@@ -1,6 +1,6 @@
 import './global.css'
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { StatusBar, Platform } from 'react-native';
+import { StatusBar, Platform, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as SplashScreen from 'expo-splash-screen';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -42,6 +42,7 @@ import {
   SafeOnboarding,
   SafeFoodsLibrary,
   SafeMealsLibrary,
+  SafeRecipeImport,
   SafeMealPlans,
   SafeLabReportImport,
   SafeLabResultAdd,
@@ -63,6 +64,7 @@ import {
   SafeMealPlanForm,
   SafeWorkoutPlans,
   SafeWorkoutPlanForm,
+  SafeWorkoutPlanDetail,
   SafeWaterContainers,
   SafeWaterLog,
   SafeWaterContainerEdit,
@@ -94,6 +96,7 @@ import {
   SafeActivityAdd,
   SafeWorkoutDetail,
   SafeActiveWorkout,
+  SafeWorkoutReorder,
   SafeWorkoutComplete,
   SafeActivityDetail,
   SafeFastingDetail,
@@ -105,6 +108,8 @@ import {
   SafeImportHistory,
   SafeMeasurementsAdd,
   SafeMindfulnessLog,
+  SafeOralCare,
+  SafeOralCareLog,
   SafeProgressPhotos,
   SafeProgressPhotoCompare,
   SafeProgressPhotoTimelapse,
@@ -133,6 +138,7 @@ import {
   SafeCustomCategoryEdit,
   SafeWorkoutSettings,
   SafeWarmupSettings,
+  SafeTreadmillSettings,
   SafeHeartRateZonesSettings,
   SafeServerSettings,
   SafePasskeySettings,
@@ -150,6 +156,7 @@ import {
   SafeHeartRateReport,
   SafeCompareReport,
   SafeHydrationReport,
+  SafeOralCareReport,
   SafeSubstancesReport,
   SafeMeasurementsReport,
   SafeReportsSettings,
@@ -187,7 +194,7 @@ import ReauthModal from './src/components/ReauthModal';
 import ServerConfigModal from './src/components/ServerConfigModal';
 import { useAuth } from './src/hooks/useAuth';
 import { addLog } from './src/services/LogService';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { FullWindowOverlay } from 'react-native-screens';
 import type { RootStackParamList } from './src/types/navigation';
@@ -208,6 +215,7 @@ import { usePendingPresetUpdateStore } from './src/stores/pendingPresetUpdateSto
 import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import MoodCheckinReminderReconciler from './src/components/MoodCheckinReminderReconciler';
+import OralCareReminderReconciler from './src/components/OralCareReminderReconciler';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
 import { useIOSWidgetLanguageRefresh } from './src/hooks/useIOSWidgetLanguageRefresh';
@@ -382,6 +390,7 @@ function AppContent() {
     handleAddMood,
     handleStartCheckIn,
     handleAddMindfulness,
+    handleAddOralCare,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,
@@ -480,6 +489,7 @@ function AppContent() {
         },
         FoodScan: 'scan',
         FoodSearch: 'search',
+        RecipeImport: 'meals/import-mealie',
         // The Android calorie and macro widgets' fasting shortcut.
         FastingDetail: 'fasting',
         ChatSettings: 'settings/voice',
@@ -488,6 +498,8 @@ function AppContent() {
         ActiveWorkout: 'active-workout',
         // The run Live Activity opens the recording screen.
         RecordActivity: 'record-activity',
+        // The brushing timer's Live Activity opens the oral care screen.
+        OralCare: 'oral-care',
         // Route generation; without a routing provider the screen explains that.
         RouteGenerate: 'routes/generate',
         // Planned against completed training: sparkyfitnessmobile://training-calendar
@@ -528,11 +540,23 @@ function AppContent() {
         <LightboxProvider>
         <UniwindInsetsBridge />
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+        <HorizontalInsetsFrame>
         <Stack.Navigator
           screenLayout={usesLiquidGlassNavigation
             ? ({ children, route }) => (
               <ActiveWorkoutTransitionScreenLayout routeName={route.name} routeKey={route.key}>
-                {children}
+                {/* View-level safe area: keeps pushed screens clear of the
+                    vertical bar iPhone Duo presents on one side. Not for
+                    Tabs: wrapping the tab controller narrows it and the
+                    system stops presenting its bar vertically; each tab's
+                    own stack insets its screens instead. */}
+                {route.name === 'Tabs' ? (
+                  children
+                ) : (
+                  <SafeAreaView edges={['left', 'right']} style={{ flex: 1 }}>
+                    {children}
+                  </SafeAreaView>
+                )}
               </ActiveWorkoutTransitionScreenLayout>
             )
             : undefined}
@@ -612,6 +636,11 @@ function AppContent() {
             name="MealsLibrary"
             component={SafeMealsLibrary}
             options={createStackScreenOptions(t('screens.meals', { defaultValue: 'Meals' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="RecipeImport"
+            component={SafeRecipeImport}
+            options={createStackScreenOptions(t('recipeImport.title', { defaultValue: 'Import Mealie ingredients' }), { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
             name="MealPlans"
@@ -724,6 +753,11 @@ function AppContent() {
           <Stack.Screen
             name="WorkoutPlanForm"
             component={SafeWorkoutPlanForm}
+            options={createStackScreenOptions(t('workoutPlans.title', { defaultValue: 'Workout plans' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
+            name="WorkoutPlanDetail"
+            component={SafeWorkoutPlanDetail}
             options={createStackScreenOptions(t('workoutPlans.title', { defaultValue: 'Workout plans' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
           />
           <Stack.Screen
@@ -973,6 +1007,11 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.hydrationReport', { defaultValue: 'Hydration' }), { headerBackButtonDisplayMode: 'minimal' })}
           />
           <Stack.Screen
+            name="OralCareReport"
+            component={SafeOralCareReport}
+            options={createStackScreenOptions(t('oralCareReport.title', { defaultValue: 'Oral care' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
             name="SubstancesReport"
             component={SafeSubstancesReport}
             options={createStackScreenOptions(t('screens.substancesReport', { defaultValue: 'Caffeine and alcohol' }), { headerBackButtonDisplayMode: 'minimal' })}
@@ -1047,6 +1086,13 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="WorkoutReorder"
+            component={SafeWorkoutReorder}
+            options={createStackScreenOptions(t('workoutReorder.title', { defaultValue: 'Reorder exercises' }), {
+              presentation: 'modal',
+            })}
+          />
+          <Stack.Screen
             name="WorkoutComplete"
             component={SafeWorkoutComplete}
             options={{
@@ -1081,6 +1127,11 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="OralCare"
+            component={SafeOralCare}
+            options={createStackScreenOptions(t('oralCare.title', { defaultValue: 'Oral care' }), { headerBackTitle: t('navigation.dashboard', { defaultValue: 'Dashboard' }) })}
+          />
+          <Stack.Screen
             name="SleepDetail"
             component={SafeSleepDetail}
             options={createStackScreenOptions(t('screens.sleep', { defaultValue: 'Sleep' }), { headerBackTitle: t('navigation.diary', { defaultValue: 'Diary' }) })}
@@ -1112,6 +1163,15 @@ function AppContent() {
             name="MindfulnessLog"
             component={SafeMindfulnessLog}
             options={createStackScreenOptions(t('mindfulness.modal.addTitle', { defaultValue: 'Log Mindful Session' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
+          />
+          <Stack.Screen
+            name="OralCareLog"
+            component={SafeOralCareLog}
+            options={createStackScreenOptions(t('oralCare.log.addTitle', { defaultValue: 'Log oral care' }), {
               presentation: 'modal',
               headerBackButtonDisplayMode: 'minimal',
               ...(Platform.OS === 'android' ? androidModalAnimation : {}),
@@ -1257,6 +1317,11 @@ function AppContent() {
             name="WarmupSettings"
             component={SafeWarmupSettings}
             options={createStackScreenOptions(t('screens.warmupSettings', { defaultValue: 'Warm-up Calculator' }), { headerBackTitle: t('screens.workoutSettings', { defaultValue: 'Workout Settings' }) })}
+          />
+          <Stack.Screen
+            name="TreadmillSettings"
+            component={SafeTreadmillSettings}
+            options={createStackScreenOptions(t('treadmillSettings.title', { defaultValue: 'Treadmill & Stride' }), { headerBackTitle: t('screens.workoutSettings', { defaultValue: 'Workout Settings' }) })}
           />
           <Stack.Screen
             name="HeartRateZonesSettings"
@@ -1471,6 +1536,7 @@ function AppContent() {
           onAddSymptoms={handleAddSymptoms}
           onAddMood={handleAddMood}
           onAddMindfulness={handleAddMindfulness}
+          onAddOralCare={handleAddOralCare}
           onRecordActivity={handleRecordActivity}
           onAskSparky={handleAskSparky}
           onStartCheckIn={handleStartCheckIn}
@@ -1510,10 +1576,12 @@ function AppContent() {
             }
           }}
         />
+        </HorizontalInsetsFrame>
         <ActiveWorkoutBar />
         <ActiveWorkoutKeepAwake />
         <MedicationReminderReconciler />
         <MoodCheckinReminderReconciler />
+        <OralCareReminderReconciler />
         <SafeAreaToast />
         </LightboxProvider>
       </SafeAreaProvider>
@@ -1530,6 +1598,32 @@ function SafeAreaToast() {
   // bottom sheets escape modal contexts. Android modal layering doesn't have
   // this problem, and FullWindowOverlay is a no-op there.
   return Platform.OS === 'ios' ? <FullWindowOverlay>{toast}</FullWindowOverlay> : toast;
+}
+
+// iPhone Duo's vertical bar strip takes the leading or trailing edge and swaps
+// sides between poses, so keep every screen inside the live left/right insets.
+// Read per render, never cached. Zero on a normal iPhone in portrait.
+//
+// Skipped under native Liquid Glass navigation: there the system presents the
+// tab bar and headers vertically itself, and each tab's screens inset for that
+// bar through ScreenSideInsets (TabsLayout) instead.
+function HorizontalInsetsFrame({ children }: { children: React.ReactNode }) {
+  const insets = useSafeAreaInsets();
+  const nativeNav = useNativeIOSTabsActive();
+  // One View in both modes: returning a Fragment for native tabs would change
+  // the element type when the Liquid Glass setting flips and remount the whole
+  // navigator, discarding screen state. Native tabs get zero padding.
+  return (
+    <View
+      style={{
+        flex: 1,
+        paddingLeft: nativeNav ? 0 : insets.left,
+        paddingRight: nativeNav ? 0 : insets.right,
+      }}
+    >
+      {children}
+    </View>
+  );
 }
 
 function UniwindInsetsBridge() {

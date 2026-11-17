@@ -142,6 +142,7 @@ export const useDeleteCustomMeasurementMutation = () => {
   return useMutation({
     mutationFn: (id: string) => deleteCustomMeasurement(id),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
       queryClient.invalidateQueries({ queryKey: checkInKeys.all });
       queryClient.invalidateQueries({ queryKey: dailyProgressKeys.all });
     },
@@ -210,6 +211,7 @@ export const useSaveCustomMeasurementMutation = () => {
   return useMutation({
     mutationFn: saveCustomMeasurement,
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
       return queryClient.invalidateQueries({ queryKey: checkInKeys.all });
     },
     meta: {

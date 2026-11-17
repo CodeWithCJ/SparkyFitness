@@ -14,6 +14,7 @@ import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import Icon from '../components/Icon';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { usePreferences } from '../hooks/usePreferences';
 import { useTrainingCalendar } from '../hooks/useTrainingCalendar';
 import { useTrainingCalendarColors } from '../hooks/useTrainingCalendarColors';
@@ -56,6 +57,7 @@ const WEEK_TOTAL_WIDTH = 44;
 const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const appLocale = useAppLocale();
   const { preferences } = usePreferences();
   const firstDayOfWeek =
@@ -758,7 +760,10 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -815,7 +820,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
         ) : null}
         {body()}
       </ScrollView>
-    </>
+    </View>
   );
 };
 

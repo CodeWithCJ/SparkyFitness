@@ -1,3 +1,5 @@
+import { curveSampleTimes, instantToMs } from '../utils/curveSampling.ts';
+
 export interface CaffeineDose {
   at: string; // ISO instant, UTC
   mg: number;
@@ -94,10 +96,6 @@ export type CaffeineCutoff =
   | { kind: 'passed'; at: string }
   | { kind: 'over' };
 
-function toMs(instant: string | number | Date): number {
-  return typeof instant === 'number' ? instant : new Date(instant).getTime();
-}
-
 /**
  * Latest time another dose of `doseMg` can be taken while keeping the projected
  * bedtime total at or under `thresholdMg`.
@@ -127,8 +125,8 @@ export function caffeineCutoff(opts: {
     doseMg,
   } = opts;
 
-  const bedtimeMs = toMs(bedtimeInstant);
-  const nowMs = toMs(nowInstant);
+  const bedtimeMs = instantToMs(bedtimeInstant);
+  const nowMs = instantToMs(nowInstant);
   if (
     isNaN(bedtimeMs) ||
     isNaN(nowMs) ||
@@ -173,13 +171,6 @@ export function bedtimeHeadroomMg(
  * step lands on the dose time instead of wherever the fixed grid happened to
  * fall.
  */
-/**
- * Most grid points any one curve is walked at. Dose boundaries are added on
- * top of these, so a curve can exceed it slightly; it bounds the walk, not the
- * output exactly.
- */
-const MAX_CURVE_POINTS = 2000;
-
 export function caffeineCurve(
   doses: CaffeineDose[],
   fromInstant: string | number | Date,
@@ -187,40 +178,22 @@ export function caffeineCurve(
   halfLifeHours: number = DEFAULT_CAFFEINE_HALF_LIFE_HOURS,
   stepMinutes: number = 10
 ): Array<{ t: number; mg: number }> {
-  const fromMs = toMs(fromInstant);
-  const toMsValue = toMs(toInstant);
-  if (isNaN(fromMs) || isNaN(toMsValue) || toMsValue <= fromMs) return [];
-  if (halfLifeHours <= 0 || stepMinutes <= 0) return [];
+  if (halfLifeHours <= 0) return [];
 
-  // Backstop against a caller handing in a range far wider than it meant to.
-  // The grid is walked one step at a time, so an unbounded span turns straight
-  // into unbounded work and an unrenderable series -- a year at ten-minute
-  // steps is ~52k points. Callers are expected to pass a window of hours; if
-  // one passes days, widen the step rather than refusing or hanging, which
-  // keeps the curve's shape honest at a resolution the range can carry.
-  const requestedStepMs = stepMinutes * 60 * 1000;
-  const spanMs = toMsValue - fromMs;
-  const stepMs =
-    spanMs / requestedStepMs > MAX_CURVE_POINTS
-      ? Math.ceil(spanMs / MAX_CURVE_POINTS)
-      : requestedStepMs;
-
-  const points = new Set<number>();
-  for (let t = fromMs; t < toMsValue; t += stepMs) points.add(t);
-  points.add(toMsValue);
-
+  // One millisecond before each dose keeps the rise vertical instead of
+  // sloping up from the previous grid point.
+  const doseEdgesMs: number[] = [];
   for (const dose of doses ?? []) {
     const doseMs = new Date(dose?.at).getTime();
-    if (isNaN(doseMs) || doseMs < fromMs || doseMs > toMsValue) continue;
-    points.add(doseMs);
-    // One millisecond earlier keeps the rise vertical instead of sloping up
-    // from the previous grid point.
-    if (doseMs - 1 >= fromMs) points.add(doseMs - 1);
+    if (!isNaN(doseMs)) doseEdgesMs.push(doseMs, doseMs - 1);
   }
 
-  return [...points]
-    .sort((a, b) => a - b)
-    .map((t) => ({ t, mg: activeCaffeineAt(doses, t, halfLifeHours) }));
+  return curveSampleTimes(
+    instantToMs(fromInstant),
+    instantToMs(toInstant),
+    stepMinutes,
+    doseEdgesMs
+  ).map((t) => ({ t, mg: activeCaffeineAt(doses, t, halfLifeHours) }));
 }
 
 /**

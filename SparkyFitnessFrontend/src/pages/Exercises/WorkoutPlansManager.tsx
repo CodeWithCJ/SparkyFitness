@@ -126,13 +126,32 @@ const WorkoutPlansManager = () => {
     }
   };
 
+  // The plan save commits even when the diary refresh after it fails;
+  // surface that state instead of showing a plain success.
+  const showRegenerationFailedToast = React.useCallback(() => {
+    toast({
+      title: t('common.error'),
+      description: t(
+        'workoutPlansManager.regenerationFailed',
+        'Saved, but refreshing the diary failed. Please try again.'
+      ),
+      variant: 'destructive',
+    });
+  }, [t]);
+
   const handleUpdatePlan = async (
     planId: string,
     updatedPlanData: Partial<WorkoutPlanTemplate>
   ) => {
     if (!user?.id) return;
     try {
-      await updateWorkoutPlanTemplate({ id: planId, data: updatedPlanData });
+      const result = await updateWorkoutPlanTemplate({
+        id: planId,
+        data: updatedPlanData,
+      });
+      if (result?.regeneration_failed) {
+        showRegenerationFailedToast();
+      }
       setIsEditDialogOpen(false);
       setSelectedPlan(null);
     } catch (err) {
@@ -168,15 +187,25 @@ const WorkoutPlansManager = () => {
           });
           return;
         }
-        await updateWorkoutPlanTemplate({
+        const result = await updateWorkoutPlanTemplate({
           id: planId,
           data: { ...planToUpdate, is_active: isActive },
         });
+        if (result?.regeneration_failed) {
+          showRegenerationFailedToast();
+        }
       } catch (err) {
         error(loggingLevel, 'Error toggling workout plan active status:', err);
       }
     },
-    [user?.id, plans, t, updateWorkoutPlanTemplate, loggingLevel]
+    [
+      user?.id,
+      plans,
+      t,
+      updateWorkoutPlanTemplate,
+      showRegenerationFailedToast,
+      loggingLevel,
+    ]
   );
 
   const columns = React.useMemo<

@@ -103,7 +103,11 @@ async function resolveSummaryAccess(
  *   get:
  *     summary: Get consolidated daily summary
  *     tags: [Dashboard]
- *     description: Returns goals, food entries, exercise sessions, and water intake for a single date in one response.
+ *     description: >
+ *       Returns goals, food entries, exercise sessions, and water intake for a single date in one response.
+ *       When the user has calorie cycling switched on, `calorieCycling` says how it set the day's calorie
+ *       goal: status (active, paused_earn_back, paused_weekly_plan), the base target, the cycled target,
+ *       the change, the day type (high, low, even) and the safety floor it respected.
  *     security:
  *       - cookieAuth: []
  *     parameters:

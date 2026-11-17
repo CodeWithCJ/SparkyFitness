@@ -8,10 +8,10 @@
 "widget.burned" = "Bruciato";
 "widget.goal" = "Obiettivo";
 "widget.protein" = "Proteine";
-"widget.carbs" = "Carbo";
+"widget.carbs" = "Carboidrati";
 "widget.fat" = "Grassi";
 "widget.grams" = "%@ g";
 "widget.a11y.kcal_left" = "Mancano %@ kcal";
 "widget.a11y.kcal" = "%@ kcal";
 "widget.search_food" = "Cerca cibo";
-"widget.scan_barcode" = "Scansiona codice";
+"widget.scan_barcode" = "Scansiona codice a barre";

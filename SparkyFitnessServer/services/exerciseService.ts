@@ -13,14 +13,14 @@ import { log } from '../config/logging.js';
 import wgerService from '../integrations/wger/wgerService.js';
 import nutritionixService from '../integrations/nutritionix/nutritionixService.js';
 import { downloadImage } from '../utils/imageDownloader.js';
-import calorieCalculationService from './CalorieCalculationService.js';
+import calorieCalculationService, {
+  type PreparedCalorieEstimator,
+} from './CalorieCalculationService.js';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 import { normalizeToStringArray } from '../utils/exerciseJsonFields.js';
 import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
-import { editedSyncFields } from '../utils/manualFields.js';
+import { editedSyncFields, resolveEditedSets } from '../utils/manualFields.js';
 import {
   deriveExerciseModality,
   canEditGroupedWorkout,
@@ -29,6 +29,8 @@ import {
   toNumber,
   parseCsv,
   DEFAULT_CSV_FORMAT,
+  type PresetSessionExerciseRequest,
+  type UpdateExerciseEntryRequest,
 } from '@workspace/shared';
 import {
   getGroupedExerciseSessionById,
@@ -42,9 +44,8 @@ import {
   equipmentNameMap,
 } from '../integrations/wger/wgerNameMapping.js';
 import { ExternalProviderType } from '../types/externalProvider.js';
+import { removeUnusedEntryImage } from './exerciseEntryImageService.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 async function getExercisesWithPagination(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   authenticatedUserId: any,
@@ -488,14 +489,11 @@ async function getExerciseEntryById(authenticatedUserId: any, id: any) {
   }
 }
 async function updateExerciseEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  id: string,
+  updateData: UpdateExerciseEntryRequest &
+    Partial<Pick<PresetSessionExerciseRequest, 'sort_order' | 'superset_group'>>
 ) {
   try {
     const existingEntry = await exerciseEntryDb.getExerciseEntryById(
@@ -504,20 +502,6 @@ async function updateExerciseEntry(
     );
     if (!existingEntry) {
       throw new Error('Exercise entry not found.');
-    }
-    // If a new image is being uploaded or the image is being cleared, delete the old one
-    if (
-      (updateData.image_url || updateData.image_url === null) &&
-      existingEntry.image_url
-    ) {
-      const relativePath = existingEntry.image_url.startsWith('/')
-        ? existingEntry.image_url.substring(1)
-        : existingEntry.image_url;
-      const oldImagePath = path.join(__dirname, '..', relativePath);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
-        log('info', `Deleted old exercise entry image: ${oldImagePath}`);
-      }
     }
     // If calories_burned is not provided, calculate it using the calorieCalculationService
     // An edit that changes the sets usually omits exercise_id (the entry keeps
@@ -531,18 +515,17 @@ async function updateExerciseEntry(
       updateData.duration_minutes !== null &&
       updateData.duration_minutes !== undefined &&
       updateData.calories_burned === undefined;
-    let caloriesPerHour: number | null = null;
+    let estimateCaloriesFromSets: PreparedCalorieEstimator | undefined;
     if (estimateCalories) {
       const exercise = await exerciseDb.getExerciseById(
         estimateExerciseId,
         authenticatedUserId
       );
       if (exercise) {
-        caloriesPerHour =
-          await calorieCalculationService.estimateCaloriesBurnedPerHour(
+        estimateCaloriesFromSets =
+          await calorieCalculationService.prepareCalorieEstimator(
             exercise,
-            authenticatedUserId,
-            updateData.sets
+            authenticatedUserId
           );
       } else {
         log(
@@ -555,70 +538,84 @@ async function updateExerciseEntry(
     // model reads it under the entry's lock, not from the read above: a watch
     // upload or another edit committed in between would be overwritten with
     // the values read here.
+    // The image the entry held under the lock, which a new or cleared image
+    // replaces once the update has committed.
+    let replacedImageUrl: unknown;
     const resolveUpdate = (existingEntry: Record<string, unknown>) => {
-      let caloriesBurned = updateData.calories_burned;
+      const resolvedRequest = {
+        ...updateData,
+        sets: resolveEditedSets(updateData.sets, existingEntry.sets),
+      };
+      replacedImageUrl = existingEntry.image_url;
+      let caloriesBurned = resolvedRequest.calories_burned;
       // The estimate is for the exercise read above; if another edit has
       // since moved the entry to a different one, keep the stored calories.
       if (
         estimateCalories &&
-        (updateData.exercise_id !== undefined ||
+        (resolvedRequest.exercise_id !== undefined ||
           existingEntry.exercise_id === estimateExerciseId)
       ) {
+        const caloriesPerHour = estimateCaloriesFromSets?.(
+          resolvedRequest.sets
+        );
         // A watch-measured figure (active_calories) beats the formula, same
         // rule as the grouped-session edit path.
         caloriesBurned = resolveEditedCaloriesBurned(
           undefined,
           existingEntry,
-          caloriesPerHour === null
+          caloriesPerHour === undefined
             ? Number(existingEntry.calories_burned ?? 0)
-            : (caloriesPerHour / 60) * updateData.duration_minutes
+            : (caloriesPerHour / 60) * Number(resolvedRequest.duration_minutes)
         );
       }
       return {
         updateData: {
-          ...updateData,
-          exercise_id: updateData.exercise_id ?? existingEntry.exercise_id,
+          ...resolvedRequest,
+          exercise_id: resolvedRequest.exercise_id ?? existingEntry.exercise_id,
           duration_minutes:
-            updateData.duration_minutes ?? existingEntry.duration_minutes ?? 0,
+            resolvedRequest.duration_minutes ??
+            existingEntry.duration_minutes ??
+            0,
           calories_burned: caloriesBurned ?? existingEntry.calories_burned ?? 0,
-          entry_date: updateData.entry_date ?? existingEntry.entry_date,
-          notes: updateData.notes ?? existingEntry.notes,
+          entry_date: resolvedRequest.entry_date ?? existingEntry.entry_date,
+          notes: resolvedRequest.notes ?? existingEntry.notes,
           workout_plan_assignment_id:
-            updateData.workout_plan_assignment_id ??
+            resolvedRequest.workout_plan_assignment_id ??
             existingEntry.workout_plan_assignment_id,
           image_url:
-            updateData.image_url === undefined
+            resolvedRequest.image_url === undefined
               ? existingEntry.image_url
-              : updateData.image_url,
+              : resolvedRequest.image_url,
           // Explicit value (including null-to-clear) wins; omitted derives the
           // total from per-set distances, else preserves the existing value.
           distance:
-            updateData.distance !== undefined
-              ? updateData.distance
-              : (setsDistanceKm(updateData.sets) ?? existingEntry.distance),
+            resolvedRequest.distance !== undefined
+              ? resolvedRequest.distance
+              : (setsDistanceKm(resolvedRequest.sets) ??
+                existingEntry.distance),
           avg_heart_rate:
-            updateData.avg_heart_rate ?? existingEntry.avg_heart_rate,
-          steps: updateData.steps ?? existingEntry.steps,
-          sort_order: updateData.sort_order ?? existingEntry.sort_order,
+            resolvedRequest.avg_heart_rate ?? existingEntry.avg_heart_rate,
+          steps: resolvedRequest.steps ?? existingEntry.steps,
+          sort_order: resolvedRequest.sort_order ?? existingEntry.sort_order,
           exercise_name:
-            updateData.exercise_name ?? existingEntry.exercise_name,
+            resolvedRequest.exercise_name ?? existingEntry.exercise_name,
           // Preserve when omitted; explicit null clears (leaving a superset).
           superset_group:
-            updateData.superset_group === undefined
+            resolvedRequest.superset_group === undefined
               ? (existingEntry.superset_group ?? null)
-              : updateData.superset_group,
+              : resolvedRequest.superset_group,
           // Preserve when omitted; explicit null clears the time of day.
           entry_time:
-            updateData.entry_time === undefined
+            resolvedRequest.entry_time === undefined
               ? (existingEntry.entry_time ?? null)
-              : updateData.entry_time,
+              : resolvedRequest.entry_time,
         },
         // A synced entry remembers which fields this edit changed, so the same
         // workout sent again by the provider does not overwrite them. Taken
         // from the request as sent, before the defaults and the calorie
         // estimate above fill in the rest.
         markManualFields: existingEntry.source_id
-          ? editedSyncFields(updateData, existingEntry)
+          ? editedSyncFields(resolvedRequest, existingEntry)
           : [],
       };
     };
@@ -633,13 +630,22 @@ async function updateExerciseEntry(
     if (!updatedEntry) {
       throw new Error('Exercise entry not found or not authorized to update.');
     }
+    if (
+      (updateData.image_url || updateData.image_url === null) &&
+      replacedImageUrl !== updateData.image_url
+    ) {
+      await removeUnusedEntryImage(replacedImageUrl);
+    }
     // Handle activity details updates
     if (updateData.activity_details !== undefined) {
-      const existingActivityDetails =
-        await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(
-          authenticatedUserId,
-          id
-        );
+      const existingActivityDetails: {
+        id: string;
+        detail_type: string;
+        detail_data: unknown;
+      }[] = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(
+        authenticatedUserId,
+        id
+      );
       const incomingActivityDetails = updateData.activity_details || [];
       const RAW_PROVIDER_TYPES = [
         'full_activity_data',
@@ -650,8 +656,7 @@ async function updateExerciseEntry(
       // Identify details to delete
       for (const existingDetail of existingActivityDetails) {
         const found = incomingActivityDetails.find(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (incomingDetail: any) => incomingDetail.id === existingDetail.id
+          (incomingDetail) => incomingDetail.id === existingDetail.id
         );
         if (!found) {
           // Do not delete raw provider dump rows during standard entry edit
@@ -672,12 +677,11 @@ async function updateExerciseEntry(
             incomingDetail.detail_data === null ||
             incomingDetail.detail_data === undefined ||
             incomingDetail.detail_data === 'null' ||
-            RAW_PROVIDER_TYPES.includes(incomingDetail.detail_type);
+            RAW_PROVIDER_TYPES.includes(incomingDetail.detail_type ?? '');
 
           if (isMaskedOrNull) {
             const existing = existingActivityDetails.find(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (e: any) => e.id === incomingDetail.id
+              (e) => e.id === incomingDetail.id
             );
             if (
               existing &&
@@ -741,18 +745,11 @@ async function deleteExerciseEntry(authenticatedUserId: any, id: any) {
     if (!entry) {
       throw new Error('Exercise entry not found.'); // Should not happen if entryOwnerId was found
     }
-    // If an image is associated with the entry, delete it from the filesystem
-    if (entry.image_url) {
-      const imagePath = path.join(__dirname, '..', entry.image_url);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-        log('info', `Deleted exercise entry image: ${imagePath}`);
-      }
-    }
     const success = await exerciseEntryDb.deleteExerciseEntry(id, entryOwnerId);
     if (!success) {
       throw new Error('Exercise entry not found or not authorized to delete.');
     }
+    await removeUnusedEntryImage(entry.image_url);
     return { message: 'Exercise entry deleted successfully.' };
   } catch (error) {
     log(
@@ -1039,7 +1036,7 @@ function wgerDescriptionToInstructions(rawDescription: string): string[] {
 }
 
 async function searchExternalExercises(
-  _authenticatedUserId: string,
+  authenticatedUserId: string,
   query: string,
   providerId: string,
   providerType: ExternalProviderType,
@@ -1145,7 +1142,11 @@ async function searchExternalExercises(
       });
     } else if (providerType === 'nutritionix') {
       const nutritionixSearchResults =
-        await nutritionixService.searchNutritionixExercises(query, providerId);
+        await nutritionixService.searchNutritionixExercises(
+          authenticatedUserId,
+          query,
+          providerId
+        );
       totalCount = nutritionixSearchResults.length;
       items = nutritionixSearchResults.slice(offset, offset + pageSize);
     } else if (providerType === 'free-exercise-db') {
@@ -1463,7 +1464,6 @@ async function addFreeExerciseDBExerciseToUserExercises(
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       images: localImagePaths.filter((p): p is string => p !== null), // Local upload paths — createExercise handles JSON.stringify
       calories_per_hour:
-        // @ts-expect-error TS(2554): Expected 3 arguments, but got 2.
         await calorieCalculationService.estimateCaloriesBurnedPerHour(
           exerciseDetails,
           authenticatedUserId
@@ -1991,6 +1991,7 @@ async function createGroupedWorkoutSession(
             notes,
             location: location ?? null,
             source,
+            finished_at: sessionData.finished_at ?? null,
           },
           actingUserId
         );
@@ -2021,6 +2022,7 @@ async function createGroupedWorkoutSession(
             notes: notes ?? null,
             location: location ?? null,
             source,
+            finished_at: sessionData.finished_at ?? null,
           },
           actingUserId
         );
@@ -2135,18 +2137,45 @@ async function updateGroupedWorkoutSession(
     if (!existingSession) {
       throw createServiceError(404, 'Exercise preset entry not found.');
     }
-    await exercisePresetEntryRepository.updateExercisePresetEntryWithClient(
-      client,
-      presetEntryId,
-      userId,
-      {
-        name: updateData.name,
-        description: updateData.description,
-        notes: updateData.notes,
-        location: updateData.location,
-        entry_date: updateData.entry_date,
-      }
-    );
+    // #1995 phase 1 lifecycle: when the client presents the revision it last
+    // saw, a mismatch means another device flushed edits in between. Refuse
+    // with 409 instead of letting this snapshot silently overwrite them.
+    if (
+      updateData.revision !== undefined &&
+      Number(existingSession.revision) !== Number(updateData.revision)
+    ) {
+      throw createServiceError(
+        409,
+        'This workout session was modified by another device or tab. Reload it before saving.'
+      );
+    }
+    const updatedPresetEntry =
+      await exercisePresetEntryRepository.updateExercisePresetEntryWithClient(
+        client,
+        presetEntryId,
+        userId,
+        {
+          name: updateData.name,
+          description: updateData.description,
+          notes: updateData.notes,
+          location: updateData.location,
+          entry_date: updateData.entry_date,
+          // Lifecycle transition (see migration 20261110120000): a timestamp
+          // ends the session, null reopens a partial one, absent leaves it.
+          finished_at: updateData.finished_at,
+          // Pins the revision read above so the bump is atomic: if another
+          // writer committed in between, the repository UPDATE misses and
+          // returns null, which we refuse with 409 below instead of
+          // silently overwriting the other device's edits.
+          expected_revision: updateData.revision,
+        }
+      );
+    if (updateData.revision !== undefined && !updatedPresetEntry) {
+      throw createServiceError(
+        409,
+        'This workout session was modified by another device or tab. Reload it before saving.'
+      );
+    }
     const targetEntryDate = updateData.entry_date || existingSession.entry_date;
     if (updateData.exercises !== undefined) {
       if (!canEditGroupedWorkout(existingSession.source)) {
@@ -2407,15 +2436,16 @@ async function logWorkoutPresetGrouped(
   });
 }
 async function getActivityDetailsByExerciseEntryIdAndProvider(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerName: any
+  authenticatedUserId: string,
+  entryId: string,
+  providerName: unknown
 ) {
   try {
-    let activityDetails = [];
+    let activityDetails: Awaited<
+      ReturnType<
+        typeof activityDetailsRepository.getActivityDetailsByEntryOrPresetId
+      >
+    > = [];
     // First, try to find an exercise entry with the given ID
     const exerciseEntry = await exerciseEntryDb.getExerciseEntryById(
       entryId,
@@ -2475,14 +2505,12 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(
 
     // Find the full_activity_data and full_workout_data for the given provider
     const activityData = activityDetails.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (detail: any) =>
+      (detail) =>
         matchesProvider(detail.provider_name) &&
         detail.detail_type === 'full_activity_data'
     );
     const workoutData = activityDetails.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (detail: any) =>
+      (detail) =>
         matchesProvider(detail.provider_name) &&
         detail.detail_type === 'full_workout_data'
     );
@@ -2520,10 +2548,8 @@ async function getExercisesNeedingReview(authenticatedUserId: any) {
 }
 
 async function updateExerciseEntriesSnapshot(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exerciseId: any
+  authenticatedUserId: string,
+  exerciseId: string
 ) {
   try {
     // Fetch the latest exercise details
@@ -2539,6 +2565,7 @@ async function updateExerciseEntriesSnapshot(
       exercise_name: exercise.name,
       calories_per_hour: exercise.calories_per_hour,
       modality: exercise.modality,
+      health_activity_type: exercise.health_activity_type ?? null,
     };
     // Update all relevant exercise entries for the authenticated user
     await exerciseRepository.updateExerciseEntriesSnapshot(

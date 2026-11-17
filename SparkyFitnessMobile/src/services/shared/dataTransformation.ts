@@ -1,3 +1,7 @@
+import {
+  isSkinTemperatureSite,
+  type SkinTemperatureSite,
+} from '@workspace/shared';
 import { addLog } from '../LogService';
 import {
   MetricConfig,
@@ -19,7 +23,7 @@ import { toLocalDateString } from '../../utils/dateUtils';
 // mg/dL per mmol/L for blood glucose (molar mass of glucose ≈ 180.18 g/mol). Shared by
 // both platforms' glucose transformers and the HealthKit day-statistics read so every
 // path converts identically.
-export const BLOOD_GLUCOSE_MG_DL_PER_MMOL_L = 18.018;
+export { BLOOD_GLUCOSE_MG_DL_PER_MMOL_L } from '@workspace/shared';
 
 // HC stores every nutrient as Mass (grams), but Sparky's food columns expect a
 // specific unit per nutrient — matching how OpenFoodFacts/Garmin populate them:
@@ -76,6 +80,7 @@ export interface ValueTransformResult {
   type?: string; // Optional override for output type
   timestamp?: string;
   source_id?: string;
+  site?: SkinTemperatureSite;
 }
 
 // Transformer that extracts value and date for standard record output
@@ -286,6 +291,9 @@ export const createTransformHealthRecords =
             if (typeof rec.timestamp === 'string') {
               transformedRecord.timestamp = rec.timestamp;
             }
+            if (isSkinTemperatureSite(rec.site)) {
+              transformedRecord.site = rec.site;
+            }
             // Forward timezone metadata from aggregation layer
             if (rec.record_timezone != null) {
               transformedRecord.record_timezone = rec.record_timezone as string;
@@ -324,6 +332,7 @@ export const createTransformHealthRecords =
               source,
               ...(result.timestamp ? { timestamp: result.timestamp } : {}),
               ...(result.source_id ? { source_id: result.source_id } : {}),
+              ...(result.site ? { site: result.site } : {}),
               ...extractTimezoneMetadata(rec),
             };
             transformedData.push(transformedRecord);

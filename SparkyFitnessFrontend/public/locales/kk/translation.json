@@ -44,9 +44,7 @@
       "categoryGeneral": "Жалпы",
       "categoryStrength": "Күш",
       "categoryCardio": "Кардио",
-      "categoryYoga": "Йога",
-      "caloriesPerHourLabel": "Каллория/сағатына",
-      "caloriesPerHourHint": "Жүйе есептеген сағаттық калорияларды ({{newExerciseCalories}} кал/сағ) пайдалану үшін бос қалдырыңыз."
+      "categoryYoga": "Йога"
     }
   }
 }

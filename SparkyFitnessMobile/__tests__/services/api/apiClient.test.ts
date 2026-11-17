@@ -226,6 +226,30 @@ describe('apiClient', () => {
       expect(result).toEqual(responseData);
     });
 
+    test('forwards caller cancellation without treating it as a timeout', async () => {
+      const controller = new AbortController();
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockImplementation((_url: string, options: RequestInit) => {
+        controller.abort();
+        if (options.signal?.aborted) {
+          return Promise.reject(
+            Object.assign(new Error('Cancelled'), { name: 'AbortError' })
+          );
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      await expect(
+        apiFetch({
+          endpoint: '/api/test',
+          serviceName: 'Test API',
+          operation: 'fetch test',
+          signal: controller.signal,
+        })
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(addLog).not.toHaveBeenCalled();
+    });
+
     test('throws error when no server config exists', async () => {
       mockGetActiveServerConfig.mockResolvedValue(null);
 

@@ -26,10 +26,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import {
-  useCreateLabMarker,
-  useSaveLabResult,
-} from '@/hooks/Labs/useLabResults';
+import { useSaveLabResult } from '@/hooks/Labs/useLabResults';
 import { exactLabValue, exactRangeBound, labNumber } from './labFormat';
 
 interface LabResultDialogProps {
@@ -65,7 +62,6 @@ const LabResultDialog = ({
   const { t } = useTranslation();
   const { timezone } = usePreferences();
   const saveResult = useSaveLabResult();
-  const createMarker = useCreateLabMarker();
 
   // The unit and range a new result starts from: the marker's latest result,
   // else the preset's (the profile's sex picks the range), else the marker's.
@@ -167,9 +163,6 @@ const LabResultDialog = ({
       ? { unit: from.unit, low: text(from.low), high: text(from.high) }
       : null;
   });
-  // A marker created for a new name before the result failed to save: a retry
-  // reuses it instead of creating the same name again.
-  const [createdMarkerId, setCreatedMarkerId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   // The numbers the fields were filled in with, so a field left untouched is
   // saved as that exact number rather than re-read from its formatted text.
@@ -190,7 +183,6 @@ const LabResultDialog = ({
 
   const choose = (next: Picked) => {
     setPicked(next);
-    setCreatedMarkerId(null);
     const source = seedSource(next);
     const seed = {
       unit: source.unit,
@@ -276,23 +268,18 @@ const LabResultDialog = ({
             marker_key: picked.key,
             source: 'manual',
           } as CreateLabResultBody;
-        } else {
-          let customId: string;
-          if (picked.kind === 'custom') {
-            customId = picked.id;
-          } else if (createdMarkerId) {
-            customId = createdMarkerId;
-          } else {
-            const created = await createMarker.mutateAsync({
-              name: picked.name,
-              unit: '',
-            });
-            customId = created.id;
-            setCreatedMarkerId(created.id);
-          }
+        } else if (picked.kind === 'custom') {
           body = {
             ...common,
-            custom_marker_id: customId,
+            custom_marker_id: picked.id,
+            source: 'manual',
+          } as CreateLabResultBody;
+        } else {
+          // A new marker is created with the result in one server write, so a
+          // failed save leaves no empty marker and a retry simply sends it again.
+          body = {
+            ...common,
+            custom_marker_name: picked.name,
             source: 'manual',
           } as CreateLabResultBody;
         }
@@ -304,7 +291,7 @@ const LabResultDialog = ({
     }
   };
 
-  const busy = saveResult.isPending || createMarker.isPending;
+  const busy = saveResult.isPending;
   const typed = query.trim();
   const canCreate =
     typed !== '' &&

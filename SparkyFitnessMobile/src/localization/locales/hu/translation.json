@@ -169,7 +169,6 @@
     "emptyForDate": "Erre a dátumra nincs étkezési bejegyzés",
     "diaryForDate": "Családi napló · {{date}}",
     "openMeal": "{{meal}} étkezés megnyitása",
-    "mealCalories": "{{calories}} kcal",
     "unnamedFood": "Névtelen étel",
     "selectAll": "Összes kiválasztása",
     "deselectAll": "Minden jelölés eltávolítása",
@@ -177,15 +176,12 @@
     "selectFood": "Válassza ki a(z) {{food}}",
     "deselectFood": "A {{food}} kijelölésének megszüntetése",
     "continue": "Folytatás",
-    "nutritionSummary": "{{calories}} kcal · P {{protein}} g · C {{carbs}} g · F {{fat}} g",
-    "selectedNutrition": "Kiválasztott: {{calories}} kcal · P {{protein}} g · C {{carbs}} g · F {{fat}} g",
     "copyReview": "Másolat megtekintése",
     "copyFrom": "Másolás a {{name}}-ből",
     "copyMealTitle": "{{meal}} étel",
     "quantityForFood": "A {{food}} mennyisége",
     "quantityMustBePositive": "Adjon meg nullánál nagyobb mennyiséget.",
     "copyNutrition": "Táplálkozás másolása",
-    "copyCalories": "{{calories}} kcal",
     "copyProtein": "{{protein}} g fehérje",
     "copyCarbs": "{{carbs}} g szénhidrát",
     "copyFat": "{{fat}} g zsír",
@@ -421,7 +417,6 @@
       "changeMetric": "Mérőszám-oszlop módosítása",
       "notesForSet": "Megjegyzések a(z) {{number}} szetthez",
       "addSet": "Hozzáadás a(z) {{name}} szetthez",
-      "caloriesUnit": "kcal",
       "addSetLabel": "Szett hozzáadása",
       "heartRateFor": "{{name}} átlagos pulzusszáma",
       "liveHeartRateFor": "{{name}} jelenlegi pulzusszáma",
@@ -520,9 +515,6 @@
     "manageSymptoms": "A tünetek kezelése",
     "symptomDefinition": "A tünetek részletei",
     "library": {
-      "noServerConfigured": "Nincs beállított szerver",
-      "configureServer": "A könyvtár megtekintéséhez állítsd be a szerverkapcsolatot a Beállítások menüpontban.",
-      "goToSettings": "Ugrás a Beállítások menübe",
       "loading": "Könyvtár betöltése...",
       "title": "Könyvtár",
       "create": "Létrehozás",
@@ -752,9 +744,6 @@
   },
   "dashboard": {
     "chooseDate": "Válasszon vezérlőpult dátumot",
-    "noServerConfigured": "Nincs beállított szerver",
-    "configureServer": "A napi összefoglaló megtekintéséhez állítsd be a szerverkapcsolatot a Beállítások menüpontban.",
-    "goToSettings": "Ugrás a Beállításokhoz",
     "loadingSummary": "Összefoglaló betöltése...",
     "loadFailed": "Az összefoglaló betöltése nem sikerült",
     "checkConnection": "Kérjük, ellenőrizze az internetkapcsolatát, majd próbálja meg újra.",
@@ -765,7 +754,6 @@
     "healthTrends": "Egészségügyi trendek",
     "consumed": "Fogyasztott",
     "remaining": "fennmaradó",
-    "ofCalories": "{{value}} kcal",
     "burned": "Elégetett",
     "hydration": "Folyadékpótlás",
     "ofVolume": "{{value}} {{unit}}",
@@ -841,5 +829,10 @@
     "unavailable": {
       "healthConnect": "A Health Connect szolgáltatás nem érhető el. Kérjük, ellenőrizze, hogy telepítve van-e és engedélyezve van-e."
     }
+  },
+  "barcodeSources": {
+    "currentSource": "Forrás: {{name}}",
+    "otherSources": "További források",
+    "empty": "Nincsenek további elérhető források"
   }
 }

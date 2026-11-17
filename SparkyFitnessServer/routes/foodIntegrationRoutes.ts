@@ -555,6 +555,7 @@ router.get('/nutritionix/search', authenticate, async (req, res, next) => {
   }
   try {
     const data = await searchNutritionixFoods(
+      req.authenticatedUserId,
       String(query),
       String(providerId)
     );
@@ -598,6 +599,7 @@ router.get('/nutritionix/nutrients', authenticate, async (req, res, next) => {
   }
   try {
     const data = await getNutritionixNutrients(
+      req.authenticatedUserId,
       String(query),
       String(providerId)
     );
@@ -639,6 +641,7 @@ router.get('/nutritionix/item', authenticate, async (req, res, next) => {
   }
   try {
     const data = await getNutritionixBrandedNutrients(
+      req.authenticatedUserId,
       String(nix_item_id),
       String(providerId)
     );
@@ -690,7 +693,7 @@ router.get('/mealie/search', authenticate, async (req, res, next) => {
       ? // @ts-expect-error TS(2345): Argument of type 'string | ParsedQs | (string | Pa... Remove this comment to see the full error message
         Math.max(1, parseInt(req.query.page, 10) || 1)
       : undefined;
-  if (!query) {
+  if (typeof query !== 'string' || !query) {
     return res.status(400).json({ error: 'Missing search query' });
   }
   try {

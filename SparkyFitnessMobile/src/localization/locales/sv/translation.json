@@ -14,5 +14,17 @@
     "next": "Nästa",
     "save": "Spara",
     "success": "Klart"
+  },
+  "recipeImport": {
+    "inactive": "Inaktiv",
+    "inactiveManagement": "Aktivera den här leverantören i Inställningar för att importera recept. Du kan fortfarande hantera dina sparade val här."
+  },
+  "barcodeSources": {
+    "local": "Dina livsmedel"
+  },
+  "foodSearch": {
+    "sections": {
+      "yourFoods": "Dina livsmedel"
+    }
   }
 }

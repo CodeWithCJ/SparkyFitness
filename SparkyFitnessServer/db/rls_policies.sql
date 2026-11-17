@@ -43,6 +43,7 @@ BEGIN
     'food_variants',
     'foods',
     'goal_presets',
+    'intervals_nutrition_pushes',
     'meal_foods',
     'meal_plan_template_assignments',
     'meal_plan_templates',
@@ -51,6 +52,7 @@ BEGIN
     'meal_types',
     'mood_entries',
     'mindfulness_sessions',
+    'oral_care_sessions',
     'run_programs',
     'run_goals',
     'shoes',
@@ -659,7 +661,12 @@ CREATE POLICY modify_policy ON public.profiles FOR ALL TO PUBLIC USING (authenti
 -- existing profile-read and owner-write policies cover them without new grants.
 -- adaptive_activity_separate inherits the existing preference read/write rules.
 -- adjust_macros_with_exercise uses the same owner-write, delegate-read rules.
+-- calorie_cycling_mode and calorie_cycling_offsets inherit the existing preference read/write rules.
 -- use_move_ring_active_calories inherits the existing preference read/write rules.
+-- default_temperature_unit inherits the existing preference read/write rules.
+-- oral_care_daily_target and oral_care_target_seconds inherit the existing preference read/write rules.
+-- bac_distribution_formula, bac_elimination_rate and bac_display_unit inherit the existing preference read/write rules.
+-- feature_choices (optional features per platform, #3487) inherits the existing preference read/write rules.
 CREATE POLICY select_policy ON public.user_preferences FOR SELECT TO PUBLIC USING (has_profile_read_access(user_id));
 CREATE POLICY modify_policy ON public.user_preferences FOR ALL TO PUBLIC
 USING (authenticated_user_id() = user_id)
@@ -739,6 +746,8 @@ USING (
 );
 -- The modify policy for exercise_entries is already handled by create_diary_policy('exercise_entries')
 
+-- Provider session identities (including Hevy source_id) use the same diary
+-- owner/delegate policy; a provider ID never grants access to another owner.
 SELECT create_diary_policy('exercise_preset_entries');
 
 -- Workout feedback (#1560) follows the diary rows it describes: readable by
@@ -807,7 +816,12 @@ SELECT create_owner_policy('run_goals');
 SELECT create_owner_policy('custom_run_programs');
 -- Running fitness tests (5K, 30-minute run, Cooper) and the paces they gave: personal training data, owner-only.
 SELECT create_owner_policy('fitness_tests');
+-- Recipe integration provenance and source-food mappings are never delegated.
+SELECT create_owner_policy('recipe_imports');
+SELECT create_owner_policy('recipe_food_mappings');
 SELECT create_owner_policy('routes');
+-- Intervals.icu nutrition push log: owner-only, never shared.
+SELECT create_owner_policy('intervals_nutrition_pushes');
 
 -- User-defined mood tags. Mood is check-in data (mood_entries uses the check-in
 -- policy), and custom check-in definitions like custom_categories are shared with
@@ -815,6 +829,8 @@ SELECT create_owner_policy('routes');
 -- consistency (a delegate managing the owner's check-in sees the owner's moods).
 SELECT create_checkin_policy('user_custom_moods');
 SELECT create_checkin_policy('mindfulness_sessions');
+-- Oral care (brushing, flossing, ...) is check-in data like mindfulness (#1862).
+SELECT create_checkin_policy('oral_care_sessions');
 -- Lab results are check-in data. Built-in markers live in @workspace/shared; only a
 -- user's own markers and their results are stored, both under the check-in policy.
 SELECT create_checkin_policy('lab_markers');

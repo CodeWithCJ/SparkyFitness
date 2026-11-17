@@ -1,4 +1,4 @@
-import { vi, beforeEach, describe, it, expect } from 'vitest';
+import { vi, beforeEach, describe, it, expect, assert } from 'vitest';
 import { getGarminDateChunks } from '../integrations/garminconnect/garminConnectService.js';
 
 const { fakeClient } = vi.hoisted(() => {
@@ -137,16 +137,18 @@ describe('Garmin Strength Activity Processor - summarizedExerciseSets Fallback',
     const firstCallArgs = vi.mocked(
       exerciseEntryRepository._createExerciseEntryWithClient
     ).mock.calls[0][2];
+    assert(firstCallArgs.sets);
     expect(firstCallArgs.sets).toHaveLength(3);
-    expect(firstCallArgs.sets[0].reps).toBe(10);
-    expect(firstCallArgs.sets[0].weight).toBe(6); // 180000 / 30 * 0.001 = 6 kg
+    expect(firstCallArgs.sets![0].reps).toBe(10);
+    expect(firstCallArgs.sets![0].weight).toBe(6); // 180000 / 30 * 0.001 = 6 kg
 
     const secondCallArgs = vi.mocked(
       exerciseEntryRepository._createExerciseEntryWithClient
     ).mock.calls[1][2];
+    assert(secondCallArgs.sets);
     expect(secondCallArgs.sets).toHaveLength(4);
-    expect(secondCallArgs.sets[0].reps).toBe(8);
-    expect(secondCallArgs.sets[0].weight).toBe(10); // 320000 / 32 * 0.001 = 10 kg
+    expect(secondCallArgs.sets![0].reps).toBe(8);
+    expect(secondCallArgs.sets![0].weight).toBe(10); // 320000 / 32 * 0.001 = 10 kg
   });
 
   it('falls back to summarizedExerciseSets when individual exercise sets lack exercise names', async () => {

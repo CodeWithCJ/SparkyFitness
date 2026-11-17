@@ -331,6 +331,36 @@ describe('runWriteback (cursor)', () => {
 });
 
 describe('removeWrittenData (cleanup)', () => {
+  it('keeps exercise id lists when deleting written workouts fails', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackExerciseExerciseSessionIds:2026-06-01',
+      JSON.stringify(['sparky-exercise-individual-e1-session-1'])
+    );
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackExerciseSig:2026-06-01',
+      '"sig"'
+    );
+    mockDeleteByRange.mockImplementation((type: string) =>
+      type === 'ExerciseSession'
+        ? Promise.reject(new Error('quota'))
+        : Promise.resolve(undefined)
+    );
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).toContain(
+      '@HealthConnect:writebackExerciseExerciseSessionIds:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthConnect:writebackExerciseSig:2026-06-01'
+    );
+    mockDeleteByRange.mockReset();
+    mockDeleteByRange.mockResolvedValue(undefined);
+  });
+
   it('full purge: deletes all-time, clears all tracking, disables writeback', async () => {
     await AsyncStorage.clear();
     await AsyncStorage.setItem(

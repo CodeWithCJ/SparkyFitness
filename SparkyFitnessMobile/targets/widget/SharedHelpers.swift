@@ -61,6 +61,43 @@ func localizedWidgetString(_ key: String) -> String {
     return fallbackWidgetString(key)
 }
 
+/// The energy unit the phone sends with a calorie or macro snapshot. A
+/// snapshot written by an older app has none, and its numbers are kcal.
+/// Snapshot numbers are always kcal; views convert them for display.
+enum WidgetEnergyUnit {
+    case kcal
+    case kJ
+
+    init(_ raw: String?) {
+        self = raw == "kJ" ? .kJ : .kcal
+    }
+
+    /// A value stored in kcal, in this unit.
+    func fromKcal(_ kcal: Double) -> Double {
+        self == .kJ ? kcal * 4.184 : kcal
+    }
+}
+
+func energyUnitLabel(_ unit: WidgetEnergyUnit) -> String {
+    unit == .kJ ? localizedWidgetString("widget.kj") : localizedWidgetString("widget.kcal")
+}
+
+func energyLeftLabel(_ unit: WidgetEnergyUnit) -> String {
+    unit == .kJ ? localizedWidgetString("widget.kj_left") : localizedWidgetString("widget.kcal_left")
+}
+
+/// Format with one `%@` for the number, for VoiceOver.
+func energyA11yFormat(_ unit: WidgetEnergyUnit) -> String {
+    unit == .kJ ? localizedWidgetString("widget.a11y.kj") : localizedWidgetString("widget.a11y.kcal")
+}
+
+/// Format with one `%@` for the number left, for VoiceOver.
+func energyLeftA11yFormat(_ unit: WidgetEnergyUnit) -> String {
+    unit == .kJ
+        ? localizedWidgetString("widget.a11y.kj_left")
+        : localizedWidgetString("widget.a11y.kcal_left")
+}
+
 /// Stable readable English fallback for the small known widget key set, used
 /// only when every localization bundle is missing the key.
 private func fallbackWidgetString(_ key: String) -> String {
@@ -71,6 +108,8 @@ private func fallbackWidgetString(_ key: String) -> String {
     case "widget.macro.description": return "Today's protein, carbs, and fat at a glance."
     case "widget.kcal_left": return "kcal left"
     case "widget.kcal": return "kcal"
+    case "widget.kj_left": return "kJ left"
+    case "widget.kj": return "kJ"
     case "widget.food": return "Food"
     case "widget.burned": return "Burned"
     case "widget.goal": return "Goal"
@@ -80,6 +119,8 @@ private func fallbackWidgetString(_ key: String) -> String {
     case "widget.grams": return "%@ g"
     case "widget.a11y.kcal_left": return "%@ kcal left"
     case "widget.a11y.kcal": return "%@ kcal"
+    case "widget.a11y.kj_left": return "%@ kJ left"
+    case "widget.a11y.kj": return "%@ kJ"
     case "widget.control.log_water.name": return "Log water"
     case "widget.water.name": return "Water"
     case "widget.water.description": return "Today's water intake, with a button to log a drink."

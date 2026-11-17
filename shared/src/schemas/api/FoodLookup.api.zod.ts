@@ -44,6 +44,12 @@ export const FoodVariantSchema = z.object({
   // providers that report units (USDA, OFF). Used to prefill a custom
   // nutrient's unit. Import-only; never persisted.
   provider_nutrient_units: z.record(z.string(), z.string()).optional(),
+  // Standard nutrient id per provider field (same label keys as
+  // provider_nutrients), for providers that map fields by nutrient code.
+  // Labels can come back in the user's language, so this lets the client flag
+  // a field as already captured by a standard column without matching its
+  // text. Import-only; never persisted.
+  provider_nutrient_standard: z.record(z.string(), z.string()).optional(),
   source: z.enum(['manual', 'ai_estimate', 'imported']).optional(),
   ai_confidence: z.enum(['high', 'medium', 'low']).nullable().optional(),
   allergens: z.array(z.string()).nullable().optional(),
@@ -60,6 +66,9 @@ export const NormalizedFoodSchema = z.object({
   provider_external_id: z.string().optional(),
   provider_type: z.string().optional(),
   provider_verified: z.boolean().optional(),
+  // Transient Mealie recipe context, never persisted on a library food.
+  recipe_has_nutrition: z.boolean().optional(),
+  recipe_servings: z.number().finite().positive().nullable().optional(),
   is_custom: z.boolean(),
   // Upstream provider photo on a not-yet-imported result. Hotlinked by the
   // search UI; localized into `images` on import (see models/food.ts). Without

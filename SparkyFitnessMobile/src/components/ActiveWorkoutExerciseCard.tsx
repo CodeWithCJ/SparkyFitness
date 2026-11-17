@@ -79,6 +79,9 @@ import type {
   PrSetMap,
 } from '../stores/activeWorkoutStore';
 import type { ActiveWorkoutMetricColumn } from '../stores/appPreferencesStore';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { useEnergyInputText } from '../hooks/useEnergyInputText';
 
 interface ActiveWorkoutExerciseCardProps {
   exercise: WorkoutCardExercise;
@@ -540,9 +543,15 @@ function ActiveWorkoutExerciseCard({
   // value churns with every autosave recompute.
   const caloriesField = isEdit && onChangeCalories != null;
   const [caloriesEditing, setCaloriesEditing] = useState(false);
+  const energyUnit = useEnergyUnit();
+  // The draft stays in kcal; the field shows and takes the account's unit.
+  const caloriesInput = useEnergyInputText(
+    exercise.editCaloriesText ?? '',
+    (text) => onChangeCalories?.(exercise.id, text)
+  );
   const caloriesText =
     readOnly && exercise.calories_burned != null && exercise.calories_burned > 0
-      ? String(Math.round(exercise.calories_burned))
+      ? String(roundedEnergy(exercise.calories_burned, energyUnit))
       : null;
 
   // Heart rate for this exercise, read-only: there is no UI for typing one,
@@ -1263,10 +1272,8 @@ function ActiveWorkoutExerciseCard({
                 <View className="flex-row items-center gap-1">
                   <Icon name="flame" size={14} color={accentPrimary} />
                   <FormInput
-                    value={exercise.editCaloriesText ?? ''}
-                    onChangeText={(text) =>
-                      onChangeCalories?.(exercise.id, text)
-                    }
+                    value={caloriesInput.text}
+                    onChangeText={caloriesInput.onChangeText}
                     onBlur={() => setCaloriesEditing(false)}
                     keyboardType="decimal-pad"
                     autoFocus
@@ -1288,9 +1295,7 @@ function ActiveWorkoutExerciseCard({
                     }}
                   />
                   <Text className="text-sm text-text-secondary">
-                    {t('activeWorkout.exercise.caloriesUnit', {
-                      defaultValue: 'kcal',
-                    })}
+                    {energyUnitLabel(energyUnit, t)}
                   </Text>
                 </View>
               ) : (
@@ -1306,12 +1311,8 @@ function ActiveWorkoutExerciseCard({
                 >
                   <Icon name="flame" size={14} color={accentPrimary} />
                   <Text className="text-sm" style={{ color: accentPrimary }}>
-                    {(exercise.editCaloriesText ?? '') !== ''
-                      ? exercise.editCaloriesText
-                      : '–'}{' '}
-                    {t('activeWorkout.exercise.caloriesUnit', {
-                      defaultValue: 'kcal',
-                    })}
+                    {caloriesInput.text !== '' ? caloriesInput.text : '–'}{' '}
+                    {energyUnitLabel(energyUnit, t)}
                   </Text>
                   <Icon name="chevron-down" size={10} color={accentPrimary} />
                 </Pressable>
@@ -1320,10 +1321,7 @@ function ActiveWorkoutExerciseCard({
               <View className="flex-row items-center">
                 <Icon name="flame" size={14} color={activeEnergyColor} />
                 <Text className="text-sm text-text-secondary ml-1">
-                  {caloriesText}{' '}
-                  {t('activeWorkout.exercise.caloriesUnit', {
-                    defaultValue: 'kcal',
-                  })}
+                  {caloriesText} {energyUnitLabel(energyUnit, t)}
                 </Text>
               </View>
             )}

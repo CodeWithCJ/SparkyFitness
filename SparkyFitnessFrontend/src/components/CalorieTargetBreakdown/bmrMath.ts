@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next';
+import { getOxfordCoefficients, KCAL_PER_MJ } from '@workspace/shared';
 import type { CalorieTargetBreakdownProps } from './types';
 
 export type BmrMathInputs = Pick<
@@ -87,19 +88,27 @@ export const getBmrMathText = (
   }
 
   if (bmrAlgorithm === 'Oxford') {
+    const { slope, intercept } = getOxfordCoefficients(
+      displayAge,
+      displayGender
+    );
+    const params = {
+      slope,
+      intercept,
+      weight: formatInput(displayWeight),
+      result: Math.round(KCAL_PER_MJ * (slope * displayWeight + intercept)),
+    };
     if (displayGender === 'male') {
-      return t('diary.calculateExplanation.oxfordMaleMath', {
+      return t('diary.calculateExplanation.oxfordMaleMathHenry2005', {
         defaultValue:
-          'Formula: 14.2 × weight + 593\nMath: 14.2 × {{weight}} + 593 = {{result}} kcal',
-        weight: formatInput(displayWeight),
-        result: Math.round(14.2 * displayWeight + 593),
+          'Formula: ({{slope}} × weight + {{intercept}}) × 239, for your age\nMath: ({{slope}} × {{weight}} + {{intercept}}) × 239 = {{result}} kcal',
+        ...params,
       });
     } else {
-      return t('diary.calculateExplanation.oxfordFemaleMath', {
+      return t('diary.calculateExplanation.oxfordFemaleMathHenry2005', {
         defaultValue:
-          'Formula: 10.9 × weight + 677\nMath: 10.9 × {{weight}} + 677 = {{result}} kcal',
-        weight: formatInput(displayWeight),
-        result: Math.round(10.9 * displayWeight + 677),
+          'Formula: ({{slope}} × weight + {{intercept}}) × 239, for your age\nMath: ({{slope}} × {{weight}} + {{intercept}}) × 239 = {{result}} kcal',
+        ...params,
       });
     }
   }

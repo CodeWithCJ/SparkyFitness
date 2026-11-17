@@ -44,6 +44,14 @@ Picking an option fills in the computed gram value; you can still edit it manual
 
 ---
 
+## Goal Presets and Weekly Plans
+
+A **goal preset** is a saved set of goals (calories, macros and the rest), such as "Training day" and "Rest day". A **weekly goal plan** picks a preset for each weekday, from a start date on, so Monday can use one preset and Tuesday another. Create both on the Goals page (web) or Goals (mobile).
+
+Weekly plans use fixed numbers. If you want training days higher and rest days lower while still following your Adaptive TDEE and keeping the weekly total, use [calorie cycling](/features/settings/calculation-settings#calorie-cycling) instead. When both are on, a day a plan sets uses the plan's preset and calorie cycling is paused that day.
+
+---
+
 ## Interactions with Calculation Settings
 
 The Nutrient Goal Direction feature only changes how progress is *displayed* against whatever goal number already exists — it doesn't compute goal values itself (except the Added Sugar auto-calculate above). Two things to be aware of when combining it with [Calculation Settings](/features/settings/calculation-settings):

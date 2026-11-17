@@ -87,6 +87,9 @@ const REQUIRED_KEYS = [
   'sparky_macro_widget_description',
   'widget_kcal_left',
   'widget_kcal_left_empty',
+  'widget_kj_left',
+  'widget_kj_left_empty',
+  'widget_kj_eaten',
   'widget_grams',
   'widget_protein',
   'widget_carbs',
@@ -245,9 +248,11 @@ describe('Android widget localization contract', () => {
       );
       const placeholderKeys = [
         'widget_kcal_left',
+        'widget_kj_left',
         'widget_grams',
         'widget_amount_of_goal',
         'widget_kcal_eaten',
+        'widget_kj_eaten',
         'widget_water_amount',
         'widget_water_amount_no_goal',
         'widget_water_amount_empty',
@@ -324,12 +329,13 @@ describe('Android widget localization contract', () => {
         'widget_fat',
         'widget_search_food',
         'widget_scan_barcode',
-        'widget_kcal_left',
         'widget_kcal_left_empty',
         'widget_grams',
       ]) {
         expect(macroSrc).toMatch(new RegExp(`R\\.string\\.${ref}`));
       }
+      // kcal or kJ left, picked by the snapshot's energy unit.
+      expect(macroSrc).toMatch(/CalorieWidget\.energyLeftRes\(/);
       // Classic one-line header: no caption/value split in the macro widget.
       expect(macroSrc).not.toMatch(/R\.string\.widget_kcal_left_caption/);
       expect(macroSrc).not.toMatch(/R\.string\.widget_kcal_left_value/);
@@ -344,7 +350,7 @@ describe('Android widget localization contract', () => {
         /render\(tile, WidgetLocale\.localizedContext\(this\)\)/
       );
       expect(src).toMatch(/context\.getString\(labelRes\)/);
-      expect(src).toMatch(/R\.string\.widget_kcal_left/);
+      expect(src).toMatch(/CalorieWidget\.energyLeftRes\(/);
       // No label or subtitle set from a hardcoded string.
       expect(src).not.toMatch(/tile\.(label|subtitle) = "/);
     });

@@ -32,9 +32,15 @@ export const getProfileData = async (): Promise<Profile> => {
   });
 };
 
-export const toggleEmailMfa = async (enabled: boolean): Promise<void> => {
+export const toggleEmailMfa = async ({
+  enabled,
+  currentPassword,
+}: {
+  enabled: boolean;
+  currentPassword?: string;
+}): Promise<void> => {
   return apiCall('/identity/mfa/email-toggle', {
     method: 'POST',
-    body: { enabled },
+    body: { enabled, currentPassword },
   });
 };

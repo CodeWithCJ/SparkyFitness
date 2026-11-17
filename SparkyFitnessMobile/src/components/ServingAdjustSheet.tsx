@@ -13,6 +13,8 @@ import StepperInput from './StepperInput';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import type { FoodEntry } from '../types/foodEntries';
 import { formatServingUnit } from '../utils/foodDetails';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 
 export interface ServingAdjustSheetRef {
@@ -29,6 +31,7 @@ const ServingAdjustSheet = forwardRef<
   ServingAdjustSheetProps
 >(({ onViewEntry }, ref) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [entry, setEntry] = useState<FoodEntry | null>(null);
   const [quantityText, setQuantityText] = useState('0');
@@ -40,7 +43,7 @@ const ServingAdjustSheet = forwardRef<
   const quantity = parseDecimalInput(quantityText) || 0;
   const totalCalories =
     entry && entry.serving_size > 0
-      ? Math.round((entry.calories * quantity) / entry.serving_size)
+      ? (entry.calories * quantity) / entry.serving_size
       : 0;
 
   const { updateEntry, isPending, invalidateCache } = useUpdateFoodEntry({
@@ -128,8 +131,8 @@ const ServingAdjustSheet = forwardRef<
               </Text>
               <Text className="text-text-secondary text-sm mt-1">
                 {entry.serving_size} {formatServingUnit(entry.unit)} ={' '}
-                {entry.calories}{' '}
-                {t('nutrition.caloriesUnit', { defaultValue: 'Cal' })}
+                {roundedEnergy(entry.calories, energyUnit)}{' '}
+                {energyUnitLabel(energyUnit, t)}
               </Text>
             </View>
 
@@ -153,8 +156,8 @@ const ServingAdjustSheet = forwardRef<
             {/* Calories */}
             <View className="items-center mb-6">
               <Text className="text-text-primary text-2xl font-semibold">
-                {totalCalories}{' '}
-                {t('nutrition.caloriesUnit', { defaultValue: 'Cal' })}
+                {roundedEnergy(totalCalories, energyUnit)}{' '}
+                {energyUnitLabel(energyUnit, t)}
               </Text>
             </View>
 

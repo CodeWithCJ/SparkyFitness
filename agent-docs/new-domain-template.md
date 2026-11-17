@@ -5,6 +5,7 @@ Use this checklist when adding a major feature area (e.g., symptom tracking, wor
 ## Phase 1: Plan & Schemas (Before Code)
 
 - [ ] Clarify the **permission type** it falls under (diary, checkin, reports, or new?)
+- [ ] Decide whether people can turn it off in Settings → Features. If so, register it in `shared/src/features/optionalFeatures.ts` (with its default) and tag every entry point with its `feature` key, following the optional-features rule in the root `AGENTS.md`
 - [ ] Define tables in SQL (spike/schema sketch)
 - [ ] Create Zod schemas:
   - `shared/src/schemas/database/<Table>.zod.ts` for each table

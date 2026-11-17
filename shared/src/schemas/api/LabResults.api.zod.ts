@@ -83,6 +83,12 @@ export const createLabResultBodySchema = z
       .nullable()
       .optional(),
     custom_marker_id: z.string().uuid().nullable().optional(),
+    /**
+     * One of the user's own markers by name, reused when one has that name
+     * (any case) and created with this result's unit and range otherwise, in
+     * the same transaction as the result.
+     */
+    custom_marker_name: z.string().trim().min(1).max(120).nullable().optional(),
     entry_date: dateStringSchema,
     value_numeric: z.number().finite().nullable().optional(),
     value_text: z.string().trim().min(1).max(200).nullable().optional(),
@@ -94,9 +100,13 @@ export const createLabResultBodySchema = z
     source: labResultSourceSchema.default('manual'),
   })
   .refine(
-    (body) => (body.marker_key != null) !== (body.custom_marker_id != null),
+    (body) =>
+      [body.marker_key, body.custom_marker_id, body.custom_marker_name].filter(
+        (value) => value != null
+      ).length === 1,
     {
-      message: 'Provide exactly one of marker_key or custom_marker_id',
+      message:
+        'Provide exactly one of marker_key, custom_marker_id or custom_marker_name',
       path: ['marker_key'],
     }
   )
@@ -181,6 +191,12 @@ const importResultSchema = z
 
 /** POST /api/v2/lab-results/imports: the reviewed results of one lab report. */
 export const importLabReportBodySchema = z.object({
+  /**
+   * A key the client makes once per reviewed report and sends again when it
+   * retries the same save. A key already used by this user returns the report
+   * it saved instead of saving the results a second time.
+   */
+  client_request_id: z.string().uuid().nullable().optional(),
   lab_name: z.string().trim().max(200).nullable().optional(),
   /** The test date, `YYYY-MM-DD`; every result of the report gets it. */
   entry_date: dateStringSchema,

@@ -3,6 +3,7 @@ import {
   createGuardedFetch,
   PUBLIC_ONLY_AI_NETWORK_POLICY,
 } from '../../utils/outboundUrlPolicy.js';
+import { mapStandardNutrientsByCode } from '../../utils/standardNutrientCodes.js';
 
 // The base URL is configurable per provider; route outbound requests through
 // the shared public-host guard.
@@ -45,11 +46,37 @@ export interface SwissFoodDetail {
   }>;
 }
 
+// SwissFood component codes behind each standard column, in order of
+// preference. Codes are the same in every language the API serves, unlike the
+// component names.
+const STANDARD_NUTRIENT_CODES = {
+  calories: ['ENERCC'],
+  protein: ['PROT625'],
+  carbs: ['CHO'],
+  fat: ['FAT'],
+  saturated_fat: ['FASAT'],
+  polyunsaturated_fat: ['FAPU'],
+  monounsaturated_fat: ['FAMS'],
+  cholesterol: ['CHORL'],
+  sodium: ['NA'],
+  potassium: ['K'],
+  dietary_fiber: ['FIBT'],
+  sugars: ['SUGAR'],
+  calcium: ['CA'],
+  iron: ['FE'],
+  vitamin_a: ['VITARAE', 'VITARE'],
+  vitamin_c: ['VITC'],
+  // Reported in g per 100 g; water is ~1 g/ml, so grams and ml are the same.
+  water_ml: ['WATER'],
+  alcohol_g: ['ALC'],
+} as const;
+
 export function mapSwissFood(food: SwissFoodDetail) {
   if (!food) {
     throw new Error('Food detail is required for mapping');
   }
   const nutrients: Record<string, number> = {};
+  const labelsByCode: Record<string, string> = {};
   // All components keyed by SwissFood's exact component name (per 100 g), for
   // alias discovery and custom-nutrient matching on import.
   const providerNutrientsByLabel: Record<string, number> = {};
@@ -61,8 +88,16 @@ export function mapSwissFood(food: SwissFoodDetail) {
     const name = v.component?.name?.trim();
     if (name) {
       providerNutrientsByLabel[name] = v.value ?? 0;
+      if (code) labelsByCode[code] = name;
     }
   }
+
+  const { values: standard, providerNutrientStandard } =
+    mapStandardNutrientsByCode(
+      STANDARD_NUTRIENT_CODES,
+      nutrients,
+      labelsByCode
+    );
 
   // Mappings per 100g edible portion. The Swiss Food Composition Database has
   // no field indicating a liquid basis (its per-value `unit.code` is the
@@ -72,24 +107,26 @@ export function mapSwissFood(food: SwissFoodDetail) {
   const defaultVariant = {
     serving_size: 100,
     serving_unit: 'g',
-    calories: Math.round(nutrients['ENERCC'] ?? 0),
-    protein: Math.round((nutrients['PROT625'] ?? 0) * 10) / 10,
-    carbs: Math.round((nutrients['CHO'] ?? 0) * 10) / 10,
-    fat: Math.round((nutrients['FAT'] ?? 0) * 10) / 10,
-    saturated_fat: Math.round((nutrients['FASAT'] ?? 0) * 10) / 10,
-    polyunsaturated_fat: Math.round((nutrients['FAPU'] ?? 0) * 10) / 10,
-    monounsaturated_fat: Math.round((nutrients['FAMS'] ?? 0) * 10) / 10,
-    cholesterol: Math.round((nutrients['CHORL'] ?? 0) * 10) / 10,
-    sodium: Math.round((nutrients['NA'] ?? 0) * 10) / 10,
-    potassium: Math.round((nutrients['K'] ?? 0) * 10) / 10,
-    dietary_fiber: Math.round((nutrients['FIBT'] ?? 0) * 10) / 10,
-    sugars: Math.round((nutrients['SUGAR'] ?? 0) * 10) / 10,
-    calcium: Math.round((nutrients['CA'] ?? 0) * 10) / 10,
-    iron: Math.round((nutrients['FE'] ?? 0) * 10) / 10,
-    vitamin_a:
-      Math.round((nutrients['VITARAE'] ?? nutrients['VITARE'] ?? 0) * 10) / 10,
-    vitamin_c: Math.round((nutrients['VITC'] ?? 0) * 10) / 10,
+    calories: Math.round(standard.calories),
+    protein: Math.round(standard.protein * 10) / 10,
+    carbs: Math.round(standard.carbs * 10) / 10,
+    fat: Math.round(standard.fat * 10) / 10,
+    saturated_fat: Math.round(standard.saturated_fat * 10) / 10,
+    polyunsaturated_fat: Math.round(standard.polyunsaturated_fat * 10) / 10,
+    monounsaturated_fat: Math.round(standard.monounsaturated_fat * 10) / 10,
+    cholesterol: Math.round(standard.cholesterol * 10) / 10,
+    sodium: Math.round(standard.sodium * 10) / 10,
+    potassium: Math.round(standard.potassium * 10) / 10,
+    dietary_fiber: Math.round(standard.dietary_fiber * 10) / 10,
+    sugars: Math.round(standard.sugars * 10) / 10,
+    calcium: Math.round(standard.calcium * 10) / 10,
+    iron: Math.round(standard.iron * 10) / 10,
+    vitamin_a: Math.round(standard.vitamin_a * 10) / 10,
+    vitamin_c: Math.round(standard.vitamin_c * 10) / 10,
+    water_ml: Math.round(standard.water_ml * 10) / 10,
+    alcohol_g: Math.round(standard.alcohol_g * 10) / 10,
     provider_nutrients: providerNutrientsByLabel,
+    provider_nutrient_standard: providerNutrientStandard,
     is_default: true,
   };
 

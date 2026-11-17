@@ -45,13 +45,18 @@ export function useGoalsQuery(date: string, { enabled = true } = {}) {
 }
 
 /** Today's goal after adaptive/dynamic adjustments, which differs from the saved row. */
-export function useAdjustedCalorieGoal(date: string, enabled: boolean) {
+export function useAdjustedDailyGoal(date: string, enabled: boolean) {
   const query = useQuery({
     queryKey: goalsRangeQueryKey(date, date, true),
     queryFn: () => fetchGoalsRange(date, date, true),
     enabled,
   });
-  return query.data?.[date]?.calories;
+  return {
+    adjustedGoal: query.data?.[date],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+  };
 }
 
 export function useSaveGoalsMutation() {

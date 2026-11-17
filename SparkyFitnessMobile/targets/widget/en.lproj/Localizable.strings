@@ -4,6 +4,8 @@
 "widget.macro.description" = "Today's protein, carbs, and fat at a glance.";
 "widget.kcal_left" = "kcal left";
 "widget.kcal" = "kcal";
+"widget.kj_left" = "kJ left";
+"widget.kj" = "kJ";
 "widget.food" = "Food";
 "widget.burned" = "Burned";
 "widget.goal" = "Goal";
@@ -13,6 +15,8 @@
 "widget.grams" = "%@ g";
 "widget.a11y.kcal_left" = "%@ kcal left";
 "widget.a11y.kcal" = "%@ kcal";
+"widget.a11y.kj_left" = "%@ kJ left";
+"widget.a11y.kj" = "%@ kJ";
 "widget.search_food" = "Search food";
 "widget.scan_barcode" = "Scan barcode";
 "widget.control.log_water.name" = "Log water";

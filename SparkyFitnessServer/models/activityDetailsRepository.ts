@@ -1,4 +1,5 @@
 import { getClient } from '../db/poolManager.js';
+import type { ExerciseEntryActivityDetails } from '@workspace/shared';
 import { log } from '../config/logging.js';
 import type { PoolClient } from 'pg';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,14 +75,13 @@ async function createActivityDetail(userId: any, detail: any) {
   }
 }
 async function getActivityDetailsByEntryOrPresetId(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  entryId = null,
-  presetEntryId = null
+  userId: string,
+  entryId: string | null = null,
+  presetEntryId: string | null = null
 ) {
-  const client = await getClient(userId);
-  let query;
-  let values;
+  const client: PoolClient = await getClient(userId);
+  let query: string;
+  let values: string[];
   if (entryId && presetEntryId) {
     throw new Error(
       'Cannot query activity details by both entryId and presetEntryId simultaneously.',
@@ -108,9 +108,11 @@ async function getActivityDetailsByEntryOrPresetId(
     throw new Error('Either entryId or presetEntryId must be provided.');
   }
   try {
-    const result = await client.query(query, values);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return result.rows.map((row: any) => {
+    const result = await client.query<ExerciseEntryActivityDetails>(
+      query,
+      values
+    );
+    return result.rows.map((row) => {
       // Recursively parse detail_data until it's not a JSON string anymore.
       // This handles cases where data might be double-stringified.
       while (typeof row.detail_data === 'string') {

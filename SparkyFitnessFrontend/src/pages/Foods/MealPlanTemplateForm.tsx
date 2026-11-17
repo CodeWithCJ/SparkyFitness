@@ -55,7 +55,11 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
-  const { loggingLevel } = usePreferences(); // Get loggingLevel from preferences
+  const { loggingLevel, energyUnit, convertEnergy, getEnergyUnitString } =
+    usePreferences();
+  // Assignments carry kcal; totals are shown in the account's energy unit.
+  const energyText = (kcal: number) =>
+    `${Math.round(convertEnergy(kcal, 'kcal', energyUnit))} ${getEnergyUnitString(energyUnit)}`;
   const [planName, setPlanName] = useState(template?.plan_name || '');
   const [description, setDescription] = useState(template?.description || '');
   const [startDate, setStartDate] = useState(
@@ -630,7 +634,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                                           )}
                                       </div>
                                       <div className="flex space-x-3 mt-1 sm:mt-0">
-                                        <span>{calories.toFixed(0)} kcal</span>
+                                        <span>{energyText(calories)}</span>
                                         <span className="text-blue-500">
                                           {t(
                                             'mealPlanTemplateForm.pProteing',
@@ -661,13 +665,14 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                             {assignmentsForMealType.length > 0 && (
                               <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded">
                                 <Trans
-                                  i18nKey="mealPlanTemplateForm.totalKcalPGC"
+                                  i18nKey="mealPlanTemplateForm.totalEnergyPGC"
                                   defaults={
-                                    '<strong>Total:</strong> {{totalCalories}} kcal | P: {{totalProtein}}g | C: {{totalCarbs}}g | F: {{totalFat}}g'
+                                    '<strong>Total:</strong> {{totalCalories}} | P: {{totalProtein}}g | C: {{totalCarbs}}g | F: {{totalFat}}g'
                                   }
                                   values={{
-                                    totalCalories:
-                                      mealTypeTotals.totalCalories.toFixed(0),
+                                    totalCalories: energyText(
+                                      mealTypeTotals.totalCalories
+                                    ),
                                     totalProtein:
                                       mealTypeTotals.totalProtein.toFixed(1),
                                     totalCarbs:
@@ -704,7 +709,7 @@ const MealPlanTemplateForm: React.FC<MealPlanTemplateFormProps> = ({
                         </h4>
                         <div className="text-sm space-x-4">
                           <span className="font-medium">
-                            {dailyTotals.totalCalories.toFixed(0)} kcal
+                            {energyText(dailyTotals.totalCalories)}
                           </span>
                           <span className="text-blue-500">
                             {t(

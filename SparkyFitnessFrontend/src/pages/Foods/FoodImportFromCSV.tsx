@@ -41,6 +41,7 @@ import CsvHeaderMappingDialog from '@/components/CsvImport/CsvHeaderMappingDialo
 
 interface ImportFromCSVProps {
   onSave: (foodData: FoodDataForBackend[], overwrite: boolean) => Promise<void>;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
 export interface CSVData {
@@ -75,6 +76,26 @@ export interface CSVData {
 const generateUniqueId = () =>
   `temp_${Math.random().toString(36).slice(2, 11)}`;
 
+const getFoodKey = (row: CSVData) =>
+  `${(row.name || '').trim().toLowerCase()}::${(row.brand || '').trim().toLowerCase()}`;
+
+const getFoodKeysWithoutDefault = (rows: CSVData[]): Set<string> => {
+  const defaultMap = new Map<string, boolean>();
+  rows.forEach((row) => {
+    const key = getFoodKey(row);
+    if (row.is_default === true) {
+      defaultMap.set(key, true);
+    } else if (!defaultMap.has(key)) {
+      defaultMap.set(key, false);
+    }
+  });
+  const invalid = new Set<string>();
+  defaultMap.forEach((hasDefault, key) => {
+    if (!hasDefault) invalid.add(key);
+  });
+  return invalid;
+};
+
 // Debounce for the reparse-on-format-change effect below — collapses rapid
 // format-bar clicks into a single re-parse instead of one per click.
 const REPARSE_DEBOUNCE_MS = 400;
@@ -108,7 +129,7 @@ const servingUnitOptions = [
   'whole',
 ];
 
-const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
+const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
   const { t } = useTranslation();
   const { energyUnit, convertEnergy } = usePreferences();
   // Food records have no date column, so this importer's format bar never
@@ -137,6 +158,39 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   const [mappingConfirmed, setMappingConfirmed] = useState(false);
   const [filterMissingDefault, setFilterMissingDefault] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // The pending reparse-on-format-change timer, if any. The two effects below
+  // are mutually exclusive (one requires mappingConfirmed, the other not), so
+  // at most one timer is live at a time. Flushed before a save so a save issued
+  // within the debounce window persists rows parsed under the current format,
+  // and the stamped snapshot matches the saved rows.
+  const reparseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // True once the user has edited the table (cell/row add/delete) since the
+  // last parse. Edited rows are the source of truth: a pending reparse must not
+  // rebuild them from the (now-stale) file text. Reset on every fresh parse and
+  // on clear.
+  const editedSinceParseRef = useRef(false);
+  // The serialized format used for the last parse. Lets the reparse effects skip
+  // a redundant timer when the format hasn't changed since the table was last
+  // parsed (e.g. right after a fresh load) — arming it then would only re-parse
+  // the same file and wipe an edit made in the window.
+  const lastParsedFormatRef = useRef<string | null>(null);
+
+  // The launcher confirms closing only while this form is dirty. A successful
+  // save doesn't clear the table, so remember the saved csvData reference and
+  // treat the form as clean until it changes again (state, not a ref, so the
+  // save boundary change triggers a re-render and recompute).
+  const [savedSnapshot, setSavedSnapshot] = useState<CSVData[]>(csvData);
+  // Compare the snapshot by reference only when there are rows: a freshly
+  // cleared/deleted empty table is a new array that would differ from the
+  // snapshot and falsely report dirty. An empty table with no pending text or
+  // mapping is clean.
+  const isDirty =
+    (csvData.length > 0 && csvData !== savedSnapshot) ||
+    csvText.trim() !== '' ||
+    showMapping;
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const textFields = new Set(['name', 'brand']);
   const booleanFields = new Set([
@@ -296,6 +350,8 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       if (parsedData.length > 0 && parsedHeaders) {
         setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
         setCsvData(parsedData);
+        editedSinceParseRef.current = false;
+        lastParsedFormatRef.current = JSON.stringify(options);
       } else if (!silent) {
         toast({
           title: t('foodCsvImport.noDataTitle', 'No Data Found'),
@@ -386,6 +442,8 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     if (parsedData.length > 0 && parsedHeaders) {
       setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
       setCsvData(parsedData);
+      editedSinceParseRef.current = false;
+      lastParsedFormatRef.current = JSON.stringify(csvFormat.options);
       setShowMapping(false);
       setMappingConfirmed(true);
     } else {
@@ -419,10 +477,20 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     // dialog there are no headers yet, and a delimiter fix in the format bar
     // is exactly what needs to re-evaluate the file.
     if (!loadedText || showMapping || mappingConfirmed) return;
+    // Arm the timer only when the format actually changed since the last parse.
+    // Right after a fresh load the format is unchanged, so a reparse would just
+    // re-parse the same file and wipe an edit made in the window.
+    if (lastParsedFormatRef.current === JSON.stringify(csvFormat.options))
+      return;
     const timer = setTimeout(() => {
+      reparseTimerRef.current = null;
       evaluateAndParse(loadedText, { silent: true });
     }, REPARSE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    reparseTimerRef.current = timer;
+    return () => {
+      if (reparseTimerRef.current === timer) reparseTimerRef.current = null;
+      clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [csvFormat.options, loadedText]);
 
@@ -431,15 +499,25 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
   // loadedText with no mapping, or headers would no longer line up.
   useEffect(() => {
     if (!mappingConfirmed || showMapping) return;
+    // Arm only on a real format change, same as the no-mapping path above.
+    if (lastParsedFormatRef.current === JSON.stringify(csvFormat.options))
+      return;
     const timer = setTimeout(() => {
+      reparseTimerRef.current = null;
       const parsedData = parseCSV(rawCsvText, csvFormat.options, headerMapping);
       const parsedHeaders = parsedData[0];
       if (parsedData.length > 0 && parsedHeaders) {
         setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
         setCsvData(parsedData);
+        editedSinceParseRef.current = false;
+        lastParsedFormatRef.current = JSON.stringify(csvFormat.options);
       }
     }, REPARSE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    reparseTimerRef.current = timer;
+    return () => {
+      if (reparseTimerRef.current === timer) reparseTimerRef.current = null;
+      clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     csvFormat.options,
@@ -505,12 +583,14 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     field: string,
     value: string | number | boolean
   ) => {
+    editedSinceParseRef.current = true;
     setCsvData((prevData) =>
       prevData.map((row) => (row.id === id ? { ...row, [field]: value } : row))
     );
   };
 
   const handleDeleteRow = (id: string) => {
+    editedSinceParseRef.current = true;
     setCsvData((prevData) => prevData.filter((row) => row.id !== id));
   };
 
@@ -545,10 +625,13 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     if (headers.length === 0) {
       setHeaders(requiredHeaders);
     }
+    editedSinceParseRef.current = true;
     setCsvData((prev) => [...prev, newRow]);
   };
 
   const clearData = () => {
+    editedSinceParseRef.current = false;
+    lastParsedFormatRef.current = null;
     setCsvData([]);
     setHeaders([]);
     setLoadedText('');
@@ -564,25 +647,10 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     [loadedText, csvFormat]
   );
 
-  const getFoodKey = (row: CSVData) =>
-    `${(row.name || '').trim().toLowerCase()}::${(row.brand || '').trim().toLowerCase()}`;
-
-  const invalidFoodKeys = useMemo(() => {
-    const defaultMap = new Map<string, boolean>();
-    csvData.forEach((row) => {
-      const key = getFoodKey(row);
-      if (row.is_default === true) {
-        defaultMap.set(key, true);
-      } else if (!defaultMap.has(key)) {
-        defaultMap.set(key, false);
-      }
-    });
-    const invalid = new Set<string>();
-    defaultMap.forEach((hasDefault, key) => {
-      if (!hasDefault) invalid.add(key);
-    });
-    return invalid;
-  }, [csvData]);
+  const invalidFoodKeys = useMemo(
+    () => getFoodKeysWithoutDefault(csvData),
+    [csvData]
+  );
 
   const foodsWithoutDefaultCount = invalidFoodKeys.size;
 
@@ -596,9 +664,95 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     foodsWithoutDefaultCount,
   ]);
 
+  // Applies a pending reparse-on-format-change synchronously, so a save issued
+  // within the debounce window doesn't persist rows parsed under the previous
+  // format (e.g. a decimal-format change that hasn't re-parsed yet). Returns
+  // the rows to save (the edited rows, or the freshly parsed rows), or null to
+  // abort the save (the format change flipped the file into header-mapping
+  // mode, where there's no confirmed table). Clears the pending timer.
+  const flushPendingReparse = (): CSVData[] | null => {
+    if (!reparseTimerRef.current) return null;
+    // A format change is pending and the table has edits: applying the new
+    // format would wipe the edits, while saving now would persist values from
+    // the previous format. Return null to block the save, but leave the timer
+    // alive so the reparse still fires and settles the conflict — clearing it
+    // here would let a retry save the stale old-format rows.
+    if (editedSinceParseRef.current) return null;
+    clearTimeout(reparseTimerRef.current);
+    reparseTimerRef.current = null;
+    if (mappingConfirmed && rawCsvText) {
+      const parsedData = parseCSV(rawCsvText, csvFormat.options, headerMapping);
+      const parsedHeaders = parsedData[0];
+      if (parsedData.length > 0 && parsedHeaders) {
+        setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
+        setCsvData(parsedData);
+        editedSinceParseRef.current = false;
+        lastParsedFormatRef.current = JSON.stringify(csvFormat.options);
+        return parsedData;
+      }
+      // The format change broke the confirmed parse; reopen mapping so the user
+      // remaps, and block saving the stale table.
+      setShowMapping(true);
+      return null;
+    } else if (loadedText && !showMapping) {
+      const fileHeaders = getCsvHeaders(loadedText);
+      const areHeadersValid = requiredHeaders.every((h) =>
+        fileHeaders.includes(h)
+      );
+      if (areHeadersValid) {
+        const parsedData = parseCSV(loadedText, csvFormat.options);
+        const parsedHeaders = parsedData[0];
+        if (parsedData.length > 0 && parsedHeaders) {
+          setHeaders(Object.keys(parsedHeaders).filter((key) => key !== 'id'));
+          setCsvData(parsedData);
+          editedSinceParseRef.current = false;
+          lastParsedFormatRef.current = JSON.stringify(csvFormat.options);
+          return parsedData;
+        }
+      }
+      // Headers no longer valid under the new format: enter mapping recovery
+      // (opens the dialog) instead of silently dropping the table, and block
+      // saving the stale rows.
+      evaluateAndParse(loadedText, { silent: true });
+      return null;
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.SubmitEvent) => {
     e.preventDefault();
-    const invalidRow = csvData.find(
+    // While the header-mapping dialog is open there's no confirmed table to
+    // save — a format change that invalidated the headers opens it via
+    // flushPendingReparse, so don't persist the stale rows.
+    if (showMapping) return;
+    // A pending reparse (scheduled by a format-bar change) would otherwise save
+    // rows parsed under the previous format. Apply it first so the saved values
+    // reflect the current format, and stamp the snapshot with the same rows so
+    // the form closes cleanly.
+    let dataToSave: CSVData[];
+    if (reparseTimerRef.current) {
+      const flushed = flushPendingReparse();
+      if (flushed === null) {
+        // The pending reparse can't be applied safely (edits + format change,
+        // or the file flipped into header-mapping mode). Abort rather than
+        // persist stale rows; the user lets the reparse settle and retries.
+        toast({
+          title: t('foodCsvImport.reparsePendingTitle', 'Please Wait'),
+          description: t(
+            'foodCsvImport.reparsePendingDescription',
+            'A format change is still processing. Try again in a moment.'
+          ),
+          variant: 'default',
+        });
+        return;
+      }
+      dataToSave = flushed;
+    } else {
+      dataToSave = csvData;
+    }
+    // Validate the rows that will actually be saved (post-flush), not the
+    // pre-flush table, so a quote/format change that empties a name is caught.
+    const invalidRow = dataToSave.find(
       (row) => !row.name || String(row.name).trim() === ''
     );
     if (invalidRow) {
@@ -612,7 +766,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       });
       return;
     }
-    if (foodsWithoutDefaultCount > 0) {
+    if (getFoodKeysWithoutDefault(dataToSave).size > 0) {
       toast({
         title: t('foodCsvImport.validationErrorTitle', 'Validation Error'),
         description: t(
@@ -624,14 +778,16 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
       return;
     }
     setLoading(true);
-    // CSV import never creates quick foods; that is a separate workflow.
-    const dataForBackend = csvData.map(({ id, ...rest }) => ({
-      ...rest,
-      is_quick_food: false,
-    }));
-    // console.log(dataForBackend);
     try {
+      // CSV import never creates quick foods; that is a separate workflow.
+      const dataForBackend = dataToSave.map(({ id, ...rest }) => ({
+        ...rest,
+        is_quick_food: false,
+      }));
+      // console.log(dataForBackend);
       await onSave(dataForBackend, overwriteExisting);
+      // Saved: the table now matches what's stored, so closing shouldn't prompt.
+      setSavedSnapshot(dataToSave);
     } catch (error) {
       console.error(
         'An error occurred while the parent was handling the save operation:',

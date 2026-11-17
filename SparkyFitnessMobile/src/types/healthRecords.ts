@@ -4,6 +4,7 @@ import type { RecordSyncError } from '../services/api/healthDataApi';
 import type {
   AppleWorkoutZoneDuration,
   MindfulnessSessionType,
+  SkinTemperatureSite,
 } from '@workspace/shared';
 
 // ==========================================
@@ -268,6 +269,9 @@ export interface TransformedRecord extends RecordTimezoneMetadata {
   source: string;
   timestamp?: string;
   source_id?: string;
+  /** Where a skin temperature was taken, so readings from two places on one
+   *  source never share a baseline. */
+  site?: SkinTemperatureSite;
 }
 
 /** Sparky meal type slug derived from Health Connect MealType constant */
@@ -327,13 +331,28 @@ export interface TransformedMindfulnessSession extends RecordTimezoneMetadata {
   notes?: string;
 }
 
+/** One brush from Apple Health's ToothbrushingEvent (#1862). */
+export interface TransformedToothbrushingSession extends RecordTimezoneMetadata {
+  type: 'Toothbrushing';
+  source: typeof HEALTHKIT_SOURCE;
+  /** The sample uuid, used for idempotent re-sync. */
+  source_id: string;
+  timestamp: string;
+  startTime: string;
+  endTime: string;
+  duration_seconds: number;
+  /** Duration in minutes; required by the server's field check. */
+  value: number;
+}
+
 /** Union type for all possible transform outputs */
 export type TransformOutput =
   | TransformedRecord
   | AggregatedSleepSession
   | TransformedExerciseSession
   | TransformedNutritionEntry
-  | TransformedMindfulnessSession;
+  | TransformedMindfulnessSession
+  | TransformedToothbrushingSession;
 
 // ==========================================
 // SYNC RESULT TYPES (Phase 5)

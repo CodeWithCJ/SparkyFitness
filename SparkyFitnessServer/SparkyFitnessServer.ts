@@ -108,9 +108,11 @@ import pregnancyRoutesV2 from './routes/v2/pregnancyRoutes.js';
 import reportRoutesV2 from './routes/v2/reportRoutes.js';
 import nutritionKineticsRoutesV2 from './routes/v2/nutritionKineticsRoutes.js';
 import mindfulnessRoutesV2 from './routes/v2/mindfulnessRoutes.js';
+import oralCareRoutesV2 from './routes/v2/oralCareRoutes.js';
 import labResultRoutesV2 from './routes/v2/labResultRoutes.js';
 import labReportRoutesV2 from './routes/v2/labReportRoutes.js';
 import heartRateZoneRoutesV2 from './routes/v2/heartRateZoneRoutes.js';
+import recipeImportRoutesV2 from './routes/v2/recipeImportRoutes.js';
 import runProgramRoutesV2 from './routes/v2/runProgramRoutes.js';
 import fitnessTestRoutesV2 from './routes/v2/fitnessTestRoutes.js';
 import runGoalRoutesV2 from './routes/v2/runGoalRoutes.js';
@@ -245,7 +247,7 @@ app.use(
       (_err, allowed) => {
         callback(null, {
           origin: allowed,
-          methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+          methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
           allowedHeaders: CORS_ALLOWED_HEADERS,
           exposedHeaders: ['mcp-session-id', 'www-authenticate'],
           credentials: true,
@@ -866,9 +868,11 @@ app.use('/api/v2/pregnancy', pregnancyRoutesV2);
 app.use('/api/v2/reports', reportRoutesV2);
 app.use('/api/v2/nutrition', nutritionKineticsRoutesV2);
 app.use('/api/v2/mindfulness', mindfulnessRoutesV2);
+app.use('/api/v2/oral-care', oralCareRoutesV2);
 app.use('/api/v2/lab-results', labResultRoutesV2);
 app.use('/api/v2/lab-reports', labReportRoutesV2);
 app.use('/api/v2/heart-rate-zones', heartRateZoneRoutesV2);
+app.use('/api/v2/recipe-imports', recipeImportRoutesV2);
 app.use('/api/v2/run-program', runProgramRoutesV2);
 app.use('/api/v2/fitness-tests', fitnessTestRoutesV2);
 app.use('/api/v2/run-goals', runGoalRoutesV2);

@@ -52,7 +52,10 @@ export function invalidateMealUsageCaches(queryClient: QueryClient) {
   });
 }
 
-function invalidateMealCaches(queryClient: QueryClient, mealId?: string) {
+export function invalidateMealCaches(
+  queryClient: QueryClient,
+  mealId?: string
+) {
   queryClient.invalidateQueries({ queryKey: mealsQueryKey });
   invalidateMealUsageCaches(queryClient);
   queryClient.invalidateQueries({ queryKey: mealSearchQueryKeyRoot });

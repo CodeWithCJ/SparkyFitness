@@ -12,6 +12,7 @@ import {
   yesNoDifferenceText,
   yesNoWording,
 } from '../../utils/compareCopy';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 
 interface CompareBarsProps {
   response: CompareResponse;
@@ -20,12 +21,13 @@ interface CompareBarsProps {
 
 const CompareBars: React.FC<CompareBarsProps> = ({ response, question }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const binary = response.result.binary;
   if (!binary) return null;
 
   const outcome = binary.yesKey === question.a ? question.b : question.a;
-  const yesMean = compareDisplayValue(outcome, binary.yesMean);
-  const noMean = compareDisplayValue(outcome, binary.noMean);
+  const yesMean = compareDisplayValue(outcome, binary.yesMean, energyUnit);
+  const noMean = compareDisplayValue(outcome, binary.noMean, energyUnit);
   const largest = Math.max(Math.abs(yesMean), Math.abs(noMean));
   const widthPercent = (value: number) =>
     largest > 0 ? Math.round((Math.abs(value) / largest) * 100) : 0;
@@ -36,14 +38,14 @@ const CompareBars: React.FC<CompareBarsProps> = ({ response, question }) => {
       id: 'yes',
       label: wording.yesLabel,
       mean: yesMean,
-      text: compareValueText(outcome, binary.yesMean),
+      text: compareValueText(outcome, binary.yesMean, energyUnit),
       count: binary.yesCount,
     },
     {
       id: 'no',
       label: wording.noLabel,
       mean: noMean,
-      text: compareValueText(outcome, binary.noMean),
+      text: compareValueText(outcome, binary.noMean, energyUnit),
       count: binary.noCount,
     },
   ];
@@ -80,7 +82,7 @@ const CompareBars: React.FC<CompareBarsProps> = ({ response, question }) => {
         </View>
       ))}
       <Text className="text-text-muted text-xs">
-        {yesNoDifferenceText(question, binary, t)}
+        {yesNoDifferenceText(question, binary, t, energyUnit)}
       </Text>
     </View>
   );

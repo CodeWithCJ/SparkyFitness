@@ -1,24 +1,7 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  Modal,
-  Platform,
-  Pressable,
-  StatusBar,
-  Text,
-  View,
-} from 'react-native';
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-} from 'react-native-gesture-handler';
+import { Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   measure,
   runOnJS,
@@ -58,13 +41,11 @@ export const REORDER_LONG_PRESS_MS = 150;
 const AUTO_SCROLL_EDGE = 80;
 const AUTO_SCROLL_SPEED = 8;
 
-interface WorkoutReorderListProps {
-  visible: boolean;
+interface WorkoutReorderContentProps {
   /** Session `ExerciseEntryResponse[]` satisfies this structurally. */
   exercises: WorkoutCardExercise[];
   getImageSource: GetImageSource;
   onMoveItem: (fromItemIndex: number, toItemIndex: number) => void;
-  onDone: () => void;
 }
 
 /**
@@ -503,22 +484,19 @@ function ReorderItemRow({
 }
 
 /**
- * Full-screen reorder overlay for the active-workout and form exercise lists.
- * Each draggable item is a solo exercise or a whole superset run (its members
- * drag as one block, per {@link buildExerciseReorderItems}); a release commits
- * the move through `onMoveItem`. Self-hosts its own `Animated.ScrollView` so
- * the four calling surfaces don't need to plumb scroll refs.
+ * The draggable exercise list, without any chrome around it. Each draggable
+ * item is a solo exercise or a whole superset run (its members drag as one
+ * block, per {@link buildExerciseReorderItems}); a release commits the move
+ * through `onMoveItem`. Self-hosts its own `Animated.ScrollView` so the calling
+ * surfaces don't need to plumb scroll refs. Every surface shows it in the
+ * native modal `WorkoutReorderScreen`.
  */
-function WorkoutReorderList({
-  visible,
+export function WorkoutReorderContent({
   exercises,
   getImageSource,
   onMoveItem,
-  onDone,
-}: WorkoutReorderListProps) {
-  const { t } = useTranslation();
+}: WorkoutReorderContentProps) {
   const insets = useSafeAreaInsets();
-  const accent = String(useCSSVariable('--color-accent-primary'));
   const palette = useCSSVariable(SUPERSET_PALETTE_VARS) as string[];
 
   const items = useMemo(
@@ -676,75 +654,38 @@ function WorkoutReorderList({
     scrollTo(scrollRef, 0, next, false);
   });
 
-  const headerTopPad =
-    Platform.OS === 'android'
-      ? (StatusBar.currentHeight ?? 0) + 8
-      : insets.top + 8;
-
   return (
-    <Modal
-      visible={visible}
-      animationType="fade"
-      statusBarTranslucent
-      onRequestClose={onDone}
+    <Animated.ScrollView
+      ref={scrollRef}
+      onScroll={scrollHandler}
+      scrollEventThrottle={16}
+      scrollEnabled={scrollEnabled}
+      contentContainerStyle={{
+        padding: 12,
+        paddingBottom: insets.bottom + 24,
+      }}
     >
-      <GestureHandlerRootView className="flex-1 bg-background">
-        <View
-          className="flex-row items-center justify-between px-4 pb-3 border-b border-border-subtle"
-          style={{ paddingTop: headerTopPad }}
-        >
-          <Text className="text-lg font-semibold text-text-primary">
-            {t('workoutReorder.title', { defaultValue: 'Reorder exercises' })}
-          </Text>
-          <Pressable
-            onPress={onDone}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityRole="button"
-            accessibilityLabel={t('workoutReorder.doneHint', {
-              defaultValue: 'Done reordering',
-            })}
-          >
-            <Text className="text-base font-semibold" style={{ color: accent }}>
-              {t('common.done', { defaultValue: 'Done' })}
-            </Text>
-          </Pressable>
-        </View>
-
-        <Animated.ScrollView
-          ref={scrollRef}
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
-          scrollEnabled={scrollEnabled}
-          contentContainerStyle={{
-            padding: 12,
-            paddingBottom: insets.bottom + 24,
-          }}
-        >
-          {items.map((item, index) => (
-            <ReorderItemRow
-              key={item.key}
-              item={item}
-              index={index}
-              exercisesById={exercisesById}
-              railColor={railColorByItemKey.get(item.key) ?? null}
-              getImageSource={getImageSource}
-              strides={strides}
-              activeIndex={activeIndex}
-              committing={committing}
-              ty={ty}
-              targetIndex={targetIndex}
-              panY={panY}
-              pointerAbsY={pointerAbsY}
-              scrollY={scrollY}
-              dragStartScrollY={dragStartScrollY}
-              onCommit={handleCommit}
-              setScrollEnabled={setScrollEnabledJS}
-            />
-          ))}
-        </Animated.ScrollView>
-      </GestureHandlerRootView>
-    </Modal>
+      {items.map((item, index) => (
+        <ReorderItemRow
+          key={item.key}
+          item={item}
+          index={index}
+          exercisesById={exercisesById}
+          railColor={railColorByItemKey.get(item.key) ?? null}
+          getImageSource={getImageSource}
+          strides={strides}
+          activeIndex={activeIndex}
+          committing={committing}
+          ty={ty}
+          targetIndex={targetIndex}
+          panY={panY}
+          pointerAbsY={pointerAbsY}
+          scrollY={scrollY}
+          dragStartScrollY={dragStartScrollY}
+          onCommit={handleCommit}
+          setScrollEnabled={setScrollEnabledJS}
+        />
+      ))}
+    </Animated.ScrollView>
   );
 }
-
-export default React.memo(WorkoutReorderList);

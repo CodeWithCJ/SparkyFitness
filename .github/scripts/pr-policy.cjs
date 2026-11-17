@@ -75,7 +75,7 @@ function getExemption(pr) {
 
   // 2. The repo owner. Also covers PAT-driven automation whose token belongs to
   //    the owner, which appears as a normal User rather than a Bot (e.g.
-  //    TRANSLATIONS_PAT in sync-translations.yml). If that PAT belongs to
+  //    a maintainer's personal access token). If that PAT belongs to
   //    someone else, rule 3 below still covers it via the branch name.
   if (EXEMPT_ASSOCIATIONS.includes(pr.author_association)) {
     return { exempt: true, reason: `repo ${String(pr.author_association).toLowerCase()}` };

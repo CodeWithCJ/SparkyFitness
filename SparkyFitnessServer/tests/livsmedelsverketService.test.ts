@@ -113,6 +113,78 @@ describe('livsmedelsverketService - mapLivsmedelsverketFood', () => {
     expect(mapped.default_variant.calories).toBe(138);
     expect(mapped.default_variant.protein).toBe(25);
   });
+
+  it('lists the standard field behind each label, whatever the language', () => {
+    const mapped = mapLivsmedelsverketFood({
+      nummer: 20,
+      namn: 'Mjölk',
+      naringsvarden: [
+        {
+          namn: 'Energi (kcal)',
+          euroFIRkod: 'ENERC',
+          enhet: 'kcal',
+          varde: 60,
+        },
+        { namn: 'Energi (kJ)', euroFIRkod: 'ENERC', enhet: 'kJ', varde: 250 },
+        { namn: 'Fett, totalt', euroFIRkod: 'FAT', enhet: 'g', varde: 3 },
+        { namn: 'Natrium, Na', euroFIRkod: 'NA', enhet: 'mg', varde: 40 },
+        { namn: 'Vatten', euroFIRkod: 'WATER', enhet: 'g', varde: 88 },
+        { namn: 'Salt, NaCl', euroFIRkod: 'NACL', enhet: 'g', varde: 0.1 },
+      ],
+    });
+
+    // The kJ row and salt are reported but are not what any column holds.
+    expect(mapped.default_variant.provider_nutrient_standard).toEqual({
+      'Energi (kcal)': 'calories',
+      'Fett, totalt': 'fat',
+      'Natrium, Na': 'sodium',
+      Vatten: 'water_ml',
+    });
+  });
+
+  it('uses 0 and no badge for a standard field the food has no value for', () => {
+    const mapped = mapLivsmedelsverketFood({
+      nummer: 21,
+      namn: 'Vatten, kranvatten',
+      naringsvarden: [
+        { namn: 'Vatten', euroFIRkod: 'WATER', enhet: 'g', varde: 99.9 },
+        // Listed by the API, but without a number.
+        { namn: 'Sockerarter, totalt', euroFIRkod: 'SUGAR', varde: null },
+        // Only the fallback code for vitamin A is present.
+        { namn: 'Retinol', euroFIRkod: 'RETOL', enhet: 'µg', varde: 2 },
+      ],
+    });
+
+    // ALC is missing entirely: 0, and no label to badge.
+    expect(mapped.default_variant.alcohol_g).toBe(0);
+    // SUGAR is listed without a value: 0, still badged as the sugars field.
+    expect(mapped.default_variant.sugars).toBe(0);
+    expect(mapped.default_variant.vitamin_a).toBe(2);
+    expect(mapped.default_variant.provider_nutrient_standard).toEqual({
+      Vatten: 'water_ml',
+      'Sockerarter, totalt': 'sugars',
+      Retinol: 'vitamin_a',
+    });
+  });
+
+  it('does not badge calories or sodium when they are worked out from other fields', () => {
+    const mapped = mapLivsmedelsverketFood({
+      nummer: 22,
+      namn: 'Knäckebröd',
+      naringsvarden: [
+        { namn: 'Protein', euroFIRkod: 'PROT', enhet: 'g', varde: 10 },
+        { namn: 'Natrium, Na', euroFIRkod: 'NA', enhet: 'mg', varde: 0 },
+        { namn: 'Salt, NaCl', euroFIRkod: 'NACL', enhet: 'g', varde: 1 },
+      ],
+    });
+
+    // Calories come from protein (no kcal row), sodium from salt.
+    expect(mapped.default_variant.calories).toBe(40);
+    expect(mapped.default_variant.sodium).toBe(400);
+    expect(mapped.default_variant.provider_nutrient_standard).toEqual({
+      Protein: 'protein',
+    });
+  });
 });
 
 describe('livsmedelsverketService - searchLivsmedelsverketFoods & getLivsmedelsverketFoodDetails', () => {

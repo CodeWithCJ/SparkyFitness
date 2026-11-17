@@ -24,6 +24,7 @@ export const exerciseEntrySetsSchema = z.object({
   updated_at: z.date().nullable(),
   rpe: z.number().nullable(),
   completed_at: z.date().nullable(),
+  started_at: z.date().nullable(),
   // Km; only meaningful on duration_distance sets.
   distance: z.number().nullable(),
   is_pr: z.boolean().nullable().optional(),
@@ -45,6 +46,7 @@ export const exerciseEntrySetsInitializerSchema = z.object({
   updated_at: z.date().optional().nullable(),
   rpe: z.number().optional().nullable(),
   completed_at: z.date().optional().nullable(),
+  started_at: z.date().optional().nullable(),
   // Km; only meaningful on duration_distance sets.
   distance: z.number().optional().nullable(),
   is_pr: z.boolean().optional().nullable(),
@@ -66,6 +68,7 @@ export const exerciseEntrySetsMutatorSchema = z.object({
   updated_at: z.date().optional().nullable(),
   rpe: z.number().optional().nullable(),
   completed_at: z.date().optional().nullable(),
+  started_at: z.date().optional().nullable(),
   // Km; only meaningful on duration_distance sets.
   distance: z.number().optional().nullable(),
   is_pr: z.boolean().optional().nullable(),

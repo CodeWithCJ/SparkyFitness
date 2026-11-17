@@ -1,9 +1,13 @@
 import {
   compareByEntryTime,
+  deriveWorkoutSessionStatus,
   earliestEntryTime,
+  isAppLoggedWorkoutSource,
   type ExerciseEntryHrZonesInitializer,
+  type ExercisePresetEntries,
+  type WorkoutSessionStatusSet,
 } from '@workspace/shared';
-import { getClient } from '../db/poolManager.js';
+import { getClient, getSystemClient } from '../db/poolManager.js';
 import type { PoolClient } from 'pg';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
@@ -191,7 +195,7 @@ async function _getExerciseEntryByIdWithClient(client: any, id: any) {
              COALESCE(
                (SELECT json_agg(set_data ORDER BY set_data.set_number)
                 FROM (
-                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+                  SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
                   FROM exercise_entry_sets ees
                   WHERE ees.exercise_entry_id = ee.id
                 ) AS set_data
@@ -328,12 +332,50 @@ export const EXERCISE_ENTRY_TELEMETRY_COLUMNS = [
   'calories_applied',
 ] as const;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function telemetryValuesFrom(source: any): unknown[] {
-  return EXERCISE_ENTRY_TELEMETRY_COLUMNS.map((column) => {
-    const value = source?.[column];
-    return value === undefined ? null : value;
-  });
+const INT4_MAX = 2147483647;
+
+// The telemetry columns that are integer or smallint in exercise_entries, with
+// the range Postgres accepts for each. Health platforms report counts and
+// durations as doubles (HealthKit sums swimming stroke samples to values like
+// 120.99894867182387), and Postgres rejects a fractional or out-of-range value,
+// which fails the whole sync batch.
+export const EXERCISE_ENTRY_INTEGER_TELEMETRY_RANGES: ReadonlyMap<
+  string,
+  readonly [number, number]
+> = new Map([
+  ['heart_rate_recovery_1min', [-INT4_MAX - 1, INT4_MAX]],
+  ['stroke_count', [-INT4_MAX - 1, INT4_MAX]],
+  ['moving_time_seconds', [-INT4_MAX - 1, INT4_MAX]],
+  ['elapsed_time_seconds', [-INT4_MAX - 1, INT4_MAX]],
+  ['work_time_seconds', [-INT4_MAX - 1, INT4_MAX]],
+  // chk_exercise_entries_workout_effort
+  ['workout_effort', [1, 10]],
+]);
+
+/**
+ * Returns the value to bind for one telemetry column. Integer columns get the
+ * value rounded, and a value the column can't hold becomes null: telemetry is
+ * optional, and one bad reading shouldn't cost the whole sync batch. Other
+ * columns pass through unchanged, and undefined becomes null.
+ */
+export function telemetryValueFor(column: string, value: unknown): unknown {
+  if (value === undefined) return null;
+  const range = EXERCISE_ENTRY_INTEGER_TELEMETRY_RANGES.get(column);
+  if (!range) return value;
+  // pg hands numeric columns back as strings, so a merged update can carry one.
+  const numeric =
+    typeof value === 'string' && value.trim() !== '' ? Number(value) : value;
+  if (typeof numeric !== 'number' || !Number.isFinite(numeric)) return value;
+  const rounded = Math.round(numeric);
+  return rounded >= range[0] && rounded <= range[1] ? rounded : null;
+}
+
+function telemetryValuesFrom(
+  source: Record<string, unknown> | null | undefined
+): unknown[] {
+  return EXERCISE_ENTRY_TELEMETRY_COLUMNS.map((column) =>
+    telemetryValueFor(column, source?.[column])
+  );
 }
 
 /**
@@ -375,7 +417,13 @@ async function _updateExerciseEntryTelemetryOnlyWithClient(
   await client.query(
     `UPDATE exercise_entries SET ${setClause}, updated_at = now()
      WHERE id = $${columns.length + 1} AND user_id = $${columns.length + 2}`,
-    [...columns.map((column) => telemetryFields[column]), id, userId]
+    [
+      ...columns.map((column) =>
+        telemetryValueFor(column, telemetryFields[column])
+      ),
+      id,
+      userId,
+    ]
   );
 }
 
@@ -433,6 +481,8 @@ export interface WatchTelemetryFields {
   watch_duration_minutes?: number | null;
   /** Stride length in cm; null clears it. */
   stride_length_cm?: number | null;
+  /** Average cadence in steps per minute; null clears it. */
+  avg_cadence?: number | null;
 }
 
 /**
@@ -700,6 +750,31 @@ type ResolveExerciseEntryUpdate = (currentEntry: Record<string, unknown>) => {
   markManualFields: readonly string[];
 };
 
+// A set's started_at is optional for clients (#2840): an update that omits it
+// keeps the stored value, an explicit null clears it. Clients that do not know
+// the field yet must not wipe a start recorded by a newer one.
+interface SetStartedAtInput {
+  id?: string | number | null;
+  started_at?: string | null;
+}
+
+function toStoredSetId(id: SetStartedAtInput['id']): number | null {
+  if (id === undefined || id === null) return null;
+  const numericId = typeof id === 'number' ? id : Number.parseInt(id, 10);
+  return Number.isFinite(numericId) ? numericId : null;
+}
+
+// Value to write when the sets of an entry are replaced (delete + insert): an
+// omitted started_at is taken from the stored set with the same id.
+function resolveReplacedSetStartedAt(
+  set: SetStartedAtInput,
+  storedStartedAt: ReadonlyMap<number, Date | string | null>
+): Date | string | null {
+  if (set.started_at !== undefined) return set.started_at;
+  const storedId = toStoredSetId(set.id);
+  return storedId === null ? null : (storedStartedAt.get(storedId) ?? null);
+}
+
 async function _updateExerciseEntryWithClient(
   client: PoolClient,
   id: string,
@@ -720,6 +795,7 @@ async function _updateExerciseEntryWithClient(
     preserveManualFields?: boolean;
     markManualFields?: readonly string[];
     resolveUpdate?: ResolveExerciseEntryUpdate;
+    deferCalorieLinkReapply?: boolean;
   } = {}
 ) {
   // A link created after an unlocked read would be ignored, and locking one
@@ -743,6 +819,16 @@ async function _updateExerciseEntryWithClient(
   const currentEntry = existingEntryResult.rows[0];
   let markManualFields = options.markManualFields ?? [];
   if (options.resolveUpdate) {
+    if (updateData.sets !== undefined) {
+      // The edit comparison uses the same locked snapshot as scalar fields.
+      // Reading sets before this lock could freeze an unchanged client save,
+      // or miss a correction committed by another writer.
+      const currentSets = await client.query<Record<string, unknown>>(
+        'SELECT * FROM exercise_entry_sets WHERE exercise_entry_id = $1 ORDER BY set_number, id',
+        [id]
+      );
+      currentEntry.sets = currentSets.rows;
+    }
     ({ updateData, markManualFields } = options.resolveUpdate(currentEntry));
   }
   const currentManualFields = storedManualFields(currentEntry.manual_fields);
@@ -830,14 +916,18 @@ async function _updateExerciseEntryWithClient(
         ? updateData.water_estimated
         : currentEntry.water_estimated,
   };
+  // The entry's copy of the Health activity type (#1750) changes only when the
+  // entry is moved to another exercise, like its other snapshot fields.
+  let refreshedHealthActivityType: string | null | undefined;
   // If exercise_id is explicitly updated, re-fetch snapshot data from the exercise
   if (
-    updateData.exercise_id &&
+    typeof updateData.exercise_id === 'string' &&
     updateData.exercise_id !== currentEntry.exercise_id
   ) {
     const exercise = await exerciseRepository.getExerciseById(
       updateData.exercise_id,
-      userId
+      userId,
+      client
     );
     if (!exercise) {
       throw Object.assign(new Error('Exercise not found.'), { status: 404 });
@@ -846,7 +936,11 @@ async function _updateExerciseEntryWithClient(
     mergedData.calories_per_hour = exercise.calories_per_hour;
     mergedData.category = exercise.category;
     mergedData.modality = exercise.modality;
-    mergedData.source_id = exercise.source_id;
+    // Only synced entries own a provider workout instance. App-logged entries
+    // follow the replacement exercise's library identity instead.
+    mergedData.source_id = isAppLoggedWorkoutSource(mergedData.source)
+      ? exercise.source_id
+      : updateData.source_id || currentEntry.source_id || exercise.source_id;
     mergedData.force = exercise.force;
     mergedData.level = exercise.level;
     mergedData.mechanic = exercise.mechanic;
@@ -855,6 +949,7 @@ async function _updateExerciseEntryWithClient(
     mergedData.secondary_muscles = exercise.secondary_muscles;
     mergedData.instructions = exercise.instructions;
     mergedData.images = exercise.images;
+    refreshedHealthActivityType = exercise.health_activity_type ?? null;
   }
   // Telemetry columns: prefer an explicitly-provided updateData value, otherwise keep
   // whatever is already on the row. Using a raw object spread for these would let an
@@ -917,6 +1012,11 @@ async function _updateExerciseEntryWithClient(
       ${telemetrySetClause},
       record_timezone = $${32 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length},
       manual_fields = $${33 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length}::text[],
+      health_activity_type = CASE
+        WHEN $${34 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length}::boolean
+          THEN $${35 + EXERCISE_ENTRY_TELEMETRY_COLUMNS.length}::text
+        ELSE health_activity_type
+      END,
       updated_at = now()
     WHERE id = $28 AND user_id = $29
     RETURNING id`,
@@ -956,6 +1056,8 @@ async function _updateExerciseEntryWithClient(
       mergedData.record_timezone ?? null,
       // NULL while nothing is marked, so an untouched row keeps its shape.
       manualFields.length > 0 ? manualFields : null,
+      refreshedHealthActivityType !== undefined,
+      refreshedHealthActivityType ?? null,
     ]
   );
   // The row can be deleted by a competing writer between the existence check
@@ -974,15 +1076,28 @@ async function _updateExerciseEntryWithClient(
   }
   // Handle sets update
   if (updateData.sets !== undefined) {
-    // Only modify sets if they are explicitly provided
+    // Only modify sets if they are explicitly provided. The rows are replaced,
+    // so read the stored started_at first to keep it for sets sent back by id.
+    const storedStartedAtResult = await client.query(
+      'SELECT id, started_at FROM exercise_entry_sets WHERE exercise_entry_id = $1',
+      [id]
+    );
+    const storedStartedAt = new Map<number, Date | string | null>(
+      (
+        storedStartedAtResult.rows as {
+          id: number;
+          started_at: Date | string | null;
+        }[]
+      ).map((row) => [row.id, row.started_at])
+    );
     await client.query(
       'DELETE FROM exercise_entry_sets WHERE exercise_entry_id = $1',
       [id]
     );
     if (Array.isArray(updateData.sets) && updateData.sets.length > 0) {
       assertSetWeightSign(updateData.sets, mergedData.modality);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const setsValues = updateData.sets.map((set: any) => [
+      const sets = updateData.sets as Record<string, unknown>[];
+      const setsValues = sets.map((set) => [
         id,
         set.set_number,
         set.set_type,
@@ -996,15 +1111,16 @@ async function _updateExerciseEntryWithClient(
         set.completed_at ?? null,
         set.is_pr ?? false,
         set.distance ?? null,
+        resolveReplacedSetStartedAt(set, storedStartedAt),
       ]);
       const setsQuery = format(
-        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
+        'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance, started_at) VALUES %L',
         setsValues
       );
       await client.query(setsQuery);
     }
   }
-  if (currentEntry.calorie_link_id) {
+  if (currentEntry.calorie_link_id && !options.deferCalorieLinkReapply) {
     await reapplyCalorieLinkWithClient(
       client,
       userId,
@@ -1033,18 +1149,65 @@ async function acquireExerciseEntrySyncLockWithClient(
   await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [key]);
 }
 
+/** One set of an entry being created; columns of exercise_entry_sets. */
+interface ExerciseEntrySetInput {
+  set_number?: number | null;
+  set_type?: string | null;
+  reps?: number | null;
+  weight?: number | string | null;
+  duration?: number | null;
+  rest_time?: number | null;
+  notes?: string | null;
+  rpe?: number | null;
+  rir?: number | null;
+  completed_at?: string | Date | null;
+  is_pr?: boolean | null;
+  distance?: number | null;
+  started_at?: string | Date | null;
+}
+
+/**
+ * What every create path (diary, presets, plans, chatbot, Garmin, FIT,
+ * Liftosaur, health data) passes. Fields a path does not know are left out;
+ * the telemetry columns (EXERCISE_ENTRY_TELEMETRY_COLUMNS) and other provider
+ * extras ride along under the index signature and are read by name, and the
+ * whole object also feeds the update path when the entry already exists.
+ */
+interface ExerciseEntryCreateInput {
+  [column: string]: unknown;
+  /** A client-chosen entry id, so the entry keeps its identity across saves. */
+  id?: string | null;
+  exercise_id: string | null;
+  entry_date: string;
+  exercise_name?: string | null;
+  duration_minutes?: number | null;
+  calories_burned?: number | null;
+  notes?: string | null;
+  workout_plan_assignment_id?: string | number | null;
+  image_url?: string | null;
+  source_id?: string | null;
+  distance?: number | null;
+  avg_heart_rate?: number | null;
+  sort_order?: number | null;
+  steps?: number | null;
+  water_estimated?: number | null;
+  superset_group?: string | number | null;
+  entry_time?: string | null;
+  record_timezone?: string | null;
+  sets?: ExerciseEntrySetInput[] | null;
+}
+
 async function _createExerciseEntryWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any,
+  client: PoolClient,
+  userId: string,
+  entryData: ExerciseEntryCreateInput,
+  createdByUserId: string,
   entrySource = 'Manual',
   exercisePresetEntryId: string | null = null,
-  options: { skipDuplicateCheck?: boolean } = {}
+  options: {
+    skipDuplicateCheck?: boolean;
+    deferCalorieLinkReapply?: boolean;
+  } = {}
 ) {
   try {
     // Check for existing entry
@@ -1125,7 +1288,11 @@ async function _createExerciseEntryWithClient(
         entrySource,
         // A source_id match is the same provider workout sent again: keep
         // what the user corrected since the last sync.
-        { returnNullIfMissing: true, preserveManualFields: syncDuplicateCheck }
+        {
+          returnNullIfMissing: true,
+          preserveManualFields: syncDuplicateCheck,
+          deferCalorieLinkReapply: options.deferCalorieLinkReapply,
+        }
       );
       if (!updatedEntry) {
         // The writer that deleted the row is a delete-then-insert sync, so it
@@ -1155,6 +1322,7 @@ async function _createExerciseEntryWithClient(
             {
               returnNullIfMissing: true,
               preserveManualFields: syncDuplicateCheck,
+              deferCalorieLinkReapply: options.deferCalorieLinkReapply,
             }
           );
         }
@@ -1167,7 +1335,7 @@ async function _createExerciseEntryWithClient(
       // No existing entry, create a new one
       // 1. Fetch the exercise details to create the snapshot
       const exerciseSnapshotQuery = await client.query(
-        `SELECT name, calories_per_hour, category, source, source_id, force, level, mechanic, equipment, primary_muscles, secondary_muscles, instructions, images, modality
+        `SELECT name, calories_per_hour, category, source, source_id, force, level, mechanic, equipment, primary_muscles, secondary_muscles, instructions, images, modality, health_activity_type
          FROM exercises WHERE id = $1`,
         [entryData.exercise_id]
       );
@@ -1217,6 +1385,7 @@ async function _createExerciseEntryWithClient(
         snapshot.modality,
         ...telemetryValuesFrom(entryData),
         entryData.record_timezone ?? null,
+        snapshot.health_activity_type ?? null,
       ];
       const hasClientId = entryData.id !== undefined && entryData.id !== null;
       const idColumn = hasClientId ? ', id' : '';
@@ -1228,7 +1397,7 @@ async function _createExerciseEntryWithClient(
         'equipment, primary_muscles, secondary_muscles, instructions, images, ' +
         'distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated, ' +
         'superset_group, entry_time, modality';
-      const allColumns = `${baseColumns}, ${EXERCISE_ENTRY_TELEMETRY_COLUMNS.join(', ')}, record_timezone${idColumn}`;
+      const allColumns = `${baseColumns}, ${EXERCISE_ENTRY_TELEMETRY_COLUMNS.join(', ')}, record_timezone, health_activity_type${idColumn}`;
       const placeholders = entryValues
         .map((_, index) => `$${index + 1}`)
         .join(', ');
@@ -1238,10 +1407,9 @@ async function _createExerciseEntryWithClient(
         entryValues
       );
       newEntryId = entryResult.rows[0].id;
-      if (entryData.sets && entryData.sets.length > 0) {
+      if (Array.isArray(entryData.sets) && entryData.sets.length > 0) {
         assertSetWeightSign(entryData.sets, snapshot.modality);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const setsValues = entryData.sets.map((set: any) => [
+        const setsValues = entryData.sets.map((set) => [
           newEntryId,
           set.set_number,
           set.set_type,
@@ -1255,9 +1423,10 @@ async function _createExerciseEntryWithClient(
           set.completed_at ?? null,
           set.is_pr ?? false,
           set.distance ?? null,
+          set.started_at ?? null,
         ]);
         const setsQuery = format(
-          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
+          'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance, started_at) VALUES %L',
           setsValues
         );
         await client.query(setsQuery);
@@ -1364,6 +1533,39 @@ async function getExerciseEntryOwnerId(id: any, userId: any) {
     return entryResult.rows[0]?.user_id;
   } finally {
     client.release();
+  }
+}
+
+/**
+ * Whether any diary entry or workout preset exercise, of any user, still
+ * points at this image. Read without row-level security so a file only
+ * another user's row references is never taken for unused. A failed check
+ * counts as referenced: a stray file on disk is better than a lost photo.
+ */
+async function isExerciseImageReferenced(imageUrl: string): Promise<boolean> {
+  try {
+    const client = await getSystemClient();
+    try {
+      const result = await client.query(
+        // Case-insensitive, so a differently cased spelling of the same file
+        // on a case-insensitive filesystem still counts as a reference.
+        `SELECT 1 FROM exercise_entries WHERE lower(image_url) = lower($1)
+         UNION ALL
+         SELECT 1 FROM workout_preset_exercises WHERE lower(image_url) = lower($1)
+         LIMIT 1`,
+        [imageUrl]
+      );
+      return result.rows.length > 0;
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    log(
+      'warn',
+      'Could not check references to an exercise image; keeping it',
+      error
+    );
+    return true;
   }
 }
 
@@ -1560,7 +1762,8 @@ async function _reconcileExerciseEntrySetsWithClient(
            completed_at = $9,
            is_pr = $10,
            distance = $11,
-           rir = $12
+           rir = $12,
+           started_at = CASE WHEN $15::boolean THEN $16::timestamptz ELSE started_at END
        WHERE id = $13 AND exercise_entry_id = $14`,
       [
         set.set_number,
@@ -1577,6 +1780,9 @@ async function _reconcileExerciseEntrySetsWithClient(
         set.rir ?? null,
         set.id,
         exerciseEntryId,
+        // Omitted keeps the stored start; null clears it (#2840).
+        set.started_at !== undefined,
+        set.started_at ?? null,
       ]
     );
   }
@@ -1597,9 +1803,10 @@ async function _reconcileExerciseEntrySetsWithClient(
       set.completed_at ?? null,
       set.is_pr ?? false,
       set.distance ?? null,
+      set.started_at ?? null,
     ]);
     const setsQuery = format(
-      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance) VALUES %L',
+      'INSERT INTO exercise_entry_sets (exercise_entry_id, set_number, set_type, reps, weight, duration, rest_time, notes, rpe, rir, completed_at, is_pr, distance, started_at) VALUES %L',
       setsValues
     );
     await client.query(setsQuery);
@@ -1627,12 +1834,44 @@ async function deleteExerciseEntry(id: any, userId: any) {
   }
 }
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+/**
+ * Row shape of the preset SELECT in the V1 diary path, taken from the shared
+ * database schema so the columns stay in sync with it (#1995 phase 1). The
+ * lifecycle columns must ride along so the status can be derived from the
+ * same rows that define it.
+ */
+type DiaryPresetEntryRow = Pick<
+  ExercisePresetEntries,
+  | 'id'
+  | 'workout_preset_id'
+  | 'name'
+  | 'description'
+  | 'notes'
+  | 'location'
+  | 'created_at'
+  | 'entry_date'
+  | 'source'
+  | 'finished_at'
+  | 'revision'
+>;
+
+/**
+ * Session child fields the status derivation reads on the V1 diary path. The
+ * children are loosely shaped legacy rows; only the fields the derivation
+ * touches are declared.
+ */
+interface DiaryPresetChildExercise {
+  workout_plan_assignment_id?: string | null;
+  sets?: WorkoutSessionStatusSet[] | null;
+}
+
 async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
   const client = await getClient(userId);
   try {
     // 1. Fetch all exercise preset entries for the given date and user
     const presetEntriesResult = await client.query(
-      `SELECT id, workout_preset_id, name, description, notes, created_at, source, location
+      `SELECT id, workout_preset_id, name, description, notes, created_at, source, location,
+              entry_date, finished_at, revision
        FROM exercise_preset_entries
        WHERE user_id = $1 AND entry_date = $2
        ORDER BY created_at ASC`,
@@ -1646,7 +1885,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1663,8 +1902,7 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
     // Map to store grouped exercises
     const groupedEntries = new Map();
     // Initialize grouped entries with preset entries
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    presetEntries.forEach((preset: any) => {
+    presetEntries.forEach((preset: DiaryPresetEntryRow) => {
       groupedEntries.set(preset.id, {
         type: 'preset',
         id: preset.id,
@@ -1674,7 +1912,10 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
         notes: preset.notes,
         location: preset.location ?? null,
         created_at: preset.created_at,
+        entry_date: preset.entry_date,
         source: preset.source,
+        finished_at: preset.finished_at,
+        revision: preset.revision,
         exercises: [], // This will hold the individual exercise entries
         total_duration_minutes: 0, // Initialize total duration for the preset
       });
@@ -1775,6 +2016,27 @@ async function getExerciseEntriesByDate(userId: any, selectedDate: any) {
     // Now add the preset entries (which now contain their associated exercises) to the final list
     for (const preset of groupedEntries.values()) {
       preset.activity_details = activityDetailsByPresetId.get(preset.id) || [];
+      // #1995 phase 1 lifecycle: derive the session status from the same rows
+      // that define it. Never stored, so it can never drift from the data.
+      const finishedAt =
+        preset.finished_at instanceof Date
+          ? preset.finished_at.toISOString()
+          : preset.finished_at
+            ? String(preset.finished_at)
+            : null;
+      preset.finished_at = finishedAt;
+      preset.revision = Number(preset.revision ?? 1);
+      preset.status = deriveWorkoutSessionStatus({
+        source: preset.source,
+        finishedAt,
+        hasPlanAssignment: (preset.exercises || []).some(
+          (exercise: DiaryPresetChildExercise) =>
+            (exercise.workout_plan_assignment_id ?? null) !== null
+        ),
+        sets: (preset.exercises || []).flatMap(
+          (exercise: DiaryPresetChildExercise) => exercise.sets || []
+        ),
+      });
       finalEntriesMap.set(preset.id, preset); // Add preset to map, overwriting if already present (shouldn't happen for presets)
     }
     const finalEntries = Array.from(finalEntriesMap.values()); // Convert map values to an array
@@ -1864,7 +2126,7 @@ async function getExerciseProgressData(
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -1901,7 +2163,7 @@ async function getExerciseHistory(userId: any, exerciseId: any, limit = 5) {
          COALESCE(
            (SELECT json_agg(set_data ORDER BY set_data.set_number)
             FROM (
-              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, ees.is_pr, ees.distance
+              SELECT ees.id, ees.set_number, ees.set_type, ees.reps, ees.weight, ees.duration, ees.rest_time, ees.notes, ees.rpe, ees.rir, to_char(ees.completed_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS completed_at, to_char(ees.started_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS started_at, ees.is_pr, ees.distance
               FROM exercise_entry_sets ees
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
@@ -2011,8 +2273,40 @@ async function getRecentSessionsForExercise(
 ): Promise<RecentSessionRow[]> {
   const client = await getClient(userId);
   try {
+    // Preset scoping must not leave a brand-new preset with an empty history
+    // card: when the preset itself has no qualifying sessions yet, fall back to
+    // the exercise's global recent sessions so the in-progress view still has
+    // something to compare against (issue: presetId-scoped stats returned []
+    // for a fresh preset while lastSet/global stats were populated).
+    //
+    // The scope decision runs in the SAME statement as the select (via a CTE)
+    // so a preset session committing concurrently cannot race the probe: the
+    // probe and the main query read a single snapshot. The probe applies the
+    // same excludePresetEntryId exclusion as the main query, so today's
+    // in-progress session cannot keep preset scoping active when it is the
+    // preset's only qualifying history.
     const result = await client.query(
-      `SELECT
+      `WITH scoped_preset AS (
+         SELECT CASE
+           WHEN $5::integer IS NULL THEN NULL
+           WHEN EXISTS (
+             SELECT 1
+               FROM exercise_entries ee
+               JOIN exercise_preset_entries epe ON epe.id = ee.exercise_preset_entry_id
+              WHERE ee.user_id = $1
+                AND ee.exercise_id = $2
+                AND epe.workout_preset_id = $5::integer
+                AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3::uuid)
+                AND EXISTS (
+                  SELECT 1 FROM exercise_entry_sets ees
+                   WHERE ees.exercise_entry_id = ee.id
+                     AND (ees.weight IS NOT NULL OR ees.reps IS NOT NULL OR ees.duration IS NOT NULL OR ees.distance IS NOT NULL)
+                )
+           ) THEN $5::integer
+           ELSE NULL
+         END AS preset_id
+       )
+       SELECT
          ee.entry_date::TEXT AS entry_date,
          (SELECT json_agg(set_data ORDER BY set_data.set_number, set_data.id)
             FROM (
@@ -2023,15 +2317,17 @@ async function getRecentSessionsForExercise(
             ) AS set_data
          ) AS sets
        FROM exercise_entries ee
+       CROSS JOIN scoped_preset sp
        WHERE ee.user_id = $1
          AND ee.exercise_id = $2
-         AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3)
+         AND ($3::uuid IS NULL OR ee.exercise_preset_entry_id IS DISTINCT FROM $3::uuid)
          AND (
            $5::integer IS NULL
+           OR sp.preset_id IS NULL
            OR EXISTS (
              SELECT 1 FROM exercise_preset_entries epe
               WHERE epe.id = ee.exercise_preset_entry_id
-                AND epe.workout_preset_id = $5
+                AND epe.workout_preset_id = sp.preset_id
            )
          )
          AND EXISTS (
@@ -2065,16 +2361,13 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
   // the enriched-session reuse cache makes every sync do once a session has
   // been collected once (#2191, #2300).
   //
-  // Everything else in the span is still deleted, so a workout removed upstream
-  // still disappears here. The client splits workout chunks on day boundaries,
-  // so one request always carries every workout for the days it covers and this
-  // exclusion cannot strand another chunk's rows.
   keepSourceIds?: string[]
 ) {
   await acquireExerciseEntrySyncLockWithClient(client, userId, entrySource);
   // Get IDs of exercise entries to be deleted
-  const entryIdsResult = await client.query(
-    `SELECT id FROM exercise_entries
+  const readCleanupCandidates = () =>
+    client.query<{ id: string }>(
+      `SELECT id FROM exercise_entries
      WHERE user_id = $1
        AND entry_date BETWEEN $2 AND $3
        AND source = $4
@@ -2092,16 +2385,17 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
          OR source_id IS NULL
          OR NOT (source_id = ANY($6::text[]))
        )`,
-    [
-      userId,
-      startDate,
-      endDate,
-      entrySource,
-      excludedExerciseName ?? null,
-      keepSourceIds && keepSourceIds.length > 0 ? keepSourceIds : null,
-    ]
-  );
-  const entryIds = entryIdsResult.rows.map((row: { id: string }) => row.id);
+      [
+        userId,
+        startDate,
+        endDate,
+        entrySource,
+        excludedExerciseName ?? null,
+        keepSourceIds && keepSourceIds.length > 0 ? keepSourceIds : null,
+      ]
+    );
+  const entryIdsResult = await readCleanupCandidates();
+  const entryIds = entryIdsResult.rows.map((row) => row.id);
   if (entryIds.length > 0) {
     // A resync deletes the synced side in bulk. Clear the link first so the
     // logged workout that stays behind counts its own estimate again.
@@ -2452,10 +2746,12 @@ async function getExistingSourceIds(
 
 export { upsertExerciseEntryData };
 export { _createExerciseEntryWithClient };
+export { acquireExerciseEntrySyncLockWithClient };
 export { createExerciseEntry };
 export { getExerciseEntryById };
 export { getExerciseEntryOwnerId };
 export { updateExerciseEntry };
+export { isExerciseImageReferenced };
 export { updateExerciseEntryTelemetryOnly };
 export { _updateExerciseEntryTelemetryOnlyWithClient };
 export { updateExerciseEntriesDateByPresetEntryIdWithClient };
@@ -2490,6 +2786,7 @@ export default {
   getExerciseEntryById,
   getExerciseEntryOwnerId,
   updateExerciseEntry,
+  isExerciseImageReferenced,
   updateExerciseEntryTelemetryOnly,
   _updateExerciseEntryTelemetryOnlyWithClient,
   applyWatchTelemetryAtomically,

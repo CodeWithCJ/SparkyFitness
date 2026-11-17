@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   bodyBatterySampleSchema,
+  bloodGlucoseSampleSchema,
   healthMetricSchema,
   heartRateSampleSchema,
   hrvSampleSchema,
@@ -85,6 +86,13 @@ const writeBodyBase = {
  */
 export const healthMetricSamplesWriteBodySchema = z
   .discriminatedUnion('metric', [
+    z
+      .object({
+        ...writeBodyBase,
+        metric: z.literal('blood_glucose'),
+        samples: samplesOf(bloodGlucoseSampleSchema.omit(NO_LINKS).strict()),
+      })
+      .strict(),
     z
       .object({
         ...writeBodyBase,

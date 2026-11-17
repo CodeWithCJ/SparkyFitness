@@ -623,7 +623,6 @@
       "prnReason": "Sebep (İsteğe bağlı)",
       "prnReasonPlaceholder": "örneğin Ağrı",
       "prnMax": "Maksimum Doz / Gün",
-      "supplementDoseScalingCalories": "Her kayıt {{dose}} porsiyon sayılır: {{dose}} x {{perDose}} kcal = {{total}} kcal.",
       "supplementDoseScaling": "Her kayıt {{dose}} porsiyon sayılır; yani porsiyon başına girilen besin değerlerinin {{dose}} katı.",
       "servingUnit": "porsiyon",
       "servingsPerLog": "Kayıt başına porsiyon",
@@ -839,8 +838,6 @@
       "categoryStrength": "Güç",
       "categoryCardio": "Kardiyo",
       "categoryYoga": "yoga",
-      "caloriesPerHourLabel": "Kalori/Saat",
-      "caloriesPerHourHint": "Sistemin saat başına hesapladığı kaloriyi ({{newExerciseCalories}} cal/saat) kullanmak için boş bırakın.",
       "descriptionLabel": "Açıklama",
       "sourceLabel": "Kaynak",
       "forceLabel": "kuvvet",
@@ -969,7 +966,6 @@
       "exerciseLabel": "Egzersiz",
       "unknownExercise": "Bilinmeyen Egzersiz",
       "addSetButton": "Set Ekle",
-      "caloriesBurnedOptionalLabel": "Yakılan Kaloriler (İsteğe bağlı)",
       "caloriesBurnedPlaceholder": "Hesaplamayı geçersiz kılmak için yakılan kalorileri girin",
       "caloriesBurnedHint": "Boş bırakılırsa kaloriler kaydetme sırasında otomatik olarak hesaplanacaktır.",
       "distanceLabel": "Mesafe",
@@ -2210,7 +2206,6 @@
       "title": "Alerjen Tercihleri"
     },
     "calculationExplanation": {
-      "adaptiveFootnote": "* Günlük Hedefinizi gerçek metabolizmanıza göre dinamik olarak ayarlar. Yüksek doğruluk için düzenli besin ve kilo takibi gerekir.",
       "burnedActivity": "Aktivite (Yalnızca Egzersiz ve Adım)",
       "burnedBmr": "Aktivite + BMH (Temel metabolizmanız)",
       "burnedTdee": "Health Connect toplam kalori (yedek: BMH + aktif kalori)",
@@ -2372,9 +2367,6 @@
       "unsafeGainText": "Haftada vücut ağırlığının %0,5'inden fazlasını almak, eklenen ağırlığın çoğunun kas değil yağ olacağı anlamına gelir. Daha yavaş bir fazla, çok daha az yağ artışıyla benzer miktarda kas yapar.",
       "unsafeLossTitle": "Güvenli Olmayan Kilo Verme Hızı",
       "unsafeLossText": "Haftada vücut ağırlığının %1,5'inden fazlasını kaybetmek aşırı kabul edilir. Bu hız ciddi kas kaybı, halsizlik, hormonal dengesizlikler ve besin eksiklikleri riskini önemli ölçüde artırır. Lütfen daha az agresif bir hedef modu seçin.",
-      "calibrationDescription": "Sparky'nin Uyarlanabilir TDEE motoru, metabolizmanızı doğru hesaplamak için en az {{required}} günlük düzenli takip gerektirir (şu anda yedek tahminler kullanılıyor). Kalibrasyonu hızlandırmak için:",
-      "calibrationWeightTip": "Kilonuzu haftada en az 3-4 kez kaydedin.",
-      "calibrationFoodTip": "Besin alımınızı her gün kaydedin (günde >200 kcal).",
       "livePreviewSavedNote": "BMH ve vücut yağı siz ayarları değiştirdikçe güncellenir. Harcama, kayıtlı ayarlarınızdan sunucuda hesaplanır; bu yüzden harcama ve nihai hedef yalnızca kaydettikten sonra değişir."
     },
     "mfa": {
@@ -3045,7 +3037,6 @@
       "calorieLogRequirement": "• TDEE hesaplaması için Kalori Kayıtları (≥ 200 kcal olan 7+ gün)",
       "daysMissing": "❌ Eksik ({{days}}/{{required}} gün kaydedildi)",
       "daysMet": "✓ Karşılandı ({{days}}/{{required}} gün kaydedildi)",
-      "stabilityRequirement": "• Hedef bütçe istikrarı için Kalori Kayıtları (≥ 200 kcal olan {{required}}+ gün)",
       "daysWarning": "⚠️ Eksik ({{days}}/{{required}} gün kaydedildi)",
       "usingFallbackBmr": "Yedek BMH × Aktivite Çarpanı kullanılıyor:",
       "fallbackMath": "Hesap: BMH ({{bmr}} kcal) × aktivite çarpanı ({{multiplier}}) = {{result}} {{unit}}",
@@ -5598,7 +5589,6 @@
       "targetHoursDesc": "Orucun tamamlanması için hedef süre (saat).",
       "targetEatingHours": "Hedef Yemek Saati",
       "targetEatingHoursDesc": "Yemek pencerenizin süresi (saat).",
-      "calorieThreshold": "Kalori Eşiği (kcal)",
       "calorieThresholdHint": "Bu değerin altındaki atıştırmalıklar veya içecekler (örn. sade kahve, su, elektrolitler) orucunuzu bozmaz veya yeniden başlatmaz.",
       "preEndAlert": "Hedef Öncesi Uyarı (dakika)",
       "preEndAlertHint": "Hedef oruç süresine ulaşmadan kaç dakika önce hatırlatma bildirimi alacağınız.",

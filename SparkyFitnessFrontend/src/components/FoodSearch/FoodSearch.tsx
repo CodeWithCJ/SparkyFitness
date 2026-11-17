@@ -1,3 +1,4 @@
+import { useFoodResultNutrientConfig } from '@/hooks/Foods/useFoodResultNutrientConfig';
 import {
   useState,
   useEffect,
@@ -20,9 +21,9 @@ import {
   Filter,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Select,
   SelectContent,
@@ -37,14 +38,11 @@ import {
   useDatabaseFoodSearchQuery,
   useRecentAndTopFoodsQuery,
 } from '@/hooks/Foods/useFoods.ts';
-import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients.ts';
 import {
   nutritionixBrandedNutrientsOptions,
   nutritionixNaturalNutrientsOptions,
   searchNutritionixOptions,
 } from '@/hooks/Foods/useNutrionix.ts';
-import { DEFAULT_NUTRIENTS } from '@/constants/nutrients.ts';
-import { visibleCustomNutrients } from '@/utils/nutrientUtils.ts';
 import {
   convertNutritionixToFood,
   pinDefaultVariantToServing,
@@ -116,6 +114,7 @@ interface EnhancedFoodSearchProps {
   // meal cannot contain another meal).
   hideMealTab?: boolean;
   mealType?: string;
+  allowRecipeImport?: boolean;
 }
 
 const SectionHeader = ({ children }: { children: ReactNode }) => (
@@ -169,10 +168,12 @@ const EnhancedFoodSearch = ({
   onFoodSelect,
   hideDatabaseTab = false,
   hideMealTab = false,
+  allowRecipeImport = !hideMealTab,
   mealType = undefined,
 }: EnhancedFoodSearchProps) => {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { isActingOnBehalf } = useActiveUser();
   const [ownershipFilter, setOwnershipFilter] = useState<
     'all' | 'mine' | 'family' | 'public'
   >('all');
@@ -181,14 +182,8 @@ const EnhancedFoodSearch = ({
     foodSearchAllProvidersDefault,
     defaultBarcodeProviderId,
     itemDisplayLimit,
-    nutrientDisplayPreferences,
-    energyUnit,
-    convertEnergy,
-    getEnergyUnitString,
     autoScaleOpenFoodFactsImports,
   } = usePreferences();
-  const isMobile = useIsMobile();
-  const platform = isMobile ? 'mobile' : 'desktop';
 
   // Display modes derived from the embedding context.
   const onlineOnly = hideDatabaseTab;
@@ -220,6 +215,9 @@ const EnhancedFoodSearch = ({
 
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Food | null>(null);
+  const [editingRecipeProviderId, setEditingRecipeProviderId] = useState<
+    string | undefined
+  >();
   const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
   const [barcodeProviderId, setBarcodeProviderId] = useState<string | null>(
     null
@@ -261,10 +259,10 @@ const EnhancedFoodSearch = ({
     setIsOnlineLoading(false);
     setEditingProduct(null);
     setShowEditDialog(false);
+    setShowBarcodeScanner(false);
   }, [user?.id, user?.activeUserId]);
 
   const queryClient = useQueryClient();
-  const { data: customNutrients } = useCustomNutrients();
   const { data: foodDataProviders = EMPTY_PROVIDERS } =
     useExternalProvidersQuery();
   // item_display_limit (default 10) is the per-section total cap for the
@@ -568,6 +566,9 @@ const EnhancedFoodSearch = ({
   // --- Local meals: searched alongside foods, guarded against stale resolves ---
 
   const mealSearchSeq = useRef(0);
+  // The results area, found by ref rather than by class name: its scroll
+  // classes only apply from a certain viewport height (see the JSX below).
+  const resultsRef = useRef<HTMLDivElement>(null);
   const handleMealSearch = useCallback(
     async (term: string) => {
       const seq = ++mealSearchSeq.current;
@@ -1138,6 +1139,7 @@ const EnhancedFoodSearch = ({
     food: Food,
     providerIdOverride?: string
   ) => {
+    const providerId = providerIdOverride || searchProviderId || undefined;
     const needsDetailFetch =
       foodProviderNeedsDetailFetch(food.provider_type) &&
       food.provider_external_id;
@@ -1145,9 +1147,9 @@ const EnhancedFoodSearch = ({
     if (needsDetailFetch) {
       // In All Providers mode searchProviderId isn't set, so callers pass the
       // result's own provider id to fetch full nutrients with the right creds.
-      const providerId = providerIdOverride || searchProviderId || undefined;
       if (!providerId && !isPublicFoodProvider(food.provider_type)) {
         // No provider credentials available — data is already complete (barcode flow)
+        setEditingRecipeProviderId(providerId);
         setEditingProduct(food);
         setShowEditDialog(true);
         return;
@@ -1167,11 +1169,15 @@ const EnhancedFoodSearch = ({
           detailedFood,
           food.default_variant
         );
+        setEditingRecipeProviderId(providerId);
         setEditingProduct({
           ...pinnedFood,
           provider_type: pinnedFood.provider_type ?? food.provider_type,
           provider_external_id:
             pinnedFood.provider_external_id ?? food.provider_external_id,
+          recipe_has_nutrition:
+            pinnedFood.recipe_has_nutrition ?? food.recipe_has_nutrition,
+          recipe_servings: pinnedFood.recipe_servings ?? food.recipe_servings,
           provider_verified:
             pinnedFood.provider_verified ?? food.provider_verified,
           // The details endpoint doesn't always echo the photo back, so fall
@@ -1190,57 +1196,19 @@ const EnhancedFoodSearch = ({
           ),
           variant: 'destructive',
         });
+        setEditingRecipeProviderId(providerId);
         setEditingProduct(food);
         setShowEditDialog(true);
       }
       return;
     }
 
+    setEditingRecipeProviderId(providerId);
     setEditingProduct(food);
     setShowEditDialog(true);
   };
 
-  const quickInfoPreferences =
-    nutrientDisplayPreferences.find(
-      (p) => p.view_group === 'quick_info' && p.platform === platform
-    ) ||
-    nutrientDisplayPreferences.find(
-      (p) => p.view_group === 'quick_info' && p.platform === 'desktop'
-    );
-
-  // Custom nutrients are gated by the food_database view group, the group the
-  // settings page adds them to by default — supplement-scoped nutrients are
-  // deliberately absent from it and must not become columns on every result card.
-  const foodDatabasePreferences =
-    nutrientDisplayPreferences.find(
-      (p) => p.view_group === 'food_database' && p.platform === platform
-    ) ||
-    nutrientDisplayPreferences.find(
-      (p) => p.view_group === 'food_database' && p.platform === 'desktop'
-    );
-
-  const visibleNutrients = useMemo(() => {
-    const base = quickInfoPreferences
-      ? quickInfoPreferences.visible_nutrients
-      : DEFAULT_NUTRIENTS;
-
-    const allKeys = [
-      ...base,
-      ...visibleCustomNutrients(customNutrients, foodDatabasePreferences).map(
-        (cn) => cn.name
-      ),
-    ];
-
-    return Array.from(new Set(allKeys));
-  }, [quickInfoPreferences, foodDatabasePreferences, customNutrients]);
-
-  const nutrientConfig = {
-    visibleNutrients,
-    energyUnit,
-    convertEnergy,
-    getEnergyUnitString,
-    customNutrients: customNutrients || [],
-  };
+  const nutrientConfig = useFoodResultNutrientConfig();
 
   // --- Derived render state ---
 
@@ -1308,8 +1276,11 @@ const EnhancedFoodSearch = ({
       />
     );
 
+  // Inside the food search dialog (foodSearchDialogLayout): from 37.5rem of
+  // viewport height the root and the results area may shrink, so only the
+  // results scroll; below it nothing shrinks and the dialog scrolls instead.
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col space-y-4 [@media(min-height:37.5rem)]:min-h-0">
       <div className="flex flex-col sm:flex-row flex-wrap gap-2">
         <Button
           onClick={() => setShowAddFoodDialog(true)}
@@ -1324,7 +1295,7 @@ const EnhancedFoodSearch = ({
           className="whitespace-nowrap"
         >
           <Camera className="w-4 h-4 mr-2" />{' '}
-          {t('enhancedFoodSearch.scanBarcode', 'Scan Barcode')}
+          {t('enhancedFoodSearch.scanBarcodeOrLabel', 'Scan Barcode or Label')}
         </Button>
       </div>
 
@@ -1413,7 +1384,11 @@ const EnhancedFoodSearch = ({
         )}
       </div>
 
-      <div className="space-y-2 max-h-96 overflow-y-auto">
+      <div
+        ref={resultsRef}
+        data-testid="food-search-results"
+        className="space-y-2 [@media(min-height:37.5rem)]:min-h-0 [@media(min-height:37.5rem)]:overflow-y-auto"
+      >
         {/* Landing: recent + top foods and meals (local mode, empty query) */}
         {showLocalFoods && isSearchEmpty && !scannedBarcode && (
           <>
@@ -1727,15 +1702,22 @@ const EnhancedFoodSearch = ({
                             {count > r.items.length && (
                               <button
                                 type="button"
-                                onClick={(e) => {
+                                onClick={() => {
                                   setExternalResults([]);
                                   setManualProviderId(r.provider.id);
                                   // Switching to the single-provider view reuses
-                                  // the same scroll container; reset it to the top
+                                  // the same scroll position; reset it to the top
                                   // so the user isn't left stranded at the bottom.
-                                  const container =
-                                    e.currentTarget.closest('.overflow-y-auto');
-                                  if (container) container.scrollTop = 0;
+                                  // The results area scrolls on tall windows, the
+                                  // dialog on short ones: reset both (a no-op on
+                                  // whichever is not scrolling).
+                                  const results = resultsRef.current;
+                                  if (results) {
+                                    results.scrollTop = 0;
+                                    const dialog =
+                                      results.closest('[role="dialog"]');
+                                    if (dialog) dialog.scrollTop = 0;
+                                  }
                                 }}
                                 className="text-sm font-medium text-primary px-1 py-2"
                               >
@@ -1764,6 +1746,20 @@ const EnhancedFoodSearch = ({
         onOpenChange={setShowEditDialog}
         mode="edit"
         editingProduct={editingProduct}
+        recipeImportProviderId={
+          allowRecipeImport &&
+          !isActingOnBehalf &&
+          foodDataProviders.some(
+            (provider) =>
+              provider.id === editingRecipeProviderId &&
+              provider.provider_type === 'mealie' &&
+              provider.is_active &&
+              'user_id' in provider &&
+              provider.user_id === user?.id
+          )
+            ? editingRecipeProviderId
+            : undefined
+        }
         onSave={handleSaveEditedFood}
       />
       <FoodFormDialog
@@ -1773,6 +1769,7 @@ const EnhancedFoodSearch = ({
         onSave={handleSaveEditedFood}
       />
       <BarcodeScannerDialog
+        key={JSON.stringify([user?.id, user?.activeUserId])}
         isOpen={showBarcodeScanner}
         onOpenChange={setShowBarcodeScanner}
         onBarcodeDetected={(barcode) => {
@@ -1782,6 +1779,11 @@ const EnhancedFoodSearch = ({
         selectedProviderId={selectedBarcodeProvider}
         onProviderChange={setBarcodeProviderId}
         providers={foodDataProviders}
+        onLabelScanned={(food) => {
+          setShowBarcodeScanner(false);
+          setEditingProduct(food);
+          setShowEditDialog(true);
+        }}
       />
     </div>
   );

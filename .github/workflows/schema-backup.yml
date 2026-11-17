@@ -8,9 +8,17 @@ name: Schema Backup
 #
 # Why this shape: fork PRs can't receive pushes from GITHUB_TOKEN, so the
 # regeneration runs after merge on main instead of updating the PR branch; and
-# main's ruleset requires changes to arrive via reviewed pull request, so the
-# result is proposed as a PR rather than pushed directly. Use workflow_dispatch
-# to force a regeneration (e.g. after changing this workflow).
+# main's ruleset requires changes to arrive via pull request, so the result is
+# proposed as a PR rather than pushed directly. Use workflow_dispatch to force a
+# regeneration (e.g. after changing this workflow).
+#
+# The PR merges itself: the file is derived from migrations already on main, so
+# a review adds nothing. The job that runs pnpm install has read-only access and
+# hands the dump over as an artifact. A second job opens the PR and merges it
+# with the SparkyFitness-Sync app token, which can merge past main's review
+# rule, and runs nothing but pinned actions. Opening the PR with the app token
+# rather than GITHUB_TOKEN lets the repository keep "Allow GitHub Actions to
+# create and approve pull requests" off.
 
 on:
   push:
@@ -27,9 +35,8 @@ on:
       - ".github/workflows/schema-backup.yml"
   workflow_dispatch:
 
-permissions:
-  contents: write
-  pull-requests: write
+# Each job asks for what it needs; the PR job uses the app token instead.
+permissions: {}
 
 # Serialize runs so two close-together merges can't race on the push.
 concurrency:
@@ -40,6 +47,8 @@ jobs:
   regenerate:
     name: Regenerate db_schema_backup.sql
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     services:
       postgres:
@@ -63,16 +72,15 @@ jobs:
           --health-retries 10
 
     steps:
-      # persist-credentials off so the write-scoped token isn't readable by
-      # package scripts; create-pull-request authenticates via its token input.
+      # This job only reads; the PR job opens and merges the PR.
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: main
           persist-credentials: false
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -110,12 +118,55 @@ jobs:
                   -e 's/^\\unrestrict .*/\\unrestrict SparkyFitnessSchemaBackup/' \
             > db_schema_backup.sql
 
+      - name: Upload the dump
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: schema-backup
+          path: db_schema_backup.sql
+          if-no-files-found: error
+          retention-days: 1
+
+  pr:
+    name: Open and merge the schema backup PR
+    needs: regenerate
+    if: github.ref == 'refs/heads/main'
+    # The app secrets live in this environment, which only main can use.
+    environment: sync-app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # create-pull-request authenticates through its token input.
+          persist-credentials: false
+
+      - name: Download the dump
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: schema-backup
+          path: .
+
+      - name: Create SparkyFitness-Sync token
+        id: app_token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          # The app's Client ID is not secret, so it lives here, not in a secret.
+          client-id: Iv23lizuGhwaizMxrvDT
+          private-key: ${{ secrets.SYNC_APP_PRIVATE_KEY }}
+          # Only what opening, checking and merging the PR needs.
+          permission-contents: write
+          permission-pull-requests: write
+
       # No-op when the dump is unchanged. Reuses one branch, so back-to-back
       # migration merges update the same open sync PR instead of stacking new
       # ones.
       - name: Open sync PR if changed
-        uses: peter-evans/create-pull-request@v7
+        id: pr
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         with:
+          token: ${{ steps.app_token.outputs.token }}
           add-paths: db_schema_backup.sql
           branch: ci/schema-backup-sync
           commit-message: "chore: sync db_schema_backup.sql with migrations"
@@ -124,7 +175,19 @@ jobs:
             Automated schema backup regeneration
             (`.github/workflows/schema-backup.yml`): every migration was
             applied to an empty PostgreSQL 18.3 database and the schema was
-            dumped with `pg_dump --schema-only --no-owner`. Review the diff
-            and merge to keep `db_schema_backup.sql` aligned with the
-            migrations.
+            dumped with `pg_dump --schema-only --no-owner`. The workflow
+            merges it right after opening it; if it is still open, the merge
+            failed, so merge it by hand to keep `db_schema_backup.sql` aligned
+            with the migrations.
           delete-branch: true
+
+      # "closed" means the dump already matches main and the PR was closed.
+      - name: Merge
+        if: steps.pr.outputs.pull-request-number != '' && steps.pr.outputs.pull-request-operation != 'closed'
+        uses: ./.github/actions/merge-automation-pr
+        with:
+          token: ${{ steps.app_token.outputs.token }}
+          repository: ${{ github.repository }}
+          pull-request: ${{ steps.pr.outputs.pull-request-number }}
+          head-sha: ${{ steps.pr.outputs.pull-request-head-sha }}
+          allowed-files: '^db_schema_backup\.sql$'

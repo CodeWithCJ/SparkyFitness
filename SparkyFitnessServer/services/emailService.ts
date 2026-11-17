@@ -2,6 +2,17 @@ import nodemailer from 'nodemailer';
 import type { Transporter } from 'nodemailer';
 import type SMTPTransport from 'nodemailer/lib/smtp-transport/index.js';
 import { log } from '../config/logging.js';
+import {
+  DEFAULT_EMAIL_LANGUAGE,
+  getEmailTemplate,
+} from './emailTranslations.js';
+
+// Lifetimes the mails tell the user about, the values the texts named before
+// they moved into the catalog. The magic link one matches
+// magicLink({ expiresIn: 900 }) in auth.ts.
+const PASSWORD_RESET_EXPIRES_IN_HOURS = 1;
+const MFA_CODE_EXPIRES_IN_MINUTES = 5;
+const MAGIC_LINK_EXPIRES_IN_MINUTES = 15;
 
 export interface EmailTransportConfig {
   host?: string;
@@ -102,8 +113,13 @@ function getTransporterDebugInfo(): string {
 
 async function sendPasswordResetEmail(
   toEmail: string,
-  resetUrl: string
+  resetUrl: string,
+  language: string = DEFAULT_EMAIL_LANGUAGE
 ): Promise<boolean> {
+  const template = getEmailTemplate('passwordReset', language, {
+    resetUrl,
+    expiresInHours: String(PASSWORD_RESET_EXPIRES_IN_HOURS),
+  });
   log(
     'info',
     `Attempting to send password reset email to ${toEmail} with URL: ${resetUrl}`
@@ -119,15 +135,9 @@ async function sendPasswordResetEmail(
       ------------------------------------
       PASSWORD RESET EMAIL (NOT SENT - EMAIL SERVICE NOT CONFIGURED)
       To: ${toEmail}
-      Subject: SparkyFitness Password Reset
-      
-      You have requested a password reset for your SparkyFitness account.
-      Please click on the following link to reset your password:
-      
-      ${resetUrl}
-      
-      This link will expire in 1 hour.
-      If you did not request a password reset, please ignore this email.
+      Subject: ${template.subject}
+
+${template.bodyText}
       ------------------------------------
     `);
     return false;
@@ -138,14 +148,9 @@ async function sendPasswordResetEmail(
       from:
         process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com',
       to: toEmail,
-      subject: 'SparkyFitness Password Reset',
-      html: `
-        <p>You have requested a password reset for your SparkyFitness account.</p>
-        <p>Please click on the following link to reset your password:</p>
-        <p><a href="${resetUrl}">${resetUrl}</a></p>
-        <p>This link will expire in 1 hour.</p>
-        <p>If you did not request a password reset, please ignore this email.</p>
-      `,
+      subject: template.subject,
+      html: template.bodyHtml,
+      text: template.bodyText,
     });
     log('info', `Password reset email successfully sent to ${toEmail}.`);
     return true;
@@ -176,8 +181,13 @@ async function sendPasswordResetEmail(
 
 async function sendEmailMfaCode(
   toEmail: string,
-  code: string
+  code: string,
+  language: string = DEFAULT_EMAIL_LANGUAGE
 ): Promise<boolean> {
+  const template = getEmailTemplate('mfaCode', language, {
+    code,
+    expiresInMinutes: String(MFA_CODE_EXPIRES_IN_MINUTES),
+  });
   log('info', `Attempting to send email MFA code to ${toEmail}`);
   log('debug', `Email Transporter Config: ${getTransporterDebugInfo()}`);
 
@@ -190,13 +200,9 @@ async function sendEmailMfaCode(
       ------------------------------------
       EMAIL MFA CODE (NOT SENT - EMAIL SERVICE NOT CONFIGURED)
       To: ${toEmail}
-      Subject: Your SparkyFitness MFA Code
-      
-      Your Multi-Factor Authentication code is:
-      
-      ${code}
-      
-      This code is valid for 5 minutes.
+      Subject: ${template.subject}
+
+${template.bodyText}
       ------------------------------------
     `);
     return false;
@@ -207,13 +213,9 @@ async function sendEmailMfaCode(
       from:
         process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com',
       to: toEmail,
-      subject: 'Your SparkyFitness MFA Code',
-      html: `
-        <p>Your Multi-Factor Authentication code is:</p>
-        <h3>${code}</h3>
-        <p>This code is valid for 5 minutes.</p>
-        <p>If you did not request this code, please ignore this email.</p>
-      `,
+      subject: template.subject,
+      html: template.bodyHtml,
+      text: template.bodyText,
     });
     log('info', `Email MFA code successfully sent to ${toEmail}.`);
     return true;
@@ -247,8 +249,13 @@ async function sendEmailMfaCode(
 
 async function sendMagicLinkEmail(
   toEmail: string,
-  magicLinkUrl: string
+  magicLinkUrl: string,
+  language: string = DEFAULT_EMAIL_LANGUAGE
 ): Promise<boolean> {
+  const template = getEmailTemplate('magicLink', language, {
+    magicLinkUrl,
+    expiresInMinutes: String(MAGIC_LINK_EXPIRES_IN_MINUTES),
+  });
   log(
     'info',
     `Attempting to send magic link email to ${toEmail} with URL: ${magicLinkUrl}`
@@ -264,15 +271,9 @@ async function sendMagicLinkEmail(
       ------------------------------------
       MAGIC LINK EMAIL (NOT SENT - EMAIL SERVICE NOT CONFIGURED)
       To: ${toEmail}
-      Subject: Your SparkyFitness Login Link
-      
-      You have requested a passwordless login to your SparkyFitness account.
-      Please click on the following link to log in:
-      
-      ${magicLinkUrl}
-      
-      This link will expire in 15 minutes and can only be used once.
-      If you did not request this, please ignore this email.
+      Subject: ${template.subject}
+
+${template.bodyText}
       ------------------------------------
     `);
     return false;
@@ -283,14 +284,9 @@ async function sendMagicLinkEmail(
       from:
         process.env.SPARKY_FITNESS_EMAIL_FROM || 'noreply@sparkyfitness.com',
       to: toEmail,
-      subject: 'Your SparkyFitness Login Link',
-      html: `
-        <p>You have requested a passwordless login to your SparkyFitness account.</p>
-        <p>Please click on the following link to log in:</p>
-        <p><a href="${magicLinkUrl}">${magicLinkUrl}</a></p>
-        <p>This link will expire in 15 minutes and can only be used once.</p>
-        <p>If you did not request this, please ignore this email.</p>
-      `,
+      subject: template.subject,
+      html: template.bodyHtml,
+      text: template.bodyText,
     });
     log('info', `Magic link email successfully sent to ${toEmail}.`);
     return true;

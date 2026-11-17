@@ -1,0 +1,100 @@
+name: Merge an automation PR
+description: >-
+  Merges a pull request that a workflow just opened, pinned to the head commit
+  it opened it at, so a commit pushed onto the branch afterwards is never merged
+  with it. Retries while GitHub is still working out whether a new PR is
+  mergeable, and fails the step if it never merges, so the PR is not forgotten.
+
+inputs:
+  token:
+    description: Token allowed to merge, here the SparkyFitness-Sync app token.
+    required: true
+  repository:
+    description: owner/name of the repository the pull request is in.
+    required: true
+  pull-request:
+    description: Pull request number.
+    required: true
+  head-sha:
+    description: Head commit the pull request must still be at.
+    required: true
+  method:
+    description: merge, squash or rebase.
+    required: false
+    default: squash
+  allowed-files:
+    description: >-
+      Extended regular expression every changed path must match, checked on
+      head-sha itself before merging. An empty value fails the merge.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Merge
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPO: ${{ inputs.repository }}
+        PR: ${{ inputs.pull-request }}
+        HEAD_SHA: ${{ inputs.head-sha }}
+        METHOD: ${{ inputs.method }}
+        ALLOWED: ${{ inputs.allowed-files }}
+      run: |
+        set -euo pipefail
+        case "$METHOD" in merge | squash | rebase) ;; *)
+          echo "::error::Unknown merge method: $METHOD"
+          exit 1
+          ;;
+        esac
+        # The file check is the only content control on a merge past review, so
+        # no allowlist means no merge.
+        if [ -z "$ALLOWED" ]; then
+          echo "::error::allowed-files is empty, so PR #$PR has no content check. Review it by hand."
+          exit 1
+        fi
+        # The workflow chose which files to commit, but a file staged by an
+        # earlier step would still ride along, so check the files of head-sha
+        # itself. The compare API returns at most 300 files: a larger diff, or a
+        # head that moved since, does not match the PR's count and is refused.
+        # Right after a push GitHub can still report the previous count, so a
+        # mismatch is retried like the merge; a disallowed file fails at once.
+        # Runs inside an if, where set -e is off, so every step returns 1 itself:
+        # a failed call must never read as a match.
+        files_match() {
+          local info base changed compare listed outside status=0
+          info=$(gh pr view "$PR" --repo "$REPO" --json baseRefOid,changedFiles --jq '"\(.baseRefOid) \(.changedFiles)"') || return 1
+          read -r base changed <<<"$info" || return 1
+          [[ "$base" =~ ^[0-9a-f]{40}$ && "$changed" =~ ^[0-9]+$ ]] || return 1
+          compare=$(gh api "repos/$REPO/compare/$base...$HEAD_SHA") || return 1
+          listed=$(jq -e '.files | length' <<<"$compare") || return 1
+          outside=$(jq -r '.files[] | .filename, (.previous_filename // empty)' <<<"$compare") || return 1
+          outside=$(grep -Ev -- "$ALLOWED" <<<"$outside") || status=$?
+          # grep exits 1 when every path matched and 2 on an error such as a
+          # malformed pattern: only 0 and 1 mean the check ran.
+          if [ "$status" -gt 1 ]; then
+            echo "::error::The allowed-files check could not run for PR #$PR (grep exit $status). Review it by hand."
+            exit 1
+          fi
+          if [ -n "$outside" ]; then
+            echo "::error::PR #$PR changes files outside its allowlist. Review it by hand:"
+            echo "$outside"
+            exit 1
+          fi
+          if [ "$listed" != "$changed" ]; then
+            echo "PR #$PR reports $changed changed files but $listed are listed at $HEAD_SHA."
+            return 1
+          fi
+        }
+        # gh refuses a PR that main's review rule reports as BLOCKED before it
+        # calls the API, even for a bypass actor (cli/cli#13388). --admin only
+        # skips that local check: GitHub still applies the ruleset, and lets the
+        # merge through because the app is on its bypass list.
+        for attempt in 1 2 3; do
+          if files_match && gh pr merge "$PR" --repo "$REPO" "--$METHOD" --admin --delete-branch --match-head-commit "$HEAD_SHA"; then
+            exit 0
+          fi
+          if [ "$attempt" -lt 3 ]; then sleep 20; fi
+        done
+        echo "::error::PR #$PR in $REPO could not be merged. Merge it by hand."
+        exit 1

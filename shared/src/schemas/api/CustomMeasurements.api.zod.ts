@@ -6,6 +6,11 @@ import {
 import { z } from 'zod';
 import { customCategoriesResponseSchema } from './CustomCategories.api.zod.ts';
 
+// Opt-in timestamp-day reads leave the existing diary endpoint semantics intact.
+export const customMeasurementDayQuerySchema = z.object({
+  byTimestamp: z.enum(['true', 'false']).optional(),
+});
+
 export const customMeasurementsResponseSchema = customMeasurementsSchema.extend(
   {
     custom_categories: customCategoriesResponseSchema

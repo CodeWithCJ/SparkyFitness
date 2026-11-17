@@ -260,4 +260,24 @@ describe('labImportBody', () => {
       ],
     });
   });
+
+  it('carries the client key only when one is given', () => {
+    const rows = planLabImport(
+      [scanned({})],
+      buildLabMarkers([], []),
+      {},
+      null
+    );
+    const options = { labName: null, date: '2026-09-12', values: {} };
+
+    expect(labImportBody(rows, options)).not.toHaveProperty(
+      'client_request_id'
+    );
+    expect(
+      labImportBody(rows, {
+        ...options,
+        clientRequestId: '11111111-1111-4111-8111-111111111111',
+      }).client_request_id
+    ).toBe('11111111-1111-4111-8111-111111111111');
+  });
 });

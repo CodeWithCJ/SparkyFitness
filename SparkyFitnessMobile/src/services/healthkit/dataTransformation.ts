@@ -1,8 +1,10 @@
+import { instantToDay, isValidTimeZone } from '@workspace/shared';
 import { addLog } from '../LogService';
 import { attachWorkoutTelemetry } from '../shared/workoutTelemetryPayload';
 import {
   TransformedExerciseSession,
   TransformedMindfulnessSession,
+  TransformedToothbrushingSession,
   TransformedNutritionEntry,
   SparkyMealType,
   AggregatedSleepSession,
@@ -67,6 +69,23 @@ export const WATCH_SESSION_METADATA_KEY = 'SparkyFitnessSessionId';
 export const isOwnWatchWorkout = (rec: Record<string, unknown>): boolean => {
   const metadata = rec.metadata as Record<string, unknown> | undefined;
   return metadata?.[WATCH_SESSION_METADATA_KEY] !== undefined;
+};
+
+/**
+ * Metadata key exercise write-back (#1750) stamps on every workout and sample
+ * it saves, valued with the diary session's write key. Matched by key rather
+ * than by this app's bundle id, because the dev seed tool also saves workouts
+ * from this app and those must still be imported.
+ */
+export const EXERCISE_WRITEBACK_METADATA_KEY = 'SparkyExerciseWriteback';
+
+/**
+ * True for a workout exercise write-back saved from the diary. Importing it
+ * would file the session it came from a second time.
+ */
+export const isOwnWrittenWorkout = (rec: Record<string, unknown>): boolean => {
+  const metadata = rec.metadata as Record<string, unknown> | undefined;
+  return metadata?.[EXERCISE_WRITEBACK_METADATA_KEY] !== undefined;
 };
 
 /**
@@ -262,6 +281,28 @@ const VALUE_TRANSFORMERS: Record<string, ValueTransformer> = {
     const value = extractNestedValue(rec, 'temperature', 'inCelsius');
     const date = getDateString(rec.time);
     return value !== null && date ? { value, date } : null;
+  },
+
+  // Apple stamps the night's value across the sleep, so key it to the wake day
+  // (the sample's end) like the sleep session it belongs to, on the clock the
+  // sample was recorded on (as the sleep session is) when it says which.
+  SleepingWristTemperature: (rec) => {
+    const value = extractNestedValue(rec, 'temperature', 'inCelsius');
+    const instant = rec.endTime ?? rec.time;
+    const { record_timezone: recordTimezone } = extractTimezoneMetadata(rec);
+    const isInstant = typeof instant === 'string' || instant instanceof Date;
+    const date =
+      recordTimezone && isValidTimeZone(recordTimezone) && isInstant
+        ? instantToDay(instant, recordTimezone)
+        : getDateString(instant);
+    return value !== null && date
+      ? {
+          value,
+          date,
+          site: 'wrist',
+          ...(isInstant ? { timestamp: new Date(instant).toISOString() } : {}),
+        }
+      : null;
   },
 
   // Percentage records
@@ -620,6 +661,33 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     output.push(session);
   },
 
+  // ToothbrushingEvent: the brush's start and end give its duration. A brush
+  // Sparky wrote back (writeback) is skipped so it never comes back in.
+  Toothbrushing: (rec, _record, _metricConfig, output) => {
+    if (isOwnRecord(rec)) return;
+
+    const uuid = rec.uuid as string | undefined;
+    if (!uuid || !rec.startTime || !rec.endTime) return;
+
+    const start = new Date(rec.startTime as string).getTime();
+    const end = new Date(rec.endTime as string).getTime();
+    if (isNaN(start) || isNaN(end) || end < start) return;
+    const durationSeconds = Math.round((end - start) / 1000);
+
+    const brush: TransformedToothbrushingSession = {
+      type: 'Toothbrushing',
+      source: HEALTHKIT_SOURCE,
+      source_id: uuid,
+      timestamp: rec.startTime as string,
+      startTime: rec.startTime as string,
+      endTime: rec.endTime as string,
+      duration_seconds: durationSeconds,
+      value: durationSeconds / 60,
+      ...extractTimezoneMetadata(rec),
+    };
+    output.push(brush);
+  },
+
   BloodPressure: createBloodPressureTransformer(
     HEALTHKIT_SOURCE,
     getDateString
@@ -662,6 +730,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     // Written by our own watch app during a live Sparky workout, whose sets
     // are already in the diary. See `isOwnWatchWorkout`.
     if (isOwnWatchWorkout(rec)) return;
+    // Written from the diary by exercise write-back; already in the diary.
+    if (isOwnWrittenWorkout(rec)) return;
 
     const activityType = rec.activityType as number | undefined;
     const baseActivityName = activityType

@@ -14,6 +14,7 @@ import ReportSummaryCard, {
 import ReportHighlights, {
   type ReportHighlight,
 } from '../components/reports/ReportHighlights';
+import MeasurementTimelineCard from '../components/reports/MeasurementTimelineCard';
 import WeightLineChart from '../components/WeightLineChart';
 import StepsBarChart from '../components/StepsBarChart';
 import StatusView from '../components/StatusView';
@@ -77,6 +78,12 @@ const MeasurementsReportScreen: React.FC<
   if (isLoading || isError) {
     return (
       <ReportScreenLayout header={header} {...rangeProps}>
+        {isSectionShown('measurements.timeline') && (
+          <MeasurementTimelineCard
+            startDate={reportWindow.startDate}
+            endDate={reportWindow.endDate}
+          />
+        )}
         <StatusView
           loading={isLoading}
           icon="chart-bar"
@@ -335,13 +342,19 @@ const MeasurementsReportScreen: React.FC<
 
   return (
     <ReportScreenLayout header={header} {...rangeProps}>
+      {isSectionShown('measurements.timeline') && (
+        <MeasurementTimelineCard
+          startDate={reportWindow.startDate}
+          endDate={reportWindow.endDate}
+        />
+      )}
       {!hasAnything ? (
         <StatusView
           icon="chart-bar"
           iconTone="muted"
           inline
-          title={t('measurementsReport.empty', {
-            defaultValue: 'No measurements in this period',
+          title={t('measurementTimeline.noBodyMeasurements', {
+            defaultValue: 'No body measurements in this period',
           })}
         />
       ) : (

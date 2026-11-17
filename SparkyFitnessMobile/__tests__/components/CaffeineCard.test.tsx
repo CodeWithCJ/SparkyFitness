@@ -16,12 +16,17 @@ jest.mock('victory-native', () => {
       data,
     }: {
       children: (arg: unknown) => React.ReactNode;
-      data: { t: number; mg: number; threshold: number }[];
+      data: { t: number; value: number; threshold: number }[];
     }) => {
       const renderArg = ReactModule.useMemo(
         () => ({
           points: {
-            mg: data.map((d, i) => ({ x: i, xValue: d.t, y: 0, yValue: d.mg })),
+            value: data.map((d, i) => ({
+              x: i,
+              xValue: d.t,
+              y: 0,
+              yValue: d.value,
+            })),
             threshold: data.map((d, i) => ({
               x: i,
               xValue: d.t,

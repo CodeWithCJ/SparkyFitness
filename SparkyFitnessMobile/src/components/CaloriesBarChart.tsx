@@ -39,6 +39,9 @@ import {
   type CaloriesStackSegment,
 } from './charts/caloriesStackLayout';
 import { StatTile, type StatLabel } from './charts/StatTile';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel } from '../utils/energyUnit';
+import { energyFromKcal, type EnergyUnit } from '@workspace/shared';
 
 type CaloriesBarChartProps = {
   data: CaloriesDataPoint[];
@@ -119,13 +122,15 @@ const getCaloriesSegmentLabel = (
 export const buildCaloriesTooltipText = (
   day: CaloriesStackDay | undefined,
   selectedSegment: CaloriesStackSegment | undefined,
-  t: ReturnType<typeof useTranslation>['t']
+  t: ReturnType<typeof useTranslation>['t'],
+  energyUnit: EnergyUnit = 'kcal'
 ): string => {
   if (!day) return DEFAULT_TOOLTIP;
   const formattedCount = formatLocalizedNumber(Math.round(day.totalCalories));
-  const totalPart = t('charts.calories.tooltip', {
+  const totalPart = t('charts.calories.tooltipWithUnit', {
     formattedCount,
-    defaultValue: '{{formattedCount}} kcal consumed',
+    unit: energyUnitLabel(energyUnit, t),
+    defaultValue: '{{formattedCount}} {{unit}} consumed',
   });
   const datePart = formatTooltipDate(day.day);
 
@@ -155,7 +160,8 @@ export const buildCaloriesTooltipText = (
  */
 export const buildCaloriesAverageLabel = (
   averageCalories: number | null,
-  t: ReturnType<typeof useTranslation>['t']
+  t: ReturnType<typeof useTranslation>['t'],
+  energyUnit: EnergyUnit = 'kcal'
 ): StatLabel => ({
   // Just "Avg", not "Avg calories": Sleep's two tiles need "time in bed" vs. "time asleep"
   // to tell them apart, but this card only ever has the one stat.
@@ -163,9 +169,10 @@ export const buildCaloriesAverageLabel = (
   value:
     averageCalories == null
       ? t('charts.calories.noAverage', { defaultValue: '—' })
-      : t('charts.calories.avgCaloriesValue', {
+      : t('charts.calories.avgCaloriesValueWithUnit', {
           formattedCount: formatLocalizedNumber(Math.round(averageCalories)),
-          defaultValue: '{{formattedCount}} kcal',
+          unit: energyUnitLabel(energyUnit, t),
+          defaultValue: '{{formattedCount}} {{unit}}',
         }),
 });
 
@@ -193,12 +200,27 @@ const CaloriesBarChart: React.FC<CaloriesBarChartProps> = ({
   isLoading,
   isError,
   range,
-  averageCalories,
-  goals,
+  averageCalories: averageKcal,
+  goals: goalsKcal,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
+  // Everything below is drawn in the account's unit, so the axis keeps round steps.
+  const averageCalories =
+    averageKcal == null ? null : energyFromKcal(averageKcal, energyUnit);
+  const goals = useMemo(
+    () =>
+      goalsKcal?.map((goal) =>
+        goal == null ? goal : energyFromKcal(goal, energyUnit)
+      ),
+    [goalsKcal, energyUnit]
+  );
   const axisFont = useChartFont(CHART_LABEL_FONT_SIZE);
-  const averageLabel = buildCaloriesAverageLabel(averageCalories, t);
+  const averageLabel = buildCaloriesAverageLabel(
+    averageCalories,
+    t,
+    energyUnit
+  );
   const [plotWidth, setPlotWidth] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [selectedPointY, setSelectedPointY] = useState<number | null>(null);
@@ -219,7 +241,18 @@ const CaloriesBarChart: React.FC<CaloriesBarChartProps> = ({
     other: otherColor,
   };
 
-  const days = useMemo(() => buildCaloriesStackDays(data), [data]);
+  const days = useMemo(
+    () =>
+      buildCaloriesStackDays(data).map((day) => ({
+        ...day,
+        totalCalories: energyFromKcal(day.totalCalories, energyUnit),
+        segments: day.segments.map((segment) => ({
+          ...segment,
+          calories: energyFromKcal(segment.calories, energyUnit),
+        })),
+      })),
+    [data, energyUnit]
+  );
 
   const hasData = useMemo(
     () => days.some((day) => day.totalCalories > 0),
@@ -299,7 +332,12 @@ const CaloriesBarChart: React.FC<CaloriesBarChartProps> = ({
     return days[selectedIndex]?.segments[blockIndex];
   }, [selectedIndex, selectedPointY, columns, days]);
 
-  const tooltipText = buildCaloriesTooltipText(selectedDay, selectedSegment, t);
+  const tooltipText = buildCaloriesTooltipText(
+    selectedDay,
+    selectedSegment,
+    t,
+    energyUnit
+  );
 
   const touchLayout: ChartTouchLayout = useMemo(() => {
     if (plotWidth <= 0 || columns.length === 0) return EMPTY_CHART_TOUCH_LAYOUT;

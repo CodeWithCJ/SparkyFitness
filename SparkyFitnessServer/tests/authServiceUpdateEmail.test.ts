@@ -2,6 +2,7 @@ import { vi, beforeEach, afterEach, describe, expect, it } from 'vitest';
 import bcrypt from 'bcryptjs';
 import authService from '../services/authService.js';
 import userRepository from '../models/userRepository.js';
+import rateLimitWindowRepository from '../models/rateLimitWindowRepository.js';
 
 vi.mock('../models/userRepository.js', () => ({
   default: {
@@ -9,6 +10,9 @@ vi.mock('../models/userRepository.js', () => ({
     updateUserEmail: vi.fn(),
     getCredentialPasswordHash: vi.fn(),
   },
+}));
+vi.mock('../models/rateLimitWindowRepository.js', () => ({
+  default: { hit: vi.fn() },
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
@@ -19,6 +23,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(userRepository.findUserByEmail).mockResolvedValue(undefined);
   vi.mocked(userRepository.updateUserEmail).mockResolvedValue(true);
+  vi.mocked(rateLimitWindowRepository.hit).mockResolvedValue({
+    count: 1,
+    resetInMs: 0,
+  });
 });
 
 afterEach(() => {
@@ -96,5 +104,24 @@ describe('authService.updateUserEmail', () => {
       'sso-user',
       'new@example.com'
     );
+  });
+
+  it('stops checking the password after too many attempts for the account', async () => {
+    vi.mocked(userRepository.getCredentialPasswordHash).mockResolvedValue(
+      PASSWORD_HASH
+    );
+    vi.mocked(rateLimitWindowRepository.hit).mockResolvedValue({
+      count: 6,
+      resetInMs: 60_000,
+    });
+
+    await expect(
+      authService.updateUserEmail('user-id', 'new@example.com', 'correct-horse')
+    ).rejects.toMatchObject({ statusCode: 429 });
+    expect(rateLimitWindowRepository.hit).toHaveBeenCalledWith(
+      'password-check|user-id',
+      15 * 60 * 1000
+    );
+    expect(userRepository.updateUserEmail).not.toHaveBeenCalled();
   });
 });

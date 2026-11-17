@@ -7,6 +7,9 @@ import ProgressRing from './ProgressRing';
 import { getNetCarbsValue } from '../utils/nutrientUtils';
 import { localizeNutrientKey } from '../utils/nutrientLocalization';
 import { formatLocalizedNumber } from '../localization';
+import { energyFromKcal } from '@workspace/shared';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel } from '../utils/energyUnit';
 
 export interface NutritionGoalPercentages {
   calories?: number | null;
@@ -47,7 +50,7 @@ const RING_SIZE = 130;
 const RING_STROKE = 12;
 
 const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
-  calories,
+  calories: caloriesKcal,
   protein,
   carbs,
   fat,
@@ -56,12 +59,19 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
   goalsLoading,
   showNetCarbs = false,
   fiber,
-  calorieGoal,
+  calorieGoal: calorieGoalKcal,
   proteinGoal,
   carbsGoal,
   fatGoal,
   onMacroPress,
 }) => {
+  const energyUnit = useEnergyUnit();
+  // Values arrive in kcal; everything below shows them in the account's unit.
+  const calories = energyFromKcal(caloriesKcal, energyUnit);
+  const calorieGoal =
+    calorieGoalKcal == null
+      ? calorieGoalKcal
+      : energyFromKcal(calorieGoalKcal, energyUnit);
   const [proteinColor, carbsColor, fatColor, trackColor, accentColor] =
     useCSSVariable([
       '--color-macro-protein',
@@ -178,7 +188,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                 <Text className="text-text-muted text-[10px] uppercase font-semibold mt-0.5">
                   {hasCalorieGoal
                     ? t('nutrition.left', { defaultValue: 'left' })
-                    : t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
+                    : energyUnitLabel(energyUnit, t)}
                 </Text>
               </View>
             </View>
@@ -186,13 +196,12 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
               <Text className="text-text-muted text-xs mt-2 text-center">
                 {formatLocalizedNumber(Math.round(calories))} /{' '}
                 {formatLocalizedNumber(Math.round(calorieGoal))}{' '}
-                {t('nutrition.caloriesShort', { defaultValue: 'kcal' })} (
-                {goalPercentages?.calories}%)
+                {energyUnitLabel(energyUnit, t)} ({goalPercentages?.calories}%)
               </Text>
             ) : (
               <Text className="text-text-muted text-xs mt-2 text-center">
                 {formatLocalizedNumber(Math.round(calories))}{' '}
-                {t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
+                {energyUnitLabel(energyUnit, t)}
               </Text>
             )}
           </View>
@@ -314,7 +323,9 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
                 <Text className="text-text-secondary text-xs mt-0.5">
                   {hasCalorieGoal
                     ? t('nutrition.left', { defaultValue: 'left' })
-                    : t('nutrition.calories', { defaultValue: 'calories' })}
+                    : energyUnit === 'kJ'
+                      ? energyUnitLabel(energyUnit, t)
+                      : t('nutrition.calories', { defaultValue: 'calories' })}
                 </Text>
               </View>
             </View>
@@ -322,7 +333,7 @@ const NutritionMacroCard: React.FC<NutritionMacroCardProps> = ({
               <Text className="text-text-secondary text-xs font-medium mt-2 text-center">
                 {formatLocalizedNumber(Math.round(calories))} /{' '}
                 {formatLocalizedNumber(Math.round(calorieGoal))}{' '}
-                {t('nutrition.caloriesShort', { defaultValue: 'kcal' })}
+                {energyUnitLabel(energyUnit, t)}
               </Text>
             ) : null}
           </View>

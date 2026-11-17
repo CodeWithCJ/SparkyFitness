@@ -24,6 +24,7 @@ import {
   GenerateCoachingPlanSchema,
   ReviewCalorieTargetSchema,
 } from './schemas/coach.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
 
 // Trend math and pattern classification ported from MCP's coachService; the
 // SQL lives in models/coachRepository.ts.
@@ -422,7 +423,7 @@ function formatCalorieTargetReview(
   if (review.status === 'learning') {
     lines.push(
       '',
-      'The maintenance estimate is still learning (it needs about two weeks of food and weight logs). Do not recommend changing the target yet; say what to keep logging.'
+      'The maintenance estimate is still learning; it needs a full window of reliable food and weight history. Do not recommend changing the target yet; explain that consistent logging and time for recent changes to settle are needed.'
     );
   } else if (review.status === 'low_logging') {
     lines.push(
@@ -431,7 +432,7 @@ function formatCalorieTargetReview(
     );
   } else {
     lines.push(
-      `- Average logged intake: ${review.averageIntakeKcal ?? 'n/a'} kcal${review.adherencePercent === null ? '' : ` (${review.adherencePercent}% of target)`}`,
+      `- Logged intake used by the estimate: ${review.averageIntakeKcal ?? 'n/a'} kcal${review.adherencePercent === null ? '' : ` (${review.adherencePercent}% of target)`}`,
       `- Rate the target implies: ${rate(review.impliedKgPerWeek)}`,
       `- Rate the weight trend shows: ${rate(review.observedKgPerWeek)}`
     );
@@ -616,7 +617,10 @@ export function buildCoachTools(userId: string, tz: string) {
               userId,
               parsed.data.desired_kg_per_week
             ),
-            preferenceService.getUserPreferences(userId, userId),
+            preferenceService.getUserPreferences(
+              actorUserIdFor(userId),
+              userId
+            ),
           ]);
           return formatCalorieTargetReview(
             review,

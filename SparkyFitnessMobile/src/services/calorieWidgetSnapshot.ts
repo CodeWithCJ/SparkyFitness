@@ -1,3 +1,4 @@
+import type { EnergyUnit } from '@workspace/shared';
 import type { DailySummary } from '../types/dailySummary';
 
 /**
@@ -5,7 +6,8 @@ import type { DailySummary } from '../types/dailySummary';
  * `useWidgetSync` and to the Android widget by `androidWidgetSyncService`.
  * The Swift `CalorieSnapshotPayload` and the Kotlin `parseSnapshot` read these
  * keys. All of them come from `calorieBalance`, the figures the Dashboard
- * shows.
+ * shows. The numbers stay in kcal; `energyUnit` tells the widget which unit to
+ * show them in, and a snapshot without it (written by an older app) is kcal.
  */
 export interface CalorieWidgetSnapshot {
   date: string;
@@ -15,10 +17,12 @@ export interface CalorieWidgetSnapshot {
   remaining: number;
   /** Food eaten as a share of food eaten plus remaining, 0 to 1. */
   progress: number;
+  energyUnit: EnergyUnit;
 }
 
 export function buildCalorieWidgetSnapshot(
-  summary: DailySummary
+  summary: DailySummary,
+  energyUnit: EnergyUnit = 'kcal'
 ): CalorieWidgetSnapshot | undefined {
   const balance = summary.calorieBalance;
   if (!balance) return undefined;
@@ -30,5 +34,6 @@ export function buildCalorieWidgetSnapshot(
     goal,
     remaining,
     progress: goal > 0 ? Math.max(0, Math.min(1, progress / 100)) : 0,
+    energyUnit,
   };
 }

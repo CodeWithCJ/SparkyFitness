@@ -68,6 +68,49 @@ beforeEach(() => {
 });
 
 describe('POST /api/generic-health/samples', () => {
+  it('stores glucose readings in mmol/L with source attribution and a local calendar day', async () => {
+    const res = await request(app)
+      .post('/api/generic-health/samples')
+      .send({
+        ...heartRateBody,
+        metric: 'blood_glucose',
+        samples: [
+          {
+            t: '2026-10-28T00:30:00+01:00',
+            mmol_l: 5.5,
+            source_bundle_id: 'com.dexcom.example',
+          },
+        ],
+      });
+    expect(res.statusCode).toBe(200);
+    expect(upsertMock).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      'blood_glucose',
+      'xiaomi',
+      [
+        expect.objectContaining({
+          entry_date: '2026-10-28',
+          mmol_l: 5.5,
+          source_bundle_id: 'com.dexcom.example',
+        }),
+      ],
+      expect.objectContaining({ mode: 'merge', keepLinked: true })
+    );
+  });
+
+  it.each([0, -1, 101])('rejects invalid glucose %s', async (mmol_l) => {
+    const res = await request(app)
+      .post('/api/generic-health/samples')
+      .send({
+        ...heartRateBody,
+        metric: 'blood_glucose',
+        samples: [{ t: heartRateBody.samples[0]!.t, mmol_l }],
+      });
+    expect(res.statusCode).toBe(400);
+    expect(upsertMock).not.toHaveBeenCalled();
+  });
+
   it('writes the samples through upsertSamplesByDay in merge mode with the window', async () => {
     const res = await request(app)
       .post('/api/generic-health/samples')

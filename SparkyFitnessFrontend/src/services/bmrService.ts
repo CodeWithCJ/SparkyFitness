@@ -1,3 +1,5 @@
+import { getOxfordCoefficients, KCAL_PER_MJ } from '@workspace/shared';
+
 export enum BmrAlgorithm {
   MIFFLIN_ST_JEOR = 'Mifflin-St Jeor',
   REVISED_HARRIS_BENEDICT = 'Revised Harris-Benedict',
@@ -51,7 +53,8 @@ export const calculateBmr = (
   }
 
   if (algorithm === BmrAlgorithm.OXFORD) {
-    return gender === 'male' ? 14.2 * weightKg + 593 : 10.9 * weightKg + 677;
+    const { slope, intercept } = getOxfordCoefficients(age, gender);
+    return KCAL_PER_MJ * (slope * weightKg + intercept);
   }
 
   // Default: Mifflin-St Jeor

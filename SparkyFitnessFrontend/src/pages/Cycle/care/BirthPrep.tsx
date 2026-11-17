@@ -4,36 +4,69 @@ import { BIRTH_PLAN_QUESTIONS, HOSPITAL_BAG_ITEMS } from '@workspace/shared';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { Check, Circle, ClipboardList, Luggage, Printer } from 'lucide-react';
 
 // Birth plan & hospital bag are personal, low-stakes prep — stored locally to
 // avoid extra tables. (A future migration could persist these server-side.)
+// They are kept per person, so a browser a family shares never shows one
+// person's lists to another.
 const PLAN_KEY = 'cycle.birthPlan';
 const BAG_KEY = 'cycle.hospitalBag';
 
-function useLocalState<T>(key: string, initial: T): [T, (v: T) => void] {
+const ownKey = (key: string, ownerId: string) => `${key}:${ownerId}`;
+
+function useLocalState<T>(
+  key: string,
+  ownerId: string,
+  initial: T
+): [T, (v: T) => void] {
   const [value, setValue] = useState<T>(() => {
     try {
-      const raw = localStorage.getItem(key);
+      const raw = localStorage.getItem(ownKey(key, ownerId));
       return raw ? (JSON.parse(raw) as T) : initial;
     } catch {
       return initial;
     }
   });
+  // Lists saved before they were kept per person have no owner, so nobody can
+  // tell whose they are: they are never shown, and are removed.
   useEffect(() => {
     try {
-      localStorage.setItem(key, JSON.stringify(value));
+      localStorage.removeItem(key);
+    } catch {
+      /* ignore privacy-mode errors */
+    }
+  }, [key]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(ownKey(key, ownerId), JSON.stringify(value));
     } catch {
       /* ignore quota / privacy-mode errors */
     }
-  }, [key, value]);
+  }, [key, ownerId, value]);
   return [value, setValue];
 }
 
 export default function BirthPrep() {
+  const { activeUserId } = useActiveUser();
+  if (!activeUserId) return null;
+  // Someone else taking over the page starts from their own lists.
+  return <BirthPrepLists key={activeUserId} ownerId={activeUserId} />;
+}
+
+function BirthPrepLists({ ownerId }: { ownerId: string }) {
   const { t } = useTranslation();
-  const [plan, setPlan] = useLocalState<Record<string, string>>(PLAN_KEY, {});
-  const [bag, setBag] = useLocalState<Record<string, boolean>>(BAG_KEY, {});
+  const [plan, setPlan] = useLocalState<Record<string, string>>(
+    PLAN_KEY,
+    ownerId,
+    {}
+  );
+  const [bag, setBag] = useLocalState<Record<string, boolean>>(
+    BAG_KEY,
+    ownerId,
+    {}
+  );
 
   const bagDone = HOSPITAL_BAG_ITEMS.filter((i) => bag[i.key]).length;
 

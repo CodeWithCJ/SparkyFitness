@@ -14,6 +14,7 @@ import {
   useWatchRunLiveStore,
   useWatchRunPending,
 } from '../stores/watchRunLiveStore';
+import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { sendRunControl } from '../services/watchRunControl';
 import type { WatchRunControlAction } from '../../modules/watch-connectivity';
 import {
@@ -24,6 +25,9 @@ import {
   paceSecondsPerUnit,
 } from '../utils/gpsRecording';
 import type { RootStackScreenProps } from '../types/navigation';
+import { energyUnitLabel } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyFromKcal } from '@workspace/shared';
 
 type Props = RootStackScreenProps<'WatchRunLive'>;
 
@@ -46,7 +50,9 @@ const SWITCH_ACTIONS: Record<
 
 const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const insets = useSafeAreaInsets();
+  const usesNativeHeader = useNativeIOSHeadersActive();
   const { preferences } = usePreferences();
   const run = useWatchRunLive();
   const pending = useWatchRunPending();
@@ -154,7 +160,10 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
     );
 
   return (
-    <>
+    <View
+      className="flex-1 bg-background"
+      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+    >
       {header}
       <ScrollView
         className="flex-1 bg-background"
@@ -283,9 +292,13 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
                 />
               ) : null}
               <Stat
-                label={t('watchRunLive.calories', { defaultValue: 'Calories' })}
-                value={number(run.energyKcal, 0)}
-                unit={t('watchRunLive.kcal', { defaultValue: 'kcal' })}
+                label={
+                  energyUnit === 'kJ'
+                    ? t('common.energy', { defaultValue: 'Energy' })
+                    : t('watchRunLive.calories', { defaultValue: 'Calories' })
+                }
+                value={number(energyFromKcal(run.energyKcal, energyUnit), 0)}
+                unit={energyUnitLabel(energyUnit, t)}
               />
               {run.lapCount > 0 && run.kind !== 'jumpRope' ? (
                 <Stat
@@ -388,7 +401,7 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
           </>
         )}
       </ScrollView>
-    </>
+    </View>
   );
 };
 

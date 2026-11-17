@@ -1,17 +1,9 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, ScrollView, Text, Pressable } from 'react-native';
+import { View, ScrollView, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 
-import Icon from '../components/Icon';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import NotificationPermissionBanner, {
@@ -37,8 +29,12 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { usePreferences } from '../hooks/usePreferences';
 import { markCheckinReminderOfferShown } from '../services/checkinReminderOffer';
-import { MAX_CHECKIN_REMINDERS } from '../utils/checkinReminderTimes';
+import {
+  MAX_CHECKIN_REMINDERS,
+  MAX_ORAL_CARE_REMINDERS,
+} from '../utils/checkinReminderTimes';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
+import { useReminderTimeRows } from '../components/ReminderTimeRows';
 import { isValidReminderWindow } from '../utils/hydrationReminder';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -130,18 +126,8 @@ const NotificationSettingsScreen: React.FC<
     (s) => s.setCheckinReminderTimes
   );
   const { preferences } = usePreferences();
-  const checkinTimeSheetRef = useRef<TimeSheetRef>(null);
-  // `nonce` makes reopening the same row a fresh request; the sheet reads its
-  // value at present() time, so presenting waits for the render that applies it.
-  const [editingCheckin, setEditingCheckin] = useState<{
-    index: number;
-    nonce: number;
-  } | null>(null);
   const startTimeSheetRef = useRef<TimeSheetRef>(null);
   const endTimeSheetRef = useRef<TimeSheetRef>(null);
-  const [secondaryColor] = useCSSVariable(['--color-text-secondary']) as [
-    string,
-  ];
   const usesNativeHeader = useNativeIOSHeadersActive();
   const bannerRef = useRef<NotificationPermissionBannerHandle>(null);
 
@@ -211,47 +197,87 @@ const NotificationSettingsScreen: React.FC<
     [setCheckinRemindersEnabled]
   );
 
-  useEffect(() => {
-    if (editingCheckin) checkinTimeSheetRef.current?.present();
-  }, [editingCheckin]);
-
-  const openCheckinTimeSheet = useCallback((index: number) => {
-    setEditingCheckin((prev) => ({ index, nonce: (prev?.nonce ?? 0) + 1 }));
-  }, []);
-
-  const handleCheckinTimeSelect = useCallback(
-    (time: string) => {
-      if (!editingCheckin) return;
-      const next = [...checkinReminderTimes];
-      next[editingCheckin.index] = time;
-      setCheckinReminderTimes(next);
-    },
-    [editingCheckin, checkinReminderTimes, setCheckinReminderTimes]
+  const oralCareRemindersEnabled = useAppPreferencesStore(
+    (s) => s.oralCareRemindersEnabled
+  );
+  const setOralCareRemindersEnabled = useAppPreferencesStore(
+    (s) => s.setOralCareRemindersEnabled
+  );
+  const oralCareReminderTimes = useAppPreferencesStore(
+    (s) => s.oralCareReminderTimes
+  );
+  const setOralCareReminderTimes = useAppPreferencesStore(
+    (s) => s.setOralCareReminderTimes
   );
 
-  const handleRemoveCheckinTime = useCallback(
-    (index: number) => {
-      setCheckinReminderTimes(
-        checkinReminderTimes.filter((_, i) => i !== index)
-      );
-    },
-    [checkinReminderTimes, setCheckinReminderTimes]
-  );
-
-  const handleAddCheckinTime = useCallback(() => {
-    // Start at noon and take the first free hour after it (wrapping).
-    let newTime = '12:00';
-    for (let offset = 0; offset < 24; offset++) {
-      const candidate = `${String((12 + offset) % 24).padStart(2, '0')}:00`;
-      if (!checkinReminderTimes.includes(candidate)) {
-        newTime = candidate;
-        break;
+  const handleOralCareRemindersToggle = useCallback(
+    async (value: boolean) => {
+      if (!value) {
+        setOralCareRemindersEnabled(false);
+        return;
       }
-    }
-    const next = [...checkinReminderTimes, newTime].sort();
-    setCheckinReminderTimes(next);
-    openCheckinTimeSheet(next.indexOf(newTime));
-  }, [checkinReminderTimes, setCheckinReminderTimes, openCheckinTimeSheet]);
+      const status = await requestNotificationPermission();
+      bannerRef.current?.refresh();
+      if (status === 'granted') setOralCareRemindersEnabled(true);
+    },
+    [setOralCareRemindersEnabled]
+  );
+
+  const oralCareReminderRows = useReminderTimeRows({
+    times: oralCareReminderTimes,
+    onChangeTimes: setOralCareReminderTimes,
+    maxTimes: MAX_ORAL_CARE_REMINDERS,
+    timeFormat: preferences?.time_format,
+    labels: {
+      reminder: (number) =>
+        t('notificationSettings.oralCareReminderTime', {
+          defaultValue: 'Reminder {{number}}',
+          number,
+        }),
+      reminderA11y: (number, time) =>
+        t('notificationSettings.oralCareReminderTimeAccessibility', {
+          defaultValue: 'Brushing reminder {{number}}, {{time}}',
+          number,
+          time,
+        }),
+      remove: (number) =>
+        t('notificationSettings.oralCareRemoveReminder', {
+          defaultValue: 'Remove brushing reminder {{number}}',
+          number,
+        }),
+      add: t('notificationSettings.oralCareAddReminder', {
+        defaultValue: 'Add reminder',
+      }),
+    },
+  });
+
+  const checkinReminderRows = useReminderTimeRows({
+    times: checkinReminderTimes,
+    onChangeTimes: setCheckinReminderTimes,
+    maxTimes: MAX_CHECKIN_REMINDERS,
+    timeFormat: preferences?.time_format,
+    labels: {
+      reminder: (number) =>
+        t('notificationSettings.moodCheckinReminderTime', {
+          defaultValue: 'Reminder {{number}}',
+          number,
+        }),
+      reminderA11y: (number, time) =>
+        t('notificationSettings.moodCheckinReminderTimeAccessibility', {
+          defaultValue: 'Reminder {{number}}, {{time}}',
+          number,
+          time,
+        }),
+      remove: (number) =>
+        t('notificationSettings.moodCheckinRemoveReminder', {
+          defaultValue: 'Remove reminder {{number}}',
+          number,
+        }),
+      add: t('notificationSettings.moodCheckinAddReminder', {
+        defaultValue: 'Add reminder',
+      }),
+    },
+  });
 
   const intervalSegments = useMemo(
     () =>
@@ -638,98 +664,42 @@ const NotificationSettingsScreen: React.FC<
                 />
               }
             />
-            {checkinRemindersEnabled &&
-              checkinReminderTimes.map((time, index) => {
-                const timeLabel = formatTimeLabel(
-                  time,
-                  preferences?.time_format
-                );
-                const removeLabel = t(
-                  'notificationSettings.moodCheckinRemoveReminder',
-                  {
-                    defaultValue: 'Remove reminder {{number}}',
-                    number: index + 1,
-                  }
-                );
-                const canRemove = checkinReminderTimes.length > 1;
-                return (
-                  <SettingsRow
-                    key={time}
-                    title={t('notificationSettings.moodCheckinReminderTime', {
-                      defaultValue: 'Reminder {{number}}',
-                      number: index + 1,
-                    })}
-                    accessibilityLabel={t(
-                      'notificationSettings.moodCheckinReminderTimeAccessibility',
-                      {
-                        defaultValue: 'Reminder {{number}}, {{time}}',
-                        number: index + 1,
-                        time: timeLabel,
-                      }
-                    )}
-                    // The visible remove button sits inside the row's
-                    // accessible Pressable, which screen readers can't reach.
-                    accessibilityActions={
-                      canRemove
-                        ? [{ name: 'remove', label: removeLabel }]
-                        : undefined
-                    }
-                    onAccessibilityAction={(event) => {
-                      if (event.nativeEvent.actionName === 'remove') {
-                        handleRemoveCheckinTime(index);
-                      }
-                    }}
-                    onPress={() => openCheckinTimeSheet(index)}
-                    rightAccessory={
-                      <View className="flex-row items-center">
-                        <Text className="text-sm text-text-secondary">
-                          {timeLabel}
-                        </Text>
-                        {canRemove && (
-                          <Pressable
-                            onPress={() => handleRemoveCheckinTime(index)}
-                            accessibilityRole="button"
-                            accessibilityLabel={removeLabel}
-                            hitSlop={14}
-                            className="ml-3"
-                          >
-                            <Icon
-                              name="close"
-                              size={18}
-                              color={secondaryColor}
-                            />
-                          </Pressable>
-                        )}
-                      </View>
-                    }
-                  />
-                );
+            {checkinRemindersEnabled && checkinReminderRows.rows}
+          </SettingsRowGroup>
+        )}
+
+        {notificationsEnabled && (
+          <SettingsRowGroup
+            title={t('notificationSettings.oralCare', {
+              defaultValue: 'Oral care',
+            })}
+          >
+            <SettingsRow
+              title={t('notificationSettings.oralCareReminders', {
+                defaultValue: 'Brushing reminders',
               })}
-            {checkinRemindersEnabled &&
-              checkinReminderTimes.length < MAX_CHECKIN_REMINDERS && (
-                <SettingsRow
-                  icon="add"
-                  title={t('notificationSettings.moodCheckinAddReminder', {
-                    defaultValue: 'Add reminder',
-                  })}
-                  onPress={handleAddCheckinTime}
-                  rightAccessory={null}
+              subtitle={t('notificationSettings.oralCareRemindersSubtitle', {
+                defaultValue: 'A daily nudge to brush your teeth',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  accessibilityLabel={t(
+                    'notificationSettings.oralCareReminders',
+                    { defaultValue: 'Brushing reminders' }
+                  )}
+                  value={oralCareRemindersEnabled}
+                  onValueChange={handleOralCareRemindersToggle}
                 />
-              )}
+              }
+            />
+            {oralCareRemindersEnabled && oralCareReminderRows.rows}
           </SettingsRowGroup>
         )}
       </ScrollView>
 
-      <TimeSheet
-        ref={checkinTimeSheetRef}
-        value={
-          editingCheckin
-            ? (checkinReminderTimes[editingCheckin.index] ?? '')
-            : ''
-        }
-        onSelectTime={handleCheckinTimeSelect}
-        commitOn="done"
-      />
+      {checkinReminderRows.sheet}
+      {oralCareReminderRows.sheet}
       <TimeSheet
         ref={startTimeSheetRef}
         value={waterReminderWindowStart}

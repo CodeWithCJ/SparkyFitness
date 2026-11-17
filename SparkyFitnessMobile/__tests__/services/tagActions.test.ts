@@ -1,4 +1,11 @@
 import { QueryClient } from '@tanstack/react-query';
+import {
+  glucoseContextQueryKeyRoot,
+  dailySummaryQueryKey,
+  waterIntakeLogQueryKey,
+  bloodAlcoholQueryKey,
+  caffeineActiveQueryKey,
+} from '../../src/hooks/queryKeys';
 import type { TagAction } from '@workspace/shared';
 import { changeWaterIntake } from '../../src/services/api/measurementsApi';
 import { deleteFoodEntry } from '../../src/services/api/foodEntriesApi';
@@ -60,7 +67,15 @@ describe('tag actions', () => {
     const queryClient = new QueryClient();
     const spy = jest.spyOn(queryClient, 'invalidateQueries');
     refreshAfterTagAction(queryClient, action, '2026-10-30');
-    expect(spy).toHaveBeenCalledTimes(3);
+    expect(spy.mock.calls.map(([options]) => options?.queryKey)).toEqual(
+      expect.arrayContaining([
+        glucoseContextQueryKeyRoot,
+        dailySummaryQueryKey('2026-10-30'),
+        waterIntakeLogQueryKey('2026-10-30'),
+        caffeineActiveQueryKey('2026-10-30'),
+        bloodAlcoholQueryKey('2026-10-30'),
+      ])
+    );
   });
 });
 

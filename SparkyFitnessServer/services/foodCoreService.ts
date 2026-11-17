@@ -601,6 +601,7 @@ async function getFoodVariantById(
   }
 }
 
+/** Updates a variant the user owns, including its custom nutrient amounts. */
 async function updateFoodVariant(
   authenticatedUserId: string,
   variantId: string,
@@ -660,9 +661,12 @@ async function updateFoodVariant(
       {
         ...processedVariantData,
         glycemic_index: processedVariantData.glycemic_index || null,
-        custom_nutrients: sanitizeCustomNutrients(
-          processedVariantData.custom_nutrients
-        ),
+        // Omitted means "leave the stored values alone"; sanitizing it would
+        // turn it into {} and wipe them on any update that doesn't resend them.
+        custom_nutrients:
+          processedVariantData.custom_nutrients === undefined
+            ? undefined
+            : sanitizeCustomNutrients(processedVariantData.custom_nutrients),
       },
       authenticatedUserId
     );

@@ -1,4 +1,7 @@
-import { DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR } from '../constants/calorieConstants.ts';
+import {
+  CALORIE_CYCLING_DEFAULT_OFFSETS,
+  DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
+} from '../constants/calorieConstants.ts';
 import type { CalorieRules } from '../schemas/database/UserCalorieRuleHistory.zod.ts';
 
 export type ResolvedCalorieRules = {
@@ -22,6 +25,8 @@ export const CALORIE_RULE_DEFAULTS: ResolvedCalorieRules = {
   use_external_bmr: false,
   include_bmr_in_net_calories: false,
   adjust_macros_with_exercise: false,
+  calorie_cycling_mode: 'off',
+  calorie_cycling_offsets: [...CALORIE_CYCLING_DEFAULT_OFFSETS],
 };
 
 /** The calorie settings of `preferences`, with the defaults for unset ones. */

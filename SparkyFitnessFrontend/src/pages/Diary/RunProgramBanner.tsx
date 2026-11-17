@@ -5,6 +5,7 @@ import { planMinutes, programRunForDate, todayInZone } from '@workspace/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
+import { useHiddenWebTabs } from '@/hooks/Settings/useHiddenWebTabs';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   useCompleteRunProgramWorkoutMutation,
@@ -30,6 +31,7 @@ interface RunProgramBannerProps {
 const RunProgramBanner = ({ date }: RunProgramBannerProps) => {
   const { t } = useTranslation();
   const { isActingOnBehalf } = useActiveUser();
+  const { hidden: hiddenWebTabs } = useHiddenWebTabs();
   const { timezone } = usePreferences();
   const { program, status, enabled, schedule, doneDay } =
     useRunProgram(!isActingOnBehalf);
@@ -84,13 +86,19 @@ const RunProgramBanner = ({ date }: RunProgramBannerProps) => {
         <p className="text-xs text-muted-foreground">
           {t('trainingPrograms.banner.program', 'Training program: {{name}}', {
             name: programTitle(t, status.program),
-          })}{' '}
-          <Link
-            to="/exercises/training-programs"
-            className="underline underline-offset-2"
-          >
-            {t('trainingPrograms.banner.open', 'Open program')}
-          </Link>
+          })}
+          {/* The program page sits under Exercises; no link once it is hidden. */}
+          {!hiddenWebTabs.has('exercises') && (
+            <>
+              {' '}
+              <Link
+                to="/exercises/training-programs"
+                className="underline underline-offset-2"
+              >
+                {t('trainingPrograms.banner.open', 'Open program')}
+              </Link>
+            </>
+          )}
         </p>
       </div>
       {isToday ? (

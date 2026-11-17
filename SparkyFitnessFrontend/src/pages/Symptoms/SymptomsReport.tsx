@@ -18,6 +18,7 @@ import {
   computeSymptomMetrics,
   type FactorKey,
   type SymptomEntryResponse,
+  type SymptomImpact,
   formatDuration,
   minutesBetween,
 } from '@workspace/shared';
@@ -39,12 +40,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 import {
   useSymptomContext,
   useSymptomEntries,
   useSymptomFreeDays,
 } from '@/hooks/useSymptoms';
 import { cn } from '@/lib/utils';
+import { impactTimelineText, peakImpact } from './impactSummary';
 
 interface SymptomsReportProps {
   startDate: string;
@@ -85,6 +88,7 @@ export default function SymptomsReport({
 }: SymptomsReportProps) {
   const { t } = useTranslation();
   const { timezone, formatTime, formatDateInUserTimezone } = usePreferences();
+  const cycleOff = useWebFeatures().isExplicitlyOff('cycle');
   const [symptom, setSymptom] = useState('all');
   const [tableSize, setTableSize] = useState<number>(10);
 
@@ -175,6 +179,9 @@ export default function SymptomsReport({
     count,
   }));
 
+  const impactLabel = (impact: SymptomImpact | null) =>
+    impact ? t(`symptoms.impact.${impact}`, impact) : '';
+
   const reliefText = (e: SymptomEntryResponse) =>
     e.treatments.map((tr) => tr.name_snapshot).join(', ');
 
@@ -191,6 +198,8 @@ export default function SymptomsReport({
           ? minutesBetween(e.started_at as string, e.ended_at)
           : '',
         peak_severity: e.peak_severity ?? e.severity ?? '',
+        peak_impact: peakImpact(e) ?? '',
+        impact_timeline: impactTimelineText(e),
         where: e.body_locations.join('; '),
         triggers: e.triggers.join('; '),
         treatments: e.treatments
@@ -201,7 +210,8 @@ export default function SymptomsReport({
         foods_day_of: same?.foods.join('; ') ?? '',
         water_ml_day_before: before?.water_ml ?? '',
         steps_day_before: before?.steps ?? '',
-        cycle_phase: ctx?.cycle?.phase ?? '',
+        // No cycle column while cycle is turned off (Settings > Features).
+        ...(cycleOff ? {} : { cycle_phase: ctx?.cycle?.phase ?? '' }),
       };
     });
     const blob = new Blob([Papa.unparse(rows)], {
@@ -380,6 +390,7 @@ export default function SymptomsReport({
                     t('symptoms.report.col.started', 'Started'),
                     t('symptoms.report.col.duration', 'Duration'),
                     t('symptoms.report.col.peak', 'Peak'),
+                    t('symptoms.report.col.impact', 'Effect on the day'),
                     t('symptoms.report.col.where', 'Where'),
                     t('symptoms.report.col.triggers', 'Triggers'),
                     t('symptoms.report.col.relief', 'Relief'),
@@ -415,6 +426,9 @@ export default function SymptomsReport({
                       </td>
                       <td className="px-3 py-2 tabular-nums">
                         {e.peak_severity ?? e.severity ?? '–'}
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-2">
+                        {impactLabel(peakImpact(e)) || '–'}
                       </td>
                       <td className="px-3 py-2">
                         {e.body_locations.join(', ') || '–'}
@@ -640,6 +654,7 @@ export default function SymptomsReport({
                 <td className="py-1 pr-2">
                   {e.peak_severity ?? e.severity ?? ''}
                 </td>
+                <td className="py-1 pr-2">{impactLabel(peakImpact(e))}</td>
                 <td className="py-1 pr-2">{e.body_locations.join(', ')}</td>
                 <td className="py-1 pr-2">{e.triggers.join(', ')}</td>
                 <td className="py-1">{reliefText(e)}</td>

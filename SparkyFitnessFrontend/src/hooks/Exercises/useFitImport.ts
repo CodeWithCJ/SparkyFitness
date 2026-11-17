@@ -14,8 +14,11 @@ export const useFitImport = () => {
   const [response, setResponse] = useState<ImportFitResponse | null>(null);
   const { mutateAsync, isPending } = useImportFitFilesMutation();
 
-  const importFiles = async (files: File[]) => {
-    if (files.length === 0) return;
+  // Returns true only when every file imported cleanly (no per-file failures).
+  // Partial or request-level failures return false so the caller can retain the
+  // files for re-import instead of clearing them.
+  const importFiles = async (files: File[]): Promise<boolean> => {
+    if (files.length === 0) return false;
     setResponse(null);
     try {
       const result = await mutateAsync(files);
@@ -30,6 +33,7 @@ export const useFitImport = () => {
             { count: imported }
           ),
         });
+        return true;
       } else {
         toast({
           title: t(
@@ -43,10 +47,12 @@ export const useFitImport = () => {
           ),
           variant: imported > 0 ? 'default' : 'destructive',
         });
+        return false;
       }
     } catch {
       // Request-level failure (network, size limit, auth) — apiCall already
       // surfaced an error toast; there are no per-file results to show.
+      return false;
     }
   };
 

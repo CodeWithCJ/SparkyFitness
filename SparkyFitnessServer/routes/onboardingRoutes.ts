@@ -1,9 +1,18 @@
 import express from 'express';
 import { z } from 'zod';
 import { authenticate } from '../middleware/authMiddleware.js';
+import { createRequireSelfActor } from '../middleware/requireSelfMiddleware.js';
 import onboardingService from '../services/onboardingService.js';
 const router = express.Router();
 router.use(express.json());
+// Only the account owner can answer, skip or reset their onboarding, or set
+// their goal weight: RLS lets only the owner write onboarding_status and
+// onboarding_data, so for someone acting for them a skip or reset would match
+// no row and still answer 200. The status stays readable to them.
+const selfOnly = createRequireSelfActor({
+  action: 'an onboarding change',
+  message: 'Forbidden: onboarding can only be changed on your own account.',
+});
 /**
  * @route   POST /api/onboarding
  * @desc    Submit user onboarding data
@@ -35,8 +44,10 @@ router.use(express.json());
  *     responses:
  *       201:
  *         description: Onboarding completed successfully.
+ *       403:
+ *         description: Acting for another account; only the owner can submit onboarding.
  */
-router.post('/', authenticate, async (req, res, next) => {
+router.post('/', authenticate, selfOnly, async (req, res, next) => {
   try {
     const userId = req.userId;
     const onboardingData = req.body;
@@ -102,8 +113,10 @@ const targetWeightBodySchema = z.object({
  *         description: Target weight saved.
  *       400:
  *         description: Invalid target weight.
+ *       403:
+ *         description: Acting for another account; only the owner can set their goal weight.
  */
-router.put('/target-weight', authenticate, async (req, res, next) => {
+router.put('/target-weight', authenticate, selfOnly, async (req, res, next) => {
   try {
     const parsed = targetWeightBodySchema.safeParse(req.body);
     if (!parsed.success) {
@@ -165,8 +178,10 @@ router.get('/status', authenticate, async (req, res, next) => {
  *     responses:
  *       200:
  *         description: Onboarding skipped successfully.
+ *       403:
+ *         description: Acting for another account; only the owner can skip onboarding.
  */
-router.post('/skip', authenticate, async (req, res, next) => {
+router.post('/skip', authenticate, selfOnly, async (req, res, next) => {
   try {
     const userId = req.userId;
     await onboardingService.skipOnboarding(userId);
@@ -186,8 +201,10 @@ router.post('/skip', authenticate, async (req, res, next) => {
  *     responses:
  *       200:
  *         description: Onboarding status reset successfully.
+ *       403:
+ *         description: Acting for another account; only the owner can reset onboarding.
  */
-router.post('/reset', authenticate, async (req, res) => {
+router.post('/reset', authenticate, selfOnly, async (req, res) => {
   try {
     const userId = req.userId;
     await onboardingService.resetOnboardingStatus(userId);

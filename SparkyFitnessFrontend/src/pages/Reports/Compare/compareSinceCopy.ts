@@ -17,6 +17,7 @@ import {
   questionParts,
   type Translator,
 } from './compareCopy';
+import type { EnergyUnit } from '@workspace/shared';
 
 // The "since a habit started" wording, the website's copy of the phone's
 // `SparkyFitnessMobile/src/utils/compareSinceCopy.ts`: the same English under
@@ -62,31 +63,34 @@ export function percentText(share: number, signed = false): string {
 function averageText(
   key: CompareMetricKey,
   value: number,
-  timeFormat?: string
+  timeFormat: string | undefined,
+  energyUnit: EnergyUnit
 ): string {
   return isYesNo(key)
     ? percentText(value)
-    : compareValueText(key, value, timeFormat);
+    : compareValueText(key, value, timeFormat, energyUnit);
 }
 
 /** A difference, or one end of its range: a share for yes/no, else an amount (bedtime in minutes). */
 function differenceText(
   key: CompareMetricKey,
   value: number,
-  signed: boolean
+  signed: boolean,
+  energyUnit: EnergyUnit
 ): string {
   return isYesNo(key)
     ? percentText(value, signed)
-    : compareAmountText(key, value, signed);
+    : compareAmountText(key, value, signed, energyUnit);
 }
 
 /** The change after the averages: bedtime later or earlier, anything else with its sign. */
 function changeText(
   key: CompareMetricKey,
   diff: number,
-  t: Translator
+  t: Translator,
+  energyUnit: EnergyUnit
 ): string {
-  if (key !== 'bedtime') return differenceText(key, diff, true);
+  if (key !== 'bedtime') return differenceText(key, diff, true, energyUnit);
   const minutes = compareAmountText(key, Math.abs(diff));
   return diff >= 0
     ? t('compareReport.since.minutesLater', {
@@ -174,7 +178,8 @@ export function sinceVerdictCopy(
   response: CompareSinceResponse,
   t: Translator,
   formatDay: (day: string) => string,
-  timeFormat?: string
+  timeFormat?: string,
+  energyUnit: EnergyUnit = 'kcal'
 ): { headline: string; detail: string } {
   const key = response.outcome.key;
   const { outcome } = sinceParts(responseKeys(response), t);
@@ -202,9 +207,9 @@ export function sinceVerdictCopy(
     const change = {
       start,
       outcome,
-      since: averageText(key, verdict.since, timeFormat),
-      before: averageText(key, verdict.before, timeFormat),
-      diff: changeText(key, verdict.diff, t),
+      since: averageText(key, verdict.since, timeFormat, energyUnit),
+      before: averageText(key, verdict.before, timeFormat, energyUnit),
+      diff: changeText(key, verdict.diff, t, energyUnit),
     };
     return {
       headline: t('compareReport.since.changedHeadline', {
@@ -228,8 +233,8 @@ export function sinceVerdictCopy(
     const averages = {
       start,
       outcome,
-      since: averageText(key, verdict.averages.since, timeFormat),
-      before: averageText(key, verdict.averages.before, timeFormat),
+      since: averageText(key, verdict.averages.since, timeFormat, energyUnit),
+      before: averageText(key, verdict.averages.before, timeFormat, energyUnit),
     };
     detail = verdict.lastYear
       ? t('compareReport.since.noChangeDetailLastYear', {
@@ -258,7 +263,8 @@ export function sinceVerdictCopy(
  */
 export function sinceHowSureLines(
   response: CompareSinceResponse,
-  t: Translator
+  t: Translator,
+  energyUnit: EnergyUnit = 'kcal'
 ): { label: string; value: string }[] {
   const { result } = response;
   const key = response.outcome.key;
@@ -273,8 +279,8 @@ export function sinceHowSureLines(
     return [];
   }
   const range = {
-    low: differenceText(key, low, false),
-    high: differenceText(key, high, false),
+    low: differenceText(key, low, false, energyUnit),
+    high: differenceText(key, high, false, energyUnit),
   };
   const before = result.before?.valueDays ?? 0;
   const since = result.since?.valueDays ?? 0;
@@ -283,7 +289,7 @@ export function sinceHowSureLines(
       label: t('compareReport.howSure.difference', {
         defaultValue: 'Difference',
       }),
-      value: changeText(key, diff, t),
+      value: changeText(key, diff, t, energyUnit),
     },
     {
       label: t('compareReport.howSure.likelyBetween', {
@@ -343,7 +349,8 @@ export function sinceStretchRows(
   response: CompareSinceResponse,
   t: Translator,
   formatDay: (day: string) => string,
-  timeFormat?: string
+  timeFormat?: string,
+  energyUnit: EnergyUnit = 'kcal'
 ): SinceStretchRow[] {
   const { result } = response;
   if (result.status !== 'ok') return [];
@@ -371,13 +378,18 @@ export function sinceStretchRows(
         average:
           stretch.mean === undefined
             ? ''
-            : averageText(key, stretch.mean, timeFormat),
+            : averageText(key, stretch.mean, timeFormat, energyUnit),
         usual:
           scaled && stretch.p10 !== undefined && stretch.p90 !== undefined
             ? t('compareReport.since.usualRange', {
                 defaultValue: '{{low}}–{{high}}',
-                low: compareValueText(key, stretch.p10, timeFormat),
-                high: compareValueText(key, stretch.p90, timeFormat),
+                low: compareValueText(key, stretch.p10, timeFormat, energyUnit),
+                high: compareValueText(
+                  key,
+                  stretch.p90,
+                  timeFormat,
+                  energyUnit
+                ),
               })
             : null,
         atOrAbove:

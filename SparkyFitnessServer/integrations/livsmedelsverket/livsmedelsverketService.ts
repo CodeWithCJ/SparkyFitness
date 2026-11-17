@@ -3,6 +3,7 @@ import {
   createGuardedFetch,
   PUBLIC_ONLY_AI_NETWORK_POLICY,
 } from '../../utils/outboundUrlPolicy.js';
+import { mapStandardNutrientsByCode } from '../../utils/standardNutrientCodes.js';
 
 const guardedFetch = createGuardedFetch(PUBLIC_ONLY_AI_NETWORK_POLICY);
 
@@ -79,6 +80,7 @@ export interface LivsmedelsverketVariant {
   alcohol_g?: number;
   provider_nutrients?: Record<string, number>;
   provider_nutrient_units?: Record<string, string>;
+  provider_nutrient_standard?: Record<string, string>;
   custom_nutrients?: Record<string, number>;
   is_default: boolean;
   [key: string]: unknown;
@@ -108,6 +110,31 @@ export function clearLivsmedelsverketDirectoryCache(): void {
   }
 }
 
+// EuroFIR codes behind each standard column, in order of preference. Calories
+// (ENERC in kcal) and the salt fallback for sodium are handled separately in
+// mapLivsmedelsverketFood. Codes are the same in Swedish and English, unlike
+// the nutrient names.
+const STANDARD_NUTRIENT_CODES = {
+  protein: ['PROT'],
+  carbs: ['CHO'],
+  fat: ['FAT'],
+  saturated_fat: ['FASAT'],
+  polyunsaturated_fat: ['FAPU'],
+  monounsaturated_fat: ['FAMS'],
+  cholesterol: ['CHORL'],
+  sodium: ['NA'],
+  potassium: ['K'],
+  dietary_fiber: ['FIBT'],
+  sugars: ['SUGAR'],
+  calcium: ['CA'],
+  iron: ['FE'],
+  vitamin_a: ['VITA', 'RETOL'],
+  vitamin_c: ['VITC'],
+  caffeine_mg: ['CAFF'],
+  water_ml: ['WATER'],
+  alcohol_g: ['ALC'],
+} as const;
+
 export function mapLivsmedelsverketFood(
   food: LivsmedelsverketFoodDetailRaw
 ): LivsmedelsverketMappedFood {
@@ -116,10 +143,12 @@ export function mapLivsmedelsverketFood(
   }
 
   const nutrientsByEuroFir: Record<string, number> = {};
+  const labelsByEuroFir: Record<string, string> = {};
   const providerNutrientsByLabel: Record<string, number> = {};
   const providerNutrientUnits: Record<string, string> = {};
 
   let caloriesKcal = 0;
+  let caloriesLabel: string | undefined;
 
   for (const n of food.naringsvarden || []) {
     const val = typeof n.varde === 'number' ? n.varde : 0;
@@ -139,26 +168,40 @@ export function mapLivsmedelsverketFood(
       if (code === 'ENERC') {
         if (unit === 'kcal' || (name && name.toLowerCase().includes('kcal'))) {
           caloriesKcal = val;
+          caloriesLabel = name;
         }
       } else {
         nutrientsByEuroFir[code] = val;
+        if (name) labelsByEuroFir[code] = name;
       }
     }
   }
 
+  const { values: standard, providerNutrientStandard } =
+    mapStandardNutrientsByCode(
+      STANDARD_NUTRIENT_CODES,
+      nutrientsByEuroFir,
+      labelsByEuroFir
+    );
+
   // Fallback calories calculation if not provided explicitly
-  const protein = Math.round((nutrientsByEuroFir['PROT'] ?? 0) * 10) / 10;
-  const carbs = Math.round((nutrientsByEuroFir['CHO'] ?? 0) * 10) / 10;
-  const fat = Math.round((nutrientsByEuroFir['FAT'] ?? 0) * 10) / 10;
+  const protein = Math.round(standard.protein * 10) / 10;
+  const carbs = Math.round(standard.carbs * 10) / 10;
+  const fat = Math.round(standard.fat * 10) / 10;
 
   if (caloriesKcal === 0 && (protein > 0 || carbs > 0 || fat > 0)) {
     caloriesKcal = Math.round(protein * 4 + carbs * 4 + fat * 9);
+  } else if (caloriesLabel) {
+    providerNutrientStandard[caloriesLabel] = 'calories';
   }
 
   // Sodium calculation: if NA is present in mg use NA, else derive from NaCl (salt) in g -> salt * 400 mg
-  let sodiumMg = Math.round((nutrientsByEuroFir['NA'] ?? 0) * 10) / 10;
+  let sodiumMg = Math.round(standard.sodium * 10) / 10;
   if (sodiumMg === 0 && (nutrientsByEuroFir['NACL'] ?? 0) > 0) {
     sodiumMg = Math.round(nutrientsByEuroFir['NACL'] * 400 * 10) / 10;
+    // Derived from salt, so the reported sodium row is not what the column holds.
+    const sodiumLabel = labelsByEuroFir['NA'];
+    if (sodiumLabel) delete providerNutrientStandard[sodiumLabel];
   }
 
   const defaultVariant: LivsmedelsverketVariant = {
@@ -168,28 +211,24 @@ export function mapLivsmedelsverketFood(
     protein,
     carbs,
     fat,
-    saturated_fat: Math.round((nutrientsByEuroFir['FASAT'] ?? 0) * 10) / 10,
-    polyunsaturated_fat:
-      Math.round((nutrientsByEuroFir['FAPU'] ?? 0) * 10) / 10,
-    monounsaturated_fat:
-      Math.round((nutrientsByEuroFir['FAMS'] ?? 0) * 10) / 10,
-    cholesterol: Math.round((nutrientsByEuroFir['CHORL'] ?? 0) * 10) / 10,
+    saturated_fat: Math.round(standard.saturated_fat * 10) / 10,
+    polyunsaturated_fat: Math.round(standard.polyunsaturated_fat * 10) / 10,
+    monounsaturated_fat: Math.round(standard.monounsaturated_fat * 10) / 10,
+    cholesterol: Math.round(standard.cholesterol * 10) / 10,
     sodium: sodiumMg,
-    potassium: Math.round((nutrientsByEuroFir['K'] ?? 0) * 10) / 10,
-    dietary_fiber: Math.round((nutrientsByEuroFir['FIBT'] ?? 0) * 10) / 10,
-    sugars: Math.round((nutrientsByEuroFir['SUGAR'] ?? 0) * 10) / 10,
-    calcium: Math.round((nutrientsByEuroFir['CA'] ?? 0) * 10) / 10,
-    iron: Math.round((nutrientsByEuroFir['FE'] ?? 0) * 10) / 10,
-    vitamin_a:
-      Math.round(
-        (nutrientsByEuroFir['VITA'] ?? nutrientsByEuroFir['RETOL'] ?? 0) * 10
-      ) / 10,
-    vitamin_c: Math.round((nutrientsByEuroFir['VITC'] ?? 0) * 10) / 10,
-    caffeine_mg: Math.round((nutrientsByEuroFir['CAFF'] ?? 0) * 10) / 10,
-    water_ml: Math.round((nutrientsByEuroFir['WATER'] ?? 0) * 10) / 10,
-    alcohol_g: Math.round((nutrientsByEuroFir['ALC'] ?? 0) * 10) / 10,
+    potassium: Math.round(standard.potassium * 10) / 10,
+    dietary_fiber: Math.round(standard.dietary_fiber * 10) / 10,
+    sugars: Math.round(standard.sugars * 10) / 10,
+    calcium: Math.round(standard.calcium * 10) / 10,
+    iron: Math.round(standard.iron * 10) / 10,
+    vitamin_a: Math.round(standard.vitamin_a * 10) / 10,
+    vitamin_c: Math.round(standard.vitamin_c * 10) / 10,
+    caffeine_mg: Math.round(standard.caffeine_mg * 10) / 10,
+    water_ml: Math.round(standard.water_ml * 10) / 10,
+    alcohol_g: Math.round(standard.alcohol_g * 10) / 10,
     provider_nutrients: providerNutrientsByLabel,
     provider_nutrient_units: providerNutrientUnits,
+    provider_nutrient_standard: providerNutrientStandard,
     custom_nutrients: {},
     is_default: true,
   };

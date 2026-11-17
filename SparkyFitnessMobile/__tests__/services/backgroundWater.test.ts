@@ -55,6 +55,7 @@ describe('background water', () => {
 
   it('builds the config the native shortcut posts with', () => {
     expect(buildBackgroundWaterConfig(server, container)).toEqual({
+      serverId: 's1',
       baseUrl: 'https://sparky.example.com',
       headers: {
         'X-Proxy': 'abc',

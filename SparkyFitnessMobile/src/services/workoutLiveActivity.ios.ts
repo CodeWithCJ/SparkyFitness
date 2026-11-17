@@ -1,5 +1,3 @@
-import { Asset } from 'expo-asset';
-import { File, Paths } from 'expo-file-system';
 import {
   addUserInteractionListener,
   type LiveActivity,
@@ -20,6 +18,7 @@ import {
 import { formatWeightDisplay } from '../utils/unitConversions';
 import { createConcurrencyLimiter } from '../utils/concurrency';
 import { addLog } from './LogService';
+import { copyLiveActivityIcon } from './liveActivityAppIcon';
 import {
   buildWorkoutLiveActivityLabels,
   formatNextSubtitle,
@@ -90,21 +89,7 @@ let appIconResolution: Promise<void> | null = null;
 
 async function resolveAppIcon(): Promise<void> {
   try {
-    const container = Object.values(Paths.appleSharedContainers)[0];
-    if (container == null) return;
-    // Must stay small: WidgetKit rejects oversized Live Activity images
-    // ("widget archival failed") and renders a grey placeholder shape, so the
-    // full-resolution icon art cannot be used directly.
-    const asset = Asset.fromModule(
-      require('../../assets/icons/live-activity-icon.png')
-    );
-    await asset.downloadAsync();
-    if (asset.localUri == null) return;
-    const destination = new File(container, 'workout-live-activity-icon.png');
-    // Overwrite so an icon change ships with the next app update.
-    if (destination.exists) destination.delete();
-    new File(asset.localUri).copy(destination);
-    appIconUri = destination.uri;
+    appIconUri = await copyLiveActivityIcon('workout-live-activity-icon.png');
   } catch (error) {
     logActivityError('app icon resolve failed', error);
   }

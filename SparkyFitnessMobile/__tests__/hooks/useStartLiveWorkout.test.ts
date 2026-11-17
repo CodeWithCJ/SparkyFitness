@@ -12,6 +12,10 @@ import {
   __resetActiveWorkoutStoreForTests,
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
+import {
+  __resetAppPreferencesStoreForTests,
+  useAppPreferencesStore,
+} from '../../src/stores/appPreferencesStore';
 import { createWorkout } from '../../src/services/api/exerciseApi';
 import { invalidateExerciseCache } from '../../src/hooks/invalidateExerciseCache';
 import { ensureNotificationPermission } from '../../src/services/notifications';
@@ -384,6 +388,38 @@ describe('useStartLiveWorkout', () => {
     });
   });
 
+  it('marks the store plan to show before last session when "Use planned values as placeholders" is on (#3417)', async () => {
+    useAppPreferencesStore.getState().setPlannedValuesAsPlaceholders(true);
+    try {
+      const { result } = setup();
+      const plannedExercises = [
+        {
+          ...EXERCISES[0],
+          sets: [{ ...EXERCISES[0].sets[0], weight: 110, reps: 5 }],
+        },
+      ];
+
+      await act(async () => {
+        await result.current.startLiveWorkout({
+          name: 'Push Day',
+          exercises: plannedExercises,
+        });
+      });
+
+      expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
+        '101': {
+          weight: 110,
+          reps: 5,
+          duration: null,
+          distance: null,
+          preferOverHistory: true,
+        },
+      });
+    } finally {
+      __resetAppPreferencesStoreForTests();
+    }
+  });
+
   it('forwards the source preset link with the active server config id into the store', async () => {
     const { result } = setup();
     mockGetActiveServerConfig.mockResolvedValue({
@@ -649,5 +685,35 @@ describe('useStartLiveWorkout', () => {
         setOrder: ['1', '3', '2', '4', '5', '6', '7'],
       })
     );
+  });
+
+  it('sends the equipment line and the bar and plates only for a barbell exercise', () => {
+    const base = makeSession().exercises[0];
+    const withEquipment = (id: string, equipment: string[]) =>
+      ({
+        ...base,
+        id,
+        exercise_snapshot: { ...base.exercise_snapshot, equipment },
+      }) as typeof base;
+    act(() => {
+      useActiveWorkoutStore.getState().startWorkout({
+        ...makeSession(),
+        exercises: [
+          withEquipment('bench', ['barbell']),
+          withEquipment('curl', ['dumbbell']),
+        ],
+      });
+    });
+
+    armWatchForActiveSession(
+      ((key: string, options?: { defaultValue?: string }) =>
+        options?.defaultValue ?? key) as never
+    );
+
+    const [bench, curl] = mockStartWorkout.mock.calls[0][0].exercises;
+    expect(bench.equipment).toBe('Barbell');
+    expect(bench.plates).toMatchObject({ unit: 'kg', barWeight: 20 });
+    expect(curl.equipment).toBe('Dumbbell');
+    expect(curl.plates).toBeUndefined();
   });
 });

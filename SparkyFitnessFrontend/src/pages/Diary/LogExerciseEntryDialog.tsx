@@ -56,6 +56,7 @@ import {
   defaultSetForModality,
   toSetTableModality,
 } from '@/constants/exercises';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 
 interface LogExerciseEntryDialogProps {
   isOpen: boolean;
@@ -67,11 +68,6 @@ interface LogExerciseEntryDialogProps {
   initialNotes?: string;
   initialImageUrl?: string;
   energyUnit: 'kcal' | 'kJ';
-  convertEnergy: (
-    value: number,
-    fromUnit: 'kcal' | 'kJ',
-    toUnit: 'kcal' | 'kJ'
-  ) => number;
   getEnergyUnitString: (unit: 'kcal' | 'kJ') => string;
 }
 
@@ -85,7 +81,6 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
   onSaveSuccess,
   initialSets,
   energyUnit,
-  convertEnergy,
   getEnergyUnitString,
 }) => {
   const { t } = useTranslation();
@@ -508,28 +503,13 @@ const LogExerciseEntryDialog: React.FC<LogExerciseEntryDialogProps> = ({
                   <Input
                     id="calories-burned"
                     type="number"
-                    value={
-                      caloriesBurnedInput === ''
-                        ? ''
-                        : Math.round(
-                            convertEnergy(
-                              Number(caloriesBurnedInput),
-                              'kcal',
-                              energyUnit
-                            )
-                          )
-                    }
+                    value={shownEnergyInput(caloriesBurnedInput, energyUnit)}
                     onChange={(e) =>
                       setCaloriesBurnedInput(
-                        e.target.value === ''
-                          ? ''
-                          : Math.round(
-                              convertEnergy(
-                                Number(e.target.value),
-                                energyUnit,
-                                'kcal'
-                              )
-                            )
+                        kcalFromEnergyInput(
+                          e.target.value === '' ? '' : Number(e.target.value),
+                          energyUnit
+                        )
                       )
                     }
                     placeholder={t(

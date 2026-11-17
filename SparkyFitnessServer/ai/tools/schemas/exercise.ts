@@ -2,6 +2,8 @@ import { z } from 'zod';
 import {
   EXERCISE_ALTERNATIVE_MODES,
   EXERCISE_MODALITIES,
+  HEALTH_ACTIVITY_TYPES,
+  type HealthActivityType,
   WORKOUT_FEEDBACK_DIFFICULTIES,
   WORKOUT_FEEDBACK_PAIN_NOTE_MAX_LENGTH,
   RAMP_INCREMENT_MAX_KG,
@@ -17,6 +19,17 @@ import {
   paginationSchema,
   uuidSchema,
 } from './common.js';
+
+/**
+ * Which Apple Health / Health Connect activity type the exercise is written as
+ * (#1750). Omitted means Automatic (guessed from the name and category).
+ */
+const healthActivityTypeField = z
+  .enum(HEALTH_ACTIVITY_TYPES as [HealthActivityType, ...HealthActivityType[]])
+  .optional()
+  .describe(
+    "Activity type used when writing workouts to Apple Health / Health Connect (e.g. 'walking', 'running_treadmill', 'strength_training'); omit for automatic"
+  );
 
 const exerciseSetSchema = z
   .object({
@@ -108,6 +121,7 @@ const createExerciseSchema = z
       .describe(
         'Which set editor the exercise uses; defaults to a value derived from the category'
       ),
+    health_activity_type: healthActivityTypeField,
   })
   .strict();
 
@@ -841,6 +855,7 @@ export const manageExerciseInput = z.object({
     .describe(
       'Which set editor the exercise uses; defaults to a value derived from the category'
     ),
+  health_activity_type: healthActivityTypeField,
   // log
   entry_date: dateSchema.optional().describe('Date for the entry (YYYY-MM-DD)'),
   entry_time: optionalEntryTimeSchema,

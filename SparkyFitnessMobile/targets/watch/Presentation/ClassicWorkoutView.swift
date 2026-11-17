@@ -1,9 +1,9 @@
 import SwiftUI
 import WatchKit
 
-// The Workout page as it was before the larger-text layout (#3191): what the
-// page shows while "Larger text on the watch" is off. `WorkoutView.swift` is the
-// larger one. Only the types shared with it are renamed (`Classic` prefix).
+// The Workout page as it was before the new workout view: what the page shows
+// while Settings → Apple Watch → "New workout view" is off. `WorkoutView.swift`
+// is the new one. Only the types shared with it are renamed (`Classic` prefix).
 
 
 private extension View {
@@ -137,7 +137,7 @@ private struct WorkoutSummaryView: View {
                     row("Max HR", "\(Int(max.rounded())) bpm")
                 }
                 if let kcal = summary.activeEnergyKcal, kcal > 0 {
-                    row("Active", "\(Int(kcal.rounded())) kcal")
+                    row("Active", "\(Int(checkIn.context.energyFromKcal(kcal).rounded())) \(checkIn.context.energyUnitLabel)")
                 }
                 WorkoutEffortPicker { score, done in
                     session.rateWorkoutEffort(score, sessionId: summary.sessionId, completion: done)
@@ -451,7 +451,7 @@ private struct ActiveWorkoutView: View {
                         .workoutPage(geo, alignment: .top)
                         .id(WorkoutPageID.set)
                     // The wearer's choice (Settings → Apple Watch on the
-                    // phone); the page is shared with the larger layout.
+                    // phone).
                     if checkIn.context.effectiveUpNextPage {
                         UpNextPage(onOpenList: { showingExercises = true })
                             .workoutPage(geo)
@@ -900,7 +900,10 @@ private struct MetricsStrip: View {
                                 .layoutPriority(1)
                         }
                         if let kcal = store.activeEnergyKcal {
-                            Self.metric("\(Int(kcal))", systemImage: "flame.fill")
+                            Self.metric(
+                                "\(Int(CheckInStore.shared.context.energyFromKcal(kcal)))",
+                                systemImage: "flame.fill"
+                            )
                                 .foregroundStyle(.orange)
                                 .fixedSize()
                         }

@@ -10,6 +10,7 @@ Pod::Spec.new do |s|
   s.license        = 'MIT'
 
   s.dependency 'ExpoModulesCore'
+  s.dependency 'ExpoNotifications'
 
   s.source_files = '**/*.{h,m,mm,swift,hpp,cpp}'
 end

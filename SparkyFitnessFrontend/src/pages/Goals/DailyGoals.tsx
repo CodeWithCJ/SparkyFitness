@@ -22,6 +22,8 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useNutrientAutoCalculate } from '@/hooks/Goals/useNutrientAutoCalculate';
 import { NutrientAutoCalculate } from './NutrientAutoCalculate';
 import { AutoCalculateToolbar } from './AutoCalculateToolbar';
+import { CalorieCyclingGoalHint } from '@/components/CalorieCyclingGoalHint';
+import { useCalorieCyclingForDay } from '@/hooks/Goals/useCalorieCyclingActive';
 
 const calculateGrams = (
   calories: number,
@@ -85,6 +87,10 @@ export const DailyGoals = ({
   });
 
   const [initialCalories] = useState(goals.calories);
+  const calorieCycling = useCalorieCyclingForDay(
+    today,
+    goals.calories !== initialCalories
+  );
 
   const [macroInputType, setMacroInputType] = useState<'grams' | 'percentages'>(
     goals.protein_percentage !== null ? 'percentages' : 'grams'
@@ -205,10 +211,16 @@ export const DailyGoals = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-6">
             <div className="space-y-1.5">
               <Label htmlFor="calories">
-                {t(
-                  'nutrition.calories',
-                  `Calories (${getEnergyUnitString(energyUnit)})`
-                )}
+                {calorieCycling.typedIsBase
+                  ? t(
+                      'goals.calorieCycling.baseCalories',
+                      'Base calories ({{energyUnitString}})',
+                      { energyUnitString: getEnergyUnitString(energyUnit) }
+                    )
+                  : t(
+                      'nutrition.calories',
+                      `Calories (${getEnergyUnitString(energyUnit)})`
+                    )}
               </Label>
               <NumericInput
                 id="calories"
@@ -222,6 +234,11 @@ export const DailyGoals = ({
                     calories: convertEnergy(val ?? 0, energyUnit, 'kcal'),
                   }))
                 }
+              />
+              <CalorieCyclingGoalHint
+                calories={goals.calories}
+                day={today}
+                cycling={calorieCycling}
               />
             </div>
             <div className="space-y-1.5">

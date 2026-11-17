@@ -50,7 +50,7 @@ export function useCurrentFast(options?: QueryOptions) {
     queryFn: fetchCurrentFast,
     enabled,
   });
-  useRefetchOnFocus(query.refetch, enabled);
+  useRefetchOnFocus(query.refetch, enabled, 0);
   return query;
 }
 
@@ -61,7 +61,7 @@ export function useFastingStats(options?: QueryOptions) {
     queryFn: fetchFastingStats,
     enabled,
   });
-  useRefetchOnFocus(query.refetch, enabled);
+  useRefetchOnFocus(query.refetch, enabled, 0);
   return query;
 }
 

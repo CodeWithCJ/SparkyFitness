@@ -60,6 +60,12 @@ Each Intervals.icu activity becomes one exercise entry. Re-syncing updates the s
 
 Not imported: sleep (Intervals.icu has no bedtime), blood pressure, blood glucose (no unit given), hydration (it would double-count water logged in SparkyFitness), nutrition (SparkyFitness can push it to Intervals.icu, so reading it back would loop), readiness, and the subjective scores (mood, soreness, and so on). Also not imported: GPS tracks and laps, and max power.
 
+### Nutrition push (optional)
+
+Turn on **Push daily nutrition to Intervals.icu** on the provider card to send your daily food totals to Intervals.icu wellness every night: calories (`kcalConsumed`), protein, carbohydrates and fat, in grams. Each night covers the last three days, so late edits are picked up, and nothing is sent when the values have not changed. If you delete everything you logged for a day, the values SparkyFitness pushed for that day are cleared.
+
+The card shows the date pushing started. **Remove pushed data** turns pushing off and clears every value SparkyFitness wrote, except values another app has changed since, which are left alone. If some days cannot be cleared, the card shows how many remain so you can try again. Disconnecting Intervals.icu does not remove pushed data.
+
 ---
 
 ## Sync Schedule & Manual Controls

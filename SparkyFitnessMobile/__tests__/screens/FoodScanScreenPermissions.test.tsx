@@ -13,6 +13,11 @@ import {
   type LabelScanResult,
 } from '../../src/services/api/externalFoodSearchApi';
 
+jest.mock('@react-navigation/native', () => ({
+  ...jest.requireActual('@react-navigation/native'),
+  useIsFocused: () => true,
+}));
+
 jest.mock('../../src/services/api/externalFoodSearchApi', () => ({
   lookupBarcodeV2: jest.fn(),
   scanNutritionLabel: jest.fn(),

@@ -15,6 +15,8 @@ import FoodThumbnail from './FoodThumbnail';
 import { useFoodImageSourceContext } from './FoodImageSourceProvider';
 import { primaryImageOf, usableFoodImages } from '../utils/foodImages';
 import { useOpenLightbox } from './LightboxProvider';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 
 interface FoodLibraryRowProps {
   food: FoodItem;
@@ -32,6 +34,7 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
   isFavorite = false,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const { profile } = useProfile();
   const status = deriveShareStatus(
     food.user_id,
@@ -112,8 +115,8 @@ const FoodLibraryRow: React.FC<FoodLibraryRowProps> = ({
           </View>
           <View className="items-end">
             <Text className="text-text-primary text-base font-semibold">
-              {Math.round(food.default_variant.calories)}{' '}
-              {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
+              {roundedEnergy(food.default_variant.calories, energyUnit)}{' '}
+              {energyUnitLabel(energyUnit, t)}
             </Text>
             <Text className="text-text-secondary text-xs">
               {food.default_variant.serving_size}{' '}

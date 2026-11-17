@@ -19,6 +19,7 @@ import {
   formatXLabel30d90d,
   useChartFont,
 } from '../charts/chartFormatting';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 
 interface CompareSinceChartProps {
   response: CompareSinceResponse;
@@ -39,6 +40,7 @@ type Swatch = 'dot' | 'block' | 'dash';
  */
 const CompareSinceChart: React.FC<CompareSinceChartProps> = ({ response }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const [accent, beforeColor, sinceColor, textMuted, textSecondary] =
     useCSSVariable([
@@ -49,7 +51,10 @@ const CompareSinceChart: React.FC<CompareSinceChartProps> = ({ response }) => {
       '--color-text-secondary',
     ]) as [string, string, string, string, string];
 
-  const chart = useMemo(() => sinceChartData(response), [response]);
+  const chart = useMemo(
+    () => sinceChartData(response, energyUnit),
+    [response, energyUnit]
+  );
   const key = response.outcome.key;
   const { start } = response.result;
   if (start === null || chart.rows.length === 0) return null;
@@ -101,7 +106,7 @@ const CompareSinceChart: React.FC<CompareSinceChartProps> = ({ response }) => {
               color: textMuted,
               text: t('compareReport.since.chartLine', {
                 defaultValue: 'Line {{line}}',
-                line: compareValueText(key, response.result.line),
+                line: compareValueText(key, response.result.line, energyUnit),
               }),
             },
           ]

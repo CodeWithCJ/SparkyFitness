@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00285_dumbbell_alternate_biceps_curl",
+  "numeric_id": "00285",
+  "slug": "dumbbell_alternate_biceps_curl",
+  "name": "Dumbbell Alternate Biceps Curl",
+  "aliases": [
+    "Dumbbell Bicep Curl",
+    "Standing Alternating Dumbbell Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-1-1",
+    "demonstration_reps": 4
+  },
+  "steps": [
+    "Stand up straight with a dumbbell in each hand, palms facing forward and arms fully extended.",
+    "Keeping your upper arms stationary, exhale and curl the weights while contracting your biceps.",
+    "Continue to raise the dumbbells until your biceps are fully contracted and the dumbbells are at shoulder level.",
+    "Hold the contracted position for a brief pause as you squeeze your biceps.",
+    "Inhale and slowly begin to lower the dumbbells back to the starting position.",
+    "Repeat for the desired number of repetitions, alternating arms."
+  ],
+  "coaching_cues": [
+    "Keep elbows stationary and pinned to your sides throughout the movement",
+    "Avoid swinging your torso or using momentum from your hips",
+    "Lower the weights slowly under full control on the eccentric phase"
+  ],
+  "sources": {
+    "external_id": "00285",
+    "attribution": "SparkyFitness Media"
+  }
+}

@@ -9,6 +9,7 @@ import type {
   ExerciseModality,
   ExerciseSessionResponse,
   ExerciseSetStats,
+  EnergyUnit,
 } from '@workspace/shared';
 import {
   isBodyweightModality,
@@ -31,6 +32,8 @@ import { formatLocalizedNumber } from '../localization';
 import { formatDateLabel } from '../utils/dateUtils';
 import ExerciseEffortCard from './ExerciseEffortCard';
 import { buildExerciseEffortSummary } from '../utils/exerciseEffort';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 
 interface ExerciseHistoryListProps {
   exerciseId: string;
@@ -199,7 +202,9 @@ const SetRow: React.FC<{
 
 /** Duration/calories line for entries logged without set data (cardio, quick logs). */
 const formatEntrySummary = (
-  entries: ExerciseEntryResponse[]
+  entries: ExerciseEntryResponse[],
+  t: TFunction,
+  energyUnit: EnergyUnit
 ): string | null => {
   const duration = entries.reduce(
     (sum, e) => sum + (e.duration_minutes ?? 0),
@@ -211,7 +216,10 @@ const formatEntrySummary = (
   );
   const parts: string[] = [];
   if (duration > 0) parts.push(`${Math.round(duration)} min`);
-  if (calories > 0) parts.push(`${Math.round(calories)} cal`);
+  if (calories > 0)
+    parts.push(
+      `${roundedEnergy(calories, energyUnit)} ${energyUnitLabel(energyUnit, t)}`
+    );
   return parts.length > 0 ? parts.join(' · ') : null;
 };
 
@@ -248,6 +256,7 @@ const SessionCard: React.FC<{
   onOpenSession,
 }) => {
   const { t, i18n: translationI18n } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const textMuted = useCSSVariable('--color-text-muted') as string;
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
@@ -338,7 +347,7 @@ const SessionCard: React.FC<{
         </>
       ) : (
         <Text className="text-text-secondary text-sm mt-2">
-          {formatEntrySummary(entries) ??
+          {formatEntrySummary(entries, t, energyUnit) ??
             t('exerciseHistory.noSetData', { defaultValue: 'No set data' })}
         </Text>
       )}

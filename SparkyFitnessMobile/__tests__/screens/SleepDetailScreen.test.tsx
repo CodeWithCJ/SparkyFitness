@@ -2,6 +2,9 @@ import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
 
 import SleepDetailScreen from '../../src/screens/SleepDetailScreen';
+import { usePreferences } from '../../src/hooks/usePreferences';
+import { useSkinTemperature } from '../../src/hooks/useSkinTemperature';
+import { useSleepBiometricTrend } from '../../src/hooks/useSleepBiometricTrend';
 import { useSleepDetail } from '../../src/hooks/useSleepDetail';
 import { initializeI18n } from '../../src/localization/i18n';
 import { addDays, getTodayDate } from '../../src/utils/dateUtils';
@@ -9,6 +12,18 @@ import { buildSleepEntry, buildStageEvent } from '../helpers/sleepFixtures';
 
 jest.mock('../../src/hooks/useSleepDetail', () => ({
   useSleepDetail: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useSkinTemperature', () => ({
+  useSkinTemperature: jest.fn(() => null),
+}));
+
+jest.mock('../../src/hooks/useSleepBiometricTrend', () => ({
+  useSleepBiometricTrend: jest.fn(() => ({
+    points: [],
+    isLoading: false,
+    isError: false,
+  })),
 }));
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
@@ -83,6 +98,7 @@ const setupScreen = (overrides: Partial<DetailResult> = {}) => {
   const entry = buildSleepEntry({ id: ENTRY_ID });
   mockUseSleepDetail.mockReturnValue({
     entry,
+    isMainSleep: true,
     stages: [buildStageEvent()],
     isLoading: false,
     isError: false,
@@ -105,6 +121,9 @@ describe('SleepDetailScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (usePreferences as jest.Mock).mockReturnValue({
+      preferences: { time_format: 'h:mm A' },
+    });
   });
 
   test('renders header, hypnogram, breakdown and biometrics for a full entry', () => {
@@ -150,6 +169,164 @@ describe('SleepDetailScreen', () => {
     expect(queryByTestId('sleep-biometric-averageSpo2')).toBeNull();
     expect(queryByTestId('sleep-biometric-lowestSpo2')).toBeNull();
     expect(queryByTestId('sleep-biometric-highestSpo2')).toBeNull();
+  });
+
+  test('renders the overnight HRV row when the entry has an HRV value', () => {
+    const { getByTestId, getByText } = setupScreen({
+      entry: buildSleepEntry({
+        id: ENTRY_ID,
+        average_spo2_value: null,
+        lowest_spo2_value: null,
+        highest_spo2_value: null,
+        resting_heart_rate: null,
+        avg_overnight_hrv: 48,
+      }),
+    });
+
+    expect(getByTestId('sleep-biometrics')).toBeTruthy();
+    expect(getByTestId('sleep-biometric-overnightHrv')).toBeTruthy();
+    expect(getByText('48 ms')).toBeTruthy();
+  });
+
+  test('renders skin temperature and its deviation from usual', () => {
+    (useSkinTemperature as jest.Mock).mockReturnValueOnce({
+      celsius: 35.1,
+      deviation: -0.3,
+    });
+    const { getByTestId, getByText } = setupScreen({
+      entry: buildSleepEntry({
+        id: ENTRY_ID,
+        average_spo2_value: null,
+        lowest_spo2_value: null,
+        highest_spo2_value: null,
+        resting_heart_rate: null,
+      }),
+    });
+
+    expect(getByTestId('sleep-biometric-skinTemperature')).toBeTruthy();
+    expect(getByText('35.1 °C')).toBeTruthy();
+    expect(
+      getByTestId('sleep-biometric-skinTemperatureDeviation')
+    ).toBeTruthy();
+    expect(getByText('-0.3 °C')).toBeTruthy();
+  });
+
+  test('shows skin temperature in °F with miles on a server without the temperature setting', () => {
+    (usePreferences as jest.Mock).mockReturnValue({
+      preferences: { time_format: 'h:mm A', default_distance_unit: 'miles' },
+    });
+    (useSkinTemperature as jest.Mock).mockReturnValueOnce({
+      celsius: 35.1,
+      deviation: -0.3,
+    });
+    const { getByText, queryByText } = setupScreen();
+
+    // 35.1 °C is 95.18 °F; a -0.3 °C difference is -0.54 °F (no 32° offset).
+    expect(getByText('95.2 °F')).toBeTruthy();
+    expect(getByText('-0.5 °F')).toBeTruthy();
+    expect(queryByText('35.1 °C')).toBeNull();
+  });
+
+  test('the temperature setting wins over the distance setting', () => {
+    (usePreferences as jest.Mock).mockReturnValue({
+      preferences: {
+        time_format: 'h:mm A',
+        default_distance_unit: 'miles',
+        default_temperature_unit: 'celsius',
+      },
+    });
+    (useSkinTemperature as jest.Mock).mockReturnValueOnce({
+      celsius: 35.1,
+      deviation: null,
+    });
+    const { getByText } = setupScreen();
+
+    expect(getByText('35.1 °C')).toBeTruthy();
+  });
+
+  test('tapping a biometric opens its trend, and tapping again closes it', () => {
+    (useSleepBiometricTrend as jest.Mock).mockImplementation(
+      (_day: string, key: string | null) => ({
+        points:
+          key === 'restingHeartRate'
+            ? [
+                { day: '2026-08-21', value: 55 },
+                { day: '2026-08-22', value: 53 },
+                { day: '2026-08-23', value: 52 },
+              ]
+            : [],
+        isLoading: false,
+        isError: false,
+      })
+    );
+    const { getByTestId, queryByTestId } = setupScreen({
+      entry: buildSleepEntry({ id: ENTRY_ID, resting_heart_rate: 52 }),
+    });
+
+    expect(queryByTestId('sleep-biometric-trend-restingHeartRate')).toBeNull();
+    fireEvent.press(getByTestId('sleep-biometric-restingHeartRate'));
+    expect(getByTestId('sleep-biometric-trend-restingHeartRate')).toBeTruthy();
+    // Placed by night in the 30-night window ending on the entry's day.
+    expect(
+      getByTestId('cartesian-chart').props.data.map(
+        (point: { x: number }) => point.x
+      )
+    ).toEqual([27, 28, 29]);
+
+    fireEvent.press(getByTestId('sleep-biometric-restingHeartRate'));
+    expect(queryByTestId('sleep-biometric-trend-restingHeartRate')).toBeNull();
+  });
+
+  test('converts the skin temperature trend to °F with the miles setting', () => {
+    (usePreferences as jest.Mock).mockReturnValue({
+      preferences: { time_format: 'h:mm A', default_distance_unit: 'miles' },
+    });
+    (useSkinTemperature as jest.Mock).mockReturnValue({
+      celsius: 35,
+      deviation: null,
+    });
+    (useSleepBiometricTrend as jest.Mock).mockReturnValue({
+      points: [
+        { day: '2026-08-22', value: 34 },
+        { day: '2026-08-23', value: 35 },
+      ],
+      isLoading: false,
+      isError: false,
+    });
+    const { getByTestId } = setupScreen();
+
+    fireEvent.press(getByTestId('sleep-biometric-skinTemperature'));
+    expect(
+      getByTestId('cartesian-chart').props.data.map(
+        (point: { value: number }) => point.value
+      )
+    ).toEqual([93.2, 95]);
+    (useSkinTemperature as jest.Mock).mockReturnValue(null);
+  });
+
+  test('a nap shows no skin temperature and opens no trend', () => {
+    const { getByTestId, queryByTestId } = setupScreen({
+      entry: buildSleepEntry({ id: ENTRY_ID, resting_heart_rate: 52 }),
+      isMainSleep: false,
+    });
+
+    expect(useSkinTemperature).toHaveBeenLastCalledWith(undefined);
+    fireEvent.press(getByTestId('sleep-biometric-restingHeartRate'));
+    expect(queryByTestId('sleep-biometric-trend-restingHeartRate')).toBeNull();
+  });
+
+  test('says there is not enough data when a trend has one night', () => {
+    (useSleepBiometricTrend as jest.Mock).mockReturnValue({
+      points: [{ day: '2026-08-23', value: 52 }],
+      isLoading: false,
+      isError: false,
+    });
+    const { getByTestId, getByText } = setupScreen({
+      entry: buildSleepEntry({ id: ENTRY_ID, resting_heart_rate: 52 }),
+    });
+
+    fireEvent.press(getByTestId('sleep-biometric-restingHeartRate'));
+    expect(getByText('Not enough nights to show a trend yet')).toBeTruthy();
   });
 
   test('leads the content with a Sleep title and the session’s date', () => {

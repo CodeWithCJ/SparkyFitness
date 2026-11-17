@@ -1,8 +1,6 @@
 {{- /*
-With server.replicas above 1, one of those replicas runs as a separate
-"-jobs" Deployment that runs the scheduled jobs, and the rest set
-SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS so each job runs once. Both render from
-this template, and both carry the sparkyfitness.io/server label that the
+Every server replica runs the same pod; the replicas share scheduled jobs
+through the database. Pods carry the sparkyfitness.io/server label that the
 Service and NetworkPolicies select on.
 
 Several pods can only share a volume that attaches on more than one node, so
@@ -12,7 +10,6 @@ node. A single replica on a ReadWriteOnce volume keeps Recreate, because a
 surge pod on another node could never attach it.
 */}}
 {{- $replicas := int .Values.server.replicas }}
-{{- $splitJobs := gt $replicas 1 }}
 {{- $shutdownTimeout := ternary "" (toString .Values.server.shutdownTimeoutSeconds) (kindIs "invalid" .Values.server.shutdownTimeoutSeconds) }}
 {{- if and $shutdownTimeout (or (not (regexMatch "^[1-9][0-9]{0,3}$" $shutdownTimeout)) (gt (atoi $shutdownTimeout) 3600)) }}
 {{- fail "server.shutdownTimeoutSeconds must be a whole number of seconds from 1 to 3600" }}
@@ -43,42 +40,31 @@ surge pod on another node could never attach it.
 {{- end }}
 {{- $rolling := or (gt $replicas 1) (ne ($strategy.type | default "RollingUpdate") "Recreate") }}
 {{- $serverSelector := printf "%s\nsparkyfitness.io/server: \"true\"" (include "sparkyfitness.selectorLabels" .) }}
-{{- $roles := list "server" }}
-{{- if $splitJobs }}{{- $roles = append $roles "jobs" }}{{- end }}
-{{- range $role := $roles }}
-{{- with $ }}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "sparkyfitness.fullname" . }}-{{ $role }}
+  name: {{ include "sparkyfitness.fullname" . }}-server
   labels:
     {{- include "sparkyfitness.labels" . | nindent 4 }}
-    app.kubernetes.io/component: {{ $role }}
+    app.kubernetes.io/component: server
 spec:
-  {{- if eq $role "jobs" }}
-  replicas: 1
-  strategy:
-    type: Recreate
-  {{- else }}
-  replicas: {{ ternary (sub $replicas 1) $replicas $splitJobs }}
+  replicas: {{ $replicas }}
   strategy:
     {{- toYaml $strategy | nindent 4 }}
-  {{- end }}
   {{- with include "sparkyfitness.minReadySeconds" (dict "values" .Values.server "rolling" $rolling) }}
   minReadySeconds: {{ . }}
   {{- end }}
   selector:
     matchLabels:
       {{- include "sparkyfitness.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: {{ $role }}
+      app.kubernetes.io/component: server
   template:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/server/configmap.yaml") . | sha256sum }}
       labels:
         {{- include "sparkyfitness.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: {{ $role }}
+        app.kubernetes.io/component: server
         sparkyfitness.io/server: "true"
     spec:
       {{- if and .Values.global.serviceAccount.create .Values.server.serviceAccount.create }}
@@ -217,10 +203,6 @@ spec:
                   name: {{ include "sparkyfitness.smtpSecretName" . }}
                   key: {{ .Values.config.email.secrets.existingSecretKeys.password | default "password" }}
             {{- end }}
-            {{- if and $splitJobs (eq $role "server") }}
-            - name: SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS
-              value: "true"
-            {{- end }}
             {{- if $shutdownTimeout }}
             - name: SPARKY_FITNESS_SHUTDOWN_TIMEOUT_SECONDS
               value: {{ $shutdownTimeout | quote }}
@@ -291,5 +273,3 @@ spec:
       topologySpreadConstraints:
         {{- . | nindent 8 }}
       {{- end }}
-{{- end }}
-{{- end }}
