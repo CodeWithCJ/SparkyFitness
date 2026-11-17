@@ -8248,8 +8248,8 @@
     },
     "cooked": {
       "switch": "Weighed it cooked",
-      "usingPrevious": "Using {{factor}}× from your {{food}} on {{date}}",
-      "usingEntry": "Using {{factor}}× from this entry",
+      "sameBatchPrevious": "Same batch as on {{date}}: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked",
+      "sameBatchEntry": "Same batch as this entry: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked",
       "newBatch": "New batch",
       "rawBatch": "Raw weight of batch ({{unit}})",
       "cookedBatch": "Cooked weight of batch ({{unit}})",

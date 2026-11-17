@@ -402,7 +402,7 @@ describe('EditFoodEntryDialog', () => {
       });
       expect(toggle).toHaveAttribute('aria-checked', 'true');
       expect(
-        screen.getByText('Using 2.5× from this entry')
+        screen.getByText('Same batch as this entry: 120 g raw → 300 g cooked')
       ).toBeInTheDocument();
       expect(screen.getByLabelText('You ate (cooked, g)')).toHaveValue('300');
       expect(screen.getByLabelText(/^Quantity$/i)).toHaveValue('120');

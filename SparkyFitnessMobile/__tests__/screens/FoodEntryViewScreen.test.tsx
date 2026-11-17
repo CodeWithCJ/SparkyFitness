@@ -491,7 +491,9 @@ describe('FoodEntryViewScreen', () => {
       pressAction(screen, navigation, 'Edit');
 
       expect(screen.getByLabelText('Weighed it cooked').props.value).toBe(true);
-      expect(screen.getByText('Using 2.5× from this entry')).toBeTruthy();
+      expect(
+        screen.getByText('Same batch as this entry: 120 g raw → 300 g cooked')
+      ).toBeTruthy();
       fireEvent.changeText(screen.getByLabelText('You ate (cooked, g)'), '200');
       expect(screen.getByTestId('quantity-input').props.value).toBe('80');
 

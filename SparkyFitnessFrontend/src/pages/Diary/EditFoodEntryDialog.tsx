@@ -591,7 +591,6 @@ const EditFoodEntryDialog = ({
                     <CookedWeightSection
                       key={selectedVariant.serving_unit}
                       unit={selectedVariant.serving_unit}
-                      foodName={entry.food_name ?? ''}
                       editingEntry={
                         entry.cooked_quantity &&
                         entry.unit === selectedVariant.serving_unit

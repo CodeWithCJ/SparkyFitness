@@ -2200,7 +2200,6 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             <CookedWeightSection
               key={`${activeItem.id}-${displayValues.servingUnit}`}
               unit={displayValues.servingUnit}
-              foodName={adjustedValues?.name || activeItem.name}
               energyUnit={energyUnit}
               previousEntry={lastCookedEntry ?? null}
               caloriesFor={(rawQuantity) =>

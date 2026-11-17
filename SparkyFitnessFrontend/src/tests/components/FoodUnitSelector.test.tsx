@@ -745,7 +745,9 @@ describe('FoodUnitSelector', () => {
         screen.getByRole('switch', { name: 'Weighed it cooked' })
       ).toHaveAttribute('aria-checked', 'true');
       expect(
-        screen.getByText('Using 2.5× from your Cornstarch on on-2026-11-13')
+        screen.getByText(
+          'Same batch as on on-2026-11-13: 120 g raw → 300 g cooked'
+        )
       ).toBeInTheDocument();
       expect(
         screen.queryByLabelText('Raw weight of batch (g)')

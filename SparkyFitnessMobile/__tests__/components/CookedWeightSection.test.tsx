@@ -15,7 +15,6 @@ describe('CookedWeightSection (#3534)', () => {
     render(
       <CookedWeightSection
         unit="g"
-        foodName="Rice"
         energyUnit="kcal"
         caloriesFor={ricePer100g}
         onChange={onChange}
@@ -51,7 +50,6 @@ describe('CookedWeightSection (#3534)', () => {
     render(
       <CookedWeightSection
         unit="kg"
-        foodName="Rice"
         energyUnit="kcal"
         caloriesFor={() => null}
         onChange={onChange}
@@ -78,7 +76,6 @@ describe('CookedWeightSection (#3534)', () => {
     render(
       <CookedWeightSection
         unit="g"
-        foodName="Rice"
         energyUnit="kcal"
         previousEntry={{
           id: 'entry-9',
@@ -92,7 +89,9 @@ describe('CookedWeightSection (#3534)', () => {
       />
     );
     expect(screen.getByLabelText('Weighed it cooked').props.value).toBe(true);
-    expect(screen.getByText(/^Using 2\.5× from your Rice on /)).toBeTruthy();
+    expect(
+      screen.getByText(/^Same batch as on .+: 120 g raw → 300 g cooked$/)
+    ).toBeTruthy();
     expect(screen.queryByLabelText('Raw weight of batch (g)')).toBeNull();
     expect(screen.getByText('Enter the cooked weight you ate.')).toBeTruthy();
 
@@ -112,14 +111,15 @@ describe('CookedWeightSection (#3534)', () => {
     render(
       <CookedWeightSection
         unit="g"
-        foodName="Rice"
         energyUnit="kcal"
         editingEntry={{ quantity: 120, cookedQuantity: 300 }}
         caloriesFor={ricePer100g}
         onChange={onChange}
       />
     );
-    expect(screen.getByText('Using 2.5× from this entry')).toBeTruthy();
+    expect(
+      screen.getByText('Same batch as this entry: 120 g raw → 300 g cooked')
+    ).toBeTruthy();
     expect(screen.getByDisplayValue('300')).toBeTruthy();
     expect(onChange).toHaveBeenLastCalledWith(true, {
       rawQuantity: 120,
@@ -127,12 +127,37 @@ describe('CookedWeightSection (#3534)', () => {
     });
   });
 
+  it('names the last batch in its own unit and rounds the raw weight', () => {
+    const onChange = jest.fn();
+    render(
+      <CookedWeightSection
+        unit="g"
+        energyUnit="kcal"
+        previousEntry={{
+          id: 'entry-10',
+          entry_date: '2026-11-16',
+          quantity: 0.0857,
+          unit: 'kg',
+          cooked_quantity: 0.2,
+        }}
+        caloriesFor={() => 328}
+        onChange={onChange}
+      />
+    );
+    expect(screen.getByText(/: 0\.086 kg raw → 0\.2 kg cooked$/)).toBeTruthy();
+    fireEvent.changeText(screen.getByLabelText('You ate (cooked, g)'), '200');
+    expect(onChange).toHaveBeenLastCalledWith(true, {
+      rawQuantity: 85.7,
+      cookedQuantity: 200,
+    });
+    expect(screen.getByText('= 85.7 g raw · 328 kcal')).toBeTruthy();
+  });
+
   it('keeps the stored raw quantity of an untouched kg entry', () => {
     const onChange = jest.fn();
     render(
       <CookedWeightSection
         unit="kg"
-        foodName="Rice"
         energyUnit="kcal"
         editingEntry={{ quantity: 0.125, cookedQuantity: 0.3 }}
         caloriesFor={() => null}

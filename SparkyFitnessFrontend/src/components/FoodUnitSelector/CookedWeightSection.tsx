@@ -4,7 +4,7 @@ import {
   COOKED_WEIGHT_DECIMALS,
   cookedYieldFactor,
   rawQuantityFromCooked,
-  roundYieldFactor,
+  roundCookedWeightForDisplay,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -22,7 +22,6 @@ export interface CookedWeightResult {
 interface CookedWeightSectionProps {
   /** Unit of the entry; the caller only renders this for weight units. */
   unit: string;
-  foodName: string;
   /** The entry being edited, when it was weighed cooked. */
   editingEntry?: { quantity: number; cookedQuantity: number } | null;
   /**
@@ -50,7 +49,6 @@ type YieldSource = 'previous' | 'entry' | 'batch';
  */
 export const CookedWeightSection = ({
   unit,
-  foodName,
   editingEntry,
   previousFoodId,
   caloriesFor,
@@ -123,8 +121,32 @@ export const CookedWeightSection = ({
   }, [enabled, rawQuantity, eaten]);
 
   const calories = rawQuantity !== null ? caloriesFor(rawQuantity) : null;
-  const formattedYield =
-    yieldFactor !== null ? String(roundYieldFactor(yieldFactor)) : null;
+  // The reused batch in plain words: the raw and cooked weight it was logged
+  // with, in that entry's own unit.
+  const reusedBatch =
+    source === 'entry' && editingEntry && editingYield !== null
+      ? {
+          raw: editingEntry.quantity,
+          cooked: editingEntry.cookedQuantity,
+          unit,
+        }
+      : source === 'previous' && previousEntry && previousYield !== null
+        ? {
+            raw: previousEntry.quantity,
+            cooked: previousEntry.cooked_quantity,
+            unit: previousEntry.unit ?? unit,
+          }
+        : null;
+  const batchValues = reusedBatch
+    ? {
+        raw: roundCookedWeightForDisplay(reusedBatch.raw, reusedBatch.unit),
+        cooked: roundCookedWeightForDisplay(
+          reusedBatch.cooked,
+          reusedBatch.unit
+        ),
+        unit: reusedBatch.unit,
+      }
+    : null;
 
   return (
     <div className="space-y-3 rounded-md border p-3">
@@ -144,23 +166,22 @@ export const CookedWeightSection = ({
 
       {enabled && (
         <>
-          {source !== 'batch' && formattedYield !== null ? (
+          {batchValues !== null ? (
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-muted-foreground">
               <span>
                 {source === 'previous' && previousEntry
                   ? t(
-                      'foodUnitSelector.cooked.usingPrevious',
-                      'Using {{factor}}× from your {{food}} on {{date}}',
+                      'foodUnitSelector.cooked.sameBatchPrevious',
+                      'Same batch as on {{date}}: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked',
                       {
-                        factor: formattedYield,
-                        food: foodName,
+                        ...batchValues,
                         date: formatDate(previousEntry.entry_date),
                       }
                     )
                   : t(
-                      'foodUnitSelector.cooked.usingEntry',
-                      'Using {{factor}}× from this entry',
-                      { factor: formattedYield }
+                      'foodUnitSelector.cooked.sameBatchEntry',
+                      'Same batch as this entry: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked',
+                      batchValues
                     )}
               </span>
               <Button
@@ -250,7 +271,7 @@ export const CookedWeightSection = ({
                   'foodUnitSelector.cooked.result',
                   '= {{raw}} {{unit}} raw · {{calories}} {{energyUnit}}',
                   {
-                    raw: rawQuantity,
+                    raw: roundCookedWeightForDisplay(rawQuantity, unit),
                     unit,
                     calories:
                       calories !== null

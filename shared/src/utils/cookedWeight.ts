@@ -43,9 +43,6 @@ export function isValidCookedQuantity(value: unknown): value is number | null {
  */
 export const COOKED_WEIGHT_DECIMALS = 3;
 
-/** Decimal places kept for a yield factor. */
-const YIELD_FACTOR_DECIMALS = 2;
-
 function roundTo(value: number, decimals: number): number {
   const scale = 10 ** decimals;
   return Math.round(value * scale) / scale;
@@ -89,7 +86,15 @@ export function entryYieldFactor(entry: {
   return cookedYieldFactor(entry.quantity, entry.cooked_quantity);
 }
 
-/** A yield factor rounded for display ("2.5×"). */
-export function roundYieldFactor(yieldFactor: number): number {
-  return roundTo(yieldFactor, YIELD_FACTOR_DECIMALS);
+/**
+ * A weight rounded for display: g and oz to one decimal, kg and lb to three,
+ * so "85.714 g" reads "85.7 g" while "0.086 kg" still shows whole grams. The
+ * stored quantity keeps its three decimals.
+ */
+export function roundCookedWeightForDisplay(
+  value: number,
+  unit: string
+): number {
+  const coarse = ['kg', 'lb'].includes(unit.trim().toLowerCase());
+  return roundTo(value, coarse ? COOKED_WEIGHT_DECIMALS : 1);
 }

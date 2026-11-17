@@ -1198,7 +1198,6 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
                   <CookedWeightSection
                     key={displayValues.servingUnit}
                     unit={displayValues.servingUnit}
-                    foodName={entry.food_name ?? ''}
                     energyUnit={energyUnit}
                     editingEntry={
                       entry.cooked_quantity &&

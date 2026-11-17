@@ -6,7 +6,7 @@ import {
   COOKED_WEIGHT_DECIMALS,
   cookedYieldFactor,
   rawQuantityFromCooked,
-  roundYieldFactor,
+  roundCookedWeightForDisplay,
   type EnergyUnit,
   type LastCookedFoodEntry,
 } from '@workspace/shared';
@@ -25,7 +25,6 @@ export interface CookedWeightResult {
 interface CookedWeightSectionProps {
   /** Unit of the entry; the caller only renders this for weight units. */
   unit: string;
-  foodName: string;
   energyUnit: EnergyUnit;
   /** The entry being edited, when it was weighed cooked. */
   editingEntry?: { quantity: number; cookedQuantity: number } | null;
@@ -57,7 +56,6 @@ const positiveOrUndefined = (text: string): number | undefined => {
  */
 const CookedWeightSection: React.FC<CookedWeightSectionProps> = ({
   unit,
-  foodName,
   energyUnit,
   editingEntry,
   previousEntry,
@@ -153,12 +151,33 @@ const CookedWeightSection: React.FC<CookedWeightSectionProps> = ({
     </View>
   );
 
-  const formattedYield =
-    yieldFactor !== null
-      ? formatLocalizedNumber(roundYieldFactor(yieldFactor), {
-          maximumFractionDigits: 2,
-        })
-      : null;
+  const formatWeight = (value: number, weightUnit: string) =>
+    formatLocalizedNumber(roundCookedWeightForDisplay(value, weightUnit), {
+      maximumFractionDigits: COOKED_WEIGHT_DECIMALS,
+    });
+  // The reused batch in plain words: the raw and cooked weight it was logged
+  // with, in that entry's own unit.
+  const reusedBatch =
+    source === 'entry' && editingEntry && editingYield !== null
+      ? {
+          raw: editingEntry.quantity,
+          cooked: editingEntry.cookedQuantity,
+          unit,
+        }
+      : source === 'previous' && previousEntry && previousYield !== null
+        ? {
+            raw: previousEntry.quantity,
+            cooked: previousEntry.cooked_quantity,
+            unit: previousEntry.unit ?? unit,
+          }
+        : null;
+  const batchValues = reusedBatch
+    ? {
+        raw: formatWeight(reusedBatch.raw, reusedBatch.unit),
+        cooked: formatWeight(reusedBatch.cooked, reusedBatch.unit),
+        unit: reusedBatch.unit,
+      }
+    : null;
   const calories = rawQuantity !== null ? caloriesFor(rawQuantity) : null;
   const switchLabel = t('foodEntryAdd.cooked.switch', {
     defaultValue: 'Weighed it cooked',
@@ -180,23 +199,23 @@ const CookedWeightSection: React.FC<CookedWeightSectionProps> = ({
 
       {enabled ? (
         <>
-          {source !== 'batch' && formattedYield !== null ? (
+          {batchValues !== null ? (
             <View className="flex-row items-center justify-between gap-2">
               <Text className="text-text-secondary text-sm flex-1">
                 {source === 'previous' && previousEntry
-                  ? t('foodEntryAdd.cooked.usingPrevious', {
+                  ? t('foodEntryAdd.cooked.sameBatchPrevious', {
                       defaultValue:
-                        'Using {{factor}}× from your {{food}} on {{date}}',
-                      factor: formattedYield,
-                      food: foodName,
+                        'Same batch as on {{date}}: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked',
+                      ...batchValues,
                       date: formatShortDate(
                         previousEntry.entry_date,
                         i18n.language
                       ),
                     })
-                  : t('foodEntryAdd.cooked.usingEntry', {
-                      defaultValue: 'Using {{factor}}× from this entry',
-                      factor: formattedYield,
+                  : t('foodEntryAdd.cooked.sameBatchEntry', {
+                      defaultValue:
+                        'Same batch as this entry: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked',
+                      ...batchValues,
                     })}
               </Text>
               <TouchableOpacity
@@ -251,9 +270,7 @@ const CookedWeightSection: React.FC<CookedWeightSectionProps> = ({
             {rawQuantity !== null
               ? t('foodEntryAdd.cooked.result', {
                   defaultValue: '= {{raw}} {{unit}} raw · {{energy}}',
-                  raw: formatLocalizedNumber(rawQuantity, {
-                    maximumFractionDigits: COOKED_WEIGHT_DECIMALS,
-                  }),
+                  raw: formatWeight(rawQuantity, unit),
                   unit,
                   energy:
                     calories !== null

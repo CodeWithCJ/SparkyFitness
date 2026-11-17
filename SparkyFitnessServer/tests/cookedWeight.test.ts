@@ -7,7 +7,7 @@ import {
   isCookedWeightUnit,
   isValidCookedQuantity,
   rawQuantityFromCooked,
-  roundYieldFactor,
+  roundCookedWeightForDisplay,
 } from '@workspace/shared';
 
 describe('cooked weight helpers (#3534)', () => {
@@ -65,7 +65,13 @@ describe('cooked weight helpers (#3534)', () => {
       entryYieldFactor({ quantity: 120, cooked_quantity: null })
     ).toBeNull();
     expect(entryYieldFactor({ quantity: 120 })).toBeNull();
-    expect(roundYieldFactor(2.4999)).toBe(2.5);
-    expect(roundYieldFactor(0.756)).toBe(0.76);
+  });
+
+  it('shows g and oz to one decimal and kg and lb to whole grams', () => {
+    expect(roundCookedWeightForDisplay(85.714, 'g')).toBe(85.7);
+    expect(roundCookedWeightForDisplay(200, 'g')).toBe(200);
+    expect(roundCookedWeightForDisplay(3.0251, 'oz')).toBe(3);
+    expect(roundCookedWeightForDisplay(0.0857, 'kg')).toBe(0.086);
+    expect(roundCookedWeightForDisplay(0.1234, 'LB')).toBe(0.123);
   });
 });

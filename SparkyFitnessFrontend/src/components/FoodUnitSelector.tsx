@@ -924,7 +924,6 @@ const FoodUnitSelector = ({
                 <CookedWeightSection
                   key={`${food.id}-${displayUnit}`}
                   unit={displayUnit}
-                  foodName={food.name}
                   previousFoodId={food.id}
                   caloriesFor={(rawQuantity) =>
                     activeVariant
