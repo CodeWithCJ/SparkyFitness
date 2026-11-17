@@ -12,6 +12,11 @@ import type { ExerciseEntryResponse } from '@workspace/shared';
 import type { SupersetBorder } from './ActiveWorkoutRail';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import { withAlpha } from '../utils/colors';
+import type { GetImageSource } from '../hooks/useExerciseImageSource';
+import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
+import SafeImage from './SafeImage';
+import Icon from './Icon';
+import CompletionCheck from './CompletionCheck';
 
 const CHIP_SIZE = 44;
 const CHIP_GAP = 8;
@@ -27,6 +32,7 @@ interface Props {
   completedSetIds: CompletedSetMap;
   selectedId: string | null;
   supersetBorders: Map<string, SupersetBorder>;
+  getImageSource: GetImageSource;
   onSelect: (entryId: string) => void;
 }
 
@@ -61,9 +67,9 @@ function buildGroups(
 }
 
 /**
- * The focus view's exercise pager: one numbered circle per exercise (the
- * selected one filled with the accent, a finished one outlined, one in
- * progress tinted), with each superset wrapped in a single tinted group shape
+ * The focus view's exercise pager: one photo circle per exercise with its
+ * number (a check once finished) on a corner badge; the selected one is ringed
+ * in the accent, a finished one outlined, one in progress tinted, with each superset wrapped in a single tinted group shape
  * in its colour. Keeps the selected chip centred.
  */
 function ActiveWorkoutFocusChips({
@@ -71,16 +77,15 @@ function ActiveWorkoutFocusChips({
   completedSetIds,
   selectedId,
   supersetBorders,
+  getImageSource,
   onSelect,
 }: Props) {
   const { t } = useTranslation();
-  const [accentPrimary, textPrimary, textSecondary, borderStrong] =
-    useCSSVariable([
-      '--color-accent-primary',
-      '--color-text-primary',
-      '--color-text-secondary',
-      '--color-border-strong',
-    ]) as [string, string, string, string];
+  const [accentPrimary, textSecondary, borderStrong] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-secondary',
+    '--color-border-strong',
+  ]) as [string, string, string];
   const scrollRef = useRef<ScrollView>(null);
   const viewportWidthRef = useRef(0);
 
@@ -146,6 +151,11 @@ function ActiveWorkoutFocusChips({
       exercise.sets.length > 0 && doneCount === exercise.sets.length;
     const status = isDone ? 'done' : doneCount > 0 ? 'inProgress' : 'todo';
     const isSelected = exercise.id === selectedId;
+    const image = exercise.exercise_snapshot?.images?.[0] ?? null;
+    const fallbackIcon =
+      (exercise.exercise_snapshot?.category &&
+        CATEGORY_ICON_MAP[exercise.exercise_snapshot.category]) ||
+      'exercise-weights';
     const statusLabel =
       status === 'done'
         ? t('activeWorkout.focus.chips.done', { defaultValue: 'done' })
@@ -199,22 +209,51 @@ function ActiveWorkoutFocusChips({
               : withAlpha(textSecondary, 0.14),
         }}
       >
-        <View testID={`focus-chip-ring-${exercise.id}`} pointerEvents="none">
-          <Text
-            className="text-base font-bold"
+        <View
+          testID={`focus-chip-ring-${exercise.id}`}
+          pointerEvents="none"
+          className="overflow-hidden rounded-full"
+          style={{ width: CHIP_SIZE - 4, height: CHIP_SIZE - 4 }}
+        >
+          <View style={{ opacity: isDone && !isSelected ? 0.5 : 1 }}>
+            <SafeImage
+              source={image ? getImageSource(image) : null}
+              style={{ width: CHIP_SIZE - 4, height: CHIP_SIZE - 4 }}
+              fallback={
+                <View
+                  className="items-center justify-center"
+                  style={{ width: CHIP_SIZE - 4, height: CHIP_SIZE - 4 }}
+                >
+                  <Icon name={fallbackIcon} size={22} color={textSecondary} />
+                </View>
+              }
+            />
+          </View>
+        </View>
+        {isDone ? (
+          <View className="absolute" style={{ right: -4, top: -4 }}>
+            <CompletionCheck size={18} iconSize={11} />
+          </View>
+        ) : (
+          <View
+            className="absolute items-center justify-center rounded-full"
             style={{
-              color: isSelected
-                ? '#ffffff'
-                : isDone
-                  ? textPrimary
-                  : status === 'inProgress'
-                    ? accentPrimary
-                    : textSecondary,
+              left: -4,
+              top: -4,
+              minWidth: 18,
+              height: 18,
+              paddingHorizontal: 4,
+              backgroundColor:
+                isSelected || status === 'inProgress'
+                  ? accentPrimary
+                  : textSecondary,
             }}
           >
-            {index + 1}
-          </Text>
-        </View>
+            <Text className="text-xs font-bold" style={{ color: '#ffffff' }}>
+              {index + 1}
+            </Text>
+          </View>
+        )}
       </Pressable>
     );
   };

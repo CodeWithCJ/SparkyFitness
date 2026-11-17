@@ -14,6 +14,7 @@ import WorkoutCompletePrCard from '../components/WorkoutCompletePrCard';
 import WorkoutCompleteExerciseList from '../components/WorkoutCompleteExerciseList';
 import WorkoutFeedbackCard from '../components/WorkoutFeedbackCard';
 import FocusWorkoutSummary from '../components/FocusWorkoutSummary';
+import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 import { workoutSessionQueryKey } from '../hooks/queryKeys';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
@@ -244,16 +245,19 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
             (await serverConfig) ?? undefined
           )
         )
-        .then(() =>
-          queryClient.invalidateQueries({
+        .then(() => {
+          if (session.entry_date != null) {
+            invalidateExerciseCache(queryClient, session.entry_date);
+          }
+          return queryClient.invalidateQueries({
             queryKey: workoutSessionQueryKey(session.id),
-          })
-        )
+          });
+        })
         .catch(() => {
           if (effortWriteRef.current.latest === write) setPickedEffort(null);
         });
     },
-    [session.exercises, session.id, queryClient]
+    [session.exercises, session.id, session.entry_date, queryClient]
   );
 
   const finishedTimeText = formatDateToTimeLabel(

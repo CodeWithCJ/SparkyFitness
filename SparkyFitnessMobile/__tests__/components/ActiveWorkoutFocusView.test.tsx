@@ -615,7 +615,7 @@ describe('ActiveWorkoutFocusView', () => {
     rerender(
       viewElement(
         'a',
-        { getImageSource: () => ({ uri: 'https://img/a.jpg' }) },
+        { getImageSource: () => ({ uri: 'https://img/a.jpg', headers: {} }) },
         { exercises: [withPicture] }
       )
     );

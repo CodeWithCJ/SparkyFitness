@@ -940,6 +940,7 @@ function ActiveWorkoutFocusView({
         completedSetIds={completedSetIds}
         selectedId={exercise.id}
         supersetBorders={supersetBorders}
+        getImageSource={getImageSource}
         onSelect={handleSelectChip}
       />
       <KeyboardAwareScrollView

@@ -28,6 +28,7 @@ describe('ActiveWorkoutFocusChips', () => {
         completedSetIds={{}}
         selectedId="e5"
         supersetBorders={new Map()}
+        getImageSource={() => null}
         onSelect={jest.fn()}
       />
     );
@@ -49,6 +50,7 @@ describe('ActiveWorkoutFocusChips', () => {
         completedSetIds={{ '1': true }}
         selectedId="e0"
         supersetBorders={new Map()}
+        getImageSource={() => null}
         onSelect={jest.fn()}
       />
     );
@@ -73,6 +75,7 @@ describe('ActiveWorkoutFocusChips', () => {
         completedSetIds={{}}
         selectedId="e0"
         supersetBorders={borders}
+        getImageSource={() => null}
         onSelect={jest.fn()}
       />
     );
