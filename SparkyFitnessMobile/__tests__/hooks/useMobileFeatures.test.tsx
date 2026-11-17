@@ -308,6 +308,72 @@ describe('useCycleSettings saves', () => {
     expect(queryClient.getQueryData(cycleSettingsQueryKey)).toBeUndefined();
   });
 
+  it('keeps the switch as saved when a read from before it answers late', async () => {
+    getMock.mockResolvedValueOnce(cycleRow());
+    const { result } = setup();
+    await waitFor(() => expect(result.current.cycle.state).toBe('ready'));
+
+    // A refresh is already on its way, with the value from before the change.
+    const oldRead = deferred<SharedCycleSettings | null>();
+    getMock.mockReturnValueOnce(oldRead.promise);
+    void queryClient.refetchQueries({ queryKey: cycleSettingsQueryKey });
+    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(2));
+
+    putMock.mockResolvedValueOnce(cycleRow({ enabled: false }));
+    act(() => result.current.cycle.setOn(false));
+    await waitFor(() => expect(result.current.cycle.on).toBe(false));
+
+    await act(async () => {
+      oldRead.resolve(cycleRow());
+    });
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryState(cycleSettingsQueryKey)?.fetchStatus
+      ).toBe('idle')
+    );
+    expect(result.current.cycle.on).toBe(false);
+  });
+
+  it('undoes only its own field when a save fails after the switch saved', async () => {
+    getMock.mockResolvedValue(cycleRow({ mode: 'standard' }));
+    const switched = deferred<SharedCycleSettings>();
+    putMock
+      .mockReturnValueOnce(switched.promise)
+      .mockRejectedValueOnce(new Error('offline'));
+    const { result } = renderHook(
+      () => ({ cycle: useCycleSwitch(), edit: useCycleSettings() }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+    await waitFor(() => expect(result.current.cycle.state).toBe('ready'));
+
+    // Off, and while that saves, a field edited on another screen.
+    act(() => result.current.cycle.setOn(false));
+    await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1));
+    act(() => result.current.edit.updateSettings({ mode: 'ttc' }));
+    // The edit has kept its copy of the settings from before the switch.
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<SharedCycleSettings>(cycleSettingsQueryKey)
+          ?.mode
+      ).toBe('ttc')
+    );
+    await act(async () => {
+      switched.resolve(cycleRow({ enabled: false, mode: 'standard' }));
+    });
+    await waitFor(() => expect(putMock).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(jest.mocked(Toast.show)).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' })
+      )
+    );
+
+    const cached = queryClient.getQueryData<SharedCycleSettings>(
+      cycleSettingsQueryKey
+    );
+    expect(cached?.enabled).toBe(false);
+    expect(cached?.mode).toBe('standard');
+  });
+
   it('runs one save at a time, so a quick off and on land in order', async () => {
     getMock.mockResolvedValue(cycleRow());
     const first = deferred<SharedCycleSettings>();

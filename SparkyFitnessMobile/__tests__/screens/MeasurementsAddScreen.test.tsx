@@ -743,6 +743,29 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(screen.queryByText('Menstrual flow')).toBeNull();
   });
 
+  test('keeps a value typed before its feature turned out to be off', () => {
+    setCustomCategories([
+      customCategory({
+        id: 'c2',
+        name: 'menstruation_flow',
+        display_name: 'Menstrual flow',
+        measurement_type: '',
+      }),
+    ]);
+    const screen = renderScreen();
+    fireEvent.changeText(screen.getByTestId('custom-input-c2'), '2');
+
+    // Cycle's settings arrive: it was turned off on purpose.
+    mockHiddenCategories = new Set(['menstruation_flow']);
+    rerenderScreen(screen);
+    expect(screen.queryByTestId('custom-input-c2')).toBeNull();
+
+    // Turned back on while the form is still open: the value is still there.
+    mockHiddenCategories = new Set();
+    rerenderScreen(screen);
+    expect(screen.getByTestId('custom-input-c2').props.value).toBe('2');
+  });
+
   test('renders no custom section when there are no categories', () => {
     setCustomCategories([]);
     const screen = renderScreen();

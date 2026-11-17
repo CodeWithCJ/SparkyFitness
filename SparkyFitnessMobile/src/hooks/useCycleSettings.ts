@@ -57,6 +57,27 @@ const showSavedCycleSettings = (
   queryClient.invalidateQueries({ queryKey: cycleFertilityQueryKey });
 };
 
+/**
+ * What a failed write puts back: only the fields it changed, as they were
+ * before it. A write saved meanwhile (the on/off switch shares the queue)
+ * keeps its answer.
+ */
+function previousValuesOf(
+  body: CycleSettingsBody,
+  previous: SharedCycleSettings
+): Partial<SharedCycleSettings> {
+  const { mark_onboarded, reset_onboarding, ...patch } = body;
+  const keys = Object.keys(patch) as (keyof SharedCycleSettings)[];
+  return {
+    ...(Object.fromEntries(
+      keys.map((key) => [key, previous[key]])
+    ) as Partial<SharedCycleSettings>),
+    ...(mark_onboarded || reset_onboarding
+      ? { onboarded_at: previous.onboarded_at }
+      : {}),
+  };
+}
+
 function useSaveFailedToast() {
   const { t } = useTranslation();
   return (error: unknown) => {
@@ -133,13 +154,17 @@ export function useCycleSettings() {
         showSavedCycleSettings(queryClient, data);
       }
     },
-    onError: (error, _variables, context) => {
-      // Rollback to previous settings on error, unless another account took
-      // over meanwhile: its cache is not ours to touch.
-      if (context?.previousSettings && context.started.isCurrent()) {
+    onError: (error, variables, context) => {
+      // Undo what this write changed, unless another account took over
+      // meanwhile: its cache is not ours to touch.
+      const previous = context?.previousSettings;
+      if (previous && context?.started.isCurrent()) {
         queryClient.setQueryData<SharedCycleSettings | null>(
           cycleSettingsQueryKey,
-          context.previousSettings
+          (current) =>
+            current
+              ? { ...current, ...previousValuesOf(variables, previous) }
+              : current
         );
       }
       showSaveFailed(error);
@@ -171,7 +196,13 @@ export function useSetCycleEnabled() {
   return useMutation({
     scope: CYCLE_SETTINGS_SCOPE,
     mutationFn: (enabled: boolean) => putSettings({ enabled }),
-    onMutate: () => startedOn(queryClient),
+    onMutate: async () => {
+      const started = startedOn(queryClient);
+      // A read already on its way answers with the value from before this
+      // change; landing after it, it would undo the switch on screen.
+      await queryClient.cancelQueries({ queryKey: cycleSettingsQueryKey });
+      return started;
+    },
     onSuccess: (data, _enabled, started) => {
       if (started.isCurrent()) showSavedCycleSettings(queryClient, data);
     },

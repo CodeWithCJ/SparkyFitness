@@ -316,16 +316,20 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
    * syncCustomForm / buildCustomOps / delete lookup / reconciliation / dirty
    * preservation — never the presentation partition, so a value typed inside
    * "More categories" is always part of the form regardless of expansion. */
-  // Categories of a feature turned off on purpose (the reproductive ones while
-  // cycle is off in Settings → Features) are left out; their data is kept.
-  const { hiddenCustomCategories } = useMobileFeatures();
   const dailyCustomCategories = useMemo(
+    () => (customCategories ?? []).filter(isDailyCustomCategory),
+    [customCategories]
+  );
+
+  /** PRESENTATION: the form model less the categories of a feature turned off
+   * on purpose (the reproductive ones while cycle is off in Settings →
+   * Features). Only the list shown leaves them out, so a value typed before
+   * the feature's state loaded stays in the form; their data is kept. */
+  const { hiddenCustomCategories } = useMobileFeatures();
+  const shownCustomCategories = useMemo(
     () =>
-      withoutHiddenCategories(
-        customCategories ?? [],
-        hiddenCustomCategories
-      ).filter(isDailyCustomCategory),
-    [customCategories, hiddenCustomCategories]
+      withoutHiddenCategories(dailyCustomCategories, hiddenCustomCategories),
+    [dailyCustomCategories, hiddenCustomCategories]
   );
 
   /**
@@ -372,12 +376,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
    * for the selected date. Always visible in the main custom list. */
   const primaryCustomCategories = useMemo(
     () =>
-      dailyCustomCategories.filter(
+      shownCustomCategories.filter(
         (cat) =>
           !isAutoHealthSyncCustomCategoryName(cat.name) ||
           manualCategoryIds.has(cat.id)
       ),
-    [dailyCustomCategories, manualCategoryIds]
+    [shownCustomCategories, manualCategoryIds]
   );
 
   /** More: a known health-sync name with NO manual entry for the selected
@@ -386,12 +390,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
    * accessible. */
   const moreCustomCategories = useMemo(
     () =>
-      dailyCustomCategories.filter(
+      shownCustomCategories.filter(
         (cat) =>
           isAutoHealthSyncCustomCategoryName(cat.name) &&
           !manualCategoryIds.has(cat.id)
       ),
-    [dailyCustomCategories, manualCategoryIds]
+    [shownCustomCategories, manualCategoryIds]
   );
 
   // Lazy "More categories" expansion state (presentation only — never owns the
@@ -1950,7 +1954,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color={accentPrimary} />
               </View>
             ) : (
-              dailyCustomCategories.length > 0 && (
+              shownCustomCategories.length > 0 && (
                 <View className="mt-4 mb-2">
                   <Text className="text-text-primary text-base font-semibold mb-3">
                     {t('measurements.custom.title', {
