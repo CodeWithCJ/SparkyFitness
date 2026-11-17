@@ -102,6 +102,13 @@ async function getTrainingCalendar(
   try {
     const inRange = (day: string) =>
       compareDays(day, start) >= 0 && compareDays(day, end) <= 0;
+    // A planned item matches an entry up to MATCH_WINDOW_DAYS from its day, and
+    // a past program day is rebuilt from the completions around it. So slots and
+    // entries are both read and matched over the range widened by that margin,
+    // and only the result is trimmed back: a day then has the same status
+    // whatever range it was asked for.
+    const matchStart = addDays(start, -MATCH_WINDOW_DAYS);
+    const matchEnd = addDays(end, MATCH_WINDOW_DAYS);
     const timezone = await loadUserTimezone(targetUserId);
     const today = todayInZone(timezone);
     const preferences =
@@ -113,17 +120,11 @@ async function getTrainingCalendar(
         : 0;
 
     const [rows, templates, program, zones, curveSessions] = await Promise.all([
-      // A planned item matches an entry up to MATCH_WINDOW_DAYS from its day,
-      // so read that much beyond the range and trim after matching.
-      reportRepository.getCalendarEntries(
-        targetUserId,
-        addDays(start, -MATCH_WINDOW_DAYS),
-        addDays(end, MATCH_WINDOW_DAYS)
-      ),
+      reportRepository.getCalendarEntries(targetUserId, matchStart, matchEnd),
       workoutPlanTemplateRepository.getPlanTemplatesForCalendar(
         targetUserId,
-        start,
-        end
+        matchStart,
+        matchEnd
       ),
       getRunProgram(targetUserId, authenticatedUserId),
       heartRateZoneService.resolveZonesForUser(targetUserId),
@@ -176,8 +177,8 @@ async function getTrainingCalendar(
             completions,
           },
           today,
-          start,
-          end
+          matchStart,
+          matchEnd
         )
       );
     }
@@ -198,7 +199,7 @@ async function getTrainingCalendar(
         minutes: a.minutes === null ? null : Number(a.minutes),
       })),
     }));
-    slots.push(...weeklyPlanSlots(plans, start, end));
+    slots.push(...weeklyPlanSlots(plans, matchStart, matchEnd));
     const nextByPlan = new Map<string, number[]>();
     if (
       compareDays(today, start) >= 0 &&
@@ -218,15 +219,11 @@ async function getTrainingCalendar(
         );
       }
     }
-    slots.push(
-      ...sequentialPlanSlots(plans, entries, today, nextByPlan).filter((slot) =>
-        inRange(slot.day)
-      )
-    );
+    slots.push(...sequentialPlanSlots(plans, entries, today, nextByPlan));
 
     const matched = matchPlan(slots, entries, today, zones.floors);
-    const { planned } = matched;
     // The margin only served matching: what is shown and totalled is the range.
+    const planned = matched.planned.filter((item) => inRange(item.day));
     const completed = matched.completed.filter((item) => inRange(item.day));
     const curve = computeFitnessFatigue(curveSessions, today, zones.floors);
 

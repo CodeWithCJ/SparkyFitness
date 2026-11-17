@@ -65,18 +65,19 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
       ? preferences.first_day_of_week
       : 0;
   const colors = useTrainingCalendarColors();
-  // The device's day until the server has said what day it is for the person;
-  // everything that depends on today (the ring, the "Today" label, week tags,
-  // the opening selection) follows the person's own day once it is known.
+  // The day the view opens on: the device's day until the first response says
+  // what day it is for the person, and then that day, adopted once. Later
+  // responses (other cached months, after midnight) never move it, so two
+  // cached months that disagree on today cannot keep rewriting it.
   const deviceToday = getTodayDate();
-  const [serverToday, setServerToday] = useState<string | null>(null);
-  const today = serverToday ?? deviceToday;
+  const [openingDay, setOpeningDay] = useState<string | null>(null);
+  const opening = openingDay ?? deviceToday;
   const [mode, setMode] = useState<ViewMode>('month');
   // What the person picked; until they pick, the view sits on today.
   const [anchorPick, setAnchorPick] = useState<string | null>(null);
   const [selectedPick, setSelectedPick] = useState<string | null>(null);
-  const anchor = anchorPick ?? today;
-  const selected = selectedPick ?? today;
+  const anchor = anchorPick ?? opening;
+  const selected = selectedPick ?? opening;
   const [showEarlier, setShowEarlier] = useState(false);
   const [loadHelpOpen, setLoadHelpOpen] = useState(false);
 
@@ -86,7 +87,10 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
     range.start,
     range.end
   );
-  if (data?.today && data.today !== serverToday) setServerToday(data.today);
+  if (data?.today && openingDay === null) setOpeningDay(data.today);
+  // Everything that depends on today follows the response on screen, which a
+  // focus refetch keeps current after midnight.
+  const today = data?.today ?? opening;
   const header = useScreenHeader({
     title: t('screens.trainingCalendar', { defaultValue: 'Training calendar' }),
     left: { kind: 'back' },

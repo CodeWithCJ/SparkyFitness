@@ -432,3 +432,23 @@ test("opens the selected day's week when switching to the week view", () => {
     screen.getByTestId('calendar-day-2026-09-30').props.accessibilityState
   ).toMatchObject({ selected: true });
 });
+
+test('does not loop when two cached months disagree on today', () => {
+  // The device says the 14th. The first month answers that today is 1 November,
+  // the month it then asks for answers the 14th again.
+  jest.mocked(useTrainingCalendar).mockImplementation(
+    (start: string) =>
+      ({
+        data:
+          start === '2026-09-28'
+            ? { ...data, today: '2026-11-01' }
+            : { ...data, today: '2026-10-14' },
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      }) as never
+  );
+  expect(() => renderScreen()).not.toThrow();
+  // It opened on the first answer's day and stayed there.
+  expect(screen.getByText('November 2026')).toBeTruthy();
+});
