@@ -1014,6 +1014,11 @@ async function recomputeMemberLocked(
       run.rules
     );
     const counted = challengeCountedEntries(entries, run.rules);
+    // Workouts of each day from the counted workouts, so a daily calorie
+    // total that an active-calories challenge adds up is never one
+    const workoutsOn = new Map<string, number>();
+    for (const e of counted)
+      workoutsOn.set(e.date, (workoutsOn.get(e.date) ?? 0) + 1);
     // The goal counts the same workouts as the day scores: manual entries
     // ignored, duplicates merged, filters applied, and only on the weekdays
     // the challenge counts (its own baseline weeks included).
@@ -1055,12 +1060,13 @@ async function recomputeMemberLocked(
         beat_average_bonus: d.beatAverageBonus,
         minutes: d.minutes,
         steps: d.steps,
-        workouts: d.workouts,
+        workouts: workoutsOn.get(d.date) ?? 0,
         // Tomorrow in the challenge's zone is scored for members whose own
         // day is already there; until it holds a workout or steps it is not
         // an eligible day, so it never counts as a missed one.
         eligible:
-          d.eligible && (d.date <= today || d.workouts > 0 || d.steps > 0),
+          d.eligible &&
+          (d.date <= today || workoutsOn.has(d.date) || d.steps > 0),
         detail: {
           prs: d.prs,
           entries: d.entries,

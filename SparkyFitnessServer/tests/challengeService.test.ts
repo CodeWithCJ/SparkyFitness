@@ -1323,6 +1323,8 @@ describe('bot review follow-ups, second round', () => {
     );
     const kcal = repo.saveMemberDays.mock.calls[1]![4];
     expect(kcal.find((d) => d.day === '2026-11-03')!.total).toBe(600);
+    // ...but a day holding only the daily total has no workout
+    expect(kcal.find((d) => d.day === '2026-11-03')!.workouts).toBe(0);
     expect(repo.saveMemberDays.mock.calls[1]![5]).toEqual([]);
   });
 
