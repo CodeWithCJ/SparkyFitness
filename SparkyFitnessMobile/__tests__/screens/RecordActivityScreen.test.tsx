@@ -107,6 +107,14 @@ jest.mock('../../src/services/haptics', () => ({
 }));
 jest.mock('../../src/services/gpsRecordingSave', () => ({
   saveRecordedActivity: jest.fn(),
+  // Goes through the mocked service, so a discard still reaches it.
+  discardRecordingAndEntry: jest.fn(async () => {
+    const service = jest.requireMock<{ discardRecording: () => Promise<void> }>(
+      '../../src/services/gpsRecordingService'
+    );
+    await service.discardRecording();
+    return null;
+  }),
 }));
 jest.mock('../../src/hooks/useIndoorDistanceEstimate', () => ({
   useIndoorDistanceEstimate: jest.fn(() => null),

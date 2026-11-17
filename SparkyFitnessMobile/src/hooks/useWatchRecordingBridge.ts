@@ -18,6 +18,7 @@ import {
   noteLiveHeartRate,
   pauseRecording,
   peekAppleWorkoutZones,
+  recordingEntryDeletedOnDiscard,
   resumeRecording,
   savedRecordingEntryId,
   useGpsRecording,
@@ -175,9 +176,11 @@ export function useWatchRecordingBridge(enabled: boolean): void {
       );
     } else if (lastSent.current) {
       // Saved or discarded: the session left the store.
+      // A discard that deleted a failed save's entry leaves nothing saved.
       const saved =
         lastSession.current?.id === lastSent.current.id &&
-        lastSession.current.savedEntryId != null;
+        lastSession.current.savedEntryId != null &&
+        !recordingEntryDeletedOnDiscard(lastSent.current.id);
       endRecording(lastSent.current.id, unitRef.current, !saved);
       lastSent.current = null;
       lastSession.current = null;

@@ -40,8 +40,10 @@ import {
   markLap,
   markRecordingSaved,
   pauseRecording,
+  recordingEntryDeletedOnDiscard,
   resetRecordingStateForTests,
   resumeRecording,
+  savedRecordingEntryId,
   startRecording,
   type RecordingSession,
   setRecordingAudioCues,
@@ -328,6 +330,38 @@ describe('finishing and discarding', () => {
     await startRecording({ activity: 'walk', notification });
     await markRecordingSaved('entry-1');
     expect((await storedSession())?.savedEntryId).toBe('entry-1');
+  });
+
+  it('hands the saved entry to the discard before clearing the session', async () => {
+    await startRecording({ activity: 'run', notification });
+    await markRecordingSaved('entry-1');
+    const id = (await storedSession())!.id;
+    const beforeClear = jest.fn(() => Promise.resolve());
+    await discardRecording(beforeClear);
+
+    expect(beforeClear).toHaveBeenCalledWith({
+      entryId: 'entry-1',
+      entryDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
+    expect(await storedSession()).toBeNull();
+    expect(recordingEntryDeletedOnDiscard(id)).toBe(true);
+    expect(savedRecordingEntryId(id)).toBeNull();
+  });
+
+  it('keeps the recording when removing the saved entry fails', async () => {
+    await startRecording({ activity: 'run', notification });
+    await markRecordingSaved('entry-1');
+    await expect(
+      discardRecording(() => Promise.reject(new Error('offline')))
+    ).rejects.toThrow('offline');
+    expect((await storedSession())?.savedEntryId).toBe('entry-1');
+  });
+
+  it('does not call back when nothing was saved yet', async () => {
+    await startRecording({ activity: 'run', notification });
+    const beforeClear = jest.fn(() => Promise.resolve());
+    await discardRecording(beforeClear);
+    expect(beforeClear).not.toHaveBeenCalled();
   });
 
   it('clears the session and every chunk on discard', async () => {

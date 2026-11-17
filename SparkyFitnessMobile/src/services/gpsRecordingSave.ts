@@ -4,9 +4,12 @@ import {
   attachExerciseEntryWatchTelemetry,
   createExercise,
   createExerciseEntry,
+  deleteExerciseEntry,
   searchExercises,
 } from './api/exerciseApi';
+import { ApiError } from './api/errors';
 import {
+  discardRecording,
   elapsedSeconds,
   getHeartRateSamples,
   markRecordingSaved,
@@ -253,11 +256,14 @@ export async function saveRecordedActivity(
     }
   }
 
-  if (!indoor) {
+  // A route needs two points. A run stopped before the first GPS fix is
+  // saved without one rather than sent for the server to refuse every time.
+  const track = indoor ? [] : toWorkoutGpsPoints(points);
+  if (track.length >= MIN_TRACK_POINTS) {
     const unitMeters =
       distanceUnit === 'miles' ? METERS_PER_MILE : METERS_PER_KM;
     await attachExerciseEntryGpsTrack(entryId, {
-      points: toWorkoutGpsPoints(points),
+      points: track,
       // Laps the person marked replace the automatic splits: they are the
       // intervals they meant to compare.
       laps: splitsToLapWindows(
@@ -269,6 +275,29 @@ export async function saveRecordedActivity(
   }
   await attachWatchHeartRate(entryId, session.id);
   return { entryId, entryDate, form, ...(wornOutShoe && { wornOutShoe }) };
+}
+
+/** The fewest points the server takes for a GPS track. */
+const MIN_TRACK_POINTS = 2;
+
+/**
+ * Discards the recording and the diary entry a failed save already created
+ * for it, so Discard leaves nothing behind. The entry goes first: if that
+ * fails the recording is kept and the discard can be tried again. Returns the
+ * deleted entry's day, for refreshing the diary, or null when there was none.
+ */
+export async function discardRecordingAndEntry(): Promise<string | null> {
+  let deletedDay: string | null = null;
+  await discardRecording(async ({ entryId, entryDate }) => {
+    try {
+      await deleteExerciseEntry(entryId);
+    } catch (error) {
+      // Already gone, for example deleted from the diary: nothing to undo.
+      if (!(error instanceof ApiError && error.statusCode === 404)) throw error;
+    }
+    deletedDay = entryDate;
+  });
+  return deletedDay;
 }
 
 /**

@@ -23,6 +23,7 @@ import {
   type RecordingActivity,
 } from '../utils/gpsRecording';
 import { programSpokenCues } from '../utils/programCues';
+import { toLocalDateString } from '../utils/dateUtils';
 import { isStepActivity, type FormMetrics } from '../utils/stride';
 import { captureStepCounterBaseline } from './stepCounter';
 import {
@@ -1676,6 +1677,24 @@ export function savedRecordingEntryId(sessionId: string): string | null {
   return savedEntriesBySession.get(sessionId) ?? null;
 }
 
+// Recordings whose diary entry a discard deleted. The session still carried
+// `savedEntryId` when it left the store, so the watch bridge asks here before
+// it reports the recording as saved. Bounded like the saved-entry map.
+const entriesDeletedOnDiscard = new Set<string>();
+
+function rememberEntryDeletedOnDiscard(sessionId: string): void {
+  entriesDeletedOnDiscard.add(sessionId);
+  if (entriesDeletedOnDiscard.size > MAX_SAVED_ENTRY_IDS) {
+    const oldest = entriesDeletedOnDiscard.values().next().value;
+    if (oldest !== undefined) entriesDeletedOnDiscard.delete(oldest);
+  }
+}
+
+/** Whether a discard deleted the diary entry this recording had created. */
+export function recordingEntryDeletedOnDiscard(sessionId: string): boolean {
+  return entriesDeletedOnDiscard.has(sessionId);
+}
+
 /** Drops the remembered entry id once a late callback has used it. */
 export function clearSavedRecordingEntryId(sessionId: string): void {
   savedEntriesBySession.delete(sessionId);
@@ -1723,9 +1742,23 @@ export function markRecordingSaved(
 }
 
 /** Drops the session and every stored point. */
-export function discardRecording(): Promise<void> {
+export function discardRecording(
+  /**
+   * Runs first with the diary entry a failed save already created, if any.
+   * Throwing keeps the recording, so the discard can be tried again.
+   */
+  beforeClear?: (saved: { entryId: string; entryDate: string }) => Promise<void>
+): Promise<void> {
   return enqueue(async () => {
     await hydrate();
+    if (beforeClear && session?.savedEntryId) {
+      await beforeClear({
+        entryId: session.savedEntryId,
+        entryDate: toLocalDateString(new Date(session.startedAt)),
+      });
+      savedEntriesBySession.delete(session.id);
+      rememberEntryDeletedOnDiscard(session.id);
+    }
     await stopUpdates();
     stopRecordingCues();
     await clearStoredPoints();

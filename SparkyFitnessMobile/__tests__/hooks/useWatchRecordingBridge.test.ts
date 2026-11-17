@@ -22,6 +22,7 @@ jest.mock('../../src/services/gpsRecordingService', () => ({
   addHeartRateSamples: jest.fn(() => Promise.resolve()),
   noteLiveHeartRate: jest.fn(() => Promise.resolve()),
   elapsedSeconds: jest.fn(() => 0),
+  recordingEntryDeletedOnDiscard: jest.fn(() => false),
 }));
 
 import { useWatchRecordingBridge } from '../../src/hooks/useWatchRecordingBridge';
@@ -212,6 +213,28 @@ describe('useWatchRecordingBridge', () => {
 
     expect(watch.updateRecordingState).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'ended', discarded: false }),
+      true
+    );
+  });
+
+  it('says a recording was discarded when the discard deleted its diary entry', () => {
+    setSnapshot({ ...baseSession, status: 'finished' });
+    const { rerender } = renderHook(() => useWatchRecordingBridge(true));
+    // A failed save had created the entry; Discard then deleted it.
+    setSnapshot({
+      ...baseSession,
+      status: 'finished',
+      savedEntryId: 'entry-1',
+    });
+    rerender({});
+    mockedService.recordingEntryDeletedOnDiscard.mockReturnValueOnce(true);
+    watch.updateRecordingState.mockClear();
+
+    setSnapshot(null);
+    rerender({});
+
+    expect(watch.updateRecordingState).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'ended', discarded: true }),
       true
     );
   });

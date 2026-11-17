@@ -3,18 +3,22 @@ import {
   attachExerciseEntryWatchTelemetry,
   createExercise,
   createExerciseEntry,
+  deleteExerciseEntry,
   searchExercises,
 } from '../../src/services/api/exerciseApi';
+import { ApiError } from '../../src/services/api/errors';
 import { findShoeThatReachedLimit } from '../../src/services/shoeWear';
 import {
   assignShoeToExerciseEntry,
   fetchShoes,
 } from '../../src/services/api/shoesApi';
 import {
+  discardRecording,
   getHeartRateSamples,
   markRecordingSaved,
 } from '../../src/services/gpsRecordingService';
 import {
+  discardRecordingAndEntry,
   resolveRecordingExercise,
   saveRecordedActivity,
 } from '../../src/services/gpsRecordingSave';
@@ -31,6 +35,7 @@ jest.mock('../../src/services/api/exerciseApi');
 jest.mock('../../src/services/api/shoesApi');
 jest.mock('../../src/services/shoeWear');
 jest.mock('../../src/services/gpsRecordingService', () => ({
+  discardRecording: jest.fn(() => Promise.resolve()),
   elapsedSeconds: jest.fn(() => 1500),
   markRecordingSaved: jest.fn(() => Promise.resolve()),
   getHeartRateSamples: jest.fn(() => Promise.resolve([])),
@@ -259,6 +264,55 @@ describe('saveRecordedActivity', () => {
       entryId: 'entry-1',
       entryDate: '2026-10-06',
     });
+  });
+});
+
+describe('saveRecordedActivity before a GPS fix', () => {
+  it.each([
+    ['no point', 0],
+    ['a single point', 1],
+  ])('saves a run with %s and sends no route', async (_label, count) => {
+    const saved = await saveRecordedActivity(
+      session,
+      points.slice(0, count),
+      'km'
+    );
+    expect(saved.entryId).toBe('entry-1');
+    expect(mockedCreateEntry).toHaveBeenCalledTimes(1);
+    expect(mockedAttach).not.toHaveBeenCalled();
+  });
+});
+
+describe('discardRecordingAndEntry', () => {
+  const mockedDiscard = jest.mocked(discardRecording);
+  const mockedDelete = jest.mocked(deleteExerciseEntry);
+  const withSavedEntry = () =>
+    mockedDiscard.mockImplementationOnce(async (beforeClear) => {
+      await beforeClear?.({ entryId: 'entry-9', entryDate: '2026-11-08' });
+    });
+
+  it('deletes the entry a failed save left, then discards', async () => {
+    withSavedEntry();
+    mockedDelete.mockResolvedValueOnce(undefined);
+    await expect(discardRecordingAndEntry()).resolves.toBe('2026-11-08');
+    expect(mockedDelete).toHaveBeenCalledWith('entry-9');
+  });
+
+  it('deletes nothing when no entry was saved', async () => {
+    await expect(discardRecordingAndEntry()).resolves.toBeNull();
+    expect(mockedDelete).not.toHaveBeenCalled();
+  });
+
+  it('treats an entry already deleted as done', async () => {
+    withSavedEntry();
+    mockedDelete.mockRejectedValueOnce(new ApiError('gone', 404, ''));
+    await expect(discardRecordingAndEntry()).resolves.toBe('2026-11-08');
+  });
+
+  it('keeps the recording when the entry cannot be deleted', async () => {
+    withSavedEntry();
+    mockedDelete.mockRejectedValueOnce(new ApiError('down', 503, ''));
+    await expect(discardRecordingAndEntry()).rejects.toThrow('down');
   });
 });
 

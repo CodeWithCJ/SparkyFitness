@@ -128,7 +128,10 @@ import {
   type RunSummaryParams,
 } from '../utils/runSummary';
 import { toLocalDateString } from '../utils/dateUtils';
-import { saveRecordedActivity } from '../services/gpsRecordingSave';
+import {
+  discardRecordingAndEntry,
+  saveRecordedActivity,
+} from '../services/gpsRecordingSave';
 import { useShoeMutations } from '../hooks/useShoes';
 import { promptToRetireShoe } from '../utils/retireShoePrompt';
 import { fireSelectionHaptic, fireSuccessHaptic } from '../services/haptics';
@@ -925,7 +928,9 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress: () =>
             void run(
               async () => {
-                await discardRecording();
+                const deletedDay = await discardRecordingAndEntry();
+                if (deletedDay)
+                  invalidateExerciseCache(queryClient, deletedDay);
                 // The screen stays mounted. A distance typed for this session
                 // must not be offered as the next one's estimate.
                 setIndoorDistanceText(null);
@@ -941,7 +946,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         },
       ]
     );
-  }, [run, t]);
+  }, [queryClient, run, t]);
 
   const indoorEstimate = useIndoorDistanceEstimate(session);
   // The estimate counts steps through finishedAt, cooldown included, so a
