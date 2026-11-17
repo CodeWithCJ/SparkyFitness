@@ -4782,7 +4782,9 @@
     "logFood": "Log Food",
     "deleteFood": "Delete Food",
     "notes": "Notes",
-    "deleteSheetTitle": "Delete food"
+    "deleteSheetTitle": "Delete food",
+    "nutriScoreProvider": "Nutri-Score {{grade}} (from Open Food Facts)",
+    "nutriScoreComputed": "Nutri-Score {{grade}} (calculated from nutrients)"
   },
   "foodEntryView": {
     "saveChanges": "Save food entry changes",

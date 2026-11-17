@@ -23,6 +23,9 @@ export const foodsSchema = z.object({
   is_quick_food: z.boolean(),
   images: z.array(z.string()),
   notes: z.string().nullable(),
+  added_sugars: z.number().nullable(),
+  fruit_veg_legume_percent: z.number().nullable(),
+  provider_nutriscore_grade: z.string().nullable(),
 });
 
 export const foodsInitializerSchema = z.object({
@@ -41,6 +44,9 @@ export const foodsInitializerSchema = z.object({
   is_quick_food: z.boolean().optional(),
   images: z.array(z.string()).optional(),
   notes: z.string().optional().nullable(),
+  added_sugars: z.number().optional().nullable(),
+  fruit_veg_legume_percent: z.number().optional().nullable(),
+  provider_nutriscore_grade: z.string().optional().nullable(),
 });
 
 export const foodsMutatorSchema = z.object({
@@ -59,6 +65,9 @@ export const foodsMutatorSchema = z.object({
   is_quick_food: z.boolean().optional(),
   images: z.array(z.string()).optional(),
   notes: z.string().optional().nullable(),
+  added_sugars: z.number().optional().nullable(),
+  fruit_veg_legume_percent: z.number().optional().nullable(),
+  provider_nutriscore_grade: z.string().optional().nullable(),
 });
 
 export type Foods = z.infer<typeof foodsSchema>;

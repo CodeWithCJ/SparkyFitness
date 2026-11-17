@@ -3,6 +3,7 @@
 // ID, plus the shared response normalization/custom-nutrient enrichment
 // helpers used by the v2 food routes and the refresh-from-source endpoint.
 
+import { withFoodHealthScore } from '@workspace/shared';
 import { log } from '../config/logging.js';
 import customNutrientService from './customNutrientService.js';
 import {
@@ -103,7 +104,7 @@ export function normalizeFoodForResponse(food: unknown): unknown {
     return food;
   }
 
-  const record = food as Record<string, unknown>;
+  const record = withFoodHealthScore(food as Record<string, unknown>);
 
   return {
     ...record,

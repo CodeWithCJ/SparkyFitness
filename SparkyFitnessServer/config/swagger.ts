@@ -7,6 +7,8 @@ import {
   CALORIE_CYCLING_MAX_OFFSET,
   CALORIE_CYCLING_MODES,
   CHART_SCALE_MODES,
+  FRONT_OF_PACK_REGIONS,
+  FRONT_OF_PACK_WARNINGS,
   MAX_CALORIE_SAFETY_FLOOR,
   MIN_CALORIE_SAFETY_FLOOR,
   recipeImportSaveRequestSchema,
@@ -466,6 +468,60 @@ const options = {
             is_quick_food: {
               type: 'boolean',
               description: 'Indicates if the food is marked for quick access.',
+            },
+            added_sugars: {
+              type: 'number',
+              nullable: true,
+              minimum: 0,
+              description:
+                'Added sugars in grams per 100 g (solids) or 100 ml (liquids). Null means unknown, which skips the added-sugar warnings.',
+            },
+            fruit_veg_legume_percent: {
+              type: 'number',
+              nullable: true,
+              minimum: 0,
+              maximum: 100,
+              description:
+                'Share of fruit, vegetables and legumes used by Nutri-Score. Null is scored as 0.',
+            },
+            provider_nutriscore_grade: {
+              type: 'string',
+              nullable: true,
+              enum: ['a', 'b', 'c', 'd', 'e'],
+              description:
+                'Nutri-Score grade published by Open Food Facts; preferred over the computed grade.',
+            },
+            health_score: {
+              type: 'object',
+              readOnly: true,
+              description:
+                'Computed on read. nutri_score is null when the default serving has no weight/volume basis; warnings lists the front-of-pack "high in" warnings for every supported region.',
+              properties: {
+                nutri_score: {
+                  type: 'object',
+                  nullable: true,
+                  properties: {
+                    grade: { type: 'string', enum: ['a', 'b', 'c', 'd', 'e'] },
+                    score: { type: 'integer', nullable: true },
+                    source: { type: 'string', enum: ['provider', 'computed'] },
+                  },
+                },
+                warnings: {
+                  type: 'object',
+                  properties: Object.fromEntries(
+                    ['brazil', 'chile', 'mexico'].map((region) => [
+                      region,
+                      {
+                        type: 'array',
+                        items: {
+                          type: 'string',
+                          enum: [...FRONT_OF_PACK_WARNINGS],
+                        },
+                      },
+                    ])
+                  ),
+                },
+              },
             },
             created_at: {
               type: 'string',
@@ -1570,6 +1626,12 @@ const options = {
               enum: [...CHART_SCALE_MODES],
               description:
                 'Date-axis layout for report charts. Time spaces points by elapsed time so gaps stay visible; point spaces entries evenly.',
+            },
+            front_of_pack_region: {
+              type: 'string',
+              enum: [...FRONT_OF_PACK_REGIONS],
+              description:
+                'Which regional front-of-pack warning set food views show: none, Brazil (ANVISA), Chile or Mexico. Food responses carry every region in health_score.warnings; this only picks the one displayed.',
             },
             food_search_all_providers_default: {
               type: 'boolean',

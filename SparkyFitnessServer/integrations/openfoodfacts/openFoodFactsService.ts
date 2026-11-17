@@ -86,6 +86,7 @@ const OFF_FIELDS = [
   'nutriments',
   'allergens_tags',
   'traces_tags',
+  'nutriscore_grade',
   // Product photos: front image preferred, plain image_url as fallback.
   'image_front_url',
   'image_url',
@@ -133,6 +134,7 @@ interface OffProduct {
   traces_tags?: string[];
   image_front_url?: string;
   image_url?: string;
+  nutriscore_grade?: string;
   [key: string]: unknown;
 }
 
@@ -1456,6 +1458,9 @@ function mapOpenFoodFactsProduct(
     is_custom: false,
     // Hotlinked in search results; localized on import (see models/food.ts).
     image_url: product.image_front_url || product.image_url || null,
+    // Composition values, per 100 g/ml regardless of the variant's serving.
+    added_sugars: parseOffNumber(nutriments['added-sugars_100g']),
+    provider_nutriscore_grade: product.nutriscore_grade ?? null,
     default_variant: metricVariant,
     ...(product[PARTIAL_SERVING_DATA]
       ? { [PARTIAL_SERVING_DATA]: true as const }

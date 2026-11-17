@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NumericInput } from '@/components/NumericInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { Plus, Camera, RefreshCw, Loader2 } from 'lucide-react';
@@ -490,6 +491,50 @@ const CustomFoodForm = ({
                     : renderVariantCard(variant, index)
                 )}
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="food-added-sugars">
+                  {t(
+                    'customFoodForm.addedSugarsLabel',
+                    'Added sugars (g per 100 g/ml)'
+                  )}
+                </Label>
+                <NumericInput
+                  id="food-added-sugars"
+                  min="0"
+                  step="0.1"
+                  value={formData.added_sugars}
+                  onValueChange={(value) => updateField('added_sugars', value)}
+                  placeholder={t('customFoodForm.unknown', 'Unknown')}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="food-fvl-percent">
+                  {t(
+                    'customFoodForm.fruitVegLegumePercentLabel',
+                    'Fruit, vegetables & legumes (%)'
+                  )}
+                </Label>
+                <NumericInput
+                  id="food-fvl-percent"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={formData.fruit_veg_legume_percent}
+                  onValueChange={(value) =>
+                    updateField('fruit_veg_legume_percent', value)
+                  }
+                  placeholder={t('customFoodForm.unknown', 'Unknown')}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                {t(
+                  'customFoodForm.healthScoreHelp',
+                  'Used for the Nutri-Score and front-of-pack warnings. Leave added sugars empty if the label does not state them.'
+                )}
+              </p>
             </div>
 
             {/*

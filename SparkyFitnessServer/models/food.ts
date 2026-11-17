@@ -12,7 +12,8 @@ import {
   toImageArray,
   resolveImageInput,
 } from '../utils/imageLocalizer.js';
-import { sanitizeNotes } from '@workspace/shared';
+import { NUTRI_SCORE_GRADES, sanitizeNotes } from '@workspace/shared';
+import { ValidationError } from '../utils/errors.js';
 import type {
   NutrientValue,
   NutrientFields,
@@ -59,6 +60,10 @@ export interface FoodInput extends NutrientFields {
   allergens?: string[] | null;
   traces?: string[] | null;
   abv_percent?: NutrientValue;
+  /** Grams per 100 g/ml; see the health score migration. */
+  added_sugars?: NutrientValue;
+  fruit_veg_legume_percent?: NutrientValue;
+  provider_nutriscore_grade?: string | null;
 }
 
 const DEFAULT_VARIANT_JSON_SQL = `
@@ -148,6 +153,32 @@ function sanitizeNumeric(value: NutrientValue) {
   const num = parseFloat(String(sanitizedValue));
   return isNaN(num) ? null : num;
 }
+const HEALTH_SCORE_INPUT_KEYS = [
+  'added_sugars',
+  'fruit_veg_legume_percent',
+  'provider_nutriscore_grade',
+] as const;
+
+/** Rejects out-of-range values with a 400 instead of a CHECK-constraint 500. */
+function sanitizeHealthScoreInputs(foodData: FoodUpdate) {
+  const addedSugars = sanitizeNumeric(foodData.added_sugars);
+  const fvlPercent = sanitizeNumeric(foodData.fruit_veg_legume_percent);
+  if (addedSugars !== null && addedSugars < 0) {
+    throw new ValidationError('added_sugars cannot be negative.');
+  }
+  if (fvlPercent !== null && (fvlPercent < 0 || fvlPercent > 100)) {
+    throw new ValidationError(
+      'fruit_veg_legume_percent must be between 0 and 100.'
+    );
+  }
+  const grade = foodData.provider_nutriscore_grade?.toLowerCase();
+  return {
+    added_sugars: addedSugars,
+    fruit_veg_legume_percent: fvlPercent,
+    provider_nutriscore_grade:
+      NUTRI_SCORE_GRADES.find((g) => g === grade) ?? null,
+  };
+}
 function sanitizeBoolean(value: BooleanLike) {
   if (
     value === true ||
@@ -182,6 +213,7 @@ async function searchFoods(
     let query = `
       SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
+        f.added_sugars, f.fruit_veg_legume_percent, f.provider_nutriscore_grade,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -242,11 +274,14 @@ async function searchFoods(
  * URLs must use `createFood`, not this.
  */
 async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
+  const healthScoreInputs = sanitizeHealthScoreInputs(foodData);
   // 1. Create the food entry
   const foodResult = await client.query(
     `INSERT INTO foods (
-        name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, images, notes, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified, images, notes`,
+        name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, images, notes,
+        added_sugars, fruit_veg_legume_percent, provider_nutriscore_grade, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified, images, notes,
+        added_sugars, fruit_veg_legume_percent, provider_nutriscore_grade`,
     [
       foodData.name,
       sanitizeBoolean(foodData.is_custom) ?? true,
@@ -260,6 +295,9 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
       sanitizeBoolean(foodData.is_quick_food) ?? false,
       JSON.stringify(resolveImageInput(foodData)),
       sanitizeNotes(foodData.notes) ?? null,
+      healthScoreInputs.added_sugars,
+      healthScoreInputs.fruit_veg_legume_percent,
+      healthScoreInputs.provider_nutriscore_grade,
     ]
   );
   const newFood = foodResult.rows[0];
@@ -530,6 +568,7 @@ async function findFoodByBarcode(barcode: string, userId: string) {
     const result = await client.query(
       `SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
+        f.added_sugars, f.fruit_veg_legume_percent, f.provider_nutriscore_grade,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -549,6 +588,7 @@ async function getFoodById(foodId: string, userId: string) {
     const result = await client.query(
       `SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
+        f.added_sugars, f.fruit_veg_legume_percent, f.provider_nutriscore_grade,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -597,6 +637,12 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
     const notesValue = notesKeyPresent
       ? (sanitizeNotes(foodData.notes) ?? null)
       : null;
+    // Same again: clearing a health score input back to "unknown" sends null.
+    const healthScoreInputs = sanitizeHealthScoreInputs(foodData);
+    const [addedSugarsPresent, fvlPresent, gradePresent] =
+      HEALTH_SCORE_INPUT_KEYS.map((key) =>
+        Object.prototype.hasOwnProperty.call(foodData, key)
+      );
     const result = await client.query(
       `UPDATE foods SET
         name = COALESCE($1, name),
@@ -610,6 +656,9 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
         is_quick_food = COALESCE($10, is_quick_food),
         images = COALESCE($11::jsonb, images),
         notes = CASE WHEN $12::boolean THEN $13 ELSE notes END,
+        added_sugars = CASE WHEN $15::boolean THEN $16 ELSE added_sugars END,
+        fruit_veg_legume_percent = CASE WHEN $17::boolean THEN $18 ELSE fruit_veg_legume_percent END,
+        provider_nutriscore_grade = CASE WHEN $19::boolean THEN $20 ELSE provider_nutriscore_grade END,
         updated_at = now()
       WHERE id = $14
       RETURNING *`,
@@ -631,6 +680,12 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
         notesKeyPresent,
         notesValue,
         id,
+        addedSugarsPresent,
+        healthScoreInputs.added_sugars,
+        fvlPresent,
+        healthScoreInputs.fruit_veg_legume_percent,
+        gradePresent,
+        healthScoreInputs.provider_nutriscore_grade,
       ]
     );
     const updated = result.rows[0];
@@ -766,6 +821,7 @@ async function getFoodsWithPagination(
     let query = `
       SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
+        f.added_sugars, f.fruit_veg_legume_percent, f.provider_nutriscore_grade,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -1236,6 +1292,9 @@ interface BulkImportFoodData {
   water_ml?: NumericInput;
   alcohol_g?: NumericInput;
   abv_percent?: NumericInput;
+  /** Food-level, per 100 g/ml; see the health score migration. */
+  added_sugars?: NumericInput;
+  fruit_veg_legume_percent?: NumericInput;
   glycemic_index?: string | null;
   custom_nutrients?: Record<string, unknown> | null;
   source?: string | null;
@@ -1256,6 +1315,8 @@ interface GroupedImportFood {
   provider_type?: string | null;
   provider_verified?: BooleanInput;
   images?: string[] | null;
+  added_sugars: number | null;
+  fruit_veg_legume_percent: number | null;
   variants: BulkImportFoodData[];
 }
 
@@ -1298,9 +1359,20 @@ async function createFoodsInBulk(
           provider_type: variant.provider_type || null,
           provider_verified: variant.provider_verified,
           images: resolveImageInput(variant),
+          added_sugars: null,
+          fruit_veg_legume_percent: null,
           variants: [],
         };
       }
+      // Composition fields belong to the food, but the CSV repeats them per
+      // variant row: the first row that states a value wins.
+      const healthScoreInputs = sanitizeHealthScoreInputs({
+        added_sugars: variant.added_sugars,
+        fruit_veg_legume_percent: variant.fruit_veg_legume_percent,
+      });
+      acc[key].added_sugars ??= healthScoreInputs.added_sugars;
+      acc[key].fruit_veg_legume_percent ??=
+        healthScoreInputs.fruit_veg_legume_percent;
       if (sanitizeBoolean(variant.provider_verified) === true) {
         acc[key].provider_verified = true;
       }
@@ -1382,6 +1454,10 @@ async function createFoodsInBulk(
              shared_with_public = $3,
              is_quick_food = $4,
              provider_verified = CASE WHEN $5 THEN TRUE ELSE provider_verified END,
+             -- A missing or blank column arrives as null and keeps the stored
+             -- value, like the variant nutrients below.
+             added_sugars = COALESCE($6, added_sugars),
+             fruit_veg_legume_percent = COALESCE($7, fruit_veg_legume_percent),
              updated_at = now()
            WHERE id = $1`,
           [
@@ -1390,14 +1466,17 @@ async function createFoodsInBulk(
             sanitizeBoolean(food.shared_with_public) ?? false,
             sanitizeBoolean(food.is_quick_food) ?? false,
             sanitizeBoolean(food.provider_verified) ?? false,
+            food.added_sugars,
+            food.fruit_veg_legume_percent,
           ]
         );
         foodId = existingFoodId;
         totalFoodsUpdated++;
       } else {
         const foodResult = await client.query(
-          `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type,provider_verified, images, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now(), now())
+          `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type,provider_verified, images,
+             added_sugars, fruit_veg_legume_percent, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, now(), now())
            RETURNING id`,
           [
             food.name,
@@ -1411,6 +1490,8 @@ async function createFoodsInBulk(
             food.provider_type || null,
             sanitizeBoolean(food.provider_verified) ?? false,
             JSON.stringify(resolveImageInput(food)),
+            food.added_sugars,
+            food.fruit_veg_legume_percent,
           ]
         );
         foodId = foodResult.rows[0].id;

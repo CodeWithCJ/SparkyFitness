@@ -329,6 +329,9 @@ export const saveFood = async (
       // The update branch spreads foodData, but this object is explicit, so a
       // new field has to be listed here or it is silently dropped on create.
       notes: foodData.notes ?? null,
+      added_sugars: foodData.added_sugars ?? null,
+      fruit_veg_legume_percent: foodData.fruit_veg_legume_percent ?? null,
+      provider_nutriscore_grade: foodData.provider_nutriscore_grade ?? null,
       provider_external_id: foodData.provider_external_id,
       provider_type: foodData.provider_type,
       provider_verified: foodData.provider_verified,

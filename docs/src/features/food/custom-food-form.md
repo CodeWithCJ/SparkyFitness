@@ -52,3 +52,30 @@ Diary entries have their own separate note, for something specific to one
 occasion. It is never copied from the food's note, and editing one never
 changes the other. A note follows its entry when you copy entries to another
 day.
+
+## Health score
+
+Every food with a serving measured in a weight or volume unit (g, oz, ml, cup,
+…) shows a **Nutri-Score** grade from A to E, calculated per 100 g or 100 ml
+with the 2023 algorithm (general foods and beverages). Foods imported from Open
+Food Facts use the grade Open Food Facts publishes when it has one. Servings in
+units like "piece" or "serving" have no per-100 basis, so they get no grade.
+
+Two optional fields on the form feed the score:
+
+* **Added sugars (g per 100 g/ml)** — as printed on the label. Leave it empty
+  when the label does not state it; an empty value never counts as "no added
+  sugar".
+* **Fruit, vegetables & legumes (%)** — the share of the food made of them. An
+  empty value scores as 0, as the Nutri-Score rules do.
+
+The food CSV import accepts both as optional `added_sugars` and
+`fruit_veg_legume_percent` columns; a missing column or a blank cell is stored
+as unknown, and an overwrite import keeps the stored value in that case.
+
+Under **Settings → Preferences → Front-of-pack warnings** you can also show a
+country's "high in" warnings next to the grade: Brazil (ANVISA), Chile or
+Mexico. They report whether a food crosses that country's thresholds; they do
+not know whether a product is packaged or which ingredients were added, which
+the regulations also take into account. The added-sugar warnings only appear
+when the food has an added sugars value.

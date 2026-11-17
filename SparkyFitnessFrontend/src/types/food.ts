@@ -1,5 +1,5 @@
 import { FormFoodVariant } from '@/utils/foodForm';
-import type { FoodProviderType } from '@workspace/shared';
+import type { FoodHealthScore, FoodProviderType } from '@workspace/shared';
 
 export type GlycemicIndex =
   'None' | 'Very Low' | 'Low' | 'Medium' | 'High' | 'Very High';
@@ -94,6 +94,12 @@ export interface Food {
    * owner can edit it.
    */
   notes?: string | null;
+  /** Grams per 100 g/ml; null means unknown. */
+  added_sugars?: number | null;
+  fruit_veg_legume_percent?: number | null;
+  provider_nutriscore_grade?: string | null;
+  /** Computed by the server on read; see `computeFoodHealthScore`. */
+  health_score?: FoodHealthScore;
   // ISO timestamp of when the current user starred this food. Present only on
   // items returned by the favorites endpoint; used to order the Favorites list.
   favorited_at?: string;
@@ -219,6 +225,9 @@ export interface CSVData {
   vitamin_c: number;
   calcium: number;
   iron: number;
+  /** Food-level, per 100 g/ml; null means unknown. */
+  added_sugars?: number | null;
+  fruit_veg_legume_percent?: number | null;
   custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
 }
 

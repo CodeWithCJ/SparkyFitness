@@ -6,6 +6,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import {
   addDays,
+  computeFoodHealthScore,
   getConversionFactor,
   prefillEntryTime,
   todayInZone,
@@ -738,8 +739,13 @@ function projectCatalogFood(row: any) {
   // one recipe cannot crowd out the other foods in a list.
   const notePreview = truncateNote(compacted.notes);
   if (notePreview) compacted.notes = notePreview;
+  const healthScore = computeFoodHealthScore(row);
+  const hasHealthSignal =
+    healthScore.nutri_score !== null ||
+    Object.values(healthScore.warnings).some((list) => list.length > 0);
   return {
     ...compacted,
+    ...(hasHealthSignal ? { health_score: healthScore } : {}),
     variants: defaultVariant?.id
       ? [compactRecord(defaultVariant, VARIANT_DROP)]
       : [],

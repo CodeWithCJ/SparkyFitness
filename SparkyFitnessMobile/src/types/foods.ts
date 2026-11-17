@@ -1,3 +1,5 @@
+import type { FoodHealthScore } from '@workspace/shared';
+
 export interface FoodDefaultVariant {
   id?: string;
   /**
@@ -60,6 +62,8 @@ export interface FoodItem {
    * food; only the owner can edit it.
    */
   notes?: string | null;
+  /** Computed by the server on read. */
+  health_score?: FoodHealthScore;
   default_variant: FoodDefaultVariant;
 }
 

@@ -22,6 +22,7 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
+import NutriScoreBadge from '../components/NutriScoreBadge';
 import { NoteMarkdown } from '../components/NoteMarkdown';
 import { usableFoodImages } from '../utils/foodImages';
 import ServerGate from '../components/ServerGate';
@@ -461,6 +462,10 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
           provider_verified={food.provider_verified}
           customNutrients={selectedCustomNutrients}
         />
+
+        {food.nutriScore ? (
+          <NutriScoreBadge nutriScore={food.nutriScore} />
+        ) : null}
 
         {food.notes ? (
           <View className="bg-surface rounded-xl p-4">

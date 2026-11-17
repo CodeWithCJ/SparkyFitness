@@ -18,6 +18,7 @@ import {
   BAC_ELIMINATION_RATE_RANGE,
 } from '../../nutrients/alcoholKinetics.ts';
 import { featureChoicesSchema } from '../../features/optionalFeatures.ts';
+import { FRONT_OF_PACK_REGIONS } from '../../nutrients/foodHealthScore.ts';
 
 export const SUPPORTED_TIME_FORMATS = ['HH:mm', 'h:mm A', 'h:mm a'] as const;
 export const SUPPORTED_DATE_FORMATS = [
@@ -234,6 +235,7 @@ export const userPreferencesInitializerSchema = z.object({
   chart_scale_mode: z.enum(CHART_SCALE_MODES).optional(),
   adaptive_workout_suggestions: z.boolean().optional(),
   intervals_push_nutrition: z.boolean().optional(),
+  front_of_pack_region: z.enum(FRONT_OF_PACK_REGIONS).optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   use_move_ring_active_calories: z.boolean().optional(),
@@ -345,6 +347,7 @@ export const userPreferencesMutatorSchema = z.object({
   chart_scale_mode: z.enum(CHART_SCALE_MODES).optional(),
   adaptive_workout_suggestions: z.boolean().optional(),
   intervals_push_nutrition: z.boolean().optional(),
+  front_of_pack_region: z.enum(FRONT_OF_PACK_REGIONS).optional(),
   measurement_decimal_places: z.number().int().min(0).optional(),
   use_external_bmr: z.boolean().optional(),
   use_move_ring_active_calories: z.boolean().optional(),

@@ -11,6 +11,11 @@ jest.mock('@/hooks/useAllergenPreferences', () => ({
   useAllergenPreferences: () => ({ data: [] }),
 }));
 
+// FoodHealthBadges reads the front-of-pack region; the badge itself has its own suite.
+jest.mock('@/contexts/PreferencesContext', () => ({
+  ...jest.requireActual('@/contexts/PreferencesContext'),
+  usePreferences: () => ({ frontOfPackRegion: 'none' }),
+}));
 jest.mock('@/contexts/ActiveUserContext', () => ({
   useActiveUser: () => ({
     activeUserId: 'user-1',

@@ -109,6 +109,9 @@ async function getRecentFoods(
         f.provider_type,
         f.provider_verified,
         f.images,
+        f.added_sugars,
+        f.fruit_veg_legume_percent,
+        f.provider_nutriscore_grade,
         rfe.last_used_date,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
@@ -161,6 +164,9 @@ async function getTopFoods(
         f.provider_type,
         f.provider_verified,
         f.images,
+        f.added_sugars,
+        f.fruit_veg_legume_percent,
+        f.provider_nutriscore_grade,
         tfe.usage_count,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
@@ -191,6 +197,9 @@ async function getFavoriteFoods(userId: string) {
         f.provider_type,
         f.provider_verified,
         f.images,
+        f.added_sugars,
+        f.fruit_veg_legume_percent,
+        f.provider_nutriscore_grade,
         ff.created_at AS favorited_at,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM food_favorites ff

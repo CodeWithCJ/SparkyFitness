@@ -7,6 +7,8 @@ import { apiCall } from '@/api/api';
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
     energyUnit: 'kcal',
+    // FoodHealthBadges reads the front-of-pack region.
+    frontOfPackRegion: 'none',
     convertEnergy: (value: number) => value,
     getEnergyUnitString: (unit: string) => unit,
   }),

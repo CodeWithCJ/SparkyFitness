@@ -323,8 +323,8 @@ describe('foodCoreService.searchFoods provider metadata', () => {
     );
 
     expect(foodRepository.updateFood).not.toHaveBeenCalled();
-    expect(result.recentFoods[0]).toBe(recentFood);
-    expect(result.topFoods[0]).toBe(topFood);
+    expect(result.recentFoods[0]).toMatchObject(recentFood);
+    expect(result.topFoods[0]).toMatchObject(topFood);
   });
 
   it('returns search results without refreshing provider metadata during search', async () => {
@@ -348,7 +348,7 @@ describe('foodCoreService.searchFoods provider metadata', () => {
     );
 
     expect(foodRepository.updateFood).not.toHaveBeenCalled();
-    expect(result.searchResults[0]).toBe(localFood);
+    expect(result.searchResults[0]).toMatchObject(localFood);
   });
 
   // Regression: the search limit used to read `food_display_limit`, a column

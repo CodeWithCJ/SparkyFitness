@@ -222,6 +222,8 @@ describe('mapOpenFoodFactsProduct', () => {
     expect(result).toEqual({
       name: 'Nutella',
       brand: 'Ferrero',
+      added_sugars: null,
+      provider_nutriscore_grade: null,
       barcode: '3017620422003',
       provider_external_id: '3017620422003',
       provider_type: 'openfoodfacts',
