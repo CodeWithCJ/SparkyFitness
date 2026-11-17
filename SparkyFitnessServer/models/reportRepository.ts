@@ -1,4 +1,5 @@
 import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
+import { CalendarEntryLimitError } from '../utils/errors.js';
 import type { FoodVariantNutrientField } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
 import {
@@ -882,46 +883,46 @@ async function getCalendarEntries(
            AND ee.exercise_name != 'Active Calories'
        ) entries
        WHERE duration_minutes > 0
-       ORDER BY entry_date DESC, created_at DESC, id DESC
-       LIMIT ${MAX_CALENDAR_ENTRIES}`,
+       ORDER BY entry_date ASC, created_at ASC, id ASC
+       LIMIT ${MAX_CALENDAR_ENTRIES + 1}`,
       [userId, startDate, endDate]
     );
-    // Newest first so the cap drops the oldest; the calendar wants them oldest first.
-    return result.rows
-      .reverse()
-      .map(
-        (row: {
-          id: string;
-          day: string;
-          exercise_name: string | null;
-          category: string | null;
-          notes: string | null;
-          provider_name: string | null;
-          detail_data: unknown;
-          exercise_source_id: string | null;
-          duration_minutes: string | number;
-          distance: string | number | null;
-          avg_heart_rate: string | number | null;
-          workout_plan_assignment_id: number | null;
-          preset_entry_id: string | null;
-          preset_name: string | null;
-        }) => ({
-          id: row.id,
-          day: row.day,
-          exerciseName: row.exercise_name,
-          category: row.category,
-          notes: row.notes,
-          providerName: row.provider_name,
-          detailData: row.detail_data,
-          exerciseSourceId: row.exercise_source_id,
-          durationMinutes: Number(row.duration_minutes),
-          distanceKm: toNumberOrNull(row.distance),
-          avgHeartRate: toNumberOrNull(row.avg_heart_rate),
-          workoutPlanAssignmentId: row.workout_plan_assignment_id,
-          presetEntryId: row.preset_entry_id,
-          presetName: row.preset_name,
-        })
-      );
+    if (result.rows.length > MAX_CALENDAR_ENTRIES) {
+      throw new CalendarEntryLimitError(MAX_CALENDAR_ENTRIES);
+    }
+    return result.rows.map(
+      (row: {
+        id: string;
+        day: string;
+        exercise_name: string | null;
+        category: string | null;
+        notes: string | null;
+        provider_name: string | null;
+        detail_data: unknown;
+        exercise_source_id: string | null;
+        duration_minutes: string | number;
+        distance: string | number | null;
+        avg_heart_rate: string | number | null;
+        workout_plan_assignment_id: number | null;
+        preset_entry_id: string | null;
+        preset_name: string | null;
+      }) => ({
+        id: row.id,
+        day: row.day,
+        exerciseName: row.exercise_name,
+        category: row.category,
+        notes: row.notes,
+        providerName: row.provider_name,
+        detailData: row.detail_data,
+        exerciseSourceId: row.exercise_source_id,
+        durationMinutes: Number(row.duration_minutes),
+        distanceKm: toNumberOrNull(row.distance),
+        avgHeartRate: toNumberOrNull(row.avg_heart_rate),
+        workoutPlanAssignmentId: row.workout_plan_assignment_id,
+        presetEntryId: row.preset_entry_id,
+        presetName: row.preset_name,
+      })
+    );
   } finally {
     client.release();
   }

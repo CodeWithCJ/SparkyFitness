@@ -6,6 +6,7 @@ import express, {
 import { authenticate } from '../middleware/authMiddleware.js';
 import reportService from '../services/reportService.js';
 import trainingCalendarService from '../services/trainingCalendarService.js';
+import { CalendarEntryLimitError } from '../utils/errors.js';
 import {
   daysBetween,
   isDayString,
@@ -441,7 +442,7 @@ router.get(
  *       200:
  *         description: Planned items (run program, workout plans) with a status, completed diary workouts, weekly totals and training load per sport group.
  *       400:
- *         description: Missing or invalid range (at most 120 days).
+ *         description: Missing or invalid range (at most 120 days), or a range with more workouts than one request reads.
  */
 router.get('/training-calendar', authenticate, async (req, res, next) => {
   const parsed = trainingCalendarQuerySchema.safeParse(req.query);
@@ -489,6 +490,9 @@ router.get('/training-calendar', authenticate, async (req, res, next) => {
     );
     res.status(200).json(data);
   } catch (error) {
+    if (error instanceof CalendarEntryLimitError) {
+      return res.status(400).json({ error: error.message });
+    }
     next(error);
   }
 });

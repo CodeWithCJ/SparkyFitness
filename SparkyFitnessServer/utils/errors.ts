@@ -165,3 +165,17 @@ function describeError(error: unknown): string {
 }
 
 export { describeError };
+
+/**
+ * Thrown when a range holds more workouts than one training calendar request
+ * reads. The calendar never answers from a truncated diary: a missing old entry
+ * would show its plan as missed and drop it from the totals.
+ */
+export class CalendarEntryLimitError extends Error {
+  constructor(limit: number) {
+    super(
+      `That range has more than ${limit} workouts; choose a shorter range.`
+    );
+    this.name = 'CalendarEntryLimitError';
+  }
+}

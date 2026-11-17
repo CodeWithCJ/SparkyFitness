@@ -3,6 +3,7 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import express from 'express';
 import errorHandler from '../middleware/errorHandler.js';
+import { CalendarEntryLimitError } from '../utils/errors.js';
 import { trainingCalendarResponseSchema } from '@workspace/shared';
 
 const { getTrainingCalendar, canAccessUserData } = vi.hoisted(() => ({
@@ -136,5 +137,16 @@ describe('GET /api/reports/training-calendar', () => {
     );
     expect(res.status).toBe(403);
     expect(getTrainingCalendar).not.toHaveBeenCalled();
+  });
+
+  it('answers 400 instead of a calendar built from a truncated diary', async () => {
+    getTrainingCalendar.mockRejectedValueOnce(
+      new CalendarEntryLimitError(5000)
+    );
+    const res = await request(app).get(
+      `${url}?start=2026-10-12&end=2026-10-18`
+    );
+    expect(res.status).toBe(400);
+    expect(res.body.error).toMatch(/more than 5000 workouts/);
   });
 });
