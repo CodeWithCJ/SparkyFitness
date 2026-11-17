@@ -720,19 +720,18 @@ export async function getStandings(
   );
   const rules = rulesForDay(changes, window.start);
 
+  // The marker first, then the rows: both are committed together, so read
+  // in this order a frozen period always comes with its stored rows. A
+  // period whose rows all went with deleted accounts is still final, and is
+  // never rescored.
+  const frozenStarts =
+    await challengeRepository.frozenPeriodStarts(challengeId);
   const frozen = await challengeRepository.getResultsForMember(
     userId,
     challengeId,
     window.start
   );
-  // Frozen by the challenge's marker: a period whose result rows all went
-  // with deleted accounts is still final, and is never rescored.
-  if (
-    frozen.length ||
-    (await challengeRepository.frozenPeriodStarts(challengeId)).includes(
-      window.start
-    )
-  ) {
+  if (frozenStarts.includes(window.start) || frozen.length) {
     // Rounded once, as the shared ranking does, for both fields
     const group =
       Math.round(frozen.reduce((s, r) => s + Number(r.total), 0) * 10) / 10;

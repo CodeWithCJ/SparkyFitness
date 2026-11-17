@@ -851,6 +851,11 @@ describe('review fixes (PR #3585)', () => {
       expect(res.final).toBe(true);
       expect(res.rows).toEqual([]);
       expect(repo.getDailyScoresForMember).not.toHaveBeenCalled();
+      // The marker is read before the rows, so a period frozen in between
+      // is never shown final without its rows
+      expect(
+        repo.frozenPeriodStarts.mock.invocationCallOrder.at(-1)!
+      ).toBeLessThan(repo.getResultsForMember.mock.invocationCallOrder.at(-1)!);
     });
 
     it('a frozen period keeps its winner and marks the caller', async () => {
