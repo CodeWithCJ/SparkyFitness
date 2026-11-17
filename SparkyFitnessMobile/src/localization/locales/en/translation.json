@@ -8274,6 +8274,7 @@
     "nightsOfWindow": "{{nights}} of {{total}}",
     "stageShare": "{{pct}}% of the night",
     "negativeDuration": "-{{duration}}",
+    "needLoadFailed": "Couldn't load tonight's sleep need",
     "needTonight": "Sleep need tonight",
     "needTotal": "Total",
     "needBaseline": "Baseline",

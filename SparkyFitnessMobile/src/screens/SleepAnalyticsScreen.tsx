@@ -102,7 +102,11 @@ const SleepAnalyticsScreen: React.FC<SleepAnalyticsScreenProps> = () => {
   } = useReportCustomization();
   const { analytics, previousAnalytics, isLoading, isError } =
     useSleepAnalytics({ window: reportWindow });
-  const { data: sleepNeed } = useSleepNeed();
+  const {
+    data: sleepNeed,
+    isError: sleepNeedFailed,
+    refetch: refetchSleepNeed,
+  } = useSleepNeed();
   const days = reportWindow.days;
 
   const header = useScreenHeader({
@@ -264,6 +268,22 @@ const SleepAnalyticsScreen: React.FC<SleepAnalyticsScreenProps> = () => {
               ]
             : []),
         ]}
+      />
+    ) : isSectionShown('sleep.need') && sleepNeedFailed ? (
+      <StatusView
+        icon="sleep-bedtime"
+        iconTone="muted"
+        inline
+        title={t('sleepAnalytics.needLoadFailed', {
+          defaultValue: "Couldn't load tonight's sleep need",
+        })}
+        action={{
+          label: t('common.retry', { defaultValue: 'Retry' }),
+          onPress: () => {
+            void refetchSleepNeed();
+          },
+          variant: 'secondary',
+        }}
       />
     ) : null;
 
