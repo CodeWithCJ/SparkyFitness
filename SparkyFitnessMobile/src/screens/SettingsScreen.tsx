@@ -319,6 +319,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
               )}
               {isConnected && (
                 <SettingsRow
+                  icon="feature-settings"
+                  title={t('settings.rows.features', {
+                    defaultValue: 'Features',
+                  })}
+                  onPress={() => navigation.navigate('FeatureSettings')}
+                  iconColor={catViolet}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
                   icon="dashboard-settings"
                   title={t('settings.rows.dashboard', {
                     defaultValue: 'Dashboard',

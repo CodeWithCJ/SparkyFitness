@@ -63,6 +63,12 @@ jest.mock('../../src/hooks/useCustomMeasurements', () => ({
   useDeleteCustomMeasurement: jest.fn(),
 }));
 
+// Categories of features turned off on purpose (Settings → Features).
+let mockHiddenCategories: ReadonlySet<string> = new Set();
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({ hiddenCustomCategories: mockHiddenCategories }),
+}));
+
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
   return {
@@ -635,6 +641,7 @@ describe('MeasurementsAddScreen — omitted vs null save semantics', () => {
 describe('MeasurementsAddScreen — custom measurements', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockHiddenCategories = new Set();
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     setMeasurements({});
     setPreferences({
@@ -717,6 +724,23 @@ describe('MeasurementsAddScreen — custom measurements', () => {
         : String(n.props?.children);
     expect(labelText(labels[0])).toBe('Stres (mmHg)');
     expect(labelText(labels[1])).toBe('Energy Level');
+  });
+
+  test('leaves out the categories of a feature turned off on purpose', () => {
+    setCustomCategories([
+      customCategory({ id: 'c1', name: 'Energy', measurement_type: '' }),
+      customCategory({
+        id: 'c2',
+        name: 'menstruation_flow',
+        display_name: 'Menstrual flow',
+        measurement_type: '',
+      }),
+    ]);
+    mockHiddenCategories = new Set(['menstruation_flow']);
+    const screen = renderScreen();
+
+    expect(screen.getByText('Energy')).toBeTruthy();
+    expect(screen.queryByText('Menstrual flow')).toBeNull();
   });
 
   test('renders no custom section when there are no categories', () => {

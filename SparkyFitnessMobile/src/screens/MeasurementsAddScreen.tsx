@@ -36,6 +36,7 @@ import {
 import { useUpsertCheckIn } from '../hooks/useUpsertCheckIn';
 import { usePreferences } from '../hooks/usePreferences';
 import { useProfile } from '../hooks/useProfile';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import { getTodayDate, addDays, formatDate } from '../utils/dateUtils';
 import {
   weightToKg,
@@ -50,6 +51,7 @@ import {
   calculateAge,
   energyFromKcal,
   normalizeEnergyUnit,
+  withoutHiddenCategories,
 } from '@workspace/shared';
 import {
   EMPTY_FORM,
@@ -314,9 +316,16 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
    * syncCustomForm / buildCustomOps / delete lookup / reconciliation / dirty
    * preservation — never the presentation partition, so a value typed inside
    * "More categories" is always part of the form regardless of expansion. */
+  // Categories of a feature turned off on purpose (the reproductive ones while
+  // cycle is off in Settings → Features) are left out; their data is kept.
+  const { hiddenCustomCategories } = useMobileFeatures();
   const dailyCustomCategories = useMemo(
-    () => (customCategories ?? []).filter(isDailyCustomCategory),
-    [customCategories]
+    () =>
+      withoutHiddenCategories(
+        customCategories ?? [],
+        hiddenCustomCategories
+      ).filter(isDailyCustomCategory),
+    [customCategories, hiddenCustomCategories]
   );
 
   /**

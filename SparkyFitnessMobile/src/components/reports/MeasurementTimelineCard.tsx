@@ -21,6 +21,7 @@ import {
   GLUCOSE_CONTEXT_KINDS,
   glucoseContextForDay,
   type GlucoseContextKind,
+  withoutHiddenCategories,
 } from '@workspace/shared';
 import Icon, { type IconName } from '../Icon';
 import BottomSheetPicker from '../BottomSheetPicker';
@@ -37,6 +38,8 @@ import {
 } from '../charts/chartFormatting';
 import { useGlucoseContext } from '../../hooks/useGlucoseContext';
 import { useMeasurementTimeline } from '../../hooks/useMeasurementTimeline';
+import { useCustomCategories } from '../../hooks/useCustomMeasurements';
+import { useMobileFeatures } from '../../hooks/useMobileFeatures';
 import { usePreferences } from '../../hooks/usePreferences';
 import { addDays } from '../../utils/dateUtils';
 import { formatHourLabel } from '../../utils/entryTimeDisplay';
@@ -102,7 +105,18 @@ export default function MeasurementTimelineCard({
     (localDateTimeToUtc(`${addDays(day, 1)}T00:00`, timezone).getTime() -
       dayStart) /
     60_000;
-  const [categoryId, setCategoryId] = useState('blood_glucose');
+  const [chosenCategoryId, setCategoryId] = useState('blood_glucose');
+  // Categories of a feature turned off on purpose (the reproductive ones while
+  // cycle is off in Settings → Features) are not offered, and one picked
+  // before falls back to glucose; it comes back when the feature does.
+  const { hiddenCustomCategories } = useMobileFeatures();
+  const { data: allCustomCategories } = useCustomCategories();
+  const categoryId = allCustomCategories?.some(
+    (item) =>
+      item.id === chosenCategoryId && hiddenCustomCategories.has(item.name)
+  )
+    ? 'blood_glucose'
+    : chosenCategoryId;
   const [sourceChoice, setSource] = useState('');
   const glucoseUnit = preferences?.default_glucose_unit ?? DEFAULT_GLUCOSE_UNIT;
   const [selected, setSelected] = useState<number | null>(null);
@@ -125,7 +139,7 @@ export default function MeasurementTimelineCard({
         defaultValue: 'Blood glucose (CGM)',
       }),
     },
-    ...(categories.data ?? [])
+    ...withoutHiddenCategories(categories.data ?? [], hiddenCustomCategories)
       .filter((category) => category.data_type !== 'text')
       .map((category) => ({
         value: category.id,
