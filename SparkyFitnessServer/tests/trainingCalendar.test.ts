@@ -765,3 +765,21 @@ describe('oversized plans', () => {
     expect(Date.now() - t0).toBeLessThan(1500);
   });
 });
+
+describe('groupPresetEntries at scale', () => {
+  it('groups thousands of presets in linear time', () => {
+    const parts = Array.from({ length: 6000 }, (_, i) => ({
+      ...entry(`p${i}`, -(i % 60), {
+        sport: 'strength',
+        distanceKm: null,
+      }),
+      presetEntryId: `preset-${Math.floor(i / 2)}`,
+      presetName: 'Upper',
+    }));
+    const t0 = Date.now();
+    const grouped = groupPresetEntries(parts);
+    expect(Date.now() - t0).toBeLessThan(500);
+    expect(grouped).toHaveLength(3000);
+    expect(grouped[0]!.durationMinutes).toBe(60);
+  });
+});

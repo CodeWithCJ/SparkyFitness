@@ -158,6 +158,9 @@ export function groupPresetEntries(
 ): CalendarEntry[] {
   const out: CalendarEntry[] = [];
   const groups = new Map<string, GroupableEntry[]>();
+  // Each group by the id of its first entry (the placeholder in `out`), so
+  // finding it is a lookup rather than a scan of every group.
+  const groupByFirstId = new Map<string, GroupableEntry[]>();
   for (const entry of entries) {
     if (isPassiveEntry(entry)) continue;
     const { presetEntryId, presetName, ...plain } = entry;
@@ -169,10 +172,13 @@ export function groupPresetEntries(
     const list = groups.get(presetEntryId) ?? [];
     list.push(entry);
     groups.set(presetEntryId, list);
-    if (list.length === 1) out.push(plain); // placeholder keeps day order
+    if (list.length === 1) {
+      out.push(plain); // placeholder keeps day order
+      groupByFirstId.set(entry.id, list);
+    }
   }
   return out.map((entry) => {
-    const group = [...groups.values()].find((g) => g[0]?.id === entry.id);
+    const group = groupByFirstId.get(entry.id);
     if (!group) return entry;
     if (group.length === 1) {
       return { ...entry, sport: presetSport(group) };
