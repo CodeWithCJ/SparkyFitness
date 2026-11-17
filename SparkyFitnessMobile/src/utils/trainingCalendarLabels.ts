@@ -4,6 +4,7 @@ import type {
   PlannedItem,
   PlannedStatus,
 } from '@workspace/shared';
+import { formatLocalizedNumber } from '../localization';
 import { programName } from '../components/recording/RunProgramCard';
 
 export function sportLoadLabel(t: TFunction, sport: LoadSportGroup): string {
@@ -48,7 +49,7 @@ export function plannedItemLabel(t: TFunction, item: PlannedItem): string {
   if (item.source === 'runProgram' && item.programId) {
     return t('trainingCalendar.programWorkout', {
       name: programName(t, item.programId),
-      number: item.workoutNumber ?? 1,
+      number: formatLocalizedNumber(item.workoutNumber ?? 1),
       defaultValue: '{{name}} · workout {{number}}',
     });
   }

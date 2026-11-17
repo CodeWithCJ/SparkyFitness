@@ -222,7 +222,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
                   : 'text-text-secondary'
             }`}
           >
-            {Number(day.slice(8))}
+            {formatLocalizedNumber(Number(day.slice(8)))}
           </Text>
         </View>
         <DayMarks marks={marks} />
@@ -243,13 +243,14 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
           summary
             ? summary.planned > 0
               ? t('trainingCalendar.weekTotalA11y', {
-                  done: summary.done,
-                  planned: summary.planned,
+                  done: formatLocalizedNumber(summary.done),
+                  planned: formatLocalizedNumber(summary.planned),
                   defaultValue: '{{done}} of {{planned}} planned sessions done',
                 })
               : t('trainingCalendar.weekLoggedA11y', {
                   count: summary.done,
-                  defaultValue: '{{count}} sessions logged',
+                  formattedCount: formatLocalizedNumber(summary.done),
+                  defaultValue: '{{formattedCount}} sessions logged',
                 })
             : t('trainingCalendar.weekEmptyA11y', {
                 defaultValue: 'No sessions this week',
@@ -267,8 +268,8 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
           >
             {summary.planned > 0
               ? t('trainingCalendar.weekTotalShort', {
-                  done: summary.done,
-                  planned: summary.planned,
+                  done: formatLocalizedNumber(summary.done),
+                  planned: formatLocalizedNumber(summary.planned),
                   defaultValue: '{{done}}/{{planned}}',
                 })
               : formatLocalizedNumber(summary.done)}
@@ -281,20 +282,22 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
   // A run program workout opens its own screen (steps, the run it was done as,
   // repeat or skip); a workout plan item has no screen of its own.
   const renderPlanned = (item: PlannedItem) => {
-    const programIndex =
-      item.source === 'runProgram' && item.workoutNumber != null
-        ? item.workoutNumber - 1
+    const target =
+      item.source === 'runProgram' &&
+      item.workoutNumber != null &&
+      item.programId != null
+        ? { index: item.workoutNumber - 1, programId: item.programId }
         : null;
     return (
       <Pressable
         key={item.id}
         testID={`planned-${item.id}`}
-        disabled={programIndex === null}
-        accessibilityRole={programIndex === null ? undefined : 'button'}
+        disabled={target === null}
+        accessibilityRole={target === null ? undefined : 'button'}
         onPress={() =>
-          programIndex === null
+          target === null
             ? undefined
-            : navigation.navigate('RunProgramWorkout', { index: programIndex })
+            : navigation.navigate('RunProgramWorkout', target)
         }
         className="flex-row items-center bg-raised rounded-lg px-3 py-2.5 mt-2"
       >
@@ -327,7 +330,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
               : ''}
           </Text>
         </View>
-        {programIndex !== null ? (
+        {target !== null ? (
           <View className="w-8 h-8 rounded-full border border-border-subtle items-center justify-center ml-2">
             <Icon name="chevron-forward" size={16} color={colors.extra} />
           </View>
@@ -338,10 +341,13 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
 
   // A completed row wears the colour of the planned item it counted for, or
   // the extra colour when nothing was planned: sport is in the text.
-  const plannedStatus = new Map(detail.planned.map((p) => [p.id, p.status]));
+  const plannedStatus = new Map(
+    (data?.planned ?? []).map((p) => [p.id, p.status])
+  );
   const renderCompleted = (item: CompletedItem) => (
     <View key={item.id} className="flex-row items-center py-2">
       <View
+        testID={`completed-bar-${item.id}`}
         className="w-2 h-8 rounded-full mr-3"
         style={{
           backgroundColor:
@@ -434,19 +440,23 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
           <Text className="text-text-primary text-base font-semibold flex-1">
             {week.plannedSessions > 0
               ? t('trainingCalendar.totals.sessions', {
-                  done: week.doneSessions + week.partialSessions,
-                  planned: week.plannedSessions,
+                  done: formatLocalizedNumber(
+                    week.doneSessions + week.partialSessions
+                  ),
+                  planned: formatLocalizedNumber(week.plannedSessions),
                   defaultValue: '{{done}} of {{planned}} planned sessions',
                 })
               : t('trainingCalendar.totals.sessionsLogged', {
                   count: week.completedSessions,
-                  defaultValue: '{{count}} sessions logged',
+                  formattedCount: formatLocalizedNumber(week.completedSessions),
+                  defaultValue: '{{formattedCount}} sessions logged',
                 })}
             {week.plannedSessions > 0 && week.extraSessions > 0 ? (
               <Text className="text-accent-primary text-sm font-normal">
                 {` · ${t('trainingCalendar.totals.extra', {
                   count: week.extraSessions,
-                  defaultValue: '{{count}} extra',
+                  formattedCount: formatLocalizedNumber(week.extraSessions),
+                  defaultValue: '{{formattedCount}} extra',
                 })}`}
               </Text>
             ) : null}
@@ -748,7 +758,8 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
                       })
                     : t('trainingCalendar.showEarlier', {
                         count: earlier.length,
-                        defaultValue: 'Show earlier weeks ({{count}})',
+                        formattedCount: formatLocalizedNumber(earlier.length),
+                        defaultValue: 'Show earlier weeks ({{formattedCount}})',
                       })}
                 </Text>
               </Pressable>

@@ -67,6 +67,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const usesNativeTabs = useNativeIOSTabsActive();
   const verticalBar = useVerticalBar();
   const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const mutedColor = useCSSVariable('--color-text-muted') as string;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isNavigationLocked, runNavigationAction } =
     useNavigationActionGuard(navigation);
@@ -422,7 +423,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
               })}
             </Text>
           </View>
-          <Icon name="chevron-forward" size={20} color="#999" />
+          <Icon name="chevron-forward" size={20} color={mutedColor} />
         </Pressable>
         <Pressable
           className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"

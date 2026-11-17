@@ -10,6 +10,19 @@ import TrainingCalendarScreen from '../../src/screens/TrainingCalendarScreen';
 import { useTrainingCalendar } from '../../src/hooks/useTrainingCalendar';
 import { initializeI18n } from '../../src/localization/i18n';
 
+jest.mock('../../src/hooks/useTrainingCalendarColors', () => ({
+  useTrainingCalendarColors: () => ({
+    sport: {},
+    status: {
+      done: '#done',
+      partial: '#partial',
+      missed: '#missed',
+      upcoming: '#upcoming',
+    },
+    extra: '#extra',
+    mutedIcon: '#muted',
+  }),
+}));
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: jest.fn(() => null),
 }));
@@ -351,7 +364,10 @@ test('opens the program workout from a planned run program item', () => {
   state({ data: { ...data, planned: [...data.planned, program] } });
   renderScreen();
   fireEvent.press(screen.getByTestId('planned-program-1'));
-  expect(navigate).toHaveBeenCalledWith('RunProgramWorkout', { index: 3 });
+  expect(navigate).toHaveBeenCalledWith('RunProgramWorkout', {
+    index: 3,
+    programId: 'beginner5k',
+  });
 });
 
 test('a workout plan item opens nothing', () => {
@@ -451,4 +467,25 @@ test('does not loop when two cached months disagree on today', () => {
   expect(() => renderScreen()).not.toThrow();
   // It opened on the first answer's day and stayed there.
   expect(screen.getByText('November 2026')).toBeTruthy();
+});
+
+test('a completion keeps the colour of its planned item when that item is on another day', () => {
+  // Planned on Monday the 12th, done on the 14th: the 14th's own list has no
+  // such item, yet the row still wears the item's status colour, not Extra.
+  state({
+    data: {
+      ...data,
+      completed: [
+        { ...data.completed[0]!, plannedItemId: 'Push' },
+        { ...data.completed[0]!, id: 'e2', plannedItemId: null },
+      ],
+    },
+  });
+  renderScreen();
+  expect(
+    screen.getByTestId('completed-bar-e1').props.style.backgroundColor
+  ).toBe('#done');
+  expect(
+    screen.getByTestId('completed-bar-e2').props.style.backgroundColor
+  ).toBe('#extra');
 });

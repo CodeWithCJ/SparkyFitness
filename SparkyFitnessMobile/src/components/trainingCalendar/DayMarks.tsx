@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Icon from '../Icon';
+import { formatLocalizedNumber } from '../../localization';
 import { useTrainingCalendarColors } from '../../hooks/useTrainingCalendarColors';
 import {
   MAX_DAY_MARKS,
@@ -61,12 +62,14 @@ const DayMarks: React.FC<{ marks: DayMark[] }> = ({ marks }) => {
           style={{ fontSize: 10 }}
           accessibilityLabel={t('trainingCalendar.moreA11y', {
             count: more,
-            defaultValue: '{{count}} more sessions',
+            formattedCount: formatLocalizedNumber(more),
+            defaultValue: '{{formattedCount}} more sessions',
           })}
         >
           {t('trainingCalendar.more', {
             count: more,
-            defaultValue: '+{{count}}',
+            formattedCount: formatLocalizedNumber(more),
+            defaultValue: '+{{formattedCount}}',
           })}
         </Text>
       ) : null}

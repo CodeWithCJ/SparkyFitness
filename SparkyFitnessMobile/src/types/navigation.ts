@@ -135,7 +135,8 @@ export type RootStackParamList = {
     | undefined;
   WorkoutPlanDetail: { template: WorkoutPlanTemplate };
   RunPrograms: undefined;
-  RunProgramWorkout: { index: number };
+  /** `programId` is the program the row was shown for; a different active program is "not in your program any more". */
+  RunProgramWorkout: { index: number; programId: string };
   RunProgramRace: { distance?: RaceDistance; raceDay?: string } | undefined;
   FitnessTest: undefined;
   FitnessTestResult: { id: string };

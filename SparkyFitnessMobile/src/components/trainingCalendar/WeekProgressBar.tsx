@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { CalendarWeekTotals } from '@workspace/shared';
+import { formatLocalizedNumber } from '../../localization';
 import { useTrainingCalendarColors } from '../../hooks/useTrainingCalendarColors';
 import { weekProgress } from '../../utils/trainingCalendar';
 
@@ -22,10 +23,10 @@ const WeekProgressBar: React.FC<{ week: CalendarWeekTotals }> = ({ week }) => {
       testID={`week-progress-${week.start}`}
       accessible
       accessibilityLabel={t('trainingCalendar.progressA11y', {
-        done: p.done,
-        partial: p.partial,
-        missed: p.missed,
-        planned: p.planned,
+        done: formatLocalizedNumber(p.done),
+        partial: formatLocalizedNumber(p.partial),
+        missed: formatLocalizedNumber(p.missed),
+        planned: formatLocalizedNumber(p.planned),
         defaultValue:
           '{{done}} done, {{partial}} partly done, {{missed}} missed, of {{planned}} planned',
       })}
