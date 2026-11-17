@@ -742,6 +742,7 @@ internal object WatchConnectivityHub {
     asDouble(payload["weightKg"])?.let { event["weightKg"] = it }
     asDouble(payload["reps"])?.let { event["reps"] = it }
     asDouble(payload["rpe"])?.let { event["rpe"] = it }
+    if (payload["rpeOnly"] == true) event["rpeOnly"] = true
     asInt(payload["duration"])?.let { event["duration"] = it }
     asDouble(payload["distanceKm"])?.let { event["distanceKm"] = it }
     (payload["completedAt"] as? String)?.let { event["completedAt"] = it }

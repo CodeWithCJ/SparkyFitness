@@ -812,6 +812,7 @@ object OutboundPayloads {
     completed.duration?.let { put("duration", it) }
     completed.distanceKm?.let { put("distanceKm", it) }
     completed.rpe?.let { put("rpe", it) }
+    if (completed.rpeOnly) put("rpeOnly", true)
     put("completedAt", ContextPayloadMapper.formatIso(completed.completedAtMs))
   }
 

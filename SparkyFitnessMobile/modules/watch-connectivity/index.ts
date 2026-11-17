@@ -637,6 +637,14 @@ export interface WatchSetCompletedPayload {
   /** Effort (RPE) the wearer picked, 6 to 10. Omitted when skipped. */
   rpe?: number | null;
   /**
+   * True when this payload is a Wear OS follow-up delivering only the wearer's
+   * RPE choice after the initial completion was already sent. When the set is
+   * already complete on the phone, only `rpe` is applied so phone-side edits
+   * are preserved; if the set is not yet complete, all carried values still
+   * recover the missed initial completion.
+   */
+  rpeOnly?: boolean | null;
+  /**
    * When the wearer tapped the set on the watch, ISO 8601. The phone stamps
    * its own clock when this is absent (an older watch build, or a set logged
    * here). Using arrival time instead pulls the next exercise's readings

@@ -2149,6 +2149,7 @@ class WorkoutSessionStore(private val context: Context) {
         sessionId = curPlan.sessionId,
         setId = pending.step.setId,
         rpe = rpe,
+        rpeOnly = true,
         completedAtMs = pending.completedAtMs
       )
       unconfirmedCompletions[pending.step.setId] = rpeUpdate
@@ -2161,7 +2162,8 @@ class WorkoutSessionStore(private val context: Context) {
         values = latestValues,
         durationSeconds = pending.durationSeconds,
         rpe = rpe,
-        completedAtMs = pending.completedAtMs
+        completedAtMs = pending.completedAtMs,
+        rpeOnly = true
       )
     }
   }
@@ -2172,7 +2174,8 @@ class WorkoutSessionStore(private val context: Context) {
     values: SetValues,
     durationSeconds: Int?,
     rpe: Double?,
-    completedAtMs: Long
+    completedAtMs: Long,
+    rpeOnly: Boolean = false
   ) {
     val completed = CompletedSet(
       clientId = UUID.randomUUID().toString(),
@@ -2183,6 +2186,7 @@ class WorkoutSessionStore(private val context: Context) {
       duration = if (step.timed) durationSeconds else null,
       distanceKm = if (step.carry) values.distanceKm else step.targetDistanceKm,
       rpe = rpe,
+      rpeOnly = rpeOnly,
       completedAtMs = completedAtMs
     )
     unconfirmedCompletions[step.setId] = completed

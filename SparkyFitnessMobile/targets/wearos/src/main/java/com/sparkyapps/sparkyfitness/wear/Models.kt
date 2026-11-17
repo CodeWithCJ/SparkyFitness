@@ -593,6 +593,7 @@ data class CompletedSet(
   val duration: Int? = null,
   val distanceKm: Double? = null,
   val rpe: Double? = null,
+  val rpeOnly: Boolean = false,
   val completedAtMs: Long = System.currentTimeMillis()
 )
 

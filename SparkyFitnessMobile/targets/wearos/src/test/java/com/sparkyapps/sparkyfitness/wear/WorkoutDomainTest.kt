@@ -475,6 +475,8 @@ class WorkoutDomainTest {
             sessionId = "sess-1",
             setId = "set-2",
             duration = 45,
+            rpe = 8.5,
+            rpeOnly = true,
             completedAtMs = 1_700_000_060_000L
         )
         val bundled = OutboundPayloads.workoutStop("sess-1", listOf(c1, c2))
@@ -484,9 +486,11 @@ class WorkoutDomainTest {
         assertEquals("set-1", arr.getJSONObject(0).getString("setId"))
         assertEquals(60.0, arr.getJSONObject(0).getDouble("weightKg"), 0.001)
         assertEquals(7.5, arr.getJSONObject(0).getDouble("rpe"), 0.001)
+        assertFalse(arr.getJSONObject(0).has("rpeOnly"))
         assertEquals("cid-2", arr.getJSONObject(1).getString("clientId"))
         assertEquals("set-2", arr.getJSONObject(1).getString("setId"))
         assertEquals(45, arr.getJSONObject(1).getInt("duration"))
+        assertTrue(arr.getJSONObject(1).getBoolean("rpeOnly"))
     }
 
     @Test

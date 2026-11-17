@@ -2699,7 +2699,7 @@ private fun ExerciseListOverlay(
   ) {
     item {
       Text(
-        text = plan?.workoutName ?: stringResource(R.string.page_workout),
+        text = plan?.workoutName ?: stringResource(R.string.workout_new_fallback_title),
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = SetTint.Blue.color,

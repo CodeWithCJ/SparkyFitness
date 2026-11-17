@@ -269,6 +269,7 @@
 
     <!-- New Workout View -->
     <string name="workout_new_live_title">Live</string>
+    <string name="workout_new_fallback_title">Workout</string>
     <string name="workout_new_sets_progress">%1$d of %2$d</string>
     <string name="workout_new_sets_unit">SETS</string>
     <string name="workout_new_log_set">Log set</string>

@@ -668,7 +668,7 @@ describe('useWatchWorkoutBridge', () => {
     expect(getStore().session!.exercises[0].sets[0].rpe).toBe(9.5);
   });
 
-  it('applies only RPE on a follow-up completion for an already-completed set, preserving phone edits', async () => {
+  it('applies only RPE on an rpeOnly follow-up for an already-completed set, preserving phone edits', async () => {
     renderHook(() => useWatchWorkoutBridge(true));
     act(() => {
       getStore().startWorkout(makeSession());
@@ -693,7 +693,8 @@ describe('useWatchWorkoutBridge', () => {
       getStore().updateSetField('101', { weight: 85, reps: 12 });
     });
 
-    // Delayed RPE follow-up still carries the watch's original weight/reps.
+    // Delayed Wear OS RPE follow-up still carries the watch's original values,
+    // flagged with rpeOnly: true so only RPE is patched on the completed set.
     await act(async () => {
       fire('onSetCompleted', {
         clientId: 'client-2',
@@ -702,6 +703,7 @@ describe('useWatchWorkoutBridge', () => {
         weightKg: 80,
         reps: 10,
         rpe: 8.5,
+        rpeOnly: true,
       });
       await Promise.resolve();
       await Promise.resolve();
@@ -712,6 +714,60 @@ describe('useWatchWorkoutBridge', () => {
     expect(set.reps).toBe(12);
     expect(set.rpe).toBe(8.5);
     expect(getStore().completedSetIds['101']).toBe(firstCompletedAt);
+  });
+
+  it('still overwrites an already-completed set when a normal completion arrives without rpeOnly', async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+      getStore().updateSetField('101', { weight: 85, reps: 12 });
+      getStore().completeSet('101');
+    });
+
+    await act(async () => {
+      fire('onSetCompleted', {
+        clientId: 'apple-watch-1',
+        sessionId: 'session-1',
+        setId: '101',
+        weightKg: 90,
+        reps: 8,
+        rpe: 9,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const set = getStore().session!.exercises[0].sets[0];
+    expect(set.weight).toBe(90);
+    expect(set.reps).toBe(8);
+    expect(set.rpe).toBe(9);
+  });
+
+  it('recovers full values from an rpeOnly follow-up if the initial completion never arrived', async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+    });
+
+    await act(async () => {
+      fire('onSetCompleted', {
+        clientId: 'wear-rpe-followup-1',
+        sessionId: 'session-1',
+        setId: '101',
+        weightKg: 82.5,
+        reps: 9,
+        rpe: 8,
+        rpeOnly: true,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const set = getStore().session!.exercises[0].sets[0];
+    expect(set.weight).toBe(82.5);
+    expect(set.reps).toBe(9);
+    expect(set.rpe).toBe(8);
+    expect(getStore().completedSetIds['101']).toBeDefined();
   });
 
   it('ignores an effort outside 1 to 10', async () => {
