@@ -30,6 +30,9 @@ const MAX_PROJECTED = 200;
 /** How many days apart a diary entry and the day it was planned for may be. */
 export const MATCH_WINDOW_DAYS = 3;
 
+/** Days before the range the past run-day walk starts, so earlier completions still claim their run days. */
+const PAST_WALK_MARGIN_DAYS = 14;
+
 /** Folds the full sport taxonomy into the groups load is split by. */
 export function loadSportGroup(sport: ActivitySport): LoadSportGroup {
   switch (sport) {
@@ -565,9 +568,18 @@ export function programSlots(
     runDays.size > 0 &&
     lastPastDay !== null
   ) {
+    // Only walk the days the range can show, plus a margin so completions
+    // before the range still claim the run days they would have claimed. The
+    // stored first day can be arbitrarily far back, so it never sets the
+    // length of the walk.
+    const walkStart = addDays(start, -PAST_WALK_MARGIN_DAYS);
+    const walkEnd = compareDays(end, lastPastDay) < 0 ? end : lastPastDay;
     for (
-      let day = schedule.startDay;
-      compareDays(day, lastPastDay) <= 0;
+      let day =
+        compareDays(schedule.startDay, walkStart) > 0
+          ? schedule.startDay
+          : walkStart;
+      compareDays(day, walkEnd) <= 0;
       day = addDays(day, 1)
     ) {
       if (!runDays.has(dayOfWeek(day))) continue;

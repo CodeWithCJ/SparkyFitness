@@ -470,6 +470,19 @@ describe('programSlots', () => {
       '2026-10-12',
     ]);
   });
+  it('does not walk from a far-back first day outside the range', () => {
+    const ancient: ProgramPlanInput = {
+      ...base,
+      schedule: { runDays: [1, 3, 5], startDay: '0100-01-01', endDay: null },
+      completions: [],
+    };
+    const t0 = Date.now();
+    const slots = programSlots(ancient, TODAY, '2026-10-05', '2026-10-13');
+    expect(Date.now() - t0).toBeLessThan(500);
+    expect(
+      slots.every((s) => s.day >= '2026-10-05' && s.day <= '2026-10-13')
+    ).toBe(true);
+  });
 });
 
 describe('run done inside another plan item', () => {
