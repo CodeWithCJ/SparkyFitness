@@ -69,7 +69,7 @@ const primaryExplicitA11y = [
 ];
 
 describe('useScreenHeader accessibility label (custom path)', () => {
-  let osSpy: jest.SpyInstance | null = null;
+  let osSpy: jest.ReplaceProperty<typeof Platform.OS> | null = null;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -134,7 +134,7 @@ describe('useScreenHeader accessibility label (custom path)', () => {
 });
 
 describe('useScreenHeader custom bar title layout', () => {
-  let osSpy: jest.SpyInstance | null = null;
+  let osSpy: jest.ReplaceProperty<typeof Platform.OS> | null = null;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -200,7 +200,7 @@ describe('useScreenHeader custom bar title layout', () => {
 });
 
 describe('useScreenHeader accessibility label (native path)', () => {
-  let osSpy: jest.SpyInstance | null = null;
+  let osSpy: jest.ReplaceProperty<typeof Platform.OS> | null = null;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -334,7 +334,7 @@ describe('useScreenHeader accessibility label (native path)', () => {
 
 describe('useScreenHeader status-bar room (custom path)', () => {
   const STATUS_BAR = 24;
-  let osSpy: jest.SpyInstance | null = null;
+  let osSpy: jest.ReplaceProperty<typeof Platform.OS> | null = null;
 
   beforeEach(async () => {
     jest.clearAllMocks();
