@@ -185,7 +185,7 @@ export interface ScreenHeaderConfig {
   topInset?: HeaderTopInset;
 }
 
-/** Bar padding above its buttons, matching the `py-3` below them. */
+/** Bar padding above its buttons, matching the `pb-3` below them. */
 const BAR_VERTICAL_PADDING = 12;
 
 function statusBarInset(topInset: HeaderTopInset, insetTop: number): number {
