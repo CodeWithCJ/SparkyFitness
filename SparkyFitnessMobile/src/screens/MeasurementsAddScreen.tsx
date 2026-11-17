@@ -313,18 +313,21 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // reach the form state, so they cannot flood the screen. Memoized so the
   // reconciliation effect below has a stable identity across renders.
   /** FORM MODEL: every Daily category (health-sync names included). Used by
-   * syncCustomForm / buildCustomOps / delete lookup / reconciliation / dirty
-   * preservation — never the presentation partition, so a value typed inside
-   * "More categories" is always part of the form regardless of expansion. */
+   * syncCustomForm / reconciliation / dirty preservation — never the
+   * presentation partition, so a value typed inside "More categories" is
+   * always part of the form regardless of expansion. Saving goes through
+   * `shownCustomCategories` below. */
   const dailyCustomCategories = useMemo(
     () => (customCategories ?? []).filter(isDailyCustomCategory),
     [customCategories]
   );
 
-  /** PRESENTATION: the form model less the categories of a feature turned off
-   * on purpose (the reproductive ones while cycle is off in Settings →
-   * Features). Only the list shown leaves them out, so a value typed before
-   * the feature's state loaded stays in the form; their data is kept. */
+  /** SHOWN: the form model less the categories of a feature turned off on
+   * purpose (the reproductive ones while cycle is off in Settings →
+   * Features). What is listed, checked for unsaved edits, validated and
+   * saved. A value typed before the feature's state loaded stays in the form
+   * model, so it comes back with the feature, but a hidden draft is neither
+   * saved nor allowed to block Save. Their stored data is kept. */
   const { hiddenCustomCategories } = useMobileFeatures();
   const shownCustomCategories = useMemo(
     () =>
@@ -528,12 +531,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     if (standardChanged) return true;
 
     const loadedCustom = syncCustomForm({
-      categories: dailyCustomCategories,
+      categories: shownCustomCategories,
       serverEntries: customMeasurements ?? [],
       current: {},
       dirtyKeys: new Set(),
     }).form;
-    return dailyCustomCategories.some((category) => {
+    return shownCustomCategories.some((category) => {
       const current = customForm[category.id];
       if (!current) return false;
       if (current.deleted.length > 0) return true;
@@ -547,7 +550,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     isPreferencesLoading,
     measurements,
     units,
-    dailyCustomCategories,
+    shownCustomCategories,
     customMeasurements,
   ]);
 
@@ -1051,7 +1054,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     // means a changed row failed validation, so handleSave stops before any
     // mutation runs; untouched rows are never parsed and cannot block saves.
     const customResult = buildCustomOps({
-      categories: dailyCustomCategories,
+      categories: shownCustomCategories,
       form: customForm,
       dirtyKeys: new Set(dirtyCustomKeysRef.current),
       onInvalid: (label) => {
@@ -1198,7 +1201,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const clearingLabels = [
       ...cleared.map((k) => fieldLabel(k, k)),
       ...customDeleteOps.map((op) => {
-        const cat = dailyCustomCategories.find((c) => c.id === op.categoryId);
+        const cat = shownCustomCategories.find((c) => c.id === op.categoryId);
         return cat ? (cat.display_name ?? cat.name) : op.categoryId;
       }),
     ];
@@ -1251,7 +1254,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     saveCustomMutation,
     deleteCustomMutation,
     navigation,
-    dailyCustomCategories,
+    shownCustomCategories,
     customForm,
     refetchMeasurements,
     refetchCustomCategories,

@@ -766,6 +766,32 @@ describe('MeasurementsAddScreen — custom measurements', () => {
     expect(screen.getByTestId('custom-input-c2').props.value).toBe('2');
   });
 
+  test('saves the shown fields when a hidden category holds an unfinished value', async () => {
+    setCustomCategories([
+      customCategory({
+        id: 'c2',
+        name: 'menstruation_flow',
+        display_name: 'Menstrual flow',
+        measurement_type: '',
+      }),
+    ]);
+    const screen = renderScreen();
+    fireEvent.changeText(screen.getByTestId('custom-input-c2'), '-');
+
+    // Cycle's settings arrive: it was turned off on purpose.
+    mockHiddenCategories = new Set(['menstruation_flow']);
+    rerenderScreen(screen);
+    fireEvent.changeText(getInput(screen, 'weight'), '80');
+    await pressSave(screen);
+
+    expect(
+      mockUseUpsertCheckIn.mock.results.at(-1)?.value.mutateAsync
+    ).toHaveBeenCalledWith(expect.objectContaining({ weight: 80 }));
+    const saveMock = mockUseSaveCustomMeasurement.mock.results.at(-1)
+      ?.value as { mutateAsync: jest.Mock };
+    expect(saveMock.mutateAsync).not.toHaveBeenCalled();
+  });
+
   test('renders no custom section when there are no categories', () => {
     setCustomCategories([]);
     const screen = renderScreen();
