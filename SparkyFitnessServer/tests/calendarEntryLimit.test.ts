@@ -28,19 +28,32 @@ const row = (i: number) => ({
 
 beforeEach(() => vi.clearAllMocks());
 
+// A diary of `total` rows that answers like the database: it honours the
+// query's own LIMIT, so a query that stops asking for the overflow row would
+// silently truncate here too.
+const diary = (total: number) =>
+  query.mockImplementation(async (sql: string) => {
+    const limit = Number(/LIMIT\s+(\d+)\s*$/i.exec(sql.trim())?.[1] ?? total);
+    return {
+      rows: Array.from({ length: Math.min(total, limit) }, (_, i) => row(i)),
+    };
+  });
+
 describe('getCalendarEntries row limit', () => {
+  it('asks for one row past the limit, so an overflow is detectable', async () => {
+    diary(10);
+    await getCalendarEntries('u', '2026-10-01', '2026-10-31');
+    expect(query.mock.calls[0]![0]).toMatch(/LIMIT\s+5001\s*$/);
+  });
+
   it('returns every row up to the limit', async () => {
-    query.mockResolvedValue({
-      rows: Array.from({ length: 5000 }, (_, i) => row(i)),
-    });
+    diary(5000);
     const rows = await getCalendarEntries('u', '2026-10-01', '2026-10-31');
     expect(rows).toHaveLength(5000);
   });
 
   it('refuses a range over the limit instead of dropping the oldest entry', async () => {
-    query.mockResolvedValue({
-      rows: Array.from({ length: 5001 }, (_, i) => row(i)),
-    });
+    diary(6000);
     await expect(
       getCalendarEntries('u', '2026-10-01', '2026-10-31')
     ).rejects.toBeInstanceOf(CalendarEntryLimitError);
