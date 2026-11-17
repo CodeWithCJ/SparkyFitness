@@ -28,6 +28,7 @@ export function makeChallenge(
         points: {},
       }
     ),
+    pending_rules: null,
     start_date: '2026-11-02',
     end_date: null,
     time_zone: 'UTC',
@@ -55,6 +56,13 @@ export function makeStandings(
     challenge_id: 'c1',
     period_start: '2026-11-09',
     period_end: '2026-11-15',
+    rules: challengeRulesSchema.parse({
+      version: 1,
+      metric: 'points',
+      period: 'week',
+      bestDaysPerWeek: 5,
+      points: {},
+    }),
     final: false,
     group_total: 650,
     group_reached: false,

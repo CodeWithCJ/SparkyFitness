@@ -8,7 +8,6 @@ import {
   isLeading,
   ownStanding,
   parseInviteCode,
-  rulesInEffect,
   showsTrophy,
   sortChallenges,
   standingsLeader,
@@ -283,39 +282,5 @@ describe('buildChallengeWeekNotices', () => {
         now
       )
     ).toEqual([]);
-  });
-});
-
-describe('rulesInEffect', () => {
-  const base = makeChallenge().rules;
-  const later = { ...base, metric: 'steps' as const, points: null };
-  const latest = { ...base, metric: 'distance' as const, points: null };
-  const change = (id: string, effective_from: string, rules: typeof base) => ({
-    id,
-    changed_by_display_name: 'Alex',
-    effective_from,
-    rules,
-    previous_rules: null,
-    created_at: '2026-11-12T00:00:00.000Z',
-  });
-
-  it('picks the change in effect on the day, as the server does', () => {
-    const log = [
-      change('a', '2026-11-02', base),
-      change('b', '2026-11-16', later),
-    ];
-    expect(rulesInEffect(log, '2026-11-09', latest)).toBe(base);
-    expect(rulesInEffect(log, '2026-11-16', latest)).toBe(later);
-    // While the log loads, the newest saved rules stand in.
-    expect(rulesInEffect(undefined, '2026-11-09', latest)).toBe(latest);
-  });
-
-  it('keeps the server write order for changes on the same day', () => {
-    const log = [
-      change('a', '2026-11-02', base),
-      change('b', '2026-11-16', later),
-      change('c', '2026-11-16', latest),
-    ];
-    expect(rulesInEffect(log, '2026-11-16', base)).toBe(latest);
   });
 });

@@ -9,7 +9,6 @@ import {
 } from '../../src/services/challengeWeekNotificationService';
 import { hasNotificationPermission } from '../../src/services/notifications';
 import {
-  fetchChallengeRuleChanges,
   fetchChallengeStandings,
   fetchChallenges,
   fetchChallengesStatus,
@@ -37,7 +36,6 @@ jest.mock('../../src/services/api/challengesApi', () => ({
   fetchChallengesStatus: jest.fn(),
   fetchChallenges: jest.fn(),
   fetchChallengeStandings: jest.fn(),
-  fetchChallengeRuleChanges: jest.fn(async () => []),
 }));
 
 jest.mock('../../src/hooks/usePreferences', () => ({
@@ -105,7 +103,6 @@ describe('ChallengeWeekNotificationReconciler', () => {
       }),
     ]);
     mockStandings.mockResolvedValue(makeStandings());
-    (fetchChallengeRuleChanges as jest.Mock).mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -159,32 +156,13 @@ describe('ChallengeWeekNotificationReconciler', () => {
     expect(mockSchedule).not.toHaveBeenCalled();
   });
 
-  it('shows totals in the units of the rules that score this week', async () => {
-    const steps = makeChallenge().rules;
+  it('shows totals in the units of the rules that score this week, sent with its standings', async () => {
+    const points = makeChallenge().rules;
+    // The week's standings say points scored it, whatever the list carries
     mockList.mockResolvedValue([
-      makeChallenge({
-        // Saved mid-week; counts from next week.
-        rules: { ...steps, metric: 'steps', points: null },
-      }),
+      makeChallenge({ rules: { ...points, metric: 'steps', points: null } }),
     ]);
-    (fetchChallengeRuleChanges as jest.Mock).mockResolvedValue([
-      {
-        id: 'r1',
-        changed_by_display_name: 'Alex',
-        effective_from: '2026-11-02',
-        rules: steps,
-        previous_rules: null,
-        created_at: '2026-11-01T00:00:00.000Z',
-      },
-      {
-        id: 'r2',
-        changed_by_display_name: 'Alex',
-        effective_from: '2026-11-16',
-        rules: { ...steps, metric: 'steps', points: null },
-        previous_rules: steps,
-        created_at: '2026-11-12T00:00:00.000Z',
-      },
-    ]);
+    mockStandings.mockResolvedValue(makeStandings({ rules: points }));
     renderReconciler();
     await waitFor(() => expect(mockSchedule).toHaveBeenCalled());
     expect(mockSchedule).toHaveBeenLastCalledWith([
