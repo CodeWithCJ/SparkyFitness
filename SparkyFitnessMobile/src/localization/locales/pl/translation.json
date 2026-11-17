@@ -71,7 +71,9 @@
     "kJUnit": "kJ",
     "energy": "Energia",
     "apply": "Zastosuj",
-    "reset": "Resetuj"
+    "reset": "Resetuj",
+    "search": "Szukaj",
+    "noMatches": "Brak wyników"
   },
   "settings": {
     "app": "Ustawienia aplikacji",
@@ -741,7 +743,8 @@
     "labResults": "Wyniki badań",
     "labResultDetail": "Wynik badania",
     "labResultAdd": "Dodaj wynik badania",
-    "labReportImport": "Import wyniku"
+    "labReportImport": "Import wyniku",
+    "treadmillSettings": "Bieżnia i krok"
   },
   "healthMetrics": {
     "steps": "Kroki",
@@ -808,7 +811,8 @@
     "mindfulness": "Uważność",
     "sleepingWristTemperature": "Temperatura nadgarstka podczas snu",
     "overnightBodyTemperature": "Temperatura ciała w nocy",
-    "toothbrushing": "Szczotkowanie zębów"
+    "toothbrushing": "Szczotkowanie zębów",
+    "exercise": "Ćwiczenie"
   },
   "healthCategories": {
     "Common": "Ogólne",
@@ -823,7 +827,8 @@
     "Environment": "Środowisko",
     "Apple": "Apple",
     "unknown": "Inne",
-    "Hygiene": "Higiena"
+    "Hygiene": "Higiena",
+    "Exercise": "Ćwiczenie"
   },
   "healthSync": {
     "appleHealth": "Apple Health",
@@ -1009,7 +1014,8 @@
     "permissionDenied": {
       "title": "Odmowa uprawnień",
       "read": "Włącz uprawnienie „{{metric}}” w {{settings}}.",
-      "write": "Włącz uprawnienie do zapisu danych „{{metric}}” w {{settings}}."
+      "write": "Włącz uprawnienie do zapisu danych „{{metric}}” w {{settings}}.",
+      "writeRequired": "Nadaj uprawnienia wymagane przez {{metric}} w {{settings}}."
     },
     "removal": {
       "removed": "Usunięto",
@@ -1018,7 +1024,8 @@
       "partialMessage": "Niektórych rekordów nie można było usunąć z {{store}}.",
       "errorMessage": "Nie udało się usunąć danych z {{store}}.",
       "confirmTitle": "Usuń wszystkie dane z {{store}}",
-      "confirmMessage": "Usunąć wszystkie rekordy składników odżywczych i nawodnienia zapisane przez SparkyFitness w {{store}} oraz wyłączyć zapis zwrotny? Dziennik SparkyFitness i dane z innych aplikacji nie zostaną zmienione."
+      "confirmMessage": "Usunąć wszystkie rekordy składników odżywczych i nawodnienia zapisane przez SparkyFitness w {{store}} oraz wyłączyć zapis zwrotny? Dziennik SparkyFitness i dane z innych aplikacji nie zostaną zmienione.",
+      "confirmMessageAll": "Usunąć wszystkie wpisy, jakie SparkyFitness zapisał w {{store}} (wartości odżywcze, nawodnienie, treningi i pozostałe), i wyłączyć zapisywanie zwrotne? Twój dziennik SparkyFitness oraz wpisy z innych aplikacji pozostaną bez zmian."
     },
     "range": {
       "title": "Zakres synchronizacji",
@@ -1406,7 +1413,12 @@
     "focusMediaSmall": "Małe",
     "plannedPlaceholders": "Użyj planowanych wartości jako symboli zastępczych",
     "plannedPlaceholdersSubtitle": "Treningi rozpoczęte z planu lub zapisanego treningu proponują jego planowany ciężar i powtórzenia zamiast ostatniej sesji. Zastosowanie od następnego rozpoczętego treningu.",
-    "plannedPlaceholdersAccessibility": "Użyj planowanych wartości jako symboli zastępczych"
+    "plannedPlaceholdersAccessibility": "Użyj planowanych wartości jako symboli zastępczych",
+    "restEndFocus": "Przejdź do następnej serii po zakończeniu przerwy",
+    "restEndFocusSubtitle": "Gdy licznik przerwy zakończy się sam, ustaw kursor na pierwszej wartości następnej serii i otwórz klawiaturę.",
+    "restEndFocusAccessibility": "Przejdź do następnej serii po zakończeniu przerwy",
+    "treadmillStride": "Bieżnia i krok",
+    "treadmillStrideSubtitle": "Zobacz i ustaw długość kroku używaną do szacowania dystansu w pomieszczeniach oraz skoryguj bieżnię, która zawyża lub zaniża odczyt."
   },
   "restPeriod": {
     "title": "Czas przerwy",
@@ -2444,7 +2456,14 @@
     "resumeFailedTitle": "Nie udało się wznowić treningu",
     "resumeFailedMessage": "Spróbuj ponownie.",
     "finishStampFailedTitle": "Nie udało się oznaczyć treningu jako ukończonego",
-    "finishStampFailedMessage": "Twoje serie zostały zapisane, ale oznaczenie treningu jako ukończonego nie powiodło się. Ponów, aby dokończyć."
+    "finishStampFailedMessage": "Twoje serie zostały zapisane, ale oznaczenie treningu jako ukończonego nie powiodło się. Ponów, aby dokończyć.",
+    "healthActivityType": "Typ aktywności zdrowotnej",
+    "healthActivityTypeAutomatic": "Automatycznie ({{type}})",
+    "healthActivityTypeHintApple": "Używane, gdy Twoje treningi są zapisywane w Apple Health.",
+    "healthActivityTypeHintHealthConnect": "Używane, gdy Twoje treningi są zapisywane w Health Connect.",
+    "healthActivityTypeCommon": "Częste",
+    "healthActivityTypeAll": "Wszystkie aktywności",
+    "healthActivityTypeSearch": "Szukaj aktywności"
   },
   "cycleCard": {
     "mode": {
@@ -4500,7 +4519,8 @@
       "deleteFailed": "Nie udało się usunąć wpisu"
     },
     "deleteConfirm": "Czy na pewno chcesz usunąć ten wpis produktu?",
-    "entryNotes": "Notatka do tego wpisu"
+    "entryNotes": "Notatka do tego wpisu",
+    "copyEntry": "Kopiuj produkt"
   },
   "presetSearch": {
     "title": "Rozpocznij trening",
@@ -4646,8 +4666,12 @@
       "exercise": "Ćwiczenie",
       "checkin": "Wpis dnia",
       "goals": "Cele",
-      "lookedUp": "Wyszukano: {{name}}",
-      "runProgram": "Program treningowy"
+      "lookedUp": "Wyszukano {{name}}",
+      "runProgram": "Uruchom program",
+      "generic": "Narzędzie",
+      "outside": "narzędzie zewnętrzne",
+      "outsideNamed": "{{server}}: {{tool}}",
+      "withAction": "{{tool}} ({{action}})"
     },
     "typing": "Sparky pisze",
     "voice": {
@@ -4672,6 +4696,73 @@
       "cameraPermission": "Wymagane uprawnienie do aparatu",
       "cameraPermissionBody": "Włącz dostęp do aparatu, aby dodać zdjęcie.",
       "addFailed": "Nie udało się dodać zdjęcia"
+    },
+    "approval": {
+      "title": "Zezwolić na ten krok?",
+      "details": "Szczegóły",
+      "allow": "Zezwól",
+      "deny": "Odmów",
+      "allowed": "Zezwolono",
+      "denied": "Odmówiono",
+      "failed": "Nie udało się zapisać odpowiedzi. Spróbuj ponownie.",
+      "working": "Pracuję nad tym…",
+      "done": "Gotowe",
+      "notRun": "Nie uruchomiono",
+      "cancelled": "Najpierw wysłano nową wiadomość.",
+      "nothingChanged": "Nic nie zostało zmienione.",
+      "toolFailed": "Zezwolono, ale nie zadziałało",
+      "otherPending": "Odpowiedz na drugi krok, aby kontynuować.",
+      "composerHint": "Najpierw odpowiedz na powyższy krok albo pisz dalej, aby go pominąć.",
+      "announce": "Sparky czeka na Twoją odpowiedź: Zezwolić na ten krok?",
+      "run": "Po przeczytaniu {{server}} Sparky chce uruchomić:",
+      "send": "Po przeczytaniu {{server}} Sparky chce użyć tego z {{otherServer}}:",
+      "runPlain": "Sparky chce uruchomić:",
+      "delete": "Sparky chce usunąć:",
+      "deleteAfter": "Po przeczytaniu {{server}} Sparky chce usunąć:",
+      "change": "Sparky chce wprowadzić tę zmianę:",
+      "changeAfter": "Po przeczytaniu {{server}} Sparky chce wprowadzić tę zmianę:",
+      "runCompleted": "Po przeczytaniu {{server}} Sparky uruchomił:",
+      "runPlainCompleted": "Sparky uruchomił:",
+      "sendCompleted": "Po przeczytaniu {{server}} Sparky uruchomił:",
+      "deleteCompleted": "Zezwolono Sparky na usunięcie:",
+      "deleteAfterCompleted": "Gdy Sparky przeczytał {{server}}, zezwolono mu na usunięcie:",
+      "changeCompleted": "Zezwolono Sparky na wprowadzenie tej zmiany:",
+      "changeAfterCompleted": "Gdy Sparky przeczytał {{server}}, zezwolono mu na wprowadzenie tej zmiany:",
+      "runFailed": "Po przeczytaniu {{server}} Sparky próbował uruchomić:",
+      "runPlainFailed": "Sparky próbował uruchomić:",
+      "sendFailed": "Po przeczytaniu {{server}} Sparky próbował uruchomić:",
+      "deleteFailed": "Sparky próbował usunąć:",
+      "deleteAfterFailed": "Po przeczytaniu {{server}} Sparky próbował usunąć:",
+      "changeFailed": "Sparky próbował wprowadzić tę zmianę:",
+      "changeAfterFailed": "Po przeczytaniu {{server}} Sparky próbował wprowadzić tę zmianę:",
+      "runUnused": "Po przeczytaniu {{server}} Sparky chciał uruchomić:",
+      "runPlainUnused": "Sparky chciał uruchomić:",
+      "sendUnused": "Po przeczytaniu {{server}} Sparky chciał użyć tego z {{otherServer}}:",
+      "deleteUnused": "Sparky chciał usunąć:",
+      "deleteAfterUnused": "Po przeczytaniu {{server}} Sparky chciał usunąć:",
+      "changeUnused": "Sparky chciał wprowadzić tę zmianę:",
+      "changeAfterUnused": "Po przeczytaniu {{server}} Sparky chciał wprowadzić tę zmianę:"
+    },
+    "outsideSource": {
+      "delete": "Usuń tę wiadomość",
+      "clear": "Wyczyść czat",
+      "failed": "Nie udało się usunąć tej wiadomości. Spróbuj ponownie.",
+      "deleteTitle": "Usunąć tę odpowiedź?",
+      "deleteBody": "Spowoduje to usunięcie odpowiedzi z czatu. Nie cofnie żadnych zmian, które Sparky już wprowadził.",
+      "cancel": "Anuluj",
+      "confirmDelete": "Usuń",
+      "deleting": "Usuwanie…",
+      "line": "Użyto {{servers}}. Coś wygląda nie tak?"
+    },
+    "outsideError": {
+      "unavailable": "{{server}} nie odpowiedział. Spróbuj ponownie później.",
+      "turnedOff": "{{server}} jest dla Ciebie wyłączony w ustawieniach AI."
+    },
+    "clearConfirm": {
+      "title": "Wyczyścić czat?",
+      "body": "Trwale usuwa to historię czatu ze Sparky. Tej operacji nie można cofnąć.",
+      "cancel": "Anuluj",
+      "clear": "Wyczyść"
     }
   },
   "foodImagePicker": {
@@ -5400,7 +5491,14 @@
     "copy": "Kopiuj",
     "copying": "Kopiowanie…",
     "duplicateTitle": "Nie można skopiować posiłku",
-    "duplicateMessage": "Nie można obecnie użyć zduplikowanych nazw typów posiłków w funkcji Kopiuj posiłek."
+    "duplicateMessage": "Nie można obecnie użyć zduplikowanych nazw typów posiłków w funkcji Kopiuj posiłek.",
+    "foodTitle": "Kopiuj produkt: {{food}}",
+    "copyTo": "Kopiuj do",
+    "quick": {
+      "now": "Teraz",
+      "today": "Dzisiaj",
+      "tomorrow": "Jutro"
+    }
   },
   "ingredientRow": {
     "lastWarning": "To ostatni składnik. Dodaj kolejny, aby móc zapisać, albo użyj opcji usunięcia całego posiłku.",
@@ -5476,7 +5574,9 @@
   },
   "foodEntryCopy": {
     "success": "Posiłek skopiowany",
-    "failed": "Nie udało się skopiować posiłku"
+    "failed": "Nie udało się skopiować posiłku",
+    "foodSuccess": "Produkt skopiowany",
+    "foodFailed": "Nie udało się skopiować produktu"
   },
   "foodDelete": {
     "failed": "Nie udało się usunąć produktu",
@@ -5684,7 +5784,9 @@
       "dailyTitle": "Wpis objawów",
       "dailyBody": "Jak się dziś czujesz? Dotknij, aby zapisać objawy.",
       "nudgeTitle": "Epizod nadal aktywny?",
-      "nudgeBody": "{{name}} trwa od {{hours}} godz. Czy nadal trwa, czy już się zakończył?"
+      "nudgeBody": "{{name}} trwa od {{hours}} godz. Czy nadal trwa, czy już się zakończył?",
+      "episodeEnded": "Epizod zakończony",
+      "otherServer": "To przypomnienie pochodzi z innego serwera"
     },
     "builtIn": {
       "head": "Głowa",
@@ -6932,9 +7034,19 @@
     "upNextTitle": "Strona „Następne”",
     "upNextSubtitle": "Strona jedno przesunięcie nad ekranem serii z następnym ćwiczeniem, jego celem i przyciskiem Zamień, aby najpierw zrobić inne ćwiczenie.",
     "largerTextTitle": "Większy tekst na zegarku",
-    "largerTextSubtitle": "Większa czcionka i nowsze układy na zegarku: Cele, Woda, trening, Post, Kroki i więcej. Po wyłączeniu zachowany zostaje pierwotny wygląd.",
-    "classicWorkoutTitle": "Pierwotna strona treningu",
-    "classicWorkoutSubtitle": "Zachowaj pierwotny ekran treningu, gdy większy tekst jest włączony wszędzie indziej. Po wyłączeniu większego tekstu trening zawsze go używa."
+    "largerTextSubtitle": "Większa czcionka i nowsze układy na zegarku: Cele, Woda, Post, Kroki i więcej. Po wyłączeniu zachowany zostaje pierwotny wygląd.",
+    "newWorkoutTitle": "Nowy widok treningu",
+    "newWorkoutSubtitle": "Przycisk zapisu serii (podwójne dotknięcie też zapisuje), przycisk edycji poprzedniej serii, strona „więcej” z akcjami treningu i jedno podsumowanie po zakończeniu. Po wyłączeniu zachowany zostaje pierwotny ekran treningu.",
+    "topLineTitle": "Górna linia",
+    "topLineDescription": "Co pokazuje najpierw góra ekranu treningu na zegarku: czas trwania czy tętno i kalorie na żywo. Dotknij na zegarku, aby przełączyć.",
+    "topLineTime": "Czas",
+    "topLineMetrics": "Wskaźniki",
+    "countdownTitle": "Dźwięk i wibracja odliczania",
+    "countdownDescription": "Dźwięk i wibracja dla każdej z ostatnich sekund przerwy lub pozycji na czas, a inny sygnał przy zerze, aby wiedzieć, kiedy się przygotować, bez patrzenia. Przy zegarku wyciszonym odtwarzana jest tylko wibracja.",
+    "countdownOff": "Wyłączone",
+    "countdownSeconds": "{{seconds}} s",
+    "holdCountdownTitle": "Odliczanie przed pozycjami na czas",
+    "holdCountdownSubtitle": "Ekran „3, 2, 1, gotowe” przed rozpoczęciem pozycji na czas, aby zdążyć się ustawić. Dotknij, aby pominąć."
   },
   "progressPhotos": {
     "card": {
@@ -7285,6 +7397,17 @@
         "title": "Skanuj etykiety na urządzeniu",
         "description": "Odczytuj etykiety wartości odżywczych przez Apple Intelligence na tym urządzeniu. Jeśli nie odczyta etykiety, używany jest serwerowy dostawca AI."
       }
+    },
+    "chatMcp": {
+      "title": "Narzędzia zewnętrzne",
+      "description": "Te usługi dodał administrator spoza SparkyFitness. Gdy któraś jest włączona, Sparky może wysyłać jej części czatu i odczytywać jej odpowiedzi. Każda jest wyłączona, dopóki jej nie włączysz.",
+      "allow": "Pozwól Sparky używać {{name}}",
+      "loadError": "Nie udało się wczytać narzędzi zewnętrznych.",
+      "saveError": "Nie udało się zapisać. Spróbuj ponownie.",
+      "accountId": "Widzi Twój identyfikator konta.",
+      "familyOff": "Narzędzia zewnętrzne są wyłączone, gdy przeglądasz czyjś profil.",
+      "retry": "Spróbuj ponownie",
+      "loading": "Wczytywanie narzędzi zewnętrznych…"
     }
   },
   "voiceSettings": {
@@ -7424,7 +7547,7 @@
     "sessionNamePlaceholder": "Nazwa sesji (opcjonalna)",
     "addSession": "Dodaj sesję",
     "assignmentRequired": "Dodaj do planu co najmniej jeden trening.",
-    "presetNotice": "Możesz dodać treningi zapisane w bibliotece. Aby zaplanować pojedyncze ćwiczenie, użyj aplikacji webowej.",
+    "presetNotice": "Możesz dodać treningi zapisane w bibliotece albo pojedyncze ćwiczenia z własnymi seriami.",
     "deleteTitle": "Usuń plan treningów",
     "deleteMessage": "Usunąć {{name}}? Nadchodzące treningi, które ten plan dodał do Twojego Dziennika, zostaną usunięte.",
     "deleteSuccess": "Usunięto plan treningów",
@@ -7442,7 +7565,39 @@
     "emptySubtitle": "Rozłóż zapisane treningi na wybrane dni lub jako cykl do przechodzenia.",
     "moreAssignments_one": "+{{count}} więcej",
     "moreAssignments_few": "+{{count}} więcej",
-    "moreAssignments_many": "+{{count}} więcej"
+    "moreAssignments_many": "+{{count}} więcej",
+    "invalidSetValues": "Niektóre wartości serii są niekompletne",
+    "activated": "Plan aktywowany",
+    "addExercise": "Dodaj ćwiczenie",
+    "addSet": "Dodaj serię",
+    "deactivated": "Plan dezaktywowany",
+    "deletePlan": "Usuń plan",
+    "impactNote": "Ten aktywny plan wypełnia nadchodzące sesje w Twoim dzienniku. Edycje odświeżają tylko zaplanowane sesje; treningi zapisane, rozpoczęte lub ukończone pozostają bez zmian.",
+    "impactNoteForm": "Zapisanie odświeża nadchodzące sesje tego planu w dzienniku. Treningi już zapisane, rozpoczęte lub ukończone pozostają bez zmian.",
+    "moveDownNamed": "Przenieś {{name}} niżej",
+    "moveUpNamed": "Przenieś {{name}} wyżej",
+    "noAssignmentsSubtitle": "Edytuj plan, aby dodać treningi.",
+    "noAssignmentsTitle": "Brak treningów w tym planie",
+    "refreshedSessions_one": "Odświeżono {{count}} nadchodzącą sesję",
+    "refreshedSessions_few": "Odświeżono {{count}} nadchodzące sesje",
+    "refreshedSessions_many": "Odświeżono {{count}} nadchodzących sesji",
+    "regenerationFailed": "Zapisano, ale odświeżenie dziennika nie powiodło się",
+    "removedSessions_one": "Usunięto {{count}} nadchodzącą sesję",
+    "removedSessions_few": "Usunięto {{count}} nadchodzące sesje",
+    "removedSessions_many": "Usunięto {{count}} nadchodzących sesji",
+    "removeSetNumber": "Usuń serię {{number}}",
+    "repsCount_one": "{{count}} powtórzenie",
+    "repsCount_few": "{{count}} powtórzenia",
+    "repsCount_many": "{{count}} powtórzeń",
+    "repsShort": "Powt.",
+    "restCount_one": "{{count}} s przerwy",
+    "restCount_few": "{{count}} s przerwy",
+    "restCount_many": "{{count}} s przerwy",
+    "restShort": "Przerwa (s)",
+    "savedWorkout": "Zapisany trening",
+    "sessionPosition": "Sesja {{current}} z {{total}}",
+    "setNumber": "Seria {{number}}",
+    "weightShort": "Ciężar"
   },
   "mood": {
     "logTitle": "Nastrój",
@@ -7669,7 +7824,8 @@
       "estimateRough_one": "Zgrubny szacunek z {{formattedCount}} kroku przy typowej długości kroku. Wpisz wartość z bieżni, a aplikacja nauczy się Twojej.",
       "estimateRough_few": "Zgrubny szacunek z {{formattedCount}} kroków przy typowej długości kroku. Wpisz wartość z bieżni, a aplikacja nauczy się Twojej.",
       "estimateRough_many": "Zgrubny szacunek z {{formattedCount}} kroków przy typowej długości kroku. Wpisz wartość z bieżni, a aplikacja nauczy się Twojej.",
-      "invalid": "Wpisz dystans zerowy lub większy."
+      "invalid": "Wpisz dystans zerowy lub większy.",
+      "corrected": "Bieżnia pokazała {{shown}} {{unit}}. Zapisano {{saved}} {{unit}} z Twoją korektą bieżni {{percent}}."
     },
     "heartRate": "Tętno",
     "errors": {
@@ -8080,7 +8236,8 @@
       "activity": "Woda i trening",
       "meals": "Rozkład kalorii na posiłki",
       "presets": "Szablony celów",
-      "weekly": "Plany tygodniowe"
+      "weekly": "Plany tygodniowe",
+      "goalWeight": "Docelowa masa ciała"
     },
     "meals": {
       "mustBe100": "Procenty posiłków muszą sumować się do 100%.",
@@ -8212,7 +8369,16 @@
     "adaptiveNoteTodayWithUnit": "Tryb adaptacyjny jest włączony, więc Twój cel kaloryczny zmienia się codziennie. Dziś wynosi {{calories}} {{unit}}. Poniższa wartość bazowa określa, jak bardzo chcesz być powyżej lub poniżej szacowanego zapotrzebowania; to nie jest stały dzienny cel.",
     "cyclingNoteTodayWithUnit": "Cyklowanie kalorii jest włączone, więc kalorie poniżej to Twój cel bazowy, a każdy dzień jest wyższy lub niższy. Dziś wynosi {{calories}} {{unit}}.",
     "cyclingPausedWeeklyPlan": "Cyklowanie kalorii jest dziś wstrzymane przez aktywny plan celu tygodniowego. Kalorie poniżej ustawiają bezpośrednio cel dzisiejszego planu.",
-    "adjustedGoalFailed": "Nie udało się wczytać dzisiejszego skorygowanego celu."
+    "adjustedGoalFailed": "Nie udało się wczytać dzisiejszego skorygowanego celu.",
+    "goalWeight": {
+      "description": "Twoja docelowa masa ciała. Wykresy masy ciała używają jej do pokazywania postępów.",
+      "placeholder": "Docelowa masa ciała ({{unit}})",
+      "invalid": "Wpisz masę ciała większą od zera.",
+      "save": "Zapisz docelową masę ciała",
+      "clear": "Wyczyść",
+      "saved": "Docelowa masa ciała zapisana.",
+      "saveFailed": "Nie udało się zapisać docelowej masy ciała."
+    }
   },
   "reports": {
     "title": "Raporty",
@@ -8622,7 +8788,9 @@
     "distanceFailed": "Nie udało się zapisać dystansu.",
     "heartRate": "Tętno",
     "jumpRopeSaved": "Skakanka zapisana",
-    "watchJumpRopeSaved": "Skakanka z zegarka zapisana"
+    "watchJumpRopeSaved": "Skakanka z zegarka zapisana",
+    "treadmillCorrected": "Urządzenie pokazało {{shown}} {{unit}}; zapisano {{saved}} {{unit}} z Twoją korektą bieżni.",
+    "treadmillCorrectionOn": "Od wpisywanej wartości odejmowana jest Twoja korekta bieżni {{percent}}."
   },
   "runPrograms": {
     "startWhenTitle": "Rozpocznij {{name}}",
@@ -10580,5 +10748,173 @@
     "finishReview": "Potwierdź każdy składnik przed zapisaniem.",
     "amountRequired": "Wpisz ilość dla całego przepisu w wybranej jednostce. Objętość nigdy nie jest automatycznie traktowana jako masa.",
     "missingServings": "Źródło nie ma porcji przepisu. Wpisz porcje, aby zapisać posiłek do śledzenia; synchronizacja wartości odżywczych pozostanie niedostępna."
+  },
+  "toolfallback": {
+    "used": "Użyte narzędzie",
+    "cancelled": "Anulowane narzędzie",
+    "error": "Błąd:",
+    "cancelledReason": "Powód anulowania:"
+  },
+  "healthActivityTypes": {
+    "american_football": "Futbol amerykański",
+    "archery": "Łucznictwo",
+    "australian_football": "Futbol australijski",
+    "badminton": "Badminton",
+    "baseball": "Baseball",
+    "basketball": "Koszykówka",
+    "bowling": "Kręgle",
+    "boxing": "Boks",
+    "climbing": "Wspinaczka",
+    "cricket": "Krykiet",
+    "cross_training": "Trening mieszany",
+    "curling": "Curling",
+    "cycling": "Kolarstwo",
+    "cycling_indoor": "Kolarstwo na miejscu",
+    "elliptical": "Orbitrek",
+    "equestrian_sports": "Jeździectwo",
+    "fencing": "Szermierka",
+    "fishing": "Wędkarstwo",
+    "functional_strength_training": "Trening siłowy funkcjonalny",
+    "golf": "Golf",
+    "gymnastics": "Gimnastyka",
+    "handball": "Piłka ręczna",
+    "hiking": "Wędrówki piesze",
+    "ice_hockey": "Hokej na lodzie",
+    "roller_hockey": "Hokej na wrotkach",
+    "hunting": "Polowanie",
+    "lacrosse": "Lacrosse",
+    "martial_arts": "Sztuki walki",
+    "mind_and_body": "Ciało i umysł",
+    "breathing": "Oddech",
+    "paddle_sports": "Sporty wiosłowe",
+    "play": "Zabawa",
+    "preparation_and_recovery": "Przygotowanie i regeneracja",
+    "racquetball": "Racquetball",
+    "rowing": "Wioślarstwo",
+    "rowing_machine": "Ergometr wioślarski",
+    "rugby": "Rugby",
+    "running": "Bieganie",
+    "running_treadmill": "Bieganie na bieżni",
+    "sailing": "Żeglarstwo",
+    "skating": "Wrotkarstwo",
+    "ice_skating": "Łyżwiarstwo",
+    "snowshoeing": "Marsze w rakietach śnieżnych",
+    "soccer": "Piłka nożna",
+    "softball": "Softball",
+    "squash": "Squash",
+    "stair_climbing_machine": "Stopnica",
+    "surfing": "Surfing",
+    "swimming_pool": "Pływanie na basenie",
+    "swimming_open_water": "Pływanie na wodach otwartych",
+    "table_tennis": "Tenis stołowy",
+    "tennis": "Tenis",
+    "track_and_field": "Lekkoatletyka",
+    "strength_training": "Trening siłowy",
+    "weightlifting": "Podnoszenie ciężarów",
+    "volleyball": "Siatkówka",
+    "walking": "Chodzenie",
+    "walking_treadmill": "Chodzenie w pomieszczeniach",
+    "water_fitness": "Fitness w wodzie",
+    "water_polo": "Piłka wodna",
+    "water_sports": "Sporty wodne",
+    "wrestling": "Zapasy",
+    "yoga": "Joga",
+    "barre": "Barre",
+    "core_training": "Trening core",
+    "calisthenics": "Kalistenika",
+    "cross_country_skiing": "Biegi narciarskie",
+    "downhill_skiing": "Narciarstwo zjazdowe",
+    "stretching": "Rozciąganie",
+    "hiit": "Trening interwałowy o wysokiej intensywności (HIIT)",
+    "jump_rope": "Skakanka",
+    "kickboxing": "Kickboxing",
+    "pilates": "Pilates",
+    "snowboarding": "Snowboard",
+    "stairs": "Schody",
+    "step_training": "Step",
+    "wheelchair_walk_pace": "Wózek (tempo marszu)",
+    "wheelchair_run_pace": "Wózek (tempo biegu)",
+    "tai_chi": "Tai chi",
+    "mixed_cardio": "Cardio mieszane",
+    "exercise_class": "Zajęcia fitness",
+    "boot_camp": "Boot camp",
+    "hand_cycling": "Kolarstwo ręczne",
+    "disc_sports": "Frisbee",
+    "fitness_gaming": "Gry ruchowe (fitness)",
+    "cardio_dance": "Taniec cardio",
+    "social_dance": "Taniec",
+    "pickleball": "Pickleball",
+    "cooldown": "Schłodzenie",
+    "underwater_diving": "Nurkowanie",
+    "paragliding": "Paralotniarstwo",
+    "other": "Inne"
+  },
+  "treadmillSettings": {
+    "title": "Bieżnia i krok",
+    "unitFeet": "ft",
+    "unitMeters": "m",
+    "strideSection": "Twoja długość kroku",
+    "strideSectionHint": "Jak daleko zabiera Cię jeden krok. W pomieszczeniach nie ma GPS, więc aplikacja przelicza kroki na dystans za jej pomocą.",
+    "walkingStride": "Długość kroku przy chodzie",
+    "runningStride": "Długość kroku przy biegu",
+    "strideSummaryTypical": "{{stride}} · typowa",
+    "strideSummaryManual": "{{stride}} · ustawiona przez Ciebie",
+    "strideSummaryLearned_one": "{{stride}} · wyuczona z {{count}} dystansu",
+    "strideSummaryLearned_few": "{{stride}} · wyuczona z {{count}} dystansów",
+    "strideSummaryLearned_many": "{{stride}} · wyuczona z {{count}} dystansów",
+    "strideManual": "Ustawiona przez Ciebie. Nowe dystanse delikatnie ją korygują.",
+    "strideLearned_one": "Wyuczona z {{count}} prawdziwego dystansu. Każdy nowy delikatnie ją koryguje.",
+    "strideLearned_few": "Wyuczona z {{count}} prawdziwych dystansów. Każdy nowy delikatnie ją koryguje.",
+    "strideLearned_many": "Wyuczona z {{count}} prawdziwych dystansów. Każdy nowy delikatnie ją koryguje.",
+    "strideDefault": "Typowa długość kroku. Aplikacja uczy się Twojej za każdym razem, gdy po spacerze lub biegu wpisujesz dystans z bieżni, ale możesz też ustawić ją tutaj.",
+    "strideInputA11y": "{{activity}} w {{unit}}",
+    "strideInvalid": "Ta długość kroku wygląda na błędną. Krok mieści się zwykle między 0,3 a 2,5 m (1 i 8 ft).",
+    "measureStrideToggle": "Zmierz ją na torze",
+    "measureStrideHint": "Przejdź lub przebiegnij dystans, co do którego masz pewność, np. okrążenia toru. Potem wpisz liczbę kroków z Health lub zegarka oraz ten dystans.",
+    "calSteps": "Liczba kroków",
+    "calDistance": "Prawdziwy dystans",
+    "calShown": "Bieżnia pokazała",
+    "calibrateAction": "Ustaw moją długość kroku",
+    "calibrateFailed": "To jest za krótkie albo liczby się nie zgadzają. Użyj co najmniej 150 kroków i 100 m oraz sprawdź wartości.",
+    "calibrated": "Twoja {{activity}} wynosi teraz {{stride}}.",
+    "reset": "Resetuj",
+    "resetA11y": "Resetuj: {{activity}}",
+    "treadmillSection": "Czy Twoja bieżnia jest dokładna?",
+    "treadmillSectionHint": "Dla bieżni, której własny odczyt jest błędny. Poprawia dystanse wpisywane z niej, na telefonie lub zegarku. Przechowywane na tym telefonie.",
+    "treadmillRow": "Odczyt bieżni",
+    "treadmillSummaryOff": "Około poprawnie. Nic nie jest zmieniane.",
+    "treadmillSummaryLong": "Pokazuje o {{percent}} więcej niż rzeczywisty dystans",
+    "treadmillSummaryShort": "Pokazuje o {{percent}} mniej niż rzeczywisty dystans",
+    "treadmillSummaryLongUnset": "Pokazuje więcej niż rzeczywisty dystans. Wpisz o ile.",
+    "treadmillSummaryShortUnset": "Pokazuje mniej niż rzeczywisty dystans. Wpisz o ile.",
+    "displayReads": "W porównaniu z rzeczywistym dystansem pokazuje",
+    "readsRight": "Około poprawnie",
+    "readsLong": "Więcej",
+    "readsShort": "Mniej",
+    "percentBy": "O",
+    "percentA11y": "O ile procent bieżnia się myli",
+    "preview": "Gdy pokazuje {{shown}} {{unit}}, zapisywane jest {{saved}} {{unit}}.",
+    "previewNone": "Wpisz, o ile się myli, maks. {{max}}%. Przy 0 nic nie jest zmieniane.",
+    "measureTreadmillToggle": "Nie masz pewności? Oblicz to ze swoich kroków",
+    "measureTreadmillHint": "Idź lub biegnij na bieżni, a potem wpisz liczbę kroków z Health lub zegarka oraz to, co pokazała bieżnia. Twoje kroki pomnożone przez długość kroku dają prawdziwy dystans.",
+    "checkAction": "Sprawdź moją bieżnię",
+    "checkedLong": "Z Twoich kroków wynika {{actual}} {{unit}}, więc bieżnia pokazuje o {{percent}} więcej niż faktycznie.",
+    "checkedShort": "Z Twoich kroków wynika {{actual}} {{unit}}, więc bieżnia pokazuje o {{percent}} mniej niż faktycznie.",
+    "checkedSame": "Z Twoich kroków wynika {{actual}} {{unit}}. Bieżnia ma rację, nie ma czego poprawiać.",
+    "useCorrection": "Użyj tej korekty",
+    "watchScale": "Własny szacunek zegarka",
+    "watchScaleHint": "Używane, gdy zachowujesz dystans ze zegarka zamiast wpisywać dystans z bieżni. Zegarek szacuje na podstawie ruchu ręki, a za każdym razem, gdy wpisujesz wartość z bieżni, uczy się, o ile się mylił. To działa automatycznie.",
+    "watchScaleWalk": "Spacery",
+    "watchScaleRun": "Biegi",
+    "watchScaleNone": "Jeszcze się nie wyuczył.",
+    "watchScaleLower_one": "Obniżono o {{percent}}. Wyuczono z {{count}} biegu.",
+    "watchScaleLower_few": "Obniżono o {{percent}}. Wyuczono z {{count}} biegów.",
+    "watchScaleLower_many": "Obniżono o {{percent}}. Wyuczono z {{count}} biegów.",
+    "watchScaleRaise_one": "Podniesiono o {{percent}}. Wyuczono z {{count}} biegu.",
+    "watchScaleRaise_few": "Podniesiono o {{percent}}. Wyuczono z {{count}} biegów.",
+    "watchScaleRaise_many": "Podniesiono o {{percent}}. Wyuczono z {{count}} biegów.",
+    "watchScaleSame_one": "Zegarek zgadza się z bieżnią. Wyuczono z {{count}} biegu.",
+    "watchScaleSame_few": "Zegarek zgadza się z bieżnią. Wyuczono z {{count}} biegów.",
+    "watchScaleSame_many": "Zegarek zgadza się z bieżnią. Wyuczono z {{count}} biegów."
   }
 }
