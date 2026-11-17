@@ -801,10 +801,17 @@ const MealCard = ({
                     defaultValue: `${meal.name} Total:`,
                   })}
                 </span>
+                {/* Columns as wide as the entry grid's, so a long label
+                    ("Kohlenhydrate") never runs into the next column. The
+                    grid takes the space beside the title, at most six
+                    columns' worth, and wraps into more rows when narrower. */}
                 <div
-                  className="grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-[35%] sm:ml-auto"
+                  data-testid="meal-total-nutrients"
+                  className="grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-auto sm:flex-1 sm:min-w-0 sm:max-w-[37rem] sm:ml-auto"
                   style={{
-                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '40px' : '60px'}, 1fr))`,
+                    // 92px fits "Kohlenhydrate" in text-xs on one line;
+                    // 37rem is six such columns plus their gaps.
+                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '80px' : '92px'}, 1fr))`,
                   }}
                 >
                   {visibleNutrientsForGrid.map((nutrient) => {
@@ -831,7 +838,10 @@ const MealCard = ({
                         : metadata.unit;
 
                     return (
-                      <div key={nutrient} className="text-center min-w-[40px]">
+                      <div
+                        key={nutrient}
+                        className="text-center min-w-0 wrap-break-word"
+                      >
                         <div className={`font-bold ${metadata.color}`}>
                           {displayValue} {unitDisplay}
                         </div>
