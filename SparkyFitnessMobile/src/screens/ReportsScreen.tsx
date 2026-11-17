@@ -114,6 +114,15 @@ const ReportsScreen: React.FC<ReportsScreenProps> = ({ navigation }) => {
       onPress: () => navigation.navigate('HeartRateReport'),
     },
     {
+      key: 'oralCare',
+      icon: 'oral-care',
+      title: t('reports.oralCare', { defaultValue: 'Oral care' }),
+      subtitle: t('reports.oralCareSubtitle', {
+        defaultValue: 'Brushing against your goal, streaks and time',
+      }),
+      onPress: () => navigation.navigate('OralCareReport'),
+    },
+    {
       key: 'compare',
       icon: 'swap-vertical',
       title: t('reports.compare', { defaultValue: 'Compare' }),

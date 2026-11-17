@@ -30,7 +30,13 @@ interface ActivityInterrogationFinderProps {
 export const ActivityInterrogationFinder = ({
   onQueryFetch,
 }: ActivityInterrogationFinderProps) => {
-  const { distanceUnit, loggingLevel } = usePreferences();
+  const {
+    distanceUnit,
+    loggingLevel,
+    energyUnit,
+    convertEnergy,
+    getEnergyUnitString,
+  } = usePreferences();
   const { t } = useTranslation();
   const isMiles = distanceUnit === 'miles';
 
@@ -269,7 +275,10 @@ export const ActivityInterrogationFinder = ({
                         {t('exerciseAnalytics.volume.calories', 'Calories')}
                       </div>
                       <div className="font-semibold text-amber-600">
-                        {Math.round(item.caloriesBurned)} kcal
+                        {Math.round(
+                          convertEnergy(item.caloriesBurned, 'kcal', energyUnit)
+                        )}{' '}
+                        {getEnergyUnitString(energyUnit)}
                       </div>
                     </div>
                   )}

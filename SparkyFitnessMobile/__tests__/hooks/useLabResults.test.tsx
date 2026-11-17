@@ -8,7 +8,6 @@ import {
   createLabMarker,
   createLabResult,
   deleteLabMarker,
-  fetchLabMarkers,
 } from '../../src/services/api/labResultsApi';
 import {
   deleteBuiltinMarkerResults,
@@ -60,7 +59,6 @@ describe('useSaveLabResult', () => {
     result.current.mutate({ ...base, target: { markerKey: 'hba1c' } });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(createLabMarker).not.toHaveBeenCalled();
     expect(createLabResult).toHaveBeenCalledWith({
       marker_key: 'hba1c',
       entry_date: '2026-09-20',
@@ -78,55 +76,72 @@ describe('useSaveLabResult', () => {
     result.current.mutate({ ...base, notes: '', target: { markerId: 'm-1' } });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(createLabMarker).not.toHaveBeenCalled();
     expect(createLabResult).toHaveBeenCalledWith(
       expect.objectContaining({ custom_marker_id: 'm-1', notes: undefined })
     );
   });
 
-  it('creates the marker first when it is new', async () => {
+  it('names a new marker in the result request, so the server creates both together', async () => {
+    jest.mocked(createLabResult).mockResolvedValue({ id: 'r-1' } as never);
+    const { result } = renderSave();
+
+    result.current.mutate({ ...base, target: { newMarkerName: 'ApoB' } });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(createLabResult).toHaveBeenCalledTimes(1);
+    expect(createLabResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        custom_marker_name: 'ApoB',
+        unit: '%',
+        ref_range_low: 4.8,
+        ref_range_high: 5.6,
+      })
+    );
+    expect(jest.mocked(createLabResult).mock.calls[0]?.[0]).not.toHaveProperty(
+      'custom_marker_id'
+    );
+  });
+  it('falls back to creating the marker first on an older server', async () => {
+    jest
+      .mocked(createLabResult)
+      .mockRejectedValueOnce(
+        new ApiError(
+          'Server error: 400',
+          400,
+          '{"error":"Invalid request body","details":{"marker_key":{"_errors":["Provide exactly one of marker_key or custom_marker_id"]}}}'
+        )
+      )
+      .mockResolvedValueOnce({ id: 'r-1' } as never);
     jest.mocked(createLabMarker).mockResolvedValue({ id: 'm-9' } as never);
     const { result } = renderSave();
 
     result.current.mutate({ ...base, target: { newMarkerName: 'ApoB' } });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(createLabMarker).toHaveBeenCalledWith({
-      name: 'ApoB',
-      unit: '%',
-      ref_range_low: 4.8,
-      ref_range_high: 5.6,
+    expect(createLabMarker).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'ApoB', unit: '%' })
+    );
+    expect(jest.mocked(createLabResult).mock.calls[1]?.[0]).toMatchObject({
+      custom_marker_id: 'm-9',
     });
-    expect(createLabResult).toHaveBeenCalledWith(
-      expect.objectContaining({ custom_marker_id: 'm-9' })
-    );
   });
 
-  it('reuses the marker when a retry finds the name already taken', async () => {
+  it('does not fall back on an ordinary refusal from a current server', async () => {
     jest
-      .mocked(createLabMarker)
-      .mockRejectedValue(new ApiError('conflict', 409));
-    jest
-      .mocked(fetchLabMarkers)
-      .mockResolvedValue([{ id: 'm-7', name: 'apob' }] as never);
-    const { result } = renderSave();
-
-    result.current.mutate({ ...base, target: { newMarkerName: 'ApoB' } });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(createLabResult).toHaveBeenCalledWith(
-      expect.objectContaining({ custom_marker_id: 'm-7' })
-    );
-  });
-
-  it('does not save a result when creating the marker fails', async () => {
-    jest.mocked(createLabMarker).mockRejectedValue(new Error('boom'));
+      .mocked(createLabResult)
+      .mockRejectedValue(
+        new ApiError(
+          'Server error: 400',
+          400,
+          '{"error":"Invalid request body","details":{"ref_range_low":{"_errors":["ref_range_low must not exceed ref_range_high"]}}}'
+        )
+      );
     const { result } = renderSave();
 
     result.current.mutate({ ...base, target: { newMarkerName: 'ApoB' } });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(createLabResult).not.toHaveBeenCalled();
+    expect(createLabMarker).not.toHaveBeenCalled();
   });
 });
 

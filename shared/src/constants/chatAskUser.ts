@@ -33,7 +33,8 @@ export type AskUserMode = (typeof ASK_USER_MODES)[number];
 /** Chips stop being scannable past a handful; also caps model verbosity. */
 export const MAX_ASK_USER_OPTIONS = 4;
 export const MIN_ASK_USER_OPTIONS = 2;
-export const MAX_ASK_USER_OPTION_LENGTH = 48;
+// Keep a finite model-output bound while allowing real provider product names.
+export const MAX_ASK_USER_OPTION_LENGTH = 120;
 
 export interface AskUserInput {
   mode: AskUserMode;

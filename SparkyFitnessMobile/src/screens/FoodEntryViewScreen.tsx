@@ -34,10 +34,14 @@ import CalendarSheet, {
 import TimeSheet, { type TimeSheetRef } from '../components/TimeSheet';
 import MarkdownNotesField from '../components/MarkdownNotesField';
 import { NoteMarkdown } from '../components/NoteMarkdown';
-import { toHourMinute } from '@workspace/shared';
+import { clockInZone, toHourMinute } from '@workspace/shared';
 import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { usableFoodImages } from '../utils/foodImages';
-import { normalizeDate, formatDateLabel } from '../utils/dateUtils';
+import {
+  normalizeDate,
+  formatDateLabel,
+  getDeviceTimezone,
+} from '../utils/dateUtils';
 import { getLocalizedMealLabel } from '../constants/meals';
 import {
   useMealTypes,
@@ -49,6 +53,10 @@ import {
 } from '../hooks';
 import { useFoodVariants } from '../hooks/useFoodVariants';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
+import { useCopyFoodEntry } from '../hooks/useCopyFoodEntry';
+import CopyMealSheet, {
+  type CopyMealSheetRef,
+} from '../components/CopyMealSheet';
 import { useUpdateFoodEntry } from '../hooks/useUpdateFoodEntry';
 import { useProfile } from '../hooks/useProfile';
 import type { UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
@@ -81,6 +89,8 @@ import {
 } from '../utils/foodDetails';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
 import VerifiedBadge from '../components/VerifiedBadge';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 
 type FoodEntryViewScreenProps = RootStackScreenProps<'FoodEntryView'>;
 
@@ -146,6 +156,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   route,
 }) => {
   const { t, i18n: translationI18n } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
@@ -177,6 +188,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const { profile } = useProfile();
   const calendarRef = useRef<CalendarSheetRef>(null);
   const timeSheetRef = useRef<TimeSheetRef>(null);
+  const copySheetRef = useRef<CopyMealSheetRef>(null);
+  const { copyFood, isPending: isCopyPending } = useCopyFoodEntry({
+    onSuccess: () => copySheetRef.current?.dismiss(),
+  });
 
   useEffect(() => {
     if (entry.food_entry_meal_id) {
@@ -849,7 +864,10 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   const { preferences } = usePreferences();
   const showNetCarbs = preferences?.show_net_carbs === true;
 
-  const viewCalories = Math.round(scaledValue(entry.calories, entry));
+  const viewCalories = roundedEnergy(
+    scaledValue(entry.calories, entry),
+    energyUnit
+  );
   const viewProtein = Math.round(scaledValue(entry.protein, entry));
   const viewCarbs = Math.round(scaledValue(entry.carbs, entry));
   const viewFat = Math.round(scaledValue(entry.fat, entry));
@@ -1147,11 +1165,13 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
               <View className="flex-1 items-center pr-10">
                 <Text className="text-text-primary text-3xl font-medium">
                   {isEditing
-                    ? Math.round(scaled(displayValues.calories))
+                    ? roundedEnergy(scaled(displayValues.calories), energyUnit)
                     : viewCalories}
                 </Text>
                 <Text className="text-text-secondary text-base mt-1">
-                  {t('nutrients.calories', { defaultValue: 'Calories' })}
+                  {energyUnit === 'kJ'
+                    ? energyUnitLabel(energyUnit, t)
+                    : t('nutrients.calories', { defaultValue: 'Calories' })}
                 </Text>
               </View>
               <Animated.View
@@ -1538,6 +1558,27 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           ) : null}
         </Animated.View>
 
+        {canEdit && !isEditing ? (
+          <Button
+            variant="outline"
+            onPress={() =>
+              copySheetRef.current?.present(
+                normalizeDate(entry.entry_date),
+                entry.meal_type_id ?? null,
+                entry.meal_type,
+                { foodName: entry.food_name ?? '' }
+              )
+            }
+            accessibilityRole="button"
+            accessibilityLabel={t('foodEntryView.copyEntry', {
+              defaultValue: 'Copy Food',
+            })}
+            className="mt-2"
+          >
+            {t('foodEntryView.copyEntry', { defaultValue: 'Copy Food' })}
+          </Button>
+        ) : null}
+
         <Animated.View layout={LinearTransition.duration(300)}>
           <Button
             variant="destructive"
@@ -1558,6 +1599,24 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         </Animated.View>
       </ScrollView>
 
+      {canEdit && (
+        <CopyMealSheet
+          ref={copySheetRef}
+          isPending={isCopyPending}
+          onCopy={(payload, { targetMealTypeId, quickTarget }) =>
+            copyFood({
+              entry,
+              targetDate: payload.targetDate,
+              targetMealTypeId,
+              // "Now" logs the copy at the current time; any other target
+              // keeps the time of day the food was first logged at.
+              ...(quickTarget === 'now'
+                ? { entryTime: clockInZone(getDeviceTimezone()) }
+                : {}),
+            })
+          }
+        />
+      )}
       {isEditing && (
         <CalendarSheet
           ref={calendarRef}

@@ -20,4 +20,26 @@ function getGarminSyncPhaseErrors(result: GarminSyncResult) {
   });
 }
 
-export { getGarminSyncPhaseErrors };
+// The connection-level codes formatGarminMicroserviceError puts in a phase's
+// error text when the microservice could not be reached at all.
+const UNREACHABLE_CODES = /\b(?:ECONNREFUSED|ETIMEDOUT|ENOTFOUND)\b/;
+
+/** Whether a failed phase says the Garmin microservice was not reachable. */
+function isGarminServiceUnreachable(result: GarminSyncResult): boolean {
+  return getGarminSyncPhaseErrors(result).some((phase) => {
+    const phaseResult = result[phase];
+    if (!isRecord(phaseResult)) return false;
+    const messages = [
+      phaseResult.error,
+      ...(Array.isArray(phaseResult.partialErrors)
+        ? phaseResult.partialErrors
+        : []),
+    ];
+    return messages.some(
+      (message) =>
+        typeof message === 'string' && UNREACHABLE_CODES.test(message)
+    );
+  });
+}
+
+export { getGarminSyncPhaseErrors, isGarminServiceUnreachable };

@@ -269,11 +269,18 @@ describe.runIf(reachable)('database connection loss (real PostgreSQL)', () => {
     } finally {
       client.release(true);
     }
-    const { rows } = await admin.query(
-      'SELECT 1 FROM pg_stat_activity WHERE query LIKE $1 AND pid <> pg_backend_pid()',
-      [`%${marker}%`]
+    // The ended backend lingers in pg_stat_activity for a moment; a replayed
+    // statement would stay for its full 5 s.
+    await vi.waitFor(
+      async () => {
+        const { rows } = await admin.query(
+          'SELECT 1 FROM pg_stat_activity WHERE query LIKE $1 AND pid <> pg_backend_pid()',
+          [`%${marker}%`]
+        );
+        expect(rows).toHaveLength(0);
+      },
+      { timeout: 2000, interval: 50 }
     );
-    expect(rows).toHaveLength(0);
   });
 
   it('rides out a database outage shorter than the retry bound', async () => {

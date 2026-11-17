@@ -10,11 +10,6 @@ import {
   listBackups,
 } from '../services/backupService.js';
 import { rescheduleBackups } from '../services/backupScheduler.js';
-import {
-  assertRestoreAllowed,
-  RestoreRefusedError,
-  RESTORE_REFUSED_CODE,
-} from '../services/onlineRestoreGuard.js';
 import { authenticate, isAdmin } from '../middleware/authMiddleware.js';
 import backupSettingsRepository from '../models/backupSettingsRepository.js';
 
@@ -75,33 +70,6 @@ async function ensureTempUploadDirectory() {
 }
 ensureTempUploadDirectory(); // Call once on startup
 
-function sendRestoreRefused(res: express.Response, error: RestoreRefusedError) {
-  log('warn', error.message);
-  return res
-    .status(409)
-    .json({ code: RESTORE_REFUSED_CODE, message: error.message });
-}
-
-// Runs before multer so a refused restore never accepts the upload.
-async function refuseRestoreWithOtherInstances(
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) {
-  try {
-    await assertRestoreAllowed();
-  } catch (error) {
-    if (error instanceof RestoreRefusedError) {
-      return sendRestoreRefused(res, error);
-    }
-    log('error', 'Could not check for other instances before restore:', error);
-    return res.status(503).json({
-      message:
-        'Could not check whether other instances are running; the restore was not started.',
-    });
-  }
-  next();
-}
 /**
  * @swagger
  * tags:
@@ -191,17 +159,16 @@ router.post('/manual', authenticate, isAdmin, async (req, res) => {
  *       400:
  *         description: No backup file uploaded.
  *       409:
- *         description: Refused because other server instances appear to be using the database (best effort; scale to one instance first), or another restore is already running.
+ *         description: Another restore is already running.
  *       500:
  *         description: Server error during restore.
  *       503:
- *         description: Could not check for other instances, or another restore is already running (refused before the upload, with Retry-After); the restore was not started.
+ *         description: Another restore is already running (refused before the upload, with Retry-After); the restore was not started.
  */
 router.post(
   '/restore',
   authenticate,
   isAdmin,
-  refuseRestoreWithOtherInstances,
   upload.single('backupFile'),
   async (req, res) => {
     log('info', 'Restore initiated by admin.');
@@ -239,9 +206,6 @@ router.post(
           .json({ message: 'Restore failed.', error: result.error });
       }
     } catch (error) {
-      if (error instanceof RestoreRefusedError) {
-        return sendRestoreRefused(res, error);
-      }
       if (error instanceof RestoreInProgressError) {
         return res.status(409).json({ message: error.message });
       }

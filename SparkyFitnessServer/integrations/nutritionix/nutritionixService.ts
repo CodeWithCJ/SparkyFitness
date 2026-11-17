@@ -18,10 +18,36 @@ interface NutritionixExercise {
   nf_calories?: number;
 }
 
-async function getNutritionixHeaders(providerId: string) {
+async function getNutritionixHeaders(
+  authenticatedUserId: string,
+  providerId: string
+) {
+  // The provider holds a user's private Nutritionix keys and is loaded with the
+  // RLS-bypassing system client, so the caller's access must be checked first.
+  const hasAccess =
+    await externalProviderRepository.checkExternalDataProviderAccess(
+      providerId,
+      authenticatedUserId
+    );
+  if (!hasAccess) {
+    throw Object.assign(
+      new Error(
+        'Forbidden: You do not have permission to access this external data provider.'
+      ),
+      { statusCode: 403 }
+    );
+  }
   const providerData =
     await externalProviderRepository.getExternalDataProviderById(providerId);
-  if (!providerData || !providerData.app_id || !providerData.app_key) {
+  if (!providerData) {
+    throw new Error('Nutritionix provider not configured or keys missing.');
+  }
+  if (providerData.provider_type !== 'nutritionix') {
+    throw Object.assign(new Error('Provider is not a Nutritionix provider.'), {
+      statusCode: 400,
+    });
+  }
+  if (!providerData.app_id || !providerData.app_key) {
     throw new Error('Nutritionix provider not configured or keys missing.');
   }
   return {
@@ -30,9 +56,16 @@ async function getNutritionixHeaders(providerId: string) {
     'x-app-key': providerData.app_key,
   };
 }
-async function searchNutritionixFoods(query: string, providerId: string) {
+async function searchNutritionixFoods(
+  authenticatedUserId: string,
+  query: string,
+  providerId: string
+) {
   try {
-    const headers = await getNutritionixHeaders(providerId);
+    const headers = await getNutritionixHeaders(
+      authenticatedUserId,
+      providerId
+    );
     const response = await fetch(
       `${NUTRITIONIX_API_BASE_URL}/search/instant?query=${encodeURIComponent(query)}`,
       {
@@ -56,9 +89,16 @@ async function searchNutritionixFoods(query: string, providerId: string) {
     throw error;
   }
 }
-async function getNutritionixNutrients(query: string, providerId: string) {
+async function getNutritionixNutrients(
+  authenticatedUserId: string,
+  query: string,
+  providerId: string
+) {
   try {
-    const headers = await getNutritionixHeaders(providerId);
+    const headers = await getNutritionixHeaders(
+      authenticatedUserId,
+      providerId
+    );
     const response = await fetch(
       `${NUTRITIONIX_API_BASE_URL}/natural/nutrients`,
       {
@@ -114,11 +154,15 @@ async function getNutritionixNutrients(query: string, providerId: string) {
   }
 }
 async function getNutritionixBrandedNutrients(
+  authenticatedUserId: string,
   nixItemId: string,
   providerId: string
 ) {
   try {
-    const headers = await getNutritionixHeaders(providerId);
+    const headers = await getNutritionixHeaders(
+      authenticatedUserId,
+      providerId
+    );
     const response = await fetch(`${NUTRITIONIX_API_BASE_URL}/search/item`, {
       method: 'POST',
       headers: headers,
@@ -175,12 +219,16 @@ async function getNutritionixBrandedNutrients(
   }
 }
 async function searchNutritionixExercises(
+  authenticatedUserId: string,
   query: string,
   providerId: string,
   userDemographics: Record<string, unknown> = {}
 ) {
   try {
-    const headers = await getNutritionixHeaders(providerId);
+    const headers = await getNutritionixHeaders(
+      authenticatedUserId,
+      providerId
+    );
     const body = {
       query: query,
       ...userDemographics, // Add user demographics if provided

@@ -19,6 +19,7 @@ export const ADD_MENU_ITEM_KEYS = [
   'symptoms',
   'mood',
   'mindfulness',
+  'oralCare',
   'askSparky',
   'syncHealth',
 ] as const;
@@ -61,6 +62,7 @@ export const ADD_MENU_ITEM_LABELS: Record<
   mood: (t) => t('addSheet.mood', { defaultValue: 'Mood' }),
   mindfulness: (t) =>
     t('addSheet.mindfulness', { defaultValue: 'Mindfulness' }),
+  oralCare: (t) => t('addSheet.oralCare', { defaultValue: 'Oral care' }),
   askSparky: (t) => t('addSheet.askSparky', { defaultValue: 'Ask Sparky' }),
   syncHealth: (t) =>
     t('addSheet.syncHealthShort', { defaultValue: 'Sync Health' }),
@@ -86,6 +88,7 @@ export const ADD_MENU_ITEM_ICONS: Record<AddMenuItemKey, IconName> = {
   symptoms: 'symptoms',
   mood: 'mood',
   mindfulness: 'exercise-yoga',
+  oralCare: 'oral-care',
   askSparky: 'sparkles',
   syncHealth: 'sync',
 };
@@ -105,6 +108,7 @@ export const ADD_MENU_ITEM_TINTS: Record<AddMenuItemKey, AddMenuItemTint> = {
   symptoms: 'red',
   mood: 'amber',
   mindfulness: 'sky',
+  oralCare: 'sky',
   askSparky: 'accent',
   syncHealth: 'accent',
 };
@@ -138,6 +142,7 @@ export const ADD_MENU_ITEM_ROW_STYLES: Record<AddMenuItemKey, AddMenuRowStyle> =
     symptoms: 'list',
     mood: 'compact',
     mindfulness: 'compact',
+    oralCare: 'list',
     askSparky: 'action',
     syncHealth: 'action',
   };

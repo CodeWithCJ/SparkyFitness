@@ -1,3 +1,7 @@
+import {
+  chatApprovalResponsesReady,
+  savedChatMessageMetadata,
+} from '@workspace/shared';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
 import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 import { useAuth } from '@/hooks/useAuth';
@@ -32,17 +36,20 @@ interface SparkyChatInnerProps {
     id: string;
     chat_tool_profile?: 'full' | 'core' | null;
   } | null;
+  onClearChat?: () => void;
   history: Array<{
     id: string;
     content: string;
     isUser: boolean;
     parts?: MessagePart[];
+    metadata?: unknown;
   }>;
 }
 
 const SparkyChatInner = ({
   activeAIServiceSetting,
   history,
+  onClearChat,
 }: SparkyChatInnerProps) => {
   const { t } = useTranslation();
   const invalidateDiary = useDiaryInvalidation();
@@ -96,6 +103,7 @@ const SparkyChatInner = ({
       role: msg.isUser ? ('user' as const) : ('assistant' as const),
       content: msg.content,
       parts,
+      metadata: savedChatMessageMetadata(msg.metadata, msg.id),
       attachments,
     };
   }) as unknown as NonNullable<
@@ -103,9 +111,12 @@ const SparkyChatInner = ({
   >['messages'];
 
   const runtime = useChatRuntime({
+    joinStrategy: 'none',
+    sendAutomaticallyWhen: chatApprovalResponsesReady,
     transport: new AssistantChatTransport({
       api: '/api/chat/stream',
       body: {
+        approvals: true,
         service_config_id: activeAIServiceSetting?.id,
         user_date: userDate,
       },
@@ -193,13 +204,13 @@ const SparkyChatInner = ({
         }
       />
       <div className="flex-1 overflow-hidden py-4">
-        <Thread runtime={runtime} />
+        <Thread runtime={runtime} onClearChat={onClearChat} />
       </div>
     </div>
   );
 };
 
-const SparkyChatInterface = () => {
+const SparkyChatInterface = ({ onClearChat }: { onClearChat?: () => void }) => {
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
   const { data: activeAIServiceSetting, isLoading: isActiveServiceLoading } =
@@ -224,6 +235,7 @@ const SparkyChatInterface = () => {
       key={activeUserId ?? ''}
       activeAIServiceSetting={activeAIServiceSetting || null}
       history={history || []}
+      onClearChat={onClearChat}
     />
   );
 };

@@ -94,17 +94,4 @@ export interface ProfileFormState {
   height: number | string;
 }
 
-export interface AdaptiveTdeeResult {
-  tdee: number;
-  activityAdjustedTdee?: number;
-  rawActivityAdjustedTdee?: number;
-  averageActivityCalories?: number;
-  activityDaysOfData?: number;
-  confidence: 'HIGH' | 'MEDIUM' | 'LOW';
-  weightTrend?: number;
-  isFallback: boolean;
-  fallbackReason?: string;
-  avgIntake?: number;
-  daysOfData?: number;
-  lastCalculated: string;
-}
+export type { AdaptiveTdeeResult } from '@workspace/shared';

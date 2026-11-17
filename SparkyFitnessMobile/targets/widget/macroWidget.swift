@@ -5,8 +5,12 @@ struct MacroSnapshot {
     let proteinGrams: Double
     let carbsGrams: Double
     let fatGrams: Double
+    /// kcal, like the snapshot; `caloriesDisplay` is the number to show.
     let caloriesConsumed: Double
     let lastUpdated: Date?
+    var energyUnit: WidgetEnergyUnit = .kcal
+
+    var caloriesDisplay: Double { energyUnit.fromKcal(caloriesConsumed) }
 
     var proteinKcal: Double { proteinGrams * 4 }
     var carbsKcal:   Double { carbsGrams   * 4 }
@@ -27,6 +31,7 @@ private struct MacroSnapshotPayload: Decodable {
     let fat: Double?
     let calories: Double?
     let lastUpdated: Double?
+    let energyUnit: String?
 }
 
 private func loadMacroSnapshot() -> MacroSnapshot {
@@ -45,7 +50,8 @@ private func loadMacroSnapshot() -> MacroSnapshot {
         carbsGrams: payload.carbs ?? 0,
         fatGrams: payload.fat ?? 0,
         caloriesConsumed: payload.calories ?? 0,
-        lastUpdated: payload.lastUpdated.map { Date(timeIntervalSince1970: $0) }
+        lastUpdated: payload.lastUpdated.map { Date(timeIntervalSince1970: $0) },
+        energyUnit: WidgetEnergyUnit(payload.energyUnit)
     )
 }
 
@@ -179,7 +185,7 @@ private struct MacroRingWithLabel: View {
 
     private var centerText: String {
         guard snapshot.hasData else { return "-" }
-        return localizedNumberString(snapshot.caloriesConsumed)
+        return localizedNumberString(snapshot.caloriesDisplay)
     }
 
     var body: some View {
@@ -190,7 +196,7 @@ private struct MacroRingWithLabel: View {
                         .font(.system(size: numberFontSize, weight: .bold, design: .rounded))
                         .minimumScaleFactor(0.6)
                         .lineLimit(1)
-                    Text(localizedWidgetString("widget.kcal"))
+                    Text(energyUnitLabel(snapshot.energyUnit))
                         .font(.system(size: numberFontSize * 0.58))
                         .foregroundStyle(.secondary)
                 }
@@ -198,7 +204,7 @@ private struct MacroRingWithLabel: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(
                     String(
-                        format: localizedWidgetString("widget.a11y.kcal"),
+                        format: energyA11yFormat(snapshot.energyUnit),
                         centerText
                     )
                 )
@@ -286,7 +292,7 @@ struct macroWidgetEntryView: View {
 
     private var lockCircular: some View {
         let calories = entry.snapshot.hasData
-            ? localizedNumberString(entry.snapshot.caloriesConsumed)
+            ? localizedNumberString(entry.snapshot.caloriesDisplay)
             : "-"
         return MacroLockRing(snapshot: entry.snapshot)
             .overlay(
@@ -298,7 +304,7 @@ struct macroWidgetEntryView: View {
             )
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(
-                String(format: localizedWidgetString("widget.a11y.kcal"), calories)
+                String(format: energyA11yFormat(entry.snapshot.energyUnit), calories)
                     + ", "
                     + lockSummary
             )

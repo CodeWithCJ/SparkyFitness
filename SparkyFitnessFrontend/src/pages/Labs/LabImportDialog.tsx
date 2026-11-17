@@ -24,8 +24,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { generateClientId } from '@/utils/generateClientId';
 import { toast } from '@/hooks/use-toast';
 import {
+  saveMayHaveLanded,
   useImportLabReport,
   useScanLabReport,
 } from '@/hooks/Labs/useLabResults';
@@ -39,6 +41,9 @@ import {
   labReportMimeType,
   readFileAsBase64,
 } from './labFormat';
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 interface LabImportDialogProps {
   open: boolean;
@@ -71,6 +76,14 @@ const LabImportDialog = ({
   const [date, setDate] = useState(todayInZone(timezone));
   const [fileError, setFileError] = useState<string | null>(null);
 
+  // One key per reviewed report, sent with every try to save it.
+  const [requestId, setRequestId] = useState<string | null>(null);
+  // After a save that may have been stored, the review is locked: a retry
+  // must send exactly what was sent, or the server would return the earlier
+  // report under the same key and drop the changes. Choosing the report again
+  // starts a new review with a new key.
+  const [locked, setLocked] = useState(false);
+
   const reset = () => {
     selection.current += 1;
     setRows(null);
@@ -78,6 +91,7 @@ const LabImportDialog = ({
     setValues({});
     setLabName('');
     setFileError(null);
+    setLocked(false);
     scan.reset();
   };
 
@@ -136,6 +150,11 @@ const LabImportDialog = ({
         sex
       );
       setRows(planned);
+      // randomUUID needs HTTPS; generateClientId falls back to
+      // getRandomValues, so a plain-HTTP self-host gets a key too. Without any
+      // crypto it is not a UUID, and the import is sent without a key.
+      const key = generateClientId();
+      setRequestId(UUID_PATTERN.test(key) ? key : null);
       setIncluded(
         Object.fromEntries(planned.map((r) => [r.key, r.blocked === null]))
       );
@@ -181,6 +200,7 @@ const LabImportDialog = ({
       labName: labName.trim() || null,
       date,
       values: parsed as Record<string, number>,
+      clientRequestId: requestId ?? undefined,
     });
     const id = selection.current;
     try {
@@ -194,8 +214,9 @@ const LabImportDialog = ({
       });
       // A different report picked while this one was saving stays on screen.
       if (id === selection.current) close(false);
-    } catch {
+    } catch (error) {
       // The mutation's toast reports it; the review stays for another try.
+      if (saveMayHaveLanded(error)) setLocked(true);
     }
   };
 
@@ -252,6 +273,7 @@ const LabImportDialog = ({
                 <Label htmlFor="import-lab">{t('labs.labName', 'Lab')}</Label>
                 <Input
                   id="import-lab"
+                  disabled={locked}
                   value={labName}
                   onChange={(e) => setLabName(e.target.value)}
                 />
@@ -263,6 +285,7 @@ const LabImportDialog = ({
                 <Input
                   id="import-date"
                   type="date"
+                  disabled={locked}
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
                 />
@@ -282,6 +305,22 @@ const LabImportDialog = ({
               </div>
             </div>
 
+            {locked && requestId && (
+              <p role="status" className="text-sm text-muted-foreground">
+                {t(
+                  'labs.import.lockedAfterFailedSave',
+                  'Saving did not finish, so this review is locked: Save again sends exactly the same report, and it is stored only once. To change values, choose the report again.'
+                )}
+              </p>
+            )}
+            {locked && !requestId && (
+              <p role="alert" className="text-sm text-destructive">
+                {t(
+                  'labs.import.unconfirmedNoKey',
+                  'Saving did not finish, and this browser cannot mark the report so that saving again stores it once. The report may still be saving. Close this window and check your lab results in a few minutes before importing anything again, so it is not saved twice.'
+                )}
+              </p>
+            )}
             <ul className="divide-y rounded-md border">
               {rows.map((row) => (
                 <li
@@ -290,7 +329,7 @@ const LabImportDialog = ({
                 >
                   <Checkbox
                     checked={!!included[row.key] && row.blocked === null}
-                    disabled={row.blocked !== null}
+                    disabled={locked || row.blocked !== null}
                     onCheckedChange={(on) =>
                       setIncluded((prev) => ({
                         ...prev,
@@ -336,7 +375,7 @@ const LabImportDialog = ({
                   <Input
                     className="w-28"
                     inputMode="decimal"
-                    disabled={row.blocked !== null}
+                    disabled={locked || row.blocked !== null}
                     value={values[row.key] ?? ''}
                     aria-label={t(
                       'labs.import.valueFor',
@@ -380,6 +419,8 @@ const LabImportDialog = ({
               onClick={() => void save()}
               disabled={
                 chosen.length === 0 ||
+                // Without a key a retry could store the report twice.
+                (locked && !requestId) ||
                 invalid ||
                 badDate ||
                 future ||

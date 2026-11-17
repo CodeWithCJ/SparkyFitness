@@ -11,6 +11,7 @@ import type {
 import { COMPARE_METRICS, compareDisplayValue } from './metrics.ts';
 
 import type { CompareMode, CompareQuestion } from './question.ts';
+import type { EnergyUnit } from '../utils/energyUnit.ts';
 
 export interface CompareDot {
   key: string;
@@ -106,12 +107,13 @@ export function overTimeData(response: CompareResponse): {
 /** Dots on the display scale (mood 1-10), which is what the person reads off the axes. */
 export function displayDots(
   dots: readonly CompareDot[],
-  question: Pick<CompareQuestion, 'a' | 'b'>
+  question: Pick<CompareQuestion, 'a' | 'b'>,
+  energyUnit: EnergyUnit = 'kcal'
 ): CompareDot[] {
   return dots.map((dot) => ({
     key: dot.key,
-    x: compareDisplayValue(question.a, dot.x),
-    y: compareDisplayValue(question.b, dot.y),
+    x: compareDisplayValue(question.a, dot.x, energyUnit),
+    y: compareDisplayValue(question.b, dot.y, energyUnit),
   }));
 }
 
@@ -142,7 +144,10 @@ export interface SinceChartData {
  * no days is left out: its `from` can be later than its `to`. Nothing to draw
  * without a since stretch (no start yet).
  */
-export function sinceChartData(response: CompareSinceResponse): SinceChartData {
+export function sinceChartData(
+  response: CompareSinceResponse,
+  energyUnit: EnergyUnit = 'kcal'
+): SinceChartData {
   const { result, outcome } = response;
   const { before, since } = result;
   if (!since || since.days === 0) {
@@ -157,13 +162,16 @@ export function sinceChartData(response: CompareSinceResponse): SinceChartData {
   const line =
     COMPARE_METRICS[outcome.key].kind === 'binary'
       ? null
-      : compareDisplayValue(outcome.key, result.line);
+      : compareDisplayValue(outcome.key, result.line, energyUnit);
   const rows = daysInRange(first, since.to).map((day, i) => {
     const raw = outcome.values[day];
     return {
       index: i,
       day,
-      value: raw === undefined ? null : compareDisplayValue(outcome.key, raw),
+      value:
+        raw === undefined
+          ? null
+          : compareDisplayValue(outcome.key, raw, energyUnit),
       line,
     };
   });

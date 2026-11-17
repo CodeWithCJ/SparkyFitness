@@ -68,6 +68,49 @@ beforeEach(() => {
 });
 
 describe('POST /api/generic-health/samples', () => {
+  it('stores glucose readings in mmol/L with source attribution and a local calendar day', async () => {
+    const res = await request(app)
+      .post('/api/generic-health/samples')
+      .send({
+        ...heartRateBody,
+        metric: 'blood_glucose',
+        samples: [
+          {
+            t: '2026-10-28T00:30:00+01:00',
+            mmol_l: 5.5,
+            source_bundle_id: 'com.dexcom.example',
+          },
+        ],
+      });
+    expect(res.statusCode).toBe(200);
+    expect(upsertMock).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      'blood_glucose',
+      'xiaomi',
+      [
+        expect.objectContaining({
+          entry_date: '2026-10-28',
+          mmol_l: 5.5,
+          source_bundle_id: 'com.dexcom.example',
+        }),
+      ],
+      expect.objectContaining({ mode: 'merge', keepLinked: true })
+    );
+  });
+
+  it.each([0, -1, 101])('rejects invalid glucose %s', async (mmol_l) => {
+    const res = await request(app)
+      .post('/api/generic-health/samples')
+      .send({
+        ...heartRateBody,
+        metric: 'blood_glucose',
+        samples: [{ t: heartRateBody.samples[0]!.t, mmol_l }],
+      });
+    expect(res.statusCode).toBe(400);
+    expect(upsertMock).not.toHaveBeenCalled();
+  });
+
   it('writes the samples through upsertSamplesByDay in merge mode with the window', async () => {
     const res = await request(app)
       .post('/api/generic-health/samples')
@@ -293,16 +336,37 @@ describe('POST /api/generic-health/samples', () => {
     expect(upsertMock).not.toHaveBeenCalled();
   });
 
-  it('rejects an empty source and an empty sample list', async () => {
+  it('rejects an empty source, and an empty sample list outside merge mode', async () => {
     await request(app)
       .post('/api/generic-health/samples')
       .send({ ...heartRateBody, source: ' ' })
       .expect(400);
+    const { window: _window, ...noWindow } = heartRateBody;
     await request(app)
       .post('/api/generic-health/samples')
-      .send({ ...heartRateBody, samples: [] })
+      .send({ ...noWindow, mode: 'replace', samples: [] })
+      .expect(400);
+    // Merge still needs its window, empty or not.
+    await request(app)
+      .post('/api/generic-health/samples')
+      .send({ ...noWindow, samples: [] })
       .expect(400);
     expect(upsertMock).not.toHaveBeenCalled();
+  });
+
+  it('accepts an empty merge, which clears the window on every day it touches', async () => {
+    upsertMock.mockResolvedValue(2);
+    const res = await request(app)
+      .post('/api/generic-health/samples')
+      .send({ ...heartRateBody, samples: [] })
+      .expect(200);
+
+    expect(res.body).toMatchObject({ days_written: 2, samples_written: 0 });
+    expect(upsertMock.mock.calls[0]?.[4]).toEqual([]);
+    expect(upsertMock.mock.calls[0]?.[5]).toMatchObject({
+      mode: 'merge',
+      days: ['2026-10-28', '2026-10-29'],
+    });
   });
 
   it('returns 403 and writes nothing when the permission check fails', async () => {

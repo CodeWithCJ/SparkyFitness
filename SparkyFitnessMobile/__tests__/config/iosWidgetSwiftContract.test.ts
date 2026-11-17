@@ -46,21 +46,38 @@ describe('iOS WidgetKit Swift contract', () => {
 
     it('resolves calorie labels through the localization helper', () => {
       const src = readSwift('widgets.swift');
-      expect(src).toMatch(/localizedWidgetString\("widget\.kcal_left"\)/);
+      // The energy labels follow the unit sent with the snapshot (kcal or kJ).
+      expect(src).toMatch(/energyLeftLabel\(/);
       expect(src).toMatch(/localizedWidgetString\("widget\.food"\)/);
       expect(src).toMatch(/localizedWidgetString\("widget\.burned"\)/);
       expect(src).toMatch(/localizedWidgetString\("widget\.goal"\)/);
-      expect(src).toMatch(/localizedWidgetString\("widget\.a11y\.kcal_left"\)/);
+      expect(src).toMatch(/energyLeftA11yFormat\(/);
+    });
+
+    it('resolves both energy units through the localization helper', () => {
+      const src = readSwift('SharedHelpers.swift');
+      for (const key of [
+        'widget.kcal',
+        'widget.kj',
+        'widget.kcal_left',
+        'widget.kj_left',
+        'widget.a11y.kcal',
+        'widget.a11y.kj',
+        'widget.a11y.kcal_left',
+        'widget.a11y.kj_left',
+      ]) {
+        expect(src).toContain(`localizedWidgetString("${key}")`);
+      }
     });
 
     it('resolves macro labels through the localization helper', () => {
       const src = readSwift('macroWidget.swift');
-      expect(src).toMatch(/localizedWidgetString\("widget\.kcal"\)/);
+      expect(src).toMatch(/energyUnitLabel\(/);
       expect(src).toMatch(/localizedWidgetString\("widget\.protein"\)/);
       expect(src).toMatch(/localizedWidgetString\("widget\.carbs"\)/);
       expect(src).toMatch(/localizedWidgetString\("widget\.fat"\)/);
       expect(src).toMatch(/localizedWidgetString\("widget\.grams"\)/);
-      expect(src).toMatch(/localizedWidgetString\("widget\.a11y\.kcal"\)/);
+      expect(src).toMatch(/energyA11yFormat\(/);
     });
 
     it('localizes gallery metadata through LocalizedStringKey keys', () => {

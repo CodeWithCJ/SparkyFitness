@@ -1,3 +1,5 @@
+import React from 'react';
+import { Text } from 'react-native';
 import type { NativeStackHeaderItem } from '@react-navigation/native-stack';
 import { formatDateLabel } from './dateUtils';
 import { createNativeHeaderIconButtonItem } from './nativeHeaderItems';
@@ -15,6 +17,17 @@ export type NativeHeaderDatePickerOptions = {
   dateLabel?: string;
   t: import('i18next').TFunction;
   locale: string;
+  /**
+   * Side-bar presentation (iPhone Duo): the date text becomes a plain label
+   * (no pill, no arrow, not tappable) and a calendar icon button joins the
+   * arrows. The icon opens the same picker the text button does elsewhere.
+   */
+  compactCalendarButton?: boolean;
+  /**
+   * Side bar only: not enough room for previous / calendar / next (a live
+   * activity lengthened the status cluster), so keep just the calendar icon.
+   */
+  collapseToCalendar?: boolean;
   leadingAction?: {
     sfSymbol: string;
     onPress: () => void;
@@ -65,8 +78,24 @@ export function createNativeHeaderDatePickerItems({
   dateLabel,
   t,
   locale,
+  compactCalendarButton = false,
+  collapseToCalendar = false,
 }: NativeHeaderDatePickerOptions): NativeStackHeaderItem[] {
-  return [
+  const calendarItem: NativeStackHeaderItem[] = compactCalendarButton
+    ? [
+        {
+          type: 'button',
+          label: '',
+          icon: { type: 'sfSymbol', name: 'calendar' },
+          onPress: onDatePress,
+          tintColor,
+          accessibilityLabel,
+          identifier: 'date-picker-calendar',
+          sharesBackground: true,
+        },
+      ]
+    : [];
+  const items: NativeStackHeaderItem[] = [
     {
       type: 'button',
       label: '',
@@ -93,6 +122,7 @@ export function createNativeHeaderDatePickerItems({
       identifier: 'date-picker',
       sharesBackground: true,
     },
+    ...calendarItem,
     {
       type: 'button',
       label: '',
@@ -106,4 +136,29 @@ export function createNativeHeaderDatePickerItems({
       disabled: false,
     },
   ];
+  if (!compactCalendarButton) return items;
+  // Side bar: the label comes first so previous / calendar / next sit together
+  // as one contiguous group. It is a custom item, so iOS draws no button, no
+  // glass and no arrow — just the day the page is showing.
+  const [previous, , calendar, next] = items;
+  const dayLabel: NativeStackHeaderItem = {
+    type: 'custom',
+    hidesSharedBackground: true,
+    element: React.createElement(
+      Text,
+      {
+        accessibilityRole: 'header',
+        style: {
+          fontSize: 15,
+          fontWeight: '600',
+          color: dateTintColor ?? tintColor,
+          paddingHorizontal: 12,
+        },
+      },
+      formatDateLabel(selectedDate, t, locale)
+    ),
+  };
+  return collapseToCalendar
+    ? [dayLabel, calendar]
+    : [dayLabel, previous, calendar, next];
 }

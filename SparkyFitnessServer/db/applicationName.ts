@@ -13,8 +13,7 @@ const HASH_LENGTH = 10;
 
 /**
  * Names this process's sessions in pg_stat_activity, so an operator can tell
- * which replica and which pool a connection belongs to, and the restore guard
- * can tell this process's sessions from every other's. A name that does not
+ * which replica and which pool a connection belongs to. A name that does not
  * fit is cut short and ends in a hash of the whole host:pid, because the part
  * that tells replicas apart (a pod's suffix, the pid) comes last.
  */

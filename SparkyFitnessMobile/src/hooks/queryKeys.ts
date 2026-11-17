@@ -27,6 +27,10 @@ export const caffeineActiveRootQueryKey = ['caffeineActive'] as const;
 export const caffeineActiveQueryKey = (date: string) =>
   ['caffeineActive', date] as const;
 
+export const bloodAlcoholRootQueryKey = ['bloodAlcohol'] as const;
+export const bloodAlcoholQueryKey = (date: string) =>
+  ['bloodAlcohol', date] as const;
+
 export const measurementsQueryKey = (date: string) =>
   ['measurements', date] as const;
 
@@ -128,6 +132,10 @@ export const goalsRangeQueryKey = (
   adjust: boolean
 ) => ['goalsRange', startDate, endDate, adjust] as const;
 
+/** One saved food; under `foods`, so invalidating the food caches covers it. */
+export const foodDetailQueryKey = (foodId: string) =>
+  ['foods', 'detail', foodId] as const;
+
 export const foodVariantsQueryKey = (foodId: string) =>
   ['foodVariants', foodId] as const;
 
@@ -144,6 +152,11 @@ export const heartRateRangeQueryKeyRoot = ['heartRateRange'] as const;
 export const heartRateRangeQueryKey = (startDate: string, endDate: string) =>
   [...heartRateRangeQueryKeyRoot, startDate, endDate] as const;
 
+export const heartRateDaySleepQueryKeyRoot = ['heartRateDaySleep'] as const;
+
+export const heartRateDaySleepQueryKey = (day: string) =>
+  [...heartRateDaySleepQueryKeyRoot, day] as const;
+
 export const heartRateReportQueryKeyRoot = ['heartRateReport'] as const;
 
 export const heartRateReportQueryKey = (startDate: string, endDate: string) =>
@@ -157,6 +170,11 @@ export const sleepRangeQueryKeyRoot = ['sleepRange'] as const;
 export const sleepNeedQueryKey = ['sleepNeed'] as const;
 export const sleepRangeQueryKey = (startDate: string, endDate: string) =>
   [...sleepRangeQueryKeyRoot, startDate, endDate] as const;
+
+/** Skin temperature samples around one night, for the Sleep Details row. */
+export const skinTemperatureQueryKeyRoot = ['skinTemperature'] as const;
+export const skinTemperatureQueryKey = (startDate: string, endDate: string) =>
+  [...skinTemperatureQueryKeyRoot, startDate, endDate] as const;
 
 export const sleepDayQueryKeyRoot = ['sleep'] as const;
 export const sleepDayQueryKey = (day: string) =>
@@ -397,8 +415,10 @@ export const cardioSessionDetailQueryKey = (
   exerciseEntryId: string
 ) => ['cardioSessionDetail', part, exerciseEntryId] as const;
 
+export const heartRateSamplesQueryKeyRoot = ['heartRateSamples'] as const;
+
 export const heartRateSamplesQueryKey = (startDate: string, endDate: string) =>
-  ['heartRateSamples', startDate, endDate] as const;
+  [...heartRateSamplesQueryKeyRoot, startDate, endDate] as const;
 
 // --- Cycle & Pregnancy ---
 export const cycleSettingsQueryKey = ['cycleSettings'] as const;
@@ -517,3 +537,8 @@ export const compareQueryKey = (p: CompareParams) =>
 /** One since-a-habit-started answer: the habit, the outcome, the start and the line (null = the server's pick). */
 export const compareSinceQueryKey = (p: CompareSinceParams) =>
   ['compare', 'since', p.a, p.b, p.habitStart, p.line] as const;
+
+export const glucoseSamplesQueryKeyRoot = ['glucoseSamples'] as const;
+export const glucoseContextQueryKeyRoot = ['glucoseContext'] as const;
+
+export const chatMcpServersQueryKey = ['chatMcpServers'] as const;

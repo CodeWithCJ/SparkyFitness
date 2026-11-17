@@ -12,8 +12,13 @@ import { createWorkoutPlaybackDraftFromPreset } from '@/utils/workoutPlayback';
 
 const mockNavigate = jest.fn();
 const mockCreatePresetSession = jest.fn();
+const mockUpdatePresetSession = jest.fn();
 const mockSearchParams = new URLSearchParams('date=2026-04-27');
-let mockLocationState: { returnTo?: string; draft?: unknown } | null = null;
+let mockLocationState: {
+  returnTo?: string;
+  draft?: unknown;
+  ownerId?: string;
+} | null = null;
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -30,8 +35,16 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
-  useLocation: () => ({ state: mockLocationState }),
+  // Route state as the Diary builds it: a draft for the person on screen.
+  useLocation: () => ({
+    state: mockLocationState && { ownerId: 'user-1', ...mockLocationState },
+  }),
   useSearchParams: () => [mockSearchParams],
+}));
+
+let mockActiveUserId = 'user-1';
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({ activeUserId: mockActiveUserId }),
 }));
 
 jest.mock('@/contexts/PreferencesContext', () => ({
@@ -45,6 +58,10 @@ jest.mock('@/contexts/PreferencesContext', () => ({
 jest.mock('@/hooks/Exercises/useExerciseEntries', () => ({
   useCreatePresetSessionMutation: () => ({
     mutateAsync: (...args: unknown[]) => mockCreatePresetSession(...args),
+    isPending: false,
+  }),
+  useUpdatePresetSessionMutation: () => ({
+    mutateAsync: (...args: unknown[]) => mockUpdatePresetSession(...args),
     isPending: false,
   }),
   useWorkoutLocations: () => ({ data: ['Home Gym', 'Downtown'] }),
@@ -74,6 +91,7 @@ describe('WorkoutPlaybackPage', () => {
     mockNavigate.mockReset();
     mockCreatePresetSession.mockReset();
     window.localStorage.clear();
+    mockActiveUserId = 'user-1';
     mockLocationState = { returnTo: '/?date=2026-04-27' };
   });
 
@@ -240,7 +258,7 @@ describe('WorkoutPlaybackPage', () => {
       '2026-04-27'
     );
     window.localStorage.setItem(
-      'sparky.workoutPlaybackDraft.v1:2026-04-27',
+      'sparky.workoutPlaybackDraft.v2:user-1:2026-04-27',
       JSON.stringify(draft)
     );
     mockLocationState = { returnTo: '/?date=2026-04-27' };
@@ -251,6 +269,50 @@ describe('WorkoutPlaybackPage', () => {
       expect(screen.getByText('Upper Body')).toBeInTheDocument();
     });
     expect(screen.getAllByLabelText('Reps set 1')[0]).toBeInTheDocument();
+  });
+
+  it('does not take a draft handed over for someone else', () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      presetFixture,
+      '2026-04-27'
+    );
+    // A resume made for user-2 that finished after user-1 took over.
+    mockLocationState = {
+      returnTo: '/?date=2026-04-27',
+      draft,
+      ownerId: 'user-2',
+    };
+
+    render(<WorkoutPlaybackPage />);
+
+    expect(screen.queryByText('Upper Body')).not.toBeInTheDocument();
+    expect(
+      window.localStorage.getItem(
+        'sparky.workoutPlaybackDraft.v2:user-1:2026-04-27'
+      )
+    ).toBeNull();
+  });
+
+  it("does not show one person's stored draft to someone else", async () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      presetFixture,
+      '2026-04-27'
+    );
+    window.localStorage.setItem(
+      'sparky.workoutPlaybackDraft.v2:user-1:2026-04-27',
+      JSON.stringify(draft)
+    );
+    mockLocationState = { returnTo: '/?date=2026-04-27' };
+
+    const { rerender } = render(<WorkoutPlaybackPage />);
+    await waitFor(() => {
+      expect(screen.getByText('Upper Body')).toBeInTheDocument();
+    });
+
+    // Another account (or profile) takes over the page.
+    mockActiveUserId = 'user-2';
+    rerender(<WorkoutPlaybackPage />);
+    expect(screen.queryByText('Upper Body')).not.toBeInTheDocument();
   });
 
   it('starts rest countdown when current set is completed', () => {

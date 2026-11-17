@@ -40,6 +40,7 @@ interface EatingEvent {
 }
 
 const MIN_FAST_DURATION_MINUTES = 600; // 10 hours minimum to classify as an intermittent fast
+const CLOCK_SKEW_TOLERANCE_MS = 15 * 60 * 1000; // 15-minute tolerance for client-server clock drift and minute rounding
 
 export function classifyProtocol(durationMinutes: number): string {
   const hours = durationMinutes / 60;
@@ -122,7 +123,11 @@ async function fetchFoodPoints(
         fe.entry_date::text AS entry_date,
         fe.entry_time::text AS entry_time,
         COALESCE(umv.default_time, mt.default_time)::text AS meal_default_time,
-        ((fe.entry_date + COALESCE(fe.entry_time, umv.default_time, mt.default_time, '12:00'::time)) AT TIME ZONE $2) AS meal_timestamp,
+        ((fe.entry_date + CASE 
+          WHEN fe.entry_time IS NOT NULL THEN fe.entry_time 
+          WHEN fe.created_at IS NOT NULL AND fe.entry_date = (fe.created_at AT TIME ZONE $2)::date THEN (fe.created_at AT TIME ZONE $2)::time 
+          ELSE COALESCE(umv.default_time, mt.default_time, '12:00'::time) 
+        END) AT TIME ZONE $2) AS meal_timestamp,
         fe.calories,
         fe.food_name,
         COALESCE(mt.name, 'Meal') AS meal_type_name
@@ -195,9 +200,18 @@ export async function getCurrentAutoFast(
 
   const now = new Date();
   const nowMs = now.getTime();
-  const eatingEvents = clusterEatingEvents(points).filter(
-    (e) => e.start.getTime() <= nowMs
-  );
+  const eatingEvents = clusterEatingEvents(points)
+    .filter((e) => e.start.getTime() <= nowMs + CLOCK_SKEW_TOLERANCE_MS)
+    .map((e) => {
+      if (e.start.getTime() > nowMs) {
+        return {
+          ...e,
+          start: new Date(nowMs),
+          end: e.end.getTime() > nowMs ? new Date(nowMs) : e.end,
+        };
+      }
+      return e;
+    });
   if (eatingEvents.length === 0) {
     return null;
   }
@@ -252,6 +266,52 @@ export async function getCurrentAutoFast(
       return null;
     }
 
+    const existingFast = await fastingRepository.findFastNearStartTime(
+      userId,
+      fastStartTime,
+      60
+    );
+    if (
+      existingFast &&
+      existingFast.status === 'COMPLETED' &&
+      existingFast.end_time
+    ) {
+      const fastEndTime = new Date(existingFast.end_time);
+      const eatingWindowEnd = new Date(
+        fastEndTime.getTime() + targetEatingHours * 60 * 60 * 1000
+      );
+      if (
+        now.getTime() >= fastEndTime.getTime() - CLOCK_SKEW_TOLERANCE_MS &&
+        now.getTime() < eatingWindowEnd.getTime()
+      ) {
+        const remainingMinutes = Math.max(
+          0,
+          Math.floor((eatingWindowEnd.getTime() - now.getTime()) / 60000)
+        );
+        const elapsedMinutes = Math.max(
+          0,
+          Math.floor((now.getTime() - fastEndTime.getTime()) / 60000)
+        );
+
+        return {
+          id: `auto-eating-window-${fastEndTime.toISOString()}`,
+          user_id: userId,
+          start_time: fastEndTime.toISOString(),
+          end_time: null,
+          target_end_time: eatingWindowEnd.toISOString(),
+          duration_minutes: elapsedMinutes,
+          fasting_type: `${prefs.target_fasting_hours || 16}:${prefs.target_eating_hours || 8}`,
+          status: 'ACTIVE',
+          is_auto_calculated: true,
+          is_eating_window: true,
+          start_meal_name: lastMealToday.description,
+          eating_window_remaining_minutes: remainingMinutes,
+        };
+      }
+      // The fast from fastStartTime was already completed; do not resurrect it as active.
+      return null;
+    }
+
     const elapsedMinutes = Math.floor(
       (now.getTime() - fastStartTime.getTime()) / (60 * 1000)
     );
@@ -279,6 +339,53 @@ export async function getCurrentAutoFast(
 
   // If the last meal was logged in the future (or clock skew), no active fast yet
   if (now.getTime() <= fastStartTime.getTime()) {
+    return null;
+  }
+
+  const existingFast = await fastingRepository.findFastNearStartTime(
+    userId,
+    fastStartTime,
+    60
+  );
+  if (
+    existingFast &&
+    existingFast.status === 'COMPLETED' &&
+    existingFast.end_time
+  ) {
+    const fastEndTime = new Date(existingFast.end_time);
+    const eatingWindowEnd = new Date(
+      fastEndTime.getTime() + targetEatingHours * 60 * 60 * 1000
+    );
+
+    if (
+      now.getTime() >= fastEndTime.getTime() - CLOCK_SKEW_TOLERANCE_MS &&
+      now.getTime() < eatingWindowEnd.getTime()
+    ) {
+      const remainingMinutes = Math.max(
+        0,
+        Math.floor((eatingWindowEnd.getTime() - now.getTime()) / 60000)
+      );
+      const elapsedMinutes = Math.max(
+        0,
+        Math.floor((now.getTime() - fastEndTime.getTime()) / 60000)
+      );
+
+      return {
+        id: `auto-eating-window-${fastEndTime.toISOString()}`,
+        user_id: userId,
+        start_time: fastEndTime.toISOString(),
+        end_time: null,
+        target_end_time: eatingWindowEnd.toISOString(),
+        duration_minutes: elapsedMinutes,
+        fasting_type: `${prefs.target_fasting_hours || 16}:${prefs.target_eating_hours || 8}`,
+        status: 'ACTIVE',
+        is_auto_calculated: true,
+        is_eating_window: true,
+        start_meal_name: lastEvent.description,
+        eating_window_remaining_minutes: remainingMinutes,
+      };
+    }
+    // The fast from fastStartTime was already completed; do not resurrect it as active.
     return null;
   }
 
@@ -328,9 +435,18 @@ async function getCalculatedFastingHistory(
   );
 
   const nowMs = Date.now();
-  const eatingEvents = clusterEatingEvents(points).filter(
-    (e) => e.start.getTime() <= nowMs
-  );
+  const eatingEvents = clusterEatingEvents(points)
+    .filter((e) => e.start.getTime() <= nowMs + CLOCK_SKEW_TOLERANCE_MS)
+    .map((e) => {
+      if (e.start.getTime() > nowMs) {
+        return {
+          ...e,
+          start: new Date(nowMs),
+          end: e.end.getTime() > nowMs ? new Date(nowMs) : e.end,
+        };
+      }
+      return e;
+    });
   const results: CalculatedFast[] = [];
   const targetHours = prefs.target_fasting_hours || 16.0;
 
@@ -438,9 +554,18 @@ export async function syncCompletedAutoFasts(
   );
 
   const syncNowMs = Date.now();
-  const eatingEvents = clusterEatingEvents(points).filter(
-    (e) => e.start.getTime() <= syncNowMs
-  );
+  const eatingEvents = clusterEatingEvents(points)
+    .filter((e) => e.start.getTime() <= syncNowMs + CLOCK_SKEW_TOLERANCE_MS)
+    .map((e) => {
+      if (e.start.getTime() > syncNowMs) {
+        return {
+          ...e,
+          start: new Date(syncNowMs),
+          end: e.end.getTime() > syncNowMs ? new Date(syncNowMs) : e.end,
+        };
+      }
+      return e;
+    });
   if (eatingEvents.length === 0) {
     return 0;
   }

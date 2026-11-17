@@ -102,6 +102,13 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `meal_plan_template_assignments` | Scheduled meal templates to calendar |
 | `meal_plan_assignment_sets` | Sets within assigned meal plans |
 
+### Recipe Ingredient Imports (Tier 1: Owner-Only)
+
+| Table | Purpose |
+| --- | --- |
+| `recipe_imports` | Mealie source provenance, reviewed mappings, meal fingerprint and explicit nutrition sync status for an ordinary reusable meal. The private source JSON optionally stores a versioned content/nutrition baseline; it is excluded from the strict public source DTO. Legacy rows retain full-source fingerprint checks. |
+| `recipe_food_mappings` | Confirmed food mappings reused against current quantities only for unique, unchanged source preparation contexts. Ambiguous repeated contexts require individual review. |
+
 ### Exercise & Workouts (Tier 1/2/3: Owner-Only, Owner-Write, or Delegate-Read/Write)
 | Table | Purpose |
 |-------|---------|
@@ -150,9 +157,10 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `user_fasting_preferences` | Intermittent fasting targets, auto-calculation config, and alert timing |
 | `mood_entries` | Logged mood check-ins, several per day: optional mood, energy and focus ratings, tags and journal notes, with a timestamp and a `source` (`manual`, `garmin` or `import`) |
 | `mindfulness_sessions` | Logged mindfulness, meditation, and breathwork sessions |
+| `oral_care_sessions` | Brushing, flossing, mouthwash, tongue cleaning and custom ("other") oral care sessions, logged in Sparky (`manual`, `timer`) or synced from Apple Health; a synced sample upserts on `(user_id, provider, external_id)`. The daily brushing goal is `user_preferences.oral_care_daily_target` / `oral_care_target_seconds` |
 | `lab_markers` | A user's own lab markers with optional default reference range (built-in markers are defined in `@workspace/shared`) |
 | `lab_results` | Lab results with their own unit and reference range, for built-in or custom markers |
-| `lab_reports` | One imported lab report (a PDF or photo read into results); results link to it with `report_id`, and the report itself is not stored |
+| `lab_reports` | One imported lab report (a PDF or photo read into results); results link to it with `report_id`, and the report itself is not stored. `client_request_id` makes a retried import save once |
 | `user_custom_moods` | User-defined mood tags (icon/color) |
 | `medications` | Custom medication inventory lists |
 | `medication_schedules` | Reminders and schedules for medications |
@@ -177,6 +185,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `pregnancies` | Pregnancy records (due date, status) |
 | `run_programs` | A person's run program, their place in it, its Diary schedule, goal date, adjustments to it and which diary entries its workouts were done as |
 | `run_goals` | A person's weekly running distance target and the race they are counting down to |
+| `intervals_nutrition_pushes` | The daily nutrition totals (kcal, protein, carbohydrates, fat) last accepted by Intervals.icu for each day, one row per user per day, so pushing and removal only touch values SparkyFitness wrote |
 | `custom_run_programs` | A person's own run or walk plans: a name, the activity and an ordered list of workouts, each a list of timed steps. Starting one copies it into `run_programs` |
 | `fitness_tests` | A person's running fitness tests (5K time trial, 30-minute run, Cooper test): measurements, whether it was run outdoors or on a treadmill (and the incline), result, the training paces derived from them and the recorded activity it was run as |
 | `routes` | A person's saved routes: name, activity, source (drawn, GPX, activity), distance, elevation gain, a simplified track of points and optional turn cues |
@@ -190,7 +199,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | Table | Purpose |
 |-------|---------|
 | `profiles` | User full name, height, display metrics |
-| `user_preferences` | Unit, formatting, chart display, and heart rate zone preferences |
+| `user_preferences` | Unit, formatting, chart display, heart rate zone and optional feature (`feature_choices`, per platform) preferences |
 | `user_nutrient_display_preferences` | Nutrient column display preferences |
 | `user_meal_visibilities` | Visibility settings for meals |
 | `user_goals` | Active daily calorie/macro goals |
@@ -198,7 +207,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `user_nutrient_goal_preferences` | Per-user minimum/maximum/target goal direction override per nutrient (predefined or custom) |
 | `user_water_containers` | Configured container sizes |
 | `user_calorie_rule_history` | Calorie settings in force from each change on, so past days keep their target |
-| `user_dashboard_layouts` | Rearranged dashboard widget positions |
+| `user_dashboard_layouts` | Rearranged dashboard widget positions, and the main web tabs a person hid (`page_key` `web-tabs`) |
 | `user_medication_display_preferences` | GLP-1/Medication display preferences |
 | `user_mood_display_preferences` | Mood picker visibility settings |
 | `user_cycle_display_preferences` | Cycle dashboard tile visibility |
@@ -350,7 +359,7 @@ Example: `20240315103000_add_exercise_tracking.sql`
 
 2. **Write the migration SQL** — see the migration checklist in the repo's agent-docs folder (for developers and AI tools)
 
-3. **`db_schema_backup.sql` updates itself** — after merge, CI regenerates it from the migrations and opens an automated sync PR; never edit it by hand
+3. **`db_schema_backup.sql` updates itself** — after merge, CI regenerates it from the migrations and opens a sync PR that merges itself; never edit it by hand
 
 4. **Apply RLS policies** (startup applies `db/rls_policies.sql` again whenever the file or the policies in the database changed; it records what it applied in `system.rls_policy_state`)
 

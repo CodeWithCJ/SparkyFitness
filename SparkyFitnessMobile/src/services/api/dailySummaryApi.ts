@@ -7,6 +7,7 @@ import type {
   SupplementTotals,
   WaterIntakeBreakdown,
   AdjustedGoals,
+  CalorieCyclingDay,
 } from '@workspace/shared';
 
 export interface DailySummaryApiResponse {
@@ -23,6 +24,8 @@ export interface DailySummaryApiResponse {
   // on servers new enough to send them.
   supplementTotals?: SupplementTotals;
   adjustedGoals?: AdjustedGoals | null;
+  /** How calorie cycling set the day's goal (#2327); absent when off or on older servers. */
+  calorieCycling?: CalorieCyclingDay;
 }
 
 export const fetchDailySummary = (

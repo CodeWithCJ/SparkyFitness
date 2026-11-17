@@ -17,11 +17,13 @@ import {
   History,
   Utensils,
   ClipboardCopy,
+  Copy,
   PlusCircle,
   Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import EnhancedFoodSearch from '../../components/FoodSearch/FoodSearch';
+import { FOOD_SEARCH_DIALOG_CONTENT_CLASS } from '../../components/FoodSearch/foodSearchDialogLayout';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { debug } from '@/utils/logging';
@@ -95,6 +97,8 @@ interface MealCardProps {
   ) => Promise<void>;
   getEntryNutrition: (entry: FoodEntry | FoodEntryMeal) => MealTotals;
   onCopyClick: (mealType: string) => void;
+  /** Copies one logged food; omitted where copying isn't offered. */
+  onCopyEntry?: (entry: FoodEntry) => void;
   onCopyFamilyClick: (mealType: string) => void;
   onConvertToMealClick: (mealType: string) => void;
   energyUnit: 'kcal' | 'kJ';
@@ -116,6 +120,7 @@ const MealCard = ({
   onRemoveEntry,
   getEntryNutrition,
   onCopyClick,
+  onCopyEntry,
   onCopyFamilyClick,
   onConvertToMealClick,
   energyUnit,
@@ -274,7 +279,7 @@ const MealCard = ({
                     <Utensils className="w-4 h-4" />
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-6xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className={FOOD_SEARCH_DIALOG_CONTENT_CLASS}>
                   <DialogHeader>
                     <DialogTitle>
                       {t('mealCard.addFoodToMeal', {
@@ -607,6 +612,18 @@ const MealCard = ({
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        {isFoodEntry && onCopyEntry && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-9 w-9 text-muted-foreground"
+                            onClick={() => onCopyEntry(item as FoodEntry)}
+                            title={t('mealCard.copyFood', 'Copy food')}
+                            aria-label={t('mealCard.copyFood', 'Copy food')}
+                          >
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           size="icon"
                           variant="ghost"
@@ -742,6 +759,17 @@ const MealCard = ({
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
+                      {isFoodEntry && onCopyEntry && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => onCopyEntry(item as FoodEntry)}
+                          title={t('mealCard.copyFood', 'Copy food')}
+                          aria-label={t('mealCard.copyFood', 'Copy food')}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="ghost"

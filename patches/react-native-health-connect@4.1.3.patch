@@ -1,3 +1,18 @@
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/HealthConnectManager.kt b/android/src/main/java/dev/matinzd/healthconnect/HealthConnectManager.kt
+index 40539feaf939fce127b10d99e036cf3ee44e96ab..cdd00a3c37a01c5a1485cf27af3fe50a05ad6bea 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/HealthConnectManager.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/HealthConnectManager.kt
+@@ -274,6 +274,10 @@ class HealthConnectManager(private val applicationContext: ReactApplicationConte
+           } catch (e: Exception) {
+             promise.rejectWithException(e)
+           }
++        } else {
++          // SparkyFitness patch: an unknown record type left the promise
++          // pending forever.
++          promise.reject("UNKNOWN_RECORD_TYPE", "Unknown record type: $recordType")
+         }
+       }
+     }
 diff --git a/android/src/main/java/dev/matinzd/healthconnect/permissions/PermissionUtils.kt b/android/src/main/java/dev/matinzd/healthconnect/permissions/PermissionUtils.kt
 index 0d9d3427cb5c60e9a3d988ef6ac68ea54ea06fb4..a04c511983a9ef19244367bbc9dd2de98173abdb 100644
 --- a/android/src/main/java/dev/matinzd/healthconnect/permissions/PermissionUtils.kt
@@ -16,3 +31,90 @@ index 0d9d3427cb5c60e9a3d988ef6ac68ea54ea06fb4..a04c511983a9ef19244367bbc9dd2de9
        }
      }
    }
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt
+index 9a22318a79a3ae3e7884049a82380447e665d954..32970001d69d9f3a903286cd2c0d6a6a084a2bad 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactActiveCaloriesBurnedRecord.kt
+@@ -33,8 +33,9 @@ class ReactActiveCaloriesBurnedRecord : ReactHealthRecordImpl<ActiveCaloriesBurn
+         startTime = Instant.parse(it.getString("startTime")),
+         endTime = Instant.parse(it.getString("endTime")),
+         energy = getEnergyFromJsMap(it.getMap("energy")),
+-        endZoneOffset = null,
+-        startZoneOffset = null,
++        // SparkyFitness patch: zone offsets were always dropped on write.
++        endZoneOffset = getZoneOffsetFromJsMap(it.getMap("endZoneOffset")),
++        startZoneOffset = getZoneOffsetFromJsMap(it.getMap("startZoneOffset")),
+         metadata = convertMetadataFromJSMap(it.getMap("metadata"))
+       )
+     }
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactDistanceRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactDistanceRecord.kt
+index a403db33f5e601c8486f5377312ba0c2b8484886..f2d2dd96599c8e2a58efe5adb067adc06be37b06 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactDistanceRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactDistanceRecord.kt
+@@ -25,8 +25,9 @@ class ReactDistanceRecord : ReactHealthRecordImpl<DistanceRecord> {
+         startTime = Instant.parse(map.getString("startTime")),
+         endTime = Instant.parse(map.getString("endTime")),
+         distance = getLengthFromJsMap(map.getMap("distance")),
+-        endZoneOffset = null,
+-        startZoneOffset = null,
++        // SparkyFitness patch: zone offsets were always dropped on write.
++        endZoneOffset = getZoneOffsetFromJsMap(map.getMap("endZoneOffset")),
++        startZoneOffset = getZoneOffsetFromJsMap(map.getMap("startZoneOffset")),
+         metadata = convertMetadataFromJSMap(map.getMap("metadata"))
+       )
+     }
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/records/ReactExerciseSessionRecord.kt b/android/src/main/java/dev/matinzd/healthconnect/records/ReactExerciseSessionRecord.kt
+index 3dfdee5ef7dd49c6285fa9666ee57ee28d9595eb..e66714c7ed84d4ff9f57c5638f13e64434bed7f7 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/records/ReactExerciseSessionRecord.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/records/ReactExerciseSessionRecord.kt
+@@ -38,21 +38,24 @@ class ReactExerciseSessionRecord : ReactHealthRecordImpl<ExerciseSessionRecord>
+       ExerciseSessionRecord(
+         startTime = Instant.parse(it.getString("startTime")),
+         endTime = Instant.parse(it.getString("endTime")),
+-        startZoneOffset = null,
+-        endZoneOffset = null,
++        // SparkyFitness patch: zone offsets were always dropped on write.
++        startZoneOffset = getZoneOffsetFromJsMap(it.getMap("startZoneOffset")),
++        endZoneOffset = getZoneOffsetFromJsMap(it.getMap("endZoneOffset")),
+         exerciseType = it.getSafeInt(
+           "exerciseType", ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT
+         ),
+         notes = it.getString("notes"),
+         title = it.getString("title"),
+-        laps = it.getArray("samples")?.toMapList()?.map { sample ->
++        // SparkyFitness patch: laps and segments come from their own keys (both
++        // were parsed from one "samples" array, so neither could be written).
++        laps = it.getArray("laps")?.toMapList()?.map { sample ->
+           ExerciseLap(
+             startTime = Instant.parse(sample.getString("startTime")),
+             endTime = Instant.parse(sample.getString("endTime")),
+             length = getLengthFromJsMap(sample.getMap("length")),
+           )
+         } ?: emptyList(),
+-        segments = it.getArray("samples")?.toMapList()?.map { sample ->
++        segments = it.getArray("segments")?.toMapList()?.map { sample ->
+           ExerciseSegment(
+             startTime = Instant.parse(sample.getString("startTime")),
+             endTime = Instant.parse(sample.getString("endTime")),
+diff --git a/android/src/main/java/dev/matinzd/healthconnect/utils/HealthConnectUtils.kt b/android/src/main/java/dev/matinzd/healthconnect/utils/HealthConnectUtils.kt
+index 0f75b2bff0d4ec9ac8be73cc1aaa23ef92f4fc1b..2ac4f8f89315033f37738a48d2d3dbcb7a8e3d7e 100644
+--- a/android/src/main/java/dev/matinzd/healthconnect/utils/HealthConnectUtils.kt
++++ b/android/src/main/java/dev/matinzd/healthconnect/utils/HealthConnectUtils.kt
+@@ -426,6 +426,17 @@ fun lengthToJsMap(length: Length?): WritableNativeMap {
+   }
+ }
+ 
++/**
++ * SparkyFitness patch: reads a written record's zone offset ({ totalSeconds })
++ * so it is stored, instead of every write dropping it.
++ */
++fun getZoneOffsetFromJsMap(map: ReadableMap?): ZoneOffset? {
++  if (map == null || !map.hasKey("totalSeconds")) {
++    return null
++  }
++  return ZoneOffset.ofTotalSeconds(map.getInt("totalSeconds"))
++}
++
+ fun zoneOffsetToJsMap(zoneOffset: ZoneOffset?): WritableNativeMap? {
+   if (zoneOffset == null) {
+     return null

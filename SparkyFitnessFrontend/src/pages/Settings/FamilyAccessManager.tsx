@@ -503,7 +503,7 @@ const FamilyAccessManager = () => {
                         <p className="text-xs">
                           {t(
                             'settings.familyAccess.canManageCheckinHelp',
-                            'Allows delegate to log weight, body measurements, progress photos, sleep logs, mood logs, and fasting status on your behalf. Diary logs are blocked. Gives read-only profile access.'
+                            'Allows delegate to log weight, body measurements, progress photos, sleep logs, mood logs, and fasting status on your behalf. Also gives access to your lab results. Diary logs are blocked. Gives read-only profile access.'
                           )}
                         </p>
                       </TooltipContent>
@@ -614,7 +614,7 @@ const FamilyAccessManager = () => {
                         <p className="text-xs">
                           {t(
                             'settings.familyAccess.canViewReportsHelp',
-                            'Allows delegate to view charts, statistics, and historical logs on your dashboard. No write privileges are granted. Gives read-only profile access.'
+                            'Allows delegate to view charts, statistics, and historical logs on your dashboard. Also gives read-only access to your lab results. No write privileges are granted. Gives read-only profile access.'
                           )}
                         </p>
                       </TooltipContent>

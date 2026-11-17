@@ -48,7 +48,13 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
   const { t } = useTranslation();
   const [sortColumn, setSortColumn] = useState<string>('lapIndex');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const { distanceUnit, convertDistance } = usePreferences();
+  const {
+    distanceUnit,
+    convertDistance,
+    energyUnit,
+    convertEnergy,
+    getEnergyUnitString,
+  } = usePreferences();
 
   const formatTime = (seconds: number): string => {
     if (!seconds || seconds <= 0) return t('common.notApplicable', 'N/A');
@@ -106,11 +112,15 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
         maxHR: lap.maxHR ?? 0,
         averageRunCadence: lap.averageRunCadence ?? 0,
         maxRunCadence: lap.maxRunCadence ?? 0,
-        calories: lap.calories ?? 0,
+        // Laps carry kcal; shown in the account's energy unit.
+        calories:
+          energyUnit === 'kcal'
+            ? (lap.calories ?? 0)
+            : Math.round(convertEnergy(lap.calories ?? 0, 'kcal', energyUnit)),
       });
       return acc;
     }, []);
-  }, [lapDTOs, distanceUnit, convertDistance]);
+  }, [lapDTOs, distanceUnit, convertDistance, energyUnit, convertEnergy]);
 
   // Column visibility — only show a column when at least one lap has real data
   const showDistanceCols = processedLaps.some((l) => l.lapDistance > 0);
@@ -394,6 +404,9 @@ const ActivityReportLapTable: React.FC<LapTableProps> = ({
                   onClick={() => handleSort('calories')}
                 >
                   {t('reports.activityReportLapTable.calories', 'Calories')}
+                  <span className="block text-xs font-normal">
+                    ({getEnergyUnitString(energyUnit)})
+                  </span>
                   <FaFire className="block text-red-500 mx-auto" />
                   <span>{getSortIndicator('calories')}</span>
                 </th>

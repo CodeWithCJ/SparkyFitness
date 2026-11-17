@@ -551,7 +551,7 @@ describe('MealAddScreen', () => {
     });
 
     expect(screen.queryByText(/NaN/)).toBeNull();
-    expect(screen.getAllByText('0 cal').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('0 kcal').length).toBeGreaterThan(0);
     expect(screen.getByText('0 cup')).toBeTruthy();
   });
 
@@ -574,7 +574,7 @@ describe('MealAddScreen', () => {
     });
 
     expect(screen.queryByText(/NaN/)).toBeNull();
-    expect(screen.getAllByText('0.0024 cal').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('0.0024 kcal').length).toBeGreaterThan(0);
     expect(
       screen.getByText('0.001g protein · 0.0016g carbs · 0.0004g fat')
     ).toBeTruthy();
@@ -600,7 +600,7 @@ describe('MealAddScreen', () => {
       focusCallback?.();
     });
 
-    expect(screen.getAllByText('120 cal').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('120 kcal').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/protein/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/carbs/).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/fat/).length).toBeGreaterThan(0);

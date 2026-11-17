@@ -17,6 +17,7 @@ import { COMPARE_METRIC_LABELS } from '../../constants/compareMetrics';
 import { dotsAxisCaption } from '../../utils/compareCopy';
 import { formatLocalizedNumber } from '../../localization';
 import { CHART_LABEL_FONT_SIZE, useChartFont } from '../charts/chartFormatting';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 
 interface CompareScatterChartProps {
   response: CompareResponse;
@@ -37,6 +38,7 @@ const CompareScatterChart: React.FC<CompareScatterChartProps> = ({
   question,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const [accent, textMuted] = useCSSVariable([
     '--color-accent-primary',
@@ -45,7 +47,11 @@ const CompareScatterChart: React.FC<CompareScatterChartProps> = ({
 
   const { mode, timing } = timingOf(question.choice);
   const { data, hasTrend } = useMemo(() => {
-    const dots = displayDots(pairedDots(response, mode, timing), question);
+    const dots = displayDots(
+      pairedDots(response, mode, timing),
+      question,
+      energyUnit
+    );
     // A fitted line reads as a finding, so it is drawn only for a real link.
     const line = response.result.linked === true ? trendLine(dots) : null;
     const sorted = [...dots].sort((p, q) => p.x - q.x);
@@ -57,7 +63,7 @@ const CompareScatterChart: React.FC<CompareScatterChartProps> = ({
         trend: line ? line.slope * dot.x + line.intercept : dot.y,
       })),
     };
-  }, [response, question, mode, timing]);
+  }, [response, question, mode, timing, energyUnit]);
 
   const aLabel = COMPARE_METRIC_LABELS[question.a](t);
   const bLabel = COMPARE_METRIC_LABELS[question.b](t);

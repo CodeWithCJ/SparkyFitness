@@ -256,6 +256,73 @@ describe('Fasting Routes', () => {
       });
     });
 
+    it('ends an auto-calculated fast with an auto-prefixed id from the client', async () => {
+      // @ts-expect-error TS(2339)
+      fastingAutoCalculationService.getCurrentAutoFast.mockResolvedValue({
+        start_time: '2026-07-18T00:00:00.000Z',
+        target_end_time: '2026-07-18T16:00:00.000Z',
+        fasting_type: '16:8',
+      });
+      // @ts-expect-error TS(2339)
+      fastingRepository.createCompletedFast.mockResolvedValue({
+        id: 'completed-uuid',
+        start_time: '2026-07-18T00:00:00.000Z',
+        end_time: endTime,
+        duration_minutes: 960,
+      });
+
+      const res = await request(app).post('/fasting/end').send({
+        id: 'auto-2026-07-18T00:00:00.000Z',
+        start_time: '2026-07-18T00:00:00.000Z',
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(200);
+      expect(fastingRepository.createCompletedFast).toHaveBeenCalledWith(
+        'testUserId',
+        '2026-07-18T00:00:00.000Z',
+        endTime,
+        '2026-07-18T16:00:00.000Z',
+        960,
+        '16:8'
+      );
+      expect(fastingRepository.getFastingById).not.toHaveBeenCalled();
+    });
+
+    it('rejects ending an eating window as a fast', async () => {
+      const res = await request(app).post('/fasting/end').send({
+        id: 'auto-eating-window-2026-07-18T00:00:00.000Z',
+        start_time: '2026-07-18T00:00:00.000Z',
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('Cannot end an eating window');
+      expect(fastingRepository.createCompletedFast).not.toHaveBeenCalled();
+    });
+
+    it('rejects invalid timestamp dates in fast end request', async () => {
+      const res = await request(app).post('/fasting/end').send({
+        id: 'auto-current',
+        start_time: 'not-a-date',
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('Valid start_time and end_time');
+      expect(fastingRepository.createCompletedFast).not.toHaveBeenCalled();
+    });
+
+    it('rejects a non-string fast id', async () => {
+      const res = await request(app).post('/fasting/end').send({
+        id: 12345,
+        end_time: endTime,
+      });
+
+      expect(res.statusCode).toEqual(400);
+      expect(res.body.error).toContain('Valid fast id is required');
+    });
+
     it('rejects a mood that is not a number before ending anything', async () => {
       const res = await request(app)
         .post('/fasting/end')

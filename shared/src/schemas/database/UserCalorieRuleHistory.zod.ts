@@ -23,6 +23,8 @@ export const calorieRulesSchema = userPreferencesSchema.pick({
   use_external_bmr: true,
   include_bmr_in_net_calories: true,
   adjust_macros_with_exercise: true,
+  calorie_cycling_mode: true,
+  calorie_cycling_offsets: true,
 });
 
 export const CALORIE_RULE_FIELDS = calorieRulesSchema.keyof().options;

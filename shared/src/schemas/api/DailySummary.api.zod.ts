@@ -136,6 +136,24 @@ export const calorieInputsSchema = z.object({
 
 export type CalorieInputs = z.infer<typeof calorieInputsSchema>;
 
+/**
+ * Calorie cycling on this day (#2327). `baseTarget` is the day's target before
+ * cycling and `target` the cycled one (equal to `calorieBalance.goal` when
+ * active); `floor` is the safety floor the cycling respected. Optional, so
+ * older clients ignore it.
+ */
+export const calorieCyclingDaySchema = z.object({
+  status: z.enum(['off', 'active', 'paused_earn_back', 'paused_weekly_plan']),
+  baseTarget: z.number(),
+  target: z.number(),
+  delta: z.number(),
+  dayType: z.enum(['high', 'low', 'even']),
+  floor: z.number().nullable(),
+  clampedToFloor: z.boolean(),
+});
+
+export type CalorieCyclingDay = z.infer<typeof calorieCyclingDaySchema>;
+
 export const dailySummaryResponseSchema = z.object({
   goals: dailyGoalsResponseSchema,
   foodEntries: z.array(foodEntryResponseSchema),
@@ -146,6 +164,7 @@ export const dailySummaryResponseSchema = z.object({
   calorieBalance: calorieBalanceSchema,
   calorieInputs: calorieInputsSchema,
   adjustedGoals: adjustedGoalsSchema.nullable(),
+  calorieCycling: calorieCyclingDaySchema.optional(),
   supplementTotals: supplementTotalsSchema,
 });
 

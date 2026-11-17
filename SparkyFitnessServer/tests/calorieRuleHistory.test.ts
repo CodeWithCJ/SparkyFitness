@@ -45,6 +45,8 @@ const rules: CalorieRules = {
   use_external_bmr: false,
   include_bmr_in_net_calories: false,
   adjust_macros_with_exercise: false,
+  calorie_cycling_mode: 'off',
+  calorie_cycling_offsets: [0, 0, 0, 0, 0, 0, 0],
 };
 
 const row = (

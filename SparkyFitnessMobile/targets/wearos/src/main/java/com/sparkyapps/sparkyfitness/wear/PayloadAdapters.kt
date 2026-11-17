@@ -47,6 +47,7 @@ object ContextPayloadMapper {
       suggestedExercises = parseSuggestedExercises(obj) ?: previous.suggestedExercises,
       workoutServerId = if (obj.has("workoutServerId")) obj.optStringOrNull("workoutServerId") else previous.workoutServerId,
       distanceUnit = obj.optStringOrNull("distanceUnit") ?: previous.distanceUnit,
+      energyUnit = obj.optStringOrNull("energyUnit") ?: previous.energyUnit,
       doubleTapEnabled = obj.optBooleanOrNull("doubleTapEnabled") ?: previous.doubleTapEnabled,
       rpeEnabled = obj.optBooleanOrNull("rpeEnabled") ?: previous.rpeEnabled,
       medications = parseMedications(obj),

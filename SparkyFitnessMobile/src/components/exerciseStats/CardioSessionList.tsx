@@ -6,9 +6,12 @@ import {
   cardioSessionHeadline,
   daysBetween,
   type ExerciseActivityQueryItem,
+  EnergyUnit,
 } from '@workspace/shared';
 import { formatLocalizedNumber, getAppLocale } from '../../localization';
 import Icon from '../Icon';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
+import { energyUnitLabel, formatEnergyNumber } from '../../utils/energyUnit';
 
 interface CardioSessionListProps {
   sessions: readonly ExerciseActivityQueryItem[];
@@ -47,7 +50,8 @@ const dayLabel = (t: TFunction, day: string, today: string) => {
 const headlineText = (
   t: TFunction,
   session: ExerciseActivityQueryItem,
-  distanceUnit: 'km' | 'miles'
+  distanceUnit: 'km' | 'miles',
+  energyUnit: EnergyUnit
 ) => {
   const stat = cardioSessionHeadline(session);
   if (stat.kind === 'distance') {
@@ -62,9 +66,10 @@ const headlineText = (
     }`;
   }
   if (stat.kind === 'calories') {
-    return t('exerciseStatistics.cardio.calories', {
-      defaultValue: '{{value}} Cal',
-      value: formatLocalizedNumber(stat.value),
+    return t('exerciseStatistics.cardio.caloriesWithUnit', {
+      defaultValue: '{{value}} {{unit}}',
+      value: formatEnergyNumber(stat.value, energyUnit),
+      unit: energyUnitLabel(energyUnit, t),
     });
   }
   return t('exerciseStatistics.cardio.minutes', {
@@ -87,6 +92,7 @@ const CardioSessionList: React.FC<CardioSessionListProps> = ({
   onOpen,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
 
   const groups = useMemo(() => {
     const locale = getAppLocale();
@@ -131,7 +137,7 @@ const CardioSessionList: React.FC<CardioSessionListProps> = ({
                     {session.exerciseName}
                   </Text>
                   <Text className="text-text-primary text-lg font-semibold">
-                    {headlineText(t, session, distanceUnit)}
+                    {headlineText(t, session, distanceUnit, energyUnit)}
                   </Text>
                 </View>
                 <Text className="text-text-secondary text-sm mr-2">

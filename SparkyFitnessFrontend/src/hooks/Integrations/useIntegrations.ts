@@ -11,6 +11,9 @@ import {
   LiftosaurSyncResult,
   syncIntervalsData,
   IntervalsSyncResult,
+  setIntervalsNutritionPush,
+  removeIntervalsPushedData,
+  IntervalsRemoveResult,
   loginGarmin,
   GarminLoginPayload,
 } from '@/api/Integrations/integrations';
@@ -50,8 +53,12 @@ import {
 } from '@/api/Settings/externalProviderService';
 import { garminKeys } from '@/api/keys/integrations';
 import { externalProviderKeys } from '@/api/keys/settings';
-import { useDiaryInvalidation } from '@/hooks/useInvalidateKeys';
+import {
+  useDiaryInvalidation,
+  useGarminStatusInvalidation,
+} from '@/hooks/useInvalidateKeys';
 import i18n from 'i18next';
+import { garminSyncWarning } from '@/hooks/Integrations/garminSyncWarning';
 export const useLinkFitbitMutation = () => {
   const { t } = useTranslation();
   const invalidate = useDiaryInvalidation();
@@ -353,6 +360,62 @@ export const useSyncIntervalsMutation = () => {
   });
 };
 
+export const useSetIntervalsNutritionPushMutation = () => {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (enabled: boolean) => setIntervalsNutritionPush(enabled),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'integrations.intervalsPushToggleError',
+        'Could not save the Intervals.icu nutrition push setting.'
+      ),
+    },
+  });
+};
+
+export const useRemoveIntervalsPushedDataMutation = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (providerId?: string) => removeIntervalsPushedData(providerId),
+    // The server turns pushing off even when clearing then fails.
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+    },
+    onSuccess: (data: IntervalsRemoveResult) => {
+      toast({
+        variant: data.failed > 0 ? 'destructive' : 'default',
+        title: t(
+          'integrations.intervalsRemoveTitle',
+          'Pushed nutrition data removed'
+        ),
+        description: t(
+          'integrations.intervalsRemoveDetails',
+          'Cleared {{cleared}} days, left {{kept}} days another app had changed, {{failed}} failed.',
+          { cleared: data.cleared, kept: data.kept, failed: data.failed }
+        ),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'integrations.intervalsRemoveError',
+        'Could not remove the pushed nutrition data. Please try again.'
+      ),
+    },
+  });
+};
+
 export const useDisconnectIntervalsMutation = () => {
   const queryClient = useQueryClient();
 
@@ -428,13 +491,22 @@ export const useDisconnectGarminMutation = () => {
 };
 
 export const useManualSyncGarminMutation = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const invalidateSyncData = useDiaryInvalidation();
+  const invalidateGarminStatus = useGarminStatusInvalidation();
 
   return useMutation({
     mutationFn: ({ startDate, endDate, ...mock }: SyncVariables) =>
       handleManualSyncGarmin(startDate, endDate, mock),
-    onSuccess: () => {
+    onSuccess: (result) => {
       invalidateSyncData();
+      const warning = garminSyncWarning(result, t);
+      if (warning) toast(warning);
+    },
+    // A failed sync can change the status too (e.g. the service went down).
+    onSettled: () => {
+      invalidateGarminStatus();
     },
   });
 };
@@ -669,12 +741,6 @@ export const useManualSyncGoogleHealthMutation = () => {
     },
   });
 };
-
-export interface GarminStatusResponse {
-  isLinked: boolean;
-  lastUpdated: string | null;
-  tokenExpiresAt: string | null;
-}
 
 export const useGarminStatus = (userId?: string) => {
   return useQuery({

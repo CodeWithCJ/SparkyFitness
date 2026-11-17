@@ -4,6 +4,14 @@ import FoodDatabaseManager from '@/pages/Foods/Foods';
 import { renderWithClient } from '../test-utils';
 import { apiCall } from '@/api/api';
 
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+    getEnergyUnitString: (unit: string) => unit,
+  }),
+}));
+
 jest.mock('@/api/api', () => ({ apiCall: jest.fn() }));
 let mockActiveUserId = 'test-user-id';
 jest.mock('@/hooks/useAuth', () => ({

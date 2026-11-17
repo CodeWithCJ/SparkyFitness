@@ -37,7 +37,7 @@ Each of these has a value to change or turn off (`server.strategy`, `server.podD
 
 ## Point the load balancer at the readiness check
 
-Have your load balancer check `/api/health/ready` on each instance and send traffic only to instances that answer 200. It answers 503 once that instance has been unable to reach the database for more than about 10 seconds, and while it shuts down, so traffic moves to the others. While a backup is being restored it answers 200 with status `RESTORING`, so a container health check does not restart the server partway through the restore. `/api/health` only says the process is running.
+Have your load balancer check `/api/health/ready` on each instance and send traffic only to instances that answer 200. It answers 503 once that instance has been unable to reach the database for more than about 10 seconds, and while it shuts down, so traffic moves to the others. While it swaps a restored backup in, the instance running the restore answers 200 with status `RESTORING`, so a container health check does not restart it partway through. `/api/health` only says the process is running.
 
 ## Scheduled jobs
 
@@ -45,15 +45,13 @@ Scheduled jobs (nightly cleanup, hourly integration syncs, automatic backups, Op
 
 You can still keep scheduled jobs on one instance by setting `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true` on every other instance. With `SPARKY_FITNESS_LOG_LEVEL` set to `INFO` or `DEBUG`, each instance with jobs disabled says so in its startup log.
 
-With Kubernetes, the Helm chart still does this when `server.replicas` is above 1; change it in your values, not with `kubectl scale`. Without the chart, run the jobs instance as its own Deployment with `replicas: 1` and the `Recreate` strategy, sharing the same ConfigMap and Secrets, and set the variable on the Deployment you scale. With Docker Compose, keep scaling `sparkyfitness-server`, the service the frontend sends requests to, and add `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS: "true"` under its `environment:`. Then add a copy of that service under a new name, such as `sparkyfitness-jobs`, without the variable, to run the jobs. Do not put it in the shared `.env` file, or no instance will run the jobs.
+Without the Helm chart, set it on that instance's own environment, not in a shared `.env` file, or no instance will run the jobs. The Helm chart runs every replica the same way and does not set it. Upgrading from a chart that ran a separate `-jobs` Deployment deletes that Deployment and adds its replica to the others.
 
 A backup schedule saved in the admin settings reaches every instance within 5 minutes.
 
-## Restoring a backup: scale to one instance first
+## Restoring a backup
 
-Restoring a backup from the admin page deletes the database and the uploads folder that every instance shares, so it must run with only one instance up. Scale to one instance (with Helm, `server.replicas: 1`; with Compose, one `sparkyfitness-server` without `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS` and no separate jobs service), wait until the others have stopped, restore, then scale back up. See [Manual Backup and Restore](/administration/manual_backup_restore) for the steps.
-
-The server refuses a restore when it can tell other instances are running: when it has `SPARKY_FITNESS_DISABLE_SCHEDULED_JOBS=true`, or when another SparkyFitness server has database connections open. This is a safety net, not a guarantee: an instance with no traffic closes its database connections after about 30 seconds and then cannot be seen.
+A restore from the admin page runs with every instance up. While it loads the backup beside the live data, every instance keeps serving reads, refuses changes with `503` and stops scheduled jobs from using the database. It then ends every instance's connections to the old database and swaps the restored one in, so requests fail for a moment and work again on the next try. Only one restore runs at a time across all instances. See [Manual Backup and Restore](/administration/manual_backup_restore) for what it needs and how to roll back.
 
 ## What to expect during a rolling update
 

@@ -1,0 +1,13 @@
+# Ignore MP4 videos specifically inside exercise folders (prevents git bloat)
+exercises/**/*.mp4
+exercises/**/candidates/
+exercises/**/_temp_*
+
+# Un-ignore compiled catalog
+!dist/
+!dist/exercises.json
+
+# Node & system
+node_modules/
+.DS_Store
+*.log

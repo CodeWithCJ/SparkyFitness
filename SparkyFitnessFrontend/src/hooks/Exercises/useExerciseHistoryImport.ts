@@ -1,4 +1,4 @@
-import { useState, RefObject } from 'react';
+import { useEffect, useState, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format, parse } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -90,7 +90,8 @@ export const requiredHeaders = [
 export function useExerciseHistoryImport(
   fileInputRef: RefObject<HTMLInputElement | null>,
   onImportComplete: () => void,
-  csvFormat: CsvFormatOptions
+  csvFormat: CsvFormatOptions,
+  onDirtyChange: (dirty: boolean) => void
 ) {
   const { t } = useTranslation();
   const { dateFormat, weightUnit, distanceUnit } = usePreferences();
@@ -128,6 +129,18 @@ export function useExerciseHistoryImport(
 
   const weightUnitLabel = weightUnit === 'lbs' ? 'lbs' : 'kg';
   const dateFormatToUse = csvFormat.dateFormat ?? dateFormat;
+
+  // The launcher confirms closing only while this form is dirty. A successful
+  // import closes the dialog (via onImportComplete), so a clean state closes
+  // freely.
+  const isDirty =
+    groupedEntries.length > 0 ||
+    csvText.trim() !== '' ||
+    showMapping ||
+    file !== null;
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files?.[0]) {

@@ -113,7 +113,7 @@ class CaloriesLeftTileService : SparkyTileService() {
             return
         }
         tile.label = context.getString(
-            R.string.widget_kcal_left,
+            CalorieWidget.energyLeftRes(snapshot.isKj),
             CalorieWidget.formatInt(context, snapshot.remaining),
         )
     }

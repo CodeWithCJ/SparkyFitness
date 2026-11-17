@@ -64,3 +64,21 @@ test('still produces TimeoutError when the caller has not cancelled', async () =
   await check;
   expect(jest.getTimerCount()).toBe(0);
 });
+
+test('a cancel after the response arrives still aborts the request, so a stalled body read stops', async () => {
+  let requestSignal: AbortSignal | undefined;
+  mockFetch.mockImplementation((_url, options) => {
+    requestSignal = options?.signal ?? undefined;
+    return Promise.resolve({ ok: true } as Response);
+  });
+  const controller = new AbortController();
+  await fetchWithTimeout(
+    'https://example.test',
+    { signal: controller.signal },
+    1000
+  );
+  expect(jest.getTimerCount()).toBe(0);
+  expect(requestSignal?.aborted).toBe(false);
+  controller.abort();
+  expect(requestSignal?.aborted).toBe(true);
+});

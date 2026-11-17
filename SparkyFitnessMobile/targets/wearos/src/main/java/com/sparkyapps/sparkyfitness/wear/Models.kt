@@ -367,6 +367,8 @@ data class WatchContext(
   val suggestedExercises: List<SuggestedExercise>? = null,
   val workoutServerId: String? = null,
   val distanceUnit: String? = null,
+  /** The phone's energy unit (`kcal` or `kJ`); energy numbers stay kcal. Null reads as kcal. */
+  val energyUnit: String? = null,
   val doubleTapEnabled: Boolean? = null,
   val rpeEnabled: Boolean? = null,
   val medications: MedicationSnapshot? = null,
@@ -620,3 +622,24 @@ data class WatchRunResult(
   val distanceScale: Double = 1.0,
   val estimatedDistanceMeters: Double? = null
 )
+
+/**
+ * How to show an energy number. Everything the phone and Health Services hand
+ * the watch is kcal; [WatchContext.energyUnit] says whether to show it in kJ.
+ * A context from an older phone app has no unit and reads as kcal.
+ */
+data class EnergyDisplay(val isKj: Boolean) {
+  /** A kcal value in this unit. */
+  fun value(kcal: Double): Double = if (isKj) kcal * 4.184 else kcal
+
+  /** A kcal value in this unit, rounded to a whole number. */
+  fun whole(kcal: Double): Int = value(kcal).roundToInt()
+
+  val unit: String get() = if (isKj) "kJ" else "kcal"
+
+  companion object {
+    val KCAL = EnergyDisplay(isKj = false)
+
+    fun of(context: WatchContext?): EnergyDisplay = EnergyDisplay(isKj = context?.energyUnit == "kJ")
+  }
+}

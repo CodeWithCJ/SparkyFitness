@@ -1751,6 +1751,130 @@ describe('readHealthRecords', () => {
     });
   });
 
+  describe('skin temperature records (read through to the upload shape)', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockIsHealthDataAvailable.mockResolvedValue(true);
+    });
+
+    const ring = (startDate: string, quantity: number, bundle: string) => ({
+      startDate,
+      endDate: startDate,
+      quantity,
+      sourceRevision: { source: { bundleIdentifier: bundle } },
+    });
+
+    test('OvernightBodyTemperature sends one body reading per night, from one source', async () => {
+      await initHealthConnect();
+      mockQueryCategorySamples.mockResolvedValue([
+        {
+          startDate: '2024-01-14T22:00:00Z',
+          endDate: '2024-01-15T06:00:00Z',
+          value: 'ASLEEP',
+          metadata: { HKTimeZone: 'UTC' },
+        },
+      ]);
+      mockQueryQuantitySamples.mockResolvedValue([
+        ring('2024-01-15T00:00:00Z', 36.0, 'com.ring'),
+        ring('2024-01-15T02:00:00Z', 36.2, 'com.ring'),
+        ring('2024-01-15T04:00:00Z', 36.4, 'com.ring'),
+        ring('2024-01-15T03:00:00Z', 38.0, 'com.thermometer'),
+      ]);
+
+      // The window starts after bedtime: the night must still be read whole.
+      const windowStart = new Date('2024-01-15T01:00:00Z');
+      const windowEnd = new Date('2024-01-15T23:59:59Z');
+      const raw = await readHealthRecords(
+        'OvernightBodyTemperature',
+        windowStart,
+        windowEnd
+      );
+      const records = transformHealthRecords(raw, {
+        recordType: 'OvernightBodyTemperature',
+        unit: 'celsius',
+        type: 'skin_temperature',
+      }) as TransformedRecord[];
+
+      expect(mockQueryCategorySamples).toHaveBeenCalledWith(
+        'HKCategoryTypeIdentifierSleepAnalysis',
+        expect.objectContaining({
+          filter: {
+            date: {
+              startDate: new Date('2024-01-14T01:00:00Z'),
+              endDate: windowEnd,
+            },
+          },
+        })
+      );
+      expect(records).toHaveLength(1);
+      expect(records[0]).toMatchObject({
+        type: 'skin_temperature',
+        value: 36.2,
+        site: 'body',
+        date: '2024-01-15',
+        timestamp: expect.stringMatching(/^2024-01-15T06:00:00/),
+      });
+    });
+
+    test('OvernightBodyTemperature sends nothing for a night that ended before the window', async () => {
+      await initHealthConnect();
+      mockQueryCategorySamples.mockResolvedValue([
+        {
+          startDate: '2024-01-14T22:00:00Z',
+          endDate: '2024-01-15T06:00:00Z',
+          value: 'ASLEEP',
+        },
+      ]);
+      mockQueryQuantitySamples.mockResolvedValue([
+        ring('2024-01-15T02:00:00Z', 36.2, 'com.ring'),
+      ]);
+
+      const raw = await readHealthRecords(
+        'OvernightBodyTemperature',
+        new Date('2024-01-15T12:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+
+      expect(raw).toEqual([]);
+    });
+
+    test('SleepingWristTemperature sends a wrist reading on the wake day', async () => {
+      await initHealthConnect();
+      mockQueryQuantitySamples.mockResolvedValue([
+        {
+          startDate: '2024-01-14T22:00:00Z',
+          endDate: '2024-01-15T06:00:00Z',
+          quantity: 34.1,
+          metadataTimeZone: 'UTC',
+        },
+      ]);
+
+      // The window opens at midnight, after the sample began: it is matched by its end.
+      const raw = await readHealthRecords(
+        'SleepingWristTemperature',
+        new Date('2024-01-15T00:00:00Z'),
+        new Date('2024-01-15T23:59:59Z')
+      );
+      const records = transformHealthRecords(raw, {
+        recordType: 'SleepingWristTemperature',
+        unit: 'celsius',
+        type: 'skin_temperature',
+      }) as TransformedRecord[];
+
+      expect(mockQueryQuantitySamples).toHaveBeenCalledWith(
+        'HKQuantityTypeIdentifierAppleSleepingWristTemperature',
+        expect.anything()
+      );
+      expect(records).toHaveLength(1);
+      expect(records[0]).toMatchObject({
+        type: 'skin_temperature',
+        value: 34.1,
+        site: 'wrist',
+        date: '2024-01-15',
+      });
+    });
+  });
+
   describe('Stress records', () => {
     beforeEach(() => {
       jest.clearAllMocks();

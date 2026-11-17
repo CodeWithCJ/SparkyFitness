@@ -26,8 +26,10 @@ import {
   HeartPulse,
   Sparkles,
 } from 'lucide-react';
+import Tooth from '@/components/icons/Tooth';
 import { useTranslation } from 'react-i18next';
 import { MindfulnessSection } from './MindfulnessSection';
+import { OralCareSection } from './OralCareSection';
 
 const CheckIn = () => {
   const { user } = useAuth();
@@ -133,6 +135,11 @@ const CheckIn = () => {
                 id: 'mindfulness',
                 label: t('checkIn.tabs.mindfulness', 'Mindfulness'),
                 icon: Sparkles,
+              },
+              {
+                id: 'oralCare',
+                label: t('checkIn.tabs.oralCare', 'Oral care'),
+                icon: Tooth,
               },
               {
                 id: 'sleep',
@@ -281,6 +288,10 @@ const CheckIn = () => {
 
         <TabsContent value="mindfulness" className="focus-visible:outline-none">
           <MindfulnessSection selectedDate={selectedDate} />
+        </TabsContent>
+
+        <TabsContent value="oralCare" className="focus-visible:outline-none">
+          <OralCareSection selectedDate={selectedDate} />
         </TabsContent>
 
         <TabsContent value="sleep" className="focus-visible:outline-none">

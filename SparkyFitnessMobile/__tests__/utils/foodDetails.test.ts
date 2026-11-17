@@ -537,6 +537,230 @@ describe('buildExternalVariantOptions', () => {
     ]);
     expect(options[0].id).toBe('ext-0');
   });
+
+  // #3402: Open Food Facts "1 portion (100 g)" arrives as a 100 g default plus
+  // a 1 serving variant with the same values, and the mappers fill in
+  // "1 serving" as its description. That filled-in text only restates the
+  // size and unit, so it must not hide the metric weight.
+  test('shows the metric weight of a serving whose description only restates it', () => {
+    const offPortion = {
+      calories: 125,
+      protein: 9.5,
+      carbs: 6.9,
+      fat: 7,
+    };
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        ...offPortion,
+        serving_size: 1,
+        serving_unit: 'serving',
+        serving_description: '1 serving',
+      }),
+      makeExternalVariant({
+        ...offPortion,
+        serving_size: 100,
+        serving_unit: 'g',
+        serving_description: '100 g',
+      }),
+    ]);
+
+    expect(options).toHaveLength(1);
+    expect(options[0]).toMatchObject({
+      id: 'ext-0',
+      label: '1 serving (100 g) (125 cal)',
+      quantityUnitLabel: 'serving (100 g)',
+      perServingLabel: '1 serving (100 g)',
+    });
+  });
+
+  test('reads a restated size by its number, not its spelling', () => {
+    const portion = { calories: 125, protein: 9.5, carbs: 6.9, fat: 7 };
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        ...portion,
+        serving_size: 1,
+        serving_unit: 'serving',
+        serving_description: '1.0 serving',
+      }),
+      makeExternalVariant({
+        ...portion,
+        serving_size: 100,
+        serving_unit: 'g',
+        serving_description: '100 g',
+      }),
+    ]);
+
+    expect(options[0].label).toBe('1 serving (100 g) (125 cal)');
+  });
+
+  test('shows the weight of a zero-calorie serving that another nutrient identifies', () => {
+    // A diet drink: no calories, but enough sodium to set the amount.
+    const dietDrink = { calories: 0, protein: 0, carbs: 0, fat: 0, sodium: 20 };
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        ...dietDrink,
+        serving_size: 100,
+        serving_unit: 'ml',
+        serving_description: '100 ml',
+      }),
+      makeExternalVariant({
+        ...dietDrink,
+        serving_size: 1,
+        serving_unit: 'serving',
+        serving_description: '1 serving',
+      }),
+    ]);
+
+    expect(options).toHaveLength(1);
+    expect(options[0]).toMatchObject({
+      label: '1 serving (100 ml) (0 cal)',
+      quantityUnitLabel: 'serving (100 ml)',
+      perServingLabel: '1 serving (100 ml)',
+    });
+  });
+
+  test('keeps the amount beside the quantity for a serving that is not one unit', () => {
+    // FatSecret "3 oz" = 85 g: the 85 g is the whole serving, so "oz (85 g)"
+    // beside the quantity would say one ounce weighs 85 g. Half a cup is the
+    // same: "cup (120 g)" would say a whole cup weighs 120 g.
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        serving_size: 3,
+        serving_unit: 'oz',
+        serving_description: '3 oz',
+        calories: 140,
+      }),
+      makeExternalVariant({
+        serving_size: 85,
+        serving_unit: 'g',
+        serving_description: '85 g',
+        calories: 140,
+      }),
+      makeExternalVariant({
+        serving_size: 0.5,
+        serving_unit: 'cup',
+        serving_description: '0.5 cup',
+        calories: 60,
+      }),
+      makeExternalVariant({
+        serving_size: 120,
+        serving_unit: 'g',
+        serving_description: '120 g',
+        calories: 60,
+      }),
+    ]);
+
+    expect(options).toHaveLength(2);
+    expect(options[0]).toMatchObject({
+      label: '3 oz (85 g) (140 cal)',
+      quantityUnitLabel: '3 oz',
+    });
+    expect(options[1]).toMatchObject({
+      label: '0.5 cup (120 g) (60 cal)',
+      quantityUnitLabel: '0.5 cup',
+    });
+  });
+
+  test('does not borrow a weight for servings that only match on zero nutrition', () => {
+    // Water: every serving matches on nutrition, so the group says nothing
+    // about which weight belongs to which serving.
+    const water = { calories: 0, protein: 0, carbs: 0, fat: 0 };
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        ...water,
+        serving_size: 1,
+        serving_unit: 'bottle',
+        serving_description: '1 bottle',
+      }),
+      makeExternalVariant({
+        ...water,
+        serving_size: 100,
+        serving_unit: 'ml',
+        serving_description: '100 ml',
+      }),
+      makeExternalVariant({
+        ...water,
+        serving_size: 500,
+        serving_unit: 'ml',
+        serving_description: '500 ml',
+      }),
+    ]);
+
+    expect(options[0]).toMatchObject({
+      label: '1 bottle (0 cal)',
+      quantityUnitLabel: 'bottle',
+      perServingLabel: '1 bottle',
+    });
+  });
+
+  test('keeps the weight a provider states for a small serving', () => {
+    // FatSecret sends one almond with its own 1.2 g and the same values.
+    const almond = { calories: 7, protein: 0.25, carbs: 0.26, fat: 0.6 };
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        ...almond,
+        serving_size: 1,
+        serving_unit: 'almond',
+        serving_description: '1 almond',
+      }),
+      makeExternalVariant({
+        ...almond,
+        serving_size: 1.2,
+        serving_unit: 'g',
+        serving_description: '1.2 g',
+      }),
+    ]);
+
+    expect(options[0]).toMatchObject({
+      label: '1 almond (1.2 g) (7 cal)',
+      quantityUnitLabel: 'almond (1.2 g)',
+    });
+  });
+
+  test('does not borrow a weight for trace nutrition that rounds alike', () => {
+    // A 125 ml glass and 100 ml of a drink with 1 kcal, 0.1 g of carbs and
+    // 1 mg of sodium per 100 ml round to the same values.
+    const trace = { calories: 1, protein: 0, carbs: 0.1, fat: 0, sodium: 1 };
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        ...trace,
+        serving_size: 1,
+        serving_unit: 'glass',
+        serving_description: '1 glass',
+      }),
+      makeExternalVariant({
+        ...trace,
+        serving_size: 100,
+        serving_unit: 'ml',
+        serving_description: '100 ml',
+      }),
+    ]);
+
+    expect(options[0]).toMatchObject({
+      label: '1 glass (1 cal)',
+      quantityUnitLabel: 'glass',
+    });
+  });
+
+  test('keeps a provider description that says more than the size and unit', () => {
+    const options = buildExternalVariantOptions([
+      makeExternalVariant({
+        serving_size: 1,
+        serving_unit: 'cup',
+        serving_description: '1 cup, chopped',
+      }),
+      makeExternalVariant({
+        serving_size: 150,
+        serving_unit: 'g',
+        serving_description: '150 g',
+      }),
+    ]);
+
+    expect(options[0]).toMatchObject({
+      label: '1 cup, chopped (95 cal)',
+      quantityUnitLabel: '1 cup, chopped',
+    });
+  });
 });
 
 describe('resolveFoodDisplayValues', () => {

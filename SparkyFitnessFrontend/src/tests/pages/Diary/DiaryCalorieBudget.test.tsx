@@ -8,9 +8,14 @@ import Diary from '@/pages/Diary/Diary';
 const mockGoals = { calories: 1800, protein: 100, carbs: 200, fat: 60 };
 let mockRemaining = 1256;
 let mockCaloriePreference: NutrientGoalPreferenceEntry | undefined;
+let mockIsActingOnBehalf = false;
+let mockWidgetKeys: string[] = [];
 
 jest.mock('@/contexts/ActiveUserContext', () => ({
-  useActiveUser: () => ({ activeUserId: 'test-user' }),
+  useActiveUser: () => ({
+    activeUserId: 'test-user',
+    isActingOnBehalf: mockIsActingOnBehalf,
+  }),
 }));
 jest.mock('@/contexts/PreferencesContext', () => ({
   usePreferences: () => ({
@@ -39,6 +44,7 @@ jest.mock('@/hooks/Diary/useFoodEntries', () => ({
   useCreateFoodEntryMutation: () => ({ mutateAsync: jest.fn() }),
   useDeleteFoodEntryMutation: () => ({ mutateAsync: jest.fn() }),
   useCopyFoodEntriesMutation: () => ({ mutateAsync: jest.fn() }),
+  useCopySingleFoodEntryMutation: () => ({ mutate: jest.fn() }),
   useDeleteFoodEntryMealMutation: () => ({ mutateAsync: jest.fn() }),
 }));
 jest.mock('@/hooks/Foods/useCustomNutrients', () => ({
@@ -52,9 +58,12 @@ jest.mock('@/hooks/useGenericHealth', () => ({
 }));
 jest.mock('@/pages/Diary/DiaryWidgetGrid', () => ({
   __esModule: true,
-  default: ({ widgets }: { widgets: DiaryWidget[] }) => (
-    <>{widgets.find((widget) => widget.key === 'nutrition')?.render()}</>
-  ),
+  default: ({ widgets }: { widgets: DiaryWidget[] }) => {
+    mockWidgetKeys = widgets.map((widget) => widget.key);
+    return (
+      <>{widgets.find((widget) => widget.key === 'nutrition')?.render()}</>
+    );
+  },
 }));
 jest.mock('@/pages/Diary/NutritionSummaryCard', () => ({
   __esModule: true,
@@ -65,6 +74,7 @@ jest.mock('@/pages/Diary/NutritionSummaryCard', () => ({
 jest.mock('@/pages/Diary/DailyProgress', () => () => null);
 jest.mock('@/pages/Diary/WaterIntake', () => () => null);
 jest.mock('@/pages/Diary/CaffeineCard', () => () => null);
+jest.mock('@/pages/Diary/BloodAlcoholCard', () => () => null);
 jest.mock('@/pages/Diary/MealCard', () => () => null);
 jest.mock('@/pages/Diary/ExerciseCard', () => () => null);
 jest.mock('@/pages/Diary/EditFoodEntryDialog', () => () => null);
@@ -89,6 +99,8 @@ const renderDiary = () =>
 beforeEach(() => {
   mockRemaining = 1256;
   mockCaloriePreference = undefined;
+  mockIsActingOnBehalf = false;
+  mockWidgetKeys = [];
 });
 
 it('uses the same target ceiling plus credited activity as the energy ring', () => {
@@ -132,4 +144,17 @@ it('refreshes the summary budget when the calorie preference changes', () => {
     </MemoryRouter>
   );
   expect(screen.getByLabelText('Calorie budget')).toHaveTextContent('2681');
+});
+
+// The server refuses the estimate to a delegate, so the card is owner only.
+it('registers the blood alcohol widget for the owner only', () => {
+  renderDiary();
+  expect(mockWidgetKeys).toContain('bloodAlcohol');
+});
+
+it('does not register the blood alcohol widget when acting on behalf', () => {
+  mockIsActingOnBehalf = true;
+  renderDiary();
+  expect(mockWidgetKeys).not.toContain('bloodAlcohol');
+  expect(mockWidgetKeys).toContain('caffeine');
 });

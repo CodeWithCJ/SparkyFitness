@@ -8,6 +8,18 @@ export interface SplitSample {
 }
 
 /**
+ * Whether covering `meters` in `seconds` is faster than `maxSpeedMps`. A speed
+ * exactly at the ceiling is allowed; one that is not a number counts as faster.
+ */
+export function aboveSpeedCeiling(
+  meters: number,
+  seconds: number,
+  maxSpeedMps: number
+): boolean {
+  return !(meters / seconds <= maxSpeedMps);
+}
+
+/**
  * Samples from a stored GPS track. Uses the device's own cumulative distance
  * when every point carries it (the watch's figure matches the distance saved on
  * the entry); otherwise sums the straight lines between fixes. Null when the
@@ -16,7 +28,8 @@ export interface SplitSample {
  * `maxSpeedMps` is the fastest the sport can plausibly go. On the straight-line
  * path a segment faster than that is a GPS glitch (a jump and its return would
  * otherwise both count as distance and make a split too fast), so its distance
- * is dropped. The device's own distance is trusted as recorded.
+ * is dropped. The device's own distance is trusted as recorded; a split it
+ * makes faster than the ceiling is refused by `bestSplitSeconds` instead.
  */
 export function samplesFromGpsPoints(
   points: readonly GpsTrackPoint[],
@@ -50,7 +63,7 @@ export function samplesFromGpsPoints(
       const before = timed[i - 1];
       if (before) {
         const meters = haversineMeters(before.point, point);
-        if (meters / (seconds - before.seconds) <= maxSpeedMps) {
+        if (!aboveSpeedCeiling(meters, seconds - before.seconds, maxSpeedMps)) {
           cumulative += meters;
         }
       }
@@ -121,10 +134,15 @@ function secondsAtMeters(
  * seconds, or null when the activity never covers that far. The best window
  * starts or ends on a sample (the track is linear between them), so only those
  * windows are measured.
+ *
+ * `maxSpeedMps` is the fastest the sport can plausibly go. A best stretch
+ * faster than that comes from a jump in the recorded distance, not from the
+ * effort, so there is no split for that distance rather than an impossible one.
  */
 export function bestSplitSeconds(
   samples: readonly SplitSample[],
-  targetMeters: number
+  targetMeters: number,
+  maxSpeedMps = Infinity
 ): number | null {
   const first = samples[0];
   const last = samples[samples.length - 1];
@@ -148,5 +166,6 @@ export function bestSplitSeconds(
       );
     }
   }
-  return Number.isFinite(best) && best > 0 ? best : null;
+  if (!(Number.isFinite(best) && best > 0)) return null;
+  return aboveSpeedCeiling(targetMeters, best, maxSpeedMps) ? null : best;
 }

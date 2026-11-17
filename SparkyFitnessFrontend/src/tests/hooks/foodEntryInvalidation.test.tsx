@@ -2,7 +2,11 @@ import { renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import React from 'react';
 import { useFoodEntryInvalidation } from '@/hooks/useInvalidateKeys';
-import { caffeineKeys, waterIntakeKeys } from '@/api/keys/diary';
+import {
+  bloodAlcoholKeys,
+  caffeineKeys,
+  waterIntakeKeys,
+} from '@/api/keys/diary';
 import { checkInKeys } from '@/api/keys/checkin';
 import { fastingKeys } from '@/api/keys/fasting';
 
@@ -45,6 +49,24 @@ describe('useFoodEntryInvalidation (#2115)', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: caffeineKeys.all,
+    });
+  });
+
+  // The blood alcohol estimate is the same kind of date-keyed view.
+  it('refreshes the blood alcohol estimate too', () => {
+    const queryClient = new QueryClient();
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useFoodEntryInvalidation(), {
+      wrapper,
+    });
+    result.current();
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: bloodAlcoholKeys.all,
     });
   });
 

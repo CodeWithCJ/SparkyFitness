@@ -3,6 +3,8 @@ import { Alert, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Button from './ui/Button';
 import type { GoalPreset } from '../types/goals';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 
 interface GoalPresetsSectionProps {
   presets: GoalPreset[];
@@ -23,6 +25,7 @@ const GoalPresetsSection: React.FC<GoalPresetsSectionProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
 
   const confirmDelete = (preset: GoalPreset) =>
     Alert.alert(
@@ -66,10 +69,11 @@ const GoalPresetsSection: React.FC<GoalPresetsSectionProps> = ({
               {preset.preset_name}
             </Text>
             <Text className="text-sm text-text-secondary">
-              {t('goals.presets.summary', {
+              {t('goals.presets.summaryWithUnit', {
                 defaultValue:
-                  '{{calories}} kcal, {{protein}}g P, {{carbs}}g C, {{fat}}g F',
-                calories: Math.round(preset.calories ?? 0),
+                  '{{calories}} {{unit}}, {{protein}}g P, {{carbs}}g C, {{fat}}g F',
+                calories: roundedEnergy(preset.calories ?? 0, energyUnit),
+                unit: energyUnitLabel(energyUnit, t),
                 protein: Math.round(preset.protein ?? 0),
                 carbs: Math.round(preset.carbs ?? 0),
                 fat: Math.round(preset.fat ?? 0),

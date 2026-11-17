@@ -1,12 +1,17 @@
 {
   "name": "sparkyfitnessmobile",
-  "version": "1.11.0",
+  "version": "1.12.1",
   "private": true,
   "expo": {
     "autolinking": {
       "exclude": [
         "@expo/dom-webview"
-      ]
+      ],
+      "android": {
+        "buildFromSource": [
+          "expo-camera"
+        ]
+      }
     }
   },
   "scripts": {

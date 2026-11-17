@@ -1,0 +1,24 @@
+{
+  "email": {
+    "passwordReset": {
+      "subject": "Resetowanie hasła w SparkyFitness",
+      "intro": "Poprosiłeś o zresetowanie hasła do swojego konta SparkyFitness.",
+      "actionPrompt": "Kliknij poniższy link, aby zresetować hasło:",
+      "expiry": "Ten link wygaśnie po {{expiresInHours}} godz.",
+      "ignoreNotice": "Jeśli nie prosiłeś o zresetowanie hasła, zignoruj tę wiadomość."
+    },
+    "mfaCode": {
+      "subject": "Twój kod MFA SparkyFitness",
+      "intro": "Twój kod uwierzytelniania wieloskładnikowego:",
+      "expiry": "Ten kod jest ważny {{expiresInMinutes}} min.",
+      "ignoreNotice": "Jeśli nie prosiłeś o ten kod, zignoruj tę wiadomość."
+    },
+    "magicLink": {
+      "subject": "Twój link logowania SparkyFitness",
+      "intro": "Poprosiłeś o logowanie bez hasła do swojego konta SparkyFitness.",
+      "actionPrompt": "Kliknij poniższy link, aby się zalogować:",
+      "expiry": "Ten link wygaśnie po {{expiresInMinutes}} min i może być użyty tylko raz.",
+      "ignoreNotice": "Jeśli nie prosiłeś o to, zignoruj tę wiadomość."
+    }
+  }
+}

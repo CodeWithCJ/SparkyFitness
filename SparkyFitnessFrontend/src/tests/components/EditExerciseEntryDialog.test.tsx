@@ -35,6 +35,8 @@ jest.mock('@/contexts/PreferencesContext', () => ({
           ? value / KM_PER_MILE
           : value * KM_PER_MILE,
     timezone: 'UTC',
+    energyUnit: 'kcal',
+    getEnergyUnitString: (unit: string) => unit,
   }),
 }));
 
@@ -406,6 +408,33 @@ describe('EditExerciseEntryDialog calories after changing sets', () => {
     expect(data.calories_burned).toBeUndefined();
   });
 
+  it('clears deleted-set metadata when a new set is added after removing every set', async () => {
+    const entry = strengthEntry();
+    const { container } = renderDialog({
+      ...entry,
+      sets: entry.sets!.map((set) => ({
+        ...set,
+        notes: 'Deleted personal record',
+        is_pr: true,
+        completed_at: '2026-11-01T17:00:00Z',
+      })),
+    });
+    fireEvent.click(
+      container.ownerDocument
+        .querySelector('svg.lucide-trash-2')!
+        .closest('button')!
+    );
+    fireEvent.click(screen.getByText('Add Set'));
+
+    const { data } = await saveEntry();
+    expect(data.sets).toHaveLength(1);
+    expect(data.sets[0]).toMatchObject({
+      notes: null,
+      is_pr: false,
+      completed_at: null,
+    });
+  });
+
   it('recalculates the total when a two-set cardio entry drops to one set', async () => {
     const { container } = renderDialog(
       makeEntry({
@@ -458,6 +487,35 @@ describe('EditExerciseEntryDialog calories after changing sets', () => {
 
     const { data } = await saveEntry();
     expect(data.calories_burned).toBe(0);
+  });
+
+  it('sends an explicitly cleared rep field as null over JSON', async () => {
+    renderDialog(
+      makeEntry({
+        sets: [
+          {
+            ...cardioSet,
+            weight: 40,
+            reps: 8,
+            duration: null,
+            distance: null,
+            rest_time: 120,
+          },
+        ],
+        exercise_snapshot: {
+          id: 'ex-1',
+          name: 'Bench Press',
+          category: 'Strength',
+          modality: 'weight_reps',
+        },
+      } as unknown as Partial<ExerciseEntry>)
+    );
+    fireEvent.change(screen.getByDisplayValue('8'), { target: { value: '' } });
+    const { data } = await saveEntry();
+    expect(JSON.parse(JSON.stringify(data)).sets[0]).toHaveProperty(
+      'reps',
+      null
+    );
   });
 
   it('keeps the stored duration when added strength sets carry no timing', async () => {

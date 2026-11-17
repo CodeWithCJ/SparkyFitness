@@ -13,6 +13,7 @@ import {
   Heart,
   GitCompareArrows,
 } from 'lucide-react';
+import Tooth from '@/components/icons/Tooth';
 
 interface ReportsControlsProps {
   startDate: string;
@@ -55,6 +56,11 @@ const ReportsControls = ({
       id: 'fasting',
       label: t('reports.fasting.insightsTab', 'Fasting'),
       icon: TrendingUp,
+    },
+    {
+      id: 'oral-care',
+      label: t('reports.oralCareTab', 'Oral care'),
+      icon: Tooth,
     },
     {
       id: 'exercise-charts',

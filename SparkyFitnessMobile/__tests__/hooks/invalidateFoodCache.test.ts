@@ -1,5 +1,7 @@
 import { invalidateFoodCache } from '../../src/hooks/invalidateFoodCache';
 import {
+  bloodAlcoholQueryKey,
+  bloodAlcoholRootQueryKey,
   caffeineActiveQueryKey,
   caffeineActiveRootQueryKey,
   dailySummaryQueryKey,
@@ -51,11 +53,32 @@ describe('invalidateFoodCache', () => {
       refetchType: 'all',
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: bloodAlcoholQueryKey(testDate),
+      refetchType: 'all',
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: waterIntakeLogQueryKey(testDate),
       refetchType: 'all',
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: [...foodsQueryKey],
+    });
+
+    invalidateSpy.mockRestore();
+  });
+
+  test('invalidates the next day blood alcohol estimate, which carries drinks over', () => {
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+    invalidateFoodCache(queryClient, '2026-09-30');
+
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: bloodAlcoholQueryKey('2026-10-01'),
+      refetchType: 'all',
+    });
+    expect(invalidateSpy).not.toHaveBeenCalledWith({
+      queryKey: caffeineActiveQueryKey('2026-10-01'),
+      refetchType: 'all',
     });
 
     invalidateSpy.mockRestore();
@@ -72,6 +95,10 @@ describe('invalidateFoodCache', () => {
     });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: caffeineActiveRootQueryKey,
+      refetchType: 'all',
+    });
+    expect(invalidateSpy).toHaveBeenCalledWith({
+      queryKey: bloodAlcoholRootQueryKey,
       refetchType: 'all',
     });
     expect(invalidateSpy).toHaveBeenCalledWith({

@@ -518,11 +518,11 @@ describe('ExerciseDetailScreen', () => {
     it('folds calories per hour into the strip and hides it when empty', () => {
       const screen = renderScreen({ id: uuidId });
 
-      expect(screen.getByText('Cal / hour')).toBeTruthy();
+      expect(screen.getByText('kcal / hour')).toBeTruthy();
       expect(screen.getByText('360')).toBeTruthy();
 
       const empty = renderScreen({ id: uuidId, calories_per_hour: 0 });
-      expect(empty.queryByText('Cal / hour')).toBeNull();
+      expect(empty.queryByText('kcal / hour')).toBeNull();
       expect(empty.queryByText('Best (kg)')).toBeNull();
     });
 

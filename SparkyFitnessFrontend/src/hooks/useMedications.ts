@@ -39,11 +39,13 @@ const medKeys = {
 // Call this from any mutation that changes data surfaced there so the report
 // refreshes without a manual page reload. refetchType: 'all' also refreshes the
 // cache while the Reports tab isn't mounted (e.g. editing from Cabinet or Symptoms).
-const invalidateReports = (queryClient: QueryClient) =>
-  queryClient.invalidateQueries({
+const invalidateReports = (queryClient: QueryClient) => {
+  void queryClient.invalidateQueries({ queryKey: ['glucoseContext'] });
+  return queryClient.invalidateQueries({
     queryKey: reportKeys.all,
     refetchType: 'all',
   });
+};
 
 // A supplement dose contributes its nutrient payload to the day's totals, so logging,
 // editing or undoing one moves the Diary's calories/macros and goal progress just as a

@@ -151,9 +151,17 @@ export function labImportBody(
     labName: string | null;
     date: string;
     values: Record<string, number>;
+    /**
+     * Made once per reviewed report and sent with every try to save it, so a
+     * retry after a lost answer gets the saved report back, not a second copy.
+     */
+    clientRequestId?: string;
   }
 ): ImportLabReportBody {
   return {
+    ...(options.clientRequestId
+      ? { client_request_id: options.clientRequestId }
+      : {}),
     lab_name: options.labName,
     entry_date: options.date,
     results: rows.map((row) => ({

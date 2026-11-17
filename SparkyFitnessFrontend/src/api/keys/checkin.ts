@@ -49,3 +49,11 @@ export const mindfulnessKeys = {
   range: (startDate: string, endDate: string) =>
     [...mindfulnessKeys.all, 'range', startDate, endDate] as const,
 };
+
+export const oralCareKeys = {
+  all: ['oralCare'] as const,
+  daySummary: (date: string) =>
+    [...oralCareKeys.all, 'daySummary', date] as const,
+  history: (startDate: string, endDate: string) =>
+    [...oralCareKeys.all, 'history', startDate, endDate] as const,
+};

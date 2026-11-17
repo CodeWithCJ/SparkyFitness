@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { restingHeartRateTrendDelta } from '@workspace/shared';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useSleepEntriesQuery } from '@/hooks/CheckIn/useSleep';
 import { useResolvedHeartRateZones } from '@/hooks/Settings/useHeartRateZones';
@@ -980,17 +981,7 @@ export const useHeartRateData = (
     const maxBpm = Math.max(...bpms);
     const avgBpm = Math.round(bpms.reduce((a, b) => a + b, 0) / bpms.length);
 
-    let trendDelta: number | null = null;
-    if (points.length >= 4) {
-      const half = Math.floor(points.length / 2);
-      const firstHalf = points.slice(0, half);
-      const secondHalf = points.slice(-half);
-      const firstAvg =
-        firstHalf.reduce((a, b) => a + b.bpm, 0) / firstHalf.length;
-      const secondAvg =
-        secondHalf.reduce((a, b) => a + b.bpm, 0) / secondHalf.length;
-      trendDelta = Math.round(secondAvg - firstAvg);
-    }
+    const trendDelta = restingHeartRateTrendDelta(bpms);
 
     return {
       points,

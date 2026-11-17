@@ -25,6 +25,10 @@ jest.mock('react-i18next', () => ({
 }));
 
 jest.mock('@/hooks/Settings/useExternalProviderSettings', () => ({
+  useListMcpServerToolsMutation: () => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  }),
   useExternalProviderTypesQuery: () => ({
     data: [
       {
@@ -62,6 +66,54 @@ const Harness = ({ isAdminMode }: { isAdminMode: boolean }) => {
     />
   );
 };
+
+describe('EditProviderForm Garmin service reachability', () => {
+  const garmin = (
+    reachable: boolean | null | undefined
+  ): ExternalDataProvider => ({
+    id: 'garmin-1',
+    provider_name: 'Garmin',
+    provider_type: 'garmin',
+    app_id: null,
+    app_key: null,
+    is_active: true,
+    base_url: null,
+    visibility: 'private',
+    garmin_connect_status: 'linked',
+    garmin_service_reachable: reachable,
+  });
+
+  const renderGarmin = (reachable: boolean | null | undefined) =>
+    renderWithClient(
+      <EditProviderForm
+        provider={garmin(reachable)}
+        editData={garmin(reachable)}
+        setEditData={jest.fn()}
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+        loading={false}
+      />
+    );
+
+  it('keeps the linked notice and adds a red notice when the service is unreachable', () => {
+    renderGarmin(false);
+
+    expect(screen.getByText('Connected to Garmin')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Garmin service unreachable'
+    );
+  });
+
+  it.each([true, null, undefined])(
+    'shows no red notice when reachability is %s',
+    (reachable) => {
+      renderGarmin(reachable);
+
+      expect(screen.getByText('Connected to Garmin')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    }
+  );
+});
 
 describe('EditProviderForm Open Food Facts credentials', () => {
   it.each([false, true])(
@@ -101,6 +153,43 @@ describe('EditProviderForm Open Food Facts credentials', () => {
     ).toHaveAttribute('autocomplete', 'current-password');
     expect(
       screen.getByPlaceholderText('(leave blank to keep existing)')
+    ).toBeInTheDocument();
+  });
+});
+
+describe('EditProviderForm MCP tool server', () => {
+  const server: ExternalDataProvider = {
+    id: 'server-1',
+    provider_name: 'Household tools',
+    provider_type: 'mcp_server',
+    app_id: null,
+    app_key: null,
+    is_active: true,
+    base_url: 'https://tools.example/mcp',
+    visibility: 'public',
+    provider_options: {
+      allowed_tools: [{ name: 'search', fingerprint: 'a'.repeat(64) }],
+      send_user_id: false,
+    },
+  };
+
+  it('locks its type, which cannot be changed, and shows its allowed tools', () => {
+    renderWithClient(
+      <EditProviderForm
+        provider={server}
+        editData={server}
+        setEditData={jest.fn()}
+        onSubmit={jest.fn()}
+        onCancel={jest.fn()}
+        loading={false}
+        isAdminMode
+      />
+    );
+
+    expect(screen.getAllByRole('combobox')[0]).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'search' })).toBeChecked();
+    expect(
+      screen.getByPlaceholderText('Leave blank to keep the saved token')
     ).toBeInTheDocument();
   });
 });

@@ -473,9 +473,6 @@
     "medications": "Legemidler",
     "medication": "Legemiddel",
     "library": {
-      "noServerConfigured": "Ingen server er konfigurert",
-      "configureServer": "Konfigurer servertilkoblingen i Innstillinger for å se biblioteket ditt.",
-      "goToSettings": "Gå til innstillinger",
       "loading": "Laster inn bibliotek...",
       "title": "Bibliotek",
       "create": "Opprett",
@@ -568,8 +565,6 @@
     "removeHeader": "Fjern header {{number}}"
   },
   "dashboard": {
-    "noServerConfigured": "Ingen server er konfigurert",
-    "goToSettings": "Gå til innstillinger",
     "loadingSummary": "Laster inn sammendrag...",
     "loadFailed": "Kunne ikke laste inn sammendrag",
     "checkConnection": "Kontroller tilkoblingen og prøv igjen.",
@@ -712,8 +707,6 @@
     "off": "Av"
   },
   "diary": {
-    "noServer": "Ingen server er konfigurert",
-    "goToSettings": "Gå til innstillinger",
     "loading": "Laster inn dagbok...",
     "loadFailed": "Kunne ikke laste inn dagbok",
     "checkConnection": "Kontroller tilkoblingen og prøv igjen.",
@@ -1380,8 +1373,6 @@
     "active": "Aktiv",
     "inactive": "Inaktiv",
     "deleteTitle": "Slett måltidsplan",
-    "noServer": "Ingen server er konfigurert",
-    "goToSettings": "Gå til innstillinger",
     "loading": "Laster inn måltidsplaner...",
     "loadFailed": "Kunne ikke laste inn måltidsplaner",
     "loadingPlanningOptions": "Laster inn planleggingsalternativer...",
@@ -1445,7 +1436,6 @@
   "mealDetail": {
     "addFavorite": "Legg til i favoritter",
     "editMeal": "Rediger måltid",
-    "noServer": "Ingen server er konfigurert",
     "loading": "Laster inn måltid...",
     "loadFailed": "Kunne ikke laste inn måltid",
     "perServing": "Per porsjon",
@@ -1743,7 +1733,6 @@
   },
   "foodDetail": {
     "editFood": "Rediger mat",
-    "noServer": "Ingen server er konfigurert",
     "selectServing": "Velg porsjon",
     "loadingServingOptions": "Laster inn porsjonsalternativer...",
     "barcode": "Strekkode",
@@ -1953,7 +1942,6 @@
   },
   "activityAdd": {
     "fields": {
-      "calories": "Kalorier",
       "notes": "Notater",
       "activity": "Aktivitet"
     },
@@ -1976,7 +1964,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Ingen server er konfigurert",
       "loadFailed": "Kunne ikke laste inn måltid",
       "loading": "Laster inn måltid…"
     },
@@ -2088,8 +2075,6 @@
   "exerciseLibrary": {
     "title": "Øvelser",
     "search": "Søk etter øvelser...",
-    "noServer": "Ingen server er konfigurert",
-    "go": "Gå til innstillinger",
     "loading": "Laster inn øvelser...",
     "failed": "Kunne ikke laste inn øvelser",
     "retry": "Prøv igjen",
@@ -2102,8 +2087,6 @@
   "foodLibrary": {
     "title": "Matvarer",
     "search": "Søk etter matvarer...",
-    "noServer": "Ingen server er konfigurert",
-    "go": "Gå til innstillinger",
     "loading": "Laster inn matvarer...",
     "failed": "Kunne ikke laste inn matvarer",
     "retry": "Prøv igjen",
@@ -2115,8 +2098,6 @@
   "mealLibrary": {
     "title": "Måltider",
     "search": "Søk etter måltider...",
-    "noServer": "Ingen server er konfigurert",
-    "go": "Gå til innstillinger",
     "loading": "Laster inn måltider...",
     "failed": "Kunne ikke laste inn måltider",
     "retry": "Prøv igjen",
@@ -2127,8 +2108,6 @@
   "presetLibrary": {
     "title": "Treningsmaler",
     "search": "Søk etter treningsmaler...",
-    "noServer": "Ingen server er konfigurert",
-    "go": "Gå til innstillinger",
     "loading": "Laster inn treningsmaler...",
     "failed": "Kunne ikke laste inn treningsmaler",
     "retry": "Prøv igjen",

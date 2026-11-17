@@ -260,9 +260,14 @@ class MacroWidget : GlanceAppWidget() {
     private fun CalorieHeader(context: Context, snapshot: MacroSnapshot?, fontSize: Int = 20) {
         val calories = snapshot?.displayCalories
         val text = if (snapshot?.hasData == true && calories != null) {
-            context.getString(R.string.widget_kcal_left, formatInt(context, calories))
+            context.getString(
+                CalorieWidget.energyLeftRes(snapshot.isKj),
+                formatInt(context, calories),
+            )
         } else {
-            context.getString(R.string.widget_kcal_left_empty)
+            context.getString(
+                if (snapshot?.isKj == true) R.string.widget_kj_left_empty else R.string.widget_kcal_left_empty
+            )
         }
         Text(
             text = text,
@@ -282,7 +287,10 @@ class MacroWidget : GlanceAppWidget() {
         if (snapshot?.hasData != true || snapshot.remaining == null) return
         Spacer(modifier = GlanceModifier.height(2.dp))
         Text(
-            text = context.getString(R.string.widget_kcal_eaten, formatInt(context, snapshot.calories)),
+            text = context.getString(
+                if (snapshot.isKj) R.string.widget_kj_eaten else R.string.widget_kcal_eaten,
+                formatInt(context, snapshot.calories),
+            ),
             style = TextStyle(
                 color = GlanceTheme.colors.onSurfaceVariant,
                 fontSize = 12.sp,
@@ -429,6 +437,8 @@ class MacroWidget : GlanceAppWidget() {
         val carbsGoal: Double?,
         val fatGoal: Double?,
         val lastUpdated: Long,
+        /** `calories` and `remaining` are already in kJ (the account's energy unit). */
+        val isKj: Boolean = false,
     ) {
         val proteinKcal: Double = protein * 4.0
         val carbsKcal: Double = carbs * 4.0
@@ -459,17 +469,21 @@ class MacroWidget : GlanceAppWidget() {
             val obj = JSONObject(json)
             val date = obj.optString("date", "")
             if (!isSnapshotToday(date)) return null
+            val isKj = CalorieWidget.isKjSnapshot(obj)
             MacroSnapshot(
                 date = date,
                 protein = obj.safeDouble("protein"),
                 carbs = obj.safeDouble("carbs"),
                 fat = obj.safeDouble("fat"),
-                calories = obj.safeDouble("calories"),
-                remaining = obj.optionalDouble("remaining"),
+                calories = CalorieWidget.energyFromKcal(obj.safeDouble("calories"), isKj),
+                remaining = obj.optionalDouble("remaining")?.let {
+                    CalorieWidget.energyFromKcal(it, isKj)
+                },
                 proteinGoal = obj.optionalDouble("proteinGoal"),
                 carbsGoal = obj.optionalDouble("carbsGoal"),
                 fatGoal = obj.optionalDouble("fatGoal"),
                 lastUpdated = obj.optLong("lastUpdated", 0L),
+                isKj = isKj,
             )
         } catch (e: Exception) {
             null

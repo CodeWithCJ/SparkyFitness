@@ -24,6 +24,15 @@ import {
   ACTIVITY_MULTIPLIERS,
   isUsableMeasuredBmr,
   isAdaptiveActivitySeparated,
+  calorieCyclingPattern,
+  isCalorieCyclingAvailable,
+  cycleDayTarget,
+  calorieCyclingDayType,
+  applyCalorieCyclingMacroDelta,
+  getClinicalCalorieMinimum,
+  getRecommendedCalorieSafetyFloor,
+  type CalorieCyclingDay,
+  type CalorieTargetResult,
 } from '@workspace/shared';
 import customNutrientService from './customNutrientService.js';
 import { DEFAULT_GOALS } from '../constants/goals.js';
@@ -277,6 +286,11 @@ async function getUserGoalsForRange(
   while (!isAfter(cursor, end)) {
     const dateStr = format(cursor, 'yyyy-MM-dd');
     let goals = explicitByDate[dateStr] ?? null;
+    // A weekly goal plan already sets this weekday's goal, so calorie cycling
+    // leaves the day alone (#2327).
+    let usedWeeklyPlanPreset = false;
+    // Calorie change from cycling; carbs take it (protein and fat stay fixed).
+    let cyclingDeltaKcal = 0;
 
     if (goals) {
       currentFallback = goals;
@@ -285,6 +299,7 @@ async function getUserGoalsForRange(
       const presetId = weeklyPlan?.[DAY_PRESETS[getDay(cursor)]];
       if (presetId) {
         goals = await getPreset(presetId);
+        usedWeeklyPlanPreset = Boolean(goals);
       }
     }
 
@@ -428,11 +443,12 @@ async function getUserGoalsForRange(
         goalMode === 'weekly' &&
         goalModeCalculationMethod === 'manual' &&
         goalCalories > 0;
+      let targetResult: CalorieTargetResult | null = null;
       if (bmr > 0 || hasWeeklyManualBaseline) {
         const age = userProfile
           ? (ageOnDay(userProfile.date_of_birth, dateStr) ?? 30)
           : 30;
-        const targetResult = computeCalorieTarget({
+        targetResult = computeCalorieTarget({
           goalMode,
           calculationMethod: goalModeCalculationMethod,
           customPercentage: goalModeCustomPercentage,
@@ -478,6 +494,54 @@ async function getUserGoalsForRange(
         goalCalories = targetResult.finalTarget;
       }
 
+      // Calorie cycling (#2327): spread the weekly budget over the weekdays.
+      const cyclingPattern = dayPreferences
+        ? calorieCyclingPattern(dayPreferences)
+        : null;
+      if (cyclingPattern && dayPreferences) {
+        const floor =
+          targetResult?.effectiveSafetyFloor ??
+          resolveCalorieSafetyFloor(
+            dayPreferences.calorie_safety_floor_mode,
+            dayPreferences.calorie_safety_floor_value,
+            bmr > 0
+              ? getRecommendedCalorieSafetyFloor(bmr, gender)
+              : getClinicalCalorieMinimum(gender)
+          );
+        const baseTarget = Math.round(goalCalories);
+        let cycling: CalorieCyclingDay = {
+          status: 'active',
+          baseTarget,
+          target: baseTarget,
+          delta: 0,
+          dayType: 'even',
+          floor,
+          clampedToFloor: false,
+        };
+        if (usedWeeklyPlanPreset) {
+          cycling = { ...cycling, status: 'paused_weekly_plan' };
+        } else if (!isCalorieCyclingAvailable(dayPreferences)) {
+          cycling = { ...cycling, status: 'paused_earn_back' };
+        } else {
+          const day = cycleDayTarget({
+            baseTarget,
+            offsets: cyclingPattern,
+            weekday: getDay(cursor),
+            floor,
+          });
+          cycling = {
+            ...cycling,
+            target: day.target,
+            delta: day.delta,
+            dayType: calorieCyclingDayType(day.delta),
+            clampedToFloor: day.clampedToFloor,
+          };
+          cyclingDeltaKcal = day.target - goalCalories;
+          goalCalories = day.target;
+        }
+        processedGoals.calorie_cycling = cycling;
+      }
+
       processedGoals.calories = goalCalories;
     }
 
@@ -493,7 +557,8 @@ async function getUserGoalsForRange(
           Number.isFinite(Number(value))
       )
     ) {
-      let macroCalories = Number(processedGoals.calories);
+      // Grams follow the day's target before cycling; cycling then moves only carbs.
+      let macroCalories = Number(processedGoals.calories) - cyclingDeltaKcal;
       const dayPreferences = adjust ? preferencesOn(dateStr) : null;
       if (dayPreferences?.adjust_macros_with_exercise) {
         // Use the same budget policy as the diary, including adaptive suppression
@@ -546,6 +611,22 @@ async function getUserGoalsForRange(
         carbs: carbs_grams,
         fat: fat_grams,
       };
+    }
+    if (
+      cyclingDeltaKcal !== 0 &&
+      Number.isFinite(Number(processedGoals.carbs))
+    ) {
+      const cycledMacros = applyCalorieCyclingMacroDelta(
+        {
+          protein: Number(processedGoals.protein),
+          carbs: Number(processedGoals.carbs),
+          fat: Number(processedGoals.fat),
+        },
+        cyclingDeltaKcal
+      );
+      processedGoals.protein = cycledMacros.protein;
+      processedGoals.carbs = cycledMacros.carbs;
+      processedGoals.fat = cycledMacros.fat;
     }
 
     // Adjust water goal by exercise water loss if preference is enabled

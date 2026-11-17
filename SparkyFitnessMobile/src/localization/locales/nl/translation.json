@@ -547,9 +547,6 @@
   },
   "dashboard": {
     "chooseDate": "Kies dashboarddatum",
-    "noServerConfigured": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om uw dagelijkse samenvatting te bekijken.",
-    "goToSettings": "Ga naar Instellingen",
     "loadingSummary": "Samenvatting laden...",
     "loadFailed": "Laden van samenvatting mislukt",
     "checkConnection": "Controleer uw verbinding en probeer het opnieuw.",
@@ -560,7 +557,6 @@
     "healthTrends": "Gezondheidstrends",
     "consumed": "Verbruikt",
     "remaining": "resterend",
-    "ofCalories": "van {{value}} kcal",
     "burned": "Verbrand",
     "hydration": "Hydratatie",
     "ofVolume": "van {{value}} {{unit}}",
@@ -631,7 +627,6 @@
     "emptyForDate": "Geen voedingsregistraties voor deze datum",
     "diaryForDate": "Familiedagboek · {{date}}",
     "openMeal": "Maaltijd {{meal}} openen",
-    "mealCalories": "{{calories}} kcal",
     "unnamedFood": "Naamloos voedingsmiddel",
     "selectAll": "Alles selecteren",
     "deselectAll": "Alles deselecteren",
@@ -639,15 +634,12 @@
     "selectFood": "{{food}} selecteren",
     "deselectFood": "{{food}} deselecteren",
     "continue": "Doorgaan",
-    "nutritionSummary": "{{calories}} kcal · E {{protein}} g · K {{carbs}} g · V {{fat}} g",
-    "selectedNutrition": "Geselecteerd: {{calories}} kcal · E {{protein}} g · K {{carbs}} g · V {{fat}} g",
     "copyReview": "Kopie beoordelen",
     "copyFrom": "Kopiëren van {{name}}",
     "copyMealTitle": "Maaltijd {{meal}}",
     "quantityForFood": "Hoeveelheid voor {{food}}",
     "quantityMustBePositive": "Voer een hoeveelheid groter dan nul in.",
     "copyNutrition": "Voedingswaarde kopiëren",
-    "copyCalories": "{{calories}} kcal",
     "copyProtein": "{{protein}} g eiwit",
     "copyCarbs": "{{carbs}} g koolhydraten",
     "copyFat": "{{fat}} g vet",
@@ -815,7 +807,6 @@
       "changeMetric": "Metriekkolom wijzigen",
       "notesForSet": "Notities voor set {{number}}",
       "addSet": "Set toevoegen aan {{name}}",
-      "caloriesUnit": "kcal",
       "addSetLabel": "Set toevoegen",
       "viewImages": "Afbeeldingen van {{name}} bekijken",
       "heartRateFor": "Gemiddelde hartslag voor {{name}}",
@@ -924,9 +915,6 @@
     "medications": "Medicijnen",
     "medication": "Medicijn",
     "library": {
-      "noServerConfigured": "Geen server geconfigureerd",
-      "configureServer": "Configureer uw serververbinding in Instellingen om uw bibliotheek te bekijken.",
-      "goToSettings": "Ga naar Instellingen",
       "loading": "Bibliotheek laden...",
       "title": "Bibliotheek",
       "create": "Aanmaken",
@@ -1211,7 +1199,6 @@
     "exerciseCaloriesDescription": "Hoeveel van uw trainingscalorieën worden teruggegeven aan uw dagelijkse doel.",
     "activityLevel": "Activiteitsniveau",
     "activityBaseline": "Wordt gebruikt als basislijn voor TDEE.",
-    "adaptiveFallback": "Werkt als terugval totdat u genoeg trackinggegevens heeft.",
     "allowNegative": "Lagere Terugvalprojectie Toestaan",
     "negativeDescription": "Als een apparaattotaal niet beschikbaar is, laat de BMR + actieve calorieën-terugval uw doel verlagen.",
     "includeResting": "Rustcalorieën Meetellen",
@@ -1392,9 +1379,6 @@
   },
   "diary": {
     "chooseDate": "Kies dagboekdatum",
-    "noServer": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om uw dagboek te bekijken.",
-    "goToSettings": "Ga naar Instellingen",
     "loading": "Dagboek laden...",
     "loadFailed": "Laden van dagboek mislukt",
     "checkConnection": "Controleer uw verbinding en probeer het opnieuw.",
@@ -1741,7 +1725,6 @@
     "forceStatic": "Statisch",
     "mechanicCompound": "Samengesteld",
     "mechanicIsolation": "Isolatie",
-    "caloriesPerHour": "Calorieën per Uur",
     "muscles": "Spieren",
     "classification": "Classificatie",
     "selectValue": "Selecteer…",
@@ -1820,7 +1803,6 @@
     "setCount_one": "{{formattedCount}} set",
     "setCount_other": "{{formattedCount}} sets",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "unknownExercise": "Onbekende oefening",
     "addNotePlaceholder": "Voeg een notitie toe…",
     "setOf_one": "Set {{number}} van {{count}}",
@@ -2082,8 +2064,6 @@
     "protein": "eiwit",
     "carbs": "koolhydraten",
     "fat": "vet",
-    "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "proteinAmount": "eiwit",
     "carbsAmount": "koolhydraten",
     "fatAmount": "vet",
@@ -2097,7 +2077,6 @@
   "foodSummary": {
     "tapToAddFood": "Tik om voeding toe te voegen",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "nutritionBreakdown": "Voedingswaarde-uitsplitsing van {{label}}"
   },
   "exerciseSummary": {
@@ -2117,7 +2096,6 @@
     "unknownFood": "Onbekend voedingsmiddel",
     "adjustServing": "Portie aanpassen",
     "caloriesShort": "kcal",
-    "caloriesUnit": "Cal",
     "deleteFood": "Voedingsmiddel verwijderen"
   },
   "exerciseRow": {
@@ -2231,7 +2209,6 @@
       "weightWithUnit": "Gewicht ({{unit}})",
       "muscleMassWithUnit": "Spiermassa ({{unit}})",
       "boneMassWithUnit": "Botmassa ({{unit}})",
-      "bmrWithUnit": "BMR (kcal)",
       "weightStones": "Gewicht in stones",
       "weightPounds": "Gewicht in ponden",
       "heightFeet": "Lengte in voet",
@@ -2249,8 +2226,7 @@
       "invalidHeight": "Ongeldige lengte",
       "feetInchesNumber": "Voer een getal in voor voet en inches.",
       "bodyFatRange": "Lichaamsvet % moet tussen 0 en 100 liggen.",
-      "bodyWaterRange": "Lichaamswater % moet tussen 0 en 100 liggen.",
-      "bmrRange": "BMR moet tussen 300 en 10000 kcal liggen."
+      "bodyWaterRange": "Lichaamswater % moet tussen 0 en 100 liggen."
     },
     "nothingToSave": "Niets om op te slaan",
     "enterValue": "Voer minstens één waarde in of wis deze.",
@@ -2603,8 +2579,6 @@
     "remaining": "resterend",
     "over": "te veel",
     "title": "Samenvatting",
-    "projectedTdee": "Geprojecteerde TDEE: {{value}} kcal",
-    "goalModeTarget": "Doel van Doelmodus: {{value}} kcal",
     "healthConnectProjectionSource": "Totale calorieën Health Connect",
     "fallbackProjectionSource": "BMR + actieve calorieën als terugval",
     "legacyProjectionSource": "Apparaatprojectie",
@@ -2639,7 +2613,6 @@
     "servingSize": "Portiegrootte",
     "servingUnit": "Portie-eenheid",
     "autoScaleNutrition": "Voedingswaarde Automatisch Schalen",
-    "caloriesRequired": "Calorieën (kcal) *",
     "ai": {
       "couldNotEstimate": "Kon niet schatten",
       "noTrustedDefault": "Dit voedingsmiddel heeft geen vertrouwde standaard om vanuit te schalen.",
@@ -3107,7 +3080,6 @@
     "showMore": "Meer tonen",
     "best": "Beste ({{unit}})",
     "last": "Laatste ({{unit}})",
-    "caloriesPerHour": "Cal / uur",
     "equipment": "Apparatuur",
     "primaryMuscles": "Primaire spieren",
     "secondaryMuscles": "Secundaire spieren",
@@ -3163,8 +3135,6 @@
     "makePrivate": "Privé maken",
     "shareWithPublic": "Delen met publiek",
     "editMeal": "Maaltijd bewerken",
-    "noServer": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om maaltijddetails te bekijken.",
     "loading": "Maaltijd laden...",
     "loadFailed": "Laden van maaltijd mislukt",
     "perServing": "Per portie",
@@ -3178,7 +3148,6 @@
     "protein": "eiwit",
     "carbs": "koolhydraten",
     "fat": "vet",
-    "calories": "kcal",
     "viewLinkedMeal": "Gekoppelde maaltijd {{name}} bekijken",
     "logMeal": "Maaltijd Registreren",
     "deleting": "Verwijderen...",
@@ -3399,7 +3368,6 @@
     },
     "labels": {
       "caloriesShort": "kcal",
-      "caloriesUnit": "cal",
       "foods": "voedingsmiddelen",
       "meals": "maaltijden",
       "meal": "Maaltijd",
@@ -3649,8 +3617,6 @@
     "makePrivate": "Privé maken",
     "sharePublic": "Delen met publiek",
     "editFood": "Voedingsmiddel bewerken",
-    "noServer": "Geen server geconfigureerd",
-    "configureServer": "Configureer uw serververbinding in Instellingen om voedingsdetails te bekijken.",
     "serving": "Portie",
     "selectServing": "Selecteer Portie",
     "servingOptions": "Portieopties",
@@ -3978,11 +3944,8 @@
       "count_one": "{{count}} ingrediënt",
       "count_other": "{{count}} ingrediënten",
       "totals": "Totaal",
-      "rowSummary": "{{grams}} g · {{calories}} kcal",
-      "macroSummary": "{{calories}} kcal · {{protein}}E · {{carbs}}K · {{fat}}V",
       "addFood": "Voeding Toevoegen",
       "addedFood": "Voedingsmiddel",
-      "pickedRowSummary": "{{quantity}} {{unit}} · {{calories}} kcal",
       "pickedFoodNote": "Toegevoegd vanuit uw voedingsmiddelen. Verwijder het en voeg het opnieuw toe om de hoeveelheid te wijzigen."
     },
     "match": {
@@ -4044,7 +4007,6 @@
       "activity": "Activiteit",
       "duration": "Duur (min)",
       "distance": "Afstand ({{unit}})",
-      "calories": "Calorieën",
       "avgHeartRate": "Gem. Hartslag (bpm)",
       "notes": "Notities",
       "notesPlaceholder": "Optionele notities..."
@@ -4076,8 +4038,6 @@
   },
   "mealTypeDetail": {
     "states": {
-      "noServer": "Geen server geconfigureerd",
-      "noServerHint": "Configureer uw serververbinding in Instellingen om maaltijdvoedingswaarde te bekijken.",
       "loading": "Maaltijd laden…",
       "loadFailed": "Laden van maaltijd mislukt",
       "noFoods": "Geen {{meal}}-voedingsmiddelen",
@@ -4089,8 +4049,7 @@
     "accessibility": {
       "addFood": "Voeding Toevoegen",
       "copyMeal": "Maaltijd kopiëren naar andere dag"
-    },
-    "targetCalories": "Doel: {{calories}} kcal"
+    }
   },
   "nutrientTrends": {
     "title": "{{nutrient}}-trends",
@@ -4389,20 +4348,15 @@
       "title": "Calorieën",
       "loadFailed": "Caloriegegevens konden niet worden geladen",
       "empty": "Geen caloriegegevens voor deze periode",
-      "tooltip": "{{formattedCount}} kcal gegeten",
       "tooltipMacro": "{{percent}}% {{macroLabel}}",
       "otherMacro": "Overig",
       "avgCalories": "Gem.",
-      "avgCaloriesValue": "{{formattedCount}} kcal",
       "noAverage": "—"
     }
   },
   "exerciseLibrary": {
     "title": "Oefeningen",
     "search": "Oefeningen zoeken...",
-    "noServer": "Geen server geconfigureerd",
-    "configure": "Configureer uw serververbinding in Instellingen om uw oefeningbibliotheek te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Oefeningen laden...",
     "failed": "Laden van oefeningen mislukt",
     "retry": "Opnieuw proberen",
@@ -4418,9 +4372,6 @@
   "foodLibrary": {
     "title": "Voedingsmiddelen",
     "search": "Voeding zoeken...",
-    "noServer": "Geen server geconfigureerd",
-    "configure": "Configureer uw serververbinding in Instellingen om uw voedingsbibliotheek te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Voedingsmiddelen laden...",
     "failed": "Laden van voedingsmiddelen mislukt",
     "retry": "Opnieuw proberen",
@@ -4435,9 +4386,6 @@
   "mealLibrary": {
     "title": "Maaltijden",
     "search": "Maaltijden zoeken...",
-    "noServer": "Geen server geconfigureerd",
-    "configure": "Configureer uw serververbinding in Instellingen om uw maaltijdbibliotheek te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Maaltijden laden...",
     "failed": "Laden van maaltijden mislukt",
     "searchFailed": "Zoeken naar maaltijden mislukt",
@@ -4452,9 +4400,7 @@
   "presetLibrary": {
     "title": "Trainingsvoorinstellingen",
     "search": "Trainingsvoorinstellingen zoeken...",
-    "noServer": "Geen server geconfigureerd",
     "configure": "Configureer uw serververbinding in Instellingen om uw trainingsvoorinstellingen te bekijken.",
-    "go": "Ga naar Instellingen",
     "loading": "Trainingsvoorinstellingen laden...",
     "failed": "Laden van trainingsvoorinstellingen mislukt",
     "retry": "Opnieuw proberen",
@@ -5204,9 +5150,6 @@
       "dayCycle_other": "{{count}}-daagse cyclus"
     }
   },
-  "workoutPresetLibrary": {
-    "configure": "Configureer uw serververbinding in Instellingen om uw trainingsvoorinstellingen te bekijken."
-  },
   "time": {
     "hoursShort": "u",
     "minutesShort": "m"
@@ -5232,7 +5175,6 @@
   },
   "healthDataDisplay": {
     "distance": "{{value}} km",
-    "kcal": "{{value}} kcal",
     "bpm": "{{value}} bpm",
     "kg": "{{value}} kg",
     "percent": "{{value}}%",
@@ -5280,9 +5222,6 @@
     "deleteMessage": "{{name}} verwijderen? Toekomstige dagboekregistraties die door dit plan zijn gegenereerd, worden verwijderd.",
     "deleteFailed": "Verwijderen van maaltijdplan mislukt",
     "deleteSuccess": "Maaltijdplan verwijderd",
-    "noServer": "Geen server geconfigureerd",
-    "noServerSubtitle": "Configureer uw serververbinding om maaltijdplannen te beheren.",
-    "goToSettings": "Ga naar Instellingen",
     "loading": "Maaltijdplannen laden...",
     "loadFailed": "Laden van maaltijdplannen mislukt",
     "loadFailedSubtitle": "Controleer uw verbinding en probeer het opnieuw.",
@@ -5341,11 +5280,8 @@
     "proteinLabel": "Eiwit",
     "carbsLabel": "Koolhydraten",
     "fatLabel": "Vet",
-    "nutritionLine": "{{calories}} kcal · {{protein}} g E · {{carbs}} g K · {{fat}} g V",
     "dailyNutritionAccessibility": "Dagelijks {{nutrient}} {{value}} {{unit}}",
-    "mealTypeNutritionAccessibility": "Totaal {{mealType}}: {{calories}} kcal, {{protein}} g eiwit, {{carbs}} g koolhydraten, {{fat}} g vet",
     "mealTypeMacros": "{{protein}} g E · {{carbs}} g K · {{fat}} g V",
-    "caloriesValue": "{{value}} kcal",
     "nutritionLoading": "Ontbrekende voedingsdetails laden. Totalen kunnen onvolledig zijn.",
     "nutritionLoadFailed": "Sommige voedingsdetails konden niet worden geladen. Totalen kunnen onvolledig zijn.",
     "assignmentRequired": "Voeg minstens één volledige maaltijdtoewijzing toe.",
@@ -5816,9 +5752,6 @@
     "loading": "Watercontainers laden...",
     "loadFailed": "Watercontainers konden niet worden geladen",
     "loadFailedSubtitle": "Controleer uw verbinding en probeer het opnieuw.",
-    "noServer": "Geen server geconfigureerd",
-    "noServerSubtitle": "Configureer uw serververbinding om watercontainers te beheren.",
-    "goToSettings": "Naar Instellingen",
     "emptyTitle": "Nog geen watercontainers",
     "emptySubtitle": "Voeg een fles of glas toe om hydratatie bij te houden -- eventueel gekoppeld aan een voedingsmiddel zodat één tik beide registreert.",
     "linkedTo": "Gekoppeld aan {{food}}",
@@ -5976,7 +5909,6 @@
       "olderSessions": "Oudere sessies",
       "unitKm": "km",
       "unitMi": "mi",
-      "calories": "{{value}} kcal",
       "minutes_one": "{{formattedCount}} min",
       "minutes_other": "",
       "bpm": "{{value}} bpm",

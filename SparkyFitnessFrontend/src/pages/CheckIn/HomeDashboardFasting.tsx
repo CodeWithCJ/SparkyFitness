@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   CardHeader,
@@ -10,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DateTimeInput } from '@/components/ui/TimeInput';
 import FastingTimerRing from '../Fasting/FastingTimerRing';
-import { Play, Timer, Square, Sparkles } from 'lucide-react';
+import { Play, Timer, Square, Sparkles, Utensils } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -43,6 +44,7 @@ import {
 } from '@/hooks/Fasting/useFasting';
 
 const HomeDashboardFasting = () => {
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const { timeFormat } = usePreferences();
 
@@ -293,6 +295,18 @@ const HomeDashboardFasting = () => {
               <Square className="w-4 h-4 mr-2 fill-current" />
               {t('fasting.endFast', 'End Fast')}
             </Button>
+
+            {activeFast.is_auto_calculated && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/')}
+                className="w-full gap-2 text-xs text-muted-foreground -mt-3"
+              >
+                <Utensils className="w-3.5 h-3.5 mr-1" />
+                {t('fasting.logMealToEnd', 'Log Meal to End Fast')}
+              </Button>
+            )}
           </>
         )}
 

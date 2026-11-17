@@ -1,8 +1,12 @@
 name: Release Published Notification
 
+# Runs after Publish Docker Images, not on release: published, because that
+# workflow waits for approval in the release environment, and an issue should
+# not hear that its fix is out before the images are.
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Publish Docker Images"]
+    types: [completed]
 
 permissions:
   contents: read
@@ -10,22 +14,32 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: release-published-notification-${{ github.event.release.tag_name }}
+  group: release-published-notification-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 jobs:
   notify-resolved-issues:
     name: Notify Resolved Issues
     runs-on: ubuntu-latest
+    # workflow_run fires on failure too, and for manual rebuilds of the images,
+    # which are not a new release.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'release'
 
     steps:
       - name: Comment on resolved issues
         uses: actions/github-script@v7
         with:
           script: |
-            const release = context.payload.release;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+            // For a release run, head_branch is the release's tag.
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner,
+              repo,
+              tag: context.payload.workflow_run.head_branch,
+            });
             const body = release.body || '';
             const tagName = release.tag_name || '';
             const releaseUrl = release.html_url || `https://github.com/${owner}/${repo}/releases/tag/${tagName}`;

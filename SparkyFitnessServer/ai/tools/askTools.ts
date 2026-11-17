@@ -29,7 +29,9 @@ const AskUserSchema = z.object({
     .max(MAX_ASK_USER_OPTIONS)
     .describe(
       'The tappable answers, phrased exactly as the user would say them ("75g each", not "Tell me 75g"). ' +
-        `${MIN_ASK_USER_OPTIONS}-${MAX_ASK_USER_OPTIONS} short options.`
+        `${MIN_ASK_USER_OPTIONS}-${MAX_ASK_USER_OPTIONS} short options, each at most ${MAX_ASK_USER_OPTION_LENGTH} characters. ` +
+        'For food matches, use the concise product name and leave serving or nutrition details out of the option. ' +
+        'Every option must be distinct: if two matches would share the same text, add the serving size to tell them apart.'
     ),
 });
 

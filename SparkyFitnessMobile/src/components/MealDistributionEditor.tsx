@@ -12,6 +12,8 @@ import {
   sumPercentages,
   type MealPercentages,
 } from '../utils/mealDistribution';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 
 export interface MealDistributionMeal {
   key: string;
@@ -33,6 +35,7 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
   totalCalories,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const [textPrimary, textMuted] = useCSSVariable([
     '--color-text-primary',
     '--color-text-muted',
@@ -64,11 +67,17 @@ const MealDistributionEditor: React.FC<MealDistributionEditorProps> = ({
         return (
           <View key={key} className="gap-1">
             <Text className="text-sm font-medium text-text-primary">
-              {t('goals.meals.mealCalories', {
-                defaultValue: '{{meal}} ({{calories}} kcal)',
-                meal: label,
-                calories: Math.round((percent / 100) * totalCalories),
-              })}
+              {totalCalories > 0
+                ? t('goals.meals.mealCaloriesWithUnit', {
+                    defaultValue: '{{meal}} ({{calories}} {{unit}})',
+                    meal: label,
+                    calories: roundedEnergy(
+                      (percent / 100) * totalCalories,
+                      energyUnit
+                    ),
+                    unit: energyUnitLabel(energyUnit, t),
+                  })
+                : label}
             </Text>
             <View className="flex-row items-center gap-2">
               <Pressable

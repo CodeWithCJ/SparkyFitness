@@ -5,6 +5,8 @@ import { useExerciseActivities } from '@/hooks/Reports/useExerciseStats';
 import ActivityReportVisualizer from '@/pages/Reports/ActivityReportVisualizer';
 import { addDays, cardioSessionHeadline, daysBetween } from '@workspace/shared';
 import type { ExerciseActivityQueryItem } from '@workspace/shared';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { energyFromKcal, type EnergyUnit } from '@workspace/shared';
 
 interface CardioSessionListProps {
   startDate: string | null;
@@ -33,7 +35,8 @@ function dayLabel(
 
 function headline(
   item: ExerciseActivityQueryItem,
-  distanceUnit: string
+  distanceUnit: string,
+  energyUnit: EnergyUnit
 ): { value: string; unit: string } {
   const stat = cardioSessionHeadline(item);
   if (stat.kind === 'distance') {
@@ -42,10 +45,13 @@ function headline(
       unit: distanceUnit === 'miles' ? 'MI' : 'KM',
     };
   }
-  return {
-    value: String(stat.value),
-    unit: stat.kind === 'calories' ? 'CAL' : 'MIN',
-  };
+  if (stat.kind === 'calories') {
+    return {
+      value: String(Math.round(energyFromKcal(stat.value, energyUnit))),
+      unit: energyUnit === 'kJ' ? 'KJ' : 'KCAL',
+    };
+  }
+  return { value: String(stat.value), unit: 'MIN' };
 }
 
 export const CardioSessionList = ({
@@ -57,6 +63,7 @@ export const CardioSessionList = ({
 }: CardioSessionListProps) => {
   const { t } = useTranslation();
   const { activeUserId } = useActiveUser();
+  const { energyUnit } = usePreferences();
   const [page, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
   const [earlier, setEarlier] = useState<ExerciseActivityQueryItem[]>([]);
@@ -137,7 +144,7 @@ export const CardioSessionList = ({
             <h3 className="text-sm font-semibold">{group.label}</h3>
             {group.items.map((item) => {
               const open = openId === item.id;
-              const stat = headline(item, distanceUnit);
+              const stat = headline(item, distanceUnit, energyUnit);
               return (
                 <div key={item.id} className="rounded-xl border bg-card">
                   <button

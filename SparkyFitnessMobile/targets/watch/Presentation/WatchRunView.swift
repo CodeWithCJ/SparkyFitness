@@ -97,8 +97,8 @@ struct WatchRunView: View {
             stats.append(
                 CardioStat(
                     id: "active",
-                    value: "\(Int(metrics.activeEnergyKcal.rounded()))",
-                    unit: "kcal"
+                    value: "\(Int(store.context.energyFromKcal(metrics.activeEnergyKcal).rounded()))",
+                    unit: store.context.energyUnitLabel
                 )
             )
         }
@@ -280,7 +280,7 @@ struct WatchRunView: View {
                         )
                     }
                     if summary.metrics.activeEnergyKcal > 0 {
-                        row(String(localized: "watch.run.row.active", defaultValue: "Active"), "\(Int(summary.metrics.activeEnergyKcal.rounded())) \(String(localized: "watch.unit.kcal", defaultValue: "kcal"))")
+                        row(String(localized: "watch.run.row.active", defaultValue: "Active"), "\(Int(store.context.energyFromKcal(summary.metrics.activeEnergyKcal).rounded())) \(store.context.energyUnitLabel)")
                     }
                     if summary.saved {
                         WorkoutEffortPicker { score, done in

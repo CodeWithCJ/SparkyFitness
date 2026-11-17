@@ -30,6 +30,7 @@ import FastingEditSheet, {
 } from '../components/FastingEditSheet';
 import { FastingHistoryRow } from '../components/FastingHistorySheet';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
   useCurrentFast,
   useFastingStats,
@@ -562,7 +563,7 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
             {/* End Fast action button — prominent, styled solid red button */}
             <TouchableOpacity
               onPress={() => endFastSheetRef.current?.present(currentFast)}
-              className="w-full flex-row items-center justify-center py-3.5 px-4 bg-red-500 active:bg-red-600 rounded-xl shadow-sm mb-6"
+              className="w-full flex-row items-center justify-center py-3.5 px-4 bg-red-500 active:bg-red-600 rounded-xl shadow-sm mb-3"
               accessibilityRole="button"
               accessibilityLabel={t('fastingDetail.endFast', {
                 defaultValue: 'End Fast',
@@ -578,6 +579,33 @@ const FastingDetailScreen: React.FC<Props> = ({ navigation }) => {
                 {t('fastingDetail.endFast', { defaultValue: 'End Fast' })}
               </Text>
             </TouchableOpacity>
+
+            {currentFast.is_auto_calculated && (
+              <TouchableOpacity
+                onPress={() =>
+                  navigation.navigate('FoodSearch', {
+                    date: useDiaryDateStore.getState().selectedDate,
+                  })
+                }
+                className="w-full flex-row items-center justify-center py-2.5 px-4 bg-surface active:bg-surface-elevated border border-border-subtle rounded-xl mb-6"
+                accessibilityRole="button"
+                accessibilityLabel={t('fastingDetail.logMealToEnd', {
+                  defaultValue: 'Log Meal to End Fast',
+                })}
+              >
+                <Icon
+                  name="food"
+                  size={15}
+                  color={textMuted}
+                  style={{ marginRight: 6 }}
+                />
+                <Text className="text-sm font-medium text-text-secondary">
+                  {t('fastingDetail.logMealToEnd', {
+                    defaultValue: 'Log Meal to End Fast',
+                  })}
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Stats row */}
             <View className="flex-row gap-3 mb-6">

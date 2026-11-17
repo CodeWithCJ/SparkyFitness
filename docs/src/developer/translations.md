@@ -179,4 +179,4 @@ import { getLanguageDisplayName, getSupportedLanguages } from "@/utils/languageU
 
 ## 8. Adding New Languages
 
-Translation files are not created by hand. A language is requested on [Weblate](https://weblate.sparkyfitness.com/engage/sparkyfitness) and translated there. A maintainer then runs the **Sync Translations** workflow (`workflow_dispatch`), which copies the non-English files into `public/locales/` and opens a pull request. Enabling the language is a separate edit: add the code to `getSupportedLanguages()` and `getLanguageDisplayName()` in `src/utils/languageUtils.ts`.
+Translation files are not created by hand. A language is requested on [Weblate](https://weblate.sparkyfitness.com/engage/sparkyfitness) and translated there. The **Sync Translations** workflow, which runs every night and can also be run by hand, then copies the non-English files into `public/locales/` and opens a pull request. Enabling the language is a separate edit: add the code to `getSupportedLanguages()` and `getLanguageDisplayName()` in `src/utils/languageUtils.ts`.

@@ -121,6 +121,12 @@ describe('MealsLibraryScreen', () => {
     });
   });
 
+  it('opens the visible Mealie ingredient import entry', () => {
+    const screen = renderScreen();
+    fireEvent.press(screen.getByText('Import Mealie ingredients'));
+    expect(navigation.navigate).toHaveBeenCalledWith('RecipeImport');
+  });
+
   it('lists meals and navigates to MealDetail when a meal is pressed', () => {
     mockUseMeals.mockReturnValue({
       meals: [

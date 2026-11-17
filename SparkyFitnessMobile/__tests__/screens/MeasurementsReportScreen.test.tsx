@@ -1,5 +1,5 @@
 import React from 'react';
-import { render } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 import MeasurementsReportScreen from '../../src/screens/MeasurementsReportScreen';
 import {
@@ -10,6 +10,25 @@ import { initializeI18n } from '../../src/localization/i18n';
 import { buildMeasurementsReport } from '../../src/utils/measurementsReport';
 import type { CheckInMeasurementRange } from '../../src/types/measurements';
 
+jest.mock('../../src/components/reports/MeasurementTimelineCard', () => {
+  const { useState } = jest.requireActual<typeof import('react')>('react');
+  const { Pressable, Text } =
+    jest.requireActual<typeof import('react-native')>('react-native');
+  return {
+    __esModule: true,
+    default: function MockMeasurementTimelineCard() {
+      const [selection, setSelection] = useState('default timeline state');
+      return (
+        <Pressable
+          testID="measurement-timeline"
+          onPress={() => setSelection('selected day, zoom and layers')}
+        >
+          <Text>{selection}</Text>
+        </Pressable>
+      );
+    },
+  };
+});
 const mockUseMeasurementsReport = jest.fn();
 jest.mock('../../src/components/DateRangeSheet', () => {
   const React = require('react');
@@ -116,6 +135,34 @@ describe('MeasurementsReportScreen', () => {
     });
   });
 
+  it.each(['loading', 'error'] as const)(
+    'preserves timeline selections through %s, loaded and empty states',
+    (state) => {
+      mockUseMeasurementsReport.mockReturnValue({
+        report: undefined,
+        isLoading: state === 'loading',
+        isError: state === 'error',
+      });
+      const screen = renderScreen();
+      fireEvent.press(screen.getByTestId('measurement-timeline'));
+
+      for (const nextReport of [
+        report,
+        buildMeasurementsReport([], '2026-10-01', 5),
+        undefined,
+        report,
+      ]) {
+        mockUseMeasurementsReport.mockReturnValue({
+          report: nextReport,
+          isLoading: nextReport === undefined,
+          isError: false,
+        });
+        screen.rerender(<MeasurementsReportScreen />);
+        expect(screen.getByText('selected day, zoom and layers')).toBeTruthy();
+      }
+    }
+  );
+
   it('shows the key figures with changes, the charts and the summary cards', () => {
     const { getByTestId, getAllByText } = renderScreen();
 
@@ -134,11 +181,13 @@ describe('MeasurementsReportScreen', () => {
         'measurements.weightChart',
         'measurements.stepsChart',
         'measurements.tape',
+        'measurements.timeline',
       ],
     });
 
     const { queryByTestId, getByTestId } = renderScreen();
 
+    expect(queryByTestId('measurement-timeline')).toBeNull();
     expect(queryByTestId('weight-chart')).toBeNull();
     expect(queryByTestId('steps-chart')).toBeNull();
     expect(queryByTestId('measurements-waist')).toBeNull();
@@ -152,8 +201,27 @@ describe('MeasurementsReportScreen', () => {
       isError: false,
     });
 
-    const { getByText } = renderScreen();
+    const { getByText, getByTestId } = renderScreen();
+    expect(getByTestId('measurement-timeline')).toBeTruthy();
 
-    expect(getByText('No measurements in this period')).toBeTruthy();
+    expect(getByText('No body measurements in this period')).toBeTruthy();
   });
 });
+
+it.each(['loading', 'error'] as const)(
+  'does not mount a hidden timeline in the %s branch',
+  async (state) => {
+    __resetAppPreferencesStoreForTests();
+    await initializeI18n('en');
+    useAppPreferencesStore.setState({
+      hiddenReportSections: ['measurements.timeline'],
+    });
+    mockUseMeasurementsReport.mockReturnValue({
+      report: undefined,
+      isLoading: state === 'loading',
+      isError: state === 'error',
+    });
+    const { queryByTestId } = render(<MeasurementsReportScreen />);
+    expect(queryByTestId('measurement-timeline')).toBeNull();
+  }
+);

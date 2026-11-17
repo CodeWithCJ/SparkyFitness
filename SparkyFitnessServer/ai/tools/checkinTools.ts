@@ -1,5 +1,6 @@
 import { tool } from 'ai';
 import {
+  addDays,
   dayToUtcRange,
   instantForDay,
   todayInZone,
@@ -25,6 +26,7 @@ import moodRepository, {
 import fastingRepository from '../../models/fastingRepository.js';
 import fastingAutoCalculationService from '../../services/fastingAutoCalculationService.js';
 import sleepRepository from '../../models/sleepRepository.js';
+import * as oralCareService from '../../services/oralCareService.js';
 import { ERRORS, formatZodError } from './errors.js';
 import { normalizeActionArgs } from './dates.js';
 import {
@@ -40,6 +42,7 @@ import {
   manageCheckinInput,
   type ManageCheckinInput,
 } from './schemas/checkin.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
 
 interface BiometricsRow {
   entry_date: string;
@@ -107,6 +110,7 @@ const VALID_ACTIONS = [
   'get_fasting_status',
   'get_biometrics_history',
   'get_custom_metrics_history',
+  'get_oral_care_summary',
 ];
 
 // Optional inputs and nullable DB columns are treated alike: absent.
@@ -222,12 +226,15 @@ export async function getBiometricsHistoryRows(
   startDate?: string,
   endDate?: string
 ): Promise<BiometricsRow[]> {
-  const prefs = await preferenceService.getUserPreferences(userId, userId);
+  const prefs = await preferenceService.getUserPreferences(
+    actorUserIdFor(userId),
+    userId
+  );
   const wUnit = prefs.default_weight_unit || 'kg';
   const mUnit = prefs.default_measurement_unit || 'cm';
 
   const rows = await measurementService.getCheckInMeasurementsByDateRange(
-    userId,
+    actorUserIdFor(userId),
     userId,
     startDate || '1970-01-01',
     endDate || '9999-12-31'
@@ -271,7 +278,8 @@ Actions:
 - list_checkin_diary(entry_date?)
 - get_fasting_status() — returns the currently active fasting session if any
 - get_biometrics_history(start_date?, end_date?) — returns standard measurement history
-- get_custom_metrics_history(start_date?, end_date?, category_name?) — custom metric values by day, newest first; category_name keeps one metric (if several share that display name, the reply lists their stored names)`,
+- get_custom_metrics_history(start_date?, end_date?, category_name?) — custom metric values by day, newest first; category_name keeps one metric (if several share that display name, the reply lists their stored names)
+- get_oral_care_summary(start_date?, end_date?) — brushing per day against the daily goal, other oral care (flossing, mouthwash, ...) and the streak; defaults to the last 7 days. A brush logged in Sparky that a synced toothbrush also recorded counts once`,
       inputSchema: manageCheckinInput,
       execute: async (rawArgs) => {
         const normalized = normalizeActionArgs(
@@ -355,7 +363,7 @@ Actions:
           switch (args.action) {
             case 'log_biometrics': {
               const prefs = await preferenceService.getUserPreferences(
-                userId,
+                actorUserIdFor(userId),
                 userId
               );
               const defaultWeightUnit = prefs.default_weight_unit || 'kg';
@@ -424,7 +432,7 @@ Actions:
 
               await measurementService.upsertCheckInMeasurements(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 args.entry_date,
                 measurements
               );
@@ -456,7 +464,7 @@ Actions:
 
             case 'log_custom_metric': {
               const categories = await measurementService.getCustomCategories(
-                userId,
+                actorUserIdFor(userId),
                 userId
               );
               const category = categories.find(
@@ -471,7 +479,7 @@ Actions:
               }
               await measurementService.upsertCustomMeasurementEntry(
                 userId,
-                userId,
+                actorUserIdFor(userId),
                 {
                   category_id: category.id,
                   value: String(args.value),
@@ -486,7 +494,7 @@ Actions:
 
             case 'list_categories': {
               const rows = await measurementService.getCustomCategories(
-                userId,
+                actorUserIdFor(userId),
                 userId
               );
               interface MappedCategoryRow {
@@ -514,12 +522,16 @@ Actions:
             }
 
             case 'create_category': {
-              await measurementService.createCustomCategory(userId, userId, {
-                name: args.category_name,
-                measurement_type: args.unit || 'unit',
-                data_type: args.data_type || 'numeric',
-                frequency: 'Daily',
-              });
+              await measurementService.createCustomCategory(
+                userId,
+                actorUserIdFor(userId),
+                {
+                  name: args.category_name,
+                  measurement_type: args.unit || 'unit',
+                  data_type: args.data_type || 'numeric',
+                  frequency: 'Daily',
+                }
+              );
               return formatConfirmation(
                 `Category "${args.category_name}" created${args.unit ? ` with measurement type "${args.unit}"` : ''}.`
               );
@@ -610,14 +622,19 @@ Actions:
                 throw new Error('Could not resolve bedtime and wake time.');
               }
 
-              await measurementService.processSleepEntry(userId, userId, {
-                entry_date: args.entry_date,
-                bedtime,
-                wake_time: wakeTime,
-                duration_in_seconds: duration,
-                source: args.source || 'manual',
-                record_utc_offset_minutes: recordUtcOffsetMinutes ?? undefined,
-              });
+              await measurementService.processSleepEntry(
+                userId,
+                actorUserIdFor(userId),
+                {
+                  entry_date: args.entry_date,
+                  bedtime,
+                  wake_time: wakeTime,
+                  duration_in_seconds: duration,
+                  source: args.source || 'manual',
+                  record_utc_offset_minutes:
+                    recordUtcOffsetMinutes ?? undefined,
+                }
+              );
 
               const parts: string[] = [];
               if (isSet(args.duration_seconds)) {
@@ -644,7 +661,7 @@ Actions:
               // editors, which would otherwise mislabel their source date here.
               const exactBiometricRows =
                 await measurementService.getCheckInMeasurementsByDateRange(
-                  userId,
+                  actorUserIdFor(userId),
                   userId,
                   date,
                   date
@@ -678,12 +695,12 @@ Actions:
                 );
               const customRows =
                 await measurementService.getCustomMeasurementEntriesByDate(
-                  userId,
+                  actorUserIdFor(userId),
                   userId,
                   date
                 );
               const prefs = await preferenceService.getUserPreferences(
-                userId,
+                actorUserIdFor(userId),
                 userId
               );
               const wUnit = prefs.default_weight_unit || 'kg';
@@ -948,7 +965,7 @@ Actions:
               const [history, customMeasurements] = await Promise.all([
                 getBiometricsHistoryRows(userId, startDate, endDate),
                 measurementService.getCustomMeasurementEntriesByDateRange(
-                  userId,
+                  actorUserIdFor(userId),
                   userId,
                   startDate,
                   endDate
@@ -977,10 +994,40 @@ Actions:
               });
             }
 
+            case 'get_oral_care_summary': {
+              const endDate = args.end_date || todayInZone(tz);
+              const startDate = args.start_date || addDays(endDate, -6);
+              if (startDate > endDate) {
+                return ERRORS.VALIDATION(
+                  'start_date must not be after end_date.'
+                );
+              }
+              const clampedStart =
+                addDays(startDate, oralCareService.MAX_HISTORY_DAYS - 1) <
+                endDate
+                  ? addDays(endDate, -(oralCareService.MAX_HISTORY_DAYS - 1))
+                  : startDate;
+              const history = await oralCareService.getHistory(
+                userId,
+                actorUserIdFor(userId),
+                clampedStart,
+                endDate
+              );
+              return formatJsonResult({
+                start_date: clampedStart,
+                end_date: endDate,
+                daily_brushing_goal: history.settings.daily_target,
+                target_seconds_per_brush: history.settings.target_seconds,
+                current_streak_days: history.streak,
+                best_streak_days: history.best_streak,
+                days: history.days,
+              });
+            }
+
             case 'get_custom_metrics_history': {
               const history: CustomMeasurementEntryRow[] =
                 await measurementService.getCustomMeasurementEntriesByDateRange(
-                  userId,
+                  actorUserIdFor(userId),
                   userId,
                   args.start_date || '1970-01-01',
                   args.end_date || '9999-12-31'

@@ -3,6 +3,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { CardioLog } from '@/pages/Exercises/CardioLog';
 
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+    getEnergyUnitString: (unit: string) => unit,
+  }),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (_key: string, defaultValue?: string) => defaultValue,

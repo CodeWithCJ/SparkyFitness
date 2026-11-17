@@ -55,8 +55,11 @@ interface TooltipProps {
  */
 export const CompareSinceChart = ({ response }: CompareSinceChartProps) => {
   const { t } = useTranslation();
-  const { formatDateInUserTimezone, timeFormat } = usePreferences();
-  const chart = useMemo(() => sinceChartData(response), [response]);
+  const { formatDateInUserTimezone, timeFormat, energyUnit } = usePreferences();
+  const chart = useMemo(
+    () => sinceChartData(response, energyUnit),
+    [response, energyUnit]
+  );
   const { rows, before, since, start, line } = chart;
   if (rows.length === 0) return null;
   if (!rows.some((row) => row.value !== null)) {
@@ -84,7 +87,7 @@ export const CompareSinceChart = ({ response }: CompareSinceChartProps) => {
   // Chart values are already on the display scale; only bedtime needs a clock.
   const shown = (value: number) =>
     key === 'bedtime'
-      ? compareValueText(key, value, timeFormat)
+      ? compareValueText(key, value, timeFormat, energyUnit)
       : compareShownAmountText(key, value);
   // A yes/no tick (or mean) is a share of days, and a yes/no day is Yes or No.
   const axisText = (value: number) =>
@@ -216,11 +219,11 @@ export const CompareSinceChart = ({ response }: CompareSinceChartProps) => {
                           segment={[
                             {
                               x: s.span.from,
-                              y: compareDisplayValue(key, s.mean),
+                              y: compareDisplayValue(key, s.mean, energyUnit),
                             },
                             {
                               x: s.span.to,
-                              y: compareDisplayValue(key, s.mean),
+                              y: compareDisplayValue(key, s.mean, energyUnit),
                             },
                           ]}
                           stroke={s.color}
@@ -241,7 +244,8 @@ export const CompareSinceChart = ({ response }: CompareSinceChartProps) => {
                             line: compareValueText(
                               key,
                               response.result.line,
-                              timeFormat
+                              timeFormat,
+                              energyUnit
                             ),
                           }),
                           position: 'insideBottomRight',

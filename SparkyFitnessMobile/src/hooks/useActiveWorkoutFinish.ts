@@ -2,10 +2,15 @@ import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Keyboard } from 'react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useQueryClient } from '@tanstack/react-query';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { WorkoutDurationSheetRef } from '../components/WorkoutDurationSheet';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import { ApiError } from '../services/api/errors';
+import { getWorkout, updateWorkout } from '../services/api/exerciseApi';
+import { invalidateExerciseCache } from './invalidateExerciseCache';
+import { normalizeDate } from '../utils/dateUtils';
 import { formatDuration, summarizeWorkoutSpan } from '../utils/workoutSession';
 import { buildWorkoutCelebration } from '../utils/workoutCelebration';
 import type { RootStackParamList } from '../types/navigation';
@@ -33,6 +38,7 @@ export function useActiveWorkoutFinish({
   handleConfirmEnd: () => void;
 } {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const handleFinish = useCallback(async () => {
     function confirmDiscardChanges(): void {
@@ -93,6 +99,95 @@ export function useActiveWorkoutFinish({
         );
         return;
       }
+      // #1995 phase 1: the flush delivered every set; stamp the lifecycle
+      // end so the session derives partial/completed from its sets instead
+      // of staying in progress forever. The stamp presents the revision the
+      // flush adopted from the server (or the one the session was seeded
+      // with, when the flush found nothing to save), so it can never mark a
+      // newer session that another device resumed or edited in between: the
+      // server refuses with 409, the revision is refreshed once, and a stamp
+      // that still fails falls back to the retry alert below.
+      const sessionId = useActiveWorkoutStore.getState().sessionId;
+      if (sessionId != null) {
+        const stampFinished = async (): Promise<boolean> => {
+          let revision = useActiveWorkoutStore.getState().session?.revision;
+          // A session restored from storage can lack the revision, and a
+          // clean flush never fetches it: fetch the server's current one
+          // first so this stamp is guarded too. Refuse rather than stamp
+          // unguarded.
+          if (revision == null) {
+            try {
+              revision = (await getWorkout(sessionId)).revision;
+            } catch {
+              return false;
+            }
+            if (revision == null) return false;
+          }
+          for (let stampAttempt = 0; stampAttempt < 2; stampAttempt += 1) {
+            try {
+              await updateWorkout(sessionId, {
+                finished_at: new Date().toISOString(),
+                revision,
+              });
+              return true;
+            } catch (error) {
+              if (
+                stampAttempt === 0 &&
+                error instanceof ApiError &&
+                error.statusCode === 409
+              ) {
+                // Another device changed the session after this phone's
+                // save: adopt the server's current revision and retry once
+                // instead of presenting the stale revision again.
+                try {
+                  revision = (await getWorkout(sessionId)).revision;
+                  // A session without a revision cannot be guarded:
+                  // refuse instead of stamping unguarded.
+                  if (revision == null) return false;
+                } catch {
+                  return false;
+                }
+                continue;
+              }
+              return false;
+            }
+          }
+          return false;
+        };
+        // Capture the entry date before the async stamp: the store must
+        // not be re-read afterwards, when the session may have been
+        // swapped mid-stamp.
+        const entryDate = useActiveWorkoutStore.getState().session?.entry_date;
+        const stamped = await stampFinished();
+        if (!stamped) {
+          Alert.alert(
+            t('workout.finishStampFailedTitle', {
+              defaultValue: 'Could not mark the workout as finished',
+            }),
+            t('workout.finishStampFailedMessage', {
+              defaultValue:
+                'Your sets were saved, but marking the workout finished failed. Retry to complete it.',
+            }),
+            [
+              {
+                text: t('workout.retry', { defaultValue: 'Retry' }),
+                onPress: () => void attempt(),
+              },
+              {
+                text: t('common.cancel', { defaultValue: 'Cancel' }),
+                style: 'cancel',
+              },
+            ]
+          );
+          return;
+        }
+        // The stamp bumps the revision after the flush above already
+        // invalidated the diary, so refresh it again: otherwise the
+        // next read could resurrect the pre-finish state.
+        if (entryDate != null) {
+          invalidateExerciseCache(queryClient, normalizeDate(entryDate));
+        }
+      }
       const celebration = buildWorkoutCelebration(
         useActiveWorkoutStore.getState()
       );
@@ -104,7 +199,7 @@ export function useActiveWorkoutFinish({
       }
     }
     await attempt();
-  }, [flush, navigation, safeGoBack, t]);
+  }, [flush, navigation, queryClient, safeGoBack, t]);
 
   const maybeAdjustDurationThenFinish = useCallback(() => {
     const { completedSetIds: completed, startedAt } =

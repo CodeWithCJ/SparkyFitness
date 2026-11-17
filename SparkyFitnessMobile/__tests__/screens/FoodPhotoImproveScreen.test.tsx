@@ -2,7 +2,9 @@ import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
+import * as ImagePicker from 'expo-image-picker';
 import FoodPhotoImproveScreen from '../../src/screens/FoodPhotoImproveScreen';
+import type { ActionSheetRef as MockActionSheetRef } from '../../src/components/ActionSheet';
 import { useEstimateFoodPhoto } from '../../src/hooks/useEstimateFoodPhoto';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 
@@ -26,6 +28,72 @@ jest.mock('react-native-toast-message', () => ({
 jest.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: jest.fn() }),
 }));
+
+jest.mock('expo-image-picker', () => ({
+  launchImageLibraryAsync: jest.fn(),
+  launchCameraAsync: jest.fn(),
+  requestCameraPermissionsAsync: jest.fn(),
+}));
+
+jest.mock('../../src/utils/pickImage', () => ({
+  downscaleFoodPhoto: jest.fn(async (asset: { uri: string }) => asset),
+}));
+
+// The add-image sheet: present() shows its items, dismiss() only records the
+// call, and finishDismiss() ends the close animation and fires onDismiss, so a
+// test can check that no picker opens while the sheet is still closing.
+const mockAddSheet = {
+  present: jest.fn(),
+  dismiss: jest.fn(),
+  finishDismiss: () => {},
+};
+
+jest.mock('../../src/components/ActionSheet', () => {
+  const React: typeof import('react') = require('react');
+  const {
+    View,
+    Text,
+    Pressable,
+  }: typeof import('react-native') = require('react-native');
+  type MockSheetProps = React.ComponentPropsWithoutRef<
+    typeof import('../../src/components/ActionSheet').default
+  >;
+  return {
+    __esModule: true,
+    default: React.forwardRef<MockActionSheetRef, MockSheetProps>(
+      (props, ref) => {
+        const [visible, setVisible] = React.useState(false);
+        React.useImperativeHandle(ref, () => ({
+          present: () => {
+            mockAddSheet.present();
+            setVisible(true);
+          },
+          dismiss: mockAddSheet.dismiss,
+        }));
+        const { onDismiss } = props;
+        React.useEffect(() => {
+          mockAddSheet.finishDismiss = () => {
+            setVisible(false);
+            onDismiss?.();
+          };
+        }, [onDismiss]);
+        if (!visible) return null;
+        return React.createElement(
+          View,
+          { testID: 'add-image-sheet' },
+          React.createElement(Text, null, props.title),
+          props.items.map((item) =>
+            React.createElement(
+              Pressable,
+              { key: item.key, onPress: item.onPress },
+              React.createElement(Text, null, item.label)
+            )
+          )
+        );
+      }
+    ),
+  };
+});
 
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
@@ -252,6 +320,79 @@ describe('FoodPhotoImproveScreen', () => {
       expect(i18n.t('foodPhotoImprove.subjectLabel', { count: 22 })).toBe(
         'zdjęcia'
       );
+    });
+  });
+
+  describe('add another image', () => {
+    const mockLibrary = ImagePicker.launchImageLibraryAsync as jest.Mock;
+    const mockCamera = ImagePicker.launchCameraAsync as jest.Mock;
+    const mockCameraPermission =
+      ImagePicker.requestCameraPermissionsAsync as jest.Mock;
+
+    const openAddSheet = () => {
+      const screen = renderScreen();
+      fireEvent.press(screen.getByLabelText('Add another image'));
+      expect(mockAddSheet.present).toHaveBeenCalledTimes(1);
+      return screen;
+    };
+
+    const sentImages = async (screen: ReturnType<typeof renderScreen>) => {
+      fireEvent.press(screen.getByText('Generate estimate'));
+      await waitFor(() => expect(mockMutate).toHaveBeenCalledTimes(1));
+      return mockMutate.mock.calls[0][0].images;
+    };
+
+    it('opens the library only after the sheet has finished closing, and adds the pick', async () => {
+      mockLibrary.mockResolvedValueOnce({
+        canceled: false,
+        assets: [{ uri: 'file:///library.png', mimeType: 'image/png' }],
+      });
+      const screen = openAddSheet();
+
+      fireEvent.press(screen.getByText('Choose from library'));
+      expect(mockAddSheet.dismiss).toHaveBeenCalledTimes(1);
+      expect(mockLibrary).not.toHaveBeenCalled();
+
+      await act(async () => mockAddSheet.finishDismiss());
+
+      expect(mockLibrary).toHaveBeenCalledTimes(1);
+      await waitFor(() =>
+        expect(screen.getByLabelText('Remove image 2')).toBeTruthy()
+      );
+      expect(await sentImages(screen)).toEqual([
+        { base64Image: 'AAAA-base64', mimeType: 'image/jpeg' },
+        { base64Image: 'AAAA-base64', mimeType: 'image/png' },
+      ]);
+    });
+
+    it('opens the camera only after the sheet has finished closing', async () => {
+      mockCameraPermission.mockResolvedValueOnce({ granted: true });
+      mockCamera.mockResolvedValueOnce({
+        canceled: false,
+        assets: [{ uri: 'file:///camera.jpg', mimeType: 'image/jpeg' }],
+      });
+      const screen = openAddSheet();
+
+      fireEvent.press(screen.getByText('Take photo'));
+      expect(mockCameraPermission).not.toHaveBeenCalled();
+      expect(mockCamera).not.toHaveBeenCalled();
+
+      await act(async () => mockAddSheet.finishDismiss());
+
+      expect(mockCamera).toHaveBeenCalledTimes(1);
+      await waitFor(() =>
+        expect(screen.getByLabelText('Remove image 2')).toBeTruthy()
+      );
+    });
+
+    it('closing the sheet without a choice opens no picker', async () => {
+      openAddSheet();
+
+      await act(async () => mockAddSheet.finishDismiss());
+
+      expect(mockLibrary).not.toHaveBeenCalled();
+      expect(mockCameraPermission).not.toHaveBeenCalled();
+      expect(mockCamera).not.toHaveBeenCalled();
     });
   });
 });

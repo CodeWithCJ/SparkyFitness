@@ -34,6 +34,8 @@ import {
   type NutrientAverage,
 } from '../utils/nutritionReport';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
 
 type NutritionReportScreenProps = RootStackScreenProps<'NutritionReport'>;
 
@@ -41,6 +43,7 @@ const NutritionReportScreen: React.FC<NutritionReportScreenProps> = ({
   navigation,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const {
     window: reportWindow,
     rangeProps,
@@ -59,9 +62,10 @@ const NutritionReportScreen: React.FC<NutritionReportScreenProps> = ({
   const fmt = (value: number, digits = 0) =>
     formatLocalizedNumber(value, { maximumFractionDigits: digits });
   const kcal = (value: number) =>
-    t('nutritionReport.kcal', {
-      defaultValue: '{{value}} kcal',
-      value: fmt(Math.round(value)),
+    t('nutritionReport.kcalWithUnit', {
+      defaultValue: '{{value}} {{unit}}',
+      value: formatEnergyNumber(value, energyUnit),
+      unit: energyUnitLabel(energyUnit, t),
     });
   const grams = (value: number) =>
     t('nutritionReport.grams', {

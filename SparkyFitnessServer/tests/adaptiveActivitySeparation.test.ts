@@ -55,17 +55,19 @@ describe('adaptive activity separation', () => {
     expect(result.averageActivityCalories).toBe(900);
     expect(result.rawActivityAdjustedTdee).toBe(2000);
     expect(result.activityAdjustedTdee).toBe(2000);
-    expect(result.activityDaysOfData).toBe(28);
+    expect(result.activityDaysOfData).toBe(27);
   });
 
   it('uses the same qualifying food days for the activity average', () => {
     const inputs = data();
-    // The last day of the window is the day before the calculation date.
-    inputs.nutritionData[89].calories = 199;
-    inputs.activityCaloriesByDate.set(days[89], 10000);
+    // Food on the last completed weigh-in day does not explain that weight.
+    // Change the preceding supported food day, so this still exercises the
+    // qualifying-food mask rather than accidentally changing an excluded day.
+    inputs.nutritionData[88].calories = 199;
+    inputs.activityCaloriesByDate.set(days[88], 10000);
     const result = computeAdaptiveTdeeFromData(inputs, date);
     expect(result.averageActivityCalories).toBe(900);
-    expect(result.activityDaysOfData).toBe(27);
+    expect(result.activityDaysOfData).toBe(26);
     expect(result.activityAdjustedTdee).toBe(2000);
   });
 

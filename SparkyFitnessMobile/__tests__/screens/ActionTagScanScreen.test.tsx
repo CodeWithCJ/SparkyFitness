@@ -11,6 +11,7 @@ import ActionTagScanScreen from '../../src/screens/ActionTagScanScreen';
 import { useServerConnection } from '../../src/hooks';
 import { scanActionTag } from '../../src/services/api/actionTagsApi';
 import { ApiError } from '../../src/services/api/errors';
+import { deleteFoodEntry } from '../../src/services/api/foodEntriesApi';
 import { initializeI18n } from '../../src/localization/i18n';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 
@@ -29,6 +30,9 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 jest.mock('../../src/services/api/measurementsApi', () => ({
   changeWaterIntake: jest.fn(() => Promise.resolve({})),
+}));
+jest.mock('../../src/services/api/foodEntriesApi', () => ({
+  deleteFoodEntry: jest.fn(() => Promise.resolve()),
 }));
 
 const CODE = '0123456789abcdef0123456789abcdef';
@@ -94,6 +98,35 @@ describe('ActionTagScanScreen', () => {
         text1: 'Logged 1 × Stanley',
         text2: 'Tap to undo',
       })
+    );
+  });
+
+  it('undoes a food tap by deleting the entry the server logged', async () => {
+    jest.mocked(scanActionTag).mockResolvedValue({
+      status: 'done',
+      tag: {
+        ...tag,
+        label: 'Greek yogurt',
+        action: {
+          type: 'food',
+          food_id: 'food-1',
+          variant_id: 'variant-1',
+          quantity: 170,
+          unit: 'g',
+          meal: { mode: 'auto' },
+        },
+      },
+      summary: '170 g Greek yogurt',
+      logged: { kind: 'food_entry', id: 'entry-1' },
+    });
+    renderScreen();
+    await waitFor(() => expect(Toast.show).toHaveBeenCalled());
+    const toast = jest.mocked(Toast.show).mock.calls[0][0] as {
+      onPress: () => void;
+    };
+    toast.onPress();
+    await waitFor(() =>
+      expect(deleteFoodEntry).toHaveBeenCalledWith('entry-1')
     );
   });
 

@@ -188,12 +188,18 @@ router.post('/start', async (req, res) => {
  *             properties:
  *               id:
  *                 type: string
- *                 format: uuid
- *                 description: The ID of the fast to end.
+ *                 description: The ID of the fast to end (UUID or auto-* identifier).
  *               start_time:
  *                 type: string
  *                 format: date-time
  *                 description: Optional start time to override.
+ *               target_end_time:
+ *                 type: string
+ *                 format: date-time
+ *                 description: Optional target end time of the fast.
+ *               fasting_type:
+ *                 type: string
+ *                 description: Optional fasting protocol (e.g. 16:8).
  *               end_time:
  *                 type: string
  *                 format: date-time
@@ -225,7 +231,8 @@ router.post('/start', async (req, res) => {
 // End an active fast
 router.post('/end', async (req, res) => {
   const userId = req.userId;
-  const { id, start_time, end_time, mood } = req.body; // mood: { value, notes }
+  const { id, start_time, end_time, target_end_time, fasting_type, mood } =
+    req.body; // mood: { value, notes }
   if (!id || !end_time) {
     return res.status(400).json({ error: 'Fast ID and end time are required' });
   }
@@ -241,18 +248,37 @@ router.post('/end', async (req, res) => {
     }
   }
   try {
-    if (id === 'auto-current') {
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ error: 'Valid fast id is required' });
+    }
+    if (id.startsWith('auto-eating-window-')) {
+      return res
+        .status(400)
+        .json({ error: 'Cannot end an eating window as a fast' });
+    }
+    const isAutoFast = id === 'auto-current' || id.startsWith('auto-');
+    if (isAutoFast) {
       const tz = await loadUserTimezone(userId);
       const activeAuto = await fastingAutoCalculationService.getCurrentAutoFast(
         userId,
         tz
       );
-      if (!activeAuto) {
+      if (!activeAuto && !start_time) {
         return res.status(404).json({ error: 'Fast not found' });
       }
 
-      const startUsed = start_time || activeAuto.start_time;
-      if (new Date(startUsed) > new Date(end_time)) {
+      const startUsed = start_time || activeAuto?.start_time;
+      if (!startUsed) {
+        return res.status(400).json({ error: 'Start time is required' });
+      }
+      const startTimeMs = new Date(startUsed).getTime();
+      const endTimeMs = new Date(end_time).getTime();
+      if (isNaN(startTimeMs) || isNaN(endTimeMs)) {
+        return res
+          .status(400)
+          .json({ error: 'Valid start_time and end_time are required' });
+      }
+      if (startTimeMs > endTimeMs) {
         return res
           .status(400)
           .json({ error: 'start_time must be before end_time' });
@@ -260,12 +286,10 @@ router.post('/end', async (req, res) => {
 
       const durationMinutes = Math.max(
         0,
-        Math.round(
-          (new Date(end_time).getTime() - new Date(startUsed).getTime()) / 60000
-        )
+        Math.round((endTimeMs - startTimeMs) / 60000)
       );
-      const targetEnd = activeAuto.target_end_time || null;
-      const fastingType = activeAuto.fasting_type || '16:8';
+      const targetEnd = target_end_time || activeAuto?.target_end_time || null;
+      const fastingType = fasting_type || activeAuto?.fasting_type || '16:8';
 
       const completed = await fastingRepository.createCompletedFast(
         userId,
@@ -283,7 +307,30 @@ router.post('/end', async (req, res) => {
         mood?.notes,
         end_time
       );
-      return res.json(completed);
+      let resultFast = completed;
+      if (!resultFast) {
+        const existing = await fastingRepository.findFastNearStartTime(
+          userId,
+          new Date(startUsed),
+          60
+        );
+        if (existing) {
+          if (existing.status === 'ACTIVE') {
+            resultFast = await fastingRepository.endFast(
+              existing.id,
+              userId,
+              end_time,
+              durationMinutes
+            );
+          } else {
+            resultFast = await fastingRepository.getFastingById(
+              existing.id,
+              userId
+            );
+          }
+        }
+      }
+      return res.json(resultFast);
     }
 
     const fast = await fastingRepository.getFastingById(id, userId);

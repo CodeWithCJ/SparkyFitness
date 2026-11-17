@@ -22,6 +22,9 @@ import type { ExternalFoodItem } from '../../types/externalFoods';
 import type { ExternalProvider } from '../../types/externalProviders';
 import type { ResultRow } from './types';
 import type { OwnershipFilter } from '../../utils/shareStatus';
+import { energyUnitLabel, roundedEnergy } from '../../utils/energyUnit';
+import { useEnergyUnit } from '../../hooks/useEnergyUnit';
+import { formatLocalizedNumber } from '../../localization';
 
 interface OnlineResultRowProps {
   item: ExternalFoodItem;
@@ -31,9 +34,10 @@ interface OnlineResultRowProps {
   loadingFoodId: string | null;
   getProviderColor: (providerId?: string | null) => string;
   onSelect: (item: ExternalFoodItem, providerId?: string) => Promise<void>;
+  showMacros?: boolean;
 }
 
-const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
+export const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
   item,
   badge,
   providerId,
@@ -41,8 +45,10 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
   loadingFoodId,
   getProviderColor,
   onSelect,
+  showMacros = false,
 }) => {
   const { t } = useTranslation();
+  const energyUnit = useEnergyUnit();
   const getImageSource = useFoodImageSourceContext();
   const openLightbox = useOpenLightbox();
   const image = externalFoodImage(item);
@@ -107,6 +113,23 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
             </View>
           ) : null}
           <AllergenBadges allergens={item.allergens} traces={item.traces} />
+          {showMacros && item.recipe_has_nutrition !== false && (
+            <Text className="text-text-secondary text-xs">
+              {t('recipeImport.searchMacros', {
+                defaultValue:
+                  'Protein {{protein}} g · Carbs {{carbs}} g · Fat {{fat}} g',
+                protein: formatLocalizedNumber(item.protein, {
+                  maximumFractionDigits: 2,
+                }),
+                carbs: formatLocalizedNumber(item.carbs, {
+                  maximumFractionDigits: 2,
+                }),
+                fat: formatLocalizedNumber(item.fat, {
+                  maximumFractionDigits: 2,
+                }),
+              })}
+            </Text>
+          )}
         </View>
         <View className="items-end">
           {loadingFoodId === item.id ? (
@@ -114,8 +137,11 @@ const OnlineResultRow: React.FC<OnlineResultRowProps> = ({
           ) : (
             <>
               <Text className="text-text-primary text-base font-semibold">
-                {Math.round(item.calories)}{' '}
-                {t('foodSearch.labels.caloriesUnit', { defaultValue: 'cal' })}
+                {item.recipe_has_nutrition === false
+                  ? t('recipeImport.noDeclaredNutrition', {
+                      defaultValue: 'No declared nutrition',
+                    })
+                  : `${roundedEnergy(item.calories, energyUnit)} ${energyUnitLabel(energyUnit, t)}`}
               </Text>
               <Text className="text-text-secondary text-xs">
                 {item.serving_description

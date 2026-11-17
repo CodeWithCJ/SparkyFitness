@@ -1,22 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FastingReport } from '@/pages/Reports/FastingReport';
 import MedicationReports from '@/pages/Reports/MedicationReports';
 import SymptomsReport from '@/pages/Symptoms/SymptomsReport';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
+import {
+  useWebFeatures,
+  withoutHiddenCategories,
+} from '@/hooks/Settings/useWebFeatures';
 import { useProfileQuery } from '@/hooks/Settings/useProfile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import ZoomableChart from '@/components/ZoomableChart';
 import ReportsControls from '@/pages/Reports/ReportsControls';
-import NutritionPeriodSummary from '@/pages/Reports/NutritionPeriodSummary';
-import { WeeklyAlcoholCard } from '@/pages/Reports/WeeklyAlcoholCard';
-import HydrationTrendChart from '@/pages/Reports/HydrationTrendChart';
-import NutritionChartsGrid from '@/pages/Reports/NutritionChartsGrid';
 import WidgetGrid from '@/components/widgets/WidgetGrid';
 import {
   generateReportsMeasurementsDefaultLayouts,
   useMeasurementChartWidgets,
 } from '@/pages/Reports/MeasurementChartsGrid';
+import {
+  generateReportsNutrientsDefaultLayouts,
+  isNutrientWidgetKey,
+  nutrientKeyFromWidgetKey,
+  useNutritionChartWidgets,
+} from '@/pages/Reports/NutritionChartsGrid';
 import ReportsTables, {
   type TableFilterValue,
 } from '@/pages/Reports/ReportsTables';
@@ -24,12 +31,14 @@ import ExerciseReportsDashboard from '@/pages/Reports/ExerciseReportsDashboard';
 import SleepReport from '@/pages/Reports/SleepReport';
 import BodyBatteryCard from '@/pages/Reports/BodyBatteryCard';
 import RespirationCard from '@/pages/Reports/RespirationCard';
+import GlucoseCard from '@/pages/Reports/GlucoseCard';
 import HeartRateAnalyticsCard from '@/pages/Reports/HeartRateAnalyticsCard';
 
 import StressChart from '@/pages/Reports/StressChart';
 import { debug, info } from '@/utils/logging';
 
 import MoodChart from '@/pages/Reports/MoodChart';
+import OralCareReport from '@/pages/Reports/OralCareReport';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { useMoodEntries } from '@/hooks/CheckIn/useMood';
 import {
@@ -61,10 +70,15 @@ const Reports = () => {
     loggingLevel,
     energyUnit,
     convertEnergy,
+    convertWeight,
+    convertMeasurement,
     weightUnit: defaultWeightUnit,
     measurementUnit: defaultMeasurementUnit,
     showNetCarbs,
+    nutrientDisplayPreferences,
   } = usePreferences();
+  const isMobile = useIsMobile();
+  const platform = isMobile ? 'mobile' : 'desktop';
 
   // Suppress specific Recharts warning in hidden tabs
   useEffect(() => {
@@ -157,7 +171,7 @@ const Reports = () => {
     tabularData = [],
     exerciseEntries = [],
     measurementData = [],
-    customCategories = [],
+    customCategories: allCustomCategories = [],
     customMeasurementsData = [],
     sleepAnalyticsData = [],
     medications = [],
@@ -166,6 +180,21 @@ const Reports = () => {
     injections = [],
     titrationSteps = [],
   } = reportsData || {};
+  // The reproductive Health categories leave the charts and tables while
+  // cycle is turned off (Settings > Features); their data is kept.
+  const { hiddenCustomCategories } = useWebFeatures();
+  const customCategories = useMemo(
+    () => withoutHiddenCategories(allCustomCategories, hiddenCustomCategories),
+    [allCustomCategories, hiddenCustomCategories]
+  );
+  // A table that is no longer listed falls back to all tables.
+  const shownTable: TableFilterValue =
+    selectedTable.startsWith('category:') &&
+    !customCategories.some(
+      (category) => `category:${category.id}` === selectedTable
+    )
+      ? 'all'
+      : selectedTable;
 
   const { data: goalData } = useDailyGoalsRange(startDate, endDate, true, true);
 
@@ -179,6 +208,41 @@ const Reports = () => {
       ? Number(profile.target_weight)
       : null,
   });
+
+  const legacyReportChartPref = nutrientDisplayPreferences.find(
+    (p) => p.view_group === 'report_chart' && p.platform === platform
+  );
+
+  const nutritionReportWidgets = useNutritionChartWidgets({
+    startDate,
+    endDate,
+    userId: activeUserId,
+    nutritionData: reportsData?.nutritionData,
+    customNutrients,
+    goals: goalData,
+    calorieBalanceByDate,
+  });
+
+  const defaultHiddenNutrientKeys = useMemo(() => {
+    if (legacyReportChartPref?.visible_nutrients) {
+      const visibleSet = new Set(legacyReportChartPref.visible_nutrients);
+      return nutritionReportWidgets
+        .map((w) => w.key)
+        .filter((key) => {
+          if (!isNutrientWidgetKey(key)) return false;
+          const nutrientKey = nutrientKeyFromWidgetKey(key);
+          return !visibleSet.has(nutrientKey);
+        });
+    }
+    const defaultVisible = new Set(['calories', 'protein', 'carbs', 'fat']);
+    return nutritionReportWidgets
+      .map((w) => w.key)
+      .filter((key) => {
+        if (!isNutrientWidgetKey(key)) return false;
+        const nutrientKey = nutrientKeyFromWidgetKey(key);
+        return !defaultVisible.has(nutrientKey);
+      });
+  }, [legacyReportChartPref, nutritionReportWidgets]);
 
   const handleStartDateChange = (date: string) => {
     debug(loggingLevel, 'Reports: Start date change handler called:', {
@@ -210,38 +274,21 @@ const Reports = () => {
     switch (activeTab) {
       case 'charts':
         return (
-          <div className="space-y-12">
-            <ChartErrorBoundary>
-              <WeeklyAlcoholCard date={endDate} userId={activeUserId} />
-            </ChartErrorBoundary>
-            <ChartErrorBoundary>
-              <HydrationTrendChart
-                startDate={startDate}
-                endDate={endDate}
-                userId={activeUserId}
-              />
-            </ChartErrorBoundary>
-            <ChartErrorBoundary>
-              <NutritionPeriodSummary
-                nutritionData={nutritionData}
-                customNutrients={customNutrients}
-                goals={goalData}
-                calorieBalanceByDate={calorieBalanceByDate}
-              />
-            </ChartErrorBoundary>
-            <ChartErrorBoundary>
-              <NutritionChartsGrid
-                nutritionData={nutritionData}
-                customNutrients={customNutrients}
-                calorieBalanceByDate={calorieBalanceByDate}
-                goals={goalData}
-              />
-            </ChartErrorBoundary>
-          </div>
+          <ChartErrorBoundary>
+            <WidgetGrid
+              pageKey="reports-nutrients"
+              widgets={nutritionReportWidgets}
+              generateDefaultLayouts={generateReportsNutrientsDefaultLayouts}
+              defaultHidden={defaultHiddenNutrientKeys}
+            />
+          </ChartErrorBoundary>
         );
       case 'measurements':
         return (
           <div className="space-y-6">
+            <ChartErrorBoundary>
+              <GlucoseCard startDate={startDate} endDate={endDate} />
+            </ChartErrorBoundary>
             <ChartErrorBoundary>
               <WidgetGrid
                 pageKey="reports-measurements"
@@ -289,6 +336,12 @@ const Reports = () => {
         return (
           <ChartErrorBoundary>
             <FastingReport fastingData={fastingData} />
+          </ChartErrorBoundary>
+        );
+      case 'oral-care':
+        return (
+          <ChartErrorBoundary>
+            <OralCareReport startDate={startDate} endDate={endDate} />
           </ChartErrorBoundary>
         );
       case 'exercise-charts':
@@ -350,7 +403,7 @@ const Reports = () => {
               customCategories={customCategories}
               customMeasurementsData={customMeasurementsData}
               prData={exerciseDashboardData?.prData}
-              selectedTable={selectedTable}
+              selectedTable={shownTable}
               onSelectedTableChange={setSelectedTable}
               onExportFoodDiary={() =>
                 exportFoodDiary({
@@ -374,6 +427,8 @@ const Reports = () => {
                   defaultWeightUnit,
                   defaultMeasurementUnit,
                   formatDateInUserTimezone,
+                  convertWeight,
+                  convertMeasurement,
                 })
               }
               onExportCustomMeasurements={(

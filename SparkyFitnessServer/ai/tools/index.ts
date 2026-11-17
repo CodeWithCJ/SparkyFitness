@@ -7,12 +7,16 @@ import {
   type ChatToolCategorySlug,
 } from '@workspace/shared';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
+import { withFixedActor } from '../../db/poolManager.js';
+import { OWN_ACCOUNT_ONLY_TOOLS } from './ownAccountOnlyTools.js';
+import { ERRORS, isPermissionDenied } from './errors.js';
 import { buildAllergenTools } from './allergenTools.js';
 import { buildAskTools } from './askTools.js';
 import { buildCheckinTools } from './checkinTools.js';
 import { buildCustomNutrientTools } from './customNutrientTools.js';
 import { buildWaterContainerTools } from './waterContainerTools.js';
 import { buildCaffeineKineticsTools } from './caffeineKineticsTools.js';
+import { buildBloodAlcoholTools } from './bloodAlcoholTools.js';
 import { buildCoachTools } from './coachTools.js';
 import { buildCompareTools } from './compareTools.js';
 import { buildEngagementTools } from './engagementTools.js';
@@ -61,11 +65,16 @@ type ToolMap = Record<string, Tool>;
 // lands on whatever ends up last (see applyChatProviderTuning), and
 // tests/chatbotToolsIndex.test.ts pins the full/core surfaces against it.
 /**
- * Per-turn context a builder may use. Only the vision category needs it today
- * (it hands the structured photo estimate to the turn so it can be persisted
- * and logged verbatim); every other builder ignores the argument.
+ * Per-turn context for one chat turn. Chat passes one on every turn; MCP and
+ * tests build without it, and then the tools act for the person they were
+ * built for. Each builder reads only the fields it needs.
  */
 export interface ToolBuildContext {
+  /**
+   * The signed-in person. Every chat tool acts as them in the database, even
+   * in a family member's account.
+   */
+  actorUserId: string;
   /** Trusted text from the current user turn, used to authorize lasting memory. */
   latestUserText?: string;
   foodPhotoEstimateSink?: FoodPhotoEstimateSink;
@@ -83,6 +92,12 @@ export interface ToolBuildContext {
   serviceConfigId?: string | null;
   /** Provider-executed web research, offered within the food category only. */
   foodResearchTool?: Tool;
+  /**
+   * This turn's tools from the outside MCP servers an admin added (see
+   * mcpServerTools.ts). Only buildChatToolSurface reads them: they belong to
+   * no category, so a hand-picked selection leaves them out.
+   */
+  outsideTools?: ToolMap;
 }
 
 const CATEGORY_BUILDERS: Record<
@@ -105,6 +120,7 @@ const CATEGORY_BUILDERS: Record<
     (u, tz) => buildCustomNutrientTools(u, tz),
     (u, tz) => buildWaterContainerTools(u, tz),
     (u, tz) => buildCaffeineKineticsTools(u, tz),
+    (u, tz) => buildBloodAlcoholTools(u, tz),
     (u, tz) => buildAllergenTools(u, tz),
     (u, tz) => buildBarcodeTools(u, tz),
   ],
@@ -236,6 +252,37 @@ function stripNullValues(value: unknown): unknown {
   return value;
 }
 
+// Chat can work in a family member's account, so every tool runs with the
+// signed-in person fixed as the actor. Each tool is replaced rather than edited
+// so a tool object shared between builds never keeps another person's actor.
+function fixChatToolActor(
+  tools: ToolMap,
+  actorUserId: string,
+  accountUserId: string
+): void {
+  const inFamilyAccount = actorUserId !== accountUserId;
+  for (const [name, t] of Object.entries(tools)) {
+    const { execute } = t;
+    if (!execute) continue;
+    tools[name] = {
+      ...t,
+      execute:
+        inFamilyAccount && OWN_ACCOUNT_ONLY_TOOLS.has(name)
+          ? async () => ERRORS.OWN_ACCOUNT_ONLY()
+          : async (...args: Parameters<typeof execute>) => {
+              try {
+                return await withFixedActor(actorUserId, () =>
+                  execute(...args)
+                );
+              } catch (error) {
+                if (isPermissionDenied(error)) return ERRORS.NOT_ALLOWED();
+                throw error;
+              }
+            },
+    };
+  }
+}
+
 // Applies chat-provider tuning that only matters when the tools are sent to an
 // LLM provider through the AI SDK. The MCP surface skips this — MCP publishes
 // the schemas over JSON-RPC where strict-mode flags and Anthropic cache
@@ -300,9 +347,11 @@ const toolCache = new Map<string, { tools: ToolMap; expiresAt: number }>();
 
 /**
  * Composes the in-process chatbot tool set for generateText/streamText.
- * Handlers close over the authenticated userId — chat tools always act as the
- * session user, so two-actor services receive (userId, userId, …) — and the
- * user's IANA timezone, used for "today" defaults and day bucketing.
+ * Handlers close over `userId`, the account being worked in, and its IANA
+ * timezone, used for "today" defaults and day bucketing. Chat tools act as
+ * `ctx.actorUserId` in the database (see fixChatToolActor), so in a family
+ * member's account their Family Access grant applies; services that record who
+ * made an entry get that person via actorUserIdFor.
  *
  * `providerTuning` (default true) applies the chat/AI-SDK provider settings
  * (strict off, Anthropic cache breakpoint). The MCP adapter passes false to
@@ -352,6 +401,7 @@ export function buildChatbotTools(
   }
   if (providerTuning) {
     applyChatProviderTuning(tools);
+    fixChatToolActor(tools, ctx?.actorUserId ?? userId, userId);
   }
 
   if (!cacheable) return tools;
@@ -405,6 +455,10 @@ export function buildChatToolSurface(
     tz,
     ctx
   );
+  // After Sparky's own tools and before the two below, which keeps the cache
+  // breakpoint on the escalation tool. Their names all start with mcp_, which
+  // no built-in tool uses, so none can replace one.
+  Object.assign(tools, ctx?.outsideTools);
   // The quick-reply tool is composed for every surface but only made active for
   // the 'full' profile (see activeToolNames in chatService.ts); it belongs to no
   // category, so it is not in toolNamesByCategory.
@@ -414,6 +468,7 @@ export function buildChatToolSurface(
   // active, so the marker is always sent regardless of per-request narrowing.
   Object.assign(tools, buildMetaTools());
   applyChatProviderTuning(tools);
+  fixChatToolActor(tools, ctx?.actorUserId ?? userId, userId);
 
   const surface: ChatToolSurface = { tools, toolNamesByCategory };
   if (!cacheable) return surface;

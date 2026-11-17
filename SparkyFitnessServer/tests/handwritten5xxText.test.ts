@@ -14,6 +14,11 @@ const SCANNED_DIRS = ['routes', 'integrations'];
 // Responses that send their own error text on purpose, with how many each
 // file has. Adding one means adding it here, where review can see it.
 const ALLOWED: Record<string, { count: number; reason: string }> = {
+  'routes/adminRoutes.ts': {
+    count: 1,
+    reason:
+      'admin only; the 502 says why an MCP tool server did not list its tools, in this app’s words only (McpServerListError)',
+  },
   'routes/aiUnitConversionRoutes.ts': {
     count: 1,
     reason:

@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { SymbolView, SymbolViewProps } from 'expo-symbols';
 import React from 'react';
 import { Platform, StyleProp, ViewStyle } from 'react-native';
@@ -18,6 +18,10 @@ const ICON_MAP = {
 
   // Actions
   expand: { sf: 'arrow.up.left.and.arrow.down.right', ion: 'expand-outline' },
+  move: {
+    sf: 'arrow.up.and.down.and.arrow.left.and.right',
+    ion: 'move-outline',
+  },
   copy: { sf: 'doc.on.doc', ion: 'copy-outline' },
   trash: { sf: 'trash', ion: 'trash-outline' },
   paste: { sf: 'doc.on.clipboard', ion: 'clipboard-outline' },
@@ -96,6 +100,8 @@ const ICON_MAP = {
 
   // Food
   food: { sf: 'fork.knife', ion: 'restaurant' },
+  coffee: { sf: 'cup.and.saucer', ion: 'cafe-outline' },
+  wine: { sf: 'wineglass', ion: 'wine-outline' },
 
   // Meals
   meal: { sf: 'square.stack.3d.up.fill', ion: 'layers' },
@@ -123,6 +129,9 @@ const ICON_MAP = {
     ion: 'barbell-outline',
   },
   'exercise-yoga': { sf: 'figure.yoga', ion: 'body-outline' },
+  // Neither SF Symbols nor Ionicons draw a tooth, so both platforms use the
+  // Material Community glyph (`mci`); `sf`/`ion` stay for the type's shape.
+  'oral-care': { sf: 'mouth', ion: 'happy-outline', mci: 'tooth-outline' },
   'exercise-tennis': { sf: 'figure.tennis', ion: 'tennisball-outline' },
   'exercise-basketball': { sf: 'figure.basketball', ion: 'basketball-outline' },
   'exercise-soccer': { sf: 'figure.soccer', ion: 'football-outline' },
@@ -157,6 +166,9 @@ const ICON_MAP = {
   'diary-settings': { sf: 'book', ion: 'book-outline' },
   'measurements-settings': { sf: 'ruler', ion: 'speedometer-outline' },
   'workout-settings': { sf: 'dumbbell', ion: 'barbell-outline' },
+  // Calorie cycling: a training day and a rest day.
+  'cycling-training': { sf: 'dumbbell', ion: 'barbell-outline' },
+  'cycling-rest': { sf: 'moon', ion: 'moon-outline' },
   'watch-settings': { sf: 'applewatch', ion: 'watch-outline' },
   'app-settings': { sf: 'slider.horizontal.3', ion: 'options-outline' },
   logs: { sf: 'doc.plaintext', ion: 'document-text-outline' },
@@ -196,6 +208,7 @@ const ICON_MAP = {
   'sleep-score': { sf: 'star.fill', ion: 'star' },
   spo2: { sf: 'lungs.fill', ion: 'pulse' },
   'heart-rate': { sf: 'heart.fill', ion: 'heart' },
+  'skin-temperature': { sf: 'thermometer.medium', ion: 'thermometer-outline' },
 } as const;
 
 export type IconName = keyof typeof ICON_MAP;
@@ -213,7 +226,8 @@ interface IconProps {
 
 /**
  * Cross-platform icon component.
- * Uses SF Symbols on iOS and Ionicons on Android.
+ * Uses SF Symbols on iOS and Ionicons on Android; an entry with `mci` uses
+ * that Material Community glyph on both.
  */
 const Icon: React.FC<IconProps> = ({
   name,
@@ -230,6 +244,21 @@ const Icon: React.FC<IconProps> = ({
       console.warn(`[Icon] Unknown icon name: "${String(name)}"`);
     }
     return null;
+  }
+
+  if ('mci' in mapping) {
+    return (
+      <MaterialCommunityIcons
+        name={
+          (mapping as { mci: string })
+            .mci as keyof typeof MaterialCommunityIcons.glyphMap
+        }
+        size={size}
+        color={color}
+        style={style}
+        accessibilityLabel={accessibilityLabel}
+      />
+    );
   }
 
   const useIoniconOnIOS =

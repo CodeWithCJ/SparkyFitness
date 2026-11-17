@@ -33,6 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import type { WorkoutPreset } from '@/types/workout';
 import WorkoutPresetForm from './WorkoutPresetForm';
 import {
@@ -65,6 +66,7 @@ const WorkoutPresetsManager = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { activeUserId } = useActiveUser();
   const isMobile = useIsMobile();
   const { weightUnit } = usePreferences();
 
@@ -262,6 +264,7 @@ const WorkoutPresetsManager = () => {
       const routeState = createWorkoutPlaybackRouteState(
         preset,
         today,
+        activeUserId,
         `${location.pathname}${location.search}`
       );
 
@@ -269,7 +272,7 @@ const WorkoutPresetsManager = () => {
         state: routeState,
       });
     },
-    [location.pathname, location.search, navigate, t]
+    [activeUserId, location.pathname, location.search, navigate, t]
   );
 
   const columns = React.useMemo<ColumnDef<DataTableFeatures, WorkoutPreset>[]>(

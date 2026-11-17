@@ -43,6 +43,9 @@ import { resolveExerciseModality } from '@workspace/shared';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { energyUnitLabel } from '../utils/energyUnit';
+import EnergyFormInput from '../components/EnergyFormInput';
 
 type Props = RootStackScreenProps<'ActivityAdd'>;
 
@@ -93,6 +96,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
     },
     [setFormDate]
   );
+  const energyUnit = useEnergyUnit();
 
   const {
     createEntry,
@@ -461,11 +465,14 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
           {/* Calories */}
           <View className="mb-4">
             <Text className="text-sm font-medium text-text-secondary mb-1.5">
-              {t('activityAdd.fields.calories', { defaultValue: 'Calories' })}
+              {t('activityAdd.fields.caloriesWithUnit', {
+                defaultValue: 'Calories ({{unit}})',
+                unit: energyUnitLabel(energyUnit, t),
+              })}
             </Text>
-            <FormInput
-              value={state.calories}
-              onChangeText={setCalories}
+            <EnergyFormInput
+              kcalValue={state.calories}
+              onChangeKcal={setCalories}
               accessibilityLabel={t('activityAdd.accessibility.calories', {
                 defaultValue: 'Calories',
               })}

@@ -30,7 +30,6 @@ import {
   updateEntry,
 } from '../services/api/medicationsApi';
 import {
-  caffeineActiveQueryKey,
   medicationsListQueryKey,
   medicationEntriesQueryKey,
   measurementsQueryKey,
@@ -39,6 +38,7 @@ import {
   waterContainersQueryKey,
   waterIntakeLogQueryKey,
 } from './queryKeys';
+import { invalidateIntakeKinetics } from './invalidateIntakeKinetics';
 import { refreshHealthSyncCache } from './refreshHealthSyncCache';
 import { getTodayDate, addDays, getDeviceTimezone } from '../utils/dateUtils';
 import {
@@ -86,6 +86,7 @@ import { useRunProgram } from '../services/runProgramService';
 import { suggestedPaceRangesFromRace } from '../utils/suggestedRanges';
 import { buildWatchRunPlans } from '../utils/watchRunPlans';
 import { useZone2HeartRateBand } from './useZone2HeartRateBand';
+import { useWatchHeartRateZoneFloors } from './useWatchHeartRateZoneFloors';
 import {
   getWatchIndoorScale,
   onWatchIndoorScaleChange,
@@ -93,6 +94,7 @@ import {
 import { presetName } from '../components/recording/IntervalSetup';
 import { programWorkoutLabel } from '../components/recording/RunProgramCard';
 import { getAppLocale } from '../localization';
+import { normalizeEnergyUnit } from '@workspace/shared';
 
 /** Saved workouts the watch may start. Presets with no exercises are omitted:
  * the server rejects a session that has none. */
@@ -283,8 +285,15 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   );
   const watchUpNextPage = useAppPreferencesStore((s) => s.watchUpNextPage);
   const watchLargerText = useAppPreferencesStore((s) => s.watchLargerText);
-  const watchClassicWorkout = useAppPreferencesStore(
-    (s) => s.watchClassicWorkout
+  const watchNewWorkout = useAppPreferencesStore((s) => s.watchNewWorkout);
+  const watchWorkoutCountdown = useAppPreferencesStore(
+    (s) => s.watchWorkoutCountdown
+  );
+  const watchHoldCountdown = useAppPreferencesStore(
+    (s) => s.watchHoldCountdown
+  );
+  const watchWorkoutTopLine = useAppPreferencesStore(
+    (s) => s.watchWorkoutTopLine
   );
   const watchDoubleTapEnabled = useAppPreferencesStore(
     (s) => s.watchDoubleTapEnabled
@@ -319,6 +328,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // A weighted carry's distance follows the phone's distance unit: the watch
   // shows metres, or yards when the phone is set to miles.
   const distanceUnit = watchDistanceUnit(preferences?.default_distance_unit);
+  const energyUnit = normalizeEnergyUnit(preferences?.energy_unit);
   const { status: programStatus, enabled: programEnabled } = useRunProgram();
   // The learned indoor distance factor, re-read whenever a correction
   // changes it, so the next context push carries the new value.
@@ -357,6 +367,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     [paceReferenceOnWatch, paceReferenceRace, programStatus]
   );
   const zone2Band = useZone2HeartRateBand(enabled);
+  const heartRateZoneFloors = useWatchHeartRateZoneFloors(enabled);
   const runPlans = useMemo(
     () =>
       buildWatchRunPlans(
@@ -880,6 +891,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         failedClientIds: failedClientIdsRef.current.slice(-20),
         weightUnit,
         distanceUnit,
+        energyUnit,
         containers: watchContainers,
         // Goal and display unit ride outside the day gate: the watch treats
         // both as account configuration and carries them forward, which is
@@ -893,7 +905,10 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         setScreenMetrics: watchSetScreenMetrics,
         upNextPage: watchUpNextPage,
         largerText: watchLargerText,
-        classicWorkout: watchClassicWorkout,
+        newWorkout: watchNewWorkout,
+        workoutCountdown: watchWorkoutCountdown,
+        holdCountdown: watchHoldCountdown,
+        workoutTopLine: watchWorkoutTopLine,
         // This build handles a skipped dose from the watch.
         medicationSkip: true,
         // ... and "do this exercise now" from the workout pages.
@@ -915,6 +930,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
             }
           : {}),
         runPlans,
+        ...(heartRateZoneFloors ? { heartRateZoneFloors } : {}),
         ...(indoorDistanceScale ? { indoorDistanceScale } : {}),
         startableWorkouts,
         suggestedExercises,
@@ -957,6 +973,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   }, [
     weightUnit,
     distanceUnit,
+    energyUnit,
     hapticsEnabled,
     restAlertsEnabled,
     watchDoubleTapEnabled,
@@ -964,8 +981,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     watchSetScreenMetrics,
     watchUpNextPage,
     watchLargerText,
-    watchClassicWorkout,
+    watchNewWorkout,
+    watchWorkoutCountdown,
+    watchHoldCountdown,
+    watchWorkoutTopLine,
     runPlans,
+    heartRateZoneFloors,
     indoorDistanceScale,
     startableWorkouts,
     suggestedExercises,
@@ -1257,9 +1278,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           queryClient.invalidateQueries({
             queryKey: waterIntakeLogQueryKey(payload.entryDate),
           }),
-          queryClient.invalidateQueries({
-            queryKey: caffeineActiveQueryKey(payload.entryDate),
-          }),
+          invalidateIntakeKinetics(queryClient, payload.entryDate),
         ]);
 
         addLog(
@@ -1342,9 +1361,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           queryClient.invalidateQueries({
             queryKey: waterIntakeLogQueryKey(today),
           }),
-          queryClient.invalidateQueries({
-            queryKey: caffeineActiveQueryKey(today),
-          }),
+          // The server also deletes a food entry linked to the log row (a
+          // drink container tied to a food, possibly alcoholic), and the
+          // delete carries no day: the row can be from an earlier day the
+          // watch still lists, so refresh every day's curves.
+          invalidateIntakeKinetics(queryClient),
         ]);
 
         addLog(`Watch deleted water log entry ${payload.entryId}`, 'INFO');

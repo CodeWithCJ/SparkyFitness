@@ -74,6 +74,7 @@ describe('ReportsSettingsScreen', () => {
       'measurements',
       'exercise',
       'heartRate',
+      'oralCare',
       'compare',
     ]);
   });
@@ -100,6 +101,7 @@ describe('ReportsSettingsScreen', () => {
         'mood',
         'exercise',
         'heartRate',
+        'oralCare',
       ],
     });
 

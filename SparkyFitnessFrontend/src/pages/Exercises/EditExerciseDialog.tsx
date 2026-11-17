@@ -34,8 +34,11 @@ import {
   resolveCanonicalOrCustomEquipment,
 } from '@workspace/shared';
 import { resolveExerciseImageSrc } from '@/utils/exercises';
+import { HealthActivityTypeSelect } from '@/components/HealthActivityTypeSelect';
 import { TagInput } from '@/components/ui/TagInput';
 import { localizeMuscle, localizeEquipment } from '@/utils/exerciseTaxonomy';
+import { usePreferences } from '@/contexts/PreferencesContext';
+import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 
 interface EditExerciseDialogProps {
   form: ReturnType<typeof useEditExerciseForm>;
@@ -43,6 +46,7 @@ interface EditExerciseDialogProps {
 
 export default function EditExerciseDialog({ form }: EditExerciseDialogProps) {
   const { t } = useTranslation();
+  const { energyUnit, getEnergyUnitString } = usePreferences();
   const isDuplicate = form.dialogMode === 'duplicate';
 
   return (
@@ -146,20 +150,62 @@ export default function EditExerciseDialog({ form }: EditExerciseDialogProps) {
               </Select>
             </div>
 
+            {/* Health activity type (#1750) */}
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label
+                htmlFor="edit-health-activity-type"
+                className="text-right pt-2"
+              >
+                {t(
+                  'exercise.addExerciseDialog.healthActivityTypeLabel',
+                  'Health activity type'
+                )}
+              </Label>
+              <div className="col-span-3 space-y-1">
+                <HealthActivityTypeSelect
+                  id="edit-health-activity-type"
+                  value={form.editExerciseHealthActivityType}
+                  onChange={form.setEditExerciseHealthActivityType}
+                  exercise={{
+                    name: form.editExerciseName,
+                    category: form.editExerciseCategory,
+                    modality: form.editExerciseModality,
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    'exercise.addExerciseDialog.healthActivityTypeHint',
+                    'Used when the mobile app writes your workouts to Apple Health or Health Connect.'
+                  )}
+                </p>
+              </div>
+            </div>
+
             {/* Calories/Hour */}
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="edit-calories" className="text-right">
                 {t(
-                  'exercise.addExerciseDialog.caloriesPerHourLabel',
-                  'Calories/Hour'
+                  'exercise.addExerciseDialog.caloriesPerHourWithUnit',
+                  'Calories/Hour ({{unit}})',
+                  { unit: getEnergyUnitString(energyUnit) }
                 )}
               </Label>
               <Input
                 id="edit-calories"
                 type="number"
-                value={form.editExerciseCalories.toString()}
+                value={shownEnergyInput(
+                  form.editExerciseCalories,
+                  energyUnit
+                ).toString()}
                 onChange={(e) =>
-                  form.setEditExerciseCalories(Number(e.target.value))
+                  form.setEditExerciseCalories(
+                    Number(
+                      kcalFromEnergyInput(
+                        e.target.value === '' ? '' : Number(e.target.value),
+                        energyUnit
+                      )
+                    )
+                  )
                 }
                 className="col-span-3"
               />

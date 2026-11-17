@@ -18,6 +18,7 @@ const { Pool, types } = pg;
 
 export const dbContextStorage = new AsyncLocalStorage<{
   authenticatedUserId: string;
+  actorIsFixed?: boolean;
 }>();
 // Parse numeric types
 types.setTypeParser(types.builtins.NUMERIC, (value) => parseFloat(value));
@@ -135,7 +136,10 @@ async function getClient(
   await refuseWorkDuringRestore();
   const store = dbContextStorage.getStore();
   const actualAuthUserId =
-    authenticatedUserId || store?.authenticatedUserId || userId;
+    (store?.actorIsFixed && store.authenticatedUserId) ||
+    authenticatedUserId ||
+    store?.authenticatedUserId ||
+    userId;
   const client = await retryOnConnectionError(async () => {
     const client = await _getRawAppPool().connect();
     try {
@@ -151,6 +155,21 @@ async function getClient(
   }, requestConnectRetry);
   return unlessWorkAborted(client);
 }
+/**
+ * Runs work whose connections all act as `actorUserId`, whatever actor the code
+ * passes to getClient. Chat tools run this way so that one naming the target as
+ * its own actor can't skip the Family Access checks in RLS.
+ */
+function withFixedActor<T>(actorUserId: string, work: () => T): T {
+  return dbContextStorage.run(
+    {
+      ...dbContextStorage.getStore(),
+      authenticatedUserId: actorUserId,
+      actorIsFixed: true,
+    },
+    work
+  );
+}
 async function getSystemClient() {
   throwIfWorkAborted();
   await refuseWorkDuringRestore();
@@ -165,9 +184,9 @@ async function getSystemClient() {
  * (new write requests are refused at the door, in
  * middleware/restoreWriteFence.ts) gets no further connection, so it cannot
  * write into the restored database or race the uploads swap. A write request
- * still running once the restored database is in gets none either, since it
- * may write what it read before. A connection it already holds is ended by
- * the swap.
+ * or scheduled job still running once the restored database is in gets none
+ * either, since it may write what it read before. A connection it already
+ * holds is ended by the swap.
  */
 async function refuseWorkDuringRestore(
   connection?: Pick<pg.ClientBase, 'query'>
@@ -180,7 +199,7 @@ async function refuseWorkDuringRestore(
   }
   if (restoredSinceAdmitted()) {
     throw new Error(
-      'A backup was restored while this request ran; it stopped so it does not write what it read before the restore.'
+      'A backup was restored while this work ran; it stopped so it does not write what it read before the restore.'
     );
   }
 }
@@ -240,6 +259,24 @@ appPoolInstance = createAppPoolInstance();
 export { endPool };
 export { resetPool };
 export { getClient };
+/**
+ * The person doing the work: inside withFixedActor that is the fixed actor,
+ * otherwise `userId` itself. Chat tools use it for the actor argument of
+ * services that record who made an entry.
+ */
+function actorUserIdFor(userId: string): string {
+  const store = dbContextStorage.getStore();
+  return store?.actorIsFixed ? store.authenticatedUserId : userId;
+}
+/**
+ * The signed-in person behind the current request (inside withFixedActor, the
+ * fixed actor), or `userId` outside any request. For what stays with whoever is
+ * signed in after a Profile Switcher switch, such as their AI services.
+ */
+function signedInUserIdOr(userId: string): string {
+  return dbContextStorage.getStore()?.authenticatedUserId ?? userId;
+}
+export { withFixedActor, actorUserIdFor, signedInUserIdOr };
 export { getSystemClient };
 export { getPoolStats };
 export { _getRawOwnerPool as getRawOwnerPool };

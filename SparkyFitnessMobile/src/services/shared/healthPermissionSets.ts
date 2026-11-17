@@ -1,5 +1,8 @@
 import { HEALTH_METRICS } from '../../HealthMetrics';
-import { WRITEBACK_METRICS } from '../../WritebackMetrics';
+import {
+  WRITEBACK_METRICS,
+  writebackMetricPermissions,
+} from '../../WritebackMetrics';
 import type {
   PermissionRequest,
   HealthMetricStates,
@@ -29,7 +32,9 @@ export const enabledWritebackPermissions = (
     (metric) =>
       writebackStates[metric.id] === true &&
       (!recordTypes || recordTypes.has(metric.permission.recordType))
-  ).map((metric) => metric.permission);
+  ).flatMap(
+    (metric) => writebackMetricPermissions(metric) as PermissionRequest[]
+  );
 
 /** Read permissions for enabled read metrics covering a record type. */
 export const enabledReadPermissionsForRecordType = (
@@ -66,7 +71,9 @@ export const loadAllEnabledPermissions = async (
   const write: PermissionRequest[] = [];
   for (const metric of WRITEBACK_METRICS) {
     if ((await loadHealthPreference<boolean>(metric.preferenceKey)) === true) {
-      write.push(metric.permission);
+      write.push(
+        ...(writebackMetricPermissions(metric) as PermissionRequest[])
+      );
     }
   }
 

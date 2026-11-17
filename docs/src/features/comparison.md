@@ -77,6 +77,7 @@ These are the projects most people compare SparkyFitness against when they want 
 | Per-nutrient goal direction (min / max / range) | ✅ | ❌ | ❌ | 🟡 | 🟡 | ❌ |
 | Saved goal presets | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Weekly goal plans (different targets per weekday) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Calorie cycling (training vs rest days, same weekly total) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Multiple BMR formulas | ✅ 5 formulas | 🟡 | 🟡 | 🟡 | ❌ | ❌ |
 | Adaptive TDEE from intake & weight trend | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Fitness** | | | | | | |

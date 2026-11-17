@@ -978,6 +978,534 @@ describe('exerciseStatsService', () => {
       expect(res.cardioPRs[0].sport).toBe('walking');
       expect(res.cardioPRs[0].activityName).toBe('Antwerp Walking');
     });
+
+    // #3469: a treadmill 5K test stopped after 2 seconds was saved as a 5 km
+    // run with no track and took the 5 km record at 0:02. A time faster than
+    // the sport allows comes from a wrong duration or distance, so it holds no
+    // record, however the time was found.
+    describe('times faster than the sport allows', () => {
+      const runDetail = { activityType: { typeKey: 'running' } };
+      // 5 km at 5:00 /km, as an indoor run's [active seconds, metres] rows.
+      const steadySeries = [0, 1, 2, 3, 4, 5].map((km): [number, number] => [
+        km * 300,
+        km * 1000,
+      ]);
+      // A GPS track whose points carry the watch's own distance, which is
+      // taken as recorded, from [seconds, metres] marks.
+      const deviceTrack = (marks: [number, number][]) => {
+        const start = Date.parse('2026-10-10T07:00:00Z');
+        return marks.map(([seconds, meters]) => ({
+          t: new Date(start + seconds * 1000).toISOString(),
+          lat: 50,
+          lon: 4,
+          dist: meters,
+        }));
+      };
+
+      it('keeps an untracked entry out of the records', async () => {
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'treadmill-2s',
+              exercise_name: 'Indoor Running',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-11-08'),
+              duration_minutes: 2 / 60,
+              distance: 5,
+              provider_name: null,
+              detail_data: null,
+              exercise_source_id: null,
+            },
+            {
+              id: 'parkrun-5k',
+              exercise_name: 'Parkrun',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-11-01'),
+              duration_minutes: 25,
+              distance: 5,
+              provider_name: 'garmin',
+              detail_data: runDetail,
+              exercise_source_id: null,
+            },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+        const res =
+          await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+        const fiveK = res.cardioPRs.find(
+          (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '5k'
+        );
+        expect(fiveK?.activityId).toBe('parkrun-5k');
+        expect(fiveK?.bestTimeSeconds).toBe(1500);
+        expect(
+          res.cardioPRs.filter((pr) => pr.activityId === 'treadmill-2s')
+        ).toEqual([]);
+      });
+
+      it('still counts a fast but possible run', async () => {
+        // 5 km in 13:00 is close to the world record, and about 6.4 m/s.
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'track-5k',
+              exercise_name: 'Track 5K',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-09-12'),
+              duration_minutes: 13,
+              distance: 5,
+              provider_name: 'garmin',
+              detail_data: runDetail,
+              exercise_source_id: null,
+            },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+        const res =
+          await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+        const fiveK = res.cardioPRs.find(
+          (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '5k'
+        );
+        expect(fiveK?.activityId).toBe('track-5k');
+        expect(fiveK?.bestTimeSeconds).toBe(780);
+        expect(fiveK?.formattedPace).toBe('2:36 /km');
+      });
+
+      it('holds each sport to its own ceiling', async () => {
+        // 10 km in 12:00 is 13.9 m/s: a fast bike time trial, but no run.
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'typo-run',
+              exercise_name: 'Morning Run',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-09-20'),
+              duration_minutes: 12,
+              distance: 10,
+              provider_name: 'garmin',
+              detail_data: runDetail,
+              exercise_source_id: null,
+            },
+            {
+              id: 'easy-10k',
+              exercise_name: 'Easy 10K',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-09-14'),
+              duration_minutes: 55,
+              distance: 10,
+              provider_name: 'garmin',
+              detail_data: runDetail,
+              exercise_source_id: null,
+            },
+            {
+              id: 'time-trial',
+              exercise_name: 'Time Trial',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-09-21'),
+              duration_minutes: 12,
+              distance: 10,
+              provider_name: 'garmin',
+              detail_data: { activityType: { typeKey: 'cycling' } },
+              exercise_source_id: null,
+            },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+        const res =
+          await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+        const run10k = res.cardioPRs.find(
+          (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '10k'
+        );
+        const ride10k = res.cardioPRs.find(
+          (pr) => pr.sportGroup === 'ride' && pr.distanceStandard === '10k'
+        );
+        expect(run10k?.activityId).toBe('easy-10k');
+        expect(run10k?.bestTimeSeconds).toBe(3300);
+        expect(ride10k?.activityId).toBe('time-trial');
+        expect(ride10k?.bestTimeSeconds).toBe(720);
+      });
+
+      it('ignores a distance-series split faster than the sport allows', async () => {
+        // The series jumps 1 km in one second; the rest of the run is real.
+        const series: [number, number][] = [
+          [0, 0],
+          [300, 1000],
+          [600, 2000],
+          [601, 3000],
+          [900, 4000],
+          [1200, 5000],
+        ];
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'indoor-jump',
+              exercise_name: 'Indoor Running',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-10-03'),
+              duration_minutes: 20,
+              distance: 5,
+              provider_name: null,
+              detail_data: null,
+              exercise_source_id: null,
+              has_gps_track: false,
+              has_distance_series: true,
+            },
+            {
+              id: 'run-1k',
+              exercise_name: 'Morning Run',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-10-01'),
+              duration_minutes: 4.5,
+              distance: 1,
+              provider_name: 'garmin',
+              detail_data: runDetail,
+              exercise_source_id: null,
+            },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({
+          rows: [{ exercise_entry_id: 'indoor-jump', points: series }],
+        });
+        mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+        const res =
+          await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+        const oneK = res.cardioPRs.find(
+          (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '1k'
+        );
+        const fiveK = res.cardioPRs.find(
+          (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '5k'
+        );
+        expect(oneK?.activityId).toBe('run-1k');
+        expect(oneK?.bestTimeSeconds).toBe(270);
+        // A longer stretch that takes the jump in still counts while its
+        // average is within the ceiling (5 km in 20:00 here, and a mile in
+        // about 3:03): the ceiling only refuses stretches faster than 12 m/s,
+        // not every glitch.
+        expect(fiveK?.activityId).toBe('indoor-jump');
+        expect(fiveK?.bestTimeSeconds).toBe(1200);
+        expect(fiveK?.timeBasis).toBe('best_split');
+      });
+
+      it('lets the distance series answer when the track split is too fast', async () => {
+        // A jump in the watch's own distance gives an impossible split; the
+        // series answers that distance instead.
+        const gps = deviceTrack([
+          [0, 0],
+          [300, 1000],
+          [600, 2000],
+          [601, 3000],
+          [900, 4000],
+          [1200, 5000],
+        ]);
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'watch-jump',
+              exercise_name: 'Morning Run',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-10-10'),
+              duration_minutes: 25,
+              distance: 5,
+              provider_name: 'garmin',
+              detail_data: runDetail,
+              exercise_source_id: null,
+              has_gps_track: true,
+              has_distance_series: true,
+            },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({
+          rows: [{ exercise_entry_id: 'watch-jump', points: gps }],
+        });
+        mockClient.query.mockResolvedValueOnce({
+          rows: [{ exercise_entry_id: 'watch-jump', points: steadySeries }],
+        });
+        mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+        const res =
+          await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+        const oneK = res.cardioPRs.find(
+          (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '1k'
+        );
+        expect(oneK?.activityId).toBe('watch-jump');
+        expect(oneK?.bestTimeSeconds).toBe(300);
+        expect(oneK?.timeBasis).toBe('best_split');
+      });
+
+      it('checks track splits against the ceiling of their own sport', async () => {
+        // A ride's first 10 km in 12:00 (13.9 m/s) is fast but possible; a
+        // run's kilometre in 1:20 (12.5 m/s) is not.
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'ride-20k',
+              exercise_name: 'Evening Ride',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-09-28'),
+              duration_minutes: 40,
+              distance: 20,
+              provider_name: 'garmin',
+              detail_data: { activityType: { typeKey: 'cycling' } },
+              exercise_source_id: null,
+              has_gps_track: true,
+              has_distance_series: false,
+            },
+            {
+              id: 'run-3k',
+              exercise_name: 'Tempo Run',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-09-27'),
+              duration_minutes: 680 / 60,
+              distance: 3,
+              provider_name: 'garmin',
+              detail_data: runDetail,
+              exercise_source_id: null,
+              has_gps_track: true,
+              has_distance_series: false,
+            },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            {
+              exercise_entry_id: 'ride-20k',
+              points: deviceTrack([
+                [0, 0],
+                [720, 10000],
+                [2400, 20000],
+              ]),
+            },
+            {
+              exercise_entry_id: 'run-3k',
+              points: deviceTrack([
+                [0, 0],
+                [300, 1000],
+                [380, 2000],
+                [680, 3000],
+              ]),
+            },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+        const res =
+          await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+        const ride10k = res.cardioPRs.find(
+          (pr) => pr.sportGroup === 'ride' && pr.distanceStandard === '10k'
+        );
+        expect(ride10k?.activityId).toBe('ride-20k');
+        expect(ride10k?.bestTimeSeconds).toBe(720);
+        expect(ride10k?.timeBasis).toBe('best_split');
+        expect(
+          res.cardioPRs.find(
+            (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '1k'
+          )
+        ).toBeUndefined();
+      });
+
+      it("falls back to the activity's own pace when its track split is too fast", async () => {
+        // The watch's distance covers the whole kilometre in one second, but
+        // the run itself, 1 km in 5:00, is believable.
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'jump-1k',
+              exercise_name: 'Morning Run',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-10-12'),
+              duration_minutes: 5,
+              distance: 1,
+              provider_name: 'garmin',
+              detail_data: runDetail,
+              exercise_source_id: null,
+              has_gps_track: true,
+              has_distance_series: false,
+            },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            {
+              exercise_entry_id: 'jump-1k',
+              points: deviceTrack([
+                [0, 0],
+                [150, 0],
+                [151, 1000],
+                [300, 1000],
+              ]),
+            },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+        const res =
+          await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+        const oneK = res.cardioPRs.find(
+          (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '1k'
+        );
+        expect(oneK?.activityId).toBe('jump-1k');
+        expect(oneK?.bestTimeSeconds).toBe(300);
+        expect(oneK?.timeBasis).toBe('activity_pace');
+      });
+
+      it('keeps the records a believable series sets for an entry with an impossible average', async () => {
+        // The stored duration is 2 s, but a split never reads it: the series
+        // covers 5 km in 25:00.
+        mockClient.query.mockResolvedValueOnce({
+          rows: [
+            {
+              id: 'series-2s',
+              exercise_name: 'Indoor Running',
+              category: 'cardio',
+              notes: null,
+              entry_date: new Date('2026-11-08'),
+              duration_minutes: 2 / 60,
+              distance: 5,
+              provider_name: null,
+              detail_data: null,
+              exercise_source_id: null,
+              has_gps_track: false,
+              has_distance_series: true,
+            },
+          ],
+        });
+        mockClient.query.mockResolvedValueOnce({
+          rows: [{ exercise_entry_id: 'series-2s', points: steadySeries }],
+        });
+        mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+        const res =
+          await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+        const fiveK = res.cardioPRs.find(
+          (pr) => pr.sportGroup === 'run' && pr.distanceStandard === '5k'
+        );
+        expect(fiveK?.activityId).toBe('series-2s');
+        expect(fiveK?.bestTimeSeconds).toBe(1500);
+        expect(fiveK?.timeBasis).toBe('best_split');
+      });
+
+      it('takes the longest activity its sport allows for the best-effort card', async () => {
+        // None is near a distance standard, so the card is looked up, longest
+        // first. The walk at 8 m/s is under the run ceiling (12 m/s) but over
+        // the walk one (7 m/s); the ride at 9.2 m/s (33 km/h) is over the walk
+        // ceiling but under its own (30 m/s); the run after it is a second
+        // allowed activity, and only one card is shown.
+        const rows = [
+          {
+            id: 'walk-fast',
+            exercise_name: 'Evening Walk',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-11-03'),
+            duration_minutes: 13.5,
+            distance: 6.5,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'walking' } },
+            exercise_source_id: null,
+          },
+          {
+            id: 'treadmill-6k',
+            exercise_name: 'Indoor Running',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-11-08'),
+            duration_minutes: 2 / 60,
+            distance: 6,
+            provider_name: null,
+            detail_data: null,
+            exercise_source_id: null,
+          },
+          {
+            id: 'ride-5k5',
+            exercise_name: 'Evening Ride',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-10-25'),
+            duration_minutes: 10,
+            distance: 5.5,
+            provider_name: 'garmin',
+            detail_data: { activityType: { typeKey: 'cycling' } },
+            exercise_source_id: null,
+          },
+          {
+            id: 'run-3k2',
+            exercise_name: 'Lunch Run',
+            category: 'cardio',
+            notes: null,
+            entry_date: new Date('2026-10-20'),
+            duration_minutes: 15,
+            distance: 3.2,
+            provider_name: 'garmin',
+            detail_data: runDetail,
+            exercise_source_id: null,
+          },
+        ];
+        mockClient.query.mockResolvedValueOnce({ rows });
+        mockClient.query.mockResolvedValueOnce({ rows });
+        mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+        const res =
+          await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+        expect(String(mockClient.query.mock.calls[1]?.[0])).toMatch(
+          /LIMIT 10\b/
+        );
+        expect(res.cardioPRs).toHaveLength(1);
+        expect(res.cardioPRs[0].id).toBe('pr-ride-longest');
+        expect(res.cardioPRs[0].activityId).toBe('ride-5k5');
+        expect(res.cardioPRs[0].label).toBe('Best Effort (5.5 km)');
+        expect(res.cardioPRs[0].bestTimeSeconds).toBe(600);
+      });
+
+      it('shows a sport with no ceiling on the best-effort card as recorded', async () => {
+        // Skiing has no speed limit, so 12 km in 10:00 (20 m/s) is shown.
+        const ski = {
+          id: 'ski-fast',
+          exercise_name: 'Downhill Skiing',
+          category: 'cardio',
+          notes: null,
+          entry_date: new Date('2026-02-23'),
+          duration_minutes: 10,
+          distance: 12,
+          provider_name: null,
+          detail_data: null,
+          exercise_source_id: null,
+        };
+        mockClient.query.mockResolvedValueOnce({ rows: [ski] });
+        mockClient.query.mockResolvedValueOnce({ rows: [ski] });
+        mockClient.query.mockResolvedValueOnce({ rows: [] });
+
+        const res =
+          await exerciseStatsService.getPersonalRecordMatrix('user-123');
+
+        expect(res.cardioPRs).toHaveLength(1);
+        expect(res.cardioPRs[0].id).toBe('pr-other-longest');
+        expect(res.cardioPRs[0].bestTimeSeconds).toBe(600);
+      });
+    });
   });
 
   describe('getMatchedCourses', () => {

@@ -1,6 +1,13 @@
-import { todayInZone } from '@workspace/shared';
+import {
+  normalizeEnergyUnit,
+  todayInZone,
+  type EnergyUnit,
+} from '@workspace/shared';
 import { CalorieWidgetBridge } from './CalorieWidgetBridge';
-import { ensureTimezoneBootstrapped } from './api/preferencesApi';
+import {
+  ensureTimezoneBootstrapped,
+  fetchPreferences,
+} from './api/preferencesApi';
 import {
   buildDailySummary,
   loadDailySummaryRawData,
@@ -27,6 +34,8 @@ export interface AndroidMacroSnapshot {
   proteinGoal: number;
   carbsGoal: number;
   fatGoal: number;
+  /** `calories` and `remaining` stay in kcal; this is the unit to show them in. */
+  energyUnit: EnergyUnit;
 }
 
 /** What the water widgets need beyond the day's totals. */
@@ -81,14 +90,17 @@ export function buildAndroidWaterSnapshot(
   };
 }
 
-export function buildAndroidWidgetSnapshots(summary: DailySummary): {
+export function buildAndroidWidgetSnapshots(
+  summary: DailySummary,
+  energyUnit: EnergyUnit = 'kcal'
+): {
   calorie?: CalorieWidgetSnapshot;
   macro: AndroidMacroSnapshot;
 } {
   const balance = summary.calorieBalance;
 
   return {
-    calorie: buildCalorieWidgetSnapshot(summary),
+    calorie: buildCalorieWidgetSnapshot(summary, energyUnit),
     macro: {
       date: summary.date,
       protein: summary.protein.consumed,
@@ -103,6 +115,7 @@ export function buildAndroidWidgetSnapshots(summary: DailySummary): {
       proteinGoal: summary.protein.goal,
       carbsGoal: summary.carbs.goal,
       fatGoal: summary.fat.goal,
+      energyUnit,
     },
   };
 }
@@ -169,9 +182,17 @@ export async function refreshAndroidWidgetsFromServer(): Promise<void> {
     throw new Error('Account timezone is unavailable for widget refresh');
   }
   const date = todayInZone(timezone);
-  const raw = await loadDailySummaryRawData(date);
+  const [raw, energyUnit] = await Promise.all([
+    loadDailySummaryRawData(date),
+    // The widget only labels its numbers with this, so a failed read shows
+    // kcal for one refresh rather than failing the whole widget update.
+    Promise.resolve()
+      .then(fetchPreferences)
+      .then((preferences) => normalizeEnergyUnit(preferences.energy_unit))
+      .catch(() => 'kcal' as const),
+  ]);
   const summary = buildDailySummary(date, raw);
-  const snapshots = buildAndroidWidgetSnapshots(summary);
+  const snapshots = buildAndroidWidgetSnapshots(summary, energyUnit);
   const lastUpdated = Math.floor(Date.now() / 1000);
   const updates: Promise<void>[] = [];
   // The account changed while the summary loaded. Checked in the same turn

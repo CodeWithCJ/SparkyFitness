@@ -1,4 +1,8 @@
-import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
+import {
+  getActiveServerConfig,
+  proxyHeadersToRecord,
+  type ServerConfig,
+} from '../storage';
 import { addLog } from '../LogService';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { ApiError } from './errors';
@@ -26,6 +30,17 @@ interface ApiFetchOptions {
    * on the `ApiError`.
    */
   logResponseBody?: boolean;
+  /**
+   * Cancels the request, including reading the response body, which
+   * `timeoutMs` does not cover.
+   */
+  signal?: AbortSignal;
+  /**
+   * The server and credentials to send with, in place of whichever config is
+   * active when the request starts. For work that belongs to one account and
+   * must never reach another one switched to meanwhile.
+   */
+  serverConfig?: ServerConfig;
 }
 
 export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
@@ -38,9 +53,11 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
     headers: customHeaders,
     timeoutMs = DEFAULT_API_TIMEOUT_MS,
     logResponseBody = true,
+    signal,
+    serverConfig,
   } = options;
 
-  const config = await getActiveServerConfig();
+  const config = serverConfig ?? (await getActiveServerConfig());
   if (!config) {
     throw new Error('Server configuration not found.');
   }
@@ -82,6 +99,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
           ...customHeaders,
         },
         ...(body ? { body: JSON.stringify(body) } : {}),
+        ...(signal ? { signal } : {}),
       },
       timeoutMs
     );
@@ -112,6 +130,7 @@ export async function apiFetch<T>(options: ApiFetchOptions): Promise<T> {
 
     return await response.json();
   } catch (error) {
+    if (signal?.aborted) throw error;
     // An ApiError's message embeds the response body, so with body logging off
     // only its status is logged.
     const message =

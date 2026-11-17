@@ -466,10 +466,11 @@ export const fetchDailyHeartRateMetrics = async (
 };
 
 export const fetchCustomMeasurementsByDate = async (
-  date: string
+  date: string,
+  byTimestamp = false
 ): Promise<CustomMeasurementEntry[]> => {
   return apiFetch<CustomMeasurementEntry[]>({
-    endpoint: `/api/measurements/custom-entries/${date}`,
+    endpoint: `/api/measurements/custom-entries/${date}${byTimestamp ? '?byTimestamp=true' : ''}`,
     serviceName: 'Measurements API',
     operation: 'fetch custom measurements by date',
   });

@@ -15,8 +15,7 @@ import { resolveFoodProviderNetworkPolicy } from '../utils/outboundUrlPolicy.js'
 // Non-admins get a guarded outbound fetch (blocks redirect-to-internal and
 // private-resolving hostnames); admins keep the plain fetch. Resolved per call
 // from the acting user so it reflects their current role.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function foodProviderPolicyFor(userId: any) {
+async function foodProviderPolicyFor(userId: string) {
   return resolveFoodProviderNetworkPolicy(await resolveIsAdminByUserId(userId));
 }
 
@@ -259,18 +258,15 @@ async function getFatSecretNutrients(
   }
 }
 async function searchMealieFoods(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  query: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  baseUrl: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  apiKey: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any,
+  query: string,
+  baseUrl: string | undefined,
+  apiKey: string | undefined,
+  userId: string,
+  providerId: string | undefined,
   page = 1
 ) {
+  if (!baseUrl || !apiKey)
+    throw new Error('Mealie server URL and API key are required.');
   log(
     'debug',
     `searchMealieFoods: query: ${query}, baseUrl: ${baseUrl}, apiKey: ${apiKey ? '***' : 'none'}, userId: ${userId}, providerId: ${providerId}, page: ${page}`
@@ -282,10 +278,7 @@ async function searchMealieFoods(
       await mealieService.searchRecipes(query, page);
     // Concurrently fetch details for all recipes
     const detailedRecipes = await Promise.all(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      searchResults.map((recipe: any) =>
-        mealieService.getRecipeDetails(recipe.slug)
-      )
+      searchResults.map((recipe) => mealieService.getRecipeDetails(recipe.slug))
     );
     // Filter out any null results (e.g., if a recipe detail fetch failed)
     const validRecipes = detailedRecipes.filter((recipe) => recipe !== null);
@@ -308,17 +301,14 @@ async function searchMealieFoods(
 }
 
 async function getMealieFoodDetails(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  slug: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  baseUrl: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  apiKey: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerId: any
+  slug: string,
+  baseUrl: string | undefined,
+  apiKey: string | undefined,
+  userId: string,
+  providerId: string | undefined
 ) {
+  if (!baseUrl || !apiKey)
+    throw new Error('Mealie server URL and API key are required.');
   log(
     'debug',
     `getMealieFoodDetails: slug: ${slug}, baseUrl: ${baseUrl}, apiKey: ${apiKey ? '***' : 'none'}, userId: ${userId}, providerId: ${providerId}`

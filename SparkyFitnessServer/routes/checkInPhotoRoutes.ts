@@ -190,9 +190,13 @@ router.get(
       return;
     }
     try {
+      // The photo is looked up by id, so the service checks that the caller
+      // may see its owner's check-in data; pass the real signed-in user, not
+      // only the switched context.
       const absolutePath = await checkInPhotoService.getPhotoFileById(
         req.userId,
-        parsed.data.id
+        parsed.data.id,
+        req.originalUserId || req.authenticatedUserId || req.userId
       );
       if (!absolutePath) {
         res.status(404).json({ error: 'Photo not found' });

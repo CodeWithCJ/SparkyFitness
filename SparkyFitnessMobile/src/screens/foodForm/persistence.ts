@@ -13,6 +13,7 @@ import type {
   FoodUnitVariant,
 } from '../../types/foodUnitVariants';
 import { parseDecimalInput } from '../../utils/numericInput';
+import { customNutrientsMatch } from '../../utils/foodDetails';
 
 export const FOOD_VARIANT_FIELDS: (keyof FoodFormData)[] = [
   'servingSize',
@@ -337,12 +338,19 @@ function updateFoodVariantCache(
   );
 }
 
+/** Builds a variant from the form values, carrying the given custom nutrients (else the base variant's). */
 export function buildVariantFromFormData(
   data: FoodFormData,
-  selection?: FoodUnitSelectionResult | null
+  selection?: FoodUnitSelectionResult | null,
+  // The form's edited custom-nutrient values. When given, they replace the
+  // selected variant's stored ones, so a new variant keeps the user's edits.
+  customNutrients?: Record<string, string | number> | null
 ): FoodUnitVariant {
   return {
     ...selection?.variant,
+    ...(customNutrients !== undefined
+      ? { custom_nutrients: customNutrients }
+      : {}),
     serving_size: parseDecimalInput(data.servingSize) || 0,
     serving_unit: data.servingUnit || 'serving',
     calories: parseDecimalInput(data.calories) || 0,
@@ -434,6 +442,7 @@ export function buildFormValuesFromVariant(
   };
 }
 
+/** Saves changed food metadata and variant nutrition, including custom nutrients, and refreshes the cache. */
 export async function persistFoodEdits({
   queryClient,
   foodId,
@@ -441,6 +450,7 @@ export async function persistFoodEdits({
   customNutrients,
   data,
   variantInitialValues,
+  variantInitialCustomNutrients,
   foodInitialValues,
 }: {
   queryClient: QueryClient;
@@ -449,13 +459,16 @@ export async function persistFoodEdits({
   customNutrients?: Record<string, string | number> | null;
   data: FoodFormData;
   variantInitialValues: Partial<FoodFormData>;
+  /** The variant's stored custom-nutrient values, to detect custom-only edits. */
+  variantInitialCustomNutrients?: Record<string, string | number> | null;
   foodInitialValues: Partial<FoodFormData>;
 }): Promise<boolean> {
-  const shouldUpdateVariant = hasFoodFormChanges(
-    variantInitialValues,
-    data,
-    FOOD_VARIANT_FIELDS
-  );
+  // Custom nutrients live outside the form fields, so a change to them alone
+  // must still count as a variant change or it is never sent.
+  const shouldUpdateVariant =
+    hasFoodFormChanges(variantInitialValues, data, FOOD_VARIANT_FIELDS) ||
+    (customNutrients != null &&
+      !customNutrientsMatch(customNutrients, variantInitialCustomNutrients));
   const shouldUpdateFood = hasFoodFormChanges(
     foodInitialValues,
     data,
