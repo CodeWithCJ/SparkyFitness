@@ -227,6 +227,19 @@ export const challengeRulesSchema = z
         message: 'target is required for this format', // i18n-ignore
       });
     }
+    // The goal bonus is weekly: a daily period would pay it only on the days
+    // it lands on, which skews the day's winner.
+    if (
+      rules.metric === 'points' &&
+      rules.period === 'day' &&
+      rules.points?.goal
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['points', 'goal'],
+        message: 'the weekly goal needs a period of a week or longer', // i18n-ignore
+      });
+    }
     if (rules.timeWindow && rules.timeWindow.start === rules.timeWindow.end) {
       ctx.addIssue({
         code: 'custom',
@@ -248,11 +261,29 @@ export type ChallengeRules = z.infer<typeof challengeRulesSchema>;
 export type ChallengeRulesInput = z.input<typeof challengeRulesSchema>;
 
 /**
- * Parses stored or submitted rules. Only version 1 exists; an older version
- * would be upgraded here before parsing, so stored rules never stop loading.
+ * Parses stored rules. Only version 1 exists; an older version would be
+ * upgraded here before parsing, so stored rules never stop loading. Rules
+ * saved before a daily period refused the weekly goal have it turned off
+ * here (a request with both is still refused by challengeRulesSchema).
  */
 export function parseChallengeRules(value: unknown) {
-  return challengeRulesSchema.safeParse(value);
+  return challengeRulesSchema.safeParse(withoutDailyGoal(value));
+}
+
+function withoutDailyGoal(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null) return value;
+  const rules = value as {
+    period?: unknown;
+    points?: { goal?: unknown } | null;
+  };
+  if (
+    rules.period !== 'day' ||
+    typeof rules.points !== 'object' ||
+    rules.points === null ||
+    rules.points.goal === null
+  )
+    return value;
+  return { ...rules, points: { ...rules.points, goal: null } };
 }
 
 /** The default points builder (the All-Rounder preset). */

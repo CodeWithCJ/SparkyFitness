@@ -14,9 +14,9 @@ import {
   challengeRulesEffectiveFrom,
   challengeRulesSchema,
   challengeStepPoints,
+  challengeEntryClass,
+  challengeFilterSport,
   challengeWeekGoal,
-  challengeWeekStart,
-  challengeWeeksIn,
   defaultPointsRules,
   heartRateZoneFor,
   isDayString,
@@ -24,10 +24,12 @@ import {
   isStrengthEntry,
   isoWeekday,
   mergeChallengeDuplicates,
+  parseChallengeRules,
   percentMaxFloors,
   rankChallengeStandings,
   resolveHeartRateZones,
   scoreChallengeDays,
+  weekStartOf,
   type ChallengeEntry,
   type ChallengeMemberZones,
   type ChallengeRules,
@@ -143,6 +145,7 @@ describe('challenge scoring (All-Rounder points)', () => {
         bestE1rm: 100,
       })
     ).toBe(true);
+    // The category decides first: Strength is lifting whatever the name says
     expect(
       isStrengthEntry({
         id: 'x',
@@ -150,6 +153,14 @@ describe('challenge scoring (All-Rounder points)', () => {
         durationMin: 1,
         name: 'Treadmill run',
         category: 'Strength',
+      })
+    ).toBe(true);
+    expect(
+      isStrengthEntry({
+        id: 'x',
+        date: 'x',
+        durationMin: 1,
+        name: 'Treadmill run',
       })
     ).toBe(false);
     expect(
@@ -454,17 +465,6 @@ describe('challenge scoring (All-Rounder points)', () => {
     expect(t.workouts).toBe(7);
   });
 
-  it('weeks starting inside a window, up to today', () => {
-    expect(challengeWeeksIn('2026-11-02', '2026-11-08', '2026-11-06')).toEqual([
-      '2026-11-02',
-    ]);
-    expect(challengeWeeksIn('2026-11-01', '2026-11-30', '2026-11-18')).toEqual([
-      '2026-11-02',
-      '2026-11-09',
-      '2026-11-16',
-    ]);
-  });
-
   it('ranking: points, then workout minutes, then name; ties share a rank', () => {
     const { rows } = rankChallengeStandings(
       [
@@ -496,9 +496,13 @@ describe('challenge scoring (All-Rounder points)', () => {
   });
 
   it('days: Monday-to-Sunday weeks and months', () => {
-    expect(challengeWeekStart('2026-11-06')).toBe('2026-11-02'); // Friday -> Monday
-    expect(challengeWeekStart('2026-11-08')).toBe('2026-11-02'); // Sunday -> the Monday before
-    expect(challengeWeekStart('2026-11-02')).toBe('2026-11-02');
+    // Weeks come from the shared weekStartOf, Monday first
+    const week = (day: string) =>
+      challengePeriodWindow('week', day, '2026-01-01', null).start;
+    expect(week('2026-11-06')).toBe('2026-11-02'); // Friday -> Monday
+    expect(week('2026-11-08')).toBe('2026-11-02'); // Sunday -> the Monday before
+    expect(week('2026-11-02')).toBe('2026-11-02');
+    expect(week('2026-11-08')).toBe(weekStartOf('2026-11-08', 1));
     expect(
       challengePeriodWindow('month', '2026-02-10', '2026-01-01', null)
     ).toEqual({ start: '2026-02-01', end: '2026-02-28' });
@@ -842,8 +846,9 @@ describe('challenge metrics and filters', () => {
     for (const source of ['garmin', 'HealthKit', 'sparky']) {
       expect(isManualEntry(row(source)), source).toBe(false);
     }
-    // A heart rate means it was measured, whatever the source says
-    expect(isManualEntry({ ...row('Manual'), avgHr: 140 })).toBe(false);
+    // The source alone decides: a heart rate typed into the diary form
+    // does not make the entry measured
+    expect(isManualEntry({ ...row('Manual'), avgHr: 140 })).toBe(true);
 
     const diary = (id: string, min: number): ChallengeEntry => ({
       ...row('Manual'),
@@ -1456,5 +1461,249 @@ describe('period totals up to a day', () => {
     ]);
     expect(t.total).toBe(20);
     expect(t.reachedOn).toBeNull();
+  });
+});
+
+describe('CodeWithCJ review (PR #3585)', () => {
+  const day = '2026-11-06';
+  const entry = (
+    id: string,
+    name: string,
+    category: string | null,
+    extra: Partial<ChallengeEntry> = {}
+  ): ChallengeEntry => ({
+    id,
+    date: day,
+    durationMin: 30,
+    name,
+    category,
+    source: 'garmin',
+    ...extra,
+  });
+
+  it('the category decides lifting first: Indoor Row (Cardio) is not lifting, Barbell, Seated Cable and Bent Over Rows are', () => {
+    const indoor = entry('indoor', 'Indoor Row', 'Cardio');
+    const barbell = entry('barbell', 'Barbell Row', 'Strength');
+    const cable = entry('cable', 'Seated Cable Row', 'Strength');
+    const bentOver = entry('bent', 'Bent Over Row', null);
+    expect(isStrengthEntry(indoor)).toBe(false);
+    expect(challengeEntryClass(indoor)).toBe('other');
+    // No lifting floor: a no-HR Indoor Row pays the no-HR rate
+    expect(challengeEntryRate(indoor, zones, pts).perMin).toBe(0.75);
+    expect(challengeEntryRate(indoor, zones, pts).strengthFloored).toBe(false);
+    for (const lift of [barbell, cable, bentOver]) {
+      expect(isStrengthEntry(lift), lift.name!).toBe(true);
+      expect(challengeEntryClass(lift), lift.name!).toBe('strength');
+      expect(challengeFilterSport(lift), lift.name!).toBe('strength');
+    }
+    expect(challengeFilterSport(indoor)).toBe('rowing');
+    // A bare "Row" with no category is still rowing
+    expect(challengeFilterSport(entry('row', 'Row', null))).toBe('rowing');
+  });
+
+  it('the sport filter follows the category: lifting rows count in a strength challenge, not a rowing one', () => {
+    const list = [
+      entry('indoor', 'Indoor Row', 'Cardio'),
+      entry('barbell', 'Barbell Row', 'Strength'),
+      entry('cable', 'Seated Cable Row', 'Strength'),
+      entry('bent', 'Bent Over Row', null),
+    ];
+    const ids = (sports: ChallengeRulesInput['activities']) =>
+      challengeCountedEntries(
+        list,
+        rulesWith({ metric: 'active_minutes', activities: sports })
+      )
+        .map((x) => x.id)
+        .sort();
+    expect(ids({ includeSports: ['strength'] })).toEqual([
+      'barbell',
+      'bent',
+      'cable',
+    ]);
+    expect(ids({ includeSports: ['rowing'] })).toEqual(['indoor']);
+    expect(ids({ excludeSports: ['strength'] })).toEqual(['indoor']);
+  });
+
+  it('a manual entry stays manual with a typed-in heart rate, so ignore and cap still apply', () => {
+    const typed = entry('typed', 'Run', null, {
+      source: 'Manual',
+      durationMin: 90,
+      avgHr: 160,
+    });
+    const minutes = (mode: 'ignore' | 'cap') =>
+      score(
+        [typed],
+        day,
+        day,
+        {},
+        rulesWith({
+          metric: 'active_minutes',
+          activities: { manualEntries: mode, manualMinutesCap: 30 },
+        })
+      )[0]!.total;
+    expect(minutes('ignore')).toBe(0);
+    expect(minutes('cap')).toBe(30);
+    // In a points challenge with the cap it is paid for 30 minutes, not 90
+    const points = challengeRulesSchema.parse({
+      ...allRounder,
+      activities: { manualEntries: 'cap', manualMinutesCap: 30 },
+    });
+    expect(score([typed], day, day, {}, points)[0]!.minutes).toBe(30);
+  });
+
+  it('a capped copy cuts distance, calories and elevation by the same fraction as its minutes', () => {
+    // 100 km typed in over 60 minutes, capped to 15: a quarter of it counts
+    const typed = entry('typed', 'Ride', 'Cardio', {
+      source: 'Manual',
+      durationMin: 60,
+      distanceM: 100_000,
+      activeCalories: 800,
+      elevationM: 400,
+    });
+    const total = (metric: ChallengeRules['metric']) =>
+      score(
+        [typed],
+        day,
+        day,
+        {},
+        rulesWith({
+          metric,
+          activities: { manualEntries: 'cap', manualMinutesCap: 15 },
+        })
+      )[0]!.total;
+    expect(total('distance')).toBe(25_000);
+    expect(total('active_calories')).toBe(200);
+    expect(total('elevation')).toBe(100);
+    expect(total('active_minutes')).toBe(15);
+    const [copy] = challengeCountedEntries(
+      [typed],
+      rulesWith({
+        metric: 'distance',
+        activities: { manualEntries: 'cap', manualMinutesCap: 15 },
+      })
+    );
+    // Pace stays the measured 0.6 min/km
+    expect(copy!.durationMin / (copy!.distanceM! / 1000)).toBeCloseTo(0.6);
+    // An entry under the cap is kept as it is
+    const short = { ...typed, durationMin: 10 };
+    expect(
+      challengeCountedEntries(
+        [short],
+        rulesWith({
+          metric: 'distance',
+          activities: { manualEntries: 'cap', manualMinutesCap: 15 },
+        })
+      )[0]
+    ).toBe(short);
+  });
+
+  it('the weekly goal is refused on a daily points challenge', () => {
+    const daily = { ...allRounder, period: 'day' as const };
+    expect(challengeRulesSchema.safeParse(daily).success).toBe(false);
+    expect(
+      challengeRulesSchema.safeParse({
+        ...daily,
+        points: { ...allRounder.points, goal: null },
+      }).success
+    ).toBe(true);
+    // Weekly, monthly and whole-challenge periods keep it
+    for (const period of ['week', 'month', 'challenge'] as const) {
+      expect(
+        challengeRulesSchema.safeParse({ ...allRounder, period }).success,
+        period
+      ).toBe(true);
+    }
+  });
+
+  it('a week cut by the period counts its own days against its share of the target', () => {
+    const runs = [
+      // Monday to Wednesday, before a challenge that starts on Thursday
+      entry('mon', 'Run', 'Cardio', { date: '2026-11-02' }),
+      entry('tue', 'Run', 'Cardio', { date: '2026-11-03' }),
+      entry('wed', 'Run', 'Cardio', { date: '2026-11-04' }),
+      entry('thu', 'Run', 'Cardio', { date: '2026-11-05' }),
+      entry('fri', 'Run', 'Cardio', { date: '2026-11-06' }),
+    ];
+    const all = [1, 2, 3, 4, 5, 6, 7];
+    const full = challengeWeekGoal(
+      runs,
+      'stay_active',
+      '2026-11-02',
+      '2026-11-08',
+      pts
+    )!;
+    expect(full.target).toBe(3); // the stay-active floor
+    expect(full.done).toBe(5);
+    const part = challengeWeekGoal(
+      runs,
+      'stay_active',
+      '2026-11-02',
+      '2026-11-08',
+      pts,
+      { start: '2026-11-05', end: '2026-11-08', days: all }
+    )!;
+    // Thursday to Sunday is 4 of 7 days: the target is 3 x 4/7
+    expect(part.target).toBe(1.7);
+    // Only Thursday and Friday count, not the days before the start
+    expect(part.done).toBe(2);
+    // Met in full, it pays its share of the bonus: 4/7 of 50
+    expect(part.rawBonus).toBeCloseTo((pts.goal!.maxBonus * 4) / 7);
+    // A one-day slice (a month starting on a Sunday) pays a seventh at most
+    const sunday = challengeWeekGoal(
+      [entry('sun', 'Run', 'Cardio', { date: '2026-11-08' })],
+      'stay_active',
+      '2026-11-02',
+      '2026-11-08',
+      pts,
+      { start: '2026-11-08', end: '2026-11-30', days: all }
+    )!;
+    expect(sunday.rawBonus).toBeCloseTo(pts.goal!.maxBonus / 7);
+    // Weekdays only (Mon-Fri), starting on a Saturday: no counted day left
+    const weekend = challengeWeekGoal(
+      runs,
+      'stay_active',
+      '2026-11-02',
+      '2026-11-08',
+      pts,
+      { start: '2026-11-07', end: '2026-11-08', days: [1, 2, 3, 4, 5] }
+    )!;
+    expect(weekend.rawBonus).toBe(0);
+  });
+
+  it('rules saved with a daily period and a goal still load, with the goal off', () => {
+    const stored = {
+      ...allRounder,
+      period: 'day',
+      points: { ...allRounder.points, goal: { maxBonus: 50 } },
+    };
+    const parsed = parseChallengeRules(stored);
+    expect(parsed.success).toBe(true);
+    expect(parsed.data!.points!.goal).toBeNull();
+    // A request with both is still refused
+    expect(challengeRulesSchema.safeParse(stored).success).toBe(false);
+  });
+
+  it('a typed-in copy with heart rate does not replace the synced copy of the same run', () => {
+    const typed = entry('typed', 'Run', 'Cardio', {
+      source: 'Manual',
+      durationMin: 90,
+      avgHr: 150,
+    });
+    const synced = entry('synced', 'Run', 'Cardio', {
+      source: 'strava',
+      durationMin: 88,
+      distanceM: 15_000,
+    });
+    const counted = challengeCountedEntries(
+      [typed, synced],
+      rulesWith({
+        metric: 'active_minutes',
+        activities: { manualEntries: 'cap', manualMinutesCap: 30 },
+      })
+    );
+    expect(counted).toHaveLength(1);
+    expect(counted[0]!.id).toBe('synced');
+    expect(counted[0]!.durationMin).toBe(88);
+    expect(counted[0]!.distanceM).toBe(15_000);
   });
 });

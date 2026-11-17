@@ -307,6 +307,33 @@ async function getRuleChangesForMember(
   });
 }
 
+/** The rules log of several challenges, read as the member (RLS applies). */
+async function getRuleLogsForMember(
+  userId: string,
+  challengeIds: readonly string[]
+): Promise<
+  Pick<
+    ChallengeRuleChangeRow,
+    'challenge_id' | 'effective_from' | 'rules' | 'seq'
+  >[]
+> {
+  if (!challengeIds.length) return [];
+  return asMember(userId, async (client) => {
+    const { rows } = await client.query(
+      `SELECT r.challenge_id, TO_CHAR(r.effective_from, 'YYYY-MM-DD') AS effective_from,
+              r.rules, r.seq
+         FROM challenge_rule_changes r
+        WHERE r.challenge_id = ANY($1::uuid[])
+        ORDER BY r.challenge_id, r.effective_from, r.seq`,
+      [challengeIds]
+    );
+    return rows as Pick<
+      ChallengeRuleChangeRow,
+      'challenge_id' | 'effective_from' | 'rules' | 'seq'
+    >[];
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Server-side lookups and writes (owner pool; the service checked access)
 // ---------------------------------------------------------------------------
@@ -1124,6 +1151,7 @@ export default {
   getDailyScoresForMember,
   getResultsForMember,
   getRuleChangesForMember,
+  getRuleLogsForMember,
   getMembership,
   getChallenge,
   getMembers,

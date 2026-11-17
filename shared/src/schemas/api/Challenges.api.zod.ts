@@ -77,13 +77,27 @@ export const challengeStandingsQuerySchema = z.object({
   date: dayStringSchema.optional(),
 });
 
+/** A saved rules change that applies from a later period. */
+export const challengePendingRulesSchema = z.object({
+  rules: challengeRulesSchema,
+  /** The first day the change scores (the start of the next period). */
+  effective_from: dayStringSchema,
+});
+export type ChallengePendingRules = z.infer<typeof challengePendingRulesSchema>;
+
 export const challengeSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().nullable(),
   emoji: z.string().nullable(),
   template: z.string().nullable(),
+  /**
+   * The rules scoring the challenge today (its first day before it starts,
+   * its last once it is over), not the newest save.
+   */
   rules: challengeRulesSchema,
+  /** The host's newest change while it waits for its first day; else null. */
+  pending_rules: challengePendingRulesSchema.nullable(),
   start_date: dayStringSchema,
   end_date: dayStringSchema.nullable(),
   time_zone: z.string(),
@@ -138,6 +152,8 @@ export const challengeStandingsResponseSchema = z.object({
   challenge_id: z.string(),
   period_start: dayStringSchema,
   period_end: dayStringSchema,
+  /** The rules that score this period (units, target and format come from here). */
+  rules: challengeRulesSchema,
   /** True once the period is frozen in challenge_results. */
   final: z.boolean(),
   group_total: z.number(),

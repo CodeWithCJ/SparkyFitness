@@ -10,6 +10,7 @@ vi.mock('../models/challengeRepository.js', () => ({
     getDailyScoresForMember: vi.fn(),
     getResultsForMember: vi.fn(),
     getRuleChangesForMember: vi.fn(),
+    getRuleLogsForMember: vi.fn(),
     getMembership: vi.fn(),
     getChallenge: vi.fn(),
     getMembers: vi.fn(),
@@ -142,6 +143,8 @@ beforeEach(() => {
   } as never);
   repo.getRuleChanges.mockResolvedValue([change('2026-11-09', allRounder)]);
   repo.frozenPeriodStarts.mockResolvedValue([]);
+  repo.getRuleChangesForMember.mockResolvedValue([]);
+  repo.getRuleLogsForMember.mockResolvedValue([]);
   repo.getMemberEntries.mockResolvedValue([]);
   repo.getMemberSteps.mockResolvedValue({});
   repo.setInvite.mockResolvedValue(true);
@@ -1346,5 +1349,246 @@ describe('bot review follow-ups, second round', () => {
     await expect(
       service.updateRules('host', challenge().id, allRounder)
     ).rejects.toMatchObject({ status: 403, code: 'CHALLENGE_HOST_ONLY' });
+  });
+});
+
+describe('CodeWithCJ review (PR #3585)', () => {
+  const scoreRow = (
+    user_id: string,
+    day: string,
+    total: number,
+    detail: Record<string, unknown> = {}
+  ) => ({
+    challenge_id: challenge().id,
+    user_id,
+    day,
+    total,
+    effort: total,
+    step_points: 0,
+    pr_bonus: 0,
+    streak_bonus: 0,
+    beat_average_bonus: 0,
+    minutes: 30,
+    steps: 0,
+    workouts: 1,
+    eligible: true,
+    detail,
+  });
+
+  describe('periods freeze in order', () => {
+    it('a frozen period after an open one does not make a rescore skip the open one', async () => {
+      // Week 2 (11-16) was frozen while week 1 (11-09) was not
+      repo.frozenPeriodStarts.mockResolvedValue(['2026-11-16']);
+      vi.setSystemTime(new Date('2026-11-25T12:00:00Z'));
+      await service.recomputeMember(
+        challenge(),
+        member('amy'),
+        '2026-11-10',
+        '2026-11-15'
+      );
+      const [, , from, to] = repo.saveMemberDays.mock.calls[0]!;
+      expect([from, to]).toEqual(['2026-11-10', '2026-11-15']);
+    });
+
+    it('a frozen period holding the first day is still skipped', async () => {
+      repo.frozenPeriodStarts.mockResolvedValue(['2026-11-09', '2026-11-16']);
+      vi.setSystemTime(new Date('2026-11-25T12:00:00Z'));
+      await service.recomputeMember(challenge(), member('amy'), '2026-11-10');
+      const [, , from] = repo.saveMemberDays.mock.calls[0]!;
+      expect(from).toBe('2026-11-23');
+    });
+
+    it('a middle period that is refused stops the run, so later periods wait', async () => {
+      repo.getMembers.mockResolvedValue([
+        member('host', 'host'),
+        member('amy'),
+      ]);
+      repo.getDailyScores.mockResolvedValue([
+        scoreRow('amy', '2026-11-10', 40),
+        scoreRow('host', '2026-11-10', 25),
+      ]);
+      // Weeks of 11-09, 11-16 and 11-23 are all past their late-sync window;
+      // the second is refused (someone joined or left meanwhile).
+      vi.setSystemTime(new Date('2026-12-03T12:00:00Z'));
+      repo.insertResults
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true);
+      expect(await service.finalizeChallenge(challenge())).toBe(1);
+      expect(repo.insertResults.mock.calls.map((c) => c[1])).toEqual([
+        '2026-11-09',
+        '2026-11-16',
+      ]);
+      // The next run starts again at the refused week
+      repo.frozenPeriodStarts.mockResolvedValue(['2026-11-09']);
+      repo.insertResults.mockReset().mockResolvedValue(true);
+      expect(await service.finalizeChallenge(challenge())).toBe(2);
+      expect(repo.insertResults.mock.calls.map((c) => c[1])).toEqual([
+        '2026-11-16',
+        '2026-11-23',
+      ]);
+    });
+  });
+
+  describe('the weekly goal in a week cut by the period', () => {
+    it("a weekly challenge that starts on a Thursday pays its first week's goal", () => {
+      const standings = service.standingsFromScores(
+        [member('amy')],
+        [
+          scoreRow('amy', '2026-11-12', 10, { goal: { rawBonus: 20 } }),
+          scoreRow('amy', '2026-11-13', 10, { goal: { rawBonus: 35 } }),
+        ],
+        allRounder,
+        { start: '2026-11-12', end: '2026-11-15' },
+        '2026-11-15'
+      );
+      expect(standings.rows[0]!.goalBonus).toBe(35);
+      expect(standings.rows[0]!.total).toBe(55);
+    });
+
+    it("scores the goal on the week's part inside the period", async () => {
+      // Starts Thursday 11-12; Monday's run is before the start
+      const run = (id: string, entry_date: string) => ({
+        id,
+        entry_date,
+        entry_time: '07:00',
+        duration_minutes: 30,
+        avg_heart_rate: 150,
+        max_heart_rate: null,
+        exercise_name: 'Run',
+        category: 'Cardio',
+        source: 'garmin',
+        exercise_id: null,
+        distance: null,
+        active_calories: null,
+        calories_burned: null,
+        elevation_gain_meters: null,
+        zone_seconds: null,
+        edited: false,
+        sets: null,
+        session: null,
+      });
+      repo.getMemberEntries.mockResolvedValue([
+        run('a', '2026-11-09'),
+        run('b', '2026-11-12'),
+      ]);
+      await service.recomputeMember(
+        challenge({ start_date: '2026-11-12' }),
+        member('amy'),
+        '2026-11-12'
+      );
+      const scores = repo.saveMemberDays.mock.calls[0]![4];
+      const thu = scores.find((x) => x.day === '2026-11-12')!;
+      const goal = thu.detail.goal as { target: number; done: number };
+      // Thursday to Sunday: 4 of 7 days of the 3-day floor, and only
+      // Thursday's run counts
+      expect(goal.target).toBe(1.7);
+      expect(goal.done).toBe(1);
+    });
+
+    it('a daily points challenge stores no goal', async () => {
+      const daily = {
+        ...allRounder,
+        period: 'day' as const,
+        points: { ...allRounder.points!, goal: null },
+      };
+      repo.getRuleChanges.mockResolvedValue([change('2026-11-09', daily)]);
+      await service.recomputeMember(
+        challenge({ rules: daily }),
+        member('amy'),
+        '2026-11-10'
+      );
+      const scores = repo.saveMemberDays.mock.calls[0]![4];
+      expect(scores.every((x) => x.detail.goal === null)).toBe(true);
+    });
+  });
+
+  describe('rules in force', () => {
+    const later = { ...allRounder, bestDaysPerWeek: 3 };
+    beforeEach(() => {
+      repo.getMembership.mockResolvedValue(member('amy'));
+      // The newest save is already in challenges.rules
+      repo.getForMember.mockResolvedValue(challenge({ rules: later }));
+      repo.getMembersForMember.mockResolvedValue([member('amy')]);
+      repo.getRuleChangesForMember.mockResolvedValue([
+        change('2026-11-09', allRounder, '2026-11-01T00:00:00Z'),
+        change('2026-11-16', later, '2026-11-11T00:00:00Z'),
+      ]);
+    });
+
+    it('GET /:id returns the rules scoring today, with the change waiting in pending_rules', async () => {
+      const detail = await service.getChallenge('amy', challenge().id);
+      expect(detail.rules.bestDaysPerWeek).toBe(allRounder.bestDaysPerWeek);
+      expect(detail.pending_rules).toEqual({
+        rules: later,
+        effective_from: '2026-11-16',
+      });
+      // From its first day the change is in force and nothing is pending
+      vi.setSystemTime(new Date('2026-11-16T12:00:00Z'));
+      const next = await service.getChallenge('amy', challenge().id);
+      expect(next.rules.bestDaysPerWeek).toBe(3);
+      expect(next.pending_rules).toBeNull();
+    });
+
+    it('the list carries the same rules and pending change', async () => {
+      repo.listForMember.mockResolvedValue([
+        { ...challenge({ rules: later }), role: 'member', member_count: 2 },
+      ]);
+      repo.getRuleLogsForMember.mockResolvedValue(
+        [
+          change('2026-11-09', allRounder, '2026-11-01T00:00:00Z'),
+          change('2026-11-16', later, '2026-11-11T00:00:00Z'),
+        ].map(({ challenge_id, effective_from, rules, seq }) => ({
+          challenge_id,
+          effective_from,
+          rules,
+          seq,
+        }))
+      );
+      const [summary] = await service.listChallenges('amy');
+      expect(repo.getRuleLogsForMember).toHaveBeenCalledWith('amy', [
+        challenge().id,
+      ]);
+      expect(summary!.rules.bestDaysPerWeek).toBe(allRounder.bestDaysPerWeek);
+      expect(summary!.pending_rules?.effective_from).toBe('2026-11-16');
+    });
+
+    it('before the start the rules from the start are in force, with nothing pending', async () => {
+      repo.getForMember.mockResolvedValue(
+        challenge({ rules: later, start_date: '2026-11-20' })
+      );
+      repo.getRuleChangesForMember.mockResolvedValue([
+        change('2026-11-20', allRounder, '2026-11-01T00:00:00Z'),
+        change('2026-11-20', later, '2026-11-11T00:00:00Z'),
+      ]);
+      const detail = await service.getChallenge('amy', challenge().id);
+      expect(detail.rules.bestDaysPerWeek).toBe(3);
+      expect(detail.pending_rules).toBeNull();
+    });
+
+    it('once a challenge is over, the rules of its last day are in force', async () => {
+      repo.getForMember.mockResolvedValue(
+        challenge({ rules: later, end_date: '2026-11-12' })
+      );
+      vi.setSystemTime(new Date('2026-12-01T12:00:00Z'));
+      const detail = await service.getChallenge('amy', challenge().id);
+      expect(detail.rules.bestDaysPerWeek).toBe(allRounder.bestDaysPerWeek);
+      expect(detail.pending_rules).toBeNull();
+    });
+
+    it('standings carry the rules that scored that period', async () => {
+      repo.getResultsForMember.mockResolvedValue([]);
+      repo.getDailyScoresForMember.mockResolvedValue([
+        scoreRow('amy', '2026-11-10', 40),
+      ]);
+      const now = await service.getStandings('amy', challenge().id);
+      expect(now.rules).toEqual(allRounder);
+      const next = await service.getStandings(
+        'amy',
+        challenge().id,
+        '2026-11-17'
+      );
+      expect(next.rules).toEqual(later);
+    });
   });
 });

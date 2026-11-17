@@ -94,7 +94,7 @@ const me = (req: Request): string => req.userId;
  *     summary: The challenges you are a member of
  *     tags: [Challenges]
  *     responses:
- *       200: { description: Challenge summaries }
+ *       200: { description: "Challenge summaries; rules are the ones scoring today, with a saved change waiting for its first day in pending_rules" }
  *       403: { description: Challenges are turned off, or a delegated context }
  */
 router.get('/', async (req, res, next) => {
@@ -165,7 +165,7 @@ router.post('/join', async (req, res, next) => {
  *     summary: One challenge you are a member of, with its members' display names
  *     tags: [Challenges]
  *     responses:
- *       200: { description: The challenge }
+ *       200: { description: "The challenge; rules are the ones scoring today, and pending_rules (rules and effective_from) holds a saved change that applies from the next period, else null" }
  *       404: { description: Not found, or you are not a member }
  */
 router.get('/:id', async (req, res, next) => {
@@ -183,7 +183,7 @@ router.get('/:id', async (req, res, next) => {
  *     summary: Change the rules (host only). Before the start the change applies from the start, after it from the next period; every change is logged for members
  *     tags: [Challenges]
  *     responses:
- *       200: { description: The challenge with its new rules }
+ *       200: { description: "The challenge: the rules still scoring today, and the change in pending_rules until its effective_from" }
  *       403: { description: Only the host can change the rules }
  *       429: { description: Too many rules changes to this challenge }
  */
@@ -291,7 +291,7 @@ router.post('/:id/leave', async (req, res, next) => {
  *         name: date
  *         schema: { type: string, format: date }
  *     responses:
- *       200: { description: The standings }
+ *       200: { description: "The standings, with the rules that score that period" }
  */
 router.get('/:id/standings', async (req, res, next) => {
   try {

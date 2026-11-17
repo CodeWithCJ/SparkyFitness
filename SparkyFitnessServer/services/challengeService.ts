@@ -11,7 +11,7 @@ import {
   addDays,
   challengeCountedEntries,
   challengeEntryClass,
-  challengeMeasuredMinutes,
+  challengePace,
   challengePeriodTotal,
   challengePeriodWindow,
   challengePeriodsUpTo,
@@ -19,8 +19,6 @@ import {
   challengePresetEndDate,
   challengeRulesEffectiveFrom,
   challengeWeekGoal,
-  challengeWeekStart,
-  challengeWeeksIn,
   daysBetween,
   daysInRange,
   deriveWorkoutSessionStatus,
@@ -33,6 +31,7 @@ import {
   rankChallengeStandings,
   scoreChallengeDays,
   todayInZone,
+  weekStartOf,
   type ChallengeDayScore,
   type ChallengeDetail,
   type ChallengeEntry,
@@ -149,10 +148,58 @@ function iso(value: Date | string | null): string | null {
   return value instanceof Date ? value.toISOString() : String(value);
 }
 
+type RuleLogRow = Pick<
+  ChallengeRuleChangeRow,
+  'effective_from' | 'rules' | 'seq'
+>;
+
+/** The rules log in write order: by effective day, then by seq. */
+function orderedLog(changes: readonly RuleLogRow[]): RuleLogRow[] {
+  // seq is the write order; created_at is the transaction start and can be
+  // out of order between two overlapping changes.
+  return [...changes].sort(
+    (a, b) =>
+      a.effective_from.localeCompare(b.effective_from) ||
+      Number(a.seq) - Number(b.seq)
+  );
+}
+
+/**
+ * The rules scoring a challenge today (its first day before it starts, its
+ * last once it is over) and the saved change still waiting for its first
+ * day, if any. `challenges.rules` holds the newest save, which applies only
+ * from the next period, so it is not what scores the running one.
+ */
+export function rulesInForce(
+  row: Pick<ChallengeRow, 'rules' | 'start_date' | 'end_date' | 'time_zone'>,
+  changes: readonly RuleLogRow[]
+): Pick<ChallengeSummary, 'rules' | 'pending_rules'> {
+  if (!changes.length) {
+    return { rules: parseStoredRules(row.rules), pending_rules: null };
+  }
+  let day = todayInZone(row.time_zone);
+  if (day < row.start_date) day = row.start_date;
+  if (row.end_date && day > row.end_date) day = row.end_date;
+  const last = orderedLog(changes).at(-1)!;
+  return {
+    rules: rulesForDay(changes, day),
+    // A change dated after the end never scores (the host is refused one).
+    pending_rules:
+      last.effective_from > day &&
+      (!row.end_date || last.effective_from <= row.end_date)
+        ? {
+            rules: parseStoredRules(last.rules),
+            effective_from: last.effective_from,
+          }
+        : null,
+  };
+}
+
 function toSummary(
   row: ChallengeRow,
   isHost: boolean,
-  memberCount: number
+  memberCount: number,
+  changes: readonly RuleLogRow[]
 ): ChallengeSummary {
   return {
     id: row.id,
@@ -160,7 +207,7 @@ function toSummary(
     description: row.description,
     emoji: row.emoji,
     template: row.template,
-    rules: parseStoredRules(row.rules),
+    ...rulesInForce(row, changes),
     start_date: row.start_date,
     end_date: row.end_date,
     time_zone: row.time_zone,
@@ -195,19 +242,10 @@ async function requireHost(
 
 /** The rules in force on `day`: the latest change effective on or before it. */
 export function rulesForDay(
-  changes: readonly Pick<
-    ChallengeRuleChangeRow,
-    'effective_from' | 'rules' | 'seq'
-  >[],
+  changes: readonly RuleLogRow[],
   day: string
 ): ChallengeRules {
-  // seq is the write order; created_at is the transaction start and can be
-  // out of order between two overlapping changes.
-  const ordered = [...changes].sort(
-    (a, b) =>
-      a.effective_from.localeCompare(b.effective_from) ||
-      Number(a.seq) - Number(b.seq)
-  );
+  const ordered = orderedLog(changes);
   let chosen = ordered[0];
   for (const change of ordered) {
     if (change.effective_from <= day) chosen = change;
@@ -319,8 +357,22 @@ export async function listChallenges(
 ): Promise<ChallengeSummary[]> {
   const rows: ChallengeListRow[] =
     await challengeRepository.listForMember(userId);
+  const logs = new Map<string, RuleLogRow[]>();
+  for (const log of await challengeRepository.getRuleLogsForMember(
+    userId,
+    rows.map((row) => row.id)
+  )) {
+    const list = logs.get(log.challenge_id);
+    if (list) list.push(log);
+    else logs.set(log.challenge_id, [log]);
+  }
   return rows.map((row) =>
-    toSummary(row, row.role === 'host', row.member_count)
+    toSummary(
+      row,
+      row.role === 'host',
+      row.member_count,
+      logs.get(row.id) ?? []
+    )
   );
 }
 
@@ -329,13 +381,14 @@ export async function getChallenge(
   challengeId: string
 ): Promise<ChallengeDetail> {
   const member = await requireMember(userId, challengeId);
-  const [row, members] = await Promise.all([
+  const [row, members, changes] = await Promise.all([
     challengeRepository.getForMember(userId, challengeId),
     challengeRepository.getMembersForMember(userId, challengeId),
+    challengeRepository.getRuleChangesForMember(userId, challengeId),
   ]);
   if (!row) throw notFound();
   return {
-    ...toSummary(row, member.role === 'host', members.length),
+    ...toSummary(row, member.role === 'host', members.length, changes),
     members: members.map((m) => ({
       user_id: m.user_id,
       display_name: m.display_name,
@@ -586,28 +639,26 @@ function storedDay(row: ChallengeDailyScoreRow): ChallengeDayScore {
 }
 
 /**
- * The goal bonus of each week starting in the window as it stood on each
- * scored day (the latest day of a week gives its bonus; the earlier days let
- * a race finish on the day the bonus got there).
+ * The goal bonus of each week in the window, a week cut by the window's start
+ * or end included (its days were scored against its share of the target), as
+ * it stood on each scored day: the latest day of a week gives its bonus; the
+ * earlier days let a race finish on the day the bonus got there.
  */
 function goalBonuses(
   rows: readonly ChallengeDailyScoreRow[],
-  window: ChallengeWindow,
   upTo: string
 ): ChallengeGoalBonusInput[] {
   const out: ChallengeGoalBonusInput[] = [];
-  for (const monday of challengeWeeksIn(window.start, window.end, upTo)) {
-    for (const r of rows) {
-      if (challengeWeekStart(r.day) !== monday || r.day > upTo) continue;
-      const goal = r.detail?.goal as { rawBonus?: unknown } | undefined;
-      const raw = Number(goal?.rawBonus);
-      if (goal && Number.isFinite(raw)) {
-        out.push({
-          weekStart: monday,
-          asOf: r.day,
-          rawBonus: Math.max(0, raw),
-        });
-      }
+  for (const r of rows) {
+    if (r.day > upTo) continue;
+    const goal = r.detail?.goal as { rawBonus?: unknown } | undefined;
+    const raw = Number(goal?.rawBonus);
+    if (goal && Number.isFinite(raw)) {
+      out.push({
+        weekStart: weekStartOf(r.day, 1),
+        asOf: r.day,
+        rawBonus: Math.max(0, raw),
+      });
     }
   }
   return out;
@@ -626,8 +677,8 @@ export function standingsFromScores(
         s.user_id === m.user_id && s.day >= window.start && s.day <= window.end
     );
     const goals =
-      rules.metric === 'points' && rules.points?.goal
-        ? goalBonuses(own, window, upTo)
+      rules.metric === 'points' && rules.points?.goal && rules.period !== 'day'
+        ? goalBonuses(own, upTo)
         : [];
     const total = challengePeriodTotal(own.map(storedDay), rules, upTo, goals);
     return {
@@ -682,6 +733,7 @@ export async function getStandings(
       challenge_id: challengeId,
       period_start: window.start,
       period_end: window.end,
+      rules,
       final: true,
       group_total: group,
       group_reached:
@@ -727,6 +779,7 @@ export async function getStandings(
     challenge_id: challengeId,
     period_start: window.start,
     period_end: window.end,
+    rules,
     final: false,
     group_total: standings.groupTotal,
     group_reached: standings.groupReached,
@@ -902,13 +955,17 @@ async function recomputeMemberLocked(
   const frozen = new Set(
     await challengeRepository.frozenPeriodStarts(challenge.id)
   );
+  // Periods freeze in order, so the frozen ones are the first few: skip
+  // only those that hold `from`. A frozen period after an open one would
+  // mean the open one is skipped and later frozen from stale scores.
   for (const w of challengePeriodsUpTo(
     current.period,
     challenge.start_date,
     challenge.end_date,
     to
   )) {
-    if (frozen.has(w.start) && w.end >= from) from = addDays(w.end, 1);
+    if (frozen.has(w.start) && w.start <= from && w.end >= from)
+      from = addDays(w.end, 1);
   }
   if (from > to) return;
 
@@ -937,16 +994,30 @@ async function recomputeMemberLocked(
       run.rules.days.includes(isoWeekday(e.date))
     );
     const points = pointsRules(run.rules);
+    // A daily period has no weekly goal (the rules refuse one).
+    const weekly = points?.goal && run.rules.period !== 'day' ? points : null;
     for (const d of days) {
-      const goal = points?.goal
-        ? challengeWeekGoal(
-            goalEntries,
-            member.goal_type,
-            challengeWeekStart(d.date),
+      // The week as far as the day's period holds it, so a week cut by the
+      // challenge's start or end, or a month's, earns its share.
+      const part = weekly
+        ? challengePeriodWindow(
+            run.rules.period,
             d.date,
-            points
+            challenge.start_date,
+            challenge.end_date
           )
         : null;
+      const goal =
+        weekly && part
+          ? challengeWeekGoal(
+              goalEntries,
+              member.goal_type,
+              weekStartOf(d.date, 1),
+              d.date,
+              weekly,
+              { ...part, days: run.rules.days }
+            )
+          : null;
       scores.push({
         day: d.date,
         total: d.rawTotal,
@@ -973,8 +1044,7 @@ async function recomputeMemberLocked(
       });
       const pointsById = new Map(d.entries.map((e) => [e.id, e.points]));
       for (const e of counted.filter((x) => x.date === d.date)) {
-        const km = e.distanceM ? e.distanceM / 1000 : 0;
-        const measured = challengeMeasuredMinutes(e);
+        const pace = challengePace(e);
         const row = doneById.get(e.id);
         cards.push({
           exercise_entry_id: e.id,
@@ -983,8 +1053,7 @@ async function recomputeMemberLocked(
           name: e.name ?? null,
           minutes: e.durationMin,
           distance_meters: e.distanceM ?? null,
-          pace_seconds_per_km:
-            km > 0 && measured > 0 ? (measured * 60) / km : null,
+          pace_seconds_per_km: pace !== null ? pace * 60 : null,
           avg_heart_rate: e.avgHr ? Math.round(e.avgHr) : null,
           max_heart_rate:
             row && n(row.max_heart_rate)
@@ -1187,10 +1256,12 @@ export async function finalizeChallenge(
         },
       }))
     );
-    if (stored) {
-      count += 1;
-      frozen.add(window.start);
-    }
+    // A period that was not frozen (someone joined or left meanwhile) stops
+    // the run: later periods wait, so periods always freeze in order and a
+    // rescore never skips an open one.
+    if (!stored) break;
+    count += 1;
+    frozen.add(window.start);
   }
   const allFrozen = windows.every((w) => frozen.has(w.start));
   if (

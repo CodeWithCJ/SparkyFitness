@@ -1,15 +1,11 @@
 import { addDays, dayOfWeek } from '../utils/timezone.ts';
+import { weekStartOf } from '../utils/trainingConsistency.ts';
 import type { ChallengePeriod } from './rules.ts';
 
 /** ISO weekday of a YYYY-MM-DD day: 1 = Monday ... 7 = Sunday. */
 export function isoWeekday(day: string): number {
   const dow = dayOfWeek(day);
   return dow === 0 ? 7 : dow;
-}
-
-/** Monday of the Monday-to-Sunday week containing `day`. */
-export function challengeWeekStart(day: string): string {
-  return addDays(day, 1 - isoWeekday(day));
 }
 
 function monthEnd(day: string): string {
@@ -40,7 +36,8 @@ export function challengePeriodWindow(
     start = day;
     end = day;
   } else if (period === 'week') {
-    start = challengeWeekStart(day);
+    // Challenge weeks always run Monday to Sunday
+    start = weekStartOf(day, 1);
     end = addDays(start, 6);
   } else if (period === 'month') {
     start = `${day.slice(0, 8)}01`;

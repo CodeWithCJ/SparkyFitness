@@ -34,7 +34,8 @@ import {
   normalizeSource,
 } from '../constants/exercise.ts';
 import { heartRateZoneFor } from '../utils/heartRateZones.ts';
-import { challengeWeekStart, isoWeekday } from './periods.ts';
+import { weekStartOf } from '../utils/trainingConsistency.ts';
+import { isoWeekday, type ChallengeWindow } from './periods.ts';
 import {
   DEFAULT_CHALLENGE_GOAL_TYPE,
   type ChallengeGoalType,
@@ -50,12 +51,11 @@ export interface ChallengeEntry {
   date: string;
   /** Local start time, HH:MM, when known. */
   time?: string | null;
-  durationMin: number;
   /**
-   * The logged length, set only when the manual-minute cap shortened
-   * durationMin, so pace is still worked out from what was measured.
+   * Minutes. On a copy the manual-minute cap shortened, distance, calories and
+   * elevation are cut by the same fraction, so pace stays the measured pace.
    */
-  measuredDurationMin?: number;
+  durationMin: number;
   avgHr?: number | null;
   /** Seconds in heart-rate zones 1 to 5, when the workout has a zone breakdown. */
   zoneSeconds?: readonly number[] | null;
@@ -91,7 +91,15 @@ export interface ChallengeMemberData {
 export type ChallengeEntryClass = 'strength' | PrSportGroup;
 
 const LIFT_RE =
-  /\b(strength|weights?|weight ?lifting|lift(ing)?|bench|squat|deadlift|press|curl|rows?|pull-?ups?|chin-?ups?|dips?|lunges?|kettlebell|dumbbell|barbell|resistance|hypertrophy|push|pull|legs? day|upper|lower body|full body)\b/i;
+  /\b(strength|weights?|weight ?lifting|lift(ing)?|bench|squat|deadlift|press|curl|pull-?ups?|chin-?ups?|dips?|lunges?|kettlebell|dumbbell|barbell|resistance|hypertrophy|push|pull|legs? day|upper|lower body|full body)\b/i;
+/**
+ * A lifting row by its name: "row" with a lifting word ("Barbell Row", "Bent
+ * Over Row", "Seated Cable Row"). A bare "Row" or "Indoor Row" is rowing.
+ */
+const LIFT_ROW_RE =
+  /\b(barbell|dumbbell|db|cable|bent[- ]?over|seated|t-?bar|pendlay|upright|inverted|single[- ]arm|one[- ]arm|kettlebell|landmine|renegade|chest[- ]supported|machine|meadows|kroc|yates)\b.*\brows?\b/i;
+const LIFT_CATEGORY_RE = /strength|powerlifting|weightlifting|strongman/i;
+const CARDIO_CATEGORY_RE = /cardio/i;
 
 const round1 = (n: number): number => Math.round(n * 10) / 10;
 const roundTo = (n: number, step: number): number =>
@@ -105,19 +113,50 @@ export function challengeEntrySport(e: ChallengeEntry): ActivitySport {
     .sport;
 }
 
-/** 'run' | 'ride' | 'walk' | 'swim' for a cardio workout, else null. */
+/**
+ * What the entry's category says: true for lifting (Strength), false for not
+ * lifting (Cardio), null when it says neither and the name has to decide.
+ */
+export function challengeCategoryLifting(
+  category: string | null | undefined
+): boolean | null {
+  if (!category) return null;
+  if (LIFT_CATEGORY_RE.test(category)) return true;
+  if (CARDIO_CATEGORY_RE.test(category)) return false;
+  return null;
+}
+
+/** 'run' | 'ride' | 'walk' | 'swim' for a cardio workout, else null. A Strength entry never is one. */
 export function challengeActivityKind(e: ChallengeEntry): PrSportGroup | null {
+  if (challengeCategoryLifting(e.category) === true) return null;
   const group = toPrSportGroup(challengeEntrySport(e));
   return group === 'other' ? null : group;
 }
 
-/** A lifting workout: strength category, weighted sets or a lifting name. A cardio workout never is. */
+/**
+ * A lifting workout. The category decides first: Strength is lifting, Cardio
+ * is not, whatever the name says. Only when it says neither do the name,
+ * the shared sport and weighted sets decide; a run, ride, walk or swim never is.
+ */
 export function isStrengthEntry(e: ChallengeEntry): boolean {
+  const byCategory = challengeCategoryLifting(e.category);
+  if (byCategory !== null) return byCategory;
+  if (LIFT_ROW_RE.test(e.name ?? '')) return true;
   if (challengeActivityKind(e)) return false;
   if (challengeEntrySport(e) === 'strength') return true;
-  if (e.category && /strength/i.test(e.category)) return true;
   if (num(e.bestE1rm) > 0) return true;
   return LIFT_RE.test(`${e.name ?? ''} ${e.category ?? ''}`);
+}
+
+/**
+ * The sport a challenge's sport filter sees: 'strength' for a lifting
+ * workout (so "Barbell Row" is not rowing), else the shared sport, with a
+ * Cardio entry never taken for strength.
+ */
+export function challengeFilterSport(e: ChallengeEntry): ActivitySport {
+  if (isStrengthEntry(e)) return 'strength';
+  const sport = challengeEntrySport(e);
+  return sport === 'strength' ? 'other' : sport;
 }
 
 export function challengeEntryClass(e: ChallengeEntry): ChallengeEntryClass {
@@ -130,15 +169,17 @@ const hasHr = (e: ChallengeEntry): boolean =>
   num(e.avgHr) > 0 || (e.zoneSeconds ?? []).some((s) => s > 0);
 
 /**
- * Logged by hand: no heart rate, and no source or one a member makes in the
- * app (the diary form's 'Manual', a logged preset, a plan workout), in any
- * casing. A live workout ('sparky') is timed by the app, so it is not one.
+ * Logged by hand, decided by the source alone: no source, or one a member
+ * makes in the app (the diary form's 'Manual', a logged preset, a plan
+ * workout), in any casing. A heart rate typed into the diary form does not
+ * make it measured. A live workout ('sparky') is timed by the app, so it is
+ * not one.
  */
 export function isManualEntry(e: ChallengeEntry): boolean {
-  const typedIn =
+  return (
     !normalizeSource(e.source) ||
-    (isUserOriginatedSource(e.source) && !isLiveWorkoutSource(e.source));
-  return typedIn && !hasHr(e);
+    (isUserOriginatedSource(e.source) && !isLiveWorkoutSource(e.source))
+  );
 }
 
 export type ChallengeRateBasis = 'zones' | 'average_hr' | 'no_hr';
@@ -315,13 +356,12 @@ export function challengeDayEffort(
   };
 }
 
-/** The measured length of a workout, before any manual-minute cap. */
-export const challengeMeasuredMinutes = (e: ChallengeEntry): number =>
-  num(e.measuredDurationMin ?? e.durationMin);
-const paceOf = (e: ChallengeEntry): number | null =>
-  num(e.distanceM) > 0 && challengeMeasuredMinutes(e) > 0
-    ? challengeMeasuredMinutes(e) / (num(e.distanceM) / 1000)
+/** Minutes per km. A capped copy keeps the measured pace (both were cut alike). */
+export const challengePace = (e: ChallengeEntry): number | null =>
+  num(e.distanceM) > 0 && num(e.durationMin) > 0
+    ? num(e.durationMin) / (num(e.distanceM) / 1000)
     : null;
+const paceOf = challengePace;
 const liftKey = (e: ChallengeEntry): string =>
   e.exerciseKey
     ? `k:${e.exerciseKey}`
@@ -506,10 +546,12 @@ export function mergeChallengeDuplicates(
     }
     for (const group of new Set(groupOf.values())) {
       if (group.length < 2) continue;
-      // The copy with heart rate is kept (the longest if several or none
-      // have it); the others fill in what it lacks.
+      // A measured copy is kept over a typed-in one (so the manual cap never
+      // cuts a synced workout), then the one with heart rate, then the
+      // longest; the others fill in what it lacks.
       const [keep, ...others] = [...group].sort(
         (x, y) =>
+          Number(isManualEntry(x)) - Number(isManualEntry(y)) ||
           Number(hasHr(y)) - Number(hasHr(x)) ||
           num(y.durationMin) - num(x.durationMin)
       );
@@ -566,9 +608,7 @@ export function challengeCountedEntries(
     ? mergeChallengeDuplicates(eligible)
     : [...eligible];
   list = list.filter((e) => {
-    const sport = challengeEntrySport(e);
-    const effective: ActivitySport =
-      sport === 'other' && isStrengthEntry(e) ? 'strength' : sport;
+    const effective = challengeFilterSport(e);
     if (a.includeSports && !a.includeSports.includes(effective)) return false;
     if (a.excludeSports.includes(effective)) return false;
     if (num(e.durationMin) < a.minMinutes) return false;
@@ -588,14 +628,26 @@ export function challengeCountedEntries(
     }
     const used = usedByDay.get(e.date) ?? 0;
     const left = Math.max(0, a.manualMinutesCap - used);
-    const minutes = Math.min(num(e.durationMin), left);
+    const full = num(e.durationMin);
+    const minutes = Math.min(full, left);
     usedByDay.set(e.date, used + minutes);
-    if (minutes > 0)
-      capped.push({
-        ...e,
-        durationMin: minutes,
-        measuredDurationMin: challengeMeasuredMinutes(e),
-      });
+    if (minutes <= 0) continue;
+    if (minutes >= full) {
+      capped.push(e);
+      continue;
+    }
+    // Distance, calories and elevation are cut by the same fraction as the
+    // minutes, so a typed-in 100 km counts no more than its capped minutes.
+    const share = minutes / full;
+    const cut = (v: number | null | undefined) =>
+      typeof v === 'number' && Number.isFinite(v) ? v * share : v;
+    capped.push({
+      ...e,
+      durationMin: minutes,
+      distanceM: cut(e.distanceM),
+      activeCalories: cut(e.activeCalories),
+      elevationM: cut(e.elevationM),
+    });
   }
   return capped;
 }
@@ -865,16 +917,29 @@ export interface ChallengeWeekGoal {
 }
 
 /**
+ * The part of a week a period holds: its first and last day, and the
+ * weekdays the challenge counts. A week cut by the period's start or end
+ * (a challenge starting on a Thursday, a month ending on a Wednesday) is
+ * paid on that part, with the target cut to its share of counted days.
+ */
+export interface ChallengeWeekPart extends ChallengeWindow {
+  days: readonly number[];
+}
+
+/**
  * The member's goal for the week starting `monday`: the target comes from
  * their own previous weeks (average x stretch, within the goal's floor and
- * ceiling), progress counts up to `upTo`, and the bonus is pro rata.
+ * ceiling), progress counts up to `upTo`, and the bonus is pro rata. With
+ * `part`, only the days of the week inside the period count, and the target
+ * is cut to their share of the week's counted days.
  */
 export function challengeWeekGoal(
   entries: readonly ChallengeEntry[],
   goal: unknown,
   monday: string,
   upTo: string,
-  rules: ChallengePointsRules
+  rules: ChallengePointsRules,
+  part?: ChallengeWeekPart
 ): ChallengeWeekGoal | null {
   if (!rules.goal) return null;
   const key = challengeGoalType(goal);
@@ -886,19 +951,28 @@ export function challengeWeekGoal(
   }
   const baseline = sum / rules.goal.lookbackWeeks;
   const stretch = 1 + rules.goal.stretchPct / 100;
-  const target = Math.min(
+  const weekTarget = Math.min(
     g.ceil,
     Math.max(g.floor, roundTo(baseline * stretch, g.step))
   );
-  const end = addDays(monday, 6);
-  const done = challengeGoalMeasure(
-    g.metric,
-    entries,
-    monday,
-    upTo < end ? upTo : end
-  );
+  const sunday = addDays(monday, 6);
+  const from = part && part.start > monday ? part.start : monday;
+  const end = part && part.end < sunday ? part.end : sunday;
+  let share = 1;
+  if (part && (from > monday || end < sunday)) {
+    const counted = (a: string, b: string) =>
+      daysInRange(a, b).filter((d) => part.days.includes(isoWeekday(d))).length;
+    const all = counted(monday, sunday);
+    share = all > 0 ? counted(from, end) / all : 0;
+  }
+  const target = round1(weekTarget * share);
+  const last = upTo < end ? upTo : end;
+  const done =
+    last < from ? 0 : challengeGoalMeasure(g.metric, entries, from, last);
   const frac = target > 0 ? Math.min(1, done / target) : 0;
-  const rawBonus = rules.goal.maxBonus * frac;
+  // A part of a week pays its share of the bonus too, so a month's slices
+  // add up to what its days are worth, never a full bonus for one day.
+  const rawBonus = rules.goal.maxBonus * share * frac;
   return {
     weekStart: monday,
     goal: key,
@@ -909,19 +983,6 @@ export function challengeWeekGoal(
     bonus: round1(rawBonus),
     rawBonus,
   };
-}
-
-/** Mondays of the weeks that start inside [from, to] and on or before upTo. */
-export function challengeWeeksIn(
-  from: string,
-  to: string,
-  upTo?: string
-): string[] {
-  const out: string[] = [];
-  let m = challengeWeekStart(from);
-  if (m < from) m = addDays(m, 7);
-  for (; m <= to && (!upTo || m <= upTo); m = addDays(m, 7)) out.push(m);
-  return out;
 }
 
 export interface ChallengePeriodTotal {
@@ -995,7 +1056,7 @@ export function challengePeriodTotal(
   const groups = new Map<string, ChallengeDayScore[]>();
   for (const d of inRange) {
     if (!d.eligible) continue;
-    const k = challengeWeekStart(d.date);
+    const k = weekStartOf(d.date, 1);
     const list = groups.get(k);
     if (list) list.push(d);
     else groups.set(k, [d]);
@@ -1052,7 +1113,7 @@ export function challengePeriodTotal(
       for (const d of chronological) {
         if (d.date > day) break;
         if (!d.eligible) continue;
-        const k = challengeWeekStart(d.date);
+        const k = weekStartOf(d.date, 1);
         const list = weeks.get(k);
         if (list) list.push(d.rawTotal);
         else weeks.set(k, [d.rawTotal]);

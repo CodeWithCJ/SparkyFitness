@@ -1764,6 +1764,19 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     expect(await count(AMY, AMY, 'challenge_rule_changes')).toBe(1);
   });
 
+  it("the list's rules log read returns only the member's own challenges", async () => {
+    const mine = await challengeRepository.getRuleLogsForMember(AMY, [
+      challengeId,
+    ]);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]!.challenge_id).toBe(challengeId);
+    // An id the caller is not a member of reads nothing
+    expect(
+      await challengeRepository.getRuleLogsForMember(OUTSIDER, [challengeId])
+    ).toEqual([]);
+    expect(await challengeRepository.getRuleLogsForMember(AMY, [])).toEqual([]);
+  });
+
   it.each([
     ['a non-member', OUTSIDER, OUTSIDER],
     ['a diary delegate acting for the host', HOST, OUTSIDER],
