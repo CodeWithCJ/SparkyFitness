@@ -34,7 +34,6 @@ import RouteStyleControls from '../components/RouteStyleControls';
 import Button from '../components/ui/Button';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { addLog } from '../services/LogService';
 import {
   generateRouteOptions,
@@ -72,7 +71,6 @@ const DEFAULT_DISTANCE: Record<'km' | 'miles', string> = {
 const RouteGenerateScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { preferences } = usePreferences();
   const unit = preferences?.default_distance_unit ?? 'km';
   const lineColor = useCSSVariable('--color-accent-primary') as string;
@@ -213,10 +211,7 @@ const RouteGenerateScreen: React.FC<Props> = ({ navigation }) => {
 
   if (checking || !available) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <View className="flex-1 bg-background items-center justify-center px-6">
           {checking ? (
@@ -251,10 +246,7 @@ const RouteGenerateScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <View className="flex-1 bg-background">
         <View className="flex-1">

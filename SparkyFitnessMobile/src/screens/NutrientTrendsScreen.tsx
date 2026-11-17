@@ -12,7 +12,6 @@ import {
   trendRangeSegments,
   type TrendRange,
 } from '../utils/trendRange';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
@@ -31,7 +30,6 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({
   const { nutrientKey, nutrientLabel, unit, goal } = route.params;
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const [range, setRange] = useState<TrendRange>('7d');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
@@ -118,10 +116,7 @@ const NutrientTrendsScreen: React.FC<NutrientTrendsScreenProps> = ({
   }
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1"

@@ -43,7 +43,6 @@ import { useFoodEntryMealDetails } from '../hooks/useFoodEntryMealDetails';
 import { useUpdateFoodEntryMeal } from '../hooks/useUpdateFoodEntryMeal';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import { consumePendingMealIngredientSelection } from '../services/mealBuilderSelection';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel, normalizeDate } from '../utils/dateUtils';
 import { getFoodEntryMealTypeLabel } from '../utils/mealNutrition';
 import { buildMealIngredientDraftFromEntryMealFood } from '../utils/mealBuilderDraft';
@@ -107,7 +106,6 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
     : 'en-US';
   const { foodEntryMealId, initialMeal } = route.params;
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const calendarRef = useRef<CalendarSheetRef>(null);
   const timeSheetRef = useRef<TimeSheetRef>(null);
@@ -430,10 +428,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
 
   if (isLoading) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         <StatusView loading />
       </View>
     );
@@ -456,10 +451,7 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
     baseTotals.fiber != null ? baseTotals.fiber * displayScale : undefined;
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ScrollView

@@ -49,10 +49,7 @@ const Glp1TrackerScreen: React.FC<Glp1TrackerScreenProps> = ({
   const isInjectable = med?.type_id === 'injection';
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isLoading || !med ? (
         <View className="flex-1 items-center justify-center">

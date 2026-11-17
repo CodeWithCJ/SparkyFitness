@@ -1333,11 +1333,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   if (usesNativeHeader) return content;
 
-  return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {content}
-    </View>
-  );
+  return <View className="flex-1 bg-background">{content}</View>;
 };
 
 export default WorkoutDetailScreen;

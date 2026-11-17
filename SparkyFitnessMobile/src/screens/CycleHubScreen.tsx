@@ -8,7 +8,6 @@ import { useCycleMode } from '../hooks/useCycleMode';
 import { useCycleSettings } from '../hooks/useCycleSettings';
 import { useCycleHistory } from '../hooks/useCycleHistory';
 import { useCycleLogsRange } from '../hooks/useCycleLogs';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -33,7 +32,6 @@ type CycleHubScreenProps = RootStackScreenProps<'CycleHub'>;
 const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const {
     mode,
@@ -160,10 +158,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   }
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       {/* Header Bar with Segmented Control */}

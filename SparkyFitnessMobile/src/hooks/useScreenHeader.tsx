@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
 import { useCSSVariable } from 'uniwind';
 import { useNavigation } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { createDuplicatePressGuard } from '../utils/duplicatePress';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -77,6 +78,16 @@ export type HeaderMenuSection = {
 };
 
 export type HeaderMenuEntry = HeaderMenuAction | HeaderMenuSection;
+
+/**
+ * Where the custom bar reserves room for the status bar. The app runs edge to
+ * edge on Android, so the bar has to sit below the clock and battery icons:
+ * - `status-bar` (default): pushed screens, on both platforms.
+ * - `android-only`: `presentation: 'modal'` routes. An iOS sheet already
+ *   starts below the status bar, while Android draws it full height.
+ * - `none`: a bar that does not sit at the top of the window.
+ */
+export type HeaderTopInset = 'status-bar' | 'android-only' | 'none';
 
 function isMenuSection(entry: HeaderMenuEntry): entry is HeaderMenuSection {
   return 'items' in entry;
@@ -170,6 +181,17 @@ export interface ScreenHeaderConfig {
   nativeOptions?: Partial<NativeStackNavigationOptions>;
   /** Cross-fade the custom bar when this key changes (view/edit swaps). */
   animateKey?: string;
+  /** Room for the status bar above the custom bar; see HeaderTopInset. */
+  topInset?: HeaderTopInset;
+}
+
+/** Bar padding above its buttons, matching the `py-3` below them. */
+const BAR_VERTICAL_PADDING = 12;
+
+function statusBarInset(topInset: HeaderTopInset, insetTop: number): number {
+  if (topInset === 'none') return 0;
+  if (topInset === 'android-only' && Platform.OS !== 'android') return 0;
+  return insetTop;
 }
 
 interface HeaderColors {
@@ -581,6 +603,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<ParamListBase>>();
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const insets = useSafeAreaInsets();
   const { defaultColor, saveColor } = useHeaderActionColors();
   const colors: HeaderColors = { defaultColor, saveColor };
   // The menu badge dot always takes the real accent, even on the Liquid Glass
@@ -604,6 +627,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     borderless,
     nativeOptions,
     animateKey,
+    topInset = 'status-bar',
   } = config;
   const rightItems = toRightArray(right);
 
@@ -857,10 +881,15 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     />
   );
 
+  // The bar reserves the status bar itself, so a screen cannot forget it on
+  // one of its return paths (#3465). The padding sits inside the bar, so the
+  // screen's own background shows behind the clock as before.
+  const barInset = statusBarInset(topInset, insets.top);
   const bar = (
     <View
-      className={`px-4 py-3 ${borderless ? '' : 'border-b border-border-subtle'}`}
+      className={`px-4 pb-3 ${borderless ? '' : 'border-b border-border-subtle'}`}
       style={{
+        paddingTop: BAR_VERTICAL_PADDING + barInset,
         position: 'relative',
         flexDirection: 'row',
         alignItems: 'center',
@@ -880,6 +909,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
           layout means it can never compete with the side cells for space, so
           it can never squeeze them — and it still lands on the bar's true
           center regardless of how the left/right content widths differ.
+          It starts below the status-bar room, so it centers on the buttons.
           pointerEvents="box-none" keeps the title layer itself untouchable so
           it can never sit "on top of" a button for hit-testing purposes. */}
       <View
@@ -888,7 +918,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
           position: 'absolute',
           left: 16,
           right: 16,
-          top: 0,
+          top: barInset,
           bottom: 0,
           alignItems: 'center',
           justifyContent: 'center',

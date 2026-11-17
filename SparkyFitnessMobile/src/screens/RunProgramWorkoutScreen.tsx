@@ -18,7 +18,6 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { fetchExerciseEntry } from '../services/api/exerciseStatsApi';
 import { addLog } from '../services/LogService';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   setProgramPosition,
   useRunProgram,
@@ -42,7 +41,6 @@ const isoToLocalDay = (iso: string): string => toLocalDateString(new Date(iso));
 const RunProgramWorkoutScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { index } = route.params;
   const { program, status, schedule, doneDay, enabled } = useRunProgram();
   const { preferences } = usePreferences();
@@ -79,10 +77,7 @@ const RunProgramWorkoutScreen: React.FC<Props> = ({ navigation, route }) => {
 
   if (!status || !workout || !item) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <View className="flex-1 bg-background p-4">
           <Text className="text-text-secondary text-base text-center mt-8">
@@ -206,10 +201,7 @@ const RunProgramWorkoutScreen: React.FC<Props> = ({ navigation, route }) => {
         });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 bg-background"

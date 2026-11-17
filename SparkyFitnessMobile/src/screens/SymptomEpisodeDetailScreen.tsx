@@ -1,9 +1,7 @@
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { formatDuration, minutesBetween, scaleMax } from '@workspace/shared';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { getAppLocale } from '../localization';
 import { useSymptomDefinitions, useSymptomEntry } from '../hooks/useSymptoms';
@@ -45,8 +43,6 @@ export default function SymptomEpisodeDetailScreen({
   route,
 }: Props) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { entryId } = route.params;
   const { entry, isLoading } = useSymptomEntry(entryId);
   const { definitions } = useSymptomDefinitions();
@@ -94,10 +90,7 @@ export default function SymptomEpisodeDetailScreen({
   const isEpisode = entry?.started_at != null;
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isLoading || !entry ? (
         <View className="py-16 items-center">

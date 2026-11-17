@@ -225,10 +225,10 @@ function usesScreenHeaderAbstraction(source: string): boolean {
 }
 
 /**
- * Layouts that render a useScreenHeader bar for the screen and reserve the
- * status-bar inset above it themselves.
+ * Layouts that render a useScreenHeader bar for the screen. Like the screens,
+ * they leave the status-bar room to the bar.
  */
-const STATUS_BAR_INSET_LAYOUTS = {
+const SCREEN_HEADER_LAYOUTS = {
   FormScreenChrome: 'src/components/FormScreenChrome.tsx',
   ReportScreenLayout: 'src/components/reports/ReportScreenLayout.tsx',
 } as const;
@@ -239,22 +239,6 @@ function padsTopWithSafeAreaInset(source: string): boolean {
   // The value may wrap over several lines once Prettier breaks it up, but it
   // ends at the next `,`, `;` or `}`, so insets.top has to be part of it.
   return /paddingTop:[^,;}]*\binsets\.top\b/.test(code);
-}
-
-/**
- * On the custom-header path (Android always, iOS 26+ with Liquid Glass off)
- * the bar useScreenHeader returns is drawn by the screen, and the app runs
- * edge to edge, so the screen has to keep it below the status bar: either its
- * root pads the top with the safe-area inset, or it renders the bar through a
- * layout that does.
- */
-function reservesStatusBarInset(source: string): boolean {
-  return (
-    padsTopWithSafeAreaInset(source) ||
-    Object.keys(STATUS_BAR_INSET_LAYOUTS).some((layout) =>
-      new RegExp(`<${layout}\\b`).test(source)
-    )
-  );
 }
 
 function hasHandRolledHeaderMarker(source: string): boolean {
@@ -409,7 +393,7 @@ function failNativeHeaderContract(message: string): never {
       '- Root-stack screens with a screen-owned React header must hide that React header on iOS because the native stack header owns the iOS chrome.',
       '- Declare screen headers with useScreenHeader(...) (src/hooks/useScreenHeader.tsx). It renders the custom bar on the fallback path, mirrors the same descriptor into unstable_header*Items on the native path, and returns null on native so the two never coexist.',
       '- A screen on useScreenHeader must not keep hand-rolled header code: no unstable_header*Items blocks, renderHeader()/renderHeaderBar() functions, or {/* Header */} custom bars alongside the hook.',
-      "- A screen on useScreenHeader must render the bar the hook returns and keep it below the status bar: wrap every return path that renders it in a root padded with insets.top, style={usesNativeHeader ? undefined : { paddingTop: insets.top }} on pushed screens (RoutesScreen) and style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined} on presentation: 'modal' routes, or render it through FormScreenChrome or ReportScreenLayout. The app is edge to edge on Android, so a bare fragment puts the title and buttons under the clock and battery icons.",
+      "- A screen on useScreenHeader must render the bar the hook returns, and must not pad its root with insets.top: the custom bar reserves the status bar itself (#3465), so a padded root shows the room twice. A presentation: 'modal' route passes topInset: 'android-only' (an iOS sheet already starts below the status bar); a bar that does not sit at the top of the window passes topInset: 'none'.",
       '- Screens intentionally off the hook (e.g. FoodSearchScreen with its anchored + menu) must mirror custom actions with unstable_headerLeftItems or unstable_headerRightItems themselves and gate the custom bar on useNativeIOSHeadersActive().',
       '- When adding a new root-stack screen that is intentionally presented above Tabs instead of inside native tabs mode, add it to NATIVE_TABS_ROUTE_EXCLUSIONS with a short reason.',
     ].join('\n')
@@ -764,26 +748,39 @@ describe('native header navigation contract', () => {
     ).toBe(false);
   });
 
-  it('keeps custom header bars below the Android status bar', () => {
-    const layoutsWithoutInset = Object.entries(STATUS_BAR_INSET_LAYOUTS)
-      .filter(
-        ([, relativePath]) =>
-          !padsTopWithSafeAreaInset(readMobileFile(relativePath))
+  it('keeps the custom header bar below the Android status bar', () => {
+    // The app is edge to edge on Android, so the bar the hook returns has to
+    // reserve the status bar itself; screens no longer do it (#3465).
+    const hookSource = readMobileFile('src/hooks/useScreenHeader.tsx');
+
+    expect(hookSource).toMatch(/\buseSafeAreaInsets\(\)/);
+    expect(hookSource).toMatch(/paddingTop:[^,;}]*\bbarInset\b/);
+    expect(hookSource).toMatch(
+      /const barInset = statusBarInset\(topInset, insets\.top\)/
+    );
+  });
+
+  it('leaves the status-bar room to the header bar instead of padding screens', () => {
+    // A root padded with insets.top on top of the bar's own room would push
+    // the header down by the status bar a second time.
+    const layoutsPadding = Object.entries(SCREEN_HEADER_LAYOUTS)
+      .filter(([, relativePath]) =>
+        padsTopWithSafeAreaInset(readMobileFile(relativePath))
       )
       .map(([layout]) => layout);
     const offenders = listAllScreenFiles().filter((relativePath) => {
       const source = readMobileFile(relativePath);
       return (
-        usesScreenHeaderAbstraction(source) && !reservesStatusBarInset(source)
+        usesScreenHeaderAbstraction(source) && padsTopWithSafeAreaInset(source)
       );
     });
 
-    if (layoutsWithoutInset.length > 0 || offenders.length > 0) {
+    if (layoutsPadding.length > 0 || offenders.length > 0) {
       failNativeHeaderContract(
         [
-          'Custom header bars can draw under the Android status bar.',
-          `Header layouts that no longer pad the top with the safe-area inset: ${formatList(layoutsWithoutInset)}.`,
-          `Screens on useScreenHeader that neither pad their root with insets.top on the custom-header path nor render through ${Object.keys(STATUS_BAR_INSET_LAYOUTS).join(' or ')}: ${formatList(offenders)}.`,
+          'Custom header bars get the status-bar room twice.',
+          `Header layouts that still pad the top with the safe-area inset: ${formatList(layoutsPadding)}.`,
+          `Screens on useScreenHeader that still pad with insets.top: ${formatList(offenders)}.`,
         ].join('\n')
       );
     }

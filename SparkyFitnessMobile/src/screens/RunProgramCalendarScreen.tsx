@@ -16,7 +16,6 @@ import {
 } from '../components/recording/RunProgramCard';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useRunProgram } from '../services/runProgramService';
 import { toLocalDateString } from '../utils/dateUtils';
 import { formatDayLabel } from '../utils/dayLabel';
@@ -36,7 +35,6 @@ const isoToLocalDay = (iso: string): string => toLocalDateString(new Date(iso));
 const RunProgramCalendarScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { program, status, schedule, doneDay, loaded } = useRunProgram();
   const { preferences } = usePreferences();
   const firstDayOfWeek = preferences?.first_day_of_week ?? 1;
@@ -77,10 +75,7 @@ const RunProgramCalendarScreen: React.FC<Props> = ({ navigation }) => {
 
   if (!loaded || !program || !status) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <View className="flex-1 bg-background p-4">
           {loaded ? (
@@ -170,10 +165,7 @@ const RunProgramCalendarScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 bg-background"

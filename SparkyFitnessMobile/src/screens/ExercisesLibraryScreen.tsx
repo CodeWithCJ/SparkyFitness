@@ -26,7 +26,6 @@ import SafeImage from '../components/SafeImage';
 import Icon from '../components/Icon';
 import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { Exercise } from '../types/exercise';
@@ -40,7 +39,6 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [textSecondary, textPrimary] = useCSSVariable([
     '--color-text-secondary',
@@ -286,10 +284,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isConnected ? (
         <LibrarySearchBar

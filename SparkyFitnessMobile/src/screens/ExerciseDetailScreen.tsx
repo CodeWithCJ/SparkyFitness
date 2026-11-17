@@ -70,7 +70,6 @@ import {
 } from '../utils/workoutSession';
 import { formatDateLabel } from '../utils/dateUtils';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -142,7 +141,6 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     route.params;
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const textPrimary = useCSSVariable('--color-text-primary') as string;
   const textMuted = useCSSVariable('--color-text-muted') as string;
@@ -698,10 +696,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
 
   return (
     <GestureDetector gesture={swipeGesture}>
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         {header}
 
         <ScrollView

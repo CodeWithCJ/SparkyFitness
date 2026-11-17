@@ -75,7 +75,6 @@ import type {
 } from '../types/foodUnitVariants';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   buildLocalUnitVariants,
   convertEquivalentVariantQuantity,
@@ -183,7 +182,6 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
     });
   const isEntryImagePending = isSettingEntryImage || isClearingEntryImage;
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { profile } = useProfile();
   const calendarRef = useRef<CalendarSheetRef>(null);
@@ -1008,10 +1006,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ScrollView

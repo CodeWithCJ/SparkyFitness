@@ -30,7 +30,6 @@ import {
   deleteWaterIntakeLogEntry,
   fetchWaterIntakeLog,
 } from '../services/api/measurementsApi';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import { isManualSource } from '../utils/customMeasurementsForm';
 import { formatDateLabel, getDeviceTimezone } from '../utils/dateUtils';
@@ -54,7 +53,6 @@ const WaterLogScreen: React.FC<WaterLogScreenProps> = ({ route }) => {
   const { date } = route.params;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const queryClient = useQueryClient();
   const [accentColor, hydrationColor, dangerColor] = useCSSVariable([
@@ -314,10 +312,7 @@ const WaterLogScreen: React.FC<WaterLogScreenProps> = ({ route }) => {
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {content()}
     </View>

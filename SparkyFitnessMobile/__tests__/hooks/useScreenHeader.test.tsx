@@ -1,8 +1,12 @@
 import React from 'react';
 import { Platform, View } from 'react-native';
 import { render } from '@testing-library/react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { useScreenHeader } from '../../src/hooks/useScreenHeader';
+import {
+  useScreenHeader,
+  type HeaderTopInset,
+} from '../../src/hooks/useScreenHeader';
 import { __resetAppPreferencesStoreForTests } from '../../src/stores/appPreferencesStore';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
 
@@ -27,15 +31,18 @@ function TestScreen({
   right,
   left,
   title = 'Test',
+  topInset,
 }: {
   right?: Parameters<typeof useScreenHeader>[0]['right'];
   left?: Parameters<typeof useScreenHeader>[0]['left'];
   title?: string;
+  topInset?: HeaderTopInset;
 }) {
   const header = useScreenHeader({
     title,
     left,
     right: right ?? [{ kind: 'primary', onPress: () => {} }],
+    topInset,
   });
   return <>{header}</>;
 }
@@ -322,5 +329,77 @@ describe('useScreenHeader accessibility label (native path)', () => {
     const item = nativeLeftItem();
     expect(item?.label).toBe('Save');
     expect(item?.accessibilityLabel).toBe('Save meal');
+  });
+});
+
+describe('useScreenHeader status-bar room (custom path)', () => {
+  const STATUS_BAR = 24;
+  let osSpy: jest.SpyInstance | null = null;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    __resetAppPreferencesStoreForTests();
+    mockUsesNativeHeader = false;
+    await initializeI18n('en');
+    await i18n.changeLanguage('en');
+  });
+
+  afterEach(() => {
+    if (osSpy) osSpy.restore();
+    osSpy = null;
+  });
+
+  function renderBar(os: 'android' | 'ios', topInset?: HeaderTopInset) {
+    osSpy = jest.replaceProperty(Platform, 'OS', os);
+    const { UNSAFE_queryAllByType } = render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: STATUS_BAR, bottom: 0, left: 0, right: 0 },
+        }}
+      >
+        <TestScreen topInset={topInset} />
+      </SafeAreaProvider>
+    );
+    const views = UNSAFE_queryAllByType(View);
+    const bar = views.find((view) =>
+      String(view.props.className ?? '').startsWith('px-4 pb-3')
+    );
+    const titleLayer = views.find(
+      (view) => view.props.pointerEvents === 'box-none'
+    );
+    return { bar, titleLayer };
+  }
+
+  // The bar reserves the status bar itself, so a screen cannot forget it on
+  // one of its return paths (#3465).
+  it.each([
+    ['android', undefined, STATUS_BAR],
+    ['ios', undefined, STATUS_BAR],
+    ['android', 'status-bar', STATUS_BAR],
+    ['android', 'android-only', STATUS_BAR],
+    ['ios', 'android-only', 0],
+    ['android', 'none', 0],
+    ['ios', 'none', 0],
+  ] as const)(
+    'on %s with topInset %s leaves %i of room above the buttons',
+    (os, topInset, room) => {
+      const { bar, titleLayer } = renderBar(os, topInset);
+
+      expect(bar?.props.style).toEqual(
+        expect.objectContaining({ paddingTop: 12 + room })
+      );
+      // The title layer starts below that room, so it centers on the buttons.
+      expect(titleLayer?.props.style).toEqual(
+        expect.objectContaining({ top: room, bottom: 0 })
+      );
+    }
+  );
+
+  it('renders nothing on the native-header path', () => {
+    mockUsesNativeHeader = true;
+    const { bar } = renderBar('ios');
+
+    expect(bar).toBeUndefined();
   });
 });

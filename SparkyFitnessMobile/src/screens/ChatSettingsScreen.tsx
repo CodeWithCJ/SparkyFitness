@@ -91,10 +91,7 @@ export default function ChatSettingsScreen(
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={nativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{

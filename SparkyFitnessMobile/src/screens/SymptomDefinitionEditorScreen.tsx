@@ -8,9 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
 import Switch from '../components/ui/Switch';
@@ -67,8 +65,6 @@ export default function SymptomDefinitionEditorScreen({
     '--color-text-muted',
     '--color-accent-primary',
   ]) as [string, string];
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { definitionId } = route.params || {};
 
   const { definitions } = useSymptomDefinitions();
@@ -228,10 +224,7 @@ export default function SymptomDefinitionEditorScreen({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ScrollView
