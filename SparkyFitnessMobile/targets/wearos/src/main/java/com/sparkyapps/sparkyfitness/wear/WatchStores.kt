@@ -1123,6 +1123,7 @@ class WorkoutSessionStore(private val context: Context) {
   private val pendingUnlogs = mutableSetOf<String>()
   private val unconfirmedCompletions = LinkedHashMap<String, CompletedSet>()
   private var targetRevision: Double = Double.NEGATIVE_INFINITY
+  private var targetOverrides: Map<String, SetValues> = emptyMap()
   private val celebratedPrSetIds = mutableSetOf<String>()
   private val hrReadings = mutableListOf<Double>()
 
@@ -1346,7 +1347,11 @@ class WorkoutSessionStore(private val context: Context) {
     val prevStepId = currentStep?.setId
     _plan.value = incoming
 
-    val builtSteps = flattenSteps(incoming)
+    if (!isSameSession) {
+      targetRevision = Double.NEGATIVE_INFINITY
+      targetOverrides = emptyMap()
+    }
+    val builtSteps = applyTargetOverrides(flattenSteps(incoming))
     _steps.value = builtSteps
     demoStore?.prune(activeDemoKeys())
 
@@ -1372,7 +1377,6 @@ class WorkoutSessionStore(private val context: Context) {
       phoneConfirmedSetIds.clear()
       pendingUnlogs.clear()
       unconfirmedCompletions.clear()
-      targetRevision = Double.NEGATIVE_INFINITY
       celebratedPrSetIds.clear()
       celebratedPrSetIds.addAll(incoming.prSetIds)
       _completedSetIds.value = emptySet()
@@ -1440,23 +1444,27 @@ class WorkoutSessionStore(private val context: Context) {
     )
   }
 
+  private fun applyTargetOverrides(steps: List<WorkoutStep>): List<WorkoutStep> {
+    if (targetOverrides.isEmpty()) return steps
+    return steps.map { step ->
+      val t = targetOverrides[step.setId] ?: return@map step
+      step.copy(
+        targetWeightKg = t.weightKg ?: step.targetWeightKg,
+        targetReps = t.reps ?: step.targetReps,
+        targetDurationSec = t.durationSec ?: step.targetDurationSec,
+        previousDurationSec = t.previousDurationSec ?: step.previousDurationSec,
+        targetDistanceKm = t.distanceKm ?: step.targetDistanceKm
+      )
+    }
+  }
+
   fun applySetTargetsUpdate(update: ContextPayloadMapper.SetTargetsUpdate) {
     val curPlan = _plan.value ?: return
     if (curPlan.sessionId != update.sessionId) return
     if (update.revision <= targetRevision) return
     targetRevision = update.revision
-    val updatedSteps = _steps.value.map { step ->
-      val t = update.targets[step.setId]
-      if (t != null) {
-        step.copy(
-          targetWeightKg = t.weightKg ?: step.targetWeightKg,
-          targetReps = t.reps ?: step.targetReps,
-          targetDurationSec = t.durationSec ?: step.targetDurationSec,
-          previousDurationSec = t.previousDurationSec ?: step.previousDurationSec,
-          targetDistanceKm = t.distanceKm ?: step.targetDistanceKm
-        )
-      } else step
-    }
+    targetOverrides = update.targets
+    val updatedSteps = applyTargetOverrides(flattenSteps(curPlan))
     _steps.value = updatedSteps
 
     // Reconcile completions while preserving in-flight wrist logs and pending unlogs
@@ -1878,17 +1886,18 @@ class WorkoutSessionStore(private val context: Context) {
         if (exIdx >= 0) {
           val ex = updatedExercises[exIdx]
           val template = ex.sets.lastOrNull()
+          val templateOverride = template?.setId?.let { targetOverrides[it] }
           val newSet = PlannedSet(
             setId = "watch_set_${UUID.randomUUID()}",
-            targetReps = template?.targetReps ?: 10.0,
-            targetWeightKg = template?.targetWeightKg,
+            targetReps = templateOverride?.reps ?: template?.targetReps ?: 10.0,
+            targetWeightKg = templateOverride?.weightKg ?: template?.targetWeightKg,
             restSeconds = template?.restSeconds ?: 60,
             restAfterSeconds = template?.restAfterSeconds,
             setType = "normal",
-            targetDurationSec = template?.targetDurationSec,
+            targetDurationSec = templateOverride?.durationSec ?: template?.targetDurationSec,
             timed = template?.timed,
             carry = template?.carry,
-            targetDistanceKm = template?.targetDistanceKm,
+            targetDistanceKm = templateOverride?.distanceKm ?: template?.targetDistanceKm,
             weighted = template?.weighted
           )
           updatedExercises[exIdx] = ex.copy(sets = ex.sets + newSet)
@@ -1963,7 +1972,7 @@ class WorkoutSessionStore(private val context: Context) {
     }
     val nextPlan = curPlan.copy(exercises = updatedExercises)
     _plan.value = nextPlan
-    val nextSteps = flattenSteps(nextPlan)
+    val nextSteps = applyTargetOverrides(flattenSteps(nextPlan))
     _steps.value = nextSteps
     syncLoggedOrder(nextSteps)
     _stepIndex.value = min(_stepIndex.value, max(0, nextSteps.size - 1))
@@ -2444,6 +2453,7 @@ class WorkoutSessionStore(private val context: Context) {
     clearPendingRpeQueue()
     unconfirmedCompletions.clear()
     targetRevision = Double.NEGATIVE_INFINITY
+    targetOverrides = emptyMap()
     tickerJob?.cancel()
     cancelGetReady()
     clearHold()
@@ -2471,6 +2481,7 @@ class WorkoutSessionStore(private val context: Context) {
   fun dismissSummary() {
     unconfirmedCompletions.clear()
     targetRevision = Double.NEGATIVE_INFINITY
+    targetOverrides = emptyMap()
     _plan.value = null
     _steps.value = emptyList()
     _stepIndex.value = 0
