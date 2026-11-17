@@ -7,6 +7,7 @@ import {
   programSlots,
   sportLoadOf,
   weeklyPlanSlots,
+  MAX_PLAN_ASSIGNMENTS,
   weeklyTotals,
   loadSportGroup,
   sessionLoad,
@@ -725,5 +726,42 @@ describe('cardio that is not a run, ride or walk', () => {
       completedMinutes: 95,
       matchedMinutes: 30,
     });
+  });
+});
+
+describe('oversized plans', () => {
+  const huge = {
+    id: 'big',
+    name: 'Big',
+    scheduleType: 'weekly' as const,
+    start: '2026-01-01',
+    end: null,
+    assignments: Array.from({ length: 20000 }, (_, i) => ({
+      id: i,
+      dayOfWeek: i % 7,
+      sessionIndex: i,
+      sessionName: null,
+      name: 'Lift',
+      sport: 'strength' as const,
+      minutes: 30,
+    })),
+  };
+
+  it('bounds the slots a plan with thousands of sessions can make', () => {
+    const slots = weeklyPlanSlots([huge], '2026-10-01', '2027-01-30');
+    expect(slots.length).toBeLessThanOrEqual(3000);
+    // Only the first assignments are read, so links stay bounded too.
+    const links = slots.reduce((n, s) => n + s.linkKeys.length, 0);
+    expect(links).toBeLessThanOrEqual(MAX_PLAN_ASSIGNMENTS * 20);
+  });
+
+  it('matches thousands of slots and entries quickly', () => {
+    const slots = weeklyPlanSlots([huge], '2026-10-01', '2027-01-30');
+    const entries = Array.from({ length: 3000 }, (_, i) =>
+      entry(`e${i}`, -(i % 100), { sport: 'strength', linkKey: `plan:${i}` })
+    );
+    const t0 = Date.now();
+    matchPlan(slots, entries, TODAY);
+    expect(Date.now() - t0).toBeLessThan(1500);
   });
 });

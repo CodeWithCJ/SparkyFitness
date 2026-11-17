@@ -30,6 +30,16 @@ const MAX_PROJECTED = 200;
 /** How many days apart a diary entry and the day it was planned for may be. */
 export const MATCH_WINDOW_DAYS = 3;
 
+/**
+ * Ceilings on what the calendar builds from user-owned plans, so one oversized
+ * plan cannot make a request expensive: plans read, assignments read per plan,
+ * distinct sessions per weekday, and weekly-plan slots emitted per request.
+ */
+export const MAX_CALENDAR_PLANS = 50;
+export const MAX_PLAN_ASSIGNMENTS = 500;
+const MAX_SESSIONS_PER_DAY = 20;
+const MAX_PLAN_SLOTS = 3000;
+
 /** Days before the range the past run-day walk starts, so earlier completions still claim their run days. */
 const PAST_WALK_MARGIN_DAYS = 14;
 
@@ -246,6 +256,25 @@ export function matchPlan(
   const free = entries
     .filter((entry) => !isPassiveEntry(entry))
     .sort((a, b) => compareDays(a.day, b.day) || a.id.localeCompare(b.id));
+  // Indexes, so matching costs about the number of slots plus entries rather
+  // than their product.
+  const slotLinks = new Map(
+    ordered.map((slot) => [slot.id, new Set(slot.linkKeys)])
+  );
+  const slotsByKey = new Map<string, PlanSlot[]>();
+  for (const slot of ordered) {
+    for (const key of slotLinks.get(slot.id) ?? []) {
+      const list = slotsByKey.get(key) ?? [];
+      list.push(slot);
+      slotsByKey.set(key, list);
+    }
+  }
+  const entriesByDay = new Map<string, CalendarEntry[]>();
+  for (const entry of free) {
+    const list = entriesByDay.get(entry.day) ?? [];
+    list.push(entry);
+    entriesByDay.set(entry.day, list);
+  }
   const taken = new Map<string, string>(); // entry id -> slot id
   const matched = new Map<
     string,
@@ -266,17 +295,22 @@ export function matchPlan(
   for (const entry of free) {
     const links = keysOf(entry);
     if (links.length === 0) continue;
-    const candidates = ordered
-      .filter(
-        (slot) =>
-          slot.linkKeys.some((k) => links.includes(k)) &&
-          Math.abs(daysBetween(slot.day, entry.day)) <= MATCH_WINDOW_DAYS
-      )
+    const near = new Map<string, PlanSlot>();
+    for (const key of links) {
+      for (const slot of slotsByKey.get(key) ?? []) {
+        if (Math.abs(daysBetween(slot.day, entry.day)) <= MATCH_WINDOW_DAYS) {
+          near.set(slot.id, slot);
+        }
+      }
+    }
+    const candidates = [...near.values()]
       .map((slot) => ({
         slot,
         exact: slot.day === entry.day ? 0 : 1,
         held: (matched.get(slot.id)?.entries ?? []).some((e) =>
-          keysOf(e).some((k) => links.includes(k) && slot.linkKeys.includes(k))
+          keysOf(e).some(
+            (k) => links.includes(k) && slotLinks.get(slot.id)?.has(k)
+          )
         )
           ? 1
           : 0,
@@ -294,12 +328,9 @@ export function matchPlan(
   }
   for (const slot of ordered) {
     if (matched.has(slot.id)) continue;
-    for (const entry of free) {
+    for (const entry of entriesByDay.get(slot.day) ?? []) {
       if (taken.has(entry.id) || entry.linkKey) continue;
-      if (
-        entry.day === slot.day &&
-        (entry.sport === slot.sport || sameName(entry.name, slot.label))
-      ) {
+      if (entry.sport === slot.sport || sameName(entry.name, slot.label)) {
         take(slot, entry, false);
       }
     }
@@ -312,8 +343,8 @@ export function matchPlan(
   const sourceOf = new Map(ordered.map((slot) => [slot.id, slot.source]));
   for (const slot of ordered) {
     if (matched.has(slot.id)) continue;
-    for (const entry of free) {
-      if (!taken.has(entry.id) || entry.day !== slot.day) continue;
+    for (const entry of entriesByDay.get(slot.day) ?? []) {
+      if (!taken.has(entry.id)) continue;
       if (entry.sport !== slot.sport) continue;
       if (sourceOf.get(taken.get(entry.id) ?? '') === slot.source) continue;
       const current = matched.get(slot.id) ?? { entries: [], linked: false };
@@ -335,9 +366,12 @@ export function matchPlan(
       status = compareDays(slot.day, today) < 0 ? 'missed' : 'upcoming';
     else if (found.linked) {
       const covered = new Set(
-        found.entries.flatMap(keysOf).filter((k) => slot.linkKeys.includes(k))
+        found.entries
+          .flatMap(keysOf)
+          .filter((k) => slotLinks.get(slot.id)?.has(k))
       ).size;
-      status = covered >= slot.linkKeys.length ? 'done' : 'partial';
+      status =
+        covered >= (slotLinks.get(slot.id)?.size ?? 0) ? 'done' : 'partial';
     } else if (slot.plannedMinutes != null && slot.plannedMinutes > 0) {
       status = minutes / slot.plannedMinutes >= DONE_SHARE ? 'done' : 'partial';
     } else {
@@ -716,21 +750,27 @@ export function weeklyPlanSlots(
   end: string
 ): PlanSlot[] {
   const slots: PlanSlot[] = [];
-  for (const template of templates) {
+  for (const template of templates.slice(0, MAX_CALENDAR_PLANS)) {
     if (template.scheduleType !== 'weekly') continue;
     const first =
       compareDays(template.start, start) > 0 ? template.start : start;
     const last =
       template.end && compareDays(template.end, end) < 0 ? template.end : end;
+    // Sessions of each weekday, grouped once instead of per day.
+    const byWeekday = new Map<number, Map<number, PlanAssignmentInput[]>>();
+    for (const a of template.assignments.slice(0, MAX_PLAN_ASSIGNMENTS)) {
+      if (a.dayOfWeek == null) continue;
+      const sessions =
+        byWeekday.get(a.dayOfWeek) ?? new Map<number, PlanAssignmentInput[]>();
+      const key = a.sessionIndex ?? 0;
+      const group = sessions.get(key);
+      if (group) group.push(a);
+      else if (sessions.size < MAX_SESSIONS_PER_DAY) sessions.set(key, [a]);
+      byWeekday.set(a.dayOfWeek, sessions);
+    }
     for (let day = first; compareDays(day, last) <= 0; day = addDays(day, 1)) {
-      const weekday = dayOfWeek(day);
-      const sessions = new Map<number, PlanAssignmentInput[]>();
-      for (const a of template.assignments) {
-        if (a.dayOfWeek !== weekday) continue;
-        const key = a.sessionIndex ?? 0;
-        sessions.set(key, [...(sessions.get(key) ?? []), a]);
-      }
-      for (const [sessionIndex, group] of sessions) {
+      for (const [sessionIndex, group] of byWeekday.get(dayOfWeek(day)) ?? []) {
+        if (slots.length >= MAX_PLAN_SLOTS) return slots;
         slots.push(planSessionSlot(template, day, sessionIndex, group));
       }
     }

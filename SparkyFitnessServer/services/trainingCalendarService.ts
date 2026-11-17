@@ -17,6 +17,8 @@ import {
   groupPresetEntries,
   loadSportGroup,
   MATCH_WINDOW_DAYS,
+  MAX_CALENDAR_PLANS,
+  MAX_PLAN_ASSIGNMENTS,
   matchPlan,
   planMinutes,
   planSessionSlot,
@@ -183,22 +185,27 @@ async function getTrainingCalendar(
       );
     }
 
-    const plans: PlanTemplateInput[] = templates.map((t) => ({
-      id: t.id,
-      name: t.plan_name,
-      scheduleType: t.schedule_type,
-      start: t.start_day,
-      end: t.end_day,
-      assignments: t.assignments.map((a): PlanAssignmentInput => ({
-        id: a.id,
-        dayOfWeek: a.day_of_week,
-        sessionIndex: a.session_index,
-        sessionName: a.session_name,
-        name: a.name,
-        sport: assignmentSport(a.name, a.is_preset),
-        minutes: a.minutes === null ? null : Number(a.minutes),
-      })),
-    }));
+    // Plans are user-owned and uncapped, so only a bounded part of them is read.
+    const plans: PlanTemplateInput[] = templates
+      .slice(0, MAX_CALENDAR_PLANS)
+      .map((t) => ({
+        id: t.id,
+        name: t.plan_name,
+        scheduleType: t.schedule_type,
+        start: t.start_day,
+        end: t.end_day,
+        assignments: t.assignments
+          .slice(0, MAX_PLAN_ASSIGNMENTS)
+          .map((a): PlanAssignmentInput => ({
+            id: a.id,
+            dayOfWeek: a.day_of_week,
+            sessionIndex: a.session_index,
+            sessionName: a.session_name,
+            name: a.name,
+            sport: assignmentSport(a.name, a.is_preset),
+            minutes: a.minutes === null ? null : Number(a.minutes),
+          })),
+      }));
     slots.push(...weeklyPlanSlots(plans, matchStart, matchEnd));
     const nextByPlan = new Map<string, number[]>();
     if (
@@ -268,10 +275,15 @@ function sequentialPlanSlots(
       const key = a.sessionIndex ?? 1;
       sessions.set(key, [...(sessions.get(key) ?? []), a]);
     }
+    // Which session each assignment link belongs to, built once.
+    const sessionOfLink = new Map<string, [number, PlanAssignmentInput[]]>();
+    for (const [index, group] of sessions) {
+      for (const a of group) sessionOfLink.set(`plan:${a.id}`, [index, group]);
+    }
     for (const entry of entries) {
-      const match = [...sessions.entries()].find(([, group]) =>
-        group.some((a) => calendarEntryLinks(entry).includes(`plan:${a.id}`))
-      );
+      const match = calendarEntryLinks(entry)
+        .map((link) => sessionOfLink.get(link))
+        .find((found) => found !== undefined);
       if (!match) continue;
       const slot = planSessionSlot(plan, entry.day, match[0], match[1]);
       slots.set(slot.id, slot);
