@@ -415,17 +415,22 @@ export function useWatchWorkoutBridge(
         );
         return;
       }
+      const alreadyCompleted = state.completedSetIds[payload.setId] != null;
       // Values the wearer typed on the watch land first: `completeSet` runs
       // the store's assumed-value adoption, which only fills a field that is
       // still empty, so patching afterwards would be overwriting a value the
       // store had already committed. Each field is omitted unless the watch
       // actually had one — writing null would clear the planned value.
+      // When the set is already complete (e.g. a follow-up RPE reply arriving
+      // before confirmation), only patch RPE so phone-side edits stay intact.
       const patch: ActiveSetPatch = {};
-      if (payload.weightKg != null) patch.weight = payload.weightKg;
-      if (payload.reps != null) patch.reps = payload.reps;
-      if (payload.duration != null)
-        patch.duration = Math.round(payload.duration);
-      if (payload.distanceKm != null) patch.distance = payload.distanceKm;
+      if (!alreadyCompleted) {
+        if (payload.weightKg != null) patch.weight = payload.weightKg;
+        if (payload.reps != null) patch.reps = payload.reps;
+        if (payload.duration != null)
+          patch.duration = Math.round(payload.duration);
+        if (payload.distanceKm != null) patch.distance = payload.distanceKm;
+      }
       if (
         payload.rpe != null &&
         Number.isFinite(payload.rpe) &&
@@ -437,19 +442,22 @@ export function useWatchWorkoutBridge(
       if (Object.keys(patch).length > 0) {
         state.updateSetField(payload.setId, patch);
       }
-      // The watch has reported the duration it timed. The phone's own
-      // stopwatch for this set (started from the watch's) is done.
-      state.clearSetTimer(payload.setId);
-      clampedWatchTimerStart.delete(payload.setId);
+      if (!alreadyCompleted) {
+        // The watch has reported the duration it timed. The phone's own
+        // stopwatch for this set (started from the watch's) is done.
+        state.clearSetTimer(payload.setId);
+        clampedWatchTimerStart.delete(payload.setId);
 
-      state.completeSet(
-        payload.setId,
-        boundedWatchCompletedAt(
-          payload.completedAt,
-          state.startedAt,
-          Date.now()
-        )
-      );
+        state.completeSet(
+          payload.setId,
+          boundedWatchCompletedAt(
+            payload.completedAt,
+            state.startedAt,
+            Date.now()
+          )
+        );
+      }
+      if (alreadyCompleted && Object.keys(patch).length === 0) return;
       // Flushed immediately rather than left to the debounced autosave: the
       // phone screen that normally drives that debounce may not even be
       // open while the wearer is logging entirely from the watch.

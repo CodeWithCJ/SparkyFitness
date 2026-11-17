@@ -668,7 +668,7 @@ describe('useWatchWorkoutBridge', () => {
     expect(getStore().session!.exercises[0].sets[0].rpe).toBe(9.5);
   });
 
-  it('applies a follow-up RPE update to an already-completed set without overwriting its values or completion time', async () => {
+  it('applies only RPE on a follow-up completion for an already-completed set, preserving phone edits', async () => {
     renderHook(() => useWatchWorkoutBridge(true));
     act(() => {
       getStore().startWorkout(makeSession());
@@ -680,21 +680,27 @@ describe('useWatchWorkoutBridge', () => {
         sessionId: 'session-1',
         setId: '101',
         weightKg: 80,
-        reps: 8,
+        reps: 10,
       });
       await Promise.resolve();
       await Promise.resolve();
     });
     const firstCompletedAt = getStore().completedSetIds['101'];
     expect(firstCompletedAt).toBeDefined();
-    expect(getStore().session!.exercises[0].sets[0].weight).toBe(80);
-    expect(getStore().session!.exercises[0].sets[0].rpe).toBeNull();
 
+    // Phone edits weight/reps before the watch gets confirmation.
+    act(() => {
+      getStore().updateSetField('101', { weight: 85, reps: 12 });
+    });
+
+    // Delayed RPE follow-up still carries the watch's original weight/reps.
     await act(async () => {
       fire('onSetCompleted', {
         clientId: 'client-2',
         sessionId: 'session-1',
         setId: '101',
+        weightKg: 80,
+        reps: 10,
         rpe: 8.5,
       });
       await Promise.resolve();
@@ -702,8 +708,8 @@ describe('useWatchWorkoutBridge', () => {
     });
 
     const set = getStore().session!.exercises[0].sets[0];
-    expect(set.weight).toBe(80);
-    expect(set.reps).toBe(8);
+    expect(set.weight).toBe(85);
+    expect(set.reps).toBe(12);
     expect(set.rpe).toBe(8.5);
     expect(getStore().completedSetIds['101']).toBe(firstCompletedAt);
   });

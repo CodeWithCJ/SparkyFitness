@@ -1122,6 +1122,7 @@ class WorkoutSessionStore(private val context: Context) {
   private val phoneConfirmedSetIds = mutableSetOf<String>()
   private val pendingUnlogs = mutableSetOf<String>()
   private val unconfirmedCompletions = LinkedHashMap<String, CompletedSet>()
+  private var targetRevision: Double = Double.NEGATIVE_INFINITY
   private val celebratedPrSetIds = mutableSetOf<String>()
   private val hrReadings = mutableListOf<Double>()
 
@@ -1371,6 +1372,7 @@ class WorkoutSessionStore(private val context: Context) {
       phoneConfirmedSetIds.clear()
       pendingUnlogs.clear()
       unconfirmedCompletions.clear()
+      targetRevision = Double.NEGATIVE_INFINITY
       celebratedPrSetIds.clear()
       celebratedPrSetIds.addAll(incoming.prSetIds)
       _completedSetIds.value = emptySet()
@@ -1441,6 +1443,8 @@ class WorkoutSessionStore(private val context: Context) {
   fun applySetTargetsUpdate(update: ContextPayloadMapper.SetTargetsUpdate) {
     val curPlan = _plan.value ?: return
     if (curPlan.sessionId != update.sessionId) return
+    if (update.revision <= targetRevision) return
+    targetRevision = update.revision
     val updatedSteps = _steps.value.map { step ->
       val t = update.targets[step.setId]
       if (t != null) {
@@ -2439,6 +2443,7 @@ class WorkoutSessionStore(private val context: Context) {
     val plan = _plan.value
     clearPendingRpeQueue()
     unconfirmedCompletions.clear()
+    targetRevision = Double.NEGATIVE_INFINITY
     tickerJob?.cancel()
     cancelGetReady()
     clearHold()
@@ -2465,6 +2470,7 @@ class WorkoutSessionStore(private val context: Context) {
 
   fun dismissSummary() {
     unconfirmedCompletions.clear()
+    targetRevision = Double.NEGATIVE_INFINITY
     _plan.value = null
     _steps.value = emptyList()
     _stepIndex.value = 0
