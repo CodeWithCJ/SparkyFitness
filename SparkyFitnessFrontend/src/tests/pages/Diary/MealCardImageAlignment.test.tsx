@@ -1,0 +1,122 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
+import type { ComponentProps } from 'react';
+import MealCard from '@/pages/Diary/MealCard';
+import type { FoodEntry } from '@/types/food';
+
+const mockEmpty: never[] = [];
+
+jest.mock('react-i18next', () =>
+  jest.requireActual('@/tests/mocks/reactI18next')
+);
+jest.mock('@/contexts/PreferencesContext', () => ({
+  usePreferences: () => ({
+    nutrientDisplayPreferences: mockEmpty,
+    loggingLevel: 'ERROR',
+    getDateRelationToToday: () => 'today',
+    timeFormat: '24h',
+  }),
+}));
+jest.mock('@/hooks/use-mobile', () => ({ useIsMobile: () => false }));
+jest.mock('@/hooks/Diary/useFoodEntries', () => ({
+  useCopyFoodEntriesFromYesterdayMutation: () => ({ mutate: jest.fn() }),
+}));
+jest.mock('@/components/AllergenBadges', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+jest.mock('@/components/FoodSearch/FoodSearch', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+const totals = {
+  calories: 100,
+  protein: 1,
+  carbs: 1,
+  fat: 1,
+  dietary_fiber: 1,
+};
+
+const entry = (id: string, images: string[] | null): FoodEntry =>
+  ({
+    id,
+    food_name: `Food ${id}`,
+    meal_type: 'breakfast',
+    entry_date: '2026-11-17',
+    quantity: 1,
+    unit: 'serving',
+    images,
+  }) as FoodEntry;
+
+const renderMeal = (entries: FoodEntry[]) => {
+  const props: ComponentProps<typeof MealCard> = {
+    meal: {
+      name: 'Breakfast',
+      type: 'breakfast',
+      entries,
+      selectedDate: '2026-11-17',
+    },
+    totals,
+    selectedDate: '2026-11-17',
+    onFoodSelect: jest.fn(),
+    onEditEntry: jest.fn(),
+    onRemoveEntry: jest.fn(),
+    getEntryNutrition: () => totals,
+    onCopyClick: jest.fn(),
+    onCopyFamilyClick: jest.fn(),
+    onConvertToMealClick: jest.fn(),
+    energyUnit: 'kcal',
+    convertEnergy: (value: number) => value,
+  };
+  return render(
+    <QueryClientProvider client={new QueryClient()}>
+      <MemoryRouter>
+        <MealCard {...props} />
+      </MemoryRouter>
+    </QueryClientProvider>
+  );
+};
+
+describe('MealCard desktop image alignment', () => {
+  it('gives rows without an image a placeholder when another row has one', () => {
+    renderMeal([
+      entry('a', ['https://example.com/a.jpg']),
+      entry('b', null),
+      entry('c', []),
+    ]);
+
+    const placeholders = screen.getAllByTestId('meal-entry-image-placeholder');
+    expect(placeholders).toHaveLength(2);
+    for (const placeholder of placeholders) {
+      expect(placeholder).toHaveAttribute('aria-hidden', 'true');
+      expect(placeholder).toHaveClass(
+        'hidden',
+        'sm:block',
+        'w-16',
+        'h-16',
+        'flex-shrink-0'
+      );
+    }
+  });
+
+  it('adds no placeholder to a meal without images', () => {
+    renderMeal([entry('a', null), entry('b', [])]);
+
+    expect(
+      screen.queryByTestId('meal-entry-image-placeholder')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the space of an image that fails to load', () => {
+    renderMeal([entry('a', ['https://example.com/a.jpg']), entry('b', null)]);
+
+    const image = screen.getByRole('img', { name: 'Food a' });
+    fireEvent.error(image);
+
+    expect(image).toHaveStyle({ visibility: 'hidden' });
+    expect(image).not.toHaveStyle({ display: 'none' });
+  });
+});

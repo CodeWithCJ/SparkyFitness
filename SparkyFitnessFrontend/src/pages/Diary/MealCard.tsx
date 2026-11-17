@@ -79,6 +79,21 @@ const MOBILE_NUTRIENT_LABEL_OVERRIDES: Record<
   dietary_fiber: { label: 'nutrition.fiber', defaultLabel: 'Fiber' },
 };
 
+/**
+ * The images a diary row shows. Food entries: per-entry override, else the
+ * food's own image. Logged meals: their override, else the meal template's.
+ */
+const mealCardEntryImages = (item: FoodEntry | FoodEntryMeal): string[] => {
+  if (!('foods' in item && 'entry_date' in item)) {
+    return diaryEntryImages(item as FoodEntry);
+  }
+  const loggedMeal = item as FoodEntryMeal;
+  const override = usableFoodImages(loggedMeal.images);
+  return override.length > 0
+    ? override
+    : usableFoodImages(loggedMeal.meal_images);
+};
+
 interface MealCardProps {
   meal: {
     name: string;
@@ -232,6 +247,12 @@ const MealCard = ({
 
   const visibleNutrientsForGrid = quickInfoNutrients.filter((nutrient) =>
     summableNutrients.includes(nutrient)
+  );
+
+  // On desktop an image narrows its row's nutrient grid, so once any row has
+  // one, rows without get an empty slot of the same width.
+  const mealHasImages = meal.entries.some(
+    (item) => mealCardEntryImages(item).length > 0
   );
 
   const handleCopyFromYesterday = () => {
@@ -405,18 +426,7 @@ const MealCard = ({
                 const entryIsHighlighted =
                   'food_id' in item &&
                   (item as FoodEntry).food_id === highlightFoodId;
-                // Food entries: per-entry override, else the food's own image.
-                // Logged meals: the meal template's image.
-                const entryImages = isFoodEntry
-                  ? diaryEntryImages(item as FoodEntry)
-                  : (() => {
-                      const override = usableFoodImages(
-                        (item as FoodEntryMeal).images
-                      );
-                      return override.length > 0
-                        ? override
-                        : usableFoodImages((item as FoodEntryMeal).meal_images);
-                    })();
+                const entryImages = mealCardEntryImages(item);
                 const entryImageSrc = entryImages[0] ?? null;
 
                 // Determine glycemic index directly from the entryNutrition object
@@ -656,6 +666,13 @@ const MealCard = ({
                       entryIsHighlighted && 'border-2 border-blue-500'
                     )}
                   >
+                    {!entryImageSrc && mealHasImages && (
+                      <div
+                        aria-hidden="true"
+                        data-testid="meal-entry-image-placeholder"
+                        className="hidden sm:block w-16 h-16 flex-shrink-0"
+                      />
+                    )}
                     {entryImageSrc && (
                       <button
                         type="button"
@@ -671,8 +688,9 @@ const MealCard = ({
                           className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
                           loading="lazy"
                           onError={(e) => {
-                            // A dead provider link shouldn't leave a broken icon.
-                            e.currentTarget.style.display = 'none';
+                            // A dead provider link shouldn't leave a broken
+                            // icon; keep its space so the row stays aligned.
+                            e.currentTarget.style.visibility = 'hidden';
                           }}
                         />
                       </button>
