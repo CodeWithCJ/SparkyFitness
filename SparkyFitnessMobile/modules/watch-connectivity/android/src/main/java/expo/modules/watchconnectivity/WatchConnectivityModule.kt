@@ -732,7 +732,7 @@ internal object WatchConnectivityHub {
   private fun buildSetCompletedEvent(
     payload: Map<String, Any?>,
     fallbackSessionId: String = ""
-  ): Map<String, Any?> {
+  ): MutableMap<String, Any?> {
     val sessionId = (payload["sessionId"] as? String)?.takeIf { it.isNotEmpty() } ?: fallbackSessionId
     val event = mutableMapOf<String, Any?>(
       "clientId" to (payload["clientId"] as? String ?: ""),
@@ -982,6 +982,7 @@ internal object WatchConnectivityHub {
             val setId = event["setId"] as? String ?: ""
             val clientId = event["clientId"] as? String ?: ""
             if (setId.isNotEmpty() && clientId.isNotEmpty()) {
+              event["replay"] = true
               mod.emitEvent("onSetCompleted", event)
             }
           }

@@ -1916,10 +1916,7 @@ class WorkoutSessionStore(private val context: Context) {
               removed = true
             }
             if (removed) {
-              unconfirmedCompletions.remove(action.setId)
-              if (pendingRpeQueue.removeAll { it.step.setId == action.setId }) {
-                _pendingRpe.value = pendingRpeQueue.firstOrNull()
-              }
+              pruneRemovedSetIds(listOf(action.setId))
             }
             break
           }
@@ -1960,12 +1957,7 @@ class WorkoutSessionStore(private val context: Context) {
             .flatMap { it.sets.map { s -> s.setId } }
             .toSet()
           updatedExercises.removeAll { it.exerciseEntryId == action.exerciseEntryId }
-          if (removedSetIds.isNotEmpty()) {
-            unconfirmedCompletions.keys.removeAll(removedSetIds)
-            if (pendingRpeQueue.removeAll { it.step.setId in removedSetIds }) {
-              _pendingRpe.value = pendingRpeQueue.firstOrNull()
-            }
-          }
+          pruneRemovedSetIds(removedSetIds)
         }
       }
       else -> {}
@@ -1975,9 +1967,25 @@ class WorkoutSessionStore(private val context: Context) {
     val nextSteps = applyTargetOverrides(flattenSteps(nextPlan))
     _steps.value = nextSteps
     syncLoggedOrder(nextSteps)
+    recalculateTotalVolume()
     _stepIndex.value = min(_stepIndex.value, max(0, nextSteps.size - 1))
     seedDraftsForCurrentStep()
     Haptics.click()
+  }
+
+  private fun pruneRemovedSetIds(removedIds: Collection<String>) {
+    if (removedIds.isEmpty()) return
+    val idSet = removedIds.toSet()
+    unconfirmedCompletions.keys.removeAll(idSet)
+    completedSetIds.removeAll(idSet)
+    wristLoggedSetIds.removeAll(idSet)
+    phoneConfirmedSetIds.removeAll(idSet)
+    pendingUnlogs.removeAll(idSet)
+    _completedSetIds.value = completedSetIds.toSet()
+    _completedSetsCount.value = completedSetIds.size
+    if (pendingRpeQueue.removeAll { it.step.setId in idSet }) {
+      _pendingRpe.value = pendingRpeQueue.firstOrNull()
+    }
   }
 
   // ---- Completing & Uncompleting Sets ----

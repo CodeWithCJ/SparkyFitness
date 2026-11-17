@@ -416,6 +416,16 @@ export function useWatchWorkoutBridge(
         return;
       }
       const alreadyCompleted = state.completedSetIds[payload.setId] != null;
+      // Bundled Wear OS `workoutStop` replays only recover completions the
+      // phone missed; if the set is already complete (e.g. after a restart
+      // cleared `handledSetClientIdsRef`), do not overwrite phone edits.
+      if (
+        alreadyCompleted &&
+        payload.replay === true &&
+        payload.rpeOnly !== true
+      ) {
+        return;
+      }
       const applyRpeOnly = payload.rpeOnly === true && alreadyCompleted;
       // Values the wearer typed on the watch land first: `completeSet` runs
       // the store's assumed-value adoption, which only fills a field that is

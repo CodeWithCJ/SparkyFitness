@@ -770,6 +770,61 @@ describe('useWatchWorkoutBridge', () => {
     expect(getStore().completedSetIds['101']).toBeDefined();
   });
 
+  it('ignores a replayed completion for an already-completed set so phone edits survive restarts', async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+      getStore().updateSetField('101', { weight: 85, reps: 12, rpe: 9 });
+      getStore().completeSet('101');
+    });
+
+    await act(async () => {
+      fire('onSetCompleted', {
+        clientId: 'replayed-after-restart-1',
+        sessionId: 'session-1',
+        setId: '101',
+        weightKg: 80,
+        reps: 10,
+        rpe: 7,
+        replay: true,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const set = getStore().session!.exercises[0].sets[0];
+    expect(set.weight).toBe(85);
+    expect(set.reps).toBe(12);
+    expect(set.rpe).toBe(9);
+  });
+
+  it('applies a replayed completion when the set was not yet completed on the phone', async () => {
+    renderHook(() => useWatchWorkoutBridge(true));
+    act(() => {
+      getStore().startWorkout(makeSession());
+    });
+
+    await act(async () => {
+      fire('onSetCompleted', {
+        clientId: 'replayed-missed-1',
+        sessionId: 'session-1',
+        setId: '101',
+        weightKg: 80,
+        reps: 10,
+        rpe: 8,
+        replay: true,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const set = getStore().session!.exercises[0].sets[0];
+    expect(set.weight).toBe(80);
+    expect(set.reps).toBe(10);
+    expect(set.rpe).toBe(8);
+    expect(getStore().completedSetIds['101']).toBeDefined();
+  });
+
   it('ignores an effort outside 1 to 10', async () => {
     renderHook(() => useWatchWorkoutBridge(true));
     act(() => {
