@@ -2,18 +2,14 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Icon from '../Icon';
+import { useTrainingCalendarColors } from '../../hooks/useTrainingCalendarColors';
 import {
-  EXTRA_COLOR,
   MAX_DAY_MARKS,
   SPORT_ICONS,
-  STATUS_COLORS,
   type DayMark,
 } from '../../utils/trainingCalendar';
 import { markA11yLabel } from '../../utils/trainingCalendarLabels';
 import type { LoadSportGroup } from '@workspace/shared';
-
-export const markColor = (status: DayMark['status']) =>
-  status === 'extra' ? EXTRA_COLOR : STATUS_COLORS[status];
 
 /** One sport icon in the colour of its status; extra work is faded. */
 export const SportMark: React.FC<{
@@ -23,6 +19,7 @@ export const SportMark: React.FC<{
   testID?: string;
 }> = ({ sport, status, size = 13, testID }) => {
   const { t } = useTranslation();
+  const colors = useTrainingCalendarColors();
   return (
     <View
       testID={testID}
@@ -30,7 +27,11 @@ export const SportMark: React.FC<{
       accessibilityLabel={markA11yLabel(t, sport, status)}
       style={{ opacity: status === 'extra' ? 0.5 : 1 }}
     >
-      <Icon name={SPORT_ICONS[sport]} size={size} color={markColor(status)} />
+      <Icon
+        name={SPORT_ICONS[sport]}
+        size={size}
+        color={status === 'extra' ? colors.extra : colors.status[status]}
+      />
     </View>
   );
 };

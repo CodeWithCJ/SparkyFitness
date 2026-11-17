@@ -490,6 +490,8 @@ function AppContent() {
         RecordActivity: 'record-activity',
         // Route generation; without a routing provider the screen explains that.
         RouteGenerate: 'routes/generate',
+        // Planned against completed training: sparkyfitnessmobile://training-calendar
+        TrainingCalendar: 'training-calendar',
         // An NFC tag tap: https://tag.sparkyfitness.com/t/<code> (#941).
         ActionTagScan: 't/:code',
       },

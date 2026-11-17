@@ -517,6 +517,8 @@ describe('ExerciseStatisticsScreen', () => {
     const screen = render(<ExerciseStatisticsScreen {...props} />);
     expect(screen.getByText('No workouts in this range')).toBeTruthy();
     expect(screen.getAllByTestId('training-load-bar')).toHaveLength(4);
+    // The load by sport card has its own window too, so an empty range keeps it.
+    expect(screen.getByText('Load by Sport')).toBeTruthy();
   });
 
   it('keeps showing cached stats when a refetch fails', () => {

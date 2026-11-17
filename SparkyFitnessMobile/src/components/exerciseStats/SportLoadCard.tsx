@@ -9,14 +9,13 @@ import type {
 import StatusView from '../StatusView';
 import Icon from '../Icon';
 import { formatLocalizedNumber } from '../../localization';
+import { useTrainingCalendarColors } from '../../hooks/useTrainingCalendarColors';
 import {
-  SPORT_COLORS,
   SPORT_LOAD_WEEKS,
   currentSplits,
   sportShares,
 } from '../../utils/trainingCalendar';
 import { sportLoadLabel } from '../../utils/trainingCalendarLabels';
-import { getTodayDate } from '../../utils/dateUtils';
 
 interface SportLoadCardProps {
   data: TrainingCalendarResponse | undefined;
@@ -33,6 +32,7 @@ const SplitBlock: React.FC<{
   bySport: LoadBySport | undefined;
 }> = ({ title, bySport }) => {
   const { t } = useTranslation();
+  const colors = useTrainingCalendarColors();
   const shares = sportShares(bySport);
   const total = shares.reduce((sum, s) => sum + s.load, 0);
   return (
@@ -57,7 +57,7 @@ const SplitBlock: React.FC<{
                 key={s.sport}
                 style={{
                   flex: s.share,
-                  backgroundColor: SPORT_COLORS[s.sport],
+                  backgroundColor: colors.sport[s.sport],
                 }}
               />
             ))}
@@ -66,7 +66,7 @@ const SplitBlock: React.FC<{
             <View key={s.sport} className="flex-row items-center mb-0.5">
               <View
                 className="w-2 h-2 rounded-full mr-2"
-                style={{ backgroundColor: SPORT_COLORS[s.sport] }}
+                style={{ backgroundColor: colors.sport[s.sport] }}
               />
               <Text className="text-text-secondary text-xs flex-1">
                 {sportLoadLabel(t, s.sport)}
@@ -99,6 +99,7 @@ const SportLoadCard: React.FC<SportLoadCardProps> = ({
   onOpenCalendar,
 }) => {
   const { t } = useTranslation();
+  const colors = useTrainingCalendarColors();
 
   const renderBody = () => {
     if (isLoading) return <StatusView inline loading />;
@@ -118,9 +119,9 @@ const SportLoadCard: React.FC<SportLoadCardProps> = ({
         Object.values(w.bySport).reduce((sum, v) => sum + v, 0)
       )
     );
-    const { week, month } = currentSplits(data, getTodayDate());
+    const { week, month } = currentSplits(data, data.today);
     const point = data.fitnessFatigue.today;
-    const sports = Object.keys(SPORT_COLORS) as LoadSportGroup[];
+    const sports = Object.keys(colors.sport) as LoadSportGroup[];
     return (
       <>
         <SplitBlock
@@ -158,7 +159,7 @@ const SportLoadCard: React.FC<SportLoadCardProps> = ({
                     key={sport}
                     style={{
                       height: Math.max(1, (value / peak) * BAR_HEIGHT),
-                      backgroundColor: SPORT_COLORS[sport],
+                      backgroundColor: colors.sport[sport],
                     }}
                   />
                 ) : null;
@@ -212,7 +213,7 @@ const SportLoadCard: React.FC<SportLoadCardProps> = ({
               defaultValue: 'Open training calendar',
             })}
           </Text>
-          <Icon name="chevron-forward" size={18} color="#999" />
+          <Icon name="chevron-forward" size={18} color={colors.mutedIcon} />
         </Pressable>
       </>
     );

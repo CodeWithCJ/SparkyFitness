@@ -108,3 +108,26 @@ test('says so when the load cannot be fetched', () => {
   );
   expect(screen.getByText('Could not load your load by sport.')).toBeTruthy();
 });
+
+test("takes the current week and month from the response's own day", () => {
+  // The device is on 2026-10-14; the person\'s day is still 30 September.
+  const september = {
+    ...data,
+    today: '2026-09-30',
+    sportLoad: {
+      weeks: [{ start: '2026-09-28', bySport: { ...none, cycling: 90 } }],
+      months: [{ month: '2026-09', bySport: { ...none, cycling: 90 } }],
+      total: { ...none, cycling: 90 },
+    },
+  } as TrainingCalendarResponse;
+  render(
+    <SportLoadCard
+      data={september}
+      isLoading={false}
+      isError={false}
+      onOpenCalendar={onOpenCalendar}
+    />
+  );
+  expect(screen.queryByText('No workouts logged yet.')).toBeNull();
+  expect(screen.getAllByText('90 · 100%')).toHaveLength(2);
+});

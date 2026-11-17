@@ -203,14 +203,33 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   const hasActivity =
     (data?.keyStats.totalWorkouts ?? 0) > 0 || setRows.length > 0;
 
-  // A fixed 28-day window, so it still has something to say when the selected
+  // Fixed windows of their own (28 days, 90 days, eight weeks), so they still
+  // have something to say, and the calendar stays reachable, when the selected
   // range holds no workouts.
-  const loadCard = isSectionShown('exercise.load') ? (
-    <TrainingLoadCard
-      data={trainingLoad.load}
-      isLoading={trainingLoad.isLoading}
-      isError={trainingLoad.isError}
-    />
+  const loadSection = isSectionShown('exercise.load') ? (
+    <>
+      <TrainingLoadCard
+        data={trainingLoad.load}
+        isLoading={trainingLoad.isLoading}
+        isError={trainingLoad.isError}
+      />
+      <FitnessFatigueCard
+        data={fitnessFatigue.data}
+        isLoading={fitnessFatigue.isLoading}
+        isError={fitnessFatigue.isError}
+      />
+      <SportLoadCard
+        data={sportLoad.data}
+        isLoading={sportLoad.isLoading}
+        isError={sportLoad.isError}
+        onOpenCalendar={() => navigation.navigate('TrainingCalendar')}
+      />
+      <RunEstimatesCard
+        data={runEstimates.data}
+        isLoading={runEstimates.isLoading}
+        isError={runEstimates.isError}
+      />
+    </>
   ) : null;
 
   const renderCardio = () => {
@@ -316,7 +335,7 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
                 'Log a workout and its sets will show up here by muscle.',
             })}
           />
-          {loadCard}
+          {loadSection}
         </>
       );
     }
@@ -518,28 +537,7 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
           </View>
         ) : null}
 
-        {loadCard}
-
-        {isSectionShown('exercise.load') ? (
-          <>
-            <FitnessFatigueCard
-              data={fitnessFatigue.data}
-              isLoading={fitnessFatigue.isLoading}
-              isError={fitnessFatigue.isError}
-            />
-            <SportLoadCard
-              data={sportLoad.data}
-              isLoading={sportLoad.isLoading}
-              isError={sportLoad.isError}
-              onOpenCalendar={() => navigation.navigate('TrainingCalendar')}
-            />
-            <RunEstimatesCard
-              data={runEstimates.data}
-              isLoading={runEstimates.isLoading}
-              isError={runEstimates.isError}
-            />
-          </>
-        ) : null}
+        {loadSection}
 
         {isSectionShown('exercise.consistency') ? (
           <TrainingConsistencyCard

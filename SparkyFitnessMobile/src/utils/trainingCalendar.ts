@@ -18,28 +18,36 @@ import {
 /** Weeks of load per sport the load card draws. */
 export const SPORT_LOAD_WEEKS = 8;
 
-export const SPORT_COLORS: Record<LoadSportGroup, string> = {
-  running: '#e4572e',
-  cycling: '#2e86ab',
-  walking: '#58a55c',
-  cardio: '#2a9d8f',
-  strength: '#7b5ea7',
-  other: '#8a8f98',
+/**
+ * The theme tokens (`global.css`) the calendar and the load card draw with.
+ * They are variable names, not colours: `useTrainingCalendarColors` resolves
+ * them for the active theme at the rendering boundary.
+ */
+export const SPORT_COLOR_VARS: Record<LoadSportGroup, string> = {
+  running: '--color-sport-running',
+  cycling: '--color-sport-cycling',
+  walking: '--color-sport-walking',
+  cardio: '--color-sport-cardio',
+  strength: '--color-sport-strength',
+  other: '--color-sport-other',
+};
+
+/** Colours mean done / partly / missed / upcoming; the accent outline means extra. */
+export const STATUS_COLOR_VARS: Record<PlannedStatus, string> = {
+  done: '--color-icon-success',
+  partial: '--color-icon-warning',
+  missed: '--color-icon-danger',
+  upcoming: '--color-text-muted',
 };
 
 /**
  * Work nothing was planned for. Not a status colour and not a sport colour, so
- * the calendar reads one way throughout: colours mean done / partly / missed /
- * upcoming, and this outline means extra.
+ * the calendar reads one way throughout.
  */
-export const EXTRA_COLOR = '#5b8def';
+export const EXTRA_COLOR_VAR = '--color-accent-primary';
 
-export const STATUS_COLORS: Record<PlannedStatus, string> = {
-  done: '#3d9a50',
-  partial: '#e0a030',
-  missed: '#d6453d',
-  upcoming: '#8a8f98',
-};
+/** Neutral glyphs on the calendar and the load card: chevrons, the info icon, legend icons. */
+export const MUTED_ICON_COLOR_VAR = '--color-text-muted';
 
 /**
  * The range the load card asks for: eight full weeks and the current month fit
@@ -152,11 +160,17 @@ export function dayMarks(items: DayItems): DayMark[] {
       status: item.status,
     })),
     ...items.completed
-      .filter((item) => item.plannedItemId === null)
+      // A completion that counted for an item planned on another day keeps its
+      // own mark here; it is hidden only when that item is on this same day.
+      .filter(
+        (item) =>
+          item.plannedItemId === null ||
+          !items.planned.some((p) => p.id === item.plannedItemId)
+      )
       .map((item): DayMark => ({
         key: item.id,
         sport: item.sport,
-        status: 'extra',
+        status: item.plannedItemId === null ? 'extra' : 'done',
       })),
   ];
 }

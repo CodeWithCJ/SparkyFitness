@@ -71,6 +71,12 @@ export interface CalendarEntry {
   linkKey: string | null;
   /** Further links when several logged exercises were merged into one workout. */
   alsoLinked?: string[];
+  /**
+   * Training load worked out before several exercises were merged into this
+   * entry (the sum of each exercise's own load). When absent the load comes
+   * from the entry's duration and average heart rate.
+   */
+  load?: number;
 }
 
 /** Shortest entry that counts as a workout session, in minutes. */
@@ -97,8 +103,13 @@ export function isPassiveEntry(
   );
 }
 
-const keysOf = (entry: CalendarEntry): string[] =>
+/** Every link an entry carries: its own plus the ones merged into it. */
+export const calendarEntryLinks = (
+  entry: Pick<CalendarEntry, 'linkKey' | 'alsoLinked'>
+): string[] =>
   entry.linkKey ? [entry.linkKey, ...(entry.alsoLinked ?? [])] : [];
+
+const keysOf = calendarEntryLinks;
 
 /** A diary exercise that may belong to a logged workout preset. */
 export interface GroupableEntry extends CalendarEntry {
@@ -132,7 +143,8 @@ const sameName = (a: string | null, b: string | null) =>
   !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
 
 export function groupPresetEntries(
-  entries: readonly GroupableEntry[]
+  entries: readonly GroupableEntry[],
+  zoneFloors: readonly number[] = percentMaxFloors(FALLBACK_MAX_HR)
 ): CalendarEntry[] {
   const out: CalendarEntry[] = [];
   const groups = new Map<string, GroupableEntry[]>();
@@ -180,6 +192,9 @@ export function groupPresetEntries(
           : null,
       linkKey: links[0] ?? null,
       alsoLinked: links.slice(1),
+      // Each exercise is weighted by its own heart rate; the averaged heart
+      // rate above is for display only.
+      load: group.reduce((sum, e) => sum + sessionLoad(e, zoneFloors), 0),
     };
   });
 }
@@ -243,16 +258,39 @@ export function matchPlan(
     matched.set(slot.id, current);
   };
 
-  for (const slot of ordered) {
-    if (slot.linkKeys.length === 0) continue;
-    for (const entry of free) {
-      if (taken.has(entry.id)) continue;
-      if (!keysOf(entry).some((k) => slot.linkKeys.includes(k))) continue;
-      if (Math.abs(daysBetween(slot.day, entry.day)) > MATCH_WINDOW_DAYS) {
-        continue;
-      }
-      take(slot, entry, true);
-    }
+  // A key can belong to several slots (the same program workout is planned
+  // again on a later day), so each linked entry picks its own occurrence: the
+  // one on its own day, else the nearest within the window, preferring a slot
+  // that does not hold that link yet. An earlier slot never takes an entry
+  // that fits a later occurrence better.
+  for (const entry of free) {
+    const links = keysOf(entry);
+    if (links.length === 0) continue;
+    const candidates = ordered
+      .filter(
+        (slot) =>
+          slot.linkKeys.some((k) => links.includes(k)) &&
+          Math.abs(daysBetween(slot.day, entry.day)) <= MATCH_WINDOW_DAYS
+      )
+      .map((slot) => ({
+        slot,
+        exact: slot.day === entry.day ? 0 : 1,
+        held: (matched.get(slot.id)?.entries ?? []).some((e) =>
+          keysOf(e).some((k) => links.includes(k) && slot.linkKeys.includes(k))
+        )
+          ? 1
+          : 0,
+        distance: Math.abs(daysBetween(slot.day, entry.day)),
+      }))
+      .sort(
+        (a, b) =>
+          a.exact - b.exact ||
+          a.held - b.held ||
+          a.distance - b.distance ||
+          compareDays(a.slot.day, b.slot.day)
+      );
+    const best = candidates[0];
+    if (best) take(best.slot, entry, true);
   }
   for (const slot of ordered) {
     if (matched.has(slot.id)) continue;
@@ -268,19 +306,24 @@ export function matchPlan(
   }
   // An entry logged against some other plan item still counts for a slot of
   // its own day and sport that nothing else filled (a run done inside a plan
-  // session satisfies that day's run). It stays with the item that took it.
+  // session satisfies that day's run). It stays with the item that took it,
+  // and only crosses between a workout plan and the run program: distinct
+  // sessions of one plan are never all done by one workout.
+  const sourceOf = new Map(ordered.map((slot) => [slot.id, slot.source]));
   for (const slot of ordered) {
     if (matched.has(slot.id)) continue;
     for (const entry of free) {
       if (!taken.has(entry.id) || entry.day !== slot.day) continue;
       if (entry.sport !== slot.sport) continue;
+      if (sourceOf.get(taken.get(entry.id) ?? '') === slot.source) continue;
       const current = matched.get(slot.id) ?? { entries: [], linked: false };
       current.entries.push(entry);
       matched.set(slot.id, current);
     }
   }
 
-  const loadOf = (entry: CalendarEntry) => sessionLoad(entry, zoneFloors);
+  const loadOf = (entry: CalendarEntry) =>
+    entry.load ?? sessionLoad(entry, zoneFloors);
 
   const planned: PlannedItem[] = ordered.map((slot) => {
     const found = matched.get(slot.id);

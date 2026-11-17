@@ -502,6 +502,63 @@ describe('run done inside another plan item', () => {
   });
 });
 
+describe('linked entries and occurrences', () => {
+  it('gives an entry the occurrence on its own day, not an earlier one', () => {
+    const early = slot('early', -3, { linkKeys: ['runProgram:2'] });
+    const late = slot('late', 0, { linkKeys: ['runProgram:2'] });
+    const run = entry('run', 0, { linkKey: 'runProgram:2' });
+    expect(statusOf([early, late], [run], 'early')).toBe('missed');
+    expect(statusOf([early, late], [run], 'late')).toBe('done');
+  });
+
+  it('matches through a link merged into the entry', () => {
+    const planned = slot('p', 0, {
+      source: 'workoutPlan',
+      sport: 'strength',
+      linkKeys: ['plan:7'],
+    });
+    const run = entry('run', 0, {
+      linkKey: 'runProgram:0',
+      alsoLinked: ['plan:7'],
+    });
+    expect(statusOf([planned], [run])).toBe('done');
+  });
+
+  it('does not finish two sessions of one plan with one workout', () => {
+    const a = slot('a', 0, {
+      source: 'workoutPlan',
+      sport: 'strength',
+      linkKeys: ['plan:1'],
+    });
+    const b = slot('b', 0, {
+      source: 'workoutPlan',
+      sport: 'strength',
+      linkKeys: ['plan:2'],
+    });
+    const lift = entry('lift', 0, { sport: 'strength', name: 'Lift' });
+    const { planned } = matchPlan([a, b], [lift], TODAY);
+    expect(planned.map((p) => p.status).sort()).toEqual(['done', 'upcoming']);
+  });
+
+  it('sums each exercise load of a preset instead of averaging heart rate', () => {
+    const part = (id: string, bpm: number) => ({
+      ...entry(id, 0, {
+        sport: 'strength',
+        durationMinutes: 30,
+        distanceKm: null,
+        avgHeartRate: bpm,
+      }),
+      presetEntryId: 'p1',
+      presetName: 'Upper',
+    });
+    const parts = [part('a', 100), part('b', 160)];
+    const [merged] = groupPresetEntries(parts, FLOORS);
+    const expected = parts.reduce((sum, e) => sum + sessionLoad(e, FLOORS), 0);
+    const { completed } = matchPlan([], [merged!], TODAY, FLOORS);
+    expect(completed[0]!.load).toBe(Math.round(expected));
+  });
+});
+
 describe('groupPresetEntries', () => {
   const part = (
     id: string,

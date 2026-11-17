@@ -137,6 +137,24 @@ describe('calendar marks and weeks', () => {
     ]);
   });
 
+  it('keeps a completion mark on the day it happened when its item moved', () => {
+    const planned = [{ id: 'q', sport: 'running', status: 'done' }] as never;
+    // Done on the 16th for an item planned on the 17th: the 16th has no item
+    // `q`, so the completion shows there; the 17th does, so it does not repeat.
+    expect(
+      dayMarks({
+        planned: [],
+        completed: [{ id: 'b', sport: 'running', plannedItemId: 'q' }] as never,
+      }).map((m) => [m.sport, m.status])
+    ).toEqual([['running', 'done']]);
+    expect(
+      dayMarks({
+        planned,
+        completed: [{ id: 'b', sport: 'running', plannedItemId: 'q' }] as never,
+      }).map((m) => [m.sport, m.status])
+    ).toEqual([['running', 'done']]);
+  });
+
   it('summarises a week as done of planned, or just what was logged', () => {
     expect(weekSummary(undefined)).toBeNull();
     expect(weekSummary(week('2026-10-12'))).toBeNull();

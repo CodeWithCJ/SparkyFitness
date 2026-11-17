@@ -12,9 +12,11 @@ import {
   classifyActivitySport,
   compareDays,
   computeFitnessFatigue,
+  calendarEntryLinks,
   CURVE_DAYS,
   groupPresetEntries,
   loadSportGroup,
+  MATCH_WINDOW_DAYS,
   matchPlan,
   planMinutes,
   planSessionSlot,
@@ -52,6 +54,12 @@ function toEntry(
   programIndexByEntry: Map<string, number>
 ): GroupableEntry {
   const programIndex = programIndexByEntry.get(row.id);
+  const links = [
+    ...(programIndex !== undefined ? [`runProgram:${programIndex}`] : []),
+    ...(row.workoutPlanAssignmentId !== null
+      ? [`plan:${row.workoutPlanAssignmentId}`]
+      : []),
+  ];
   return {
     id: row.id,
     day: row.day,
@@ -71,12 +79,10 @@ function toEntry(
     avgHeartRate: row.avgHeartRate,
     presetEntryId: row.presetEntryId,
     presetName: row.presetName,
-    linkKey:
-      programIndex !== undefined
-        ? `runProgram:${programIndex}`
-        : row.workoutPlanAssignmentId !== null
-          ? `plan:${row.workoutPlanAssignmentId}`
-          : null,
+    // An entry can be both a program workout and a plan item; it keeps both
+    // links so each planned item can find it.
+    linkKey: links[0] ?? null,
+    alsoLinked: links.slice(1),
   };
 }
 
@@ -94,6 +100,8 @@ async function getTrainingCalendar(
   end: string
 ): Promise<TrainingCalendarResponse> {
   try {
+    const inRange = (day: string) =>
+      compareDays(day, start) >= 0 && compareDays(day, end) <= 0;
     const timezone = await loadUserTimezone(targetUserId);
     const today = todayInZone(timezone);
     const preferences =
@@ -105,7 +113,13 @@ async function getTrainingCalendar(
         : 0;
 
     const [rows, templates, program, zones, curveSessions] = await Promise.all([
-      reportRepository.getCalendarEntries(targetUserId, start, end),
+      // A planned item matches an entry up to MATCH_WINDOW_DAYS from its day,
+      // so read that much beyond the range and trim after matching.
+      reportRepository.getCalendarEntries(
+        targetUserId,
+        addDays(start, -MATCH_WINDOW_DAYS),
+        addDays(end, MATCH_WINDOW_DAYS)
+      ),
       workoutPlanTemplateRepository.getPlanTemplatesForCalendar(
         targetUserId,
         start,
@@ -138,7 +152,8 @@ async function getTrainingCalendar(
     });
 
     const entries = groupPresetEntries(
-      rows.map((row) => toEntry(row, programIndexByEntry))
+      rows.map((row) => toEntry(row, programIndexByEntry)),
+      zones.floors
     );
 
     const slots: PlanSlot[] = [];
@@ -203,14 +218,16 @@ async function getTrainingCalendar(
         );
       }
     }
-    slots.push(...sequentialPlanSlots(plans, entries, today, nextByPlan));
-
-    const { planned, completed } = matchPlan(
-      slots,
-      entries,
-      today,
-      zones.floors
+    slots.push(
+      ...sequentialPlanSlots(plans, entries, today, nextByPlan).filter((slot) =>
+        inRange(slot.day)
+      )
     );
+
+    const matched = matchPlan(slots, entries, today, zones.floors);
+    const { planned } = matched;
+    // The margin only served matching: what is shown and totalled is the range.
+    const completed = matched.completed.filter((item) => inRange(item.day));
     const curve = computeFitnessFatigue(curveSessions, today, zones.floors);
 
     return {
@@ -256,7 +273,7 @@ function sequentialPlanSlots(
     }
     for (const entry of entries) {
       const match = [...sessions.entries()].find(([, group]) =>
-        group.some((a) => `plan:${a.id}` === entry.linkKey)
+        group.some((a) => calendarEntryLinks(entry).includes(`plan:${a.id}`))
       );
       if (!match) continue;
       const slot = planSessionSlot(plan, entry.day, match[0], match[1]);

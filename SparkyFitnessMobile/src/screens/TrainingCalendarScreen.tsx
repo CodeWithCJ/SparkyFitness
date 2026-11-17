@@ -16,15 +16,14 @@ import Icon from '../components/Icon';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { usePreferences } from '../hooks/usePreferences';
 import { useTrainingCalendar } from '../hooks/useTrainingCalendar';
+import { useTrainingCalendarColors } from '../hooks/useTrainingCalendarColors';
 import { formatLocalizedNumber, useAppLocale } from '../localization';
 import { getCalendarWeekdayShortNames } from '../utils/calendarLocalization';
 import { distanceFromKm } from '../utils/unitConversions';
 import { formatDate, formatShortDate, getTodayDate } from '../utils/dateUtils';
 import {
-  EXTRA_COLOR,
   REST_DAY_AHEAD_DAYS,
   SPORT_ICONS,
-  STATUS_COLORS,
   dayMarks,
   itemsByDay,
   monthRange,
@@ -65,22 +64,29 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
     preferences.first_day_of_week <= 6
       ? preferences.first_day_of_week
       : 0;
-  const today = getTodayDate();
+  const colors = useTrainingCalendarColors();
+  // The device's day until the server has said what day it is for the person;
+  // everything that depends on today (the ring, the "Today" label, week tags,
+  // the opening selection) follows the person's own day once it is known.
+  const deviceToday = getTodayDate();
+  const [serverToday, setServerToday] = useState<string | null>(null);
+  const today = serverToday ?? deviceToday;
   const [mode, setMode] = useState<ViewMode>('month');
-  const [anchor, setAnchor] = useState(today);
-  const [selected, setSelected] = useState(today);
+  // What the person picked; until they pick, the view sits on today.
+  const [anchorPick, setAnchorPick] = useState<string | null>(null);
+  const [selectedPick, setSelectedPick] = useState<string | null>(null);
+  const anchor = anchorPick ?? today;
+  const selected = selectedPick ?? today;
   const [showEarlier, setShowEarlier] = useState(false);
   const [loadHelpOpen, setLoadHelpOpen] = useState(false);
 
   const month = anchor.slice(0, 7);
-  const range = useMemo(
-    () => monthRange(month, firstDayOfWeek),
-    [month, firstDayOfWeek]
-  );
+  const range = monthRange(month, firstDayOfWeek);
   const { data, isLoading, isError, refetch } = useTrainingCalendar(
     range.start,
     range.end
   );
+  if (data?.today && data.today !== serverToday) setServerToday(data.today);
   const header = useScreenHeader({
     title: t('screens.trainingCalendar', { defaultValue: 'Training calendar' }),
     left: { kind: 'back' },
@@ -95,13 +101,23 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
     );
   }, [appLocale, firstDayOfWeek]);
 
+  const select = (day: string) => setSelectedPick(day);
+
+  // Switching views keeps the selected day: the grid, the detail and the totals
+  // all open on the week or month that holds it.
+  const changeMode = (next: ViewMode) => {
+    setMode(next);
+    setAnchorPick(selected);
+    setShowEarlier(false);
+  };
+
   const move = (direction: -1 | 1) => {
     const next =
       mode === 'week'
         ? addDays(anchor, 7 * direction)
         : addDays(`${month}-01`, direction === 1 ? 32 : -1).slice(0, 7) + '-01';
-    setAnchor(next);
-    setSelected(next);
+    setAnchorPick(next);
+    setSelectedPick(next);
     setShowEarlier(false);
   };
 
@@ -178,7 +194,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
         accessibilityRole="button"
         accessibilityLabel={dayA11yLabel(day)}
         accessibilityState={{ selected: day === selected }}
-        onPress={() => setSelected(day)}
+        onPress={() => select(day)}
         className={`flex-1 items-center py-1.5 rounded-lg ${
           day === selected ? 'bg-accent-primary/20' : ''
         }`}
@@ -233,7 +249,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
                 defaultValue: 'No sessions this week',
               })
         }
-        onPress={() => setSelected(weekStartDay)}
+        onPress={() => select(weekStartDay)}
         className="items-center justify-center"
         style={{ width: WEEK_TOTAL_WIDTH }}
       >
@@ -278,14 +294,14 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
       >
         <View
           className="w-1.5 self-stretch rounded-full mr-3"
-          style={{ backgroundColor: STATUS_COLORS[item.status] }}
+          style={{ backgroundColor: colors.status[item.status] }}
         />
         <View className="flex-1">
           <Text className="text-text-primary text-base font-semibold">
             {plannedItemLabel(t, item)}
           </Text>
           <Text className="text-text-secondary text-xs mt-0.5">
-            <Text style={{ color: STATUS_COLORS[item.status] }}>
+            <Text style={{ color: colors.status[item.status] }}>
               {plannedStatusLabel(t, item.status)}
             </Text>
             {' · '}
@@ -307,7 +323,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
         </View>
         {programIndex !== null ? (
           <View className="w-8 h-8 rounded-full border border-border-subtle items-center justify-center ml-2">
-            <Icon name="chevron-forward" size={16} color={EXTRA_COLOR} />
+            <Icon name="chevron-forward" size={16} color={colors.extra} />
           </View>
         ) : null}
       </Pressable>
@@ -324,8 +340,8 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
         style={{
           backgroundColor:
             item.plannedItemId !== null && plannedStatus.has(item.plannedItemId)
-              ? STATUS_COLORS[plannedStatus.get(item.plannedItemId)!]
-              : EXTRA_COLOR,
+              ? colors.status[plannedStatus.get(item.plannedItemId)!]
+              : colors.extra,
         }}
       />
       <View className="flex-1">
@@ -433,7 +449,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
             <Text
               testID={`week-percent-${week.start}`}
               className="text-sm font-semibold ml-2"
-              style={{ color: STATUS_COLORS.done }}
+              style={{ color: colors.status.done }}
             >
               {formatLocalizedNumber(percent, { style: 'percent' })}
             </Text>
@@ -502,7 +518,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
             <Icon
               name="info-circle"
               size={13}
-              color="#999"
+              color={colors.mutedIcon}
               style={{ marginLeft: 3 }}
             />
           </Pressable>
@@ -589,7 +605,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
                 <View key={status} className="flex-row items-center">
                   <View
                     className="w-2 h-2 rounded-full mr-1"
-                    style={{ backgroundColor: STATUS_COLORS[status] }}
+                    style={{ backgroundColor: colors.status[status] }}
                   />
                   <Text className="text-text-muted text-xs">
                     {plannedStatusLabel(t, status)}
@@ -600,7 +616,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
             <View className="flex-row items-center">
               <View
                 className="w-2 h-2 rounded-full mr-1"
-                style={{ backgroundColor: EXTRA_COLOR, opacity: 0.5 }}
+                style={{ backgroundColor: colors.extra, opacity: 0.5 }}
               />
               <Text className="text-text-muted text-xs">
                 {t('trainingCalendar.extra', { defaultValue: 'Extra' })}
@@ -616,7 +632,11 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
               {visibleSports.map((sport) => (
                 <View key={sport} className="flex-row items-center">
                   <View className="mr-1">
-                    <Icon name={SPORT_ICONS[sport]} size={13} color="#999" />
+                    <Icon
+                      name={SPORT_ICONS[sport]}
+                      size={13}
+                      color={colors.mutedIcon}
+                    />
                   </View>
                   <Text className="text-text-muted text-xs">
                     {sportLoadLabel(t, sport)}
@@ -752,7 +772,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => move(-1)}
             hitSlop={12}
           >
-            <Icon name="chevron-back" size={22} color="#999" />
+            <Icon name="chevron-back" size={22} color={colors.mutedIcon} />
           </Pressable>
           <Text className="text-text-primary text-xl font-bold">{title}</Text>
           <Pressable
@@ -763,7 +783,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
             onPress={() => move(1)}
             hitSlop={12}
           >
-            <Icon name="chevron-forward" size={22} color="#999" />
+            <Icon name="chevron-forward" size={22} color={colors.mutedIcon} />
           </Pressable>
         </View>
         <View className="mb-4">
@@ -779,7 +799,7 @@ const TrainingCalendarScreen: React.FC<Props> = ({ navigation }) => {
               },
             ]}
             activeKey={mode}
-            onSelect={setMode}
+            onSelect={changeMode}
           />
         </View>
         {isError && data ? (

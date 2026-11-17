@@ -395,3 +395,40 @@ test('tags this week and the weeks ahead, with a percentage only for weeks under
     opacity: 0.6,
   });
 });
+
+test("follows the response's day for the ring, selection and week tags", () => {
+  // The device says the 14th; the person\'s own day is already the 21st.
+  state({ data: { ...data, today: '2026-10-21' } });
+  renderScreen();
+  expect(
+    within(screen.getByTestId('calendar-day-2026-10-21')).getByTestId(
+      'calendar-today-ring'
+    )
+  ).toBeTruthy();
+  expect(
+    screen.getByTestId('calendar-day-2026-10-21').props.accessibilityState
+  ).toMatchObject({ selected: true });
+  expect(
+    screen.getByTestId('calendar-day-2026-10-14').props.accessibilityState
+  ).toMatchObject({ selected: false });
+  expect(screen.getByText('Wednesday')).toBeTruthy();
+  // The week of the 12th is behind the person\'s today, so it is not the
+  // current week.
+  expect(screen.queryByTestId('week-tag-2026-10-12')).toBeNull();
+});
+
+test("opens the selected day's week when switching to the week view", () => {
+  state();
+  renderScreen();
+  fireEvent.press(screen.getByTestId('calendar-day-2026-09-30'));
+  fireEvent.press(screen.getByText('Week'));
+  // The grid is asked for the month that holds the selected day.
+  expect(useTrainingCalendar).toHaveBeenLastCalledWith(
+    '2026-08-31',
+    '2026-10-04'
+  );
+  expect(screen.getByText(/^Week of /)).toBeTruthy();
+  expect(
+    screen.getByTestId('calendar-day-2026-09-30').props.accessibilityState
+  ).toMatchObject({ selected: true });
+});
