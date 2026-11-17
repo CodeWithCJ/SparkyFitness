@@ -1744,5 +1744,13 @@
     "errorLoadingWeight": "Det gick inte att läsa in senaste vikt."
   },
   "success": "Klart",
-  "warning": "Varning"
+  "warning": "Varning",
+  "recipeImport": {
+    "inactive": "Inaktiv",
+    "inactiveManagement": "Aktivera den här leverantören i Inställningar för att importera recept. Du kan fortfarande hantera dina sparade val här."
+  },
+  "barcodeLookup": {
+    "yourFoods": "Dina livsmedel",
+    "fallback": "Reserv"
+  }
 }

@@ -102,7 +102,14 @@
       "replaceSuccess": "Ćwiczenie zamienione",
       "suggestedTab": "Proponowane",
       "caloriesPerHourWithUnit": "Kalorie/godz. ({{unit}})",
-      "caloriesPerHourHintWithUnit": "Pozostaw puste, aby użyć obliczonych przez system kalorii na godzinę ({{newExerciseCalories}} {{unit}}/godz.)."
+      "caloriesPerHourHintWithUnit": "Pozostaw puste, aby użyć obliczonych przez system kalorii na godzinę ({{newExerciseCalories}} {{unit}}/godz.).",
+      "healthActivityTypeLabel": "Typ aktywności zdrowotnej",
+      "healthActivityTypeAutomatic": "Automatycznie ({{type}})",
+      "healthActivityTypeHint": "Używane, gdy aplikacja mobilna zapisuje Twoje treningi w Apple Health lub Health Connect.",
+      "healthActivityTypeCommon": "Częste",
+      "healthActivityTypeAll": "Wszystkie aktywności",
+      "healthActivityTypeSearch": "Szukaj aktywności",
+      "healthActivityTypeNoMatches": "Brak wyników"
     },
     "addWorkoutPresetDialog": {
       "searchResultsTitle": "Wyniki wyszukiwania",
@@ -1500,7 +1507,8 @@
     "scheduledWorkout": "Sesja treningowa",
     "activePlanLabel": "Aktywny plan: {{name}}",
     "failedToLoadActivePlan": "Nie udało się wczytać aktywnego planu treningu.",
-    "currentOfTotal": "({{current}} z {{total}})"
+    "currentOfTotal": "({{current}} z {{total}})",
+    "regenerationFailed": "Zapisano, ale odświeżenie dziennika nie powiodło się. Spróbuj ponownie."
   },
   "foodSearchDialog": {
     "title": "Szukaj i dodaj produkty",
@@ -1535,7 +1543,7 @@
     "editFoodDetailsDescription": "Dostosuj wartości przed dodaniem do bazy.",
     "addNewFood": "Dodaj nowy produkt",
     "addNewFoodDescription": "Wprowadź dane nowego produktu, który zostanie dodany do Twojej bazy.",
-    "scanBarcodeDescription": "Umieść kod kreskowy produktu przed kamerą.",
+    "scanBarcodeDescription": "Umieść kod kreskowy produktu przed kamerą albo użyj jego zdjęcia.",
     "importFromCSVDescription": "Importuj plik CSV, aby dodać wiele produktów naraz.",
     "yourFoods": "Twoje produkty",
     "yourMeals": "Twoje posiłki",
@@ -1565,7 +1573,8 @@
     "selectBarcodeProvider": "Wybierz dostawcę",
     "dataProvider": "Dostawca danych:",
     "aiEstimate": "szacunek AI {{ai_confidence}}",
-    "per": "Na {{default_variant}}"
+    "per": "Na {{default_variant}}",
+    "scanBarcodeOrLabel": "Skanuj kod kreskowy lub etykietę"
   },
   "settings": {
     "profileInformation": {
@@ -2873,7 +2882,11 @@
       "appKeyLabel": "App Key:",
       "syncLabel": "Synchronizacja:",
       "neverSynced": "Ostatnia synchronizacja: nigdy",
-      "garminServiceUnreachable": "Usługa Garmin niedostępna. Synchronizacja nie jest możliwa."
+      "garminServiceUnreachable": "Usługa Garmin niedostępna. Synchronizacja nie jest możliwa.",
+      "mcpServerToolCount_one": "Czat może użyć {{count}} narzędzie",
+      "mcpServerToolCount_few": "Czat może użyć {{count}} narzędzia",
+      "mcpServerToolCount_many": "Czat może użyć {{count}} narzędzi",
+      "mcpServerSendsUserId": "Mówi serwerowi, kto czatuje"
     },
     "providerSpecificFields": {
       "appURL": "Adres URL aplikacji",
@@ -3051,6 +3064,62 @@
       "saveError": "Nie udało się zapisać wyboru kart. Spróbuj ponownie.",
       "loadError": "Nie udało się wczytać wyboru kart.",
       "actingOnBehalf": "Karty można zmieniać tylko na własnym koncie."
+    },
+    "chatMcp": {
+      "title": "Narzędzia zewnętrzne",
+      "description": "Te usługi dodał administrator spoza SparkyFitness. Gdy któraś jest włączona, Sparky może wysyłać jej części czatu i odczytywać jej odpowiedzi. Każda jest wyłączona, dopóki jej nie włączysz.",
+      "allow": "Pozwól Sparky używać {{name}}",
+      "loadError": "Nie udało się wczytać narzędzi zewnętrznych.",
+      "saveError": "Nie udało się zapisać. Spróbuj ponownie.",
+      "accountId": "Widzi Twój identyfikator konta.",
+      "familyOff": "Narzędzia zewnętrzne są wyłączone, gdy przeglądasz czyjś profil.",
+      "retry": "Spróbuj ponownie",
+      "loading": "Wczytywanie narzędzi zewnętrznych…"
+    },
+    "mcpServer": {
+      "trustNote": "To, co asystent przekaże tym narzędziom, trafia na ten serwer, a to, co wróci, wchodzi do czatu. Dodawaj tylko serwery, którym ufasz.",
+      "baseUrlLabel": "Adres URL serwera MCP",
+      "tokenLabel": "Token Bearer (opcjonalnie)",
+      "tokenKeepPlaceholder": "Pozostaw puste, aby zachować zapisany token",
+      "loadTools": "Wczytaj narzędzia",
+      "loadingTools": "Wczytywanie narzędzi...",
+      "allowedCount": "Zaznaczono {{count}} z {{max}} narzędzi.",
+      "noTools": "Serwer nie udostępnia żadnych narzędzi.",
+      "toolChanged": "Zmienione od czasu zapisania. Zaznacz ponownie, aby zezwolić na tę wersję.",
+      "tokenUrlChanged": "Po zmianie adresu URL serwera wpisz token ponownie.",
+      "toolProblem": {
+        "not_object": "Jego schemat wejścia nie opisuje obiektu.",
+        "too_deep": "Jego schemat wejścia jest zagnieżdżony zbyt głęboko.",
+        "malformed": "Jego schemat wejścia jest uszkodzony.",
+        "unreadable": "Nie udało się odczytać jego schematu wejścia.",
+        "too_large": "Jego schemat wejścia jest zbyt duży.",
+        "contains_token": "Jego schemat wejścia zawiera token.",
+        "name_too_long": "Jego nazwa ma więcej niż 128 znaków.",
+        "name_blank_or_padded": "Jego nazwa jest pusta albo zaczyna się lub kończy spacją."
+      },
+      "toolGone": "Serwer nie udostępnia już tego narzędzia.",
+      "sendUserIdLabel": "Powiedz serwerowi, kto czatuje",
+      "sendUserIdHelp": "Wysyła identyfikator użytkownika zalogowanej osoby w nagłówku {{header}}, dla serwera przechowującego dane per użytkownik.",
+      "details": "Szczegóły",
+      "urlHelp": "Zmiana adresu URL usuwa zaznaczone narzędzia.",
+      "urlCleared": "Zaznaczone narzędzia zostały wyczyszczone, ponieważ zmienił się adres URL. Wczytaj narzędzia i zaznacz je ponownie.",
+      "limit": "Zaznaczono już maksymalną dozwoloną liczbę narzędzi ({{max}}). Odznacz jedno, aby dodać kolejne.",
+      "noneTicked": "Nie zaznaczono jeszcze żadnych narzędzi, więc Sparky nie może używać tego serwera.",
+      "changedSummary_one": "{{count}} narzędzie zmieniło się od zapisania i zostało odznaczone. Sprawdź je poniżej.",
+      "changedSummary_few": "{{count}} narzędzia zmieniły się od zapisania i zostały odznaczone. Sprawdź je poniżej.",
+      "changedSummary_many": "{{count}} narzędzi zmieniło się od zapisania i zostało odznaczone. Sprawdź je poniżej.",
+      "goneSummary_one": "{{count}} narzędzie nie jest już na serwerze.",
+      "goneSummary_few": "{{count}} narzędzia nie są już na serwerze.",
+      "goneSummary_many": "{{count}} narzędzi nie jest już na serwerze.",
+      "detailsFor": "Szczegóły: {{name}}",
+      "problem": "Czat nie może użyć tego narzędzia: {{reason}}",
+      "loadError": {
+        "auth": "Serwer odrzucił token. Sprawdź token Bearer.",
+        "timeout": "Serwer nie odpowiedział w ciągu {{seconds}} s.",
+        "unreachable": "Nie udało się połączyć z serwerem. Sprawdź adres URL.",
+        "policy": "Ten adres jest niedozwolony przez politykę sieciową.",
+        "other": "Serwer nie wylistował swoich narzędzi ({{reason}})."
+      }
     }
   },
   "admin": {
@@ -3936,7 +4005,9 @@
       "stepFloor": "Utrzymano na bezpiecznym minimum; pozostałe dni oddają różnicę.",
       "pausedWeeklyPlan": "Cyklowanie kalorii jest dziś wstrzymane: plan celu tygodniowego ustala ten dzień.",
       "pausedEarnBack": "Cyklowanie kalorii jest wstrzymane: kalorie z treningu są dodawane z powrotem do celu."
-    }
+    },
+    "copyFoodError": "Nie udało się skopiować produktu.",
+    "copyFoodSuccess": "Produkt skopiowany."
   },
   "foodDiary": {
     "title": "Dziennik posiłków",
@@ -4002,7 +4073,8 @@
     "fromPlan": "Z planu",
     "editFoodDatabase": "Edytuj bazę produktów",
     "editFoodDatabaseDescription": "Edytuj informacje o wartościach odżywczych tego produktu w swojej bazie.",
-    "editingTemporarilyUnavailable": "Edycja szczegółów produktu jest chwilowo niedostępna z powodu zmian schematu."
+    "editingTemporarilyUnavailable": "Edycja szczegółów produktu jest chwilowo niedostępna z powodu zmian schematu.",
+    "copyFood": "Kopiuj produkt"
   },
   "checkIn": {
     "neutral": "Neutralnie",
@@ -6566,6 +6638,85 @@
     "sparkyChatInterface": {
       "chatError": "Błąd czatu",
       "failedToProcessMessagePlease": "Nie udało się przetworzyć wiadomości. Sprawdź ustawienia usługi AI."
+    },
+    "approval": {
+      "title": "Zezwolić na ten krok?",
+      "run": "Po przeczytaniu <bold>{{server}}</bold> Sparky chce uruchomić <bold>{{tool}}</bold>.",
+      "send": "Po przeczytaniu <bold>{{server}}</bold> Sparky chce użyć <bold>{{tool}}</bold> z <bold>{{otherServer}}</bold>.",
+      "details": "Szczegóły",
+      "allow": "Zezwól",
+      "deny": "Odmów",
+      "allowed": "Zezwolono",
+      "denied": "Odmówiono",
+      "failed": "Nie udało się zapisać odpowiedzi. Spróbuj ponownie.",
+      "runPlain": "Sparky chce uruchomić <bold>{{tool}}</bold>.",
+      "delete": "Sparky chce usunąć <bold>{{summary}}</bold>.",
+      "deleteAfter": "Po przeczytaniu <bold>{{server}}</bold> Sparky chce usunąć <bold>{{summary}}</bold>.",
+      "change": "Sparky chce wprowadzić tę zmianę: <bold>{{summary}}</bold>.",
+      "changeAfter": "Po przeczytaniu <bold>{{server}}</bold> Sparky chce wprowadzić tę zmianę: <bold>{{summary}}</bold>.",
+      "working": "Pracuję nad tym…",
+      "done": "Gotowe",
+      "notRun": "Nie uruchomiono",
+      "cancelled": "Najpierw wysłano nową wiadomość.",
+      "nothingChanged": "Nic nie zostało zmienione.",
+      "toolFailed": "Zezwolono, ale nie zadziałało",
+      "otherPending": "Odpowiedz na drugi krok, aby kontynuować.",
+      "composerHint": "Najpierw odpowiedz na powyższy krok albo pisz dalej, aby go pominąć.",
+      "announce": "Sparky czeka na Twoją odpowiedź: Zezwolić na ten krok?",
+      "runCompleted": "Po przeczytaniu <bold>{{server}}</bold> Sparky uruchomił <bold>{{tool}}</bold>.",
+      "runPlainCompleted": "Sparky uruchomił <bold>{{tool}}</bold>.",
+      "sendCompleted": "Po przeczytaniu <bold>{{server}}</bold> Sparky uruchomił <bold>{{tool}}</bold>.",
+      "deleteCompleted": "Zezwolono Sparky na usunięcie <bold>{{summary}}</bold>.",
+      "deleteAfterCompleted": "Gdy Sparky przeczytał <bold>{{server}}</bold>, zezwolono mu na usunięcie <bold>{{summary}}</bold>.",
+      "changeCompleted": "Zezwolono Sparky na wprowadzenie tej zmiany: <bold>{{summary}}</bold>.",
+      "changeAfterCompleted": "Gdy Sparky przeczytał <bold>{{server}}</bold>, zezwolono mu na wprowadzenie tej zmiany: <bold>{{summary}}</bold>.",
+      "runFailed": "Po przeczytaniu <bold>{{server}}</bold> Sparky próbował uruchomić <bold>{{tool}}</bold>.",
+      "runPlainFailed": "Sparky próbował uruchomić <bold>{{tool}}</bold>.",
+      "sendFailed": "Po przeczytaniu <bold>{{server}}</bold> Sparky próbował uruchomić <bold>{{tool}}</bold>.",
+      "deleteFailed": "Sparky próbował usunąć <bold>{{summary}}</bold>.",
+      "deleteAfterFailed": "Po przeczytaniu <bold>{{server}}</bold> Sparky próbował usunąć <bold>{{summary}}</bold>.",
+      "changeFailed": "Sparky próbował wprowadzić tę zmianę: <bold>{{summary}}</bold>.",
+      "changeAfterFailed": "Po przeczytaniu <bold>{{server}}</bold> Sparky próbował wprowadzić tę zmianę: <bold>{{summary}}</bold>.",
+      "runUnused": "Po przeczytaniu <bold>{{server}}</bold> Sparky chciał uruchomić <bold>{{tool}}</bold>.",
+      "runPlainUnused": "Sparky chciał uruchomić <bold>{{tool}}</bold>.",
+      "sendUnused": "Po przeczytaniu <bold>{{server}}</bold> Sparky chciał użyć <bold>{{tool}}</bold> z <bold>{{otherServer}}</bold>.",
+      "deleteUnused": "Sparky chciał usunąć <bold>{{summary}}</bold>.",
+      "deleteAfterUnused": "Po przeczytaniu <bold>{{server}}</bold> Sparky chciał usunąć <bold>{{summary}}</bold>.",
+      "changeUnused": "Sparky chciał wprowadzić tę zmianę: <bold>{{summary}}</bold>.",
+      "changeAfterUnused": "Po przeczytaniu <bold>{{server}}</bold> Sparky chciał wprowadzić tę zmianę: <bold>{{summary}}</bold>."
+    },
+    "outsideSource": {
+      "line": "Użyto <bold>{{servers}}</bold>. Coś wygląda nie tak?",
+      "delete": "Usuń tę wiadomość",
+      "clear": "Wyczyść czat",
+      "failed": "Nie udało się usunąć tej wiadomości. Spróbuj ponownie.",
+      "deleteTitle": "Usunąć tę odpowiedź?",
+      "deleteBody": "Spowoduje to usunięcie odpowiedzi z czatu. Nie cofnie żadnych zmian, które Sparky już wprowadził.",
+      "cancel": "Anuluj",
+      "confirmDelete": "Usuń",
+      "deleting": "Usuwanie…"
+    },
+    "tools": {
+      "generic": "Narzędzie",
+      "outside": "narzędzie zewnętrzne",
+      "outsideNamed": "{{server}}: {{tool}}",
+      "withAction": "{{tool}} ({{action}})",
+      "runProgram": "Uruchom program",
+      "food": "Produkt",
+      "exercise": "Ćwiczenie",
+      "checkin": "Wpis dnia",
+      "goals": "Cele",
+      "lookedUp": "Wyszukano {{name}}"
+    },
+    "outsideError": {
+      "unavailable": "{{server}} nie odpowiedział. Spróbuj ponownie później.",
+      "turnedOff": "{{server}} jest dla Ciebie wyłączony w ustawieniach AI."
+    },
+    "clearConfirm": {
+      "title": "Wyczyścić czat?",
+      "body": "Trwale usuwa to historię czatu ze Sparky. Tej operacji nie można cofnąć.",
+      "cancel": "Anuluj",
+      "clear": "Wyczyść"
     }
   },
   "foodCsvImport": {
@@ -6793,7 +6944,10 @@
     "matchScopeDescription": "Dopasowanie nazwy produktu poza zaznaczonymi zakresami zostanie zignorowane, a zamiast tego zostanie utworzony nowy produkt na podstawie kolumn z wartościami odżywczymi wiersza.",
     "mealType": "Posiłek",
     "overrideDescription": "Gdy wiersz pasuje do jednego z Twoich produktów, zapisane wartości odżywcze tego wariantu produktu zostaną zastąpione wartościami z importu. Dotyczy tylko elementów „Moje elementy” — dopasowanie rodzinne i publiczne są wyłączone.",
-    "overrideLabel": "Zastąp wartości odżywcze istniejącego produktu zaimportowanymi wartościami"
+    "overrideLabel": "Zastąp wartości odżywcze istniejącego produktu zaimportowanymi wartościami",
+    "aggregateLabel": "Importuj jako sumy posiłków (agregat per posiłek)",
+    "aggregateDescription": "Ten plik ma jeden wiersz na posiłek, bez nazwy i ilości produktu. Zapisz wartości odżywcze każdego wiersza jako jedną porcję posiłku nazwanego według jego typu.",
+    "unit": "Jednostka"
   },
   "healthDataImport": {
     "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB.",
@@ -6824,7 +6978,15 @@
     "acceptedActivityTypes": "Akceptowane typy aktywności",
     "hydration": "Nawodnienie",
     "dailyWaterIntakeValuesAre": "Dzienne przyjmowanie wody. Wartości są przeliczane na mililitry.",
-    "mood": "Nastrój"
+    "mood": "Nastrój",
+    "unitPrompt": "Twój plik nie ma kolumny jednostek. Wybierz jednostkę dla wartości, aby poprawnie je przeliczyć.",
+    "weightUnitLabel": "Jednostka masy",
+    "weightUnitRequired": "Twój plik nie ma jednostki masy. Przed importem wybierz kg lub lb.",
+    "lengthUnitLabel": "Jednostka długości",
+    "lengthUnitRequired": "Twój plik nie ma jednostki długości. Przed importem wybierz cm, in lub m.",
+    "weightUnitMissing": "Masa jest obecna, ale jednostka nie jest ustawiona. Wybierz jednostkę (kg lub lb) dla tego importu.",
+    "lengthUnitMissing": "{{type}} jest obecne, ale jednostka nie jest ustawiona. Wybierz jednostkę (cm, in lub m) dla tego importu.",
+    "unitRequired": "Wymagana jednostka"
   },
   "workoutLaps": {
     "lap": "Okrążenie",
@@ -7327,7 +7489,15 @@
     "mealType": "Typ posiłku",
     "selectMealTypePlaceholder": "Wybierz typ posiłku",
     "title": "Kopiuj wpisy produktów",
-    "titleAll": "Kopiuj cały dzień"
+    "titleAll": "Kopiuj cały dzień",
+    "copyTo": "Kopiuj do",
+    "descriptionFood": "Zapisz ten produkt ponownie teraz albo wybierz datę i typ posiłku.",
+    "quick": {
+      "now": "Teraz",
+      "today": "Dzisiaj",
+      "tomorrow": "Jutro"
+    },
+    "titleFood": "Kopiuj {{food}}"
   },
   "copied": "Skopiowano!",
   "customNutrients": {
@@ -9357,6 +9527,33 @@
       "estimate2": "szacunek {{ai_confidence}}",
       "custom": "Niestandardowa",
       "aiEstimateConfidence": "Szacunek AI (pewność {{confidence}})"
+    },
+    "barcodeImage": {
+      "upload": "Prześlij obraz kodu kreskowego",
+      "notFound": "Na tym obrazie nie znaleziono kodu kreskowego. Spróbuj ostrzejszego zdjęcia z całym kodem w kadrze.",
+      "unreadable": "Nie udało się otworzyć tego obrazu. Użyj pliku JPEG lub PNG."
+    },
+    "imageSourceInput": {
+      "dropOrPaste": "albo upuść tutaj obraz, albo wklej zrzut ekranu"
+    },
+    "nutritionLabelImage": {
+      "title": "Skanuj etykietę żywieniową",
+      "dialogDescription": "Utwórz produkt ze zdjęcia jego etykiety żywieniowej.",
+      "description": "Użyj zdjęcia panelu wartości odżywczych. Twoja usługa AI odczyta wartości, a Ty sprawdzisz je przed zapisaniem produktu.",
+      "upload": "Prześlij obraz etykiety",
+      "reading": "Odczytywanie etykiety...",
+      "errors": {
+        "noAiService": "Odczytanie etykiety wymaga usługi AI obsługującej obrazy. Dodaj ją w Ustawienia → Usługa AI.",
+        "aiServiceSetup": "Twojej usługi AI nie można użyć do odczytu etykiet: {{message}}",
+        "badImage": "Nie udało się wysłać tego obrazu do usługi AI. Użyj zdjęcia JPEG lub PNG.",
+        "unreadable": "Nie odczytano z tego obrazu żadnych wartości odżywczych. Spróbuj ostrzejszego, bliższego zdjęcia etykiety.",
+        "unavailable": "Twoja usługa AI nie odpowiedziała. Spróbuj ponownie za chwilę.",
+        "generic": "Nie udało się odczytać etykiety. Spróbuj ponownie."
+      }
+    },
+    "scanModes": {
+      "barcode": "Kod kreskowy",
+      "label": "Etykieta żywieniowa"
     }
   },
   "gitHubSponsorButton": {
@@ -9443,7 +9640,11 @@
     }
   },
   "toolfallback": {
-    "result": "Wynik:"
+    "result": "Wynik:",
+    "used": "Użyte narzędzie",
+    "cancelled": "Anulowane narzędzie",
+    "error": "Błąd:",
+    "cancelledReason": "Powód anulowania:"
   },
   "ui": {
     "confirmationDialog": {
@@ -10765,5 +10966,99 @@
     "importAsMeal": "Importuj składniki jako posiłek",
     "searchMacros": "Białko {{protein}} g · Węglowodany {{carbs}} g · Tłuszcz {{fat}} g",
     "unsavedIngredients": "Zapisz lub odrzuć zmiany składników przed synchronizacją wartości odżywczych do Mealie."
+  },
+  "healthActivityTypes": {
+    "american_football": "Futbol amerykański",
+    "archery": "Łucznictwo",
+    "australian_football": "Futbol australijski",
+    "badminton": "Badminton",
+    "baseball": "Baseball",
+    "basketball": "Koszykówka",
+    "bowling": "Kręgle",
+    "boxing": "Boks",
+    "climbing": "Wspinaczka",
+    "cricket": "Krykiet",
+    "cross_training": "Trening mieszany",
+    "curling": "Curling",
+    "cycling": "Kolarstwo",
+    "cycling_indoor": "Kolarstwo na miejscu",
+    "elliptical": "Orbitrek",
+    "equestrian_sports": "Jeździectwo",
+    "fencing": "Szermierka",
+    "fishing": "Wędkarstwo",
+    "functional_strength_training": "Trening siłowy funkcjonalny",
+    "golf": "Golf",
+    "gymnastics": "Gimnastyka",
+    "handball": "Piłka ręczna",
+    "hiking": "Wędrówki piesze",
+    "ice_hockey": "Hokej na lodzie",
+    "roller_hockey": "Hokej na wrotkach",
+    "hunting": "Polowanie",
+    "lacrosse": "Lacrosse",
+    "martial_arts": "Sztuki walki",
+    "mind_and_body": "Ciało i umysł",
+    "breathing": "Oddech",
+    "paddle_sports": "Sporty wiosłowe",
+    "play": "Zabawa",
+    "preparation_and_recovery": "Przygotowanie i regeneracja",
+    "racquetball": "Racquetball",
+    "rowing": "Wioślarstwo",
+    "rowing_machine": "Ergometr wioślarski",
+    "rugby": "Rugby",
+    "running": "Bieganie",
+    "running_treadmill": "Bieganie na bieżni",
+    "sailing": "Żeglarstwo",
+    "skating": "Wrotkarstwo",
+    "ice_skating": "Łyżwiarstwo",
+    "snowshoeing": "Marsze w rakietach śnieżnych",
+    "soccer": "Piłka nożna",
+    "softball": "Softball",
+    "squash": "Squash",
+    "stair_climbing_machine": "Stopnica",
+    "surfing": "Surfing",
+    "swimming_pool": "Pływanie na basenie",
+    "swimming_open_water": "Pływanie na wodach otwartych",
+    "table_tennis": "Tenis stołowy",
+    "tennis": "Tenis",
+    "track_and_field": "Lekkoatletyka",
+    "strength_training": "Trening siłowy",
+    "weightlifting": "Podnoszenie ciężarów",
+    "volleyball": "Siatkówka",
+    "walking": "Chodzenie",
+    "walking_treadmill": "Chodzenie w pomieszczeniach",
+    "water_fitness": "Fitness w wodzie",
+    "water_polo": "Piłka wodna",
+    "water_sports": "Sporty wodne",
+    "wrestling": "Zapasy",
+    "yoga": "Joga",
+    "barre": "Barre",
+    "core_training": "Trening core",
+    "calisthenics": "Kalistenika",
+    "cross_country_skiing": "Biegi narciarskie",
+    "downhill_skiing": "Narciarstwo zjazdowe",
+    "stretching": "Rozciąganie",
+    "hiit": "Trening interwałowy o wysokiej intensywności (HIIT)",
+    "jump_rope": "Skakanka",
+    "kickboxing": "Kickboxing",
+    "pilates": "Pilates",
+    "snowboarding": "Snowboard",
+    "stairs": "Schody",
+    "step_training": "Step",
+    "wheelchair_walk_pace": "Wózek (tempo marszu)",
+    "wheelchair_run_pace": "Wózek (tempo biegu)",
+    "tai_chi": "Tai chi",
+    "mixed_cardio": "Cardio mieszane",
+    "exercise_class": "Zajęcia fitness",
+    "boot_camp": "Boot camp",
+    "hand_cycling": "Kolarstwo ręczne",
+    "disc_sports": "Frisbee",
+    "fitness_gaming": "Gry ruchowe (fitness)",
+    "cardio_dance": "Taniec cardio",
+    "social_dance": "Taniec",
+    "pickleball": "Pickleball",
+    "cooldown": "Schłodzenie",
+    "underwater_diving": "Nurkowanie",
+    "paragliding": "Paralotniarstwo",
+    "other": "Inne"
   }
 }
