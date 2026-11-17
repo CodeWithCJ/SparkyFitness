@@ -18,6 +18,7 @@ export const challengesSchema = z.object({
   invite_code_hash: z.string().nullable(),
   invite_expires_at: z.coerce.date().nullable(),
   ended_at: z.coerce.date().nullable(),
+  frozen_period_starts: z.array(z.string()),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
 });
@@ -39,6 +40,7 @@ export const challengesInitializerSchema = z.object({
   invite_code_hash: z.string().optional().nullable(),
   invite_expires_at: z.coerce.date().optional().nullable(),
   ended_at: z.coerce.date().optional().nullable(),
+  frozen_period_starts: z.array(z.string()).optional().default([]),
   created_at: z.coerce.date().optional(),
   updated_at: z.coerce.date().optional(),
 });

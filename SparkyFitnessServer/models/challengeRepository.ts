@@ -924,25 +924,16 @@ async function saveMemberDays(
   });
 }
 
-/** Whether a period is already frozen. */
-async function hasResults(
-  challengeId: string,
-  periodStart: string
-): Promise<boolean> {
-  return withSystem(async (client) => {
-    const { rowCount } = await client.query(
-      'SELECT 1 FROM challenge_results WHERE challenge_id = $1 AND period_start = $2 LIMIT 1',
-      [challengeId, periodStart]
-    );
-    return (rowCount ?? 0) > 0;
-  });
-}
-
+/**
+ * Starts of the frozen periods, from the challenge's own marker, not the
+ * result rows (an account deletion removes those).
+ */
 async function frozenPeriodStarts(challengeId: string): Promise<string[]> {
   return withSystem(async (client) => {
     const { rows } = await client.query(
-      `SELECT DISTINCT TO_CHAR(period_start, 'YYYY-MM-DD') AS period_start
-         FROM challenge_results WHERE challenge_id = $1`,
+      `SELECT TO_CHAR(p, 'YYYY-MM-DD') AS period_start
+         FROM challenges c, unnest(c.frozen_period_starts) AS p
+        WHERE c.id = $1`,
       [challengeId]
     );
     return (rows as { period_start: string }[]).map((r) => r.period_start);
@@ -1011,7 +1002,7 @@ async function insertResults(
     )
       return false;
     const already = await client.query(
-      'SELECT 1 FROM challenge_results WHERE challenge_id = $1 AND period_start = $2 LIMIT 1',
+      'SELECT 1 FROM challenges WHERE id = $1 AND $2::date = ANY(frozen_period_starts)',
       [challengeId, periodStart]
     );
     if (already.rowCount) return false;
@@ -1027,6 +1018,14 @@ async function insertResults(
            is_winner boolean, reached_on date, detail jsonb)
        ON CONFLICT (challenge_id, period_start, user_id) DO NOTHING`,
       [challengeId, periodStart, periodEnd, JSON.stringify(rows)]
+    );
+    // The marker outlives the rows: deleting an account removes that
+    // member's results but leaves the period frozen.
+    await client.query(
+      `UPDATE challenges
+          SET frozen_period_starts = array_append(frozen_period_starts, $2::date)
+        WHERE id = $1`,
+      [challengeId, periodStart]
     );
     return true;
   });
@@ -1169,7 +1168,6 @@ export default {
   ackQueuedDays,
   withScoringLock,
   saveMemberDays,
-  hasResults,
   frozenPeriodStarts,
   getDailyScores,
   insertResults,

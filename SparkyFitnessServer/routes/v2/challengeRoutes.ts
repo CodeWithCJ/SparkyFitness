@@ -161,6 +161,11 @@ router.post('/join', async (req, res, next) => {
 /**
  * @swagger
  * /v2/challenges/{id}:
+ *   parameters:
+ *     - in: path
+ *       name: id
+ *       required: true
+ *       schema: { type: string, format: uuid }
  *   get:
  *     summary: One challenge you are a member of, with its members' display names
  *     tags: [Challenges]
@@ -179,6 +184,11 @@ router.get('/:id', async (req, res, next) => {
 /**
  * @swagger
  * /v2/challenges/{id}/rules:
+ *   parameters:
+ *     - in: path
+ *       name: id
+ *       required: true
+ *       schema: { type: string, format: uuid }
  *   put:
  *     summary: Change the rules (host only). Before the start the change applies from the start, after it from the next period; every change is logged for members
  *     tags: [Challenges]
@@ -206,6 +216,11 @@ router.put('/:id/rules', async (req, res, next) => {
 /**
  * @swagger
  * /v2/challenges/{id}/rule-changes:
+ *   parameters:
+ *     - in: path
+ *       name: id
+ *       required: true
+ *       schema: { type: string, format: uuid }
  *   get:
  *     summary: The log of rules changes, visible to every member
  *     tags: [Challenges]
@@ -223,6 +238,11 @@ router.get('/:id/rule-changes', async (req, res, next) => {
 /**
  * @swagger
  * /v2/challenges/{id}/invite:
+ *   parameters:
+ *     - in: path
+ *       name: id
+ *       required: true
+ *       schema: { type: string, format: uuid }
  *   post:
  *     summary: Make a new invite code (host only); replaces any live code. The code is returned only here
  *     tags: [Challenges]
@@ -265,6 +285,11 @@ router.delete('/:id/invite', async (req, res, next) => {
 /**
  * @swagger
  * /v2/challenges/{id}/leave:
+ *   parameters:
+ *     - in: path
+ *       name: id
+ *       required: true
+ *       schema: { type: string, format: uuid }
  *   post:
  *     summary: Leave a challenge; your scores in it are deleted. A leaving host passes hosting to the longest-standing member
  *     tags: [Challenges]
@@ -283,6 +308,11 @@ router.post('/:id/leave', async (req, res, next) => {
 /**
  * @swagger
  * /v2/challenges/{id}/standings:
+ *   parameters:
+ *     - in: path
+ *       name: id
+ *       required: true
+ *       schema: { type: string, format: uuid }
  *   get:
  *     summary: Standings of the period containing `date` (default today); final once the period is frozen
  *     tags: [Challenges]

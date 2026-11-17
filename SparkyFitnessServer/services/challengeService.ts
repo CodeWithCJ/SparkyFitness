@@ -725,7 +725,14 @@ export async function getStandings(
     challengeId,
     window.start
   );
-  if (frozen.length) {
+  // Frozen by the challenge's marker: a period whose result rows all went
+  // with deleted accounts is still final, and is never rescored.
+  if (
+    frozen.length ||
+    (await challengeRepository.frozenPeriodStarts(challengeId)).includes(
+      window.start
+    )
+  ) {
     // Rounded once, as the shared ranking does, for both fields
     const group =
       Math.round(frozen.reduce((s, r) => s + Number(r.total), 0) * 10) / 10;
@@ -810,6 +817,12 @@ const n = (v: unknown): number | null => {
   const x = Number(v);
   return Number.isFinite(x) ? x : null;
 };
+
+/**
+ * The name upsertExerciseEntryData gives a synced daily active-calorie total.
+ * Those rows hold the day's calories, not a workout.
+ */
+const DAILY_SUMMARY_EXERCISE_NAME = 'Active Calories';
 
 /**
  * A diary row that is only planned, so it earns nothing yet: what a prefill
@@ -979,13 +992,27 @@ async function recomputeMemberLocked(
   ]);
   const done = rows.filter((row) => !isPlannedEntryRow(row));
   const doneById = new Map(done.map((row) => [row.id, row]));
-  const entries = done.map(toChallengeEntry);
-  const data = { entries, steps, zones };
+  const allEntries = done.map(toChallengeEntry);
+  // A synced daily calorie total is stored as an entry but is no workout: it
+  // counts only toward an active-calories total, as before, and never as a
+  // workout, a streak day, the goal or a card.
+  const entries = allEntries.filter(
+    (e) => doneById.get(e.id)?.exercise_name !== DAILY_SUMMARY_EXERCISE_NAME
+  );
 
   const scores: DailyScoreInput[] = [];
   const cards: ChallengeActivityCardInput[] = [];
   for (const run of runs) {
-    const days = scoreChallengeDays(data, run.from, run.to, run.rules);
+    const days = scoreChallengeDays(
+      {
+        entries: run.rules.metric === 'active_calories' ? allEntries : entries,
+        steps,
+        zones,
+      },
+      run.from,
+      run.to,
+      run.rules
+    );
     const counted = challengeCountedEntries(entries, run.rules);
     // The goal counts the same workouts as the day scores: manual entries
     // ignored, duplicates merged, filters applied, and only on the weekdays

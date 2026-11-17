@@ -7,6 +7,7 @@ import {
   challengeEntryRate,
   challengeGoalType,
   challengePeriodTotal,
+  challengePrsForDay,
   challengePeriodWindow,
   challengePeriodsUpTo,
   challengePreset,
@@ -1705,5 +1706,144 @@ describe('CodeWithCJ review (PR #3585)', () => {
     expect(counted[0]!.id).toBe('synced');
     expect(counted[0]!.durationMin).toBe(88);
     expect(counted[0]!.distanceM).toBe(15_000);
+  });
+});
+
+describe('CodeRabbit and Cardio-import follow-ups (PR #3585)', () => {
+  const day = '2026-11-06';
+  const entry = (
+    id: string,
+    name: string,
+    category: string | null,
+    extra: Partial<ChallengeEntry> = {}
+  ): ChallengeEntry => ({
+    id,
+    date: day,
+    durationMin: 30,
+    name,
+    category,
+    source: 'garmin',
+    ...extra,
+  });
+  const capped = (metric: ChallengeRules['metric']) =>
+    rulesWith({
+      metric,
+      activities: { manualEntries: 'cap', manualMinutesCap: 15 },
+    });
+
+  it('a capped copy cuts its zone time too, so the rate and zone minutes see 15 minutes, not 60', () => {
+    const typed = entry('typed', 'Run', 'Cardio', {
+      source: 'Manual',
+      durationMin: 60,
+      zoneSeconds: [0, 0, 3600, 0, 0],
+    });
+    const [copy] = challengeCountedEntries([typed], capped('hr_zone_minutes'));
+    expect(copy!.zoneSeconds).toEqual([0, 0, 900, 0, 0]);
+    const rate = challengeEntryRate(copy!, zones, pts);
+    expect(rate.minutes).toBe(15);
+    expect(
+      score([typed], day, day, {}, capped('hr_zone_minutes'))[0]!.total
+    ).toBe(15);
+    expect(
+      score([typed], day, day, {}, capped('active_minutes'))[0]!.total
+    ).toBe(15);
+  });
+
+  it('a Strength Training session an importer filed under Cardio is still lifting', () => {
+    // Oura, Polar and Withings create every workout with category Cardio
+    const synced = entry('oura', 'Strength Training', 'Cardio', {
+      source: 'Oura',
+    });
+    for (const source of ['Polar', 'Withings']) {
+      expect(isStrengthEntry({ ...synced, source }), source).toBe(true);
+    }
+    expect(isStrengthEntry(synced)).toBe(true);
+    expect(challengeEntryClass(synced)).toBe('strength');
+    expect(challengeFilterSport(synced)).toBe('strength');
+    expect(challengeEntryRate(synced, zones, pts).strengthFloored).toBe(true);
+    expect(
+      challengeCountedEntries(
+        [synced],
+        rulesWith({
+          metric: 'active_minutes',
+          activities: { includeSports: ['strength'] },
+        })
+      ).map((x) => x.id)
+    ).toEqual(['oura']);
+    // Otherwise Cardio still means not lifting, as the owner asked
+    for (const cardio of [
+      entry('run', 'Running', 'Cardio', { source: 'Oura' }),
+      entry('bw', 'Body Weight Cardio', 'Cardio', { source: 'Polar' }),
+      entry('indoor', 'Indoor Row', 'Cardio'),
+      // The exception is only for those importers: a member's own Cardio
+      // exercise stays not lifting whatever its name
+      entry('hiit', 'Body Weight HIIT', 'Cardio', { source: 'Manual' }),
+      entry('st', 'Strength Training', 'Cardio', { source: 'garmin' }),
+    ]) {
+      expect(isStrengthEntry(cardio), cardio.name!).toBe(false);
+      expect(challengeFilterSport(cardio), cardio.name!).not.toBe('strength');
+    }
+    for (const lift of [
+      entry('bb', 'Barbell Row', 'Strength'),
+      entry('sc', 'Seated Cable Row', 'Strength'),
+    ]) {
+      expect(isStrengthEntry(lift), lift.name!).toBe(true);
+    }
+  });
+
+  it('a capped manual run keeps its logged distance for the pace PR minimum, not the distance PR', () => {
+    // Two earlier 5 km runs at 6 min/km, then a typed-in 5 km at 5 min/km
+    // that the 15-minute cap cuts to 15 of its 25 minutes (3 km)
+    const earlier = [
+      entry('a', 'Run', 'Cardio', {
+        date: '2026-11-01',
+        durationMin: 30,
+        distanceM: 5000,
+      }),
+      entry('b', 'Run', 'Cardio', {
+        date: '2026-11-02',
+        durationMin: 30,
+        distanceM: 5000,
+      }),
+    ];
+    const typed = entry('typed', 'Run', 'Cardio', {
+      source: 'Manual',
+      durationMin: 25,
+      distanceM: 5000,
+    });
+    const rules = {
+      ...pts,
+      pr: { ...pts.pr!, minPaceMeters: 4000, types: ['pace' as const] },
+    };
+    const counted = challengeCountedEntries(
+      [...earlier, typed],
+      capped('active_minutes')
+    );
+    const copy = counted.find((x) => x.id === 'typed')!;
+    expect(copy.durationMin).toBe(15);
+    expect(copy.distanceM).toBe(3000);
+    const byDate = new Map<string, ChallengeEntry[]>();
+    for (const x of counted)
+      byDate.set(x.date, [...(byDate.get(x.date) ?? []), x]);
+    const prs = challengePrsForDay(day, byDate, rules);
+    expect(prs).toEqual([
+      expect.objectContaining({ entryId: 'typed', type: 'pace', value: 5 }),
+    ]);
+    // A distance PR counts only what the cap kept, so the cap holds there:
+    // a typed-in 10 km cut to 3 km does not beat the earlier 5 km
+    const typedFar = { ...typed, durationMin: 50, distanceM: 10_000 };
+    const far = challengeCountedEntries(
+      [...earlier, typedFar],
+      capped('active_minutes')
+    );
+    const farByDate = new Map<string, ChallengeEntry[]>();
+    for (const x of far)
+      farByDate.set(x.date, [...(farByDate.get(x.date) ?? []), x]);
+    expect(
+      challengePrsForDay(day, farByDate, {
+        ...rules,
+        pr: { ...rules.pr, types: ['distance'] },
+      })
+    ).toEqual([]);
   });
 });

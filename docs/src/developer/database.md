@@ -1,6 +1,6 @@
 # Database Schema & Migrations
 
-*Last updated: 2026-11-16*
+*Last updated: 2026-11-17*
 
 This document covers the database structure, schema design, and migration process for SparkyFitness.
 
@@ -180,7 +180,7 @@ Written only by the server (owner pool) after `services/challengeService.ts` has
 
 | Table | Purpose |
 |-------|---------|
-| `challenges` | A challenge: host, name, `rules` JSONB (the shared versioned `challengeRulesSchema`), start and end dates, the time zone that decides when a period is over, member limit, late joining, the sha256 of the current invite code and its expiry |
+| `challenges` | A challenge: host, name, `rules` JSONB (the shared versioned `challengeRulesSchema`), start and end dates, the time zone that decides when a period is over, member limit, late joining, the sha256 of the current invite code and its expiry, and `frozen_period_starts` (the periods already frozen, kept here so an account deletion never reopens one) |
 | `challenge_members` | Who is in a challenge (`host` or `member`), the display name other members see, the personal goal type and `share_routes` (off by default). Leaving deletes the row and, by cascade, the member's scores, cards and queued days |
 | `challenge_daily_scores` | One member's computed value for one day (points parts, minutes, steps, workouts, and a `detail` breakdown); read by standings |
 | `challenge_activity_cards` | The per-workout summary members see (type, name, minutes, distance in metres, pace, heart rate, points); deleted with the workout |

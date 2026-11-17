@@ -33,6 +33,10 @@ CREATE TABLE IF NOT EXISTS public.challenges (
     invite_code_hash VARCHAR(64),
     invite_expires_at TIMESTAMPTZ,
     ended_at TIMESTAMPTZ,
+    -- Starts of the periods already frozen into challenge_results. Kept here,
+    -- not read from the result rows, so a member's account deletion (which
+    -- removes their results) never reopens a frozen period.
+    frozen_period_starts DATE[] NOT NULL DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     CONSTRAINT chk_challenges_dates CHECK (end_date IS NULL OR end_date >= start_date),

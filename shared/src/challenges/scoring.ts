@@ -64,6 +64,12 @@ export interface ChallengeEntry {
   /** Where the entry came from, as stored ('Manual', 'garmin', ...); see isManualEntry. */
   source?: string | null;
   distanceM?: number | null;
+  /**
+   * The logged distance, set only on a copy the manual-minute cap cut, so
+   * the pace PR's minimum length sees the whole distance (the cut leaves the
+   * pace as it was).
+   */
+  measuredDistanceM?: number | null;
   /** Best estimated one-rep max of the entry's sets, in kg. */
   bestE1rm?: number | null;
   /** Identifies "the same lift" across days (the exercise id, else the name). */
@@ -134,13 +140,33 @@ export function challengeActivityKind(e: ChallengeEntry): PrSportGroup | null {
 }
 
 /**
+ * Importers that file every workout they create under Cardio, whatever the
+ * sport, so their Cardio says nothing (entry sources, normalised).
+ */
+const CARDIO_BY_DEFAULT_SOURCES: ReadonlySet<string> = new Set([
+  'oura',
+  'polar',
+  'withings',
+]);
+
+/**
  * A lifting workout. The category decides first: Strength is lifting, Cardio
- * is not, whatever the name says. Only when it says neither do the name,
- * the shared sport and weighted sets decide; a run, ride, walk or swim never is.
+ * is not, whatever the name says, with one exception: Oura, Polar and
+ * Withings file every workout they create under Cardio, so from them a
+ * Cardio entry the shared classifier calls a strength sport ("Strength
+ * Training") is lifting unless its name says cardio. Only when the category
+ * says neither do the name, the shared sport and weighted sets decide; a run,
+ * ride, walk or swim never is.
  */
 export function isStrengthEntry(e: ChallengeEntry): boolean {
   const byCategory = challengeCategoryLifting(e.category);
-  if (byCategory !== null) return byCategory;
+  if (byCategory === true) return true;
+  if (byCategory === false)
+    return (
+      CARDIO_BY_DEFAULT_SOURCES.has(normalizeSource(e.source) ?? '') &&
+      challengeEntrySport(e) === 'strength' &&
+      !CARDIO_CATEGORY_RE.test(e.name ?? '')
+    );
   if (LIFT_ROW_RE.test(e.name ?? '')) return true;
   if (challengeActivityKind(e)) return false;
   if (challengeEntrySport(e) === 'strength') return true;
@@ -151,7 +177,7 @@ export function isStrengthEntry(e: ChallengeEntry): boolean {
 /**
  * The sport a challenge's sport filter sees: 'strength' for a lifting
  * workout (so "Barbell Row" is not rowing), else the shared sport, with a
- * Cardio entry never taken for strength.
+ * Cardio entry that is not lifting never taken for strength.
  */
 export function challengeFilterSport(e: ChallengeEntry): ActivitySport {
   if (isStrengthEntry(e)) return 'strength';
@@ -362,6 +388,13 @@ export const challengePace = (e: ChallengeEntry): number | null =>
     ? num(e.durationMin) / (num(e.distanceM) / 1000)
     : null;
 const paceOf = challengePace;
+/**
+ * The distance as logged, for the pace PR's minimum length: a capped copy
+ * still covered all of it at the same pace. Distance PRs use the capped
+ * distance, so the cap holds there.
+ */
+const loggedDistance = (e: ChallengeEntry): number =>
+  num(e.measuredDistanceM ?? e.distanceM);
 const liftKey = (e: ChallengeEntry): string =>
   e.exerciseKey
     ? `k:${e.exerciseKey}`
@@ -447,9 +480,9 @@ export function challengePrsForDay(
       }
     }
     const pace = paceOf(e);
-    if (wants.has('pace') && pace && num(e.distanceM) >= pr.minPaceMeters) {
+    if (wants.has('pace') && pace && loggedDistance(e) >= pr.minPaceMeters) {
       const prevP = prev.filter(
-        (x) => num(x.distanceM) >= pr.minPaceMeters && paceOf(x)
+        (x) => loggedDistance(x) >= pr.minPaceMeters && paceOf(x)
       );
       const fast = Math.min(...prevP.map((x) => paceOf(x) as number));
       if (prevP.length >= pr.minEarlier && pace < fast) {
@@ -636,8 +669,9 @@ export function challengeCountedEntries(
       capped.push(e);
       continue;
     }
-    // Distance, calories and elevation are cut by the same fraction as the
-    // minutes, so a typed-in 100 km counts no more than its capped minutes.
+    // Distance, calories, elevation and zone time are cut by the same
+    // fraction as the minutes, so a typed-in 100 km counts no more than its
+    // capped minutes.
     const share = minutes / full;
     const cut = (v: number | null | undefined) =>
       typeof v === 'number' && Number.isFinite(v) ? v * share : v;
@@ -645,8 +679,11 @@ export function challengeCountedEntries(
       ...e,
       durationMin: minutes,
       distanceM: cut(e.distanceM),
+      measuredDistanceM: e.distanceM,
       activeCalories: cut(e.activeCalories),
       elevationM: cut(e.elevationM),
+      // Zone time too, or the rate and zone minutes would count the full workout
+      zoneSeconds: e.zoneSeconds?.map((z) => cut(z) ?? 0) ?? e.zoneSeconds,
     });
   }
   return capped;

@@ -31,7 +31,6 @@ vi.mock('../models/challengeRepository.js', () => ({
         fn({ lockClient: true })
     ),
     saveMemberDays: vi.fn(),
-    hasResults: vi.fn(),
     frozenPeriodStarts: vi.fn(),
     getDailyScores: vi.fn(),
     insertResults: vi.fn(),
@@ -840,6 +839,20 @@ describe('review fixes (PR #3585)', () => {
       ]);
     });
 
+    it('a frozen period stays final when its result rows went with deleted accounts', async () => {
+      repo.getResultsForMember.mockResolvedValue([]);
+      repo.frozenPeriodStarts.mockResolvedValue(['2026-11-09']);
+      repo.getDailyScoresForMember.mockResolvedValue([score('amy', 40)]);
+      const res = await service.getStandings(
+        'amy',
+        challenge().id,
+        '2026-11-10'
+      );
+      expect(res.final).toBe(true);
+      expect(res.rows).toEqual([]);
+      expect(repo.getDailyScoresForMember).not.toHaveBeenCalled();
+    });
+
     it('a frozen period keeps its winner and marks the caller', async () => {
       repo.getResultsForMember.mockResolvedValue(
         ['amy', 'host'].map((user_id, i) => ({
@@ -1271,6 +1284,46 @@ describe('bot review follow-ups, second round', () => {
       '2026-11-02'
     );
     expect(goalOn(1, '2026-11-08')).toBeGreaterThan(0);
+  });
+
+  it('daily Active Calories summaries are not workouts: no workouts, streak or goal', async () => {
+    const start = challenge({ start_date: '2026-11-02' });
+    repo.getRuleChanges.mockResolvedValue([change('2026-11-02', allRounder)]);
+    // What upsertExerciseEntryData stores for a synced daily calorie total
+    const summary = (day: string, id: string) =>
+      diaryRow({
+        id,
+        entry_date: day,
+        entry_time: null,
+        duration_minutes: 0,
+        exercise_name: 'Active Calories',
+        category: 'Other',
+        calories_burned: 600,
+      });
+    repo.getMemberEntries.mockResolvedValue([
+      summary('2026-11-02', '55555555-5555-4555-8555-555555555551'),
+      summary('2026-11-03', '55555555-5555-4555-8555-555555555552'),
+      summary('2026-11-04', '55555555-5555-4555-8555-555555555553'),
+    ]);
+    await service.recomputeMember(start, member('amy'), '2026-11-02');
+    const days = repo.saveMemberDays.mock.calls[0]![4];
+    for (const d of days.filter((x) => x.day <= '2026-11-04')) {
+      expect(d.workouts, d.day).toBe(0);
+      expect(d.streak_bonus, d.day).toBe(0);
+      expect((d.detail.goal as { done: number }).done, d.day).toBe(0);
+    }
+    expect(repo.saveMemberDays.mock.calls[0]![5]).toEqual([]);
+    // An active-calories challenge still counts the daily total, as before
+    const calories = { ...allRounder, metric: 'active_calories' as const };
+    repo.getRuleChanges.mockResolvedValue([change('2026-11-02', calories)]);
+    await service.recomputeMember(
+      challenge({ start_date: '2026-11-02', rules: calories }),
+      member('amy'),
+      '2026-11-02'
+    );
+    const kcal = repo.saveMemberDays.mock.calls[1]![4];
+    expect(kcal.find((d) => d.day === '2026-11-03')!.total).toBe(600);
+    expect(repo.saveMemberDays.mock.calls[1]![5]).toEqual([]);
   });
 
   it('a long streak threshold reads enough history', async () => {

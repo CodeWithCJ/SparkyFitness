@@ -2317,8 +2317,25 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       [challengeId]
     );
     expect(rows[0].n).toBe(2);
+    // The period stays frozen when its result rows go (an account deletion
+    // removes that member's), so it is never worked out again
     await sys.query(
       "DELETE FROM public.challenge_results WHERE challenge_id = $1 AND period_start = '2026-11-30'",
+      [challengeId]
+    );
+    expect(await challengeRepository.frozenPeriodStarts(challengeId)).toContain(
+      '2026-11-30'
+    );
+    expect(
+      await challengeRepository.insertResults(
+        challengeId,
+        '2026-11-30',
+        '2026-11-30',
+        [AMY, HOST].map(result)
+      )
+    ).toBe(false);
+    await sys.query(
+      "UPDATE public.challenges SET frozen_period_starts = '{}' WHERE id = $1",
       [challengeId]
     );
 
