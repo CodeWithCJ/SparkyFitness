@@ -427,8 +427,11 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
   });
 
   if (isLoading) {
+    // The bar keeps the spinner where it was below the status bar, and gives
+    // a way back while the meal loads (Save stays disabled until it does).
     return (
       <View className="flex-1 bg-background">
+        {header}
         <StatusView loading />
       </View>
     );

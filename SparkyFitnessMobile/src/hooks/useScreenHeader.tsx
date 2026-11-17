@@ -83,8 +83,10 @@ export type HeaderMenuEntry = HeaderMenuAction | HeaderMenuSection;
  * Where the custom bar reserves room for the status bar. The app runs edge to
  * edge on Android, so the bar has to sit below the clock and battery icons:
  * - `status-bar` (default): pushed screens, on both platforms.
- * - `android-only`: `presentation: 'modal'` routes. An iOS sheet already
- *   starts below the status bar, while Android draws it full height.
+ * - `android-only`: a modal that on iOS starts below the status bar, so it
+ *   needs the room only on Android, where it is drawn full height. The modal
+ *   routes that padded on Android only before #3465 pass it; the others, and
+ *   `FormScreenChrome`, keep the default.
  * - `none`: a bar that does not sit at the top of the window.
  */
 export type HeaderTopInset = 'status-bar' | 'android-only' | 'none';
