@@ -1,5 +1,5 @@
 import type { TFunction } from 'i18next';
-import type { WebHideableTabId } from '@workspace/shared';
+import type { FeatureKey, WebHideableTabId } from '@workspace/shared';
 import {
   cycleTabLabel,
   knownHiddenWebTabs,
@@ -10,19 +10,17 @@ import { translateForTest } from '@/tests/mocks/reactI18next';
 
 const t = translateForTest as unknown as TFunction;
 const none = new Set<WebHideableTabId>();
-const cycleOn = {
-  enabled: true,
-  mode: 'standard',
-  discreet_mode: false,
-} as const;
+const cycleSettings = { mode: 'standard', discreet_mode: false } as const;
+const allOn = () => true;
 
 const ids = (
   hidden: Set<WebHideableTabId>,
-  cycle: Parameters<typeof visibleModuleTabs>[2] = cycleOn
-) => visibleModuleTabs(t, hidden, cycle).map((tab) => tab.id);
+  isFeatureOn: (key: FeatureKey) => boolean = allOn
+) =>
+  visibleModuleTabs(t, hidden, isFeatureOn, cycleSettings).map((tab) => tab.id);
 
 describe('visibleModuleTabs', () => {
-  it('shows every module tab when nothing is hidden, cycle while it is on', () => {
+  it('shows every module tab when nothing is hidden and every feature is on', () => {
     expect(ids(none)).toEqual([
       'checkin',
       'cycle',
@@ -33,10 +31,28 @@ describe('visibleModuleTabs', () => {
       'exercises',
       'goals',
     ]);
-    expect(ids(none, { ...cycleOn, enabled: false })).not.toContain('cycle');
-    expect(visibleModuleTabs(t, none, null).map((tab) => tab.id)).not.toContain(
-      'cycle'
+  });
+
+  it('shows the cycle tab only while the cycle feature is on', () => {
+    const asked: FeatureKey[] = [];
+    const cycleOff = (key: FeatureKey) => {
+      asked.push(key);
+      return key !== 'cycle';
+    };
+    expect(ids(none, cycleOff)).not.toContain('cycle');
+    expect(ids(none, cycleOff)).toContain('checkin');
+    expect(asked).toContain('cycle');
+  });
+
+  it('names the cycle tab from its settings, also before they load', () => {
+    const cycleTab = (settings: Parameters<typeof visibleModuleTabs>[3]) =>
+      visibleModuleTabs(t, none, allOn, settings).find(
+        (tab) => tab.id === 'cycle'
+      )?.label;
+    expect(cycleTab({ ...cycleSettings, discreet_mode: true })).toBe(
+      'Wellness'
     );
+    expect(cycleTab(null)).toBe('Cycle');
   });
 
   it('leaves out the tabs the person hid', () => {
@@ -51,7 +67,7 @@ describe('visibleModuleTabs', () => {
   });
 
   it('keeps Reports out of the + menu and the rest in it', () => {
-    const plusMenu = visibleModuleTabs(t, none, cycleOn)
+    const plusMenu = visibleModuleTabs(t, none, allOn, cycleSettings)
       .filter((tab) => tab.inPlusMenu)
       .map((tab) => tab.id);
     expect(plusMenu).not.toContain('reports');
@@ -59,7 +75,7 @@ describe('visibleModuleTabs', () => {
   });
 
   it('gives each tab its label and path', () => {
-    const labs = visibleModuleTabs(t, none, cycleOn).find(
+    const labs = visibleModuleTabs(t, none, allOn, cycleSettings).find(
       (tab) => tab.id === 'labs'
     );
     expect(labs).toMatchObject({ path: '/labs', label: 'Lab results' });
@@ -68,13 +84,13 @@ describe('visibleModuleTabs', () => {
 
 describe('cycleTabLabel', () => {
   it('never says Cycle in discreet mode', () => {
-    expect(cycleTabLabel(t, { ...cycleOn, discreet_mode: true })).toBe(
+    expect(cycleTabLabel(t, { ...cycleSettings, discreet_mode: true })).toBe(
       'Wellness'
     );
-    expect(cycleTabLabel(t, { ...cycleOn, mode: 'pregnant' })).toBe(
+    expect(cycleTabLabel(t, { ...cycleSettings, mode: 'pregnant' })).toBe(
       'Pregnancy'
     );
-    expect(cycleTabLabel(t, cycleOn)).toBe('Cycle');
+    expect(cycleTabLabel(t, cycleSettings)).toBe('Cycle');
   });
 });
 

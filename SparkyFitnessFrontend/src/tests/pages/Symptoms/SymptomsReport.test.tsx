@@ -37,6 +37,11 @@ jest.mock('@/contexts/PreferencesContext', () => ({
 }));
 
 const unparse = jest.fn((_rows: unknown[]) => 'csv');
+let mockCycleOff = false;
+jest.mock('@/hooks/Settings/useWebFeatures', () => ({
+  useWebFeatures: () => ({ isExplicitlyOff: () => mockCycleOff }),
+}));
+
 jest.mock('papaparse', () => ({
   __esModule: true,
   default: { unparse: (rows: unknown[]) => unparse(rows) },
@@ -113,6 +118,7 @@ const renderReport = () =>
 beforeEach(() => {
   resetSymptomHooks();
   unparse.mockClear();
+  mockCycleOff = false;
 });
 
 describe('SymptomsReport', () => {
@@ -414,6 +420,18 @@ describe('SymptomsReport', () => {
         steps_day_before: 6300,
       }),
     ]);
+    expect(unparse.mock.calls[0]?.[0][0]).toHaveProperty('cycle_phase');
+  });
+
+  it('leaves the cycle column out while cycle is turned off', () => {
+    URL.createObjectURL = jest.fn(() => 'blob:x');
+    URL.revokeObjectURL = jest.fn();
+    mockCycleOff = true;
+    hookState.entries = [episode('a', '2026-09-29')];
+    hookState.contexts = { a: contextFor('a') };
+    renderReport();
+    fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    expect(unparse.mock.calls[0]?.[0][0]).not.toHaveProperty('cycle_phase');
   });
 });
 

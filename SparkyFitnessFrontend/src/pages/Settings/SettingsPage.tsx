@@ -44,6 +44,7 @@ import { GuidedWorkoutSettings } from './GuidedWorkoutSettings';
 import CycleSettings from './CycleSettings';
 import { PreferenceSettings } from './PreferenceSettings';
 import { WebTabsSettings } from './WebTabsSettings';
+import { FeatureSettings } from './FeatureSettings';
 import { HeartRateZoneSettings } from './HeartRateZoneSettings';
 import { ProfileInformation } from './ProfileInformation';
 import { DataManagementSettings } from './DataManagementSettings';
@@ -57,6 +58,7 @@ export interface PasswordFormState {
 const SECTION_TO_TAB_MAP: Record<string, string> = {
   'profile-information': 'profile-account',
   'user-preferences': 'profile-account',
+  features: 'profile-account',
   'web-tabs': 'profile-account',
   'account-security': 'profile-account',
   'family-access': 'profile-account',
@@ -180,6 +182,9 @@ const Settings = () => {
               className="border rounded-lg mb-4"
             >
               <PreferenceSettings />
+            </AccordionItem>
+            <AccordionItem value="features" className="border rounded-lg mb-4">
+              <FeatureSettings />
             </AccordionItem>
             <AccordionItem value="web-tabs" className="border rounded-lg mb-4">
               <WebTabsSettings />

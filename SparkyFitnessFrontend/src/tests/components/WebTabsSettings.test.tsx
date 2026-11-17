@@ -25,11 +25,14 @@ jest.mock('@/hooks/Settings/useHiddenWebTabs', () => ({
   }),
 }));
 
-let mockCycleSettings: {
-  enabled: boolean;
-  mode: string;
-  discreet_mode: boolean;
-} | null = null;
+let mockCycleSettings:
+  | {
+      enabled: boolean;
+      mode: string;
+      discreet_mode: boolean;
+    }
+  | null
+  | undefined = null;
 jest.mock('@/hooks/useCycle', () => ({
   useCycleSettings: () => ({ data: mockCycleSettings }),
 }));
@@ -120,6 +123,16 @@ describe('WebTabsSettings', () => {
     expect(screen.getByText('Cycle')).toBeInTheDocument();
     expect(screen.getByText('On')).toBeInTheDocument();
     expect(screen.getAllByRole('switch')).toHaveLength(7);
+    expect(
+      screen.getByText('Cycle is turned on or off in Features, above.')
+    ).toBeInTheDocument();
+  });
+
+  it('leaves the cycle row out until cycle settings are known', () => {
+    mockCycleSettings = undefined;
+    renderSettings();
+    expect(screen.queryByText('Cycle')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Features, above/)).not.toBeInTheDocument();
   });
 
   it('calls cycle Wellness in discreet mode', () => {
