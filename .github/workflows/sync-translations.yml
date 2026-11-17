@@ -137,6 +137,13 @@ jobs:
             );
             console.log(
               stale(
+                "targets/wearos/src/main/res",
+                (name) => localeFromAndroidDir(name, source) !== null,
+                android
+              ).join(" ")
+            );
+            console.log(
+              stale(
                 "targets/widget",
                 (name) => name.endsWith(".lproj"),
                 lproj
@@ -156,7 +163,8 @@ jobs:
             done
           }
           prune_unregistered "$MOBILE/targets/android-widget/res" "$(echo "$registry" | sed -n 3p)"
-          prune_unregistered "$MOBILE/targets/widget" "$(echo "$registry" | sed -n 4p)"
+          prune_unregistered "$MOBILE/targets/wearos/src/main/res" "$(echo "$registry" | sed -n 4p)"
+          prune_unregistered "$MOBILE/targets/widget" "$(echo "$registry" | sed -n 5p)"
 
           echo "=== Copying non-English mobile translations from translation repo to main repo ==="
           sync_dirs() {
@@ -185,6 +193,7 @@ jobs:
 
           sync_dirs "$MIRROR/src/localization/locales" "$MOBILE/src/localization/locales" en
           sync_dirs "$MIRROR/targets/android-widget/res" "$MOBILE/targets/android-widget/res" values 'values-*' "$SHIPPED_ANDROID"
+          sync_dirs "$MIRROR/targets/wearos/src/main/res" "$MOBILE/targets/wearos/src/main/res" values 'values-*' "$SHIPPED_ANDROID"
           sync_dirs "$MIRROR/targets/widget" "$MOBILE/targets/widget" en.lproj '*.lproj' "$SHIPPED_LPROJ"
 
           if [ -d "$MIRROR/locales" ]; then
@@ -201,11 +210,13 @@ jobs:
           echo "=== Copying English mobile sources from main repo to translation repo ==="
           # Unconditional: this seeds the four components on the first run.
           mkdir -p "$MIRROR/src/localization/locales" "$MIRROR/locales" \
-                   "$MIRROR/targets/android-widget/res" "$MIRROR/targets/widget"
+                   "$MIRROR/targets/android-widget/res" "$MIRROR/targets/wearos/src/main/res" \
+                   "$MIRROR/targets/widget"
           rm -rf "$MIRROR/src/localization/locales/en" "$MIRROR/targets/android-widget/res/values" \
-                 "$MIRROR/targets/widget/en.lproj"
+                 "$MIRROR/targets/wearos/src/main/res/values" "$MIRROR/targets/widget/en.lproj"
           cp -r "$MOBILE/src/localization/locales/en" "$MIRROR/src/localization/locales/"
           cp -r "$MOBILE/targets/android-widget/res/values" "$MIRROR/targets/android-widget/res/"
+          cp -r "$MOBILE/targets/wearos/src/main/res/values" "$MIRROR/targets/wearos/src/main/res/"
           cp -r "$MOBILE/targets/widget/en.lproj" "$MIRROR/targets/widget/"
           cp "$MOBILE/locales/en.json" "$MIRROR/locales/"
           echo "Copied English mobile sources successfully."
@@ -247,7 +258,7 @@ jobs:
         working-directory: main-repo
         run: |
           set -euo pipefail
-          paths="SparkyFitnessFrontend/public/locales SparkyFitnessMobile/src/localization/locales SparkyFitnessMobile/locales SparkyFitnessMobile/targets/android-widget/res SparkyFitnessMobile/targets/widget SparkyFitnessServer/locales"
+          paths="SparkyFitnessFrontend/public/locales SparkyFitnessMobile/src/localization/locales SparkyFitnessMobile/locales SparkyFitnessMobile/targets/android-widget/res SparkyFitnessMobile/targets/wearos/src/main/res SparkyFitnessMobile/targets/widget SparkyFitnessServer/locales"
           links=$(find $paths -type l)
           if [ -n "$links" ]; then
             echo "::error::Symbolic links came from the translations repository:"; echo "$links"
@@ -329,6 +340,7 @@ jobs:
             SparkyFitnessMobile/locales
             :!SparkyFitnessMobile/locales/en.json
             SparkyFitnessMobile/targets/android-widget/res/values-*/widget_strings.xml
+            SparkyFitnessMobile/targets/wearos/src/main/res/values-*/strings.xml
             SparkyFitnessMobile/targets/widget/*.lproj/Localizable.strings
             :!SparkyFitnessMobile/targets/widget/en.lproj
             SparkyFitnessServer/locales
@@ -365,6 +377,7 @@ jobs:
             mobile/src/localization/locales/en
             mobile/locales/en.json
             mobile/targets/android-widget/res/values
+            mobile/targets/wearos/src/main/res/values
             mobile/targets/widget/en.lproj
           commit-message: "chore(i18n): update English locales from main repo"
           branch: i18n/update-english-locales
@@ -382,6 +395,7 @@ jobs:
             | Mobile runtime | `mobile/src/localization/locales/en` |
             | Mobile Expo metadata | `mobile/locales/en.json` |
             | Mobile Android widgets | `mobile/targets/android-widget/res/values` |
+            | Mobile Wear OS | `mobile/targets/wearos/src/main/res/values` |
             | Mobile iOS widgets | `mobile/targets/widget/en.lproj` |
 
             The workflow merges this pull request right after opening it, unless it deletes more than 300 lines. If it is still open, a maintainer needs to review and merge it.
@@ -422,7 +436,7 @@ jobs:
           pull-request: ${{ steps.english_pr.outputs.pull-request-number }}
           head-sha: ${{ steps.english_pr.outputs.pull-request-head-sha }}
           method: merge
-          allowed-files: '^(locales/en/|server/locales/en/|mobile/src/localization/locales/en/|mobile/locales/en\.json$|mobile/targets/android-widget/res/values/|mobile/targets/widget/en\.lproj/)'
+          allowed-files: '^(locales/en/|server/locales/en/|mobile/src/localization/locales/en/|mobile/locales/en\.json$|mobile/targets/android-widget/res/values/|mobile/targets/wearos/src/main/res/values/|mobile/targets/widget/en\.lproj/)'
 
       # 7. Show both pull requests on the run's summary page.
       - name: Summary
