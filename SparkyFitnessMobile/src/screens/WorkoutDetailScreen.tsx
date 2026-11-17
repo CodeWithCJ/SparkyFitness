@@ -1026,7 +1026,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Native-header mode: the glass header (above) replaces the custom header,
   // and the KeyboardAwareScrollView must be the screen root for the large
-  // title to attach. Fallback mode keeps the custom header + padded wrapper.
+  // title to attach. Fallback mode keeps the custom header, which reserves
+  // the status bar itself, inside a plain background wrapper.
   const content = (
     <>
       {header}
