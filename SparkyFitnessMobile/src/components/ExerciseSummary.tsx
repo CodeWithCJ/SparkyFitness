@@ -31,6 +31,8 @@ interface ExerciseSummaryProps {
   getImageSource?: GetImageSource;
   weightUnit?: 'kg' | 'lbs';
   distanceUnit?: 'km' | 'miles';
+  /** Workouts logged on this phone and not on the server yet (#1983). */
+  waitingSessionIds?: ReadonlySet<string>;
 }
 
 const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
@@ -43,6 +45,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
   getImageSource,
   weightUnit = 'kg',
   distanceUnit = 'km',
+  waitingSessionIds,
 }) => {
   const { t } = useTranslation();
   const [accentPrimary, textMuted] = useCSSVariable([
@@ -308,6 +311,7 @@ const ExerciseSummary: React.FC<ExerciseSummaryProps> = ({
             getImageSource={getImageSource}
             weightUnit={weightUnit}
             distanceUnit={distanceUnit}
+            waitingToUpload={waitingSessionIds?.has(session.id) ?? false}
           />
         ))}
       </View>

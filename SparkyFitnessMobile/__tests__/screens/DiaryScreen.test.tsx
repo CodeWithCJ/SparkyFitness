@@ -52,6 +52,10 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
+jest.mock('../../src/hooks/useOfflineDiaryDay', () => ({
+  useOfflineDiaryDay: jest.fn(() => ({ saved: null, waiting: [] })),
+}));
+
 jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(),
   useDailySummary: jest.fn(),

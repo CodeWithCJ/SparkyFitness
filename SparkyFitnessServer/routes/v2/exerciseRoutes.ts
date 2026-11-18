@@ -4,6 +4,8 @@ import {
   exerciseAlternativesQuerySchema,
   exerciseAlternativesResponseSchema,
   exerciseSearchQuerySchema,
+  exerciseStatsBatchRequestSchema,
+  exerciseStatsBatchResponseSchema,
   exerciseStatsQuerySchema,
   exerciseStatsResponseSchema,
   paginatedExercisesResponseSchema,
@@ -229,6 +231,92 @@ router.get(
   '/:exerciseId/stats',
   checkPermissionMiddleware('diary'),
   statsHandler
+);
+
+/**
+ * @swagger
+ * /v2/exercises/stats/batch:
+ *   post:
+ *     summary: Best / last / recent-session stats for many exercises at once
+ *     tags: [Exercise & Workouts]
+ *     description: |
+ *       Answers the same question as `GET /v2/exercises/{exerciseId}/stats` for up to 100 exercise and preset pairs
+ *       in one request, so a client preparing data for offline use does not send one request per exercise.
+ *       `presetId` scopes `recentSessions` exactly as it does on the single endpoint. Read-only.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [items]
+ *             properties:
+ *               items:
+ *                 type: array
+ *                 minItems: 1
+ *                 maxItems: 100
+ *                 items:
+ *                   type: object
+ *                   required: [exerciseId]
+ *                   properties:
+ *                     exerciseId:
+ *                       type: string
+ *                       format: uuid
+ *                     presetId:
+ *                       type: integer
+ *                       minimum: 1
+ *     responses:
+ *       200:
+ *         description: One stats item per requested pair, in request order.
+ *       400:
+ *         description: Invalid body (no items, more than 100 items, or a malformed id).
+ *       401:
+ *         description: Unauthenticated.
+ *       403:
+ *         description: Forbidden (no diary permission when acting on behalf of another user).
+ *       500:
+ *         description: Internal server error.
+ */
+const statsBatchHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const parsed = exerciseStatsBatchRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({
+        error: 'Invalid stats batch request',
+        details: parsed.error.flatten().fieldErrors,
+      });
+      return;
+    }
+    const items = await exerciseService.getExerciseStatsBatch(
+      req.userId,
+      parsed.data.items
+    );
+    const response = exerciseStatsBatchResponseSchema.parse({ items });
+    res.status(200).json(response);
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === 'ZodError') {
+      log(
+        'error',
+        'v2 exercises stats batch response validation failed:',
+        error
+      );
+      next(
+        Object.assign(new Error('Internal response validation failed'), {
+          status: 500,
+        })
+      );
+      return;
+    }
+    next(error);
+  }
+};
+
+router.post(
+  '/stats/batch',
+  checkPermissionMiddleware('diary'),
+  statsBatchHandler
 );
 
 /**

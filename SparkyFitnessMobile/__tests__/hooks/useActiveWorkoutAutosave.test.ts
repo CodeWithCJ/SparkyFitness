@@ -16,7 +16,11 @@ import {
   __resetActiveWorkoutStoreForTests,
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
-import { updateWorkout } from '../../src/services/api/exerciseApi';
+import {
+  createWorkout,
+  getWorkout,
+  updateWorkout,
+} from '../../src/services/api/exerciseApi';
 import { ApiError } from '../../src/services/api/errors';
 import { invalidateExerciseCache } from '../../src/hooks/invalidateExerciseCache';
 import { syncExerciseSessionInCache } from '../../src/hooks/syncExerciseSessionInCache';
@@ -29,6 +33,8 @@ import {
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
   updateWorkout: jest.fn(),
+  createWorkout: jest.fn(),
+  getWorkout: jest.fn(),
 }));
 
 jest.mock('../../src/hooks/invalidateExerciseCache', () => ({
@@ -49,6 +55,10 @@ jest.mock('../../src/services/notifications', () => ({
   fireRestCompleteCue: jest.fn(),
 }));
 
+const mockCreateWorkout = createWorkout as jest.MockedFunction<
+  typeof createWorkout
+>;
+const mockGetWorkout = getWorkout as jest.MockedFunction<typeof getWorkout>;
 const mockUpdateWorkout = updateWorkout as jest.MockedFunction<
   typeof updateWorkout
 >;
@@ -769,6 +779,42 @@ describe('useActiveWorkoutAutosave', () => {
       expect(mockToastShow).toHaveBeenCalledTimes(1);
     });
 
+    it('says the workout is saved on the phone, not that it failed, when the server cannot be reached', async () => {
+      const { result } = renderAutosave();
+      mockUpdateWorkout.mockRejectedValue(
+        new TypeError('Network request failed')
+      );
+      startAndEdit();
+
+      await act(async () => {
+        await result.current.flush();
+      });
+
+      expect(mockToastShow).toHaveBeenCalledTimes(1);
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'info',
+          text1: 'Saved on this phone',
+        })
+      );
+    });
+
+    it('treats an Android plain-Error network failure the same way', async () => {
+      const { result } = renderAutosave();
+      mockUpdateWorkout.mockRejectedValue(
+        new Error('fetch failed: java.net.UnknownHostException')
+      );
+      startAndEdit();
+
+      await act(async () => {
+        await result.current.flush();
+      });
+
+      expect(mockToastShow).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'info' })
+      );
+    });
+
     it('logs ApiError status and exact body for workout plan conflicts', async () => {
       renderAutosave();
       const body = JSON.stringify({
@@ -1023,6 +1069,95 @@ describe('useActiveWorkoutAutosave', () => {
       );
       expect(mockInvalidate).not.toHaveBeenCalled();
       expect(getStore().hasUnsavedChanges).toBe(true);
+    });
+  });
+  describe('a workout that exists only on this phone (#1983)', () => {
+    const pending = {
+      entryDate: '2026-11-16',
+      workoutPresetId: 7,
+      workoutPlanAssignmentId: null,
+    };
+
+    function startPending() {
+      act(() => {
+        getStore().startWorkout(makeSession(), { pendingCreate: pending });
+      });
+    }
+
+    it('creates it with its own id, then sends the sets as they stand', async () => {
+      mockCreateWorkout.mockResolvedValue(makeSession());
+      startPending();
+
+      await expect(saveActiveWorkoutSession(queryClient)).resolves.toBe(
+        'saved'
+      );
+
+      expect(mockCreateWorkout).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: makeSession().id,
+          entry_date: '2026-11-16',
+          source: 'sparky',
+          workout_preset_id: 7,
+        })
+      );
+      // The create's answer may be an older stored copy; an update follows.
+      expect(mockUpdateWorkout).toHaveBeenCalledTimes(1);
+      expect(getStore().pendingCreate).toBeNull();
+      expect(getStore().createAttempted).toBe(true);
+      expect(getStore().hasUnsavedChanges).toBe(false);
+    });
+
+    it('stays waiting to be created while the server cannot be reached', async () => {
+      mockCreateWorkout.mockRejectedValue(
+        new TypeError('Network request failed')
+      );
+      startPending();
+
+      await expect(saveActiveWorkoutSession(queryClient)).resolves.toBe(
+        'failed'
+      );
+
+      expect(getStore().pendingCreate).toEqual(pending);
+      expect(getStore().hasUnsavedChanges).toBe(true);
+      expect(mockUpdateWorkout).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('a workout the server had, changed while it was away', () => {
+    it('remembers the revision last seen and presents it once back', async () => {
+      startAndEdit();
+      useActiveWorkoutStore.setState({
+        session: { ...getStore().session!, revision: 4 },
+      });
+      mockUpdateWorkout.mockRejectedValueOnce(
+        new TypeError('Network request failed')
+      );
+
+      await saveActiveWorkoutSession(queryClient);
+      expect(getStore().offlineBaseRevision).toBe(4);
+
+      await saveActiveWorkoutSession(queryClient);
+      expect(mockUpdateWorkout.mock.calls[1]![1]).toMatchObject({
+        revision: 4,
+      });
+      expect(getStore().offlineBaseRevision).toBeNull();
+    });
+
+    it('keeps the edits on the phone when the workout really changed elsewhere', async () => {
+      startAndEdit();
+      useActiveWorkoutStore.setState({ offlineBaseRevision: 4 });
+      mockUpdateWorkout.mockRejectedValueOnce(new ApiError('conflict', 409));
+      mockGetWorkout.mockResolvedValue({
+        ...makeSession(),
+        exercises: [],
+      });
+
+      await expect(saveActiveWorkoutSession(queryClient)).resolves.toBe(
+        'failed'
+      );
+
+      expect(getStore().hasUnsavedChanges).toBe(true);
+      expect(getStore().offlineBaseRevision).toBe(4);
     });
   });
 });

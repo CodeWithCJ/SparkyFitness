@@ -233,7 +233,9 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # 22.5 or newer: the offline tests run their SQL on Node's built-in
+          # SQLite (node:sqlite). 24 matches the other jobs.
+          node-version: "24"
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 

@@ -1,6 +1,7 @@
 import { proxyHeadersToRecord } from '../services/storage';
 import { normalizeUrl } from '../services/api/apiClient';
 import type { ServerConfig } from '../services/storage';
+import { localImageUri } from '../offline/localImageIndex';
 
 export type ExerciseImageSource = {
   uri: string;
@@ -13,6 +14,19 @@ export type ExerciseImageSource = {
  * path or when a server-relative path has no config to resolve against.
  */
 export function resolveExerciseImageSource(
+  imagePath: string,
+  config: ServerConfig | null
+): ExerciseImageSource | null {
+  const remote = resolveRemoteExerciseImageSource(imagePath, config);
+  if (remote == null || config == null) return remote;
+  // A copy saved for offline use (#1983) is shown instead, online too: it is
+  // the same picture and needs no request.
+  const local = localImageUri(config.id, remote.uri);
+  return local != null ? { uri: local, headers: {} } : remote;
+}
+
+/** Where the picture lives on the server or the web; never a saved copy. */
+export function resolveRemoteExerciseImageSource(
   imagePath: string,
   config: ServerConfig | null
 ): ExerciseImageSource | null {

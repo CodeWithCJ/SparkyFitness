@@ -1,3 +1,6 @@
+import { clearAllCache } from '../offline/cacheStore';
+import { getOfflineDb } from '../offline/db';
+import { clearAllOfflineImages } from '../offline/offlineImages';
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
@@ -61,6 +64,15 @@ export function useAuth() {
       // succeeds; restore waits until the ids are read and purged.
       notifyWatchTelemetryAccountSwitch(takeIdentityChangeServerConfigIds);
       queryClient.clear();
+      // Data saved for offline use belongs to the previous account too; the
+      // next refresh downloads the new one's. Waiting uploads are kept and
+      // stay with the account that made them.
+      void getOfflineDb()
+        .then(clearAllCache)
+        .then(clearAllOfflineImages)
+        .catch((err: unknown) => {
+          addLog(`Failed to clear offline data: ${err}`, 'WARNING');
+        });
       // The widgets' snapshots carry no account either, and the Quick Settings
       // tile shows the calorie figure on the lock screen. Cleared in the same
       // turn as the cache, so no summary of the previous account is pushed

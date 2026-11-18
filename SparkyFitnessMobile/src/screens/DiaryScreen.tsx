@@ -6,6 +6,7 @@ import {
   hasSupplementNutrition,
   isCardioModality,
   resolveExerciseModality,
+  type ExerciseSessionResponse,
   type PresetSessionExerciseRequest,
 } from '@workspace/shared';
 import React, {
@@ -43,6 +44,9 @@ import ServingAdjustSheet, {
 import { BedTimeCard, NapsCard, WakeUpCard } from '../components/SleepCards';
 import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
+import OfflineBanner from '../components/OfflineBanner';
+import { useOfflineDiaryDay } from '../hooks/useOfflineDiaryDay';
+import { mergeWaitingWorkouts } from '../offline/diaryDay';
 import Button from '../components/ui/Button';
 import {
   useCustomNutrients,
@@ -118,10 +122,23 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   // push the date buttons onto the Add button; then only the calendar stays.
   const dateColumnCollapsed = useDateColumnCollapsed(verticalBar);
   const lastDateCollapsedRef = useRef<boolean | null>(null);
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const {
+    isConnected,
+    isLoading: isConnectionLoading,
+    status: connectionStatus,
+    refetch: recheckConnection,
+  } = useServerConnection();
+  // Set up but not answering: the diary then shows the day's workouts from
+  // this phone (#1983) instead of the blocking message.
+  const isOffline = !isConnectionLoading && connectionStatus === 'unreachable';
   const { data: familyUsers = [] } = useFamilyUsers({ enabled: isConnected });
   const hasFamilyDiaries = isConnected && familyUsers.length > 0;
   const selectedDate = useDiaryDateStore((s) => s.selectedDate);
+  const offlineDay = useOfflineDiaryDay(selectedDate);
+  const waitingSessionIds = useMemo(
+    () => new Set(offlineDay.waiting.map((session) => session.id)),
+    [offlineDay.waiting]
+  );
   const setSelectedDate = useDiaryDateStore((s) => s.setSelectedDate);
   const goToPreviousDay = useDiaryDateStore((s) => s.goToPreviousDay);
   const goToNextDay = useDiaryDateStore((s) => s.goToNextDay);
@@ -569,7 +586,111 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     activePlans,
   ]);
 
+  const openWorkout = (session: ExerciseSessionResponse) => {
+    if (session.type === 'preset') {
+      // The live workout's surface is the active screen; detail is
+      // for reviewing past or planned sessions.
+      if (useActiveWorkoutStore.getState().sessionId === session.id) {
+        navigation.navigate('ActiveWorkout');
+        return;
+      }
+      navigation.navigate('WorkoutDetail', { session });
+    } else {
+      const synced = cardioSessionFromDiaryEntry(session, distanceUnit);
+      if (synced) {
+        navigation.navigate('CardioSession', {
+          session: synced,
+          distanceUnit,
+        });
+        return;
+      }
+      // A run, walk or ride logged in the app (a GPS recording
+      // or a watch run is saved as an in-app entry) opens the
+      // stats screen too, with an Edit button that hands over to
+      // the activity editor. Anything without a distance or heart
+      // rate has nothing for that screen to show.
+      const inApp =
+        (session.distance ?? 0) > 0 || session.avg_heart_rate != null
+          ? cardioSessionFromDiaryEntry(session, distanceUnit, {
+              allowInApp: true,
+            })
+          : null;
+      if (!inApp) {
+        navigation.navigate('ActivityDetail', { session });
+        return;
+      }
+      navigation.navigate('CardioSession', {
+        session: inApp,
+        distanceUnit,
+        diaryEntry: session,
+      });
+    }
+  };
+
+  const renderOfflineDay = () => {
+    const sessions = mergeWaitingWorkouts(
+      offlineDay.saved ?? [],
+      offlineDay.waiting
+    );
+    return (
+      <ScrollView
+        className="flex-1 bg-background"
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: usesNativeTabs && verticalBar ? 12 : 8,
+          paddingBottom: 80 + activeWorkoutBarPadding,
+        }}
+        contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
+        automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={() => void recheckConnection()}
+            tintColor={accentColor}
+          />
+        }
+      >
+        <OfflineBanner />
+        <Text
+          testID="diary-offline-note"
+          className="text-sm text-text-secondary my-3"
+        >
+          {t('offline.diaryNote', {
+            defaultValue:
+              'Only workouts are available offline. Food and other entries need a connection.',
+          })}
+        </Text>
+        {offlineDay.saved == null && sessions.length === 0 ? (
+          <StatusView
+            inline
+            icon="cloud-offline"
+            iconTone="muted"
+            title={t('offline.diaryNothingSaved', {
+              defaultValue: 'Nothing saved for this day',
+            })}
+          />
+        ) : (
+          <ExerciseSummary
+            exerciseEntries={sessions}
+            waitingSessionIds={waitingSessionIds}
+            entryDate={selectedDate}
+            getImageSource={getImageSource}
+            weightUnit={weightUnit}
+            distanceUnit={distanceUnit}
+            onAddExercise={() =>
+              addSheetRef.current?.present({ initialMenu: 'exercise' })
+            }
+            onPressPlanAssignment={handleStartPlanAssignment}
+            onPressWorkout={openWorkout}
+          />
+        )}
+      </ScrollView>
+    );
+  };
+
   const renderContent = () => {
+    if (isOffline) return renderOfflineDay();
     if (!isConnectionLoading && !isConnected) {
       return <ServerStatusView />;
     }
@@ -680,7 +801,11 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               onPressMealType={openMealTypeDetail}
             />
             <ExerciseSummary
-              exerciseEntries={summary.exerciseEntries}
+              exerciseEntries={mergeWaitingWorkouts(
+                summary.exerciseEntries,
+                offlineDay.waiting
+              )}
+              waitingSessionIds={waitingSessionIds}
               entryDate={selectedDate}
               getImageSource={getImageSource}
               weightUnit={weightUnit}
@@ -711,52 +836,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
                 </>
               }
               onPressPlanAssignment={handleStartPlanAssignment}
-              onPressWorkout={(session) => {
-                if (session.type === 'preset') {
-                  // The live workout's surface is the active screen; detail is
-                  // for reviewing past or planned sessions.
-                  if (
-                    useActiveWorkoutStore.getState().sessionId === session.id
-                  ) {
-                    navigation.navigate('ActiveWorkout');
-                    return;
-                  }
-                  navigation.navigate('WorkoutDetail', { session });
-                } else {
-                  const synced = cardioSessionFromDiaryEntry(
-                    session,
-                    distanceUnit
-                  );
-                  if (synced) {
-                    navigation.navigate('CardioSession', {
-                      session: synced,
-                      distanceUnit,
-                    });
-                    return;
-                  }
-                  // A run, walk or ride logged in the app (a GPS recording
-                  // or a watch run is saved as an in-app entry) opens the
-                  // stats screen too, with an Edit button that hands over to
-                  // the activity editor. Anything without a distance or heart
-                  // rate has nothing for that screen to show.
-                  const inApp =
-                    (session.distance ?? 0) > 0 ||
-                    session.avg_heart_rate != null
-                      ? cardioSessionFromDiaryEntry(session, distanceUnit, {
-                          allowInApp: true,
-                        })
-                      : null;
-                  if (!inApp) {
-                    navigation.navigate('ActivityDetail', { session });
-                    return;
-                  }
-                  navigation.navigate('CardioSession', {
-                    session: inApp,
-                    distanceUnit,
-                    diaryEntry: session,
-                  });
-                }
-              }}
+              onPressWorkout={openWorkout}
             />
             <NapsCard naps={naps} day={selectedDate} navigation={navigation} />
             <BedTimeCard
@@ -818,7 +898,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const content = (
     <>
-      {!isConnectionLoading && isConnected ? (
+      {!isConnectionLoading && (isConnected || isOffline) ? (
         <DateNavigator
           title={t('diary.title', { defaultValue: 'Diary' })}
           selectedDate={selectedDate}

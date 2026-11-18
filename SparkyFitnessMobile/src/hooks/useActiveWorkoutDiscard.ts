@@ -1,3 +1,5 @@
+import { queueWorkoutSessionDelete } from '../offline/workoutHandOver';
+import { serverMayBeDown } from '../utils/serverErrors';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert } from 'react-native';
@@ -56,16 +58,31 @@ export function useActiveWorkoutDiscard({
               // Clear and exit first: clearing cancels the pending autosave
               // debounce and frees the user immediately; the delete finishes in
               // the background (a racing autosave 404s harmlessly server-side).
+              // Read before the clear wipes it: whether the server can hold
+              // this session at all. One started with no connection and never
+              // sent exists only on this phone, so there is nothing to delete.
+              const { pendingCreate, createAttempted } =
+                useActiveWorkoutStore.getState();
+              const neverSent = pendingCreate != null && !createAttempted;
               useActiveWorkoutStore
                 .getState()
                 .clearWorkout({ discarded: true });
               safeGoBack();
+              if (neverSent) return;
               deleteWorkout(idToDelete)
                 .then(() => {
                   if (entryDate != null)
                     invalidateExerciseCache(queryClient, entryDate);
                 })
-                .catch((error: unknown) => {
+                .catch(async (error: unknown) => {
+                  // The server is away: queue the removal so the workout does
+                  // not stay in the diary once it is back.
+                  if (
+                    serverMayBeDown(error) &&
+                    (await queueWorkoutSessionDelete(idToDelete))
+                  ) {
+                    return;
+                  }
                   addLog(
                     `Failed to delete discarded live-start workout: ${error}`,
                     'ERROR'

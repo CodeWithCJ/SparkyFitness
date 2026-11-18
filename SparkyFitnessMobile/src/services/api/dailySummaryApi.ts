@@ -1,4 +1,5 @@
 import { apiFetch } from './apiClient';
+import { saveDiaryDayWorkouts } from '../../offline/diaryDay';
 import type { DailyGoals } from '../../types/goals';
 import type { FoodEntry } from '../../types/foodEntries';
 import type {
@@ -35,9 +36,17 @@ export const fetchDailySummary = (
   const params = new URLSearchParams({ date });
   if (userId) params.set('userId', userId);
 
-  return apiFetch<DailySummaryApiResponse>({
+  const request = apiFetch<DailySummaryApiResponse>({
     endpoint: `/api/daily-summary?${params.toString()}`,
     serviceName: 'Daily Summary API',
     operation: userId ? 'fetch family daily summary' : 'fetch daily summary',
   });
+  // The person's own workouts of the day are kept so the diary can show them
+  // with no connection (#1983). A family member's day is never kept.
+  if (!userId) {
+    void request
+      .then((summary) => saveDiaryDayWorkouts(date, summary.exerciseSessions))
+      .catch(() => undefined);
+  }
+  return request;
 };

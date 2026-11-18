@@ -1,3 +1,4 @@
+import { isSessionAwaitingServer } from '../offline/sessionAwaitingServer';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -845,6 +846,13 @@ export function useWatchWorkoutBridge(
           continue;
         // Discarded while an earlier entry of this session was posting.
         if (discardedSessionsRef.current.has(sessionId)) break;
+        // Logged with no connection and not on the server yet: its entries
+        // would answer 404, which drops the readings for good. Kept for a
+        // later flush, after the workout itself has been uploaded.
+        if (await isSessionAwaitingServer(sessionId)) {
+          session.unposted = true;
+          break;
+        }
         try {
           await attachExerciseEntryWatchTelemetry(exerciseEntryId, {
             ...(hrSamples ? { hrSamples } : {}),

@@ -25,7 +25,9 @@ import {
   type CreateExerciseEntryPayload,
   type UpdateExercisePayload,
 } from '../services/api/exerciseApi';
+import { TimeoutError } from '../utils/concurrency';
 import { normalizeDate } from '../utils/dateUtils';
+import { serverMayBeDown } from '../utils/serverErrors';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { syncExerciseSessionInCache } from './syncExerciseSessionInCache';
 import {
@@ -126,11 +128,18 @@ function useCrudMutation<TPayload, TResult>({
   errorKey,
   errorDefaultTitle,
   onMutationSuccess,
+  quietWhenServerAway = false,
 }: {
   mutationFn: (payload: TPayload) => Promise<TResult>;
   errorKey: string;
   errorDefaultTitle: string;
   onMutationSuccess?: (data: TResult, queryClient: QueryClient) => void;
+  /**
+   * The caller keeps the change on the phone when the server cannot be
+   * reached (#1983), so the failure is not announced as an error here. A
+   * timeout still is, because the server may have received the request.
+   */
+  quietWhenServerAway?: boolean;
 }) {
   const queryClient = useQueryClient();
 
@@ -139,7 +148,14 @@ function useCrudMutation<TPayload, TResult>({
     onSuccess: onMutationSuccess
       ? (data: TResult) => onMutationSuccess(data, queryClient)
       : undefined,
-    onError: () => {
+    onError: (error: unknown) => {
+      if (
+        quietWhenServerAway &&
+        serverMayBeDown(error) &&
+        !(error instanceof TimeoutError)
+      ) {
+        return;
+      }
       Toast.show({
         type: 'error',
         text1: translateExerciseError(errorKey, errorDefaultTitle),
@@ -227,8 +243,11 @@ function useDeleteMutation({
 // Create / Update hooks
 // ---------------------------------------------------------------------------
 
-export function useCreateWorkout() {
+export function useCreateWorkout(
+  options: { quietWhenServerAway?: boolean } = {}
+) {
   const { mutate, ...rest } = useCrudMutation({
+    quietWhenServerAway: options.quietWhenServerAway,
     mutationFn: (payload: CreatePresetSessionRequest) => createWorkout(payload),
     errorKey: 'exerciseMutations.errors.saveWorkout',
     errorDefaultTitle: 'Failed to save workout',
@@ -236,8 +255,11 @@ export function useCreateWorkout() {
   return { createSession: mutate, ...rest };
 }
 
-export function useUpdateWorkout() {
+export function useUpdateWorkout(
+  options: { quietWhenServerAway?: boolean } = {}
+) {
   const { mutate, ...rest } = useCrudMutation({
+    quietWhenServerAway: options.quietWhenServerAway,
     mutationFn: ({
       id,
       payload,

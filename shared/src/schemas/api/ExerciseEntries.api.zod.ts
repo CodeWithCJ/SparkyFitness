@@ -58,6 +58,35 @@ export const exerciseStatsQuerySchema = z.object({
   presetId: z.coerce.number().int().positive().optional(),
 });
 
+/** Most items one batch stats request may carry. */
+export const EXERCISE_STATS_BATCH_MAX_ITEMS = 100;
+
+/**
+ * Body of POST /api/v2/exercises/stats/batch: the same question as the
+ * per-exercise stats endpoint, asked for many exercises in one request so a
+ * client preparing offline data does not send one request per exercise.
+ */
+export const exerciseStatsBatchRequestSchema = z
+  .object({
+    items: z
+      .array(
+        z
+          .object({
+            exerciseId: z.string().uuid(),
+            /** Scopes recentSessions, as `presetId` does on the single endpoint. */
+            presetId: z.number().int().positive().optional(),
+          })
+          .strict()
+      )
+      .min(1)
+      .max(EXERCISE_STATS_BATCH_MAX_ITEMS),
+  })
+  .strict();
+
+export type ExerciseStatsBatchRequest = z.infer<
+  typeof exerciseStatsBatchRequestSchema
+>;
+
 // --- Building blocks ---
 
 /**
@@ -249,6 +278,11 @@ export const wodScoreDetailDataSchema = z.object({
 // Both sources can also be provided together (e.g. client starts from a preset with client-supplied sets).
 export const createPresetSessionRequestSchema = z
   .object({
+    // Session id minted by the client (offline workouts, #1983). Makes the
+    // create safe to repeat: a second request with the same id returns the
+    // stored session (200) instead of creating another (201). Omitted, the
+    // server assigns the id as before.
+    id: z.string().uuid().optional(),
     workout_preset_id: z.number().int().nullable().optional(),
     entry_date: dateStringSchema,
     name: z.string().nullable().optional(),
@@ -740,6 +774,29 @@ export const exerciseStatsResponseSchema = z
     recentSessions: z.array(exerciseRecentSessionSchema).max(3),
   })
   .strict();
+
+/**
+ * Response of POST /api/v2/exercises/stats/batch. One item per requested
+ * exercise and preset pair, in request order, each holding what the single
+ * endpoint returns for that pair. A pair asked for twice is answered once.
+ */
+export const exerciseStatsBatchResponseSchema = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          exerciseId: z.string(),
+          presetId: z.number().int().nullable(),
+          stats: exerciseStatsResponseSchema,
+        })
+        .strict()
+    ),
+  })
+  .strict();
+
+export type ExerciseStatsBatchResponse = z.infer<
+  typeof exerciseStatsBatchResponseSchema
+>;
 
 // --- Types ---
 

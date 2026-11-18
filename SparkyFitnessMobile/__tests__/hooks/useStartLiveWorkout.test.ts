@@ -25,6 +25,16 @@ import { serverConnectionQueryKey } from '../../src/hooks/queryKeys';
 import { defaultWorkoutName } from '../../src/hooks/useWorkoutForm';
 import { getTodayDate } from '../../src/utils/dateUtils';
 import { buildSingleExerciseStartPayload } from '../../src/utils/workoutSession';
+import { ApiError } from '../../src/services/api/errors';
+import { putCacheRows } from '../../src/offline/cacheStore';
+import {
+  CACHE_COLLECTIONS,
+  PACK_COMPLETED_KEY,
+  SINGLE_DOCUMENT_KEY,
+} from '../../src/offline/collections';
+import { __setOfflineDbForTests } from '../../src/offline/db';
+import type { OfflineDb } from '../../src/offline/types';
+import { createTestDb } from '../helpers/offlineTestDb';
 import { createQueryWrapper, createTestQueryClient } from './queryTestUtils';
 
 jest.mock('../../src/services/api/exerciseApi', () => ({
@@ -50,6 +60,7 @@ jest.mock('../../src/hooks/useActiveWorkoutAutosave', () => ({
 jest.mock('../../src/services/storage', () => ({
   ...jest.requireActual('../../src/services/storage'),
   getActiveServerConfig: jest.fn(),
+  getActiveServerConfigId: jest.fn(async () => 's1'),
 }));
 
 jest.mock('../../modules/watch-connectivity', () => ({
@@ -182,12 +193,17 @@ describe('useStartLiveWorkout', () => {
       });
     });
 
-    expect(mockCreateWorkout).toHaveBeenCalledWith({
-      name: 'Push Day',
-      entry_date: getTodayDate(),
-      source: 'sparky',
-      exercises: EXERCISES,
-    });
+    expect(mockCreateWorkout).toHaveBeenCalledWith(
+      {
+        // Made on the phone, so a repeated create cannot make two workouts.
+        id: expect.stringMatching(/^[0-9a-f-]{36}$/),
+        name: 'Push Day',
+        entry_date: getTodayDate(),
+        source: 'sparky',
+        exercises: EXERCISES,
+      },
+      { timeoutMs: 5_000 }
+    );
     expect(mockInvalidate).toHaveBeenCalledWith(queryClient, getTodayDate());
     expect(mockEnsurePermission).toHaveBeenCalled();
 
@@ -380,7 +396,8 @@ describe('useStartLiveWorkout', () => {
             ],
           }),
         ],
-      })
+      }),
+      { timeoutMs: 5_000 }
     );
     // The plan lands keyed to the created session's set ids for placeholders.
     expect(useActiveWorkoutStore.getState().plannedSetValues).toEqual({
@@ -442,7 +459,8 @@ describe('useStartLiveWorkout', () => {
     // Also tags the created session server-side (recentSessions stats
     // scoping), independent of the client-supplied exercises.
     expect(mockCreateWorkout).toHaveBeenCalledWith(
-      expect.objectContaining({ workout_preset_id: 42 })
+      expect.objectContaining({ workout_preset_id: 42 }),
+      { timeoutMs: 5_000 }
     );
   });
 
@@ -457,7 +475,8 @@ describe('useStartLiveWorkout', () => {
     expect(useActiveWorkoutStore.getState().sourcePresetId).toBeNull();
     expect(useActiveWorkoutStore.getState().sourceServerConfigId).toBeNull();
     expect(mockCreateWorkout).toHaveBeenCalledWith(
-      expect.not.objectContaining({ workout_preset_id: expect.anything() })
+      expect.not.objectContaining({ workout_preset_id: expect.anything() }),
+      { timeoutMs: 5_000 }
     );
   });
 
@@ -469,7 +488,8 @@ describe('useStartLiveWorkout', () => {
     });
 
     expect(mockCreateWorkout).toHaveBeenCalledWith(
-      expect.objectContaining({ name: defaultWorkoutName(getTodayDate()) })
+      expect.objectContaining({ name: defaultWorkoutName(getTodayDate()) }),
+      { timeoutMs: 5_000 }
     );
   });
 
@@ -487,7 +507,8 @@ describe('useStartLiveWorkout', () => {
     expect(sessionIdAtReplace).toBe('session-1');
   });
 
-  it('alerts and does not create when no server is connected', async () => {
+  it('alerts and does not create when no server is set up', async () => {
+    mockGetActiveServerConfig.mockResolvedValue(null);
     const { result, navigation } = setup({ connected: false });
 
     await act(async () => {
@@ -500,6 +521,118 @@ describe('useStartLiveWorkout', () => {
     );
     expect(mockCreateWorkout).not.toHaveBeenCalled();
     expect(navigation.replace).not.toHaveBeenCalled();
+  });
+
+  describe('with a server that is set up but not answering', () => {
+    let db: OfflineDb & { close(): void };
+
+    beforeEach(async () => {
+      mockGetActiveServerConfig.mockResolvedValue({
+        id: 's1',
+        url: 'https://sparky.example',
+      } as never);
+      db = await createTestDb();
+      __setOfflineDbForTests(db);
+    });
+
+    afterEach(() => {
+      __setOfflineDbForTests(null);
+      db.close();
+    });
+
+    const prepareOffline = () =>
+      Promise.all([
+        putCacheRows(db, 's1', CACHE_COLLECTIONS.pack, [
+          { key: PACK_COMPLETED_KEY, payload: {} },
+        ]),
+        putCacheRows(db, 's1', CACHE_COLLECTIONS.preferences, [
+          { key: SINGLE_DOCUMENT_KEY, payload: { default_weight_unit: 'kg' } },
+        ]),
+        putCacheRows(db, 's1', CACHE_COLLECTIONS.exercise, [
+          {
+            key: 'ex-1',
+            name: 'Bench Press',
+            payload: { id: 'ex-1', name: 'Bench Press', category: null },
+          },
+        ]),
+      ]);
+
+    it('starts the workout on this phone, to be created on the server later', async () => {
+      await prepareOffline();
+      const { result, navigation } = setup({ connected: false });
+
+      await act(async () => {
+        await result.current.startLiveWorkout({
+          name: 'Push Day',
+          exercises: EXERCISES,
+        });
+      });
+
+      expect(mockCreateWorkout).not.toHaveBeenCalled();
+      const store = useActiveWorkoutStore.getState();
+      expect(store.sessionId).toMatch(/^[0-9a-f-]{36}$/);
+      expect(store.session?.exercises[0]?.exercise_snapshot?.name).toBe(
+        'Bench Press'
+      );
+      expect(store.pendingCreate).toEqual({
+        entryDate: getTodayDate(),
+        workoutPresetId: null,
+        workoutPlanAssignmentId: null,
+      });
+      expect(store.hasUnsavedChanges).toBe(true);
+      expect(navigation.replace).toHaveBeenCalledWith('ActiveWorkout');
+    });
+
+    it('refuses until this phone has been prepared for offline use', async () => {
+      const { result, navigation } = setup({ connected: false });
+
+      await act(async () => {
+        await result.current.startLiveWorkout({ exercises: EXERCISES });
+      });
+
+      expect(alertSpy).toHaveBeenCalledWith(
+        'Not ready for offline workouts yet',
+        expect.any(String)
+      );
+      expect(useActiveWorkoutStore.getState().sessionId).toBeNull();
+      expect(navigation.replace).not.toHaveBeenCalled();
+      expect(result.current.isStarting).toBe(false);
+    });
+
+    it('starts on this phone when the server stops answering during the start', async () => {
+      await prepareOffline();
+      mockCreateWorkout.mockRejectedValue(
+        new TypeError('Network request failed')
+      );
+      const { result } = setup();
+
+      await act(async () => {
+        await result.current.startLiveWorkout({ exercises: EXERCISES });
+      });
+
+      expect(mockCreateWorkout).toHaveBeenCalledTimes(1);
+      const store = useActiveWorkoutStore.getState();
+      expect(store.pendingCreate).not.toBeNull();
+      // The id sent is the one kept, so a create that did arrive matches.
+      expect(store.sessionId).toBe(
+        (mockCreateWorkout.mock.calls[0]![0] as { id: string }).id
+      );
+    });
+  });
+
+  it('retries without the session id on a server that refuses it', async () => {
+    mockCreateWorkout
+      .mockRejectedValueOnce(new ApiError('bad request', 400))
+      .mockResolvedValueOnce(makeSession());
+    const { result } = setup();
+
+    await act(async () => {
+      await result.current.startLiveWorkout({ exercises: EXERCISES });
+    });
+
+    expect(mockCreateWorkout).toHaveBeenCalledTimes(2);
+    expect(mockCreateWorkout.mock.calls[1]![0]).not.toHaveProperty('id');
+    expect(useActiveWorkoutStore.getState().sessionId).toBe('session-1');
   });
 
   it('alerts and does not create when another workout is in progress', async () => {

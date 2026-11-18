@@ -11,6 +11,8 @@ import {
   saveWorkoutSessionFeedback,
 } from '../services/api/workoutCoachingApi';
 import { addLog } from '../services/LogService';
+import { queueWorkoutFeedback } from '../offline/followUps';
+import { serverMayBeDown } from '../utils/serverErrors';
 import {
   workoutSessionFeedbackQueryKey,
   workoutSuggestionsQueryKeyRoot,
@@ -19,7 +21,9 @@ import {
 // Typing a note should not send a request per keystroke.
 const SAVE_DEBOUNCE_MS = 600;
 
-export type FeedbackSaveState = 'idle' | 'saving' | 'saved' | 'error';
+/** `queued`: no connection; the answer waits on the phone and is sent later. */
+export type FeedbackSaveState =
+  'idle' | 'saving' | 'saved' | 'queued' | 'error';
 
 /**
  * Loads and autosaves one session's feedback (issue #1560). Every change
@@ -73,7 +77,16 @@ export function useWorkoutSessionFeedback(presetEntryId: string) {
         });
         setSaveState('saved');
       })
-      .catch((error: unknown) => {
+      .catch(async (error: unknown) => {
+        // No connection (#1983): keep the answer for the upload queue, to
+        // be sent after the workout itself.
+        if (
+          serverMayBeDown(error) &&
+          (await queueWorkoutFeedback(presetEntryId, request))
+        ) {
+          setSaveState('queued');
+          return;
+        }
         addLog(
           `Saving workout feedback failed: ${(error as Error).message}`,
           'WARNING'

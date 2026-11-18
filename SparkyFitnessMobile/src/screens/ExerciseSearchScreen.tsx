@@ -91,7 +91,10 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
     '--color-text-secondary',
     '--color-border-subtle',
   ]) as [string, string, string, string];
-  const { isConnected } = useServerConnection();
+  const { isConnected, status: connectionStatus } = useServerConnection();
+  // Searching the library works from what the phone saved (src/offline/);
+  // online catalogues and alternatives still need the server.
+  const canSearchLibrary = isConnected || connectionStatus === 'unreachable';
   const { profile } = useProfile();
   const { getImageSource } = useExerciseImageSource();
   const { isNavigationLocked, runNavigationAction } =
@@ -526,7 +529,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
   };
 
   const renderSearchTab = () => {
-    if (!isConnected) {
+    if (!canSearchLibrary) {
       return (
         <StatusView
           icon="cloud-offline"

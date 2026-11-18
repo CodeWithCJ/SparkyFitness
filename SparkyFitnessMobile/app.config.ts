@@ -265,6 +265,8 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       ...(isDev ? devPlugins : []),
       ...(config.plugins ?? []),
       'expo-image',
+      // Local database behind offline workouts (src/offline/).
+      'expo-sqlite',
       [
         // System voice input (Android/iOS speech recognition) for chat dictation.
         'expo-speech-recognition',

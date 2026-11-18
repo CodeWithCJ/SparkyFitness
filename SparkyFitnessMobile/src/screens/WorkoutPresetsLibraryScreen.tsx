@@ -55,7 +55,10 @@ const WorkoutPresetsLibraryScreen: React.FC<
     (s) => s.setWorkoutPresetsLibraryOwnershipFilter
   );
 
-  const { isConnected } = useServerConnection();
+  const { isConnected, status: connectionStatus } = useServerConnection();
+  // A server that is set up but not answering: the list then comes from
+  // what the phone saved (src/offline/).
+  const canShowData = isConnected || connectionStatus === 'unreachable';
   const { profile } = useProfile();
   const {
     presets,
@@ -67,7 +70,7 @@ const WorkoutPresetsLibraryScreen: React.FC<
     isFetchingNextPage,
     loadMore,
     refetch,
-  } = useWorkoutPresetsLibrary(searchText, { enabled: isConnected });
+  } = useWorkoutPresetsLibrary(searchText, { enabled: canShowData });
   const filteredPresets = useMemo(
     () => filterByOwnership(presets, ownershipFilter, profile?.id),
     [presets, ownershipFilter, profile?.id]
@@ -272,7 +275,7 @@ const WorkoutPresetsLibraryScreen: React.FC<
       style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
     >
       {header}
-      {isConnected ? (
+      {canShowData ? (
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
@@ -282,7 +285,7 @@ const WorkoutPresetsLibraryScreen: React.FC<
           isSearching={isSearching}
         />
       ) : null}
-      <ServerGate>{renderContent()}</ServerGate>
+      <ServerGate offlineCapable>{renderContent()}</ServerGate>
     </View>
   );
 };
