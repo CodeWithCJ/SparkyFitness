@@ -132,6 +132,8 @@ export interface MemberEntryRow {
   calorie_link_id: string | null;
   /** How that link was resolved, which decides the side it counts. */
   calorie_link_resolution: CalorieLinkResolution | null;
+  /** The sources of the link's other sides, on any date (null: not linked). */
+  calorie_link_sources: (string | null)[] | null;
   elevation_gain_meters: number | null;
   zone_seconds: number[] | null;
   /** The row was changed after it was created (updated_at > created_at). */
@@ -1127,6 +1129,11 @@ async function getMemberEntries(
               e.avg_heart_rate, e.max_heart_rate, e.exercise_name, e.category, e.source,
               e.exercise_id, e.distance, e.active_calories, e.calories_burned,
               e.calories_applied, e.calorie_link_id, e.calorie_link_resolution,
+              CASE WHEN e.calorie_link_id IS NOT NULL THEN ARRAY(
+                SELECT l.source FROM exercise_entries l
+                 WHERE l.user_id = e.user_id
+                   AND l.calorie_link_id = e.calorie_link_id
+                   AND l.id <> e.id) END AS calorie_link_sources,
               e.elevation_gain_meters,
               (SELECT array_agg(COALESCE(z.seconds_in_zone, 0)::float8 ORDER BY zi)
                  FROM generate_series(1, 5) AS zi

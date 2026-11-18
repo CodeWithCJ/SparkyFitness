@@ -911,6 +911,7 @@ export function toChallengeEntry(row: MemberEntryRow): ChallengeEntry {
     ...(applied !== null ? { caloriesEstimate: estimate } : {}),
     calorieLinkId: row.calorie_link_id ?? null,
     calorieLinkResolution: row.calorie_link_resolution ?? null,
+    calorieLinkSources: row.calorie_link_sources ?? null,
     elevationM: n(row.elevation_gain_meters),
   };
 }

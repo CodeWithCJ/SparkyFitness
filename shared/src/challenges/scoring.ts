@@ -93,6 +93,12 @@ export interface ChallengeEntry {
   calorieLinkId?: string | null;
   /** How that link was resolved (`calorie_link_resolution`); see calorieLinkSideCounts. */
   calorieLinkResolution?: CalorieLinkResolution | null;
+  /**
+   * The sources of the link's other sides, whatever their dates, so a side
+   * whose partner falls outside the scored days is still read as half of a
+   * typed-in or measured pair. Never scored itself.
+   */
+  calorieLinkSources?: readonly (string | null)[] | null;
   /** On the copy that was kept: the ids of the copies merged into it, comma-separated. */
   mergedFrom?: string;
   /**
@@ -231,9 +237,13 @@ const hasHr = (e: ChallengeEntry): boolean =>
  * not one.
  */
 export function isManualEntry(e: ChallengeEntry): boolean {
+  return isManualSource(e.source);
+}
+
+function isManualSource(source: string | null | undefined): boolean {
   return (
-    !normalizeSource(e.source) ||
-    (isUserOriginatedSource(e.source) && !isLiveWorkoutSource(e.source))
+    !normalizeSource(source) ||
+    (isUserOriginatedSource(source) && !isLiveWorkoutSource(source))
   );
 }
 
@@ -690,7 +700,9 @@ function calorieLinkSideCounts(e: ChallengeEntry): boolean {
  * picks (calorieLinkSideCounts) at that side's own figure, not an average or
  * custom one, a custom 0 included. A link of two typed-in entries keeps
  * their figures. Pass every entry, the ignored ones too, so both sides are
- * seen.
+ * seen; a side outside the entries is known by its source
+ * (`calorieLinkSources`), so a rescore of several days and a finalization of
+ * one day score the pair alike.
  */
 export function challengeTypedCalories(
   entries: readonly ChallengeEntry[],
@@ -704,8 +716,10 @@ export function challengeTypedCalories(
       typed: false,
       measured: false,
     };
-    if (isManualEntry(e)) side.typed = true;
-    else side.measured = true;
+    for (const source of [e.source, ...(e.calorieLinkSources ?? [])]) {
+      if (isManualSource(source)) side.typed = true;
+      else side.measured = true;
+    }
     sides.set(e.calorieLinkId, side);
   }
   return entries.map((e) => {

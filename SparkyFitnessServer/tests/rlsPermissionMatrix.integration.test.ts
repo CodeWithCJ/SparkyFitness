@@ -2084,6 +2084,43 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     }
   });
 
+  it("a calorie link's other side on another date is read by its source only, from the member's own rows", async () => {
+    const linkId = randomUUID();
+    const inserted = await sys.query(
+      `INSERT INTO public.exercise_entries
+         (user_id, entry_date, entry_time, calories_burned, calories_applied, duration_minutes,
+          exercise_name, source, source_id, calorie_link_id, calorie_link_resolution)
+       VALUES ($1, '2026-11-25', '07:00', 300, 0, 30, 'rls-challenge watch run', 'garmin', 'rls-link-2', $2, 'custom'),
+              ($1, '2026-11-26', '07:00', 250, 800, 30, 'rls-challenge typed run', 'Manual', NULL, $2, 'custom'),
+              ($3, '2026-11-25', '07:00', 100, 0, 30, 'rls-challenge other run', 'polar', 'rls-link-3', $2, 'custom')
+       RETURNING id`,
+      [AMY, linkId, OUTSIDER]
+    );
+    try {
+      const rows = await challengeRepository.getMemberEntries(
+        AMY,
+        '2026-11-25',
+        '2026-11-25'
+      );
+      // Only the watch run is read; its partner is known by source alone,
+      // and another user's row under the same id is not seen
+      expect(rows.map((r) => [r.source, r.calorie_link_sources])).toEqual([
+        ['garmin', ['Manual']],
+      ]);
+      const rules = challengeRulesSchema.parse({
+        version: 1,
+        metric: 'active_calories',
+        activities: { manualEntries: 'cap' },
+      });
+      const scored = challengeTypedCalories(rows.map(toChallengeEntry), rules);
+      expect(scored.map((e) => e.activeCalories)).toEqual([300]);
+    } finally {
+      await sys.query(
+        'DELETE FROM public.exercise_entries WHERE id = ANY($1::uuid[])',
+        [inserted.rows.map((r) => r.id)]
+      );
+    }
+  });
   it('a planned session from a plan: scoring sees it as planned until a set is checked off, and checking off or finishing queues the day', async () => {
     await clearQueue();
     const session = await sys.query(

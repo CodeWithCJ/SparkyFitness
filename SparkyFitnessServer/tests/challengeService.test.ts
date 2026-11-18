@@ -496,6 +496,7 @@ describe('scoring jobs', () => {
         calories_applied: null,
         calorie_link_id: null,
         calorie_link_resolution: null,
+        calorie_link_sources: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,
@@ -811,6 +812,7 @@ describe('review fixes (PR #3585)', () => {
         calories_applied: null,
         calorie_link_id: null,
         calorie_link_resolution: null,
+        calorie_link_sources: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,
@@ -988,6 +990,7 @@ describe('review fixes from Jerrys-modz (PR #3585)', () => {
     calories_applied: null,
     calorie_link_id: null,
     calorie_link_resolution: null,
+    calorie_link_sources: null,
     elevation_gain_meters: null,
     zone_seconds: null,
     edited: false,
@@ -1312,6 +1315,7 @@ describe('bot review follow-ups (PRs #3594 and #3595)', () => {
         calories_applied: null,
         calorie_link_id: null,
         calorie_link_resolution: null,
+        calorie_link_sources: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,
@@ -1398,6 +1402,7 @@ describe('bot review follow-ups, second round', () => {
     calories_applied: null,
     calorie_link_id: null,
     calorie_link_resolution: null,
+    calorie_link_sources: null,
     elevation_gain_meters: null,
     zone_seconds: null,
     edited: false,
@@ -1542,6 +1547,71 @@ describe('bot review follow-ups, second round', () => {
     const cap = await run(capped, 1);
     expect(cap('2026-11-03').total).toBe(300);
     expect(cap('2026-11-04').total).toBe(300);
+  });
+
+  it('a calorie link across two dates scores the same in one rescore as in two daily finalizations', async () => {
+    const capped = {
+      ...allRounder,
+      metric: 'active_calories' as const,
+      activities: {
+        ...allRounder.activities,
+        manualEntries: 'cap' as const,
+        manualMinutesCap: 15,
+      },
+    } as typeof allRounder;
+    repo.getRuleChanges.mockResolvedValue([change('2026-11-02', capped)]);
+    // A 300 kcal Garmin run on Nov 5 linked to a 30-minute Manual copy on
+    // Nov 6 with a custom 800: the link writes 0 on the Garmin side
+    const link = {
+      calorie_link_id: '77777777-7777-4777-8777-777777777770',
+      calorie_link_resolution: 'custom' as const,
+    };
+    const rows = [
+      diaryRow({
+        id: '77777777-7777-4777-8777-777777777771',
+        entry_date: '2026-11-05',
+        duration_minutes: 30,
+        active_calories: 300,
+        calories_applied: 0,
+        ...link,
+        calorie_link_sources: ['Manual'],
+      }),
+      diaryRow({
+        id: '77777777-7777-4777-8777-777777777772',
+        entry_date: '2026-11-06',
+        duration_minutes: 30,
+        source: 'Manual',
+        calories_burned: 250,
+        calories_applied: 800,
+        ...link,
+        calorie_link_sources: ['garmin'],
+      }),
+    ];
+    // The member read returns only the rows inside the dates asked for
+    repo.getMemberEntries.mockImplementation(
+      async (_user: string, from: string, to: string) =>
+        rows.filter((r) => r.entry_date >= from && r.entry_date <= to)
+    );
+    const totals = async (from: string, to: string) => {
+      await service.recomputeMember(
+        challenge({ start_date: '2026-11-02', rules: capped }),
+        member('amy'),
+        from,
+        to
+      );
+      const days = repo.saveMemberDays.mock.calls.at(-1)![4];
+      return Object.fromEntries(
+        days
+          .filter((d) => d.day >= from && d.day <= to)
+          .map((d) => [d.day, d.total])
+      );
+    };
+    const rescore = await totals('2026-11-05', '2026-11-06');
+    expect(rescore).toEqual({ '2026-11-05': 300, '2026-11-06': 0 });
+    expect({
+      ...(await totals('2026-11-05', '2026-11-05')),
+      ...(await totals('2026-11-06', '2026-11-06')),
+    }).toEqual(rescore);
   });
 
   it('an active-calories day with a daily total and a run scores the larger, not both', async () => {
@@ -1775,6 +1845,7 @@ describe('CodeWithCJ review (PR #3585)', () => {
         calories_applied: null,
         calorie_link_id: null,
         calorie_link_resolution: null,
+        calorie_link_sources: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,
