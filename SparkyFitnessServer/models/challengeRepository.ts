@@ -125,6 +125,8 @@ export interface MemberEntryRow {
   distance: number | null;
   active_calories: number | null;
   calories_burned: number | null;
+  /** The member's override of what the Diary counts (null: the estimate counts). */
+  calories_applied: number | null;
   elevation_gain_meters: number | null;
   zone_seconds: number[] | null;
   /** The row was changed after it was created (updated_at > created_at). */
@@ -1095,6 +1097,7 @@ async function getMemberEntries(
               TO_CHAR(e.entry_time, 'HH24:MI') AS entry_time, e.duration_minutes,
               e.avg_heart_rate, e.max_heart_rate, e.exercise_name, e.category, e.source,
               e.exercise_id, e.distance, e.active_calories, e.calories_burned,
+              e.calories_applied,
               e.elevation_gain_meters,
               (SELECT array_agg(COALESCE(z.seconds_in_zone, 0)::float8 ORDER BY zi)
                  FROM generate_series(1, 5) AS zi

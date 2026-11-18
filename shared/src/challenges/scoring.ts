@@ -75,7 +75,14 @@ export interface ChallengeEntry {
   bestE1rm?: number | null;
   /** Identifies "the same lift" across days (the exercise id, else the name). */
   exerciseKey?: string | null;
+  /** What the Diary counts for it: the member's override when set, else its own figure. */
   activeCalories?: number | null;
+  /**
+   * Set only when the member overrode the calories the Diary counts
+   * (`calories_applied`): the workout's own figure, which a challenge that
+   * caps or ignores manual entries scores instead (see challengeTypedCalories).
+   */
+  caloriesEstimate?: number | null;
   elevationM?: number | null;
   /** On the copy that was kept: the ids of the copies merged into it, comma-separated. */
   mergedFrom?: string;
@@ -587,7 +594,9 @@ export function mergeChallengeDuplicates(
       if (group.length < 2) continue;
       // A measured copy is kept over a typed-in one (so the manual cap never
       // cuts a synced workout), then the one with heart rate, then the
-      // longest; the others fill in what it lacks.
+      // longest; the others fill in what it lacks. Its calories win unless
+      // they are 0: a pair the Diary counts once, by a calorie link or an
+      // override setting one side to 0, counts the other side's figure here.
       const [keep, ...others] = [...group].sort(
         (x, y) =>
           Number(isManualEntry(x)) - Number(isManualEntry(y)) ||
@@ -616,6 +625,26 @@ export function mergeChallengeDuplicates(
   return list.filter((e) => !drop.has(e.id)).map((e) => out.get(e.id) ?? e);
 }
 
+/**
+ * Calories as the challenge's manual-entry rule allows. An override of a
+ * workout's calories is typed in by the member, so where manual entries are
+ * capped or ignored it is treated like one: a measured workout scores its own
+ * figure, up or down, and a typed-in entry keeps the override, since it is
+ * capped or dropped as a whole anyway. Where manual entries count in full, the
+ * override counts, as in the Diary.
+ */
+export function challengeTypedCalories(
+  entries: readonly ChallengeEntry[],
+  rules: ChallengeRules
+): ChallengeEntry[] {
+  if (rules.activities.manualEntries === 'count') return [...entries];
+  return entries.map((e) =>
+    e.caloriesEstimate !== undefined && !isManualEntry(e)
+      ? { ...e, activeCalories: e.caloriesEstimate }
+      : e
+  );
+}
+
 function inTimeWindow(
   time: string | null | undefined,
   window: { start: string; end: string }
@@ -639,10 +668,14 @@ export function challengeCountedEntries(
   const a = rules.activities;
   // Ignored manual entries go before duplicates are merged, so a timed copy
   // of the same workout is kept rather than merged into a dropped one.
-  const eligible =
+  // Calories are settled first, so a merge keeps and fills in the figures
+  // that count.
+  const eligible = challengeTypedCalories(
     a.manualEntries === 'ignore'
       ? entries.filter((e) => !isManualEntry(e))
-      : entries;
+      : entries,
+    rules
+  );
   let list = a.mergeDuplicates
     ? mergeChallengeDuplicates(eligible)
     : [...eligible];
@@ -740,7 +773,8 @@ export interface ChallengeDayScore {
  * against, by day (two devices' rows add up, as in the Diary). A whole-day
  * total can't be split by sport, length or hour, so there are none when the
  * rules leave some workouts out; a typed-in one counts only when manual
- * entries count in full.
+ * entries count in full, and a Diary override of a synced one likewise
+ * (challengeTypedCalories).
  */
 export function challengeDailyCalories(
   rows: readonly ChallengeEntry[] | undefined,
@@ -756,7 +790,7 @@ export function challengeDailyCalories(
     rules.timeWindow
   )
     return byDay;
-  for (const e of rows ?? []) {
+  for (const e of challengeTypedCalories(rows ?? [], rules)) {
     if (a.manualEntries !== 'count' && isManualEntry(e)) continue;
     const kcal = num(e.activeCalories);
     if (kcal > 0) byDay.set(e.date, (byDay.get(e.date) ?? 0) + kcal);

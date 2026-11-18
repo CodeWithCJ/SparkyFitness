@@ -452,6 +452,7 @@ describe('scoring jobs', () => {
         distance: '5.0' as unknown as number,
         active_calories: null,
         calories_burned: 300,
+        calories_applied: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,
@@ -762,6 +763,7 @@ describe('review fixes (PR #3585)', () => {
         distance: null,
         active_calories: null,
         calories_burned: null,
+        calories_applied: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,
@@ -900,6 +902,7 @@ describe('review fixes from Jerrys-modz (PR #3585)', () => {
     distance: null,
     active_calories: null,
     calories_burned: 200,
+    calories_applied: null,
     elevation_gain_meters: null,
     zone_seconds: null,
     edited: false,
@@ -1204,6 +1207,7 @@ describe('bot review follow-ups (PRs #3594 and #3595)', () => {
         distance: null,
         active_calories: null,
         calories_burned: 50,
+        calories_applied: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,
@@ -1287,6 +1291,7 @@ describe('bot review follow-ups, second round', () => {
     distance: null,
     active_calories: null,
     calories_burned: null,
+    calories_applied: null,
     elevation_gain_meters: null,
     zone_seconds: null,
     edited: false,
@@ -1378,6 +1383,59 @@ describe('bot review follow-ups, second round', () => {
     // ...but a day holding only the daily total has no workout
     expect(kcal.find((d) => d.day === '2026-11-03')!.workouts).toBe(0);
     expect(repo.saveMemberDays.mock.calls[1]![5]).toEqual([]);
+  });
+
+  it("a workout's calories follow the Diary's override, and under cap the measured figure", async () => {
+    const calories = { ...allRounder, metric: 'active_calories' as const };
+    const capped = {
+      ...calories,
+      activities: { ...calories.activities, manualEntries: 'cap' as const },
+    } as typeof calories;
+    // A watch run measured at 300 active kcal (450 with resting energy) that
+    // the member set to 500 in the Diary, and one set to 0
+    repo.getMemberEntries.mockResolvedValue([
+      diaryRow({
+        id: '88888888-8888-4888-8888-888888888881',
+        entry_date: '2026-11-03',
+        active_calories: 300,
+        calories_burned: 450,
+        calories_applied: 500,
+      }),
+      diaryRow({
+        id: '88888888-8888-4888-8888-888888888882',
+        entry_date: '2026-11-04',
+        active_calories: 300,
+        calories_burned: 450,
+        calories_applied: 0,
+      }),
+      diaryRow({
+        id: '88888888-8888-4888-8888-888888888883',
+        entry_date: '2026-11-05',
+        active_calories: 300,
+        calories_burned: 450,
+      }),
+    ]);
+    const run = async (rules: typeof calories, call: number) => {
+      repo.getRuleChanges.mockResolvedValue([change('2026-11-02', rules)]);
+      await service.recomputeMember(
+        challenge({ start_date: '2026-11-02', rules }),
+        member('amy'),
+        '2026-11-02'
+      );
+      const days = repo.saveMemberDays.mock.calls[call]![4];
+      return (day: string) => days.find((d) => d.day === day)!;
+    };
+    const full = await run(calories, 0);
+    expect(full('2026-11-03').total).toBe(500);
+    expect(full('2026-11-04').total).toBe(0);
+    // No override: the measured active part, not the total with resting energy
+    expect(full('2026-11-05').total).toBe(300);
+    // The override changes calories only: each is still a workout with a card
+    expect(full('2026-11-04').workouts).toBe(1);
+    expect(repo.saveMemberDays.mock.calls[0]![5]).toHaveLength(3);
+    const cap = await run(capped, 1);
+    expect(cap('2026-11-03').total).toBe(300);
+    expect(cap('2026-11-04').total).toBe(300);
   });
 
   it('an active-calories day with a daily total and a run scores the larger, not both', async () => {
@@ -1608,6 +1666,7 @@ describe('CodeWithCJ review (PR #3585)', () => {
         distance: null,
         active_calories: null,
         calories_burned: null,
+        calories_applied: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,

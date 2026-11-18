@@ -24,6 +24,7 @@ import {
   daysInRange,
   deriveWorkoutSessionStatus,
   effortAdjustedOneRepMaxKg,
+  entryCaloriesCounted,
   isValidTimeZone,
   isWarmupSetType,
   isoWeekday,
@@ -866,6 +867,12 @@ export function toChallengeEntry(row: MemberEntryRow): ChallengeEntry {
       .map((s) => effortAdjustedOneRepMaxKg(s.weight, s.reps, null))
   );
   const km = n(row.distance);
+  // The workout's own figure: the measured active part when the row has one
+  // (a Garmin FIT file's calories_burned includes resting energy), else the
+  // estimate. The Diary's override (calories_applied) wins over it, through
+  // the Diary's own entryCaloriesCounted.
+  const estimate = n(row.active_calories) ?? n(row.calories_burned);
+  const applied = n(row.calories_applied);
   return {
     id: row.id,
     date: row.entry_date,
@@ -881,7 +888,11 @@ export function toChallengeEntry(row: MemberEntryRow): ChallengeEntry {
     distanceM: km !== null ? km * 1000 : null,
     bestE1rm: bestE1rm > 0 ? bestE1rm : null,
     exerciseKey: row.exercise_id,
-    activeCalories: n(row.active_calories) ?? n(row.calories_burned),
+    activeCalories: entryCaloriesCounted({
+      calories_applied: applied,
+      calories_burned: estimate,
+    }),
+    ...(applied !== null ? { caloriesEstimate: estimate } : {}),
     elevationM: n(row.elevation_gain_meters),
   };
 }

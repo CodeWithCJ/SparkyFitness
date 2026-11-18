@@ -1980,6 +1980,96 @@ describe('an active-calories day scores like the Diary', () => {
     expect(with_('ignore')).toBe(0);
   });
 
+  // A workout whose calories the member set in the Diary (calories_applied):
+  // activeCalories is what the Diary counts, caloriesEstimate its own figure
+  const overridden = (
+    id: string,
+    applied: number,
+    extra: Partial<ChallengeEntry> = {}
+  ) => run(id, { activeCalories: applied, caloriesEstimate: 300, ...extra });
+
+  it("counts the Diary's calorie override when manual entries count in full", () => {
+    expect(kcal([overridden('r', 500)], null)).toBe(500);
+    expect(kcal([overridden('r', 120)], null)).toBe(120);
+    // Set to 0 in the Diary, it counts nothing here either
+    expect(kcal([overridden('r', 0)], null)).toBe(0);
+  });
+
+  it('treats an override like a typed-in entry under cap and ignore: a measured workout scores its own figure', () => {
+    for (const manualEntries of ['cap', 'ignore'] as const) {
+      expect(kcal([overridden('r', 900)], null, { manualEntries })).toBe(300);
+      expect(kcal([overridden('r', 100)], null, { manualEntries })).toBe(300);
+    }
+  });
+
+  it('a typed-in entry keeps its override, capped or dropped with the entry', () => {
+    const typed = overridden('m', 800, { source: 'Manual', durationMin: 60 });
+    expect(kcal([typed], null)).toBe(800);
+    // 15 of its 60 minutes kept, so a quarter of the 800
+    expect(
+      kcal([typed], null, { manualEntries: 'cap', manualMinutesCap: 15 })
+    ).toBe(200);
+    expect(kcal([typed], null, { manualEntries: 'ignore' })).toBe(0);
+  });
+
+  it('merged duplicates count once, the side a calorie link kept', () => {
+    // The member linked their typed-in run to the watch's copy and kept their
+    // own 250 kcal: the link set the watch copy to 0
+    const watch = overridden('w', 0);
+    const typed = run('m', { source: 'Manual', activeCalories: 250 });
+    expect(kcal([watch, typed], null)).toBe(250);
+    // Kept the watch's 300 instead: the typed-in side is 0
+    const typedOff = run('m', {
+      source: 'Manual',
+      activeCalories: 0,
+      caloriesEstimate: 250,
+    });
+    expect(kcal([run('w'), typedOff], null)).toBe(300);
+    // Under cap the measured copy is kept with its own figure, never the
+    // typed-in copy's
+    expect(
+      kcal([watch, typed], null, { manualEntries: 'cap', manualMinutesCap: 15 })
+    ).toBe(300);
+    // An override on the copy that is kept wins over the other copy's figure
+    const apple = run('a', { source: 'apple_health', activeCalories: 280 });
+    expect(kcal([overridden('w', 410), apple], null)).toBe(410);
+  });
+
+  it("a daily total's override counts in full only, then the larger of it and the workouts", () => {
+    const daily = (manualEntries: 'count' | 'cap') =>
+      scoreChallengeDays(
+        {
+          entries: [run('r')],
+          steps: {},
+          // The device synced 600; the member set 400 in the Diary
+          dailyCalories: [
+            { ...total('t', 400), caloriesEstimate: 600 } as ChallengeEntry,
+          ],
+          zones,
+        },
+        day,
+        day,
+        rulesWith({ metric: 'active_calories', activities: { manualEntries } })
+      )[0]!.total;
+    expect(daily('count')).toBe(400);
+    expect(daily('cap')).toBe(600);
+  });
+
+  it('an override changes calories only: workouts and their minutes stay', () => {
+    const days = (entries: ChallengeEntry[]) =>
+      scoreChallengeDays(
+        { entries, steps: {}, zones },
+        day,
+        day,
+        rulesWith({ metric: 'active_calories' })
+      )[0]!;
+    const plain = days([run('r')]);
+    const changed = days([overridden('r', 0)]);
+    expect(changed.workouts).toBe(plain.workouts);
+    expect(changed.minutes).toBe(plain.minutes);
+    expect(changed.total).toBe(0);
+  });
+
   it('only an active-calories challenge reads the daily totals', () => {
     expect(
       challengeDailyCalories(
