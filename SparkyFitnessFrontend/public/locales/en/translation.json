@@ -11248,8 +11248,8 @@
       "zones": "Effort, by your own heart-rate zones: {{rates}} points a minute in zones 1 to 5.",
       "noHr": "Below zone 1: {{below}} a minute. No heart rate at all: {{none}} a minute.",
       "strength": "Lifting earns at least {{rate}} a minute, since rest between sets lowers heart rate.",
-      "tiers": "A day's first {{full}} minutes count in full, the next {{half}} at {{pct}}%, the rest not at all.",
-      "tiersFullOnly": "A day's first {{full}} minutes count; the rest do not.",
+      "tiers": "Up to {{full}} minutes a day count in full, highest-rate minutes first; the next {{half}} count at {{pct}}%, the rest not at all.",
+      "tiersFullOnly": "Up to {{full}} minutes a day count, highest-rate minutes first; the rest do not.",
       "steps": "Steps: 1 point per {{per}}, up to {{cap}} a day.",
       "pr": "Personal records: +{{bonus}} each, at most {{max}} a day.",
       "streak": "Streak: +{{bonus}} a day from day {{from}} in a row.",
@@ -11260,7 +11260,8 @@
       "minMinutes": "Workouts shorter than {{minutes}} minutes do not count.",
       "manualIgnore": "Workouts logged by hand do not count.",
       "manualCap": "Workouts logged by hand count up to {{minutes}} minutes a day.",
-      "merge": "A workout synced from two sources counts once."
+      "merge": "A workout synced from two sources counts once.",
+      "prSome": "Personal records ({{types}} only): +{{bonus}} each, at most {{max}} a day."
     },
     "leaderboard": {
       "you": "You",
@@ -11539,6 +11540,11 @@
       "hostOnly": "Only the host can do this. Hosting may have passed to someone else.",
       "periodLocked": "The period cannot change once the challenge has started.",
       "action": "That did not go through. Try again."
+    },
+    "prTypes": {
+      "lift": "lifts",
+      "distance": "distance",
+      "pace": "pace"
     }
   }
 }

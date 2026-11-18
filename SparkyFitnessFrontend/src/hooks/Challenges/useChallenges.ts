@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import {
   useMutation,
   useQueries,
@@ -238,6 +238,28 @@ export const useLeaveChallenge = () => {
       silentError: true,
     },
   });
+};
+
+/**
+ * After a leave, once the detail view has unmounted (nothing reads them any
+ * more), drops the left challenge's cached detail, standings and rule log, so
+ * going Back asks the server again and shows "not found" instead of the
+ * challenge as it was.
+ */
+export const useForgetLeftChallenge = () => {
+  const queryClient = useQueryClient();
+  return useCallback(
+    (id: string) => {
+      for (const queryKey of [
+        challengeKeys.detail(id),
+        challengeKeys.standingsOf(id),
+        challengeKeys.ruleChanges(id),
+      ]) {
+        queryClient.removeQueries({ queryKey });
+      }
+    },
+    [queryClient]
+  );
 };
 
 /** The person's distance and energy units, for challenge amounts. */

@@ -210,6 +210,69 @@ describe('Challenges page', () => {
     );
   });
 
+  it('shows a code made while another tab was open', async () => {
+    let finish: (value: { code: string; expires_at: string }) => void = () =>
+      undefined;
+    api.createChallengeInvite.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      })
+    );
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Members' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Make an invite code' })
+    );
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Standings' }));
+    await waitFor(() =>
+      expect(screen.queryByTestId('invite-panel')).not.toBeInTheDocument()
+    );
+    finish({ code: INVITE_CODE, expires_at: '2026-11-21T00:00:00.000Z' });
+    await waitFor(() =>
+      expect(api.createChallengeInvite).toHaveBeenCalledTimes(1)
+    );
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Members' }));
+    expect(await screen.findByDisplayValue(INVITE_CODE)).toBeInTheDocument();
+  });
+
+  it('after a leave, Back asks again and shows the challenge is gone', async () => {
+    api.leaveChallenge.mockResolvedValue(undefined as never);
+    const Back = () => {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate(-1)}>Back</button>;
+    };
+    const { Wrapper } = wrapper();
+    render(
+      <Wrapper>
+        <MemoryRouter
+          initialEntries={['/challenges', `/challenges/${CHALLENGE_ID}`]}
+          initialIndex={1}
+        >
+          <Back />
+          <Routes>
+            <Route path="/challenges" element={<Challenges />} />
+            <Route path="/challenges/:challengeId" element={<Challenges />} />
+          </Routes>
+        </MemoryRouter>
+      </Wrapper>
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Leave' }));
+    const dialog = await screen.findByRole('dialog');
+    api.listChallenges.mockResolvedValue([]);
+    api.getChallenge.mockRejectedValue(
+      new HttpApiError('Challenge not found', 404, 'CHALLENGE_NOT_FOUND')
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Leave' }));
+    expect(await screen.findByText(/No challenges yet/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(
+      await screen.findByText(/not found, or you are not a member/)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Leave' })
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps the shown invite code when the host switches tabs and back', async () => {
     api.createChallengeInvite.mockResolvedValue({
       code: INVITE_CODE,

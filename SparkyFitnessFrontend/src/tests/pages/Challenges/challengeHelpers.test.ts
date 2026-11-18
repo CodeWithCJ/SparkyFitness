@@ -65,7 +65,7 @@ describe('How points work', () => {
     expect(text).toContain('Steps: 1 point per 1,000, up to 10 a day.');
     expect(text).toContain('Streak: +5 a day from day 3 in a row.');
     expect(text).toContain(
-      "A day's first 60 minutes count in full, the next 30 at 50%, the rest not at all."
+      'Up to 60 minutes a day count in full, highest-rate minutes first; the next 30 count at 50%, the rest not at all.'
     );
     expect(text).toContain('Only your best 5 days of each week count.');
   });
@@ -104,6 +104,28 @@ describe('How points work', () => {
     // 30 full minutes at 2, then 15 at half rate.
     expect(pointsExample(tiered)?.effort).toBe(75);
     expect(pointsExample(challengePreset('workweek_hustle').rules)).toBeNull();
+  });
+
+  it('lengthens the example workout to the shortest one that counts', () => {
+    const long = rules({
+      activities: { ...allRounder.activities, minMinutes: 60 },
+    });
+    expect(pointsExample(long)?.workoutMinutes).toBe(60);
+  });
+
+  it('names the kinds of personal record that count when not all do', () => {
+    const liftOnly = rules({
+      points: {
+        ...allRounder.points!,
+        pr: { ...allRounder.points!.pr!, types: ['lift'] },
+      },
+    });
+    expect(ruleLines(t, liftOnly, km).map((l) => l.text)).toContain(
+      'Personal records (lifts only): +15 each, at most 2 a day.'
+    );
+    expect(changedRuleLines(t, allRounder, liftOnly, km)).toContain(
+      'Personal records (lifts only): +15 each, at most 2 a day.'
+    );
   });
 
   it("holds the example day to the challenge's daily cap", () => {

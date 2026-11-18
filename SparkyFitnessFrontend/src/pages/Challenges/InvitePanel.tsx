@@ -8,10 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import {
-  useCreateChallengeInvite,
-  useRevokeChallengeInvite,
-} from '@/hooks/Challenges/useChallenges';
 import { challengeInviteLink } from './challengeLinks';
 
 /**
@@ -21,20 +17,26 @@ import { challengeInviteLink } from './challengeLinks';
 const InvitePanel = ({
   challenge,
   invite,
-  onInvite,
+  busy,
+  onCreate,
+  onRevoke,
 }: {
   challenge: ChallengeDetail;
-  /** Kept by the detail view, so the code survives a switch of tabs. */
+  /**
+   * The code, the requests and their results are kept by the detail view, so
+   * they survive a switch of tabs.
+   */
   invite: ChallengeInviteResponse | null;
-  onInvite: (invite: ChallengeInviteResponse | null) => void;
+  /**
+   * A create or revoke is running. One at a time: a revoke racing a create
+   * could turn off the new code while it is still shown as shareable.
+   */
+  busy: boolean;
+  onCreate: () => void;
+  onRevoke: () => void;
 }) => {
   const { t } = useTranslation();
   const { formatDate } = usePreferences();
-  const create = useCreateChallengeInvite();
-  const revoke = useRevokeChallengeInvite();
-  // One at a time: a revoke racing a create could turn off the new code
-  // while it is still shown as shareable.
-  const busy = create.isPending || revoke.isPending;
   const link = invite
     ? challengeInviteLink(window.location.origin, invite.code)
     : null;
@@ -104,24 +106,13 @@ const InvitePanel = ({
         </div>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button
-          onClick={() =>
-            create.mutate(challenge.id, { onSuccess: (r) => onInvite(r) })
-          }
-          disabled={busy || !!challenge.ended_at}
-        >
+        <Button onClick={onCreate} disabled={busy || !!challenge.ended_at}>
           {challenge.invite_active
             ? t('challenges.invite.newCode', 'Make a new code')
             : t('challenges.invite.create', 'Make an invite code')}
         </Button>
         {challenge.invite_active && (
-          <Button
-            variant="outline"
-            onClick={() =>
-              revoke.mutate(challenge.id, { onSuccess: () => onInvite(null) })
-            }
-            disabled={busy}
-          >
+          <Button variant="outline" onClick={onRevoke} disabled={busy}>
             <XCircle className="mr-2 h-4 w-4" />
             {t('challenges.invite.revoke', 'Turn off the code')}
           </Button>

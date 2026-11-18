@@ -3,6 +3,7 @@ import {
   CHALLENGE_MAX_BACKDATE_DAYS,
   CHALLENGE_MAX_LENGTH_DAYS,
   CHALLENGE_MAX_START_AHEAD_DAYS,
+  CHALLENGE_PR_TYPES,
   challengeDayEffort,
   challengeStepPoints,
   energyFromKcal,
@@ -16,6 +17,7 @@ import {
   type ChallengeManualEntryMode,
   type ChallengeMetric,
   type ChallengePeriod,
+  type ChallengePrType,
   type ChallengePresetId,
   type ChallengeRules,
 } from '@workspace/shared';
@@ -156,6 +158,18 @@ export function manualEntriesLabel(
       return t('challenges.manualEntries.cap', 'Count up to a cap');
     case 'ignore':
       return t('challenges.manualEntries.ignore', 'Ignore');
+  }
+}
+
+/** A kind of personal record, for the rule lines. */
+export function prTypeLabel(t: TFunction, type: ChallengePrType): string {
+  switch (type) {
+    case 'lift':
+      return t('challenges.prTypes.lift', 'lifts');
+    case 'distance':
+      return t('challenges.prTypes.distance', 'distance');
+    case 'pace':
+      return t('challenges.prTypes.pace', 'pace');
   }
 }
 
@@ -487,7 +501,7 @@ export function ruleLines(
           p.minuteTiers.half > 0
             ? t(
                 'challenges.how.tiers',
-                "A day's first {{full}} minutes count in full, the next {{half}} at {{pct}}%, the rest not at all.",
+                'Up to {{full}} minutes a day count in full, highest-rate minutes first; the next {{half}} count at {{pct}}%, the rest not at all.',
                 {
                   full: p.minuteTiers.full,
                   half: p.minuteTiers.half,
@@ -496,7 +510,7 @@ export function ruleLines(
               )
             : t(
                 'challenges.how.tiersFullOnly',
-                "A day's first {{full}} minutes count; the rest do not.",
+                'Up to {{full}} minutes a day count, highest-rate minutes first; the rest do not.',
                 { full: p.minuteTiers.full }
               ),
       });
@@ -515,13 +529,28 @@ export function ruleLines(
       });
     }
     if (p.pr) {
+      const allTypes = CHALLENGE_PR_TYPES.every((type) =>
+        p.pr?.types.includes(type)
+      );
       lines.push({
         key: 'pr',
-        text: t(
-          'challenges.how.pr',
-          'Personal records: +{{bonus}} each, at most {{max}} a day.',
-          { bonus: p.pr.bonus, max: p.pr.dailyMax }
-        ),
+        text: allTypes
+          ? t(
+              'challenges.how.pr',
+              'Personal records: +{{bonus}} each, at most {{max}} a day.',
+              { bonus: p.pr.bonus, max: p.pr.dailyMax }
+            )
+          : t(
+              'challenges.how.prSome',
+              'Personal records ({{types}} only): +{{bonus}} each, at most {{max}} a day.',
+              {
+                types: p.pr.types
+                  .map((type) => prTypeLabel(t, type))
+                  .join(', '),
+                bonus: p.pr.bonus,
+                max: p.pr.dailyMax,
+              }
+            ),
       });
     }
     if (p.streak) {
@@ -631,13 +660,14 @@ export interface PointsExample {
 
 /**
  * A worked example for the points metric, scored by the shared scorer with
- * this challenge's rules: a 45-minute workout all in zone 3, plus 8,000
- * steps, held to the challenge's daily cap like a real day. Null for any
- * other metric.
+ * this challenge's rules: a 45-minute workout all in zone 3 (longer if the
+ * challenge's shortest counted workout is longer, so the example counts),
+ * plus 8,000 steps, held to the challenge's daily cap like a real day. Null
+ * for any other metric.
  */
 export function pointsExample(rules: ChallengeRules): PointsExample | null {
   if (rules.metric !== 'points' || !rules.points) return null;
-  const workoutMinutes = 45;
+  const workoutMinutes = Math.max(45, Math.ceil(rules.activities.minMinutes));
   const zone = 3;
   const steps = 8000;
   const zoneSeconds = [0, 0, 0, 0, 0];

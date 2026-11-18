@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, Settings2, Users } from 'lucide-react';
@@ -14,7 +14,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import {
   useChallengeUnits,
+  useCreateChallengeInvite,
+  useForgetLeftChallenge,
   useLeaveChallenge,
+  useRevokeChallengeInvite,
 } from '@/hooks/Challenges/useChallenges';
 import ChallengeLeaderboard, { type StandingRow } from './ChallengeLeaderboard';
 import EditRulesDialog from './EditRulesDialog';
@@ -38,6 +41,19 @@ const ChallengeDetailView = ({
   const { formatDateInUserTimezone } = usePreferences();
   const units = useChallengeUnits();
   const leave = useLeaveChallenge();
+  const forgetLeft = useForgetLeftChallenge();
+  // Held here, not in the Members tab, so a code made or turned off while
+  // another tab is open still lands when the request finishes.
+  const createInvite = useCreateChallengeInvite();
+  const revokeInvite = useRevokeChallengeInvite();
+  const left = useRef(false);
+  const challengeId = challenge.id;
+  useEffect(
+    () => () => {
+      if (left.current) forgetLeft(challengeId);
+    },
+    [challengeId, forgetLeft]
+  );
   const [member, setMember] = useState<{
     row: StandingRow;
     periodStart: string;
@@ -207,7 +223,17 @@ const ChallengeDetailView = ({
                 <InvitePanel
                   challenge={challenge}
                   invite={invite}
-                  onInvite={setInvite}
+                  busy={createInvite.isPending || revokeInvite.isPending}
+                  onCreate={() =>
+                    createInvite.mutate(challenge.id, {
+                      onSuccess: (r) => setInvite(r),
+                    })
+                  }
+                  onRevoke={() =>
+                    revokeInvite.mutate(challenge.id, {
+                      onSuccess: () => setInvite(null),
+                    })
+                  }
                 />
               </CardContent>
             </Card>
@@ -255,6 +281,7 @@ const ChallengeDetailView = ({
         onConfirm={() =>
           leave.mutate(challenge.id, {
             onSuccess: () => {
+              left.current = true;
               setLeaving(false);
               navigate('/challenges');
             },
