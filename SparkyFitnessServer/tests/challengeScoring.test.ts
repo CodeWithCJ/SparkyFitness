@@ -2070,6 +2070,23 @@ describe('an active-calories day scores like the Diary', () => {
     expect(changed.total).toBe(0);
   });
 
+  it('a daily total posted to /health-data without a source is typed in, as a sourceless workout is', () => {
+    // /health-data stores a post with no source as 'manual'; manual is decided
+    // by the source alone, so a challenge can't tell it from a typed-in total
+    const posted = total('p', 2500, 'manual');
+    const with_ = (manualEntries: 'count' | 'cap' | 'ignore') =>
+      challengeDailyCalories(
+        [posted],
+        rulesWith({ metric: 'active_calories', activities: { manualEntries } })
+      ).get(day) ?? 0;
+    expect(with_('count')).toBe(2500);
+    expect(with_('cap')).toBe(0);
+    expect(with_('ignore')).toBe(0);
+    expect(isManualEntry(posted)).toBe(
+      isManualEntry(run('w', { source: 'manual' }))
+    );
+  });
+
   it('only an active-calories challenge reads the daily totals', () => {
     expect(
       challengeDailyCalories(
