@@ -20,6 +20,7 @@ import {
   Copy,
   PlusCircle,
   Users,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useState } from 'react';
 import EnhancedFoodSearch from '../../components/FoodSearch/FoodSearch';
@@ -92,6 +93,61 @@ const mealCardEntryImages = (item: FoodEntry | FoodEntryMeal): string[] => {
   return override.length > 0
     ? override
     : usableFoodImages(loggedMeal.meal_images);
+};
+
+interface EntryThumbnailProps {
+  src: string | null;
+  alt: string;
+  /** Whether a row without a usable image keeps an image-sized slot. */
+  reserveSpace: boolean;
+  viewLabel: string;
+  onOpen: () => void;
+}
+
+/**
+ * A diary row's image, opening the lightbox. A row without one, or whose
+ * image fails to load, shows a placeholder of the same size from sm up, so
+ * the nutrient grids of a meal's rows line up.
+ */
+const EntryThumbnail = ({
+  src,
+  alt,
+  reserveSpace,
+  viewLabel,
+  onOpen,
+}: EntryThumbnailProps) => {
+  // Remembers the failed address, so a new image is tried again.
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+
+  if (src && src !== failedSrc) {
+    return (
+      <button
+        type="button"
+        className="flex-shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onClick={onOpen}
+        aria-label={viewLabel}
+      >
+        <img
+          src={src}
+          alt={alt}
+          className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
+          loading="lazy"
+          // A dead provider link shouldn't leave a broken icon.
+          onError={() => setFailedSrc(src)}
+        />
+      </button>
+    );
+  }
+  if (!src && !reserveSpace) return null;
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="meal-entry-image-placeholder"
+      className="hidden sm:flex w-16 h-16 flex-shrink-0 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700"
+    >
+      <UtensilsCrossed className="h-6 w-6 text-muted-foreground" />
+    </div>
+  );
 };
 
 interface MealCardProps {
@@ -666,35 +722,15 @@ const MealCard = ({
                       entryIsHighlighted && 'border-2 border-blue-500'
                     )}
                   >
-                    {!entryImageSrc && mealHasImages && (
-                      <div
-                        aria-hidden="true"
-                        data-testid="meal-entry-image-placeholder"
-                        className="hidden sm:block w-16 h-16 flex-shrink-0"
-                      />
-                    )}
-                    {entryImageSrc && (
-                      <button
-                        type="button"
-                        className="flex-shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onClick={() =>
-                          openLightbox(entryImages, 0, entryName ?? undefined)
-                        }
-                        aria-label={t('food.viewImages', 'View images')}
-                      >
-                        <img
-                          src={entryImageSrc}
-                          alt={entryName ?? ''}
-                          className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
-                          loading="lazy"
-                          onError={(e) => {
-                            // A dead provider link shouldn't leave a broken
-                            // icon; keep its space so the row stays aligned.
-                            e.currentTarget.style.visibility = 'hidden';
-                          }}
-                        />
-                      </button>
-                    )}
+                    <EntryThumbnail
+                      src={entryImageSrc}
+                      alt={entryName ?? ''}
+                      reserveSpace={mealHasImages}
+                      viewLabel={t('food.viewImages', 'View images')}
+                      onOpen={() =>
+                        openLightbox(entryImages, 0, entryName ?? undefined)
+                      }
+                    />
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
                         <span className="font-medium">{entryName}</span>

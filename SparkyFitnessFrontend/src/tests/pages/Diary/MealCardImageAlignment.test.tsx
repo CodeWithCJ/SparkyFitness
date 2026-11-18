@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -51,6 +51,26 @@ const entry = (id: string, images: string[] | null): FoodEntry =>
     images,
   }) as FoodEntry;
 
+// The placeholder for a row without a usable image: the dimmed food icon on a
+// muted tile, hidden from assistive tech and not interactive.
+const expectPlaceholder = (placeholder: HTMLElement) => {
+  expect(placeholder).toHaveAttribute('aria-hidden', 'true');
+  expect(placeholder).toHaveClass(
+    'hidden',
+    'sm:flex',
+    'w-16',
+    'h-16',
+    'flex-shrink-0',
+    'rounded-md',
+    'bg-gray-100',
+    'dark:bg-gray-700'
+  );
+  const icon = placeholder.querySelector('svg.lucide-utensils-crossed');
+  expect(icon).not.toBeNull();
+  expect(icon).toHaveClass('h-6', 'w-6', 'text-muted-foreground');
+  expect(within(placeholder).queryByRole('button')).toBeNull();
+};
+
 const renderMeal = (entries: FoodEntry[]) => {
   const props: ComponentProps<typeof MealCard> = {
     meal: {
@@ -91,14 +111,7 @@ describe('MealCard desktop image alignment', () => {
     const placeholders = screen.getAllByTestId('meal-entry-image-placeholder');
     expect(placeholders).toHaveLength(2);
     for (const placeholder of placeholders) {
-      expect(placeholder).toHaveAttribute('aria-hidden', 'true');
-      expect(placeholder).toHaveClass(
-        'hidden',
-        'sm:block',
-        'w-16',
-        'h-16',
-        'flex-shrink-0'
-      );
+      expectPlaceholder(placeholder);
     }
   });
 
@@ -110,13 +123,21 @@ describe('MealCard desktop image alignment', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps the space of an image that fails to load', () => {
+  it('turns an image that fails to load into the placeholder', () => {
     renderMeal([entry('a', ['https://example.com/a.jpg']), entry('b', null)]);
 
-    const image = screen.getByRole('img', { name: 'Food a' });
-    fireEvent.error(image);
+    expect(screen.getAllByTestId('meal-entry-image-placeholder')).toHaveLength(
+      1
+    );
+    fireEvent.error(screen.getByRole('img', { name: 'Food a' }));
 
-    expect(image).toHaveStyle({ visibility: 'hidden' });
-    expect(image).not.toHaveStyle({ display: 'none' });
+    expect(screen.queryByRole('img', { name: 'Food a' })).toBeNull();
+    // The lightbox button is gone, so it can no longer be clicked or focused.
+    expect(
+      screen.queryByRole('button', { name: 'View images' })
+    ).not.toBeInTheDocument();
+    const placeholders = screen.getAllByTestId('meal-entry-image-placeholder');
+    expect(placeholders).toHaveLength(2);
+    placeholders.forEach(expectPlaceholder);
   });
 });
