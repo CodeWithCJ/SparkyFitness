@@ -35,6 +35,7 @@ import {
 } from '../constants/exercise.ts';
 import { resolveExerciseCalories } from '../utils/calorieCalculations.ts';
 import {
+  calorieLinkFixedSide,
   isCalorieLinkWorkoutSource,
   type CalorieLinkResolution,
 } from '../utils/exerciseCalorieLink.ts';
@@ -94,6 +95,12 @@ export interface ChallengeEntry {
   calorieLinkResolution?: CalorieLinkResolution | null;
   /** On the copy that was kept: the ids of the copies merged into it, comma-separated. */
   mergedFrom?: string;
+  /**
+   * Under a manual cap, on a measured copy with no start time: the typed-in
+   * copy with one that merged into it. A time window counts that copy
+   * instead, capped, so a typed time never moves a measured workout into it.
+   */
+  typedTimedCopy?: ChallengeEntry;
 }
 
 /** The member's own heart-rate zones (resolved with resolveHeartRateZones). */
@@ -536,10 +543,10 @@ const minuteOfDay = (time: string | null | undefined): number | null => {
  * start times are known, starting within 15 minutes of each other are merged:
  * the copy with heart rate is kept and fills in a missing time, distance or
  * lift from the other. Two workouts from the same source are never merged.
- * With `capManual` (manual entries are capped), a typed-in copy never fills
- * an amount the cap would cut (distance, calories, elevation) into a measured
- * one, which the cap does not reach, nor its start time, which decides a
- * time window.
+ * With `capManual` (manual entries are capped), a typed-in copy fills
+ * nothing into a measured one, which the cap does not reach: no amount the
+ * cap would cut (distance, calories, elevation), no lift, and no start time,
+ * which decides a time window (see `typedTimedCopy`).
  */
 export function mergeChallengeDuplicates(
   entries: readonly ChallengeEntry[],
@@ -620,19 +627,17 @@ export function mergeChallengeDuplicates(
         ...keep!,
         mergedFrom: others.map((o) => o.id).join(','),
       };
+      const keepMeasured = capManual && !isManualEntry(keep!);
       for (const other of others) {
-        // Under cap a typed-in copy's start time never moves a measured
-        // workout into or out of a time window
-        const typedIntoMeasured =
-          capManual && isManualEntry(other) && !isManualEntry(keep!);
-        if (!merged.time && other.time && !typedIntoMeasured)
-          merged.time = other.time;
-        if (!(num(merged.bestE1rm) > 0) && num(other.bestE1rm) > 0)
-          merged.bestE1rm = other.bestE1rm;
-        if (typedIntoMeasured) {
+        if (keepMeasured && isManualEntry(other)) {
+          if (other.time && !merged.typedTimedCopy)
+            merged.typedTimedCopy = other;
           drop.add(other.id);
           continue;
         }
+        if (!merged.time && other.time) merged.time = other.time;
+        if (!(num(merged.bestE1rm) > 0) && num(other.bestE1rm) > 0)
+          merged.bestE1rm = other.bestE1rm;
         if (!(num(merged.distanceM) > 0) && num(other.distanceM) > 0)
           merged.distanceM = other.distanceM;
         if (!(num(merged.activeCalories) > 0) && num(other.activeCalories) > 0)
@@ -641,6 +646,7 @@ export function mergeChallengeDuplicates(
           merged.elevationM = other.elevationM;
         drop.add(other.id);
       }
+      if (merged.time) delete merged.typedTimedCopy;
       out.set(keep!.id, merged);
     }
   }
@@ -649,28 +655,20 @@ export function mergeChallengeDuplicates(
 
 /**
  * Whether this side of a Diary calorie link is the one the link counts, read
- * from how the link was resolved, never from a 0: a custom figure of 0 sets
- * both sides to 0. `sparkyfitness`, `average` and `custom` count the side
- * logged in SparkyFitness (or Hevy), `synced` the other; `higher` and `lower`
- * leave the side they keep at its own estimate (no `calories_applied`) and set
- * the other to 0. A link stored without a resolution falls back to the side
- * that is not 0.
+ * from how the link was resolved (calorieLinkFixedSide, the Diary's own
+ * mapping), never from a 0: a custom figure of 0 sets both sides to 0.
+ * `higher` and `lower` leave the side they keep at its own estimate (no
+ * `calories_applied`) and set the other to 0. A link stored without a
+ * resolution falls back to the side that is not 0.
  */
 function calorieLinkSideCounts(e: ChallengeEntry): boolean {
-  const appSide = isCalorieLinkWorkoutSource(e.source);
-  switch (e.calorieLinkResolution) {
-    case 'sparkyfitness':
-    case 'average':
-    case 'custom':
-      return appSide;
-    case 'synced':
-      return !appSide;
-    case 'higher':
-    case 'lower':
-      return e.caloriesEstimate === undefined;
-    default:
-      return num(e.activeCalories) !== 0;
-  }
+  const resolution = e.calorieLinkResolution;
+  if (!resolution) return num(e.activeCalories) !== 0;
+  const fixed = calorieLinkFixedSide(resolution);
+  if (fixed)
+    return isCalorieLinkWorkoutSource(e.source) === (fixed === 'manual');
+  // `higher` and `lower` type no figure: the kept side is its own estimate
+  return e.caloriesEstimate === undefined || num(e.activeCalories) !== 0;
 }
 
 /**
@@ -686,8 +684,9 @@ function calorieLinkSideCounts(e: ChallengeEntry): boolean {
  * figure and nothing for the typed-in side, so the pair counts once, merged
  * or not. A link of two measured entries counts the side its resolution
  * picks (calorieLinkSideCounts) at that side's own figure, not an average or
- * custom one, a custom 0 included; one of two typed-in
- * entries keeps its figures. Pass every entry, the ignored ones too, so both sides are seen.
+ * custom one, a custom 0 included. A link of two typed-in entries keeps
+ * their figures. Pass every entry, the ignored ones too, so both sides are
+ * seen.
  */
 export function challengeTypedCalories(
   entries: readonly ChallengeEntry[],
@@ -757,6 +756,13 @@ export function challengeCountedEntries(
   let list = a.mergeDuplicates
     ? mergeChallengeDuplicates(eligible, {
         capManual: a.manualEntries === 'cap',
+      }).map((e) => {
+        if (!e.typedTimedCopy) return e;
+        // In a time window, only the typed-in copy's time places the
+        // workout, so that copy counts, capped as entered
+        if (rules.timeWindow) return e.typedTimedCopy;
+        const { typedTimedCopy: _typed, ...measured } = e;
+        return measured;
       })
     : [...eligible];
   list = list.filter((e) => {

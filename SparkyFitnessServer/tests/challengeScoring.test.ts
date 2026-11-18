@@ -1438,21 +1438,45 @@ describe('duplicate merge, second round', () => {
     const [kept] = mergeChallengeDuplicates([watch, typed], {
       capManual: true,
     });
-    expect(kept).toMatchObject({ id: 'w' });
+    expect(kept).toMatchObject({ id: 'w', typedTimedCopy: { id: 'm' } });
     expect(kept!.time).toBeUndefined();
-    const counted = (manualEntries: 'count' | 'cap') =>
+    const counted = (
+      manualEntries: 'count' | 'cap',
+      timeWindow: { start: string; end: string } | null
+    ) =>
       challengeCountedEntries(
         [watch, typed],
         rulesWith({
           metric: 'active_minutes',
-          activities: { manualEntries, manualMinutesCap: 60 },
-          timeWindow: { start: '06:00', end: '09:00' },
+          activities: { manualEntries, manualMinutesCap: 15 },
+          timeWindow,
         })
-      ).map((e) => e.id);
-    expect(counted('cap')).toEqual([]);
+      ).map((e) => [e.id, e.durationMin, e.time]);
+    const window = { start: '06:00', end: '09:00' };
+    // Only the typed time places it in the window, so the typed-in copy
+    // counts there, capped, as it would without the watch's copy
+    expect(counted('cap', window)).toEqual([['m', 15, '06:30']]);
+    // With no window the watch's copy counts in full, once
+    expect(counted('cap', null)).toEqual([['w', 30, undefined]]);
     // Counted in full, the typed-in time fills in as before
     expect(mergeChallengeDuplicates([watch, typed])[0]!.time).toBe('06:30');
-    expect(counted('count')).toEqual(['w']);
+    expect(counted('count', window)).toEqual([['w', 30, '06:30']]);
+    // A measured copy with its own time keeps it
+    const [timed] = mergeChallengeDuplicates(
+      [run('w', 'garmin', { avgHr: 150, time: '05:50' }), typed],
+      { capManual: true }
+    );
+    expect(timed).toMatchObject({ time: '05:50' });
+    expect(timed!.typedTimedCopy).toBeUndefined();
+  });
+
+  it("under cap a typed-in copy's lift never fills into the measured copy", () => {
+    const watch = run('w', 'garmin', { avgHr: 120, name: 'Bench Press' });
+    const typed = run('m', 'Manual', { name: 'Bench Press', bestE1rm: 200 });
+    expect(
+      mergeChallengeDuplicates([watch, typed], { capManual: true })[0]!.bestE1rm
+    ).toBeUndefined();
+    expect(mergeChallengeDuplicates([watch, typed])[0]!.bestE1rm).toBe(200);
   });
 
   it('with manual entries ignored, the timed copy of the same workout is kept', () => {
@@ -2159,6 +2183,60 @@ describe('an active-calories day scores like the Diary', () => {
         })
       ).toBe(300);
     }
+  });
+
+  it('every link resolution counts one side at its own figure under cap, merged or not', () => {
+    const link = (
+      resolution: ChallengeEntry['calorieLinkResolution'],
+      appApplied: number | null,
+      watchApplied: number | null,
+      app: Partial<ChallengeEntry> = {}
+    ) => {
+      const ids = { calorieLinkId: 'L', calorieLinkResolution: resolution };
+      const appSide = run('s', {
+        source: 'sparky',
+        activeCalories: appApplied ?? 280,
+        ...(appApplied !== null ? { caloriesEstimate: 280 } : {}),
+        ...ids,
+        ...app,
+      });
+      const watch = run('w', {
+        time: '07:30',
+        activeCalories: watchApplied ?? 300,
+        ...(watchApplied !== null ? { caloriesEstimate: 300 } : {}),
+        ...ids,
+      });
+      return [appSide, watch];
+    };
+    const cases: [ChallengeEntry[], number][] = [
+      [link('sparkyfitness', null, 0), 280],
+      [link('synced', 0, null), 300],
+      [link('higher', 0, null), 300],
+      [link('lower', null, 0), 280],
+      [link('average', 290, 0), 280],
+      [link('custom', 0, 0), 280],
+      // Hevy is the SparkyFitness side of a link too
+      [link('custom', 0, 0, { source: 'hevy' }), 280],
+      // No stored resolution: the side that is not 0
+      [link(null, null, 0), 280],
+    ];
+    for (const [entries, expected] of cases) {
+      const resolution = entries[0]!.calorieLinkResolution;
+      for (const mergeDuplicates of [true, false]) {
+        const merged = mergeDuplicates
+          ? entries.map((e) => ({ ...e, time: '07:00' }))
+          : entries;
+        expect(
+          kcal(merged, null, { manualEntries: 'cap', mergeDuplicates }),
+          `${resolution} merged=${mergeDuplicates}`
+        ).toBe(expected);
+      }
+    }
+    // A session of two exercises on the SparkyFitness side, custom 0
+    const [a, w] = link('custom', 0, 0);
+    const b = { ...a!, id: 's2', time: '08:00', caloriesEstimate: 120 };
+    expect(kcal([a!, b, w!], null, { manualEntries: 'cap' })).toBe(400);
+    expect(kcal([a!, b, w!], null)).toBe(0);
   });
 
   it('under cap a typed-in copy never fills calories, distance or elevation into a measured one', () => {
