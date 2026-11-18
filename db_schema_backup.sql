@@ -2807,7 +2807,9 @@ CREATE TABLE public.food_entries (
     caffeine_mg numeric,
     water_ml numeric,
     alcohol_g numeric,
+    cooked_quantity numeric,
     CONSTRAINT chk_food_or_meal_id CHECK (((food_id IS NULL) OR (meal_id IS NULL))),
+    CONSTRAINT food_entries_cooked_quantity_positive CHECK (((cooked_quantity IS NULL) OR (cooked_quantity > (0)::numeric))),
     CONSTRAINT food_entries_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text)),
     CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
 );
@@ -2860,6 +2862,13 @@ COMMENT ON COLUMN public.food_entries.water_ml IS 'Log-time snapshot of the vari
 --
 
 COMMENT ON COLUMN public.food_entries.alcohol_g IS 'Log-time snapshot of the variant''s alcohol_g. NULL on rows predating this column.';
+
+
+--
+-- Name: COLUMN food_entries.cooked_quantity; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.cooked_quantity IS 'Cooked weight eaten, in the same unit as quantity (the raw weight). NULL when the entry was not weighed cooked.';
 
 
 --
