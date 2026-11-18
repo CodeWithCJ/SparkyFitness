@@ -191,27 +191,47 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
         }
         continue;
       }
+      // Every result applies only to the row that was sent: if the work was
+      // replaced while the request was out (the row went back to pending),
+      // this outcome says nothing about the newer version.
+      const whileSending = { onlyIfStatus: 'sending' } as const;
       if (result.outcome === 'retry') {
-        await updateOutboxRow(db, row.id, {
-          status: 'pending',
-          attempts: row.attempts + 1,
-          lastError: result.error ?? null,
-        });
+        await updateOutboxRow(
+          db,
+          row.id,
+          {
+            status: 'pending',
+            attempts: row.attempts + 1,
+            lastError: result.error ?? null,
+          },
+          undefined,
+          whileSending
+        );
         // The server is not answering; the rows behind this one would only
         // fail the same way.
         stopped = true;
         break;
       }
       if (result.outcome === 'needs_sign_in') {
-        await updateOutboxRow(db, row.id, { status: 'needs_sign_in' });
+        await updateOutboxRow(
+          db,
+          row.id,
+          { status: 'needs_sign_in' },
+          undefined,
+          whileSending
+        );
         // Every later row would be refused with the same credentials.
         stopped = true;
         break;
       }
-      await updateOutboxRow(db, row.id, {
-        status: result.outcome,
-        lastError: result.error ?? null,
-      });
+      const recorded = await updateOutboxRow(
+        db,
+        row.id,
+        { status: result.outcome, lastError: result.error ?? null },
+        undefined,
+        whileSending
+      );
+      if (!recorded) continue;
       addLog('[Offline] Upload needs attention', 'WARNING', [
         `kind: ${row.kind}`,
         `status: ${result.outcome}`,

@@ -216,6 +216,36 @@ describe('offline sync engine', () => {
     expect((await getOutboxRow(db, 'b'))?.status).toBe('synced');
   });
 
+  it('does not let the failure of an older upload mark newer work', async () => {
+    await queue('a');
+    send.mockImplementationOnce(async () => {
+      // The work is replaced while its request is out, then the old request
+      // is refused as a conflict.
+      await enqueueOutbox(
+        db,
+        {
+          id: 'a-again',
+          serverConfigId: 's1',
+          userId: 'u1',
+          kind: KIND,
+          entityId: 'entity-a',
+          payload: { id: 'newer' },
+          payloadVersion: 2,
+        },
+        Date.now() + 5_000
+      );
+      return { outcome: 'conflict', error: 'changed' } as SendResult;
+    });
+
+    await drainOutbox('reconnect');
+
+    expect(await getOutboxRow(db, 'a')).toMatchObject({
+      status: 'pending',
+      lastError: null,
+      payload: { id: 'newer' },
+    });
+  });
+
   it('keeps newer work queued when the upload that finished was of the older work', async () => {
     await queue('a');
     send.mockImplementationOnce(async () => {
