@@ -1,5 +1,7 @@
 import * as Notifications from 'expo-notifications';
+import { getCalendars } from 'expo-localization';
 import { Platform } from 'react-native';
+import { localDateTimeToUtc } from '@workspace/shared';
 
 import { reconcileMedicationReminders } from '../../src/services/medicationReminderService';
 import {
@@ -232,6 +234,7 @@ describe('reconcileMedicationReminders', () => {
             baseKey: BASE_KEY,
             hideNames: 'false',
             locale: 'en',
+            scheduledForMs: String(new Date(2026, 6, 28, 9, 0, 0, 0).getTime()),
           },
         },
         trigger: {
@@ -430,7 +433,11 @@ describe('reconcileMedicationReminders', () => {
     it('does not reschedule a dose whose base reminder is already pending', async () => {
       useAppPreferencesStore.setState({ medicationReminderRepeats: false });
       mockGetAllScheduled.mockResolvedValue([
-        pendingRequest('n1', { medicationId: 'med-1', key: BASE_KEY }),
+        pendingRequest('n1', {
+          medicationId: 'med-1',
+          key: BASE_KEY,
+          scheduledForMs: String(new Date(2026, 6, 28, 9, 0, 0, 0).getTime()),
+        }),
       ]);
 
       await reconcileMedicationReminders([buildMedication()], []);
@@ -441,7 +448,11 @@ describe('reconcileMedicationReminders', () => {
 
     it('adds the repeat pings behind an already-pending base reminder when repeats turn on mid-day', async () => {
       mockGetAllScheduled.mockResolvedValue([
-        pendingRequest('n1', { medicationId: 'med-1', key: BASE_KEY }),
+        pendingRequest('n1', {
+          medicationId: 'med-1',
+          key: BASE_KEY,
+          scheduledForMs: String(new Date(2026, 6, 28, 9, 0, 0, 0).getTime()),
+        }),
       ]);
 
       await reconcileMedicationReminders([buildMedication()], []);
@@ -456,6 +467,229 @@ describe('reconcileMedicationReminders', () => {
           `${BASE_KEY}_30`,
         ])
       );
+    });
+
+    it('replaces legacy pending reminders that carry no stamped fire instant', async () => {
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('legacy-unstamped', {
+          medicationId: 'med-1',
+          key: BASE_KEY,
+        }),
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], []);
+
+      expect(mockCancel).toHaveBeenCalledWith('legacy-unstamped');
+      expect(scheduledKeys()).toContain(BASE_KEY);
+    });
+
+    it('cancels PST-scheduled lookahead reminders and reschedules them in CST after traveling east', async () => {
+      const mockGetCalendars = getCalendars as jest.MockedFunction<
+        typeof getCalendars
+      >;
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+
+      // 2026-11-17 16:00:00Z = 08:00 PST (America/Los_Angeles) = 10:00 CST (America/Chicago)
+      jest.setSystemTime(new Date('2026-11-17T16:00:00.000Z'));
+
+      const med = buildMedication({
+        schedules: [buildSchedule({ time_of_day: '17:15:00' })],
+      });
+
+      // Step 1: Schedule 7 days while in Seattle (America/Los_Angeles, UTC-8)
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Los_Angeles',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+
+      await reconcileMedicationReminders([med], []);
+      expect(mockSchedule).toHaveBeenCalledTimes(7);
+
+      const pstScheduledRequests = mockSchedule.mock.calls.map((call, index) =>
+        pendingRequest(
+          `pst-${index}`,
+          call[0].content.data as Record<string, string>
+        )
+      );
+      const pstTodayTrigger = (
+        mockSchedule.mock.calls[0][0].trigger as { date: Date }
+      ).date;
+      // 17:15 PST = 2026-11-18T01:15:00.000Z
+      expect(pstTodayTrigger.toISOString()).toBe('2026-11-18T01:15:00.000Z');
+
+      // Step 2: Return to America/Chicago (CST, UTC-6) with PST notifications still pending
+      mockSchedule.mockClear();
+      mockCancel.mockClear();
+      mockGetAllScheduled.mockResolvedValue(pstScheduledRequests);
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Chicago',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+
+      await reconcileMedicationReminders([med], []);
+
+      // Every PST reminder across the 7-day lookahead is cancelled and replaced in CST
+      expect(mockCancel).toHaveBeenCalledTimes(7);
+      for (let i = 0; i < 7; i++) {
+        expect(mockCancel).toHaveBeenCalledWith(`pst-${i}`);
+      }
+      expect(mockSchedule).toHaveBeenCalledTimes(7);
+
+      const cstTodayTrigger = (
+        mockSchedule.mock.calls[0][0].trigger as { date: Date }
+      ).date;
+      // 17:15 CST = 2026-11-17T23:15:00.000Z (2 hours earlier than PST)
+      expect(cstTodayTrigger.toISOString()).toBe('2026-11-17T23:15:00.000Z');
+      expect(cstTodayTrigger.getTime()).toBe(
+        localDateTimeToUtc('2026-11-17T17:15:00', 'America/Chicago').getTime()
+      );
+
+      // Restore default mock behavior for subsequent tests
+      mockGetCalendars.mockImplementation(() => [
+        {
+          calendar: 'gregory',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+    });
+
+    it('cancels a pending PST reminder without re-firing when the CST dose time has already passed', async () => {
+      const mockGetCalendars = getCalendars as jest.MockedFunction<
+        typeof getCalendars
+      >;
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+
+      // 2026-11-17 16:00:00Z = 10:00 CST (09:00 CST has passed, but 09:00 PST = 17:00Z is still future)
+      jest.setSystemTime(new Date('2026-11-17T16:00:00.000Z'));
+      const pstNineAmMs = localDateTimeToUtc(
+        '2026-11-17T09:00:00',
+        'America/Los_Angeles'
+      ).getTime();
+
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('pst-morning', {
+          medicationId: 'med-1',
+          key: 'med_2026-11-17_med-1_sched-1_09:00:00',
+          baseKey: 'med_2026-11-17_med-1_sched-1_09:00:00',
+          hideNames: 'false',
+          locale: 'en',
+          scheduledForMs: String(pstNineAmMs),
+        }),
+      ]);
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Chicago',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+
+      await reconcileMedicationReminders(
+        [
+          buildMedication({
+            schedules: [buildSchedule({ time_of_day: '09:00:00' })],
+          }),
+        ],
+        []
+      );
+
+      // The 11:00 CST (09:00 PST) pending notification is cancelled, and today's
+      // already-past 09:00 CST slot is not scheduled; only the next 6 days are scheduled.
+      expect(mockCancel).toHaveBeenCalledWith('pst-morning');
+      expect(mockSchedule).toHaveBeenCalledTimes(6);
+      expect(scheduledKeys().some((k) => k.includes('2026-11-17'))).toBe(false);
+
+      mockGetCalendars.mockImplementation(() => [
+        {
+          calendar: 'gregory',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+    });
+
+    it('dismisses an already-delivered reminder that fired early in an eastern timezone when moving west', async () => {
+      const mockGetCalendars = getCalendars as jest.MockedFunction<
+        typeof getCalendars
+      >;
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+
+      // 2026-11-17 15:30:00Z = 09:30 CST (already fired in Chicago), 07:30 PST (not due yet in Seattle)
+      jest.setSystemTime(new Date('2026-11-17T15:30:00.000Z'));
+      const cstNineAmMs = localDateTimeToUtc(
+        '2026-11-17T09:00:00',
+        'America/Chicago'
+      ).getTime();
+      const key = 'med_2026-11-17_med-1_sched-1_09:00:00';
+
+      (
+        Notifications.getPresentedNotificationsAsync as jest.Mock
+      ).mockResolvedValue([
+        {
+          request: {
+            identifier: 'early-cst-banner',
+            content: {
+              data: {
+                medicationId: 'med-1',
+                key,
+                baseKey: key,
+                hideNames: 'false',
+                locale: 'en',
+                scheduledForMs: String(cstNineAmMs),
+              },
+            },
+          },
+        },
+      ]);
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Los_Angeles',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+
+      await reconcileMedicationReminders(
+        [
+          buildMedication({
+            schedules: [buildSchedule({ time_of_day: '09:00:00' })],
+          }),
+        ],
+        []
+      );
+
+      expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(
+        'early-cst-banner'
+      );
+      const todayCall = mockSchedule.mock.calls.find(
+        (c) => c[0].content.data?.key === key
+      );
+      expect(
+        (todayCall?.[0].trigger as { date: Date }).date.toISOString()
+      ).toBe('2026-11-17T17:00:00.000Z');
+
+      mockGetCalendars.mockImplementation(() => [
+        {
+          calendar: 'gregory',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
     });
 
     it('cancels stale reminders from a previous day and schedules fresh ones', async () => {

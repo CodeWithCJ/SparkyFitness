@@ -18,6 +18,22 @@ jest.mock('expo-localization', () => ({
       textDirection: 'ltr',
     },
   ]),
+  getCalendars: jest.fn(() => [
+    {
+      calendar: 'gregory',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      uses24hourClock: false,
+      firstWeekday: 1,
+    },
+  ]),
+  useCalendars: jest.fn(() => [
+    {
+      calendar: 'gregory',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      uses24hourClock: false,
+      firstWeekday: 1,
+    },
+  ]),
 }));
 
 // Mock radon-ide (ESM module that Jest can't transform)

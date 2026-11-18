@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { AppState } from 'react-native';
+import { useCalendars } from 'expo-localization';
 
 import { useMedications, useMedicationEntries } from '../hooks/useMedications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import { getTodayDate } from '../utils/dateUtils';
+import { getDeviceTimezone, getTodayDate } from '../utils/dateUtils';
 import { reconcileMedicationReminders } from '../services/medicationReminderService';
 import {
   maybePromptForExactAlarmPermission,
@@ -35,6 +36,13 @@ const MedicationReminderReconciler: React.FC = () => {
   );
   const remindersActive = medicationRemindersEnabled && notificationsEnabled;
   const [languageRevision, setLanguageRevision] = useState(0);
+  const [, bumpResumeRevision] = useReducer((n: number) => n + 1, 0);
+
+  // Re-render on OS calendar / significant-time-change events so travel across
+  // timezones or midnight updates `timezone` and `today` without a cold start.
+  useCalendars();
+  const timezone = getDeviceTimezone();
+  const today = getTodayDate();
 
   const {
     data: medications,
@@ -42,7 +50,6 @@ const MedicationReminderReconciler: React.FC = () => {
     refetch: refetchMeds,
   } = useMedications({ activeOnly: true, enabled: remindersActive });
 
-  const today = getTodayDate();
   const {
     data: todayEntries,
     isLoading: isLoadingEntries,
@@ -98,6 +105,7 @@ const MedicationReminderReconciler: React.FC = () => {
     medicationReminderHideNames,
     medicationReminderConsolidate,
     today,
+    timezone,
     languageRevision,
   ]);
 
@@ -124,6 +132,7 @@ const MedicationReminderReconciler: React.FC = () => {
     if (!remindersActive) return;
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
+      bumpResumeRevision();
       void refetchMeds();
       void refetchEntries();
     });

@@ -2,7 +2,12 @@ import * as Notifications from 'expo-notifications';
 import i18n from '../localization/i18n';
 
 import { addDays, getDeviceTimezone, getTodayDate } from '../utils/dateUtils';
-import { getDueDosesForDate } from '@workspace/shared';
+import {
+  getDueDosesForDate,
+  isValidTimeZone,
+  localDateTimeToUtc,
+  todayInZone,
+} from '@workspace/shared';
 import {
   ensureMedicationReminderChannel,
   hasNotificationPermission,
@@ -50,6 +55,19 @@ function medGroupReminderKey(
 
 function repeatMedReminderKey(baseKey: string, offset: number) {
   return `${baseKey}_${offset}`;
+}
+
+function scheduledDoseInstant(
+  date: string,
+  timeOfDay: string,
+  tz: string | null
+): Date {
+  if (tz) {
+    return localDateTimeToUtc(`${date}T${timeOfDay}`, tz);
+  }
+  const [hours, minutes] = timeOfDay.split(':').map(Number);
+  const [year, month, day] = date.split('-').map(Number);
+  return new Date(year, month - 1, day, hours, minutes, 0, 0);
 }
 
 async function cancelReminders(ids: string[]): Promise<void> {
@@ -127,6 +145,11 @@ export async function reconcileMedicationReminders(
   schedulingLock.add('medication-reminders');
 
   try {
+    const rawTz = getDeviceTimezone();
+    const validTz = rawTz && isValidTimeZone(rawTz) ? rawTz : null;
+    const today = validTz ? todayInZone(validTz) : getTodayDate();
+    const tz = validTz ?? 'UTC';
+
     // Each reminder is stamped with the server it was made for, so the iOS
     // native handler logs a button press only against that same server.
     const activeServerId =
@@ -135,8 +158,8 @@ export async function reconcileMedicationReminders(
     if (flushedAny) {
       try {
         entries = await listEntries({
-          fromDate: getTodayDate(),
-          toDate: getTodayDate(),
+          fromDate: today,
+          toDate: today,
         });
       } catch (err) {
         addLog(
@@ -186,14 +209,13 @@ export async function reconcileMedicationReminders(
 
     await ensureMedicationReminderChannel();
 
-    const today = getTodayDate();
-    const tz = getDeviceTimezone();
     const hideNames = prefs.medicationReminderHideNames;
     const consolidate = prefs.medicationReminderConsolidate;
     const reminderLocale =
       i18n.resolvedLanguage?.split('-')[0] === 'pl' ? 'pl' : 'en';
 
     const desiredKeys = new Set<string>();
+    const expectedFireAtMs = new Map<string, number>();
 
     type DueDose = ReturnType<
       typeof getDueDosesForDate<MedicationDetail>
@@ -205,9 +227,43 @@ export async function reconcileMedicationReminders(
       date: string;
       withRepeats: boolean;
       baseKey: string;
+      baseTriggerDate: Date;
     }
 
     const slotsToSchedule: ReminderSlot[] = [];
+
+    const addSlot = (
+      doses: DueDose[],
+      date: string,
+      timeOfDay: string,
+      isToday: boolean,
+      baseKey: string
+    ) => {
+      const baseTriggerDate = scheduledDoseInstant(date, timeOfDay, validTz);
+      desiredKeys.add(baseKey);
+      expectedFireAtMs.set(baseKey, baseTriggerDate.getTime());
+
+      const withRepeats = isToday && prefs.medicationReminderRepeats;
+      if (withRepeats) {
+        for (const offset of REPEAT_MINUTES) {
+          const repeatKey = repeatMedReminderKey(baseKey, offset);
+          desiredKeys.add(repeatKey);
+          expectedFireAtMs.set(
+            repeatKey,
+            baseTriggerDate.getTime() + offset * 60_000
+          );
+        }
+      }
+
+      slotsToSchedule.push({
+        doses,
+        timeOfDay,
+        date,
+        withRepeats,
+        baseKey,
+        baseTriggerDate,
+      });
+    };
 
     for (let dayOffset = 0; dayOffset < REMINDER_LOOKAHEAD_DAYS; dayOffset++) {
       const date = addDays(today, dayOffset);
@@ -251,23 +307,7 @@ export async function reconcileMedicationReminders(
                   timeOfDay
                 )
               : medGroupReminderKey(date, timeOfDay, doses);
-
-          desiredKeys.add(baseKey);
-
-          const withRepeats = isToday && prefs.medicationReminderRepeats;
-          if (withRepeats) {
-            for (const offset of REPEAT_MINUTES) {
-              desiredKeys.add(repeatMedReminderKey(baseKey, offset));
-            }
-          }
-
-          slotsToSchedule.push({
-            doses,
-            timeOfDay,
-            date,
-            withRepeats,
-            baseKey,
-          });
+          addSlot(doses, date, timeOfDay, isToday, baseKey);
         }
       } else {
         for (const due of unloggedDoses) {
@@ -278,22 +318,7 @@ export async function reconcileMedicationReminders(
             date,
             timeOfDay
           );
-          desiredKeys.add(baseKey);
-
-          const withRepeats = isToday && prefs.medicationReminderRepeats;
-          if (withRepeats) {
-            for (const offset of REPEAT_MINUTES) {
-              desiredKeys.add(repeatMedReminderKey(baseKey, offset));
-            }
-          }
-
-          slotsToSchedule.push({
-            doses: [due],
-            timeOfDay,
-            date,
-            withRepeats,
-            baseKey,
-          });
+          addSlot([due], date, timeOfDay, isToday, baseKey);
         }
       }
     }
@@ -401,6 +426,16 @@ export async function reconcileMedicationReminders(
         }
         if (baseKey && snoozedBaseKeys.has(baseKey)) return true;
         if (!key || !desiredKeys.has(key)) return true;
+        // DATE triggers are anchored to a fixed UTC epoch instant at scheduling
+        // time, so travel across timezones (or legacy unstamped reminders) must
+        // cancel and reschedule whenever the expected fire instant changes.
+        const expectedMs = expectedFireAtMs.get(key);
+        if (
+          expectedMs !== undefined &&
+          n.content.data.scheduledForMs !== String(expectedMs)
+        ) {
+          return true;
+        }
         // Notification copy is language-sensitive as well as privacy-sensitive:
         // changing EN ↔ PL must replace pending notifications created earlier.
         return (
@@ -426,9 +461,16 @@ export async function reconcileMedicationReminders(
               staleSnoozeFireAt.has(baseKey)
             );
           }
+          const expectedMs = key ? expectedFireAtMs.get(key) : undefined;
+          const firedEarlyForCurrentZone =
+            expectedMs !== undefined &&
+            expectedMs > Date.now() &&
+            data.scheduledForMs !== undefined &&
+            data.scheduledForMs !== String(expectedMs);
           return (
             ((!key || !desiredKeys.has(key)) &&
               (!baseKey || !desiredKeys.has(baseKey))) ||
+            firedEarlyForCurrentZone ||
             (data.hideNames === 'true') !== hideNames ||
             (data.locale ?? 'en') !== reminderLocale
           );
@@ -455,6 +497,7 @@ export async function reconcileMedicationReminders(
       date,
       withRepeats,
       baseKey,
+      baseTriggerDate,
     } of slotsToSchedule) {
       let snoozeFireAt = staleSnoozeFireAt.get(baseKey);
       const isCoveredBySnooze =
@@ -553,10 +596,10 @@ export async function reconcileMedicationReminders(
         data.isSnoozed = 'true';
       }
 
-      const [hours, minutes] = timeOfDay.split(':').map(Number);
-      const [year, month, day] = date.split('-').map(Number);
-      const triggerDate =
-        snoozeFireAt ?? new Date(year, month - 1, day, hours, minutes, 0, 0);
+      const triggerDate = snoozeFireAt ?? baseTriggerDate;
+      if (!snoozeFireAt) {
+        data.scheduledForMs = String(triggerDate.getTime());
+      }
       if (!pendingKeys.has(baseKey) && triggerDate.getTime() > Date.now()) {
         await scheduleReminder(body, triggerDate, data, categoryIdentifier);
       }
@@ -575,6 +618,7 @@ export async function reconcileMedicationReminders(
               {
                 ...data,
                 key: repeatKey,
+                scheduledForMs: String(repeatDate.getTime()),
               },
               categoryIdentifier
             );
