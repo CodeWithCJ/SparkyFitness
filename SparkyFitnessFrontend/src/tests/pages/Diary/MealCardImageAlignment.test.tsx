@@ -27,6 +27,18 @@ jest.mock('@/components/AllergenBadges', () => ({
   __esModule: true,
   default: () => null,
 }));
+const mockOpenLightbox = jest.fn();
+jest.mock('@/hooks/Foods/useImageLightbox', () => ({
+  useImageLightbox: () => ({
+    lightboxProps: {
+      images: [],
+      initialIndex: 0,
+      open: false,
+      onOpenChange: () => undefined,
+    },
+    openLightbox: mockOpenLightbox,
+  }),
+}));
 jest.mock('@/components/FoodSearch/FoodSearch', () => ({
   __esModule: true,
   default: () => null,
@@ -71,7 +83,7 @@ const expectPlaceholder = (placeholder: HTMLElement) => {
   expect(within(placeholder).queryByRole('button')).toBeNull();
 };
 
-const renderMeal = (entries: FoodEntry[]) => {
+const mealCard = (entries: FoodEntry[], client: QueryClient) => {
   const props: ComponentProps<typeof MealCard> = {
     meal: {
       name: 'Breakfast',
@@ -91,8 +103,8 @@ const renderMeal = (entries: FoodEntry[]) => {
     energyUnit: 'kcal',
     convertEnergy: (value: number) => value,
   };
-  return render(
-    <QueryClientProvider client={new QueryClient()}>
+  return (
+    <QueryClientProvider client={client}>
       <MemoryRouter>
         <MealCard {...props} />
       </MemoryRouter>
@@ -100,7 +112,17 @@ const renderMeal = (entries: FoodEntry[]) => {
   );
 };
 
+const renderMeal = (entries: FoodEntry[]) => {
+  const client = new QueryClient();
+  const { rerender } = render(mealCard(entries, client));
+  return {
+    rerenderMeal: (next: FoodEntry[]) => rerender(mealCard(next, client)),
+  };
+};
+
 describe('MealCard desktop image alignment', () => {
+  beforeEach(() => mockOpenLightbox.mockClear());
+
   it('gives rows without an image a placeholder when another row has one', () => {
     renderMeal([
       entry('a', ['https://example.com/a.jpg']),
@@ -123,7 +145,7 @@ describe('MealCard desktop image alignment', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('turns an image that fails to load into the placeholder', () => {
+  it('turns a single image that fails to load into the placeholder', () => {
     renderMeal([entry('a', ['https://example.com/a.jpg']), entry('b', null)]);
 
     expect(screen.getAllByTestId('meal-entry-image-placeholder')).toHaveLength(
@@ -139,5 +161,62 @@ describe('MealCard desktop image alignment', () => {
     const placeholders = screen.getAllByTestId('meal-entry-image-placeholder');
     expect(placeholders).toHaveLength(2);
     placeholders.forEach(expectPlaceholder);
+  });
+
+  it('shows the next image when the first fails, and keeps the lightbox', () => {
+    renderMeal([
+      entry('a', [
+        'https://example.com/dead.jpg',
+        'https://example.com/b.jpg',
+        'https://example.com/c.jpg',
+      ]),
+    ]);
+
+    fireEvent.error(screen.getByRole('img', { name: 'Food a' }));
+
+    expect(screen.getByRole('img', { name: 'Food a' })).toHaveAttribute(
+      'src',
+      'https://example.com/b.jpg'
+    );
+    expect(
+      screen.queryByTestId('meal-entry-image-placeholder')
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'View images' }));
+    // Opens on the image shown, without the one that failed.
+    expect(mockOpenLightbox).toHaveBeenCalledWith(
+      ['https://example.com/b.jpg', 'https://example.com/c.jpg'],
+      0,
+      'Food a'
+    );
+  });
+
+  it('shows the placeholder once every image has failed', () => {
+    renderMeal([
+      entry('a', ['https://example.com/x.jpg', 'https://example.com/y.jpg']),
+    ]);
+
+    fireEvent.error(screen.getByRole('img', { name: 'Food a' }));
+    fireEvent.error(screen.getByRole('img', { name: 'Food a' }));
+
+    expect(screen.queryByRole('img', { name: 'Food a' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'View images' })
+    ).not.toBeInTheDocument();
+    expectPlaceholder(screen.getByTestId('meal-entry-image-placeholder'));
+  });
+
+  it('tries again from the first image when the addresses change', () => {
+    const { rerenderMeal } = renderMeal([
+      entry('a', ['https://example.com/x.jpg']),
+    ]);
+    fireEvent.error(screen.getByRole('img', { name: 'Food a' }));
+    expect(screen.queryByRole('img', { name: 'Food a' })).toBeNull();
+
+    rerenderMeal([entry('a', ['https://example.com/new.jpg'])]);
+
+    expect(screen.getByRole('img', { name: 'Food a' })).toHaveAttribute(
+      'src',
+      'https://example.com/new.jpg'
+    );
   });
 });

@@ -96,49 +96,58 @@ const mealCardEntryImages = (item: FoodEntry | FoodEntryMeal): string[] => {
 };
 
 interface EntryThumbnailProps {
-  src: string | null;
+  images: string[];
   alt: string;
   /** Whether a row without a usable image keeps an image-sized slot. */
   reserveSpace: boolean;
   viewLabel: string;
-  onOpen: () => void;
+  /** Opens the lightbox on the images that have not failed, shown one first. */
+  onOpen: (images: string[]) => void;
 }
 
 /**
- * A diary row's image, opening the lightbox. A row without one, or whose
- * image fails to load, shows a placeholder of the same size from sm up, so
- * the nutrient grids of a meal's rows line up.
+ * A diary row's image, opening the lightbox. When an image fails to load the
+ * next one is tried. A row without images, or whose images all fail, shows a
+ * placeholder of the same size from sm up, so a meal's nutrient grids line up.
  */
 const EntryThumbnail = ({
-  src,
+  images,
   alt,
   reserveSpace,
   viewLabel,
   onOpen,
 }: EntryThumbnailProps) => {
-  // Remembers the failed address, so a new image is tried again.
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  // How many images failed, for this list of addresses only: another list
+  // starts again from its first image.
+  const imagesKey = images.join('\n');
+  const [failures, setFailures] = useState({ imagesKey, count: 0 });
+  const failedCount = failures.imagesKey === imagesKey ? failures.count : 0;
+  const remaining = images.slice(failedCount);
+  const src = remaining[0] ?? null;
 
-  if (src && src !== failedSrc) {
+  if (src) {
     return (
       <button
         type="button"
         className="flex-shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        onClick={onOpen}
+        onClick={() => onOpen(remaining)}
         aria-label={viewLabel}
       >
         <img
+          // A new element per address, so a late error of the previous one
+          // can't count against this one.
+          key={src}
           src={src}
           alt={alt}
           className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
           loading="lazy"
           // A dead provider link shouldn't leave a broken icon.
-          onError={() => setFailedSrc(src)}
+          onError={() => setFailures({ imagesKey, count: failedCount + 1 })}
         />
       </button>
     );
   }
-  if (!src && !reserveSpace) return null;
+  if (images.length === 0 && !reserveSpace) return null;
   return (
     <div
       aria-hidden="true"
@@ -483,7 +492,6 @@ const MealCard = ({
                   'food_id' in item &&
                   (item as FoodEntry).food_id === highlightFoodId;
                 const entryImages = mealCardEntryImages(item);
-                const entryImageSrc = entryImages[0] ?? null;
 
                 // Determine glycemic index directly from the entryNutrition object
                 const giValue: GlycemicIndex | undefined | null =
@@ -723,12 +731,12 @@ const MealCard = ({
                     )}
                   >
                     <EntryThumbnail
-                      src={entryImageSrc}
+                      images={entryImages}
                       alt={entryName ?? ''}
                       reserveSpace={mealHasImages}
                       viewLabel={t('food.viewImages', 'View images')}
-                      onOpen={() =>
-                        openLightbox(entryImages, 0, entryName ?? undefined)
+                      onOpen={(images) =>
+                        openLightbox(images, 0, entryName ?? undefined)
                       }
                     />
                     <div className="flex-1">
