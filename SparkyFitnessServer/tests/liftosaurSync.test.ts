@@ -90,6 +90,60 @@ describe('liftosaurSync', () => {
     );
   });
 
+  it('limits an incremental sync to the last 7 days and keys workouts by record id', async () => {
+    const before = Date.now();
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: {
+        data: {
+          records: [
+            {
+              id: 1772359200123,
+              text: '2026-03-01T10:00:00Z / exercises: {\n  Squat / 3x5 100kg\n}',
+            },
+          ],
+          hasMore: false,
+        },
+      },
+    });
+
+    await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123'
+    );
+
+    const params = vi.mocked(axios.get).mock.calls[0]![1]!.params as {
+      startDate?: string;
+    };
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const startMs = new Date(params.startDate!).getTime();
+    expect(startMs).toBeGreaterThanOrEqual(before - sevenDaysMs);
+    expect(startMs).toBeLessThanOrEqual(Date.now() - sevenDaysMs);
+
+    const workouts = vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts)
+      .mock.calls[0]![2];
+    expect(workouts[0]!.id).toBe(1772359200123);
+  });
+
+  it('sends no startDate on a full sync', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: { data: { records: [], hasMore: false } },
+    });
+
+    await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      true,
+      'provider-123'
+    );
+
+    const params = vi.mocked(axios.get).mock.calls[0]![1]!.params as {
+      startDate?: string;
+    };
+    expect(params.startDate).toBeUndefined();
+  });
+
   it('stops paginating when a full sync reports more pages without advancing the cursor', async () => {
     // A full sync has no date window to end the loop, so an unchanged cursor
     // has to, or the sync re-fetches the same page forever.

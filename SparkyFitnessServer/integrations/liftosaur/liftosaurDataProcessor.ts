@@ -11,7 +11,6 @@ import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import exerciseRepository from '../../models/exercise.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
-import exercisePresetEntryRepository from '../../models/exercisePresetEntryRepository.js';
 import { getClient } from '../../db/poolManager.js';
 import { log } from '../../config/logging.js';
 import { instantToDay, instantHourMinute } from '@workspace/shared';
@@ -20,6 +19,10 @@ import {
   LiftohistoryExercise,
   LiftohistorySet,
 } from './liftosaurTypes.js';
+import {
+  deleteLiftosaurSessionsNotInWithClient,
+  upsertLiftosaurSessionWithClient,
+} from './liftosaurSessionRepository.js';
 
 const LB_TO_KG = 0.45359237;
 
@@ -32,15 +35,20 @@ interface ExerciseRow {
 interface WorkoutPresetRow {
   id: number;
 }
-interface PresetEntryRow {
-  id: string;
-}
 interface ExerciseEntryRow {
   id: string;
 }
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** Source id of the entry for one exercise of a Liftosaur workout. */
+function entrySourceId(
+  workout: LiftohistoryWorkout,
+  exerciseIndex: number
+): string {
+  return `${workout.id}_${exerciseIndex}`;
 }
 
 /**
@@ -61,30 +69,41 @@ async function processLiftosaurWorkouts(
   try {
     await client.query('BEGIN');
 
-    // Mirror the Garmin/Hevy re-sync model: clear any existing Liftosaur sessions
-    // and exercise entries in the synced date range before rebuilding so re-syncs
-    // are idempotent. Preset templates (workout_presets) are reused by name.
+    // Re-sent workouts are updated in place, keyed by source id (session:
+    // the Liftosaur record id; entry: `<record id>_<exercise index>`), so
+    // entry ids and anything the user added in SparkyFitness (notes, effort,
+    // calorie links, edited fields) survive a re-sync. Only Liftosaur rows in
+    // the synced day range that are no longer sent are deleted: workouts
+    // deleted in Liftosaur, and rows from before source ids were stable.
+    // Entries go first, because that path clears their calorie links and a
+    // session delete cascades to the entries still under it.
     if (workouts.length > 0) {
       const entryDates = workouts.map((w) =>
         instantToDay(new Date(w.date), timezone)
       );
       const startDate = entryDates.reduce((a, b) => (a < b ? a : b));
       const endDate = entryDates.reduce((a, b) => (a > b ? a : b));
+      const keepSessionIds = workouts.map((w) => String(w.id));
+      const keepEntryIds = workouts.flatMap((w) =>
+        w.exercises.map((_, index) => entrySourceId(w, index))
+      );
 
       await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient(
         client,
         userId,
         startDate,
         endDate,
-        LIFTOSAUR_SOURCE
+        LIFTOSAUR_SOURCE,
+        undefined,
+        keepEntryIds
       );
 
-      await exercisePresetEntryRepository.deleteExercisePresetEntriesByEntrySourceAndDateWithClient(
+      await deleteLiftosaurSessionsNotInWithClient(
         client,
         userId,
         startDate,
         endDate,
-        LIFTOSAUR_SOURCE
+        keepSessionIds
       );
     }
 
@@ -165,24 +184,19 @@ async function processSingleWorkout(
     );
   }
 
-  const presetPayload = {
-    user_id: userId,
-    workout_preset_id: workoutPreset.id,
-    name: workoutTitle,
-    description: `Logged session of ${workoutTitle}`,
-    entry_date: entryDate,
-    created_by_user_id: createdByUserId,
-    notes: `Liftosaur Workout Session: ${workoutTitle}`,
-    source: LIFTOSAUR_SOURCE,
-  };
-
-  const presetEntry: PresetEntryRow =
-    await exercisePresetEntryRepository.createExercisePresetEntryWithClient(
-      client,
-      userId,
-      presetPayload,
-      createdByUserId
-    );
+  const presetEntryId = await upsertLiftosaurSessionWithClient(
+    client,
+    userId,
+    createdByUserId,
+    {
+      source_id: String(workout.id),
+      workout_preset_id: workoutPreset.id,
+      name: workoutTitle,
+      description: `Logged session of ${workoutTitle}`,
+      entry_date: entryDate,
+      notes: `Liftosaur Workout Session: ${workoutTitle}`,
+    }
+  );
 
   const workoutDurationMinutes = workout.durationSeconds
     ? Math.round(workout.durationSeconds / 60)
@@ -238,7 +252,7 @@ async function processSingleWorkout(
     // Stable per-exercise identity so re-syncs update in place instead of
     // duplicating. Liftosaur record ids are unique and exercise index is unique
     // within a record.
-    const sourceId = `${workout.id}_${exerciseIndex}`;
+    const sourceId = entrySourceId(workout, exerciseIndex);
 
     const durationMinutes =
       mergedSets.timerSeconds > 0
@@ -278,7 +292,7 @@ async function processSingleWorkout(
         entryData,
         createdByUserId,
         LIFTOSAUR_SOURCE,
-        presetEntry.id
+        presetEntryId
       );
     const entry: ExerciseEntryRow | null = created.entry ?? null;
 
@@ -311,6 +325,17 @@ async function processSingleWorkout(
     //    statement aborts the surrounding transaction, so swallowing it here
     //    would only surface later as a failed COMMIT with a misleading error.
     if (entry?.id) {
+      // A re-synced entry is updated in place; replace its raw detail rather
+      // than adding another copy on every sync.
+      if (created.operation === 'updated') {
+        await activityDetailsRepository._deleteActivityDetailsByEntryIdAndProviderWithClient(
+          client,
+          userId,
+          entry.id,
+          LIFTOSAUR_SOURCE,
+          'full_activity_data'
+        );
+      }
       const detailPayload = {
         exercise_entry_id: entry.id,
         provider_name: LIFTOSAUR_SOURCE,

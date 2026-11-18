@@ -36,6 +36,9 @@ vi.mock('../models/exercise.js', () => ({
 vi.mock('../models/activityDetailsRepository.js', () => ({
   default: {
     _createActivityDetailWithClient: vi.fn().mockResolvedValue(undefined),
+    _deleteActivityDetailsByEntryIdAndProviderWithClient: vi
+      .fn()
+      .mockResolvedValue(undefined),
   },
 }));
 
@@ -47,15 +50,9 @@ vi.mock('../models/workoutPresetRepository.js', () => ({
   },
 }));
 
-vi.mock('../models/exercisePresetEntryRepository.js', () => ({
-  default: {
-    createExercisePresetEntryWithClient: vi
-      .fn()
-      .mockResolvedValue({ id: 'preset-entry-1' }),
-    deleteExercisePresetEntriesByEntrySourceAndDateWithClient: vi
-      .fn()
-      .mockResolvedValue(undefined),
-  },
+vi.mock('../integrations/liftosaur/liftosaurSessionRepository.js', () => ({
+  upsertLiftosaurSessionWithClient: vi.fn().mockResolvedValue('preset-entry-1'),
+  deleteLiftosaurSessionsNotInWithClient: vi.fn().mockResolvedValue(0),
 }));
 
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
@@ -65,7 +62,10 @@ import exerciseEntryRepository from '../models/exerciseEntry.js';
 import exerciseRepository from '../models/exercise.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
-import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
+import {
+  deleteLiftosaurSessionsNotInWithClient,
+  upsertLiftosaurSessionWithClient,
+} from '../integrations/liftosaur/liftosaurSessionRepository.js';
 import { getClient } from '../db/poolManager.js';
 import { parseLiftohistory } from '../integrations/liftosaur/liftohistoryParser.js';
 
@@ -103,9 +103,9 @@ describe('processLiftosaurWorkouts', () => {
 
   it('rolls back transaction and releases client when an error occurs', async () => {
     const workouts = parseSampleWorkouts();
-    vi.mocked(
-      exercisePresetEntryRepository.createExercisePresetEntryWithClient
-    ).mockRejectedValueOnce(new Error('DB failure'));
+    vi.mocked(upsertLiftosaurSessionWithClient).mockRejectedValueOnce(
+      new Error('DB failure')
+    );
 
     await expect(processLiftosaurWorkouts(UID, CID, workouts)).rejects.toThrow(
       'DB failure'
@@ -127,8 +127,9 @@ describe('processLiftosaurWorkouts', () => {
     );
   });
 
-  it('clears prior Liftosaur data in the synced date range before rebuilding', async () => {
+  it('deletes only Liftosaur rows in the synced range that are not re-sent', async () => {
     const workouts = parseSampleWorkouts();
+    const id = String(workouts[0]!.id);
     await processLiftosaurWorkouts(UID, CID, workouts);
 
     expect(
@@ -138,16 +139,26 @@ describe('processLiftosaurWorkouts', () => {
       UID,
       '2026-07-13',
       '2026-07-13',
-      'Liftosaur'
+      'Liftosaur',
+      undefined,
+      [`${id}_0`, `${id}_1`]
     );
-    expect(
-      exercisePresetEntryRepository.deleteExercisePresetEntriesByEntrySourceAndDateWithClient
-    ).toHaveBeenCalledWith(
+    expect(deleteLiftosaurSessionsNotInWithClient).toHaveBeenCalledWith(
       mockClient,
       UID,
       '2026-07-13',
       '2026-07-13',
-      'Liftosaur'
+      [id]
+    );
+    // Entries go first: that path clears calorie links, and a session delete
+    // cascades to its entries.
+    expect(
+      vi.mocked(
+        exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+      ).mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      vi.mocked(deleteLiftosaurSessionsNotInWithClient).mock
+        .invocationCallOrder[0]!
     );
   });
 
@@ -167,19 +178,16 @@ describe('processLiftosaurWorkouts', () => {
       description: 'Workout session from Liftosaur: 5/3/1',
       is_public: false,
     });
-    expect(
-      exercisePresetEntryRepository.createExercisePresetEntryWithClient
-    ).toHaveBeenCalledWith(
+    expect(upsertLiftosaurSessionWithClient).toHaveBeenCalledWith(
       mockClient,
       UID,
+      CID,
       expect.objectContaining({
-        user_id: UID,
+        source_id: String(workouts[0]!.id),
         workout_preset_id: 42,
         name: '5/3/1',
         entry_date: '2026-07-13',
-        source: 'Liftosaur',
-      }),
-      CID
+      })
     );
   });
 
@@ -292,6 +300,33 @@ describe('processLiftosaurWorkouts', () => {
       durationSeconds: 3600,
     });
     expect(detailCall[1].detail_data.exercise.name).toBe('Squat');
+  });
+
+  it('replaces the raw detail of an entry updated in place instead of adding a copy', async () => {
+    vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mockResolvedValueOnce({
+      entry: { id: 'entry-1' },
+      operation: 'updated',
+    } as never);
+
+    await processLiftosaurWorkouts(UID, CID, parseSampleWorkouts());
+
+    expect(
+      activityDetailsRepository._deleteActivityDetailsByEntryIdAndProviderWithClient
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      activityDetailsRepository._deleteActivityDetailsByEntryIdAndProviderWithClient
+    ).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      'entry-1',
+      'Liftosaur',
+      'full_activity_data'
+    );
+    expect(
+      activityDetailsRepository._createActivityDetailWithClient
+    ).toHaveBeenCalledTimes(2);
   });
 
   it('deduplicates workouts with the same id', async () => {

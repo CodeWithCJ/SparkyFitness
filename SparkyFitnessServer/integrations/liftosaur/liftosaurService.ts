@@ -195,9 +195,14 @@ async function syncLiftosaurData(
     endInstant = range.end;
   }
 
-  // Incremental syncs stop once a fetched page's newest record predates the
-  // 7-day window (mirrors the Hevy service's stop condition).
+  // An incremental sync covers the last 7 days: recent enough to pick up
+  // workouts edited, added late or deleted in Liftosaur, which the history
+  // API has no change timestamp for. Liftosaur filters by startDate, so only
+  // those workouts are fetched and re-applied, not the whole history.
   const cutoffMs = fullSync ? 0 : Date.now() - 7 * 24 * 60 * 60 * 1000;
+  if (!fullSync && startInstant === undefined) {
+    startInstant = new Date(cutoffMs).toISOString();
+  }
 
   const allWorkouts = [];
   let skippedCount = 0;
@@ -215,7 +220,6 @@ async function syncLiftosaurData(
       break;
     }
 
-    let newestWorkoutDate = 0;
     for (const record of records) {
       const parsed = parseLiftohistory(record.text);
       for (const err of parsed.errors) {
@@ -225,23 +229,17 @@ async function syncLiftosaurData(
         );
         skippedCount += 1;
       }
-      for (const workout of parsed.workouts) {
-        allWorkouts.push(workout);
-        const workoutMs = new Date(workout.date).getTime();
-        if (workoutMs > newestWorkoutDate) {
-          newestWorkoutDate = workoutMs;
-        }
+      for (const parsedWorkout of parsed.workouts) {
+        // Identify the workout by Liftosaur's record id, which stays the same
+        // when its start time is edited in Liftosaur.
+        allWorkouts.push({ ...parsedWorkout, id: record.id });
       }
     }
 
-    // Records come back newest-first; in incremental mode (no explicit date
-    // range) stop once the newest workout on this page predates the window.
-    const withinWindow =
-      fullSync || startInstant !== undefined || newestWorkoutDate >= cutoffMs;
-    hasMore = !!page.hasMore && withinWindow;
-    // A full sync or an explicit date range has no window to stop it, so a
-    // provider that keeps reporting hasMore without moving the cursor would
-    // re-fetch the same page forever. Stop when the cursor does not advance.
+    // Liftosaur applies the date range itself, so follow hasMore. A provider
+    // that keeps reporting hasMore without moving the cursor would re-fetch
+    // the same page forever, so stop when the cursor does not advance.
+    hasMore = !!page.hasMore;
     if (
       hasMore &&
       (page.nextCursor === undefined || page.nextCursor === cursor)
