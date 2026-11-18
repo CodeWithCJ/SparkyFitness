@@ -383,6 +383,9 @@ export const foodEntriesRangeRootQueryKey = ['foodEntriesRange'] as const;
 export const foodEntriesRangeQueryKey = (startDate: string, endDate: string) =>
   ['foodEntriesRange', startDate, endDate] as const;
 
+export const lastCookedFoodEntryQueryKey = (foodId: string) =>
+  ['lastCookedFoodEntry', foodId] as const;
+
 export const exerciseDashboardQueryKey = (startDate: string, endDate: string) =>
   ['exerciseDashboard', startDate, endDate] as const;
 
