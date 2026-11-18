@@ -1461,13 +1461,14 @@ describe('duplicate merge, second round', () => {
     // Counted in full, the typed-in time fills in as before
     expect(mergeChallengeDuplicates([watch, typed])[0]!.time).toBe('06:30');
     expect(counted('count', window)).toEqual([['w', 30, '06:30']]);
-    // A measured copy with its own time keeps it
-    const [timed] = mergeChallengeDuplicates(
-      [run('w', 'garmin', { avgHr: 150, time: '05:50' }), typed],
+    // A measured copy with its own time keeps it (close enough to merge)
+    const merged = mergeChallengeDuplicates(
+      [run('w', 'garmin', { avgHr: 150, time: '06:20' }), typed],
       { capManual: true }
     );
-    expect(timed).toMatchObject({ time: '05:50' });
-    expect(timed!.typedTimedCopies).toBeUndefined();
+    expect(merged).toHaveLength(1);
+    expect(merged[0]).toMatchObject({ id: 'w', time: '06:20' });
+    expect(merged[0]!.typedTimedCopies).toBeUndefined();
     // Two typed-in copies: the one inside the window counts, even when the
     // one outside it sorts first (it has heart rate)
     const early = run('m', 'Manual', { time: '05:55', avgHr: 130 });
