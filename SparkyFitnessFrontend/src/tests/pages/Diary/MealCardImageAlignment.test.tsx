@@ -190,6 +190,42 @@ describe('MealCard desktop image alignment', () => {
     );
   });
 
+  it('moves past a repeated dead address to the next image', () => {
+    const dead = 'https://example.com/dead.jpg';
+    renderMeal([entry('a', [dead, dead, 'https://example.com/ok.jpg'])]);
+
+    const first = screen.getByRole('img', { name: 'Food a' });
+    fireEvent.error(first);
+    // The same address again is a new element, so the browser loads it
+    // afresh and can report its own error.
+    const second = screen.getByRole('img', { name: 'Food a' });
+    expect(second).not.toBe(first);
+    expect(second).toHaveAttribute('src', dead);
+    fireEvent.error(second);
+
+    expect(screen.getByRole('img', { name: 'Food a' })).toHaveAttribute(
+      'src',
+      'https://example.com/ok.jpg'
+    );
+    expect(
+      screen.getByRole('button', { name: 'View images' })
+    ).toBeInTheDocument();
+  });
+
+  it('shows the placeholder when the same dead address repeats', () => {
+    const dead = 'https://example.com/dead.jpg';
+    renderMeal([entry('a', [dead, dead])]);
+
+    fireEvent.error(screen.getByRole('img', { name: 'Food a' }));
+    fireEvent.error(screen.getByRole('img', { name: 'Food a' }));
+
+    expect(screen.queryByRole('img', { name: 'Food a' })).toBeNull();
+    expect(
+      screen.queryByRole('button', { name: 'View images' })
+    ).not.toBeInTheDocument();
+    expectPlaceholder(screen.getByTestId('meal-entry-image-placeholder'));
+  });
+
   it('shows the placeholder once every image has failed', () => {
     renderMeal([
       entry('a', ['https://example.com/x.jpg', 'https://example.com/y.jpg']),

@@ -134,9 +134,9 @@ const EntryThumbnail = ({
         aria-label={viewLabel}
       >
         <img
-          // A new element per address, so a late error of the previous one
-          // can't count against this one.
-          key={src}
+          // A new element per attempt, so the browser loads it afresh and
+          // reports its own error, even when the list repeats an address.
+          key={`${failedCount}:${src}`}
           src={src}
           alt={alt}
           className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
