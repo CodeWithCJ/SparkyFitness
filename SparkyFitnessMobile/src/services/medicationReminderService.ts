@@ -202,15 +202,21 @@ export function reconcileMedicationReminders(
   return batchPromise;
 }
 
+interface ReconcileDrainState {
+  flushedDuringDrain: boolean;
+}
+
 async function drainReconcileQueue(): Promise<void> {
   activeReconcileRunning = true;
+  const drainState: ReconcileDrainState = { flushedDuringDrain: false };
   try {
     let batch = dequeueReconcileBatch();
     while (batch) {
       try {
         await reconcileMedicationRemindersOnce(
           batch.medications,
-          batch.entries
+          batch.entries,
+          drainState
         );
         batch.resolve();
       } catch (err) {
@@ -225,7 +231,8 @@ async function drainReconcileQueue(): Promise<void> {
 
 async function reconcileMedicationRemindersOnce(
   medications: MedicationDetail[],
-  entries: MedicationEntry[]
+  entries: MedicationEntry[],
+  drainState: ReconcileDrainState
 ): Promise<void> {
   const rawTz = getDeviceTimezone();
   const validTz = rawTz && isValidTimeZone(rawTz) ? rawTz : null;
@@ -237,6 +244,9 @@ async function reconcileMedicationRemindersOnce(
   const activeServerId =
     (await getActiveServerConfig().catch(() => null))?.id ?? null;
   const flushedAny = await flushPendingMedicationNotificationActions();
+  if (flushedAny) {
+    drainState.flushedDuringDrain = true;
+  }
   const prefs = useAppPreferencesStore.getState();
   if (!prefs.medicationRemindersEnabled || !prefs.notificationsEnabled) {
     await cancelAndDismissAllMedicationReminders();
@@ -249,7 +259,7 @@ async function reconcileMedicationRemindersOnce(
     return;
   }
 
-  if (flushedAny) {
+  if (drainState.flushedDuringDrain) {
     try {
       entries = await listEntries({
         fromDate: today,

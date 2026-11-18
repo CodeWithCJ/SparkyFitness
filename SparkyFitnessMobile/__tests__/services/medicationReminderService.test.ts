@@ -1291,6 +1291,49 @@ describe('reconcileMedicationReminders', () => {
       listEntriesSpy.mockRestore();
     });
 
+    it('reloads entries on a queued trailing pass when an earlier pass in the same drain flushed a pending action', async () => {
+      const handlerMod =
+        require('../../src/services/medicationNotificationHandler') as typeof import('../../src/services/medicationNotificationHandler');
+      const apiMod =
+        require('../../src/services/api/medicationsApi') as typeof import('../../src/services/api/medicationsApi');
+
+      let releaseFirstPendingLookup: (() => void) | null = null;
+      const firstPendingGate = new Promise<Notifications.NotificationRequest[]>(
+        (resolve) => {
+          releaseFirstPendingLookup = () => resolve([]);
+        }
+      );
+
+      mockGetAllScheduled
+        .mockImplementationOnce(() => firstPendingGate)
+        .mockResolvedValue([]);
+
+      const flushSpy = jest
+        .spyOn(handlerMod, 'flushPendingMedicationNotificationActions')
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false);
+      const listEntriesSpy = jest
+        .spyOn(apiMod, 'listEntries')
+        .mockResolvedValue([buildEntry()]);
+
+      const first = reconcileMedicationReminders([buildMedication()], []);
+      // Overlapping call arrives with stale empty entries before query refetch completes
+      const second = reconcileMedicationReminders([buildMedication()], []);
+
+      releaseFirstPendingLookup?.();
+      await Promise.all([first, second]);
+
+      expect(flushSpy).toHaveBeenCalledTimes(2);
+      expect(listEntriesSpy).toHaveBeenCalledTimes(2);
+      const allScheduledKeys = mockSchedule.mock.calls.map(
+        (c) => (c[0].content.data as { key: string }).key
+      );
+      expect(allScheduledKeys).not.toContain(BASE_KEY);
+
+      flushSpy.mockRestore();
+      listEntriesSpy.mockRestore();
+    });
+
     it('still cancels and dismisses medication reminders when disabled even if action flush triggers while offline', async () => {
       const handlerMod =
         require('../../src/services/medicationNotificationHandler') as typeof import('../../src/services/medicationNotificationHandler');
