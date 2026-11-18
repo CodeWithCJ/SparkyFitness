@@ -643,8 +643,6 @@
     "cycle": {
       "title": "Cycle et grossesse",
       "description": "Gérez la santé reproductive, les cycles menstruels et le suivi de grossesse",
-      "enableLabel": "Activer le suivi du cycle et de la grossesse",
-      "enableHint": "Active le centre de santé reproductive. L'activer affiche l'onglet correspondant dans la barre latérale.",
       "mode": "Mode de suivi",
       "bcMethod": "Contraception",
       "terminology": "Terminologie",
@@ -2957,8 +2955,6 @@
       "cunninghamMath": "Formule : 500 + 22 × MM (où MM = poids × (1 - MG/100))\nCalcul : 500 + 22 × ({{weight}} kg × (1 - {{bodyFat}}/100)) = {{result}} kcal",
       "harrisMaleMath": "Formule : 13.397 × poids + 4.799 × taille - 5.677 × âge + 88.362\nCalcul : 13.397 × {{weight}} + 4.799 × {{height}} - 5.677 × {{age}} + 88.362 = {{result}} kcal",
       "harrisFemaleMath": "Formule : 9.247 × poids + 3.098 × taille - 4.33 × âge + 447.593\nCalcul : 9.247 × {{weight}} + 3.098 × {{height}} - 4.33 × {{age}} + 447.593 = {{result}} kcal",
-      "oxfordMaleMath": "Formule : 14.2 × poids + 593\nCalcul : 14.2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "Formule : 10.9 × poids + 677\nCalcul : 10.9 × {{weight}} + 677 = {{result}} kcal",
       "bmiBodyFatMath": "Formule : 1.2 × IMC + 0.23 × âge - constante ({{constant}})\nCalcul : 1.2 × {{bmi}} (IMC) + 0.23 × {{age}} - {{constant}} = {{result}} %",
       "invalidMeasurements": "Mesures invalides pour le calcul logarithmique.",
       "navyMaleMath": "Formule (homme) : 86.01 × log10(tour de taille - tour de cou) - 70.041 × log10(taille) + 36.76 (en pouces)\nCalcul : 86.01 × log10({{waist}} po - {{neck}} po) - 70.041 × log10({{height}} po) + 36.76\nRésultat : {{result}} %",

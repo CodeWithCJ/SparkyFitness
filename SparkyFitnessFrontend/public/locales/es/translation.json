@@ -1419,8 +1419,6 @@
     "cycle": {
       "title": "Ciclo y Embarazo",
       "description": "Gestiona tu salud reproductiva, ciclos menstruales y seguimiento del embarazo",
-      "enableLabel": "Activar seguimiento de Ciclo y Embarazo",
-      "enableHint": "Activa el centro de salud reproductiva. Al activarlo, aparecerá la pestaña en la barra lateral.",
       "mode": "Modo de seguimiento",
       "bcMethod": "Anticonceptivos",
       "terminology": "Terminología",
@@ -2766,8 +2764,6 @@
       "cunninghamMath": "Fórmula: 500 + 22 × MLO (donde MLO = peso × (1 - GC/100))\nCálculo: 500 + 22 × ({{weight}} kg × (1 - {{bodyFat}}/100)) = {{result}} kcal",
       "harrisMaleMath": "Fórmula: 13,397 × peso + 4,799 × altura - 5,677 × edad + 88,362\nCálculo: 13,397 × {{weight}} + 4,799 × {{height}} - 5,677 × {{age}} + 88,362 = {{result}} kcal",
       "harrisFemaleMath": "Fórmula: 9,247 × peso + 3,098 × altura - 4,33 × edad + 447,593\nCálculo: 9,247 × {{weight}} + 3,098 × {{height}} - 4,33 × {{age}} + 447,593 = {{result}} kcal",
-      "oxfordMaleMath": "Fórmula: 14,2 × peso + 593\nCálculo: 14,2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "Fórmula: 10,9 × peso + 677\nCálculo: 10,9 × {{weight}} + 677 = {{result}} kcal",
       "bmiBodyFatMath": "Fórmula: 1,2 × IMC + 0,23 × edad - constante ({{constant}})\nCálculo: 1,2 × {{bmi}} (IMC) + 0,23 × {{age}} - {{constant}} = {{result}}%",
       "invalidMeasurements": "Mediciones no válidas para el cálculo del registro.",
       "navyMaleMath": "Fórmula (Hombre): 86,01 × log10(cintura - cuello) - 70,041 × log10(altura) + 36,76 (en pulgadas)\nCálculo: 86,01 × log10({{waist}}in - {{neck}}in) - 70,041 × log10({{height}}in) + 36,76\nCalculado: {{result}}%",

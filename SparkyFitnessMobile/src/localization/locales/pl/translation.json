@@ -1295,7 +1295,9 @@
     "labResults": "Wyniki badań",
     "labResultsSubtitle": "Pokazuje najnowsze wyniki badań i to, które są poza normą",
     "oralCare": "Higiena jamy ustnej",
-    "oralCareSubtitle": "Pokazuje szczotkowanie względem celu i Twoją serię"
+    "oralCareSubtitle": "Pokazuje szczotkowanie względem celu i Twoją serię",
+    "bloodAlcohol": "Szacunek alkoholu we krwi",
+    "bloodAlcoholSubtitle": "Pokaż zgrubny szacunek alkoholu we krwi na podstawie zapisanych drinków na Pulpicie"
   },
   "diarySettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -10916,5 +10918,21 @@
     "watchScaleSame_one": "Zegarek zgadza się z bieżnią. Wyuczono z {{count}} biegu.",
     "watchScaleSame_few": "Zegarek zgadza się z bieżnią. Wyuczono z {{count}} biegów.",
     "watchScaleSame_many": "Zegarek zgadza się z bieżnią. Wyuczono z {{count}} biegów."
+  },
+  "bloodAlcohol": {
+    "title": "Szacowany alkohol we krwi",
+    "estimatedNow": "Szacunek teraz",
+    "peakAt": "Szczyt o {{time}}",
+    "unitPermille": "‰",
+    "unitPercent": "%",
+    "estimatedTimes": "Niektóre czasy drinków są szacunkowe",
+    "disclaimer": "Tylko zgrubny szacunek. Realna zawartość alkoholu we krwi może różnić się o 20% lub więcej. Nigdy nie używaj go do decyzji, czy możesz prowadzić pojazd.",
+    "missingInputs": "Dodaj do profilu, aby zobaczyć szacunek:",
+    "missingSex": "Płeć: ustaw ją w profilu na stronie",
+    "missingWeight": "Masa ciała: zapisz ją w Pomiarach",
+    "missingHeight": "Wzrost: zapisz go w Pomiarach",
+    "missingAge": "Wiek: ustaw datę urodzenia w profilu na stronie",
+    "implausibleInputs": "Twoja masa ciała lub wzrost wygląda na błędny, więc szacunek nie jest dostępny. Sprawdź najnowszą masę ciała i wzrost w Pomiarach.",
+    "formulaFallback": "Wybrany wzór nie pasuje do Twoich pomiarów ciała, więc używany jest wzór Watsona."
   }
 }

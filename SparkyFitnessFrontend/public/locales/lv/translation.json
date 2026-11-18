@@ -1176,8 +1176,6 @@
     "cycle": {
       "title": "Cikls un grūtniecība",
       "description": "Pārvaldiet reproduktīvo veselību, menstruālo ciklu un grūtniecības uzskaiti",
-      "enableLabel": "Iespējot cikla un grūtniecības uzskaiti",
-      "enableHint": "Ieslēdziet reproduktīvās veselības sadaļu. Ieslēdzot, sānjoslā parādās navigācijas cilne.",
       "mode": "Uzskaites režīms",
       "bcMethod": "Kontracepcija",
       "terminology": "Terminoloģija",
@@ -2051,8 +2049,6 @@
       "cunninghamMath": "Formula: 500 + 22 × LBM (kur LBM = svars × (1 - tauku procentuālais saturs/100))\nAprēķins: 500 + 22 × ({{svars}} kg × (1 - {{bodyFat}}/100)) = {{result}} kcal",
       "harrisMaleMath": "Formula: 13,397 × svars + 4,799 × augstums - 5,677 × vecums + 88,362\nAprēķins: 13,397 × {{svars}} + 4,799 × {{augstums}} - 5,677 × {{vecums}} + 88,362 = {{rezultāts}} kcal",
       "harrisFemaleMath": "Formula: 9,247 × svars + 3,098 × augstums - 4,33 × vecums + 447,593\nAprēķins: 9,247 × {{svars}} + 3,098 × {{augstums}} - 4,33 × {{vecums}} + 447,593 = {{rezultāts}} kcal",
-      "oxfordMaleMath": "Formula: 14,2 × svars + 593\nAprēķins: 14,2 × {{svars}} + 593 = {{rezultāts}} kcal",
-      "oxfordFemaleMath": "Formula: 10,9 × svars + 677\nAprēķins: 10,9 × {{svars}} + 677 = {{rezultāts}} kcal",
       "bmiBodyFatMath": "Formula: 1,2 × ĶMI + 0,23 × vecums - konstante ({{constant}})\nAprēķins: 1,2 × {{bmi}} (ĶMI) + 0,23 × {{age}} - {{constant}} = {{result}}%",
       "invalidMeasurements": "Žurnāla aprēķiniem nederīgi mērījumi.",
       "navyMaleMath": "Formula (vīrietis): 86,01 × log10(viduklis - kakls) - 70,041 × log10(augstums) + 36,76 (collās)\nAprēķins: 86,01 × log10({{waist}} collas - {{neck}} collas) - 70,041 × log10({{height}} collas) + 36,76\nAprēķināts: {{result}}%",
