@@ -72,6 +72,15 @@ import ImageLightbox from '@/components/ImageLightbox';
 
 const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
 
+// Desktop meal total row: the narrowest column, and the gap between columns
+// (gap-x-2).
+const TOTAL_COLUMN_MIN_PX = 92;
+const TOTAL_COLUMN_GAP_PX = 8;
+
+/** Wide enough for one row of `count` columns plus their gaps. */
+const totalRowMaxWidth = (count: number): string =>
+  `${count * TOTAL_COLUMN_MIN_PX + Math.max(count - 1, 0) * TOTAL_COLUMN_GAP_PX}px`;
+
 const MOBILE_NUTRIENT_LABEL_OVERRIDES: Record<
   string,
   { label: string; defaultLabel: string }
@@ -863,10 +872,22 @@ const MealCard = ({
                     defaultValue: `${meal.name} Total:`,
                   })}
                 </span>
+                {/* Columns wide enough that a long label ("Kohlenhydrate")
+                    never runs into the next one. The grid takes the space
+                    beside the title, on desktop up to one row of every
+                    nutrient shown, and wraps into more rows when narrower. */}
                 <div
-                  className="grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-[35%] sm:ml-auto"
+                  data-testid="meal-total-nutrients"
+                  className={cn(
+                    'grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-auto sm:flex-1 sm:min-w-0 sm:ml-auto',
+                    isMobile && 'sm:max-w-[37rem]'
+                  )}
                   style={{
-                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '40px' : '60px'}, 1fr))`,
+                    // 92px fits "Kohlenhydrate" in text-xs on one line.
+                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '80px' : `${TOTAL_COLUMN_MIN_PX}px`}, 1fr))`,
+                    maxWidth: isMobile
+                      ? undefined
+                      : totalRowMaxWidth(visibleNutrientsForGrid.length),
                   }}
                 >
                   {visibleNutrientsForGrid.map((nutrient) => {
@@ -893,7 +914,10 @@ const MealCard = ({
                         : metadata.unit;
 
                     return (
-                      <div key={nutrient} className="text-center min-w-[40px]">
+                      <div
+                        key={nutrient}
+                        className="text-center min-w-0 wrap-break-word"
+                      >
                         <div className={`font-bold ${metadata.color}`}>
                           {displayValue} {unitDisplay}
                         </div>
