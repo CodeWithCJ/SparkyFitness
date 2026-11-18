@@ -538,7 +538,8 @@ const minuteOfDay = (time: string | null | undefined): number | null => {
  * lift from the other. Two workouts from the same source are never merged.
  * With `capManual` (manual entries are capped), a typed-in copy never fills
  * an amount the cap would cut (distance, calories, elevation) into a measured
- * one, which the cap does not reach.
+ * one, which the cap does not reach, nor its start time, which decides a
+ * time window.
  */
 export function mergeChallengeDuplicates(
   entries: readonly ChallengeEntry[],
@@ -620,10 +621,15 @@ export function mergeChallengeDuplicates(
         mergedFrom: others.map((o) => o.id).join(','),
       };
       for (const other of others) {
-        if (!merged.time && other.time) merged.time = other.time;
+        // Under cap a typed-in copy's start time never moves a measured
+        // workout into or out of a time window
+        const typedIntoMeasured =
+          capManual && isManualEntry(other) && !isManualEntry(keep!);
+        if (!merged.time && other.time && !typedIntoMeasured)
+          merged.time = other.time;
         if (!(num(merged.bestE1rm) > 0) && num(other.bestE1rm) > 0)
           merged.bestE1rm = other.bestE1rm;
-        if (capManual && isManualEntry(other) && !isManualEntry(keep!)) {
+        if (typedIntoMeasured) {
           drop.add(other.id);
           continue;
         }

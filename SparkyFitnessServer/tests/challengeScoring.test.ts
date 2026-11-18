@@ -1430,6 +1430,31 @@ describe('duplicate merge, second round', () => {
     });
   });
 
+  it("under cap a typed-in copy's start time never moves the measured copy into a time window", () => {
+    // The watch's copy has no start time; the member typed the same run in
+    // at 06:30, inside the challenge's 06:00 to 09:00 window
+    const watch = run('w', 'garmin', { avgHr: 150 });
+    const typed = run('m', 'Manual', { time: '06:30' });
+    const [kept] = mergeChallengeDuplicates([watch, typed], {
+      capManual: true,
+    });
+    expect(kept).toMatchObject({ id: 'w' });
+    expect(kept!.time).toBeUndefined();
+    const counted = (manualEntries: 'count' | 'cap') =>
+      challengeCountedEntries(
+        [watch, typed],
+        rulesWith({
+          metric: 'active_minutes',
+          activities: { manualEntries, manualMinutesCap: 60 },
+          timeWindow: { start: '06:00', end: '09:00' },
+        })
+      ).map((e) => e.id);
+    expect(counted('cap')).toEqual([]);
+    // Counted in full, the typed-in time fills in as before
+    expect(mergeChallengeDuplicates([watch, typed])[0]!.time).toBe('06:30');
+    expect(counted('count')).toEqual(['w']);
+  });
+
   it('with manual entries ignored, the timed copy of the same workout is kept', () => {
     const rules = rulesWith({
       metric: 'active_minutes',
