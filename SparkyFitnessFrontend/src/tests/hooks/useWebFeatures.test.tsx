@@ -1,13 +1,17 @@
 import React from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { SharedCycleSettings } from '@workspace/shared';
+import type {
+  FeatureChoicesResponse,
+  SharedCycleSettings,
+} from '@workspace/shared';
 import { cycleKeys, useUpsertCycleSettingsMutation } from '@/hooks/useCycle';
 import {
   useCycleSwitch,
   useWebFeatures,
 } from '@/hooks/Settings/useWebFeatures';
 import { getSettings, putSettings } from '@/api/Cycle/cycleService';
+import { getFeatureChoices } from '@/api/Settings/featureChoices';
 
 jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
@@ -16,6 +20,11 @@ jest.mock('react-i18next', () =>
 jest.mock('@/api/Cycle/cycleService', () => ({
   getSettings: jest.fn(),
   putSettings: jest.fn(),
+}));
+
+jest.mock('@/api/Settings/featureChoices', () => ({
+  getFeatureChoices: jest.fn(),
+  updateFeatureChoices: jest.fn(),
 }));
 
 let mockActingOnBehalf = false;
@@ -30,6 +39,7 @@ jest.mock('react-router-dom', () => ({
 
 const getMock = getSettings as jest.Mock;
 const putMock = putSettings as jest.Mock;
+const getChoicesMock = getFeatureChoices as jest.Mock;
 
 const cycleRow = (
   overrides: Partial<SharedCycleSettings> = {}
@@ -74,6 +84,49 @@ describe('useWebFeatures', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     mockActingOnBehalf = false;
+    getChoicesMock.mockResolvedValue({ feature_choices: {} });
+  });
+
+  it.each([
+    ['no choice', {}, true],
+    ['turned off on the website', { web: { labResults: false } }, false],
+    [
+      'turned off in the mobile app only',
+      { mobile: { labResults: false } },
+      true,
+    ],
+    ['turned back on', { web: { labResults: true } }, true],
+  ] as const)(
+    'lab results with %s',
+    async (_label, feature_choices, expected) => {
+      getMock.mockResolvedValue(null);
+      getChoicesMock.mockResolvedValue({ feature_choices });
+      const { result, client } = setup();
+      await waitFor(() =>
+        expect(client.getQueryState(['featureChoices'])?.status).toBe('success')
+      );
+      expect(result.current.features.isEnabled('labResults')).toBe(expected);
+      expect(result.current.features.isExplicitlyOff('labResults')).toBe(
+        !expected
+      );
+    }
+  );
+
+  it('keeps lab results on while the choices load or after they fail', async () => {
+    getMock.mockResolvedValue(null);
+    const pending = deferred<FeatureChoicesResponse>();
+    getChoicesMock.mockReturnValueOnce(pending.promise);
+    const { result, client } = setup();
+    expect(result.current.features.isEnabled('labResults')).toBe(true);
+
+    getChoicesMock.mockRejectedValueOnce(new Error('offline'));
+    await act(async () => {
+      await client.resetQueries({ queryKey: ['featureChoices'] });
+    });
+    await waitFor(() =>
+      expect(client.getQueryState(['featureChoices'])?.status).toBe('error')
+    );
+    expect(result.current.features.isEnabled('labResults')).toBe(true);
   });
 
   it.each([

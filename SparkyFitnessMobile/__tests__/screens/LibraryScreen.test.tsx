@@ -58,6 +58,13 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: jest.fn(() => 0),
 }));
 
+let mockFeaturesOff = new Set<string>();
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({
+    isEnabled: (key: string) => !mockFeaturesOff.has(key),
+  }),
+}));
+
 const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
 const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
 const mockUseRecentMeals = useRecentMeals as jest.MockedFunction<
@@ -174,6 +181,7 @@ describe('LibraryScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFeaturesOff = new Set();
     mockUseServerConnection.mockReturnValue({
       isConnected: true,
       isLoading: false,
@@ -254,6 +262,19 @@ describe('LibraryScreen', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Routes'));
     expect(navigation.navigate).toHaveBeenCalledWith('Routes');
+  });
+
+  it('navigates to LabResults when the Lab results row is pressed', () => {
+    const screen = renderScreen();
+    fireEvent.press(screen.getByText('Lab results'));
+    expect(navigation.navigate).toHaveBeenCalledWith('LabResults');
+  });
+
+  it('leaves out Lab results while it is turned off in Features', () => {
+    mockFeaturesOff = new Set(['labResults']);
+    const screen = renderScreen();
+    expect(screen.queryByText('Lab results')).toBeNull();
+    expect(screen.getByText('Routes')).toBeTruthy();
   });
 
   it('navigates to MealPlans when the Meal plans row is pressed', () => {

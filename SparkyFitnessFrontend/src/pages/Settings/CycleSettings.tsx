@@ -227,7 +227,7 @@ export default function CycleSettings() {
           </p>
           <Button variant="outline" size="sm" asChild>
             <Link to="/settings?section=features">
-              {t('settings.cycle.openFeatures', 'Open Features')}
+              {t('settings.features.open', 'Open Features')}
             </Link>
           </Button>
         </div>

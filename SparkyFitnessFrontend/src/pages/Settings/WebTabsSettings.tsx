@@ -14,6 +14,7 @@ import {
 import {
   cycleTabIcon,
   cycleTabLabel,
+  webTabFeature,
   webTabIcon,
   webTabLabel,
 } from '@/constants/webTabs';
@@ -66,16 +67,32 @@ export const WebTabsSettings = () => {
         )}
         {WEB_HIDEABLE_TAB_IDS.map((id) => {
           const switchId = `web-tab-${id}`;
+          const feature = webTabFeature(id);
+          // The tab's own choice is kept while its feature is off, so turning
+          // the feature back on brings the tab back as it was.
+          const featureOff = feature !== undefined && !isFeatureOn(feature);
+          const noteId = `${switchId}-feature-off`;
           return (
             <div key={id} className="flex items-center justify-between gap-4">
-              <Label htmlFor={switchId} className="flex items-center gap-2">
-                <TabIcon icon={webTabIcon(id)} />
-                {webTabLabel(t, id)}
-              </Label>
+              <div className="space-y-0.5">
+                <Label htmlFor={switchId} className="flex items-center gap-2">
+                  <TabIcon icon={webTabIcon(id)} />
+                  {webTabLabel(t, id)}
+                </Label>
+                {featureOff && (
+                  <p id={noteId} className="text-xs text-muted-foreground">
+                    {t(
+                      'settings.webTabs.featureOff',
+                      'Not shown: turned off in Features.'
+                    )}
+                  </p>
+                )}
+              </div>
               <Switch
                 id={switchId}
                 checked={!hidden.has(id)}
                 disabled={editState !== 'ready'}
+                aria-describedby={featureOff ? noteId : undefined}
                 onCheckedChange={(visible) => setTabHidden(id, !visible)}
               />
             </div>

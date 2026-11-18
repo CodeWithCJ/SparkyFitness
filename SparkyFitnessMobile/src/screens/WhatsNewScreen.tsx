@@ -11,6 +11,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { startGuidedCheckIn } from '../hooks/useGuidedCheckIn';
 import { useWatchConnectivity } from '../hooks/useWatchConnectivity';
 import { useNfcSupport } from '../hooks/useNfcSupport';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import { getTodayDate } from '../utils/dateUtils';
 import { canUseLiquidGlass } from '../utils/liquidGlass';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -727,6 +728,10 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   // Settings lists NFC tags only on a phone with NFC, so the button follows it.
   const { supported: nfcSupported } = useNfcSupport();
 
+  // A feature turned off in Settings → Features keeps its card, without a
+  // button to open it.
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
+
   // Added or changed a card below? Bump WHATS_NEW_CONTENT_VERSION in
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
   const features: Feature[] = [
@@ -742,12 +747,16 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
           'Add blood test results by hand or import a lab report from a PDF or photo. See each marker against its reference range, chart it over time, and spot what is out of range from the dashboard.',
       }),
       hero: <LabResultsMockup />,
-      cta: {
-        label: t('whatsNewPage.features.labResults.cta', {
-          defaultValue: 'Open lab results',
-        }),
-        onPress: () => navigation.navigate('LabResults'),
-      },
+      ...(isFeatureOn('labResults')
+        ? {
+            cta: {
+              label: t('whatsNewPage.features.labResults.cta', {
+                defaultValue: 'Open lab results',
+              }),
+              onPress: () => navigation.navigate('LabResults'),
+            },
+          }
+        : {}),
     },
     {
       eyebrow: t('whatsNewPage.features.nfcTags.eyebrow', {

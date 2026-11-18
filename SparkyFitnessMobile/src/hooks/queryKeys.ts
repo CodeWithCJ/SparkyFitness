@@ -425,6 +425,9 @@ export const heartRateSamplesQueryKeyRoot = ['heartRateSamples'] as const;
 export const heartRateSamplesQueryKey = (startDate: string, endDate: string) =>
   [...heartRateSamplesQueryKeyRoot, startDate, endDate] as const;
 
+// --- Optional features (#3487) ---
+export const featureChoicesQueryKey = ['featureChoices'] as const;
+
 // --- Cycle & Pregnancy ---
 export const cycleSettingsQueryKey = ['cycleSettings'] as const;
 export const cycleLogQueryKey = (date: string) => ['cycleLog', date] as const;

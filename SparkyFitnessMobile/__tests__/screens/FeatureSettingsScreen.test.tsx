@@ -2,7 +2,9 @@ import React from 'react';
 import { Text } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import FeatureSettingsScreen from '../../src/screens/FeatureSettingsScreen';
+import type { FeatureKey } from '@workspace/shared';
 import type { CycleSwitchState } from '../../src/hooks/useMobileFeatures';
+import type { FeatureChoiceState } from '../../src/hooks/useFeatureChoices';
 import { initializeI18n } from '../../src/localization/i18n';
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
@@ -36,12 +38,27 @@ let mockCycle: {
 const mockSetOn = jest.fn();
 const mockOpenSetup = jest.fn();
 const mockReload = jest.fn();
+let mockFeaturesOff = new Set<FeatureKey>();
 jest.mock('../../src/hooks/useMobileFeatures', () => ({
   useCycleSwitch: () => ({
     ...mockCycle,
     setOn: mockSetOn,
     openSetup: mockOpenSetup,
     reload: mockReload,
+  }),
+  useMobileFeatures: () => ({
+    isEnabled: (key: FeatureKey) => !mockFeaturesOff.has(key),
+  }),
+}));
+
+let mockChoice: { state: FeatureChoiceState; isPending: boolean };
+const mockSetFeatureOn = jest.fn();
+const mockReloadChoices = jest.fn();
+jest.mock('../../src/hooks/useFeatureChoices', () => ({
+  useSetMobileFeatureChoice: () => ({
+    ...mockChoice,
+    setFeatureOn: mockSetFeatureOn,
+    reload: mockReloadChoices,
   }),
 }));
 
@@ -65,6 +82,8 @@ describe('FeatureSettingsScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockFeaturesOff = new Set();
+    mockChoice = { state: 'ready', isPending: false };
     mockCycle = {
       on: false,
       state: 'ready',
@@ -110,6 +129,67 @@ describe('FeatureSettingsScreen', () => {
       expect(allText()).not.toMatch(/cycle|period|fertil|pregnan/i);
     }
   );
+
+  it('lists lab results under Health, on by default, for this app only', () => {
+    renderScreen();
+    const toggle = screen.getByLabelText('Lab results');
+    expect(toggle.props.value).toBe(true);
+    expect(toggle.props.disabled).toBe(false);
+    expect(
+      screen.getByText(/Only this app\. The website has its own switch\./)
+    ).toBeTruthy();
+  });
+
+  it('turns lab results off in this app', () => {
+    renderScreen();
+    fireEvent(
+      screen.getByTestId('feature-switch-labResults'),
+      'valueChange',
+      false
+    );
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('labResults', false);
+  });
+
+  it('turns lab results back on', () => {
+    mockFeaturesOff = new Set<FeatureKey>(['labResults']);
+    renderScreen();
+    const toggle = screen.getByTestId('feature-switch-labResults');
+    expect(toggle.props.value).toBe(false);
+    fireEvent(toggle, 'valueChange', true);
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('labResults', true);
+  });
+
+  it.each([
+    ['the choices load', { state: 'loading', isPending: false }],
+    ['a change is saving', { state: 'ready', isPending: true }],
+  ] as const)('cannot switch lab results while %s', (_label, choice) => {
+    mockChoice = choice;
+    renderScreen();
+    expect(screen.getByTestId('feature-switch-labResults').props.disabled).toBe(
+      true
+    );
+  });
+
+  it('offers a retry when the lab results choice could not load', () => {
+    mockChoice = { state: 'loadFailed', isPending: false };
+    renderScreen();
+    expect(screen.getByTestId('feature-switch-labResults').props.disabled).toBe(
+      true
+    );
+    fireEvent.press(screen.getByText('Retry'));
+    expect(mockReloadChoices).toHaveBeenCalledTimes(1);
+  });
+
+  it('says the server needs an update when it is older than Features', () => {
+    mockChoice = { state: 'serverTooOld', isPending: false };
+    renderScreen();
+    expect(screen.getByTestId('feature-switch-labResults').props.disabled).toBe(
+      true
+    );
+    expect(
+      screen.getByText(/Update your SparkyFitness server to change this\./)
+    ).toBeTruthy();
+  });
 
   it('cannot be switched while a change is saving', () => {
     mockCycle = { ...mockCycle, isPending: true };

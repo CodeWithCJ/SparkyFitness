@@ -8,48 +8,47 @@ import {
   type FeatureKey,
 } from '@workspace/shared';
 import { useCycleSettingsQuery, useSetCycleEnabled } from './useCycleSettings';
+import { useFeatureChoicesQuery } from './useFeatureChoices';
 import type { RootStackParamList } from '../types/navigation';
 
 /**
  * Which optional features (#3487) show in the mobile app, from the shared
  * registry. Every entry point to one (dashboard card, + menu row, screen)
- * asks this instead of reading where the switch is stored. Cycle, the only
- * feature so far, keeps its own account-wide switch in
- * `cycle_settings.enabled`; the app's `feature_choices` join here with the
- * first feature stored there.
+ * asks this instead of reading where the switch is stored: the app's own
+ * `feature_choices` (lab results), or for cycle its account-wide switch in
+ * `cycle_settings.enabled`.
  *
- * `isEnabled` is off while its value is loading or could not be read, as
- * before Features. `isExplicitlyOff` is only for a feature the person turned
- * off: data shown outside the feature's own screens (the reproductive Health
- * categories, cycle hub symptoms) hides only then, so nothing disappears for
- * someone who never chose, or while the answer loads.
+ * While a value is loading or could not be read, or the server is older than
+ * Features, `isEnabled` gives the feature's default (cycle off, as before
+ * Features; lab results on), so nothing that was showing disappears.
+ * `isExplicitlyOff` is only for a feature the person turned off: data shown
+ * outside the feature's own screens (the reproductive Health categories,
+ * cycle hub symptoms) hides only then, so nothing disappears for someone who
+ * never chose, or while the answer loads.
  */
 export function useMobileFeatures() {
   const { data: cycleSettings } = useCycleSettingsQuery();
   const cycleEnabled = cycleSettings?.enabled;
+  const { data: choicesResponse } = useFeatureChoicesQuery();
+  const choices = choicesResponse?.feature_choices;
+  const sources = useMemo(
+    () => ({ choices, cycleEnabled }),
+    [choices, cycleEnabled]
+  );
   const isEnabled = useCallback(
-    (key: FeatureKey) =>
-      isFeatureEnabled(key, 'mobile', { choices: undefined, cycleEnabled }),
-    [cycleEnabled]
+    (key: FeatureKey) => isFeatureEnabled(key, 'mobile', sources),
+    [sources]
   );
   const isExplicitlyOff = useCallback(
-    (key: FeatureKey) =>
-      isFeatureExplicitlyOff(key, 'mobile', {
-        choices: undefined,
-        cycleEnabled,
-      }),
-    [cycleEnabled]
+    (key: FeatureKey) => isFeatureExplicitlyOff(key, 'mobile', sources),
+    [sources]
   );
   // Custom categories of features turned off on purpose. Measurement lists
   // leave them out (`withoutHiddenCategories` from shared); Settings > Custom
   // Measurements keeps them. Memoized: forms depend on the lists built from it.
   const hiddenCustomCategories = useMemo(
-    () =>
-      hiddenFeatureCustomCategories('mobile', {
-        choices: undefined,
-        cycleEnabled,
-      }),
-    [cycleEnabled]
+    () => hiddenFeatureCustomCategories('mobile', sources),
+    [sources]
   );
   return { isEnabled, isExplicitlyOff, hiddenCustomCategories };
 }

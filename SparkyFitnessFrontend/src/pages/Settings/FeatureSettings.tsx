@@ -6,6 +6,7 @@ import {
   FEATURE_GROUPS,
   FEATURE_KEYS,
   OPTIONAL_FEATURES,
+  type ChoiceFeatureKey,
   type FeatureGroup,
   type FeatureKey,
 } from '@workspace/shared';
@@ -14,8 +15,17 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import { useCycleSwitch } from '@/hooks/Settings/useWebFeatures';
-import { cycleTabIcon, cycleTabLabel } from '@/constants/webTabs';
+import { useSetWebFeatureChoice } from '@/hooks/Settings/useFeatureChoices';
+import {
+  useCycleSwitch,
+  useWebFeatures,
+} from '@/hooks/Settings/useWebFeatures';
+import {
+  choiceFeatureLabel,
+  cycleTabIcon,
+  cycleTabLabel,
+  webTabIcon,
+} from '@/constants/webTabs';
 import { CycleSetupPrompt } from './CycleSetupPrompt';
 
 function FeatureIcon({ icon: Icon }: { icon: LucideIcon }) {
@@ -100,11 +110,86 @@ function CycleFeatureRow() {
   );
 }
 
+/**
+ * A feature with one choice per platform (`feature_choices`): this switch
+ * changes the website only. It can be used once the choices have loaded;
+ * until then it shows the default, so nothing looks off that is not.
+ */
+function ChoiceFeatureRow({
+  feature,
+  icon,
+  label,
+  description,
+}: {
+  feature: ChoiceFeatureKey;
+  icon: LucideIcon;
+  label: string;
+  description: string;
+}) {
+  const { t } = useTranslation();
+  const { isEnabled } = useWebFeatures();
+  const choice = useSetWebFeatureChoice();
+  const switchId = `feature-${feature}`;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-0.5">
+          <Label htmlFor={switchId} className="flex items-center gap-2">
+            <FeatureIcon icon={icon} />
+            {label}
+          </Label>
+          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-xs text-muted-foreground">
+            {t(
+              'settings.features.webOnly',
+              'Only this website. The mobile app has its own switch.'
+            )}
+          </p>
+        </div>
+        <Switch
+          id={switchId}
+          checked={isEnabled(feature)}
+          disabled={choice.state !== 'ready' || choice.isPending}
+          onCheckedChange={(on) => choice.setFeatureOn(feature, on)}
+        />
+      </div>
+      {choice.state === 'loadFailed' && (
+        <div className="flex flex-col items-start gap-2">
+          <p className="text-sm text-destructive">
+            {t('settings.features.loadError', 'Could not load this setting.')}
+          </p>
+          <Button variant="outline" size="sm" onClick={choice.reload}>
+            {t('common.retry', 'Retry')}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LabResultsFeatureRow() {
+  const { t } = useTranslation();
+  return (
+    <ChoiceFeatureRow
+      feature="labResults"
+      icon={webTabIcon('labs')}
+      label={choiceFeatureLabel(t, 'labResults')}
+      description={t(
+        'settings.features.labResults.description',
+        'Record blood tests and follow each marker over time.'
+      )}
+    />
+  );
+}
+
 /** One row per feature. A new registry key needs its own row here. */
 function FeatureRow({ feature }: { feature: FeatureKey }): ReactElement {
   switch (feature) {
     case 'cycle':
       return <CycleFeatureRow />;
+    case 'labResults':
+      return <LabResultsFeatureRow />;
   }
 }
 
