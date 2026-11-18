@@ -195,15 +195,19 @@ async function sessionFromRow(
 export async function readOfflineDiaryDay(
   date: string
 ): Promise<OfflineDiaryDay> {
+  // Waits for an account change in progress. If its clean-up failed, nothing
+  // is read: the saved day, the saved identity and so the queued workouts
+  // that would be matched to it may all belong to the previous account.
+  if (!(await savedCopyReadable())) return { saved: null, waiting: [] };
   const serverConfigId = await getActiveServerConfigId();
   if (!serverConfigId) return { saved: null, waiting: [] };
   const db = await getOfflineDb();
-  // Waits for an account change in progress; if its clean-up failed, the
-  // saved day is not shown, because it may be the previous account's.
-  const readable = await savedCopyReadable();
-  const savedRow = readable
-    ? await getCacheRow(db, serverConfigId, CACHE_COLLECTIONS.diaryDay, date)
-    : null;
+  const savedRow = await getCacheRow(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.diaryDay,
+    date
+  );
   const saved = savedRow
     ? (savedRow.payload as ExerciseSessionResponse[])
     : null;

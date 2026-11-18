@@ -134,9 +134,23 @@ describe('the diary day kept on the phone', () => {
   it('does not show the saved day while an account change cleared nothing or is still clearing', async () => {
     await saveDiaryDayWorkouts(DAY, [savedSession('s-1', 'Legs')]);
 
-    // The clean-up failed: the saved day may be the previous account's.
+    // The clean-up failed: the saved day, and the identity that queued
+    // workouts are matched to, may be the previous account's.
+    await enqueueOutbox(db, {
+      id: 'queued',
+      serverConfigId: 's1',
+      userId: 'u1',
+      kind: WORKOUT_SESSION_CREATE,
+      entityId: 'w-queued',
+      entryDate: DAY,
+      payload: createPayload('w-queued', true),
+      payloadVersion: 1,
+    });
     await beginAccountChange(async () => false);
-    expect((await readOfflineDiaryDay(DAY)).saved).toBeNull();
+    expect(await readOfflineDiaryDay(DAY)).toEqual({
+      saved: null,
+      waiting: [],
+    });
 
     // A later change that cleared it makes the saved copy readable again.
     await beginAccountChange(async () => true);
