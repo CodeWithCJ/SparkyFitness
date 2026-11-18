@@ -1,5 +1,6 @@
 import { clearAllCache } from '../offline/cacheStore';
-import { bumpAccountGeneration } from '../offline/accountGeneration';
+import { beginAccountChange } from '../offline/accountGeneration';
+import { notifyDiaryDaySaved } from '../offline/events';
 import { getOfflineDb } from '../offline/db';
 import { clearAllOfflineImages } from '../offline/offlineImages';
 import { useState, useEffect, useCallback } from 'react';
@@ -70,26 +71,31 @@ export function useAuth() {
       // stay with the account that made them.
       // Awaited like the cookie sweep below: the documents are keyed by
       // server configuration, not by account, so a read that overtook this
-      // DELETE would answer from the previous account's copy. Work already
-      // under way for the previous account (a refresh, a request that stores
-      // its answer) is told to stop writing first. A failure is reported at
-      // ERROR because nothing retries it until the next identity change.
-      bumpAccountGeneration();
-      // Tried a few times: a lock held by another write is the usual reason
-      // for a failure, and the previous account's copy must not stay behind.
-      for (let attempt = 1; attempt <= 3; attempt += 1) {
-        try {
-          await clearAllCache(await getOfflineDb());
-          break;
-        } catch (err: unknown) {
-          addLog(
-            `Failed to clear offline data (attempt ${attempt} of 3): ${err}`,
-            'ERROR'
-          );
-          if (attempt < 3)
-            await new Promise((resolve) => setTimeout(resolve, 250));
+      // DELETE would answer from the previous account's copy. Reads of the
+      // saved copy wait for it (and stay closed if it fails), and work under
+      // way for the previous account (a refresh, a request that stores its
+      // answer) is told to stop writing. Tried a few times: a lock held by
+      // another write is the usual reason for a failure. A failure is
+      // reported at ERROR because nothing retries it until the next change.
+      await beginAccountChange(async () => {
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          try {
+            await clearAllCache(await getOfflineDb());
+            return true;
+          } catch (err: unknown) {
+            addLog(
+              `Failed to clear offline data (attempt ${attempt} of 3): ${err}`,
+              'ERROR'
+            );
+            if (attempt < 3) {
+              await new Promise((resolve) => setTimeout(resolve, 250));
+            }
+          }
         }
-      }
+        return false;
+      });
+      // A Diary read that ran meanwhile is read again.
+      notifyDiaryDaySaved();
       // Pictures of the shared exercise library carry no account data, so
       // that sweep does not hold the switch up.
       void clearAllOfflineImages().catch((err: unknown) => {

@@ -1,5 +1,5 @@
 import { getActiveServerConfigId } from '../services/storage';
-import { accountGeneration } from './accountGeneration';
+import { accountGeneration, savedCopyReadable } from './accountGeneration';
 import { serverMayBeDown } from '../utils/serverErrors';
 import {
   isServerKnownUnreachable,
@@ -21,6 +21,9 @@ async function readSaved<T>(
   read: OfflineFallbackOptions<T>['read']
 ): Promise<T | null> {
   try {
+    // Not while an account change is clearing the saved copy, nor after a
+    // clean-up that failed: that copy may be the previous account's.
+    if (!(await savedCopyReadable())) return null;
     const serverConfigId = await getActiveServerConfigId();
     if (!serverConfigId) return null;
     return await read(await getOfflineDb(), serverConfigId);

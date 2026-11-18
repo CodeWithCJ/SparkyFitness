@@ -4,7 +4,7 @@ import type {
   PresetSessionResponse,
 } from '@workspace/shared';
 import { apiFetch } from '../services/api/apiClient';
-import { accountGeneration } from './accountGeneration';
+import { accountGeneration, savedCopyReadable } from './accountGeneration';
 import { getActiveServerConfigId } from '../services/storage';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import type { Exercise } from '../types/exercise';
@@ -198,12 +198,12 @@ export async function readOfflineDiaryDay(
   const serverConfigId = await getActiveServerConfigId();
   if (!serverConfigId) return { saved: null, waiting: [] };
   const db = await getOfflineDb();
-  const savedRow = await getCacheRow(
-    db,
-    serverConfigId,
-    CACHE_COLLECTIONS.diaryDay,
-    date
-  );
+  // Waits for an account change in progress; if its clean-up failed, the
+  // saved day is not shown, because it may be the previous account's.
+  const readable = await savedCopyReadable();
+  const savedRow = readable
+    ? await getCacheRow(db, serverConfigId, CACHE_COLLECTIONS.diaryDay, date)
+    : null;
   const saved = savedRow
     ? (savedRow.payload as ExerciseSessionResponse[])
     : null;

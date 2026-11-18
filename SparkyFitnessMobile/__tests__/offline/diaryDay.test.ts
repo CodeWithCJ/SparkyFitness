@@ -2,6 +2,7 @@ import type {
   ExerciseSessionResponse,
   PresetSessionResponse,
 } from '@workspace/shared';
+import { beginAccountChange } from '../../src/offline/accountGeneration';
 import { putCacheRows } from '../../src/offline/cacheStore';
 import { CACHE_COLLECTIONS } from '../../src/offline/collections';
 import { __setOfflineDbForTests } from '../../src/offline/db';
@@ -128,6 +129,20 @@ describe('the diary day kept on the phone', () => {
     stop();
 
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not show the saved day while an account change cleared nothing or is still clearing', async () => {
+    await saveDiaryDayWorkouts(DAY, [savedSession('s-1', 'Legs')]);
+
+    // The clean-up failed: the saved day may be the previous account's.
+    await beginAccountChange(async () => false);
+    expect((await readOfflineDiaryDay(DAY)).saved).toBeNull();
+
+    // A later change that cleared it makes the saved copy readable again.
+    await beginAccountChange(async () => true);
+    expect(
+      (await readOfflineDiaryDay(DAY)).saved?.map((session) => session.id)
+    ).toEqual(['s-1']);
   });
 
   it('rebuilds a workout waiting to be created, with its logged sets and names', async () => {
