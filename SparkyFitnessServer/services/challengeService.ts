@@ -405,14 +405,15 @@ export async function getChallenge(
  * after it, from the next period (next day for a daily challenge), so a
  * running period keeps its rules. Every change is logged for all members.
  */
-export async function updateRules(
-  userId: string,
-  challengeId: string,
-  input: unknown
-): Promise<ChallengeDetail> {
-  await requireHost(userId, challengeId);
-  const challenge = await challengeRepository.getChallenge(challengeId);
-  if (!challenge) throw notFound();
+/**
+ * The day a rules change takes effect on this challenge as it stands, or the
+ * reason it is refused: ended, a period change once started, dates the rules
+ * don't allow, or no period left.
+ */
+function ruleChangeEffectiveFrom(
+  challenge: ChallengeRow,
+  rules: ChallengeRules
+): string {
   if (challenge.ended_at) {
     throw new ChallengeError(
       409,
@@ -420,7 +421,6 @@ export async function updateRules(
       'This challenge has ended'
     );
   }
-  const rules = parseStoredRules(input);
   const current = parseStoredRules(challenge.rules);
   const today = todayInZone(challenge.time_zone);
   const started = today >= challenge.start_date;
@@ -445,6 +445,21 @@ export async function updateRules(
       'No period is left for a rules change to apply to'
     );
   }
+  return effectiveFrom;
+}
+
+export async function updateRules(
+  userId: string,
+  challengeId: string,
+  input: unknown
+): Promise<ChallengeDetail> {
+  await requireHost(userId, challengeId);
+  const challenge = await challengeRepository.getChallenge(challengeId);
+  if (!challenge) throw notFound();
+  const rules = parseStoredRules(input);
+  // Checked here so a refused change costs no rate-limit slot, and again
+  // under the row lock, where the day it takes effect is decided
+  const effectiveFrom = ruleChangeEffectiveFrom(challenge, rules);
   // Per challenge, and only for a change that will be saved: each change is
   // one more rules run in every member's rescore.
   await rateLimit(
@@ -457,7 +472,8 @@ export async function updateRules(
     userId,
     rules,
     effectiveFrom,
-    CHALLENGE_RULES_VERSION
+    CHALLENGE_RULES_VERSION,
+    (locked) => ruleChangeEffectiveFrom(locked, rules)
   );
   // Hosting passed on while this request was on its way
   if (!saved) throw hostOnly();
@@ -1274,36 +1290,33 @@ export async function finalizeChallenge(
       await recomputeMember(challenge, member, window.start, window.end);
     }
     const rules = rulesForDay(changes, window.start);
-    const scores = await challengeRepository.getDailyScores(
-      challenge.id,
-      window.start,
-      window.end
-    );
-    const standings = standingsFromScores(
-      members,
-      scores,
-      rules,
-      window,
-      window.end
-    );
+    // The standings are worked out from the scores the freeze reads under its
+    // lock, so a rescore saved after these runs is never frozen over.
     const stored = await challengeRepository.insertResults(
       challenge.id,
       window.start,
       window.end,
-      standings.rows.map((r) => ({
-        user_id: r.userId,
-        display_name: r.name,
-        rank: r.rank,
-        total: r.total,
-        minutes: r.minutes,
-        is_winner: r.winner,
-        reached_on: r.reachedOn ?? null,
-        detail: {
-          daysHit: r.daysHit,
-          daysEligible: r.daysEligible,
-          goalBonus: r.goalBonus,
-        },
-      }))
+      (scores) =>
+        standingsFromScores(
+          members,
+          scores,
+          rules,
+          window,
+          window.end
+        ).rows.map((r) => ({
+          user_id: r.userId,
+          display_name: r.name,
+          rank: r.rank,
+          total: r.total,
+          minutes: r.minutes,
+          is_winner: r.winner,
+          reached_on: r.reachedOn ?? null,
+          detail: {
+            daysHit: r.daysHit,
+            daysEligible: r.daysEligible,
+            goalBonus: r.goalBonus,
+          },
+        }))
     );
     // A period that was not frozen (someone joined or left meanwhile) stops
     // the run: later periods wait, so periods always freeze in order and a

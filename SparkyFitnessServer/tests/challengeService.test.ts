@@ -281,7 +281,8 @@ describe('changing the rules', () => {
       'host',
       expect.objectContaining({ bestDaysPerWeek: 4 }),
       '2026-11-16',
-      1
+      1,
+      expect.any(Function)
     );
   });
 
@@ -307,6 +308,46 @@ describe('changing the rules', () => {
       service.updateRules('host', challenge().id, allRounder)
     ).rejects.toMatchObject({ status: 409 });
     expect(repo.updateRules).not.toHaveBeenCalled();
+  });
+
+  it('the day a change takes effect is decided again under the row lock', async () => {
+    // Sunday 23:59 in the challenge's zone: from Monday 11-16. The save then
+    // waits on the row lock past midnight, so it applies from 11-23.
+    vi.setSystemTime(new Date('2026-11-15T23:59:00Z'));
+    repo.getChallenge.mockResolvedValue(challenge());
+    let decided = '';
+    repo.updateRules.mockImplementation(
+      async (_id, _by, _rules, early, _version, recheck) => {
+        expect(early).toBe('2026-11-16');
+        vi.setSystemTime(new Date('2026-11-16T00:01:00Z'));
+        decided = recheck!(challenge());
+        return true;
+      }
+    );
+    await service.updateRules('host', challenge().id, {
+      ...allRounder,
+      bestDaysPerWeek: 4,
+    });
+    expect(decided).toBe('2026-11-23');
+  });
+
+  it('a period change accepted before the start is refused if the challenge started by the save', async () => {
+    vi.setSystemTime(new Date('2026-11-15T23:59:00Z'));
+    const upcoming = challenge({ start_date: '2026-11-16' });
+    repo.getChallenge.mockResolvedValue(upcoming);
+    repo.updateRules.mockImplementation(
+      async (_id, _by, _rules, _early, _version, recheck) => {
+        vi.setSystemTime(new Date('2026-11-16T00:01:00Z'));
+        recheck!(upcoming);
+        return true;
+      }
+    );
+    await expect(
+      service.updateRules('host', upcoming.id, {
+        ...allRounder,
+        period: 'day',
+      })
+    ).rejects.toMatchObject({ status: 400, code: 'CHALLENGE_PERIOD_LOCKED' });
   });
 
   it('a day is scored by the latest change effective on or before it', () => {
@@ -540,8 +581,10 @@ describe('scoring jobs', () => {
     // Wednesday: the window has passed
     vi.setSystemTime(new Date('2026-11-18T01:00:00Z'));
     expect(await service.finalizePeriods()).toBe(1);
-    const [, start, end, rows] = repo.insertResults.mock.calls[0]!;
+    const [, start, end, build] = repo.insertResults.mock.calls[0]!;
     expect([start, end]).toEqual(['2026-11-09', '2026-11-15']);
+    // The freeze hands the builder the scores it read under its lock
+    const rows = build(await repo.getDailyScores(challenge().id, start, end));
     expect(rows.map((r) => [r.user_id, r.rank, r.is_winner])).toEqual([
       ['amy', 1, true],
       ['host', 2, false],
@@ -783,6 +826,42 @@ describe('review fixes (PR #3585)', () => {
     };
     expect(goal.done).toBe(0);
     expect(goal.rawBonus).toBe(0);
+  });
+
+  it('freezes the standings of the scores read under the freeze lock, not an earlier read', async () => {
+    repo.listOpenChallenges.mockResolvedValue([challenge()]);
+    repo.getMembers.mockResolvedValue([member('host', 'host'), member('amy')]);
+    const row = (user_id: string, total: number) => ({
+      challenge_id: challenge().id,
+      user_id,
+      day: '2026-11-10',
+      total,
+      effort: total,
+      step_points: 0,
+      pr_bonus: 0,
+      streak_bonus: 0,
+      beat_average_bonus: 0,
+      minutes: 20,
+      steps: 0,
+      workouts: 1,
+      eligible: true,
+      detail: {},
+    });
+    // What a read before the lock would have seen: host ahead. A rescore of
+    // amy's late sync then saved 40, which the freeze reads under its lock.
+    repo.getDailyScores.mockResolvedValue([row('amy', 10), row('host', 25)]);
+    let frozen: Array<{ user_id: string; rank: number }> = [];
+    repo.insertResults.mockImplementation(async (_id, _start, _end, build) => {
+      frozen = build([row('amy', 40), row('host', 25)]);
+      return true;
+    });
+    vi.setSystemTime(new Date('2026-11-18T01:00:00Z'));
+    expect(await service.finalizePeriods()).toBe(1);
+    expect(frozen.map((r) => [r.user_id, r.rank])).toEqual([
+      ['amy', 1],
+      ['host', 2],
+    ]);
+    expect(repo.getDailyScores).not.toHaveBeenCalled();
   });
 
   it('finalising rescores only the period being frozen', async () => {

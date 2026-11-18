@@ -36,7 +36,15 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb from '../models/exerciseEntry.js';
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  vi,
+} from 'vitest';
 import { getClient, getSystemClient, endPool } from '../db/poolManager.js';
 import challengeRepository, {
   type QueuedMemberDays,
@@ -2292,7 +2300,7 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
         challengeId,
         '2026-11-30',
         '2026-11-30',
-        [AMY, OUTSIDER].map(result)
+        () => [AMY, OUTSIDER].map(result)
       )
     ).toBe(false);
     expect(
@@ -2300,7 +2308,7 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
         challengeId,
         '2026-11-30',
         '2026-11-30',
-        [AMY].map(result)
+        () => [AMY].map(result)
       )
     ).toBe(false);
     expect(
@@ -2308,7 +2316,7 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
         challengeId,
         '2026-11-30',
         '2026-11-30',
-        [AMY, HOST].map(result)
+        () => [AMY, HOST].map(result)
       )
     ).toBe(true);
     const { rows } = await sys.query(
@@ -2331,7 +2339,7 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
         challengeId,
         '2026-11-30',
         '2026-11-30',
-        [AMY, HOST].map(result)
+        () => [AMY, HOST].map(result)
       )
     ).toBe(false);
     await sys.query(
@@ -2357,6 +2365,77 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       entry.rows[0].id,
     ]);
     await clearQueue();
+  });
+
+  it('a freeze waits for a score save in flight and freezes what it saved', async () => {
+    const day = '2026-12-07';
+    const result = (user_id: string, i: number) => ({
+      user_id,
+      display_name: 'X',
+      rank: i + 1,
+      total: 10 - i,
+      minutes: 0,
+      is_winner: i === 0,
+      reached_on: null,
+      detail: {},
+    });
+    // A rescore's save, mid-transaction: saveMemberDays holds its member row
+    // FOR SHARE and has written the day, not yet committed
+    const save = await getSystemClient();
+    let seen: number | null = null;
+    let freezing: Promise<boolean> | undefined;
+    try {
+      await save.query('BEGIN');
+      await save.query(
+        'SELECT 1 FROM public.challenge_members WHERE challenge_id = $1 AND user_id = $2 FOR SHARE',
+        [challengeId, AMY]
+      );
+      await save.query(
+        `INSERT INTO public.challenge_daily_scores
+           (challenge_id, user_id, day, total, effort, step_points, pr_bonus, streak_bonus,
+            beat_average_bonus, minutes, steps, workouts, eligible, detail)
+         VALUES ($1, $2, $3, 77, 77, 0, 0, 0, 0, 30, 0, 1, true, '{}')`,
+        [challengeId, AMY, day]
+      );
+      freezing = challengeRepository.insertResults(
+        challengeId,
+        day,
+        day,
+        (scores) => {
+          seen = Number(scores.find((r) => r.user_id === AMY)?.total ?? 0);
+          return [AMY, HOST].map(result);
+        }
+      );
+      // The freeze waits on the save's row lock instead of reading around it
+      await vi.waitFor(
+        async () => {
+          const waiting = await sys.query(
+            `SELECT count(*)::int AS n FROM pg_locks
+              WHERE NOT granted AND locktype IN ('transactionid', 'tuple')`
+          );
+          expect(waiting.rows[0].n).toBeGreaterThanOrEqual(1);
+        },
+        { timeout: 10000, interval: 50 }
+      );
+      expect(seen).toBeNull();
+    } finally {
+      await save.query('COMMIT');
+      save.release();
+    }
+    expect(await freezing).toBe(true);
+    expect(seen).toBe(77);
+    await sys.query(
+      'DELETE FROM public.challenge_results WHERE challenge_id = $1 AND period_start = $2',
+      [challengeId, day]
+    );
+    await sys.query(
+      'DELETE FROM public.challenge_daily_scores WHERE challenge_id = $1 AND day = $2',
+      [challengeId, day]
+    );
+    await sys.query(
+      "UPDATE public.challenges SET frozen_period_starts = '{}' WHERE id = $1",
+      [challengeId]
+    );
   });
 
   it("deleting an account removes that person's challenge rows", async () => {

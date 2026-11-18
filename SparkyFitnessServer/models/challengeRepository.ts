@@ -458,19 +458,26 @@ async function createWithHost(input: NewChallenge): Promise<string> {
  * A scoring run already under way when this commits keeps the day queued
  * (its claim no longer matches), so it cannot leave old-rules scores behind.
  */
+/**
+ * Saves a rules change. `recheck`, when given, runs under the row lock on the
+ * challenge as it stands then and returns the day the change takes effect
+ * (or throws to refuse it), so a save that commits after midnight in the
+ * challenge's time zone, or after it started, is decided on that day.
+ */
 async function updateRules(
   challengeId: string,
   changedBy: string,
   rules: unknown,
   effectiveFrom: string,
-  rulesVersion: number
+  rulesVersion: number,
+  recheck?: (locked: ChallengeRow) => string
 ): Promise<boolean> {
   return inTransaction(async (client) => {
     // The rules being replaced, read under the row lock (the lock leaving and
     // passing on hosting take), so two overlapping changes log R0 -> R1 and
     // R1 -> R2, and a host who left meanwhile cannot write.
     const locked = await client.query(
-      'SELECT rules FROM challenges WHERE id = $1 FOR UPDATE',
+      `SELECT ${CHALLENGE_COLUMNS} FROM challenges c WHERE c.id = $1 FOR UPDATE`,
       [challengeId]
     );
     if (!locked.rowCount) return false;
@@ -480,7 +487,9 @@ async function updateRules(
       [challengeId, changedBy]
     );
     if (!host.rowCount) return false;
-    const previous = (locked.rows[0] as { rules: unknown } | undefined)?.rules;
+    const row = locked.rows[0] as ChallengeRow;
+    if (recheck) effectiveFrom = recheck(row);
+    const previous = row.rules;
     await client.query(
       'UPDATE challenges SET rules = $2::jsonb, rules_version = $3, updated_at = now() WHERE id = $1',
       [challengeId, JSON.stringify(rules), rulesVersion]
@@ -811,8 +820,9 @@ async function ackQueuedDays(batch: QueuedMemberDays): Promise<void> {
  * Runs one member's read-score-save cycle for one challenge while holding an
  * advisory lock on that pair, across instances. The queue job and the
  * finaliser both score through here, so a run that read older data can never
- * save over the scores of a run that started after it, and the finaliser
- * never freezes such a stale save.
+ * save over the scores of a run that started after it. The freeze reads the
+ * scores itself under its own lock (insertResults), so it never freezes
+ * totals a save changed after they were read.
  */
 async function withScoringLock<T>(
   challengeId: string,
@@ -942,20 +952,23 @@ async function frozenPeriodStarts(challengeId: string): Promise<string[]> {
   });
 }
 
+const DAILY_SCORES_SQL = `SELECT challenge_id, user_id, TO_CHAR(day, 'YYYY-MM-DD') AS day, total, effort,
+              step_points, pr_bonus, streak_bonus, beat_average_bonus, minutes, steps,
+              workouts, eligible, detail
+         FROM challenge_daily_scores
+        WHERE challenge_id = $1 AND day BETWEEN $2 AND $3`;
+
 async function getDailyScores(
   challengeId: string,
   from: string,
   to: string
 ): Promise<ChallengeDailyScoreRow[]> {
   return withSystem(async (client) => {
-    const { rows } = await client.query(
-      `SELECT challenge_id, user_id, TO_CHAR(day, 'YYYY-MM-DD') AS day, total, effort,
-              step_points, pr_bonus, streak_bonus, beat_average_bonus, minutes, steps,
-              workouts, eligible, detail
-         FROM challenge_daily_scores
-        WHERE challenge_id = $1 AND day BETWEEN $2 AND $3`,
-      [challengeId, from, to]
-    );
+    const { rows } = await client.query(DAILY_SCORES_SQL, [
+      challengeId,
+      from,
+      to,
+    ]);
     return rows as ChallengeDailyScoreRow[];
   });
 }
@@ -972,14 +985,19 @@ export interface ResultInput {
 }
 
 /**
- * Freezes a period. The first writer wins: a second instance finalising the
- * same period at once inserts nothing, and a frozen row is never rewritten.
+ * Freezes a period from its daily scores as they stand under the lock:
+ * `build` works the result rows out from the scores read here, after the
+ * member rows are locked, so a save in flight (saveMemberDays holds its
+ * member row FOR SHARE) is waited for and read, and none can land between
+ * the read and the freeze. The first writer wins: a second instance
+ * finalising the same period at once inserts nothing, and a frozen row is
+ * never rewritten.
  */
 async function insertResults(
   challengeId: string,
   periodStart: string,
   periodEnd: string,
-  rows: ResultInput[]
+  build: (scores: ChallengeDailyScoreRow[]) => ResultInput[]
 ): Promise<boolean> {
   return inTransaction(async (client) => {
     await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
@@ -991,23 +1009,31 @@ async function insertResults(
     await client.query('SELECT id FROM challenges WHERE id = $1 FOR UPDATE', [
       challengeId,
     ]);
+    // Challenge row first, then member rows: the order leaving and joining
+    // take them, and a save takes only its member row.
     const current = await client.query(
-      'SELECT user_id FROM challenge_members WHERE challenge_id = $1',
+      'SELECT user_id FROM challenge_members WHERE challenge_id = $1 FOR UPDATE',
       [challengeId]
     );
     const members = new Set(
       (current.rows as { user_id: string }[]).map((r) => r.user_id)
     );
-    if (
-      members.size !== rows.length ||
-      !rows.every((r) => members.has(r.user_id))
-    )
-      return false;
     const already = await client.query(
       'SELECT 1 FROM challenges WHERE id = $1 AND $2::date = ANY(frozen_period_starts)',
       [challengeId, periodStart]
     );
     if (already.rowCount) return false;
+    const scores = await client.query(DAILY_SCORES_SQL, [
+      challengeId,
+      periodStart,
+      periodEnd,
+    ]);
+    const rows = build(scores.rows as ChallengeDailyScoreRow[]);
+    if (
+      members.size !== rows.length ||
+      !rows.every((r) => members.has(r.user_id))
+    )
+      return false;
     if (!rows.length) return false;
     await client.query(
       `INSERT INTO challenge_results
