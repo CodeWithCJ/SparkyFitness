@@ -6773,9 +6773,7 @@
     "upNextTitle": "Página Siguiente",
     "upNextSubtitle": "Una página a la que se accede deslizando hacia arriba desde la pantalla de series con el siguiente ejercicio, su objetivo y un botón Cambiar para realizar otro ejercicio primero.",
     "largerTextTitle": "Texto más grande en el reloj",
-    "largerTextSubtitle": "Texto más grande y los nuevos diseños en todo el reloj: Objetivos, Agua, Entrenamiento, Ayuno, Pasos y más. Desactivarlo mantiene el aspecto original.",
-    "classicWorkoutTitle": "Página de entrenamiento original",
-    "classicWorkoutSubtitle": "Conserva la pantalla de entrenamiento original mientras el texto más grande está activo en el resto de la app. Con el texto grande desactivado, el entrenamiento siempre lo usa."
+    "largerTextSubtitle": "Texto más grande y los nuevos diseños en todo el reloj: Objetivos, Agua, Entrenamiento, Ayuno, Pasos y más. Desactivarlo mantiene el aspecto original."
   },
   "exerciseStatistics": {
     "analysis": {

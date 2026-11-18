@@ -41,7 +41,7 @@ const isoToLocalDay = (iso: string): string => toLocalDateString(new Date(iso));
 const RunProgramWorkoutScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const { index } = route.params;
+  const { index, programId } = route.params;
   const { program, status, schedule, doneDay, enabled } = useRunProgram();
   const { preferences } = usePreferences();
   const [opening, setOpening] = useState(false);
@@ -73,9 +73,12 @@ const RunProgramWorkoutScreen: React.FC<Props> = ({ navigation, route }) => {
         : undefined,
     [program, status, schedule, doneDay, today, index]
   );
-  const workout = status?.program.workouts[index];
+  // The index means nothing in another program, so a row opened for a program
+  // that is no longer the active one is treated as not found.
+  const sameProgram = status?.program.id === programId;
+  const workout = sameProgram ? status?.program.workouts[index] : undefined;
 
-  if (!status || !workout || !item) {
+  if (!status || !sameProgram || !workout || !item) {
     return (
       <View className="flex-1 bg-background">
         {header}

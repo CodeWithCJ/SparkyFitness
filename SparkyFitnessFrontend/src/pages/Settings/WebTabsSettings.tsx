@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useCycleSettings } from '@/hooks/useCycle';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 import {
   useHiddenWebTabs,
   useSetWebTabHidden,
@@ -27,6 +28,7 @@ export const WebTabsSettings = () => {
   const { hidden, editState, reload } = useHiddenWebTabs();
   const { setTabHidden } = useSetWebTabHidden();
   const { data: cycleSettings } = useCycleSettings();
+  const { isEnabled: isFeatureOn } = useWebFeatures();
 
   return (
     <>
@@ -79,24 +81,30 @@ export const WebTabsSettings = () => {
             </div>
           );
         })}
-        <div className="flex items-center justify-between gap-4">
-          <span className="flex items-center gap-2 text-sm font-medium">
-            <TabIcon icon={cycleTabIcon(cycleSettings)} />
-            {cycleTabLabel(t, cycleSettings)}
-          </span>
-          <span className="text-sm text-muted-foreground">
-            {cycleSettings?.enabled
-              ? t('settings.webTabs.cycleOn', 'On')
-              : t('settings.webTabs.cycleOff', 'Off')}
-          </span>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          {t(
-            'settings.webTabs.cycleHint',
-            '{{name}} has its own on/off switch in the Wellness settings tab.',
-            { name: cycleTabLabel(t, cycleSettings) }
-          )}
-        </p>
+        {/* Only once cycle settings are known: until then discreet mode is
+            unknown too, and the row could name cycle. */}
+        {cycleSettings !== undefined && (
+          <>
+            <div className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-2 text-sm font-medium">
+                <TabIcon icon={cycleTabIcon(cycleSettings)} />
+                {cycleTabLabel(t, cycleSettings)}
+              </span>
+              <span className="text-sm text-muted-foreground">
+                {isFeatureOn('cycle')
+                  ? t('settings.webTabs.cycleOn', 'On')
+                  : t('settings.webTabs.cycleOff', 'Off')}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {t(
+                'settings.webTabs.cycleHint',
+                '{{name}} is turned on or off in Features, above.',
+                { name: cycleTabLabel(t, cycleSettings) }
+              )}
+            </p>
+          </>
+        )}
         <p className="text-sm text-muted-foreground">
           {t(
             'settings.webTabs.footnote',

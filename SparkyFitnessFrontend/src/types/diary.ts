@@ -48,6 +48,11 @@ export interface FoodEntryUpdateData {
   entry_time?: string | null;
   /** undefined leaves the stored note alone; null clears it. */
   notes?: string | null;
+  /**
+   * Cooked weight eaten, in `unit`. Send it with every quantity or unit
+   * change: the server clears it when either changes without it.
+   */
+  cooked_quantity?: number | null;
 }
 
 export interface FoodDiaryImportRow {

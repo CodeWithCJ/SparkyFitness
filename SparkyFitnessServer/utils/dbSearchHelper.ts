@@ -39,19 +39,26 @@ export function buildSqlSearch(
   };
 }
 
-/**
- * Generates SQL for prioritizing exact sequence matches in the ORDER BY clause.
- *
- * @param nameColumn The SQL column name or expression
- * @param exactMatchParamIndex The index of the parameter bound to `%${searchTerm}%`
- */
-export function buildSqlExactMatchOrder(
+export function buildSqlRelevanceOrder(
   nameColumn: string,
-  exactMatchParamIndex: number
-): string {
-  return `(CASE WHEN ${nameColumn} ILIKE $${exactMatchParamIndex}::text THEN 0 ELSE 1 END)`;
+  fullColumn: string,
+  searchTerm: string,
+  baseParamIndex: number
+): { orderClause: string; queryParams: string[]; nextParamIndex: number } {
+  const term = searchTerm.trim();
+  const i = baseParamIndex;
+  return {
+    orderClause: `(CASE WHEN LOWER(${nameColumn}) = LOWER($${i}::text) THEN 0 WHEN ${nameColumn} ILIKE $${i + 1}::text THEN 1 WHEN ${fullColumn} ~* $${i + 2}::text THEN 2 WHEN ${fullColumn} ILIKE $${i + 3}::text THEN 3 ELSE 4 END)`,
+    queryParams: [
+      term,
+      `${term}%`,
+      `(^|\\W)${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\W|$)`,
+      `%${term}%`,
+    ],
+    nextParamIndex: i + 4,
+  };
 }
 export default {
   buildSqlSearch,
-  buildSqlExactMatchOrder,
+  buildSqlRelevanceOrder,
 };

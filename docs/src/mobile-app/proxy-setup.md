@@ -2,6 +2,8 @@
 
 If you use a proxy tunnel such as Cloudflare or Pangolin, you will need to configure the app to send a special header.
 
+If your reverse proxy requires a client certificate instead, see [Client Certificates (mTLS)](/mobile-app/client-certificates).
+
 ## Pangolin
 
 1. Open your Pangolin dashboard click "Links" in the sidebar

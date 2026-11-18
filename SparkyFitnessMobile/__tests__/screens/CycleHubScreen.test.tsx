@@ -29,12 +29,37 @@ let mockMode: 'standard' | 'ttc' | 'pregnant' = 'standard';
 jest.mock('../../src/hooks/useCycleMode', () => ({
   useCycleMode: () => ({
     mode: mockMode,
-    enabled: true,
     discreetMode: false,
     isLoading: false,
-    settings: { onboarded_at: '2026-07-08T00:00:00Z' },
   }),
 }));
+
+type MockCycleSwitch = {
+  on: boolean;
+  state: 'ready' | 'loading' | 'loadFailed';
+  isPending: boolean;
+  settings: { onboarded_at: string | null } | null | undefined;
+};
+const setUpAndOn = (): MockCycleSwitch => ({
+  on: true,
+  state: 'ready',
+  isPending: false,
+  settings: { onboarded_at: '2026-07-08T00:00:00Z' },
+});
+let mockCycleSwitch: MockCycleSwitch = setUpAndOn();
+const mockSetOn = jest.fn();
+const mockReload = jest.fn();
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useCycleSwitch: () => ({
+    ...mockCycleSwitch,
+    needsSetup: false,
+    setOn: mockSetOn,
+    openSetup: jest.fn(),
+    reload: mockReload,
+  }),
+}));
+
+let mockDiscreet = false;
 
 jest.mock('../../src/components/wellness/CycleInsightsView', () => {
   const { View } = require('react-native');
@@ -71,7 +96,7 @@ jest.mock('../../src/hooks/useCycleSettings', () => ({
       preferred_products: [],
       dismissed_prompts: [],
       terminology: 'default',
-      discreet_mode: false,
+      discreet_mode: mockDiscreet,
       onboarded_at: '2026-07-08T00:00:00Z',
     },
     isLoading: false,
@@ -155,9 +180,14 @@ describe('CycleHubScreen', () => {
   beforeEach(async () => {
     await initializeI18n('en');
     await i18n.changeLanguage('en');
-    mockNavigation.navigate.mockClear();
+    jest.mocked(mockNavigation.navigate).mockClear();
+    jest.mocked(mockNavigation.replace).mockClear();
+    mockSetOn.mockClear();
+    mockReload.mockClear();
     mockLogs.length = 0;
     mockMode = 'standard';
+    mockDiscreet = false;
+    mockCycleSwitch = setUpAndOn();
   });
 
   it('renders Overview, Trends, and History tabs in cycle mode', () => {
@@ -236,5 +266,62 @@ describe('CycleHubScreen', () => {
 
     expect(getByTestId(`logged-dot-${month}-10`)).toBeTruthy();
     expect(queryByTestId(`logged-dot-${month}-11`)).toBeNull();
+  });
+
+  describe('while cycle is not on and set up', () => {
+    it('runs the setup when cycle was never set up', () => {
+      mockCycleSwitch = { ...setUpAndOn(), on: false, settings: null };
+      const { queryByText } = renderScreen();
+      expect(mockNavigation.replace).toHaveBeenCalledWith('CycleOnboarding');
+      expect(queryByText('Overview')).toBeNull();
+    });
+
+    it('runs the setup when cycle is on but its setup was reset', () => {
+      mockCycleSwitch = { ...setUpAndOn(), settings: { onboarded_at: null } };
+      renderScreen();
+      expect(mockNavigation.replace).toHaveBeenCalledWith('CycleOnboarding');
+    });
+
+    it('offers to turn cycle back on, without the setup, once it was set up', () => {
+      mockCycleSwitch = { ...setUpAndOn(), on: false };
+      const { getByText, queryByText } = renderScreen();
+
+      expect(getByText('Cycle tracking is turned off')).toBeTruthy();
+      expect(queryByText('Overview')).toBeNull();
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+
+      fireEvent.press(getByText('Turn on'));
+      expect(mockSetOn).toHaveBeenCalledWith(true);
+      fireEvent.press(getByText('Open Features'));
+      expect(mockNavigation.navigate).toHaveBeenCalledWith('FeatureSettings');
+    });
+
+    it('never says Cycle on that notice in discreet mode', () => {
+      mockDiscreet = true;
+      mockCycleSwitch = { ...setUpAndOn(), on: false };
+      const { getByText, queryByText } = renderScreen();
+      expect(getByText('Wellness is turned off')).toBeTruthy();
+      expect(queryByText(/cycle/i)).toBeNull();
+    });
+
+    it('cannot turn cycle on twice while it is turning on', () => {
+      mockCycleSwitch = { ...setUpAndOn(), on: false, isPending: true };
+      const { getByText } = renderScreen();
+      fireEvent.press(getByText('Turn on'));
+      expect(mockSetOn).not.toHaveBeenCalled();
+    });
+
+    it('shows Retry, never the setup, when the settings could not load', () => {
+      mockCycleSwitch = {
+        ...setUpAndOn(),
+        on: false,
+        state: 'loadFailed',
+        settings: undefined,
+      };
+      const { getByText } = renderScreen();
+      expect(mockNavigation.replace).not.toHaveBeenCalled();
+      fireEvent.press(getByText('Retry'));
+      expect(mockReload).toHaveBeenCalledTimes(1);
+    });
   });
 });

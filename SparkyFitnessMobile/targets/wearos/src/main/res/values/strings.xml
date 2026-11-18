@@ -267,5 +267,135 @@
     <string name="run_keypad_distance">Distance (%1$s)</string>
     <string name="run_treadmill_distance_title">Treadmill Distance</string>
 
+    <!-- New Workout View -->
+    <string name="workout_new_live_title">Live</string>
+    <string name="workout_new_fallback_title">Workout</string>
+    <string name="workout_new_sets_progress">%1$d of %2$d</string>
+    <string name="workout_new_sets_unit">SETS</string>
+    <string name="workout_new_log_set">Log set</string>
+    <string name="workout_new_undo">Undo</string>
+    <string name="workout_new_rest_time">Rest %1$s</string>
+    <string name="workout_new_then_next">then %1$s</string>
+    <string name="workout_new_logged_tag">logged</string>
+    <string name="workout_new_superset_with">Superset · %1$s</string>
+    <string name="workout_new_set_of">Set %1$d of %2$d</string>
+    <string name="workout_new_warmup_of">Warm-up %1$d of %2$d</string>
+    <string name="workout_new_drop_of">Drop %1$d of %2$d</string>
+    <string name="workout_new_failure_of">Failure %1$d of %2$d</string>
+    <string name="workout_new_field_weight">WEIGHT</string>
+    <string name="workout_new_field_added">ADDED</string>
+    <string name="workout_new_field_assisted">ASSISTED</string>
+    <string name="workout_new_field_reps">REPS</string>
+    <string name="workout_new_field_distance">DISTANCE</string>
+    <string name="workout_new_field_hold">HOLD</string>
+    <string name="workout_new_field_time">TIME</string>
+    <string name="workout_new_last_hold">Last %1$s</string>
+    <string name="workout_new_get_ready">Get ready</string>
+    <string name="workout_new_tap_to_skip">Tap to skip</string>
+    <string name="workout_new_tap_ring_end">Tap ring to end early</string>
+    <string name="workout_new_rest_back">−15</string>
+    <string name="workout_new_rest_forward">+15</string>
+    <string name="workout_new_paused">Paused</string>
+    <string name="workout_new_next_prefix">Next: </string>
+    <string name="workout_new_next_timed">Timed</string>
+    <string name="workout_new_workout_complete">Workout complete</string>
+    <string name="workout_new_finish">Finish</string>
+    <string name="workout_new_bw_label">BW</string>
+    <string name="workout_new_unit_sec">s</string>
+    <string name="workout_new_unit_min">m</string>
+    <string name="workout_new_unit_hour">h</string>
+    <string name="workout_new_unit_yd">yd</string>
+    <string name="workout_new_unit_m">m</string>
+    <string name="workout_new_short_sec">%1$ds</string>
+    <string name="workout_new_short_min">%1$dm</string>
+    <string name="workout_new_short_hour">%1$dh</string>
+    <plurals name="workout_new_reps_target">
+        <item quantity="one">%1$d rep</item>
+        <item quantity="other">%1$d reps</item>
+    </plurals>
+    <string name="workout_new_bw_reps">%1$s × %2$d</string>
+    <string name="workout_new_bw_delta_reps">%1$s %2$s%3$s × %4$d</string>
+
+    <!-- More Page & Plate Calculator -->
+    <string name="workout_new_more_title">More</string>
+    <plurals name="workout_new_up_next_sets">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d sets</item>
+    </plurals>
+    <string name="workout_new_last_exercise">This is the last exercise</string>
+    <string name="workout_new_do_first">Do first</string>
+    <string name="workout_new_list">List</string>
+    <string name="workout_new_section_this_set">THIS SET</string>
+    <string name="workout_new_section_exercise">EXERCISE</string>
+    <string name="workout_new_section_workout">WORKOUT</string>
+    <string name="workout_new_tile_type">Type</string>
+    <string name="workout_new_tile_plates">Plates</string>
+    <string name="workout_new_tile_add_set">Add Set</string>
+    <string name="workout_new_tile_add_set_hint">+1 set</string>
+    <string name="workout_new_tile_delete_set">Delete Set</string>
+    <string name="workout_new_tile_swap">Swap</string>
+    <string name="workout_new_tile_skip">Skip</string>
+    <string name="workout_new_tile_skip_hint">no log</string>
+    <string name="workout_new_tile_delete_exercise">Delete Exercise</string>
+    <string name="workout_new_tile_water">Water</string>
+    <string name="workout_new_tile_undo_set">Undo Set</string>
+    <string name="workout_new_tile_undo_set_hint">remove last log</string>
+    <string name="workout_new_tile_add_exercise">Add Exercise</string>
+    <string name="workout_new_tile_discard">Discard</string>
+    <string name="workout_new_do_now_title">Do Now</string>
+    <string name="workout_new_set_type_title">Set Type</string>
+    <string name="workout_new_confirm_delete_set">Delete this set?</string>
+    <string name="workout_new_confirm_delete_set_msg">An exercise\'s last set removes the exercise.</string>
+    <string name="workout_new_confirm_delete_exercise">Delete %1$s?</string>
+    <string name="workout_new_confirm_delete_exercise_msg">Its sets are removed from this workout.</string>
+    <string name="workout_new_confirm_finish">Finish workout?</string>
+    <string name="workout_new_confirm_discard">Discard workout?</string>
+    <string name="workout_new_delete">Delete</string>
+
+    <string name="workout_new_plates_bar_only">Bar only</string>
+    <string name="workout_new_plates_not_exact">Not exact</string>
+    <string name="workout_new_plates_closest">Closest %1$s</string>
+    <string name="workout_new_plates_unavailable">Cannot work this out</string>
+    <string name="workout_new_plates_bar_line">Bar %1$s %2$s</string>
+    <string name="workout_new_plates_use">Use %1$s %2$s</string>
+
+    <!-- Edit Previous Set -->
+    <string name="workout_new_editing_set">Set %1$d</string>
+    <string name="workout_new_no_logged_sets">No sets logged yet</string>
+
+    <!-- Effort (RPE & Workout Effort) -->
+    <string name="workout_new_how_hard">How hard?</string>
+    <string name="workout_new_set_done">Set %1$d done</string>
+    <string name="workout_new_effort_saved">Saved</string>
+    <string name="workout_new_effort_easy">Easy</string>
+    <string name="workout_new_effort_moderate">Moderate</string>
+    <string name="workout_new_effort_hard">Hard</string>
+    <string name="workout_new_effort_all_out">All Out</string>
+    <string name="workout_new_rpe_short_10">0 reps left</string>
+    <string name="workout_new_rpe_short_9_5">0–1 reps left</string>
+    <string name="workout_new_rpe_short_9">1 rep left</string>
+    <string name="workout_new_rpe_short_8_5">1–2 reps left</string>
+    <string name="workout_new_rpe_short_8">2 reps left</string>
+    <string name="workout_new_rpe_short_7_5">2–3 reps left</string>
+    <string name="workout_new_rpe_short_7">3 reps left</string>
+    <string name="workout_new_rpe_short_6_5">3–4 reps left</string>
+    <string name="workout_new_rpe_short_6">4+ reps left</string>
+    <string name="workout_new_rpe_short_5">5+ reps left</string>
+    <string name="workout_new_rpe_short_4">Light</string>
+    <string name="workout_new_rpe_short_3">Very light</string>
+    <string name="workout_new_rpe_short_low">Easy</string>
+
+    <!-- New PR & Finish Summary -->
+    <string name="workout_new_pr_title">New PR!</string>
+    <string name="workout_new_pr_continue">Continue · %1$ds</string>
+    <string name="workout_new_done_title">Workout done</string>
+    <string name="workout_new_summary_time">Time</string>
+    <string name="workout_new_summary_sets">Sets</string>
+    <string name="workout_new_summary_volume">Volume</string>
+    <string name="workout_new_summary_avg_max_hr">Avg / Max HR</string>
+    <string name="workout_new_summary_active">Active</string>
+    <string name="workout_new_changed_preset">You changed %1$s</string>
+    <string name="workout_new_keep_short">Keep</string>
+
     <color name="iconBackground">#FFFFFF</color>
 </resources>

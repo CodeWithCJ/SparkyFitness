@@ -1,3 +1,4 @@
+import type { DailyNeedData } from '@workspace/shared';
 import type { SleepEntry } from '../../types/sleep';
 import { apiFetch } from './apiClient';
 
@@ -17,5 +18,19 @@ export const fetchSleepEntries = async (
     endpoint: `/api/sleep?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`,
     serviceName: 'Sleep API',
     operation: 'fetch sleep entries',
+  });
+};
+
+/**
+ * Tonight's sleep need and what it is made of: the baseline, the extra from the
+ * day's logged workouts (strain) and from sleep debt. `training_load_score` is
+ * null when no workout was logged that day, which is not the same as a rest
+ * score of 0. With no date the server uses today in the account's timezone.
+ */
+export const fetchDailySleepNeed = async (): Promise<DailyNeedData> => {
+  return apiFetch<DailyNeedData>({
+    endpoint: '/api/sleep-science/daily-need',
+    serviceName: 'Sleep Science API',
+    operation: 'fetch daily sleep need',
   });
 };

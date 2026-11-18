@@ -140,9 +140,22 @@ Eight balanced hues for things that need a distinct color but no fixed meaning. 
 | Past-Date Orange | `--color-date-past` (JS only)           | #F2590D   | #F07C42  | Date pill tint when viewing a day before today  |
 | Future-Date Sky  | `--color-date-future` (JS only)         | #0DA6F2   | #5EBEED  | Date pill tint when viewing a day after today   |
 
+### Sport tints
+
+The training calendar and the Load by Sport card colour each sport group with its own token, so the calendar marks, the stacked bars and their legend always agree. AMOLED uses the Dark values. Planned-item status on the calendar reuses existing tokens rather than adding new ones: done is Success Glyph (`--color-icon-success`), partly done is Warning Glyph (`--color-icon-warning`), missed is Danger Glyph (`--color-icon-danger`), upcoming is Muted Slate (`--color-text-muted`) and extra work is Sparky Blue (`--color-accent-primary`).
+
+| Role           | Token class                        | Light hex | Dark hex | Usage                                                               |
+| -------------- | ---------------------------------- | --------- | -------- | ------------------------------------------------------------------- |
+| Sport Running  | `--color-sport-running` (JS only)  | #E45A2F   | #E17A5B  | Running sessions: calendar marks, the load-by-sport bars and legend |
+| Sport Cycling  | `--color-sport-cycling` (JS only)  | #2E87AD   | #419CC3  | Cycling sessions, same places                                       |
+| Sport Walking  | `--color-sport-walking` (JS only)  | #59A65D   | #77B17A  | Walking and hiking sessions                                         |
+| Sport Cardio   | `--color-sport-cardio` (JS only)   | #2A9D90   | #3AB6A8  | Swimming, rowing and gym-machine sessions                           |
+| Sport Strength | `--color-sport-strength` (JS only) | #7B5EA6   | #917BB2  | Strength sessions and logged workout presets                        |
+| Sport Other    | `--color-sport-other` (JS only)    | #8B8F98   | #A0A4AB  | Sessions no other sport group claims                                |
+
 ### AMOLED differences
 
-AMOLED uses the Dark values for 48 of the 61 color tokens. Only these 13 change:
+AMOLED uses the Dark values for 54 of the 67 color tokens. Only these 13 change:
 
 | Token                    | AMOLED hex             | Dark hex |
 | ------------------------ | ---------------------- | -------- |
@@ -770,11 +783,11 @@ The watches are native, not React Native, so sections 2–9 (Uniwind tokens, `gl
 
 ### 10.1 Targets
 
-| Surface                              | Code                                                                                                                                 | UI toolkit                                         |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
-| Apple Watch app                      | `targets/watch` (`Presentation/`, `Domain/`, `Application/`, `Infrastructure/`, `Adapters/`)                                         | SwiftUI                                            |
-| Apple Watch complications            | `targets/watch-widget` (`index.swift` lists them: Energy, Water, Protein, Carbs, Fat, Fasting, Steps)                                | WidgetKit                                          |
-| Wear OS app, complications and tiles | `targets/wearos/src/main/java/com/sparkyapps/sparkyfitness/wear` (`Screens.kt`, `WorkoutScreens.kt`, `Complications.kt`, `Tiles.kt`) | Compose for Wear OS (`MaterialTheme`), ProtoLayout |
+| Surface                              | Code                                                                                                                                                         | UI toolkit                                         |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| Apple Watch app                      | `targets/watch` (`Presentation/`, `Domain/`, `Application/`, `Infrastructure/`, `Adapters/`)                                                                 | SwiftUI                                            |
+| Apple Watch complications            | `targets/watch-widget` (`index.swift` lists them: Energy, Water, Protein, Carbs, Fat, Fasting, Steps)                                                        | WidgetKit                                          |
+| Wear OS app, complications and tiles | `targets/wearos/src/main/java/com/sparkyapps/sparkyfitness/wear` (`Screens.kt`, `WorkoutScreens.kt`, `NewWorkoutScreens.kt`, `Complications.kt`, `Tiles.kt`) | Compose for Wear OS (`MaterialTheme`), ProtoLayout |
 
 Android home-screen widgets (`targets/android-widget`) and the iOS phone widget (`targets/widget`) are separate from these.
 
@@ -785,7 +798,7 @@ Android home-screen widgets (`targets/android-widget`) and the iOS phone widget 
 - Swipe is the navigation on Apple Watch; there is no button to change page. Wear OS scrolls with rotary input (`wearRotaryScroll`).
 - Every tap that logs something gives a haptic. Apple Watch haptics go through `Haptics` (`Presentation/Haptics.swift`), which follows the phone's Settings → Haptics switch (`WatchContext.effectiveHapticsEnabled`); do not call `WKInterfaceDevice.current().play` directly. The one exception is the rest-finished buzz in `WatchAppDelegate`, which uses `effectiveRestBuzzEnabled` (the haptics switch plus the phone's rest-alerts setting).
 - Works with the phone away: pages draw from the last persisted context, and writes (water taps, medication taps, check-ins) queue and resend.
-- Copy: Apple Watch copy uses `String(localized:defaultValue:)` keys (`watch.<page>.<name>`), with the strings in `targets/watch/en.lproj`; `pnpm run i18n:audit:watch` checks it. Never build a key or a color from translated text (the Goals rows pick their color from the nutrient key, not the title). The Wear OS screens use literal strings (see 10.6).
+- Copy: Apple Watch copy uses `String(localized:defaultValue:)` keys (`watch.<page>.<name>`), with the strings in `targets/watch/en.lproj`; `pnpm run i18n:audit:watch` checks it. Wear OS copy uses Android string resources in `targets/wearos/src/main/res/values/strings.xml`. Never build a key or a color from translated text (the Goals rows pick their color from the nutrient key, not the title).
 
 ### 10.3 Apple Watch app
 
@@ -848,12 +861,12 @@ Take macro and nutrient colors from `GoalPalette` (`GoalPalette.color(forNutrien
 - Complications are `SuspendingComplicationDataSourceService` classes in `Complications.kt` (Energy, Protein, Carbs, Fat, Water, Fasting, Steps), registered in `AndroidManifest.xml`, with monochrome icons in `res/drawable/ic_complication_*.xml`.
 - Tiles are ProtoLayout `TileService` subclasses in `Tiles.kt` (`NutritionTileService`, `SleepTileService`, `MedicationsTileService`, `ExerciseTileService`), wrapped in `buildTileShell` (pure black background, a 300° progress arc on a `CardBg` track anchored at `-150°`, and up to three compact pill rows), registered in `AndroidManifest.xml` with preview images in `res/drawable-nodpi/tile_preview_*.png` and icons in `res/drawable/ic_tile_*.xml`. Nutrition tile macro rows use `nutrientColor` (`SparkyColors`) from `Screens.kt`. Tapping a tile launches `MainActivity` with a `target_page` extra (`goals`, `sleep`, `meds`, `workout`).
 - The phone finds the watch by the `sparky_wear_companion` capability in `res/values/wear.xml`.
-- `WearOsParityTest` covers Wear OS payload parsing and builders against hard-coded JSON. It does not compare them with the Apple Watch definitions, so it cannot catch a one-sided schema change; keep both watches in step by hand.
+- The optional **New workout view** (`NewWorkoutScreens.kt`, toggled via Settings → Wear OS → New workout view) matches the Apple Watch dark workout palette (`SetTint` / `SetSupersetPalette`), vertical page layout (`VerticalPager`: Demo when photos are synced → Metrics → Set → More), rest/hold countdown rings with audible+haptic cues (`CountdownCues.kt`), barbell plate calculator (`WatchPlates` + `BarbellDrawing`), previous-set editing (`LoggedSetOrder`), RPE/effort track, full-screen New PR celebration, and single scrolling finish summary with workout effort rating and inline preset update confirmation.
+- `WearOsParityTest` and `WorkoutDomainTest` cover Wear OS payload parsing, builders, and workout domain rules against hard-coded expectations. They do not read the Swift definitions directly, so keep both watches in step by hand.
 
 ### 10.6 Known gaps
 
-- The Wear OS palette is a Tailwind-style set unrelated to the Apple Watch `GoalPalette`, so the same macro is a different color on each watch: protein is amber on Apple Watch and cyan on Wear OS, and carbs is green on Apple Watch and amber on Wear OS.
-- The Wear OS screens use literal English strings rather than Android string resources, unlike the localized Apple Watch app.
+- The Wear OS non-workout palette is a Tailwind-style set unrelated to the Apple Watch `GoalPalette`, so the same macro is a different color on each watch: protein is amber on Apple Watch and cyan on Wear OS, and carbs is green on Apple Watch and amber on Wear OS.
 - Neither watch palette is derived from `global.css`; the superset palette is the only hand-copied mirror.
 
 ### 10.7 Checklist for a watch change

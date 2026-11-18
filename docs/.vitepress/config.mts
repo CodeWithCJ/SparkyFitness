@@ -241,6 +241,10 @@ export default defineConfig({
             { text: 'Writing to Apple Health and Health Connect', link: '/mobile-app/health-writeback' },
             { text: 'Watch Apps (Apple Watch & Wear OS)', link: '/mobile-app/watch-apps' },
             { text: 'Proxy Setup', link: '/mobile-app/proxy-setup' },
+            {
+              text: 'Client Certificates (mTLS)',
+              link: '/mobile-app/client-certificates',
+            },
             { text: 'Troubleshooting', link: '/mobile-app/troubleshooting' },
           ],
         },

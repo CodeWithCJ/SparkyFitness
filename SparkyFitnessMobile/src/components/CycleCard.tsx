@@ -5,6 +5,7 @@ import { View, Text, Pressable } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 import { useCycleSettings } from '../hooks/useCycleSettings';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import {
   useCurrentPregnancy,
@@ -173,6 +174,7 @@ export const CycleCardRingContent: React.FC<{
 
 const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
   const { t } = useTranslation();
   const { discreetMode } = useDiscreetMode();
   const tokens = useWellnessTokens();
@@ -195,12 +197,13 @@ const CycleCard: React.FC<CycleCardProps> = ({ navigation }) => {
     return null;
   }
 
-  // Hide card if settings are null (un-opted user) or explicitly disabled (Issue 2)
-  if (!settings || settings.enabled === false) {
+  // Hide the card while cycle is off in Settings → Features, or was never set
+  // up (no settings).
+  if (!settings || !isFeatureOn('cycle')) {
     return null;
   }
 
-  const isSetup = !!settings.onboarded_at && !!settings.enabled;
+  const isSetup = !!settings.onboarded_at;
   const title = getModeTitle(t, settings.mode, discreetMode);
   // The cycle-ring state renders its own title so the ring can span the full
   // card height; every other state keeps the shared header row.

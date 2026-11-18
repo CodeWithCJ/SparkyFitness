@@ -382,12 +382,12 @@ const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
           <ProgramActionList>
             <ProgramActionRow
               label={t('runPrograms.openCalendar', {
-                defaultValue: 'Open the program calendar',
+                defaultValue: 'Open the training calendar',
               })}
               hint={t('runPrograms.openCalendarHint', {
-                defaultValue: 'Every workout on a month view',
+                defaultValue: 'Program and plan workouts, done and to come',
               })}
-              onPress={() => navigation.navigate('RunProgramCalendar')}
+              onPress={() => navigation.navigate('TrainingCalendar')}
             />
             {status.program.custom ? null : (
               <ProgramActionRow

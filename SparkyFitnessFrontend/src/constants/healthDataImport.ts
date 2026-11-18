@@ -79,9 +79,12 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
     get label() {
       return i18n.t('healthDataImport.bodyMeasurements', 'Body Measurements');
     },
-    description:
-      'Weight, body fat, height, and body circumference. One row per day. ' +
-      'Stored without a source label, so re-importing a date overwrites it.',
+    get description() {
+      return i18n.t(
+        'healthDataImport.bodyMeasurementsDescription',
+        'Weight, body fat, height, and body circumference. One row per day. Stored without a source label, so re-importing a date overwrites it.'
+      );
+    },
     requiredHeaders: [
       'date',
       'weight',
@@ -127,13 +130,12 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
     get label() {
       return i18n.t('healthDataImport.sleep', 'Sleep');
     },
-    description:
-      'One sleep session per row. Provide bedtime/wake_time as ISO timestamps. ' +
-      'The deep/light/rem/awake columns are aggregate seconds per stage. For a ' +
-      'full stage timeline, optionally put a JSON array in stage_events. ' +
-      'Optional record_timezone (IANA name, e.g. America/New_York) and/or ' +
-      'record_utc_offset_minutes columns pin display to the zone the sleep ' +
-      'was recorded in; without them times display in your profile timezone.',
+    get description() {
+      return i18n.t(
+        'healthDataImport.sleepDescription',
+        'One sleep session per row. Provide bedtime/wake_time as ISO timestamps. The deep/light/rem/awake columns are aggregate seconds per stage. For a full stage timeline, optionally put a JSON array in stage_events. Optional record_timezone (IANA name, e.g. America/New_York) and/or record_utc_offset_minutes columns pin display to the zone the sleep was recorded in; without them times display in your profile timezone.'
+      );
+    },
     requiredHeaders: [
       'date',
       'bedtime',
@@ -183,9 +185,12 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
     get label() {
       return i18n.t('healthDataImport.vitalsCustom', 'Vitals & Custom');
     },
-    description:
-      'One reading per row. `type` accepts a vital name OR any custom category ' +
-      'name — unknown types create/reuse a custom measurement category by name.',
+    get description() {
+      return i18n.t(
+        'healthDataImport.vitalsCustomDescription',
+        'One reading per row. `type` accepts a vital name OR any custom category name — unknown types create/reuse a custom measurement category by name.'
+      );
+    },
     requiredHeaders: ['date', 'type', 'value', 'unit', 'source', 'notes'],
     sample: [
       {
@@ -230,9 +235,12 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
     get label() {
       return i18n.t('healthDataImport.dailyActivity', 'Daily Activity');
     },
-    description:
-      'Daily totals such as steps, distance, and calories burned. Note: steps ' +
-      'and active_calories ignore notes; distance is stored as a custom measurement.',
+    get description() {
+      return i18n.t(
+        'healthDataImport.dailyActivityDescription',
+        'Daily totals such as steps, distance, and calories burned. Note: steps and active_calories ignore notes; distance is stored as a custom measurement.'
+      );
+    },
     requiredHeaders: ['date', 'type', 'value', 'unit', 'source'],
     sample: [
       {
@@ -304,13 +312,12 @@ export const HEALTH_IMPORT_CATEGORIES: HealthImportCategoryConfig[] = [
     get label() {
       return i18n.t('healthDataImport.mood', 'Mood');
     },
-    description:
-      "One imported mood per day (re-importing a date replaces that day's imported mood). " +
-      'Moods you log yourself are kept. ' +
-      'Moods imported before this update are treated as your own, so re-importing those dates adds a second entry. ' +
-      'mood_value is 10-100: 10 Sad, 20 Angry, 30 Worried, 40 Neutral, ' +
-      '50 Thoughtful, 60 Calm, 70 Confident, 80 Happy, 90 Excited. ' +
-      'mood_tags is optional, pipe-separated (e.g. grateful|energetic).',
+    get description() {
+      return i18n.t(
+        'healthDataImport.moodDescription',
+        "One imported mood per day (re-importing a date replaces that day's imported mood). Moods you log yourself are kept. Moods imported before this update are treated as your own, so re-importing those dates adds a second entry. mood_value is 10-100: 10 Sad, 20 Angry, 30 Worried, 40 Neutral, 50 Thoughtful, 60 Calm, 70 Confident, 80 Happy, 90 Excited. mood_tags is optional, pipe-separated (e.g. grateful|energetic)."
+      );
+    },
     requiredHeaders: ['date', 'mood_value', 'mood_tags', 'notes'],
     sample: [
       {

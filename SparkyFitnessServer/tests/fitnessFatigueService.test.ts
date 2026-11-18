@@ -36,7 +36,10 @@ import userRepository from '../models/userRepository.js';
 import heartRateZoneService from '../services/heartRateZoneService.js';
 import sleepScienceRepository from '../models/sleepScienceRepository.js';
 import { CURVE_DAYS, WARMUP_DAYS } from '@workspace/shared';
-import { getFitnessFatigue } from '../services/reportService.js';
+import {
+  getFitnessFatigue,
+  getRecoveryScore,
+} from '../services/reportService.js';
 
 const repo = vi.mocked(reportRepository);
 const users = vi.mocked(userRepository);
@@ -95,5 +98,39 @@ describe('getFitnessFatigue', () => {
     repo.getReadinessVitals.mockResolvedValue({ ...noVitals, sleepHours: 4 });
     const result = await getFitnessFatigue('u1', 'u1');
     expect(result.readiness.factors.sleep).toBe(50);
+  });
+});
+
+describe('getRecoveryScore', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    users.getUserProfile.mockResolvedValue(null);
+    zones.resolveZonesForUser.mockResolvedValue({
+      floors: [95, 114, 133, 152, 171],
+    } as Awaited<ReturnType<typeof zones.resolveZonesForUser>>);
+    repo.getTrainingLoadSessions.mockResolvedValue([]);
+  });
+
+  it('scores the morning of the given day against the need it is given', async () => {
+    repo.getReadinessVitals.mockResolvedValue({
+      ...noVitals,
+      sleepHours: 6,
+    });
+    const score = await getRecoveryScore('user-1', '2026-11-04', 8);
+    // Only sleep is known: 6 of the 8 hours needed.
+    expect(score).toBe(75);
+    expect(repo.getReadinessVitals).toHaveBeenCalledWith(
+      'user-1',
+      '2026-11-04',
+      '2026-11-03',
+      '2026-10-20'
+    );
+    // The caller's need wins over the stored one, which it is replacing.
+    expect(sleep.getDailyNeed).not.toHaveBeenCalled();
+  });
+
+  it('is null with no sleep, vitals or training to go on', async () => {
+    repo.getReadinessVitals.mockResolvedValue(noVitals);
+    expect(await getRecoveryScore('user-1', '2026-11-04', 8)).toBeNull();
   });
 });

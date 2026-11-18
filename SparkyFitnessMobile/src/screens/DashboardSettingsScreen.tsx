@@ -16,7 +16,9 @@ import {
   resetReorderDragPreview,
   useReorderRowGeometry,
 } from '../components/WorkoutReorderList';
+import { isShownByFeature } from '@workspace/shared';
 import {
+  DASHBOARD_CARD_FEATURES,
   DASHBOARD_CARD_SUBTITLES,
   DASHBOARD_CARD_TITLES,
   type DashboardCardKey,
@@ -28,6 +30,8 @@ import {
 } from '../hooks';
 import { nutrientDisplayPreferencesQueryKey } from '../hooks/queryKeys';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useDiscreetMode } from '../hooks/useDiscreetMode';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import {
   updateNutrientDisplayPreference,
   type NutrientDisplayPreference,
@@ -63,6 +67,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
+  const { discreetMode } = useDiscreetMode();
 
   const calorieRingCardVisible = useAppPreferencesStore(
     (s) => s.calorieRingCardVisible
@@ -476,8 +482,22 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
 
         <View className="bg-surface rounded-xl overflow-hidden shadow-sm mb-6">
           {orderedCards.map((cardKey, index) => {
-            const title = DASHBOARD_CARD_TITLES[cardKey](t);
-            const subtitle = DASHBOARD_CARD_SUBTITLES[cardKey](t);
+            // Discreet mode (assumed until the cycle settings load) never
+            // names cycle.
+            const title =
+              cardKey === 'cycle' && discreetMode
+                ? t('dashboardSettings.wellness', { defaultValue: 'Wellness' })
+                : DASHBOARD_CARD_TITLES[cardKey](t);
+            // A card of a feature turned off stays listed, with its place and
+            // switch, and says why the Dashboard leaves it out.
+            const subtitle = isShownByFeature(
+              DASHBOARD_CARD_FEATURES[cardKey],
+              isFeatureOn
+            )
+              ? DASHBOARD_CARD_SUBTITLES[cardKey](t)
+              : t('dashboardSettings.offInFeatures', {
+                  defaultValue: 'Not shown: turned off in Features',
+                });
             return (
               <ReorderSwitchRow
                 key={cardKey}

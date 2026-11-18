@@ -107,6 +107,12 @@ const DELIBERATE_OMISSIONS: Omission[] = [
       'CSV import column contract — widening it changes the file format users already have, so it is a deliberate, separate change.',
   },
   {
+    file: /^components\/CsvImport\/csvFieldDescriptions\.ts$/,
+    columns: TRACKED_COLUMNS,
+    reason:
+      'Describes the CSV import columns, which deliberately exclude these (same contract as the CSV importers above).',
+  },
+  {
     file: /^constants\/standardNutrientAliases\.ts$/,
     columns: TRACKED_COLUMNS,
     reason:

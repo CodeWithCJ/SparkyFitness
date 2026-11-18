@@ -14,6 +14,10 @@ import {
   notifyIdentityChanged,
 } from '../../src/services/api/authService';
 import { saveServerConfig } from '../../src/services/storage';
+import {
+  setPendingClientCertificateServer,
+  shouldSuggestClientCertificate,
+} from '../../src/services/clientCertificate';
 
 jest.mock('../../src/services/api/authService', () => ({
   login: jest.fn(),
@@ -40,6 +44,25 @@ jest.mock('../../src/services/storage', () => ({
 
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
+}));
+
+// A stand-in for the certificate section: pressing it reports a finished import.
+jest.mock('../../src/components/ClientCertificateSection', () => {
+  const { Pressable, Text } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({ onImported }: { onImported?: () => void }) => (
+      <Pressable onPress={onImported}>
+        <Text>stub-import-done</Text>
+      </Pressable>
+    ),
+  };
+});
+
+jest.mock('../../src/services/clientCertificate', () => ({
+  ...jest.requireActual('../../src/services/clientCertificate'),
+  setPendingClientCertificateServer: jest.fn().mockResolvedValue(undefined),
+  shouldSuggestClientCertificate: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../src/components/Icon', () => {
@@ -463,6 +486,29 @@ describe('ServerConfigModal', () => {
       });
 
       expect(result.getByText('Invalid credentials')).toBeTruthy();
+    });
+
+    it('adds the client certificate hint to a connection failure when none is stored', async () => {
+      (shouldSuggestClientCertificate as jest.Mock).mockReturnValueOnce(true);
+      mockLogin.mockRejectedValue(new Error('Network error'));
+      const result = renderModal();
+      await waitForForm(result);
+      await enterUrl(result, 'https://server.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'a@b.com'
+      );
+      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+
+      await act(async () => {
+        pressConnectButton(result);
+      });
+
+      expect(
+        result.getByText(
+          /Could not connect to server\. Check the URL and try again\. If your server requires a client certificate, add it under Advanced options/
+        )
+      ).toBeTruthy();
     });
 
     it('displays generic error for non-LoginError exceptions', async () => {
@@ -1088,6 +1134,108 @@ describe('ServerConfigModal', () => {
       expect(
         result.getByText('Enter the code from your authenticator app.')
       ).toBeTruthy();
+    });
+  });
+
+  describe('client certificate host', () => {
+    const mockSetPending = setPendingClientCertificateServer as jest.Mock;
+    const calledWithUrl = (url: string) =>
+      mockSetPending.mock.calls.some(([arg]) => arg === url);
+
+    it('does not offer the certificate to an address that is still being typed', async () => {
+      const result = renderModal();
+      const input = result.getByPlaceholderText(URL_PLACEHOLDER);
+
+      fireEvent(input, 'focus');
+      fireEvent.changeText(input, 'https://my-server.co');
+      await flushDebounce();
+
+      expect(calledWithUrl('https://my-server.co')).toBe(false);
+      // The settings request itself still goes out, as before.
+      expect(mockFetchAuthSettings).toHaveBeenCalled();
+    });
+
+    it('offers it once the address field is left, and asks the server again', async () => {
+      const result = renderModal();
+      const input = result.getByPlaceholderText(URL_PLACEHOLDER);
+      fireEvent(input, 'focus');
+      fireEvent.changeText(input, 'https://my-server.com');
+      await flushDebounce();
+      expect(calledWithUrl('https://my-server.com')).toBe(false);
+      mockFetchAuthSettings.mockClear();
+
+      fireEvent(input, 'blur');
+      await flushDebounce();
+
+      expect(calledWithUrl('https://my-server.com')).toBe(true);
+      // Re-fetched, so a server that needs the certificate now shows its
+      // real sign-in options instead of the defaults.
+      expect(mockFetchAuthSettings).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers it straight away for a pasted address (the field is not focused)', async () => {
+      const result = renderModal();
+
+      fireEvent.changeText(
+        result.getByPlaceholderText(URL_PLACEHOLDER),
+        'https://pasted.example.com'
+      );
+      await flushDebounce();
+
+      expect(calledWithUrl('https://pasted.example.com')).toBe(true);
+    });
+
+    it('offers it when Connect is pressed, even if the address box is still focused', async () => {
+      mockLogin.mockRejectedValue(new Error('stop here'));
+      const result = renderModal();
+      const input = result.getByPlaceholderText(URL_PLACEHOLDER);
+      fireEvent(input, 'focus');
+      fireEvent.changeText(input, 'https://192.168.1.5:8443/fitness');
+      await flushDebounce();
+      expect(calledWithUrl('https://192.168.1.5:8443/fitness')).toBe(false);
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'me@example.com'
+      );
+      fireEvent.changeText(result.getByPlaceholderText('Password'), 'secret');
+
+      await act(async () => {
+        pressConnectButton(result);
+      });
+
+      // An IP address with a port and a sub-path works the same as a name.
+      expect(calledWithUrl('https://192.168.1.5:8443/fitness')).toBe(true);
+      // And it was allowed before the request that needs it.
+      const allowed = mockSetPending.mock.invocationCallOrder.at(-1) ?? 0;
+      expect(allowed).toBeLessThan(mockLogin.mock.invocationCallOrder[0]);
+    });
+
+    it('asks the server for its sign-in options again after a certificate is imported', async () => {
+      const result = renderModal();
+      await enterUrl(result, 'https://my-server.com');
+      fireEvent.press(result.getByText(/Advanced options/));
+      mockFetchAuthSettings.mockClear();
+
+      fireEvent.press(result.getByText('stub-import-done'));
+      await flushDebounce();
+
+      expect(mockFetchAuthSettings).toHaveBeenCalledTimes(1);
+      expect(mockFetchAuthSettings.mock.calls[0][0]).toBe(
+        'https://my-server.com'
+      );
+    });
+
+    it('stops offering it when the address is cleared or not valid', async () => {
+      const result = renderModal();
+      const input = result.getByPlaceholderText(URL_PLACEHOLDER);
+      fireEvent.changeText(input, 'https://my-server.com');
+      await flushDebounce();
+      mockSetPending.mockClear();
+
+      fireEvent.changeText(input, '');
+      await flushDebounce();
+
+      expect(mockSetPending).toHaveBeenCalledWith(null);
     });
   });
 });

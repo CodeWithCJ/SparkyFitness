@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
+import { MAX_CALENDAR_PLANS, MAX_PLAN_ASSIGNMENTS } from '@workspace/shared';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-format'.
 import format from 'pg-format';
 import {
@@ -643,6 +644,91 @@ async function getActiveWorkoutPlanForDate(
   }
 }
 
+/** An active plan with each assignment's name and planned minutes. */
+export interface PlanCalendarTemplateRow {
+  id: number;
+  plan_name: string;
+  schedule_type: 'weekly' | 'sequential';
+  start_day: string;
+  end_day: string | null;
+  assignments: {
+    id: number;
+    day_of_week: number | null;
+    session_index: number | null;
+    session_name: string | null;
+    name: string | null;
+    modality: string | null;
+    is_preset: boolean;
+    minutes: number | null;
+  }[];
+}
+
+/**
+ * The active plans that run on any day between two local days, for the training
+ * calendar: each assignment with the preset or exercise it names and the
+ * minutes its sets add up to (set times are seconds).
+ */
+async function getPlanTemplatesForCalendar(
+  userId: string,
+  startDate: string,
+  endDate: string
+): Promise<PlanCalendarTemplateRow[]> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      // The limits apply in the database, before anything is aggregated: at
+      // most MAX_CALENDAR_PLANS plans, and for each at most
+      // MAX_PLAN_ASSIGNMENTS assignments (in the order the calendar reads
+      // them), so an oversized plan costs a bounded amount of work and transfer.
+      `SELECT t.id, t.plan_name, t.schedule_type,
+              TO_CHAR(t.start_date, 'YYYY-MM-DD') AS start_day,
+              TO_CHAR(t.end_date, 'YYYY-MM-DD') AS end_day,
+              COALESCE((
+                SELECT json_agg(x.item
+                                ORDER BY x.session_index ASC NULLS LAST,
+                                         x.sort_order ASC, x.id ASC)
+                FROM (
+                  SELECT json_build_object(
+                           'id', a.id,
+                           'day_of_week', a.day_of_week,
+                           'session_index', a.session_index,
+                           'session_name', a.session_name,
+                           'name', COALESCE(wp.name, e.name),
+                           'modality', e.modality,
+                           'is_preset', a.workout_preset_id IS NOT NULL,
+                           'minutes', (
+                             SELECT NULLIF(SUM(COALESCE(s.duration, 0)), 0) / 60.0
+                             FROM workout_plan_assignment_sets s
+                             WHERE s.assignment_id = a.id
+                           )
+                         ) AS item,
+                         a.session_index, a.sort_order, a.id
+                  FROM workout_plan_template_assignments a
+                  LEFT JOIN workout_presets wp ON a.workout_preset_id = wp.id
+                  LEFT JOIN exercises e ON a.exercise_id = e.id
+                  WHERE a.template_id = t.id
+                  ORDER BY a.session_index ASC NULLS LAST, a.sort_order ASC, a.id ASC
+                  LIMIT $5
+                ) x
+              ), '[]'::json) AS assignments
+       FROM (
+         SELECT * FROM workout_plan_templates
+         WHERE user_id = $1
+           AND is_active = TRUE
+           AND start_date <= $3
+           AND COALESCE(end_date, '9999-12-31') >= $2
+         ORDER BY created_at ASC
+         LIMIT $4
+       ) t
+       ORDER BY t.created_at ASC`,
+      [userId, startDate, endDate, MAX_CALENDAR_PLANS, MAX_PLAN_ASSIGNMENTS]
+    );
+    return result.rows as PlanCalendarTemplateRow[];
+  } finally {
+    client.release();
+  }
+}
+
 async function unlinkExerciseEntriesByTemplateId(
   templateId: string | number,
   userId: string,
@@ -739,6 +825,7 @@ export { updatePlannedSetWeights };
 export { getWorkoutPlanTemplateOwnerId };
 export { getActiveWorkoutPlanForDate };
 export { unlinkExerciseEntriesByTemplateId };
+export { getPlanTemplatesForCalendar };
 export default {
   createWorkoutPlanTemplate,
   getWorkoutPlanTemplatesByUserId,
@@ -749,4 +836,5 @@ export default {
   getWorkoutPlanTemplateOwnerId,
   getActiveWorkoutPlanForDate,
   unlinkExerciseEntriesByTemplateId,
+  getPlanTemplatesForCalendar,
 };

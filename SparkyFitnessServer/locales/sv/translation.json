@@ -1,1 +1,7 @@
-{}
+{
+  "email": {
+    "passwordReset": {
+      "intro": "Du har begärt en lösenordsåterställning för ditt SparkyFitnesskonto."
+    }
+  }
+}

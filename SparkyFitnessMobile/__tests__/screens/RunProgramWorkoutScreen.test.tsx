@@ -42,7 +42,7 @@ jest.mock('react-native-toast-message', () => ({
 
 const navigate = jest.fn();
 const goBack = jest.fn();
-const renderFor = (index: number) =>
+const renderFor = (index: number, programId = 'beginner5k') =>
   render(
     <RunProgramWorkoutScreen
       {...({
@@ -50,7 +50,7 @@ const renderFor = (index: number) =>
         route: {
           key: 'RunProgramWorkout',
           name: 'RunProgramWorkout',
-          params: { index },
+          params: { index, programId },
         },
       } as never)}
     />
@@ -151,6 +151,14 @@ describe('RunProgramWorkoutScreen', () => {
     fireEvent.press(screen.getByText('Repeat this workout'));
     confirm();
     await waitFor(() => expect(setProgramPosition).toHaveBeenCalledWith(0));
+  });
+
+  it('says so when the row was opened for a different program', () => {
+    // Workout 0 exists in the active program, but the row belonged to another.
+    renderFor(0, 'another-program');
+    expect(
+      screen.getByText('This workout is not in your program any more.')
+    ).toBeTruthy();
   });
 
   it('says so when the workout is no longer in the program', () => {

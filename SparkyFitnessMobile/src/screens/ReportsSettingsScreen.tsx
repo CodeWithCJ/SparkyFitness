@@ -169,6 +169,10 @@ const SECTION_LABELS: Record<
     t('reportsSettings.sections.sleepWeekend', {
       defaultValue: 'Weekdays vs weekends',
     }),
+  'sleep.need': (t) =>
+    t('reportsSettings.sections.sleepNeed', {
+      defaultValue: 'Sleep need tonight',
+    }),
   'sleep.nights': (t) =>
     t('reportsSettings.sections.sleepNights', { defaultValue: 'Nights' }),
   'nutrition.fats': (t) =>

@@ -10,7 +10,7 @@
     "close": "Fechar",
     "cancel": "Cancelar",
     "continue": "Continuar",
-    "retry": "Tentar novamente",
+    "retry": "Tentar de novo",
     "details": "Detalhes",
     "error": "Erro",
     "delete": "Excluir",
@@ -69,7 +69,9 @@
     "builtIn": "Padrão",
     "kcalUnit": "kcal",
     "kJUnit": "kJ",
-    "energy": "Energia"
+    "energy": "Energia",
+    "apply": "Aplicar",
+    "reset": "Redefinir"
   },
   "settings": {
     "app": "Configurações do App",
@@ -318,7 +320,8 @@
     "unknown": "Métrica de saúde",
     "mindfulness": "Atenção plena",
     "sleepingWristTemperature": "Temperatura do pulso durante o sono",
-    "overnightBodyTemperature": "Temperatura corporal noturna"
+    "overnightBodyTemperature": "Temperatura corporal noturna",
+    "toothbrushing": "Escovação de dentes"
   },
   "mindfulness": {
     "timer": {
@@ -1537,7 +1540,9 @@
       "workoutTimer": "Cronômetro do treino",
       "fasting": "Jejum",
       "hydration": "Lembretes de hidratação",
-      "moodCheckin": "Check-ins de humor"
+      "moodCheckin": "Check-ins de humor",
+      "oralCare": "Lembretes de escovação",
+      "mindfulness": "Temporizador de meditação"
     },
     "actions": {
       "completeSet": "Concluir série",
@@ -1581,6 +1586,18 @@
     "moodCheckin": {
       "title": "Como você está se sentindo?",
       "body": "Faça um check-in rápido: humor, energia e foco."
+    },
+    "oralCare": {
+      "title": "Hora de escovar",
+      "body": "Dois minutos para os seus dentes, depois é só registrar."
+    },
+    "brushingTimer": {
+      "title": "Escovação concluída",
+      "body": "Abra o SparkyFitness para salvar a escovação."
+    },
+    "meditationTimer": {
+      "title": "Meditação concluída",
+      "body": "Abra o SparkyFitness para salvar a sua sessão."
     }
   },
   "activeWorkout": {
@@ -1846,7 +1863,9 @@
     "moodHint": "Registrar estado",
     "mindfulnessHint": "Respiração, zen",
     "checkIn": "Check-In Diário",
-    "checkInHint": "Hábitos"
+    "checkInHint": "Hábitos",
+    "oralCare": "Saúde bucal",
+    "oralCareHint": "Escovar, fio dental"
   },
   "screens": {
     "foods": "Alimentos",
@@ -2012,7 +2031,8 @@
     "Cycling": "Ciclismo",
     "Environment": "Ambiente",
     "Apple": "Apple",
-    "unknown": "Outros"
+    "unknown": "Outros",
+    "Hygiene": "Higiene"
   },
   "healthSync": {
     "appleHealth": "Apple Health",
@@ -2427,7 +2447,8 @@
       "customShort": "Personalizada"
     },
     "energyUnitLabel": "Unidade de energia",
-    "energyUnitKcal": "Calorias (kcal)"
+    "energyUnitKcal": "Calorias (kcal)",
+    "adaptiveEstimateRangeWithUnit": "O nível de atividade define a estimativa inicial e a faixa de plausibilidade de ±{{amount}} {{unit}} em torno de TMB × este fator. As estimativas podem levar algumas semanas para se estabilizar; oscilações de peso e registros de alimentos incompletos aumentam a incerteza."
   },
   "dashboardSettings": {
     "updateFailed": "Falha ao atualizar a configuração.",
@@ -2474,7 +2495,9 @@
     "trainingLoad": "Carga de treino",
     "trainingLoadSubtitle": "Compara esta semana com o seu treino habitual, com um lembrete para descansar",
     "labResults": "Exames laboratoriais",
-    "labResultsSubtitle": "Mostra os seus exames mais recentes e quais estão fora da faixa"
+    "labResultsSubtitle": "Mostra os seus exames mais recentes e quais estão fora da faixa",
+    "oralCare": "Saúde bucal",
+    "oralCareSubtitle": "Mostrar a escovação em relação à meta e a sua sequência"
   },
   "diarySettings": {
     "updateFailed": "Falha ao atualizar a configuração.",
@@ -2547,7 +2570,14 @@
     "moodCheckinReminderTime": "Lembrete {{number}}",
     "moodCheckinReminderTimeAccessibility": "Lembrete {{number}}, {{time}}",
     "moodCheckinAddReminder": "Adicionar lembrete",
-    "moodCheckinRemoveReminder": "Remover lembrete {{number}}"
+    "moodCheckinRemoveReminder": "Remover lembrete {{number}}",
+    "oralCare": "Saúde bucal",
+    "oralCareReminders": "Lembretes de escovação",
+    "oralCareRemindersSubtitle": "Um lembrete diário para escovar os dentes",
+    "oralCareReminderTime": "Lembrete {{number}}",
+    "oralCareReminderTimeAccessibility": "Lembrete de escovação {{number}}, {{time}}",
+    "oralCareRemoveReminder": "Remover lembrete de escovação {{number}}",
+    "oralCareAddReminder": "Adicionar lembrete"
   },
   "workoutSettings": {
     "title": "Configurações de treino",
@@ -2582,7 +2612,10 @@
     "focusMediaLarge": "Grande",
     "focusMediaSmall": "Pequena",
     "workoutViewList": "Lista",
-    "workoutViewFocus": "Foco"
+    "workoutViewFocus": "Foco",
+    "plannedPlaceholders": "Usar os valores planejados como sugestão",
+    "plannedPlaceholdersSubtitle": "Treinos iniciados a partir de um plano ou de um treino salvo sugerem o peso e as repetições planejados, em vez dos da última sessão. Vale a partir do próximo treino que você iniciar.",
+    "plannedPlaceholdersAccessibility": "Usar os valores planejados como sugestão"
   },
   "restPeriod": {
     "title": "Tempo de descanso",
@@ -3057,7 +3090,20 @@
     "doNowSets_one": "Fazer agora · {{count}} série",
     "doNowSets_many": "Fazer agora · {{count}} séries",
     "doNowSets_other": "Fazer agora · {{count}} séries",
-    "caloriesPerHourWithUnit": "Calorias por hora ({{unit}})"
+    "caloriesPerHourWithUnit": "Calorias por hora ({{unit}})",
+    "sessionStatus": {
+      "planned": "Planejada",
+      "in_progress": "Em andamento",
+      "partial": "Parcial",
+      "completed": "Concluída"
+    },
+    "resumeWorkout": "Continuar treino",
+    "resumeConflictTitle": "Treino alterado em outro lugar",
+    "resumeConflictMessage": "Este treino foi atualizado em outro dispositivo ou aba. Recarregue e tente novamente.",
+    "resumeFailedTitle": "Não foi possível continuar o treino",
+    "resumeFailedMessage": "Tente novamente.",
+    "finishStampFailedTitle": "Não foi possível marcar o treino como concluído",
+    "finishStampFailedMessage": "Suas séries foram salvas, mas não foi possível marcar o treino como concluído. Tente de novo para concluí-lo."
   },
   "cycleCard": {
     "mode": {
@@ -3490,7 +3536,18 @@
     "label": {
       "analyzing": "Analisando o rótulo...",
       "retake": "Tirar de novo",
-      "usePhoto": "Usar foto"
+      "usePhoto": "Usar foto",
+      "cropHelp": "Arraste os cantos para enquadrar o rótulo nutricional.",
+      "cropPhoto": "Foto do rótulo nutricional",
+      "cropMove": "Mover o recorte do rótulo",
+      "cropTopLeft": "Alça de recorte superior esquerda",
+      "cropTopRight": "Alça de recorte superior direita",
+      "cropBottomLeft": "Alça de recorte inferior esquerda",
+      "cropBottomRight": "Alça de recorte inferior direita",
+      "cropLeft": "Mover para a esquerda",
+      "cropRight": "Mover para a direita",
+      "cropUp": "Mover para cima",
+      "cropDown": "Mover para baixo"
     },
     "lookup": {
       "failed": "Falha na consulta",
@@ -4099,7 +4156,15 @@
       "weeklyGoal": "Meta semanal",
       "weeklyRate": "−0,5 kg",
       "dailyTarget": "Meta diária",
-      "dailyAdjustment": "≈ −550 kcal"
+      "dailyAdjustment": "≈ −550 kcal",
+      "vitaminD": "Vitamina D",
+      "labLow": "Baixo",
+      "labValue": "18 ng/mL",
+      "labRange": "Faixa 30–100",
+      "deskTag": "Tag da mesa",
+      "tapped": "Tocada",
+      "tagWater": "Água • 500 mL",
+      "logged": "Registrado"
     },
     "features": {
       "medications": {
@@ -4188,6 +4253,18 @@
         "headline": "Defina uma meta de peso semanal",
         "body": "Escolha quanto peso você quer perder ou ganhar por semana, e o Sparky calcula a sua meta diária de calorias.",
         "cta": "Abrir configurações de calorias"
+      },
+      "labResults": {
+        "eyebrow": "EXAMES LABORATORIAIS",
+        "headline": "Seus resultados de exames num só lugar",
+        "body": "Adicione resultados de exames de sangue à mão ou importe um laudo em PDF ou foto. Veja cada marcador em relação à faixa de referência, acompanhe no gráfico ao longo do tempo e descubra pelo painel o que está fora da faixa.",
+        "cta": "Abrir exames"
+      },
+      "nfcTags": {
+        "eyebrow": "TAGS NFC",
+        "headline": "Registre com um toque",
+        "body": "Cole uma tag NFC na garrafa de água, na mesa ou no armário da cozinha e configure-a para registrar uma bebida, um alimento ou uma refeição salva. Encoste o celular nela para registrar, com Desfazer se foi sem querer.",
+        "cta": "Configurar tags NFC"
       }
     }
   },
@@ -4391,7 +4468,9 @@
         "description": "Fase frequentemente associada a mais autofagia"
       }
     },
-    "settings": "Configurações de jejum"
+    "settings": "Configurações de jejum",
+    "logMealToEnd": "Registrar refeição para encerrar o jejum",
+    "autoFastEndsWithMeal": "Seu jejum é calculado automaticamente a partir das refeições e termina quando você registrar um alimento."
   },
   "exerciseDetail": {
     "duplicate": "Duplicar exercício",
@@ -4600,7 +4679,16 @@
     "items_one": "{{formattedCount}} item",
     "items_many": "{{formattedCount}} itens",
     "items_other": "{{formattedCount}} itens",
-    "notes": "Notas"
+    "notes": "Notas",
+    "resetToTemplate": "Voltar ao modelo",
+    "reset": "Redefinir",
+    "editIngredientQuantity": "Editar a quantidade de {{name}}: {{quantity}} {{unit}}",
+    "addFood": "Adicionar alimento",
+    "removeIngredient": "Remover da refeição",
+    "quantity": "Quantidade",
+    "changeUnit": "Trocar unidade",
+    "selectUnit": "Selecionar unidade",
+    "savedPortions": "Porções salvas"
   },
   "dailyNutritionDetails": {
     "title": "Detalhes nutricionais",
@@ -6711,7 +6799,10 @@
     "records_one": "{{count}} registro",
     "records_many": "{{count}} registros",
     "records_other": "{{count}} registros",
-    "energy": "{{value}} {{unit}}"
+    "energy": "{{value}} {{unit}}",
+    "brushes_one": "{{count}} escovação",
+    "brushes_many": "{{count}} escovações",
+    "brushes_other": "{{count}} escovações"
   },
   "sleep": {
     "wakeUp": "Despertar",
@@ -6841,9 +6932,7 @@
     "upNextTitle": "Página A seguir",
     "upNextSubtitle": "Uma página a um deslize para cima da tela da série, com o próximo exercício, a meta dele e um botão Trocar para fazer outro exercício antes.",
     "largerTextTitle": "Texto maior no relógio",
-    "largerTextSubtitle": "Letras maiores e os layouts novos em todo o relógio: Metas, Água, o treino, Jejum, Passos e mais. Desativado, mantém o visual original.",
-    "classicWorkoutTitle": "Página de treino original",
-    "classicWorkoutSubtitle": "Mantém a tela de treino original enquanto o texto maior vale no resto. Com o texto maior desativado, o treino sempre usa essa tela."
+    "largerTextSubtitle": "Letras maiores e os layouts novos em todo o relógio: Metas, Água, o treino, Jejum, Passos e mais. Desativado, mantém o visual original."
   },
   "progressPhotos": {
     "card": {
@@ -8158,7 +8247,9 @@
     "heartRateHighest": "Máxima",
     "heartRatePreviousDay": "Dia anterior",
     "heartRateNextDay": "Próximo dia",
-    "heartRateLegendWorkout": "Treino"
+    "heartRateLegendWorkout": "Treino",
+    "oralCare": "Saúde bucal",
+    "oralCareSubtitle": "Escovação em relação à meta, sequências e tempo"
   },
   "nutritionReport": {
     "title": "Nutrição",
@@ -8351,7 +8442,10 @@
       "heartRateZones": "Zonas de intensidade",
       "heartRateRangeTimeline": "Frequência cardíaca média por dia",
       "heartRateDayTimeline": "Frequência cardíaca ao longo do dia",
-      "measurementTimeline": "Linha do tempo de medidas"
+      "measurementTimeline": "Linha do tempo de medidas",
+      "oralCareBrushesChart": "Gráfico de escovações por dia",
+      "oralCareMinutesChart": "Gráfico de minutos escovando",
+      "oralCareSummary": "Sequências e outros cuidados"
     },
     "hydrationSections": "Relatório de hidratação",
     "measurementsSections": "Relatório de medidas",
@@ -8360,7 +8454,8 @@
     "nutrientReorderHint": "Muda a posição deste nutriente no relatório",
     "substancesSections": "Relatório de cafeína e álcool",
     "exerciseSections": "Relatório de exercícios",
-    "heartRateSections": "Relatório de frequência cardíaca"
+    "heartRateSections": "Relatório de frequência cardíaca",
+    "oralCareSections": "Relatório de saúde bucal"
   },
   "hydrationReport": {
     "title": "Hidratação",
@@ -10224,5 +10319,264 @@
     "layerHydration": "Hidratação",
     "carbs": "Carboidratos",
     "dailyAverage": "Média diária"
+  },
+  "oralCare": {
+    "types": {
+      "brushing": "Escovação",
+      "flossing": "Fio dental",
+      "mouthwash": "Enxaguante bucal",
+      "other": "Outro",
+      "tongueCleaning": "Limpeza da língua"
+    },
+    "title": "Saúde bucal",
+    "loading": "Carregando saúde bucal...",
+    "goal": {
+      "title": "Meta de escovação",
+      "dailyTarget": "Escovações por dia",
+      "targetTime": "Tempo por escovação",
+      "hint": "Os dentistas costumam recomendar escovar duas vezes por dia, por 2 minutos.",
+      "perDay_one": "{{count}} vez por dia",
+      "perDay_many": "{{count}} vezes por dia",
+      "perDay_other": "{{count}} vezes por dia"
+    },
+    "stats": {
+      "brushed": "Escovações",
+      "time": "Tempo escovando",
+      "ofTarget": "{{brushed}} de {{target}}",
+      "streak_one": "Sequência: {{count}} dia",
+      "streak_many": "Sequência: {{count}} dias",
+      "streak_other": "Sequência: {{count}} dias",
+      "best_one": "Melhor: {{count}} dia",
+      "best_many": "Melhor: {{count}} dias",
+      "best_other": "Melhor: {{count}} dias",
+      "weekA11y_one": "Meta cumprida em {{count}} dos últimos 7 dias",
+      "weekA11y_many": "Meta cumprida em {{count}} dos últimos 7 dias",
+      "weekA11y_other": "Meta cumprida em {{count}} dos últimos 7 dias"
+    },
+    "source": {
+      "timer": "Cronômetro",
+      "health": "Apple Health"
+    },
+    "coveredBySync": "Também registrado pelo Apple Health · contado uma vez",
+    "errors": {
+      "save": "Não foi possível salvar a sessão.",
+      "delete": "Não foi possível excluir a sessão.",
+      "goal": "Não foi possível salvar a meta."
+    },
+    "timer": {
+      "title": "Cronômetro de escovação",
+      "subtitle": "{{time}}, um quarto da boca de cada vez",
+      "upperLeft": "Superior esquerdo",
+      "upperRight": "Superior direito",
+      "lowerRight": "Inferior direito",
+      "lowerLeft": "Inferior esquerdo",
+      "ready": "Pronto",
+      "start": "Iniciar",
+      "pause": "Pausar",
+      "resume": "Continuar",
+      "done": "Pronto! Toque em Salvar",
+      "save": "Salvar",
+      "doneShort": "Pronto!",
+      "paused": "Pausado"
+    },
+    "loadFailed": "Não foi possível carregar a saúde bucal",
+    "sessions": "Sessões",
+    "empty": "Nada registrado neste dia",
+    "actions": {
+      "log": "Registrar",
+      "startTimer": "Iniciar cronômetro"
+    },
+    "card": {
+      "a11y": "Saúde bucal, {{brushed}} de {{target}} escovações"
+    },
+    "delete": {
+      "title": "Excluir esta sessão?",
+      "synced": "Ela volta na próxima sincronização, a menos que você a exclua também no app Saúde."
+    },
+    "log": {
+      "addTitle": "Registrar saúde bucal",
+      "editTitle": "Editar sessão",
+      "type": "Tipo",
+      "name": "Nome",
+      "namePlaceholder": "ex.: irrigador oral",
+      "time": "Horário",
+      "duration": "Duração (opcional)",
+      "minutes": "Minutos",
+      "minutesShort": "min",
+      "seconds": "Segundos",
+      "secondsShort": "s",
+      "tooLong": "Uma sessão pode ter no máximo 60 minutos.",
+      "notes": "Notas (opcional)",
+      "notesA11y": "Notas",
+      "timerHint": "{{time}}, um quarto da boca de cada vez. Salva a escovação para você.",
+      "timerTitle": "Escovar com o cronômetro",
+      "startTimerA11y": "Iniciar o cronômetro de escovação de {{time}}"
+    }
+  },
+  "recipeImport": {
+    "inactive": "Inativo",
+    "inactiveManagement": "Ative este provedor nas Configurações para importar receitas. As escolhas salvas ainda podem ser gerenciadas aqui.",
+    "syncEnergy": "Energia",
+    "syncProtein": "Proteína",
+    "syncCarbs": "Carboidratos",
+    "syncFat": "Gordura",
+    "syncSaturatedFat": "Gordura saturada",
+    "syncTransFat": "Gordura trans",
+    "syncUnsaturatedFat": "Gordura insaturada",
+    "syncCholesterol": "Colesterol",
+    "syncSodium": "Sódio",
+    "syncFiber": "Fibra alimentar",
+    "syncSugars": "Açúcares",
+    "syncPotassium": "Potássio",
+    "syncVitaminA": "Vitamina A",
+    "syncVitaminC": "Vitamina C",
+    "syncCalcium": "Cálcio",
+    "syncIron": "Ferro",
+    "syncCaffeine": "Cafeína",
+    "syncAlcohol": "Álcool",
+    "syncWater": "Água",
+    "syncSavedValues": "Estes são os valores salvos dos ingredientes. Para incluir uma correção da biblioteca, substitua o ingrediente afetado pela variante corrigida do alimento, confira os valores e salve a refeição.",
+    "syncSavedAt": "Último salvamento: {{date}}",
+    "syncSavedAtUnknown": "Horário do último salvamento indisponível.",
+    "syncPartial": "Parcial: {{known}}/{{total}} valores conhecidos",
+    "syncSkippedUnknown": "Ignorado: nenhum valor de ingrediente conhecido.",
+    "syncCoverageHelp": "As somas parciais incluem só os valores conhecidos dos ingredientes. Os valores ignorados ficam inalterados no Mealie.",
+    "syncSkippedUnsupported": "{{nutrient}} — não suportado pelo Mealie.",
+    "syncReviewTitle": "Revisar a sincronização da nutrição",
+    "syncMeal": "Refeição salva: {{name}}",
+    "syncReviewDescription": "Revise a nutrição da refeição salva antes de substituir a nutrição da receita no Mealie. Só a nutrição é enviada.",
+    "loadingSyncPreview": "Carregando a nutrição atual…",
+    "syncServings": "Porções no Mealie: {{servings}}",
+    "syncSourceChanged": "Esta receita mudou no Mealie. Confira a receita atual e o número de porções antes de confirmar.",
+    "syncPerServing": "Nutrição por porção do Mealie",
+    "syncNutrient": "Nutriente",
+    "syncCurrent": "No Mealie",
+    "syncProposed": "Da refeição salva",
+    "refreshSyncPreview": "Atualizar a prévia",
+    "confirmSync": "Confirmar a sincronização da nutrição",
+    "syncReviewHelp": "Revise e confirme a nutrição atual da refeição salva antes de atualizar o Mealie. As alterações no diário são à parte.",
+    "syncNeedsCompleteMeal": "Revise os ingredientes da refeição salva e complete a nutrição deles antes de sincronizar.",
+    "sourceIngredient": "Ingrediente do Mealie",
+    "savedChoice": "Escolha salva",
+    "savedSuggestion": "Sugerido a partir de uma importação anterior",
+    "confirmSavedChoice": "Confirmar a escolha salva",
+    "confirmSavedChoiceFor": "Confirmar a escolha salva de {{name}}",
+    "forgetSavedChoice": "Esquecer a escolha salva",
+    "forgetSavedChoiceFor": "Esquecer a escolha salva de {{name}}",
+    "forgetFailed": "Não foi possível esquecer a escolha salva. Tente novamente.",
+    "noteNeedsReview": "Esta nota começa com uma quantidade e pode descrever outro ingrediente. Revise-a separadamente antes de salvar.",
+    "hideSavedChoices": "Ocultar escolhas salvas",
+    "manageSavedChoices": "Gerenciar escolhas salvas",
+    "manageSavedChoicesHelp": "As escolhas salvas são sugestões para as próximas importações. Esquecer uma delas mantém as suas refeições salvas e os registros do diário.",
+    "loadingSavedChoices": "Carregando escolhas salvas…",
+    "savedSourceIngredient": "Ingrediente de origem",
+    "savedFoodUnavailable": "Alimento indisponível",
+    "savedMappingPair": "{{ingredient}} → {{food}}",
+    "savedMappingRatio": "{{quantity}} {{unit}} / 1 {{sourceUnit}}",
+    "sourceUnit": "unidade de origem",
+    "noSavedChoices": "Nenhuma escolha salva para este provedor.",
+    "selectedFoodAmount": "Alimento e quantidade selecionados",
+    "savedChoiceHelp": "Confira esta escolha salva e a quantidade dela para a receita inteira antes de salvar.",
+    "matchesFor": "Correspondências para {{name}} — escolha uma e revise a quantidade.",
+    "sourceReviewWarnings": "Revise abaixo as quantidades, unidades e porções que faltam na origem. Digite as quantidades da receita inteira que serão usadas no cálculo da nutrição.",
+    "missingSourceServingsReview": "Digite as porções da refeição salva. Para sincronizar a nutrição depois, defina um número de porções positivo no Mealie e atualize a prévia da nutrição.",
+    "incompleteCoreNutrition": "A nutrição principal está incompleta. Escolha uma variante completa do alimento.",
+    "sourceAmount": "Quantidade original para a receita inteira: {{quantity}} {{unit}}",
+    "notProvided": "não informado",
+    "title": "Importar ingredientes do Mealie",
+    "loadingRecipes": "Carregando receitas…",
+    "noRecipes": "Nenhuma receita encontrada.",
+    "mealName": "Nome da refeição",
+    "servings": "Porções da receita",
+    "suggestFailed": "Não foi possível carregar as sugestões. Escolha os alimentos manualmente.",
+    "confirmed": "Confirmado",
+    "unresolved": "Precisa de confirmação",
+    "missingNutrients": "Nutrientes que faltam: {{nutrients}}",
+    "loadingFood": "Carregando o alimento selecionado…",
+    "chooseFoodFor": "Escolher alimento para {{name}}",
+    "reviewSuggestions": "Revise os candidatos e confirme o alimento, a variante e a quantidade da receita inteira.",
+    "noCandidates": "Nenhum candidato encontrado. Escolha um alimento manualmente.",
+    "suggested": "Sugerido — precisa de revisão",
+    "reviewCandidate": "Revisar {{name}}",
+    "ownerOnly": "Mude para o seu próprio perfil para importar ou sincronizar receitas.",
+    "syncExplanation": "Atualiza a nutrição por porção da receita original do Mealie. Evite editar a receita no Mealie durante a sincronização: edições simultâneas da nutrição podem ser sobrescritas. As quantidades dos ingredientes não são enviadas.",
+    "sync": "Sincronizar a nutrição com o Mealie",
+    "synced": "Nutrição sincronizada com o Mealie.",
+    "issues": {
+      "missing_quantity": "Falta a quantidade na origem. Digite a quantidade da receita inteira.",
+      "missing_unit": "Falta a unidade na origem. Selecione uma unidade compatível explícita.",
+      "unstructured_food": "A identificação do alimento na origem precisa de revisão manual.",
+      "linked_recipe": "Receitas vinculadas não podem ser importadas aqui. Use uma receita com ingredientes explícitos.",
+      "mapping_unavailable": "A correspondência de alimento salva está indisponível. Escolha um alimento de novo.",
+      "incomplete_nutrition": "Alguns nutrientes opcionais são desconhecidos. A nutrição conhecida ainda pode ser usada.",
+      "incompatible_unit": "Revise a quantidade na unidade do alimento selecionado. Volume nunca é tratado como massa."
+    },
+    "reviewIngredients": "Revisar ingredientes",
+    "recipeYield_one": "A receita rende {{servings}} porção",
+    "recipeYield_many": "A receita rende {{servings}} porções",
+    "recipeYield_other": "A receita rende {{servings}} porções",
+    "noDeclaredNutrition": "Sem nutrição informada",
+    "missingNutritionHint": "Esta receita do Mealie não tem nutrição informada. Calcule a partir dos ingredientes correspondentes.",
+    "importAsMeal": "Importar ingredientes como refeição",
+    "searchMacros": "Proteína {{protein}} g · Carboidratos {{carbs}} g · Gordura {{fat}} g",
+    "sourceWarning": "Revise a receita de origem antes de sincronizar a nutrição.",
+    "variantNutritionEnergy": "{{size}} {{unit}}: {{calories}} {{energyUnit}} · P {{protein}} g · C {{carbs}} g · G {{fat}} g",
+    "foodUnavailable": "Não foi possível carregar os detalhes do alimento. Tente novamente.",
+    "reopenReview": "Abra de novo a revisão da importação da receita e escolha este ingrediente outra vez.",
+    "chooseFood": "Escolher alimento ou quantidade",
+    "candidateNutritionEnergy": "{{calories}} {{energyUnit}} · P {{protein}} g · C {{carbs}} g · G {{fat}} g por porção",
+    "invalidAmounts": "Digite um nome e um número positivo de porções ou de gramas cozidos.",
+    "saveFailed": "Não foi possível salvar a receita.",
+    "saved": "Refeição salva. Registre a sua porção pelo fluxo normal de refeições.",
+    "openMeal": "Abrir a refeição salva",
+    "chooseRecipe": "Escolher outra receita",
+    "batchExplanation": "As quantidades dos ingredientes são da receita inteira. O peso cozido só define o denominador da porção; ao registrar depois, digite os gramas consumidos.",
+    "grams": "Gramas cozidos",
+    "servingsOnly": "Só porções",
+    "finishedWeight": "Prato pronto inteiro, sem a panela, em gramas (opcional)",
+    "unresolvedRows": "Ingredientes ainda por confirmar: {{amount}}",
+    "match": "Buscar alimentos candidatos",
+    "matchAi": "Sugerir correspondências com IA",
+    "progress": "Buscando correspondências: {{done}} / {{total}} ingredientes",
+    "checkLibrary": "Confira a sua biblioteca de refeições antes de tentar de novo. Não se sabe se a refeição foi salva.",
+    "save": "Salvar refeição reutilizável",
+    "sourceTitle": "Origem no Mealie",
+    "syncUnavailable": "Esta refeição serve só para acompanhamento. Importe de novo a receita original, com as quantidades completas e inalteradas, para ativar a sincronização da nutrição.",
+    "lastSynced": "Última sincronização: {{date}}",
+    "previewFailed": "Não foi possível mostrar a prévia da receita.",
+    "selectProvider": "Escolha a sua origem do Mealie configurada.",
+    "noProvider": "Primeiro, configure um provedor de alimentos ativo do Mealie nas Configurações.",
+    "search": "Buscar receitas no Mealie",
+    "previous": "Página anterior",
+    "next": "Próxima página",
+    "finishReview": "Confirme todos os ingredientes antes de salvar.",
+    "amountRequired": "Digite a quantidade da receita inteira na unidade selecionada. Volume nunca é tratado automaticamente como massa.",
+    "missingServings": "A origem não tem porções da receita. Digite as porções para salvar para acompanhamento; a sincronização da nutrição continua indisponível."
+  },
+  "oralCareReport": {
+    "title": "Saúde bucal",
+    "loadFailed": "Falha ao carregar os dados de saúde bucal",
+    "empty": "Nenhum cuidado bucal registrado neste período",
+    "brushesTooltip_one": "{{count}} escovação · {{date}}",
+    "brushesTooltip_many": "{{count}} escovações · {{date}}",
+    "brushesTooltip_other": "{{count}} escovações · {{date}}",
+    "minutesTooltip": "{{time}} · {{date}}",
+    "goalDays": "Meta cumprida",
+    "goalDaysValue": "{{met}} de {{total}} dias",
+    "brushesPerDay": "Escovações por dia",
+    "minutesPerDay": "Escovação por dia",
+    "insightGoal": "Você escovou {{target}} vezes por dia em {{percent}}% dos dias.",
+    "insightStreak_one": "Sua maior sequência é de {{count}} dia.",
+    "insightStreak_many": "Sua maior sequência é de {{count}} dias.",
+    "insightStreak_other": "Sua maior sequência é de {{count}} dias.",
+    "brushesChart": "Escovações por dia",
+    "minutesChart": "Minutos escovando por dia",
+    "summaryTitle": "Sequências e outros cuidados",
+    "currentStreak": "Sequência atual",
+    "longestStreak": "Maior sequência",
+    "daysCount_one": "{{count}} dia",
+    "daysCount_many": "{{count}} dias",
+    "daysCount_other": "{{count}} dias",
+    "otherCare": "Fio dental, enxaguante e outros"
   }
 }

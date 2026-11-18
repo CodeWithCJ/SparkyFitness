@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import {
   BIRTH_CONTROL_METHODS,
   CYCLE_CONDITIONS,
@@ -11,6 +12,8 @@ import {
   useUpsertCycleSettingsMutation,
   useCycleExportMutation,
 } from '@/hooks/useCycle';
+import { useCycleSwitch } from '@/hooks/Settings/useWebFeatures';
+import { CycleSetupPrompt } from './CycleSetupPrompt';
 import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -32,11 +35,17 @@ import { toast } from '@/hooks/use-toast';
 export default function CycleSettings() {
   const { t } = useTranslation();
   const { data: settings, isLoading } = useCycleSettings();
+  // Cycle is turned on or off only in Settings > Features; this section reads
+  // the same state and points there.
+  const cycle = useCycleSwitch();
   const upsert = useUpsertCycleSettingsMutation();
   const exportMutation = useCycleExportMutation();
+  // The details (and Save and Reset) only once cycle is on and set up: Save
+  // never creates a cycle row, so it cannot turn cycle on or off by itself.
+  const showDetails =
+    cycle.state === 'ready' && cycle.on && !!settings?.onboarded_at;
 
   // Local draft states
-  const [enabled, setEnabled] = useState(false);
   const [mode, setMode] = useState<CycleMode>('standard');
   const [avgCycleLength, setAvgCycleLength] = useState<string>('');
   const [avgPeriodLength, setAvgPeriodLength] = useState<string>('');
@@ -53,7 +62,6 @@ export default function CycleSettings() {
   // Sync state from server settings
   useEffect(() => {
     if (settings) {
-      setEnabled(settings.enabled);
       setMode(settings.mode);
       setAvgCycleLength(
         settings.avg_cycle_length_override != null
@@ -108,7 +116,6 @@ export default function CycleSettings() {
     setSaving(true);
     try {
       await upsert.mutateAsync({
-        enabled,
         mode,
         avg_cycle_length_override:
           avgCycleLength === '' ? null : Number(avgCycleLength),
@@ -120,7 +127,6 @@ export default function CycleSettings() {
         show_fertile_window: showFertileWindow,
         terminology,
         discreet_mode: discreetMode,
-        mark_onboarded: enabled ? true : undefined,
       });
       toast({
         title: t('settings.cycle.successTitle', 'Success'),
@@ -202,39 +208,43 @@ export default function CycleSettings() {
         {t('settings.cycle.title', 'Cycle & Pregnancy')}
       </AccordionTrigger>
       <AccordionContent className="p-4 pt-0 space-y-4">
-        {/* Enable Switch */}
-        <div className="flex items-center justify-between py-2">
-          <div className="space-y-0.5">
-            <Label
-              htmlFor="cycle-tracking-enabled"
-              className="text-sm font-semibold"
-            >
-              {t(
-                'settings.cycle.enableLabel',
-                'Enable Cycle & Pregnancy Tracking'
-              )}
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              {t(
-                'settings.cycle.enableHint',
-                'Toggle the reproductive health hub. Enabling reveals the sidebar navigation tab.'
-              )}
-            </p>
-          </div>
-          <Switch
-            id="cycle-tracking-enabled"
-            checked={enabled}
-            onCheckedChange={(val) => {
-              setEnabled(val);
-              void upsert.mutateAsync({
-                enabled: val,
-                mark_onboarded: val ? true : undefined,
-              });
-            }}
-          />
+        <div className="flex flex-col items-start gap-2 py-2 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            {cycle.state !== 'ready'
+              ? t(
+                  'settings.cycle.switchInFeatures',
+                  'Cycle tracking is turned on or off in Features.'
+                )
+              : cycle.on
+                ? t(
+                    'settings.cycle.onInFeatures',
+                    'Cycle tracking is on. You can turn it off in Features.'
+                  )
+                : t(
+                    'settings.cycle.offInFeatures',
+                    'Cycle tracking is off. Turn it on in Features.'
+                  )}
+          </p>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/settings?section=features">
+              {t('settings.cycle.openFeatures', 'Open Features')}
+            </Link>
+          </Button>
         </div>
 
-        {enabled && (
+        {cycle.state === 'loadFailed' && (
+          <div className="flex flex-col items-start gap-2">
+            <p className="text-sm text-destructive">
+              {t('settings.features.loadError', 'Could not load this setting.')}
+            </p>
+            <Button variant="outline" size="sm" onClick={cycle.reload}>
+              {t('common.retry', 'Retry')}
+            </Button>
+          </div>
+        )}
+        {cycle.needsSetup && <CycleSetupPrompt onOpen={cycle.openSetup} />}
+
+        {showDetails && (
           <div className="space-y-6 pt-4 border-t">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Tracker Mode */}
@@ -511,26 +521,32 @@ export default function CycleSettings() {
                   : t('settings.cycle.export', 'Export')}
               </Button>
             </div>
+
+            <div className="pt-2 flex flex-wrap gap-2">
+              <Button onClick={handleSave} disabled={saving}>
+                <Save className="h-4 w-4 mr-2" />
+                {saving
+                  ? t('common.saving', 'Saving...')
+                  : t(
+                      'settings.preferences.savePreferences',
+                      'Save Preferences'
+                    )}
+              </Button>
+
+              <Button
+                variant="outline"
+                className="text-destructive hover:bg-destructive/5 hover:text-destructive"
+                onClick={handleResetOnboarding}
+                disabled={saving}
+              >
+                {t(
+                  'settings.cycle.resetOnboarding',
+                  'Reset & Re-run Onboarding'
+                )}
+              </Button>
+            </div>
           </div>
         )}
-
-        <div className="pt-2 flex flex-wrap gap-2">
-          <Button onClick={handleSave} disabled={saving}>
-            <Save className="h-4 w-4 mr-2" />
-            {saving
-              ? t('common.saving', 'Saving...')
-              : t('settings.preferences.savePreferences', 'Save Preferences')}
-          </Button>
-
-          <Button
-            variant="outline"
-            className="text-destructive hover:bg-destructive/5 hover:text-destructive"
-            onClick={handleResetOnboarding}
-            disabled={saving}
-          >
-            {t('settings.cycle.resetOnboarding', 'Reset & Re-run Onboarding')}
-          </Button>
-        </div>
       </AccordionContent>
     </>
   );

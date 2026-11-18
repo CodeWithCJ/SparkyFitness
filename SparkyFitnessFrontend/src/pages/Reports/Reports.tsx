@@ -5,6 +5,8 @@ import MedicationReports from '@/pages/Reports/MedicationReports';
 import SymptomsReport from '@/pages/Symptoms/SymptomsReport';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
+import { withoutHiddenCategories } from '@workspace/shared';
 import { useProfileQuery } from '@/hooks/Settings/useProfile';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ZoomableChart from '@/components/ZoomableChart';
@@ -167,7 +169,7 @@ const Reports = () => {
     tabularData = [],
     exerciseEntries = [],
     measurementData = [],
-    customCategories = [],
+    customCategories: allCustomCategories = [],
     customMeasurementsData = [],
     sleepAnalyticsData = [],
     medications = [],
@@ -176,6 +178,21 @@ const Reports = () => {
     injections = [],
     titrationSteps = [],
   } = reportsData || {};
+  // The reproductive Health categories leave the charts and tables while
+  // cycle is turned off (Settings > Features); their data is kept.
+  const { hiddenCustomCategories } = useWebFeatures();
+  const customCategories = useMemo(
+    () => withoutHiddenCategories(allCustomCategories, hiddenCustomCategories),
+    [allCustomCategories, hiddenCustomCategories]
+  );
+  // A table that is no longer listed falls back to all tables.
+  const shownTable: TableFilterValue =
+    selectedTable.startsWith('category:') &&
+    !customCategories.some(
+      (category) => `category:${category.id}` === selectedTable
+    )
+      ? 'all'
+      : selectedTable;
 
   const { data: goalData } = useDailyGoalsRange(startDate, endDate, true, true);
 
@@ -384,7 +401,7 @@ const Reports = () => {
               customCategories={customCategories}
               customMeasurementsData={customMeasurementsData}
               prData={exerciseDashboardData?.prData}
-              selectedTable={selectedTable}
+              selectedTable={shownTable}
               onSelectedTableChange={setSelectedTable}
               onExportFoodDiary={() =>
                 exportFoodDiary({
