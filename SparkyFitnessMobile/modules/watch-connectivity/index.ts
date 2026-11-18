@@ -637,6 +637,20 @@ export interface WatchSetCompletedPayload {
   /** Effort (RPE) the wearer picked, 6 to 10. Omitted when skipped. */
   rpe?: number | null;
   /**
+   * True when this payload is a Wear OS follow-up delivering only the wearer's
+   * RPE choice after the initial completion was already sent. When the set is
+   * already complete on the phone, only `rpe` is applied so phone-side edits
+   * are preserved; if the set is not yet complete, all carried values still
+   * recover the missed initial completion.
+   */
+  rpeOnly?: boolean | null;
+  /**
+   * True when the native bridge is replaying an unconfirmed completion bundled
+   * inside Wear OS `workoutStop`. Replays recover completions the phone missed
+   * without overwriting phone-side edits if the set is already complete.
+   */
+  replay?: boolean | null;
+  /**
    * When the wearer tapped the set on the watch, ISO 8601. The phone stamps
    * its own clock when this is absent (an older watch build, or a set logged
    * here). Using arrival time instead pulls the next exercise's readings
@@ -1182,8 +1196,8 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   startWorkout(plan: WatchWorkoutStartPayload): Promise<void>;
   /**
    * Transfers one exercise demo picture (a local JPEG, already scaled down) to
-   * the watch as queued user info (the session's reliable channel). `index` 0 is the start position,
-   * 1 the end. iOS only; absent on Android.
+   * the watch as a live message with durable queued fallback. `index` 0 is the
+   * start position, 1 the end. Supported on iOS and Android (Wear OS).
    */
   sendExerciseImage?(image: {
     key: string;

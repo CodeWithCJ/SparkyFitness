@@ -884,6 +884,8 @@ fun WatchKeypadSheet(
   title: String,
   initialValue: Double,
   allowDecimal: Boolean,
+  allowNegative: Boolean = false,
+  allowZero: Boolean = false,
   onConfirm: (Double) -> Unit,
   onCancel: () -> Unit
 ) {
@@ -898,7 +900,7 @@ fun WatchKeypadSheet(
     modifier = Modifier
       .fillMaxSize()
       .background(Color.Black)
-      .padding(horizontal = 10.dp, vertical = 8.dp),
+      .padding(horizontal = 10.dp, vertical = 18.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.SpaceBetween
   ) {
@@ -907,6 +909,20 @@ fun WatchKeypadSheet(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+      if (allowNegative) {
+        Box(
+          modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(SparkyColors.CardBg)
+            .clickable {
+              text = if (text.startsWith("-")) text.removePrefix("-") else "-$text"
+              Haptics.click()
+            }
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+          Text("±", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+        }
+      }
       Text(
         text = text.ifEmpty { "0" },
         fontSize = 18.sp,
@@ -948,11 +964,17 @@ fun WatchKeypadSheet(
                   when (key) {
                     "✓" -> {
                       val parsed = text.toDoubleOrNull()
-                      if (parsed != null && parsed > 0) onConfirm(parsed) else onCancel()
+                      val valid = when {
+                        parsed == null -> false
+                        allowNegative -> true
+                        allowZero -> parsed >= 0.0
+                        else -> parsed > 0.0
+                      }
+                      if (valid && parsed != null) onConfirm(parsed) else onCancel()
                     }
                     "C" -> text = ""
-                    "." -> if (!text.contains(".")) text += "."
-                    else -> if (text.length < 6) text += key
+                    "." -> if (!text.contains(".")) text += if (text.isEmpty() || text == "-") "0." else "."
+                    else -> if (text.length < 7) text += key
                   }
                 },
               contentAlignment = Alignment.Center
