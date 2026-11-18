@@ -1,3 +1,4 @@
+import { bumpAccountGeneration } from '../../src/offline/accountGeneration';
 import { ApiError } from '../../src/services/api/errors';
 import { apiFetch } from '../../src/services/api/apiClient';
 import {
@@ -109,6 +110,25 @@ describe('offline pack', () => {
   afterEach(() => {
     __setOfflineDbForTests(null);
     db.close();
+  });
+
+  it('drops what a refresh wrote when the account changed while it ran', async () => {
+    serveFrom(state);
+    // The account switches while the last-time values are being fetched.
+    const serve = mockApiFetch.getMockImplementation()!;
+    mockApiFetch.mockImplementation((async (options: { endpoint: string }) => {
+      if (options.endpoint === '/api/v2/exercises/stats/batch') {
+        bumpAccountGeneration();
+      }
+      return serve(options as never);
+    }) as never);
+
+    expect(await refreshOfflinePack({ force: true })).toBe(false);
+
+    expect(
+      await listCacheRows(db, 's1', CACHE_COLLECTIONS.workoutPreset)
+    ).toEqual([]);
+    expect(await isOfflinePackReady(db, 's1')).toBe(false);
   });
 
   it('saves workouts, exercises, last-time values, settings and who is signed in', async () => {

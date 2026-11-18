@@ -7,6 +7,7 @@ import {
   registerOutboxHandler,
 } from '../../src/offline/handlers/registry';
 import {
+  deleteUnconfirmedForEntity,
   enqueueOutbox,
   getOutboxRow,
   updateOutboxRow,
@@ -145,6 +146,72 @@ describe('offline sync engine', () => {
 
     await drainOutbox('manual');
     expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds a row with no recorded account until the person asks', async () => {
+    await enqueueOutbox(db, {
+      id: 'unowned',
+      serverConfigId: 's1',
+      userId: null,
+      kind: KIND,
+      entityId: 'e-unowned',
+      payload: {},
+      payloadVersion: 2,
+    });
+
+    await drainOutbox('reconnect');
+    await drainOutbox('foreground');
+    expect(send).not.toHaveBeenCalled();
+
+    await drainOutbox('manual');
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not send a row that was discarded while an earlier one was going up', async () => {
+    await queue('a');
+    await queue('b');
+    send.mockImplementationOnce(async () => {
+      // The person discards b while a's request is out.
+      await deleteUnconfirmedForEntity(db, 's1', 'entity-b');
+      return { outcome: 'synced' } as SendResult;
+    });
+
+    const summary = await drainOutbox('reconnect');
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]![0].id).toBe('a');
+    expect(summary.synced).toBe(1);
+    expect(await getOutboxRow(db, 'b')).toBeNull();
+  });
+
+  it('keeps newer work queued when the upload that finished was of the older work', async () => {
+    await queue('a');
+    send.mockImplementationOnce(async () => {
+      // The workout changes while its upload is out: the row is replaced.
+      await enqueueOutbox(db, {
+        id: 'a-again',
+        serverConfigId: 's1',
+        userId: 'u1',
+        kind: KIND,
+        entityId: 'entity-a',
+        payload: { id: 'newer' },
+        payloadVersion: 2,
+      });
+      return { outcome: 'synced' } as SendResult;
+    });
+
+    const summary = await drainOutbox('reconnect');
+
+    expect(summary.synced).toBe(0);
+    expect(await getOutboxRow(db, 'a')).toMatchObject({
+      status: 'pending',
+      payload: { id: 'newer' },
+    });
+
+    await drainOutbox('manual');
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1]![0].payload).toEqual({ id: 'newer' });
+    expect((await getOutboxRow(db, 'a'))?.status).toBe('synced');
   });
 
   it('tries a waiting row at once when the connection comes back', async () => {

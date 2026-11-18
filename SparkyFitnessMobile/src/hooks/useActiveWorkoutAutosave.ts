@@ -210,15 +210,22 @@ async function saveNow(
         const serverCopy = await getWorkout(sessionId);
         if (
           lastSentExercises == null ||
-          !serverSessionMatchesSent(serverCopy, lastSentExercises)
+          !serverSessionMatchesSent(serverCopy, lastSentExercises, updateBody)
         ) {
           // Changed somewhere else. Keep everything on the phone; the person
           // chooses which copy to keep when the workout is finished.
           throw error;
         }
         // The "change" is this phone's own earlier save whose answer was
-        // lost. Nothing to ask about.
-        result = await updateWorkout(sessionId, updateBody);
+        // lost. Nothing to ask about. The retry still presents the revision
+        // just read, so a save from another device that lands before it is
+        // refused again and kept for the person to decide.
+        result = await updateWorkout(sessionId, {
+          ...updateBody,
+          ...(serverCopy.revision != null
+            ? { revision: Number(serverCopy.revision) }
+            : {}),
+        });
       }
       useActiveWorkoutStore.setState({ offlineBaseRevision: null });
     }

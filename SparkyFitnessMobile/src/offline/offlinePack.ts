@@ -17,6 +17,7 @@ import { getActiveServerConfigId } from '../services/storage';
 import type { UserPreferences } from '../types/preferences';
 import {
   getCacheRow,
+  clearCache,
   putCacheRows,
   replaceCacheCollection,
 } from './cacheStore';
@@ -27,6 +28,7 @@ import {
   exerciseStatsCacheKey,
 } from './collections';
 import { getOfflineDb } from './db';
+import { accountGeneration } from './accountGeneration';
 import { refreshRecentDiaryDays } from './diaryDay';
 import { notifyOutboxChanged } from './events';
 import { IDENTITY_COLLECTION, IDENTITY_KEY } from './syncEngine';
@@ -188,6 +190,17 @@ async function refreshOnce(force: boolean): Promise<boolean> {
     if (marker && Date.now() - marker.fetchedAt < PACK_MAX_AGE_MS) return false;
   }
 
+  // The account can change while this runs (the switch clears the cache, and
+  // every write below would put the previous account's data back). A run that
+  // finds the account changed throws away what it wrote and does not set the
+  // completed marker, so the next trigger refreshes for the new account.
+  const startedUnder = accountGeneration();
+  const abandonedAfterSwitch = async (): Promise<boolean> => {
+    if (accountGeneration() === startedUnder) return false;
+    await clearCache(db, serverConfigId);
+    return true;
+  };
+
   const identity = await apiFetch<IdentityResponse>({
     endpoint: '/api/identity/user',
     serviceName: SERVICE,
@@ -244,6 +257,7 @@ async function refreshOnce(force: boolean): Promise<boolean> {
   await refreshStats(db, serverConfigId, presets);
   await refreshPlanDays(db, serverConfigId);
 
+  if (await abandonedAfterSwitch()) return false;
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.pack, [
     { key: PACK_COMPLETED_KEY, payload: { completedAt: Date.now() } },
   ]);
@@ -251,10 +265,11 @@ async function refreshOnce(force: boolean): Promise<boolean> {
   // After the marker: what a workout needs is ready, and a failure here only
   // leaves the Diary with the days it already had.
   try {
-    await refreshRecentDiaryDays(db, serverConfigId);
+    await refreshRecentDiaryDays(db, serverConfigId, undefined, startedUnder);
   } catch (error) {
     addLog(`[Offline] Last week's workouts not refreshed: ${error}`, 'WARNING');
   }
+  if (await abandonedAfterSwitch()) return false;
   return true;
 }
 

@@ -57,7 +57,10 @@ export function useOfflineUploads(): void {
   useEffect(() => {
     if (!isConnected) return;
     const refresh = async () => {
-      await refreshOfflinePack();
+      const refreshed = await refreshOfflinePack();
+      // The refresh is what records who is signed in. Uploads that were held
+      // because that was unknown (just after an account switch) can go now.
+      if (refreshed) await drainOutbox('foreground');
       // Pictures follow the data they belong to (Wi-Fi only by default).
       await refreshOfflineImages();
     };

@@ -4,6 +4,7 @@ import type {
   PresetSessionResponse,
 } from '@workspace/shared';
 import { apiFetch } from '../services/api/apiClient';
+import { accountGeneration } from './accountGeneration';
 import { getActiveServerConfigId } from '../services/storage';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import type { Exercise } from '../types/exercise';
@@ -35,11 +36,13 @@ export interface OfflineDiaryDay {
 /** Keeps the day's workouts from a diary load, for showing it offline. */
 export async function saveDiaryDayWorkouts(
   date: string,
-  sessions: ExerciseSessionResponse[]
+  sessions: ExerciseSessionResponse[],
+  /** `accountGeneration()` when the request was made; a later one is dropped. */
+  requestedUnder: number = accountGeneration()
 ): Promise<void> {
   try {
     const serverConfigId = await getActiveServerConfigId();
-    if (!serverConfigId) return;
+    if (!serverConfigId || accountGeneration() !== requestedUnder) return;
     await putCacheRows(
       await getOfflineDb(),
       serverConfigId,
@@ -67,19 +70,23 @@ export const DIARY_DAYS_KEPT = 7;
 export async function refreshRecentDiaryDays(
   db: OfflineDb,
   serverConfigId: string,
-  today: string = getTodayDate()
+  today: string = getTodayDate(),
+  startedUnder: number = accountGeneration()
 ): Promise<void> {
   for (let back = 0; back < DIARY_DAYS_KEPT; back += 1) {
+    if (accountGeneration() !== startedUnder) return;
     const day = addDays(today, -back);
     const sessions = await apiFetch<ExerciseSessionResponse[]>({
       endpoint: `/api/v2/exercise-entries/by-date?selectedDate=${encodeURIComponent(day)}`,
       serviceName: 'Offline pack',
       operation: "fetch the day's workouts",
     });
+    if (accountGeneration() !== startedUnder) return;
     await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.diaryDay, [
       { key: day, payload: Array.isArray(sessions) ? sessions : [] },
     ]);
   }
+  if (accountGeneration() !== startedUnder) return;
   await db.run(
     `DELETE FROM cache WHERE server_config_id = ? AND collection = ? AND key < ?`,
     [

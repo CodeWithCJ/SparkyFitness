@@ -29,6 +29,10 @@ import Switch from '../components/ui/Switch';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { drainOutbox } from '../offline/syncEngine';
 import type { OutboxRow, OutboxStatus } from '../offline/types';
+import {
+  WORKOUT_SESSION_UPDATE,
+  type WorkoutSessionUpdatePayload,
+} from '../offline/workoutHandOver';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { getActiveServerConfigId } from '../services/storage';
 import { formatDate } from '../utils/dateUtils';
@@ -157,6 +161,12 @@ const OfflineSettingsScreen: React.FC<OfflineSettingsScreenProps> = () => {
         text: t('common.cancel', { defaultValue: 'Cancel' }),
         style: 'cancel' as const,
       };
+      // "Keep both" and "Save as new" copy the phone's whole workout. An edit
+      // that changed only the name, notes or date holds none of the exercises,
+      // so there is nothing to copy; the other choices still apply.
+      const holdsWholeWorkout =
+        row.kind !== WORKOUT_SESSION_UPDATE ||
+        (row.payload as WorkoutSessionUpdatePayload).body?.exercises != null;
       if (row.lastError === 'deleted') {
         Alert.alert(
           t('offline.conflict.deletedTitle', {
@@ -167,12 +177,16 @@ const OfflineSettingsScreen: React.FC<OfflineSettingsScreenProps> = () => {
               'This workout was deleted on another device while this phone was offline.',
           }),
           [
-            {
-              text: t('offline.conflict.saveAsNew', {
-                defaultValue: 'Save as a new workout',
-              }),
-              onPress: () => resolve('saveSeparately'),
-            },
+            ...(holdsWholeWorkout
+              ? [
+                  {
+                    text: t('offline.conflict.saveAsNew', {
+                      defaultValue: 'Save as a new workout',
+                    }),
+                    onPress: () => resolve('saveSeparately'),
+                  },
+                ]
+              : []),
             {
               text: t('offline.conflict.discard', {
                 defaultValue: 'Discard this phone’s copy',
@@ -206,14 +220,21 @@ const OfflineSettingsScreen: React.FC<OfflineSettingsScreenProps> = () => {
             }),
             onPress: () => resolve('keepServer'),
           },
-          {
-            text: t('offline.conflict.saveSeparately', {
-              defaultValue: 'Keep both',
-            }),
-            onPress: () => resolve('saveSeparately'),
-          },
+          ...(holdsWholeWorkout
+            ? [
+                {
+                  text: t('offline.conflict.saveSeparately', {
+                    defaultValue: 'Keep both',
+                  }),
+                  onPress: () => resolve('saveSeparately'),
+                },
+              ]
+            : []),
           cancel,
-        ]
+        ],
+        // Android shows at most three buttons and drops the rest, so the
+        // cancel button may not appear; back and a tap outside still close it.
+        { cancelable: true }
       );
     },
     [t]

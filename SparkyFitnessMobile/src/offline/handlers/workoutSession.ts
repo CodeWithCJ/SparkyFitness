@@ -67,7 +67,7 @@ async function sendCreate(row: OutboxRow): Promise<SendResult> {
   const sentFinished = (payload.finished_at ?? null) !== null;
   if (
     payload.exercises != null &&
-    serverSessionMatchesSent(created, payload.exercises) &&
+    serverSessionMatchesSent(created, payload.exercises, payload) &&
     storedFinished === sentFinished
   ) {
     return { outcome: 'synced' };
@@ -107,7 +107,7 @@ async function sendUpdate(row: OutboxRow): Promise<SendResult> {
     const serverCopy = await getWorkout(row.entityId);
     if (
       body.exercises == null ||
-      !serverSessionMatchesSent(serverCopy, body.exercises)
+      !serverSessionMatchesSent(serverCopy, body.exercises, body)
     ) {
       return { outcome: 'conflict', error: 'changed' };
     }

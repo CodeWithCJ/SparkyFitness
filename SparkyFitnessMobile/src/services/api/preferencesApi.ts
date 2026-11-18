@@ -76,14 +76,16 @@ let timezoneBootstrapPromise: Promise<TimezoneBootstrapResult> | null = null;
 /**
  * Fetches user preferences.
  */
+const requestPreferences = (): Promise<UserPreferences> =>
+  apiFetch<UserPreferences>({
+    endpoint: '/api/user-preferences',
+    serviceName: 'Preferences API',
+    operation: 'fetch preferences',
+  });
+
 export const fetchPreferences = async (): Promise<UserPreferences> =>
   withOfflineFallback<UserPreferences>({
-    fetch: () =>
-      apiFetch<UserPreferences>({
-        endpoint: '/api/user-preferences',
-        serviceName: 'Preferences API',
-        operation: 'fetch preferences',
-      }),
+    fetch: requestPreferences,
     store: (db, serverConfigId, value) =>
       putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.preferences, [
         { key: SINGLE_DOCUMENT_KEY, payload: value },
@@ -106,7 +108,9 @@ export const fetchPreferences = async (): Promise<UserPreferences> =>
  * without the field reads as off.
  */
 export const fetchMoveRingActiveCaloriesSetting = async (): Promise<boolean> =>
-  (await fetchPreferences()).use_move_ring_active_calories === true;
+  // Straight from the server, never the phone's saved copy: a saved value
+  // could be out of date and would send the wrong figure.
+  (await requestPreferences()).use_move_ring_active_calories === true;
 
 /**
  * Updates user preferences (partial — only provided fields are changed).

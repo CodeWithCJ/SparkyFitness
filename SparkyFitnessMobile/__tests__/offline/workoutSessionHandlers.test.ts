@@ -10,7 +10,12 @@ import { __setOfflineDbForTests } from '../../src/offline/db';
 import { __clearOutboxHandlersForTests } from '../../src/offline/handlers/registry';
 import { registerWorkoutSessionHandlers } from '../../src/offline/handlers/workoutSession';
 import { enqueueOutbox, getOutboxRow } from '../../src/offline/outbox';
-import { drainOutbox } from '../../src/offline/syncEngine';
+import { putCacheRows } from '../../src/offline/cacheStore';
+import {
+  IDENTITY_COLLECTION,
+  IDENTITY_KEY,
+  drainOutbox,
+} from '../../src/offline/syncEngine';
 import type { OfflineDb } from '../../src/offline/types';
 import {
   WORKOUT_SESSION_CREATE,
@@ -119,7 +124,7 @@ describe('workout session upload handlers', () => {
     enqueueOutbox(db, {
       id: 'row-1',
       serverConfigId: 's1',
-      userId: null,
+      userId: 'u1',
       kind,
       entityId: SESSION_ID,
       entryDate: '2026-11-16',
@@ -143,6 +148,9 @@ describe('workout session upload handlers', () => {
     __setOfflineDbForTests(db);
     __clearOutboxHandlersForTests();
     registerWorkoutSessionHandlers();
+    await putCacheRows(db, 's1', IDENTITY_COLLECTION, [
+      { key: IDENTITY_KEY, payload: { id: 'u1' } },
+    ]);
   });
 
   afterEach(() => {
@@ -242,6 +250,43 @@ describe('workout session upload handlers', () => {
       SESSION_ID,
       { exercises: sentExercises, revision: 5 },
     ]);
+    expect((await getOutboxRow(db, 'row-1'))?.status).toBe('synced');
+  });
+
+  it('stops for the person when only the name changed elsewhere and the sets match', async () => {
+    mockUpdate.mockRejectedValue(new ApiError('conflict', 409));
+    mockGet.mockResolvedValue({
+      ...serverSession(),
+      name: 'Renamed on the web',
+    });
+    await queue(
+      WORKOUT_SESSION_UPDATE,
+      { body: { name: 'Push', exercises: sentExercises } },
+      2
+    );
+
+    await drainOutbox('reconnect');
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(await getOutboxRow(db, 'row-1')).toMatchObject({
+      status: 'conflict',
+      lastError: 'changed',
+    });
+  });
+
+  it("still treats a matching name and sets as this phone's own save", async () => {
+    mockUpdate
+      .mockRejectedValueOnce(new ApiError('conflict', 409))
+      .mockResolvedValueOnce(serverSession());
+    mockGet.mockResolvedValue(serverSession({ revision: 5 }));
+    await queue(
+      WORKOUT_SESSION_UPDATE,
+      { body: { name: 'Push', exercises: sentExercises } },
+      2
+    );
+
+    await drainOutbox('reconnect');
+
     expect((await getOutboxRow(db, 'row-1'))?.status).toBe('synced');
   });
 

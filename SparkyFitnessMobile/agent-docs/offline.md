@@ -6,7 +6,7 @@ Everything the app keeps for use without a connection lives in `src/offline/`. U
 
 - One SQLite file, `sparky-offline.db` (`expo-sqlite`), opened by `getOfflineDb()` (`db.ts`). Tables in `schema.ts`, versioned with `PRAGMA user_version`: add a step to `MIGRATIONS`, never edit a shipped one. Tables: `cache` (server JSON per collection and key), `outbox` (uploads), `offline_image` (saved pictures), `offline_keep` (exercises the person chose to keep pictures of).
 - No table mirrors the server. A new server column needs no change here; a new module adds a `collection` name (`collections.ts`) and an outbox `kind`.
-- Every row carries `server_config_id`. An account switch clears `cache` and pictures (`hooks/useAuth.ts`); waiting uploads stay, carry `user_id`, and are sent only while that same account is signed in (`syncEngine.ts`).
+- Every row carries `server_config_id`. An account switch clears `cache` and pictures (`hooks/useAuth.ts`, the cache clear is awaited) and bumps `accountGeneration()` (`accountGeneration.ts`); a refresh, a fetch that stores its answer and a Diary save take the number when they start and write only while it is unchanged, because a switch on the same server keeps the config id. Waiting uploads stay, carry `user_id`, and are sent only while that same account is signed in (`syncEngine.ts`); a row with no recorded account waits for Upload now.
 - Tests run the real SQL on Node's built-in SQLite through `__tests__/helpers/offlineTestDb.ts`; `jest.setup.js` makes `expo-sqlite` fail to open everywhere else. Use `__setOfflineDbForTests(db)`.
 
 ## Reading without a connection

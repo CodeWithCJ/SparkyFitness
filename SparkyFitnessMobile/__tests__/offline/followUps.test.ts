@@ -6,7 +6,6 @@ import { updateWorkoutPreset } from '../../src/services/api/workoutPresetsApi';
 import { __setOfflineDbForTests } from '../../src/offline/db';
 import {
   WORKOUT_FEEDBACK_PUT,
-  hasWaitingSessionUpload,
   queuePresetUpdate,
   queueWorkoutFeedback,
   readQueuedFeedback,
@@ -21,6 +20,7 @@ import {
 import { drainOutbox } from '../../src/offline/syncEngine';
 import type { OfflineDb } from '../../src/offline/types';
 import { WORKOUT_SESSION_CREATE } from '../../src/offline/workoutHandOver';
+import { isSessionAwaitingServer } from '../../src/offline/sessionAwaitingServer';
 import { createTestDb } from '../helpers/offlineTestDb';
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
@@ -80,7 +80,7 @@ describe('feedback and saved-workout updates given offline', () => {
 
   it('sends feedback only after its workout, and the last answer wins', async () => {
     await queueSession();
-    expect(await hasWaitingSessionUpload(SESSION_ID)).toBe(true);
+    expect(await isSessionAwaitingServer(SESSION_ID)).toBe(true);
     await queueWorkoutFeedback(SESSION_ID, request);
     const later = {
       ...request,

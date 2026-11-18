@@ -5,7 +5,7 @@ import type {
   WorkoutSessionFeedbackResponse,
 } from '@workspace/shared';
 import { apiFetch } from './apiClient';
-import { hasWaitingSessionUpload } from '../../offline/followUps';
+import { isSessionAwaitingServer } from '../../offline/sessionAwaitingServer';
 import { withOfflineFallback } from '../../offline/withOfflineFallback';
 
 /** `/api/v2/workout-coaching` — session feedback and adaptive settings (#1560). */
@@ -20,12 +20,14 @@ export const fetchWorkoutSessionFeedback = async (
         serviceName: 'Workout Coaching API',
         operation: 'fetch workout feedback',
       }),
-    // A workout just logged without a connection has no feedback on the
-    // server yet, so the card can start empty and its answers wait in the
-    // upload queue. For any other workout the load still fails, because
-    // answering from an empty form would replace feedback already saved.
+    // A workout just logged without a connection, still waiting to be
+    // created, has no feedback on the server yet, so the card can start empty
+    // and its answers wait in the upload queue. For any other workout, one
+    // the server holds (even with an edit waiting), the load still fails,
+    // because answering from an empty form would replace feedback already
+    // saved.
     read: async () =>
-      (await hasWaitingSessionUpload(presetEntryId))
+      (await isSessionAwaitingServer(presetEntryId))
         ? {
             exercise_preset_entry_id: presetEntryId,
             session: null,

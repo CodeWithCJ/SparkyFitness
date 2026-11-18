@@ -1,4 +1,5 @@
 import { getActiveServerConfigId } from '../services/storage';
+import { accountGeneration } from './accountGeneration';
 import { serverMayBeDown } from '../utils/serverErrors';
 import {
   isServerKnownUnreachable,
@@ -53,6 +54,9 @@ export async function withOfflineFallback<T>({
       return saved;
     }
   }
+  // The answer belongs to the account that asked; if the account changed
+  // while the request was out, it is returned but not saved.
+  const generation = accountGeneration();
   let value: T;
   try {
     value = await fetch();
@@ -63,10 +67,10 @@ export async function withOfflineFallback<T>({
     notifyOfflineFallbackUsed();
     return saved;
   }
-  if (store) {
+  if (store && accountGeneration() === generation) {
     try {
       const serverConfigId = await getActiveServerConfigId();
-      if (serverConfigId) {
+      if (serverConfigId && accountGeneration() === generation) {
         await store(await getOfflineDb(), serverConfigId, value);
       }
     } catch {

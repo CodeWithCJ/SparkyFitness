@@ -1,4 +1,5 @@
 import { clearAllCache } from '../offline/cacheStore';
+import { bumpAccountGeneration } from '../offline/accountGeneration';
 import { getOfflineDb } from '../offline/db';
 import { clearAllOfflineImages } from '../offline/offlineImages';
 import { useState, useEffect, useCallback } from 'react';
@@ -67,12 +68,23 @@ export function useAuth() {
       // Data saved for offline use belongs to the previous account too; the
       // next refresh downloads the new one's. Waiting uploads are kept and
       // stay with the account that made them.
-      void getOfflineDb()
-        .then(clearAllCache)
-        .then(clearAllOfflineImages)
-        .catch((err: unknown) => {
-          addLog(`Failed to clear offline data: ${err}`, 'WARNING');
-        });
+      // Awaited like the cookie sweep below: the documents are keyed by
+      // server configuration, not by account, so a read that overtook this
+      // DELETE would answer from the previous account's copy. Work already
+      // under way for the previous account (a refresh, a request that stores
+      // its answer) is told to stop writing first. A failure is reported at
+      // ERROR because nothing retries it until the next identity change.
+      bumpAccountGeneration();
+      try {
+        await clearAllCache(await getOfflineDb());
+      } catch (err: unknown) {
+        addLog(`Failed to clear offline data: ${err}`, 'ERROR');
+      }
+      // Pictures of the shared exercise library carry no account data, so
+      // that sweep does not hold the switch up.
+      void clearAllOfflineImages().catch((err: unknown) => {
+        addLog(`Failed to clear saved pictures: ${err}`, 'WARNING');
+      });
       // The widgets' snapshots carry no account either, and the Quick Settings
       // tile shows the calorie figure on the lock screen. Cleared in the same
       // turn as the cache, so no summary of the previous account is pushed

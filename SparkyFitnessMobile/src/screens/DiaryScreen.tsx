@@ -563,6 +563,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       summary?.foodEntries.length === 0 &&
       !hasSupplementNutrition(summary?.supplementTotals) && //A logged supplement is something the user recorded for this day, so the day is not empty even with no food, exercise or measurement.
       summary?.exerciseEntries.length === 0 &&
+      // A workout waiting to upload is on the day too (#1983), whether or
+      // not the server has it yet.
+      offlineDay.waiting.length === 0 &&
       !hasAnyMeasurement &&
       // A progress photo is something the user recorded for this day, so it
       // defeats the empty state exactly as a logged supplement does. Gated on
@@ -578,6 +581,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     isSleepLoading,
     wakeUp,
     summary,
+    offlineDay.waiting,
     hasAnyMeasurement,
     isPhotosLoading,
     dayPhotos,

@@ -34,8 +34,42 @@ const sameInstant = (
  */
 export function serverSessionMatchesSent(
   server: PresetSessionResponse,
-  sent: readonly PresetSessionExerciseRequest[]
+  sent: readonly PresetSessionExerciseRequest[],
+  /**
+   * The other fields the same save carried. Matching sets alone must not let
+   * a resend through: someone may have renamed the workout or changed its
+   * notes or date meanwhile, and the resend would put the old values back.
+   */
+  fields?: {
+    name?: string | null;
+    notes?: string | null;
+    description?: string | null;
+    entry_date?: string;
+  }
 ): boolean {
+  if (fields) {
+    // A save with no name leaves the server's own name alone.
+    if (fields.name != null && server.name !== fields.name) return false;
+    if (
+      fields.notes !== undefined &&
+      (server.notes ?? null) !== (fields.notes ?? null)
+    ) {
+      return false;
+    }
+    if (
+      fields.description !== undefined &&
+      (server.description ?? null) !== (fields.description ?? null)
+    ) {
+      return false;
+    }
+    if (
+      fields.entry_date !== undefined &&
+      String(server.entry_date).slice(0, 10) !==
+        String(fields.entry_date).slice(0, 10)
+    ) {
+      return false;
+    }
+  }
   if (server.exercises.length !== sent.length) return false;
   return sent.every((sentExercise, exerciseIndex) => {
     const stored = server.exercises[exerciseIndex]!;

@@ -198,12 +198,18 @@ export interface OutboxPatch {
   remindedAt?: number | null;
 }
 
+/**
+ * Updates one row. With `onlyIfStatus` the update applies only while the row
+ * is in that status, so a result for work sent earlier cannot overwrite a
+ * row that was replaced or removed meanwhile. Resolves whether a row changed.
+ */
 export async function updateOutboxRow(
   db: OfflineDb,
   id: string,
   patch: OutboxPatch,
-  now: number = Date.now()
-): Promise<void> {
+  now: number = Date.now(),
+  options: { onlyIfStatus?: OutboxStatus } = {}
+): Promise<boolean> {
   const sets: string[] = ['updated_at = ?'];
   const params: SqlParam[] = [now];
   const set = (column: string, value: SqlParam) => {
@@ -232,7 +238,16 @@ export async function updateOutboxRow(
   if (patch.syncedAt !== undefined) set('synced_at', patch.syncedAt);
   if (patch.remindedAt !== undefined) set('reminded_at', patch.remindedAt);
   params.push(id);
-  await db.run(`UPDATE outbox SET ${sets.join(', ')} WHERE id = ?`, params);
+  let where = 'id = ?';
+  if (options.onlyIfStatus !== undefined) {
+    where += ' AND status = ?';
+    params.push(options.onlyIfStatus);
+  }
+  const { changes } = await db.run(
+    `UPDATE outbox SET ${sets.join(', ')} WHERE ${where}`,
+    params
+  );
+  return changes > 0;
 }
 
 /**

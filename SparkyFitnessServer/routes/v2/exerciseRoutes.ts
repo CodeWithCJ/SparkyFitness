@@ -242,7 +242,9 @@ router.get(
  *     description: |
  *       Answers the same question as `GET /v2/exercises/{exerciseId}/stats` for up to 100 exercise and preset pairs
  *       in one request, so a client preparing data for offline use does not send one request per exercise.
- *       `presetId` scopes `recentSessions` exactly as it does on the single endpoint. Read-only.
+ *       `presetId` scopes `recentSessions` exactly as it does on the single endpoint. Read-only: it needs the
+ *       same read access to the diary as the single GET, although it is a POST. A pair listed more than once
+ *       is answered once; the response holds one item per distinct pair, in the order each first appeared.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -269,7 +271,7 @@ router.get(
  *                       minimum: 1
  *     responses:
  *       200:
- *         description: One stats item per requested pair, in request order.
+ *         description: One stats item per distinct requested pair, in the order each first appeared.
  *       400:
  *         description: Invalid body (no items, more than 100 items, or a malformed id).
  *       401:
@@ -313,9 +315,12 @@ const statsBatchHandler: RequestHandler = async (req, res, next) => {
   }
 };
 
+// A POST only because the list is too long for a query string; it reads like
+// the single GET does, so it asks for the same read access ('diary' alone
+// resolves to write access for a POST).
 router.post(
   '/stats/batch',
-  checkPermissionMiddleware('diary'),
+  checkPermissionMiddleware('diary_read'),
   statsBatchHandler
 );
 

@@ -119,8 +119,13 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
       if (!isDue(listed, trigger, now)) continue;
       // Work made under an account is only sent while that same account is
       // known to be signed in: never under another one, and not while the
-      // signed-in person is unknown (just after an account switch).
-      if (listed.userId != null && listed.userId !== currentUserId) {
+      // signed-in person is unknown (just after an account switch). A row
+      // with no recorded account (queued while the phone did not know who
+      // was signed in) cannot be matched to anyone, so it waits for the
+      // person to tap Upload now.
+      if (listed.userId == null) {
+        if (trigger !== 'manual') continue;
+      } else if (listed.userId !== currentUserId) {
         continue;
       }
       if (listed.dependsOn != null) {
@@ -146,7 +151,17 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
         row = { ...row, payload, payloadVersion: handler.payloadVersion };
       }
 
-      await updateOutboxRow(db, row.id, { status: 'sending' });
+      // Claim the row as it is now. The list was read before earlier rows
+      // were sent, which can take a while; a row discarded or replaced in the
+      // meantime must not be sent from this stale copy.
+      const claimed = await updateOutboxRow(
+        db,
+        row.id,
+        { status: 'sending' },
+        undefined,
+        { onlyIfStatus: listed.status }
+      );
+      if (!claimed) continue;
       let result: SendResult;
       try {
         result = await handler.send(row);
@@ -155,11 +170,17 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
       }
 
       if (result.outcome === 'synced') {
-        await updateOutboxRow(db, row.id, {
-          status: 'synced',
-          syncedAt: Date.now(),
-          lastError: null,
-        });
+        // Only while the row is still the one that was sent: if the work was
+        // replaced while this request was out (it went back to pending), the
+        // newer version has not been sent and must stay queued.
+        const confirmed = await updateOutboxRow(
+          db,
+          row.id,
+          { status: 'synced', syncedAt: Date.now(), lastError: null },
+          undefined,
+          { onlyIfStatus: 'sending' }
+        );
+        if (!confirmed) continue;
         synced += 1;
         try {
           await handler.onSynced?.(row);

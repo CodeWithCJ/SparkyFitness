@@ -1143,6 +1143,33 @@ describe('useActiveWorkoutAutosave', () => {
       expect(getStore().offlineBaseRevision).toBeNull();
     });
 
+    it("presents the revision just read when it resends the phone's own save", async () => {
+      startAndEdit();
+      useActiveWorkoutStore.setState({
+        session: { ...getStore().session!, revision: 4 },
+      });
+      mockUpdateWorkout.mockRejectedValueOnce(
+        new TypeError('Network request failed')
+      );
+      await saveActiveWorkoutSession(queryClient);
+      expect(getStore().offlineBaseRevision).toBe(4);
+
+      // The server saw that save with its answer lost: the copy it holds is
+      // the phone's own, now at revision 9.
+      mockUpdateWorkout.mockRejectedValueOnce(new ApiError('conflict', 409));
+      mockGetWorkout.mockResolvedValue({
+        ...getStore().session!,
+        revision: 9,
+      });
+      mockUpdateWorkout.mockImplementationOnce(async () => getStore().session!);
+
+      await saveActiveWorkoutSession(queryClient);
+
+      expect(mockUpdateWorkout.mock.calls.at(-1)![1]).toMatchObject({
+        revision: 9,
+      });
+    });
+
     it('keeps the edits on the phone when the workout really changed elsewhere', async () => {
       startAndEdit();
       useActiveWorkoutStore.setState({ offlineBaseRevision: 4 });

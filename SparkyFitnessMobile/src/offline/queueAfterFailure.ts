@@ -13,5 +13,18 @@ export async function queueAfterConnectionFailure(
   queue: () => Promise<boolean>
 ): Promise<boolean> {
   if (!serverMayBeDown(error) || error instanceof TimeoutError) return false;
+  if (isReadTimeout(error)) return false;
   return queue();
+}
+
+/**
+ * A plain `Error` that says a read or socket timed out. The request got as
+ * far as the server, which may have processed it. "Connect timed out" and
+ * "failed to connect" mean it never arrived, so those still count as lost.
+ */
+function isReadTimeout(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  const message = error.message;
+  if (/connect(ion)? timed out|failed to connect/i.test(message)) return false;
+  return /timed out|timeout/i.test(message);
 }

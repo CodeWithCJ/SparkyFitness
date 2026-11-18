@@ -2,6 +2,7 @@ import type {
   CreatePresetSessionRequest,
   PresetSessionExerciseRequest,
 } from '@workspace/shared';
+import { getTodayDate } from '../utils/dateUtils';
 import { newUuid } from '../utils/ids';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged } from './events';
@@ -71,11 +72,14 @@ export async function resolveWorkoutConflict(
     // elsewhere: upload it as a new one.
     const update = row.payload as WorkoutSessionUpdatePayload;
     const body = update.body;
+    // An edit of only the name, notes or date holds no exercises, so there
+    // is no workout on this phone to copy.
+    if (row.kind === WORKOUT_SESSION_UPDATE && body.exercises == null) return;
     const name = `${body.name ?? ''} ${options.phoneSuffix}`.trim();
     const create: CreatePresetSessionRequest = {
       id: newUuid(),
       name,
-      entry_date: row.entryDate ?? new Date().toISOString().slice(0, 10),
+      entry_date: row.entryDate ?? getTodayDate(),
       source: 'sparky',
       location: body.location,
       exercises: asNewExercises(body.exercises ?? []),
@@ -84,33 +88,38 @@ export async function resolveWorkoutConflict(
         ? { finished_at: body.finished_at }
         : {}),
     };
-    await updateOutboxRow(db, rowId, {
-      kind: WORKOUT_SESSION_CREATE,
-      payload: create,
-      status: 'pending',
-      attempts: 0,
-      baseRevision: null,
-      lastError: null,
-    });
-    await db.run(`UPDATE outbox SET entity_id = ? WHERE id = ?`, [
-      create.id!,
-      rowId,
-    ]);
-    // Feedback given on the phone's copy belongs to the new workout.
-    const dependants = await db.all<{ id: string; payload: string }>(
-      `SELECT id, payload FROM outbox WHERE depends_on = ? AND kind = ?`,
-      [rowId, WORKOUT_FEEDBACK_PUT]
-    );
-    for (const dependant of dependants) {
-      const payload = JSON.parse(dependant.payload) as QueuedFeedbackPayload;
-      await updateOutboxRow(db, dependant.id, {
-        payload: { ...payload, sessionId: create.id! },
+    // One transaction: the row, its id and the feedback given on it change
+    // together, so a failure part-way leaves the conflict as it was, ready
+    // to be chosen again.
+    await db.transaction(async (tx) => {
+      await updateOutboxRow(tx, rowId, {
+        kind: WORKOUT_SESSION_CREATE,
+        payload: create,
+        status: 'pending',
+        attempts: 0,
+        baseRevision: null,
+        lastError: null,
       });
-      await db.run(`UPDATE outbox SET entity_id = ? WHERE id = ?`, [
-        `feedback:${create.id!}`,
-        dependant.id,
+      await tx.run(`UPDATE outbox SET entity_id = ? WHERE id = ?`, [
+        create.id!,
+        rowId,
       ]);
-    }
+      // Feedback given on the phone's copy belongs to the new workout.
+      const dependants = await tx.all<{ id: string; payload: string }>(
+        `SELECT id, payload FROM outbox WHERE depends_on = ? AND kind = ?`,
+        [rowId, WORKOUT_FEEDBACK_PUT]
+      );
+      for (const dependant of dependants) {
+        const payload = JSON.parse(dependant.payload) as QueuedFeedbackPayload;
+        await updateOutboxRow(tx, dependant.id, {
+          payload: { ...payload, sessionId: create.id! },
+        });
+        await tx.run(`UPDATE outbox SET entity_id = ? WHERE id = ?`, [
+          `feedback:${create.id!}`,
+          dependant.id,
+        ]);
+      }
+    });
   }
   notifyOutboxChanged();
   await drainOutbox('manual');

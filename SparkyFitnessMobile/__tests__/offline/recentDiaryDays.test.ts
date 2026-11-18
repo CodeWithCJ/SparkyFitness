@@ -1,3 +1,4 @@
+import { bumpAccountGeneration } from '../../src/offline/accountGeneration';
 import { apiFetch } from '../../src/services/api/apiClient';
 import { getCacheRow, putCacheRows } from '../../src/offline/cacheStore';
 import { CACHE_COLLECTIONS } from '../../src/offline/collections';
@@ -91,6 +92,21 @@ describe('refreshRecentDiaryDays', () => {
     expect((await savedDay(db, '2026-11-15'))?.map((s) => s.id)).toEqual([
       'kept',
     ]);
+  });
+
+  it('stops writing when the account changed during the refresh', async () => {
+    let calls = 0;
+    mockApiFetch.mockImplementation(async () => {
+      calls += 1;
+      if (calls === 2) bumpAccountGeneration();
+      return [daySession('a', TODAY)];
+    });
+
+    await refreshRecentDiaryDays(db, SERVER, TODAY);
+
+    expect(calls).toBe(2);
+    expect(await savedDay(db, TODAY)).not.toBeNull();
+    expect(await savedDay(db, '2026-11-16')).toBeNull();
   });
 
   it('tells the offline view to read again', async () => {

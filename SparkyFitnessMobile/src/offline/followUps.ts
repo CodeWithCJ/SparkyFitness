@@ -130,19 +130,3 @@ export async function readQueuedFeedback(
     return null;
   }
 }
-
-/** True while a workout session has an upload waiting on this phone. */
-export async function hasWaitingSessionUpload(
-  sessionId: string
-): Promise<boolean> {
-  try {
-    const serverConfigId = await getActiveServerConfigId();
-    if (!serverConfigId) return false;
-    return (
-      (await sessionRowId(await getOfflineDb(), serverConfigId, sessionId)) !=
-      null
-    );
-  } catch {
-    return false;
-  }
-}

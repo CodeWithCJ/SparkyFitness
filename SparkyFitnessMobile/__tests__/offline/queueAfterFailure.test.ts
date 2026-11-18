@@ -47,4 +47,27 @@ describe('queueAfterConnectionFailure', () => {
     ).toBe(false);
     expect(queue).not.toHaveBeenCalled();
   });
+
+  it('does not queue after a read timeout, which the server may have processed', async () => {
+    const queue = jest.fn(async () => true);
+
+    expect(
+      await queueAfterConnectionFailure(
+        new Error(
+          'fetch failed: java.net.SocketTimeoutException: Read timed out'
+        ),
+        queue
+      )
+    ).toBe(false);
+    expect(queue).not.toHaveBeenCalled();
+
+    expect(
+      await queueAfterConnectionFailure(
+        new Error(
+          'fetch failed: java.net.SocketTimeoutException: connect timed out'
+        ),
+        queue
+      )
+    ).toBe(true);
+  });
 });

@@ -3,6 +3,7 @@ import {
   setServerKnownUnreachable,
   subscribeOfflineFallbackUsed,
 } from '../../src/offline/connection';
+import { bumpAccountGeneration } from '../../src/offline/accountGeneration';
 import { __setOfflineDbForTests } from '../../src/offline/db';
 import { withOfflineFallback } from '../../src/offline/withOfflineFallback';
 import type { OfflineDb } from '../../src/offline/types';
@@ -47,6 +48,22 @@ describe('withOfflineFallback', () => {
     expect(store).toHaveBeenCalledWith(db, 's1', 'fresh');
     expect(read).not.toHaveBeenCalled();
     expect(fallbackUsed).not.toHaveBeenCalled();
+  });
+
+  it('does not keep an answer that arrived after the account changed', async () => {
+    const store = jest.fn(async () => {});
+
+    const answer = await withOfflineFallback({
+      fetch: async () => {
+        bumpAccountGeneration();
+        return 'fresh';
+      },
+      store,
+      read: async () => null,
+    });
+
+    expect(answer).toBe('fresh');
+    expect(store).not.toHaveBeenCalled();
   });
 
   it('answers from the phone when the server cannot be reached, and reports it', async () => {

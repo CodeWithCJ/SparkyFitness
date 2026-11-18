@@ -116,6 +116,19 @@ describe('resolving a workout changed elsewhere', () => {
     expect(payload.exercises[0]!.sets[0]).not.toHaveProperty('id');
   });
 
+  it('does not make an empty workout from an edit that holds no exercises', async () => {
+    await updateOutboxRow(db, 'row-1', {
+      payload: { body: { name: 'Renamed' } },
+    });
+
+    await resolve('saveSeparately');
+
+    expect(await getOutboxRow(db, 'row-1')).toMatchObject({
+      status: 'conflict',
+      kind: WORKOUT_SESSION_UPDATE,
+    });
+  });
+
   it('ignores a row that is no longer in conflict', async () => {
     await updateOutboxRow(db, 'row-1', { status: 'pending' });
 
