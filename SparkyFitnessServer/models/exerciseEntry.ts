@@ -2361,9 +2361,40 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
   // the enriched-session reuse cache makes every sync do once a session has
   // been collected once (#2191, #2300).
   //
-  keepSourceIds?: string[]
+  keepSourceIds?: string[],
+  // Name of a per-day summary entry to keep (#3620). A row is kept only when it
+  // has the summary's shape: no source_id, zero duration, not part of a preset,
+  // and its library exercise has this name (or, once the library exercise was
+  // deleted and exercise_id set to NULL, its snapshot name does). These are the
+  // predicates upsertExerciseEntryData uses to find the summary again. Unset
+  // keeps nothing extra.
+  keepDailySummaryName?: string
 ) {
   await acquireExerciseEntrySyncLockWithClient(client, userId, entrySource);
+  // Only added when a summary name is given, so every other caller sends
+  // exactly the query and parameters it always did.
+  const keepDailySummarySql =
+    keepDailySummaryName === undefined
+      ? ''
+      : `
+       AND NOT (
+         $7::text IS NOT NULL
+         AND source_id IS NULL
+         AND duration_minutes = 0
+         AND exercise_preset_entry_id IS NULL
+         AND (
+           EXISTS (
+             SELECT 1
+             FROM exercises e
+             WHERE e.id = exercise_entries.exercise_id
+               AND e.name = $7
+           )
+           OR (
+             exercise_id IS NULL
+             AND COALESCE(exercise_name = $7, FALSE)
+           )
+         )
+       )`;
   // Get IDs of exercise entries to be deleted
   const readCleanupCandidates = () =>
     client.query<{ id: string }>(
@@ -2384,7 +2415,7 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
          $6::text[] IS NULL
          OR source_id IS NULL
          OR NOT (source_id = ANY($6::text[]))
-       )`,
+       )${keepDailySummarySql}`,
       [
         userId,
         startDate,
@@ -2392,6 +2423,7 @@ async function deleteExerciseEntriesByEntrySourceAndDateWithClient(
         entrySource,
         excludedExerciseName ?? null,
         keepSourceIds && keepSourceIds.length > 0 ? keepSourceIds : null,
+        ...(keepDailySummaryName === undefined ? [] : [keepDailySummaryName]),
       ]
     );
   const entryIdsResult = await readCleanupCandidates();
@@ -2443,7 +2475,8 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
   endDate: string,
   entrySource: string,
   excludedExerciseName?: string,
-  keepSourceIds?: string[]
+  keepSourceIds?: string[],
+  keepDailySummaryName?: string
 ) {
   const client = await getClient(userId);
   try {
@@ -2456,7 +2489,8 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
         endDate,
         entrySource,
         excludedExerciseName,
-        keepSourceIds
+        keepSourceIds,
+        keepDailySummaryName
       );
     await client.query('COMMIT');
     return deletedCount;
