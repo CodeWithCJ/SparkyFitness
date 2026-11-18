@@ -2121,6 +2121,7 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       );
     }
   });
+
   it('a planned session from a plan: scoring sees it as planned until a set is checked off, and checking off or finishing queues the day', async () => {
     await clearQueue();
     const session = await sys.query(
@@ -2293,7 +2294,9 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
           max_heart_rate: null,
           points: 45,
         },
-      ]
+      ],
+      undefined,
+      []
     );
     const { rows } = await sys.query(
       `SELECT TO_CHAR(day, 'YYYY-MM-DD') AS day, points
@@ -2570,51 +2573,51 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     const freeze = await getSystemClient();
     let saving: Promise<void> | undefined;
     try {
-      await freeze.query('BEGIN');
-      await freeze.query(
-        'SELECT id FROM public.challenges WHERE id = $1 FOR UPDATE',
-        [challengeId]
-      );
-      // A queue run that read the period as open saves now
-      saving = challengeRepository.saveMemberDays(
-        challengeId,
-        AMY,
-        frozenDay,
-        openDay,
-        [score(frozenDay, 99), score(openDay, 42)],
-        [],
-        undefined,
-        periods
-      );
-      const freezePid = (await freeze.query('SELECT pg_backend_pid() AS pid'))
-        .rows[0].pid;
-      const freezeXid = (
-        await freeze.query('SELECT txid_current()::text::xid AS xid')
-      ).rows[0].xid;
-      await vi.waitFor(
-        async () => {
-          const waiting = await sys.query(
-            `SELECT count(*)::int AS n FROM pg_locks
+      try {
+        await freeze.query('BEGIN');
+        await freeze.query(
+          'SELECT id FROM public.challenges WHERE id = $1 FOR UPDATE',
+          [challengeId]
+        );
+        // A queue run that read the period as open saves now
+        saving = challengeRepository.saveMemberDays(
+          challengeId,
+          AMY,
+          frozenDay,
+          openDay,
+          [score(frozenDay, 99), score(openDay, 42)],
+          [],
+          undefined,
+          periods
+        );
+        const freezePid = (await freeze.query('SELECT pg_backend_pid() AS pid'))
+          .rows[0].pid;
+        const freezeXid = (
+          await freeze.query('SELECT txid_current()::text::xid AS xid')
+        ).rows[0].xid;
+        await vi.waitFor(
+          async () => {
+            const waiting = await sys.query(
+              `SELECT count(*)::int AS n FROM pg_locks
               WHERE NOT granted AND locktype = 'transactionid'
                 AND transactionid = $1::xid AND pid <> $2`,
-            [freezeXid, freezePid]
-          );
-          expect(waiting.rows[0].n).toBeGreaterThanOrEqual(1);
-        },
-        { timeout: 10000, interval: 50 }
-      );
-      await freeze.query(
-        `UPDATE public.challenges
+              [freezeXid, freezePid]
+            );
+            expect(waiting.rows[0].n).toBeGreaterThanOrEqual(1);
+          },
+          { timeout: 10000, interval: 50 }
+        );
+        await freeze.query(
+          `UPDATE public.challenges
             SET frozen_period_starts = array_append(frozen_period_starts, $2::date)
           WHERE id = $1`,
-        [challengeId, frozenDay]
-      );
-    } finally {
-      await freeze.query('COMMIT');
-      freeze.release();
-    }
-    await saving;
-    try {
+          [challengeId, frozenDay]
+        );
+      } finally {
+        await freeze.query('COMMIT');
+        freeze.release();
+      }
+      await saving;
       const days = await sys.query(
         `SELECT TO_CHAR(day, 'YYYY-MM-DD') AS day, total FROM public.challenge_daily_scores
           WHERE challenge_id = $1 AND user_id = $2 AND day BETWEEN $3 AND $4 ORDER BY day`,
@@ -2630,6 +2633,8 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       );
       expect(cards.rows).toEqual([{ points: 5 }]);
     } finally {
+      // A save still in flight after a failure finishes before the clean-up
+      await saving?.catch(() => undefined);
       await sys.query(
         'DELETE FROM public.challenge_daily_scores WHERE challenge_id = $1 AND day BETWEEN $2 AND $3',
         [challengeId, frozenDay, openDay]

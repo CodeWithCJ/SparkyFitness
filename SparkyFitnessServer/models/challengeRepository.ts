@@ -876,9 +876,10 @@ export interface DailyScoreInput {
  *
  * `periods` are the challenge's periods over [from, to]. A period the
  * finaliser froze after this run read the marker keeps its stored days and
- * cards: the marker is read again here, under the challenge row and then the
- * member row (the order the freeze takes them), and only those periods' days
- * are skipped, so the open days of the batch still save.
+ * the cards on them (a card still follows its workout to an open day): the
+ * marker is read again here, under the challenge row and then the member row
+ * (the order the freeze takes them), and only those periods' days are
+ * skipped, so the open days of the batch still save.
  */
 async function saveMemberDays(
   challengeId: string,
@@ -887,8 +888,8 @@ async function saveMemberDays(
   to: string,
   scores: DailyScoreInput[],
   cards: ChallengeActivityCardInput[],
-  lock?: PoolClient,
-  periods: readonly { start: string; end: string }[] = []
+  lock: PoolClient | undefined,
+  periods: readonly { start: string; end: string }[]
 ): Promise<void> {
   // On the connection that holds the member's scoring lock: if it was lost
   // (and the lock with it) the save fails instead of landing after a newer
@@ -896,9 +897,9 @@ async function saveMemberDays(
   const run = (fn: (client: PoolClient) => Promise<void>) =>
     lock ? transactionOn(lock, fn) : inTransaction(fn);
   await run(async (client) => {
-    // KEY SHARE conflicts only with the freeze's FOR UPDATE: a freeze that
-    // committed first is seen here, one that comes after waits and reads
-    // what this saves.
+    // KEY SHARE waits for the FOR UPDATE that the freeze (and join, leave,
+    // rules and invite changes) take: a freeze that committed first is seen
+    // here, one that comes after waits and reads what this saves.
     const challenge = await client.query(
       `SELECT ARRAY(SELECT TO_CHAR(p, 'YYYY-MM-DD')
                       FROM unnest(frozen_period_starts) AS p) AS frozen
@@ -1020,9 +1021,10 @@ export interface ResultInput {
 /**
  * Freezes a period from its daily scores as they stand under the lock:
  * `build` works the result rows out from the scores read here, after the
- * member rows are locked, so a save in flight (saveMemberDays holds its
- * member row FOR SHARE) is waited for and read, and none can land between
- * the read and the freeze. The first writer wins: a second instance
+ * challenge and member rows are locked, so a save in flight (saveMemberDays
+ * holds the challenge row FOR KEY SHARE and its member row FOR SHARE) is
+ * waited for and read, and a later one rereads the marker and skips the
+ * period, so none can land between the read and the freeze. The first writer wins: a second instance
  * finalising the same period at once inserts nothing, and a frozen row is
  * never rewritten.
  */

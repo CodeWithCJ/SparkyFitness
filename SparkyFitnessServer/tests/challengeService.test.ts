@@ -1608,6 +1608,10 @@ describe('bot review follow-ups, second round', () => {
     };
     const rescore = await totals('2026-11-05', '2026-11-06');
     expect(rescore).toEqual({ '2026-11-05': 300, '2026-11-06': 0 });
+    // The save gets the periods over its days, to recheck the freeze marker
+    expect(repo.saveMemberDays.mock.calls.at(-1)![7]).toEqual([
+      expect.objectContaining({ start: '2026-11-02', end: '2026-11-08' }),
+    ]);
     expect({
       ...(await totals('2026-11-05', '2026-11-05')),
       ...(await totals('2026-11-06', '2026-11-06')),
