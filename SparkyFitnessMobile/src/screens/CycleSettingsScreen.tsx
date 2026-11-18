@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, ScrollView, Alert } from 'react-native';
+import { View, ScrollView, Alert, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import * as Sharing from 'expo-sharing';
@@ -10,6 +10,7 @@ import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import StatusView from '../components/StatusView';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useCycleSettings } from '../hooks/useCycleSettings';
+import { useCycleSwitch } from '../hooks/useMobileFeatures';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { addLog } from '../services/LogService';
@@ -18,6 +19,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import StepperInput, { useStepperDraft } from '../components/StepperInput';
 import Switch from '../components/ui/Switch';
+import Button from '../components/ui/Button';
 import { CYCLE_SETTING_LIMITS } from '../utils/cycleDisplayUtils';
 
 import {
@@ -38,7 +40,14 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const { settings, isLoading, updateSettings } = useCycleSettings();
+  const { settings, updateSettings } = useCycleSettings();
+  // Cycle is turned on or off only in Settings → Features; this screen shows
+  // its state and, once it is on and set up, its details.
+  const cycle = useCycleSwitch();
+  // The details, Export and Reset only once cycle is on and set up: none of
+  // them may create a settings row (a write without `enabled` turns cycle on).
+  const showDetails =
+    cycle.state === 'ready' && cycle.on && !!settings?.onboarded_at;
 
   const modeOptions = [
     {
@@ -148,16 +157,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({
     },
   ];
 
-  const handleToggleEnabled = useCallback(
-    (value: boolean) => {
-      updateSettings({
-        enabled: value,
-        mark_onboarded: value ? true : undefined,
-      });
-    },
-    [updateSettings]
-  );
-
   const handleModeChange = useCallback(
     (value: string) => {
       updateSettings({ mode: value as CycleMode });
@@ -228,13 +227,18 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({
           text: t('cycleSettings.reset.action', { defaultValue: 'Reset' }),
           style: 'destructive',
           onPress: () => {
-            updateSettings({ reset_onboarding: true });
-            Toast.show({
-              type: 'success',
-              text1: t('cycleSettings.reset.success', {
-                defaultValue: 'Onboarding reset completed.',
-              }),
-            });
+            updateSettings(
+              { reset_onboarding: true },
+              {
+                onSuccess: () =>
+                  Toast.show({
+                    type: 'success',
+                    text1: t('cycleSettings.reset.success', {
+                      defaultValue: 'Onboarding reset completed.',
+                    }),
+                  }),
+              }
+            );
           },
         },
       ]
@@ -319,10 +323,6 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({
     left: { kind: 'back' },
   });
 
-  if (isLoading || !settings) {
-    return <StatusView loading className="bg-background" />;
-  }
-
   return (
     <View
       className="flex-1 bg-background"
@@ -339,24 +339,56 @@ const CycleSettingsScreen: React.FC<CycleSettingsScreenProps> = ({
           usesNativeHeader ? 'automatic' : 'never'
         }
       >
-        <SettingsRowGroup>
-          <SettingsRow
-            title={t('cycleSettings.enable.title', {
-              defaultValue: 'Enable Cycle & Pregnancy Tracking',
-            })}
-            subtitle={t('cycleSettings.enable.subtitle', {
-              defaultValue: 'Turn on logging, predictions, and history',
-            })}
-            rightAccessory={
-              <Switch
-                value={settings.enabled}
-                onValueChange={handleToggleEnabled}
+        {cycle.state === 'loading' && <StatusView inline loading />}
+        {cycle.state === 'loadFailed' && (
+          <View className="gap-4">
+            <Text className="text-text-secondary">
+              {t('cycleSettings.loadFailed', {
+                defaultValue: 'Could not load these settings.',
+              })}
+            </Text>
+            <Button variant="secondary" onPress={cycle.reload}>
+              {t('common.retry', { defaultValue: 'Retry' })}
+            </Button>
+          </View>
+        )}
+        {cycle.state === 'ready' && (
+          <SettingsRowGroup>
+            <SettingsRow
+              title={
+                cycle.on
+                  ? t('cycleSettings.feature.on', {
+                      defaultValue: 'Turned on',
+                    })
+                  : t('cycleSettings.feature.off', {
+                      defaultValue: 'Turned off',
+                    })
+              }
+              subtitle={t('cycleSettings.feature.hint', {
+                defaultValue: 'Turn it on or off in Settings → Features.',
+              })}
+              subtitleNumberOfLines={0}
+              onPress={() => navigation.navigate('FeatureSettings')}
+              testID="cycle-settings-open-features"
+            />
+            {cycle.needsSetup && (
+              <SettingsRow
+                title={t('cycleSettings.setup.action', {
+                  defaultValue: 'Set up',
+                })}
+                subtitle={t('cycleSettings.setup.hint', {
+                  defaultValue:
+                    'Answer a few questions to finish setting it up.',
+                })}
+                subtitleNumberOfLines={0}
+                onPress={cycle.openSetup}
+                testID="cycle-settings-setup"
               />
-            }
-          />
-        </SettingsRowGroup>
+            )}
+          </SettingsRowGroup>
+        )}
 
-        {settings.enabled && (
+        {showDetails && settings && (
           <>
             <SettingsRowGroup
               title={t('cycleSettings.groups.features', {

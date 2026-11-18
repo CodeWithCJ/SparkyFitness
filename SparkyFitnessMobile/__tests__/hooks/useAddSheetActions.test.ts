@@ -2,6 +2,8 @@ import { Alert } from 'react-native';
 import { renderHook } from '@testing-library/react-native';
 import { CommonActions } from '@react-navigation/native';
 import { navigationRef } from '../../src/components/ActiveWorkoutBar';
+import { queryClient } from '../../src/hooks/queryClient';
+import { cycleSettingsQueryKey } from '../../src/hooks/queryKeys';
 import { useAddSheetActions } from '../../src/hooks/useAddSheetActions';
 import { initializeI18n } from '../../src/localization/i18n';
 import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
@@ -196,6 +198,44 @@ describe('useAddSheetActions handleStartCheckIn', () => {
         name: 'MoodLog',
         params: { date: '2026-10-20' },
       })
+    );
+  });
+});
+
+describe('useAddSheetActions handleOpenCycle', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    isReady.mockReturnValue(true);
+    queryClient.clear();
+  });
+
+  afterAll(() => {
+    queryClient.clear();
+  });
+
+  it('opens the log once cycle is set up', () => {
+    queryClient.setQueryData(cycleSettingsQueryKey, {
+      enabled: true,
+      onboarded_at: '2026-10-01T00:00:00.000Z',
+    });
+
+    renderActions().handleOpenCycle();
+
+    expect(dispatch).toHaveBeenCalledWith(
+      CommonActions.navigate({ name: 'CycleLogModal', params: undefined })
+    );
+  });
+
+  it('opens the setup while cycle is on but not set up yet', () => {
+    queryClient.setQueryData(cycleSettingsQueryKey, {
+      enabled: true,
+      onboarded_at: null,
+    });
+
+    renderActions().handleOpenCycle();
+
+    expect(dispatch).toHaveBeenCalledWith(
+      CommonActions.navigate({ name: 'CycleOnboarding', params: undefined })
     );
   });
 });

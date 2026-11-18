@@ -1,3 +1,4 @@
+import type { FeatureKey } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 
 /**
@@ -25,6 +26,16 @@ export const ADD_MENU_ITEM_KEYS = [
 ] as const;
 
 export type AddMenuItemKey = (typeof ADD_MENU_ITEM_KEYS)[number];
+
+/**
+ * Items that belong to an optional feature (Settings → Features): the sheet
+ * leaves them out while it is off, wherever they are arranged.
+ */
+export const ADD_MENU_ITEM_FEATURES: Partial<
+  Record<AddMenuItemKey, FeatureKey>
+> = {
+  wellness: 'cycle',
+};
 
 /** How many big cards the sheet has room for: two rows of two. */
 export const ADD_MENU_CARD_COUNT = 4;

@@ -107,6 +107,7 @@ import ChatScreen from '../screens/ChatScreen';
 import ChatSettingsScreen from '../screens/ChatSettingsScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import CycleSettingsScreen from '../screens/CycleSettingsScreen';
+import FeatureSettingsScreen from '../screens/FeatureSettingsScreen';
 import CycleOnboardingScreen from '../screens/CycleOnboardingScreen';
 import CycleHubScreen from '../screens/CycleHubScreen';
 import CycleLogModalScreen from '../screens/CycleLogModalScreen';
@@ -293,6 +294,7 @@ export const SafeFamilyMealDetail = withErrorBoundary(FamilyMealDetailScreen, 'F
 export const SafeFamilyCopyReview = withErrorBoundary(FamilyCopyReviewScreen, 'FamilyCopyReview', { canGoBack: true });
 
 export const SafeCycleSettings = withErrorBoundary(CycleSettingsScreen, 'CycleSettings', { canGoBack: true });
+export const SafeFeatureSettings = withErrorBoundary(FeatureSettingsScreen, 'FeatureSettings', { canGoBack: true });
 export const SafeCycleOnboarding = withErrorBoundary(CycleOnboardingScreen, 'CycleOnboarding', { canGoBack: true });
 export const SafeCycleHub = withErrorBoundary(CycleHubScreen, 'CycleHub', { canGoBack: true });
 export const SafeCycleLogModal = withErrorBoundary(CycleLogModalScreen, 'CycleLogModal', { canGoBack: true });

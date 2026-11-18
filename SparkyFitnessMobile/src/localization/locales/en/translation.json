@@ -169,6 +169,7 @@
       "server": "Server",
       "healthSync": "Health Data Sync",
       "app": "App Settings",
+      "features": "Features",
       "calories": "Calories & BMR",
       "food": "Food",
       "dashboard": "Dashboard",
@@ -684,6 +685,7 @@
     "about": "About",
     "whatsNew": "What's New",
     "cyclePregnancy": "Cycle & Pregnancy",
+    "features": "Features",
     "cycleSetup": "Cycle Setup",
     "wellnessHub": "Wellness Hub",
     "logDailyEntry": "Log Daily Entry",
@@ -1357,6 +1359,8 @@
     "fastingSubtitle": "Show the fasting card on the Dashboard",
     "cyclePregnancy": "Cycle & Pregnancy",
     "cyclePregnancySubtitle": "Show the wellness card on the Dashboard",
+    "wellness": "Wellness",
+    "offInFeatures": "Not shown: turned off in Features",
     "medications": "Medications",
     "medicationsSubtitle": "Show the medications card on the Dashboard",
     "symptoms": "Symptoms",
@@ -2845,10 +2849,6 @@
       "wellness": "Wellness Settings",
       "cyclePregnancy": "Cycle & Pregnancy"
     },
-    "enable": {
-      "title": "Enable Cycle & Pregnancy Tracking",
-      "subtitle": "Turn on logging, predictions, and history"
-    },
     "groups": {
       "features": "Feature Configuration",
       "calculations": "Cycle Calculations Overrides",
@@ -2882,6 +2882,37 @@
       "discreetSubtitle": "Hides \"Cycle\" or \"Pregnancy\" labels in UI",
       "exportSubtitle": "Download JSON data export",
       "resetSubtitle": "Restart setup walkthrough"
+    },
+    "loadFailed": "Could not load these settings.",
+    "feature": {
+      "on": "Turned on",
+      "off": "Turned off",
+      "hint": "Turn it on or off in Settings → Features."
+    },
+    "setup": {
+      "action": "Set up",
+      "hint": "Answer a few questions to finish setting it up."
+    }
+  },
+  "featureSettings": {
+    "title": "Features",
+    "description": "Turn whole features on or off in this app.",
+    "footnote": "Turning a feature off only hides it: nothing is deleted, and syncs and imports keep running.",
+    "loading": "Loading",
+    "loadError": "Could not load this setting.",
+    "groups": {
+      "health": "Health",
+      "nutrition": "Nutrition",
+      "training": "Training",
+      "wellbeing": "Wellbeing"
+    },
+    "cycle": {
+      "title": "Cycle & Pregnancy",
+      "discreetTitle": "Wellness",
+      "description": "Track periods, fertility and pregnancy.",
+      "scope": "One switch for the app and the website.",
+      "setupAction": "Set up",
+      "setupHint": "Answer a few questions to finish setting it up."
     }
   },
   "measurements": {
@@ -4096,7 +4127,7 @@
     "previewTitle": "Preview",
     "previewDescription": "How Quick Actions looks with your choices.",
     "lineNumber": "Line {{number}}",
-    "needsCycle": "Not shown: cycle tracking is off",
+    "offInFeatures": "Not shown: turned off in Features",
     "showAs": "Show as",
     "showAsValue": "Show as {{style}}",
     "styleList": "List",
@@ -6982,6 +7013,14 @@
       "day": "Day {{day}}",
       "dayCycle_one": "{{count}}-day cycle",
       "dayCycle_other": "{{count}}-day cycle"
+    },
+    "loadFailed": "Could not load your settings.",
+    "off": {
+      "title": "Cycle tracking is turned off",
+      "discreetTitle": "Wellness is turned off",
+      "description": "Your history is kept. Turn it back on to see it here again.",
+      "turnOn": "Turn on",
+      "openFeatures": "Open Features"
     }
   },
   "workoutPresetLibrary": {},

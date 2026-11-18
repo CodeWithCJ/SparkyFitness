@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next';
+import type { FeatureKey } from '@workspace/shared';
 
 export const DASHBOARD_CARD_KEYS = [
   'calorieRing',
@@ -22,6 +23,17 @@ export const DASHBOARD_CARD_KEYS = [
 ] as const;
 
 export type DashboardCardKey = (typeof DASHBOARD_CARD_KEYS)[number];
+
+/**
+ * Cards that belong to an optional feature (Settings → Features): the
+ * Dashboard leaves them out while it is off. Dashboard Settings keeps listing
+ * them, so their place and switch are kept for when it comes back.
+ */
+export const DASHBOARD_CARD_FEATURES: Partial<
+  Record<DashboardCardKey, FeatureKey>
+> = {
+  cycle: 'cycle',
+};
 
 export const DASHBOARD_CARD_TITLES: Record<
   DashboardCardKey,

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { queryClient } from './queryClient';
-import { serverConnectionQueryKey } from './queryKeys';
+import { cycleSettingsQueryKey, serverConnectionQueryKey } from './queryKeys';
 import { useSyncHealthData } from './useSyncHealthData';
 import { promptForActiveWorkoutConflict } from './useStartLiveWorkout';
 import { startGuidedCheckIn } from './useGuidedCheckIn';
@@ -20,6 +20,7 @@ import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutB
 import { NON_ADD_TABS, type NonAddTabName } from '../components/TabsLayout';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { RootStackParamList } from '../types/navigation';
+import type { SharedCycleSettings } from '../types/womensHealth';
 
 function getServerConnectionMessage(
   t: (key: string, options: { defaultValue: string }) => string,
@@ -346,8 +347,16 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     navigateFromSheet('Chat');
   }, [navigateFromSheet]);
 
+  // Cycle can be on before its setup is done (Settings → Features turns it on
+  // without it), so the row sends that person to the setup, as the Dashboard
+  // card and the hub do, instead of logging without a mode or lengths.
   const handleOpenCycle = useCallback(() => {
-    navigateFromSheet('CycleLogModal');
+    const settings = queryClient.getQueryData<SharedCycleSettings | null>(
+      cycleSettingsQueryKey
+    );
+    navigateFromSheet(
+      settings?.onboarded_at ? 'CycleLogModal' : 'CycleOnboarding'
+    );
   }, [navigateFromSheet]);
 
   const handleSyncHealthData = useCallback(async () => {

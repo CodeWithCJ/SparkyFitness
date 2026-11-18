@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, ScrollView } from 'react-native';
+import { View, ScrollView, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import { useCycleMode } from '../hooks/useCycleMode';
 import { useCycleSettings } from '../hooks/useCycleSettings';
+import { useCycleSwitch } from '../hooks/useMobileFeatures';
 import { useCycleHistory } from '../hooks/useCycleHistory';
 import { useCycleLogsRange } from '../hooks/useCycleLogs';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -15,6 +16,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
+import Button from '../components/ui/Button';
 import CycleCalendarGrid from '../components/wellness/CycleCalendarGrid';
 import CycleHistoryList from '../components/wellness/CycleHistoryList';
 import CycleInsightsView from '../components/wellness/CycleInsightsView';
@@ -35,23 +37,22 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const {
-    mode,
-    enabled,
-    isLoading: isModeLoading,
-    onboardedAt,
-  } = useCycleMode();
+  const { mode, isLoading: isModeLoading } = useCycleMode();
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
   const { discreetMode } = useDiscreetMode();
+  const cycle = useCycleSwitch();
 
-  // Redirect to Onboarding if not enabled or not onboarded
+  // Never set up, or its setup was reset: run the setup. Once it was set up,
+  // a hub turned off in Settings → Features offers to turn it back on as it
+  // was instead, so the setup never asks again and overwrites the settings;
+  // a failed load offers Retry, never the setup.
+  const isSetUp = !!cycle.settings?.onboarded_at;
+  const needsSetup = cycle.state === 'ready' && !isSetUp;
+  const isOff = cycle.state === 'ready' && isSetUp && !cycle.on;
+  const showsHub = cycle.state === 'ready' && isSetUp && cycle.on;
   useEffect(() => {
-    if (!isModeLoading) {
-      if (!enabled || !onboardedAt) {
-        navigation.replace('CycleOnboarding');
-      }
-    }
-  }, [isModeLoading, enabled, onboardedAt, navigation]);
+    if (needsSetup) navigation.replace('CycleOnboarding');
+  }, [needsSetup, navigation]);
 
   // Anchor date for predictions, alerts, and the header log action
   const [selectedDate] = useState(getTodayDate);
@@ -144,18 +145,81 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
     title: hubTitle,
     nativeTitle: hubTitle,
     left: { kind: 'back' },
-    right: {
-      kind: 'icon',
-      ionicon: 'add-outline',
-      sfSymbol: 'plus',
-      role: 'primary',
-      accessibilityLabel: t('cycleHub.logEntry', { defaultValue: 'Log Entry' }),
-      onPress: () =>
-        navigation.navigate('CycleLogModal', { date: selectedDate }),
-    },
+    right: showsHub
+      ? {
+          kind: 'icon',
+          ionicon: 'add-outline',
+          sfSymbol: 'plus',
+          role: 'primary',
+          accessibilityLabel: t('cycleHub.logEntry', {
+            defaultValue: 'Log Entry',
+          }),
+          onPress: () =>
+            navigation.navigate('CycleLogModal', { date: selectedDate }),
+        }
+      : undefined,
   });
 
-  if (isLoading || !settings) {
+  if (cycle.state === 'loadFailed' || isOff) {
+    return (
+      <View
+        className="flex-1 bg-background"
+        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
+      >
+        {header}
+        {isOff ? (
+          <View className="flex-1 justify-center items-center px-6 gap-3">
+            <Text className="text-text-primary text-lg font-semibold text-center">
+              {discreetMode
+                ? t('cycleHub.off.discreetTitle', {
+                    defaultValue: 'Wellness is turned off',
+                  })
+                : t('cycleHub.off.title', {
+                    defaultValue: 'Cycle tracking is turned off',
+                  })}
+            </Text>
+            <Text className="text-text-secondary text-sm text-center">
+              {t('cycleHub.off.description', {
+                defaultValue:
+                  'Your history is kept. Turn it back on to see it here again.',
+              })}
+            </Text>
+            <Button
+              variant="primary"
+              className="mt-2 px-6"
+              disabled={cycle.isPending}
+              onPress={() => cycle.setOn(true)}
+            >
+              {t('cycleHub.off.turnOn', { defaultValue: 'Turn on' })}
+            </Button>
+            <Button
+              variant="secondary"
+              className="px-6"
+              onPress={() => navigation.navigate('FeatureSettings')}
+            >
+              {t('cycleHub.off.openFeatures', {
+                defaultValue: 'Open Features',
+              })}
+            </Button>
+          </View>
+        ) : (
+          <StatusView
+            icon="alert-circle"
+            iconTone="muted"
+            title={t('cycleHub.loadFailed', {
+              defaultValue: 'Could not load your settings.',
+            })}
+            action={{
+              label: t('common.retry', { defaultValue: 'Retry' }),
+              onPress: cycle.reload,
+            }}
+          />
+        )}
+      </View>
+    );
+  }
+
+  if (!showsHub || isLoading || !settings) {
     return <StatusView loading className="bg-background" />;
   }
 
