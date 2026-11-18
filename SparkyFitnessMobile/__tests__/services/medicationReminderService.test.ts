@@ -1025,6 +1025,88 @@ describe('reconcileMedicationReminders', () => {
       expect(secondOutcome.status).toBe('fulfilled');
       expect(mockCancel).toHaveBeenCalledWith('existing-med');
     });
+
+    it('reloads today entries when a queued batch drains on a later calendar day', async () => {
+      const mockGetCalendars = getCalendars as jest.MockedFunction<
+        typeof getCalendars
+      >;
+      const apiMod =
+        require('../../src/services/api/medicationsApi') as typeof import('../../src/services/api/medicationsApi');
+
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+      // 2026-11-18T06:30:00Z = 2026-11-17 22:30 PST, but 2026-11-18 00:30 CST
+      jest.setSystemTime(new Date('2026-11-18T06:30:00.000Z'));
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Los_Angeles',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+
+      let releaseFirstPendingLookup: (() => void) | null = null;
+      const firstPendingGate = new Promise<Notifications.NotificationRequest[]>(
+        (resolve) => {
+          releaseFirstPendingLookup = () => resolve([]);
+        }
+      );
+
+      mockGetAllScheduled
+        .mockImplementationOnce(() => firstPendingGate)
+        .mockResolvedValue([]);
+
+      const listEntriesSpy = jest
+        .spyOn(apiMod, 'listEntries')
+        .mockResolvedValue([]);
+
+      const med = buildMedication({
+        schedules: [buildSchedule({ time_of_day: '09:00:00' })],
+      });
+      const yesterdayTaken = buildEntry({
+        entry_date: '2026-11-17',
+        status: 'taken',
+      });
+
+      const first = reconcileMedicationReminders([med], [yesterdayTaken]);
+      // Queued while local date is still 2026-11-17 in PST with 2026-11-17's taken entry
+      const second = reconcileMedicationReminders([med], [yesterdayTaken]);
+
+      // Before the queued batch drains, the device shifts east to CST (where local date is 2026-11-18)
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Chicago',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+      mockSchedule.mockClear();
+
+      releaseFirstPendingLookup?.();
+      await Promise.all([first, second]);
+
+      expect(listEntriesSpy).toHaveBeenCalledWith({
+        fromDate: '2026-11-18',
+        toDate: '2026-11-18',
+      });
+      const scheduledKeysOnDrain = mockSchedule.mock.calls.map(
+        (c) => (c[0].content.data as { key: string }).key
+      );
+      expect(scheduledKeysOnDrain).toContain(
+        'med_2026-11-18_med-1_sched-1_09:00:00'
+      );
+
+      listEntriesSpy.mockRestore();
+      mockGetCalendars.mockImplementation(() => [
+        {
+          calendar: 'gregory',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+    });
   });
 
   describe('consolidated reminders', () => {

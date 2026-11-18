@@ -34,6 +34,7 @@ const REMINDER_LOOKAHEAD_DAYS = 7;
 interface QueuedReconcileBatch {
   medications: MedicationDetail[];
   entries: MedicationEntry[];
+  entriesDate: string;
   promise: Promise<void>;
   resolve: () => void;
   reject: (reason?: unknown) => void;
@@ -42,9 +43,21 @@ interface QueuedReconcileBatch {
 let activeReconcileRunning = false;
 let queuedReconcileBatch: QueuedReconcileBatch | null = null;
 
+function resolveCurrentTimezoneAndToday(): {
+  validTz: string | null;
+  tz: string;
+  today: string;
+} {
+  const rawTz = getDeviceTimezone();
+  const validTz = rawTz && isValidTimeZone(rawTz) ? rawTz : null;
+  const today = validTz ? todayInZone(validTz) : getTodayDate();
+  return { validTz, tz: validTz ?? 'UTC', today };
+}
+
 function createQueuedReconcileBatch(
   medications: MedicationDetail[],
-  entries: MedicationEntry[]
+  entries: MedicationEntry[],
+  entriesDate: string
 ): QueuedReconcileBatch {
   let resolve!: () => void;
   let reject!: (reason?: unknown) => void;
@@ -52,7 +65,7 @@ function createQueuedReconcileBatch(
     resolve = res;
     reject = rej;
   });
-  return { medications, entries, promise, resolve, reject };
+  return { medications, entries, entriesDate, promise, resolve, reject };
 }
 
 function dequeueReconcileBatch(): QueuedReconcileBatch | null {
@@ -188,11 +201,17 @@ export function reconcileMedicationReminders(
   medications: MedicationDetail[],
   entries: MedicationEntry[]
 ): Promise<void> {
+  const entriesDate = resolveCurrentTimezoneAndToday().today;
   if (queuedReconcileBatch) {
     queuedReconcileBatch.medications = medications;
     queuedReconcileBatch.entries = entries;
+    queuedReconcileBatch.entriesDate = entriesDate;
   } else {
-    queuedReconcileBatch = createQueuedReconcileBatch(medications, entries);
+    queuedReconcileBatch = createQueuedReconcileBatch(
+      medications,
+      entries,
+      entriesDate
+    );
   }
 
   const batchPromise = queuedReconcileBatch.promise;
@@ -216,6 +235,7 @@ async function drainReconcileQueue(): Promise<void> {
         await reconcileMedicationRemindersOnce(
           batch.medications,
           batch.entries,
+          batch.entriesDate,
           drainState
         );
         batch.resolve();
@@ -232,13 +252,9 @@ async function drainReconcileQueue(): Promise<void> {
 async function reconcileMedicationRemindersOnce(
   medications: MedicationDetail[],
   entries: MedicationEntry[],
+  entriesDate: string,
   drainState: ReconcileDrainState
 ): Promise<void> {
-  const rawTz = getDeviceTimezone();
-  const validTz = rawTz && isValidTimeZone(rawTz) ? rawTz : null;
-  const today = validTz ? todayInZone(validTz) : getTodayDate();
-  const tz = validTz ?? 'UTC';
-
   // Each reminder is stamped with the server it was made for, so the iOS
   // native handler logs a button press only against that same server.
   const activeServerId =
@@ -259,7 +275,15 @@ async function reconcileMedicationRemindersOnce(
     return;
   }
 
-  if (drainState.flushedDuringDrain) {
+  const { validTz, tz, today } = resolveCurrentTimezoneAndToday();
+  const hasMismatchedEntryDate = entries.some(
+    (entry) => Boolean(entry.entry_date) && entry.entry_date !== today
+  );
+  if (
+    drainState.flushedDuringDrain ||
+    entriesDate !== today ||
+    hasMismatchedEntryDate
+  ) {
     try {
       entries = await listEntries({
         fromDate: today,
@@ -267,7 +291,7 @@ async function reconcileMedicationRemindersOnce(
       });
     } catch (err) {
       addLog(
-        `reconcileMedicationReminders failed to reload entries after flush: ${(err as Error).message}`,
+        `reconcileMedicationReminders failed to reload entries: ${(err as Error).message}`,
         'WARNING'
       );
       return;
