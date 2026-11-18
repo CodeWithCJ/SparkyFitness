@@ -71,6 +71,15 @@ import ImageLightbox from '@/components/ImageLightbox';
 
 const MOBILE_ENTRY_NUTRIENT_LIMIT = 4;
 
+// Desktop meal total row: the narrowest column, and the gap between columns
+// (gap-x-2).
+const TOTAL_COLUMN_MIN_PX = 92;
+const TOTAL_COLUMN_GAP_PX = 8;
+
+/** Wide enough for one row of `count` columns plus their gaps. */
+const totalRowMaxWidth = (count: number): string =>
+  `${count * TOTAL_COLUMN_MIN_PX + Math.max(count - 1, 0) * TOTAL_COLUMN_GAP_PX}px`;
+
 const MOBILE_NUTRIENT_LABEL_OVERRIDES: Record<
   string,
   { label: string; defaultLabel: string }
@@ -801,17 +810,22 @@ const MealCard = ({
                     defaultValue: `${meal.name} Total:`,
                   })}
                 </span>
-                {/* Columns as wide as the entry grid's, so a long label
-                    ("Kohlenhydrate") never runs into the next column. The
-                    grid takes the space beside the title, at most six
-                    columns' worth, and wraps into more rows when narrower. */}
+                {/* Columns wide enough that a long label ("Kohlenhydrate")
+                    never runs into the next one. The grid takes the space
+                    beside the title, on desktop up to one row of every
+                    nutrient shown, and wraps into more rows when narrower. */}
                 <div
                   data-testid="meal-total-nutrients"
-                  className="grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-auto sm:flex-1 sm:min-w-0 sm:max-w-[37rem] sm:ml-auto"
+                  className={cn(
+                    'grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-auto sm:flex-1 sm:min-w-0 sm:ml-auto',
+                    isMobile && 'sm:max-w-[37rem]'
+                  )}
                   style={{
-                    // 92px fits "Kohlenhydrate" in text-xs on one line;
-                    // 37rem is six such columns plus their gaps.
-                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '80px' : '92px'}, 1fr))`,
+                    // 92px fits "Kohlenhydrate" in text-xs on one line.
+                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '80px' : `${TOTAL_COLUMN_MIN_PX}px`}, 1fr))`,
+                    maxWidth: isMobile
+                      ? undefined
+                      : totalRowMaxWidth(visibleNutrientsForGrid.length),
                   }}
                 >
                   {visibleNutrientsForGrid.map((nutrient) => {
