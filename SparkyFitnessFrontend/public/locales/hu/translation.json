@@ -1552,8 +1552,6 @@
     "cycle": {
       "title": "Ciklus & Terhesség",
       "description": "A reproduktív egészség, a menstruációs ciklusok és a terhesség nyomon követésének kezelése",
-      "enableLabel": "Ciklus- és Terhességkövetés Engedélyezése",
-      "enableHint": "Kapcsolja be az reproduktív egészségügyi központot. A bekapcsolás után megjelenik az oldalsáv navigációs lapja.",
       "mode": "Nyomkövető mód",
       "bcMethod": "Fogamzásgátlás",
       "terminology": "Szakkifejezések",

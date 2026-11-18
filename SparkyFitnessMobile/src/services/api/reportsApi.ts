@@ -2,6 +2,7 @@ import type {
   ExerciseDashboardSummary,
   RunningEstimatesResponse,
   FitnessFatigueResponse,
+  TrainingCalendarResponse,
   TrainingConsistency,
   TrainingLoad,
 } from '@workspace/shared';
@@ -82,4 +83,16 @@ export const fetchRunEstimates = (): Promise<RunningEstimatesResponse> =>
     endpoint: '/api/reports/run-estimates',
     serviceName: 'Reports API',
     operation: 'fetch running estimates',
+  });
+
+export const fetchTrainingCalendar = (
+  start: string,
+  end: string
+): Promise<TrainingCalendarResponse> =>
+  apiFetch<TrainingCalendarResponse>({
+    endpoint: `/api/reports/training-calendar?start=${encodeURIComponent(
+      start
+    )}&end=${encodeURIComponent(end)}`,
+    serviceName: 'Reports API',
+    operation: 'fetch training calendar',
   });

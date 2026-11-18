@@ -133,6 +133,21 @@ private final class RefuseRedirects: NSObject, URLSessionTaskDelegate {
     ) {
         completionHandler(nil)
     }
+
+    /// Presents the TLS client certificate when the user's server asks for one
+    /// (ClientCertificateIdentity.swift, compiled into this target too).
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        if let credential = ClientCertificateIdentity.credential(for: challenge) {
+            completionHandler(.useCredential, credential)
+        } else {
+            completionHandler(.performDefaultHandling, nil)
+        }
+    }
 }
 
 /// Keeps the water widget's snapshot in step with a drink logged or removed from

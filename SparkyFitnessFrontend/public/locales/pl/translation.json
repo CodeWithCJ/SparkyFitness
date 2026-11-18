@@ -354,7 +354,9 @@
       "headersMapped": "Nagłówki zostały przypisane",
       "mapRequiredFields": "Nagłówki CSV nie pasują do wymaganego formatu. Zmapuj pola, aby kontynuować.",
       "parseSuccessful": "Pomyślnie przeanalizowano",
-      "readError": "Nie udało się odczytać wybranego pliku."
+      "readError": "Nie udało się odczytać wybranego pliku.",
+      "reparsePending": "Proszę czekać",
+      "reparsePendingDescription": "Zmiana formatu jest jeszcze przetwarzana. Spróbuj ponownie za chwilę."
     },
     "playbackModal": {
       "voiceLabel": "Głos:",
@@ -1668,7 +1670,23 @@
       "temperatureUnit": "Jednostka temperatury",
       "celsius": "Celsjusz (°C)",
       "fahrenheit": "Fahrenheit (°F)",
-      "glucoseUnit": "Jednostka glukozy"
+      "glucoseUnit": "Jednostka glukozy",
+      "bacDistributionFormula": "Wzór szacowania alkoholu we krwi",
+      "bacFormula": {
+        "widmark": "Widmark",
+        "widmarkDescription": "Stały udział wody w ciele zależnie od płci. Wymaga płci i masy ciała.",
+        "watson": "Watson (domyślny)",
+        "watsonDescription": "Woda w ciele na podstawie płci, wieku, wzrostu i masy ciała.",
+        "seidl": "Seidl",
+        "seidlDescription": "Na podstawie płci, wzrostu i masy ciała.",
+        "forrest": "Forrest",
+        "forrestDescription": "Na podstawie płci i wskaźnika masy ciała (wzrostu i masy ciała)."
+      },
+      "bacEliminationRate": "Szybkość eliminacji alkoholu (‰ na godzinę)",
+      "bacEliminationRateHint": "Pomiędzy {{min}} a {{max}}, zawsze w ‰ na godzinę. {{default}} to typowa średnia.",
+      "bacDisplayUnit": "Jednostka alkoholu we krwi",
+      "bacPermille": "Promile (‰)",
+      "bacPercent": "Procent (%)"
     },
     "waterTracking": {
       "title": "Śledzenie wody",
@@ -2203,8 +2221,6 @@
     "cycle": {
       "title": "Cykl i ciąża",
       "description": "Zarządzaj zdrowiem reprodukcyjnym oraz monitorowaniem cyklu menstruacyjnego i ciąży",
-      "enableLabel": "Włącz monitorowanie cyklu i ciąży",
-      "enableHint": "Włącz centrum zdrowia reprodukcyjnego. Po włączeniu na pasku bocznym pojawi się odpowiednia karta.",
       "mode": "Tryb monitora",
       "bcMethod": "Antykoncepcja",
       "terminology": "Terminologia",
@@ -2237,7 +2253,11 @@
       "resetError": "Nie udało się zresetować konfiguracji początkowej. Spróbuj ponownie.",
       "resetOnboarding": "Zresetuj i uruchom ponownie konfigurację początkową",
       "resetSuccessDesc": "Konfiguracja początkowa została zresetowana. Odwiedź kartę Centrum cyklu, aby rozpocząć konfigurację.",
-      "resetSuccessTitle": "Reset profilu"
+      "resetSuccessTitle": "Reset profilu",
+      "switchInFeatures": "Śledzenie cyklu włącza się i wyłącza w sekcji Funkcje.",
+      "onInFeatures": "Śledzenie cyklu jest włączone. Możesz je wyłączyć w sekcji Funkcje.",
+      "offInFeatures": "Śledzenie cyklu jest wyłączone. Włącz je w sekcji Funkcje.",
+      "openFeatures": "Otwórz Funkcje"
     },
     "nutrientGoalDirection": {
       "title": "Sposób interpretacji celu dla składników odżywczych",
@@ -3059,7 +3079,7 @@
       "description": "Wybierz, które główne karty są widoczne na stronie",
       "cycleOn": "Wł.",
       "cycleOff": "Wył.",
-      "cycleHint": "{{name}} ma własny przełącznik wł./wył. w zakładce ustawień Samopoczucie.",
+      "cycleHint": "{{name}} włącza się i wyłącza w sekcji Funkcje powyżej.",
       "footnote": "Karty Dziennik i Ustawienia są zawsze widoczne. Ukrycie karty zmienia tylko tę stronę: nic nie jest usuwane, a aplikacja mobilna ma własne ustawienia.",
       "saveError": "Nie udało się zapisać wyboru kart. Spróbuj ponownie.",
       "loadError": "Nie udało się wczytać wyboru kart.",
@@ -3119,6 +3139,25 @@
         "unreachable": "Nie udało się połączyć z serwerem. Sprawdź adres URL.",
         "policy": "Ten adres jest niedozwolony przez politykę sieciową.",
         "other": "Serwer nie wylistował swoich narzędzi ({{reason}})."
+      }
+    },
+    "features": {
+      "title": "Funkcje",
+      "description": "Włączaj i wyłączaj całe funkcje na tej stronie",
+      "actingOnBehalf": "Tylko właściciel konta może włączać i wyłączać funkcje.",
+      "loadError": "Nie udało się wczytać tego ustawienia.",
+      "footnote": "Wyłączenie funkcji tylko ją ukrywa: nic nie jest usuwane, a synchronizacje i importy działają dalej.",
+      "groups": {
+        "health": "Zdrowie",
+        "nutrition": "Odżywianie",
+        "training": "Trening",
+        "wellbeing": "Samopoczucie"
+      },
+      "cycle": {
+        "description": "Śledź okresy, płodność i ciążę.",
+        "scope": "Jeden przełącznik dla strony i aplikacji mobilnej.",
+        "setupHint": "Odpowiedz na kilka pytań, aby dokończyć konfigurację.",
+        "setupAction": "Skonfiguruj"
       }
     }
   },
@@ -3689,8 +3728,6 @@
       "cunninghamMath": "Wzór: 500 + 22 × LBM (gdzie LBM = masa ciała × (1 − BF/100))\nObliczenia: 500 + 22 × ({{weight}} kg × (1 − {{bodyFat}}/100)) = {{result}} kcal",
       "harrisMaleMath": "Wzór: 13,397 × masa ciała + 4,799 × wzrost − 5,677 × wiek + 88,362\nObliczenia: 13,397 × {{weight}} + 4,799 × {{height}} − 5,677 × {{age}} + 88,362 = {{result}} kcal",
       "harrisFemaleMath": "Wzór: 9,247 × masa ciała + 3,098 × wzrost − 4,33 × wiek + 447,593\nObliczenia: 9,247 × {{weight}} + 3,098 × {{height}} − 4,33 × {{age}} + 447,593 = {{result}} kcal",
-      "oxfordMaleMath": "Wzór: 14,2 × masa ciała + 593\nObliczenia: 14,2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "Wzór: 10,9 × masa ciała + 677\nObliczenia: 10,9 × {{weight}} + 677 = {{result}} kcal",
       "bmiBodyFatMath": "Wzór: 1,2 × BMI + 0,23 × wiek − stała ({{constant}})\nObliczenia: 1,2 × {{bmi}} (BMI) + 0,23 × {{age}} − {{constant}} = {{result}}%",
       "invalidMeasurements": "Nieprawidłowe pomiary do obliczenia.",
       "navyMaleMath": "Wzór (mężczyzna): 86,01 × log10(talia − szyja) − 70,041 × log10(wzrost) + 36,76 (w calach)\nObliczenia: 86,01 × log10({{waist}}in − {{neck}}in) − 70,041 × log10({{height}}in) + 36,76\nWynik: {{result}}%",
@@ -3791,7 +3828,9 @@
       "candidatePlausibilityBand": "Limity wiarygodności z Twojego poziomu aktywności (×{{multiplier}}): {{min}}–{{max}} {{unit}}. Surowy kandydat mieści się w tym zakresie; następuje korekta historii.",
       "adaptiveHistoryAdjustment": "Korekta historii: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}} (średnia {{window}}-dniowa po utrzymaniu i zanikaniu starszych oszacowań).",
       "activityCandidateCapped": "Po limicie wiarygodności opartym na BMR kandydat z wyłączoną aktywnością wynosi {{baseline}} {{unit}}; następuje jego korekta historii.",
-      "activityHistoryAdjustment": "Korekta historii bazy aktywności: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}}. Tryb celu i bezpieczne minimum mają zastosowanie do tej filtrowanej bazy."
+      "activityHistoryAdjustment": "Korekta historii bazy aktywności: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}}. Tryb celu i bezpieczne minimum mają zastosowanie do tej filtrowanej bazy.",
+      "oxfordMaleMathHenry2005": "Wzór: ({{slope}} × masa ciała + {{intercept}}) × 239, dla Twojego wieku\nObliczenia: ({{slope}} × {{weight}} + {{intercept}}) × 239 = {{result}} kcal",
+      "oxfordFemaleMathHenry2005": "Wzór: ({{slope}} × masa ciała + {{intercept}}) × 239, dla Twojego wieku\nObliczenia: ({{slope}} × {{weight}} + {{intercept}}) × 239 = {{result}} kcal"
     },
     "copyAllError": "Nie udało się skopiować całego dnia.",
     "copyAllFromYesterday": "Skopiuj wszystko z wczoraj",
@@ -4007,7 +4046,35 @@
       "pausedEarnBack": "Cyklowanie kalorii jest wstrzymane: kalorie z treningu są dodawane z powrotem do celu."
     },
     "copyFoodError": "Nie udało się skopiować produktu.",
-    "copyFoodSuccess": "Produkt skopiowany."
+    "copyFoodSuccess": "Produkt skopiowany.",
+    "bloodAlcohol": {
+      "title": "Szacowany alkohol we krwi",
+      "failedToLoad": "Nie udało się wczytać szacunku alkoholu we krwi.",
+      "disclaimer": "Tylko zgrubny szacunek. Realna zawartość alkoholu we krwi może różnić się o 20% lub więcej. Nigdy nie używaj go do decyzji, czy możesz prowadzić pojazd.",
+      "estimatedTimes": "Szacowane czasy",
+      "inputs": {
+        "sex": "płeć",
+        "weight": "masa ciała",
+        "height": "wzrost",
+        "age": "data urodzenia"
+      },
+      "missingInputs": "Aby oszacować alkohol we krwi, uzupełnij: {{inputs}}. Do tego czasu szacunek nie jest dostępny.",
+      "openProfile": "Ustaw {{inputs}} w swoim profilu",
+      "openCheckIn": "Zapisz masę ciała i wzrost we Wpisie dnia",
+      "implausibleInputs": "Twoja masa ciała i wzrost nie dają wiarygodnych wartości, więc szacunek nie jest dostępny. Sprawdź najnowsze wartości we Wpisie dnia.",
+      "checkMeasurements": "Sprawdź pomiary",
+      "empty": "Na ten dzień nie zapisano alkoholu.",
+      "formulaFellBack": "Wzór {{formula}} nie pasuje do Twoich pomiarów ciała, więc ten szacunek używa wzoru Watsona.",
+      "estimatedNow": "Szacunek teraz",
+      "peak": "Szacowany szczyt",
+      "legendCurve": "Szacowany BAC",
+      "legendNow": "Teraz",
+      "legendDrink": "Zapisany drink",
+      "legendEstimated": "Przyjęty czas",
+      "drinks": "Policzone drinki",
+      "drink": "Drink",
+      "gramsAlcohol": "{{grams}} g alkoholu"
+    }
   },
   "foodDiary": {
     "title": "Dziennik posiłków",
@@ -6308,6 +6375,12 @@
       "energyLevel": "Poziom energii",
       "displayNameCapacityMlml": "{{displayName}} (<span>{{capacityMl}}</span> ml)",
       "energy": "Energia: {{energy}}"
+    },
+    "ownerOnly": "Tylko właściciel konta może to widzieć i zmieniać.",
+    "off": {
+      "title": "{{name}} jest wyłączone",
+      "description": "Twoja historia jest zachowana. Włącz ponownie, aby zobaczyć ją tutaj.",
+      "turnOn": "Włącz"
     }
   },
   "onboarding": {
@@ -6757,7 +6830,9 @@
     "missingDefaultValidationError": "Co najmniej jeden wariant każdego produktu musi być ustawiony jako jednostka domyślna.",
     "missingDefaultWarning": "Uwaga: liczba produktów bez ustawionego wariantu domyślnego: {{count}}. Ustaw co najmniej jeden wariant jako domyślny (podświetlony na żółto poniżej).",
     "showAllRows": "Pokaż wszystkie wiersze ({{count}})",
-    "upfrontNote": "Uwaga: każdy produkt musi mieć co najmniej jeden wariant ustawiony jako jednostka domyślna (Is Default = True)."
+    "upfrontNote": "Uwaga: każdy produkt musi mieć co najmniej jeden wariant ustawiony jako jednostka domyślna (Is Default = True).",
+    "reparsePendingTitle": "Proszę czekać",
+    "reparsePendingDescription": "Zmiana formatu jest jeszcze przetwarzana. Spróbuj ponownie za chwilę."
   },
   "foods": {
     "providerVerified": "Zweryfikowany produkt",
@@ -6910,7 +6985,79 @@
     "viewErrors": "Pokaż nieudane wiersze",
     "imported": "Zaimportowano: {{processedCount}}",
     "skipped": "Pominięto: {{skippedCount}}",
-    "failed": "Nie powiodło się: {{errorsCount}}"
+    "failed": "Nie powiodło się: {{errorsCount}}",
+    "fieldDescriptions": {
+      "date": "Data (ISO 8601: YYYY-MM-DD; pełny znacznik czasu również jest akceptowany, ale zachowywana jest tylko data — pora dnia jest pomijana, a strefa czasowa decyduje, który dzień) — dzień, w którym zapisano wpis.",
+      "source": "Tekst — skąd pochodzą dane.",
+      "notes": "Tekst — dowolne notatki.",
+      "meal_type": "Tekst — jeden z Twoich typów posiłków (breakfast, lunch, dinner, snacks, …), bez rozróżniania wielkości liter.",
+      "meal_name": "Tekst — grupuje wiersze w nazwany posiłek (wiersze o tej samej dacie, typie posiłku i nazwie stają się jednym posiłkiem).",
+      "food_name": "Tekst — produkt do dopasowania w Twojej bibliotece lub do utworzenia.",
+      "brand": "Tekst — opcjonalna marka, używana do lepszego dopasowania.",
+      "quantity": "Liczba — ilość na jednostkę, np. 200.",
+      "unit": "Tekst — znana jednostka (g, oz, ml, cup, serving, …); niedopasowane wartości są zachowywane bez zmian.",
+      "name": "Tekst — nazwa do dopasowania w Twojej bibliotece lub do utworzenia.",
+      "serving_size": "Liczba — ilość na porcję; dzielnik we wzorze wartości odżywczych.",
+      "serving_unit": "Tekst — jednostka dla serving_size (g, oz, cup, …).",
+      "is_custom": "Wartość logiczna — `true` oznacza element własny (każda inna wartość to false).",
+      "shared_with_public": "Wartość logiczna — `true` udostępnia element w bibliotece publicznej (każda inna wartość to false).",
+      "is_default": "Wartość logiczna — `true` czyni ten element wariantem domyślnym (każda inna wartość to false).",
+      "category": "Tekst — kategoria ćwiczenia (strength, cardio, …).",
+      "calories_per_hour": "Liczba — szacowane spalone kalorie na godzinę.",
+      "description": "Tekst — krótki opis ćwiczenia.",
+      "force": "Tekst — `pull`, `push` lub `static` (bez rozróżniania wielkości liter).",
+      "level": "Tekst — `beginner`, `intermediate` lub `expert` (bez rozróżniania wielkości liter).",
+      "mechanic": "Tekst — `isolation` lub `compound` (bez rozróżniania wielkości liter).",
+      "equipment": "Tekst — używany sprzęt (oddzielony przecinkami).",
+      "primary_muscles": "Tekst — mięśnie główne (oddzielone przecinkami).",
+      "secondary_muscles": "Tekst — mięśnie pomocnicze (oddzielone przecinkami).",
+      "instructions": "Tekst — jak wykonać ćwiczenie.",
+      "images": "Tekst — adresy URL obrazów (oddzielone przecinkami).",
+      "entry_date": "Data (ISO 8601: YYYY-MM-DD; pełny znacznik czasu również jest akceptowany, ale zachowywana jest tylko data — pora dnia jest pomijana, a strefa czasowa decyduje, który dzień) — dzień, w którym wykonano trening.",
+      "exercise_name": "Tekst — ćwiczenie do dopasowania w Twojej bibliotece lub do utworzenia.",
+      "exercise_force": "Tekst — `pull`, `push` lub `static` (bez rozróżniania wielkości liter).",
+      "exercise_level": "Tekst — `beginner`, `intermediate` lub `expert` (bez rozróżniania wielkości liter).",
+      "exercise_mechanic": "Tekst — `isolation` lub `compound` (bez rozróżniania wielkości liter).",
+      "weight": "Liczba — masa ciała (w weight_unit).",
+      "weight_unit": "Tekst — jednostka masy (kg lub lb).",
+      "body_fat": "Liczba — procent tkanki tłuszczowej (%).",
+      "height": "Liczba — wzrost (w length_unit).",
+      "neck": "Liczba — obwód szyi (w length_unit).",
+      "waist": "Liczba — obwód talii (w length_unit).",
+      "hips": "Liczba — obwód bioder (w length_unit).",
+      "length_unit": "Tekst — jednostka pól długości (cm, in, m).",
+      "bedtime": "Znacznik czasu (ISO) — pora snu.",
+      "wake_time": "Znacznik czasu (ISO) — pobudka.",
+      "duration_in_seconds": "Liczba — całkowity czas snu, w sekundach.",
+      "time_asleep_in_seconds": "Liczba — czas snu, w sekundach.",
+      "deep_sleep_seconds": "Liczba — sen głęboki, w sekundach.",
+      "light_sleep_seconds": "Liczba — sen lekki, w sekundach.",
+      "rem_sleep_seconds": "Liczba — sen REM, w sekundach.",
+      "awake_sleep_seconds": "Liczba — czuwanie, w sekundach.",
+      "sleep_score": "Liczba — ogólna ocena snu (0–100).",
+      "stage_events": "Tekst (tablica JSON) — surowa sekwencja zdarzeń faz snu.",
+      "type": "Tekst — nazwa metryki lub parametru życiowego.",
+      "value": "Liczba — jej wartość.",
+      "mood_value": "Liczba — wynik nastroju (10–100).",
+      "mood_tags": "Tekst — tagi nastroju oddzielone pionową kreską (np. grateful|energetic).",
+      "calories": "Liczba — kalorie (kcal).",
+      "protein": "Liczba — białko (g).",
+      "carbs": "Liczba — węglowodany (g).",
+      "fat": "Liczba — tłuszcz całkowity (g).",
+      "saturated_fat": "Liczba — tłuszcz nasycony (g).",
+      "polyunsaturated_fat": "Liczba — tłuszcz wielonienasycony (g).",
+      "monounsaturated_fat": "Liczba — tłuszcz jednonienasycony (g).",
+      "trans_fat": "Liczba — tłuszcz trans (g).",
+      "cholesterol": "Liczba — cholesterol (mg).",
+      "sodium": "Liczba — sód (mg).",
+      "potassium": "Liczba — potas (mg).",
+      "dietary_fiber": "Liczba — błonnik pokarmowy (g).",
+      "sugars": "Liczba — cukry (g).",
+      "vitamin_a": "Liczba — witamina A (IU).",
+      "vitamin_c": "Liczba — witamina C (mg).",
+      "calcium": "Liczba — wapń (mg).",
+      "iron": "Liczba — żelazo (mg)."
+    }
   },
   "diaryCsvImport": {
     "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB.",
@@ -6986,7 +7133,15 @@
     "lengthUnitRequired": "Twój plik nie ma jednostki długości. Przed importem wybierz cm, in lub m.",
     "weightUnitMissing": "Masa jest obecna, ale jednostka nie jest ustawiona. Wybierz jednostkę (kg lub lb) dla tego importu.",
     "lengthUnitMissing": "{{type}} jest obecne, ale jednostka nie jest ustawiona. Wybierz jednostkę (cm, in lub m) dla tego importu.",
-    "unitRequired": "Wymagana jednostka"
+    "unitRequired": "Wymagana jednostka",
+    "fieldDescriptions": {
+      "unit": "Tekst — jednostka wartości (np. ml, L, oz, bpm, mmol/L); w miarę możliwości konwertowana."
+    },
+    "bodyMeasurementsDescription": "Masa ciała, tkanka tłuszczowa, wzrost i obwody ciała. Jeden wiersz na dzień. Przechowywane bez etykiety źródła, więc ponowny import daty nadpisuje te dane.",
+    "sleepDescription": "Jedna sesja snu na wiersz. Podaj bedtime/wake_time jako znaczniki czasu ISO. Kolumny deep/light/rem/awake to sumy sekund per faza. Pełną oś czasu faz uzyskasz, opcjonalnie umieszczając tablicę JSON w stage_events. Opcjonalne kolumny record_timezone (nazwa IANA, np. America/New_York) i/lub record_utc_offset_minutes przypinają wyświetlanie do strefy, w której zapisano sen; bez nich czasy wyświetlają się w strefie czasowej profilu.",
+    "vitalsCustomDescription": "Jeden odczyt na wiersz. Pole `type` przyjmuje nazwę parametru życiowego LUB dowolną nazwę kategorii własnej — nieznane typy tworzą lub ponownie używają kategorii pomiaru własnego według nazwy.",
+    "dailyActivityDescription": "Dzienne sumy, takie jak kroki, dystans i spalone kalorie. Uwaga: kroki i active_calories ignorują notatki; dystans jest przechowywany jako pomiar własny.",
+    "moodDescription": "Jeden importowany nastrój na dzień (ponowny import daty zastępuje importowany nastrój tego dnia). Nastrój zapisany samodzielnie jest zachowywany. Nastrój zaimportowany przed tą aktualizacją jest traktowany jako własny, więc ponowny import tych dat doda drugi wpis. mood_value to 10-100: 10 Smutny, 20 Zły, 30 Zaniepokojony, 40 Neutralny, 50 Zamyślony, 60 Spokojny, 70 Pewny siebie, 80 Szczęśliwy, 90 Podekscytowany. mood_tags jest opcjonalne, oddzielone pionową kreską (np. grateful|energetic)."
   },
   "workoutLaps": {
     "lap": "Okrążenie",

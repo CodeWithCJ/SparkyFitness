@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { shouldSuggestClientCertificate } from '../../src/services/clientCertificate';
 import OnboardingScreen from '../../src/screens/OnboardingScreen';
 import { login, fetchAuthSettings } from '../../src/services/api/authService';
 import { saveServerConfig } from '../../src/services/storage';
@@ -35,6 +37,12 @@ jest.mock('../../src/services/api/authService', () => ({
 
 jest.mock('../../src/services/storage', () => ({
   saveServerConfig: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../src/services/clientCertificate', () => ({
+  ...jest.requireActual('../../src/services/clientCertificate'),
+  setPendingClientCertificateServer: jest.fn().mockResolvedValue(undefined),
+  shouldSuggestClientCertificate: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -145,6 +153,41 @@ describe('OnboardingScreen', () => {
         expect(
           getByText('Could not reach server. Check the URL and try again.')
         ).toBeTruthy();
+      });
+    });
+
+    describe.each([
+      ['ios', /then fully close and reopen the app/],
+      ['android', /under Advanced options\.$/],
+    ] as const)('client certificate hint on %s', (os, expected) => {
+      const originalOs = Platform.OS;
+      afterEach(() => {
+        Platform.OS = originalOs;
+      });
+
+      test('is added to the unreachable-server error when no certificate is stored', async () => {
+        Platform.OS = os;
+        (shouldSuggestClientCertificate as jest.Mock).mockReturnValueOnce(true);
+        mockFetch.mockRejectedValueOnce(new Error('Network error'));
+        const { getByText, getByPlaceholderText } = renderScreen();
+        fireEvent.changeText(
+          getByPlaceholderText('https://your-sparky-app.com'),
+          'https://example.com'
+        );
+
+        await act(async () => {
+          fireEvent.press(getByText('Next'));
+        });
+
+        await waitFor(() => {
+          expect(
+            getByText(/Could not reach server\. Check the URL and try again\./)
+          ).toBeTruthy();
+        });
+        expect(
+          getByText(/If your server requires a client certificate/)
+        ).toBeTruthy();
+        expect(getByText(expected)).toBeTruthy();
       });
     });
 

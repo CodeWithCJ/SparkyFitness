@@ -11,6 +11,8 @@ Pod::Spec.new do |s|
 
   s.dependency 'ExpoModulesCore'
   s.dependency 'ExpoNotifications'
+  # The TLS client certificate the reminder buttons present to the server.
+  s.dependency 'ClientCertificateModule'
 
   s.source_files = '**/*.{h,m,mm,swift,hpp,cpp}'
 end

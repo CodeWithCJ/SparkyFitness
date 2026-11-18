@@ -215,9 +215,10 @@ struct MacroComplicationView: View {
 }
 
 struct ProteinGoalComplication: Widget {
-    // Must match MacroKind.protein.kind. Literals throughout, like the other
-    // complications: a configuration built from interpolated strings crashed
-    // the extension at load on watchOS 27.
+    // Must match ComplicationPublisher's Energy.kinds (targets/watch), which
+    // reloads this kind whenever energyGoalSnapshot changes. Literals
+    // throughout, like the other complications: a configuration built from
+    // interpolated strings crashed the extension at load on watchOS 27.
     let kind: String = "proteinGoalComplication"
 
     var body: some WidgetConfiguration {

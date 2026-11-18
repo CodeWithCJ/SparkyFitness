@@ -159,6 +159,8 @@ export interface FoodEntry {
    * which is shown alongside it rather than copied into it.
    */
   notes?: string | null;
+  /** Cooked weight eaten, in `unit`; `quantity` is the raw weight (#3534). */
+  cooked_quantity?: number | null;
   // Snapshotted nutrient data
   calories?: number;
   protein?: number;

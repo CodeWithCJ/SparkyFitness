@@ -89,6 +89,14 @@
       --color-heart-rate: hsl(358, 75%, 55%);
       --color-active-energy: hsl(24, 90%, 52%);
 
+      /* Training calendar and load by sport: one tint per sport group. */
+      --color-sport-running: hsl(14, 77%, 54%);
+      --color-sport-cycling: hsl(198, 58%, 43%);
+      --color-sport-walking: hsl(123, 30%, 50%);
+      --color-sport-cardio: hsl(173, 58%, 39%);
+      --color-sport-strength: hsl(264, 29%, 51%);
+      --color-sport-other: hsl(219, 6%, 57%);
+
       --color-wellness-menstrual: hsl(354, 75%, 55%);
       --color-wellness-follicular: hsl(158, 55%, 45%);
       --color-wellness-ovulation: hsl(214, 90%, 56%);
@@ -169,6 +177,13 @@
       --color-heart-rate: hsl(358, 75%, 65%);
       --color-active-energy: hsl(24, 75%, 62%);
 
+      --color-sport-running: hsl(14, 69%, 62%);
+      --color-sport-cycling: hsl(198, 52%, 51%);
+      --color-sport-walking: hsl(123, 27%, 58%);
+      --color-sport-cardio: hsl(173, 52%, 47%);
+      --color-sport-strength: hsl(264, 26%, 59%);
+      --color-sport-other: hsl(219, 6%, 65%);
+
       --color-wellness-menstrual: hsl(354, 75%, 65%);
       --color-wellness-follicular: hsl(158, 55%, 55%);
       --color-wellness-ovulation: hsl(214, 90%, 66%);
@@ -247,6 +262,13 @@
 
       --color-heart-rate: hsl(358, 75%, 65%);
       --color-active-energy: hsl(24, 75%, 62%);
+
+      --color-sport-running: hsl(14, 69%, 62%);
+      --color-sport-cycling: hsl(198, 52%, 51%);
+      --color-sport-walking: hsl(123, 27%, 58%);
+      --color-sport-cardio: hsl(173, 52%, 47%);
+      --color-sport-strength: hsl(264, 26%, 59%);
+      --color-sport-other: hsl(219, 6%, 65%);
 
       --color-wellness-menstrual: hsl(354, 75%, 65%);
       --color-wellness-follicular: hsl(158, 55%, 55%);

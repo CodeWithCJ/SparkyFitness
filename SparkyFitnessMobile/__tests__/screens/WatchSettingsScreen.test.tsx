@@ -1,4 +1,5 @@
 import React from 'react';
+import { Platform } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import WatchSettingsScreen from '../../src/screens/WatchSettingsScreen';
@@ -306,5 +307,51 @@ describe('WatchSettingsScreen', () => {
     expect(useAppPreferencesStore.getState().watchSetInputStyle).toBe('keypad');
     fireEvent.press(screen.getByText('Digital Crown'));
     expect(useAppPreferencesStore.getState().watchSetInputStyle).toBe('crown');
+  });
+
+  test('on Android (Wear OS), shows New workout view and its sub-options while hiding iOS-only settings', () => {
+    const originalOs = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    try {
+      renderScreen();
+      const prefs = () => useAppPreferencesStore.getState();
+
+      expect(screen.queryByTestId('watch-double-tap-switch')).toBeNull();
+      expect(screen.queryByText('Digital Crown')).toBeNull();
+      expect(
+        screen.queryByTestId('watch-set-screen-metrics-switch')
+      ).toBeNull();
+      expect(screen.queryByTestId('watch-up-next-switch')).toBeNull();
+      expect(screen.queryByTestId('watch-larger-text-switch')).toBeNull();
+
+      const newWorkoutToggle = screen.getByTestId('watch-new-workout-switch');
+      expect(newWorkoutToggle).toBeTruthy();
+      expect(screen.queryByText('Countdown sound & haptic')).toBeNull();
+
+      fireEvent(newWorkoutToggle, 'valueChange', true);
+      expect(prefs().watchNewWorkout).toBe(true);
+      expect(screen.getByText('Top line')).toBeTruthy();
+      expect(screen.getByText('Countdown sound & haptic')).toBeTruthy();
+      expect(screen.getByTestId('watch-hold-countdown-switch')).toBeTruthy();
+
+      fireEvent.press(screen.getByText('Metrics'));
+      expect(prefs().watchWorkoutTopLine).toBe('metrics');
+      fireEvent.press(screen.getByText('5 s'));
+      expect(prefs().watchWorkoutCountdown).toBe(5);
+      fireEvent(
+        screen.getByTestId('watch-hold-countdown-switch'),
+        'valueChange',
+        false
+      );
+      expect(prefs().watchHoldCountdown).toBe(false);
+    } finally {
+      Object.defineProperty(Platform, 'OS', {
+        value: originalOs,
+        configurable: true,
+      });
+    }
   });
 });
