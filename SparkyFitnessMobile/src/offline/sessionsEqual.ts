@@ -45,9 +45,24 @@ export function serverSessionMatchesSent(
     notes?: string | null;
     description?: string | null;
     entry_date?: string;
+    location?: string | null;
+    /** A timestamp is compared as an instant; an explicit null (a resume) too. */
+    finished_at?: string | null;
   }
 ): boolean {
   if (fields) {
+    if (
+      fields.location !== undefined &&
+      (server.location ?? null) !== (fields.location ?? null)
+    ) {
+      return false;
+    }
+    if (
+      fields.finished_at !== undefined &&
+      !sameInstant(server.finished_at, fields.finished_at)
+    ) {
+      return false;
+    }
     // A save with no name leaves the server's own name alone.
     if (fields.name != null && server.name !== fields.name) return false;
     if (

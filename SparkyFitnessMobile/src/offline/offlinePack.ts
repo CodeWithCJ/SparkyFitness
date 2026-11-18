@@ -176,10 +176,43 @@ async function refreshPlanDays(
 }
 
 async function refreshOnce(force: boolean): Promise<boolean> {
+  // The account can change while this runs (the switch clears the cache, and
+  // every write below would put the previous account's data back), so the
+  // number is taken before anything is awaited, not after. A switch of the
+  // active server counts too: it goes through the same identity change. A
+  // run that finds the account changed throws away what it wrote, on every
+  // way out, and does not set the completed marker, so the next trigger
+  // refreshes for the new account.
+  const startedUnder = accountGeneration();
   const serverConfigId = await getActiveServerConfigId();
   if (!serverConfigId) return false;
   const db = await getOfflineDb();
+  const abandonedAfterSwitch = async (): Promise<boolean> => {
+    if (accountGeneration() === startedUnder) return false;
+    await clearCache(db, serverConfigId);
+    return true;
+  };
+  try {
+    return await refreshSteps(
+      db,
+      serverConfigId,
+      force,
+      abandonedAfterSwitch,
+      startedUnder
+    );
+  } catch (error) {
+    if (await abandonedAfterSwitch()) return false;
+    throw error;
+  }
+}
 
+async function refreshSteps(
+  db: OfflineDb,
+  serverConfigId: string,
+  force: boolean,
+  abandonedAfterSwitch: () => Promise<boolean>,
+  startedUnder: number
+): Promise<boolean> {
   if (!force) {
     const marker = await getCacheRow(
       db,
@@ -190,22 +223,12 @@ async function refreshOnce(force: boolean): Promise<boolean> {
     if (marker && Date.now() - marker.fetchedAt < PACK_MAX_AGE_MS) return false;
   }
 
-  // The account can change while this runs (the switch clears the cache, and
-  // every write below would put the previous account's data back). A run that
-  // finds the account changed throws away what it wrote and does not set the
-  // completed marker, so the next trigger refreshes for the new account.
-  const startedUnder = accountGeneration();
-  const abandonedAfterSwitch = async (): Promise<boolean> => {
-    if (accountGeneration() === startedUnder) return false;
-    await clearCache(db, serverConfigId);
-    return true;
-  };
-
   const identity = await apiFetch<IdentityResponse>({
     endpoint: '/api/identity/user',
     serviceName: SERVICE,
     operation: 'fetch signed-in user',
   });
+  if (await abandonedAfterSwitch()) return false;
   if (identity.authenticatedUserId) {
     await putCacheRows(db, serverConfigId, IDENTITY_COLLECTION, [
       { key: IDENTITY_KEY, payload: { id: identity.authenticatedUserId } },
@@ -217,6 +240,7 @@ async function refreshOnce(force: boolean): Promise<boolean> {
     serviceName: SERVICE,
     operation: 'fetch preferences',
   });
+  if (await abandonedAfterSwitch()) return false;
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.preferences, [
     { key: SINGLE_DOCUMENT_KEY, payload: preferences },
   ]);
@@ -226,11 +250,13 @@ async function refreshOnce(force: boolean): Promise<boolean> {
     serviceName: SERVICE,
     operation: 'fetch plate inventory',
   });
+  if (await abandonedAfterSwitch()) return false;
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.plateInventory, [
     { key: SINGLE_DOCUMENT_KEY, payload: plates },
   ]);
 
   const presets = await fetchAllPresets();
+  if (await abandonedAfterSwitch()) return false;
   await replaceCacheCollection(
     db,
     serverConfigId,
@@ -243,6 +269,7 @@ async function refreshOnce(force: boolean): Promise<boolean> {
   );
 
   const exercises = await fetchAllExercises();
+  if (await abandonedAfterSwitch()) return false;
   await replaceCacheCollection(
     db,
     serverConfigId,

@@ -131,6 +131,32 @@ describe('offline pack', () => {
     expect(await isOfflinePackReady(db, 's1')).toBe(false);
   });
 
+  it('leaves nothing of the previous account behind when it switched during the preset request and a later request failed', async () => {
+    serveFrom(state);
+    const serve = mockApiFetch.getMockImplementation()!;
+    mockApiFetch.mockImplementation((async (options: { endpoint: string }) => {
+      if (options.endpoint.startsWith('/api/workout-presets')) {
+        // The account switches while the presets are on their way.
+        bumpAccountGeneration();
+      }
+      if (options.endpoint.startsWith('/api/v2/exercises/search')) {
+        throw new Error('the server stopped answering');
+      }
+      return serve(options as never);
+    }) as never);
+
+    // The run gives up quietly, because the account changed under it.
+    expect(await refreshOfflinePack({ force: true })).toBe(false);
+
+    expect(
+      await listCacheRows(db, 's1', CACHE_COLLECTIONS.workoutPreset)
+    ).toEqual([]);
+    expect(await listCacheRows(db, 's1', CACHE_COLLECTIONS.exercise)).toEqual(
+      []
+    );
+    expect(await isOfflinePackReady(db, 's1')).toBe(false);
+  });
+
   it('saves workouts, exercises, last-time values, settings and who is signed in', async () => {
     serveFrom(state);
 

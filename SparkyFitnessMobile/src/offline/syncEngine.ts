@@ -141,6 +141,20 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
       // Written by a newer build than this one: leave it for that build.
       if (!handler) continue;
 
+      // Claim the row as it was listed: still in that status and still that
+      // version of it. The list was read before earlier rows were sent, which
+      // can take a while; a row discarded in the meantime, or replaced by
+      // newer work (still pending, with a new payload), must not be sent from
+      // this stale copy. A replaced row is picked up on the next run.
+      const claimed = await updateOutboxRow(
+        db,
+        listed.id,
+        { status: 'sending' },
+        undefined,
+        { onlyIfStatus: listed.status, onlyIfUpdatedAt: listed.updatedAt }
+      );
+      if (!claimed) continue;
+
       let row = listed;
       if (row.payloadVersion < handler.payloadVersion) {
         const payload = handler.upgrade(row.payload, row.payloadVersion);
@@ -150,18 +164,6 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
         });
         row = { ...row, payload, payloadVersion: handler.payloadVersion };
       }
-
-      // Claim the row as it is now. The list was read before earlier rows
-      // were sent, which can take a while; a row discarded or replaced in the
-      // meantime must not be sent from this stale copy.
-      const claimed = await updateOutboxRow(
-        db,
-        row.id,
-        { status: 'sending' },
-        undefined,
-        { onlyIfStatus: listed.status }
-      );
-      if (!claimed) continue;
       let result: SendResult;
       try {
         result = await handler.send(row);

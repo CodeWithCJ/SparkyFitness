@@ -75,10 +75,20 @@ export function useAuth() {
       // its answer) is told to stop writing first. A failure is reported at
       // ERROR because nothing retries it until the next identity change.
       bumpAccountGeneration();
-      try {
-        await clearAllCache(await getOfflineDb());
-      } catch (err: unknown) {
-        addLog(`Failed to clear offline data: ${err}`, 'ERROR');
+      // Tried a few times: a lock held by another write is the usual reason
+      // for a failure, and the previous account's copy must not stay behind.
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        try {
+          await clearAllCache(await getOfflineDb());
+          break;
+        } catch (err: unknown) {
+          addLog(
+            `Failed to clear offline data (attempt ${attempt} of 3): ${err}`,
+            'ERROR'
+          );
+          if (attempt < 3)
+            await new Promise((resolve) => setTimeout(resolve, 250));
+        }
       }
       // Pictures of the shared exercise library carry no account data, so
       // that sweep does not hold the switch up.

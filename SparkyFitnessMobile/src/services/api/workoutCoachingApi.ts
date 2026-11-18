@@ -5,12 +5,42 @@ import type {
   WorkoutSessionFeedbackResponse,
 } from '@workspace/shared';
 import { apiFetch } from './apiClient';
+import { ApiError } from './errors';
 import { isSessionAwaitingServer } from '../../offline/sessionAwaitingServer';
 import { withOfflineFallback } from '../../offline/withOfflineFallback';
 
 /** `/api/v2/workout-coaching` — session feedback and adaptive settings (#1560). */
 
+const emptyFeedback = (
+  presetEntryId: string
+): WorkoutSessionFeedbackResponse => ({
+  exercise_preset_entry_id: presetEntryId,
+  session: null,
+  exercises: [],
+});
+
 export const fetchWorkoutSessionFeedback = async (
+  presetEntryId: string
+): Promise<WorkoutSessionFeedbackResponse> => {
+  try {
+    return await requestWorkoutSessionFeedback(presetEntryId);
+  } catch (error) {
+    // The connection is back but the workout's own upload has not gone yet,
+    // so the server does not know the session and answers 404. There is no
+    // feedback to lose, so the card starts empty like it does with no
+    // connection; any other 404 is still an error.
+    if (
+      error instanceof ApiError &&
+      error.statusCode === 404 &&
+      (await isSessionAwaitingServer(presetEntryId))
+    ) {
+      return emptyFeedback(presetEntryId);
+    }
+    throw error;
+  }
+};
+
+const requestWorkoutSessionFeedback = async (
   presetEntryId: string
 ): Promise<WorkoutSessionFeedbackResponse> =>
   withOfflineFallback<WorkoutSessionFeedbackResponse>({
@@ -28,11 +58,7 @@ export const fetchWorkoutSessionFeedback = async (
     // saved.
     read: async () =>
       (await isSessionAwaitingServer(presetEntryId))
-        ? {
-            exercise_preset_entry_id: presetEntryId,
-            session: null,
-            exercises: [],
-          }
+        ? emptyFeedback(presetEntryId)
         : null,
   });
 

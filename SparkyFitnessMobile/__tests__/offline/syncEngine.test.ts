@@ -184,6 +184,38 @@ describe('offline sync engine', () => {
     expect(await getOutboxRow(db, 'b')).toBeNull();
   });
 
+  it('sends the newer payload of a waiting row that was replaced while an earlier row uploaded', async () => {
+    await queue('a');
+    await queue('b');
+    send.mockImplementationOnce(async () => {
+      // b is replaced by newer work (still pending) while a's request is out.
+      await enqueueOutbox(
+        db,
+        {
+          id: 'b-again',
+          serverConfigId: 's1',
+          userId: 'u1',
+          kind: KIND,
+          entityId: 'entity-b',
+          payload: { id: 'b-newer' },
+          payloadVersion: 2,
+        },
+        Date.now() + 5_000
+      );
+      return { outcome: 'synced' } as SendResult;
+    });
+
+    await drainOutbox('reconnect');
+    // b was not sent from the stale listing; the newer one goes next run.
+    expect(send).toHaveBeenCalledTimes(1);
+    expect((await getOutboxRow(db, 'b'))?.status).toBe('pending');
+
+    await drainOutbox('manual');
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(send.mock.calls[1]![0].payload).toEqual({ id: 'b-newer' });
+    expect((await getOutboxRow(db, 'b'))?.status).toBe('synced');
+  });
+
   it('keeps newer work queued when the upload that finished was of the older work', async () => {
     await queue('a');
     send.mockImplementationOnce(async () => {
