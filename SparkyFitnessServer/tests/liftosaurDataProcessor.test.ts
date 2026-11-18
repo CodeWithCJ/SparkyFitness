@@ -253,6 +253,39 @@ describe('processLiftosaurWorkouts', () => {
     });
   });
 
+  it('imports only completed sets, never skipped planned ones', async () => {
+    const text = [
+      '2026-07-13 05:52:14 +00:00 / program: "P" / dayName: "D" / exercises: {',
+      '  Crunch, Cable / 1x8 40kg / target: 1x6-8 40kg @9 60s, 1x6-8 40kg @10 60s',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    const sets = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls[0]![2].sets as Array<Record<string, unknown>>;
+    expect(sets).toHaveLength(1);
+    expect(sets[0]).toMatchObject({ reps: 8, weight: 40 });
+  });
+
+  it('creates no entry for an exercise with no performed sets', async () => {
+    const text = [
+      '2026-07-13 05:52:14 +00:00 / program: "P" / dayName: "D" / exercises: {',
+      '  Squat / 3x5 100kg',
+      '  Lunge / target: 3x10 20kg 60s',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    const calls = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0]![2]).toMatchObject({ exercise_id: 'exercise-squat' });
+  });
+
   it('attributes whole-workout duration to the first exercise when no timers exist', async () => {
     const text = [
       '2026-07-14 10:00:00 +00:00 / duration: 3600s / exercises: {',

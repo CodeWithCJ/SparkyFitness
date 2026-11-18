@@ -234,6 +234,13 @@ async function processSingleWorkout(
     //    program prescribed (target); completed values win for reps/weight/RPE,
     //    and target rest timers become per-set durations.
     const mergedSets = mergeSets(liftosaurExercise);
+    if (mergedSets.sets.length === 0) {
+      log(
+        'debug',
+        `Skipping Liftosaur exercise "${liftosaurExercise.name}" with no performed sets`
+      );
+      continue;
+    }
 
     // Stable per-exercise identity so re-syncs update in place instead of
     // duplicating. Liftosaur record ids are unique and exercise index is unique
@@ -357,8 +364,9 @@ interface NormalizedSet {
  * Precedence:
  * 1. Working sets come from completedSets (expanded by `count`).
  * 2. Warmup sets come from warmupSets (marked 'Warm-up').
- * 3. Target sets supply rest timers (`timerSeconds`) and fallback targets
- *    when completed sets are missing (e.g. an unfinished session).
+ * 3. Target sets (the program's plan) only supply rest timers and labels for
+ *    the completed set at the same position. A planned set with no completed
+ *    counterpart was skipped and is never imported.
  */
 function mergeSets(exercise: LiftohistoryExercise): {
   sets: NormalizedSet[];
@@ -377,14 +385,11 @@ function mergeSets(exercise: LiftohistoryExercise): {
     setNumber += 1;
   }
 
-  const mergedCount = Math.max(completed.length, target.length);
-  for (let i = 0; i < mergedCount; i += 1) {
-    const done = completed[i];
+  for (let i = 0; i < completed.length; i += 1) {
+    const done = completed[i]!;
     const planned = target[i];
-    const base = done ?? planned;
-    if (!base) continue;
-    const setType = mapSetType(base.label ?? planned?.label, false);
-    const normalized = toNormalizedSet(base, setNumber, setType);
+    const setType = mapSetType(done.label ?? planned?.label, false);
+    const normalized = toNormalizedSet(done, setNumber, setType);
     // Rest timers only exist on target sets.
     const timer = planned?.timerSeconds;
     if (timer && timer > 0) {
