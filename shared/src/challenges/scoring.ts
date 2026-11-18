@@ -97,10 +97,11 @@ export interface ChallengeEntry {
   mergedFrom?: string;
   /**
    * Under a manual cap, on a measured copy with no start time: the typed-in
-   * copy with one that merged into it. A time window counts that copy
-   * instead, capped, so a typed time never moves a measured workout into it.
+   * copies with one that merged into it. A time window counts the first of
+   * them inside it instead, capped, so a typed time never moves a measured
+   * workout into it.
    */
-  typedTimedCopy?: ChallengeEntry;
+  typedTimedCopies?: ChallengeEntry[];
 }
 
 /** The member's own heart-rate zones (resolved with resolveHeartRateZones). */
@@ -546,7 +547,7 @@ const minuteOfDay = (time: string | null | undefined): number | null => {
  * With `capManual` (manual entries are capped), a typed-in copy fills
  * nothing into a measured one, which the cap does not reach: no amount the
  * cap would cut (distance, calories, elevation), no lift, and no start time,
- * which decides a time window (see `typedTimedCopy`).
+ * which decides a time window (see `typedTimedCopies`).
  */
 export function mergeChallengeDuplicates(
   entries: readonly ChallengeEntry[],
@@ -630,8 +631,11 @@ export function mergeChallengeDuplicates(
       const keepMeasured = capManual && !isManualEntry(keep!);
       for (const other of others) {
         if (keepMeasured && isManualEntry(other)) {
-          if (other.time && !merged.typedTimedCopy)
-            merged.typedTimedCopy = other;
+          if (other.time)
+            merged.typedTimedCopies = [
+              ...(merged.typedTimedCopies ?? []),
+              other,
+            ];
           drop.add(other.id);
           continue;
         }
@@ -646,7 +650,7 @@ export function mergeChallengeDuplicates(
           merged.elevationM = other.elevationM;
         drop.add(other.id);
       }
-      if (merged.time) delete merged.typedTimedCopy;
+      if (merged.time) delete merged.typedTimedCopies;
       out.set(keep!.id, merged);
     }
   }
@@ -757,11 +761,14 @@ export function challengeCountedEntries(
     ? mergeChallengeDuplicates(eligible, {
         capManual: a.manualEntries === 'cap',
       }).map((e) => {
-        if (!e.typedTimedCopy) return e;
-        // In a time window, only the typed-in copy's time places the
-        // workout, so that copy counts, capped as entered
-        if (rules.timeWindow) return e.typedTimedCopy;
-        const { typedTimedCopy: _typed, ...measured } = e;
+        const typed = e.typedTimedCopies;
+        if (!typed) return e;
+        // In a time window, only a typed-in copy's time places the workout,
+        // so the first such copy inside it counts, capped as entered
+        const window = rules.timeWindow;
+        if (window)
+          return typed.find((c) => inTimeWindow(c.time, window)) ?? typed[0]!;
+        const { typedTimedCopies: _typed, ...measured } = e;
         return measured;
       })
     : [...eligible];

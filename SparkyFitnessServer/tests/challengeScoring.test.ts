@@ -1438,7 +1438,7 @@ describe('duplicate merge, second round', () => {
     const [kept] = mergeChallengeDuplicates([watch, typed], {
       capManual: true,
     });
-    expect(kept).toMatchObject({ id: 'w', typedTimedCopy: { id: 'm' } });
+    expect(kept).toMatchObject({ id: 'w', typedTimedCopies: [{ id: 'm' }] });
     expect(kept!.time).toBeUndefined();
     const counted = (
       manualEntries: 'count' | 'cap',
@@ -1467,7 +1467,22 @@ describe('duplicate merge, second round', () => {
       { capManual: true }
     );
     expect(timed).toMatchObject({ time: '05:50' });
-    expect(timed!.typedTimedCopy).toBeUndefined();
+    expect(timed!.typedTimedCopies).toBeUndefined();
+    // Two typed-in copies: the one inside the window counts, even when the
+    // one outside it sorts first (it has heart rate)
+    const early = run('m', 'Manual', { time: '05:55', avgHr: 130 });
+    const preset = run('p', 'Workout Preset', { time: '06:05' });
+    const both = (timeWindow: { start: string; end: string } | null) =>
+      challengeCountedEntries(
+        [watch, early, preset],
+        rulesWith({
+          metric: 'active_minutes',
+          activities: { manualEntries: 'cap', manualMinutesCap: 15 },
+          timeWindow,
+        })
+      ).map((e) => [e.id, e.durationMin]);
+    expect(both(window)).toEqual([['p', 15]]);
+    expect(both(null)).toEqual([['w', 30]]);
   });
 
   it("under cap a typed-in copy's lift never fills into the measured copy", () => {
