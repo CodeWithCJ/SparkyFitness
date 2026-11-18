@@ -18,6 +18,10 @@ This sample can be found under [sample](https://github.com/CodeWithCJ/SparkyFitn
 If you want to rely on docker networking instead, choose the scheme ```http```, enter the container name ```sparkyfitness-frontend```
 and port ```80```.Note: In order for docker networking to work, the Nginx Proxy Manager network has to be connected to the ```sparkyfitness-frontend``` container. You can find the name of your networks using ```docker network ls```, find the container name using ```docker container ls``` and connect them using ```docker network connect network container```.
 
+## Requiring a client certificate (mTLS)
+
+To accept only devices that hold a certificate you issued, see [Client Certificates (mTLS)](/mobile-app/client-certificates). It covers creating the certificate, the proxy settings for Caddy, Traefik, nginx and Nginx Proxy Manager, and importing it into the mobile app and the browser.
+
 ## Running behind Cloudflare Tunnel + Cloudflare Access
 
 SparkyFitness has its own login, so Cloudflare Access simply adds an extra authentication layer in front of the app. A few settings keep the two working together smoothly:

@@ -1,3 +1,4 @@
+import ClientCertificateModule
 import ExpoModulesCore
 import ExpoNotifications
 import Foundation
@@ -251,6 +252,7 @@ private struct MedicationLogin: Decodable {
 }
 
 /// Answers a redirect with its own 3xx response, so the login never goes to another host.
+/// Also presents the TLS client certificate when the user's server asks for one.
 private final class MedicationRefuseRedirects: NSObject, URLSessionTaskDelegate {
     func urlSession(
         _ session: URLSession,
@@ -260,6 +262,19 @@ private final class MedicationRefuseRedirects: NSObject, URLSessionTaskDelegate 
         completionHandler: @escaping (URLRequest?) -> Void
     ) {
         completionHandler(nil)
+    }
+
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        didReceive challenge: URLAuthenticationChallenge,
+        completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void
+    ) {
+        if let credential = ClientCertificateIdentity.credential(for: challenge) {
+            completionHandler(.useCredential, credential)
+        } else {
+            completionHandler(.performDefaultHandling, nil)
+        }
     }
 }
 

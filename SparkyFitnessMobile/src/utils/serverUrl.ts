@@ -9,9 +9,12 @@ export const normalizeUrl = (url: string): string =>
  * Extracts the lowercased hostname from a URL string without relying on RN's
  * partial `URL` implementation (whose `.hostname` is unreliable on Hermes).
  */
-const extractHost = (url: string): string => {
+export const extractHost = (url: string): string => {
   const withoutScheme = url.trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
-  const authority = withoutScheme.split('/')[0].split('?')[0].split('#')[0];
+  // A backslash ends the authority too (OkHttp and URLSession read it as a
+  // slash), so `https://a.com\@b.com` is host `a.com` here as well, and the
+  // host the app allows is the host the network code connects to.
+  const authority = withoutScheme.split(/[\\/?#]/)[0];
   const hostPort = authority.split('@').pop() ?? '';
   // IPv6 literal, e.g. [::1]:3000 → ::1
   const ipv6 = hostPort.match(/^\[([^\]]+)\]/);

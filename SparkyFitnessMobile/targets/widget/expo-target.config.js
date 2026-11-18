@@ -38,11 +38,33 @@ const syncInfoPlist = (appGroup) => {
   );
 };
 
+// ShortcutIntents.swift presents the TLS client certificate through
+// ClientCertificateIdentity, which lives with its module. Every Swift file in
+// this folder is compiled into the widget extension, so a copy is written here
+// (git-ignored, like Info.plist) each time the config is evaluated.
+const CLIENT_CERTIFICATE_SOURCE = 'ClientCertificateIdentity.swift';
+
+const syncClientCertificateSource = () => {
+  fs.copyFileSync(
+    path.join(
+      __dirname,
+      '..',
+      '..',
+      'modules',
+      'client-certificate',
+      'ios',
+      CLIENT_CERTIFICATE_SOURCE
+    ),
+    path.join(__dirname, CLIENT_CERTIFICATE_SOURCE)
+  );
+};
+
 /** @type {import('@bacons/apple-targets/app.plugin').ConfigFunction} */
 module.exports = (config) => {
   const appGroup = getIosAppGroup();
   const isDev = isDevVariant();
   syncInfoPlist(appGroup);
+  syncClientCertificateSource();
 
   return {
     type: 'widget',
