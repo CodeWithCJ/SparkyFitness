@@ -30,6 +30,7 @@ vi.mock('../models/exercise.js', () => ({
         Promise.resolve(name === 'Squat' ? { id: 'exercise-squat' } : null)
       ),
     createExercise: vi.fn().mockResolvedValue({ id: 'exercise-new' }),
+    updateExercise: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -88,6 +89,11 @@ function parseSampleWorkouts() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getClient).mockResolvedValue(mockClient as any);
+  // clearAllMocks keeps implementations, so restore the default library.
+  vi.mocked(exerciseRepository.findExerciseByNameAndUserId).mockImplementation(
+    (name: string) =>
+      Promise.resolve(name === 'Squat' ? { id: 'exercise-squat' } : null) as any
+  );
 });
 
 describe('processLiftosaurWorkouts', () => {
@@ -201,6 +207,140 @@ describe('processLiftosaurWorkouts', () => {
         is_custom: true,
       })
     );
+  });
+
+  it('creates new exercises with the muscles the resolver returns, asking only about exercises that need them', async () => {
+    const resolveMuscles = vi
+      .fn()
+      .mockResolvedValue(
+        new Map([
+          [
+            'Bulgarian Split Squat',
+            { primary: ['quadriceps'], secondary: ['glutes'] },
+          ],
+        ])
+      );
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      resolveMuscles
+    );
+
+    // "Squat" resolves to a library row the user does not own, so only the
+    // new exercise is looked up.
+    expect(resolveMuscles).toHaveBeenCalledTimes(1);
+    expect(resolveMuscles).toHaveBeenCalledWith(['Bulgarian Split Squat']);
+    expect(exerciseRepository.createExercise).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Bulgarian Split Squat',
+        primary_muscles: ['quadriceps'],
+        secondary_muscles: ['glutes'],
+      })
+    );
+    expect(exerciseRepository.updateExercise).not.toHaveBeenCalled();
+  });
+
+  it('resolves each exercise once per batch, not once per workout', async () => {
+    const [first] = parseSampleWorkouts();
+    const workouts = [first!, { ...first!, id: first!.id + 1 }];
+
+    await processLiftosaurWorkouts(UID, CID, workouts);
+
+    expect(exerciseRepository.createExercise).toHaveBeenCalledTimes(1);
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenCalledTimes(4);
+  });
+
+  it('backfills muscles on an owned exercise that has none', async () => {
+    vi.mocked(
+      exerciseRepository.findExerciseByNameAndUserId
+    ).mockImplementation(
+      (name: string) =>
+        Promise.resolve(
+          name === 'Squat'
+            ? { id: 'exercise-squat', user_id: UID, primary_muscles: '[]' }
+            : null
+        ) as any
+    );
+    const resolveMuscles = vi
+      .fn()
+      .mockResolvedValue(
+        new Map([['Squat', { primary: ['quadriceps'], secondary: ['glutes'] }]])
+      );
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      resolveMuscles
+    );
+
+    expect(resolveMuscles).toHaveBeenCalledWith([
+      'Squat',
+      'Bulgarian Split Squat',
+    ]);
+    expect(exerciseRepository.updateExercise).toHaveBeenCalledWith(
+      'exercise-squat',
+      UID,
+      { primary_muscles: ['quadriceps'], secondary_muscles: ['glutes'] }
+    );
+  });
+
+  it('makes no muscle lookup when every exercise already has muscles or is not owned', async () => {
+    vi.mocked(
+      exerciseRepository.findExerciseByNameAndUserId
+    ).mockImplementation(
+      (name: string) =>
+        Promise.resolve(
+          name === 'Squat'
+            ? {
+                id: 'exercise-squat',
+                user_id: UID,
+                primary_muscles: '["glutes"]',
+              }
+            : name === 'Bulgarian Split Squat'
+              ? { id: 'public-bss', user_id: null, primary_muscles: null }
+              : null
+        ) as any
+    );
+    const resolveMuscles = vi.fn();
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      resolveMuscles
+    );
+
+    expect(resolveMuscles).not.toHaveBeenCalled();
+    expect(exerciseRepository.updateExercise).not.toHaveBeenCalled();
+    expect(exerciseRepository.createExercise).not.toHaveBeenCalled();
+  });
+
+  it('still imports the workout when the muscle lookup fails', async () => {
+    const resolveMuscles = vi.fn().mockRejectedValue(new Error('timeout'));
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      resolveMuscles
+    );
+
+    const created = vi.mocked(exerciseRepository.createExercise).mock
+      .calls[0]![0];
+    expect(created).not.toHaveProperty('primary_muscles');
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenCalledTimes(2);
   });
 
   it('creates exercise entries with merged sets using _createExerciseEntryWithClient', async () => {

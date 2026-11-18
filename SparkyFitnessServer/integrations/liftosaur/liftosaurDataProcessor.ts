@@ -20,6 +20,11 @@ import {
   LiftohistoryExercise,
   LiftohistorySet,
 } from './liftosaurTypes.js';
+import {
+  hasNoMuscles,
+  type LiftosaurMuscleLookup,
+  type MuscleMapping,
+} from './liftosaurMuscles.js';
 
 const LB_TO_KG = 0.45359237;
 
@@ -28,6 +33,8 @@ export const LIFTOSAUR_SOURCE = 'Liftosaur';
 /** Minimal shapes for the repository rows we consume by id. */
 interface ExerciseRow {
   id: string;
+  user_id?: string | null;
+  primary_muscles?: unknown;
 }
 interface WorkoutPresetRow {
   id: number;
@@ -44,17 +51,152 @@ function errorMessage(error: unknown): string {
 }
 
 /**
+ * Looks up muscles for exercise names (in production, Liftosaur's
+ * program-stats endpoint via liftosaurMuscles.resolveLiftosaurMuscles).
+ */
+export type LiftosaurMuscleResolver = (
+  names: string[]
+) => Promise<LiftosaurMuscleLookup>;
+
+/** Library exercise for a Liftosaur name: exact name, then the bare name. */
+async function findLibraryExercise(
+  userId: string,
+  name: string
+): Promise<ExerciseRow | null> {
+  const exact: ExerciseRow | null =
+    await exerciseRepository.findExerciseByNameAndUserId(name, userId);
+  if (exact) return exact;
+  const bareName = name.split(',')[0]!.trim();
+  if (!bareName || bareName === name) return null;
+  return (
+    (await exerciseRepository.findExerciseByNameAndUserId(bareName, userId)) ??
+    null
+  );
+}
+
+function needsMuscles(userId: string, exercise: ExerciseRow | null): boolean {
+  return (
+    !exercise ||
+    (exercise.user_id === userId && hasNoMuscles(exercise.primary_muscles))
+  );
+}
+
+/**
+ * Resolve every distinct Liftosaur exercise name in the batch to a library
+ * exercise once, creating missing ones, before the diary transaction starts.
+ *
+ * Diary entries snapshot the exercise's muscles when they are created, so
+ * muscles have to be on the library row first. Only exercises that are new or
+ * that the user owns with empty muscles are sent to the resolver, so after the
+ * first full sync a routine sync normally makes no muscle request at all, and
+ * one that failed is retried on the next sync. Library rows are written on
+ * their own connections, as before (see processSingleWorkout).
+ */
+async function resolveLibraryExercises(
+  userId: string,
+  workouts: LiftohistoryWorkout[],
+  resolveMuscles?: LiftosaurMuscleResolver
+): Promise<Map<string, ExerciseRow>> {
+  const names = [
+    ...new Set(workouts.flatMap((w) => w.exercises.map((e) => e.name))),
+  ];
+
+  const found = new Map<string, ExerciseRow | null>();
+  for (const name of names) {
+    found.set(name, await findLibraryExercise(userId, name));
+  }
+
+  let muscles: LiftosaurMuscleLookup = new Map();
+  const wanted = names.filter((name) => needsMuscles(userId, found.get(name)!));
+  if (resolveMuscles && wanted.length > 0) {
+    try {
+      muscles = await resolveMuscles(wanted);
+    } catch (error) {
+      log(
+        'warn',
+        `Skipping Liftosaur muscle lookup for user ${userId}: ${errorMessage(error)}`
+      );
+    }
+  }
+
+  const library = new Map<string, ExerciseRow>();
+  for (const name of names) {
+    const mapping = muscles.get(name);
+    let exercise = found.get(name) ?? null;
+    if (exercise) {
+      if (mapping) await fillMissingMuscles(userId, exercise, mapping);
+    } else {
+      exercise = await exerciseRepository.createExercise({
+        user_id: userId,
+        name,
+        source: LIFTOSAUR_SOURCE,
+        is_custom: true,
+        shared_with_public: false,
+        ...(mapping
+          ? {
+              primary_muscles: mapping.primary,
+              secondary_muscles: mapping.secondary,
+            }
+          : {}),
+      });
+    }
+    if (exercise) {
+      library.set(name, exercise);
+    } else {
+      log('error', `Failed to find or create Liftosaur exercise "${name}"`);
+    }
+  }
+  return library;
+}
+
+/**
+ * Backfill muscles on an existing exercise the user owns when it has none
+ * (e.g. Liftosaur exercises created before the muscle mapping existed), so
+ * the muscle-group reports pick up its sets. Never overwrites muscles that are
+ * already set, and never touches public/shared library rows. Library writes
+ * run outside the diary transaction (see processSingleWorkout), so a failure
+ * here is logged and the workout still imports.
+ */
+async function fillMissingMuscles(
+  userId: string,
+  exercise: ExerciseRow,
+  muscles: MuscleMapping
+): Promise<void> {
+  if (exercise.user_id !== userId) return;
+  if (muscles.primary.length === 0) return;
+  if (!hasNoMuscles(exercise.primary_muscles)) return;
+  try {
+    await exerciseRepository.updateExercise(exercise.id, userId, {
+      primary_muscles: muscles.primary,
+      secondary_muscles: muscles.secondary,
+    });
+  } catch (error) {
+    log(
+      'warn',
+      `Skipping Liftosaur muscle backfill for exercise ${exercise.id}: ${errorMessage(error)}`
+    );
+  }
+}
+
+/**
  * Process a list of parsed Liftosaur workouts into SparkyFitness entries atomically.
  */
 async function processLiftosaurWorkouts(
   userId: string,
   createdByUserId: string,
   workouts: LiftohistoryWorkout[],
-  timezone = 'UTC'
+  timezone = 'UTC',
+  resolveMuscles?: LiftosaurMuscleResolver
 ) {
   log(
     'info',
     `Processing ${workouts.length} Liftosaur workouts for user ${userId}...`
+  );
+
+  const library = await resolveLibraryExercises(
+    userId,
+    workouts,
+    resolveMuscles
   );
 
   const client = await getClient(userId, createdByUserId);
@@ -101,6 +243,7 @@ async function processLiftosaurWorkouts(
         userId,
         createdByUserId,
         workout,
+        library,
         client,
         timezone
       );
@@ -126,6 +269,7 @@ async function processSingleWorkout(
   userId: string,
   createdByUserId: string,
   workout: LiftohistoryWorkout,
+  library: Map<string, ExerciseRow>,
   client: PoolClient,
   timezone = 'UTC'
 ) {
@@ -144,8 +288,8 @@ async function processSingleWorkout(
   // Find or create the reusable workout preset (the Liftosaur program name, or
   // a generic name for ad-hoc sessions) so the diary shows the whole workout as
   // a single grouped session instead of loose exercises.
-  // Library rows (exercises above, presets here) are written on their own
-  // connection, outside the diary transaction, the same way
+  // Library rows (exercises in resolveLibraryExercises, presets here) are
+  // written on their own connection, outside the diary transaction, the same way
   // services/garmin/garminActivityProcessor.ts does it: they are get-or-create
   // lookups whose survival after a rollback is harmless, and keeping them out
   // means a failure here cannot abort the transaction that owns the entries.
@@ -195,39 +339,10 @@ async function processSingleWorkout(
   ) {
     const liftosaurExercise = workout.exercises[exerciseIndex]!;
 
-    // 1. Resolve exercise in SparkyFitness library: try exact name match
-    //    first, then the bare name ("Squat"), then create a custom exercise
-    //    that preserves the full Liftosaur name.
-    let exercise: ExerciseRow | null =
-      await exerciseRepository.findExerciseByNameAndUserId(
-        liftosaurExercise.name,
-        userId
-      );
-    if (!exercise) {
-      const bareName = liftosaurExercise.name.split(',')[0]!.trim();
-      if (bareName && bareName !== liftosaurExercise.name) {
-        exercise = await exerciseRepository.findExerciseByNameAndUserId(
-          bareName,
-          userId
-        );
-      }
-    }
-    if (!exercise) {
-      exercise = await exerciseRepository.createExercise({
-        user_id: userId,
-        name: liftosaurExercise.name,
-        source: LIFTOSAUR_SOURCE,
-        is_custom: true,
-        shared_with_public: false,
-      });
-    }
-    if (!exercise) {
-      log(
-        'error',
-        `Failed to find or create Liftosaur exercise "${liftosaurExercise.name}"`
-      );
-      continue;
-    }
+    // 1. The library exercise was resolved (and created, with its muscles)
+    //    up front by resolveLibraryExercises.
+    const exercise = library.get(liftosaurExercise.name);
+    if (!exercise) continue;
 
     // 2. Merge completed/warmup/target sets into the flat set list SparkyFitness
     //    stores. Liftosaur logs both what was done (completed) and what the

@@ -24,6 +24,7 @@ import {
   getValidatedLiftosaurBaseUrl,
 } from './liftosaurTypes.js';
 import { importMeasurementsFromLiftosaur } from './liftosaurMeasurementsService.js';
+import { resolveLiftosaurMuscles } from './liftosaurMuscles.js';
 
 const HISTORY_PAGE_SIZE = 200; // Liftosaur API cap
 
@@ -259,17 +260,19 @@ async function syncLiftosaurData(
     'debug',
     `[liftosaurService] Parsed ${allWorkouts.length} workouts for user ${userId}.`
   );
+  const apiKey = await getLiftosaurApiKey(userId, resolvedProviderId);
   if (allWorkouts.length > 0) {
+    // Muscles come from Liftosaur's program-stats endpoint, asked only for
+    // exercises that do not have any yet (see liftosaurMuscles.ts).
     await liftosaurDataProcessor.processLiftosaurWorkouts(
       userId,
       createdByUserId,
       allWorkouts,
-      tz
+      tz,
+      (names) => resolveLiftosaurMuscles(apiKey, names)
     );
   }
   const workoutsImported = allWorkouts.length;
-
-  const apiKey = await getLiftosaurApiKey(userId, resolvedProviderId);
 
   // 2. Ingest measurements from Liftosaur into SparkyFitness
   let measurementsImported = 0;
