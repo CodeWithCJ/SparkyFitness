@@ -311,7 +311,16 @@ const CreateChallengeDialog = ({
                 value={startDate}
                 min={earliestStart}
                 max={latestStart}
-                onChange={(e) => e.target.value && setStartDate(e.target.value)}
+                onChange={(e) => {
+                  const start = e.target.value;
+                  if (!start) return;
+                  // An end still where the preset put it moves with the
+                  // start, so the preset keeps its length.
+                  if (endDate === presetEnd(presetId, startDate)) {
+                    setEndDate(presetEnd(presetId, start));
+                  }
+                  setStartDate(start);
+                }}
               />
             </div>
             <div className="space-y-1">

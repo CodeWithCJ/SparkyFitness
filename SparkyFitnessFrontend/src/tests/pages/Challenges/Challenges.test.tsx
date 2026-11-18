@@ -22,6 +22,7 @@ import {
   weekStartOf,
 } from '@workspace/shared';
 import { HttpApiError } from '@/api/api';
+import { toast } from '@/hooks/use-toast';
 import * as challengesApi from '@/api/Challenges/challengesApi';
 import Challenges from '@/pages/Challenges/Challenges';
 import ChallengeJoinLink from '@/pages/Challenges/ChallengeJoinLink';
@@ -194,6 +195,21 @@ describe('Challenges page', () => {
     ).toBeInTheDocument();
   });
 
+  it('says once, in its own words, why an invite could not be made', async () => {
+    api.createChallengeInvite.mockRejectedValue(
+      new HttpApiError('This challenge has ended', 409, 'CHALLENGE_ENDED')
+    );
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.mouseDown(await screen.findByRole('tab', { name: 'Members' }));
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Make an invite code' })
+    );
+    await waitFor(() => expect(toast).toHaveBeenCalledTimes(1));
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'This challenge has ended.' })
+    );
+  });
+
   it('keeps the shown invite code when the host switches tabs and back', async () => {
     api.createChallengeInvite.mockResolvedValue({
       code: INVITE_CODE,
@@ -257,6 +273,92 @@ describe('Challenges page', () => {
     expect(
       await screen.findByTestId('challenge-leaderboard')
     ).toBeInTheDocument();
+  });
+
+  it('a join from an invite link replaces it, so Back skips the used code', async () => {
+    api.joinChallenge.mockResolvedValue(challenge({ is_host: false }));
+    const Back = () => {
+      const navigate = useNavigate();
+      return <button onClick={() => navigate(-1)}>Back</button>;
+    };
+    const { Wrapper } = wrapper();
+    render(
+      <Wrapper>
+        <MemoryRouter
+          initialEntries={['/before', `/challenges/join#${INVITE_CODE}`]}
+          initialIndex={1}
+        >
+          <Back />
+          <Routes>
+            <Route path="/before" element={<p>Before</p>} />
+            <Route path="/challenges" element={<Challenges />} />
+            <Route path="/challenges/join" element={<ChallengeJoinLink />} />
+            <Route path="/challenges/:challengeId" element={<Challenges />} />
+          </Routes>
+        </MemoryRouter>
+      </Wrapper>
+    );
+    fireEvent.click(await screen.findByRole('button', { name: 'Join' }));
+    expect(
+      await screen.findByTestId('challenge-leaderboard')
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(await screen.findByText('Before')).toBeInTheDocument();
+  });
+
+  it('says the list failed to load, with a retry, rather than that it is empty', async () => {
+    api.listChallenges.mockRejectedValue(new Error('down'));
+    renderAt('/challenges');
+    expect(
+      await screen.findByText('Could not load your challenges.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No challenges yet/)).not.toBeInTheDocument();
+    api.listChallenges.mockResolvedValue([challenge()]);
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByTestId('challenge-list')).toBeInTheDocument();
+  });
+
+  it('says standings failed to load rather than that nobody scored', async () => {
+    api.getChallengeStandings.mockRejectedValue(new Error('down'));
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(
+      await screen.findByText('Could not load the standings.')
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No scores yet/)).not.toBeInTheDocument();
+  });
+
+  it('tells a failed load of one challenge from one that is not there', async () => {
+    api.getChallenge.mockRejectedValue(new HttpApiError('boom', 500));
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(
+      await screen.findByText('Could not load this challenge.')
+    ).toBeInTheDocument();
+    api.getChallenge.mockRejectedValue(
+      new HttpApiError('Challenge not found', 404, 'CHALLENGE_NOT_FOUND')
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(
+      await screen.findByText(/not found, or you are not a member/)
+    ).toBeInTheDocument();
+  });
+
+  it('moves a preset end with the start, so the preset keeps its length', async () => {
+    api.createChallenge.mockResolvedValue(challenge());
+    renderAt('/challenges');
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'New challenge' })
+    );
+    fireEvent.click(screen.getByRole('radio', { name: /Race to 100k steps/ }));
+    const start = addDays(todayInZone('UTC'), 3);
+    fireEvent.change(screen.getByLabelText('Starts'), {
+      target: { value: start },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Create challenge' }));
+    await waitFor(() => expect(api.createChallenge).toHaveBeenCalled());
+    expect(api.createChallenge.mock.calls[0]?.[0]).toMatchObject({
+      start_date: start,
+      end_date: addDays(start, 29),
+    });
   });
 
   it('says why a join failed', async () => {

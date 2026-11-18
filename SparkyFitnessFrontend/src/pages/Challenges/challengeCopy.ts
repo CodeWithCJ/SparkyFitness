@@ -723,6 +723,22 @@ export function goalTypeLabel(t: TFunction, goal: ChallengeGoalType): string {
 const CARD_CHALLENGES_SHOWN = 2;
 
 /**
+ * Today in a challenge's time zone. A zone this browser does not know (the
+ * server's list can be newer) falls back to the browser's own day rather
+ * than breaking the page.
+ */
+export function todayInChallengeZone(
+  zone: string,
+  now: Date = new Date()
+): string {
+  try {
+    return instantToDay(now, zone);
+  } catch {
+    return instantToDay(now, Intl.DateTimeFormat().resolvedOptions().timeZone);
+  }
+}
+
+/**
  * The challenges the card shows: ones not ended, those already running
  * (started by today in their own time zone) before scheduled ones, newest
  * start first within each.
@@ -731,20 +747,11 @@ export function challengesForCard(
   challenges: readonly ChallengeSummary[],
   now: Date = new Date()
 ): ChallengeSummary[] {
-  // A zone this browser does not know falls back to the browser's own day
-  // rather than breaking the card.
-  const today = (zone: string): string => {
-    try {
-      return instantToDay(now, zone);
-    } catch {
-      return instantToDay(
-        now,
-        Intl.DateTimeFormat().resolvedOptions().timeZone
-      );
-    }
-  };
   const running = new Map(
-    challenges.map((c) => [c.id, c.start_date <= today(c.time_zone)])
+    challenges.map((c) => [
+      c.id,
+      c.start_date <= todayInChallengeZone(c.time_zone, now),
+    ])
   );
   return challenges
     .filter((c) => c.ended_at === null)
@@ -823,6 +830,11 @@ export function createErrorText(
           length: CHALLENGE_MAX_LENGTH_DAYS,
         }
       );
+    case 'CHALLENGE_RATE_LIMITED':
+      return t(
+        'challenges.create.errors.rateLimited',
+        'Too many new challenges. Wait a few minutes and try again.'
+      );
     default:
       return t(
         'challenges.create.errors.generic',
@@ -855,5 +867,73 @@ export function joinErrorText(t: TFunction, code: string | undefined): string {
       );
     default:
       return t('challenges.join.errors.generic', 'Could not join. Try again.');
+  }
+}
+
+/**
+ * Why the server refused a rules change, an invite or a leave, from its
+ * error code, in the app's own words.
+ */
+export function actionErrorText(
+  t: TFunction,
+  code: string | undefined
+): string {
+  switch (code) {
+    case 'CHALLENGE_ENDED':
+      return t('challenges.join.errors.ended', 'This challenge has ended.');
+    case 'CHALLENGE_HOST_ONLY':
+      return t(
+        'challenges.errors.hostOnly',
+        'Only the host can do this. Hosting may have passed to someone else.'
+      );
+    case 'CHALLENGE_NO_PERIOD_LEFT':
+      return t(
+        'challenges.rules.noPeriodLeft',
+        'No period is left for a change to apply to.'
+      );
+    case 'CHALLENGE_PERIOD_LOCKED':
+      return t(
+        'challenges.errors.periodLocked',
+        'The period cannot change once the challenge has started.'
+      );
+    case 'CHALLENGE_NOT_FOUND':
+      return t(
+        'challenges.notFound',
+        'This challenge was not found, or you are not a member.'
+      );
+    case 'CHALLENGE_RATE_LIMITED':
+      return t(
+        'challenges.join.errors.rateLimited',
+        'Too many tries. Wait a few minutes and try again.'
+      );
+    default:
+      return t(
+        'challenges.errors.action',
+        'That did not go through. Try again.'
+      );
+  }
+}
+
+/**
+ * Where a daily cap starts when the host turns it on, in the metric's stored
+ * unit: about a big day, so it trims outliers rather than flattening the board.
+ */
+export function defaultDailyCap(metric: ChallengeMetric): number {
+  switch (metric) {
+    case 'steps':
+      return 20000;
+    case 'active_minutes':
+    case 'hr_zone_minutes':
+      return 120;
+    case 'distance':
+      return 20000; // metres
+    case 'workout_days':
+      return 1;
+    case 'active_calories':
+      return 1000; // kcal
+    case 'elevation':
+      return 1000; // metres
+    case 'points':
+      return 100;
   }
 }

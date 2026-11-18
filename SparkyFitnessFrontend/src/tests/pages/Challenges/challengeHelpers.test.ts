@@ -7,9 +7,11 @@ import {
   type ChallengeSummary,
 } from '@workspace/shared';
 import {
+  actionErrorText,
   challengesForCard,
   changedRuleLines,
   createErrorText,
+  defaultDailyCap,
   daysText,
   joinErrorText,
   metricValueText,
@@ -18,6 +20,7 @@ import {
   standingsSummary,
   targetFromInput,
   targetToInput,
+  todayInChallengeZone,
   type MetricUnits,
 } from '@/pages/Challenges/challengeCopy';
 import {
@@ -199,7 +202,48 @@ describe('invite links', () => {
     expect(createErrorText(t, 'CHALLENGE_INVALID_DATES')).toBe(
       'A challenge can start at most 31 days ago and at most 365 days from today, and lasts at most 365 days.'
     );
+    expect(createErrorText(t, 'CHALLENGE_RATE_LIMITED')).toMatch(/Wait a few/);
     expect(createErrorText(t, undefined)).toMatch(/Could not create/);
+  });
+
+  it('says why a rules change, invite or leave was refused, in its own words', () => {
+    expect(actionErrorText(t, 'CHALLENGE_ENDED')).toBe(
+      'This challenge has ended.'
+    );
+    expect(actionErrorText(t, 'CHALLENGE_HOST_ONLY')).toMatch(/Only the host/);
+    expect(actionErrorText(t, 'CHALLENGE_NO_PERIOD_LEFT')).toMatch(
+      /No period is left/
+    );
+    expect(actionErrorText(t, 'CHALLENGE_RATE_LIMITED')).toMatch(/Wait a few/);
+    expect(actionErrorText(t, undefined)).toBe(
+      'That did not go through. Try again.'
+    );
+  });
+});
+
+describe('daily cap', () => {
+  it('starts at a big day in the metric own unit, never 100 steps', () => {
+    expect(defaultDailyCap('steps')).toBe(20000);
+    expect(defaultDailyCap('distance')).toBe(20000);
+    expect(defaultDailyCap('workout_days')).toBe(1);
+    for (const metric of [
+      'points',
+      'steps',
+      'active_minutes',
+      'hr_zone_minutes',
+      'distance',
+      'workout_days',
+      'active_calories',
+      'elevation',
+    ] as const) {
+      const rules = { ...challengePreset('all_rounder').rules, metric };
+      expect(
+        challengeRulesSchema.safeParse({
+          ...rules,
+          dailyCap: defaultDailyCap(metric),
+        }).success
+      ).toBe(true);
+    }
   });
 });
 
@@ -279,6 +323,13 @@ describe('the Diary card', () => {
       'kiribati',
       'next-month',
     ]);
+  });
+
+  it('today in a zone the browser does not know falls back to the browser day', () => {
+    expect(todayInChallengeZone('UTC', now)).toBe(
+      now.toISOString().slice(0, 10)
+    );
+    expect(() => todayInChallengeZone('Not/AZone', now)).not.toThrow();
   });
 
   it('a time zone the browser does not know does not break the card', () => {

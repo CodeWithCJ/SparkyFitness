@@ -35,6 +35,7 @@ import { Switch } from '@/components/ui/switch';
 import { TimeInput } from '@/components/ui/TimeInput';
 import { Toggle } from '@/components/ui/toggle';
 import {
+  defaultDailyCap,
   formatLabel,
   manualEntriesLabel,
   metricLabel,
@@ -91,7 +92,10 @@ const NumberField = ({
   const refused =
     typed !== null &&
     Number.isFinite(typed) &&
-    (value === null || Math.abs(typed - value) > 0.5);
+    (value === null ||
+      (min !== undefined && typed < min) ||
+      (max !== undefined && typed > max) ||
+      Math.abs(typed - value) > 0.5);
   const hintId = useId();
   return (
     <div className="space-y-1">
@@ -487,7 +491,7 @@ const ChallengeRulesEditor = ({
             on={rules.dailyCap !== null}
             onToggle={(on) =>
               set({
-                dailyCap: on ? targetFromInput(rules.metric, 100, units) : null,
+                dailyCap: on ? defaultDailyCap(rules.metric) : null,
               })
             }
             disabled={disabled}

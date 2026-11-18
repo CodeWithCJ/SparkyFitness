@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Flag, Trophy } from 'lucide-react';
 import {
-  todayInZone,
   type ChallengeDetail,
   type ChallengeStandingsResponse,
 } from '@workspace/shared';
@@ -21,7 +20,12 @@ import {
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useChallengeStandings } from '@/hooks/Challenges/useChallenges';
 import { cn } from '@/lib/utils';
-import { metricValueText, type MetricUnits } from './challengeCopy';
+import LoadError from './LoadError';
+import {
+  metricValueText,
+  todayInChallengeZone,
+  type MetricUnits,
+} from './challengeCopy';
 import {
   nextPeriodDay,
   periodRangeText,
@@ -50,7 +54,7 @@ const ChallengeLeaderboard = ({
   // null is the current period; otherwise any day of the period shown.
   const [day, setDay] = useState<string | null>(null);
   const standings = useChallengeStandings(challenge.id, day);
-  const today = todayInZone(challenge.time_zone);
+  const today = todayInChallengeZone(challenge.time_zone);
   const formatDay = (d: string, pattern: string) =>
     formatDateInUserTimezone(d, pattern);
 
@@ -140,6 +144,14 @@ const ChallengeLeaderboard = ({
 
       {standings.isLoading ? (
         <Skeleton className="h-32 w-full" />
+      ) : standings.isError && !data ? (
+        <LoadError
+          message={t(
+            'challenges.errors.standings',
+            'Could not load the standings.'
+          )}
+          onRetry={() => void standings.refetch()}
+        />
       ) : !data || data.rows.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {t('challenges.leaderboard.empty', 'No scores yet in this period.')}

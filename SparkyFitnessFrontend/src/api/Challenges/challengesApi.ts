@@ -55,6 +55,8 @@ export const updateChallengeRules = (
   apiCall(`/v2/challenges/${encodeURIComponent(id)}/rules`, {
     method: 'PUT',
     body: { rules },
+    // useUpdateChallengeRules says what went wrong, in the app's words.
+    suppressErrorToast: true,
   });
 
 export const getChallengeRuleChanges = (
@@ -64,22 +66,27 @@ export const getChallengeRuleChanges = (
     method: 'GET',
   });
 
+// The invite and leave hooks say what went wrong, in the app's words.
 export const createChallengeInvite = (
-  id: string,
-  expiresInDays?: number
+  id: string
 ): Promise<ChallengeInviteResponse> =>
   apiCall(`/v2/challenges/${encodeURIComponent(id)}/invite`, {
     method: 'POST',
-    body: expiresInDays ? { expires_in_days: expiresInDays } : {},
+    body: {},
+    suppressErrorToast: true,
   });
 
 export const revokeChallengeInvite = (id: string): Promise<void> =>
   apiCall(`/v2/challenges/${encodeURIComponent(id)}/invite`, {
     method: 'DELETE',
+    suppressErrorToast: true,
   });
 
 export const leaveChallenge = (id: string): Promise<void> =>
-  apiCall(`/v2/challenges/${encodeURIComponent(id)}/leave`, { method: 'POST' });
+  apiCall(`/v2/challenges/${encodeURIComponent(id)}/leave`, {
+    method: 'POST',
+    suppressErrorToast: true,
+  });
 
 export const getChallengeStandings = (
   id: string,

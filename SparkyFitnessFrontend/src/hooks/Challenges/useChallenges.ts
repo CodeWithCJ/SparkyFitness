@@ -18,11 +18,27 @@ import * as challengesApi from '@/api/Challenges/challengesApi';
 import { challengeKeys } from '@/api/keys/challenges';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import type { MetricUnits } from '@/pages/Challenges/challengeCopy';
+import { toast } from '@/hooks/use-toast';
+import {
+  actionErrorText,
+  type MetricUnits,
+} from '@/pages/Challenges/challengeCopy';
 
 /** The server's error code (`CHALLENGE_FULL`, ...) of a failed request. */
 export const challengeErrorCode = (error: unknown): string | undefined =>
   error instanceof HttpApiError ? error.code : undefined;
+
+/**
+ * One error toast for a refused rules change, invite or leave, in the app's
+ * words: the API call shows none and the mutation is silent, so the server's
+ * own text never shows twice.
+ */
+const toastActionError = (error: unknown) =>
+  toast({
+    title: i18n.t('common.error', 'Error'),
+    description: actionErrorText(i18n.t, challengeErrorCode(error)),
+    variant: 'destructive',
+  });
 
 // A join, a leave or a rules change moves the list, the detail, the standings
 // and the rules log together, so the whole family refreshes.
@@ -153,11 +169,13 @@ export const useUpdateChallengeRules = () => {
     mutationFn: ({ id, rules }: { id: string; rules: ChallengeRulesInput }) =>
       challengesApi.updateChallengeRules(id, rules),
     onSuccess: () => invalidateChallenges(queryClient),
+    onError: toastActionError,
     meta: {
       successMessage: i18n.t(
         'challenges.rules.saved',
         'Rules saved. Everyone in the challenge can see the change.'
       ),
+      silentError: true,
     },
   });
 };
@@ -168,6 +186,8 @@ export const useCreateChallengeInvite = () => {
     mutationFn: (id: string) => challengesApi.createChallengeInvite(id),
     onSuccess: (_data, id) =>
       queryClient.invalidateQueries({ queryKey: challengeKeys.detail(id) }),
+    onError: toastActionError,
+    meta: { silentError: true },
   });
 };
 
@@ -177,11 +197,13 @@ export const useRevokeChallengeInvite = () => {
     mutationFn: (id: string) => challengesApi.revokeChallengeInvite(id),
     onSuccess: (_data, id) =>
       queryClient.invalidateQueries({ queryKey: challengeKeys.detail(id) }),
+    onError: toastActionError,
     meta: {
       successMessage: i18n.t(
         'challenges.invite.revoked',
         'Invite code turned off'
       ),
+      silentError: true,
     },
   });
 };
@@ -210,8 +232,10 @@ export const useLeaveChallenge = () => {
       );
       void queryClient.invalidateQueries({ queryKey: challengeKeys.list() });
     },
+    onError: toastActionError,
     meta: {
       successMessage: i18n.t('challenges.leave.done', 'You left the challenge'),
+      silentError: true,
     },
   });
 };

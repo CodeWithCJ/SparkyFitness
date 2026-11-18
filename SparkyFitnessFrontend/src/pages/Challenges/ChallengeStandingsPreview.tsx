@@ -8,6 +8,7 @@ import {
 } from '@/hooks/Challenges/useChallenges';
 import { cn } from '@/lib/utils';
 import { metricValueText, ownStanding } from './challengeCopy';
+import LoadError from './LoadError';
 
 /** The top of the current standings, plus the viewer's own place if lower. */
 const ChallengeStandingsPreview = ({
@@ -22,6 +23,17 @@ const ChallengeStandingsPreview = ({
   const standings = useChallengeStandings(challenge.id);
   const { metric } = standings.data?.rules ?? challenge.rules;
   if (standings.isLoading) return <Skeleton className="h-16 w-full" />;
+  if (standings.isError && !standings.data) {
+    return (
+      <LoadError
+        message={t(
+          'challenges.errors.standings',
+          'Could not load the standings.'
+        )}
+        onRetry={() => void standings.refetch()}
+      />
+    );
+  }
   const rows = standings.data?.rows ?? [];
   if (!rows.length) {
     return (

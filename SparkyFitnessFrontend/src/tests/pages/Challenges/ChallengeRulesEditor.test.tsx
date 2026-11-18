@@ -54,4 +54,36 @@ describe('the rules editor', () => {
       )
     ).not.toBeInTheDocument();
   });
+
+  it('starts a steps daily cap at a big day, not 100 steps', () => {
+    const onChange = jest.fn();
+    render(
+      <ChallengeRulesEditor
+        rules={challengePreset('race_to_100k_steps').rules}
+        onChange={onChange}
+        units={units}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Days and times' }));
+    fireEvent.click(
+      screen.getByRole('switch', { name: 'Cap what one day can add' })
+    );
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ dailyCap: 20000 })
+    );
+  });
+
+  it('flags a refused value below the minimum, however small the field', () => {
+    render(
+      <ChallengeRulesEditor
+        rules={challengePreset('all_rounder').rules}
+        onChange={jest.fn()}
+        units={units}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Points builder' }));
+    const field = screen.getByLabelText('Below zone 1 (a minute)');
+    fireEvent.change(field, { target: { value: '-0.2' } });
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+  });
 });

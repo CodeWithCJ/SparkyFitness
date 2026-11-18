@@ -11394,7 +11394,8 @@
       "startOutOfRange": "The start must be between {{earliest}} and {{latest}}.",
       "errors": {
         "invalidDates": "A challenge can start at most {{back}} days ago and at most {{ahead}} days from today, and lasts at most {{length}} days.",
-        "generic": "Could not create the challenge. Try again."
+        "generic": "Could not create the challenge. Try again.",
+        "rateLimited": "Too many new challenges. Wait a few minutes and try again."
       },
       "rulesInvalid": "A rule setting is empty or out of range.",
       "memberLimitRange": "Most members must be between 2 and {{max}}."
@@ -11534,7 +11535,10 @@
       "load": "Could not load your challenges.",
       "loadOne": "Could not load this challenge.",
       "standings": "Could not load the standings.",
-      "ruleChanges": "Could not load the rule changes."
+      "ruleChanges": "Could not load the rule changes.",
+      "hostOnly": "Only the host can do this. Hosting may have passed to someone else.",
+      "periodLocked": "The period cannot change once the challenge has started.",
+      "action": "That did not go through. Try again."
     }
   }
 }

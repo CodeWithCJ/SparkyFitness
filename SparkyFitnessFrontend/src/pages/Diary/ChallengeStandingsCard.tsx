@@ -40,6 +40,10 @@ const ChallengeStandingsLine = ({
       </span>
       {standings.isLoading ? (
         <Skeleton className="h-8 w-full" />
+      ) : standings.isError && !standings.data ? (
+        <span className="block text-sm text-destructive">
+          {t('challenges.errors.standings', 'Could not load the standings.')}
+        </span>
       ) : rows.length === 0 ? (
         <span className="block text-sm text-muted-foreground">
           {t('challenges.leaderboard.empty', 'No scores yet in this period.')}

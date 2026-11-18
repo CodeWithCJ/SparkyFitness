@@ -11,6 +11,7 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAuth } from '@/hooks/useAuth';
 import {
+  challengeErrorCode,
   useChallenge,
   useChallenges,
   useChallengesAvailable,
@@ -19,6 +20,7 @@ import ChallengeDetailView from './ChallengeDetailView';
 import ChallengeStandingsPreview from './ChallengeStandingsPreview';
 import CreateChallengeDialog from './CreateChallengeDialog';
 import JoinChallengeDialog from './JoinChallengeDialog';
+import LoadError from './LoadError';
 import { metricLabel, periodLabel } from './challengeCopy';
 
 /** The display name a form starts with: the first name, never the email. */
@@ -63,6 +65,12 @@ const Challenges = () => {
 
   const openChallenge = (challenge: ChallengeDetail) =>
     navigate(`/challenges/${challenge.id}`);
+  // Joined from an invite link: replace the entry holding the code, so Back
+  // does not open the join dialog again with a used code.
+  const openJoined = (challenge: ChallengeDetail) =>
+    navigate(`/challenges/${challenge.id}`, {
+      replace: linkCode !== undefined,
+    });
 
   const heading = (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -115,6 +123,24 @@ const Challenges = () => {
 
   if (challengeId) {
     if (detail.isLoading) return <Skeleton className="h-64 w-full" />;
+    if (
+      !detail.data &&
+      detail.isError &&
+      challengeErrorCode(detail.error) !== 'CHALLENGE_NOT_FOUND'
+    ) {
+      return (
+        <div className="space-y-4">
+          {heading}
+          <LoadError
+            message={t(
+              'challenges.errors.loadOne',
+              'Could not load this challenge.'
+            )}
+            onRetry={() => void detail.refetch()}
+          />
+        </div>
+      );
+    }
     if (!detail.data) {
       return (
         <div className="space-y-4">
@@ -145,6 +171,14 @@ const Challenges = () => {
       {heading}
       {list.isLoading ? (
         <Skeleton className="h-40 w-full" />
+      ) : list.isError && !list.data ? (
+        <LoadError
+          message={t(
+            'challenges.errors.load',
+            'Could not load your challenges.'
+          )}
+          onRetry={() => void list.refetch()}
+        />
       ) : challenges.length === 0 ? (
         <Notice>
           {t(
@@ -210,7 +244,7 @@ const Challenges = () => {
           onOpenChange={(open) => !open && closeJoin()}
           initialCode={linkCode ?? ''}
           defaultDisplayName={displayName}
-          onJoined={openChallenge}
+          onJoined={openJoined}
         />
       )}
     </div>
