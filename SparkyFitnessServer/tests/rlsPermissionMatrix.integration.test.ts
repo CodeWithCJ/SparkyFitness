@@ -2525,6 +2525,126 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     );
   });
 
+  it('a score save that waits on a freeze skips only the period it froze', async () => {
+    const frozenDay = '2026-12-14';
+    const openDay = '2026-12-21';
+    const periods = [
+      { start: '2026-12-14', end: '2026-12-20' },
+      { start: '2026-12-21', end: '2026-12-27' },
+    ];
+    const score = (day: string, total: number) => ({
+      day,
+      total,
+      effort: total,
+      step_points: 0,
+      pr_bonus: 0,
+      streak_bonus: 0,
+      beat_average_bonus: 0,
+      minutes: 30,
+      steps: 0,
+      workouts: 1,
+      eligible: true,
+      detail: {},
+    });
+    const entry = await sys.query(
+      `INSERT INTO public.exercise_entries (user_id, entry_date, calories_burned, duration_minutes, exercise_name)
+       VALUES ($1, $2, 100, 30, 'rls-challenge frozen run') RETURNING id`,
+      [AMY, frozenDay]
+    );
+    const entryId = entry.rows[0].id as string;
+    // What the period held when the finaliser read it
+    await sys.query(
+      `INSERT INTO public.challenge_daily_scores
+         (challenge_id, user_id, day, total, effort, step_points, pr_bonus, streak_bonus,
+          beat_average_bonus, minutes, steps, workouts, eligible, detail)
+       VALUES ($1, $2, $3, 5, 5, 0, 0, 0, 0, 30, 0, 1, true, '{}')`,
+      [challengeId, AMY, frozenDay]
+    );
+    await sys.query(
+      `INSERT INTO public.challenge_activity_cards
+         (challenge_id, user_id, exercise_entry_id, day, activity_type, minutes, points)
+       VALUES ($1, $2, $3, $4, 'run', 30, 5)`,
+      [challengeId, AMY, entryId, frozenDay]
+    );
+    // The freeze, mid-transaction: it holds the challenge row FOR UPDATE
+    const freeze = await getSystemClient();
+    let saving: Promise<void> | undefined;
+    try {
+      await freeze.query('BEGIN');
+      await freeze.query(
+        'SELECT id FROM public.challenges WHERE id = $1 FOR UPDATE',
+        [challengeId]
+      );
+      // A queue run that read the period as open saves now
+      saving = challengeRepository.saveMemberDays(
+        challengeId,
+        AMY,
+        frozenDay,
+        openDay,
+        [score(frozenDay, 99), score(openDay, 42)],
+        [],
+        undefined,
+        periods
+      );
+      const freezePid = (await freeze.query('SELECT pg_backend_pid() AS pid'))
+        .rows[0].pid;
+      const freezeXid = (
+        await freeze.query('SELECT txid_current()::text::xid AS xid')
+      ).rows[0].xid;
+      await vi.waitFor(
+        async () => {
+          const waiting = await sys.query(
+            `SELECT count(*)::int AS n FROM pg_locks
+              WHERE NOT granted AND locktype = 'transactionid'
+                AND transactionid = $1::xid AND pid <> $2`,
+            [freezeXid, freezePid]
+          );
+          expect(waiting.rows[0].n).toBeGreaterThanOrEqual(1);
+        },
+        { timeout: 10000, interval: 50 }
+      );
+      await freeze.query(
+        `UPDATE public.challenges
+            SET frozen_period_starts = array_append(frozen_period_starts, $2::date)
+          WHERE id = $1`,
+        [challengeId, frozenDay]
+      );
+    } finally {
+      await freeze.query('COMMIT');
+      freeze.release();
+    }
+    await saving;
+    try {
+      const days = await sys.query(
+        `SELECT TO_CHAR(day, 'YYYY-MM-DD') AS day, total FROM public.challenge_daily_scores
+          WHERE challenge_id = $1 AND user_id = $2 AND day BETWEEN $3 AND $4 ORDER BY day`,
+        [challengeId, AMY, frozenDay, openDay]
+      );
+      expect(days.rows).toEqual([
+        { day: frozenDay, total: 5 },
+        { day: openDay, total: 42 },
+      ]);
+      const cards = await sys.query(
+        'SELECT points FROM public.challenge_activity_cards WHERE exercise_entry_id = $1',
+        [entryId]
+      );
+      expect(cards.rows).toEqual([{ points: 5 }]);
+    } finally {
+      await sys.query(
+        'DELETE FROM public.challenge_daily_scores WHERE challenge_id = $1 AND day BETWEEN $2 AND $3',
+        [challengeId, frozenDay, openDay]
+      );
+      await sys.query('DELETE FROM public.exercise_entries WHERE id = $1', [
+        entryId,
+      ]);
+      await sys.query(
+        "UPDATE public.challenges SET frozen_period_starts = '{}' WHERE id = $1",
+        [challengeId]
+      );
+      await clearQueue();
+    }
+  });
+
   it('a rules change takes effect from the day the recheck decides under the row lock', async () => {
     await clearQueue();
     let lockedStart = '';

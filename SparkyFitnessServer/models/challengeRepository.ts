@@ -873,6 +873,12 @@ export interface DailyScoreInput {
  * A workout has one card: one moved here from a day outside [from, to] (a
  * frozen period included) takes its card along rather than leaving the old
  * one in place.
+ *
+ * `periods` are the challenge's periods over [from, to]. A period the
+ * finaliser froze after this run read the marker keeps its stored days and
+ * cards: the marker is read again here, under the challenge row and then the
+ * member row (the order the freeze takes them), and only those periods' days
+ * are skipped, so the open days of the batch still save.
  */
 async function saveMemberDays(
   challengeId: string,
@@ -881,7 +887,8 @@ async function saveMemberDays(
   to: string,
   scores: DailyScoreInput[],
   cards: ChallengeActivityCardInput[],
-  lock?: PoolClient
+  lock?: PoolClient,
+  periods: readonly { start: string; end: string }[] = []
 ): Promise<void> {
   // On the connection that holds the member's scoring lock: if it was lost
   // (and the lock with it) the save fails instead of landing after a newer
@@ -889,11 +896,29 @@ async function saveMemberDays(
   const run = (fn: (client: PoolClient) => Promise<void>) =>
     lock ? transactionOn(lock, fn) : inTransaction(fn);
   await run(async (client) => {
+    // KEY SHARE conflicts only with the freeze's FOR UPDATE: a freeze that
+    // committed first is seen here, one that comes after waits and reads
+    // what this saves.
+    const challenge = await client.query(
+      `SELECT ARRAY(SELECT TO_CHAR(p, 'YYYY-MM-DD')
+                      FROM unnest(frozen_period_starts) AS p) AS frozen
+         FROM challenges WHERE id = $1 FOR KEY SHARE`,
+      [challengeId]
+    );
+    if (!challenge.rowCount) return;
     const member = await client.query(
       'SELECT 1 FROM challenge_members WHERE challenge_id = $1 AND user_id = $2 FOR SHARE',
       [challengeId, userId]
     );
     if (!member.rowCount) return;
+    const frozenStarts = new Set(
+      (challenge.rows[0] as { frozen: string[] }).frozen
+    );
+    const frozen = periods.filter((p) => frozenStarts.has(p.start));
+    const open = (day: string) =>
+      !frozen.some((p) => p.start <= day && day <= p.end);
+    scores = scores.filter((s) => open(s.day));
+    cards = cards.filter((c) => open(c.day));
     await client.query(
       `INSERT INTO challenge_daily_scores
          (challenge_id, user_id, day, total, effort, step_points, pr_bonus, streak_bonus,
@@ -914,8 +939,11 @@ async function saveMemberDays(
     );
     await client.query(
       `DELETE FROM challenge_activity_cards
-        WHERE challenge_id = $1 AND user_id = $2 AND day BETWEEN $3 AND $4`,
-      [challengeId, userId, from, to]
+        WHERE challenge_id = $1 AND user_id = $2 AND day BETWEEN $3 AND $4
+          AND NOT EXISTS (
+            SELECT 1 FROM jsonb_to_recordset($5::jsonb) AS f(start date, "end" date)
+             WHERE day BETWEEN f.start AND f."end")`,
+      [challengeId, userId, from, to, JSON.stringify(frozen)]
     );
     if (cards.length) {
       await client.query(
@@ -1014,8 +1042,8 @@ async function insertResults(
     await client.query('SELECT id FROM challenges WHERE id = $1 FOR UPDATE', [
       challengeId,
     ]);
-    // Challenge row first, then member rows: the order leaving and joining
-    // take them, and a save takes only its member row.
+    // Challenge row first, then member rows: the order leaving, joining and
+    // a save take them (a save rechecks the marker under them).
     const current = await client.query(
       'SELECT user_id FROM challenge_members WHERE challenge_id = $1 FOR UPDATE',
       [challengeId]

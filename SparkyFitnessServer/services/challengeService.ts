@@ -1001,12 +1001,13 @@ async function recomputeMemberLocked(
   // Periods freeze in order, so the frozen ones are the first few: skip
   // only those that hold `from`. A frozen period after an open one would
   // mean the open one is skipped and later frozen from stale scores.
-  for (const w of challengePeriodsUpTo(
+  const periods = challengePeriodsUpTo(
     current.period,
     challenge.start_date,
     challenge.end_date,
     to
-  )) {
+  );
+  for (const w of periods) {
     if (frozen.has(w.start) && w.start <= from && w.end >= from)
       from = addDays(w.end, 1);
   }
@@ -1139,7 +1140,10 @@ async function recomputeMemberLocked(
     to,
     scores,
     cards,
-    lock
+    lock,
+    // The save rechecks the freeze marker: a period frozen since it was
+    // read above keeps its stored days
+    periods.filter((w) => w.end >= from && w.start <= to)
   );
 }
 
