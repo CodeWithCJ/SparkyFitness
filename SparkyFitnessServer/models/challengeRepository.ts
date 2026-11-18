@@ -1,5 +1,6 @@
 import type { PoolClient } from 'pg';
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import type { CalorieLinkResolution } from '@workspace/shared';
 
 /**
  * Challenges storage. Two kinds of access, on purpose:
@@ -129,6 +130,8 @@ export interface MemberEntryRow {
   calories_applied: number | null;
   /** Shared by both sides of a Diary calorie link. */
   calorie_link_id: string | null;
+  /** How that link was resolved, which decides the side it counts. */
+  calorie_link_resolution: CalorieLinkResolution | null;
   elevation_gain_meters: number | null;
   zone_seconds: number[] | null;
   /** The row was changed after it was created (updated_at > created_at). */
@@ -1123,7 +1126,7 @@ async function getMemberEntries(
               TO_CHAR(e.entry_time, 'HH24:MI') AS entry_time, e.duration_minutes,
               e.avg_heart_rate, e.max_heart_rate, e.exercise_name, e.category, e.source,
               e.exercise_id, e.distance, e.active_calories, e.calories_burned,
-              e.calories_applied, e.calorie_link_id,
+              e.calories_applied, e.calorie_link_id, e.calorie_link_resolution,
               e.elevation_gain_meters,
               (SELECT array_agg(COALESCE(z.seconds_in_zone, 0)::float8 ORDER BY zi)
                  FROM generate_series(1, 5) AS zi

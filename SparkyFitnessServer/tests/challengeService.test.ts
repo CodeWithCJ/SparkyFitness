@@ -495,6 +495,7 @@ describe('scoring jobs', () => {
         calories_burned: 300,
         calories_applied: null,
         calorie_link_id: null,
+        calorie_link_resolution: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,
@@ -809,6 +810,7 @@ describe('review fixes (PR #3585)', () => {
         calories_burned: null,
         calories_applied: null,
         calorie_link_id: null,
+        calorie_link_resolution: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,
@@ -985,6 +987,7 @@ describe('review fixes from Jerrys-modz (PR #3585)', () => {
     calories_burned: 200,
     calories_applied: null,
     calorie_link_id: null,
+    calorie_link_resolution: null,
     elevation_gain_meters: null,
     zone_seconds: null,
     edited: false,
@@ -1110,6 +1113,23 @@ describe('review fixes from Jerrys-modz (PR #3585)', () => {
           .bestE1rm!
       );
     }
+  });
+
+  it("carries a calorie link's id and resolution to the scorer", () => {
+    const entry = service.toChallengeEntry(
+      row({
+        source: 'sparky',
+        calories_applied: 0,
+        calorie_link_id: '44444444-4444-4444-8444-444444444444',
+        calorie_link_resolution: 'custom',
+      })
+    );
+    expect(entry).toMatchObject({
+      activeCalories: 0,
+      caloriesEstimate: 200,
+      calorieLinkId: '44444444-4444-4444-8444-444444444444',
+      calorieLinkResolution: 'custom',
+    });
   });
 
   it('an explicit end_date: null makes an open-ended challenge, not the preset length', async () => {
@@ -1291,6 +1311,7 @@ describe('bot review follow-ups (PRs #3594 and #3595)', () => {
         calories_burned: 50,
         calories_applied: null,
         calorie_link_id: null,
+        calorie_link_resolution: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,
@@ -1376,6 +1397,7 @@ describe('bot review follow-ups, second round', () => {
     calories_burned: null,
     calories_applied: null,
     calorie_link_id: null,
+    calorie_link_resolution: null,
     elevation_gain_meters: null,
     zone_seconds: null,
     edited: false,
@@ -1752,6 +1774,7 @@ describe('CodeWithCJ review (PR #3585)', () => {
         calories_burned: null,
         calories_applied: null,
         calorie_link_id: null,
+        calorie_link_resolution: null,
         elevation_gain_meters: null,
         zone_seconds: null,
         edited: false,

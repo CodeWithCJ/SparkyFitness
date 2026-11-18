@@ -52,7 +52,12 @@ import challengeRepository, {
 import {
   isPlannedEntryRow,
   rulesForDay,
+  toChallengeEntry,
 } from '../services/challengeService.js';
+import {
+  challengeTypedCalories,
+  challengeRulesSchema,
+} from '@workspace/shared';
 
 // Probe the app role RLS actually needs, with a short timeout, using a
 // standalone client. Returns false on any failure so the suite skips rather
@@ -2039,6 +2044,44 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
     );
     expect(await queued()).toEqual(['amy 2026-11-17', 'amy 2026-11-19']);
     await clearQueue();
+  });
+
+  it("a calorie link's resolution reaches the scorer, so a custom 0 keeps the SparkyFitness side's own figure under cap", async () => {
+    const linkId = randomUUID();
+    const inserted = await sys.query(
+      `INSERT INTO public.exercise_entries
+         (user_id, entry_date, entry_time, calories_burned, calories_applied, duration_minutes,
+          exercise_name, source, source_id, calorie_link_id, calorie_link_resolution)
+       VALUES ($1, '2026-11-24', '07:00', 280, 0, 30, 'rls-challenge live run', 'sparky', NULL, $2, 'custom'),
+              ($1, '2026-11-24', '07:30', 300, 0, 30, 'rls-challenge watch run', 'garmin', 'rls-link-1', $2, 'custom')
+       RETURNING id`,
+      [AMY, linkId]
+    );
+    try {
+      const rows = await challengeRepository.getMemberEntries(
+        AMY,
+        '2026-11-24',
+        '2026-11-24'
+      );
+      expect(rows.map((r) => r.calorie_link_resolution)).toEqual([
+        'custom',
+        'custom',
+      ]);
+      const rules = challengeRulesSchema.parse({
+        version: 1,
+        metric: 'active_calories',
+        activities: { manualEntries: 'cap' },
+      });
+      const scored = challengeTypedCalories(rows.map(toChallengeEntry), rules);
+      expect(
+        Object.fromEntries(scored.map((e) => [e.source, e.activeCalories]))
+      ).toEqual({ sparky: 280, garmin: 0 });
+    } finally {
+      await sys.query(
+        'DELETE FROM public.exercise_entries WHERE id = ANY($1::uuid[])',
+        [inserted.rows.map((r) => r.id)]
+      );
+    }
   });
 
   it('a planned session from a plan: scoring sees it as planned until a set is checked off, and checking off or finishing queues the day', async () => {

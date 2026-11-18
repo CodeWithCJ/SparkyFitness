@@ -2061,22 +2061,78 @@ describe('an active-calories day scores like the Diary', () => {
       source: 'sparky',
       activeCalories: 280,
       calorieLinkId: 'L',
+      calorieLinkResolution: 'sparkyfitness',
     });
-    const watch = overridden('w', 0, { time: '07:30', calorieLinkId: 'L' });
+    const watch = overridden('w', 0, {
+      time: '07:30',
+      calorieLinkId: 'L',
+      calorieLinkResolution: 'sparkyfitness',
+    });
     expect(kcal([live, watch], null, { manualEntries: 'cap' })).toBe(280);
     // A custom figure typed into the link counts only in full; capped or
     // ignored, the kept side scores its own figure
+    const link = { calorieLinkId: 'L', calorieLinkResolution: 'custom' };
     const custom = overridden('s', 2000, {
       source: 'sparky',
       caloriesEstimate: 280,
-      calorieLinkId: 'L',
-    });
-    expect(kcal([custom, watch], null)).toBe(2000);
+      ...link,
+    } as Partial<ChallengeEntry>);
+    const watchOff = overridden('w', 0, {
+      time: '07:30',
+      ...link,
+    } as Partial<ChallengeEntry>);
+    expect(kcal([custom, watchOff], null)).toBe(2000);
     for (const manualEntries of ['cap', 'ignore'] as const) {
-      expect(kcal([custom, watch], null, { manualEntries })).toBe(280);
+      expect(kcal([custom, watchOff], null, { manualEntries })).toBe(280);
       expect(
-        kcal([custom, watch], null, { manualEntries, mergeDuplicates: false })
+        kcal([custom, watchOff], null, {
+          manualEntries,
+          mergeDuplicates: false,
+        })
       ).toBe(280);
+    }
+  });
+
+  it("a custom 0 on a link of two measured workouts: 0 in full, the SparkyFitness side's own figure capped or ignored", () => {
+    // The link API takes custom_calories: 0, which writes 0 on both sides, so
+    // the side that counts comes from the stored resolution, not from a 0
+    const link = (resolution: ChallengeEntry['calorieLinkResolution']) => ({
+      calorieLinkId: 'L',
+      calorieLinkResolution: resolution,
+    });
+    const live = overridden('s', 0, {
+      source: 'sparky',
+      caloriesEstimate: 280,
+      ...link('custom'),
+    });
+    const watch = overridden('w', 0, { time: '07:30', ...link('custom') });
+    expect(kcal([live, watch], null)).toBe(0);
+    for (const manualEntries of ['cap', 'ignore'] as const) {
+      expect(kcal([live, watch], null, { manualEntries })).toBe(280);
+      expect(
+        kcal([live, watch], null, { manualEntries, mergeDuplicates: false })
+      ).toBe(280);
+    }
+    // Merged (same start) it still counts the SparkyFitness side's 280
+    expect(
+      kcal([live, { ...watch, time: '07:00' }], null, { manualEntries: 'cap' })
+    ).toBe(280);
+    // 'synced' keeps the watch's own figure; 'higher' keeps the side the link
+    // left at its own estimate (no override)
+    const liveOff = (resolution: ChallengeEntry['calorieLinkResolution']) =>
+      overridden('s', 0, {
+        source: 'sparky',
+        caloriesEstimate: 280,
+        ...link(resolution),
+      });
+    const watchKept = (resolution: ChallengeEntry['calorieLinkResolution']) =>
+      run('w', { time: '07:30', ...link(resolution) });
+    for (const resolution of ['synced', 'higher'] as const) {
+      expect(
+        kcal([liveOff(resolution), watchKept(resolution)], null, {
+          manualEntries: 'cap',
+        })
+      ).toBe(300);
     }
   });
 

@@ -34,6 +34,10 @@ import {
   normalizeSource,
 } from '../constants/exercise.ts';
 import { resolveExerciseCalories } from '../utils/calorieCalculations.ts';
+import {
+  isCalorieLinkWorkoutSource,
+  type CalorieLinkResolution,
+} from '../utils/exerciseCalorieLink.ts';
 import { heartRateZoneFor } from '../utils/heartRateZones.ts';
 import { weekStartOf } from '../utils/trainingConsistency.ts';
 import { isoWeekday, type ChallengeWindow } from './periods.ts';
@@ -86,6 +90,8 @@ export interface ChallengeEntry {
   elevationM?: number | null;
   /** Shared by the two sides of a Diary calorie link (`calorie_link_id`). */
   calorieLinkId?: string | null;
+  /** How that link was resolved (`calorie_link_resolution`); see calorieLinkSideCounts. */
+  calorieLinkResolution?: CalorieLinkResolution | null;
   /** On the copy that was kept: the ids of the copies merged into it, comma-separated. */
   mergedFrom?: string;
 }
@@ -636,6 +642,32 @@ export function mergeChallengeDuplicates(
 }
 
 /**
+ * Whether this side of a Diary calorie link is the one the link counts, read
+ * from how the link was resolved, never from a 0: a custom figure of 0 sets
+ * both sides to 0. `sparkyfitness`, `average` and `custom` count the side
+ * logged in SparkyFitness (or Hevy), `synced` the other; `higher` and `lower`
+ * leave the side they keep at its own estimate (no `calories_applied`) and set
+ * the other to 0. A link stored without a resolution falls back to the side
+ * that is not 0.
+ */
+function calorieLinkSideCounts(e: ChallengeEntry): boolean {
+  const appSide = isCalorieLinkWorkoutSource(e.source);
+  switch (e.calorieLinkResolution) {
+    case 'sparkyfitness':
+    case 'average':
+    case 'custom':
+      return appSide;
+    case 'synced':
+      return !appSide;
+    case 'higher':
+    case 'lower':
+      return e.caloriesEstimate === undefined;
+    default:
+      return num(e.activeCalories) !== 0;
+  }
+}
+
+/**
  * Calories as the challenge's manual-entry rule allows. An override of a
  * workout's calories is typed in by the member, so where manual entries are
  * capped or ignored it is treated like one: a measured workout scores its own
@@ -646,8 +678,9 @@ export function mergeChallengeDuplicates(
  * A calorie link writes the override on both sides, one of them 0. A link of
  * a measured workout with a typed-in one counts the measured side's own
  * figure and nothing for the typed-in side, so the pair counts once, merged
- * or not. A link of two measured entries counts the side it kept at that
- * side's own figure (not an average or custom one); one of two typed-in
+ * or not. A link of two measured entries counts the side its resolution
+ * picks (calorieLinkSideCounts) at that side's own figure, not an average or
+ * custom one, a custom 0 included; one of two typed-in
  * entries keeps its figures. Pass every entry, the ignored ones too, so both sides are seen.
  */
 export function challengeTypedCalories(
@@ -676,7 +709,7 @@ export function challengeTypedCalories(
       // Two measured entries: the link picks the side that counts, but a
       // figure typed into it (average, custom) does not
       if (!side.typed)
-        return { ...e, activeCalories: num(e.activeCalories) === 0 ? 0 : own };
+        return { ...e, activeCalories: calorieLinkSideCounts(e) ? own : 0 };
       return { ...e, activeCalories: isManualEntry(e) ? 0 : own };
     }
     return e.caloriesEstimate !== undefined && !isManualEntry(e)
