@@ -2035,6 +2035,76 @@ describe('an active-calories day scores like the Diary', () => {
     expect(kcal([overridden('w', 410), apple], null)).toBe(410);
   });
 
+  it('a linked pair that does not merge counts once under every manual rule', () => {
+    // A typed-in run linked to the watch's copy, which started 30 minutes
+    // later (too far apart to merge): the member kept their own 250 kcal, so
+    // the link set the watch copy to 0
+    const typed = run('m', {
+      source: 'Manual',
+      activeCalories: 250,
+      calorieLinkId: 'L',
+    });
+    const watch = overridden('w', 0, { time: '07:30', calorieLinkId: 'L' });
+    expect(kcal([typed, watch], null)).toBe(250);
+    // Capped or ignored, the measured side's own figure counts, once
+    const cap = { manualEntries: 'cap' as const, manualMinutesCap: 15 };
+    expect(kcal([typed, watch], null, cap)).toBe(300);
+    expect(kcal([typed, watch], null, { manualEntries: 'ignore' })).toBe(300);
+    expect(kcal([typed, watch], null, { ...cap, mergeDuplicates: false })).toBe(
+      300
+    );
+  });
+
+  it('a link between two measured workouts counts the kept side at its own figure', () => {
+    // A live workout timed in the app linked to the watch's copy
+    const live = run('s', {
+      source: 'sparky',
+      activeCalories: 280,
+      calorieLinkId: 'L',
+    });
+    const watch = overridden('w', 0, { time: '07:30', calorieLinkId: 'L' });
+    expect(kcal([live, watch], null, { manualEntries: 'cap' })).toBe(280);
+    // A custom figure typed into the link counts only in full; capped or
+    // ignored, the kept side scores its own figure
+    const custom = overridden('s', 2000, {
+      source: 'sparky',
+      caloriesEstimate: 280,
+      calorieLinkId: 'L',
+    });
+    expect(kcal([custom, watch], null)).toBe(2000);
+    for (const manualEntries of ['cap', 'ignore'] as const) {
+      expect(kcal([custom, watch], null, { manualEntries })).toBe(280);
+      expect(
+        kcal([custom, watch], null, { manualEntries, mergeDuplicates: false })
+      ).toBe(280);
+    }
+  });
+
+  it('under cap a typed-in copy never fills calories, distance or elevation into a measured one', () => {
+    // The watch's copy has no calories; the member's typed-in copy says 1500
+    const watch = run('w', {
+      durationMin: 120,
+      avgHr: 140,
+      activeCalories: null,
+      distanceM: null,
+    });
+    const typed = run('m', {
+      source: 'Manual',
+      durationMin: 118,
+      activeCalories: 1500,
+      distanceM: 20_000,
+    });
+    const cap = { manualEntries: 'cap' as const, manualMinutesCap: 60 };
+    expect(kcal([watch, typed], null, cap)).toBe(0);
+    const [kept] = mergeChallengeDuplicates([watch, typed], {
+      capManual: true,
+    });
+    expect(kept!.distanceM).toBeNull();
+    // Counted in full, the typed-in figures fill in as before
+    expect(kcal([watch, typed], null)).toBe(1500);
+    expect(mergeChallengeDuplicates([watch, typed])[0]!.distanceM).toBe(20_000);
+  });
+
   it("a daily total's override counts in full only, then the larger of it and the workouts", () => {
     const daily = (manualEntries: 'count' | 'cap') =>
       scoreChallengeDays(

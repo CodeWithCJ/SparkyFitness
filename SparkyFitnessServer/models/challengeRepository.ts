@@ -127,6 +127,8 @@ export interface MemberEntryRow {
   calories_burned: number | null;
   /** The member's override of what the Diary counts (null: the estimate counts). */
   calories_applied: number | null;
+  /** Shared by both sides of a Diary calorie link. */
+  calorie_link_id: string | null;
   elevation_gain_meters: number | null;
   zone_seconds: number[] | null;
   /** The row was changed after it was created (updated_at > created_at). */
@@ -457,12 +459,10 @@ async function createWithHost(input: NewChallenge): Promise<string> {
  * can run ahead of the challenge's zone) is scored again under the new rules.
  * A scoring run already under way when this commits keeps the day queued
  * (its claim no longer matches), so it cannot leave old-rules scores behind.
- */
-/**
- * Saves a rules change. `recheck`, when given, runs under the row lock on the
- * challenge as it stands then and returns the day the change takes effect
- * (or throws to refuse it), so a save that commits after midnight in the
- * challenge's time zone, or after it started, is decided on that day.
+ * `recheck`, when given, runs under the row lock on the challenge as it
+ * stands then and returns the day the change takes effect (or throws to
+ * refuse it), so a save that commits after midnight in the challenge's time
+ * zone, or after it started, is decided on that day.
  */
 async function updateRules(
   challengeId: string,
@@ -1123,7 +1123,7 @@ async function getMemberEntries(
               TO_CHAR(e.entry_time, 'HH24:MI') AS entry_time, e.duration_minutes,
               e.avg_heart_rate, e.max_heart_rate, e.exercise_name, e.category, e.source,
               e.exercise_id, e.distance, e.active_calories, e.calories_burned,
-              e.calories_applied,
+              e.calories_applied, e.calorie_link_id,
               e.elevation_gain_meters,
               (SELECT array_agg(COALESCE(z.seconds_in_zone, 0)::float8 ORDER BY zi)
                  FROM generate_series(1, 5) AS zi

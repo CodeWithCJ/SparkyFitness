@@ -84,6 +84,8 @@ export interface ChallengeEntry {
    */
   caloriesEstimate?: number | null;
   elevationM?: number | null;
+  /** Shared by the two sides of a Diary calorie link (`calorie_link_id`). */
+  calorieLinkId?: string | null;
   /** On the copy that was kept: the ids of the copies merged into it, comma-separated. */
   mergedFrom?: string;
 }
@@ -528,9 +530,13 @@ const minuteOfDay = (time: string | null | undefined): number | null => {
  * start times are known, starting within 15 minutes of each other are merged:
  * the copy with heart rate is kept and fills in a missing time, distance or
  * lift from the other. Two workouts from the same source are never merged.
+ * With `capManual` (manual entries are capped), a typed-in copy never fills
+ * an amount the cap would cut (distance, calories, elevation) into a measured
+ * one, which the cap does not reach.
  */
 export function mergeChallengeDuplicates(
-  entries: readonly ChallengeEntry[]
+  entries: readonly ChallengeEntry[],
+  { capManual = false }: { capManual?: boolean } = {}
 ): ChallengeEntry[] {
   const list = entries.filter(Boolean);
   const drop = new Set<string>();
@@ -609,10 +615,14 @@ export function mergeChallengeDuplicates(
       };
       for (const other of others) {
         if (!merged.time && other.time) merged.time = other.time;
-        if (!(num(merged.distanceM) > 0) && num(other.distanceM) > 0)
-          merged.distanceM = other.distanceM;
         if (!(num(merged.bestE1rm) > 0) && num(other.bestE1rm) > 0)
           merged.bestE1rm = other.bestE1rm;
+        if (capManual && isManualEntry(other) && !isManualEntry(keep!)) {
+          drop.add(other.id);
+          continue;
+        }
+        if (!(num(merged.distanceM) > 0) && num(other.distanceM) > 0)
+          merged.distanceM = other.distanceM;
         if (!(num(merged.activeCalories) > 0) && num(other.activeCalories) > 0)
           merged.activeCalories = other.activeCalories;
         if (!(num(merged.elevationM) > 0) && num(other.elevationM) > 0)
@@ -632,17 +642,47 @@ export function mergeChallengeDuplicates(
  * figure, up or down, and a typed-in entry keeps the override, since it is
  * capped or dropped as a whole anyway. Where manual entries count in full, the
  * override counts, as in the Diary.
+ *
+ * A calorie link writes the override on both sides, one of them 0. A link of
+ * a measured workout with a typed-in one counts the measured side's own
+ * figure and nothing for the typed-in side, so the pair counts once, merged
+ * or not. A link of two measured entries counts the side it kept at that
+ * side's own figure (not an average or custom one); one of two typed-in
+ * entries keeps its figures. Pass every entry, the ignored ones too, so both sides are seen.
  */
 export function challengeTypedCalories(
   entries: readonly ChallengeEntry[],
   rules: ChallengeRules
 ): ChallengeEntry[] {
   if (rules.activities.manualEntries === 'count') return [...entries];
-  return entries.map((e) =>
-    e.caloriesEstimate !== undefined && !isManualEntry(e)
-      ? { ...e, activeCalories: e.caloriesEstimate }
-      : e
-  );
+  const sides = new Map<string, { typed: boolean; measured: boolean }>();
+  for (const e of entries) {
+    if (!e.calorieLinkId) continue;
+    const side = sides.get(e.calorieLinkId) ?? {
+      typed: false,
+      measured: false,
+    };
+    if (isManualEntry(e)) side.typed = true;
+    else side.measured = true;
+    sides.set(e.calorieLinkId, side);
+  }
+  return entries.map((e) => {
+    const own =
+      e.caloriesEstimate !== undefined ? e.caloriesEstimate : e.activeCalories;
+    if (e.calorieLinkId) {
+      const side = sides.get(e.calorieLinkId)!;
+      // Two typed-in entries are capped or dropped as entered
+      if (!side.measured) return e;
+      // Two measured entries: the link picks the side that counts, but a
+      // figure typed into it (average, custom) does not
+      if (!side.typed)
+        return { ...e, activeCalories: num(e.activeCalories) === 0 ? 0 : own };
+      return { ...e, activeCalories: isManualEntry(e) ? 0 : own };
+    }
+    return e.caloriesEstimate !== undefined && !isManualEntry(e)
+      ? { ...e, activeCalories: own }
+      : e;
+  });
 }
 
 function inTimeWindow(
@@ -670,14 +710,15 @@ export function challengeCountedEntries(
   // of the same workout is kept rather than merged into a dropped one.
   // Calories are settled first, so a merge keeps and fills in the figures
   // that count.
-  const eligible = challengeTypedCalories(
+  const typed = challengeTypedCalories(entries, rules);
+  const eligible =
     a.manualEntries === 'ignore'
-      ? entries.filter((e) => !isManualEntry(e))
-      : entries,
-    rules
-  );
+      ? typed.filter((e) => !isManualEntry(e))
+      : typed;
   let list = a.mergeDuplicates
-    ? mergeChallengeDuplicates(eligible)
+    ? mergeChallengeDuplicates(eligible, {
+        capManual: a.manualEntries === 'cap',
+      })
     : [...eligible];
   list = list.filter((e) => {
     const effective = challengeFilterSport(e);

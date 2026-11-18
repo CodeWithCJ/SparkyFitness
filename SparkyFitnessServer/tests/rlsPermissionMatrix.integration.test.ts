@@ -2407,11 +2407,18 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
         }
       );
       // The freeze waits on the save's row lock instead of reading around it
+      const savePid = (await save.query('SELECT pg_backend_pid() AS pid'))
+        .rows[0].pid;
+      const saveXid = (
+        await save.query('SELECT txid_current()::text::xid AS xid')
+      ).rows[0].xid;
       await vi.waitFor(
         async () => {
           const waiting = await sys.query(
             `SELECT count(*)::int AS n FROM pg_locks
-              WHERE NOT granted AND locktype IN ('transactionid', 'tuple')`
+              WHERE NOT granted AND locktype = 'transactionid'
+                AND transactionid = $1::xid AND pid <> $2`,
+            [saveXid, savePid]
           );
           expect(waiting.rows[0].n).toBeGreaterThanOrEqual(1);
         },
@@ -2436,6 +2443,57 @@ describe.runIf(RUN)('Challenge membership RLS', () => {
       "UPDATE public.challenges SET frozen_period_starts = '{}' WHERE id = $1",
       [challengeId]
     );
+  });
+
+  it('a rules change takes effect from the day the recheck decides under the row lock', async () => {
+    await clearQueue();
+    let lockedStart = '';
+    expect(
+      await challengeRepository.updateRules(
+        challengeId,
+        HOST,
+        { version: 1, metric: 'steps', dailyCap: 6200 },
+        '2026-12-07',
+        1,
+        (locked) => {
+          lockedStart = locked.start_date;
+          return '2026-12-14';
+        }
+      )
+    ).toBe(true);
+    expect(lockedStart).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const log = await sys.query(
+      `SELECT TO_CHAR(effective_from, 'YYYY-MM-DD') AS d FROM public.challenge_rule_changes
+        WHERE challenge_id = $1 AND rules->>'dailyCap' = '6200'`,
+      [challengeId]
+    );
+    expect(log.rows).toEqual([{ d: '2026-12-14' }]);
+    expect(await queued()).toEqual(['host 2026-12-14', 'amy 2026-12-14']);
+    // A recheck that refuses writes nothing
+    await expect(
+      challengeRepository.updateRules(
+        challengeId,
+        HOST,
+        { version: 1, metric: 'steps', dailyCap: 6300 },
+        '2026-12-07',
+        1,
+        () => {
+          throw new Error('refused under the lock');
+        }
+      )
+    ).rejects.toThrow('refused under the lock');
+    const none = await sys.query(
+      `SELECT 1 FROM public.challenge_rule_changes
+        WHERE challenge_id = $1 AND rules->>'dailyCap' = '6300'`,
+      [challengeId]
+    );
+    expect(none.rowCount).toBe(0);
+    await sys.query(
+      `DELETE FROM public.challenge_rule_changes
+        WHERE challenge_id = $1 AND rules->>'dailyCap' = '6200'`,
+      [challengeId]
+    );
+    await clearQueue();
   });
 
   it("deleting an account removes that person's challenge rows", async () => {

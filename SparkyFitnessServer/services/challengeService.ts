@@ -401,11 +401,6 @@ export async function getChallenge(
 }
 
 /**
- * Changes the rules. Before the start the change applies from the start;
- * after it, from the next period (next day for a daily challenge), so a
- * running period keeps its rules. Every change is logged for all members.
- */
-/**
  * The day a rules change takes effect on this challenge as it stands, or the
  * reason it is refused: ended, a period change once started, dates the rules
  * don't allow, or no period left.
@@ -448,6 +443,11 @@ function ruleChangeEffectiveFrom(
   return effectiveFrom;
 }
 
+/**
+ * Changes the rules. Before the start the change applies from the start;
+ * after it, from the next period (next day for a daily challenge), so a
+ * running period keeps its rules. Every change is logged for all members.
+ */
 export async function updateRules(
   userId: string,
   challengeId: string,
@@ -909,6 +909,7 @@ export function toChallengeEntry(row: MemberEntryRow): ChallengeEntry {
       calories_burned: estimate,
     }),
     ...(applied !== null ? { caloriesEstimate: estimate } : {}),
+    calorieLinkId: row.calorie_link_id ?? null,
     elevationM: n(row.elevation_gain_meters),
   };
 }
