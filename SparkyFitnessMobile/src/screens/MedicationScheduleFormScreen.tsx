@@ -563,10 +563,7 @@ const MedicationScheduleFormScreen: React.FC<
 
   if (isEditing && !existing) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <View className="flex-1 items-center justify-center">
           <Text className="text-text-muted text-base">
@@ -584,10 +581,7 @@ const MedicationScheduleFormScreen: React.FC<
   }
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <KeyboardAwareScrollView
         contentContainerStyle={{

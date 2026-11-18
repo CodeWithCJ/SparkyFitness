@@ -341,6 +341,7 @@ const FoodEntryMultiAddScreen: React.FC<FoodEntryMultiAddScreenProps> = ({
   }, [navigation, isSubmitting]);
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: t('foodEntryMultiAdd.title', { defaultValue: 'Review' }),
     nativeTitle: t('foodEntryMultiAdd.title', { defaultValue: 'Review' }),
     left: { kind: 'back', disabled: isSubmitting },
@@ -354,10 +355,7 @@ const FoodEntryMultiAddScreen: React.FC<FoodEntryMultiAddScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <KeyboardAvoidingView
         style={{ flex: 1 }}

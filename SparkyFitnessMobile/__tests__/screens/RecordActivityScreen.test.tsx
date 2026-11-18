@@ -217,21 +217,20 @@ describe('RecordActivityScreen', () => {
     return undefined;
   };
 
-  it('renders its header below the status bar on the custom-header path', async () => {
-    // On Android (and iOS 26+ with Liquid Glass off) the hook returns a bar
-    // the screen has to render inside a root padded with the top inset.
+  it('leaves the status bar to its header bar on the custom-header path', async () => {
+    // On Android (and iOS 26+ with Liquid Glass off) the bar the hook returns
+    // reserves the status bar itself (#3465); a padded root would add it twice.
     state(null);
     jest
       .mocked(useScreenHeader)
       .mockReturnValue(<Text testID="screen-header-bar">Record Activity</Text>);
     try {
-      // Two insets, so a fixed padding that happens to match one cannot pass.
       for (const top of [24, 48]) {
         mockInsets.top = top;
         const custom = await renderScreen();
-        expect(paddingTopAbove(custom.getByTestId('screen-header-bar'))).toBe(
-          top
-        );
+        expect(
+          paddingTopAbove(custom.getByTestId('screen-header-bar'))
+        ).toBeUndefined();
         custom.unmount();
       }
 

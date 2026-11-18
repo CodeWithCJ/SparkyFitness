@@ -21,7 +21,6 @@ import {
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
@@ -43,7 +42,6 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   const preset = route.params.updatedPreset ?? route.params.preset;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { preferences } = usePreferences();
   const { profile } = useProfile();
@@ -375,10 +373,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ScrollView

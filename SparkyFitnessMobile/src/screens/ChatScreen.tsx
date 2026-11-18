@@ -1599,7 +1599,6 @@ export default function ChatScreen({
     <View
       className="flex-1 bg-background"
       style={{
-        paddingTop: usesNativeHeader ? undefined : insets.top,
         paddingBottom: insets.bottom,
       }}
     >

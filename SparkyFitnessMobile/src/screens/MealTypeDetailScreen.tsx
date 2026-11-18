@@ -18,7 +18,6 @@ import { useDailySummary, useServerConnection, useMealTypes } from '../hooks';
 import { useCopyFoodEntries } from '../hooks/useCopyFoodEntries';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel } from '../utils/dateUtils';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
@@ -45,7 +44,6 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
     : 'en-US';
   const { date, mealType, mealTypeId, mealLabel } = route.params;
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const servingSheetRef = useRef<ServingAdjustSheetRef>(null);
   const copySheetRef = useRef<CopyMealSheetRef>(null);
@@ -300,10 +298,7 @@ const MealTypeDetailScreen: React.FC<MealTypeDetailScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ServerGate>{renderContent()}</ServerGate>

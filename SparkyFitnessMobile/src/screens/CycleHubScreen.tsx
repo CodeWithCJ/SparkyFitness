@@ -9,7 +9,6 @@ import { useCycleSettings } from '../hooks/useCycleSettings';
 import { useCycleSwitch } from '../hooks/useMobileFeatures';
 import { useCycleHistory } from '../hooks/useCycleHistory';
 import { useCycleLogsRange } from '../hooks/useCycleLogs';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -35,7 +34,6 @@ type CycleHubScreenProps = RootStackScreenProps<'CycleHub'>;
 const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { mode, isLoading: isModeLoading } = useCycleMode();
   const { settings, isLoading: isSettingsLoading } = useCycleSettings();
@@ -162,10 +160,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
 
   if (cycle.state === 'loadFailed' || isOff) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         {header}
         {isOff ? (
           <View className="flex-1 justify-center items-center px-6 gap-3">
@@ -224,10 +219,7 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
   }
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       {/* Header Bar with Segmented Control */}

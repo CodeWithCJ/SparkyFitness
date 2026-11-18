@@ -7,7 +7,6 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 import {
@@ -65,7 +64,6 @@ const startingRange = (marker: LabMarker) =>
 
 const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t, i18n } = useTranslation();
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
@@ -364,10 +362,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 px-4 py-3"

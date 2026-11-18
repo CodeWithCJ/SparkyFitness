@@ -40,7 +40,6 @@ import {
 } from '../hooks/queryKeys';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { updatePreferences } from '../services/api/preferencesApi';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { WaterContainer } from '../types/measurements';
 import type { UserPreferences } from '../types/preferences';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -73,7 +72,6 @@ const WaterContainersScreen: React.FC<WaterContainersScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor, starColor] = useCSSVariable([
     '--color-accent-primary',
     '--color-cat-amber',
@@ -561,10 +559,7 @@ const WaterContainersScreen: React.FC<WaterContainersScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ServerGate>{content()}</ServerGate>
       {containers.length > 0 && !isLoading && !isError ? (

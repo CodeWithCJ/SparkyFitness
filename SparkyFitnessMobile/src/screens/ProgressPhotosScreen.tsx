@@ -10,13 +10,11 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Platform,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatSignedWeightChange } from '@workspace/shared';
 import { useCSSVariable } from 'uniwind';
 import i18n from '../localization/i18n';
@@ -46,7 +44,6 @@ import {
 import { useCheckInPhotoSource } from '../hooks/useCheckInPhotoSource';
 import { usePreferences } from '../hooks/usePreferences';
 import { getApiErrorMessage } from '../services/api/errors';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { pickImageFromCamera, pickImagesFromLibrary } from '../utils/pickImage';
 import { formatDateLabel, getTodayDate } from '../utils/dateUtils';
 import {
@@ -122,8 +119,6 @@ interface TimelineRow {
  */
 const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [accentPrimary, mutedColor] = useCSSVariable([
     '--color-accent-primary',
@@ -242,12 +237,6 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
     if (pickerLock.current) return;
     guidedCheckIn?.back?.(false, { saved: uploadedRef.current });
   }, [guidedCheckIn]);
-  // Pushed, the screen pads below the status bar only when it draws its own
-  // header. In the check-in it is a sheet, which on iOS already starts below
-  // the status bar, so there only Android (full height) pads.
-  const needsTopInset =
-    !usesNativeHeader && (!guidedCheckIn || Platform.OS === 'android');
-
   // Photos save as they are added, so on the last step closing is finishing.
   // System Back and the iOS swipe down close the sheet without the header;
   // they finish with the same confirmation.
@@ -264,6 +253,10 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   }, [guidedCheckIn, navigation]);
 
   const header = useScreenHeader({
+    // Pushed, the bar sits below the status bar. In the check-in it is a
+    // sheet, which on iOS already starts below the status bar, so there only
+    // Android (full height) needs the room.
+    topInset: guidedCheckIn ? 'android-only' : 'status-bar',
     title: t('progressPhotos.title', { defaultValue: 'Progress Photos' }),
     // The steps replace one another, so in the check-in this leaves the flow
     // rather than going back to step 2. The X is the same Finish.
@@ -519,10 +512,7 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={needsTopInset ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {guidedCheckIn && (
         <GuidedCheckInStepIndicator

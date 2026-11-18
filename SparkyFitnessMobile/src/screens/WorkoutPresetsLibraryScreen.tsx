@@ -26,7 +26,6 @@ import {
   ownershipFilterHeaderMenu,
 } from '../utils/shareStatus';
 import ShareStatusBadge from '../components/ShareStatusBadge';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { WorkoutPreset } from '../types/workoutPresets';
@@ -40,7 +39,6 @@ const WorkoutPresetsLibraryScreen: React.FC<
 > = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textSecondary] = useCSSVariable([
     '--color-accent-primary',
@@ -267,10 +265,7 @@ const WorkoutPresetsLibraryScreen: React.FC<
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isConnected ? (
         <LibrarySearchBar
