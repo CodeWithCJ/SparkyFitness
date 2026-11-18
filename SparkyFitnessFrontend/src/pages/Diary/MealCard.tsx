@@ -20,6 +20,7 @@ import {
   Copy,
   PlusCircle,
   Users,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { useState } from 'react';
 import EnhancedFoodSearch from '../../components/FoodSearch/FoodSearch';
@@ -77,6 +78,83 @@ const MOBILE_NUTRIENT_LABEL_OVERRIDES: Record<
 > = {
   carbs: { label: 'nutrition.carbs', defaultLabel: 'Carbs' },
   dietary_fiber: { label: 'nutrition.fiber', defaultLabel: 'Fiber' },
+};
+
+/**
+ * The images a diary row shows. Food entries: per-entry override, else the
+ * food's own image. Logged meals: their override, else the meal template's.
+ */
+const mealCardEntryImages = (item: FoodEntry | FoodEntryMeal): string[] => {
+  if (!('foods' in item && 'entry_date' in item)) {
+    return diaryEntryImages(item as FoodEntry);
+  }
+  const loggedMeal = item as FoodEntryMeal;
+  const override = usableFoodImages(loggedMeal.images);
+  return override.length > 0
+    ? override
+    : usableFoodImages(loggedMeal.meal_images);
+};
+
+interface EntryThumbnailProps {
+  images: string[];
+  alt: string;
+  /** Whether a row without a usable image keeps an image-sized slot. */
+  reserveSpace: boolean;
+  viewLabel: string;
+  /** Opens the lightbox on the images that have not failed, shown one first. */
+  onOpen: (images: string[]) => void;
+}
+
+/**
+ * A diary row's image, opening the lightbox. When an image fails to load the
+ * next one is tried. A row without images, or whose images all fail, shows a
+ * placeholder of the same size from sm up, so a meal's nutrient grids line up.
+ */
+const EntryThumbnail = ({
+  images,
+  alt,
+  reserveSpace,
+  viewLabel,
+  onOpen,
+}: EntryThumbnailProps) => {
+  // How many images failed. The caller keys this component by the list, so
+  // another list starts again from its first image.
+  const [failedCount, setFailedCount] = useState(0);
+  const remaining = images.slice(failedCount);
+  const src = remaining[0] ?? null;
+
+  if (src) {
+    return (
+      <button
+        type="button"
+        className="flex-shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        onClick={() => onOpen(remaining)}
+        aria-label={viewLabel}
+      >
+        <img
+          // A new element per attempt, so the browser loads it afresh and
+          // reports its own error, even when the list repeats an address.
+          key={`${failedCount}:${src}`}
+          src={src}
+          alt={alt}
+          className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
+          loading="lazy"
+          // A dead provider link shouldn't leave a broken icon.
+          onError={() => setFailedCount(failedCount + 1)}
+        />
+      </button>
+    );
+  }
+  if (images.length === 0 && !reserveSpace) return null;
+  return (
+    <div
+      aria-hidden="true"
+      data-testid="meal-entry-image-placeholder"
+      className="hidden sm:flex w-16 h-16 flex-shrink-0 items-center justify-center rounded-md bg-gray-100 dark:bg-gray-700"
+    >
+      <UtensilsCrossed className="h-6 w-6 text-muted-foreground" />
+    </div>
+  );
 };
 
 interface MealCardProps {
@@ -232,6 +310,12 @@ const MealCard = ({
 
   const visibleNutrientsForGrid = quickInfoNutrients.filter((nutrient) =>
     summableNutrients.includes(nutrient)
+  );
+
+  // On desktop an image narrows its row's nutrient grid, so once any row has
+  // one, rows without get an empty slot of the same width.
+  const mealHasImages = meal.entries.some(
+    (item) => mealCardEntryImages(item).length > 0
   );
 
   const handleCopyFromYesterday = () => {
@@ -405,19 +489,7 @@ const MealCard = ({
                 const entryIsHighlighted =
                   'food_id' in item &&
                   (item as FoodEntry).food_id === highlightFoodId;
-                // Food entries: per-entry override, else the food's own image.
-                // Logged meals: the meal template's image.
-                const entryImages = isFoodEntry
-                  ? diaryEntryImages(item as FoodEntry)
-                  : (() => {
-                      const override = usableFoodImages(
-                        (item as FoodEntryMeal).images
-                      );
-                      return override.length > 0
-                        ? override
-                        : usableFoodImages((item as FoodEntryMeal).meal_images);
-                    })();
-                const entryImageSrc = entryImages[0] ?? null;
+                const entryImages = mealCardEntryImages(item);
 
                 // Determine glycemic index directly from the entryNutrition object
                 const giValue: GlycemicIndex | undefined | null =
@@ -656,27 +728,17 @@ const MealCard = ({
                       entryIsHighlighted && 'border-2 border-blue-500'
                     )}
                   >
-                    {entryImageSrc && (
-                      <button
-                        type="button"
-                        className="flex-shrink-0 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        onClick={() =>
-                          openLightbox(entryImages, 0, entryName ?? undefined)
-                        }
-                        aria-label={t('food.viewImages', 'View images')}
-                      >
-                        <img
-                          src={entryImageSrc}
-                          alt={entryName ?? ''}
-                          className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
-                          loading="lazy"
-                          onError={(e) => {
-                            // A dead provider link shouldn't leave a broken icon.
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      </button>
-                    )}
+                    <EntryThumbnail
+                      // A changed list rebuilds it, so failures start over.
+                      key={entryImages.join('\n')}
+                      images={entryImages}
+                      alt={entryName ?? ''}
+                      reserveSpace={mealHasImages}
+                      viewLabel={t('food.viewImages', 'View images')}
+                      onOpen={(images) =>
+                        openLightbox(images, 0, entryName ?? undefined)
+                      }
+                    />
                     <div className="flex-1">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
                         <span className="font-medium">{entryName}</span>
