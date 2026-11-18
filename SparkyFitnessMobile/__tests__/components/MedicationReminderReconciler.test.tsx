@@ -265,6 +265,55 @@ describe('MedicationReminderReconciler', () => {
     ]);
   });
 
+  it('re-runs reconciliation while staying open in the foreground when the device timezone changes without a calendar event', () => {
+    jest.useFakeTimers();
+    try {
+      const mockGetCalendars = getCalendars as jest.MockedFunction<
+        typeof getCalendars
+      >;
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Los_Angeles',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+      mockQueries({ meds: medications, medEntries: entries });
+
+      render(<MedicationReminderReconciler />);
+      expect(mockReconcile).toHaveBeenCalledTimes(1);
+
+      // Android expo-localization 57.0.2 does not emit a calendar event on
+      // ACTION_TIMEZONE_CHANGED; the foreground poll detects the zone change.
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Chicago',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+
+      act(() => {
+        jest.advanceTimersByTime(30_000);
+      });
+
+      expect(mockReconcile).toHaveBeenCalledTimes(2);
+
+      mockGetCalendars.mockImplementation(() => [
+        {
+          calendar: 'gregory',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('removes the AppState subscription on unmount', () => {
     mockQueries({ meds: medications, medEntries: entries });
 

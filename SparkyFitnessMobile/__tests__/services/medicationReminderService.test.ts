@@ -692,6 +692,101 @@ describe('reconcileMedicationReminders', () => {
       ]);
     });
 
+    it('dismisses an unstamped legacy banner whose local dose time is still in the future while keeping already-due unstamped banners', async () => {
+      const mockGetCalendars = getCalendars as jest.MockedFunction<
+        typeof getCalendars
+      >;
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+
+      // 2026-11-17 15:30:00Z = 07:30 PST: 07:00 PST is already due, 09:00 PST is still future
+      jest.setSystemTime(new Date('2026-11-17T15:30:00.000Z'));
+      const dueKey = 'med_2026-11-17_med-due_sched-due_07:00:00';
+      const earlyKey = 'med_2026-11-17_med-early_sched-early_09:00:00';
+
+      (
+        Notifications.getPresentedNotificationsAsync as jest.Mock
+      ).mockResolvedValue([
+        {
+          request: {
+            identifier: 'legacy-due-banner',
+            content: {
+              data: {
+                medicationId: 'med-due',
+                key: dueKey,
+                baseKey: dueKey,
+                hideNames: 'false',
+                locale: 'en',
+              },
+            },
+          },
+        },
+        {
+          request: {
+            identifier: 'legacy-early-banner',
+            content: {
+              data: {
+                medicationId: 'med-early',
+                key: earlyKey,
+                baseKey: earlyKey,
+                hideNames: 'false',
+                locale: 'en',
+              },
+            },
+          },
+        },
+      ]);
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Los_Angeles',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+
+      await reconcileMedicationReminders(
+        [
+          buildMedication({
+            id: 'med-due',
+            schedules: [
+              buildSchedule({
+                id: 'sched-due',
+                medication_id: 'med-due',
+                time_of_day: '07:00:00',
+              }),
+            ],
+          }),
+          buildMedication({
+            id: 'med-early',
+            schedules: [
+              buildSchedule({
+                id: 'sched-early',
+                medication_id: 'med-early',
+                time_of_day: '09:00:00',
+              }),
+            ],
+          }),
+        ],
+        []
+      );
+
+      expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(
+        'legacy-early-banner'
+      );
+      expect(Notifications.dismissNotificationAsync).not.toHaveBeenCalledWith(
+        'legacy-due-banner'
+      );
+
+      mockGetCalendars.mockImplementation(() => [
+        {
+          calendar: 'gregory',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+    });
+
     it('cancels stale reminders from a previous day and schedules fresh ones', async () => {
       const staleKey = 'med_2026-07-27_med-1_sched-1_09:00';
       mockGetAllScheduled.mockResolvedValue([
@@ -823,18 +918,112 @@ describe('reconcileMedicationReminders', () => {
   });
 
   describe('locking', () => {
-    it('makes a concurrent second call a no-op', async () => {
-      useAppPreferencesStore.setState({ medicationRemindersEnabled: false });
-      mockGetAllScheduled.mockResolvedValue([
-        pendingRequest('n1', { medicationId: 'med-1', key: BASE_KEY }),
+    it('coalesces overlapping calls into one queued trailing pass that reads the latest inputs and live timezone', async () => {
+      const mockGetCalendars = getCalendars as jest.MockedFunction<
+        typeof getCalendars
+      >;
+      useAppPreferencesStore.setState({ medicationReminderRepeats: false });
+      jest.setSystemTime(new Date('2026-11-17T16:00:00.000Z'));
+
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Los_Angeles',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
       ]);
 
-      const first = reconcileMedicationReminders([], []);
-      const second = reconcileMedicationReminders([], []);
-      await Promise.all([first, second]);
+      let releaseFirstPendingLookup: (() => void) | null = null;
+      const firstPendingGate = new Promise<Notifications.NotificationRequest[]>(
+        (resolve) => {
+          releaseFirstPendingLookup = () => resolve([]);
+        }
+      );
 
-      expect(mockGetAllScheduled).toHaveBeenCalledTimes(1);
-      expect(mockCancel).toHaveBeenCalledTimes(1);
+      mockGetAllScheduled
+        .mockImplementationOnce(() => firstPendingGate)
+        .mockResolvedValue([]);
+
+      const med = buildMedication({
+        schedules: [buildSchedule({ time_of_day: '17:15:00' })],
+      });
+
+      const first = reconcileMedicationReminders([med], []);
+      // Two calls arrive while the first is mid-await and the timezone shifts to CST;
+      // they coalesce into a single trailing run using the latest entries and CST.
+      mockGetCalendars.mockReturnValue([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Chicago',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+      const second = reconcileMedicationReminders([med], []);
+      const third = reconcileMedicationReminders(
+        [med],
+        [
+          buildEntry({
+            entry_date: '2026-11-17',
+            status: 'taken',
+          }),
+        ]
+      );
+
+      releaseFirstPendingLookup?.();
+      await Promise.all([first, second, third]);
+
+      // 3 overlapping calls collapse to 2 sequential passes (never 3, never dropped).
+      expect(mockGetAllScheduled).toHaveBeenCalledTimes(2);
+
+      // The trailing pass scheduled future days in America/Chicago (23:15Z) rather
+      // than America/Los_Angeles (01:15Z), and respected the logged 2026-11-17 entry.
+      const lastCallTrigger = (
+        mockSchedule.mock.calls.at(-1)?.[0].trigger as { date: Date }
+      ).date;
+      expect(lastCallTrigger.toISOString()).toBe('2026-11-23T23:15:00.000Z');
+
+      mockGetCalendars.mockImplementation(() => [
+        {
+          calendar: 'gregory',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+    });
+
+    it('still drains a queued reconciliation pass when an earlier in-flight pass rejects', async () => {
+      let rejectFirstLookup: ((err: Error) => void) | null = null;
+      const firstLookupGate = new Promise<Notifications.NotificationRequest[]>(
+        (_resolve, reject) => {
+          rejectFirstLookup = reject;
+        }
+      );
+
+      mockGetAllScheduled
+        .mockImplementationOnce(() => firstLookupGate)
+        .mockResolvedValueOnce([
+          pendingRequest('existing-med', {
+            medicationId: 'med-1',
+            key: BASE_KEY,
+          }),
+        ]);
+
+      const first = reconcileMedicationReminders([buildMedication()], []);
+      useAppPreferencesStore.setState({ medicationRemindersEnabled: false });
+      const second = reconcileMedicationReminders([], []);
+
+      const [firstOutcome, secondOutcome] = await (async () => {
+        const settled = Promise.allSettled([first, second]);
+        rejectFirstLookup?.(new Error('lookup failed'));
+        return settled;
+      })();
+
+      expect(firstOutcome.status).toBe('rejected');
+      expect(secondOutcome.status).toBe('fulfilled');
+      expect(mockCancel).toHaveBeenCalledWith('existing-med');
     });
   });
 
@@ -1097,6 +1286,49 @@ describe('reconcileMedicationReminders', () => {
         (c) => (c[0].content.data as { key: string }).key
       );
       expect(scheduledKeys).not.toContain(BASE_KEY);
+
+      flushSpy.mockRestore();
+      listEntriesSpy.mockRestore();
+    });
+
+    it('still cancels and dismisses medication reminders when disabled even if action flush triggers while offline', async () => {
+      const handlerMod =
+        require('../../src/services/medicationNotificationHandler') as typeof import('../../src/services/medicationNotificationHandler');
+      const apiMod =
+        require('../../src/services/api/medicationsApi') as typeof import('../../src/services/api/medicationsApi');
+
+      const flushSpy = jest
+        .spyOn(handlerMod, 'flushPendingMedicationNotificationActions')
+        .mockResolvedValueOnce(true);
+      const listEntriesSpy = jest
+        .spyOn(apiMod, 'listEntries')
+        .mockRejectedValueOnce(new Error('offline'));
+
+      useAppPreferencesStore.setState({ medicationRemindersEnabled: false });
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('existing-med', {
+          medicationId: 'med-1',
+          key: BASE_KEY,
+        }),
+      ]);
+      (
+        Notifications.getPresentedNotificationsAsync as jest.Mock
+      ).mockResolvedValue([
+        {
+          request: {
+            identifier: 'delivered-med',
+            content: { data: { medicationId: 'med-1' } },
+          },
+        },
+      ]);
+
+      await reconcileMedicationReminders([], []);
+
+      expect(mockCancel).toHaveBeenCalledWith('existing-med');
+      expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith(
+        'delivered-med'
+      );
+      expect(listEntriesSpy).not.toHaveBeenCalled();
 
       flushSpy.mockRestore();
       listEntriesSpy.mockRestore();

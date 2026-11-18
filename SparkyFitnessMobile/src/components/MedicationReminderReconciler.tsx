@@ -15,6 +15,8 @@ import { syncNativeMedicationSnoozeMinutes } from '../services/medicationNativeS
 import { addLog } from '../services/LogService';
 import i18n from '../localization/i18n';
 
+const FOREGROUND_CLOCK_POLL_MS = 30_000;
+
 const MedicationReminderReconciler: React.FC = () => {
   const medicationRemindersEnabled = useAppPreferencesStore(
     (s) => s.medicationRemindersEnabled
@@ -38,8 +40,10 @@ const MedicationReminderReconciler: React.FC = () => {
   const [languageRevision, setLanguageRevision] = useState(0);
   const [, bumpResumeRevision] = useReducer((n: number) => n + 1, 0);
 
-  // Re-render on OS calendar / significant-time-change events so travel across
-  // timezones or midnight updates `timezone` and `today` without a cold start.
+  // `useCalendars()` re-renders on iOS `significantTimeChangeNotification`,
+  // while the foreground poll below covers Android (`expo-localization` 57.0.2
+  // only observes configuration changes, not `ACTION_TIMEZONE_CHANGED`) and
+  // open-app midnight rollovers.
   useCalendars();
   const timezone = getDeviceTimezone();
   const today = getTodayDate();
@@ -130,14 +134,45 @@ const MedicationReminderReconciler: React.FC = () => {
 
   useEffect(() => {
     if (!remindersActive) return;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+
+    const checkClock = () => {
+      if (getDeviceTimezone() !== timezone || getTodayDate() !== today) {
+        bumpResumeRevision();
+      }
+    };
+
+    const startPolling = () => {
+      if (intervalId !== null) return;
+      intervalId = setInterval(checkClock, FOREGROUND_CLOCK_POLL_MS);
+    };
+
+    const stopPolling = () => {
+      if (intervalId === null) return;
+      clearInterval(intervalId);
+      intervalId = null;
+    };
+
+    if (AppState.currentState !== 'background') {
+      startPolling();
+    }
+
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') return;
-      bumpResumeRevision();
+      if (state !== 'active') {
+        stopPolling();
+        return;
+      }
+      checkClock();
+      startPolling();
       void refetchMeds();
       void refetchEntries();
     });
-    return () => subscription.remove();
-  }, [refetchMeds, refetchEntries, remindersActive]);
+
+    return () => {
+      stopPolling();
+      subscription.remove();
+    };
+  }, [refetchMeds, refetchEntries, remindersActive, timezone, today]);
 
   return null;
 };
