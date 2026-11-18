@@ -55,6 +55,12 @@ interface ActiveWorkoutHeaderProps {
    * button included, stops at that edge instead of a fixed width.
    */
   statusCluster?: { left: number } | null;
+  /**
+   * The focus view's pill bar: shown instead of the title block, with the
+   * viewed exercise's position and a list button. Ignored when the buttons
+   * live in a side strip.
+   */
+  focusBar?: { position: number; total: number; onOpenList?: () => void };
 }
 
 /**
@@ -172,6 +178,34 @@ function ElapsedTime({ startedAt }: { startedAt: number | null }) {
   );
 }
 
+/** A 44 pt round or pill-shaped chip for the focus view's top bar. */
+const FOCUS_PILL_CLASS =
+  'h-11 min-w-11 flex-row items-center justify-center rounded-full bg-raised px-3.5';
+
+/** The elapsed clock as a pill; ticks on its own like {@link ElapsedTime}. */
+function ElapsedPill({ startedAt }: { startedAt: number | null }) {
+  const { t } = useTranslation();
+  const now = useClockTick();
+  const time = formatElapsed(startedAt, now);
+  return (
+    <View
+      className={FOCUS_PILL_CLASS}
+      accessible
+      accessibilityLabel={t('activeWorkout.header.elapsedTime', {
+        defaultValue: '{{time}} elapsed',
+        time,
+      })}
+    >
+      <Text
+        className="text-[17px] font-bold text-accent-primary"
+        style={{ fontVariant: ['tabular-nums'] }}
+      >
+        {time}
+      </Text>
+    </View>
+  );
+}
+
 /**
  * Custom chrome for the active-workout screen (the route renders with
  * `headerShown: false`): back, name + elapsed clock, kebab menu, and the
@@ -196,6 +230,7 @@ function ActiveWorkoutHeader({
   openMenuRef,
   inStatusRow = false,
   statusCluster = null,
+  focusBar,
 }: ActiveWorkoutHeaderProps) {
   const { t } = useTranslation();
   const { width: windowWidth } = useWindowDimensions();
@@ -328,6 +363,76 @@ function ActiveWorkoutHeader({
     destructive: true,
     onPress: onDiscard,
   });
+
+  if (focusBar != null && !buttonsInStrip) {
+    return (
+      <View
+        className="px-4 pb-1 bg-background"
+        style={inStatusRow ? { paddingTop: STATUS_ROW_TOP_PAD } : undefined}
+      >
+        <View
+          className="flex-row items-center gap-2"
+          style={inStatusRow ? { marginRight: clusterReserve } : undefined}
+        >
+          <Pressable
+            onPress={onBack}
+            hitSlop={4}
+            accessibilityRole="button"
+            accessibilityLabel={t('activeWorkout.header.back', {
+              defaultValue: 'Back',
+            })}
+            className={`${FOCUS_PILL_CLASS} w-11 px-0 active:opacity-70`}
+          >
+            <Icon name="chevron-back" size={22} color={textPrimary} />
+          </Pressable>
+          <Pressable
+            onPress={focusBar.onOpenList}
+            disabled={focusBar.onOpenList == null}
+            accessibilityRole={focusBar.onOpenList ? 'button' : 'text'}
+            accessibilityLabel={t('activeWorkout.focus.header.position', {
+              defaultValue: 'Exercise {{position}} of {{total}}',
+              position: focusBar.position,
+              total: focusBar.total,
+            })}
+            className={`${FOCUS_PILL_CLASS} active:opacity-70`}
+          >
+            <Text
+              className="text-[17px] font-bold text-accent-primary"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {`${focusBar.position}/${focusBar.total}`}
+            </Text>
+          </Pressable>
+          <View className="flex-1 items-center">
+            <ElapsedPill startedAt={startedAt} />
+          </View>
+          {focusBar.onOpenList != null && (
+            <Pressable
+              onPress={focusBar.onOpenList}
+              accessibilityRole="button"
+              accessibilityLabel={t('activeWorkout.focus.header.list', {
+                defaultValue: 'Exercise list',
+              })}
+              className={`${FOCUS_PILL_CLASS} w-11 px-0 active:opacity-70`}
+            >
+              <Icon name="list" size={22} color={textPrimary} />
+            </Pressable>
+          )}
+          <Pressable
+            onPress={openMenu}
+            accessibilityRole="button"
+            accessibilityLabel={t('activeWorkout.header.menu', {
+              defaultValue: 'Workout menu',
+            })}
+            className={`${FOCUS_PILL_CLASS} w-11 px-0 active:opacity-70`}
+          >
+            <Icon name="ellipsis-horizontal" size={22} color={textPrimary} />
+          </Pressable>
+        </View>
+        <ActionSheet ref={menuSheetRef} title={name} items={menuItems} />
+      </View>
+    );
+  }
 
   return (
     <View

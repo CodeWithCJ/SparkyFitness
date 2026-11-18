@@ -40,6 +40,8 @@ interface ActiveWorkoutOverflowSheetProps {
   onSwitchToSwapMode: () => void;
   onSwitchToMainMode: () => void;
   onDismiss: () => void;
+  /** The focus view's card-style menu (Phone-Menu board) with icons. */
+  cards?: boolean;
 }
 
 export default function ActiveWorkoutOverflowSheet({
@@ -63,6 +65,7 @@ export default function ActiveWorkoutOverflowSheet({
   onSwitchToSwapMode,
   onSwitchToMainMode,
   onDismiss,
+  cards = false,
 }: ActiveWorkoutOverflowSheetProps) {
   const { t } = useTranslation();
 
@@ -130,11 +133,18 @@ export default function ActiveWorkoutOverflowSheet({
     items.push({
       key: 'view',
       label: t('workout.viewExercise', { defaultValue: 'View exercise' }),
+      icon: 'play',
+      description: cards
+        ? t('activeWorkout.focus.menu.viewHint', {
+            defaultValue: 'Instructions and history',
+          })
+        : undefined,
       onPress: () => onPressThumb(entryId),
     });
     items.push({
       key: 'notes',
       label: t('workout.notes', { defaultValue: 'Notes' }),
+      icon: 'list',
       onPress: () => onToggleExerciseNote(entryId),
     });
     if (upcoming.length > 0) {
@@ -143,6 +153,7 @@ export default function ActiveWorkoutOverflowSheet({
         label: t('workout.doAnotherFirst', {
           defaultValue: 'Do another exercise first…',
         }),
+        icon: 'skip-forward',
         dismissOnPress: false,
         onPress: onSwitchToSwapMode,
       });
@@ -151,6 +162,7 @@ export default function ActiveWorkoutOverflowSheet({
       items.push({
         key: 'superset-with',
         label: t('workout.supersetWith', { defaultValue: 'Superset with…' }),
+        icon: 'add',
         dismissOnPress: false,
         onPress: onSwitchToPickMode,
       });
@@ -161,6 +173,7 @@ export default function ActiveWorkoutOverflowSheet({
         label: t('workout.removeFromSuperset', {
           defaultValue: 'Remove from superset',
         }),
+        icon: 'remove-circle',
         onPress: () => {
           onUngroupExercise(entryId);
         },
@@ -170,12 +183,19 @@ export default function ActiveWorkoutOverflowSheet({
       items.push({
         key: 'warmups',
         label: t('workout.addWarmups', { defaultValue: 'Add warm-ups' }),
+        icon: 'flame',
+        description: cards
+          ? t('activeWorkout.focus.menu.warmupsHint', {
+              defaultValue: 'Calculated from your working weight',
+            })
+          : undefined,
         onPress: () => onAddWarmups(entryId),
       });
     }
     items.push({
       key: 'replace',
       label: t('workout.replaceExercise', { defaultValue: 'Replace exercise' }),
+      icon: 'arrow-undo',
       onPress: () => onReplaceExercise(entryId),
     });
     if (entryHasCompleted && !entryIsCardioForm) {
@@ -184,6 +204,7 @@ export default function ActiveWorkoutOverflowSheet({
         label: t('workout.clearLoggedSets', {
           defaultValue: 'Clear logged sets',
         }),
+        icon: 'arrow-undo',
         destructive: true,
         onPress: () => onClearExerciseSets(entryId),
       });
@@ -191,6 +212,7 @@ export default function ActiveWorkoutOverflowSheet({
     items.push({
       key: 'remove',
       label: t('workout.removeExercise', { defaultValue: 'Remove exercise' }),
+      icon: 'close',
       destructive: true,
       onPress: () => onRemoveExercise(entryId),
     });
@@ -213,6 +235,7 @@ export default function ActiveWorkoutOverflowSheet({
     onSelectSupersetPartner,
     onUngroupExercise,
     onSwitchToPickMode,
+    cards,
     t,
   ]);
 
@@ -231,7 +254,12 @@ export default function ActiveWorkoutOverflowSheet({
     <ActionSheet
       ref={sheetRef}
       title={title}
-      items={overflowMenuItems}
+      items={
+        cards
+          ? overflowMenuItems
+          : overflowMenuItems.map(({ icon: _icon, ...rest }) => rest)
+      }
+      layout={cards ? 'cards' : 'list'}
       onBack={overflowMenu?.mode === 'pick' ? onSwitchToMainMode : undefined}
       onDismiss={onDismiss}
     />

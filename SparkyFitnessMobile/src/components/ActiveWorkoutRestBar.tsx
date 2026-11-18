@@ -1,14 +1,16 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppState, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
+import FooterActionBar from './FooterActionBar';
 import Icon from './Icon';
 import LiquidGlassSurface, {
   createLiquidGlassPillStyle,
 } from './LiquidGlassSurface';
 import { useClockTick } from '../hooks/useClockTick';
+import { useCountdownCue, useCountdownSeconds } from '../hooks/useCountdownCue';
 import { useRestCountdown } from '../hooks/useRestCountdown';
 import { fireSelectionHaptic } from '../services/haptics';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
@@ -49,6 +51,17 @@ interface ActiveWorkoutRestBarProps {
   onCompleteSet: () => void;
   /** Taps on the bar outside its controls (the buttons claim their own). */
   onPressBar?: () => void;
+  /**
+   * The focus view's ready bar: a back button (reopens the last logged set to
+   * edit it) beside a large Log set button that names the rest that follows.
+   * The resting state is unchanged.
+   */
+  focusReady?: {
+    restLabel: string | null;
+    onPreviousSet?: () => void;
+    /** Set for a timed hold: the primary button starts it instead of logging. */
+    onStartHold?: () => void;
+  };
 }
 
 /**
@@ -83,41 +96,134 @@ function ActiveWorkoutRestBar({
   onResume,
   onCompleteSet,
   onPressBar,
+  focusReady,
 }: ActiveWorkoutRestBarProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const usesGlass = useNativeIOSTabsActive();
-  const [accentPrimary, textMuted, trackColor, chromeBorder] = useCSSVariable([
+  const [
+    accentPrimary,
+    textMuted,
+    trackColor,
+    chromeBorder,
+    textPrimary,
+    restColor,
+    onRest,
+  ] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
     '--color-progress-track',
     '--color-chrome-border',
-  ]) as [string, string, string, string];
+    '--color-text-primary',
+    '--color-rest',
+    '--color-on-rest',
+  ]) as [string, string, string, string, string, string, string];
 
-  const lastCountdownSecRef = useRef<number | null>(null);
+  // Lead-in beeps for the last seconds of the rest (the watch's Countdown
+  // setting: Off, 3 or 5). The beep at zero is the rest-complete chime, which
+  // the store owns, so it is never doubled here.
+  useCountdownCue({
+    active: state === 'resting',
+    remainingMs,
+    seconds: useCountdownSeconds(),
+    onTick: () => {
+      playIntervalCue('countdown');
+      fireSelectionHaptic();
+    },
+  });
 
-  useEffect(() => {
-    if (state !== 'resting') {
-      lastCountdownSecRef.current = null;
-      return;
-    }
+  if (state === 'ready' && focusReady != null) {
+    return (
+      <FooterActionBar>
+        <Pressable
+          testID="rest-bar-body"
+          onPress={onPressBar}
+          accessible={false}
+          className="flex-row items-center gap-2.5 pt-2"
+        >
+          <Pressable
+            onPress={focusReady.onPreviousSet}
+            disabled={focusReady.onPreviousSet == null}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: focusReady.onPreviousSet == null }}
+            accessibilityLabel={t('activeWorkout.focus.bar.previousSet', {
+              defaultValue: 'Previous set, edit in place',
+            })}
+            className={`h-14 w-14 items-center justify-center rounded-full bg-raised active:opacity-70 ${
+              focusReady.onPreviousSet == null ? 'opacity-40' : ''
+            }`}
+          >
+            <Icon name="chevron-back" size={26} color={textPrimary} />
+          </Pressable>
+          <Pressable
+            onPress={focusReady.onStartHold ?? onCompleteSet}
+            accessibilityRole="button"
+            accessibilityLabel={
+              focusReady.onStartHold != null
+                ? t('activeWorkout.focus.bar.startHold', {
+                    defaultValue: 'Start hold',
+                  })
+                : focusReady.restLabel != null
+                  ? t('activeWorkout.focus.bar.logSetRest', {
+                      defaultValue: 'Log set, rest {{duration}}',
+                      duration: focusReady.restLabel,
+                    })
+                  : t('activeWorkout.focus.bar.logSet', {
+                      defaultValue: 'Log set',
+                    })
+            }
+            className="h-14 flex-1 flex-row items-center justify-center gap-2.5 rounded-full active:opacity-80"
+            style={{ backgroundColor: accentPrimary }}
+          >
+            <Text className="text-xl font-bold text-white">
+              {focusReady.onStartHold != null
+                ? t('activeWorkout.focus.bar.startHold', {
+                    defaultValue: 'Start hold',
+                  })
+                : t('activeWorkout.focus.bar.logSet', {
+                    defaultValue: 'Log set',
+                  })}
+            </Text>
+            {focusReady.restLabel != null && (
+              <Text
+                className="text-base font-semibold text-white"
+                style={{ opacity: 0.75, fontVariant: ['tabular-nums'] }}
+              >
+                {t('restPeriod.rest', {
+                  defaultValue: 'Rest {{duration}}',
+                  duration: focusReady.restLabel,
+                })}
+              </Text>
+            )}
+          </Pressable>
+        </Pressable>
+      </FooterActionBar>
+    );
+  }
 
-    const remainingSec = Math.ceil(remainingMs / 1000);
-    if (
-      remainingSec >= 1 &&
-      remainingSec <= 3 &&
-      lastCountdownSecRef.current !== remainingSec
-    ) {
-      lastCountdownSecRef.current = remainingSec;
-      // Lead-in beeps are for someone watching the bar. Off screen (the
-      // background rest chime keeps JS running) the single rest-complete
-      // chime is the whole cue, not three beeps and then the chime.
-      if (AppState.currentState === 'active') {
-        playIntervalCue('countdown');
-        fireSelectionHaptic();
-      }
-    }
-  }, [remainingMs, state]);
+  // The focus view shows the timer as a card among the sets; the footer is
+  // just the way out of the rest.
+  if (focusReady != null) {
+    return (
+      <FooterActionBar>
+        <Pressable
+          testID="rest-bar-body"
+          onPress={onSkip}
+          accessibilityRole="button"
+          accessibilityLabel={t('activeWorkout.rest.skip', {
+            defaultValue: 'Skip rest',
+          })}
+          className="mt-2 h-14 flex-row items-center justify-center gap-2.5 rounded-full active:opacity-80"
+          style={{ backgroundColor: restColor }}
+        >
+          <Icon name="skip-forward" size={20} color={onRest} weight="bold" />
+          <Text className="text-xl font-bold" style={{ color: onRest }}>
+            {t('activeWorkout.focus.rest.skip', { defaultValue: 'Skip rest' })}
+          </Text>
+        </Pressable>
+      </FooterActionBar>
+    );
+  }
 
   const paused = state === 'paused';
   const timerColor = paused ? textMuted : accentPrimary;

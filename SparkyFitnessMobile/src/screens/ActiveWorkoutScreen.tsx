@@ -26,6 +26,7 @@ import {
 import { useIsFocused } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
+import { useCSSVariable } from 'uniwind';
 
 import ActiveWorkoutHeader, {
   ActiveWorkoutStripButtons,
@@ -44,7 +45,11 @@ import {
 } from '../components/SetRowChrome';
 import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
 import PlateCalculatorSheet from '../components/PlateCalculatorSheet';
-import { storedWeightInUnit } from '../utils/unitConversions';
+import {
+  storedWeightInUnit,
+  weightFromKg,
+  weightToKg,
+} from '../utils/unitConversions';
 import {
   ActiveWorkoutCompactRestRow,
   COMPACT_REST_ROW_HEIGHT,
@@ -59,6 +64,14 @@ import ExerciseSetRestSheet from '../components/ExerciseSetRestSheet';
 import WorkoutDurationSheet, {
   type WorkoutDurationSheetRef,
 } from '../components/WorkoutDurationSheet';
+import FocusExercisesSheet from '../components/FocusExercisesSheet';
+import FocusSetOptionsPage from '../components/FocusSetOptionsPage';
+import FocusEffortSheet, {
+  effortStartValue,
+  type EffortMetric,
+} from '../components/FocusEffortSheet';
+import FocusPrCard from '../components/FocusPrCard';
+import { formatLocalizedNumber } from '../localization';
 import ActiveWorkoutIntervalHud from '../components/ActiveWorkoutIntervalHud';
 import ActiveWorkoutGuidedCard from '../components/ActiveWorkoutGuidedCard';
 import ActiveWorkoutNowCard from '../components/ActiveWorkoutNowCard';
@@ -79,9 +92,11 @@ import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useVerticalBar } from '../hooks/useVerticalBar';
 import { getActiveServerConfig } from '../services/storage';
 import {
+  restSecAfterLoggingSet,
   useActiveWorkoutStore,
   type ActiveSetPatch,
 } from '../stores/activeWorkoutStore';
+import { useFocusHold } from '../hooks/useFocusHold';
 import {
   shouldPlaceHeaderInStatusRow,
   statusRowCluster,
@@ -93,14 +108,21 @@ import { runAfterKeyboardSettles } from '../utils/keyboardFocus';
 import {
   buildExerciseReorderItems,
   describeActiveSet,
+  FOCUS_SUPERSET_PALETTE_VARS,
   firstSetInputField,
   formatSetLoad,
   rendersCardioEffortForm,
   resolveSnapshotModality,
   isCardioModality,
   isDurationModality,
+  isMetricClampedToRpe,
+  isWarmupSetType,
+  quantizeSetWeightKg,
+  resolveCurrentSetId,
+  SET_TYPE_OPTIONS,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { formatRest } from '../components/RestPeriodChip';
 import { resolveWarmupOptions } from '../utils/warmupSettings';
 import { useActiveWorkoutIntervalLifecycle } from '../hooks/useActiveWorkoutIntervalLifecycle';
 import { useActiveWorkoutDiscard } from '../hooks/useActiveWorkoutDiscard';
@@ -124,6 +146,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   );
   const startedAt = useActiveWorkoutStore((s) => s.startedAt);
   const completedSetIds = useActiveWorkoutStore((s) => s.completedSetIds);
+  const steps = useActiveWorkoutStore((s) => s.steps);
   const prSetIds = useActiveWorkoutStore((s) => s.prSetIds);
   const setRenderKeys = useActiveWorkoutStore((s) => s.setRenderKeys);
   const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
@@ -149,6 +172,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const distanceUnit =
     (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
   const { getImageSource } = useExerciseImageSource();
+  const focusGroupColor = String(useCSSVariable('--color-superset'));
 
   const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
   useActiveWorkoutIntervalLifecycle(workoutFormat, guidedWorkoutEnabled);
@@ -160,6 +184,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     activeWorkoutView === 'focus' &&
     (workoutFormat ?? 'standard') === 'standard' &&
     !guidedWorkoutEnabled;
+
+  // The exercise on show in the focus view, for the header's "2/6" pill.
+  const [focusIndex, setFocusIndex] = useState(0);
 
   const isFocused = useIsFocused();
   const [verifiedSourcePresetId, setVerifiedSourcePresetId] = useState<
@@ -374,6 +401,19 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     [warmupWeightKg, weightUnit, session]
   );
 
+  const handleReorderMove = useCallback((from: number, to: number) => {
+    useActiveWorkoutStore.getState().reorderExercises(from, to);
+  }, []);
+  const [exercisesSheetVisible, setExercisesSheetVisible] = useState(false);
+  const handleOpenExercisesSheet = useCallback(() => {
+    Keyboard.dismiss();
+    setExercisesSheetVisible(true);
+  }, []);
+  const handleCloseExercisesSheet = useCallback(
+    () => setExercisesSheetVisible(false),
+    []
+  );
+
   const handleOpenReorder = useCallback(() => {
     Keyboard.dismiss();
     // A reorder screen opened from a workout form can still be in the stack
@@ -394,6 +434,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   );
   const { runs: supersetRuns, borders: supersetBorders } =
     useSupersetBorders(exercisesForBorders);
+  // The focus view draws supersets in the watch's lilac group colour.
+  const { borders: focusSupersetBorders } = useSupersetBorders(
+    exercisesForBorders,
+    FOCUS_SUPERSET_PALETTE_VARS
+  );
 
   const [userExpandedIds, setUserExpandedIds] = useState<ReadonlySet<string>>(
     () => new Set<string>()
@@ -703,8 +748,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   // The set the plate calculator is open for (its weight is kg, as stored).
   const [plateCalc, setPlateCalc] = useState<{
+    setId: string;
     weightKg: number | null;
     equipment: readonly string[] | null;
+    exerciseName?: string;
+    setNumber?: number;
   } | null>(null);
   // The plate calculator's target for a set: only a barbell exercise has one.
   // Reads the store so a weight committed a moment ago (a row flushing its
@@ -720,8 +768,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       const set = ex.sets.find((s) => String(s.id) === setId);
       const weightKg = Number(set?.weight ?? plannedSetValues[setId]?.weight);
       return {
+        setId,
         weightKg: Number.isFinite(weightKg) && weightKg > 0 ? weightKg : null,
         equipment,
+        exerciseName: ex.exercise_snapshot?.name,
+        setNumber: set?.set_number,
       };
     },
     [plannedSetValues]
@@ -754,20 +805,29 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         e.sets.some((s) => String(s.id) === focusedSetId) &&
         rendersCardioEffortForm(e.exercise_snapshot, e.sets.length)
     );
+    const focusedExercise = session.exercises.find((e) =>
+      e.sets.some((s) => String(s.id) === focusedSetId)
+    );
+    // A multi-set cardio row has a distance cell after its duration cell, so
+    // it walks duration -> distance -> RPE like the one-set form does.
+    const focusedIsDurationDistance =
+      resolveSnapshotModality(focusedExercise?.exercise_snapshot) ===
+      'duration_distance';
     const nextField = focusedEntryIsCardioForm
       ? focusedField === 'duration'
         ? ('distance' as const)
         : null
       : focusedField === 'weight'
         ? ('reps' as const)
-        : (focusedField === 'reps' || focusedField === 'duration') &&
-            metricColumn === 'rpe'
-          ? ('rpe' as const)
-          : null;
+        : focusedField === 'duration' && focusedIsDurationDistance
+          ? ('distance' as const)
+          : (focusedField === 'reps' ||
+                focusedField === 'duration' ||
+                (focusedField === 'distance' && focusedIsDurationDistance)) &&
+              metricColumn === 'rpe'
+            ? ('rpe' as const)
+            : null;
     const focusedSetCompleted = completedSetIds[focusedSetId] != null;
-    const focusedExercise = session.exercises.find((e) =>
-      e.sets.some((s) => String(s.id) === focusedSetId)
-    );
     const showCalculator =
       focusedField === 'weight' &&
       usesBarbell(focusedExercise?.exercise_snapshot?.equipment);
@@ -851,9 +911,43 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     [barCarriesRest]
   );
 
+  // What the focus view shows after a logged set: the effort sheet (only with
+  // the effort column on and no effort yet), then the PR card for a record.
+  const [postSet, setPostSet] = useState<{
+    setId: string;
+    stage: 'effort' | 'pr';
+  } | null>(null);
+  const handleClosePrCard = useCallback(() => setPostSet(null), []);
+  const startPostSetFlow = useCallback((setId: string) => {
+    const state = useActiveWorkoutStore.getState();
+    const exercise = state.session?.exercises.find((e) =>
+      e.sets.some((s) => String(s.id) === setId)
+    );
+    const set = exercise?.sets.find((s) => String(s.id) === setId);
+    if (exercise == null || set == null || state.completedSetIds[setId] == null)
+      return;
+    const modality = resolveSnapshotModality(exercise.exercise_snapshot);
+    const column = useAppPreferencesStore.getState().activeWorkoutMetricColumn;
+    const effective =
+      isMetricClampedToRpe(modality) && column !== 'rir' ? 'rpe' : column;
+    const effortColumnOn =
+      (effective === 'rpe' || effective === 'rir') &&
+      !rendersCardioEffortForm(
+        exercise.exercise_snapshot,
+        exercise.sets.length
+      );
+    const hasEffort = set.rpe != null || set.rir != null;
+    if (effortColumnOn && !hasEffort && !isWarmupSetType(set.set_type)) {
+      setPostSet({ setId, stage: 'effort' });
+    } else if (state.prSetIds[setId]) {
+      setPostSet({ setId, stage: 'pr' });
+    }
+  }, []);
+
   const handleCompleteSet = useCallback(
     (setId: string) => {
       useActiveWorkoutStore.getState().completeSet(setId);
+      if (focusModeRef.current) startPostSetFlow(setId);
       setFocusedSetKey(null);
       setExpandedSetKey(null);
       Keyboard.dismiss();
@@ -872,10 +966,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         }, 350);
       }
     },
-    [setFocusedSetKey]
+    [setFocusedSetKey, startPostSetFlow]
   );
 
   const handleCompleteActiveSet = useCallback(() => {
+    // The bottom Log runs before the focused input's blur commits its draft,
+    // so flush every row's typed values first or the set logs the old ones
+    // (and a typed record is neither detected as a PR nor kept as logged).
+    for (const handle of Object.values(accessoryHandlesRef.current)) {
+      handle.flushDrafts?.();
+    }
     const id = useActiveWorkoutStore.getState().activeSetId;
     if (id != null) handleCompleteSet(id);
   }, [handleCompleteSet]);
@@ -937,6 +1037,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     setId: string;
     anchor: AnchorRect;
   } | null>(null);
+  // The page's note field flushes its draft on unmount, after the menu state is
+  // already null; keep the last id so that final commit still reaches the set.
+  const lastSetOptionsIdRef = useRef('');
+  if (setTypeMenu != null) lastSetOptionsIdRef.current = setTypeMenu.setId;
   const handlePressSetType = useCallback(
     (setId: string, anchor: AnchorRect) => {
       setSetTypeMenu({ setId, anchor });
@@ -999,7 +1103,15 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     setHeaderHeight(e.nativeEvent.layout.height);
   }, []);
 
-  const restBarVisible = restRunning || activeSetId != null;
+  // The timed hold in the focus view; its screen replaces the footer.
+  const hold = useFocusHold({
+    session,
+    activeSetId,
+    enabled: focusMode,
+    onFinish: handleCompleteSet,
+  });
+  const restBarVisible =
+    (restRunning || activeSetId != null) && hold.phase === 'idle';
   const scrollContentStyle = useMemo(() => {
     const restBarPadding = usesGlassRestBar
       ? REST_BAR_GLASS_CLEARANCE + insets.bottom
@@ -1048,6 +1160,149 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     activeSetDescription == null
       ? null
       : formatSetLoad(activeSetDescription, weightUnit, t);
+
+  // The focus view's Log set button names the rest that follows the set, and
+  // its back button reopens the last logged set so it can be edited in place.
+  // The rest logging the set would start, by the rule completeSet applies:
+  // none between back-to-back superset partners, before a drop set or after
+  // the final set.
+  const activeRestSec =
+    activeSetId != null
+      ? restSecAfterLoggingSet(session, steps, completedSetIds, activeSetId)
+      : null;
+  const lastLoggedSetId = Object.entries(completedSetIds).reduce<string | null>(
+    (latest, [id, at]) =>
+      latest == null || at > completedSetIds[latest] ? id : latest,
+    null
+  );
+  const undoDescription = describeActiveSet(session, lastLoggedSetId);
+  const undoLoad =
+    undoDescription != null
+      ? formatSetLoad(undoDescription, weightUnit, t)
+      : null;
+  const exercisesUndo =
+    lastLoggedSetId != null && undoDescription != null
+      ? {
+          detail: [undoDescription.exerciseName, undoLoad]
+            .filter((part) => part != null && part !== '')
+            .join(' · '),
+          onUndo: () => handleUncomplete(lastLoggedSetId),
+        }
+      : null;
+  const focusReady = focusMode
+    ? {
+        restLabel:
+          activeRestSec != null && activeRestSec > 0
+            ? formatRest(activeRestSec)
+            : null,
+        onPreviousSet:
+          lastLoggedSetId != null
+            ? () => handleUncomplete(lastLoggedSetId)
+            : undefined,
+        onStartHold: hold.setId != null ? hold.start : undefined,
+      }
+    : undefined;
+
+  // The set the Set type menu / Set options page is open for.
+  const setOptionsSet = (() => {
+    if (setTypeMenu == null) return null;
+    for (const exercise of session.exercises) {
+      const set = exercise.sets.find((s) => String(s.id) === setTypeMenu.setId);
+      if (set) return { exercise, set };
+    }
+    return null;
+  })();
+  const handleSelectSetType = (type: (typeof SET_TYPE_OPTIONS)[number]) => {
+    const setId = setTypeMenu?.setId;
+    if (setId != null) {
+      useActiveWorkoutStore
+        .getState()
+        .updateSetField(setId, { set_type: type });
+    }
+  };
+  const openSetPlateCalculator = (() => {
+    const setId = setTypeMenu?.setId;
+    if (setId == null) return undefined;
+    const target = plateTargetFor(setId);
+    if (!target) return undefined;
+    return () => {
+      setPlateCalc(target);
+      setSetTypeMenu(null);
+    };
+  })();
+  const generateDropSets = (() => {
+    const ex = setOptionsSet?.exercise;
+    if (ex == null) return undefined;
+    // Drop from the last working set with a weight, typed or assumed.
+    const baseIndex = findDropSetBaseIndex(
+      ex.sets,
+      (s) => s.weight ?? plannedSetValues[String(s.id)]?.weight
+    );
+    if (baseIndex < 0) return undefined;
+    const baseSet = ex.sets[baseIndex];
+    const weightKg = Number(
+      baseSet.weight ?? plannedSetValues[String(baseSet.id)]?.weight
+    );
+    return () => {
+      useActiveWorkoutStore
+        .getState()
+        .addDropSetsToExercise(ex.id, weightKg, weightUnit);
+      setSetTypeMenu(null);
+    };
+  })();
+
+  // The set behind the post-set effort sheet / PR card.
+  // `postSet.setId` is the id seen when the set was logged; autosave can swap
+  // it, so every read and write goes through the set's current id.
+  const postSetId =
+    postSet != null
+      ? resolveCurrentSetId(session, setRenderKeys, postSet.setId)
+      : null;
+  const postSetTarget = (() => {
+    if (postSetId == null) return null;
+    for (const exercise of session.exercises) {
+      const set = exercise.sets.find((s) => String(s.id) === postSetId);
+      if (set) return { exercise, set };
+    }
+    return null;
+  })();
+  const effortMetric: EffortMetric = metricColumn === 'rir' ? 'rir' : 'rpe';
+  const finishEffortPrompt = (value: number | null) => {
+    if (postSet == null) return;
+    if (value != null && postSetId != null) {
+      handleCommitField(
+        postSetId,
+        effortMetric === 'rir' ? { rir: value } : { rpe: value }
+      );
+    }
+    const isPr =
+      postSetId != null && useActiveWorkoutStore.getState().prSetIds[postSetId];
+    setPostSet(isPr ? { setId: postSet.setId, stage: 'pr' } : null);
+  };
+  const prDetail = (() => {
+    if (postSetTarget == null) return null;
+    const { exercise, set } = postSetTarget;
+    const baseline =
+      useActiveWorkoutStore.getState().prBaseline[exercise.exercise_id ?? ''];
+    if (baseline?.weight == null || set.weight == null) return null;
+    const gainKg = set.weight - baseline.weight;
+    if (gainKg <= 0) return null;
+    const fmt = (kg: number) =>
+      `${formatLocalizedNumber(weightFromKg(kg, weightUnit), { maximumFractionDigits: 2 })} ${weightUnit}`;
+    return { gain: `+${fmt(gainKg)}`, previous: fmt(baseline.weight) };
+  })();
+  const prLoad =
+    postSetTarget != null
+      ? (formatSetLoad(
+          {
+            weightKg: postSetTarget.set.weight ?? null,
+            reps: postSetTarget.set.reps ?? null,
+            durationSec: null,
+          },
+          weightUnit,
+          t
+        ) ?? '')
+      : '';
 
   const footerButtons = (
     <>
@@ -1185,6 +1440,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           startedAt={startedAt}
           progress={progress}
           progressInSubtitle={focusMode}
+          focusBar={
+            focusMode
+              ? {
+                  position:
+                    Math.min(focusIndex, session.exercises.length - 1) + 1,
+                  total: session.exercises.length,
+                  onOpenList: handleOpenExercisesSheet,
+                }
+              : undefined
+          }
           onBack={safeGoBack}
           onDiscard={handleDiscard}
           onEndWorkout={handleConfirmEnd}
@@ -1205,10 +1470,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
             scrollRef={scrollRef}
             showRequest={focusShowRequest}
             onDismissKeyboard={handleAccessoryDone}
+            onSelectedIndexChange={setFocusIndex}
+            onOpenPlateCalculator={openPlateCalculator}
             session={session}
             prSetIds={prSetIds}
             activeExerciseId={activeExerciseId}
-            supersetBorders={supersetBorders}
+            supersetBorders={focusSupersetBorders}
+            hold={hold}
             sessionId={sessionId}
             verifiedSourcePresetId={effectiveVerifiedSourcePresetId}
             historyScopeSettled={historyScopeSettled}
@@ -1357,6 +1625,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onResume={handleResumeRest}
           onCompleteSet={handleCompleteActiveSet}
           onPressBar={handlePressRestBar}
+          focusReady={focusReady}
         />
       )}
 
@@ -1369,6 +1638,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
       <ExerciseSetRestSheet
         ref={setRestSheetRef}
+        appearance={focusMode ? 'page' : 'sheet'}
         onApply={handleApplySetRests}
       />
 
@@ -1399,6 +1669,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
       <ActiveWorkoutOverflowSheet
         sheetRef={overflowSheetRef}
+        cards={focusMode}
         overflowMenu={overflowMenu}
         session={session}
         supersetRuns={supersetRuns}
@@ -1430,53 +1701,50 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onDismiss={() => setOverflowMenu(null)}
       />
 
-      <SetTypeMenu
-        anchor={setTypeCurrent != null ? (setTypeMenu?.anchor ?? null) : null}
-        currentType={setTypeCurrent}
-        onClose={() => setSetTypeMenu(null)}
-        onSelect={(type) => {
-          const setId = setTypeMenu?.setId;
-          if (setId != null) {
-            useActiveWorkoutStore
-              .getState()
-              .updateSetField(setId, { set_type: type });
+      {focusMode ? (
+        <FocusSetOptionsPage
+          visible={setTypeCurrent != null && setTypeMenu != null}
+          setId={setTypeMenu?.setId ?? lastSetOptionsIdRef.current}
+          setNumber={setOptionsSet?.set.set_number ?? 0}
+          exerciseName={
+            setOptionsSet?.exercise.exercise_snapshot?.name ??
+            t('workout.exercise', { defaultValue: 'Exercise' })
           }
-        }}
-        onOpenPlateCalculator={(() => {
-          const setId = setTypeMenu?.setId;
-          if (setId == null) return undefined;
-          const target = plateTargetFor(setId);
-          if (!target) return undefined;
-          return () => {
-            setPlateCalc(target);
-            setSetTypeMenu(null);
-          };
-        })()}
-        onGenerateDropSets={(() => {
-          const setId = setTypeMenu?.setId;
-          if (setId == null) return undefined;
-          const ex = session.exercises.find((e) =>
-            e.sets.some((s) => String(s.id) === setId)
-          );
-          if (!ex) return undefined;
-          // Drop from the last working set with a weight, typed or assumed.
-          const baseIndex = findDropSetBaseIndex(
-            ex.sets,
-            (s) => s.weight ?? plannedSetValues[String(s.id)]?.weight
-          );
-          if (baseIndex < 0) return undefined;
-          const baseSet = ex.sets[baseIndex];
-          const weightKg = Number(
-            baseSet.weight ?? plannedSetValues[String(baseSet.id)]?.weight
-          );
-          return () => {
-            useActiveWorkoutStore
+          currentType={setTypeCurrent}
+          note={setOptionsSet?.set.notes}
+          metricColumn={metricColumn}
+          clampedToRpe={
+            setOptionsSet != null &&
+            isMetricClampedToRpe(
+              resolveSnapshotModality(setOptionsSet.exercise.exercise_snapshot)
+            )
+          }
+          onSelectType={handleSelectSetType}
+          onSelectMetric={(metric) =>
+            useAppPreferencesStore
               .getState()
-              .addDropSetsToExercise(ex.id, weightKg, weightUnit);
+              .setActiveWorkoutMetricColumn(metric)
+          }
+          onCommitField={handleCommitField}
+          onGenerateDropSets={generateDropSets}
+          onOpenPlateCalculator={openSetPlateCalculator}
+          onDelete={() => {
+            const setId = setTypeMenu?.setId;
             setSetTypeMenu(null);
-          };
-        })()}
-      />
+            if (setId != null) handleDeleteSet(setId);
+          }}
+          onClose={() => setSetTypeMenu(null)}
+        />
+      ) : (
+        <SetTypeMenu
+          anchor={setTypeCurrent != null ? (setTypeMenu?.anchor ?? null) : null}
+          currentType={setTypeCurrent}
+          onClose={() => setSetTypeMenu(null)}
+          onSelect={handleSelectSetType}
+          onOpenPlateCalculator={openSetPlateCalculator}
+          onGenerateDropSets={generateDropSets}
+        />
+      )}
 
       {plateCalc != null && (
         <PlateCalculatorSheet
@@ -1489,6 +1757,69 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           }
           weightUnit={weightUnit}
           equipment={plateCalc?.equipment}
+          page={focusMode}
+          exerciseName={plateCalc?.exerciseName}
+          setNumber={plateCalc?.setNumber}
+          onUseWeight={(weight) => {
+            // The id the calculator opened with can have been swapped by
+            // autosave since.
+            const currentId = resolveCurrentSetId(
+              useActiveWorkoutStore.getState().session,
+              useActiveWorkoutStore.getState().setRenderKeys,
+              plateCalc.setId
+            );
+            if (currentId != null) {
+              handleCommitField(currentId, {
+                weight: quantizeSetWeightKg(weightToKg(weight, weightUnit)),
+              });
+            }
+            setPlateCalc(null);
+          }}
+        />
+      )}
+
+      {focusMode && postSetTarget != null && postSet?.stage === 'effort' && (
+        <FocusEffortSheet
+          key={postSet.setId}
+          visible
+          title={`${postSetTarget.exercise.exercise_snapshot?.name ?? t('workout.exercise', { defaultValue: 'Exercise' })} · ${t('workout.setNumber', { defaultValue: 'Set {{number}}', number: postSetTarget.set.set_number })}`}
+          metric={effortMetric}
+          initialValue={effortStartValue(effortMetric)}
+          onSave={(value) => finishEffortPrompt(value)}
+          onSkip={() => finishEffortPrompt(null)}
+        />
+      )}
+      {focusMode && postSetTarget != null && postSet?.stage === 'pr' && (
+        <FocusPrCard
+          key={postSet.setId}
+          visible
+          exerciseName={
+            postSetTarget.exercise.exercise_snapshot?.name ??
+            t('workout.exercise', { defaultValue: 'Exercise' })
+          }
+          load={prLoad}
+          detail={prDetail}
+          onClose={handleClosePrCard}
+        />
+      )}
+
+      {focusMode && (
+        <FocusExercisesSheet
+          visible={exercisesSheetVisible}
+          exercises={session.exercises}
+          completedSetIds={completedSetIds}
+          selectedId={
+            session.exercises[
+              Math.min(focusIndex, session.exercises.length - 1)
+            ]?.id ?? null
+          }
+          undo={exercisesUndo}
+          groupColor={focusGroupColor}
+          onSelectExercise={handleRailPress}
+          onMoveItem={handleReorderMove}
+          onAddExercise={handleAddExercise}
+          onEndWorkout={handleConfirmEnd}
+          onClose={handleCloseExercisesSheet}
         />
       )}
     </View>

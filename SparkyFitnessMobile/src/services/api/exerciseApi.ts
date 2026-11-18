@@ -1,6 +1,10 @@
 import { apiFetch, normalizeUrl } from './apiClient';
 import { ApiError } from './errors';
-import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
+import {
+  getActiveServerConfig,
+  proxyHeadersToRecord,
+  type ServerConfig,
+} from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
 import { addLog } from '../LogService';
 import { UPLOAD_TIMEOUT_MS, fetchWithTimeout } from '../../utils/concurrency';
@@ -610,7 +614,9 @@ export const attachExerciseEntryWatchTelemetry = async (
  */
 export const setExerciseEntryEffort = async (
   exerciseEntryId: string,
-  rating: number
+  rating: number,
+  /** Pins a write that starts later to the server the entry belongs to. */
+  serverConfig?: ServerConfig
 ): Promise<void> => {
   return apiFetch<void>({
     endpoint: `/api/exercise-entries/${exerciseEntryId}/effort`,
@@ -618,6 +624,7 @@ export const setExerciseEntryEffort = async (
     operation: 'set exercise entry effort',
     method: 'POST',
     body: { rating },
+    serverConfig,
   });
 };
 

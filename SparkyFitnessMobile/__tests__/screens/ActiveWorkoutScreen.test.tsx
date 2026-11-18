@@ -284,8 +284,14 @@ jest.mock('../../src/components/PlateCalculatorSheet', () => {
   const { Text } = require('react-native');
   return {
     __esModule: true,
-    default: (props: { targetWeight: number | null }) => (
-      <Text testID="plate-sheet">{`plates:${props.targetWeight}`}</Text>
+    default: (props: {
+      targetWeight: number | null;
+      onUseWeight?: (weight: number) => void;
+    }) => (
+      <Text
+        testID="plate-sheet"
+        onPress={() => props.onUseWeight?.(85)}
+      >{`plates:${props.targetWeight}`}</Text>
     ),
   };
 });
@@ -319,6 +325,36 @@ jest.mock('../../src/components/ExerciseSetRestSheet', () => {
     }),
   };
 });
+
+// The post-set effort sheet and PR card have component tests; here only when
+// the screen shows them and what Save writes.
+const mockEffortSheet: { props: any } = { props: null };
+jest.mock('../../src/components/FocusEffortSheet', () => ({
+  __esModule: true,
+  effortStartValue: (metric: string) => (metric === 'rir' ? 2 : 8),
+  default: (props: any) => {
+    mockEffortSheet.props = props;
+    return null;
+  },
+}));
+const mockPrCard: { props: any } = { props: null };
+jest.mock('../../src/components/FocusPrCard', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    mockPrCard.props = props;
+    return null;
+  },
+}));
+
+// The Exercises sheet has its own component test; here only its wiring.
+const mockExercisesSheet: { props: any } = { props: null };
+jest.mock('../../src/components/FocusExercisesSheet', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    mockExercisesSheet.props = props;
+    return null;
+  },
+}));
 
 // Captures the custom-duration sheet's props and present args so tests can
 // assert the long-workout adjust wiring and drive onSave directly.
@@ -793,6 +829,23 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
     expect(getByTestId('plate-sheet')).toBeTruthy();
   });
 
+  it('writes the weight chosen in the plate calculator to its set and closes it', () => {
+    __resetActiveWorkoutStoreForTests();
+    const session = makeSession();
+    session.exercises[0].exercise_snapshot.equipment = ['barbell'];
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const { getByTestId, getByText, queryByTestId } = renderScreen();
+
+    fireEvent.press(getByTestId('focus-weight-102'));
+    fireEvent.press(getByText('Calculator'));
+    fireEvent.press(getByTestId('plate-sheet'));
+    expect(queryByTestId('plate-sheet')).toBeNull();
+    const set = useActiveWorkoutStore
+      .getState()
+      .session?.exercises[0].sets.find((s) => String(s.id) === '102');
+    expect(Number(set?.weight)).toBe(85);
+  });
+
   it('has no plate calculator for other exercises or other fields', () => {
     const { getByTestId, queryByText } = renderScreen();
     fireEvent.press(getByTestId('focus-weight-102'));
@@ -838,6 +891,29 @@ describe('ActiveWorkoutScreen keyboard accessory bar', () => {
     expect(queryByText('Next Set')).toBeNull();
     fireEvent.press(getByText('Log'));
     expect(mockAccessoryHandles['401'].log).toHaveBeenCalledTimes(1);
+  });
+
+  it('walks a multi-set cardio row from duration to distance to RPE', () => {
+    __resetActiveWorkoutStoreForTests();
+    const session = makeSession();
+    const cardio = makeExercise('ex-d', 'Running', [
+      makeSet(401, { reps: null, weight: null, duration: 600, distance: 1 }),
+      makeSet(402, { reps: null, weight: null, duration: 600, distance: 1 }),
+    ]);
+    cardio.exercise_snapshot.modality = 'duration_distance';
+    session.exercises.push(cardio);
+    useActiveWorkoutStore.getState().startWorkout(session);
+    const { getByTestId, getByText } = renderScreen();
+
+    fireEvent.press(getByTestId('focus-duration-401'));
+    fireEvent.press(getByText('Next'));
+    expect(mockAccessoryHandles['401'].focusField).toHaveBeenCalledWith(
+      'distance'
+    );
+
+    fireEvent.press(getByTestId('focus-distance-401'));
+    fireEvent.press(getByText('Next'));
+    expect(mockAccessoryHandles['401'].focusField).toHaveBeenCalledWith('rpe');
   });
 
   it('ends a completed cardio bar at Done — no Next Set into a second set', () => {
@@ -1833,6 +1909,112 @@ describe('ActiveWorkoutScreen focus view', () => {
     expect(queryByTestId('card-ex-a')).toBeNull();
     expect(getByText('Add an Exercise')).toBeTruthy();
     expect(getByText('End Workout')).toBeTruthy();
+  });
+
+  describe('post-set effort sheet and PR card', () => {
+    const logLast = (getByTestId: (id: string) => any) => {
+      fireEvent.press(getByTestId('focus-complete-last'));
+    };
+    const findSet = (setId: string) =>
+      useActiveWorkoutStore
+        .getState()
+        .session?.exercises.flatMap((e) => e.sets)
+        .find((set) => String(set.id) === setId);
+
+    beforeEach(() => {
+      mockEffortSheet.props = null;
+      mockPrCard.props = null;
+      useAppPreferencesStore.getState().setActiveWorkoutView('focus');
+    });
+
+    it('asks how hard the set was when the effort column is on, and saves it', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+
+      expect(mockEffortSheet.props.metric).toBe('rpe');
+      expect(mockEffortSheet.props.initialValue).toBe(8);
+      act(() => mockEffortSheet.props.onSave(9));
+      expect(findSet('301')?.rpe).toBe(9);
+    });
+
+    it('writes RIR when that is the effort column, and Skip writes nothing', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rir');
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+      expect(mockEffortSheet.props.metric).toBe('rir');
+      act(() => mockEffortSheet.props.onSkip());
+      expect(findSet('301')?.rir ?? null).toBeNull();
+      expect(findSet('301')?.rpe ?? null).toBeNull();
+    });
+
+    it('adds no step when the effort column is off', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('volume');
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+      expect(mockEffortSheet.props).toBeNull();
+    });
+
+    it('detects a real record against the captured best and shows the PR card after the effort sheet', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+      useActiveWorkoutStore
+        .getState()
+        .capturePrBaseline('x-ex-c', { weight: 50, reps: 8 });
+      const { getByTestId } = renderScreen();
+      logLast(getByTestId);
+      expect(useActiveWorkoutStore.getState().prSetIds).toEqual({
+        '301': true,
+      });
+      expect(mockEffortSheet.props).not.toBeNull();
+      expect(mockPrCard.props).toBeNull();
+      act(() => mockEffortSheet.props.onSave(9));
+      expect(mockPrCard.props.exerciseName).toBe('Deadlift');
+      expect(mockPrCard.props.detail).toEqual({
+        gain: '+10 kg',
+        previous: '50 kg',
+      });
+      expect(useActiveWorkoutStore.getState().prSetIds).toEqual({
+        '301': true,
+      });
+    });
+
+    it('shows the PR card for a record, after the effort sheet', () => {
+      useAppPreferencesStore.getState().setActiveWorkoutMetricColumn('rpe');
+      const { getByTestId } = renderScreen();
+      act(() => {
+        useActiveWorkoutStore.setState({
+          prSetIds: { '301': true },
+        });
+      });
+      // completeSet restamps PR ids from the baseline; stub the stamp through
+      // the store state the screen reads after completing.
+      const original = useActiveWorkoutStore.getState().completeSet;
+      useActiveWorkoutStore.setState({
+        completeSet: (setId: string) => {
+          original(setId);
+          useActiveWorkoutStore.setState({ prSetIds: { [setId]: true } });
+        },
+      });
+      logLast(getByTestId);
+      expect(mockEffortSheet.props).not.toBeNull();
+      act(() => mockEffortSheet.props.onSkip());
+      expect(mockPrCard.props.exerciseName).toBe('Deadlift');
+      act(() => mockPrCard.props.onClose());
+    });
+  });
+
+  it('opens the Exercises sheet from the header list button', () => {
+    useAppPreferencesStore.getState().setActiveWorkoutView('focus');
+    renderScreen();
+    expect(mockExercisesSheet.props.visible).toBe(false);
+
+    act(() =>
+      (mockHeaderProps.focusBar as { onOpenList: () => void }).onOpenList()
+    );
+    expect(mockExercisesSheet.props.visible).toBe(true);
+
+    act(() => mockExercisesSheet.props.onClose());
+    expect(mockExercisesSheet.props.visible).toBe(false);
   });
 
   it('keeps the list in guided mode, where the guided card runs the cues', () => {

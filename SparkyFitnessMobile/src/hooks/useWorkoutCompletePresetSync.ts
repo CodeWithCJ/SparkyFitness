@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { Alert, AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -13,6 +14,7 @@ import {
   type AssumedSetValues,
   type AssumedValueSources,
 } from '../utils/workoutSession';
+import { describePresetChanges } from '../utils/focusView';
 import type { WorkoutPreset } from '../types/workoutPresets';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 
@@ -26,6 +28,11 @@ function isAppInBackground(state: string | null | undefined): boolean {
 
 export interface PresetUpdateOffer {
   presetName: string;
+  /**
+   * What differs from the preset, as short translated lines. Called with the
+   * caller's `t` at render, so the lines follow a language change.
+   */
+  describeChanges: (t: TFunction) => string[];
   /** Writes the workout's exercises into the preset. Resolves false when the write fails, so the question can be asked again. */
   update: () => Promise<boolean>;
 }
@@ -168,9 +175,23 @@ export function useWorkoutCompletePresetSync({
     announcedRef.current = true;
     onNeedsUpdateRef.current?.({
       presetName: sourcePreset.name,
+      describeChanges: (translate) =>
+        describePresetChanges(
+          session,
+          sourcePreset,
+          translate,
+          completedSetIds
+        ),
       update: applyUpdate,
     });
-  }, [sourcePreset, presetUpdateExercises, profile?.id, applyUpdate]);
+  }, [
+    sourcePreset,
+    presetUpdateExercises,
+    profile?.id,
+    applyUpdate,
+    session,
+    completedSetIds,
+  ]);
 
   useEffect(() => {
     if (promptedRef.current || !isFocused || !appActive) return;

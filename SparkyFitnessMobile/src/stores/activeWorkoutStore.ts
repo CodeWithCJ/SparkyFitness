@@ -1097,6 +1097,41 @@ function restSecBeforeNextSet(
 }
 
 /**
+ * The step after `setId` once it is logged: the first uncompleted step after
+ * it, else the earliest uncompleted hole anywhere, else null when every set is
+ * done. `completedSetIds` is the map with `setId` already in it.
+ */
+function nextStepAfter(
+  steps: WorkoutStep[],
+  completedSetIds: CompletedSetMap,
+  setId: string
+): WorkoutStep | null {
+  const index = steps.findIndex((s) => s.setId === setId);
+  return (
+    steps.slice(index + 1).find((s) => completedSetIds[s.setId] == null) ??
+    steps.find((s) => completedSetIds[s.setId] == null) ??
+    null
+  );
+}
+
+/**
+ * The rest logging `setId` would start: the break before the next-up set, 0
+ * when none is owed (back-to-back superset partners, a drop set next), null
+ * when it is the last set so no rest follows. The one rule `completeSet` and
+ * the focus view's Log set button share.
+ */
+export function restSecAfterLoggingSet(
+  session: PresetSessionResponse,
+  steps: WorkoutStep[],
+  completedSetIds: CompletedSetMap,
+  setId: string
+): number | null {
+  if (!steps.some((s) => s.setId === setId)) return null;
+  const next = nextStepAfter(steps, { ...completedSetIds, [setId]: 0 }, setId);
+  return next == null ? null : restSecBeforeNextSet(session, setId, next.setId);
+}
+
+/**
  * Seed the completion map from server-persisted `completed_at` timestamps so
  * a workout started from a session with prior progress resumes where it left
  * off. Missing or unparseable timestamps count as not completed. Also used by
@@ -1900,12 +1935,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // it (its "next set"), else the earliest uncompleted hole anywhere (so
         // logging the last set with earlier holes circles back to them), else
         // null when every set is done.
-        const nextStep =
-          state.steps
-            .slice(targetIndex + 1)
-            .find((s) => completedSetIds[s.setId] == null) ??
-          state.steps.find((s) => completedSetIds[s.setId] == null) ??
-          null;
+        const nextStep = nextStepAfter(state.steps, completedSetIds, setId);
 
         if (!nextStep) {
           // No uncompleted step remains: workout is done. No final rest timer.

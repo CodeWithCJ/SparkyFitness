@@ -28,7 +28,9 @@ import ActiveWorkoutSetRow, {
 } from './ActiveWorkoutSetRow';
 import type { SetInputField } from './SetRowChrome';
 import ActiveWorkoutSetDetail from './ActiveWorkoutSetDetail';
+import BodyweightBanner from './BodyweightBanner';
 import CardioEffortForm from './CardioEffortForm';
+import ExerciseHeartRateChip from './ExerciseHeartRateChip';
 import WorkoutNotesField from './WorkoutNotesField';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import { useExerciseStats } from '../hooks/useExerciseStats';
@@ -36,7 +38,6 @@ import type { GetImageSource } from '../hooks/useExerciseImageSource';
 import {
   distanceFromKm,
   storedWeightInUnit,
-  weightFromKg,
   weightToKg,
 } from '../utils/unitConversions';
 import { formatLocalizedNumber } from '../localization';
@@ -69,6 +70,7 @@ import {
   useLiveProgression,
 } from '../hooks/useLiveExerciseCoaching';
 import type { ExerciseProgressionPatch } from '../hooks/draftExercisesSlice';
+import { useHeartRateZoneColor } from '../hooks/useHeartRateZoneColor';
 import { useLiveHeartRate } from '../stores/liveHeartRateStore';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
@@ -561,6 +563,8 @@ function ActiveWorkoutExerciseCard({
   // During a live workout, the newest reading the watch sent for this
   // exercise instead; the saved average only exists once the workout is.
   const liveBpm = useLiveHeartRate(isLive ? String(exercise.id) : null);
+  // Live readings take the person's heart rate zone color, as on the watch.
+  const liveZoneColor = useHeartRateZoneColor(liveBpm);
   const heartRateText = (() => {
     if (!readOnly) return liveBpm != null ? String(liveBpm) : null;
     const avg = exercise.avg_heart_rate;
@@ -1326,8 +1330,14 @@ function ActiveWorkoutExerciseCard({
               </View>
             )}
             {heartRateText != null && (
-              <View
-                className="flex-row items-center"
+              <ExerciseHeartRateChip
+                text={heartRateText}
+                color={
+                  !readOnly ? (liveZoneColor ?? heartRateColor) : heartRateColor
+                }
+                valueColor={
+                  !readOnly ? (liveZoneColor ?? undefined) : undefined
+                }
                 accessibilityLabel={
                   readOnly
                     ? t('activeWorkout.exercise.heartRateFor', {
@@ -1339,18 +1349,7 @@ function ActiveWorkoutExerciseCard({
                         name,
                       })
                 }
-              >
-                <Icon name="heart-rate" size={14} color={heartRateColor} />
-                <Text
-                  className="text-sm text-text-secondary ml-1"
-                  style={{ fontVariant: ['tabular-nums'] }}
-                >
-                  {heartRateText}{' '}
-                  {t('activeWorkout.exercise.heartRateUnit', {
-                    defaultValue: 'bpm',
-                  })}
-                </Text>
-              </View>
+              />
             )}
             {showPlates && plateTargetKgValue != null && (
               <PlateBarGraphic
@@ -1416,29 +1415,10 @@ function ActiveWorkoutExerciseCard({
         )}
 
         {!cardioForm && isBodyweightModality(modality) && (
-          <View
-            className="mx-1 mb-1 flex-row items-start gap-2 rounded-lg bg-surface-secondary px-3 py-2"
-            accessibilityRole="text"
-            testID="bodyweight-banner"
-          >
-            <Icon name="info-circle" size={14} color={accentPrimary} />
-            <Text className="flex-1 text-xs text-text-secondary">
-              {bodyWeightKg != null
-                ? t('workout.bodyweightBanner', {
-                    defaultValue:
-                      'Bodyweight exercise: counts your body weight ({{bodyWeight}} {{unit}}) plus the weight you enter. Use a minus sign for assistance.',
-                    bodyWeight: formatLocalizedNumber(
-                      weightFromKg(bodyWeightKg, weightUnit),
-                      { maximumFractionDigits: 1 }
-                    ),
-                    unit: unitLabel,
-                  })
-                : t('workout.bodyweightBannerNoWeight', {
-                    defaultValue:
-                      'Bodyweight exercise: counts your body weight plus the weight you enter. Use a minus sign for assistance. Log a body weight so volume can be calculated.',
-                  })}
-            </Text>
-          </View>
+          <BodyweightBanner
+            bodyWeightKg={bodyWeightKg}
+            weightUnit={weightUnit}
+          />
         )}
 
         {!cardioForm && exercise.sets.length > 0 && (
@@ -1460,7 +1440,7 @@ function ActiveWorkoutExerciseCard({
                 <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
                   {t('workout.sec', { defaultValue: 'Sec' })}
                 </Text>
-                {readOnly && modality === 'duration_distance' && (
+                {(readOnly || isLive) && modality === 'duration_distance' && (
                   <Text className="flex-1 text-center text-xs font-semibold uppercase text-text-muted">
                     {distanceUnit === 'miles'
                       ? t('workout.mi', { defaultValue: 'mi' })

@@ -9,6 +9,7 @@ import type {
   ExerciseSetRestUpdate,
 } from '../components/ExerciseSetRestSheet';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import { isFocusViewActive } from '../utils/focusView';
 import { exerciseFromSnapshot, getSupersetRuns } from '../utils/workoutSession';
 import type { RootStackParamList } from '../types/navigation';
 import { buildExerciseReplaceContext } from '../utils/exerciseReplace';
@@ -90,6 +91,7 @@ export function useActiveWorkoutExerciseActions({
         navigation.navigate('ExerciseSearch', {
           returnKey: route.key,
           replaceFor,
+          ...(isFocusViewActive() ? { focusStyle: true } : null),
         });
       });
     },

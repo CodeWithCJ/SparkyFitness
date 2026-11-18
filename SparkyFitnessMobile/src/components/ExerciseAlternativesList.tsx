@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next';
 import {
   ActivityIndicator,
   FlatList,
+  Pressable,
   Text,
   TouchableOpacity,
   View,
@@ -34,6 +35,8 @@ interface ExerciseAlternativesListProps {
   onSelect: (alternative: ExerciseAlternative) => void;
   onPreview: (alternative: ExerciseAlternative) => void;
   onSearchAll: () => void;
+  /** The focus view's Replace page look (Phone-Replace board): card rows, a Replace button each. */
+  cards?: boolean;
 }
 
 // A row shows at most this many reasons; the first ones are the strongest.
@@ -82,6 +85,7 @@ const ExerciseAlternativesList: React.FC<ExerciseAlternativesListProps> = ({
   onSelect,
   onPreview,
   onSearchAll,
+  cards = false,
 }) => {
   const { t } = useTranslation();
   const [accentColor, textMuted] = useCSSVariable([
@@ -131,6 +135,72 @@ const ExerciseAlternativesList: React.FC<ExerciseAlternativesListProps> = ({
       ]
         .filter(Boolean)
         .join(' · ');
+      if (cards) {
+        return (
+          <View className="mx-4 mb-2 flex-row items-center gap-3 rounded-2xl bg-surface p-2.5">
+            <TouchableOpacity
+              activeOpacity={0.7}
+              disabled={disabled}
+              onPress={() => onPreview(item)}
+              accessibilityRole="button"
+              accessibilityLabel={t('exerciseSearch.actions.viewDetails', {
+                defaultValue: 'View exercise details',
+              })}
+            >
+              <SafeImage
+                source={image ? getImageSource(image) : null}
+                style={{ width: 64, height: 64, borderRadius: 14 }}
+                fallback={
+                  <View
+                    className="items-center justify-center bg-raised"
+                    style={{ width: 64, height: 64, borderRadius: 14 }}
+                  >
+                    <Icon name={fallbackIcon} size={26} color={textMuted} />
+                  </View>
+                }
+              />
+            </TouchableOpacity>
+            <View className="min-w-0 flex-1">
+              <Text
+                className="text-[17px] font-bold text-text-primary"
+                numberOfLines={2}
+              >
+                {item.name}
+              </Text>
+              {details.length > 0 && (
+                <Text
+                  className="text-[14px] text-text-secondary"
+                  numberOfLines={1}
+                >
+                  {details}
+                </Text>
+              )}
+            </View>
+            <TouchableOpacity
+              testID={`alternative-${item.id}`}
+              activeOpacity={0.7}
+              disabled={disabled}
+              onPress={() => onSelect(item)}
+              accessibilityRole="button"
+              accessibilityLabel={t('exerciseSearch.alternatives.replaceWith', {
+                defaultValue: 'Replace with {{name}}',
+                name: item.name,
+              })}
+              className="h-10 min-w-[84px] items-center justify-center rounded-full bg-accent-primary px-4"
+            >
+              {importingId === item.id ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text className="text-[15px] font-bold text-white">
+                  {t('exerciseSearch.alternatives.replace', {
+                    defaultValue: 'Replace',
+                  })}
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        );
+      }
       return (
         <View className="flex-row items-center border-b border-border-subtle">
           <TouchableOpacity
@@ -216,6 +286,7 @@ const ExerciseAlternativesList: React.FC<ExerciseAlternativesListProps> = ({
       );
     },
     [
+      cards,
       accentColor,
       disabled,
       getImageSource,
@@ -284,25 +355,85 @@ const ExerciseAlternativesList: React.FC<ExerciseAlternativesListProps> = ({
         keyboardShouldPersistTaps="handled"
         contentContainerClassName="pb-safe-or-4"
         ListFooterComponent={
-          <View className="py-4 items-center">
-            {!data.catalog_available && (
-              <Text className="text-text-muted text-xs px-4 mb-2 text-center">
+          cards ? (
+            !data.catalog_available ? (
+              <Text className="px-4 py-2 text-center text-xs text-text-muted">
                 {t('exerciseSearch.alternatives.catalogUnavailable', {
                   defaultValue:
                     'Free Exercise DB is unavailable, so only your library is shown.',
                 })}
               </Text>
-            )}
-            <Button
-              variant="ghost"
-              onPress={onSearchAll}
-              textClassName="text-sm"
-            >
-              {searchAllAction.label}
-            </Button>
-          </View>
+            ) : null
+          ) : (
+            <View className="py-4 items-center">
+              {!data.catalog_available && (
+                <Text className="text-text-muted text-xs px-4 mb-2 text-center">
+                  {t('exerciseSearch.alternatives.catalogUnavailable', {
+                    defaultValue:
+                      'Free Exercise DB is unavailable, so only your library is shown.',
+                  })}
+                </Text>
+              )}
+              <Button
+                variant="ghost"
+                onPress={onSearchAll}
+                textClassName="text-sm"
+              >
+                {searchAllAction.label}
+              </Button>
+            </View>
+          )
         }
       />
+    );
+  }
+
+  if (cards) {
+    return (
+      <View className="flex-1">
+        <View className="gap-2 px-4 pb-3">
+          <Text
+            accessibilityRole="header"
+            className="text-[26px] font-extrabold text-text-primary"
+          >
+            {replaceFor.exerciseName}
+          </Text>
+          <Text className="text-[15px] text-text-secondary">
+            {t('exerciseSearch.alternatives.cardsHint', {
+              defaultValue:
+                'Swap for something similar. Logged sets stay with the new exercise.',
+            })}
+          </Text>
+          <SegmentedControl
+            segments={modes}
+            activeKey={mode}
+            onSelect={setMode}
+          />
+          <Text className="pt-1 text-[13px] font-extrabold uppercase tracking-wider text-text-secondary">
+            {mode === 'similar'
+              ? t('exerciseSearch.alternatives.similarHeading', {
+                  defaultValue: 'Similar exercises',
+                })
+              : t('exerciseSearch.alternatives.otherEquipmentHeading', {
+                  defaultValue: 'Other equipment',
+                })}
+          </Text>
+        </View>
+        <View className="flex-1">{body}</View>
+        <View className="px-4 pb-safe-or-4 pt-2">
+          <Pressable
+            onPress={onSearchAll}
+            accessibilityRole="button"
+            className="h-14 items-center justify-center rounded-full bg-raised active:opacity-70"
+          >
+            <Text className="text-[18px] font-bold text-text-primary">
+              {t('workout.replaceWithOther', {
+                defaultValue: 'Replace with another exercise…',
+              })}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
     );
   }
 

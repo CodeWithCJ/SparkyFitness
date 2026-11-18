@@ -28,39 +28,63 @@ describe('ActiveWorkoutFocusChips', () => {
         completedSetIds={{}}
         selectedId="e5"
         supersetBorders={new Map()}
+        getImageSource={() => null}
         onSelect={jest.fn()}
       />
     );
     fireEvent(UNSAFE_getByType(ScrollView), 'layout', {
       nativeEvent: { layout: { width: 360, height: 60, x: 0, y: 0 } },
     });
-    // 12 padding + 5 chips of 44 + 5 gaps of 8, plus half a chip, minus half the viewport.
+    // 16 padding + 5 chips of 44 + 5 gaps of 8, plus half a chip, minus half the viewport.
     expect(scrollTo).toHaveBeenLastCalledWith({
-      x: 12 + 5 * 52 + 22 - 180,
+      x: 16 + 5 * 52 + 22 - 180,
       animated: false,
     });
     scrollTo.mockRestore();
   });
 
-  it('draws a completed chip with a tinted fill and a themed, non-white numeral', () => {
-    const { getByTestId, getByText } = render(
+  it('fills the selected chip, outlines a finished one and tints the rest', () => {
+    const { getByTestId } = render(
       <ActiveWorkoutFocusChips
         exercises={exercises}
         completedSetIds={{ '1': true }}
         selectedId="e0"
         supersetBorders={new Map()}
+        getImageSource={() => null}
         onSelect={jest.fn()}
       />
     );
-    const numeral = StyleSheet.flatten(getByText('2').props.style);
-    expect(numeral.color).toBeDefined();
-    expect(numeral.color).not.toBe('white');
-    const ring = StyleSheet.flatten(
-      getByTestId('focus-chip-ring-e1').props.style
+    const style = (id: string) =>
+      StyleSheet.flatten(getByTestId(id).props.style);
+    expect(style('focus-chip-e0').backgroundColor).toBeDefined();
+    expect(style('focus-chip-e1').borderColor).not.toBe('transparent');
+    expect(style('focus-chip-e2').borderColor).toBe('transparent');
+    expect(style('focus-chip-e1').backgroundColor).not.toBe(
+      style('focus-chip-e0').backgroundColor
     );
-    expect(ring.backgroundColor).not.toBe(
-      StyleSheet.flatten(getByTestId('focus-chip-ring-e2').props.style)
-        .backgroundColor
+  });
+
+  it('wraps a superset in one group shape and labels its members A1 and A2', () => {
+    const borders = new Map([
+      ['e2', { color: '#c792ea', isLast: false }],
+      ['e3', { color: '#c792ea', isLast: true }],
+    ]);
+    const { getByTestId, getByLabelText } = render(
+      <ActiveWorkoutFocusChips
+        exercises={exercises}
+        completedSetIds={{}}
+        selectedId="e0"
+        supersetBorders={borders}
+        getImageSource={() => null}
+        onSelect={jest.fn()}
+      />
     );
+    const group = getByTestId('focus-chip-group-e2');
+    expect(StyleSheet.flatten(group.props.style).borderColor).toBe('#c792ea');
+    // Both members sit in the one shape.
+    expect(group).toContainElement(getByTestId('focus-chip-e2'));
+    expect(group).toContainElement(getByTestId('focus-chip-e3'));
+    expect(getByLabelText(/^Exercise 3 of 8.*superset A1$/)).toBeTruthy();
+    expect(getByLabelText(/^Exercise 4 of 8.*superset A2$/)).toBeTruthy();
   });
 });

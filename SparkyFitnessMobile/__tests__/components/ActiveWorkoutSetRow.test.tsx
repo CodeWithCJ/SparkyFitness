@@ -436,6 +436,70 @@ describe('ActiveWorkoutSetRow', () => {
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
     });
 
+    it('commits an effort draft to the metric it was typed for when the column switches', () => {
+      const base = { state: 'current' as const, isFocused: true };
+      const { getByLabelText, queryByLabelText, callbacks, rerenderRow } =
+        renderRow({ ...base, metricColumn: 'rpe', set: { rpe: null } });
+      fireEvent.changeText(getByLabelText('RPE'), '8');
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+
+      rerenderRow({ ...base, metricColumn: 'rir', set: { rpe: null } });
+
+      expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
+      expect(queryByLabelText('RPE')).toBeNull();
+      expect(getByLabelText('RIR').props.value).toBe('');
+    });
+
+    it('does not write an effort value it was never typed back over a watch edit', () => {
+      const base = {
+        state: 'current' as const,
+        metricColumn: 'rpe' as const,
+        isFocused: true,
+      };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        set: { rpe: 8 },
+      });
+      expect(getByLabelText('RPE').props.value).toBe('8');
+
+      // The watch sets RPE 7 while the row is focused.
+      rerenderRow({ ...base, set: { rpe: 7 } });
+      expect(getByLabelText('RPE').props.value).toBe('7');
+
+      rerenderRow({ ...base, isFocused: false, set: { rpe: 7 } });
+      fireEvent(getByLabelText('RPE'), 'blur');
+      expect(callbacks.onCommitField).not.toHaveBeenCalled();
+    });
+
+    it('keeps an effort value typed on the phone over a later store change while focused', () => {
+      const base = {
+        state: 'current' as const,
+        metricColumn: 'rpe' as const,
+        isFocused: true,
+      };
+      const { getByLabelText, callbacks, rerenderRow } = renderRow({
+        ...base,
+        set: { rpe: 8 },
+      });
+      fireEvent.changeText(getByLabelText('RPE'), '9');
+      rerenderRow({ ...base, set: { rpe: 7 } });
+      expect(getByLabelText('RPE').props.value).toBe('9');
+
+      rerenderRow({ ...base, isFocused: false, set: { rpe: 7 } });
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 9 });
+    });
+
+    it('shows kg to two decimals and lbs to one in the row', () => {
+      const kg = renderRow({ set: { weight: 61.25 }, weightUnit: 'kg' });
+      expect(kg.getByLabelText('Weight').props.value).toBe('61.25');
+      kg.unmount();
+
+      // 61.25 kg is 135.03 lb; the list shows what a lb lifter would type.
+      const lbs = renderRow({ set: { weight: 61.25 }, weightUnit: 'lbs' });
+      expect(lbs.getByLabelText('Weight').props.value).toBe('135');
+    });
+
     it('commits typed drafts when a focused live row unmounts without a blur', () => {
       // The focus view pages to another exercise with the keyboard up.
       const { getByLabelText, callbacks, unmount } = renderRow({
@@ -714,6 +778,22 @@ describe('ActiveWorkoutSetRow', () => {
         weight: 80,
       });
       expect(callbacks.onComplete).toHaveBeenCalledWith('101');
+    });
+
+    it('flushDrafts commits every typed field without completing the set', () => {
+      const { getByLabelText, callbacks } = renderRow({
+        state: 'current',
+        isFocused: true,
+      });
+      const [, handle] = callbacks.onRegisterAccessoryHandle.mock.calls[0];
+
+      fireEvent.changeText(getByLabelText('Reps'), '12');
+      act(() => handle.flushDrafts());
+
+      expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+        reps: 12,
+      });
+      expect(callbacks.onComplete).not.toHaveBeenCalled();
     });
 
     it('unregisters the sticky-bar handle on unmount', () => {
@@ -1005,6 +1085,140 @@ describe('ActiveWorkoutSetRow', () => {
         });
       }
     );
+
+    describe('duration_distance live distance input', () => {
+      const ddSet = { weight: null, reps: null, duration: 300, distance: null };
+
+      it('renders an editable distance next to the duration for a live row', () => {
+        const { getByLabelText } = renderRow({
+          modality: 'duration_distance',
+          state: 'current',
+          set: { ...ddSet, distance: 1.25 },
+        });
+        expect(getByLabelText('Duration').props.value).toBe('300');
+        expect(getByLabelText('Distance').props.value).toBe('1.25');
+      });
+
+      it('has no distance input on plain duration, view or edit rows', () => {
+        for (const overrides of [
+          { modality: 'duration' as const, state: 'current' as const },
+          {
+            modality: 'duration_distance' as const,
+            state: 'done' as const,
+            readOnly: true,
+          },
+          {
+            modality: 'duration_distance' as const,
+            state: 'current' as const,
+            mode: 'edit' as const,
+          },
+        ]) {
+          const view = renderRow({ ...overrides, set: ddSet });
+          expect(view.queryByLabelText('Distance')).toBeNull();
+          view.unmount();
+        }
+      });
+
+      it('commits a typed distance in km on blur', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          modality: 'duration_distance',
+          state: 'current',
+          set: ddSet,
+        });
+        const input = getByLabelText('Distance');
+        fireEvent.changeText(input, '2.5');
+        fireEvent(input, 'blur');
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          distance: 2.5,
+        });
+      });
+
+      it('converts a typed distance from miles to km', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          modality: 'duration_distance',
+          state: 'current',
+          distanceUnit: 'miles',
+          set: ddSet,
+        });
+        const input = getByLabelText('Distance');
+        fireEvent.changeText(input, '1');
+        fireEvent(input, 'blur');
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          distance: 1.60934,
+        });
+      });
+
+      it('writes the typed distance when the set is logged', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          modality: 'duration_distance',
+          state: 'current',
+          set: ddSet,
+        });
+        fireEvent.changeText(getByLabelText('Distance'), '3');
+        fireEvent.press(getByLabelText('Log set 1'));
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          distance: 3,
+        });
+        expect(callbacks.onComplete).toHaveBeenCalledWith('101');
+      });
+
+      it('commits a typed distance when a focused row unmounts', () => {
+        const { getByLabelText, callbacks, unmount } = renderRow({
+          modality: 'duration_distance',
+          state: 'current',
+          isFocused: true,
+          set: ddSet,
+        });
+        fireEvent.changeText(getByLabelText('Distance'), '4');
+        unmount();
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          distance: 4,
+        });
+      });
+
+      it('writes nothing for an untouched distance', () => {
+        const { callbacks, unmount } = renderRow({
+          modality: 'duration_distance',
+          state: 'current',
+          isFocused: true,
+          set: { ...ddSet, distance: 1.25 },
+        });
+        unmount();
+        expect(callbacks.onCommitField).not.toHaveBeenCalled();
+      });
+
+      it('shows the assumed distance as the placeholder', () => {
+        const { getByLabelText } = renderRow({
+          modality: 'duration_distance',
+          state: 'current',
+          set: ddSet,
+          assumed: { weight: null, reps: null, duration: null, distance: 5 },
+        });
+        expect(getByLabelText('Distance').props.placeholder).toBe('5');
+      });
+
+      it('fills duration and distance from the previous set', () => {
+        const { getByLabelText, callbacks } = renderRow({
+          modality: 'duration_distance',
+          state: 'current',
+          set: ddSet,
+          previousSet: {
+            setNumber: 1,
+            setType: 'normal',
+            weight: null,
+            reps: null,
+            duration: 600,
+            distance: 2,
+          },
+        });
+        fireEvent.press(getByLabelText('Fill set 1 from previous'));
+        expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
+          duration: 600,
+          distance: 2,
+        });
+        expect(getByLabelText('Distance').props.value).toBe('2');
+      });
+    });
 
     describe('duration_distance view-mode distance cell', () => {
       it('renders the distance next to the seconds', () => {

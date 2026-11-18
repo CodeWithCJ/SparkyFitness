@@ -13,6 +13,7 @@ import { RIR_MAX, RIR_MIN, isBodyweightModality } from '@workspace/shared';
 import { measureAnchoredMenuTrigger, type AnchorRect } from './AnchoredMenu';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
 import Icon from './Icon';
+import { TableCellInput } from './FocusSetCells';
 import {
   SetCellInput,
   SetSwipeDeleteAction,
@@ -28,9 +29,11 @@ import {
 import {
   distanceFromKm,
   weightFromKg,
+  storedWeightInUnit,
   weightToKg,
 } from '../utils/unitConversions';
 import { formatLocalizedNumber } from '../localization';
+import { formatFocusWeight } from '../utils/focusView';
 import {
   effectiveSetDurationSec,
   epley1RmKg,
@@ -42,6 +45,7 @@ import {
   isDurationModality,
   isWeightDistanceModality,
   isWeightDurationModality,
+  previousSetFillPatch,
   quantizeSetWeightKg,
   setDistanceFromKm,
   setDistanceToKm,
@@ -71,14 +75,23 @@ export const RPE_TONE_VARS: Record<RpeTone, string> = {
   max: '--color-icon-danger',
 };
 
+/** A stored distance (km) as the draft text of its cell, to two decimals. */
+function formatDistanceDraft(
+  km: number,
+  distanceUnit: 'km' | 'miles',
+  modality: ExerciseModality
+): string {
+  return String(
+    parseFloat(setDistanceFromKm(km, distanceUnit, modality).toFixed(2))
+  );
+}
+
 export function formatDisplayWeight(
   weightKg: number | null,
   unit: 'kg' | 'lbs'
 ): string {
   if (weightKg == null) return '';
-  return formatLocalizedNumber(weightFromKg(weightKg, unit), {
-    maximumFractionDigits: 1,
-  });
+  return formatFocusWeight(storedWeightInUnit(weightKg, unit), unit);
 }
 
 function formatMetricWeight(valueKg: number, unit: 'kg' | 'lbs'): string {
@@ -252,6 +265,12 @@ interface ActiveWorkoutSetRowProps {
   ) => void;
   onAddSet?: (entryId: string) => void;
   /**
+   * The focus view's table look (Phone-OtherTypes board): 44 pt rounded value
+   * cells like the stepper rows' instead of the list's flat ones. Same inputs,
+   * drafts and handlers.
+   */
+  focusLook?: boolean;
+  /**
    * Live and edit: register this row's {@link SetRowAccessoryHandle} (keyed by
    * its render key) so the screen's sticky accessory bar can dispatch
    * Next/Log/advance to the focused row. Called with `null` on unmount.
@@ -260,6 +279,37 @@ interface ActiveWorkoutSetRowProps {
     key: string,
     handle: SetRowAccessoryHandle | null
   ) => void;
+}
+
+type CellInputProps = React.ComponentProps<typeof SetCellInput>;
+
+/** `SetCellInput`'s props on the focus view's 44 pt cell (the list's chip-only props are dropped). */
+function FocusCellInput({
+  className: _className,
+  flat: _flat,
+  keyboardType,
+  placeholder,
+  ...rest
+}: CellInputProps) {
+  // The cell fills its column: the list's cells are sized by their callers'
+  // `w-16` / `w-11`, which would shrink these 44 pt chips around the value.
+  return (
+    <View
+      style={{
+        alignSelf: 'stretch',
+        flexGrow: 1,
+        flexShrink: 1,
+        minWidth: 0,
+        paddingHorizontal: 2,
+      }}
+    >
+      <TableCellInput
+        {...rest}
+        keyboardType={keyboardType}
+        placeholder={placeholder}
+      />
+    </View>
+  );
 }
 
 function ActiveWorkoutSetRow({
@@ -293,9 +343,11 @@ function ActiveWorkoutSetRow({
   onActivateRpe,
   onEditFieldChange,
   onAddSet,
+  focusLook = false,
   onRegisterAccessoryHandle,
 }: ActiveWorkoutSetRowProps) {
   const { t } = useTranslation();
+  const CellInput = focusLook ? FocusCellInput : SetCellInput;
   const readOnly = mode === 'view';
   const isEdit = mode === 'edit';
   const isLive = mode === 'live';
@@ -345,6 +397,9 @@ function ActiveWorkoutSetRow({
   // in place of reps.
   const weightDuration = isWeightDurationModality(modality);
   const weightDistance = isWeightDistanceModality(modality);
+  // A multi-set cardio row logs a distance next to its duration. Only a live
+  // row edits it; view rows show it as text and edit rows keep the duration cell.
+  const cardioDistance = isLive && modality === 'duration_distance';
   // Legacy-aware display seconds: `duration` modality falls back to
   // reps-as-seconds for pre-modality isometric rows (see
   // effectiveSetDurationSec). Editing writes `duration`; reps stay untouched.
@@ -366,11 +421,7 @@ function ActiveWorkoutSetRow({
   const [durationDraft, setDurationDraft] = useState(durationSeedText);
   const distanceSeedText =
     set.distance != null
-      ? String(
-          parseFloat(
-            setDistanceFromKm(set.distance, distanceUnit, modality).toFixed(2)
-          )
-        )
+      ? formatDistanceDraft(set.distance, distanceUnit, modality)
       : '';
   const [distanceDraft, setDistanceDraft] = useState(distanceSeedText);
   // Whether the user typed in each value draft since it was last committed or
@@ -384,6 +435,7 @@ function ActiveWorkoutSetRow({
     reps: false,
     duration: false,
     distance: false,
+    effort: false,
   });
   const handleWeightTyped = useCallback((text: string) => {
     setWeightDraft(text);
@@ -417,12 +469,17 @@ function ActiveWorkoutSetRow({
   const [rpeDraft, setRpeDraft] = useState(() =>
     effortValue != null ? formatRpe(effortValue) : ''
   );
+  const handleEffortTyped = useCallback((text: string) => {
+    setRpeDraft(text);
+    setEdited((previous) => ({ ...previous, effort: true }));
+  }, []);
 
   // Re-seed drafts when the underlying set's VALUES change (unit change or an
   // external edit) — but deliberately NOT on `set.id`. A stable render key keeps
   // this row's instance alive across an autosave that only reassigns the id, so
   // keying the re-seed on the id would wipe in-progress text under a still-open
   // keyboard.
+  const [prevEffortField, setPrevEffortField] = useState(effortField);
   const signature = `${set.weight}|${set.reps}|${set.duration}|${set.distance}|${set.rpe}|${set.rir}|${effortField}|${weightUnit}|${distanceUnit}`;
   const [prevSignature, setPrevSignature] = useState(signature);
   // A store change (an autosave echo normalizing a value, or a set edited on
@@ -439,14 +496,30 @@ function ActiveWorkoutSetRow({
   const justGainedFocus = !wasFocused && isFocusedRow;
   if (wasFocused !== isFocusedRow) setWasFocused(isFocusedRow);
   if (justGainedFocus) {
-    setEdited({ weight: false, reps: false, duration: false, distance: false });
+    setEdited({
+      weight: false,
+      reps: false,
+      duration: false,
+      distance: false,
+      effort: false,
+    });
   }
   const liveEdited = justGainedFocus
-    ? { weight: false, reps: false, duration: false, distance: false }
+    ? {
+        weight: false,
+        reps: false,
+        duration: false,
+        distance: false,
+        effort: false,
+      }
     : edited;
   if (signature !== prevSignature) {
     setPrevSignature(signature);
     const keepEdits = isFocusedRow || justLostFocus;
+    // A metric switch never keeps the effort draft: it was flushed to the old
+    // field (see effortFlushRef) and the new field starts from its own value.
+    const effortSwitched = effortField !== prevEffortField;
+    if (effortSwitched) setPrevEffortField(effortField);
     const fromStore = {
       weight: formatDisplayWeight(set.weight, weightUnit),
       reps: set.reps != null ? String(set.reps) : '',
@@ -458,6 +531,7 @@ function ActiveWorkoutSetRow({
       reps: keepEdits && liveEdited.reps,
       duration: keepEdits && liveEdited.duration,
       distance: keepEdits && liveEdited.distance,
+      effort: keepEdits && liveEdited.effort && !effortSwitched,
     };
     if (!kept.weight) setWeightDraft(fromStore.weight);
     if (!kept.reps) setRepsDraft(fromStore.reps);
@@ -468,14 +542,18 @@ function ActiveWorkoutSetRow({
       reps: kept.reps,
       duration: kept.duration,
       distance: kept.distance,
+      effort: kept.effort,
     });
     // RPE alone commits per keystroke in edit mode, so a re-seed can arrive
     // mid-typing: leave the draft alone while its parse already matches the
     // committed value (e.g. "0" clamps to 1 — rewriting would jump the text
-    // under the user's cursor). Blur still snaps the text via commitRpe. Its
-    // draft is never re-seeded under the keyboard: a live row only commits it
-    // on blur, so a draft being typed has no flag to tell it from a stale one.
-    if (!isFocusedRow && parseEffortInput(rpeDraft) !== effortValue) {
+    // under the user's cursor). Blur still snaps the text via commitRpe. A
+    // draft the user typed is kept while focused; an untouched one follows the
+    // store even under the keyboard, so a watch edit shows and is not undone.
+    if (
+      !kept.effort &&
+      (effortSwitched || parseEffortInput(rpeDraft) !== effortValue)
+    ) {
       setRpeDraft(effortValue != null ? formatRpe(effortValue) : '');
     }
   }
@@ -536,78 +614,33 @@ function ActiveWorkoutSetRow({
   const canFillFromPrevious = previousSet != null;
   const handleFillFromPrevious = useCallback(() => {
     if (previousSet == null) return;
-    if (durationLike) {
-      const seconds = effectiveSetDurationSec(
-        { duration: previousSet.duration ?? null, reps: previousSet.reps },
-        modality
-      );
-      if (seconds == null) return;
-      onCommitField?.(setId, { duration: seconds });
-      setDurationDraft(String(seconds));
-      setEdited((previous) => ({ ...previous, duration: false }));
-      return;
-    }
-    const patch: ActiveSetPatch = {};
-    if (previousSet.weight != null) patch.weight = previousSet.weight;
-    if (weightDuration) {
-      if (previousSet.duration != null) patch.duration = previousSet.duration;
-    } else if (weightDistance) {
-      if (previousSet.distance != null) patch.distance = previousSet.distance;
-    } else if (previousSet.reps != null) {
-      patch.reps = previousSet.reps;
-    }
+    const patch = previousSetFillPatch(previousSet, modality);
     if (Object.keys(patch).length === 0) return;
     onCommitField?.(setId, patch);
     // A focused row skips the store-driven re-seed (drafts win under the
     // keyboard), so mirror the fill into the drafts here; on an unfocused row
     // the re-seed writes the same values. The fill is committed above, so
     // it is not an edit left to write back.
-    const filled: { [K in keyof typeof edited]?: string } = {};
-    if (previousSet.weight != null) {
-      filled.weight = formatDisplayWeight(previousSet.weight, weightUnit);
+    if (patch.weight != null) {
+      setWeightDraft(formatDisplayWeight(patch.weight, weightUnit));
     }
-    if (weightDuration) {
-      if (previousSet.duration != null) {
-        filled.duration = String(previousSet.duration);
-      }
-    } else if (weightDistance) {
-      if (previousSet.distance != null) {
-        filled.distance = String(
-          parseFloat(
-            setDistanceFromKm(
-              previousSet.distance,
-              distanceUnit,
-              modality
-            ).toFixed(2)
-          )
-        );
-      }
-    } else if (previousSet.reps != null) {
-      filled.reps = String(previousSet.reps);
+    if (patch.duration != null) setDurationDraft(String(patch.duration));
+    if (patch.distance != null) {
+      setDistanceDraft(
+        formatDistanceDraft(patch.distance, distanceUnit, modality)
+      );
     }
-    if (filled.weight != null) setWeightDraft(filled.weight);
-    if (filled.duration != null) setDurationDraft(filled.duration);
-    if (filled.distance != null) setDistanceDraft(filled.distance);
-    if (filled.reps != null) setRepsDraft(filled.reps);
+    if (patch.reps != null) setRepsDraft(String(patch.reps));
     // What the fill wrote is committed, so a field typed in before the fill is
     // no longer an unwritten edit. Fields the fill did not touch keep theirs.
     setEdited((previous) => ({
-      weight: filled.weight != null ? false : previous.weight,
-      reps: filled.reps != null ? false : previous.reps,
-      duration: filled.duration != null ? false : previous.duration,
-      distance: filled.distance != null ? false : previous.distance,
+      weight: patch.weight != null ? false : previous.weight,
+      reps: patch.reps != null ? false : previous.reps,
+      duration: patch.duration != null ? false : previous.duration,
+      distance: patch.distance != null ? false : previous.distance,
+      effort: previous.effort,
     }));
-  }, [
-    previousSet,
-    durationLike,
-    weightDuration,
-    weightDistance,
-    distanceUnit,
-    modality,
-    onCommitField,
-    setId,
-    weightUnit,
-  ]);
+  }, [previousSet, modality, distanceUnit, onCommitField, setId, weightUnit]);
 
   // Commit the parsed+clamped value on every keystroke — including empty → null
   // — so WorkoutDetailScreen's header Save, which reads the reducer synchronously
@@ -616,10 +649,10 @@ function ActiveWorkoutSetRow({
   // in rpeDraft for display; blur still echoes the snapped value via commitRpe.
   const handleEditRpeChange = useCallback(
     (text: string) => {
-      setRpeDraft(text);
+      handleEffortTyped(text);
       onCommitField?.(setId, effortPatch(parseEffortInput(text)));
     },
-    [onCommitField, setId, effortPatch, parseEffortInput]
+    [handleEffortTyped, onCommitField, setId, effortPatch, parseEffortInput]
   );
 
   // Advance past this row: activate the next set's first value cell, or add a
@@ -764,12 +797,21 @@ function ActiveWorkoutSetRow({
   // landed it) is unchanged too.
   const commitRpeValue = useCallback(
     (text: string) => {
+      // Never typed here: the store may have moved on under it (a watch edit).
+      if (!edited.effort) return;
       if (text === (effortValue != null ? formatRpe(effortValue) : '')) return;
       const value = parseEffortInput(text);
       if (value === effortValue) return;
       onCommitField?.(setId, effortPatch(value));
     },
-    [onCommitField, setId, effortValue, effortPatch, parseEffortInput]
+    [
+      onCommitField,
+      setId,
+      effortValue,
+      effortPatch,
+      parseEffortInput,
+      edited.effort,
+    ]
   );
 
   // Blur handler: commit, then snap the visible text to the committed form
@@ -779,6 +821,8 @@ function ActiveWorkoutSetRow({
       commitRpeValue(text);
       const value = parseEffortInput(text);
       setRpeDraft(value != null ? formatRpe(value) : '');
+      // Committed, so a later store change (a watch edit) is not written over.
+      setEdited((previous) => ({ ...previous, effort: false }));
     },
     [commitRpeValue, parseEffortInput]
   );
@@ -793,6 +837,7 @@ function ActiveWorkoutSetRow({
   const writeDrafts = useCallback(() => {
     if (durationLike) {
       writeDuration(durationDraft);
+      if (cardioDistance) writeDistance(distanceDraft);
     } else if (weightDuration) {
       writeWeight(weightDraft);
       writeDuration(durationDraft);
@@ -806,6 +851,7 @@ function ActiveWorkoutSetRow({
     if (isEffortColumn) commitRpeValue(rpeDraft);
   }, [
     durationLike,
+    cardioDistance,
     weightDuration,
     weightDistance,
     writeWeight,
@@ -830,19 +876,31 @@ function ActiveWorkoutSetRow({
   // once on the way out. It reads the latest writers through a ref so the
   // cleanup runs on unmount only, not on every keystroke, and goes through
   // the same edited / unchanged guards: an untouched draft writes nothing.
+  // A draft typed for RPE is committed to RPE when the column switches to RIR
+  // (and vice versa): the previous render's writer still targets the field the
+  // draft was typed for, like FocusSetRow's useStepperField commitKey flush.
+  const effortFlushRef = useRef({ field: effortField, flush: () => {} });
+  useEffect(() => {
+    const previous = effortFlushRef.current;
+    if (previous.field !== effortField) previous.flush();
+    effortFlushRef.current = {
+      field: effortField,
+      flush: () => commitRpeValue(rpeDraft),
+    };
+  });
+
   const unmountFlushRef = useRef<() => void>(() => {});
   useEffect(() => {
     unmountFlushRef.current = isLive && isFocusedRow ? writeDrafts : () => {};
   });
   useEffect(() => () => unmountFlushRef.current(), []);
 
-  // Log the set: flush any in-progress edits first so the values the user
-  // sees are exactly what gets completed (and autosaved). The completion
-  // haptic fires in the store (selection tick, or the stronger success buzz on
-  // a PR), so it stays mutually exclusive.
-  const handleLog = useCallback(() => {
+  // Commit every in-progress draft of the row, for the row's own Log and for
+  // a Log pressed outside it (the bottom bar, through the accessory handle).
+  const commitDrafts = useCallback(() => {
     if (durationLike) {
       commitDuration(durationDraft);
+      if (cardioDistance) commitDistance(distanceDraft);
     } else if (weightDuration) {
       commitWeight(weightDraft);
       commitDuration(durationDraft);
@@ -854,9 +912,9 @@ function ActiveWorkoutSetRow({
       commitReps(repsDraft);
     }
     if (isEffortColumn) commitRpe(rpeDraft);
-    onComplete?.(setId);
   }, [
     durationLike,
+    cardioDistance,
     weightDuration,
     weightDistance,
     commitWeight,
@@ -865,14 +923,20 @@ function ActiveWorkoutSetRow({
     commitDistance,
     commitRpe,
     isEffortColumn,
-    onComplete,
-    setId,
     weightDraft,
     repsDraft,
     durationDraft,
     distanceDraft,
     rpeDraft,
   ]);
+  // Log the set: flush any in-progress edits first so the values the user
+  // sees are exactly what gets completed (and autosaved). The completion
+  // haptic fires in the store (selection tick, or the stronger success buzz on
+  // a PR), so it stays mutually exclusive.
+  const handleLog = useCallback(() => {
+    commitDrafts();
+    onComplete?.(setId);
+  }, [commitDrafts, onComplete, setId]);
 
   // Register this row's accessory handle for the screen's sticky bar (live
   // and edit — view rows have nothing to dispatch to). The handle is
@@ -883,10 +947,14 @@ function ActiveWorkoutSetRow({
   const handleLogRef = useRef(handleLog);
   const handleAdvanceRef = useRef(handleAdvance);
   const flushWeightRef = useRef(() => commitWeight(weightDraft));
+  // Edit rows are written per keystroke by the form reducer and their local
+  // drafts can be stale, so only a live row flushes every draft.
+  const flushDraftsRef = useRef(() => {});
   useEffect(() => {
     handleLogRef.current = handleLog;
     handleAdvanceRef.current = handleAdvance;
     flushWeightRef.current = () => commitWeight(weightDraft);
+    flushDraftsRef.current = isLive ? commitDrafts : () => {};
   });
   useEffect(() => {
     if (readOnly || !onRegisterAccessoryHandle) return;
@@ -908,6 +976,7 @@ function ActiveWorkoutSetRow({
       },
       advance: () => handleAdvanceRef.current(),
       flushWeight: () => flushWeightRef.current(),
+      flushDrafts: () => flushDraftsRef.current(),
     });
     return () => onRegisterAccessoryHandle(key, null);
   }, [readOnly, renderKey, setId, onRegisterAccessoryHandle]);
@@ -1004,7 +1073,47 @@ function ActiveWorkoutSetRow({
     setNumberAnchor
   );
 
+  // The focus table's check cell: a 44 pt rounded chip, accent once logged
+  // (like the stepper rows'), a muted tick while it still waits.
+  const focusCheckCell = (
+    done: boolean,
+    onPress: () => void,
+    label: string
+  ) => (
+    <Pressable
+      onPress={onPress}
+      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      className={`h-11 w-11 items-center justify-center rounded-[14px] active:opacity-80 ${done ? '' : 'bg-raised'}`}
+      style={done ? { backgroundColor: accentPrimary } : undefined}
+    >
+      <Icon
+        name="checkmark"
+        size={20}
+        color={done ? '#ffffff' : textMuted}
+        weight="bold"
+      />
+    </Pressable>
+  );
+
   const checkControl = (() => {
+    if (focusLook && isLive && !readOnly) {
+      const done = state === 'done';
+      return focusCheckCell(
+        done,
+        done ? () => onUncomplete?.(setId) : handleLog,
+        done
+          ? t('activeWorkout.setRow.incomplete', {
+              defaultValue: 'Un-complete set {{setNumber}}',
+              setNumber: set.set_number,
+            })
+          : t('activeWorkout.setRow.log', {
+              defaultValue: 'Log set {{setNumber}}',
+              setNumber: set.set_number,
+            })
+      );
+    }
     if (state === 'done') {
       if (readOnly) {
         return <CompletionCheck size={28} />;
@@ -1217,7 +1326,7 @@ function ActiveWorkoutSetRow({
       : 'numeric';
   const weightInputCell = (
     <View className="flex-1 items-center">
-      <SetCellInput
+      <CellInput
         inputRef={weightInputRef}
         value={isEdit ? editWeightText : weightDraft}
         onChangeText={
@@ -1239,7 +1348,7 @@ function ActiveWorkoutSetRow({
   );
   const repsInputCell = (
     <View className="flex-1 items-center">
-      <SetCellInput
+      <CellInput
         inputRef={repsInputRef}
         value={isEdit ? editRepsText : repsDraft}
         onChangeText={
@@ -1263,17 +1372,11 @@ function ActiveWorkoutSetRow({
   );
   const assumedDistanceText =
     isLive && set.distance == null && assumed?.distance != null
-      ? String(
-          parseFloat(
-            setDistanceFromKm(assumed.distance, distanceUnit, modality).toFixed(
-              2
-            )
-          )
-        )
+      ? formatDistanceDraft(assumed.distance, distanceUnit, modality)
       : null;
   const distanceInputCell = (
     <View className="flex-1 items-center">
-      <SetCellInput
+      <CellInput
         inputRef={distanceInputRef}
         value={isEdit ? editDistanceText : distanceDraft}
         onChangeText={
@@ -1331,7 +1434,7 @@ function ActiveWorkoutSetRow({
       className="flex-1 flex-row items-center justify-center"
       style={{ gap: 4 }}
     >
-      <SetCellInput
+      <CellInput
         inputRef={durationInputRef}
         value={
           stopwatchStartedAt != null
@@ -1404,10 +1507,10 @@ function ActiveWorkoutSetRow({
   // cell being an input.
   const rpeInputCell = showRpeInput ? (
     <View className="w-14 items-center">
-      <SetCellInput
+      <CellInput
         inputRef={rpeInputRef}
         value={rpeDraft}
-        onChangeText={isEdit ? handleEditRpeChange : setRpeDraft}
+        onChangeText={isEdit ? handleEditRpeChange : handleEffortTyped}
         onBlur={() => commitRpe(rpeDraft)}
         onFocus={() => onActivateRpe?.(setId)}
         keyboardType="decimal-pad"
@@ -1432,9 +1535,9 @@ function ActiveWorkoutSetRow({
     <Pressable
       testID="set-row"
       onLongPress={longPress}
-      className={`flex-row items-center ${isLive ? 'py-2' : 'py-2.5'} px-1 ${isCursor ? 'rounded-xl' : 'bg-background'}`}
+      className={`flex-row items-center ${focusLook ? 'py-1' : isLive ? 'py-2' : 'py-2.5'} px-1 ${isCursor && !focusLook ? 'rounded-xl' : focusLook ? '' : 'bg-background'}`}
       style={
-        isCursor
+        isCursor && !focusLook
           ? { backgroundColor: withAlpha(accentPrimary, 0.12) }
           : undefined
       }
@@ -1453,6 +1556,11 @@ function ActiveWorkoutSetRow({
             <>
               {durationCellText}
               {modality === 'duration_distance' && distanceCellText}
+            </>
+          ) : cardioDistance ? (
+            <>
+              {durationInputCell}
+              {distanceInputCell}
             </>
           ) : (
             durationInputCell
@@ -1488,7 +1596,7 @@ function ActiveWorkoutSetRow({
           </Text>
         )}
       </View>
-      <View className="w-10 items-center">
+      <View className={focusLook ? 'w-11 items-center' : 'w-10 items-center'}>
         {isEdit ? editLastCell : checkControl}
       </View>
     </Pressable>

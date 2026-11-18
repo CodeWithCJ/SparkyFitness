@@ -40,7 +40,11 @@ import {
 } from '@workspace/shared';
 import type { IconName } from '../components/Icon';
 // Type-only, so the store's runtime import of this module stays acyclic.
-import type { CompletedSetMap, PrSetMap } from '../stores/activeWorkoutStore';
+import type {
+  ActiveSetPatch,
+  CompletedSetMap,
+  PrSetMap,
+} from '../stores/activeWorkoutStore';
 import type { WorkoutDraftExercise, WorkoutDraftSet } from '../types/drafts';
 import type { Exercise } from '../types/exercise';
 import type { ExternalExerciseItem } from '../types/externalExercises';
@@ -774,6 +778,29 @@ export function rendersCardioEffortForm(
 }
 
 /**
+ * The set's current id for an id captured earlier. Autosave swaps a client-added
+ * set's temporary id (-1) for the server's, and the store keeps the old id as
+ * the row's stable render key (`setRenderKeys`: current id -> key). State a view
+ * holds across that swap (a pending Get ready, the effort prompt, the plate
+ * calculator) stores the id it saw and resolves it here before it reads or
+ * writes the set. Null when the set no longer exists.
+ */
+export function resolveCurrentSetId(
+  session: PresetSessionResponse | null,
+  setRenderKeys: Record<string, string>,
+  setId: string
+): string | null {
+  if (session == null) return null;
+  const exists = (id: string) =>
+    session.exercises.some((e) => e.sets.some((s) => String(s.id) === id));
+  if (exists(setId)) return setId;
+  for (const [currentId, key] of Object.entries(setRenderKeys)) {
+    if (key === setId && exists(currentId)) return currentId;
+  }
+  return null;
+}
+
+/**
  * Duration in seconds a set displays/fills/adopts. Legacy isometric rows hold
  * their seconds in `reps` (they predate the duration column), so `duration`
  * modality — and ONLY that modality — falls back to reps-as-seconds. The
@@ -1194,6 +1221,40 @@ export function alignPreviousSets<T extends { setType?: string | null }>(
       ? warmups[warmupIndex++]
       : working[workingIndex++]
   );
+}
+
+/**
+ * What tapping a set's PREVIOUS cell writes: last session's values for the
+ * fields this modality shows. A field the previous set lacks (a weight-only
+ * set, say) is left out so the fill never clears what the row holds. Shared by
+ * the list's set row and the focus view's rows. Empty when there is nothing to
+ * fill.
+ */
+export function previousSetFillPatch(
+  previousSet: ExerciseRecentSessionSet,
+  modality: ExerciseModality
+): ActiveSetPatch {
+  const patch: ActiveSetPatch = {};
+  if (isDurationModality(modality)) {
+    const seconds = effectiveSetDurationSec(
+      { duration: previousSet.duration ?? null, reps: previousSet.reps },
+      modality
+    );
+    if (seconds != null) patch.duration = seconds;
+    if (modality === 'duration_distance' && previousSet.distance != null) {
+      patch.distance = previousSet.distance;
+    }
+    return patch;
+  }
+  if (previousSet.weight != null) patch.weight = previousSet.weight;
+  if (isWeightDurationModality(modality)) {
+    if (previousSet.duration != null) patch.duration = previousSet.duration;
+  } else if (isWeightDistanceModality(modality)) {
+    if (previousSet.distance != null) patch.distance = previousSet.distance;
+  } else if (previousSet.reps != null) {
+    patch.reps = previousSet.reps;
+  }
+  return patch;
 }
 
 export function resolveAssumedSetValues(
@@ -2756,6 +2817,30 @@ function canonicalExerciseStructureEqual(
   );
 }
 
+/**
+ * A preset exercise saved without sets shows one fabricated set in the
+ * session. Left as it was (not logged, no values, still a normal set) it is
+ * that placeholder, not a set the lifter added.
+ */
+export function isUntouchedFabricatedSet(
+  presetSetCount: number,
+  sessionSets: PresetSessionResponse['exercises'][number]['sets'],
+  completedSetIds: CompletedSetMap
+): boolean {
+  if (presetSetCount !== 0 || sessionSets.length !== 1) return false;
+  const [only] = sessionSets;
+  return (
+    completedSetIds[String(only.id)] == null &&
+    // The fabricated set is a normal one; a changed type is the lifter's.
+    (only.set_type ?? 'normal') === 'normal' &&
+    only.weight == null &&
+    only.reps == null &&
+    only.duration == null &&
+    only.distance == null &&
+    only.notes == null
+  );
+}
+
 export function buildPresetUpdateExercises(
   session: PresetSessionResponse,
   preset: WorkoutPreset,
@@ -2818,17 +2903,13 @@ export function buildPresetUpdateExercises(
               ...opts.assumeSources,
               plannedSetValues: opts.plannedSetValues,
             });
-      const [only] = exercise.sets;
       const untouchedFabricatedSet =
         matched != null &&
-        matched.sets.length === 0 &&
-        exercise.sets.length === 1 &&
-        opts.completedSetIds[String(only.id)] == null &&
-        only.weight == null &&
-        only.reps == null &&
-        only.duration == null &&
-        only.distance == null &&
-        only.notes == null;
+        isUntouchedFabricatedSet(
+          matched.sets.length,
+          exercise.sets,
+          opts.completedSetIds
+        );
       return {
         exercise_id: exercise.exercise_id,
         image_url:

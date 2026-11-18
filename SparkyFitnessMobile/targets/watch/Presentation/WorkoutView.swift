@@ -1412,7 +1412,6 @@ private struct CurrentSetView: View {
         // `crownStep`, captured when the box was selected.
         .onChange(of: step.plannedSet.setId) {
             endCrownEditing()
-            logFinishedHoldIfDue()
         }
         // crownValue is a number in the unit it was selected in. Committing
         // after the phone switches kg/lb or m/yd would save that number in the new unit.
@@ -1424,11 +1423,6 @@ private struct CurrentSetView: View {
             if editing == .distance { editing = nil }
         }
         .onDisappear { endCrownEditing() }
-        // A running hold that reaches 0:00 logs the set on its own.
-        // It also runs when this set becomes visible again, because the hold
-        // may have finished while another set was on screen.
-        .onChange(of: store.holdFinishedSetId) { logFinishedHoldIfDue() }
-        .onAppear { logFinishedHoldIfDue() }
         .sheet(item: $editing) { field in
             NumericKeypadView(
                 title: title(for: field),
@@ -1440,12 +1434,6 @@ private struct CurrentSetView: View {
                 editing = nil
             }
         }
-    }
-
-    /// Logs this set if its hold already ran out. Idempotent: a completed set
-    /// is skipped.
-    private func logFinishedHoldIfDue() {
-        if store.holdFinishedSetId == step.plannedSet.setId, !store.isCompleted(step) { logSet() }
     }
 
     /// Logs the set on screen, with the value on screen, settled or not. From
@@ -2019,8 +2007,9 @@ private struct HoldGetReady: View {
 
 /// The hold while it runs, in place of the set's values: a ring that empties
 /// with the time left and the heart rate in it. A tap ends the hold early and
-/// logs the set (`onEnd`), and at 0:00 the set screen logs it on its own. It
-/// buzzes at the end through the rest-finished hook. `TimelineView` rather
+/// logs the set (`onEnd`). At 0:00 it buzzes through the rest-finished hook and
+/// keeps counting up ("+7") until the tap, so a hold can go past its plan; the
+/// set logs the time actually held. `TimelineView` rather
 /// than a stored timer publisher: the store republishes every second and would
 /// freeze a `Timer.publish` the way the rest screen used to.
 private struct HoldRunning: View {
@@ -2037,7 +2026,8 @@ private struct HoldRunning: View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let setId = step.plannedSet.setId
             let remaining = remaining(setId: setId, now: context.date)
-            let fraction = totalSeconds > 0 ? Double(remaining) / Double(totalSeconds) : 0
+            let over = store.holdOvertime(for: setId, now: context.date)
+            let fraction = over != nil ? 1 : (totalSeconds > 0 ? Double(remaining) / Double(totalSeconds) : 0)
             let size = WatchStyle.m(140)
             let line = size * 12 / 136
             let weight = store.values(for: step).weightKg
@@ -2052,7 +2042,7 @@ private struct HoldRunning: View {
                             .rotationEffect(.degrees(-90))
                         VStack(spacing: 0) {
                             HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(2)) {
-                                Text("\(remaining)")
+                                Text(over.map { "+\($0)" } ?? "\(remaining)") // i18n-ignore
                                     .font(.system(size: WatchStyle.num(50), weight: WatchStyle.numWeight))
                                     .monospacedDigit()
                                 Text("s").font(.system(size: WatchStyle.m(30), weight: WatchStyle.numWeight)) // i18n-ignore
@@ -2075,7 +2065,8 @@ private struct HoldRunning: View {
                     .contentShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(String(localized: "watch.workout.holdRunning", defaultValue: "\(remaining) seconds left"))
+                .accessibilityLabel(over.map { String(localized: "watch.workout.holdOver", defaultValue: "\($0) seconds past the plan") }
+                    ?? String(localized: "watch.workout.holdRunning", defaultValue: "\(remaining) seconds left"))
                 .accessibilityHint(String(localized: "watch.workout.holdEndHint", defaultValue: "Ends the hold and logs the set"))
                 SetProgressRow(step: step, centered: true)
                     .frame(height: WatchStyle.m(8))
@@ -2092,7 +2083,9 @@ private struct HoldRunning: View {
                         .minimumScaleFactor(0.5)
                         .frame(height: WatchStyle.m(24))
                 }
-                Text(String(localized: "watch.workout.holdTapToEnd", defaultValue: "Tap the ring to end early"))
+                Text(over != nil
+                    ? String(localized: "watch.workout.holdTapToLog", defaultValue: "Tap the ring to log the set")
+                    : String(localized: "watch.workout.holdTapToEnd", defaultValue: "Tap the ring to end early"))
                     .font(.system(size: WatchStyle.m(14), weight: .medium))
                     .foregroundStyle(WatchStyle.lightGrey)
                     .frame(height: WatchStyle.m(18))

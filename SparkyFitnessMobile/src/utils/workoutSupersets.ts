@@ -473,6 +473,16 @@ export const SUPERSET_PALETTE_VARS = [
 ];
 
 /**
+ * The focus view draws a superset in one light colour throughout, lilac for
+ * the first run, like the watch (`SetSupersetPalette`). Later runs reuse the
+ * category palette from its second colour on, as the watch does.
+ */
+export const FOCUS_SUPERSET_PALETTE_VARS = [
+  '--color-superset',
+  ...SUPERSET_PALETTE_VARS.slice(1),
+];
+
+/**
  * Maps each grouped entry id to a palette colour by run position
  * (palette[i % length]) — index assignment, not group-id hashing, so colours
  * stay collision-free while the visible groups fit the palette.

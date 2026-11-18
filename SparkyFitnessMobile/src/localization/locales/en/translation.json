@@ -590,7 +590,8 @@
         "label": "Exercise {{number}} of {{total}}, {{name}}, {{status}}",
         "done": "done",
         "inProgress": "in progress",
-        "todo": "not started"
+        "todo": "not started",
+        "supersetLabel": "{{label}}, superset {{letter}}{{member}}"
       },
       "plan": "Plan: {{sets}} × {{reps}}",
       "lastTime": "Last time: {{sets}}",
@@ -598,7 +599,107 @@
       "next": "Next",
       "previousLabel": "Previous exercise, {{name}}",
       "nextLabel": "Next exercise, {{name}}",
-      "backToCurrent": "Back to current"
+      "backToCurrent": "Back to current",
+      "header": {
+        "position": "Exercise {{position}} of {{total}}",
+        "list": "Exercise list"
+      },
+      "bar": {
+        "previousSet": "Previous set, edit in place",
+        "logSet": "Log set",
+        "logSetRest": "Log set, rest {{duration}}",
+        "startHold": "Start hold"
+      },
+      "hero": {
+        "label": "Set {{setNumber}} of {{total}}",
+        "setOf": "Set {{setNumber}} of {{total}}",
+        "typedSet": "Set {{letter}}",
+        "fill": "Fill {{value}}",
+        "fillLabel": "Fill set {{setNumber}} with {{value}}",
+        "step": "step {{step}} {{unit}}",
+        "lastReps": "last {{reps}}",
+        "optional": "optional",
+        "optionalRepsLeft_one": "optional · {{count}} rep left",
+        "optionalRepsLeft_other": "optional · {{count}} reps left",
+        "decreaseEffort": "Decrease {{metric}} for set {{setNumber}}",
+        "increaseEffort": "Increase {{metric}} for set {{setNumber}}"
+      },
+      "plates": {
+        "perSide": "Per side:",
+        "onBar": "on a {{bar}} {{unit}} bar",
+        "nearest": "Nearest {{weight}} {{unit}}",
+        "perSideLower": "per side",
+        "calculator": "Plate calculator"
+      },
+      "planShort": "Plan {{sets}} × {{reps}}",
+      "lastTimeShort": "Last time {{sets}}",
+      "bestLabel": "Best",
+      "rest": {
+        "skip": "Skip rest",
+        "paused": "Rest paused",
+        "label": "Rest",
+        "beepsAt": "Beeps at {{seconds}} s",
+        "beepsOff": "Beeps off",
+        "seconds": "{{seconds}} s",
+        "next": "Next: {{value}}"
+      },
+      "hold": {
+        "startNow": "Start the hold now",
+        "end": "End the hold and log the set",
+        "getReady": "Get ready",
+        "tapToStart": "Tap the ring to start now.",
+        "tapToEnd": "Tap the ring to end. At 0 it keeps going until you tap.",
+        "tapToEndOver": "Past the plan. Tap the ring when you are done to log the set.",
+        "tapToStop": "Tap the ring to stop and log the set.",
+        "setOf": "Set {{number}}/{{total}}"
+      },
+      "exercises": {
+        "title": "Exercises",
+        "add": "Add exercise",
+        "undo": "Undo set",
+        "back": "Back to workout",
+        "end": "End workout",
+        "superset": "Superset",
+        "supersetHeader": "Superset",
+        "supersetMember": "superset {{badge}}",
+        "setsProgress": "{{done}}/{{total}} sets"
+      },
+      "setOptions": {
+        "title": "Set {{number}} · {{name}}",
+        "setType": "Set type",
+        "metricColumn": "Metric column",
+        "metricHint": "Vol, 1RM and 10RM are calculated from weight and reps.",
+        "setDetail": "Set detail",
+        "volume": "Vol",
+        "e1rm": "1RM",
+        "tenrm": "10RM"
+      },
+      "menu": {
+        "viewHint": "Instructions and history",
+        "warmupsHint": "Calculated from your working weight"
+      },
+      "effort": {
+        "maxEffort": "Max effort",
+        "noneLeft": "Nothing left",
+        "repsLeft_one": "{{count}} rep left",
+        "repsLeft_other": "{{count}} reps left",
+        "scaleRpe": "Same scale as RPE, 1 to 10",
+        "scaleRir": "Reps in reserve, 0 to 5",
+        "question": "How hard was that set?",
+        "easy": "Easy",
+        "max": "Max",
+        "lower": "Lower",
+        "higher": "Higher",
+        "skip": "Skip",
+        "save": "Save"
+      },
+      "pr": {
+        "label": "Personal record",
+        "title": "New PR!",
+        "over": "{{gain}} over your previous best of {{previous}}",
+        "continue": "Continue · {{seconds}} s",
+        "autoClose": "Closes on its own after about 5 s"
+      }
     }
   },
   "addSheet": {
@@ -4406,7 +4507,12 @@
       "noMuscles": "No muscles recorded for {{name}}",
       "noMusclesHint": "Add its primary muscles in the exercise library to get suggestions.",
       "empty": "No alternatives found",
-      "catalogUnavailable": "Free Exercise DB is unavailable, so only your library is shown."
+      "catalogUnavailable": "Free Exercise DB is unavailable, so only your library is shown.",
+      "replaceWith": "Replace with {{name}}",
+      "replace": "Replace",
+      "cardsHint": "Swap for something similar. Logged sets stay with the new exercise.",
+      "similarHeading": "Similar exercises",
+      "otherEquipmentHeading": "Other equipment"
     }
   },
   "foodSearch": {
@@ -4732,6 +4838,32 @@
     "sections": {
       "exercises": "Exercises",
       "volume": "Volume"
+    },
+    "changes": {
+      "added": "{{name}} added.",
+      "removed": "{{name}} removed.",
+      "setTypes": "{{name}} set types changed.",
+      "superset": "{{name}} superset changed.",
+      "order": "Exercise order changed.",
+      "sets_one": "{{name}} {{count}} set, was {{before}}.",
+      "sets_other": "{{name}} {{count}} sets, was {{before}}."
+    },
+    "effort": {
+      "easy": "Easy",
+      "moderate": "Moderate",
+      "hard": "Hard",
+      "allOut": "All Out"
+    },
+    "focus": {
+      "niceWork": "Nice work",
+      "setsDone": "{{done}} of {{total}} sets done",
+      "time": "Time",
+      "avgBpm": "Avg bpm",
+      "zoneLegend": "Heart rate takes its zone colour (Zone 1–5)",
+      "howHard": "How hard",
+      "rateEffort": "Rate the workout {{rating}} of 10",
+      "changedTitle": "You changed this workout",
+      "keepOriginal": "Keep original"
     }
   },
   "createFood": {
@@ -5824,7 +5956,16 @@
     "roundRest": "Round Rest",
     "rest": "Rest",
     "round": "Round",
-    "set": "Set"
+    "set": "Set",
+    "allSets": "All sets",
+    "roundRestPeriod": "Round rest period",
+    "restPeriod": "Rest period",
+    "pageHint": "Set it for every set, or one set at a time. New exercises start from your default rest.",
+    "lessLabel": "Subtract 15 seconds",
+    "moreLabel": "Add 15 seconds",
+    "less": "− 15 s",
+    "more": "+ 15 s",
+    "pageFootnote": "While resting, the timer is a taller bar inside the workout screen, and sets stay visible below it."
   },
   "pregnancyDueDate": {
     "errors": {
@@ -5914,6 +6055,8 @@
     "sets_one": "{{count}} set",
     "sets_other": "{{count}} sets",
     "drag": "Drag to reorder",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
     "title": "Reorder exercises",
     "doneHint": "Done reordering"
   },
@@ -10111,7 +10254,27 @@
     "calculatorShort": "Calculator",
     "barCard": "Bar {{number}}: {{name}}",
     "removeBarShort": "Remove",
-    "barWeightUnit": "Weight ({{unit}})"
+    "barWeightUnit": "Weight ({{unit}})",
+    "editInventory": "Edit plate inventory",
+    "targetWeightLabel": "Target weight",
+    "setOf": "{{name}} · set {{number}}",
+    "perSideSummary": "{{plates}} per side",
+    "pageBreakdown": "bar {{bar}} {{unit}} · {{plates}} {{unit}} of plates",
+    "drawingLabel": "Per side: {{plates}} {{unit}}",
+    "drawingEmpty": "Per side: no plates, empty bar",
+    "moreBars": "More bars",
+    "setNumber": "set {{number}}",
+    "stepHint": "− / + step to the next weight your plates can make",
+    "barsHint": "Bars come from your equipment list.",
+    "nearbyWeights": "Nearby weights you can load",
+    "lighter": "Previous weight",
+    "heavier": "Next weight",
+    "useWeight": "Use {{weight}} {{unit}}",
+    "othersGrey": "others grey",
+    "unitKg": "kg",
+    "unitLb": "lb",
+    "cantBeMade": "When the weight can't be made",
+    "platesYouOwn": "Plates you own"
   },
   "labs": {
     "add": "Add lab result",

@@ -5,7 +5,6 @@ import type { PresetSessionResponse } from '@workspace/shared';
 import Icon from './Icon';
 import SafeImage from './SafeImage';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
-import { useImageSlideshow } from '../hooks/useImageSlideshow';
 import {
   useActiveWorkoutStore,
   type CompletedSetMap,
@@ -72,7 +71,6 @@ export default function ActiveWorkoutNowCard({
   const images = (entry?.exercise_snapshot?.images ?? []).filter(
     (path) => path && getImageSource(path) !== null
   );
-  const imageIndex = useImageSlideshow(images.length);
   if (description == null || entry == null) return null;
 
   const activeSet = entry.sets.find((s) => String(s.id) === activeSetId);
@@ -162,10 +160,10 @@ export default function ActiveWorkoutNowCard({
         </View>
         {images.length > 0 && (
           <SafeImage
-            source={getImageSource(images[imageIndex % images.length])}
+            source={getImageSource(images[0])}
             style={{ width: IMAGE_SIZE, height: IMAGE_SIZE, borderRadius: 12 }}
             contentFit="cover"
-            autoplay
+            // A preview is a still: only the enlarged demo animates.
             fallback={null}
           />
         )}
