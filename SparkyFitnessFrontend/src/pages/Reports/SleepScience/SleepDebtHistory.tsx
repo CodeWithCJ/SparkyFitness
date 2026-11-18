@@ -18,6 +18,7 @@ import {
   YAxis,
 } from 'recharts';
 import { SleepDebtData } from '@workspace/shared';
+import { sleepChartTooltipProps } from './sleepChartTooltip';
 
 interface SleepDebtHistoryProps {
   data: SleepDebtData;
@@ -110,12 +111,7 @@ const SleepDebtHistory: React.FC<SleepDebtHistoryProps> = ({ data }) => {
               tickFormatter={(v: number) => formatSecondsToHHMM(v * 3600)}
             />
             <Tooltip
-              contentStyle={{
-                backgroundColor: isDark ? '#1e1e1e' : '#fff',
-                border: `1px solid ${isDark ? '#333' : '#ddd'}`,
-                borderRadius: '8px',
-                fontSize: '12px',
-              }}
+              {...sleepChartTooltipProps(isDark)}
               formatter={(
                 value:
                   string | number | ReadonlyArray<string | number> | undefined,
