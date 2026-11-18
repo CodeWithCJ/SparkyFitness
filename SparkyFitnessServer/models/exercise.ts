@@ -15,7 +15,7 @@ import {
 } from '../services/exerciseCalorieLinkService.js';
 import {
   buildSqlSearch,
-  buildSqlExactMatchOrder,
+  buildSqlRelevanceOrder,
 } from '../utils/dbSearchHelper.js';
 import {
   parseJsonArrayField,
@@ -222,10 +222,15 @@ async function getExercisesWithPagination(
     const selectQueryParams = [...queryParams];
     let selectParamIndex = paramIndex;
     if (searchTerm) {
-      const exactMatchParamIndex = selectParamIndex;
-      selectQueryParams.push(`%${searchTerm}%`);
-      selectParamIndex++;
-      orderClause = `${buildSqlExactMatchOrder('name', exactMatchParamIndex)}, name ASC`;
+      const relevance = buildSqlRelevanceOrder(
+        'name',
+        'name',
+        searchTerm,
+        selectParamIndex
+      );
+      selectQueryParams.push(...relevance.queryParams);
+      selectParamIndex = relevance.nextParamIndex;
+      orderClause = `${relevance.orderClause}, name ASC`;
     }
     const query = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
@@ -443,10 +448,15 @@ async function searchExercises(
     const selectQueryParams = [...queryParams];
     let selectParamIndex = paramIndex;
     if (name) {
-      const exactMatchParamIndex = selectParamIndex;
-      selectQueryParams.push(`%${name}%`);
-      selectParamIndex++;
-      orderClause = `${buildSqlExactMatchOrder('name', exactMatchParamIndex)}, name ASC`;
+      const relevance = buildSqlRelevanceOrder(
+        'name',
+        'name',
+        name,
+        selectParamIndex
+      );
+      selectQueryParams.push(...relevance.queryParams);
+      selectParamIndex = relevance.nextParamIndex;
+      orderClause = `${relevance.orderClause}, name ASC`;
     }
     const finalQuery = `
       SELECT id, source, source_id, name, force, level, mechanic, equipment,
@@ -541,10 +551,15 @@ async function searchExercisesPaginated(
     const selectQueryParams = [...queryParams];
     let selectParamIndex = paramIndex;
     if (name) {
-      const exactMatchParamIndex = selectParamIndex;
-      selectQueryParams.push(`%${name}%`);
-      selectParamIndex++;
-      orderClause = `${buildSqlExactMatchOrder('name', exactMatchParamIndex)}, name ASC`;
+      const relevance = buildSqlRelevanceOrder(
+        'name',
+        'name',
+        name,
+        selectParamIndex
+      );
+      selectQueryParams.push(...relevance.queryParams);
+      selectParamIndex = relevance.nextParamIndex;
+      orderClause = `${relevance.orderClause}, name ASC`;
     }
     const limitParamIndex = selectParamIndex;
     const offsetParamIndex = selectParamIndex + 1;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { pressAction } from './helpers/nativeHeaderTestUtils';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import FoodEntryViewScreen from '../../src/screens/FoodEntryViewScreen';
@@ -454,5 +454,245 @@ describe('FoodEntryViewScreen', () => {
       })
     );
     expect(screen.queryByText('Create Draft Unit')).toBeNull();
+  });
+
+  describe('Weighed it cooked (#3534)', () => {
+    const riceVariants = {
+      variants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          is_default: true,
+          serving_size: 100,
+          serving_unit: 'g',
+          serving_description: '100 g',
+          calories: 360,
+          protein: 7,
+          carbs: 79,
+          fat: 1,
+        },
+      ] as any,
+      isLoading: false,
+      isError: false,
+    };
+    const cookedRice = {
+      ...baseEntry,
+      food_name: 'Rice',
+      quantity: 120,
+      unit: 'g',
+      serving_size: 100,
+      calories: 360,
+      cooked_quantity: 300,
+    };
+
+    it('reopens with the yield and sends the new raw and cooked quantity', () => {
+      mockUseFoodVariants.mockReturnValue(riceVariants as any);
+      const screen = renderScreen({ entry: cookedRice });
+      pressAction(screen, navigation, 'Edit');
+
+      expect(screen.getByLabelText('Weighed it cooked').props.value).toBe(true);
+      expect(
+        screen.getByText('Same batch as this entry: 120 g raw → 300 g cooked')
+      ).toBeTruthy();
+      fireEvent.changeText(screen.getByLabelText('You ate (cooked, g)'), '200');
+      expect(screen.getByTestId('quantity-input').props.value).toBe('80');
+
+      pressAction(screen, navigation, 'Done');
+      expect(mockUpdateEntry).toHaveBeenCalledWith(
+        expect.objectContaining({ quantity: 80, cooked_quantity: 200 })
+      );
+    });
+
+    it('clears the cooked weight when the switch is turned off', () => {
+      mockUseFoodVariants.mockReturnValue(riceVariants as any);
+      const screen = renderScreen({ entry: cookedRice });
+      pressAction(screen, navigation, 'Edit');
+      fireEvent(
+        screen.getByLabelText('Weighed it cooked'),
+        'valueChange',
+        false
+      );
+      pressAction(screen, navigation, 'Done');
+      expect(mockUpdateEntry).toHaveBeenCalledWith({ cooked_quantity: null });
+    });
+
+    it('sends the cooked weight with a quantity change so the server keeps it in step', () => {
+      mockUseFoodVariants.mockReturnValue(riceVariants as any);
+      const screen = renderScreen({
+        entry: { ...cookedRice, cooked_quantity: null },
+      });
+      pressAction(screen, navigation, 'Edit');
+      fireEvent.changeText(screen.getByTestId('quantity-input'), '150');
+      pressAction(screen, navigation, 'Done');
+      expect(mockUpdateEntry).toHaveBeenCalledWith({
+        quantity: 150,
+        cooked_quantity: null,
+      });
+    });
+    it('keeps the calculated raw quantity when nutrition is adjusted while editing', () => {
+      mockUseFoodVariants.mockReturnValue(riceVariants as any);
+      const screen = renderScreen({ entry: cookedRice });
+      pressAction(screen, navigation, 'Edit');
+      expect(screen.getByTestId('quantity-input').props.value).toBe('120');
+
+      // Back from Adjust nutrition with a different serving size.
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryViewScreen
+            navigation={navigation}
+            route={
+              {
+                key: 'FoodEntryView-key',
+                name: 'FoodEntryView',
+                params: {
+                  entry: cookedRice,
+                  adjustedValues: {
+                    name: 'Rice',
+                    brand: '',
+                    servingSize: '200',
+                    servingUnit: 'g',
+                    calories: '720',
+                    protein: '14',
+                    carbs: '158',
+                    fat: '2',
+                    fiber: '',
+                    saturatedFat: '',
+                    sodium: '',
+                    sugars: '',
+                    transFat: '',
+                    potassium: '',
+                    calcium: '',
+                    iron: '',
+                    cholesterol: '',
+                    vitaminA: '',
+                    vitaminC: '',
+                  },
+                },
+              } as any
+            }
+          />
+        </SafeAreaProvider>
+      );
+      expect(screen.getByTestId('quantity-input').props.value).toBe('120');
+
+      pressAction(screen, navigation, 'Done');
+      const payload = mockUpdateEntry.mock.calls[0][0];
+      expect(payload.serving_size).toBe(200);
+      expect(payload).not.toHaveProperty('quantity');
+    });
+
+    it('drops the calculated quantity when nutrition comes back in another unit', () => {
+      mockUseFoodVariants.mockReturnValue(riceVariants as any);
+      const screen = renderScreen({ entry: cookedRice });
+      pressAction(screen, navigation, 'Edit');
+      expect(screen.getByTestId('quantity-input').props.value).toBe('120');
+
+      // Back from Adjust nutrition with a different serving size.
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryViewScreen
+            navigation={navigation}
+            route={
+              {
+                key: 'FoodEntryView-key',
+                name: 'FoodEntryView',
+                params: {
+                  entry: cookedRice,
+                  adjustedValues: {
+                    name: 'Rice',
+                    brand: '',
+                    servingSize: '0.5',
+                    servingUnit: 'kg',
+                    calories: '1800',
+                    protein: '14',
+                    carbs: '158',
+                    fat: '2',
+                    fiber: '',
+                    saturatedFat: '',
+                    sodium: '',
+                    sugars: '',
+                    transFat: '',
+                    potassium: '',
+                    calcium: '',
+                    iron: '',
+                    cholesterol: '',
+                    vitaminA: '',
+                    vitaminC: '',
+                  },
+                },
+              } as any
+            }
+          />
+        </SafeAreaProvider>
+      );
+      expect(screen.getByTestId('quantity-input').props.value).toBe('0.5');
+
+      pressAction(screen, navigation, 'Done');
+      const payload = mockUpdateEntry.mock.calls[0][0];
+      expect(payload).toEqual(
+        expect.objectContaining({
+          quantity: 0.5,
+          unit: 'kg',
+          cooked_quantity: null,
+        })
+      );
+    });
+
+    it('drops the calculated quantity when only the unit changes', () => {
+      mockUseFoodVariants.mockReturnValue(riceVariants as any);
+      const screen = renderScreen({ entry: cookedRice });
+      pressAction(screen, navigation, 'Edit');
+      expect(screen.getByTestId('quantity-input').props.value).toBe('120');
+
+      // Back from Adjust nutrition with a different serving size.
+      screen.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <FoodEntryViewScreen
+            navigation={navigation}
+            route={
+              {
+                key: 'FoodEntryView-key',
+                name: 'FoodEntryView',
+                params: {
+                  entry: cookedRice,
+                  adjustedValues: {
+                    name: 'Rice',
+                    brand: '',
+                    servingSize: '100',
+                    servingUnit: 'kg',
+                    calories: '360000',
+                    protein: '14',
+                    carbs: '158',
+                    fat: '2',
+                    fiber: '',
+                    saturatedFat: '',
+                    sodium: '',
+                    sugars: '',
+                    transFat: '',
+                    potassium: '',
+                    calcium: '',
+                    iron: '',
+                    cholesterol: '',
+                    vitaminA: '',
+                    vitaminC: '',
+                  },
+                },
+              } as any
+            }
+          />
+        </SafeAreaProvider>
+      );
+      expect(screen.getByTestId('quantity-input').props.value).toBe('100');
+
+      pressAction(screen, navigation, 'Done');
+      const payload = mockUpdateEntry.mock.calls[0][0];
+      expect(payload).toEqual(
+        expect.objectContaining({
+          quantity: 100,
+          unit: 'kg',
+          cooked_quantity: null,
+        })
+      );
+    });
   });
 });

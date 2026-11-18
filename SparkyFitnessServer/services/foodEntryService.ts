@@ -29,6 +29,8 @@ import {
   type FoodEntryCopyFingerprintVersion,
   hasExactReviewedFoodEntrySnapshot,
   isDayString,
+  isCookedWeightUnit,
+  type LastCookedFoodEntry,
   foodVolumeToMl,
   resolveExerciseCalories,
 } from '@workspace/shared';
@@ -763,12 +765,62 @@ async function importFoodDiaryEntriesInBulk(
   };
 }
 
+function cookedWeightUnitError() {
+  return Object.assign(
+    new Error(
+      'cooked_quantity is only allowed for weight units (g, kg, oz, lb).'
+    ),
+    { statusCode: 400 }
+  );
+}
+
+/**
+ * The cooked weight an updated entry ends up with (#3534). A value the client
+ * sends wins. Without one, a quantity or unit change on its own clears it,
+ * because the stored cooked weight belonged to the old quantity and would
+ * skew the factor pre-filled next time. Otherwise the stored value stays.
+ */
+function resolveUpdatedCookedQuantity(
+  entryData: FoodEntryInput,
+  existingEntry: {
+    quantity?: unknown;
+    unit?: string | null;
+    cooked_quantity?: number | null;
+  }
+): number | null {
+  const finalUnit =
+    entryData.unit !== undefined ? entryData.unit : existingEntry.unit;
+  if (entryData.cooked_quantity !== undefined) {
+    if (entryData.cooked_quantity !== null && !isCookedWeightUnit(finalUnit)) {
+      throw cookedWeightUnitError();
+    }
+    return entryData.cooked_quantity;
+  }
+  const quantityChanged =
+    entryData.quantity !== undefined &&
+    entryData.quantity !== null &&
+    Number(entryData.quantity) !== Number(existingEntry.quantity);
+  const unitChanged =
+    entryData.unit !== undefined && entryData.unit !== existingEntry.unit;
+  if (quantityChanged || unitChanged || !isCookedWeightUnit(finalUnit)) {
+    return null;
+  }
+  return existingEntry.cooked_quantity ?? null;
+}
+
 async function createFoodEntry(
   authenticatedUserId: string,
   actingUserId: string,
   entryData: FoodEntryInput
 ) {
   try {
+    if (
+      entryData.cooked_quantity !== undefined &&
+      entryData.cooked_quantity !== null &&
+      !isCookedWeightUnit(entryData.unit)
+    ) {
+      throw cookedWeightUnitError();
+    }
     const entryWithUser = {
       ...entryData,
       user_id: entryData.user_id || authenticatedUserId,
@@ -969,6 +1021,7 @@ async function updateFoodEntry(
         // a quantity tweak) omit the key and must not wipe the user's note.
         notes:
           entryData.notes !== undefined ? entryData.notes : existingEntry.notes,
+        cooked_quantity: resolveUpdatedCookedQuantity(entryData, existingEntry),
       }, // Ensure meal_type_id and correct variant_id are passed
       newSnapshotData // Pass the new snapshot data
     );
@@ -1218,6 +1271,24 @@ async function getFoodEntriesByDate(
     throw error;
   }
 }
+/**
+ * The person's most recent cooked entry of a food, for pre-filling the batch
+ * yield in the add form (#3534). Null when there is none.
+ */
+async function getLastCookedFoodEntry(
+  targetUserId: string,
+  foodId: string
+): Promise<LastCookedFoodEntry | null> {
+  const row = await foodRepository.getLastCookedFoodEntry(targetUserId, foodId);
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    entry_date: String(row.entry_date),
+    quantity: Number(row.quantity),
+    unit: row.unit ?? null,
+    cooked_quantity: Number(row.cooked_quantity),
+  };
+}
 async function getFoodEntriesByDateRange(
   authenticatedUserId: string,
   targetUserId: string,
@@ -1381,6 +1452,8 @@ async function copyFoodEntries(
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
           notes: entry.notes ?? null,
+          // Copying a day keeps the cooked weight with its quantity (#3534).
+          cooked_quantity: entry.cooked_quantity ?? null,
         });
         log(
           'debug',
@@ -1551,6 +1624,8 @@ async function copyFoodEntriesFromUser(
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
           notes: entry.notes ?? null,
+          // Copying a day keeps the cooked weight with its quantity (#3534).
+          cooked_quantity: entry.cooked_quantity ?? null,
         });
       }
     }
@@ -1924,6 +1999,8 @@ async function copyFoodEntriesToUser(
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
           notes: entry.notes ?? null,
+          // Copying a day keeps the cooked weight with its quantity (#3534).
+          cooked_quantity: entry.cooked_quantity ?? null,
         });
       }
     }
@@ -4123,6 +4200,7 @@ export { copySelectedFoodEntriesFromUser };
 export { copySelectedFoodEntriesToUser };
 export { importFoodDiaryEntriesInBulk };
 export default {
+  getLastCookedFoodEntry,
   createFoodEntry,
   deleteFoodEntry,
   updateFoodEntry,

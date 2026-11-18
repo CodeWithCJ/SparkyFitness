@@ -11,6 +11,9 @@ import {
   CopyReviewedFoodEntriesToUserBodySchema,
   CopySelectedFoodEntriesToUserBodySchema,
   isEntryTimeString,
+  isValidCookedQuantity,
+  lastCookedFoodEntryQuerySchema,
+  type LastCookedFoodEntryResponse,
 } from '@workspace/shared';
 import {
   uploadImages,
@@ -213,6 +216,14 @@ router.post(
       ) {
         return res.status(400).json({
           error: 'entry_time must be in HH:MM (24h) format.',
+        });
+      }
+      if (
+        req.body.cooked_quantity !== undefined &&
+        !isValidCookedQuantity(req.body.cooked_quantity)
+      ) {
+        return res.status(400).json({
+          error: 'cooked_quantity must be a positive number or null.',
         });
       }
 
@@ -1020,6 +1031,14 @@ router.put(
         error: 'entry_time must be in HH:MM (24h) format.',
       });
     }
+    if (
+      req.body.cooked_quantity !== undefined &&
+      !isValidCookedQuantity(req.body.cooked_quantity)
+    ) {
+      return res.status(400).json({
+        error: 'cooked_quantity must be a positive number or null.',
+      });
+    }
     try {
       const updatedEntry = await foodEntryService.updateFoodEntry(
         req.userId,
@@ -1168,6 +1187,66 @@ router.get(
         // @ts-expect-error TS(2571): Object is of type 'unknown'.
         return res.status(403).json({ error: error.message });
       }
+      next(error);
+    }
+  }
+);
+/**
+ * @swagger
+ * /food-entries/last-cooked:
+ *   get:
+ *     summary: Get the most recent cooked entry of a food
+ *     tags: [Nutrition & Meals]
+ *     description: Returns the person's most recent diary entry of a food that was weighed cooked (cooked_quantity set), so the add form can pre-fill the batch yield (cooked_quantity / quantity). Components of logged meals are not considered.
+ *     parameters:
+ *       - in: query
+ *         name: food_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: userId
+ *         required: false
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Diary owner when acting for another user.
+ *     responses:
+ *       200:
+ *         description: The entry, or null when the food was never logged cooked.
+ *       400:
+ *         description: Invalid query.
+ *       403:
+ *         description: User does not have permission to access this resource.
+ */
+router.get(
+  '/last-cooked',
+  authenticate,
+  checkPermissionMiddleware('diary'),
+  async (req, res, next) => {
+    const parsed = lastCookedFoodEntryQuerySchema.safeParse(req.query);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'food_id must be a valid UUID.' });
+    }
+    const { food_id: foodId, userId } = parsed.data;
+    const targetUserId = userId ?? req.userId;
+    try {
+      if (userId && userId !== req.userId) {
+        const hasPermission = await canAccessUserData(
+          userId,
+          'diary',
+          req.originalUserId || req.userId
+        );
+        if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
+      }
+      const entry = await foodEntryService.getLastCookedFoodEntry(
+        targetUserId,
+        foodId
+      );
+      const body: LastCookedFoodEntryResponse = { entry };
+      res.status(200).json(body);
+    } catch (error) {
       next(error);
     }
   }

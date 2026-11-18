@@ -8400,6 +8400,18 @@
       "genericEstimateVerifyIfAccuracy": "Generic estimate - verify if accuracy matters.",
       "useThis": "Use this",
       "estimate2": "- {{confidence}} estimate"
+    },
+    "cooked": {
+      "switch": "Weighed it cooked",
+      "sameBatchPrevious": "Same batch as on {{date}}: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked",
+      "sameBatchEntry": "Same batch as this entry: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked",
+      "newBatch": "New batch",
+      "rawBatch": "Raw weight of batch ({{unit}})",
+      "cookedBatch": "Cooked weight of batch ({{unit}})",
+      "eaten": "You ate (cooked, {{unit}})",
+      "result": "= {{raw}} {{unit}} raw · {{calories}} {{energyUnit}}",
+      "incomplete": "Enter the weights to calculate the raw amount.",
+      "enterEaten": "Enter the cooked weight you ate."
     }
   },
   "healthMetrics": {

@@ -1531,8 +1531,6 @@
     "cycle": {
       "title": "生理週期 & 懷孕監察",
       "description": "管理 月經週期、生理期記錄 同懷孕相關追蹤功能",
-      "enableLabel": "開啟週期同懷孕追蹤功能",
-      "enableHint": "開啟之後，側邊導覽列先會出現對應嘅頁面.",
       "mode": "追蹤模式",
       "bcMethod": "避孕方式",
       "terminology": "用詞風格",
@@ -3310,8 +3308,6 @@
       "cunninghamMath": "公式：500 + 22 × 瘦體重（瘦體重 = 體重 ×（1 - 體脂/100））\n計算：500 + 22 ×（{{weight}} kg ×（1 - {{bodyFat}}/100））= {{result}} kcal",
       "harrisMaleMath": "公式：13.397 × 體重 + 4.799 × 身高 - 5.677 × 年齡 + 88.362\n計算：13.397 × {{weight}} + 4.799 × {{height}} - 5.677 × {{age}} + 88.362 = {{result}} kcal",
       "harrisFemaleMath": "公式：9.247 × 體重 + 3.098 × 身高 - 4.33 × 年齡 + 447.593\n計算：9.247 × {{weight}} + 3.098 × {{height}} - 4.33 × {{age}} + 447.593 = {{result}} kcal",
-      "oxfordMaleMath": "公式：14.2 × 體重 + 593\n計算：14.2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "公式：10.9 × 體重 + 677\n計算：10.9 × {{weight}} + 677 = {{result}} kcal",
       "bmiBodyFatMath": "公式：1.2 × BMI + 0.23 × 年齡 - 常數（{{constant}}）\n計算：1.2 × {{bmi}}（BMI）+ 0.23 × {{age}} - {{constant}} = {{result}}%",
       "invalidMeasurements": "用嚟日誌計算嘅測量值無效.",
       "navyMaleMath": "公式（男性）：86.01 × log₁₀(腰圍 − 頸圍) − 70.041 × log₁₀(身高) + 30.295（單位：厘米）\n計算：`86.01 × log10({{waist}}cm − {{neck}}cm) − 70.041 × log10({{height}}cm) + 30.295`\n計算結果：{{result}}%",

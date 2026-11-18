@@ -424,10 +424,28 @@ private fun ActiveWorkoutView(
   }
 
   if (phase == WorkoutSessionStore.Phase.COMPLETED && summary != null) {
-    WorkoutSummaryView(
-      summary = summary!!,
-      onDone = { workoutStore.dismissSummary() },
-      energy = EnergyDisplay.of(watchCtx)
+    if (watchCtx.effectiveNewWorkout) {
+      WorkoutFinishSummaryView(
+        summary = summary!!,
+        workoutStore = workoutStore,
+        watchCtx = watchCtx,
+        onDone = { workoutStore.dismissSummary() }
+      )
+    } else {
+      WorkoutSummaryView(
+        summary = summary!!,
+        onDone = { workoutStore.dismissSummary() },
+        energy = EnergyDisplay.of(watchCtx)
+      )
+    }
+    return
+  }
+
+  if (watchCtx.effectiveNewWorkout && !(steps.isEmpty() && plan != null)) {
+    NewActiveWorkoutView(
+      checkInStore = checkInStore,
+      workoutStore = workoutStore,
+      isCurrentPage = isCurrentPage
     )
     return
   }
@@ -592,7 +610,7 @@ private fun ActiveWorkoutView(
         )
         if (step.supersetRun != null) {
           Text(
-            text = stringResource(R.string.workout_superset_badge, step.supersetRun),
+            text = stringResource(R.string.workout_superset_badge, kotlin.math.max(1, step.supersetRun + 1)),
             fontSize = 9.sp,
             fontWeight = FontWeight.Bold,
             color = SparkyColors.Purple

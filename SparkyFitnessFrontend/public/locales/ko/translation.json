@@ -1178,8 +1178,6 @@
     "cycle": {
       "title": "주기 및 임신",
       "description": "생식 건강과 월경 주기를 관리하고 임신 경과를 추적하세요.",
-      "enableLabel": "생리 주기 및 임신 추적 사용",
-      "enableHint": "생식 건강 허브를 켜거나 끕니다. 사용 설정하면 사이드바의 탐색 탭이 표시됩니다.",
       "mode": "추적 모드",
       "bcMethod": "피임",
       "terminology": "용어",
@@ -2088,8 +2086,6 @@
       "cunninghamMath": "공식: 500 + 22 × LBM(LBM = 체중 × (1 - 체지방률/100))\n계산식: 500 + 22 × ({{weight}} kg × (1 - {{bodyFat}}/100)) = {{result}} kcal",
       "harrisMaleMath": "공식: 13.397 × 체중 + 4.799 × 키 - 5.677 × 나이 + 88.362\n수식: 13.397 × {{weight}} + 4.799 × {{height}} - 5.677 × {{age}} + 88.362 = {{result}} kcal",
       "harrisFemaleMath": "공식: 9.247 × 체중 + 3.098 × 키 - 4.33 × 나이 + 447.593\n계산식: 9.247 × {{weight}} + 3.098 × {{height}} - 4.33 × {{age}} + 447.593 = {{result}} kcal",
-      "oxfordMaleMath": "공식: 14.2 × 체중 + 593\n계산식: 14.2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "공식: 10.9 × 체중 + 677\n수식: 10.9 × {{weight}} + 677 = {{result}} kcal",
       "bmiBodyFatMath": "공식: 1.2 × BMI + 0.23 × 나이 - 상수 ({{constant}})\n계산식: 1.2 × {{bmi}} (BMI) + 0.23 × {{age}} - {{constant}} = {{result}}%",
       "invalidMeasurements": "로그 계산에 유효하지 않은 측정값입니다.",
       "navyMaleMath": "공식(남성): 86.01 × log10(허리둘레 - 목둘레) - 70.041 × log10(키) + 36.76 (인치 단위)\n수식: 86.01 × log10({{waist}}in - {{neck}}in) - 70.041 × log10({{height}}in) + 36.76\n계산 결과: {{result}}%",

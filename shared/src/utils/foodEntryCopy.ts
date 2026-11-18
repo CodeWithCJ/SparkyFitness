@@ -1,4 +1,5 @@
 import { FOOD_VARIANT_NUTRIENT_FIELDS } from '../constants/foodVariantNutrients.ts';
+import { isCookedWeightUnit } from './cookedWeight.ts';
 
 /**
  * Building the create-entry payload that logs a diary food again on another
@@ -29,6 +30,8 @@ export type FoodEntryCopySource = {
   unit: string;
   entry_time?: string | null;
   notes?: string | null;
+  /** Cooked weight eaten, in `unit` (#3534). */
+  cooked_quantity?: NumericLike;
   food_name?: string | null;
   brand_name?: string | null;
   serving_size?: NumericLike;
@@ -50,6 +53,7 @@ export type FoodEntryCopyPayload = {
   entry_date: string;
   entry_time: string | null;
   notes: string | null;
+  cooked_quantity?: number;
   food_id?: string;
   variant_id?: string;
   food_name?: string;
@@ -92,6 +96,15 @@ export function buildFoodEntryCopyPayload(
     serving_size: toNumber(entry.serving_size),
     serving_unit: entry.serving_unit ?? undefined,
   };
+  // The cooked weight belongs to the copied quantity, as when copying a day.
+  const cookedQuantity = toNumber(entry.cooked_quantity);
+  if (
+    cookedQuantity !== undefined &&
+    cookedQuantity > 0 &&
+    isCookedWeightUnit(entry.unit)
+  ) {
+    payload.cooked_quantity = cookedQuantity;
+  }
   if (entry.food_id && entry.variant_id) {
     payload.food_id = entry.food_id;
     payload.variant_id = entry.variant_id;

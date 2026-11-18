@@ -1476,8 +1476,6 @@
     "cycle": {
       "title": "Cyklus a tehotenstvo",
       "description": "Spravujte reprodukčné zdravie, menštruačné cykly a sledovanie tehotenstva",
-      "enableLabel": "Povoliť sledovanie cyklu a tehotenstva",
-      "enableHint": "Prepnite centrum reprodukčného zdravia. Povolenie odhalí kartu bočnej navigácie.",
       "mode": "Režim sledovania",
       "bcMethod": "Antikoncepcia",
       "terminology": "Terminológia",
