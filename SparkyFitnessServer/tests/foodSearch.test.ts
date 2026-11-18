@@ -40,19 +40,21 @@ describe('food model search query builder', () => {
       expect(params[0]).toBe('%whey%');
       expect(params[1]).toBe('%protein%');
       expect(params[2]).toBe('%gold%');
-      // Exact match brand + name
-      expect(params[3]).toBe('%whey protein gold%');
+      expect(params[3]).toBe('whey protein gold');
+      expect(params[4]).toBe('whey protein gold%');
+      expect(params[5]).toBe('(^|\\W)whey protein gold(\\W|$)');
+      expect(params[6]).toBe('%whey protein gold%');
       // Limit, offset
-      expect(params[4]).toBe(10);
-      expect(params[5]).toBe(0);
+      expect(params[7]).toBe(10);
+      expect(params[8]).toBe(0);
 
       expect(sql).toContain("CONCAT(f.brand, ' ', f.name) ILIKE $1");
       expect(sql).toContain("CONCAT(f.brand, ' ', f.name) ILIKE $2");
       expect(sql).toContain("CONCAT(f.brand, ' ', f.name) ILIKE $3");
       expect(sql).toContain(
-        "ORDER BY (CASE WHEN CONCAT(f.brand, ' ', f.name) ILIKE $4::text THEN 0 ELSE 1 END), f.name ASC, f.id ASC"
+        "ORDER BY (CASE WHEN LOWER(f.name) = LOWER($4::text) THEN 0 WHEN f.name ILIKE $5::text THEN 1 WHEN CONCAT(f.brand, ' ', f.name) ~* $6::text THEN 2 WHEN CONCAT(f.brand, ' ', f.name) ILIKE $7::text THEN 3 ELSE 4 END), f.name ASC, f.id ASC"
       );
-      expect(sql).toContain('LIMIT $5 OFFSET $6');
+      expect(sql).toContain('LIMIT $8 OFFSET $9');
     });
 
     describe('provider (data source) filtering', () => {
@@ -73,15 +75,18 @@ describe('food model search query builder', () => {
           '%whey%',
           '%protein%',
           'usda',
+          'whey protein',
+          'whey protein%',
+          '(^|\\W)whey protein(\\W|$)',
           '%whey protein%',
           10,
           0,
         ]);
         expect(sql).toContain('f.provider_type = $3');
         expect(sql).toContain(
-          "ORDER BY (CASE WHEN CONCAT(f.brand, ' ', f.name) ILIKE $4::text THEN 0 ELSE 1 END)"
+          "ORDER BY (CASE WHEN LOWER(f.name) = LOWER($4::text) THEN 0 WHEN f.name ILIKE $5::text THEN 1 WHEN CONCAT(f.brand, ' ', f.name) ~* $6::text THEN 2 WHEN CONCAT(f.brand, ' ', f.name) ILIKE $7::text THEN 3 ELSE 4 END)"
         );
-        expect(sql).toContain('LIMIT $5 OFFSET $6');
+        expect(sql).toContain('LIMIT $8 OFFSET $9');
       });
 
       it('filters manual foods with IS NULL and adds no parameter', async () => {
@@ -158,6 +163,83 @@ describe('food model search query builder', () => {
         expect(sql).toContain('f.provider_type = $2');
         expect(sql).toContain('LIMIT $3 OFFSET $4');
       });
+    });
+  });
+
+  describe('relevance ranking', () => {
+    it('ranks an exact name, then a name prefix, then a whole word, then a mid-word match', async () => {
+      await foodDb.getFoodsWithPagination(
+        'Kartoffel',
+        null,
+        'user-1',
+        10,
+        0,
+        null
+      );
+
+      const [sql, params] = mockClient.query.mock.calls[0];
+
+      expect(params).toEqual([
+        '%Kartoffel%',
+        'Kartoffel',
+        'Kartoffel%',
+        '(^|\\W)Kartoffel(\\W|$)',
+        '%Kartoffel%',
+        10,
+        0,
+      ]);
+      expect(sql).toContain(
+        "ORDER BY (CASE WHEN LOWER(f.name) = LOWER($2::text) THEN 0 WHEN f.name ILIKE $3::text THEN 1 WHEN CONCAT(f.brand, ' ', f.name) ~* $4::text THEN 2 WHEN CONCAT(f.brand, ' ', f.name) ILIKE $5::text THEN 3 ELSE 4 END), f.name ASC, f.id ASC"
+      );
+    });
+
+    it('keeps the exact-name tier ahead of a descending name sort', async () => {
+      await foodDb.getFoodsWithPagination(
+        'rice',
+        null,
+        'user-1',
+        10,
+        0,
+        'name:desc'
+      );
+
+      const [sql] = mockClient.query.mock.calls[0];
+
+      expect(sql).toMatch(
+        /ORDER BY \(CASE WHEN LOWER\(f\.name\) = LOWER\(\$2::text\) THEN 0 .* ELSE 4 END\), f\.name DESC/
+      );
+    });
+
+    it('escapes regular expression characters in the whole-word pattern', async () => {
+      await foodDb.searchFoods(
+        'Kartoffel (roh) gekocht',
+        'user-1',
+        false,
+        true,
+        false
+      );
+
+      const [, params] = mockClient.query.mock.calls[0];
+
+      expect(params).toContain('(^|\\W)Kartoffel \\(roh\\) gekocht(\\W|$)');
+    });
+
+    it('matches a whole phrase that ends in punctuation', async () => {
+      await foodDb.getFoodsWithPagination(
+        'milk (raw)',
+        null,
+        'user-1',
+        10,
+        0,
+        null
+      );
+
+      const [, params] = mockClient.query.mock.calls[0];
+      // eslint-disable-next-line security/detect-non-literal-regexp
+      const wholeWord = new RegExp(params[4], 'i');
+
+      expect(wholeWord.test('Z milk (raw)')).toBe(true);
+      expect(wholeWord.test('A buttermilk (raw)')).toBe(false);
     });
   });
 
