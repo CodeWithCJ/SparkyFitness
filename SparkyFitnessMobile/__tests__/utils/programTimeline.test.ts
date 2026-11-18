@@ -1,4 +1,4 @@
-import { buildProgramTimeline, itemsByDay } from '@workspace/shared';
+import { buildProgramTimeline } from '@workspace/shared';
 
 // 2026-10-13 is a Tuesday.
 const TODAY = '2026-10-13';
@@ -108,21 +108,5 @@ describe('buildProgramTimeline', () => {
 
   it('is empty for a program with no workouts', () => {
     expect(buildProgramTimeline({ ...base, total: 0, next: 0 })).toEqual([]);
-  });
-});
-
-describe('itemsByDay', () => {
-  it('groups by day and skips undated items', () => {
-    const grouped = itemsByDay(
-      buildProgramTimeline({
-        ...base,
-        completions: [
-          { index: 0, entry_id: 'a', at: '2026-10-06T07:00:00.000Z' },
-          { index: 1, entry_id: 'b', at: '2026-10-06T18:00:00.000Z' },
-        ],
-      })
-    );
-    expect(grouped.get('2026-10-06')?.map((i) => i.index)).toEqual([0, 1]);
-    expect(grouped.get('2026-10-13')?.map((i) => i.index)).toEqual([2]);
   });
 });

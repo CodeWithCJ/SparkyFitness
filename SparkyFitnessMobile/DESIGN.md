@@ -140,9 +140,22 @@ Eight balanced hues for things that need a distinct color but no fixed meaning. 
 | Past-Date Orange | `--color-date-past` (JS only)           | #F2590D   | #F07C42  | Date pill tint when viewing a day before today  |
 | Future-Date Sky  | `--color-date-future` (JS only)         | #0DA6F2   | #5EBEED  | Date pill tint when viewing a day after today   |
 
+### Sport tints
+
+The training calendar and the Load by Sport card colour each sport group with its own token, so the calendar marks, the stacked bars and their legend always agree. AMOLED uses the Dark values. Planned-item status on the calendar reuses existing tokens rather than adding new ones: done is Success Glyph (`--color-icon-success`), partly done is Warning Glyph (`--color-icon-warning`), missed is Danger Glyph (`--color-icon-danger`), upcoming is Muted Slate (`--color-text-muted`) and extra work is Sparky Blue (`--color-accent-primary`).
+
+| Role           | Token class                        | Light hex | Dark hex | Usage                                                               |
+| -------------- | ---------------------------------- | --------- | -------- | ------------------------------------------------------------------- |
+| Sport Running  | `--color-sport-running` (JS only)  | #E45A2F   | #E17A5B  | Running sessions: calendar marks, the load-by-sport bars and legend |
+| Sport Cycling  | `--color-sport-cycling` (JS only)  | #2E87AD   | #419CC3  | Cycling sessions, same places                                       |
+| Sport Walking  | `--color-sport-walking` (JS only)  | #59A65D   | #77B17A  | Walking and hiking sessions                                         |
+| Sport Cardio   | `--color-sport-cardio` (JS only)   | #2A9D90   | #3AB6A8  | Swimming, rowing and gym-machine sessions                           |
+| Sport Strength | `--color-sport-strength` (JS only) | #7B5EA6   | #917BB2  | Strength sessions and logged workout presets                        |
+| Sport Other    | `--color-sport-other` (JS only)    | #8B8F98   | #A0A4AB  | Sessions no other sport group claims                                |
+
 ### AMOLED differences
 
-AMOLED uses the Dark values for 48 of the 61 color tokens. Only these 13 change:
+AMOLED uses the Dark values for 54 of the 67 color tokens. Only these 13 change:
 
 | Token                    | AMOLED hex             | Dark hex |
 | ------------------------ | ---------------------- | -------- |

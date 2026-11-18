@@ -399,8 +399,12 @@ export const trainingLoadQueryKey = (today: string) =>
 
 export const runEstimatesQueryKey = (today: string) =>
   ['runEstimates', today] as const;
+export const fitnessFatigueRootQueryKey = ['fitnessFatigue'] as const;
 export const fitnessFatigueQueryKey = (today: string) =>
-  ['fitnessFatigue', today] as const;
+  [...fitnessFatigueRootQueryKey, today] as const;
+export const trainingCalendarRootQueryKey = ['trainingCalendar'] as const;
+export const trainingCalendarQueryKey = (start: string, end: string) =>
+  [...trainingCalendarRootQueryKey, start, end] as const;
 
 export const cardioSessionsQueryKey = (
   startDate: string,
