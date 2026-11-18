@@ -40,6 +40,14 @@ const mockCycle = {
 jest.mock('../../src/hooks/useCycleMode', () => ({
   useCycleMode: () => mockCycle,
 }));
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({
+    isEnabled: (key: string) => key === 'cycle' && mockCycle.enabled,
+  }),
+}));
+jest.mock('../../src/hooks/useDiscreetMode', () => ({
+  useDiscreetMode: () => ({ discreetMode: mockCycle.discreetMode }),
+}));
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -162,7 +170,7 @@ describe('AddMenuSettingsScreen', () => {
 
       const wellness = screen.getByTestId('add-menu-row-wellness');
       expect(
-        within(wellness).getByText('Not shown: cycle tracking is off')
+        within(wellness).getByText('Not shown: turned off in Features')
       ).toBeTruthy();
       expect(within(wellness).queryByText(/^Line /)).toBeNull();
       // Mood and Mindfulness pair up on line 1: the missing item takes no

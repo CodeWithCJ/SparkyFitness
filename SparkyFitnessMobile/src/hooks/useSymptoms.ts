@@ -16,6 +16,8 @@ import type {
   UpdateSymptomDefinitionBody,
   UpdateSymptomEntryBody,
 } from '@workspace/shared';
+import { withoutCycleHubSymptoms } from '@workspace/shared';
+import { useMobileFeatures } from './useMobileFeatures';
 import {
   listSymptomEntries,
   createSymptomEntry,
@@ -154,11 +156,24 @@ export function useSymptomDefinitions() {
   return { definitions: query.data ?? [], isLoading: query.isLoading };
 }
 
+/**
+ * Symptoms logged in the cycle hub belong to cycle tracking: while the person
+ * has turned it off on purpose (Settings → Features), lists outside the hub
+ * leave them out. They stay stored and come back when cycle is turned on.
+ * Not for `useSymptomEntries`, which the hub itself reads to save its picks.
+ */
+function useCycleHubSymptomsFilter() {
+  return useMobileFeatures().isExplicitlyOff('cycle')
+    ? withoutCycleHubSymptoms<SymptomEntryResponse>
+    : undefined;
+}
+
 export function useOngoingEpisodes(enabled = true) {
   const query = useQuery<SymptomEntryResponse[]>({
     queryKey: symptomOngoingQueryKey,
     queryFn: fetchOngoingEpisodes,
     enabled,
+    select: useCycleHubSymptomsFilter(),
   });
   useRefetchOnFocus(query.refetch, enabled);
   return { episodes: query.data ?? [], isLoading: query.isLoading };
@@ -181,6 +196,7 @@ export function useSymptomEntriesDetailed({
     queryFn: () =>
       fetchSymptomEntriesDetailed(fromDate, toDate, { overlapping }),
     enabled,
+    select: useCycleHubSymptomsFilter(),
   });
   useRefetchOnFocus(query.refetch, enabled);
   return {

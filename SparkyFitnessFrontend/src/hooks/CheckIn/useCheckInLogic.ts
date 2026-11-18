@@ -47,12 +47,10 @@ import {
   UpdateCheckInMeasurementsRequest,
   UpdateCustomMeasurementsRequest,
   calculateAge,
+  withoutHiddenCategories,
 } from '@workspace/shared';
 import { useAuth } from '../useAuth';
-import {
-  useWebFeatures,
-  withoutHiddenCategories,
-} from '@/hooks/Settings/useWebFeatures';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 import { useSearchParams } from 'react-router-dom';
 import { addDays, todayInZone } from '@workspace/shared';
 

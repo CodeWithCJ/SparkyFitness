@@ -18,6 +18,7 @@ import type {
   UpdateSymptomDefinitionBody,
   UpdateSymptomEntryBody,
 } from '@workspace/shared';
+import { withoutCycleHubSymptoms } from '@workspace/shared';
 import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 
 import i18n from 'i18next';
@@ -79,9 +80,6 @@ export const useSymptomOptions = (kind?: SymptomOptionKind) =>
     },
   });
 
-const withoutCycleHubSymptoms = (entries: SymptomEntryResponse[]) =>
-  entries.filter((entry) => entry.source !== 'cycle');
-
 /**
  * Symptoms logged in the cycle hub belong to cycle tracking: while the person
  * has turned it off (Settings > Features), lists outside the hub leave them
@@ -89,7 +87,7 @@ const withoutCycleHubSymptoms = (entries: SymptomEntryResponse[]) =>
  */
 const useCycleHubSymptomsFilter = () =>
   useWebFeatures().isExplicitlyOff('cycle')
-    ? withoutCycleHubSymptoms
+    ? withoutCycleHubSymptoms<SymptomEntryResponse>
     : undefined;
 
 export const useSymptomEntries = (filters?: SymptomEntryFilters) =>

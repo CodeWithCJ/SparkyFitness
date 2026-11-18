@@ -166,6 +166,8 @@ export const waterIntakeRangeQueryKey = (startDate: string, endDate: string) =>
   ['waterIntakeRange', startDate, endDate] as const;
 
 export const sleepRangeQueryKeyRoot = ['sleepRange'] as const;
+/** Tonight's sleep need; it moves with both synced sleep and logged workouts. */
+export const sleepNeedQueryKey = ['sleepNeed'] as const;
 export const sleepRangeQueryKey = (startDate: string, endDate: string) =>
   [...sleepRangeQueryKeyRoot, startDate, endDate] as const;
 
