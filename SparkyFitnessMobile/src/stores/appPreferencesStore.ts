@@ -129,6 +129,7 @@ export const PREFERENCE_DEFAULTS = {
   mindfulnessCardVisible: true,
   oralCareCardVisible: false,
   labResultsCardVisible: true,
+  challengesCardVisible: true,
   trainingLoadCardVisible: true,
   dashboardCardOrder: [...DASHBOARD_CARD_KEYS] as DashboardCardKey[],
   medicationRemindersEnabled: true,
@@ -144,6 +145,7 @@ export const PREFERENCE_DEFAULTS = {
   checkinReminderTimes: [DEFAULT_CHECKIN_REMINDER_TIME] as string[],
   oralCareRemindersEnabled: false,
   oralCareReminderTimes: [...DEFAULT_ORAL_CARE_REMINDER_TIMES] as string[],
+  challengeWeekNotificationsEnabled: true,
   liquidGlassTabBarEnabled: false,
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
@@ -233,6 +235,7 @@ export type AppPreferencesData = {
   mindfulnessCardVisible: boolean;
   oralCareCardVisible: boolean;
   labResultsCardVisible: boolean;
+  challengesCardVisible: boolean;
   trainingLoadCardVisible: boolean;
   dashboardCardOrder: DashboardCardKey[];
   medicationRemindersEnabled: boolean;
@@ -248,6 +251,7 @@ export type AppPreferencesData = {
   checkinReminderTimes: string[];
   oralCareRemindersEnabled: boolean;
   oralCareReminderTimes: string[];
+  challengeWeekNotificationsEnabled: boolean;
   liquidGlassTabBarEnabled: boolean;
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
@@ -410,6 +414,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setMindfulnessCardVisible: (value: boolean) => void;
   setOralCareCardVisible: (value: boolean) => void;
   setLabResultsCardVisible: (value: boolean) => void;
+  setChallengesCardVisible: (value: boolean) => void;
   setTrainingLoadCardVisible: (value: boolean) => void;
   setDashboardCardOrder: (order: DashboardCardKey[]) => void;
   setMedicationRemindersEnabled: (value: boolean) => void;
@@ -426,6 +431,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setCheckinReminderTimes: (times: string[]) => void;
   setOralCareRemindersEnabled: (enabled: boolean) => void;
   setOralCareReminderTimes: (times: string[]) => void;
+  setChallengeWeekNotificationsEnabled: (enabled: boolean) => void;
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
@@ -594,6 +600,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setOralCareCardVisible: (value) => set({ oralCareCardVisible: value }),
       setLabResultsCardVisible: (value) =>
         set({ labResultsCardVisible: value }),
+      setChallengesCardVisible: (value) =>
+        set({ challengesCardVisible: value }),
       setTrainingLoadCardVisible: (value) =>
         set({ trainingLoadCardVisible: value }),
       setDashboardCardOrder: (order) => set({ dashboardCardOrder: order }),
@@ -620,6 +628,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ oralCareRemindersEnabled: enabled }),
       setOralCareReminderTimes: (times) =>
         set({ oralCareReminderTimes: normalizeOralCareReminderTimes(times) }),
+      setChallengeWeekNotificationsEnabled: (enabled) =>
+        set({ challengeWeekNotificationsEnabled: enabled }),
       setLiquidGlassTabBarEnabled: (value) =>
         set({ liquidGlassTabBarEnabled: value }),
       setActiveWorkoutMetricColumn: (value) =>
@@ -839,6 +849,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         mindfulnessCardVisible: state.mindfulnessCardVisible,
         oralCareCardVisible: state.oralCareCardVisible,
         labResultsCardVisible: state.labResultsCardVisible,
+        challengesCardVisible: state.challengesCardVisible,
         trainingLoadCardVisible: state.trainingLoadCardVisible,
         dashboardCardOrder: state.dashboardCardOrder,
         medicationRemindersEnabled: state.medicationRemindersEnabled,
@@ -854,6 +865,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         checkinReminderTimes: state.checkinReminderTimes,
         oralCareRemindersEnabled: state.oralCareRemindersEnabled,
         oralCareReminderTimes: state.oralCareReminderTimes,
+        challengeWeekNotificationsEnabled:
+          state.challengeWeekNotificationsEnabled,
         liquidGlassTabBarEnabled: state.liquidGlassTabBarEnabled,
         // Older persisted blobs without these keys backfill via the default
         // shallow merge — no version bump needed.

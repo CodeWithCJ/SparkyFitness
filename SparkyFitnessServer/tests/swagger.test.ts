@@ -47,6 +47,23 @@ it('publishes strict ingredient save and suggestion request bodies in the genera
   expect(suggest.properties.serviceConfigId.format).toBe('uuid');
 });
 
+it('declares the id path parameter on every challenge path that has one', () => {
+  const paths = Object.keys(specs.paths).filter((p) =>
+    p.startsWith('/v2/challenges/{id}')
+  );
+  expect(paths.length).toBeGreaterThanOrEqual(6);
+  for (const p of paths) {
+    expect(specs.paths[p].parameters, p).toEqual([
+      {
+        in: 'path',
+        name: 'id',
+        required: true,
+        schema: { type: 'string', format: 'uuid' },
+      },
+    ]);
+  }
+});
+
 // Dynamically construct mount mappings by parsing SparkyFitnessServer.ts and sub-routers
 function buildMountMap(
   serverPath: string,

@@ -48,6 +48,9 @@ import {
   SafeLabResultAdd,
   SafeLabResultDetail,
   SafeLabResults,
+  SafeChallenges,
+  SafeChallengeDetail,
+  SafeChallengeJoin,
   SafePersonalRecords,
   SafeTrainingCalendar,
   SafeWatchRunLive,
@@ -216,6 +219,7 @@ import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import MoodCheckinReminderReconciler from './src/components/MoodCheckinReminderReconciler';
 import OralCareReminderReconciler from './src/components/OralCareReminderReconciler';
+import ChallengeWeekNotificationReconciler from './src/components/ChallengeWeekNotificationReconciler';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
 import { useIOSWidgetLanguageRefresh } from './src/hooks/useIOSWidgetLanguageRefresh';
@@ -711,6 +715,25 @@ function AppContent() {
             name="LabResults"
             component={SafeLabResults}
             options={createStackScreenOptions(t('screens.labResults', { defaultValue: 'Lab results' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="Challenges"
+            component={SafeChallenges}
+            options={createStackScreenOptions(t('challenges.title', { defaultValue: 'Challenges' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="ChallengeDetail"
+            component={SafeChallengeDetail}
+            options={({ route }) => createStackScreenOptions(route.params.name ?? t('challenges.title', { defaultValue: 'Challenges' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="ChallengeJoin"
+            component={SafeChallengeJoin}
+            options={createStackScreenOptions(t('challenges.join.title', { defaultValue: 'Join a challenge' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="LabResultDetail"
@@ -1582,6 +1605,7 @@ function AppContent() {
         <MedicationReminderReconciler />
         <MoodCheckinReminderReconciler />
         <OralCareReminderReconciler />
+        <ChallengeWeekNotificationReconciler />
         <SafeAreaToast />
         </LightboxProvider>
       </SafeAreaProvider>
