@@ -1,5 +1,7 @@
+import type { TFunction } from 'i18next';
 import * as DocumentPicker from 'expo-document-picker';
 import { File } from 'expo-file-system';
+import { Platform } from 'react-native';
 import ClientCertificateModule, {
   type ClientCertificateImportResult,
   type ClientCertificateInfo,
@@ -129,6 +131,23 @@ export const getClientCertificateInfo = (): ClientCertificateInfo | null => {
  */
 export const shouldSuggestClientCertificate = (): boolean =>
   isClientCertificateSupported() && getClientCertificateInfo() == null;
+
+/**
+ * The sentence added to a connection error when a missing client certificate
+ * may be the cause. iPhone gets a longer one, because a certificate added
+ * after a failed attempt only takes effect once the app is restarted. Kept in
+ * one place so the first-run screen and the server form say the same thing.
+ */
+export const clientCertificateConnectionHint = (t: TFunction): string =>
+  Platform.OS === 'ios'
+    ? t('auth.clientCertificate.connectionHintRestart', {
+        defaultValue:
+          'If your server requires a client certificate, add it under Advanced options, then fully close and reopen the app.',
+      })
+    : t('auth.clientCertificate.connectionHint', {
+        defaultValue:
+          'If your server requires a client certificate, add it under Advanced options.',
+      });
 
 /**
  * True when this build cannot present the certificate on one of its request

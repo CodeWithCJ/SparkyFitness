@@ -14,7 +14,10 @@ import {
   notifyIdentityChanged,
 } from '../../src/services/api/authService';
 import { saveServerConfig } from '../../src/services/storage';
-import { setPendingClientCertificateServer } from '../../src/services/clientCertificate';
+import {
+  setPendingClientCertificateServer,
+  shouldSuggestClientCertificate,
+} from '../../src/services/clientCertificate';
 
 jest.mock('../../src/services/api/authService', () => ({
   login: jest.fn(),
@@ -59,6 +62,7 @@ jest.mock('../../src/components/ClientCertificateSection', () => {
 jest.mock('../../src/services/clientCertificate', () => ({
   ...jest.requireActual('../../src/services/clientCertificate'),
   setPendingClientCertificateServer: jest.fn().mockResolvedValue(undefined),
+  shouldSuggestClientCertificate: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../src/components/Icon', () => {
@@ -482,6 +486,29 @@ describe('ServerConfigModal', () => {
       });
 
       expect(result.getByText('Invalid credentials')).toBeTruthy();
+    });
+
+    it('adds the client certificate hint to a connection failure when none is stored', async () => {
+      (shouldSuggestClientCertificate as jest.Mock).mockReturnValueOnce(true);
+      mockLogin.mockRejectedValue(new Error('Network error'));
+      const result = renderModal();
+      await waitForForm(result);
+      await enterUrl(result, 'https://server.com');
+      fireEvent.changeText(
+        result.getByPlaceholderText(EMAIL_PLACEHOLDER),
+        'a@b.com'
+      );
+      fireEvent.changeText(result.getByPlaceholderText('Password'), 'pass');
+
+      await act(async () => {
+        pressConnectButton(result);
+      });
+
+      expect(
+        result.getByText(
+          /Could not connect to server\. Check the URL and try again\. If your server requires a client certificate, add it under Advanced options/
+        )
+      ).toBeTruthy();
     });
 
     it('displays generic error for non-LoginError exceptions', async () => {

@@ -53,6 +53,7 @@ import {
 } from '../services/storage';
 import { addLog } from '../services/LogService';
 import {
+  clientCertificateConnectionHint,
   setPendingClientCertificateServer,
   shouldSuggestClientCertificate,
 } from '../services/clientCertificate';
@@ -403,17 +404,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         // looks the same as an unreachable server.
         setError(
           shouldSuggestClientCertificate()
-            ? `${failed} ${
-                Platform.OS === 'ios'
-                  ? t('auth.clientCertificate.connectionHintRestart', {
-                      defaultValue:
-                        'If your server requires a client certificate, add it under Advanced options, then fully close and reopen the app.',
-                    })
-                  : t('auth.clientCertificate.connectionHint', {
-                      defaultValue:
-                        'If your server requires a client certificate, add it under Advanced options.',
-                    })
-              }`
+            ? `${failed} ${clientCertificateConnectionHint(t)}`
             : failed
         );
       }

@@ -8,7 +8,6 @@ import {
   Pressable,
   LayoutAnimation,
   Keyboard,
-  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -44,6 +43,7 @@ import {
 import { saveServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
 import {
+  clientCertificateConnectionHint,
   isClientCertificateSupported,
   setPendingClientCertificateServer,
   shouldSuggestClientCertificate,
@@ -255,17 +255,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         // looks the same as an unreachable server.
         setError(
           shouldSuggestClientCertificate()
-            ? `${unreachable} ${
-                Platform.OS === 'ios'
-                  ? t('auth.clientCertificate.connectionHintRestart', {
-                      defaultValue:
-                        'If your server requires a client certificate, add it under Advanced options, then fully close and reopen the app.',
-                    })
-                  : t('auth.clientCertificate.connectionHint', {
-                      defaultValue:
-                        'If your server requires a client certificate, add it under Advanced options.',
-                    })
-              }`
+            ? `${unreachable} ${clientCertificateConnectionHint(t)}`
             : unreachable
         );
       }

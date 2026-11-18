@@ -16,6 +16,8 @@ jest.mock('../../modules/client-certificate', () => ({
   default: mockNative,
 }));
 
+import { Platform } from 'react-native';
+
 const mockGetSavedServerUrls = jest.fn();
 jest.mock('../../src/services/storage', () => ({
   getSavedServerUrls: () => mockGetSavedServerUrls(),
@@ -333,6 +335,54 @@ describe('clientCertificate', () => {
         expiresAt: null,
       });
       expect(shouldSuggestClientCertificate()).toBe(false);
+    });
+  });
+
+  describe('clientCertificateConnectionHint', () => {
+    // A translator that returns the English fallback, as the app does when a
+    // language has no entry for the key.
+    const t = ((_key: string, options: { defaultValue: string }) =>
+      options.defaultValue) as unknown as import('i18next').TFunction;
+    const originalOs = Platform.OS;
+    afterEach(() => {
+      Platform.OS = originalOs;
+    });
+
+    it('tells iPhone users to restart the app as well', () => {
+      Platform.OS = 'ios';
+      const { clientCertificateConnectionHint } = loadService();
+
+      expect(clientCertificateConnectionHint(t)).toBe(
+        'If your server requires a client certificate, add it under Advanced options, then fully close and reopen the app.'
+      );
+    });
+
+    it('does not mention a restart on Android', () => {
+      Platform.OS = 'android';
+      const { clientCertificateConnectionHint } = loadService();
+
+      expect(clientCertificateConnectionHint(t)).toBe(
+        'If your server requires a client certificate, add it under Advanced options.'
+      );
+    });
+
+    it('asks for the translation key that belongs to the platform', () => {
+      const keys: string[] = [];
+      const spy = ((key: string, options: { defaultValue: string }) => {
+        keys.push(key);
+        return options.defaultValue;
+      }) as unknown as import('i18next').TFunction;
+      const { clientCertificateConnectionHint } = loadService();
+
+      Platform.OS = 'ios';
+      clientCertificateConnectionHint(spy);
+      Platform.OS = 'android';
+      clientCertificateConnectionHint(spy);
+
+      expect(keys).toEqual([
+        'auth.clientCertificate.connectionHintRestart',
+        'auth.clientCertificate.connectionHint',
+      ]);
     });
   });
 
