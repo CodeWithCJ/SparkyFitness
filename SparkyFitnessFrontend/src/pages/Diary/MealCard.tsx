@@ -117,11 +117,9 @@ const EntryThumbnail = ({
   viewLabel,
   onOpen,
 }: EntryThumbnailProps) => {
-  // How many images failed, for this list of addresses only: another list
-  // starts again from its first image.
-  const imagesKey = images.join('\n');
-  const [failures, setFailures] = useState({ imagesKey, count: 0 });
-  const failedCount = failures.imagesKey === imagesKey ? failures.count : 0;
+  // How many images failed. The caller keys this component by the list, so
+  // another list starts again from its first image.
+  const [failedCount, setFailedCount] = useState(0);
   const remaining = images.slice(failedCount);
   const src = remaining[0] ?? null;
 
@@ -142,7 +140,7 @@ const EntryThumbnail = ({
           className="w-16 h-16 object-cover rounded-md cursor-zoom-in"
           loading="lazy"
           // A dead provider link shouldn't leave a broken icon.
-          onError={() => setFailures({ imagesKey, count: failedCount + 1 })}
+          onError={() => setFailedCount(failedCount + 1)}
         />
       </button>
     );
@@ -731,6 +729,8 @@ const MealCard = ({
                     )}
                   >
                     <EntryThumbnail
+                      // A changed list rebuilds it, so failures start over.
+                      key={entryImages.join('\n')}
                       images={entryImages}
                       alt={entryName ?? ''}
                       reserveSpace={mealHasImages}

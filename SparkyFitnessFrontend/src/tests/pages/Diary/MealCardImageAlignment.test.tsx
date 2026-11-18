@@ -255,4 +255,29 @@ describe('MealCard desktop image alignment', () => {
       'https://example.com/new.jpg'
     );
   });
+
+  it('tries a list again when it comes back after another one', () => {
+    const listA = ['https://example.com/a1.jpg', 'https://example.com/a2.jpg'];
+    const listB = ['https://example.com/b.jpg'];
+    const { rerenderMeal } = renderMeal([entry('a', listA)]);
+
+    fireEvent.error(screen.getByRole('img', { name: 'Food a' }));
+    fireEvent.error(screen.getByRole('img', { name: 'Food a' }));
+    expectPlaceholder(screen.getByTestId('meal-entry-image-placeholder'));
+
+    rerenderMeal([entry('a', listB)]);
+    expect(screen.getByRole('img', { name: 'Food a' })).toHaveAttribute(
+      'src',
+      'https://example.com/b.jpg'
+    );
+
+    rerenderMeal([entry('a', listA)]);
+    expect(screen.getByRole('img', { name: 'Food a' })).toHaveAttribute(
+      'src',
+      'https://example.com/a1.jpg'
+    );
+    expect(
+      screen.queryByTestId('meal-entry-image-placeholder')
+    ).not.toBeInTheDocument();
+  });
 });
