@@ -111,6 +111,7 @@ export const MEASUREMENTS_SECTIONS = [
 export const SLEEP_SECTIONS = [
   'sleep.overview',
   'sleep.insights',
+  'sleep.need',
   'sleep.stages',
   'sleep.routine',
   'sleep.weekendVsWeekday',
