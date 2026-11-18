@@ -3,6 +3,7 @@ import {
   CHALLENGE_PRESETS,
   addDays,
   challengeCountedEntries,
+  challengeDailyCalories,
   challengeDayEffort,
   challengeEntryRate,
   challengeGoalType,
@@ -1845,5 +1846,146 @@ describe('CodeRabbit and Cardio-import follow-ups (PR #3585)', () => {
         pr: { ...rules.pr, types: ['distance'] },
       })
     ).toEqual([]);
+  });
+});
+
+describe('an active-calories day scores like the Diary', () => {
+  const day = '2026-11-06';
+  const run = (id: string, extra: Partial<ChallengeEntry> = {}) =>
+    ({
+      id,
+      date: day,
+      time: '07:00',
+      durationMin: 30,
+      name: 'Running',
+      category: 'Cardio',
+      source: 'garmin',
+      activeCalories: 300,
+      ...extra,
+    }) as ChallengeEntry;
+  // What a device syncs as the day's "Active Calories" row
+  const total = (id: string, kcal: number, source = 'garmin') =>
+    ({
+      id,
+      date: day,
+      durationMin: 0,
+      name: 'Active Calories',
+      category: 'Other',
+      source,
+      activeCalories: kcal,
+    }) as ChallengeEntry;
+  const kcal = (
+    entries: ChallengeEntry[],
+    daily: number | null,
+    activities: ChallengeRulesInput['activities'] = {},
+    extra: Partial<ChallengeRulesInput> = {}
+  ) =>
+    scoreChallengeDays(
+      {
+        entries,
+        steps: {},
+        dailyCalories: daily === null ? [] : [total('t', daily)],
+        zones,
+      },
+      day,
+      day,
+      rulesWith({ metric: 'active_calories', activities, ...extra })
+    )[0]!.total;
+
+  it('takes the daily total when it already holds the workout (600 + 300 run = 600)', () => {
+    expect(kcal([run('r')], 600)).toBe(600);
+  });
+
+  it('takes the workouts when they add up to more (200 daily + 300 run = 300)', () => {
+    expect(kcal([run('r')], 200)).toBe(300);
+  });
+
+  it('a day with only the daily total scores it', () => {
+    expect(kcal([], 600)).toBe(600);
+  });
+
+  it('a day with only workouts scores them', () => {
+    expect(kcal([run('r'), run('s', { time: '18:00' })], null)).toBe(600);
+  });
+
+  it('a capped typed-in workout counts its share toward the workouts side', () => {
+    // 800 kcal typed in over 60 minutes, capped to 15: 200 of it, plus a 300
+    // kcal run, is 500, still under a 600 daily total
+    const typed = run('m', {
+      time: '12:00',
+      source: 'Manual',
+      durationMin: 60,
+      activeCalories: 800,
+    });
+    const capped = { manualEntries: 'cap' as const, manualMinutesCap: 15 };
+    expect(kcal([run('r'), typed], 600, capped)).toBe(600);
+    expect(kcal([run('r'), typed], 100, capped)).toBe(500);
+    expect(kcal([run('r'), typed], 100, { manualEntries: 'ignore' })).toBe(300);
+  });
+
+  it('a whole-day total never brings back workouts the rules leave out', () => {
+    const walk = run('w', {
+      time: '12:00',
+      name: 'Walking',
+      activeCalories: 250,
+    });
+    // The 600 daily total holds the walk, so with walks excluded only the run counts
+    expect(kcal([run('r'), walk], 600, { excludeSports: ['walking'] })).toBe(
+      300
+    );
+    expect(kcal([run('r'), walk], 600, { includeSports: ['running'] })).toBe(
+      300
+    );
+    // A minimum length drops the whole-day total too, as it can't be split
+    expect(kcal([run('r'), walk], 600, { minMinutes: 20 })).toBe(550);
+    expect(
+      kcal(
+        [run('r'), walk],
+        600,
+        {},
+        {
+          timeWindow: { start: '06:00', end: '09:00' },
+        }
+      )
+    ).toBe(300);
+    // With no such rule, the daily total stands
+    expect(kcal([run('r'), walk], 600)).toBe(600);
+  });
+
+  it("two devices' daily totals add up, as in the Diary", () => {
+    const rules = rulesWith({ metric: 'active_calories' });
+    const days = scoreChallengeDays(
+      {
+        entries: [run('r')],
+        steps: {},
+        dailyCalories: [total('g', 400), total('a', 350, 'apple_health')],
+        zones,
+      },
+      day,
+      day,
+      rules
+    );
+    expect(days[0]!.total).toBe(750);
+  });
+
+  it('a typed-in daily total counts only when manual entries count in full', () => {
+    const typed = total('m', 3000, 'Manual');
+    const with_ = (manualEntries: 'count' | 'cap' | 'ignore') =>
+      challengeDailyCalories(
+        [typed],
+        rulesWith({ metric: 'active_calories', activities: { manualEntries } })
+      ).get(day) ?? 0;
+    expect(with_('count')).toBe(3000);
+    expect(with_('cap')).toBe(0);
+    expect(with_('ignore')).toBe(0);
+  });
+
+  it('only an active-calories challenge reads the daily totals', () => {
+    expect(
+      challengeDailyCalories(
+        [total('t', 600)],
+        rulesWith({ metric: 'active_minutes' })
+      ).size
+    ).toBe(0);
   });
 });

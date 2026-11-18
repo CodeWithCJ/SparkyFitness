@@ -1183,6 +1183,53 @@ describe('bot review follow-ups (PRs #3594 and #3595)', () => {
     expect(scores.find((d) => d.day === '2026-11-13')!.eligible).toBe(true);
   });
 
+  it("tomorrow's daily calorie total makes it eligible only where the challenge counts it", async () => {
+    const calories = { ...allRounder, metric: 'active_calories' as const };
+    const sportOnly = {
+      ...calories,
+      activities: { ...calories.activities, includeSports: ['running'] },
+    } as typeof calories;
+    repo.getMemberEntries.mockResolvedValue([
+      {
+        id: '77777777-7777-4777-8777-777777777771',
+        entry_date: '2026-11-13',
+        entry_time: null,
+        duration_minutes: 0,
+        avg_heart_rate: null,
+        max_heart_rate: null,
+        exercise_name: 'Active Calories',
+        category: 'Other',
+        source: 'garmin',
+        exercise_id: null,
+        distance: null,
+        active_calories: null,
+        calories_burned: 50,
+        elevation_gain_meters: null,
+        zone_seconds: null,
+        edited: false,
+        sets: null,
+        session: null,
+      },
+    ]);
+    const tomorrow = async (rules: typeof calories, call: number) => {
+      repo.getRuleChanges.mockResolvedValue([
+        change(challenge().start_date, rules),
+      ]);
+      await service.recomputeMember(
+        challenge({ rules }),
+        member('amy'),
+        '2026-11-12'
+      );
+      return repo.saveMemberDays.mock.calls[call]![4].find(
+        (d) => d.day === '2026-11-13'
+      )!;
+    };
+    expect((await tomorrow(calories, 0)).eligible).toBe(true);
+    const filtered = await tomorrow(sportOnly, 1);
+    expect(filtered.eligible).toBe(false);
+    expect(filtered.total).toBe(0);
+  });
+
   it('a race finish counts the goal bonus on the day it was earned', () => {
     const race = {
       ...allRounder,
@@ -1331,6 +1378,45 @@ describe('bot review follow-ups, second round', () => {
     // ...but a day holding only the daily total has no workout
     expect(kcal.find((d) => d.day === '2026-11-03')!.workouts).toBe(0);
     expect(repo.saveMemberDays.mock.calls[1]![5]).toEqual([]);
+  });
+
+  it('an active-calories day with a daily total and a run scores the larger, not both', async () => {
+    const calories = { ...allRounder, metric: 'active_calories' as const };
+    repo.getRuleChanges.mockResolvedValue([change('2026-11-02', calories)]);
+    // A 600 kcal Garmin day with a 300 kcal run inside it, and a 200 kcal day
+    // with the same run, and a day holding only the run
+    const daily = (day: string, id: string, kcal: number) =>
+      diaryRow({
+        id,
+        entry_date: day,
+        entry_time: null,
+        duration_minutes: 0,
+        exercise_name: 'Active Calories',
+        category: 'Other',
+        calories_burned: kcal,
+      });
+    const runOn = (day: string, id: string) =>
+      diaryRow({ id, entry_date: day, active_calories: 300 });
+    repo.getMemberEntries.mockResolvedValue([
+      daily('2026-11-03', '66666666-6666-4666-8666-666666666661', 600),
+      runOn('2026-11-03', '66666666-6666-4666-8666-666666666662'),
+      daily('2026-11-04', '66666666-6666-4666-8666-666666666663', 200),
+      runOn('2026-11-04', '66666666-6666-4666-8666-666666666664'),
+      runOn('2026-11-05', '66666666-6666-4666-8666-666666666665'),
+    ]);
+    await service.recomputeMember(
+      challenge({ start_date: '2026-11-02', rules: calories }),
+      member('amy'),
+      '2026-11-02'
+    );
+    const days = repo.saveMemberDays.mock.calls[0]![4];
+    const on = (day: string) => days.find((d) => d.day === day)!;
+    expect(on('2026-11-03').total).toBe(600);
+    expect(on('2026-11-04').total).toBe(300);
+    expect(on('2026-11-05').total).toBe(300);
+    // The run is still one workout and one card each day; the total is neither
+    expect(on('2026-11-03').workouts).toBe(1);
+    expect(repo.saveMemberDays.mock.calls[0]![5]).toHaveLength(3);
   });
 
   it('a long streak threshold reads enough history', async () => {

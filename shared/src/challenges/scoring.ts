@@ -33,6 +33,7 @@ import {
   isUserOriginatedSource,
   normalizeSource,
 } from '../constants/exercise.ts';
+import { resolveExerciseCalories } from '../utils/calorieCalculations.ts';
 import { heartRateZoneFor } from '../utils/heartRateZones.ts';
 import { weekStartOf } from '../utils/trainingConsistency.ts';
 import { isoWeekday, type ChallengeWindow } from './periods.ts';
@@ -91,6 +92,11 @@ export interface ChallengeMemberData {
   entries: readonly ChallengeEntry[];
   /** Steps per day (the highest any source recorded). */
   steps: Readonly<Record<string, number>>;
+  /**
+   * The daily "Active Calories" rows a device syncs, kept apart from the
+   * workouts because each already includes theirs.
+   */
+  dailyCalories?: readonly ChallengeEntry[];
   zones: ChallengeMemberZones;
 }
 
@@ -729,6 +735,35 @@ export interface ChallengeDayScore {
   }>;
 }
 
+/**
+ * The daily "Active Calories" totals an active-calories challenge scores
+ * against, by day (two devices' rows add up, as in the Diary). A whole-day
+ * total can't be split by sport, length or hour, so there are none when the
+ * rules leave some workouts out; a typed-in one counts only when manual
+ * entries count in full.
+ */
+export function challengeDailyCalories(
+  rows: readonly ChallengeEntry[] | undefined,
+  rules: ChallengeRules
+): Map<string, number> {
+  const byDay = new Map<string, number>();
+  const a = rules.activities;
+  if (
+    rules.metric !== 'active_calories' ||
+    a.includeSports ||
+    a.excludeSports.length > 0 ||
+    a.minMinutes > 0 ||
+    rules.timeWindow
+  )
+    return byDay;
+  for (const e of rows ?? []) {
+    if (a.manualEntries !== 'count' && isManualEntry(e)) continue;
+    const kcal = num(e.activeCalories);
+    if (kcal > 0) byDay.set(e.date, (byDay.get(e.date) ?? 0) + kcal);
+  }
+  return byDay;
+}
+
 function metricValue(
   rules: ChallengeRules,
   day: string,
@@ -762,11 +797,16 @@ function metricValue(
       return entries.reduce((s, e) => s + Math.max(0, num(e.distanceM)), 0);
     case 'workout_days':
       return entries.length > 0 ? 1 : 0;
-    case 'active_calories':
-      return entries.reduce(
+    case 'active_calories': {
+      const workouts = entries.reduce(
         (s, e) => s + Math.max(0, num(e.activeCalories)),
         0
       );
+      // The daily total already holds the workouts the device recorded, so
+      // the day scores like the Diary: the larger of it and the workouts.
+      const daily = challengeDailyCalories(data.dailyCalories, rules);
+      return resolveExerciseCalories(workouts, daily.get(day) ?? 0, 0).calories;
+    }
     case 'elevation':
       return entries.reduce((s, e) => s + Math.max(0, num(e.elevationM)), 0);
     default:

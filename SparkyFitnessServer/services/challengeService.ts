@@ -10,6 +10,7 @@ import {
   DEFAULT_CHALLENGE_PRESET_ID,
   addDays,
   challengeCountedEntries,
+  challengeDailyCalories,
   challengeEntryClass,
   challengePace,
   challengePeriodTotal,
@@ -991,30 +992,31 @@ async function recomputeMemberLocked(
   ]);
   const done = rows.filter((row) => !isPlannedEntryRow(row));
   const doneById = new Map(done.map((row) => [row.id, row]));
-  const allEntries = done.map(toChallengeEntry);
   // A synced daily calorie total is stored as an entry but is no workout: it
-  // counts only toward an active-calories total, as before, and never as a
-  // workout, a streak day, the goal or a card.
-  const entries = allEntries.filter(
-    (e) => doneById.get(e.id)?.exercise_name !== DAILY_SUMMARY_EXERCISE_NAME
-  );
+  // is never a workout, a streak day, the goal or a card. An active-calories
+  // challenge scores each day against it the way the Diary does (the larger
+  // of it and the counted workouts), so it is kept per day, apart.
+  const entries: ChallengeEntry[] = [];
+  const dailyCalories: ChallengeEntry[] = [];
+  for (const row of done) {
+    (row.exercise_name === DAILY_SUMMARY_EXERCISE_NAME
+      ? dailyCalories
+      : entries
+    ).push(toChallengeEntry(row));
+  }
 
   const scores: DailyScoreInput[] = [];
   const cards: ChallengeActivityCardInput[] = [];
   for (const run of runs) {
     const days = scoreChallengeDays(
-      {
-        entries: run.rules.metric === 'active_calories' ? allEntries : entries,
-        steps,
-        zones,
-      },
+      { entries, steps, dailyCalories, zones },
       run.from,
       run.to,
       run.rules
     );
     const counted = challengeCountedEntries(entries, run.rules);
-    // Workouts of each day from the counted workouts, so a daily calorie
-    // total that an active-calories challenge adds up is never one
+    const dailyKcal = challengeDailyCalories(dailyCalories, run.rules);
+    // Workouts of each day, from the counted workouts.
     const workoutsOn = new Map<string, number>();
     for (const e of counted)
       workoutsOn.set(e.date, (workoutsOn.get(e.date) ?? 0) + 1);
@@ -1061,11 +1063,15 @@ async function recomputeMemberLocked(
         steps: d.steps,
         workouts: workoutsOn.get(d.date) ?? 0,
         // Tomorrow in the challenge's zone is scored for members whose own
-        // day is already there; until it holds a workout or steps it is not
-        // an eligible day, so it never counts as a missed one.
+        // day is already there; until it holds a workout, steps or a daily
+        // calorie total the challenge counts it is not an eligible day, so
+        // it never counts as a missed one.
         eligible:
           d.eligible &&
-          (d.date <= today || workoutsOn.has(d.date) || d.steps > 0),
+          (d.date <= today ||
+            workoutsOn.has(d.date) ||
+            d.steps > 0 ||
+            dailyKcal.has(d.date)),
         detail: {
           prs: d.prs,
           entries: d.entries,
