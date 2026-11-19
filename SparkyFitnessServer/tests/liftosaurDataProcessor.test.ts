@@ -278,9 +278,12 @@ describe('processLiftosaurWorkouts', () => {
 
     await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
 
+    // The workout returns before its preset and session are looked up or
+    // created (checked on the preset lookup, which comes first).
     expect(
-      exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      workoutPresetRepository.getWorkoutPresetByName
     ).not.toHaveBeenCalled();
+    expect(workoutPresetRepository.createWorkoutPreset).not.toHaveBeenCalled();
     expect(
       exerciseEntryRepository._createExerciseEntryWithClient
     ).not.toHaveBeenCalled();
