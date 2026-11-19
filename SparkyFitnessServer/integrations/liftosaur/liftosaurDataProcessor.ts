@@ -58,6 +58,17 @@ function fetchedDayRange(
   };
 }
 
+/**
+ * Source ids of the Liftosaur rows this sync keeps: the sessions and entries
+ * it wrote, plus entries it could not write because of an error (so a
+ * transient failure never deletes an existing entry). A deliberate skip adds
+ * nothing, so its old row is cleaned up.
+ */
+interface KeptSourceIds {
+  sessions: Set<string>;
+  entries: Set<string>;
+}
+
 /** Source id of the entry for one exercise of a Liftosaur workout. */
 function entrySourceId(
   workout: LiftohistoryWorkout,
@@ -105,45 +116,10 @@ async function processLiftosaurWorkouts(
       LIFTOSAUR_SOURCE
     );
 
-    // Re-sent workouts are updated in place, keyed by source id (session:
-    // the Liftosaur record id; entry: `<record id>_<exercise index>`), so
-    // entry ids and anything the user added in SparkyFitness (notes, effort,
-    // calorie links, edited fields) survive a re-sync. Only Liftosaur rows in
-    // the synced day range that are no longer sent are deleted: workouts
-    // deleted in Liftosaur, and rows from before source ids were stable.
-    // Entries go first, because that path clears their calorie links and a
-    // session delete cascades to the entries still under it.
-    const range =
-      cleanup === undefined ? fetchedDayRange(workouts, timezone) : cleanup;
-    if (range) {
-      const { startDate, endDate } = range;
-      const keepSessionIds = workouts.map((w) => String(w.id));
-      const keepEntryIds = workouts.flatMap((w) =>
-        w.exercises.map((_, index) => entrySourceId(w, index))
-      );
-
-      await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient(
-        client,
-        userId,
-        startDate,
-        endDate,
-        LIFTOSAUR_SOURCE,
-        undefined,
-        keepEntryIds
-      );
-
-      await deleteLiftosaurSessionsNotInWithClient(
-        client,
-        userId,
-        startDate,
-        endDate,
-        keepSessionIds
-      );
-    }
-
     // Paginated fetches can overlap at page boundaries; process each workout id
     // exactly once so a second pass doesn't create an empty orphan session.
     const seenWorkoutIds = new Set<number>();
+    const kept: KeptSourceIds = { sessions: new Set(), entries: new Set() };
     for (const workout of workouts) {
       if (seenWorkoutIds.has(workout.id)) {
         log('debug', `Skipping duplicate Liftosaur workout ${workout.id}`);
@@ -154,8 +130,42 @@ async function processLiftosaurWorkouts(
         userId,
         createdByUserId,
         workout,
+        kept,
         client,
         timezone
+      );
+    }
+
+    // Re-sent workouts are updated in place above, keyed by source id
+    // (session: the Liftosaur record id; entry: `<record id>_<exercise
+    // index>`), so entry ids and anything the user added in SparkyFitness
+    // (notes, effort, calorie links, edited fields) survive a re-sync. Then
+    // every Liftosaur row in the synced day range that this sync did not
+    // write is deleted: workouts deleted in Liftosaur, rows from before
+    // source ids were stable, and rows the import now skips. Entries go
+    // first, because that path clears their calorie links and a session
+    // delete cascades to the entries still under it.
+    const range =
+      cleanup === undefined ? fetchedDayRange(workouts, timezone) : cleanup;
+    if (range) {
+      const { startDate, endDate } = range;
+
+      await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient(
+        client,
+        userId,
+        startDate,
+        endDate,
+        LIFTOSAUR_SOURCE,
+        undefined,
+        [...kept.entries]
+      );
+
+      await deleteLiftosaurSessionsNotInWithClient(
+        client,
+        userId,
+        startDate,
+        endDate,
+        [...kept.sessions]
       );
     }
 
@@ -179,6 +189,7 @@ async function processSingleWorkout(
   userId: string,
   createdByUserId: string,
   workout: LiftohistoryWorkout,
+  kept: KeptSourceIds,
   client: PoolClient,
   timezone = 'UTC'
 ) {
@@ -231,6 +242,7 @@ async function processSingleWorkout(
       notes: `Liftosaur Workout Session: ${workoutTitle}`,
     }
   );
+  kept.sessions.add(String(workout.id));
 
   const workoutDurationMinutes = workout.durationSeconds
     ? Math.round(workout.durationSeconds / 60)
@@ -274,6 +286,8 @@ async function processSingleWorkout(
         'error',
         `Failed to find or create Liftosaur exercise "${liftosaurExercise.name}"`
       );
+      // An error, not a skip: keep the existing entry for the next sync.
+      kept.entries.add(entrySourceId(workout, exerciseIndex));
       continue;
     }
 
@@ -329,6 +343,7 @@ async function processSingleWorkout(
         presetEntryId
       );
     const entry: ExerciseEntryRow | null = created.entry ?? null;
+    kept.entries.add(sourceId);
 
     // 5. Populate the reusable preset template with this exercise. Reuses the
     //    existing exercise row when present and skips if it already has sets,

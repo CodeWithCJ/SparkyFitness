@@ -192,6 +192,46 @@ describe('processLiftosaurWorkouts', () => {
     expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
   });
 
+  it('deletes only after writing, keeping exactly what this sync wrote', async () => {
+    const workouts = parseSampleWorkouts();
+    await processLiftosaurWorkouts(UID, CID, workouts);
+
+    const deleteOrder = vi.mocked(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+    ).mock.invocationCallOrder[0]!;
+    const lastWrite = Math.max(
+      ...vi.mocked(exerciseEntryRepository._createExerciseEntryWithClient).mock
+        .invocationCallOrder
+    );
+    expect(deleteOrder).toBeGreaterThan(lastWrite);
+  });
+
+  it('keeps the existing entry of an exercise skipped because of an error', async () => {
+    // "Bulgarian Split Squat" is not in the library and cannot be created.
+    vi.mocked(exerciseRepository.createExercise).mockResolvedValueOnce(
+      null as never
+    );
+    const workouts = parseSampleWorkouts();
+    const id = String(workouts[0]!.id);
+
+    await processLiftosaurWorkouts(UID, CID, workouts);
+
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+    ).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      '2026-07-13',
+      '2026-07-13',
+      'Liftosaur',
+      undefined,
+      [`${id}_0`, `${id}_1`]
+    );
+  });
+
   it('takes the Liftosaur sync lock before writing anything', async () => {
     await processLiftosaurWorkouts(
       UID,
