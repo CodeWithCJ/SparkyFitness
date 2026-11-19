@@ -235,6 +235,42 @@ describe('liftosaurSync', () => {
     expect(call[4]).toBeNull();
   });
 
+  it('imports one workout per record and deletes nothing when a record holds more', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: {
+        data: {
+          records: [
+            {
+              id: 4,
+              text: [
+                '2026-03-01T10:00:00Z / exercises: {',
+                '  Squat / 3x5 100kg',
+                '}',
+                '2026-03-02T10:00:00Z / exercises: {',
+                '  Curl / 3x10 10kg',
+                '}',
+              ].join('\n'),
+            },
+          ],
+          hasMore: false,
+        },
+      },
+    });
+
+    await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123'
+    );
+
+    const call = vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts).mock
+      .calls[0]!;
+    expect(call[2]).toHaveLength(1);
+    expect(call[2][0]!.id).toBe(4);
+    expect(call[4]).toBeNull();
+  });
+
   it('reconciles exactly the requested days of a Sync Range', async () => {
     vi.mocked(axios.get).mockResolvedValueOnce({
       data: { data: { records: [], hasMore: false } },

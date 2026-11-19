@@ -250,9 +250,19 @@ async function syncLiftosaurData(
         skippedCount += 1;
         parseComplete = false;
       }
-      for (const parsedWorkout of parsed.workouts) {
-        // Identify the workout by Liftosaur's record id, which stays the same
-        // when its start time is edited in Liftosaur.
+      // Each history record is one workout, identified by Liftosaur's record
+      // id, which stays the same when its start time is edited in Liftosaur.
+      // A record holding more than one would need ids of its own; rather than
+      // guess them, import the first, say so, and delete nothing this sync.
+      if (parsed.workouts.length > 1) {
+        log(
+          'warn',
+          `[liftosaurService] Record ${record.id} holds ${parsed.workouts.length} workouts; importing the first only.`
+        );
+        parseComplete = false;
+      }
+      const [parsedWorkout] = parsed.workouts;
+      if (parsedWorkout) {
         allWorkouts.push({ ...parsedWorkout, id: record.id });
       }
     }
