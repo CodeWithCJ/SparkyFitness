@@ -833,6 +833,10 @@
   "barcodeSources": {
     "currentSource": "Forrás: {{name}}",
     "otherSources": "További források",
-    "empty": "Nincsenek további elérhető források"
+    "empty": "Nincsenek további elérhető források",
+    "error": "Nem lehet betölteni a vonalkód forrásokat. Kérlek próbáld újra.",
+    "retry": "Nem lehet betölteni a forrásokat. Kattints az újrapróbáláshoz.",
+    "providerError": "Forrás nem elérhető",
+    "noMatch": "Nincs találat"
   }
 }

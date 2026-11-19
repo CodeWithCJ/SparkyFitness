@@ -1996,7 +1996,6 @@
     "watchRunLiveRun": "Corrida no relógio",
     "watchWalkLive": "Caminhada no relógio",
     "allergenSettings": "Alérgenos",
-    "runProgramCalendar": "Calendário do programa",
     "runProgramWorkout": "Treino",
     "runProgramEdit": "Editar plano",
     "runProgramNew": "Novo plano",
@@ -8735,34 +8734,8 @@
     "partOfProgram": "Faz parte do seu programa de treino",
     "openCalendar": "Abrir o calendário do programa",
     "openCalendarHint": "Todos os treinos numa visão mensal",
-    "monthGrid": {
-      "previous": "Mês anterior",
-      "next": "Próximo mês",
-      "dayA11yNone": "{{date}}, sem treinos",
-      "dayA11y_one": "{{date}}, {{formattedCount}} treino",
-      "dayA11y_many": "{{date}}, {{formattedCount}} treinos",
-      "dayA11y_other": "{{date}}, {{formattedCount}} treinos"
-    },
     "calendarScreen": {
-      "noProgram": "Inicie um programa de treino para ver o calendário.",
-      "progress": "{{done}} de {{total}} treinos feitos",
-      "doneOn": "Feito em {{date}}",
-      "done": "Concluído",
-      "dueOn": "Próximo · {{date}}",
-      "notScheduled": "Não agendado",
-      "minutes": "{{minutes}} min",
-      "legendDone": "Concluído",
-      "legendAhead": "Pendente ou futuro",
-      "noWorkoutsDay": "Nenhum treino do programa neste dia.",
-      "pickDays_one": "Mais {{count}} treino ainda não está no calendário. Escolha os dias de treino na tela do programa para ver quando cai cada um.",
-      "pickDays_many": "Mais {{count}} treinos ainda não estão no calendário. Escolha os dias de treino na tela do programa para ver quando cai cada um.",
-      "pickDays_other": "Mais {{count}} treinos ainda não estão no calendário. Escolha os dias de treino na tela do programa para ver quando cai cada um.",
-      "pastGoal_one": "{{count}} treino não cabe antes da data da meta.",
-      "pastGoal_many": "{{count}} treinos não cabem antes da data da meta.",
-      "pastGoal_other": "{{count}} treinos não cabem antes da data da meta.",
-      "allWorkouts": "Todos os treinos",
-      "today": "Hoje",
-      "due": "Próximo"
+      "minutes": "{{minutes}} min"
     },
     "detail": {
       "workoutTitle": "Semana {{week}}, corrida {{run}}",

@@ -1369,7 +1369,6 @@
     "watchRunLiveRun": "喺手錶度跑",
     "watchWalkLive": "喺手錶度行",
     "allergenSettings": "致敏原",
-    "runProgramCalendar": "計劃日曆",
     "runProgramWorkout": "訓練",
     "runProgramEdit": "編輯計劃",
     "runProgramNew": "新計劃",
@@ -7650,28 +7649,8 @@
     "partOfProgram": "您嘅訓練計劃嘅一部分",
     "openCalendar": "開計劃日曆",
     "openCalendarHint": "喺月視圖睇每堂訓練",
-    "monthGrid": {
-      "previous": "上個月",
-      "next": "下個月",
-      "dayA11yNone": "{{date}}，冇訓練",
-      "dayA11y_other": "{{date}}，{{formattedCount}} 堂訓練"
-    },
     "calendarScreen": {
-      "noProgram": "開始訓練計劃嚟睇佢嘅日曆.",
-      "progress": "已完成 {{done}} 堂，共 {{total}} 堂",
-      "doneOn": "{{date}} 完成",
-      "done": "完成",
-      "dueOn": "下一次 · {{date}}",
-      "notScheduled": "未排程",
-      "minutes": "{{minutes}} 分鐘",
-      "legendDone": "完成",
-      "legendAhead": "到期或者就嚟",
-      "noWorkoutsDay": "呢一日冇計劃訓練.",
-      "pickDays_other": "仲有 {{count}} 堂訓練未上日曆。喺計劃螢幕揀您嘅訓練日，嚟睇每堂嘅日期.",
-      "pastGoal_other": "{{count}} 堂訓練趕唔切喺目標日期前完成.",
-      "allWorkouts": "全部訓練",
-      "today": "今日",
-      "due": "下一次"
+      "minutes": "{{minutes}} 分鐘"
     },
     "detail": {
       "workoutTitle": "第 {{week}} 週，跑步 {{run}}",

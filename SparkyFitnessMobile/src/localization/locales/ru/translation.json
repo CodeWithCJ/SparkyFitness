@@ -1356,7 +1356,6 @@
     "watchRunLiveJumpRope": "Прыжки со скакалкой на часах",
     "watchWalkLive": "Ходьба на часах",
     "allergenSettings": "Аллергены",
-    "runProgramCalendar": "Календарь программы",
     "runProgramEdit": "Изменить план",
     "runProgramNew": "Новый план",
     "runProgramRace": "Запланировать забег",
@@ -7572,13 +7571,6 @@
         "miles": "мили"
       },
       "pickDate": "Выберите дату"
-    },
-    "monthGrid": {
-      "previous": "Предыдущий месяц",
-      "next": "Следующий месяц"
-    },
-    "calendarScreen": {
-      "today": "Сегодня"
     },
     "detail": {
       "runTime": "Бег",
