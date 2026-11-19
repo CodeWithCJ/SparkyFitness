@@ -3,13 +3,12 @@ import {
   buildChallengeWeekNotices,
   challengeDaysLabel,
   challengeRulesSummary,
-  challengeState,
   formatChallengeValue,
   showsTrophy,
-  sortChallenges,
   weekLeaderNotificationDate,
   type ChallengeUnits,
 } from '../../src/utils/challenges';
+import { challengeState, sortChallenges } from '@workspace/shared';
 import {
   FRIEND,
   makeChallenge,

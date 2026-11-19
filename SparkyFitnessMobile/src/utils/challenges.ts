@@ -1,6 +1,7 @@
 import type { TFunction } from 'i18next';
 import {
   challengeLeaders,
+  challengeState,
   challengeToday,
   leadsChallenge,
   localDateTimeToUtc,
@@ -197,42 +198,6 @@ export function formatChallengeValue(
             value: whole(value),
           });
   }
-}
-
-export type ChallengeState = 'upcoming' | 'running' | 'ended';
-
-export function challengeState(
-  challenge: Pick<ChallengeSummary, 'start_date' | 'end_date' | 'ended_at'>,
-  today: string
-): ChallengeState {
-  if (challenge.ended_at) return 'ended';
-  if (challenge.end_date && today > challenge.end_date) return 'ended';
-  if (today < challenge.start_date) return 'upcoming';
-  return 'running';
-}
-
-/**
- * Running first, then upcoming, then ended; newest start first within each.
- * `today` is one day for all, or each challenge's own today (its time zone).
- */
-export function sortChallenges<
-  T extends Pick<ChallengeSummary, 'start_date' | 'end_date' | 'ended_at'>,
->(challenges: readonly T[], today: string | ((challenge: T) => string)): T[] {
-  const order: Record<ChallengeState, number> = {
-    running: 0,
-    upcoming: 1,
-    ended: 2,
-  };
-  const rank = (challenge: T) =>
-    order[
-      challengeState(
-        challenge,
-        typeof today === 'string' ? today : today(challenge)
-      )
-    ];
-  return [...challenges].sort(
-    (a, b) => rank(a) - rank(b) || b.start_date.localeCompare(a.start_date)
-  );
 }
 
 /** A trophy belongs to a final period's winners only. */

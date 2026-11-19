@@ -14,13 +14,13 @@ import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 import { usePreferences } from '../../hooks/usePreferences';
 import {
   challengeLeaders,
+  challengeState,
   leadsChallenge,
   ownChallengeStanding,
+  sortChallenges,
 } from '@workspace/shared';
 import {
-  challengeState,
   formatChallengeValue,
-  sortChallenges,
   type ChallengeUnits,
 } from '../../utils/challenges';
 import type { RootStackParamList, TabParamList } from '../../types/navigation';

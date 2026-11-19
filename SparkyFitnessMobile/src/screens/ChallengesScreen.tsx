@@ -9,7 +9,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { challengeToday, type ChallengeSummary } from '@workspace/shared';
+import {
+  challengeState,
+  challengeToday,
+  sortChallenges,
+  type ChallengeSummary,
+} from '@workspace/shared';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import ServerGate from '../components/ServerGate';
@@ -20,11 +25,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppLocale } from '../localization';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatShortDate } from '../utils/dateUtils';
-import {
-  challengeRulesSummary,
-  challengeState,
-  sortChallenges,
-} from '../utils/challenges';
+import { challengeRulesSummary } from '../utils/challenges';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'Challenges'>;

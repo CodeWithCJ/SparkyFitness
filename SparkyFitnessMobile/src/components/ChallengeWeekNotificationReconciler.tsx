@@ -18,10 +18,9 @@ import {
   scheduleChallengeWeekNotifications,
 } from '../services/challengeWeekNotificationService';
 import { hasNotificationPermission } from '../services/notifications';
-import { challengeToday } from '@workspace/shared';
+import { challengeState, challengeToday } from '@workspace/shared';
 import {
   buildChallengeWeekNotices,
-  challengeState,
   type ChallengeDistanceUnit,
 } from '../utils/challenges';
 
