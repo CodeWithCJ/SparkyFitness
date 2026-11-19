@@ -141,6 +141,16 @@ async function processSingleWorkout(
     `Processing Liftosaur workout: ${workoutTitle} (${workout.date})`
   );
 
+  // A workout in which nothing was performed (only planned sets) gets no
+  // session at all, rather than an empty one.
+  if (!workout.exercises.some((ex) => mergeSets(ex).sets.length > 0)) {
+    log(
+      'debug',
+      `Skipping Liftosaur workout ${workout.id} with no performed sets`
+    );
+    return;
+  }
+
   // Find or create the reusable workout preset (the Liftosaur program name, or
   // a generic name for ad-hoc sessions) so the diary shows the whole workout as
   // a single grouped session instead of loose exercises.
@@ -187,6 +197,9 @@ async function processSingleWorkout(
   const workoutDurationMinutes = workout.durationSeconds
     ? Math.round(workout.durationSeconds / 60)
     : 0;
+  // The whole-workout duration fallback goes to the first exercise that is
+  // imported, which is not index 0 when that one was skipped.
+  let isFirstImported = true;
 
   for (
     let exerciseIndex = 0;
@@ -194,6 +207,18 @@ async function processSingleWorkout(
     exerciseIndex++
   ) {
     const liftosaurExercise = workout.exercises[exerciseIndex]!;
+
+    // Merge completed/warmup/target sets into the flat set list SparkyFitness
+    // stores (see mergeSets). An exercise with no performed sets is skipped
+    // before anything is looked up or created for it.
+    const mergedSets = mergeSets(liftosaurExercise);
+    if (mergedSets.sets.length === 0) {
+      log(
+        'debug',
+        `Skipping Liftosaur exercise "${liftosaurExercise.name}" with no performed sets`
+      );
+      continue;
+    }
 
     // 1. Resolve exercise in SparkyFitness library: try exact name match
     //    first, then the bare name ("Squat"), then create a custom exercise
@@ -229,19 +254,6 @@ async function processSingleWorkout(
       continue;
     }
 
-    // 2. Merge completed/warmup/target sets into the flat set list SparkyFitness
-    //    stores. Liftosaur logs both what was done (completed) and what the
-    //    program prescribed (target); completed values win for reps/weight/RPE,
-    //    and target rest timers become per-set durations.
-    const mergedSets = mergeSets(liftosaurExercise);
-    if (mergedSets.sets.length === 0) {
-      log(
-        'debug',
-        `Skipping Liftosaur exercise "${liftosaurExercise.name}" with no performed sets`
-      );
-      continue;
-    }
-
     // Stable per-exercise identity so re-syncs update in place instead of
     // duplicating. Liftosaur record ids are unique and exercise index is unique
     // within a record.
@@ -250,9 +262,10 @@ async function processSingleWorkout(
     const durationMinutes =
       mergedSets.timerSeconds > 0
         ? Math.round(mergedSets.timerSeconds / 60)
-        : exerciseIndex === 0
+        : isFirstImported
           ? workoutDurationMinutes
           : 0;
+    isFirstImported = false;
 
     // 3. Prepare entry data
     const entryData = {
