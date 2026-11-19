@@ -21,6 +21,7 @@ import {
   upsertBbt,
 } from '../../../src/services/api/cycleApi';
 import { apiFetch } from '../../../src/services/api/apiClient';
+import { testServer } from '../../hooks/queryTestUtils';
 
 jest.mock('../../../src/services/api/apiClient', () => ({
   apiFetch: jest.fn(),
@@ -42,11 +43,12 @@ describe('wire contract', () => {
     ],
     [
       'putSettings',
-      () => putSettings({ mode: 'ttc', mark_onboarded: true }),
+      () => putSettings({ mode: 'ttc', mark_onboarded: true }, testServer),
       {
         endpoint: '/api/v2/cycle/settings',
         method: 'PUT',
         body: { mode: 'ttc', mark_onboarded: true },
+        serverConfig: testServer,
       },
     ],
     [

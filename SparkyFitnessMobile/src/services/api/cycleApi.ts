@@ -1,4 +1,5 @@
 import { apiFetch } from './apiClient';
+import type { ServerConfig } from '../storage';
 import type {
   SharedCycleSettings,
   SharedCycleDailyLog,
@@ -18,11 +19,14 @@ export const getSettings = async (): Promise<SharedCycleSettings | null> => {
   });
 };
 
+/** Sent to `serverConfig`, the account the change was made for, whichever
+ * server is active by the time it goes out (`serverOnScreen`). */
 export const putSettings = async (
   body: Partial<SharedCycleSettings> & {
     mark_onboarded?: boolean;
     reset_onboarding?: boolean;
-  }
+  },
+  serverConfig: ServerConfig
 ): Promise<SharedCycleSettings> => {
   return apiFetch<SharedCycleSettings>({
     endpoint: '/api/v2/cycle/settings',
@@ -30,6 +34,7 @@ export const putSettings = async (
     operation: 'put settings',
     method: 'PUT',
     body,
+    serverConfig,
   });
 };
 

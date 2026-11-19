@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-17_
+_Last updated: 2026-11-19_
 
 SparkyFitness Mobile is a React Native 0.86 + Expo SDK 57 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -318,6 +318,7 @@ npx expo prebuild --clean
 - `OnboardingScreen` handles first-run setup, session sign-in, API keys, MFA, theme, external food source defaults, and finish-without-connection.
 - `ServerSettingsScreen` handles server list management, active server switching, connection tests, web dashboard launch, and `ServerConfigModal`.
 - `useAuth`, `ReauthModal`, `ServerConfigModal`, `authService.ts`, and `MfaForm` coordinate auth recovery, MFA, session expiry, and API-key fallback.
+- A server switch stores the new active server before `useAuth` clears the cache, and `apiFetch` without a `serverConfig` reads the active server only when the request goes out. So a write that belongs to the account on screen and can wait (queued behind another in a mutation `scope`, or an `await` in `onMutate`) takes `serverOnScreen(queryClient)` (`hooks/serverOnScreen.ts`, the `useServerConfigs` cache) when it is made and passes it as `serverConfig`; with none known it saves nothing and says so. The cycle settings writes do this (#3665), and recipe imports read the account the same way; the scoped preference writes (calorie settings, water preferences, glucose unit) do not yet.
 - Production rejects HTTP server URLs. Preserve HTTPS guards in onboarding, settings, raw fetch paths, and health sync.
 - Proxy headers support reverse-proxy auth. They must be injected before auth headers in `apiClient.ts` and raw fetch clients.
 - During login before a config is saved, `authService` manages pending proxy headers via `setPendingProxyHeaders()` / `clearPendingProxyHeaders()`.

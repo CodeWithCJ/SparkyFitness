@@ -5,12 +5,17 @@ import {
   useMobileFeatures,
 } from '../../src/hooks/useMobileFeatures';
 import { useCycleSettings } from '../../src/hooks/useCycleSettings';
-import { cycleSettingsQueryKey } from '../../src/hooks/queryKeys';
+import {
+  cycleSettingsQueryKey,
+  serverConfigsQueryKey,
+} from '../../src/hooks/queryKeys';
 import { getSettings, putSettings } from '../../src/services/api/cycleApi';
 import type { SharedCycleSettings } from '../../src/types/womensHealth';
 import {
   createQueryWrapper,
   createTestQueryClient,
+  showServerOnScreen,
+  testServer,
   type QueryClient,
 } from './queryTestUtils';
 
@@ -69,6 +74,7 @@ function setup() {
 beforeEach(() => {
   jest.resetAllMocks();
   queryClient = createTestQueryClient();
+  showServerOnScreen(queryClient);
 });
 
 afterEach(() => {
@@ -184,7 +190,7 @@ describe('useCycleSwitch', () => {
       expect(mockNavigate).toHaveBeenCalledWith('CycleOnboarding')
     );
     expect(putMock).toHaveBeenCalledTimes(1);
-    expect(putMock).toHaveBeenCalledWith({ enabled: true });
+    expect(putMock).toHaveBeenCalledWith({ enabled: true }, testServer);
   });
 
   it('brings cycle back without the setup once it was set up', async () => {
@@ -197,7 +203,7 @@ describe('useCycleSwitch', () => {
     act(() => result.current.cycle.setOn(true));
 
     await waitFor(() => expect(result.current.cycle.on).toBe(true));
-    expect(putMock).toHaveBeenCalledWith({ enabled: true });
+    expect(putMock).toHaveBeenCalledWith({ enabled: true }, testServer);
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -210,7 +216,7 @@ describe('useCycleSwitch', () => {
     act(() => result.current.cycle.setOn(false));
 
     await waitFor(() => expect(result.current.cycle.on).toBe(false));
-    expect(putMock).toHaveBeenCalledWith({ enabled: false });
+    expect(putMock).toHaveBeenCalledWith({ enabled: false }, testServer);
     expect(result.current.features.isExplicitlyOff('cycle')).toBe(true);
     expect(mockNavigate).not.toHaveBeenCalled();
   });
@@ -372,6 +378,66 @@ describe('useCycleSettings saves', () => {
     );
     expect(cached?.enabled).toBe(false);
     expect(cached?.mode).toBe('standard');
+  });
+
+  it('sends each save to the server it was made on, even if another one is active by then', async () => {
+    getMock.mockResolvedValue(cycleRow());
+    const first = deferred<SharedCycleSettings>();
+    putMock
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValueOnce(cycleRow({ enabled: false, mode: 'ttc' }))
+      .mockResolvedValueOnce(cycleRow({ enabled: false, mode: 'ttc' }));
+    const { result } = renderHook(
+      () => ({ cycle: useCycleSwitch(), edit: useCycleSettings() }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+    await waitFor(() => expect(result.current.cycle.state).toBe('ready'));
+
+    // A field edit, then the switch and another edit queued behind it.
+    act(() => result.current.edit.updateSettings({ mode: 'ttc' }));
+    await waitFor(() => expect(putMock).toHaveBeenCalledTimes(1));
+    act(() => result.current.cycle.setOn(false));
+    act(() => result.current.edit.updateSettings({ luteal_phase_length: 13 }));
+
+    // A server switch stores the new active server before the cache is
+    // cleared; the queued saves still belong to the first one.
+    showServerOnScreen(queryClient, {
+      ...testServer,
+      id: 'server-b',
+      url: 'https://b.example.com',
+    });
+    await act(async () => {
+      first.resolve(cycleRow({ mode: 'ttc' }));
+    });
+    await waitFor(() => expect(putMock).toHaveBeenCalledTimes(3));
+    expect(putMock.mock.calls.map(([, server]) => server.id)).toEqual([
+      'server-a',
+      'server-a',
+      'server-a',
+    ]);
+  });
+
+  it('saves nothing, and says so, when the server on screen is not known', async () => {
+    getMock.mockResolvedValue(cycleRow());
+    const { result } = renderHook(
+      () => ({ cycle: useCycleSwitch(), edit: useCycleSettings() }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+    await waitFor(() => expect(result.current.cycle.state).toBe('ready'));
+
+    queryClient.removeQueries({ queryKey: serverConfigsQueryKey });
+    act(() => result.current.cycle.setOn(false));
+    act(() => result.current.edit.updateSettings({ mode: 'ttc' }));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    });
+
+    expect(putMock).not.toHaveBeenCalled();
+    expect(jest.mocked(Toast.show)).toHaveBeenCalledTimes(2);
+    expect(result.current.cycle.on).toBe(true);
+    expect(
+      queryClient.getQueryData<SharedCycleSettings>(cycleSettingsQueryKey)?.mode
+    ).toBe('standard');
   });
 
   it('runs one save at a time, so a quick off and on land in order', async () => {
