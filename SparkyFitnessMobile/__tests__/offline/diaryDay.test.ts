@@ -20,6 +20,7 @@ import {
 import type { OfflineDb } from '../../src/offline/types';
 import {
   WORKOUT_SESSION_CREATE,
+  WORKOUT_SESSION_DELETE,
   WORKOUT_SESSION_UPDATE,
 } from '../../src/offline/workoutHandOver';
 import { createTestDb } from '../helpers/offlineTestDb';
@@ -100,6 +101,7 @@ describe('the diary day kept on the phone', () => {
     expect(await readOfflineDiaryDay(DAY)).toEqual({
       saved: null,
       waiting: [],
+      deleted: [],
     });
   });
 
@@ -150,6 +152,7 @@ describe('the diary day kept on the phone', () => {
     expect(await readOfflineDiaryDay(DAY)).toEqual({
       saved: null,
       waiting: [],
+      deleted: [],
     });
 
     // A later change that cleared it makes the saved copy readable again.
@@ -319,5 +322,28 @@ describe('the diary day kept on the phone', () => {
     expect(
       merged.map((session) => (session as PresetSessionResponse).name)
     ).toEqual(['New A', 'B', 'C']);
+  });
+
+  it('hides a workout whose removal is waiting to upload', async () => {
+    await enqueueOutbox(db, {
+      id: 'row-del',
+      serverConfigId: 's1',
+      userId: 'u1',
+      kind: WORKOUT_SESSION_DELETE,
+      entityId: 'b',
+      entryDate: DAY,
+      payload: { id: 'b' },
+      payloadVersion: 1,
+    });
+
+    const day = await readOfflineDiaryDay(DAY);
+    expect(day.deleted).toEqual(['b']);
+
+    const merged = mergeWaitingWorkouts(
+      [savedSession('a', 'A'), savedSession('b', 'B')],
+      [],
+      day.deleted
+    );
+    expect(merged.map((session) => session.id)).toEqual(['a']);
   });
 });

@@ -26,6 +26,7 @@ If you try to start a workout offline before the phone has ever refreshed, the a
 - Log sets, add or swap exercises from your saved library, use the plate calculator and the rest timer.
 - Finish the workout. The usual summary appears, and your feedback and the "update saved workout" answer are kept to send later.
 - Discard a workout.
+- Delete a saved workout from its detail screen. It disappears from your diary at once and is removed from the server when it can be reached.
 - See your workouts of the last 7 days in the **Diary**, and open them. Food, water, sleep and the other diary entries need a connection, and the diary says so. Older days are not kept on the phone.
 - Browse your saved workouts and your exercise library in the **Library** tab. Everything else in the Library (foods, meals, plans, reports) needs a connection, and the tab says so.
 

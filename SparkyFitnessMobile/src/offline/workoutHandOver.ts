@@ -203,7 +203,8 @@ export async function queueWorkoutUpdate(
  * that session is dropped first: a discarded workout must not upload.
  */
 export async function queueWorkoutSessionDelete(
-  sessionId: string
+  sessionId: string,
+  entryDate: string | null = null
 ): Promise<boolean> {
   try {
     const serverConfigId = await getActiveServerConfigId();
@@ -218,6 +219,7 @@ export async function queueWorkoutSessionDelete(
         userId,
         kind: WORKOUT_SESSION_DELETE,
         entityId: sessionId,
+        entryDate: entryDate ? normalizeDate(entryDate) : null,
         payload: { id: sessionId },
         payloadVersion: WORKOUT_SESSION_PAYLOAD_VERSION,
       });

@@ -28,6 +28,7 @@ import {
 import { TimeoutError } from '../utils/concurrency';
 import { normalizeDate } from '../utils/dateUtils';
 import { serverMayBeDown } from '../utils/serverErrors';
+import { queueWorkoutSessionDelete } from '../offline/workoutHandOver';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { syncExerciseSessionInCache } from './syncExerciseSessionInCache';
 import {
@@ -370,13 +371,42 @@ interface UseDeleteWorkoutOptions {
   onSuccess?: () => void;
 }
 
+// With the server away the removal is kept on this phone and sent when it can
+// be reached (#1983); the diary hides the workout meanwhile.
+async function deleteWorkoutOrQueue(
+  sessionId: string,
+  entryDate: string
+): Promise<void> {
+  try {
+    await deleteWorkoutApi(sessionId);
+  } catch (error) {
+    if (
+      serverMayBeDown(error) &&
+      (await queueWorkoutSessionDelete(sessionId, entryDate))
+    ) {
+      Toast.show({
+        type: 'info',
+        text1: i18n.t('offline.deleteSavedTitle', {
+          defaultValue: 'Deleted on this phone',
+        }),
+        text2: i18n.t('offline.deleteSavedMessage', {
+          defaultValue:
+            'It is removed from your server once it can be reached.',
+        }),
+      });
+      return;
+    }
+    throw error;
+  }
+}
+
 export function useDeleteWorkout({
   sessionId,
   entryDate,
   onSuccess,
 }: UseDeleteWorkoutOptions) {
   return useDeleteMutation({
-    deleteFn: deleteWorkoutApi,
+    deleteFn: (id) => deleteWorkoutOrQueue(id, entryDate),
     id: sessionId,
     entryDate,
     confirmTitleKey: 'exerciseMutations.confirm.deleteWorkoutTitle',

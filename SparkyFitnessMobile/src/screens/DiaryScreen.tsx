@@ -634,7 +634,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
   const renderOfflineDay = () => {
     const sessions = mergeWaitingWorkouts(
       offlineDay.saved ?? [],
-      offlineDay.waiting
+      offlineDay.waiting,
+      offlineDay.deleted
     );
     return (
       <ScrollView
@@ -807,7 +808,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             <ExerciseSummary
               exerciseEntries={mergeWaitingWorkouts(
                 summary.exerciseEntries,
-                offlineDay.waiting
+                offlineDay.waiting,
+                offlineDay.deleted
               )}
               waitingSessionIds={waitingSessionIds}
               entryDate={selectedDate}

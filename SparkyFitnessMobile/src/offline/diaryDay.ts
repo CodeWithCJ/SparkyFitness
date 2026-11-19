@@ -18,6 +18,7 @@ import { signedInUserId } from './syncEngine';
 import type { OfflineDb, OutboxRow } from './types';
 import {
   WORKOUT_SESSION_CREATE,
+  WORKOUT_SESSION_DELETE,
   WORKOUT_SESSION_UPDATE,
   type WorkoutSessionUpdatePayload,
 } from './workoutHandOver';
@@ -31,6 +32,8 @@ export interface OfflineDiaryDay {
    * uploaded. Shown in place of the saved copy of the same workout.
    */
   waiting: PresetSessionResponse[];
+  /** Workouts of that day whose removal is waiting to upload: hidden. */
+  deleted: string[];
 }
 
 /** Keeps the day's workouts from a diary load, for showing it offline. */
@@ -198,9 +201,10 @@ export async function readOfflineDiaryDay(
   // Waits for an account change in progress. If its clean-up failed, nothing
   // is read: the saved day, the saved identity and so the queued workouts
   // that would be matched to it may all belong to the previous account.
-  if (!(await savedCopyReadable())) return { saved: null, waiting: [] };
+  if (!(await savedCopyReadable()))
+    return { saved: null, waiting: [], deleted: [] };
   const serverConfigId = await getActiveServerConfigId();
-  if (!serverConfigId) return { saved: null, waiting: [] };
+  if (!serverConfigId) return { saved: null, waiting: [], deleted: [] };
   const db = await getOfflineDb();
   const savedRow = await getCacheRow(
     db,
@@ -228,7 +232,10 @@ export async function readOfflineDiaryDay(
     ]);
     if (session) byId.set(session.id, session);
   }
-  return { saved, waiting: [...byId.values()] };
+  const deleted = rows
+    .filter((row) => row.kind === WORKOUT_SESSION_DELETE)
+    .map((row) => row.entityId);
+  return { saved, waiting: [...byId.values()], deleted };
 }
 
 /**
@@ -237,8 +244,13 @@ export async function readOfflineDiaryDay(
  */
 export function mergeWaitingWorkouts(
   sessions: readonly ExerciseSessionResponse[],
-  waiting: readonly PresetSessionResponse[]
+  waiting: readonly PresetSessionResponse[],
+  deleted: readonly string[] = []
 ): ExerciseSessionResponse[] {
+  if (deleted.length > 0) {
+    const gone = new Set(deleted);
+    sessions = sessions.filter((session) => !gone.has(session.id));
+  }
   const waitingById = new Map(waiting.map((session) => [session.id, session]));
   const merged = sessions.map(
     (session) => waitingById.get(session.id) ?? session

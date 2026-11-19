@@ -10768,6 +10768,8 @@
     "diaryNothingSaved": "Nothing saved for this day",
     "finishedTitle": "Saved on this phone",
     "finishedMessage": "It uploads when your server can be reached.",
+    "deleteSavedTitle": "Deleted on this phone",
+    "deleteSavedMessage": "It is removed from your server once it can be reached.",
     "startedTitle": "Started offline",
     "startedMessage": "This workout is kept on this phone and uploads when your server can be reached.",
     "notReadyTitle": "Not ready for offline workouts yet",
