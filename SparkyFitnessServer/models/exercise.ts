@@ -21,6 +21,7 @@ import {
   parseJsonArrayField,
   normalizeToStringArray,
 } from '../utils/exerciseJsonFields.js';
+import { emptyMuscleColumnSql } from '../utils/muscleColumnSql.js';
 /**
  * How a request's `health_activity_type` (#1750) is written. Omitted keeps the
  * stored value; null, '' or 'automatic' clears it back to Automatic; a known
@@ -705,8 +706,6 @@ async function createExercise(
     if (!existingClient) client.release();
   }
 }
-const EMPTY_MUSCLES_SQL = (column: string) =>
-  `regexp_replace(COALESCE(${column}, ''), '\\s', '', 'g') IN ('', '[]', 'null')`;
 
 /**
  * Give an owned exercise muscles only while its primary muscles are still
@@ -727,11 +726,11 @@ async function fillEmptyMuscles(
     const result = await client.query(
       `UPDATE exercises SET
          primary_muscles = $1,
-         secondary_muscles = CASE WHEN ${EMPTY_MUSCLES_SQL('secondary_muscles')}
+         secondary_muscles = CASE WHEN ${emptyMuscleColumnSql('secondary_muscles')}
            THEN $2 ELSE secondary_muscles END,
          updated_at = NOW()
        WHERE id = $3 AND user_id = $4
-         AND ${EMPTY_MUSCLES_SQL('primary_muscles')}`,
+         AND ${emptyMuscleColumnSql('primary_muscles')}`,
       [JSON.stringify(primary), JSON.stringify(secondary), exerciseId, userId]
     );
     return (result.rowCount ?? 0) > 0;
