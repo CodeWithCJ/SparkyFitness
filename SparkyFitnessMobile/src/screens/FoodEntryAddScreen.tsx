@@ -1210,7 +1210,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             caffeine_mg: displayValues.caffeineMg,
             water_ml: displayValues.waterMl,
             alcohol_g: displayValues.alcoholG,
-            added_sugars: displayValues.addedSugars,
+            added_sugars: displayValues.addedSugars ?? null,
             cholesterol: displayValues.cholesterol,
             vitamin_a: displayValues.vitaminA,
             vitamin_c: displayValues.vitaminC,
