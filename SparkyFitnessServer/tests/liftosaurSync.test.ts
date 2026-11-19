@@ -182,6 +182,59 @@ describe('liftosaurSync', () => {
     );
   });
 
+  it('deletes nothing when a record does not parse', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: {
+        data: {
+          records: [{ id: 3, text: 'not a liftohistory record' }],
+          hasMore: false,
+        },
+      },
+    });
+
+    const result = await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123'
+    );
+
+    // Nothing parsed and no cleanup allowed: the processor is not called.
+    expect(
+      liftosaurDataProcessor.processLiftosaurWorkouts
+    ).not.toHaveBeenCalled();
+    expect(result.skippedCount).toBeGreaterThan(0);
+  });
+
+  it('imports the parsed workouts but deletes nothing when another record fails', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: {
+        data: {
+          records: [
+            {
+              id: 1,
+              text: '2026-03-01T10:00:00Z / exercises: {\n  Squat / 3x5 100kg\n}',
+            },
+            { id: 2, text: 'garbled' },
+          ],
+          hasMore: false,
+        },
+      },
+    });
+
+    await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123'
+    );
+
+    const call = vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts).mock
+      .calls[0]!;
+    expect(call[2]).toHaveLength(1);
+    expect(call[4]).toBeNull();
+  });
+
   it('reconciles exactly the requested days of a Sync Range', async () => {
     vi.mocked(axios.get).mockResolvedValueOnce({
       data: { data: { records: [], hasMore: false } },

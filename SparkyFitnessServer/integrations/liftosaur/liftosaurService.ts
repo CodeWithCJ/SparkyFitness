@@ -224,6 +224,9 @@ async function syncLiftosaurData(
   // Only a fetch that ended with Liftosaur reporting no more pages shows
   // which workouts are gone. Any other stop leaves rows alone.
   let fetchComplete = false;
+  // A record that did not parse cleanly may hide a workout (or shift the
+  // positions entry ids depend on), so its absence proves nothing either.
+  let parseComplete = true;
 
   while (hasMore) {
     const page = await getHistoryPage(userId, resolvedProviderId, {
@@ -245,6 +248,7 @@ async function syncLiftosaurData(
           `[liftosaurService] Record ${record.id} line ${err.line}: ${err.message}`
         );
         skippedCount += 1;
+        parseComplete = false;
       }
       for (const parsedWorkout of parsed.workouts) {
         // Identify the workout by Liftosaur's record id, which stays the same
@@ -283,7 +287,13 @@ async function syncLiftosaurData(
       `[liftosaurService] Liftosaur history fetch for user ${userId} ended before the last page; importing what was fetched without deleting anything.`
     );
   }
-  const cleanup = fetchComplete ? window : null;
+  if (fetchComplete && !parseComplete) {
+    log(
+      'warn',
+      `[liftosaurService] Some Liftosaur records for user ${userId} did not parse; importing the rest without deleting anything.`
+    );
+  }
+  const cleanup = fetchComplete && parseComplete ? window : null;
   // With a window, process even an empty fetch: the only workout in the
   // window may have been deleted in Liftosaur.
   if (allWorkouts.length > 0 || cleanup) {
