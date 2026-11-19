@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import axios from 'axios';
+import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import liftosaurService from '../integrations/liftosaur/liftosaurService.js';
 import liftosaurDataProcessor from '../integrations/liftosaur/liftosaurDataProcessor.js';
 import * as measurementsService from '../integrations/liftosaur/liftosaurMeasurementsService.js';
@@ -129,6 +130,36 @@ describe('liftosaurSync', () => {
       startDate: startDay,
       endDate: new Date().toISOString().slice(0, 10),
     });
+  });
+
+  it('counts the window in calendar days across a clock change', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // 2 Nov 2026, 23:30 in New York, the day after clocks went back.
+    vi.setSystemTime(new Date('2026-11-03T04:30:00Z'));
+    vi.mocked(loadUserTimezone).mockResolvedValueOnce('America/New_York');
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: { data: { records: [], hasMore: false } },
+    });
+    try {
+      await liftosaurService.syncLiftosaurData(
+        'user-1',
+        'user-1',
+        false,
+        'provider-123'
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+
+    const params = vi.mocked(axios.get).mock.calls[0]![1]!.params as {
+      startDate?: string;
+    };
+    // Start of 26 Oct in New York (still on daylight time, UTC-4).
+    expect(params.startDate).toBe('2026-10-26T04:00:00.000Z');
+    expect(
+      vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts).mock
+        .calls[0]![4]
+    ).toEqual({ startDate: '2026-10-26', endDate: '2026-11-02' });
   });
 
   it('reconciles the window even when Liftosaur returns no workouts', async () => {

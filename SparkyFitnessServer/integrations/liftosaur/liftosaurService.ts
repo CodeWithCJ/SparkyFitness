@@ -13,7 +13,7 @@ import { decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 import { log } from '../../config/logging.js';
 import { logRawResponse } from '../../utils/diagnosticLogger.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
-import { dayToUtcRange, instantToDay, todayInZone } from '@workspace/shared';
+import { addDays, dayToUtcRange, todayInZone } from '@workspace/shared';
 import { parseLiftohistory } from './liftohistoryParser.js';
 import liftosaurDataProcessor, {
   type LiftosaurCleanupRange,
@@ -208,11 +208,13 @@ async function syncLiftosaurData(
   // those workouts are fetched and re-applied, not the whole history.
   const cutoffMs = fullSync ? 0 : Date.now() - 7 * 24 * 60 * 60 * 1000;
   if (!fullSync && startInstant === undefined) {
-    // Fetch whole days, from the start of the user's day 7 days ago, so every
+    // Fetch whole days, from the start of the user's day 7 calendar days ago
+    // (calendar days, so a clock change cannot shorten the window), so every
     // workout on a reconciled day is fetched before anything is deleted.
-    const startDay = instantToDay(new Date(cutoffMs), tz);
+    const today = todayInZone(tz);
+    const startDay = addDays(today, -7);
     startInstant = dayToUtcRange(startDay, tz).start.toISOString();
-    window = { startDate: startDay, endDate: todayInZone(tz) };
+    window = { startDate: startDay, endDate: today };
   }
 
   const allWorkouts = [];
