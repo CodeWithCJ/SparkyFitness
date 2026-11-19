@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { SharedCycleSettings } from '@workspace/shared';
+import type { FeatureKey, SharedCycleSettings } from '@workspace/shared';
+import type { FeatureChoiceState } from '@/hooks/Settings/useFeatureChoices';
 import type { CycleSwitchState } from '@/hooks/Settings/useWebFeatures';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { FeatureSettings } from '@/pages/Settings/FeatureSettings';
@@ -25,12 +26,27 @@ let mockCycle: {
 const mockSetOn = jest.fn();
 const mockOpenSetup = jest.fn();
 const mockReload = jest.fn();
+let mockFeaturesOff = new Set<FeatureKey>();
 jest.mock('@/hooks/Settings/useWebFeatures', () => ({
   useCycleSwitch: () => ({
     ...mockCycle,
     setOn: mockSetOn,
     openSetup: mockOpenSetup,
     reload: mockReload,
+  }),
+  useWebFeatures: () => ({
+    isEnabled: (key: FeatureKey) => !mockFeaturesOff.has(key),
+  }),
+}));
+
+let mockChoice: { state: FeatureChoiceState; isPending: boolean };
+const mockSetFeatureOn = jest.fn();
+const mockReloadChoices = jest.fn();
+jest.mock('@/hooks/Settings/useFeatureChoices', () => ({
+  useSetWebFeatureChoice: () => ({
+    ...mockChoice,
+    setFeatureOn: mockSetFeatureOn,
+    reload: mockReloadChoices,
   }),
 }));
 
@@ -48,6 +64,8 @@ describe('FeatureSettings', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockActingOnBehalf = false;
+    mockFeaturesOff = new Set();
+    mockChoice = { state: 'ready', isPending: false };
     mockCycle = {
       on: false,
       state: 'ready',
@@ -91,10 +109,67 @@ describe('FeatureSettings', () => {
     (state) => {
       mockCycle = { ...mockCycle, state, settings: undefined };
       const { container } = renderSettings();
-      expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('switch', { name: /cycle|wellness|pregnan/i })
+      ).not.toBeInTheDocument();
       expect(container.textContent).not.toMatch(/cycle|period|fertil|pregnan/i);
     }
   );
+
+  it('lists lab results under Health, on by default, for this website only', () => {
+    renderSettings();
+    const toggle = screen.getByRole('switch', { name: 'Lab results' });
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeEnabled();
+    expect(
+      screen.getByText('Only this website. The mobile app has its own switch.')
+    ).toBeInTheDocument();
+  });
+
+  it('turns lab results off on this website', () => {
+    renderSettings();
+    fireEvent.click(screen.getByRole('switch', { name: 'Lab results' }));
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('labResults', false);
+  });
+
+  it('turns lab results back on', () => {
+    mockFeaturesOff = new Set<FeatureKey>(['labResults']);
+    renderSettings();
+    const toggle = screen.getByRole('switch', { name: 'Lab results' });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('labResults', true);
+  });
+
+  it.each([
+    ['the choices load', { state: 'loading', isPending: false }],
+    ['a change is saving', { state: 'ready', isPending: true }],
+  ] as const)('cannot switch lab results while %s', (_label, choice) => {
+    mockChoice = choice;
+    renderSettings();
+    expect(screen.getByRole('switch', { name: 'Lab results' })).toBeDisabled();
+  });
+
+  it('asks to update the server when it is older than Features, without a retry', () => {
+    mockChoice = { state: 'serverTooOld', isPending: false };
+    renderSettings();
+    // The defaults on an older server are covered in useWebFeatures.test.
+    expect(screen.getByRole('switch', { name: 'Lab results' })).toBeDisabled();
+    expect(
+      screen.getByText('Update your SparkyFitness server to change this.')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Retry' })
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers a retry when the lab results choice could not load', () => {
+    mockChoice = { state: 'loadFailed', isPending: false };
+    renderSettings();
+    expect(screen.getByRole('switch', { name: 'Lab results' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(mockReloadChoices).toHaveBeenCalledTimes(1);
+  });
 
   it('cannot be switched while a change is saving', () => {
     mockCycle = { ...mockCycle, isPending: true };

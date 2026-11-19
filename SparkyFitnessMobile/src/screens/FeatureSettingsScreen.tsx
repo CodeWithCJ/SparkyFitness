@@ -7,6 +7,7 @@ import {
   FEATURE_GROUPS,
   FEATURE_KEYS,
   OPTIONAL_FEATURES,
+  type ChoiceFeatureKey,
   type FeatureGroup,
   type FeatureKey,
 } from '@workspace/shared';
@@ -15,7 +16,10 @@ import Switch from '../components/ui/Switch';
 import Button from '../components/ui/Button';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useCycleSwitch } from '../hooks/useMobileFeatures';
+import type { IconName } from '../components/Icon';
+import { useSetMobileFeatureChoice } from '../hooks/useFeatureChoices';
+import { useRefetchOnFocus } from '../hooks/useRefetchOnFocus';
+import { useCycleSwitch, useMobileFeatures } from '../hooks/useMobileFeatures';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -128,11 +132,102 @@ function CycleFeatureRows() {
   );
 }
 
+/**
+ * A feature with one choice per platform (`feature_choices`): this switch
+ * changes the app only. It can be used once the choices have loaded; until
+ * then, and on a server older than Features, it shows the default.
+ */
+function ChoiceFeatureRows({
+  feature,
+  icon,
+  title,
+  description,
+}: {
+  feature: ChoiceFeatureKey;
+  icon: IconName;
+  title: string;
+  description: string;
+}) {
+  const { t } = useTranslation();
+  const { isEnabled } = useMobileFeatures();
+  const choice = useSetMobileFeatureChoice();
+  // Choices are read once per session; on an older server, ask again on each
+  // visit, so updating the server takes effect without restarting the app.
+  useRefetchOnFocus(choice.reload, choice.state === 'serverTooOld');
+  const lines = [
+    description,
+    t('featureSettings.appOnly', {
+      defaultValue: 'Only this app. The website has its own switch.',
+    }),
+  ];
+  if (choice.state === 'serverTooOld') {
+    lines.push(
+      t('featureSettings.serverTooOld', {
+        defaultValue: 'Update your SparkyFitness server to change this.',
+      })
+    );
+  }
+
+  return (
+    <>
+      <SettingsRow
+        icon={icon}
+        title={title}
+        subtitle={lines.join('\n')}
+        subtitleNumberOfLines={0}
+        testID={`feature-row-${feature}`}
+        rightAccessory={
+          <Switch
+            accessibilityLabel={title}
+            value={isEnabled(feature)}
+            disabled={choice.state !== 'ready' || choice.isPending}
+            onValueChange={(on) => choice.setFeatureOn(feature, on)}
+            testID={`feature-switch-${feature}`}
+          />
+        }
+      />
+      {choice.state === 'loadFailed' && (
+        <>
+          <View className="h-px bg-border-subtle" />
+          <View className="px-4 py-3 gap-3 items-start">
+            <Text className="text-sm text-text-secondary">
+              {t('featureSettings.loadError', {
+                defaultValue: 'Could not load this setting.',
+              })}
+            </Text>
+            <Button variant="secondary" onPress={choice.reload}>
+              {t('common.retry', { defaultValue: 'Retry' })}
+            </Button>
+          </View>
+        </>
+      )}
+    </>
+  );
+}
+
+function LabResultsFeatureRows() {
+  const { t } = useTranslation();
+  return (
+    <ChoiceFeatureRows
+      feature="labResults"
+      icon="lab-results"
+      title={t('featureSettings.labResults.title', {
+        defaultValue: 'Lab results',
+      })}
+      description={t('featureSettings.labResults.description', {
+        defaultValue: 'Record blood tests and follow each marker over time.',
+      })}
+    />
+  );
+}
+
 /** One row per feature. A new registry key needs its own rows here. */
 function FeatureRows({ feature }: { feature: FeatureKey }) {
   switch (feature) {
     case 'cycle':
       return <CycleFeatureRows />;
+    case 'labResults':
+      return <LabResultsFeatureRows />;
   }
 }
 

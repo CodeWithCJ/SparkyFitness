@@ -9,7 +9,8 @@ import PregnancyToday from './pregnancy/PregnancyToday';
 import CycleOnboarding from './CycleOnboarding';
 import CycleInsights from './CycleInsights';
 import CareHub from './care/CareHub';
-import { CycleOffNotice } from './CycleOffNotice';
+import { FeatureOffNotice } from '@/components/FeatureOffNotice';
+import { cycleTabLabel } from '@/constants/webTabs';
 
 export default function CyclePage() {
   const { t } = useTranslation();
@@ -58,8 +59,8 @@ export default function CyclePage() {
   // Turned off after it was set up: offer to turn it back on as it was.
   if (settings?.onboarded_at && !cycle.on) {
     return (
-      <CycleOffNotice
-        settings={settings}
+      <FeatureOffNotice
+        name={cycleTabLabel(t, settings)}
         onTurnOn={() => cycle.setOn(true)}
         turningOn={cycle.isPending || cycle.state !== 'ready'}
       />

@@ -47,7 +47,7 @@ The Liftosaur integration allows you to automatically import workouts, exercise 
 ### Body Measurements
 - **Measurements**: Body weight and measurement entries logged in Liftosaur are automatically imported into SparkyFitness.
 - **Which ones**: weight, body fat, neck, waist and hips map to your check-in measurements; chest, shoulders, biceps, calves, thighs and forearms map to custom measurement categories of the same name.
-- **Left and right**: SparkyFitness keeps one value per limb measurement, so the right-side value from Liftosaur is the one imported (for example, Liftosaur's `biceps_right` becomes `Biceps`). Left-side values are not imported.
+- **Left and right**: SparkyFitness keeps one value per limb measurement, so the right-side value from Liftosaur is the one imported (for example, Liftosaur's `bicepRight` becomes `Biceps`). Left-side values are not imported.
 
 ---
 

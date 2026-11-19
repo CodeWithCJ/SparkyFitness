@@ -2,6 +2,8 @@
 
 Keep your blood work and other lab tests in one place, see each marker over time, and check it against its reference range. Lab results are on the web (**Lab results** tab, or the **Add** menu) and in the mobile app (**Library → Lab results**).
 
+Lab results are on by default. To hide them, turn them off in **Settings → Features**: the website and the mobile app each have their own switch, so you can keep them in one and hide them in the other. Turning them off only hides them (the tab, the Add menu entry, the Library row and the Dashboard card); your results are kept and come back when you turn them on again. With a server older than this switch, lab results stay on and the switch asks you to update the server.
+
 ## Markers
 
 A marker is one thing a lab measures, such as HbA1c, LDL or vitamin D. SparkyFitness has built-in markers with a default unit and an adult reference range, and you can add your own. A built-in marker appears in the list once it has a result; your own markers always appear.

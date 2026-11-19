@@ -2906,6 +2906,9 @@
     "footnote": "Turning a feature off only hides it: nothing is deleted, and syncs and imports keep running.",
     "loading": "Loading",
     "loadError": "Could not load this setting.",
+    "saveFailed": "Could not save this setting. Please try again.",
+    "appOnly": "Only this app. The website has its own switch.",
+    "serverTooOld": "Update your SparkyFitness server to change this.",
     "groups": {
       "health": "Health",
       "nutrition": "Nutrition",
@@ -2919,6 +2922,10 @@
       "scope": "One switch for the app and the website.",
       "setupAction": "Set up",
       "setupHint": "Answer a few questions to finish setting it up."
+    },
+    "labResults": {
+      "title": "Lab results",
+      "description": "Record blood tests and follow each marker over time."
     }
   },
   "measurements": {
