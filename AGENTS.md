@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-11-17*
+*Last updated: 2026-11-19*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -33,11 +33,11 @@ For `docs/` and `SparkyFitnessGarmin/`, there is no package-level `AGENTS.md`. `
 
 - `SparkyFitnessFrontend/` - React 19 + Vite web app.
 - `SparkyFitnessServer/` - Express 5 + PostgreSQL backend API.
-- `SparkyFitnessMobile/` - Expo SDK 57 / React Native 0.86 app.
+- `SparkyFitnessMobile/` - Expo SDK 57 / React Native 0.86 app. Its `targets/` also hold the watch apps: Apple Watch (`watch/`), Wear OS (`wearos/`) and Garmin Connect IQ (`garmin/`, built with the Connect IQ SDK, not by prebuild).
 - `shared/` - source-first TypeScript workspace package for `@workspace/shared` schemas, constants, and timezone/day helpers.
 - `docs/` - VitePress documentation site.
 - `docs/readme/` - translated copies of the root `README.md` (`README_<lang>.md`), outside the VitePress `srcDir`. The language bar at the top of `README.md` links to them; when the root README changes substantially, the translations go stale.
-- `SparkyFitnessGarmin/` - standalone Python integration service outside the current `pnpm` workspace.
+- `SparkyFitnessGarmin/` - standalone Python integration service outside the current `pnpm` workspace (Garmin Connect data sync for the server; the Garmin watch app is `SparkyFitnessMobile/targets/garmin/`).
 - `SparkyFitnessTag/` - static site behind `https://tag.sparkyfitness.com` (Cloudflare Workers static assets, deployed from this folder with `wrangler.jsonc`). It serves only Apple's `apple-app-site-association`, Android's `assetlinks.json` and a "get the app" page, so an NFC tag link (`/t/<code>`) opens the mobile app. Holds no secrets and stores no data; a new app ID, Apple team or signing key means editing the two `.well-known` files. Not a `pnpm` workspace package. Do not add a `_redirects` rule for `/t/*`: Cloudflare rejects it as a loop, and `not_found_handling: single-page-application` already serves the page.
 - `SparkyFitnessZeppAuth/` - Cloudflare Worker behind `https://zepp-auth.sparkyfitness.com`, the Zepp (Amazfit) OAuth relay for #301. Zepp grants SparkyFitness one shared client ID, and the token exchange needs a secret that self-hosted servers must not hold, so the relay will keep it; each user's server calls `api-open.zepp.com` directly, so health data never passes through it. Currently registration-only: bare `GET`/`HEAD` on `/api/zepp/oauth/callback` and `/api/zepp/data/callback` return 200, and everything else is refused. Plain JS, deployed with `wrangler deploy` from the folder; not a `pnpm` workspace package. Keep secrets out of `SparkyFitnessTag/`.
 - `docker/`, `helm/`, `.github/` - infra and deployment assets.

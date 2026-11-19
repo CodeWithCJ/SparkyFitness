@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+    <!--
+        The id is also GARMIN_APP_ID in the phone's Kotlin transport
+        (modules/watch-connectivity/android/.../garmin/); change both together.
+    -->
+    <iq:application id="e3c1758fa6d74590a5d47005e5806904" type="watch-app" name="@Strings.AppName" entry="SparkyFitnessApp" launcherIcon="@Drawables.LauncherIcon" minApiLevel="5.2.0">
+        <!-- Every product needs its device files to build; add one as people test it. -->
+        <iq:products>
+            <iq:product id="fenix843mm"/>
+        </iq:products>
+        <iq:permissions>
+            <iq:uses-permission id="Communications"/>
+        </iq:permissions>
+        <!-- English only for now; other languages come later through Weblate. -->
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+        <iq:barrels/>
+    </iq:application>
+</iq:manifest>

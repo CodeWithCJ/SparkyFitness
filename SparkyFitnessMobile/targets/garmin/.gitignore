@@ -1,0 +1,9 @@
+# Connect IQ build output (monkeyc -o bin/..., and the VS Code extension's bin/).
+bin/
+*.prg
+*.prg.debug.xml
+*.iq
+
+# Developer signing keys never belong in the repository.
+*.der
+*.pem

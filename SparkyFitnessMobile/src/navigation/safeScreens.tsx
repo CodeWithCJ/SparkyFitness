@@ -82,6 +82,7 @@ import AllergenSettingsScreen from '../screens/AllergenSettingsScreen';
 import DashboardSettingsScreen from '../screens/DashboardSettingsScreen';
 import HealthTrendsSettingsScreen from '../screens/HealthTrendsSettingsScreen';
 import WatchSettingsScreen from '../screens/WatchSettingsScreen';
+import GarminSettingsScreen from '../screens/GarminSettingsScreen';
 import AddMenuSettingsScreen from '../screens/AddMenuSettingsScreen';
 import CustomCategoriesScreen from '../screens/CustomCategoriesScreen';
 import CustomCategoryEditScreen from '../screens/CustomCategoryEditScreen';
@@ -257,6 +258,7 @@ export const SafeAllergenSettings = withErrorBoundary(AllergenSettingsScreen, 'A
 export const SafeDashboardSettings = withErrorBoundary(DashboardSettingsScreen, 'DashboardSettings', { canGoBack: true });
 export const SafeHealthTrendsSettings = withErrorBoundary(HealthTrendsSettingsScreen, 'HealthTrendsSettings', { canGoBack: true });
 export const SafeWatchSettings = withErrorBoundary(WatchSettingsScreen, 'WatchSettings', { canGoBack: true });
+export const SafeGarminSettings = withErrorBoundary(GarminSettingsScreen, 'GarminSettings', { canGoBack: true });
 export const SafeAddMenuSettings = withErrorBoundary(AddMenuSettingsScreen, 'AddMenuSettings', { canGoBack: true });
 export const SafeDiarySettings = withErrorBoundary(DiarySettingsScreen, 'DiarySettings', { canGoBack: true });
 export const SafeOfflineSettings = withErrorBoundary(OfflineSettingsScreen, 'OfflineSettings', { canGoBack: true });

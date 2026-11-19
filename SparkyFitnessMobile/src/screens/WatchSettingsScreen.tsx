@@ -8,7 +8,7 @@ import { ReorderSwitchList } from '../components/ReorderSwitchList';
 import SegmentedControl from '../components/SegmentedControl';
 import SettingsRow from '../components/SettingsRow';
 import Switch from '../components/ui/Switch';
-import { getNutrientLabel } from '../constants/nutrients';
+import { WatchGoalNutrientsSection } from '../components/WatchGoalNutrientsSection';
 import {
   WATCH_PAGE_KEYS,
   WATCH_PAGE_LABELS,
@@ -17,14 +17,11 @@ import {
   type WatchWorkoutCountdown,
   type WatchWorkoutTopLine,
 } from '../constants/watchPages';
-import { useCustomNutrients } from '../hooks/useCustomNutrients';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useServerConnection } from '../hooks/useServerConnection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
 import { resolveKeyOrder } from '../utils/reorderUtils';
-import { WATCH_STANDARD_NUTRIENT_KEYS } from '../utils/watchNutrients';
 
 type WatchSettingsScreenProps = RootStackScreenProps<'WatchSettings'>;
 
@@ -41,8 +38,6 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
-  const { isConnected } = useServerConnection();
-  const { customNutrients } = useCustomNutrients({ enabled: isConnected });
 
   const watchPageOrder = useAppPreferencesStore((s) => s.watchPageOrder);
   const hiddenWatchPages = useAppPreferencesStore((s) => s.hiddenWatchPages);
@@ -96,18 +91,6 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const setWatchPageHidden = useAppPreferencesStore(
     (s) => s.setWatchPageHidden
   );
-  const watchNutrientOrder = useAppPreferencesStore(
-    (s) => s.watchNutrientOrder
-  );
-  const shownWatchNutrients = useAppPreferencesStore(
-    (s) => s.shownWatchNutrients
-  );
-  const setWatchNutrientOrder = useAppPreferencesStore(
-    (s) => s.setWatchNutrientOrder
-  );
-  const setWatchNutrientShown = useAppPreferencesStore(
-    (s) => s.setWatchNutrientShown
-  );
   const watchSetInputStyle = useAppPreferencesStore(
     (s) => s.watchSetInputStyle
   );
@@ -126,18 +109,6 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const shownPageCount = pageItems.filter(
     ({ key }) => !hiddenWatchPages.includes(key)
   ).length;
-
-  // Standard nutrients, then the account's custom ones, in the saved order.
-  const nutrientItems = useMemo(() => {
-    const customNames = customNutrients.map((def) => def.name);
-    return resolveKeyOrder(watchNutrientOrder, [
-      ...WATCH_STANDARD_NUTRIENT_KEYS,
-      ...customNames,
-    ]).map((key) => ({
-      key,
-      label: customNames.includes(key) ? key : getNutrientLabel(t, key),
-    }));
-  }, [watchNutrientOrder, customNutrients, t]);
 
   const header = useScreenHeader({
     title: isAndroid
@@ -433,33 +404,7 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
           })}
         />
 
-        <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
-          {t('watchSettings.nutrientsTitle', {
-            defaultValue: 'Goals page nutrients',
-          })}
-        </Text>
-        <Text className="text-text-secondary text-sm mb-4">
-          {t('watchSettings.nutrientsDescription', {
-            defaultValue:
-              'Choose the nutrients listed under the calorie ring on your watch, and drag to set their order. Each shows today’s amount against its goal.',
-          })}
-        </Text>
-        <ReorderSwitchList
-          items={nutrientItems}
-          testIDPrefix="watch-nutrient"
-          isEnabled={(key) => shownWatchNutrients.includes(key)}
-          onToggle={setWatchNutrientShown}
-          onReorder={setWatchNutrientOrder}
-          reorderA11yLabel={(name) =>
-            t('watchSettings.reorder', {
-              defaultValue: 'Reorder {{name}}',
-              name,
-            })
-          }
-          reorderA11yHint={t('watchSettings.nutrientReorderHint', {
-            defaultValue: 'Changes where this nutrient sits on your watch',
-          })}
-        />
+        <WatchGoalNutrientsSection />
       </ScrollView>
     </View>
   );

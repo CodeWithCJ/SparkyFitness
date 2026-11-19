@@ -37,6 +37,7 @@ import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import WatchConnectivity from '../../modules/watch-connectivity';
+import { isGarminWatchEnabled } from '../constants/garmin';
 import { useNfcSupport } from '../hooks/useNfcSupport';
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -63,6 +64,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const hasPairedWatch =
     WatchConnectivity?.isSupported() === true &&
     WatchConnectivity.isPaired() === true;
+  // Garmin watches pair in Garmin Connect, so its presence is the signal; the
+  // screen itself lists the watches it can see. Development builds only until
+  // the watch app is on the Connect IQ Store (`isGarminWatchEnabled`).
+  const showsGarmin = isGarminWatchEnabled();
 
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 
@@ -437,6 +442,14 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                         })
                   }
                   onPress={() => navigation.navigate('WatchSettings')}
+                  iconColor={catSlate}
+                />
+              )}
+              {showsGarmin && (
+                <SettingsRow
+                  icon="watch-settings"
+                  title={t('settings.rows.garmin', { defaultValue: 'Garmin' })}
+                  onPress={() => navigation.navigate('GarminSettings')}
                   iconColor={catSlate}
                 />
               )}

@@ -11,6 +11,8 @@ android {
   defaultConfig {
     versionCode 1
     versionName '1.0.0'
+    // Kept for builds with R8 turned on (android.enableMinifyInReleaseBuilds).
+    consumerProguardFiles 'consumer-rules.pro'
   }
 }
 
@@ -21,4 +23,11 @@ dependencies {
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
   implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1'
   implementation 'com.google.guava:guava:33.3.1-android'
+  // Garmin Connect IQ mobile SDK. Its manifest adds the <queries> entry for
+  // Garmin Connect, so the app needs no manifest change.
+  implementation 'com.garmin.connectiq:ciq-companion-app-sdk:2.4.0@aar'
+
+  testImplementation 'junit:junit:4.13.2'
+  // android.jar's org.json is a stub that throws in JVM tests.
+  testImplementation 'org.json:json:20240303'
 }
