@@ -12,6 +12,7 @@ vi.mock('../db/poolManager.js', () => ({
 }));
 
 vi.mock('../models/exerciseEntry.js', () => ({
+  acquireExerciseEntrySyncLockWithClient: vi.fn().mockResolvedValue(undefined),
   default: {
     _createExerciseEntryWithClient: vi
       .fn()
@@ -58,7 +59,9 @@ vi.mock('../integrations/liftosaur/liftosaurSessionRepository.js', () => ({
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 import { processLiftosaurWorkouts } from '../integrations/liftosaur/liftosaurDataProcessor.js';
-import exerciseEntryRepository from '../models/exerciseEntry.js';
+import exerciseEntryRepository, {
+  acquireExerciseEntrySyncLockWithClient,
+} from '../models/exerciseEntry.js';
 import exerciseRepository from '../models/exercise.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
@@ -187,6 +190,28 @@ describe('processLiftosaurWorkouts', () => {
       []
     );
     expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+  });
+
+  it('takes the Liftosaur sync lock before writing anything', async () => {
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      null
+    );
+
+    expect(acquireExerciseEntrySyncLockWithClient).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      'Liftosaur'
+    );
+    expect(
+      vi.mocked(acquireExerciseEntrySyncLockWithClient).mock
+        .invocationCallOrder[0]
+    ).toBeLessThan(
+      vi.mocked(upsertLiftosaurSessionWithClient).mock.invocationCallOrder[0]!
+    );
   });
 
   it('deletes nothing when told the fetch was incomplete', async () => {

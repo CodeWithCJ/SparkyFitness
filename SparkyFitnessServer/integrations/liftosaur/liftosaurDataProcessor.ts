@@ -7,7 +7,9 @@
  * integrations/hevy/hevyDataProcessor.ts).
  */
 import type { PoolClient } from 'pg';
-import exerciseEntryRepository from '../../models/exerciseEntry.js';
+import exerciseEntryRepository, {
+  acquireExerciseEntrySyncLockWithClient,
+} from '../../models/exerciseEntry.js';
 import exerciseRepository from '../../models/exercise.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
@@ -94,6 +96,14 @@ async function processLiftosaurWorkouts(
   const client = await getClient(userId, createdByUserId);
   try {
     await client.query('BEGIN');
+    // Hold the Liftosaur sync lock for the whole import, as the Hevy import
+    // does, so session upserts are serialized even when this sync deletes
+    // nothing (the cleanup and entry writes below take the same lock).
+    await acquireExerciseEntrySyncLockWithClient(
+      client,
+      userId,
+      LIFTOSAUR_SOURCE
+    );
 
     // Re-sent workouts are updated in place, keyed by source id (session:
     // the Liftosaur record id; entry: `<record id>_<exercise index>`), so
