@@ -40,7 +40,7 @@ describe('food_entries.cooked_quantity in the repository', () => {
     vi.clearAllMocks();
   });
 
-  it('writes cooked_quantity as $46 on create and clears it on a re-sync that changes the amount', async () => {
+  it('writes cooked_quantity as $47 on create and clears it on a re-sync that changes the amount', async () => {
     await foodEntryRepository.createFoodEntry(
       {
         user_id: 'user-1',
@@ -58,9 +58,9 @@ describe('food_entries.cooked_quantity in the repository', () => {
     );
     const [sql, params] = callFor('INSERT INTO food_entries');
     expect(sql).toContain('cooked_quantity');
-    expect(sql).toContain('$46');
-    expect(params).toHaveLength(46);
-    expect(params[45]).toBe(300);
+    expect(sql).toContain('$47');
+    expect(params).toHaveLength(47);
+    expect(params[46]).toBe(300);
     // A re-sync keeps a user-added cooked weight only while quantity and unit
     // stay the same.
     const doUpdate = sql.slice(sql.indexOf('DO UPDATE'));
@@ -86,10 +86,10 @@ describe('food_entries.cooked_quantity in the repository', () => {
       'user-1'
     );
     const [, params] = callFor('INSERT INTO food_entries');
-    expect(params[45]).toBeNull();
+    expect(params[46]).toBeNull();
   });
 
-  it('assigns the resolved value as $40 on update', async () => {
+  it('assigns the resolved value as $41 on update', async () => {
     await foodEntryRepository.updateFoodEntry(
       'entry-1',
       'user-1',
@@ -98,8 +98,8 @@ describe('food_entries.cooked_quantity in the repository', () => {
       { food_name: 'Rice, dry', calories: 360 }
     );
     const [sql, params] = callFor('UPDATE food_entries SET');
-    expect(sql).toContain('cooked_quantity = $40');
-    expect(params[39]).toBe(300);
+    expect(sql).toContain('cooked_quantity = $41');
+    expect(params[40]).toBe(300);
   });
 
   it('copies cooked_quantity in a bulk insert (copy a day)', async () => {
