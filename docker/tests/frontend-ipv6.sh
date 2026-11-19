@@ -56,8 +56,10 @@ check_frontend() {
 }
 
 check_frontend root 80 true
-# Some nginx base images use /run/nginx.pid rather than /var/run/nginx.pid.
-# Accommodate that existing non-root PID-path issue with a writable runtime dir.
+# The image keeps its pid in the group-writable /var/run/nginx, so a non-root
+# user in group 0 starts without any writable mount.
+check_frontend non-root-no-mount 8080 true --user 1000:0
+# Same with a writable /run, as the Helm chart mounts it.
 check_frontend non-root 8080 true --user 1000:0 --tmpfs /run:rw,mode=1777
 check_frontend custom-port 8181 true --user 1000:0 --tmpfs /run:rw,mode=1777 -e NGINX_LISTEN_PORT=8181
 check_frontend ipv6-disabled 80 false --sysctl net.ipv6.conf.all.disable_ipv6=1
