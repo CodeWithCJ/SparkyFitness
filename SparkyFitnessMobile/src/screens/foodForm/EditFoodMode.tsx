@@ -163,6 +163,9 @@ export function EditFoodMode({
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // A failed response may still mean the write committed, so a key sent once is
+  // sent again on a retry even when the form is back at its initial value.
+  const attemptedMetadataKeysRef = useRef(new Set<keyof UpdateFoodPayload>());
   const [pickerImages, setPickerImages] = useState<PickerImage[]>(() =>
     toSavedImages(item?.images)
   );
@@ -447,16 +450,34 @@ export function EditFoodMode({
       let nextVariantBaselineValues = variantBaselineValues;
       let nextCustomNutrients = currentCustomNutrients;
 
+      const attemptedKeys = attemptedMetadataKeysRef.current;
+      const metadataChanged = (
+        key: keyof UpdateFoodPayload,
+        changed: boolean
+      ) => changed || attemptedKeys.has(key);
       const foodPayload: UpdateFoodPayload = {};
-      if (data.name !== initialValues.name) foodPayload.name = data.name;
-      if (data.brand !== initialValues.brand)
+      if (metadataChanged('name', data.name !== initialValues.name))
+        foodPayload.name = data.name;
+      if (metadataChanged('brand', data.brand !== initialValues.brand))
         foodPayload.brand = data.brand || '';
       // Key presence is the update signal, so only set `notes` when it really
       // changed; an unchanged save must leave the stored note untouched.
-      if ((data.notes ?? '') !== (initialValues.notes ?? ''))
+      if (
+        metadataChanged(
+          'notes',
+          (data.notes ?? '') !== (initialValues.notes ?? '')
+        )
+      )
         foodPayload.notes = (data.notes ?? '').trim() || null;
-      if (data.nutriScoreCategory !== initialValues.nutriScoreCategory)
+      if (
+        metadataChanged(
+          'nutri_score_category',
+          data.nutriScoreCategory !== initialValues.nutriScoreCategory
+        )
+      )
         foodPayload.nutri_score_category = data.nutriScoreCategory || null;
+      for (const key of Object.keys(foodPayload) as (keyof UpdateFoodPayload)[])
+        attemptedKeys.add(key);
       // Only send images when they actually changed: the server treats a
       // supplied `images` array as authoritative and deletes anything omitted,
       // so an unchanged round-trip is wasted work at best.

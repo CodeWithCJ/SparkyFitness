@@ -602,10 +602,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
       applyCompatibleDraftSelection(selection.variant);
       return;
     }
-    preciseNumericValuesRef.current = {
-      ...preciseNumericValuesRef.current,
-      ...buildPreciseNumericValuesFromVariant(selection.variant),
-    };
+    preciseNumericValuesRef.current = buildPreciseNumericValuesFromVariant(
+      selection.variant
+    );
     lastServingSizeRef.current = selection.variant.serving_size;
     setForm((prev) => applyVariantToFormState(prev, selection.variant));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -696,10 +695,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
       setSelectedSavedVariantId(nextSelection.variant.id);
     }
     if (nextSelection.kind === 'existing') {
-      preciseNumericValuesRef.current = {
-        ...preciseNumericValuesRef.current,
-        ...buildPreciseNumericValuesFromVariant(nextSelection.variant),
-      };
+      preciseNumericValuesRef.current = buildPreciseNumericValuesFromVariant(
+        nextSelection.variant
+      );
       lastServingSizeRef.current = nextSelection.variant.serving_size;
     }
     if (nextSelection.kind === 'draft') {

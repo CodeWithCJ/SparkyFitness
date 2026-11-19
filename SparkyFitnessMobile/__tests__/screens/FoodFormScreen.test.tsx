@@ -3706,6 +3706,79 @@ describe('FoodFormScreen', () => {
     expect(updateFood).not.toHaveBeenCalled();
   });
 
+  it('resends a reverted Nutri-Score category after an edit save whose response failed', async () => {
+    answerSyncPrompt('keep');
+    const baseValues = {
+      name: 'Tomato Soup',
+      brand: 'Brand Co',
+      servingSize: '250',
+      servingUnit: 'ml',
+      calories: '90',
+      protein: '2',
+      carbs: '12',
+      fat: '3',
+    };
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 250,
+          serving_unit: 'ml',
+          calories: 90,
+          protein: 2,
+          carbs: 12,
+          fat: 3,
+          is_default: true,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+    const screen = renderScreen({
+      mode: 'edit-food',
+      item: {
+        id: 'food-1',
+        name: 'Tomato Soup',
+        brand: 'Brand Co',
+        servingSize: 250,
+        servingUnit: 'ml',
+        calories: 90,
+        protein: 2,
+        carbs: 12,
+        fat: 3,
+        source: 'local',
+        originalItem: {},
+      },
+      initialValues: { ...baseValues, nutriScoreCategory: '' },
+      returnKey: 'FoodDetail-key',
+      foodId: 'food-1',
+      variantId: 'variant-1',
+    });
+
+    updateFood.mockRejectedValueOnce(new Error('offline'));
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      ...baseValues,
+      nutriScoreCategory: 'beverage',
+    };
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() => expect(updateFood).toHaveBeenCalledTimes(1));
+    expect(navigation.goBack).not.toHaveBeenCalled();
+
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      nutriScoreCategory: '',
+    };
+    fireEvent.press(screen.getByText('Save'));
+    await waitFor(() => expect(updateFood).toHaveBeenCalledTimes(2));
+    expect(updateFood).toHaveBeenLastCalledWith(
+      'food-1',
+      expect.objectContaining({ nutri_score_category: null }),
+      undefined
+    );
+  });
+
   it('asks before touching past diary entries, and leaves them alone by default', async () => {
     // Diary entries hold a nutrition snapshot from when they were logged, so a
     // library edit must not silently rewrite history. Prompted on every save,

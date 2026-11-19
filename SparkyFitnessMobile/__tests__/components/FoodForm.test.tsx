@@ -1146,7 +1146,10 @@ describe('FoodForm', () => {
   });
 
   describe('AI unit conversion and added sugars', () => {
-    const renderAiConversion = (anchorAddedSugars: number | null) => {
+    const renderAiConversion = (
+      anchorAddedSugars: number | null,
+      onSubmit: jest.Mock = jest.fn()
+    ) => {
       mockUserAiConfigAllowed = true;
       mockActiveAiServiceSetting = { provider: 'openai' };
       mockUserPreferences = { ai_assisted_conversions: true };
@@ -1197,7 +1200,7 @@ describe('FoodForm', () => {
             selectedSelection: { kind: 'existing', variant: anchor },
             onUnitSelectionChange: jest.fn(),
           }}
-          onSubmit={jest.fn()}
+          onSubmit={onSubmit}
         />
       );
       fireEvent.press(screen.getByText('Show more nutrients ▾'));
@@ -1205,6 +1208,11 @@ describe('FoodForm', () => {
       const numericInputs = screen.getAllByPlaceholderText('0');
       fireEvent.changeText(numericInputs[numericInputs.length - 1], '7');
       return screen;
+    };
+
+    const addedSugarsInput = (screen: ReturnType<typeof render>) => {
+      const inputs = screen.getAllByPlaceholderText('0');
+      return inputs[inputs.length - 1];
     };
 
     const convertWithAi = async (screen: ReturnType<typeof render>) => {
@@ -1226,15 +1234,19 @@ describe('FoodForm', () => {
     });
 
     it('scales a known zero added sugars instead of clearing it', async () => {
-      const screen = renderAiConversion(0);
+      const onSubmit = jest.fn();
+      const screen = renderAiConversion(0, onSubmit);
 
       await convertWithAi(screen);
 
       await waitFor(() => {
         expect(screen.getByDisplayValue('240')).toBeTruthy();
-        expect(screen.queryByDisplayValue('7')).toBeNull();
-        expect(screen.getAllByDisplayValue('0').length).toBeGreaterThan(0);
+        expect(addedSugarsInput(screen).props.value).toBe('0');
       });
+      fireEvent.press(screen.getByText('Add Food'));
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ addedSugars: '0' })
+      );
     });
   });
 
@@ -1522,6 +1534,57 @@ describe('FoodForm', () => {
         carbs: '8.23',
         fat: '4',
       })
+    );
+  });
+
+  it('does not submit a previous added sugars value when the selected variant has none', () => {
+    const onSubmit = jest.fn();
+    const known = {
+      id: 'variant-1',
+      food_id: 'food-1',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 120,
+      protein: 10,
+      carbs: 8,
+      fat: 4,
+      added_sugars: 7.25,
+    };
+    const unknown = {
+      ...known,
+      id: 'variant-oz',
+      serving_size: 1,
+      serving_unit: 'oz',
+      added_sugars: null,
+    };
+    const initialValues = {
+      name: 'Greek Yogurt',
+      servingSize: '100',
+      servingUnit: 'g',
+      calories: '120',
+      protein: '10',
+      carbs: '8',
+      fat: '4',
+      addedSugars: '7.25',
+    };
+    const renderWith = (variant: typeof known) => (
+      <FoodForm
+        initialValues={initialValues}
+        unitSelector={{
+          variants: [known, unknown],
+          selectedSelection: { kind: 'existing', variant },
+          onUnitSelectionChange: jest.fn(),
+        }}
+        onSubmit={onSubmit}
+      />
+    );
+
+    const screen = render(renderWith(known));
+    screen.rerender(renderWith(unknown));
+    fireEvent.press(screen.getByText('Add Food'));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ addedSugars: '' })
     );
   });
 
