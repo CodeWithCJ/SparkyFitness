@@ -1067,6 +1067,12 @@ describe('groupEquivalentVariants', () => {
 });
 
 describe('diffSiblingRows', () => {
+  test('filling an unknown nutrient with 0 is an update, not a no-op', () => {
+    const current = makeLocalVariant({ id: 'a', sugars: null });
+    const { updates } = diffSiblingRows([current], [{ ...current, sugars: 0 }]);
+    expect(updates.map((u) => u.id)).toEqual(['a']);
+  });
+
   test('active-row-is-base — sibling edits classified correctly', () => {
     const base = makeLocalVariant({
       id: 'a',

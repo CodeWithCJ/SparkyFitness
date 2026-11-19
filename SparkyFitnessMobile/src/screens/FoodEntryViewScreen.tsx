@@ -130,6 +130,7 @@ const foodEntryToUnitVariant = (entry: FoodEntry): FoodUnitVariant => ({
   caffeine_mg: entry.caffeine_mg,
   water_ml: entry.water_ml,
   alcohol_g: entry.alcohol_g,
+  added_sugars: entry.added_sugars,
   glycemic_index: entry.glycemic_index,
   custom_nutrients: entry.custom_nutrients ?? null,
 });
@@ -152,6 +153,7 @@ const entryToDisplayValues = (entry: FoodEntry) => ({
   caffeineMg: entry.caffeine_mg,
   waterMl: entry.water_ml,
   alcoholG: entry.alcohol_g,
+  addedSugars: entry.added_sugars,
   cholesterol: entry.cholesterol,
   vitaminA: entry.vitamin_a,
   vitaminC: entry.vitamin_c,
@@ -404,6 +406,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
           caffeineMg: variant.caffeine_mg,
           waterMl: variant.water_ml,
           alcoholG: variant.alcohol_g,
+          addedSugars: variant.added_sugars,
           cholesterol: variant.cholesterol,
           vitaminA: variant.vitamin_a,
           vitaminC: variant.vitamin_c,
@@ -511,6 +514,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       caffeineMg: parseOptional(adjustedValues.caffeineMg),
       waterMl: parseOptional(adjustedValues.waterMl),
       alcoholG: parseOptional(adjustedValues.alcoholG),
+      addedSugars: parseOptional(adjustedValues.addedSugars),
       cholesterol: parseOptional(adjustedValues.cholesterol),
       vitaminA: parseOptional(adjustedValues.vitaminA),
       vitaminC: parseOptional(adjustedValues.vitaminC),
@@ -743,6 +747,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       caffeine_mg: displayValues.caffeineMg,
       water_ml: displayValues.waterMl,
       alcohol_g: displayValues.alcoholG,
+      added_sugars: displayValues.addedSugars,
       cholesterol: displayValues.cholesterol,
       vitamin_a: displayValues.vitaminA,
       vitamin_c: displayValues.vitaminC,
@@ -780,6 +785,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         caffeineMg: toFormString(displayValues.caffeineMg),
         waterMl: toFormString(displayValues.waterMl),
         alcoholG: toFormString(displayValues.alcoholG),
+        addedSugars: toFormString(displayValues.addedSugars),
         cholesterol: toFormString(displayValues.cholesterol),
         vitaminA: toFormString(displayValues.vitaminA),
         vitaminC: toFormString(displayValues.vitaminC),
@@ -878,6 +884,7 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       payload.caffeine_mg = displayValues.caffeineMg;
       payload.water_ml = displayValues.waterMl;
       payload.alcohol_g = displayValues.alcoholG;
+      payload.added_sugars = displayValues.addedSugars ?? null;
       payload.cholesterol = displayValues.cholesterol;
       payload.vitamin_a = displayValues.vitaminA;
       payload.vitamin_c = displayValues.vitaminC;

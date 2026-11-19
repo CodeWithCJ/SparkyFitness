@@ -33,7 +33,11 @@ const LABEL_NUMERIC_FIELDS = {
   caffeineMg: 'caffeine_mg',
   waterMl: 'water_ml',
   alcoholG: 'alcohol_g',
-} as const satisfies Record<NumericFoodFormField, keyof LabelScanResult>;
+} as const satisfies Record<
+  // The label-scan API does not return added sugars, so the form field stays manual.
+  Exclude<NumericFoodFormField, 'addedSugars'>,
+  keyof LabelScanResult
+>;
 
 /** Only recognized nutrition and serving fields may change an existing draft. */
 export function labelScanToNutritionPatch(
@@ -41,6 +45,7 @@ export function labelScanToNutritionPatch(
 ): Partial<FoodFormData> {
   const patch: Partial<FoodFormData> = {};
   for (const field of NUMERIC_FOOD_FORM_FIELDS) {
+    if (field === 'addedSugars') continue;
     const value = result[LABEL_NUMERIC_FIELDS[field]];
     if (typeof value === 'number' && Number.isFinite(value)) {
       patch[field] = String(value);

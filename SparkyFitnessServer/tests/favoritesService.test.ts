@@ -36,7 +36,10 @@ describe('favoritesService', () => {
 
       expect(foodRepo.getFavoriteFoods).toHaveBeenCalledWith(USER);
       expect(mealRepo.getFavoriteMeals).toHaveBeenCalledWith(USER);
-      expect(result).toEqual({ favoriteFoods: foods, favoriteMeals: meals });
+      expect(result).toEqual({
+        favoriteFoods: [{ ...foods[0], health_score: expect.any(Object) }],
+        favoriteMeals: meals,
+      });
     });
   });
 

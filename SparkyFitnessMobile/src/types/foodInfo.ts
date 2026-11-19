@@ -3,6 +3,7 @@ import type { ExternalFoodItem, ExternalFoodVariant } from './externalFoods';
 import type { Meal, MealIngredientDraft } from './meals';
 import type { BarcodeFood } from '../services/api/externalFoodSearchApi';
 import type { TFunction } from 'i18next';
+import type { FoodHealthScore, NutriScoreCategory } from '@workspace/shared';
 import { localizeNutrientKey } from '../utils/nutrientLocalization';
 import { parseDecimalInput, toFiniteNumber } from '../utils/numericInput';
 
@@ -57,6 +58,8 @@ export const EXTRA_NUTRIENT_FIELDS = [
   { key: 'waterMl', label: 'Water Content', unit: 'ml', additional: true },
   // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata; rendered labels are localized at presentation.
   { key: 'alcoholG', label: 'Alcohol', unit: 'g', additional: true },
+  // i18n-audit-ignore-next-line hardcoded-ui-text -- canonical English metadata; rendered labels are localized at presentation.
+  { key: 'addedSugars', label: 'Added Sugars', unit: 'g', additional: true },
 ] as const;
 
 type ExtraNutrientKey = (typeof EXTRA_NUTRIENT_FIELDS)[number]['key'];
@@ -80,6 +83,7 @@ const EXTRA_NUTRIENT_PREFERENCE_KEYS: Record<ExtraNutrientKey, string> = {
   caffeineMg: 'caffeine_mg',
   waterMl: 'water_ml',
   alcoholG: 'alcohol_g',
+  addedSugars: 'added_sugars',
 };
 
 export interface NutrientDisplayItem {
@@ -102,7 +106,7 @@ export interface BuildNutrientDisplayListOptions {
 
 /** Build primary + additional display lists from a camelCase nutrient source. */
 export function buildNutrientDisplayList(
-  source: Partial<Record<ExtraNutrientKey, number>>,
+  source: Partial<Record<ExtraNutrientKey, number | null>>,
   options: BuildNutrientDisplayListOptions & { t?: TFunction } = {}
 ) {
   const primary: NutrientDisplayItem[] = [];
@@ -188,12 +192,17 @@ export interface FoodInfoItem {
   caffeineMg?: number;
   waterMl?: number;
   alcoholG?: number;
+  /** NULL = unknown, which is not the same as 0 g. */
+  addedSugars?: number | null;
   customNutrients?: Record<string, string | number> | null;
   allergens?: string[] | null;
   traces?: string[] | null;
   variantId?: string;
   externalVariants?: ExternalFoodVariant[];
   provider_verified?: boolean;
+  healthScore?: FoodHealthScore | null;
+  nutriScoreCategory?: NutriScoreCategory | null;
+  fruitVegLegumePercent?: number | null;
   // Photos. `images` is set for already-saved foods and meals; the two URL
   // fields carry a provider result's photo before it has been imported, and
   // must survive as far as the create payload or the food is saved without
@@ -250,9 +259,13 @@ export const foodItemToFoodInfo = (
   caffeineMg: item.default_variant.caffeine_mg,
   waterMl: item.default_variant.water_ml,
   alcoholG: item.default_variant.alcohol_g,
+  addedSugars: item.default_variant.added_sugars,
   customNutrients: item.default_variant.custom_nutrients ?? null,
   variantId: item.default_variant.id,
   images: item.images ?? null,
+  healthScore: item.health_score ?? null,
+  nutriScoreCategory: item.nutri_score_category ?? null,
+  fruitVegLegumePercent: item.fruit_veg_legume_percent ?? null,
   source: 'local',
   originalItem: item,
 });
@@ -290,6 +303,7 @@ export const externalFoodItemToFoodInfo = (
   caffeineMg: item.caffeine_mg,
   waterMl: item.water_ml,
   alcoholG: item.alcohol_g,
+  addedSugars: item.added_sugars,
   allergens: item.allergens ?? null,
   traces: item.traces ?? null,
   externalVariants: item.variants,
@@ -393,6 +407,9 @@ export const mealToFoodInfo = (meal: Meal): FoodInfoItem => {
     alcoholG: hasField('alcohol_g')
       ? Math.round(mealNutrientPerServing(meal, 'alcohol_g'))
       : undefined,
+    addedSugars: hasField('added_sugars')
+      ? Math.round(mealNutrientPerServing(meal, 'added_sugars'))
+      : undefined,
     mealTotalServings: totalServings,
     images: meal.images ?? null,
     source: 'meal',
@@ -429,6 +446,7 @@ export const mealIngredientDraftToFoodInfo = (
     caffeineMg: toOptionalFiniteNumber(ingredient.caffeine_mg),
     waterMl: toOptionalFiniteNumber(ingredient.water_ml),
     alcoholG: toOptionalFiniteNumber(ingredient.alcohol_g),
+    addedSugars: toOptionalFiniteNumber(ingredient.added_sugars),
     cholesterol: toOptionalFiniteNumber(ingredient.cholesterol),
     vitaminA: toOptionalFiniteNumber(ingredient.vitamin_a),
     vitaminC: toOptionalFiniteNumber(ingredient.vitamin_c),

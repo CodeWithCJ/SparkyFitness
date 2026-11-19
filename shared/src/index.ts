@@ -183,6 +183,7 @@ export * from './nutrients/alcoholUnits.ts';
 export * from './nutrients/alcoholKinetics.ts';
 export * from './nutrients/caffeineKinetics.ts';
 export * from './utils/curveSampling.ts';
+export * from './nutrients/foodHealthScore.ts';
 export * from './utils/bodyComposition.ts';
 export * from './utils/timezone.ts';
 export * from './utils/calendar.ts';

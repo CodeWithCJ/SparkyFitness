@@ -310,6 +310,7 @@ describe('useUnitConversion', () => {
       caffeine_mg: 0,
       water_ml: 0,
       alcohol_g: 0,
+      added_sugars: null,
       // Carried across unchanged: ABV is a property of the liquid, not a
       // per-serving amount.
       abv_percent: undefined,

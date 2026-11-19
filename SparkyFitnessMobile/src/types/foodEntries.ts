@@ -48,6 +48,7 @@ export interface FoodEntry {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
   allergens?: string[] | null;

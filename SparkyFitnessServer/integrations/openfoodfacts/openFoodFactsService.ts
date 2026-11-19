@@ -9,6 +9,7 @@ import { log } from '../../config/logging.js';
 import {
   normalizeNutrientUnit,
   alcoholGramsForServing,
+  type NutriScoreCategory,
 } from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
 import { PARTIAL_SERVING_DATA } from '../../utils/foodRanking.js';
@@ -86,6 +87,8 @@ const OFF_FIELDS = [
   'nutriments',
   'allergens_tags',
   'traces_tags',
+  'nutriscore_grade',
+  'categories_tags',
   // Product photos: front image preferred, plain image_url as fallback.
   'image_front_url',
   'image_url',
@@ -133,6 +136,8 @@ interface OffProduct {
   traces_tags?: string[];
   image_front_url?: string;
   image_url?: string;
+  nutriscore_grade?: string;
+  categories_tags?: string[];
   [key: string]: unknown;
 }
 
@@ -1144,6 +1149,56 @@ function getOffNutrient100g(
   return 0;
 }
 
+function hasOffNutrient(
+  nutriments: Record<string, unknown>,
+  baseKey: string,
+  declaredServingQuantity: number | null
+): boolean {
+  return (
+    parseOffNumber(nutriments[`${baseKey}_100g`]) !== null ||
+    (declaredServingQuantity !== null &&
+      declaredServingQuantity > 0 &&
+      parseOffNumber(nutriments[`${baseKey}_serving`]) !== null)
+  );
+}
+
+// Mirrors the category tests in ProductOpener::Food
+// (is_fat_oil_nuts_seeds_for_nutrition_score: en:fats, en:creams, en:seeds, or
+// an HS heading of nuts/peanuts/oilseeds; beverages: en:beverages). OFF reads
+// the HS heading from the category taxonomy, where raw nuts, peanuts and almonds
+// descend from en:nuts (taxonomies/food/categories.txt, wco_hs_heading 08.01,
+// 08.02, 12.02), so en:nuts stands in for it. Processed nuts matched by HS code
+// 2008.11/2008.19 and milk-heavy dairy drinks are not modelled; they score as
+// "general" and the provider grade still wins when OFF supplies one.
+// Cheese is en:cheeses minus fr:fromages-blancs (is_cheese_for_nutrition_score).
+// Red meat is the HS 02.01-02.06 categories; OFF also counts products with more
+// than 10% red-meat ingredients, which needs an ingredient list and is not
+// modelled.
+const OFF_FAT_OIL_NUT_TAGS = ['en:fats', 'en:creams', 'en:seeds', 'en:nuts'];
+const OFF_RED_MEAT_TAGS = [
+  'en:beef',
+  'en:veal-meat',
+  'en:pork',
+  'en:lamb-meat',
+  'en:sheep-meat',
+  'en:goat-meat',
+  'en:horse-fresh-meat',
+];
+
+function offNutriScoreCategory(
+  tags: unknown
+): Exclude<NutriScoreCategory, 'general'> | undefined {
+  if (!Array.isArray(tags)) return undefined;
+  if (tags.includes('en:cheeses') && !tags.includes('fr:fromages-blancs')) {
+    return 'cheese';
+  }
+  if (tags.some((tag) => OFF_FAT_OIL_NUT_TAGS.includes(tag))) {
+    return 'fat_oil_nut';
+  }
+  if (tags.some((tag) => OFF_RED_MEAT_TAGS.includes(tag))) return 'red_meat';
+  return tags.includes('en:beverages') ? 'beverage' : undefined;
+}
+
 function getOffEnergyKcal100g(
   nutriments: Record<string, unknown>,
   declaredServingQuantity: number | null
@@ -1302,6 +1357,22 @@ function mapOpenFoodFactsProduct(
           scale *
           10
       ) / 10,
+    // Left undefined when OFF has no added-sugars figure: unknown, not 0.
+    added_sugars: hasOffNutrient(
+      nutriments,
+      'added-sugars',
+      declaredServingQuantity
+    )
+      ? Math.round(
+          getOffNutrient100g(
+            nutriments,
+            'added-sugars',
+            declaredServingQuantity
+          ) *
+            scale *
+            10
+        ) / 10
+      : undefined,
     polyunsaturated_fat:
       Math.round(
         getOffNutrient100g(
@@ -1456,6 +1527,8 @@ function mapOpenFoodFactsProduct(
     is_custom: false,
     // Hotlinked in search results; localized on import (see models/food.ts).
     image_url: product.image_front_url || product.image_url || null,
+    provider_nutriscore_grade: product.nutriscore_grade ?? null,
+    nutri_score_category: offNutriScoreCategory(product.categories_tags),
     default_variant: metricVariant,
     ...(product[PARTIAL_SERVING_DATA]
       ? { [PARTIAL_SERVING_DATA]: true as const }

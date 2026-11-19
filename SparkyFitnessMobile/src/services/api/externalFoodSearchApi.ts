@@ -480,6 +480,7 @@ interface NormalizedFoodVariant {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   is_default: boolean;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
@@ -542,6 +543,7 @@ export function _transformNormalizedFood(
     caffeine_mg: v.caffeine_mg,
     water_ml: v.water_ml,
     alcohol_g: v.alcohol_g,
+    added_sugars: v.added_sugars,
     vitamin_a: v.vitamin_a,
     vitamin_c: v.vitamin_c,
   });

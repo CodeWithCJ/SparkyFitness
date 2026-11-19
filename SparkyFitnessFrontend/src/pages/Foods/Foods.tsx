@@ -49,6 +49,7 @@ import { useFoodDatabaseManager } from '@/hooks/Foods/useFoodDatabaseManager';
 import DeleteFoodDialog, { PendingDeletion } from './DeleteFoodDialog';
 import FoodSearchDialog from '@/components/FoodSearch/FoodSearchDialog';
 import AllergenBadges from '@/components/AllergenBadges';
+import FoodHealthBadges from '@/components/FoodHealthBadges';
 import {
   useFavoritesQuery,
   useToggleFavoriteMutation,
@@ -337,6 +338,7 @@ const FoodDatabaseManager = () => {
                   allergens={food.default_variant?.allergens}
                   traces={food.default_variant?.traces}
                 />
+                <FoodHealthBadges healthScore={food.health_score} />
               </div>
             </div>
           );
@@ -925,6 +927,7 @@ const FoodDatabaseManager = () => {
                     })}
               </div>
             </DialogDescription>
+            <FoodHealthBadges healthScore={viewingFood?.health_score} />
           </DialogHeader>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">

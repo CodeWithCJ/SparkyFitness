@@ -6,6 +6,7 @@ import { Edit, Share2, Sparkles, Star } from 'lucide-react';
 import { NutrientGrid } from './NutrientGrid';
 import ProviderVerifiedBadge from './ProviderVerifiedBadge';
 import AllergenBadges from '@/components/AllergenBadges';
+import FoodHealthBadges from '@/components/FoodHealthBadges';
 import type { Food } from '@/types/food';
 import type { Meal } from '@/types/meal';
 import type { UserCustomNutrient } from '@/types/customNutrient';
@@ -286,6 +287,10 @@ const FoodResultCard = ({
                 <AllergenBadges
                   allergens={foodItem.default_variant.allergens}
                   traces={foodItem.default_variant.traces}
+                />
+                <FoodHealthBadges
+                  healthScore={foodItem.health_score}
+                  className="mt-1"
                 />
               </>
             )}

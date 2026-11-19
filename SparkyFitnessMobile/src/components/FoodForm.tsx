@@ -68,11 +68,13 @@ import {
 import {
   CONFIDENCE_TONES,
   getConversionFactor,
+  NUTRI_SCORE_CATEGORIES,
   saltGramsToSodiumMg,
   shouldOfferAiConversion,
   sodiumMgToSaltGrams,
   type AiConfidence,
   type ConfidenceTone,
+  type NutriScoreCategory,
 } from '@workspace/shared';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 import { energyUnitLabel } from '../utils/energyUnit';
@@ -90,9 +92,10 @@ export interface FoodFormProps {
   isSubmitting?: boolean;
   hideSubmitButton?: boolean;
   /**
-   * Show the markdown notes field. Only the food create/edit modes own the
-   * food's note; the adjust-entry-nutrition mode edits one diary entry's
-   * numbers and must not present the food's note as if it were editable there.
+   * Show the food-level fields: the markdown notes and the Nutri-Score
+   * category. Only the food create/edit modes own them; the
+   * adjust-entry-nutrition mode edits one diary entry's numbers and must not
+   * present the food's note or category as if they were editable there.
    */
   showNotes?: boolean;
   showAutoScaleNutrition?: boolean;
@@ -371,6 +374,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     caffeineMg: useRef<TextInput>(null),
     waterMl: useRef<TextInput>(null),
     alcoholG: useRef<TextInput>(null),
+    addedSugars: useRef<TextInput>(null),
   };
 
   const focusField = (field: keyof typeof fieldRefs) => {
@@ -404,6 +408,24 @@ const FoodForm: React.FC<FoodFormProps> = ({
     });
   };
 
+  const nutriScoreCategoryLabels: Record<NutriScoreCategory, string> = {
+    general: t('foodForm.nutriScoreCategoryGeneral', {
+      defaultValue: 'General',
+    }),
+    beverage: t('foodForm.nutriScoreCategoryBeverage', {
+      defaultValue: 'Beverage',
+    }),
+    fat_oil_nut: t('foodForm.nutriScoreCategoryFatOilNut', {
+      defaultValue: 'Fat, oil & nut',
+    }),
+    cheese: t('foodForm.nutriScoreCategoryCheese', {
+      defaultValue: 'Cheese',
+    }),
+    red_meat: t('foodForm.nutriScoreCategoryRedMeat', {
+      defaultValue: 'Red meat',
+    }),
+  };
+
   const update = (field: keyof FoodFormData, value: string) => {
     // Manual nutrition edits on an AI-tagged unit immediately take ownership
     // away from AI — the saved variant becomes 'manual' so it isn't mislabeled.
@@ -411,7 +433,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
     // re-entry, and AI-then-auto-scale stays semantically "AI-sourced at the
     // original quantity". serving_unit changes route through the sheet, which
     // emits a fresh draft selection. Matches web's immediate-clear behavior.
-    const isNutritionField = NUTRITION_FIELDS.includes(field);
+    const isNutritionField =
+      field !== 'nutriScoreCategory' && NUTRITION_FIELDS.includes(field);
     if (
       isNutritionField &&
       selectedUnitSelection &&
@@ -579,10 +602,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
       applyCompatibleDraftSelection(selection.variant);
       return;
     }
-    preciseNumericValuesRef.current = {
-      ...preciseNumericValuesRef.current,
-      ...buildPreciseNumericValuesFromVariant(selection.variant),
-    };
+    preciseNumericValuesRef.current = buildPreciseNumericValuesFromVariant(
+      selection.variant
+    );
     lastServingSizeRef.current = selection.variant.serving_size;
     setForm((prev) => applyVariantToFormState(prev, selection.variant));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -673,10 +695,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
       setSelectedSavedVariantId(nextSelection.variant.id);
     }
     if (nextSelection.kind === 'existing') {
-      preciseNumericValuesRef.current = {
-        ...preciseNumericValuesRef.current,
-        ...buildPreciseNumericValuesFromVariant(nextSelection.variant),
-      };
+      preciseNumericValuesRef.current = buildPreciseNumericValuesFromVariant(
+        nextSelection.variant
+      );
       lastServingSizeRef.current = nextSelection.variant.serving_size;
     }
     if (nextSelection.kind === 'draft') {
@@ -800,6 +821,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         caffeineMg: anchor.caffeine_mg,
         waterMl: anchor.water_ml,
         alcoholG: anchor.alcohol_g,
+        addedSugars: anchor.added_sugars ?? undefined,
       };
       NUTRITION_FIELDS.forEach((field) => {
         const anchorValue =
@@ -810,12 +832,20 @@ const FoodForm: React.FC<FoodFormProps> = ({
         scaledPreciseUpdates[field as NumericFoodFormField] = next;
       });
 
-      // Apply scaled nutrition + clear banner. We don't change servingSize or
-      // servingUnit — the row already has the user's chosen new unit.
-      preciseNumericValuesRef.current = {
+      // Unknown added sugars on the anchor means unknown here too, not the
+      // value typed for the previous unit.
+      const nextPreciseValues = {
         ...preciseNumericValuesRef.current,
         ...scaledPreciseUpdates,
       };
+      if (!Number.isFinite(anchor.added_sugars)) {
+        scaledNutrition.addedSugars = '';
+        delete nextPreciseValues.addedSugars;
+      }
+
+      // Apply scaled nutrition + clear banner. We don't change servingSize or
+      // servingUnit — the row already has the user's chosen new unit.
+      preciseNumericValuesRef.current = nextPreciseValues;
       setForm((prev) => ({ ...prev, ...scaledNutrition }));
       setShowManualUpdateBanner(false);
 
@@ -848,6 +878,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         caffeine_mg: scaledPreciseUpdates.caffeineMg,
         water_ml: scaledPreciseUpdates.waterMl,
         alcohol_g: scaledPreciseUpdates.alcoholG,
+        added_sugars: scaledPreciseUpdates.addedSugars ?? null,
         // Same anchor and ratio as above, so the screen keeps the food's
         // custom nutrients instead of clearing them for this draft.
         custom_nutrients: scaleCompatibleDraftVariant(
@@ -1060,7 +1091,10 @@ const FoodForm: React.FC<FoodFormProps> = ({
     const patch = labelScanToNutritionPatch(nutritionLabelScan.result);
     const displayValues = buildDisplayFormState(patch);
     const displayPatch: Partial<FoodFormData> = {};
-    for (const field of Object.keys(patch) as (keyof FoodFormData)[]) {
+    for (const field of Object.keys(patch) as Exclude<
+      keyof FoodFormData,
+      'nutriScoreCategory'
+    >[]) {
       displayPatch[field] = displayValues[field];
     }
     // Update both representations without triggering serving-size auto-scaling
@@ -1536,6 +1570,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 {renderNumericField(
                   t('nutrients.alcohol', { defaultValue: 'Alcohol' }),
                   'alcoholG',
+                  'g',
+                  false,
+                  'addedSugars'
+                )}
+                {renderNumericField(
+                  t('nutrients.addedSugars', { defaultValue: 'Added Sugars' }),
+                  'addedSugars',
                   'g'
                 )}
               </View>
@@ -1592,6 +1633,28 @@ const FoodForm: React.FC<FoodFormProps> = ({
         */}
         {showNotes ? (
           <View className="mt-4">
+            <Text className="text-sm font-medium text-text-secondary mb-1">
+              {t('foodForm.nutriScoreCategory', {
+                defaultValue: 'Nutri-Score category',
+              })}
+            </Text>
+            <BottomSheetPicker
+              value={form.nutriScoreCategory || 'general'}
+              options={NUTRI_SCORE_CATEGORIES.map((value) => ({
+                value,
+                label: nutriScoreCategoryLabels[value],
+              }))}
+              onSelect={(value) => update('nutriScoreCategory', value)}
+              title={t('foodForm.nutriScoreCategory', {
+                defaultValue: 'Nutri-Score category',
+              })}
+            />
+            <Text className="text-xs text-text-muted mt-1 mb-4">
+              {t('foodForm.nutriScoreCategoryHint', {
+                defaultValue:
+                  'Beverages, fats, oils and nuts, cheese and red meat are scored differently from other foods.',
+              })}
+            </Text>
             <MarkdownNotesField
               images={noteImages}
               value={form.notes}

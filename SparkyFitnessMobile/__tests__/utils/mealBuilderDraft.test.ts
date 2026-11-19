@@ -57,6 +57,7 @@ describe('mealBuilderDraft', () => {
       cholesterol: 12,
       vitamin_a: 30,
       vitamin_c: 4,
+      added_sugars: null,
     });
   });
 
@@ -116,6 +117,7 @@ describe('mealBuilderDraft', () => {
       cholesterol: 0,
       vitamin_a: 4,
       vitamin_c: 10,
+      added_sugars: null,
     });
   });
 

@@ -57,6 +57,7 @@ import {
   type CalorieCyclingMode,
   type GlucoseUnit,
   type ChartScaleMode,
+  type FrontOfPackRegion,
   type TemperatureUnit,
   type UserPreferences as SharedUserPreferences,
 } from '@workspace/shared';
@@ -148,6 +149,10 @@ interface PreferencesContextType {
   measurementDecimalPlaces: number;
   chartScaleMode: ChartScaleMode;
   setChartScaleMode: (mode: ChartScaleMode) => void;
+  frontOfPackRegion: FrontOfPackRegion;
+  setFrontOfPackRegion: (region: FrontOfPackRegion) => void;
+  nutriScoreEnabled: boolean;
+  setNutriScoreEnabled: (enabled: boolean) => void;
   glucoseUnit: GlucoseUnit;
   setGlucoseUnit: (unit: GlucoseUnit) => void;
   temperatureUnit: TemperatureUnit;
@@ -299,6 +304,8 @@ export interface DefaultPreferences {
   first_day_of_week: number;
   measurement_decimal_places: number;
   chart_scale_mode: ChartScaleMode;
+  front_of_pack_region: FrontOfPackRegion;
+  nutri_score_enabled: boolean;
   default_glucose_unit?: GlucoseUnit;
   default_temperature_unit?: TemperatureUnit;
   goal_mode: GoalMode;
@@ -424,6 +431,9 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
   const [firstDayOfWeek, setFirstDayOfWeekState] = useState<DayOfWeek>(0);
   const [measurementDecimalPlaces, setMeasurementDecimalPlacesState] =
     useState<number>(0);
+  const [frontOfPackRegion, setFrontOfPackRegionState] =
+    useState<FrontOfPackRegion>('none');
+  const [nutriScoreEnabled, setNutriScoreEnabledState] = useState(false);
   const [chartScaleMode, setChartScaleModeState] = useState<ChartScaleMode>(
     DEFAULT_CHART_SCALE_MODE
   );
@@ -892,6 +902,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
           setChartScaleModeState(
             data.chart_scale_mode || DEFAULT_CHART_SCALE_MODE
           );
+          setFrontOfPackRegionState(data.front_of_pack_region || 'none');
+          setNutriScoreEnabledState(data.nutri_score_enabled === true);
           loadedGlucoseUnit.current = isGlucoseUnit(data.default_glucose_unit)
             ? data.default_glucose_unit
             : DEFAULT_GLUCOSE_UNIT;
@@ -1175,6 +1187,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
         measurement_decimal_places:
           edits.measurementDecimalPlaces ?? measurementDecimalPlaces,
         chart_scale_mode: edits.chartScaleMode ?? chartScaleMode,
+        front_of_pack_region: edits.frontOfPackRegion ?? frontOfPackRegion,
+        nutri_score_enabled: edits.nutriScoreEnabled ?? nutriScoreEnabled,
         default_temperature_unit: edits.temperatureUnit ?? temperatureUnit,
         ...((edits.glucoseUnit ?? glucoseUnit) !== loadedGlucoseUnit.current
           ? { default_glucose_unit: edits.glucoseUnit ?? glucoseUnit }
@@ -1288,6 +1302,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       firstDayOfWeek,
       measurementDecimalPlaces,
       chartScaleMode,
+      frontOfPackRegion,
+      nutriScoreEnabled,
       temperatureUnit,
       glucoseUnit,
       goalMode,
@@ -1630,6 +1646,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       firstDayOfWeek,
       measurementDecimalPlaces,
       chartScaleMode,
+      frontOfPackRegion,
+      nutriScoreEnabled,
       temperatureUnit,
       glucoseUnit,
       goalMode,
@@ -1658,6 +1676,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       setStandardDrinkGrams,
       setMeasurementDecimalPlaces: setMeasurementDecimalPlacesState,
       setChartScaleMode: setChartScaleModeState,
+      setFrontOfPackRegion: setFrontOfPackRegionState,
+      setNutriScoreEnabled: setNutriScoreEnabledState,
       setTemperatureUnit: setTemperatureUnitState,
       setGlucoseUnit: setGlucoseUnitState,
       setGoalMode,
@@ -1755,6 +1775,8 @@ export const PreferencesProvider: React.FC<{ children: React.ReactNode }> = ({
       firstDayOfWeek,
       measurementDecimalPlaces,
       chartScaleMode,
+      frontOfPackRegion,
+      nutriScoreEnabled,
       temperatureUnit,
       glucoseUnit,
       goalMode,

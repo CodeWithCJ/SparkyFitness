@@ -36,6 +36,7 @@ export const FOOD_VARIANT_FIELDS: (keyof FoodFormData)[] = [
   'caffeineMg',
   'waterMl',
   'alcoholG',
+  'addedSugars',
 ];
 
 const FOOD_METADATA_FIELDS: (keyof FoodFormData)[] = ['name', 'brand'];
@@ -59,6 +60,7 @@ const NUMERIC_FOOD_FIELDS = new Set<keyof FoodFormData>([
   'caffeineMg',
   'waterMl',
   'alcoholG',
+  'addedSugars',
 ]);
 
 export function isBlankEquivalent(eq: EquivalentUnit): boolean {
@@ -371,6 +373,7 @@ export function buildVariantFromFormData(
     caffeine_mg: parseOptional(data.caffeineMg),
     water_ml: parseOptional(data.waterMl),
     alcohol_g: parseOptional(data.alcoholG),
+    added_sugars: parseOptional(data.addedSugars) ?? null,
   };
 }
 
@@ -411,6 +414,7 @@ export function buildVariantFromInitialValues(
     caffeine_mg: parseOptional(initialValues.caffeineMg ?? ''),
     water_ml: parseOptional(initialValues.waterMl ?? ''),
     alcohol_g: parseOptional(initialValues.alcoholG ?? ''),
+    added_sugars: parseOptional(initialValues.addedSugars ?? '') ?? null,
   };
 }
 
@@ -439,6 +443,8 @@ export function buildFormValuesFromVariant(
     caffeineMg: variant.caffeine_mg != null ? String(variant.caffeine_mg) : '',
     waterMl: variant.water_ml != null ? String(variant.water_ml) : '',
     alcoholG: variant.alcohol_g != null ? String(variant.alcohol_g) : '',
+    addedSugars:
+      variant.added_sugars != null ? String(variant.added_sugars) : '',
   };
 }
 
@@ -505,6 +511,7 @@ export async function persistFoodEdits({
         caffeine_mg: parseOptional(data.caffeineMg),
         water_ml: parseOptional(data.waterMl),
         alcohol_g: parseOptional(data.alcoholG),
+        added_sugars: parseOptional(data.addedSugars) ?? null,
         custom_nutrients: customNutrients || undefined,
       }).then((updatedVariant) => {
         updateFoodVariantCache(queryClient, updatedVariant);

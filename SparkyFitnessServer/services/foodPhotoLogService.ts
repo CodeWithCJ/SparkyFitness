@@ -67,6 +67,7 @@ interface ResolvedVariantRow {
   caffeine_mg: number | string | null;
   water_ml: number | string | null;
   alcohol_g: number | string | null;
+  added_sugars: number | string | null;
   glycemic_index: string | null;
   custom_nutrients: Record<string, unknown> | null;
 }
@@ -94,7 +95,7 @@ async function loadExistingVariants(
        fv.trans_fat, fv.cholesterol, fv.sodium, fv.potassium,
        fv.dietary_fiber, fv.sugars, fv.vitamin_a, fv.vitamin_c,
        fv.calcium, fv.iron, fv.caffeine_mg, fv.water_ml, fv.alcohol_g,
-       fv.glycemic_index, fv.custom_nutrients
+       fv.added_sugars, fv.glycemic_index, fv.custom_nutrients
      FROM food_variants fv
      JOIN foods f ON f.id = fv.food_id
      WHERE fv.id = ANY($1::uuid[])`,

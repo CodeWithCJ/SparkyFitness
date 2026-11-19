@@ -234,6 +234,7 @@ function mergeVariantDisplayValues(
       fallback[field]
     );
   }
+  mergedValues.addedSugars = variant?.added_sugars ?? fallback.addedSugars;
 
   return mergedValues;
 }
@@ -314,6 +315,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       return {
         name: item.name,
         brand: item.brand ?? '',
+        nutriScoreCategory: '',
         // A meal ingredient carries a nutrition snapshot, not a note; the note
         // belongs to the food and to the diary entry, not to this row.
         notes: '',
@@ -337,6 +339,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         caffeineMg: toFormString(item.caffeineMg),
         waterMl: toFormString(item.waterMl),
         alcoholG: toFormString(item.alcoholG),
+        addedSugars: toFormString(item.addedSugars),
       };
     }
   );
@@ -688,6 +691,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       caffeineMg: parseOptional(adjustedValues.caffeineMg),
       waterMl: parseOptional(adjustedValues.waterMl),
       alcoholG: parseOptional(adjustedValues.alcoholG),
+      addedSugars: parseOptional(adjustedValues.addedSugars),
       cholesterol: parseOptional(adjustedValues.cholesterol),
       vitaminA: parseOptional(adjustedValues.vitaminA),
       vitaminC: parseOptional(adjustedValues.vitaminC),
@@ -740,6 +744,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       caffeine_mg: displayValues.caffeineMg,
       water_ml: displayValues.waterMl,
       alcohol_g: displayValues.alcoholG,
+      added_sugars: displayValues.addedSugars,
     };
   }, [displayValues, selectedVariantOverride]);
 
@@ -1132,6 +1137,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       caffeine_mg: saveFoodSourceValues.caffeineMg,
       water_ml: saveFoodSourceValues.waterMl,
       alcohol_g: saveFoodSourceValues.alcoholG,
+      added_sugars: saveFoodSourceValues.addedSugars,
       cholesterol: saveFoodSourceValues.cholesterol,
       vitamin_a: saveFoodSourceValues.vitaminA,
       vitamin_c: saveFoodSourceValues.vitaminC,
@@ -1204,6 +1210,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
             caffeine_mg: displayValues.caffeineMg,
             water_ml: displayValues.waterMl,
             alcohol_g: displayValues.alcoholG,
+            added_sugars: displayValues.addedSugars ?? null,
             cholesterol: displayValues.cholesterol,
             vitamin_a: displayValues.vitaminA,
             vitamin_c: displayValues.vitaminC,
@@ -1281,6 +1288,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
                 caffeine_mg: displayValues.caffeineMg,
                 water_ml: displayValues.waterMl,
                 alcohol_g: displayValues.alcoholG,
+                added_sugars: displayValues.addedSugars,
                 cholesterol: displayValues.cholesterol,
                 vitamin_a: displayValues.vitaminA,
                 vitamin_c: displayValues.vitaminC,
@@ -1800,6 +1808,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       caffeine_mg: displayValues.caffeineMg,
       water_ml: displayValues.waterMl,
       alcohol_g: displayValues.alcoholG,
+      added_sugars: displayValues.addedSugars,
       cholesterol: displayValues.cholesterol,
       vitamin_a: displayValues.vitaminA,
       vitamin_c: displayValues.vitaminC,
@@ -1839,6 +1848,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         caffeineMg: toFormString(displayValues.caffeineMg),
         waterMl: toFormString(displayValues.waterMl),
         alcoholG: toFormString(displayValues.alcoholG),
+        addedSugars: toFormString(displayValues.addedSugars),
         cholesterol: toFormString(displayValues.cholesterol),
         vitaminA: toFormString(displayValues.vitaminA),
         vitaminC: toFormString(displayValues.vitaminC),

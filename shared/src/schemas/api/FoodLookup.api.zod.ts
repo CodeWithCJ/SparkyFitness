@@ -1,4 +1,9 @@
 import { z } from 'zod/v4';
+import {
+  FRONT_OF_PACK_WARNINGS,
+  NUTRI_SCORE_CATEGORIES,
+  NUTRI_SCORE_GRADES,
+} from '../../nutrients/foodHealthScore.ts';
 
 export const FoodVariantSchema = z.object({
   id: z.string().optional(),
@@ -29,6 +34,7 @@ export const FoodVariantSchema = z.object({
   caffeine_mg: z.number().optional(),
   water_ml: z.number().optional(),
   alcohol_g: z.number().optional(),
+  added_sugars: z.number().nullable().optional(),
   abv_percent: z.number().optional(),
   is_default: z.boolean(),
   glycemic_index: z.string().optional(),
@@ -58,6 +64,23 @@ export const FoodVariantSchema = z.object({
 
 export type FoodVariant = z.infer<typeof FoodVariantSchema>;
 
+const FrontOfPackWarningsSchema = z.array(z.enum(FRONT_OF_PACK_WARNINGS));
+
+export const FoodHealthScoreSchema = z.object({
+  nutri_score: z
+    .object({
+      grade: z.enum(NUTRI_SCORE_GRADES),
+      score: z.number().nullable(),
+      source: z.enum(['provider', 'computed']),
+    })
+    .nullable(),
+  warnings: z.object({
+    brazil: FrontOfPackWarningsSchema,
+    chile: FrontOfPackWarningsSchema,
+    mexico: FrontOfPackWarningsSchema,
+  }),
+});
+
 export const NormalizedFoodSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
@@ -82,6 +105,10 @@ export const NormalizedFoodSchema = z.object({
   // Owner-authored markdown note. Only local foods have one; provider results
   // arrive without the key, hence optional as well as nullable.
   notes: z.string().nullable().optional(),
+  fruit_veg_legume_percent: z.number().nullable().optional(),
+  provider_nutriscore_grade: z.string().nullable().optional(),
+  nutri_score_category: z.enum(NUTRI_SCORE_CATEGORIES).nullable().optional(),
+  health_score: FoodHealthScoreSchema.optional(),
   default_variant: FoodVariantSchema,
   variants: z.array(FoodVariantSchema).optional(),
 });

@@ -35,6 +35,8 @@ export const formVariantToFoodVariant = (
   caffeine_mg: variant.caffeine_mg || 0,
   water_ml: variant.water_ml || 0,
   alcohol_g: variant.alcohol_g || 0,
+  // Unlike the other nutrients, blank is unknown (null) here, not 0.
+  added_sugars: variant.added_sugars ?? null,
   abv_percent: variant.abv_percent || 0,
 });
 
@@ -67,6 +69,7 @@ export const foodVariantToFormVariant = (
   caffeine_mg: variant.caffeine_mg === 0 ? undefined : variant.caffeine_mg,
   water_ml: variant.water_ml === 0 ? undefined : variant.water_ml,
   alcohol_g: variant.alcohol_g === 0 ? undefined : variant.alcohol_g,
+  added_sugars: variant.added_sugars ?? undefined,
   abv_percent: variant.abv_percent === 0 ? undefined : variant.abv_percent,
 });
 
@@ -121,6 +124,7 @@ export function createDefaultFormVariant(
     caffeine_mg: undefined,
     water_ml: undefined,
     alcohol_g: undefined,
+    added_sugars: undefined,
     abv_percent: undefined,
     is_default: true,
     is_locked: false,

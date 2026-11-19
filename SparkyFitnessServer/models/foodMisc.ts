@@ -37,6 +37,7 @@ const DEFAULT_VARIANT_JSON_SQL = `
     'caffeine_mg', fv.caffeine_mg,
     'water_ml', fv.water_ml,
     'alcohol_g', fv.alcohol_g,
+    'added_sugars', fv.added_sugars,
     'abv_percent', fv.abv_percent,
     'is_default', fv.is_default,
     'glycemic_index', fv.glycemic_index,
@@ -109,6 +110,9 @@ async function getRecentFoods(
         f.provider_type,
         f.provider_verified,
         f.images,
+        f.fruit_veg_legume_percent,
+        f.provider_nutriscore_grade,
+        f.nutri_score_category,
         rfe.last_used_date,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
@@ -161,6 +165,9 @@ async function getTopFoods(
         f.provider_type,
         f.provider_verified,
         f.images,
+        f.fruit_veg_legume_percent,
+        f.provider_nutriscore_grade,
+        f.nutri_score_category,
         tfe.usage_count,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
@@ -191,6 +198,9 @@ async function getFavoriteFoods(userId: string) {
         f.provider_type,
         f.provider_verified,
         f.images,
+        f.fruit_veg_legume_percent,
+        f.provider_nutriscore_grade,
+        f.nutri_score_category,
         ff.created_at AS favorited_at,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM food_favorites ff
@@ -569,11 +579,12 @@ async function updateFoodEntriesSnapshot(
           custom_nutrients = $23,
           caffeine_mg = $24,
           water_ml = $25,
-          alcohol_g = $26
+          alcohol_g = $26,
+          added_sugars = $27
           -- The user picked "nutrition only", so the photo column is left out
           -- of the statement and every entry keeps the photo it shows today.
-          ${syncImages ? ', images = $30::jsonb' : ''}
-       WHERE user_id = $27 AND food_id = $28 AND variant_id = $29
+          ${syncImages ? ', images = $31::jsonb' : ''}
+       WHERE user_id = $28 AND food_id = $29 AND variant_id = $30
        RETURNING id`,
       [
         newSnapshotData.food_name,
@@ -602,11 +613,12 @@ async function updateFoodEntriesSnapshot(
         newSnapshotData.caffeine_mg,
         newSnapshotData.water_ml,
         newSnapshotData.alcohol_g,
+        newSnapshotData.added_sugars,
         userId,
         foodId,
         variantId,
         // Postgres rejects a bind with more parameters than the statement
-        // references, so $30 is only supplied when the SET clause uses it.
+        // references, so $31 is only supplied when the SET clause uses it.
         ...(syncImages ? [JSON.stringify(newSnapshotData.images ?? [])] : []),
       ]
     );

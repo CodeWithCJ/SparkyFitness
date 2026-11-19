@@ -129,6 +129,7 @@ const ALL_NUTRIENT_KEYS = [
   'caffeine_mg',
   'water_ml',
   'alcohol_g',
+  'added_sugars',
 ] as const;
 
 // Only ingredient identities and amounts govern source nutrition sync. Keep
@@ -708,6 +709,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
         caffeine_mg: mealFoodToEdit.caffeine_mg,
         water_ml: mealFoodToEdit.water_ml,
         alcohol_g: mealFoodToEdit.alcohol_g,
+        added_sugars: mealFoodToEdit.added_sugars,
         glycemic_index: mealFoodToEdit.glycemic_index as GlycemicIndex,
         custom_nutrients: mealFoodToEdit.custom_nutrients,
       };
@@ -758,6 +760,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
       caffeine_mg: selectedVariant.caffeine_mg,
       water_ml: selectedVariant.water_ml,
       alcohol_g: selectedVariant.alcohol_g,
+      added_sugars: selectedVariant.added_sugars,
       glycemic_index: selectedVariant.glycemic_index,
       custom_nutrients: selectedVariant.custom_nutrients,
     };
@@ -1016,6 +1019,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
           caffeine_mg: mf.caffeine_mg,
           water_ml: mf.water_ml,
           alcohol_g: mf.alcohol_g,
+          added_sugars: mf.added_sugars,
           glycemic_index: mf.glycemic_index,
           custom_nutrients: mf.custom_nutrients,
         })),
@@ -1152,6 +1156,7 @@ const MealBuilder: React.FC<MealBuilderProps> = ({
               caffeine_mg: mf.caffeine_mg,
               water_ml: mf.water_ml,
               alcohol_g: mf.alcohol_g,
+              added_sugars: mf.added_sugars,
               glycemic_index: mf.glycemic_index,
               custom_nutrients: mf.custom_nutrients,
             })),

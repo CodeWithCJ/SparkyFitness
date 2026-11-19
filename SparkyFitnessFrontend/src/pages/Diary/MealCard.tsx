@@ -56,6 +56,7 @@ interface MealTotals {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   calcium?: number;
   glycemic_index?: GlycemicIndex;
   custom_nutrients?: Record<string, number>;
@@ -294,6 +295,7 @@ const MealCard = ({
     // ring still owns the day total, which is computed from its own arm.
     'water_ml',
     'alcohol_g',
+    'added_sugars',
   ];
 
   // Add custom nutrient names to summable nutrients list if they exist
@@ -534,16 +536,22 @@ const MealCard = ({
                     (entryNutrition[nutrient as keyof MealTotals] as number) ??
                     entryNutrition.custom_nutrients?.[nutrient] ??
                     0;
+                  // Unknown is not 0 g: other nutrients still fall back to 0.
+                  const isUnknown =
+                    nutrient === 'added_sugars' &&
+                    entryNutrition.added_sugars == null;
 
-                  const displayValue =
-                    nutrient === 'calories'
+                  const displayValue = isUnknown
+                    ? '–'
+                    : nutrient === 'calories'
                       ? Math.round(
                           convertEnergy(value, 'kcal', energyUnit)
                         ).toString()
                       : formatNutrientValue(nutrient, value, customNutrients);
 
-                  const unitDisplay =
-                    nutrient === 'calories'
+                  const unitDisplay = isUnknown
+                    ? ''
+                    : nutrient === 'calories'
                       ? getEnergyUnitString(energyUnit)
                       : metadata.unit;
 

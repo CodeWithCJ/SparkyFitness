@@ -20,6 +20,7 @@
     "syncIron": "Iron",
     "syncCaffeine": "Caffeine",
     "syncAlcohol": "Alcohol",
+    "syncAddedSugars": "Added sugars",
     "syncWater": "Water",
     "syncSavedValues": "These are saved ingredient values. To include a library correction, replace the affected ingredient using its corrected food variant, check the values, then save the meal.",
     "syncSavedAt": "Last saved: {{date}}",
@@ -381,6 +382,7 @@
     "actions": "Actions",
     "booleanTrue": "True",
     "booleanFalse": "False",
+    "categoryUnset": "Not set",
     "deleteRow": "Delete Row",
     "overrideLabel": "Override existing food details",
     "overrideDescription": "If a food with the same name and brand already exists, update its nutrition instead of failing the import. Leave unchecked to skip and error on duplicates.",
@@ -413,6 +415,18 @@
   "foods": {
     "providerVerified": "Verified food",
     "removeNutrient": "Remove {{nutrient}}",
+    "healthScore": {
+      "nutriScoreProvider": "Nutri-Score {{grade}} (from Open Food Facts)",
+      "nutriScoreComputed": "Nutri-Score {{grade}} (calculated from nutrients)",
+      "warnings": {
+        "calories": "High in calories",
+        "sugars": "High in sugars",
+        "added_sugars": "High in added sugar",
+        "saturated_fat": "High in saturated fat",
+        "trans_fat": "High in trans fat",
+        "sodium": "High in sodium"
+      }
+    },
     "aliasChipInput": {
       "remove": "Remove {{alias}}"
     },
@@ -1158,6 +1172,7 @@
     "caffeine": "Caffeine",
     "waterContent": "Water Content",
     "alcohol": "Alcohol",
+    "addedSugars": "Added Sugars",
     "abv": "ABV (%)",
     "autoCalculate": "Auto-calculate",
     "autoCalculateTooltip": "Auto-calculate using {{algorithm}}",
@@ -2192,7 +2207,14 @@
       "wednesday": "Wednesday",
       "thursday": "Thursday",
       "friday": "Friday",
-      "saturday": "Saturday"
+      "saturday": "Saturday",
+      "frontOfPackRegion": "Front-of-pack warnings",
+      "frontOfPackRegionNone": "None",
+      "frontOfPackRegionBrazil": "Brazil (ANVISA)",
+      "frontOfPackRegionChile": "Chile",
+      "frontOfPackRegionMexico": "Mexico",
+      "nutriScoreEnabled": "Show Nutri-Score",
+      "nutriScoreEnabledHint": "Show the European Nutri-Score grade (A to E) on foods. It is a regional label, so it is off by default."
     },
     "waterTracking": {
       "title": "Water Tracking",
@@ -5514,7 +5536,8 @@
       "iron": "Iron (mg)",
       "caffeine": "Caffeine (mg)",
       "waterContent": "Water Content (ml)",
-      "alcohol": "Alcohol (g)"
+      "alcohol": "Alcohol (g)",
+      "addedSugars": "Added Sugars (g)"
     },
     "exerciseEntriesExportHeaders": {
       "date": "Date",
@@ -6522,7 +6545,16 @@
     "barcodeConflictDescription": "This barcode is already attached to “{{existing}}”. Attach it to “{{current}}” anyway?",
     "notesLabel": "Notes",
     "notesHelp": "Details you want to remember every time you log this — how you order it, or a recipe. Supports markdown.",
-    "notesPlaceholder": "e.g. White rice, double chicken, mild salsa, no beans"
+    "notesPlaceholder": "e.g. White rice, double chicken, mild salsa, no beans",
+    "nutriScoreCategoryLabel": "Nutri-Score category",
+    "nutriScoreCategoryGeneral": "General",
+    "nutriScoreCategoryBeverage": "Beverage",
+    "nutriScoreCategoryFatOilNut": "Fat, oil & nut",
+    "nutriScoreCategoryCheese": "Cheese",
+    "nutriScoreCategoryRedMeat": "Red meat",
+    "fruitVegLegumePercentLabel": "Fruit, vegetables & legumes (%)",
+    "unknown": "Unknown",
+    "healthScoreHelp": "Used for the Nutri-Score and front-of-pack warnings. The category picks the scoring table: a drink in ml is only scored as a beverage when you choose Beverage. Added sugars is a nutrient of each serving size above; leave it empty if the label does not state it."
   },
   "customMeasurements": {
     "title": "Custom Measurements - {{date}}",

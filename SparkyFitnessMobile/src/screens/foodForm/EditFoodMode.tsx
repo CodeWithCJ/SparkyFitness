@@ -4,7 +4,11 @@ import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { CommonActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
-import { getFoodPortionUnit, parseNamedFoodPortion } from '@workspace/shared';
+import {
+  computeFoodHealthScore,
+  getFoodPortionUnit,
+  parseNamedFoodPortion,
+} from '@workspace/shared';
 import {
   saveNamedFoodPortions,
   isCalculatedFoodPortion,
@@ -86,12 +90,40 @@ function buildUpdatedFoodInfo(
   data: FoodFormData,
   variantId: string
 ): FoodInfoItem {
+  const nutriScoreCategory = data.nutriScoreCategory || null;
+  const servingSize = parseDecimalInput(data.servingSize) || item.servingSize;
+  const servingUnit = data.servingUnit || item.servingUnit;
+  // The provider's published grade survives an edit, as on the server.
+  const providerGrade =
+    item.healthScore?.nutri_score?.source === 'provider'
+      ? item.healthScore.nutri_score.grade
+      : null;
   return {
     ...item,
+    nutriScoreCategory,
+    healthScore: computeFoodHealthScore({
+      provider_type: providerGrade ? 'openfoodfacts' : null,
+      provider_nutriscore_grade: providerGrade,
+      nutri_score_category: nutriScoreCategory,
+      fruit_veg_legume_percent: item.fruitVegLegumePercent,
+      default_variant: {
+        serving_size: servingSize,
+        serving_unit: servingUnit,
+        calories: parseDecimalInput(data.calories) || 0,
+        protein: parseDecimalInput(data.protein) || 0,
+        fat: parseDecimalInput(data.fat) || 0,
+        saturated_fat: parseOptional(data.saturatedFat),
+        trans_fat: parseOptional(data.transFat),
+        sodium: parseOptional(data.sodium),
+        dietary_fiber: parseOptional(data.fiber),
+        sugars: parseOptional(data.sugars),
+        added_sugars: parseOptional(data.addedSugars),
+      },
+    }),
     name: data.name,
     brand: data.brand || null,
-    servingSize: parseDecimalInput(data.servingSize) || item.servingSize,
-    servingUnit: data.servingUnit || item.servingUnit,
+    servingSize,
+    servingUnit,
     calories: parseDecimalInput(data.calories) || 0,
     protein: parseDecimalInput(data.protein) || 0,
     carbs: parseDecimalInput(data.carbs) || 0,
@@ -110,6 +142,7 @@ function buildUpdatedFoodInfo(
     caffeineMg: parseOptional(data.caffeineMg),
     waterMl: parseOptional(data.waterMl),
     alcoholG: parseOptional(data.alcoholG),
+    addedSugars: parseOptional(data.addedSugars),
     variantId,
   };
 }
@@ -130,6 +163,9 @@ export function EditFoodMode({
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // A failed response may still mean the write committed, so a key sent once is
+  // sent again on a retry even when the form is back at its initial value.
+  const attemptedMetadataKeysRef = useRef(new Set<keyof UpdateFoodPayload>());
   const [pickerImages, setPickerImages] = useState<PickerImage[]>(() =>
     toSavedImages(item?.images)
   );
@@ -364,6 +400,7 @@ export function EditFoodMode({
       caffeine_mg: parseOptional(data.caffeineMg),
       water_ml: parseOptional(data.waterMl),
       alcohol_g: parseOptional(data.alcoholG),
+      added_sugars: parseOptional(data.addedSugars) ?? null,
       polyunsaturated_fat: snapshot?.polyunsaturated_fat,
       monounsaturated_fat: snapshot?.monounsaturated_fat,
       glycemic_index: snapshot?.glycemic_index,
@@ -413,14 +450,34 @@ export function EditFoodMode({
       let nextVariantBaselineValues = variantBaselineValues;
       let nextCustomNutrients = currentCustomNutrients;
 
+      const attemptedKeys = attemptedMetadataKeysRef.current;
+      const metadataChanged = (
+        key: keyof UpdateFoodPayload,
+        changed: boolean
+      ) => changed || attemptedKeys.has(key);
       const foodPayload: UpdateFoodPayload = {};
-      if (data.name !== initialValues.name) foodPayload.name = data.name;
-      if (data.brand !== initialValues.brand)
+      if (metadataChanged('name', data.name !== initialValues.name))
+        foodPayload.name = data.name;
+      if (metadataChanged('brand', data.brand !== initialValues.brand))
         foodPayload.brand = data.brand || '';
       // Key presence is the update signal, so only set `notes` when it really
       // changed; an unchanged save must leave the stored note untouched.
-      if ((data.notes ?? '') !== (initialValues.notes ?? ''))
+      if (
+        metadataChanged(
+          'notes',
+          (data.notes ?? '') !== (initialValues.notes ?? '')
+        )
+      )
         foodPayload.notes = (data.notes ?? '').trim() || null;
+      if (
+        metadataChanged(
+          'nutri_score_category',
+          data.nutriScoreCategory !== initialValues.nutriScoreCategory
+        )
+      )
+        foodPayload.nutri_score_category = data.nutriScoreCategory || null;
+      for (const key of Object.keys(foodPayload) as (keyof UpdateFoodPayload)[])
+        attemptedKeys.add(key);
       // Only send images when they actually changed: the server treats a
       // supplied `images` array as authoritative and deletes anything omitted,
       // so an unchanged round-trip is wasted work at best.

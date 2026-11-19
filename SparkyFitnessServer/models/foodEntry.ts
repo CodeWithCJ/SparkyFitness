@@ -190,6 +190,10 @@ function reviewedCopyConflict() {
  *           type: number
  *         alcohol_g:
  *           type: number
+ *         added_sugars:
+ *           type: number
+ *           nullable: true
+ *           description: Grams of added sugars per serving; null means unknown.
  *         glycemic_index:
  *           type: number
  *         custom_nutrients:
@@ -264,6 +268,7 @@ async function createFoodEntry(
         'caffeine_mg',
         'water_ml',
         'alcohol_g',
+        'added_sugars',
         'glycemic_index',
         'serving_size',
         'serving_unit',
@@ -312,6 +317,7 @@ async function createFoodEntry(
         caffeine_mg: entryData.caffeine_mg,
         water_ml: entryData.water_ml,
         alcohol_g: entryData.alcohol_g,
+        added_sugars: entryData.added_sugars,
         glycemic_index: entryData.glycemic_index,
         custom_nutrients: entryData.custom_nutrients || {},
         allergens: entryData.allergens || null,
@@ -326,11 +332,11 @@ async function createFoodEntry(
          created_by_user_id, food_name, brand_name, serving_size, serving_unit, calories, protein, carbs, fat,
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
-         source, source_id, entry_time, images, notes, caffeine_mg, water_ml, alcohol_g,
+         source, source_id, entry_time, images, notes, caffeine_mg, water_ml, alcohol_g, added_sugars,
          cooked_quantity
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42, $43, $44, $45, $46
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42, $43, $44, $45, $46, $47
        )
        -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
        -- re-ingesting the same record updates it in place. Manual/web entries
@@ -375,6 +381,7 @@ async function createFoodEntry(
            caffeine_mg = EXCLUDED.caffeine_mg,
            water_ml = EXCLUDED.water_ml,
            alcohol_g = EXCLUDED.alcohol_g,
+           added_sugars = EXCLUDED.added_sugars,
            -- A cooked weight the user added belongs to the old quantity: keep
            -- it only while the re-sync leaves quantity and unit as they were.
            cooked_quantity = CASE
@@ -439,6 +446,7 @@ async function createFoodEntry(
         snapshot.caffeine_mg,
         snapshot.water_ml,
         snapshot.alcohol_g,
+        snapshot.added_sugars ?? null,
         // Cooked weight eaten (#3534). The route has already checked it;
         // provider re-syncs never send it (see DO UPDATE above).
         entryData.cooked_quantity ?? null,
@@ -495,6 +503,7 @@ async function getFoodEntryById(entryId: string, userId: string) {
         fe.caffeine_mg,
         fe.water_ml,
         fe.alcohol_g,
+        fe.added_sugars,
         fe.glycemic_index,
         fe.custom_nutrients,
         fe.allergens,
@@ -597,8 +606,9 @@ async function updateFoodEntry(
         caffeine_mg = $37,
         water_ml = $38,
         alcohol_g = $39,
+        added_sugars = $40,
         -- Resolved by the service like notes: the value the entry ends up with.
-        cooked_quantity = $40
+        cooked_quantity = $41
       WHERE id = $30
       RETURNING *`,
       [
@@ -643,6 +653,7 @@ async function updateFoodEntry(
         snapshotData.caffeine_mg,
         snapshotData.water_ml,
         snapshotData.alcohol_g,
+        snapshotData.added_sugars ?? null,
         entryData.cooked_quantity ?? null,
       ]
     );
@@ -713,6 +724,7 @@ async function getFoodEntriesByDate(userId: string, selectedDate: string) {
         fe.caffeine_mg,
         fe.water_ml,
         fe.alcohol_g,
+        fe.added_sugars,
         fe.glycemic_index,
         fe.custom_nutrients,
         fe.source,
@@ -784,6 +796,7 @@ async function getFoodEntriesByDateAndMealType(
         fe.caffeine_mg,
         fe.water_ml,
         fe.alcohol_g,
+        fe.added_sugars,
         fe.glycemic_index,
         fe.custom_nutrients,
         f.provider_verified,
@@ -856,6 +869,7 @@ async function getFoodEntriesByDateRange(
         fe.caffeine_mg,
         fe.water_ml,
         fe.alcohol_g,
+        fe.added_sugars,
         fe.glycemic_index, 
         fe.custom_nutrients,
         f.provider_verified,
@@ -974,6 +988,7 @@ async function copyFoodEntriesWithReview({
         fe.caffeine_mg,
         fe.water_ml,
         fe.alcohol_g,
+        fe.added_sugars,
         fe.glycemic_index,
         fe.custom_nutrients
        FROM food_entries fe
@@ -1144,12 +1159,13 @@ async function copyFoodEntriesWithReview({
           saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
           cholesterol, sodium, potassium, dietary_fiber, sugars, vitamin_a,
           vitamin_c, calcium, iron, caffeine_mg, water_ml, alcohol_g,
-          glycemic_index, custom_nutrients, notes, meal_id, cooked_quantity
+          glycemic_index, custom_nutrients, notes, meal_id, added_sugars,
+          cooked_quantity
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
           $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40,
-          $41
+          $41, $42
         ) RETURNING *`,
         [
           targetUserId,
@@ -1193,6 +1209,7 @@ async function copyFoodEntriesWithReview({
           sanitizeNotes(entry.notes) ?? null,
           // A source meal deletion must not cascade into the copied snapshot.
           null,
+          entry.added_sugars ?? null,
           // The cooked weight belongs to the copied quantity. A quantity
           // picked in the review no longer matches it, so it is dropped.
           copiedCookedQuantity(entry, quantityByEntryId.get(entry.id)),
@@ -1281,6 +1298,7 @@ async function bulkCreateFoodEntriesWithClient(
         caffeine_mg,
         water_ml,
         alcohol_g,
+        added_sugars,
         glycemic_index,
         custom_nutrients,
         notes,
@@ -1325,6 +1343,7 @@ async function bulkCreateFoodEntriesWithClient(
     entry.caffeine_mg,
     entry.water_ml,
     entry.alcohol_g,
+    entry.added_sugars ?? null,
     entry.glycemic_index,
     entry.custom_nutrients || {},
     sanitizeNotes(entry.notes) ?? null,
@@ -1401,6 +1420,7 @@ async function getFoodEntryComponentsByFoodEntryMealId(
         fe.caffeine_mg,
         fe.water_ml,
         fe.alcohol_g,
+        fe.added_sugars,
         fe.glycemic_index, 
         fe.custom_nutrients
        FROM food_entries fe
@@ -1477,6 +1497,7 @@ async function getFoodEntriesBatch(
         fe.caffeine_mg,
         fe.water_ml,
         fe.alcohol_g,
+        fe.added_sugars,
         fe.glycemic_index,
         fe.custom_nutrients
        FROM food_entries fe

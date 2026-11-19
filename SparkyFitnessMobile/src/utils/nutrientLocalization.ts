@@ -47,6 +47,8 @@ export function localizeNutrientKey(t: TFunction, key: string): string {
       return t('nutrients.waterContent', { defaultValue: 'Water Content' });
     case 'alcoholG':
       return t('nutrients.alcohol', { defaultValue: 'Alcohol' });
+    case 'addedSugars':
+      return t('nutrients.addedSugars', { defaultValue: 'Added Sugars' });
     case 'glycemicIndex':
       return t('nutrients.glycemicIndex', { defaultValue: 'Glycemic Index' });
     case 'totalCarbs':

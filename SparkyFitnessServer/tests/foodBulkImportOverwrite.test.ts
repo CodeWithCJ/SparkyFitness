@@ -109,3 +109,141 @@ describe('createFoodsInBulk — overwrite preserves omitted nutrients', () => {
     expect(update.params[20]).toBeNull();
   });
 });
+
+describe('createFoodsInBulk — health score inputs', () => {
+  async function runCreateImport(
+    rows: Record<string, unknown>[]
+  ): Promise<QueryCall[]> {
+    const calls: QueryCall[] = [];
+    const client = {
+      query: vi.fn(async (sql: string, params: unknown[] = []) => {
+        calls.push({ sql, params });
+        if (sql.includes('INSERT INTO foods')) {
+          return { rows: [{ id: 'food-new' }] };
+        }
+        return { rows: [] };
+      }),
+      release: vi.fn(),
+    };
+    (poolManagerNamed.getClient as ReturnType<typeof vi.fn>).mockResolvedValue(
+      client
+    );
+    await foodRepository.createFoodsInBulk(
+      UID,
+      rows.map((row) => ({ name: 'Cola', brand: 'Fizz', ...row })) as never,
+      false
+    );
+    return calls;
+  }
+
+  function foodInsert(calls: QueryCall[]): QueryCall {
+    const call = calls.find((c) => c.sql.includes('INSERT INTO foods'));
+    if (!call) throw new Error('no foods INSERT was issued');
+    return call;
+  }
+
+  it('stores the values a row carries', async () => {
+    const insert = foodInsert(
+      await runCreateImport([
+        {
+          serving_size: 100,
+          serving_unit: 'ml',
+          nutri_score_category: 'beverage',
+          fruit_veg_legume_percent: 0,
+        },
+      ])
+    );
+    expect(insert.sql).toContain(
+      'fruit_veg_legume_percent, nutri_score_category'
+    );
+    expect(insert.params.slice(11, 13)).toEqual([0, 'beverage']);
+  });
+
+  it('stores null for a missing or blank column', async () => {
+    const insert = foodInsert(
+      await runCreateImport([
+        { serving_size: 100, serving_unit: 'ml', nutri_score_category: '' },
+      ])
+    );
+    expect(insert.params.slice(11, 13)).toEqual([null, null]);
+  });
+
+  it('takes the first stated value across a food’s variant rows', async () => {
+    const insert = foodInsert(
+      await runCreateImport([
+        { serving_size: 100, serving_unit: 'ml', is_default: true },
+        {
+          serving_size: 350,
+          serving_unit: 'ml',
+          nutri_score_category: 'beverage',
+        },
+      ])
+    );
+    expect(insert.params[12]).toBe('beverage');
+  });
+
+  it('rejects an unknown Nutri-Score category before touching the database', async () => {
+    await expect(
+      runCreateImport([
+        { serving_size: 100, serving_unit: 'g', nutri_score_category: 'water' },
+      ])
+    ).rejects.toMatchObject({ name: 'ValidationError' });
+  });
+
+  it('stores added sugars on the variant, null when unknown', async () => {
+    const variantInsert = (calls: QueryCall[]) =>
+      calls.find((c) => c.sql.includes('INSERT INTO food_variants'))!;
+    const stated = variantInsert(
+      await runCreateImport([
+        { serving_size: 350, serving_unit: 'ml', added_sugars: '10.6' },
+      ])
+    );
+    const blank = variantInsert(
+      await runCreateImport([
+        { serving_size: 350, serving_unit: 'ml', added_sugars: '' },
+      ])
+    );
+    expect(stated.params.at(-1)).toBe(10.6);
+    expect(blank.params.at(-1)).toBeNull();
+  });
+
+  it('never writes a provider grade from an import row', async () => {
+    const insert = foodInsert(
+      await runCreateImport([
+        {
+          serving_size: 100,
+          serving_unit: 'g',
+          provider_nutriscore_grade: 'a',
+        },
+      ])
+    );
+    expect(insert.sql).not.toContain('provider_nutriscore_grade');
+    expect(insert.params).not.toContain('a');
+  });
+
+  it('rejects an out-of-range percentage before touching the database', async () => {
+    await expect(
+      runCreateImport([
+        {
+          serving_size: 100,
+          serving_unit: 'g',
+          fruit_veg_legume_percent: 120,
+        },
+      ])
+    ).rejects.toMatchObject({ name: 'ValidationError' });
+    expect(poolManagerNamed.getClient).not.toHaveBeenCalled();
+  });
+
+  it('keeps stored values on overwrite when the import omits them', async () => {
+    const calls = await runOverwriteImport({
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 250,
+    });
+    const update = calls.find((c) => c.sql.includes('UPDATE foods SET'));
+    expect(update?.sql).toContain(
+      'fruit_veg_legume_percent = COALESCE($6, fruit_veg_legume_percent)'
+    );
+    expect(update?.params.slice(5, 7)).toEqual([null, null]);
+  });
+});

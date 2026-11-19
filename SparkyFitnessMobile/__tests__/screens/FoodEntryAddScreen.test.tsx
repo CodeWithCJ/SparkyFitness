@@ -2951,6 +2951,7 @@ describe('FoodEntryAddScreen', () => {
         cholesterol: '',
         vitaminA: '',
         vitaminC: '',
+        addedSugars: '',
       },
       adjustedUnitSelection: {
         kind: 'draft',
@@ -3291,6 +3292,7 @@ describe('FoodEntryAddScreen', () => {
           caffeineMg: '',
           waterMl: '',
           alcoholG: '',
+          addedSugars: '',
         },
         ...extraParams,
       });

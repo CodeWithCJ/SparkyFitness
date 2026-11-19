@@ -31,7 +31,12 @@ import path from 'path';
  */
 
 const SRC_ROOT = path.join(process.cwd(), 'src');
-const TRACKED_COLUMNS = ['caffeine_mg', 'water_ml', 'alcohol_g'] as const;
+const TRACKED_COLUMNS = [
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
+  'added_sugars',
+] as const;
 const ANCHOR = 'iron';
 
 interface Omission {
@@ -58,6 +63,24 @@ const DELIBERATE_OMISSIONS: Omission[] = [
     columns: ['water_ml'],
     reason:
       'user_goals has no water_ml column — water_goal_ml is the one water goal (NON_GOAL_NUTRIENT_KEYS).',
+  },
+  {
+    file: /^constants\/goals\.ts$/,
+    columns: ['added_sugars'],
+    reason:
+      'DEFAULT_GOALS deliberately has no added-sugars target: there is no one-size default, so the goal stays unset until the person picks one.',
+  },
+  {
+    file: /^utils\/foodForm\.ts$/,
+    columns: ['added_sugars'],
+    reason:
+      'The anchor over-counts the `=== 0 ? undefined` pattern the other nutrients use; added_sugars is NULL-able (blank = unknown) and a typed 0 is a real value, so it is never normalised away.',
+  },
+  {
+    file: /^utils\/nutritionLabelScan\.ts$/,
+    columns: ['added_sugars'],
+    reason:
+      'The label-scan response contract (NutritionLabelScan.api.zod.ts) does not carry added sugars, so there is nothing to map.',
   },
   {
     file: /^components\/Onboarding\/NutrientGoals\.tsx$/,

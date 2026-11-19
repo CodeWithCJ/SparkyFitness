@@ -247,6 +247,7 @@ describe('GET /v2/foods/barcode/:barcode', () => {
         brand: null,
         barcode,
         is_custom: true,
+        health_score: expect.any(Object),
         default_variant: {
           id: 'variant-xyz-789',
           serving_size: 100,
@@ -335,6 +336,7 @@ describe('GET /v2/foods/search/:providerType', () => {
           provider_external_id: 'off-123',
           provider_type: 'openfoodfacts',
           is_custom: false,
+          health_score: expect.any(Object),
           default_variant: {
             serving_size: 100,
             serving_unit: 'ml',

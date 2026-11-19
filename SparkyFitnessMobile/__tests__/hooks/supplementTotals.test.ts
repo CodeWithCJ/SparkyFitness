@@ -51,9 +51,9 @@ describe('resolveSupplementTotals', () => {
     expect(Object.keys(fixed).sort()).toEqual(
       [...FOOD_VARIANT_NUTRIENT_FIELDS].sort()
     );
-    expect(Object.keys(fixed)).toHaveLength(19);
-    // The nineteen fixed columns (seventeen nutrients plus caffeine_mg #1958 and
-    // alcohol_g #1925) plus the open-ended map. Only six catalog micronutrients
+    expect(Object.keys(fixed)).toHaveLength(20);
+    // The twenty fixed columns (seventeen nutrients plus caffeine_mg #1958,
+    // alcohol_g #1925 and added_sugars) plus the open-ended map. Only six catalog micronutrients
     // have a fixed column, so without this arm a magnesium or vitamin D
     // supplement has nowhere at all to land.
     expect(custom_nutrients).toEqual({});

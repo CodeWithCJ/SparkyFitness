@@ -117,6 +117,7 @@ interface LoggedComponentEntry {
   caffeine_mg?: number | null;
   water_ml?: number | null;
   alcohol_g?: number | null;
+  added_sugars?: number | null;
   glycemic_index?: string | null;
   custom_nutrients?: Record<string, unknown> | null;
   [column: string]: unknown;
@@ -298,6 +299,7 @@ const DIARY_IMPORT_NUTRIENT_FIELDS = [
   'caffeine_mg',
   'water_ml',
   'alcohol_g',
+  'added_sugars',
 ] as const;
 
 const isBlankCell = (value: unknown): boolean =>
@@ -849,6 +851,42 @@ async function createFoodEntry(
     throw error;
   }
 }
+const NUTRITION_OVERRIDE_FIELDS = [
+  'food_name',
+  'brand_name',
+  'serving_size',
+  'serving_unit',
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
+  'added_sugars',
+  'glycemic_index',
+] as const satisfies readonly (keyof FoodEntryInput)[];
+
+const SNAPSHOT_INPUT_FIELDS = [
+  'quantity',
+  'unit',
+  'custom_nutrients',
+  ...NUTRITION_OVERRIDE_FIELDS,
+] as const satisfies readonly (keyof FoodEntryInput)[];
+
 interface FoodEntryUpdateOptions {
   // MCP normalizes a quantity/unit edit without choosing a new catalog
   // variant, so it must preserve the historical nutrition reference.
@@ -898,11 +936,23 @@ async function updateFoodEntry(
 
     // MCP quantity, unit and meal-type edits preserve the entry snapshot: the
     // catalog can change after logging, and MCP did not choose a new variant.
-    // The web/mobile update path retains its existing refresh-on-edit behavior.
+    // The web/mobile update path refreshes it from the variant on a nutrition
+    // edit, but an update touching none of those inputs (a note, a time, a
+    // meal type) keeps the stored snapshot, which may hold adjusted values. The
+    // web dialog resends quantity and unit on every save, so a value equal to
+    // the stored one is not an edit.
+    const variantChanged =
+      entryData.variant_id !== undefined &&
+      entryData.variant_id !== existingEntry.variant_id;
+    const isUnchangedPortion = (field: string) =>
+      (field === 'quantity' &&
+        Number(entryData.quantity) === Number(existingEntry.quantity)) ||
+      (field === 'unit' && entryData.unit === existingEntry.unit);
+    const editsSnapshotInputs = SNAPSHOT_INPUT_FIELDS.some(
+      (field) => entryData[field] !== undefined && !isUnchangedPortion(field)
+    );
     const shouldRefreshSnapshot =
-      !options.preserveSnapshot ||
-      (entryData.variant_id !== undefined &&
-        entryData.variant_id !== existingEntry.variant_id);
+      variantChanged || (!options.preserveSnapshot && editsSnapshotInputs);
     let newSnapshotData;
     if (shouldRefreshSnapshot && food && variant) {
       newSnapshotData = {
@@ -930,6 +980,7 @@ async function updateFoodEntry(
         caffeine_mg: variant.caffeine_mg,
         water_ml: variant.water_ml,
         alcohol_g: variant.alcohol_g,
+        added_sugars: variant.added_sugars,
         glycemic_index: variant.glycemic_index,
         custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
       };
@@ -960,6 +1011,7 @@ async function updateFoodEntry(
         caffeine_mg: existingEntry.caffeine_mg,
         water_ml: existingEntry.water_ml,
         alcohol_g: existingEntry.alcohol_g,
+        added_sugars: existingEntry.added_sugars,
         glycemic_index: existingEntry.glycemic_index,
         custom_nutrients: sanitizeCustomNutrients(
           existingEntry.custom_nutrients
@@ -967,34 +1019,7 @@ async function updateFoodEntry(
       };
     }
     // Apply inline nutrition overrides if provided by the client
-    const nutritionOverrideFields = [
-      'food_name',
-      'brand_name',
-      'serving_size',
-      'serving_unit',
-      'calories',
-      'protein',
-      'carbs',
-      'fat',
-      'saturated_fat',
-      'polyunsaturated_fat',
-      'monounsaturated_fat',
-      'trans_fat',
-      'cholesterol',
-      'sodium',
-      'potassium',
-      'dietary_fiber',
-      'sugars',
-      'vitamin_a',
-      'vitamin_c',
-      'calcium',
-      'iron',
-      'caffeine_mg',
-      'water_ml',
-      'alcohol_g',
-      'glycemic_index',
-    ];
-    for (const field of nutritionOverrideFields as (keyof FoodEntryInput)[]) {
+    for (const field of NUTRITION_OVERRIDE_FIELDS) {
       if (entryData[field] !== undefined) {
         (newSnapshotData as Record<string, unknown>)[field] = entryData[field];
       }
@@ -1448,6 +1473,7 @@ async function copyFoodEntries(
           caffeine_mg: entry.caffeine_mg,
           water_ml: entry.water_ml,
           alcohol_g: entry.alcohol_g,
+          added_sugars: entry.added_sugars,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
@@ -1620,6 +1646,7 @@ async function copyFoodEntriesFromUser(
           caffeine_mg: entry.caffeine_mg,
           water_ml: entry.water_ml,
           alcohol_g: entry.alcohol_g,
+          added_sugars: entry.added_sugars,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
@@ -1995,6 +2022,7 @@ async function copyFoodEntriesToUser(
           caffeine_mg: entry.caffeine_mg,
           water_ml: entry.water_ml,
           alcohol_g: entry.alcohol_g,
+          added_sugars: entry.added_sugars,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
@@ -2295,6 +2323,7 @@ async function buildLeafFoodEntries(
         caffeine_mg: (Number(component.caffeine_mg) || 0) * multiplier,
         water_ml: (Number(component.water_ml) || 0) * multiplier,
         alcohol_g: (Number(component.alcohol_g) || 0) * multiplier,
+        added_sugars: (Number(component.added_sugars) || 0) * multiplier,
         glycemic_index: component.glycemic_index || null,
         custom_nutrients: component.custom_nutrients || null,
       });
@@ -2667,6 +2696,7 @@ async function updateFoodEntryMeal(
       'caffeine_mg',
       'water_ml',
       'alcohol_g',
+      'added_sugars',
     ] as const;
     const validatedFoods = updatedMealData.foods?.map((foodItem) => {
       const validatedFood = { ...foodItem };
@@ -2989,6 +3019,7 @@ async function getFoodEntryMealWithComponents(
     let totalCaffeineMg = 0;
     let totalWaterMl = 0;
     let totalAlcoholG = 0;
+    let totalAddedSugars = 0;
     // Custom nutrient totals, keyed by the user's nutrient name.
     const totalCustomNutrients: Record<string, number> = {};
     let totalCarbsForGI = 0;
@@ -3016,6 +3047,7 @@ async function getFoodEntryMealWithComponents(
       totalCaffeineMg += (entry.caffeine_mg || 0) * ratio;
       totalWaterMl += (entry.water_ml || 0) * ratio;
       totalAlcoholG += (entry.alcohol_g || 0) * ratio;
+      totalAddedSugars += (entry.added_sugars || 0) * ratio;
       // Aggregate custom nutrients
       if (
         entry.custom_nutrients &&
@@ -3084,6 +3116,7 @@ async function getFoodEntryMealWithComponents(
           caffeine_mg: entry.caffeine_mg,
           water_ml: entry.water_ml,
           alcohol_g: entry.alcohol_g,
+          added_sugars: entry.added_sugars,
           glycemic_index: entry.glycemic_index,
           custom_nutrients: entry.custom_nutrients,
           serving_size: Number(entry.serving_size ?? 0),
@@ -3111,6 +3144,7 @@ async function getFoodEntryMealWithComponents(
       caffeine_mg: totalCaffeineMg,
       water_ml: totalWaterMl,
       alcohol_g: totalAlcoholG,
+      added_sugars: totalAddedSugars,
       custom_nutrients: totalCustomNutrients,
       glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
     };
@@ -3162,6 +3196,7 @@ async function getFoodEntryMealsByDate(
       let totalCaffeineMg = 0;
       let totalWaterMl = 0;
       let totalAlcoholG = 0;
+      let totalAddedSugars = 0;
       // Custom nutrient totals, keyed by the user's nutrient name.
       const totalCustomNutrients: Record<string, number> = {};
       let totalProtein = 0;
@@ -3191,6 +3226,7 @@ async function getFoodEntryMealsByDate(
         totalCaffeineMg += (entry.caffeine_mg || 0) * ratio;
         totalWaterMl += (entry.water_ml || 0) * ratio;
         totalAlcoholG += (entry.alcohol_g || 0) * ratio;
+        totalAddedSugars += (entry.added_sugars || 0) * ratio;
         // Aggregate custom nutrients
         if (
           entry.custom_nutrients &&
@@ -3304,6 +3340,11 @@ async function getFoodEntryMealsByDate(
           alcohol_g:
             (Number(entry.alcohol_g ?? 0) * Number(entry.quantity ?? 0)) /
             Number(entry.serving_size ?? 0),
+          added_sugars:
+            entry.added_sugars === null || entry.added_sugars === undefined
+              ? null
+              : (Number(entry.added_sugars) * Number(entry.quantity ?? 0)) /
+                Number(entry.serving_size ?? 0),
           glycemic_index: entry.glycemic_index,
           custom_nutrients: entry.custom_nutrients,
           serving_size: Number(entry.serving_size ?? 0),
@@ -3329,6 +3370,7 @@ async function getFoodEntryMealsByDate(
         caffeine_mg: totalCaffeineMg,
         water_ml: totalWaterMl,
         alcohol_g: totalAlcoholG,
+        added_sugars: totalAddedSugars,
         custom_nutrients: totalCustomNutrients,
         glycemic_index: getGlycemicIndexCategory(aggregatedGlycemicIndex),
       });

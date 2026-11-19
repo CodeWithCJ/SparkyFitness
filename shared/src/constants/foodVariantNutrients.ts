@@ -18,6 +18,7 @@ export const FOOD_VARIANT_NUTRIENT_FIELDS = [
   'iron',
   'caffeine_mg',
   'alcohol_g',
+  'added_sugars',
 ] as const;
 
 export type FoodVariantNutrientField =

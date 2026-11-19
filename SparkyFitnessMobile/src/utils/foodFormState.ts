@@ -8,12 +8,17 @@ import {
   localizeFoodUnit,
   localizeFoodUnitGroup,
 } from './foodUnitLocalization';
-import { FOOD_FORM_UNIT_GROUPS } from '@workspace/shared';
+import {
+  FOOD_FORM_UNIT_GROUPS,
+  type NutriScoreCategory,
+} from '@workspace/shared';
 import type { TFunction } from 'i18next';
 
 export interface FoodFormData {
   name: string;
   brand: string;
+  /** Which Nutri-Score algorithm applies; '' is unset, scored as general. */
+  nutriScoreCategory: NutriScoreCategory | '';
   /** Markdown reference note. Non-numeric, so it stays out of NUMERIC_FOOD_FORM_FIELDS. */
   notes: string;
   servingSize: string;
@@ -36,6 +41,7 @@ export interface FoodFormData {
   caffeineMg: string;
   waterMl: string;
   alcoholG: string;
+  addedSugars: string;
 }
 
 export type NumericFoodFormField =
@@ -57,7 +63,8 @@ export type NumericFoodFormField =
   | 'vitaminC'
   | 'caffeineMg'
   | 'waterMl'
-  | 'alcoholG';
+  | 'alcoholG'
+  | 'addedSugars';
 
 export const NUMERIC_FOOD_FORM_FIELDS: NumericFoodFormField[] = [
   'servingSize',
@@ -79,6 +86,7 @@ export const NUMERIC_FOOD_FORM_FIELDS: NumericFoodFormField[] = [
   'caffeineMg',
   'waterMl',
   'alcoholG',
+  'addedSugars',
 ];
 
 export const NUMERIC_FOOD_FORM_FIELD_SET = new Set<keyof FoodFormData>(
@@ -103,7 +111,10 @@ export function makeServingUnitSections(
   }));
 }
 
-export const NUTRITION_FIELDS: (keyof FoodFormData)[] = [
+export const NUTRITION_FIELDS: Exclude<
+  keyof FoodFormData,
+  'nutriScoreCategory'
+>[] = [
   'calories',
   'protein',
   'carbs',
@@ -122,11 +133,13 @@ export const NUTRITION_FIELDS: (keyof FoodFormData)[] = [
   'caffeineMg',
   'waterMl',
   'alcoholG',
+  'addedSugars',
 ];
 
 const EMPTY_FORM: FoodFormData = {
   name: '',
   brand: '',
+  nutriScoreCategory: '',
   notes: '',
   servingSize: '',
   servingUnit: '',
@@ -148,6 +161,7 @@ const EMPTY_FORM: FoodFormData = {
   caffeineMg: '',
   waterMl: '',
   alcoholG: '',
+  addedSugars: '',
 };
 
 export const FORM_DRAFT_UNIT_ID = '__food-form-draft-unit__';
@@ -199,6 +213,10 @@ export function buildDisplayFormState(
     ),
     waterMl: formatInitialNumericValue(initialValues?.waterMl, 'nutrient'),
     alcoholG: formatInitialNumericValue(initialValues?.alcoholG, 'nutrient'),
+    addedSugars: formatInitialNumericValue(
+      initialValues?.addedSugars,
+      'nutrient'
+    ),
   };
 }
 
@@ -266,6 +284,10 @@ export function applyVariantToFormState(
     caffeineMg: formatFoodFormNumber(variant.caffeine_mg, 'nutrient'),
     waterMl: formatFoodFormNumber(variant.water_ml, 'nutrient'),
     alcoholG: formatFoodFormNumber(variant.alcohol_g, 'nutrient'),
+    addedSugars: formatFoodFormNumber(
+      variant.added_sugars ?? undefined,
+      'nutrient'
+    ),
   };
 }
 
@@ -305,6 +327,10 @@ export function applyCompatibleDraftToFormState(
     caffeineMg: formatFoodFormNumber(scaledVariant.caffeine_mg, 'nutrient'),
     waterMl: formatFoodFormNumber(scaledVariant.water_ml, 'nutrient'),
     alcoholG: formatFoodFormNumber(scaledVariant.alcohol_g, 'nutrient'),
+    addedSugars: formatFoodFormNumber(
+      scaledVariant.added_sugars ?? undefined,
+      'nutrient'
+    ),
   };
 }
 
@@ -331,6 +357,7 @@ export function buildPreciseNumericValuesFromVariant(
     caffeineMg: toPreciseFormString(variant.caffeine_mg),
     waterMl: toPreciseFormString(variant.water_ml),
     alcoholG: toPreciseFormString(variant.alcohol_g),
+    addedSugars: toPreciseFormString(variant.added_sugars ?? undefined),
   });
 }
 
@@ -366,6 +393,8 @@ export function scaleCompatibleDraftVariant(
     caffeine_mg: (variant.caffeine_mg ?? 0) * ratio,
     water_ml: (variant.water_ml ?? 0) * ratio,
     alcohol_g: (variant.alcohol_g ?? 0) * ratio,
+    added_sugars:
+      variant.added_sugars == null ? null : variant.added_sugars * ratio,
     // Not scaled: a concentration, not an amount (see the type comment).
     abv_percent: variant.abv_percent,
     dietary_fiber: (variant.dietary_fiber ?? 0) * ratio,
@@ -384,7 +413,7 @@ export function scaleCompatibleDraftVariant(
 export function getScaledVariantNumericValue(
   field: Exclude<NumericFoodFormField, 'servingSize'>,
   variant: FoodUnitVariant
-): number {
+): number | undefined {
   switch (field) {
     case 'calories':
       return variant.calories ?? 0;
@@ -422,6 +451,8 @@ export function getScaledVariantNumericValue(
       return variant.water_ml ?? 0;
     case 'alcoholG':
       return variant.alcohol_g ?? 0;
+    case 'addedSugars':
+      return variant.added_sugars ?? undefined;
   }
 }
 

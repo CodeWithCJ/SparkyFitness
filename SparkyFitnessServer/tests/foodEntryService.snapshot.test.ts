@@ -116,6 +116,68 @@ describe('foodEntryService.updateFoodEntry snapshots', () => {
     });
   });
 
+  it('keeps the stored snapshot, adjusted values included, when only the note changes', async () => {
+    const adjustedEntry = {
+      ...historicalEntry,
+      sodium: 120,
+      added_sugars: 4,
+      custom_nutrients: { Omega3: 2 },
+    };
+    vi.mocked(foodRepository.getFoodEntryById).mockResolvedValue(adjustedEntry);
+    vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
+      id: OLD_VARIANT_ID,
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 999,
+      sodium: 5,
+      added_sugars: null,
+      custom_nutrients: {},
+    });
+
+    await foodEntryService.updateFoodEntry('user-1', 'user-1', ENTRY_ID, {
+      notes: 'with lemon',
+    });
+
+    const snapshot = vi.mocked(foodRepository.updateFoodEntry).mock
+      .calls[0]?.[4];
+    expect(snapshot).toMatchObject({
+      food_name: 'Lentils, dry',
+      calories: 351,
+      sodium: 120,
+      added_sugars: 4,
+      custom_nutrients: { Omega3: 2 },
+    });
+  });
+
+  it('keeps the stored snapshot when the web dialog resends the unchanged quantity and unit', async () => {
+    vi.mocked(foodRepository.getFoodEntryById).mockResolvedValue({
+      ...historicalEntry,
+      added_sugars: 4,
+    });
+    vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
+      id: OLD_VARIANT_ID,
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 999,
+      added_sugars: null,
+    });
+
+    await foodEntryService.updateFoodEntry('user-1', 'user-1', ENTRY_ID, {
+      variant_id: OLD_VARIANT_ID,
+      quantity: 75,
+      unit: 'g',
+      notes: 'with lemon',
+    });
+
+    const snapshot = vi.mocked(foodRepository.updateFoodEntry).mock
+      .calls[0]?.[4];
+    expect(snapshot).toMatchObject({
+      food_name: 'Lentils, dry',
+      calories: 351,
+      added_sugars: 4,
+    });
+  });
+
   it('uses the selected variant nutrition when the variant changes', async () => {
     vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
       id: NEW_VARIANT_ID,

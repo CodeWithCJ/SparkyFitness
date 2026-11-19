@@ -47,6 +47,7 @@ const predefinedNutrients = [
   // water content) and is one click from the summary.
   'water_ml',
   'alcohol_g',
+  'added_sugars',
 ];
 /**
  * The view groups a nutrient created from the Custom Nutrients settings page is made

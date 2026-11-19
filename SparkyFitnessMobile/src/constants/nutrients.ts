@@ -97,6 +97,11 @@ export const NUTRIENT_META: Record<string, NutrientMeta> = {
     defaultLabel: 'Alcohol',
     unit: 'g',
   },
+  added_sugars: {
+    labelKey: 'nutrients.addedSugars',
+    defaultLabel: 'Added Sugars',
+    unit: 'g',
+  },
   glycemic_index: {
     labelKey: 'nutrients.glycemicIndex',
     defaultLabel: 'Glycemic Index',
@@ -165,6 +170,8 @@ export function getNutrientLabel(
       return t('nutrients.waterContent', { defaultValue: 'Water Content' });
     case 'alcohol_g':
       return t('nutrients.alcohol', { defaultValue: 'Alcohol' });
+    case 'added_sugars':
+      return t('nutrients.addedSugars', { defaultValue: 'Added Sugars' });
     case 'glycemic_index':
       return t('nutrients.glycemicIndex', { defaultValue: 'Glycemic Index' });
     default:

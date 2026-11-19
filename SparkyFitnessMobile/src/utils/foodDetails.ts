@@ -39,6 +39,7 @@ export interface FoodDisplayValues {
   caffeineMg?: number;
   waterMl?: number;
   alcoholG?: number;
+  addedSugars?: number | null;
 }
 
 export interface FoodVariantOptionData extends FoodDisplayValues {
@@ -220,6 +221,7 @@ export function foodInfoToDisplayValues(item: FoodInfoItem): FoodDisplayValues {
     caffeineMg: item.caffeineMg,
     waterMl: item.waterMl,
     alcoholG: item.alcoholG,
+    addedSugars: item.addedSugars,
     cholesterol: item.cholesterol,
     vitaminA: item.vitaminA,
     vitaminC: item.vitaminC,
@@ -248,6 +250,7 @@ export function unitVariantToDisplayValues(
     caffeineMg: variant.caffeine_mg,
     waterMl: variant.water_ml,
     alcoholG: variant.alcohol_g,
+    addedSugars: variant.added_sugars,
     cholesterol: variant.cholesterol,
     vitaminA: variant.vitamin_a,
     vitaminC: variant.vitamin_c,
@@ -278,6 +281,7 @@ export function foodInfoToUnitVariant(item: FoodInfoItem): FoodUnitVariant {
     caffeine_mg: item.caffeineMg,
     water_ml: item.waterMl,
     alcohol_g: item.alcoholG,
+    added_sugars: item.addedSugars,
     custom_nutrients: item.customNutrients ?? null,
   };
 }
@@ -311,6 +315,7 @@ export function localVariantToUnitVariant(
     caffeine_mg: variant.caffeine_mg,
     water_ml: variant.water_ml,
     alcohol_g: variant.alcohol_g,
+    added_sugars: variant.added_sugars,
     glycemic_index: variant.glycemic_index,
     custom_nutrients: variant.custom_nutrients ?? null,
     // Forward AI provenance so the sheet's `selectedVariant.source` check
@@ -349,6 +354,7 @@ export function externalVariantToUnitVariant(
     caffeine_mg: variant.caffeine_mg,
     water_ml: variant.water_ml,
     alcohol_g: variant.alcohol_g,
+    added_sugars: variant.added_sugars,
   };
 }
 
@@ -590,6 +596,7 @@ export function buildLocalVariantOptions(
       caffeineMg: base.caffeine_mg,
       waterMl: base.water_ml,
       alcoholG: base.alcohol_g,
+      addedSugars: base.added_sugars,
       cholesterol: base.cholesterol,
       vitaminA: base.vitamin_a,
       vitaminC: base.vitamin_c,
@@ -648,6 +655,7 @@ export function buildExternalVariantOptions(
         caffeineMg: base.caffeine_mg,
         waterMl: base.water_ml,
         alcoholG: base.alcohol_g,
+        addedSugars: base.added_sugars,
         cholesterol: base.cholesterol,
         vitaminA: base.vitamin_a,
         vitaminC: base.vitamin_c,
@@ -744,6 +752,7 @@ export function buildCreateFoodVariantInput(
     caffeine_mg: variant.caffeine_mg,
     water_ml: variant.water_ml,
     alcohol_g: variant.alcohol_g,
+    added_sugars: variant.added_sugars,
     cholesterol: variant.cholesterol,
     vitamin_a: variant.vitamin_a,
     vitamin_c: variant.vitamin_c,
@@ -980,7 +989,12 @@ function rowsEqual(
     return false;
   if ((current.glycemic_index ?? '') !== (desired.glycemic_index ?? ''))
     return false;
-  return nutritionMatches(current, desired);
+  // Unknown (null) and 0 are different facts: the Nutri-Score is withheld
+  // until sugars and sodium are known, so filling a blank with 0 must save.
+  const knownChanged = FOOD_VARIANT_NUTRIENT_FIELDS.some(
+    (field) => (current[field] == null) !== (desired[field] == null)
+  );
+  return !knownChanged && nutritionMatches(current, desired);
 }
 
 export function diffSiblingRows(
@@ -1043,6 +1057,7 @@ export function applyDisplayValuesToFoodInfo(
     caffeineMg: displayValues.caffeineMg,
     waterMl: displayValues.waterMl,
     alcoholG: displayValues.alcoholG,
+    addedSugars: displayValues.addedSugars,
     cholesterol: displayValues.cholesterol,
     vitaminA: displayValues.vitaminA,
     vitaminC: displayValues.vitaminC,

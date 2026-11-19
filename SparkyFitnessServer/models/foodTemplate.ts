@@ -343,6 +343,7 @@ async function createFoodEntriesFromTemplate(
               variant.caffeine_mg,
               variant.water_ml,
               variant.alcohol_g,
+              variant.added_sugars,
             ]);
           }
           log(
@@ -393,6 +394,7 @@ async function createFoodEntriesFromTemplate(
             variant.caffeine_mg,
             variant.water_ml,
             variant.alcohol_g,
+            variant.added_sugars,
           ]);
           existingFoodEntries.add(entryKey);
         }
@@ -407,7 +409,7 @@ async function createFoodEntriesFromTemplate(
                 calories, protein, carbs, fat,
                 saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
                 cholesterol, sodium, potassium, dietary_fiber, sugars,
-                vitamin_a, vitamin_c, calcium, iron, meal_id, created_by_user_id, food_entry_meal_id, custom_nutrients, caffeine_mg, water_ml, alcohol_g
+                vitamin_a, vitamin_c, calcium, iron, meal_id, created_by_user_id, food_entry_meal_id, custom_nutrients, caffeine_mg, water_ml, alcohol_g, added_sugars
             ) VALUES %L`,
         foodEntriesToInsert
       );

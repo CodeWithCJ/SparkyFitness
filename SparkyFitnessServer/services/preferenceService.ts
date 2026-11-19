@@ -12,6 +12,7 @@ import {
   MAX_CALORIE_SAFETY_FLOOR,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   CHART_SCALE_MODES,
+  FRONT_OF_PACK_REGIONS,
   TEMPERATURE_UNITS,
   DEFAULT_GLUCOSE_UNIT,
   isGlucoseUnit,
@@ -43,8 +44,8 @@ type CalorieSafetyFloorPreferenceInput = Partial<
     'calorie_safety_floor_mode' | 'calorie_safety_floor_value'
   >
 >;
-type ChartScaleModePreferenceInput = Partial<
-  Pick<UserPreferencesMutator, 'chart_scale_mode'>
+type EnumPreferenceInput = Partial<
+  Pick<UserPreferencesMutator, 'chart_scale_mode' | 'front_of_pack_region'>
 >;
 
 function validateActivityPreferences(
@@ -71,6 +72,15 @@ function validateActivityPreferences(
         status: 400,
       }
     );
+  }
+  if (
+    !userPreferencesMutatorSchema.shape.nutri_score_enabled.safeParse(
+      preferences.nutri_score_enabled
+    ).success
+  ) {
+    throw Object.assign(new Error('nutri_score_enabled must be a boolean.'), {
+      status: 400,
+    });
   }
 }
 /** Calorie cycling (#2327): a known mode and 7 whole weekday percentages within range. */
@@ -275,21 +285,21 @@ async function validateCalorieSafetyFloor(
     }
   }
 }
-async function validateChartScaleMode(
-  preferenceData: ChartScaleModePreferenceInput
-) {
-  if (
-    preferenceData.chart_scale_mode !== undefined &&
-    !(CHART_SCALE_MODES as readonly string[]).includes(
-      preferenceData.chart_scale_mode
-    )
-  ) {
-    throw Object.assign(
-      new Error(
-        `Invalid chart_scale_mode: '${preferenceData.chart_scale_mode}'. Must be one of: ${CHART_SCALE_MODES.join(', ')}.`
-      ),
-      { status: 400 }
-    );
+const ENUM_PREFERENCES: Record<keyof EnumPreferenceInput, readonly string[]> = {
+  chart_scale_mode: CHART_SCALE_MODES,
+  front_of_pack_region: FRONT_OF_PACK_REGIONS,
+};
+async function validateEnumPreferences(preferenceData: EnumPreferenceInput) {
+  for (const [field, allowed] of Object.entries(ENUM_PREFERENCES)) {
+    const value = preferenceData[field as keyof EnumPreferenceInput];
+    if (value !== undefined && !allowed.includes(value)) {
+      throw Object.assign(
+        new Error(
+          `Invalid ${field}: '${value}'. Must be one of: ${allowed.join(', ')}.`
+        ),
+        { status: 400 }
+      );
+    }
   }
 }
 function assertValidTemperatureUnit(
@@ -337,6 +347,8 @@ function getDefaultPreferences() {
     calorie_safety_floor_mode: 'standard',
     calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
     chart_scale_mode: DEFAULT_CHART_SCALE_MODE,
+    front_of_pack_region: 'none',
+    nutri_score_enabled: false,
     default_temperature_unit: DEFAULT_TEMPERATURE_UNIT,
     default_glucose_unit: DEFAULT_GLUCOSE_UNIT,
     goal_mode_weekly_change_kg: 0,
@@ -368,7 +380,7 @@ async function updateUserPreferences(
     await validateCalorieSafetyFloor(preferenceData);
     validateCalorieCycling(preferenceData);
     validateBloodAlcoholPreferences(preferenceData);
-    await validateChartScaleMode(preferenceData);
+    await validateEnumPreferences(preferenceData);
     assertValidTemperatureUnit(preferenceData);
     assertValidGlucoseUnit(preferenceData);
     const updatedPreferences = await preferenceRepository.updateUserPreferences(
@@ -493,7 +505,7 @@ async function upsertUserPreferences(
     await validateCalorieSafetyFloor(preferenceData);
     validateCalorieCycling(preferenceData);
     validateBloodAlcoholPreferences(preferenceData);
-    await validateChartScaleMode(preferenceData);
+    await validateEnumPreferences(preferenceData);
     assertValidTemperatureUnit(preferenceData);
     assertValidGlucoseUnit(preferenceData);
     // Provide a default for calorie_goal_adjustment_mode if it's not present

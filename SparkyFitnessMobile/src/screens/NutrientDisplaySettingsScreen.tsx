@@ -63,6 +63,7 @@ const BASE_NUTRIENTS = [
   'caffeine_mg',
   'water_ml',
   'alcohol_g',
+  'added_sugars',
 ];
 
 /** Visible nutrients first, in saved order, then the hidden ones. */

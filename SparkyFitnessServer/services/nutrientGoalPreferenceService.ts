@@ -35,6 +35,7 @@ const PREDEFINED_NUTRIENT_KEYS = [
   'calcium',
   'caffeine_mg',
   'alcohol_g',
+  'added_sugars',
 ];
 
 export interface EffectiveGoalPreference {

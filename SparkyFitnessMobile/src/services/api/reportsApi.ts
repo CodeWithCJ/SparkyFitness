@@ -30,6 +30,7 @@ export interface NutritionTrendPoint {
   caffeine_mg: number;
   water_ml: number;
   alcohol_g: number;
+  added_sugars: number;
   [customNutrient: string]: string | number;
 }
 

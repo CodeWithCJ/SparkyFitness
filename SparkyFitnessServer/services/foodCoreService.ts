@@ -19,6 +19,7 @@ import {
   mapFatSecretFood,
 } from '../integrations/fatsecret/fatsecretService.js';
 import { searchYazioByBarcode } from '../integrations/yazio/yazioService.js';
+import { fetchProviderFoodDetails } from './foodProviderDetailService.js';
 import { sanitizeBoolean } from '../models/food.js';
 import type {
   BulkImportFoodData,
@@ -35,6 +36,7 @@ import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
 import {
   alcoholGramsForServing,
   BARCODE_FALLBACK_PROVIDER_ID,
+  withFoodHealthScore,
 } from '@workspace/shared';
 
 /** A food row as returned by the repository. */
@@ -85,8 +87,8 @@ async function searchFoods(
         mealType
       );
       return {
-        recentFoods,
-        topFoods,
+        recentFoods: recentFoods.map(withFoodHealthScore),
+        topFoods: topFoods.map(withFoodHealthScore),
       };
     } else {
       // Otherwise, perform a regular search
@@ -106,7 +108,7 @@ async function searchFoods(
         checkCustom,
         limit // Pass the limit to the repository search function
       );
-      return { searchResults: foods };
+      return { searchResults: foods.map(withFoodHealthScore) };
     }
   } catch (error) {
     log(
@@ -137,6 +139,15 @@ async function refreshExistingExternalFoodMetadata(
     metadata.provider_verified = true;
   }
 
+  if (
+    sameProviderIdentity &&
+    foodData.provider_nutriscore_grade &&
+    existingFood.provider_nutriscore_grade !==
+      foodData.provider_nutriscore_grade
+  ) {
+    metadata.provider_nutriscore_grade = foodData.provider_nutriscore_grade;
+  }
+
   // Backfill the provider photo onto a food imported before it had one (or
   // imported while the image was being dropped upstream). Only fills a gap —
   // an existing image is the user's, and re-importing must not overwrite it.
@@ -161,6 +172,14 @@ async function refreshExistingExternalFoodMetadata(
     sanitizeBoolean(foodData.is_quick_food) !== true
   ) {
     metadata.is_quick_food = false;
+  }
+
+  if (sameProviderIdentity) {
+    await foodRepository.backfillMissingComposition(
+      existingFood.id,
+      authenticatedUserId,
+      foodData
+    );
   }
 
   if (Object.keys(metadata).length === 0) {
@@ -210,8 +229,73 @@ function deriveAlcoholGramsIfMissing<
   return data;
 }
 
-async function createFood(authenticatedUserId: string, foodData: FoodInput) {
+const OFF_VERIFY_TIMEOUT_MS = 10_000;
+
+interface VerifiedOffFood {
+  provider_nutriscore_grade?: string | null;
+  nutri_score_category?: string | null;
+}
+
+async function fetchVerifiedOffFood(
+  userId: string,
+  externalId: string
+): Promise<VerifiedOffFood | null> {
   try {
+    const detail = (await fetchProviderFoodDetails({
+      credentialUserId: userId,
+      dataUserId: userId,
+      providerType: 'openfoodfacts',
+      externalId,
+      signal: AbortSignal.timeout(OFF_VERIFY_TIMEOUT_MS),
+    })) as (VerifiedOffFood & { provider_type?: string }) | null;
+    return detail?.provider_type === 'openfoodfacts' ? detail : null;
+  } catch (error) {
+    log(
+      'warn',
+      `Open Food Facts verification failed for ${externalId}:`,
+      error
+    );
+    return null;
+  }
+}
+
+/**
+ * Client payloads never set the provider Nutri-Score grade. A claim to be an
+ * Open Food Facts food is re-fetched from OFF and the grade and category are
+ * taken from that response; if OFF cannot confirm it, the food is saved as a
+ * plain custom food. Other provider types carry no scoring trust and keep the
+ * client-supplied identity that dedup and refresh-from-source rely on.
+ */
+async function withTrustedProvenance(
+  userId: string,
+  foodData: FoodInput
+): Promise<FoodInput> {
+  const food = { ...foodData };
+  delete food.provider_nutriscore_grade;
+  if (food.provider_type !== 'openfoodfacts') return food;
+
+  const verified = food.provider_external_id
+    ? await fetchVerifiedOffFood(userId, String(food.provider_external_id))
+    : null;
+  if (!verified) {
+    food.provider_type = null;
+    food.provider_external_id = null;
+    return food;
+  }
+  food.provider_nutriscore_grade = verified.provider_nutriscore_grade ?? null;
+  food.nutri_score_category ||= verified.nutri_score_category ?? null;
+  return food;
+}
+
+async function createFood(
+  authenticatedUserId: string,
+  clientFoodData: FoodInput
+) {
+  try {
+    const foodData = await withTrustedProvenance(
+      authenticatedUserId,
+      clientFoodData
+    );
     if (foodData.barcode) {
       const existingFood = await foodRepository.findFoodByBarcode(
         foodData.barcode,
@@ -281,12 +365,12 @@ async function getFoodById(authenticatedUserId: string, foodId: string) {
       );
       if (publicFood && !publicFood.is_custom) {
         // Assuming public foods are not custom
-        return publicFood;
+        return withFoodHealthScore(publicFood);
       }
       throw new Error('Food not found.');
     }
     const food = await foodRepository.getFoodById(foodId, authenticatedUserId);
-    return food;
+    return food && withFoodHealthScore(food);
   } catch (error) {
     log(
       'error',
@@ -322,9 +406,16 @@ async function updateFood(
         : ((await foodRepository.getFoodById(foodId, foodOwnerId))?.images ??
           []);
 
+    // Provenance is set at import time only; an edit must not forge or rewrite it.
+    const {
+      provider_nutriscore_grade: _forgedGrade,
+      provider_type: _forgedType,
+      ...editableFoodData
+    } = foodData;
+
     // Update the food's main details
     const updatedFood = await foodRepository.updateFood(foodId, foodOwnerId, {
-      ...foodData,
+      ...editableFoodData,
       custom_nutrients: sanitizeCustomNutrients(foodData.custom_nutrients),
     });
     if (!updatedFood) {
@@ -525,7 +616,7 @@ async function getFoodsWithPagination(
         providerType
       ),
     ]);
-    return { foods, totalCount };
+    return { foods: foods.map(withFoodHealthScore), totalCount };
   } catch (error) {
     log(
       'error',
@@ -854,7 +945,8 @@ async function importFoodsInBulk(
     }
     return await foodRepository.createFoodsInBulk(
       authenticatedUserId,
-      foodDataArray.map((food) => ({
+      // The bulk insert never writes a grade; provider_type is import-only.
+      foodDataArray.map(({ provider_type: _forgedType, ...food }) => ({
         ...food,
         glycemic_index: food.glycemic_index || null,
         custom_nutrients: sanitizeCustomNutrients(food.custom_nutrients),
@@ -919,6 +1011,7 @@ async function updateSnapshotForVariant(
     caffeine_mg: variant.caffeine_mg,
     water_ml: variant.water_ml,
     alcohol_g: variant.alcohol_g,
+    added_sugars: variant.added_sugars,
     glycemic_index: variant.glycemic_index,
     custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
   };

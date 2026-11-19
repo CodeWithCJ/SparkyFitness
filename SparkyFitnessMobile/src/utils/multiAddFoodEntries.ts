@@ -114,6 +114,9 @@ function snapshotNutrition(food: FoodItem): Partial<CreateFoodEntryPayload> {
       snapshot[nutrientKey] = value;
     }
   }
+  if (variant.added_sugars !== undefined) {
+    snapshot.added_sugars = variant.added_sugars;
+  }
   if (variant.custom_nutrients != null) {
     snapshot.custom_nutrients = variant.custom_nutrients;
   }

@@ -38,6 +38,7 @@ const COLUMN_SPELLINGS: Record<string, string[]> = {
   caffeine_mg: ['caffeine_mg', 'caffeineMg'],
   water_ml: ['water_ml', 'waterMl'],
   alcohol_g: ['alcohol_g', 'alcoholG'],
+  added_sugars: ['added_sugars', 'addedSugars'],
 };
 const TRACKED_COLUMNS = Object.keys(COLUMN_SPELLINGS);
 const ANCHOR = 'iron';
@@ -89,7 +90,7 @@ const DELIBERATE_OMISSIONS: Omission[] = [
     file: /^components\/FoodForm\.tsx$/,
     columns: TRACKED_COLUMNS,
     reason:
-      'All three fields are rendered here; the extra `iron` is a focus-chain reference naming the next input, not a nutrient list entry.',
+      'All four fields are rendered here; the extra `iron` is a focus-chain reference naming the next input, not a nutrient list entry.',
   },
   {
     file: /^utils\/labMarkerLabels\.ts$/,
@@ -117,9 +118,9 @@ const DELIBERATE_OMISSIONS: Omission[] = [
   },
   {
     file: /^services\/healthkit\/writebackMappers\.ts$/,
-    columns: ['water_ml', 'alcohol_g'],
+    columns: ['water_ml', 'alcohol_g', 'added_sugars'],
     reason:
-      'Hydration is written as its own DietaryWater sample, not as part of the food correlation, and HealthKit exposes no alcohol identifier.',
+      'Hydration is written as its own DietaryWater sample, not as part of the food correlation, and HealthKit exposes no alcohol or added sugars identifier.',
   },
   {
     file: /^services\/shared\/dataTransformation\.ts$/,
@@ -129,9 +130,21 @@ const DELIBERATE_OMISSIONS: Omission[] = [
   },
   {
     file: /^types\/healthRecords\.ts$/,
-    columns: ['water_ml', 'alcohol_g'],
+    columns: ['water_ml', 'alcohol_g', 'added_sugars'],
     reason:
-      'Inbound nutrition records: hydration arrives as its own record type and neither platform reports alcohol.',
+      'Inbound nutrition records: hydration arrives as its own record type and neither platform reports alcohol or added sugars.',
+  },
+  {
+    file: /^constants\/reports\.ts$/,
+    columns: ['added_sugars'],
+    reason:
+      'The picker list is derived from NUTRIENT_META, so added sugars is selectable; it stays out of the default six and the fixed micronutrient cards.',
+  },
+  {
+    file: /^utils\/labelScanFood\.ts$/,
+    columns: ['added_sugars'],
+    reason:
+      'The label-scan API result has no added sugars field, so neither the scan-to-form mapping nor the initial food carries it; the form field stays manual.',
   },
   {
     file: /^utils\/nutrientLocalization\.ts$/,

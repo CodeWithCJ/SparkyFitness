@@ -32,7 +32,9 @@ import {
   suggestHeaderMapping,
   MAX_CSV_FILE_SIZE_BYTES,
   DEFAULT_CSV_FORMAT,
+  NUTRI_SCORE_CATEGORIES,
   type CsvFormatOptions,
+  type NutriScoreCategory,
 } from '@workspace/shared';
 import { useCsvFormat } from '@/hooks/useCsvFormat';
 import CsvFormatBar from '@/components/CsvImport/CsvFormatBar';
@@ -70,7 +72,10 @@ export interface CSVData {
   calcium: number;
   iron: number;
   is_default: boolean;
-  [key: string]: string | number | boolean;
+  added_sugars?: number | null;
+  fruit_veg_legume_percent?: number | null;
+  nutri_score_category?: NutriScoreCategory | null;
+  [key: string]: string | number | boolean | null | undefined;
 }
 
 const generateUniqueId = () =>
@@ -192,7 +197,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     onDirtyChange(isDirty);
   }, [isDirty, onDirtyChange]);
 
-  const textFields = new Set(['name', 'brand']);
+  const textFields = new Set(['name', 'brand', 'nutri_score_category']);
   const booleanFields = new Set([
     'shared_with_public',
     'is_default',
@@ -226,9 +231,22 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     'is_default',
   ];
 
+  // Health score inputs. Optional so existing files stay valid, and unlike the
+  // other nutrients a blank cell means "unknown": it becomes null, never 0,
+  // because 0 added sugar is a claim about the food. added_sugars is grams per
+  // serving of the row's serving size; the category is validated here, and
+  // the server never reads a grade from the file.
+  const NUTRI_SCORE_CATEGORY_HEADER = 'nutri_score_category';
+  const healthScoreHeaders = [
+    'added_sugars',
+    'fruit_veg_legume_percent',
+    NUTRI_SCORE_CATEGORY_HEADER,
+  ];
+  const importHeaders = [...requiredHeaders, ...healthScoreHeaders];
+
   // Numeric columns feed decimal-format auto-detection; everything except
   // the text/boolean/unit columns above.
-  const numericColumns = requiredHeaders.filter(
+  const numericColumns = importHeaders.filter(
     (h) => !textFields.has(h) && !booleanFields.has(h) && h !== 'serving_unit'
   );
 
@@ -258,10 +276,17 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     const buildValue = (
       header: string,
       raw: string
-    ): string | number | boolean => {
+    ): string | number | boolean | null => {
       const value = raw.trim();
       if (booleanFields.has(header)) {
         return value.toLowerCase() === 'true';
+      }
+      if (header === NUTRI_SCORE_CATEGORY_HEADER) {
+        const category = value.toLowerCase();
+        return NUTRI_SCORE_CATEGORIES.find((c) => c === category) ?? null;
+      }
+      if (healthScoreHeaders.includes(header)) {
+        return toNumber(value, format) ?? null;
       }
       if (!textFields.has(header) && header !== 'serving_unit') {
         // toNumber (not parseFloat) so a locale-comma decimal like "80,2"
@@ -289,7 +314,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     return rows.map((rawRow) => {
       const row: CSVData = { id: generateUniqueId() } as CSVData;
       if (mapping) {
-        requiredHeaders.forEach((header) => {
+        importHeaders.forEach((header) => {
           const fileColumn = mapping[header];
           // A nutrient with no column mapped to it is absent from the file,
           // not zero in it. Leaving the key off the row keeps the two parse
@@ -299,7 +324,11 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
           // simply never carried, which on an overwrite import would replace
           // real stored values with confident zeros. A mapped-but-blank cell
           // still parses to 0, so clearing a value on purpose is unaffected.
-          if (!fileColumn && nutrientColumns.has(header)) return;
+          if (
+            !fileColumn &&
+            (nutrientColumns.has(header) || healthScoreHeaders.includes(header))
+          )
+            return;
           row[header] = buildValue(
             header,
             fileColumn ? (rawRow[fileColumn] ?? '') : ''
@@ -364,7 +393,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
       }
     } else {
       setFileHeaders(fileHeaders);
-      setHeaderMapping(suggestHeaderMapping(requiredHeaders, fileHeaders));
+      setHeaderMapping(suggestHeaderMapping(importHeaders, fileHeaders));
       setRawCsvText(text);
       setShowMapping(true);
       if (!silent) {
@@ -554,15 +583,16 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
         calcium: 360,
         iron: 366,
         is_default: 'TRUE',
+        added_sugars: 12,
+        fruit_veg_legume_percent: '',
+        nutri_score_category: '',
       },
     ];
 
-    const headerString = requiredHeaders.join(',');
+    const headerString = importHeaders.join(',');
     const rowsString = sampleData
       .map((row) =>
-        requiredHeaders
-          .map((header) => row[header as keyof typeof row])
-          .join(',')
+        importHeaders.map((header) => row[header as keyof typeof row]).join(',')
       )
       .join('\n');
     const csvContent = `${headerString}\n${rowsString}`;
@@ -581,7 +611,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
   const handleEditCell = (
     id: string,
     field: string,
-    value: string | number | boolean
+    value: string | number | boolean | null
   ) => {
     editedSinceParseRef.current = true;
     setCsvData((prevData) =>
@@ -623,7 +653,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
       is_default: csvData.length === 0,
     };
     if (headers.length === 0) {
-      setHeaders(requiredHeaders);
+      setHeaders(importHeaders);
     }
     editedSinceParseRef.current = true;
     setCsvData((prev) => [...prev, newRow]);
@@ -913,7 +943,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
             <CsvHeaderMappingDialog
               open={showMapping}
               onOpenChange={setShowMapping}
-              requiredHeaders={requiredHeaders}
+              requiredHeaders={importHeaders}
               fileHeaders={fileHeaders}
               headerMapping={headerMapping}
               onHeaderMappingChange={setHeaderMapping}
@@ -1065,6 +1095,37 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
                                     </SelectItem>
                                   </SelectContent>
                                 </Select>
+                              ) : header === NUTRI_SCORE_CATEGORY_HEADER ? (
+                                <Select
+                                  value={(row[header] as string) || 'unset'}
+                                  onValueChange={(value) =>
+                                    handleEditCell(
+                                      row.id,
+                                      header,
+                                      value === 'unset' ? null : value
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger className="w-full md:w-[140px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="unset">
+                                      {t(
+                                        'foodCsvImport.categoryUnset',
+                                        'Not set'
+                                      )}
+                                    </SelectItem>
+                                    {NUTRI_SCORE_CATEGORIES.map((category) => (
+                                      <SelectItem
+                                        key={category}
+                                        value={category}
+                                      >
+                                        {category}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
                               ) : textFields.has(header) ? (
                                 <Input
                                   type="text"
@@ -1078,6 +1139,29 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
                                   }
                                   required={header === 'name'}
                                   className="w-full md:w-40"
+                                />
+                              ) : healthScoreHeaders.includes(header) ? (
+                                // Empty stays empty: null means "unknown".
+                                <Input
+                                  type="number"
+                                  value={(row[header] as number | null) ?? ''}
+                                  onChange={(e) =>
+                                    handleEditCell(
+                                      row.id,
+                                      header,
+                                      Number.isNaN(e.target.valueAsNumber)
+                                        ? null
+                                        : e.target.valueAsNumber
+                                    )
+                                  }
+                                  min="0"
+                                  max={
+                                    header === 'fruit_veg_legume_percent'
+                                      ? '100'
+                                      : undefined
+                                  }
+                                  step="any"
+                                  className="w-full md:w-20"
                                 />
                               ) : (
                                 // Generic number input

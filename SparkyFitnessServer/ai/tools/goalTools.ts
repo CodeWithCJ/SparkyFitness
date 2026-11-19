@@ -45,6 +45,7 @@ const GOAL_SNAPSHOT_FIELDS = [
   'iron',
   'caffeine_mg',
   'alcohol_g',
+  'added_sugars',
 ] as const;
 
 // Adjusted goals come from the goal-mode calculation and can carry float noise
@@ -90,7 +91,7 @@ This tool takes a FLAT object with an "action" field. Do NOT nest fields under t
 
 Actions:
 - action: 'get_goals' (fields: target_date?) — returns the goals active on a specific date
-- action: 'set_goals' (fields: start_date, calories?, protein?, carbs?, fat?, water_goal_ml?, weight?, caffeine_mg?, alcohol_g?, ...) — sets new goals from a start date
+- action: 'set_goals' (fields: start_date, calories?, protein?, carbs?, fat?, water_goal_ml?, weight?, caffeine_mg?, alcohol_g?, added_sugars?, ...) — sets new goals from a start date
 - action: 'list_goal_timeline' — lists all goal changes over time`,
       inputSchema: manageGoalsInput,
       execute: async (rawArgs) => {
@@ -108,7 +109,8 @@ Actions:
               args.weight !== undefined ||
               args.start_date !== undefined ||
               args.caffeine_mg !== undefined ||
-              args.alcohol_g !== undefined
+              args.alcohol_g !== undefined ||
+              args.added_sugars !== undefined
             ) {
               return 'set_goals';
             }
@@ -146,6 +148,7 @@ Actions:
                 'water_goal_ml',
                 'caffeine_mg',
                 'alcohol_g',
+                'added_sugars',
               ] as const;
               for (const field of DISPLAY_FIELDS) {
                 if (goals[field] !== null && goals[field] !== undefined) {
@@ -178,6 +181,10 @@ Actions:
                       break;
                     case 'alcohol_g':
                       label = 'Alcohol';
+                      unit = ' g';
+                      break;
+                    case 'added_sugars':
+                      label = 'Added sugars';
                       unit = ' g';
                       break;
                     default:
@@ -245,6 +252,7 @@ Actions:
                 p_iron: args.iron ?? existingGoals.iron,
                 p_caffeine_mg: args.caffeine_mg ?? existingGoals.caffeine_mg,
                 p_alcohol_g: args.alcohol_g ?? existingGoals.alcohol_g,
+                p_added_sugars: args.added_sugars ?? existingGoals.added_sugars,
                 // Preserve custom nutrients if not provided
                 custom_nutrients:
                   args.custom_nutrients ?? existingGoals.custom_nutrients,

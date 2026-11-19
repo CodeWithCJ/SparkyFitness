@@ -54,6 +54,7 @@ export default function RecipeImportSyncConfirmation({
     iron: t('recipeImport.syncIron', 'Iron'),
     caffeine_mg: t('recipeImport.syncCaffeine', 'Caffeine'),
     alcohol_g: t('recipeImport.syncAlcohol', 'Alcohol'),
+    added_sugars: t('recipeImport.syncAddedSugars', 'Added sugars'),
     water_ml: t('recipeImport.syncWater', 'Water'),
   };
   const rows = preview ? recipeImportSyncComparison(preview) : [];

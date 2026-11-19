@@ -94,6 +94,7 @@ describe('foodRepository snapshot functions', () => {
       caffeine_mg: 5,
       water_ml: 240,
       alcohol_g: 14,
+      added_sugars: 6,
       glycemic_index: null,
       custom_nutrients: { zinc: '1.3mg' },
       ...overrides,
@@ -119,7 +120,7 @@ describe('foodRepository snapshot functions', () => {
       );
     const updateCall = () => sqlCalls()[1];
 
-    it('should execute UPDATE with all 30 params in correct order and return rowCount', async () => {
+    it('should execute UPDATE with all 31 params in correct order and return rowCount', async () => {
       const snapshot = makeSnapshotData();
       mockSelectThenUpdate(3);
       const result = await foodRepository.updateFoodEntriesSnapshot(
@@ -157,10 +158,11 @@ describe('foodRepository snapshot functions', () => {
         snapshot.caffeine_mg,
         snapshot.water_ml,
         snapshot.alcohol_g,
+        snapshot.added_sugars,
         userId,
         foodId,
         variantId,
-        // Images ride along as the 30th param whenever they are being synced.
+        // Images ride along as the 31st param whenever they are being synced.
         JSON.stringify([]),
       ]);
     });
@@ -180,9 +182,9 @@ describe('foodRepository snapshot functions', () => {
       );
 
       const [sql, params] = updateCall();
-      expect(sql).toContain('images = $30::jsonb');
+      expect(sql).toContain('images = $31::jsonb');
       expect(sql).not.toContain('NOT EXISTS');
-      expect(params[29]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
+      expect(params[30]).toBe(JSON.stringify(['/uploads/foods/f1/new.jpg']));
     });
 
     it('reads and overwrites in one transaction, locking the rows', async () => {
@@ -285,7 +287,7 @@ describe('foodRepository snapshot functions', () => {
 
     it('leaves the photo column out entirely for a nutrition-only sync', async () => {
       // Every entry keeps the photo it is showing, custom or inherited, so the
-      // statement must not bind a 27th parameter either — Postgres rejects a
+      // statement must not bind a 31st parameter either — Postgres rejects a
       // bind carrying more parameters than the statement references.
       mockClient.query.mockResolvedValue({ rowCount: 1 });
 
@@ -302,7 +304,7 @@ describe('foodRepository snapshot functions', () => {
       expect(sqlCalls()).toHaveLength(1);
       const [sql, params] = sqlCalls()[0];
       expect(sql).not.toContain('images =');
-      expect(params).toHaveLength(29);
+      expect(params).toHaveLength(30);
       expect(result.replacedEntryImages).toEqual([]);
     });
 

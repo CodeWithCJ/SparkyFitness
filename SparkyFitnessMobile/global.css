@@ -105,6 +105,14 @@
 
       --color-date-past: hsl(20, 90%, 50%);
       --color-date-future: hsl(200, 90%, 50%);
+
+      /* Official Nutri-Score palette (Santé publique France charter): the same
+         in every theme, as the strip is a regulated mark. */
+      --color-nutriscore-a: #038141;
+      --color-nutriscore-b: #85bb2f;
+      --color-nutriscore-c: #fecb02;
+      --color-nutriscore-d: #ee8100;
+      --color-nutriscore-e: #e63e11;
     }
 
     @variant dark {
@@ -192,6 +200,14 @@
 
       --color-date-past: hsl(20, 85%, 60%);
       --color-date-future: hsl(200, 80%, 65%);
+
+      /* Official Nutri-Score palette (Santé publique France charter): the same
+         in every theme, as the strip is a regulated mark. */
+      --color-nutriscore-a: #038141;
+      --color-nutriscore-b: #85bb2f;
+      --color-nutriscore-c: #fecb02;
+      --color-nutriscore-d: #ee8100;
+      --color-nutriscore-e: #e63e11;
     }
 
     @variant amoled {
@@ -278,6 +294,14 @@
 
       --color-date-past: hsl(20, 85%, 60%);
       --color-date-future: hsl(200, 80%, 65%);
+
+      /* Official Nutri-Score palette (Santé publique France charter): the same
+         in every theme, as the strip is a regulated mark. */
+      --color-nutriscore-a: #038141;
+      --color-nutriscore-b: #85bb2f;
+      --color-nutriscore-c: #fecb02;
+      --color-nutriscore-d: #ee8100;
+      --color-nutriscore-e: #e63e11;
     }
   }
 }

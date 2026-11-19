@@ -44,6 +44,7 @@ export const MedicationNutrientsSchema = z
     caffeine_mg: nutrientValue.optional(),
     water_ml: nutrientValue.optional(),
     alcohol_g: nutrientValue.optional(),
+    added_sugars: nutrientValue.optional(),
     custom_nutrients: z.record(z.string(), nutrientValue).optional(),
   })
   .strict();

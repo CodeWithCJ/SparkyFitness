@@ -41,6 +41,7 @@ export interface NutrientFields {
   caffeine_mg?: NutrientValue;
   water_ml?: NutrientValue;
   alcohol_g?: NutrientValue;
+  added_sugars?: NutrientValue;
   glycemic_index?: string | null;
   custom_nutrients?: CustomNutrients | null;
 }

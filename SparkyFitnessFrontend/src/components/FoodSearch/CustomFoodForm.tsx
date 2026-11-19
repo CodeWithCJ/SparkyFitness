@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NumericInput } from '@/components/NumericInput';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 import { Plus, Camera, RefreshCw, Loader2 } from 'lucide-react';
@@ -26,7 +27,19 @@ import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 import { UNIT_GROUPS } from '@/constants/foodForm';
 import { deriveSavedAiUnits } from '@/utils/foodAiUnits';
-import { getConversionFactor, parseNamedFoodPortion } from '@workspace/shared';
+import {
+  getConversionFactor,
+  NUTRI_SCORE_CATEGORIES,
+  parseNamedFoodPortion,
+  type NutriScoreCategory,
+} from '@workspace/shared';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { FoodImagePicker } from './FoodImagePicker';
 import { resolveFoodImageSrc } from '@/utils/foodImages';
 import { useOpenFoodFactsContributionAvailability } from '@/hooks/Foods/useOpenFoodFactsContribution';
@@ -47,6 +60,16 @@ const CustomFoodForm = ({
   visibleNutrients: passedVisibleNutrients,
 }: CustomFoodFormProps) => {
   const { t } = useTranslation();
+  const nutriScoreCategoryLabels: Record<NutriScoreCategory, string> = {
+    general: t('customFoodForm.nutriScoreCategoryGeneral', 'General'),
+    beverage: t('customFoodForm.nutriScoreCategoryBeverage', 'Beverage'),
+    fat_oil_nut: t(
+      'customFoodForm.nutriScoreCategoryFatOilNut',
+      'Fat, oil & nut'
+    ),
+    cheese: t('customFoodForm.nutriScoreCategoryCheese', 'Cheese'),
+    red_meat: t('customFoodForm.nutriScoreCategoryRedMeat', 'Red meat'),
+  };
   const {
     nutrientDisplayPreferences,
     energyUnit,
@@ -490,6 +513,59 @@ const CustomFoodForm = ({
                     : renderVariantCard(variant, index)
                 )}
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="food-nutri-score-category">
+                  {t(
+                    'customFoodForm.nutriScoreCategoryLabel',
+                    'Nutri-Score category'
+                  )}
+                </Label>
+                <Select
+                  value={formData.nutri_score_category ?? 'general'}
+                  onValueChange={(value) =>
+                    updateField('nutri_score_category', value)
+                  }
+                >
+                  <SelectTrigger id="food-nutri-score-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NUTRI_SCORE_CATEGORIES.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {nutriScoreCategoryLabels[category]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="food-fvl-percent">
+                  {t(
+                    'customFoodForm.fruitVegLegumePercentLabel',
+                    'Fruit, vegetables & legumes (%)'
+                  )}
+                </Label>
+                <NumericInput
+                  id="food-fvl-percent"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={formData.fruit_veg_legume_percent}
+                  onValueChange={(value) =>
+                    updateField('fruit_veg_legume_percent', value)
+                  }
+                  placeholder={t('customFoodForm.unknown', 'Unknown')}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                {t(
+                  'customFoodForm.healthScoreHelp',
+                  'Used for the Nutri-Score and front-of-pack warnings. The category picks the scoring table: a drink in ml is only scored as a beverage when you choose Beverage. Added sugars is a nutrient of each serving size above; leave it empty if the label does not state it.'
+                )}
+              </p>
             </div>
 
             {/*

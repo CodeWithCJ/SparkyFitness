@@ -1,6 +1,7 @@
 import foodCoreService from './foodCoreService.js';
 import foodRepository from '../models/foodRepository.js';
 import mealRepository from '../models/mealRepository.js';
+import { withFoodHealthScore } from '@workspace/shared';
 
 // Unified favorites across foods and meals. Foods and meals are returned as two
 // arrays (each item carries a `favorited_at`) so the client can render them with
@@ -11,7 +12,10 @@ async function getFavorites(authenticatedUserId: any) {
     foodRepository.getFavoriteFoods(authenticatedUserId),
     mealRepository.getFavoriteMeals(authenticatedUserId),
   ]);
-  return { favoriteFoods, favoriteMeals };
+  return {
+    favoriteFoods: favoriteFoods.map(withFoodHealthScore),
+    favoriteMeals,
+  };
 }
 
 async function addFavorite(

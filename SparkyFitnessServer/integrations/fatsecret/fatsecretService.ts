@@ -474,6 +474,7 @@ function mapFatSecretFood(data: FatSecretFoodResponse) {
       potassium: nutrientNumber(serving.potassium),
       dietary_fiber: nutrientNumber(serving.fiber),
       sugars: nutrientNumber(serving.sugar),
+      added_sugars: nutrientNumber(serving.added_sugars),
       vitamin_a: nutrientNumber(serving.vitamin_a),
       vitamin_c: nutrientNumber(serving.vitamin_c),
       calcium: nutrientNumber(serving.calcium),

@@ -19,6 +19,7 @@ export interface ExpandedGoals {
   iron: number;
   caffeine_mg?: number | null;
   alcohol_g?: number | null;
+  added_sugars?: number | null;
   target_exercise_calories_burned: number;
   target_exercise_duration_minutes: number;
   target_steps?: number | null;
@@ -57,6 +58,7 @@ export interface GoalPreset {
   iron: number;
   caffeine_mg?: number | null;
   alcohol_g?: number | null;
+  added_sugars?: number | null;
   target_exercise_calories_burned: number;
   target_exercise_duration_minutes: number;
   target_steps?: number | null;

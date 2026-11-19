@@ -54,6 +54,7 @@ function saveFoodPayloadToDisplayValues(p: SaveFoodPayload): FoodDisplayValues {
     caffeineMg: p.caffeine_mg,
     waterMl: p.water_ml,
     alcoholG: p.alcohol_g,
+    addedSugars: p.added_sugars,
     cholesterol: p.cholesterol,
     vitaminA: p.vitamin_a,
     vitaminC: p.vitamin_c,

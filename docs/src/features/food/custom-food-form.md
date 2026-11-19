@@ -52,3 +52,42 @@ Diary entries have their own separate note, for something specific to one
 occasion. It is never copied from the food's note, and editing one never
 changes the other. A note follows its entry when you copy entries to another
 day.
+
+## Health score
+
+Nutri-Score is a European label, so the badge is off by default. Turn on
+**Settings → Preferences → Show Nutri-Score** to see a grade from A to E on
+foods, calculated per 100 g or 100 ml with the 2023 algorithm. Foods imported
+from Open Food Facts use the grade Open Food Facts publishes when it has one.
+A food gets no grade when it lacks calories, sugars, saturated fat or sodium
+(and total fat for oils and nuts), when its serving unit has no per-100 basis
+("piece", "serving"), or when it is a solid whose serving is measured only in a
+volume unit and has no gram weight.
+
+Three optional fields feed the score:
+
+* **Added sugars (g per serving)** — a nutrient like sugars, stored per
+  serving on each serving size and in diary entries, so it also appears in
+  daily totals, reports and nutrient goals. Leave it empty when the label does
+  not state it; an empty value is unknown, never "no added sugar". Daily totals
+  count unknown entries as 0, so the figure is a lower bound.
+* **Fruit, vegetables & legumes (%)** — the share of the food made of them. An
+  empty value scores as 0, as the Nutri-Score rules do.
+* **Nutri-Score category** — General (the default), Beverage, Fat, oil &
+  nut, Cheese or Red meat. It picks the table the score uses (Cheese always
+  counts its protein, Red meat caps protein at 2 points); a drink measured in
+  ml is not scored as a beverage unless you choose Beverage. Open Food Facts
+  imports set it from the product's categories.
+
+The food CSV import accepts `added_sugars` (per serving row),
+`fruit_veg_legume_percent` and `nutri_score_category` columns; a missing column
+or a blank cell is stored as unknown, and an overwrite import keeps the stored
+value in that case. The grade published by Open Food Facts is never taken from
+a form or CSV: only an import from Open Food Facts itself can set it.
+
+Under **Settings → Preferences → Front-of-pack warnings** you can also show a
+country's "high in" warnings next to the grade: Brazil (ANVISA), Chile or
+Mexico. They report whether a food crosses that country's thresholds; they do
+not know whether a product is packaged or which ingredients were added, which
+the regulations also take into account. The added-sugar warnings only appear
+when the food has an added sugars value.
