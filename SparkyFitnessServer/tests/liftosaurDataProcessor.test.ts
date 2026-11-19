@@ -162,6 +162,24 @@ describe('processLiftosaurWorkouts', () => {
     );
   });
 
+  it('deletes nothing when told the fetch was incomplete', async () => {
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      null
+    );
+
+    expect(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+    ).not.toHaveBeenCalled();
+    expect(deleteLiftosaurSessionsNotInWithClient).not.toHaveBeenCalled();
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenCalledTimes(2);
+  });
+
   it('creates a workout preset per program name and one preset entry per workout on client', async () => {
     const workouts = parseSampleWorkouts();
     await processLiftosaurWorkouts(UID, CID, workouts);

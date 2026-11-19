@@ -43,6 +43,19 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** First and last day (user timezone) of the fetched workouts, if any. */
+function fetchedDayRange(
+  workouts: LiftohistoryWorkout[],
+  timezone: string
+): LiftosaurCleanupRange | null {
+  if (workouts.length === 0) return null;
+  const days = workouts.map((w) => instantToDay(new Date(w.date), timezone));
+  return {
+    startDate: days.reduce((a, b) => (a < b ? a : b)),
+    endDate: days.reduce((a, b) => (a > b ? a : b)),
+  };
+}
+
 /** Source id of the entry for one exercise of a Liftosaur workout. */
 function entrySourceId(
   workout: LiftohistoryWorkout,
@@ -51,14 +64,25 @@ function entrySourceId(
   return `${workout.id}_${exerciseIndex}`;
 }
 
+/** Calendar days (user timezone) whose Liftosaur rows a sync reconciles. */
+export interface LiftosaurCleanupRange {
+  startDate: string;
+  endDate: string;
+}
+
 /**
  * Process a list of parsed Liftosaur workouts into SparkyFitness entries atomically.
+ *
+ * @param cleanup Which Liftosaur rows that are no longer sent get deleted:
+ *   left out, the days between the first and last fetched workout; null,
+ *   none (the fetch may be incomplete, so a missing workout proves nothing).
  */
 async function processLiftosaurWorkouts(
   userId: string,
   createdByUserId: string,
   workouts: LiftohistoryWorkout[],
-  timezone = 'UTC'
+  timezone = 'UTC',
+  cleanup?: LiftosaurCleanupRange | null
 ) {
   log(
     'info',
@@ -77,12 +101,10 @@ async function processLiftosaurWorkouts(
     // deleted in Liftosaur, and rows from before source ids were stable.
     // Entries go first, because that path clears their calorie links and a
     // session delete cascades to the entries still under it.
-    if (workouts.length > 0) {
-      const entryDates = workouts.map((w) =>
-        instantToDay(new Date(w.date), timezone)
-      );
-      const startDate = entryDates.reduce((a, b) => (a < b ? a : b));
-      const endDate = entryDates.reduce((a, b) => (a > b ? a : b));
+    const range =
+      cleanup === undefined ? fetchedDayRange(workouts, timezone) : cleanup;
+    if (range) {
+      const { startDate, endDate } = range;
       const keepSessionIds = workouts.map((w) => String(w.id));
       const keepEntryIds = workouts.flatMap((w) =>
         w.exercises.map((_, index) => entrySourceId(w, index))

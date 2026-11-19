@@ -208,6 +208,9 @@ async function syncLiftosaurData(
   let skippedCount = 0;
   let cursor: number | undefined;
   let hasMore = true;
+  // Only a fetch that ended with Liftosaur reporting no more pages shows
+  // which workouts are gone. Any other stop leaves rows alone.
+  let fetchComplete = false;
 
   while (hasMore) {
     const page = await getHistoryPage(userId, resolvedProviderId, {
@@ -217,6 +220,7 @@ async function syncLiftosaurData(
     });
     const records = page.records ?? [];
     if (records.length === 0) {
+      fetchComplete = !page.hasMore;
       break;
     }
 
@@ -240,6 +244,9 @@ async function syncLiftosaurData(
     // that keeps reporting hasMore without moving the cursor would re-fetch
     // the same page forever, so stop when the cursor does not advance.
     hasMore = !!page.hasMore;
+    if (!hasMore) {
+      fetchComplete = true;
+    }
     if (
       hasMore &&
       (page.nextCursor === undefined || page.nextCursor === cursor)
@@ -257,12 +264,19 @@ async function syncLiftosaurData(
     'debug',
     `[liftosaurService] Parsed ${allWorkouts.length} workouts for user ${userId}.`
   );
+  if (!fetchComplete) {
+    log(
+      'warn',
+      `[liftosaurService] Liftosaur history fetch for user ${userId} ended before the last page; importing what was fetched without deleting anything.`
+    );
+  }
   if (allWorkouts.length > 0) {
     await liftosaurDataProcessor.processLiftosaurWorkouts(
       userId,
       createdByUserId,
       allWorkouts,
-      tz
+      tz,
+      fetchComplete ? undefined : null
     );
   }
   const workoutsImported = allWorkouts.length;
@@ -308,8 +322,9 @@ async function syncLiftosaurData(
   }
 
   // The scheduler reads last_sync_at to decide when a daily sync is due, so a
-  // sync whose measurements failed leaves it alone to be retried next tick.
-  if (!measurementsFailed) {
+  // sync whose history fetch stopped early or whose measurements failed
+  // leaves it alone to be retried next tick.
+  if (fetchComplete && !measurementsFailed) {
     const client = await getSystemClient();
     try {
       await client.query(
@@ -324,7 +339,7 @@ async function syncLiftosaurData(
   } else {
     log(
       'warn',
-      `[liftosaurService] Liftosaur sync for user ${userId} did not import all measurements; last_sync_at not updated.`
+      `[liftosaurService] Liftosaur sync for user ${userId} did not import all ${fetchComplete ? 'measurements' : 'history'}; last_sync_at not updated.`
     );
   }
 

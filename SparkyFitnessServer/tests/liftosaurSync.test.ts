@@ -173,6 +173,49 @@ describe('liftosaurSync', () => {
     // First page, then one more for the cursor that did not move.
     expect(vi.mocked(axios.get)).toHaveBeenCalledTimes(2);
     expect(result.workoutsImported).toBe(2);
+    // The fetch stopped before the last page: import, but delete nothing and
+    // leave last_sync_at so the sync is retried.
+    expect(
+      vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts).mock
+        .calls[0]![4]
+    ).toBeNull();
+    expect(mockClient.query).not.toHaveBeenCalledWith(
+      expect.stringContaining('last_sync_at'),
+      expect.anything()
+    );
+  });
+
+  it('deletes nothing when an empty page arrives while Liftosaur still reports more', async () => {
+    vi.mocked(axios.get)
+      .mockResolvedValueOnce({
+        data: {
+          data: {
+            records: [
+              {
+                id: 1,
+                text: '2026-03-01T10:00:00Z / exercises: {\n  Squat / 3x5 100kg\n}',
+              },
+            ],
+            hasMore: true,
+            nextCursor: 5,
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { data: { records: [], hasMore: true, nextCursor: 9 } },
+      });
+
+    await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      true,
+      'provider-123'
+    );
+
+    expect(
+      vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts).mock
+        .calls[0]![4]
+    ).toBeNull();
   });
 
   it('keeps imported workouts but leaves last_sync_at alone when measurements fail', async () => {
