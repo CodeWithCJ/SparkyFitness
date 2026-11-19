@@ -41,22 +41,22 @@ xcodebuild -version; xcrun simctl list devices available   # iOS
 
 Needs the Android SDK (`adb`, `emulator` on PATH) and a virtual device. If missing, ask the user to install Android Studio and create a device.
 
-- **Start:** `emulator -avd <name>` (background), or the user starts it from Android Studio's Device Manager. Wait for `adb -s emulator-5554 shell getprop sys.boot_completed` to print `1`.
-- **Install and run:** ask the user to run `pnpm android` in `SparkyFitnessMobile/`. If a physical phone is also connected over adb, Expo installs on the phone instead: `adb disconnect <host:port>` first. If the emulator reports `INSTALL_FAILED_INSUFFICIENT_STORAGE`, uninstall the old dev app (`adb uninstall org.SparkyApps.SparkyFitnessMobile1.dev`) or raise the virtual device's internal storage.
-- **Tunnels:** `adb reverse tcp:8081 tcp:8081` and `adb reverse tcp:3010 tcp:3010`.
+- **Start:** `emulator -avd <name>` (background), or the user starts it from Android Studio's Device Manager. Find its serial with `adb devices` (an emulator is `emulator-<port>`; the port is not always 5554) and pass `-s <serial>` to every adb command, or `export ANDROID_SERIAL=<serial>`; with a phone or a second emulator also connected, adb refuses commands without it. Wait for `adb -s <serial> shell getprop sys.boot_completed` to print `1`.
+- **Install and run:** ask the user to run `pnpm android` in `SparkyFitnessMobile/`. If a physical phone is also connected over adb, Expo installs on the phone instead: `adb disconnect <host:port>` first. If the emulator reports `INSTALL_FAILED_INSUFFICIENT_STORAGE`, raise the virtual device's internal storage first. Uninstalling the dev app (`adb uninstall org.SparkyApps.SparkyFitnessMobile1.dev`) deletes its private storage, including the offline database with any workouts not yet uploaded, so do it only after the user approves it (check Settings, Offline for waiting uploads first).
+- **Tunnels:** `adb reverse tcp:8081 tcp:8081` for Metro. Add `adb reverse tcp:3010 tcp:3010` only when the app's server URL is `localhost:3010`. A reverse tunnel reaches the Mac even with Wi-Fi and mobile data off, so **remove it for an offline test** (`adb reverse --remove tcp:3010`) and add it back afterwards.
 - **Relaunch with the new JS:** `adb shell am force-stop <app>`, then `adb shell am start -a android.intent.action.VIEW -d "exp+sparkyfitnessmobile://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081" <app>`. A saved file makes Metro reload and returns the app to its first screen.
 - **Read the screen as text:** `adb shell uiautomator dump /sdcard/u.xml`, `adb exec-out cat /sdcard/u.xml`, then list `text` / `content-desc` with their `bounds` centres. Tap with `adb shell input tap X Y`, type with `adb shell input text "a%sb"` (`%s` is a space), back is `input keyevent 4`.
 - **Screenshot:** `adb exec-out screencap -p > file.png`, then downscale.
 - **Gotchas:** the dev client's floating gear button covers the top-right of headers, so a tap there opens the dev menu (close it, tap a little to the side). A tap sent while the app is reloading is lost; check the screen before the next step. Quote or avoid shell variables in `ui` helper scripts (zsh has no `timeout`).
-- **Offline:** `adb shell svc wifi disable; adb shell svc data disable`, back with `enable`. The app notices the way back on its own within about 30 seconds.
+- **Offline:** `adb shell svc wifi disable; adb shell svc data disable` (both: with mobile data on, the emulator can stay connected), remove any `adb reverse tcp:3010` tunnel, and confirm the server is really unreachable (`adb shell ping -c1 -W2 <server host>` fails) before starting the test. Back with `svc wifi enable` and `svc data enable` (and the tunnel). The app notices the way back on its own within about 30 seconds.
 - **Inspect the phone's offline data** (debug build): `adb exec-out "run-as <app> cat files/SQLite/sparky-offline.db"` (also `-wal`, `-shm`) into a scratch folder, then read it with Python's `sqlite3`. The app log is the `app_logs` key in `databases/RKStorage` and is written out lazily; for live output add a temporary `console.log` and read `adb logcat -d | grep ReactNativeJS`, and remove it afterwards.
 
 ## 4. iOS simulator (simctl and idb)
 
 Needs Xcode (check the version). Newer Xcode versions may have no `Simulator.app`; then everything goes through `xcrun simctl`.
 
-- **Boot, launch, stop, screenshot:** `xcrun simctl boot <udid>`, `simctl launch <udid> <bundle id>`, `simctl terminate`, `simctl io <udid> screenshot file.png`. Several simulators can share a name (different iOS versions): use the UDID from `simctl list devices available`.
-- **Install and run:** ask the user to run `pnpm ios --device <udid>` in `SparkyFitnessMobile/` (without `--device` Expo uses the one booted simulator). `npx expo prebuild` rewrites the watch app icon in `SparkyFitnessMobile/targets/`: that file must never be committed (`git checkout -- SparkyFitnessMobile/targets`).
+- **Boot, launch, stop, screenshot:** `xcrun simctl boot <udid>`, `xcrun simctl launch <udid> org.SparkyApps.SparkyFitnessMobile1.dev`, `xcrun simctl terminate <udid> org.SparkyApps.SparkyFitnessMobile1.dev`, `xcrun simctl io <udid> screenshot file.png`. Always go through `xcrun`: `simctl` is not on `PATH`. Several simulators can share a name (different iOS versions): use the UDID from `xcrun simctl list devices available`.
+- **Install and run:** ask the user to run `pnpm ios --device <udid>` in `SparkyFitnessMobile/` (without `--device` Expo uses the one booted simulator). `npx expo prebuild` rewrites the watch app icon (`SparkyFitnessMobile/targets/watch/Assets.xcassets/AppIcon.appiconset/App-Icon-1024x1024@1x.png`): that file must never be committed. Run `git status --short SparkyFitnessMobile/targets` first; if only that icon changed, restore just it (`git checkout -- <that path>`). If other files there have changes, keep them and tell the user.
 - **Tapping needs idb.** `simctl` has no tap or typing command. Ask the user to run, once:
 
   ```bash
@@ -81,8 +81,13 @@ Ask the user to run `pnpm dev` in `SparkyFitnessFrontend/` (port 8080; it proxie
 Sign in with the test account to get a token, then read what the app wrote:
 
 ```bash
-TOKEN=$(curl -s -X POST localhost:3010/api/auth/sign-in/email -H 'Content-Type: application/json' \
-  -d '{"email":"<email>","password":"<password>"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+# Credentials come from the user. They go through the environment of this one
+# command and the JSON is sent on standard input, so the password is not in
+# the curl arguments, a file or the shell history. Python builds the JSON, so
+# quotes and backslashes in a password are escaped.
+TOKEN=$(EMAIL='<email>' PASS='<password>' python3 -c 'import json,os;print(json.dumps({"email":os.environ["EMAIL"],"password":os.environ["PASS"]}))' \
+  | curl -s -X POST localhost:3010/api/auth/sign-in/email -H 'Content-Type: application/json' -d @- \
+  | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
 curl -s -H "Authorization: Bearer $TOKEN" "localhost:3010/api/v2/exercise-entries/by-date?selectedDate=YYYY-MM-DD"
 curl -s -H "Authorization: Bearer $TOKEN" "localhost:3010/api/daily-summary?date=YYYY-MM-DD"
 ```
@@ -92,10 +97,10 @@ Dates are calendar days in the account's timezone; the Mac's `date +%F` can diff
 ## 7. The offline-workout recipe (what was run for #1983)
 
 1. Online: sign in, open Settings, Offline, confirm a recent "Last refreshed" (or tap Refresh now). Note the session count on the server.
-2. Go offline (Android: `svc wifi disable`; iOS: the user stops the server). Relaunch the app so it starts offline.
+2. Go offline (Android: `svc wifi disable` and `svc data disable`, no `adb reverse` tunnel to the server, and check the server is unreachable; iOS: the user stops the server). Relaunch the app so it starts offline.
 3. Dashboard shows "Can't reach your server" and "Start a saved workout offline". Open a saved workout, Start, complete a set, End workout, Keep preset, Done.
 4. Diary: the workout shows "Waiting to upload"; the Library tab lists only Workout presets and Exercises; yesterday still shows its workouts (the saved week).
-5. Back online (Android: `svc wifi enable`; iOS: the user restarts the server). Within about 30 seconds the badge clears, Settings, Offline says "Nothing is waiting", and the server holds exactly one copy.
+5. Back online (Android: `svc wifi enable` and `svc data enable`, and the tunnel if you used one; iOS: the user restarts the server). Within about 30 seconds the badge clears, Settings, Offline says "Nothing is waiting", and the server holds exactly one copy.
 6. Other cases worth a pass when relevant: resume a waiting workout, edit a logged workout offline, discard offline, a change made on the server meanwhile (edit it through the API with the revision, then finish on the phone and pick keep phone / keep other / keep both), a pounds account started offline (set the preference through the API, refresh, go offline, check the numbers; set it back afterwards).
 
 ## 8. Clean up and report
