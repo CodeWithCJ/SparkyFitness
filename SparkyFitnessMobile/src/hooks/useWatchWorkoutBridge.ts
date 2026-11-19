@@ -1,4 +1,6 @@
 import { isSessionAwaitingServer } from '../offline/sessionAwaitingServer';
+import { queueActiveWorkoutForUpload } from '../offline/workoutHandOver';
+import { checkServerConnection } from '../services/api/healthDataApi';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -922,11 +924,38 @@ export function useWatchWorkoutBridge(
         );
         return;
       }
+      // Finishing from the wrist with no server (#1983): the workout, with
+      // its finish time, goes to the upload queue and the phone's live
+      // workout ends, as the phone's own Finish does. False when the server
+      // is reachable (the failure is then a real one) or the queue could not
+      // take it, and the workout stays open as before.
+      const finishOffline = async (): Promise<boolean> => {
+        const neverReachedServer =
+          useActiveWorkoutStore.getState().pendingCreate != null;
+        if (!neverReachedServer && (await checkServerConnection())) {
+          return false;
+        }
+        if (useActiveWorkoutStore.getState().sessionId !== payload.sessionId) {
+          return false;
+        }
+        const queued = await queueActiveWorkoutForUpload({
+          finishedAt: new Date().toISOString(),
+        });
+        if (queued == null) return false;
+        const celebration = buildWorkoutCelebration(
+          useActiveWorkoutStore.getState()
+        );
+        useActiveWorkoutStore.getState().clearWorkout();
+        onWatchFinishedRef.current?.(celebration, payload.sessionId);
+        await settleEfforts();
+        return true;
+      };
       // Finishing on the watch ends the phone's live session too, the same
       // way the phone's own Finish does: flush any dirty sets, snapshot the
       // completion screen's params before the store empties, then clear.
       const outcome = await saveActiveWorkoutSession(queryClient);
       if (outcome === 'failed') {
+        if (await finishOffline()) return;
         // Clearing now would throw away sets the server never received. Keep
         // the session live so the wearer can finish it on the phone, whose
         // Finish flow retries the save.
@@ -1009,6 +1038,7 @@ export function useWatchWorkoutBridge(
       const entryDate = entryDateOf(useActiveWorkoutStore.getState().session);
       const stamped = await stampFromWrist();
       if (!stamped) {
+        if (await finishOffline()) return;
         addLog(
           `Watch finish kept the phone workout open: stamping finished_at for session ${payload.sessionId} failed`,
           'WARNING'

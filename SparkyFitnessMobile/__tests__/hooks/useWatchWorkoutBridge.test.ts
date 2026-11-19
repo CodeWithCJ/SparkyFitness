@@ -37,6 +37,17 @@ jest.mock('../../src/services/api/exerciseApi', () => ({
   setExerciseEntryEffort: jest.fn(),
 }));
 
+const mockCheckServerConnection = jest.fn();
+jest.mock('../../src/services/api/healthDataApi', () => ({
+  checkServerConnection: (...args: unknown[]) =>
+    mockCheckServerConnection(...args),
+}));
+const mockQueueActiveWorkout = jest.fn();
+jest.mock('../../src/offline/workoutHandOver', () => ({
+  queueActiveWorkoutForUpload: (...args: unknown[]) =>
+    mockQueueActiveWorkout(...args),
+}));
+
 jest.mock('../../src/hooks/invalidateExerciseCache', () => ({
   invalidateExerciseCache: jest.fn(),
 }));
@@ -1861,7 +1872,40 @@ describe('useWatchWorkoutBridge across sessions, failures and watch finishes', (
     }
   );
 
+  it('hands the workout to the upload queue when a watch finish finds the server away', async () => {
+    mockCheckServerConnection.mockResolvedValue(false);
+    mockQueueActiveWorkout.mockResolvedValue({ id: 'row-1' });
+    const onWatchFinished = jest.fn();
+    renderHook(() =>
+      useWatchWorkoutBridge(true, true, undefined, onWatchFinished)
+    );
+    act(() => {
+      getStore().startWorkout(makeSession());
+    });
+    mockUpdateWorkout.mockRejectedValue(new Error('offline'));
+    await act(async () => {
+      fire('onSetCompleted', {
+        clientId: 'set-away',
+        sessionId: 'session-1',
+        setId: '101',
+      });
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      fire('onWorkoutStop', { sessionId: 'session-1' });
+      for (let i = 0; i < 10; i += 1) await Promise.resolve();
+    });
+
+    expect(mockQueueActiveWorkout).toHaveBeenCalledWith({
+      finishedAt: expect.any(String),
+    });
+    expect(getStore().sessionId).toBeNull();
+    expect(onWatchFinished).toHaveBeenCalled();
+  });
+
   it('keeps the phone workout open when a watch finish cannot save it', async () => {
+    mockCheckServerConnection.mockResolvedValue(true);
     const onWatchFinished = jest.fn();
     renderHook(() =>
       useWatchWorkoutBridge(true, true, undefined, onWatchFinished)
