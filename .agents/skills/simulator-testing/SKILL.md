@@ -48,7 +48,7 @@ Needs the Android SDK (`adb`, `emulator` on PATH) and a virtual device. If missi
 - **Read the screen as text:** `adb shell uiautomator dump /sdcard/u.xml`, `adb exec-out cat /sdcard/u.xml`, then list `text` / `content-desc` with their `bounds` centres. Tap with `adb shell input tap X Y`, type with `adb shell input text "a%sb"` (`%s` is a space), back is `input keyevent 4`.
 - **Screenshot:** `adb exec-out screencap -p > file.png`, then downscale.
 - **Gotchas:** the dev client's floating gear button covers the top-right of headers, so a tap there opens the dev menu (close it, tap a little to the side). A tap sent while the app is reloading is lost; check the screen before the next step. Quote or avoid shell variables in `ui` helper scripts (zsh has no `timeout`).
-- **Offline:** `adb shell svc wifi disable; adb shell svc data disable` (both: with mobile data on, the emulator can stay connected), remove any `adb reverse tcp:3010` tunnel, and confirm the server is really unreachable (`adb shell ping -c1 -W2 <server host>` fails) before starting the test. Back with `svc wifi enable` and `svc data enable` (and the tunnel). The app notices the way back on its own within about 30 seconds.
+- **Offline:** `adb shell svc wifi disable; adb shell svc data disable` (both: with mobile data on, the emulator can stay connected), and remove any `adb reverse tcp:3010` tunnel. Then check that the app's real server URL and port are unreachable from the emulator (`adb shell nc -z -w2 <host> <port>` fails; with a `localhost:3010` URL the tunnel is the only way in, so pinging `localhost` proves nothing), or relaunch the app and see "Can't reach your server", before starting the test. Back with `svc wifi enable` and `svc data enable` (and the tunnel). The app notices the way back on its own within about 30 seconds.
 - **Inspect the phone's offline data** (debug build): `adb exec-out "run-as <app> cat files/SQLite/sparky-offline.db"` (also `-wal`, `-shm`) into a scratch folder, then read it with Python's `sqlite3`. The app log is the `app_logs` key in `databases/RKStorage` and is written out lazily; for live output add a temporary `console.log` and read `adb logcat -d | grep ReactNativeJS`, and remove it afterwards.
 
 ## 4. iOS simulator (simctl and idb)
@@ -81,13 +81,19 @@ Ask the user to run `pnpm dev` in `SparkyFitnessFrontend/` (port 8080; it proxie
 Sign in with the test account to get a token, then read what the app wrote:
 
 ```bash
-# Credentials come from the user. They go through the environment of this one
-# command and the JSON is sent on standard input, so the password is not in
-# the curl arguments, a file or the shell history. Python builds the JSON, so
-# quotes and backslashes in a password are escaped.
-TOKEN=$(EMAIL='<email>' PASS='<password>' python3 -c 'import json,os;print(json.dumps({"email":os.environ["EMAIL"],"password":os.environ["PASS"]}))' \
+# Credentials come from the user. Read the password with a quoted heredoc: the
+# text is taken literally, so an apostrophe, a quote or a backslash in it cannot
+# break the command, and it is not in any process arguments. (In your own
+# terminal use `read -rs PASS` instead.) Python then builds the JSON, which
+# escapes it, and curl sends it on standard input.
+IFS= read -r PASS <<'EOF'
+<password>
+EOF
+export PASS
+TOKEN=$(EMAIL='<email>' python3 -c 'import json,os;print(json.dumps({"email":os.environ["EMAIL"],"password":os.environ["PASS"]}))' \
   | curl -s -X POST localhost:3010/api/auth/sign-in/email -H 'Content-Type: application/json' -d @- \
   | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
+unset PASS
 curl -s -H "Authorization: Bearer $TOKEN" "localhost:3010/api/v2/exercise-entries/by-date?selectedDate=YYYY-MM-DD"
 curl -s -H "Authorization: Bearer $TOKEN" "localhost:3010/api/daily-summary?date=YYYY-MM-DD"
 ```
