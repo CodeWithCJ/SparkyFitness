@@ -32,6 +32,9 @@ const ALLOWED_FILES = {
       `^SparkyFitnessMobile/targets/android-widget/res/values-${ANDROID_LANG}/widget_strings\\.xml$`,
     ),
     new RegExp(
+      `^SparkyFitnessMobile/targets/wearos/src/main/res/values-${ANDROID_LANG}/strings\\.xml$`,
+    ),
+    new RegExp(
       `^SparkyFitnessMobile/targets/widget/${LANG}\\.lproj/Localizable\\.strings$`,
     ),
   ],

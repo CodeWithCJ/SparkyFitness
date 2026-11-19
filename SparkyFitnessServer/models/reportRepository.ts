@@ -2,6 +2,7 @@ import { FOOD_VARIANT_NUTRIENT_FIELDS } from '@workspace/shared';
 import { CalendarEntryLimitError } from '../utils/errors.js';
 import type { FoodVariantNutrientField } from '@workspace/shared';
 import { getClient } from '../db/poolManager.js';
+import { MAIN_SLEEP_ORDER_SQL } from './sleepRepository.js';
 import {
   doseScale,
   supplementCountable,
@@ -783,19 +784,27 @@ async function getTrainingLoadSessions(
   startDate: string,
   endDate: string
 ): Promise<
-  { day: string; durationMinutes: number; avgHeartRate: number | null }[]
+  {
+    day: string;
+    durationMinutes: number;
+    avgHeartRate: number | null;
+    zoneSeconds?: { zoneIndex: number; seconds: number }[] | null;
+  }[]
 > {
   const client = await getClient(userId);
   try {
     const result = await client.query(
       // A workout logged without a duration still has its sets: their timing
       // (seconds, per set) stands in for the length before the positive filter.
-      `SELECT day, duration_minutes, avg_heart_rate
+      `SELECT day, duration_minutes, avg_heart_rate, zone_seconds
        FROM (
          SELECT ee.entry_date,
                 TO_CHAR(ee.entry_date, 'YYYY-MM-DD') AS day,
                 ${ENTRY_DURATION_SQL} AS duration_minutes,
-                ee.avg_heart_rate
+                ee.avg_heart_rate,
+                (SELECT json_agg(json_build_object('zoneIndex', z.zone_index, 'seconds', z.seconds_in_zone))
+                 FROM exercise_entry_hr_zones z
+                 WHERE z.exercise_entry_id = ee.id AND z.seconds_in_zone > 0) AS zone_seconds
          FROM exercise_entries ee
          WHERE ee.user_id = $1
            AND ee.entry_date BETWEEN $2 AND $3
@@ -810,11 +819,13 @@ async function getTrainingLoadSessions(
         day: string;
         duration_minutes: string | number;
         avg_heart_rate: string | number | null;
+        zone_seconds: { zoneIndex: number; seconds: number }[] | null;
       }) => ({
         day: row.day,
         durationMinutes: Number(row.duration_minutes),
         avgHeartRate:
           row.avg_heart_rate === null ? null : Number(row.avg_heart_rate),
+        zoneSeconds: row.zone_seconds,
       })
     );
   } finally {
@@ -1023,11 +1034,16 @@ async function getReadinessVitals(
 ): Promise<ReadinessVitals> {
   const client = await getClient(userId);
   try {
+    // Each wake day's main sleep, not a nap, then the latest such day.
     const latest = await client.query(
-      `SELECT COALESCE(time_asleep_in_seconds, duration_in_seconds) / 3600.0 AS sleep_hours
-       FROM sleep_entries
-       WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
-       ORDER BY entry_date DESC, wake_time DESC
+      `SELECT sleep_hours FROM (
+         SELECT DISTINCT ON (entry_date) entry_date,
+                COALESCE(time_asleep_in_seconds, duration_in_seconds) / 3600.0 AS sleep_hours
+         FROM sleep_entries
+         WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
+         ORDER BY ${MAIN_SLEEP_ORDER_SQL}
+       ) main_sleep
+       ORDER BY entry_date DESC
        LIMIT 1`,
       [userId, yesterday, today]
     );

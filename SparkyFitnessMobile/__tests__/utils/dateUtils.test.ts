@@ -1,5 +1,7 @@
+import { getCalendars } from 'expo-localization';
 import {
   toLocalDateString,
+  getDeviceTimezone,
   getTodayDate,
   addDays,
   normalizeDate,
@@ -9,6 +11,10 @@ import {
   formatRelativeTime,
 } from '../../src/utils/dateUtils';
 import i18n, { initializeI18n } from '../../src/localization/i18n';
+
+const mockGetCalendars = getCalendars as jest.MockedFunction<
+  typeof getCalendars
+>;
 
 const englishTranslator = i18n.getFixedT('en');
 
@@ -102,6 +108,79 @@ describe('with a pinned clock', () => {
 
     test('agrees with toLocalDateString for the same instant', () => {
       expect(getTodayDate()).toBe(toLocalDateString(new Date()));
+    });
+
+    test('follows a live OS calendar timezone shift across midnight even when JS Date stays cached', () => {
+      // 2026-11-18T05:30:00Z is 2026-11-17 21:30 in America/Los_Angeles (PST),
+      // but already 2026-11-17 23:30 in CST; at 06:30:00Z it is 22:30 PST vs
+      // 2026-11-18 00:30 CST.
+      jest.setSystemTime(new Date('2026-11-18T06:30:00.000Z'));
+
+      mockGetCalendars.mockReturnValueOnce([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Los_Angeles',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+      expect(getDeviceTimezone()).toBe('America/Los_Angeles');
+
+      mockGetCalendars.mockReturnValueOnce([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Los_Angeles',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+      expect(getTodayDate()).toBe('2026-11-17');
+
+      mockGetCalendars.mockReturnValueOnce([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Chicago',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+      expect(getDeviceTimezone()).toBe('America/Chicago');
+
+      mockGetCalendars.mockReturnValueOnce([
+        {
+          calendar: 'gregory',
+          timeZone: 'America/Chicago',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+      expect(getTodayDate()).toBe('2026-11-18');
+    });
+
+    test('falls back to Intl when expo-localization returns a null or invalid timezone', () => {
+      mockGetCalendars.mockReturnValueOnce([
+        {
+          calendar: 'gregory',
+          timeZone: null,
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+      expect(getDeviceTimezone()).toBe(
+        Intl.DateTimeFormat().resolvedOptions().timeZone
+      );
+
+      mockGetCalendars.mockReturnValueOnce([
+        {
+          calendar: 'gregory',
+          timeZone: 'Invalid/Not_A_Timezone',
+          uses24hourClock: false,
+          firstWeekday: 1,
+        },
+      ]);
+      expect(getDeviceTimezone()).toBe(
+        Intl.DateTimeFormat().resolvedOptions().timeZone
+      );
     });
   });
 

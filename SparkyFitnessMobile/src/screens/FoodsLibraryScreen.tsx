@@ -16,7 +16,6 @@ import {
   useProfile,
 } from '../hooks';
 import { foodItemToFoodInfo } from '../types/foodInfo';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
@@ -34,7 +33,6 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
@@ -235,10 +233,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isConnected ? (
         <LibrarySearchBar

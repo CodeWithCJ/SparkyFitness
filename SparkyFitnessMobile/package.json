@@ -102,6 +102,7 @@
     "expo-speech": "~57.0.3",
     "expo-speech-recognition": "^57.1.0",
     "expo-splash-screen": "~57.0.9",
+    "expo-sqlite": "~57.0.5",
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
     "expo-task-manager": "~57.0.20",

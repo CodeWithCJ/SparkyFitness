@@ -550,10 +550,7 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
   });
 
   const container = (children: React.ReactNode) => (
-    <View
-      className="flex-1 bg-background"
-      style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {children}
     </View>

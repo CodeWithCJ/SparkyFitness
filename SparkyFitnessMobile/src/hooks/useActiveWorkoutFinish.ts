@@ -3,12 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Keyboard } from 'react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
+import Toast from 'react-native-toast-message';
 import type { PresetSessionResponse } from '@workspace/shared';
 import type { WorkoutDurationSheetRef } from '../components/WorkoutDurationSheet';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { ApiError } from '../services/api/errors';
 import { getWorkout, updateWorkout } from '../services/api/exerciseApi';
+import { checkServerConnection } from '../services/api/healthDataApi';
+import { queueActiveWorkoutForUpload } from '../offline/workoutHandOver';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { normalizeDate } from '../utils/dateUtils';
 import { formatDuration, summarizeWorkoutSpan } from '../utils/workoutSession';
@@ -69,9 +72,49 @@ export function useActiveWorkoutFinish({
       );
     }
 
+    /**
+     * Finishing with no server (#1983): the workout, with its finish time,
+     * goes to the upload queue and the finish carries on as usual. Only
+     * once the queue holds it is the live workout cleared, so a workout is
+     * never dropped on the way. False when the server is reachable (the
+     * failure is then a real one) or the queue could not take it.
+     */
+    async function finishOffline(): Promise<boolean> {
+      // A workout the server has never accepted (started offline, or refused
+      // by a server too old for it) is always kept by queueing it: retrying
+      // here could not succeed, and Discard would lose the whole workout.
+      const neverReachedServer =
+        useActiveWorkoutStore.getState().pendingCreate != null;
+      if (!neverReachedServer && (await checkServerConnection())) return false;
+      const queued = await queueActiveWorkoutForUpload({
+        finishedAt: new Date().toISOString(),
+      });
+      if (queued == null) return false;
+      const celebration = buildWorkoutCelebration(
+        useActiveWorkoutStore.getState()
+      );
+      useActiveWorkoutStore.getState().clearWorkout();
+      Toast.show({
+        type: 'info',
+        text1: t('offline.finishedTitle', {
+          defaultValue: 'Saved on this phone',
+        }),
+        text2: t('offline.finishedMessage', {
+          defaultValue: 'It uploads when your server can be reached.',
+        }),
+      });
+      if (celebration != null) {
+        navigation.replace('WorkoutComplete', celebration);
+      } else {
+        safeGoBack();
+      }
+      return true;
+    }
+
     async function attempt(): Promise<void> {
       const ok = await flush();
       if (!ok) {
+        if (await finishOffline()) return;
         Alert.alert(
           t('workout.saveError', {
             defaultValue: 'Could not save your workout',
@@ -160,6 +203,9 @@ export function useActiveWorkoutFinish({
         const entryDate = useActiveWorkoutStore.getState().session?.entry_date;
         const stamped = await stampFinished();
         if (!stamped) {
+          // The sets reached the server but the connection went before the
+          // finish did: queue the finish instead of asking for a retry.
+          if (await finishOffline()) return;
           Alert.alert(
             t('workout.finishStampFailedTitle', {
               defaultValue: 'Could not mark the workout as finished',

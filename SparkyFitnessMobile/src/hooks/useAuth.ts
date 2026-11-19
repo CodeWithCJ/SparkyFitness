@@ -1,3 +1,6 @@
+import { beginAccountChange } from '../offline/accountGeneration';
+import { notifyDiaryDaySaved } from '../offline/events';
+import { clearAllOfflineImages } from '../offline/offlineImages';
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
@@ -72,6 +75,23 @@ export function useAuth() {
       // succeeds; restore waits until the ids are read and purged.
       notifyWatchTelemetryAccountSwitch(takeIdentityChangeServerConfigIds);
       queryClient.clear();
+      // Data saved for offline use belongs to the previous account too; the
+      // next refresh downloads the new one's. Waiting uploads are kept and
+      // stay with the account that made them.
+      // Awaited like the cookie sweep below: the documents are keyed by
+      // server configuration, not by account, so a read that overtook this
+      // DELETE would answer from the previous account's copy. Reads of the
+      // saved copy wait for it (and stay closed if it fails, also after a
+      // restart), and work under way for the previous account (a refresh, a
+      // request that stores its answer) is told to stop writing.
+      await beginAccountChange();
+      // A Diary read that ran meanwhile is read again.
+      notifyDiaryDaySaved();
+      // Pictures of the shared exercise library carry no account data, so
+      // that sweep does not hold the switch up.
+      void clearAllOfflineImages().catch((err: unknown) => {
+        addLog(`Failed to clear saved pictures: ${err}`, 'WARNING');
+      });
       // The widgets' snapshots carry no account either, and the Quick Settings
       // tile shows the calorie figure on the lock screen. Cleared in the same
       // turn as the cache, so no summary of the previous account is pushed

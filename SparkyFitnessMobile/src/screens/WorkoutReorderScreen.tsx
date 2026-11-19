@@ -2,10 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { WorkoutReorderContent } from '../components/WorkoutReorderList';
 import {
@@ -26,8 +24,6 @@ type Props = RootStackScreenProps<'WorkoutReorder'>;
  */
 function WorkoutReorderScreen({ navigation }: Props) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { getImageSource } = useExerciseImageSource();
   const storeExercises = useActiveWorkoutStore((s) => s.session?.exercises);
   // Opened from a form list: it owns the exercises, so keep a local copy that
@@ -71,10 +67,7 @@ function WorkoutReorderScreen({ navigation }: Props) {
   });
 
   return (
-    <GestureHandlerRootView
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <GestureHandlerRootView className="flex-1 bg-background">
       {header}
       <View className="flex-1">
         <WorkoutReorderContent

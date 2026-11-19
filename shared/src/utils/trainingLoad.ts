@@ -11,6 +11,8 @@ export interface LoadSession {
   day: string;
   durationMinutes: number;
   avgHeartRate: number | null;
+  /** Seconds recorded per heart rate zone 1-5, used before the average heart rate. */
+  zoneSeconds?: readonly { zoneIndex: number; seconds: number }[] | null;
 }
 
 /** Sessions longer than this are treated as this long (a forgotten stop). */
@@ -29,13 +31,32 @@ export type RecoveryHint = 'ready' | 'ok' | 'takeRest';
 /**
  * Load points for one session: minutes weighted by how hard the heart worked
  * (the Edwards zone method: the weight is the person's heart-rate zone, 1 up to
- * 5, with anything below zone 1 counting as 1). A session without a heart rate counts as moderate, so a run from a phone with
- * no watch still counts.
+ * 5, with anything below zone 1 counting as 1). Recorded time in each zone is
+ * used when present, else the average heart rate. A session without a heart
+ * rate counts as moderate, so a run from a phone with no watch still counts.
  */
 export function sessionLoad(
-  session: Pick<LoadSession, 'durationMinutes' | 'avgHeartRate'>,
+  session: Pick<
+    LoadSession,
+    'durationMinutes' | 'avgHeartRate' | 'zoneSeconds'
+  >,
   zoneFloors: readonly number[]
 ): number {
+  const recorded = (session.zoneSeconds ?? []).filter(
+    (zone) => Number.isFinite(zone.seconds) && zone.seconds > 0
+  );
+  if (recorded.length > 0) {
+    const weighted = recorded.reduce(
+      (sum, zone) =>
+        sum + (zone.seconds / 60) * Math.min(5, Math.max(1, zone.zoneIndex)),
+      0
+    );
+    const total = recorded.reduce((sum, zone) => sum + zone.seconds / 60, 0);
+    // Scale a forgotten stop down to the same cap as the other paths.
+    return total > MAX_SESSION_MINUTES
+      ? weighted * (MAX_SESSION_MINUTES / total)
+      : weighted;
+  }
   const minutes = Math.min(
     MAX_SESSION_MINUTES,
     Math.max(0, session.durationMinutes)

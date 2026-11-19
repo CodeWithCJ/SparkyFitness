@@ -104,6 +104,17 @@ export function syncWatchIntervalTiming(timing: {
   });
 }
 
+/**
+ * What creating a session on the server needs beyond the session the store
+ * already holds (its id, name, exercises and sets).
+ */
+export interface PendingSessionCreate {
+  /** Calendar day (YYYY-MM-DD) the workout was started on. */
+  entryDate: string;
+  workoutPresetId: number | null;
+  workoutPlanAssignmentId: number | null;
+}
+
 /** Monotonic counter used to reject stale async schedule resolutions. */
 let restInstanceCounter = 0;
 
@@ -215,6 +226,29 @@ export interface ActiveWorkoutState {
    * Persisted so the distinction survives a cold-start resume.
    */
   createdByLiveStart: boolean;
+  /**
+   * Set while the session exists only on this phone (#1983): it was started
+   * with no connection, or its create has not been confirmed. Holds what the
+   * create request needs besides the session itself. The next save sends a
+   * create (carrying the phone-minted session id) instead of an update, and
+   * clears this once the server has the session. Persisted, so a workout
+   * started offline survives a restart still knowing it must be created.
+   */
+  pendingCreate: PendingSessionCreate | null;
+  /**
+   * True once a create for this session has been sent, whatever came of it.
+   * A create whose answer was lost may have reached the server, so a later
+   * create can come back with that older stored copy; the save after it then
+   * sends the phone's current sets instead of taking the answer as current.
+   */
+  createAttempted: boolean;
+  /**
+   * The server revision last seen before this phone lost the connection
+   * while changing a session the server already had. Presented with the
+   * first save once back online, so a change made elsewhere meanwhile is
+   * noticed instead of overwritten. Null when there is nothing to guard.
+   */
+  offlineBaseRevision: number | null;
   /**
    * Per-exercise historical best captured once at the start of the session
    * (keyed by `exercise_id`). Key absent = not yet captured; `null` = captured
@@ -341,6 +375,8 @@ export interface ActiveWorkoutState {
     session: PresetSessionResponse,
     opts?: {
       createdByLiveStart?: boolean;
+      /** Present when the session has not been created on the server yet. */
+      pendingCreate?: PendingSessionCreate;
       plannedSetValues?: PlannedSetValues[][];
       /** Positional with `session.exercises`, like `plannedSetValues`. */
       exerciseConfigs?: LiveExerciseConfig[];
@@ -624,6 +660,9 @@ const initialData: Pick<
   | 'sessionRevision'
   | 'hasUnsavedChanges'
   | 'createdByLiveStart'
+  | 'pendingCreate'
+  | 'createAttempted'
+  | 'offlineBaseRevision'
   | 'prBaseline'
   | 'prSetIds'
   | 'resumedDurationMinutes'
@@ -662,6 +701,9 @@ const initialData: Pick<
   sessionRevision: 0,
   hasUnsavedChanges: false,
   createdByLiveStart: false,
+  pendingCreate: null,
+  createAttempted: false,
+  offlineBaseRevision: null,
   prBaseline: {},
   prSetIds: {},
   resumedDurationMinutes: {},
@@ -1513,6 +1555,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           sessionRevision: 0,
           hasUnsavedChanges: false,
           createdByLiveStart: opts?.createdByLiveStart ?? false,
+          pendingCreate: opts?.pendingCreate ?? null,
+          createAttempted: false,
+          offlineBaseRevision: null,
+          // A session the server does not have yet is unsaved by definition.
+          ...(opts?.pendingCreate ? { hasUnsavedChanges: true } : {}),
           // Baseline is captured lazily per exercise by the live card; stamps
           // resume from the server.
           prBaseline: {},
@@ -1586,6 +1633,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           sessionRevision: addedPriors ? 1 : 0,
           hasUnsavedChanges: addedPriors,
           createdByLiveStart: false,
+          pendingCreate: null,
+          createAttempted: false,
+          offlineBaseRevision: null,
           // Backfilled priors are never PRs (detection lives only in
           // completeActiveSet); stamps resume from the server.
           prBaseline: {},
@@ -3045,6 +3095,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         // next launch. sessionRevision is deliberately transient.
         hasUnsavedChanges: state.hasUnsavedChanges,
         createdByLiveStart: state.createdByLiveStart,
+        pendingCreate: state.pendingCreate,
+        createAttempted: state.createAttempted,
+        offlineBaseRevision: state.offlineBaseRevision,
         // Baseline and stamps survive a cold-start resume.
         prBaseline: state.prBaseline,
         prSetIds: state.prSetIds,

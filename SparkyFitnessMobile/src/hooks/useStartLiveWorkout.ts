@@ -7,12 +7,20 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type {
+  CreatePresetSessionRequest,
   GetPlateInventoryResponse,
   PresetSessionExerciseRequest,
   PresetSessionResponse,
   WorkoutFormat,
 } from '@workspace/shared';
-import { useCreateWorkout } from './useExerciseMutations';
+import { createWorkout } from '../services/api/exerciseApi';
+import { ApiError } from '../services/api/errors';
+import { invalidateExerciseCache } from './invalidateExerciseCache';
+import { isServerKnownUnreachable } from '../offline/connection';
+import { buildOfflineStartSession } from '../offline/startOffline';
+import type { PendingSessionCreate } from '../stores/activeWorkoutStore';
+import { newUuid } from '../utils/ids';
+import { serverMayBeDown } from '../utils/serverErrors';
 import { flushActiveWorkoutBeforeClear } from './useActiveWorkoutAutosave';
 import {
   plateInventoryQueryKey,
@@ -53,6 +61,30 @@ import {
 import type { LiveExerciseConfig } from '../utils/workoutSession';
 import { getSupersetRuns } from '../utils/workoutSupersets';
 import type { RootStackParamList } from '../types/navigation';
+
+/**
+ * Creates the session for a start. A server from before client-made session
+ * ids refuses the `id` field (its schema is strict), so a 400 is retried
+ * once without it; the server then assigns the id as it always did.
+ */
+async function createSessionForStart(
+  body: CreatePresetSessionRequest
+): Promise<PresetSessionResponse> {
+  // A server that answers slowly or not at all should not keep the person
+  // waiting: past this the workout starts on the phone instead, and a create
+  // that arrives late is harmless because it carries the same session id.
+  const options = { timeoutMs: START_CREATE_TIMEOUT_MS };
+  try {
+    return await createWorkout(body, options);
+  } catch (error) {
+    if (!(error instanceof ApiError) || error.statusCode !== 400) throw error;
+    const { id: _clientId, ...withoutId } = body;
+    return createWorkout(withoutId, options);
+  }
+}
+
+/** How long a live start waits for the server before starting offline. */
+const START_CREATE_TIMEOUT_MS = 5_000;
 
 /** One start at a time, across screens and the watch. */
 let liveWorkoutStartInFlight = false;
@@ -280,7 +312,6 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
 } {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { createSession, invalidateCache } = useCreateWorkout();
   const inFlightRef = useRef(false);
   const [isStarting, setIsStarting] = useState(false);
 
@@ -377,8 +408,13 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
           preferOverHistory:
             useAppPreferencesStore.getState().plannedValuesAsPlaceholders,
         });
-        const session = await createSession({
-          name: name ?? defaultWorkoutName(entryDate),
+        // The session id is made here, not by the server, so a workout
+        // started with no connection keeps it once uploaded, and a create
+        // that is sent twice cannot make two workouts (#1983).
+        const sessionName = name ?? defaultWorkoutName(entryDate);
+        const createBody: CreatePresetSessionRequest = {
+          id: newUuid(),
+          name: sessionName,
           entry_date: entryDate,
           source: 'sparky',
           exercises: stripPlannedSetValues(resolvedExercises),
@@ -388,8 +424,70 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
           // fields are present instead of substituting the preset's own.
           workout_preset_id: sourcePresetId,
           workoutPlanAssignmentId,
-        });
-        invalidateCache(entryDate);
+        };
+        let session: PresetSessionResponse | null = null;
+        let pendingCreate: PendingSessionCreate | undefined;
+        const serverReachable =
+          queryClient.getQueryData(serverConnectionQueryKey) === true &&
+          !isServerKnownUnreachable();
+        if (serverReachable) {
+          try {
+            session = await createSessionForStart(createBody);
+            invalidateExerciseCache(queryClient, entryDate);
+          } catch (error) {
+            if (!serverMayBeDown(error)) {
+              Toast.show({
+                type: 'error',
+                text1: t('exerciseMutations.errors.saveWorkout', {
+                  defaultValue: 'Failed to save workout',
+                }),
+                text2: t('common.tryAgain', {
+                  defaultValue: 'Please try again.',
+                }),
+              });
+              throw error;
+            }
+            // The server went away while starting: start on this phone.
+          }
+        }
+        if (session == null) {
+          const offline = await buildOfflineStartSession({
+            id: createBody.id!,
+            name: sessionName,
+            entryDate,
+            workoutPresetId: sourcePresetId ?? null,
+            workoutPlanAssignmentId: workoutPlanAssignmentId ?? null,
+            exercises: createBody.exercises ?? [],
+          });
+          if (!offline.ok) {
+            Alert.alert(
+              t('offline.notReadyTitle', {
+                defaultValue: 'Not ready for offline workouts yet',
+              }),
+              t('offline.notReadyMessage', {
+                defaultValue:
+                  'Connect to your server once so this phone can save what a workout needs.',
+              })
+            );
+            throw new Error(`offline start refused: ${offline.reason}`);
+          }
+          session = offline.session;
+          pendingCreate = {
+            entryDate,
+            workoutPresetId: sourcePresetId ?? null,
+            workoutPlanAssignmentId: workoutPlanAssignmentId ?? null,
+          };
+          Toast.show({
+            type: 'info',
+            text1: t('offline.startedTitle', {
+              defaultValue: 'Started offline',
+            }),
+            text2: t('offline.startedMessage', {
+              defaultValue:
+                'This workout is kept on this phone and uploads when your server can be reached.',
+            }),
+          });
+        }
         // Chained so the exact-alarm prompt never stacks on top of the OS
         // notification-permission dialog.
         void ensureNotificationPermission().then(() =>
@@ -397,6 +495,7 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
         );
         useActiveWorkoutStore.getState().startWorkout(session, {
           createdByLiveStart: true,
+          pendingCreate,
           plannedSetValues,
           exerciseConfigs,
           sourcePresetId,
@@ -420,18 +519,24 @@ export function useStartLiveWorkout(navigation: StartLiveWorkoutNavigation): {
           setIsStarting(false);
         }
       } catch {
-        // useCrudMutation already showed the failure toast; re-enable the UI.
+        // The failure was already shown (toast or alert); re-enable the UI.
         inFlightRef.current = false;
         liveWorkoutStartInFlight = false;
         setIsStarting(false);
       }
     },
-    [createSession, invalidateCache, navigation, t]
+    [navigation, queryClient, t]
   );
 
   const startLiveWorkout = useCallback(
     async (args: StartLiveWorkoutArgs) => {
-      if (!queryClient.getQueryData(serverConnectionQueryKey)) {
+      // A server that is set up but not answering does not stop a start:
+      // the workout then begins on this phone (#1983). Only having no
+      // server at all does.
+      if (
+        !queryClient.getQueryData(serverConnectionQueryKey) &&
+        (await getActiveServerConfig()) == null
+      ) {
         Alert.alert(
           t('liveWorkout.noServerTitle', {
             defaultValue: 'No Server Connected',

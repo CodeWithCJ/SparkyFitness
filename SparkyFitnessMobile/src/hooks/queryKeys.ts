@@ -5,6 +5,13 @@ import type {
 
 export const serverConnectionQueryKey = ['serverConnection'] as const;
 
+/** What the phone holds for offline use (its own file, not a server read). */
+export const offlineStatusQueryKey = ['offlineStatus'] as const;
+export const keptExercisesQueryKey = ['keptExercises'] as const;
+export const offlineDiaryDayQueryKeyRoot = ['offlineDiaryDay'] as const;
+export const offlineDiaryDayQueryKey = (date: string) =>
+  [...offlineDiaryDayQueryKeyRoot, date] as const;
+
 export const serverConfigsQueryKey = ['serverConfigs'] as const;
 
 export const dailySummaryQueryKey = (date: string) =>
@@ -166,6 +173,8 @@ export const waterIntakeRangeQueryKey = (startDate: string, endDate: string) =>
   ['waterIntakeRange', startDate, endDate] as const;
 
 export const sleepRangeQueryKeyRoot = ['sleepRange'] as const;
+/** Tonight's sleep need; it moves with both synced sleep and logged workouts. */
+export const sleepNeedQueryKey = ['sleepNeed'] as const;
 export const sleepRangeQueryKey = (startDate: string, endDate: string) =>
   [...sleepRangeQueryKeyRoot, startDate, endDate] as const;
 

@@ -10,7 +10,6 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   buildCheckinCreateBody,
@@ -206,7 +205,6 @@ function MoodLogFrame({
   children,
 }: MoodLogFrameProps) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const saveLabel = guidedCheckIn
     ? t('guidedCheckIn.saveAndContinue', { defaultValue: 'Save & continue' })
@@ -237,10 +235,7 @@ function MoodLogFrame({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {guidedCheckIn && (
         <GuidedCheckInStepIndicator

@@ -13,11 +13,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Platform,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
@@ -206,7 +204,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     },
     [t]
   );
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
@@ -1354,6 +1351,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     : t('common.save', { defaultValue: 'Save' });
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: t('screens.measurements', { defaultValue: 'Measurements' }),
     left: {
       kind: 'dismiss',
@@ -1496,10 +1494,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           );
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {guidedCheckIn && (
         <GuidedCheckInStepIndicator

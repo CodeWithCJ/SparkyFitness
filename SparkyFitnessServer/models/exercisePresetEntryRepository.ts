@@ -23,21 +23,31 @@ async function getExercisePresetEntryByIdWithClient(
   );
   return result.rows[0] || null;
 }
+/** What a new grouped workout session row is created from. */
+interface CreateExercisePresetEntryData {
+  /** Client-minted session id; omitted or null lets the database assign one. */
+  id?: string | null;
+  workout_preset_id?: number | null;
+  name: string;
+  description?: string | null;
+  entry_date: string;
+  notes?: string | null;
+  source?: string | null;
+  location?: string | null;
+  finished_at?: string | null;
+}
+
 async function createExercisePresetEntryWithClient(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  userId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryData: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  createdByUserId: any
+  client: PoolClient,
+  userId: string,
+  entryData: CreateExercisePresetEntryData,
+  createdByUserId: string
 ) {
   const result = await client.query(
     // workout_format is snapshotted from the preset so later preset edits or
     // deletes don't reclassify this session's sets.
-    `INSERT INTO exercise_preset_entries (user_id, workout_preset_id, name, description, entry_date, created_by_user_id, notes, source, location, workout_format, finished_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
+    `INSERT INTO exercise_preset_entries (id, user_id, workout_preset_id, name, description, entry_date, created_by_user_id, notes, source, location, workout_format, finished_at)
+     VALUES (COALESCE($11::uuid, gen_random_uuid()), $1, $2, $3, $4, $5, $6, $7, $8, $9,
              COALESCE((SELECT wp.workout_format FROM workout_presets wp WHERE wp.id = $2), 'standard'),
              $10)
      RETURNING id`,
@@ -54,6 +64,9 @@ async function createExercisePresetEntryWithClient(
       // #1995 phase 1: NULL for live starts, stamped when the session is
       // created already finished.
       entryData.finished_at ?? null,
+      // A client-minted id (offline workouts) keeps the session's identity
+      // across a repeated create; NULL falls back to the column default.
+      entryData.id ?? null,
     ]
   );
   return getExercisePresetEntryByIdWithClient(

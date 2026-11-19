@@ -8248,6 +8248,18 @@
       "genericEstimateVerifyIfAccuracy": "Ogólny szacunek — zweryfikuj, jeśli liczy się dokładność.",
       "useThis": "Użyj tego",
       "estimate2": "— szacunek {{confidence}}"
+    },
+    "cooked": {
+      "switch": "Zważone po ugotowaniu",
+      "sameBatchPrevious": "Ta sama partia co {{date}}: {{raw}} {{unit}} na surowo → {{cooked}} {{unit}} po ugotowaniu",
+      "sameBatchEntry": "Ta sama partia co ten wpis: {{raw}} {{unit}} na surowo → {{cooked}} {{unit}} po ugotowaniu",
+      "newBatch": "Nowa partia",
+      "rawBatch": "Masa surowa partii ({{unit}})",
+      "cookedBatch": "Masa partii po ugotowaniu ({{unit}})",
+      "eaten": "Zjedzono (po ugotowaniu, {{unit}})",
+      "result": "= {{raw}} {{unit}} na surowo · {{calories}} {{energyUnit}}",
+      "incomplete": "Wprowadź masy, aby obliczyć ilość surową.",
+      "enterEaten": "Wprowadź zjedzoną masę po ugotowaniu."
     }
   },
   "healthMetrics": {

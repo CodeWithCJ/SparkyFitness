@@ -22,6 +22,7 @@ interface GlobalSettingsUpdate {
   mcp_oauth_enabled?: boolean;
   mcp_oauth_allowed_redirect_uris?: string[];
   enable_version_check?: boolean;
+  enable_challenges?: boolean;
 }
 
 async function getGlobalSettings() {
@@ -128,6 +129,8 @@ async function getGlobalSettings() {
     // The column is NOT NULL DEFAULT TRUE; a missing row reads as off, matching
     // isVersionCheckEnabled.
     settings.enable_version_check = !!settings.enable_version_check;
+    // NOT NULL DEFAULT TRUE as well; read the same way.
+    settings.enable_challenges = !!settings.enable_challenges;
 
     log(
       'info',
@@ -175,7 +178,8 @@ async function saveGlobalSettings(settings: GlobalSettingsUpdate) {
                  mcp_oauth_enabled = COALESCE($14, mcp_oauth_enabled, false),
                  enable_version_check = COALESCE($15, enable_version_check, true),
                  mcp_oauth_allowed_redirect_uris = COALESCE($16, mcp_oauth_allowed_redirect_uris),
-                 enable_magic_link_login = COALESCE($17, enable_magic_link_login, true)
+                 enable_magic_link_login = COALESCE($17, enable_magic_link_login, true),
+                 enable_challenges = COALESCE($18, enable_challenges, true)
              WHERE id = 1
              RETURNING *`,
       [
@@ -198,6 +202,7 @@ async function saveGlobalSettings(settings: GlobalSettingsUpdate) {
         settings.enable_version_check ?? null,
         settings.mcp_oauth_allowed_redirect_uris ?? null,
         magicLinkEnvForced ? null : (settings.enable_magic_link_login ?? null),
+        settings.enable_challenges ?? null,
       ]
     );
     // Return the full truth (DB + ENV overrides)
@@ -231,7 +236,8 @@ type BooleanSettingColumn =
   | 'dev_tools_enabled'
   | 'mock_data_enabled'
   | 'mcp_oauth_enabled'
-  | 'enable_version_check';
+  | 'enable_version_check'
+  | 'enable_challenges';
 
 /**
  * Reads one boolean policy column from `global_settings`, failing closed.
@@ -321,6 +327,14 @@ async function isMockDataEnabled(): Promise<boolean> {
 async function isVersionCheckEnabled(): Promise<boolean> {
   return readBooleanSetting('enable_version_check');
 }
+/**
+ * Whether Challenges is available on this server. On by default; while an
+ * admin has it off, the challenge routes answer 403 and the challenge jobs do
+ * nothing. Fails closed like the lookups above.
+ */
+async function isChallengesEnabled(): Promise<boolean> {
+  return readBooleanSetting('enable_challenges');
+}
 async function isUserAiConfigAllowed() {
   const client = await getSystemClient();
   try {
@@ -375,6 +389,7 @@ export {
   getMcpOAuthAllowedRedirectUris,
   isMockDataEnabled,
   isVersionCheckEnabled,
+  isChallengesEnabled,
 };
 export default {
   getGlobalSettings,
@@ -391,4 +406,5 @@ export default {
   getMcpOAuthAllowedRedirectUris,
   isMockDataEnabled,
   isVersionCheckEnabled,
+  isChallengesEnabled,
 };

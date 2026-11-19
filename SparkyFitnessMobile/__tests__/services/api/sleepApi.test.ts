@@ -1,4 +1,7 @@
-import { fetchSleepEntries } from '../../../src/services/api/sleepApi';
+import {
+  fetchDailySleepNeed,
+  fetchSleepEntries,
+} from '../../../src/services/api/sleepApi';
 import { ApiError } from '../../../src/services/api/errors';
 import {
   getActiveServerConfig,
@@ -146,6 +149,38 @@ describe('sleepApi', () => {
         fetchSleepEntries('2026-08-23', '2026-08-24')
       ).rejects.toThrow('Server configuration not found.');
       expect(mockFetch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('fetchDailySleepNeed', () => {
+    test('requests the daily sleep need and returns it with the training load', async () => {
+      const need = {
+        date: '2026-10-22',
+        baseline_need: 8,
+        strain_addition: 0.45,
+        debt_addition: 0,
+        nap_subtraction: 0,
+        total_need: 8.45,
+        method: 'default',
+        confidence: 'low',
+        training_load_score: 180,
+      };
+      mockGetActiveServerConfig.mockResolvedValue({
+        id: 'test-id',
+        url: 'https://example.com',
+        apiKey: 'test-api-key-12345',
+      });
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(need),
+      });
+
+      const result = await fetchDailySleepNeed();
+
+      expect(mockFetch.mock.calls[0][0]).toBe(
+        'https://example.com/api/sleep-science/daily-need'
+      );
+      expect(result.training_load_score).toBe(180);
     });
   });
 });

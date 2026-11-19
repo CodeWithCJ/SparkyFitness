@@ -522,4 +522,37 @@ describe('LibraryScreen', () => {
       mode: 'create-exercise',
     });
   });
+  describe('while the server is unreachable', () => {
+    beforeEach(() => {
+      mockUseServerConnection.mockReturnValue({
+        status: 'unreachable',
+        isConnected: false,
+        isLoading: false,
+        isError: true,
+        refetch: jest.fn(),
+      } as unknown as ReturnType<typeof useServerConnection>);
+    });
+
+    it('offers only workout presets and exercises', () => {
+      const screen = renderScreen();
+
+      expect(screen.getByTestId('offline-library')).toBeTruthy();
+      expect(screen.queryByText('Foods')).toBeNull();
+      expect(screen.queryByText("Can't reach your server")).toBeNull();
+    });
+
+    it('opens the saved workout presets', () => {
+      const screen = renderScreen();
+
+      fireEvent.press(screen.getByTestId('offline-library-workoutPresets'));
+      expect(navigation.navigate).toHaveBeenCalledWith('WorkoutPresetsLibrary');
+    });
+
+    it('opens the saved exercises', () => {
+      const screen = renderScreen();
+
+      fireEvent.press(screen.getByTestId('offline-library-exercises'));
+      expect(navigation.navigate).toHaveBeenCalledWith('ExercisesLibrary');
+    });
+  });
 });

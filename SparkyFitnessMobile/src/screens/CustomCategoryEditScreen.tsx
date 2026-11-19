@@ -192,10 +192,7 @@ const CustomCategoryEditScreen: React.FC<CustomCategoryEditScreenProps> = ({
 
   if (isEditing && isCategoriesLoading) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <StatusView
           loading
@@ -242,10 +239,7 @@ const CustomCategoryEditScreen: React.FC<CustomCategoryEditScreenProps> = ({
   ];
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <KeyboardAwareScrollView
         contentContainerStyle={{

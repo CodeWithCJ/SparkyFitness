@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { View, Platform } from 'react-native';
+import { View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -51,6 +51,7 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({
   }, [discreetMode, mode]);
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: headerTitle,
     nativeTitle: headerTitle,
     left: { kind: 'dismiss', onPress: () => navigation.goBack() },
@@ -67,12 +68,7 @@ const CycleLogModalScreen: React.FC<CycleLogModalScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      // iOS keeps no top inset even without the native header: this modal
-      // sheet already starts below the status bar.
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <KeyboardAwareScrollView

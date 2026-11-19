@@ -25,7 +25,10 @@ import {
   type CreateExerciseEntryPayload,
   type UpdateExercisePayload,
 } from '../services/api/exerciseApi';
+import { TimeoutError } from '../utils/concurrency';
 import { normalizeDate } from '../utils/dateUtils';
+import { serverMayBeDown } from '../utils/serverErrors';
+import { queueWorkoutSessionDelete } from '../offline/workoutHandOver';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
 import { syncExerciseSessionInCache } from './syncExerciseSessionInCache';
 import {
@@ -126,11 +129,18 @@ function useCrudMutation<TPayload, TResult>({
   errorKey,
   errorDefaultTitle,
   onMutationSuccess,
+  quietWhenServerAway = false,
 }: {
   mutationFn: (payload: TPayload) => Promise<TResult>;
   errorKey: string;
   errorDefaultTitle: string;
   onMutationSuccess?: (data: TResult, queryClient: QueryClient) => void;
+  /**
+   * The caller keeps the change on the phone when the server cannot be
+   * reached (#1983), so the failure is not announced as an error here. A
+   * timeout still is, because the server may have received the request.
+   */
+  quietWhenServerAway?: boolean;
 }) {
   const queryClient = useQueryClient();
 
@@ -139,7 +149,14 @@ function useCrudMutation<TPayload, TResult>({
     onSuccess: onMutationSuccess
       ? (data: TResult) => onMutationSuccess(data, queryClient)
       : undefined,
-    onError: () => {
+    onError: (error: unknown) => {
+      if (
+        quietWhenServerAway &&
+        serverMayBeDown(error) &&
+        !(error instanceof TimeoutError)
+      ) {
+        return;
+      }
       Toast.show({
         type: 'error',
         text1: translateExerciseError(errorKey, errorDefaultTitle),
@@ -227,8 +244,11 @@ function useDeleteMutation({
 // Create / Update hooks
 // ---------------------------------------------------------------------------
 
-export function useCreateWorkout() {
+export function useCreateWorkout(
+  options: { quietWhenServerAway?: boolean } = {}
+) {
   const { mutate, ...rest } = useCrudMutation({
+    quietWhenServerAway: options.quietWhenServerAway,
     mutationFn: (payload: CreatePresetSessionRequest) => createWorkout(payload),
     errorKey: 'exerciseMutations.errors.saveWorkout',
     errorDefaultTitle: 'Failed to save workout',
@@ -236,8 +256,11 @@ export function useCreateWorkout() {
   return { createSession: mutate, ...rest };
 }
 
-export function useUpdateWorkout() {
+export function useUpdateWorkout(
+  options: { quietWhenServerAway?: boolean } = {}
+) {
   const { mutate, ...rest } = useCrudMutation({
+    quietWhenServerAway: options.quietWhenServerAway,
     mutationFn: ({
       id,
       payload,
@@ -348,13 +371,42 @@ interface UseDeleteWorkoutOptions {
   onSuccess?: () => void;
 }
 
+// With the server away the removal is kept on this phone and sent when it can
+// be reached (#1983); the diary hides the workout meanwhile.
+async function deleteWorkoutOrQueue(
+  sessionId: string,
+  entryDate: string
+): Promise<void> {
+  try {
+    await deleteWorkoutApi(sessionId);
+  } catch (error) {
+    if (
+      serverMayBeDown(error) &&
+      (await queueWorkoutSessionDelete(sessionId, entryDate))
+    ) {
+      Toast.show({
+        type: 'info',
+        text1: i18n.t('offline.deleteSavedTitle', {
+          defaultValue: 'Deleted on this phone',
+        }),
+        text2: i18n.t('offline.deleteSavedMessage', {
+          defaultValue:
+            'It is removed from your server once it can be reached.',
+        }),
+      });
+      return;
+    }
+    throw error;
+  }
+}
+
 export function useDeleteWorkout({
   sessionId,
   entryDate,
   onSuccess,
 }: UseDeleteWorkoutOptions) {
   return useDeleteMutation({
-    deleteFn: deleteWorkoutApi,
+    deleteFn: (id) => deleteWorkoutOrQueue(id, entryDate),
     id: sessionId,
     entryDate,
     confirmTitleKey: 'exerciseMutations.confirm.deleteWorkoutTitle',

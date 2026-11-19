@@ -243,6 +243,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             }
           />
 
+          {activeConfig && (
+            <SettingsRow
+              icon="cloud-offline"
+              title={t('settings.rows.offline', { defaultValue: 'Offline' })}
+              onPress={() => navigation.navigate('OfflineSettings')}
+              iconColor={catSlate}
+            />
+          )}
+
           <SectionErrorBoundary
             sectionName={t('settings.title', { defaultValue: 'Settings' })}
           >

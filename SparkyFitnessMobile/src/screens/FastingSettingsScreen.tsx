@@ -16,7 +16,6 @@ import {
   useUpdateFastingPreferences,
 } from '../hooks/useFasting';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { addLog } from '../services/LogService';
 import { FASTING_PRESETS } from '../constants/fasting';
 import type { FastingPreferences } from '../types/fasting';
@@ -389,8 +388,6 @@ const FastingSettingsForm: React.FC<FormProps> = ({ preferences }) => {
 
 const FastingSettingsScreen: React.FC<Props> = () => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const {
     data: preferences,
     isLoading,
@@ -403,10 +400,7 @@ const FastingSettingsScreen: React.FC<Props> = () => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isError ? (
         <StatusView

@@ -16,12 +16,10 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
   ScrollView,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { StackActions, useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
@@ -1099,7 +1097,6 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
   const scaled = (value: number) => value * servings;
 
-  const insets = useSafeAreaInsets();
   const [accentColor, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-primary',
@@ -1910,6 +1907,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   // reads as a button; edit/save stay neutral. The sticky footer "Add Food"/
   // "Add Meal" button remains this screen's main accent action.
   const header = useScreenHeader({
+    topInset: 'android-only',
     nativeTitle: '',
     left: {
       kind: 'dismiss',
@@ -1993,10 +1991,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ScrollView
