@@ -86,13 +86,16 @@ Sign in with the test account to get a token, then read what the app wrote:
 # escapes it, and curl sends it on standard input. With no terminal to type in
 # (read fails), ask the user to run the sign-in line in their own terminal and
 # give you only the token.
-IFS= read -rs -p 'Password: ' PASS && [ -n "$PASS" ] || { echo 'No password read, stopping.' >&2; exit 1; }
-echo
-export PASS
-TOKEN=$(EMAIL='<email>' python3 -c 'import json,os;print(json.dumps({"email":os.environ["EMAIL"],"password":os.environ["PASS"]}))' \
-  | curl -s -X POST localhost:3010/api/auth/sign-in/email -H 'Content-Type: application/json' -d @- \
-  | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])')
-unset PASS
+# A function, so a failed or empty read returns instead of closing the shell.
+sparky_token() {
+  local PASS
+  IFS= read -rs -p 'Password: ' PASS && [ -n "$PASS" ] || { echo 'No password read, stopping.' >&2; return 1; }
+  echo >&2
+  PASS="$PASS" EMAIL='<email>' python3 -c 'import json,os;print(json.dumps({"email":os.environ["EMAIL"],"password":os.environ["PASS"]}))' \
+    | curl -s -X POST localhost:3010/api/auth/sign-in/email -H 'Content-Type: application/json' -d @- \
+    | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])'
+}
+TOKEN=$(sparky_token) || echo 'Sign-in stopped.' >&2
 curl -s -H "Authorization: Bearer $TOKEN" "localhost:3010/api/v2/exercise-entries/by-date?selectedDate=YYYY-MM-DD"
 curl -s -H "Authorization: Bearer $TOKEN" "localhost:3010/api/daily-summary?date=YYYY-MM-DD"
 ```
