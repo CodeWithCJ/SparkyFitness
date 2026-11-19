@@ -9,7 +9,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import type { ChallengeSummary } from '@workspace/shared';
+import { challengeToday, type ChallengeSummary } from '@workspace/shared';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import ServerGate from '../components/ServerGate';
@@ -23,7 +23,6 @@ import { formatShortDate } from '../utils/dateUtils';
 import {
   challengeRulesSummary,
   challengeState,
-  challengeToday,
   sortChallenges,
 } from '../utils/challenges';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -115,7 +114,7 @@ const ChallengesScreen: React.FC<Props> = ({ navigation }) => {
   // turning over is picked up too.
   const now = new Date();
   const todayOf = (challenge: ChallengeSummary) =>
-    challengeToday(challenge, now);
+    challengeToday(challenge.time_zone, now);
   const sorted = sortChallenges(challenges, todayOf);
   const openJoin = () => navigation.navigate('ChallengeJoin');
 

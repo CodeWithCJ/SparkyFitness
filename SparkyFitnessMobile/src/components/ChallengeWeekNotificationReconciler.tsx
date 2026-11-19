@@ -18,10 +18,10 @@ import {
   scheduleChallengeWeekNotifications,
 } from '../services/challengeWeekNotificationService';
 import { hasNotificationPermission } from '../services/notifications';
+import { challengeToday } from '@workspace/shared';
 import {
   buildChallengeWeekNotices,
   challengeState,
-  challengeToday,
   type ChallengeDistanceUnit,
 } from '../utils/challenges';
 
@@ -61,7 +61,8 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
     ? challenges.filter(
         (c) =>
           c.rules.period === 'week' &&
-          challengeState(c, challengeToday(c, new Date())) === 'running'
+          challengeState(c, challengeToday(c.time_zone, new Date())) ===
+            'running'
       )
     : [];
   const hasWeekly = weekly.length > 0;

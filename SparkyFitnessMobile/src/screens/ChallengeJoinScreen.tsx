@@ -6,7 +6,7 @@ import FormScreenChrome from '../components/FormScreenChrome';
 import FormInput from '../components/FormInput';
 import { useChallengeMutations } from '../hooks/useChallenges';
 import { ApiError } from '../services/api/errors';
-import { parseInviteCode } from '../utils/challenges';
+import { parseChallengeInviteCode } from '@workspace/shared';
 import type { RootStackScreenProps } from '../types/navigation';
 
 /** The server's error code (`CHALLENGE_FULL`, ...) in a failed request's body. */
@@ -78,7 +78,7 @@ const ChallengeJoinScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleJoin = () => {
     // The keyboard's Done can fire while a join is on its way.
     if (joiningRef.current) return;
-    const parsed = parseInviteCode(code);
+    const parsed = parseChallengeInviteCode(code);
     if (!parsed) {
       setError(
         t('challenges.join.notACode', {

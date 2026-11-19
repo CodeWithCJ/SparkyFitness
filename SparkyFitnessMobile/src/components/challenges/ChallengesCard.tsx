@@ -13,12 +13,14 @@ import {
 import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 import { usePreferences } from '../../hooks/usePreferences';
 import {
+  challengeLeaders,
+  leadsChallenge,
+  ownChallengeStanding,
+} from '@workspace/shared';
+import {
   challengeState,
   formatChallengeValue,
-  ownStanding,
   sortChallenges,
-  isLeading,
-  standingsLeader,
   type ChallengeUnits,
 } from '../../utils/challenges';
 import type { RootStackParamList, TabParamList } from '../../types/navigation';
@@ -85,8 +87,10 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
       </View>
       {running.map((challenge, index) => {
         const period = standings.byId.get(challenge.id);
-        const own = period ? ownStanding(period.rows) : null;
-        const leader = period ? standingsLeader(period.rows) : null;
+        const own = period ? ownChallengeStanding(period.rows) : null;
+        const leader = period
+          ? (challengeLeaders(period.rows)[0] ?? null)
+          : null;
         // In the units of the rules that scored the period, sent with it
         // (totals are formatted only once the period is in).
         const metric = (period ?? challenge).rules.metric;
@@ -105,7 +109,7 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
         const leaderLine =
           !leader || !own
             ? null
-            : isLeading(own)
+            : leadsChallenge(own)
               ? t('challenges.card.youLead', { defaultValue: 'You lead' })
               : t('challenges.card.leader', {
                   defaultValue: '{{name}} leads with {{total}}',

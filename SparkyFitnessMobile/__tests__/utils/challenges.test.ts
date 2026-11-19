@@ -5,18 +5,13 @@ import {
   challengeRulesSummary,
   challengeState,
   formatChallengeValue,
-  isLeading,
-  ownStanding,
-  parseInviteCode,
   showsTrophy,
   sortChallenges,
-  standingsLeader,
   weekLeaderNotificationDate,
   type ChallengeUnits,
 } from '../../src/utils/challenges';
 import {
   FRIEND,
-  ME,
   makeChallenge,
   makeSharedLeadStandings,
   makeStandings,
@@ -26,7 +21,6 @@ import {
 const t = i18n.t.bind(i18n);
 const KM: ChallengeUnits = { distanceUnit: 'km', energyUnit: 'kcal' };
 const MILES: ChallengeUnits = { distanceUnit: 'miles', energyUnit: 'kcal' };
-const CODE = 'Ab3_-defghijklmnopqrst';
 
 beforeAll(async () => {
   await initializeI18n('en');
@@ -108,48 +102,7 @@ describe('challengeState and sortChallenges', () => {
   });
 });
 
-describe('parseInviteCode', () => {
-  it('takes the bare code, or the code at the end of a pasted link', () => {
-    expect(parseInviteCode(`  ${CODE} `)).toBe(CODE);
-    expect(
-      parseInviteCode(
-        `Join me: https://fit.example.com/challenges/join?code=${CODE}`
-      )
-    ).toBe(CODE);
-    expect(parseInviteCode('short')).toBeNull();
-    expect(parseInviteCode('')).toBeNull();
-  });
-
-  it('never takes part of a longer token, and prefers a code= parameter', () => {
-    expect(
-      parseInviteCode(
-        `https://fit.example.com/challenges/join?code=${CODE} see you Monday-morning-runners-club`
-      )
-    ).toBe(CODE);
-    expect(parseInviteCode(`${CODE}x`)).toBeNull();
-    expect(parseInviteCode('whatsapp_share_message_from_alex')).toBeNull();
-  });
-});
-
 describe('standings helpers', () => {
-  it('finds the user by the server’s `me` flag and the leader by rank', () => {
-    const { rows } = makeStandings();
-    expect(ownStanding(rows)?.user_id).toBe(ME);
-    expect(ownStanding(rows.map(({ me: _me, ...r }) => r))).toBeNull();
-    expect(standingsLeader(rows)?.user_id).toBe(FRIEND);
-    expect(standingsLeader(rows.map((r) => ({ ...r, total: 0 })))).toBeNull();
-    expect(isLeading(ownStanding(rows))).toBe(false);
-    expect(
-      isLeading(ownStanding(standingsSeenBy(makeStandings(), FRIEND).rows))
-    ).toBe(true);
-  });
-
-  it('lets racers who finished the same day share the lead', () => {
-    const { rows } = makeSharedLeadStandings();
-    expect(standingsLeader(rows)?.user_id).toBe(FRIEND);
-    expect(isLeading(ownStanding(rows))).toBe(true);
-  });
-
   it('gives a trophy only to the winner of a final period', () => {
     const open = makeStandings();
     expect(open.rows.some((r) => showsTrophy(open, r))).toBe(false);

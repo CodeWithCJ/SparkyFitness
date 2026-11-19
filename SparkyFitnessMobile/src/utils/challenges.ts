@@ -1,7 +1,10 @@
 import type { TFunction } from 'i18next';
 import {
-  instantToDay,
+  challengeLeaders,
+  challengeToday,
+  leadsChallenge,
   localDateTimeToUtc,
+  ownChallengeStanding,
   type ChallengeFormat,
   type ChallengeMetric,
   type ChallengePeriod,
@@ -232,60 +235,6 @@ export function sortChallenges<
   );
 }
 
-// A whole 22-character base64url token, not the start of a longer one.
-const INVITE_CODE_RE = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{22}(?![A-Za-z0-9_-])/g;
-const CODE_PARAM_RE = /[?&#]code=([A-Za-z0-9_-]{22})(?![A-Za-z0-9_-])/;
-
-/**
- * The invite code in what was typed or pasted: the bare code, or a link or
- * message that carries it. Codes are 22 base64url characters. A `code=`
- * parameter wins; otherwise the last whole 22-character token, so a link's
- * own path never shadows the code at its end.
- */
-export function parseInviteCode(text: string): string | null {
-  const trimmed = text.trim();
-  const param = CODE_PARAM_RE.exec(trimmed);
-  if (param?.[1]) return param[1];
-  const matches = trimmed.match(INVITE_CODE_RE);
-  return matches?.[matches.length - 1] ?? null;
-}
-
-/** The challenge's today, in its own time zone (as the server counts days). */
-export function challengeToday(
-  challenge: Pick<ChallengeSummary, 'time_zone'>,
-  now: Date
-): string {
-  try {
-    return instantToDay(now, challenge.time_zone);
-  } catch {
-    // A zone this device's Intl data does not know: use the device's day.
-    return instantToDay(now, Intl.DateTimeFormat().resolvedOptions().timeZone);
-  }
-}
-
-/** The signed-in user's row, which the server marks with `me`. */
-export function ownStanding(rows: readonly StandingRow[]): StandingRow | null {
-  return rows.find((row) => row.me === true) ?? null;
-}
-
-/**
- * Who leads a period: the first rank-1 row with something on the board, else
- * nobody. Several rows can share rank 1 (racers who finished the same day).
- * This is the leader, not the winner: `winner` is only set once the period is
- * final.
- */
-export function standingsLeader(
-  rows: readonly StandingRow[]
-): StandingRow | null {
-  const leader = rows.find((row) => row.rank === 1);
-  return leader && leader.total > 0 ? leader : null;
-}
-
-/** Whether the user shares or holds first place. */
-export function isLeading(own: StandingRow | null): boolean {
-  return own !== null && own.rank === 1 && own.total > 0;
-}
-
 /** A trophy belongs to a final period's winners only. */
 export function showsTrophy(
   standings: Pick<ChallengeStandingsResponse, 'final'>,
@@ -348,17 +297,20 @@ export function buildChallengeWeekNotices(
 ): ChallengeWeekNotice[] {
   const notices: ChallengeWeekNotice[] = [];
   for (const challenge of challenges) {
-    if (challengeState(challenge, challengeToday(challenge, now)) !== 'running')
+    if (
+      challengeState(challenge, challengeToday(challenge.time_zone, now)) !==
+      'running'
+    )
       continue;
     const standings = standingsById.get(challenge.id);
     if (!standings) continue;
     const fireAt = weekLeaderNotificationDate(challenge, standings, now);
-    const leader = standingsLeader(standings.rows);
+    const leader = challengeLeaders(standings.rows)[0] ?? null;
     if (!fireAt || !leader) continue;
     // In the units of the rules that score this week, sent with its standings
     const metric = standings.rules.metric;
-    const own = ownStanding(standings.rows);
-    const leaderIsMe = isLeading(own);
+    const own = ownChallengeStanding(standings.rows);
+    const leaderIsMe = leadsChallenge(own);
     notices.push({
       challengeId: challenge.id,
       challengeName: challenge.emoji

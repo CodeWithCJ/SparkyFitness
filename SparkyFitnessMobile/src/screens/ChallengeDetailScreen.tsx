@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { addDays } from '@workspace/shared';
+import { addDays, challengeToday } from '@workspace/shared';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import ServerGate from '../components/ServerGate';
@@ -30,7 +30,6 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatShortDate, getTodayDate } from '../utils/dateUtils';
 import {
   challengeRulesSummary,
-  challengeToday,
   formatChallengeValue,
   type ChallengeUnits,
 } from '../utils/challenges';
@@ -140,7 +139,7 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // The challenge's own today, as the server counts its days.
   const today = challenge
-    ? challengeToday(challenge, new Date())
+    ? challengeToday(challenge.time_zone, new Date())
     : getTodayDate();
   const canGoBack =
     !!challenge && !!standings && standings.period_start > challenge.start_date;
