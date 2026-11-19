@@ -1853,6 +1853,8 @@ async function updateFoodVariantNutrition(
   try {
     // custom_nutrients is optional and COALESCE-guarded so existing callers
     // (e.g. health-data ingest) that omit it keep the stored value untouched.
+    // added_sugars follows the same rule by key presence, so an explicit null
+    // still clears it but a sync that never sends it (Garmin, CSV) does not.
     await client.query(
       `UPDATE food_variants SET
         serving_size = $2,
@@ -1878,7 +1880,7 @@ async function updateFoodVariantNutrition(
         caffeine_mg = $22,
         water_ml = $23,
         alcohol_g = $24,
-        added_sugars = $25,
+        added_sugars = CASE WHEN $26::boolean THEN $25::numeric ELSE added_sugars END,
         updated_at = now()
       WHERE id = $1`,
       [
@@ -1909,6 +1911,7 @@ async function updateFoodVariantNutrition(
         sanitizeNumeric(nutritionData.water_ml),
         sanitizeNumeric(nutritionData.alcohol_g),
         sanitizeAddedSugars(nutritionData.added_sugars),
+        nutritionData.added_sugars !== undefined,
       ]
     );
   } finally {
