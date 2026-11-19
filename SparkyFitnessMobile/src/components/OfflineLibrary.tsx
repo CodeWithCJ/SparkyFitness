@@ -1,8 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from './Icon';
 import OfflineBanner from './OfflineBanner';
+import { useActiveWorkoutBarPadding } from './ActiveWorkoutBar';
+import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 
 /**
  * The Library tab while the server cannot be reached (#1983). Only what the
@@ -15,6 +18,9 @@ const OfflineLibrary: React.FC<{
   onOpenExercises: () => void;
 }> = ({ onOpenWorkoutPresets, onOpenExercises }) => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+  const usesNativeTabs = useNativeIOSTabsActive();
+  const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
 
   const rows = [
     {
@@ -31,14 +37,21 @@ const OfflineLibrary: React.FC<{
     },
   ];
 
+  // One scroll view holds the banner too, so under iOS native tabs the large
+  // title and its inset adjust it like the online Library.
   return (
-    <View className="flex-1 bg-background">
+    <ScrollView
+      className="flex-1 bg-background"
+      style={{ flex: 1 }}
+      contentContainerStyle={{
+        paddingBottom: insets.bottom + activeWorkoutBarPadding + 16,
+      }}
+      contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
+      automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
+      testID="offline-library"
+    >
       <OfflineBanner />
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ padding: 16 }}
-        testID="offline-library"
-      >
+      <View style={{ padding: 16 }}>
         <Text className="text-text-secondary text-sm mb-4">
           {t('offline.libraryNote', {
             defaultValue:
@@ -64,8 +77,8 @@ const OfflineLibrary: React.FC<{
             </Pressable>
           ))}
         </View>
-      </ScrollView>
-    </View>
+      </View>
+    </ScrollView>
   );
 };
 
