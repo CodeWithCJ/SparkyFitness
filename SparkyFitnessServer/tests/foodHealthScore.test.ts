@@ -243,6 +243,21 @@ describe('computeFoodHealthScore', () => {
     expect(drink('g')).toEqual([]);
   });
 
+  it('keeps regional warnings for a non-beverage measured in ml', () => {
+    const soup = computeFoodHealthScore({
+      default_variant: {
+        serving_size: 100,
+        serving_unit: 'ml',
+        calories: 60,
+        sugars: 1,
+        saturated_fat: 3,
+        sodium: 100,
+      },
+    });
+    expect(soup.nutri_score).toBeNull();
+    expect(soup.warnings.brazil).toEqual(['saturated_fat']);
+  });
+
   it('prefers the grade Open Food Facts publishes', () => {
     const result = computeFoodHealthScore({
       ...soda,
@@ -416,10 +431,14 @@ describe('nutrientsPer100', () => {
     ).toMatchObject({ isLiquid: true, sugars: expect.closeTo(10) });
   });
 
-  it('refuses a volume serving for anything but a beverage', () => {
+  it('measures a non-beverage volume serving per 100 ml without scoring it', () => {
     expect(
-      nutrientsPer100({ serving_size: 1, serving_unit: 'cup', sugars: 5 })
-    ).toBeNull();
+      nutrientsPer100({ serving_size: 1, serving_unit: 'cup', sugars: 23.6588 })
+    ).toMatchObject({
+      isLiquid: true,
+      hasScoreInputs: false,
+      sugars: expect.closeTo(10),
+    });
   });
 
   it('keeps unknown added sugars null instead of 0', () => {

@@ -1162,15 +1162,20 @@ function hasOffNutrient(
 }
 
 // Mirrors the category tests in ProductOpener::Food
-// (is_fat_oil_nuts_seeds_for_nutrition_score: en:fats, en:creams, en:seeds;
-// beverages: en:beverages). OFF also derives nuts from HS codes and treats
-// milk-heavy dairy drinks as food; those are not modelled, so they score as
+// (is_fat_oil_nuts_seeds_for_nutrition_score: en:fats, en:creams, en:seeds, or
+// an HS heading of nuts/peanuts/oilseeds; beverages: en:beverages). OFF reads
+// the HS heading from the category taxonomy, where raw nuts, peanuts and almonds
+// descend from en:nuts (taxonomies/food/categories.txt, wco_hs_heading 08.01,
+// 08.02, 12.02), so en:nuts stands in for it. Processed nuts matched by HS code
+// 2008.11/2008.19 and milk-heavy dairy drinks are not modelled; they score as
 // "general" and the provider grade still wins when OFF supplies one.
+const OFF_FAT_OIL_NUT_TAGS = ['en:fats', 'en:creams', 'en:seeds', 'en:nuts'];
+
 function offNutriScoreCategory(
   tags: unknown
 ): 'beverage' | 'fat_oil_nut' | undefined {
   if (!Array.isArray(tags)) return undefined;
-  if (tags.some((tag) => ['en:fats', 'en:creams', 'en:seeds'].includes(tag))) {
+  if (tags.some((tag) => OFF_FAT_OIL_NUT_TAGS.includes(tag))) {
     return 'fat_oil_nut';
   }
   return tags.includes('en:beverages') ? 'beverage' : undefined;

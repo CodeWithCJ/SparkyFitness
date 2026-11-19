@@ -1,4 +1,5 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
+import { computeFoodHealthScore } from '@workspace/shared';
 import foodRepository from '../models/foodRepository.js';
 import {
   searchOpenFoodFactsByBarcodeFields,
@@ -285,6 +286,30 @@ describe('mapOpenFoodFactsProduct', () => {
     expect(category(['en:beverages', 'en:sodas'])).toBe('beverage');
     expect(category(['en:fats', 'en:vegetable-oils'])).toBe('fat_oil_nut');
     expect(category(['en:snacks'])).toBeUndefined();
+  });
+  it('scores nuts with the fats, oils, nuts and seeds table without a provider grade', () => {
+    const almonds = mapOpenFoodFactsProduct({
+      product_name: 'Almonds',
+      code: '556',
+      categories_tags: ['en:plant-based-foods', 'en:nuts', 'en:almonds'],
+      nutriments: {
+        'energy-kcal_100g': 579,
+        fat_100g: 49.9,
+        'saturated-fat_100g': 3.8,
+        sugars_100g: 4.4,
+        sodium_100g: 0.001,
+        fiber_100g: 12.5,
+        proteins_100g: 21.2,
+      },
+    });
+    expect(almonds.nutri_score_category).toBe('fat_oil_nut');
+    const withCategory = computeFoodHealthScore(almonds).nutri_score;
+    const asGeneral = computeFoodHealthScore({
+      ...almonds,
+      nutri_score_category: 'general',
+    }).nutri_score;
+    expect(withCategory).toMatchObject({ source: 'computed' });
+    expect(withCategory?.score).not.toBe(asGeneral?.score);
   });
   it('should convert sodium from grams to milligrams', () => {
     const product = {

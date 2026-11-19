@@ -190,9 +190,11 @@ function hasScoreInputs(
 
 /**
  * Normalises a variant to 100 g/ml. Returns null when the serving unit has no
- * weight or volume basis ("piece", "serving"), or when it is a volume unit on a
- * food that is not a beverage: converting ml to g needs a density the model
- * does not carry. A volume unit never makes a food a beverage by itself.
+ * weight or volume basis ("piece", "serving"). A volume unit on a food that is
+ * not a beverage (soup) is measured per 100 ml and judged against the liquid
+ * warning limits, but never scored: the Nutri-Score beverage algorithm is for
+ * beverages only and converting ml to g needs a density the model does not
+ * carry. A volume unit never makes a food a beverage by itself.
  */
 export function nutrientsPer100(
   variant: HealthScoreVariantInput | null | undefined,
@@ -202,7 +204,7 @@ export function nutrientsPer100(
   const size = toNumber(variant?.serving_size);
   const unitCategory = getUnitCategory(unit);
   if (!variant || !unitCategory || size === null || size <= 0) return null;
-  if (unitCategory === 'volume' && category !== 'beverage') return null;
+  const unscoredLiquid = unitCategory === 'volume' && category !== 'beverage';
 
   const baseUnit = unitCategory === 'volume' ? 'ml' : 'g';
   const scale = 100 / (size * getConversionFactor(baseUnit, unit)!);
@@ -223,8 +225,9 @@ export function nutrientsPer100(
   return {
     ...amounts,
     category,
-    isLiquid: category === 'beverage',
-    hasScoreInputs: hasScoreInputs(variant, category, amounts),
+    isLiquid: category === 'beverage' || unscoredLiquid,
+    hasScoreInputs:
+      !unscoredLiquid && hasScoreInputs(variant, category, amounts),
     addedSugars: scaled(variant.added_sugars),
     fat: per100(variant.fat),
     transFat: per100(variant.trans_fat),
