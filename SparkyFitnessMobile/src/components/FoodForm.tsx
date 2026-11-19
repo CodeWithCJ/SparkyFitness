@@ -828,12 +828,20 @@ const FoodForm: React.FC<FoodFormProps> = ({
         scaledPreciseUpdates[field as NumericFoodFormField] = next;
       });
 
-      // Apply scaled nutrition + clear banner. We don't change servingSize or
-      // servingUnit — the row already has the user's chosen new unit.
-      preciseNumericValuesRef.current = {
+      // Unknown added sugars on the anchor means unknown here too, not the
+      // value typed for the previous unit.
+      const nextPreciseValues = {
         ...preciseNumericValuesRef.current,
         ...scaledPreciseUpdates,
       };
+      if (!Number.isFinite(anchor.added_sugars)) {
+        scaledNutrition.addedSugars = '';
+        delete nextPreciseValues.addedSugars;
+      }
+
+      // Apply scaled nutrition + clear banner. We don't change servingSize or
+      // servingUnit — the row already has the user's chosen new unit.
+      preciseNumericValuesRef.current = nextPreciseValues;
       setForm((prev) => ({ ...prev, ...scaledNutrition }));
       setShowManualUpdateBanner(false);
 

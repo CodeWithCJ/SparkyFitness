@@ -2,6 +2,7 @@ import React from 'react';
 import { Alert, Dimensions } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import FoodForm, { type FoodFormProps } from '../../src/components/FoodForm';
+import { requestAiUnitConversion } from '../../src/services/api/aiConversionApi';
 
 const mockBottomSheetPicker = jest.fn();
 const mockFoodUnitSelectorSheet = jest.fn();
@@ -59,6 +60,9 @@ jest.mock('../../src/components/Icon', () => {
 // FoodForm queries server connection + custom nutrient defs + AI service
 // settings via react-query. Mock all of them as inert so the form renders
 // cleanly in unit-test isolation without a QueryClientProvider.
+jest.mock('../../src/services/api/aiConversionApi', () => ({
+  requestAiUnitConversion: jest.fn(),
+}));
 jest.mock('../../src/hooks', () => ({
   useServerConnection: () => ({ isConnected: true, isLoading: false }),
 }));
@@ -1138,6 +1142,99 @@ describe('FoodForm', () => {
         true
       );
       expect(screen.getByText('Convert with AI')).toBeTruthy();
+    });
+  });
+
+  describe('AI unit conversion and added sugars', () => {
+    const renderAiConversion = (anchorAddedSugars: number | null) => {
+      mockUserAiConfigAllowed = true;
+      mockActiveAiServiceSetting = { provider: 'openai' };
+      mockUserPreferences = { ai_assisted_conversions: true };
+      mockUnitSelectionPayload = {
+        kind: 'draft',
+        variant: {
+          serving_size: 1,
+          serving_unit: 'cup',
+          calories: 100,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        },
+        requiresNutritionUpdate: true,
+      };
+      const anchor = {
+        id: 'variant-g',
+        food_id: 'food-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        is_default: true,
+        calories: 100,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        added_sugars: anchorAddedSugars,
+      };
+      (requestAiUnitConversion as jest.Mock).mockResolvedValue({
+        estimatedAmount: 240,
+        confidence: 'medium',
+      });
+
+      const screen = render(
+        <FoodForm
+          showAutoScaleNutrition
+          initialAutoScaleNutritionEnabled
+          initialValues={{
+            name: 'Oats',
+            servingSize: '100',
+            servingUnit: 'g',
+            calories: '100',
+            protein: '0',
+            carbs: '0',
+            fat: '0',
+          }}
+          unitSelector={{
+            variants: [anchor],
+            selectedSelection: { kind: 'existing', variant: anchor },
+            onUnitSelectionChange: jest.fn(),
+          }}
+          onSubmit={jest.fn()}
+        />
+      );
+      fireEvent.press(screen.getByText('Show more nutrients ▾'));
+      // Added Sugars is the last numeric input; the selected variant seeds it.
+      const numericInputs = screen.getAllByPlaceholderText('0');
+      fireEvent.changeText(numericInputs[numericInputs.length - 1], '7');
+      return screen;
+    };
+
+    const convertWithAi = async (screen: ReturnType<typeof render>) => {
+      fireEvent.press(screen.getByText('Use Converted Unit'));
+      fireEvent.press(await screen.findByText('Convert with AI'));
+      await waitFor(() => expect(requestAiUnitConversion).toHaveBeenCalled());
+    };
+
+    it('clears added sugars when the trusted anchor does not know them', async () => {
+      const screen = renderAiConversion(null);
+      expect(screen.getByDisplayValue('7')).toBeTruthy();
+
+      await convertWithAi(screen);
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('240')).toBeTruthy();
+        expect(screen.queryByDisplayValue('7')).toBeNull();
+      });
+    });
+
+    it('scales a known zero added sugars instead of clearing it', async () => {
+      const screen = renderAiConversion(0);
+
+      await convertWithAi(screen);
+
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('240')).toBeTruthy();
+        expect(screen.queryByDisplayValue('7')).toBeNull();
+        expect(screen.getAllByDisplayValue('0').length).toBeGreaterThan(0);
+      });
     });
   });
 
