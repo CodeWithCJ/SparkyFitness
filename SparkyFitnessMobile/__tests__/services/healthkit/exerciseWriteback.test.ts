@@ -194,6 +194,33 @@ describe('writeExerciseForDate', () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 
+  it('does not write a session the watch app already saved, even when the times do not overlap', async () => {
+    // The watch workout started after the last logged set ended.
+    mockQuery.mockResolvedValue([
+      {
+        startDate: new Date('2026-06-01T07:00:00Z'),
+        endDate: new Date('2026-06-01T07:05:00Z'),
+        metadata: { SparkyFitnessSessionId: 'e1' },
+        sourceRevision: { source: { name: 'SparkyFitness' } },
+      },
+    ]);
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('still writes a session when the watch workout nearby belongs to another session', async () => {
+    mockQuery.mockResolvedValue([
+      {
+        startDate: new Date('2026-06-01T07:00:00Z'),
+        endDate: new Date('2026-06-01T07:05:00Z'),
+        metadata: { SparkyFitnessSessionId: 'other' },
+        sourceRevision: { source: { name: 'SparkyFitness' } },
+      },
+    ]);
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+
   it('ignores its own earlier copy when checking for overlaps', async () => {
     mockQuery.mockResolvedValue([
       {

@@ -21,7 +21,10 @@ import {
   type ExerciseWritebackPlanOptions,
   type WorkoutWrite,
 } from '../shared/exerciseWritebackPlan';
-import { EXERCISE_WRITEBACK_METADATA_KEY } from './dataTransformation';
+import {
+  EXERCISE_WRITEBACK_METADATA_KEY,
+  WATCH_SESSION_METADATA_KEY,
+} from './dataTransformation';
 import { loadHealthPreference, saveHealthPreference } from './preferences';
 
 // Exercise write-back to Apple Health (#1750). One HKWorkout per diary session,
@@ -230,7 +233,13 @@ interface OtherWorkout {
   start: Date;
   end: Date;
   source: string;
+  /** The Sparky session the Apple Watch app recorded this workout for, when it did. */
+  sparkySessionId?: string | null;
 }
+
+/** The diary session id inside a write key (`sparky-exercise-<kind>-<id>`). */
+const sessionIdOfKey = (key: string): string =>
+  key.replace(/^sparky-exercise-(?:individual|preset)-/, '');
 
 /**
  * Workouts other sources saved around the day (other apps, watches, and our
@@ -269,10 +278,19 @@ const otherWorkoutsAround = async (
             sourceRevision?: { source?: { name?: string } };
           }
         ).sourceRevision?.source?.name ?? 'another app',
+      sparkySessionId:
+        ((w.metadata as Record<string, unknown> | undefined)?.[
+          WATCH_SESSION_METADATA_KEY
+        ] as string | undefined) ?? null,
     }));
 };
 
-/** Drop writes another source already recorded (≥80% of the same time). */
+/**
+ * Drop writes another source already recorded: the Apple Watch app's workout for
+ * the same Sparky session (it is stamped with the session id, and may start
+ * after the first logged set or end before the last, so its times need not
+ * overlap), or any workout covering ≥80% of the same time.
+ */
 export const withoutOverlaps = (
   writes: WorkoutWrite[],
   others: OtherWorkout[]
@@ -283,8 +301,11 @@ export const withoutOverlaps = (
   const keep: WorkoutWrite[] = [];
   const skipped: { write: WorkoutWrite; source: string }[] = [];
   for (const write of writes) {
+    const sessionId = sessionIdOfKey(write.key);
     const match = others.find(
-      (o) => overlapFraction(write, o) >= OVERLAP_SKIP_FRACTION
+      (o) =>
+        o.sparkySessionId === sessionId ||
+        overlapFraction(write, o) >= OVERLAP_SKIP_FRACTION
     );
     if (match) skipped.push({ write, source: match.source });
     else keep.push(write);
