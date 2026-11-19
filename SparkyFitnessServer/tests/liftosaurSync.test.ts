@@ -116,14 +116,59 @@ describe('liftosaurSync', () => {
     const params = vi.mocked(axios.get).mock.calls[0]![1]!.params as {
       startDate?: string;
     };
+    // Whole days: from the start of the (UTC, here) day 7 days ago.
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
-    const startMs = new Date(params.startDate!).getTime();
-    expect(startMs).toBeGreaterThanOrEqual(before - sevenDaysMs);
-    expect(startMs).toBeLessThanOrEqual(Date.now() - sevenDaysMs);
+    const startDay = new Date(before - sevenDaysMs).toISOString().slice(0, 10);
+    expect(params.startDate).toBe(`${startDay}T00:00:00.000Z`);
 
-    const workouts = vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts)
-      .mock.calls[0]![2];
-    expect(workouts[0]!.id).toBe(1772359200123);
+    const call = vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts).mock
+      .calls[0]!;
+    expect(call[2][0]!.id).toBe(1772359200123);
+    // Reconciles the whole window, today included.
+    expect(call[4]).toEqual({
+      startDate: startDay,
+      endDate: new Date().toISOString().slice(0, 10),
+    });
+  });
+
+  it('reconciles the window even when Liftosaur returns no workouts', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: { data: { records: [], hasMore: false } },
+    });
+
+    await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123'
+    );
+
+    const call = vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts).mock
+      .calls[0]!;
+    expect(call[2]).toEqual([]);
+    expect(call[4]).toEqual(
+      expect.objectContaining({ endDate: expect.any(String) })
+    );
+  });
+
+  it('reconciles exactly the requested days of a Sync Range', async () => {
+    vi.mocked(axios.get).mockResolvedValueOnce({
+      data: { data: { records: [], hasMore: false } },
+    });
+
+    await liftosaurService.syncLiftosaurData(
+      'user-1',
+      'user-1',
+      false,
+      'provider-123',
+      '2026-03-01',
+      '2026-03-05'
+    );
+
+    expect(
+      vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts).mock
+        .calls[0]![4]
+    ).toEqual({ startDate: '2026-03-01', endDate: '2026-03-05' });
   });
 
   it('sends no startDate on a full sync', async () => {
@@ -142,6 +187,10 @@ describe('liftosaurSync', () => {
       startDate?: string;
     };
     expect(params.startDate).toBeUndefined();
+    // No window and nothing fetched: nothing to reconcile, no processing.
+    expect(
+      liftosaurDataProcessor.processLiftosaurWorkouts
+    ).not.toHaveBeenCalled();
   });
 
   it('stops paginating when a full sync reports more pages without advancing the cursor', async () => {

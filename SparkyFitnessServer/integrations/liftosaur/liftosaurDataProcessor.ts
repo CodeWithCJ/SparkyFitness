@@ -74,8 +74,10 @@ export interface LiftosaurCleanupRange {
  * Process a list of parsed Liftosaur workouts into SparkyFitness entries atomically.
  *
  * @param cleanup Which Liftosaur rows that are no longer sent get deleted:
- *   left out, the days between the first and last fetched workout; null,
- *   none (the fetch may be incomplete, so a missing workout proves nothing).
+ *   a day range, every such row on those days (even when no workouts were
+ *   fetched); left out, the days between the first and last fetched
+ *   workout; null, none (the fetch may be incomplete, so a missing workout
+ *   proves nothing).
  */
 async function processLiftosaurWorkouts(
   userId: string,

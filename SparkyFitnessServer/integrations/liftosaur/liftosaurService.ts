@@ -13,9 +13,11 @@ import { decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 import { log } from '../../config/logging.js';
 import { logRawResponse } from '../../utils/diagnosticLogger.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
-import { dayToUtcRange } from '@workspace/shared';
+import { dayToUtcRange, instantToDay, todayInZone } from '@workspace/shared';
 import { parseLiftohistory } from './liftohistoryParser.js';
-import liftosaurDataProcessor from './liftosaurDataProcessor.js';
+import liftosaurDataProcessor, {
+  type LiftosaurCleanupRange,
+} from './liftosaurDataProcessor.js';
 import {
   LiftosaurApiEnvelope,
   LiftosaurHistoryResponseData,
@@ -189,10 +191,15 @@ async function syncLiftosaurData(
   // the Liftosaur API filters by the same day the user sees in the UI.
   let startInstant: string | undefined;
   let endInstant: string | undefined;
+  // The days this sync reconciles: Liftosaur rows on them that are not
+  // re-sent were deleted in Liftosaur. A full sync has no window, so it
+  // reconciles the days between its first and last fetched workout.
+  let window: LiftosaurCleanupRange | undefined;
   if (startDate && endDate) {
     const range = dayRangeToInstants(startDate, endDate, tz);
     startInstant = range.start;
     endInstant = range.end;
+    window = { startDate, endDate };
   }
 
   // An incremental sync covers the last 7 days: recent enough to pick up
@@ -201,7 +208,11 @@ async function syncLiftosaurData(
   // those workouts are fetched and re-applied, not the whole history.
   const cutoffMs = fullSync ? 0 : Date.now() - 7 * 24 * 60 * 60 * 1000;
   if (!fullSync && startInstant === undefined) {
-    startInstant = new Date(cutoffMs).toISOString();
+    // Fetch whole days, from the start of the user's day 7 days ago, so every
+    // workout on a reconciled day is fetched before anything is deleted.
+    const startDay = instantToDay(new Date(cutoffMs), tz);
+    startInstant = dayToUtcRange(startDay, tz).start.toISOString();
+    window = { startDate: startDay, endDate: todayInZone(tz) };
   }
 
   const allWorkouts = [];
@@ -270,13 +281,16 @@ async function syncLiftosaurData(
       `[liftosaurService] Liftosaur history fetch for user ${userId} ended before the last page; importing what was fetched without deleting anything.`
     );
   }
-  if (allWorkouts.length > 0) {
+  const cleanup = fetchComplete ? window : null;
+  // With a window, process even an empty fetch: the only workout in the
+  // window may have been deleted in Liftosaur.
+  if (allWorkouts.length > 0 || cleanup) {
     await liftosaurDataProcessor.processLiftosaurWorkouts(
       userId,
       createdByUserId,
       allWorkouts,
       tz,
-      fetchComplete ? undefined : null
+      cleanup
     );
   }
   const workoutsImported = allWorkouts.length;

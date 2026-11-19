@@ -162,6 +162,33 @@ describe('processLiftosaurWorkouts', () => {
     );
   });
 
+  it('reconciles an explicit day range even with no fetched workouts', async () => {
+    await processLiftosaurWorkouts(UID, CID, [], 'UTC', {
+      startDate: '2026-07-07',
+      endDate: '2026-07-14',
+    });
+
+    expect(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+    ).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      '2026-07-07',
+      '2026-07-14',
+      'Liftosaur',
+      undefined,
+      []
+    );
+    expect(deleteLiftosaurSessionsNotInWithClient).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      '2026-07-07',
+      '2026-07-14',
+      []
+    );
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+  });
+
   it('deletes nothing when told the fetch was incomplete', async () => {
     await processLiftosaurWorkouts(
       UID,
