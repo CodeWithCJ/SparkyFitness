@@ -8,6 +8,10 @@ import {
   createQueryWrapper,
 } from '../hooks/queryTestUtils';
 
+jest.mock('../../src/hooks/useOfflineDiaryDay', () => ({
+  useOfflineDiaryDay: jest.fn(() => ({ saved: null, waiting: [] })),
+}));
+
 jest.mock('../../src/hooks', () => ({
   useServerConnection: () => ({ isConnected: true }),
   useDailySummary: jest.fn(),

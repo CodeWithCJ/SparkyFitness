@@ -1,3 +1,6 @@
+import { isServerKnownUnreachable } from '../offline/connection';
+import { queuePresetUpdate } from '../offline/followUps';
+import { serverMayBeDown } from '../utils/serverErrors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, AppState } from 'react-native';
@@ -143,6 +146,27 @@ export function useWorkoutCompletePresetSync({
 
   const applyUpdate = useCallback(async (): Promise<boolean> => {
     if (sourcePreset == null || presetUpdateExercises == null) return false;
+    // No connection (#1983): keep the answer and update the saved workout
+    // once the server is back, unless it was changed elsewhere meanwhile.
+    const queueForLater = async (): Promise<boolean> => {
+      const queued = await queuePresetUpdate({
+        presetId: Number(sourcePreset.id),
+        presetName: sourcePreset.name,
+        exercises: presetUpdateExercises,
+        expectedUpdatedAt: sourcePreset.updated_at ?? null,
+      });
+      if (queued) {
+        Toast.show({
+          type: 'info',
+          text1: t('offline.presetUpdateQueued', {
+            defaultValue:
+              'Saved workout will be updated when you are back online',
+          }),
+        });
+      }
+      return queued;
+    };
+    if (isServerKnownUnreachable()) return queueForLater();
     try {
       await updatePresetAsync({
         id: sourcePreset.id,
@@ -155,7 +179,8 @@ export function useWorkoutCompletePresetSync({
         }),
       });
       return true;
-    } catch {
+    } catch (error) {
+      if (serverMayBeDown(error)) return queueForLater();
       // useUpdateWorkoutPreset already showed the failure toast.
       return false;
     }

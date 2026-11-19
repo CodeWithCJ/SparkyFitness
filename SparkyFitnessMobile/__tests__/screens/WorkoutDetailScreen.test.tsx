@@ -23,6 +23,12 @@ import type {
 const mockFetchWorkoutHrZones = jest.fn(
   async (_entryId: string): Promise<unknown[]> => []
 );
+jest.mock('../../src/services/api/exerciseApi', () => ({
+  ...jest.requireActual('../../src/services/api/exerciseApi'),
+  updateWorkout: jest.fn(),
+  getWorkout: jest.fn(),
+}));
+
 jest.mock('../../src/services/api/exerciseStatsApi', () => ({
   ...jest.requireActual('../../src/services/api/exerciseStatsApi'),
   fetchWorkoutHrZones: (entryId: string) => mockFetchWorkoutHrZones(entryId),
@@ -727,5 +733,26 @@ describe('WorkoutDetailScreen', () => {
     fireEvent.press(pending.getByLabelText('Edytuj trening'));
     expect(pending.getByText('Usuwanie…')).toBeTruthy();
     expect(pending.queryByText('Deleting...')).toBeNull();
+  });
+  it('resumes a partial workout on this phone when the server cannot be reached', async () => {
+    const { updateWorkout } = jest.requireMock(
+      '../../src/services/api/exerciseApi'
+    ) as { updateWorkout: jest.Mock };
+    updateWorkout.mockRejectedValue(new TypeError('Network request failed'));
+    const screen = renderScreen(
+      buildSession({ status: 'partial', revision: 7 })
+    );
+
+    await act(async () => {
+      fireEvent.press(screen.getByText('Resume Workout'));
+    });
+
+    await waitFor(() =>
+      expect(mockNavigation.replace).toHaveBeenCalledWith('ActiveWorkout')
+    );
+    const store = useActiveWorkoutStore.getState();
+    expect(store.sessionId).toBe('session-1');
+    // Presented with the first save once the server is back.
+    expect(store.offlineBaseRevision).toBe(7);
   });
 });

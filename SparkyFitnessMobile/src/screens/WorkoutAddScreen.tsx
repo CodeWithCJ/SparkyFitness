@@ -1,4 +1,10 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
+import { isServerKnownUnreachable } from '../offline/connection';
+import {
+  queueWorkoutCreate,
+  queueWorkoutUpdate,
+} from '../offline/workoutHandOver';
+import { queueAfterConnectionFailure } from '../offline/queueAfterFailure';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -176,12 +182,12 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     createSession,
     isPending: isCreating,
     invalidateCache: invalidateCreateCache,
-  } = useCreateWorkout();
+  } = useCreateWorkout({ quietWhenServerAway: true });
   const {
     updateSession,
     isPending: isUpdating,
     invalidateCache: invalidateUpdateCache,
-  } = useUpdateWorkout();
+  } = useUpdateWorkout({ quietWhenServerAway: true });
   const isPending = isCreating || isUpdating;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
@@ -288,6 +294,19 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const canReorder = canReorderDraftExercises(state.exercises);
 
+  // No server (#1983): the workout is kept on this phone and uploads later.
+  const showSavedOnPhone = useCallback(() => {
+    Toast.show({
+      type: 'info',
+      text1: t('workoutAdd.savedOfflineTitle', {
+        defaultValue: 'Saved on this phone',
+      }),
+      text2: t('workoutAdd.savedOfflineMessage', {
+        defaultValue: 'It uploads when your server can be reached.',
+      }),
+    });
+  }, [t]);
+
   const handleFinish = useCallback(() => {
     if (!submission.canSave) {
       Toast.show({
@@ -322,7 +341,30 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   ? { exercises: submission.payloadExercises }
                   : {}),
               };
-              await updateSession({ id: session.id, payload });
+              const revision =
+                session.revision != null ? Number(session.revision) : null;
+              const queueEdit = () =>
+                queueWorkoutUpdate(
+                  session.id,
+                  payload,
+                  revision,
+                  submission.entryDate
+                );
+              let savedOffline = false;
+              if (isServerKnownUnreachable()) {
+                savedOffline = await queueEdit();
+              }
+              if (!savedOffline) {
+                try {
+                  await updateSession({ id: session.id, payload });
+                } catch (error) {
+                  if (!(await queueAfterConnectionFailure(error, queueEdit))) {
+                    throw error;
+                  }
+                  savedOffline = true;
+                }
+              }
+              if (savedOffline) showSavedOnPhone();
               invalidateUpdateCache(submission.entryDate);
               navigation.pop(2);
             } else {
@@ -335,7 +377,24 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 finished_at: new Date().toISOString(),
                 exercises: submission.payloadExercises,
               };
-              await createSession(payload);
+              const queueCreate = () => queueWorkoutCreate(payload);
+              let savedOffline = false;
+              if (isServerKnownUnreachable()) {
+                savedOffline = await queueCreate();
+              }
+              if (!savedOffline) {
+                try {
+                  await createSession(payload);
+                } catch (error) {
+                  if (
+                    !(await queueAfterConnectionFailure(error, queueCreate))
+                  ) {
+                    throw error;
+                  }
+                  savedOffline = true;
+                }
+              }
+              if (savedOffline) showSavedOnPhone();
               await discardDraft();
               invalidateCreateCache(submission.entryDate);
               navigation.pop(popCount);
@@ -359,6 +418,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     submission,
     isEditMode,
     session,
+    showSavedOnPhone,
     exercisesModifiedRef,
     createSession,
     updateSession,

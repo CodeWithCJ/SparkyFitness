@@ -1,4 +1,7 @@
 import { apiFetch } from './apiClient';
+import { getCacheRow, putCacheRows } from '../../offline/cacheStore';
+import { CACHE_COLLECTIONS } from '../../offline/collections';
+import { withOfflineFallback } from '../../offline/withOfflineFallback';
 import type {
   SaveWorkoutPlanPayload,
   WorkoutPlanTemplate,
@@ -6,7 +9,8 @@ import type {
 
 const SERVICE_NAME = 'Workout Plans API';
 
-export const fetchActiveWorkoutPlans = async (
+/** The plans active on a day, straight from the server. */
+export const fetchActiveWorkoutPlansFromServer = async (
   date: string
 ): Promise<WorkoutPlanTemplate[]> => {
   const response = await apiFetch<
@@ -19,6 +23,27 @@ export const fetchActiveWorkoutPlans = async (
   if (!response) return [];
   return Array.isArray(response) ? response : [response];
 };
+
+/** The plans active on a day; from what the phone saved when offline. */
+export const fetchActiveWorkoutPlans = (
+  date: string
+): Promise<WorkoutPlanTemplate[]> =>
+  withOfflineFallback<WorkoutPlanTemplate[]>({
+    fetch: () => fetchActiveWorkoutPlansFromServer(date),
+    store: (db, serverConfigId, plans) =>
+      putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.planDay, [
+        { key: date, payload: plans },
+      ]),
+    read: async (db, serverConfigId) => {
+      const row = await getCacheRow(
+        db,
+        serverConfigId,
+        CACHE_COLLECTIONS.planDay,
+        date
+      );
+      return row ? (row.payload as WorkoutPlanTemplate[]) : null;
+    },
+  });
 
 export const fetchWorkoutPlans = async (): Promise<WorkoutPlanTemplate[]> => {
   const response = await apiFetch<WorkoutPlanTemplate[] | null>({

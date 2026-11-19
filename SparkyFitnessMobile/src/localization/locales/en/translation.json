@@ -167,6 +167,7 @@
     "shareReportDescription": "Exports a local diagnostic report (app version, sync status, logs). No personal health or food data is included. Nothing is sent automatically.",
     "rows": {
       "server": "Server",
+      "offline": "Offline",
       "healthSync": "Health Data Sync",
       "app": "App Settings",
       "features": "Features",
@@ -308,6 +309,10 @@
     "goToTodayHint": "Returns to today"
   },
   "notifications": {
+    "offlineUploads": {
+      "title": "A workout is waiting to upload",
+      "body": "Open SparkyFitness when your server can be reached."
+    },
     "title": "Notifications",
     "channels": {
       "medicationReminders": "Medication reminders",
@@ -756,6 +761,7 @@
     "fastingSettings": "Fasting Settings",
     "fasting": "Fasting",
     "warmupSettings": "Warm-up Calculator",
+    "offlineSettings": "Offline",
     "symptomEpisodeDetail": "Episode Details",
     "recordActivity": "Record Activity",
     "reports": "Reports",
@@ -3594,6 +3600,10 @@
   "whatsNewPage": {
     "title": "What's New",
     "mockup": {
+      "offlinePush": "Push Day",
+      "offlineBadge": "Offline",
+      "offlineSets": "12 sets logged",
+      "offlineWaiting": "Waiting to upload",
       "today": "TODAY",
       "kcalLeft": "kcal left",
       "in": "In",
@@ -3659,6 +3669,12 @@
       "logged": "Logged"
     },
     "features": {
+      "offlineWorkouts": {
+        "eyebrow": "OFFLINE WORKOUTS",
+        "headline": "Train with no signal",
+        "body": "Start, log and finish a workout even when your server cannot be reached. It is kept on your phone and uploads by itself once you are back online. Long-press exercises in your library to keep their pictures offline too.",
+        "cta": "Offline settings"
+      },
       "labResults": {
         "eyebrow": "LAB RESULTS",
         "headline": "Keep your lab results in one place",
@@ -5567,7 +5583,9 @@
     "reorderExercises": "Reorder exercises",
     "workoutPlaceholder": "Workout",
     "useYesterday": "Use Yesterday",
-    "useToday": "Use Today"
+    "useToday": "Use Today",
+    "savedOfflineTitle": "Saved on this phone",
+    "savedOfflineMessage": "It uploads when your server can be reached."
   },
   "mealMutations": {
     "createFailed": "Failed to create meal",
@@ -6621,7 +6639,9 @@
   },
   "activeWorkoutAutosave": {
     "failedTitle": "Workout not saved",
-    "failedMessage": "Changes are kept on this device and will retry."
+    "failedMessage": "Changes are kept on this device and will retry.",
+    "offlineTitle": "Saved on this phone",
+    "offlineMessage": "Your workout uploads when your server can be reached."
   },
   "medicalDisclaimer": {
     "text": "For tracking and general information only, not medical advice. Talk with your healthcare provider about medical concerns."
@@ -7390,6 +7410,7 @@
     "rateExercises": "Rate each exercise",
     "saving": "Saving…",
     "saved": "Saved",
+    "queued": "Will be sent when you are back online",
     "saveFailed": "Couldn't save your feedback. Tap to retry.",
     "loadFailed": "Couldn't load your feedback. Tap to try again."
   },
@@ -10456,7 +10477,8 @@
     "goToSettings": "Go to Settings",
     "unreachableTitle": "Can't reach your server",
     "unreachableSubtitle": "Check your connection or try again.",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "offlineWorkouts": "Start a saved workout offline"
   },
   "waterLog": {
     "title": "Drinks",
@@ -10869,5 +10891,95 @@
     "cancelled": "Cancelled tool",
     "error": "Error:",
     "cancelledReason": "Cancelled reason:"
+  },
+  "offline": {
+    "keptAdded_one": "Pictures of {{count}} exercise will be kept offline",
+    "keptAdded_other": "Pictures of {{count}} exercises will be kept offline",
+    "keptRemoved_one": "{{count}} exercise no longer kept offline",
+    "keptRemoved_other": "{{count}} exercises no longer kept offline",
+    "keptMark": "Kept offline",
+    "selectedCount_one": "{{count}} selected",
+    "selectedCount_other": "{{count}} selected",
+    "keepOffline": "Keep offline",
+    "removeFromOffline": "Remove from offline",
+    "picturesTitle": "Exercise pictures",
+    "picturesOnMobileData": "Download pictures on mobile data",
+    "picturesOnMobileDataSubtitle": "Off: pictures download on Wi-Fi only. Up to 300 MB.",
+    "keptHeading": "Exercises kept offline",
+    "keptIntro": "Pictures of this week’s plan and your saved workouts are kept automatically. To keep more, long-press exercises in the exercise library.",
+    "keptRemove": "Tap to stop keeping offline",
+    "presetOfflineNote": "Offline: you can start or log this workout. Changes to it, and duplicating it, need a connection.",
+    "leave": {
+      "title_one": "{{count}} workout is waiting to upload",
+      "title_other": "{{count}} workouts are waiting to upload",
+      "deleteMessage": "Removing this server also removes what is waiting on this phone, and it will never reach the server.",
+      "switchMessage": "They stay on this phone and upload when you switch back to this server.",
+      "uploadFirst": "Upload first",
+      "deleteAnyway": "Remove anyway",
+      "switchAnyway": "Switch anyway"
+    },
+    "presetUpdateQueued": "Saved workout will be updated when you are back online",
+    "presetUpdateSkipped": "Saved workout \"{{name}}\" was not updated because it was changed elsewhere",
+    "presetUpdated": "Saved workout \"{{name}}\" updated",
+    "diaryNote": "Only workouts are available offline. Food and other entries need a connection.",
+    "diaryNothingSaved": "Nothing saved for this day",
+    "finishedTitle": "Saved on this phone",
+    "finishedMessage": "It uploads when your server can be reached.",
+    "deleteSavedTitle": "Deleted on this phone",
+    "deleteSavedMessage": "It is removed from your server once it can be reached.",
+    "startedTitle": "Started offline",
+    "startedMessage": "This workout is kept on this phone and uploads when your server can be reached.",
+    "notReadyTitle": "Not ready for offline workouts yet",
+    "notReadyMessage": "Connect to your server once so this phone can save what a workout needs.",
+    "banner": "Offline: showing data saved on this phone",
+    "bannerHint": "Checks the connection again",
+    "intro": "Workouts can be started and logged without a connection. They are kept on this phone and uploaded when your server can be reached.",
+    "waitingHeading": "Waiting to upload",
+    "nothingWaiting": "Nothing is waiting",
+    "nothingWaitingSubtitle": "Everything on this phone has been uploaded.",
+    "waitingItem": "{{kind}}, {{date}}",
+    "uploadNow": "Upload now",
+    "uploadDone": "Everything is uploaded",
+    "uploadStillWaiting": "Some items are still waiting",
+    "uploadStillWaitingDetail": "They stay on this phone and upload when your server can be reached.",
+    "storageHeading": "On this phone",
+    "storageTitle": "Saved for offline use",
+    "storageValue": "{{size}} MB",
+    "refreshRow": "Refresh now",
+    "refreshing": "Refreshing…",
+    "neverRefreshed": "Not downloaded yet. Connect to your server once to prepare offline workouts.",
+    "lastRefreshed": "Last refreshed {{when}}",
+    "refreshDone": "Saved data is up to date",
+    "refreshFailed": "Could not refresh",
+    "refreshFailedDetail": "Your server could not be reached. What is already saved is kept.",
+    "clearRow": "Clear offline data",
+    "clearRowSubtitle": "Uploads still waiting are kept",
+    "clearTitle": "Clear offline data?",
+    "clearMessage": "Saved workouts, exercises and other data kept for offline use are removed from this phone and downloaded again next time. Anything still waiting to upload is kept.",
+    "clearConfirm": "Clear",
+    "status": {
+      "pending": "Waiting to upload",
+      "sending": "Uploading…",
+      "conflict": "Changed somewhere else. Tap to choose.",
+      "needsSignIn": "Sign in again to upload",
+      "failed": "The server did not accept it"
+    },
+    "conflict": {
+      "phoneSuffix": "(phone)",
+      "deletedTitle": "Deleted somewhere else",
+      "deletedMessage": "This workout was deleted on another device while this phone was offline.",
+      "saveAsNew": "Save as a new workout",
+      "discard": "Discard this phone’s copy",
+      "changedTitle": "Changed somewhere else",
+      "changedMessage": "This workout was changed on another device while this phone was offline. Which one do you want to keep?",
+      "keepPhone": "Keep this phone’s workout",
+      "keepServer": "Keep the other version",
+      "saveSeparately": "Keep both"
+    },
+    "kind": {
+      "workout": "Workout",
+      "other": "Saved change"
+    },
+    "libraryNote": "Only workouts and exercises are available offline. Everything else in the Library needs a connection."
   }
 }

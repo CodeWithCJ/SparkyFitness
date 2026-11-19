@@ -1,5 +1,8 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
+import { registerAllOutboxHandlers } from '../offline/handlers';
+import { drainOutbox } from '../offline/syncEngine';
+import { remindAboutLongWaitingUploads } from '../offline/waitingReminder';
 import { AppState, Platform } from 'react-native';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
 import { runWriteback } from './writeback';
@@ -130,6 +133,11 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
         interactive: false,
       });
   await runBackgroundSync(taskId, telemetry);
+  // Best effort: the OS decides when this task runs, so uploads of work
+  // logged offline also go out on reconnect and when the app opens.
+  registerAllOutboxHandlers();
+  await drainOutbox('background');
+  await remindAboutLongWaitingUploads().catch(() => undefined);
   if (Platform.OS === 'android') {
     try {
       await refreshAndroidWidgetsFromServer();

@@ -989,3 +989,13 @@ jest.mock('react-native-safe-area-context', () => {
     },
   };
 });
+
+// The offline file (src/offline/) opens expo-sqlite, a native module. Tests of
+// the offline code supply their own database through `__setOfflineDbForTests`;
+// everywhere else an open simply fails, which the offline code treats as
+// "nothing stored" and logs.
+jest.mock('expo-sqlite', () => ({
+  openDatabaseAsync: jest.fn(() =>
+    Promise.reject(new Error('expo-sqlite is not available in tests'))
+  ),
+}));

@@ -466,6 +466,8 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         <Button
           variant="ghost"
           onPress={() => void handleLogPastWorkout()}
+          // Logging after the fact needs the server; only live workouts
+          // work offline (#1983).
           disabled={isStarting}
           className="mt-3"
           textClassName="text-text-secondary font-medium"
@@ -478,7 +480,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         <Button
           variant="ghost"
           onPress={() => void handleDuplicatePreset()}
-          disabled={isDuplicatePending}
+          disabled={isDuplicatePending || !isConnected}
           className="mt-3"
           textClassName="text-text-secondary font-medium"
           accessibilityLabel={t('workoutPresetDetail.accessibility.duplicate', {
@@ -493,6 +495,18 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
                 defaultValue: 'Duplicate preset',
               })}
         </Button>
+
+        {!isConnected && (
+          <Text
+            testID="preset-offline-note"
+            className="text-sm text-text-secondary text-center mt-3"
+          >
+            {t('offline.presetOfflineNote', {
+              defaultValue:
+                'Offline: you can start or log this workout. Changes to it, and duplicating it, need a connection.',
+            })}
+          </Text>
+        )}
 
         {canManagePreset && (
           <Button
