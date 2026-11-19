@@ -3600,6 +3600,7 @@
       "footnote": "Turning a feature off only hides it: nothing is deleted, and syncs and imports keep running.",
       "open": "Open Features",
       "webOnly": "Only this website. The mobile app has its own switch.",
+      "serverTooOld": "Update your SparkyFitness server to change this.",
       "off": {
         "title": "{{name}} is turned off",
         "description": "Your history is kept. Turn it back on to see it here again.",

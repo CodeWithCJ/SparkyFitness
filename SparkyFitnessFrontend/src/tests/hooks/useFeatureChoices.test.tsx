@@ -91,6 +91,19 @@ describe('useSetWebFeatureChoice', () => {
     await waitFor(() => expect(result.current.write.state).toBe('ready'));
   });
 
+  it('saves nothing on a server older than Features, and offers no retry', async () => {
+    getMock.mockResolvedValue(null);
+    const { result } = setup();
+    await waitFor(() =>
+      expect(result.current.write.state).toBe('serverTooOld')
+    );
+    expect(result.current.read.isError).toBe(false);
+
+    act(() => result.current.write.setFeatureOn('labResults', false));
+    await settle();
+    expect(updateMock).not.toHaveBeenCalled();
+  });
+
   it('offers a retry when the choices could not load', async () => {
     getMock.mockRejectedValueOnce(new Error('offline'));
     const { result } = setup();

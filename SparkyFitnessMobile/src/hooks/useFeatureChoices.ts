@@ -1,5 +1,10 @@
 import { useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import type {
@@ -12,7 +17,8 @@ import {
 } from '../services/api/featureChoicesApi';
 import { ApiError } from '../services/api/errors';
 import { addLog } from '../services/LogService';
-import { featureChoicesQueryKey } from './queryKeys';
+import type { ServerConfig } from '../services/storage';
+import { featureChoicesQueryKey, serverConfigsQueryKey } from './queryKeys';
 import { startedOn } from './queryOwner';
 
 /**
@@ -42,31 +48,36 @@ export function useFeatureChoicesQuery() {
 export type FeatureChoiceState =
   'ready' | 'loading' | 'loadFailed' | 'serverTooOld';
 
+/** The server and account on screen, as `useServerConfigs` cached them. A
+ * server switch stores the new active server before it clears the cache, so
+ * reading the active server later could already give the new one. */
+const serverOnScreen = (queryClient: QueryClient): ServerConfig | null =>
+  queryClient.getQueryData<{ activeConfig: ServerConfig | null }>(
+    serverConfigsQueryKey
+  )?.activeConfig ?? null;
+
+/** One change, bound when the switch is tapped to the account on screen. */
+interface ChoiceChange {
+  feature: ChoiceFeatureKey;
+  on: boolean;
+  serverConfig: ServerConfig;
+  started: ReturnType<typeof startedOn>;
+}
+
 /**
  * Turns one feature on or off in this app. Saves run one at a time, so a
  * quick off and on lands in order; each cancels a read already on its way (it
- * answers with the choices from before), and an answer that arrives after
- * another account or server took over is dropped.
+ * answers with the choices from before). A change goes to the account it was
+ * made for, never one switched to meanwhile, and an answer that arrives after
+ * another account or server took over is dropped. `useAuth` clears the cache
+ * on a switch, mutations included, so a save still queued then is not sent.
  */
 export function useSetMobileFeatureChoice() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const query = useFeatureChoicesQuery();
-  const { mutate, isPending } = useMutation({
-    scope: { id: 'feature-choices' },
-    mutationFn: ({ feature, on }: { feature: ChoiceFeatureKey; on: boolean }) =>
-      updateFeatureChoices({ mobile: { [feature]: on } }),
-    onMutate: async () => {
-      const started = startedOn(queryClient, featureChoicesQueryKey);
-      await queryClient.cancelQueries({ queryKey: featureChoicesQueryKey });
-      return started;
-    },
-    onSuccess: (data, _change, started) => {
-      if (started.isCurrent()) {
-        queryClient.setQueryData(featureChoicesQueryKey, data);
-      }
-    },
-    onError: (error) => {
+  const showSaveFailed = useCallback(
+    (error: unknown) => {
       addLog(`Failed to save a feature choice: ${error}`, 'ERROR');
       Toast.show({
         type: 'error',
@@ -75,6 +86,21 @@ export function useSetMobileFeatureChoice() {
         }),
       });
     },
+    [t]
+  );
+  const { mutate, isPending } = useMutation({
+    scope: { id: 'feature-choices' },
+    mutationFn: ({ feature, on, serverConfig }: ChoiceChange) =>
+      updateFeatureChoices({ mobile: { [feature]: on } }, serverConfig),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: featureChoicesQueryKey });
+    },
+    onSuccess: (data, change) => {
+      if (change.started.isCurrent()) {
+        queryClient.setQueryData(featureChoicesQueryKey, data);
+      }
+    },
+    onError: showSaveFailed,
   });
 
   const state: FeatureChoiceState =
@@ -88,9 +114,19 @@ export function useSetMobileFeatureChoice() {
   const setFeatureOn = useCallback(
     (feature: ChoiceFeatureKey, on: boolean) => {
       if (state !== 'ready') return;
-      mutate({ feature, on });
+      const serverConfig = serverOnScreen(queryClient);
+      if (!serverConfig) {
+        showSaveFailed('no active server');
+        return;
+      }
+      mutate({
+        feature,
+        on,
+        serverConfig,
+        started: startedOn(queryClient, featureChoicesQueryKey),
+      });
     },
-    [state, mutate]
+    [state, mutate, queryClient, showSaveFailed]
   );
   const { refetch } = query;
   const reload = useCallback(() => {

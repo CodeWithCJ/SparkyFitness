@@ -150,6 +150,19 @@ describe('FeatureSettings', () => {
     expect(screen.getByRole('switch', { name: 'Lab results' })).toBeDisabled();
   });
 
+  it('asks to update the server when it is older than Features, without a retry', () => {
+    mockChoice = { state: 'serverTooOld', isPending: false };
+    renderSettings();
+    // The defaults on an older server are covered in useWebFeatures.test.
+    expect(screen.getByRole('switch', { name: 'Lab results' })).toBeDisabled();
+    expect(
+      screen.getByText('Update your SparkyFitness server to change this.')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Retry' })
+    ).not.toBeInTheDocument();
+  });
+
   it('offers a retry when the lab results choice could not load', () => {
     mockChoice = { state: 'loadFailed', isPending: false };
     renderSettings();

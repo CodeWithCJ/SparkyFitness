@@ -6,7 +6,11 @@ import {
   useSetMobileFeatureChoice,
 } from '../../src/hooks/useFeatureChoices';
 import { useMobileFeatures } from '../../src/hooks/useMobileFeatures';
-import { featureChoicesQueryKey } from '../../src/hooks/queryKeys';
+import {
+  featureChoicesQueryKey,
+  serverConfigsQueryKey,
+} from '../../src/hooks/queryKeys';
+import type { ServerConfig } from '../../src/services/storage';
 import {
   fetchFeatureChoices,
   updateFeatureChoices,
@@ -61,6 +65,21 @@ const settle = () =>
 
 let queryClient: QueryClient;
 
+const serverA: ServerConfig = {
+  id: 'server-a',
+  url: 'https://a.example.com',
+  apiKey: '',
+  authType: 'session',
+  sessionToken: 'token-a',
+};
+
+/** What `useServerConfigs` caches; `useServerConnection` keeps it loaded. */
+const showServer = (config: ServerConfig) =>
+  queryClient.setQueryData(serverConfigsQueryKey, {
+    allConfigs: [config],
+    activeConfig: config,
+  });
+
 function setup() {
   return renderHook(
     () => ({
@@ -80,6 +99,7 @@ const cached = () =>
 beforeEach(() => {
   jest.resetAllMocks();
   queryClient = createTestQueryClient();
+  showServer(serverA);
   jest.mocked(getSettings).mockResolvedValue(null);
 });
 
@@ -147,7 +167,10 @@ describe('useSetMobileFeatureChoice', () => {
       expect(result.current.features.isEnabled('labResults')).toBe(false)
     );
     expect(updateMock).toHaveBeenCalledTimes(1);
-    expect(updateMock).toHaveBeenCalledWith({ mobile: { labResults: false } });
+    expect(updateMock).toHaveBeenCalledWith(
+      { mobile: { labResults: false } },
+      serverA
+    );
   });
 
   it('saves nothing until the choices have loaded', async () => {
@@ -228,6 +251,70 @@ describe('useSetMobileFeatureChoice', () => {
     expect(cached()).toBeUndefined();
   });
 
+  it('sends a change to the server it was made on, even if another one is active by then', async () => {
+    getMock.mockResolvedValueOnce(choices({}));
+    const { result } = setup();
+    await waitFor(() => expect(result.current.write.state).toBe('ready'));
+
+    const first = deferred<FeatureChoicesResponse>();
+    updateMock
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValueOnce(choices({ mobile: { labResults: true } }));
+    act(() => result.current.write.setFeatureOn('labResults', false));
+    act(() => result.current.write.setFeatureOn('labResults', true));
+    await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
+
+    // A server switch stores the new active server before the cache is
+    // cleared; the queued change still belongs to the first one.
+    showServer({ ...serverA, id: 'server-b', url: 'https://b.example.com' });
+    await act(async () =>
+      first.resolve(choices({ mobile: { labResults: false } }))
+    );
+    await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(2));
+    expect(updateMock.mock.calls.map(([, server]) => server.id)).toEqual([
+      'server-a',
+      'server-a',
+    ]);
+  });
+
+  it('saves nothing, and says so, when the server on screen is not known', async () => {
+    getMock.mockResolvedValueOnce(choices({}));
+    const { result } = setup();
+    await waitFor(() => expect(result.current.write.state).toBe('ready'));
+
+    queryClient.removeQueries({ queryKey: serverConfigsQueryKey });
+    act(() => result.current.write.setFeatureOn('labResults', false));
+    await settle();
+
+    expect(updateMock).not.toHaveBeenCalled();
+    expect(Toast.show).toHaveBeenCalledTimes(1);
+  });
+
+  // Records the TanStack Query behaviour the binding above relies on: the
+  // cache clear on a switch drops a save still queued, so it is never sent.
+  it('does not send a change still queued when another account or server takes over', async () => {
+    getMock.mockResolvedValueOnce(choices({}));
+    const { result } = setup();
+    await waitFor(() => expect(result.current.write.state).toBe('ready'));
+
+    const first = deferred<FeatureChoicesResponse>();
+    updateMock.mockReturnValueOnce(first.promise);
+    act(() => result.current.write.setFeatureOn('labResults', false));
+    act(() => result.current.write.setFeatureOn('labResults', true));
+    await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(1));
+
+    // useAuth clears the cache on an account or server switch.
+    getMock.mockReturnValue(new Promise(() => {}));
+    act(() => queryClient.clear());
+    await act(async () =>
+      first.resolve(choices({ mobile: { labResults: false } }))
+    );
+    await settle();
+
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    expect(Toast.show).not.toHaveBeenCalled();
+  });
+
   it('saves quick changes in order, one at a time', async () => {
     getMock.mockResolvedValueOnce(choices({}));
     const { result } = setup();
@@ -246,9 +333,10 @@ describe('useSetMobileFeatureChoice', () => {
       first.resolve(choices({ mobile: { labResults: false } }))
     );
     await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(2));
-    expect(updateMock).toHaveBeenLastCalledWith({
-      mobile: { labResults: true },
-    });
+    expect(updateMock).toHaveBeenLastCalledWith(
+      { mobile: { labResults: true } },
+      serverA
+    );
     await waitFor(() =>
       expect(cached()?.feature_choices.mobile).toEqual({ labResults: true })
     );

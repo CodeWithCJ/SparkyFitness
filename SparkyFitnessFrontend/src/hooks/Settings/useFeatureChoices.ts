@@ -11,10 +11,11 @@ import { startedOn } from '@/utils/queryOwner';
 /**
  * The person's explicit feature choices (#3487), both platforms; this
  * website reads `web`. While they load or after a failed load, `data` is
- * undefined and every feature is at its default, so nothing disappears
- * because of a network error. Someone acting for the person reads the
- * person's own (the server answers 403 when their grant does not cover
- * settings, and the defaults apply).
+ * undefined, and from a server older than Features it is null: either way
+ * every feature is at its default, so nothing disappears because of a network
+ * error or an old server. Someone acting for the person reads the person's
+ * own (the server answers 403 when their grant does not cover settings, and
+ * the defaults apply).
  */
 export function useFeatureChoicesQuery() {
   return useQuery({
@@ -24,8 +25,10 @@ export function useFeatureChoicesQuery() {
 }
 
 /** Whether a choice switch can be used: only once the choices have loaded,
- * since a guess could undo one made elsewhere. */
-export type FeatureChoiceState = 'ready' | 'loading' | 'loadFailed';
+ * since a guess could undo one made elsewhere, and not on a server older than
+ * Features, which cannot store one (Retry would never help there). */
+export type FeatureChoiceState =
+  'ready' | 'loading' | 'loadFailed' | 'serverTooOld';
 
 /**
  * Turns one feature on or off on this website. Saves run one at a time, so a
@@ -53,11 +56,13 @@ export function useSetWebFeatureChoice() {
   });
 
   const state: FeatureChoiceState =
-    query.data !== undefined
-      ? 'ready'
-      : query.isError
-        ? 'loadFailed'
-        : 'loading';
+    query.data === null
+      ? 'serverTooOld'
+      : query.data !== undefined
+        ? 'ready'
+        : query.isError
+          ? 'loadFailed'
+          : 'loading';
   const setFeatureOn = useCallback(
     (feature: ChoiceFeatureKey, on: boolean) => {
       if (state !== 'ready') return;

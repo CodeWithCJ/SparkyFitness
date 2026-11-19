@@ -18,6 +18,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { IconName } from '../components/Icon';
 import { useSetMobileFeatureChoice } from '../hooks/useFeatureChoices';
+import { useRefetchOnFocus } from '../hooks/useRefetchOnFocus';
 import { useCycleSwitch, useMobileFeatures } from '../hooks/useMobileFeatures';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -150,6 +151,9 @@ function ChoiceFeatureRows({
   const { t } = useTranslation();
   const { isEnabled } = useMobileFeatures();
   const choice = useSetMobileFeatureChoice();
+  // Choices are read once per session; on an older server, ask again on each
+  // visit, so updating the server takes effect without restarting the app.
+  useRefetchOnFocus(choice.reload, choice.state === 'serverTooOld');
   const lines = [
     description,
     t('featureSettings.appOnly', {

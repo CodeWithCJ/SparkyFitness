@@ -17,9 +17,10 @@ import { useFeatureChoicesQuery } from '@/hooks/Settings/useFeatureChoices';
  * `feature_choices` (lab results), or for cycle its account-wide switch in
  * `cycle_settings.enabled`.
  *
- * While a value is loading or could not be read, `isEnabled` gives the
- * feature's default (cycle off, as before Features; lab results on), so a
- * network error never hides something that was showing. `isExplicitlyOff` is
+ * While a value is loading or could not be read, or the server is older than
+ * Features, `isEnabled` gives the feature's default (cycle off, as before
+ * Features; lab results on), so a network error or an old server never hides
+ * something that was showing. `isExplicitlyOff` is
  * only for a feature the person turned off: data shown outside the feature's
  * own pages (the reproductive Health categories, cycle hub symptoms) hides
  * only then, so nothing disappears for someone who never chose, or while the

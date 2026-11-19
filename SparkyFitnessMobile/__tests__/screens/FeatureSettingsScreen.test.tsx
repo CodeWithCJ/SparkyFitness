@@ -7,6 +7,12 @@ import type { CycleSwitchState } from '../../src/hooks/useMobileFeatures';
 import type { FeatureChoiceState } from '../../src/hooks/useFeatureChoices';
 import { initializeI18n } from '../../src/localization/i18n';
 
+const mockRefetchOnFocus = jest.fn();
+jest.mock('../../src/hooks/useRefetchOnFocus', () => ({
+  useRefetchOnFocus: (refetch: () => void, enabled: boolean) =>
+    mockRefetchOnFocus(refetch, enabled),
+}));
+
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: () => null,
 }));
@@ -189,6 +195,23 @@ describe('FeatureSettingsScreen', () => {
     expect(
       screen.getByText(/Update your SparkyFitness server to change this\./)
     ).toBeTruthy();
+  });
+
+  it('asks the server again on each visit while it is older than Features', () => {
+    mockChoice = { state: 'serverTooOld', isPending: false };
+    renderScreen();
+    expect(mockRefetchOnFocus).toHaveBeenLastCalledWith(
+      mockReloadChoices,
+      true
+    );
+  });
+
+  it('does not ask again on each visit once the choices are known', () => {
+    renderScreen();
+    expect(mockRefetchOnFocus).toHaveBeenLastCalledWith(
+      mockReloadChoices,
+      false
+    );
   });
 
   it('cannot be switched while a change is saving', () => {

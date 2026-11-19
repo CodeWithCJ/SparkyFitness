@@ -112,6 +112,18 @@ describe('useWebFeatures', () => {
     }
   );
 
+  it('keeps lab results on with a server older than Features', async () => {
+    getMock.mockResolvedValue(null);
+    getChoicesMock.mockResolvedValue(null);
+    const { result, client } = setup();
+    await waitFor(() =>
+      expect(client.getQueryState(['featureChoices'])?.status).toBe('success')
+    );
+    expect(client.getQueryData(['featureChoices'])).toBeNull();
+    expect(result.current.features.isEnabled('labResults')).toBe(true);
+    expect(result.current.features.isExplicitlyOff('labResults')).toBe(false);
+  });
+
   it('keeps lab results on while the choices load or after they fail', async () => {
     getMock.mockResolvedValue(null);
     const pending = deferred<FeatureChoicesResponse>();

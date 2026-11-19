@@ -113,7 +113,8 @@ function CycleFeatureRow() {
 /**
  * A feature with one choice per platform (`feature_choices`): this switch
  * changes the website only. It can be used once the choices have loaded;
- * until then it shows the default, so nothing looks off that is not.
+ * until then, and on a server older than Features, it shows the default, so
+ * nothing looks off that is not.
  */
 function ChoiceFeatureRow({
   feature,
@@ -146,6 +147,14 @@ function ChoiceFeatureRow({
               'Only this website. The mobile app has its own switch.'
             )}
           </p>
+          {choice.state === 'serverTooOld' && (
+            <p className="text-xs text-muted-foreground">
+              {t(
+                'settings.features.serverTooOld',
+                'Update your SparkyFitness server to change this.'
+              )}
+            </p>
+          )}
         </div>
         <Switch
           id={switchId}
