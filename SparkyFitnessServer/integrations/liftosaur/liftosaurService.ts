@@ -194,12 +194,12 @@ async function syncLiftosaurData(
   // The days this sync reconciles: Liftosaur rows on them that are not
   // re-sent were deleted in Liftosaur. A full sync has no window, so it
   // reconciles the days between its first and last fetched workout.
-  let window: LiftosaurCleanupRange | undefined;
+  let syncDays: LiftosaurCleanupRange | undefined;
   if (startDate && endDate) {
     const range = dayRangeToInstants(startDate, endDate, tz);
     startInstant = range.start;
     endInstant = range.end;
-    window = { startDate, endDate };
+    syncDays = { startDate, endDate };
   }
 
   // An incremental sync covers the last 7 days: recent enough to pick up
@@ -214,7 +214,7 @@ async function syncLiftosaurData(
     const today = todayInZone(tz);
     const startDay = addDays(today, -7);
     startInstant = dayToUtcRange(startDay, tz).start.toISOString();
-    window = { startDate: startDay, endDate: today };
+    syncDays = { startDate: startDay, endDate: today };
   }
 
   const allWorkouts = [];
@@ -303,7 +303,7 @@ async function syncLiftosaurData(
       `[liftosaurService] Some Liftosaur records for user ${userId} did not parse; importing the rest without deleting anything.`
     );
   }
-  const cleanup = fetchComplete && parseComplete ? window : null;
+  const cleanup = fetchComplete && parseComplete ? syncDays : null;
   // With a window, process even an empty fetch: the only workout in the
   // window may have been deleted in Liftosaur.
   if (allWorkouts.length > 0 || cleanup) {
