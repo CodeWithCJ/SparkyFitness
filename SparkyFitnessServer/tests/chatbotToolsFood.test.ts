@@ -558,6 +558,93 @@ describe('lookup_food_nutrition', () => {
     );
   });
 
+  // USDA's phrase search can return a near-identical name first. When the AI
+  // quoted a name for its search syntax, only the exact name contains the
+  // query once unquoted, so it ranks first.
+  it.each([
+    {
+      quoted: '"Turkey, ground, 93% lean/ 7% fat, raw"',
+      results: [
+        'Turkey, ground, 93% lean, 7% fat, raw',
+        'Turkey, ground, 93% lean/ 7% fat, raw',
+      ],
+      first: 'Turkey, ground, 93% lean/ 7% fat, raw',
+    },
+    {
+      quoted: '"Beef, trimmed to 1/8\\" fat, raw"',
+      results: [
+        'Beef, trimmed to 1/8 fat, raw',
+        'Beef, trimmed to 1/8" fat, raw',
+      ],
+      first: 'Beef, trimmed to 1/8" fat, raw',
+    },
+  ])(
+    'ranks the quoted USDA name $quoted by the name inside the quotes',
+    async ({ quoted, results, first }) => {
+      vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([]);
+      vi.mocked(foodRepository.countFoods).mockResolvedValue(0);
+      vi.mocked(
+        externalProviderRepository.getActiveProvidersByTypes
+      ).mockResolvedValue([
+        { id: 'prov-1', provider_type: 'usda', provider_name: 'USDA' },
+      ]);
+      const variant = { serving_size: 100, serving_unit: 'g', calories: 150 };
+      vi.mocked(searchProviderFoods).mockResolvedValue({
+        foods: results.map((name, i) => ({
+          name,
+          provider_external_id: String(i + 1),
+          default_variant: variant,
+        })),
+        pagination: { page: 1, pageSize: 20, totalCount: 2, hasMore: false },
+      });
+
+      const result = await tools.sparky_manage_food.execute!(
+        {
+          action: 'lookup_food_nutrition',
+          food_name: quoted,
+          provider_type: 'usda',
+        },
+        opts
+      );
+
+      expect(vi.mocked(searchProviderFoods).mock.calls[0][2]).toBe(quoted);
+      expect(result).toContain(`### Found match in **usda**:\n**${first}**`);
+    }
+  );
+
+  // Only names the tool text has the AI quote are unquoted for ranking; any
+  // other quoted query ranks as it did before.
+  it("leaves the provider's order alone for a quoted name with no search syntax", async () => {
+    vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([]);
+    vi.mocked(foodRepository.countFoods).mockResolvedValue(0);
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      { id: 'prov-1', provider_type: 'usda', provider_name: 'USDA' },
+    ]);
+    const variant = { serving_size: 100, serving_unit: 'g', calories: 150 };
+    const results = ['Apple juice', 'Apple'];
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: results.map((name, i) => ({
+        name,
+        provider_external_id: String(i + 1),
+        default_variant: variant,
+      })),
+      pagination: { page: 1, pageSize: 20, totalCount: 2, hasMore: false },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'lookup_food_nutrition',
+        food_name: '"Apple"',
+        provider_type: 'usda',
+      },
+      opts
+    );
+
+    expect(result).toContain(`### Found match in **usda**:\n**${results[0]}**`);
+  });
+
   it('continues past a failing provider to the next one', async () => {
     vi.mocked(foodRepository.getFoodsWithPagination).mockResolvedValue([]);
     vi.mocked(foodRepository.countFoods).mockResolvedValue(0);
