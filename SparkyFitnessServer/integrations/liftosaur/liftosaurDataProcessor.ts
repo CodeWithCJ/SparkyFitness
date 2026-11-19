@@ -122,7 +122,13 @@ async function resolveLibraryExercises(
   const library = new Map<string, ExerciseRow>();
   for (const name of names) {
     const mapping = muscles.get(name);
-    let exercise = found.get(name) ?? null;
+    // An alias resolved earlier in this sync ("Squat" before
+    // "Squat, Barbell") is reused, as the bare-name lookup would have found
+    // it had the rows been created one workout at a time.
+    const bareName = name.split(',')[0]!.trim();
+    let exercise =
+      found.get(name) ??
+      (bareName !== name ? (library.get(bareName) ?? null) : null);
     if (exercise) {
       if (mapping) await fillMissingMuscles(userId, exercise, mapping);
     } else {
@@ -166,10 +172,15 @@ async function fillMissingMuscles(
   if (muscles.primary.length === 0) return;
   if (!hasNoMuscles(exercise.primary_muscles)) return;
   try {
-    await exerciseRepository.updateExercise(exercise.id, userId, {
-      primary_muscles: muscles.primary,
-      secondary_muscles: muscles.secondary,
-    });
+    // The write re-checks emptiness itself (see fillEmptyMuscles), so a
+    // stale snapshot or a second alias of the same row cannot overwrite
+    // muscles, and saved secondary muscles are kept.
+    await exerciseRepository.fillEmptyMuscles(
+      userId,
+      exercise.id,
+      muscles.primary,
+      muscles.secondary
+    );
   } catch (error) {
     log(
       'warn',

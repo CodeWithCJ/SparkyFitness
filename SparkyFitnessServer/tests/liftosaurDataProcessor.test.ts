@@ -30,7 +30,7 @@ vi.mock('../models/exercise.js', () => ({
         Promise.resolve(name === 'Squat' ? { id: 'exercise-squat' } : null)
       ),
     createExercise: vi.fn().mockResolvedValue({ id: 'exercise-new' }),
-    updateExercise: vi.fn().mockResolvedValue(undefined),
+    fillEmptyMuscles: vi.fn().mockResolvedValue(true),
   },
 }));
 
@@ -240,7 +240,7 @@ describe('processLiftosaurWorkouts', () => {
         secondary_muscles: ['glutes'],
       })
     );
-    expect(exerciseRepository.updateExercise).not.toHaveBeenCalled();
+    expect(exerciseRepository.fillEmptyMuscles).not.toHaveBeenCalled();
   });
 
   it('resolves each exercise once per batch, not once per workout', async () => {
@@ -284,11 +284,38 @@ describe('processLiftosaurWorkouts', () => {
       'Squat',
       'Bulgarian Split Squat',
     ]);
-    expect(exerciseRepository.updateExercise).toHaveBeenCalledWith(
-      'exercise-squat',
+    expect(exerciseRepository.fillEmptyMuscles).toHaveBeenCalledWith(
       UID,
-      { primary_muscles: ['quadriceps'], secondary_muscles: ['glutes'] }
+      'exercise-squat',
+      ['quadriceps'],
+      ['glutes']
     );
+  });
+
+  it('reuses a row created earlier in the sync for a bare-name alias', async () => {
+    vi.mocked(exerciseRepository.findExerciseByNameAndUserId).mockResolvedValue(
+      null as never
+    );
+    vi.mocked(exerciseRepository.createExercise).mockResolvedValueOnce({
+      id: 'exercise-squat-new',
+    } as never);
+    const text = [
+      '2026-07-13 05:52:14 +00:00 / exercises: {',
+      '  Squat / 3x5 100kg',
+      '  Squat, Barbell / 3x5 100kg',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    expect(exerciseRepository.createExercise).toHaveBeenCalledTimes(1);
+    const entries = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(entries.map((c) => c[2].exercise_id)).toEqual([
+      'exercise-squat-new',
+      'exercise-squat-new',
+    ]);
   });
 
   it('makes no muscle lookup when every exercise already has muscles or is not owned', async () => {
@@ -319,7 +346,7 @@ describe('processLiftosaurWorkouts', () => {
     );
 
     expect(resolveMuscles).not.toHaveBeenCalled();
-    expect(exerciseRepository.updateExercise).not.toHaveBeenCalled();
+    expect(exerciseRepository.fillEmptyMuscles).not.toHaveBeenCalled();
     expect(exerciseRepository.createExercise).not.toHaveBeenCalled();
   });
 

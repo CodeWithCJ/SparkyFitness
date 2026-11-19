@@ -705,6 +705,41 @@ async function createExercise(
     if (!existingClient) client.release();
   }
 }
+const EMPTY_MUSCLES_SQL = (column: string) =>
+  `regexp_replace(COALESCE(${column}, ''), '\\s', '', 'g') IN ('', '[]', 'null')`;
+
+/**
+ * Give an owned exercise muscles only while its primary muscles are still
+ * empty, filling secondary muscles only if those are empty too. Emptiness is
+ * tested in the same statement as the write, so a muscle edit saved after
+ * the caller read the row, or an earlier fill in the same sync, is never
+ * overwritten. Returns whether the row was changed.
+ */
+async function fillEmptyMuscles(
+  userId: string,
+  exerciseId: string,
+  primary: readonly string[],
+  secondary: readonly string[]
+): Promise<boolean> {
+  if (primary.length === 0) return false;
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE exercises SET
+         primary_muscles = $1,
+         secondary_muscles = CASE WHEN ${EMPTY_MUSCLES_SQL('secondary_muscles')}
+           THEN $2 ELSE secondary_muscles END,
+         updated_at = NOW()
+       WHERE id = $3 AND user_id = $4
+         AND ${EMPTY_MUSCLES_SQL('primary_muscles')}`,
+      [JSON.stringify(primary), JSON.stringify(secondary), exerciseId, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
+
 async function updateExercise(
   id: string,
   userId: string,
@@ -1335,6 +1370,7 @@ export default {
   searchExercisesPaginated,
   createExercise,
   updateExercise,
+  fillEmptyMuscles,
   deleteExercise,
   getRecentExercises,
   getTopExercises,
