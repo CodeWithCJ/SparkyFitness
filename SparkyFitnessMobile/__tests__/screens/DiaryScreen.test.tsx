@@ -79,6 +79,12 @@ jest.mock('../../src/hooks/useCustomMeasurements', () => ({
   useCustomMeasurementsByDate: jest.fn(),
 }));
 
+// Categories of features turned off on purpose (Settings → Features).
+let mockHiddenCategories: ReadonlySet<string> = new Set();
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({ hiddenCustomCategories: mockHiddenCategories }),
+}));
+
 // This suite renders DiaryScreen without a QueryClientProvider, so the sleep hook's real
 // useQuery would throw. Mocked to an empty day by default.
 jest.mock('../../src/hooks/useSleepDay', () => ({
@@ -412,6 +418,45 @@ const renderScreen = () =>
       <DiaryScreen navigation={mockNavigation} route={diaryRoute} />
     </SafeAreaProvider>
   );
+
+describe('DiaryScreen custom measurements of a feature turned off', () => {
+  const flowEntry = {
+    id: 'flow-1',
+    category_id: 'flow',
+    value: '2',
+    entry_date: '2024-06-15',
+    source: 'manual',
+    custom_categories: { name: 'menstruation_flow' },
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockHiddenCategories = new Set();
+    useDiaryDateStore.setState({
+      selectedDate: '2024-06-15',
+      lastKnownToday: getTodayDate(),
+    });
+    configureConnection(true);
+    mockUseNativeIOSTabsActive.mockReturnValue(false);
+    configureFamilyUsers([]);
+    configureOnlineData();
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [flowEntry],
+      refetch: refetchCustomMeasurements,
+    } as unknown as ReturnType<typeof useCustomMeasurementsByDate>);
+  });
+
+  test('shows a manual reproductive entry while cycle is on', () => {
+    const { getByTestId } = renderScreen();
+    expect(getByTestId('measurements-summary')).toBeTruthy();
+  });
+
+  test('leaves it out while cycle is turned off on purpose', () => {
+    mockHiddenCategories = new Set(['menstruation_flow']);
+    const { queryByTestId } = renderScreen();
+    expect(queryByTestId('measurements-summary')).toBeNull();
+  });
+});
 
 describe('DiaryScreen custom queries', () => {
   beforeEach(() => {

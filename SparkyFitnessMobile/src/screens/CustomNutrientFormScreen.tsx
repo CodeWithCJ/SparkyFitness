@@ -2,7 +2,6 @@ import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 
@@ -45,7 +44,6 @@ const CustomNutrientForm: React.FC<CustomNutrientFormProps> = ({
   existing,
 }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const isEditing = nutrientId !== undefined;
@@ -187,12 +185,8 @@ const CustomNutrientForm: React.FC<CustomNutrientFormProps> = ({
     },
   });
 
-  const wrapperStyle = usesNativeHeader
-    ? undefined
-    : { paddingTop: insets.top };
-
   return (
-    <View className="flex-1 bg-background" style={wrapperStyle}>
+    <View className="flex-1 bg-background">
       {header}
       <KeyboardAwareScrollView
         className="flex-1"
@@ -287,8 +281,6 @@ const CustomNutrientFormScreen: React.FC<CustomNutrientFormScreenProps> = ({
   route,
 }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const nutrientId = route.params?.nutrientId;
   const { customNutrients, isLoading } = useCustomNutrients();
   const existing = customNutrients.find((n) => n.id === nutrientId);
@@ -302,10 +294,7 @@ const CustomNutrientFormScreen: React.FC<CustomNutrientFormScreenProps> = ({
 
   if (nutrientId !== undefined && !existing) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         {header}
         {isLoading ? (
           <StatusView

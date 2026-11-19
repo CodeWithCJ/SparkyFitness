@@ -13,7 +13,6 @@ import { fetchExternalProviders } from '../services/api/externalProvidersApi';
 import { browseRecipes, previewRecipe } from '../services/api/recipeImportApi';
 import { useRecipeImportAccess } from '../hooks/useRecipeImport';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import RecipeImportReview from '../components/recipeImport/RecipeImportReview';
 import RecipeImportSavedMappings from '../components/recipeImport/RecipeImportSavedMappings';
@@ -319,7 +318,6 @@ export default function RecipeImportScreen({
   const { t } = useTranslation();
   const scope = useRecipeImportAccess();
   const insets = useSafeAreaInsets();
-  const native = useNativeIOSHeadersActive();
   const padding = useActiveWorkoutBarPadding('stack');
   const header = useScreenHeader({
     title: t('recipeImport.title', {
@@ -328,10 +326,7 @@ export default function RecipeImportScreen({
     left: { kind: 'back' },
   });
   return (
-    <View
-      className="flex-1 bg-background"
-      style={native ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentInsetAdjustmentBehavior="automatic"

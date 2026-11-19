@@ -29,6 +29,7 @@ const catalogues = tracked(
   "SparkyFitnessMobile/src/localization/locales",
   "SparkyFitnessMobile/locales",
   "SparkyFitnessMobile/targets/android-widget/res/values-*/widget_strings.xml",
+  "SparkyFitnessMobile/targets/wearos/src/main/res/values-*/strings.xml",
   "SparkyFitnessMobile/targets/widget/*.lproj/Localizable.strings",
   "SparkyFitnessServer/locales",
 );
@@ -80,6 +81,8 @@ test("code, workflows, nested and non-catalogue files are rejected", () => {
     "SparkyFitnessMobile/src/localization/locales/en_US/translation.json",
     "SparkyFitnessMobile/locales/english.json",
     "SparkyFitnessServer/locales/en-US/translation.json",
+    "SparkyFitnessMobile/targets/wearos/src/main/res/values-en/strings.xml",
+    "SparkyFitnessMobile/targets/wearos/src/main/res/values-night/strings.xml",
   ];
   assert.deepEqual(
     outsideAllowlist("i18n/sync-weblate-translations", bad),
@@ -350,6 +353,16 @@ test("widget strings and .strings files are checked by key too", () => {
       strings("Hi"),
     ),
     ["widget.title: www.evil.org"],
+  );
+  const wearPath =
+    "SparkyFitnessMobile/targets/wearos/src/main/res/values-de/strings.xml";
+  assert.deepEqual(
+    outsideAllowlist("i18n/sync-weblate-translations", [wearPath]),
+    [],
+  );
+  assert.deepEqual(
+    newLinks(wearPath, xml("Mehr: evil.com"), xml("Hallo"), xml("Hello")),
+    ["t: evil.com"],
   );
 });
 

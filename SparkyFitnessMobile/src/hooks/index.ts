@@ -111,7 +111,6 @@ export { useCustomNutrients } from './useCustomNutrients';
 export type { UserCustomNutrient } from './useCustomNutrients';
 export { useNutrientDisplayPreferences } from './useNutrientDisplayPreferences';
 export { useChatHistory } from './useChatHistory';
-export { useCycleMode } from './useCycleMode';
 export { useMedications } from './useMedications';
 export {
   useSetFoodEntryImages,

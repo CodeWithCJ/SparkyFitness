@@ -5,6 +5,14 @@ import express, {
 } from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import reportService from '../services/reportService.js';
+import trainingCalendarService from '../services/trainingCalendarService.js';
+import { CalendarEntryLimitError } from '../utils/errors.js';
+import {
+  daysBetween,
+  isDayString,
+  MAX_TRAINING_CALENDAR_DAYS,
+  trainingCalendarQuerySchema,
+} from '@workspace/shared';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 const router = express.Router();
 /**
@@ -410,6 +418,84 @@ router.get(
   authenticate,
   ownReportHandler(reportService.getFitnessFatigue)
 );
+/**
+ * @swagger
+ * /reports/training-calendar:
+ *   get:
+ *     summary: Get planned against completed training for a range of days, with load per sport
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: start
+ *         required: true
+ *         schema: { type: 'string', format: 'date' }
+ *       - in: query
+ *         name: end
+ *         required: true
+ *         schema: { type: 'string', format: 'date' }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: 'string', format: 'uuid' }
+ *     responses:
+ *       200:
+ *         description: Planned items (run program, workout plans) with a status, completed diary workouts, weekly totals and training load per sport group.
+ *       400:
+ *         description: Missing or invalid range (at most 120 days), or a range with more workouts than one request reads.
+ */
+router.get('/training-calendar', authenticate, async (req, res, next) => {
+  const parsed = trainingCalendarQuerySchema.safeParse(req.query);
+  if (
+    !parsed.success ||
+    !isDayString(parsed.data.start) ||
+    !isDayString(parsed.data.end) ||
+    daysBetween(parsed.data.start, parsed.data.end) >=
+      MAX_TRAINING_CALENDAR_DAYS
+  ) {
+    return res.status(400).json({
+      error: `A start and end day (YYYY-MM-DD) at most ${MAX_TRAINING_CALENDAR_DAYS} days apart are required.`,
+    });
+  }
+  const { start, end, userId } = parsed.data;
+  const authenticatedUserId = req.authenticatedUserId || req.userId;
+  const targetUserId = userId || req.userId;
+  if (!targetUserId || !authenticatedUserId) {
+    return res.status(400).json({ error: 'Target User ID is required.' });
+  }
+  // Check against the signed-in person, not the switched-to account, so a
+  // delegate acting as the owner is still held to their own grant.
+  if (String(targetUserId) !== authenticatedUserId) {
+    const hasPermission = await canAccessUserData(
+      String(targetUserId),
+      'reports',
+      authenticatedUserId,
+      // Planned and completed workouts are read on a family grant only, never
+      // on a matching email address.
+      { allowSameEmail: false }
+    );
+    if (!hasPermission) {
+      return res.status(403).json({
+        error:
+          'Forbidden: You do not have permission to view reports for this user.',
+      });
+    }
+  }
+  try {
+    const data = await trainingCalendarService.getTrainingCalendar(
+      authenticatedUserId,
+      String(targetUserId),
+      start,
+      end
+    );
+    res.status(200).json(data);
+  } catch (error) {
+    if (error instanceof CalendarEntryLimitError) {
+      return res.status(400).json({ error: error.message });
+    }
+    next(error);
+  }
+});
 /**
  * @swagger
  * /reports/run-estimates:

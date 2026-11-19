@@ -23,7 +23,6 @@ import {
   useServerConnection,
 } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { MealPlanAssignment, MealPlanTemplate } from '../types/mealPlans';
 import type { RootStackScreenProps } from '../types/navigation';
 import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
@@ -50,7 +49,6 @@ function assignmentLabel(
 const MealPlansScreen: React.FC<MealPlansScreenProps> = ({ navigation }) => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [refreshing, setRefreshing] = useState(false);
   const { isConnected } = useServerConnection();
@@ -366,10 +364,7 @@ const MealPlansScreen: React.FC<MealPlansScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ServerGate>{content()}</ServerGate>
       {mealPlans.length > 0 && !isLoading && !isError ? (

@@ -24,6 +24,7 @@ describe('global settings policy lookups with the database unreachable', () => {
     'isDevToolsEnabled',
     'isMockDataEnabled',
     'isVersionCheckEnabled',
+    'isChallengesEnabled',
   ] as const;
 
   beforeEach(() => {

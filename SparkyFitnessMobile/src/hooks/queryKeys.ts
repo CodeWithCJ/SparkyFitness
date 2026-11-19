@@ -173,6 +173,8 @@ export const waterIntakeRangeQueryKey = (startDate: string, endDate: string) =>
   ['waterIntakeRange', startDate, endDate] as const;
 
 export const sleepRangeQueryKeyRoot = ['sleepRange'] as const;
+/** Tonight's sleep need; it moves with both synced sleep and logged workouts. */
+export const sleepNeedQueryKey = ['sleepNeed'] as const;
 export const sleepRangeQueryKey = (startDate: string, endDate: string) =>
   [...sleepRangeQueryKeyRoot, startDate, endDate] as const;
 
@@ -390,6 +392,9 @@ export const foodEntriesRangeRootQueryKey = ['foodEntriesRange'] as const;
 export const foodEntriesRangeQueryKey = (startDate: string, endDate: string) =>
   ['foodEntriesRange', startDate, endDate] as const;
 
+export const lastCookedFoodEntryQueryKey = (foodId: string) =>
+  ['lastCookedFoodEntry', foodId] as const;
+
 export const exerciseDashboardQueryKey = (startDate: string, endDate: string) =>
   ['exerciseDashboard', startDate, endDate] as const;
 
@@ -403,8 +408,12 @@ export const trainingLoadQueryKey = (today: string) =>
 
 export const runEstimatesQueryKey = (today: string) =>
   ['runEstimates', today] as const;
+export const fitnessFatigueRootQueryKey = ['fitnessFatigue'] as const;
 export const fitnessFatigueQueryKey = (today: string) =>
-  ['fitnessFatigue', today] as const;
+  [...fitnessFatigueRootQueryKey, today] as const;
+export const trainingCalendarRootQueryKey = ['trainingCalendar'] as const;
+export const trainingCalendarQueryKey = (start: string, end: string) =>
+  [...trainingCalendarRootQueryKey, start, end] as const;
 
 export const cardioSessionsQueryKey = (
   startDate: string,

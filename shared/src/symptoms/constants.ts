@@ -104,3 +104,14 @@ export interface SymptomCustomFieldDef {
 /** `symptom_entries.source` values with a defined meaning. */
 export const SYMPTOM_SOURCE_MANUAL = 'manual';
 export const SYMPTOM_SOURCE_CYCLE = 'cycle';
+
+/**
+ * Symptom entries less those logged in the cycle hub (`source = 'cycle'`).
+ * Lists outside the hub use it while cycle tracking is turned off on purpose;
+ * the entries stay stored.
+ */
+export function withoutCycleHubSymptoms<T extends { source?: string | null }>(
+  entries: readonly T[]
+): T[] {
+  return entries.filter((entry) => entry.source !== SYMPTOM_SOURCE_CYCLE);
+}

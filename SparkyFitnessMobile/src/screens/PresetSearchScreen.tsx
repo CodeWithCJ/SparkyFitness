@@ -35,7 +35,6 @@ import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useSelectedExercise } from '../hooks/useSelectedExercise';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatLocalizedNumber } from '../localization';
 import {
   CATEGORY_ICON_MAP,
@@ -65,7 +64,6 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({
     '--color-text-secondary',
     '--color-border-subtle',
   ]) as [string, string, string, string];
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { profile } = useProfile();
 
   const [searchText, setSearchText] = useState('');
@@ -418,10 +416,7 @@ const PresetSearchScreen: React.FC<PresetSearchScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       {/* Search bar */}

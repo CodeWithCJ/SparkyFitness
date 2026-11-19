@@ -53,7 +53,6 @@ import IntervalSetup, {
 } from '../components/recording/IntervalSetup';
 import RouteMap from '../components/exerciseStats/RouteMap';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useIndoorDistanceEstimate } from '../hooks/useIndoorDistanceEstimate';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { correctTreadmillDistance } from '../utils/treadmillCorrection';
@@ -272,7 +271,6 @@ function recordingTitle(
 const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const { updateMutation: updateShoe } = useShoeMutations();
   const { preferences } = usePreferences();
@@ -2308,10 +2306,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   })();
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 bg-background"

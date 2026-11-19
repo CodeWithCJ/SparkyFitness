@@ -1,8 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  FEATURE_CUSTOM_CATEGORIES,
-  FEATURE_KEYS,
+  hiddenFeatureCustomCategories,
   isFeatureEnabled,
   isFeatureExplicitlyOff,
   type FeatureKey,
@@ -37,27 +36,17 @@ export function useWebFeatures() {
     [cycleEnabled]
   );
   // Custom categories that belong to a feature turned off on purpose. Lists
-  // of measurements leave them out; Settings > Custom Categories keeps them.
-  const hiddenCustomCategories = useMemo<ReadonlySet<string>>(
+  // of measurements leave them out (`withoutHiddenCategories` from shared);
+  // Settings > Custom Categories keeps them.
+  const hiddenCustomCategories = useMemo(
     () =>
-      new Set(
-        FEATURE_KEYS.filter(isExplicitlyOff).flatMap(
-          (key) => FEATURE_CUSTOM_CATEGORIES[key] ?? []
-        )
-      ),
-    [isExplicitlyOff]
+      hiddenFeatureCustomCategories('web', {
+        choices: undefined,
+        cycleEnabled,
+      }),
+    [cycleEnabled]
   );
   return { isEnabled, isExplicitlyOff, hiddenCustomCategories };
-}
-
-/** The categories to list, less those of features turned off on purpose. */
-export function withoutHiddenCategories<T extends { name: string }>(
-  categories: readonly T[],
-  hidden: ReadonlySet<string>
-): T[] {
-  return hidden.size === 0
-    ? [...categories]
-    : categories.filter((category) => !hidden.has(category.name));
 }
 
 /**

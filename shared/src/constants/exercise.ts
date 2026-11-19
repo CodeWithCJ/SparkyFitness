@@ -136,7 +136,14 @@ export function resolveExerciseModality(
 // Workout sources that support nested exercise editing after creation.
 const EDITABLE_SOURCES = new Set(['manual', 'sparky', 'workout plan']);
 
-function normalizeSource(source: string | null | undefined): string | null {
+/**
+ * A stored source in one form for comparing: trimmed and lower case. Exercise
+ * entries default to 'Manual', presets and plans are Title Case and other
+ * tables use lower case, so never compare a source with `===`.
+ */
+export function normalizeSource(
+  source: string | null | undefined
+): string | null {
   if (source == null) return null;
   return source.trim().toLowerCase();
 }

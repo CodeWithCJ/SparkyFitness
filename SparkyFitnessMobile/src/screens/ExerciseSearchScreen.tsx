@@ -15,13 +15,11 @@ import {
   FlatList,
   ScrollView,
   TextInput,
-  Platform,
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
@@ -83,7 +81,6 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
   const { returnKey, replaceFor } = route.params;
   const { t } = useTranslation();
 
-  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [accentColor, textMuted, textSecondary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -941,6 +938,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
   );
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: replaceFor
       ? t('exerciseSearch.replaceTitle', { defaultValue: 'Replace Exercise' })
       : t('exerciseSearch.title', { defaultValue: 'Exercises' }),
@@ -980,10 +978,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       {/* Segmented control */}

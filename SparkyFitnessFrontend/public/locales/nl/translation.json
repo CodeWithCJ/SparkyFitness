@@ -1849,8 +1849,6 @@
     "cycle": {
       "title": "Cyclus en zwangerschap",
       "description": "Beheer uw reproductieve gezondheid, menstruatiecycli en het bijhouden van zwangerschappen",
-      "enableLabel": "Cyclus & zwangerschapsvolger aanzetten",
-      "enableHint": "Schakel het centrum voor reproductieve gezondheid in of uit. Als u dit inschakelt, wordt het navigatietabblad in de zijbalk weergegeven.",
       "mode": "Volger modus",
       "bcMethod": "Anticonceptie",
       "terminology": "Taalgebruik",
@@ -2552,8 +2550,6 @@
       "cunninghamMath": "Formule: 500 + 22 × LBM (waarbij LBM = gewicht × (1 - LV/100))\nBerekening: 500 + 22 × ({{weight}} kg × (1 - {{bodyFat}}/100)) = {{result}} kcal",
       "harrisMaleMath": "Formule: 13,397 × gewicht + 4,799 × lengte - 5,677 × leeftijd + 88,362\nBerekening: 13,397 × {{weight}} + 4,799 × {{height}} - 5,677 × {{age}} + 88,362 = {{result}} kcal",
       "harrisFemaleMath": "Formule: 9,247 × gewicht + 3,098 × lengte - 4,33 × leeftijd + 447,593\nBerekening: 9,247 × {{weight}} + 3,098 × {{height}} - 4,33 × {{age}} + 447,593 = {{result}} kcal",
-      "oxfordMaleMath": "Formule: 14,2 × gewicht + 593\nBerekening: 14,2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "Formule: 10,9 × gewicht + 677\nBerekening: 10,9 × {{weight}} + 677 = {{result}} kcal",
       "bmiBodyFatMath": "Formule: 1,2 × BMI + 0,23 × leeftijd - constante ({{constant}})\nBerekening: 1,2 × {{bmi}} (BMI) + 0,23 × {{age}} - {{constant}} = {{result}}%",
       "invalidMeasurements": "Ongeldige metingen voor logberekening.",
       "navyMaleMath": "Formule (Man): 86,01 × log10(taille - nek) - 70,041 × log10(lengte) + 36,76 (in inches)\nBerekening: 86,01 × log10({{waist}}in - {{neck}}in) - 70,041 × log10({{height}}in) + 36,76\nBerekend: {{result}}%",

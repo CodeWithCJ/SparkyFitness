@@ -28,7 +28,12 @@ jest.mock('../../src/services/api/authService', () => ({
 jest.mock('../../src/services/storage', () => ({
   clearServerConfigCache: jest.fn(),
   setOnServerConfigDeleted: jest.fn(),
+  setOnServerConfigsChanged: jest.fn(),
   takeIdentityChangeServerConfigIds: jest.fn(async () => []),
+}));
+
+jest.mock('../../src/services/clientCertificate', () => ({
+  refreshClientCertificateHosts: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('expo-image', () => ({
@@ -123,6 +128,24 @@ describe('useAuth', () => {
     expect(mockSetOnNoConfigs).toHaveBeenCalledWith(expect.any(Function));
     expect(mockSetOnIdentityChanged).toHaveBeenCalledTimes(1);
     expect(mockSetOnIdentityChanged).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  test('keeps the client certificate hosts in step with the saved servers', async () => {
+    const { setOnServerConfigsChanged } = jest.requireMock(
+      '../../src/services/storage'
+    ) as { setOnServerConfigsChanged: jest.Mock };
+    const { refreshClientCertificateHosts } = jest.requireMock(
+      '../../src/services/clientCertificate'
+    ) as { refreshClientCertificateHosts: jest.Mock };
+    renderUseAuth();
+
+    await act(async () => {});
+
+    // Once at start, for servers saved before this build.
+    expect(refreshClientCertificateHosts).toHaveBeenCalledTimes(1);
+    const onChanged = setOnServerConfigsChanged.mock.calls[0][0] as () => void;
+    onChanged();
+    expect(refreshClientCertificateHosts).toHaveBeenCalledTimes(2);
   });
 
   test('identity changed callback drops every cached query', async () => {

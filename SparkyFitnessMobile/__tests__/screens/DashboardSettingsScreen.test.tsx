@@ -1,5 +1,10 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -46,6 +51,17 @@ jest.mock('../../src/components/Icon', () => {
   };
 });
 
+let mockCycleOn = false;
+let mockDiscreet = false;
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({
+    isEnabled: (key: string) => key === 'cycle' && mockCycleOn,
+  }),
+}));
+jest.mock('../../src/hooks/useDiscreetMode', () => ({
+  useDiscreetMode: () => ({ discreetMode: mockDiscreet }),
+}));
+
 const insets = { top: 0, bottom: 0, left: 0, right: 0 };
 const frame = { x: 0, y: 0, width: 390, height: 844 };
 
@@ -79,6 +95,8 @@ describe('DashboardSettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
+    mockCycleOn = false;
+    mockDiscreet = false;
   });
 
   const moveRow = (cardKey: string, actionName: 'increment' | 'decrement') =>
@@ -92,6 +110,36 @@ describe('DashboardSettingsScreen', () => {
     renderScreen();
 
     expect(orderedRowKeys()).toEqual([...DASHBOARD_CARD_KEYS]);
+  });
+
+  test('keeps the cycle card listed while cycle is off, saying why it is not shown', () => {
+    renderScreen();
+    const row = screen.getByTestId('dashboard-card-row-cycle');
+    expect(
+      within(row).getByText('Not shown: turned off in Features')
+    ).toBeTruthy();
+    expect(screen.getByTestId('dashboard-card-switch-cycle').props.value).toBe(
+      true
+    );
+  });
+
+  test('describes the cycle card normally while cycle is on', () => {
+    mockCycleOn = true;
+    renderScreen();
+    const row = screen.getByTestId('dashboard-card-row-cycle');
+    expect(within(row).getByText('Cycle & Pregnancy')).toBeTruthy();
+    expect(
+      within(row).queryByText('Not shown: turned off in Features')
+    ).toBeNull();
+  });
+
+  test('never names cycle in discreet mode', () => {
+    mockCycleOn = true;
+    mockDiscreet = true;
+    renderScreen();
+    const row = screen.getByTestId('dashboard-card-row-cycle');
+    expect(within(row).getByText('Wellness')).toBeTruthy();
+    expect(within(row).queryByText(/cycle/i)).toBeNull();
   });
 
   test('the Health Trends configure button navigates to HealthTrendsSettings', () => {

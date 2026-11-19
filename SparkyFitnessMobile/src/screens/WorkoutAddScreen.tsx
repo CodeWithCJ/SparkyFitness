@@ -17,7 +17,6 @@ import {
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
@@ -79,7 +78,6 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     !!route.params?.skipDraftLoad ||
     (!!route.params?.selectedExercise && !isEditMode);
 
-  const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
   const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
 
@@ -468,10 +466,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isInitializingEditForm ? (
         <StatusView loading />

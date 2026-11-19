@@ -63,6 +63,7 @@ import RunEffortPrompt from '../components/recording/RunEffortPrompt';
 import ProgramRetestPrompt from '../components/recording/ProgramRetestPrompt';
 import { useActiveWorkoutPlans } from '../hooks/useActiveWorkoutPlan';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import {
   useCheckInPhotoDates,
   useCheckInPhotosByDate,
@@ -362,13 +363,27 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
     0,
     4
   );
+  // Manual-only custom entries for the Diary tiles: health-synced entries are
+  // filtered here (before presentation) so MeasurementsSummary never receives
+  // them; the component itself re-filters defensively too. Entries of a
+  // feature turned off on purpose (the reproductive categories while cycle is
+  // off in Settings → Features) are left out as well.
+  const { hiddenCustomCategories } = useMobileFeatures();
+  const manualCustomMeasurements = useMemo(
+    () =>
+      (customMeasurements ?? []).filter(
+        (e) =>
+          isManualSource(e.source) &&
+          !hiddenCustomCategories.has(e.custom_categories?.name ?? '')
+      ),
+    [customMeasurements, hiddenCustomCategories]
+  );
+
   const hasAnyMeasurement = useMemo(() => {
     // Only MANUAL custom entries make the Measurements section meaningful — a
     // user with pages of health-synced custom entries should not see the
     // section flash on their behalf.
-    const manualCustom =
-      customMeasurements?.filter((e) => isManualSource(e.source)) ?? [];
-    if (manualCustom.length > 0) return true;
+    if (manualCustomMeasurements.length > 0) return true;
     if (!measurements) return false;
     return (
       measurements.weight != null ||
@@ -379,15 +394,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       measurements.hips != null ||
       measurements.steps != null
     );
-  }, [measurements, customMeasurements]);
-
-  // Manual-only custom entries for the Diary tiles: health-synced entries are
-  // filtered here (before presentation) so MeasurementsSummary never receives
-  // them; the component itself re-filters defensively too.
-  const manualCustomMeasurements = useMemo(
-    () => (customMeasurements ?? []).filter((e) => isManualSource(e.source)),
-    [customMeasurements]
-  );
+  }, [measurements, manualCustomMeasurements]);
 
   const { startLiveWorkout } = useStartLiveWorkout(navigation);
   const { plans: activePlans } = useActiveWorkoutPlans(selectedDate);

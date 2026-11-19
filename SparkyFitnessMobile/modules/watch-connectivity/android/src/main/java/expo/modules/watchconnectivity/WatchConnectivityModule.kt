@@ -11,6 +11,7 @@ import androidx.wear.remote.interactions.RemoteActivityHelper
 import com.facebook.react.bridge.ReadableMap
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
+import com.google.android.gms.wearable.Asset
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
@@ -299,8 +300,8 @@ internal object WatchConnectivityHub {
     }
   }
 
-  private suspend fun sendLiveBytes(context: Context, path: String, bytes: ByteArray) {
-    try {
+  private suspend fun sendLiveBytes(context: Context, path: String, bytes: ByteArray): Boolean {
+    return try {
       val nodes = Wearable.getNodeClient(context).connectedNodes.await()
       val connected = nodes.isNotEmpty()
       val prev = isReachableFlag.getAndSet(connected)
@@ -311,15 +312,61 @@ internal object WatchConnectivityHub {
         activeModule?.emitEvent("onReachabilityChange", mapOf("isReachable" to connected))
       }
       val msgClient = Wearable.getMessageClient(context)
+      var delivered = false
       for (node in nodes) {
         try {
           msgClient.sendMessage(node.id, path, bytes).await()
+          delivered = true
         } catch (e: Throwable) {
           Log.w(TAG, "sendMessage to ${node.id} failed: ${e.message}")
         }
       }
+      delivered
     } catch (e: Throwable) {
       Log.w(TAG, "sendLiveBytes failed: ${e.message}")
+      false
+    }
+  }
+
+  private const val MAX_INLINE_WEARABLE_BYTES = 80 * 1024
+
+  suspend fun sendExerciseImage(context: Context, key: String, index: Int, bytes: ByteArray) {
+    val appCtx = context.applicationContext
+    val safeKey = key.replace(Regex("[^a-zA-Z0-9_-]"), "_")
+    // Wearable MessageClient and inline DataItem payloads cap at ~100 KB.
+    // Only send live when the Base64-encoded JSON fits comfortably under that
+    // cap; otherwise go straight to a durable DataClient transfer using an
+    // Asset for oversized images.
+    val livePayload = if (bytes.size <= 58 * 1024) {
+      JSONObject().apply {
+        put("type", "exerciseImage")
+        put("key", key)
+        put("index", index)
+        put("dataBase64", Base64.encodeToString(bytes, Base64.NO_WRAP))
+      }.toString().toByteArray(Charsets.UTF_8)
+    } else {
+      null
+    }
+    val sentLive = livePayload != null &&
+      livePayload.size <= MAX_INLINE_WEARABLE_BYTES &&
+      sendLiveBytes(appCtx, "/sparky/message", livePayload)
+    if (!sentLive) {
+      val path = "/sparky/transfer/phone/exerciseImage/${safeKey}_$index"
+      try {
+        val req = PutDataMapRequest.create(path).apply {
+          dataMap.putString("key", key)
+          dataMap.putInt("index", index)
+          if (bytes.size <= MAX_INLINE_WEARABLE_BYTES) {
+            dataMap.putByteArray("data", bytes)
+          } else {
+            dataMap.putAsset("asset", Asset.createFromBytes(bytes))
+          }
+          dataMap.putLong("sentAt", System.currentTimeMillis())
+        }.asPutDataRequest().setUrgent()
+        Wearable.getDataClient(appCtx).putDataItem(req).await()
+      } catch (e: Throwable) {
+        Log.w(TAG, "durable exerciseImage transfer ($path) failed: ${e.message}")
+      }
     }
   }
 
@@ -514,6 +561,7 @@ internal object WatchConnectivityHub {
 
       val reqExArr = JSONArray()
       val plannedTargetsByEx = mutableListOf<List<JSONObject>>()
+      val presetSupersetGroups = mutableListOf<Int?>()
 
       for (i in 0 until presetExArr.length()) {
         val pEx = presetExArr.optJSONObject(i) ?: continue
@@ -550,12 +598,16 @@ internal object WatchConnectivityHub {
           }
         }
         plannedTargetsByEx.add(plannedList)
+        val supersetGroup = if (pEx.has("superset_group") && !pEx.isNull("superset_group")) {
+          pEx.optInt("superset_group")
+        } else null
+        presetSupersetGroups.add(supersetGroup)
         val reqEx = JSONObject().apply {
           put("exercise_id", exId)
           put("sort_order", i)
           put("duration_minutes", 0)
-          if (pEx.has("superset_group") && !pEx.isNull("superset_group")) {
-            put("superset_group", pEx.opt("superset_group"))
+          if (supersetGroup != null) {
+            put("superset_group", supersetGroup)
           }
           put("sets", reqSets)
         }
@@ -586,8 +638,13 @@ internal object WatchConnectivityHub {
       if (sessionId.isEmpty()) return
       val sessionExercises = sessionObj.optJSONArray("exercises") ?: JSONArray()
 
-      val watchExercises = mutableListOf<Map<String, Any?>>()
-      val setOrder = mutableListOf<String>()
+      data class HeadlessBuiltExercise(
+        val supersetGroup: Int?,
+        val watchSets: List<MutableMap<String, Any?>>,
+        val exMap: MutableMap<String, Any?>
+      )
+
+      val builtExercises = mutableListOf<HeadlessBuiltExercise>()
 
       for (i in 0 until sessionExercises.length()) {
         val sEx = sessionExercises.optJSONObject(i) ?: continue
@@ -599,15 +656,19 @@ internal object WatchConnectivityHub {
         val isTimed = modality == "duration" || modality == "duration_distance" || modality == "weight_duration"
         val isCarry = modality == "weight_distance"
         val isWeightedTimed = modality == "weight_duration"
+        val supersetGroup = if (sEx.has("superset_group") && !sEx.isNull("superset_group")) {
+          sEx.optInt("superset_group")
+        } else {
+          presetSupersetGroups.getOrNull(i)
+        }
 
         val sSets = sEx.optJSONArray("sets") ?: JSONArray()
         val plannedSets = plannedTargetsByEx.getOrNull(i) ?: emptyList()
-        val watchSets = mutableListOf<Map<String, Any?>>()
+        val watchSets = mutableListOf<MutableMap<String, Any?>>()
 
         for (sIdx in 0 until sSets.length()) {
           val ss = sSets.optJSONObject(sIdx) ?: continue
           val setId = ss.opt("id")?.toString() ?: continue
-          setOrder.add(setId)
           val planned = plannedSets.getOrNull(sIdx)
           val targetReps = if (planned != null && planned.has("reps") && !planned.isNull("reps")) planned.optInt("reps") else null
           val targetWeightKg = if (planned != null && planned.has("weight") && !planned.isNull("weight")) planned.optDouble("weight") else null
@@ -623,6 +684,7 @@ internal object WatchConnectivityHub {
             "targetDurationSec" to targetDurationSec,
             "targetDistanceKm" to targetDistanceKm,
             "restSeconds" to restSeconds,
+            "restAfterSeconds" to restSeconds,
             "setType" to setType
           )
           if (isTimed) setMap["timed"] = true
@@ -631,15 +693,73 @@ internal object WatchConnectivityHub {
           watchSets.add(setMap)
         }
 
-        watchExercises.add(
-          mapOf(
-            "exerciseEntryId" to entryId,
-            "name" to exName,
-            "bodyweight" to isBodyweight,
-            "sets" to watchSets
-          )
+        val exMap = mutableMapOf<String, Any?>(
+          "exerciseEntryId" to entryId,
+          "name" to exName,
+          "bodyweight" to isBodyweight,
+          "sets" to watchSets
         )
+        snap?.optJSONArray("equipment")?.optString(0)?.takeIf { it.isNotBlank() }?.let {
+          exMap["equipment"] = it
+        }
+        snap?.optJSONArray("primary_muscles")?.optString(0)?.takeIf { it.isNotBlank() }?.let {
+          exMap["muscle"] = it
+        }
+        val imageId = snap?.optString("id")?.takeIf { it.isNotBlank() }
+        val imagesArr = snap?.optJSONArray("images")
+        if (imageId != null && imagesArr != null && imagesArr.length() > 0) {
+          exMap["imageKey"] = imageId
+          exMap["imageCount"] = minOf(imagesArr.length(), 2)
+        }
+        builtExercises.add(HeadlessBuiltExercise(supersetGroup, watchSets, exMap))
       }
+
+      // Mirror getSupersetRuns + buildStepsFromSession on the phone: identify
+      // adjacent runs of 2+ exercises sharing a non-null superset_group, assign
+      // 0-based supersetRun indices, interleave setOrder round-robin, and set
+      // restSeconds to 0 inside a superset round (groupRest before each round).
+      val setOrder = mutableListOf<String>()
+      var nextSupersetRun = 0
+      var idx = 0
+      while (idx < builtExercises.size) {
+        val current = builtExercises[idx]
+        val group = current.supersetGroup
+        if (group != null) {
+          var end = idx + 1
+          while (end < builtExercises.size && builtExercises[end].supersetGroup == group) {
+            end += 1
+          }
+          if (end - idx >= 2) {
+            val runIdx = nextSupersetRun++
+            val members = builtExercises.subList(idx, end)
+            for (member in members) {
+              member.exMap["supersetRun"] = runIdx
+            }
+            val roundCount = members.maxOfOrNull { it.watchSets.size } ?: 0
+            for (round in 0 until roundCount) {
+              val groupRest = (members[0].watchSets.getOrNull(round)?.get("restAfterSeconds") as? Int) ?: 90
+              var firstInRound = true
+              for (member in members) {
+                val setMap = member.watchSets.getOrNull(round) ?: continue
+                val isDrop = (setMap["setType"] as? String).equals("drop", ignoreCase = true)
+                setMap["restSeconds"] = if (isDrop) 0 else if (firstInRound) groupRest else 0
+                firstInRound = false
+                setOrder.add(setMap["setId"] as String)
+              }
+            }
+            idx = end
+            continue
+          }
+        }
+        for (setMap in current.watchSets) {
+          val ownRest = (setMap["restAfterSeconds"] as? Int) ?: 0
+          val isDrop = (setMap["setType"] as? String).equals("drop", ignoreCase = true)
+          setMap["restSeconds"] = if (isDrop) 0 else ownRest
+          setOrder.add(setMap["setId"] as String)
+        }
+        idx += 1
+      }
+      val watchExercises = builtExercises.map { it.exMap }
 
       val nowMs = System.currentTimeMillis()
       val nowIso = Instant.ofEpochMilli(nowMs).toString()
@@ -668,6 +788,26 @@ internal object WatchConnectivityHub {
 
   private fun activeOwnerId(context: Context): String {
     return getTelemetryOwner(context)
+  }
+
+  private fun buildSetCompletedEvent(
+    payload: Map<String, Any?>,
+    fallbackSessionId: String = ""
+  ): MutableMap<String, Any?> {
+    val sessionId = (payload["sessionId"] as? String)?.takeIf { it.isNotEmpty() } ?: fallbackSessionId
+    val event = mutableMapOf<String, Any?>(
+      "clientId" to (payload["clientId"] as? String ?: ""),
+      "sessionId" to sessionId,
+      "setId" to (payload["setId"] as? String ?: "")
+    )
+    asDouble(payload["weightKg"])?.let { event["weightKg"] = it }
+    asDouble(payload["reps"])?.let { event["reps"] = it }
+    asDouble(payload["rpe"])?.let { event["rpe"] = it }
+    if (payload["rpeOnly"] == true) event["rpeOnly"] = true
+    asInt(payload["duration"])?.let { event["duration"] = it }
+    asDouble(payload["distanceKm"])?.let { event["distanceKm"] = it }
+    (payload["completedAt"] as? String)?.let { event["completedAt"] = it }
+    return event
   }
 
   private fun routePayload(context: Context, payload: Map<String, Any?>, rawJson: String? = null) {
@@ -823,19 +963,8 @@ internal object WatchConnectivityHub {
         }
       }
       "setCompleted" -> {
-        val event = mutableMapOf<String, Any?>(
-          "clientId" to (payload["clientId"] as? String ?: ""),
-          "sessionId" to (payload["sessionId"] as? String ?: ""),
-          "setId" to (payload["setId"] as? String ?: "")
-        )
-        asDouble(payload["weightKg"])?.let { event["weightKg"] = it }
-        asDouble(payload["reps"])?.let { event["reps"] = it }
-        asDouble(payload["rpe"])?.let { event["rpe"] = it }
-        asInt(payload["duration"])?.let { event["duration"] = it }
-        asDouble(payload["distanceKm"])?.let { event["distanceKm"] = it }
-        (payload["completedAt"] as? String)?.let { event["completedAt"] = it }
         if (mod != null) {
-          mod.emitEvent("onSetCompleted", event)
+          mod.emitEvent("onSetCompleted", buildSetCompletedEvent(payload))
         } else if (rawJson != null) {
           enqueueInboundJson(context, rawJson)
         }
@@ -908,9 +1037,19 @@ internal object WatchConnectivityHub {
       }
       "workoutStop" -> {
         if (mod != null) {
+          val stopSessionId = payload["sessionId"] as? String ?: ""
+          for (completion in asMapList(payload["completedSets"])) {
+            val event = buildSetCompletedEvent(completion, fallbackSessionId = stopSessionId)
+            val setId = event["setId"] as? String ?: ""
+            val clientId = event["clientId"] as? String ?: ""
+            if (setId.isNotEmpty() && clientId.isNotEmpty()) {
+              event["replay"] = true
+              mod.emitEvent("onSetCompleted", event)
+            }
+          }
           mod.emitEvent(
             "onWorkoutStop",
-            mapOf("sessionId" to (payload["sessionId"] as? String ?: ""))
+            mapOf("sessionId" to stopSessionId)
           )
         } else if (rawJson != null) {
           enqueueInboundJson(context, rawJson)
@@ -949,14 +1088,39 @@ internal object WatchConnectivityHub {
           }
         }
       }
+      "workoutEffort" -> {
+        val event = mapOf(
+          "sessionId" to (payload["sessionId"] as? String ?: ""),
+          "rating" to (asInt(payload["rating"]) ?: 0)
+        )
+        if (mod != null) {
+          mod.emitEvent("onWorkoutEffort", event)
+        } else if (rawJson != null) {
+          enqueueInboundJson(context, rawJson)
+        }
+      }
+      "runEffort" -> {
+        val event = mapOf(
+          "clientId" to (payload["clientId"] as? String ?: ""),
+          "rating" to (asInt(payload["rating"]) ?: 0)
+        )
+        if (mod != null) {
+          mod.emitEvent("onRunEffort", event)
+        } else if (rawJson != null) {
+          enqueueInboundJson(context, rawJson)
+        }
+      }
       "workoutEdit" -> {
         val event = mutableMapOf<String, Any?>(
           "sessionId" to (payload["sessionId"] as? String ?: ""),
           "clientId" to (payload["clientId"] as? String ?: ""),
           "action" to (payload["action"] as? String ?: "")
         )
-        for (key in listOf("exerciseEntryId", "setId", "exerciseId", "setType")) {
+        for (key in listOf("exerciseEntryId", "anchorEntryId", "setId", "exerciseId", "setType")) {
           (payload[key] as? String)?.let { event[key] = it }
+        }
+        for (key in listOf("weightKg", "reps", "distanceKm", "at", "armedAt")) {
+          asDouble(payload[key])?.let { event[key] = it }
         }
         if (mod != null) {
           mod.emitEvent("onWorkoutEdit", event)
@@ -970,7 +1134,8 @@ internal object WatchConnectivityHub {
             "onPresetUpdateAnswer",
             mapOf(
               "sessionId" to (payload["sessionId"] as? String ?: ""),
-              "update" to (payload["update"] as? Boolean ?: false)
+              "update" to (payload["update"] as? Boolean ?: false),
+              "waiting" to (payload["waiting"] as? Boolean ?: false)
             )
           )
         } else if (rawJson != null) {
@@ -1520,6 +1685,7 @@ class WatchConnectivityModule : Module() {
       "onSetTimerStopped",
       "onHeartRateBatch",
       "onLiveHeartRate",
+      "onWorkoutEffort",
       "onWorkoutStop",
       "onWorkoutDiscard",
       "onWorkoutStartRequested",
@@ -1531,7 +1697,8 @@ class WatchConnectivityModule : Module() {
       "onFastEndRequested",
       "onRunLive",
       "onRunCue",
-      "onRunFinished"
+      "onRunFinished",
+      "onRunEffort"
     )
 
     OnCreate {
@@ -1604,6 +1771,41 @@ class WatchConnectivityModule : Module() {
         WatchConnectivityHub.sendMessageOrTransfer(ctx, payload, durable = true, slotKey = "latest")
       }
       WatchConnectivityHub.launchWatchApp(ctx, "workout")
+    }
+
+    AsyncFunction("sendExerciseImage") { image: ReadableMap ->
+      val ctx = appContext.reactContext
+        ?: throw IllegalStateException("React context unavailable")
+      if (!WatchConnectivityHub.isSupportedFlag.get()) {
+        throw IllegalStateException("Wearable connectivity unsupported")
+      }
+      val map = image.toHashMap()
+      val key = (map["key"] as? String)?.trim()
+      val index = (map["index"] as? Number)?.toInt()
+      val uriStr = map["uri"] as? String
+      if (key.isNullOrEmpty() || key.length > 80 || index == null || index !in 0..1 || uriStr.isNullOrEmpty()) {
+        throw IllegalArgumentException("Invalid exercise image payload")
+      }
+      val parsed = Uri.parse(uriStr)
+      val filePath = if (parsed.scheme == "file") parsed.path else null
+      if (filePath.isNullOrEmpty()) {
+        throw IllegalArgumentException("Exercise image uri must be a file:// URL")
+      }
+      val file = File(filePath).canonicalFile
+      val cacheRoot = ctx.cacheDir.canonicalFile.path
+      val filesRoot = ctx.filesDir.canonicalFile.path
+      val insideAppStorage = file.path.startsWith("$cacheRoot${File.separator}") ||
+        file.path.startsWith("$filesRoot${File.separator}")
+      if (!insideAppStorage || !file.isFile) {
+        throw IllegalArgumentException("Exercise image file unreadable")
+      }
+      val bytes = file.readBytes()
+      if (bytes.isEmpty() || bytes.size > 256 * 1024) {
+        throw IllegalArgumentException("Exercise image size out of bounds")
+      }
+      WatchConnectivityHub.scope.launch {
+        WatchConnectivityHub.sendExerciseImage(ctx, key, index, bytes)
+      }
     }
 
     AsyncFunction("updateWorkoutPlan") { plan: ReadableMap ->

@@ -23,7 +23,6 @@ import LabReportImportScreen from '../screens/LabReportImportScreen';
 import LabResultAddScreen from '../screens/LabResultAddScreen';
 import LabResultDetailScreen from '../screens/LabResultDetailScreen';
 import LabResultsScreen from '../screens/LabResultsScreen';
-import RunProgramCalendarScreen from '../screens/RunProgramCalendarScreen';
 import RunProgramRaceScreen from '../screens/RunProgramRaceScreen';
 import FitnessTestScreen from '../screens/FitnessTestScreen';
 import FitnessTestResultScreen from '../screens/FitnessTestResultScreen';
@@ -34,6 +33,7 @@ import RouteDrawScreen from '../screens/RouteDrawScreen';
 import RouteGenerateScreen from '../screens/RouteGenerateScreen';
 import RunProgramWorkoutScreen from '../screens/RunProgramWorkoutScreen';
 import PersonalRecordsScreen from '../screens/PersonalRecordsScreen';
+import TrainingCalendarScreen from '../screens/TrainingCalendarScreen';
 import WatchRunLiveScreen from '../screens/WatchRunLiveScreen';
 import MealPlanFormScreen from '../screens/MealPlanFormScreen';
 import WorkoutPlansScreen from '../screens/WorkoutPlansScreen';
@@ -108,6 +108,7 @@ import ChatScreen from '../screens/ChatScreen';
 import ChatSettingsScreen from '../screens/ChatSettingsScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import CycleSettingsScreen from '../screens/CycleSettingsScreen';
+import FeatureSettingsScreen from '../screens/FeatureSettingsScreen';
 import CycleOnboardingScreen from '../screens/CycleOnboardingScreen';
 import CycleHubScreen from '../screens/CycleHubScreen';
 import CycleLogModalScreen from '../screens/CycleLogModalScreen';
@@ -166,6 +167,7 @@ export const SafeLabResults = withErrorBoundary(LabResultsScreen, 'LabResults', 
 export const SafeLabResultDetail = withErrorBoundary(LabResultDetailScreen, 'LabResultDetail', { canGoBack: true });
 export const SafeLabResultAdd = withErrorBoundary(LabResultAddScreen, 'LabResultAdd', { canGoBack: true });
 export const SafePersonalRecords = withErrorBoundary(PersonalRecordsScreen, 'PersonalRecords', { canGoBack: true });
+export const SafeTrainingCalendar = withErrorBoundary(TrainingCalendarScreen, 'TrainingCalendar', { canGoBack: true });
 export const SafeRunPrograms = withErrorBoundary(RunProgramsScreen, 'RunPrograms', { canGoBack: true });
 export const SafeRunProgramRace = withErrorBoundary(RunProgramRaceScreen, 'RunProgramRace', { canGoBack: true });
 export const SafeFitnessTest = withErrorBoundary(FitnessTestScreen, 'FitnessTest', { canGoBack: true });
@@ -175,7 +177,6 @@ export const SafeRouteDetail = withErrorBoundary(RouteDetailScreen, 'RouteDetail
 export const SafeRouteDraw = withErrorBoundary(RouteDrawScreen, 'RouteDraw', { canGoBack: true });
 export const SafeRouteGenerate = withErrorBoundary(RouteGenerateScreen, 'RouteGenerate', { canGoBack: true });
 export const SafeRunProgramEdit = withErrorBoundary(RunProgramEditScreen, 'RunProgramEdit', { canGoBack: true });
-export const SafeRunProgramCalendar = withErrorBoundary(RunProgramCalendarScreen, 'RunProgramCalendar', { canGoBack: true });
 export const SafeRunProgramWorkout = withErrorBoundary(RunProgramWorkoutScreen, 'RunProgramWorkout', { canGoBack: true });
 export const SafeMealPlanForm = withErrorBoundary(MealPlanFormScreen, 'MealPlanForm', { canGoBack: true });
 export const SafeWorkoutPlans = withErrorBoundary(WorkoutPlansScreen, 'WorkoutPlans', { canGoBack: true });
@@ -295,6 +296,7 @@ export const SafeFamilyMealDetail = withErrorBoundary(FamilyMealDetailScreen, 'F
 export const SafeFamilyCopyReview = withErrorBoundary(FamilyCopyReviewScreen, 'FamilyCopyReview', { canGoBack: true });
 
 export const SafeCycleSettings = withErrorBoundary(CycleSettingsScreen, 'CycleSettings', { canGoBack: true });
+export const SafeFeatureSettings = withErrorBoundary(FeatureSettingsScreen, 'FeatureSettings', { canGoBack: true });
 export const SafeCycleOnboarding = withErrorBoundary(CycleOnboardingScreen, 'CycleOnboarding', { canGoBack: true });
 export const SafeCycleHub = withErrorBoundary(CycleHubScreen, 'CycleHub', { canGoBack: true });
 export const SafeCycleLogModal = withErrorBoundary(CycleLogModalScreen, 'CycleLogModal', { canGoBack: true });

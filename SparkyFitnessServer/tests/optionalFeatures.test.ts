@@ -9,12 +9,15 @@ import {
   featureChoicesSchema,
   featureStorage,
   filterByFeature,
+  hiddenFeatureCustomCategories,
   isFeatureEnabled,
   isFeatureEnabledAnywhere,
   isFeatureExplicitlyOff,
   isFeatureKey,
   platformFeatureChoicesSchema,
   userPreferencesSchema,
+  withoutCycleHubSymptoms,
+  withoutHiddenCategories,
   type FeatureKey,
 } from '@workspace/shared';
 
@@ -102,6 +105,57 @@ describe('filterByFeature', () => {
     ]);
     expect(filterByFeature(items, () => false).map((item) => item.id)).toEqual([
       'diary',
+    ]);
+  });
+});
+
+describe('hiddenFeatureCustomCategories', () => {
+  it.each(FEATURE_PLATFORMS)(
+    'hides the reproductive categories only while cycle is turned off on purpose (%s)',
+    (platform) => {
+      expect(
+        hiddenFeatureCustomCategories(platform, {
+          choices: undefined,
+          cycleEnabled: false,
+        })
+      ).toEqual(new Set(FEATURE_CUSTOM_CATEGORIES.cycle));
+      for (const cycleEnabled of [true, null, undefined]) {
+        expect(
+          hiddenFeatureCustomCategories(platform, {
+            choices: undefined,
+            cycleEnabled,
+          }).size
+        ).toBe(0);
+      }
+    }
+  );
+});
+
+describe('withoutHiddenCategories', () => {
+  it('leaves out the hidden category names and keeps the rest', () => {
+    const categories = [
+      { id: '1', name: 'blood_glucose' },
+      { id: '2', name: 'menstruation_flow' },
+    ];
+    expect(
+      withoutHiddenCategories(categories, new Set(['menstruation_flow']))
+    ).toEqual([{ id: '1', name: 'blood_glucose' }]);
+    expect(withoutHiddenCategories(categories, new Set())).toEqual(categories);
+  });
+});
+
+describe('withoutCycleHubSymptoms', () => {
+  it('leaves out only symptoms logged in the cycle hub', () => {
+    const entries = [
+      { id: 'a', source: 'manual' },
+      { id: 'b', source: 'cycle' },
+      { id: 'c', source: null },
+      { id: 'd' },
+    ];
+    expect(withoutCycleHubSymptoms(entries).map((entry) => entry.id)).toEqual([
+      'a',
+      'c',
+      'd',
     ]);
   });
 });

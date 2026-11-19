@@ -962,6 +962,22 @@ $$;
 
 
 --
+-- Name: is_challenge_member(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.is_challenge_member(p_challenge_id uuid) RETURNS boolean
+    LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.challenge_members m
+    WHERE m.challenge_id = p_challenge_id
+      AND m.user_id = authenticated_user_id()
+  );
+$$;
+
+
+--
 -- Name: manage_goal_timeline(uuid, date, numeric, numeric, numeric, numeric, integer, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric, numeric); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1096,6 +1112,106 @@ BEGIN
   RETURN normalized;
 END;
 $_$;
+
+
+--
+-- Name: queue_challenge_member_day(uuid, date); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.queue_challenge_member_day(p_user_id uuid, p_day date) RETURNS void
+    LANGUAGE plpgsql
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  IF p_user_id IS NULL OR p_day IS NULL THEN
+    RETURN;
+  END IF;
+  INSERT INTO public.challenge_score_queue (challenge_id, user_id, day)
+  SELECT m.challenge_id, m.user_id, p_day
+    FROM public.challenge_members m
+    JOIN public.challenges c ON c.id = m.challenge_id
+   WHERE m.user_id = p_user_id
+     AND c.ended_at IS NULL
+     AND p_day >= c.start_date
+     AND (c.end_date IS NULL OR p_day <= c.end_date)
+  ON CONFLICT (challenge_id, user_id, day)
+    DO UPDATE SET queued_at = EXCLUDED.queued_at;
+END;
+$$;
+
+
+--
+-- Name: queue_challenge_scores(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.queue_challenge_scores() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  IF TG_OP <> 'INSERT' THEN
+    PERFORM public.queue_challenge_member_day(OLD.user_id, OLD.entry_date);
+  END IF;
+  IF TG_OP <> 'DELETE' AND (
+    TG_OP = 'INSERT'
+    OR NEW.user_id IS DISTINCT FROM OLD.user_id
+    OR NEW.entry_date IS DISTINCT FROM OLD.entry_date
+  ) THEN
+    PERFORM public.queue_challenge_member_day(NEW.user_id, NEW.entry_date);
+  END IF;
+  RETURN NULL;
+END;
+$$;
+
+
+--
+-- Name: queue_challenge_scores_for_sets(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.queue_challenge_scores_for_sets() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  changed RECORD;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    FOR changed IN
+      SELECT DISTINCT e.user_id, e.entry_date
+        FROM new_sets n
+        JOIN public.exercise_entries e ON e.id = n.exercise_entry_id
+       WHERE n.completed_at IS NOT NULL OR n.started_at IS NOT NULL
+    LOOP
+      PERFORM public.queue_challenge_member_day(changed.user_id, changed.entry_date);
+    END LOOP;
+  ELSIF TG_OP = 'DELETE' THEN
+    -- A set removed with its entry finds no entry: the entry's own trigger
+    -- queued the day.
+    FOR changed IN
+      SELECT DISTINCT e.user_id, e.entry_date
+        FROM old_sets o
+        JOIN public.exercise_entries e ON e.id = o.exercise_entry_id
+       WHERE o.completed_at IS NOT NULL OR o.started_at IS NOT NULL
+    LOOP
+      PERFORM public.queue_challenge_member_day(changed.user_id, changed.entry_date);
+    END LOOP;
+  ELSE
+    FOR changed IN
+      SELECT DISTINCT e.user_id, e.entry_date
+        FROM new_sets n
+        JOIN old_sets o ON o.id = n.id
+        JOIN public.exercise_entries e
+          ON e.id IN (n.exercise_entry_id, o.exercise_entry_id)
+       WHERE n.completed_at IS DISTINCT FROM o.completed_at
+          OR n.started_at IS DISTINCT FROM o.started_at
+          OR n.exercise_entry_id IS DISTINCT FROM o.exercise_entry_id
+    LOOP
+      PERFORM public.queue_challenge_member_day(changed.user_id, changed.entry_date);
+    END LOOP;
+  END IF;
+  RETURN NULL;
+END;
+$$;
 
 
 --
@@ -1814,6 +1930,164 @@ CREATE SEQUENCE public.backup_settings_id_seq
 --
 
 ALTER SEQUENCE public.backup_settings_id_seq OWNED BY public.backup_settings.id;
+
+
+--
+-- Name: challenge_activity_cards; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.challenge_activity_cards (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    challenge_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    exercise_entry_id uuid NOT NULL,
+    day date NOT NULL,
+    activity_type character varying(30) NOT NULL,
+    name character varying(255),
+    minutes double precision DEFAULT 0 NOT NULL,
+    distance_meters double precision,
+    pace_seconds_per_km double precision,
+    avg_heart_rate smallint,
+    max_heart_rate smallint,
+    points double precision DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: challenge_daily_scores; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.challenge_daily_scores (
+    challenge_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    day date NOT NULL,
+    total double precision DEFAULT 0 NOT NULL,
+    effort double precision DEFAULT 0 NOT NULL,
+    step_points double precision DEFAULT 0 NOT NULL,
+    pr_bonus double precision DEFAULT 0 NOT NULL,
+    streak_bonus double precision DEFAULT 0 NOT NULL,
+    beat_average_bonus double precision DEFAULT 0 NOT NULL,
+    minutes double precision DEFAULT 0 NOT NULL,
+    steps integer DEFAULT 0 NOT NULL,
+    workouts smallint DEFAULT 0 NOT NULL,
+    eligible boolean DEFAULT true NOT NULL,
+    detail jsonb DEFAULT '{}'::jsonb NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: challenge_members; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.challenge_members (
+    challenge_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    role character varying(10) DEFAULT 'member'::character varying NOT NULL,
+    display_name character varying(40) NOT NULL,
+    goal_type character varying(20) DEFAULT 'stay_active'::character varying NOT NULL,
+    share_routes boolean DEFAULT false NOT NULL,
+    joined_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chk_challenge_members_display_name CHECK ((btrim((display_name)::text) <> ''::text)),
+    CONSTRAINT chk_challenge_members_goal_type CHECK (((goal_type)::text = ANY ((ARRAY['lose_weight'::character varying, 'build_muscle'::character varying, 'endurance'::character varying, 'stay_active'::character varying])::text[]))),
+    CONSTRAINT chk_challenge_members_role CHECK (((role)::text = ANY ((ARRAY['host'::character varying, 'member'::character varying])::text[])))
+);
+
+
+--
+-- Name: challenge_results; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.challenge_results (
+    challenge_id uuid NOT NULL,
+    period_start date NOT NULL,
+    period_end date NOT NULL,
+    user_id uuid NOT NULL,
+    display_name character varying(40) NOT NULL,
+    rank smallint NOT NULL,
+    total double precision NOT NULL,
+    minutes double precision DEFAULT 0 NOT NULL,
+    is_winner boolean DEFAULT false NOT NULL,
+    reached_on date,
+    detail jsonb DEFAULT '{}'::jsonb NOT NULL,
+    finalized_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chk_challenge_results_period CHECK ((period_end >= period_start))
+);
+
+
+--
+-- Name: challenge_rule_changes; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.challenge_rule_changes (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    seq bigint NOT NULL,
+    challenge_id uuid NOT NULL,
+    changed_by_user_id uuid,
+    effective_from date NOT NULL,
+    rules jsonb NOT NULL,
+    previous_rules jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: challenge_rule_changes_seq_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.challenge_rule_changes ALTER COLUMN seq ADD GENERATED ALWAYS AS IDENTITY (
+    SEQUENCE NAME public.challenge_rule_changes_seq_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- Name: challenge_score_queue; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.challenge_score_queue (
+    challenge_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    day date NOT NULL,
+    queued_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: challenges; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.challenges (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    owner_user_id uuid,
+    name character varying(80) NOT NULL,
+    description character varying(500),
+    emoji character varying(16),
+    template character varying(40),
+    rules jsonb NOT NULL,
+    rules_version smallint DEFAULT 1 NOT NULL,
+    start_date date NOT NULL,
+    end_date date,
+    time_zone character varying(64) DEFAULT 'UTC'::character varying NOT NULL,
+    member_limit smallint DEFAULT 50 NOT NULL,
+    late_join boolean DEFAULT true NOT NULL,
+    invite_code_hash character varying(64),
+    invite_expires_at timestamp with time zone,
+    ended_at timestamp with time zone,
+    frozen_period_starts date[] DEFAULT '{}'::date[] NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT chk_challenges_dates CHECK (((end_date IS NULL) OR (end_date >= start_date))),
+    CONSTRAINT chk_challenges_length CHECK (((end_date IS NULL) OR ((end_date - start_date) < 365))),
+    CONSTRAINT chk_challenges_member_limit CHECK (((member_limit >= 2) AND (member_limit <= 200))),
+    CONSTRAINT chk_challenges_name CHECK ((btrim((name)::text) <> ''::text))
+);
 
 
 --
@@ -2807,7 +3081,9 @@ CREATE TABLE public.food_entries (
     caffeine_mg numeric,
     water_ml numeric,
     alcohol_g numeric,
+    cooked_quantity numeric,
     CONSTRAINT chk_food_or_meal_id CHECK (((food_id IS NULL) OR (meal_id IS NULL))),
+    CONSTRAINT food_entries_cooked_quantity_positive CHECK (((cooked_quantity IS NULL) OR (cooked_quantity > (0)::numeric))),
     CONSTRAINT food_entries_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text)),
     CONSTRAINT food_entries_serving_size_positive CHECK ((serving_size > (0)::numeric))
 );
@@ -2860,6 +3136,13 @@ COMMENT ON COLUMN public.food_entries.water_ml IS 'Log-time snapshot of the vari
 --
 
 COMMENT ON COLUMN public.food_entries.alcohol_g IS 'Log-time snapshot of the variant''s alcohol_g. NULL on rows predating this column.';
+
+
+--
+-- Name: COLUMN food_entries.cooked_quantity; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.cooked_quantity IS 'Cooked weight eaten, in the same unit as quantity (the raw weight). NULL when the entry was not weighed cooked.';
 
 
 --
@@ -3075,6 +3358,7 @@ CREATE TABLE public.global_settings (
     mcp_oauth_allowed_redirect_uris text[] DEFAULT ARRAY['https://claude.ai/api/mcp/auth_callback'::text, 'https://claude.com/api/mcp/auth_callback'::text, 'http://localhost:*'::text, 'http://127.0.0.1:*'::text, 'http://[::1]:*'::text] NOT NULL,
     enable_version_check boolean DEFAULT true NOT NULL,
     enable_magic_link_login boolean DEFAULT true NOT NULL,
+    enable_challenges boolean DEFAULT true NOT NULL,
     CONSTRAINT single_row_check CHECK ((id = 1))
 );
 
@@ -6430,6 +6714,70 @@ ALTER TABLE ONLY public.backup_settings
 
 
 --
+-- Name: challenge_activity_cards challenge_activity_cards_entry_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_activity_cards
+    ADD CONSTRAINT challenge_activity_cards_entry_key UNIQUE (challenge_id, exercise_entry_id);
+
+
+--
+-- Name: challenge_activity_cards challenge_activity_cards_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_activity_cards
+    ADD CONSTRAINT challenge_activity_cards_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: challenge_daily_scores challenge_daily_scores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_daily_scores
+    ADD CONSTRAINT challenge_daily_scores_pkey PRIMARY KEY (challenge_id, user_id, day);
+
+
+--
+-- Name: challenge_members challenge_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_members
+    ADD CONSTRAINT challenge_members_pkey PRIMARY KEY (challenge_id, user_id);
+
+
+--
+-- Name: challenge_results challenge_results_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_results
+    ADD CONSTRAINT challenge_results_pkey PRIMARY KEY (challenge_id, period_start, user_id);
+
+
+--
+-- Name: challenge_rule_changes challenge_rule_changes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_rule_changes
+    ADD CONSTRAINT challenge_rule_changes_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: challenge_score_queue challenge_score_queue_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_score_queue
+    ADD CONSTRAINT challenge_score_queue_pkey PRIMARY KEY (challenge_id, user_id, day);
+
+
+--
+-- Name: challenges challenges_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenges
+    ADD CONSTRAINT challenges_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: check_in_measurements check_in_measurements_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -8030,6 +8378,69 @@ CREATE INDEX idx_assignment_sets_assignment_id ON public.workout_plan_assignment
 
 
 --
+-- Name: idx_challenge_activity_cards_challenge_day; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_challenge_activity_cards_challenge_day ON public.challenge_activity_cards USING btree (challenge_id, day);
+
+
+--
+-- Name: idx_challenge_activity_cards_entry; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_challenge_activity_cards_entry ON public.challenge_activity_cards USING btree (exercise_entry_id);
+
+
+--
+-- Name: idx_challenge_members_one_host; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_challenge_members_one_host ON public.challenge_members USING btree (challenge_id) WHERE ((role)::text = 'host'::text);
+
+
+--
+-- Name: idx_challenge_members_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_challenge_members_user ON public.challenge_members USING btree (user_id);
+
+
+--
+-- Name: idx_challenge_results_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_challenge_results_user ON public.challenge_results USING btree (user_id);
+
+
+--
+-- Name: idx_challenge_rule_changes_challenge; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_challenge_rule_changes_challenge ON public.challenge_rule_changes USING btree (challenge_id, effective_from, seq);
+
+
+--
+-- Name: idx_challenge_score_queue_queued_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_challenge_score_queue_queued_at ON public.challenge_score_queue USING btree (queued_at);
+
+
+--
+-- Name: idx_challenges_invite_code_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_challenges_invite_code_hash ON public.challenges USING btree (invite_code_hash) WHERE (invite_code_hash IS NOT NULL);
+
+
+--
+-- Name: idx_challenges_owner; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_challenges_owner ON public.challenges USING btree (owner_user_id);
+
+
+--
 -- Name: idx_custom_categories_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -9213,6 +9624,90 @@ COMMENT ON TRIGGER on_public_user_created ON public."user" IS 'Initializes onboa
 
 
 --
+-- Name: exercise_entries queue_challenge_scores; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores AFTER INSERT OR DELETE OR UPDATE ON public.exercise_entries FOR EACH ROW EXECUTE FUNCTION public.queue_challenge_scores();
+
+
+--
+-- Name: exercise_entry_hr_zones queue_challenge_scores; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores AFTER INSERT OR DELETE OR UPDATE ON public.exercise_entry_hr_zones FOR EACH ROW EXECUTE FUNCTION public.queue_challenge_scores();
+
+
+--
+-- Name: exercise_preset_entries queue_challenge_scores; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores AFTER UPDATE ON public.exercise_preset_entries FOR EACH ROW WHEN (((old.finished_at IS DISTINCT FROM new.finished_at) OR (old.source IS DISTINCT FROM new.source) OR ((old.updated_at <= old.created_at) AND (new.updated_at > new.created_at)))) EXECUTE FUNCTION public.queue_challenge_scores();
+
+
+--
+-- Name: check_in_measurements queue_challenge_scores_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores_delete AFTER DELETE ON public.check_in_measurements FOR EACH ROW WHEN ((old.steps IS NOT NULL)) EXECUTE FUNCTION public.queue_challenge_scores();
+
+
+--
+-- Name: daily_health_metrics queue_challenge_scores_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores_delete AFTER DELETE ON public.daily_health_metrics FOR EACH ROW WHEN ((old.total_steps IS NOT NULL)) EXECUTE FUNCTION public.queue_challenge_scores();
+
+
+--
+-- Name: exercise_entry_sets queue_challenge_scores_delete; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores_delete AFTER DELETE ON public.exercise_entry_sets REFERENCING OLD TABLE AS old_sets FOR EACH STATEMENT EXECUTE FUNCTION public.queue_challenge_scores_for_sets();
+
+
+--
+-- Name: check_in_measurements queue_challenge_scores_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores_insert AFTER INSERT ON public.check_in_measurements FOR EACH ROW WHEN ((new.steps IS NOT NULL)) EXECUTE FUNCTION public.queue_challenge_scores();
+
+
+--
+-- Name: daily_health_metrics queue_challenge_scores_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores_insert AFTER INSERT ON public.daily_health_metrics FOR EACH ROW WHEN ((new.total_steps IS NOT NULL)) EXECUTE FUNCTION public.queue_challenge_scores();
+
+
+--
+-- Name: exercise_entry_sets queue_challenge_scores_insert; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores_insert AFTER INSERT ON public.exercise_entry_sets REFERENCING NEW TABLE AS new_sets FOR EACH STATEMENT EXECUTE FUNCTION public.queue_challenge_scores_for_sets();
+
+
+--
+-- Name: check_in_measurements queue_challenge_scores_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores_update AFTER UPDATE ON public.check_in_measurements FOR EACH ROW WHEN (((old.steps IS DISTINCT FROM new.steps) OR (((old.steps IS NOT NULL) OR (new.steps IS NOT NULL)) AND ((old.entry_date IS DISTINCT FROM new.entry_date) OR (old.user_id IS DISTINCT FROM new.user_id))))) EXECUTE FUNCTION public.queue_challenge_scores();
+
+
+--
+-- Name: daily_health_metrics queue_challenge_scores_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores_update AFTER UPDATE ON public.daily_health_metrics FOR EACH ROW WHEN (((old.total_steps IS DISTINCT FROM new.total_steps) OR (((old.total_steps IS NOT NULL) OR (new.total_steps IS NOT NULL)) AND ((old.entry_date IS DISTINCT FROM new.entry_date) OR (old.user_id IS DISTINCT FROM new.user_id))))) EXECUTE FUNCTION public.queue_challenge_scores();
+
+
+--
+-- Name: exercise_entry_sets queue_challenge_scores_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER queue_challenge_scores_update AFTER UPDATE ON public.exercise_entry_sets REFERENCING OLD TABLE AS old_sets NEW TABLE AS new_sets FOR EACH STATEMENT EXECUTE FUNCTION public.queue_challenge_scores_for_sets();
+
+
+--
 -- Name: user_preferences record_calorie_rule_change; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -9659,6 +10154,94 @@ ALTER TABLE ONLY public.ai_service_settings
 
 ALTER TABLE ONLY public.api_key
     ADD CONSTRAINT api_key_user_id_fkey FOREIGN KEY (reference_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: challenge_activity_cards challenge_activity_cards_challenge_id_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_activity_cards
+    ADD CONSTRAINT challenge_activity_cards_challenge_id_user_id_fkey FOREIGN KEY (challenge_id, user_id) REFERENCES public.challenge_members(challenge_id, user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: challenge_activity_cards challenge_activity_cards_exercise_entry_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_activity_cards
+    ADD CONSTRAINT challenge_activity_cards_exercise_entry_id_fkey FOREIGN KEY (exercise_entry_id) REFERENCES public.exercise_entries(id) ON DELETE CASCADE;
+
+
+--
+-- Name: challenge_daily_scores challenge_daily_scores_challenge_id_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_daily_scores
+    ADD CONSTRAINT challenge_daily_scores_challenge_id_user_id_fkey FOREIGN KEY (challenge_id, user_id) REFERENCES public.challenge_members(challenge_id, user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: challenge_members challenge_members_challenge_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_members
+    ADD CONSTRAINT challenge_members_challenge_id_fkey FOREIGN KEY (challenge_id) REFERENCES public.challenges(id) ON DELETE CASCADE;
+
+
+--
+-- Name: challenge_members challenge_members_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_members
+    ADD CONSTRAINT challenge_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: challenge_results challenge_results_challenge_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_results
+    ADD CONSTRAINT challenge_results_challenge_id_fkey FOREIGN KEY (challenge_id) REFERENCES public.challenges(id) ON DELETE CASCADE;
+
+
+--
+-- Name: challenge_results challenge_results_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_results
+    ADD CONSTRAINT challenge_results_user_id_fkey FOREIGN KEY (user_id) REFERENCES public."user"(id) ON DELETE CASCADE;
+
+
+--
+-- Name: challenge_rule_changes challenge_rule_changes_challenge_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_rule_changes
+    ADD CONSTRAINT challenge_rule_changes_challenge_id_fkey FOREIGN KEY (challenge_id) REFERENCES public.challenges(id) ON DELETE CASCADE;
+
+
+--
+-- Name: challenge_rule_changes challenge_rule_changes_changed_by_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_rule_changes
+    ADD CONSTRAINT challenge_rule_changes_changed_by_user_id_fkey FOREIGN KEY (changed_by_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
+
+
+--
+-- Name: challenge_score_queue challenge_score_queue_challenge_id_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenge_score_queue
+    ADD CONSTRAINT challenge_score_queue_challenge_id_user_id_fkey FOREIGN KEY (challenge_id, user_id) REFERENCES public.challenge_members(challenge_id, user_id) ON DELETE CASCADE;
+
+
+--
+-- Name: challenges challenges_owner_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.challenges
+    ADD CONSTRAINT challenges_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES public."user"(id) ON DELETE SET NULL;
 
 
 --
@@ -11832,6 +12415,48 @@ CREATE POLICY ai_service_settings_update_policy ON public.ai_service_settings FO
 ALTER TABLE public.api_key ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: challenge_activity_cards; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.challenge_activity_cards ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: challenge_daily_scores; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.challenge_daily_scores ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: challenge_members; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.challenge_members ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: challenge_results; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.challenge_results ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: challenge_rule_changes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.challenge_rule_changes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: challenge_score_queue; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.challenge_score_queue ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: challenges; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.challenges ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: check_in_measurements; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -11915,6 +12540,13 @@ CREATE POLICY delete_policy ON public.external_data_providers FOR DELETE USING (
 --
 
 CREATE POLICY delete_policy ON public.food_entries FOR DELETE USING (public.has_diary_access(user_id));
+
+
+--
+-- Name: challenge_score_queue deny_all_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY deny_all_policy ON public.challenge_score_queue USING (false) WITH CHECK (false);
 
 
 --
@@ -13284,6 +13916,48 @@ CREATE POLICY select_exercise_preset_entry_linked_policy ON public.exercise_entr
 
 
 --
+-- Name: challenge_activity_cards select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.challenge_activity_cards FOR SELECT USING (public.is_challenge_member(challenge_id));
+
+
+--
+-- Name: challenge_daily_scores select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.challenge_daily_scores FOR SELECT USING (public.is_challenge_member(challenge_id));
+
+
+--
+-- Name: challenge_members select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.challenge_members FOR SELECT USING (public.is_challenge_member(challenge_id));
+
+
+--
+-- Name: challenge_results select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.challenge_results FOR SELECT USING (public.is_challenge_member(challenge_id));
+
+
+--
+-- Name: challenge_rule_changes select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.challenge_rule_changes FOR SELECT USING (public.is_challenge_member(challenge_id));
+
+
+--
+-- Name: challenges select_policy; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY select_policy ON public.challenges FOR SELECT USING (public.is_challenge_member(id));
+
+
+--
 -- Name: check_in_measurements select_policy; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -14395,6 +15069,13 @@ GRANT ALL ON FUNCTION public.is_admin() TO sparky_app;
 
 
 --
+-- Name: FUNCTION is_challenge_member(p_challenge_id uuid); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.is_challenge_member(p_challenge_id uuid) TO sparky_app;
+
+
+--
 -- Name: FUNCTION manage_goal_timeline(p_user_id uuid, p_start_date date, p_calories numeric, p_protein numeric, p_carbs numeric, p_fat numeric, p_water_goal integer, p_saturated_fat numeric, p_polyunsaturated_fat numeric, p_monounsaturated_fat numeric, p_trans_fat numeric, p_cholesterol numeric, p_sodium numeric, p_potassium numeric, p_dietary_fiber numeric, p_sugars numeric, p_vitamin_a numeric, p_vitamin_c numeric, p_calcium numeric, p_iron numeric); Type: ACL; Schema: public; Owner: -
 --
 
@@ -14406,6 +15087,27 @@ GRANT ALL ON FUNCTION public.manage_goal_timeline(p_user_id uuid, p_start_date d
 --
 
 GRANT ALL ON FUNCTION public.normalize_openfoodfacts_gtin(raw_code text) TO sparky_app;
+
+
+--
+-- Name: FUNCTION queue_challenge_member_day(p_user_id uuid, p_day date); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.queue_challenge_member_day(p_user_id uuid, p_day date) TO sparky_app;
+
+
+--
+-- Name: FUNCTION queue_challenge_scores(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.queue_challenge_scores() TO sparky_app;
+
+
+--
+-- Name: FUNCTION queue_challenge_scores_for_sets(); Type: ACL; Schema: public; Owner: -
+--
+
+GRANT ALL ON FUNCTION public.queue_challenge_scores_for_sets() TO sparky_app;
 
 
 --
@@ -14602,6 +15304,62 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.backup_settings TO sparky_app;
 --
 
 GRANT SELECT,USAGE ON SEQUENCE public.backup_settings_id_seq TO sparky_app;
+
+
+--
+-- Name: TABLE challenge_activity_cards; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_activity_cards TO sparky_app;
+
+
+--
+-- Name: TABLE challenge_daily_scores; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_daily_scores TO sparky_app;
+
+
+--
+-- Name: TABLE challenge_members; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_members TO sparky_app;
+
+
+--
+-- Name: TABLE challenge_results; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_results TO sparky_app;
+
+
+--
+-- Name: TABLE challenge_rule_changes; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_rule_changes TO sparky_app;
+
+
+--
+-- Name: SEQUENCE challenge_rule_changes_seq_seq; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,USAGE ON SEQUENCE public.challenge_rule_changes_seq_seq TO sparky_app;
+
+
+--
+-- Name: TABLE challenge_score_queue; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenge_score_queue TO sparky_app;
+
+
+--
+-- Name: TABLE challenges; Type: ACL; Schema: public; Owner: -
+--
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.challenges TO sparky_app;
 
 
 --

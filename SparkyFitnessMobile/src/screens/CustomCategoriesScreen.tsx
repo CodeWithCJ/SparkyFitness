@@ -21,7 +21,6 @@ import {
   useDeleteCustomCategory,
 } from '../hooks/useCustomMeasurements';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { CustomCategory } from '../types/customMeasurements';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -32,7 +31,6 @@ const CustomCategoriesScreen: React.FC<CustomCategoriesScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [refreshing, setRefreshing] = useState(false);
   const {
@@ -255,10 +253,7 @@ const CustomCategoriesScreen: React.FC<CustomCategoriesScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ServerGate>{content()}</ServerGate>
       {categories.length > 0 && !isLoading && !isError ? (

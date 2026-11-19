@@ -43,9 +43,9 @@ type AddMenuSettingsScreenProps = RootStackScreenProps<'AddMenuSettings'>;
 /**
  * Lays out the + sheet: the four big cards (tap one to pick what goes there)
  * and the rows under them (drag to reorder, switch off to hide). An item
- * appears in one place only. An item the app cannot offer right now, such as
- * Wellness with the cycle feature off, is listed here and left out of the
- * sheet.
+ * appears in one place only. An item of a feature turned off in Settings →
+ * Features, such as Wellness while cycle is off, is listed here and left out
+ * of the sheet.
  */
 const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
   const { t } = useTranslation();
@@ -163,8 +163,8 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
                   className="text-xs text-text-muted ml-2"
                   numberOfLines={1}
                 >
-                  {t('addMenuSettings.needsCycle', {
-                    defaultValue: 'Not shown: cycle tracking is off',
+                  {t('addMenuSettings.offInFeatures', {
+                    defaultValue: 'Not shown: turned off in Features',
                   })}
                 </Text>
               ) : lineOf.has(key) ? (
@@ -298,10 +298,7 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
   ];
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{

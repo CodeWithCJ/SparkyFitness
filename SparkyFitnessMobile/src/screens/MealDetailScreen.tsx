@@ -655,7 +655,7 @@ const MealDetailScreen: React.FC<MealDetailScreenProps> = ({
   }
 
   return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
+    <View className="flex-1 bg-background">
       {header}
       <ServerGate>{renderContent()}</ServerGate>
     </View>

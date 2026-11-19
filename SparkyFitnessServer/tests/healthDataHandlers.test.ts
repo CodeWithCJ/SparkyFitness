@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { todayInZone } from '@workspace/shared';
 import {
   resolveHandler,
@@ -16,6 +16,8 @@ import * as oralCareRepository from '../models/oralCareRepository.js';
 import moodRepository from '../models/moodRepository.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { upsertSamplesByDay } from '../services/healthMetricSampleWriter.js';
+import exerciseDb from '../models/exercise.js';
+import exerciseEntryDb from '../models/exerciseEntry.js';
 import type { WaterContainerResponse } from '@workspace/shared';
 
 vi.mock('../models/measurementRepository.js', () => ({
@@ -125,6 +127,51 @@ describe('health data handler registry', () => {
     expect(resolveHandler('Weight')).toBeUndefined(); // only lowercase 'weight' had a dedicated case
     expect(resolveHandler(undefined)).toBeUndefined();
     expect(customMeasurementHandler).toBeDefined();
+  });
+});
+
+describe('activeCaloriesHandler', () => {
+  const handler = HEALTH_TYPE_HANDLERS['active_calories'];
+  const ctx = {
+    userId: 'user-1',
+    actingUserId: 'actor-1',
+    parsedDate: '2026-08-03',
+  } as unknown as HealthEntryContext;
+
+  const spies: Array<{ mockRestore: () => void }> = [];
+  beforeEach(() => {
+    spies.push(
+      vi
+        .spyOn(exerciseDb, 'getOrCreateActiveCaloriesExercise')
+        .mockResolvedValue('exercise-1' as never),
+      vi
+        .spyOn(exerciseEntryDb, 'upsertExerciseEntryData')
+        .mockResolvedValue({} as never)
+    );
+  });
+  afterEach(() => {
+    while (spies.length) spies.pop()!.mockRestore();
+  });
+
+  it('stores a daily total posted without a source as manual, like every sourceless /health-data post', async () => {
+    // Challenges read this as typed in (manual is decided by the source
+    // alone), so it is capped or dropped under their manual-entry rule
+    await handler.handle({ value: 640 }, ctx);
+    expect(exerciseEntryDb.upsertExerciseEntryData).toHaveBeenCalledWith(
+      'user-1',
+      'actor-1',
+      'exercise-1',
+      640,
+      '2026-08-03',
+      'manual'
+    );
+  });
+
+  it('keeps the source a sync sends', async () => {
+    await handler.handle({ value: 640, source: 'HealthKit' }, ctx);
+    expect(
+      vi.mocked(exerciseEntryDb.upsertExerciseEntryData).mock.calls[0]![5]
+    ).toBe('HealthKit');
   });
 });
 

@@ -1,6 +1,6 @@
 # Database Schema & Migrations
 
-*Last updated: 2026-10-20*
+*Last updated: 2026-11-17*
 
 This document covers the database structure, schema design, and migration process for SparkyFitness.
 
@@ -175,6 +175,19 @@ These tables are managed by Better Auth and are not exposed through family shari
 | `symptom_entry_photos` | Photos attached to a symptom entry |
 | `symptom_free_days` | Explicit "no symptoms today" markers |
 
+### Challenges (Tier 2: Member-Read, Server-Write)
+Written only by the server (owner pool) after `services/challengeService.ts` has checked membership or the host role; members read them through `is_challenge_member(challenge_id)`. Family delegation never applies.
+
+| Table | Purpose |
+|-------|---------|
+| `challenges` | A challenge: host, name, `rules` JSONB (the shared versioned `challengeRulesSchema`), start and end dates, the time zone that decides when a period is over, member limit, late joining, the sha256 of the current invite code and its expiry, and `frozen_period_starts` (the periods already frozen, kept here so an account deletion never reopens one) |
+| `challenge_members` | Who is in a challenge (`host` or `member`), the display name other members see, the personal goal type and `share_routes` (off by default). Leaving deletes the row and, by cascade, the member's scores, cards and queued days |
+| `challenge_daily_scores` | One member's computed value for one day (points parts, minutes, steps, workouts, and a `detail` breakdown); read by standings |
+| `challenge_activity_cards` | The per-workout summary members see (type, name, minutes, distance in metres, pace, heart rate, points); deleted with the workout |
+| `challenge_results` | A finished period frozen once its 48 h late-sync window has passed, one row per member; never rewritten; removed with the member's account |
+| `challenge_rule_changes` | Every rules change with the day it takes effect (the challenge start, or the next period once running), visible to all members |
+| `challenge_score_queue` | Member-days waiting to be scored again, filled by the `queue_challenge_scores` triggers (workouts, sets checked off, sessions finished, steps), rules changes and the nightly catch-up; drained by the score job. Deny-all to the app role |
+
 ### Cycle & Pregnancy (Tier 1: Owner-Only)
 | Table | Purpose |
 |-------|---------|
@@ -226,7 +239,7 @@ These tables are managed by Better Auth and are not exposed through family shari
 ### Admin & System (Tier 1: Admin-Only or Public)
 | Table | Purpose |
 |-------|---------|
-| `global_settings` | Application feature flags and config |
+| `global_settings` | Application feature flags and config (including `enable_challenges`, the Challenges switch, on by default) |
 | `sso_provider` | Active Single Sign-On providers |
 | `oidc_providers` | OpenID Connect integration settings |
 | `external_provider_types` | Search provider configurations (FatSecret, USDA, Canadian Nutrient File, Livsmedelsverket) |

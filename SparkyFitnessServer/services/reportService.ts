@@ -1030,44 +1030,58 @@ async function getTrainingLoad(
 const READINESS_BASELINE_DAYS = 14;
 
 /**
- * The fitness / fatigue / form curve over the last 90 days and today's
- * readiness score, which blends that form with last night's sleep and, when a
- * watch recorded them, resting heart rate and HRV against the person's recent
- * average. Intensity uses the person's resolved heart rate zones, the same as
- * the training load.
+ * The fitness / fatigue / form curve over the 90 days up to `day` and that
+ * morning's readiness score, which blends that form with the night before's
+ * sleep and, when a watch recorded them, resting heart rate and HRV against the
+ * person's recent average. Intensity uses the person's resolved heart rate
+ * zones, the same as the training load. `sleepNeedHours` stands in for the
+ * stored daily sleep need, for a caller that has just worked it out.
  */
+async function buildFitnessFatigue(
+  userId: string,
+  day: string,
+  sleepNeedHours?: number | null
+): Promise<{ fitnessFatigue: FitnessFatigue; readiness: Readiness }> {
+  const yesterday = addDays(day, -1);
+  const [sessions, zones, vitals, storedNeed] = await Promise.all([
+    reportRepository.getTrainingLoadSessions(
+      userId,
+      addDays(day, -(CURVE_DAYS + WARMUP_DAYS - 1)),
+      day
+    ),
+    heartRateZoneService.resolveZonesForUser(userId),
+    reportRepository.getReadinessVitals(
+      userId,
+      day,
+      yesterday,
+      addDays(yesterday, -READINESS_BASELINE_DAYS)
+    ),
+    sleepNeedHours === undefined
+      ? sleepScienceRepository.getDailyNeed(userId, day)
+      : null,
+  ]);
+  const fitnessFatigue = computeFitnessFatigue(sessions, day, zones.floors);
+  const readiness = computeReadiness({
+    fitnessFatigue,
+    ...vitals,
+    sleepNeedHours:
+      sleepNeedHours !== undefined
+        ? sleepNeedHours
+        : storedNeed?.total_need
+          ? Number(storedNeed.total_need)
+          : null,
+  });
+  return { fitnessFatigue, readiness };
+}
+
+/** Today's fitness / fatigue / form curve and readiness score. */
 async function getFitnessFatigue(
   authenticatedUserId: string,
   targetUserId: string
 ): Promise<{ fitnessFatigue: FitnessFatigue; readiness: Readiness }> {
   try {
     const timezone = await loadUserTimezone(targetUserId);
-    const today = todayInZone(timezone);
-    const yesterday = addDays(today, -1);
-    const [sessions, zones, vitals, sleepNeed] = await Promise.all([
-      reportRepository.getTrainingLoadSessions(
-        targetUserId,
-        addDays(today, -(CURVE_DAYS + WARMUP_DAYS - 1)),
-        today
-      ),
-      heartRateZoneService.resolveZonesForUser(targetUserId),
-      reportRepository.getReadinessVitals(
-        targetUserId,
-        today,
-        yesterday,
-        addDays(yesterday, -READINESS_BASELINE_DAYS)
-      ),
-      sleepScienceRepository.getDailyNeed(targetUserId, today),
-    ]);
-    const fitnessFatigue = computeFitnessFatigue(sessions, today, zones.floors);
-    const readiness = computeReadiness({
-      fitnessFatigue,
-      ...vitals,
-      sleepNeedHours: sleepNeed?.total_need
-        ? Number(sleepNeed.total_need)
-        : null,
-    });
-    return { fitnessFatigue, readiness };
+    return await buildFitnessFatigue(targetUserId, todayInZone(timezone));
   } catch (error) {
     log(
       'error',
@@ -1076,6 +1090,19 @@ async function getFitnessFatigue(
     );
     throw error;
   }
+}
+
+/**
+ * The readiness score (0 to 100) for the morning of `day`, for the daily sleep
+ * need's recovery figure; null when there is nothing to base it on.
+ */
+async function getRecoveryScore(
+  userId: string,
+  day: string,
+  sleepNeedHours: number
+): Promise<number | null> {
+  const { readiness } = await buildFitnessFatigue(userId, day, sleepNeedHours);
+  return readiness.score;
 }
 
 /**
@@ -1145,6 +1172,7 @@ async function getRunningEstimates(
 export { getTrainingConsistency };
 export { getTrainingLoad };
 export { getFitnessFatigue };
+export { getRecoveryScore };
 export { getRunningEstimates };
 export default {
   getReportsData,
@@ -1154,5 +1182,6 @@ export default {
   getTrainingConsistency,
   getTrainingLoad,
   getFitnessFatigue,
+  getRecoveryScore,
   getRunningEstimates,
 };
