@@ -26,6 +26,7 @@ vi.mock('../models/foodEntryMealRepository.js', () => ({
     updateFoodEntryMeal: vi.fn(),
     moveFoodEntryMealToMealType: vi.fn(),
     getFoodEntryMealById: vi.fn(),
+    getFoodEntryMealsByDate: vi.fn(),
     getFoodEntryMealComponents: vi.fn(),
   },
 }));
@@ -42,6 +43,7 @@ vi.mock('../config/logging.js', () => ({
 
 import {
   createFoodEntryMeal,
+  getFoodEntryMealsByDate,
   getFoodEntryMealWithComponents,
   moveFoodEntryMealToMealType,
   updateFoodEntryMeal,
@@ -53,6 +55,37 @@ import mealRepository from '../models/mealRepository.js';
 describe('foodEntryMealService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe('getFoodEntryMealsByDate', () => {
+    it('keeps unknown added sugars null on a component and scales a known zero', async () => {
+      vi.mocked(
+        foodEntryMealRepository.getFoodEntryMealsByDate
+      ).mockResolvedValue([{ id: 'meal-1' }]);
+      const component = {
+        quantity: 50,
+        serving_size: 100,
+        serving_unit: 'g',
+        unit: 'g',
+      };
+      vi.mocked(
+        foodRepository.getFoodEntryComponentsByFoodEntryMealId
+      ).mockResolvedValue([
+        { ...component, food_name: 'Unknown', added_sugars: null },
+        { ...component, food_name: 'Measured zero', added_sugars: 0 },
+        { ...component, food_name: 'Known', added_sugars: 10 },
+      ]);
+
+      const [meal] = await getFoodEntryMealsByDate(
+        'user-1',
+        'user-1',
+        '2026-11-19'
+      );
+
+      expect(
+        meal.foods.map((f: { added_sugars: number | null }) => f.added_sugars)
+      ).toEqual([null, 0, 5]);
+    });
   });
 
   describe('createFoodEntryMeal', () => {

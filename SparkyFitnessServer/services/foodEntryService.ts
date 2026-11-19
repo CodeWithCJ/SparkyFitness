@@ -938,12 +938,18 @@ async function updateFoodEntry(
     // catalog can change after logging, and MCP did not choose a new variant.
     // The web/mobile update path refreshes it from the variant on a nutrition
     // edit, but an update touching none of those inputs (a note, a time, a
-    // meal type) keeps the stored snapshot, which may hold adjusted values.
+    // meal type) keeps the stored snapshot, which may hold adjusted values. The
+    // web dialog resends quantity and unit on every save, so a value equal to
+    // the stored one is not an edit.
     const variantChanged =
       entryData.variant_id !== undefined &&
       entryData.variant_id !== existingEntry.variant_id;
+    const isUnchangedPortion = (field: string) =>
+      (field === 'quantity' &&
+        Number(entryData.quantity) === Number(existingEntry.quantity)) ||
+      (field === 'unit' && entryData.unit === existingEntry.unit);
     const editsSnapshotInputs = SNAPSHOT_INPUT_FIELDS.some(
-      (field) => entryData[field] !== undefined
+      (field) => entryData[field] !== undefined && !isUnchangedPortion(field)
     );
     const shouldRefreshSnapshot =
       variantChanged || (!options.preserveSnapshot && editsSnapshotInputs);
@@ -3335,8 +3341,10 @@ async function getFoodEntryMealsByDate(
             (Number(entry.alcohol_g ?? 0) * Number(entry.quantity ?? 0)) /
             Number(entry.serving_size ?? 0),
           added_sugars:
-            (Number(entry.added_sugars ?? 0) * Number(entry.quantity ?? 0)) /
-            Number(entry.serving_size ?? 0),
+            entry.added_sugars === null || entry.added_sugars === undefined
+              ? null
+              : (Number(entry.added_sugars) * Number(entry.quantity ?? 0)) /
+                Number(entry.serving_size ?? 0),
           glycemic_index: entry.glycemic_index,
           custom_nutrients: entry.custom_nutrients,
           serving_size: Number(entry.serving_size ?? 0),

@@ -63,6 +63,15 @@ describe('reportRepository — custom nutrient parameterization and SQL escaping
     );
   });
 
+  it('getTabularFoodData leaves an unknown per-entry added_sugars null instead of 0', async () => {
+    await getTabularFoodData(userId, '2026-07-01', '2026-07-01', []);
+
+    const sql = String(mockClient.query.mock.calls[0][0]);
+    expect(sql).toContain(
+      '(fe.added_sugars * fe.quantity / fe.serving_size) AS added_sugars'
+    );
+  });
+
   it('getNutritionData binds custom nutrient JSON keys as query parameters and escapes identifiers', async () => {
     const customNutrients = [
       { name: "St. John's Wort" },

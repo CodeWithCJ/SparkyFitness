@@ -200,7 +200,7 @@ async function getTabularFoodData(
           (COALESCE(fe.caffeine_mg, 0) * fe.quantity / fe.serving_size) AS caffeine_mg,
           (COALESCE(fe.water_ml, 0) * fe.quantity / fe.serving_size) AS water_ml,
           (COALESCE(fe.alcohol_g, 0) * fe.quantity / fe.serving_size) AS alcohol_g,
-          (COALESCE(fe.added_sugars, 0) * fe.quantity / fe.serving_size) AS added_sugars,
+          (fe.added_sugars * fe.quantity / fe.serving_size) AS added_sugars,
           fe.serving_size,
           fe.serving_unit,
           fe.food_entry_meal_id${
