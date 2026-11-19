@@ -70,12 +70,24 @@ interface KeptSourceIds {
   entries: Set<string>;
 }
 
-/** Source id of the entry for one exercise of a Liftosaur workout. */
+/**
+ * Source id of the entry for one exercise of a Liftosaur workout:
+ * `<record id>_<exercise name>_<occurrence>`, where the occurrence counts
+ * earlier lines of the same exercise in that workout. Keyed by name rather
+ * than position, so reordering or removing exercises in Liftosaur never moves
+ * an entry (and the edits saved on it) to a different exercise. Only two
+ * blocks of the same exercise can trade places, which keeps edits on the
+ * same exercise. A renamed exercise counts as a new one.
+ */
 function entrySourceId(
   workout: LiftohistoryWorkout,
   exerciseIndex: number
 ): string {
-  return `${workout.id}_${exerciseIndex}`;
+  const name = workout.exercises[exerciseIndex]!.name;
+  const occurrence = workout.exercises
+    .slice(0, exerciseIndex)
+    .filter((exercise) => exercise.name === name).length;
+  return `${workout.id}_${name}_${occurrence}`;
 }
 
 /** Calendar days (user timezone) whose Liftosaur rows a sync reconciles. */
@@ -139,7 +151,7 @@ async function processLiftosaurWorkouts(
 
     // Re-sent workouts are updated in place above, keyed by source id
     // (session: the Liftosaur record id; entry: `<record id>_<exercise
-    // index>`), so entry ids and anything the user added in SparkyFitness
+    // name>_<occurrence>`), so entry ids and anything the user added in SparkyFitness
     // (notes, effort, calorie links, edited fields) survive a re-sync. Then
     // every Liftosaur row in the synced day range that this sync did not
     // write is deleted: workouts deleted in Liftosaur, rows from before
@@ -299,8 +311,7 @@ async function processSingleWorkout(
     const mergedSets = mergeSets(liftosaurExercise);
 
     // Stable per-exercise identity so re-syncs update in place instead of
-    // duplicating. Liftosaur record ids are unique and exercise index is unique
-    // within a record.
+    // duplicating (see entrySourceId).
     const sourceId = entrySourceId(workout, exerciseIndex);
 
     const durationMinutes =

@@ -146,7 +146,7 @@ describe('processLiftosaurWorkouts', () => {
       '2026-07-13',
       'Liftosaur',
       undefined,
-      [`${id}_0`, `${id}_1`]
+      [`${id}_Squat_0`, `${id}_Bulgarian Split Squat_0`]
     );
     expect(deleteLiftosaurSessionsNotInWithClient).toHaveBeenCalledWith(
       mockClient,
@@ -194,6 +194,38 @@ describe('processLiftosaurWorkouts', () => {
     expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
   });
 
+  it('keys entries by exercise name and occurrence, not position', async () => {
+    const record = (lines: string[]) =>
+      parseLiftohistory(
+        ['2026-07-13 10:00:00 +00:00 / exercises: {', ...lines, '}'].join('\n')
+      ).workouts.map((w) => ({ ...w, id: 7 }));
+    const sourceIds = () =>
+      vi
+        .mocked(exerciseEntryRepository._createExerciseEntryWithClient)
+        .mock.calls.map((call) => call[2].source_id);
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      record([
+        '  Squat / 3x5 100kg',
+        '  Curl / 3x10 10kg',
+        '  Squat / 1x5 110kg',
+      ])
+    );
+    expect(sourceIds()).toEqual(['7_Squat_0', '7_Curl_0', '7_Squat_1']);
+
+    // Reordered in Liftosaur: each exercise keeps its id.
+    vi.clearAllMocks();
+    vi.mocked(getClient).mockResolvedValue(mockClient as any);
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      record(['  Curl / 3x10 10kg', '  Squat / 3x5 100kg'])
+    );
+    expect(sourceIds()).toEqual(['7_Curl_0', '7_Squat_0']);
+  });
+
   it('deletes only after writing, keeping exactly what this sync wrote', async () => {
     const workouts = parseSampleWorkouts();
     await processLiftosaurWorkouts(UID, CID, workouts);
@@ -230,7 +262,7 @@ describe('processLiftosaurWorkouts', () => {
       '2026-07-13',
       'Liftosaur',
       undefined,
-      [`${id}_0`, `${id}_1`]
+      [`${id}_Squat_0`, `${id}_Bulgarian Split Squat_0`]
     );
   });
 
@@ -341,7 +373,7 @@ describe('processLiftosaurWorkouts', () => {
       entry_date: '2026-07-13',
       entry_time: '05:52',
       duration_minutes: 6, // 3 * 120s timer
-      source_id: expect.stringContaining('_0'),
+      source_id: expect.stringContaining('_Squat_0'),
     });
     expect(squatCall[3]).toBe(CID);
     expect(squatCall[4]).toBe('Liftosaur');
@@ -369,7 +401,7 @@ describe('processLiftosaurWorkouts', () => {
     expect(splitSquatCall[2]).toMatchObject({
       exercise_id: 'exercise-new',
       duration_minutes: 0,
-      source_id: expect.stringContaining('_1'),
+      source_id: expect.stringContaining('_Bulgarian Split Squat_0'),
     });
   });
 
