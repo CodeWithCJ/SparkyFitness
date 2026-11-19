@@ -1567,8 +1567,6 @@
     "cycle": {
       "title": "Döngü ve Gebelik",
       "description": "Üreme sağlığını, adet döngülerini ve hamilelik takibini yönetin",
-      "enableLabel": "Döngü ve Gebelik Takibini Etkinleştir",
-      "enableHint": "Üreme sağlığı merkezini açın. Etkinleştirildiğinde kenar çubuğu gezinme sekmesi ortaya çıkar.",
       "mode": "Takipçi Modu",
       "bcMethod": "Doğum Kontrolü",
       "terminology": "Terminoloji",
@@ -3014,8 +3012,6 @@
       "cunninghamMath": "Formül: 500 + 22 × YVK (YVK = kilo × (1 - VY/100))\nHesap: 500 + 22 × ({{weight}} kg × (1 - {{bodyFat}}/100)) = {{result}} kcal",
       "harrisMaleMath": "Formül: 13,397 × kilo + 4,799 × boy - 5,677 × yaş + 88,362\nHesap: 13,397 × {{weight}} + 4,799 × {{height}} - 5,677 × {{age}} + 88,362 = {{result}} kcal",
       "harrisFemaleMath": "Formül: 9,247 × kilo + 3,098 × boy - 4,33 × yaş + 447,593\nHesap: 9,247 × {{weight}} + 3,098 × {{height}} - 4,33 × {{age}} + 447,593 = {{result}} kcal",
-      "oxfordMaleMath": "Formül: 14,2 × kilo + 593\nHesap: 14,2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "Formül: 10,9 × kilo + 677\nHesap: 10,9 × {{weight}} + 677 = {{result}} kcal",
       "bmiBodyFatMath": "Formül: 1,2 × VKİ + 0,23 × yaş - sabit ({{constant}})\nHesap: 1,2 × {{bmi}} (VKİ) + 0,23 × {{age}} - {{constant}} = %{{result}}",
       "invalidMeasurements": "Logaritmik hesaplama için geçersiz ölçümler.",
       "navyMaleMath": "Formül (Erkek): 86,01 × log10(bel - boyun) - 70,041 × log10(boy) + 36,76 (inç cinsinden)\nHesap: 86,01 × log10({{waist}}in - {{neck}}in) - 70,041 × log10({{height}}in) + 36,76\nSonuç: %{{result}}",

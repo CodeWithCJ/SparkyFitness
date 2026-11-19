@@ -1,3 +1,6 @@
+import { isSessionAwaitingServer } from '../offline/sessionAwaitingServer';
+import { queueActiveWorkoutForUpload } from '../offline/workoutHandOver';
+import { checkServerConnection } from '../services/api/healthDataApi';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import Toast from 'react-native-toast-message';
@@ -312,6 +315,10 @@ export function useWatchWorkoutBridge(
   // loading, or a flush already walking its snapshot, must not bring their
   // telemetry back and attach it to an entry that stays in the diary.
   const discardedSessionsRef = useRef<Set<string>>(new Set());
+  // Sessions the wearer finished on the watch, so clearing the phone's live
+  // store does not echo `stopWorkout` back while the watch's finish summary,
+  // effort prompt, or preset-update card is open.
+  const watchStoppedSessionsRef = useRef<Set<string>>(new Set());
   const onPendingChangeRef = useRef(onTelemetryPendingChange);
   const onWatchFinishedRef = useRef(onWatchFinishedWorkout);
   // Ratings from the watch waiting for their session to be saved and its
@@ -411,17 +418,35 @@ export function useWatchWorkoutBridge(
         );
         return;
       }
+      const alreadyCompleted = state.completedSetIds[payload.setId] != null;
+      // Bundled Wear OS `workoutStop` replays only recover completions the
+      // phone missed; if the set is already complete (e.g. after a restart
+      // cleared `handledSetClientIdsRef`), do not overwrite phone edits.
+      if (
+        alreadyCompleted &&
+        payload.replay === true &&
+        payload.rpeOnly !== true
+      ) {
+        return;
+      }
+      const applyRpeOnly = payload.rpeOnly === true && alreadyCompleted;
       // Values the wearer typed on the watch land first: `completeSet` runs
       // the store's assumed-value adoption, which only fills a field that is
       // still empty, so patching afterwards would be overwriting a value the
       // store had already committed. Each field is omitted unless the watch
       // actually had one — writing null would clear the planned value.
+      // Only Wear OS's explicit `rpeOnly` follow-up skips value fields on an
+      // already-completed set so phone-side edits stay intact; normal
+      // completions without `rpeOnly` (including Apple Watch) keep their
+      // original behavior where watch values win.
       const patch: ActiveSetPatch = {};
-      if (payload.weightKg != null) patch.weight = payload.weightKg;
-      if (payload.reps != null) patch.reps = payload.reps;
-      if (payload.duration != null)
-        patch.duration = Math.round(payload.duration);
-      if (payload.distanceKm != null) patch.distance = payload.distanceKm;
+      if (!applyRpeOnly) {
+        if (payload.weightKg != null) patch.weight = payload.weightKg;
+        if (payload.reps != null) patch.reps = payload.reps;
+        if (payload.duration != null)
+          patch.duration = Math.round(payload.duration);
+        if (payload.distanceKm != null) patch.distance = payload.distanceKm;
+      }
       if (
         payload.rpe != null &&
         Number.isFinite(payload.rpe) &&
@@ -433,19 +458,22 @@ export function useWatchWorkoutBridge(
       if (Object.keys(patch).length > 0) {
         state.updateSetField(payload.setId, patch);
       }
-      // The watch has reported the duration it timed. The phone's own
-      // stopwatch for this set (started from the watch's) is done.
-      state.clearSetTimer(payload.setId);
-      clampedWatchTimerStart.delete(payload.setId);
+      if (!applyRpeOnly) {
+        // The watch has reported the duration it timed. The phone's own
+        // stopwatch for this set (started from the watch's) is done.
+        state.clearSetTimer(payload.setId);
+        clampedWatchTimerStart.delete(payload.setId);
 
-      state.completeSet(
-        payload.setId,
-        boundedWatchCompletedAt(
-          payload.completedAt,
-          state.startedAt,
-          Date.now()
-        )
-      );
+        state.completeSet(
+          payload.setId,
+          boundedWatchCompletedAt(
+            payload.completedAt,
+            state.startedAt,
+            Date.now()
+          )
+        );
+      }
+      if (applyRpeOnly && Object.keys(patch).length === 0) return;
       // Flushed immediately rather than left to the debounced autosave: the
       // phone screen that normally drives that debounce may not even be
       // open while the wearer is logging entirely from the watch.
@@ -845,6 +873,13 @@ export function useWatchWorkoutBridge(
           continue;
         // Discarded while an earlier entry of this session was posting.
         if (discardedSessionsRef.current.has(sessionId)) break;
+        // Logged with no connection and not on the server yet: its entries
+        // would answer 404, which drops the readings for good. Kept for a
+        // later flush, after the workout itself has been uploaded.
+        if (await isSessionAwaitingServer(sessionId)) {
+          session.unposted = true;
+          break;
+        }
         try {
           await attachExerciseEntryWatchTelemetry(exerciseEntryId, {
             ...(hrSamples ? { hrSamples } : {}),
@@ -914,11 +949,38 @@ export function useWatchWorkoutBridge(
         );
         return;
       }
+      // Finishing from the wrist with no server (#1983): the workout, with
+      // its finish time, goes to the upload queue and the phone's live
+      // workout ends, as the phone's own Finish does. False when the server
+      // is reachable (the failure is then a real one) or the queue could not
+      // take it, and the workout stays open as before.
+      const finishOffline = async (): Promise<boolean> => {
+        const neverReachedServer =
+          useActiveWorkoutStore.getState().pendingCreate != null;
+        if (!neverReachedServer && (await checkServerConnection())) {
+          return false;
+        }
+        if (useActiveWorkoutStore.getState().sessionId !== payload.sessionId) {
+          return false;
+        }
+        const queued = await queueActiveWorkoutForUpload({
+          finishedAt: new Date().toISOString(),
+        });
+        if (queued == null) return false;
+        const celebration = buildWorkoutCelebration(
+          useActiveWorkoutStore.getState()
+        );
+        useActiveWorkoutStore.getState().clearWorkout();
+        onWatchFinishedRef.current?.(celebration, payload.sessionId);
+        await settleEfforts();
+        return true;
+      };
       // Finishing on the watch ends the phone's live session too, the same
       // way the phone's own Finish does: flush any dirty sets, snapshot the
       // completion screen's params before the store empties, then clear.
       const outcome = await saveActiveWorkoutSession(queryClient);
       if (outcome === 'failed') {
+        if (await finishOffline()) return;
         // Clearing now would throw away sets the server never received. Keep
         // the session live so the wearer can finish it on the phone, whose
         // Finish flow retries the save.
@@ -1001,6 +1063,7 @@ export function useWatchWorkoutBridge(
       const entryDate = entryDateOf(useActiveWorkoutStore.getState().session);
       const stamped = await stampFromWrist();
       if (!stamped) {
+        if (await finishOffline()) return;
         addLog(
           `Watch finish kept the phone workout open: stamping finished_at for session ${payload.sessionId} failed`,
           'WARNING'
@@ -1024,6 +1087,7 @@ export function useWatchWorkoutBridge(
       const celebration = buildWorkoutCelebration(
         useActiveWorkoutStore.getState()
       );
+      watchStoppedSessionsRef.current.add(payload.sessionId);
       useActiveWorkoutStore.getState().clearWorkout();
       onWatchFinishedRef.current?.(celebration, payload.sessionId);
       // The wearer may already have rated it while the save was running.
@@ -1524,11 +1588,13 @@ export function useWatchWorkoutBridge(
             activeSetId: prevState.activeSetId,
           };
         }
-        void WatchConnectivity?.stopWorkout(
-          ended,
-          new Date().toISOString(),
-          false
-        );
+        if (!watchStoppedSessionsRef.current.delete(ended)) {
+          void WatchConnectivity?.stopWorkout(
+            ended,
+            new Date().toISOString(),
+            false
+          );
+        }
         // Posts what has arrived so far. The watch answers that stop signal
         // with its own final drain, which lands afterwards and re-posts the
         // completed series — see `handleHeartRateBatch`.
@@ -1538,6 +1604,7 @@ export function useWatchWorkoutBridge(
         // The same diary session can be opened again after a discard. Its
         // new run is a fresh arm, so an old discard must not drop its data.
         discardedSessionsRef.current.delete(state.sessionId);
+        watchStoppedSessionsRef.current.delete(state.sessionId);
         track(state.sessionId, state.session);
       }
     });

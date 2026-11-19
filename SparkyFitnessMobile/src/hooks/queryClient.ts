@@ -6,26 +6,22 @@ import {
 } from '@tanstack/react-query';
 import { ApiError } from '../services/api/errors';
 import { TimeoutError } from '../utils/concurrency';
-import { serverConnectionQueryKey } from './queryKeys';
+import {
+  setServerKnownUnreachable,
+  subscribeOfflineFallbackUsed,
+} from '../offline/connection';
+import { subscribeUploadsConfirmed } from '../offline/events';
+import { drainOutbox } from '../offline/syncEngine';
+import { serverMayBeDown } from '../utils/serverErrors';
+import {
+  dailySummaryRootQueryKey,
+  serverConnectionQueryKey,
+} from './queryKeys';
 
 // At most one connection re-check per window, however many queries fail at once.
 const SERVER_RECHECK_INTERVAL_MS = 10_000;
 let lastServerRecheckAt = -Infinity;
 let trailingServerRecheck: ReturnType<typeof setTimeout> | null = null;
-
-/**
- * True when a failed request suggests the server itself is not answering: a
- * network error (React Native's fetch rejects with a TypeError), a timeout, or
- * a 5xx/429 (often a reverse proxy in front of a stopped server). A 4xx means
- * the server answered; app errors such as validation or a cancelled request
- * say nothing about the connection.
- */
-function serverMayBeDown(error: unknown): boolean {
-  if (error instanceof ApiError) {
-    return error.statusCode >= 500 || error.statusCode === 429;
-  }
-  return error instanceof TimeoutError || error instanceof TypeError;
-}
 
 /**
  * Data queries refetch on refresh, Retry and health-sync invalidation without
@@ -49,6 +45,10 @@ function recheckServerConnection(error: unknown, queryKey?: QueryKey) {
     SERVER_RECHECK_INTERVAL_MS - sinceLast
   );
 }
+
+// Saved data served in place of a failed request hides the failure from the
+// query cache, so the offline code reports it here instead.
+subscribeOfflineFallbackUsed(() => recheckServerConnection(new TypeError()));
 
 function runServerRecheck() {
   if (trailingServerRecheck) clearTimeout(trailingServerRecheck);
@@ -105,10 +105,22 @@ queryClient.getQueryCache().subscribe((event) => {
   if (event.type !== 'updated' || event.action.type !== 'success') return;
   if (event.query.queryKey[0] !== serverConnectionQueryKey[0]) return;
   const connected = event.query.state.data === true;
+  setServerKnownUnreachable(!connected);
   const reconnected = connected && lastKnownConnected === false;
   lastKnownConnected = connected;
   if (!reconnected) return;
+  // Work logged while the server was away goes up first, so the screens
+  // reloading below already see it.
+  void drainOutbox('reconnect');
   void queryClient.invalidateQueries({
     predicate: (query) => query.queryKey[0] !== serverConnectionQueryKey[0],
   });
+});
+
+// The reload above starts before the upload finishes, so it can load the day
+// without the workout that is still going up, and the diary (and its saved
+// offline copy) would keep that. Once the server confirms uploads, load the
+// day again.
+subscribeUploadsConfirmed(() => {
+  void queryClient.invalidateQueries({ queryKey: dailySummaryRootQueryKey });
 });

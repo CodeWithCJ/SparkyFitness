@@ -14,7 +14,6 @@ import {
   useWatchRunLiveStore,
   useWatchRunPending,
 } from '../stores/watchRunLiveStore';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { sendRunControl } from '../services/watchRunControl';
 import type { WatchRunControlAction } from '../../modules/watch-connectivity';
 import {
@@ -52,7 +51,6 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const energyUnit = useEnergyUnit();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { preferences } = usePreferences();
   const run = useWatchRunLive();
   const pending = useWatchRunPending();
@@ -160,10 +158,7 @@ const WatchRunLiveScreen: React.FC<Props> = ({ navigation }) => {
     );
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 bg-background"

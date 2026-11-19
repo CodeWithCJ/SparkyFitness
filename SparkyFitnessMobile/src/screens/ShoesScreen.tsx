@@ -16,7 +16,6 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { usePreferences } from '../hooks/usePreferences';
 import { useShoeMutations, useShoes } from '../hooks/useShoes';
 import { formatLocalizedNumber } from '../localization';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { kmToMiles } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -147,7 +146,6 @@ const ShoesScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { preferences } = usePreferences();
   const distanceUnit =
     (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
@@ -184,10 +182,7 @@ const ShoesScreen: React.FC<Props> = ({ navigation }) => {
     ));
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isError ? (
         <StatusView

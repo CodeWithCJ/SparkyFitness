@@ -271,7 +271,7 @@
       "powder": "Pulver"
     },
     "mealRelation": {
-      "awayFromMeals": "Zwischen den Mahlzeiten"
+      "awayFromMeals": "Unabhängig von Mahlzeiten"
     },
     "title": "Medikamente",
     "medication": "Medikament",
@@ -1360,7 +1360,6 @@
     "watchRunLiveRun": "Lauf auf deiner Uhr",
     "watchWalkLive": "Gehen auf deiner Uhr",
     "allergenSettings": "Allergene",
-    "runProgramCalendar": "Programmkalender",
     "runProgramWorkout": "Training",
     "runProgramEdit": "Plan bearbeiten",
     "runProgramNew": "Neuer Plan",
@@ -8633,31 +8632,8 @@
     "partOfProgram": "Teil deines Trainingsprogramms",
     "openCalendar": "Programmkalender öffnen",
     "openCalendarHint": "Alle Trainings in der Monatsansicht",
-    "monthGrid": {
-      "previous": "Vorheriger Monat",
-      "next": "Nächster Monat",
-      "dayA11yNone": "{{date}}, keine Trainings",
-      "dayA11y_one": "{{date}}, {{formattedCount}} Training",
-      "dayA11y_other": "{{date}}, {{formattedCount}} Trainings"
-    },
     "calendarScreen": {
-      "noProgram": "Starte ein Trainingsprogramm, um seinen Kalender zu sehen.",
-      "progress": "{{done}} von {{total}} Trainings erledigt",
-      "doneOn": "Erledigt am {{date}}",
-      "done": "Erledigt",
-      "dueOn": "Als Nächstes · {{date}}",
-      "notScheduled": "Nicht geplant",
-      "minutes": "{{minutes}} min",
-      "legendDone": "Erledigt",
-      "legendAhead": "Fällig oder geplant",
-      "noWorkoutsDay": "Kein Programmtraining an diesem Tag.",
-      "pickDays_one": "{{count}} weiteres Training steht noch nicht im Kalender. Wähle deine Trainingstage in der Programmansicht, um zu sehen, wann es ansteht.",
-      "pickDays_other": "{{count}} weitere Trainings stehen noch nicht im Kalender. Wähle deine Trainingstage in der Programmansicht, um zu sehen, wann jedes ansteht.",
-      "pastGoal_one": "{{count}} Training passt nicht mehr vor dein Zieldatum.",
-      "pastGoal_other": "{{count}} Trainings passen nicht mehr vor dein Zieldatum.",
-      "allWorkouts": "Alle Trainings",
-      "today": "Heute",
-      "due": "Als Nächstes"
+      "minutes": "{{minutes}} min"
     },
     "detail": {
       "workoutTitle": "Woche {{week}}, Lauf {{run}}",

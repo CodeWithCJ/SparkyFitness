@@ -52,6 +52,12 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
+import { useOfflineDiaryDay } from '../../src/hooks/useOfflineDiaryDay';
+
+jest.mock('../../src/hooks/useOfflineDiaryDay', () => ({
+  useOfflineDiaryDay: jest.fn(() => ({ saved: null, waiting: [] })),
+}));
+
 jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(),
   useDailySummary: jest.fn(),
@@ -71,6 +77,12 @@ jest.mock('../../src/hooks/useMeasurements', () => ({
 
 jest.mock('../../src/hooks/useCustomMeasurements', () => ({
   useCustomMeasurementsByDate: jest.fn(),
+}));
+
+// Categories of features turned off on purpose (Settings → Features).
+let mockHiddenCategories: ReadonlySet<string> = new Set();
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({ hiddenCustomCategories: mockHiddenCategories }),
 }));
 
 // This suite renders DiaryScreen without a QueryClientProvider, so the sleep hook's real
@@ -407,6 +419,45 @@ const renderScreen = () =>
     </SafeAreaProvider>
   );
 
+describe('DiaryScreen custom measurements of a feature turned off', () => {
+  const flowEntry = {
+    id: 'flow-1',
+    category_id: 'flow',
+    value: '2',
+    entry_date: '2024-06-15',
+    source: 'manual',
+    custom_categories: { name: 'menstruation_flow' },
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockHiddenCategories = new Set();
+    useDiaryDateStore.setState({
+      selectedDate: '2024-06-15',
+      lastKnownToday: getTodayDate(),
+    });
+    configureConnection(true);
+    mockUseNativeIOSTabsActive.mockReturnValue(false);
+    configureFamilyUsers([]);
+    configureOnlineData();
+    mockUseCustomMeasurementsByDate.mockReturnValue({
+      data: [flowEntry],
+      refetch: refetchCustomMeasurements,
+    } as unknown as ReturnType<typeof useCustomMeasurementsByDate>);
+  });
+
+  test('shows a manual reproductive entry while cycle is on', () => {
+    const { getByTestId } = renderScreen();
+    expect(getByTestId('measurements-summary')).toBeTruthy();
+  });
+
+  test('leaves it out while cycle is turned off on purpose', () => {
+    mockHiddenCategories = new Set(['menstruation_flow']);
+    const { queryByTestId } = renderScreen();
+    expect(queryByTestId('measurements-summary')).toBeNull();
+  });
+});
+
 describe('DiaryScreen custom queries', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -679,6 +730,27 @@ describe('DiaryScreen sleep cards', () => {
     // The food and exercise sections still render, empty, as the day's scaffolding.
     expect(getByTestId('food-summary')).toBeTruthy();
     expect(getByTestId('exercise-summary')).toBeTruthy();
+  });
+
+  test('a workout waiting to upload keeps an empty server day from showing the empty illustration', () => {
+    // The server has nothing for the day yet (reconnected, upload still going
+    // up): the waiting workout is on the day, so the day is not empty.
+    configureSleep({ wakeUp: null, naps: [], bedTime: null });
+    (useOfflineDiaryDay as jest.Mock).mockReturnValue({
+      saved: null,
+      waiting: [
+        { type: 'preset', id: 'w-1', name: 'Waiting push', exercises: [] },
+      ],
+    });
+
+    const { queryByTestId, getByTestId } = renderScreen();
+
+    expect(queryByTestId('empty-day')).toBeNull();
+    expect(getByTestId('exercise-summary')).toBeTruthy();
+    (useOfflineDiaryDay as jest.Mock).mockReturnValue({
+      saved: null,
+      waiting: [],
+    });
   });
 
   test('a nap alone is enough to keep the day non-empty', () => {

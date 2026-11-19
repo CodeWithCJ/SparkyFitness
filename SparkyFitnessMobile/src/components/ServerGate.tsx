@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import OfflineBanner from './OfflineBanner';
 import StatusView from './StatusView';
 import { useServerConnection } from '../hooks';
 import type { RootStackParamList } from '../types/navigation';
@@ -65,6 +66,14 @@ export function ServerStatusView() {
         variant: 'primary',
       }}
       secondaryAction={goToSettings}
+      tertiaryAction={{
+        testID: 'server-status-offline-workouts',
+        label: t('serverStatus.offlineWorkouts', {
+          defaultValue: 'Start a saved workout offline',
+        }),
+        onPress: () => navigation.navigate('WorkoutPresetsLibrary'),
+        variant: 'secondary',
+      }}
     />
   );
 }
@@ -74,8 +83,28 @@ export function ServerStatusView() {
  * server status view. Wrap a screen's content area (below its header) so every
  * screen handles "no server" and "can't reach the server" the same way.
  */
-export default function ServerGate({ children }: { children: ReactNode }) {
-  const { isConnected } = useServerConnection();
+export default function ServerGate({
+  children,
+  offlineCapable = false,
+}: {
+  children: ReactNode;
+  /**
+   * The screen can work from data saved on the phone. While the server is
+   * set up but not answering it then shows its content under a slim offline
+   * strip instead of the blocking message. With no server set up it still
+   * blocks.
+   */
+  offlineCapable?: boolean;
+}) {
+  const { isConnected, status } = useServerConnection();
   if (isConnected) return <>{children}</>;
+  if (offlineCapable && status === 'unreachable') {
+    return (
+      <>
+        <OfflineBanner />
+        {children}
+      </>
+    );
+  }
   return <ServerStatusView />;
 }

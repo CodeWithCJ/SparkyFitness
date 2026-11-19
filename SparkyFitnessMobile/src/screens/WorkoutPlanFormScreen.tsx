@@ -2,7 +2,6 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from '../components/BottomSheetPicker';
@@ -64,7 +63,6 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
   route,
 }) => {
   const { t, i18n } = useTranslation();
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [dangerColor, accentColor] = useCSSVariable([
     '--color-icon-danger',
@@ -452,13 +450,9 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
     },
   });
 
-  const containerStyle = !usesNativeHeader
-    ? { paddingTop: insets.top }
-    : undefined;
-
   if (isPresetsLoading) {
     return (
-      <View className="flex-1 bg-background" style={containerStyle}>
+      <View className="flex-1 bg-background">
         {header}
         <StatusView
           loading
@@ -472,7 +466,7 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
 
   if (isPresetsError) {
     return (
-      <View className="flex-1 bg-background" style={containerStyle}>
+      <View className="flex-1 bg-background">
         {header}
         <StatusView
           icon="alert-circle"
@@ -755,7 +749,7 @@ const WorkoutPlanFormScreen: React.FC<WorkoutPlanFormScreenProps> = ({
   );
 
   return (
-    <View className="flex-1 bg-background" style={containerStyle}>
+    <View className="flex-1 bg-background">
       {header}
       <KeyboardAwareScrollView
         className="flex-1"

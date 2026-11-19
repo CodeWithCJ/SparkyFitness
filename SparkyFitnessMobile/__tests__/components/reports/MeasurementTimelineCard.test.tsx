@@ -10,6 +10,14 @@ import { initializeI18n } from '../../../src/localization/i18n';
 jest.mock('../../../src/hooks/useMeasurementTimeline', () => ({
   useMeasurementTimeline: jest.fn(),
 }));
+let mockHiddenCategories: ReadonlySet<string> = new Set();
+jest.mock('../../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({ hiddenCustomCategories: mockHiddenCategories }),
+}));
+let mockCustomCategories: { id: string; name: string }[] = [];
+jest.mock('../../../src/hooks/useCustomMeasurements', () => ({
+  useCustomCategories: () => ({ data: mockCustomCategories }),
+}));
 jest.mock('../../../src/hooks/useGlucoseContext', () => ({
   useGlucoseContext: jest.fn(),
 }));
@@ -119,20 +127,28 @@ const readings = [
 const timeline = jest.mocked(useMeasurementTimeline);
 const context = jest.mocked(useGlucoseContext);
 beforeAll(() => initializeI18n());
+const cgmCategory = {
+  id: 'custom-cgm',
+  name: 'CGM import',
+  measurement_type: 'mg/dL',
+  data_type: 'numeric',
+};
+const flowCategory = {
+  id: 'custom-flow',
+  name: 'menstruation_flow',
+  display_name: 'Menstrual flow',
+  measurement_type: 'level',
+  data_type: 'numeric',
+};
 beforeEach(() => {
+  mockHiddenCategories = new Set();
+  mockCustomCategories = [cgmCategory];
   jest.mocked(usePreferences).mockReturnValue({
     preferences: { timezone: 'UTC', time_format: 'HH:mm' },
   } as ReturnType<typeof usePreferences>);
   timeline.mockReturnValue({
     categories: {
-      data: [
-        {
-          id: 'custom-cgm',
-          name: 'CGM import',
-          measurement_type: 'mg/dL',
-          data_type: 'numeric',
-        },
-      ],
+      data: [cgmCategory],
       isError: false,
     },
     readings: { data: readings, isLoading: false, isError: false },
@@ -285,4 +301,42 @@ test('keeps raw glucose visible when custom category metadata fails', () => {
   );
   expect(screen.getByTestId('measurement-chart')).toBeTruthy();
   expect(screen.queryByText('Could not load measurement readings.')).toBeNull();
+});
+
+describe('categories of a feature turned off on purpose', () => {
+  const withFlow = () => {
+    mockCustomCategories = [cgmCategory, flowCategory];
+    timeline.mockReturnValue({
+      categories: { data: [cgmCategory, flowCategory], isError: false },
+      readings: { data: readings, isLoading: false, isError: false },
+    } as unknown as ReturnType<typeof useMeasurementTimeline>);
+  };
+
+  test('are offered while the feature is on', () => {
+    withFlow();
+    render(
+      <MeasurementTimelineCard startDate="2026-11-02" endDate="2026-11-03" />
+    );
+    fireEvent.press(screen.getByLabelText('Chart options'));
+    expect(screen.getByLabelText('Measurement: Menstrual flow')).toBeTruthy();
+  });
+
+  test('are not offered, and one picked before falls back to glucose', () => {
+    withFlow();
+    const view = render(
+      <MeasurementTimelineCard startDate="2026-11-02" endDate="2026-11-03" />
+    );
+    fireEvent.press(screen.getByLabelText('Chart options'));
+    fireEvent.press(screen.getByLabelText('Measurement: Menstrual flow'));
+    expect(timeline).toHaveBeenLastCalledWith('custom-flow', '2026-11-03');
+
+    mockHiddenCategories = new Set(['menstruation_flow']);
+    view.rerender(
+      <MeasurementTimelineCard startDate="2026-11-02" endDate="2026-11-03" />
+    );
+
+    expect(timeline).toHaveBeenLastCalledWith('blood_glucose', '2026-11-03');
+    expect(screen.queryByLabelText('Measurement: Menstrual flow')).toBeNull();
+    expect(screen.getByLabelText('Measurement: CGM import')).toBeTruthy();
+  });
 });

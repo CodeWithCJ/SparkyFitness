@@ -365,7 +365,7 @@ describe('RunProgramsScreen', () => {
     );
     expect(setProgramEnabled).toHaveBeenCalledWith(true, 'beginner5k');
   });
-  it('opens the program calendar', () => {
+  it('opens the training calendar', () => {
     mockedUse.mockReturnValue({
       status: programStatus({ programId: 'beginner5k', next: 2 })!,
       enabled: true,
@@ -376,10 +376,8 @@ describe('RunProgramsScreen', () => {
     });
     const props = RunProgramsProps();
     renderScreen(props);
-    fireEvent.press(screen.getByText('Open the program calendar'));
-    expect(props.navigation.navigate).toHaveBeenCalledWith(
-      'RunProgramCalendar'
-    );
+    fireEvent.press(screen.getByText('Open the training calendar'));
+    expect(props.navigation.navigate).toHaveBeenCalledWith('TrainingCalendar');
   });
 
   it('offers to customize each program and the one being followed', () => {

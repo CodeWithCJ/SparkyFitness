@@ -4,7 +4,7 @@ import { log } from '../config/logging.js';
 import { normalizeBarcode } from '../utils/foodUtils.js';
 import {
   buildSqlSearch,
-  buildSqlExactMatchOrder,
+  buildSqlRelevanceOrder,
 } from '../utils/dbSearchHelper.js';
 import { isValidProviderType } from '../constants/foodProviders.js';
 import {
@@ -254,10 +254,15 @@ async function searchFoods(
         queryParams.push(...searchParams);
         paramIndex = nextParamIndex;
 
-        const exactMatchParamIndex = paramIndex;
-        queryParams.push(`%${name}%`);
-        paramIndex++;
-        orderByClause = ` ORDER BY ${buildSqlExactMatchOrder("CONCAT(f.brand, ' ', f.name)", exactMatchParamIndex)}, f.name ASC`;
+        const relevance = buildSqlRelevanceOrder(
+          'f.name',
+          "CONCAT(f.brand, ' ', f.name)",
+          name as string,
+          paramIndex
+        );
+        queryParams.push(...relevance.queryParams);
+        paramIndex = relevance.nextParamIndex;
+        orderByClause = ` ORDER BY ${relevance.orderClause}, f.name ASC`;
       }
     } else if (checkCustom) {
       query += ` AND f.name = $${paramIndex++}`;
@@ -875,10 +880,15 @@ async function getFoodsWithPagination(
     const selectQueryParams = [...queryParams];
     let selectParamIndex = paramIndex;
     if (searchTerm) {
-      const exactMatchParamIndex = selectParamIndex;
-      selectQueryParams.push(`%${searchTerm}%`);
-      selectParamIndex++;
-      orderByClause = `${buildSqlExactMatchOrder("CONCAT(f.brand, ' ', f.name)", exactMatchParamIndex)}, ${orderByClause}`;
+      const relevance = buildSqlRelevanceOrder(
+        'f.name',
+        "CONCAT(f.brand, ' ', f.name)",
+        searchTerm,
+        selectParamIndex
+      );
+      selectQueryParams.push(...relevance.queryParams);
+      selectParamIndex = relevance.nextParamIndex;
+      orderByClause = `${relevance.orderClause}, ${orderByClause}`;
     }
     query += ` ORDER BY ${orderByClause}`;
     query += ` LIMIT $${selectParamIndex} OFFSET $${selectParamIndex + 1}`;

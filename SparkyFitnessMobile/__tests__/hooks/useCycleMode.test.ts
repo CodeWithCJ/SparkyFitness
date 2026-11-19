@@ -33,7 +33,6 @@ describe('useCycleMode', () => {
 
     const { result } = renderHook(() => useCycleMode());
 
-    expect(result.current.enabled).toBe(true);
     expect(result.current.mode).toBe('standard');
     expect(result.current.discreetMode).toBe(true);
     expect(result.current.terminology).toBe('neutral');
@@ -54,7 +53,6 @@ describe('useCycleMode', () => {
 
     const { result } = renderHook(() => useCycleMode());
 
-    expect(result.current.enabled).toBe(false);
     expect(result.current.mode).toBe('standard');
     expect(result.current.discreetMode).toBe(false);
     expect(result.current.terminology).toBe('default');

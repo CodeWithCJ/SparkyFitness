@@ -13,8 +13,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Icon from '../components/Icon';
 import { getAppLocale } from '../localization';
@@ -36,8 +34,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'SymptomHistory'>;
 
 export default function SymptomHistoryScreen({ navigation }: Props) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const today = getTodayDate();
   const thirtyDaysAgo = addDays(today, -29);
   // Episode days are read in the profile timezone, the one the server files a
@@ -199,10 +195,7 @@ export default function SymptomHistoryScreen({ navigation }: Props) {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       {/* Filter Chips */}

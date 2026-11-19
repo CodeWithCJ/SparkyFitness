@@ -6,7 +6,6 @@ import { cycleKeys, useUpsertCycleSettingsMutation } from '@/hooks/useCycle';
 import {
   useCycleSwitch,
   useWebFeatures,
-  withoutHiddenCategories,
 } from '@/hooks/Settings/useWebFeatures';
 import { getSettings, putSettings } from '@/api/Cycle/cycleService';
 
@@ -249,19 +248,6 @@ describe('useCycleSwitch', () => {
       client.getQueryData<SharedCycleSettings | null>(cycleKeys.settings())
         ?.enabled
     ).toBeUndefined();
-  });
-});
-
-describe('withoutHiddenCategories', () => {
-  it('leaves out the hidden category names and keeps the rest', () => {
-    const categories = [
-      { id: '1', name: 'blood_glucose' },
-      { id: '2', name: 'menstruation_flow' },
-    ];
-    expect(
-      withoutHiddenCategories(categories, new Set(['menstruation_flow']))
-    ).toEqual([{ id: '1', name: 'blood_glucose' }]);
-    expect(withoutHiddenCategories(categories, new Set())).toEqual(categories);
   });
 });
 

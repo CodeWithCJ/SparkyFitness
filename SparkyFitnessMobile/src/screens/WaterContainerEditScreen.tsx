@@ -342,10 +342,7 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
 
   if (isEditing && isContainersLoading) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <StatusView
           loading
@@ -431,10 +428,7 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
   ];
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <KeyboardAwareScrollView
         contentContainerStyle={{

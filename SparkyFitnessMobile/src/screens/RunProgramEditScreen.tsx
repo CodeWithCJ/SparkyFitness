@@ -19,7 +19,6 @@ import {
 } from '../components/recording/RunProgramCard';
 import Icon from '../components/Icon';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   removeCustomProgram,
   saveCustomProgram,
@@ -236,7 +235,6 @@ const IconButton: React.FC<{
 const RunProgramEditScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const id = route.params?.id;
   const { programs, loaded } = useCustomRunPrograms();
   const existing = id ? programs.find((p) => p.id === id) : undefined;
@@ -277,10 +275,7 @@ const RunProgramEditScreen: React.FC<Props> = ({ navigation, route }) => {
 
   if (!draft) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <View className="flex-1 bg-background p-4">
           <Text className="text-text-secondary text-sm">
@@ -377,10 +372,7 @@ const RunProgramEditScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 bg-background"

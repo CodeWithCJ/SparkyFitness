@@ -21,7 +21,6 @@ import {
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
 import { useStartLiveWorkout } from '../hooks/useStartLiveWorkout';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import {
@@ -43,7 +42,6 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   const preset = route.params.updatedPreset ?? route.params.preset;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { preferences } = usePreferences();
   const { profile } = useProfile();
@@ -375,10 +373,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ScrollView
@@ -471,6 +466,8 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         <Button
           variant="ghost"
           onPress={() => void handleLogPastWorkout()}
+          // Logging after the fact needs the server; only live workouts
+          // work offline (#1983).
           disabled={isStarting}
           className="mt-3"
           textClassName="text-text-secondary font-medium"
@@ -483,7 +480,7 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
         <Button
           variant="ghost"
           onPress={() => void handleDuplicatePreset()}
-          disabled={isDuplicatePending}
+          disabled={isDuplicatePending || !isConnected}
           className="mt-3"
           textClassName="text-text-secondary font-medium"
           accessibilityLabel={t('workoutPresetDetail.accessibility.duplicate', {
@@ -498,6 +495,18 @@ const WorkoutPresetDetailScreen: React.FC<WorkoutPresetDetailScreenProps> = ({
                 defaultValue: 'Duplicate preset',
               })}
         </Button>
+
+        {!isConnected && (
+          <Text
+            testID="preset-offline-note"
+            className="text-sm text-text-secondary text-center mt-3"
+          >
+            {t('offline.presetOfflineNote', {
+              defaultValue:
+                'Offline: you can start or log this workout. Changes to it, and duplicating it, need a connection.',
+            })}
+          </Text>
+        )}
 
         {canManagePreset && (
           <Button

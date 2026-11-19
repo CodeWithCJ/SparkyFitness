@@ -3,7 +3,6 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useCSSVariable } from 'uniwind';
 import { FooterSaveBar } from '../components/FormScreenChrome';
@@ -77,7 +76,6 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const energyUnit = useEnergyUnit();
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [dangerColor, caloriesColor, proteinColor, carbsColor, fatColor] =
     useCSSVariable([
@@ -326,10 +324,7 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
 
   if (isMealsLoading || isMealTypesLoading) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <StatusView
           loading
@@ -343,10 +338,7 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
 
   if (isMealsError || isMealTypesError) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <StatusView
           icon="alert-circle"
@@ -369,10 +361,7 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
 
   if (mealTypes.length === 0) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <StatusView
           icon="meal"
@@ -532,10 +521,7 @@ const MealPlanFormScreen: React.FC<MealPlanFormScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <KeyboardAwareScrollView
         className="flex-1"

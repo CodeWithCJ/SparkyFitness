@@ -1492,8 +1492,6 @@
     "cycle": {
       "title": "Cyklus a těhotenství",
       "description": "Spravujte reprodukční zdraví, menstruační cykly a sledování těhotenství",
-      "enableLabel": "Povolit sledování cyklu a těhotenství",
-      "enableHint": "Přepnout centrum reprodukčního zdraví. Povolením se zobrazí navigační karta postranního panelu.",
       "mode": "Režim sledování",
       "bcMethod": "Antikoncepce",
       "terminology": "Terminologie",
@@ -2842,8 +2840,6 @@
       "cunninghamMath": "Vzorec: 500 + 22 × BTH (kde BTH = hmotnost × (1 − tělesný tuk/100))\nVýpočet: 500 + 22 × ({{weight}} kg × (1 − {{bodyFat}}/100)) = {{result}} kcal",
       "harrisMaleMath": "Vzorec: 13,397 × hmotnost + 4,799 × výška − 5,677 × věk + 88,362\nVýpočet: 13,397 × {{weight}} + 4,799 × {{height}} − 5,677 × {{age}} + 88,362 = {{result}} kcal",
       "harrisFemaleMath": "Vzorec: 9,247 × hmotnost + 3,098 × výška − 4,33 × věk + 447,593\nVýpočet: 9,247 × {{weight}} + 3,098 × {{height}} − 4,33 × {{age}} + 447,593 = {{result}} kcal",
-      "oxfordMaleMath": "Vzorec: 14,2 × hmotnost + 593\nVýpočet: 14,2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "Vzorec: 10,9 × hmotnost + 677\nVýpočet: 10,9 × {{weight}} + 677 = {{result}} kcal",
       "bmiBodyFatMath": "Vzorec: 1,2 × BMI + 0,23 × věk − konstanta ({{constant}})\nVýpočet: 1,2 × {{bmi}} (BMI) + 0,23 × {{age}} − {{constant}} = {{result}} %",
       "invalidMeasurements": "Neplatná měření pro logaritmický výpočet.",
       "navyMaleMath": "Vzorec (muž): 86,01 × log10(pas − krk) − 70,041 × log10(výška) + 36,76 (v palcích)\nVýpočet: 86,01 × log10({{waist}} in − {{neck}} in) − 70,041 × log10({{height}} in) + 36,76\nVýsledek: {{result}} %",

@@ -27,6 +27,7 @@ import { useRunProgram } from '../services/runProgramService';
 import MealLibraryRow from '../components/MealLibraryRow';
 import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
+import OfflineLibrary from '../components/OfflineLibrary';
 import {
   useFavorites,
   useFoods,
@@ -67,10 +68,15 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const usesNativeTabs = useNativeIOSTabsActive();
   const verticalBar = useVerticalBar();
   const accentColor = useCSSVariable('--color-accent-primary') as string;
+  const mutedColor = useCSSVariable('--color-text-muted') as string;
   const [isRefreshing, setIsRefreshing] = useState(false);
   const { isNavigationLocked, runNavigationAction } =
     useNavigationActionGuard(navigation);
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const {
+    isConnected,
+    isLoading: isConnectionLoading,
+    status: connectionStatus,
+  } = useServerConnection();
   const { favoriteFoods, favoriteMeals } = useFavorites({
     enabled: isConnected,
   });
@@ -199,6 +205,27 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
     void refetchRecentMeals();
     void refetchRecentExercises();
   };
+
+  // A server that is set up but not answering: offer what the phone has saved.
+  if (connectionStatus === 'unreachable') {
+    return (
+      <View
+        className="flex-1 bg-background"
+        style={usesNativeTabs ? undefined : { paddingTop: insets.top }}
+      >
+        <OfflineLibrary
+          onOpenWorkoutPresets={() =>
+            runNavigationAction(() =>
+              navigation.navigate('WorkoutPresetsLibrary')
+            )
+          }
+          onOpenExercises={() =>
+            runNavigationAction(() => navigation.navigate('ExercisesLibrary'))
+          }
+        />
+      </View>
+    );
+  }
 
   if (!isConnectionLoading && !isConnected) {
     return (
@@ -403,6 +430,26 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             </Text>
           </View>
           <Icon name="chevron-forward" size={20} color="#999" />
+        </Pressable>
+        <Pressable
+          className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
+          onPress={() => navigation.navigate('TrainingCalendar')}
+          style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+        >
+          <View className="flex-1 mr-3">
+            <Text className="text-base font-semibold text-text-primary">
+              {t('screens.library.trainingCalendar', {
+                defaultValue: 'Training calendar',
+              })}
+            </Text>
+            <Text className="text-sm text-text-secondary mt-0.5">
+              {t('screens.library.trainingCalendarSubtitle', {
+                defaultValue:
+                  'Planned and completed workouts, and load by sport',
+              })}
+            </Text>
+          </View>
+          <Icon name="chevron-forward" size={20} color={mutedColor} />
         </Pressable>
         <Pressable
           className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"

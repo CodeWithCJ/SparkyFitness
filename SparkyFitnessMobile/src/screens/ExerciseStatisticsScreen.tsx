@@ -20,7 +20,6 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useProfile } from '../hooks/useProfile';
 import { formatLocalizedNumber } from '../localization';
 import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SegmentedControl from '../components/SegmentedControl';
 import ReportRangeControl from '../components/reports/ReportRangeControl';
@@ -36,6 +35,9 @@ import PaceZonesCard from '../components/exerciseStats/PaceZonesCard';
 import TrainingLoadCard from '../components/exerciseStats/TrainingLoadCard';
 import RunEstimatesCard from '../components/exerciseStats/RunEstimatesCard';
 import FitnessFatigueCard from '../components/exerciseStats/FitnessFatigueCard';
+import SportLoadCard from '../components/exerciseStats/SportLoadCard';
+import { useTrainingCalendar } from '../hooks/useTrainingCalendar';
+import { sportLoadRange } from '../utils/trainingCalendar';
 import { useTrainingLoad } from '../hooks/useTrainingLoad';
 import { useRunEstimates } from '../hooks/useRunEstimates';
 import { useFitnessFatigue } from '../hooks/useFitnessFatigue';
@@ -116,7 +118,6 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const defaultRange = useAppPreferencesStore((s) => s.reportDefaultRange);
   const hiddenSections = useAppPreferencesStore((s) => s.hiddenReportSections);
   const isSectionShown = (key: ReportSectionKey) =>
@@ -146,6 +147,8 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   const trainingLoad = useTrainingLoad();
   const runEstimates = useRunEstimates();
   const fitnessFatigue = useFitnessFatigue();
+  const sportRange = sportLoadRange(getTodayDate());
+  const sportLoad = useTrainingCalendar(sportRange.start, sportRange.end);
   const cardio = useCardioSessions(range, view === 'cardio', customRange);
   const running = useRunningTrends(view === 'cardio');
   const paceZones = usePaceZones(view === 'cardio');
@@ -198,14 +201,33 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   const hasActivity =
     (data?.keyStats.totalWorkouts ?? 0) > 0 || setRows.length > 0;
 
-  // A fixed 28-day window, so it still has something to say when the selected
+  // Fixed windows of their own (28 days, 90 days, eight weeks), so they still
+  // have something to say, and the calendar stays reachable, when the selected
   // range holds no workouts.
-  const loadCard = isSectionShown('exercise.load') ? (
-    <TrainingLoadCard
-      data={trainingLoad.load}
-      isLoading={trainingLoad.isLoading}
-      isError={trainingLoad.isError}
-    />
+  const loadSection = isSectionShown('exercise.load') ? (
+    <>
+      <TrainingLoadCard
+        data={trainingLoad.load}
+        isLoading={trainingLoad.isLoading}
+        isError={trainingLoad.isError}
+      />
+      <FitnessFatigueCard
+        data={fitnessFatigue.data}
+        isLoading={fitnessFatigue.isLoading}
+        isError={fitnessFatigue.isError}
+      />
+      <SportLoadCard
+        data={sportLoad.data}
+        isLoading={sportLoad.isLoading}
+        isError={sportLoad.isError}
+        onOpenCalendar={() => navigation.navigate('TrainingCalendar')}
+      />
+      <RunEstimatesCard
+        data={runEstimates.data}
+        isLoading={runEstimates.isLoading}
+        isError={runEstimates.isError}
+      />
+    </>
   ) : null;
 
   const renderCardio = () => {
@@ -311,7 +333,7 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
                 'Log a workout and its sets will show up here by muscle.',
             })}
           />
-          {loadCard}
+          {loadSection}
         </>
       );
     }
@@ -513,22 +535,7 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
           </View>
         ) : null}
 
-        {loadCard}
-
-        {isSectionShown('exercise.load') ? (
-          <>
-            <FitnessFatigueCard
-              data={fitnessFatigue.data}
-              isLoading={fitnessFatigue.isLoading}
-              isError={fitnessFatigue.isError}
-            />
-            <RunEstimatesCard
-              data={runEstimates.data}
-              isLoading={runEstimates.isLoading}
-              isError={runEstimates.isError}
-            />
-          </>
-        ) : null}
+        {loadSection}
 
         {isSectionShown('exercise.consistency') ? (
           <TrainingConsistencyCard
@@ -610,10 +617,7 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1"

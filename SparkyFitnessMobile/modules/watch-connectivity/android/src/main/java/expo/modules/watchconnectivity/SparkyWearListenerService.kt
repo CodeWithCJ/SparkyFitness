@@ -22,9 +22,17 @@ class SparkyWearListenerService : WearableListenerService() {
     WatchConnectivityHub.handleIncomingJson(applicationContext, json)
   }
 
+  private data class QueuedWatchItem(
+    val uri: android.net.Uri,
+    val json: String,
+    val ts: Long,
+    val seq: Long,
+    val isTerminal: Int
+  )
+
   override fun onDataChanged(dataEvents: DataEventBuffer) {
     super.onDataChanged(dataEvents)
-    val itemsToConsume = mutableListOf< Pair<android.net.Uri, String> >()
+    val itemsToConsume = mutableListOf<QueuedWatchItem>()
     for (event in dataEvents) {
       if (event.type != DataEvent.TYPE_CHANGED) continue
       val item = event.dataItem
@@ -32,12 +40,19 @@ class SparkyWearListenerService : WearableListenerService() {
       if (!path.startsWith("/sparky/transfer/watch/")) continue
       val dataMap = DataMapItem.fromDataItem(item).dataMap
       val json = dataMap.getString("json") ?: continue
-      itemsToConsume.add(item.uri to json)
+      val ts = dataMap.getLong("ts", 0L)
+      val seq = dataMap.getLong("seq", 0L)
+      val isTerminal = if (
+        path.startsWith("/sparky/transfer/watch/workoutStop/") ||
+        path.startsWith("/sparky/transfer/watch/workoutDiscard/")
+      ) 1 else 0
+      itemsToConsume.add(QueuedWatchItem(item.uri, json, ts, seq, isTerminal))
     }
+    itemsToConsume.sortWith(compareBy<QueuedWatchItem>({ it.ts }, { it.seq }, { it.isTerminal }))
     val appCtx = applicationContext
-    for ((uri, json) in itemsToConsume) {
-      WatchConnectivityHub.handleIncomingJson(appCtx, json)
-      Wearable.getDataClient(appCtx).deleteDataItems(uri)
+    for (item in itemsToConsume) {
+      WatchConnectivityHub.handleIncomingJson(appCtx, item.json)
+      Wearable.getDataClient(appCtx).deleteDataItems(item.uri)
     }
   }
 }

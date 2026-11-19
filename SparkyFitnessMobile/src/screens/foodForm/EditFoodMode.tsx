@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Platform } from 'react-native';
+import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -161,7 +160,6 @@ export function EditFoodMode({
   const { item, initialValues, returnKey, foodId, variantId, customNutrients } =
     params;
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -864,6 +862,7 @@ export function EditFoodMode({
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: t('foodForm.editTitle', { defaultValue: 'Edit Food' }),
     left: {
       kind: 'dismiss',
@@ -884,10 +883,7 @@ export function EditFoodMode({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <FoodForm

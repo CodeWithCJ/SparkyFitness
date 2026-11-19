@@ -6640,6 +6640,9 @@
   "sleepScience": {
     "title": "Sleep Science",
     "sleepDebt": "Sleep Debt",
+    "sleepSurplus": "Sleep Surplus",
+    "debtSurplus": "Surplus",
+    "debtSurplusDesc": "You're ahead on sleep. Tonight's need is a little lower.",
     "debtLow": "Low",
     "debtLowDesc": "Your sleep debt is minimal. Great recovery!",
     "debtModerate": "Moderate",
@@ -6682,6 +6685,9 @@
     "sleepNeedTonight": "Sleep Need Tonight",
     "baseline": "Baseline",
     "strain": "Strain",
+    "trainingLoad": "Training load",
+    "recovery": "Recovery",
+    "recoveryScore": "{{score}}/100",
     "debtRecovery": "Debt Recovery",
     "naps": "Naps",
     "method": "Method",
@@ -8430,6 +8436,18 @@
       "genericEstimateVerifyIfAccuracy": "Generic estimate - verify if accuracy matters.",
       "useThis": "Use this",
       "estimate2": "- {{confidence}} estimate"
+    },
+    "cooked": {
+      "switch": "Weighed it cooked",
+      "sameBatchPrevious": "Same batch as on {{date}}: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked",
+      "sameBatchEntry": "Same batch as this entry: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked",
+      "newBatch": "New batch",
+      "rawBatch": "Raw weight of batch ({{unit}})",
+      "cookedBatch": "Cooked weight of batch ({{unit}})",
+      "eaten": "You ate (cooked, {{unit}})",
+      "result": "= {{raw}} {{unit}} raw · {{calories}} {{energyUnit}}",
+      "incomplete": "Enter the weights to calculate the raw amount.",
+      "enterEaten": "Enter the cooked weight you ate."
     }
   },
   "healthMetrics": {

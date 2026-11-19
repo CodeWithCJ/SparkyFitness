@@ -34,7 +34,7 @@ import { log } from '../config/logging.js';
 import format from 'pg-format';
 import {
   buildSqlSearch,
-  buildSqlExactMatchOrder,
+  buildSqlRelevanceOrder,
 } from '../utils/dbSearchHelper.js';
 import { localizeImages, toImageArray } from '../utils/imageLocalizer.js';
 // --- Helpers ---
@@ -276,10 +276,15 @@ async function searchMeals(
     const selectQueryParams = [...queryParams];
     let selectParamIndex = paramIndex;
     if (searchTerm) {
-      const exactMatchParamIndex = selectParamIndex;
-      selectQueryParams.push(`%${searchTerm}%`);
-      selectParamIndex++;
-      orderClause = `${buildSqlExactMatchOrder('name', exactMatchParamIndex)}, name ASC`;
+      const relevance = buildSqlRelevanceOrder(
+        'name',
+        'name',
+        searchTerm,
+        selectParamIndex
+      );
+      selectQueryParams.push(...relevance.queryParams);
+      selectParamIndex = relevance.nextParamIndex;
+      orderClause = `${relevance.orderClause}, name ASC`;
     }
 
     let query = `

@@ -3,12 +3,24 @@ import { AppState } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
-import type { PresetSessionResponse } from '@workspace/shared';
-import { updateWorkout } from '../services/api/exerciseApi';
+import type {
+  PresetSessionExerciseRequest,
+  PresetSessionResponse,
+} from '@workspace/shared';
+import {
+  createWorkout,
+  getWorkout,
+  updateWorkout,
+} from '../services/api/exerciseApi';
 import { ApiError } from '../services/api/errors';
 import { syncExerciseSessionInCache } from './syncExerciseSessionInCache';
 import { invalidateExerciseCache } from './invalidateExerciseCache';
-import { buildSessionExercisesPayload } from '../utils/workoutSession';
+import {
+  buildActiveWorkoutCreateBody,
+  buildActiveWorkoutUpdateBody,
+} from '../utils/activeWorkoutPayload';
+import { serverMayBeDown } from '../utils/serverErrors';
+import { serverSessionMatchesSent } from '../offline/sessionsEqual';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
 import { addLog } from '../services/LogService';
 import { normalizeDate } from '../utils/dateUtils';
@@ -34,6 +46,13 @@ let saveQueue: Promise<unknown> = Promise.resolve();
  * and saves are serialized through `saveQueue`, so a second response can
  * never land while one is still held.
  */
+/**
+ * The exercises of the last save sent for the live session, whatever came of
+ * it. Compared with the server's copy when a save is refused as "changed
+ * elsewhere", to recognise this phone's own save whose answer was lost.
+ */
+let lastSentExercises: PresetSessionExerciseRequest[] | null = null;
+
 let heldResponse: {
   result: PresetSessionResponse;
   sentRevision: number;
@@ -64,6 +83,13 @@ function adoptHeldServerSession(): void {
     held.sentSetIds
   );
 }
+
+/**
+ * Whether the latest failed save failed only because the server could not be
+ * reached. The workout is then safe on this phone and goes up later, which is
+ * not something to alarm the person about.
+ */
+let lastFailureWasServerAway = false;
 
 /**
  * One-shot save of the live session's unsaved edits. Shared by the autosave
@@ -135,44 +161,75 @@ async function saveNow(
   const sessionId = state.sessionId;
   const sessionSource = state.session.source ?? 'unknown';
   try {
-    const trimmedName = state.session.name.trim();
-    const activityDetails =
-      state.workoutFormat !== 'standard'
-        ? [
-            {
-              detail_type: 'wod_score' as const,
-              detail_data: {
-                // Shared-schema key (read by web and the AI), plus the legacy
-                // `format` key older mobile builds read.
-                workout_format: state.workoutFormat,
-                format: state.workoutFormat,
-                rounds_completed: state.intervalRoundsCompleted,
-                reps_completed: state.intervalRepsCompleted,
-                time_cap_seconds: state.timeCapSeconds ?? undefined,
-                elapsed_seconds: state.startedAt
-                  ? Math.floor((Date.now() - state.startedAt) / 1000)
-                  : undefined,
-                status: state.intervalStatus,
-                scaling_notes: state.intervalScalingNotes || undefined,
-              },
-            },
-          ]
-        : undefined;
+    if (state.pendingCreate != null) {
+      // The server does not have this session yet: create it, carrying the
+      // session id this phone minted, so a repeat cannot make a second one.
+      const createBody = buildActiveWorkoutCreateBody({
+        ...state,
+        session: state.session,
+      });
+      // Remembered so a discard knows the server may hold this session.
+      useActiveWorkoutStore.setState({ createAttempted: true });
+      await createWorkout(createBody!);
+      if (
+        useActiveWorkoutStore.getState().sessionId !== sessionId ||
+        useActiveWorkoutStore.getState().startedAt !== state.startedAt
+      ) {
+        // The workout was ended or swapped while the create was in flight.
+        return 'saved';
+      }
+      useActiveWorkoutStore.setState({ pendingCreate: null });
+      // The create's answer is not taken as the current workout. An earlier
+      // create may have reached the server with its answer lost, in which
+      // case this one came back with that older stored copy, and sets logged
+      // since would be rolled back on screen. The store is still dirty, so
+      // an ordinary update follows at once: it sends the sets as they stand
+      // and its answer brings the ids the server assigned.
+      return saveNow(queryClient, holdAdoption);
+    }
 
-    const result = await updateWorkout(sessionId, {
-      // Persist the (possibly renamed) session name; skip an empty string so
-      // the server's min(1) name validation isn't tripped.
-      ...(trimmedName.length > 0 ? { name: trimmedName } : {}),
-      location: state.session.location ?? null,
-      exercises: buildSessionExercisesPayload(
-        state.session,
-        state.completedSetIds,
-        state.prSetIds,
-        state.startedAt,
-        state.resumedDurationMinutes
-      ),
-      activity_details: activityDetails,
+    const updateBody = buildActiveWorkoutUpdateBody({
+      ...state,
+      session: state.session,
     });
+    let result: PresetSessionResponse;
+    if (state.offlineBaseRevision == null) {
+      result = await updateWorkout(sessionId, updateBody);
+    } else {
+      // First save after a stretch without the server: present the revision
+      // last seen, so a change made elsewhere meanwhile is noticed.
+      try {
+        result = await updateWorkout(sessionId, {
+          ...updateBody,
+          revision: state.offlineBaseRevision,
+        });
+      } catch (error) {
+        if (!(error instanceof ApiError) || error.statusCode !== 409) {
+          throw error;
+        }
+        const serverCopy = await getWorkout(sessionId);
+        if (
+          lastSentExercises == null ||
+          !serverSessionMatchesSent(serverCopy, lastSentExercises, updateBody)
+        ) {
+          // Changed somewhere else. Keep everything on the phone; the person
+          // chooses which copy to keep when the workout is finished.
+          throw error;
+        }
+        // The "change" is this phone's own earlier save whose answer was
+        // lost. Nothing to ask about. The retry still presents the revision
+        // just read, so a save from another device that lands before it is
+        // refused again and kept for the person to decide.
+        result = await updateWorkout(sessionId, {
+          ...updateBody,
+          ...(serverCopy.revision != null
+            ? { revision: Number(serverCopy.revision) }
+            : {}),
+        });
+      }
+      useActiveWorkoutStore.setState({ offlineBaseRevision: null });
+    }
+    lastSentExercises = updateBody.exercises ?? null;
     if (holdAdoption?.() === true) {
       heldResponse = {
         result,
@@ -188,8 +245,30 @@ async function saveNow(
         .applyServerSession(result, sentRevision, sentEntryIds, sentSetIds);
     }
     syncExerciseSessionInCache(queryClient, result);
+    lastFailureWasServerAway = false;
     return 'saved';
   } catch (error) {
+    // Losing the server while changing a session it already has: remember
+    // the revision last seen, to be presented once it is back.
+    lastFailureWasServerAway = serverMayBeDown(error);
+    if (serverMayBeDown(error)) {
+      lastSentExercises =
+        buildActiveWorkoutUpdateBody({
+          ...state,
+          session: state.session,
+        }).exercises ?? null;
+      const current = useActiveWorkoutStore.getState();
+      if (
+        current.sessionId === sessionId &&
+        current.pendingCreate == null &&
+        current.offlineBaseRevision == null &&
+        current.session?.revision != null
+      ) {
+        useActiveWorkoutStore.setState({
+          offlineBaseRevision: current.session.revision,
+        });
+      }
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
 
     const statusCode = error instanceof ApiError ? error.statusCode : undefined;
@@ -358,15 +437,28 @@ export function useActiveWorkoutAutosave(options?: { editing?: boolean }): {
       }
     } else if (!failureToastShownRef.current) {
       failureToastShownRef.current = true;
-      Toast.show({
-        type: 'error',
-        text1: t('activeWorkoutAutosave.failedTitle', {
-          defaultValue: 'Workout not saved',
-        }),
-        text2: t('activeWorkoutAutosave.failedMessage', {
-          defaultValue: 'Changes are kept on this device and will retry.',
-        }),
-      });
+      if (lastFailureWasServerAway) {
+        Toast.show({
+          type: 'info',
+          text1: t('activeWorkoutAutosave.offlineTitle', {
+            defaultValue: 'Saved on this phone',
+          }),
+          text2: t('activeWorkoutAutosave.offlineMessage', {
+            defaultValue:
+              'Your workout uploads when your server can be reached.',
+          }),
+        });
+      } else {
+        Toast.show({
+          type: 'error',
+          text1: t('activeWorkoutAutosave.failedTitle', {
+            defaultValue: 'Workout not saved',
+          }),
+          text2: t('activeWorkoutAutosave.failedMessage', {
+            defaultValue: 'Changes are kept on this device and will retry.',
+          }),
+        });
+      }
     }
     return ok;
   }, [queryClient, runSave, t]);

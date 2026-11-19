@@ -28,6 +28,7 @@ export interface StatusViewProps {
   action?: StatusViewAction;
   /** Second action button, shown below `action` */
   secondaryAction?: StatusViewAction;
+  tertiaryAction?: StatusViewAction & { testID?: string };
   /** Compact block for use inside lists/sections instead of filling the screen */
   inline?: boolean;
   /** Additional className for the outer container */
@@ -44,6 +45,7 @@ export default function StatusView({
   subtitle,
   action,
   secondaryAction,
+  tertiaryAction,
   inline,
   className,
 }: StatusViewProps) {
@@ -95,6 +97,16 @@ export default function StatusView({
           className="mt-3 px-6"
         >
           {secondaryAction.label}
+        </Button>
+      )}
+      {tertiaryAction && (
+        <Button
+          testID={tertiaryAction.testID}
+          variant={tertiaryAction.variant ?? 'secondary'}
+          onPress={tertiaryAction.onPress}
+          className="mt-3 px-6"
+        >
+          {tertiaryAction.label}
         </Button>
       )}
     </View>

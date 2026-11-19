@@ -45,6 +45,7 @@ import {
   recipeImportInitialQuantity,
   recipeImportNutritionGaps,
   toHourMinute,
+  isCookedWeightUnit,
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
@@ -79,6 +80,10 @@ const getValidAiConfidence = (
 };
 
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
+import {
+  CookedWeightSection,
+  type CookedWeightResult,
+} from '@/components/FoodUnitSelector/CookedWeightSection';
 import FavoriteStarButton from '@/components/FavoriteStarButton';
 import { MarkdownView } from '@/components/ui/MarkdownView';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
@@ -95,7 +100,8 @@ interface FoodUnitSelectorProps {
     selectedVariant: FoodVariant,
     entryTime?: string | null,
     mealType?: string | null,
-    notes?: string | null
+    notes?: string | null,
+    cookedQuantity?: number | null
   ) => void;
   showUnitSelector?: boolean;
   initialQuantity?: number;
@@ -112,6 +118,12 @@ interface FoodUnitSelectorProps {
     name: string;
     default_time?: string | null;
   }>;
+  /**
+   * Offer "Weighed it cooked" for weight units (#3534). Only the diary turns
+   * it on: the meal builder, meal plans and recipe imports share this dialog
+   * but store no cooked weight.
+   */
+  showCookedWeight?: boolean;
 }
 
 const FoodUnitSelector = ({
@@ -129,6 +141,7 @@ const FoodUnitSelector = ({
   defaultMealTime,
   showMealTypeSelect,
   availableMealTypes,
+  showCookedWeight = false,
 }: FoodUnitSelectorProps) => {
   const { t } = useTranslation();
   const {
@@ -165,6 +178,10 @@ const FoodUnitSelector = ({
   const [entryNotes, setEntryNotes] = useState('');
   const [mealType, setMealType] = useState('');
   const [loading, setLoading] = useState(false);
+  const [cookedEnabled, setCookedEnabled] = useState(false);
+  const [cookedResult, setCookedResult] = useState<CookedWeightResult | null>(
+    null
+  );
 
   const wasOpenRef = useRef(false);
 
@@ -253,7 +270,14 @@ const FoodUnitSelector = ({
     selectedVariant,
     onVariantSelect: (_variantId, variant) => {
       setSelectedVariant(variant);
-      if (!preserveInitialAmountUnit) setQuantity(variant.serving_size);
+      // A calculated raw quantity stays valid for another variant of the same
+      // unit; resetting it would no longer match the cooked weight eaten.
+      const keepsCookedQuantity =
+        cookedEnabled &&
+        cookedResult !== null &&
+        variant.serving_unit === selectedVariant?.serving_unit;
+      if (!preserveInitialAmountUnit && !keepsCookedQuantity)
+        setQuantity(variant.serving_size);
     },
   });
   const selectedAiConfidence = getValidAiConfidence(
@@ -531,6 +555,11 @@ const FoodUnitSelector = ({
     debug(loggingLevel, 'Handling submit.');
 
     if (quantity === undefined || recipeMissingCore) return;
+    if (cookedSectionShown && cookedEnabled && !cookedResult) return;
+    const cookedActive = cookedSectionShown && cookedEnabled && cookedResult;
+    const cookedQuantity = cookedActive ? cookedResult.cookedQuantity : null;
+    // The raw quantity always comes from the same result as the cooked weight.
+    const submitQuantity = cookedActive ? cookedResult.rawQuantity : quantity;
 
     if (isConverting) {
       const convertedVariant = buildConvertedVariant();
@@ -553,12 +582,13 @@ const FoodUnitSelector = ({
         };
         onSelect(
           food,
-          quantity,
+          submitQuantity,
           variantWithId.serving_unit,
           variantWithId,
           entryTime || null,
           showMealTypeSelect ? mealType : null,
-          entryNotes.trim() || null
+          entryNotes.trim() || null,
+          cookedQuantity
         );
         onOpenChange(false);
         setQuantity(1);
@@ -578,12 +608,13 @@ const FoodUnitSelector = ({
       });
       onSelect(
         food,
-        quantity,
+        submitQuantity,
         selectedVariant.serving_unit,
         selectedVariant,
         entryTime || null,
         showMealTypeSelect ? mealType : null,
-        entryNotes.trim() || null
+        entryNotes.trim() || null,
+        cookedQuantity
       );
       onOpenChange(false);
       setQuantity(1);
@@ -646,6 +677,23 @@ const FoodUnitSelector = ({
   const displayUnit = isConverting
     ? pendingUnit.trim() || '?'
     : selectedVariant?.serving_unit || '';
+  // Converting to a new unit saves a variant first; the cooked weight is only
+  // offered on a unit the food already has.
+  const cookedSectionShown =
+    showCookedWeight && !isConverting && isCookedWeightUnit(displayUnit);
+  useEffect(() => {
+    if (cookedSectionShown) return;
+    setCookedEnabled(false);
+    setCookedResult(null);
+  }, [cookedSectionShown]);
+  const handleCookedChange = useCallback(
+    (enabled: boolean, result: CookedWeightResult | null) => {
+      setCookedEnabled(enabled);
+      setCookedResult(result);
+      if (enabled && result) setQuantity(result.rawQuantity);
+    },
+    []
+  );
   const initialAmountFactor = initialUnit
     ? getConversionFactor(displayUnit, initialUnit)
     : null;
@@ -767,6 +815,7 @@ const FoodUnitSelector = ({
                     min="0.01"
                     decimals={3}
                     required
+                    disabled={cookedSectionShown && cookedEnabled}
                     value={quantity}
                     onValueChange={(newQuantity) => {
                       debug(loggingLevel, 'Quantity changed:', newQuantity);
@@ -874,6 +923,21 @@ const FoodUnitSelector = ({
                   </div>
                 </div>
               </div>
+
+              {cookedSectionShown && (
+                <CookedWeightSection
+                  key={`${food.id}-${displayUnit}`}
+                  unit={displayUnit}
+                  previousFoodId={food.id}
+                  caloriesFor={(rawQuantity) =>
+                    activeVariant
+                      ? ((activeVariant.calories || 0) * rawQuantity) /
+                        (activeVariant.serving_size || 1)
+                      : null
+                  }
+                  onChange={handleCookedChange}
+                />
+              )}
 
               {showMealTypeSelect &&
                 availableMealTypes &&
@@ -1245,6 +1309,7 @@ const FoodUnitSelector = ({
                   disabled={
                     createFoodVariantMutation.isPending ||
                     recipeMissingCore ||
+                    (cookedSectionShown && cookedEnabled && !cookedResult) ||
                     (preserveInitialAmountUnit &&
                       (quantity === undefined ||
                         !Number.isFinite(quantity) ||

@@ -16,6 +16,8 @@ export interface FoodEntry {
   unit: string;
   /** Per-occurrence markdown note; independent of the food's own note. */
   notes?: string | null;
+  /** Cooked weight eaten, in `unit`; `quantity` is the raw weight (#3534). */
+  cooked_quantity?: number | null;
   variant_id?: string;
   food_name?: string;
   brand_name?: string;

@@ -1531,8 +1531,6 @@
     "cycle": {
       "title": "生理周期与孕期管理",
       "description": "管理生殖健康、经期记录以及孕期追踪功能",
-      "enableLabel": "开启周期与孕期追踪功能",
-      "enableHint": "开启后侧边导航栏会显示对应功能入口。",
       "mode": "记录模式",
       "bcMethod": "避孕方式",
       "terminology": "用词风格",
@@ -3310,8 +3308,6 @@
       "cunninghamMath": "公式：500 + 22 × 瘦体重（其中瘦体重 = 体重 ×（1 - 体脂/100））\n计算：500 + 22 ×（{{weight}} kg ×（1 - {{bodyFat}}/100））= {{result}} kcal",
       "harrisMaleMath": "公式：13.397 × 体重 + 4.799 × 身高 - 5.677 × 年龄 + 88.362\n计算：13.397 × {{weight}} + 4.799 × {{height}} - 5.677 × {{age}} + 88.362 = {{result}} kcal",
       "harrisFemaleMath": "公式：9.247 × 体重 + 3.098 × 身高 - 4.33 × 年龄 + 447.593\n计算：9.247 × {{weight}} + 3.098 × {{height}} - 4.33 × {{age}} + 447.593 = {{result}} kcal",
-      "oxfordMaleMath": "公式：14.2 × 体重 + 593\n计算：14.2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "公式：10.9 × 体重 + 677\n计算：10.9 × {{weight}} + 677 = {{result}} kcal",
       "bmiBodyFatMath": "公式：1.2 × BMI + 0.23 × 年龄 - 常数（{{constant}}）\n计算：1.2 × {{bmi}}（BMI）+ 0.23 × {{age}} - {{constant}} = {{result}}%",
       "invalidMeasurements": "用于日志计算的测量值无效.",
       "navyMaleMath": "公式（男性）：86.01 × log10(腰围 - 颈围) - 70.041 × log10(身高) + 36.76（单位：英寸）\n计算：86.01 × log10({{waist}}in - {{neck}}in) - 70.041 × log10({{height}}in) + 36.76\n计算结果：{{result}}%",

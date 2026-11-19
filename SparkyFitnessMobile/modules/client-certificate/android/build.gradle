@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.clientcertificate'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.clientcertificate"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // OkHttpClientProvider, and OkHttp itself through React Native.
+  compileOnly 'com.facebook.react:react-android'
+}

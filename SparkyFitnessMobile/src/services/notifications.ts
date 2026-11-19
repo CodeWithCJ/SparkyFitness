@@ -766,6 +766,38 @@ export async function scheduleFastGoalNotification(
 }
 
 /**
+ * Tells the person, once, that a workout logged without a connection has
+ * waited a week to upload (#1983). Shown now, without asking for permission:
+ * a reminder nobody asked for must not open a permission prompt.
+ */
+export async function showOfflineUploadReminder(): Promise<boolean> {
+  if (!useAppPreferencesStore.getState().notificationsEnabled) return false;
+  if (!(await hasNotificationPermission())) return false;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: notificationCopy(
+          'notifications.offlineUploads.title',
+          'A workout is waiting to upload'
+        ),
+        body: notificationCopy(
+          'notifications.offlineUploads.body',
+          'Open SparkyFitness when your server can be reached.'
+        ),
+      },
+      trigger: null,
+    });
+    return true;
+  } catch (err) {
+    addLog(
+      `showOfflineUploadReminder failed: ${(err as Error).message}`,
+      'ERROR'
+    );
+    return false;
+  }
+}
+
+/**
  * Schedules a notification 30 minutes (or custom minutes) prior to fasting goal completion.
  */
 export async function scheduleFastPreEndNotification(

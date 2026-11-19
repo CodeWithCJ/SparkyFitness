@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatLocalizedNumber } from '../../localization';
-import { View, TouchableOpacity, Platform, Text } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { StackActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -122,7 +121,6 @@ export function CreateFoodMode({
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [textPrimary, textSecondary] = useCSSVariable([
     '--color-text-primary',
@@ -972,6 +970,7 @@ export function CreateFoodMode({
     : t('createFood.actions.addFood', { defaultValue: 'Add Food' });
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: t('createFood.title', { defaultValue: 'New Food' }),
     left: {
       kind: 'dismiss',
@@ -998,10 +997,7 @@ export function CreateFoodMode({
   } = useRetryLabelScan(params, navigation);
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <FoodForm

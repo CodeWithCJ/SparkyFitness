@@ -50,7 +50,6 @@ import {
 } from '../services/runProgramService';
 import { useFitnessTests } from '../services/fitnessTestService';
 import { addLog } from '../services/LogService';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { formatLocalizedNumber } from '../localization';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -67,7 +66,6 @@ type Props = RootStackScreenProps<'RunPrograms'>;
 const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const {
     program,
     status,
@@ -384,12 +382,12 @@ const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
           <ProgramActionList>
             <ProgramActionRow
               label={t('runPrograms.openCalendar', {
-                defaultValue: 'Open the program calendar',
+                defaultValue: 'Open the training calendar',
               })}
               hint={t('runPrograms.openCalendarHint', {
-                defaultValue: 'Every workout on a month view',
+                defaultValue: 'Program and plan workouts, done and to come',
               })}
-              onPress={() => navigation.navigate('RunProgramCalendar')}
+              onPress={() => navigation.navigate('TrainingCalendar')}
             />
             {status.program.custom ? null : (
               <ProgramActionRow
@@ -569,10 +567,7 @@ const RunProgramsScreen: React.FC<Props> = ({ navigation }) => {
   ) : null;
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 bg-background"

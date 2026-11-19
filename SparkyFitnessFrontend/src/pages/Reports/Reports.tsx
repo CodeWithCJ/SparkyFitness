@@ -5,10 +5,8 @@ import MedicationReports from '@/pages/Reports/MedicationReports';
 import SymptomsReport from '@/pages/Symptoms/SymptomsReport';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import {
-  useWebFeatures,
-  withoutHiddenCategories,
-} from '@/hooks/Settings/useWebFeatures';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
+import { withoutHiddenCategories } from '@workspace/shared';
 import { useProfileQuery } from '@/hooks/Settings/useProfile';
 import { useIsMobile } from '@/hooks/use-mobile';
 import ZoomableChart from '@/components/ZoomableChart';

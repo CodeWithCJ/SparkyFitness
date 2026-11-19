@@ -179,8 +179,10 @@
     "shareReportDescription": "Exports a local diagnostic report (app version, sync status, logs). No personal health or food data is included. Nothing is sent automatically.",
     "rows": {
       "server": "Server",
+      "offline": "Offline",
       "healthSync": "Health Data Sync",
       "app": "App Settings",
+      "features": "Features",
       "calories": "Calories & BMR",
       "food": "Food",
       "dashboard": "Dashboard",
@@ -319,6 +321,10 @@
     "goToTodayHint": "Returns to today"
   },
   "notifications": {
+    "offlineUploads": {
+      "title": "A workout is waiting to upload",
+      "body": "Open SparkyFitness when your server can be reached."
+    },
     "title": "Notifications",
     "channels": {
       "medicationReminders": "Medication reminders",
@@ -696,6 +702,7 @@
     "about": "About",
     "whatsNew": "What's New",
     "cyclePregnancy": "Cycle & Pregnancy",
+    "features": "Features",
     "cycleSetup": "Cycle Setup",
     "wellnessHub": "Wellness Hub",
     "logDailyEntry": "Log Daily Entry",
@@ -746,6 +753,8 @@
       "routesSubtitle": "Draw, import and save routes to follow",
       "equipment": "Equipment",
       "equipmentSubtitle": "Shoes and other gear",
+      "trainingCalendar": "Training calendar",
+      "trainingCalendarSubtitle": "Planned and completed workouts, and load by sport",
       "labResults": "Lab results",
       "labResultsSubtitle": "Blood tests and other markers over time"
     },
@@ -764,6 +773,7 @@
     "fastingSettings": "Fasting Settings",
     "fasting": "Fasting",
     "warmupSettings": "Warm-up Calculator",
+    "offlineSettings": "Offline",
     "symptomEpisodeDetail": "Episode Details",
     "recordActivity": "Record Activity",
     "reports": "Reports",
@@ -782,8 +792,8 @@
     "watchRunLiveRun": "Run on your watch",
     "watchRunLiveJumpRope": "Jump Rope on your watch",
     "watchWalkLive": "Walk on your watch",
+    "trainingCalendar": "Training calendar",
     "allergenSettings": "Allergens",
-    "runProgramCalendar": "Program calendar",
     "runProgramWorkout": "Workout",
     "runProgramEdit": "Edit plan",
     "runProgramNew": "New plan",
@@ -992,6 +1002,34 @@
     "proxyHeaders": "Proxy Headers",
     "addHeader": "Add header",
     "proxyHeadersHelp": "Used when running behind certain reverse proxies",
+    "clientCertificate": {
+      "title": "Client certificate",
+      "experimental": "Experimental",
+      "experimentalNote": "This feature is new and may not work with every proxy or phone. If something fails, remove the certificate and report the problem.",
+      "help": "Only needed when your reverse proxy requires a client certificate (mutual TLS). It is sent only to your saved servers.",
+      "installed": "Certificate installed",
+      "expires": "Expires on {{date}}",
+      "expiresSoon": "Expires soon, on {{date}}",
+      "expired": "Expired on {{date}}. Import a new one.",
+      "gap": "This version of the app cannot use the certificate for every request. Please report this.",
+      "passwordPlaceholder": "Certificate password",
+      "import": "Import",
+      "choose": "Import certificate",
+      "replace": "Replace certificate",
+      "remove": "Remove",
+      "restartHint": "Fully close and reopen the app so this applies. Until then the server may still answer as before.",
+      "restartTitle": "Restart the app",
+      "restartAfterImport": "To use the new certificate, fully close the app (swipe it away in the app switcher) and open it again, then connect.",
+      "restartAfterRemove": "To stop using the old certificate, fully close the app (swipe it away in the app switcher) and open it again.",
+      "connectionHint": "If your server requires a client certificate, add it under Advanced options.",
+      "connectionHintRestart": "If your server requires a client certificate, add it under Advanced options, then fully close and reopen the app.",
+      "errors": {
+        "wrongPassword": "That password does not open this file.",
+        "invalidFile": "This file could not be read. Check the password, and that it is a .p12 or .pfx file. A file made with a recent OpenSSL may need to be exported again in the legacy format.",
+        "noPrivateKey": "This file has a certificate but no private key. Export it again with the key included.",
+        "storage": "The certificate could not be saved on this device."
+      }
+    },
     "reservedHeader": "Reserved Header",
     "reservedHeaderMessage": "\"{{name}}\" may conflict with headers set by the app. Continue anyway?",
     "signInWithProvider": "Sign in with {{provider}}",
@@ -1339,6 +1377,8 @@
     "fastingSubtitle": "Show the fasting card on the Dashboard",
     "cyclePregnancy": "Cycle & Pregnancy",
     "cyclePregnancySubtitle": "Show the wellness card on the Dashboard",
+    "wellness": "Wellness",
+    "offInFeatures": "Not shown: turned off in Features",
     "medications": "Medications",
     "medicationsSubtitle": "Show the medications card on the Dashboard",
     "symptoms": "Symptoms",
@@ -2827,10 +2867,6 @@
       "wellness": "Wellness Settings",
       "cyclePregnancy": "Cycle & Pregnancy"
     },
-    "enable": {
-      "title": "Enable Cycle & Pregnancy Tracking",
-      "subtitle": "Turn on logging, predictions, and history"
-    },
     "groups": {
       "features": "Feature Configuration",
       "calculations": "Cycle Calculations Overrides",
@@ -2864,6 +2900,37 @@
       "discreetSubtitle": "Hides \"Cycle\" or \"Pregnancy\" labels in UI",
       "exportSubtitle": "Download JSON data export",
       "resetSubtitle": "Restart setup walkthrough"
+    },
+    "loadFailed": "Could not load these settings.",
+    "feature": {
+      "on": "Turned on",
+      "off": "Turned off",
+      "hint": "Turn it on or off in Settings → Features."
+    },
+    "setup": {
+      "action": "Set up",
+      "hint": "Answer a few questions to finish setting it up."
+    }
+  },
+  "featureSettings": {
+    "title": "Features",
+    "description": "Turn whole features on or off in this app.",
+    "footnote": "Turning a feature off only hides it: nothing is deleted, and syncs and imports keep running.",
+    "loading": "Loading",
+    "loadError": "Could not load this setting.",
+    "groups": {
+      "health": "Health",
+      "nutrition": "Nutrition",
+      "training": "Training",
+      "wellbeing": "Wellbeing"
+    },
+    "cycle": {
+      "title": "Cycle & Pregnancy",
+      "discreetTitle": "Wellness",
+      "description": "Track periods, fertility and pregnancy.",
+      "scope": "One switch for the app and the website.",
+      "setupAction": "Set up",
+      "setupHint": "Answer a few questions to finish setting it up."
     }
   },
   "measurements": {
@@ -3551,6 +3618,10 @@
   "whatsNewPage": {
     "title": "What's New",
     "mockup": {
+      "offlinePush": "Push Day",
+      "offlineBadge": "Offline",
+      "offlineSets": "12 sets logged",
+      "offlineWaiting": "Waiting to upload",
       "today": "TODAY",
       "kcalLeft": "kcal left",
       "in": "In",
@@ -3616,6 +3687,12 @@
       "logged": "Logged"
     },
     "features": {
+      "offlineWorkouts": {
+        "eyebrow": "OFFLINE WORKOUTS",
+        "headline": "Train with no signal",
+        "body": "Start, log and finish a workout even when your server cannot be reached. It is kept on your phone and uploads by itself once you are back online. Long-press exercises in your library to keep their pictures offline too.",
+        "cta": "Offline settings"
+      },
       "labResults": {
         "eyebrow": "LAB RESULTS",
         "headline": "Keep your lab results in one place",
@@ -4084,7 +4161,7 @@
     "previewTitle": "Preview",
     "previewDescription": "How Quick Actions looks with your choices.",
     "lineNumber": "Line {{number}}",
-    "needsCycle": "Not shown: cycle tracking is off",
+    "offInFeatures": "Not shown: turned off in Features",
     "showAs": "Show as",
     "showAsValue": "Show as {{style}}",
     "styleList": "List",
@@ -4309,6 +4386,18 @@
     "pickers": {
       "selectServing": "Select Serving",
       "selectMeal": "Select Meal"
+    },
+    "cooked": {
+      "switch": "Weighed it cooked",
+      "sameBatchPrevious": "Same batch as on {{date}}: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked",
+      "sameBatchEntry": "Same batch as this entry: {{raw}} {{unit}} raw → {{cooked}} {{unit}} cooked",
+      "newBatch": "New batch",
+      "rawBatch": "Raw weight of batch ({{unit}})",
+      "cookedBatch": "Cooked weight of batch ({{unit}})",
+      "eaten": "You ate (cooked, {{unit}})",
+      "result": "= {{raw}} {{unit}} raw · {{energy}}",
+      "incomplete": "Enter the weights to calculate the raw amount.",
+      "enterEaten": "Enter the cooked weight you ate."
     }
   },
   "foodEntryMultiAdd": {
@@ -5522,7 +5611,9 @@
     "reorderExercises": "Reorder exercises",
     "workoutPlaceholder": "Workout",
     "useYesterday": "Use Yesterday",
-    "useToday": "Use Today"
+    "useToday": "Use Today",
+    "savedOfflineTitle": "Saved on this phone",
+    "savedOfflineMessage": "It uploads when your server can be reached."
   },
   "mealMutations": {
     "createFailed": "Failed to create meal",
@@ -6576,7 +6667,9 @@
   },
   "activeWorkoutAutosave": {
     "failedTitle": "Workout not saved",
-    "failedMessage": "Changes are kept on this device and will retry."
+    "failedMessage": "Changes are kept on this device and will retry.",
+    "offlineTitle": "Saved on this phone",
+    "offlineMessage": "Your workout uploads when your server can be reached."
   },
   "medicalDisclaimer": {
     "text": "For tracking and general information only, not medical advice. Talk with your healthcare provider about medical concerns."
@@ -6968,6 +7061,14 @@
       "day": "Day {{day}}",
       "dayCycle_one": "{{count}}-day cycle",
       "dayCycle_other": "{{count}}-day cycle"
+    },
+    "loadFailed": "Could not load your settings.",
+    "off": {
+      "title": "Cycle tracking is turned off",
+      "discreetTitle": "Wellness is turned off",
+      "description": "Your history is kept. Turn it back on to see it here again.",
+      "turnOn": "Turn on",
+      "openFeatures": "Open Features"
     }
   },
   "workoutPresetLibrary": {},
@@ -7152,6 +7253,7 @@
     "largerTextTitle": "Larger text on the watch",
     "largerTextSubtitle": "Larger type and the newer layouts across the watch: Goals, Water, Fasting, Steps and more. Off keeps the original look.",
     "newWorkoutSubtitle": "A Log set button (double tap logs too), a button to edit the previous set, a more page with the workout actions, and a single summary when you finish. Off keeps the original workout screen.",
+    "newWorkoutSubtitleWearOs": "A Log set button, a button to edit the previous set, exercise demos, plate calculator, a more page with the workout actions, and a single summary when you finish. Off keeps the original workout screen.",
     "topLineTitle": "Top line",
     "topLineDescription": "What the top of the watch workout shows first: the elapsed time or live heart rate and calories. Tap it on the watch to switch.",
     "topLineTime": "Time",
@@ -7336,6 +7438,7 @@
     "rateExercises": "Rate each exercise",
     "saving": "Saving…",
     "saved": "Saved",
+    "queued": "Will be sent when you are back online",
     "saveFailed": "Couldn't save your feedback. Tap to retry.",
     "loadFailed": "Couldn't load your feedback. Tap to try again."
   },
@@ -8693,6 +8796,21 @@
     "nightsTracked": "Nights tracked",
     "nightsOfWindow": "{{nights}} of {{total}}",
     "stageShare": "{{pct}}% of the night",
+    "negativeDuration": "-{{duration}}",
+    "needLoadFailed": "Couldn't load tonight's sleep need",
+    "needTonight": "Sleep need tonight",
+    "needTotal": "Total",
+    "needBaseline": "Baseline",
+    "needStrain": "Strain",
+    "needStrainHint": "From today's workouts",
+    "needDebt": "Debt recovery",
+    "needDebtHint": "Part of your {{amount}} sleep debt",
+    "needSurplusHint": "Part of your {{amount}} sleep surplus",
+    "recovery": "Recovery",
+    "recoveryScore": "{{score}}/100",
+    "recoveryHint": "Your readiness: sleep, resting heart rate and HRV",
+    "trainingLoad": "Training load",
+    "trainingLoadHint": "Heart-rate-weighted workout minutes",
     "hoursValue": "{{hours}} h",
     "weekdayAsleep": "Weeknights asleep",
     "weekendAsleep": "Weekend nights asleep",
@@ -8735,6 +8853,7 @@
       "nutrientTrends": "Trend by nutrient",
       "sleepStages": "Average night",
       "sleepRoutine": "Routine",
+      "sleepNeed": "Sleep need tonight",
       "sleepAverages": "Period averages",
       "moodChart": "Daily mood chart",
       "moodSummary": "Summary",
@@ -9083,33 +9202,10 @@
         "save": "Could not save your goals. Please try again."
       }
     },
-    "openCalendar": "Open the program calendar",
-    "openCalendarHint": "Every workout on a month view",
-    "monthGrid": {
-      "previous": "Previous month",
-      "next": "Next month",
-      "dayA11yNone": "{{date}}, no workouts",
-      "dayA11y_one": "{{date}}, {{formattedCount}} workout",
-      "dayA11y_other": "{{date}}, {{formattedCount}} workouts"
-    },
+    "openCalendar": "Open the training calendar",
+    "openCalendarHint": "Program and plan workouts, done and to come",
     "calendarScreen": {
-      "noProgram": "Start a training program to see its calendar.",
-      "progress": "{{done}} of {{total}} workouts done",
-      "doneOn": "Done {{date}}",
-      "done": "Done",
-      "dueOn": "Next · {{date}}",
-      "notScheduled": "Not scheduled",
-      "minutes": "{{minutes}} min",
-      "legendDone": "Done",
-      "legendAhead": "Due or to come",
-      "noWorkoutsDay": "No program workout on this day.",
-      "pickDays_one": "{{count}} more workout is not on the calendar yet. Pick your workout days on the program screen to see when each one falls.",
-      "pickDays_other": "{{count}} more workouts are not on the calendar yet. Pick your workout days on the program screen to see when each one falls.",
-      "pastGoal_one": "{{count}} workout does not fit before your goal date.",
-      "pastGoal_other": "{{count}} workouts do not fit before your goal date.",
-      "allWorkouts": "All workouts",
-      "today": "Today",
-      "due": "Next"
+      "minutes": "{{minutes}} min"
     },
     "detail": {
       "workoutTitle": "Week {{week}}, run {{run}}",
@@ -10141,6 +10237,88 @@
     "removeBarShort": "Remove",
     "barWeightUnit": "Weight ({{unit}})"
   },
+  "trainingCalendar": {
+    "load": {
+      "title": "Load by Sport",
+      "subtitle": "Where your training load comes from: running, cycling, walking, strength and other.",
+      "thisWeek": "This week",
+      "thisMonth": "This month",
+      "weekly": "Weekly load",
+      "noneYet": "No workouts logged yet.",
+      "loadFailed": "Could not load your load by sport.",
+      "method": "Load is minutes weighted by your average heart rate (1 to 5, from how close it was to your maximum). A workout with no heart rate counts at a moderate weight of 2, so a strength session with no watch still counts by its time. Effort ratings are not used.",
+      "openCalendar": "Open training calendar"
+    },
+    "sport": {
+      "running": "Running",
+      "cycling": "Cycling",
+      "walking": "Walking",
+      "cardio": "Cardio",
+      "strength": "Strength",
+      "other": "Other"
+    },
+    "status": {
+      "done": "Done",
+      "partial": "Partly done",
+      "missed": "Missed",
+      "upcoming": "Upcoming"
+    },
+    "programWorkout": "{{name}} · workout {{number}}",
+    "workoutPlanFallback": "Workout plan",
+    "weekOf": "Week of {{date}}",
+    "minutesShort": "{{value}} min",
+    "minutesOf": "{{done}} of {{planned}} min",
+    "loadValue": "load {{value}}",
+    "estimated": "(estimated, no heart rate)",
+    "extra": "Extra",
+    "totals": {
+      "title": "Planned vs completed",
+      "sessions": "{{done}} of {{planned}} planned sessions",
+      "extra_one": "{{formattedCount}} extra",
+      "extra_other": "{{formattedCount}} extra",
+      "minutes": "Time {{done}} of {{planned}} min",
+      "load": "Training load {{done}} of {{planned}}",
+      "sessionsLogged_one": "{{formattedCount}} session logged",
+      "sessionsLogged_other": "{{formattedCount}} sessions logged",
+      "minutesDone": "Time {{done}} min",
+      "loadDone": "Training load {{done}}",
+      "minutesExtra": "(+{{extra}} min extra)",
+      "loadExtra": "(+{{extra}} extra)",
+      "thisWeek": "This week",
+      "ahead": "Upcoming"
+    },
+    "loadFailed": "Could not load your training calendar.",
+    "refreshFailed": "Could not refresh. Showing the last result.",
+    "emptyDay": "Nothing planned or logged this day.",
+    "planned": "Planned",
+    "completed": "Completed",
+    "month": "Month",
+    "week": "Week",
+    "previous": "Previous",
+    "next": "Next",
+    "distanceKm": "{{value}} km",
+    "distanceMiles": "{{value}} mi",
+    "restDay": "Rest day",
+    "hideEarlier": "Hide earlier weeks",
+    "loadHelpA11y": "What is training load?",
+    "progressA11y": "{{done}} done, {{partial}} partly done, {{missed}} missed, of {{planned}} planned",
+    "markA11y": "{{sport}}, {{status}}",
+    "extraA11y": "extra, not planned",
+    "moreA11y_one": "{{formattedCount}} more session",
+    "moreA11y_other": "{{formattedCount}} more sessions",
+    "dayA11y": "{{date}}: {{marks}}",
+    "dayA11yNone": "{{date}}, nothing planned or logged",
+    "weekTotalA11y": "{{done}} of {{planned}} planned sessions done",
+    "weekTotalShort": "{{done}}/{{planned}}",
+    "weekTotalHeader": "Total",
+    "weekLoggedA11y_one": "{{formattedCount}} session logged",
+    "weekLoggedA11y_other": "{{formattedCount}} sessions logged",
+    "weekEmptyA11y": "No sessions this week",
+    "more_one": "+{{formattedCount}}",
+    "more_other": "+{{formattedCount}}",
+    "showEarlier_one": "Show earlier week ({{formattedCount}})",
+    "showEarlier_other": "Show earlier weeks ({{formattedCount}})"
+  },
   "labs": {
     "add": "Add lab result",
     "changeMarker": "Change",
@@ -10327,7 +10505,8 @@
     "goToSettings": "Go to Settings",
     "unreachableTitle": "Can't reach your server",
     "unreachableSubtitle": "Check your connection or try again.",
-    "tryAgain": "Try again"
+    "tryAgain": "Try again",
+    "offlineWorkouts": "Start a saved workout offline"
   },
   "waterLog": {
     "title": "Drinks",
@@ -10741,5 +10920,95 @@
     "cancelled": "Cancelled tool",
     "error": "Error:",
     "cancelledReason": "Cancelled reason:"
+  },
+  "offline": {
+    "keptAdded_one": "Pictures of {{count}} exercise will be kept offline",
+    "keptAdded_other": "Pictures of {{count}} exercises will be kept offline",
+    "keptRemoved_one": "{{count}} exercise no longer kept offline",
+    "keptRemoved_other": "{{count}} exercises no longer kept offline",
+    "keptMark": "Kept offline",
+    "selectedCount_one": "{{count}} selected",
+    "selectedCount_other": "{{count}} selected",
+    "keepOffline": "Keep offline",
+    "removeFromOffline": "Remove from offline",
+    "picturesTitle": "Exercise pictures",
+    "picturesOnMobileData": "Download pictures on mobile data",
+    "picturesOnMobileDataSubtitle": "Off: pictures download on Wi-Fi only. Up to 300 MB.",
+    "keptHeading": "Exercises kept offline",
+    "keptIntro": "Pictures of this week’s plan and your saved workouts are kept automatically. To keep more, long-press exercises in the exercise library.",
+    "keptRemove": "Tap to stop keeping offline",
+    "presetOfflineNote": "Offline: you can start or log this workout. Changes to it, and duplicating it, need a connection.",
+    "leave": {
+      "title_one": "{{count}} workout is waiting to upload",
+      "title_other": "{{count}} workouts are waiting to upload",
+      "deleteMessage": "Removing this server also removes what is waiting on this phone, and it will never reach the server.",
+      "switchMessage": "They stay on this phone and upload when you switch back to this server.",
+      "uploadFirst": "Upload first",
+      "deleteAnyway": "Remove anyway",
+      "switchAnyway": "Switch anyway"
+    },
+    "presetUpdateQueued": "Saved workout will be updated when you are back online",
+    "presetUpdateSkipped": "Saved workout \"{{name}}\" was not updated because it was changed elsewhere",
+    "presetUpdated": "Saved workout \"{{name}}\" updated",
+    "diaryNote": "Only workouts are available offline. Food and other entries need a connection.",
+    "diaryNothingSaved": "Nothing saved for this day",
+    "finishedTitle": "Saved on this phone",
+    "finishedMessage": "It uploads when your server can be reached.",
+    "deleteSavedTitle": "Deleted on this phone",
+    "deleteSavedMessage": "It is removed from your server once it can be reached.",
+    "startedTitle": "Started offline",
+    "startedMessage": "This workout is kept on this phone and uploads when your server can be reached.",
+    "notReadyTitle": "Not ready for offline workouts yet",
+    "notReadyMessage": "Connect to your server once so this phone can save what a workout needs.",
+    "banner": "Offline: showing data saved on this phone",
+    "bannerHint": "Checks the connection again",
+    "intro": "Workouts can be started and logged without a connection. They are kept on this phone and uploaded when your server can be reached.",
+    "waitingHeading": "Waiting to upload",
+    "nothingWaiting": "Nothing is waiting",
+    "nothingWaitingSubtitle": "Everything on this phone has been uploaded.",
+    "waitingItem": "{{kind}}, {{date}}",
+    "uploadNow": "Upload now",
+    "uploadDone": "Everything is uploaded",
+    "uploadStillWaiting": "Some items are still waiting",
+    "uploadStillWaitingDetail": "They stay on this phone and upload when your server can be reached.",
+    "storageHeading": "On this phone",
+    "storageTitle": "Saved for offline use",
+    "storageValue": "{{size}} MB",
+    "refreshRow": "Refresh now",
+    "refreshing": "Refreshing…",
+    "neverRefreshed": "Not downloaded yet. Connect to your server once to prepare offline workouts.",
+    "lastRefreshed": "Last refreshed {{when}}",
+    "refreshDone": "Saved data is up to date",
+    "refreshFailed": "Could not refresh",
+    "refreshFailedDetail": "Your server could not be reached. What is already saved is kept.",
+    "clearRow": "Clear offline data",
+    "clearRowSubtitle": "Uploads still waiting are kept",
+    "clearTitle": "Clear offline data?",
+    "clearMessage": "Saved workouts, exercises and other data kept for offline use are removed from this phone and downloaded again next time. Anything still waiting to upload is kept.",
+    "clearConfirm": "Clear",
+    "status": {
+      "pending": "Waiting to upload",
+      "sending": "Uploading…",
+      "conflict": "Changed somewhere else. Tap to choose.",
+      "needsSignIn": "Sign in again to upload",
+      "failed": "The server did not accept it"
+    },
+    "conflict": {
+      "phoneSuffix": "(phone)",
+      "deletedTitle": "Deleted somewhere else",
+      "deletedMessage": "This workout was deleted on another device while this phone was offline.",
+      "saveAsNew": "Save as a new workout",
+      "discard": "Discard this phone’s copy",
+      "changedTitle": "Changed somewhere else",
+      "changedMessage": "This workout was changed on another device while this phone was offline. Which one do you want to keep?",
+      "keepPhone": "Keep this phone’s workout",
+      "keepServer": "Keep the other version",
+      "saveSeparately": "Keep both"
+    },
+    "kind": {
+      "workout": "Workout",
+      "other": "Saved change"
+    },
+    "libraryNote": "Only workouts and exercises are available offline. Everything else in the Library needs a connection."
   }
 }

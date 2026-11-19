@@ -1,8 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Platform, Text } from 'react-native';
+import { View, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
@@ -83,7 +82,6 @@ export function AdjustNutritionMode({
     selectedUnitSelection,
   } = params;
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -658,6 +656,7 @@ export function AdjustNutritionMode({
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: t('foodFormPersistence.adjustNutritionTitle', {
       defaultValue: 'Adjust Nutrition',
     }),
@@ -680,10 +679,7 @@ export function AdjustNutritionMode({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <FoodForm

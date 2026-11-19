@@ -151,6 +151,7 @@ describe('water_ml round-trips through all three schema variants of each table',
       source_id: null,
       images: [],
       notes: null,
+      cooked_quantity: null,
     };
 
     expect(

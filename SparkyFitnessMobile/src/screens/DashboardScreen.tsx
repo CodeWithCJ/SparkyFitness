@@ -3,7 +3,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
-import { hasSupplementNutrition } from '@workspace/shared';
+import { hasSupplementNutrition, isShownByFeature } from '@workspace/shared';
 import React, {
   useCallback,
   useEffect,
@@ -95,6 +95,8 @@ import {
   selectVisibleHealthTrends,
 } from '../utils/healthTrendPreferences';
 import { resolveDashboardCardOrder } from '../utils/dashboardCardPreferences';
+import { DASHBOARD_CARD_FEATURES } from '../constants/dashboardCards';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { formatDateLabel, getDateRelationToToday } from '../utils/dateUtils';
 import {
@@ -451,9 +453,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     deleteSession: deleteMindfulSession,
   } = useMindfulnessMutations(selectedDate);
 
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
   const orderedDashboardCards = useMemo(
-    () => resolveDashboardCardOrder(dashboardCardOrder),
-    [dashboardCardOrder]
+    () =>
+      resolveDashboardCardOrder(dashboardCardOrder).filter((cardKey) =>
+        isShownByFeature(DASHBOARD_CARD_FEATURES[cardKey], isFeatureOn)
+      ),
+    [dashboardCardOrder, isFeatureOn]
   );
 
   useLayoutEffect(() => {

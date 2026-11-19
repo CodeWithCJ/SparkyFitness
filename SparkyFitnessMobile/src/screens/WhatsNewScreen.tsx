@@ -707,6 +707,28 @@ const NfcTagMockup: React.FC = () => {
   );
 };
 
+const OfflineWorkoutMockup: React.FC = () => {
+  const { t } = useTranslation();
+  return (
+    <StatCardMockup
+      colorVariable="--color-exercise"
+      icon="cloud-offline"
+      title={t('whatsNewPage.mockup.offlinePush', {
+        defaultValue: 'Push Day',
+      })}
+      badge={t('whatsNewPage.mockup.offlineBadge', {
+        defaultValue: 'Offline',
+      })}
+      left={t('whatsNewPage.mockup.offlineSets', {
+        defaultValue: '12 sets logged',
+      })}
+      right={t('whatsNewPage.mockup.offlineWaiting', {
+        defaultValue: 'Waiting to upload',
+      })}
+    />
+  );
+};
+
 const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -730,6 +752,25 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   // Added or changed a card below? Bump WHATS_NEW_CONTENT_VERSION in
   // services/whatsNewBanner.ts so the banner re-appears for existing users.
   const features: Feature[] = [
+    {
+      eyebrow: t('whatsNewPage.features.offlineWorkouts.eyebrow', {
+        defaultValue: 'OFFLINE WORKOUTS',
+      }),
+      headline: t('whatsNewPage.features.offlineWorkouts.headline', {
+        defaultValue: 'Train with no signal',
+      }),
+      body: t('whatsNewPage.features.offlineWorkouts.body', {
+        defaultValue:
+          'Start, log and finish a workout even when your server cannot be reached. It is kept on your phone and uploads by itself once you are back online. Long-press exercises in your library to keep their pictures offline too.',
+      }),
+      hero: <OfflineWorkoutMockup />,
+      cta: {
+        label: t('whatsNewPage.features.offlineWorkouts.cta', {
+          defaultValue: 'Offline settings',
+        }),
+        onPress: () => navigation.navigate('OfflineSettings'),
+      },
+    },
     {
       eyebrow: t('whatsNewPage.features.labResults.eyebrow', {
         defaultValue: 'LAB RESULTS',
@@ -1066,10 +1107,7 @@ const WhatsNewScreen: React.FC<WhatsNewScreenProps> = ({ navigation }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{

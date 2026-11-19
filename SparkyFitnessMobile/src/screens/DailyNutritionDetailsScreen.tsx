@@ -1,12 +1,6 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  Platform,
-} from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
@@ -83,6 +77,7 @@ const DailyNutritionDetailsScreen: React.FC<
 
   // Configure screen header
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: t('dailyNutritionDetails.title', {
       defaultValue: 'Nutrition Details',
     }),
@@ -346,12 +341,7 @@ const DailyNutritionDetailsScreen: React.FC<
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      // iOS keeps no top inset even without the native header: this modal
-      // sheet already starts below the status bar.
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1"

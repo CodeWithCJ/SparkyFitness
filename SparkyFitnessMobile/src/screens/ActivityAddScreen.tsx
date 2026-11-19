@@ -9,7 +9,6 @@ import {
 } from 'react-native';
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
@@ -57,7 +56,6 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const popCount = route.params?.popCount ?? 1;
   const isEditMode = !!entry;
 
-  const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
   const [accentPrimary, textMuted, raisedBg] = useCSSVariable([
@@ -261,10 +259,7 @@ const ActivityAddScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <KeyboardAwareScrollView

@@ -26,7 +26,6 @@ import {
   ownershipFilterHeaderMenu,
 } from '../utils/shareStatus';
 import ShareStatusBadge from '../components/ShareStatusBadge';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { WorkoutPreset } from '../types/workoutPresets';
@@ -40,7 +39,6 @@ const WorkoutPresetsLibraryScreen: React.FC<
 > = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textSecondary] = useCSSVariable([
     '--color-accent-primary',
@@ -55,7 +53,10 @@ const WorkoutPresetsLibraryScreen: React.FC<
     (s) => s.setWorkoutPresetsLibraryOwnershipFilter
   );
 
-  const { isConnected } = useServerConnection();
+  const { isConnected, status: connectionStatus } = useServerConnection();
+  // A server that is set up but not answering: the list then comes from
+  // what the phone saved (src/offline/).
+  const canShowData = isConnected || connectionStatus === 'unreachable';
   const { profile } = useProfile();
   const {
     presets,
@@ -67,7 +68,7 @@ const WorkoutPresetsLibraryScreen: React.FC<
     isFetchingNextPage,
     loadMore,
     refetch,
-  } = useWorkoutPresetsLibrary(searchText, { enabled: isConnected });
+  } = useWorkoutPresetsLibrary(searchText, { enabled: canShowData });
   const filteredPresets = useMemo(
     () => filterByOwnership(presets, ownershipFilter, profile?.id),
     [presets, ownershipFilter, profile?.id]
@@ -267,12 +268,9 @@ const WorkoutPresetsLibraryScreen: React.FC<
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
-      {isConnected ? (
+      {canShowData ? (
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
@@ -282,7 +280,7 @@ const WorkoutPresetsLibraryScreen: React.FC<
           isSearching={isSearching}
         />
       ) : null}
-      <ServerGate>{renderContent()}</ServerGate>
+      <ServerGate offlineCapable>{renderContent()}</ServerGate>
     </View>
   );
 };
