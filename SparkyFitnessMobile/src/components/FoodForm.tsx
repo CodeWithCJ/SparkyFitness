@@ -418,6 +418,12 @@ const FoodForm: React.FC<FoodFormProps> = ({
     fat_oil_nut: t('foodForm.nutriScoreCategoryFatOilNut', {
       defaultValue: 'Fat, oil & nut',
     }),
+    cheese: t('foodForm.nutriScoreCategoryCheese', {
+      defaultValue: 'Cheese',
+    }),
+    red_meat: t('foodForm.nutriScoreCategoryRedMeat', {
+      defaultValue: 'Red meat',
+    }),
   };
 
   const update = (field: keyof FoodFormData, value: string) => {
@@ -1648,7 +1654,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
             <Text className="text-xs text-text-muted mt-1 mb-4">
               {t('foodForm.nutriScoreCategoryHint', {
                 defaultValue:
-                  'Beverages and fats, oils and nuts are scored differently from other foods.',
+                  'Beverages, fats, oils and nuts, cheese and red meat are scored differently from other foods.',
               })}
             </Text>
             <MarkdownNotesField

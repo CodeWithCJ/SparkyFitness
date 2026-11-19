@@ -9,6 +9,7 @@ import { log } from '../../config/logging.js';
 import {
   normalizeNutrientUnit,
   alcoholGramsForServing,
+  type NutriScoreCategory,
 } from '@workspace/shared';
 import package$0 from '../../package.json' with { type: 'json' };
 import { PARTIAL_SERVING_DATA } from '../../utils/foodRanking.js';
@@ -1169,15 +1170,32 @@ function hasOffNutrient(
 // 08.02, 12.02), so en:nuts stands in for it. Processed nuts matched by HS code
 // 2008.11/2008.19 and milk-heavy dairy drinks are not modelled; they score as
 // "general" and the provider grade still wins when OFF supplies one.
+// Cheese is en:cheeses minus fr:fromages-blancs (is_cheese_for_nutrition_score).
+// Red meat is the HS 02.01-02.06 categories; OFF also counts products with more
+// than 10% red-meat ingredients, which needs an ingredient list and is not
+// modelled.
 const OFF_FAT_OIL_NUT_TAGS = ['en:fats', 'en:creams', 'en:seeds', 'en:nuts'];
+const OFF_RED_MEAT_TAGS = [
+  'en:beef',
+  'en:veal-meat',
+  'en:pork',
+  'en:lamb-meat',
+  'en:sheep-meat',
+  'en:goat-meat',
+  'en:horse-fresh-meat',
+];
 
 function offNutriScoreCategory(
   tags: unknown
-): 'beverage' | 'fat_oil_nut' | undefined {
+): Exclude<NutriScoreCategory, 'general'> | undefined {
   if (!Array.isArray(tags)) return undefined;
+  if (tags.includes('en:cheeses') && !tags.includes('fr:fromages-blancs')) {
+    return 'cheese';
+  }
   if (tags.some((tag) => OFF_FAT_OIL_NUT_TAGS.includes(tag))) {
     return 'fat_oil_nut';
   }
+  if (tags.some((tag) => OFF_RED_MEAT_TAGS.includes(tag))) return 'red_meat';
   return tags.includes('en:beverages') ? 'beverage' : undefined;
 }
 

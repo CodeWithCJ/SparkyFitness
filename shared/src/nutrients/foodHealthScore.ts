@@ -40,12 +40,14 @@ export type FrontOfPackWarning = (typeof FRONT_OF_PACK_WARNINGS)[number];
 
 /**
  * Which Nutri-Score algorithm applies. Null/unset on a food means 'general'.
- * Cheese and red meat adjustments are not modelled.
+ * Cheese and red meat use the general table with one protein adjustment each.
  */
 export const NUTRI_SCORE_CATEGORIES = [
   'general',
   'beverage',
   'fat_oil_nut',
+  'cheese',
+  'red_meat',
 ] as const;
 export type NutriScoreCategory = (typeof NUTRI_SCORE_CATEGORIES)[number];
 
@@ -144,8 +146,11 @@ const FAT_OIL_NUT_POINTS = {
 };
 const KJ_PER_G_SATURATED_FAT = 37;
 // Upper score bound of grades A..D; anything above the last bound is E.
+const GENERAL_GRADE_BOUNDS = [0, 2, 10, 18];
 const GRADE_BOUNDS: Record<NutriScoreCategory, number[]> = {
-  general: [0, 2, 10, 18],
+  general: GENERAL_GRADE_BOUNDS,
+  cheese: GENERAL_GRADE_BOUNDS,
+  red_meat: GENERAL_GRADE_BOUNDS,
   // Beverages never reach A: in the 2023 algorithm A is reserved for plain
   // water, which this data cannot tell apart from a zero-calorie sweetened drink.
   beverage: [Number.NEGATIVE_INFINITY, 2, 6, 9],
@@ -153,6 +158,7 @@ const GRADE_BOUNDS: Record<NutriScoreCategory, number[]> = {
 };
 const PROTEIN_CAP_NEGATIVE_POINTS = 11;
 const FAT_OIL_NUT_PROTEIN_CAP_NEGATIVE_POINTS = 7;
+const RED_MEAT_MAX_PROTEIN_POINTS = 2;
 
 function toNumber(value: NumericLike): number | null {
   if (value === null || value === undefined || value === '') return null;
@@ -263,9 +269,9 @@ function negativePoints(n: NutrientsPer100, fatTable: boolean): number {
 /**
  * Nutri-Score 2023 for the general, beverage and fats/oils/nuts/seeds
  * algorithms (ProductOpener::Nutriscore, Santé publique France 2022-2023
- * update reports). Cheese and red-meat adjustments are not applied, and the
- * beverage sweetener penalty needs an ingredient list, so it is scored 0 (Open
- * Food Facts does the same when ingredients are unknown).
+ * update reports). Cheese always counts its protein; red meat caps protein at
+ * 2 points. The beverage sweetener penalty needs an ingredient list, so it is
+ * scored 0 (Open Food Facts does the same when ingredients are unknown).
  */
 export function computeNutriScore(
   nutrients: NutrientsPer100,
@@ -277,14 +283,20 @@ export function computeNutriScore(
 
   const countProtein =
     nutrients.isLiquid ||
+    nutrients.category === 'cheese' ||
     negative <
       (fatTable
         ? FAT_OIL_NUT_PROTEIN_CAP_NEGATIVE_POINTS
         : PROTEIN_CAP_NEGATIVE_POINTS);
+  const proteinPoints = pointsAbove(nutrients.protein, table.protein);
+  const cappedProteinPoints =
+    nutrients.category === 'red_meat'
+      ? Math.min(proteinPoints, RED_MEAT_MAX_PROTEIN_POINTS)
+      : proteinPoints;
   const positive =
     pointsAbove(nutrients.fiber, table.fiber) +
     pointsAbove(fruitVegLegumePercent ?? 0, table.fvlPercent) +
-    (countProtein ? pointsAbove(nutrients.protein, table.protein) : 0);
+    (countProtein ? cappedProteinPoints : 0);
 
   const score = negative - positive;
   return {

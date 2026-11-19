@@ -3445,10 +3445,12 @@
     "notes": "Notes",
     "notesPlaceholder": "e.g. White rice, double chicken, no beans (supports markdown)",
     "nutriScoreCategory": "Nutri-Score category",
-    "nutriScoreCategoryHint": "Beverages and fats, oils and nuts are scored differently from other foods.",
+    "nutriScoreCategoryHint": "Beverages, fats, oils and nuts, cheese and red meat are scored differently from other foods.",
     "nutriScoreCategoryGeneral": "General",
     "nutriScoreCategoryBeverage": "Beverage",
-    "nutriScoreCategoryFatOilNut": "Fat, oil & nut"
+    "nutriScoreCategoryFatOilNut": "Fat, oil & nut",
+    "nutriScoreCategoryCheese": "Cheese",
+    "nutriScoreCategoryRedMeat": "Red meat"
   },
   "exerciseEffort": {
     "title": "Effort",

@@ -64,7 +64,7 @@ describe('FoodImportFromCSV health score columns', () => {
 
   it('nulls an unknown nutri_score_category', async () => {
     const row = await importCsv(
-      `${REQUIRED},nutri_score_category\n${REQUIRED_VALUES},cheese`
+      `${REQUIRED},nutri_score_category\n${REQUIRED_VALUES},dairy`
     );
     expect(row.nutri_score_category).toBeNull();
   });

@@ -97,6 +97,42 @@ describe('computeNutriScore (2023 algorithm)', () => {
   it('never grades a beverage A without knowing it is water', () => {
     expect(computeNutriScore(per100(BEVERAGE), null).grade).toBe('b');
   });
+
+  it('keeps the protein points of a cheese past the 11-point cap', () => {
+    // 1673.6 kJ -> 4, sat fat 21 g -> 10, salt 1.5 g -> 7: N = 21. Protein
+    // 25 g -> 7, counted for cheese. 21 - 7 = 14 -> D.
+    const cheese = {
+      energyKcal: 400,
+      saturatedFat: 21,
+      sodiumMg: 600,
+      protein: 25,
+    };
+    expect(computeNutriScore(per100(cheese), null)).toEqual({
+      score: 21,
+      grade: 'e',
+    });
+    expect(
+      computeNutriScore(per100({ ...cheese, category: 'cheese' }), null)
+    ).toEqual({ score: 14, grade: 'd' });
+  });
+
+  it('caps the protein points of red meat at 2', () => {
+    // 836.8 kJ -> 2, sat fat 2 g -> 1, salt 0.125 g -> 0: N = 3. Protein
+    // 25 g -> 7, capped at 2 for red meat. 3 - 2 = 1 -> B.
+    const beef = {
+      energyKcal: 200,
+      saturatedFat: 2,
+      sodiumMg: 50,
+      protein: 25,
+    };
+    expect(computeNutriScore(per100(beef), null)).toEqual({
+      score: -4,
+      grade: 'a',
+    });
+    expect(
+      computeNutriScore(per100({ ...beef, category: 'red_meat' }), null)
+    ).toEqual({ score: 1, grade: 'b' });
+  });
 });
 
 const banana: HealthScoreFoodInput = {

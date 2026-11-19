@@ -6550,6 +6550,8 @@
     "nutriScoreCategoryGeneral": "General",
     "nutriScoreCategoryBeverage": "Beverage",
     "nutriScoreCategoryFatOilNut": "Fat, oil & nut",
+    "nutriScoreCategoryCheese": "Cheese",
+    "nutriScoreCategoryRedMeat": "Red meat",
     "fruitVegLegumePercentLabel": "Fruit, vegetables & legumes (%)",
     "unknown": "Unknown",
     "healthScoreHelp": "Used for the Nutri-Score and front-of-pack warnings. The category picks the scoring table: a drink in ml is only scored as a beverage when you choose Beverage. Added sugars is a nutrient of each serving size above; leave it empty if the label does not state it."

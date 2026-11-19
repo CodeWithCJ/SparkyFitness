@@ -66,14 +66,14 @@ ALTER TABLE public.foods
       OR provider_nutriscore_grade IN ('a', 'b', 'c', 'd', 'e')),
   ADD COLUMN IF NOT EXISTS nutri_score_category text
     CHECK (nutri_score_category IS NULL
-      OR nutri_score_category IN ('general', 'beverage', 'fat_oil_nut'));
+      OR nutri_score_category IN ('general', 'beverage', 'fat_oil_nut', 'cheese', 'red_meat'));
 
 COMMENT ON COLUMN public.foods.fruit_veg_legume_percent IS
   'Share of fruit, vegetables and legumes (0-100) for the Nutri-Score positive component. NULL = unknown, scored as 0.';
 COMMENT ON COLUMN public.foods.provider_nutriscore_grade IS
   'Nutri-Score grade as published by Open Food Facts. Set only by the server''s import path, never from a client payload. Preferred over the computed grade when present.';
 COMMENT ON COLUMN public.foods.nutri_score_category IS
-  'Which Nutri-Score algorithm applies: general, beverage or fat_oil_nut. NULL = general. A volume serving unit never implies a beverage (soup and nut butters are measured by volume too).';
+  'Which Nutri-Score algorithm applies: general, beverage, fat_oil_nut, cheese or red_meat. NULL = general. A volume serving unit never implies a beverage (soup and nut butters are measured by volume too).';
 
 ALTER TABLE public.user_preferences
   ADD COLUMN IF NOT EXISTS front_of_pack_region text NOT NULL DEFAULT 'none'

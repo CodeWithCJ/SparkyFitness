@@ -67,6 +67,8 @@ const CustomFoodForm = ({
       'customFoodForm.nutriScoreCategoryFatOilNut',
       'Fat, oil & nut'
     ),
+    cheese: t('customFoodForm.nutriScoreCategoryCheese', 'Cheese'),
+    red_meat: t('customFoodForm.nutriScoreCategoryRedMeat', 'Red meat'),
   };
   const {
     nutrientDisplayPreferences,

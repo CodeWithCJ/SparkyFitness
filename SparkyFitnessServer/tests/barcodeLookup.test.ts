@@ -285,6 +285,14 @@ describe('mapOpenFoodFactsProduct', () => {
       }).nutri_score_category;
     expect(category(['en:beverages', 'en:sodas'])).toBe('beverage');
     expect(category(['en:fats', 'en:vegetable-oils'])).toBe('fat_oil_nut');
+    expect(category(['en:dairies', 'en:cheeses', 'en:goat-cheeses'])).toBe(
+      'cheese'
+    );
+    expect(category(['en:cheeses', 'fr:fromages-blancs'])).toBeUndefined();
+    expect(category(['en:meats', 'en:beef', 'en:beef-steaks'])).toBe(
+      'red_meat'
+    );
+    expect(category(['en:meats', 'en:poultries'])).toBeUndefined();
     expect(category(['en:snacks'])).toBeUndefined();
   });
   it('scores nuts with the fats, oils, nuts and seeds table without a provider grade', () => {

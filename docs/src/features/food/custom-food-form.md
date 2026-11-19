@@ -73,10 +73,11 @@ Three optional fields feed the score:
   count unknown entries as 0, so the figure is a lower bound.
 * **Fruit, vegetables & legumes (%)** — the share of the food made of them. An
   empty value scores as 0, as the Nutri-Score rules do.
-* **Nutri-Score category** — General (the default), Beverage, or Fat, oil &
-  nut. It picks the table the score uses; a drink measured in ml is not scored
-  as a beverage unless you choose Beverage. Open Food Facts imports set it from
-  the product's categories.
+* **Nutri-Score category** — General (the default), Beverage, Fat, oil &
+  nut, Cheese or Red meat. It picks the table the score uses (Cheese always
+  counts its protein, Red meat caps protein at 2 points); a drink measured in
+  ml is not scored as a beverage unless you choose Beverage. Open Food Facts
+  imports set it from the product's categories.
 
 The food CSV import accepts `added_sugars` (per serving row),
 `fruit_veg_legume_percent` and `nutri_score_category` columns; a missing column
