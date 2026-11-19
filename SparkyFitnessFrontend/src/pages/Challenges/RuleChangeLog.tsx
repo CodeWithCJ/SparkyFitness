@@ -32,9 +32,8 @@ const RuleChangeLog = ({
       />
     );
   }
-  const list = [...(changes.data ?? [])].sort((a, b) =>
-    b.created_at.localeCompare(a.created_at)
-  );
+  // Newest first: the server sends them in the order they apply.
+  const list = [...(changes.data ?? [])].reverse();
   if (!list.length) {
     return (
       <p className="text-sm text-muted-foreground">
