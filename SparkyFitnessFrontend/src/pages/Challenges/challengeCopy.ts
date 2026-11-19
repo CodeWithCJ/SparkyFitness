@@ -7,7 +7,10 @@ import {
   challengeDayEffort,
   challengeStepPoints,
   energyFromKcal,
-  instantToDay,
+  challengeLeaders,
+  challengeToday,
+  leadsChallenge,
+  ownChallengeStanding,
   type EnergyUnit,
   type ActivitySport,
   type ChallengeFormat,
@@ -753,22 +756,6 @@ export function goalTypeLabel(t: TFunction, goal: ChallengeGoalType): string {
 const CARD_CHALLENGES_SHOWN = 2;
 
 /**
- * Today in a challenge's time zone. A zone this browser does not know (the
- * server's list can be newer) falls back to the browser's own day rather
- * than breaking the page.
- */
-export function todayInChallengeZone(
-  zone: string,
-  now: Date = new Date()
-): string {
-  try {
-    return instantToDay(now, zone);
-  } catch {
-    return instantToDay(now, Intl.DateTimeFormat().resolvedOptions().timeZone);
-  }
-}
-
-/**
  * The challenges the card shows: ones not ended, those already running
  * (started by today in their own time zone) before scheduled ones, newest
  * start first within each.
@@ -780,7 +767,7 @@ export function challengesForCard(
   const running = new Map(
     challenges.map((c) => [
       c.id,
-      c.start_date <= todayInChallengeZone(c.time_zone, now),
+      c.start_date <= challengeToday(c.time_zone, now),
     ])
   );
   return challenges
@@ -795,22 +782,6 @@ export function challengesForCard(
 
 type StandingRow = ChallengeStandingsResponse['rows'][number];
 
-/** The caller's own row; the server marks it with `me`. */
-export function ownStanding(
-  rows: readonly StandingRow[]
-): StandingRow | undefined {
-  return rows.find((row) => row.me === true);
-}
-
-/**
- * Who leads the period: everyone on rank 1 (racers who finish on the same
- * day share it). `winner` is only set once the period is final, so a running
- * period's leader comes from the rank.
- */
-export function standingsLeaders(rows: readonly StandingRow[]): StandingRow[] {
-  return rows.filter((row) => row.rank === 1);
-}
-
 /**
  * The card's two lines for one challenge: your place ("#2 of 2 · 295 pts")
  * and who leads ("Test B leads with 340 pts", or "You lead").
@@ -820,8 +791,8 @@ export function standingsSummary(
   rows: readonly StandingRow[],
   formatTotal: (total: number) => string
 ): { place: string; leader: string | null } {
-  const own = ownStanding(rows);
-  const leaders = standingsLeaders(rows);
+  const own = ownChallengeStanding(rows);
+  const leaders = challengeLeaders(rows);
   const place = own
     ? t('challenges.widget.place', '#{{rank}} of {{members}} · {{total}}', {
         rank: own.rank,
@@ -830,17 +801,16 @@ export function standingsSummary(
       })
     : t('challenges.widget.noScore', 'No score yet');
   const other = leaders.find((row) => !row.me);
-  const leader =
-    own?.rank === 1
-      ? other
-        ? t('challenges.widget.youShareLead', 'You share the lead')
-        : t('challenges.widget.youLead', 'You lead')
-      : other
-        ? t('challenges.widget.leader', '{{name}} leads with {{total}}', {
-            name: other.display_name,
-            total: formatTotal(other.total),
-          })
-        : null;
+  const leader = leadsChallenge(own)
+    ? other
+      ? t('challenges.widget.youShareLead', 'You share the lead')
+      : t('challenges.widget.youLead', 'You lead')
+    : other
+      ? t('challenges.widget.leader', '{{name}} leads with {{total}}', {
+          name: other.display_name,
+          total: formatTotal(other.total),
+        })
+      : null;
   return { place, leader };
 }
 

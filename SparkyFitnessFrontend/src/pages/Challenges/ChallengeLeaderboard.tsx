@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight, Flag, Trophy } from 'lucide-react';
 import {
+  challengeToday,
+  leadsChallenge,
   type ChallengeDetail,
   type ChallengeStandingsResponse,
 } from '@workspace/shared';
@@ -21,11 +23,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useChallengeStandings } from '@/hooks/Challenges/useChallenges';
 import { cn } from '@/lib/utils';
 import LoadError from './LoadError';
-import {
-  metricValueText,
-  todayInChallengeZone,
-  type MetricUnits,
-} from './challengeCopy';
+import { metricValueText, type MetricUnits } from './challengeCopy';
 import {
   nextPeriodDay,
   periodRangeText,
@@ -54,7 +52,7 @@ const ChallengeLeaderboard = ({
   // null is the current period; otherwise any day of the period shown.
   const [day, setDay] = useState<string | null>(null);
   const standings = useChallengeStandings(challenge.id, day);
-  const today = todayInChallengeZone(challenge.time_zone);
+  const today = challengeToday(challenge.time_zone);
   const formatDay = (d: string, pattern: string) =>
     formatDateInUserTimezone(d, pattern);
 
@@ -201,7 +199,7 @@ const ChallengeLeaderboard = ({
                       />
                     )}
                     <span>{row.display_name}</span>
-                    {!data.final && row.rank === 1 && (
+                    {!data.final && leadsChallenge(row) && (
                       <Badge variant="secondary">
                         {t('challenges.leaderboard.leads', 'Leads')}
                       </Badge>

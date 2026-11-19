@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next';
 import {
   challengePreset,
   challengeRulesSchema,
+  parseChallengeInviteCode,
   type ChallengeRules,
   type ChallengeStandingsResponse,
   type ChallengeSummary,
@@ -20,14 +21,12 @@ import {
   standingsSummary,
   targetFromInput,
   targetToInput,
-  todayInChallengeZone,
   type MetricUnits,
 } from '@/pages/Challenges/challengeCopy';
 import {
   PENDING_INVITE_MAX_AGE_MS,
   challengeInviteLink,
   clearPendingInvite,
-  inviteCodeFrom,
   rememberPendingInvite,
   takePendingInvite,
 } from '@/pages/Challenges/challengeLinks';
@@ -199,19 +198,7 @@ describe('invite links', () => {
   it('puts the code in the fragment and reads it back from what is pasted', () => {
     const link = challengeInviteLink('https://fit.example', CODE);
     expect(link).toBe(`https://fit.example/challenges/join#${CODE}`);
-    expect(inviteCodeFrom(link)).toBe(CODE);
-    expect(inviteCodeFrom(`  ${CODE} `)).toBe(CODE);
-    expect(inviteCodeFrom(`#${CODE}`)).toBe(CODE);
-    expect(
-      inviteCodeFrom(`https://fit.example/challenges/join?code=${CODE}`)
-    ).toBe(CODE);
-    expect(inviteCodeFrom('not a code')).toBeNull();
-    expect(inviteCodeFrom('')).toBeNull();
-  });
-
-  it('reads a link with bad percent-encoding as no code instead of throwing', () => {
-    expect(inviteCodeFrom('https://fit.example/join?code=%E0')).toBeNull();
-    expect(inviteCodeFrom('?code=%')).toBeNull();
+    expect(parseChallengeInviteCode(link)).toBe(CODE);
   });
 
   it('says why a join failed from the server code', () => {
@@ -347,13 +334,6 @@ describe('the Diary card', () => {
     ]);
   });
 
-  it('today in a zone the browser does not know falls back to the browser day', () => {
-    expect(todayInChallengeZone('UTC', now)).toBe(
-      now.toISOString().slice(0, 10)
-    );
-    expect(() => todayInChallengeZone('Not/AZone', now)).not.toThrow();
-  });
-
   it('a time zone the browser does not know does not break the card', () => {
     const odd = summary('odd', '2026-11-02', null, 'Not/AZone');
     expect(
@@ -426,6 +406,14 @@ describe('standings summary (Diary card)', () => {
       row({ user_id: 'b', rank: 1, total: 100 }),
     ];
     expect(standingsSummary(t, tied, pts).leader).toBe('You share the lead');
+  });
+
+  it('names no leader while everyone is still on 0', () => {
+    const rows = [
+      row({ user_id: 'a', rank: 1, total: 0, me: true }),
+      row({ user_id: 'b', rank: 1, total: 0 }),
+    ];
+    expect(standingsSummary(t, rows, pts).leader).toBeNull();
   });
 
   it('names the leader even before you have a score', () => {

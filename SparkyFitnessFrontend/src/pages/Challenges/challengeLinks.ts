@@ -1,4 +1,4 @@
-import { challengeInviteCodeSchema } from '@workspace/shared';
+import { parseChallengeInviteCode } from '@workspace/shared';
 
 /** The page an invite link opens; the code rides in the fragment. */
 export const CHALLENGE_JOIN_PATH = '/challenges/join';
@@ -10,31 +10,6 @@ export const CHALLENGE_JOIN_PATH = '/challenges/join';
  */
 export function challengeInviteLink(origin: string, code: string): string {
   return `${origin}${CHALLENGE_JOIN_PATH}#${code}`;
-}
-
-/**
- * The invite code in what someone pasted: a bare code, or an invite link
- * (code after `#`, or a `code=` parameter). Null when there is none.
- */
-export function inviteCodeFrom(text: string): string | null {
-  const trimmed = text.trim();
-  if (!trimmed) return null;
-  const candidates = [trimmed];
-  const hash = trimmed.lastIndexOf('#');
-  if (hash >= 0) candidates.push(trimmed.slice(hash + 1));
-  const param = /[?&#]code=([^&#\s]+)/.exec(trimmed);
-  if (param?.[1]) {
-    try {
-      candidates.push(decodeURIComponent(param[1]));
-    } catch {
-      // Bad percent-encoding: not a code.
-    }
-  }
-  for (const candidate of candidates) {
-    const parsed = challengeInviteCodeSchema.safeParse(candidate);
-    if (parsed.success) return parsed.data;
-  }
-  return null;
 }
 
 /** Where an invite opened while signed out waits for the sign-in. */
@@ -50,7 +25,7 @@ export const PENDING_INVITE_MAX_AGE_MS = 30 * 60 * 1000;
  * so someone else signing in later in the same tab does not get it.
  */
 export function rememberPendingInvite(hash: string, now = Date.now()): void {
-  const code = inviteCodeFrom(hash);
+  const code = parseChallengeInviteCode(hash);
   if (!code) return;
   try {
     sessionStorage.setItem(
@@ -85,7 +60,7 @@ export function takePendingInvite(now = Date.now()): string | null {
       now < kept.savedAt
     )
       return null;
-    return inviteCodeFrom(kept.code);
+    return parseChallengeInviteCode(kept.code);
   } catch {
     return null;
   }

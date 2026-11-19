@@ -2,6 +2,7 @@ import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DEFAULT_CHALLENGE_GOAL_TYPE,
+  parseChallengeInviteCode,
   type ChallengeDetail,
   type ChallengeGoalType,
 } from '@workspace/shared';
@@ -22,7 +23,6 @@ import {
 } from '@/hooks/Challenges/useChallenges';
 import GoalTypeSelect from './GoalTypeSelect';
 import { joinErrorText } from './challengeCopy';
-import { inviteCodeFrom } from './challengeLinks';
 
 interface JoinChallengeDialogProps {
   open: boolean;
@@ -49,7 +49,7 @@ const JoinChallengeDialog = ({
   const [goalType, setGoalType] = useState<ChallengeGoalType>(
     DEFAULT_CHALLENGE_GOAL_TYPE
   );
-  const code = inviteCodeFrom(codeText);
+  const code = parseChallengeInviteCode(codeText);
   const canSubmit =
     code !== null && displayName.trim().length > 0 && !join.isPending;
 

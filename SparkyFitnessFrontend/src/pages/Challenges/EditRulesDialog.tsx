@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   challengeRulesEffectiveFrom,
+  challengeToday,
   challengeRulesSchema,
   type ChallengeDetail,
   type ChallengeRules,
@@ -21,7 +22,6 @@ import {
   useUpdateChallengeRules,
 } from '@/hooks/Challenges/useChallenges';
 import ChallengeRulesEditor from './ChallengeRulesEditor';
-import { todayInChallengeZone } from './challengeCopy';
 
 /**
  * The host changes the rules. Before the start a change applies from the
@@ -45,7 +45,7 @@ const EditRulesDialog = ({
   const [rules, setRules] = useState<ChallengeRules>(
     challenge.pending_rules?.rules ?? challenge.rules
   );
-  const today = todayInChallengeZone(challenge.time_zone);
+  const today = challengeToday(challenge.time_zone);
   const started = today >= challenge.start_date;
   const effectiveFrom = challengeRulesEffectiveFrom(
     challenge.rules.period,

@@ -1,13 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { Trophy } from 'lucide-react';
-import type { ChallengeSummary } from '@workspace/shared';
+import { ownChallengeStanding, type ChallengeSummary } from '@workspace/shared';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   useChallengeStandings,
   useChallengeUnits,
 } from '@/hooks/Challenges/useChallenges';
 import { cn } from '@/lib/utils';
-import { metricValueText, ownStanding } from './challengeCopy';
+import { metricValueText } from './challengeCopy';
 import LoadError from './LoadError';
 
 /** The top of the current standings, plus the viewer's own place if lower. */
@@ -43,7 +43,7 @@ const ChallengeStandingsPreview = ({
     );
   }
   const shown = rows.slice(0, top);
-  const mine = ownStanding(rows);
+  const mine = ownChallengeStanding(rows);
   if (mine && !shown.includes(mine)) shown.push(mine);
   return (
     <ol className="space-y-1 text-sm" data-testid="standings-preview">

@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { inviteCodeFrom } from './challengeLinks';
+import { parseChallengeInviteCode } from '@workspace/shared';
 
 /**
  * `/challenges/join#<code>`, the invite link. Hands the code to the
@@ -12,7 +12,7 @@ const ChallengeJoinLink = () => {
     <Navigate
       to="/challenges"
       replace
-      state={{ joinCode: inviteCodeFrom(hash) ?? '' }}
+      state={{ joinCode: parseChallengeInviteCode(hash) ?? '' }}
     />
   );
 };
