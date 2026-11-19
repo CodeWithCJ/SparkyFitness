@@ -213,7 +213,8 @@ export interface MealTotals {
   /** Optional: meal totals sum it, day totals deliberately do not. */
   water_ml?: number;
   alcohol_g: number;
-  added_sugars: number;
+  /** Null on a single entry whose added sugars are unknown; sums skip it. */
+  added_sugars: number | null;
   custom_nutrients?: Record<string, number>; // Add custom_nutrients support
   [key: string]: number | string | Record<string, number> | null | undefined;
 }

@@ -536,16 +536,22 @@ const MealCard = ({
                     (entryNutrition[nutrient as keyof MealTotals] as number) ??
                     entryNutrition.custom_nutrients?.[nutrient] ??
                     0;
+                  // Unknown is not 0 g: other nutrients still fall back to 0.
+                  const isUnknown =
+                    nutrient === 'added_sugars' &&
+                    entryNutrition.added_sugars == null;
 
-                  const displayValue =
-                    nutrient === 'calories'
+                  const displayValue = isUnknown
+                    ? '–'
+                    : nutrient === 'calories'
                       ? Math.round(
                           convertEnergy(value, 'kcal', energyUnit)
                         ).toString()
                       : formatNutrientValue(nutrient, value, customNutrients);
 
-                  const unitDisplay =
-                    nutrient === 'calories'
+                  const unitDisplay = isUnknown
+                    ? ''
+                    : nutrient === 'calories'
                       ? getEnergyUnitString(energyUnit)
                       : metadata.unit;
 

@@ -148,3 +148,26 @@ describe('calculateNutrition — water_ml', () => {
     expect(calculateFoodEntryNutrition(entry).water_ml).toBe(0);
   });
 });
+
+describe('calculateFoodEntryNutrition — added_sugars unknown vs zero', () => {
+  const entryWith = (added_sugars: number | null) =>
+    ({
+      id: 'e1',
+      quantity: 2,
+      unit: 'serving',
+      serving_size: 1,
+      calories: 100,
+      added_sugars,
+    }) as unknown as FoodEntry;
+
+  it('keeps an unknown value unknown', () => {
+    expect(
+      calculateFoodEntryNutrition(entryWith(null)).added_sugars
+    ).toBeNull();
+  });
+
+  it('scales a recorded value and keeps a recorded zero', () => {
+    expect(calculateFoodEntryNutrition(entryWith(4)).added_sugars).toBe(8);
+    expect(calculateFoodEntryNutrition(entryWith(0)).added_sugars).toBe(0);
+  });
+});

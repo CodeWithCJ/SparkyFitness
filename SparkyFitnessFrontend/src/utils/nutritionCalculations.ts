@@ -158,9 +158,14 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     alcohol_g:
       (nutrientValuesPerReferenceSize.alcohol_g / effectiveReferenceSize) *
       entry.quantity,
+    // Null stays null per entry so the diary can show it as unknown; the day
+    // and meal sums skip non-numbers, which keeps them a lower bound.
     added_sugars:
-      (nutrientValuesPerReferenceSize.added_sugars / effectiveReferenceSize) *
-      entry.quantity,
+      source.added_sugars == null
+        ? null
+        : (nutrientValuesPerReferenceSize.added_sugars /
+            effectiveReferenceSize) *
+          entry.quantity,
     glycemic_index: nutrientValuesPerReferenceSize.glycemic_index, // Pass through glycemic_index
     // Explicit water_ml wins (scaled like every other nutrient); when the food
     // carries no water content at all, fall back to the logged volume for
@@ -581,7 +586,7 @@ export const getEntryNutrition = (
       caffeine_mg: item.caffeine_mg || 0,
       water_ml: item.water_ml || 0,
       alcohol_g: item.alcohol_g || 0,
-      added_sugars: item.added_sugars || 0,
+      added_sugars: item.added_sugars ?? null,
       custom_nutrients: (item.custom_nutrients as Record<string, number>) || {},
     };
   } else {
