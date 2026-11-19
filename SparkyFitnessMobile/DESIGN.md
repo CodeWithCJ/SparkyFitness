@@ -87,6 +87,18 @@ In Light, the canvas is the darkest surface and controls are white. In Dark, rai
 | Heart-Rate Red       | `--color-heart-rate` (JS only)    | #E2363C   | #E96367  | Watch-measured heart rate on workouts and charts; also the finish marker on route maps        |
 | Active-Energy Orange | `--color-active-energy` (JS only) | #F36F16   | #E79055  | Watch-measured active energy; separate from dietary Calorie Indigo                            |
 
+### Nutri-Score grades
+
+The five-letter strip on the food detail screen (`NutriScoreBadge`) colours the active grade with the official Nutri-Score palette. It is a regulated mark, so each token has the same value in Light, Dark and AMOLED. Grades B, C and D take dark text (`text-neutral-900`), because white on them falls under 3:1; A and E take white.
+
+| Role          | Token class                      | Light hex | Dark hex | Usage                   |
+| ------------- | -------------------------------- | --------- | -------- | ----------------------- |
+| Nutri-Score A | `--color-nutriscore-a` (JS only) | #038141   | #038141  | Active grade A on strip |
+| Nutri-Score B | `--color-nutriscore-b` (JS only) | #85BB2F   | #85BB2F  | Active grade B on strip |
+| Nutri-Score C | `--color-nutriscore-c` (JS only) | #FECB02   | #FECB02  | Active grade C on strip |
+| Nutri-Score D | `--color-nutriscore-d` (JS only) | #EE8100   | #EE8100  | Active grade D on strip |
+| Nutri-Score E | `--color-nutriscore-e` (JS only) | #E63E11   | #E63E11  | Active grade E on strip |
+
 ### Category palette
 
 Eight balanced hues for things that need a distinct color but no fixed meaning. Seven of them (all but amber) tint Settings row icons, and all eight color workout superset rails and the workout-complete confetti.
@@ -155,7 +167,7 @@ The training calendar and the Load by Sport card colour each sport group with it
 
 ### AMOLED differences
 
-AMOLED uses the Dark values for 54 of the 67 color tokens. Only these 13 change:
+AMOLED uses the Dark values for 59 of the 72 color tokens. Only these 13 change:
 
 | Token                    | AMOLED hex             | Dark hex |
 | ------------------------ | ---------------------- | -------- |
