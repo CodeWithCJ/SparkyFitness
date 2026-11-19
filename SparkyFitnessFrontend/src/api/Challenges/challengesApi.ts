@@ -22,11 +22,16 @@ export const getChallengesStatus = (): Promise<{ enabled: boolean }> =>
     suppressErrorToast: true,
   });
 
+// The reads below fail inline (LoadError) with the hook's own message, so
+// apiCall shows no toast of its own.
 export const listChallenges = (): Promise<ChallengeSummary[]> =>
-  apiCall('/v2/challenges', { method: 'GET' });
+  apiCall('/v2/challenges', { method: 'GET', suppressErrorToast: true });
 
 export const getChallenge = (id: string): Promise<ChallengeDetail> =>
-  apiCall(`/v2/challenges/${encodeURIComponent(id)}`, { method: 'GET' });
+  apiCall(`/v2/challenges/${encodeURIComponent(id)}`, {
+    method: 'GET',
+    suppressErrorToast: true,
+  });
 
 export const createChallenge = (
   body: CreateChallengeBody
@@ -64,6 +69,7 @@ export const getChallengeRuleChanges = (
 ): Promise<ChallengeRuleChange[]> =>
   apiCall(`/v2/challenges/${encodeURIComponent(id)}/rule-changes`, {
     method: 'GET',
+    suppressErrorToast: true,
   });
 
 // The invite and leave hooks say what went wrong, in the app's words.
@@ -95,4 +101,5 @@ export const getChallengeStandings = (
   apiCall(`/v2/challenges/${encodeURIComponent(id)}/standings`, {
     method: 'GET',
     params: date ? { date } : undefined,
+    suppressErrorToast: true,
   });
