@@ -5,7 +5,11 @@ import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
-import { getFoodPortionUnit, parseNamedFoodPortion } from '@workspace/shared';
+import {
+  computeFoodHealthScore,
+  getFoodPortionUnit,
+  parseNamedFoodPortion,
+} from '@workspace/shared';
 import {
   saveNamedFoodPortions,
   isCalculatedFoodPortion,
@@ -87,12 +91,40 @@ function buildUpdatedFoodInfo(
   data: FoodFormData,
   variantId: string
 ): FoodInfoItem {
+  const nutriScoreCategory = data.nutriScoreCategory || null;
+  const servingSize = parseDecimalInput(data.servingSize) || item.servingSize;
+  const servingUnit = data.servingUnit || item.servingUnit;
+  // The provider's published grade survives an edit, as on the server.
+  const providerGrade =
+    item.healthScore?.nutri_score?.source === 'provider'
+      ? item.healthScore.nutri_score.grade
+      : null;
   return {
     ...item,
+    nutriScoreCategory,
+    healthScore: computeFoodHealthScore({
+      provider_type: providerGrade ? 'openfoodfacts' : null,
+      provider_nutriscore_grade: providerGrade,
+      nutri_score_category: nutriScoreCategory,
+      fruit_veg_legume_percent: item.fruitVegLegumePercent,
+      default_variant: {
+        serving_size: servingSize,
+        serving_unit: servingUnit,
+        calories: parseDecimalInput(data.calories) || 0,
+        protein: parseDecimalInput(data.protein) || 0,
+        fat: parseDecimalInput(data.fat) || 0,
+        saturated_fat: parseOptional(data.saturatedFat),
+        trans_fat: parseOptional(data.transFat),
+        sodium: parseOptional(data.sodium),
+        dietary_fiber: parseOptional(data.fiber),
+        sugars: parseOptional(data.sugars),
+        added_sugars: parseOptional(data.addedSugars),
+      },
+    }),
     name: data.name,
     brand: data.brand || null,
-    servingSize: parseDecimalInput(data.servingSize) || item.servingSize,
-    servingUnit: data.servingUnit || item.servingUnit,
+    servingSize,
+    servingUnit,
     calories: parseDecimalInput(data.calories) || 0,
     protein: parseDecimalInput(data.protein) || 0,
     carbs: parseDecimalInput(data.carbs) || 0,
@@ -111,6 +143,7 @@ function buildUpdatedFoodInfo(
     caffeineMg: parseOptional(data.caffeineMg),
     waterMl: parseOptional(data.waterMl),
     alcoholG: parseOptional(data.alcoholG),
+    addedSugars: parseOptional(data.addedSugars),
     variantId,
   };
 }
@@ -366,6 +399,7 @@ export function EditFoodMode({
       caffeine_mg: parseOptional(data.caffeineMg),
       water_ml: parseOptional(data.waterMl),
       alcohol_g: parseOptional(data.alcoholG),
+      added_sugars: parseOptional(data.addedSugars) ?? null,
       polyunsaturated_fat: snapshot?.polyunsaturated_fat,
       monounsaturated_fat: snapshot?.monounsaturated_fat,
       glycemic_index: snapshot?.glycemic_index,
@@ -423,6 +457,8 @@ export function EditFoodMode({
       // changed; an unchanged save must leave the stored note untouched.
       if ((data.notes ?? '') !== (initialValues.notes ?? ''))
         foodPayload.notes = (data.notes ?? '').trim() || null;
+      if (data.nutriScoreCategory !== initialValues.nutriScoreCategory)
+        foodPayload.nutri_score_category = data.nutriScoreCategory || null;
       // Only send images when they actually changed: the server treats a
       // supplied `images` array as authoritative and deletes anything omitted,
       // so an unchanged round-trip is wasted work at best.

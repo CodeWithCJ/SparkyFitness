@@ -79,6 +79,7 @@ interface NutrientTotals {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number;
   [key: string]: number | undefined;
 }
 
@@ -344,6 +345,7 @@ export const exportFoodDiary = async ({
         'Water Content (ml)'
       ),
       i18n.t('reports.foodDiaryExportHeaders.alcohol', 'Alcohol (g)'),
+      i18n.t('reports.foodDiaryExportHeaders.addedSugars', 'Added Sugars (g)'),
       ...customNutrients.map(
         (nutrient) => `${nutrient.name} (${nutrient.unit})`
       ),
@@ -411,6 +413,7 @@ export const exportFoodDiary = async ({
             caffeine_mg: total.caffeine_mg + Number(entry.caffeine_mg || 0),
             water_ml: total.water_ml + Number(entry.water_ml || 0),
             alcohol_g: total.alcohol_g + Number(entry.alcohol_g || 0),
+            added_sugars: total.added_sugars + Number(entry.added_sugars || 0),
             ...customNutrientTotals,
           };
         },
@@ -435,6 +438,7 @@ export const exportFoodDiary = async ({
           caffeine_mg: 0,
           water_ml: 0,
           alcohol_g: 0,
+          added_sugars: 0,
           ...customNutrients.reduce(
             (acc, nutrient) => ({ ...acc, [nutrient.name]: 0 }),
             {}
@@ -481,6 +485,7 @@ export const exportFoodDiary = async ({
           const caffeineMg = Number(entry.caffeine_mg || 0);
           const waterMl = Number(entry.water_ml || 0);
           const alcoholG = Number(entry.alcohol_g || 0);
+          const addedSugars = Number(entry.added_sugars || 0);
 
           const customSource = entry.custom_nutrients as
             Record<string, number> | undefined;
@@ -515,6 +520,7 @@ export const exportFoodDiary = async ({
             caffeineMg.toFixed(2), // mg
             waterMl.toFixed(2), // ml
             alcoholG.toFixed(2), // g
+            addedSugars.toFixed(1), // g
             ...customNutrients.map((nutrient) => {
               const val = Number(
                 entry[nutrient.name] ?? customSource?.[nutrient.name] ?? 0
@@ -559,6 +565,7 @@ export const exportFoodDiary = async ({
           (totals.caffeine_mg ?? 0).toFixed(2),
           (totals.water_ml ?? 0).toFixed(2),
           (totals.alcohol_g ?? 0).toFixed(2),
+          (totals.added_sugars ?? 0).toFixed(1),
           ...customNutrients.map((nutrient) =>
             (totals[nutrient.name] ?? 0).toFixed(1)
           ),

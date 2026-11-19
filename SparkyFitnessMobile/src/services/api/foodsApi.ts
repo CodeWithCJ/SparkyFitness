@@ -1,5 +1,6 @@
 import { apiFetch } from './apiClient';
 import { postPayloadWithImages } from './imageUploadClient';
+import type { NutriScoreCategory } from '@workspace/shared';
 import type { ImageUploadArgs } from '../../utils/pickerImages';
 import {
   FoodItem,
@@ -120,6 +121,7 @@ export interface CreateFoodVariantPayload {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   abv_percent?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
@@ -168,6 +170,7 @@ export interface SaveFoodPayload {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   is_custom?: boolean;
   is_quick_food?: boolean;
   is_default?: boolean;
@@ -175,6 +178,7 @@ export interface SaveFoodPayload {
   provider_type?: string | null;
   provider_external_id?: string | null;
   provider_verified?: boolean;
+  nutri_score_category?: NutriScoreCategory | null;
   custom_nutrients?: Record<string, string | number>;
   // Provider photo carried through import. The server's resolveImageInput
   // prefers `images`, then `image_source_url`, then `image_url`, and localizes
@@ -246,6 +250,7 @@ export interface UpdateFoodVariantPayload {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   abv_percent?: number;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
@@ -303,6 +308,8 @@ export interface UpdateFoodPayload {
    * the stored note alone, send null to clear it.
    */
   notes?: string | null;
+  /** Same key-presence signal: omit to keep it, null to score as general. */
+  nutri_score_category?: NutriScoreCategory | null;
 }
 
 export interface DeleteFoodResponse {

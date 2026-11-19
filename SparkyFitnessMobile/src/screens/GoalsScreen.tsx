@@ -92,7 +92,8 @@ type NutrientGoalField =
   | 'calcium'
   | 'iron'
   | 'caffeine_mg'
-  | 'alcohol_g';
+  | 'alcohol_g'
+  | 'added_sugars';
 
 type OtherGoalField =
   | 'water_goal_ml'
@@ -125,6 +126,7 @@ const OTHER_NUTRIENT_FIELDS: NutrientGoalField[] = [
   'iron',
   'caffeine_mg',
   'alcohol_g',
+  'added_sugars',
 ];
 
 const OTHER_FIELDS: OtherGoalField[] = [

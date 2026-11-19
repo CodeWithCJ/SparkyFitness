@@ -1,6 +1,7 @@
 import { z } from 'zod/v4';
 import {
   FRONT_OF_PACK_WARNINGS,
+  NUTRI_SCORE_CATEGORIES,
   NUTRI_SCORE_GRADES,
 } from '../../nutrients/foodHealthScore.ts';
 
@@ -33,6 +34,7 @@ export const FoodVariantSchema = z.object({
   caffeine_mg: z.number().optional(),
   water_ml: z.number().optional(),
   alcohol_g: z.number().optional(),
+  added_sugars: z.number().nullable().optional(),
   abv_percent: z.number().optional(),
   is_default: z.boolean(),
   glycemic_index: z.string().optional(),
@@ -103,9 +105,9 @@ export const NormalizedFoodSchema = z.object({
   // Owner-authored markdown note. Only local foods have one; provider results
   // arrive without the key, hence optional as well as nullable.
   notes: z.string().nullable().optional(),
-  added_sugars: z.number().nullable().optional(),
   fruit_veg_legume_percent: z.number().nullable().optional(),
   provider_nutriscore_grade: z.string().nullable().optional(),
+  nutri_score_category: z.enum(NUTRI_SCORE_CATEGORIES).nullable().optional(),
   health_score: FoodHealthScoreSchema.optional(),
   default_variant: FoodVariantSchema,
   variants: z.array(FoodVariantSchema).optional(),

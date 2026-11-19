@@ -172,6 +172,7 @@ const EditFoodEntryDialog = ({
       caffeine_mg: entry.caffeine_mg ?? 0,
       water_ml: entry.water_ml ?? undefined,
       alcohol_g: entry.alcohol_g ?? 0,
+      added_sugars: entry.added_sugars ?? null,
       glycemic_index: entry.glycemic_index,
       custom_nutrients:
         (entry.custom_nutrients as Record<string, string | number>) || {},

@@ -5,6 +5,7 @@ import type {
   GoalModeCalculationMethod,
   TemperatureUnit,
   GlucoseUnit,
+  FrontOfPackRegion,
 } from '@workspace/shared';
 
 export interface UserPreferences {
@@ -26,6 +27,10 @@ export interface UserPreferences {
   /** Unit temperatures are shown in; stored temperatures stay in °C. Absent
    *  from servers older than the setting. */
   default_glucose_unit?: GlucoseUnit;
+  /** Regional front-of-pack warning style shown on foods; 'none' hides them. */
+  front_of_pack_region?: FrontOfPackRegion;
+  /** Regional label, off unless the user turns it on. */
+  nutri_score_enabled?: boolean;
   default_temperature_unit?: TemperatureUnit;
   default_measurement_unit?: 'cm' | 'inches' | 'ft_in';
   date_format?:

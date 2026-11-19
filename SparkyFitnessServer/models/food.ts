@@ -12,7 +12,11 @@ import {
   toImageArray,
   resolveImageInput,
 } from '../utils/imageLocalizer.js';
-import { NUTRI_SCORE_GRADES, sanitizeNotes } from '@workspace/shared';
+import {
+  NUTRI_SCORE_CATEGORIES,
+  NUTRI_SCORE_GRADES,
+  sanitizeNotes,
+} from '@workspace/shared';
 import { ValidationError } from '../utils/errors.js';
 import type {
   NutrientValue,
@@ -60,10 +64,11 @@ export interface FoodInput extends NutrientFields {
   allergens?: string[] | null;
   traces?: string[] | null;
   abv_percent?: NutrientValue;
-  /** Grams per 100 g/ml; see the health score migration. */
-  added_sugars?: NutrientValue;
+  /** Percent by weight; see the health score migration. */
   fruit_veg_legume_percent?: NutrientValue;
+  /** Server-set from a verified Open Food Facts lookup only. */
   provider_nutriscore_grade?: string | null;
+  nutri_score_category?: string | null;
 }
 
 const DEFAULT_VARIANT_JSON_SQL = `
@@ -92,6 +97,7 @@ const DEFAULT_VARIANT_JSON_SQL = `
     'water_ml', fv.water_ml,
     'alcohol_g', fv.alcohol_g,
     'abv_percent', fv.abv_percent,
+    'added_sugars', fv.added_sugars,
     'is_default', fv.is_default,
     'glycemic_index', fv.glycemic_index,
     'custom_nutrients', fv.custom_nutrients,
@@ -153,30 +159,43 @@ function sanitizeNumeric(value: NutrientValue) {
   const num = parseFloat(String(sanitizedValue));
   return isNaN(num) ? null : num;
 }
+/** A negative would hit the CHECK constraint and surface as a 500 instead of a 400. */
+function sanitizeAddedSugars(value: NutrientValue) {
+  const grams = sanitizeNumeric(value);
+  if (grams !== null && grams < 0) {
+    throw new ValidationError('added_sugars cannot be negative.');
+  }
+  return grams;
+}
 const HEALTH_SCORE_INPUT_KEYS = [
-  'added_sugars',
   'fruit_veg_legume_percent',
   'provider_nutriscore_grade',
+  'nutri_score_category',
 ] as const;
 
 /** Rejects out-of-range values with a 400 instead of a CHECK-constraint 500. */
 function sanitizeHealthScoreInputs(foodData: FoodUpdate) {
-  const addedSugars = sanitizeNumeric(foodData.added_sugars);
   const fvlPercent = sanitizeNumeric(foodData.fruit_veg_legume_percent);
-  if (addedSugars !== null && addedSugars < 0) {
-    throw new ValidationError('added_sugars cannot be negative.');
-  }
   if (fvlPercent !== null && (fvlPercent < 0 || fvlPercent > 100)) {
     throw new ValidationError(
       'fruit_veg_legume_percent must be between 0 and 100.'
     );
   }
+  const category = foodData.nutri_score_category || null;
+  if (
+    category !== null &&
+    !NUTRI_SCORE_CATEGORIES.some((known) => known === category)
+  ) {
+    throw new ValidationError(
+      `nutri_score_category must be one of: ${NUTRI_SCORE_CATEGORIES.join(', ')}.`
+    );
+  }
   const grade = foodData.provider_nutriscore_grade?.toLowerCase();
   return {
-    added_sugars: addedSugars,
     fruit_veg_legume_percent: fvlPercent,
     provider_nutriscore_grade:
       NUTRI_SCORE_GRADES.find((g) => g === grade) ?? null,
+    nutri_score_category: category,
   };
 }
 function sanitizeBoolean(value: BooleanLike) {
@@ -213,7 +232,7 @@ async function searchFoods(
     let query = `
       SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
-        f.added_sugars, f.fruit_veg_legume_percent, f.provider_nutriscore_grade,
+        f.fruit_veg_legume_percent, f.provider_nutriscore_grade, f.nutri_score_category,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -279,9 +298,9 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
   const foodResult = await client.query(
     `INSERT INTO foods (
         name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, images, notes,
-        added_sugars, fruit_veg_legume_percent, provider_nutriscore_grade, created_at, updated_at
+        fruit_veg_legume_percent, provider_nutriscore_grade, nutri_score_category, created_at, updated_at
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified, images, notes,
-        added_sugars, fruit_veg_legume_percent, provider_nutriscore_grade`,
+        fruit_veg_legume_percent, provider_nutriscore_grade, nutri_score_category`,
     [
       foodData.name,
       sanitizeBoolean(foodData.is_custom) ?? true,
@@ -295,9 +314,9 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
       sanitizeBoolean(foodData.is_quick_food) ?? false,
       JSON.stringify(resolveImageInput(foodData)),
       sanitizeNotes(foodData.notes) ?? null,
-      healthScoreInputs.added_sugars,
       healthScoreInputs.fruit_veg_legume_percent,
       healthScoreInputs.provider_nutriscore_grade,
+      healthScoreInputs.nutri_score_category,
     ]
   );
   const newFood = foodResult.rows[0];
@@ -308,8 +327,8 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, caffeine_mg, water_ml, alcohol_g, abv_percent, is_default, glycemic_index, custom_nutrients,
-        source, ai_confidence, allergens, traces, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, TRUE, $25, $26, $27, $28, $29, $30, now(), now()) RETURNING id`,
+        source, ai_confidence, allergens, traces, added_sugars, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, TRUE, $25, $26, $27, $28, $29, $30, $31, now(), now()) RETURNING id`,
     [
       newFood.id,
       sanitizeNumeric(foodData.serving_size),
@@ -341,6 +360,7 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
       foodData.ai_confidence ?? null,
       foodData.allergens ?? null,
       foodData.traces ?? null,
+      sanitizeAddedSugars(foodData.added_sugars),
     ]
   );
   const newVariantId = variantResult.rows[0].id;
@@ -382,6 +402,7 @@ function buildDefaultVariantEcho(
     water_ml: foodData.water_ml,
     alcohol_g: foodData.alcohol_g,
     abv_percent: foodData.abv_percent,
+    added_sugars: foodData.added_sugars,
     is_default: true,
     user_id: newFood.user_id,
     source: foodData.source ?? 'manual',
@@ -478,6 +499,7 @@ export interface FoodMatchCandidateRow {
   caffeine_mg: number | string | null;
   water_ml: number | string | null;
   alcohol_g: number | string | null;
+  added_sugars: number | string | null;
   abv_percent: number | string | null;
   last_used: string | null;
 }
@@ -531,6 +553,7 @@ async function findFoodMatchCandidates(
                 fv.sodium, fv.potassium, fv.calcium, fv.iron,
                 fv.vitamin_a, fv.vitamin_c,
                 fv.caffeine_mg, fv.water_ml, fv.alcohol_g, fv.abv_percent,
+                fv.added_sugars,
                 (SELECT MAX(fe.entry_date) FROM food_entries fe
                   WHERE fe.food_id = f.id AND fe.user_id = $1) AS last_used
          FROM foods f
@@ -568,7 +591,7 @@ async function findFoodByBarcode(barcode: string, userId: string) {
     const result = await client.query(
       `SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
-        f.added_sugars, f.fruit_veg_legume_percent, f.provider_nutriscore_grade,
+        f.fruit_veg_legume_percent, f.provider_nutriscore_grade, f.nutri_score_category,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -588,7 +611,7 @@ async function getFoodById(foodId: string, userId: string) {
     const result = await client.query(
       `SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
-        f.added_sugars, f.fruit_veg_legume_percent, f.provider_nutriscore_grade,
+        f.fruit_veg_legume_percent, f.provider_nutriscore_grade, f.nutri_score_category,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -639,7 +662,7 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
       : null;
     // Same again: clearing a health score input back to "unknown" sends null.
     const healthScoreInputs = sanitizeHealthScoreInputs(foodData);
-    const [addedSugarsPresent, fvlPresent, gradePresent] =
+    const [fvlPresent, gradePresent, categoryPresent] =
       HEALTH_SCORE_INPUT_KEYS.map((key) =>
         Object.prototype.hasOwnProperty.call(foodData, key)
       );
@@ -656,9 +679,9 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
         is_quick_food = COALESCE($10, is_quick_food),
         images = COALESCE($11::jsonb, images),
         notes = CASE WHEN $12::boolean THEN $13 ELSE notes END,
-        added_sugars = CASE WHEN $15::boolean THEN $16 ELSE added_sugars END,
-        fruit_veg_legume_percent = CASE WHEN $17::boolean THEN $18 ELSE fruit_veg_legume_percent END,
-        provider_nutriscore_grade = CASE WHEN $19::boolean THEN $20 ELSE provider_nutriscore_grade END,
+        fruit_veg_legume_percent = CASE WHEN $15::boolean THEN $16 ELSE fruit_veg_legume_percent END,
+        provider_nutriscore_grade = CASE WHEN $17::boolean THEN $18 ELSE provider_nutriscore_grade END,
+        nutri_score_category = CASE WHEN $19::boolean THEN $20 ELSE nutri_score_category END,
         updated_at = now()
       WHERE id = $14
       RETURNING *`,
@@ -680,12 +703,12 @@ async function updateFood(id: string, userId: string, foodData: FoodUpdate) {
         notesKeyPresent,
         notesValue,
         id,
-        addedSugarsPresent,
-        healthScoreInputs.added_sugars,
         fvlPresent,
         healthScoreInputs.fruit_veg_legume_percent,
         gradePresent,
         healthScoreInputs.provider_nutriscore_grade,
+        categoryPresent,
+        healthScoreInputs.nutri_score_category,
       ]
     );
     const updated = result.rows[0];
@@ -821,7 +844,7 @@ async function getFoodsWithPagination(
     let query = `
       SELECT
         f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
-        f.added_sugars, f.fruit_veg_legume_percent, f.provider_nutriscore_grade,
+        f.fruit_veg_legume_percent, f.provider_nutriscore_grade, f.nutri_score_category,
         ${DEFAULT_VARIANT_JSON_SQL}
       FROM foods f
       ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
@@ -1292,9 +1315,10 @@ interface BulkImportFoodData {
   water_ml?: NumericInput;
   alcohol_g?: NumericInput;
   abv_percent?: NumericInput;
-  /** Food-level, per 100 g/ml; see the health score migration. */
   added_sugars?: NumericInput;
+  /** Food-level; see the health score migration. */
   fruit_veg_legume_percent?: NumericInput;
+  nutri_score_category?: string | null;
   glycemic_index?: string | null;
   custom_nutrients?: Record<string, unknown> | null;
   source?: string | null;
@@ -1315,8 +1339,8 @@ interface GroupedImportFood {
   provider_type?: string | null;
   provider_verified?: BooleanInput;
   images?: string[] | null;
-  added_sugars: number | null;
   fruit_veg_legume_percent: number | null;
+  nutri_score_category: string | null;
   variants: BulkImportFoodData[];
 }
 
@@ -1359,20 +1383,20 @@ async function createFoodsInBulk(
           provider_type: variant.provider_type || null,
           provider_verified: variant.provider_verified,
           images: resolveImageInput(variant),
-          added_sugars: null,
           fruit_veg_legume_percent: null,
+          nutri_score_category: null,
           variants: [],
         };
       }
       // Composition fields belong to the food, but the CSV repeats them per
       // variant row: the first row that states a value wins.
       const healthScoreInputs = sanitizeHealthScoreInputs({
-        added_sugars: variant.added_sugars,
         fruit_veg_legume_percent: variant.fruit_veg_legume_percent,
+        nutri_score_category: variant.nutri_score_category,
       });
-      acc[key].added_sugars ??= healthScoreInputs.added_sugars;
       acc[key].fruit_veg_legume_percent ??=
         healthScoreInputs.fruit_veg_legume_percent;
+      acc[key].nutri_score_category ??= healthScoreInputs.nutri_score_category;
       if (sanitizeBoolean(variant.provider_verified) === true) {
         acc[key].provider_verified = true;
       }
@@ -1456,8 +1480,8 @@ async function createFoodsInBulk(
              provider_verified = CASE WHEN $5 THEN TRUE ELSE provider_verified END,
              -- A missing or blank column arrives as null and keeps the stored
              -- value, like the variant nutrients below.
-             added_sugars = COALESCE($6, added_sugars),
-             fruit_veg_legume_percent = COALESCE($7, fruit_veg_legume_percent),
+             fruit_veg_legume_percent = COALESCE($6, fruit_veg_legume_percent),
+             nutri_score_category = COALESCE($7, nutri_score_category),
              updated_at = now()
            WHERE id = $1`,
           [
@@ -1466,8 +1490,8 @@ async function createFoodsInBulk(
             sanitizeBoolean(food.shared_with_public) ?? false,
             sanitizeBoolean(food.is_quick_food) ?? false,
             sanitizeBoolean(food.provider_verified) ?? false,
-            food.added_sugars,
             food.fruit_veg_legume_percent,
+            food.nutri_score_category,
           ]
         );
         foodId = existingFoodId;
@@ -1475,7 +1499,7 @@ async function createFoodsInBulk(
       } else {
         const foodResult = await client.query(
           `INSERT INTO foods (name, brand, is_custom, user_id, shared_with_public, is_quick_food,barcode,provider_external_id,provider_type,provider_verified, images,
-             added_sugars, fruit_veg_legume_percent, created_at, updated_at)
+             fruit_veg_legume_percent, nutri_score_category, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, now(), now())
            RETURNING id`,
           [
@@ -1490,8 +1514,8 @@ async function createFoodsInBulk(
             food.provider_type || null,
             sanitizeBoolean(food.provider_verified) ?? false,
             JSON.stringify(resolveImageInput(food)),
-            food.added_sugars,
             food.fruit_veg_legume_percent,
+            food.nutri_score_category,
           ]
         );
         foodId = foodResult.rows[0].id;
@@ -1558,6 +1582,7 @@ async function createFoodsInBulk(
                 water_ml = COALESCE($23, water_ml),
                 alcohol_g = COALESCE($24, alcohol_g),
                 abv_percent = COALESCE($25, abv_percent),
+                added_sugars = COALESCE($26, added_sugars),
                 updated_at = now()
               WHERE id = $1`,
             [
@@ -1588,6 +1613,7 @@ async function createFoodsInBulk(
               sanitizeNumeric(variant.water_ml),
               sanitizeNumeric(variant.alcohol_g),
               sanitizeNumeric(variant.abv_percent),
+              sanitizeAddedSugars(variant.added_sugars),
             ]
           );
         } else {
@@ -1597,10 +1623,10 @@ async function createFoodsInBulk(
               saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
               cholesterol, sodium, potassium, dietary_fiber, sugars,
               vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients,
-              source, ai_confidence, allergens, traces, caffeine_mg, water_ml, alcohol_g, abv_percent, created_at, updated_at
+              source, ai_confidence, allergens, traces, caffeine_mg, water_ml, alcohol_g, abv_percent, added_sugars, created_at, updated_at
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11,
-              $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, now(), now()
+              $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, now(), now()
             )`,
             [
               foodId,
@@ -1634,6 +1660,7 @@ async function createFoodsInBulk(
               sanitizeNumeric(variant.water_ml),
               sanitizeNumeric(variant.alcohol_g),
               sanitizeNumeric(variant.abv_percent),
+              sanitizeAddedSugars(variant.added_sugars),
             ]
           );
         }
@@ -1841,6 +1868,7 @@ async function updateFoodVariantNutrition(
         caffeine_mg = $22,
         water_ml = $23,
         alcohol_g = $24,
+        added_sugars = $25,
         updated_at = now()
       WHERE id = $1`,
       [
@@ -1870,6 +1898,7 @@ async function updateFoodVariantNutrition(
         sanitizeNumeric(nutritionData.caffeine_mg),
         sanitizeNumeric(nutritionData.water_ml),
         sanitizeNumeric(nutritionData.alcohol_g),
+        sanitizeAddedSugars(nutritionData.added_sugars),
       ]
     );
   } finally {
@@ -1877,8 +1906,47 @@ async function updateFoodVariantNutrition(
   }
 }
 
+/**
+ * Gap-fills composition values a provider re-import now supplies onto a food
+ * imported before it had them. Never overwrites a stored value.
+ */
+async function backfillMissingComposition(
+  foodId: string,
+  userId: string,
+  composition: Pick<FoodInput, 'fruit_veg_legume_percent' | 'added_sugars'>
+) {
+  const fruitVegLegumePercent = sanitizeNumeric(
+    composition.fruit_veg_legume_percent
+  );
+  const addedSugars = sanitizeAddedSugars(composition.added_sugars);
+  if (fruitVegLegumePercent === null && addedSugars === null) {
+    return;
+  }
+  const client = await getClient(userId);
+  try {
+    if (fruitVegLegumePercent !== null) {
+      await client.query(
+        `UPDATE foods SET fruit_veg_legume_percent = $2, updated_at = now()
+         WHERE id = $1 AND fruit_veg_legume_percent IS NULL`,
+        [foodId, fruitVegLegumePercent]
+      );
+    }
+    if (addedSugars !== null) {
+      await client.query(
+        `UPDATE food_variants SET added_sugars = $2, updated_at = now()
+         WHERE food_id = $1 AND is_default = TRUE AND added_sugars IS NULL`,
+        [foodId, addedSugars]
+      );
+    }
+  } finally {
+    client.release();
+  }
+}
+
+export { backfillMissingComposition };
 export { sanitizeGlycemicIndex };
 export { sanitizeNumeric };
+export { sanitizeAddedSugars };
 export { sanitizeBoolean };
 export { searchFoods };
 export { createFood };
@@ -1913,6 +1981,7 @@ export default {
   findVisibleFoodByName,
   findFoodByProviderExternalId,
   updateFoodVariantNutrition,
+  backfillMissingComposition,
   getFoodById,
   getFoodOwnerId,
   updateFood,

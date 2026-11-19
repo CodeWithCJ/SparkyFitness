@@ -54,6 +54,7 @@ const baseNutrients = [
   'caffeine_mg',
   'water_ml',
   'alcohol_g',
+  'added_sugars',
 ];
 
 const viewGroups = [

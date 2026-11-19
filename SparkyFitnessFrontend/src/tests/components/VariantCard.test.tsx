@@ -2,7 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { VariantCard } from '@/components/FoodSearch/VariantCard';
-import type { FoodVariant } from '@/types/food';
+import type { FormFoodVariant } from '@/utils/foodForm';
 
 jest.mock('@/components/FoodSearch/NutrientFormGrid', () => ({
   NutrientGrid: () => (
@@ -100,8 +100,8 @@ jest.mock('lucide-react', () => {
 });
 
 const createVariant = (
-  overrides: Partial<FoodVariant> = {}
-): FoodVariant & { equivalents: [] } => ({
+  overrides: Partial<FormFoodVariant> = {}
+): FormFoodVariant & { equivalents: [] } => ({
   id: 'variant-1',
   serving_size: 10,
   serving_unit: 'g',
@@ -127,7 +127,7 @@ const renderVariantCard = ({
   nutritionReadOnly = false,
 }: {
   showCompatibleUnitIndicators?: boolean;
-  variantOverrides?: Partial<FoodVariant>;
+  variantOverrides?: Partial<FormFoodVariant>;
   compatibleUnits?: ReadonlyArray<string>;
   savedAiUnits?: ReadonlyArray<{
     unit: string;

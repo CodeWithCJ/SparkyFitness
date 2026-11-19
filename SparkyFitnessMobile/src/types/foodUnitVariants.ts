@@ -27,6 +27,7 @@ export interface FoodUnitVariant {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   // Derivation metadata only (#1925): server computes alcohol_g from this at
   // save time when alcohol_g itself isn't given directly. A concentration,
   // not an amount -- unlike alcohol_g it must NOT be scaled by serving-size

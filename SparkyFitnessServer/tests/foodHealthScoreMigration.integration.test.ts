@@ -70,21 +70,35 @@ describe.skipIf(!RUN)('20261117120000_add_food_health_score_fields', () => {
   it('leaves the new food columns NULL ("unknown") by default', async () => {
     const { rows } = await client.query(
       `INSERT INTO foods (name) VALUES ('health score probe')
-       RETURNING added_sugars, fruit_veg_legume_percent, provider_nutriscore_grade`
+       RETURNING fruit_veg_legume_percent, provider_nutriscore_grade, nutri_score_category`
     );
     expect(rows[0]).toEqual({
-      added_sugars: null,
       fruit_veg_legume_percent: null,
       provider_nutriscore_grade: null,
+      nutri_score_category: null,
     });
   });
 
+  it('keeps added_sugars off foods: it is a per-serving variant nutrient', async () => {
+    const { rows } = await client.query(
+      `SELECT table_name FROM information_schema.columns
+        WHERE column_name = 'added_sugars' AND table_schema = 'public'
+          AND table_name IN ('foods', 'food_variants', 'food_entries', 'meal_foods')
+        ORDER BY table_name`
+    );
+    expect(rows.map((r) => r.table_name)).toEqual([
+      'food_entries',
+      'food_variants',
+      'meal_foods',
+    ]);
+  });
+
   it.each([
-    [{ added_sugars: -1 }],
     [{ fruit_veg_legume_percent: 101 }],
     [{ fruit_veg_legume_percent: -0.5 }],
     [{ provider_nutriscore_grade: 'A' }],
     [{ provider_nutriscore_grade: 'unknown' }],
+    [{ nutri_score_category: 'water' }],
   ])('rejects %o', async (values) => {
     await expect(insertFood(values)).rejects.toMatchObject({ code: '23514' });
   });
@@ -92,11 +106,19 @@ describe.skipIf(!RUN)('20261117120000_add_food_health_score_fields', () => {
   it('accepts the documented ranges', async () => {
     await expect(
       insertFood({
-        added_sugars: 0,
         fruit_veg_legume_percent: 100,
         provider_nutriscore_grade: 'e',
+        nutri_score_category: 'fat_oil_nut',
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('defaults nutri_score_enabled to false', async () => {
+    const { rows } = await client.query(
+      `SELECT column_default, is_nullable FROM information_schema.columns
+        WHERE table_name = 'user_preferences' AND column_name = 'nutri_score_enabled'`
+    );
+    expect(rows[0]).toEqual({ column_default: 'false', is_nullable: 'NO' });
   });
 
   it('defaults front_of_pack_region to none and rejects unknown regions', async () => {

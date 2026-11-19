@@ -55,6 +55,7 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
       iron: 0,
       caffeine_mg: 0,
       alcohol_g: 0,
+      added_sugars: 0,
       glycemic_index: 'None',
       water_ml: 0,
       custom_nutrients: {},
@@ -81,6 +82,8 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
     iron: Number(source.iron) || 0,
     caffeine_mg: Number(source.caffeine_mg) || 0,
     alcohol_g: Number(source.alcohol_g) || 0,
+    // Unknown counts as 0, so day totals are a lower bound (as on the server).
+    added_sugars: Number(source.added_sugars) || 0,
     // Kept nullable rather than coerced to 0 like the rest: only a MISSING
     // value falls back to the volume-unit heuristic below. A recorded 0 means
     // the food genuinely holds no water and must survive to the caller.
@@ -154,6 +157,9 @@ export const calculateFoodEntryNutrition = (entry: FoodEntry) => {
       entry.quantity,
     alcohol_g:
       (nutrientValuesPerReferenceSize.alcohol_g / effectiveReferenceSize) *
+      entry.quantity,
+    added_sugars:
+      (nutrientValuesPerReferenceSize.added_sugars / effectiveReferenceSize) *
       entry.quantity,
     glycemic_index: nutrientValuesPerReferenceSize.glycemic_index, // Pass through glycemic_index
     // Explicit water_ml wins (scaled like every other nutrient); when the food
@@ -251,6 +257,7 @@ export interface CalculatedNutrition {
   iron: number;
   caffeine_mg: number;
   alcohol_g: number;
+  added_sugars: number;
   water_ml: number;
   custom_nutrients: Record<string, number>;
 }
@@ -285,6 +292,7 @@ export const calculateNutrition = (
     iron: (variant.iron || 0) * ratio,
     caffeine_mg: (variant.caffeine_mg || 0) * ratio,
     alcohol_g: (variant.alcohol_g || 0) * ratio,
+    added_sugars: (variant.added_sugars || 0) * ratio,
     // #1557/#1629: explicit water_ml wins (scaled like any other nutrient);
     // with none recorded, fall back to the logged volume when serving_unit is a
     // real volume unit -- never 'oz', which is a WEIGHT ounce in the food
@@ -406,6 +414,7 @@ export const calculateDayTotals = (
         calcium: meal.calcium || 0,
         caffeine_mg: meal.caffeine_mg || 0,
         alcohol_g: meal.alcohol_g || 0,
+        added_sugars: meal.added_sugars || 0,
         custom_nutrients:
           (meal.custom_nutrients as Record<string, number>) || {},
       },
@@ -460,6 +469,7 @@ export const calculateDayTotals = (
       calcium: 0,
       caffeine_mg: 0,
       alcohol_g: 0,
+      added_sugars: 0,
       custom_nutrients: {} as Record<string, number>,
     }
   );
@@ -535,6 +545,7 @@ export const getMealTotals = (
       // contribution, and calculateDayTotals deliberately does not read it.
       water_ml: 0,
       alcohol_g: 0,
+      added_sugars: 0,
       custom_nutrients: {} as Record<string, number>,
     }
   );
@@ -570,6 +581,7 @@ export const getEntryNutrition = (
       caffeine_mg: item.caffeine_mg || 0,
       water_ml: item.water_ml || 0,
       alcohol_g: item.alcohol_g || 0,
+      added_sugars: item.added_sugars || 0,
       custom_nutrients: (item.custom_nutrients as Record<string, number>) || {},
     };
   } else {

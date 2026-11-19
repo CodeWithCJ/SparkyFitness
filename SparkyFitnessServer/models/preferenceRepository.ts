@@ -156,6 +156,7 @@ async function updateUserPreferences(
         calorie_safety_floor_value = COALESCE($46, calorie_safety_floor_value),
         chart_scale_mode = COALESCE($53, chart_scale_mode),
         front_of_pack_region = COALESCE($68, front_of_pack_region),
+        nutri_score_enabled = COALESCE($69, nutri_score_enabled),
         updated_at = now()
       WHERE user_id = $28
       RETURNING *`,
@@ -228,6 +229,7 @@ async function updateUserPreferences(
         preferenceData.bac_elimination_rate,
         preferenceData.bac_display_unit,
         preferenceData.front_of_pack_region,
+        preferenceData.nutri_score_enabled,
       ]
     );
     return result.rows[0];
@@ -339,6 +341,7 @@ async function upsertUserPreferences(
        bac_elimination_rate,
        bac_display_unit,
        front_of_pack_region,
+       nutri_score_enabled,
        created_at, updated_at
      ) VALUES (
        $1, COALESCE($2, 'yyyy-MM-dd'), COALESCE($44, 'HH:mm'), COALESCE($3, 'lbs'), COALESCE($4, 'in'), COALESCE($5, 'km'),
@@ -391,6 +394,7 @@ async function upsertUserPreferences(
        COALESCE($66, 0.150),
        COALESCE($67, 'permille'),
        COALESCE($68, 'none'),
+       COALESCE($69, FALSE),
        now(), now()
      )
      ON CONFLICT (user_id) DO UPDATE SET
@@ -464,6 +468,7 @@ async function upsertUserPreferences(
        -- Read $53 directly rather than EXCLUDED, for the same reason as $47.
        chart_scale_mode = COALESCE($53, user_preferences.chart_scale_mode),
        front_of_pack_region = COALESCE($68, user_preferences.front_of_pack_region),
+       nutri_score_enabled = COALESCE($69, user_preferences.nutri_score_enabled),
        updated_at = now()
      RETURNING *`,
       [
@@ -535,6 +540,7 @@ async function upsertUserPreferences(
         preferenceData.bac_elimination_rate,
         preferenceData.bac_display_unit,
         preferenceData.front_of_pack_region,
+        preferenceData.nutri_score_enabled,
       ]
     );
     return result.rows[0];

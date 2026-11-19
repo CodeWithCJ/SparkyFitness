@@ -87,6 +87,7 @@ const OFF_FIELDS = [
   'allergens_tags',
   'traces_tags',
   'nutriscore_grade',
+  'categories_tags',
   // Product photos: front image preferred, plain image_url as fallback.
   'image_front_url',
   'image_url',
@@ -135,6 +136,7 @@ interface OffProduct {
   image_front_url?: string;
   image_url?: string;
   nutriscore_grade?: string;
+  categories_tags?: string[];
   [key: string]: unknown;
 }
 
@@ -1146,6 +1148,34 @@ function getOffNutrient100g(
   return 0;
 }
 
+function hasOffNutrient(
+  nutriments: Record<string, unknown>,
+  baseKey: string,
+  declaredServingQuantity: number | null
+): boolean {
+  return (
+    parseOffNumber(nutriments[`${baseKey}_100g`]) !== null ||
+    (declaredServingQuantity !== null &&
+      declaredServingQuantity > 0 &&
+      parseOffNumber(nutriments[`${baseKey}_serving`]) !== null)
+  );
+}
+
+// Mirrors the category tests in ProductOpener::Food
+// (is_fat_oil_nuts_seeds_for_nutrition_score: en:fats, en:creams, en:seeds;
+// beverages: en:beverages). OFF also derives nuts from HS codes and treats
+// milk-heavy dairy drinks as food; those are not modelled, so they score as
+// "general" and the provider grade still wins when OFF supplies one.
+function offNutriScoreCategory(
+  tags: unknown
+): 'beverage' | 'fat_oil_nut' | undefined {
+  if (!Array.isArray(tags)) return undefined;
+  if (tags.some((tag) => ['en:fats', 'en:creams', 'en:seeds'].includes(tag))) {
+    return 'fat_oil_nut';
+  }
+  return tags.includes('en:beverages') ? 'beverage' : undefined;
+}
+
 function getOffEnergyKcal100g(
   nutriments: Record<string, unknown>,
   declaredServingQuantity: number | null
@@ -1304,6 +1334,22 @@ function mapOpenFoodFactsProduct(
           scale *
           10
       ) / 10,
+    // Left undefined when OFF has no added-sugars figure: unknown, not 0.
+    added_sugars: hasOffNutrient(
+      nutriments,
+      'added-sugars',
+      declaredServingQuantity
+    )
+      ? Math.round(
+          getOffNutrient100g(
+            nutriments,
+            'added-sugars',
+            declaredServingQuantity
+          ) *
+            scale *
+            10
+        ) / 10
+      : undefined,
     polyunsaturated_fat:
       Math.round(
         getOffNutrient100g(
@@ -1458,9 +1504,8 @@ function mapOpenFoodFactsProduct(
     is_custom: false,
     // Hotlinked in search results; localized on import (see models/food.ts).
     image_url: product.image_front_url || product.image_url || null,
-    // Composition values, per 100 g/ml regardless of the variant's serving.
-    added_sugars: parseOffNumber(nutriments['added-sugars_100g']),
     provider_nutriscore_grade: product.nutriscore_grade ?? null,
+    nutri_score_category: offNutriScoreCategory(product.categories_tags),
     default_variant: metricVariant,
     ...(product[PARTIAL_SERVING_DATA]
       ? { [PARTIAL_SERVING_DATA]: true as const }

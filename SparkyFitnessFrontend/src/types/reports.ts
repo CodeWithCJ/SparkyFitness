@@ -31,6 +31,7 @@ export interface NutritionData {
   caffeine_mg: number;
   water_ml: number;
   alcohol_g: number;
+  added_sugars: number;
   [key: string]: number | string; // Add index signature for custom nutrients
 }
 
@@ -63,6 +64,7 @@ export interface DailyFoodEntry {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   food_name?: string;
   brand_name?: string;
   glycemic_index?: string | number;

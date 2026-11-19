@@ -20,6 +20,7 @@
     "syncIron": "Iron",
     "syncCaffeine": "Caffeine",
     "syncAlcohol": "Alcohol",
+    "syncAddedSugars": "Added sugars",
     "syncWater": "Water",
     "syncSavedValues": "These are saved ingredient values. To include a library correction, replace the affected ingredient using its corrected food variant, check the values, then save the meal.",
     "syncSavedAt": "Last saved: {{date}}",
@@ -381,6 +382,7 @@
     "actions": "Actions",
     "booleanTrue": "True",
     "booleanFalse": "False",
+    "categoryUnset": "Not set",
     "deleteRow": "Delete Row",
     "overrideLabel": "Override existing food details",
     "overrideDescription": "If a food with the same name and brand already exists, update its nutrition instead of failing the import. Leave unchecked to skip and error on duplicates.",
@@ -1170,6 +1172,7 @@
     "caffeine": "Caffeine",
     "waterContent": "Water Content",
     "alcohol": "Alcohol",
+    "addedSugars": "Added Sugars",
     "abv": "ABV (%)",
     "autoCalculate": "Auto-calculate",
     "autoCalculateTooltip": "Auto-calculate using {{algorithm}}",
@@ -2209,7 +2212,9 @@
       "frontOfPackRegionNone": "None",
       "frontOfPackRegionBrazil": "Brazil (ANVISA)",
       "frontOfPackRegionChile": "Chile",
-      "frontOfPackRegionMexico": "Mexico"
+      "frontOfPackRegionMexico": "Mexico",
+      "nutriScoreEnabled": "Show Nutri-Score",
+      "nutriScoreEnabledHint": "Show the European Nutri-Score grade (A to E) on foods. It is a regional label, so it is off by default."
     },
     "waterTracking": {
       "title": "Water Tracking",
@@ -5531,7 +5536,8 @@
       "iron": "Iron (mg)",
       "caffeine": "Caffeine (mg)",
       "waterContent": "Water Content (ml)",
-      "alcohol": "Alcohol (g)"
+      "alcohol": "Alcohol (g)",
+      "addedSugars": "Added Sugars (g)"
     },
     "exerciseEntriesExportHeaders": {
       "date": "Date",
@@ -6540,10 +6546,13 @@
     "notesLabel": "Notes",
     "notesHelp": "Details you want to remember every time you log this — how you order it, or a recipe. Supports markdown.",
     "notesPlaceholder": "e.g. White rice, double chicken, mild salsa, no beans",
-    "addedSugarsLabel": "Added sugars (g per 100 g/ml)",
+    "nutriScoreCategoryLabel": "Nutri-Score category",
+    "nutriScoreCategoryGeneral": "General",
+    "nutriScoreCategoryBeverage": "Beverage",
+    "nutriScoreCategoryFatOilNut": "Fat, oil & nut",
     "fruitVegLegumePercentLabel": "Fruit, vegetables & legumes (%)",
     "unknown": "Unknown",
-    "healthScoreHelp": "Used for the Nutri-Score and front-of-pack warnings. Leave added sugars empty if the label does not state them."
+    "healthScoreHelp": "Used for the Nutri-Score and front-of-pack warnings. The category picks the scoring table: a drink in ml is only scored as a beverage when you choose Beverage. Added sugars is a nutrient of each serving size above; leave it empty if the label does not state it."
   },
   "customMeasurements": {
     "title": "Custom Measurements - {{date}}",

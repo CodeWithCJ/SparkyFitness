@@ -8,8 +8,12 @@ jest.mock('react-i18next', () =>
 );
 
 let mockRegion: FrontOfPackRegion = 'none';
+let mockNutriScoreEnabled = true;
 jest.mock('@/contexts/PreferencesContext', () => ({
-  usePreferences: () => ({ frontOfPackRegion: mockRegion }),
+  usePreferences: () => ({
+    frontOfPackRegion: mockRegion,
+    nutriScoreEnabled: mockNutriScoreEnabled,
+  }),
 }));
 
 const healthScore: FoodHealthScore = {
@@ -22,6 +26,27 @@ const healthScore: FoodHealthScore = {
 };
 
 describe('FoodHealthBadges', () => {
+  beforeEach(() => {
+    mockNutriScoreEnabled = true;
+  });
+
+  it('hides the Nutri-Score badge while the preference is off', () => {
+    mockRegion = 'none';
+    mockNutriScoreEnabled = false;
+    const { container } = render(
+      <FoodHealthBadges healthScore={healthScore} />
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('keeps the regional warnings while the Nutri-Score preference is off', () => {
+    mockRegion = 'brazil';
+    mockNutriScoreEnabled = false;
+    render(<FoodHealthBadges healthScore={healthScore} />);
+    expect(screen.queryByTestId('nutri-score-badge')).toBeNull();
+    expect(screen.getAllByTestId('front-of-pack-warning')).toHaveLength(2);
+  });
+
   it('shows only the Nutri-Score when no region is selected', () => {
     mockRegion = 'none';
     render(<FoodHealthBadges healthScore={healthScore} />);

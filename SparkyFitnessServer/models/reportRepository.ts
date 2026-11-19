@@ -198,6 +198,7 @@ async function getTabularFoodData(
           (COALESCE(fe.caffeine_mg, 0) * fe.quantity / fe.serving_size) AS caffeine_mg,
           (COALESCE(fe.water_ml, 0) * fe.quantity / fe.serving_size) AS water_ml,
           (COALESCE(fe.alcohol_g, 0) * fe.quantity / fe.serving_size) AS alcohol_g,
+          (COALESCE(fe.added_sugars, 0) * fe.quantity / fe.serving_size) AS added_sugars,
           fe.serving_size,
           fe.serving_unit,
           fe.food_entry_meal_id${
@@ -241,6 +242,7 @@ async function getTabularFoodData(
         cfe.caffeine_mg,
         cfe.water_ml,
         cfe.alcohol_g,
+        cfe.added_sugars,
         cfe.serving_size,
         cfe.serving_unit,
         cfe.food_entry_meal_id${
@@ -331,6 +333,7 @@ async function getTabularFoodData(
         SUM(cfe_meal.caffeine_mg) AS caffeine_mg,
         SUM(cfe_meal.water_ml) AS water_ml,
         SUM(cfe_meal.alcohol_g) AS alcohol_g,
+        SUM(cfe_meal.added_sugars) AS added_sugars,
         1 AS serving_size, -- Treat meal as single serving unit for calculations
         'serving' AS serving_unit,
         fem.id AS food_entry_meal_id${
@@ -469,7 +472,8 @@ async function getMiniNutritionTrends(
          SUM(calcium) AS total_calcium,
          SUM(iron) AS total_iron,
          SUM(caffeine_mg) AS total_caffeine_mg,
-         SUM(alcohol_g) AS total_alcohol_g${
+         SUM(alcohol_g) AS total_alcohol_g,
+         SUM(added_sugars) AS total_added_sugars${
            customNutrientsSelectOuter
              ? ',\n         ' + customNutrientsSelectOuter
              : ''
@@ -495,7 +499,8 @@ async function getMiniNutritionTrends(
            (COALESCE(fe.calcium, 0) * fe.quantity / fe.serving_size) AS calcium,
            (COALESCE(fe.iron, 0) * fe.quantity / fe.serving_size) AS iron,
            (COALESCE(fe.caffeine_mg, 0) * fe.quantity / fe.serving_size) AS caffeine_mg,
-           (COALESCE(fe.alcohol_g, 0) * fe.quantity / fe.serving_size) AS alcohol_g${
+           (COALESCE(fe.alcohol_g, 0) * fe.quantity / fe.serving_size) AS alcohol_g,
+           (COALESCE(fe.added_sugars, 0) * fe.quantity / fe.serving_size) AS added_sugars${
              customNutrientsSelectInner1
                ? ',\n           ' + customNutrientsSelectInner1
                : ''
@@ -525,7 +530,8 @@ async function getMiniNutritionTrends(
            SUM(COALESCE(fe_meal.calcium, 0) * fe_meal.quantity / fe_meal.serving_size) AS calcium,
            SUM(COALESCE(fe_meal.iron, 0) * fe_meal.quantity / fe_meal.serving_size) AS iron,
            SUM(COALESCE(fe_meal.caffeine_mg, 0) * fe_meal.quantity / fe_meal.serving_size) AS caffeine_mg,
-           SUM(COALESCE(fe_meal.alcohol_g, 0) * fe_meal.quantity / fe_meal.serving_size) AS alcohol_g${
+           SUM(COALESCE(fe_meal.alcohol_g, 0) * fe_meal.quantity / fe_meal.serving_size) AS alcohol_g,
+           SUM(COALESCE(fe_meal.added_sugars, 0) * fe_meal.quantity / fe_meal.serving_size) AS added_sugars${
              customNutrientsSelectInner2
                ? ',\n           ' + customNutrientsSelectInner2
                : ''

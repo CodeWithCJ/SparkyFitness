@@ -38,6 +38,7 @@ export interface VariantNutritionSource {
   caffeine_mg?: number | string | null;
   water_ml?: number | string | null;
   alcohol_g?: number | string | null;
+  added_sugars?: number | string | null;
   glycemic_index?: string | null;
   custom_nutrients?: Record<string, unknown> | null;
 }
@@ -76,6 +77,7 @@ export function buildFoodEntrySnapshot(
     caffeine_mg: variant.caffeine_mg,
     water_ml: variant.water_ml,
     alcohol_g: variant.alcohol_g,
+    added_sugars: variant.added_sugars,
     glycemic_index: variant.glycemic_index,
     custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
   } as FoodEntrySnapshot;

@@ -58,6 +58,7 @@ export function loggedMealToFoodEntry(meal: FoodEntryMeal): FoodEntry {
     caffeine_mg: meal.caffeine_mg,
     water_ml: meal.water_ml,
     alcohol_g: meal.alcohol_g,
+    added_sugars: meal.added_sugars,
     glycemic_index: meal.glycemic_index,
     custom_nutrients: meal.custom_nutrients,
   };

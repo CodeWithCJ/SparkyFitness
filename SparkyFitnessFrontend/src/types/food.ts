@@ -1,5 +1,9 @@
 import { FormFoodVariant } from '@/utils/foodForm';
-import type { FoodHealthScore, FoodProviderType } from '@workspace/shared';
+import type {
+  FoodHealthScore,
+  FoodProviderType,
+  NutriScoreCategory,
+} from '@workspace/shared';
 
 export type GlycemicIndex =
   'None' | 'Very Low' | 'Low' | 'Medium' | 'High' | 'Very High';
@@ -29,6 +33,8 @@ export interface FoodVariant {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  /** Grams per serving; null means unknown (not zero). */
+  added_sugars?: number | null;
   abv_percent?: number;
   is_default?: boolean;
   is_locked?: boolean;
@@ -94,9 +100,10 @@ export interface Food {
    * owner can edit it.
    */
   notes?: string | null;
-  /** Grams per 100 g/ml; null means unknown. */
-  added_sugars?: number | null;
   fruit_veg_legume_percent?: number | null;
+  /** Null scores with the general table. */
+  nutri_score_category?: NutriScoreCategory | null;
+  /** Set by the server from Open Food Facts only; never sent on save. */
   provider_nutriscore_grade?: string | null;
   /** Computed by the server on read; see `computeFoodHealthScore`. */
   health_score?: FoodHealthScore;
@@ -189,6 +196,7 @@ export interface FoodEntry {
   // utils/nutritionCalculations.ts.
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   glycemic_index?: GlycemicIndex;
   serving_size?: number;
   custom_nutrients?: Record<string, string | number>;
@@ -225,9 +233,10 @@ export interface CSVData {
   vitamin_c: number;
   calcium: number;
   iron: number;
-  /** Food-level, per 100 g/ml; null means unknown. */
+  /** Grams per serving; null means unknown. */
   added_sugars?: number | null;
   fruit_veg_legume_percent?: number | null;
+  nutri_score_category?: NutriScoreCategory | null;
   custom_nutrients?: Record<string, string | number>; // New field for custom nutrients
 }
 

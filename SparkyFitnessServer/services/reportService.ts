@@ -86,6 +86,7 @@ interface TabularFoodRow {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number;
   serving_size: number;
   [key: string]: unknown;
 }
@@ -268,6 +269,7 @@ async function getReportsData(
           caffeine_mg: row.caffeine_mg,
           water_ml: row.water_ml,
           alcohol_g: row.alcohol_g,
+          added_sugars: row.added_sugars,
           serving_size: row.serving_size,
         },
       };
@@ -297,6 +299,7 @@ async function getReportsData(
           iron: parseFloat(String(item.iron)) || 0,
           caffeine_mg: parseFloat(String(item.caffeine_mg)) || 0,
           alcohol_g: parseFloat(String(item.alcohol_g)) || 0,
+          added_sugars: parseFloat(String(item.added_sugars)) || 0,
           water: waterByDate.get(String(item.date)) || 0,
         };
         FOOD_VARIANT_NUTRIENT_FIELDS.forEach((nutrient) => {
@@ -511,6 +514,7 @@ async function getMiniNutritionTrends(
         iron: parseFloat(row.total_iron) || 0,
         caffeine_mg: parseFloat(row.total_caffeine_mg) || 0,
         alcohol_g: parseFloat(row.total_alcohol_g) || 0,
+        added_sugars: parseFloat(row.total_added_sugars) || 0,
       };
       // Map custom nutrients dynamically
       customNutrients.forEach((cn: CustomNutrientDefinition) => {

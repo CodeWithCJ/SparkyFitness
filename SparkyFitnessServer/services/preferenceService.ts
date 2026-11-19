@@ -73,6 +73,15 @@ function validateActivityPreferences(
       }
     );
   }
+  if (
+    !userPreferencesMutatorSchema.shape.nutri_score_enabled.safeParse(
+      preferences.nutri_score_enabled
+    ).success
+  ) {
+    throw Object.assign(new Error('nutri_score_enabled must be a boolean.'), {
+      status: 400,
+    });
+  }
 }
 /** Calorie cycling (#2327): a known mode and 7 whole weekday percentages within range. */
 function validateCalorieCycling(
@@ -339,6 +348,7 @@ function getDefaultPreferences() {
     calorie_safety_floor_value: DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
     chart_scale_mode: DEFAULT_CHART_SCALE_MODE,
     front_of_pack_region: 'none',
+    nutri_score_enabled: false,
     default_temperature_unit: DEFAULT_TEMPERATURE_UNIT,
     default_glucose_unit: DEFAULT_GLUCOSE_UNIT,
     goal_mode_weekly_change_kg: 0,

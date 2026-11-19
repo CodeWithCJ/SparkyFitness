@@ -32,7 +32,9 @@ import {
   suggestHeaderMapping,
   MAX_CSV_FILE_SIZE_BYTES,
   DEFAULT_CSV_FORMAT,
+  NUTRI_SCORE_CATEGORIES,
   type CsvFormatOptions,
+  type NutriScoreCategory,
 } from '@workspace/shared';
 import { useCsvFormat } from '@/hooks/useCsvFormat';
 import CsvFormatBar from '@/components/CsvImport/CsvFormatBar';
@@ -72,6 +74,7 @@ export interface CSVData {
   is_default: boolean;
   added_sugars?: number | null;
   fruit_veg_legume_percent?: number | null;
+  nutri_score_category?: NutriScoreCategory | null;
   [key: string]: string | number | boolean | null | undefined;
 }
 
@@ -194,7 +197,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     onDirtyChange(isDirty);
   }, [isDirty, onDirtyChange]);
 
-  const textFields = new Set(['name', 'brand']);
+  const textFields = new Set(['name', 'brand', 'nutri_score_category']);
   const booleanFields = new Set([
     'shared_with_public',
     'is_default',
@@ -228,10 +231,17 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
     'is_default',
   ];
 
-  // Food-level health score inputs (per 100 g/ml). Optional so existing files
-  // stay valid, and unlike the nutrients a blank cell means "unknown": it
-  // becomes null, never 0, because 0 added sugar is a claim about the food.
-  const healthScoreHeaders = ['added_sugars', 'fruit_veg_legume_percent'];
+  // Health score inputs. Optional so existing files stay valid, and unlike the
+  // other nutrients a blank cell means "unknown": it becomes null, never 0,
+  // because 0 added sugar is a claim about the food. added_sugars is grams per
+  // serving of the row's serving size; the category is validated here, and
+  // the server never reads a grade from the file.
+  const NUTRI_SCORE_CATEGORY_HEADER = 'nutri_score_category';
+  const healthScoreHeaders = [
+    'added_sugars',
+    'fruit_veg_legume_percent',
+    NUTRI_SCORE_CATEGORY_HEADER,
+  ];
   const importHeaders = [...requiredHeaders, ...healthScoreHeaders];
 
   // Numeric columns feed decimal-format auto-detection; everything except
@@ -270,6 +280,10 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
       const value = raw.trim();
       if (booleanFields.has(header)) {
         return value.toLowerCase() === 'true';
+      }
+      if (header === NUTRI_SCORE_CATEGORY_HEADER) {
+        const category = value.toLowerCase();
+        return NUTRI_SCORE_CATEGORIES.find((c) => c === category) ?? null;
       }
       if (healthScoreHeaders.includes(header)) {
         return toNumber(value, format) ?? null;
@@ -571,6 +585,7 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
         is_default: 'TRUE',
         added_sugars: 12,
         fruit_veg_legume_percent: '',
+        nutri_score_category: '',
       },
     ];
 
@@ -1078,6 +1093,37 @@ const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
                                     <SelectItem value="false">
                                       {t('foodCsvImport.booleanFalse', 'False')}
                                     </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : header === NUTRI_SCORE_CATEGORY_HEADER ? (
+                                <Select
+                                  value={(row[header] as string) || 'unset'}
+                                  onValueChange={(value) =>
+                                    handleEditCell(
+                                      row.id,
+                                      header,
+                                      value === 'unset' ? null : value
+                                    )
+                                  }
+                                >
+                                  <SelectTrigger className="w-full md:w-[140px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="unset">
+                                      {t(
+                                        'foodCsvImport.categoryUnset',
+                                        'Not set'
+                                      )}
+                                    </SelectItem>
+                                    {NUTRI_SCORE_CATEGORIES.map((category) => (
+                                      <SelectItem
+                                        key={category}
+                                        value={category}
+                                      >
+                                        {category}
+                                      </SelectItem>
+                                    ))}
                                   </SelectContent>
                                 </Select>
                               ) : textFields.has(header) ? (

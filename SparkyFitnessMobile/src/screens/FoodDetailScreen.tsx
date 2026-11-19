@@ -22,6 +22,7 @@ import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import FoodNutritionSummary from '../components/FoodNutritionSummary';
+import FrontOfPackWarnings from '../components/FrontOfPackWarnings';
 import NutriScoreBadge from '../components/NutriScoreBadge';
 import { NoteMarkdown } from '../components/NoteMarkdown';
 import { usableFoodImages } from '../utils/foodImages';
@@ -82,6 +83,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
   const { isConnected } = useServerConnection();
   const { profile } = useProfile();
   const { preferences } = usePreferences({ enabled: isConnected });
+  const frontOfPackRegion = preferences?.front_of_pack_region ?? 'none';
   const showNetCarbs = preferences?.show_net_carbs === true;
   const [food, setFood] = useState(item);
 
@@ -336,6 +338,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
         name: food.name,
         brand: food.brand ?? '',
         notes: food.notes ?? '',
+        nutriScoreCategory: food.nutriScoreCategory ?? '',
         servingSize: String(displayValues.servingSize),
         servingUnit: displayValues.servingUnit,
         calories: String(displayValues.calories),
@@ -368,6 +371,10 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
           displayValues.waterMl != null ? String(displayValues.waterMl) : '',
         alcoholG:
           displayValues.alcoholG != null ? String(displayValues.alcoholG) : '',
+        addedSugars:
+          displayValues.addedSugars != null
+            ? String(displayValues.addedSugars)
+            : '',
         cholesterol:
           displayValues.cholesterol != null
             ? String(displayValues.cholesterol)
@@ -463,8 +470,15 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
           customNutrients={selectedCustomNutrients}
         />
 
-        {food.nutriScore ? (
-          <NutriScoreBadge nutriScore={food.nutriScore} />
+        {preferences?.nutri_score_enabled && food.healthScore?.nutri_score ? (
+          <NutriScoreBadge nutriScore={food.healthScore.nutri_score} />
+        ) : null}
+
+        {frontOfPackRegion !== 'none' && food.healthScore ? (
+          <FrontOfPackWarnings
+            region={frontOfPackRegion}
+            warnings={food.healthScore.warnings[frontOfPackRegion]}
+          />
         ) : null}
 
         {food.notes ? (

@@ -48,6 +48,7 @@ export function barcodeResultToFoodInfo(
     caffeineMg: variant.caffeine_mg,
     waterMl: variant.water_ml,
     alcoholG: variant.alcohol_g,
+    addedSugars: variant.added_sugars,
     cholesterol: variant.cholesterol,
     vitaminA: variant.vitamin_a,
     vitaminC: variant.vitamin_c,

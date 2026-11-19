@@ -57,6 +57,7 @@ export interface MealFood {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
   serving_size?: number;
@@ -103,6 +104,7 @@ export interface MealFoodPayload {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   glycemic_index?: string;
   custom_nutrients?: Record<string, string | number>;
   serving_size?: number;
@@ -184,6 +186,7 @@ export interface FoodEntryMeal {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   glycemic_index?: string; // Aggregated glycemic index
   custom_nutrients?: Record<string, string | number>;
 }
@@ -210,6 +213,7 @@ export interface MealTotals {
   /** Optional: meal totals sum it, day totals deliberately do not. */
   water_ml?: number;
   alcohol_g: number;
+  added_sugars: number;
   custom_nutrients?: Record<string, number>; // Add custom_nutrients support
   [key: string]: number | string | Record<string, number> | null | undefined;
 }

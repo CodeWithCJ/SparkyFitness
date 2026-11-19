@@ -717,6 +717,7 @@ async function manageGoalTimeline(authenticatedUserId: string, goalData: any) {
       p_iron,
       p_caffeine_mg,
       p_alcohol_g,
+      p_added_sugars,
       p_target_exercise_calories_burned,
       p_target_exercise_duration_minutes,
       p_target_steps,
@@ -845,6 +846,7 @@ async function manageGoalTimeline(authenticatedUserId: string, goalData: any) {
       // not a limit of 0 (both are tracked as maximums).
       caffeine_mg: cleanNumber(blankToNull(p_caffeine_mg), true),
       alcohol_g: cleanNumber(blankToNull(p_alcohol_g), true),
+      added_sugars: cleanNumber(blankToNull(p_added_sugars), true),
       target_exercise_calories_burned: cleanNumber(
         p_target_exercise_calories_burned
       ),

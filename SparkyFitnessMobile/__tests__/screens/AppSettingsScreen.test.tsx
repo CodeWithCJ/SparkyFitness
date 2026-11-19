@@ -13,6 +13,7 @@ import i18n, { initializeI18n } from '../../src/localization/i18n';
 import { AppLanguageNative } from '../../src/services/appLanguageNative';
 
 jest.mock('../../src/components/GlucoseUnitSetting', () => () => null);
+jest.mock('../../src/components/NutriScoreSetting', () => () => null);
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
   const React = require('react');

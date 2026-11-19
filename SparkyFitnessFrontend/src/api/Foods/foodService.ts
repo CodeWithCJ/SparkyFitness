@@ -49,6 +49,7 @@ interface FoodPayload {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   abv_percent?: number;
   custom_nutrients?: Record<string, string | number>;
 }

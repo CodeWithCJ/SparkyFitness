@@ -12,6 +12,7 @@ export const BUILTIN_MAXIMUM_GOAL_NUTRIENTS = [
   'sugars',
   'caffeine_mg',
   'alcohol_g',
+  'added_sugars',
 ] as const;
 
 export type BuiltinMaximumGoalNutrient =

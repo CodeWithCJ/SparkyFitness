@@ -62,6 +62,8 @@ export const PreferenceSettings = () => {
     setChartScaleMode,
     frontOfPackRegion,
     setFrontOfPackRegion,
+    nutriScoreEnabled,
+    setNutriScoreEnabled,
     glucoseUnit,
     setGlucoseUnit,
     temperatureUnit,
@@ -177,6 +179,7 @@ export const PreferenceSettings = () => {
         measurementDecimalPlaces,
         chartScaleMode,
         frontOfPackRegion,
+        nutriScoreEnabled,
         temperatureUnit,
         glucoseUnit,
         timezone,
@@ -290,6 +293,27 @@ export const PreferenceSettings = () => {
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+          <div className="flex items-center justify-between col-span-full py-2">
+            <div className="space-y-0.5">
+              <Label htmlFor="nutri_score_enabled">
+                {t(
+                  'settings.preferences.nutriScoreEnabled',
+                  'Show Nutri-Score'
+                )}
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                {t(
+                  'settings.preferences.nutriScoreEnabledHint',
+                  'Show the European Nutri-Score grade (A to E) on foods. It is a regional label, so it is off by default.'
+                )}
+              </p>
+            </div>
+            <Switch
+              id="nutri_score_enabled"
+              checked={nutriScoreEnabled}
+              onCheckedChange={setNutriScoreEnabled}
+            />
           </div>
           <div>
             <Label htmlFor="front_of_pack_region">

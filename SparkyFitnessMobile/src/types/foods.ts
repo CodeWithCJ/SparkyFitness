@@ -1,4 +1,4 @@
-import type { FoodHealthScore } from '@workspace/shared';
+import type { FoodHealthScore, NutriScoreCategory } from '@workspace/shared';
 
 export interface FoodDefaultVariant {
   id?: string;
@@ -31,6 +31,7 @@ export interface FoodDefaultVariant {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   abv_percent?: number;
   is_default?: boolean;
   glycemic_index?: string;
@@ -62,6 +63,9 @@ export interface FoodItem {
    * food; only the owner can edit it.
    */
   notes?: string | null;
+  /** NULL = scored as a general food. */
+  nutri_score_category?: NutriScoreCategory | null;
+  fruit_veg_legume_percent?: number | null;
   /** Computed by the server on read. */
   health_score?: FoodHealthScore;
   default_variant: FoodDefaultVariant;
@@ -131,6 +135,7 @@ export interface FoodVariantDetail {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   abv_percent?: number;
   is_default?: boolean;
   glycemic_index?: string;

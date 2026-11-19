@@ -49,7 +49,12 @@ const SCANNED_DIRS = ['models', 'services', 'routes'];
 // water_ml is a column on the same three nutrition tables, but is deliberately
 // absent from FOOD_VARIANT_NUTRIENT_FIELDS: that list drives supplementSql's
 // SUM() generation, and a supplement reporting a water dose is meaningless.
-const TRACKED_COLUMNS = ['caffeine_mg', 'water_ml', 'alcohol_g'] as const;
+const TRACKED_COLUMNS = [
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
+  'added_sugars',
+] as const;
 const ANCHOR = 'iron';
 
 interface Omission {
@@ -106,10 +111,18 @@ const DELIBERATE_OMISSIONS: Omission[] = [
   },
   {
     file: /^services\/healthDataHandlers\.ts$/,
-    columns: ['water_ml', 'alcohol_g'],
+    columns: ['water_ml', 'alcohol_g', 'added_sugars'],
     reason:
       'Hydration arrives as its own health metric and lands in the water ledger, not as a food nutrient. ' +
-      'Neither HealthKit nor Health Connect has an alcohol field on their nutrition records.',
+      'Neither HealthKit nor Health Connect has an alcohol or added-sugars field on their nutrition records.',
+  },
+  {
+    file: /^services\/(cnfBulkImportService|livsmedelsverketBulkImportService)\.ts$/,
+    columns: ['added_sugars'],
+    reason:
+      'The bulk importers map a fixed set of source nutrient codes (CNF nutrient ids, EuroFIR codes) ' +
+      'and neither mapping carries an added-sugars nutrient. Imported variants keep added_sugars NULL (unknown) ' +
+      'instead of a 0 that would read as "no added sugar".',
   },
   {
     file: /^services\/garmin\//,
@@ -124,6 +137,13 @@ const DELIBERATE_OMISSIONS: Omission[] = [
       'not grams (see the alcoholGramsForServing conversion on the read side). Deriving an ABV ' +
       'back from alcohol_g needs a volume-based serving we cannot assume, and a wrong number here ' +
       'is written to a public shared database.',
+  },
+  {
+    file: /^services\/openFoodFactsContributionService\.ts$/,
+    columns: ['added_sugars'],
+    reason:
+      'Publication to the public Open Food Facts database sends a fixed packaging-label subset; ' +
+      'widening it is a separate decision from storing the value locally.',
   },
 ];
 

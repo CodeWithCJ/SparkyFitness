@@ -35,4 +35,25 @@ describe('USDA alcohol mapping (#1925)', () => {
     // USDA does not report ABV% metadata, so abv_percent should remain undefined
     expect(variant?.abv_percent).toBeUndefined();
   });
+
+  it('maps FDC nutrient 1235 to added_sugars and leaves it null when absent', () => {
+    const food = (nutrients: object[]) =>
+      mapUsdaBarcodeProduct({
+        fdcId: 1,
+        description: 'Cola',
+        servingSize: 200,
+        servingSizeUnit: 'ml',
+        foodNutrients: nutrients,
+      } as any).default_variant;
+
+    const withAdded = food([
+      { nutrientId: 1235, nutrientName: 'Sugars, added', value: 10.6 },
+    ]);
+    const without = food([
+      { nutrientId: 1008, nutrientName: 'Energy', value: 42 },
+    ]);
+
+    expect(withAdded?.added_sugars).toBeCloseTo(21.2, 1);
+    expect(without?.added_sugars).toBeNull();
+  });
 });

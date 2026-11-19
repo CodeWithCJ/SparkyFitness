@@ -330,6 +330,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
       caffeine_mg: ingredient.caffeine_mg,
       water_ml: ingredient.water_ml,
       alcohol_g: ingredient.alcohol_g,
+      added_sugars: ingredient.added_sugars,
       cholesterol: ingredient.cholesterol,
       vitamin_a: ingredient.vitamin_a,
       vitamin_c: ingredient.vitamin_c,

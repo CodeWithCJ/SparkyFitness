@@ -292,6 +292,9 @@ const ReportsTables = ({
                 (Number(acc.water_ml) || 0) + (Number(entry.water_ml) || 0),
               alcohol_g:
                 (Number(acc.alcohol_g) || 0) + (Number(entry.alcohol_g) || 0),
+              added_sugars:
+                (Number(acc.added_sugars) || 0) +
+                (Number(entry.added_sugars) || 0),
               glycemic_index: 'None',
               ...customNutrientsSum,
             };
@@ -317,6 +320,7 @@ const ReportsTables = ({
             caffeine_mg: 0,
             water_ml: 0,
             alcohol_g: 0,
+            added_sugars: 0,
             glycemic_index: 'None',
           } as Partial<DailyFoodEntry>
         ); // Use Partial to allow for initial empty state
@@ -348,6 +352,7 @@ const ReportsTables = ({
           caffeine_mg: dailyTotals.caffeine_mg,
           water_ml: dailyTotals.water_ml,
           alcohol_g: dailyTotals.alcohol_g,
+          added_sugars: dailyTotals.added_sugars,
           glycemic_index: 'None',
           serving_size: 100, // Default value, not used for totals
           ...dailyTotals, // Include custom nutrient totals

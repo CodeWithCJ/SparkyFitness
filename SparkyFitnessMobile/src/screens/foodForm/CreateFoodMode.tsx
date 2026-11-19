@@ -462,6 +462,7 @@ export function CreateFoodMode({
       name: data.name,
       brand: data.brand || null,
       notes: (data.notes ?? '').trim() || null,
+      nutri_score_category: data.nutriScoreCategory || null,
       serving_size: parseDecimalInput(data.servingSize) || 0,
       serving_unit: data.servingUnit || 'serving',
       calories: parseDecimalInput(data.calories) || 0,
@@ -482,6 +483,7 @@ export function CreateFoodMode({
       caffeine_mg: parseOptional(data.caffeineMg),
       water_ml: parseOptional(data.waterMl),
       alcohol_g: parseOptional(data.alcoholG),
+      added_sugars: parseOptional(data.addedSugars) ?? null,
       is_custom: true,
       is_quick_food: isLogEntryMode ? !saveToDatabase : false,
       is_default: true,
@@ -553,6 +555,14 @@ export function CreateFoodMode({
             metadata.brand = data.brand;
           if (metadataChanged('notes', data.notes !== previous?.data.notes))
             metadata.notes = saveFoodPayload.notes;
+          if (
+            metadataChanged(
+              'nutri_score_category',
+              data.nutriScoreCategory !== previous?.data.nutriScoreCategory
+            )
+          )
+            metadata.nutri_score_category =
+              saveFoodPayload.nutri_score_category;
           if (metadataChanged('barcode', resolvedBarcode !== previous?.barcode))
             metadata.barcode = resolvedBarcode;
           if (
@@ -591,6 +601,7 @@ export function CreateFoodMode({
                 name: data.name,
                 brand: data.brand,
                 notes: data.notes,
+                nutriScoreCategory: data.nutriScoreCategory,
               },
               custom: previous?.custom ?? requestSnapshot.custom,
             };
@@ -770,6 +781,7 @@ export function CreateFoodMode({
             caffeine_mg: groupNutrition.caffeine_mg,
             water_ml: groupNutrition.water_ml,
             alcohol_g: groupNutrition.alcohol_g,
+            added_sugars: groupNutrition.added_sugars,
           })
         )
       ).catch(() => {

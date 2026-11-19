@@ -35,6 +35,7 @@ const formValues = {
   caffeineMg: '',
   waterMl: '',
   alcoholG: '',
+  addedSugars: '',
 } as FoodFormData;
 
 describe('persistFoodEdits custom nutrients', () => {

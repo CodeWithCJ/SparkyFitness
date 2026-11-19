@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { OctagonAlert, Search, type LucideIcon } from 'lucide-react';
 import {
+  NUTRI_SCORE_DARK_TEXT_GRADES,
   NUTRI_SCORE_GRADE_COLORS,
   NUTRI_SCORE_GRADES,
   type FoodHealthScore,
@@ -58,7 +59,14 @@ const NutriScoreBadge = ({ nutriScore }: { nutriScore: NutriScoreResult }) => {
             aria-hidden="true"
             className={cn(
               'flex h-full items-center justify-center uppercase',
-              active ? 'w-5 text-white' : 'w-3 text-muted-foreground/60'
+              active
+                ? cn(
+                    'w-5',
+                    NUTRI_SCORE_DARK_TEXT_GRADES.has(letter)
+                      ? 'text-neutral-900'
+                      : 'text-white'
+                  )
+                : 'w-3 text-muted-foreground/60'
             )}
             style={
               active
@@ -88,20 +96,19 @@ const FoodHealthBadges = ({
   className,
 }: FoodHealthBadgesProps) => {
   const { t } = useTranslation();
-  const { frontOfPackRegion } = usePreferences();
+  const { frontOfPackRegion, nutriScoreEnabled } = usePreferences();
   if (!healthScore) return null;
 
   const warnings =
     frontOfPackRegion === 'none' ? [] : healthScore.warnings[frontOfPackRegion];
-  if (!healthScore.nutri_score && warnings.length === 0) return null;
+  const nutriScore = nutriScoreEnabled ? healthScore.nutri_score : null;
+  if (!nutriScore && warnings.length === 0) return null;
   const WarningIcon =
     frontOfPackRegion === 'none' ? null : REGION_ICONS[frontOfPackRegion];
 
   return (
     <div className={cn('flex flex-wrap items-center gap-1', className)}>
-      {healthScore.nutri_score && (
-        <NutriScoreBadge nutriScore={healthScore.nutri_score} />
-      )}
+      {nutriScore && <NutriScoreBadge nutriScore={nutriScore} />}
       {warnings.map((warning) => (
         <Badge
           key={warning}

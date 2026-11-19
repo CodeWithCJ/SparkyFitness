@@ -181,6 +181,7 @@ export function AdjustNutritionMode({
       caffeine_mg: parseOptional(data.caffeineMg),
       water_ml: parseOptional(data.waterMl),
       alcohol_g: parseOptional(data.alcoholG),
+      added_sugars: parseOptional(data.addedSugars) ?? null,
       polyunsaturated_fat: snapshot?.polyunsaturated_fat,
       monounsaturated_fat: snapshot?.monounsaturated_fat,
       glycemic_index: snapshot?.glycemic_index,

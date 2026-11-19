@@ -102,6 +102,7 @@ export async function persistExternalVariants(
           caffeine_mg: variant.caffeine_mg,
           water_ml: variant.water_ml,
           alcohol_g: variant.alcohol_g,
+          added_sugars: variant.added_sugars,
           cholesterol: variant.cholesterol,
           vitamin_a: variant.vitamin_a,
           vitamin_c: variant.vitamin_c,

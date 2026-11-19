@@ -8,14 +8,23 @@ import {
 } from '@workspace/shared';
 
 const ZERO: NutrientsPer100 = {
+  category: 'general',
   isLiquid: false,
+  hasScoreInputs: true,
   energyKcal: 0,
   sugars: 0,
+  addedSugars: null,
+  fat: 0,
   saturatedFat: 0,
   transFat: 0,
   sodiumMg: 0,
   fiber: 0,
   protein: 0,
+};
+
+const BEVERAGE: Partial<NutrientsPer100> = {
+  category: 'beverage',
+  isLiquid: true,
 };
 
 function per100(overrides: Partial<NutrientsPer100>): NutrientsPer100 {
@@ -34,7 +43,7 @@ describe('computeNutriScore (2023 algorithm)', () => {
     expect(
       computeNutriScore(
         per100({
-          isLiquid: true,
+          ...BEVERAGE,
           energyKcal: 195 / 4.184,
           sugars: 4.8,
           saturatedFat: 1,
@@ -81,12 +90,12 @@ describe('computeNutriScore (2023 algorithm)', () => {
 
   it('scores fruit, vegetables and legumes on the general and beverage scales', () => {
     expect(computeNutriScore(per100({}), 100).score).toBe(-5);
-    expect(computeNutriScore(per100({ isLiquid: true }), 100).score).toBe(-6);
+    expect(computeNutriScore(per100(BEVERAGE), 100).score).toBe(-6);
     expect(computeNutriScore(per100({}), 50).score).toBe(-1);
   });
 
   it('never grades a beverage A without knowing it is water', () => {
-    expect(computeNutriScore(per100({ isLiquid: true }), null).grade).toBe('b');
+    expect(computeNutriScore(per100(BEVERAGE), null).grade).toBe('b');
   });
 });
 
@@ -104,20 +113,22 @@ const banana: HealthScoreFoodInput = {
   },
 };
 
-// A 350 ml can, so the per-100 ml normalisation is exercised too.
+// A 350 ml can, so the per-100 ml normalisation is exercised too. Added sugars
+// are per serving like every other variant nutrient: 37.1 g = 10.6 g / 100 ml.
 const soda: HealthScoreFoodInput = {
-  added_sugars: 10.6,
+  nutri_score_category: 'beverage',
   default_variant: {
     serving_size: 350,
     serving_unit: 'ml',
     calories: 147,
+    saturated_fat: 0,
     sugars: 37.1,
+    added_sugars: 37.1,
     sodium: 35,
   },
 };
 
 const salty: HealthScoreFoodInput = {
-  added_sugars: 1,
   default_variant: {
     serving_size: 30,
     serving_unit: 'g',
@@ -126,7 +137,46 @@ const salty: HealthScoreFoodInput = {
     trans_fat: 0.2,
     sodium: 240,
     sugars: 0.5,
+    added_sugars: 0.3,
     protein: 2,
+  },
+};
+
+function withAddedSugars(
+  food: HealthScoreFoodInput,
+  addedSugars: number | null
+): HealthScoreFoodInput {
+  return {
+    ...food,
+    default_variant: { ...food.default_variant, added_sugars: addedSugars },
+  };
+}
+
+// Per 100 g. Thresholds: ProductOpener::Nutriscore %points_thresholds_2023
+// (energy from saturates and saturates/lipids ratio for fats, oils, nuts, seeds).
+const oliveOil: HealthScoreFoodInput = {
+  nutri_score_category: 'fat_oil_nut',
+  default_variant: {
+    serving_size: 100,
+    serving_unit: 'g',
+    calories: 884,
+    fat: 100,
+    saturated_fat: 14,
+    sugars: 0,
+    sodium: 2,
+  },
+};
+
+const butter: HealthScoreFoodInput = {
+  nutri_score_category: 'fat_oil_nut',
+  default_variant: {
+    serving_size: 100,
+    serving_unit: 'g',
+    calories: 717,
+    fat: 81,
+    saturated_fat: 51,
+    sugars: 0.1,
+    sodium: 11,
   },
 };
 
@@ -165,10 +215,7 @@ describe('computeFoodHealthScore', () => {
   });
 
   it('skips every added-sugar rule when added_sugars is unknown', () => {
-    const { warnings } = computeFoodHealthScore({
-      ...soda,
-      added_sugars: null,
-    });
+    const { warnings } = computeFoodHealthScore(withAddedSugars(soda, null));
     expect(warnings.brazil).toEqual([]);
     expect(warnings.chile).toEqual([]);
     // Without free sugars Mexico's liquid calorie seal falls back to total
@@ -177,21 +224,22 @@ describe('computeFoodHealthScore', () => {
   });
 
   it('treats a known zero added sugar as "sugar not added" in Chile', () => {
-    const { warnings } = computeFoodHealthScore({ ...soda, added_sugars: 0 });
+    const { warnings } = computeFoodHealthScore(withAddedSugars(soda, 0));
     expect(warnings.chile).not.toContain('sugars');
   });
 
-  it('uses the stricter liquid thresholds for volume servings', () => {
+  it('uses the stricter liquid thresholds for beverages', () => {
     // 3 g sat fat / 100 ml meets Brazil's liquid limit but not the solid one.
-    const drink = (unit: string) =>
+    const drink = (unit: string, category?: 'beverage') =>
       computeFoodHealthScore({
+        nutri_score_category: category,
         default_variant: {
           serving_size: 100,
           serving_unit: unit,
           saturated_fat: 3,
         },
       }).warnings.brazil;
-    expect(drink('ml')).toEqual(['saturated_fat']);
+    expect(drink('ml', 'beverage')).toEqual(['saturated_fat']);
     expect(drink('g')).toEqual([]);
   });
 
@@ -234,6 +282,126 @@ describe('computeFoodHealthScore', () => {
   });
 });
 
+describe('computeFoodHealthScore edge cases', () => {
+  it('returns no grade when a required nutrient is unknown', () => {
+    const base = banana.default_variant!;
+    for (const missing of [
+      'calories',
+      'sugars',
+      'saturated_fat',
+      'sodium',
+    ] as const) {
+      const result = computeFoodHealthScore({
+        default_variant: { ...base, [missing]: null },
+      });
+      expect(result.nutri_score, missing).toBeNull();
+    }
+  });
+
+  it('returns no grade when every input is zero', () => {
+    const result = computeFoodHealthScore({
+      default_variant: {
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 0,
+        sugars: 0,
+        saturated_fat: 0,
+        sodium: 0,
+      },
+    });
+    expect(result.nutri_score).toBeNull();
+  });
+
+  it('does not treat a volume serving unit as a beverage', () => {
+    const variant = {
+      serving_size: 250,
+      serving_unit: 'ml',
+      calories: 300,
+      sugars: 2,
+      saturated_fat: 5,
+      sodium: 400,
+    };
+    expect(
+      computeFoodHealthScore({ default_variant: variant }).nutri_score
+    ).toBeNull();
+    expect(
+      computeFoodHealthScore({
+        nutri_score_category: 'general',
+        default_variant: variant,
+      }).nutri_score
+    ).toBeNull();
+    expect(
+      computeFoodHealthScore({
+        nutri_score_category: 'beverage',
+        default_variant: variant,
+      }).nutri_score?.source
+    ).toBe('computed');
+  });
+
+  it('needs total fat to score the fats, oils and nuts table', () => {
+    const { fat: _fat, ...noFat } = oliveOil.default_variant!;
+    expect(
+      computeFoodHealthScore({ ...oliveOil, default_variant: noFat })
+        .nutri_score
+    ).toBeNull();
+  });
+
+  it('ignores protein in the fats table once negative points reach 7', () => {
+    const sweetenedNuts: HealthScoreFoodInput = {
+      nutri_score_category: 'fat_oil_nut',
+      default_variant: {
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 550,
+        fat: 50,
+        saturated_fat: 10,
+        sugars: 10,
+        sodium: 0,
+        protein: 26,
+      },
+    };
+
+    expect(computeFoodHealthScore(sweetenedNuts).nutri_score).toEqual({
+      grade: 'c',
+      score: 7,
+      source: 'computed',
+    });
+  });
+
+  it('grades olive oil C, not E, with the fats table', () => {
+    // 14 g sat fat = 518 kJ -> 4, ratio 14 % -> 1: N = 5 -> C (<= 10).
+    expect(computeFoodHealthScore(oliveOil).nutri_score).toEqual({
+      grade: 'c',
+      score: 5,
+      source: 'computed',
+    });
+    // The general table would give 20 points for the same oil.
+    expect(
+      computeFoodHealthScore({ ...oliveOil, nutri_score_category: null })
+        .nutri_score?.grade
+    ).toBe('e');
+  });
+
+  it('still grades a saturated-fat-heavy fat E', () => {
+    // 51 g sat fat -> 10 energy points, ratio 63 % -> 9: N = 19 -> E (> 18).
+    expect(computeFoodHealthScore(butter).nutri_score).toEqual({
+      grade: 'e',
+      score: 19,
+      source: 'computed',
+    });
+  });
+
+  it('lets a trusted provider grade win over the category table', () => {
+    expect(
+      computeFoodHealthScore({
+        ...oliveOil,
+        provider_type: 'openfoodfacts',
+        provider_nutriscore_grade: 'b',
+      }).nutri_score
+    ).toEqual({ grade: 'b', score: null, source: 'provider' });
+  });
+});
+
 describe('nutrientsPer100', () => {
   it('converts imperial servings to grams and millilitres', () => {
     expect(
@@ -241,7 +409,24 @@ describe('nutrientsPer100', () => {
         ?.sodiumMg
     ).toBeCloseTo(1000);
     expect(
-      nutrientsPer100({ serving_size: 1, serving_unit: 'cup', sugars: 23.6588 })
+      nutrientsPer100(
+        { serving_size: 1, serving_unit: 'cup', sugars: 23.6588 },
+        'beverage'
+      )
     ).toMatchObject({ isLiquid: true, sugars: expect.closeTo(10) });
+  });
+
+  it('refuses a volume serving for anything but a beverage', () => {
+    expect(
+      nutrientsPer100({ serving_size: 1, serving_unit: 'cup', sugars: 5 })
+    ).toBeNull();
+  });
+
+  it('keeps unknown added sugars null instead of 0', () => {
+    const variant = { serving_size: 50, serving_unit: 'g' };
+    expect(nutrientsPer100(variant)?.addedSugars).toBeNull();
+    expect(
+      nutrientsPer100({ ...variant, added_sugars: 5 })?.addedSugars
+    ).toBeCloseTo(10);
   });
 });

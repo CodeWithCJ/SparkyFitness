@@ -2,7 +2,7 @@ import { getClient } from '../db/poolManager.js';
 import { log } from '../config/logging.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'pg-f... Remove this comment to see the full error message
 import format from 'pg-format';
-import { sanitizeGlycemicIndex } from './food.js';
+import { sanitizeAddedSugars, sanitizeGlycemicIndex } from './food.js';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function createFoodVariant(variantData: any, userId: any) {
   const client = await getClient(userId); // User-specific operation
@@ -13,8 +13,8 @@ async function createFoodVariant(variantData: any, userId: any) {
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
-        source, ai_confidence, allergens, traces, caffeine_mg, water_ml, alcohol_g, abv_percent, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, now(), now()) RETURNING *`,
+        source, ai_confidence, allergens, traces, caffeine_mg, water_ml, alcohol_g, abv_percent, added_sugars, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, now(), now()) RETURNING *`,
       [
         variantData.food_id,
         variantData.serving_size,
@@ -47,6 +47,7 @@ async function createFoodVariant(variantData: any, userId: any) {
         variantData.water_ml,
         variantData.alcohol_g,
         variantData.abv_percent,
+        sanitizeAddedSugars(variantData.added_sugars),
       ]
     );
     return result.rows[0];
@@ -140,6 +141,7 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
         water_ml = COALESCE($31, water_ml),
         alcohol_g = COALESCE($32, alcohol_g),
         abv_percent = COALESCE($33, abv_percent),
+        added_sugars = COALESCE($34, added_sugars),
         updated_at = now()
       WHERE id = $27
       RETURNING *`,
@@ -179,6 +181,7 @@ async function updateFoodVariant(id: any, variantData: any, userId: any) {
         variantData.water_ml,
         variantData.alcohol_g,
         variantData.abv_percent,
+        sanitizeAddedSugars(variantData.added_sugars),
       ]
     );
     // If this variant is being set as default, ensure all other variants for this food_id are not default
@@ -218,7 +221,7 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
         saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
         cholesterol, sodium, potassium, dietary_fiber, sugars,
         vitamin_a, vitamin_c, calcium, iron, is_default, glycemic_index, custom_nutrients,
-        source, ai_confidence, caffeine_mg, water_ml, alcohol_g, abv_percent, created_at, updated_at
+        source, ai_confidence, caffeine_mg, water_ml, alcohol_g, abv_percent, added_sugars, created_at, updated_at
       ) VALUES %L RETURNING id`;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const values = variantsData.map((variant: any) => [
@@ -251,6 +254,7 @@ async function bulkCreateFoodVariants(variantsData: any, userId: any) {
       variant.water_ml,
       variant.alcohol_g,
       variant.abv_percent,
+      sanitizeAddedSugars(variant.added_sugars),
       'now()',
       'now()',
     ]);

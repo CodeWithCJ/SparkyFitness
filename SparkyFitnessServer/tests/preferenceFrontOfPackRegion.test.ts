@@ -40,4 +40,17 @@ describe('front-of-pack region preference validation', () => {
       })
     ).rejects.toMatchObject({ status: 400 });
   });
+
+  it('accepts a boolean nutri_score_enabled and rejects anything else', async () => {
+    await expect(
+      preferenceService.updateUserPreferences('user-1', 'user-1', {
+        nutri_score_enabled: true,
+      })
+    ).resolves.toEqual({ user_id: 'user-1' });
+    await expect(
+      preferenceService.updateUserPreferences('user-1', 'user-1', {
+        nutri_score_enabled: 'yes',
+      } as unknown as UserPreferencesMutator)
+    ).rejects.toMatchObject({ status: 400 });
+  });
 });

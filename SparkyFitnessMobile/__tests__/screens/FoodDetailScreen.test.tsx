@@ -12,6 +12,7 @@ import {
   useDeleteFood,
   useFavorites,
   useFoodVariants,
+  usePreferences,
   useProfile,
   useServerConnection,
   useToggleFavorite,
@@ -506,6 +507,57 @@ describe('FoodDetailScreen', () => {
     expect(navigation.setParams).toHaveBeenCalledWith({
       updatedItem: undefined,
       updatedSelectedVariantId: undefined,
+    });
+  });
+
+  describe('Nutri-Score and front-of-pack warnings', () => {
+    const healthScore = {
+      nutri_score: { grade: 'd', score: 12, source: 'computed' },
+      warnings: {
+        brazil: ['added_sugars', 'sodium'],
+        chile: ['calories'],
+        mexico: [],
+      },
+    };
+    const withPreferences = (preferences: Record<string, unknown>) =>
+      (usePreferences as jest.Mock).mockReturnValue({
+        preferences,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      });
+
+    it('hides the badge and the warnings while both preferences are off', () => {
+      withPreferences({ nutri_score_enabled: false });
+      const screen = renderScreen({ healthScore });
+
+      expect(screen.queryByTestId('nutri-score-badge')).toBeNull();
+      expect(screen.queryByTestId('front-of-pack-warnings-brazil')).toBeNull();
+    });
+
+    it('shows the badge once Nutri-Score is enabled', () => {
+      withPreferences({ nutri_score_enabled: true });
+      const screen = renderScreen({ healthScore });
+
+      expect(screen.getByTestId('nutri-score-badge')).toBeTruthy();
+      expect(screen.queryByTestId('front-of-pack-warnings-brazil')).toBeNull();
+    });
+
+    it('shows the warnings of the chosen region only', () => {
+      withPreferences({ front_of_pack_region: 'brazil' });
+      const screen = renderScreen({ healthScore });
+
+      expect(screen.queryByTestId('nutri-score-badge')).toBeNull();
+      expect(screen.getByText('High in added sugar')).toBeTruthy();
+      expect(screen.getByText('High in sodium')).toBeTruthy();
+      expect(screen.queryByText('High in calories')).toBeNull();
+    });
+
+    it('renders nothing for a region with no warnings', () => {
+      withPreferences({ front_of_pack_region: 'mexico' });
+      const screen = renderScreen({ healthScore });
+
+      expect(screen.queryByTestId('front-of-pack-warnings-mexico')).toBeNull();
     });
   });
 });

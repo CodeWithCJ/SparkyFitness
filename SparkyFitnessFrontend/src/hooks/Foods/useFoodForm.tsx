@@ -44,6 +44,7 @@ import {
   isCalculatedFoodPortion,
   parseNamedFoodPortion,
   type FoodPortionDefinition,
+  type NutriScoreCategory,
 } from '@workspace/shared';
 import type { AiEstimateData } from '@/hooks/Foods/useUnitConversion';
 import type {
@@ -72,8 +73,8 @@ interface FoodFormData {
   is_quick_food: boolean;
   barcode: string;
   notes: string;
-  added_sugars: number | undefined;
   fruit_veg_legume_percent: number | undefined;
+  nutri_score_category: NutriScoreCategory | null;
 }
 
 type VariantMeta = {
@@ -532,8 +533,8 @@ export function useCustomFoodForm({
     is_quick_food: false,
     barcode: '',
     notes: '',
-    added_sugars: undefined,
     fruit_veg_legume_percent: undefined,
+    nutri_score_category: null,
   });
 
   // Provider nutrient values the user mapped onto this food (custom nutrient
@@ -641,8 +642,8 @@ export function useCustomFoodForm({
       is_quick_food: false,
       barcode: '',
       notes: '',
-      added_sugars: undefined,
       fruit_veg_legume_percent: undefined,
+      nutri_score_category: null,
     });
     setImageItems([]);
     const defaultVariant = createDefaultFormVariant(customNutrients);
@@ -733,8 +734,8 @@ export function useCustomFoodForm({
         is_quick_food: food.is_quick_food || false,
         barcode: food.barcode || '',
         notes: food.notes || '',
-        added_sugars: food.added_sugars ?? undefined,
         fruit_veg_legume_percent: food.fruit_veg_legume_percent ?? undefined,
+        nutri_score_category: food.nutri_score_category ?? null,
       });
       // A provider search result has no `images` array yet — its photo is the
       // single upstream `image_url`. Seed the picker with it so importing
@@ -775,8 +776,8 @@ export function useCustomFoodForm({
         is_quick_food: false,
         barcode: '',
         notes: '',
-        added_sugars: undefined,
         fruit_veg_legume_percent: undefined,
+        nutri_score_category: null,
       });
       const mapped = initialVariants.map((variant) =>
         foodVariantToFormVariant({
@@ -1323,6 +1324,7 @@ export function useCustomFoodForm({
         caffeine_mg: scaled.caffeine_mg,
         water_ml: scaled.water_ml,
         alcohol_g: scaled.alcohol_g,
+        added_sugars: scaled.added_sugars,
         // Not scaled -- see UNSCALED_NUTRIENT_FIELDS.
         abv_percent: scaled.abv_percent,
         custom_nutrients: scaled.custom_nutrients
@@ -1364,7 +1366,7 @@ export function useCustomFoodForm({
 
   const updateField = (
     field: string,
-    value: string | boolean | number | undefined
+    value: string | boolean | number | null | undefined
   ) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -1385,6 +1387,8 @@ export function useCustomFoodForm({
         ...prev,
         name: refreshed.name || prev.name,
         brand: refreshed.brand || prev.brand,
+        nutri_score_category:
+          refreshed.nutri_score_category ?? prev.nutri_score_category,
       }));
 
       const incoming = refreshed.default_variant;
@@ -1550,9 +1554,8 @@ export function useCustomFoodForm({
         // `notes` as "leave unchanged", so clearing a note must send null.
         notes: formData.notes.trim() || null,
         // Null, not undefined, so clearing a value reaches the server.
-        added_sugars: formData.added_sugars ?? null,
         fruit_veg_legume_percent: formData.fruit_veg_legume_percent ?? null,
-        provider_nutriscore_grade: food?.provider_nutriscore_grade,
+        nutri_score_category: formData.nutri_score_category,
         provider_external_id: food?.provider_external_id,
         provider_type: food?.provider_type,
         provider_verified: food?.provider_verified,

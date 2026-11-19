@@ -42,6 +42,7 @@ export interface DayTotals {
   calcium?: number;
   caffeine_mg?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   custom_nutrients?: Record<string, number>;
 }
 

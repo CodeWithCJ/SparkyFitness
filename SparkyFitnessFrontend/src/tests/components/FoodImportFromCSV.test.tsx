@@ -55,6 +55,20 @@ describe('FoodImportFromCSV health score columns', () => {
     expect(row.fruit_veg_legume_percent).toBeNull();
   });
 
+  it('keeps a valid nutri_score_category', async () => {
+    const row = await importCsv(
+      `${REQUIRED},nutri_score_category\n${REQUIRED_VALUES},beverage`
+    );
+    expect(row.nutri_score_category).toBe('beverage');
+  });
+
+  it('nulls an unknown nutri_score_category', async () => {
+    const row = await importCsv(
+      `${REQUIRED},nutri_score_category\n${REQUIRED_VALUES},cheese`
+    );
+    expect(row.nutri_score_category).toBeNull();
+  });
+
   it('accepts a file without the columns and leaves them off the row', async () => {
     const row = await importCsv(`${REQUIRED}\n${REQUIRED_VALUES}`);
     expect(row.added_sugars ?? null).toBeNull();

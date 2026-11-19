@@ -40,6 +40,7 @@ export const foodEntryResponseSchema = z.object({
   caffeine_mg: z.number().nullable(),
   water_ml: z.number().nullable(),
   alcohol_g: z.number().nullable(),
+  added_sugars: z.number().nullable(),
   glycemic_index: z.string().nullable(),
   custom_nutrients: z
     .record(z.string(), z.union([z.string(), z.number()]))

@@ -491,6 +491,7 @@ describe('MealAddScreen', () => {
           protein: 28,
           carbs: 0,
           fat: 7,
+          added_sugars: null,
         },
       ],
     });

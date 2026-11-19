@@ -419,6 +419,7 @@ describe('FoodFormScreen', () => {
       caffeineMg: '',
       waterMl: '',
       alcoholG: '',
+      addedSugars: '',
     };
     const state: {
       food: FoodItem | null;
@@ -577,6 +578,7 @@ describe('FoodFormScreen', () => {
       iron: '',
       vitaminA: '',
       vitaminC: '',
+      addedSugars: '',
     };
     mockUnitSelectionResult = {
       kind: 'draft',
@@ -759,6 +761,7 @@ describe('FoodFormScreen', () => {
         caffeineMg: '',
         waterMl: '',
         alcoholG: '',
+        addedSugars: '',
       };
       const reference: FoodVariantDetail = {
         id: 'grams',
@@ -1135,6 +1138,7 @@ describe('FoodFormScreen', () => {
         caffeineMg: '',
         waterMl: '',
         alcoholG: '',
+        addedSugars: '',
       };
       mockUseAddFoodEntry.mockImplementation(
         jest.requireActual<typeof import('../../src/hooks/useAddFoodEntry')>(
@@ -2727,6 +2731,49 @@ describe('FoodFormScreen', () => {
     });
   });
 
+  it('sends the chosen Nutri-Score category and the entered added sugars, never 0 for a blank', async () => {
+    mockSaveFoodAsync.mockResolvedValue({ id: 'lib-food-2' });
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      addedSugars: '4.5',
+      nutriScoreCategory: 'beverage',
+    };
+
+    const screen = renderScreen({
+      mode: 'create-food',
+      pickerMode: 'library',
+    });
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(mockSaveFoodAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          added_sugars: 4.5,
+          nutri_score_category: 'beverage',
+        }),
+        undefined
+      );
+    });
+
+    mockSaveFoodAsync.mockClear();
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      addedSugars: '',
+      nutriScoreCategory: '',
+    };
+    fireEvent.press(screen.getByText('Save'));
+
+    await waitFor(() => {
+      expect(mockSaveFoodAsync).toHaveBeenCalledWith(
+        expect.objectContaining({
+          added_sugars: null,
+          nutri_score_category: null,
+        }),
+        undefined
+      );
+    });
+  });
+
   it('blocks save and toasts when the barcode is not 8-14 digits', () => {
     const screen = renderScreen({
       mode: 'create-food',
@@ -3173,6 +3220,7 @@ describe('FoodFormScreen', () => {
         caffeine_mg: 0,
         water_ml: 0,
         alcohol_g: 0,
+        added_sugars: null,
         glycemic_index: undefined,
         custom_nutrients: {},
         source: undefined,
@@ -3585,6 +3633,77 @@ describe('FoodFormScreen', () => {
       );
     });
     expect(mockCreateVariant).not.toHaveBeenCalled();
+  });
+
+  it('sends the Nutri-Score category on edit only when it changed', async () => {
+    answerSyncPrompt('keep');
+    const baseValues = {
+      name: 'Tomato Soup',
+      brand: 'Brand Co',
+      servingSize: '250',
+      servingUnit: 'ml',
+      calories: '90',
+      protein: '2',
+      carbs: '12',
+      fat: '3',
+    };
+    mockUseFoodVariants.mockReturnValue({
+      variants: [
+        {
+          id: 'variant-1',
+          food_id: 'food-1',
+          serving_size: 250,
+          serving_unit: 'ml',
+          calories: 90,
+          protein: 2,
+          carbs: 12,
+          fat: 3,
+          is_default: true,
+        },
+      ],
+      isLoading: false,
+      isError: false,
+    } as any);
+    const renderEdit = (initialCategory: '' | 'beverage') =>
+      renderScreen({
+        mode: 'edit-food',
+        item: {
+          id: 'food-1',
+          name: 'Tomato Soup',
+          brand: 'Brand Co',
+          servingSize: 250,
+          servingUnit: 'ml',
+          calories: 90,
+          protein: 2,
+          carbs: 12,
+          fat: 3,
+          source: 'local',
+          originalItem: {},
+        },
+        initialValues: { ...baseValues, nutriScoreCategory: initialCategory },
+        returnKey: 'FoodDetail-key',
+        foodId: 'food-1',
+        variantId: 'variant-1',
+      });
+
+    mockSubmittedFoodFormData = {
+      ...mockSubmittedFoodFormData,
+      ...baseValues,
+      nutriScoreCategory: 'beverage',
+    };
+    fireEvent.press(renderEdit('').getByText('Save'));
+    await waitFor(() => expect(updateFood).toHaveBeenCalled());
+    expect(updateFood).toHaveBeenLastCalledWith(
+      'food-1',
+      expect.objectContaining({ nutri_score_category: 'beverage' }),
+      undefined
+    );
+
+    updateFood.mockClear();
+    navigation.goBack.mockClear();
+    fireEvent.press(renderEdit('beverage').getByText('Save'));
+    await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());
+    expect(updateFood).not.toHaveBeenCalled();
   });
 
   it('asks before touching past diary entries, and leaves them alone by default', async () => {

@@ -222,7 +222,6 @@ describe('mapOpenFoodFactsProduct', () => {
     expect(result).toEqual({
       name: 'Nutella',
       brand: 'Ferrero',
-      added_sugars: null,
       provider_nutriscore_grade: null,
       barcode: '3017620422003',
       provider_external_id: '3017620422003',
@@ -259,6 +258,33 @@ describe('mapOpenFoodFactsProduct', () => {
         traces: null,
       },
     });
+  });
+  it('maps the added-sugars nutriment per serving, and leaves it unknown when absent', () => {
+    const product = (nutriments: Record<string, number>) => ({
+      product_name: 'Cola',
+      code: '444',
+      serving_quantity: 330,
+      nutriments: { 'energy-kcal_100g': 42, ...nutriments },
+    });
+    expect(
+      mapOpenFoodFactsProduct(product({ 'added-sugars_100g': 10.6 }))
+        .default_variant.added_sugars
+    ).toBeCloseTo(35, 0);
+    expect(
+      mapOpenFoodFactsProduct(product({})).default_variant.added_sugars
+    ).toBeUndefined();
+  });
+  it('derives the Nutri-Score category from the OFF category tags', () => {
+    const category = (categories_tags: string[]) =>
+      mapOpenFoodFactsProduct({
+        product_name: 'X',
+        code: '555',
+        categories_tags,
+        nutriments: { 'energy-kcal_100g': 50 },
+      }).nutri_score_category;
+    expect(category(['en:beverages', 'en:sodas'])).toBe('beverage');
+    expect(category(['en:fats', 'en:vegetable-oils'])).toBe('fat_oil_nut');
+    expect(category(['en:snacks'])).toBeUndefined();
   });
   it('should convert sodium from grams to milligrams', () => {
     const product = {
@@ -425,6 +451,7 @@ describe('mapUsdaBarcodeProduct', () => {
         caffeine_mg: 0,
         water_ml: 0,
         alcohol_g: 0,
+        added_sugars: null,
         polyunsaturated_fat: 0,
         monounsaturated_fat: 0,
         vitamin_a: 0,
@@ -451,6 +478,7 @@ describe('mapUsdaBarcodeProduct', () => {
           caffeine_mg: 0,
           water_ml: 0,
           alcohol_g: 0,
+          added_sugars: null,
           polyunsaturated_fat: 0,
           monounsaturated_fat: 0,
           vitamin_a: 0,
@@ -476,6 +504,7 @@ describe('mapUsdaBarcodeProduct', () => {
           caffeine_mg: 0,
           water_ml: 0,
           alcohol_g: 0,
+          added_sugars: null,
           polyunsaturated_fat: 0,
           monounsaturated_fat: 0,
           vitamin_a: 0,

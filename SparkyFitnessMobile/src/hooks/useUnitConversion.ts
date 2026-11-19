@@ -129,6 +129,10 @@ export function useUnitConversion({
         caffeine_mg: (baseVariant.caffeine_mg || 0) * ratio,
         water_ml: (baseVariant.water_ml || 0) * ratio,
         alcohol_g: (baseVariant.alcohol_g || 0) * ratio,
+        added_sugars:
+          baseVariant.added_sugars == null
+            ? null
+            : baseVariant.added_sugars * ratio,
         // ABV is a property of the liquid, not a per-serving amount.
         abv_percent: baseVariant.abv_percent,
         glycemic_index: baseVariant.glycemic_index,
@@ -177,6 +181,7 @@ export function useUnitConversion({
         caffeine_mg: baseVariant.caffeine_mg || 0,
         water_ml: baseVariant.water_ml || 0,
         alcohol_g: baseVariant.alcohol_g || 0,
+        added_sugars: baseVariant.added_sugars ?? null,
         abv_percent: baseVariant.abv_percent,
         glycemic_index: baseVariant.glycemic_index,
         custom_nutrients: baseVariant.custom_nutrients

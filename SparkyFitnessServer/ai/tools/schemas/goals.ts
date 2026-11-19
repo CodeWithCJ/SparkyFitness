@@ -102,6 +102,13 @@ const setGoalsSchema = z
       .describe(
         'Daily alcohol / pure ethanol ceiling (g). Default 28 g (~2 US standard drinks) when never set.'
       ),
+    added_sugars: z.coerce
+      .number()
+      .min(0)
+      .optional()
+      .describe(
+        'Daily added sugars ceiling (g). No default: unset means no ceiling is tracked.'
+      ),
     custom_nutrients: z
       .record(z.string(), z.coerce.number())
       .optional()
@@ -236,6 +243,11 @@ export const manageGoalsInput = z.object({
     .min(0)
     .optional()
     .describe('set_goals: daily alcohol / pure ethanol ceiling (g)'),
+  added_sugars: z.coerce
+    .number()
+    .min(0)
+    .optional()
+    .describe('set_goals: daily added sugars ceiling (g)'),
   // Custom nutrients as a map of name -> amount (numeric)
   custom_nutrients: z
     .record(z.string(), z.coerce.number())

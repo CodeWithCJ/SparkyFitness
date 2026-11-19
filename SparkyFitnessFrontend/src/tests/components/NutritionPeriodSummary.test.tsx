@@ -121,6 +121,7 @@ const EMPTY_NUTRIENTS = {
   caffeine_mg: 0,
   water_ml: 0,
   alcohol_g: 0,
+  added_sugars: 0,
 };
 
 const day = (date: string, calories: number): NutritionData => ({

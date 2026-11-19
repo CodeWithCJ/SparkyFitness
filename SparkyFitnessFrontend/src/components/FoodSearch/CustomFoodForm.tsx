@@ -27,7 +27,19 @@ import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 import { useUserAiConfigAllowed } from '@/hooks/AI/useUserAiConfigAllowed';
 import { UNIT_GROUPS } from '@/constants/foodForm';
 import { deriveSavedAiUnits } from '@/utils/foodAiUnits';
-import { getConversionFactor, parseNamedFoodPortion } from '@workspace/shared';
+import {
+  getConversionFactor,
+  NUTRI_SCORE_CATEGORIES,
+  parseNamedFoodPortion,
+  type NutriScoreCategory,
+} from '@workspace/shared';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { FoodImagePicker } from './FoodImagePicker';
 import { resolveFoodImageSrc } from '@/utils/foodImages';
 import { useOpenFoodFactsContributionAvailability } from '@/hooks/Foods/useOpenFoodFactsContribution';
@@ -48,6 +60,14 @@ const CustomFoodForm = ({
   visibleNutrients: passedVisibleNutrients,
 }: CustomFoodFormProps) => {
   const { t } = useTranslation();
+  const nutriScoreCategoryLabels: Record<NutriScoreCategory, string> = {
+    general: t('customFoodForm.nutriScoreCategoryGeneral', 'General'),
+    beverage: t('customFoodForm.nutriScoreCategoryBeverage', 'Beverage'),
+    fat_oil_nut: t(
+      'customFoodForm.nutriScoreCategoryFatOilNut',
+      'Fat, oil & nut'
+    ),
+  };
   const {
     nutrientDisplayPreferences,
     energyUnit,
@@ -495,20 +515,29 @@ const CustomFoodForm = ({
 
             <div className="grid grid-cols-1 gap-4 pt-2 sm:grid-cols-2">
               <div className="space-y-1.5">
-                <Label htmlFor="food-added-sugars">
+                <Label htmlFor="food-nutri-score-category">
                   {t(
-                    'customFoodForm.addedSugarsLabel',
-                    'Added sugars (g per 100 g/ml)'
+                    'customFoodForm.nutriScoreCategoryLabel',
+                    'Nutri-Score category'
                   )}
                 </Label>
-                <NumericInput
-                  id="food-added-sugars"
-                  min="0"
-                  step="0.1"
-                  value={formData.added_sugars}
-                  onValueChange={(value) => updateField('added_sugars', value)}
-                  placeholder={t('customFoodForm.unknown', 'Unknown')}
-                />
+                <Select
+                  value={formData.nutri_score_category ?? 'general'}
+                  onValueChange={(value) =>
+                    updateField('nutri_score_category', value)
+                  }
+                >
+                  <SelectTrigger id="food-nutri-score-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NUTRI_SCORE_CATEGORIES.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {nutriScoreCategoryLabels[category]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="food-fvl-percent">
@@ -532,7 +561,7 @@ const CustomFoodForm = ({
               <p className="text-xs text-muted-foreground sm:col-span-2">
                 {t(
                   'customFoodForm.healthScoreHelp',
-                  'Used for the Nutri-Score and front-of-pack warnings. Leave added sugars empty if the label does not state them.'
+                  'Used for the Nutri-Score and front-of-pack warnings. The category picks the scoring table: a drink in ml is only scored as a beverage when you choose Beverage. Added sugars is a nutrient of each serving size above; leave it empty if the label does not state it.'
                 )}
               </p>
             </div>

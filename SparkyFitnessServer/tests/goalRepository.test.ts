@@ -72,8 +72,8 @@ describe('goalRepository', () => {
       expect(mockClient.query).toHaveBeenCalledTimes(1);
       const [sql, params] = mockClient.query.mock.calls[0];
 
-      // Check positional params count ($1 through $37)
-      expect(params).toHaveLength(37);
+      // Check positional params count ($1 through $38)
+      expect(params).toHaveLength(38);
       expect(params[0]).toBe('user-1'); // $1 user_id
       expect(params[1]).toBe('2026-09-05'); // $2 goal_date
       expect(params[2]).toBe(2000); // $3 calories
@@ -81,6 +81,7 @@ describe('goalRepository', () => {
       expect(params[34]).toBe(14); // $35 alcohol_g
       expect(params[35]).toBe(10000); // $36 target_steps
       expect(params[36]).toBe(true); // $37 target_steps supplied
+      expect(params[37]).toBeNull(); // $38 added_sugars, omitted by this caller
       // target_steps is named once in the INSERT column list, as its last column
       expect(sql.split('VALUES')[0].match(/target_steps/g)?.length).toBe(1);
       // Every INSERT column has exactly one value placeholder.

@@ -105,6 +105,7 @@ export const createFoodVariant = async (
       caffeine_mg: variant.caffeine_mg,
       water_ml: variant.water_ml,
       alcohol_g: variant.alcohol_g,
+      added_sugars: variant.added_sugars ?? null,
       abv_percent: variant.abv_percent,
       glycemic_index: variant.glycemic_index,
       is_default: false,
@@ -247,6 +248,7 @@ export const saveFood = async (
           caffeine_mg: variant.caffeine_mg,
           water_ml: variant.water_ml,
           alcohol_g: variant.alcohol_g,
+          added_sugars: variant.added_sugars ?? null,
           abv_percent: variant.abv_percent,
           is_default: variant.is_default || false,
           glycemic_index: variant.glycemic_index,
@@ -291,6 +293,7 @@ export const saveFood = async (
         caffeine_mg: variant.caffeine_mg,
         water_ml: variant.water_ml,
         alcohol_g: variant.alcohol_g,
+        added_sugars: variant.added_sugars ?? null,
         abv_percent: variant.abv_percent,
         is_default: variant.is_default || false, // Pass is_default flag
         glycemic_index: variant.glycemic_index,
@@ -329,9 +332,8 @@ export const saveFood = async (
       // The update branch spreads foodData, but this object is explicit, so a
       // new field has to be listed here or it is silently dropped on create.
       notes: foodData.notes ?? null,
-      added_sugars: foodData.added_sugars ?? null,
       fruit_veg_legume_percent: foodData.fruit_veg_legume_percent ?? null,
-      provider_nutriscore_grade: foodData.provider_nutriscore_grade ?? null,
+      nutri_score_category: foodData.nutri_score_category ?? null,
       provider_external_id: foodData.provider_external_id,
       provider_type: foodData.provider_type,
       provider_verified: foodData.provider_verified,
@@ -363,6 +365,7 @@ export const saveFood = async (
       caffeine_mg: primaryVariant.caffeine_mg,
       water_ml: primaryVariant.water_ml,
       alcohol_g: primaryVariant.alcohol_g,
+      added_sugars: primaryVariant.added_sugars ?? null,
       abv_percent: primaryVariant.abv_percent,
       is_default: true, // Explicitly mark as default for new food creation
       glycemic_index: primaryVariant.glycemic_index,
@@ -436,6 +439,7 @@ export const saveFood = async (
       caffeine_mg: variant.caffeine_mg,
       water_ml: variant.water_ml,
       alcohol_g: variant.alcohol_g,
+      added_sugars: variant.added_sugars ?? null,
       abv_percent: variant.abv_percent,
       is_default: false, // Explicitly mark as not default for additional variants
       glycemic_index: variant.glycemic_index,

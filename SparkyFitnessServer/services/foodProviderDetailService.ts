@@ -80,6 +80,9 @@ export function normalizeFoodVariantForResponse(variant: unknown): unknown {
     ),
     water_ml: nullToUndefined(record.water_ml as number | null | undefined),
     alcohol_g: nullToUndefined(record.alcohol_g as number | null | undefined),
+    added_sugars: nullToUndefined(
+      record.added_sugars as number | null | undefined
+    ),
     abv_percent: nullToUndefined(
       record.abv_percent as number | null | undefined
     ),

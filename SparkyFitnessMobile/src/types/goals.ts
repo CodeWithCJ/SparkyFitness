@@ -20,6 +20,7 @@ export interface DailyGoals {
   iron?: number;
   caffeine_mg?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   water_goal_ml?: number;
   target_exercise_calories_burned?: number;
   target_exercise_duration_minutes?: number;

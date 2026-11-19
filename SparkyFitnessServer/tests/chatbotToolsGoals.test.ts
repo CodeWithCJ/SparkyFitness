@@ -255,6 +255,29 @@ describe('sparky_manage_goals', () => {
     );
   });
 
+  it('set_goals persists an added_sugars ceiling and keeps the stored one when omitted', async () => {
+    vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+      message: 'ok',
+    });
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      added_sugars: 25,
+    });
+
+    await tools.sparky_manage_goals.execute!(
+      { action: 'set_goals', start_date: '2026-06-15', added_sugars: 30 },
+      opts
+    );
+    await tools.sparky_manage_goals.execute!(
+      { action: 'set_goals', start_date: '2026-06-16', calories: 1900 },
+      opts
+    );
+
+    const calls = vi.mocked(goalService.manageGoalTimeline).mock.calls;
+    expect(calls[0][1]).toMatchObject({ p_added_sugars: 30 });
+    expect(calls[1][1]).toMatchObject({ p_added_sugars: 25 });
+  });
+
   it('infers set_goals when action is omitted and only caffeine_mg or alcohol_g is sent', async () => {
     vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
       message: 'ok',

@@ -66,6 +66,7 @@ const MEAL_SNAPSHOT_COLUMNS = [
   'caffeine_mg',
   'water_ml',
   'alcohol_g',
+  'added_sugars',
   'glycemic_index',
   'custom_nutrients',
 ] as const;
@@ -157,6 +158,7 @@ function buildMealFoodValues(mealId: string) {
       item.caffeine_mg ?? null,
       item.water_ml ?? null,
       item.alcohol_g ?? null,
+      item.added_sugars ?? null,
     ];
   };
 }
@@ -192,7 +194,7 @@ async function createMeal(mealData: MealInput, transactionClient?: PoolClient) {
            saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
            cholesterol, sodium, potassium, dietary_fiber, sugars,
            vitamin_a, vitamin_c, calcium, iron, glycemic_index,
-           custom_nutrients, caffeine_mg, water_ml, alcohol_g
+           custom_nutrients, caffeine_mg, water_ml, alcohol_g, added_sugars
          ) VALUES %L RETURNING id`,
         mealFoodsValues
       );
@@ -381,7 +383,7 @@ async function updateMeal(
              saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat,
              cholesterol, sodium, potassium, dietary_fiber, sugars,
              vitamin_a, vitamin_c, calcium, iron, glycemic_index,
-             custom_nutrients, caffeine_mg, water_ml, alcohol_g
+             custom_nutrients, caffeine_mg, water_ml, alcohol_g, added_sugars
            ) VALUES %L RETURNING id`,
           mealFoodsValues
         );

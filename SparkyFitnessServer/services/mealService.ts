@@ -283,6 +283,7 @@ const RESOLVED_NUTRIENT_KEYS = [
   'caffeine_mg',
   'water_ml',
   'alcohol_g',
+  'added_sugars',
 ] as const;
 
 interface ResolvedChildSnapshot {
@@ -1060,6 +1061,7 @@ async function createMealFromDiaryEntries(
         caffeine_mg: entry.caffeine_mg,
         water_ml: entry.water_ml,
         alcohol_g: entry.alcohol_g,
+        added_sugars: entry.added_sugars,
         glycemic_index: entry.glycemic_index,
         custom_nutrients: entry.custom_nutrients || {},
       });

@@ -118,6 +118,7 @@ const DailyNutritionDetailsScreen: React.FC<
           'iron',
           'caffeine_mg',
           'alcohol_g',
+          'added_sugars',
         ];
 
     // Build lists of nutrients grouped into categories for a clean dashboard view

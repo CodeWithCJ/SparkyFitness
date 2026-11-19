@@ -41,6 +41,7 @@ export const PREDEFINED_NUTRIENT_KEYS = [
   'caffeine_mg',
   'water_ml',
   'alcohol_g',
+  'added_sugars',
 ];
 
 export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
@@ -251,6 +252,16 @@ export const CENTRAL_NUTRIENT_CONFIG: Record<string, NutrientMetadata> = {
     decimals: 1,
     group: 'macros',
   },
+  added_sugars: {
+    id: 'added_sugars',
+    label: 'nutrition.addedSugars',
+    defaultLabel: 'Added Sugars',
+    unit: 'g',
+    color: 'text-rose-500',
+    chartColor: '#f43f5e', // rose-500
+    decimals: 1,
+    group: 'minerals',
+  },
 };
 
 // Apply the shared "stay under" defaults (single source of truth in
@@ -283,6 +294,7 @@ export const EMPTY_MEAL_TOTALS: MealTotals = {
   caffeine_mg: 0,
   water_ml: 0,
   alcohol_g: 0,
+  added_sugars: 0,
   custom_nutrients: {},
 };
 

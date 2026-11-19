@@ -20,6 +20,7 @@ export interface ExternalFoodVariant {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
 }
 
 export interface ExternalFoodSearchPagination {
@@ -63,6 +64,7 @@ export interface ExternalFoodItem {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   allergens?: string[] | null;
   traces?: string[] | null;
   serving_size: number;

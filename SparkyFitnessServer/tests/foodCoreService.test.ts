@@ -2,12 +2,22 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import foodRepository from '../models/foodRepository.js';
 import foodCoreService from '../services/foodCoreService.js';
 import preferenceService from '../services/preferenceService.js';
+import { fetchProviderFoodDetails } from '../services/foodProviderDetailService.js';
 vi.mock('../models/foodRepository');
 vi.mock('../services/preferenceService.js', () => ({
   default: { getUserPreferences: vi.fn() },
 }));
 vi.mock('../config/logging', () => ({ log: vi.fn() }));
+vi.mock('../services/foodProviderDetailService.js', () => ({
+  fetchProviderFoodDetails: vi.fn(),
+}));
 const TEST_USER_ID = 'user-123';
+// What Open Food Facts answers for a product the client claims to have picked.
+const OFF_RESPONSE = {
+  provider_type: 'openfoodfacts',
+  provider_nutriscore_grade: 'c',
+  nutri_score_category: 'beverage',
+};
 const makeFoodData = (overrides = {}) => ({
   name: 'Test Food',
   brand: 'Test Brand',
@@ -47,6 +57,9 @@ const makeExistingFood = (overrides = {}) => ({
 describe('foodCoreService.createFood', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(fetchProviderFoodDetails).mockResolvedValue({
+      provider_type: 'openfoodfacts',
+    });
   });
   it('should return existing food when barcode already exists for user', async () => {
     const existingFood = makeExistingFood();
@@ -182,6 +195,26 @@ describe('foodCoreService.createFood', () => {
       ...existingFood,
       images: ['/uploads/foods/food-existing-456/f.jpg'],
     });
+  });
+
+  it('backfills added sugars and fruit/veg percent supplied by a re-import', async () => {
+    const existingFood = makeExistingFood();
+    // @ts-expect-error TS(2339): mock typing on the repository default export
+    foodRepository.findFoodByBarcode.mockResolvedValue(existingFood);
+
+    await foodCoreService.createFood(
+      TEST_USER_ID,
+      makeFoodData({ added_sugars: 4.5, fruit_veg_legume_percent: 30 })
+    );
+
+    expect(foodRepository.backfillMissingComposition).toHaveBeenCalledWith(
+      existingFood.id,
+      TEST_USER_ID,
+      expect.objectContaining({
+        added_sugars: 4.5,
+        fruit_veg_legume_percent: 30,
+      })
+    );
   });
 
   it('does not overwrite images the existing food already has', async () => {
@@ -561,5 +594,126 @@ describe('updateFoodVariant custom_nutrients', () => {
 
     const sent = vi.mocked(foodRepository.updateFoodVariant).mock.calls[0][1];
     expect(sent.custom_nutrients).toEqual({ Zinc: 3 });
+  });
+});
+
+describe('foodCoreService provenance trust boundary', () => {
+  const FORGED_GRADE = 'a';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(foodRepository.findFoodByBarcode).mockResolvedValue(null);
+    vi.mocked(foodRepository.findFoodByProviderExternalId).mockResolvedValue(
+      null
+    );
+    vi.mocked(foodRepository.createFood).mockResolvedValue(
+      makeExistingFood({ id: 'food-new' }) as never
+    );
+    vi.mocked(fetchProviderFoodDetails).mockResolvedValue(OFF_RESPONSE);
+  });
+
+  const createdFood = () =>
+    vi.mocked(foodRepository.createFood).mock.calls[0][0];
+
+  it('stores the grade Open Food Facts reports, not the one the client sent', async () => {
+    await foodCoreService.createFood(
+      TEST_USER_ID,
+      makeFoodData({ provider_nutriscore_grade: FORGED_GRADE })
+    );
+
+    expect(createdFood()).toMatchObject({
+      provider_type: 'openfoodfacts',
+      provider_nutriscore_grade: 'c',
+      nutri_score_category: 'beverage',
+    });
+  });
+
+  it('keeps the category the user chose over the one Open Food Facts derives', async () => {
+    await foodCoreService.createFood(
+      TEST_USER_ID,
+      makeFoodData({ nutri_score_category: 'general' })
+    );
+
+    expect(createdFood().nutri_score_category).toBe('general');
+  });
+
+  it('saves a plain custom food when Open Food Facts cannot confirm the claim', async () => {
+    vi.mocked(fetchProviderFoodDetails).mockResolvedValue(null);
+
+    await foodCoreService.createFood(
+      TEST_USER_ID,
+      makeFoodData({ provider_nutriscore_grade: FORGED_GRADE })
+    );
+
+    const saved = createdFood();
+    expect(saved.provider_nutriscore_grade).toBeUndefined();
+    expect(saved.provider_type).toBeNull();
+    expect(saved.provider_external_id).toBeNull();
+  });
+
+  it('saves a plain custom food when the Open Food Facts lookup fails', async () => {
+    vi.mocked(fetchProviderFoodDetails).mockRejectedValue(new Error('down'));
+
+    await foodCoreService.createFood(
+      TEST_USER_ID,
+      makeFoodData({ provider_nutriscore_grade: FORGED_GRADE })
+    );
+
+    expect(createdFood().provider_type).toBeNull();
+    expect(createdFood().provider_nutriscore_grade).toBeUndefined();
+  });
+
+  it('never stores a client grade on a food from another provider', async () => {
+    await foodCoreService.createFood(
+      TEST_USER_ID,
+      makeFoodData({
+        provider_type: 'usda',
+        provider_nutriscore_grade: FORGED_GRADE,
+      })
+    );
+
+    expect(fetchProviderFoodDetails).not.toHaveBeenCalled();
+    expect(createdFood().provider_nutriscore_grade).toBeUndefined();
+  });
+
+  it('ignores a forged grade and provider_type on update', async () => {
+    vi.mocked(foodRepository.getFoodOwnerId).mockResolvedValue(
+      TEST_USER_ID as never
+    );
+    vi.mocked(foodRepository.updateFood).mockResolvedValue({
+      id: 'food-1',
+    } as never);
+
+    await foodCoreService.updateFood(TEST_USER_ID, 'food-1', {
+      name: 'Renamed',
+      nutri_score_category: 'fat_oil_nut',
+      provider_type: 'openfoodfacts',
+      provider_nutriscore_grade: FORGED_GRADE,
+    } as never);
+
+    const sent = vi.mocked(foodRepository.updateFood).mock.calls[0][2];
+    expect(sent).not.toHaveProperty('provider_nutriscore_grade');
+    expect(sent).not.toHaveProperty('provider_type');
+    expect(sent).toMatchObject({
+      name: 'Renamed',
+      nutri_score_category: 'fat_oil_nut',
+    });
+  });
+
+  it('drops provider_type from bulk CSV rows', async () => {
+    vi.mocked(foodRepository.createFoodsInBulk).mockResolvedValue({} as never);
+
+    await foodCoreService.importFoodsInBulk(TEST_USER_ID, [
+      {
+        name: 'Row',
+        serving_size: 100,
+        serving_unit: 'g',
+        provider_type: 'openfoodfacts',
+        provider_nutriscore_grade: FORGED_GRADE,
+      },
+    ] as never);
+
+    const [, rows] = vi.mocked(foodRepository.createFoodsInBulk).mock.calls[0];
+    expect(rows[0]).not.toHaveProperty('provider_type');
   });
 });

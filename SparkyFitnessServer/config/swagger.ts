@@ -11,6 +11,7 @@ import {
   FRONT_OF_PACK_WARNINGS,
   MAX_CALORIE_SAFETY_FLOOR,
   MIN_CALORIE_SAFETY_FLOOR,
+  NUTRI_SCORE_CATEGORIES,
   recipeImportSaveRequestSchema,
   recipeImportSuggestionRequestSchema,
   recipeImportSyncPreviewSchema,
@@ -469,12 +470,12 @@ const options = {
               type: 'boolean',
               description: 'Indicates if the food is marked for quick access.',
             },
-            added_sugars: {
-              type: 'number',
+            nutri_score_category: {
+              type: 'string',
               nullable: true,
-              minimum: 0,
+              enum: [...NUTRI_SCORE_CATEGORIES],
               description:
-                'Added sugars in grams per 100 g (solids) or 100 ml (liquids). Null means unknown, which skips the added-sugar warnings.',
+                'Nutri-Score table used for this food. Null is scored with the general table. Editable by the user; Open Food Facts imports set it from the product categories.',
             },
             fruit_veg_legume_percent: {
               type: 'number',
@@ -488,8 +489,9 @@ const options = {
               type: 'string',
               nullable: true,
               enum: ['a', 'b', 'c', 'd', 'e'],
+              readOnly: true,
               description:
-                'Nutri-Score grade published by Open Food Facts; preferred over the computed grade.',
+                'Nutri-Score grade published by Open Food Facts; preferred over the computed grade. Set only by the Open Food Facts import path: create and update requests never store a client-sent value.',
             },
             health_score: {
               type: 'object',
@@ -1632,6 +1634,11 @@ const options = {
               enum: [...FRONT_OF_PACK_REGIONS],
               description:
                 'Which regional front-of-pack warning set food views show: none, Brazil (ANVISA), Chile or Mexico. Food responses carry every region in health_score.warnings; this only picks the one displayed.',
+            },
+            nutri_score_enabled: {
+              type: 'boolean',
+              description:
+                'Whether web and mobile show the Nutri-Score badge. Off by default: Nutri-Score is a European label and is not the regulation in every region. Food responses still carry health_score.nutri_score either way.',
             },
             food_search_all_providers_default: {
               type: 'boolean',

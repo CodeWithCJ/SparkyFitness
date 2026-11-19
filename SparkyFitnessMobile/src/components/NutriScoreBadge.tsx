@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import {
+  NUTRI_SCORE_DARK_TEXT_GRADES,
   NUTRI_SCORE_GRADE_COLORS,
   NUTRI_SCORE_GRADES,
   type NutriScoreResult,
@@ -49,7 +50,7 @@ const NutriScoreBadge: React.FC<NutriScoreBadgeProps> = ({ nutriScore }) => {
             <Text
               className={
                 active
-                  ? 'text-white text-base font-bold'
+                  ? `${NUTRI_SCORE_DARK_TEXT_GRADES.has(letter) ? 'text-neutral-900' : 'text-white'} text-base font-bold`
                   : 'text-text-secondary text-xs font-semibold'
               }
             >

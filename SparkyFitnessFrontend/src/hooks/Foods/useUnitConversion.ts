@@ -199,6 +199,8 @@ export function useUnitConversion({
       caffeine_mg: scaleOptional('caffeine_mg'),
       water_ml: scaleOptional('water_ml'),
       alcohol_g: scaleOptional('alcohol_g'),
+      added_sugars:
+        base.added_sugars == null ? null : scaleOptional('added_sugars'),
       // ABV is a property of the liquid, not a per-serving amount: carried
       // across unchanged like glycemic_index.
       abv_percent: base.abv_percent,

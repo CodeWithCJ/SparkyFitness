@@ -297,6 +297,13 @@ const createFoodSchema = z
       .describe(
         'Alcohol / pure ethanol (g) per serving_size. Include only when supported by the source; omit when unknown.'
       ),
+    added_sugars: z.coerce
+      .number()
+      .min(0)
+      .optional()
+      .describe(
+        'Added sugars (g) per serving_size, a part of sugar. Include only when the source states it; omit when unknown, never 0 for unknown.'
+      ),
     water_ml: z.coerce
       .number()
       .min(0)
@@ -589,6 +596,11 @@ const updateFoodVariantSchema = z
       .describe(
         'Updated alcohol / pure ethanol (g) per serving_size. Informational only — never added to calories.'
       ),
+    added_sugars: z.coerce
+      .number()
+      .min(0)
+      .optional()
+      .describe('Updated added sugars (g) per serving_size'),
     water_ml: z.coerce
       .number()
       .min(0)
@@ -949,6 +961,13 @@ export const manageFoodInput = z.object({
     .optional()
     .describe(
       'Alcohol / pure ethanol (g) — for create_food/update_food_variant, per serving_size. Informational only, never added to calories.'
+    ),
+  added_sugars: z.coerce
+    .number()
+    .min(0)
+    .optional()
+    .describe(
+      'Added sugars (g) — for create_food/update_food_variant, per serving_size. Omit when unknown.'
     ),
   water_ml: z.coerce
     .number()

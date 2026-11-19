@@ -54,6 +54,8 @@ function normalizeMealIngredientDraft(
       draft.water_ml == null ? undefined : toFiniteNumber(draft.water_ml),
     alcohol_g:
       draft.alcohol_g == null ? undefined : toFiniteNumber(draft.alcohol_g),
+    added_sugars:
+      draft.added_sugars == null ? null : toFiniteNumber(draft.added_sugars),
     cholesterol:
       draft.cholesterol == null ? undefined : toFiniteNumber(draft.cholesterol),
     vitamin_a:
@@ -96,6 +98,7 @@ export function buildMealIngredientDraft({
     caffeine_mg: values.caffeineMg,
     water_ml: values.waterMl,
     alcohol_g: values.alcoholG,
+    added_sugars: values.addedSugars,
     cholesterol: values.cholesterol,
     vitamin_a: values.vitaminA,
     vitamin_c: values.vitaminC,
@@ -135,6 +138,7 @@ export function buildMealIngredientDraftFromSavedFood(
     caffeine_mg: food.default_variant.caffeine_mg,
     water_ml: food.default_variant.water_ml,
     alcohol_g: food.default_variant.alcohol_g,
+    added_sugars: food.default_variant.added_sugars,
     cholesterol: food.default_variant.cholesterol,
     vitamin_a: food.default_variant.vitamin_a,
     vitamin_c: food.default_variant.vitamin_c,
@@ -193,6 +197,7 @@ export function buildMealIngredientDraftFromMealFood(
     caffeine_mg: food.caffeine_mg,
     water_ml: food.water_ml,
     alcohol_g: food.alcohol_g,
+    added_sugars: food.added_sugars,
     cholesterol: food.cholesterol,
     vitamin_a: food.vitamin_a,
     vitamin_c: food.vitamin_c,

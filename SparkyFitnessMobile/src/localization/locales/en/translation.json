@@ -130,6 +130,18 @@
       "saveFailed": "Could not save glucose unit.",
       "loadFailed": "Could not load preference. Tap to retry."
     },
+    "nutriScore": {
+      "title": "Show Nutri-Score",
+      "subtitle": "Show the European Nutri-Score grade (A to E) on foods. It is a regional label, so it is off by default.",
+      "regionTitle": "Front-of-pack warnings",
+      "regionSubtitle": "Warning seals for high sugar, fat, sodium or calories.",
+      "regionNone": "None",
+      "regionBrazil": "Brazil (ANVISA)",
+      "regionChile": "Chile",
+      "regionMexico": "Mexico",
+      "saveFailed": "Could not save food label settings.",
+      "loadFailed": "Could not load preference. Tap to retry."
+    },
     "app": "App Settings",
     "language": {
       "title": "Language",
@@ -3247,6 +3259,7 @@
     "caffeine": "Caffeine",
     "waterContent": "Water Content",
     "alcohol": "Alcohol",
+    "addedSugars": "Added Sugars",
     "glycemicIndex": "Glycemic Index",
     "totalCarbs": "Total Carbs",
     "netCarbs": "Net Carbs",
@@ -3363,7 +3376,12 @@
     "equivalentUnitsUpdated_one": "Saved · {{formattedCount}} equivalent unit updated",
     "equivalentUnitsUpdated_other": "Saved · {{formattedCount}} equivalent units updated",
     "notes": "Notes",
-    "notesPlaceholder": "e.g. White rice, double chicken, no beans (supports markdown)"
+    "notesPlaceholder": "e.g. White rice, double chicken, no beans (supports markdown)",
+    "nutriScoreCategory": "Nutri-Score category",
+    "nutriScoreCategoryHint": "Beverages and fats, oils and nuts are scored differently from other foods.",
+    "nutriScoreCategoryGeneral": "General",
+    "nutriScoreCategoryBeverage": "Beverage",
+    "nutriScoreCategoryFatOilNut": "Fat, oil & nut"
   },
   "exerciseEffort": {
     "title": "Effort",
@@ -4764,6 +4782,14 @@
     }
   },
   "foodDetail": {
+    "warning": {
+      "calories": "High in calories",
+      "sugars": "High in sugars",
+      "addedSugars": "High in added sugar",
+      "saturatedFat": "High in saturated fat",
+      "transFat": "High in trans fat",
+      "sodium": "High in sodium"
+    },
     "sharedPublicly": "Food shared publicly",
     "madePrivate": "Food made private",
     "shareFailed": "Failed to update sharing",
@@ -10342,6 +10368,7 @@
     "syncIron": "Iron",
     "syncCaffeine": "Caffeine",
     "syncAlcohol": "Alcohol",
+    "syncAddedSugars": "Added sugars",
     "syncWater": "Water",
     "syncSavedValues": "These are saved ingredient values. To include a library correction, replace the affected ingredient using its corrected food variant, check the values, then save the meal.",
     "syncSavedAt": "Last saved: {{date}}",

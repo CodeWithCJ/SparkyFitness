@@ -175,6 +175,7 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
         adaptive_activity_separate: true,
         goal_mode_weekly_change_kg: -0.25,
         front_of_pack_region: 'brazil' as const,
+        nutri_score_enabled: true,
       };
       if (operation === 'update') {
         await preferenceRepository.updateUserPreferences('user-1', preferences);
@@ -186,6 +187,7 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
       }
       const [sql, params] = mockClient.query.mock.calls[0];
       expect(sql).toContain('front_of_pack_region = COALESCE($68');
+      expect(sql).toContain('nutri_score_enabled = COALESCE($69');
       expect(params.slice(47, 58)).toEqual([
         true,
         14,
@@ -200,6 +202,7 @@ describe('preferenceRepository bootstrapUserTimezoneIfUnset', () => {
         -0.25,
       ]);
       expect(params[67]).toBe('brazil');
+      expect(params[68]).toBe(true);
     }
   );
 

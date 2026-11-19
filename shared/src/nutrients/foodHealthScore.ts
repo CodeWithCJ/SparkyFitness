@@ -15,6 +15,10 @@ export const NUTRI_SCORE_GRADE_COLORS: Record<NutriScoreGrade, string> = {
   e: '#E63E11',
 };
 
+/** Grades whose official colour needs dark text: white on them falls under 3:1. */
+export const NUTRI_SCORE_DARK_TEXT_GRADES: ReadonlySet<NutriScoreGrade> =
+  new Set(['b', 'c', 'd']);
+
 export const FRONT_OF_PACK_REGIONS = [
   'none',
   'brazil',
@@ -33,6 +37,17 @@ export const FRONT_OF_PACK_WARNINGS = [
   'sodium',
 ] as const;
 export type FrontOfPackWarning = (typeof FRONT_OF_PACK_WARNINGS)[number];
+
+/**
+ * Which Nutri-Score algorithm applies. Null/unset on a food means 'general'.
+ * Cheese and red meat adjustments are not modelled.
+ */
+export const NUTRI_SCORE_CATEGORIES = [
+  'general',
+  'beverage',
+  'fat_oil_nut',
+] as const;
+export type NutriScoreCategory = (typeof NUTRI_SCORE_CATEGORIES)[number];
 
 export interface NutriScoreResult {
   grade: NutriScoreGrade;
@@ -54,27 +69,35 @@ export interface HealthScoreVariantInput {
   serving_unit?: string | null;
   calories?: NumericLike;
   protein?: NumericLike;
+  fat?: NumericLike;
   saturated_fat?: NumericLike;
   trans_fat?: NumericLike;
   sodium?: NumericLike;
   dietary_fiber?: NumericLike;
   sugars?: NumericLike;
+  /** Null/undefined = unknown, which is not the same as 0. */
+  added_sugars?: NumericLike;
 }
 
 export interface HealthScoreFoodInput {
+  /** Server-set only; the provider grade is trusted for 'openfoodfacts' foods. */
   provider_type?: string | null;
   provider_nutriscore_grade?: string | null;
-  /** Grams per 100 g/ml, as printed on the label. */
-  added_sugars?: NumericLike;
+  nutri_score_category?: NutriScoreCategory | null;
   fruit_veg_legume_percent?: NumericLike;
   default_variant?: HealthScoreVariantInput | null;
 }
 
-/** Nutrient values normalised to 100 g (solids) or 100 ml (liquids). */
+/** Nutrient values normalised to 100 g (solids) or 100 ml (beverages). */
 export interface NutrientsPer100 {
+  category: NutriScoreCategory;
   isLiquid: boolean;
+  /** False when a nutrient the score needs is unknown, or every input is 0. */
+  hasScoreInputs: boolean;
   energyKcal: number;
   sugars: number;
+  addedSugars: number | null;
+  fat: number;
   saturatedFat: number;
   transFat: number;
   sodiumMg: number;
@@ -111,12 +134,25 @@ const BEVERAGE_POINTS = {
   fvlPercent: [40, 40, 60, 60, 80, 80],
   protein: [1.2, 1.5, 1.8, 2.1, 2.4, 2.7, 3.0],
 };
+// Fats, oils, nuts and seeds: energy points count the energy of the saturates
+// only (37 kJ/g) and the saturated fat points use the saturates/lipids ratio
+// (>= instead of >), %points_thresholds_2023 in ProductOpener::Nutriscore.
+const FAT_OIL_NUT_POINTS = {
+  ...GENERAL_POINTS,
+  energyFromSaturatesKj: [120, 240, 360, 480, 600, 720, 840, 960, 1080, 1200],
+  saturatedFatRatio: [10, 16, 22, 28, 34, 40, 46, 52, 58, 64],
+};
+const KJ_PER_G_SATURATED_FAT = 37;
 // Upper score bound of grades A..D; anything above the last bound is E.
-const GENERAL_GRADE_BOUNDS = [0, 2, 10, 18];
-// Beverages never reach A: in the 2023 algorithm A is reserved for plain water,
-// which this data cannot tell apart from a zero-calorie sweetened drink.
-const BEVERAGE_GRADE_BOUNDS = [Number.NEGATIVE_INFINITY, 2, 6, 9];
+const GRADE_BOUNDS: Record<NutriScoreCategory, number[]> = {
+  general: [0, 2, 10, 18],
+  // Beverages never reach A: in the 2023 algorithm A is reserved for plain
+  // water, which this data cannot tell apart from a zero-calorie sweetened drink.
+  beverage: [Number.NEGATIVE_INFINITY, 2, 6, 9],
+  fat_oil_nut: [-6, 2, 10, 18],
+};
 const PROTEIN_CAP_NEGATIVE_POINTS = 11;
+const FAT_OIL_NUT_PROTEIN_CAP_NEGATIVE_POINTS = 7;
 
 function toNumber(value: NumericLike): number | null {
   if (value === null || value === undefined || value === '') return null;
@@ -133,66 +169,125 @@ function gradeFromScore(score: number, bounds: number[]): NutriScoreGrade {
   return NUTRI_SCORE_GRADES[index === -1 ? bounds.length : index]!;
 }
 
-/**
- * Normalises a variant to 100 g/ml. Returns null when the serving unit has no
- * weight or volume basis ("piece", "serving"), since nothing per-100 can be
- * derived from it. A volume unit marks the food as a liquid.
- */
-export function nutrientsPer100(
-  variant: HealthScoreVariantInput | null | undefined
-): NutrientsPer100 | null {
-  const unit = variant?.serving_unit?.trim() ?? '';
-  const size = toNumber(variant?.serving_size);
-  const category = getUnitCategory(unit);
-  if (!variant || !category || size === null || size <= 0) return null;
-
-  const isLiquid = category === 'volume';
-  const baseAmount = size * getConversionFactor(isLiquid ? 'ml' : 'g', unit)!;
-  const scale = 100 / baseAmount;
-  const per100 = (value: NumericLike) => (toNumber(value) ?? 0) * scale;
-
-  return {
-    isLiquid,
-    energyKcal: per100(variant.calories),
-    sugars: per100(variant.sugars),
-    saturatedFat: per100(variant.saturated_fat),
-    transFat: per100(variant.trans_fat),
-    sodiumMg: per100(variant.sodium),
-    fiber: per100(variant.dietary_fiber),
-    protein: per100(variant.protein),
-  };
+function hasScoreInputs(
+  variant: HealthScoreVariantInput,
+  category: NutriScoreCategory,
+  per100: Pick<
+    NutrientsPer100,
+    'energyKcal' | 'sugars' | 'saturatedFat' | 'sodiumMg' | 'protein' | 'fiber'
+  >
+): boolean {
+  const required = [
+    variant.calories,
+    variant.sugars,
+    variant.saturated_fat,
+    variant.sodium,
+    ...(category === 'fat_oil_nut' ? [variant.fat] : []),
+  ];
+  if (required.some((value) => toNumber(value) === null)) return false;
+  return Object.values(per100).some((value) => value !== 0);
 }
 
 /**
- * Nutri-Score 2023 for the general-foods and beverage algorithms. The cheese,
- * red-meat and fats/oils/nuts variants need a food category this data model
- * does not carry, and the beverage sweetener penalty needs an ingredient list,
- * so those adjustments are not applied (Open Food Facts likewise scores the
- * sweetener component as 0 when ingredients are unknown).
+ * Normalises a variant to 100 g/ml. Returns null when the serving unit has no
+ * weight or volume basis ("piece", "serving"), or when it is a volume unit on a
+ * food that is not a beverage: converting ml to g needs a density the model
+ * does not carry. A volume unit never makes a food a beverage by itself.
+ */
+export function nutrientsPer100(
+  variant: HealthScoreVariantInput | null | undefined,
+  category: NutriScoreCategory = 'general'
+): NutrientsPer100 | null {
+  const unit = variant?.serving_unit?.trim() ?? '';
+  const size = toNumber(variant?.serving_size);
+  const unitCategory = getUnitCategory(unit);
+  if (!variant || !unitCategory || size === null || size <= 0) return null;
+  if (unitCategory === 'volume' && category !== 'beverage') return null;
+
+  const baseUnit = unitCategory === 'volume' ? 'ml' : 'g';
+  const scale = 100 / (size * getConversionFactor(baseUnit, unit)!);
+  const scaled = (value: NumericLike) => {
+    const parsed = toNumber(value);
+    return parsed === null ? null : parsed * scale;
+  };
+  const per100 = (value: NumericLike) => scaled(value) ?? 0;
+
+  const amounts = {
+    energyKcal: per100(variant.calories),
+    sugars: per100(variant.sugars),
+    saturatedFat: per100(variant.saturated_fat),
+    sodiumMg: per100(variant.sodium),
+    protein: per100(variant.protein),
+    fiber: per100(variant.dietary_fiber),
+  };
+  return {
+    ...amounts,
+    category,
+    isLiquid: category === 'beverage',
+    hasScoreInputs: hasScoreInputs(variant, category, amounts),
+    addedSugars: scaled(variant.added_sugars),
+    fat: per100(variant.fat),
+    transFat: per100(variant.trans_fat),
+  };
+}
+
+function negativePoints(n: NutrientsPer100, fatTable: boolean): number {
+  const salt = pointsAbove(
+    (n.sodiumMg / 1000) * SALT_PER_SODIUM,
+    GENERAL_POINTS.salt
+  );
+  if (fatTable) {
+    const ratio = n.fat > 0 ? (n.saturatedFat / n.fat) * 100 : 0;
+    return (
+      pointsAbove(
+        n.saturatedFat * KJ_PER_G_SATURATED_FAT,
+        FAT_OIL_NUT_POINTS.energyFromSaturatesKj
+      ) +
+      pointsAbove(n.sugars, FAT_OIL_NUT_POINTS.sugars) +
+      FAT_OIL_NUT_POINTS.saturatedFatRatio.filter((t) => ratio >= t).length +
+      salt
+    );
+  }
+  const table = n.isLiquid ? BEVERAGE_POINTS : GENERAL_POINTS;
+  return (
+    pointsAbove(n.energyKcal * KJ_PER_KCAL, table.energyKj) +
+    pointsAbove(n.sugars, table.sugars) +
+    pointsAbove(n.saturatedFat, table.saturatedFat) +
+    salt
+  );
+}
+
+/**
+ * Nutri-Score 2023 for the general, beverage and fats/oils/nuts/seeds
+ * algorithms (ProductOpener::Nutriscore, Santé publique France 2022-2023
+ * update reports). Cheese and red-meat adjustments are not applied, and the
+ * beverage sweetener penalty needs an ingredient list, so it is scored 0 (Open
+ * Food Facts does the same when ingredients are unknown).
  */
 export function computeNutriScore(
   nutrients: NutrientsPer100,
   fruitVegLegumePercent: number | null
 ): { score: number; grade: NutriScoreGrade } {
+  const fatTable = nutrients.category === 'fat_oil_nut';
   const table = nutrients.isLiquid ? BEVERAGE_POINTS : GENERAL_POINTS;
-  const negative =
-    pointsAbove(nutrients.energyKcal * KJ_PER_KCAL, table.energyKj) +
-    pointsAbove(nutrients.sugars, table.sugars) +
-    pointsAbove(nutrients.saturatedFat, table.saturatedFat) +
-    pointsAbove((nutrients.sodiumMg / 1000) * SALT_PER_SODIUM, table.salt);
+  const negative = negativePoints(nutrients, fatTable);
 
   const countProtein =
-    nutrients.isLiquid || negative < PROTEIN_CAP_NEGATIVE_POINTS;
+    nutrients.isLiquid ||
+    negative <
+      (fatTable
+        ? FAT_OIL_NUT_PROTEIN_CAP_NEGATIVE_POINTS
+        : PROTEIN_CAP_NEGATIVE_POINTS);
   const positive =
     pointsAbove(nutrients.fiber, table.fiber) +
     pointsAbove(fruitVegLegumePercent ?? 0, table.fvlPercent) +
     (countProtein ? pointsAbove(nutrients.protein, table.protein) : 0);
 
   const score = negative - positive;
-  const bounds = nutrients.isLiquid
-    ? BEVERAGE_GRADE_BOUNDS
-    : GENERAL_GRADE_BOUNDS;
-  return { score, grade: gradeFromScore(score, bounds) };
+  return {
+    score,
+    grade: gradeFromScore(score, GRADE_BOUNDS[nutrients.category]),
+  };
 }
 
 function providerGrade(food: HealthScoreFoodInput): NutriScoreGrade | null {
@@ -329,9 +424,12 @@ function mexicoWarnings(
 export function computeFoodHealthScore(
   food: HealthScoreFoodInput
 ): FoodHealthScore {
-  const nutrients = nutrientsPer100(food.default_variant);
+  const nutrients = nutrientsPer100(
+    food.default_variant,
+    food.nutri_score_category ?? 'general'
+  );
   const published = providerGrade(food);
-  const computed = nutrients
+  const computed = nutrients?.hasScoreInputs
     ? computeNutriScore(nutrients, toNumber(food.fruit_veg_legume_percent))
     : null;
 
@@ -348,7 +446,7 @@ export function computeFoodHealthScore(
       warnings: { brazil: [], chile: [], mexico: [] },
     };
   }
-  const addedSugars = toNumber(food.added_sugars);
+  const { addedSugars } = nutrients;
   return {
     nutri_score: nutriScore,
     warnings: {

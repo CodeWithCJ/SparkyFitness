@@ -80,6 +80,7 @@ export const PREDEFINED_GOAL_KEYS = [
   'iron',
   'caffeine_mg',
   'alcohol_g',
+  'added_sugars',
   'target_exercise_calories_burned',
   'target_exercise_duration_minutes',
   'target_steps',

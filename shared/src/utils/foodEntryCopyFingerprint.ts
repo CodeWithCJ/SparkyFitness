@@ -36,6 +36,7 @@ export interface FoodEntryCopyFingerprintInput {
   caffeine_mg?: unknown;
   water_ml?: unknown;
   alcohol_g?: unknown;
+  added_sugars?: unknown;
 }
 
 export interface ReviewedFoodEntryFingerprint {
@@ -133,7 +134,12 @@ function buildFoodEntryCopyFingerprint(
   if (includeSnapshotFields) {
     snapshot['meal_id'] = entry.meal_id ?? null;
     snapshot['notes'] = entry.notes ?? null;
-    for (const field of ['caffeine_mg', 'water_ml', 'alcohol_g'] as const) {
+    for (const field of [
+      'caffeine_mg',
+      'water_ml',
+      'alcohol_g',
+      'added_sugars',
+    ] as const) {
       const value = entry[field];
       snapshot[field] = value == null ? null : Number(value);
     }

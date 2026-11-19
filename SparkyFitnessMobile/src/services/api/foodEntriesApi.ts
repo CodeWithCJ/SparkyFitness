@@ -40,6 +40,7 @@ export interface CreateFoodEntryPayload {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;
@@ -109,6 +110,7 @@ export interface UpdateFoodEntryPayload {
   caffeine_mg?: number;
   water_ml?: number;
   alcohol_g?: number;
+  added_sugars?: number | null;
   cholesterol?: number;
   vitamin_a?: number;
   vitamin_c?: number;

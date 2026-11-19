@@ -386,6 +386,12 @@ function mapUsdaBarcodeProduct(food: UsdaFood) {
         water_ml: Math.round((nutrients[1051] || 0) * scale * 10) / 10,
         // FDC nutrient id 1018 = Alcohol, ethyl, reported in grams/100g.
         alcohol_g: Math.round((nutrients[1018] || 0) * scale * 10) / 10,
+        // FDC nutrient id 1235 = Sugars, added (g/100g). Absent stays null:
+        // unknown is not zero for the Nutri-Score added-sugar warnings.
+        added_sugars:
+          nutrients[1235] === undefined
+            ? null
+            : Math.round(nutrients[1235] * scale * 10) / 10,
         provider_nutrients: scaleProviderNutrients(
           providerNutrientsByLabel,
           scale

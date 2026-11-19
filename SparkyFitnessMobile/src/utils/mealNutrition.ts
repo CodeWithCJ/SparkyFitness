@@ -306,6 +306,7 @@ export function calculateMealNutrition(entries: FoodEntry[]): MealNutrition {
       // comes from its own arm rather than from here.
       waterMl: optionalSum(entries, 'water_ml'),
       alcoholG: optionalSum(entries, 'alcohol_g'),
+      addedSugars: optionalSum(entries, 'added_sugars'),
     },
     customNutrients: calculateCustomNutrientTotals(entries),
   };
@@ -400,6 +401,7 @@ export type MealFoodNumericField = keyof Pick<
   | 'caffeine_mg'
   | 'water_ml'
   | 'alcohol_g'
+  | 'added_sugars'
   | 'cholesterol'
   | 'vitamin_a'
   | 'vitamin_c'
@@ -467,6 +469,7 @@ export function buildMealDisplayValuesFromFoods(
     caffeineMg: optionalField('caffeine_mg'),
     waterMl: optionalField('water_ml'),
     alcoholG: optionalField('alcohol_g'),
+    addedSugars: optionalField('added_sugars'),
     cholesterol: optionalField('cholesterol'),
     vitaminA: optionalField('vitamin_a'),
     vitaminC: optionalField('vitamin_c'),
@@ -502,6 +505,7 @@ export function mealFoodsToPayload(foods: MealFood[]): MealFoodPayload[] {
     caffeine_mg: food.caffeine_mg,
     water_ml: food.water_ml,
     alcohol_g: food.alcohol_g,
+    added_sugars: food.added_sugars,
     glycemic_index: food.glycemic_index ?? undefined,
     custom_nutrients: food.custom_nutrients,
     serving_size: food.serving_size,
@@ -548,6 +552,7 @@ export function draftToMealFood(
     caffeine_mg: draft.caffeine_mg,
     water_ml: draft.water_ml,
     alcohol_g: draft.alcohol_g,
+    added_sugars: draft.added_sugars,
     glycemic_index: draft.glycemic_index ?? undefined,
     custom_nutrients: draft.custom_nutrients,
   };
