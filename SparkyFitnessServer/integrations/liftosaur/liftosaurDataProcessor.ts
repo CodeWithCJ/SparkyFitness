@@ -23,6 +23,7 @@ import {
 } from './liftosaurTypes.js';
 import {
   deleteLiftosaurSessionsNotInWithClient,
+  moveEntryToSessionWithClient,
   upsertLiftosaurSessionWithClient,
 } from './liftosaurSessionRepository.js';
 
@@ -344,6 +345,17 @@ async function processSingleWorkout(
       );
     const entry: ExerciseEntryRow | null = created.entry ?? null;
     kept.entries.add(sourceId);
+    // The in-place update keeps the entry's parent. If that is an older
+    // session the cleanup below deletes, the cascade would take this kept
+    // entry with it, so move the entry under this sync's session first.
+    if (entry?.id && created.operation === 'updated') {
+      await moveEntryToSessionWithClient(
+        client,
+        userId,
+        entry.id,
+        presetEntryId
+      );
+    }
 
     // 5. Populate the reusable preset template with this exercise. Reuses the
     //    existing exercise row when present and skips if it already has sets,

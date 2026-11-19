@@ -108,3 +108,24 @@ export async function deleteLiftosaurSessionsNotInWithClient(
   }
   return deleted;
 }
+
+/**
+ * Move an entry that was updated in place under the session it was just
+ * synced into. An entry can still hang under an older Liftosaur session
+ * (one from before source ids, which the cleanup deletes); a session delete
+ * cascades to its entries, so the entry has to be moved first.
+ */
+export async function moveEntryToSessionWithClient(
+  client: PoolClient,
+  userId: string,
+  entryId: string,
+  sessionId: string
+): Promise<void> {
+  await client.query(
+    `UPDATE exercise_entries
+     SET exercise_preset_entry_id = $3, updated_at = NOW()
+     WHERE id = $1 AND user_id = $2
+       AND exercise_preset_entry_id IS DISTINCT FROM $3`,
+    [entryId, userId, sessionId]
+  );
+}

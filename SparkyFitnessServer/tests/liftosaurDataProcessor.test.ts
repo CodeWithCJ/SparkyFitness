@@ -53,6 +53,7 @@ vi.mock('../models/workoutPresetRepository.js', () => ({
 
 vi.mock('../integrations/liftosaur/liftosaurSessionRepository.js', () => ({
   upsertLiftosaurSessionWithClient: vi.fn().mockResolvedValue('preset-entry-1'),
+  moveEntryToSessionWithClient: vi.fn().mockResolvedValue(undefined),
   deleteLiftosaurSessionsNotInWithClient: vi.fn().mockResolvedValue(0),
 }));
 
@@ -67,6 +68,7 @@ import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import {
   deleteLiftosaurSessionsNotInWithClient,
+  moveEntryToSessionWithClient,
   upsertLiftosaurSessionWithClient,
 } from '../integrations/liftosaur/liftosaurSessionRepository.js';
 import { getClient } from '../db/poolManager.js';
@@ -410,6 +412,31 @@ describe('processLiftosaurWorkouts', () => {
       durationSeconds: 3600,
     });
     expect(detailCall[1].detail_data.exercise.name).toBe('Squat');
+  });
+
+  it('moves an entry updated in place under the current session before cleanup', async () => {
+    vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mockResolvedValueOnce({
+      entry: { id: 'entry-old' },
+      operation: 'updated',
+    } as never);
+
+    await processLiftosaurWorkouts(UID, CID, parseSampleWorkouts());
+
+    expect(moveEntryToSessionWithClient).toHaveBeenCalledTimes(1);
+    expect(moveEntryToSessionWithClient).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      'entry-old',
+      'preset-entry-1'
+    );
+    expect(
+      vi.mocked(moveEntryToSessionWithClient).mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      vi.mocked(deleteLiftosaurSessionsNotInWithClient).mock
+        .invocationCallOrder[0]!
+    );
   });
 
   it('replaces the raw detail of an entry updated in place instead of adding a copy', async () => {
