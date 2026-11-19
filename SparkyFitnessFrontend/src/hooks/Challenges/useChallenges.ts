@@ -40,6 +40,16 @@ const toastActionError = (error: unknown) =>
     variant: 'destructive',
   });
 
+/**
+ * Standings poll while their period is open: the server scores a saved
+ * workout a minute or so later (score queue, 30 s quiet time), so the refetch
+ * right after the save still gets the old score. A final period never moves.
+ */
+const STANDINGS_REFETCH_MS = 60 * 1000;
+const standingsRefetchInterval = (query: {
+  state: { data?: { final: boolean } };
+}) => (query.state.data?.final ? false : STANDINGS_REFETCH_MS);
+
 // A join, a leave or a rules change moves the list, the detail, the standings
 // and the rules log together, so the whole family refreshes.
 const invalidateChallenges = (queryClient: QueryClient) =>
@@ -102,6 +112,7 @@ export const useChallengeStandings = (
     queryKey: challengeKeys.standings(id ?? '', date),
     queryFn: () => challengesApi.getChallengeStandings(id as string, date),
     enabled: id !== null,
+    refetchInterval: standingsRefetchInterval,
     meta: {
       errorMessage: i18n.t(
         'challenges.errors.standings',
@@ -123,6 +134,7 @@ export const useChallengePeriodStandings = (
       queryKey: challengeKeys.standings(id ?? '', day),
       queryFn: () => challengesApi.getChallengeStandings(id as string, day),
       enabled: id !== null,
+      refetchInterval: standingsRefetchInterval,
     })),
   });
 
