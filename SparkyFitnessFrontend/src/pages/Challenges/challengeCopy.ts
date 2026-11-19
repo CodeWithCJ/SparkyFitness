@@ -9,6 +9,7 @@ import {
   energyFromKcal,
   challengeLeaders,
   challengeToday,
+  defaultHeartRateZones,
   leadsChallenge,
   ownChallengeStanding,
   type EnergyUnit,
@@ -687,7 +688,7 @@ export function pointsExample(rules: ChallengeRules): PointsExample | null {
         source: 'example',
       },
     ],
-    { maxHr: 190, floors: [95, 114, 133, 152, 171] },
+    defaultHeartRateZones(),
     rules.points
   );
   const stepPoints = challengeStepPoints(steps, rules.points);
