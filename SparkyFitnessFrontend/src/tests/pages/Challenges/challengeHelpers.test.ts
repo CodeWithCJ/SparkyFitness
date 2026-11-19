@@ -2,6 +2,8 @@ import type { TFunction } from 'i18next';
 import {
   challengePreset,
   challengeRulesSchema,
+  challengesForCard,
+  challengeStateNow,
   parseChallengeInviteCode,
   type ChallengeRules,
   type ChallengeStandingsResponse,
@@ -9,7 +11,6 @@ import {
 } from '@workspace/shared';
 import {
   actionErrorText,
-  challengesForCard,
   changedRuleLines,
   createErrorText,
   defaultDailyCap,
@@ -300,8 +301,9 @@ describe('the Diary card', () => {
     id: string,
     start_date: string,
     ended_at: string | null = null,
-    time_zone = 'UTC'
-  ) => ({ id, start_date, ended_at, time_zone }) as ChallengeSummary;
+    time_zone = 'UTC',
+    end_date: string | null = null
+  ) => ({ id, start_date, end_date, ended_at, time_zone }) as ChallengeSummary;
   const now = new Date('2026-11-16T12:00:00Z');
 
   it('shows only challenges not ended, newest first, at most two', () => {
@@ -310,7 +312,7 @@ describe('the Diary card', () => {
       summary('done', '2026-11-10', '2026-11-12T00:00:00Z'),
       summary('new', '2026-11-09'),
     ];
-    expect(challengesForCard(list, now).map((c) => c.id)).toEqual([
+    expect(challengesForCard(list, 2, now).map((c) => c.id)).toEqual([
       'new',
       'old',
     ]);
@@ -322,25 +324,52 @@ describe('the Diary card', () => {
       summary('running', '2026-11-02'),
       summary('next-week', '2026-11-23'),
     ];
-    expect(challengesForCard(list, now).map((c) => c.id)).toEqual([
+    expect(challengesForCard(list, 2, now).map((c) => c.id)).toEqual([
       'running',
       'next-month',
     ]);
     // Started today in its own zone, though not yet in UTC.
     const ahead = summary('kiribati', '2026-11-17', null, 'Pacific/Kiritimati');
-    expect(challengesForCard([list[0]!, ahead], now).map((c) => c.id)).toEqual([
-      'kiribati',
-      'next-month',
+    expect(
+      challengesForCard([list[0]!, ahead], 2, now).map((c) => c.id)
+    ).toEqual(['kiribati', 'next-month']);
+  });
+
+  it('drops a challenge whose end date has passed in its own zone', () => {
+    // Ended yesterday (11-15) in UTC; the server has not closed it yet.
+    const over = summary('over', '2026-11-02', null, 'UTC', '2026-11-15');
+    // Still 11-16 in Honolulu at 02:00 there, though its end date was 11-16.
+    const lastDay = summary(
+      'last-day',
+      '2026-11-01',
+      null,
+      'Pacific/Honolulu',
+      '2026-11-16'
+    );
+    const at = new Date('2026-11-16T12:00:00Z');
+    expect(challengesForCard([over, lastDay], 2, at).map((c) => c.id)).toEqual([
+      'last-day',
     ]);
+    expect(challengeStateNow(over, at)).toBe('ended');
+    expect(challengeStateNow(lastDay, at)).toBe('running');
   });
 
   it('a time zone the browser does not know does not break the card', () => {
     const odd = summary('odd', '2026-11-02', null, 'Not/AZone');
     expect(
-      challengesForCard([summary('later', '2026-12-01'), odd], now).map(
+      challengesForCard([summary('later', '2026-12-01'), odd], 2, now).map(
         (c) => c.id
       )
     ).toEqual(['odd', 'later']);
+    const oddOver = summary(
+      'odd-over',
+      '2026-11-02',
+      null,
+      'Not/AZone',
+      '2026-11-01'
+    );
+    expect(() => challengesForCard([oddOver], 2, now)).not.toThrow();
+    expect(challengesForCard([oddOver], 2, now)).toEqual([]);
   });
 });
 

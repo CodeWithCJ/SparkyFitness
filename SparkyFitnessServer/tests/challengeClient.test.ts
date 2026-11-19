@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   challengeLeaders,
+  challengeState,
+  challengeStateNow,
+  challengesForCard,
   challengeToday,
   leadsChallenge,
   ownChallengeStanding,
   parseChallengeInviteCode,
+  sortChallenges,
 } from '@workspace/shared';
 
 // The challenge helpers web and mobile share (shared/src/challenges/client.ts).
@@ -96,5 +100,84 @@ describe('standings', () => {
     const rows = [row('a', 1, 0, true), row('b', 1, 0)];
     expect(challengeLeaders(rows)).toEqual([]);
     expect(leadsChallenge(rows[0]!)).toBe(false);
+  });
+});
+
+describe('challengeState and challengesForCard', () => {
+  const challenge = (
+    id: string,
+    start_date: string,
+    end_date: string | null = null,
+    ended_at: string | null = null,
+    time_zone = 'UTC'
+  ) => ({ id, start_date, end_date, ended_at, time_zone });
+  const today = '2026-11-16';
+
+  it('ends a challenge once the server closed it or its end date has passed', () => {
+    expect(challengeState(challenge('a', '2026-11-01'), today)).toBe('running');
+    expect(challengeState(challenge('b', '2026-11-17'), today)).toBe(
+      'upcoming'
+    );
+    expect(
+      challengeState(challenge('c', '2026-11-01', '2026-11-16'), today)
+    ).toBe('running');
+    expect(
+      challengeState(challenge('d', '2026-11-01', '2026-11-15'), today)
+    ).toBe('ended');
+    expect(
+      challengeState(
+        challenge('e', '2026-11-01', null, '2026-11-10T00:00:00Z'),
+        today
+      )
+    ).toBe('ended');
+  });
+
+  it('sorts running, upcoming, ended, newest start first within each', () => {
+    const list = [
+      challenge('ended', '2026-11-05', '2026-11-10'),
+      challenge('later', '2026-12-01'),
+      challenge('old', '2026-10-01'),
+      challenge('new', '2026-11-09'),
+    ];
+    expect(sortChallenges(list, today).map((c) => c.id)).toEqual([
+      'new',
+      'old',
+      'later',
+      'ended',
+    ]);
+  });
+
+  it('judges each challenge on today in its own zone for the card', () => {
+    const now = new Date('2026-11-16T12:00:00Z');
+    const list = [
+      challenge('yesterday', '2026-11-01', '2026-11-15'),
+      challenge(
+        'honolulu',
+        '2026-11-01',
+        '2026-11-16',
+        null,
+        'Pacific/Honolulu'
+      ),
+      challenge(
+        'kiritimati',
+        '2026-11-01',
+        '2026-11-16',
+        null,
+        'Pacific/Kiritimati'
+      ),
+      challenge('next', '2026-12-01'),
+    ];
+    expect(challengesForCard(list, 2, now).map((c) => c.id)).toEqual([
+      'honolulu',
+      'next',
+    ]);
+    expect(challengeStateNow(list[2]!, now)).toBe('ended');
+    expect(() =>
+      challengesForCard(
+        [challenge('odd', '2026-11-01', null, null, 'Not/AZone')],
+        2,
+        now
+      )
+    ).not.toThrow();
   });
 });

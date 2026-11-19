@@ -8,7 +8,6 @@ import {
   challengeStepPoints,
   energyFromKcal,
   challengeLeaders,
-  challengeToday,
   defaultHeartRateZones,
   leadsChallenge,
   ownChallengeStanding,
@@ -17,7 +16,6 @@ import {
   type ChallengeFormat,
   type ChallengeGoalType,
   type ChallengeStandingsResponse,
-  type ChallengeSummary,
   type ChallengeManualEntryMode,
   type ChallengeMetric,
   type ChallengePeriod,
@@ -751,34 +749,6 @@ export function goalTypeLabel(t: TFunction, goal: ChallengeGoalType): string {
         'Stay active (workout days)'
       );
   }
-}
-
-/** At most this many challenges on the card. */
-const CARD_CHALLENGES_SHOWN = 2;
-
-/**
- * The challenges the card shows: ones not ended, those already running
- * (started by today in their own time zone) before scheduled ones, newest
- * start first within each.
- */
-export function challengesForCard(
-  challenges: readonly ChallengeSummary[],
-  now: Date = new Date()
-): ChallengeSummary[] {
-  const running = new Map(
-    challenges.map((c) => [
-      c.id,
-      c.start_date <= challengeToday(c.time_zone, now),
-    ])
-  );
-  return challenges
-    .filter((c) => c.ended_at === null)
-    .sort(
-      (a, b) =>
-        Number(running.get(b.id)) - Number(running.get(a.id)) ||
-        b.start_date.localeCompare(a.start_date)
-    )
-    .slice(0, CARD_CHALLENGES_SHOWN);
 }
 
 type StandingRow = ChallengeStandingsResponse['rows'][number];

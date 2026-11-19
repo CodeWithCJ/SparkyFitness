@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import type { ChallengeSummary } from '@workspace/shared';
+import { challengesForCard, type ChallengeSummary } from '@workspace/shared';
 import { Trophy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,10 +9,12 @@ import {
   useChallengeUnits,
 } from '@/hooks/Challenges/useChallenges';
 import {
-  challengesForCard,
   metricValueText,
   standingsSummary,
 } from '@/pages/Challenges/challengeCopy';
+
+/** At most this many challenges on the card. */
+const CARD_CHALLENGES_SHOWN = 2;
 
 /** One challenge on the card: your place and who leads this period. */
 const ChallengeStandingsLine = ({
@@ -75,7 +77,7 @@ const ChallengeStandingsCard = ({
   challenges: readonly ChallengeSummary[];
 }) => {
   const { t } = useTranslation();
-  const shown = challengesForCard(challenges);
+  const shown = challengesForCard(challenges, CARD_CHALLENGES_SHOWN);
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-2">

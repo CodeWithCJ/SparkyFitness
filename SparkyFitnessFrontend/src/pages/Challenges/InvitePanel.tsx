@@ -1,8 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import { Copy, Link2, XCircle } from 'lucide-react';
-import type {
-  ChallengeDetail,
-  ChallengeInviteResponse,
+import {
+  challengeStateNow,
+  type ChallengeDetail,
+  type ChallengeInviteResponse,
 } from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -106,7 +107,10 @@ const InvitePanel = ({
         </div>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button onClick={onCreate} disabled={busy || !!challenge.ended_at}>
+        <Button
+          onClick={onCreate}
+          disabled={busy || challengeStateNow(challenge) === 'ended'}
+        >
           {challenge.invite_active
             ? t('challenges.invite.newCode', 'Make a new code')
             : t('challenges.invite.create', 'Make an invite code')}

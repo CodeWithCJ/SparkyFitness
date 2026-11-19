@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, Settings2, Users } from 'lucide-react';
 import {
+  challengeStateNow,
   type ChallengeDetail,
   type ChallengeInviteResponse,
 } from '@workspace/shared';
@@ -66,6 +67,8 @@ const ChallengeDetailView = ({
   const { rules, pending_rules: upcoming } = challenge;
   const day = (d: string) => formatDateInUserTimezone(d, 'MMM d, yyyy');
   const isLastMember = challenge.member_count <= 1;
+  // Over once the server closed it or its end date has passed in its zone.
+  const ended = challengeStateNow(challenge) === 'ended';
 
   return (
     <div className="space-y-4">
@@ -106,7 +109,7 @@ const ChallengeDetailView = ({
               })}
             </Badge>
             {challenge.is_host && <Badge>{t('challenges.host', 'Host')}</Badge>}
-            {challenge.ended_at && (
+            {ended && (
               <Badge variant="outline">{t('challenges.ended', 'Ended')}</Badge>
             )}
           </div>
@@ -115,7 +118,7 @@ const ChallengeDetailView = ({
           )}
         </div>
         <div className="flex gap-2">
-          {challenge.is_host && !challenge.ended_at && (
+          {challenge.is_host && !ended && (
             <Button variant="outline" onClick={() => setEditing(true)}>
               <Settings2 className="mr-2 h-4 w-4" />
               {t('challenges.rules.edit', 'Change the rules')}

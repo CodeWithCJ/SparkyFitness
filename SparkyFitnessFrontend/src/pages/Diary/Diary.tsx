@@ -65,6 +65,7 @@ import {
 } from '@/hooks/Diary/useFoodEntries';
 import {
   buildFoodEntryCopyPayload,
+  challengeStateNow,
   clockInZone,
   prefillEntryTime,
   todayInZone,
@@ -415,7 +416,7 @@ const Diary = () => {
   const myChallenges = useMemo(
     () =>
       challengesAvailable
-        ? (challengeList ?? []).filter((c) => c.ended_at === null)
+        ? (challengeList ?? []).filter((c) => challengeStateNow(c) !== 'ended')
         : [],
     [challengesAvailable, challengeList]
   );

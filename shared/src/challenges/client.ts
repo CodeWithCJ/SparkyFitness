@@ -2,7 +2,8 @@ import { challengeInviteCodeSchema } from '../schemas/api/Challenges.api.zod.ts'
 import { instantToDay } from '../utils/timezone.ts';
 
 /**
- * Challenge helpers both apps use on what the server sends: the caller's own
+ * Challenge helpers both apps use on what the server sends: whether a
+ * challenge is upcoming, running or ended, the caller's own
  * standing, who leads a period, the invite code in pasted text and today in a
  * challenge's time zone. Keep web and mobile on these so they cannot drift.
  */
@@ -81,4 +82,77 @@ export function challengeToday(
   } catch {
     return instantToDay(now, Intl.DateTimeFormat().resolvedOptions().timeZone);
   }
+}
+
+export type ChallengeState = 'upcoming' | 'running' | 'ended';
+
+type StateFields = {
+  start_date: string;
+  end_date: string | null;
+  ended_at: string | null;
+};
+
+/**
+ * Where a challenge stands on `today` (a day in its own time zone): ended once
+ * the server has closed it or today is past its end date (the server closes it
+ * up to two days later), upcoming before its start, running otherwise.
+ */
+export function challengeState(
+  challenge: StateFields,
+  today: string
+): ChallengeState {
+  if (challenge.ended_at) return 'ended';
+  if (challenge.end_date && today > challenge.end_date) return 'ended';
+  if (today < challenge.start_date) return 'upcoming';
+  return 'running';
+}
+
+/** `challengeState` on today in the challenge's own time zone. */
+export function challengeStateNow(
+  challenge: StateFields & { time_zone: string },
+  now: Date = new Date()
+): ChallengeState {
+  return challengeState(challenge, challengeToday(challenge.time_zone, now));
+}
+
+const STATE_ORDER: Record<ChallengeState, number> = {
+  running: 0,
+  upcoming: 1,
+  ended: 2,
+};
+
+/**
+ * Running first, then upcoming, then ended; newest start first within each.
+ * `today` is one day for all, or each challenge's own today (its time zone).
+ */
+export function sortChallenges<T extends StateFields>(
+  challenges: readonly T[],
+  today: string | ((challenge: T) => string)
+): T[] {
+  const rank = new Map(
+    challenges.map((c) => [
+      c,
+      STATE_ORDER[
+        challengeState(c, typeof today === 'string' ? today : today(c))
+      ],
+    ])
+  );
+  return [...challenges].sort(
+    (a, b) =>
+      rank.get(a)! - rank.get(b)! || b.start_date.localeCompare(a.start_date)
+  );
+}
+
+/**
+ * The challenges a dashboard card shows: those not ended (each judged on today
+ * in its own time zone), running before upcoming, newest start first, at most
+ * `limit`.
+ */
+export function challengesForCard<
+  T extends StateFields & { time_zone: string },
+>(challenges: readonly T[], limit: number, now: Date = new Date()): T[] {
+  const today = (c: T) => challengeToday(c.time_zone, now);
+  return sortChallenges(challenges, today)
+    .filter((c) => challengeState(c, today(c)) !== 'ended')
+    .slice(0, limit);
 }

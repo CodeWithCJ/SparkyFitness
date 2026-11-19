@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Plus, Ticket, Trophy } from 'lucide-react';
-import type { ChallengeDetail } from '@workspace/shared';
+import { challengeStateNow, type ChallengeDetail } from '@workspace/shared';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -211,7 +211,7 @@ const Challenges = () => {
                       defaultValue_one: '{{count}} member',
                       defaultValue_other: '{{count}} members',
                     }),
-                    c.ended_at
+                    challengeStateNow(c) === 'ended'
                       ? t('challenges.ended', 'Ended')
                       : t('challenges.datesOpen', 'From {{start}}', {
                           start: formatDateInUserTimezone(

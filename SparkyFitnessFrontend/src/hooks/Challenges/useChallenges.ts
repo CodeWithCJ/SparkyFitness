@@ -82,12 +82,6 @@ export const useChallenges = (enabled = true) =>
     queryKey: challengeKeys.list(),
     queryFn: challengesApi.listChallenges,
     enabled,
-    meta: {
-      errorMessage: i18n.t(
-        'challenges.errors.load',
-        'Could not load your challenges.'
-      ),
-    },
   });
 
 export const useChallenge = (id: string | null) =>
@@ -95,12 +89,6 @@ export const useChallenge = (id: string | null) =>
     queryKey: challengeKeys.detail(id ?? ''),
     queryFn: () => challengesApi.getChallenge(id as string),
     enabled: id !== null,
-    meta: {
-      errorMessage: i18n.t(
-        'challenges.errors.loadOne',
-        'Could not load this challenge.'
-      ),
-    },
   });
 
 /** Standings of the period holding `date`; null asks for the current period. */
@@ -113,12 +101,6 @@ export const useChallengeStandings = (
     queryFn: () => challengesApi.getChallengeStandings(id as string, date),
     enabled: id !== null,
     refetchInterval: standingsRefetchInterval,
-    meta: {
-      errorMessage: i18n.t(
-        'challenges.errors.standings',
-        'Could not load the standings.'
-      ),
-    },
   });
 
 /**
@@ -143,12 +125,6 @@ export const useChallengeRuleChanges = (id: string | null) =>
     queryKey: challengeKeys.ruleChanges(id ?? ''),
     queryFn: () => challengesApi.getChallengeRuleChanges(id as string),
     enabled: id !== null,
-    meta: {
-      errorMessage: i18n.t(
-        'challenges.errors.ruleChanges',
-        'Could not load the rule changes.'
-      ),
-    },
   });
 
 export const useCreateChallenge = () => {
