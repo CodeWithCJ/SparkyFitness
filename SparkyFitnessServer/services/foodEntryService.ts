@@ -851,6 +851,42 @@ async function createFoodEntry(
     throw error;
   }
 }
+const NUTRITION_OVERRIDE_FIELDS = [
+  'food_name',
+  'brand_name',
+  'serving_size',
+  'serving_unit',
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'saturated_fat',
+  'polyunsaturated_fat',
+  'monounsaturated_fat',
+  'trans_fat',
+  'cholesterol',
+  'sodium',
+  'potassium',
+  'dietary_fiber',
+  'sugars',
+  'vitamin_a',
+  'vitamin_c',
+  'calcium',
+  'iron',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
+  'added_sugars',
+  'glycemic_index',
+] as const satisfies readonly (keyof FoodEntryInput)[];
+
+const SNAPSHOT_INPUT_FIELDS = [
+  'quantity',
+  'unit',
+  'custom_nutrients',
+  ...NUTRITION_OVERRIDE_FIELDS,
+] as const satisfies readonly (keyof FoodEntryInput)[];
+
 interface FoodEntryUpdateOptions {
   // MCP normalizes a quantity/unit edit without choosing a new catalog
   // variant, so it must preserve the historical nutrition reference.
@@ -900,11 +936,17 @@ async function updateFoodEntry(
 
     // MCP quantity, unit and meal-type edits preserve the entry snapshot: the
     // catalog can change after logging, and MCP did not choose a new variant.
-    // The web/mobile update path retains its existing refresh-on-edit behavior.
+    // The web/mobile update path refreshes it from the variant on a nutrition
+    // edit, but an update touching none of those inputs (a note, a time, a
+    // meal type) keeps the stored snapshot, which may hold adjusted values.
+    const variantChanged =
+      entryData.variant_id !== undefined &&
+      entryData.variant_id !== existingEntry.variant_id;
+    const editsSnapshotInputs = SNAPSHOT_INPUT_FIELDS.some(
+      (field) => entryData[field] !== undefined
+    );
     const shouldRefreshSnapshot =
-      !options.preserveSnapshot ||
-      (entryData.variant_id !== undefined &&
-        entryData.variant_id !== existingEntry.variant_id);
+      variantChanged || (!options.preserveSnapshot && editsSnapshotInputs);
     let newSnapshotData;
     if (shouldRefreshSnapshot && food && variant) {
       newSnapshotData = {
@@ -971,35 +1013,7 @@ async function updateFoodEntry(
       };
     }
     // Apply inline nutrition overrides if provided by the client
-    const nutritionOverrideFields = [
-      'food_name',
-      'brand_name',
-      'serving_size',
-      'serving_unit',
-      'calories',
-      'protein',
-      'carbs',
-      'fat',
-      'saturated_fat',
-      'polyunsaturated_fat',
-      'monounsaturated_fat',
-      'trans_fat',
-      'cholesterol',
-      'sodium',
-      'potassium',
-      'dietary_fiber',
-      'sugars',
-      'vitamin_a',
-      'vitamin_c',
-      'calcium',
-      'iron',
-      'caffeine_mg',
-      'water_ml',
-      'alcohol_g',
-      'added_sugars',
-      'glycemic_index',
-    ];
-    for (const field of nutritionOverrideFields as (keyof FoodEntryInput)[]) {
+    for (const field of NUTRITION_OVERRIDE_FIELDS) {
       if (entryData[field] !== undefined) {
         (newSnapshotData as Record<string, unknown>)[field] = entryData[field];
       }
