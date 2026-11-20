@@ -183,7 +183,9 @@ async function localCandidate(
   barcode: string,
   userId: string
 ): Promise<BarcodeCandidate | null> {
-  const local = await foodRepository.findFoodByBarcode(barcode, userId);
+  const local = await foodRepository.findFoodByBarcode(barcode, userId, {
+    includeFamily: true,
+  });
   if (!local) return null;
   return {
     providerId: 'local',

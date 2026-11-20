@@ -34,4 +34,24 @@ describe('findFoodByBarcode', () => {
     const queryStr = mockClient.query.mock.calls[0][0];
     expect(queryStr).toContain('f.is_quick_food = FALSE');
   });
+
+  it("matches only the user's own foods unless family foods are requested", async () => {
+    mockClient.query.mockResolvedValue({ rows: [] });
+
+    await findFoodByBarcode('0123456789012', userId);
+    expect(mockClient.query.mock.calls[0][1]).toEqual([
+      '0123456789012',
+      userId,
+      false,
+    ]);
+
+    await findFoodByBarcode('0123456789012', userId, { includeFamily: true });
+    const [queryStr, params] = mockClient.query.mock.calls[1];
+    expect(params).toEqual(['0123456789012', userId, true]);
+    expect(queryStr).toContain(
+      "(fa.access_permissions->>'can_view_food_library')::boolean = TRUE"
+    );
+    expect(queryStr).toContain('fa.is_active = TRUE');
+    expect(queryStr).toContain('fa.access_end_date > NOW()');
+  });
 });

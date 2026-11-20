@@ -1063,7 +1063,9 @@ async function lookupBarcode(
     options.signal?.throwIfAborted();
     const localFood = options.skipLocal
       ? null
-      : await foodRepository.findFoodByBarcode(barcode, userId);
+      : await foodRepository.findFoodByBarcode(barcode, userId, {
+          includeFamily: true,
+        });
     options.signal?.throwIfAborted();
     if (localFood) {
       return {

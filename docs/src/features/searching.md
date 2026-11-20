@@ -39,6 +39,8 @@ On the food search, open the barcode scanner (**Scan Barcode or Label** on the w
 
 On the web app you can also use a picture of the barcode, which helps on a computer without a camera. In that window, press **Upload barcode image**, drop an image file on the window, or paste a screenshot with Ctrl+V (Cmd+V on a Mac). The picture is read in your browser and is not uploaded. Product barcodes (EAN-13, EAN-8, UPC-A and UPC-E) are recognized.
 
+A barcode you have already saved is matched first. Next come foods from anyone who shares their food library with you (**View Food Library** in [Family & Friends Sharing](/features/family-friends-sharing)), so a household can keep one copy of a food. Only then is an online provider asked.
+
 For each lookup:
 
 - You can pick which provider performs the lookup

@@ -723,7 +723,8 @@ describe('lookupBarcode', () => {
     expect(result).toEqual({ source: 'local', food: localFood });
     expect(foodRepository.findFoodByBarcode).toHaveBeenCalledWith(
       '012345678901',
-      TEST_USER_ID
+      TEST_USER_ID,
+      { includeFamily: true }
     );
     expect(searchOpenFoodFactsByBarcodeFields).not.toHaveBeenCalled();
   });
@@ -1003,7 +1004,8 @@ describe('lookupBarcode', () => {
     // The local food library is still searched in the switched data context.
     expect(foodRepository.findFoodByBarcode).toHaveBeenCalledWith(
       '3017620422003',
-      CONTEXT_USER
+      CONTEXT_USER,
+      { includeFamily: true }
     );
   });
   it('should skip USDA when provider is inactive', async () => {

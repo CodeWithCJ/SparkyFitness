@@ -322,7 +322,9 @@ describe('barcode alternatives', () => {
       C,
     ]);
     expect(mocks.providers).toHaveBeenCalledWith('actor', 'actor');
-    expect(mocks.local).toHaveBeenCalledWith(barcode, 'target');
+    expect(mocks.local).toHaveBeenCalledWith(barcode, 'target', {
+      includeFamily: true,
+    });
     expect(mocks.lookup).toHaveBeenCalledWith(
       barcode,
       'target',
