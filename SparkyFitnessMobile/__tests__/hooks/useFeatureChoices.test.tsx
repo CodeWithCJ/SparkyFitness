@@ -10,7 +10,6 @@ import {
   featureChoicesQueryKey,
   serverConfigsQueryKey,
 } from '../../src/hooks/queryKeys';
-import type { ServerConfig } from '../../src/services/storage';
 import {
   fetchFeatureChoices,
   updateFeatureChoices,
@@ -20,6 +19,8 @@ import { ApiError } from '../../src/services/api/errors';
 import {
   createQueryWrapper,
   createTestQueryClient,
+  showServerOnScreen,
+  testServer,
   type QueryClient,
 } from './queryTestUtils';
 
@@ -65,21 +66,6 @@ const settle = () =>
 
 let queryClient: QueryClient;
 
-const serverA: ServerConfig = {
-  id: 'server-a',
-  url: 'https://a.example.com',
-  apiKey: '',
-  authType: 'session',
-  sessionToken: 'token-a',
-};
-
-/** What `useServerConfigs` caches; `useServerConnection` keeps it loaded. */
-const showServer = (config: ServerConfig) =>
-  queryClient.setQueryData(serverConfigsQueryKey, {
-    allConfigs: [config],
-    activeConfig: config,
-  });
-
 function setup() {
   return renderHook(
     () => ({
@@ -99,7 +85,7 @@ const cached = () =>
 beforeEach(() => {
   jest.resetAllMocks();
   queryClient = createTestQueryClient();
-  showServer(serverA);
+  showServerOnScreen(queryClient);
   jest.mocked(getSettings).mockResolvedValue(null);
 });
 
@@ -169,7 +155,7 @@ describe('useSetMobileFeatureChoice', () => {
     expect(updateMock).toHaveBeenCalledTimes(1);
     expect(updateMock).toHaveBeenCalledWith(
       { mobile: { labResults: false } },
-      serverA
+      testServer
     );
   });
 
@@ -266,7 +252,11 @@ describe('useSetMobileFeatureChoice', () => {
 
     // A server switch stores the new active server before the cache is
     // cleared; the queued change still belongs to the first one.
-    showServer({ ...serverA, id: 'server-b', url: 'https://b.example.com' });
+    showServerOnScreen(queryClient, {
+      ...testServer,
+      id: 'server-b',
+      url: 'https://b.example.com',
+    });
     await act(async () =>
       first.resolve(choices({ mobile: { labResults: false } }))
     );
@@ -335,7 +325,7 @@ describe('useSetMobileFeatureChoice', () => {
     await waitFor(() => expect(updateMock).toHaveBeenCalledTimes(2));
     expect(updateMock).toHaveBeenLastCalledWith(
       { mobile: { labResults: true } },
-      serverA
+      testServer
     );
     await waitFor(() =>
       expect(cached()?.feature_choices.mobile).toEqual({ labResults: true })

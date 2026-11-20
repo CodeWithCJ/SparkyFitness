@@ -1,10 +1,5 @@
 import { useCallback } from 'react';
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-  type QueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import type {
@@ -18,8 +13,9 @@ import {
 import { ApiError } from '../services/api/errors';
 import { addLog } from '../services/LogService';
 import type { ServerConfig } from '../services/storage';
-import { featureChoicesQueryKey, serverConfigsQueryKey } from './queryKeys';
+import { featureChoicesQueryKey } from './queryKeys';
 import { startedOn } from './queryOwner';
+import { serverOnScreen } from './serverOnScreen';
 
 /**
  * The person's explicit feature choices (#3487), both platforms; the app
@@ -47,14 +43,6 @@ export function useFeatureChoicesQuery() {
  * than Features, which cannot store one. */
 export type FeatureChoiceState =
   'ready' | 'loading' | 'loadFailed' | 'serverTooOld';
-
-/** The server and account on screen, as `useServerConfigs` cached them. A
- * server switch stores the new active server before it clears the cache, so
- * reading the active server later could already give the new one. */
-const serverOnScreen = (queryClient: QueryClient): ServerConfig | null =>
-  queryClient.getQueryData<{ activeConfig: ServerConfig | null }>(
-    serverConfigsQueryKey
-  )?.activeConfig ?? null;
 
 /** One change, bound when the switch is tapped to the account on screen. */
 interface ChoiceChange {

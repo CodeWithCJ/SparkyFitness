@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { View, Text, ScrollView, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -8,6 +9,7 @@ import { getTodayDate, addDays } from '../utils/dateUtils';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useCycleSettings } from '../hooks/useCycleSettings';
+import { serverOnScreen } from '../hooks/serverOnScreen';
 import {
   usePregnancyMutations,
   useCurrentPregnancy,
@@ -146,6 +148,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
     '--color-form-disabled',
   ]) as [string, string];
 
+  const queryClient = useQueryClient();
   const { updateSettingsAsync } = useCycleSettings();
   const { createPregnancyAsync, updatePregnancyAsync } =
     usePregnancyMutations();
@@ -200,17 +203,24 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
       }
     }
     setLoading(true);
+    // Every write of the setup goes to the account it was started on, even if
+    // another one is active by the time it goes out (#3665).
+    const serverConfig = serverOnScreen(queryClient);
     try {
+      if (!serverConfig) throw new Error('No server on screen');
       // 1. Save Settings
-      await updateSettingsAsync({
-        enabled: true,
-        mode,
-        avg_cycle_length_override: cycleLength,
-        avg_period_length_override: periodLength,
-        birth_control_method: birthControl,
-        conditions,
-        mark_onboarded: true,
-      });
+      await updateSettingsAsync(
+        {
+          enabled: true,
+          mode,
+          avg_cycle_length_override: cycleLength,
+          avg_period_length_override: periodLength,
+          birth_control_method: birthControl,
+          conditions,
+          mark_onboarded: true,
+        },
+        serverConfig
+      );
 
       // 2. Seed Period Days (Standard/TTC Mode) or create Pregnancy Record (Pregnant Mode)
       if (mode === 'standard' || mode === 'ttc') {
@@ -221,15 +231,18 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
           seedLogs.push({ date: dateStr, flow_level });
         }
         if (seedLogs.length > 0) {
-          await bulkPutLogs(seedLogs);
+          await bulkPutLogs(seedLogs, serverConfig);
         }
       } else if (mode === 'pregnant') {
         try {
           await createPregnancyAsync({
-            ...dueDateForm.dates,
-            fetus_count: 1,
-            status: 'active',
-            notes: null,
+            body: {
+              ...dueDateForm.dates,
+              fetus_count: 1,
+              status: 'active',
+              notes: null,
+            },
+            serverConfig,
           });
         } catch (pregErr) {
           if (currentPregnancy?.id) {
@@ -239,6 +252,7 @@ const CycleOnboardingScreen: React.FC<CycleOnboardingScreenProps> = ({
                 ...dueDateForm.dates,
                 status: 'active',
               },
+              serverConfig,
             });
           } else {
             throw pregErr;
