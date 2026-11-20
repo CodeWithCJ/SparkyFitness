@@ -641,7 +641,9 @@
     "checkIn": "Daily Check-In",
     "checkInHint": "Habits",
     "oralCare": "Oral care",
-    "oralCareHint": "Brush, floss"
+    "oralCareHint": "Brush, floss",
+    "copyFromYesterday": "Copy from yesterday",
+    "copyFromYesterdayHint": "Repeat meals"
   },
   "screens": {
     "foods": "Foods",
@@ -5531,6 +5533,7 @@
     "noServerTitle": "No Server Connected",
     "configureForExercise": "Configure your server connection in Settings to add an exercise.",
     "configureForWorkout": "Configure your server connection in Settings to start a workout.",
+    "configureForCopy": "Configure your server connection in Settings to copy from yesterday.",
     "draft": {
       "title": "Draft in Progress",
       "message": "You have an unsaved {{type}} draft. What would you like to do?",
@@ -5976,6 +5979,16 @@
     "failed": "Failed to copy meal",
     "foodSuccess": "Food copied",
     "foodFailed": "Failed to copy food"
+  },
+  "copyFromYesterday": {
+    "title": "Copy from yesterday",
+    "subtitle": "Bring yesterday’s meals into this day",
+    "emptySource": "There is nothing to copy from yesterday.",
+    "copySelected": "Copy Selected",
+    "copyAll": "Copy All",
+    "copying": "Copying...",
+    "success": "Copied from yesterday",
+    "failed": "Failed to copy from yesterday"
   },
   "foodDelete": {
     "failed": "Failed to delete food",

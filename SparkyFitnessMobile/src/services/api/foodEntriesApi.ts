@@ -200,6 +200,48 @@ export const copyFoodEntries = async (
   });
 };
 
+export interface CopyFoodEntriesFromYesterdayPayload {
+  mealType: string;
+  targetDate: string;
+}
+
+/**
+ * Copies one meal from the previous day into the same meal on `targetDate`.
+ * The source day is `targetDate - 1`, computed server-side. The meal is matched
+ * by name (case-insensitive); an empty source meal copies nothing.
+ */
+export const copyFoodEntriesFromYesterday = async (
+  payload: CopyFoodEntriesFromYesterdayPayload
+): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: '/api/food-entries/copy-yesterday',
+    serviceName: 'Food Entries API',
+    operation: 'copy food entries from yesterday',
+    method: 'POST',
+    body: payload,
+  });
+};
+
+export interface CopyAllFoodEntriesFromYesterdayPayload {
+  targetDate: string;
+}
+
+/**
+ * Copies every meal with data on the previous day into `targetDate`. The source
+ * day is `targetDate - 1`, computed server-side.
+ */
+export const copyAllFoodEntriesFromYesterday = async (
+  payload: CopyAllFoodEntriesFromYesterdayPayload
+): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: '/api/food-entries/copy-all-yesterday',
+    serviceName: 'Food Entries API',
+    operation: 'copy all food entries from yesterday',
+    method: 'POST',
+    body: payload,
+  });
+};
+
 /**
  * Copies a complete meal from an explicitly selected family diary user.
  * The server preserves composite-meal containers for this whole-meal route.
