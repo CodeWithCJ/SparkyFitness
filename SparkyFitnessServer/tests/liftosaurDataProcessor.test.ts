@@ -12,6 +12,7 @@ vi.mock('../db/poolManager.js', () => ({
 }));
 
 vi.mock('../models/exerciseEntry.js', () => ({
+  acquireExerciseEntrySyncLockWithClient: vi.fn().mockResolvedValue(undefined),
   default: {
     _createExerciseEntryWithClient: vi
       .fn()
@@ -36,6 +37,9 @@ vi.mock('../models/exercise.js', () => ({
 vi.mock('../models/activityDetailsRepository.js', () => ({
   default: {
     _createActivityDetailWithClient: vi.fn().mockResolvedValue(undefined),
+    _deleteActivityDetailsByEntryIdAndProviderWithClient: vi
+      .fn()
+      .mockResolvedValue(undefined),
   },
 }));
 
@@ -47,25 +51,26 @@ vi.mock('../models/workoutPresetRepository.js', () => ({
   },
 }));
 
-vi.mock('../models/exercisePresetEntryRepository.js', () => ({
-  default: {
-    createExercisePresetEntryWithClient: vi
-      .fn()
-      .mockResolvedValue({ id: 'preset-entry-1' }),
-    deleteExercisePresetEntriesByEntrySourceAndDateWithClient: vi
-      .fn()
-      .mockResolvedValue(undefined),
-  },
+vi.mock('../integrations/liftosaur/liftosaurSessionRepository.js', () => ({
+  upsertLiftosaurSessionWithClient: vi.fn().mockResolvedValue('preset-entry-1'),
+  moveEntryToSessionWithClient: vi.fn().mockResolvedValue(undefined),
+  deleteLiftosaurSessionsNotInWithClient: vi.fn().mockResolvedValue(0),
 }));
 
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
 import { processLiftosaurWorkouts } from '../integrations/liftosaur/liftosaurDataProcessor.js';
-import exerciseEntryRepository from '../models/exerciseEntry.js';
+import exerciseEntryRepository, {
+  acquireExerciseEntrySyncLockWithClient,
+} from '../models/exerciseEntry.js';
 import exerciseRepository from '../models/exercise.js';
 import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
-import exercisePresetEntryRepository from '../models/exercisePresetEntryRepository.js';
+import {
+  deleteLiftosaurSessionsNotInWithClient,
+  moveEntryToSessionWithClient,
+  upsertLiftosaurSessionWithClient,
+} from '../integrations/liftosaur/liftosaurSessionRepository.js';
 import { getClient } from '../db/poolManager.js';
 import { parseLiftohistory } from '../integrations/liftosaur/liftohistoryParser.js';
 
@@ -103,9 +108,9 @@ describe('processLiftosaurWorkouts', () => {
 
   it('rolls back transaction and releases client when an error occurs', async () => {
     const workouts = parseSampleWorkouts();
-    vi.mocked(
-      exercisePresetEntryRepository.createExercisePresetEntryWithClient
-    ).mockRejectedValueOnce(new Error('DB failure'));
+    vi.mocked(upsertLiftosaurSessionWithClient).mockRejectedValueOnce(
+      new Error('DB failure')
+    );
 
     await expect(processLiftosaurWorkouts(UID, CID, workouts)).rejects.toThrow(
       'DB failure'
@@ -127,8 +132,9 @@ describe('processLiftosaurWorkouts', () => {
     );
   });
 
-  it('clears prior Liftosaur data in the synced date range before rebuilding', async () => {
+  it('deletes only Liftosaur rows in the synced range that are not re-sent', async () => {
     const workouts = parseSampleWorkouts();
+    const id = String(workouts[0]!.id);
     await processLiftosaurWorkouts(UID, CID, workouts);
 
     expect(
@@ -138,17 +144,166 @@ describe('processLiftosaurWorkouts', () => {
       UID,
       '2026-07-13',
       '2026-07-13',
-      'Liftosaur'
+      'Liftosaur',
+      undefined,
+      [`${id}_Squat_0`, `${id}_Bulgarian Split Squat_0`]
     );
+    expect(deleteLiftosaurSessionsNotInWithClient).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      '2026-07-13',
+      '2026-07-13',
+      [id]
+    );
+    // Entries go first: that path clears calorie links, and a session delete
+    // cascades to its entries.
     expect(
-      exercisePresetEntryRepository.deleteExercisePresetEntriesByEntrySourceAndDateWithClient
+      vi.mocked(
+        exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+      ).mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      vi.mocked(deleteLiftosaurSessionsNotInWithClient).mock
+        .invocationCallOrder[0]!
+    );
+  });
+
+  it('reconciles an explicit day range even with no fetched workouts', async () => {
+    await processLiftosaurWorkouts(UID, CID, [], 'UTC', {
+      startDate: '2026-07-07',
+      endDate: '2026-07-14',
+    });
+
+    expect(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+    ).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      '2026-07-07',
+      '2026-07-14',
+      'Liftosaur',
+      undefined,
+      []
+    );
+    expect(deleteLiftosaurSessionsNotInWithClient).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      '2026-07-07',
+      '2026-07-14',
+      []
+    );
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+  });
+
+  it('keys entries by exercise name and occurrence, not position', async () => {
+    const record = (lines: string[]) =>
+      parseLiftohistory(
+        ['2026-07-13 10:00:00 +00:00 / exercises: {', ...lines, '}'].join('\n')
+      ).workouts.map((w) => ({ ...w, id: 7 }));
+    const sourceIds = () =>
+      vi
+        .mocked(exerciseEntryRepository._createExerciseEntryWithClient)
+        .mock.calls.map((call) => call[2].source_id);
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      record([
+        '  Squat / 3x5 100kg',
+        '  Curl / 3x10 10kg',
+        '  Squat / 1x5 110kg',
+      ])
+    );
+    expect(sourceIds()).toEqual(['7_Squat_0', '7_Curl_0', '7_Squat_1']);
+
+    // Reordered in Liftosaur: each exercise keeps its id.
+    vi.clearAllMocks();
+    vi.mocked(getClient).mockResolvedValue(mockClient as any);
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      record(['  Curl / 3x10 10kg', '  Squat / 3x5 100kg'])
+    );
+    expect(sourceIds()).toEqual(['7_Curl_0', '7_Squat_0']);
+  });
+
+  it('deletes only after writing, keeping exactly what this sync wrote', async () => {
+    const workouts = parseSampleWorkouts();
+    await processLiftosaurWorkouts(UID, CID, workouts);
+
+    const deleteOrder = vi.mocked(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+    ).mock.invocationCallOrder[0]!;
+    const lastWrite = Math.max(
+      ...vi.mocked(exerciseEntryRepository._createExerciseEntryWithClient).mock
+        .invocationCallOrder
+    );
+    expect(deleteOrder).toBeGreaterThan(lastWrite);
+  });
+
+  it('keeps the existing entry of an exercise skipped because of an error', async () => {
+    // "Bulgarian Split Squat" is not in the library and cannot be created.
+    vi.mocked(exerciseRepository.createExercise).mockResolvedValueOnce(
+      null as never
+    );
+    const workouts = parseSampleWorkouts();
+    const id = String(workouts[0]!.id);
+
+    await processLiftosaurWorkouts(UID, CID, workouts);
+
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
     ).toHaveBeenCalledWith(
       mockClient,
       UID,
       '2026-07-13',
       '2026-07-13',
+      'Liftosaur',
+      undefined,
+      [`${id}_Squat_0`, `${id}_Bulgarian Split Squat_0`]
+    );
+  });
+
+  it('takes the Liftosaur sync lock before writing anything', async () => {
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      null
+    );
+
+    expect(acquireExerciseEntrySyncLockWithClient).toHaveBeenCalledWith(
+      mockClient,
+      UID,
       'Liftosaur'
     );
+    expect(
+      vi.mocked(acquireExerciseEntrySyncLockWithClient).mock
+        .invocationCallOrder[0]
+    ).toBeLessThan(
+      vi.mocked(upsertLiftosaurSessionWithClient).mock.invocationCallOrder[0]!
+    );
+  });
+
+  it('deletes nothing when told the fetch was incomplete', async () => {
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      null
+    );
+
+    expect(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+    ).not.toHaveBeenCalled();
+    expect(deleteLiftosaurSessionsNotInWithClient).not.toHaveBeenCalled();
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenCalledTimes(2);
   });
 
   it('creates a workout preset per program name and one preset entry per workout on client', async () => {
@@ -167,19 +322,16 @@ describe('processLiftosaurWorkouts', () => {
       description: 'Workout session from Liftosaur: 5/3/1',
       is_public: false,
     });
-    expect(
-      exercisePresetEntryRepository.createExercisePresetEntryWithClient
-    ).toHaveBeenCalledWith(
+    expect(upsertLiftosaurSessionWithClient).toHaveBeenCalledWith(
       mockClient,
       UID,
+      CID,
       expect.objectContaining({
-        user_id: UID,
+        source_id: String(workouts[0]!.id),
         workout_preset_id: 42,
         name: '5/3/1',
         entry_date: '2026-07-13',
-        source: 'Liftosaur',
-      }),
-      CID
+      })
     );
   });
 
@@ -220,8 +372,8 @@ describe('processLiftosaurWorkouts', () => {
       exercise_id: 'exercise-squat',
       entry_date: '2026-07-13',
       entry_time: '05:52',
-      duration_minutes: 6, // 3 * 120s timer
-      source_id: expect.stringContaining('_0'),
+      duration_minutes: 60, // the workout's duration: 3600s
+      source_id: expect.stringContaining('_Squat_0'),
     });
     expect(squatCall[3]).toBe(CID);
     expect(squatCall[4]).toBe('Liftosaur');
@@ -240,7 +392,8 @@ describe('processLiftosaurWorkouts', () => {
       set_type: 'Working Set',
       weight: 83.91, // 185 lb -> kg
       reps: 5,
-      duration: 120,
+      duration: null, // rest timers are not set durations
+      rest_time: 120,
     });
 
     // Bulgarian Split Squat: 2 sets, no timers; not the first exercise so no
@@ -249,11 +402,88 @@ describe('processLiftosaurWorkouts', () => {
     expect(splitSquatCall[2]).toMatchObject({
       exercise_id: 'exercise-new',
       duration_minutes: 0,
-      source_id: expect.stringContaining('_1'),
+      source_id: expect.stringContaining('_Bulgarian Split Squat_0'),
     });
   });
 
-  it('attributes whole-workout duration to the first exercise when no timers exist', async () => {
+  it('imports only completed sets, never skipped planned ones', async () => {
+    const text = [
+      '2026-07-13 05:52:14 +00:00 / program: "P" / dayName: "D" / exercises: {',
+      '  Crunch, Cable / 1x8 40kg / target: 1x6-8 40kg @9 60s, 1x6-8 40kg @10 60s',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    const sets = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls[0]![2].sets as Array<Record<string, unknown>>;
+    expect(sets).toHaveLength(1);
+    expect(sets[0]).toMatchObject({ reps: 8, weight: 40 });
+  });
+
+  it('creates no session for a workout with no performed sets', async () => {
+    const text = [
+      '2026-07-13 05:52:14 +00:00 / program: "P" / dayName: "D" / exercises: {',
+      '  Lunge / target: 3x10 20kg 60s',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    // The workout returns before its preset and session are looked up or
+    // created (checked on the preset lookup, which comes first).
+    expect(
+      workoutPresetRepository.getWorkoutPresetByName
+    ).not.toHaveBeenCalled();
+    expect(workoutPresetRepository.createWorkoutPreset).not.toHaveBeenCalled();
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).not.toHaveBeenCalled();
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+  });
+
+  it('gives the workout duration to the first imported exercise when the first one is skipped', async () => {
+    const text = [
+      '2026-07-14 10:00:00 +00:00 / duration: 3600s / exercises: {',
+      '  Lunge / target: 3x10 20kg',
+      '  Squat / 3x5 100kg',
+      '  Curl / 3x10 10kg',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    const calls = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0]![2]).toMatchObject({ duration_minutes: 60 });
+    expect(calls[1]![2]).toMatchObject({ duration_minutes: 0 });
+    // The skipped exercise gets no library row either.
+    expect(exerciseRepository.createExercise).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Lunge' })
+    );
+  });
+
+  it('creates no entry for an exercise with no performed sets', async () => {
+    const text = [
+      '2026-07-13 05:52:14 +00:00 / program: "P" / dayName: "D" / exercises: {',
+      '  Squat / 3x5 100kg',
+      '  Lunge / target: 3x10 20kg 60s',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    const calls = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0]![2]).toMatchObject({ exercise_id: 'exercise-squat' });
+  });
+
+  it('attributes whole-workout duration to the first exercise only', async () => {
     const text = [
       '2026-07-14 10:00:00 +00:00 / duration: 3600s / exercises: {',
       '  Squat / 3x5 100kg',
@@ -292,6 +522,58 @@ describe('processLiftosaurWorkouts', () => {
       durationSeconds: 3600,
     });
     expect(detailCall[1].detail_data.exercise.name).toBe('Squat');
+  });
+
+  it('moves an entry updated in place under the current session before cleanup', async () => {
+    vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mockResolvedValueOnce({
+      entry: { id: 'entry-old' },
+      operation: 'updated',
+    } as never);
+
+    await processLiftosaurWorkouts(UID, CID, parseSampleWorkouts());
+
+    expect(moveEntryToSessionWithClient).toHaveBeenCalledTimes(1);
+    expect(moveEntryToSessionWithClient).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      'entry-old',
+      'preset-entry-1'
+    );
+    expect(
+      vi.mocked(moveEntryToSessionWithClient).mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      vi.mocked(deleteLiftosaurSessionsNotInWithClient).mock
+        .invocationCallOrder[0]!
+    );
+  });
+
+  it('replaces the raw detail of an entry updated in place instead of adding a copy', async () => {
+    vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mockResolvedValueOnce({
+      entry: { id: 'entry-1' },
+      operation: 'updated',
+    } as never);
+
+    await processLiftosaurWorkouts(UID, CID, parseSampleWorkouts());
+
+    expect(
+      activityDetailsRepository._deleteActivityDetailsByEntryIdAndProviderWithClient
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      activityDetailsRepository._deleteActivityDetailsByEntryIdAndProviderWithClient
+    ).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      'entry-1',
+      'Liftosaur',
+      'full_activity_data'
+    );
+    expect(
+      activityDetailsRepository._createActivityDetailWithClient
+    ).toHaveBeenCalledTimes(2);
   });
 
   it('deduplicates workouts with the same id', async () => {

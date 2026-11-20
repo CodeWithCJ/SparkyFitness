@@ -29,7 +29,7 @@ COPY shared/ ./shared/
 RUN pnpm --filter sparkyfitnessfrontend run build
 
 # Stage 2: Serve the application with Nginx
-FROM nginx:alpine3.22
+FROM nginx:1.30.7-alpine3.24
 
 # Install bash for console access, gettext for envsubst, and curl for healthcheck
 RUN apk add --no-cache bash gettext curl
@@ -46,7 +46,11 @@ RUN chmod +x /docker-entrypoint.sh \
     && mkdir -p /var/run/nginx /var/cache/nginx /etc/nginx/conf.d /var/log/nginx \
     && chgrp -R 0 /var/run/nginx /var/cache/nginx /etc/nginx/conf.d /var/log/nginx \
     && chmod -R g+wX /var/run/nginx /var/cache/nginx /etc/nginx/conf.d /var/log/nginx \
-    && sed -i 's|/var/run/nginx.pid|/var/run/nginx/nginx.pid|g' /etc/nginx/nginx.conf \
+    # Point the pid at the group-writable dir above, whatever path the base
+    # image uses (nginx 1.27.5+ ships /run/nginx.pid, older ones
+    # /var/run/nginx.pid), and fail the build if no pid line was rewritten.
+    && sed -i 's|^\([[:space:]]*pid[[:space:]]\{1,\}\)[^;]*;|\1/var/run/nginx/nginx.pid;|' /etc/nginx/nginx.conf \
+    && grep -q '^[[:space:]]*pid[[:space:]]\{1,\}/var/run/nginx/nginx\.pid;' /etc/nginx/nginx.conf \
     && sed -i 's|^[[:space:]]*user|#user|g' /etc/nginx/nginx.conf
 
 # Set default values for environment variables

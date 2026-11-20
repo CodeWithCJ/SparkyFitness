@@ -52,10 +52,12 @@ jest.mock('../../src/components/Icon', () => {
 });
 
 let mockCycleOn = false;
+let mockLabResultsOn = true;
 let mockDiscreet = false;
 jest.mock('../../src/hooks/useMobileFeatures', () => ({
   useMobileFeatures: () => ({
-    isEnabled: (key: string) => key === 'cycle' && mockCycleOn,
+    isEnabled: (key: string) =>
+      key === 'cycle' ? mockCycleOn : mockLabResultsOn,
   }),
 }));
 jest.mock('../../src/hooks/useDiscreetMode', () => ({
@@ -96,6 +98,7 @@ describe('DashboardSettingsScreen', () => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
     mockCycleOn = false;
+    mockLabResultsOn = true;
     mockDiscreet = false;
   });
 
@@ -121,6 +124,23 @@ describe('DashboardSettingsScreen', () => {
     expect(screen.getByTestId('dashboard-card-switch-cycle').props.value).toBe(
       true
     );
+  });
+
+  test('keeps the lab results card listed while lab results are off, saying why it is not shown', () => {
+    mockLabResultsOn = false;
+    renderScreen();
+    const row = screen.getByTestId('dashboard-card-row-labResults');
+    expect(
+      within(row).getByText('Not shown: turned off in Features')
+    ).toBeTruthy();
+  });
+
+  test('describes the lab results card normally while lab results are on', () => {
+    renderScreen();
+    const row = screen.getByTestId('dashboard-card-row-labResults');
+    expect(
+      within(row).queryByText('Not shown: turned off in Features')
+    ).toBeNull();
   });
 
   test('describes the cycle card normally while cycle is on', () => {

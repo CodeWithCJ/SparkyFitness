@@ -133,6 +133,25 @@ export interface ProviderLookupResult {
 }
 
 /**
+ * The name inside a quoted search, when the chatbot added the quotes. The
+ * sparky_manage_food tool text has it quote a USDA name that holds search
+ * syntax (`"... 1/8\" fat ..."`), and the provider gets that quoted form, but
+ * ranking compares result names with the query, so it must read the name
+ * itself. A quoted name with no search syntax is a phrase someone chose, and
+ * anything that is not one whole quoted phrase is not a quoted name; both are
+ * returned as is.
+ */
+function unquotedName(foodName: string): string {
+  const phrase = /^\s*"((?:[^"\\]|\\.)*)"\s*$/.exec(foodName);
+  if (!phrase) return foodName;
+  const name = phrase[1].replace(/\\"/g, '"');
+  // The same test as the tool text: these names are sent unquoted.
+  const plain =
+    /^[\p{L}\p{N} ,.'%]*$/u.test(name) && !/\b(?:AND|OR|NOT)\b/.test(name);
+  return plain ? foodName : name;
+}
+
+/**
  * Searches the given providers in order and returns the first hit, ranked.
  * A provider that throws is logged and skipped — one misconfigured or
  * rate-limited provider must never fail the whole lookup.
@@ -161,7 +180,7 @@ export async function lookupFoodFromProviders(
           !externalId || String(food.provider_external_id) === externalId
       );
       if (foods.length > 0) {
-        const ranked = rankProviderMatches(foods, foodName);
+        const ranked = rankProviderMatches(foods, unquotedName(foodName));
         return {
           source: provider.provider_type,
           provider_id: provider.id,

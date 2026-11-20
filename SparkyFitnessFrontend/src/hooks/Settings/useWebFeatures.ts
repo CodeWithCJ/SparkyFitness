@@ -8,43 +8,47 @@ import {
 } from '@workspace/shared';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useCycleSettings, useSetCycleEnabledMutation } from '@/hooks/useCycle';
+import { useFeatureChoicesQuery } from '@/hooks/Settings/useFeatureChoices';
 
 /**
  * Which optional features (#3487) show on this website, from the shared
  * registry. Every entry point to one (tab, + menu item, link) asks this
- * instead of reading where the switch is stored. Cycle, the only feature so
- * far, keeps its own account-wide switch in `cycle_settings.enabled`; the
- * website's `feature_choices` join here with the first feature stored there.
+ * instead of reading where the switch is stored: the website's own
+ * `feature_choices` (lab results), or for cycle its account-wide switch in
+ * `cycle_settings.enabled`.
  *
- * `isEnabled` is off while its value is loading or could not be read, as
- * before Features. `isExplicitlyOff` is only for a feature the person turned
- * off: data shown outside the feature's own pages (the reproductive Health
- * categories, cycle hub symptoms) hides only then, so nothing disappears for
- * someone who never chose, or while the answer loads.
+ * While a value is loading or could not be read, or the server is older than
+ * Features, `isEnabled` gives the feature's default (cycle off, as before
+ * Features; lab results on), so a network error or an old server never hides
+ * something that was showing. `isExplicitlyOff` is
+ * only for a feature the person turned off: data shown outside the feature's
+ * own pages (the reproductive Health categories, cycle hub symptoms) hides
+ * only then, so nothing disappears for someone who never chose, or while the
+ * answer loads.
  */
 export function useWebFeatures() {
   const { data: cycleSettings } = useCycleSettings();
   const cycleEnabled = cycleSettings?.enabled;
+  const { data: choicesResponse } = useFeatureChoicesQuery();
+  const choices = choicesResponse?.feature_choices;
+  const sources = useMemo(
+    () => ({ choices, cycleEnabled }),
+    [choices, cycleEnabled]
+  );
   const isEnabled = useCallback(
-    (key: FeatureKey) =>
-      isFeatureEnabled(key, 'web', { choices: undefined, cycleEnabled }),
-    [cycleEnabled]
+    (key: FeatureKey) => isFeatureEnabled(key, 'web', sources),
+    [sources]
   );
   const isExplicitlyOff = useCallback(
-    (key: FeatureKey) =>
-      isFeatureExplicitlyOff(key, 'web', { choices: undefined, cycleEnabled }),
-    [cycleEnabled]
+    (key: FeatureKey) => isFeatureExplicitlyOff(key, 'web', sources),
+    [sources]
   );
   // Custom categories that belong to a feature turned off on purpose. Lists
   // of measurements leave them out (`withoutHiddenCategories` from shared);
   // Settings > Custom Categories keeps them.
   const hiddenCustomCategories = useMemo(
-    () =>
-      hiddenFeatureCustomCategories('web', {
-        choices: undefined,
-        cycleEnabled,
-      }),
-    [cycleEnabled]
+    () => hiddenFeatureCustomCategories('web', sources),
+    [sources]
   );
   return { isEnabled, isExplicitlyOff, hiddenCustomCategories };
 }

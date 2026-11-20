@@ -2077,7 +2077,6 @@
       "switchInFeatures": "Cycle tracking is turned on or off in Features.",
       "onInFeatures": "Cycle tracking is on. You can turn it off in Features.",
       "offInFeatures": "Cycle tracking is off. Turn it on in Features.",
-      "openFeatures": "Open Features",
       "mode": "Tracker Mode",
       "bcMethod": "Birth Control",
       "terminology": "Terminology",
@@ -3590,7 +3589,8 @@
       "footnote": "Diary and Settings always show. Hiding a tab only changes this website: nothing is deleted, and the mobile app keeps its own settings.",
       "saveError": "Could not save your tab choice. Please try again.",
       "loadError": "Could not load your tab choices.",
-      "actingOnBehalf": "You can only change the tabs on your own account."
+      "actingOnBehalf": "You can only change the tabs on your own account.",
+      "featureOff": "Not shown: turned off in Features."
     },
     "features": {
       "title": "Features",
@@ -3598,6 +3598,14 @@
       "actingOnBehalf": "Only the account owner can turn features on or off.",
       "loadError": "Could not load this setting.",
       "footnote": "Turning a feature off only hides it: nothing is deleted, and syncs and imports keep running.",
+      "open": "Open Features",
+      "webOnly": "Only this website. The mobile app has its own switch.",
+      "serverTooOld": "Update your SparkyFitness server to change this.",
+      "off": {
+        "title": "{{name}} is turned off",
+        "description": "Your history is kept. Turn it back on to see it here again.",
+        "turnOn": "Turn on"
+      },
       "groups": {
         "health": "Health",
         "nutrition": "Nutrition",
@@ -3609,6 +3617,9 @@
         "scope": "One switch for the website and the mobile app.",
         "setupHint": "Answer a few questions to finish setting it up.",
         "setupAction": "Set up"
+      },
+      "labResults": {
+        "description": "Record blood tests and follow each marker over time."
       }
     }
   },
@@ -6958,11 +6969,6 @@
     "pregnancyHub": "Pregnancy Hub",
     "hubSubtitle": "Track, understand, and sync with your body.",
     "ownerOnly": "Only the account owner can see and change this.",
-    "off": {
-      "title": "{{name}} is turned off",
-      "description": "Your history is kept. Turn it back on to see it here again.",
-      "turnOn": "Turn on"
-    },
     "tabs": {
       "today": "Today",
       "calendar": "Calendar",
