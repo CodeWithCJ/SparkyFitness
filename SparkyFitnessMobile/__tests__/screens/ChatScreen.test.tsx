@@ -1583,48 +1583,187 @@ describe('ChatScreen history seeding', () => {
   );
 
   it.each([
-    {
-      statusCode: 422,
-      body: { error: 'Provider unavailable' },
-      expected: 'Provider unavailable',
-    },
-    { statusCode: 410, body: { cancelled: true }, expected: undefined },
+    { transport: 'http', failed: true },
+    { transport: 'http', failed: false },
+    { transport: 'stream', failed: true },
+    { transport: 'stream', failed: false },
   ])(
-    'handles the durable terminal response ($statusCode) after reading a pending checkpoint',
-    async ({ statusCode, body, expected }) => {
+    'adopts committed approval history after a terminal $transport response (failed=$failed)',
+    async ({ transport, failed }) => {
       const turnId = 'c37bc122-75db-4e57-aac0-e58bfff12131';
-      const prompt: chatApi.ChatHistoryEntry = {
-        id: 'u',
-        message_type: 'user',
-        content: 'request',
+      const original = 'e21bc122-75db-4e57-aac0-e58bfff12132';
+      const pending: chatApi.ChatHistoryEntry = {
+        id: 'assistant',
+        message_type: 'assistant',
         created_at: '',
-        metadata: { turnId },
+        content: 'Log this meal?',
+        metadata: { turnId: original, pendingTurnId: turnId },
+        parts: [
+          { type: 'text', text: 'Log this meal?' },
+          {
+            type: 'tool-log_food',
+            toolCallId: 'call',
+            state: 'approval-requested',
+            input: {},
+            approval: { id: 'a' },
+          },
+        ],
       };
+      const settled: chatApi.ChatHistoryEntry = {
+        ...pending,
+        metadata: failed ? pending.metadata : { turnId: original },
+        parts: [
+          { type: 'text', text: 'Log this meal?' },
+          {
+            type: 'tool-log_food',
+            toolCallId: 'call',
+            state: 'output-available',
+            input: {},
+            output: { saved: true },
+          },
+        ],
+      };
+      const seed = chatApi.mapHistoryToInitialMessages([pending]);
       mockUseChatHistory.mockReturnValue({
         ...mockUseChatHistory(),
-        data: chatApi.mapHistoryToInitialMessages([prompt]),
+        data: seed,
       });
+      const refresh = deferred<chatApi.ChatHistoryEntry[]>();
       const load = jest
         .spyOn(chatApi, 'loadChatHistory')
-        .mockResolvedValue([prompt]);
-      const responseBody = JSON.stringify(body);
-      mockReconnect.mockRejectedValueOnce(
-        Object.assign(new Error(responseBody), { statusCode, responseBody })
-      );
+        .mockResolvedValueOnce([pending])
+        .mockReturnValueOnce(refresh.promise);
+      const error = 'Provider unavailable';
+      if (transport === 'http') {
+        const responseBody = JSON.stringify(
+          failed ? { error } : { cancelled: true }
+        );
+        mockReconnect.mockImplementationOnce(async () => {
+          if (failed) {
+            mockRuntimeCallbacks.onError(new Error(error));
+            mockRuntimeCallbacks.onFinish({
+              isAbort: false,
+              isDisconnect: false,
+              isError: true,
+            });
+          }
+          throw Object.assign(new Error(responseBody), {
+            statusCode: failed ? 422 : 410,
+            responseBody,
+          });
+        });
+      } else {
+        mockReconnect.mockResolvedValueOnce({
+          getReader: () => ({
+            read: async () => ({
+              done: false,
+              value: failed
+                ? { type: 'error', errorText: error }
+                : { type: 'abort' },
+            }),
+            cancel: async () => {},
+            releaseLock: () => {},
+          }),
+        });
+      }
       try {
         renderScreen();
-        await waitFor(() => expect(mockReconnect).toHaveBeenCalled());
-        if (expected)
+        await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+        expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(seed);
+        expect(mockReconnect.mock.invocationCallOrder[0]).toBeLessThan(
+          load.mock.invocationCallOrder[1]!
+        );
+        await act(async () => {
+          // The original live transport may finish while the replay is refreshing history.
+          if (failed) mockRuntimeCallbacks.onError(new Error(error));
+          mockRuntimeCallbacks.onFinish({
+            isAbort: !failed,
+            isDisconnect: false,
+            isError: failed,
+          });
+          refresh.resolve([settled]);
+        });
+        await waitFor(() =>
+          expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
+            chatApi.mapHistoryToInitialMessages([settled])
+          )
+        );
+        expect(mockReconnect).toHaveBeenCalledTimes(1);
+        expect(load).toHaveBeenCalledTimes(2);
+        if (failed) {
+          expect(Toast.show).toHaveBeenCalledTimes(1);
           expect(Toast.show).toHaveBeenCalledWith(
-            expect.objectContaining({ text2: expected })
+            expect.objectContaining({ text2: error })
           );
-        else expect(Toast.show).not.toHaveBeenCalled();
-        expect(load).toHaveBeenCalledTimes(1);
+        } else expect(Toast.show).not.toHaveBeenCalled();
+        expect(expoFetch).not.toHaveBeenCalled();
       } finally {
         load.mockRestore();
       }
     }
   );
+
+  it('keeps a transport exception recoverable and retries an interrupted post-failure history read without replay', async () => {
+    const turnId = 'c37bc122-75db-4e57-aac0-e58bfff12131';
+    const prompt: chatApi.ChatHistoryEntry = {
+      id: 'u',
+      message_type: 'user',
+      content: 'request',
+      created_at: '',
+      metadata: { turnId },
+    };
+    const settled = { ...prompt, metadata: { turnId, turnState: 'failed' } };
+    const seed = chatApi.mapHistoryToInitialMessages([prompt]);
+    mockUseChatHistory.mockReturnValue({ ...mockUseChatHistory(), data: seed });
+    const load = jest
+      .spyOn(chatApi, 'loadChatHistory')
+      .mockResolvedValueOnce([prompt])
+      .mockResolvedValueOnce([prompt])
+      .mockRejectedValueOnce(Error('History offline'))
+      .mockResolvedValueOnce([settled]);
+    const foreground = () => {
+      const listeners = jest
+        .mocked(AppState.addEventListener)
+        .mock.calls.filter(([event]) => event === 'change');
+      listeners.forEach(([, notify]) => notify('background'));
+      listeners.forEach(([, notify]) => notify('active'));
+    };
+    mockReconnect
+      .mockRejectedValueOnce(new Error('Connection lost'))
+      .mockRejectedValueOnce(
+        Object.assign(Error('unprocessable'), {
+          statusCode: 422,
+          responseBody: JSON.stringify({ error: 'Provider failure' }),
+        })
+      );
+    try {
+      renderScreen();
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({ text2: 'Connection lost' })
+        )
+      );
+      expect(load).toHaveBeenCalledTimes(1);
+      await act(async () => foreground());
+      expect(load).toHaveBeenCalledTimes(3);
+      expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(seed);
+      await act(async () => foreground());
+      await waitFor(() =>
+        expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
+          chatApi.mapHistoryToInitialMessages([settled])
+        )
+      );
+      expect(Toast.show).toHaveBeenCalledTimes(2);
+      expect(Toast.show).toHaveBeenLastCalledWith(
+        expect.objectContaining({ text2: 'Provider failure' })
+      );
+      expect(mockReconnect).toHaveBeenCalledTimes(2);
+      expect(load).toHaveBeenCalledTimes(4);
+      expect(expoFetch).not.toHaveBeenCalled();
+    } finally {
+      load.mockRestore();
+    }
+  });
 
   it('reattaches a cold pending turn using the read-only transport then restores the saved answer', async () => {
     const turnId = 'c37bc122-75db-4e57-aac0-e58bfff12131';

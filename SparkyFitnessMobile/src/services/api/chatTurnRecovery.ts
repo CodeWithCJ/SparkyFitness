@@ -47,12 +47,14 @@ function waitForHistory(signal: AbortSignal) {
   });
 }
 
+export type TerminalChatTurn = { terminal: true; error?: string };
+
 export async function recoverChatTurn<T extends Message>(
   id: string,
   signal: AbortSignal,
   read: () => Promise<T[]>,
-  attach: () => Promise<'closed' | 'pending' | 'expired' | 'cancelled'>
-): Promise<T[] | null | undefined> {
+  attach: () => Promise<'closed' | 'pending' | 'expired' | TerminalChatTurn>
+): Promise<T[] | TerminalChatTurn | undefined> {
   let status: Awaited<ReturnType<typeof attach>> | undefined;
   while (!signal.aborted) {
     const history = await read();
@@ -65,7 +67,7 @@ export async function recoverChatTurn<T extends Message>(
       throw new Error();
     }
     status = await attach();
-    if (status === 'cancelled') return null;
+    if (typeof status === 'object') return status;
     if (status === 'pending') await waitForHistory(signal);
   }
 }

@@ -594,10 +594,18 @@ router.post('/stream', authenticate, async (req, res, next) => {
       const key = turnRowId(req.authenticatedUserId, req.userId, turnId);
       let claimed = false;
       const fail = async (message: string) => {
-        if (claimed) {
-          await markChatTurnFailed(key, req.authenticatedUserId, message);
-        }
-        return claimed;
+        if (!claimed) return;
+        if (await markChatTurnFailed(key, req.authenticatedUserId, message))
+          return { error: message };
+        // A guarded write can lose to Stop or to the approval settlement.
+        const state = await getChatTurnStatus(
+          key,
+          req.authenticatedUserId,
+          CHAT_REQUEST_TIMEOUT_MS
+        );
+        return state === 'cancelled' || typeof state === 'object'
+          ? state
+          : undefined;
       };
       const replay = await chatTurns.open(key, req.authenticatedUserId, {
         timeoutMs: CHAT_REQUEST_TIMEOUT_MS,

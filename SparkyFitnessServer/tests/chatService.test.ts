@@ -16,6 +16,7 @@ import chatRepository, {
   completeChatTurn,
   getChatTurnStatus,
   markChatTurnFailed,
+  settleFailedApprovalTurn,
 } from '../models/chatRepository.js';
 import {
   recordRejectedParam,
@@ -2066,17 +2067,37 @@ describe('chatService', () => {
         );
       });
       it('retains the approved tool output when the provider then fails', async () => {
-        scripted([[{ type: 'error', error: new Error('provider failed') }]]);
+        const providerError = new APICallError({
+          message: 'Provider unavailable',
+          url: 'https://example.test',
+          requestBodyValues: {},
+          statusCode: 400,
+        });
+        scripted([[{ type: 'error', error: providerError }]]);
+        vi.mocked(settleFailedApprovalTurn).mockResolvedValueOnce({
+          error: providerError.message,
+        });
         vi.mocked(getChatTurnStatus).mockResolvedValueOnce('pending');
         await resume(true, pending.type, drainStream, {
           turnId: 'continued-turn',
           rowId: 'continued-claim',
         });
         expect(writeExecute).toHaveBeenCalledTimes(1);
-        expect(chatRepository.saveApprovalContinuation).toHaveBeenCalledWith(
+        expect(chatRepository.claimChatApproval).toHaveBeenCalledWith(
           'row-1',
           actorUserId,
+          expect.any(Array),
+          expect.any(Array),
+          'continued-claim'
+        );
+        expect(markChatTurnFailed).not.toHaveBeenCalled();
+        expect(chatRepository.saveApprovalContinuation).not.toHaveBeenCalled();
+        expect(settleFailedApprovalTurn).toHaveBeenCalledExactlyOnceWith(
+          'continued-claim',
+          actorUserId,
+          providerError.message,
           expect.objectContaining({
+            id: 'row-1',
             parts: expect.arrayContaining([
               expect.objectContaining({
                 toolCallId: 'write-1',
@@ -2090,10 +2111,8 @@ describe('chatService', () => {
       it('restores the completed tool output when Stop wins the approval commit', async () => {
         const priorText = 'This diary write needs approval.';
         scripted([doneStep]);
-        vi.mocked(completeChatTurn).mockImplementationOnce(async () => {
-          vi.mocked(getChatTurnStatus).mockResolvedValue('cancelled');
-          return false;
-        });
+        vi.mocked(completeChatTurn).mockResolvedValueOnce(false);
+        vi.mocked(settleFailedApprovalTurn).mockResolvedValueOnce('cancelled');
         const chunks = await resume(
           true,
           pending.type,
@@ -2106,21 +2125,23 @@ describe('chatService', () => {
         );
         expect(chunks.at(-1)).toEqual({ type: 'abort' });
         expect(writeExecute).toHaveBeenCalledTimes(1);
-        expect(
-          chatRepository.saveApprovalContinuation
-        ).toHaveBeenCalledExactlyOnceWith('row-1', actorUserId, {
-          content: priorText,
-          metadata: { turnId: 'turn-1' },
-          parts: [
-            { type: 'text', text: priorText },
-            outsidePart,
-            expect.objectContaining({
-              toolCallId: 'write-1',
-              state: 'output-available',
-              output: 'saved',
-            }),
-          ],
-        });
+        expect(settleFailedApprovalTurn).toHaveBeenCalledExactlyOnceWith(
+          'continued-claim',
+          actorUserId,
+          expect.any(String),
+          {
+            id: 'row-1',
+            parts: [
+              { type: 'text', text: priorText },
+              outsidePart,
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-available',
+                output: 'saved',
+              }),
+            ],
+          }
+        );
       });
       it.each([
         ['cancelled', { type: 'abort' }],
@@ -2267,6 +2288,99 @@ describe('chatService', () => {
             ]),
           })
         );
+      });
+      it.each([false, true])(
+        'atomically settles setup failures after claiming an approval (rollback %s)',
+        async (rollback) => {
+          scripted([doneStep]);
+          vi.mocked(getChatToolServerNames).mockImplementationOnce(() => {
+            throw new Error('setup failed');
+          });
+          if (rollback)
+            vi.mocked(settleFailedApprovalTurn).mockRejectedValueOnce(
+              new Error('transaction rolled back')
+            );
+          else
+            vi.mocked(settleFailedApprovalTurn).mockResolvedValueOnce({
+              error: 'The AI service could not complete the request.',
+            });
+          await expect(
+            resume(true, pending.type, drainStream, {
+              turnId: 'continued-turn',
+              rowId: 'continued-claim',
+            })
+          ).rejects.toThrow(
+            rollback ? 'transaction rolled back' : 'setup failed'
+          );
+          expect(writeExecute).not.toHaveBeenCalled();
+          expect(settleFailedApprovalTurn).toHaveBeenCalledExactlyOnceWith(
+            'continued-claim',
+            actorUserId,
+            'The AI service could not complete the request.',
+            {
+              id: 'row-1',
+              parts: expect.arrayContaining([
+                expect.objectContaining({
+                  toolCallId: 'write-1',
+                  state: 'output-error',
+                  errorText: 'Did not run.',
+                }),
+              ]),
+            }
+          );
+          expect(markChatTurnFailed).not.toHaveBeenCalled();
+          expect(
+            chatRepository.saveApprovalContinuation
+          ).not.toHaveBeenCalled();
+        }
+      );
+      it('propagates a rolled-back approval settlement without publishing a separate failure', async () => {
+        scripted([[{ type: 'error', error: new Error('provider failed') }]]);
+        vi.mocked(settleFailedApprovalTurn).mockRejectedValueOnce(
+          new Error('transaction rolled back')
+        );
+        await expect(
+          resume(true, pending.type, drainStream, {
+            turnId: 'continued-turn',
+            rowId: 'continued-claim',
+          })
+        ).rejects.toThrow('transaction rolled back');
+        expect(writeExecute).toHaveBeenCalledTimes(1);
+        expect(markChatTurnFailed).not.toHaveBeenCalled();
+        expect(chatRepository.saveApprovalContinuation).not.toHaveBeenCalled();
+      });
+      it('preserves executed tool results if the approval completion transaction throws', async () => {
+        scripted([doneStep]);
+        vi.mocked(completeChatTurn).mockRejectedValueOnce(
+          new Error('completion rolled back')
+        );
+        vi.mocked(settleFailedApprovalTurn).mockResolvedValueOnce({
+          error: 'The AI service could not complete the request.',
+        });
+        const chunks = await resume(true, pending.type, drainStream, {
+          turnId: 'continued-turn',
+          rowId: 'continued-claim',
+        });
+        expect(chunks.at(-1)).toEqual({
+          type: 'error',
+          errorText: 'The AI service could not complete the request.',
+        });
+        expect(settleFailedApprovalTurn).toHaveBeenCalledExactlyOnceWith(
+          'continued-claim',
+          actorUserId,
+          expect.any(String),
+          {
+            id: 'row-1',
+            parts: expect.arrayContaining([
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-available',
+                output: 'saved',
+              }),
+            ]),
+          }
+        );
+        expect(markChatTurnFailed).not.toHaveBeenCalled();
       });
       it('saves settled parts for an already aborted continuation', async () => {
         scripted([doneStep]);
@@ -2636,6 +2750,7 @@ describe('chatService', () => {
         if (stopped)
           vi.mocked(markChatTurnFailed).mockImplementationOnce(async () => {
             vi.mocked(getChatTurnStatus).mockResolvedValue('cancelled');
+            return false;
           });
         streamModel([
           { type: 'stream-start', warnings: [] },

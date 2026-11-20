@@ -4,10 +4,11 @@ import { log } from '../config/logging.js';
 type Stream = ReadableStream<UIMessageChunk>;
 type Reader = ReadableStreamDefaultController<UIMessageChunk>;
 type Replay = Stream | 'pending' | 'gone' | 'capacity' | { error: string };
+type PersistedFailure = { error: string } | 'cancelled' | undefined;
 type Producer = {
   timeoutMs: number;
   start: (signal: AbortSignal, deadline: number) => Promise<Stream | null>;
-  fail: (message: string) => Promise<boolean>;
+  fail: (message: string) => Promise<PersistedFailure>;
 };
 export function chatTurnFailure(signal: AbortSignal) {
   return signal.reason?.name === 'TimeoutError'
@@ -190,23 +191,31 @@ export class ChatTurnStreams {
         }
       }
       for (const reader of turn.readers) reader.close();
-    } catch (error) {
-      // Do not replay a truncated event sequence as a successful completion.
+    } catch {
       turn.chunks = null;
-      const message = chatTurnFailure(signal);
-      const terminal: UIMessageChunk =
-        signal.aborted && signal.reason?.name !== 'TimeoutError'
-          ? { type: 'abort' }
-          : { type: 'error', errorText: message };
-      for (const reader of turn.readers) {
-        try {
-          reader.enqueue(terminal);
-          reader.close();
-        } catch {
-          reader.error(error);
+      let outcome: PersistedFailure;
+      try {
+        outcome = await producer.fail(chatTurnFailure(signal));
+      } finally {
+        // A replay reader refreshes history as soon as it sees a terminal event.
+        // Only publish one after its corresponding database write has committed.
+        const terminal: UIMessageChunk | undefined =
+          outcome === 'cancelled'
+            ? { type: 'abort' }
+            : outcome && { type: 'error', errorText: outcome.error };
+        for (const reader of turn.readers) {
+          if (!terminal) {
+            reader.error(new Error('Chat turn status unavailable.'));
+            continue;
+          }
+          try {
+            reader.enqueue(terminal);
+            reader.close();
+          } catch (error) {
+            reader.error(error);
+          }
         }
       }
-      await producer.fail(message);
     } finally {
       cleanup();
       signal.removeEventListener('abort', onAbort);

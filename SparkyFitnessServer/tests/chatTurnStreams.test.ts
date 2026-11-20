@@ -134,7 +134,7 @@ it('ends setup at the same deadline used for generation', async () => {
   vi.useFakeTimers();
   try {
     const turns = new ChatTurnStreams();
-    const fail = vi.fn(async () => true);
+    const fail = vi.fn(async (error: string) => ({ error }));
     const pending = turns.open('sample', 'actor', {
       timeoutMs: 100,
       fail,
@@ -155,7 +155,11 @@ it('ends setup at the same deadline used for generation', async () => {
 
 it('reports producer failure to a connected reader and durably records the same message', async () => {
   const turns = new ChatTurnStreams();
-  const fail = vi.fn(async () => true);
+  let commit!: (outcome: { error: string }) => void;
+  const saved = new Promise<{ error: string }>((resolve) => {
+    commit = resolve;
+  });
+  const fail = vi.fn(() => saved);
   const subscription = await turns.open('sample', 'actor', {
     timeoutMs: 60_000,
     fail,
@@ -169,7 +173,33 @@ it('reports producer failure to a connected reader and durably records the same 
   if (!(subscription instanceof ReadableStream)) throw Error('Expected stream');
   const reader = subscription.getReader();
   const errorText = 'The AI service could not complete the request.';
-  expect((await reader.read()).value).toEqual({ type: 'error', errorText });
+  const received = vi.fn();
+  const next = reader.read().then((chunk) => {
+    received();
+    return chunk;
+  });
+  await vi.waitFor(() => expect(fail).toHaveBeenCalledWith(errorText));
+  expect(received).not.toHaveBeenCalled();
+  commit({ error: errorText });
+  expect((await next).value).toEqual({ type: 'error', errorText });
   expect((await reader.read()).done).toBe(true);
   expect(fail).toHaveBeenCalledWith(errorText);
+});
+
+it('errors the transport if approval settlement could not be committed', async () => {
+  const turns = new ChatTurnStreams();
+  const subscription = await turns.open('sample', 'actor', {
+    timeoutMs: 60_000,
+    fail: async () => undefined,
+    start: async () =>
+      new ReadableStream({
+        start(c) {
+          c.error(new Error('Storage failed'));
+        },
+      }),
+  });
+  if (!(subscription instanceof ReadableStream)) throw Error('Expected stream');
+  await expect(subscription.getReader().read()).rejects.toThrow(
+    'Chat turn status unavailable.'
+  );
 });

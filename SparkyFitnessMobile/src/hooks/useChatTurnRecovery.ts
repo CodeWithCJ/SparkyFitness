@@ -19,6 +19,7 @@ import {
 import {
   pendingHistoryTurn,
   recoverChatTurn,
+  type TerminalChatTurn,
 } from '../services/api/chatTurnRecovery';
 
 type Seed = ReturnType<typeof mapHistoryToInitialMessages>;
@@ -64,7 +65,9 @@ async function readReplay(
         while (!signal.aborted) {
           const { done, value } = await reader.read();
           if (done) break;
-          if (value.type === 'error') throw Error(value.errorText);
+          if (value.type === 'error')
+            return { terminal: true, error: value.errorText } as const;
+          if (value.type === 'abort') return { terminal: true } as const;
         }
       } finally {
         signal.removeEventListener('abort', cancelReader);
@@ -93,13 +96,13 @@ async function readReplay(
             'cancelled' in details &&
             details.cancelled === true
           )
-            return 'cancelled' as const;
+            return { terminal: true } as const;
           if (
             error.statusCode === 422 &&
             'error' in details &&
             typeof details.error === 'string'
           )
-            throw new Error(details.error);
+            return { terminal: true, error: details.error } as const;
         }
       }
       if (error.statusCode === 410 || error.statusCode === 404)
@@ -128,10 +131,16 @@ function cancellationFor(owner: ServerConfig, id: string) {
 export function useChatTurnRecovery(
   owner: ServerConfig,
   seed: Seed,
-  onRecovered: (history: Seed) => void,
+  settledTurnId: string | undefined,
+  onRecovered: (history: Seed, turnId: string) => void,
   onError: (error: Error) => void
 ) {
-  const pending = useRef(pendingHistoryTurn(seed));
+  const initialTurn = pendingHistoryTurn(seed);
+  const pending = useRef(
+    initialTurn === settledTurnId ? undefined : initialTurn
+  );
+  // If refreshing the committed history is interrupted, retry the read alone.
+  const terminal = useRef<TerminalChatTurn | undefined>(undefined);
   const retryStops = useCallback(() => {
     async function deliver(target: Cancellation) {
       target.sending = true;
@@ -163,6 +172,7 @@ export function useChatTurnRecovery(
   const reader = useRef<AbortController | undefined>(undefined);
   const backgrounded = useRef(false);
   const interrupted = useRef(false);
+  const reportedRuntimeError = useRef<string | undefined>(undefined);
   const disconnected = useRef<ChatConnectionError | undefined>(undefined);
   const missingPrompt = useRef(false);
   const recover = useCallback(async () => {
@@ -181,23 +191,39 @@ export function useChatTurnRecovery(
         signal.aborted
       )
         return;
-      const history = await recoverChatTurn(
-        id,
-        signal,
-        async () =>
-          mapHistoryToInitialMessages(await loadChatHistory(owner, signal)),
-        () => readReplay(owner, id, signal)
-      );
+      const readHistory = async () =>
+        mapHistoryToInitialMessages(await loadChatHistory(owner, signal));
+      const result =
+        terminal.current ??
+        (await recoverChatTurn(id, signal, readHistory, () =>
+          readReplay(owner, id, signal)
+        ));
       if (
         !sameChatAccount(await getActiveServerConfig(), owner) ||
         signal.aborted
       )
         return;
-      if (history === null) {
+      let history: Seed | undefined;
+      if (result && !Array.isArray(result)) {
+        if (
+          !terminal.current &&
+          result.error !== undefined &&
+          result.error !== reportedRuntimeError.current
+        )
+          onError(new Error(result.error));
+        terminal.current = result;
+        history = await readHistory();
+        if (
+          !sameChatAccount(await getActiveServerConfig(), owner) ||
+          signal.aborted
+        )
+          return;
+      } else {
+        history = result;
+      }
+      if (history) {
         pending.current = undefined;
-      } else if (history) {
-        pending.current = undefined;
-        onRecovered(history);
+        onRecovered(history, id);
       } else {
         missingPrompt.current = true;
         if (disconnected.current) onError(disconnected.current);
@@ -208,7 +234,8 @@ export function useChatTurnRecovery(
           await getActiveServerConfig().catch(() => null),
           owner
         ) &&
-        !signal.aborted
+        !signal.aborted &&
+        terminal.current?.error === undefined
       ) {
         onError(error instanceof Error ? error : Error(String(error)));
       }
@@ -249,6 +276,8 @@ export function useChatTurnRecovery(
     reader.current?.abort();
     reader.current = undefined;
     interrupted.current = false;
+    terminal.current = undefined;
+    reportedRuntimeError.current = undefined;
     disconnected.current = undefined;
     missingPrompt.current = false;
     pending.current = recoverable ? randomUUID() : undefined;
@@ -269,23 +298,25 @@ export function useChatTurnRecovery(
   const finish = useCallback(
     (isAbort: boolean, isDisconnect: boolean, isError: boolean) => {
       if (
+        terminal.current ||
+        reader.current ||
         isDisconnect ||
         (isError && disconnected.current) ||
         (isAbort && backgrounded.current)
       )
         return;
-      if (isAbort || isError) reader.current?.abort();
-      else if (reader.current) return;
       pending.current = undefined;
     },
     []
   );
   const handleError = useCallback(
     (error: Error) => {
+      if (terminal.current) return;
       disconnected.current =
         error instanceof ChatConnectionError ? error : undefined;
       if (disconnected.current && interrupted.current && !missingPrompt.current)
         return;
+      reportedRuntimeError.current = error.message;
       onError(error);
     },
     [onError]

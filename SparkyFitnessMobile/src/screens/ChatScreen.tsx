@@ -169,12 +169,14 @@ function ChatKeyboardAvoidingView(
 function useSparkyChatRuntime({
   serverConfig,
   onRecovered,
+  settledTurnId,
   serviceConfigId,
   conversationId,
   initialMessages,
 }: {
   serverConfig: ServerConfig;
-  onRecovered: (history: NonNullable<InitialMessages>) => void;
+  onRecovered: (history: NonNullable<InitialMessages>, turnId: string) => void;
+  settledTurnId?: string;
   serviceConfigId: string;
   conversationId: string;
   initialMessages: InitialMessages;
@@ -198,6 +200,7 @@ function useSparkyChatRuntime({
   const { begin, finish, handleError, stop } = useChatTurnRecovery(
     serverConfig,
     initialMessages ?? [],
+    settledTurnId,
     onRecovered,
     reportError
   );
@@ -1292,6 +1295,7 @@ function getLocalizedSuggestionLabel(
 function ChatThread({
   serverConfig,
   onRecovered,
+  settledTurnId,
   serviceConfigId,
   voiceServiceConfigId,
   voiceInputEnabled,
@@ -1303,7 +1307,8 @@ function ChatThread({
 }: {
   onClearChat: () => void;
   serverConfig: ServerConfig;
-  onRecovered: (history: NonNullable<InitialMessages>) => void;
+  onRecovered: (history: NonNullable<InitialMessages>, turnId: string) => void;
+  settledTurnId?: string;
   serviceConfigId: string;
   voiceServiceConfigId?: string | null;
   voiceInputEnabled: boolean;
@@ -1317,6 +1322,7 @@ function ChatThread({
   const { runtime, stop } = useSparkyChatRuntime({
     serverConfig,
     onRecovered,
+    settledTurnId,
     serviceConfigId,
     conversationId,
     initialMessages,
@@ -1495,17 +1501,22 @@ export default function ChatScreen({
 
   const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null);
   const baseUrl = serverConfig ? normalizeUrl(serverConfig.url) : null;
-  const [restoredHistory, setRestoredHistory] =
-    useState<NonNullable<InitialMessages>>();
+  const [restoredHistory, setRestoredHistory] = useState<{
+    messages: NonNullable<InitialMessages>;
+    turnId: string;
+  }>();
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [running, setRunning] = useState(false);
   // Remounting ChatThread by key resets the in-memory runtime (it ignores
   // `messages` changes after mount), so bump this to clear the thread.
   const [threadKey, setThreadKey] = useState(0);
-  const onRecovered = useCallback((history: NonNullable<InitialMessages>) => {
-    setRestoredHistory(history);
-    setThreadKey((k) => k + 1);
-  }, []);
+  const onRecovered = useCallback(
+    (messages: NonNullable<InitialMessages>, turnId: string) => {
+      setRestoredHistory({ messages, turnId });
+      setThreadKey((k) => k + 1);
+    },
+    []
+  );
   // Kept across reopening the chat so session-affine providers keep their
   // session; rotated when the history is cleared or the provider changes.
   const chatConversationId = useAppPreferencesStore(
@@ -1562,7 +1573,7 @@ export default function ChatScreen({
   const { data: historyData, isLoading: loadingHistory } = useChatHistory({
     enabled: !!baseUrl,
   });
-  const initialMessages = restoredHistory ?? historyData ?? [];
+  const initialMessages = restoredHistory?.messages ?? historyData ?? [];
 
   const serviceConfigId = setting?.id ?? null;
 
@@ -1704,6 +1715,7 @@ export default function ChatScreen({
             key={threadKey}
             serverConfig={serverConfig}
             onRecovered={onRecovered}
+            settledTurnId={restoredHistory?.turnId}
             serviceConfigId={serviceConfigId}
             voiceServiceConfigId={preferences?.active_voice_ai_service_id}
             voiceInputEnabled={

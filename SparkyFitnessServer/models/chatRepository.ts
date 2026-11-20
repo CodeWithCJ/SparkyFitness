@@ -684,16 +684,76 @@ export async function markChatTurnFailed(
   actor: string,
   errorText: string
 ) {
-  const client = await getClient(actor);
-  try {
-    await client.query(
+  return withTurnLock(id, actor, async (client) => {
+    // An acquired approval must publish its tool outcomes with the failure.
+    const result = await client.query(
       `UPDATE sparky_chat_history SET metadata = metadata || jsonb_build_object('turnState','failed','turnError',$3::text)
-       WHERE id = $1 AND user_id = $2 AND message_type = 'user' AND metadata->>'turnState' IS NULL`,
+       WHERE id = $1 AND user_id = $2 AND message_type = 'user' AND metadata->>'turnState' IS NULL
+         AND metadata->>'approvalClaimed' IS DISTINCT FROM 'true'`,
       [id, actor, errorText]
     );
-  } finally {
-    client.release();
-  }
+    return result.rowCount === 1;
+  });
+}
+
+const APPROVAL_IN_TURN = `answer.message_type = 'assistant' AND answer.user_id = prompt.user_id
+  AND answer.id::text = lower(prompt.metadata->>'continuationOf')
+  AND answer.metadata->>'turnId' IS NOT DISTINCT FROM prompt.metadata->>'continuationFrom'
+  AND answer.metadata->>'account_user_id' IS NOT DISTINCT FROM prompt.metadata->>'account_user_id'
+  AND answer.metadata->>'chat_conversation_id' IS NOT DISTINCT FROM prompt.metadata->>'chat_conversation_id'`;
+
+export async function settleFailedApprovalTurn(
+  id: string,
+  actor: string,
+  errorText: string,
+  assistant: { id: string; parts: unknown[] }
+): Promise<'cancelled' | 'gone' | { error: string } | undefined> {
+  return withTurnLock(id, actor, async (client) => {
+    const {
+      rows: [prompt],
+    }: {
+      rows: {
+        state: string | null;
+        error: string | null;
+        claimed: boolean | null;
+        expired: boolean | null;
+      }[];
+    } = await client.query(
+      `SELECT metadata->>'turnState' AS state, metadata->>'turnError' AS error,
+              metadata->>'approvalClaimed' = 'true' AS claimed,
+              (metadata->>'turnDeadline')::bigint <= EXTRACT(EPOCH FROM clock_timestamp()) * 1000 AS expired
+       FROM sparky_chat_history WHERE id=$1 AND user_id=$2 AND message_type='user'
+         AND lower(metadata->>'continuationOf') = $3::uuid::text FOR UPDATE`,
+      [id, actor, assistant.id]
+    );
+    if (!prompt) return undefined;
+    if (prompt.state === 'complete') return 'gone';
+    if (prompt.state === 'failed') return { error: prompt.error ?? errorText };
+    if (!prompt.claimed) {
+      if (prompt.state === 'cancelled') return 'cancelled';
+      throw new Error('Approval was not claimed by this turn.');
+    }
+    const error = prompt.expired ? 'The chat request timed out.' : errorText;
+    await client.query(
+      `UPDATE sparky_chat_history SET metadata = (metadata - 'approvalClaimed') ||
+         CASE WHEN metadata->>'turnState' = 'cancelled' THEN '{}'::jsonb
+              ELSE jsonb_build_object('turnState','failed','turnError',$3::text) END
+       WHERE id=$1 AND user_id=$2 AND message_type='user'`,
+      [id, actor, error]
+    );
+    // Only parts change. The original reply, its metadata and its turn ID stay
+    // intact, including after Stop wins while a tool is running.
+    const saved = await client.query(
+      `UPDATE sparky_chat_history answer SET parts=$4::jsonb
+       FROM sparky_chat_history prompt
+       WHERE prompt.id=$1 AND prompt.user_id=$2 AND prompt.message_type='user'
+         AND answer.id=$3 AND ${APPROVAL_IN_TURN}`,
+      [id, actor, assistant.id, JSON.stringify(assistant.parts)]
+    );
+    if (saved.rowCount !== 1)
+      throw new Error('Approval continuation disappeared.');
+    return prompt.state === 'cancelled' ? 'cancelled' : { error };
+  });
 }
 
 // Commit the terminal checkpoint and assistant row together. Cancellation or a
@@ -801,8 +861,36 @@ async function claimChatApproval(
   id: string,
   userId: string,
   expectedParts: unknown[],
-  parts: unknown[]
+  parts: unknown[],
+  turnRowId?: string
 ) {
+  if (turnRowId) {
+    return withTurnLock(turnRowId, userId, async (client) => {
+      const result = await client.query(
+        `WITH claimed AS (
+           UPDATE sparky_chat_history answer SET parts=$4::jsonb
+           FROM sparky_chat_history prompt
+           WHERE prompt.id=$1 AND prompt.user_id=$2 AND prompt.message_type='user'
+             AND prompt.metadata->>'turnState' IS NULL
+             AND prompt.metadata->>'approvalClaimed' IS DISTINCT FROM 'true'
+             AND (prompt.metadata->>'turnDeadline' IS NULL OR
+                  (prompt.metadata->>'turnDeadline')::bigint > EXTRACT(EPOCH FROM clock_timestamp()) * 1000)
+             AND answer.id=$3 AND answer.parts=$5::jsonb AND ${APPROVAL_IN_TURN}
+           RETURNING answer.id
+         )
+         UPDATE sparky_chat_history SET metadata=metadata || '{"approvalClaimed":true}'::jsonb
+         WHERE id=$1 AND user_id=$2 AND message_type='user' AND EXISTS (SELECT 1 FROM claimed)`,
+        [
+          turnRowId,
+          userId,
+          id,
+          JSON.stringify(parts),
+          JSON.stringify(expectedParts),
+        ]
+      );
+      return result.rowCount === 1;
+    });
+  }
   const client = await getClient(userId);
   try {
     const result = await client.query(

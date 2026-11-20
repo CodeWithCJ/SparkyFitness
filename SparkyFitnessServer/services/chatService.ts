@@ -7,6 +7,7 @@ import chatRepository, {
   completeChatTurn,
   getChatTurnStatus,
   markChatTurnFailed,
+  settleFailedApprovalTurn,
 } from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
@@ -1960,6 +1961,23 @@ function settleChatApprovals<T extends { type: string }>(
   });
 }
 
+function failedApprovalParts(continuation: UIMessage, response: UIMessage) {
+  // Keep the original reply and any tool effects, including tools from later
+  // steps. New prose and pending cards belong only to a committed answer.
+  const results = new Map<string, UIMessage['parts'][number]>();
+  for (const part of settleChatApprovals(response.parts)) {
+    if ('toolCallId' in part && part.state.startsWith('output-'))
+      results.set(part.toolCallId, part);
+  }
+  const parts = settleChatApprovals(continuation.parts).map((part) => {
+    if (!('toolCallId' in part)) return part;
+    const completed = results.get(part.toolCallId);
+    results.delete(part.toolCallId);
+    return completed ?? part;
+  });
+  return [...parts, ...results.values()];
+}
+
 // Maps one client message part to a CoreMessage part; unknown parts fall back
 // to text.
 function mapMessagePart(part: ChatMessagePart): ProcessedMessagePart {
@@ -3304,7 +3322,8 @@ async function processChatMessageStream(
           saved.id,
           authenticatedUserId,
           saved.parts,
-          parts
+          parts,
+          rowId
         ))
       ) {
         throw new Error('Approval already answered.');
@@ -3505,6 +3524,21 @@ async function processChatMessageStream(
       response: UIMessage,
       errorText = chatStreamErrorMessage(undefined)
     ) {
+      if (continuation) {
+        const state = await settleFailedApprovalTurn(
+          claimId,
+          authenticatedUserId,
+          durableTerminal?.type === 'error'
+            ? durableTerminal.errorText
+            : errorText,
+          {
+            id: continuation.id,
+            parts: failedApprovalParts(continuation, response),
+          }
+        );
+        durableTerminal = terminalForStatus(state);
+        return;
+      }
       const readStatus = () =>
         getChatTurnStatus(
           claimId,
@@ -3530,30 +3564,6 @@ async function processChatMessageStream(
         state = await readStatus();
         if (state !== 'pending') durableTerminal = terminalForStatus(state);
       }
-      if (!continuation || !state || state === 'gone') return;
-
-      // Keep the original reply and any tool effects, including tools from later
-      // steps. New prose and pending cards belong only to a committed answer.
-      const results = new Map<string, UIMessage['parts'][number]>();
-      for (const part of settleChatApprovals(response.parts)) {
-        if ('toolCallId' in part && part.state.startsWith('output-'))
-          results.set(part.toolCallId, part);
-      }
-      const parts = settleChatApprovals(continuation.parts).map((part) => {
-        if (!('toolCallId' in part)) return part;
-        const completed = results.get(part.toolCallId);
-        results.delete(part.toolCallId);
-        return completed ?? part;
-      });
-      await chatRepository.saveApprovalContinuation(
-        continuation.id,
-        authenticatedUserId,
-        {
-          content: continuationContent,
-          parts: [...parts, ...results.values()],
-          metadata: continuation.metadata,
-        }
-      );
     }
     let savedMessageId: string | undefined;
     let usageMetadata:
@@ -3675,14 +3685,24 @@ async function processChatMessageStream(
                 parts,
               };
               if (rowId) {
-                if (
-                  !(await completeChatTurn(
+                let completed: boolean;
+                try {
+                  completed = await completeChatTurn(
                     rowId,
                     authenticatedUserId,
                     { ...history, id: continuation?.id ?? responseMessage.id },
                     Boolean(continuation)
-                  ))
-                ) {
+                  );
+                } catch (error) {
+                  if (!continuation) throw error;
+                  log(
+                    'error',
+                    'Could not commit the chat approval completion:',
+                    describeError(error)
+                  );
+                  completed = false;
+                }
+                if (!completed) {
                   await endUncommittedTurn(rowId, responseMessage);
                   return;
                 }
@@ -3767,32 +3787,47 @@ async function processChatMessageStream(
     };
   } catch (error) {
     stopMonitoring();
-    if (rowId && !streamStarted && durableTerminal?.type === 'error')
+    if (continuation) {
+      const parts = settleChatApprovals(
+        continuation.parts,
+        streamStarted ? undefined : 'Did not run.'
+      );
+      if (rowId) {
+        const errorText =
+          durableTerminal?.type === 'error'
+            ? durableTerminal.errorText
+            : signal.reason?.name === 'TimeoutError'
+              ? chatTurnFailure(signal)
+              : chatStreamErrorMessage(error);
+        await settleFailedApprovalTurn(rowId, authenticatedUserId, errorText, {
+          id: continuation.id,
+          parts,
+        });
+      } else {
+        try {
+          await chatRepository.saveApprovalContinuation(
+            continuation.id,
+            authenticatedUserId,
+            {
+              content: continuationContent,
+              parts,
+              metadata: continuation.metadata,
+            }
+          );
+        } catch (saveError) {
+          log(
+            'error',
+            `Could not settle approval ${continuation.id}:`,
+            describeError(saveError)
+          );
+        }
+      }
+    } else if (rowId && durableTerminal?.type === 'error') {
       await markChatTurnFailed(
         rowId,
         authenticatedUserId,
         durableTerminal.errorText
       );
-    if (continuation && !streamStarted) {
-      // The claim is already saved, so settle it or the card waits forever;
-      // a failure here must not hide the original error.
-      try {
-        await chatRepository.saveApprovalContinuation(
-          continuation.id,
-          authenticatedUserId,
-          {
-            content: continuationContent,
-            parts: settleChatApprovals(continuation.parts, 'Did not run.'),
-            metadata: continuation.metadata,
-          }
-        );
-      } catch (saveError) {
-        log(
-          'error',
-          `Could not settle approval ${continuation.id}:`,
-          describeError(saveError)
-        );
-      }
     }
     log(
       'error',
