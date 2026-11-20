@@ -150,6 +150,19 @@ describe('How points work', () => {
     );
   });
 
+  it('lists a distance change that the 1-decimal display would hide', () => {
+    const race = (target: number) =>
+      rules({ metric: 'distance', format: 'race', target, points: null });
+    // Both read "1 km" in How points work.
+    expect(ruleLines(t, race(1040), km).map((l) => l.text)).toContain(
+      'The first to reach 1 km wins; later finishers rank by the day they got there.'
+    );
+    expect(changedRuleLines(t, race(1000), race(1040), km)).toEqual([
+      'The first to reach 1.04 km wins; later finishers rank by the day they got there.',
+    ]);
+    expect(changedRuleLines(t, race(1000), race(1000), km)).toEqual([]);
+  });
+
   it('lists what changed between two versions of the rules', () => {
     const next = rules({ bestDaysPerWeek: 4 });
     expect(changedRuleLines(t, allRounder, next, km)).toEqual([

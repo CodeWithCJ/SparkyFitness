@@ -248,13 +248,17 @@ export interface MetricUnits {
 
 const round1 = (n: number) => Math.round(n * 10) / 10;
 
-/** A metric amount for display, in the person's own units (distance is stored in metres). */
+/**
+ * A metric amount for display, in the person's own units (distance is stored
+ * in metres, shown to `distanceDigits` decimals).
+ */
 export function metricValueText(
   t: TFunction,
   metric: ChallengeMetric,
   value: number,
   units: MetricUnits,
-  locale?: string
+  locale?: string,
+  distanceDigits = 1
 ): string {
   const fmt = (n: number, digits = 0) =>
     n.toLocaleString(locale, { maximumFractionDigits: digits });
@@ -276,9 +280,11 @@ export function metricValueText(
       const shown = shownDistance(value, units.distanceUnit);
       return units.distanceUnit === 'miles'
         ? t('challenges.values.miles', '{{value}} mi', {
-            value: fmt(shown, 1),
+            value: fmt(shown, distanceDigits),
           })
-        : t('challenges.values.km', '{{value}} km', { value: fmt(shown, 1) });
+        : t('challenges.values.km', '{{value}} km', {
+            value: fmt(shown, distanceDigits),
+          });
     }
     case 'workout_days':
       return t('challenges.values.days', '{{count}} days', {
@@ -385,14 +391,20 @@ export interface RuleLine {
   text: string;
 }
 
-/** The challenge's rules as plain sentences, numbers from the rules themselves. */
+/**
+ * The challenge's rules as plain sentences, numbers from the rules themselves.
+ * `distanceDigits` is how many decimals a distance shows (1 to read, more to
+ * tell two saved values apart).
+ */
 export function ruleLines(
   t: TFunction,
   rules: ChallengeRules,
-  units: MetricUnits
+  units: MetricUnits,
+  distanceDigits = 1
 ): RuleLine[] {
   const lines: RuleLine[] = [];
-  const value = (n: number) => metricValueText(t, rules.metric, n, units);
+  const value = (n: number) =>
+    metricValueText(t, rules.metric, n, units, undefined, distanceDigits);
 
   lines.push({
     key: 'what',
@@ -731,9 +743,14 @@ export function pointsExample(rules: ChallengeRules): PointsExample | null {
   };
 }
 
+// Metres to three decimals of a km or mile, so a change of a few metres
+// (1,000 to 1,040 m) is not hidden by the 1-decimal display.
+const CHANGE_DISTANCE_DIGITS = 3;
+
 /**
  * The rule lines that differ between two versions of the rules, worded with
- * the new values. Lines that appear or disappear count as changes.
+ * the new values. Lines that appear or disappear count as changes. Distances
+ * are compared and shown to three decimals, not the rounded display.
  */
 export function changedRuleLines(
   t: TFunction,
@@ -741,10 +758,13 @@ export function changedRuleLines(
   next: ChallengeRules,
   units: MetricUnits
 ): string[] {
-  const after = ruleLines(t, next, units);
+  const after = ruleLines(t, next, units, CHANGE_DISTANCE_DIGITS);
   if (!previous) return [];
   const before = new Map(
-    ruleLines(t, previous, units).map((l) => [l.key, l.text])
+    ruleLines(t, previous, units, CHANGE_DISTANCE_DIGITS).map((l) => [
+      l.key,
+      l.text,
+    ])
   );
   const changed = after
     .filter((l) => before.get(l.key) !== l.text)
