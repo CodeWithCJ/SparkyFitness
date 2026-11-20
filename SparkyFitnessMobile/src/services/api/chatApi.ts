@@ -1,5 +1,6 @@
 import { savedChatMessageMetadata } from '@workspace/shared';
 import type { useChatRuntime } from '@assistant-ui/react-ai-sdk';
+import type { ServerConfig } from '../storage';
 import { apiFetch } from './apiClient';
 
 /**
@@ -33,11 +34,16 @@ type InitialMessages = NonNullable<
  * `autoClearHistory` query param, so no params are needed here.
  * GET /api/chat/sparky-chat-history
  */
-export const loadChatHistory = (): Promise<ChatHistoryEntry[]> =>
+export const loadChatHistory = (
+  serverConfig?: ServerConfig,
+  signal?: AbortSignal
+): Promise<ChatHistoryEntry[]> =>
   apiFetch<ChatHistoryEntry[]>({
     endpoint: '/api/chat/sparky-chat-history',
     serviceName: 'Chat API',
     operation: 'load chat history',
+    serverConfig,
+    signal,
   });
 
 /**

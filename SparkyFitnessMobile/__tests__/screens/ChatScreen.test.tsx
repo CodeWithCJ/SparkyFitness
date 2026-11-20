@@ -13,6 +13,9 @@ import {
   pickChatImageFromCamera,
   pickChatImagesFromLibrary,
 } from '../../src/utils/pickImage';
+import * as chatApi from '../../src/services/api/chatApi';
+import { chatFetch } from '../../src/services/api/chatTransport';
+import { fetch as expoFetch } from 'expo/fetch';
 import ChatScreen from '../../src/screens/ChatScreen';
 import { getActiveServerConfig } from '../../src/services/storage';
 import { useActiveAiServiceSetting, useChatHistory } from '../../src/hooks';
@@ -107,13 +110,34 @@ jest.mock('expo-speech-recognition', () => {
   };
 });
 
+type TestTransportOptions = {
+  prepareSendMessagesRequest?: (request: { messages: { role: string }[] }) => {
+    body: { turnId?: string };
+  };
+};
+let mockTransportOptions: TestTransportOptions;
+const mockReconnect = jest.fn();
+let mockRuntimeCallbacks: {
+  onFinish: (event: {
+    isAbort: boolean;
+    isDisconnect: boolean;
+    isError: boolean;
+  }) => void;
+  onError: (error: Error) => void;
+};
 jest.mock('@assistant-ui/react-ai-sdk', () => ({
   __esModule: true,
-  AssistantChatTransport: class AssistantChatTransport {},
+  AssistantChatTransport: class AssistantChatTransport {
+    constructor(options: TestTransportOptions) {
+      if (options.prepareSendMessagesRequest) mockTransportOptions = options;
+    }
+    reconnectToStream = mockReconnect;
+  },
   useChatRuntime: (options: {
     onError?: (error: Error) => void;
     messages?: unknown;
   }) => {
+    mockRuntimeCallbacks = options as typeof mockRuntimeCallbacks;
     (global as any).__mockCapturedOnError = options?.onError;
     (global as any).__mockCapturedMessages = options?.messages;
     return {};
@@ -1204,6 +1228,191 @@ describe('ChatScreen history seeding', () => {
     await findByTestId('composer-send');
 
     expect((global as any).__mockCapturedMessages).toBe(seed);
+  });
+
+  it('recovers the saved quick replies after a localized Expo disconnect arrives on foreground', async () => {
+    const screen = renderScreen();
+    await screen.findByTestId('composer-send');
+    const turnId = mockTransportOptions.prepareSendMessagesRequest!({
+      messages: [{ role: 'user' }],
+    }).body.turnId;
+    expect(turnId).toMatch(/^[0-9a-f-]{36}$/);
+    const entries: chatApi.ChatHistoryEntry[] = [
+      {
+        id: 'u',
+        message_type: 'user',
+        content: 'ciao',
+        metadata: { turnId },
+        created_at: '',
+      },
+      {
+        id: 'a',
+        message_type: 'assistant',
+        content: '',
+        metadata: { turnId },
+        created_at: '',
+        parts: [
+          {
+            type: 'tool-sparky_ask_user',
+            toolCallId: 'q',
+            state: 'output-available',
+            input: { question: 'Confermi?', options: ['Sì', 'No'] },
+            output: { asked: true },
+          },
+        ],
+      },
+    ];
+    const load = jest
+      .spyOn(chatApi, 'loadChatHistory')
+      .mockResolvedValue(entries);
+    const callbacks = mockRuntimeCallbacks;
+    const listeners = jest
+      .mocked(AppState.addEventListener)
+      .mock.calls.filter(([event]) => event === 'change');
+    try {
+      await act(async () => {
+        listeners.forEach(([, notify]) => notify('background'));
+        listeners.forEach(([, notify]) => notify('active'));
+        jest
+          .mocked(expoFetch)
+          .mockRejectedValueOnce(new Error('La connessione è stata persa.'));
+        await chatFetch('https://sparky.example/api/chat/stream', {
+          method: 'POST',
+        }).catch((error) => callbacks.onError(error));
+        callbacks.onFinish({
+          isAbort: false,
+          isDisconnect: false,
+          isError: true,
+        });
+      });
+      await waitFor(() =>
+        expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
+          chatApi.mapHistoryToInitialMessages(entries)
+        )
+      );
+      expect(Toast.show).not.toHaveBeenCalled();
+      expect(expoFetch).toHaveBeenCalledTimes(1);
+      expect(mockReconnect).not.toHaveBeenCalled();
+      expect(load).toHaveBeenCalledWith(SERVER_CONFIG, expect.anything());
+    } finally {
+      load.mockRestore();
+    }
+  });
+
+  it.each(['background', 'after lookup'] as const)(
+    'retains a disconnect received %s on a server without turn checkpoints',
+    async (timing) => {
+      const screen = renderScreen();
+      await screen.findByTestId('composer-send');
+      mockTransportOptions.prepareSendMessagesRequest!({
+        messages: [{ role: 'user' }],
+      });
+      const load = jest
+        .spyOn(chatApi, 'loadChatHistory')
+        .mockResolvedValue([
+          {
+            id: 'old',
+            message_type: 'user',
+            content: 'prompt',
+            created_at: '',
+          },
+        ]);
+      const callbacks = mockRuntimeCallbacks;
+      const notify = (state: 'background' | 'active') => {
+        jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.filter(([event]) => event === 'change')
+          .forEach(([, listener]) => listener(state));
+      };
+      const failure = async () => {
+        jest
+          .mocked(expoFetch)
+          .mockRejectedValueOnce(new Error('La connessione è stata persa.'));
+        await chatFetch('https://sparky.example/api/chat/stream', {
+          method: 'POST',
+        }).catch((error) => callbacks.onError(error));
+        callbacks.onFinish({
+          isAbort: false,
+          isDisconnect: false,
+          isError: true,
+        });
+      };
+      try {
+        await act(async () => {
+          notify('background');
+          if (timing === 'background') await failure();
+          notify('active');
+        });
+        if (timing === 'after lookup') await act(failure);
+        await waitFor(() =>
+          expect(Toast.show).toHaveBeenCalledWith(
+            expect.objectContaining({ text2: 'La connessione è stata persa.' })
+          )
+        );
+        expect(Toast.show).toHaveBeenCalledTimes(1);
+        expect(mockReconnect).not.toHaveBeenCalled();
+        expect(expoFetch).toHaveBeenCalledTimes(1);
+      } finally {
+        load.mockRestore();
+      }
+    }
+  );
+
+  it('reattaches a cold pending turn using the read-only transport then restores the saved answer', async () => {
+    const turnId = 'c37bc122-75db-4e57-aac0-e58bfff12131';
+    const user: chatApi.ChatHistoryEntry = {
+      id: 'u',
+      message_type: 'user',
+      metadata: { turnId },
+      parts: [],
+      content: 'prompt',
+      created_at: '',
+    };
+    const answer: chatApi.ChatHistoryEntry = {
+      ...user,
+      id: 'a',
+      message_type: 'assistant',
+      content: 'answer',
+    };
+    mockUseChatHistory.mockReturnValue({
+      ...mockUseChatHistory(),
+      data: chatApi.mapHistoryToInitialMessages([user]),
+    });
+    const load = jest
+      .spyOn(chatApi, 'loadChatHistory')
+      .mockResolvedValueOnce([user])
+      .mockResolvedValueOnce([user, answer]);
+    const read = jest
+      .fn()
+      .mockResolvedValueOnce({
+        done: false,
+        value: { type: 'tool-input-available' },
+      })
+      .mockResolvedValueOnce({ done: true });
+    mockReconnect.mockResolvedValueOnce({
+      getReader: () => ({
+        read,
+        cancel: async () => {},
+        releaseLock: () => {},
+      }),
+    });
+    try {
+      renderScreen();
+      await waitFor(() =>
+        expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
+          chatApi.mapHistoryToInitialMessages([user, answer])
+        )
+      );
+      expect(mockReconnect).toHaveBeenCalledTimes(1);
+      expect(mockReconnect).toHaveBeenCalledWith({
+        chatId: turnId,
+        abortSignal: expect.anything(),
+      });
+      expect(read).toHaveBeenCalledTimes(2);
+      expect(expoFetch).not.toHaveBeenCalled();
+    } finally {
+      load.mockRestore();
+    }
   });
 
   it('holds the loading gate (no thread) while history is loading', async () => {
