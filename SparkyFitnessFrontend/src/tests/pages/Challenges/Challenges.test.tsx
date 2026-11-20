@@ -1,10 +1,12 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
   waitFor,
   within,
 } from '@testing-library/react';
+import { focusManager } from '@tanstack/react-query';
 import '@testing-library/jest-dom';
 import {
   Link,
@@ -208,6 +210,30 @@ describe('Challenges page', () => {
       target: { value: 'zz' },
     });
     expect(screen.getByText('No member matches.')).toBeInTheDocument();
+    // A refresh down to 5 members keeps the box, so the search can be cleared.
+    api.getChallengeStandings.mockResolvedValue({
+      ...many,
+      rows: many.rows.slice(0, 5),
+    });
+    const reads = api.getChallengeStandings.mock.calls.length;
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    await waitFor(() =>
+      expect(api.getChallengeStandings.mock.calls.length).toBeGreaterThan(reads)
+    );
+    await waitFor(() =>
+      expect(screen.getByLabelText('Find a member')).toHaveValue('zz')
+    );
+    fireEvent.change(screen.getByLabelText('Find a member'), {
+      target: { value: '' },
+    });
+    expect(await screen.findByRole('button', { name: /Ana/ })).toBeVisible();
+    expect(screen.queryByRole('button', { name: /José/ })).toBeNull();
+    // Below 6 members with the search cleared, the box goes.
+    expect(screen.queryByLabelText('Find a member')).not.toBeInTheDocument();
+    api.getChallengeStandings.mockResolvedValue(many);
     // Another period starts with the whole table again.
     fireEvent.click(screen.getByRole('button', { name: 'Previous period' }));
     await waitFor(() =>
@@ -541,6 +567,34 @@ describe('Challenges page', () => {
       await screen.findByText('Could not load the standings.')
     ).toBeInTheDocument();
     expect(screen.queryByText(/No scores yet/)).not.toBeInTheDocument();
+  });
+
+  it('keeps the last standings when a refresh fails, and says so with a retry', async () => {
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(
+      await screen.findByRole('button', { name: /Test B/ })
+    ).toBeInTheDocument();
+    api.getChallengeStandings.mockRejectedValue(new Error('down'));
+    act(() => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+    expect(
+      await screen.findByText(
+        'Could not refresh the standings; showing the last ones loaded.'
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Test B/ })).toBeInTheDocument();
+    api.getChallengeStandings.mockResolvedValue(standings());
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await waitFor(() =>
+      expect(
+        screen.queryByText(
+          'Could not refresh the standings; showing the last ones loaded.'
+        )
+      ).not.toBeInTheDocument()
+    );
+    focusManager.setFocused(undefined);
   });
 
   it('tells a failed load of one challenge from one that is not there', async () => {

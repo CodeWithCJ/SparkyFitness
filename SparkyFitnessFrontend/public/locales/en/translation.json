@@ -11551,6 +11551,7 @@
       "load": "Could not load your challenges.",
       "loadOne": "Could not load this challenge.",
       "standings": "Could not load the standings.",
+      "standingsRefresh": "Could not refresh the standings; showing the last ones loaded.",
       "ruleChanges": "Could not load the rule changes.",
       "hostOnly": "Only the host can do this. Hosting may have passed to someone else.",
       "periodLocked": "The period cannot change once the challenge has started.",

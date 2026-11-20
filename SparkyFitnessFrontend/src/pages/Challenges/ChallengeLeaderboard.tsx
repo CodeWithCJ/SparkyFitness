@@ -257,6 +257,16 @@ const ChallengeLeaderboard = ({
         </div>
       )}
 
+      {standings.isError && data && (
+        // A refresh failed: keep the last standings, and say so with a retry.
+        <LoadError
+          message={t(
+            'challenges.errors.standingsRefresh',
+            'Could not refresh the standings; showing the last ones loaded.'
+          )}
+          onRetry={() => void standings.refetch()}
+        />
+      )}
       {standings.isLoading ? (
         <Skeleton className="h-32 w-full" />
       ) : standings.isError && !data ? (
@@ -276,7 +286,9 @@ const ChallengeLeaderboard = ({
           {showsProgress && (
             <Podium rows={data.rows} final={data.final} value={value} />
           )}
-          {data.rows.length >= SEARCH_FROM_ROWS && (
+          {/* Kept while a search is on, even if a refresh drops below the
+              threshold, so the filter can always be cleared. */}
+          {(data.rows.length >= SEARCH_FROM_ROWS || search !== '') && (
             <div className="relative max-w-xs">
               <Search
                 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"
