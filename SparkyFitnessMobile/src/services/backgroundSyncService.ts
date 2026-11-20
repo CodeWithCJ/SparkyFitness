@@ -230,6 +230,10 @@ const runBackgroundSync = async (
     typeof getActiveServerConfigId === 'function'
       ? await getActiveServerConfigId()
       : null;
+  const runId =
+    typeof healthReadProvider.beginRun === 'function'
+      ? (healthReadProvider.beginRun(configId) ?? undefined)
+      : undefined;
   const outcomes = await collectHealthData(
     healthReadProvider,
     enabledMetrics,
@@ -238,6 +242,7 @@ const runBackgroundSync = async (
       timeoutLabelPrefix: 'Background query',
       telemetry,
       configId,
+      runId,
     }
   );
 
@@ -328,7 +333,7 @@ const runBackgroundSync = async (
       if (telemetryUsable) {
         await markEnrichedSessions(telemetry.drainCollected());
       }
-      await healthReadProvider.commitRun?.();
+      await healthReadProvider.commitRun?.(runId);
     }
     await refreshHealthSyncCacheWhenActive();
 
@@ -346,7 +351,7 @@ const runBackgroundSync = async (
       'INFO'
     );
   } else {
-    await healthReadProvider.commitRun?.();
+    await healthReadProvider.commitRun?.(runId);
     await addLog(
       `[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`,
       'INFO'

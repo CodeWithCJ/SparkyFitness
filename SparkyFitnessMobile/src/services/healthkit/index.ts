@@ -2307,31 +2307,56 @@ const handleOvernightBodyTemperature: RecordHandler = async (
   );
 };
 
+interface StagedWaterRun {
+  anchor: string | null;
+  configId: string | null;
+  cancelled: boolean;
+}
+const stagedWaterRuns = new Map<number, StagedWaterRun>();
+let nextWaterRunId = 1;
 let currentWaterRunId = 0;
-let waterRunCancelled = false;
-let stagedIosWaterAnchor: string | null = null;
-let stagedIosConfigId: string | null = null;
 
-export const beginWaterDeletionRun = (configId?: string | null): void => {
-  currentWaterRunId++;
-  waterRunCancelled = false;
-  stagedIosWaterAnchor = null;
-  stagedIosConfigId = configId ?? null;
+export const beginWaterDeletionRun = (configId?: string | null): number => {
+  const runId = nextWaterRunId++;
+  currentWaterRunId = runId;
+  stagedWaterRuns.set(runId, {
+    anchor: null,
+    configId: configId ?? null,
+    cancelled: false,
+  });
+  return runId;
 };
 
-export const cancelWaterDeletionRun = (): void => {
-  waterRunCancelled = true;
-  stagedIosWaterAnchor = null;
+export const cancelWaterDeletionRun = (runId?: number): void => {
+  if (runId !== undefined) {
+    const staged = stagedWaterRuns.get(runId);
+    if (staged) {
+      staged.cancelled = true;
+      staged.anchor = null;
+    }
+  } else {
+    for (const staged of stagedWaterRuns.values()) {
+      staged.cancelled = true;
+      staged.anchor = null;
+    }
+  }
 };
 
-export const commitWaterDeletionRun = async (): Promise<void> => {
-  if (stagedIosWaterAnchor && !waterRunCancelled) {
-    await saveHealthWaterSyncToken(
-      'ios',
-      stagedIosWaterAnchor,
-      stagedIosConfigId
-    );
-    stagedIosWaterAnchor = null;
+export const commitWaterDeletionRun = async (runId?: number): Promise<void> => {
+  if (runId !== undefined) {
+    const staged = stagedWaterRuns.get(runId);
+    if (!staged) return;
+    stagedWaterRuns.delete(runId);
+    if (staged.anchor && !staged.cancelled) {
+      await saveHealthWaterSyncToken('ios', staged.anchor, staged.configId);
+    }
+  } else {
+    for (const [id, staged] of Array.from(stagedWaterRuns.entries())) {
+      stagedWaterRuns.delete(id);
+      if (staged.anchor && !staged.cancelled) {
+        await saveHealthWaterSyncToken('ios', staged.anchor, staged.configId);
+      }
+    }
   }
 };
 
@@ -2346,6 +2371,7 @@ const handleHydration: RecordHandler = async (
   }
 
   const thisRunId = currentWaterRunId;
+  const staged = stagedWaterRuns.get(thisRunId);
 
   // 1. Window-based query for additions (preserves full-day sums and wider imports)
   const quantityHandler = createQuantityHandler('Hydration');
@@ -2357,47 +2383,59 @@ const handleHydration: RecordHandler = async (
   );
 
   // 2. Anchored query for deletions
-  const savedAnchor = await loadHealthWaterSyncToken('ios', stagedIosConfigId);
+  const savedAnchor = await loadHealthWaterSyncToken('ios', staged?.configId);
   const unit = HEALTHKIT_UNIT_MAP.Hydration || 'L';
 
-  const res = savedAnchor
-    ? await queryQuantitySamplesWithAnchor(
-        identifier as Parameters<typeof queryQuantitySamplesWithAnchor>[0],
-        {
-          unit,
-          anchor: savedAnchor,
-          limit: 0,
-        } as Parameters<typeof queryQuantitySamplesWithAnchor>[1]
-      )
-    : await queryQuantitySamplesWithAnchor(
-        identifier as Parameters<typeof queryQuantitySamplesWithAnchor>[0],
-        {
-          unit,
-          filter: { date: { startDate, endDate } },
-          limit: 0,
-        } as Parameters<typeof queryQuantitySamplesWithAnchor>[1]
-      );
+  try {
+    const res = savedAnchor
+      ? await queryQuantitySamplesWithAnchor(
+          identifier as Parameters<typeof queryQuantitySamplesWithAnchor>[0],
+          {
+            unit,
+            anchor: savedAnchor,
+            limit: 0,
+          } as Parameters<typeof queryQuantitySamplesWithAnchor>[1]
+        )
+      : await queryQuantitySamplesWithAnchor(
+          identifier as Parameters<typeof queryQuantitySamplesWithAnchor>[0],
+          {
+            unit,
+            filter: { date: { startDate, endDate } },
+            limit: 0,
+          } as Parameters<typeof queryQuantitySamplesWithAnchor>[1]
+        );
 
-  if (res.newAnchor && !waterRunCancelled && thisRunId === currentWaterRunId) {
-    stagedIosWaterAnchor = res.newAnchor;
-  }
-
-  const deletedSamples = Array.isArray(res.deletedSamples)
-    ? res.deletedSamples
-    : [];
-
-  const mappedDeletions: Record<string, unknown>[] = [];
-  for (const del of deletedSamples) {
-    if (del.uuid) {
-      mappedDeletions.push({
-        deleted: true,
-        uuid: del.uuid,
-        source_id: del.uuid,
-      });
+    if (
+      res.newAnchor &&
+      staged &&
+      !staged.cancelled &&
+      thisRunId === currentWaterRunId
+    ) {
+      staged.anchor = res.newAnchor;
     }
-  }
 
-  return [...windowSamples, ...mappedDeletions];
+    const deletedSamples = Array.isArray(res.deletedSamples)
+      ? res.deletedSamples
+      : [];
+
+    const mappedDeletions: Record<string, unknown>[] = [];
+    for (const del of deletedSamples) {
+      if (del.uuid) {
+        mappedDeletions.push({
+          deleted: true,
+          uuid: del.uuid,
+          source_id: del.uuid,
+        });
+      }
+    }
+
+    return [...windowSamples, ...mappedDeletions];
+  } catch (err) {
+    if (staged) {
+      staged.anchor = null;
+    }
+    throw err;
+  }
 };
 
 // Registry mapping record types to their handlers

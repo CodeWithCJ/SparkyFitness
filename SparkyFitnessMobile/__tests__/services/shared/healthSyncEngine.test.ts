@@ -662,6 +662,25 @@ describe('collectHealthData', () => {
         measurementsApi.serverSupportsPerRecordWater
       ).not.toHaveBeenCalled();
     });
+
+    test('cancels water deletion run with runId when hydration query fails or times out', async () => {
+      const cancelWaterDeletionRun = jest.fn();
+      const beginRun = jest.fn(() => 77);
+      const provider = fakeProvider({
+        beginRun,
+        cancelWaterDeletionRun,
+        readRaw: jest.fn().mockRejectedValue(new Error('Network failure')),
+      });
+
+      const outcomes = await collectHealthData(provider, [hydration], windows, {
+        timeoutLabelPrefix: 'Test query',
+        telemetry: createTelemetryRunContext(),
+      });
+
+      expect(outcomes[0].status).toBe('rejected');
+      expect(beginRun).toHaveBeenCalled();
+      expect(cancelWaterDeletionRun).toHaveBeenCalledWith(77);
+    });
   });
 });
 
@@ -1229,6 +1248,21 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
 
     expect(api.syncHealthData).not.toHaveBeenCalled();
     expect(markSpy).toHaveBeenCalled();
+  });
+
+  test('binds runId from beginRun to commitRun in runForegroundSync', async () => {
+    const beginRun = jest.fn(() => 88);
+    const commitRun = jest.fn().mockResolvedValue(undefined);
+    const provider = fakeProvider({
+      beginRun,
+      commitRun,
+      readRaw: jest.fn().mockResolvedValue({ records: [] }),
+    });
+
+    await runForegroundSync(provider, '1d', {}, opts);
+
+    expect(beginRun).toHaveBeenCalled();
+    expect(commitRun).toHaveBeenCalledWith(88);
   });
 });
 

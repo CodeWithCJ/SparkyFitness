@@ -104,12 +104,12 @@ export interface HealthReadProvider {
   /** Clears platform run-scoped state before a run's reads begin. Android uses
    *  it to reset the Health Connect reconnect attempt, so "reconnect once" is
    *  once per sync rather than once per app process. Synchronous and
-   *  non-throwing: it must never be able to fail a sync. */
-  beginRun?(configId?: string | null): void;
+   *  non-throwing: it must never be able to fail a sync. Returns runId when tracked. */
+  beginRun?(configId?: string | null): number | void;
   /** Discards staged water deletion tokens/anchors when the water read fails or times out. */
-  cancelWaterDeletionRun?(): void;
+  cancelWaterDeletionRun?(runId?: number): void;
   /** Commits staged cursor/token state after a successful upload. */
-  commitRun?(): Promise<void>;
+  commitRun?(runId?: number): Promise<void>;
   /** Platform transform tables (record shapes and timezone metadata differ). */
   transform(records: unknown[], metric: MetricConfig): TransformOutput[];
 }
@@ -294,6 +294,7 @@ export const collectHealthData = async (
     timeoutMs?: number;
     telemetry: TelemetryRunContext;
     configId?: string | null;
+    runId?: number;
   }
 ): Promise<MetricSyncOutcome[]> => {
   // Required, not defaulted: an omitted context used to fall back to the
@@ -302,7 +303,11 @@ export const collectHealthData = async (
   // Every run shell must state its own policy.
   const telemetry = opts.telemetry;
 
-  provider.beginRun?.(opts.configId);
+  const runId =
+    opts.runId ??
+    (typeof provider.beginRun === 'function'
+      ? (provider.beginRun(opts.configId) ?? undefined)
+      : undefined);
 
   // Probed once per run, and only when a per-record water metric is enabled.
   const waterFallbackToSum = metrics.some(
@@ -369,7 +374,7 @@ export const collectHealthData = async (
     (o) => o.metric.type === 'water' && o.status !== 'fulfilled'
   );
   if (waterFailed) {
-    provider.cancelWaterDeletionRun?.();
+    provider.cancelWaterDeletionRun?.(runId);
   }
 
   return outcomes;
@@ -499,10 +504,15 @@ export const runForegroundSync = async (
   });
 
   const configId = await getActiveServerConfigId();
+  const runId =
+    typeof provider.beginRun === 'function'
+      ? (provider.beginRun(configId) ?? undefined)
+      : undefined;
   const outcomes = await collectHealthData(provider, metricsToSync, windows, {
     timeoutLabelPrefix: opts.timeoutLabelPrefix,
     telemetry,
     configId,
+    runId,
   });
 
   // Decided here, from the settled outcomes, and used for both drain sites
@@ -571,7 +581,7 @@ export const runForegroundSync = async (
           if (telemetryUsable) {
             await markEnrichedSessions(telemetry.drainCollected());
           }
-          await provider.commitRun?.();
+          await provider.commitRun?.(runId);
         }
         return {
           success: true,
@@ -596,7 +606,7 @@ export const runForegroundSync = async (
     if (telemetryUsable) {
       await markEnrichedSessions(telemetry.drainCollected());
     }
-    await provider.commitRun?.();
+    await provider.commitRun?.(runId);
     return { success: true, message: opts.emptyMessage, syncErrors };
   }
 

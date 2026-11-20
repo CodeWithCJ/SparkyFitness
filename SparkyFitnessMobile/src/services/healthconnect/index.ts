@@ -487,40 +487,71 @@ const withClientRecovery = async <T>(read: () => Promise<T>): Promise<T> => {
   }
 };
 
+interface StagedWaterRun {
+  token: string | null;
+  configId: string | null;
+  cancelled: boolean;
+}
+const stagedWaterRuns = new Map<number, StagedWaterRun>();
+let nextWaterRunId = 1;
 let currentWaterRunId = 0;
-let waterRunCancelled = false;
-let stagedAndroidWaterToken: string | null = null;
-let stagedAndroidConfigId: string | null = null;
 
-export const beginWaterDeletionRun = (configId?: string | null): void => {
-  currentWaterRunId++;
-  waterRunCancelled = false;
-  stagedAndroidWaterToken = null;
-  stagedAndroidConfigId = configId ?? null;
+export const beginWaterDeletionRun = (configId?: string | null): number => {
+  const runId = nextWaterRunId++;
+  currentWaterRunId = runId;
+  stagedWaterRuns.set(runId, {
+    token: null,
+    configId: configId ?? null,
+    cancelled: false,
+  });
+  return runId;
 };
 
-export const cancelWaterDeletionRun = (): void => {
-  waterRunCancelled = true;
-  stagedAndroidWaterToken = null;
-};
-
-export const commitWaterDeletionRun = async (): Promise<void> => {
-  if (stagedAndroidWaterToken && !waterRunCancelled) {
-    await saveHealthWaterSyncToken(
-      'android',
-      stagedAndroidWaterToken,
-      stagedAndroidConfigId
-    );
-    stagedAndroidWaterToken = null;
+export const cancelWaterDeletionRun = (runId?: number): void => {
+  if (runId !== undefined) {
+    const staged = stagedWaterRuns.get(runId);
+    if (staged) {
+      staged.cancelled = true;
+      staged.token = null;
+    }
+  } else {
+    for (const staged of stagedWaterRuns.values()) {
+      staged.cancelled = true;
+      staged.token = null;
+    }
   }
 };
 
-const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
-  const thisRunId = currentWaterRunId;
+export const commitWaterDeletionRun = async (runId?: number): Promise<void> => {
+  if (runId !== undefined) {
+    const staged = stagedWaterRuns.get(runId);
+    if (!staged) return;
+    stagedWaterRuns.delete(runId);
+    if (staged.token && !staged.cancelled) {
+      await saveHealthWaterSyncToken('android', staged.token, staged.configId);
+    }
+  } else {
+    for (const [id, staged] of Array.from(stagedWaterRuns.entries())) {
+      stagedWaterRuns.delete(id);
+      if (staged.token && !staged.cancelled) {
+        await saveHealthWaterSyncToken(
+          'android',
+          staged.token,
+          staged.configId
+        );
+      }
+    }
+  }
+};
+
+const readHydrationDeletions = async (
+  thisRunId: number
+): Promise<Record<string, unknown>[]> => {
+  const staged = stagedWaterRuns.get(thisRunId);
   try {
     const savedToken = await loadHealthWaterSyncToken(
       'android',
-      stagedAndroidConfigId
+      staged?.configId
     );
     let currentToken = savedToken;
     let hasMore = true;
@@ -532,10 +563,11 @@ const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
       });
       if (
         initial.nextChangesToken &&
-        !waterRunCancelled &&
+        staged &&
+        !staged.cancelled &&
         thisRunId === currentWaterRunId
       ) {
-        stagedAndroidWaterToken = initial.nextChangesToken;
+        staged.token = initial.nextChangesToken;
       }
       if (initial.deletionChanges) {
         for (const del of initial.deletionChanges) {
@@ -562,10 +594,11 @@ const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
         });
         if (
           fresh.nextChangesToken &&
-          !waterRunCancelled &&
+          staged &&
+          !staged.cancelled &&
           thisRunId === currentWaterRunId
         ) {
-          stagedAndroidWaterToken = fresh.nextChangesToken;
+          staged.token = fresh.nextChangesToken;
         }
         return [];
       }
@@ -585,8 +618,8 @@ const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
       hasMore = changes.hasMore && !!changes.nextChangesToken;
     }
     // Only stage the new token once pagination completes without throwing and run is not cancelled
-    if (!waterRunCancelled && thisRunId === currentWaterRunId) {
-      stagedAndroidWaterToken = pageToken;
+    if (staged && !staged.cancelled && thisRunId === currentWaterRunId) {
+      staged.token = pageToken;
     }
     return deletedRecords;
   } catch (error) {
@@ -594,7 +627,9 @@ const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
       `[HealthConnectService] Failed reading changes for Hydration: ${(error as Error).message}`,
       'WARNING'
     );
-    stagedAndroidWaterToken = null;
+    if (staged) {
+      staged.token = null;
+    }
     return [];
   }
 };
@@ -604,13 +639,14 @@ export const readHealthRecordsDetailed = async (
   startDate: Date,
   endDate: Date
 ): Promise<HealthConnectReadResult> => {
+  const runId = currentWaterRunId;
   const result = await readHealthRecordsDetailedInner(
     recordType,
     startDate,
     endDate
   );
   if (recordType === 'Hydration') {
-    const deletions = await readHydrationDeletions();
+    const deletions = await readHydrationDeletions(runId);
     if (deletions.length > 0) {
       return {
         records: [...result.records, ...deletions],

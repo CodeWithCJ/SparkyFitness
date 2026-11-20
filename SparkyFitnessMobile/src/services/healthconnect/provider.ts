@@ -152,9 +152,9 @@ export const readEarliestRecord = async (
  * Clears the per-run Health Connect reconnect state, so a client that dies is
  * retried once in each sync rather than only once per app process.
  */
-export const beginRun = (configId?: string | null): void => {
+export const beginRun = (configId?: string | null): number => {
   resetClientUnavailableState();
-  beginWaterDeletionRun(configId);
+  return beginWaterDeletionRun(configId);
 };
 
 export const healthReadProvider: HealthReadProvider = {
