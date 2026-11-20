@@ -8,6 +8,7 @@ import ChallengeDetailScreen from '../../src/screens/ChallengeDetailScreen';
 import { initializeI18n } from '../../src/localization/i18n';
 import type { RootStackScreenProps } from '../../src/types/navigation';
 import {
+  ME,
   makeChallenge,
   makeSharedLeadStandings,
   makeStandings,
@@ -257,6 +258,38 @@ describe('ChallengeDetailScreen', () => {
     expect(screen.getByText('180 active min')).toBeTruthy();
     // Nobody has won a week that is still open.
     expect(screen.queryByTestId('icon-trophy')).toBeNull();
+  });
+
+  it('puts the places with points on a podium hidden from screen readers, with a bar per row', () => {
+    renderDetail();
+    const podium = screen.getByTestId('challenge-podium', {
+      includeHiddenElements: true,
+    });
+    expect(podium.props.accessibilityElementsHidden).toBe(true);
+    // Sam has 250 of the leader's 400.
+    const bar = screen.getByTestId(`challenge-progress-${ME}`);
+    expect(bar).toHaveStyle({ width: '63%' });
+  });
+
+  it('has no podium or row bars for a group goal', () => {
+    mockUseStandings.mockReturnValue({
+      data: makeStandings({
+        rules: challengeRulesSchema.parse({
+          version: 1,
+          metric: 'steps',
+          format: 'group_goal',
+          target: 1000,
+        }),
+      }),
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+    renderDetail();
+    expect(
+      screen.queryByTestId('challenge-podium', { includeHiddenElements: true })
+    ).toBeNull();
+    expect(screen.queryByTestId(`challenge-progress-${ME}`)).toBeNull();
   });
 
   it('shows a shared first place for racers who finished the same day', () => {
