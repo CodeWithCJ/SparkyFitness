@@ -1311,6 +1311,10 @@ export function startRecording(options: StartRecordingOptions): Promise<void> {
     latestFix = null;
     clearLatestFix();
     points = [];
+    heartRate = { samples: [], batchIds: [] };
+    // Whatever an earlier discard could not clear must not join this track.
+    await clearStoredPoints();
+    await AsyncStorage.removeItem(HEART_RATE_KEY);
     await persistSession();
     if (!indoor) {
       try {
@@ -1869,14 +1873,11 @@ export function discardRecording({
         savedEntriesBySession.delete(session.id);
         discardedId = session.id;
       }
-      await stopUpdates();
-      stopRecordingCues();
-      await clearStoredPoints();
-      await AsyncStorage.removeItem(HEART_RATE_KEY);
-      // The stored session goes before the live one: if removing it fails, the
-      // recording stays on screen and can still be saved or discarded again.
+      // The stored session goes first. If removing it fails, nothing else has
+      // changed: the recording keeps its track, its location updates and its
+      // status, and can still be saved or discarded again.
       await AsyncStorage.removeItem(SESSION_KEY);
-      // Marked only once the phone is cleared: a discard that fails before this
+      // Marked only once that succeeded: a discard that fails before this
       // leaves the recording on screen, and saving it after all must reach the
       // watch as saved.
       if (discardedId) {
@@ -1890,6 +1891,21 @@ export function discardRecording({
       points = [];
       heartRate = { samples: [], batchIds: [] };
       publish();
+      // The recording is gone now; what is left is tidying up. A leftover
+      // track or heart rate cannot come back without its session, and the
+      // next recording clears it before it starts.
+      await stopUpdates();
+      stopRecordingCues();
+      try {
+        await clearStoredPoints();
+        await AsyncStorage.removeItem(HEART_RATE_KEY);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(
+          `[GPS Recording] Could not clear the discarded track: ${message}`,
+          'WARNING'
+        );
+      }
     } finally {
       discardingSessionId = null;
     }

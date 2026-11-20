@@ -599,6 +599,80 @@ describe('finishing and discarding', () => {
       expect(wasRecordingDiscarded(id)).toBe(false);
     });
 
+    it('leaves a live recording untouched, track included, when the discard cannot remove its session', async () => {
+      await startRecording({ activity: 'run', notification });
+      await ingestFixes(
+        Array.from({ length: 30 }, (_, i) => fix(i * 5, i * 20))
+      );
+      const before = getGpsRecordingSnapshot();
+      const removeItem = jest.mocked(AsyncStorage.removeItem);
+      const original = removeItem.getMockImplementation();
+      removeItem.mockImplementation((key: string) =>
+        key === '@SparkyFitness/gpsRecording/session'
+          ? Promise.reject(new Error('disk'))
+          : (original?.(key) ?? Promise.resolve())
+      );
+      try {
+        await expect(discardRecording({ discarded: true })).rejects.toThrow(
+          'disk'
+        );
+      } finally {
+        if (original) removeItem.mockImplementation(original);
+        else removeItem.mockReset();
+      }
+
+      // Still recording, with the same track, and the track still stored for
+      // a relaunch.
+      const after = getGpsRecordingSnapshot();
+      expect(after.session?.status).toBe('recording');
+      expect(after.points).toHaveLength(before.points.length);
+      expect(
+        await AsyncStorage.getItem('@SparkyFitness/gpsRecording/chunk/0')
+      ).not.toBeNull();
+      expect(mockedLocation.stopLocationUpdatesAsync).not.toHaveBeenCalled();
+    });
+
+    it('finishes a discard whose track could not be cleared, and the next recording starts clean', async () => {
+      await startRecording({ activity: 'run', notification });
+      await ingestFixes(
+        Array.from({ length: 30 }, (_, i) => fix(i * 5, i * 20))
+      );
+      const id = (await storedSession())!.id;
+      // Only the track's chunks fail to go; the session itself is removed.
+      const multiRemove = jest.mocked(AsyncStorage.multiRemove);
+      const original = multiRemove.getMockImplementation();
+      multiRemove.mockImplementation((keys: readonly string[]) =>
+        keys.some((key) => key.includes('/chunk/'))
+          ? Promise.reject(new Error('disk'))
+          : (original?.(keys) ?? Promise.resolve())
+      );
+      try {
+        await discardRecording({ discarded: true });
+      } finally {
+        if (original) multiRemove.mockImplementation(original);
+        else multiRemove.mockReset();
+      }
+
+      expect(await storedSession()).toBeNull();
+      expect(getGpsRecordingSnapshot().session).toBeNull();
+      expect(wasRecordingDiscarded(id)).toBe(true);
+      // The old track is still on disk...
+      expect(
+        await AsyncStorage.getItem('@SparkyFitness/gpsRecording/chunk/0')
+      ).not.toBeNull();
+
+      // ...until the next recording starts and clears it.
+      const clock = jest
+        .spyOn(Date, 'now')
+        .mockReturnValue(Date.now() + 60_000);
+      await startRecording({ activity: 'run', notification });
+      clock.mockRestore();
+      expect(
+        await AsyncStorage.getItem('@SparkyFitness/gpsRecording/chunk/0')
+      ).toBeNull();
+      expect(getGpsRecordingSnapshot().points).toHaveLength(0);
+    });
+
     it('never deletes the entry when clearing after a successful save', async () => {
       const id = await halfSaved();
 
