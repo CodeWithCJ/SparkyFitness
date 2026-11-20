@@ -85,3 +85,31 @@ it('cancels without publishing a late history response', async () => {
   ).resolves.toBeUndefined();
   expect(attach).not.toHaveBeenCalled();
 });
+
+it('follows a pending approval continuation on its saved assistant row', async () => {
+  const continuation = 'e21bc122-75db-4e57-aac0-e58bfff12132';
+  const pending = {
+    ...assistant,
+    metadata: { turnId: id, pendingTurnId: continuation },
+  };
+  const done = { ...assistant, metadata: { turnId: continuation } };
+  expect(pendingHistoryTurn([user, pending])).toBe(continuation);
+  expect(pendingHistoryTurn([user, done])).toBeUndefined();
+  const attach = jest.fn().mockResolvedValue('closed');
+  const read = jest
+    .fn()
+    .mockResolvedValueOnce([user, pending])
+    .mockResolvedValueOnce([user, done]);
+  await expect(
+    recoverChatTurn(continuation, signal, read, attach)
+  ).resolves.toEqual([user, done]);
+  expect(attach).toHaveBeenCalledTimes(1);
+});
+
+it('does not resume a cancelled prompt on reopening chat', () => {
+  expect(
+    pendingHistoryTurn([
+      { ...user, metadata: { turnId: id, turnState: 'cancelled' } },
+    ])
+  ).toBeUndefined();
+});

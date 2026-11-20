@@ -195,7 +195,7 @@ function useSparkyChatRuntime({
     },
     [t]
   );
-  const { begin, finish, handleError } = useChatTurnRecovery(
+  const { begin, finish, handleError, stop } = useChatTurnRecovery(
     serverConfig,
     initialMessages ?? [],
     onRecovered,
@@ -225,7 +225,10 @@ function useSparkyChatRuntime({
           messageId,
           requestMetadata,
         }) => {
-          const turnId = begin(messages.at(-1)?.role === 'user');
+          const turnId = begin(
+            messages.at(-1)?.role === 'user' ||
+              chatApprovalResponsesReady({ messages })
+          );
           return {
             body: {
               ...body,
@@ -251,7 +254,7 @@ function useSparkyChatRuntime({
   // Thread-level safety net: a per-message error box can't render if the stream
   // fails before any assistant message exists, so surface a toast too. The server's
   // stream onError mapper passes provider error messages through, so this shows them.
-  return useChatRuntime({
+  const runtime = useChatRuntime({
     joinStrategy: 'none',
     sendAutomaticallyWhen: chatApprovalResponsesReady,
     transport,
@@ -261,6 +264,7 @@ function useSparkyChatRuntime({
     onFinish: ({ isAbort, isDisconnect, isError }) =>
       finish(isAbort, isDisconnect, isError),
   });
+  return { runtime, stop };
 }
 
 /** A single chat bubble. Rendered inside the message context. */
@@ -1071,11 +1075,13 @@ function ComposerPhotoPickerButton({
 
 /** The bottom input row. Send/Cancel stay on assistant-ui actions. */
 function Composer({
+  onStop,
   autoFocusReady,
   voiceServiceConfigId,
   voiceInputEnabled,
   onOpenLightbox,
 }: {
+  onStop: () => void;
   autoFocusReady: boolean;
   voiceServiceConfigId?: string | null;
   voiceInputEnabled: boolean;
@@ -1224,10 +1230,13 @@ function Composer({
           </ComposerPrimitive.Send>
         </ThreadPrimitive.If>
         <ThreadPrimitive.If running>
-          <ComposerPrimitive.Cancel>
-            <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
+          <ComposerPrimitive.Cancel asChild>
+            <Pressable
+              onPress={onStop}
+              className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center"
+            >
               <Icon name="stop" size={18} color="#ffffff" />
-            </View>
+            </Pressable>
           </ComposerPrimitive.Cancel>
         </ThreadPrimitive.If>
       </View>
@@ -1305,7 +1314,7 @@ function ChatThread({
 }) {
   const { t } = useTranslation();
   const { lightboxProps, openLightbox } = useImageLightbox();
-  const runtime = useSparkyChatRuntime({
+  const { runtime, stop } = useSparkyChatRuntime({
     serverConfig,
     onRecovered,
     serviceConfigId,
@@ -1440,6 +1449,7 @@ function ChatThread({
         </View>
 
         <Composer
+          onStop={stop}
           key={`${voiceInputEnabled}:${voiceServiceConfigId ?? 'system'}`}
           autoFocusReady={autoFocusReady}
           voiceServiceConfigId={voiceServiceConfigId}
@@ -1563,7 +1573,10 @@ export default function ChatScreen({
       void (async () => {
         // The history is global, not per provider; refetch so the new thread seeds from the latest messages.
         await queryClient.refetchQueries({ queryKey: chatHistoryQueryKey });
-        if (!cancelled) startChatConversation(serviceConfigId);
+        if (!cancelled) {
+          setRestoredHistory(undefined);
+          startChatConversation(serviceConfigId);
+        }
       })();
       return () => {
         cancelled = true;

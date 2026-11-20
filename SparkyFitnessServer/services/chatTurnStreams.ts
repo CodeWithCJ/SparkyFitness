@@ -1,9 +1,23 @@
 import type { UIMessageChunk } from 'ai';
+import { log } from '../config/logging.js';
 
 type Stream = ReadableStream<UIMessageChunk>;
 type Reader = ReadableStreamDefaultController<UIMessageChunk>;
-type Replay = Stream | 'pending' | 'gone';
+type Replay = Stream | 'pending' | 'gone' | 'capacity' | { error: string };
+type Producer = {
+  timeoutMs: number;
+  start: (signal: AbortSignal, deadline: number) => Promise<Stream | null>;
+  fail: (message: string) => Promise<boolean>;
+};
+export function chatTurnFailure(signal: AbortSignal) {
+  return signal.reason?.name === 'TimeoutError'
+    ? 'The chat request timed out.'
+    : 'The AI service could not complete the request.';
+}
+
 type Turn = {
+  actor: string;
+  controller: AbortController;
   chunks: UIMessageChunk[] | null;
   bytes: number;
   readers: Set<Reader>;
@@ -18,23 +32,34 @@ export class ChatTurnStreams {
 
   constructor(
     private readonly byteLimit = 2 * 1024 * 1024,
-    private readonly turnLimit = 16
+    private readonly turnLimit = 16,
+    private readonly actorLimit = 2
   ) {}
+
+  stop(key: string) {
+    this.turns.get(key)?.controller.abort();
+  }
 
   async open(
     key: string,
-    start?: () => Promise<Stream | null>
+    actor: string,
+    producer?: Producer
   ): Promise<Replay | undefined> {
     let turn = this.turns.get(key);
     if (!turn) {
-      if (!start) return undefined;
-      if (this.turns.size >= this.turnLimit) {
-        const idle = [...this.turns].find(([, value]) => value.done);
-        if (!idle) return 'pending';
+      if (!producer) return undefined;
+      const entries = [...this.turns];
+      const owned = entries.filter(([, current]) => current.actor === actor);
+      const candidates = owned.length >= this.actorLimit ? owned : entries;
+      if (owned.length >= this.actorLimit || entries.length >= this.turnLimit) {
+        const idle = candidates.find(([, current]) => current.done);
+        if (!idle) return 'capacity';
         clearTimeout(idle[1].expiration);
         this.turns.delete(idle[0]);
       }
       const created: Turn = {
+        actor,
+        controller: new AbortController(),
         bytes: 0,
         chunks: [],
         readers: new Set(),
@@ -43,26 +68,65 @@ export class ChatTurnStreams {
       };
       turn = created;
       this.turns.set(key, created);
-      created.ready = Promise.resolve()
-        .then(start)
-        .then((stream) => {
-          if (!stream) {
-            this.turns.delete(key);
-            return false;
-          }
-          // Attach the accepting reader before draining any buffered provider events.
-          setImmediate(() => void this.consume(key, created, stream));
-          return true;
-        })
-        .catch((error: unknown) => {
-          this.turns.delete(key);
-          throw error;
-        });
+      created.ready = this.start(key, created, producer);
     }
-    if (!(await turn.ready)) return 'gone';
+    if (!(await turn.ready)) {
+      return turn.controller.signal.reason?.name === 'TimeoutError'
+        ? { error: chatTurnFailure(turn.controller.signal) }
+        : 'gone';
+    }
     if (!turn.chunks) return turn.done ? 'gone' : 'pending';
     if (turn.readers.size >= 8) return 'pending';
     return this.subscribe(turn, turn.chunks);
+  }
+
+  private async start(key: string, turn: Turn, producer: Producer) {
+    const { signal } = turn.controller;
+    const deadline = Date.now() + producer.timeoutMs;
+    const timer = setTimeout(
+      () =>
+        turn.controller.abort(
+          new DOMException('Chat turn timed out.', 'TimeoutError')
+        ),
+      producer.timeoutMs
+    ).unref();
+    let onAbort!: () => void;
+    const interrupted = new Promise<never>((_, reject) => {
+      onAbort = () => reject(signal.reason);
+      signal.addEventListener('abort', onAbort, { once: true });
+    });
+    const cleanup = () => {
+      clearTimeout(timer);
+      signal.removeEventListener('abort', onAbort);
+    };
+    try {
+      const stream = await Promise.race([
+        producer.start(signal, deadline),
+        interrupted,
+      ]);
+      if (stream) {
+        // Subscribe the accepting request before draining buffered events.
+        setImmediate(() => {
+          this.consume(key, turn, stream, producer, cleanup).catch(() => {
+            log('error', 'Could not record the terminal chat turn status.');
+          });
+        });
+        return true;
+      }
+    } catch (error) {
+      try {
+        const persisted = await producer.fail(chatTurnFailure(signal));
+        if (!persisted && !signal.aborted) throw error;
+      } finally {
+        cleanup();
+        this.turns.delete(key);
+      }
+      // Look up the durable failure or cancellation before replying.
+      return false;
+    }
+    cleanup();
+    this.turns.delete(key);
+    return false;
   }
 
   private subscribe(turn: Turn, replay: UIMessageChunk[]): Stream {
@@ -92,11 +156,24 @@ export class ChatTurnStreams {
     );
   }
 
-  private async consume(key: string, turn: Turn, stream: Stream) {
+  private async consume(
+    key: string,
+    turn: Turn,
+    stream: Stream,
+    producer: Producer,
+    cleanup: () => void
+  ) {
+    const { signal } = turn.controller;
     const source = stream.getReader();
+    const onAbort = () => {
+      void source.cancel(signal.reason).catch(() => {});
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
     try {
+      if (signal.aborted) onAbort();
       for (;;) {
         const { done, value } = await source.read();
+        signal.throwIfAborted();
         if (done) break;
         const bytes = Buffer.byteLength(JSON.stringify(value));
         if (turn.chunks) {
@@ -116,8 +193,23 @@ export class ChatTurnStreams {
     } catch (error) {
       // Do not replay a truncated event sequence as a successful completion.
       turn.chunks = null;
-      for (const reader of turn.readers) reader.error(error);
+      const message = chatTurnFailure(signal);
+      const terminal: UIMessageChunk =
+        signal.aborted && signal.reason?.name !== 'TimeoutError'
+          ? { type: 'abort' }
+          : { type: 'error', errorText: message };
+      for (const reader of turn.readers) {
+        try {
+          reader.enqueue(terminal);
+          reader.close();
+        } catch {
+          reader.error(error);
+        }
+      }
+      await producer.fail(message);
     } finally {
+      cleanup();
+      signal.removeEventListener('abort', onAbort);
       source.releaseLock();
       turn.done = true;
       turn.readers.clear();

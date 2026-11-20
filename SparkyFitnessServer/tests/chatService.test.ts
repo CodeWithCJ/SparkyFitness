@@ -12,7 +12,11 @@ import chatService, {
   buildChatStopConditions,
 } from '../services/chatService.js';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
-import chatRepository from '../models/chatRepository.js';
+import chatRepository, {
+  completeChatTurn,
+  getChatTurnStatus,
+  markChatTurnFailed,
+} from '../models/chatRepository.js';
 import {
   recordRejectedParam,
   resetLearnedRejections,
@@ -1664,7 +1668,8 @@ describe('chatService', () => {
         ],
         approvals = true,
         consume = drainStream,
-        turnId?: string
+        turnId?: string,
+        rowId?: string
       ) => {
         const { stream } = await chatService.processChatMessageStream(
           messages,
@@ -1675,7 +1680,9 @@ describe('chatService', () => {
           undefined,
           undefined,
           approvals,
-          turnId
+          turnId,
+          undefined,
+          rowId
         );
         return consume(stream);
       };
@@ -1990,7 +1997,8 @@ describe('chatService', () => {
       const resume = async (
         approved: boolean,
         responseType = pending.type,
-        consume = drainStream
+        consume = drainStream,
+        checkpoint?: { turnId: string; rowId: string }
       ) => {
         vi.mocked(chatRepository.getChatHistoryEntryById).mockResolvedValue({
           id: 'row-1',
@@ -2017,9 +2025,35 @@ describe('chatService', () => {
             },
           ] as Parameters<typeof chatService.processChatMessageStream>[0],
           true,
-          consume
+          consume,
+          checkpoint?.turnId,
+          checkpoint?.rowId
         );
       };
+      it('completes the fresh continuation checkpoint on the existing assistant row', async () => {
+        scripted([doneStep]);
+        vi.mocked(getChatTurnStatus).mockResolvedValueOnce('pending');
+        vi.mocked(completeChatTurn).mockResolvedValueOnce(true);
+        await resume(true, pending.type, drainStream, {
+          turnId: 'continued-turn',
+          rowId: 'continued-claim',
+        });
+        expect(completeChatTurn).toHaveBeenCalledWith(
+          'continued-claim',
+          actorUserId,
+          expect.objectContaining({
+            id: 'row-1',
+            metadata: expect.objectContaining({ turnId: 'continued-turn' }),
+            parts: expect.arrayContaining([
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-available',
+              }),
+            ]),
+          }),
+          true
+        );
+      });
       it('approves once, updates the same row, and asks again for the next write', async () => {
         const model = scripted([callStep('sparky_test_write', 'write-2')]);
         const chunks = await resume(true);
@@ -2481,6 +2515,106 @@ describe('chatService', () => {
         'error',
         expect.stringContaining('stream error')
       );
+    });
+
+    it('persists a provider failure after a partial response without publishing the fragment as a completed answer', async () => {
+      vi.mocked(getChatTurnStatus).mockResolvedValueOnce('pending');
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 'text' },
+        { type: 'text-delta', id: 'text', delta: 'Partial' },
+        { type: 'text-end', id: 'text' },
+        {
+          type: 'error',
+          error: new APICallError({
+            message: 'Provider unavailable',
+            url: 'https://example.test',
+            requestBodyValues: {},
+            statusCode: 400,
+          }),
+        },
+      ]);
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'Sample' }],
+        'svc-1',
+        activeUserId,
+        actorUserId,
+        false,
+        undefined,
+        undefined,
+        true,
+        'turn',
+        undefined,
+        'row'
+      );
+      await drainStream(stream);
+      expect(markChatTurnFailed).toHaveBeenCalledWith(
+        'row',
+        actorUserId,
+        'Provider unavailable'
+      );
+      expect(completeChatTurn).not.toHaveBeenCalled();
+    });
+
+    it('aborts an active provider when Stop is recorded on a different worker', async () => {
+      vi.mocked(getChatTurnStatus)
+        .mockResolvedValueOnce('pending')
+        .mockResolvedValue('cancelled');
+      let providerAborted = false;
+      mockModelHolder.current = new MockLanguageModelV3({
+        doStream: async ({ abortSignal }) => ({
+          stream: new ReadableStream({
+            start(controller) {
+              abortSignal?.addEventListener(
+                'abort',
+                () => {
+                  providerAborted = true;
+                  controller.close();
+                },
+                { once: true }
+              );
+            },
+          }),
+        }),
+      });
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'Sample' }],
+        'svc-1',
+        activeUserId,
+        actorUserId,
+        false,
+        undefined,
+        undefined,
+        true,
+        'turn',
+        undefined,
+        'row'
+      );
+      await drainStream(stream);
+      expect(providerAborted).toBe(true);
+      expect(completeChatTurn).not.toHaveBeenCalled();
+    });
+
+    it('aborts provider setup when another worker has already recorded Stop', async () => {
+      vi.mocked(getChatTurnStatus).mockResolvedValueOnce('cancelled');
+      await expect(
+        chatService.processChatMessageStream(
+          [{ role: 'user', content: 'Sample' }],
+          'svc-1',
+          activeUserId,
+          actorUserId,
+          false,
+          undefined,
+          undefined,
+          true,
+          'turn',
+          undefined,
+          'row'
+        )
+      ).rejects.toThrow();
+      expect(
+        chatRepository.getAiServiceSettingForBackend
+      ).not.toHaveBeenCalled();
     });
 
     it('injects an error chunk and skips the assistant save when the model errors out with an empty completion', async () => {

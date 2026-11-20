@@ -15,7 +15,11 @@ it('drains the producer after the original socket leaves and replays every event
       })
   );
   const turns = new ChatTurnStreams();
-  const initial = await turns.open('a', start);
+  const initial = await turns.open('a', 'actor', {
+    start,
+    timeoutMs: 10000,
+    fail: vi.fn(),
+  });
   if (!(initial instanceof ReadableStream)) throw Error('Expected stream');
   await initial.cancel();
   const event: UIMessageChunk = {
@@ -24,7 +28,11 @@ it('drains the producer after the original socket leaves and replays every event
   };
   source.enqueue(event);
   source.close();
-  const resumed = await turns.open('a', start);
+  const resumed = await turns.open('a', 'actor', {
+    start,
+    timeoutMs: 10000,
+    fail: vi.fn(),
+  });
   if (!(resumed instanceof ReadableStream)) throw Error('Expected replay');
   const reader = resumed.getReader();
   expect((await reader.read()).value).toEqual(event);
@@ -42,7 +50,11 @@ it('keeps generating when replay exceeds its limit and frees its slot after comp
         source = c;
       },
     });
-  const initial = await turns.open('a', start);
+  const initial = await turns.open('a', 'actor', {
+    start,
+    timeoutMs: 10000,
+    fail: vi.fn(),
+  });
   if (!(initial instanceof ReadableStream)) throw Error('Expected stream');
   const reader = initial.getReader();
   const event: UIMessageChunk = {
@@ -52,9 +64,112 @@ it('keeps generating when replay exceeds its limit and frees its slot after comp
   };
   source.enqueue(event);
   expect((await reader.read()).value).toEqual(event);
-  expect(await turns.open('a')).toBe('pending');
-  expect(await turns.open('b', start)).toBe('pending');
+  expect(await turns.open('a', 'actor')).toBe('pending');
+  expect(
+    await turns.open('b', 'actor', { start, timeoutMs: 10000, fail: vi.fn() })
+  ).toBe('capacity');
   source.close();
   expect((await reader.read()).done).toBe(true);
-  expect(await turns.open('a')).toBeUndefined();
+  expect(await turns.open('a', 'actor')).toBeUndefined();
+});
+
+it('reserves a producer per actor before setup while letting duplicates attach', async () => {
+  const turns = new ChatTurnStreams(4096, 3, 1);
+  let accept!: (stream: ReadableStream<UIMessageChunk>) => void;
+  const start = vi.fn(
+    () =>
+      new Promise<ReadableStream<UIMessageChunk>>((resolve) => {
+        accept = resolve;
+      })
+  );
+  const producer = { timeoutMs: 60_000, start, fail: vi.fn() };
+  const first = turns.open('primary', 'one', producer);
+  const duplicate = turns.open('primary', 'one', producer);
+  expect(await turns.open('family-profile', 'one', producer)).toBe('capacity');
+  const other = await turns.open('other', 'two', {
+    ...producer,
+    start: async () =>
+      new ReadableStream({
+        start(c) {
+          c.close();
+        },
+      }),
+  });
+  expect(other).toBeInstanceOf(ReadableStream);
+  accept(
+    new ReadableStream({
+      start(c) {
+        c.close();
+      },
+    })
+  );
+  expect(await first).toBeInstanceOf(ReadableStream);
+  expect(await duplicate).toBeInstanceOf(ReadableStream);
+  expect(start).toHaveBeenCalledTimes(1);
+});
+
+it('explicitly stops an active producer after its subscriber disconnects', async () => {
+  const turns = new ChatTurnStreams();
+  let generation!: AbortSignal;
+  const cancel = vi.fn();
+  const producer = {
+    timeoutMs: 60_000,
+    fail: vi.fn(),
+    start: async (signal: AbortSignal) => {
+      generation = signal;
+      return new ReadableStream<UIMessageChunk>({ cancel });
+    },
+  };
+  const subscription = await turns.open('sample', 'actor', producer);
+  if (!(subscription instanceof ReadableStream)) throw Error('Expected stream');
+  await subscription.cancel();
+  expect(generation.aborted).toBe(false);
+  turns.stop('sample');
+  expect(generation.aborted).toBe(true);
+  await vi.waitFor(() => expect(cancel).toHaveBeenCalledTimes(1));
+  expect(await turns.open('sample', 'actor')).toBeUndefined();
+});
+
+it('ends setup at the same deadline used for generation', async () => {
+  vi.useFakeTimers();
+  try {
+    const turns = new ChatTurnStreams();
+    const fail = vi.fn(async () => true);
+    const pending = turns.open('sample', 'actor', {
+      timeoutMs: 100,
+      fail,
+      start: (signal, deadline) => {
+        expect(deadline).toBe(Date.now() + 100);
+        expect(signal.aborted).toBe(false);
+        return new Promise(() => {});
+      },
+    });
+    await vi.advanceTimersByTimeAsync(100);
+    expect(await pending).toEqual({ error: 'The chat request timed out.' });
+    expect(fail).toHaveBeenCalledWith('The chat request timed out.');
+    expect(await turns.open('sample', 'actor')).toBeUndefined();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it('reports producer failure to a connected reader and durably records the same message', async () => {
+  const turns = new ChatTurnStreams();
+  const fail = vi.fn(async () => true);
+  const subscription = await turns.open('sample', 'actor', {
+    timeoutMs: 60_000,
+    fail,
+    start: async () =>
+      new ReadableStream({
+        start(controller) {
+          controller.error(new Error('Provider internals'));
+        },
+      }),
+  });
+  if (!(subscription instanceof ReadableStream)) throw Error('Expected stream');
+  const reader = subscription.getReader();
+  const errorText = 'The AI service could not complete the request.';
+  expect((await reader.read()).value).toEqual({ type: 'error', errorText });
+  expect((await reader.read()).done).toBe(true);
+  expect(fail).toHaveBeenCalledWith(errorText);
 });

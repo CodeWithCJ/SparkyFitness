@@ -4,12 +4,16 @@ import {
 } from '../ai/chatApprovalSummary.js';
 import chatRepository, {
   claimChatTurnPrompt,
+  completeChatTurn,
+  getChatTurnStatus,
+  markChatTurnFailed,
 } from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
 import { describeError } from '../utils/errors.js';
+import { runWithAbortSignal } from '../utils/abortScope.js';
 import {
   getDefaultModel,
   getOpenAiCompatibleBaseUrl,
@@ -2273,7 +2277,8 @@ async function classifyUserIntent(
   modelInstance: Parameters<typeof generateText>[0]['model'],
   serviceType: string,
   modelName: string,
-  providerOptions?: Record<string, Record<string, JSONValue>>
+  providerOptions?: Record<string, Record<string, JSONValue>>,
+  signal?: AbortSignal
 ): Promise<ChatToolCategorySlug[]> {
   const lastUserMessage = [...messages]
     .reverse()
@@ -2339,7 +2344,10 @@ Your response must contain ONLY the matched domain names as a comma-separated li
           // Reasoning models (gpt-5.x, o-series) accept only the default.
           ...(sendTemperature && { temperature: 0 }),
           maxRetries: 0,
-          abortSignal: AbortSignal.timeout(10000), // 10s timeout to prevent hanging the chat turn
+          abortSignal: AbortSignal.any([
+            AbortSignal.timeout(10000),
+            ...(signal ? [signal] : []),
+          ]),
         })
     );
 
@@ -3053,13 +3061,19 @@ export async function claimChatTurn(
   prompt: ChatMessage,
   actorId: string,
   accountId: string,
-  conversationId?: string
+  conversationId?: string,
+  deadlineMs = Date.now() + CHAT_REQUEST_TIMEOUT_MS
 ) {
-  const { content, parts } = describeUserMessage(toCoreMessages([prompt])[0]);
+  const continuation = prompt.role === 'assistant';
+  const { content, parts } = continuation
+    ? { content: '', parts: [] }
+    : describeUserMessage(toCoreMessages([prompt])[0]);
   return claimChatTurnPrompt(rowId, actorId, content, parts, {
     ...accountHistoryMetadata(accountId, actorId),
     ...(conversationId ? { chat_conversation_id: conversationId } : {}),
     turnId,
+    turnDeadline: deadlineMs,
+    ...(continuation ? { turnHidden: true, continuationOf: prompt.id } : {}),
   });
 }
 
@@ -3072,11 +3086,48 @@ async function processChatMessageStream(
   toolCategories?: readonly string[],
   conversationId?: string,
   approvals = false,
-  turnId?: string
+  turnId?: string,
+  producerSignal?: AbortSignal,
+  rowId?: string
 ) {
   let continuation: UIMessage | undefined;
   let streamStarted = false;
+  const cancellation = new AbortController();
+  const signal = AbortSignal.any([
+    producerSignal ?? AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
+    cancellation.signal,
+  ]);
+  let poll: NodeJS.Timeout | undefined;
+  let monitoring = Boolean(rowId);
+  function stopMonitoring() {
+    monitoring = false;
+    clearTimeout(poll);
+    signal.removeEventListener('abort', stopMonitoring);
+  }
+  async function checkCancellation() {
+    if (!rowId || !monitoring) return;
+    try {
+      const state = await getChatTurnStatus(
+        rowId,
+        authenticatedUserId,
+        CHAT_REQUEST_TIMEOUT_MS
+      );
+      if (state !== 'pending') {
+        cancellation.abort();
+        return;
+      }
+    } catch (error) {
+      // A producer unable to check its durable permission to run must stop.
+      cancellation.abort(error);
+      return;
+    }
+    if (monitoring)
+      poll = setTimeout(() => void checkCancellation(), 1000).unref();
+  }
+  signal.addEventListener('abort', stopMonitoring, { once: true });
   try {
+    await checkCancellation();
+    if (rowId || producerSignal) signal.throwIfAborted();
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
     }
@@ -3124,7 +3175,8 @@ async function processChatMessageStream(
           aiService.service_type,
           authenticatedUserId,
           modelName
-        )
+        ),
+        signal
       );
     }
 
@@ -3228,6 +3280,7 @@ async function processChatMessageStream(
           },
         };
       });
+      if (rowId || producerSignal) signal.throwIfAborted();
       if (
         !(await chatRepository.claimChatApproval(
           saved.id,
@@ -3238,7 +3291,7 @@ async function processChatMessageStream(
       ) {
         throw new Error('Approval already answered.');
       }
-      turnId = metadata?.turnId;
+      turnId ??= metadata?.turnId;
       continuation = {
         id: saved.id,
         role: 'assistant',
@@ -3248,6 +3301,7 @@ async function processChatMessageStream(
       messages = [...messages.slice(0, -1), continuation];
     }
     if (!isContinuation && lastMessage?.role === 'user') {
+      if (rowId || producerSignal) signal.throwIfAborted();
       await chatRepository.cancelChatApprovals(
         authenticatedUserId,
         userId,
@@ -3327,7 +3381,11 @@ async function processChatMessageStream(
         .find((message) => message.role === 'user')
     );
 
-    const result = streamText({
+    if (rowId || producerSignal) signal.throwIfAborted();
+    let providerError: string | undefined;
+    // Built-in tools can do several database operations. An SDK abort also
+    // fences subsequent database acquisitions inside a running tool.
+    const request = {
       model: modelInstance,
       system: buildChatSystem(aiService.service_type, systemPromptContent),
       messages: llmMessages as NonNullable<
@@ -3383,6 +3441,7 @@ async function processChatMessageStream(
         // keyword match, and is skipped entirely when the user picks tool
         // categories manually, so this path can be the first request a model
         // ever sees.
+        providerError = chatStreamErrorMessage(error);
         noteStreamParameterRejection(aiService.service_type, modelName, error);
         log(
           'error',
@@ -3396,7 +3455,7 @@ async function processChatMessageStream(
         toolProfile === 'core'
           ? CORE_PROFILE_MAX_PROVIDER_RETRIES
           : MAX_PROVIDER_RETRIES,
-      abortSignal: AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
+      abortSignal: signal,
       onStepFinish({ toolResults }) {
         if (toolResults && toolResults.length > 0) {
           const sizes = toolResults
@@ -3412,7 +3471,11 @@ async function processChatMessageStream(
           `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${observedUsage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${observedUsage?.inputTokens ?? 0} noCacheTokens=${observedUsage?.inputTokenDetails?.noCacheTokens ?? 0} cacheWriteTokens=${observedUsage?.inputTokenDetails?.cacheWriteTokens ?? 0} outputTokens=${observedUsage?.outputTokens ?? 0} totalTokens=${observedUsage?.totalTokens ?? 0}`
         );
       },
-    });
+    } satisfies Parameters<typeof streamText>[0];
+    const startProvider = () => streamText(request);
+    const result = rowId
+      ? runWithAbortSignal(signal, startProvider)
+      : startProvider();
 
     streamStarted = true;
     let savedMessageId: string | undefined;
@@ -3425,7 +3488,43 @@ async function processChatMessageStream(
             sendSources: true,
             ...(continuation ? { originalMessages: [continuation] } : {}),
             generateMessageId: () => randomUUID(),
-            onFinish: async ({ responseMessage, isAborted }) => {
+            onFinish: async ({
+              responseMessage,
+              isAborted,
+              finishReason,
+              outcome,
+              isCancelled,
+            }) => {
+              stopMonitoring();
+              if (
+                rowId &&
+                (providerError ||
+                  finishReason === 'error' ||
+                  outcome.status === 'failed' ||
+                  signal.aborted ||
+                  isAborted ||
+                  isCancelled)
+              ) {
+                const errorText =
+                  providerError ??
+                  (finishReason === 'error'
+                    ? EMPTY_RESPONSE_ERROR_TEXT
+                    : chatStreamErrorMessage(
+                        outcome.status === 'failed' ? outcome.error : undefined
+                      ));
+                await markChatTurnFailed(rowId, authenticatedUserId, errorText);
+                if (continuation)
+                  await chatRepository.saveApprovalContinuation(
+                    continuation.id,
+                    authenticatedUserId,
+                    {
+                      content: '',
+                      parts: settleChatApprovals(continuation.parts),
+                      metadata: continuation.metadata,
+                    }
+                  );
+                return;
+              }
               if (isAborted && !continuation) return;
               if (!continuation && !turnId) {
                 const lastUser = [...conversationMessages]
@@ -3470,6 +3569,12 @@ async function processChatMessageStream(
                   part.type.startsWith('tool-')
                 )
               ) {
+                if (rowId)
+                  await markChatTurnFailed(
+                    rowId,
+                    authenticatedUserId,
+                    EMPTY_RESPONSE_ERROR_TEXT
+                  );
                 log(
                   'warn',
                   `Skipping empty assistant chat history for user ${userId}`
@@ -3498,7 +3603,17 @@ async function processChatMessageStream(
                 messageType: 'assistant' as const,
                 parts,
               };
-              if (continuation) {
+              if (rowId) {
+                if (
+                  !(await completeChatTurn(
+                    rowId,
+                    authenticatedUserId,
+                    { ...history, id: continuation?.id ?? responseMessage.id },
+                    Boolean(continuation)
+                  ))
+                )
+                  return;
+              } else if (continuation) {
                 await chatRepository.saveApprovalContinuation(
                   continuation.id,
                   authenticatedUserId,
@@ -3568,6 +3683,7 @@ async function processChatMessageStream(
       ),
     };
   } catch (error) {
+    stopMonitoring();
     if (continuation && !streamStarted) {
       // The claim is already saved, so settle it or the card waits forever;
       // a failure here must not hide the original error.

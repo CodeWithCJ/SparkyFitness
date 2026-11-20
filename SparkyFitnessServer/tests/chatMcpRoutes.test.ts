@@ -7,7 +7,11 @@ import express, {
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import chatRoutes from '../routes/chatRoutes.js';
-import { getChatTurnStatus } from '../models/chatRepository.js';
+import {
+  cancelChatTurn,
+  getChatTurnStatus,
+  markChatTurnFailed,
+} from '../models/chatRepository.js';
 import chatService, { claimChatTurn } from '../services/chatService.js';
 import { getChatMcpServerChoices } from '../models/externalProviderRepository.js';
 import {
@@ -27,7 +31,11 @@ vi.mock('../services/chatService.js', () => ({
   claimChatTurn: vi.fn(),
   CHAT_REQUEST_TIMEOUT_MS: 300_000,
 }));
-vi.mock('../models/chatRepository.js', () => ({ getChatTurnStatus: vi.fn() }));
+vi.mock('../models/chatRepository.js', () => ({
+  getChatTurnStatus: vi.fn(),
+  cancelChatTurn: vi.fn(),
+  markChatTurnFailed: vi.fn(),
+}));
 vi.mock('../utils/adminCheck.js', () => ({
   resolveIsAdmin: vi.fn(async () => false),
 }));
@@ -172,6 +180,8 @@ describe('/api/chat/stream approval capability', () => {
         undefined,
         undefined,
         approvals ?? false,
+        undefined,
+        undefined,
         undefined
       );
     }
@@ -218,7 +228,9 @@ describe('resumable chat turns', () => {
       undefined,
       undefined,
       true,
-      first
+      first,
+      expect.any(AbortSignal),
+      expect.any(String)
     );
     expect(claimChatTurn).toHaveBeenCalledTimes(1);
     const route = '/api/chat/turns/' + first + '/stream';
@@ -253,4 +265,64 @@ describe('resumable chat turns', () => {
     expect(remote.headers['retry-after']).toBe('2');
     expect(chatService.processChatMessageStream).not.toHaveBeenCalled();
   });
+});
+
+it('writes a stop even when the stream has not reached this worker', async () => {
+  vi.clearAllMocks();
+  const response = await request(app)
+    .post('/api/chat/turns/' + second + '/stop')
+    .set('x-family', 'true');
+  expect(response.status).toBe(204);
+  expect(cancelChatTurn).toHaveBeenCalledWith(
+    expect.any(String),
+    'owner',
+    'family',
+    second
+  );
+  vi.mocked(getChatTurnStatus).mockResolvedValue('cancelled');
+  const replay = await request(app)
+    .get('/api/chat/turns/' + second + '/stream')
+    .set('x-family', 'true');
+  expect(replay.status).toBe(410);
+  expect(replay.body).toEqual({ cancelled: true });
+});
+
+it('records a claimed approval continuation setup failure and returns its durable error', async () => {
+  vi.clearAllMocks();
+  const turnId = '00000000-0000-4000-8000-000000000009';
+  const last = {
+    id: second,
+    role: 'assistant',
+    parts: [{ state: 'approval-responded' }],
+  };
+  const error = 'The AI service could not complete the request.';
+  vi.mocked(claimChatTurn).mockResolvedValue(true);
+  vi.mocked(chatService.processChatMessageStream).mockRejectedValue(
+    new Error('Provider failure')
+  );
+  vi.mocked(getChatTurnStatus).mockResolvedValue({ error });
+  const response = await request(app)
+    .post('/api/chat/stream')
+    .send({
+      turnId,
+      service_config_id: 'svc',
+      approvals: true,
+      messages: [last],
+    });
+  expect(claimChatTurn).toHaveBeenCalledWith(
+    expect.any(String),
+    turnId,
+    last,
+    'owner',
+    'owner',
+    undefined,
+    expect.any(Number)
+  );
+  expect(markChatTurnFailed).toHaveBeenCalledWith(
+    expect.any(String),
+    'owner',
+    error
+  );
+  expect(response.status).toBe(422);
+  expect(response.body).toEqual({ error });
 });

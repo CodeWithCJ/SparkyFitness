@@ -15,6 +15,9 @@ import {
 import { buildChatbotTools } from '../ai/tools/index.js';
 import chatRepository, {
   claimChatTurnPrompt,
+  cancelChatTurn,
+  completeChatTurn,
+  markChatTurnFailed,
   getChatTurnStatus,
 } from '../models/chatRepository.js';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
@@ -260,7 +263,7 @@ describe.runIf(RUN)("chat in a family member's account", () => {
     const status = (ms: number) =>
       signedInAs(DIARY, () => getChatTurnStatus(rowId, DIARY, ms));
     expect(await status(300_000)).toBe('pending');
-    expect(await status(0)).toBe('gone');
+    expect(await status(0)).toEqual({ error: 'The chat request timed out.' });
     await signedInAs(DIARY, () =>
       chatRepository.saveChatHistory({
         user_id: DIARY,
@@ -280,6 +283,112 @@ describe.runIf(RUN)("chat in a family member's account", () => {
         parts,
       }),
     ]);
+  });
+
+  it('persists stop-before-claim without a visible synthetic prompt, and rejects late results', async () => {
+    const id = '00000000-0000-4000-b100-000000000011';
+    await signedInAs(DIARY, async () => {
+      await cancelChatTurn(id, DIARY, OWNER, id);
+      expect(
+        await claimChatTurnPrompt(id, DIARY, 'Late prompt', [], { turnId: id })
+      ).toBe(false);
+      await markChatTurnFailed(id, DIARY, 'Late error');
+      expect(
+        await completeChatTurn(
+          id,
+          DIARY,
+          { id, metadata: {}, content: 'Late answer', parts: [] },
+          false
+        )
+      ).toBe(false);
+      expect(await getChatTurnStatus(id, DIARY, 300000)).toBe('cancelled');
+      expect(
+        await chatRepository.getChatHistoryByUserId(DIARY, OWNER)
+      ).not.toContainEqual(expect.objectContaining({ id }));
+    });
+  });
+
+  it('uses the absolute claim deadline and preserves failures across readers', async () => {
+    const id = '00000000-0000-4000-b100-000000000012';
+    await signedInAs(DIARY, async () => {
+      await claimChatTurnPrompt(id, DIARY, 'Sample', [], {
+        turnId: id,
+        turnDeadline: Date.now() - 1000,
+      });
+      expect(await getChatTurnStatus(id, DIARY, 300000)).toEqual({
+        error: 'The chat request timed out.',
+      });
+      expect(
+        await completeChatTurn(
+          id,
+          DIARY,
+          { id, metadata: {}, content: 'Late answer', parts: [] },
+          false
+        )
+      ).toBe(false);
+      await markChatTurnFailed(id, DIARY, 'Provider unavailable');
+      await cancelChatTurn(id, DIARY, DIARY, id);
+      expect(await getChatTurnStatus(id, DIARY, 300000)).toEqual({
+        error: 'Provider unavailable',
+      });
+    });
+  });
+
+  it('projects an approval checkpoint onto its saved assistant until the second turn completes', async () => {
+    const original = '00000000-0000-4000-b100-000000000013';
+    const assistant = '00000000-0000-4000-b100-000000000014';
+    const id = '00000000-0000-4000-b100-000000000015';
+    await signedInAs(DIARY, async () => {
+      await claimChatTurnPrompt(original, DIARY, 'Sample approval', [], {
+        turnId: original,
+      });
+      expect(
+        await completeChatTurn(
+          original,
+          DIARY,
+          {
+            id: assistant,
+            metadata: { turnId: original },
+            content: 'Approval',
+            parts: [],
+          },
+          false
+        )
+      ).toBe(true);
+      await claimChatTurnPrompt(id, DIARY, '', [], {
+        turnId: id,
+        turnHidden: true,
+        continuationOf: assistant,
+      });
+      const history = () => chatRepository.getChatHistoryByUserId(DIARY);
+      expect(await history()).toContainEqual(
+        expect.objectContaining({
+          id: assistant,
+          metadata: { turnId: original, pendingTurnId: id },
+        })
+      );
+      expect(
+        await completeChatTurn(
+          id,
+          DIARY,
+          {
+            id: assistant,
+            metadata: { turnId: id },
+            content: 'Approved',
+            parts: [],
+          },
+          true
+        )
+      ).toBe(true);
+      expect(await history()).toContainEqual(
+        expect.objectContaining({ id: assistant, metadata: { turnId: id } })
+      );
+      expect(await history()).not.toContainEqual(
+        expect.objectContaining({ id })
+      );
+      expect(await getChatTurnStatus(original, DIARY, 300000)).toBe('gone');
+      expect(await getChatTurnStatus(id, DIARY, 300000)).toBe('gone');
+    });
   });
 
   it("uses the delegate's own AI service in the owner's account", async () => {

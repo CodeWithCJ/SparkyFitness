@@ -10,8 +10,15 @@ import { pipeUIMessageStreamToResponse } from 'ai';
 import { authenticate } from '../middleware/authMiddleware.js';
 import { v5 as uuidv5 } from 'uuid';
 import { z } from 'zod';
-import { ChatTurnStreams } from '../services/chatTurnStreams.js';
-import { getChatTurnStatus } from '../models/chatRepository.js';
+import {
+  ChatTurnStreams,
+  chatTurnFailure,
+} from '../services/chatTurnStreams.js';
+import {
+  cancelChatTurn,
+  getChatTurnStatus,
+  markChatTurnFailed,
+} from '../models/chatRepository.js';
 import chatService, {
   CHAT_REQUEST_TIMEOUT_MS,
   claimChatTurn,
@@ -430,12 +437,32 @@ router.post('/', authenticate, async (req, res, next) => {
 });
 const chatTurns = new ChatTurnStreams();
 const turnParams = z.object({ turnId: z.uuid() });
-const turnRequest = turnParams.extend({
-  service_config_id: z.string().min(1),
-  messages: z
-    .array(z.object({ role: z.string() }))
-    .refine((messages) => messages.at(-1)?.role === 'user'),
-});
+const turnRequest = turnParams
+  .extend({
+    service_config_id: z.string().min(1),
+    approvals: z.boolean().optional(),
+    messages: z.array(
+      z.object({
+        role: z.string(),
+        id: z.string().optional(),
+        parts: z.array(z.unknown()).optional(),
+      })
+    ),
+  })
+  .refine(({ messages, approvals }) => {
+    const last = messages.at(-1);
+    return (
+      last?.role === 'user' ||
+      (approvals &&
+        last?.role === 'assistant' &&
+        z.uuid().safeParse(last.id).success &&
+        last.parts?.some(
+          (part) =>
+            z.object({ state: z.literal('approval-responded') }).safeParse(part)
+              .success
+        ))
+    );
+  });
 
 function turnRowId(actor: string, account: string, turnId: string) {
   return uuidv5(JSON.stringify([actor, account]), turnId);
@@ -447,14 +474,25 @@ async function sendChatTurn(
   actor: string,
   replay: Awaited<ReturnType<ChatTurnStreams['open']>>
 ) {
-  if (!replay || replay === 'gone') {
-    replay = await getChatTurnStatus(key, actor, CHAT_REQUEST_TIMEOUT_MS);
+  const status =
+    !replay || replay === 'gone' || replay === 'capacity'
+      ? await getChatTurnStatus(key, actor, CHAT_REQUEST_TIMEOUT_MS)
+      : replay;
+  if (!status && replay === 'capacity') {
+    return res
+      .set('Retry-After', '2')
+      .status(429)
+      .json({ error: 'Too many active chat turns.' });
   }
-  if (replay === 'pending') return res.set('Retry-After', '2').sendStatus(503);
-  if (!replay) return res.sendStatus(404);
-  if (replay === 'gone') return res.sendStatus(410);
+  if (status === 'cancelled') return res.status(410).json({ cancelled: true });
+  if (status && typeof status === 'object' && 'error' in status) {
+    return res.status(422).json({ error: status.error });
+  }
+  if (status === 'pending') return res.set('Retry-After', '2').sendStatus(503);
+  if (!status) return res.sendStatus(404);
+  if (status === 'gone') return res.sendStatus(410);
   res.set('X-Accel-Buffering', 'no');
-  return pipeUIMessageStreamToResponse({ response: res, stream: replay });
+  return pipeUIMessageStreamToResponse({ response: res, stream: status });
 }
 
 router.get('/turns/:turnId/stream', authenticate, async (req, res) => {
@@ -462,8 +500,19 @@ router.get('/turns/:turnId/stream', authenticate, async (req, res) => {
   if (!parsed.success) return res.sendStatus(400);
   const { turnId } = parsed.data;
   const key = turnRowId(req.authenticatedUserId, req.userId, turnId);
-  const replay = await chatTurns.open(key);
+  const replay = await chatTurns.open(key, req.authenticatedUserId);
   return sendChatTurn(res, key, req.authenticatedUserId, replay);
+});
+
+router.post('/turns/:turnId/stop', authenticate, async (req, res) => {
+  const parsed = turnParams.safeParse(req.params);
+  if (!parsed.success) return res.sendStatus(400);
+  const actor = req.authenticatedUserId;
+  const { turnId } = parsed.data;
+  const key = turnRowId(actor, req.userId, turnId);
+  await cancelChatTurn(key, actor, req.userId, turnId);
+  chatTurns.stop(key);
+  return res.sendStatus(204);
 });
 
 router.post('/stream', authenticate, async (req, res, next) => {
@@ -479,12 +528,12 @@ router.post('/stream', authenticate, async (req, res, next) => {
   if (turnId !== undefined && !turnRequest.safeParse(req.body).success) {
     return res.status(400).json({
       error:
-        'A resumable turn requires a UUID, a user prompt and a service configuration.',
+        'A resumable turn requires a UUID, a prompt or approval response, and a service configuration.',
     });
   }
   try {
     const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
-    const generate = () =>
+    const generate = (signal?: AbortSignal, key?: string) =>
       chatService.processChatMessageStream(
         messages,
         service_config_id,
@@ -494,20 +543,45 @@ router.post('/stream', authenticate, async (req, res, next) => {
         toolCategories,
         conversationId,
         capability.data.approvals,
-        turnId
+        turnId,
+        signal,
+        key
       );
     if (turnId) {
       const key = turnRowId(req.authenticatedUserId, req.userId, turnId);
-      const replay = await chatTurns.open(key, async () => {
-        const claimed = await claimChatTurn(
-          key,
-          turnId,
-          messages.at(-1),
-          req.authenticatedUserId,
-          req.userId,
-          conversationId
-        );
-        return claimed ? (await generate()).stream : null;
+      let claimed = false;
+      const fail = async (message: string) => {
+        if (claimed) {
+          await markChatTurnFailed(key, req.authenticatedUserId, message);
+        }
+        return claimed;
+      };
+      const replay = await chatTurns.open(key, req.authenticatedUserId, {
+        timeoutMs: CHAT_REQUEST_TIMEOUT_MS,
+        fail,
+        start: async (signal, deadline) => {
+          claimed = await claimChatTurn(
+            key,
+            turnId,
+            messages.at(-1),
+            req.authenticatedUserId,
+            req.userId,
+            conversationId,
+            deadline
+          );
+          if (!claimed) return null;
+          if (signal.aborted) {
+            // A slow database claim may return after the deadline.
+            await fail(chatTurnFailure(signal));
+            return null;
+          }
+          const { stream } = await generate(signal, key);
+          if (signal.aborted) {
+            await stream.cancel(signal.reason);
+            return null;
+          }
+          return stream;
+        },
       });
       return sendChatTurn(res, key, req.authenticatedUserId, replay);
     }

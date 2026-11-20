@@ -1,19 +1,35 @@
 type Message = { role: string; metadata?: unknown };
 
-function turnIdOf(message?: Message) {
-  const value = message?.metadata;
-  return value &&
-    typeof value === 'object' &&
-    'turnId' in value &&
-    typeof value.turnId === 'string' &&
-    /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value.turnId)
-    ? value.turnId
+function turnIdOf(
+  message: Message,
+  key: 'turnId' | 'pendingTurnId' = 'turnId'
+) {
+  const metadata = message.metadata;
+  if (!metadata || typeof metadata !== 'object') return;
+  const id: unknown = Reflect.get(metadata, key);
+  return typeof id === 'string' &&
+    /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(id)
+    ? id
     : undefined;
+}
+
+function checkpointId(message: Message) {
+  if (message.role === 'assistant') return turnIdOf(message, 'pendingTurnId');
+  if (message.role !== 'user') return;
+  const metadata = message.metadata;
+  if (
+    metadata &&
+    typeof metadata === 'object' &&
+    'turnState' in metadata &&
+    (metadata.turnState === 'cancelled' || metadata.turnState === 'complete')
+  )
+    return;
+  return turnIdOf(message);
 }
 
 export function pendingHistoryTurn(messages: readonly Message[]) {
   const last = messages.at(-1);
-  return last?.role === 'user' ? turnIdOf(last) : undefined;
+  return last && checkpointId(last);
 }
 
 // The server returns 503 while a running turn exceeds its replay buffer.
@@ -35,20 +51,21 @@ export async function recoverChatTurn<T extends Message>(
   id: string,
   signal: AbortSignal,
   read: () => Promise<T[]>,
-  attach: () => Promise<'closed' | 'pending' | 'expired'>
-): Promise<T[] | undefined> {
-  let status: 'closed' | 'expired' | 'pending' | undefined;
+  attach: () => Promise<'closed' | 'pending' | 'expired' | 'cancelled'>
+): Promise<T[] | null | undefined> {
+  let status: Awaited<ReturnType<typeof attach>> | undefined;
   while (!signal.aborted) {
     const history = await read();
     if (signal.aborted) return;
     if (history.some((m) => m.role === 'assistant' && turnIdOf(m) === id))
       return history;
-    if (!history.some((m) => m.role === 'user' && turnIdOf(m) === id)) return;
+    if (!history.some((m) => checkpointId(m) === id)) return;
     if (status === 'closed' || status === 'expired') {
       // The screen uses its localized error/retry message for an expired turn.
       throw new Error();
     }
     status = await attach();
+    if (status === 'cancelled') return null;
     if (status === 'pending') await waitForHistory(signal);
   }
 }

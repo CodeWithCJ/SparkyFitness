@@ -13,6 +13,7 @@ import { getAuthHeaders } from '../services/api/authService';
 import { normalizeUrl } from '../services/api/apiClient';
 import {
   loadChatHistory,
+  stopChatTurn,
   mapHistoryToInitialMessages,
 } from '../services/api/chatApi';
 import {
@@ -75,6 +76,32 @@ async function readReplay(
   } catch (error) {
     if (error && typeof error === 'object' && 'statusCode' in error) {
       if (error.statusCode === 503) return 'pending' as const;
+      if (
+        (error.statusCode === 410 || error.statusCode === 422) &&
+        'responseBody' in error &&
+        typeof error.responseBody === 'string'
+      ) {
+        let details: unknown;
+        try {
+          details = JSON.parse(error.responseBody);
+        } catch {
+          // Older servers may return a plain-text HTTP status.
+        }
+        if (details && typeof details === 'object') {
+          if (
+            error.statusCode === 410 &&
+            'cancelled' in details &&
+            details.cancelled === true
+          )
+            return 'cancelled' as const;
+          if (
+            error.statusCode === 422 &&
+            'error' in details &&
+            typeof details.error === 'string'
+          )
+            throw new Error(details.error);
+        }
+      }
       if (error.statusCode === 410 || error.statusCode === 404)
         return 'expired' as const;
     }
@@ -118,7 +145,9 @@ export function useChatTurnRecovery(
         signal.aborted
       )
         return;
-      if (history) {
+      if (history === null) {
+        pending.current = undefined;
+      } else if (history) {
         pending.current = undefined;
         onRecovered(history);
       } else {
@@ -162,15 +191,28 @@ export function useChatTurnRecovery(
     };
   }, [recover]);
 
-  const begin = useCallback((userPrompt: boolean) => {
+  const begin = useCallback((recoverable: boolean) => {
     reader.current?.abort();
     reader.current = undefined;
     interrupted.current = false;
     disconnected.current = undefined;
     missingPrompt.current = false;
-    pending.current = userPrompt ? randomUUID() : undefined;
+    pending.current = recoverable ? randomUUID() : undefined;
     return pending.current;
   }, []);
+
+  const stop = useCallback(async () => {
+    const id = pending.current;
+    if (!id) return;
+    pending.current = undefined;
+    reader.current?.abort();
+    try {
+      const config = await getActiveServerConfig();
+      if (sameChatAccount(config, owner)) await stopChatTurn(config, id);
+    } catch (error) {
+      onError(error instanceof Error ? error : Error(String(error)));
+    }
+  }, [owner, onError]);
 
   const finish = useCallback(
     (isAbort: boolean, isDisconnect: boolean, isError: boolean) => {
@@ -196,5 +238,5 @@ export function useChatTurnRecovery(
     },
     [onError]
   );
-  return { begin, finish, handleError };
+  return { begin, finish, handleError, stop };
 }

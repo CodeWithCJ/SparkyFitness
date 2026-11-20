@@ -416,7 +416,25 @@ async function getChatHistoryByUserId(
     // and sort them chronologically (ORDER BY created_at ASC) in the outer query
     // so that the AI context and UI display them in the correct chronological order.
     const result = await client.query(
-      `SELECT id, content, message_type, created_at, metadata, parts FROM (SELECT id, content, message_type, created_at, metadata, parts FROM sparky_chat_history WHERE user_id = $1 AND ${IN_ACCOUNT} ORDER BY created_at DESC LIMIT 50) sub ORDER BY created_at ASC`,
+      `SELECT m.id, m.content, m.message_type, m.created_at, m.parts,
+              CASE WHEN checkpoint.turn_id IS NULL THEN m.metadata
+                   ELSE COALESCE(m.metadata, '{}'::jsonb) || jsonb_build_object('pendingTurnId', checkpoint.turn_id) END AS metadata
+       FROM (
+         SELECT * FROM sparky_chat_history WHERE user_id = $1 AND ${IN_ACCOUNT}
+           AND metadata->>'turnHidden' IS DISTINCT FROM 'true'
+         ORDER BY created_at DESC LIMIT 50
+       ) m
+       LEFT JOIN LATERAL (
+         SELECT metadata->>'turnId' AS turn_id, metadata->>'turnState' AS state
+         FROM sparky_chat_history
+         WHERE user_id = $1 AND ${IN_ACCOUNT} AND message_type = 'user'
+           AND metadata->>'continuationOf' = m.id::text
+           AND metadata->>'continuationFrom' IS NOT DISTINCT FROM m.metadata->>'turnId'
+         ORDER BY created_at DESC LIMIT 1
+       ) checkpoint ON m.message_type = 'assistant'
+                  AND checkpoint.state IS DISTINCT FROM 'complete'
+                  AND checkpoint.state IS DISTINCT FROM 'cancelled'
+       ORDER BY m.created_at ASC`,
       [userId, accountUserId]
     );
     return result.rows;
@@ -575,12 +593,10 @@ async function saveChatHistory(
 }
 // Chat history has no unique constraint on id. Serialize competing claims,
 // including requests handled by separate server processes.
-export async function claimChatTurnPrompt(
+async function withTurnLock<T>(
   id: string,
   userId: string,
-  content: string,
-  parts: unknown[],
-  metadata: object
+  action: (client: Awaited<ReturnType<typeof getClient>>) => Promise<T>
 ) {
   const client = await getClient(userId);
   let discard = false;
@@ -590,14 +606,9 @@ export async function claimChatTurnPrompt(
       'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
       [id]
     );
-    const result = await client.query(
-      `INSERT INTO sparky_chat_history (id, user_id, content, message_type, metadata, parts, created_at)
-       SELECT $1, $2, $3, 'user', $4, $5, now()
-       WHERE NOT EXISTS (SELECT 1 FROM sparky_chat_history WHERE id = $1 AND user_id = $2)`,
-      [id, userId, content, JSON.stringify(metadata), JSON.stringify(parts)]
-    );
+    const result = await action(client);
     await client.query('COMMIT');
-    return result.rowCount === 1;
+    return result;
   } catch (error) {
     try {
       await client.query('ROLLBACK');
@@ -609,28 +620,155 @@ export async function claimChatTurnPrompt(
     client.release(discard);
   }
 }
-// A different worker cannot replay the active worker's events. Its reader can
-// poll durable history until the provider deadline, including after a restart.
+export async function claimChatTurnPrompt(
+  id: string,
+  userId: string,
+  content: string,
+  parts: unknown[],
+  metadata: object
+) {
+  return withTurnLock(id, userId, async (client) => {
+    const result = await client.query(
+      `INSERT INTO sparky_chat_history (id, user_id, content, message_type, metadata, parts, created_at)
+       SELECT $1, $2, $3, 'user', CASE WHEN $4::jsonb ? 'continuationOf' THEN
+         $4::jsonb || jsonb_build_object('continuationFrom', (
+           SELECT metadata->>'turnId' FROM sparky_chat_history
+           WHERE id = ($4::jsonb->>'continuationOf')::uuid AND user_id = $2
+             AND message_type = 'assistant'
+             AND metadata->>'account_user_id' IS NOT DISTINCT FROM ($4::jsonb->>'account_user_id')
+           LIMIT 1
+         )) ELSE $4::jsonb END, $5, now()
+       WHERE NOT EXISTS (SELECT 1 FROM sparky_chat_history WHERE id = $1 AND user_id = $2)`,
+      [id, userId, content, JSON.stringify(metadata), JSON.stringify(parts)]
+    );
+    return result.rowCount === 1;
+  });
+}
+
+export async function cancelChatTurn(
+  id: string,
+  actor: string,
+  account: string,
+  turnId: string
+) {
+  await withTurnLock(id, actor, async (client) => {
+    const result = await client.query(
+      `UPDATE sparky_chat_history SET metadata = metadata || '{"turnState":"cancelled"}'::jsonb
+       WHERE id = $1 AND user_id = $2 AND message_type = 'user'
+         AND metadata->>'turnState' IS NULL RETURNING id`,
+      [id, actor]
+    );
+    if (result.rowCount) return;
+    // Stop may win the race with the original POST. Keep an invisible claim
+    // so a delayed or retried POST can never start its producer.
+    await client.query(
+      `INSERT INTO sparky_chat_history (id, user_id, content, message_type, metadata, parts)
+       SELECT $1, $2, '', 'user', $3, '[]'::jsonb
+       WHERE NOT EXISTS (SELECT 1 FROM sparky_chat_history WHERE id = $1 AND user_id = $2)`,
+      [
+        id,
+        actor,
+        JSON.stringify({
+          turnId,
+          account_user_id: account,
+          turnState: 'cancelled',
+          turnHidden: true,
+        }),
+      ]
+    );
+  });
+}
+
+export async function markChatTurnFailed(
+  id: string,
+  actor: string,
+  errorText: string
+) {
+  const client = await getClient(actor);
+  try {
+    await client.query(
+      `UPDATE sparky_chat_history SET metadata = metadata || jsonb_build_object('turnState','failed','turnError',$3::text)
+       WHERE id = $1 AND user_id = $2 AND message_type = 'user' AND metadata->>'turnState' IS NULL`,
+      [id, actor, errorText]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+// Commit the terminal checkpoint and assistant row together. Cancellation or a
+// deadline that won the race must prevent even a late provider completion.
+export async function completeChatTurn(
+  id: string,
+  actor: string,
+  answer: {
+    id: string;
+    content: string;
+    parts: unknown[];
+    metadata: object;
+  },
+  continuation: boolean
+) {
+  return withTurnLock(id, actor, async (client) => {
+    const updated = await client.query(
+      `UPDATE sparky_chat_history SET metadata = metadata || '{"turnState":"complete"}'::jsonb
+       WHERE id = $1 AND user_id = $2 AND message_type = 'user' AND metadata->>'turnState' IS NULL
+         AND (metadata->>'turnDeadline' IS NULL OR (metadata->>'turnDeadline')::bigint > EXTRACT(EPOCH FROM clock_timestamp()) * 1000)`,
+      [id, actor]
+    );
+    if (!updated.rowCount) return false;
+    const args = [
+      answer.id,
+      actor,
+      answer.content,
+      JSON.stringify(answer.parts),
+      JSON.stringify(answer.metadata),
+    ];
+    if (continuation) {
+      const saved = await client.query(
+        `UPDATE sparky_chat_history SET content=$3, parts=$4, metadata=$5
+        WHERE id=$1 AND user_id=$2 AND message_type='assistant'`,
+        args
+      );
+      if (!saved.rowCount)
+        throw new Error('Approval continuation disappeared.');
+    } else {
+      await client.query(
+        `INSERT INTO sparky_chat_history (id,user_id,content,parts,metadata,message_type,created_at)
+        VALUES ($1,$2,$3,$4,$5,'assistant',now())`,
+        args
+      );
+    }
+    return true;
+  });
+}
+
 export async function getChatTurnStatus(
   id: string,
   userId: string,
   timeoutMs: number
-): Promise<'pending' | 'gone' | undefined> {
+): Promise<'pending' | 'gone' | 'cancelled' | { error: string } | undefined> {
   const client = await getClient(userId);
   try {
-    const { rows }: { rows: { pending: boolean }[] } = await client.query(
-      `SELECT prompt.created_at > now() - $3::int * interval '1 millisecond'
-         AND NOT EXISTS (
+    const { rows } = await client.query(
+      `SELECT prompt.metadata->>'turnState' AS state, prompt.metadata->>'turnError' AS error,
+         COALESCE(to_timestamp((prompt.metadata->>'turnDeadline')::bigint / 1000.0),
+                  prompt.created_at + $3::int * interval '1 millisecond') > clock_timestamp() AS active,
+         EXISTS (
            SELECT 1 FROM sparky_chat_history answer
            WHERE answer.user_id = prompt.user_id AND answer.message_type = 'assistant'
              AND answer.metadata->>'account_user_id' IS NOT DISTINCT FROM prompt.metadata->>'account_user_id'
              AND answer.metadata->>'turnId' = prompt.metadata->>'turnId'
-         ) AS pending
-       FROM sparky_chat_history prompt WHERE prompt.id = $1 AND prompt.user_id = $2`,
+         ) AS answered
+       FROM sparky_chat_history prompt WHERE prompt.id = $1 AND prompt.user_id = $2 AND prompt.message_type='user'`,
       [id, userId, timeoutMs]
     );
-    if (rows.length === 0) return undefined;
-    return rows[0].pending ? 'pending' : 'gone';
+    const row = rows[0];
+    if (!row) return undefined;
+    if (row.state === 'failed') return { error: row.error };
+    if (row.state === 'cancelled') return 'cancelled';
+    if (row.state === 'complete' || row.answered) return 'gone';
+    return row.active ? 'pending' : { error: 'The chat request timed out.' };
   } finally {
     client.release();
   }

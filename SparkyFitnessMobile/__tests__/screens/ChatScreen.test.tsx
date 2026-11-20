@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -111,7 +117,9 @@ jest.mock('expo-speech-recognition', () => {
 });
 
 type TestTransportOptions = {
-  prepareSendMessagesRequest?: (request: { messages: { role: string }[] }) => {
+  prepareSendMessagesRequest?: (request: {
+    messages: { role: string; parts?: { type: string; state: string }[] }[];
+  }) => {
     body: { turnId?: string };
   };
 };
@@ -1299,6 +1307,43 @@ describe('ChatScreen history seeding', () => {
     }
   });
 
+  it('stops the specific approval continuation only on an explicit composer press', async () => {
+    mockPhotoState.__mockChatIsRunning = true;
+    const stop = jest
+      .spyOn(chatApi, 'stopChatTurn')
+      .mockResolvedValue(undefined);
+    try {
+      const screen = renderScreen();
+      await screen.findByTestId('composer-cancel');
+      const send = mockTransportOptions.prepareSendMessagesRequest!;
+      const first = send({ messages: [{ role: 'user' }] }).body.turnId;
+      const continued = send({
+        messages: [
+          {
+            role: 'assistant',
+            parts: [{ type: 'tool-example', state: 'approval-responded' }],
+          },
+        ],
+      }).body.turnId;
+      expect(continued).toMatch(/^[a-f0-9-]{36}$/);
+      expect(continued).not.toBe(first);
+      await act(async () => {
+        jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.filter(([event]) => event === 'change')
+          .forEach(([, notify]) => notify('background'));
+      });
+      expect(stop).not.toHaveBeenCalled();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('icon-stop'));
+      });
+      expect(stop).toHaveBeenCalledTimes(1);
+      expect(stop).toHaveBeenCalledWith(SERVER_CONFIG, continued);
+    } finally {
+      stop.mockRestore();
+    }
+  });
+
   it.each(['background', 'after lookup'] as const)(
     'retains a disconnect received %s on a server without turn checkpoints',
     async (timing) => {
@@ -1356,6 +1401,50 @@ describe('ChatScreen history seeding', () => {
     }
   );
 
+  it.each([
+    {
+      statusCode: 422,
+      body: { error: 'Provider unavailable' },
+      expected: 'Provider unavailable',
+    },
+    { statusCode: 410, body: { cancelled: true }, expected: undefined },
+  ])(
+    'handles the durable terminal response ($statusCode) after reading a pending checkpoint',
+    async ({ statusCode, body, expected }) => {
+      const turnId = 'c37bc122-75db-4e57-aac0-e58bfff12131';
+      const prompt: chatApi.ChatHistoryEntry = {
+        id: 'u',
+        message_type: 'user',
+        content: 'request',
+        created_at: '',
+        metadata: { turnId },
+      };
+      mockUseChatHistory.mockReturnValue({
+        ...mockUseChatHistory(),
+        data: chatApi.mapHistoryToInitialMessages([prompt]),
+      });
+      const load = jest
+        .spyOn(chatApi, 'loadChatHistory')
+        .mockResolvedValue([prompt]);
+      const responseBody = JSON.stringify(body);
+      mockReconnect.mockRejectedValueOnce(
+        Object.assign(new Error(responseBody), { statusCode, responseBody })
+      );
+      try {
+        renderScreen();
+        await waitFor(() => expect(mockReconnect).toHaveBeenCalled());
+        if (expected)
+          expect(Toast.show).toHaveBeenCalledWith(
+            expect.objectContaining({ text2: expected })
+          );
+        else expect(Toast.show).not.toHaveBeenCalled();
+        expect(load).toHaveBeenCalledTimes(1);
+      } finally {
+        load.mockRestore();
+      }
+    }
+  );
+
   it('reattaches a cold pending turn using the read-only transport then restores the saved answer', async () => {
     const turnId = 'c37bc122-75db-4e57-aac0-e58bfff12131';
     const user: chatApi.ChatHistoryEntry = {
@@ -1395,7 +1484,7 @@ describe('ChatScreen history seeding', () => {
       }),
     });
     try {
-      renderScreen();
+      const screen = renderScreen();
       await waitFor(() =>
         expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
           chatApi.mapHistoryToInitialMessages([user, answer])
@@ -1408,6 +1497,24 @@ describe('ChatScreen history seeding', () => {
       });
       expect(read).toHaveBeenCalledTimes(2);
       expect(expoFetch).not.toHaveBeenCalled();
+      // More exchanges have been saved since the immediate recovery remount.
+      const latest = chatApi.mapHistoryToInitialMessages([
+        user,
+        answer,
+        { ...answer, id: 'newer', content: 'later exchange' },
+      ]);
+      mockUseChatHistory.mockReturnValue({
+        ...mockUseChatHistory(),
+        data: latest,
+      });
+      mockUseActiveAiServiceSetting.mockReturnValue({
+        ...mockUseActiveAiServiceSetting(),
+        data: { ...ACTIVE_SETTING, id: 'new-provider' },
+      });
+      screen.rerenderThread();
+      await waitFor(() =>
+        expect(Reflect.get(globalThis, '__mockCapturedMessages')).toBe(latest)
+      );
     } finally {
       load.mockRestore();
     }
@@ -1469,6 +1576,8 @@ describe('ChatScreen photo attachments', () => {
   });
 
   afterEach(() => {
+    // Unmount before removing the useEffect-backed navigation hook mock.
+    cleanup();
     jest.mocked(useFocusEffect).mockReset();
     jest.restoreAllMocks();
   });

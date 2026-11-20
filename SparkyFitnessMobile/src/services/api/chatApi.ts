@@ -46,6 +46,18 @@ export const loadChatHistory = (
     signal,
   });
 
+export const stopChatTurn = (
+  serverConfig: ServerConfig,
+  turnId: string
+): Promise<void> =>
+  apiFetch<void>({
+    endpoint: `/api/chat/turns/${encodeURIComponent(turnId)}/stop`,
+    serviceName: 'Chat API',
+    operation: 'stop chat turn',
+    method: 'POST',
+    serverConfig,
+  });
+
 /**
  * Clears all stored chat history for the user.
  * POST /api/chat/clear-all-history
