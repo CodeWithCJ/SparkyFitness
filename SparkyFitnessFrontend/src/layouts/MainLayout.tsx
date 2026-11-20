@@ -45,6 +45,7 @@ import { useCycleSettings } from '@/hooks/useCycle';
 import { useHiddenWebTabs } from '@/hooks/Settings/useHiddenWebTabs';
 import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 import { visibleModuleTabs } from '@/constants/webTabs';
+import { useChallengesAvailable } from '@/hooks/Challenges/useChallenges';
 import { cn } from '@/lib/utils';
 import { getGridClassNormal } from '@/utils/layout';
 
@@ -98,9 +99,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({
   const { isEnabled: isFeatureOn } = useWebFeatures();
   const { data: cycleSettings } = useCycleSettings();
   const { hidden: hiddenWebTabs } = useHiddenWebTabs();
+  // Challenges show while the admin switch is on, on the owner's own account.
+  const { available: challengesAvailable } = useChallengesAvailable();
   const moduleTabs = useMemo(
-    () => visibleModuleTabs(t, hiddenWebTabs, isFeatureOn, cycleSettings),
-    [t, hiddenWebTabs, isFeatureOn, cycleSettings]
+    () =>
+      visibleModuleTabs(
+        t,
+        hiddenWebTabs,
+        isFeatureOn,
+        cycleSettings,
+        challengesAvailable
+      ),
+    [t, hiddenWebTabs, isFeatureOn, cycleSettings, challengesAvailable]
   );
 
   const handleSignOut = async () => {

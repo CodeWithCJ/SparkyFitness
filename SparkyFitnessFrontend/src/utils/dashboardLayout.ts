@@ -289,6 +289,7 @@ export function buildWidgetKeys(
     ...(hasDisplayableHealthMetrics ? ['healthMetrics'] : []),
     ...visibleMealTypeIds.map(mealWidgetKey),
     'exercise',
+    'challenges',
     'caffeine',
     'bloodAlcohol',
   ];
@@ -319,13 +320,16 @@ export function generateDefaultLayouts(mealKeys: string[]): DashboardLayouts {
     lgY += 4;
   }
   lg.push({ i: 'exercise', x: 0, y: lgY, w: 12, h: 4, minW: 3, minH: 3 });
+  // Registered only for members of a challenge; for anyone else the grid
+  // has no child for this tile and compacts the space away.
+  lg.push({ i: 'challenges', x: 0, y: lgY + 4, w: 6, h: 7, minW: 3, minH: 4 });
   // Full width and last: the caffeine card carries a curve, which is
   // unreadable in a quarter-width tile.
-  lg.push({ i: 'caffeine', x: 0, y: lgY + 4, w: 12, h: 11, minW: 4, minH: 7 });
+  lg.push({ i: 'caffeine', x: 0, y: lgY + 11, w: 12, h: 11, minW: 4, minH: 7 });
   lg.push({
     i: 'bloodAlcohol',
     x: 0,
-    y: lgY + 15,
+    y: lgY + 22,
     w: 12,
     h: 12,
     minW: 4,
@@ -345,11 +349,12 @@ export function generateDefaultLayouts(mealKeys: string[]): DashboardLayouts {
     mdY += 4;
   }
   md.push({ i: 'exercise', x: 0, y: mdY, w: 10, h: 4, minW: 3, minH: 3 });
-  md.push({ i: 'caffeine', x: 0, y: mdY + 4, w: 10, h: 11, minW: 4, minH: 7 });
+  md.push({ i: 'challenges', x: 0, y: mdY + 4, w: 5, h: 7, minW: 3, minH: 4 });
+  md.push({ i: 'caffeine', x: 0, y: mdY + 11, w: 10, h: 11, minW: 4, minH: 7 });
   md.push({
     i: 'bloodAlcohol',
     x: 0,
-    y: mdY + 15,
+    y: mdY + 22,
     w: 10,
     h: 12,
     minW: 4,
@@ -371,6 +376,7 @@ export function generateDefaultLayouts(mealKeys: string[]): DashboardLayouts {
     push('healthMetrics', 6, 4);
     for (const key of mealKeys) push(key, 4, 3);
     push('exercise', 4, 3);
+    push('challenges', 7, 4);
     push('caffeine', 11, 7);
     push('bloodAlcohol', 12, 7);
     return out;

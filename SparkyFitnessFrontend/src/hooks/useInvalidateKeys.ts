@@ -24,6 +24,7 @@ import { fastingKeys } from '@/api/keys/fasting';
 import { runProgramKeys } from '@/api/keys/runPrograms';
 import { externalProviderKeys } from '@/api/keys/settings';
 import { garminKeys } from '@/api/keys/integrations';
+import { challengeKeys } from '@/api/keys/challenges';
 
 /**
  * After a Garmin sync: the provider list carries the Garmin status (last sync,
@@ -64,6 +65,8 @@ export const useDiaryInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: ['workoutPlanTemplates'] });
     queryClient.invalidateQueries({ queryKey: fastingKeys.all });
     queryClient.invalidateQueries({ queryKey: runProgramKeys.all });
+    // Challenge scores come from workouts and steps.
+    queryClient.invalidateQueries({ queryKey: challengeKeys.allStandings() });
   }, [queryClient]);
 };
 
@@ -145,6 +148,7 @@ export const useExerciseInvalidation = () => {
     queryClient.invalidateQueries({ queryKey: diaryReportKeys.all });
     queryClient.invalidateQueries({ queryKey: reportKeys.all });
     queryClient.invalidateQueries({ queryKey: runProgramKeys.all });
+    queryClient.invalidateQueries({ queryKey: challengeKeys.allStandings() });
   }, [queryClient]);
 };
 

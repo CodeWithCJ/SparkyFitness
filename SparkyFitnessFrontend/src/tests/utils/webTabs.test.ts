@@ -82,6 +82,30 @@ describe('visibleModuleTabs', () => {
     expect(plusMenu).toContain('labs');
   });
 
+  it('shows Challenges only while they are available', () => {
+    expect(ids(none)).not.toContain('challenges');
+    const withChallenges = visibleModuleTabs(
+      t,
+      none,
+      allOn,
+      cycleSettings,
+      true
+    );
+    expect(withChallenges.map((tab) => tab.id)).toContain('challenges');
+    expect(withChallenges.find((tab) => tab.id === 'challenges')).toMatchObject(
+      { path: '/challenges', label: 'Challenges', inPlusMenu: true }
+    );
+    expect(
+      visibleModuleTabs(
+        t,
+        new Set<WebHideableTabId>(['challenges']),
+        allOn,
+        cycleSettings,
+        true
+      ).map((tab) => tab.id)
+    ).not.toContain('challenges');
+  });
+
   it('gives each tab its label and path', () => {
     const labs = visibleModuleTabs(t, none, allOn, cycleSettings).find(
       (tab) => tab.id === 'labs'
