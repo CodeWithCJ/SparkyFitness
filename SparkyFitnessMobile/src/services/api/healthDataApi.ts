@@ -11,6 +11,7 @@ import { ensureTimezoneBootstrapped } from './preferencesApi';
 import {
   CONNECTION_CHECK_TIMEOUT_MS,
   fetchWithTimeout,
+  TimeoutError,
 } from '../../utils/concurrency';
 import {
   instantToDay,
@@ -89,11 +90,16 @@ interface HealthDataResponseBody {
 
 // --- Chunking, timeout, and retry constants ---
 
-export const CHUNK_SIZE = 5_000;
+// A 5,000-record chunk (~1.5 MB) could take a small self-hosted server over
+// 30 s, so a cold import never finished (#3667).
+export const CHUNK_SIZE = 1_000;
 // Sleep sessions are expensive server-side (per-session upsert + per-stage merge
 // + aggregate recompute), so they get a smaller cap than simple measurements. #1263
 export const SESSION_CHUNK_SIZE = 50;
-export const FETCH_TIMEOUT_MS = 30_000;
+// Uploads are write-heavy and slow on a cold import, so they get more time than
+// a normal API call. A chunk that still times out is split rather than resent
+// (see sendHealthDataChunked).
+export const FETCH_TIMEOUT_MS = 120_000;
 export const MAX_RETRIES = 3;
 export const RETRY_BASE_DELAY_MS = 1_000;
 
@@ -106,17 +112,25 @@ interface RetryConfig {
   maxRetries: number;
   baseDelayMs: number;
   serverConfig?: ServerConfig;
+  /** false throws the first timeout instead of resending, so the caller can split. Default true. */
+  retryOnTimeout?: boolean;
 }
 
 /**
  * Wraps fetchWithTimeout with retry logic.
- * Retries on network errors, timeouts, and 5xx responses.
+ * Retries on network errors, timeouts (unless retryOnTimeout is false), and 5xx responses.
  * Does NOT retry on 4xx (including 401 which triggers session expiry).
  */
 export const _fetchWithRetry = async (
   url: string,
   options: RequestInit,
-  { timeoutMs, maxRetries, baseDelayMs, serverConfig }: RetryConfig
+  {
+    timeoutMs,
+    maxRetries,
+    baseDelayMs,
+    serverConfig,
+    retryOnTimeout = true,
+  }: RetryConfig
 ): Promise<Response> => {
   let lastError: Error | undefined;
 
@@ -149,6 +163,9 @@ export const _fetchWithRetry = async (
 
       // If it's a 4xx error we threw above, don't retry
       if (lastError.message.startsWith('Server error: 4')) {
+        throw lastError;
+      }
+      if (!retryOnTimeout && lastError instanceof TimeoutError) {
         throw lastError;
       }
     }
@@ -332,7 +349,10 @@ const sendHealthDataChunked = async (
     }
   }
 
-  const chunks: HealthDataPayloadItem[][] = [];
+  // `splittable` chunks may be halved after a timeout. Exercise/Workout chunks
+  // never are: each one is a whole-day range the server deletes and re-inserts.
+  const chunks: { records: HealthDataPayloadItem[]; splittable: boolean }[] =
+    [];
 
   // Exercise/Workout: one chunk per source, split only at whole-day boundaries
   // when telemetry pushes a group past the size cap.
@@ -341,32 +361,41 @@ const sendHealthDataChunked = async (
       sessionRecords,
       accountTimezone
     )) {
-      chunks.push(chunk);
+      chunks.push({ records: chunk, splittable: false });
     }
   }
 
   // Sleep/Nutrition: chunked by SESSION_CHUNK_SIZE.
   for (let i = 0; i < smallChunkRecords.length; i += SESSION_CHUNK_SIZE) {
-    chunks.push(smallChunkRecords.slice(i, i + SESSION_CHUNK_SIZE));
+    chunks.push({
+      records: smallChunkRecords.slice(i, i + SESSION_CHUNK_SIZE),
+      splittable: true,
+    });
   }
 
   // Simple measurements: chunked by CHUNK_SIZE.
   for (let i = 0; i < simpleRecords.length; i += CHUNK_SIZE) {
-    chunks.push(simpleRecords.slice(i, i + CHUNK_SIZE));
+    chunks.push({
+      records: simpleRecords.slice(i, i + CHUNK_SIZE),
+      splittable: true,
+    });
   }
 
-  const totalChunks = chunks.length;
   let recordsSent = 0;
+  let chunksSent = 0;
   const recordErrors: RecordSyncError[] = [];
 
-  for (let i = 0; i < totalChunks; i++) {
-    const chunk = chunks[i];
+  while (chunks.length > 0) {
+    const { records: chunk, splittable } = chunks[0];
+    const chunkNumber = chunksSent + 1;
+    const totalChunks = chunksSent + chunks.length;
     const chunkStart = recordsSent + 1;
     const chunkEnd = recordsSent + chunk.length;
+    const canSplit = splittable && chunk.length > 1;
 
     if (totalChunks > 1) {
       addLog(
-        `[API] Sending chunk ${i + 1}/${totalChunks} (records ${chunkStart}-${chunkEnd} of ${data.length})`,
+        `[API] Sending chunk ${chunkNumber}/${totalChunks} (records ${chunkStart}-${chunkEnd} of ${data.length})`,
         'INFO'
       );
     }
@@ -384,6 +413,9 @@ const sendHealthDataChunked = async (
           maxRetries: MAX_RETRIES,
           baseDelayMs: RETRY_BASE_DELAY_MS,
           serverConfig,
+          // Resending a chunk the server could not finish in time only gives
+          // it the same work again; split it below instead.
+          retryOnTimeout: !canSplit,
         }
       );
 
@@ -397,7 +429,7 @@ const sendHealthDataChunked = async (
 
       if (chunkSkipped.length > 0) {
         addLog(
-          `[API] Server skipped ${chunkSkipped.length} record(s) in chunk ${i + 1}/${totalChunks} (intentionally not written)`,
+          `[API] Server skipped ${chunkSkipped.length} record(s) in chunk ${chunkNumber}/${totalChunks} (intentionally not written)`,
           'INFO'
         );
       }
@@ -407,31 +439,51 @@ const sendHealthDataChunked = async (
       // whole window, so treat it like a failed chunk.
       if (chunkErrors.length > 0 && chunkProcessed.length === 0) {
         addLog(
-          `[API] chunk ${i + 1}/${totalChunks} rejected in full by server: ${chunkErrors.length} records`,
+          `[API] chunk ${chunkNumber}/${totalChunks} rejected in full by server: ${chunkErrors.length} records`,
           'ERROR'
         );
         throw new Error(
-          `Chunk ${i + 1}/${totalChunks} rejected in full by server: ${chunkErrors.length} records rejected.`
+          `Chunk ${chunkNumber}/${totalChunks} rejected in full by server: ${chunkErrors.length} records rejected.`
         );
       }
 
       recordErrors.push(...chunkErrors);
       recordsSent += chunk.length;
+      chunksSent += 1;
+      chunks.shift();
     } catch (error) {
+      if (canSplit && error instanceof TimeoutError) {
+        // Simple measurements, sleep and nutrition are upserted by natural key,
+        // so sending part of a chunk again cannot duplicate rows.
+        const half = Math.ceil(chunk.length / 2);
+        addLog(
+          `[API] Chunk ${chunkNumber}/${totalChunks} timed out after ${FETCH_TIMEOUT_MS / 1000}s; splitting its ${chunk.length} records into ${half} and ${chunk.length - half}`,
+          'WARNING'
+        );
+        chunks.splice(
+          0,
+          1,
+          { records: chunk.slice(0, half), splittable },
+          { records: chunk.slice(half), splittable }
+        );
+        continue;
+      }
       const legacyErrors = parseLegacyPartialFailure(error);
       if (legacyErrors) {
         addLog(
-          `[API] Legacy server reported ${legacyErrors.length} rejected record(s) in chunk ${i + 1}/${totalChunks}; continuing`,
+          `[API] Legacy server reported ${legacyErrors.length} rejected record(s) in chunk ${chunkNumber}/${totalChunks}; continuing`,
           'WARNING'
         );
         recordErrors.push(...legacyErrors);
         recordsSent += chunk.length;
+        chunksSent += 1;
+        chunks.shift();
         continue;
       }
       const message = error instanceof Error ? error.message : String(error);
       if (recordsSent > 0) {
         throw new Error(
-          `Sync partially completed: ${recordsSent} of ${data.length} records sent. Failed on chunk ${i + 1}/${totalChunks}: ${message}`
+          `Sync partially completed: ${recordsSent} of ${data.length} records sent. Failed on chunk ${chunkNumber}/${totalChunks}: ${message}`
         );
       }
       throw error;
