@@ -95,11 +95,11 @@ The Connect IQ simulator plays the watch, and the phone app (a real phone or an 
 5. In the simulator, choose **Connection → Start** (Ctrl+F1).
 6. Sign in on the phone. Settings → Garmin lists the simulated watch, and the app in the simulator gets today's numbers (it asks when it starts; restart it from the simulator's menu to ask again).
 
-In this mode the phone never tries Garmin's binder delivery, and the simulator may not start the background service for phone messages, so test those two on a real watch. The switch takes effect at the next start of the app when the Garmin link was already running: close SparkyFitness from the recent apps and open it again (a Metro reload is not enough). Turn it off the same way to go back to watches. While it is on, the phone listens for the simulator on port 7381 on every network, so use a trusted Wi-Fi.
+In this mode the phone never tries Garmin's binder delivery, and the simulator keeps a phone message for a closed app in its mailbox rather than starting the background service (so the glance only changes once the app is opened), so test those two on a real watch. The switch takes effect at the next start of the app when the Garmin link was already running: close SparkyFitness from the recent apps and open it again (a Metro reload is not enough). Turn it off the same way to go back to watches. While it is on, the phone listens for the simulator on port 7381 on every network, so use a trusted Wi-Fi.
 
 ## Background updates
 
-The app registers a background service for phone messages each time it opens (on watches that have the event), so a snapshot the phone sends while the app is closed is stored at once and the glance shows it. It needs the `Background` permission, which the manifest asks for. Other developers report that some watches never start it (Venu 3, Forerunner 265) and that a fēnix 8 started it with an empty message, so check it on each watch you test:
+The app registers a background service for phone messages when it is installed or updated (the system runs that in the background and does not guarantee it) and again each time it opens (on watches that have the event), so a snapshot the phone sends while the app is closed is stored at once and the glance shows it. It needs the `Background` permission, which the manifest asks for. Other developers report that some watches never start it (Venu 3, Forerunner 265) and that a fēnix 8 started it with an empty message, so check it on each watch you test:
 
 1. Create the log file first (see [Logs](#logs)): `GARMIN/APPS/LOGS/SparkyFitness.TXT`, empty, for `SparkyFitness.prg`.
 2. Open the app on the watch once, with the phone app running nearby, so it registers the service and stores today's figures. Note the "as of" time on the glance.
@@ -111,7 +111,7 @@ The app registers a background service for phone messages each time it opens (on
    - `bg 09:12:05 null message`: it ran, but the watch handed it no data (the fēnix 8 report).
    - `bg 09:12:05 late message dropped`: it started with a message the open app had already taken, or one sent before the last message applied; harmless.
    - `bg ... accountCleared`, `unknown type ignored`, `not a message`, or `error ...` for the rest.
-   - No `bg` line at all: this watch did not start the service. `Link: no background phone messages on this watch` means it lacks the event; otherwise the glance only moves on when the app is opened, as before.
+   - No `bg` line at all: this watch did not start the service. `No background phone messages on this watch` means it lacks the event (it can also be written by the background process at install or update); otherwise the glance only moves on when the app is opened, as before.
 
 The open app does not rely on the service: it still receives messages itself and asks for a fresh snapshot when it opens. Some watches may give a message to both; the second copy is skipped. Every phone message carries `seq`, a number the phone raises with each send, and `origin`, the phone install that numbered it. The service and the open app both skip a message from the same origin whose `seq` is not above the last one applied, however late it comes: the service starting after the open app took newer messages, or the open app's mailbox handing it what the service already applied. So a late copy of a signed-out account's snapshot never comes back, and a late account clear never empties the next account's figures. A crash in the service is written to `GARMIN/APPS/LOGS/CIQ_LOG.YAML`, like any other.
 

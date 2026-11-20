@@ -36,6 +36,11 @@ class GoalsView extends WatchUi.View {
     // next snapshot, which makes the figures fresh again. This one-shot timer
     // wakes the page the second the figures on it turn old.
     private var _staleTimer as Timer.Timer;
+    // Redraws when the wait for the first answer ends (SyncRequest).
+    private var _waitTimer as Timer.Timer;
+    // The ring's number font for the last value drawn (scaledNumberFont).
+    private var _numberFontText as String? = null;
+    private var _numberFont as Graphics.VectorFont? = null;
     // SyncTime.staleAt of the snapshot the timer was set for, null for none.
     private var _timedStaleAt as Number?;
     private var _shown as Boolean;
@@ -44,6 +49,7 @@ class GoalsView extends WatchUi.View {
         View.initialize();
         _scale = 1.0;
         _staleTimer = new Timer.Timer();
+        _waitTimer = new Timer.Timer();
         _timedStaleAt = null;
         _shown = false;
     }
@@ -57,7 +63,12 @@ class GoalsView extends WatchUi.View {
         setStaleTimer();
     }
 
+    function onWaitTimer() as Void {
+        WatchUi.requestUpdate();
+    }
+
     function onHide() as Void {
+        _waitTimer.stop();
         _shown = false;
         _staleTimer.stop();
     }
@@ -152,14 +163,20 @@ class GoalsView extends WatchUi.View {
         var caption = WatchUi.loadResource(captionId(kilojoules, over)) as String;
 
         var inner = 2 * (radius - pen / 2);
-        var valueFont = fitFont(dc, value, (inner * 0.84).toNumber(), (inner * 0.5).toNumber(), [
+        var maxWidth = (inner * 0.84).toNumber();
+        var maxHeight = (inner * 0.5).toNumber();
+        var valueFont = fitFont(dc, value, maxWidth, maxHeight, [
             Graphics.FONT_NUMBER_MEDIUM,
             Graphics.FONT_NUMBER_MILD,
             Graphics.FONT_LARGE,
             Graphics.FONT_MEDIUM,
             Graphics.FONT_SMALL,
             Graphics.FONT_TINY
-        ] as Array<FontDefinition>);
+        ] as Array<FontDefinition>) as FontType;
+        var numberFont = scaledNumberFont(dc, value, maxWidth, maxHeight);
+        if (numberFont != null) {
+            valueFont = numberFont;
+        }
         var captionFont = Graphics.FONT_XTINY;
         var valueHeight = dc.getFontHeight(valueFont);
         var captionHeight = dc.getFontHeight(captionFont);
@@ -223,8 +240,15 @@ class GoalsView extends WatchUi.View {
         return y + height;
     }
 
+    // Says the phone was asked for today's numbers while the answer can still
+    // come (SyncRequest), then how to get them.
     private function drawNotSynced(dc as Dc, top as Number) as Void {
-        var text = WatchUi.loadResource(Rez.Strings.GoalsOpenPhoneToSync) as String;
+        var waitLeft = SyncRequest.waitLeftMs();
+        _waitTimer.stop();
+        if (waitLeft > 0) {
+            _waitTimer.start(method(:onWaitTimer), waitLeft + 100, false);
+        }
+        var text = WatchUi.loadResource(waitLeft > 0 ? Rez.Strings.GoalsSyncing : Rez.Strings.GoalsOpenPhoneToSync) as String;
         var font = Graphics.FONT_XTINY;
         var y = top + s(12);
         var height = dc.getHeight() - y - s(40);
@@ -357,6 +381,39 @@ class GoalsView extends WatchUi.View {
         }
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         dc.fillRoundedRectangle(x, y, filled, height, radius);
+    }
+
+    // Garmin's number face, sized to fit the ring, where the watch has
+    // scalable fonts: the system number fonts are far taller than the ring on
+    // the fēnix 8, so fitFont ends up on a text font. Null where there is no
+    // such face, so fitFont's choice stays. Kept for the last value drawn.
+    private function scaledNumberFont(dc as Dc, text as String, maxWidth as Number, maxHeight as Number) as Graphics.VectorFont? {
+        if (!(Graphics has :getVectorFont)) {
+            return null;
+        }
+        if (_numberFontText != null && text.equals(_numberFontText)) {
+            return _numberFont;
+        }
+        var found = null;
+        try {
+            var size = (maxHeight * 1.4).toNumber();
+            var smallest = (maxHeight * 0.7).toNumber();
+            while (size >= smallest && found == null) {
+                var font = Graphics.getVectorFont({:face => ["BionicMedium", "BionicBold"], :size => size});
+                if (font == null) {
+                    break;
+                }
+                if (dc.getTextWidthInPixels(text, font) <= maxWidth && dc.getFontHeight(font) - Graphics.getFontDescent(font) <= maxHeight) {
+                    found = font;
+                }
+                size -= 4;
+            }
+        } catch (e instanceof Lang.Exception) {
+            found = null;
+        }
+        _numberFontText = text;
+        _numberFont = found;
+        return found;
     }
 
     // The largest candidate font the text fits in.

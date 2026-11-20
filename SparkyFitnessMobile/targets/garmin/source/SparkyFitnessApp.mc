@@ -29,6 +29,20 @@ class SparkyFitnessApp extends Application.AppBase {
     function onStop(state as Dictionary?) as Void {
     }
 
+    // Run by the system in the background when the app is installed or
+    // updated, so the glance can keep up before the app is first opened.
+    // Not guaranteed to run; Link.start registers again. Only the background
+    // process runs these, never the glance.
+    (:typecheck(disableGlanceCheck))
+    function onAppInstall() as Void {
+        BackgroundRegistration.register();
+    }
+
+    (:typecheck(disableGlanceCheck))
+    function onAppUpdate() as Void {
+        BackgroundRegistration.register();
+    }
+
     // Only the full app gets here: register for phone messages (which also
     // delivers whatever waited in the mailbox) and ask for a fresh snapshot.
     // The registered callback holds the Link for the life of the app.

@@ -19,12 +19,14 @@ module NutrientList {
         if (rows == null) {
             return false;
         }
-        var menu = new NutrientMenu(rows.size());
+        var menu = new NutrientMenu(rows.size(), footerText());
         for (var i = 0; i < rows.size(); i++) {
             menu.addItem(item(rows[i], i));
         }
         _menu = menu;
-        WatchUi.pushView(menu, new NutrientListDelegate(), WatchUi.SLIDE_UP);
+        // A menu slides in from the right and back out to the right, as
+        // Garmin's own apps do; up and down belong to the page loop.
+        WatchUi.pushView(menu, new NutrientListDelegate(), WatchUi.SLIDE_LEFT);
         return true;
     }
 
@@ -56,12 +58,23 @@ module NutrientList {
         for (var i = 0; i < rows.size(); i++) {
             menu.updateItem(item(rows[i], i), i);
         }
+        menu.setFooter(footerText());
         menu.stale = false;
         WatchUi.requestUpdate();
     }
 
     function closed() as Void {
         _menu = null;
+    }
+
+    // "as of 9:12 AM" under the list, so its figures carry their time as the
+    // page's do; null before any snapshot.
+    function footerText() as String? {
+        var pushedAt = SnapshotStore.pushedAt();
+        if (pushedAt == null) {
+            return null;
+        }
+        return Lang.format(WatchUi.loadResource(Rez.Strings.AsOf) as String, [SyncTime.text(pushedAt, true)]);
     }
 
     // Today's nutrients when there are more than the page shows, else null.
@@ -85,8 +98,12 @@ class NutrientMenu extends WatchUi.Menu2 {
     // Storage changed while it was covered in a way it cannot show.
     var stale as Boolean;
 
-    function initialize(count as Number) {
-        Menu2.initialize({:title => Rez.Strings.NutrientsTitle});
+    function initialize(count as Number, footer as String?) {
+        if (footer != null) {
+            Menu2.initialize({:title => Rez.Strings.NutrientsTitle, :footer => footer});
+        } else {
+            Menu2.initialize({:title => Rez.Strings.NutrientsTitle});
+        }
         self.count = count;
         stale = false;
     }
@@ -111,6 +128,6 @@ class NutrientListDelegate extends WatchUi.Menu2InputDelegate {
     // Overriding onBack drops Menu2's own pop, so it pops here.
     function onBack() as Void {
         NutrientList.closed();
-        WatchUi.popView(WatchUi.SLIDE_DOWN);
+        WatchUi.popView(WatchUi.SLIDE_RIGHT);
     }
 }

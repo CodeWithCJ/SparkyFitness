@@ -37,8 +37,13 @@ internal const val GARMIN_SNAPSHOT_CACHE_KEY = "sparky.garmin.lastSnapshot"
 internal const val GARMIN_SNAPSHOT_INSTALL_KEY = "sparky.garmin.lastSnapshotInstall"
 
 /**
- * Half of the 16 KB mailbox limit: the watch parses each message into memory,
- * and the Goals topic is a few hundred bytes.
+ * The cap on a message's ESTIMATED size ([GarminWire.estimateSerializedBytes]),
+ * which errs high: it counts every repeated key string per nutrient row, while
+ * the SDK's serializer stores each string once, so a Goals topic estimated at
+ * 8 KB serialises to roughly 5 KB. That keeps a message well under the watch
+ * app's 8 KB mailbox (Connect IQ SDK 2.2.0: "Limit the size of an app's
+ * mailbox from a partner app to 8kb") with room for a small one beside it.
+ * A Goals topic with every standard nutrient estimates about 3 KB.
  */
 internal const val GARMIN_MESSAGE_BYTE_CAP = 8 * 1024
 

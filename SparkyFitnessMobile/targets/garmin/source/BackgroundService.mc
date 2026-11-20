@@ -4,7 +4,8 @@ import Toybox.Lang;
 import Toybox.System;
 
 // The background process. Connect IQ starts it when a phone message arrives
-// (Background.registerForPhoneAppMessageEvent, registered by Link.start), so
+// (Background.registerForPhoneAppMessageEvent, registered by
+// BackgroundRegistration from onAppInstall, onAppUpdate and Link.start), so
 // the glance keeps up with the phone without the app being opened; a process
 // that shows something redraws through AppBase.onStorageChanged.
 //

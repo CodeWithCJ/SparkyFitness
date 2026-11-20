@@ -1522,7 +1522,14 @@ internal object GarminLink {
 
   // ---- Open app ----
 
-  private fun onOpenResponse(id: Long, status: ConnectIQ.IQOpenApplicationStatus?) {
+  private fun onOpenResponse(id: Long, rawStatus: ConnectIQ.IQOpenApplicationStatus?) {
+    // The simulator's SDK cannot open an app and answers "not installed"
+    // whatever runs in the simulator; it never says anything about the app.
+    val status = if (simulator && rawStatus == ConnectIQ.IQOpenApplicationStatus.APP_IS_NOT_INSTALLED) {
+      ConnectIQ.IQOpenApplicationStatus.PROMPT_NOT_SHOWN_ON_DEVICE
+    } else {
+      rawStatus
+    }
     val result = when (status) {
       ConnectIQ.IQOpenApplicationStatus.PROMPT_SHOWN_ON_DEVICE -> "promptShown"
       ConnectIQ.IQOpenApplicationStatus.PROMPT_NOT_SHOWN_ON_DEVICE -> "promptNotShown"

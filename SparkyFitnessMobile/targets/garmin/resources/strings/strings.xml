@@ -28,5 +28,6 @@
     <string id="GoalsEatenBurned">$1$ eaten · $2$ burned</string>
     <string id="GoalsOpenPhoneToSync">Open SparkyFitness on your phone, nearby, to sync today's numbers.</string>
     <string id="GoalsMoreNutrients">+$1$ more</string>
+    <string id="GoalsSyncing">Getting today's numbers from your phone…</string>
     <string id="NutrientsTitle">Nutrients</string>
 </strings>

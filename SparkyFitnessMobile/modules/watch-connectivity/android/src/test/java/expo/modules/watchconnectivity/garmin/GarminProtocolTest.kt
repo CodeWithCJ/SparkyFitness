@@ -199,6 +199,17 @@ class GarminProtocolTest {
   }
 
   @Test
+  fun aGoalsTopicWithEveryStandardNutrientAndSomeCustomOnesFits() {
+    // 19 standard nutrients plus a dozen custom ones, the most anyone picks.
+    val outbound = GarminOutboundMessage.prepare(snapshotFromJs(nutrients = 31))
+    assertTrue(outbound.fits())
+    // The estimate errs high: the real size, numbered as it is sent, is well
+    // under the watch app's 8 KB mailbox.
+    val sent = outbound.sentAs(1_795_133_805_469L, GarminSendSequence.newOrigin())
+    assertTrue(Serializer.serialize(sent).size < 6 * 1024)
+  }
+
+  @Test
   fun messagesOverTheCapDoNotFit() {
     val small = GarminOutboundMessage.prepare(snapshotFromJs())
     assertTrue(small.fits())

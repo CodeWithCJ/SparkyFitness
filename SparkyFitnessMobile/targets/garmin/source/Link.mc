@@ -1,4 +1,3 @@
-import Toybox.Background;
 import Toybox.Communications;
 import Toybox.Lang;
 import Toybox.System;
@@ -46,25 +45,8 @@ class Link {
     // opened.
     function start() as Void {
         Communications.registerForPhoneAppMessages(method(:onPhoneMessage));
-        registerBackground();
+        BackgroundRegistration.register();
         requestContext();
-    }
-
-    // Lets the background service (BackgroundService.mc) take phone messages
-    // while the app is closed, so the glance keeps up. The registration
-    // outlives the app; repeating it on each start costs nothing and puts it
-    // back if the system ever dropped it. Some watches lack the event, and
-    // nothing here may cost the open app its own link above.
-    private function registerBackground() as Void {
-        if (!(Background has :registerForPhoneAppMessageEvent)) {
-            System.println("Link: no background phone messages on this watch");
-            return;
-        }
-        try {
-            Background.registerForPhoneAppMessageEvent();
-        } catch (e instanceof Lang.Exception) {
-            System.println("Link: background registration failed: " + e.getErrorMessage());
-        }
     }
 
     // One request waiting in the line is enough: the phone answers each one
@@ -76,6 +58,7 @@ class Link {
                 return;
             }
         }
+        SyncRequest.markRequested();
         send({
             Protocol.KEY_TYPE => Protocol.TYPE_REQUEST_CONTEXT,
             Protocol.KEY_VERSION => Protocol.VERSION
@@ -87,6 +70,9 @@ class Link {
     function onPhoneMessage(msg as Communications.PhoneAppMessage) as Void {
         var result = Inbound.apply(msg.data);
         if (result == Inbound.SNAPSHOT || result == Inbound.ACCOUNT_CLEARED) {
+            // The phone answers a request with one whole message, so the page
+            // stops saying it is waiting.
+            SyncRequest.clear();
             NutrientList.refresh();
             WatchUi.requestUpdate();
         }
@@ -114,6 +100,13 @@ class Link {
     function onTransmitDone(delivered as Boolean) as Void {
         if (!delivered) {
             System.println("Link: transmit failed");
+            // A request that never left gets no answer: the page says what to
+            // do at once instead of waiting.
+            var type = _queue[0].get(Protocol.KEY_TYPE);
+            if (type instanceof Lang.String && type.equals(Protocol.TYPE_REQUEST_CONTEXT)) {
+                SyncRequest.clear();
+                WatchUi.requestUpdate();
+            }
         }
         _queue = _queue.slice(1, null) as Array<OutboundMessage>;
         _sending = false;
