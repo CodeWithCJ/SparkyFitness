@@ -63,12 +63,16 @@ vi.mock('../models/workoutPresetRepository.js', () => ({
 vi.mock('../integrations/liftosaur/liftosaurSessionRepository.js', () => ({
   upsertLiftosaurSessionWithClient: vi.fn().mockResolvedValue('preset-entry-1'),
   moveEntryToSessionWithClient: vi.fn().mockResolvedValue(undefined),
+  getStoredEntryDurationsWithClient: vi.fn().mockResolvedValue(new Map()),
   deleteLiftosaurSessionsNotInWithClient: vi.fn().mockResolvedValue(0),
 }));
 
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
-import { processLiftosaurWorkouts } from '../integrations/liftosaur/liftosaurDataProcessor.js';
+import {
+  chooseDurationOwner,
+  processLiftosaurWorkouts,
+} from '../integrations/liftosaur/liftosaurDataProcessor.js';
 import exerciseEntryRepository, {
   acquireExerciseEntrySyncLockWithClient,
 } from '../models/exerciseEntry.js';
@@ -77,6 +81,7 @@ import activityDetailsRepository from '../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import {
   deleteLiftosaurSessionsNotInWithClient,
+  getStoredEntryDurationsWithClient,
   moveEntryToSessionWithClient,
   upsertLiftosaurSessionWithClient,
 } from '../integrations/liftosaur/liftosaurSessionRepository.js';
@@ -874,5 +879,91 @@ describe('processLiftosaurWorkouts', () => {
     expect(
       exerciseEntryRepository._createExerciseEntryWithClient
     ).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('chooseDurationOwner', () => {
+  const stored = (
+    rows: Record<string, { minutes: number; edited?: boolean }>
+  ) =>
+    new Map(
+      Object.entries(rows).map(([id, r]) => [
+        id,
+        {
+          duration_minutes: r.minutes,
+          manual_fields: r.edited ? ['duration_minutes'] : [],
+        },
+      ])
+    );
+
+  it('gives a new workout duration to its first exercise', () => {
+    expect(chooseDurationOwner(['a', 'b'], new Map())).toBe('a');
+  });
+
+  it('keeps the duration on the entry that held it before a reorder', () => {
+    expect(
+      chooseDurationOwner(
+        ['b', 'a'],
+        stored({ a: { minutes: 60 }, b: { minutes: 0 } })
+      )
+    ).toBe('a');
+  });
+
+  it('prefers a hand-edited duration above 0, so the workout is counted once', () => {
+    expect(
+      chooseDurationOwner(
+        ['a', 'b'],
+        stored({ a: { minutes: 60 }, b: { minutes: 30, edited: true } })
+      )
+    ).toBe('b');
+  });
+
+  it('falls back to an entry edited to 0 before the first exercise', () => {
+    expect(
+      chooseDurationOwner(
+        ['a', 'b'],
+        stored({ a: { minutes: 0 }, b: { minutes: 0, edited: true } })
+      )
+    ).toBe('b');
+  });
+
+  it('has no owner for a workout with nothing imported', () => {
+    expect(chooseDurationOwner([], new Map())).toBeNull();
+  });
+});
+
+describe('duration after a reorder in Liftosaur', () => {
+  it('stays on the entry that held it, not the new first exercise', async () => {
+    const text = [
+      '2026-07-14 10:00:00 +00:00 / duration: 3600s / exercises: {',
+      '  Curl / 3x10 10kg',
+      '  Squat / 3x5 100kg',
+      '}',
+    ].join('\n');
+    const workouts = parseLiftohistory(text).workouts.map((w) => ({
+      ...w,
+      id: 9,
+    }));
+    // Synced before as [Squat, Curl]: Squat got the 60 minutes.
+    vi.mocked(getStoredEntryDurationsWithClient).mockResolvedValueOnce(
+      new Map([
+        ['9_Squat_0', { duration_minutes: 60, manual_fields: [] }],
+        ['9_Curl_0', { duration_minutes: 0, manual_fields: [] }],
+      ])
+    );
+
+    await processLiftosaurWorkouts(UID, CID, workouts);
+
+    const byId = Object.fromEntries(
+      vi
+        .mocked(exerciseEntryRepository._createExerciseEntryWithClient)
+        .mock.calls.map((call) => [call[2].source_id, call[2].duration_minutes])
+    );
+    expect(byId).toEqual({ '9_Curl_0': 0, '9_Squat_0': 60 });
+    expect(getStoredEntryDurationsWithClient).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      ['9_Curl_0', '9_Squat_0']
+    );
   });
 });
