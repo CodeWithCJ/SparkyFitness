@@ -1148,6 +1148,162 @@ export interface WatchRunControlPayload {
   controlId: string;
 }
 
+/**
+ * One nutrient row of the Garmin Goals page. Amounts are whole numbers, and
+ * `goal` is left out when the nutrient has none: Connect IQ messages never
+ * carry null (`agent-docs/garmin.md`, topic `goals`).
+ */
+export interface GarminGoalNutrient {
+  key: string;
+  label: string;
+  unit: string;
+  consumed: number;
+  goal?: number;
+  /** consumed / goal, 0...1; 0 without a goal. */
+  progress: number;
+}
+
+/**
+ * The Garmin Goals topic. Values stay in kcal; the watch converts for
+ * `energyUnit`. `day` and the figures after it are absent together when the
+ * phone cannot vouch for today, and the watch then shows its not-synced state.
+ */
+export interface GarminGoalsTopic {
+  energyUnit: 'kcal' | 'kJ';
+  day?: string;
+  consumed?: number;
+  burned?: number;
+  /** Negative when over. */
+  remaining?: number;
+  progress?: number;
+  nutrients?: GarminGoalNutrient[];
+}
+
+/** Every topic a Garmin snapshot carries, by topic name. */
+export interface GarminSnapshotTopics {
+  goals: GarminGoalsTopic;
+}
+
+/**
+ * What `buildGarminSnapshot` makes of each context push. `services/garminSync`
+ * wraps it in `snapshot` messages and works out which topics each watch still
+ * needs; the native side only carries the messages.
+ */
+export interface GarminSnapshotPayload {
+  /** Epoch ms of the context push this came from. */
+  pushedAt: number;
+  /** The phone's day, `YYYY-MM-DD`. */
+  today: string;
+  /** Active server config id, `''` when none. */
+  owner: string;
+  topics: GarminSnapshotTopics;
+}
+
+/**
+ * The `snapshot` message as a Garmin watch receives it (protocol version 1,
+ * `agent-docs/garmin.md`), less the `seq` and `origin` the native side adds
+ * to every message as it sends it. `topics` holds every topic (the native
+ * cache, a resync) or only the ones that watch does not have yet.
+ */
+export interface GarminSnapshotMessage {
+  type: 'snapshot';
+  v: 1;
+  pushedAt: number;
+  today: string;
+  owner: string;
+  topics: Partial<GarminSnapshotTopics>;
+}
+
+/**
+ * `accountCleared`: the phone has no account, so the watch deletes every
+ * topic and its `meta`. The native side also sends it by itself
+ * (`clearGarminAccount`); `services/garminSync` sends it to a watch that asks
+ * while there is nothing to give it.
+ */
+export interface GarminAccountClearedMessage {
+  type: 'accountCleared';
+  v: 1;
+}
+
+/**
+ * Every message the phone sends a Garmin watch (`sendGarminMessage`). The
+ * native side adds `seq` and `origin` as it hands each one over (a number it
+ * raises with every send, and the phone install that numbered it), so the
+ * watch can tell a copy it already has, or a late one, from a newer message.
+ */
+export type GarminPhoneMessage =
+  GarminSnapshotMessage | GarminAccountClearedMessage;
+
+/**
+ * How one `sendGarminMessage` ended. `tooLarge` means the message was over
+ * the native size cap and never reached the Connect IQ SDK; `failed` covers
+ * an SDK that is not ready, a timeout and any other SDK failure.
+ */
+export type GarminSendResult = 'sent' | 'notConnected' | 'tooLarge' | 'failed';
+
+/**
+ * Why a Garmin watch needs the latest snapshot in full: it just connected, it
+ * asked (`requestContext`, sent when its app starts), or the Connect IQ SDK
+ * became ready with it connected.
+ */
+export type GarminResyncReason = 'connected' | 'requested' | 'ready';
+
+export interface GarminResyncPayload {
+  /** Connect IQ device id, as in `GarminDevice.id`. */
+  deviceId: string;
+  reason: GarminResyncReason;
+}
+
+/** One Garmin watch known to Garmin Connect. */
+export interface GarminDevice {
+  /** Connect IQ device id, as a string. */
+  id: string;
+  name: string;
+  connected: boolean;
+  /** Whether the SparkyFitness Connect IQ app is on the watch. */
+  app: 'installed' | 'notInstalled' | 'unknown';
+}
+
+/**
+ * How Garmin Connect hands this app what the watches send
+ * (`GarminStatus.delivery`). `binder`: through the Garmin-approved binding
+ * service (`registerAppToUseBinderService`), which lets Garmin Connect start
+ * this app's process to deliver a message. `broadcast`: the SDK's receiver
+ * registered at runtime, which only receives while the process is alive; the
+ * native side falls back to it whenever the binder delivery cannot be used
+ * (Garmin has not approved it yet, an older Garmin Connect). `simulator`:
+ * the development switch is on, so the link talks to the Connect IQ simulator
+ * on a computer over ADB (`setGarminSimulator`). `none`: the link is not
+ * ready, so nothing is delivered.
+ */
+export type GarminDelivery = 'binder' | 'broadcast' | 'simulator' | 'none';
+
+/** The Garmin link as the native side sees it. */
+export interface GarminStatus {
+  state: 'unavailable' | 'starting' | 'ready' | 'error';
+  /**
+   * Code for `error`, never shown raw. Settings → Garmin turns
+   * `garminConnectUpgradeNeeded` and `bindTimeout` into their own hint.
+   */
+  error?: string;
+  devices: GarminDevice[];
+  /**
+   * How watch messages reach this app; `none` while not ready. Optional
+   * because native builds from before the binder delivery do not report it,
+   * and Settings → Garmin then says nothing about it.
+   */
+  delivery?: GarminDelivery;
+}
+
+/** How a request to open the app on a Garmin watch ended (`openGarminApp`). */
+export type GarminOpenAppResult =
+  | 'promptShown'
+  | 'promptNotShown'
+  | 'notInstalled'
+  | 'alreadyRunning'
+  | 'noDevice'
+  | 'failed';
+
 export type WatchConnectivityEvents = {
   onReachabilityChange: (payload: { isReachable: boolean }) => void;
   onCheckIn: (payload: WatchCheckInPayload) => void;
@@ -1177,6 +1333,17 @@ export type WatchConnectivityEvents = {
   onRunFinished: (payload: WatchRunFinishedPayload) => void;
   onRunEffort: (payload: WatchRunEffortPayload) => void;
   onRouteLibrary: (payload: WatchRouteLibraryPayload) => void;
+  /** The Garmin link or one of its watches changed. Android only. */
+  onGarminStatusChange: (payload: GarminStatus) => void;
+  /**
+   * A Garmin watch needs the latest snapshot in full. Only sent while JS
+   * listens for this event; with no listener (no JS runtime, or nothing
+   * subscribed) the native side answers a watch that asked with its cache
+   * (`setGarminSnapshotCache`, or `accountCleared` when there is none), and a
+   * watch that connects only once JS has listened in this process. Android
+   * only.
+   */
+  onGarminResync: (payload: GarminResyncPayload) => void;
 };
 
 declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivityEvents> {
@@ -1328,7 +1495,95 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
     baseUrl: string,
     headers: Record<string, string>
   ): Promise<void>;
+  /** Also clears the Garmin account, as `clearGarminAccount` does. */
   clearServerCredentials?(): Promise<void>;
+  /**
+   * Garmin Connect is installed, so a Garmin watch can be reached, or the
+   * development simulator switch is on (`isGarminSimulator`). Garmin
+   * (Connect IQ) is a second transport beside Wear OS; Android only. Checked
+   * again on every call. Whether this install uses Garmin at all is
+   * `isGarminWatchEnabled()` (`src/constants/garmin.ts`).
+   */
+  isGarminAvailable?(): boolean;
+  /**
+   * The development switch in Settings → Garmin: the Garmin link talks to the
+   * Connect IQ simulator on a computer over ADB instead of watches through
+   * Garmin Connect. Always false in a build that is not debuggable. Android
+   * only.
+   */
+  isGarminSimulator?(): boolean;
+  /**
+   * Sets that switch, starts the link again in the new mode when it was
+   * running in the other one, and resolves with the status, like
+   * `startGarmin()`. The simulator then needs `adb forward tcp:7381
+   * tcp:7381` and Connection → Start. Android only.
+   */
+  setGarminSimulator?(on: boolean): Promise<GarminStatus>;
+  /**
+   * Starts the Garmin link if Garmin Connect is installed and resolves with
+   * the current status. Idempotent, and checks the install again on each
+   * call, so Garmin Connect installed later is picked up. Nothing Garmin runs
+   * natively before this is first called: `garminStatus()` reads
+   * `unavailable`, and sends and open requests resolve `failed`. It also
+   * remembers natively that the link is on, so a later process can start it
+   * before any JS runs (Garmin Connect may start the process through the
+   * binder service to deliver a watch message); `stopGarmin()` forgets that.
+   */
+  startGarmin?(): Promise<GarminStatus>;
+  /**
+   * Turns the Garmin link off and forgets that `startGarmin()` turned it on,
+   * so the next process does not start it natively. Called at startup where
+   * this install does not use Garmin (`isGarminWatchEnabled()` is false), so
+   * a flag left by a development build cannot keep the Connect IQ SDK
+   * running in a release install. Android only; absent on older builds.
+   */
+  stopGarmin?(): Promise<void>;
+  /**
+   * The Garmin link and its watches; `onGarminStatusChange` follows it. Also
+   * reads the watches from Garmin Connect again (throttled natively). Starts
+   * nothing.
+   */
+  garminStatus?(): Promise<GarminStatus>;
+  /**
+   * The Garmin side of an account change: deletes the native snapshot cache,
+   * answers every queued send `failed`, and sends `accountCleared` to every
+   * connected watch so it drops the figures it shows.
+   */
+  clearGarminAccount?(): Promise<void>;
+  /**
+   * The full `snapshot` message last stored with `setGarminSnapshotCache`,
+   * as stored, or null when nothing is stored. Rejects when the stored copy
+   * cannot be read, so that is never taken for a signed-out phone. Lets a JS
+   * runtime that has not published yet answer a watch with the same message
+   * the native side would replay.
+   */
+  getGarminSnapshotCache?(): Promise<GarminSnapshotMessage | null>;
+  /**
+   * Sends one message to one Garmin watch, as given (values converted for
+   * Connect IQ; the only keys added are `seq` and `origin`, which number
+   * every send). Sends go out one at a time across
+   * all watches. What each watch gets, and when, is decided in TypeScript
+   * (`services/garminSync`), so a future iOS transport can share it.
+   */
+  sendGarminMessage?(
+    deviceId: string,
+    message: GarminPhoneMessage
+  ): Promise<GarminSendResult>;
+  /**
+   * Keeps the latest full `snapshot` message natively, for the native side to
+   * replay while nothing listens to `onGarminResync` (no JS runtime, or no
+   * listener mounted): to a watch that asks, and to one that connects once JS
+   * has listened in this process. A copy another install wrote (Android's
+   * backup or device transfer) reads as empty. Null deletes
+   * it. Stored as given; never built or edited natively.
+   */
+  setGarminSnapshotCache?(message: GarminSnapshotMessage | null): Promise<void>;
+  /**
+   * Shows Garmin's "open app" prompt on that watch. Resolves with one of the
+   * `GarminOpenAppResult` values; typed as a string because a newer native
+   * side may add one.
+   */
+  openGarminApp?(deviceId: string): Promise<string>;
 }
 
 const WatchConnectivityModule: WatchConnectivityModuleType | null =

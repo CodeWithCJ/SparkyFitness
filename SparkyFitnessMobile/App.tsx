@@ -134,6 +134,7 @@ import {
   SafeDashboardSettings,
   SafeHealthTrendsSettings,
   SafeWatchSettings,
+  SafeGarminSettings,
   SafeAddMenuSettings,
   SafeDiarySettings,
   SafeOfflineSettings,
@@ -1326,6 +1327,11 @@ function AppContent() {
             name="WatchSettings"
             component={SafeWatchSettings}
             options={createStackScreenOptions(t('screens.watchSettings', { defaultValue: 'Apple Watch' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="GarminSettings"
+            component={SafeGarminSettings}
+            options={createStackScreenOptions(t('screens.garminSettings', { defaultValue: 'Garmin' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
             name="AddMenuSettings"

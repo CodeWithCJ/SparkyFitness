@@ -19,8 +19,10 @@ import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.watchconnectivity.garmin.GarminLink
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -45,7 +47,7 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 private const val TAG = "WatchConnectivity"
-private const val PREFS_NAME = "sparky_watch_connectivity"
+internal const val PREFS_NAME = "sparky_watch_connectivity"
 private const val TELEMETRY_OWNER_KEY = "sparky.watchTelemetryOwner"
 private const val PAIRED_CACHE_KEY = "sparky.watchPairedCache"
 private const val SERVER_URL_KEY = "sparky.serverBaseUrl"
@@ -190,6 +192,7 @@ internal object WatchConnectivityHub {
     } catch (e: Throwable) {
       Log.w(TAG, "Failed to delete credentials key: ${e.message}")
     }
+    GarminLink.clearAccount(appCtx)
     scope.launch {
       try {
         val bytes = JSONObject().put("type", "accountCleared").toString().toByteArray(Charsets.UTF_8)
@@ -397,6 +400,22 @@ internal object WatchConnectivityHub {
       return
     }
     routePayload(context.applicationContext, payload, json)
+  }
+
+  // Garmin messages arrive as maps from the Connect IQ SDK. Routing them here
+  // gives them the Wear OS owner checks, inbound queue and JS events; the JSON
+  // copy is what the inbound queue stores and replays.
+  fun handleGarminPayload(context: Context, payload: Map<String, Any?>) {
+    val appCtx = context.applicationContext
+    scope.launch {
+      val rawJson = try {
+        mapToJsonObject(payload).toString()
+      } catch (e: Throwable) {
+        Log.w(TAG, "Invalid incoming payload from Garmin: ${e.message}")
+        return@launch
+      }
+      routePayload(appCtx, payload, rawJson)
+    }
   }
 
   private fun inboundQueueFile(context: Context): File {
@@ -1698,9 +1717,15 @@ class WatchConnectivityModule : Module() {
       "onRunLive",
       "onRunCue",
       "onRunFinished",
-      "onRunEffort"
+      "onRunEffort",
+      "onGarminStatusChange",
+      "onGarminResync"
     )
 
+    // The Garmin link is not started here: JS starts it (`startGarmin`) only
+    // where the Garmin feature is on, so other installs never initialise the
+    // Connect IQ SDK and its exported broadcast receiver. A later process
+    // starts it before JS (WatchConnectivityPackage) until `stopGarmin`.
     OnCreate {
       WatchConnectivityHub.activeModule = this@WatchConnectivityModule
       val ctx = appContext.reactContext ?: return@OnCreate
@@ -1714,9 +1739,24 @@ class WatchConnectivityModule : Module() {
       if (ctx != null) {
         unregisterWearListeners(ctx)
       }
+      GarminLink.setResyncListening(this@WatchConnectivityModule, false)
       if (WatchConnectivityHub.activeModule === this@WatchConnectivityModule) {
         WatchConnectivityHub.activeModule = null
       }
+    }
+
+    // The module lives as long as the React instance, but JS listens for
+    // onGarminResync only while the Garmin feature is on (server reachable or
+    // not). An event emitted with no listener is lost, so then the link
+    // answers itself: a watch that asked gets the cached snapshot (or
+    // accountCleared), and a watch that connects, or the SDK getting ready,
+    // gets the cache only once JS has listened in this process.
+    OnStartObserving("onGarminResync") {
+      GarminLink.setResyncListening(this@WatchConnectivityModule, true)
+    }
+
+    OnStopObserving("onGarminResync") {
+      GarminLink.setResyncListening(this@WatchConnectivityModule, false)
     }
 
     Function("isSupported") {
@@ -1938,6 +1978,125 @@ class WatchConnectivityModule : Module() {
 
     AsyncFunction("takeDroppedHeartRateBatchCount") {
       WatchConnectivityHub.takeDroppedHeartRateBatchCount()
+    }
+
+    // Garmin Connect is installed, or the development simulator switch is on.
+    Function("isGarminAvailable") {
+      val ctx = appContext.reactContext ?: return@Function false
+      GarminLink.isAvailable(ctx)
+    }
+
+    // The development switch: talk to the Connect IQ simulator over ADB
+    // instead of watches through Garmin Connect. Always false in a build that
+    // is not debuggable.
+    Function("isGarminSimulator") {
+      val ctx = appContext.reactContext ?: return@Function false
+      GarminLink.isSimulatorOn(ctx)
+    }
+
+    // Sets that switch, restarts the link in the new mode when it was running
+    // in the other one, and resolves with the status like startGarmin.
+    AsyncFunction("setGarminSimulator") { on: Boolean, promise: Promise ->
+      val ctx = appContext.reactContext
+      if (ctx == null) {
+        promise.resolve(GarminLink.status())
+        return@AsyncFunction
+      }
+      GarminLink.setSimulator(ctx, on) { status -> promise.resolve(status) }
+    }
+
+    // Starts the Garmin link if Garmin Connect is installed (checked again on
+    // every call), or the development simulator switch is on, and re-reads
+    // the paired watches; idempotent. Resolves with
+    // the status. Nothing below does anything for Garmin until the link is
+    // started, here or at a process start with the link turned on
+    // (WatchConnectivityPackage).
+    AsyncFunction("startGarmin") { promise: Promise ->
+      val ctx = appContext.reactContext
+      if (ctx == null) {
+        promise.resolve(GarminLink.status())
+        return@AsyncFunction
+      }
+      GarminLink.startFromJs(ctx) { status -> promise.resolve(status) }
+    }
+
+    // Turns the link off and forgets that startGarmin turned it on, so the
+    // next process start leaves the SDK alone. JS calls it where the Garmin
+    // feature is off, so a flag a development build left behind cannot keep
+    // the SDK running in a release install. A binder registration Garmin
+    // Connect may hold is unregistered first, so it can resolve only once the
+    // SDK has bound (at most the init watchdog). Keeps the snapshot cache.
+    AsyncFunction("stopGarmin") { promise: Promise ->
+      GarminLink.stop(appContext.reactContext) { promise.resolve() }
+    }
+
+    // Unavailable with no watches until the link is started; never starts it.
+    AsyncFunction("garminStatus") {
+      GarminLink.status()
+    }
+
+    // Sends one message to one Garmin watch as JS built it (plus the seq and
+    // origin every send carries); JS decides what
+    // each watch gets (services/garminSync.ts). Resolves with the
+    // GarminSendResult wire string; failed until the link is started.
+    AsyncFunction("sendGarminMessage") { deviceId: String, message: ReadableMap, promise: Promise ->
+      GarminLink.sendMessage(deviceId, message.toHashMap()) { result -> promise.resolve(result.wire) }
+    }
+
+    // The Garmin half of clearServerCredentials, for a sign-out or server
+    // switch that keeps the Wear OS credentials: deletes the cached snapshot,
+    // answers queued sends failed and sends accountCleared to every connected
+    // watch.
+    AsyncFunction("clearGarminAccount") { promise: Promise ->
+      val ctx = appContext.reactContext
+      if (ctx == null) {
+        promise.resolve()
+        return@AsyncFunction
+      }
+      GarminLink.clearAccount(ctx) { promise.resolve() }
+    }
+
+    // The cached snapshot message as stored, or null when nothing is stored.
+    // A read that fails rejects instead, so JS never mistakes it for a
+    // signed-out phone and empties a watch that should keep its figures.
+    AsyncFunction("getGarminSnapshotCache") { promise: Promise ->
+      val ctx = appContext.reactContext
+      if (ctx == null) {
+        promise.reject("ERR_GARMIN_CACHE", "React context unavailable", null)
+        return@AsyncFunction
+      }
+      GarminLink.readSnapshotCache(ctx) { message, failed ->
+        if (failed) {
+          promise.reject("ERR_GARMIN_CACHE", "The stored Garmin snapshot could not be read", null)
+        } else {
+          promise.resolve(message)
+        }
+      }
+    }
+
+    // The latest full snapshot message, replayed natively only while nothing
+    // in JS listens for onGarminResync; null deletes it.
+    AsyncFunction("setGarminSnapshotCache") { message: ReadableMap?, promise: Promise ->
+      val ctx = appContext.reactContext
+      if (ctx == null) {
+        promise.reject("ERR_GARMIN_CACHE", "React context unavailable", null)
+        return@AsyncFunction
+      }
+      GarminLink.setSnapshotCache(ctx, message?.toHashMap()) { failure ->
+        if (failure == null) {
+          promise.resolve()
+        } else {
+          promise.reject("ERR_GARMIN_CACHE", failure.message, failure)
+        }
+      }
+    }
+
+    AsyncFunction("openGarminApp") { deviceId: String, promise: Promise ->
+      if (appContext.reactContext == null) {
+        promise.resolve("failed")
+        return@AsyncFunction
+      }
+      GarminLink.openApp(deviceId) { result -> promise.resolve(result) }
     }
   }
 

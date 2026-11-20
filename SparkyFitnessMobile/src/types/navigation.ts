@@ -518,6 +518,7 @@ export type RootStackParamList = {
   DashboardSettings: undefined;
   HealthTrendsSettings: undefined;
   WatchSettings: undefined;
+  GarminSettings: undefined;
   AddMenuSettings: undefined;
   DiarySettings: undefined;
   OfflineSettings: undefined;

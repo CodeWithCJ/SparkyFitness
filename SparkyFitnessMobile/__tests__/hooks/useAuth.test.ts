@@ -11,6 +11,7 @@ import {
 import { clearServerConfigCache } from '../../src/services/storage';
 import { clearBackgroundWater } from '../../src/services/backgroundWater';
 import { clearAndroidWidgetSnapshots } from '../../src/services/androidWidgetSyncService';
+import { clearGarminAccount } from '../../src/services/garminSync';
 import { addLog } from '../../src/services/LogService';
 import { useGuidedCheckInStore } from '../../src/stores/guidedCheckInStore';
 import type { ServerConfig } from '../../src/services/storage';
@@ -49,6 +50,10 @@ jest.mock('../../src/services/backgroundWater', () => ({
 
 jest.mock('../../src/services/androidWidgetSyncService', () => ({
   clearAndroidWidgetSnapshots: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../../src/services/garminSync', () => ({
+  clearGarminAccount: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -243,6 +248,41 @@ describe('useAuth', () => {
 
     expect(mockAddLog).toHaveBeenCalledWith(
       expect.stringContaining('widget snapshots'),
+      'WARNING'
+    );
+    expect(clearBackgroundWater).toHaveBeenCalledTimes(1);
+    expect(mockClearAuthCookies).toHaveBeenCalledTimes(1);
+  });
+
+  test('identity changed callback clears the Garmin watches, with no server needed', async () => {
+    renderUseAuth();
+    await act(async () => {});
+    expect(clearGarminAccount).not.toHaveBeenCalled();
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    // The watches and the phone's replay copy hold the previous account's
+    // figures; the next context push runs only once a server answers.
+    expect(clearGarminAccount).toHaveBeenCalledTimes(1);
+  });
+
+  test('a failed Garmin clear is logged and the rest still runs', async () => {
+    (clearGarminAccount as jest.Mock).mockRejectedValueOnce(
+      new Error('no module')
+    );
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(mockAddLog).toHaveBeenCalledWith(
+      'Failed to clear the Garmin watches: Error: no module',
       'WARNING'
     );
     expect(clearBackgroundWater).toHaveBeenCalledTimes(1);
