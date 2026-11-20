@@ -1310,7 +1310,7 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
     let callCount = 0;
     storage.getActiveServerConfigId.mockImplementation(async () => {
       callCount++;
-      return callCount === 1 ? 'acc-1' : 'acc-2';
+      return callCount <= 2 ? 'acc-1' : 'acc-2';
     });
 
     const result = await runForegroundSync(
@@ -1328,6 +1328,60 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
 
     // Reset mock
     storage.getActiveServerConfigId.mockResolvedValue('server-1');
+  });
+
+  test('aborts before run begins if active account changes while queued', async () => {
+    const beginRun = jest.fn(() => 99);
+    const provider = fakeProvider({ beginRun });
+
+    let callCount = 0;
+    storage.getActiveServerConfigId.mockImplementation(async () => {
+      callCount++;
+      return callCount === 1 ? 'acc-1' : 'acc-2';
+    });
+
+    const result = await runForegroundSync(
+      provider,
+      '1d',
+      { isHydrationSyncEnabled: true },
+      opts
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Active account changed while queued');
+    expect(beginRun).not.toHaveBeenCalled();
+
+    // Reset mock
+    storage.getActiveServerConfigId.mockResolvedValue('server-1');
+  });
+
+  test('cancels water deletion run when legacy sum fallback discards tombstones', async () => {
+    measurementsApi.serverSupportsPerRecordWater.mockResolvedValue(false);
+    const beginRun = jest.fn(() => 77);
+    const cancelWaterDeletionRun = jest.fn();
+    const readRaw = jest.fn().mockResolvedValue({
+      records: [
+        { deleted: true, uuid: 'del-1' },
+        { value: 250, date: '2026-07-03' },
+      ],
+    });
+    const provider = fakeProvider({
+      beginRun,
+      cancelWaterDeletionRun,
+      readRaw,
+    });
+
+    await runForegroundSync(
+      provider,
+      '1d',
+      { isHydrationSyncEnabled: true },
+      opts
+    );
+
+    expect(cancelWaterDeletionRun).toHaveBeenCalledWith(77);
+
+    // Reset mock
+    measurementsApi.serverSupportsPerRecordWater.mockResolvedValue(true);
   });
 });
 

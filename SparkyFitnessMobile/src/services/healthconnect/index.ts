@@ -641,22 +641,24 @@ export const readHealthRecordsDetailed = async (
   _telemetry?: TelemetryRunContext,
   runId?: number
 ): Promise<HealthConnectReadResult> => {
-  const effectiveRunId = runId ?? currentWaterRunId;
-  const result = await readHealthRecordsDetailedInner(
-    recordType,
-    startDate,
-    endDate
-  );
   if (recordType === 'Hydration') {
-    const deletions = await readHydrationDeletions(effectiveRunId);
+    // Establish deletion baseline/changes query BEFORE reading sample window
+    // so any sample deleted during or after the window read is detected on the next sync
+    const deletions = runId != null ? await readHydrationDeletions(runId) : [];
+    const result = await readHealthRecordsDetailedInner(
+      recordType,
+      startDate,
+      endDate
+    );
     if (deletions.length > 0) {
       return {
         records: [...result.records, ...deletions],
         error: result.error,
       };
     }
+    return result;
   }
-  return result;
+  return readHealthRecordsDetailedInner(recordType, startDate, endDate);
 };
 
 const readHealthRecordsDetailedInner = async (

@@ -2315,11 +2315,9 @@ interface StagedWaterRun {
 }
 const stagedWaterRuns = new Map<number, StagedWaterRun>();
 let nextWaterRunId = 1;
-let currentWaterRunId = 0;
 
 export const beginWaterDeletionRun = (configId?: string | null): number => {
   const runId = nextWaterRunId++;
-  currentWaterRunId = runId;
   stagedWaterRuns.set(runId, {
     anchor: null,
     configId: configId ?? null,
@@ -2372,8 +2370,7 @@ const handleHydration: RecordHandler = async (
     return [];
   }
 
-  const thisRunId = runId ?? currentWaterRunId;
-  const staged = stagedWaterRuns.get(thisRunId);
+  const staged = runId != null ? stagedWaterRuns.get(runId) : undefined;
 
   // 1. Window-based query for additions (preserves full-day sums and wider imports)
   const quantityHandler = createQuantityHandler('Hydration');
