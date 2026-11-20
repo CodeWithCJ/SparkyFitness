@@ -130,6 +130,39 @@ it('explicitly stops an active producer after its subscriber disconnects', async
   expect(await turns.open('sample', 'actor')).toBeUndefined();
 });
 
+it.each([false, true])(
+  'waits for source cancellation before notifying attached readers (reject=%s)',
+  async (reject) => {
+    const turns = new ChatTurnStreams();
+    let settle!: () => void;
+    const cancel = vi.fn(
+      () =>
+        new Promise<void>((resolve, rejectCancellation) => {
+          settle = reject
+            ? () => rejectCancellation(new Error('Source cleanup failed'))
+            : resolve;
+        })
+    );
+    const fail = vi.fn(async () => 'cancelled' as const);
+    const subscription = await turns.open('sample', 'actor', {
+      timeoutMs: 60_000,
+      fail,
+      start: async () => new ReadableStream<UIMessageChunk>({ cancel }),
+    });
+    if (!(subscription instanceof ReadableStream))
+      throw Error('Expected stream');
+    const reader = subscription.getReader();
+    const next = reader.read();
+    turns.stop('sample');
+    await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce());
+    expect(fail).not.toHaveBeenCalled();
+    settle();
+    expect((await next).value).toEqual({ type: 'abort' });
+    expect((await reader.read()).done).toBe(true);
+    expect(fail).toHaveBeenCalledOnce();
+  }
+);
+
 it('ends setup at the same deadline used for generation', async () => {
   vi.useFakeTimers();
   try {

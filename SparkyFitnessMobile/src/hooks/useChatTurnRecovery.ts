@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { ChatConnectionError } from '../services/api/chatTransport';
+import {
+  ChatConnectionError,
+  PrematureChatClose,
+} from '../services/api/chatTransport';
 import { randomUUID } from 'expo-crypto';
 import { fetch as expoFetch } from 'expo/fetch';
 import { AssistantChatTransport } from '@assistant-ui/react-ai-sdk';
@@ -314,12 +317,16 @@ export function useChatTurnRecovery(
       if (terminal.current) return;
       disconnected.current =
         error instanceof ChatConnectionError ? error : undefined;
+      if (error instanceof PrematureChatClose && pending.current) {
+        if (!backgrounded.current && !missingPrompt.current) void recover();
+        if (!missingPrompt.current) return;
+      }
       if (disconnected.current && interrupted.current && !missingPrompt.current)
         return;
       reportedRuntimeError.current = error.message;
       onError(error);
     },
-    [onError]
+    [onError, recover]
   );
   return { begin, finish, handleError, stop };
 }

@@ -13,6 +13,7 @@ import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
+import { isConnectionError } from '../db/connectRetry.js';
 import { describeError } from '../utils/errors.js';
 import { chatTurnFailure } from './chatTurnStreams.js';
 import { runWithAbortSignal } from '../utils/abortScope.js';
@@ -98,6 +99,7 @@ import {
   RetryError,
   generateText,
   streamText,
+  toUIMessageStream,
   stepCountIs,
   hasToolCall,
   convertToModelMessages,
@@ -1940,9 +1942,12 @@ function toolPartToText(part: ChatMessagePart): string | null {
   return `[Earlier this conversation you called ${toolName}(${input}) and it returned: ${output || '(no output)'}]`;
 }
 
+const INTERRUPTED_TOOL_WARNING =
+  'Stopped before a result came back. It may have run; check before trying again.';
+
 function settleChatApprovals<T extends { type: string }>(
   parts: T[],
-  errorText = 'Stopped before a result came back. It may have run; check before trying again.'
+  errorText = INTERRUPTED_TOOL_WARNING
 ): T[] {
   return parts.map((part) => {
     const current = part as T & ChatMessagePart;
@@ -1966,8 +1971,16 @@ function failedApprovalParts(continuation: UIMessage, response: UIMessage) {
   // steps. New prose and pending cards belong only to a committed answer.
   const results = new Map<string, UIMessage['parts'][number]>();
   for (const part of settleChatApprovals(response.parts)) {
-    if ('toolCallId' in part && part.state.startsWith('output-'))
+    if (!('toolCallId' in part)) continue;
+    if (part.state === 'input-available') {
+      results.set(part.toolCallId, {
+        ...part,
+        state: 'output-error',
+        errorText: INTERRUPTED_TOOL_WARNING,
+      });
+    } else if (part.state.startsWith('output-')) {
       results.set(part.toolCallId, part);
+    }
   }
   const parts = settleChatApprovals(continuation.parts).map((part) => {
     if (!('toolCallId' in part)) return part;
@@ -1976,6 +1989,32 @@ function failedApprovalParts(continuation: UIMessage, response: UIMessage) {
     return completed ?? part;
   });
   return [...parts, ...results.values()];
+}
+
+// The transaction is idempotent even when the connection drops after COMMIT.
+// Retry the captured result only; invoking the tool again could duplicate a diary write.
+async function persistFailedApproval(
+  ...args: Parameters<typeof settleFailedApprovalTurn>
+) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await settleFailedApprovalTurn(...args);
+    } catch (error) {
+      const code =
+        error && typeof error === 'object' && 'code' in error
+          ? error.code
+          : undefined;
+      // PostgreSQL connection exception, serialization failure, deadlock or lock timeout.
+      const retryable =
+        isConnectionError(error) ||
+        (typeof code === 'string' && code.startsWith('08')) ||
+        code === '40001' ||
+        code === '40P01' ||
+        code === '55P03';
+      if (!retryable || attempt >= 3) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+    }
+  }
 }
 
 // Maps one client message part to a CoreMessage part; unknown parts fall back
@@ -3017,37 +3056,76 @@ const EMPTY_TOOL_RESPONSE_TEXT =
 const EMPTY_RESPONSE_ERROR_TEXT =
   'The AI service returned an empty response. Please try again.';
 
-// Some providers (notably Gemini via MALFORMED_FUNCTION_CALL) end a tool-calling
-// turn with finishReason 'error' and an empty completion instead of a thrown
-// error, so the stream closes cleanly and clients render nothing. Inject an
-// explicit error chunk so the UI surfaces a failure instead of staying silent.
-function withEmptyCompletionGuard(
-  stream: ReadableStream<UIMessageChunk>
+// The standalone SDK converter exposes the stream that awaits onFinish. The
+// result method and downstream pipeThrough transforms add a readable whose
+// cancellation can finish before the SDK commits the approval history.
+function chatOutputStream(
+  stream: ReadableStream<UIMessageChunk>,
+  resumable: boolean,
+  committed: () => { terminal?: UIMessageChunk; metadata?: UIMessageChunk }
 ): ReadableStream<UIMessageChunk> {
+  const reader = stream.getReader();
+  let cancelled = false;
   let sawContent = false;
-  return stream.pipeThrough(
-    new TransformStream<UIMessageChunk, UIMessageChunk>({
-      transform(chunk, controller) {
-        if (
-          chunk.type === 'text-delta' ||
-          chunk.type === 'reasoning-delta' ||
-          chunk.type.startsWith('tool-')
-        ) {
-          sawContent = true;
+  let providerTerminal: UIMessageChunk | undefined;
+  function publish(
+    controller: ReadableStreamDefaultController<UIMessageChunk>,
+    chunk: UIMessageChunk
+  ) {
+    if (
+      chunk.type === 'text-delta' ||
+      chunk.type === 'reasoning-delta' ||
+      chunk.type.startsWith('tool-')
+    )
+      sawContent = true;
+    if (
+      chunk.type === 'finish' &&
+      (chunk.finishReason === 'error' || !sawContent)
+    ) {
+      controller.enqueue({
+        type: 'error',
+        errorText: EMPTY_RESPONSE_ERROR_TEXT,
+      });
+    }
+    controller.enqueue(chunk);
+  }
+  return new ReadableStream({
+    async pull(controller) {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (cancelled) return;
+        if (done) {
+          reader.releaseLock();
+          const { terminal, metadata } = committed();
+          const outcome = terminal ?? providerTerminal;
+          if (outcome) publish(controller, outcome);
+          if (metadata) controller.enqueue(metadata);
+          controller.close();
+          return;
         }
+        // The SDK emits the terminal chunk before it awaits onFinish.
         if (
-          chunk.type === 'finish' &&
-          (chunk.finishReason === 'error' || !sawContent)
+          resumable &&
+          (value.type === 'finish' ||
+            value.type === 'abort' ||
+            value.type === 'error')
         ) {
-          controller.enqueue({
-            type: 'error',
-            errorText: EMPTY_RESPONSE_ERROR_TEXT,
-          });
+          providerTerminal = value;
+          continue;
         }
-        controller.enqueue(chunk);
-      },
-    })
-  );
+        publish(controller, value);
+        return;
+      }
+    },
+    async cancel(reason) {
+      cancelled = true;
+      try {
+        await reader.cancel(reason);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  });
 }
 
 // Shape provider usage into the keys @assistant-ui/react-ai-sdk's
@@ -3516,16 +3594,13 @@ async function processChatMessageStream(
       : startProvider();
 
     streamStarted = true;
-    let providerTerminal:
-      | Extract<UIMessageChunk, { type: 'finish' | 'abort' | 'error' }>
-      | undefined;
     async function endUncommittedTurn(
       claimId: string,
       response: UIMessage,
       errorText = chatStreamErrorMessage(undefined)
     ) {
       if (continuation) {
-        const state = await settleFailedApprovalTurn(
+        const state = await persistFailedApproval(
           claimId,
           authenticatedUserId,
           durableTerminal?.type === 'error'
@@ -3569,220 +3644,207 @@ async function processChatMessageStream(
     let usageMetadata:
       ReturnType<typeof mapUsageToMetadata>['custom'] | undefined;
     return {
-      stream: withEmptyCompletionGuard(
-        result
-          .toUIMessageStream({
-            sendSources: true,
-            ...(continuation ? { originalMessages: [continuation] } : {}),
-            generateMessageId: () => randomUUID(),
-            onFinish: async ({
-              responseMessage,
-              isAborted,
-              finishReason,
-              outcome,
-              isCancelled,
-            }) => {
-              stopMonitoring();
-              if (
-                rowId &&
-                (providerError ||
-                  finishReason === 'error' ||
-                  outcome.status === 'failed' ||
-                  signal.aborted ||
-                  isAborted ||
-                  isCancelled)
-              ) {
-                const errorText =
-                  signal.reason?.name === 'TimeoutError'
-                    ? chatTurnFailure(signal)
-                    : (providerError ??
-                      (finishReason === 'error'
-                        ? EMPTY_RESPONSE_ERROR_TEXT
-                        : chatStreamErrorMessage(
-                            outcome.status === 'failed'
-                              ? outcome.error
-                              : undefined
-                          )));
-                await endUncommittedTurn(rowId, responseMessage, errorText);
-                return;
-              }
-              if (isAborted && !continuation) return;
-              if (!continuation && !turnId) {
-                const lastUser = [...conversationMessages]
-                  .reverse()
-                  .find((msg) => msg.role === 'user');
-                await chatRepository.saveChatHistory({
-                  user_id: authenticatedUserId,
-                  metadata: {
-                    ...accountHistoryMetadata(userId, authenticatedUserId),
-                    ...(conversationId
-                      ? { chat_conversation_id: conversationId }
-                      : {}),
-                  },
-                  content: userMessageContent,
-                  messageType: 'user',
-                  parts: Array.isArray(lastUser?.content)
-                    ? lastUser.content
-                    : [{ type: 'text', text: String(lastUser?.content || '') }],
-                });
-              }
-              const parts: unknown[] = settleChatApprovals([
-                ...responseMessage.parts,
-              ]);
-              const estimate = foodPhotoEstimateSink.get();
-              if (estimate)
-                parts.push({
-                  type: FOOD_PHOTO_ESTIMATE_PART_TYPE,
-                  data: estimate,
-                });
-              const content = responseMessage.parts
-                .filter((part) => part.type === 'text')
-                .map((part) => part.text)
-                .join('');
-              const askPart = responseMessage.parts.find(
-                (part) => part.type === ASK_USER_PART_TYPE
-              );
-              if (
-                !content.trim() &&
-                !askPart &&
-                !estimate &&
-                !responseMessage.parts.some((part) =>
-                  part.type.startsWith('tool-')
-                )
-              ) {
-                if (rowId)
-                  await endUncommittedTurn(
-                    rowId,
-                    responseMessage,
-                    EMPTY_RESPONSE_ERROR_TEXT
-                  );
-                log(
-                  'warn',
-                  `Skipping empty assistant chat history for user ${userId}`
-                );
-                return;
-              }
-              const history = {
+      stream: chatOutputStream(
+        toUIMessageStream({
+          stream: result.stream,
+          tools,
+          sendSources: true,
+          ...(continuation ? { originalMessages: [continuation] } : {}),
+          generateMessageId: () => randomUUID(),
+          onFinish: async ({
+            responseMessage,
+            isAborted,
+            finishReason,
+            outcome,
+            isCancelled,
+          }) => {
+            stopMonitoring();
+            if (
+              rowId &&
+              (providerError ||
+                finishReason === 'error' ||
+                outcome.status === 'failed' ||
+                signal.aborted ||
+                isAborted ||
+                isCancelled)
+            ) {
+              const errorText =
+                signal.reason?.name === 'TimeoutError'
+                  ? chatTurnFailure(signal)
+                  : (providerError ??
+                    (finishReason === 'error'
+                      ? EMPTY_RESPONSE_ERROR_TEXT
+                      : chatStreamErrorMessage(
+                          outcome.status === 'failed'
+                            ? outcome.error
+                            : undefined
+                        )));
+              await endUncommittedTurn(rowId, responseMessage, errorText);
+              return;
+            }
+            if (isAborted && !continuation) return;
+            if (!continuation && !turnId) {
+              const lastUser = [...conversationMessages]
+                .reverse()
+                .find((msg) => msg.role === 'user');
+              await chatRepository.saveChatHistory({
                 user_id: authenticatedUserId,
                 metadata: {
-                  ...(turnId ? { turnId } : {}),
-                  custom: {
-                    outsideSource: outsideSource(),
-                    savedMessageId: responseMessage.id,
-                  },
                   ...accountHistoryMetadata(userId, authenticatedUserId),
                   ...(conversationId
                     ? { chat_conversation_id: conversationId }
                     : {}),
                 },
-                content:
-                  content.trim() ||
-                  (askPart
-                    ? askUserPartToText(askPart as ChatMessagePart)
-                    : '') ||
-                  '',
-                messageType: 'assistant' as const,
-                parts,
-              };
-              if (rowId) {
-                let completed: boolean;
-                try {
-                  completed = await completeChatTurn(
-                    rowId,
-                    authenticatedUserId,
-                    { ...history, id: continuation?.id ?? responseMessage.id },
-                    Boolean(continuation)
-                  );
-                } catch (error) {
-                  if (!continuation) throw error;
-                  log(
-                    'error',
-                    'Could not commit the chat approval completion:',
-                    describeError(error)
-                  );
-                  completed = false;
-                }
-                if (!completed) {
-                  await endUncommittedTurn(rowId, responseMessage);
-                  return;
-                }
-              } else if (continuation) {
-                await chatRepository.saveApprovalContinuation(
-                  continuation.id,
-                  authenticatedUserId,
-                  history
+                content: userMessageContent,
+                messageType: 'user',
+                parts: Array.isArray(lastUser?.content)
+                  ? lastUser.content
+                  : [{ type: 'text', text: String(lastUser?.content || '') }],
+              });
+            }
+            const parts: unknown[] = settleChatApprovals([
+              ...responseMessage.parts,
+            ]);
+            const estimate = foodPhotoEstimateSink.get();
+            if (estimate)
+              parts.push({
+                type: FOOD_PHOTO_ESTIMATE_PART_TYPE,
+                data: estimate,
+              });
+            const content = responseMessage.parts
+              .filter((part) => part.type === 'text')
+              .map((part) => part.text)
+              .join('');
+            const askPart = responseMessage.parts.find(
+              (part) => part.type === ASK_USER_PART_TYPE
+            );
+            if (
+              !content.trim() &&
+              !askPart &&
+              !estimate &&
+              !responseMessage.parts.some((part) =>
+                part.type.startsWith('tool-')
+              )
+            ) {
+              if (rowId)
+                await endUncommittedTurn(
+                  rowId,
+                  responseMessage,
+                  EMPTY_RESPONSE_ERROR_TEXT
                 );
-              } else {
-                await chatRepository.saveChatHistory({
-                  ...history,
-                  id: responseMessage.id,
-                });
-              }
-              savedMessageId = responseMessage.id;
-            },
-            messageMetadata: ({ part }) => {
-              if (
-                (part.type === 'tool-result' || part.type === 'tool-error') &&
-                toolServers[part.toolName]
-              )
-                outsideServers.add(toolServers[part.toolName]);
-              if (part.type === 'tool-approval-request') {
-                const serverId = currentToolServerIds[part.toolCall.toolName];
-                if (serverId) toolServerIds[part.toolCall.toolName] = serverId;
-                approvalSources[part.toolCall.toolCallId] = [...outsideServers];
-              }
-              if (
-                ![
-                  'tool-result',
-                  'tool-error',
-                  'tool-approval-request',
-                  'finish',
-                ].includes(part.type)
-              )
-                return undefined;
-              if (part.type === 'finish')
-                usageMetadata = mapUsageToMetadata(part.totalUsage).custom;
-              return {
+              log(
+                'warn',
+                `Skipping empty assistant chat history for user ${userId}`
+              );
+              return;
+            }
+            const history = {
+              user_id: authenticatedUserId,
+              metadata: {
+                ...(turnId ? { turnId } : {}),
                 custom: {
-                  ...(part.type === 'finish'
-                    ? mapUsageToMetadata(part.totalUsage).custom
-                    : {}),
                   outsideSource: outsideSource(),
+                  savedMessageId: responseMessage.id,
                 },
-              };
-            },
-            onError: chatStreamErrorMessage,
-          })
-          .pipeThrough(
-            new TransformStream<UIMessageChunk, UIMessageChunk>({
-              transform(chunk, controller) {
-                // The SDK emits finish before its onFinish persistence callback.
-                if (
-                  rowId &&
-                  (chunk.type === 'finish' ||
-                    chunk.type === 'abort' ||
-                    chunk.type === 'error')
-                )
-                  providerTerminal = chunk;
-                else controller.enqueue(chunk);
+                ...accountHistoryMetadata(userId, authenticatedUserId),
+                ...(conversationId
+                  ? { chat_conversation_id: conversationId }
+                  : {}),
               },
-              flush(controller) {
-                const terminal = durableTerminal ?? providerTerminal;
-                if (terminal) controller.enqueue(terminal);
-                if (savedMessageId)
-                  controller.enqueue({
-                    type: 'message-metadata',
-                    messageMetadata: {
-                      custom: {
-                        ...usageMetadata,
-                        outsideSource: outsideSource(),
-                        savedMessageId,
-                      },
-                    },
-                  });
+              content:
+                content.trim() ||
+                (askPart
+                  ? askUserPartToText(askPart as ChatMessagePart)
+                  : '') ||
+                '',
+              messageType: 'assistant' as const,
+              parts,
+            };
+            if (rowId) {
+              let completed: boolean;
+              try {
+                completed = await completeChatTurn(
+                  rowId,
+                  authenticatedUserId,
+                  { ...history, id: continuation?.id ?? responseMessage.id },
+                  Boolean(continuation)
+                );
+              } catch (error) {
+                if (!continuation) throw error;
+                log(
+                  'error',
+                  'Could not commit the chat approval completion:',
+                  describeError(error)
+                );
+                completed = false;
+              }
+              if (!completed) {
+                await endUncommittedTurn(rowId, responseMessage);
+                return;
+              }
+            } else if (continuation) {
+              await chatRepository.saveApprovalContinuation(
+                continuation.id,
+                authenticatedUserId,
+                history
+              );
+            } else {
+              await chatRepository.saveChatHistory({
+                ...history,
+                id: responseMessage.id,
+              });
+            }
+            savedMessageId = responseMessage.id;
+          },
+          messageMetadata: ({ part }) => {
+            if (
+              (part.type === 'tool-result' || part.type === 'tool-error') &&
+              toolServers[part.toolName]
+            )
+              outsideServers.add(toolServers[part.toolName]);
+            if (part.type === 'tool-approval-request') {
+              const serverId = currentToolServerIds[part.toolCall.toolName];
+              if (serverId) toolServerIds[part.toolCall.toolName] = serverId;
+              approvalSources[part.toolCall.toolCallId] = [...outsideServers];
+            }
+            if (
+              ![
+                'tool-result',
+                'tool-error',
+                'tool-approval-request',
+                'finish',
+              ].includes(part.type)
+            )
+              return undefined;
+            if (part.type === 'finish')
+              usageMetadata = mapUsageToMetadata(part.totalUsage).custom;
+            return {
+              custom: {
+                ...(part.type === 'finish'
+                  ? mapUsageToMetadata(part.totalUsage).custom
+                  : {}),
+                outsideSource: outsideSource(),
               },
-            })
-          )
+            };
+          },
+          onError: chatStreamErrorMessage,
+        }),
+        Boolean(rowId),
+        () => ({
+          terminal: durableTerminal,
+          metadata: savedMessageId
+            ? {
+                type: 'message-metadata',
+                messageMetadata: {
+                  custom: {
+                    ...usageMetadata,
+                    outsideSource: outsideSource(),
+                    savedMessageId,
+                  },
+                },
+              }
+            : undefined,
+        })
       ),
     };
   } catch (error) {
@@ -3799,7 +3861,7 @@ async function processChatMessageStream(
             : signal.reason?.name === 'TimeoutError'
               ? chatTurnFailure(signal)
               : chatStreamErrorMessage(error);
-        await settleFailedApprovalTurn(rowId, authenticatedUserId, errorText, {
+        await persistFailedApproval(rowId, authenticatedUserId, errorText, {
           id: continuation.id,
           parts,
         });

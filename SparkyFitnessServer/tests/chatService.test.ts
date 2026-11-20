@@ -2334,6 +2334,129 @@ describe('chatService', () => {
           ).not.toHaveBeenCalled();
         }
       );
+      it('keeps an interrupted later-step call with no output alongside the completed approval', async () => {
+        scripted([callStep('sparky_get_goal_snapshot', 'later-read')]);
+        let finishRead!: (value: string) => void;
+        const result = new Promise<string>((resolve) => {
+          finishRead = resolve;
+        });
+        readExecute.mockImplementationOnce(() => result);
+        vi.mocked(settleFailedApprovalTurn).mockResolvedValueOnce('cancelled');
+        try {
+          await resume(
+            true,
+            pending.type,
+            async (stream) => {
+              const reader = stream.getReader();
+              for (;;) {
+                const chunk = await reader.read();
+                if (chunk.done) throw new Error('Missing the later tool call.');
+                if (
+                  chunk.value.type === 'tool-input-available' &&
+                  chunk.value.toolCallId === 'later-read'
+                )
+                  break;
+              }
+              await vi.waitFor(() =>
+                expect(readExecute).toHaveBeenCalledTimes(1)
+              );
+              await reader.cancel();
+              return [];
+            },
+            { turnId: 'continued-turn', rowId: 'continued-claim' }
+          );
+          await vi.waitFor(() =>
+            expect(settleFailedApprovalTurn).toHaveBeenCalledWith(
+              'continued-claim',
+              actorUserId,
+              expect.any(String),
+              {
+                id: 'row-1',
+                parts: expect.arrayContaining([
+                  expect.objectContaining({
+                    toolCallId: 'write-1',
+                    state: 'output-available',
+                    output: 'saved',
+                  }),
+                  expect.objectContaining({
+                    toolCallId: 'later-read',
+                    state: 'output-error',
+                    errorText:
+                      'Stopped before a result came back. It may have run; check before trying again.',
+                  }),
+                ]),
+              }
+            )
+          );
+        } finally {
+          finishRead('late result');
+        }
+      });
+      it.each(['40001', 'ECONNRESET', '08006'])(
+        'retries only the atomic approval settlement on a transient database error %s',
+        async (code) => {
+          const error = new APICallError({
+            message: 'Provider unavailable',
+            url: 'https://example.test',
+            requestBodyValues: {},
+            statusCode: 400,
+          });
+          scripted([[{ type: 'error', error }]]);
+          const settle = vi
+            .mocked(settleFailedApprovalTurn)
+            .mockRejectedValueOnce(
+              Object.assign(new Error('Transient failure'), { code })
+            )
+            .mockResolvedValueOnce({ error: error.message });
+          const chunks = await resume(true, pending.type, drainStream, {
+            turnId: 'continued-turn',
+            rowId: 'continued-claim',
+          });
+          expect(writeExecute).toHaveBeenCalledTimes(1);
+          expect(chatRepository.claimChatApproval).toHaveBeenCalledTimes(1);
+          expect(settle).toHaveBeenCalledTimes(2);
+          expect(settle.mock.calls[1]).toEqual(settle.mock.calls[0]);
+          expect(settle.mock.calls[1]).toEqual([
+            'continued-claim',
+            actorUserId,
+            error.message,
+            {
+              id: 'row-1',
+              parts: expect.arrayContaining([
+                expect.objectContaining({
+                  toolCallId: 'write-1',
+                  state: 'output-available',
+                  output: 'saved',
+                }),
+              ]),
+            },
+          ]);
+          expect(chunks.at(-1)).toEqual({
+            type: 'error',
+            errorText: error.message,
+          });
+        }
+      );
+      it('bounds retries when settlement stays unavailable without running the tool again', async () => {
+        scripted([[{ type: 'error', error: new Error('provider failed') }]]);
+        const failure = Object.assign(new Error('connection unavailable'), {
+          code: 'ECONNRESET',
+        });
+        const settle = vi.mocked(settleFailedApprovalTurn);
+        settle
+          .mockRejectedValueOnce(failure)
+          .mockRejectedValueOnce(failure)
+          .mockRejectedValueOnce(failure);
+        await expect(
+          resume(true, pending.type, drainStream, {
+            turnId: 'continued-turn',
+            rowId: 'continued-claim',
+          })
+        ).rejects.toThrow(failure.message);
+        expect(settle).toHaveBeenCalledTimes(3);
+        expect(writeExecute).toHaveBeenCalledTimes(1);
+        expect(markChatTurnFailed).not.toHaveBeenCalled();
+      });
       it('propagates a rolled-back approval settlement without publishing a separate failure', async () => {
         scripted([[{ type: 'error', error: new Error('provider failed') }]]);
         vi.mocked(settleFailedApprovalTurn).mockRejectedValueOnce(
@@ -2406,6 +2529,50 @@ describe('chatService', () => {
             ]),
           })
         );
+      });
+      it('waits for the approval settlement when a resumable source is cancelled', async () => {
+        scripted([doneStep]);
+        let finishTool!: (value: string) => void;
+        writeExecute.mockImplementationOnce(
+          () =>
+            new Promise<string>((resolve) => {
+              finishTool = resolve;
+            })
+        );
+        let commit!: () => void;
+        vi.mocked(settleFailedApprovalTurn).mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              commit = () => resolve('cancelled');
+            })
+        );
+        try {
+          await resume(
+            true,
+            pending.type,
+            async (stream) => {
+              const reader = stream.getReader();
+              const first = reader.read();
+              await vi.waitFor(() =>
+                expect(writeExecute).toHaveBeenCalledOnce()
+              );
+              const returned = vi.fn();
+              const cancelled = reader.cancel().then(returned);
+              await vi.waitFor(() =>
+                expect(settleFailedApprovalTurn).toHaveBeenCalledOnce()
+              );
+              expect(returned).not.toHaveBeenCalled();
+              commit();
+              await cancelled;
+              await first;
+              return [];
+            },
+            { turnId: 'continued-turn', rowId: 'continued-claim' }
+          );
+        } finally {
+          commit?.();
+          finishTool?.('saved');
+        }
       });
       it('settles a continuation when its client cancels while the tool runs', async () => {
         scripted([doneStep]);

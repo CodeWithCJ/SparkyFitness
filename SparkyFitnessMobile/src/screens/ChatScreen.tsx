@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -1076,14 +1077,19 @@ function ComposerPhotoPickerButton({
   );
 }
 
+type ChatComposer = ReturnType<ReturnType<typeof useAui>['composer']>;
+type ConnectComposer = (composer: ChatComposer) => () => void;
+
 /** The bottom input row. Send/Cancel stay on assistant-ui actions. */
 function Composer({
+  connectComposer,
   onStop,
   autoFocusReady,
   voiceServiceConfigId,
   voiceInputEnabled,
   onOpenLightbox,
 }: {
+  connectComposer: ConnectComposer;
   onStop: () => void;
   autoFocusReady: boolean;
   voiceServiceConfigId?: string | null;
@@ -1091,6 +1097,11 @@ function Composer({
   onOpenLightbox: (images: string[], index?: number) => void;
 }) {
   const { t } = useTranslation();
+  const aui = useAui();
+  useLayoutEffect(
+    () => connectComposer(aui.composer()),
+    [aui, connectComposer]
+  );
   const [recording, setRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [pickerBusy, setPickerBusy] = useState(false);
@@ -1293,6 +1304,7 @@ function getLocalizedSuggestionLabel(
 }
 
 function ChatThread({
+  connectComposer,
   serverConfig,
   onRecovered,
   settledTurnId,
@@ -1305,6 +1317,7 @@ function ChatThread({
   autoFocusReady,
   onClearChat,
 }: {
+  connectComposer: ConnectComposer;
   onClearChat: () => void;
   serverConfig: ServerConfig;
   onRecovered: (history: NonNullable<InitialMessages>, turnId: string) => void;
@@ -1455,6 +1468,7 @@ function ChatThread({
         </View>
 
         <Composer
+          connectComposer={connectComposer}
           onStop={stop}
           key={`${voiceInputEnabled}:${voiceServiceConfigId ?? 'system'}`}
           autoFocusReady={autoFocusReady}
@@ -1510,8 +1524,35 @@ export default function ChatScreen({
   // Remounting ChatThread by key resets the in-memory runtime (it ignores
   // `messages` changes after mount), so bump this to clear the thread.
   const [threadKey, setThreadKey] = useState(0);
+  const activeComposer = useRef<ChatComposer | undefined>(undefined);
+  const recoveryDraft = useRef<
+    | Pick<ReturnType<ChatComposer['getState']>, 'text' | 'attachments'>
+    | undefined
+  >(undefined);
+  const connectComposer = useCallback<ConnectComposer>((composer) => {
+    activeComposer.current = composer;
+    const draft = recoveryDraft.current;
+    recoveryDraft.current = undefined;
+    if (draft) {
+      if (draft.text) composer.setText(draft.text);
+      for (const attachment of draft.attachments) {
+        if (attachment.content)
+          void composer
+            .addAttachment({ ...attachment, content: attachment.content })
+            .catch((error: unknown) => {
+              addLog('Could not restore chat attachment', 'ERROR', [
+                String(error),
+              ]);
+            });
+      }
+    }
+    return () => {
+      activeComposer.current = undefined;
+    };
+  }, []);
   const onRecovered = useCallback(
     (messages: NonNullable<InitialMessages>, turnId: string) => {
+      recoveryDraft.current = activeComposer.current?.getState();
       setRestoredHistory({ messages, turnId });
       setThreadKey((k) => k + 1);
     },
@@ -1623,6 +1664,7 @@ export default function ChatScreen({
               await clearAllChatHistory();
               // Reset the raw (pre-select) cache so a remount seeds an empty thread.
               queryClient.setQueryData(chatHistoryQueryKey, []);
+              recoveryDraft.current = undefined;
               setRestoredHistory(undefined);
               startChatConversation(serviceConfigId);
               setThreadKey((k) => k + 1);
@@ -1712,6 +1754,7 @@ export default function ChatScreen({
           </View>
         ) : (
           <ChatThread
+            connectComposer={connectComposer}
             key={threadKey}
             serverConfig={serverConfig}
             onRecovered={onRecovered}

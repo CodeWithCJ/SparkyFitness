@@ -10,6 +10,7 @@ type Seed = NonNullable<
 // again. Mark failures at the Expo I/O boundary, before the SDK decodes SSE.
 // Provider errors are valid SSE data and retain their original SDK behavior.
 export class ChatConnectionError extends Error {}
+export class PrematureChatClose extends ChatConnectionError {}
 function connectionError(error: unknown) {
   if (error instanceof Error && error.name === 'AbortError') return error;
   return new ChatConnectionError(
@@ -30,7 +31,7 @@ export class NativeChatTransport extends AssistantChatTransport<Seed[number]> {
     body: ReadableStream<Uint8Array<ArrayBufferLike>>
   ) {
     const reader = body.getReader();
-    return super.processResponseStream(
+    const decoded = super.processResponseStream(
       new ReadableStream({
         async pull(controller) {
           try {
@@ -44,5 +45,23 @@ export class NativeChatTransport extends AssistantChatTransport<Seed[number]> {
         cancel: (reason) => reader.cancel(reason),
       })
     );
+    let terminal = false;
+    const checked: typeof decoded = decoded.pipeThrough(
+      new TransformStream({
+        transform(chunk, controller) {
+          if (
+            chunk.type === 'finish' ||
+            chunk.type === 'error' ||
+            chunk.type === 'abort'
+          )
+            terminal = true;
+          controller.enqueue(chunk);
+        },
+        flush() {
+          if (!terminal) throw new PrematureChatClose();
+        },
+      })
+    );
+    return checked;
   }
 }

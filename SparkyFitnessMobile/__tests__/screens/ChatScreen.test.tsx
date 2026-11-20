@@ -20,7 +20,11 @@ import {
   pickChatImagesFromLibrary,
 } from '../../src/utils/pickImage';
 import * as chatApi from '../../src/services/api/chatApi';
-import { chatFetch } from '../../src/services/api/chatTransport';
+import {
+  chatFetch,
+  NativeChatTransport,
+  PrematureChatClose,
+} from '../../src/services/api/chatTransport';
 import { fetch as expoFetch } from 'expo/fetch';
 import ChatScreen from '../../src/screens/ChatScreen';
 import { getActiveServerConfig } from '../../src/services/storage';
@@ -125,6 +129,8 @@ type TestTransportOptions = {
 };
 let mockTransportOptions: TestTransportOptions;
 const mockReconnect = jest.fn();
+const mockDecode = jest.fn();
+const mockRuntimeMount = jest.fn();
 let mockRuntimeCallbacks: {
   onFinish: (event: {
     isAbort: boolean;
@@ -140,11 +146,19 @@ jest.mock('@assistant-ui/react-ai-sdk', () => ({
       if (options.prepareSendMessagesRequest) mockTransportOptions = options;
     }
     reconnectToStream = mockReconnect;
+    processResponseStream(body: unknown) {
+      return mockDecode(body);
+    }
   },
   useChatRuntime: (options: {
     onError?: (error: Error) => void;
     messages?: unknown;
   }) => {
+    const React: typeof import('react') = require('react');
+    React.useState(() => {
+      mockRuntimeMount();
+      return undefined;
+    });
     mockRuntimeCallbacks = options as typeof mockRuntimeCallbacks;
     (global as any).__mockCapturedOnError = options?.onError;
     (global as any).__mockCapturedMessages = options?.messages;
@@ -165,6 +179,10 @@ jest.mock('@assistant-ui/react-native', () => {
       React.createElement(React.Fragment, null, children),
     useAui: () => ({
       composer: () => ({
+        getState: () => ({
+          text: mockPhotoState.__mockComposerText,
+          attachments: mockPhotoState.__mockComposerAttachments,
+        }),
         setText: (value: string) => {
           // By default the echo back through `composer.text` is synchronous. Set
           // `__mockComposerDeferEchoes` to hold it so a test can drive the
@@ -1303,6 +1321,164 @@ describe('ChatScreen history seeding', () => {
       expect(mockReconnect).not.toHaveBeenCalled();
       expect(load).toHaveBeenCalledWith(SERVER_CONFIG, expect.anything());
     } finally {
+      load.mockRestore();
+    }
+  });
+
+  it.each(['finish', 'early EOF'] as const)(
+    'recovers a background live stream only on premature closure (%s)',
+    async (ending) => {
+      const screen = renderScreen();
+      await screen.findByTestId('composer-send');
+      const id = mockTransportOptions.prepareSendMessagesRequest!({
+        messages: [{ role: 'user' }],
+      }).body.turnId;
+      const entries: chatApi.ChatHistoryEntry[] = [
+        {
+          id: 'u',
+          message_type: 'user',
+          content: 'prompt',
+          metadata: { turnId: id },
+          created_at: '',
+        },
+        {
+          id: 'a',
+          message_type: 'assistant',
+          content: 'full response',
+          metadata: { turnId: id },
+          created_at: '',
+        },
+      ];
+      const load = jest
+        .spyOn(chatApi, 'loadChatHistory')
+        .mockResolvedValue(entries);
+      const web = jest.requireActual<typeof import('stream/web')>('stream/web');
+      const originalStreams = {
+        ReadableStream: globalThis.ReadableStream,
+        TransformStream: globalThis.TransformStream,
+      };
+      Object.assign(globalThis, {
+        ReadableStream: web.ReadableStream,
+        TransformStream: web.TransformStream,
+      });
+      class TestTransport extends NativeChatTransport {
+        decode() {
+          return this.processResponseStream(
+            new ReadableStream({
+              start(controller) {
+                controller.close();
+              },
+            })
+          );
+        }
+      }
+      const notify = (state: 'background' | 'active') =>
+        jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.filter(([event]) => event === 'change')
+          .forEach(([, listener]) => listener(state));
+      try {
+        await act(async () => notify('background'));
+        mockDecode.mockReturnValueOnce(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue({
+                type: 'text-delta',
+                id: 't',
+                delta: 'partial',
+              });
+              if (ending === 'finish') controller.enqueue({ type: 'finish' });
+              controller.close();
+            },
+          })
+        );
+        const reader = new TestTransport({}).decode().getReader();
+        expect((await reader.read()).value?.type).toBe('text-delta');
+        if (ending === 'finish') {
+          expect((await reader.read()).value?.type).toBe('finish');
+          expect((await reader.read()).done).toBe(true);
+        } else {
+          const failure = await reader.read().catch((error: Error) => error);
+          expect(failure).toBeInstanceOf(PrematureChatClose);
+          if (failure instanceof Error) mockRuntimeCallbacks.onError(failure);
+        }
+        mockRuntimeCallbacks.onFinish({
+          isAbort: false,
+          isDisconnect: false,
+          isError: ending !== 'finish',
+        });
+        expect(load).not.toHaveBeenCalled();
+        await act(async () => notify('active'));
+        if (ending === 'early EOF') {
+          await waitFor(() =>
+            expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
+              chatApi.mapHistoryToInitialMessages(entries)
+            )
+          );
+          expect(load).toHaveBeenCalledTimes(1);
+        } else expect(load).not.toHaveBeenCalled();
+        expect(Toast.show).not.toHaveBeenCalled();
+        expect(mockReconnect).not.toHaveBeenCalled();
+        expect(expoFetch).not.toHaveBeenCalled();
+      } finally {
+        Object.assign(globalThis, originalStreams);
+        load.mockRestore();
+      }
+    }
+  );
+
+  it('restores a follow-up draft and photo into the replacement runtime without sending', async () => {
+    const id = 'c37bc122-75db-4e57-aac0-e58bfff12131';
+    const prompt: chatApi.ChatHistoryEntry = {
+      id: 'u',
+      message_type: 'user',
+      content: 'prompt',
+      metadata: { turnId: id },
+      created_at: '',
+    };
+    const answer: chatApi.ChatHistoryEntry = {
+      ...prompt,
+      id: 'a',
+      message_type: 'assistant',
+      content: 'response',
+    };
+    mockUseChatHistory.mockReturnValue({
+      ...mockUseChatHistory(),
+      data: chatApi.mapHistoryToInitialMessages([prompt]),
+    });
+    const reading = deferred<chatApi.ChatHistoryEntry[]>();
+    const load = jest
+      .spyOn(chatApi, 'loadChatHistory')
+      .mockReturnValueOnce(reading.promise);
+    const image = {
+      id: 'image',
+      name: 'meal.jpg',
+      type: 'image',
+      contentType: 'image/jpeg',
+      content: [{ type: 'image', image: 'data:image/jpeg;base64,Image' }],
+    };
+    mockRuntimeMount.mockImplementation(() => {
+      mockPhotoState.__mockComposerText = '';
+      mockPhotoState.__mockComposerAttachments = [];
+    });
+    try {
+      const screen = renderScreen();
+      const input = await screen.findByPlaceholderText('Message Sparky…');
+      fireEvent.changeText(input, 'What about dinner?');
+      mockPhotoState.__mockComposerAttachments = [image];
+      await act(async () => reading.resolve([prompt, answer]));
+      expect(mockRuntimeMount).toHaveBeenCalledTimes(2);
+      expect(mockPhotoState.__mockComposerText).toBe('What about dinner?');
+      expect(mockPhotoState.__mockComposerAddAttachment).toHaveBeenCalledWith(
+        image
+      );
+      screen.rerenderThread();
+      expect(screen.getByPlaceholderText('Message Sparky…').props.value).toBe(
+        'What about dinner?'
+      );
+      expect(expoFetch).not.toHaveBeenCalled();
+    } finally {
+      mockRuntimeMount.mockReset();
       load.mockRestore();
     }
   });

@@ -166,8 +166,9 @@ export class ChatTurnStreams {
   ) {
     const { signal } = turn.controller;
     const source = stream.getReader();
+    let cancellation: Promise<void> | undefined;
     const onAbort = () => {
-      void source.cancel(signal.reason).catch(() => {});
+      cancellation ??= source.cancel(signal.reason).catch(() => {});
     };
     signal.addEventListener('abort', onAbort, { once: true });
     try {
@@ -195,6 +196,7 @@ export class ChatTurnStreams {
       turn.chunks = null;
       let outcome: PersistedFailure;
       try {
+        await cancellation;
         outcome = await producer.fail(chatTurnFailure(signal));
       } finally {
         // A replay reader refreshes history as soon as it sees a terminal event.
