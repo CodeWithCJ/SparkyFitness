@@ -15,6 +15,7 @@ import {
   readEarliestSampleDetailed,
   readMinMaxAvgByDayDetailed,
   beginWaterDeletionRun,
+  cancelWaterDeletionRun,
   commitWaterDeletionRun,
 } from './index';
 import { aggregateSleepSessions } from './dataAggregation';
@@ -109,6 +110,7 @@ export const readEarliestRecord = async (
 
 export const healthReadProvider: HealthReadProvider = {
   beginRun: beginWaterDeletionRun,
+  cancelWaterDeletionRun,
   commitRun: commitWaterDeletionRun,
   readCumulativeByDay,
   // readMinMaxAvgByDayDetailed returns null for record types without a verified

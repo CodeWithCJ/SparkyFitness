@@ -487,22 +487,41 @@ const withClientRecovery = async <T>(read: () => Promise<T>): Promise<T> => {
   }
 };
 
+let currentWaterRunId = 0;
+let waterRunCancelled = false;
 let stagedAndroidWaterToken: string | null = null;
+let stagedAndroidConfigId: string | null = null;
 
-export const beginWaterDeletionRun = (): void => {
+export const beginWaterDeletionRun = (configId?: string | null): void => {
+  currentWaterRunId++;
+  waterRunCancelled = false;
+  stagedAndroidWaterToken = null;
+  stagedAndroidConfigId = configId ?? null;
+};
+
+export const cancelWaterDeletionRun = (): void => {
+  waterRunCancelled = true;
   stagedAndroidWaterToken = null;
 };
 
 export const commitWaterDeletionRun = async (): Promise<void> => {
-  if (stagedAndroidWaterToken) {
-    await saveHealthWaterSyncToken('android', stagedAndroidWaterToken);
+  if (stagedAndroidWaterToken && !waterRunCancelled) {
+    await saveHealthWaterSyncToken(
+      'android',
+      stagedAndroidWaterToken,
+      stagedAndroidConfigId
+    );
     stagedAndroidWaterToken = null;
   }
 };
 
 const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
+  const thisRunId = currentWaterRunId;
   try {
-    const savedToken = await loadHealthWaterSyncToken('android');
+    const savedToken = await loadHealthWaterSyncToken(
+      'android',
+      stagedAndroidConfigId
+    );
     let currentToken = savedToken;
     let hasMore = true;
     const deletedRecords: Record<string, unknown>[] = [];
@@ -511,7 +530,11 @@ const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
       const initial = await getChanges({
         recordTypes: ['Hydration'],
       });
-      if (initial.nextChangesToken) {
+      if (
+        initial.nextChangesToken &&
+        !waterRunCancelled &&
+        thisRunId === currentWaterRunId
+      ) {
         stagedAndroidWaterToken = initial.nextChangesToken;
       }
       if (initial.deletionChanges) {
@@ -537,7 +560,11 @@ const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
         const fresh = await getChanges({
           recordTypes: ['Hydration'],
         });
-        if (fresh.nextChangesToken) {
+        if (
+          fresh.nextChangesToken &&
+          !waterRunCancelled &&
+          thisRunId === currentWaterRunId
+        ) {
           stagedAndroidWaterToken = fresh.nextChangesToken;
         }
         return [];
@@ -557,8 +584,10 @@ const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
       }
       hasMore = changes.hasMore && !!changes.nextChangesToken;
     }
-    // Only stage the new token once pagination completes without throwing
-    stagedAndroidWaterToken = pageToken;
+    // Only stage the new token once pagination completes without throwing and run is not cancelled
+    if (!waterRunCancelled && thisRunId === currentWaterRunId) {
+      stagedAndroidWaterToken = pageToken;
+    }
     return deletedRecords;
   } catch (error) {
     addLog(

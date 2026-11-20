@@ -35,7 +35,11 @@ import {
   glucoseContextQueryKeyRoot,
 } from '../../hooks/queryKeys';
 import { syncAllDayHeartRate, syncAllDayGlucose } from './heartRateSamplesSync';
-import { getActiveServerConfig, type ServerConfig } from '../storage';
+import {
+  getActiveServerConfig,
+  getActiveServerConfigId,
+  type ServerConfig,
+} from '../storage';
 import {
   alignToLocalDayStart,
   buildForegroundWindows,
@@ -101,7 +105,9 @@ export interface HealthReadProvider {
    *  it to reset the Health Connect reconnect attempt, so "reconnect once" is
    *  once per sync rather than once per app process. Synchronous and
    *  non-throwing: it must never be able to fail a sync. */
-  beginRun?(): void;
+  beginRun?(configId?: string | null): void;
+  /** Discards staged water deletion tokens/anchors when the water read fails or times out. */
+  cancelWaterDeletionRun?(): void;
   /** Commits staged cursor/token state after a successful upload. */
   commitRun?(): Promise<void>;
   /** Platform transform tables (record shapes and timezone metadata differ). */
@@ -287,6 +293,7 @@ export const collectHealthData = async (
     timeoutLabelPrefix: string;
     timeoutMs?: number;
     telemetry: TelemetryRunContext;
+    configId?: string | null;
   }
 ): Promise<MetricSyncOutcome[]> => {
   // Required, not defaulted: an omitted context used to fall back to the
@@ -295,7 +302,7 @@ export const collectHealthData = async (
   // Every run shell must state its own policy.
   const telemetry = opts.telemetry;
 
-  provider.beginRun?.();
+  provider.beginRun?.(opts.configId);
 
   // Probed once per run, and only when a per-record water metric is enabled.
   const waterFallbackToSum = metrics.some(
@@ -322,7 +329,7 @@ export const collectHealthData = async (
     }
   );
 
-  return results.map((result, index) => {
+  const outcomes = results.map((result, index) => {
     const metric = metrics[index];
 
     if (result.status === 'skipped') {
@@ -355,6 +362,17 @@ export const collectHealthData = async (
       ...(result.reason instanceof TimeoutError ? { timedOut: true } : {}),
     };
   });
+
+  // If a water metric read was rejected or timed out, cancel staged deletion tokens
+  // so timed-out or failed reads can never advance the sync cursor
+  const waterFailed = outcomes.some(
+    (o) => o.metric.type === 'water' && o.status !== 'fulfilled'
+  );
+  if (waterFailed) {
+    provider.cancelWaterDeletionRun?.();
+  }
+
+  return outcomes;
 };
 
 /**
@@ -480,9 +498,11 @@ export const runForegroundSync = async (
     force: opts.forceTelemetry ?? false,
   });
 
+  const configId = await getActiveServerConfigId();
   const outcomes = await collectHealthData(provider, metricsToSync, windows, {
     timeoutLabelPrefix: opts.timeoutLabelPrefix,
     telemetry,
+    configId,
   });
 
   // Decided here, from the settled outcomes, and used for both drain sites

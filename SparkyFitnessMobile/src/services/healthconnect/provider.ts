@@ -25,6 +25,7 @@ import {
   keepMostDetailedSleepSessions,
   resetClientUnavailableState,
   beginWaterDeletionRun,
+  cancelWaterDeletionRun,
   commitWaterDeletionRun,
 } from './index';
 import { transformHealthRecords } from './dataTransformation';
@@ -151,13 +152,14 @@ export const readEarliestRecord = async (
  * Clears the per-run Health Connect reconnect state, so a client that dies is
  * retried once in each sync rather than only once per app process.
  */
-export const beginRun = (): void => {
+export const beginRun = (configId?: string | null): void => {
   resetClientUnavailableState();
-  beginWaterDeletionRun();
+  beginWaterDeletionRun(configId);
 };
 
 export const healthReadProvider: HealthReadProvider = {
   beginRun,
+  cancelWaterDeletionRun,
   commitRun: commitWaterDeletionRun,
   readCumulativeByDay,
   readMinMaxAvgByDay,

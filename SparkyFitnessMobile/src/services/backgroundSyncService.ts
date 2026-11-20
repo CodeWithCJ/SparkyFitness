@@ -31,6 +31,7 @@ import {
   loadBackgroundSyncEnabled,
   savePendingHealthSyncCacheRefresh,
   consumePendingHealthSyncCacheRefresh,
+  getActiveServerConfigId,
 } from './storage';
 import { queryClient } from '../hooks/queryClient';
 import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
@@ -225,6 +226,10 @@ const runBackgroundSync = async (
     return;
   }
 
+  const configId =
+    typeof getActiveServerConfigId === 'function'
+      ? await getActiveServerConfigId()
+      : null;
   const outcomes = await collectHealthData(
     healthReadProvider,
     enabledMetrics,
@@ -232,6 +237,7 @@ const runBackgroundSync = async (
     {
       timeoutLabelPrefix: 'Background query',
       telemetry,
+      configId,
     }
   );
 
@@ -318,8 +324,11 @@ const runBackgroundSync = async (
     const uploadSummary = await syncHealthData(allData);
     // Only a fully accepted upload commits the telemetry reuse cache; see the
     // invariant on markEnrichedSessions.
-    if (telemetryUsable && (uploadSummary?.recordErrors?.length ?? 0) === 0) {
-      await markEnrichedSessions(telemetry.drainCollected());
+    if ((uploadSummary?.recordErrors?.length ?? 0) === 0) {
+      if (telemetryUsable) {
+        await markEnrichedSessions(telemetry.drainCollected());
+      }
+      await healthReadProvider.commitRun?.();
     }
     await refreshHealthSyncCacheWhenActive();
 
@@ -337,6 +346,7 @@ const runBackgroundSync = async (
       'INFO'
     );
   } else {
+    await healthReadProvider.commitRun?.();
     await addLog(
       `[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`,
       'INFO'

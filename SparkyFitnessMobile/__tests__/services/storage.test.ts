@@ -1014,5 +1014,15 @@ describe('storage', () => {
         'server-2-token'
       );
     });
+
+    test('propagates storage errors instead of silently returning null', async () => {
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('Storage failure'));
+
+      await expect(loadHealthWaterSyncToken('android')).rejects.toThrow(
+        'Storage failure'
+      );
+    });
   });
 });

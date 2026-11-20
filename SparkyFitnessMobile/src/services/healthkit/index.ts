@@ -2307,15 +2307,30 @@ const handleOvernightBodyTemperature: RecordHandler = async (
   );
 };
 
+let currentWaterRunId = 0;
+let waterRunCancelled = false;
 let stagedIosWaterAnchor: string | null = null;
+let stagedIosConfigId: string | null = null;
 
-export const beginWaterDeletionRun = (): void => {
+export const beginWaterDeletionRun = (configId?: string | null): void => {
+  currentWaterRunId++;
+  waterRunCancelled = false;
+  stagedIosWaterAnchor = null;
+  stagedIosConfigId = configId ?? null;
+};
+
+export const cancelWaterDeletionRun = (): void => {
+  waterRunCancelled = true;
   stagedIosWaterAnchor = null;
 };
 
 export const commitWaterDeletionRun = async (): Promise<void> => {
-  if (stagedIosWaterAnchor) {
-    await saveHealthWaterSyncToken('ios', stagedIosWaterAnchor);
+  if (stagedIosWaterAnchor && !waterRunCancelled) {
+    await saveHealthWaterSyncToken(
+      'ios',
+      stagedIosWaterAnchor,
+      stagedIosConfigId
+    );
     stagedIosWaterAnchor = null;
   }
 };
@@ -2330,6 +2345,8 @@ const handleHydration: RecordHandler = async (
     return [];
   }
 
+  const thisRunId = currentWaterRunId;
+
   // 1. Window-based query for additions (preserves full-day sums and wider imports)
   const quantityHandler = createQuantityHandler('Hydration');
   const windowSamples = await quantityHandler(
@@ -2340,7 +2357,7 @@ const handleHydration: RecordHandler = async (
   );
 
   // 2. Anchored query for deletions
-  const savedAnchor = await loadHealthWaterSyncToken('ios');
+  const savedAnchor = await loadHealthWaterSyncToken('ios', stagedIosConfigId);
   const unit = HEALTHKIT_UNIT_MAP.Hydration || 'L';
 
   const res = savedAnchor
@@ -2361,7 +2378,7 @@ const handleHydration: RecordHandler = async (
         } as Parameters<typeof queryQuantitySamplesWithAnchor>[1]
       );
 
-  if (res.newAnchor) {
+  if (res.newAnchor && !waterRunCancelled && thisRunId === currentWaterRunId) {
     stagedIosWaterAnchor = res.newAnchor;
   }
 

@@ -503,24 +503,15 @@ export const loadHealthWaterSyncToken = async (
   platform: 'ios' | 'android',
   configId?: string | null
 ): Promise<string | null> => {
-  try {
-    const resolvedConfigId =
-      configId !== undefined ? configId : await getActiveServerConfigId();
-    if (resolvedConfigId) {
-      const scoped = await AsyncStorage.getItem(
-        HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId)
-      );
-      if (scoped != null) return scoped;
-    }
-    return await AsyncStorage.getItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform));
-  } catch (error) {
-    const message = getErrorMessage(error);
-    addLog(
-      `[Storage] Failed to retrieve water sync token: ${message}`,
-      'ERROR'
+  const resolvedConfigId =
+    configId !== undefined ? configId : await getActiveServerConfigId();
+  if (resolvedConfigId) {
+    const scoped = await AsyncStorage.getItem(
+      HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId)
     );
-    return null;
+    if (scoped != null) return scoped;
   }
+  return await AsyncStorage.getItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform));
 };
 
 export const saveHealthWaterSyncToken = async (
