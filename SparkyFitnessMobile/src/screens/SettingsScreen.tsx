@@ -37,7 +37,10 @@ import type { DiagnosticQueryState } from '../types/diagnosticReport';
 import Constants from 'expo-constants';
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
 import WatchConnectivity from '../../modules/watch-connectivity';
-import { isGarminWatchEnabled } from '../constants/garmin';
+import {
+  canUseGarminSimulator,
+  isGarminWatchEnabled,
+} from '../constants/garmin';
 import { useNfcSupport } from '../hooks/useNfcSupport';
 
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
@@ -66,8 +69,10 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
     WatchConnectivity.isPaired() === true;
   // Garmin watches pair in Garmin Connect, so its presence is the signal; the
   // screen itself lists the watches it can see. Development builds only until
-  // the watch app is on the Connect IQ Store (`isGarminWatchEnabled`).
-  const showsGarmin = isGarminWatchEnabled();
+  // the watch app is on the Connect IQ Store (`isGarminWatchEnabled`). A
+  // development build also shows it without Garmin Connect, for the switch
+  // that points it at the Connect IQ simulator (`canUseGarminSimulator`).
+  const showsGarmin = isGarminWatchEnabled() || canUseGarminSimulator();
 
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
 

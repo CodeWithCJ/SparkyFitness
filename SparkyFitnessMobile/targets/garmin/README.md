@@ -77,6 +77,26 @@ There is no iOS bridge yet, so an iPhone cannot feed the watch.
 
 Only one phone app package receives a Connect IQ app's messages at a time, and only builds that start the Garmin link compete for them: with two such builds of SparkyFitness on one phone, the last one to start takes them. Until `GARMIN_WATCH_APP_RELEASED` is `true` that means two development builds; a production build next to a development one takes nothing.
 
+## Try it in the simulator with the phone app
+
+The Connect IQ simulator plays the watch, and the phone app (a real phone or an Android emulator) talks to it over ADB instead of through Garmin Connect and Bluetooth. Garmin Connect is not needed for this.
+
+1. Install a development build of the phone app (`pnpm android` in `SparkyFitnessMobile/`), with the phone reachable over ADB (USB, or wireless debugging; `adb devices` lists it).
+2. On the phone, open Settings → Garmin and turn on **Connect IQ simulator (ADB)** under Development. A development build shows that row even without Garmin Connect; a release build never honours the switch.
+3. On the computer, forward the simulator's port to the phone. Run it again whenever the phone reconnects to ADB:
+
+   ```bash
+   adb forward tcp:7381 tcp:7381
+   ```
+
+   With more than one device listed, add `-s <serial>` (from `adb devices`).
+
+4. In VS Code, run **Monkey C: Run App** for `fenix843mm`; the simulator opens with the app.
+5. In the simulator, choose **Connection → Start** (Ctrl+F1).
+6. Sign in on the phone. Settings → Garmin lists the simulated watch, and the app in the simulator gets today's numbers (it asks when it starts; restart it from the simulator's menu to ask again).
+
+In this mode the phone never tries Garmin's binder delivery, and the simulator may not start the background service for phone messages, so test those two on a real watch. The switch takes effect at the next start of the app when the Garmin link was already running: close SparkyFitness from the recent apps and open it again (a Metro reload is not enough). Turn it off the same way to go back to watches. While it is on, the phone listens for the simulator on port 7381 on every network, so use a trusted Wi-Fi.
+
 ## Background updates
 
 The app registers a background service for phone messages each time it opens (on watches that have the event), so a snapshot the phone sends while the app is closed is stored at once and the glance shows it. It needs the `Background` permission, which the manifest asks for. Other developers report that some watches never start it (Venu 3, Forerunner 265) and that a fēnix 8 started it with an empty message, so check it on each watch you test:

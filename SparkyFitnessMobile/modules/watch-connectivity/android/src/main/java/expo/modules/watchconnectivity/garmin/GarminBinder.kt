@@ -15,6 +15,8 @@ package expo.modules.watchconnectivity.garmin
 internal enum class GarminDelivery(val wire: String) {
   BINDER("binder"),
   BROADCAST("broadcast"),
+  /** Talking to the Connect IQ simulator over ADB (development only). */
+  SIMULATOR("simulator"),
   NONE("none")
 }
 

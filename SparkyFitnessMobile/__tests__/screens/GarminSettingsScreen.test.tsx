@@ -1,5 +1,5 @@
 import React from 'react';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, Platform } from 'react-native';
 import {
   act,
   fireEvent,
@@ -44,6 +44,10 @@ jest.mock('../../src/hooks/useCustomNutrients', () => ({
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
+jest.mock('../../src/hooks/useWatchCheckInBridge', () => ({
+  relinkGarminSync: jest.fn(),
+}));
+
 jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
@@ -63,6 +67,7 @@ import {
 } from '../../src/stores/appPreferencesStore';
 import { initializeI18n } from '../../src/localization/i18n';
 import { addLog } from '../../src/services/LogService';
+import { relinkGarminSync } from '../../src/hooks/useWatchCheckInBridge';
 
 type StatusListener = WatchConnectivityEvents['onGarminStatusChange'];
 
@@ -72,6 +77,8 @@ const watch = (
       garminStatus?: jest.Mock;
       openGarminApp?: jest.Mock;
       addListener: jest.Mock;
+      isGarminSimulator?: jest.Mock;
+      setGarminSimulator?: jest.Mock;
     };
   }
 ).default;
@@ -314,6 +321,7 @@ describe('GarminSettingsScreen', () => {
       'broadcast',
       'Keep SparkyFitness open in the background to receive from your watch.',
     ],
+    ['simulator', 'Talking to the Connect IQ simulator over ADB.'],
   ] as const)(
     "a ready link with '%s' delivery says what it means",
     async (delivery, note) => {
@@ -439,5 +447,79 @@ describe('GarminSettingsScreen', () => {
     expect(useAppPreferencesStore.getState().shownWatchNutrients).toContain(
       'sodium'
     );
+  });
+
+  describe('the development simulator switch', () => {
+    const originalOs = Platform.OS;
+    // React Native's Switch draws Android's native switch here, whose prop
+    // is `on` rather than `value`.
+    const switchIsOn = (element: {
+      props: { value?: boolean; on?: boolean };
+    }) => element.props.value ?? element.props.on;
+
+    beforeEach(() => {
+      Platform.OS = 'android';
+      watch.isGarminSimulator = jest.fn(() => false);
+      watch.setGarminSimulator = jest.fn(() => Promise.resolve(readyStatus));
+    });
+
+    afterEach(() => {
+      Platform.OS = originalOs;
+      delete watch.isGarminSimulator;
+      delete watch.setGarminSimulator;
+    });
+
+    test('is not offered on a module without it', async () => {
+      delete watch.setGarminSimulator;
+      renderScreen();
+      await screen.findByText('fenix 8');
+
+      expect(screen.queryByTestId('garmin-simulator-switch')).toBeNull();
+    });
+
+    test('shows the stored choice and turns it on, then links the sync again', async () => {
+      renderScreen();
+      await screen.findByText('fenix 8');
+      expect(screen.getByText('Connect IQ simulator (ADB)')).toBeTruthy();
+      const toggle = screen.getByTestId('garmin-simulator-switch');
+      expect(switchIsOn(toggle)).toBe(false);
+
+      fireEvent(toggle, 'valueChange', true);
+
+      await waitFor(() => expect(relinkGarminSync).toHaveBeenCalledTimes(1));
+      expect(watch.setGarminSimulator).toHaveBeenCalledWith(true);
+      expect(switchIsOn(screen.getByTestId('garmin-simulator-switch'))).toBe(
+        true
+      );
+      // A link already running keeps its mode until the app starts again.
+      expect(screen.getByTestId('garmin-simulator-restart')).toBeTruthy();
+    });
+
+    test('a failed switch goes back and says so', async () => {
+      watch.isGarminSimulator = jest.fn(() => true);
+      watch.setGarminSimulator = jest.fn(() =>
+        Promise.reject(new Error('no context'))
+      );
+      renderScreen();
+      await screen.findByText('fenix 8');
+
+      fireEvent(
+        screen.getByTestId('garmin-simulator-switch'),
+        'valueChange',
+        false
+      );
+
+      expect(
+        await screen.findByText('Could not switch the Garmin link. Try again.')
+      ).toBeTruthy();
+      expect(switchIsOn(screen.getByTestId('garmin-simulator-switch'))).toBe(
+        true
+      );
+      expect(relinkGarminSync).not.toHaveBeenCalled();
+      expect(addLog).toHaveBeenCalledWith(
+        expect.stringContaining('Garmin simulator switch failed'),
+        'WARNING'
+      );
+    });
   });
 });

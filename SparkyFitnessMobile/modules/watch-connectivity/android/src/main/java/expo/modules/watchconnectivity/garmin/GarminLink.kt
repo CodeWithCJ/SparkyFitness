@@ -2,6 +2,7 @@ package expo.modules.watchconnectivity.garmin
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
@@ -63,6 +64,7 @@ private const val BINDER_RECORD_KEY = "binderRecord"
 private const val SEND_SEQ_KEY = "sendSeq"
 private const val SEND_ORIGIN_KEY = "sendOrigin"
 private const val SEND_INSTALL_KEY = "sendInstall"
+private const val SIMULATOR_KEY = "simulator"
 
 private enum class LinkState(val wire: String) {
   UNAVAILABLE("unavailable"),
@@ -188,6 +190,28 @@ internal object GarminLink {
   private var binderMode = false
   private var binderProbe: BinderProbe? = null
 
+  /**
+   * This start of the link talks to the Connect IQ simulator on the computer
+   * over ADB (`IQConnectType.TETHERED`) instead of watches through Garmin
+   * Connect. Development only ([isSimulatorOn]): Garmin Connect is not
+   * needed, and binder delivery is never tried.
+   */
+  private var simulator = false
+
+  /**
+   * The mode the first start of this process chose; later starts keep it.
+   * The SDK cannot close its ADB connection (its server thread outlives
+   * `shutdown` and would call into the old instance), so the link never
+   * leaves the simulator mode, nor enters it, within one process: a change of
+   * the switch takes effect when the app starts again.
+   */
+  private var simulatorChosen: Boolean? = null
+
+  /** Sends to the simulator run here: the SDK writes to its socket on the calling thread. */
+  private val simulatorSender by lazy {
+    java.util.concurrent.Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "SparkyGarminSim") }
+  }
+
   /** What the last binder attempt showed; read when the link starts. */
   private var binderRecord: GarminBinderRecord? = null
 
@@ -301,8 +325,11 @@ internal object GarminLink {
    */
   private fun start(context: Context): Boolean {
     val appCtx = context.applicationContext
-    if (!isGarminConnectInstalled(appCtx)) return false
+    val useSimulator = simulatorChosen ?: isSimulatorOn(appCtx)
+    if (!useSimulator && !isGarminConnectInstalled(appCtx)) return false
     if (!started.compareAndSet(false, true)) return true
+    simulator = useSimulator
+    simulatorChosen = useSimulator
     currentStatus = statusMap(LinkState.STARTING, null, emptyList(), GarminDelivery.NONE)
     worker.execute {
       val stored = readCache(appCtx)
@@ -370,13 +397,23 @@ internal object GarminLink {
     val appCtx = context?.applicationContext
     main.post {
       val ctx = appCtx ?: appContext
-      if (ctx != null) setEnabled(ctx, false)
+      if (ctx != null) {
+        setEnabled(ctx, false)
+        saveSimulator(ctx, false)
+      }
       val waiting = pendingStop
       if (waiting != null) {
         waiting.add(onDone)
         return@post
       }
       if (!started.get() && connectIQ == null) {
+        onDone()
+        return@post
+      }
+      if (simulator) {
+        // The ADB connection cannot be closed (see simulatorChosen); with the
+        // flags cleared it is gone at the next start of the app.
+        Log.i(TAG, "Garmin link stays on the simulator until the app starts again")
         onDone()
         return@post
       }
@@ -415,6 +452,58 @@ internal object GarminLink {
       retryNowIfBackedOff()
       refreshFromJs(force = true)
       onStatus(currentStatus)
+    }
+  }
+
+  /**
+   * Whether Garmin can be used here: Garmin Connect is installed, or the
+   * simulator switch is on ([isSimulatorOn]). What JS's `isGarminAvailable`
+   * reads.
+   */
+  fun isAvailable(context: Context): Boolean = isSimulatorOn(context) || isGarminConnectInstalled(context)
+
+  /**
+   * The development switch in Settings > Garmin: the link talks to the
+   * Connect IQ simulator over ADB (`adb forward tcp:7381 tcp:7381`, then
+   * Connection > Start in the simulator) instead of watches through Garmin
+   * Connect. Only a debuggable build honours it, so a release build never
+   * opens the ADB port, whatever a development build left in the preferences.
+   */
+  fun isSimulatorOn(context: Context): Boolean {
+    val appCtx = context.applicationContext
+    if ((appCtx.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) == 0) return false
+    return try {
+      linkPrefs(appCtx).getBoolean(SIMULATOR_KEY, false)
+    } catch (e: Throwable) {
+      false
+    }
+  }
+
+  /**
+   * Turns the simulator switch on or off, then answers like [startFromJs]. A
+   * link that already runs keeps its mode until the app starts again
+   * ([simulatorChosen]); one not started yet in this process starts in the
+   * new mode.
+   */
+  fun setSimulator(context: Context, on: Boolean, onStatus: (Map<String, Any?>) -> Unit) {
+    val appCtx = context.applicationContext
+    main.post {
+      saveSimulator(appCtx, on)
+      val running = simulatorChosen
+      if (running != null && running != isSimulatorOn(appCtx)) {
+        Log.i(TAG, "Garmin simulator switch saved; it takes effect when the app starts again")
+      }
+      startFromJs(appCtx, onStatus)
+    }
+  }
+
+  private fun saveSimulator(context: Context, on: Boolean) {
+    try {
+      val editor = linkPrefs(context).edit()
+      if (on) editor.putBoolean(SIMULATOR_KEY, true) else editor.remove(SIMULATOR_KEY)
+      editor.commit()
+    } catch (e: Throwable) {
+      Log.w(TAG, "Failed to store the Garmin simulator switch: ${e.message}")
     }
   }
 
@@ -657,7 +746,8 @@ internal object GarminLink {
     initWatchdog = watchdog
     main.postDelayed(watchdog, INITIALIZE_TIMEOUT_MS)
     val ciq = try {
-      ConnectIQ.getInstance(ctx, ConnectIQ.IQConnectType.WIRELESS).also { instance ->
+      val type = if (simulator) ConnectIQ.IQConnectType.TETHERED else ConnectIQ.IQConnectType.WIRELESS
+      ConnectIQ.getInstance(ctx, type).also { instance ->
         connectIQ = instance
         // autoUI stays false: Garmin's install and upgrade dialogs must never
         // reach people who do not use Garmin.
@@ -768,6 +858,8 @@ internal object GarminLink {
       Log.i(TAG, "Garmin binder delivery not tried again until the link next starts")
       return false
     }
+    // The simulator has no Garmin Connect to register with.
+    if (simulator) return false
     val connected = try {
       ciq.knownDevices.orEmpty().filterNotNull().filter {
         ciq.getDeviceStatus(it) == IQDevice.IQDeviceStatus.CONNECTED
@@ -873,7 +965,8 @@ internal object GarminLink {
   }
 
   /** Binder delivery is on, or Garmin Connect may hold a registration from an earlier attempt. */
-  private fun binderMayBeRegistered(): Boolean = binderMode || GarminBinderPolicy.mayHoldRegistration(binderRecord)
+  private fun binderMayBeRegistered(): Boolean =
+    !simulator && (binderMode || GarminBinderPolicy.mayHoldRegistration(binderRecord))
 
   /**
    * Makes sure an onSdkReady, or the init watchdog, comes for a stop that
@@ -884,7 +977,7 @@ internal object GarminLink {
   private fun bindForUnregister(): Boolean {
     if (initWatchdog != null) return true
     val ctx = appContext ?: return false
-    if (!isGarminConnectInstalled(ctx)) return false
+    if (!simulator && !isGarminConnectInstalled(ctx)) return false
     cancelRetry()
     shutdownSdk()
     initialize()
@@ -940,6 +1033,11 @@ internal object GarminLink {
 
   /** Garmin Connect's service went away (updated, killed or uninstalled). */
   private fun onSdkLost() {
+    if (simulator) {
+      markAllDisconnected()
+      publishStatus()
+      return
+    }
     sdkReady = false
     sdkBound = false
     // A probe cut short says nothing about approval; the next ready tries again.
@@ -956,6 +1054,12 @@ internal object GarminLink {
   private fun onSdkCallFailed(e: Throwable) {
     if (e !is InvalidStateException && e !is ServiceUnavailableException) return
     if (!sdkReady) return
+    // The simulator's SDK throws while no simulator is connected; it is not
+    // a lost service, and the link must never restart it.
+    if (simulator) {
+      Log.d(TAG, "Connect IQ simulator call failed: ${e.message}")
+      return
+    }
     Log.w(TAG, "Connect IQ service unavailable: ${e.message}")
     sdkReady = false
     markAllDisconnected()
@@ -964,6 +1068,8 @@ internal object GarminLink {
   }
 
   private fun scheduleReinitialize() {
+    // The simulator's SDK cannot be started twice in one process.
+    if (simulator) return
     if (retryRunnable != null) return
     val delay = (RETRY_BASE_MS shl retryAttempt.coerceAtMost(8)).coerceAtMost(RETRY_MAX_MS)
     retryAttempt += 1
@@ -1001,8 +1107,8 @@ internal object GarminLink {
 
   private fun reinitialize() {
     val ctx = appContext ?: return
-    if (sdkReady) return
-    if (!isGarminConnectInstalled(ctx)) {
+    if (sdkReady || simulator) return
+    if (!simulator && !isGarminConnectInstalled(ctx)) {
       becomeUnavailable()
       return
     }
@@ -1018,6 +1124,8 @@ internal object GarminLink {
    * registers again. Returns whether the unregister call went out.
    */
   private fun shutdownSdk(unregisterBinder: Boolean = false): Boolean {
+    // Never on the simulator's SDK (see simulatorChosen).
+    if (simulator) return false
     val bound = sdkBound
     // shutdown() calls onSdkShutDown synchronously; the bump makes it stale.
     sdkGeneration += 1
@@ -1030,7 +1138,7 @@ internal object GarminLink {
     val ciq = connectIQ
     var unregistered = false
     if (ctx != null && ciq != null) {
-      if (unregisterBinder && (bound || binderMode)) {
+      if (unregisterBinder && !simulator && (bound || binderMode)) {
         try {
           // Also shuts the SDK down. It works on a broadcast-mode instance too.
           ciq.unregisterAppFromUsingBinderService(GARMIN_APP_ID, ctx)
@@ -1208,6 +1316,9 @@ internal object GarminLink {
           // per-watch registration is the broadcast one (it asks Garmin
           // Connect for broadcasts) and the SDK says not to use it there.
           if (!binderMode) ciq.registerForAppEvents(device, app, appListener)
+          // The simulator's SDK names every message's app "" (and the
+          // device "Simulator"), whatever app runs in the simulator.
+          if (simulator) ciq.registerForAppEvents(device, IQApp(""), appListener)
           entry.registeredGeneration = sdkGeneration
         } catch (e: Throwable) {
           onSdkCallFailed(e)
@@ -1283,6 +1394,12 @@ internal object GarminLink {
   private fun requestAppInfo(entry: DeviceEntry) {
     val ciq = connectIQ ?: return
     if (!sdkReady) return
+    // The simulator runs this app by definition, and its SDK throws while no
+    // simulator is connected.
+    if (simulator) {
+      if (entry.connected) setAppState(entry.id, GarminAppState.INSTALLED)
+      return
+    }
     try {
       ciq.getApplicationInfo(GARMIN_APP_ID, entry.device, appInfoListener(entry.id))
     } catch (e: Throwable) {
@@ -1504,6 +1621,10 @@ internal object GarminLink {
     val wireSeq = GarminSendSequence.next(lastWireSeq, System.currentTimeMillis())
     lastWireSeq = wireSeq
     saveWireSeq(wireSeq)
+    if (simulator) {
+      sendToSimulator(ciq, entry, job, seq, current, job.outbound.sentAs(wireSeq, origin))
+      return
+    }
     try {
       // The listener can run inside this call (a format error), so the result
       // is always handled on a later turn of the main loop.
@@ -1517,6 +1638,34 @@ internal object GarminLink {
       Log.w(TAG, "Garmin ${label(job)} send threw: ${e.message}")
       main.post { finishSend(seq, GarminSendResult.FAILED) }
       onSdkCallFailed(e)
+    }
+  }
+
+  /**
+   * [send] for the simulator's SDK, which pauses to mimic Bluetooth speed and
+   * then writes to its socket on the calling thread (a network call Android
+   * refuses on the main thread). Its answer comes back on the main thread.
+   */
+  private fun sendToSimulator(
+    ciq: ConnectIQ,
+    entry: DeviceEntry,
+    job: SendJob,
+    seq: Long,
+    current: InFlight,
+    message: Map<String, Any>
+  ) {
+    val deviceId = entry.id
+    val device = entry.device
+    current.handedToSdk = true
+    simulatorSender.execute {
+      try {
+        ciq.sendMessage(device, app, message) { _, _, status ->
+          main.post { onSendStatus(deviceId, seq, status) }
+        }
+      } catch (e: Throwable) {
+        Log.w(TAG, "Garmin ${label(job)} send to the simulator threw: ${e.message}")
+        main.post { finishSend(seq, GarminSendResult.FAILED) }
+      }
     }
   }
 
@@ -1607,6 +1756,7 @@ internal object GarminLink {
     }
     val delivery = when {
       !sdkReady -> GarminDelivery.NONE
+      simulator -> GarminDelivery.SIMULATOR
       binderMode -> GarminDelivery.BINDER
       else -> GarminDelivery.BROADCAST
     }

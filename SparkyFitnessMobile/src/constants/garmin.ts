@@ -15,8 +15,24 @@ import WatchConnectivity from '../../modules/watch-connectivity';
 export const GARMIN_WATCH_APP_RELEASED = false;
 
 /**
+ * Whether Settings → Garmin offers the development switch that points the
+ * Garmin link at the Connect IQ simulator over ADB: an Android development
+ * build whose native module has it. Settings shows the Garmin row then even
+ * without Garmin Connect (an emulator), so the switch can be reached; turning
+ * it on makes `isGarminWatchEnabled()` true.
+ */
+export function canUseGarminSimulator(): boolean {
+  return (
+    Platform.OS === 'android' &&
+    __DEV__ &&
+    typeof WatchConnectivity?.setGarminSimulator === 'function'
+  );
+}
+
+/**
  * Whether this install talks to Garmin watches: Android, a development build
- * (or a released watch app), and Garmin Connect installed. The install is
+ * (or a released watch app), and Garmin Connect installed (or the development
+ * simulator switch on, which the native `isGarminAvailable` also reports). The install is
  * checked again on every call, so Garmin Connect installed while the app runs
  * is picked up the next time this is asked. Every Garmin path goes through
  * it: the Settings row, the sync, its subscriptions and the native link

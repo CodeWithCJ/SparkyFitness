@@ -78,6 +78,7 @@ const watch = (
       isSupported: jest.Mock;
       isPaired: jest.Mock;
       isGarminAvailable?: jest.Mock;
+      setGarminSimulator?: jest.Mock;
     };
   }
 ).default;
@@ -150,5 +151,33 @@ describe('SettingsScreen Garmin row', () => {
     delete watch.isGarminAvailable;
 
     expect(renderScreen().queryByText('settings.rows.garmin')).toBeNull();
+  });
+
+  describe('with the development simulator switch', () => {
+    beforeEach(() => {
+      watch.setGarminSimulator = jest.fn();
+    });
+
+    afterEach(() => {
+      delete watch.setGarminSimulator;
+    });
+
+    test('shows the row without Garmin Connect, so the switch can be reached', () => {
+      isGarminAvailable.mockReturnValue(false);
+
+      fireEvent.press(renderScreen().getByText('settings.rows.garmin'));
+
+      expect(navigation.navigate).toHaveBeenCalledWith('GarminSettings');
+    });
+
+    test('never in a release build or on iOS', () => {
+      isGarminAvailable.mockReturnValue(false);
+      globals.__DEV__ = false;
+      expect(renderScreen().queryByText('settings.rows.garmin')).toBeNull();
+
+      globals.__DEV__ = true;
+      Platform.OS = 'ios';
+      expect(renderScreen().queryByText('settings.rows.garmin')).toBeNull();
+    });
   });
 });

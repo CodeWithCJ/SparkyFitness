@@ -9,12 +9,13 @@ jest.mock('../../modules/watch-connectivity', () => ({
 
 import {
   GARMIN_WATCH_APP_RELEASED,
+  canUseGarminSimulator,
   isGarminWatchEnabled,
 } from '../../src/constants/garmin';
 
 const watch = (
   jest.requireMock('../../modules/watch-connectivity') as {
-    default: { isGarminAvailable?: jest.Mock };
+    default: { isGarminAvailable?: jest.Mock; setGarminSimulator?: jest.Mock };
   }
 ).default;
 const isGarminAvailable = watch.isGarminAvailable as jest.Mock;
@@ -64,5 +65,39 @@ describe('isGarminWatchEnabled', () => {
     Platform.OS = 'android';
     delete watch.isGarminAvailable;
     expect(isGarminWatchEnabled()).toBe(false);
+  });
+});
+
+describe('canUseGarminSimulator', () => {
+  const originalOs = Platform.OS;
+  const originalDev = globals.__DEV__;
+
+  beforeEach(() => {
+    Platform.OS = 'android';
+    globals.__DEV__ = true;
+    watch.setGarminSimulator = jest.fn();
+  });
+
+  afterEach(() => {
+    Platform.OS = originalOs;
+    globals.__DEV__ = originalDev;
+    delete watch.setGarminSimulator;
+  });
+
+  test('is offered in an Android development build whose module has it', () => {
+    expect(canUseGarminSimulator()).toBe(true);
+  });
+
+  test('never in a release build, on iOS, or on a module without it', () => {
+    globals.__DEV__ = false;
+    expect(canUseGarminSimulator()).toBe(false);
+
+    globals.__DEV__ = true;
+    Platform.OS = 'ios';
+    expect(canUseGarminSimulator()).toBe(false);
+
+    Platform.OS = 'android';
+    delete watch.setGarminSimulator;
+    expect(canUseGarminSimulator()).toBe(false);
   });
 });

@@ -236,6 +236,19 @@ export async function sendContextToWatches(
  * native side replays its cache by itself, so the records may be wrong when
  * this subscribes again, and the next push is then sent in full.
  */
+// The mounted subscription's `link`, so a change that can turn Garmin on
+// while the app is in front (the simulator switch) links at once.
+let relinkGarmin: (() => void) | null = null;
+
+/**
+ * Links the Garmin sync now when the bridge is mounted, as a return to the
+ * foreground does. For the simulator switch in Settings → Garmin, which can
+ * make `isGarminWatchEnabled()` true without leaving the app.
+ */
+export function relinkGarminSync(): void {
+  relinkGarmin?.();
+}
+
 export function subscribeGarminSync(): () => void {
   const watch = WatchConnectivity;
   if (!watch) return () => {};
@@ -262,10 +275,12 @@ export function subscribeGarminSync(): () => void {
   };
 
   link();
+  relinkGarmin = link;
   const appStateSub = AppState.addEventListener('change', (state) => {
     if (state === 'active') link();
   });
   return () => {
+    if (relinkGarmin === link) relinkGarmin = null;
     appStateSub.remove();
     for (const subscription of subscriptions ?? []) subscription.remove();
     linked?.forgetAll();

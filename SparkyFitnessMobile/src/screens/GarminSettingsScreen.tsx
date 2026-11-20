@@ -10,8 +10,12 @@ import WatchConnectivity, {
   type GarminStatus,
 } from '../../modules/watch-connectivity';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import SettingsRow from '../components/SettingsRow';
 import Button from '../components/ui/Button';
+import Switch from '../components/ui/Switch';
 import { WatchGoalNutrientsSection } from '../components/WatchGoalNutrientsSection';
+import { canUseGarminSimulator } from '../constants/garmin';
+import { relinkGarminSync } from '../hooks/useWatchCheckInBridge';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { addLog } from '../services/LogService';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -163,7 +167,93 @@ function deliveryHint(
         'Keep SparkyFitness open in the background to receive from your watch.',
     });
   }
+  if (delivery === 'simulator') {
+    return t('garminSettings.deliverySimulator', {
+      defaultValue: 'Talking to the Connect IQ simulator over ADB.',
+    });
+  }
   return null;
+}
+
+/**
+ * Development builds only: points the Garmin link at the Connect IQ simulator
+ * on a computer, over ADB, instead of watches through Garmin Connect. The
+ * native side honours it only in a debuggable build. A link already running
+ * keeps its mode until the app starts again (the SDK cannot close its ADB
+ * connection); one not started yet starts in the new mode, so the sync is
+ * linked again at once, since turning it on can be what makes Garmin
+ * available here (an emulator without Garmin Connect).
+ */
+function SimulatorSwitch() {
+  const { t } = useTranslation();
+  const [on, setOn] = useState(
+    () => WatchConnectivity?.isGarminSimulator?.() === true
+  );
+  const [failed, setFailed] = useState(false);
+  const [changed, setChanged] = useState(false);
+
+  const onValueChange = useCallback((next: boolean) => {
+    const watch = WatchConnectivity;
+    if (!watch?.setGarminSimulator) return;
+    setOn(next);
+    setFailed(false);
+    setChanged(true);
+    watch
+      .setGarminSimulator(next)
+      .then(() => relinkGarminSync())
+      .catch((error: unknown) => {
+        setOn(!next);
+        setFailed(true);
+        addLog(`Garmin simulator switch failed: ${String(error)}`, 'WARNING');
+      });
+  }, []);
+
+  return (
+    <View className="mt-6">
+      <Text className="text-text-primary text-base font-semibold mb-1">
+        {t('garminSettings.developerTitle', { defaultValue: 'Development' })}
+      </Text>
+      <SettingsRow
+        title={t('garminSettings.simulatorTitle', {
+          defaultValue: 'Connect IQ simulator (ADB)',
+        })}
+        subtitle={t('garminSettings.simulatorHint', {
+          defaultValue:
+            'Talk to the Connect IQ simulator on your computer instead of a watch. Run adb forward tcp:7381 tcp:7381, then choose Connection > Start in the simulator. Use a trusted network: while it is on, the phone listens for the simulator.',
+        })}
+        subtitleNumberOfLines={0}
+        rightAccessory={
+          <Switch
+            testID="garmin-simulator-switch"
+            value={on}
+            onValueChange={onValueChange}
+          />
+        }
+      />
+      {changed && !failed && (
+        <Text
+          testID="garmin-simulator-restart"
+          className="text-text-secondary text-sm mt-1"
+          accessibilityLiveRegion="polite"
+        >
+          {t('garminSettings.simulatorRestart', {
+            defaultValue:
+              'If the Garmin link was already running, close SparkyFitness from the recent apps and open it again to switch.',
+          })}
+        </Text>
+      )}
+      {failed && (
+        <Text
+          className="text-text-secondary text-sm mt-1"
+          accessibilityLiveRegion="polite"
+        >
+          {t('garminSettings.simulatorFailed', {
+            defaultValue: 'Could not switch the Garmin link. Try again.',
+          })}
+        </Text>
+      )}
+    </View>
+  );
 }
 
 function appStateLabel(t: TFunction, app: GarminDevice['app']): string {
@@ -217,8 +307,10 @@ function openResultMessage(t: TFunction, result: GarminOpenAppResult): string {
  * Settings → Garmin: whether the phone can reach Garmin Connect, each Garmin
  * watch with its connection and whether SparkyFitness is on it, and the Goals
  * page nutrients, which are the same preference every watch app reads.
- * Shown from Settings only where `isGarminWatchEnabled()`: Android with
- * Garmin Connect, in development builds until the watch app is published.
+ * Shown from Settings only where `isGarminWatchEnabled()` (Android with
+ * Garmin Connect, in development builds until the watch app is published) or
+ * `canUseGarminSimulator()` (any Android development build, for the
+ * simulator switch).
  */
 const GarminSettingsScreen: React.FC<GarminSettingsScreenProps> = () => {
   const { t } = useTranslation();
@@ -432,6 +524,8 @@ const GarminSettingsScreen: React.FC<GarminSettingsScreenProps> = () => {
         </Text>
 
         <WatchGoalNutrientsSection />
+
+        {canUseGarminSimulator() && <SimulatorSwitch />}
       </ScrollView>
     </View>
   );

@@ -1980,13 +1980,34 @@ class WatchConnectivityModule : Module() {
       WatchConnectivityHub.takeDroppedHeartRateBatchCount()
     }
 
+    // Garmin Connect is installed, or the development simulator switch is on.
     Function("isGarminAvailable") {
       val ctx = appContext.reactContext ?: return@Function false
-      GarminLink.isGarminConnectInstalled(ctx)
+      GarminLink.isAvailable(ctx)
+    }
+
+    // The development switch: talk to the Connect IQ simulator over ADB
+    // instead of watches through Garmin Connect. Always false in a build that
+    // is not debuggable.
+    Function("isGarminSimulator") {
+      val ctx = appContext.reactContext ?: return@Function false
+      GarminLink.isSimulatorOn(ctx)
+    }
+
+    // Sets that switch, restarts the link in the new mode when it was running
+    // in the other one, and resolves with the status like startGarmin.
+    AsyncFunction("setGarminSimulator") { on: Boolean, promise: Promise ->
+      val ctx = appContext.reactContext
+      if (ctx == null) {
+        promise.resolve(GarminLink.status())
+        return@AsyncFunction
+      }
+      GarminLink.setSimulator(ctx, on) { status -> promise.resolve(status) }
     }
 
     // Starts the Garmin link if Garmin Connect is installed (checked again on
-    // every call) and re-reads the paired watches; idempotent. Resolves with
+    // every call), or the development simulator switch is on, and re-reads
+    // the paired watches; idempotent. Resolves with
     // the status. Nothing below does anything for Garmin until the link is
     // started, here or at a process start with the link turned on
     // (WatchConnectivityPackage).

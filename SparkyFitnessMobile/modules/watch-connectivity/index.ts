@@ -1271,10 +1271,12 @@ export interface GarminDevice {
  * this app's process to deliver a message. `broadcast`: the SDK's receiver
  * registered at runtime, which only receives while the process is alive; the
  * native side falls back to it whenever the binder delivery cannot be used
- * (Garmin has not approved it yet, an older Garmin Connect). `none`: the link
- * is not ready, so nothing is delivered.
+ * (Garmin has not approved it yet, an older Garmin Connect). `simulator`:
+ * the development switch is on, so the link talks to the Connect IQ simulator
+ * on a computer over ADB (`setGarminSimulator`). `none`: the link is not
+ * ready, so nothing is delivered.
  */
-export type GarminDelivery = 'binder' | 'broadcast' | 'none';
+export type GarminDelivery = 'binder' | 'broadcast' | 'simulator' | 'none';
 
 /** The Garmin link as the native side sees it. */
 export interface GarminStatus {
@@ -1496,12 +1498,27 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   /** Also clears the Garmin account, as `clearGarminAccount` does. */
   clearServerCredentials?(): Promise<void>;
   /**
-   * Garmin Connect is installed, so a Garmin watch can be reached. Garmin
+   * Garmin Connect is installed, so a Garmin watch can be reached, or the
+   * development simulator switch is on (`isGarminSimulator`). Garmin
    * (Connect IQ) is a second transport beside Wear OS; Android only. Checked
    * again on every call. Whether this install uses Garmin at all is
    * `isGarminWatchEnabled()` (`src/constants/garmin.ts`).
    */
   isGarminAvailable?(): boolean;
+  /**
+   * The development switch in Settings → Garmin: the Garmin link talks to the
+   * Connect IQ simulator on a computer over ADB instead of watches through
+   * Garmin Connect. Always false in a build that is not debuggable. Android
+   * only.
+   */
+  isGarminSimulator?(): boolean;
+  /**
+   * Sets that switch, starts the link again in the new mode when it was
+   * running in the other one, and resolves with the status, like
+   * `startGarmin()`. The simulator then needs `adb forward tcp:7381
+   * tcp:7381` and Connection → Start. Android only.
+   */
+  setGarminSimulator?(on: boolean): Promise<GarminStatus>;
   /**
    * Starts the Garmin link if Garmin Connect is installed and resolves with
    * the current status. Idempotent, and checks the install again on each

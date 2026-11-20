@@ -15,7 +15,7 @@ class GarminBinderTest {
 
   @Test
   fun deliveryWireStringsMatchTheJsContract() {
-    assertEquals(listOf("binder", "broadcast", "none"), GarminDelivery.values().map { it.wire })
+    assertEquals(listOf("binder", "broadcast", "simulator", "none"), GarminDelivery.values().map { it.wire })
   }
 
   @Test
