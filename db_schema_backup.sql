@@ -6039,7 +6039,7 @@ COMMENT ON VIEW public.v_mctq_stats IS 'Aggregated MCTQ stats per user with idea
 --
 
 CREATE TABLE public.verification (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    id text DEFAULT (gen_random_uuid())::text NOT NULL,
     identifier text NOT NULL,
     value text NOT NULL,
     expires_at timestamp without time zone NOT NULL,
