@@ -25,11 +25,11 @@ export default defineConfig({
 
   head: [
     ['link', { rel: 'icon', href: '/SparkyFitness/favicon.ico' }],
-    ['meta', { name: 'theme-color', content: '#3b82f6' }],
+    ['meta', { name: 'theme-color', content: '#F2375A' }],
   ],
 
   themeConfig: {
-    logo: '/logo.png',
+    logo: { light: '/logo-light.svg', dark: '/logo-dark.svg' },
     siteTitle: 'SparkyFitness',
 
     search: {
