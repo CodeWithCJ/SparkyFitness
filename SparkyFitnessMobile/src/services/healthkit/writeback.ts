@@ -13,7 +13,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { addLog } from '../LogService';
 import { fetchDailySummary } from '../api/dailySummaryApi';
-import { fetchWaterIntakeLog } from '../api/measurementsApi';
+import {
+  fetchMeasurementsRange,
+  fetchWaterIntakeLog,
+} from '../api/measurementsApi';
 import { fetchOralCareSessions } from '../api/oralCareApi';
 import { isSparkyOralCareProvider } from '@workspace/shared';
 import { resolveCollapsedFoodEntries } from '../../utils/loggedMealCollapse';
@@ -49,6 +52,14 @@ import {
   writeExerciseForDate,
 } from './exerciseWriteback';
 import { loadExerciseWritebackContext } from '../shared/exerciseWritebackContext';
+import { checkInRowsByDate } from '../shared/bodyWriteback';
+import {
+  HEALTHKIT_BODY_IDENTIFIERS,
+  bodyIdentifierFor,
+  isHealthKitBodyMetric,
+  writeBodyMetricForDate,
+} from './bodyWriteback';
+import type { CheckInMeasurementRange } from '../../types/measurements';
 
 type DailySummary = Awaited<ReturnType<typeof fetchDailySummary>>;
 
@@ -581,8 +592,9 @@ const writeToothbrushingForDate = async (
 // Android does — so it doesn't retry forever.
 const writableMetrics = (metrics: WritebackMetric[]): WritebackMetric[] =>
   metrics.filter((m) => {
-    const gate: ObjectTypeIdentifier =
-      m.id === 'toothbrushing'
+    const gate: ObjectTypeIdentifier = isHealthKitBodyMetric(m.id)
+      ? bodyIdentifierFor(m.id)
+      : m.id === 'toothbrushing'
         ? TOOTHBRUSHING_IDENTIFIER
         : m.id === 'exercise'
           ? WORKOUT_TYPE
@@ -625,6 +637,23 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
     ? await loadExerciseWritebackContext()
     : null;
 
+  // Body measurements (#2465) come from the check-in rows, read once for the
+  // whole window; a failed read skips them without holding the other metrics.
+  const bodyMetrics = writable.filter((m) => isHealthKitBodyMetric(m.id));
+  let checkIns: Map<string, CheckInMeasurementRange> | null = null;
+  if (bodyMetrics.length > 0 && dates.length > 0) {
+    try {
+      checkIns = checkInRowsByDate(
+        await fetchMeasurementsRange(dates[0], dates[dates.length - 1])
+      );
+    } catch (error) {
+      addLog(
+        `[Writeback] Failed to load check-ins: ${message(error)}`,
+        'ERROR'
+      );
+    }
+  }
+
   // One worker per date. The metrics within a date stay sequential (they write distinct
   // sample types to the same day, so there's nothing to gain from racing them), but
   // distinct dates run concurrently. Each worker swallows its own errors so one failed
@@ -642,7 +671,27 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
         );
       }
     }
-    const diaryMetrics = writable.filter((m) => m.id !== 'toothbrushing');
+    if (checkIns) {
+      for (const metric of bodyMetrics) {
+        if (!isHealthKitBodyMetric(metric.id)) continue;
+        try {
+          await writeBodyMetricForDate(
+            metric.id,
+            date,
+            checkIns.get(date),
+            version
+          );
+        } catch (error) {
+          addLog(
+            `[Writeback] Failed ${metric.defaultLabel} for ${date}: ${message(error)}`,
+            'ERROR'
+          );
+        }
+      }
+    }
+    const diaryMetrics = writable.filter(
+      (m) => m.id !== 'toothbrushing' && !isHealthKitBodyMetric(m.id)
+    );
     if (diaryMetrics.length === 0) return;
     let summary: DailySummary;
     try {
@@ -752,7 +801,14 @@ export const removeWrittenData = async (
 
   const exerciseRemoved = await removeExerciseData(dateFilter);
   let ok = exerciseRemoved;
-  for (const type of WRITEBACK_DELETE_TYPES) {
+  // Body measurements (#2465): HealthKit deletes only this app's samples, and
+  // only for a type it may write, so a type never turned on is left out rather
+  // than reported as a failed removal.
+  const deleteTypes: SampleTypeIdentifierWriteable[] = [
+    ...WRITEBACK_DELETE_TYPES,
+    ...HEALTHKIT_BODY_IDENTIFIERS.filter(isAuthorized),
+  ];
+  for (const type of deleteTypes) {
     try {
       await deleteObjects(type, { date: dateFilter });
     } catch (error) {

@@ -8,18 +8,23 @@ Open **Settings → Health Sync** and find **Write to Apple Health** (iPhone) or
 
 ## What each switch writes
 
-| Switch            | What is written                                                                                                                                                  | iPhone | Android |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------- |
-| **Nutrition**     | Each food you logged, with its calories and the nutrients you allowed, at the time you logged it. On iPhone each food is grouped as one food item with its meal. | yes    | yes     |
-| **Hydration**     | Each drink you logged, at its time. If you count water from food toward your intake, that amount is added once per day at noon.                                  | yes    | yes     |
-| **Exercise**      | One workout per session, with active calories and distance. See [Sending Workouts to Health Apps](/features/exercises/workouts-to-health).                       | yes    | yes     |
-| **Toothbrushing** | Each brush you logged or timed, with its duration. Health Connect has no record for it.                                                                          | yes    | no      |
+| Switch                               | What is written                                                                                                                                                                                                          | iPhone | Android |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ | ------- |
+| **Nutrition**                        | Each food you logged, with its calories and the nutrients you allowed, at the time you logged it. On iPhone each food is grouped as one food item with its meal.                                                         | yes    | yes     |
+| **Hydration**                        | Each drink you logged, at its time. If you count water from food toward your intake, that amount is added once per day at noon.                                                                                          | yes    | yes     |
+| **Exercise**                         | One workout per session, with active calories and distance. See [Sending Workouts to Health Apps](/features/exercises/workouts-to-health).                                                                               | yes    | yes     |
+| **Toothbrushing**                    | Each brush you logged or timed, with its duration. Health Connect has no record for it.                                                                                                                                  | yes    | no      |
+| **Weight**, **Body Fat**, **Height** | The day's value from your check-in (Measurements), at noon.                                                                                                                                                              | yes    | yes     |
+| **Waist Circumference**              | The day's waist from your check-in, at noon. Health Connect has no record for it.                                                                                                                                        | yes    | no      |
+| **Bone Mass**, **Body Water Mass**   | The day's value from your check-in, at noon. Body water is stored as a percentage, so it is written as that share of the same day's weight, and not at all on a day with no weight. Apple Health has no type for either. | no     | yes     |
 
-Only things you logged in SparkyFitness are written. Data that came into SparkyFitness from Apple Health, Health Connect, Garmin, Strava or any other connected service is never sent back, because it is already recorded where it came from. Readings such as steps, sleep, heart rate and weight are not written either.
+Only things you logged in SparkyFitness are written. Data that came into SparkyFitness from Apple Health, Health Connect, Garmin, Strava or any other connected service is never sent back, because it is already recorded where it came from. Readings such as steps, sleep and heart rate are not written either.
+
+Body measurements are the exception: the check-in keeps one value per measurement per day and does not record where it came from, so SparkyFitness cannot tell a weight you typed in from one a smart scale's app sent through Apple Health or Health Connect. To avoid a second copy, a day is skipped when another app already recorded the same value on it (this check needs read access to that measurement, which turning the switch on asks for). Even so, if another app already supplies a measurement, leave its switch off. Neck, hips, muscle mass and BMR are not written: there is no matching record type, or another app would count it toward calories burned.
 
 ## When it is written
 
-Writing happens during each sync, in the background or when you open the app. When you turn a switch on, yesterday and today are written. After that, each sync writes the days since the previous one, starting the day before it: if you sync every day, that is yesterday and today; after a few days without syncing it catches up on up to seven days.
+Writing happens during each sync, in the background or when you open the app. Body measurements have no time of day in SparkyFitness, so they are written at 12:00 on their day, and today's value goes out on the first sync after noon. When you turn a switch on, yesterday and today are written. After that, each sync writes the days since the previous one, starting the day before it: if you sync every day, that is yesterday and today; after a few days without syncing it catches up on up to seven days.
 
 Editing or deleting something in SparkyFitness replaces or removes its copy on the next sync, but only if its day is in that window. Changes to older days are not sent. A day with no changes is skipped, and a day is never written twice: its earlier copy is replaced.
 

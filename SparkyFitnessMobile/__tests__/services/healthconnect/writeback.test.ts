@@ -6,7 +6,10 @@ import {
   getGrantedPermissions,
 } from 'react-native-health-connect';
 import { fetchDailySummary } from '../../../src/services/api/dailySummaryApi';
-import { fetchWaterIntakeLog } from '../../../src/services/api/measurementsApi';
+import {
+  fetchMeasurementsRange,
+  fetchWaterIntakeLog,
+} from '../../../src/services/api/measurementsApi';
 import {
   loadHealthPreference,
   saveHealthPreference,
@@ -31,6 +34,7 @@ jest.mock('../../../src/services/api/dailySummaryApi', () => ({
 }));
 jest.mock('../../../src/services/api/measurementsApi', () => ({
   fetchWaterIntakeLog: jest.fn(),
+  fetchMeasurementsRange: jest.fn(),
 }));
 jest.mock('../../../src/utils/loggedMealCollapse', () => ({
   resolveCollapsedFoodEntries: jest.fn((_date: string, entries: unknown) =>
@@ -135,6 +139,33 @@ describe('writebackPhase', () => {
     expect(records[0].metadata.clientRecordId).toMatch(
       /^sparky-nutrition-fe1-\d+$/
     );
+  });
+
+  it('writes the check-in weight (#2465) without loading the daily summary', async () => {
+    prefs({ writebackWeightEnabled: true });
+    mockGranted.mockResolvedValue([
+      { recordType: 'Weight', accessType: 'write' },
+    ]);
+    (fetchMeasurementsRange as jest.Mock).mockResolvedValue([
+      {
+        id: 'c1',
+        user_id: 'u1',
+        entry_date: '2026-06-01',
+        weight: 80.4,
+        updated_at: '2026-06-01T08:00:00Z',
+      },
+    ]);
+    await writebackPhase(['2026-06-01', '2026-06-02']);
+    expect(fetchMeasurementsRange).toHaveBeenCalledWith(
+      '2026-06-01',
+      '2026-06-02'
+    );
+    expect(mockSummary).not.toHaveBeenCalled();
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockInsert.mock.calls[0][0][0]).toMatchObject({
+      recordType: 'Weight',
+      weight: { value: 80.4, unit: 'kilograms' },
+    });
   });
 
   it('skips a metric when its write permission is not granted', async () => {
@@ -385,6 +416,11 @@ describe('removeWrittenData (cleanup)', () => {
       'Hydration',
       expect.objectContaining({ operator: 'before' })
     );
+    // Body types are deleted only with their write permission (none granted here).
+    expect(mockDeleteByRange).not.toHaveBeenCalledWith(
+      'Weight',
+      expect.anything()
+    );
 
     const remaining = await AsyncStorage.getAllKeys();
     expect(remaining).not.toContain(
@@ -402,6 +438,23 @@ describe('removeWrittenData (cleanup)', () => {
     expect(mockSavePref).toHaveBeenCalledWith(
       'writebackHydrationEnabled',
       false
+    );
+  });
+
+  it('deletes the body records (#2465) it has write access for', async () => {
+    mockGranted.mockResolvedValue([
+      { recordType: 'Weight', accessType: 'write' },
+      { recordType: 'BodyFat', accessType: 'read' },
+    ]);
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: true });
+    expect(mockDeleteByRange).toHaveBeenCalledWith(
+      'Weight',
+      expect.objectContaining({ operator: 'before' })
+    );
+    expect(mockDeleteByRange).not.toHaveBeenCalledWith(
+      'BodyFat',
+      expect.anything()
     );
   });
 

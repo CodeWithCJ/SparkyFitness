@@ -1,5 +1,6 @@
 import { instantToDay, isValidTimeZone } from '@workspace/shared';
 import { addLog } from '../LogService';
+import { BODY_WRITEBACK_METADATA_KEY } from '../shared/bodyWriteback';
 import { attachWorkoutTelemetry } from '../shared/workoutTelemetryPayload';
 import {
   TransformedExerciseSession,
@@ -87,6 +88,17 @@ export const isOwnWrittenWorkout = (rec: Record<string, unknown>): boolean => {
   const metadata = rec.metadata as Record<string, unknown> | undefined;
   return metadata?.[EXERCISE_WRITEBACK_METADATA_KEY] !== undefined;
 };
+
+/**
+ * True for a sample body measurement write-back (#2465) saved, by its metadata
+ * key; matched by key rather than bundle id for the same reason as workouts.
+ */
+export const isOwnWrittenBodySample = (sample: {
+  metadata?: unknown;
+}): boolean =>
+  (sample.metadata as Record<string, unknown> | undefined)?.[
+    BODY_WRITEBACK_METADATA_KEY
+  ] !== undefined;
 
 /**
  * True for a workout recorded by this app's watch target on its own (the

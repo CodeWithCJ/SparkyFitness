@@ -8,7 +8,10 @@ import {
 } from 'react-native-health-connect';
 import { addLog } from '../LogService';
 import { fetchDailySummary } from '../api/dailySummaryApi';
-import { fetchWaterIntakeLog } from '../api/measurementsApi';
+import {
+  fetchMeasurementsRange,
+  fetchWaterIntakeLog,
+} from '../api/measurementsApi';
 import { resolveCollapsedFoodEntries } from '../../utils/loggedMealCollapse';
 import {
   loadHealthPreference,
@@ -35,6 +38,13 @@ import {
   writeExerciseForDate,
 } from './exerciseWriteback';
 import { loadExerciseWritebackContext } from '../shared/exerciseWritebackContext';
+import { checkInRowsByDate } from '../shared/bodyWriteback';
+import {
+  HEALTH_CONNECT_BODY_RECORD_TYPES,
+  isHealthConnectBodyMetric,
+  writeBodyMetricForDate,
+} from './bodyWriteback';
+import type { CheckInMeasurementRange } from '../../types/measurements';
 
 type DailySummary = Awaited<ReturnType<typeof fetchDailySummary>>;
 
@@ -307,7 +317,55 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
     ? await loadExerciseWritebackContext()
     : null;
 
+  // Body measurements (#2465) come from the check-in rows, read once for the
+  // whole window; a failed read skips them without holding the diary metrics.
+  const bodyMetrics = writable.filter((m) => isHealthConnectBodyMetric(m.id));
+  const diaryMetrics = writable.filter((m) => !isHealthConnectBodyMetric(m.id));
+  let checkIns: Map<string, CheckInMeasurementRange> | null = null;
+  if (bodyMetrics.length > 0 && dates.length > 0) {
+    try {
+      checkIns = checkInRowsByDate(
+        await fetchMeasurementsRange(dates[0], dates[dates.length - 1])
+      );
+    } catch (error) {
+      addLog(
+        `[Writeback] Failed to load check-ins: ${message(error)}`,
+        'ERROR'
+      );
+    }
+  }
+
   for (const date of dates) {
+    if (checkIns) {
+      for (const metric of bodyMetrics) {
+        if (!isHealthConnectBodyMetric(metric.id)) continue;
+        try {
+          await writeBodyMetricForDate(
+            metric.id,
+            date,
+            checkIns.get(date),
+            version,
+            granted.some(
+              (p) =>
+                p.recordType === metric.recordType && p.accessType === 'read'
+            )
+          );
+        } catch (error) {
+          if (isQuotaExceededError(error)) {
+            addLog(
+              '[Writeback] Health Connect quota exceeded — stopping; resumes next sync',
+              'WARNING'
+            );
+            return false;
+          }
+          addLog(
+            `[Writeback] Failed ${metric.defaultLabel} for ${date}: ${message(error)}`,
+            'ERROR'
+          );
+        }
+      }
+    }
+    if (diaryMetrics.length === 0) continue;
     let summary: DailySummary;
     try {
       summary = await fetchDailySummary(date); // once per date, shared by both metrics
@@ -318,7 +376,7 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
       );
       continue;
     }
-    for (const metric of writable) {
+    for (const metric of diaryMetrics) {
       try {
         if (metric.id === 'nutrition') {
           await writeNutritionForDate(date, summary, version);
@@ -393,6 +451,25 @@ const trackingKeysToClear = (
   });
 
 /**
+ * The body record types this app may still delete. Deleting needs the type's
+ * write permission, which someone who never turned a body switch on has not
+ * given; trying anyway would throw and report the whole removal as partial. A
+ * type without it holds nothing this app can remove.
+ */
+const bodyTypesWithWriteAccess = async (): Promise<
+  typeof HEALTH_CONNECT_BODY_RECORD_TYPES
+> => {
+  try {
+    const granted: GrantedPermission[] = await getGrantedPermissions();
+    return HEALTH_CONNECT_BODY_RECORD_TYPES.filter((type) =>
+      granted.some((p) => p.recordType === type && p.accessType === 'write')
+    );
+  } catch {
+    return HEALTH_CONNECT_BODY_RECORD_TYPES;
+  }
+};
+
+/**
  * Delete records SparkyFitness wrote to Health Connect. `range` null = full purge
  * (all time) — also turns writeback off, a true rollback; a date range removes just
  * that window and leaves writeback on. Health Connect only lets an app delete records
@@ -406,14 +483,17 @@ export const removeWrittenData = async (
 ): Promise<WritebackRemovalResult> => {
   // Toothbrushing is iOS-only (Health Connect has no record for it), so it is
   // never in this platform's WRITEBACK_METRICS; the guard narrows the type.
-  const recordTypes = Array.from(
-    new Set(
+  const recordTypes = [
+    ...new Set(
       WRITEBACK_METRICS.map((m) => m.recordType).filter(
         (t): t is 'Nutrition' | 'Hydration' =>
           t === 'Nutrition' || t === 'Hydration'
       )
-    )
-  );
+    ),
+    // Body measurements (#2465). Health Connect deletes only this app's own
+    // records, so other apps' and hand-entered body data stay.
+    ...(await bodyTypesWithWriteAccess()),
+  ];
   const filter = range
     ? {
         operator: 'between' as const,

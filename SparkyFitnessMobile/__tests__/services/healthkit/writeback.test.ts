@@ -7,7 +7,10 @@ import {
   authorizationStatusFor,
 } from '@kingstinct/react-native-healthkit';
 import { fetchDailySummary } from '../../../src/services/api/dailySummaryApi';
-import { fetchWaterIntakeLog } from '../../../src/services/api/measurementsApi';
+import {
+  fetchMeasurementsRange,
+  fetchWaterIntakeLog,
+} from '../../../src/services/api/measurementsApi';
 import {
   loadHealthPreference,
   saveHealthPreference,
@@ -24,6 +27,7 @@ jest.mock('../../../src/services/api/dailySummaryApi', () => ({
 }));
 jest.mock('../../../src/services/api/measurementsApi', () => ({
   fetchWaterIntakeLog: jest.fn(),
+  fetchMeasurementsRange: jest.fn(),
 }));
 jest.mock('../../../src/services/api/oralCareApi', () => ({
   fetchOralCareSessions: jest.fn().mockResolvedValue([]),
@@ -124,6 +128,33 @@ const manualLogEntry = (
 });
 
 describe('writebackPhase', () => {
+  it('saves the check-in body fat (#2465) without loading the daily summary', async () => {
+    prefs({ writebackBodyFatEnabled: true });
+    (fetchMeasurementsRange as jest.Mock).mockResolvedValue([
+      {
+        id: 'c1',
+        user_id: 'u1',
+        entry_date: '2026-06-01',
+        body_fat_percentage: 22.5,
+        updated_at: '2026-06-01T08:00:00Z',
+      },
+    ]);
+    const { queryQuantitySamples } = jest.requireMock(
+      '@kingstinct/react-native-healthkit'
+    );
+    (queryQuantitySamples as jest.Mock).mockResolvedValue([]);
+    await writebackPhase(['2026-06-01']);
+    expect(mockSummary).not.toHaveBeenCalled();
+    expect(mockSaveQuantity).toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierBodyFatPercentage',
+      '%',
+      0.225,
+      expect.any(Date),
+      expect.any(Date),
+      expect.objectContaining({ SparkyBodyWriteback: expect.any(String) })
+    );
+  });
+
   it('does nothing when both metrics are disabled', async () => {
     prefs({
       writebackNutritionEnabled: false,
@@ -491,6 +522,11 @@ describe('removeWrittenData (cleanup)', () => {
     expect(mockDeleteObjects).toHaveBeenCalledWith(ENERGY, allTime);
     expect(mockDeleteObjects).toHaveBeenCalledWith(WATER, allTime);
     expect(mockDeleteObjects).toHaveBeenCalledWith(FOOD_CORRELATION, allTime);
+    // Body types are removed only where the app may write them (all here).
+    expect(mockDeleteObjects).toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierBodyMass',
+      allTime
+    );
 
     const remaining = await AsyncStorage.getAllKeys();
     expect(remaining).not.toContain(
