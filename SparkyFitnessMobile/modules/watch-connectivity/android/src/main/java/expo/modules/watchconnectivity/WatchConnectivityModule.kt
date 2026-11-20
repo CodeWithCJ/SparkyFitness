@@ -1724,7 +1724,8 @@ class WatchConnectivityModule : Module() {
 
     // The Garmin link is not started here: JS starts it (`startGarmin`) only
     // where the Garmin feature is on, so other installs never initialise the
-    // Connect IQ SDK and its exported broadcast receiver.
+    // Connect IQ SDK and its exported broadcast receiver. A later process
+    // starts it before JS (WatchConnectivityPackage) until `stopGarmin`.
     OnCreate {
       WatchConnectivityHub.activeModule = this@WatchConnectivityModule
       val ctx = appContext.reactContext ?: return@OnCreate
@@ -1746,8 +1747,10 @@ class WatchConnectivityModule : Module() {
 
     // The module lives as long as the React instance, but JS listens for
     // onGarminResync only while the Garmin feature is on (server reachable or
-    // not). An event emitted with no listener is lost, so with the feature off,
-    // or before JS subscribes, the link replays its cached snapshot itself.
+    // not). An event emitted with no listener is lost, so then the link
+    // answers itself: a watch that asked gets the cached snapshot (or
+    // accountCleared), and a watch that connects, or the SDK getting ready,
+    // gets the cache only once JS has listened in this process.
     OnStartObserving("onGarminResync") {
       GarminLink.setResyncListening(this@WatchConnectivityModule, true)
     }
@@ -1984,7 +1987,9 @@ class WatchConnectivityModule : Module() {
 
     // Starts the Garmin link if Garmin Connect is installed (checked again on
     // every call) and re-reads the paired watches; idempotent. Resolves with
-    // the status. Nothing below does anything for Garmin until it is called.
+    // the status. Nothing below does anything for Garmin until the link is
+    // started, here or at a process start with the link turned on
+    // (WatchConnectivityPackage).
     AsyncFunction("startGarmin") { promise: Promise ->
       val ctx = appContext.reactContext
       if (ctx == null) {
@@ -1994,14 +1999,25 @@ class WatchConnectivityModule : Module() {
       GarminLink.startFromJs(ctx) { status -> promise.resolve(status) }
     }
 
-    // Unavailable with no watches until startGarmin; never starts the link.
+    // Turns the link off and forgets that startGarmin turned it on, so the
+    // next process start leaves the SDK alone. JS calls it where the Garmin
+    // feature is off, so a flag a development build left behind cannot keep
+    // the SDK running in a release install. A binder registration Garmin
+    // Connect may hold is unregistered first, so it can resolve only once the
+    // SDK has bound (at most the init watchdog). Keeps the snapshot cache.
+    AsyncFunction("stopGarmin") { promise: Promise ->
+      GarminLink.stop(appContext.reactContext) { promise.resolve() }
+    }
+
+    // Unavailable with no watches until the link is started; never starts it.
     AsyncFunction("garminStatus") {
       GarminLink.status()
     }
 
-    // Sends one message to one Garmin watch as JS built it; JS decides what
+    // Sends one message to one Garmin watch as JS built it (plus the seq and
+    // origin every send carries); JS decides what
     // each watch gets (services/garminSync.ts). Resolves with the
-    // GarminSendResult wire string; failed before startGarmin.
+    // GarminSendResult wire string; failed until the link is started.
     AsyncFunction("sendGarminMessage") { deviceId: String, message: ReadableMap, promise: Promise ->
       GarminLink.sendMessage(deviceId, message.toHashMap()) { result -> promise.resolve(result.wire) }
     }

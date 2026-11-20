@@ -1,3 +1,4 @@
+import Toybox.Background;
 import Toybox.Communications;
 import Toybox.Lang;
 import Toybox.System;
@@ -5,6 +6,8 @@ import Toybox.WatchUi;
 
 // The protocol's message types and version (agent-docs/garmin.md). A receiver
 // ignores types and keys it does not know, so a newer phone stays readable.
+// The background service reads them too (Inbound).
+(:background)
 module Protocol {
     const VERSION = 1;
 
@@ -43,7 +46,25 @@ class Link {
     // opened.
     function start() as Void {
         Communications.registerForPhoneAppMessages(method(:onPhoneMessage));
+        registerBackground();
         requestContext();
+    }
+
+    // Lets the background service (BackgroundService.mc) take phone messages
+    // while the app is closed, so the glance keeps up. The registration
+    // outlives the app; repeating it on each start costs nothing and puts it
+    // back if the system ever dropped it. Some watches lack the event, and
+    // nothing here may cost the open app its own link above.
+    private function registerBackground() as Void {
+        if (!(Background has :registerForPhoneAppMessageEvent)) {
+            System.println("Link: no background phone messages on this watch");
+            return;
+        }
+        try {
+            Background.registerForPhoneAppMessageEvent();
+        } catch (e instanceof Lang.Exception) {
+            System.println("Link: background registration failed: " + e.getErrorMessage());
+        }
     }
 
     // One request waiting in the line is enough: the phone answers each one
@@ -61,25 +82,14 @@ class Link {
         } as OutboundMessage);
     }
 
-    // `v` is not checked: unknown types and keys are ignored instead, so a
-    // newer phone's snapshot still fills in everything this watch knows.
+    // Messages arrive in order here; one the background service already
+    // applied is dropped (Inbound.apply).
     function onPhoneMessage(msg as Communications.PhoneAppMessage) as Void {
-        var message = Wire.dictionary(msg.data);
-        if (message == null) {
-            return;
+        var result = Inbound.apply(msg.data);
+        if (result == Inbound.SNAPSHOT || result == Inbound.ACCOUNT_CLEARED) {
+            NutrientList.refresh();
+            WatchUi.requestUpdate();
         }
-        var type = Wire.string(message.get(Protocol.KEY_TYPE));
-        if (type == null) {
-            return;
-        }
-        if (type.equals(Protocol.TYPE_SNAPSHOT)) {
-            SnapshotStore.applySnapshot(message);
-        } else if (type.equals(Protocol.TYPE_ACCOUNT_CLEARED)) {
-            SnapshotStore.clearAll();
-        } else {
-            return;
-        }
-        WatchUi.requestUpdate();
     }
 
     private function send(message as OutboundMessage) as Void {

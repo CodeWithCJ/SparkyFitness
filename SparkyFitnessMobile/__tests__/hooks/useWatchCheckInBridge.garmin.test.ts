@@ -20,6 +20,7 @@ jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/garminSync', () => ({
   getGarminSync: jest.fn(),
   garminAccountEpoch: jest.fn(() => 0),
+  stopGarminWhenDisabled: jest.fn(() => Promise.resolve()),
 }));
 jest.mock('../../src/constants/garmin', () => ({
   isGarminWatchEnabled: jest.fn(() => true),
@@ -107,6 +108,7 @@ import {
 import {
   garminAccountEpoch,
   getGarminSync,
+  stopGarminWhenDisabled,
   type GarminSync,
 } from '../../src/services/garminSync';
 import { syncWatchServerCredentials } from '../../src/services/watchServerCredentials';
@@ -375,6 +377,18 @@ describe('subscribeGarminSync', () => {
 
     expect(watch.addListener).not.toHaveBeenCalled();
     expect(garmin.start).not.toHaveBeenCalled();
+  });
+
+  test('turns a leftover native link off once at startup, not on each foreground', async () => {
+    // A release install: the sync is off, but a development build may have
+    // left the native flag that starts the link without JS.
+    mockedGetGarminSync.mockReturnValue(null);
+
+    subscribeGarminSync();
+    await foreground();
+    await foreground();
+
+    expect(stopGarminWhenDisabled).toHaveBeenCalledTimes(1);
   });
 
   test('Garmin Connect installed while the app ran is picked up on the next foreground', async () => {

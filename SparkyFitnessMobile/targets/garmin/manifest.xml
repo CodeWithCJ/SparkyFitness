@@ -10,6 +10,8 @@
             <iq:product id="fenix843mm"/>
         </iq:products>
         <iq:permissions>
+            <!-- Background: the service that applies phone messages while the app is closed. -->
+            <iq:uses-permission id="Background"/>
             <iq:uses-permission id="Communications"/>
         </iq:permissions>
         <!-- English only for now; other languages come later through Weblate. -->

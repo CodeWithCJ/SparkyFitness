@@ -6,14 +6,17 @@ import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
 
 // When the stored figures are from. The phone stamps every snapshot with
-// `pushedAt` (epoch ms), and the watch has to show it: snapshots only reach
-// Storage while the full app runs (there is no background service yet), so
-// the glance, or a page whose phone app has gone away, can be showing figures
-// from hours ago that would otherwise pass for live ones.
+// `pushedAt` (epoch ms), and the watch has to show it: snapshots reach
+// Storage from the full app and, where the watch delivers phone messages to
+// it, from the background service (BackgroundService.mc), and nothing
+// guarantees either ran recently. So the glance, or a page whose phone app
+// has gone away, can be showing figures from hours ago that would otherwise
+// pass for live ones.
 (:glance)
 module SyncTime {
     // The Goals page says "as of" once its figures are older than this. The
-    // glance shows the time always, as nothing refreshes it on its own.
+    // glance shows the time always, as nothing guarantees it was refreshed
+    // recently.
     const STALE_AFTER_SECONDS = 15 * 60;
 
     // Epoch ms (how the phone sends times) to the watch's seconds.

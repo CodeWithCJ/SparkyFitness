@@ -99,6 +99,7 @@ import { buildGarminSnapshot } from '../utils/garminSnapshot';
 import {
   garminAccountEpoch,
   getGarminSync,
+  stopGarminWhenDisabled,
   type GarminSync,
 } from '../services/garminSync';
 import { isGarminWatchEnabled } from '../constants/garmin';
@@ -225,6 +226,12 @@ export async function sendContextToWatches(
  * neither by itself. The handlers look the sync up when they run, so they
  * follow `getGarminSync()`.
  *
+ * Where this install does not use Garmin when it subscribes (app start), the
+ * native link is also turned off once (`stopGarminWhenDisabled`): the native
+ * side may have started it on its own from a flag an earlier development
+ * build left. Not on later foregrounds, so nothing stops a link that a
+ * foreground in this run started.
+ *
  * The cleanup also forgets what every watch holds: with no listener the
  * native side replays its cache by itself, so the records may be wrong when
  * this subscribes again, and the next push is then sent in full.
@@ -232,6 +239,7 @@ export async function sendContextToWatches(
 export function subscribeGarminSync(): () => void {
   const watch = WatchConnectivity;
   if (!watch) return () => {};
+  void stopGarminWhenDisabled();
   let subscriptions: { remove: () => void }[] | null = null;
   let linked: GarminSync | null = null;
 

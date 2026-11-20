@@ -305,6 +305,46 @@ describe('GarminSettingsScreen', () => {
     ).toBeNull();
   });
 
+  test.each([
+    [
+      'binder',
+      'Garmin Connect can wake SparkyFitness to receive from your watch.',
+    ],
+    [
+      'broadcast',
+      'Keep SparkyFitness open in the background to receive from your watch.',
+    ],
+  ] as const)(
+    "a ready link with '%s' delivery says what it means",
+    async (delivery, note) => {
+      garminStatus.mockResolvedValue({ ...readyStatus, delivery });
+      renderScreen();
+
+      expect(await screen.findByTestId('garmin-delivery')).toHaveTextContent(
+        note
+      );
+    }
+  );
+
+  test('says nothing about delivery without a mode, or while not ready', async () => {
+    // A native build from before the binder delivery reports none.
+    renderScreen();
+    await screen.findByText('fenix 8');
+    expect(screen.queryByTestId('garmin-delivery')).toBeNull();
+
+    act(() => {
+      statusListener?.({ ...readyStatus, delivery: 'none' });
+    });
+    expect(screen.queryByTestId('garmin-delivery')).toBeNull();
+
+    // A mode left over from before the link went down is not shown.
+    act(() => {
+      statusListener?.({ state: 'starting', devices: [], delivery: 'binder' });
+    });
+    expect(screen.getByText('Connecting to Garmin Connect…')).toBeTruthy();
+    expect(screen.queryByTestId('garmin-delivery')).toBeNull();
+  });
+
   test('says no watch was found only once the link is ready', async () => {
     garminStatus.mockResolvedValue({ state: 'starting', devices: [] });
     renderScreen();

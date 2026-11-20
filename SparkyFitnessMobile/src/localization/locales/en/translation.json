@@ -7249,6 +7249,8 @@
     "linkBindTimeoutHint": "Garmin Connect is not answering. Open it once, then come back here. SparkyFitness keeps trying to reach it.",
     "linkUnavailable": "Garmin Connect is not available",
     "linkUnavailableHint": "Install Garmin Connect on this phone and pair your watch there.",
+    "deliveryBinder": "Garmin Connect can wake SparkyFitness to receive from your watch.",
+    "deliveryBroadcast": "Keep SparkyFitness open in the background to receive from your watch.",
     "watchesTitle": "Watches",
     "noWatches": "No Garmin watch found. Pair your watch in the Garmin Connect app.",
     "unnamedWatch": "Garmin watch",

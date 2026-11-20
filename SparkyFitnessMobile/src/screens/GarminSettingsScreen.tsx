@@ -136,6 +136,36 @@ function linkStateHint(
   }
 }
 
+/**
+ * What the link's delivery mode means for the person, once it is ready. With
+ * the binder delivery Garmin Connect starts SparkyFitness to hand it a watch
+ * message; in broadcast mode (no approval from Garmin yet, an older Garmin
+ * Connect) only a running app receives, so the watch is answered only while
+ * SparkyFitness stays open in the background. Broadcast is also reported
+ * while Garmin Connect may still hold a registration the link has not probed
+ * again yet (no watch connected when it became ready, or a slow probe), when
+ * the hint says more than is needed, never less. `none`, a native build that
+ * does not report it, and a mode a newer one adds say nothing.
+ */
+function deliveryHint(
+  t: TFunction,
+  delivery: GarminStatus['delivery']
+): string | null {
+  if (delivery === 'binder') {
+    return t('garminSettings.deliveryBinder', {
+      defaultValue:
+        'Garmin Connect can wake SparkyFitness to receive from your watch.',
+    });
+  }
+  if (delivery === 'broadcast') {
+    return t('garminSettings.deliveryBroadcast', {
+      defaultValue:
+        'Keep SparkyFitness open in the background to receive from your watch.',
+    });
+  }
+  return null;
+}
+
 function appStateLabel(t: TFunction, app: GarminDevice['app']): string {
   switch (app) {
     case 'installed':
@@ -239,6 +269,8 @@ const GarminSettingsScreen: React.FC<GarminSettingsScreenProps> = () => {
     status?.state ??
     (WatchConnectivity?.garminStatus ? 'starting' : 'unavailable');
   const hint = linkStateHint(t, linkState, status?.error);
+  const deliveryNote =
+    linkState === 'ready' ? deliveryHint(t, status?.delivery) : null;
   const devices = status?.devices ?? [];
   // While the link is not ready its list is empty because nothing has been
   // read yet, not because there is no watch; the link card says why.
@@ -270,6 +302,14 @@ const GarminSettingsScreen: React.FC<GarminSettingsScreenProps> = () => {
           </Text>
           {hint ? (
             <Text className="text-text-secondary text-sm">{hint}</Text>
+          ) : null}
+          {deliveryNote ? (
+            <Text
+              testID="garmin-delivery"
+              className="text-text-secondary text-sm"
+            >
+              {deliveryNote}
+            </Text>
           ) : null}
         </View>
 

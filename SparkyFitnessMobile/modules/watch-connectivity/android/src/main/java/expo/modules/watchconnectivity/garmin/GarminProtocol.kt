@@ -13,8 +13,10 @@ internal const val GARMIN_TYPE_REQUEST_CONTEXT = "requestContext"
  * The watch -> phone types the Garmin app sends; anything else is ignored.
  * The SDK's broadcast receiver is exported and does not check the sender, so
  * another app on the phone can forge a "watch" message: only these types reach
- * the shared router, never the Wear OS ones the Garmin app does not send. A new
- * write type is added here together with its watch side.
+ * the shared router, never the Wear OS ones the Garmin app does not send. The
+ * binder service only accepts calls signed by Garmin, but its messages pass the
+ * same list, since the link can be in either mode. A new write type is added
+ * here together with its watch side.
  */
 internal val GARMIN_INBOUND_TYPES = setOf(GARMIN_TYPE_REQUEST_CONTEXT)
 
@@ -26,10 +28,63 @@ internal val GARMIN_INBOUND_TYPES = setOf(GARMIN_TYPE_REQUEST_CONTEXT)
 internal const val GARMIN_SNAPSHOT_CACHE_KEY = "sparky.garmin.lastSnapshot"
 
 /**
+ * The app's install time (`PackageInfo.firstInstallTime`) when the cached
+ * snapshot was written. Android's backup and device transfer copy the
+ * preferences to a reinstall or a new phone, where no account is signed in
+ * yet; a cache from another install is read as empty, so it is never
+ * replayed to a watch there.
+ */
+internal const val GARMIN_SNAPSHOT_INSTALL_KEY = "sparky.garmin.lastSnapshotInstall"
+
+/**
  * Half of the 16 KB mailbox limit: the watch parses each message into memory,
  * and the Goals topic is a few hundred bytes.
  */
 internal const val GARMIN_MESSAGE_BYTE_CAP = 8 * 1024
+
+/**
+ * Keys the link adds to every message as it hands it to the SDK: the send
+ * number ([GarminSendSequence]) and the phone install that numbered it
+ * ([GarminSendSequence.newOrigin]). The watch drops a message from the same
+ * origin whose number is not above the last one it applied.
+ */
+internal const val GARMIN_KEY_SEQ = "seq"
+internal const val GARMIN_KEY_ORIGIN = "origin"
+
+/**
+ * Room kept under [GARMIN_MESSAGE_BYTE_CAP] for those two keys and values,
+ * since [GarminOutboundMessage.fits] is decided before they are added.
+ */
+internal const val GARMIN_STAMP_BYTES = 64
+
+/** The estimated size a message may have before `seq` and `origin`. */
+internal const val GARMIN_SEND_CAP_BYTES = GARMIN_MESSAGE_BYTE_CAP - GARMIN_STAMP_BYTES
+
+/**
+ * The `seq` each message carries: one more than the last, or the clock in ms
+ * when that is higher. The link stores it (synchronously) before the message
+ * goes out, so within one origin it only rises, across process starts and
+ * whatever the clock does. The watch can then drop a copy it gets again or
+ * late (the watch may hand a message to both the open app and its background
+ * service, or the open app's mailbox may hold what the service already
+ * applied). Following the clock keeps the numbers readable as a time.
+ */
+internal object GarminSendSequence {
+  fun next(last: Long, nowMillis: Long): Long = maxOf(last + 1, nowMillis)
+
+  /**
+   * A new install's origin: random. The link keeps it with the app's install
+   * time and makes a new one when that differs, so a reinstall or another
+   * phone (whose preferences Android may have restored from a backup or a
+   * transfer) never shares a numbering with the one the watch knows; cleared
+   * data loses it anyway.
+   */
+  fun newOrigin(): String = java.util.UUID.randomUUID().toString().replace("-", "").take(12)
+
+  /** Whether an origin stored with [storedInstall] belongs to this install. */
+  fun originIsCurrent(origin: String?, storedInstall: Long, currentInstall: Long?): Boolean =
+    !origin.isNullOrEmpty() && (currentInstall == null || storedInstall == currentInstall)
+}
 
 /** How one `sendGarminMessage` ended; [wire] is the string JS receives. */
 internal enum class GarminSendResult(val wire: String) {
@@ -95,11 +150,25 @@ internal object GarminResyncPolicy {
    * not whether the runtime is up. JS listens whenever the Garmin feature is
    * on, server reachable or not, and then decides every answer, `accountCleared`
    * for a signed-out phone included. An event emitted with no listener is
-   * lost, so a runtime without one (the feature off, or no JS runtime at all)
-   * gets the cached copy like a stopped one.
+   * lost, so with none (the feature off, or no JS runtime at all) the link
+   * answers itself, as below.
+   *
+   * [jsHasListened] is whether JS has listened at all since the process
+   * started. Until then only a watch that asked is answered: the link starts
+   * at every process start with the link turned on, background starts
+   * included (a widget, an alarm, a job), and replaying the snapshot to every
+   * connected watch on each of those would wake them for nothing. A watch
+   * that needs data asks (`requestContext`), and JS sends in full to a watch
+   * it has no record of once it runs.
    */
-  fun decide(jsListening: Boolean, reason: GarminResyncReason, hasCache: Boolean): GarminResyncAction = when {
+  fun decide(
+    jsListening: Boolean,
+    jsHasListened: Boolean,
+    reason: GarminResyncReason,
+    hasCache: Boolean
+  ): GarminResyncAction = when {
     jsListening -> GarminResyncAction.EMIT_TO_JS
+    !jsHasListened && reason != GarminResyncReason.REQUESTED -> GarminResyncAction.NOTHING
     hasCache -> GarminResyncAction.REPLAY_CACHE
     // A watch that only reconnected keeps what it shows; one that asked gets
     // an answer, as before the split.
@@ -128,9 +197,12 @@ internal object GarminAppStatePolicy {
 }
 
 /**
- * A message as it goes to `ConnectIQ.sendMessage`: values cleaned by
- * [GarminWire], keys exactly as given (JS builds `type` and `v`), and its
- * estimated serialised size worked out once, off the main thread.
+ * A message as JS (or the link) built it: values cleaned by [GarminWire], keys
+ * exactly as given (JS builds `type` and `v`), and its estimated serialised
+ * size worked out once (off the main thread for JS's messages; the link's
+ * small `accountCleared` on it). It goes to
+ * `ConnectIQ.sendMessage` with `seq` and `origin` added ([sentAs]), which the
+ * size check leaves room for ([GARMIN_SEND_CAP_BYTES]).
  */
 internal class GarminOutboundMessage private constructor(
   val message: LinkedHashMap<String, Any>,
@@ -138,7 +210,14 @@ internal class GarminOutboundMessage private constructor(
 ) {
   val type: String? get() = message["type"] as? String
 
-  fun fits(capBytes: Int = GARMIN_MESSAGE_BYTE_CAP): Boolean = estimatedBytes <= capBytes
+  fun fits(capBytes: Int = GARMIN_SEND_CAP_BYTES): Boolean = estimatedBytes <= capBytes
+
+  /** The message as handed to the SDK, with its send number and origin. */
+  fun sentAs(seq: Long, origin: String): Map<String, Any> =
+    LinkedHashMap(message).apply {
+      put(GARMIN_KEY_SEQ, seq)
+      put(GARMIN_KEY_ORIGIN, origin)
+    }
 
   /** The cleaned message as JSON, for the SharedPreferences cache. */
   fun toJson(): String = GarminWire.toJson(message).toString()
@@ -159,8 +238,8 @@ internal class GarminOutboundMessage private constructor(
       }
     }
 
-    /** A message the link sends on its own (`accountCleared`). */
-    fun control(type: String): GarminOutboundMessage =
-      prepare(linkedMapOf("type" to type, "v" to GARMIN_PROTOCOL_VERSION))
+    /** The `accountCleared` the link sends on its own. */
+    fun accountCleared(): GarminOutboundMessage =
+      prepare(linkedMapOf("type" to GARMIN_TYPE_ACCOUNT_CLEARED, "v" to GARMIN_PROTOCOL_VERSION))
   }
 }

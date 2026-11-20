@@ -84,36 +84,60 @@ class GarminProtocolTest {
       for (hasCache in listOf(true, false)) {
         assertEquals(
           GarminResyncAction.EMIT_TO_JS,
-          GarminResyncPolicy.decide(jsListening = true, reason = reason, hasCache = hasCache)
+          GarminResyncPolicy.decide(jsListening = true, jsHasListened = true, reason = reason, hasCache = hasCache)
         )
       }
     }
   }
 
   @Test
-  fun withoutAListenerTheCacheIsReplayedForEveryReason() {
+  fun onceJsHasListenedTheCacheIsReplayedForEveryReasonWithoutAListener() {
     for (reason in GarminResyncReason.entries) {
       assertEquals(
         GarminResyncAction.REPLAY_CACHE,
-        GarminResyncPolicy.decide(jsListening = false, reason = reason, hasCache = true)
+        GarminResyncPolicy.decide(jsListening = false, jsHasListened = true, reason = reason, hasCache = true)
       )
     }
   }
 
   @Test
   fun withoutAListenerOrCacheOnlyARequestIsAnswered() {
+    for (jsHasListened in listOf(true, false)) {
+      assertEquals(
+        GarminResyncAction.SEND_ACCOUNT_CLEARED,
+        GarminResyncPolicy.decide(
+          jsListening = false,
+          jsHasListened = jsHasListened,
+          reason = GarminResyncReason.REQUESTED,
+          hasCache = false
+        )
+      )
+      for (reason in listOf(GarminResyncReason.CONNECTED, GarminResyncReason.READY)) {
+        assertEquals(
+          GarminResyncAction.NOTHING,
+          GarminResyncPolicy.decide(jsListening = false, jsHasListened = jsHasListened, reason = reason, hasCache = false)
+        )
+      }
+    }
+  }
+
+  @Test
+  fun beforeJsHasListenedOnlyAWatchThatAskedGetsTheCache() {
     assertEquals(
-      GarminResyncAction.SEND_ACCOUNT_CLEARED,
-      GarminResyncPolicy.decide(jsListening = false, reason = GarminResyncReason.REQUESTED, hasCache = false)
+      GarminResyncAction.REPLAY_CACHE,
+      GarminResyncPolicy.decide(
+        jsListening = false,
+        jsHasListened = false,
+        reason = GarminResyncReason.REQUESTED,
+        hasCache = true
+      )
     )
-    assertEquals(
-      GarminResyncAction.NOTHING,
-      GarminResyncPolicy.decide(jsListening = false, reason = GarminResyncReason.CONNECTED, hasCache = false)
-    )
-    assertEquals(
-      GarminResyncAction.NOTHING,
-      GarminResyncPolicy.decide(jsListening = false, reason = GarminResyncReason.READY, hasCache = false)
-    )
+    for (reason in listOf(GarminResyncReason.CONNECTED, GarminResyncReason.READY)) {
+      assertEquals(
+        GarminResyncAction.NOTHING,
+        GarminResyncPolicy.decide(jsListening = false, jsHasListened = false, reason = reason, hasCache = true)
+      )
+    }
   }
 
   @Test
@@ -204,7 +228,7 @@ class GarminProtocolTest {
 
   @Test
   fun theAccountClearedMessageIsTypeAndVersionOnly() {
-    val message = GarminOutboundMessage.control(GARMIN_TYPE_ACCOUNT_CLEARED)
+    val message = GarminOutboundMessage.accountCleared()
     assertEquals(mapOf("type" to "accountCleared", "v" to 1), message.message)
     assertTrue(message.fits())
   }
@@ -214,10 +238,59 @@ class GarminProtocolTest {
     // JS sends it through sendGarminMessage on a resync while signed out;
     // `ReadableMap.toHashMap` hands `v` over as a Double.
     val fromJs = GarminOutboundMessage.prepare(hashMapOf<String, Any?>("type" to "accountCleared", "v" to 1.0))
-    val own = GarminOutboundMessage.control(GARMIN_TYPE_ACCOUNT_CLEARED)
+    val own = GarminOutboundMessage.accountCleared()
     assertEquals(own.message, fromJs.message)
     assertEquals(own.estimatedBytes, fromJs.estimatedBytes)
     assertEquals(GARMIN_TYPE_ACCOUNT_CLEARED, fromJs.type)
+  }
+
+  @Test
+  fun eachSendCarriesItsNumberAndOriginWithoutChangingTheMessage() {
+    val message = GarminOutboundMessage.accountCleared()
+    val origin = GarminSendSequence.newOrigin()
+    val sent = message.sentAs(Long.MAX_VALUE, origin)
+    assertEquals(
+      mapOf("type" to "accountCleared", "v" to 1, "seq" to Long.MAX_VALUE, "origin" to origin),
+      sent
+    )
+    assertEquals(mapOf("type" to "accountCleared", "v" to 1), message.message)
+    // The room kept for them covers their real size.
+    val bare = GarminWire.estimateSerializedBytes(message.message)
+    val numbered = GarminWire.estimateSerializedBytes(sent)
+    assertTrue(numbered - bare <= GARMIN_STAMP_BYTES)
+    assertEquals(GARMIN_MESSAGE_BYTE_CAP - GARMIN_STAMP_BYTES, GARMIN_SEND_CAP_BYTES)
+  }
+
+  @Test
+  fun eachInstallGetsItsOwnOrigin() {
+    val a = GarminSendSequence.newOrigin()
+    val b = GarminSendSequence.newOrigin()
+    assertEquals(12, a.length)
+    assertTrue(a != b)
+  }
+
+  @Test
+  fun anOriginRestoredFromAnotherInstallIsNotKept() {
+    assertTrue(GarminSendSequence.originIsCurrent("abc", 1_000L, 1_000L))
+    // Android restored or copied the preferences: another install time.
+    assertFalse(GarminSendSequence.originIsCurrent("abc", 1_000L, 2_000L))
+    // Stored before the install time was (0 = none stored).
+    assertFalse(GarminSendSequence.originIsCurrent("abc", 0L, 2_000L))
+    // The install time cannot be read: keep it.
+    assertTrue(GarminSendSequence.originIsCurrent("abc", 0L, null))
+    assertFalse(GarminSendSequence.originIsCurrent("", 1_000L, 1_000L))
+    assertFalse(GarminSendSequence.originIsCurrent(null, 1_000L, 1_000L))
+  }
+
+  @Test
+  fun theSendNumberOnlyRises() {
+    assertEquals(1_000L, GarminSendSequence.next(0L, 1_000L))
+    // Several sends within one millisecond.
+    assertEquals(1_001L, GarminSendSequence.next(1_000L, 1_000L))
+    // The clock went back: the number still rises.
+    assertEquals(5_001L, GarminSendSequence.next(5_000L, 1_000L))
+    // A stored value lost: the clock keeps it ahead of the last one sent.
+    assertEquals(9_000L, GarminSendSequence.next(0L, 9_000L))
   }
 
   @Test

@@ -4,10 +4,11 @@ import Toybox.WatchUi;
 
 // The glance: today's calories left (or over) with a calorie-coloured bar,
 // and "as of" the time those figures are from. It runs in its own small
-// process and only reads what the app stored; it never talks to the phone.
-// Until a background service exists, a snapshot only reaches Storage while
-// the full app runs, so the glance shows what the app last received, never
-// fresher.
+// process and only reads what was stored; it never talks to the phone.
+// Storage is filled by the full app and, where the watch delivers phone
+// messages to it, by the background service (BackgroundService.mc), which
+// is not reliable on every watch: the "as of" time says how old the figures
+// are either way, and the app redraws this through onStorageChanged.
 (:glance)
 class GoalsGlanceView extends WatchUi.GlanceView {
     function initialize() {
@@ -29,8 +30,10 @@ class GoalsGlanceView extends WatchUi.GlanceView {
         var lineHeight = dc.getFontHeight(font);
         var title = WatchUi.loadResource(Rez.Strings.AppName) as String;
 
-        // Only opening the app on the watch fills Storage, so that is where
-        // the prompt sends the wearer, not to the phone.
+        // Opening the app on the watch is the one sure way to fill Storage
+        // (it asks the phone; the background service only gets what the
+        // phone sends on its own), so that is where the prompt sends the
+        // wearer, not to the phone.
         if (today == null) {
             var prompt = WatchUi.loadResource(Rez.Strings.GlanceOpenOnWatch) as String;
             var promptText = Graphics.fitTextToArea(prompt, font, width, lineHeight * 2, true);

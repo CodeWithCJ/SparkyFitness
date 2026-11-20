@@ -46,6 +46,24 @@ private const val INITIALIZE_TIMEOUT_MS = 20_000L
 // A start skips a backed-off retry at most this often (see retryNowIfBackedOff).
 private const val IMMEDIATE_RETRY_MIN_INTERVAL_MS = 30_000L
 
+/**
+ * How long the binder probe waits for anything to arrive through the binder
+ * service (the app info answer takes a Bluetooth round trip to the watch)
+ * before the link goes back to broadcasts.
+ */
+private const val BINDER_PROBE_TIMEOUT_MS = 15_000L
+
+/**
+ * The link's own switches, apart from the module's larger preferences file:
+ * the enabled flag is read on the main thread inside Application.onCreate.
+ */
+private const val LINK_PREFS_NAME = "sparky_garmin_link"
+private const val ENABLED_KEY = "enabled"
+private const val BINDER_RECORD_KEY = "binderRecord"
+private const val SEND_SEQ_KEY = "sendSeq"
+private const val SEND_ORIGIN_KEY = "sendOrigin"
+private const val SEND_INSTALL_KEY = "sendInstall"
+
 private enum class LinkState(val wire: String) {
   UNAVAILABLE("unavailable"),
   STARTING("starting"),
@@ -94,6 +112,9 @@ private class InFlight(
   var handedToSdk = false
 }
 
+/** A binder registration waiting for its first delivery; [timeout] goes back to broadcasts. */
+private class BinderProbe(val startedAt: Long, val timeout: Runnable)
+
 /**
  * The phone side of the Garmin bridge (`agent-docs/garmin.md`, "Phone side").
  *
@@ -103,17 +124,26 @@ private class InFlight(
  * transport), so the link never builds, diffs or splits a snapshot. When a
  * watch needs everything again it tells JS (`onGarminResync`); only while
  * nothing in JS listens for that does it answer the watch itself, with the
- * cached message as is.
+ * cached message as is, and before JS has listened in this process only a
+ * watch that asked ([GarminResyncPolicy]).
  *
- * Nothing starts on its own: JS calls `startGarmin` (through [startFromJs])
- * only in builds where the Garmin feature is on, which keeps the SDK, and the
- * exported broadcast receiver it registers in this mode, off every other
- * install. Until then the status reads unavailable and every send fails.
+ * JS calls `startGarmin` (through [startFromJs]) only in builds where the
+ * Garmin feature is on, which keeps the SDK, and the exported broadcast
+ * receiver it registers, off every other install. That call is remembered,
+ * so a later process starts the link before any JS ([startAtProcessStart]),
+ * until JS calls `stopGarmin` ([stop]). Until a start the status reads
+ * unavailable and every send fails.
  *
- * Connect IQ's `initialize` needs a Looper and its broadcast receiver calls
- * back on the main thread, and the SDK keeps its listeners in plain HashMaps,
- * so every SDK call and all of this object's state stay on the main thread.
- * Cleaning values, size estimates and SharedPreferences run on [worker].
+ * Delivery (`agent-docs/garmin.md`, "Binder delivery"): once the SDK is ready
+ * the link tries Garmin's binder service, which lets Garmin Connect start
+ * this process to deliver, and keeps it only when something actually arrives
+ * through it ([startBinderProbe]); otherwise it stays on broadcasts.
+ *
+ * Connect IQ's `initialize` needs a Looper, its broadcast receiver calls back
+ * on the main thread, and the SDK keeps its listeners in plain HashMaps, so
+ * every SDK call and all of this object's state stay on the main thread
+ * (binder-service callbacks come on a binder thread and are posted there).
+ * Cleaning values, size estimates and the snapshot cache run on [worker].
  */
 internal object GarminLink {
   private val main = Handler(Looper.getMainLooper())
@@ -125,7 +155,8 @@ internal object GarminLink {
   private val started = AtomicBoolean(false)
 
   @Volatile
-  private var currentStatus: Map<String, Any?> = statusMap(LinkState.UNAVAILABLE, null, emptyList())
+  private var currentStatus: Map<String, Any?> =
+    statusMap(LinkState.UNAVAILABLE, null, emptyList(), GarminDelivery.NONE)
 
   // Main thread only from here down.
   private var appContext: Context? = null
@@ -134,6 +165,13 @@ internal object GarminLink {
   /** Bumped on every (re)initialize so a replaced SDK's late callbacks are ignored. */
   private var sdkGeneration = 0
   private var sdkReady = false
+
+  /**
+   * The current SDK instance called onSdkReady, so calls that need an
+   * initialised SDK, unregistering binder delivery among them, can run.
+   * Unlike [sdkReady] it is set before the cache wait and the probe.
+   */
+  private var sdkBound = false
   private var state = LinkState.UNAVAILABLE
   private var error: String? = null
   private var retryAttempt = 0
@@ -142,10 +180,71 @@ internal object GarminLink {
   private var lastRefreshAt = 0L
 
   /**
+   * The current SDK instance was switched to binder delivery
+   * (`registerAppToUseBinderService`): its broadcast receiver is gone and
+   * messages reach [binderAppListener]. Reported as `binder` only once the
+   * probe confirmed it, since the link is not ready before then.
+   */
+  private var binderMode = false
+  private var binderProbe: BinderProbe? = null
+
+  /** What the last binder attempt showed; read when the link starts. */
+  private var binderRecord: GarminBinderRecord? = null
+
+  /**
+   * A probe in this start of the link only timed out after an earlier
+   * confirmation, and the registration was kept ([revertToBroadcast]). The
+   * next probe waits for the next start, so a watch busy for a minute cannot
+   * run up three timeouts (a rejection) within one start. Cleared when the
+   * link starts again or becomes unavailable, and when something arrives
+   * through the binder meanwhile ([onBinderDelivery]), after which the next
+   * time the SDK is ready probes again.
+   */
+  private var binderProbeDeferred = false
+
+  /**
+   * The snapshot cache has been read since the process started. onSdkReady
+   * waits for it ([readyAwaitingCache]) because the SDK can be started on the
+   * main thread before the read on [worker] lands, and a resync must not take
+   * "not read yet" for "signed out".
+   */
+  private var cacheLoaded = false
+  private var readyAwaitingCache = false
+
+  /**
+   * The `seq` of the last message handed to the SDK ([GarminSendSequence])
+   * and this install's `origin`, both kept in the link's preferences so the
+   * numbering keeps rising across process starts. Loaded when the link
+   * starts, before anything can be sent.
+   */
+  private var lastWireSeq = 0L
+  private var wireOrigin: String? = null
+
+  /**
+   * Watches that sent `requestContext` before the SDK was ready (Garmin
+   * Connect delivers through the binder service as soon as it has bound it,
+   * which is how it wakes this process). The ready resync answers them as a
+   * request rather than a plain `ready`.
+   */
+  private val pendingRequests = HashSet<Long>()
+
+  /**
    * The module whose JS has an `onGarminResync` listener, kept by Expo's
    * OnStartObserving/OnStopObserving for that event ([setResyncListening]).
    */
   private var resyncListener: WatchConnectivityModule? = null
+
+  /**
+   * JS has listened for `onGarminResync` at least once since the process
+   * started; until then a resync answers only a watch that asked.
+   */
+  private var jsHasListened = false
+
+  /**
+   * `stopGarmin` calls waiting for the SDK to bind so that binder delivery
+   * can be unregistered first ([stop]); answered when the link is unavailable.
+   */
+  private var pendingStop: MutableList<() -> Unit>? = null
 
   private val devices = LinkedHashMap<Long, DeviceEntry>()
 
@@ -192,22 +291,103 @@ internal object GarminLink {
   /**
    * Starts the link if Garmin Connect is installed; safe to call again.
    * Returns whether Garmin Connect is installed.
+   *
+   * Called on the main thread, it initialises the SDK before returning. At
+   * process start that must happen inside Application.onCreate: when Garmin
+   * Connect started the process to deliver through the binder service, it
+   * hands the message over as soon as the service is bound, which is the next
+   * thing the main thread does, and the SDK drops a message that arrives
+   * before it is initialised with a listener set.
    */
   private fun start(context: Context): Boolean {
     val appCtx = context.applicationContext
     if (!isGarminConnectInstalled(appCtx)) return false
     if (!started.compareAndSet(false, true)) return true
-    currentStatus = statusMap(LinkState.STARTING, null, emptyList())
+    currentStatus = statusMap(LinkState.STARTING, null, emptyList(), GarminDelivery.NONE)
     worker.execute {
       val stored = readCache(appCtx)
       main.post {
-        appContext = appCtx
         cached = stored.message
         cacheUnreadable = stored.failed
-        initialize()
+        markCacheLoaded()
       }
     }
+    val begin = Runnable {
+      appContext = appCtx
+      // The origin first: a new one (another install) starts its numbering
+      // afresh and forgets a binder record restored with the preferences.
+      if (wireOrigin == null) wireOrigin = readOrCreateWireOrigin(appCtx)
+      lastWireSeq = maxOf(lastWireSeq, readWireSeq(appCtx))
+      binderRecord = readBinderRecord(appCtx)
+      binderProbeDeferred = false
+      initialize()
+    }
+    if (isMainThread()) begin.run() else main.post(begin)
     return true
+  }
+
+  /**
+   * Starts the link at process start, before any JS, when the last word from
+   * JS was `startGarmin` rather than `stopGarmin` and Garmin Connect is
+   * installed (`WatchConnectivityPackage`). A process Garmin Connect started
+   * to deliver a message then has the SDK and its listener in place; while JS
+   * is not running, a request is answered from the cache and other messages
+   * go to the hub's inbound queue, as for any message without JS. Nothing is
+   * pushed to a watch that did not ask until JS has listened, so a background
+   * start (a widget, an alarm, a job) leaves the watches alone. Never throws:
+   * it runs inside Application.onCreate.
+   */
+  fun startAtProcessStart(context: Context) {
+    try {
+      val appCtx = context.applicationContext
+      if (!linkPrefs(appCtx).getBoolean(ENABLED_KEY, false)) return
+      start(appCtx)
+    } catch (e: Throwable) {
+      Log.w(TAG, "Garmin link not started at process start: ${e.message}")
+    }
+  }
+
+  /**
+   * `stopGarmin`: turns the link off and forgets that JS turned it on, so a
+   * later process start leaves the SDK alone. When binder delivery is on, or
+   * the stored record says Garmin Connect may hold a registration from an
+   * earlier attempt ([GarminBinderPolicy.mayHoldRegistration]), it is
+   * unregistered first so Garmin Connect stops waking the process, and the
+   * record is cleared so the next start probes again. That needs a bound SDK:
+   * a stop while the SDK is still binding waits for onSdkReady, at most until
+   * the init watchdog ([INITIALIZE_TIMEOUT_MS]), and one while a retry is
+   * backed off binds again first. The snapshot cache is kept (signing out
+   * clears it). [onDone] runs on the main thread. Without [context] it uses
+   * the one the link started with.
+   *
+   * Best effort: Garmin Connect never confirms the one-way unregister, and
+   * only a stop in a process where the link runs sends it. When the SDK does
+   * not bind in time, or the call throws, the record is kept, but with the
+   * flag cleared nothing sends it again until the link is started and
+   * stopped once more.
+   */
+  fun stop(context: Context?, onDone: () -> Unit) {
+    val appCtx = context?.applicationContext
+    main.post {
+      val ctx = appCtx ?: appContext
+      if (ctx != null) setEnabled(ctx, false)
+      val waiting = pendingStop
+      if (waiting != null) {
+        waiting.add(onDone)
+        return@post
+      }
+      if (!started.get() && connectIQ == null) {
+        onDone()
+        return@post
+      }
+      val unregister = binderMayBeRegistered()
+      if (unregister && !sdkBound && bindForUnregister()) {
+        pendingStop = mutableListOf(onDone)
+        return@post
+      }
+      becomeUnavailable(unregisterBinder = unregister)
+      onDone()
+    }
   }
 
   /**
@@ -223,8 +403,15 @@ internal object GarminLink {
    * Connect and came back sees it work at once instead of minutes later.
    */
   fun startFromJs(context: Context, onStatus: (Map<String, Any?>) -> Unit) {
-    start(context)
+    val appCtx = context.applicationContext
+    start(appCtx)
     main.post {
+      // A stop still waiting for the SDK is overtaken: the link stays on and
+      // the stop is answered as it is.
+      answerPendingStop()
+      // Remembered for the next process start (startAtProcessStart), whether
+      // or not Garmin Connect is installed now.
+      setEnabled(appCtx, true)
       retryNowIfBackedOff()
       refreshFromJs(force = true)
       onStatus(currentStatus)
@@ -239,12 +426,14 @@ internal object GarminLink {
 
   /**
    * Whether [module]'s JS has an `onGarminResync` listener. Without one a
-   * resync replays the cache instead of being emitted to nobody.
+   * resync replays the cache instead of being emitted to nobody, once JS has
+   * listened in this process ([jsHasListened]).
    */
   fun setResyncListening(module: WatchConnectivityModule, listening: Boolean) {
     main.post {
       if (listening) {
         resyncListener = module
+        jsHasListened = true
       } else if (resyncListener === module) {
         resyncListener = null
       }
@@ -252,11 +441,12 @@ internal object GarminLink {
   }
 
   /**
-   * Sends [raw] to one watch exactly as given, once its values are cleaned
-   * for Connect IQ. [onResult] gets the outcome once, on any thread. Messages
+   * Sends [raw] to one watch as given, once its values are cleaned for
+   * Connect IQ, with `seq` and `origin` added at send time. [onResult] gets the outcome once, on any thread. Messages
    * go out one at a time across all watches, in the order they arrive; one
-   * over the cap is answered `tooLarge` without reaching the SDK. Before
-   * `startGarmin` it is answered `failed`.
+   * over the cap is answered `tooLarge` without reaching the SDK. Until the
+   * link is started (`startGarmin`, or the process start with the link turned
+   * on) it is answered `failed`.
    */
   fun sendMessage(
     deviceId: String,
@@ -324,8 +514,15 @@ internal object GarminLink {
         val editor = prefs(appCtx).edit()
         if (outbound != null) {
           editor.putString(GARMIN_SNAPSHOT_CACHE_KEY, outbound.toJson())
+          val install = ownInstallTime(appCtx)
+          if (install != null) {
+            editor.putLong(GARMIN_SNAPSHOT_INSTALL_KEY, install)
+          } else {
+            editor.remove(GARMIN_SNAPSHOT_INSTALL_KEY)
+          }
         } else {
           editor.remove(GARMIN_SNAPSHOT_CACHE_KEY)
+          editor.remove(GARMIN_SNAPSHOT_INSTALL_KEY)
         }
         editor.apply()
       } catch (e: Throwable) {
@@ -336,6 +533,7 @@ internal object GarminLink {
       main.post {
         cached = outbound
         cacheUnreadable = false
+        markCacheLoaded()
       }
       onDone(failure)
     }
@@ -365,18 +563,19 @@ internal object GarminLink {
     val appCtx = context.applicationContext
     worker.execute {
       try {
-        prefs(appCtx).edit().remove(GARMIN_SNAPSHOT_CACHE_KEY).apply()
+        prefs(appCtx).edit().remove(GARMIN_SNAPSHOT_CACHE_KEY).remove(GARMIN_SNAPSHOT_INSTALL_KEY).apply()
       } catch (e: Throwable) {
         Log.w(TAG, "Failed to delete the Garmin snapshot: ${e.message}")
       }
       main.post {
         cached = null
         cacheUnreadable = false
+        markCacheLoaded()
         // Whatever still waits carries the previous account's data.
         failQueued(GarminSendResult.FAILED) { it.outbound.type != GARMIN_TYPE_ACCOUNT_CLEARED }
         if (sdkReady) {
           for (entry in devices.values) {
-            if (entry.connected) enqueueControl(entry.id, GARMIN_TYPE_ACCOUNT_CLEARED, front = false)
+            if (entry.connected) enqueueAccountCleared(entry.id, front = false)
           }
         }
         pump()
@@ -388,7 +587,7 @@ internal object GarminLink {
   /**
    * Shows Garmin's "open app" prompt on the watch. [onResult] gets one of
    * promptShown, promptNotShown, notInstalled, alreadyRunning, failed or
-   * noDevice, on the main thread; failed before `startGarmin`.
+   * noDevice, on the main thread; failed until the link is started.
    */
   fun openApp(deviceId: String, onResult: (String) -> Unit) {
     main.post {
@@ -419,7 +618,7 @@ internal object GarminLink {
       main.postDelayed(timeout, OPEN_APP_TIMEOUT_MS)
       try {
         ciq.openApplication(entry.device, app) { _, _, status ->
-          main.post { onOpenResponse(id, status) }
+          postFromSdk { onOpenResponse(id, status) }
         }
       } catch (e: Throwable) {
         Log.w(TAG, "openApplication failed: ${e.message}")
@@ -446,23 +645,37 @@ internal object GarminLink {
       if (generation == sdkGeneration && !sdkReady) {
         initWatchdog = null
         Log.w(TAG, "Connect IQ did not bind within $INITIALIZE_TIMEOUT_MS ms")
+        // A stop waiting to unregister goes ahead without it.
+        if (pendingStop != null) {
+          becomeUnavailable()
+          return@Runnable
+        }
         setState(LinkState.ERROR, "bindTimeout")
         scheduleReinitialize()
       }
     }
     initWatchdog = watchdog
     main.postDelayed(watchdog, INITIALIZE_TIMEOUT_MS)
-    try {
-      val ciq = ConnectIQ.getInstance(ctx, ConnectIQ.IQConnectType.WIRELESS)
-      connectIQ = ciq
-      // autoUI stays false: Garmin's install and upgrade dialogs must never
-      // reach people who do not use Garmin.
-      ciq.initialize(ctx, false, sdkListener(generation))
+    val ciq = try {
+      ConnectIQ.getInstance(ctx, ConnectIQ.IQConnectType.WIRELESS).also { instance ->
+        connectIQ = instance
+        // autoUI stays false: Garmin's install and upgrade dialogs must never
+        // reach people who do not use Garmin.
+        instance.initialize(ctx, false, sdkListener(generation))
+      }
     } catch (e: Throwable) {
       Log.w(TAG, "Connect IQ initialize failed: ${e.message}")
       cancelInitWatchdog()
       setState(LinkState.ERROR, "initializeFailed")
       scheduleReinitialize()
+      return
+    }
+    try {
+      // Set at once, not after onSdkReady (see binderAppListener). It only
+      // stores the listener in the SDK; nothing is sent to Garmin Connect.
+      ciq.registerForAppEvents(binderAppListener)
+    } catch (e: Throwable) {
+      Log.w(TAG, "Garmin binder listener not set: ${e.message}")
     }
   }
 
@@ -486,18 +699,232 @@ internal object GarminLink {
   }
 
   private fun onSdkReady() {
-    sdkReady = true
     cancelInitWatchdog()
     cancelRetry()
+    sdkBound = true
+    if (pendingStop != null) {
+      // A stop waited for this to unregister binder delivery (see stop).
+      becomeUnavailable(unregisterBinder = true)
+      return
+    }
+    if (binderMode) {
+      // Android rebound Garmin Connect's service (it restarted) to an
+      // instance already switched to the binder. Registering again on it
+      // would throw half way (the SDK unregisters its receiver a second time),
+      // so the link starts over on a fresh instance and probes again.
+      shutdownSdk()
+      initialize()
+      return
+    }
+    if (!cacheLoaded) {
+      readyAwaitingCache = true
+      return
+    }
+    if (startBinderProbe()) return
+    becomeReady()
+  }
+
+  private fun markCacheLoaded() {
+    cacheLoaded = true
+    if (readyAwaitingCache) {
+      readyAwaitingCache = false
+      onSdkReady()
+    }
+  }
+
+  private fun becomeReady() {
+    sdkReady = true
     setState(LinkState.READY, null)
     refreshDevices(sdkJustReady = true)
     pump()
   }
 
+  // ---- Binder delivery ----
+
+  /**
+   * Tries binder delivery when [GarminBinderPolicy] allows it and a watch is
+   * connected. Returns true while a probe runs: the link then stays starting
+   * (sends fail as during any start) until something arrives through the
+   * binder ([confirmBinder]) or [BINDER_PROBE_TIMEOUT_MS] passes
+   * ([revertToBroadcast]).
+   *
+   * The probe is needed because registering proves nothing. SDK 2.4.0 sends
+   * Garmin Connect a one-way call, so a registration Garmin Connect ignores
+   * (no approval yet, or a version without it) raises no error, yet the SDK
+   * has already unregistered its broadcast receiver; without the probe the
+   * link would stop hearing the watch. A connected watch is needed for an
+   * answer (its app info), so without one the link stays on broadcasts until
+   * the SDK is next ready (the next start, or a rebind after the service
+   * was lost).
+   */
+  private fun startBinderProbe(): Boolean {
+    val ctx = appContext ?: return false
+    val ciq = connectIQ ?: return false
+    val garminConnectVersion = garminConnectVersion(ctx) ?: return false
+    if (!GarminBinderPolicy.shouldAttempt(binderRecord, garminConnectVersion, System.currentTimeMillis())) {
+      return false
+    }
+    if (binderProbeDeferred) {
+      Log.i(TAG, "Garmin binder delivery not tried again until the link next starts")
+      return false
+    }
+    val connected = try {
+      ciq.knownDevices.orEmpty().filterNotNull().filter {
+        ciq.getDeviceStatus(it) == IQDevice.IQDeviceStatus.CONNECTED
+      }
+    } catch (e: Throwable) {
+      // becomeReady reads the watches again and handles a failing service.
+      return false
+    }
+    if (connected.isEmpty()) {
+      Log.i(TAG, "Garmin binder delivery not tried: no watch connected to answer the probe")
+      return false
+    }
+    Log.i(TAG, "Trying Garmin binder delivery (Garmin Connect $garminConnectVersion)")
+    try {
+      ciq.registerAppToUseBinderService(GARMIN_APP_ID)
+    } catch (e: InvalidStateException) {
+      // Thrown before the SDK changed anything: broadcasts work as before.
+      Log.w(TAG, "Garmin binder registration refused, staying on broadcasts: ${e.message}")
+      return false
+    } catch (e: ServiceUnavailableException) {
+      Log.w(TAG, "Garmin binder registration failed, staying on broadcasts: ${e.message}")
+      return false
+    } catch (e: Throwable) {
+      // Thrown after Garmin Connect was told, so the SDK may be half switched.
+      Log.w(TAG, "Garmin binder registration threw: ${e.message}")
+      binderMode = true
+      revertToBroadcast("registration threw", timedOut = false)
+      return true
+    }
+    binderMode = true
+    val timeout = Runnable {
+      if (binderProbe != null) {
+        revertToBroadcast("nothing arrived through it within $BINDER_PROBE_TIMEOUT_MS ms", timedOut = true)
+      }
+    }
+    binderProbe = BinderProbe(SystemClock.uptimeMillis(), timeout)
+    main.postDelayed(timeout, BINDER_PROBE_TIMEOUT_MS)
+    for (device in connected) {
+      try {
+        ciq.getApplicationInfo(GARMIN_APP_ID, device, appInfoListener(device.deviceIdentifier))
+      } catch (e: Throwable) {
+        Log.w(TAG, "Garmin binder probe could not ask for app info: ${e.message}")
+      }
+    }
+    return true
+  }
+
+  /**
+   * Something arrived through the binder service: a binder-thread callback
+   * ([postFromSdk]) or a message to [binderAppListener]. With a probe running
+   * that confirms it. In broadcast mode it means Garmin Connect still holds a
+   * registration (the one kept after an inconclusive probe, one from an
+   * earlier run, or one whose unregister was lost; it then delivers there
+   * whatever the SDK thinks), so the record says confirmed
+   * and the next time the SDK becomes ready tries binder delivery again,
+   * even in this start of the link ([binderProbeDeferred] no longer holds).
+   * Until then the link stays on broadcasts and reports `broadcast`.
+   */
+  private fun onBinderDelivery() {
+    if (binderProbe != null) {
+      confirmBinder()
+      return
+    }
+    if (binderMode || binderRecord?.outcome == GarminBinderOutcome.CONFIRMED) return
+    Log.i(TAG, "Garmin Connect delivered through the binder service while the link was on broadcasts")
+    binderProbeDeferred = false
+    saveBinderRecord(GarminBinderOutcome.CONFIRMED)
+  }
+
+  private fun confirmBinder() {
+    val probe = binderProbe ?: return
+    binderProbe = null
+    main.removeCallbacks(probe.timeout)
+    Log.i(TAG, "Garmin binder delivery confirmed after ${SystemClock.uptimeMillis() - probe.startedAt} ms")
+    saveBinderRecord(GarminBinderOutcome.CONFIRMED)
+    becomeReady()
+  }
+
+  /**
+   * Back to today's broadcast mode on a fresh SDK instance, remembering the
+   * failure ([GarminBinderPolicy.afterFailure]). A probe that only [timedOut]
+   * after a confirmation is tried again the next time the link starts (not
+   * in this start, unless the binder answers meanwhile:
+   * [binderProbeDeferred]), since one slow answer says nothing about
+   * approval; Garmin Connect is then not told to forget the
+   * registration, so a late answer through the binder still arrives
+   * ([onBinderDelivery]) and the watch can still wake the process. Anything
+   * else unregisters and waits a day.
+   */
+  private fun revertToBroadcast(reason: String, timedOut: Boolean) {
+    Log.w(TAG, "Garmin binder delivery not confirmed ($reason); back to broadcasts")
+    val version = appContext?.let { garminConnectVersion(it) }
+    var keepRegistration = false
+    if (version != null) {
+      val record = GarminBinderPolicy.afterFailure(binderRecord, timedOut, version, System.currentTimeMillis())
+      storeBinderRecord(record)
+      keepRegistration = record.outcome == GarminBinderOutcome.UNCONFIRMED
+    }
+    // The fresh instance's onSdkReady would otherwise probe again at once.
+    binderProbeDeferred = keepRegistration
+    shutdownSdk(unregisterBinder = !keepRegistration)
+    initialize()
+  }
+
+  /** Binder delivery is on, or Garmin Connect may hold a registration from an earlier attempt. */
+  private fun binderMayBeRegistered(): Boolean = binderMode || GarminBinderPolicy.mayHoldRegistration(binderRecord)
+
+  /**
+   * Makes sure an onSdkReady, or the init watchdog, comes for a stop that
+   * must unregister: true while an initialize is in flight, or after starting
+   * one in place of a backed-off retry. False when nothing can bind (Garmin
+   * Connect gone, initialize threw), so the stop goes ahead without it.
+   */
+  private fun bindForUnregister(): Boolean {
+    if (initWatchdog != null) return true
+    val ctx = appContext ?: return false
+    if (!isGarminConnectInstalled(ctx)) return false
+    cancelRetry()
+    shutdownSdk()
+    initialize()
+    return initWatchdog != null
+  }
+
+  private fun cancelBinderProbe() {
+    binderProbe?.let { main.removeCallbacks(it.timeout) }
+    binderProbe = null
+  }
+
+  /**
+   * SDK 2.4.0 keeps binder mode on its singleton through shutdown, so a
+   * broadcast initialize on the same instance would register a receiver its
+   * shutdown then never unregisters. Changing the connection type is the
+   * SDK's public way to replace the singleton: getInstance shuts the old one
+   * down (a shut-down one refuses, which getInstance ignores) and the
+   * TETHERED one in between is only constructed (its ADB connection starts in
+   * initialize, which never runs).
+   */
+  private fun replaceSdkInstance(ctx: Context) {
+    try {
+      ConnectIQ.getInstance(ctx, ConnectIQ.IQConnectType.TETHERED)
+      ConnectIQ.getInstance(ctx, ConnectIQ.IQConnectType.WIRELESS)
+    } catch (e: Throwable) {
+      Log.w(TAG, "Connect IQ instance not replaced: ${e.message}")
+    }
+  }
+
   private fun onInitializeError(status: ConnectIQ.IQSdkErrorStatus?) {
     Log.w(TAG, "Connect IQ initialize error: $status")
     sdkReady = false
+    sdkBound = false
     cancelInitWatchdog()
+    cancelBinderProbe()
+    // A stop waiting to unregister goes ahead without it.
+    if (pendingStop != null) {
+      becomeUnavailable()
+      return
+    }
     when (status) {
       ConnectIQ.IQSdkErrorStatus.GCM_NOT_INSTALLED -> becomeUnavailable()
       ConnectIQ.IQSdkErrorStatus.GCM_UPGRADE_NEEDED -> {
@@ -514,6 +941,9 @@ internal object GarminLink {
   /** Garmin Connect's service went away (updated, killed or uninstalled). */
   private fun onSdkLost() {
     sdkReady = false
+    sdkBound = false
+    // A probe cut short says nothing about approval; the next ready tries again.
+    cancelBinderProbe()
     markAllDisconnected()
     // An error already shown stays shown until a retry gets further.
     if (state == LinkState.READY) setState(LinkState.STARTING, null) else publishStatus()
@@ -580,26 +1010,61 @@ internal object GarminLink {
     initialize()
   }
 
-  private fun shutdownSdk() {
+  /**
+   * Shuts the SDK down. With [unregisterBinder], Garmin Connect is first told
+   * to forget the binder registration (it would otherwise keep delivering
+   * there and waking the process); that needs a bound SDK (the SDK refuses
+   * otherwise). A restart after a lost service keeps it, since the next ready
+   * registers again. Returns whether the unregister call went out.
+   */
+  private fun shutdownSdk(unregisterBinder: Boolean = false): Boolean {
+    val bound = sdkBound
     // shutdown() calls onSdkShutDown synchronously; the bump makes it stale.
     sdkGeneration += 1
     sdkReady = false
+    sdkBound = false
+    readyAwaitingCache = false
     cancelInitWatchdog()
+    cancelBinderProbe()
     val ctx = appContext
     val ciq = connectIQ
+    var unregistered = false
     if (ctx != null && ciq != null) {
-      try {
-        ciq.shutdown(ctx)
-      } catch (_: Throwable) {}
+      if (unregisterBinder && (bound || binderMode)) {
+        try {
+          // Also shuts the SDK down. It works on a broadcast-mode instance too.
+          ciq.unregisterAppFromUsingBinderService(GARMIN_APP_ID, ctx)
+          unregistered = true
+        } catch (e: Throwable) {
+          Log.w(TAG, "Garmin binder delivery not unregistered: ${e.message}")
+        }
+      }
+      if (!unregistered) {
+        try {
+          ciq.shutdown(ctx)
+        } catch (_: Throwable) {}
+      }
+    }
+    // An instance that unregistered is replaced too: what the SDK keeps on
+    // its singleton after that call is not documented.
+    if (binderMode || unregistered) {
+      binderMode = false
+      connectIQ = null
+      if (ctx != null) replaceSdkInstance(ctx)
     }
     markAllDisconnected()
+    return unregistered
   }
 
-  private fun becomeUnavailable() {
+  private fun becomeUnavailable(unregisterBinder: Boolean = false) {
     cancelRetry()
-    shutdownSdk()
+    binderProbeDeferred = false
+    // Once unregistered the record is cleared, so the next start probes
+    // again instead of trusting a confirmation for a registration that is gone.
+    if (shutdownSdk(unregisterBinder)) clearBinderRecord()
     connectIQ = null
     devices.clear()
+    pendingRequests.clear()
     // Already empty after shutdownSdk; kept so no JS send can wait forever.
     failQueued(GarminSendResult.FAILED) { true }
     // Nothing is sent until a later start, which begins afresh.
@@ -607,6 +1072,19 @@ internal object GarminLink {
     retryAttempt = 0
     started.set(false)
     setState(LinkState.UNAVAILABLE, null)
+    answerPendingStop()
+  }
+
+  private fun answerPendingStop() {
+    val waiting = pendingStop ?: return
+    pendingStop = null
+    for (callback in waiting) {
+      try {
+        callback()
+      } catch (e: Throwable) {
+        Log.w(TAG, "Garmin stop not answered: ${e.message}")
+      }
+    }
   }
 
   /** Called with [sdkReady] already false, so every waiting send fails. */
@@ -623,15 +1101,57 @@ internal object GarminLink {
 
   // ---- Devices ----
 
-  private val deviceListener = ConnectIQ.IQDeviceEventListener { device, status ->
-    if (device != null) main.post { onDeviceStatus(device, status) }
+  private fun isMainThread(): Boolean = Looper.myLooper() === Looper.getMainLooper()
+
+  /**
+   * Runs [action] on the main thread for an SDK callback. The broadcast
+   * receiver calls back on the main thread; the binder service calls the
+   * device, app info, open and send listeners on a binder thread. A callback
+   * off the main thread therefore proves that Garmin Connect delivers through
+   * the binder ([onBinderDelivery]), which is what the probe waits for.
+   */
+  private fun postFromSdk(action: () -> Unit) {
+    val viaBinder = !isMainThread()
+    main.post {
+      if (viaBinder) onBinderDelivery()
+      action()
+    }
   }
 
+  private val deviceListener = ConnectIQ.IQDeviceEventListener { device, status ->
+    postFromSdk { if (device != null) onDeviceStatus(device, status) }
+  }
+
+  /** One per watch, in broadcast mode; the SDK's receiver calls it on the main thread. */
   private val appListener = ConnectIQ.IQApplicationEventListener { device, _, messageData, status ->
-    if (device == null) return@IQApplicationEventListener
+    onAppMessage(device, messageData, status)
+  }
+
+  /**
+   * The SDK's single listener for messages through the binder service. It
+   * gets every message Garmin Connect delivers there, from any watch, known
+   * to the link or not, with whatever app id Garmin Connect names, so the id
+   * is checked here. Messages come on the main thread, apart from an empty
+   * one, which is reported on the binder thread. It is set right after
+   * each initialize rather than after onSdkReady: Garmin Connect, holding a
+   * registration, delivers as soon as it has bound the service (the bind that
+   * starts this process), and the SDK drops a message that finds no listener.
+   * The broadcast receiver never calls it.
+   */
+  private val binderAppListener = ConnectIQ.IQApplicationEventListener { device, app, messageData, status ->
+    main.post { onBinderDelivery() }
+    if (!isGarminAppId(app?.applicationId)) {
+      Log.w(TAG, "Ignored a Garmin message for app ${app?.applicationId}")
+      return@IQApplicationEventListener
+    }
+    onAppMessage(device, messageData, status)
+  }
+
+  private fun onAppMessage(device: IQDevice?, messageData: List<Any?>?, status: ConnectIQ.IQMessageStatus?) {
+    if (device == null) return
     if (status != ConnectIQ.IQMessageStatus.SUCCESS) {
       Log.w(TAG, "Garmin message could not be read: $status")
-      return@IQApplicationEventListener
+      return
     }
     val items = messageData?.toList() ?: emptyList()
     worker.execute {
@@ -684,7 +1204,10 @@ internal object GarminLink {
       if (newlyRegistered) {
         try {
           ciq.registerForDeviceEvents(device, deviceListener)
-          ciq.registerForAppEvents(device, app, appListener)
+          // In binder mode every watch's messages reach binderAppListener. The
+          // per-watch registration is the broadcast one (it asks Garmin
+          // Connect for broadcasts) and the SDK says not to use it there.
+          if (!binderMode) ciq.registerForAppEvents(device, app, appListener)
           entry.registeredGeneration = sdkGeneration
         } catch (e: Throwable) {
           onSdkCallFailed(e)
@@ -708,7 +1231,11 @@ internal object GarminLink {
     // The status goes first so JS knows the watch when the resync arrives.
     publishStatus()
     if (sdkJustReady) {
-      for (entry in devices.values.toList()) resync(entry, GarminResyncReason.READY)
+      for (entry in devices.values.toList()) {
+        val reason = if (entry.id in pendingRequests) GarminResyncReason.REQUESTED else GarminResyncReason.READY
+        resync(entry, reason)
+      }
+      pendingRequests.clear()
     } else {
       for (entry in justConnected) resync(entry, GarminResyncReason.CONNECTED)
     }
@@ -756,29 +1283,26 @@ internal object GarminLink {
   private fun requestAppInfo(entry: DeviceEntry) {
     val ciq = connectIQ ?: return
     if (!sdkReady) return
-    val id = entry.id
     try {
-      ciq.getApplicationInfo(
-        GARMIN_APP_ID,
-        entry.device,
-        object : ConnectIQ.IQApplicationInfoListener {
-          override fun onApplicationInfoReceived(info: IQApp?) {
-            val appState = when (info?.status) {
-              IQApp.IQAppStatus.INSTALLED -> GarminAppState.INSTALLED
-              IQApp.IQAppStatus.NOT_INSTALLED, IQApp.IQAppStatus.NOT_SUPPORTED -> GarminAppState.NOT_INSTALLED
-              else -> GarminAppState.UNKNOWN
-            }
-            main.post { setAppStateFromInfo(id, appState) }
-          }
-
-          override fun onApplicationNotInstalled(applicationId: String?) {
-            main.post { setAppStateFromInfo(id, GarminAppState.NOT_INSTALLED) }
-          }
-        }
-      )
+      ciq.getApplicationInfo(GARMIN_APP_ID, entry.device, appInfoListener(entry.id))
     } catch (e: Throwable) {
       Log.w(TAG, "getApplicationInfo failed: ${e.message}")
       onSdkCallFailed(e)
+    }
+  }
+
+  private fun appInfoListener(id: Long) = object : ConnectIQ.IQApplicationInfoListener {
+    override fun onApplicationInfoReceived(info: IQApp?) {
+      val appState = when (info?.status) {
+        IQApp.IQAppStatus.INSTALLED -> GarminAppState.INSTALLED
+        IQApp.IQAppStatus.NOT_INSTALLED, IQApp.IQAppStatus.NOT_SUPPORTED -> GarminAppState.NOT_INSTALLED
+        else -> GarminAppState.UNKNOWN
+      }
+      postFromSdk { setAppStateFromInfo(id, appState) }
+    }
+
+    override fun onApplicationNotInstalled(applicationId: String?) {
+      postFromSdk { setAppStateFromInfo(id, GarminAppState.NOT_INSTALLED) }
     }
   }
 
@@ -797,18 +1321,6 @@ internal object GarminLink {
   private fun onInbound(device: IQDevice, payloads: List<Map<String, Any>>) {
     val ctx = appContext ?: return
     val id = device.deviceIdentifier
-    // The SDK delivers messages only from watches registered in
-    // refreshDevices, so a watch is always known here; one paired since the
-    // link started is found by the re-read `startGarmin` and `garminStatus`
-    // do, not by its messages.
-    val entry = devices[id]
-    var justConnected = false
-    if (entry != null) {
-      // Only an installed, running app can send, whatever getApplicationInfo said.
-      justConnected = updateConnection(entry, true)
-      entry.heardSinceConnect = true
-      setAppState(id, GarminAppState.INSTALLED)
-    }
     var requested = false
     for (payload in payloads) {
       val type = payload["type"] as? String
@@ -818,6 +1330,28 @@ internal object GarminLink {
       }
       if (type == GARMIN_TYPE_REQUEST_CONTEXT) requested = true
       WatchConnectivityHub.handleGarminPayload(ctx, payload)
+    }
+    if (!sdkReady) {
+      // Only the binder service delivers this early: Garmin Connect hands the
+      // message over as soon as it has bound it, before (or while) the SDK
+      // gets ready. The ready resync answers it, as a request if it was one.
+      if (requested) pendingRequests.add(id)
+      return
+    }
+    // Through broadcasts the SDK delivers only from watches registered in
+    // refreshDevices; through the binder service any watch can send, so one
+    // paired since the link started is registered by reading the watches.
+    var entry = devices[id]
+    if (entry == null) {
+      refreshDevices(sdkJustReady = false)
+      entry = devices[id]
+    }
+    var justConnected = false
+    if (entry != null) {
+      // Only an installed, running app can send, whatever getApplicationInfo said.
+      justConnected = updateConnection(entry, true)
+      entry.heardSinceConnect = true
+      setAppState(id, GarminAppState.INSTALLED)
     }
     publishStatus()
     if (entry != null) {
@@ -845,7 +1379,13 @@ internal object GarminLink {
     // An unreadable cache says nothing about the account: replay nothing and
     // send no accountCleared; the next push, or JS once it listens, answers.
     if (listener == null && cache == null && cacheUnreadable) return
-    when (GarminResyncPolicy.decide(jsListening = listener != null, reason = reason, hasCache = cache != null)) {
+    val action = GarminResyncPolicy.decide(
+      jsListening = listener != null,
+      jsHasListened = jsHasListened,
+      reason = reason,
+      hasCache = cache != null
+    )
+    when (action) {
       GarminResyncAction.EMIT_TO_JS -> listener?.emitEvent(
         "onGarminResync",
         mapOf("deviceId" to entry.id.toString(), "reason" to reason.wire)
@@ -853,7 +1393,7 @@ internal object GarminLink {
       GarminResyncAction.REPLAY_CACHE -> if (cache != null) {
         enqueueReplay(entry.id, cache, front = reason == GarminResyncReason.REQUESTED)
       }
-      GarminResyncAction.SEND_ACCOUNT_CLEARED -> enqueueControl(entry.id, GARMIN_TYPE_ACCOUNT_CLEARED, front = true)
+      GarminResyncAction.SEND_ACCOUNT_CLEARED -> enqueueAccountCleared(entry.id, front = true)
       GarminResyncAction.NOTHING -> {}
     }
   }
@@ -896,8 +1436,8 @@ internal object GarminLink {
     if (front) queue.addFirst(job) else queue.addLast(job)
   }
 
-  private fun enqueueControl(deviceId: Long, type: String, front: Boolean) {
-    val job = SendJob(deviceId, GarminOutboundMessage.control(type), replay = false, onResult = null)
+  private fun enqueueAccountCleared(deviceId: Long, front: Boolean) {
+    val job = SendJob(deviceId, GarminOutboundMessage.accountCleared(), replay = false, onResult = null)
     if (front) queue.addFirst(job) else queue.addLast(job)
   }
 
@@ -956,11 +1496,19 @@ internal object GarminLink {
     val current = InFlight(seq, job, timeout)
     inFlight = current
     main.postDelayed(timeout, SEND_TIMEOUT_MS)
+    // Every message leaves with a `seq` above the last one's, stored first,
+    // so the watch can tell a copy it gets again or late from a newer message
+    // (a resend gets a new one too).
+    // Set in start() before the SDK can be ready; the fallback is defensive.
+    val origin = wireOrigin ?: GarminSendSequence.newOrigin().also { wireOrigin = it }
+    val wireSeq = GarminSendSequence.next(lastWireSeq, System.currentTimeMillis())
+    lastWireSeq = wireSeq
+    saveWireSeq(wireSeq)
     try {
       // The listener can run inside this call (a format error), so the result
       // is always handled on a later turn of the main loop.
-      ciq.sendMessage(entry.device, app, job.outbound.message) { _, _, status ->
-        main.post { onSendStatus(deviceId, seq, status) }
+      ciq.sendMessage(entry.device, app, job.outbound.sentAs(wireSeq, origin)) { _, _, status ->
+        postFromSdk { onSendStatus(deviceId, seq, status) }
       }
       current.handedToSdk = true
     } catch (e: Throwable) {
@@ -1036,7 +1584,7 @@ internal object GarminLink {
     Log.w(
       TAG,
       "Garmin ${outbound.type ?: "message"} is about ${outbound.estimatedBytes} bytes, " +
-        "over $GARMIN_MESSAGE_BYTE_CAP; not sent"
+        "over $GARMIN_SEND_CAP_BYTES ($GARMIN_MESSAGE_BYTE_CAP less room for seq and origin); not sent"
     )
   }
 
@@ -1057,17 +1605,28 @@ internal object GarminLink {
         "app" to entry.app.wire
       )
     }
-    val next = statusMap(state, error, deviceList)
+    val delivery = when {
+      !sdkReady -> GarminDelivery.NONE
+      binderMode -> GarminDelivery.BINDER
+      else -> GarminDelivery.BROADCAST
+    }
+    val next = statusMap(state, error, deviceList, delivery)
     if (next == currentStatus) return
     currentStatus = next
     WatchConnectivityHub.activeModule?.emitEvent("onGarminStatusChange", next)
   }
 
-  private fun statusMap(state: LinkState, error: String?, deviceList: List<Map<String, Any>>): Map<String, Any?> {
+  private fun statusMap(
+    state: LinkState,
+    error: String?,
+    deviceList: List<Map<String, Any>>,
+    delivery: GarminDelivery
+  ): Map<String, Any?> {
     val out = LinkedHashMap<String, Any?>()
     out["state"] = state.wire
     if (error != null) out["error"] = error
     out["devices"] = deviceList
+    out["delivery"] = delivery.wire
     return out
   }
 
@@ -1076,13 +1635,152 @@ internal object GarminLink {
   private fun prefs(context: Context): SharedPreferences =
     context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
+  private fun linkPrefs(context: Context): SharedPreferences =
+    context.getSharedPreferences(LINK_PREFS_NAME, Context.MODE_PRIVATE)
+
+  // The link's own preferences are a few bytes and are already loaded at
+  // process start, so they are read and written on the main thread: apply()
+  // (disk write in the background) for the flag and the binder record,
+  // commit() for the send number and origin (see saveWireSeq).
+  private fun readWireSeq(context: Context): Long =
+    try {
+      linkPrefs(context).getLong(SEND_SEQ_KEY, 0L)
+    } catch (e: Throwable) {
+      0L
+    }
+
+  // commit(), not apply(): a number handed out must be on disk before the
+  // message goes, or a process killed before the write, with the clock set
+  // back, would hand it out again and the watch would drop that message.
+  private fun saveWireSeq(seq: Long) {
+    val ctx = appContext ?: return
+    try {
+      linkPrefs(ctx).edit().putLong(SEND_SEQ_KEY, seq).commit()
+    } catch (e: Throwable) {
+      Log.w(TAG, "Failed to store the Garmin send number: ${e.message}")
+    }
+  }
+
+  // The stored origin when it was made by this install; otherwise (none yet,
+  // or preferences Android restored on a reinstall or copied to another
+  // phone) a new one, with its numbering started afresh.
+  private fun readOrCreateWireOrigin(context: Context): String {
+    val prefs = linkPrefs(context)
+    val install = ownInstallTime(context)
+    val stored = try {
+      prefs.getString(SEND_ORIGIN_KEY, null)
+    } catch (e: Throwable) {
+      null
+    }
+    val storedInstall = try {
+      prefs.getLong(SEND_INSTALL_KEY, 0L)
+    } catch (e: Throwable) {
+      0L
+    }
+    if (stored != null && GarminSendSequence.originIsCurrent(stored, storedInstall, install)) return stored
+    val created = GarminSendSequence.newOrigin()
+    try {
+      val editor = prefs.edit().putString(SEND_ORIGIN_KEY, created).remove(SEND_SEQ_KEY).remove(BINDER_RECORD_KEY)
+      if (install != null) editor.putLong(SEND_INSTALL_KEY, install)
+      editor.commit()
+    } catch (e: Throwable) {
+      Log.w(TAG, "Failed to store the Garmin send origin: ${e.message}")
+    }
+    return created
+  }
+
+  /** This app's install time, or null when it cannot be read. */
+  private fun ownInstallTime(context: Context): Long? = try {
+    val pm = context.packageManager
+    val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      pm.getPackageInfo(context.packageName, PackageManager.PackageInfoFlags.of(0))
+    } else {
+      @Suppress("DEPRECATION")
+      pm.getPackageInfo(context.packageName, 0)
+    }
+    info.firstInstallTime
+  } catch (e: Throwable) {
+    null
+  }
+
+  private fun setEnabled(context: Context, enabled: Boolean) {
+    try {
+      val editor = linkPrefs(context).edit()
+      if (enabled) editor.putBoolean(ENABLED_KEY, true) else editor.remove(ENABLED_KEY)
+      editor.apply()
+    } catch (e: Throwable) {
+      Log.w(TAG, "Failed to store the Garmin link switch: ${e.message}")
+    }
+  }
+
+  private fun readBinderRecord(context: Context): GarminBinderRecord? = try {
+    GarminBinderRecord.decode(linkPrefs(context).getString(BINDER_RECORD_KEY, null))
+  } catch (e: Throwable) {
+    Log.w(TAG, "Failed to read the Garmin binder record: ${e.message}")
+    null
+  }
+
+  private fun saveBinderRecord(outcome: GarminBinderOutcome) {
+    val ctx = appContext ?: return
+    val version = garminConnectVersion(ctx) ?: return
+    storeBinderRecord(GarminBinderRecord(outcome, version, System.currentTimeMillis()))
+  }
+
+  private fun storeBinderRecord(record: GarminBinderRecord) {
+    binderRecord = record
+    val ctx = appContext ?: return
+    try {
+      linkPrefs(ctx).edit().putString(BINDER_RECORD_KEY, record.encode()).apply()
+    } catch (e: Throwable) {
+      Log.w(TAG, "Failed to store the Garmin binder record: ${e.message}")
+    }
+  }
+
+  private fun clearBinderRecord() {
+    binderRecord = null
+    val ctx = appContext ?: return
+    try {
+      linkPrefs(ctx).edit().remove(BINDER_RECORD_KEY).apply()
+    } catch (e: Throwable) {
+      Log.w(TAG, "Failed to delete the Garmin binder record: ${e.message}")
+    }
+  }
+
+  /** Garmin Connect's version code, or null when it is not installed. */
+  private fun garminConnectVersion(context: Context): Long? = try {
+    val pm = context.packageManager
+    val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      pm.getPackageInfo(GARMIN_CONNECT_PACKAGE, PackageManager.PackageInfoFlags.of(0))
+    } else {
+      @Suppress("DEPRECATION")
+      pm.getPackageInfo(GARMIN_CONNECT_PACKAGE, 0)
+    }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+      info.longVersionCode
+    } else {
+      @Suppress("DEPRECATION")
+      info.versionCode.toLong()
+    }
+  } catch (_: Throwable) {
+    null
+  }
+
   /** What the stored snapshot read gave: a message, nothing stored, or a failure. */
   private class CacheRead(val message: GarminOutboundMessage?, val failed: Boolean)
 
   private fun readCache(context: Context): CacheRead {
     return try {
-      val json = prefs(context).getString(GARMIN_SNAPSHOT_CACHE_KEY, null)
+      val prefs = prefs(context)
+      val json = prefs.getString(GARMIN_SNAPSHOT_CACHE_KEY, null)
         ?: return CacheRead(null, failed = false)
+      // Written by another install (restored from a backup or copied from
+      // another phone): no account here has published it, so it reads as
+      // empty, and goes.
+      val install = ownInstallTime(context)
+      if (install != null && prefs.getLong(GARMIN_SNAPSHOT_INSTALL_KEY, 0L) != install) {
+        prefs.edit().remove(GARMIN_SNAPSHOT_CACHE_KEY).remove(GARMIN_SNAPSHOT_INSTALL_KEY).apply()
+        return CacheRead(null, failed = false)
+      }
       val message = GarminOutboundMessage.fromJson(json)
       if (message == null) Log.w(TAG, "The stored Garmin snapshot could not be parsed")
       CacheRead(message, failed = message == null)

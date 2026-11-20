@@ -1200,8 +1200,9 @@ export interface GarminSnapshotPayload {
 }
 
 /**
- * The `snapshot` message exactly as a Garmin watch receives it (protocol
- * version 1, `agent-docs/garmin.md`). `topics` holds every topic (the native
+ * The `snapshot` message as a Garmin watch receives it (protocol version 1,
+ * `agent-docs/garmin.md`), less the `seq` and `origin` the native side adds
+ * to every message as it sends it. `topics` holds every topic (the native
  * cache, a resync) or only the ones that watch does not have yet.
  */
 export interface GarminSnapshotMessage {
@@ -1224,7 +1225,12 @@ export interface GarminAccountClearedMessage {
   v: 1;
 }
 
-/** Every message the phone sends a Garmin watch (`sendGarminMessage`). */
+/**
+ * Every message the phone sends a Garmin watch (`sendGarminMessage`). The
+ * native side adds `seq` and `origin` as it hands each one over (a number it
+ * raises with every send, and the phone install that numbered it), so the
+ * watch can tell a copy it already has, or a late one, from a newer message.
+ */
 export type GarminPhoneMessage =
   GarminSnapshotMessage | GarminAccountClearedMessage;
 
@@ -1258,6 +1264,18 @@ export interface GarminDevice {
   app: 'installed' | 'notInstalled' | 'unknown';
 }
 
+/**
+ * How Garmin Connect hands this app what the watches send
+ * (`GarminStatus.delivery`). `binder`: through the Garmin-approved binding
+ * service (`registerAppToUseBinderService`), which lets Garmin Connect start
+ * this app's process to deliver a message. `broadcast`: the SDK's receiver
+ * registered at runtime, which only receives while the process is alive; the
+ * native side falls back to it whenever the binder delivery cannot be used
+ * (Garmin has not approved it yet, an older Garmin Connect). `none`: the link
+ * is not ready, so nothing is delivered.
+ */
+export type GarminDelivery = 'binder' | 'broadcast' | 'none';
+
 /** The Garmin link as the native side sees it. */
 export interface GarminStatus {
   state: 'unavailable' | 'starting' | 'ready' | 'error';
@@ -1267,6 +1285,12 @@ export interface GarminStatus {
    */
   error?: string;
   devices: GarminDevice[];
+  /**
+   * How watch messages reach this app; `none` while not ready. Optional
+   * because native builds from before the binder delivery do not report it,
+   * and Settings → Garmin then says nothing about it.
+   */
+  delivery?: GarminDelivery;
 }
 
 /** How a request to open the app on a Garmin watch ended (`openGarminApp`). */
@@ -1312,8 +1336,10 @@ export type WatchConnectivityEvents = {
   /**
    * A Garmin watch needs the latest snapshot in full. Only sent while JS
    * listens for this event; with no listener (no JS runtime, or nothing
-   * subscribed) the native side replays its cache (`setGarminSnapshotCache`)
-   * to the watch itself. Android only.
+   * subscribed) the native side answers a watch that asked with its cache
+   * (`setGarminSnapshotCache`, or `accountCleared` when there is none), and a
+   * watch that connects only once JS has listened in this process. Android
+   * only.
    */
   onGarminResync: (payload: GarminResyncPayload) => void;
 };
@@ -1480,10 +1506,21 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
    * Starts the Garmin link if Garmin Connect is installed and resolves with
    * the current status. Idempotent, and checks the install again on each
    * call, so Garmin Connect installed later is picked up. Nothing Garmin runs
-   * natively before this is called: `garminStatus()` reads `unavailable`,
-   * and sends and open requests resolve `failed`.
+   * natively before this is first called: `garminStatus()` reads
+   * `unavailable`, and sends and open requests resolve `failed`. It also
+   * remembers natively that the link is on, so a later process can start it
+   * before any JS runs (Garmin Connect may start the process through the
+   * binder service to deliver a watch message); `stopGarmin()` forgets that.
    */
   startGarmin?(): Promise<GarminStatus>;
+  /**
+   * Turns the Garmin link off and forgets that `startGarmin()` turned it on,
+   * so the next process does not start it natively. Called at startup where
+   * this install does not use Garmin (`isGarminWatchEnabled()` is false), so
+   * a flag left by a development build cannot keep the Connect IQ SDK
+   * running in a release install. Android only; absent on older builds.
+   */
+  stopGarmin?(): Promise<void>;
   /**
    * The Garmin link and its watches; `onGarminStatusChange` follows it. Also
    * reads the watches from Garmin Connect again (throttled natively). Starts
@@ -1506,7 +1543,8 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   getGarminSnapshotCache?(): Promise<GarminSnapshotMessage | null>;
   /**
    * Sends one message to one Garmin watch, as given (values converted for
-   * Connect IQ, no key added or changed). Sends go out one at a time across
+   * Connect IQ; the only keys added are `seq` and `origin`, which number
+   * every send). Sends go out one at a time across
    * all watches. What each watch gets, and when, is decided in TypeScript
    * (`services/garminSync`), so a future iOS transport can share it.
    */
@@ -1516,8 +1554,10 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   ): Promise<GarminSendResult>;
   /**
    * Keeps the latest full `snapshot` message natively, for the native side to
-   * replay to a watch that connects or asks while nothing listens to
-   * `onGarminResync` (no JS runtime, or no listener mounted). Null deletes
+   * replay while nothing listens to `onGarminResync` (no JS runtime, or no
+   * listener mounted): to a watch that asks, and to one that connects once JS
+   * has listened in this process. A copy another install wrote (Android's
+   * backup or device transfer) reads as empty. Null deletes
    * it. Stored as given; never built or edited natively.
    */
   setGarminSnapshotCache?(message: GarminSnapshotMessage | null): Promise<void>;

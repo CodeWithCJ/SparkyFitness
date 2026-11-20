@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import type {
   GarminDevice,
   GarminGoalsTopic,
@@ -17,6 +19,7 @@ jest.mock('../../modules/watch-connectivity', () => ({
     setGarminSnapshotCache: jest.fn(() => Promise.resolve()),
     getGarminSnapshotCache: jest.fn(() => Promise.resolve(null)),
     clearGarminAccount: jest.fn(() => Promise.resolve()),
+    stopGarmin: jest.fn(() => Promise.resolve()),
     startGarmin: jest.fn(() =>
       Promise.resolve({ state: 'ready', devices: [] })
     ),
@@ -38,6 +41,7 @@ import {
   garminAccountEpoch,
   getGarminSync,
   stableJson,
+  stopGarminWhenDisabled,
   type GarminSync,
 } from '../../src/services/garminSync';
 import { addLog } from '../../src/services/LogService';
@@ -1155,5 +1159,66 @@ describe('getGarminSync and clearGarminAccount', () => {
     enabled.mockReturnValue(false);
 
     expect(getGarminSync()).toBeNull();
+  });
+});
+
+describe('stopGarminWhenDisabled', () => {
+  const watch = (
+    jest.requireMock('../../modules/watch-connectivity') as {
+      default: { stopGarmin?: jest.Mock };
+    }
+  ).default;
+  const stopGarmin = watch.stopGarmin as jest.Mock;
+  const enabled = isGarminWatchEnabled as jest.MockedFunction<
+    typeof isGarminWatchEnabled
+  >;
+  const originalOs = Platform.OS;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    Platform.OS = 'android';
+    watch.stopGarmin = stopGarmin;
+    stopGarmin.mockResolvedValue(undefined);
+    enabled.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    Platform.OS = originalOs;
+  });
+
+  test('turns the native link off where this install does not use Garmin', async () => {
+    await stopGarminWhenDisabled();
+
+    expect(stopGarmin).toHaveBeenCalledTimes(1);
+  });
+
+  test('leaves the link alone where Garmin is on', async () => {
+    enabled.mockReturnValue(true);
+
+    await stopGarminWhenDisabled();
+
+    expect(stopGarmin).not.toHaveBeenCalled();
+  });
+
+  test('does nothing on iOS or on a native build without stopGarmin', async () => {
+    Platform.OS = 'ios';
+    await stopGarminWhenDisabled();
+    expect(stopGarmin).not.toHaveBeenCalled();
+
+    Platform.OS = 'android';
+    delete watch.stopGarmin;
+    await expect(stopGarminWhenDisabled()).resolves.toBeUndefined();
+    expect(stopGarmin).not.toHaveBeenCalled();
+  });
+
+  test('a failed stop is logged, never thrown', async () => {
+    stopGarmin.mockRejectedValue(new Error('service gone'));
+
+    await expect(stopGarminWhenDisabled()).resolves.toBeUndefined();
+
+    expect(addLog).toHaveBeenCalledWith(
+      'Garmin stop failed: Error: service gone',
+      'WARNING'
+    );
   });
 });

@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 import WatchConnectivity, {
   type GarminAccountClearedMessage,
   type GarminDevice,
@@ -662,4 +664,27 @@ export async function clearGarminAccount(): Promise<void> {
   // already forgotten and are not logged as lost.
   const cleared = shared?.clearAccount();
   await Promise.all([cleared, WatchConnectivity?.clearGarminAccount?.()]);
+}
+
+/**
+ * Turns the native Garmin link off where this install does not use Garmin
+ * (`isGarminWatchEnabled()` false). `startGarmin()` leaves a flag natively so
+ * the link can start at process start without JS (Garmin Connect may start
+ * the process through the binder service); a development build of the same
+ * package that ran before a release build would otherwise leave that flag, and
+ * every later process start would bring up the Connect IQ SDK and its exported
+ * receiver. Clearing it also keeps a later reinstall of Garmin Connect from
+ * starting the link again.
+ * Android only, and only on a native build with `stopGarmin`. Never rejects:
+ * a failure is logged, and the next start of the app tries again.
+ */
+export async function stopGarminWhenDisabled(): Promise<void> {
+  const watch = WatchConnectivity;
+  if (Platform.OS !== 'android' || !watch?.stopGarmin) return;
+  if (isGarminWatchEnabled()) return;
+  try {
+    await watch.stopGarmin();
+  } catch (error) {
+    void addLog(`Garmin stop failed: ${String(error)}`, 'WARNING');
+  }
 }
