@@ -349,6 +349,20 @@ describe('runWriteback (cursor)', () => {
     expect(mockSaveCursor).toHaveBeenCalled();
   });
 
+  it('holds the cursor when the body check-in read fails, so those dates retry', async () => {
+    prefs({ writebackWeightEnabled: true });
+    mockGranted.mockResolvedValue([
+      { recordType: 'Weight', accessType: 'write' },
+    ]);
+    (fetchMeasurementsRange as jest.Mock).mockRejectedValue(
+      new Error('offline')
+    );
+    await expect(writebackPhase(['2026-06-01'])).resolves.toBe(false);
+    await runWriteback();
+    expect(mockSaveCursor).not.toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
   it('holds the cursor when a quota error stops the run early', async () => {
     prefs({ writebackNutritionEnabled: true });
     mockInsert.mockRejectedValue(new Error('quota'));
@@ -439,6 +453,49 @@ describe('removeWrittenData (cleanup)', () => {
       'writebackHydrationEnabled',
       false
     );
+  });
+
+  it('keeps body id lists when deleting that type fails, and clears only its signature', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyWeightIds:2026-06-01',
+      JSON.stringify(['sparky-body-weight-2026-06-01-1'])
+    );
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyWeightSig:2026-06-01',
+      '"sig"'
+    );
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyBodyFatIds:2026-06-01',
+      JSON.stringify(['sparky-body-bodyFat-2026-06-01-1'])
+    );
+    mockGranted.mockResolvedValue([
+      { recordType: 'Weight', accessType: 'write' },
+      { recordType: 'BodyFat', accessType: 'write' },
+    ]);
+    mockDeleteByRange.mockImplementation((type: string) =>
+      type === 'Weight'
+        ? Promise.reject(new Error('denied'))
+        : Promise.resolve(undefined)
+    );
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
+
+    const remaining = await AsyncStorage.getAllKeys();
+    // Weight failed: the next write still needs the ids to delete the survivor.
+    expect(remaining).toContain(
+      '@HealthConnect:writebackBodyWeightIds:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthConnect:writebackBodyWeightSig:2026-06-01'
+    );
+    // BodyFat succeeded: both keys go.
+    expect(remaining).not.toContain(
+      '@HealthConnect:writebackBodyBodyFatIds:2026-06-01'
+    );
+    mockDeleteByRange.mockReset();
+    mockDeleteByRange.mockResolvedValue(undefined);
   });
 
   it('deletes the body records (#2465) it has write access for', async () => {

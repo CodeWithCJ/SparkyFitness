@@ -99,6 +99,19 @@ const sigKey = (metric: HealthKitBodyMetricId, date: string) =>
   `writebackBody${capitalized(metric)}Sig:${date}`;
 
 /**
+ * The start of the per-day UUID-list keys for the metric saved as this sample
+ * type, or null for a type body write-back never saves. Removal keeps these
+ * lists when deleting that type failed, so the next write still deletes the
+ * samples that survived.
+ */
+export const bodyUuidsKeyPrefixFor = (identifier: string): string | null => {
+  const metric = (Object.keys(IDENTIFIER) as HealthKitBodyMetricId[]).find(
+    (m) => IDENTIFIER[m] === identifier
+  );
+  return metric ? `writebackBody${capitalized(metric)}Uuids:` : null;
+};
+
+/**
  * Write one body metric for one day. Skips an unchanged day, waits for noon on
  * today, saves nothing when another app already has the same value (HealthKit
  * hides whether read access was given, so a denied read just finds nothing and
@@ -128,6 +141,10 @@ export const writeBodyMetricForDate = async (
     addLog(`${label}: unchanged — skipped`, 'DEBUG');
     return;
   }
+  // The stored signature describes the last complete write. Drop it before the
+  // old sample is touched, so a failure part way never leaves it matching a
+  // sample that is gone: a later restore of that value must save again.
+  await saveHealthPreference(sigKey(metric, date), '');
 
   let save = value !== null && time !== null;
   if (save && value !== null) {
@@ -159,6 +176,7 @@ export const writeBodyMetricForDate = async (
       );
       return;
     }
+    await saveHealthPreference(uuidsKey(metric, date), []);
   }
 
   const tracked: string[] = [];

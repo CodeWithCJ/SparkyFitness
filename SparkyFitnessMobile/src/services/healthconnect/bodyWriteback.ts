@@ -174,6 +174,19 @@ const sigKey = (metric: HealthConnectBodyMetricId, date: string) =>
   `writebackBody${capitalized(metric)}Sig:${date}`;
 
 /**
+ * The start of the per-day id-list keys for the metric written as this record
+ * type, or null for a type body write-back never writes. Removal keeps these
+ * lists when deleting that type failed, so the next write still deletes the
+ * records that survived.
+ */
+export const bodyIdsKeyPrefixFor = (recordType: string): string | null => {
+  const metric = (Object.keys(RECORD_TYPE) as HealthConnectBodyMetricId[]).find(
+    (m) => RECORD_TYPE[m] === recordType
+  );
+  return metric ? `writebackBody${capitalized(metric)}Ids:` : null;
+};
+
+/**
  * Write one body metric for one day. Skips an unchanged day, waits for noon on
  * today, writes nothing when another app already recorded the same value (only
  * checked with read access, `canReadOthers`), and removes what it wrote before
@@ -203,6 +216,10 @@ export const writeBodyMetricForDate = async (
     addLog(`${label}: unchanged — skipped`, 'DEBUG');
     return;
   }
+  // The stored signature describes the last complete write. Drop it before the
+  // old record is touched, so a failure part way never leaves it matching a
+  // record that is gone: a later restore of that value must write again.
+  await saveHealthPreference(sigKey(metric, date), '');
 
   const records: HealthConnectRecord[] = [];
   if (value !== null && time !== null) {
@@ -220,6 +237,7 @@ export const writeBodyMetricForDate = async (
     (await loadHealthPreference<string[]>(idsKey(metric, date))) ?? [];
   if (previous.length > 0) {
     await deleteRecordsByUuids(RECORD_TYPE[metric], [], previous);
+    await saveHealthPreference(idsKey(metric, date), []);
   }
   if (records.length > 0) {
     await insertRecords(records);

@@ -56,6 +56,7 @@ import { checkInRowsByDate } from '../shared/bodyWriteback';
 import {
   HEALTHKIT_BODY_IDENTIFIERS,
   bodyIdentifierFor,
+  bodyUuidsKeyPrefixFor,
   isHealthKitBodyMetric,
   writeBodyMetricForDate,
 } from './bodyWriteback';
@@ -613,9 +614,10 @@ const writableMetrics = (metrics: WritebackMetric[]): WritebackMetric[] =>
 /**
  * Run the writeback phase for the given calendar dates. Gated per-metric on the opt-in
  * preference AND a granted write permission. Each metric/date is isolated so one
- * failure doesn't abort the rest. HealthKit has no write quota, so this always returns
- * `true` once every date has been attempted; per-date failures are logged and
- * reconciled by the cursor's 1-day overlap. A metric the user hasn't granted is skipped
+ * failure doesn't abort the rest. HealthKit has no write quota, so this returns
+ * `true` once every date has been attempted, or `false` when the check-in read for
+ * body measurements failed (the caller then holds the cursor so those dates retry);
+ * other per-date failures are logged and reconciled by the cursor's 1-day overlap. A metric the user hasn't granted is skipped
  * without holding the cursor.
  */
 export const writebackPhase = async (dates: string[]): Promise<boolean> => {
@@ -638,15 +640,19 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
     : null;
 
   // Body measurements (#2465) come from the check-in rows, read once for the
-  // whole window; a failed read skips them without holding the other metrics.
+  // whole window. A failed read skips them for the window, so the run reports
+  // itself incomplete below and the cursor holds instead of moving past dates
+  // whose body values were never written.
   const bodyMetrics = writable.filter((m) => isHealthKitBodyMetric(m.id));
   let checkIns: Map<string, CheckInMeasurementRange> | null = null;
+  let bodyReadFailed = false;
   if (bodyMetrics.length > 0 && dates.length > 0) {
     try {
       checkIns = checkInRowsByDate(
         await fetchMeasurementsRange(dates[0], dates[dates.length - 1])
       );
     } catch (error) {
+      bodyReadFailed = true;
       addLog(
         `[Writeback] Failed to load check-ins: ${message(error)}`,
         'ERROR'
@@ -732,7 +738,7 @@ export const writebackPhase = async (dates: string[]): Promise<boolean> => {
   };
 
   await runTasksInBatches(dates, WRITEBACK_DATE_CONCURRENCY, writeForDate);
-  return true;
+  return !bodyReadFailed;
 };
 
 /**
@@ -808,11 +814,14 @@ export const removeWrittenData = async (
     ...WRITEBACK_DELETE_TYPES,
     ...HEALTHKIT_BODY_IDENTIFIERS.filter(isAuthorized),
   ];
+  const failedBodyUuidPrefixes: string[] = [];
   for (const type of deleteTypes) {
     try {
       await deleteObjects(type, { date: dateFilter });
     } catch (error) {
       ok = false;
+      const bodyPrefix = bodyUuidsKeyPrefixFor(type);
+      if (bodyPrefix) failedBodyUuidPrefixes.push(bodyPrefix);
       addLog(
         `[Writeback] Failed to delete ${type} records: ${message(error)}`,
         'WARNING'
@@ -824,9 +833,12 @@ export const removeWrittenData = async (
   // When removing written workouts failed, keep their per-day key lists: they
   // are what the next sync deletes before rewriting a day, so dropping them
   // would leave the surviving workouts beside new copies. Signatures are still
-  // cleared, so that sync re-checks the day.
+  // cleared, so that sync re-checks the day. Body measurements follow the same
+  // rule per sample type: a type whose delete failed keeps its UUID lists.
   const toClear = trackingKeysToClear(keys, range).filter(
-    (k) => exerciseRemoved || !k.includes('writebackExerciseKeys:')
+    (k) =>
+      (exerciseRemoved || !k.includes('writebackExerciseKeys:')) &&
+      !failedBodyUuidPrefixes.some((prefix) => k.includes(prefix))
   );
   if (toClear.length > 0) await AsyncStorage.multiRemove(toClear);
 

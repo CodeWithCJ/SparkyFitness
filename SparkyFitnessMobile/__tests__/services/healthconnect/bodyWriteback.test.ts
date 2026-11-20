@@ -148,6 +148,41 @@ describe('writeBodyMetricForDate', () => {
     ]);
   });
 
+  it('writes again when a value is restored after a replacement failed', async () => {
+    await writeBodyMetricForDate(
+      'weight',
+      DATE,
+      row({ weight: 80 }),
+      1,
+      true,
+      AFTER
+    );
+    mockInsert.mockRejectedValueOnce(new Error('insert failed'));
+    await expect(
+      writeBodyMetricForDate(
+        'weight',
+        DATE,
+        row({ weight: 81 }),
+        2,
+        true,
+        AFTER
+      )
+    ).rejects.toThrow('insert failed');
+    // The 80 record was deleted and 81 never landed; restoring 80 must not be
+    // taken for an unchanged day.
+    mockInsert.mockClear();
+    await writeBodyMetricForDate(
+      'weight',
+      DATE,
+      row({ weight: 80 }),
+      3,
+      true,
+      AFTER
+    );
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+  });
+
   it('removes the earlier record when the value is cleared', async () => {
     await writeBodyMetricForDate(
       'weight',

@@ -30,7 +30,7 @@ Editing or deleting something in SparkyFitness replaces or removes its copy on t
 
 ## Using two phones
 
-If you use SparkyFitness on an iPhone and an Android phone with the same account and turn writing on for both, each phone writes what you logged in SparkyFitness to its own store. Data the iPhone reads from Apple Health does not reach Health Connect, and the other way round.
+If you use SparkyFitness on an iPhone and an Android phone with the same account and turn writing on for both, each phone writes what you logged in SparkyFitness to its own store. Data the iPhone reads from Apple Health does not reach Health Connect, and the other way round. Body measurements are the exception: a weight that a scale app sent to Apple Health is read into your check-in, and the Android phone, whose check-in is the same, writes it to Health Connect if its Weight switch is on. Turn that switch off on one of the phones if you do not want it there.
 
 ## Duplicates
 

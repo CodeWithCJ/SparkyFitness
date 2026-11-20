@@ -136,6 +136,19 @@ describe('writeBodyMetricForDate', () => {
     expect(mockSave).toHaveBeenCalledTimes(1);
   });
 
+  it('saves again when a value is restored after a replacement failed', async () => {
+    await writeBodyMetricForDate('weight', DATE, row({ weight: 80 }), 1, AFTER);
+    mockSave.mockRejectedValueOnce(new Error('save failed'));
+    await expect(
+      writeBodyMetricForDate('weight', DATE, row({ weight: 81 }), 2, AFTER)
+    ).rejects.toThrow('save failed');
+    // The 80 sample was deleted and 81 never landed; restoring 80 must not be
+    // taken for an unchanged day.
+    mockSave.mockClear();
+    await writeBodyMetricForDate('weight', DATE, row({ weight: 80 }), 3, AFTER);
+    expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the old UUIDs and retries when the delete fails', async () => {
     await writeBodyMetricForDate('weight', DATE, row({ weight: 80 }), 1, AFTER);
     mockDelete.mockRejectedValueOnce(new Error('denied'));
