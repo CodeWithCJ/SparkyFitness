@@ -229,7 +229,7 @@ export async function saveRecordedActivity(
       }),
     });
     entryId = created.id;
-    await markRecordingSaved(entryId, form);
+    await markRecordingSaved(session.id, entryId, form);
     // Once, with the entry: a retry of a failed track upload must not teach
     // the same session twice. Best effort, never part of the save failing.
     try {

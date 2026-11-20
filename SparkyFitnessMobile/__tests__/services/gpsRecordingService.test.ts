@@ -43,6 +43,9 @@ import {
 import {
   GPS_RECORDING_TASK_NAME,
   RecordingPermissionError,
+  RecordingSaveInProgressError,
+  beginRecordingSave,
+  endRecordingSave,
   addHeartRateSamples,
   getHeartRateSamples,
   discardRecording,
@@ -341,7 +344,7 @@ describe('finishing and discarding', () => {
 
   it('remembers the saved entry id so a retry does not duplicate it', async () => {
     await startRecording({ activity: 'walk', notification });
-    await markRecordingSaved('entry-1');
+    await markRecordingSaved((await storedSession())!.id, 'entry-1');
     expect((await storedSession())?.savedEntryId).toBe('entry-1');
     // Not finished until the screen says so.
     expect((await storedSession())?.saveComplete).toBe(false);
@@ -370,8 +373,9 @@ describe('finishing and discarding', () => {
       await startRecording({ activity: 'run', notification });
       await finishRecording();
       // The save created the entry, then the route upload failed.
-      await markRecordingSaved('entry-1');
-      return (await storedSession())!.id;
+      const id = (await storedSession())!.id;
+      await markRecordingSaved(id, 'entry-1');
+      return id;
     }
 
     it('deletes the entry a failed save left in the diary', async () => {
@@ -424,7 +428,7 @@ describe('finishing and discarding', () => {
       // A session can outlive a complete save: the clear after it failed, or
       // the app was killed before it ran.
       const id = await halfSaved();
-      await markRecordingSaveComplete();
+      await markRecordingSaveComplete(id);
       expect((await storedSession())?.saveComplete).toBe(true);
 
       await discardRecording({ discarded: true });
@@ -493,12 +497,54 @@ describe('finishing and discarding', () => {
       expect(wasRecordingDiscarded(id)).toBe(false);
 
       // The person saves it after all: a new entry, then the usual clear.
-      await markRecordingSaved('entry-2');
-      await markRecordingSaveComplete();
+      await markRecordingSaved(id, 'entry-2');
+      await markRecordingSaveComplete(id);
       await discardRecording();
 
       // The watch is told it was saved, so it keeps its workout.
       expect(wasRecordingDiscarded(id)).toBe(false);
+    });
+
+    it('refuses to discard a recording while it is being saved', async () => {
+      mockedDelete.mockResolvedValue(undefined);
+      const id = await halfSaved();
+      beginRecordingSave(id);
+
+      await expect(
+        discardRecording({ discarded: true })
+      ).rejects.toBeInstanceOf(RecordingSaveInProgressError);
+      // Nothing deleted and the recording is kept for the save to finish.
+      expect(mockedDelete).not.toHaveBeenCalled();
+      expect((await storedSession())?.savedEntryId).toBe('entry-1');
+
+      endRecordingSave(id);
+      await discardRecording({ discarded: true });
+      expect(mockedDelete).toHaveBeenCalledWith('entry-1');
+    });
+
+    it('does not give a late save result to the next recording', async () => {
+      mockedDelete.mockResolvedValue(undefined);
+      const first = await halfSaved();
+      // Discarded, and a new recording started, before the old save resolves.
+      await discardRecording({ discarded: true });
+      mockedDelete.mockClear();
+      // A later start, so the new recording gets its own id.
+      const clock = jest
+        .spyOn(Date, 'now')
+        .mockReturnValue(Date.now() + 60_000);
+      await startRecording({ activity: 'run', notification });
+      clock.mockRestore();
+      const second = (await storedSession())!.id;
+      expect(second).not.toBe(first);
+
+      await markRecordingSaved(first, 'entry-old');
+      await markRecordingSaveComplete(first);
+
+      expect((await storedSession())?.savedEntryId).toBeNull();
+      // So discarding the new recording cannot delete the old run.
+      await discardRecording({ discarded: true });
+      expect(mockedDelete).not.toHaveBeenCalled();
+      expect(wasRecordingDiscarded(second)).toBe(true);
     });
 
     it('never deletes the entry when clearing after a successful save', async () => {

@@ -165,7 +165,11 @@ describe('saveRecordedActivity', () => {
     expect(entry).not.toHaveProperty('calories_burned');
     expect(entry.sets?.[0]).toMatchObject({ duration: 1500 });
 
-    expect(markRecordingSaved).toHaveBeenCalledWith('entry-1', null);
+    expect(markRecordingSaved).toHaveBeenCalledWith(
+      session.id,
+      'entry-1',
+      null
+    );
     const [entryId, track] = mockedAttach.mock.calls[0];
     expect(entryId).toBe('entry-1');
     expect(track.points).toHaveLength(11);
@@ -221,7 +225,11 @@ describe('saveRecordedActivity', () => {
     await expect(saveRecordedActivity(session, points, 'km')).rejects.toThrow(
       'offline'
     );
-    expect(markRecordingSaved).toHaveBeenCalledWith('entry-1', null);
+    expect(markRecordingSaved).toHaveBeenCalledWith(
+      session.id,
+      'entry-1',
+      null
+    );
   });
 
   it('attaches watch heart rate to the saved entry', async () => {

@@ -73,6 +73,8 @@ import { formatLocalizedNumber, getAppLocale } from '../localization';
 import {
   RecordingPermissionError,
   discardRecording,
+  beginRecordingSave,
+  endRecordingSave,
   markRecordingSaveComplete,
   elapsedSeconds,
   planCompleted,
@@ -1091,6 +1093,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSave = useCallback(async () => {
     if (!session) return;
     setBusy(true);
+    beginRecordingSave(session.id);
     try {
       const saved = await saveRecordedActivity(
         session,
@@ -1130,7 +1133,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       // that is still around (a failed clear, the app killed before it) holds
       // a finished save, so a Discard must not delete its entry. Best effort:
       // the save itself went through, so nothing here reports it as failed.
-      await markRecordingSaveComplete().catch((error: unknown) =>
+      await markRecordingSaveComplete(session.id).catch((error: unknown) =>
         addLog(
           `[GPS Recording] Could not mark the save complete: ${error}`,
           'WARNING'
@@ -1232,6 +1235,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         }),
       });
     } finally {
+      endRecordingSave(session.id);
       setBusy(false);
     }
   }, [

@@ -59,6 +59,8 @@ jest.mock('../../src/services/gpsRecordingService', () => {
     finishRecording: jest.fn(() => Promise.resolve()),
     discardRecording: jest.fn(() => Promise.resolve()),
     markRecordingSaveComplete: jest.fn(() => Promise.resolve()),
+    beginRecordingSave: jest.fn(),
+    endRecordingSave: jest.fn(),
     getHeartRateSamples: jest.fn(() => Promise.resolve([])),
     elapsedSeconds: jest.fn(() => 754),
     getRecordingPreferences: jest.fn(() =>

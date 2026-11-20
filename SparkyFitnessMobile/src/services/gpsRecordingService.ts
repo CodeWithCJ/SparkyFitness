@@ -252,8 +252,19 @@ export class RecordingPermissionError extends Error {
   }
 }
 
+/** A Discard asked for while that recording is still being saved. */
+export class RecordingSaveInProgressError extends Error {
+  constructor() {
+    super('The recording is still being saved');
+    this.name = 'RecordingSaveInProgressError';
+  }
+}
+
 let session: RecordingSession | null = null;
 let points: RecordedPoint[] = [];
+// The recording a save is running for. A Discard of it waits for nothing: it
+// is refused, so it cannot delete an entry the save is still finishing.
+let savingSessionId: string | null = null;
 let snapshot: RecordingSnapshot = { session: null, points: [] };
 let heartRate: StoredHeartRate = { samples: [], batchIds: [] };
 /** Saved entry ids by recording, for Apple zones that arrive after the session is cleared. */
@@ -1725,19 +1736,22 @@ export function clearAppleWorkoutZones(sessionId: string): void {
  * track, along with the form metrics saved on it.
  */
 export function markRecordingSaved(
+  sessionId: string,
   entryId: string,
   form: FormMetrics | null = null
 ): Promise<void> {
   return enqueue(async () => {
-    if (!session) return;
     // Kept outside the session, which is cleared right after the save, so
     // Apple zones that arrive late can still find the diary entry.
-    savedEntriesBySession.delete(session.id);
-    savedEntriesBySession.set(session.id, entryId);
+    savedEntriesBySession.delete(sessionId);
+    savedEntriesBySession.set(sessionId, entryId);
     if (savedEntriesBySession.size > MAX_SAVED_ENTRY_IDS) {
       const oldest = savedEntriesBySession.keys().next().value;
       if (oldest !== undefined) savedEntriesBySession.delete(oldest);
     }
+    // Only on the recording the save started from: once it was discarded and
+    // another one started, the entry must not become the new one's.
+    if (session?.id !== sessionId) return;
     session = {
       ...session,
       savedEntryId: entryId,
@@ -1753,9 +1767,9 @@ export function markRecordingSaved(
  * Records that the save finished, so a Discard of a session that is somehow
  * still around afterwards clears the phone and leaves the diary entry alone.
  */
-export function markRecordingSaveComplete(): Promise<void> {
+export function markRecordingSaveComplete(sessionId: string): Promise<void> {
   return enqueue(async () => {
-    if (!session) return;
+    if (session?.id !== sessionId) return;
     session = { ...session, saveComplete: true };
     await persistSession();
     publish();
@@ -1784,6 +1798,20 @@ async function deleteHalfSavedEntry(
 }
 
 /**
+ * Marks a save of the given recording as running, so a Discard of the same
+ * recording (from the recording bar, which stays live while the Record screen
+ * saves) is refused until `endRecordingSave` instead of deleting an entry the
+ * save is still finishing.
+ */
+export function beginRecordingSave(sessionId: string): void {
+  savingSessionId = sessionId;
+}
+
+export function endRecordingSave(sessionId: string): void {
+  if (savingSessionId === sessionId) savingSessionId = null;
+}
+
+/**
  * Drops the session and every stored point.
  *
  * `discarded` is the person throwing the recording away. A save that created
@@ -1805,6 +1833,9 @@ export function discardRecording({
     // and the watch is told it was saved.
     const keepsSavedEntry =
       session?.savedEntryId != null && session.saveComplete !== false;
+    if (discarded && session && savingSessionId === session.id) {
+      throw new RecordingSaveInProgressError();
+    }
     let discardedId: string | null = null;
     if (discarded && session && !keepsSavedEntry) {
       if (session.savedEntryId) {
@@ -1813,8 +1844,11 @@ export function discardRecording({
         // the published session: if clearing the phone below fails, a retried
         // Save must create a new entry rather than re-send to the deleted id.
         session = { ...session, savedEntryId: null, savedForm: null };
-        await persistSession();
-        publish();
+        try {
+          await persistSession();
+        } finally {
+          publish();
+        }
       }
       savedEntriesBySession.delete(session.id);
       discardedId = session.id;
@@ -1884,5 +1918,6 @@ export function resetRecordingStateForTests(): void {
   hydrated = null;
   queue = Promise.resolve();
   discardedSessionIds.clear();
+  savingSessionId = null;
   publish();
 }
