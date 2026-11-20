@@ -573,6 +573,68 @@ async function saveChatHistory(
     client.release();
   }
 }
+// Chat history has no unique constraint on id. Serialize competing claims,
+// including requests handled by separate server processes.
+export async function claimChatTurnPrompt(
+  id: string,
+  userId: string,
+  content: string,
+  parts: unknown[],
+  metadata: object
+) {
+  const client = await getClient(userId);
+  let discard = false;
+  try {
+    await client.query('BEGIN ISOLATION LEVEL READ COMMITTED');
+    await client.query(
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+      [id]
+    );
+    const result = await client.query(
+      `INSERT INTO sparky_chat_history (id, user_id, content, message_type, metadata, parts, created_at)
+       SELECT $1, $2, $3, 'user', $4, $5, now()
+       WHERE NOT EXISTS (SELECT 1 FROM sparky_chat_history WHERE id = $1 AND user_id = $2)`,
+      [id, userId, content, JSON.stringify(metadata), JSON.stringify(parts)]
+    );
+    await client.query('COMMIT');
+    return result.rowCount === 1;
+  } catch (error) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      discard = true;
+    }
+    throw error;
+  } finally {
+    client.release(discard);
+  }
+}
+// A different worker cannot replay the active worker's events. Its reader can
+// poll durable history until the provider deadline, including after a restart.
+export async function getChatTurnStatus(
+  id: string,
+  userId: string,
+  timeoutMs: number
+): Promise<'pending' | 'gone' | undefined> {
+  const client = await getClient(userId);
+  try {
+    const { rows } = await client.query<{ pending: boolean }>(
+      `SELECT prompt.created_at > now() - $3::int * interval '1 millisecond'
+         AND NOT EXISTS (
+           SELECT 1 FROM sparky_chat_history answer
+           WHERE answer.user_id = prompt.user_id AND answer.message_type = 'assistant'
+             AND answer.metadata->>'account_user_id' IS NOT DISTINCT FROM prompt.metadata->>'account_user_id'
+             AND answer.metadata->>'turnId' = prompt.metadata->>'turnId'
+         ) AS pending
+       FROM sparky_chat_history prompt WHERE prompt.id = $1 AND prompt.user_id = $2`,
+      [id, userId, timeoutMs]
+    );
+    if (rows.length === 0) return undefined;
+    return rows[0].pending ? 'pending' : 'gone';
+  } finally {
+    client.release();
+  }
+}
 async function cancelChatApprovals(
   userId: string,
   accountUserId: string,

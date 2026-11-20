@@ -2,7 +2,9 @@ import {
   getChatApprovalSummary,
   type ApprovalSummary,
 } from '../ai/chatApprovalSummary.js';
-import chatRepository from '../models/chatRepository.js';
+import chatRepository, {
+  claimChatTurnPrompt,
+} from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
@@ -165,7 +167,7 @@ const CORE_PROFILE_MAX_PROVIDER_RETRIES = 1;
 // unbounded otherwise — the chat path never had a timeout, unlike
 // providerDispatch.ts). Generous: a slow local model streaming a long answer
 // with several tool round-trips can legitimately take minutes.
-const CHAT_REQUEST_TIMEOUT_MS = 5 * 60_000;
+export const CHAT_REQUEST_TIMEOUT_MS = 5 * 60_000;
 
 async function handleAiServiceSettings(
   action: string,
@@ -3045,6 +3047,22 @@ export function mapUsageToMetadata(u: LanguageModelUsage) {
   };
 }
 
+export async function claimChatTurn(
+  rowId: string,
+  turnId: string,
+  prompt: ChatMessage,
+  actorId: string,
+  accountId: string,
+  conversationId?: string
+) {
+  const { content, parts } = describeUserMessage(toCoreMessages([prompt])[0]);
+  return claimChatTurnPrompt(rowId, actorId, content, parts, {
+    ...accountHistoryMetadata(accountId, actorId),
+    ...(conversationId ? { chat_conversation_id: conversationId } : {}),
+    turnId,
+  });
+}
+
 async function processChatMessageStream(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -3053,7 +3071,8 @@ async function processChatMessageStream(
   actorIsAdmin = false,
   toolCategories?: readonly string[],
   conversationId?: string,
-  approvals = false
+  approvals = false,
+  turnId?: string
 ) {
   let continuation: UIMessage | undefined;
   let streamStarted = false;
@@ -3157,6 +3176,7 @@ async function processChatMessageStream(
         | {
             account_user_id?: string;
             chat_conversation_id?: string;
+            turnId?: string;
           }
         | undefined;
       if (
@@ -3218,6 +3238,7 @@ async function processChatMessageStream(
       ) {
         throw new Error('Approval already answered.');
       }
+      turnId = metadata?.turnId;
       continuation = {
         id: saved.id,
         role: 'assistant',
@@ -3406,7 +3427,7 @@ async function processChatMessageStream(
             generateMessageId: () => randomUUID(),
             onFinish: async ({ responseMessage, isAborted }) => {
               if (isAborted && !continuation) return;
-              if (!continuation) {
+              if (!continuation && !turnId) {
                 const lastUser = [...conversationMessages]
                   .reverse()
                   .find((msg) => msg.role === 'user');
@@ -3458,6 +3479,7 @@ async function processChatMessageStream(
               const history = {
                 user_id: authenticatedUserId,
                 metadata: {
+                  ...(turnId ? { turnId } : {}),
                   custom: {
                     outsideSource: outsideSource(),
                     savedMessageId: responseMessage.id,

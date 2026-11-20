@@ -8,7 +8,14 @@ import express from 'express';
 import multer from 'multer';
 import { pipeUIMessageStreamToResponse } from 'ai';
 import { authenticate } from '../middleware/authMiddleware.js';
-import chatService from '../services/chatService.js';
+import { v5 as uuidv5 } from 'uuid';
+import { z } from 'zod';
+import { ChatTurnStreams } from '../services/chatTurnStreams.js';
+import { getChatTurnStatus } from '../models/chatRepository.js';
+import chatService, {
+  CHAT_REQUEST_TIMEOUT_MS,
+  claimChatTurn,
+} from '../services/chatService.js';
 import type { FoodOptionsErrorCategory } from '../services/chatService.js';
 import { transcribeVoiceAudio } from '../services/voiceTranscriptionService.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
@@ -421,27 +428,90 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+const chatTurns = new ChatTurnStreams();
+const turnParams = z.object({ turnId: z.uuid() });
+const turnRequest = turnParams.extend({
+  service_config_id: z.string().min(1),
+  messages: z
+    .array(z.object({ role: z.string() }))
+    .refine((messages) => messages.at(-1)?.role === 'user'),
+});
+
+function turnRowId(actor: string, account: string, turnId: string) {
+  return uuidv5(JSON.stringify([actor, account]), turnId);
+}
+
+async function sendChatTurn(
+  res: express.Response,
+  key: string,
+  actor: string,
+  replay: Awaited<ReturnType<ChatTurnStreams['open']>>
+) {
+  if (!replay || replay === 'gone') {
+    replay = await getChatTurnStatus(key, actor, CHAT_REQUEST_TIMEOUT_MS);
+  }
+  if (replay === 'pending') return res.set('Retry-After', '2').sendStatus(503);
+  if (!replay) return res.sendStatus(404);
+  if (replay === 'gone') return res.sendStatus(410);
+  res.set('X-Accel-Buffering', 'no');
+  return pipeUIMessageStreamToResponse({ response: res, stream: replay });
+}
+
+router.get('/turns/:turnId/stream', authenticate, async (req, res) => {
+  const parsed = turnParams.safeParse(req.params);
+  if (!parsed.success) return res.sendStatus(400);
+  const { turnId } = parsed.data;
+  const key = turnRowId(req.authenticatedUserId, req.userId, turnId);
+  const replay = await chatTurns.open(key);
+  return sendChatTurn(res, key, req.authenticatedUserId, replay);
+});
+
 router.post('/stream', authenticate, async (req, res, next) => {
-  const { messages, service_config_id } = req.body;
+  const { messages, service_config_id, turnId } = req.body;
   const toolCategories = normalizeChatToolCategories(req.body?.toolCategories);
   const capability = chatApprovalCapabilitySchema.safeParse(req.body);
   if (!capability.success)
     return res.status(400).json({ error: 'Invalid approval capability.' });
+  const conversationId =
+    typeof req.body.conversationId === 'string'
+      ? req.body.conversationId
+      : undefined;
+  if (turnId !== undefined && !turnRequest.safeParse(req.body).success) {
+    return res.status(400).json({
+      error:
+        'A resumable turn requires a UUID, a user prompt and a service configuration.',
+    });
+  }
   try {
     const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
-    const { stream } = await chatService.processChatMessageStream(
-      messages,
-      service_config_id,
-      req.userId,
-      req.authenticatedUserId,
-      isAdmin,
-      toolCategories,
-      typeof req.body?.conversationId === 'string'
-        ? req.body.conversationId
-        : undefined,
-      capability.data.approvals
-    );
-
+    const generate = () =>
+      chatService.processChatMessageStream(
+        messages,
+        service_config_id,
+        req.userId,
+        req.authenticatedUserId,
+        isAdmin,
+        toolCategories,
+        conversationId,
+        capability.data.approvals,
+        turnId
+      );
+    if (turnId) {
+      const key = turnRowId(req.authenticatedUserId, req.userId, turnId);
+      const replay = await chatTurns.open(key, async () => {
+        const claimed = await claimChatTurn(
+          key,
+          turnId,
+          messages.at(-1),
+          req.authenticatedUserId,
+          req.userId,
+          conversationId
+        );
+        return claimed ? (await generate()).stream : null;
+      });
+      return sendChatTurn(res, key, req.authenticatedUserId, replay);
+    }
+    const { stream } = await generate();
     pipeUIMessageStreamToResponse({ response: res, stream });
   } catch (error) {
     next(error);

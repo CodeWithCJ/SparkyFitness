@@ -1663,7 +1663,8 @@ describe('chatService', () => {
           userMessage,
         ],
         approvals = true,
-        consume = drainStream
+        consume = drainStream,
+        turnId?: string
       ) => {
         const { stream } = await chatService.processChatMessageStream(
           messages,
@@ -1673,7 +1674,8 @@ describe('chatService', () => {
           false,
           undefined,
           undefined,
-          approvals
+          approvals,
+          turnId
         );
         return consume(stream);
       };
@@ -1925,6 +1927,27 @@ describe('chatService', () => {
           messageMetadata: { custom: { savedMessageId: saved?.id } },
         });
       });
+      it('keeps a checkpointed prompt single and associates the rich assistant row with its turn', async () => {
+        scripted([
+          callStep('mcp_notes__search'),
+          callStep('sparky_test_write', 'write-1'),
+        ]);
+        await run([userMessage], true, drainStream, 'turn-1');
+        const rows = vi
+          .mocked(chatRepository.saveChatHistory)
+          .mock.calls.map(([row]) => row);
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({
+          messageType: 'assistant',
+          metadata: {
+            turnId: 'turn-1',
+            custom: { savedMessageId: rows[0].id },
+          },
+          parts: expect.arrayContaining([
+            expect.objectContaining({ state: 'approval-requested' }),
+          ]),
+        });
+      });
       it('persists a pending approval without text, including input and approval id', async () => {
         scripted([
           callStep('mcp_notes__search'),
@@ -1973,6 +1996,7 @@ describe('chatService', () => {
           id: 'row-1',
           user_id: actorUserId,
           message_type: 'assistant',
+          metadata: { turnId: 'turn-1' },
           parts: [outsidePart, pending],
         });
         return run(
@@ -2017,6 +2041,7 @@ describe('chatService', () => {
           'row-1',
           actorUserId,
           expect.objectContaining({
+            metadata: expect.objectContaining({ turnId: 'turn-1' }),
             parts: expect.arrayContaining([
               expect.objectContaining({
                 toolCallId: 'write-2',

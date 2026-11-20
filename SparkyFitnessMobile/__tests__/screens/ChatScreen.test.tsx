@@ -1307,16 +1307,14 @@ describe('ChatScreen history seeding', () => {
       mockTransportOptions.prepareSendMessagesRequest!({
         messages: [{ role: 'user' }],
       });
-      const load = jest
-        .spyOn(chatApi, 'loadChatHistory')
-        .mockResolvedValue([
-          {
-            id: 'old',
-            message_type: 'user',
-            content: 'prompt',
-            created_at: '',
-          },
-        ]);
+      const load = jest.spyOn(chatApi, 'loadChatHistory').mockResolvedValue([
+        {
+          id: 'old',
+          message_type: 'user',
+          content: 'prompt',
+          created_at: '',
+        },
+      ]);
       const callbacks = mockRuntimeCallbacks;
       const notify = (state: 'background' | 'active') => {
         jest

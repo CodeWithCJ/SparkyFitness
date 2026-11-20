@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-17_
+_Last updated: 2026-11-20_
 
 SparkyFitness Server is the backend API package for the SparkyFitness monorepo. Use this file as the primary guide for work inside `SparkyFitnessServer/`.
 
@@ -64,6 +64,7 @@ pnpm exec eslint routes/v2/foodRoutes.ts services/foodCoreService.ts
 
 - Chat display labels, outside-result cleanup, argument previews and approval result states are shared in `../shared/src/utils/chatTools.ts`. Server-owned tool titles and destructive approval summaries travel in `metadata.custom.outsideSource`; `SparkyFitnessServer/ai/chatApprovalSummary.ts` from the repo root reads targets under the user's context before approval is requested.
 
+- Streaming chat accepts an optional client-generated `turnId` on a user prompt. The server checkpoints the prompt in the signed-in person's active profile and drains the response independently. `GET /api/chat/turns/:turnId/stream` replays the original events for that actor and profile. Replay is local to the server process and bounded. Saved assistant history carries the turn ID after completion.
 - Chat outside-tool approval: `ai/chatToolApproval.ts` always gates destructive calls in approval-capable streaming chat, and gates writes and `mcp_` calls after an outside result. Hosted `web_search` is disabled for later steps after an outside result. Only streaming requests with `approvals: true` load outside tools. `services/chatService.ts` resumes persisted approval parts using this request's tools; `models/chatRepository.ts` claims responses once and cancels pending approvals on new user text. `mcpServerTools` attaches row-owned display names to tools; the stream sends and saves `metadata.custom.outsideSource` and announces `savedMessageId` only after persistence. Outside results are delimited as data and replayed in later turns only as a call note, without the result or error text.
 
 - Glucose / CGM uses the existing generic health samples API and `health_metric_samples` RLS. `blood_glucose` samples store `mmol_l` plus optional source bundle attribution; `user_preferences.default_glucose_unit` is a validated display-only preference shared by mobile and web; setup and deployment notes are in `docs/src/features/cgm.md`.

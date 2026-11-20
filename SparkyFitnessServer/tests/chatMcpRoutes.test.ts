@@ -7,7 +7,8 @@ import express, {
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import chatRoutes from '../routes/chatRoutes.js';
-import chatService from '../services/chatService.js';
+import { getChatTurnStatus } from '../models/chatRepository.js';
+import chatService, { claimChatTurn } from '../services/chatService.js';
 import { getChatMcpServerChoices } from '../models/externalProviderRepository.js';
 import {
   getChatMcpServerIds,
@@ -17,13 +18,16 @@ import {
 vi.mock('../middleware/authMiddleware.js', () => ({
   authenticate: (req: Request, _res: Response, next: NextFunction) => {
     req.userId = req.headers['x-family'] ? 'family' : 'owner';
-    req.authenticatedUserId = 'owner';
+    req.authenticatedUserId = req.headers['x-other-actor'] ? 'other' : 'owner';
     next();
   },
 }));
 vi.mock('../services/chatService.js', () => ({
   default: { processChatMessageStream: vi.fn() },
+  claimChatTurn: vi.fn(),
+  CHAT_REQUEST_TIMEOUT_MS: 300_000,
 }));
+vi.mock('../models/chatRepository.js', () => ({ getChatTurnStatus: vi.fn() }));
 vi.mock('../utils/adminCheck.js', () => ({
   resolveIsAdmin: vi.fn(async () => false),
 }));
@@ -167,7 +171,8 @@ describe('/api/chat/stream approval capability', () => {
         false,
         undefined,
         undefined,
-        approvals ?? false
+        approvals ?? false,
+        undefined
       );
     }
   );
@@ -176,6 +181,76 @@ describe('/api/chat/stream approval capability', () => {
       .post('/api/chat/stream')
       .send({ messages: [], service_config_id: 'svc-1', approvals: 'true' });
     expect(result.status).toBe(400);
+    expect(chatService.processChatMessageStream).not.toHaveBeenCalled();
+  });
+});
+
+describe('resumable chat turns', () => {
+  it('runs a retried prompt once and only replays it within its account', async () => {
+    vi.clearAllMocks();
+    vi.mocked(claimChatTurn).mockResolvedValue(true);
+    vi.mocked(chatService.processChatMessageStream).mockResolvedValue({
+      stream: new ReadableStream({
+        start(c) {
+          c.enqueue({ type: 'finish', finishReason: 'stop' });
+          c.close();
+        },
+      }),
+    });
+    const body = {
+      turnId: first,
+      service_config_id: 'svc',
+      approvals: true,
+      messages: [{ role: 'user', content: 'Hello' }],
+    };
+    const [accepted, duplicate] = await Promise.all(
+      [1, 2].map(() => request(app).post('/api/chat/stream').send(body))
+    );
+    expect(accepted.status).toBe(200);
+    expect(duplicate.text).toBe(accepted.text);
+    expect(chatService.processChatMessageStream).toHaveBeenCalledTimes(1);
+    expect(chatService.processChatMessageStream).toHaveBeenCalledWith(
+      body.messages,
+      'svc',
+      'owner',
+      'owner',
+      false,
+      undefined,
+      undefined,
+      true,
+      first
+    );
+    expect(claimChatTurn).toHaveBeenCalledTimes(1);
+    const route = '/api/chat/turns/' + first + '/stream';
+    expect(
+      (await request(app).get(route).set('x-other-actor', 'yes')).status
+    ).toBe(404);
+    expect((await request(app).get(route)).text).toBe(accepted.text);
+    expect((await request(app).get(route).set('x-family', 'yes')).status).toBe(
+      404
+    );
+  });
+  it('recognizes a durable checkpoint after replay expires and never regenerates it', async () => {
+    vi.clearAllMocks();
+    vi.mocked(claimChatTurn).mockResolvedValue(false);
+    vi.mocked(getChatTurnStatus).mockResolvedValue('gone');
+    const body = {
+      turnId: second,
+      service_config_id: 'svc',
+      messages: [{ role: 'user', content: 'Hello' }],
+    };
+    expect(
+      (await request(app).post('/api/chat/stream').send(body)).status
+    ).toBe(410);
+    expect(
+      (await request(app).get('/api/chat/turns/' + second + '/stream')).status
+    ).toBe(410);
+    vi.mocked(getChatTurnStatus).mockResolvedValue('pending');
+    const remote = await request(app).get(
+      '/api/chat/turns/' + second + '/stream'
+    );
+    expect(remote.status).toBe(503);
+    expect(remote.headers['retry-after']).toBe('2');
     expect(chatService.processChatMessageStream).not.toHaveBeenCalled();
   });
 });

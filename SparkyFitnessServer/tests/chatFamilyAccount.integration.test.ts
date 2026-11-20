@@ -13,7 +13,10 @@ import {
   getSystemClient,
 } from '../db/poolManager.js';
 import { buildChatbotTools } from '../ai/tools/index.js';
-import chatRepository from '../models/chatRepository.js';
+import chatRepository, {
+  claimChatTurnPrompt,
+  getChatTurnStatus,
+} from '../models/chatRepository.js';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
 
 async function dbReachable(): Promise<boolean> {
@@ -234,6 +237,49 @@ describe.runIf(RUN)("chat in a family member's account", () => {
     );
     expect(await history(OWNER)).toEqual([]);
     expect(await history()).toEqual(['in my own profile']);
+  });
+
+  it('claims a delegated turn once across concurrent database connections', async () => {
+    const rowId = '00000000-0000-4000-b100-000000000005';
+    const turnId = '00000000-0000-4000-b100-000000000006';
+    const parts = [{ type: 'text', text: 'Sample prompt' }];
+    const claim = () =>
+      signedInAs(DIARY, () =>
+        claimChatTurnPrompt(rowId, DIARY, 'Sample prompt', parts, {
+          turnId,
+          account_user_id: OWNER,
+        })
+      );
+    expect((await Promise.all([claim(), claim()])).sort()).toEqual([
+      false,
+      true,
+    ]);
+    expect(
+      await signedInAs(REPORTS, () => getChatTurnStatus(rowId, REPORTS, 300000))
+    ).toBeUndefined();
+    const status = (ms: number) =>
+      signedInAs(DIARY, () => getChatTurnStatus(rowId, DIARY, ms));
+    expect(await status(300_000)).toBe('pending');
+    expect(await status(0)).toBe('gone');
+    await signedInAs(DIARY, () =>
+      chatRepository.saveChatHistory({
+        user_id: DIARY,
+        content: 'Answer',
+        messageType: 'assistant',
+        metadata: { turnId, account_user_id: OWNER },
+      })
+    );
+    expect(await status(300_000)).toBe('gone');
+    const history = await signedInAs(DIARY, () =>
+      chatRepository.getChatHistoryByUserId(DIARY, OWNER)
+    );
+    expect(history.filter((row) => row.id === rowId)).toEqual([
+      expect.objectContaining({
+        content: 'Sample prompt',
+        metadata: { turnId, account_user_id: OWNER },
+        parts,
+      }),
+    ]);
   });
 
   it("uses the delegate's own AI service in the owner's account", async () => {
