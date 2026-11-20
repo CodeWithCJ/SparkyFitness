@@ -1093,8 +1093,9 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const handleSave = useCallback(async () => {
     if (!session) return;
     setBusy(true);
-    beginRecordingSave(session.id);
     try {
+      // Refused while the recording bar is discarding this recording.
+      beginRecordingSave(session.id);
       const saved = await saveRecordedActivity(
         session,
         points,

@@ -260,11 +260,22 @@ export class RecordingSaveInProgressError extends Error {
   }
 }
 
+/** A Save asked for while that recording is being discarded. */
+export class RecordingDiscardInProgressError extends Error {
+  constructor() {
+    super('The recording is being discarded');
+    this.name = 'RecordingDiscardInProgressError';
+  }
+}
+
 let session: RecordingSession | null = null;
 let points: RecordedPoint[] = [];
 // The recording a save is running for. A Discard of it waits for nothing: it
 // is refused, so it cannot delete an entry the save is still finishing.
 let savingSessionId: string | null = null;
+// The recording a Discard is running for. A Save of it is refused meanwhile,
+// so it cannot reuse the entry the discard is deleting.
+let discardingSessionId: string | null = null;
 let snapshot: RecordingSnapshot = { session: null, points: [] };
 let heartRate: StoredHeartRate = { samples: [], batchIds: [] };
 /** Saved entry ids by recording, for Apple zones that arrive after the session is cleared. */
@@ -1804,6 +1815,9 @@ async function deleteHalfSavedEntry(
  * save is still finishing.
  */
 export function beginRecordingSave(sessionId: string): void {
+  if (discardingSessionId === sessionId) {
+    throw new RecordingDiscardInProgressError();
+  }
   savingSessionId = sessionId;
 }
 
@@ -1836,42 +1850,49 @@ export function discardRecording({
     if (discarded && session && savingSessionId === session.id) {
       throw new RecordingSaveInProgressError();
     }
-    let discardedId: string | null = null;
-    if (discarded && session && !keepsSavedEntry) {
-      if (session.savedEntryId) {
-        await deleteHalfSavedEntry(session.savedEntryId, session.startedAt);
-        // The entry is gone. Published at once, because the screen saves from
-        // the published session: if clearing the phone below fails, a retried
-        // Save must create a new entry rather than re-send to the deleted id.
-        session = { ...session, savedEntryId: null, savedForm: null };
-        try {
-          await persistSession();
-        } finally {
-          publish();
+    if (discarded && session) discardingSessionId = session.id;
+    try {
+      let discardedId: string | null = null;
+      if (discarded && session && !keepsSavedEntry) {
+        if (session.savedEntryId) {
+          await deleteHalfSavedEntry(session.savedEntryId, session.startedAt);
+          // The entry is gone. Published at once, because the screen saves from
+          // the published session: if clearing the phone below fails, a retried
+          // Save must create a new entry rather than re-send to the deleted id.
+          session = { ...session, savedEntryId: null, savedForm: null };
+          try {
+            await persistSession();
+          } finally {
+            publish();
+          }
+        }
+        savedEntriesBySession.delete(session.id);
+        discardedId = session.id;
+      }
+      await stopUpdates();
+      stopRecordingCues();
+      await clearStoredPoints();
+      await AsyncStorage.removeItem(HEART_RATE_KEY);
+      // The stored session goes before the live one: if removing it fails, the
+      // recording stays on screen and can still be saved or discarded again.
+      await AsyncStorage.removeItem(SESSION_KEY);
+      // Marked only once the phone is cleared: a discard that fails before this
+      // leaves the recording on screen, and saving it after all must reach the
+      // watch as saved.
+      if (discardedId) {
+        discardedSessionIds.add(discardedId);
+        if (discardedSessionIds.size > MAX_SAVED_ENTRY_IDS) {
+          const oldest = discardedSessionIds.values().next().value;
+          if (oldest !== undefined) discardedSessionIds.delete(oldest);
         }
       }
-      savedEntriesBySession.delete(session.id);
-      discardedId = session.id;
+      session = null;
+      points = [];
+      heartRate = { samples: [], batchIds: [] };
+      publish();
+    } finally {
+      discardingSessionId = null;
     }
-    await stopUpdates();
-    stopRecordingCues();
-    await clearStoredPoints();
-    await AsyncStorage.removeItem(HEART_RATE_KEY);
-    // Marked only once the phone is cleared: a discard that fails before this
-    // leaves the recording on screen, and saving it after all must reach the
-    // watch as saved.
-    if (discardedId) {
-      discardedSessionIds.add(discardedId);
-      if (discardedSessionIds.size > MAX_SAVED_ENTRY_IDS) {
-        const oldest = discardedSessionIds.values().next().value;
-        if (oldest !== undefined) discardedSessionIds.delete(oldest);
-      }
-    }
-    session = null;
-    points = [];
-    heartRate = { samples: [], batchIds: [] };
-    await persistSession();
-    publish();
   });
 }
 
@@ -1919,5 +1940,6 @@ export function resetRecordingStateForTests(): void {
   queue = Promise.resolve();
   discardedSessionIds.clear();
   savingSessionId = null;
+  discardingSessionId = null;
   publish();
 }

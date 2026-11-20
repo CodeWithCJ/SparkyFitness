@@ -43,6 +43,7 @@ import {
 import {
   GPS_RECORDING_TASK_NAME,
   RecordingPermissionError,
+  RecordingDiscardInProgressError,
   RecordingSaveInProgressError,
   beginRecordingSave,
   endRecordingSave,
@@ -545,6 +546,57 @@ describe('finishing and discarding', () => {
       await discardRecording({ discarded: true });
       expect(mockedDelete).not.toHaveBeenCalled();
       expect(wasRecordingDiscarded(second)).toBe(true);
+    });
+
+    it('refuses to save a recording while its discard is deleting the entry', async () => {
+      let finishDelete: () => void = () => {};
+      mockedDelete.mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishDelete = resolve;
+          })
+      );
+      const id = await halfSaved();
+
+      const discarding = discardRecording({ discarded: true });
+      // Let the discard reach the pending deletion.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(mockedDelete).toHaveBeenCalledWith('entry-1');
+      expect(() => beginRecordingSave(id)).toThrow(
+        RecordingDiscardInProgressError
+      );
+
+      finishDelete();
+      await discarding;
+      expect(await storedSession()).toBeNull();
+      // Once the discard is over, saving is no longer blocked.
+      expect(() => beginRecordingSave(id)).not.toThrow();
+      endRecordingSave(id);
+    });
+
+    it('keeps the recording, unmarked, when clearing its stored session fails', async () => {
+      mockedDelete.mockResolvedValue(undefined);
+      const id = await halfSaved();
+      const removeItem = jest.mocked(AsyncStorage.removeItem);
+      const original = removeItem.getMockImplementation();
+      removeItem.mockImplementation((key: string) =>
+        key === '@SparkyFitness/gpsRecording/session'
+          ? Promise.reject(new Error('disk'))
+          : (original?.(key) ?? Promise.resolve())
+      );
+      try {
+        await expect(discardRecording({ discarded: true })).rejects.toThrow(
+          'disk'
+        );
+      } finally {
+        if (original) removeItem.mockImplementation(original);
+        else removeItem.mockReset();
+      }
+
+      // Still on screen, so it can be saved or discarded again, and the
+      // watch is not told it was discarded.
+      expect(getGpsRecordingSnapshot().session?.id).toBe(id);
+      expect(wasRecordingDiscarded(id)).toBe(false);
     });
 
     it('never deletes the entry when clearing after a successful save', async () => {
