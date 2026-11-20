@@ -329,12 +329,9 @@ async function processLiftosaurWorkouts(
   createdByUserId: string,
   workouts: LiftohistoryWorkout[],
   timezone = 'UTC',
-  cleanup?: LiftosaurCleanupRange | LiftosaurMuscleResolver | null,
+  cleanup?: LiftosaurCleanupRange | null,
   resolveMuscles?: LiftosaurMuscleResolver
 ) {
-  const actualCleanup = typeof cleanup === 'function' ? undefined : cleanup;
-  const actualResolveMuscles =
-    typeof cleanup === 'function' ? cleanup : resolveMuscles;
   log(
     'info',
     `Processing ${workouts.length} Liftosaur workouts for user ${userId}...`
@@ -343,7 +340,7 @@ async function processLiftosaurWorkouts(
   const library = await resolveLibraryExercises(
     userId,
     workouts,
-    actualResolveMuscles
+    resolveMuscles
   );
 
   const client = await getClient(userId, createdByUserId);
@@ -389,9 +386,7 @@ async function processLiftosaurWorkouts(
     // first, because that path clears their calorie links and a session
     // delete cascades to the entries still under it.
     const range =
-      actualCleanup === undefined
-        ? fetchedDayRange(workouts, timezone)
-        : actualCleanup;
+      cleanup === undefined ? fetchedDayRange(workouts, timezone) : cleanup;
     if (range) {
       const { startDate, endDate } = range;
 

@@ -386,6 +386,7 @@ describe('processLiftosaurWorkouts', () => {
       CID,
       parseSampleWorkouts(),
       'UTC',
+      undefined,
       resolveMuscles
     );
 
@@ -437,6 +438,7 @@ describe('processLiftosaurWorkouts', () => {
       CID,
       parseSampleWorkouts(),
       'UTC',
+      undefined,
       resolveMuscles
     );
 
@@ -520,6 +522,7 @@ describe('processLiftosaurWorkouts', () => {
       CID,
       parseSampleWorkouts(),
       'UTC',
+      undefined,
       resolveMuscles
     );
 
@@ -536,12 +539,19 @@ describe('processLiftosaurWorkouts', () => {
     );
   });
 
-  it('applies default fetchedDayRange cleanup when resolver is the 5th argument', async () => {
+  it('applies the default cleanup range when only a muscle resolver is passed', async () => {
     const workouts = parseSampleWorkouts();
     const id = String(workouts[0]!.id);
     const resolveMuscles = vi.fn().mockResolvedValue(new Map());
 
-    await processLiftosaurWorkouts(UID, CID, workouts, 'UTC', resolveMuscles);
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      workouts,
+      'UTC',
+      undefined,
+      resolveMuscles
+    );
 
     expect(
       exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
@@ -606,6 +616,7 @@ describe('processLiftosaurWorkouts', () => {
       CID,
       parseSampleWorkouts(),
       'UTC',
+      undefined,
       resolveMuscles
     );
 
@@ -622,6 +633,7 @@ describe('processLiftosaurWorkouts', () => {
       CID,
       parseSampleWorkouts(),
       'UTC',
+      undefined,
       resolveMuscles
     );
 
