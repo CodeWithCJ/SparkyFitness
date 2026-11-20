@@ -34,6 +34,7 @@ jest.mock('../../../src/services/storage', () => ({
     url: 'https://sparky.example',
     apiKey: 'key-1',
   }),
+  getActiveServerConfigId: jest.fn().mockResolvedValue('server-1'),
 }));
 jest.mock('../../../src/services/api/healthSamplesApi', () => ({
   postHealthMetricSamples: jest.fn().mockResolvedValue({}),
@@ -42,6 +43,11 @@ jest.mock('../../../src/services/api/healthSamplesApi', () => ({
 jest.mock('../../../src/services/api/measurementsApi', () => ({
   serverSupportsPerRecordWater: jest.fn().mockResolvedValue(true),
 }));
+
+const storage = require('../../../src/services/storage') as {
+  getActiveServerConfig: jest.Mock;
+  getActiveServerConfigId: jest.Mock;
+};
 
 const api = require('../../../src/services/api/healthDataApi') as {
   syncHealthData: jest.Mock;
@@ -1263,6 +1269,65 @@ describe('telemetry reuse cache commits only on a fully accepted upload', () => 
 
     expect(beginRun).toHaveBeenCalled();
     expect(commitRun).toHaveBeenCalledWith(88);
+  });
+
+  test('passes owning runId to provider.readRaw', async () => {
+    const beginRun = jest.fn(() => 42);
+    const readRaw = jest.fn().mockResolvedValue({ records: [] });
+    const provider = fakeProvider({
+      beginRun,
+      readRaw,
+    });
+
+    await runForegroundSync(
+      provider,
+      '1d',
+      { isHydrationSyncEnabled: true },
+      opts
+    );
+
+    expect(readRaw).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      42
+    );
+  });
+
+  test('cancels water deletion run and aborts if active account changes before upload', async () => {
+    const beginRun = jest.fn(() => 99);
+    const commitRun = jest.fn();
+    const cancelWaterDeletionRun = jest.fn();
+    const readRaw = jest.fn().mockResolvedValue({ records: [{ id: 'w1' }] });
+    const provider = fakeProvider({
+      beginRun,
+      commitRun,
+      cancelWaterDeletionRun,
+      readRaw,
+    });
+
+    let callCount = 0;
+    storage.getActiveServerConfigId.mockImplementation(async () => {
+      callCount++;
+      return callCount === 1 ? 'acc-1' : 'acc-2';
+    });
+
+    const result = await runForegroundSync(
+      provider,
+      '1d',
+      { isHydrationSyncEnabled: true },
+      opts
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('Active account changed');
+    expect(cancelWaterDeletionRun).toHaveBeenCalledWith(99);
+    expect(commitRun).not.toHaveBeenCalled();
+    expect(api.syncHealthData).not.toHaveBeenCalled();
+
+    // Reset mock
+    storage.getActiveServerConfigId.mockResolvedValue('server-1');
   });
 });
 

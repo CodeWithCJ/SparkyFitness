@@ -618,7 +618,7 @@ const readHydrationDeletions = async (
       hasMore = changes.hasMore && !!changes.nextChangesToken;
     }
     // Only stage the new token once pagination completes without throwing and run is not cancelled
-    if (staged && !staged.cancelled && thisRunId === currentWaterRunId) {
+    if (staged && !staged.cancelled) {
       staged.token = pageToken;
     }
     return deletedRecords;
@@ -637,16 +637,18 @@ const readHydrationDeletions = async (
 export const readHealthRecordsDetailed = async (
   recordType: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  _telemetry?: TelemetryRunContext,
+  runId?: number
 ): Promise<HealthConnectReadResult> => {
-  const runId = currentWaterRunId;
+  const effectiveRunId = runId ?? currentWaterRunId;
   const result = await readHealthRecordsDetailedInner(
     recordType,
     startDate,
     endDate
   );
   if (recordType === 'Hydration') {
-    const deletions = await readHydrationDeletions(runId);
+    const deletions = await readHydrationDeletions(effectiveRunId);
     if (deletions.length > 0) {
       return {
         records: [...result.records, ...deletions],

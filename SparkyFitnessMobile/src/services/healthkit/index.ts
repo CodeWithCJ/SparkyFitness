@@ -1181,7 +1181,8 @@ type RecordHandler = (
   identifier: string,
   startDate: Date,
   endDate: Date,
-  telemetry: TelemetryRunContext
+  telemetry: TelemetryRunContext,
+  runId?: number
 ) => Promise<unknown[]>;
 
 // Filter helpers for date range checking. Every handler pushes the window into the
@@ -2364,13 +2365,14 @@ const handleHydration: RecordHandler = async (
   identifier,
   startDate,
   endDate,
-  telemetry
+  telemetry,
+  runId
 ) => {
   if (!SUPPORTED_HK_TYPES.has(identifier)) {
     return [];
   }
 
-  const thisRunId = currentWaterRunId;
+  const thisRunId = runId ?? currentWaterRunId;
   const staged = stagedWaterRuns.get(thisRunId);
 
   // 1. Window-based query for additions (preserves full-day sums and wider imports)
@@ -2405,12 +2407,7 @@ const handleHydration: RecordHandler = async (
           } as Parameters<typeof queryQuantitySamplesWithAnchor>[1]
         );
 
-    if (
-      res.newAnchor &&
-      staged &&
-      !staged.cancelled &&
-      thisRunId === currentWaterRunId
-    ) {
+    if (res.newAnchor && staged && !staged.cancelled) {
       staged.anchor = res.newAnchor;
     }
 
@@ -2462,7 +2459,8 @@ export const readHealthRecordsDetailed = async (
   recordType: string,
   startDate: Date,
   endDate: Date,
-  telemetry: TelemetryRunContext
+  telemetry: TelemetryRunContext,
+  runId?: number
 ): Promise<HealthKitReadResult> => {
   if (!isHealthKitAvailable) {
     return { records: [] };
@@ -2478,7 +2476,7 @@ export const readHealthRecordsDetailed = async (
     const handler =
       RECORD_HANDLERS[recordType] || createQuantityHandler(recordType);
     return {
-      records: await handler(identifier, startDate, endDate, telemetry),
+      records: await handler(identifier, startDate, endDate, telemetry, runId),
     };
   } catch (error) {
     return { records: [], error: recordReadError(error, `${recordType} read`) };
