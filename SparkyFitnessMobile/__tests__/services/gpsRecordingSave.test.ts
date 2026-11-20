@@ -165,7 +165,11 @@ describe('saveRecordedActivity', () => {
     expect(entry).not.toHaveProperty('calories_burned');
     expect(entry.sets?.[0]).toMatchObject({ duration: 1500 });
 
-    expect(markRecordingSaved).toHaveBeenCalledWith('entry-1', null);
+    expect(markRecordingSaved).toHaveBeenCalledWith(
+      session.id,
+      'entry-1',
+      null
+    );
     const [entryId, track] = mockedAttach.mock.calls[0];
     expect(entryId).toBe('entry-1');
     expect(track.points).toHaveLength(11);
@@ -221,7 +225,11 @@ describe('saveRecordedActivity', () => {
     await expect(saveRecordedActivity(session, points, 'km')).rejects.toThrow(
       'offline'
     );
-    expect(markRecordingSaved).toHaveBeenCalledWith('entry-1', null);
+    expect(markRecordingSaved).toHaveBeenCalledWith(
+      session.id,
+      'entry-1',
+      null
+    );
   });
 
   it('attaches watch heart rate to the saved entry', async () => {
@@ -259,6 +267,41 @@ describe('saveRecordedActivity', () => {
       entryId: 'entry-1',
       entryDate: '2026-10-06',
     });
+  });
+});
+
+describe('saveRecordedActivity with no GPS fix', () => {
+  it.each([
+    ['no points', [] as RecordedPoint[]],
+    ['a single point', points.slice(0, 1)],
+  ])(
+    'saves the time with no route or distance when there are %s',
+    async (_label, few) => {
+      const saved = await saveRecordedActivity(session, few, 'km');
+
+      expect(saved.entryId).toBe('entry-1');
+      const entry = mockedCreateEntry.mock.calls[0][0];
+      expect(entry.distance).toBeNull();
+      expect(entry.duration_minutes).toBe(25);
+      // The server needs two points for a route; sending fewer failed every
+      // save and left the entry behind (#3470).
+      expect(mockedAttach).not.toHaveBeenCalled();
+      expect(mockedLearnOutdoor).not.toHaveBeenCalled();
+    }
+  );
+
+  it('still attaches the watch heart rate', async () => {
+    mockedHeartRate.mockResolvedValueOnce([
+      { t: T0, bpm: 120 },
+      { t: T0 + 60_000, bpm: 130 },
+    ]);
+
+    await saveRecordedActivity(session, [], 'km');
+
+    expect(mockedTelemetry).toHaveBeenCalledWith(
+      'entry-1',
+      expect.objectContaining({ hrSamples: expect.any(Array) })
+    );
   });
 });
 

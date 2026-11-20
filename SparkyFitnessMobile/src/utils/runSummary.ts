@@ -88,6 +88,7 @@ export function buildRunSummary({
   program,
   entryId,
   form,
+  clockSeconds,
 }: {
   activity: DiaryActivity;
   entryDate: string;
@@ -100,6 +101,12 @@ export function buildRunSummary({
   program: RunSummaryParams['program'];
   entryId?: string | null;
   form?: RunSummaryParams['form'];
+  /**
+   * The recording's clock, pauses removed. Shown when there is no route to
+   * time (a run saved before the first GPS fix, or an indoor one), which
+   * would otherwise read 0:00.
+   */
+  clockSeconds?: number;
 }): RunSummaryParams {
   const unitMeters = distanceUnit === 'miles' ? METERS_PER_MILE : METERS_PER_KM;
   const summary = summarizeRecording(points);
@@ -108,7 +115,10 @@ export function buildRunSummary({
     entryDate,
     distanceUnit,
     distanceMeters: summary.distanceMeters,
-    activeSeconds: summary.activeSeconds,
+    activeSeconds:
+      points.length < 2 && clockSeconds != null
+        ? Math.round(clockSeconds)
+        : summary.activeSeconds,
     elevationGainMeters: summary.elevationGainMeters,
     avgHeartRate,
     route:

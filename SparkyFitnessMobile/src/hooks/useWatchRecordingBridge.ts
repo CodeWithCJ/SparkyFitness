@@ -20,6 +20,7 @@ import {
   peekAppleWorkoutZones,
   resumeRecording,
   savedRecordingEntryId,
+  wasRecordingDiscarded,
   useGpsRecording,
   type RecordingSnapshot,
 } from '../services/gpsRecordingService';
@@ -68,7 +69,9 @@ export function useWatchRecordingBridge(enabled: boolean): void {
   // after the session is gone from the store.
   const lastSent = useRef<{ id: string; status: WatchStatus } | null>(null);
   // The newest session seen, to tell a saved recording from a discarded one
-  // once it has left the store: only a saved one has a diary entry id.
+  // once it has left the store: a saved one has a diary entry id and was not
+  // discarded (a discard that deleted its entry may leave before the cleared
+  // id is rendered, so `wasRecordingDiscarded` decides).
   const lastSession = useRef<RecordingSnapshot['session']>(null);
 
   // Declared first so the effects below read the current render's values.
@@ -177,7 +180,8 @@ export function useWatchRecordingBridge(enabled: boolean): void {
       // Saved or discarded: the session left the store.
       const saved =
         lastSession.current?.id === lastSent.current.id &&
-        lastSession.current.savedEntryId != null;
+        lastSession.current.savedEntryId != null &&
+        !wasRecordingDiscarded(lastSent.current.id);
       endRecording(lastSent.current.id, unitRef.current, !saved);
       lastSent.current = null;
       lastSession.current = null;
