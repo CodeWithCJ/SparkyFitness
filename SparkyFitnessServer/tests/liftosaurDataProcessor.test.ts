@@ -31,6 +31,15 @@ vi.mock('../models/exercise.js', () => ({
         Promise.resolve(name === 'Squat' ? { id: 'exercise-squat' } : null)
       ),
     createExercise: vi.fn().mockResolvedValue({ id: 'exercise-new' }),
+    fillEmptyMuscles: vi
+      .fn()
+      .mockImplementation(
+        (_uid: string, _id: string, primary: string[], secondary: string[]) =>
+          Promise.resolve({
+            primary_muscles: primary,
+            secondary_muscles: secondary,
+          })
+      ),
   },
 }));
 
@@ -93,6 +102,11 @@ function parseSampleWorkouts() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getClient).mockResolvedValue(mockClient as any);
+  // clearAllMocks keeps implementations, so restore the default library.
+  vi.mocked(exerciseRepository.findExerciseByNameAndUserId).mockImplementation(
+    (name: string) =>
+      Promise.resolve(name === 'Squat' ? { id: 'exercise-squat' } : null) as any
+  );
 });
 
 describe('processLiftosaurWorkouts', () => {
@@ -353,6 +367,283 @@ describe('processLiftosaurWorkouts', () => {
         is_custom: true,
       })
     );
+  });
+
+  it('creates new exercises with the muscles the resolver returns, asking only about exercises that need them', async () => {
+    const resolveMuscles = vi
+      .fn()
+      .mockResolvedValue(
+        new Map([
+          [
+            'Bulgarian Split Squat',
+            { primary: ['quadriceps'], secondary: ['glutes'] },
+          ],
+        ])
+      );
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      undefined,
+      resolveMuscles
+    );
+
+    // "Squat" resolves to a library row the user does not own, so only the
+    // new exercise is looked up.
+    expect(resolveMuscles).toHaveBeenCalledTimes(1);
+    expect(resolveMuscles).toHaveBeenCalledWith(['Bulgarian Split Squat']);
+    expect(exerciseRepository.createExercise).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'Bulgarian Split Squat',
+        primary_muscles: ['quadriceps'],
+        secondary_muscles: ['glutes'],
+      })
+    );
+    expect(exerciseRepository.fillEmptyMuscles).not.toHaveBeenCalled();
+  });
+
+  it('resolves each exercise once per batch, not once per workout', async () => {
+    const [first] = parseSampleWorkouts();
+    const workouts = [first!, { ...first!, id: first!.id + 1 }];
+
+    await processLiftosaurWorkouts(UID, CID, workouts);
+
+    expect(exerciseRepository.createExercise).toHaveBeenCalledTimes(1);
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenCalledTimes(4);
+  });
+
+  it('backfills muscles on an owned exercise that has none', async () => {
+    vi.mocked(
+      exerciseRepository.findExerciseByNameAndUserId
+    ).mockImplementation(
+      (name: string) =>
+        Promise.resolve(
+          name === 'Squat'
+            ? { id: 'exercise-squat', user_id: UID, primary_muscles: '[]' }
+            : null
+        ) as any
+    );
+    const resolveMuscles = vi
+      .fn()
+      .mockResolvedValue(
+        new Map([['Squat', { primary: ['quadriceps'], secondary: ['glutes'] }]])
+      );
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      undefined,
+      resolveMuscles
+    );
+
+    expect(resolveMuscles).toHaveBeenCalledWith([
+      'Squat',
+      'Bulgarian Split Squat',
+    ]);
+    expect(exerciseRepository.fillEmptyMuscles).toHaveBeenCalledWith(
+      UID,
+      'exercise-squat',
+      ['quadriceps'],
+      ['glutes']
+    );
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE exercise_entries SET'),
+      [
+        JSON.stringify(['quadriceps']),
+        JSON.stringify(['glutes']),
+        UID,
+        'exercise-squat',
+        'Liftosaur',
+      ]
+    );
+  });
+
+  it('backfills empty diary muscle snapshots during re-sync even when exercise already has muscles', async () => {
+    vi.mocked(
+      exerciseRepository.findExerciseByNameAndUserId
+    ).mockImplementation(
+      (name: string) =>
+        Promise.resolve(
+          name === 'Squat'
+            ? {
+                id: 'exercise-squat',
+                user_id: UID,
+                primary_muscles: '["quadriceps"]',
+                secondary_muscles: '["glutes"]',
+              }
+            : null
+        ) as any
+    );
+
+    await processLiftosaurWorkouts(UID, CID, parseSampleWorkouts());
+
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE exercise_entries SET'),
+      [
+        JSON.stringify(['quadriceps']),
+        JSON.stringify(['glutes']),
+        UID,
+        'exercise-squat',
+        'Liftosaur',
+      ]
+    );
+  });
+
+  it('uses the database returned secondary muscles rather than resolver values when backfilling diary snapshots', async () => {
+    vi.mocked(
+      exerciseRepository.findExerciseByNameAndUserId
+    ).mockImplementation(
+      (name: string) =>
+        Promise.resolve(
+          name === 'Squat'
+            ? { id: 'exercise-squat', user_id: UID, primary_muscles: '[]' }
+            : null
+        ) as any
+    );
+    const resolveMuscles = vi
+      .fn()
+      .mockResolvedValue(
+        new Map([['Squat', { primary: ['quadriceps'], secondary: ['glutes'] }]])
+      );
+    // Concurrent DB state preserved existing secondary muscles ("hamstrings")
+    vi.mocked(exerciseRepository.fillEmptyMuscles).mockResolvedValueOnce({
+      primary_muscles: '["quadriceps"]',
+      secondary_muscles: '["hamstrings"]',
+    });
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      undefined,
+      resolveMuscles
+    );
+
+    // The diary entry backfill must use the DB's preserved secondary muscles ("hamstrings"), not the resolver's ("glutes")
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE exercise_entries SET'),
+      [
+        JSON.stringify(['quadriceps']),
+        JSON.stringify(['hamstrings']),
+        UID,
+        'exercise-squat',
+        'Liftosaur',
+      ]
+    );
+  });
+
+  it('applies the default cleanup range when only a muscle resolver is passed', async () => {
+    const workouts = parseSampleWorkouts();
+    const id = String(workouts[0]!.id);
+    const resolveMuscles = vi.fn().mockResolvedValue(new Map());
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      workouts,
+      'UTC',
+      undefined,
+      resolveMuscles
+    );
+
+    expect(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+    ).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      '2026-07-13',
+      '2026-07-13',
+      'Liftosaur',
+      undefined,
+      [`${id}_Squat_0`, `${id}_Bulgarian Split Squat_0`]
+    );
+  });
+
+  it('reuses a row created earlier in the sync for a bare-name alias', async () => {
+    vi.mocked(exerciseRepository.findExerciseByNameAndUserId).mockResolvedValue(
+      null as never
+    );
+    vi.mocked(exerciseRepository.createExercise).mockResolvedValueOnce({
+      id: 'exercise-squat-new',
+    } as never);
+    const text = [
+      '2026-07-13 05:52:14 +00:00 / exercises: {',
+      '  Squat / 3x5 100kg',
+      '  Squat, Barbell / 3x5 100kg',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    expect(exerciseRepository.createExercise).toHaveBeenCalledTimes(1);
+    const entries = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(entries.map((c) => c[2].exercise_id)).toEqual([
+      'exercise-squat-new',
+      'exercise-squat-new',
+    ]);
+  });
+
+  it('makes no muscle lookup when every exercise already has muscles or is not owned', async () => {
+    vi.mocked(
+      exerciseRepository.findExerciseByNameAndUserId
+    ).mockImplementation(
+      (name: string) =>
+        Promise.resolve(
+          name === 'Squat'
+            ? {
+                id: 'exercise-squat',
+                user_id: UID,
+                primary_muscles: '["glutes"]',
+              }
+            : name === 'Bulgarian Split Squat'
+              ? { id: 'public-bss', user_id: null, primary_muscles: null }
+              : null
+        ) as any
+    );
+    const resolveMuscles = vi.fn();
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      undefined,
+      resolveMuscles
+    );
+
+    expect(resolveMuscles).not.toHaveBeenCalled();
+    expect(exerciseRepository.fillEmptyMuscles).not.toHaveBeenCalled();
+    expect(exerciseRepository.createExercise).not.toHaveBeenCalled();
+  });
+
+  it('still imports the workout when the muscle lookup fails', async () => {
+    const resolveMuscles = vi.fn().mockRejectedValue(new Error('timeout'));
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      undefined,
+      resolveMuscles
+    );
+
+    const created = vi.mocked(exerciseRepository.createExercise).mock
+      .calls[0]![0];
+    expect(created).not.toHaveProperty('primary_muscles');
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).toHaveBeenCalledTimes(2);
   });
 
   it('creates exercise entries with merged sets using _createExerciseEntryWithClient', async () => {
