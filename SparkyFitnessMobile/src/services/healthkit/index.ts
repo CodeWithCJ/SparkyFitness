@@ -39,6 +39,7 @@ import {
   isOwnWatchWorkout,
   EXERCISE_WRITEBACK_METADATA_KEY,
   isOwnWrittenWorkout,
+  isOwnWrittenBodySample,
 } from './dataTransformation';
 import { DIETARY_WRITE_IDENTIFIERS } from './writebackMappers';
 import {
@@ -183,6 +184,7 @@ const SUPPORTED_HK_TYPES = new Set<string>([
   'HKQuantityTypeIdentifierFlightsClimbed',
   'HKQuantityTypeIdentifierDietaryWater',
   'HKQuantityTypeIdentifierLeanBodyMass',
+  'HKQuantityTypeIdentifierWaistCircumference',
   'HKCategoryTypeIdentifierSleepAnalysis',
   'HKCategoryTypeIdentifierMindfulSession', // For Stress
   'HKCategoryTypeIdentifierToothbrushingEvent',
@@ -288,6 +290,8 @@ export const HEALTHKIT_TYPE_MAP: Record<string, string> = {
   FloorsClimbed: 'HKQuantityTypeIdentifierFlightsClimbed',
   Hydration: 'HKQuantityTypeIdentifierDietaryWater',
   LeanBodyMass: 'HKQuantityTypeIdentifierLeanBodyMass',
+  // Written by body measurement write-back (#2465); not read.
+  WaistCircumference: 'HKQuantityTypeIdentifierWaistCircumference',
   SleepSession: 'HKCategoryTypeIdentifierSleepAnalysis',
   Stress: 'HKCategoryTypeIdentifierMindfulSession', // Map Stress to MindfulSession for HealthKit
   MindfulnessSession: 'HKCategoryTypeIdentifierMindfulSession',
@@ -1905,6 +1909,9 @@ const createQuantityHandler = (recordType: string): RecordHandler => {
     // wrist temperature starts the evening before a window that opens at midnight.
     const matchByEnd = END_DATED_QUANTITIES.has(recordType);
     const filteredSamples = samples.filter((record) => {
+      // Body write-back's own samples (#2465) came from the check-in; never
+      // import them back.
+      if (isOwnWrittenBodySample(record)) return false;
       const recordDate = new Date(
         matchByEnd ? record.endDate : record.startDate
       );

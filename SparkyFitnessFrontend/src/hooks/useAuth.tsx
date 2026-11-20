@@ -12,6 +12,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '../lib/auth-client';
 import { fetchIdentityUser, switchUserContext } from '@/api/Auth/auth';
 import { apiCall, clearDemoRestrictions } from '@/api/api';
+import { clearPendingInvite } from '@/pages/Challenges/challengeLinks';
 
 export interface User {
   id: string;
@@ -297,6 +298,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setUser(null);
     identityLookupRef.current = null;
     clearDemoRestrictions();
+    clearPendingInvite();
     queryClient.clear();
     window.location.href = '/';
   }, [queryClient]);

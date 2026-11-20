@@ -80,6 +80,11 @@ describe('liftosaurSync', () => {
     expect(
       liftosaurDataProcessor.processLiftosaurWorkouts
     ).toHaveBeenCalledTimes(1);
+    // Muscles are looked up through a resolver bound to the user's API key.
+    expect(
+      vi.mocked(liftosaurDataProcessor.processLiftosaurWorkouts).mock
+        .calls[0]![5]
+    ).toEqual(expect.any(Function));
     expect(
       measurementsService.importMeasurementsFromLiftosaur
     ).toHaveBeenCalledTimes(1);

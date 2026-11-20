@@ -167,15 +167,16 @@ npx expo prebuild --clean
 
 ## Health Writeback
 
-- Writeback sends Sparky diary nutrition, hydration and workouts (plus toothbrushing on iOS) back to Apple Health on iOS and Health Connect on Android.
+- Writeback sends Sparky diary nutrition, hydration and workouts (plus toothbrushing on iOS), and the check-in's body measurements, back to Apple Health on iOS and Health Connect on Android.
 - Platform split: `services/writeback.ios.ts` re-exports `healthkit/writeback.ts`; `services/writeback.ts` re-exports `healthconnect/writeback.ts`.
 - `runWriteback()` runs after inbound sync in its own try/catch. Writeback failures must not block inbound sync results.
-- Writeback is opt-in per metric and gated on write permissions. Android production permissions include `WRITE_NUTRITION`, `WRITE_HYDRATION`, `WRITE_EXERCISE`, `WRITE_ACTIVE_CALORIES_BURNED` and `WRITE_DISTANCE`; other write permissions are dev-only. A metric's `extraPermissions` (`WritebackMetrics.ts`) are requested with it everywhere through `writebackMetricPermissions`.
+- Writeback is opt-in per metric and gated on write permissions. Android production permissions include `WRITE_NUTRITION`, `WRITE_HYDRATION`, `WRITE_EXERCISE`, `WRITE_ACTIVE_CALORIES_BURNED`, `WRITE_DISTANCE`, `WRITE_WEIGHT`, `WRITE_BODY_FAT`, `WRITE_HEIGHT`, `WRITE_BONE_MASS` and `WRITE_BODY_WATER_MASS`; other write permissions are dev-only. A metric's `extraPermissions` (`WritebackMetrics.ts`) are requested with it everywhere through `writebackMetricPermissions`.
 - Imported health entries are skipped to avoid echo loops. iOS sets the app bundle id as the own-source guard; Android relies on source metadata.
 - Per-day content-signature hashing skips unchanged days. Each run deletes prior tracked UUIDs then saves fresh records; failed deletes are retried next run.
 - `HealthDataWriteback` on `SyncScreen` owns the remove flow. `BottomSheetPicker` offers all-time purge or date range through `DateRangeSheet`; both call `removeWrittenData(range)` and clear tracking.
 - Inbound iOS nutrition sync reads food correlations with a rolling nutrition lookback and upserts by `(source, source_id)` server-side.
 - Exercise write-back (#1750): see [health-writeback.md](agent-docs/health-writeback.md#exercise-write-back).
+- Body measurement write-back (#2465): one switch per measurement in the `Body Measurements` category of `WritebackMetrics.ts` (weight, body fat, height on both; waist iOS only; bone mass and body water Android only; never BMR, neck, hips, muscle mass, steps or resting heart rate). Rules shared by both platforms are in `services/shared/bodyWriteback.ts` (check-in field per metric, 12:00 local time with today deferred until noon, body water as % × that day's weight, the same-value tolerance); the writers are `healthconnect/bodyWriteback.ts` and `healthkit/bodyWriteback.ts`, fed by one `fetchMeasurementsRange` per run (exact rows, no carry-forward). The check-in has no source, so a day is skipped when another app already holds the same value (read access asked as an optional extra). Own records are skipped on read by the `sparky-body-` client record id (Android) or the `SparkyBodyWriteback` metadata key (iOS), never by package or bundle id, since the dev seed tool writes body records from this app. Units: Health Connect takes Mass in kilograms, Height in meters and BodyFat as 0–100; HealthKit takes kg, cm and body fat as a 0–1 fraction in `%`.
 
 ## Native Patches
 

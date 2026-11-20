@@ -7,7 +7,10 @@ import {
   authorizationStatusFor,
 } from '@kingstinct/react-native-healthkit';
 import { fetchDailySummary } from '../../../src/services/api/dailySummaryApi';
-import { fetchWaterIntakeLog } from '../../../src/services/api/measurementsApi';
+import {
+  fetchMeasurementsRange,
+  fetchWaterIntakeLog,
+} from '../../../src/services/api/measurementsApi';
 import {
   loadHealthPreference,
   saveHealthPreference,
@@ -24,6 +27,7 @@ jest.mock('../../../src/services/api/dailySummaryApi', () => ({
 }));
 jest.mock('../../../src/services/api/measurementsApi', () => ({
   fetchWaterIntakeLog: jest.fn(),
+  fetchMeasurementsRange: jest.fn(),
 }));
 jest.mock('../../../src/services/api/oralCareApi', () => ({
   fetchOralCareSessions: jest.fn().mockResolvedValue([]),
@@ -124,6 +128,33 @@ const manualLogEntry = (
 });
 
 describe('writebackPhase', () => {
+  it('saves the check-in body fat (#2465) without loading the daily summary', async () => {
+    prefs({ writebackBodyFatEnabled: true });
+    (fetchMeasurementsRange as jest.Mock).mockResolvedValue([
+      {
+        id: 'c1',
+        user_id: 'u1',
+        entry_date: '2026-06-01',
+        body_fat_percentage: 22.5,
+        updated_at: '2026-06-01T08:00:00Z',
+      },
+    ]);
+    const { queryQuantitySamples } = jest.requireMock(
+      '@kingstinct/react-native-healthkit'
+    );
+    (queryQuantitySamples as jest.Mock).mockResolvedValue([]);
+    await writebackPhase(['2026-06-01']);
+    expect(mockSummary).not.toHaveBeenCalled();
+    expect(mockSaveQuantity).toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierBodyFatPercentage',
+      '%',
+      0.225,
+      expect.any(Date),
+      expect.any(Date),
+      expect.objectContaining({ SparkyBodyWriteback: expect.any(String) })
+    );
+  });
+
   it('does nothing when both metrics are disabled', async () => {
     prefs({
       writebackNutritionEnabled: false,
@@ -432,12 +463,100 @@ describe('runWriteback (cursor)', () => {
     expect(mockSaveCursor).toHaveBeenCalled();
   });
 
+  it('holds the cursor when the body check-in read fails, so those dates retry', async () => {
+    prefs({ writebackWeightEnabled: true });
+    (fetchMeasurementsRange as jest.Mock).mockRejectedValue(
+      new Error('offline')
+    );
+    await expect(writebackPhase(['2026-06-01'])).resolves.toBe(false);
+    await runWriteback();
+    expect(mockSaveCursor).not.toHaveBeenCalled();
+    expect(mockSaveQuantity).not.toHaveBeenCalled();
+  });
+
   it('advances the cursor (without holding it) when a metric is not authorized', async () => {
     prefs({ writebackNutritionEnabled: true });
     mockAuthStatus.mockReturnValue(SHARING_DENIED); // nothing granted
     await runWriteback();
     expect(mockSaveCorrelation).not.toHaveBeenCalled();
     expect(mockSaveCursor).toHaveBeenCalled(); // skipped without holding the cursor
+  });
+});
+
+describe('removeWrittenData (body measurements)', () => {
+  it('keeps tracked UUIDs of a body type whose sharing permission is gone, and reports it incomplete', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackBodyWeightUuids:2026-06-01',
+      JSON.stringify(['uuid-weight'])
+    );
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackBodyWeightSig:2026-06-01',
+      '"sig"'
+    );
+    // Height was never turned on: an empty list is not a sample left behind.
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackBodyHeightUuids:2026-06-01',
+      JSON.stringify([])
+    );
+    mockAuthStatus.mockReturnValue(SHARING_DENIED); // sharing taken away
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
+    expect(mockDeleteObjects).not.toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierBodyMass',
+      expect.anything()
+    );
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).toContain(
+      '@HealthKit:writebackBodyWeightUuids:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthKit:writebackBodyWeightSig:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthKit:writebackBodyHeightUuids:2026-06-01'
+    );
+  });
+
+  it('keeps UUID lists when deleting that type fails, and clears only its signature', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackBodyWeightUuids:2026-06-01',
+      JSON.stringify(['uuid-weight'])
+    );
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackBodyWeightSig:2026-06-01',
+      '"sig"'
+    );
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackBodyBodyFatUuids:2026-06-01',
+      JSON.stringify(['uuid-fat'])
+    );
+    mockDeleteObjects.mockImplementation((type: string) =>
+      type === 'HKQuantityTypeIdentifierBodyMass'
+        ? Promise.reject(new Error('denied'))
+        : Promise.resolve(1)
+    );
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
+
+    const remaining = await AsyncStorage.getAllKeys();
+    // Weight failed: the next write still needs the UUIDs to delete the survivor.
+    expect(remaining).toContain(
+      '@HealthKit:writebackBodyWeightUuids:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthKit:writebackBodyWeightSig:2026-06-01'
+    );
+    // Body fat succeeded: both keys go.
+    expect(remaining).not.toContain(
+      '@HealthKit:writebackBodyBodyFatUuids:2026-06-01'
+    );
+    mockDeleteObjects.mockReset();
+    mockDeleteObjects.mockResolvedValue(1);
   });
 });
 
@@ -491,6 +610,11 @@ describe('removeWrittenData (cleanup)', () => {
     expect(mockDeleteObjects).toHaveBeenCalledWith(ENERGY, allTime);
     expect(mockDeleteObjects).toHaveBeenCalledWith(WATER, allTime);
     expect(mockDeleteObjects).toHaveBeenCalledWith(FOOD_CORRELATION, allTime);
+    // Body types are removed only where the app may write them (all here).
+    expect(mockDeleteObjects).toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierBodyMass',
+      allTime
+    );
 
     const remaining = await AsyncStorage.getAllKeys();
     expect(remaining).not.toContain(
