@@ -18,6 +18,7 @@ import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useVerticalBar } from '../hooks/useVerticalBar';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import Button from '../components/ui/Button';
 import CreateTile from '../components/CreateTile';
 import FoodLibraryRow from '../components/FoodLibraryRow';
@@ -63,6 +64,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
   const { status: storedProgram, enabled: programEnabled } = useRunProgram();
   const activeProgram = programEnabled ? storedProgram : null;
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const usesNativeTabs = useNativeIOSTabsActive();
@@ -481,25 +483,27 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           </View>
           <Icon name="chevron-forward" size={20} color="#999" />
         </Pressable>
-        <Pressable
-          className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
-          onPress={() => navigation.navigate('LabResults')}
-          style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
-        >
-          <View className="flex-1 mr-3">
-            <Text className="text-base font-semibold text-text-primary">
-              {t('screens.library.labResults', {
-                defaultValue: 'Lab results',
-              })}
-            </Text>
-            <Text className="text-sm text-text-secondary mt-0.5">
-              {t('screens.library.labResultsSubtitle', {
-                defaultValue: 'Blood tests and other markers over time',
-              })}
-            </Text>
-          </View>
-          <Icon name="chevron-forward" size={20} color="#999" />
-        </Pressable>
+        {isFeatureOn('labResults') && (
+          <Pressable
+            className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
+            onPress={() => navigation.navigate('LabResults')}
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+          >
+            <View className="flex-1 mr-3">
+              <Text className="text-base font-semibold text-text-primary">
+                {t('screens.library.labResults', {
+                  defaultValue: 'Lab results',
+                })}
+              </Text>
+              <Text className="text-sm text-text-secondary mt-0.5">
+                {t('screens.library.labResultsSubtitle', {
+                  defaultValue: 'Blood tests and other markers over time',
+                })}
+              </Text>
+            </View>
+            <Icon name="chevron-forward" size={20} color="#999" />
+          </Pressable>
+        )}
         <Pressable
           className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
           onPress={() => navigation.navigate('Routes')}

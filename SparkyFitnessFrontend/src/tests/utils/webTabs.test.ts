@@ -1,9 +1,11 @@
 import type { TFunction } from 'i18next';
 import type { FeatureKey, WebHideableTabId } from '@workspace/shared';
 import {
+  choiceFeatureLabel,
   cycleTabLabel,
   knownHiddenWebTabs,
   visibleModuleTabs,
+  webTabFeature,
   withWebTabHidden,
 } from '@/constants/webTabs';
 import { translateForTest } from '@/tests/mocks/reactI18next';
@@ -44,6 +46,12 @@ describe('visibleModuleTabs', () => {
     expect(asked).toContain('cycle');
   });
 
+  it('shows the lab results tab only while its feature is on', () => {
+    const labsOff = (key: FeatureKey) => key !== 'labResults';
+    expect(ids(none, labsOff)).not.toContain('labs');
+    expect(ids(none, labsOff)).toContain('medications');
+  });
+
   it('names the cycle tab from its settings, also before they load', () => {
     const cycleTab = (settings: Parameters<typeof visibleModuleTabs>[3]) =>
       visibleModuleTabs(t, none, allOn, settings).find(
@@ -79,6 +87,19 @@ describe('visibleModuleTabs', () => {
       (tab) => tab.id === 'labs'
     );
     expect(labs).toMatchObject({ path: '/labs', label: 'Lab results' });
+  });
+});
+
+describe('webTabFeature', () => {
+  it('names the feature a tab belongs to', () => {
+    expect(webTabFeature('labs')).toBe('labResults');
+    expect(webTabFeature('goals')).toBeUndefined();
+  });
+});
+
+describe('choiceFeatureLabel', () => {
+  it('names a feature like its tab', () => {
+    expect(choiceFeatureLabel(t, 'labResults')).toBe('Lab results');
   });
 });
 

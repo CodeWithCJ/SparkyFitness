@@ -14,6 +14,7 @@ import {
   cycleOverviewQueryKey,
   cycleSettingsQueryKey,
 } from './queryKeys';
+import { startedOn } from './queryOwner';
 import { serverOnScreen } from './serverOnScreen';
 import { addLog } from '../services/LogService';
 import type { ServerConfig } from '../services/storage';
@@ -37,24 +38,10 @@ const NO_SERVER_ON_SCREEN = new Error('No server on screen');
 // Settings writes run one at a time, so a quick off and on lands in order.
 const CYCLE_SETTINGS_SCOPE = { id: 'cycle-settings' };
 
-/** The cached settings query itself, which goes away when the cache is cleared. */
-const findCycleSettingsQuery = (queryClient: QueryClient) =>
-  queryClient
-    .getQueryCache()
-    .find({ queryKey: cycleSettingsQueryKey, exact: true });
-
-/**
- * useAuth clears the cache when the account or server changes, so a write
- * whose cached settings are gone by the time it answers was made for an
- * account that is no longer on screen: its answer must not be shown, and
- * callers must not act on it. Returned from `onMutate`.
- */
-const startedOn = (queryClient: QueryClient) => {
-  const startedFrom = findCycleSettingsQuery(queryClient);
-  return {
-    isCurrent: () => findCycleSettingsQuery(queryClient) === startedFrom,
-  };
-};
+/** Drops an answer whose cached settings were cleared meanwhile (another
+ * account or server took over). Returned from `onMutate`. */
+const startCycleSettingsWrite = (queryClient: QueryClient) =>
+  startedOn(queryClient, cycleSettingsQueryKey);
 
 const showSavedCycleSettings = (
   queryClient: QueryClient,
@@ -133,7 +120,7 @@ export function useCycleSettings() {
     mutationFn: ({ change, serverConfig }: BoundWrite<CycleSettingsBody>) =>
       putSettings(change, serverConfig),
     onMutate: async ({ change: newVars }) => {
-      const started = startedOn(queryClient);
+      const started = startCycleSettingsWrite(queryClient);
 
       // Cancel outgoing refetches so they don't overwrite optimistic update
       await queryClient.cancelQueries({ queryKey: cycleSettingsQueryKey });
@@ -239,7 +226,7 @@ export function useSetCycleEnabled() {
     mutationFn: ({ change: enabled, serverConfig }: BoundWrite<boolean>) =>
       putSettings({ enabled }, serverConfig),
     onMutate: async () => {
-      const started = startedOn(queryClient);
+      const started = startCycleSettingsWrite(queryClient);
       // A read already on its way answers with the value from before this
       // change; landing after it, it would undo the switch on screen.
       await queryClient.cancelQueries({ queryKey: cycleSettingsQueryKey });

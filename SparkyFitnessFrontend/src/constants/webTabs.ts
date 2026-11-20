@@ -13,6 +13,7 @@ import {
 import {
   WEB_HIDEABLE_TAB_IDS,
   filterByFeature,
+  type ChoiceFeatureKey,
   type FeatureKey,
   type SharedCycleSettings,
   type WebHideableTabId,
@@ -36,7 +37,7 @@ const MODULE_TABS: readonly ModuleTabDefinition[] = [
   { id: 'checkin', path: '/checkin', inPlusMenu: true },
   { id: 'cycle', path: '/cycle', inPlusMenu: true, feature: 'cycle' },
   { id: 'medications', path: '/medications', inPlusMenu: true },
-  { id: 'labs', path: '/labs', inPlusMenu: true },
+  { id: 'labs', path: '/labs', inPlusMenu: true, feature: 'labResults' },
   { id: 'reports', path: '/reports', inPlusMenu: false },
   { id: 'foods', path: '/foods', inPlusMenu: true },
   { id: 'exercises', path: '/exercises', inPlusMenu: true },
@@ -76,6 +77,22 @@ export function webTabLabel(t: TFunction, id: WebHideableTabId): string {
 
 export function webTabIcon(id: WebHideableTabId): LucideIcon {
   return TAB_ICONS[id];
+}
+
+/** A feature switched per platform, named like its tab. */
+export function choiceFeatureLabel(
+  t: TFunction,
+  feature: ChoiceFeatureKey
+): string {
+  switch (feature) {
+    case 'labResults':
+      return webTabLabel(t, 'labs');
+  }
+}
+
+/** The optional feature a tab belongs to, if any (Settings > Features). */
+export function webTabFeature(id: WebHideableTabId): FeatureKey | undefined {
+  return MODULE_TABS.find((tab) => tab.id === id)?.feature;
 }
 
 /** Discreet mode names cycle Wellness, so a shared screen never says Cycle. */
