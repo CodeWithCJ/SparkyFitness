@@ -498,6 +498,42 @@ describe('removeWrittenData (cleanup)', () => {
     mockDeleteByRange.mockResolvedValue(undefined);
   });
 
+  it('keeps tracked ids of a body type whose write permission is gone, and reports it incomplete', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyWeightIds:2026-06-01',
+      JSON.stringify(['sparky-body-weight-2026-06-01-1'])
+    );
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyWeightSig:2026-06-01',
+      '"sig"'
+    );
+    // Height was never turned on: an empty list is not a record left behind.
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyHeightIds:2026-06-01',
+      JSON.stringify([])
+    );
+    mockGranted.mockResolvedValue([]); // nothing may be deleted any more
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
+    expect(mockDeleteByRange).not.toHaveBeenCalledWith(
+      'Weight',
+      expect.anything()
+    );
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).toContain(
+      '@HealthConnect:writebackBodyWeightIds:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthConnect:writebackBodyWeightSig:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthConnect:writebackBodyHeightIds:2026-06-01'
+    );
+  });
+
   it('deletes the body records (#2465) it has write access for', async () => {
     mockGranted.mockResolvedValue([
       { recordType: 'Weight', accessType: 'write' },

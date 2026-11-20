@@ -38,7 +38,10 @@ import {
   writeExerciseForDate,
 } from './exerciseWriteback';
 import { loadExerciseWritebackContext } from '../shared/exerciseWritebackContext';
-import { checkInRowsByDate } from '../shared/bodyWriteback';
+import {
+  checkInRowsByDate,
+  keysNamingTrackedRecords,
+} from '../shared/bodyWriteback';
 import {
   HEALTH_CONNECT_BODY_RECORD_TYPES,
   bodyIdsKeyPrefixFor,
@@ -489,6 +492,12 @@ export const removeWrittenData = async (
 ): Promise<WritebackRemovalResult> => {
   // Toothbrushing is iOS-only (Health Connect has no record for it), so it is
   // never in this platform's WRITEBACK_METRICS; the guard narrows the type.
+  const writableBodyTypes = await bodyTypesWithWriteAccess();
+  // A body type without its write permission cannot be deleted here; the records
+  // it may hold stay until the permission is back.
+  const skippedBodyIdPrefixes = HEALTH_CONNECT_BODY_RECORD_TYPES.filter(
+    (type) => !writableBodyTypes.includes(type)
+  ).flatMap((type) => bodyIdsKeyPrefixFor(type) ?? []);
   const recordTypes = [
     ...new Set(
       WRITEBACK_METRICS.map((m) => m.recordType).filter(
@@ -498,7 +507,7 @@ export const removeWrittenData = async (
     ),
     // Body measurements (#2465). Health Connect deletes only this app's own
     // records, so other apps' and hand-entered body data stay.
-    ...(await bodyTypesWithWriteAccess()),
+    ...writableBodyTypes,
   ];
   const filter = range
     ? {
@@ -534,10 +543,22 @@ export const removeWrittenData = async (
   // would leave the surviving records beside new copies. Signatures are still
   // cleared, so that sync re-checks the day. Body measurements follow the same
   // rule per record type: a type whose delete failed keeps its id lists.
-  const toClear = trackingKeysToClear(keys, range).filter(
+  const candidates = trackingKeysToClear(keys, range);
+  // Skipped body types that still have tracked records keep those lists, and the
+  // removal is reported incomplete; ones that never held any are a no-op.
+  const survivors = new Set(
+    await keysNamingTrackedRecords(
+      candidates.filter((k) =>
+        skippedBodyIdPrefixes.some((prefix) => k.includes(prefix))
+      ),
+      (k) => AsyncStorage.getItem(k)
+    )
+  );
+  const toClear = candidates.filter(
     (k) =>
       (exerciseRemoved || !/writebackExercise\w+Ids:/.test(k)) &&
-      !failedBodyIdPrefixes.some((prefix) => k.includes(prefix))
+      !failedBodyIdPrefixes.some((prefix) => k.includes(prefix)) &&
+      !survivors.has(k)
   );
   if (toClear.length > 0) await AsyncStorage.multiRemove(toClear);
 
@@ -553,5 +574,5 @@ export const removeWrittenData = async (
     `[Writeback] Removed SparkyFitness data from Health Connect (${range ? `${range.from}..${range.to}` : 'all time'})`,
     'INFO'
   );
-  return { ok };
+  return { ok: ok && survivors.size === 0 };
 };

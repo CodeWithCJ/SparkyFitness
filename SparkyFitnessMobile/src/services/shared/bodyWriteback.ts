@@ -133,3 +133,26 @@ export const checkInRowsByDate = (
   }
   return byDate;
 };
+
+/**
+ * Of these per-day tracking keys, the ones whose stored id or UUID list still
+ * names records. Removal uses it for body types it could not delete (their write
+ * permission was taken away): only a type that has records the app wrote needs
+ * its lists kept and the removal reported as incomplete; one that was never
+ * turned on has none and is a successful no-op.
+ */
+export const keysNamingTrackedRecords = async (
+  keys: readonly string[],
+  readValue: (key: string) => Promise<string | null>
+): Promise<string[]> => {
+  const named: string[] = [];
+  for (const key of keys) {
+    try {
+      const stored = JSON.parse((await readValue(key)) ?? '[]');
+      if (Array.isArray(stored) && stored.length > 0) named.push(key);
+    } catch {
+      // An unreadable list names nothing we can delete.
+    }
+  }
+  return named;
+};

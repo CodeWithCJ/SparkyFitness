@@ -484,6 +484,42 @@ describe('runWriteback (cursor)', () => {
 });
 
 describe('removeWrittenData (body measurements)', () => {
+  it('keeps tracked UUIDs of a body type whose sharing permission is gone, and reports it incomplete', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackBodyWeightUuids:2026-06-01',
+      JSON.stringify(['uuid-weight'])
+    );
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackBodyWeightSig:2026-06-01',
+      '"sig"'
+    );
+    // Height was never turned on: an empty list is not a sample left behind.
+    await AsyncStorage.setItem(
+      '@HealthKit:writebackBodyHeightUuids:2026-06-01',
+      JSON.stringify([])
+    );
+    mockAuthStatus.mockReturnValue(SHARING_DENIED); // sharing taken away
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
+    expect(mockDeleteObjects).not.toHaveBeenCalledWith(
+      'HKQuantityTypeIdentifierBodyMass',
+      expect.anything()
+    );
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).toContain(
+      '@HealthKit:writebackBodyWeightUuids:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthKit:writebackBodyWeightSig:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthKit:writebackBodyHeightUuids:2026-06-01'
+    );
+  });
+
   it('keeps UUID lists when deleting that type fails, and clears only its signature', async () => {
     await AsyncStorage.clear();
     await AsyncStorage.setItem(

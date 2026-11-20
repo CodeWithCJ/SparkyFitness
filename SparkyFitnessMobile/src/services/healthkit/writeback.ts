@@ -52,7 +52,10 @@ import {
   writeExerciseForDate,
 } from './exerciseWriteback';
 import { loadExerciseWritebackContext } from '../shared/exerciseWritebackContext';
-import { checkInRowsByDate } from '../shared/bodyWriteback';
+import {
+  checkInRowsByDate,
+  keysNamingTrackedRecords,
+} from '../shared/bodyWriteback';
 import {
   HEALTHKIT_BODY_IDENTIFIERS,
   bodyIdentifierFor,
@@ -814,6 +817,11 @@ export const removeWrittenData = async (
     ...WRITEBACK_DELETE_TYPES,
     ...HEALTHKIT_BODY_IDENTIFIERS.filter(isAuthorized),
   ];
+  // A body type without sharing permission cannot be deleted here; the samples
+  // it may hold stay until the permission is back.
+  const skippedBodyUuidPrefixes = HEALTHKIT_BODY_IDENTIFIERS.filter(
+    (type) => !isAuthorized(type)
+  ).flatMap((type) => bodyUuidsKeyPrefixFor(type) ?? []);
   const failedBodyUuidPrefixes: string[] = [];
   for (const type of deleteTypes) {
     try {
@@ -835,10 +843,22 @@ export const removeWrittenData = async (
   // would leave the surviving workouts beside new copies. Signatures are still
   // cleared, so that sync re-checks the day. Body measurements follow the same
   // rule per sample type: a type whose delete failed keeps its UUID lists.
-  const toClear = trackingKeysToClear(keys, range).filter(
+  const candidates = trackingKeysToClear(keys, range);
+  // Skipped body types that still have tracked samples keep those lists, and the
+  // removal is reported incomplete; ones that never held any are a no-op.
+  const survivors = new Set(
+    await keysNamingTrackedRecords(
+      candidates.filter((k) =>
+        skippedBodyUuidPrefixes.some((prefix) => k.includes(prefix))
+      ),
+      (k) => AsyncStorage.getItem(k)
+    )
+  );
+  const toClear = candidates.filter(
     (k) =>
       (exerciseRemoved || !k.includes('writebackExerciseKeys:')) &&
-      !failedBodyUuidPrefixes.some((prefix) => k.includes(prefix))
+      !failedBodyUuidPrefixes.some((prefix) => k.includes(prefix)) &&
+      !survivors.has(k)
   );
   if (toClear.length > 0) await AsyncStorage.multiRemove(toClear);
 
@@ -854,5 +874,5 @@ export const removeWrittenData = async (
     `[Writeback] Removed SparkyFitness data from Apple Health (${range ? `${range.from}..${range.to}` : 'all time'})`,
     'INFO'
   );
-  return { ok };
+  return { ok: ok && survivors.size === 0 };
 };
