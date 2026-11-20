@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, LogOut, Settings2, Users } from 'lucide-react';
 import {
+  challengeDaysToGo,
   challengeStateNow,
   type ChallengeDetail,
   type ChallengeInviteResponse,
@@ -26,7 +27,12 @@ import HowPointsWork from './HowPointsWork';
 import InvitePanel from './InvitePanel';
 import MemberPeriodsDialog from './MemberPeriodsDialog';
 import RuleChangeLog from './RuleChangeLog';
-import { formatLabel, metricLabel, periodLabel } from './challengeCopy';
+import {
+  challengeStateText,
+  formatLabel,
+  metricLabel,
+  periodLabel,
+} from './challengeCopy';
 
 interface ChallengeDetailViewProps {
   challenge: ChallengeDetail;
@@ -68,7 +74,11 @@ const ChallengeDetailView = ({
   const day = (d: string) => formatDateInUserTimezone(d, 'MMM d, yyyy');
   const isLastMember = challenge.member_count <= 1;
   // Over once the server closed it or its end date has passed in its zone.
-  const ended = challengeStateNow(challenge) === 'ended';
+  // One clock for both, so the state and its day count agree at midnight.
+  const now = new Date();
+  const state = challengeStateNow(challenge, now);
+  const ended = state === 'ended';
+  const daysToGo = challengeDaysToGo(challenge, now);
 
   return (
     <div className="space-y-4">
@@ -109,9 +119,9 @@ const ChallengeDetailView = ({
               })}
             </Badge>
             {challenge.is_host && <Badge>{t('challenges.host', 'Host')}</Badge>}
-            {ended && (
-              <Badge variant="outline">{t('challenges.ended', 'Ended')}</Badge>
-            )}
+            <Badge variant="outline" data-testid="challenge-state">
+              {challengeStateText(t, state, daysToGo)}
+            </Badge>
           </div>
           {challenge.description && (
             <p className="mt-2 text-sm">{challenge.description}</p>

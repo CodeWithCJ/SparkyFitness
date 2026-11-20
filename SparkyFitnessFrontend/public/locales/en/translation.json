@@ -11201,6 +11201,15 @@
     "datesOpen": "From {{start}}",
     "memberCount_one": "{{count}} member",
     "memberCount_other": "{{count}} members",
+    "state": {
+      "active": "Active",
+      "startsTomorrow": "Starts tomorrow",
+      "startsIn_one": "Starts in {{count}} day",
+      "startsIn_other": "Starts in {{count}} days",
+      "lastDay": "Last day",
+      "daysLeft_one": "{{count}} day left",
+      "daysLeft_other": "{{count}} days left"
+    },
     "host": "Host",
     "ended": "Ended",
     "rules": {
@@ -11279,7 +11288,13 @@
       "winner": "Winner",
       "reachedOn": "Reached {{day}}",
       "daysHit": "Goal hit on {{hit}} of {{eligible}} days",
-      "leads": "Leads"
+      "leads": "Leads",
+      "find": "Find a member",
+      "noMatch": "No member matches.",
+      "progress": "Progress",
+      "ofLeader": "{{percent}}% of the top total",
+      "ofTarget": "{{percent}}% of the goal",
+      "ofDays": "Goal hit on {{percent}}% of days"
     },
     "joined": "Joined {{day}}",
     "invite": {

@@ -151,6 +151,159 @@ describe('Challenges page', () => {
     expect(await screen.findByText('Nov 9 – Nov 15')).toBeInTheDocument();
   });
 
+  it('puts the places with points on a podium, with each row bar against the top total', async () => {
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    const podium = await screen.findByTestId('challenge-podium');
+    // Hidden from screen readers: the table carries the same names.
+    expect(podium).toHaveAttribute('aria-hidden', 'true');
+    expect(within(podium).getByText('Test B')).toBeInTheDocument();
+    expect(within(podium).getByText('Test A')).toBeInTheDocument();
+    // Plain leaderboard: the leader fills the bar, the rest are a share of it.
+    expect(
+      screen.getByRole('progressbar', { name: '100% of the top total' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('progressbar', { name: '75% of the top total' })
+    ).toBeInTheDocument();
+    // No find box for two members.
+    expect(screen.queryByLabelText('Find a member')).not.toBeInTheDocument();
+  });
+
+  it('leaves the podium empty while everyone is on 0', async () => {
+    const zero = standings();
+    zero.rows = zero.rows.map((row) => ({ ...row, rank: 1, total: 0 }));
+    api.getChallengeStandings.mockResolvedValue(zero);
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(
+      await screen.findByTestId('challenge-leaderboard')
+    ).toBeInTheDocument();
+    await screen.findAllByText('0 pts');
+    expect(screen.queryByTestId('challenge-podium')).not.toBeInTheDocument();
+  });
+
+  it('finds a member in a long table', async () => {
+    const many = standings();
+    many.rows = ['Ana', 'Ben', 'Cy', 'Dee', 'Eve', 'José'].map((name, i) => ({
+      user_id: `u-${i}`,
+      display_name: name,
+      rank: i + 1,
+      total: 60 - i * 10,
+      minutes: 10,
+      winner: false,
+      reached_on: null,
+    }));
+    api.getChallengeStandings.mockResolvedValue(many);
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    fireEvent.change(await screen.findByLabelText('Find a member'), {
+      target: { value: 'ev' },
+    });
+    expect(screen.getByRole('button', { name: /Eve/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Ana/ })).toBeNull();
+    // Accents do not matter.
+    fireEvent.change(screen.getByLabelText('Find a member'), {
+      target: { value: 'jose' },
+    });
+    expect(screen.getByRole('button', { name: /José/ })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Find a member'), {
+      target: { value: 'zz' },
+    });
+    expect(screen.getByText('No member matches.')).toBeInTheDocument();
+    // Another period starts with the whole table again.
+    fireEvent.click(screen.getByRole('button', { name: 'Previous period' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Find a member')).toHaveValue('')
+    );
+    expect(await screen.findByRole('button', { name: /Ana/ })).toBeVisible();
+  });
+
+  it('has no podium or row bars for a group goal', async () => {
+    const group = standings({
+      rules: {
+        ...challengePreset('all_rounder').rules,
+        format: 'group_goal',
+        target: 500,
+      },
+    });
+    api.getChallengeStandings.mockResolvedValue(group);
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(await screen.findByText(/Together:/)).toBeInTheDocument();
+    expect(screen.queryByTestId('challenge-podium')).not.toBeInTheDocument();
+    expect(screen.queryByText('Progress')).not.toBeInTheDocument();
+  });
+
+  it('labels a daily goal bar by the days the goal was hit', async () => {
+    const daily = standings({
+      rules: {
+        ...challengePreset('all_rounder').rules,
+        format: 'hit_goal',
+        target: 50,
+        targetPer: 'day',
+      },
+    });
+    daily.rows = daily.rows.map((row) => ({
+      ...row,
+      days_hit: 1,
+      days_eligible: 4,
+    }));
+    api.getChallengeStandings.mockResolvedValue(daily);
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(
+      await screen.findAllByRole('progressbar', {
+        name: 'Goal hit on 25% of days',
+      })
+    ).toHaveLength(2);
+  });
+
+  it('says how many days a challenge has left, or until it starts', async () => {
+    const today = todayInZone('UTC');
+    api.getChallenge.mockResolvedValue(
+      challenge({ start_date: addDays(today, -3), end_date: addDays(today, 9) })
+    );
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(await screen.findByTestId('challenge-state')).toHaveTextContent(
+      '10 days left'
+    );
+  });
+
+  it('says Active while a challenge has no end date', async () => {
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(await screen.findByTestId('challenge-state')).toHaveTextContent(
+      'Active'
+    );
+  });
+
+  it('says Ended once the server closed the challenge', async () => {
+    api.getChallenge.mockResolvedValue(
+      challenge({ ended_at: '2026-11-16T05:00:00.000Z' })
+    );
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(await screen.findByTestId('challenge-state')).toHaveTextContent(
+      'Ended'
+    );
+  });
+
+  it('says Last day on a challenge ending today', async () => {
+    const today = todayInZone('UTC');
+    api.getChallenge.mockResolvedValue(
+      challenge({ start_date: addDays(today, -3), end_date: today })
+    );
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(await screen.findByTestId('challenge-state')).toHaveTextContent(
+      'Last day'
+    );
+  });
+
+  it('says when an upcoming challenge starts', async () => {
+    const today = todayInZone('UTC');
+    api.getChallenge.mockResolvedValue(
+      challenge({ start_date: addDays(today, 1), end_date: addDays(today, 30) })
+    );
+    renderAt(`/challenges/${CHALLENGE_ID}`);
+    expect(await screen.findByTestId('challenge-state')).toHaveTextContent(
+      'Starts tomorrow'
+    );
+  });
+
   it("opens a member's recent periods from the leaderboard", async () => {
     renderAt(`/challenges/${CHALLENGE_ID}`);
     fireEvent.click(await screen.findByRole('button', { name: /Test B/ }));

@@ -22,6 +22,7 @@ import {
   type ChallengePrType,
   type ChallengePresetId,
   type ChallengeRules,
+  type ChallengeState,
 } from '@workspace/shared';
 import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
 
@@ -100,6 +101,32 @@ export function presetDescription(t: TFunction, id: ChallengePresetId): string {
         'Most days with a workout of 20 minutes or more, over 30 days.'
       );
   }
+}
+
+/**
+ * A challenge's state chip: "Ended", "Starts tomorrow" / "Starts in 5 days",
+ * "Last day" / "10 days left", or "Active" while it has no end date. Day one
+ * has its own key, since some languages use the plural `one` form for 21 too.
+ */
+export function challengeStateText(
+  t: TFunction,
+  state: ChallengeState,
+  daysToGo: number | null
+): string {
+  if (state === 'ended') return t('challenges.ended', 'Ended');
+  if (state === 'upcoming') {
+    return daysToGo === 1
+      ? t('challenges.state.startsTomorrow', 'Starts tomorrow')
+      : t('challenges.state.startsIn', 'Starts in {{count}} days', {
+          count: daysToGo ?? 0,
+        });
+  }
+  if (daysToGo === null) return t('challenges.state.active', 'Active');
+  return daysToGo === 1
+    ? t('challenges.state.lastDay', 'Last day')
+    : t('challenges.state.daysLeft', '{{count}} days left', {
+        count: daysToGo,
+      });
 }
 
 export function metricLabel(t: TFunction, metric: ChallengeMetric): string {
