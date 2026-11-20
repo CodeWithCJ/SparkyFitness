@@ -1,5 +1,6 @@
 import { challengeInviteCodeSchema } from '../schemas/api/Challenges.api.zod.ts';
-import { instantToDay } from '../utils/timezone.ts';
+import type { ChallengeRules } from './rules.ts';
+import { daysBetween, instantToDay } from '../utils/timezone.ts';
 
 /**
  * Challenge helpers both apps use on what the server sends: whether a
@@ -155,4 +156,53 @@ export function challengesForCard<
   return sortChallenges(challenges, today)
     .filter((c) => challengeState(c, today(c)) !== 'ended')
     .slice(0, limit);
+}
+
+/**
+ * Days to go on a challenge: until it starts while upcoming, left including
+ * today while running (a challenge ending today has 1), null once ended or
+ * while it has no end date.
+ */
+export function challengeDaysToGo(
+  challenge: StateFields & { time_zone: string },
+  now: Date = new Date()
+): number | null {
+  const today = challengeToday(challenge.time_zone, now);
+  const state = challengeState(challenge, today);
+  if (state === 'upcoming') return daysBetween(today, challenge.start_date);
+  if (state === 'running' && challenge.end_date) {
+    return daysBetween(today, challenge.end_date) + 1;
+  }
+  return null;
+}
+
+/**
+ * How far a standings row is, from 0 to 1: toward the target in a race or a
+ * hit-the-goal period total, the share of days hit for a daily goal, and the
+ * share of the top total in a plain leaderboard (`basis` says which). Null
+ * for a group goal, which has one shared bar, and for a daily goal with no
+ * day to count yet.
+ */
+export function standingProgress(
+  rules: Pick<ChallengeRules, 'format' | 'target' | 'targetPer'>,
+  row: { total: number; days_hit?: number; days_eligible?: number },
+  topTotal: number
+): { fraction: number; basis: 'target' | 'days' | 'leader' } | null {
+  const clamp = (n: number) => Math.min(1, Math.max(0, n));
+  if (rules.format === 'group_goal') return null;
+  if (rules.format === 'leaderboard') {
+    return {
+      fraction: topTotal > 0 ? clamp(row.total / topTotal) : 0,
+      basis: 'leader',
+    };
+  }
+  if (rules.format === 'hit_goal' && rules.targetPer === 'day') {
+    if (row.days_hit === undefined || !row.days_eligible) return null;
+    return {
+      fraction: clamp(row.days_hit / row.days_eligible),
+      basis: 'days',
+    };
+  }
+  if (!rules.target) return null;
+  return { fraction: clamp(row.total / rules.target), basis: 'target' };
 }

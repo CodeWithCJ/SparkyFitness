@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  challengeDaysToGo,
   challengeLeaders,
   challengeState,
   challengeStateNow,
@@ -9,6 +10,7 @@ import {
   ownChallengeStanding,
   parseChallengeInviteCode,
   sortChallenges,
+  standingProgress,
 } from '@workspace/shared';
 
 // The challenge helpers web and mobile share (shared/src/challenges/client.ts).
@@ -179,5 +181,99 @@ describe('challengeState and challengesForCard', () => {
         now
       )
     ).not.toThrow();
+  });
+});
+
+describe('challengeDaysToGo', () => {
+  const now = new Date('2026-11-20T12:00:00Z');
+  const challenge = (
+    start_date: string,
+    end_date: string | null,
+    ended_at: string | null = null
+  ) => ({ start_date, end_date, ended_at, time_zone: 'UTC' });
+
+  it('counts the days left including today, and the days until the start', () => {
+    expect(challengeDaysToGo(challenge('2026-10-31', '2026-11-29'), now)).toBe(
+      10
+    );
+    expect(challengeDaysToGo(challenge('2026-11-01', '2026-11-20'), now)).toBe(
+      1
+    );
+    expect(challengeDaysToGo(challenge('2026-11-30', '2026-12-30'), now)).toBe(
+      10
+    );
+  });
+
+  it('has none once ended or with no end date', () => {
+    expect(
+      challengeDaysToGo(challenge('2026-11-01', '2026-11-19'), now)
+    ).toBeNull();
+    expect(
+      challengeDaysToGo(
+        challenge('2026-11-01', '2026-11-29', '2026-11-19T00:00:00Z'),
+        now
+      )
+    ).toBeNull();
+    expect(challengeDaysToGo(challenge('2026-11-01', null), now)).toBeNull();
+  });
+
+  it('counts on the device day for a zone this runtime does not know', () => {
+    expect(
+      challengeDaysToGo(
+        { ...challenge('2026-10-31', '2026-11-29'), time_zone: 'Mars/Base' },
+        now
+      )
+    ).not.toBeNull();
+  });
+});
+
+describe('standingProgress', () => {
+  const rules = (
+    format: 'leaderboard' | 'race' | 'hit_goal' | 'group_goal',
+    target: number | null = null,
+    targetPer: 'day' | 'period' = 'period'
+  ) => ({ format, target, targetPer });
+
+  it('shares the top total in a plain leaderboard, 0 while nobody scored', () => {
+    expect(standingProgress(rules('leaderboard'), { total: 30 }, 120)).toEqual({
+      fraction: 0.25,
+      basis: 'leader',
+    });
+    expect(standingProgress(rules('leaderboard'), { total: 0 }, 0)).toEqual({
+      fraction: 0,
+      basis: 'leader',
+    });
+  });
+
+  it('runs toward the target in a race and a period goal, capped at 1', () => {
+    expect(
+      standingProgress(rules('race', 100_000), { total: 25_000 }, 25_000)
+    ).toEqual({ fraction: 0.25, basis: 'target' });
+    expect(
+      standingProgress(rules('hit_goal', 50), { total: 80 }, 80)?.fraction
+    ).toBe(1);
+  });
+
+  it('counts days hit for a daily goal, and has no row bar for a group goal', () => {
+    expect(
+      standingProgress(
+        rules('hit_goal', 8000, 'day'),
+        { total: 30_000, days_hit: 3, days_eligible: 4 },
+        30_000
+      )
+    ).toEqual({ fraction: 0.75, basis: 'days' });
+    expect(
+      standingProgress(rules('hit_goal', 8000, 'day'), { total: 0 }, 0)
+    ).toBeNull();
+    expect(
+      standingProgress(
+        rules('hit_goal', 8000, 'day'),
+        { total: 0, days_hit: 0, days_eligible: 0 },
+        0
+      )
+    ).toBeNull();
+    expect(
+      standingProgress(rules('group_goal', 500), { total: 40 }, 40)
+    ).toBeNull();
   });
 });
