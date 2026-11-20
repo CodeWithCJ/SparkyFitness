@@ -707,33 +707,40 @@ async function createExercise(
   }
 }
 
+interface FilledMuscles {
+  primary_muscles: unknown;
+  secondary_muscles: unknown;
+}
+
 /**
  * Give an owned exercise muscles only while its primary muscles are still
  * empty, filling secondary muscles only if those are empty too. Emptiness is
  * tested in the same statement as the write, so a muscle edit saved after
  * the caller read the row, or an earlier fill in the same sync, is never
- * overwritten. Returns whether the row was changed.
+ * overwritten. Returns the stored primary and secondary muscles when the row
+ * was changed, or null if no write was made.
  */
 async function fillEmptyMuscles(
   userId: string,
   exerciseId: string,
   primary: readonly string[],
   secondary: readonly string[]
-): Promise<boolean> {
-  if (primary.length === 0) return false;
-  const client = await getClient(userId);
+): Promise<FilledMuscles | null> {
+  if (primary.length === 0) return null;
+  const client: PoolClient = await getClient(userId);
   try {
-    const result = await client.query(
+    const result = await client.query<FilledMuscles>(
       `UPDATE exercises SET
          primary_muscles = $1,
          secondary_muscles = CASE WHEN ${emptyMuscleColumnSql('secondary_muscles')}
            THEN $2 ELSE secondary_muscles END,
          updated_at = NOW()
        WHERE id = $3 AND user_id = $4
-         AND ${emptyMuscleColumnSql('primary_muscles')}`,
+         AND ${emptyMuscleColumnSql('primary_muscles')}
+       RETURNING primary_muscles, secondary_muscles`,
       [JSON.stringify(primary), JSON.stringify(secondary), exerciseId, userId]
     );
-    return (result.rowCount ?? 0) > 0;
+    return result.rows[0] ?? null;
   } finally {
     client.release();
   }
@@ -1357,7 +1364,7 @@ export { getExerciseDeletionImpact };
 export { deleteExerciseAndDependencies };
 export { deleteExerciseEntriesForUser };
 export { findExerciseByNameAndUserId };
-export { fillEmptyMuscles };
+export { fillEmptyMuscles, type FilledMuscles };
 export default {
   getExerciseById,
   getExerciseOwnerId,

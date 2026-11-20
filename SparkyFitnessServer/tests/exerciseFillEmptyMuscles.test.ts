@@ -21,6 +21,12 @@ beforeEach(() => {
 
 describe('fillEmptyMuscles', () => {
   it('writes only while primary muscles are empty and keeps saved secondary muscles', async () => {
+    mockClient.query.mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [
+        { primary_muscles: '["chest"]', secondary_muscles: '["triceps"]' },
+      ],
+    });
     const changed = await exerciseRepository.fillEmptyMuscles(
       'user-1',
       'exercise-1',
@@ -28,7 +34,10 @@ describe('fillEmptyMuscles', () => {
       ['triceps']
     );
 
-    expect(changed).toBe(true);
+    expect(changed).toEqual({
+      primary_muscles: '["chest"]',
+      secondary_muscles: '["triceps"]',
+    });
     const [sql, params] = mockClient.query.mock.calls[0]!;
     // Emptiness is checked in the statement itself, not from a snapshot.
     expect(sql).toMatch(
@@ -37,6 +46,7 @@ describe('fillEmptyMuscles', () => {
     expect(sql).toMatch(
       /secondary_muscles = CASE WHEN regexp_replace\(COALESCE\(secondary_muscles.*THEN \$2 ELSE secondary_muscles END/s
     );
+    expect(sql).toMatch(/RETURNING primary_muscles, secondary_muscles/);
     expect(params).toEqual([
       '["chest"]',
       '["triceps"]',
@@ -51,13 +61,13 @@ describe('fillEmptyMuscles', () => {
 
     await expect(
       exerciseRepository.fillEmptyMuscles('user-1', 'exercise-1', ['chest'], [])
-    ).resolves.toBe(false);
+    ).resolves.toBeNull();
   });
 
   it('does nothing without primary muscles', async () => {
     await expect(
       exerciseRepository.fillEmptyMuscles('user-1', 'exercise-1', [], ['chest'])
-    ).resolves.toBe(false);
+    ).resolves.toBeNull();
     expect(mockClient.query).not.toHaveBeenCalled();
   });
 });

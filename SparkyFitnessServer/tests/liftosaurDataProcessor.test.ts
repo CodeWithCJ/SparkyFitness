@@ -31,7 +31,15 @@ vi.mock('../models/exercise.js', () => ({
         Promise.resolve(name === 'Squat' ? { id: 'exercise-squat' } : null)
       ),
     createExercise: vi.fn().mockResolvedValue({ id: 'exercise-new' }),
-    fillEmptyMuscles: vi.fn().mockResolvedValue(true),
+    fillEmptyMuscles: vi
+      .fn()
+      .mockImplementation(
+        (_uid: string, _id: string, primary: string[], secondary: string[]) =>
+          Promise.resolve({
+            primary_muscles: primary,
+            secondary_muscles: secondary,
+          })
+      ),
   },
 }));
 
@@ -478,6 +486,49 @@ describe('processLiftosaurWorkouts', () => {
       [
         JSON.stringify(['quadriceps']),
         JSON.stringify(['glutes']),
+        UID,
+        'exercise-squat',
+        'Liftosaur',
+      ]
+    );
+  });
+
+  it('uses the database returned secondary muscles rather than resolver values when backfilling diary snapshots', async () => {
+    vi.mocked(
+      exerciseRepository.findExerciseByNameAndUserId
+    ).mockImplementation(
+      (name: string) =>
+        Promise.resolve(
+          name === 'Squat'
+            ? { id: 'exercise-squat', user_id: UID, primary_muscles: '[]' }
+            : null
+        ) as any
+    );
+    const resolveMuscles = vi
+      .fn()
+      .mockResolvedValue(
+        new Map([['Squat', { primary: ['quadriceps'], secondary: ['glutes'] }]])
+      );
+    // Concurrent DB state preserved existing secondary muscles ("hamstrings")
+    vi.mocked(exerciseRepository.fillEmptyMuscles).mockResolvedValueOnce({
+      primary_muscles: '["quadriceps"]',
+      secondary_muscles: '["hamstrings"]',
+    });
+
+    await processLiftosaurWorkouts(
+      UID,
+      CID,
+      parseSampleWorkouts(),
+      'UTC',
+      resolveMuscles
+    );
+
+    // The diary entry backfill must use the DB's preserved secondary muscles ("hamstrings"), not the resolver's ("glutes")
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE exercise_entries SET'),
+      [
+        JSON.stringify(['quadriceps']),
+        JSON.stringify(['hamstrings']),
         UID,
         'exercise-squat',
         'Liftosaur',

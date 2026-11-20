@@ -261,10 +261,8 @@ async function fillMissingMuscles(
       muscles.secondary
     );
     if (filled) {
-      exercise.primary_muscles = [...muscles.primary];
-      if (hasNoMuscles(exercise.secondary_muscles)) {
-        exercise.secondary_muscles = [...muscles.secondary];
-      }
+      exercise.primary_muscles = filled.primary_muscles;
+      exercise.secondary_muscles = filled.secondary_muscles;
     }
   } catch (error) {
     log(
