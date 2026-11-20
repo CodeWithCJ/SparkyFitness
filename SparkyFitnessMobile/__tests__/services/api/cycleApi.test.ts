@@ -94,11 +94,12 @@ describe('wire contract', () => {
     ],
     [
       'bulkPutLogs',
-      () => bulkPutLogs([{ date: '2024-06-15', flow_level: null }]),
+      () => bulkPutLogs([{ date: '2024-06-15', flow_level: null }], testServer),
       {
         endpoint: '/api/v2/cycle/logs',
         method: 'PUT',
         body: [{ date: '2024-06-15', flow_level: null }],
+        serverConfig: testServer,
       },
     ],
     [

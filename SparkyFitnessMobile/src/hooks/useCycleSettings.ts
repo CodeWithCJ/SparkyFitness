@@ -188,9 +188,13 @@ export function useCycleSettings() {
     },
     [queryClient, mutate, showSaveFailed]
   );
+  // A flow whose other writes must reach the same account (the cycle setup)
+  // passes the server it bound; otherwise, the server on screen now.
   const updateSettingsAsync = useCallback(
-    (change: CycleSettingsBody) => {
-      const serverConfig = serverOnScreen(queryClient);
+    (
+      change: CycleSettingsBody,
+      serverConfig: ServerConfig | null = serverOnScreen(queryClient)
+    ) => {
       if (!serverConfig) return Promise.reject(NO_SERVER_ON_SCREEN);
       return mutateAsync({ change, serverConfig });
     },

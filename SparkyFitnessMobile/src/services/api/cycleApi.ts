@@ -99,8 +99,10 @@ export const listCycles = async (limit?: number): Promise<SharedCycle[]> => {
   });
 };
 
+/** Sent to `serverConfig`, the account the cycle setup was started on. */
 export const bulkPutLogs = async (
-  body: { date: string; flow_level: string | null }[]
+  body: { date: string; flow_level: string | null }[],
+  serverConfig: ServerConfig
 ): Promise<CycleOverview> => {
   return apiFetch<CycleOverview>({
     endpoint: '/api/v2/cycle/logs',
@@ -108,6 +110,7 @@ export const bulkPutLogs = async (
     operation: 'bulk logs',
     method: 'PUT',
     body,
+    serverConfig,
   });
 };
 

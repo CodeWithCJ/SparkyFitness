@@ -1,4 +1,5 @@
 import { apiFetch } from './apiClient';
+import type { ServerConfig } from '../storage';
 import type {
   SharedPregnancy,
   PregnancyOverview,
@@ -24,8 +25,11 @@ export const getOverview = async (
   });
 };
 
+/** `serverConfig` binds the write to an account (the cycle setup's); without
+ * it, the active server when the request goes out. */
 export const createPregnancy = async (
-  body: Partial<SharedPregnancy>
+  body: Partial<SharedPregnancy>,
+  serverConfig?: ServerConfig
 ): Promise<SharedPregnancy> => {
   return apiFetch<SharedPregnancy>({
     endpoint: '/api/v2/pregnancy',
@@ -33,12 +37,14 @@ export const createPregnancy = async (
     operation: 'create pregnancy',
     method: 'POST',
     body,
+    serverConfig,
   });
 };
 
 export const updatePregnancy = async (
   id: string,
-  body: Partial<SharedPregnancy>
+  body: Partial<SharedPregnancy>,
+  serverConfig?: ServerConfig
 ): Promise<SharedPregnancy> => {
   return apiFetch<SharedPregnancy>({
     endpoint: `/api/v2/pregnancy/${encodeURIComponent(id)}`,
@@ -46,6 +52,7 @@ export const updatePregnancy = async (
     operation: 'update pregnancy',
     method: 'PUT',
     body,
+    serverConfig,
   });
 };
 
