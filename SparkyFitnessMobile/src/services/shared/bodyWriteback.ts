@@ -139,7 +139,9 @@ export const checkInRowsByDate = (
  * names records. Removal uses it for body types it could not delete (their write
  * permission was taken away): only a type that has records the app wrote needs
  * its lists kept and the removal reported as incomplete; one that was never
- * turned on has none and is a successful no-op.
+ * turned on has none and is a successful no-op. A key that cannot be read is
+ * kept, since what it names is unknown; a value that was read but is not a list
+ * names nothing that could be deleted.
  */
 export const keysNamingTrackedRecords = async (
   keys: readonly string[],
@@ -147,11 +149,18 @@ export const keysNamingTrackedRecords = async (
 ): Promise<string[]> => {
   const named: string[] = [];
   for (const key of keys) {
+    let raw: string | null;
     try {
-      const stored = JSON.parse((await readValue(key)) ?? '[]');
+      raw = await readValue(key);
+    } catch {
+      named.push(key);
+      continue;
+    }
+    try {
+      const stored = JSON.parse(raw ?? '[]');
       if (Array.isArray(stored) && stored.length > 0) named.push(key);
     } catch {
-      // An unreadable list names nothing we can delete.
+      // Unreadable content names nothing we can delete.
     }
   }
   return named;

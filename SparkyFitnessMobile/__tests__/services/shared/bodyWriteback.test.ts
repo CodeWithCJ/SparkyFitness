@@ -3,6 +3,7 @@ import {
   bodyValueForDay,
   bodyWriteSignature,
   checkInRowsByDate,
+  keysNamingTrackedRecords,
   matchesOtherAppValue,
 } from '../../../src/services/shared/bodyWriteback';
 import type { CheckInMeasurementRange } from '../../../src/types/measurements';
@@ -108,5 +109,29 @@ describe('checkInRowsByDate', () => {
     ]);
     expect(map.get('2026-06-01')?.weight).toBe(80);
     expect(map.get('2026-06-02')?.weight).toBe(79);
+  });
+});
+
+describe('keysNamingTrackedRecords', () => {
+  const values: Record<string, string | null> = {
+    full: JSON.stringify(['a']),
+    empty: JSON.stringify([]),
+    missing: null,
+    garbled: '{not json',
+  };
+  const read = (key: string) => Promise.resolve(values[key] ?? null);
+
+  it('keeps only lists that still name records', async () => {
+    await expect(
+      keysNamingTrackedRecords(['full', 'empty', 'missing', 'garbled'], read)
+    ).resolves.toEqual(['full']);
+  });
+
+  it('keeps a key it could not read, since what it names is unknown', async () => {
+    await expect(
+      keysNamingTrackedRecords(['empty', 'broken'], (key) =>
+        key === 'broken' ? Promise.reject(new Error('io')) : read(key)
+      )
+    ).resolves.toEqual(['broken']);
   });
 });
