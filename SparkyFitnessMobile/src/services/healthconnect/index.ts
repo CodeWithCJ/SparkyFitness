@@ -494,11 +494,9 @@ interface StagedWaterRun {
 }
 const stagedWaterRuns = new Map<number, StagedWaterRun>();
 let nextWaterRunId = 1;
-let currentWaterRunId = 0;
 
 export const beginWaterDeletionRun = (configId?: string | null): number => {
   const runId = nextWaterRunId++;
-  currentWaterRunId = runId;
   stagedWaterRuns.set(runId, {
     token: null,
     configId: configId ?? null,
@@ -545,9 +543,9 @@ export const commitWaterDeletionRun = async (runId?: number): Promise<void> => {
 };
 
 const readHydrationDeletions = async (
-  thisRunId: number
+  runId?: number
 ): Promise<Record<string, unknown>[]> => {
-  const staged = stagedWaterRuns.get(thisRunId);
+  const staged = runId != null ? stagedWaterRuns.get(runId) : undefined;
   try {
     const savedToken = await loadHealthWaterSyncToken(
       'android',
@@ -561,12 +559,7 @@ const readHydrationDeletions = async (
       const initial = await getChanges({
         recordTypes: ['Hydration'],
       });
-      if (
-        initial.nextChangesToken &&
-        staged &&
-        !staged.cancelled &&
-        thisRunId === currentWaterRunId
-      ) {
+      if (initial.nextChangesToken && staged && !staged.cancelled) {
         staged.token = initial.nextChangesToken;
       }
       if (initial.deletionChanges) {
@@ -592,12 +585,7 @@ const readHydrationDeletions = async (
         const fresh = await getChanges({
           recordTypes: ['Hydration'],
         });
-        if (
-          fresh.nextChangesToken &&
-          staged &&
-          !staged.cancelled &&
-          thisRunId === currentWaterRunId
-        ) {
+        if (fresh.nextChangesToken && staged && !staged.cancelled) {
           staged.token = fresh.nextChangesToken;
         }
         return [];
@@ -644,7 +632,7 @@ export const readHealthRecordsDetailed = async (
   if (recordType === 'Hydration') {
     // Establish deletion baseline/changes query BEFORE reading sample window
     // so any sample deleted during or after the window read is detected on the next sync
-    const deletions = runId != null ? await readHydrationDeletions(runId) : [];
+    const deletions = await readHydrationDeletions(runId);
     const result = await readHealthRecordsDetailedInner(
       recordType,
       startDate,

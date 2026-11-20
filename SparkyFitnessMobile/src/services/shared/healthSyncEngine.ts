@@ -517,14 +517,8 @@ export const runForegroundSync = async (
   healthMetricStates: HealthMetricStates,
   opts: ForegroundSyncOptions
 ): Promise<SyncResult> => {
-  const initialConfigId = await getActiveServerConfigId();
-  if (!initialConfigId) {
-    return {
-      success: false,
-      error: 'No active server configuration',
-      syncErrors: [],
-    };
-  }
+  const initialConfigId =
+    (await getActiveServerConfigId().catch(() => null)) ?? null;
 
   const enabledMetricStates =
     healthMetricStates && typeof healthMetricStates === 'object'
@@ -551,8 +545,9 @@ export const runForegroundSync = async (
   }
 
   return runSerializedSync(async () => {
-    const configId = await getActiveServerConfigId();
-    if (!configId || configId !== initialConfigId) {
+    const configId =
+      (await getActiveServerConfigId().catch(() => null)) ?? null;
+    if (configId !== initialConfigId) {
       return {
         success: false,
         error: 'Active account changed while queued; aborted.',
