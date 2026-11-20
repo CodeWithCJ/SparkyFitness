@@ -632,6 +632,22 @@ describe('finishing and discarding', () => {
       expect(mockedLocation.stopLocationUpdatesAsync).not.toHaveBeenCalled();
     });
 
+    it('lets Start be tried again when clearing leftovers before it fails', async () => {
+      jest
+        .mocked(AsyncStorage.getAllKeys)
+        .mockRejectedValueOnce(new Error('disk'));
+
+      await expect(
+        startRecording({ activity: 'run', notification })
+      ).rejects.toThrow('disk');
+      // No half-made session to block the next attempt.
+      expect(getGpsRecordingSnapshot().session).toBeNull();
+      expect(await storedSession()).toBeNull();
+
+      await startRecording({ activity: 'run', notification });
+      expect(getGpsRecordingSnapshot().session?.status).toBe('recording');
+    });
+
     it('finishes a discard whose track could not be cleared, and the next recording starts clean', async () => {
       await startRecording({ activity: 'run', notification });
       await ingestFixes(

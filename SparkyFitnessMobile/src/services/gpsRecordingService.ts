@@ -1247,6 +1247,11 @@ export function startRecording(options: StartRecordingOptions): Promise<void> {
         );
       }
     }
+    // Whatever an earlier discard could not clear must not join this track.
+    // Done before the session exists, so a failure here leaves nothing behind
+    // and the next Start can simply try again.
+    await clearStoredPoints();
+    await AsyncStorage.removeItem(HEART_RATE_KEY);
     const now = Date.now();
     // A new recording starts the alerts afresh: the state (and its epoch-ms
     // waits) belongs to the run that ended, not this one.
@@ -1312,9 +1317,6 @@ export function startRecording(options: StartRecordingOptions): Promise<void> {
     clearLatestFix();
     points = [];
     heartRate = { samples: [], batchIds: [] };
-    // Whatever an earlier discard could not clear must not join this track.
-    await clearStoredPoints();
-    await AsyncStorage.removeItem(HEART_RATE_KEY);
     await persistSession();
     if (!indoor) {
       try {
