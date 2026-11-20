@@ -33,6 +33,7 @@ export const DASHBOARD_CARD_FEATURES: Partial<
   Record<DashboardCardKey, FeatureKey>
 > = {
   cycle: 'cycle',
+  labResults: 'labResults',
 };
 
 export const DASHBOARD_CARD_TITLES: Record<

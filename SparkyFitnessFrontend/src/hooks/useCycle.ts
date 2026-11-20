@@ -4,6 +4,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
+import { startedOn } from '@/utils/queryOwner';
 import * as cycleService from '@/api/Cycle/cycleService';
 import type {
   SharedCycleSettings,
@@ -89,23 +90,10 @@ const showSavedCycleSettings = (
   queryClient.invalidateQueries({ queryKey: ['symptom-context'] });
 };
 
-/** The cached settings query itself, which goes away when the cache is cleared. */
-const findCycleSettingsQuery = (queryClient: QueryClient) =>
-  queryClient
-    .getQueryCache()
-    .find({ queryKey: cycleKeys.settings(), exact: true });
-
-/**
- * useAuth clears the cache when the account changes, so a write whose cached
- * settings are gone by the time it answers was made for an account that is no
- * longer on screen: its answer must not be shown. Returned from `onMutate`.
- */
-const startedOn = (queryClient: QueryClient) => {
-  const startedFrom = findCycleSettingsQuery(queryClient);
-  return {
-    isCurrent: () => findCycleSettingsQuery(queryClient) === startedFrom,
-  };
-};
+/** A settings write's answer is shown only for the account it was made for
+ * (`startedOn`); returned from `onMutate`. */
+const startCycleSettingsWrite = (queryClient: QueryClient) =>
+  startedOn(queryClient, cycleKeys.settings());
 
 export const useUpsertCycleSettingsMutation = () => {
   const queryClient = useQueryClient();
@@ -117,7 +105,7 @@ export const useUpsertCycleSettingsMutation = () => {
         reset_onboarding?: boolean;
       }
     ) => cycleService.putSettings(body),
-    onMutate: () => startedOn(queryClient),
+    onMutate: () => startCycleSettingsWrite(queryClient),
     onSuccess: (data, _body, started) => {
       if (started.isCurrent()) showSavedCycleSettings(queryClient, data);
     },
@@ -144,7 +132,7 @@ export const useSetCycleEnabledMutation = () => {
   return useMutation({
     scope: CYCLE_SETTINGS_SCOPE,
     mutationFn: (enabled: boolean) => cycleService.putSettings({ enabled }),
-    onMutate: () => startedOn(queryClient),
+    onMutate: () => startCycleSettingsWrite(queryClient),
     onSuccess: (data, _enabled, started) => {
       if (started.isCurrent()) showSavedCycleSettings(queryClient, data);
     },

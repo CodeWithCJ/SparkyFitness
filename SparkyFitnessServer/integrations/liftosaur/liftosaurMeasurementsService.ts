@@ -7,6 +7,7 @@ import { log } from '../../config/logging.js';
 import measurementService from '../../services/measurementService.js';
 import { instantToDay } from '@workspace/shared';
 import {
+  LiftosaurMeasurementIndexData,
   LiftosaurMeasurementResponseData,
   getValidatedLiftosaurBaseUrl,
 } from './liftosaurTypes.js';
@@ -16,7 +17,11 @@ const IN_TO_CM = 2.54;
 
 const LIFTOSAUR_SOURCE = 'Liftosaur';
 
-/** Supported Liftosaur measurement keys and their mapping in SparkyFitness */
+/**
+ * Supported Liftosaur measurement keys and their mapping in SparkyFitness.
+ * Keys must match the API's names exactly (GET /api/v1/measurements lists
+ * them; an unknown key is rejected with 400). Limbs use the right side.
+ */
 interface MeasurementKeyDef {
   key: string;
   category: 'check_in' | 'custom';
@@ -51,28 +56,28 @@ const SUPPORTED_KEYS: MeasurementKeyDef[] = [
     customCategoryName: 'Shoulders',
   },
   {
-    key: 'biceps_right',
+    key: 'bicepRight',
     category: 'custom',
     field: 'Biceps',
     unit: 'cm',
     customCategoryName: 'Biceps',
   },
   {
-    key: 'calves_right',
+    key: 'calfRight',
     category: 'custom',
     field: 'Calves',
     unit: 'cm',
     customCategoryName: 'Calves',
   },
   {
-    key: 'thigh_right',
+    key: 'thighRight',
     category: 'custom',
     field: 'Thighs',
     unit: 'cm',
     customCategoryName: 'Thighs',
   },
   {
-    key: 'forearm_right',
+    key: 'forearmRight',
     category: 'custom',
     field: 'Forearms',
     unit: 'cm',
@@ -160,6 +165,38 @@ async function getMeasurementPage(
 }
 
 /**
+ * Keys worth fetching: those GET /api/v1/measurements reports with a value at
+ * or after the sync cutoff. Returns null when the index cannot be read, in
+ * which case the caller fetches every supported key as before.
+ */
+async function getKeysWithRecentValues(
+  apiKey: string,
+  cutoffMs: number
+): Promise<Set<string> | null> {
+  try {
+    const response = await axios.get<{ data?: LiftosaurMeasurementIndexData }>(
+      `${getValidatedLiftosaurBaseUrl()}/api/v1/measurements`,
+      { headers: { Authorization: `Bearer ${apiKey}` }, timeout: 15000 }
+    );
+    const measurements = response.data?.data?.measurements;
+    if (!Array.isArray(measurements)) return null;
+    const keys = new Set<string>();
+    for (const m of measurements) {
+      const latestMs = Number(m.latest?.timestamp);
+      // Keep a key whose latest timestamp is unknown rather than miss data.
+      if (Number.isNaN(latestMs) || latestMs >= cutoffMs) keys.add(m.key);
+    }
+    return keys;
+  } catch (err: unknown) {
+    log(
+      'warn',
+      `[liftosaurMeasurements] Could not list measurements, fetching every key: ${errorMessage(err)}`
+    );
+    return null;
+  }
+}
+
+/**
  * Ingest measurements from Liftosaur into SparkyFitness.
  * `failedKeys` lists keys whose fetch failed; a key Liftosaur does not have
  * (400/404) is not a failure. Values collected before a failure are still saved.
@@ -183,7 +220,12 @@ export async function importMeasurementsFromLiftosaur(
   }> = [];
   const failedKeys: string[] = [];
 
-  for (const def of SUPPORTED_KEYS) {
+  const keysWithData = await getKeysWithRecentValues(apiKey, cutoffMs);
+  const keysToFetch = keysWithData
+    ? SUPPORTED_KEYS.filter((def) => keysWithData.has(def.key))
+    : SUPPORTED_KEYS;
+
+  for (const def of keysToFetch) {
     try {
       let hasMore = true;
       let cursor: number | undefined;
@@ -237,11 +279,17 @@ export async function importMeasurementsFromLiftosaur(
       }
     } catch (err: unknown) {
       const axiosErr = err as AxiosError;
-      // If a key doesn't exist or is empty on Liftosaur, skip without failing the whole sync
-      if (
-        axiosErr?.response?.status === 400 ||
-        axiosErr?.response?.status === 404
-      ) {
+      // A key with no data (404) is not a failure.
+      if (axiosErr?.response?.status === 404) {
+        continue;
+      }
+      // 400 means Liftosaur does not know the key: our mapping is wrong.
+      // Say so in the logs, but do not hold back last_sync_at over it.
+      if (axiosErr?.response?.status === 400) {
+        log(
+          'warn',
+          `[liftosaurMeasurements] Liftosaur rejected measurement key ${def.key}: ${JSON.stringify(axiosErr.response.data)}`
+        );
         continue;
       }
       log(

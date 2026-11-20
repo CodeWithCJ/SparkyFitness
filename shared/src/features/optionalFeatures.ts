@@ -52,9 +52,18 @@ interface FeatureDefinition {
 
 export const OPTIONAL_FEATURES = {
   cycle: { group: 'health', defaultEnabled: false, storage: 'cycleSettings' },
+  labResults: { group: 'health', defaultEnabled: true, storage: 'choices' },
 } as const satisfies Record<string, FeatureDefinition>;
 
 export type FeatureKey = keyof typeof OPTIONAL_FEATURES;
+
+/** The features switched through `feature_choices`, one choice per platform
+ * (`PATCH /api/user-preferences/features` takes only these). */
+export type ChoiceFeatureKey = {
+  [K in FeatureKey]: (typeof OPTIONAL_FEATURES)[K]['storage'] extends 'choices'
+    ? K
+    : never;
+}[FeatureKey];
 
 export const FEATURE_KEYS = Object.keys(OPTIONAL_FEATURES) as FeatureKey[];
 
