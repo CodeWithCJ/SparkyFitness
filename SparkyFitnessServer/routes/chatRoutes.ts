@@ -437,6 +437,28 @@ router.post('/', authenticate, async (req, res, next) => {
 });
 const chatTurns = new ChatTurnStreams();
 const turnParams = z.object({ turnId: z.uuid() });
+// The converter reads both SDK parts and legacy array-form content.
+const turnMessageParts = z.array(
+  z.looseObject({
+    type: z.string(),
+    text: z.string().nullish(),
+    content: z.string().nullish(),
+    image: z.string().nullish(),
+    image_url: z.looseObject({ url: z.string().nullish() }).nullish(),
+    url: z.string().nullish(),
+    mimeType: z.string().nullish(),
+    mediaType: z.string().nullish(),
+    state: z.string().nullish(),
+    errorText: z.string().nullish(),
+    approval: z
+      .looseObject({
+        id: z.string().optional(),
+        approved: z.boolean().optional(),
+        reason: z.string().nullish(),
+      })
+      .nullish(),
+  })
+);
 const turnRequest = turnParams
   .extend({
     service_config_id: z.string().min(1),
@@ -445,7 +467,8 @@ const turnRequest = turnParams
       z.object({
         role: z.string(),
         id: z.string().optional(),
-        parts: z.array(z.looseObject({ type: z.string() })).optional(),
+        parts: turnMessageParts.optional(),
+        content: z.union([z.string(), turnMessageParts]).nullish(),
       })
     ),
   })
@@ -456,11 +479,7 @@ const turnRequest = turnParams
       (approvals &&
         last?.role === 'assistant' &&
         z.uuid().safeParse(last.id).success &&
-        last.parts?.some(
-          (part) =>
-            z.object({ state: z.literal('approval-responded') }).safeParse(part)
-              .success
-        ))
+        last.parts?.some((part) => part.state === 'approval-responded'))
     );
   });
 

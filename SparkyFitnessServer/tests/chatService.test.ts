@@ -1999,14 +1999,19 @@ describe('chatService', () => {
         approved: boolean,
         responseType = pending.type,
         consume = drainStream,
-        checkpoint?: { turnId: string; rowId: string }
+        checkpoint?: { turnId: string; rowId: string },
+        priorText = ''
       ) => {
+        const previousParts = priorText
+          ? [{ type: 'text', text: priorText }, outsidePart]
+          : [outsidePart];
         vi.mocked(chatRepository.getChatHistoryEntryById).mockResolvedValue({
           id: 'row-1',
           user_id: actorUserId,
           message_type: 'assistant',
           metadata: { turnId: 'turn-1' },
-          parts: [outsidePart, pending],
+          content: priorText,
+          parts: [...previousParts, pending],
         });
         return run(
           [
@@ -2015,7 +2020,7 @@ describe('chatService', () => {
               role: 'assistant',
               id: 'row-1',
               parts: [
-                outsidePart,
+                ...previousParts,
                 {
                   ...pending,
                   type: responseType,
@@ -2081,6 +2086,41 @@ describe('chatService', () => {
             ]),
           })
         );
+      });
+      it('restores the completed tool output when Stop wins the approval commit', async () => {
+        const priorText = 'This diary write needs approval.';
+        scripted([doneStep]);
+        vi.mocked(completeChatTurn).mockImplementationOnce(async () => {
+          vi.mocked(getChatTurnStatus).mockResolvedValue('cancelled');
+          return false;
+        });
+        const chunks = await resume(
+          true,
+          pending.type,
+          drainStream,
+          {
+            turnId: 'continued-turn',
+            rowId: 'continued-claim',
+          },
+          priorText
+        );
+        expect(chunks.at(-1)).toEqual({ type: 'abort' });
+        expect(writeExecute).toHaveBeenCalledTimes(1);
+        expect(
+          chatRepository.saveApprovalContinuation
+        ).toHaveBeenCalledExactlyOnceWith('row-1', actorUserId, {
+          content: priorText,
+          metadata: { turnId: 'turn-1' },
+          parts: [
+            { type: 'text', text: priorText },
+            outsidePart,
+            expect.objectContaining({
+              toolCallId: 'write-1',
+              state: 'output-available',
+              output: 'saved',
+            }),
+          ],
+        });
       });
       it.each([
         ['cancelled', { type: 'abort' }],
@@ -2579,6 +2619,62 @@ describe('chatService', () => {
       );
     });
 
+    it.each([
+      { reasoning: [], stopped: false },
+      { reasoning: [], stopped: true },
+      {
+        stopped: false,
+        reasoning: [
+          { type: 'reasoning-start', id: 'reason' },
+          { type: 'reasoning-delta', id: 'reason', delta: 'Thinking.' },
+          { type: 'reasoning-end', id: 'reason' },
+        ],
+      },
+    ])(
+      'streams the durable outcome when no answer is available (%j)',
+      async ({ reasoning, stopped }) => {
+        if (stopped)
+          vi.mocked(markChatTurnFailed).mockImplementationOnce(async () => {
+            vi.mocked(getChatTurnStatus).mockResolvedValue('cancelled');
+          });
+        streamModel([
+          { type: 'stream-start', warnings: [] },
+          ...reasoning,
+          {
+            type: 'finish',
+            finishReason: { unified: 'stop', raw: undefined },
+            usage,
+          },
+        ]);
+        const { stream } = await chatService.processChatMessageStream(
+          [{ role: 'user', content: 'Sample' }],
+          'svc-1',
+          activeUserId,
+          actorUserId,
+          false,
+          undefined,
+          undefined,
+          true,
+          'turn',
+          undefined,
+          'row'
+        );
+        const chunks = await drainStream(stream);
+        const errorText =
+          'The AI service returned an empty response. Please try again.';
+        expect(markChatTurnFailed).toHaveBeenCalledWith(
+          'row',
+          actorUserId,
+          errorText
+        );
+        expect(
+          chunks.filter((chunk) =>
+            ['error', 'finish', 'abort'].includes(chunk.type)
+          )
+        ).toEqual([stopped ? { type: 'abort' } : { type: 'error', errorText }]);
+        expect(completeChatTurn).not.toHaveBeenCalled();
+      }
+    );
     it('persists a provider failure after a partial response without publishing the fragment as a completed answer', async () => {
       vi.mocked(getChatTurnStatus).mockResolvedValueOnce('pending');
       streamModel([
@@ -2609,7 +2705,12 @@ describe('chatService', () => {
         undefined,
         'row'
       );
-      await drainStream(stream);
+      const chunks = await drainStream(stream);
+      expect(
+        chunks.filter((chunk) =>
+          ['error', 'finish', 'abort'].includes(chunk.type)
+        )
+      ).toEqual([{ type: 'error', errorText: 'Provider unavailable' }]);
       expect(markChatTurnFailed).toHaveBeenCalledWith(
         'row',
         actorUserId,

@@ -1415,6 +1415,70 @@ describe('ChatScreen history seeding', () => {
     }
   });
 
+  it.each(['acknowledged', 'failed'] as const)(
+    'coalesces foreground and explicit retries while an outstanding Stop is %s',
+    async (outcome) => {
+      mockPhotoState.__mockChatIsRunning = true;
+      const delivery = deferred<void>();
+      const stop = jest
+        .spyOn(chatApi, 'stopChatTurn')
+        .mockImplementationOnce(async () => {
+          await delivery.promise;
+          if (outcome === 'failed') throw Error('Connection lost');
+        })
+        .mockRejectedValueOnce(new Error('Still offline'))
+        .mockResolvedValue(undefined);
+      try {
+        const screen = renderScreen();
+        await screen.findByTestId('composer-cancel');
+        const id = mockTransportOptions.prepareSendMessagesRequest!({
+          messages: [{ role: 'user' }],
+        }).body.turnId;
+        const pressStop = () =>
+          fireEvent.press(screen.getByTestId('icon-stop'));
+        await act(async () => {
+          pressStop();
+        });
+        await act(async () => {
+          pressStop();
+          const listeners = jest
+            .mocked(AppState.addEventListener)
+            .mock.calls.filter(([event]) => event === 'change');
+          listeners.forEach(([, listener]) => listener('background'));
+          listeners.forEach(([, listener]) => listener('active'));
+          mockRuntimeCallbacks.onFinish({
+            isAbort: true,
+            isDisconnect: false,
+            isError: false,
+          });
+        });
+        expect(stop.mock.calls).toEqual([[SERVER_CONFIG, id]]);
+        await act(async () => delivery.resolve(undefined));
+        if (outcome === 'failed') {
+          expect(stop.mock.calls).toEqual([
+            [SERVER_CONFIG, id],
+            [SERVER_CONFIG, id],
+          ]);
+          expect(Toast.show).toHaveBeenCalledTimes(1);
+          expect(Toast.show).toHaveBeenCalledWith(
+            expect.objectContaining({ text2: 'Still offline' })
+          );
+          // Another attempt needs a fresh trigger after the queued retry fails.
+          await act(async () => {
+            pressStop();
+          });
+          expect(stop.mock.calls[2]).toEqual([SERVER_CONFIG, id]);
+        } else {
+          expect(stop.mock.calls).toEqual([[SERVER_CONFIG, id]]);
+          expect(Toast.show).not.toHaveBeenCalled();
+        }
+        expect(expoFetch).not.toHaveBeenCalled();
+      } finally {
+        stop.mockRestore();
+      }
+    }
+  );
+
   it('keeps a late Stop error private and retries on foreground after returning to the owner', async () => {
     mockPhotoState.__mockChatIsRunning = true;
     const delivery = deferred<void>();
@@ -1434,11 +1498,15 @@ describe('ChatScreen history seeding', () => {
       await act(async () => {
         fireEvent.press(screen.getByTestId('icon-stop'));
       });
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('icon-stop'));
+      });
       mockGetActiveServerConfig.mockResolvedValue({
         ...SERVER_CONFIG,
         id: 'other',
       });
       await act(async () => delivery.resolve(undefined));
+      expect(stop).toHaveBeenCalledTimes(1);
       expect(Toast.show).not.toHaveBeenCalled();
       mockGetActiveServerConfig.mockResolvedValue(SERVER_CONFIG);
       await act(async () => {

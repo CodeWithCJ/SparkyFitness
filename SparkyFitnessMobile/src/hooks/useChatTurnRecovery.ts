@@ -111,7 +111,12 @@ async function readReplay(
 
 // ChatThread remounts after restoring history. An undelivered Stop must
 // survive that remount, and only the originating account may retry it.
-type Cancellation = { id: string; owner: ServerConfig; sending: boolean };
+type Cancellation = {
+  id: string;
+  owner: ServerConfig;
+  sending: boolean;
+  retryRequested: boolean;
+};
 const cancellations = new Set<Cancellation>();
 
 function cancellationFor(owner: ServerConfig, id: string) {
@@ -131,25 +136,28 @@ export function useChatTurnRecovery(
     async function deliver(target: Cancellation) {
       target.sending = true;
       try {
-        if (!sameChatAccount(await getActiveServerConfig(), target.owner))
-          return;
-        await stopChatTurn(target.owner, target.id);
-        cancellations.delete(target);
-      } catch (error) {
-        if (
-          sameChatAccount(
-            await getActiveServerConfig().catch(() => null),
-            target.owner
-          )
-        )
-          onError(error instanceof Error ? error : Error(String(error)));
+        do {
+          target.retryRequested = false;
+          try {
+            if (!sameChatAccount(await getActiveServerConfig(), target.owner))
+              continue;
+            await stopChatTurn(target.owner, target.id);
+            cancellations.delete(target);
+            return;
+          } catch (error) {
+            const active = await getActiveServerConfig().catch(() => null);
+            if (sameChatAccount(active, target.owner) && !target.retryRequested)
+              onError(error instanceof Error ? error : Error(String(error)));
+          }
+        } while (target.retryRequested);
       } finally {
         target.sending = false;
       }
     }
     for (const target of cancellations) {
-      if (!target.sending && sameChatAccount(owner, target.owner))
-        void deliver(target);
+      if (!sameChatAccount(owner, target.owner)) continue;
+      if (target.sending) target.retryRequested = true;
+      else void deliver(target);
     }
   }, [owner, onError]);
   const reader = useRef<AbortController | undefined>(undefined);
@@ -251,7 +259,7 @@ export function useChatTurnRecovery(
     const id = pending.current;
     if (id) {
       if (!cancellationFor(owner, id))
-        cancellations.add({ id, owner, sending: false });
+        cancellations.add({ id, owner, sending: false, retryRequested: false });
       pending.current = undefined;
       reader.current?.abort();
     }

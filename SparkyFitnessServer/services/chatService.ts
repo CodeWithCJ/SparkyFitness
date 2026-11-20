@@ -3092,6 +3092,7 @@ async function processChatMessageStream(
   rowId?: string
 ) {
   let continuation: UIMessage | undefined;
+  let continuationContent = '';
   let streamStarted = false;
   const cancellation = new AbortController();
   const signal = AbortSignal.any([
@@ -3308,6 +3309,7 @@ async function processChatMessageStream(
       ) {
         throw new Error('Approval already answered.');
       }
+      continuationContent = saved.content ?? '';
       turnId ??= metadata?.turnId;
       continuation = {
         id: saved.id,
@@ -3496,7 +3498,63 @@ async function processChatMessageStream(
 
     streamStarted = true;
     let providerTerminal:
-      Extract<UIMessageChunk, { type: 'finish' | 'abort' }> | undefined;
+      | Extract<UIMessageChunk, { type: 'finish' | 'abort' | 'error' }>
+      | undefined;
+    async function endUncommittedTurn(
+      claimId: string,
+      response: UIMessage,
+      errorText = chatStreamErrorMessage(undefined)
+    ) {
+      const readStatus = () =>
+        getChatTurnStatus(
+          claimId,
+          authenticatedUserId,
+          CHAT_REQUEST_TIMEOUT_MS
+        );
+      let state = await readStatus();
+      if (state === 'pending') {
+        durableTerminal ??= { type: 'error', errorText };
+      } else {
+        durableTerminal = terminalForStatus(state);
+      }
+      if (
+        durableTerminal.type === 'error' &&
+        (state === 'pending' || typeof state === 'object')
+      ) {
+        await markChatTurnFailed(
+          claimId,
+          authenticatedUserId,
+          durableTerminal.errorText
+        );
+        // Stop may have won the conditional failure write on another worker.
+        state = await readStatus();
+        if (state !== 'pending') durableTerminal = terminalForStatus(state);
+      }
+      if (!continuation || !state || state === 'gone') return;
+
+      // Keep the original reply and any tool effects, including tools from later
+      // steps. New prose and pending cards belong only to a committed answer.
+      const results = new Map<string, UIMessage['parts'][number]>();
+      for (const part of settleChatApprovals(response.parts)) {
+        if ('toolCallId' in part && part.state.startsWith('output-'))
+          results.set(part.toolCallId, part);
+      }
+      const parts = settleChatApprovals(continuation.parts).map((part) => {
+        if (!('toolCallId' in part)) return part;
+        const completed = results.get(part.toolCallId);
+        results.delete(part.toolCallId);
+        return completed ?? part;
+      });
+      await chatRepository.saveApprovalContinuation(
+        continuation.id,
+        authenticatedUserId,
+        {
+          content: continuationContent,
+          parts: [...parts, ...results.values()],
+          metadata: continuation.metadata,
+        }
+      );
+    }
     let savedMessageId: string | undefined;
     let usageMetadata:
       ReturnType<typeof mapUsageToMetadata>['custom'] | undefined;
@@ -3524,32 +3582,18 @@ async function processChatMessageStream(
                   isAborted ||
                   isCancelled)
               ) {
-                if (!durableTerminal && signal.reason?.name === 'TimeoutError')
-                  durableTerminal = {
-                    type: 'error',
-                    errorText: chatTurnFailure(signal),
-                  };
                 const errorText =
-                  (durableTerminal?.type === 'error'
-                    ? durableTerminal.errorText
-                    : undefined) ??
-                  providerError ??
-                  (finishReason === 'error'
-                    ? EMPTY_RESPONSE_ERROR_TEXT
-                    : chatStreamErrorMessage(
-                        outcome.status === 'failed' ? outcome.error : undefined
-                      ));
-                await markChatTurnFailed(rowId, authenticatedUserId, errorText);
-                if (continuation)
-                  await chatRepository.saveApprovalContinuation(
-                    continuation.id,
-                    authenticatedUserId,
-                    {
-                      content: '',
-                      parts: settleChatApprovals(responseMessage.parts),
-                      metadata: continuation.metadata,
-                    }
-                  );
+                  signal.reason?.name === 'TimeoutError'
+                    ? chatTurnFailure(signal)
+                    : (providerError ??
+                      (finishReason === 'error'
+                        ? EMPTY_RESPONSE_ERROR_TEXT
+                        : chatStreamErrorMessage(
+                            outcome.status === 'failed'
+                              ? outcome.error
+                              : undefined
+                          )));
+                await endUncommittedTurn(rowId, responseMessage, errorText);
                 return;
               }
               if (isAborted && !continuation) return;
@@ -3597,9 +3641,9 @@ async function processChatMessageStream(
                 )
               ) {
                 if (rowId)
-                  await markChatTurnFailed(
+                  await endUncommittedTurn(
                     rowId,
-                    authenticatedUserId,
+                    responseMessage,
                     EMPTY_RESPONSE_ERROR_TEXT
                   );
                 log(
@@ -3639,18 +3683,7 @@ async function processChatMessageStream(
                     Boolean(continuation)
                   ))
                 ) {
-                  const state = await getChatTurnStatus(
-                    rowId,
-                    authenticatedUserId,
-                    CHAT_REQUEST_TIMEOUT_MS
-                  );
-                  durableTerminal = terminalForStatus(state);
-                  if (typeof state === 'object')
-                    await markChatTurnFailed(
-                      rowId,
-                      authenticatedUserId,
-                      state.error
-                    );
+                  await endUncommittedTurn(rowId, responseMessage);
                   return;
                 }
               } else if (continuation) {
@@ -3706,7 +3739,9 @@ async function processChatMessageStream(
                 // The SDK emits finish before its onFinish persistence callback.
                 if (
                   rowId &&
-                  (chunk.type === 'finish' || chunk.type === 'abort')
+                  (chunk.type === 'finish' ||
+                    chunk.type === 'abort' ||
+                    chunk.type === 'error')
                 )
                   providerTerminal = chunk;
                 else controller.enqueue(chunk);
@@ -3746,7 +3781,7 @@ async function processChatMessageStream(
           continuation.id,
           authenticatedUserId,
           {
-            content: '',
+            content: continuationContent,
             parts: settleChatApprovals(continuation.parts, 'Did not run.'),
             metadata: continuation.metadata,
           }

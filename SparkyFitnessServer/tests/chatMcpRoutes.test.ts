@@ -196,16 +196,36 @@ describe('/api/chat/stream approval capability', () => {
 });
 
 describe('resumable chat turns', () => {
-  it.each([null, 42, 'text', {}, { type: false }])(
-    'rejects an invalid message part %j before claiming the turn',
-    async (part) => {
+  const malformedParts = [
+    null,
+    42,
+    'text',
+    {},
+    { type: false },
+    { type: 'text', text: 7 },
+    { type: 'text', content: {} },
+    { type: 'image_url', image_url: { url: 7 } },
+    { type: 'image', image: {} },
+    { type: 'file', mediaType: 7 },
+    { type: 'file', mimeType: {} },
+    { type: 'file', url: {} },
+    { type: 'tool-example', state: 'output-error', errorText: {} },
+    { type: 'tool-example', state: 'output-denied', approval: { reason: 7 } },
+  ];
+  it.each(
+    ['content', 'parts'].flatMap((field) =>
+      malformedParts.map((part) => ({ field, part }))
+    )
+  )(
+    'rejects an invalid $field entry $part before claiming the turn',
+    async ({ field, part }) => {
       vi.clearAllMocks();
       const response = await request(app)
         .post('/api/chat/stream')
         .send({
           turnId: first,
           service_config_id: 'svc',
-          messages: [{ role: 'user', parts: [part] }],
+          messages: [{ role: 'user', [field]: [part] }],
         });
       expect(response.status).toBe(400);
       expect(claimChatTurn).not.toHaveBeenCalled();
@@ -230,6 +250,7 @@ describe('resumable chat turns', () => {
       service_config_id: 'svc',
       approvals: true,
       messages: [
+        { role: 'user', content: 'First question' },
         {
           role: 'user',
           parts: [
@@ -238,6 +259,16 @@ describe('resumable chat turns', () => {
               type: 'file',
               mediaType: 'image/png',
               url: 'data:image/png;base64,AA==',
+            },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', content: 'Second question' },
+            {
+              type: 'image_url',
+              image_url: { url: 'https://example.com/meal.png' },
             },
           ],
         },
