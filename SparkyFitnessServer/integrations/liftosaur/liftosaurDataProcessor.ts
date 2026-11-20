@@ -7,11 +7,12 @@
  * integrations/hevy/hevyDataProcessor.ts).
  */
 import type { PoolClient } from 'pg';
-import exerciseEntryRepository from '../../models/exerciseEntry.js';
+import exerciseEntryRepository, {
+  acquireExerciseEntrySyncLockWithClient,
+} from '../../models/exerciseEntry.js';
 import exerciseRepository from '../../models/exercise.js';
 import activityDetailsRepository from '../../models/activityDetailsRepository.js';
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
-import exercisePresetEntryRepository from '../../models/exercisePresetEntryRepository.js';
 import { getClient } from '../../db/poolManager.js';
 import { log } from '../../config/logging.js';
 import { instantToDay, instantHourMinute } from '@workspace/shared';
@@ -25,6 +26,11 @@ import {
   type LiftosaurMuscleLookup,
   type MuscleMapping,
 } from './liftosaurMuscles.js';
+import {
+  deleteLiftosaurSessionsNotInWithClient,
+  moveEntryToSessionWithClient,
+  upsertLiftosaurSessionWithClient,
+} from './liftosaurSessionRepository.js';
 
 const LB_TO_KG = 0.45359237;
 
@@ -39,15 +45,62 @@ interface ExerciseRow {
 interface WorkoutPresetRow {
   id: number;
 }
-interface PresetEntryRow {
-  id: string;
-}
 interface ExerciseEntryRow {
   id: string;
 }
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+/** First and last day (user timezone) of the fetched workouts, if any. */
+function fetchedDayRange(
+  workouts: LiftohistoryWorkout[],
+  timezone: string
+): LiftosaurCleanupRange | null {
+  if (workouts.length === 0) return null;
+  const days = workouts.map((w) => instantToDay(new Date(w.date), timezone));
+  return {
+    startDate: days.reduce((a, b) => (a < b ? a : b)),
+    endDate: days.reduce((a, b) => (a > b ? a : b)),
+  };
+}
+
+/**
+ * Source ids of the Liftosaur rows this sync keeps: the sessions and entries
+ * it wrote, plus entries it could not write because of an error (so a
+ * transient failure never deletes an existing entry). A deliberate skip adds
+ * nothing, so its old row is cleaned up.
+ */
+interface KeptSourceIds {
+  sessions: Set<string>;
+  entries: Set<string>;
+}
+
+/**
+ * Source id of the entry for one exercise of a Liftosaur workout:
+ * `<record id>_<exercise name>_<occurrence>`, where the occurrence counts
+ * earlier lines of the same exercise in that workout. Keyed by name rather
+ * than position, so reordering or removing exercises in Liftosaur never moves
+ * an entry (and the edits saved on it) to a different exercise. Only two
+ * blocks of the same exercise can trade places, which keeps edits on the
+ * same exercise. A renamed exercise counts as a new one.
+ */
+function entrySourceId(
+  workout: LiftohistoryWorkout,
+  exerciseIndex: number
+): string {
+  const name = workout.exercises[exerciseIndex]!.name;
+  const occurrence = workout.exercises
+    .slice(0, exerciseIndex)
+    .filter((exercise) => exercise.name === name).length;
+  return `${workout.id}_${name}_${occurrence}`;
+}
+
+/** Calendar days (user timezone) whose Liftosaur rows a sync reconciles. */
+export interface LiftosaurCleanupRange {
+  startDate: string;
+  endDate: string;
 }
 
 /**
@@ -98,7 +151,13 @@ async function resolveLibraryExercises(
   resolveMuscles?: LiftosaurMuscleResolver
 ): Promise<Map<string, ExerciseRow>> {
   const names = [
-    ...new Set(workouts.flatMap((w) => w.exercises.map((e) => e.name))),
+    ...new Set(
+      workouts.flatMap((w) =>
+        w.exercises
+          .filter((e) => mergeSets(e).sets.length > 0)
+          .map((e) => e.name)
+      )
+    ),
   ];
 
   const found = new Map<string, ExerciseRow | null>();
@@ -191,14 +250,24 @@ async function fillMissingMuscles(
 
 /**
  * Process a list of parsed Liftosaur workouts into SparkyFitness entries atomically.
+ *
+ * @param cleanup Which Liftosaur rows that are no longer sent get deleted:
+ *   a day range, every such row on those days (even when no workouts were
+ *   fetched); left out, the days between the first and last fetched
+ *   workout; null, none (the fetch may be incomplete, so a missing workout
+ *   proves nothing).
  */
 async function processLiftosaurWorkouts(
   userId: string,
   createdByUserId: string,
   workouts: LiftohistoryWorkout[],
   timezone = 'UTC',
+  cleanup?: LiftosaurCleanupRange | LiftosaurMuscleResolver | null,
   resolveMuscles?: LiftosaurMuscleResolver
 ) {
+  const actualCleanup = typeof cleanup === 'function' ? null : cleanup;
+  const actualResolveMuscles =
+    typeof cleanup === 'function' ? cleanup : resolveMuscles;
   log(
     'info',
     `Processing ${workouts.length} Liftosaur workouts for user ${userId}...`
@@ -207,43 +276,25 @@ async function processLiftosaurWorkouts(
   const library = await resolveLibraryExercises(
     userId,
     workouts,
-    resolveMuscles
+    actualResolveMuscles
   );
 
   const client = await getClient(userId, createdByUserId);
   try {
     await client.query('BEGIN');
-
-    // Mirror the Garmin/Hevy re-sync model: clear any existing Liftosaur sessions
-    // and exercise entries in the synced date range before rebuilding so re-syncs
-    // are idempotent. Preset templates (workout_presets) are reused by name.
-    if (workouts.length > 0) {
-      const entryDates = workouts.map((w) =>
-        instantToDay(new Date(w.date), timezone)
-      );
-      const startDate = entryDates.reduce((a, b) => (a < b ? a : b));
-      const endDate = entryDates.reduce((a, b) => (a > b ? a : b));
-
-      await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient(
-        client,
-        userId,
-        startDate,
-        endDate,
-        LIFTOSAUR_SOURCE
-      );
-
-      await exercisePresetEntryRepository.deleteExercisePresetEntriesByEntrySourceAndDateWithClient(
-        client,
-        userId,
-        startDate,
-        endDate,
-        LIFTOSAUR_SOURCE
-      );
-    }
+    // Hold the Liftosaur sync lock for the whole import, as the Hevy import
+    // does, so session upserts are serialized even when this sync deletes
+    // nothing (the cleanup and entry writes below take the same lock).
+    await acquireExerciseEntrySyncLockWithClient(
+      client,
+      userId,
+      LIFTOSAUR_SOURCE
+    );
 
     // Paginated fetches can overlap at page boundaries; process each workout id
     // exactly once so a second pass doesn't create an empty orphan session.
     const seenWorkoutIds = new Set<number>();
+    const kept: KeptSourceIds = { sessions: new Set(), entries: new Set() };
     for (const workout of workouts) {
       if (seenWorkoutIds.has(workout.id)) {
         log('debug', `Skipping duplicate Liftosaur workout ${workout.id}`);
@@ -255,8 +306,44 @@ async function processLiftosaurWorkouts(
         createdByUserId,
         workout,
         library,
+        kept,
         client,
         timezone
+      );
+    }
+
+    // Re-sent workouts are updated in place above, keyed by source id
+    // (session: the Liftosaur record id; entry: `<record id>_<exercise
+    // name>_<occurrence>`), so entry ids and anything the user added in SparkyFitness
+    // (notes, effort, calorie links, edited fields) survive a re-sync. Then
+    // every Liftosaur row in the synced day range that this sync did not
+    // write is deleted: workouts deleted in Liftosaur, rows from before
+    // source ids were stable, and rows the import now skips. Entries go
+    // first, because that path clears their calorie links and a session
+    // delete cascades to the entries still under it.
+    const range =
+      actualCleanup === undefined
+        ? fetchedDayRange(workouts, timezone)
+        : actualCleanup;
+    if (range) {
+      const { startDate, endDate } = range;
+
+      await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient(
+        client,
+        userId,
+        startDate,
+        endDate,
+        LIFTOSAUR_SOURCE,
+        undefined,
+        [...kept.entries]
+      );
+
+      await deleteLiftosaurSessionsNotInWithClient(
+        client,
+        userId,
+        startDate,
+        endDate,
+        [...kept.sessions]
       );
     }
 
@@ -281,6 +368,7 @@ async function processSingleWorkout(
   createdByUserId: string,
   workout: LiftohistoryWorkout,
   library: Map<string, ExerciseRow>,
+  kept: KeptSourceIds,
   client: PoolClient,
   timezone = 'UTC'
 ) {
@@ -295,6 +383,16 @@ async function processSingleWorkout(
     'debug',
     `Processing Liftosaur workout: ${workoutTitle} (${workout.date})`
   );
+
+  // A workout in which nothing was performed (only planned sets) gets no
+  // session at all, rather than an empty one.
+  if (!workout.exercises.some((ex) => mergeSets(ex).sets.length > 0)) {
+    log(
+      'debug',
+      `Skipping Liftosaur workout ${workout.id} with no performed sets`
+    );
+    return;
+  }
 
   // Find or create the reusable workout preset (the Liftosaur program name, or
   // a generic name for ad-hoc sessions) so the diary shows the whole workout as
@@ -320,24 +418,20 @@ async function processSingleWorkout(
     );
   }
 
-  const presetPayload = {
-    user_id: userId,
-    workout_preset_id: workoutPreset.id,
-    name: workoutTitle,
-    description: `Logged session of ${workoutTitle}`,
-    entry_date: entryDate,
-    created_by_user_id: createdByUserId,
-    notes: `Liftosaur Workout Session: ${workoutTitle}`,
-    source: LIFTOSAUR_SOURCE,
-  };
-
-  const presetEntry: PresetEntryRow =
-    await exercisePresetEntryRepository.createExercisePresetEntryWithClient(
-      client,
-      userId,
-      presetPayload,
-      createdByUserId
-    );
+  const presetEntryId = await upsertLiftosaurSessionWithClient(
+    client,
+    userId,
+    createdByUserId,
+    {
+      source_id: String(workout.id),
+      workout_preset_id: workoutPreset.id,
+      name: workoutTitle,
+      description: `Logged session of ${workoutTitle}`,
+      entry_date: entryDate,
+      notes: `Liftosaur Workout Session: ${workoutTitle}`,
+    }
+  );
+  kept.sessions.add(String(workout.id));
 
   const workoutDurationMinutes = workout.durationSeconds
     ? Math.round(workout.durationSeconds / 60)
@@ -345,6 +439,7 @@ async function processSingleWorkout(
   // Liftosaur only records the whole workout's duration. Like the Hevy
   // integration, it goes to the first exercise of the session and the rest
   // get 0, so daily exercise minutes match the workout without multiplying it.
+  // When earlier exercises are skipped, it goes to the first imported one.
   let durationAllocated = false;
 
   for (
@@ -354,21 +449,30 @@ async function processSingleWorkout(
   ) {
     const liftosaurExercise = workout.exercises[exerciseIndex]!;
 
+    // Merge completed/warmup/target sets into the flat set list SparkyFitness
+    // stores (see mergeSets). An exercise with no performed sets is skipped
+    // before anything is looked up or created for it.
+    const mergedSets = mergeSets(liftosaurExercise);
+    if (mergedSets.sets.length === 0) {
+      log(
+        'debug',
+        `Skipping Liftosaur exercise "${liftosaurExercise.name}" with no performed sets`
+      );
+      continue;
+    }
+
     // 1. The library exercise was resolved (and created, with its muscles)
     //    up front by resolveLibraryExercises.
     const exercise = library.get(liftosaurExercise.name);
-    if (!exercise) continue;
-
-    // 2. Merge completed/warmup/target sets into the flat set list SparkyFitness
-    //    stores. Liftosaur logs both what was done (completed) and what the
-    //    program prescribed (target); completed values win for reps/weight/RPE,
-    //    and target rest timers become per-set durations.
-    const mergedSets = mergeSets(liftosaurExercise);
+    if (!exercise) {
+      // An error, not a skip: keep the existing entry for the next sync.
+      kept.entries.add(entrySourceId(workout, exerciseIndex));
+      continue;
+    }
 
     // Stable per-exercise identity so re-syncs update in place instead of
-    // duplicating. Liftosaur record ids are unique and exercise index is unique
-    // within a record.
-    const sourceId = `${workout.id}_${exerciseIndex}`;
+    // duplicating (see entrySourceId).
+    const sourceId = entrySourceId(workout, exerciseIndex);
 
     const durationMinutes = durationAllocated ? 0 : workoutDurationMinutes;
     durationAllocated = true;
@@ -405,9 +509,21 @@ async function processSingleWorkout(
         entryData,
         createdByUserId,
         LIFTOSAUR_SOURCE,
-        presetEntry.id
+        presetEntryId
       );
     const entry: ExerciseEntryRow | null = created.entry ?? null;
+    kept.entries.add(sourceId);
+    // The in-place update keeps the entry's parent. If that is an older
+    // session the cleanup below deletes, the cascade would take this kept
+    // entry with it, so move the entry under this sync's session first.
+    if (entry?.id && created.operation === 'updated') {
+      await moveEntryToSessionWithClient(
+        client,
+        userId,
+        entry.id,
+        presetEntryId
+      );
+    }
 
     // 5. Populate the reusable preset template with this exercise. Reuses the
     //    existing exercise row when present and skips if it already has sets,
@@ -438,6 +554,17 @@ async function processSingleWorkout(
     //    statement aborts the surrounding transaction, so swallowing it here
     //    would only surface later as a failed COMMIT with a misleading error.
     if (entry?.id) {
+      // A re-synced entry is updated in place; replace its raw detail rather
+      // than adding another copy on every sync.
+      if (created.operation === 'updated') {
+        await activityDetailsRepository._deleteActivityDetailsByEntryIdAndProviderWithClient(
+          client,
+          userId,
+          entry.id,
+          LIFTOSAUR_SOURCE,
+          'full_activity_data'
+        );
+      }
       const detailPayload = {
         exercise_entry_id: entry.id,
         provider_name: LIFTOSAUR_SOURCE,
@@ -486,9 +613,10 @@ interface NormalizedSet {
  * Precedence:
  * 1. Working sets come from completedSets (expanded by `count`).
  * 2. Warmup sets come from warmupSets (marked 'Warm-up').
- * 3. Target sets supply rest timers (stored as the set's rest time, never
- *    its duration) and fallback targets when completed sets are missing
- *    (e.g. an unfinished session).
+ * 3. Target sets (the program's plan) only supply rest timers (stored as
+ *    the set's rest time, never its duration) and labels for the completed
+ *    set at the same position. A planned set with no completed counterpart
+ *    was skipped and is never imported.
  */
 function mergeSets(exercise: LiftohistoryExercise): {
   sets: NormalizedSet[];
@@ -505,14 +633,11 @@ function mergeSets(exercise: LiftohistoryExercise): {
     setNumber += 1;
   }
 
-  const mergedCount = Math.max(completed.length, target.length);
-  for (let i = 0; i < mergedCount; i += 1) {
-    const done = completed[i];
+  for (let i = 0; i < completed.length; i += 1) {
+    const done = completed[i]!;
     const planned = target[i];
-    const base = done ?? planned;
-    if (!base) continue;
-    const setType = mapSetType(base.label ?? planned?.label, false);
-    const normalized = toNormalizedSet(base, setNumber, setType);
+    const setType = mapSetType(done.label ?? planned?.label, false);
+    const normalized = toNormalizedSet(done, setNumber, setType);
     // Rest timers only exist on target sets.
     const timer = planned?.timerSeconds;
     if (timer && timer > 0) {

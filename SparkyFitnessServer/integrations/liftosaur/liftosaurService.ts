@@ -13,9 +13,11 @@ import { decrypt, ENCRYPTION_KEY } from '../../security/encryption.js';
 import { log } from '../../config/logging.js';
 import { logRawResponse } from '../../utils/diagnosticLogger.js';
 import { loadUserTimezone } from '../../utils/timezoneLoader.js';
-import { dayToUtcRange } from '@workspace/shared';
+import { addDays, dayToUtcRange, todayInZone } from '@workspace/shared';
 import { parseLiftohistory } from './liftohistoryParser.js';
-import liftosaurDataProcessor from './liftosaurDataProcessor.js';
+import liftosaurDataProcessor, {
+  type LiftosaurCleanupRange,
+} from './liftosaurDataProcessor.js';
 import {
   LiftosaurApiEnvelope,
   LiftosaurHistoryResponseData,
@@ -190,20 +192,42 @@ async function syncLiftosaurData(
   // the Liftosaur API filters by the same day the user sees in the UI.
   let startInstant: string | undefined;
   let endInstant: string | undefined;
+  // The days this sync reconciles: Liftosaur rows on them that are not
+  // re-sent were deleted in Liftosaur. A full sync has no window, so it
+  // reconciles the days between its first and last fetched workout.
+  let syncDays: LiftosaurCleanupRange | undefined;
   if (startDate && endDate) {
     const range = dayRangeToInstants(startDate, endDate, tz);
     startInstant = range.start;
     endInstant = range.end;
+    syncDays = { startDate, endDate };
   }
 
-  // Incremental syncs stop once a fetched page's newest record predates the
-  // 7-day window (mirrors the Hevy service's stop condition).
+  // An incremental sync covers the last 7 days: recent enough to pick up
+  // workouts edited, added late or deleted in Liftosaur, which the history
+  // API has no change timestamp for. Liftosaur filters by startDate, so only
+  // those workouts are fetched and re-applied, not the whole history.
   const cutoffMs = fullSync ? 0 : Date.now() - 7 * 24 * 60 * 60 * 1000;
+  if (!fullSync && startInstant === undefined) {
+    // Fetch whole days, from the start of the user's day 7 calendar days ago
+    // (calendar days, so a clock change cannot shorten the window), so every
+    // workout on a reconciled day is fetched before anything is deleted.
+    const today = todayInZone(tz);
+    const startDay = addDays(today, -7);
+    startInstant = dayToUtcRange(startDay, tz).start.toISOString();
+    syncDays = { startDate: startDay, endDate: today };
+  }
 
   const allWorkouts = [];
   let skippedCount = 0;
   let cursor: number | undefined;
   let hasMore = true;
+  // Only a fetch that ended with Liftosaur reporting no more pages shows
+  // which workouts are gone. Any other stop leaves rows alone.
+  let fetchComplete = false;
+  // A record that did not parse cleanly may hide a workout (or shift the
+  // positions entry ids depend on), so its absence proves nothing either.
+  let parseComplete = true;
 
   while (hasMore) {
     const page = await getHistoryPage(userId, resolvedProviderId, {
@@ -213,10 +237,10 @@ async function syncLiftosaurData(
     });
     const records = page.records ?? [];
     if (records.length === 0) {
+      fetchComplete = !page.hasMore;
       break;
     }
 
-    let newestWorkoutDate = 0;
     for (const record of records) {
       const parsed = parseLiftohistory(record.text);
       for (const err of parsed.errors) {
@@ -225,24 +249,32 @@ async function syncLiftosaurData(
           `[liftosaurService] Record ${record.id} line ${err.line}: ${err.message}`
         );
         skippedCount += 1;
+        parseComplete = false;
       }
-      for (const workout of parsed.workouts) {
-        allWorkouts.push(workout);
-        const workoutMs = new Date(workout.date).getTime();
-        if (workoutMs > newestWorkoutDate) {
-          newestWorkoutDate = workoutMs;
-        }
+      // Each history record is one workout, identified by Liftosaur's record
+      // id, which stays the same when its start time is edited in Liftosaur.
+      // A record holding more than one would need ids of its own; rather than
+      // guess them, import the first, say so, and delete nothing this sync.
+      if (parsed.workouts.length > 1) {
+        log(
+          'warn',
+          `[liftosaurService] Record ${record.id} holds ${parsed.workouts.length} workouts; importing the first only.`
+        );
+        parseComplete = false;
+      }
+      const [parsedWorkout] = parsed.workouts;
+      if (parsedWorkout) {
+        allWorkouts.push({ ...parsedWorkout, id: record.id });
       }
     }
 
-    // Records come back newest-first; in incremental mode (no explicit date
-    // range) stop once the newest workout on this page predates the window.
-    const withinWindow =
-      fullSync || startInstant !== undefined || newestWorkoutDate >= cutoffMs;
-    hasMore = !!page.hasMore && withinWindow;
-    // A full sync or an explicit date range has no window to stop it, so a
-    // provider that keeps reporting hasMore without moving the cursor would
-    // re-fetch the same page forever. Stop when the cursor does not advance.
+    // Liftosaur applies the date range itself, so follow hasMore. A provider
+    // that keeps reporting hasMore without moving the cursor would re-fetch
+    // the same page forever, so stop when the cursor does not advance.
+    hasMore = !!page.hasMore;
+    if (!hasMore) {
+      fetchComplete = true;
+    }
     if (
       hasMore &&
       (page.nextCursor === undefined || page.nextCursor === cursor)
@@ -261,7 +293,23 @@ async function syncLiftosaurData(
     `[liftosaurService] Parsed ${allWorkouts.length} workouts for user ${userId}.`
   );
   const apiKey = await getLiftosaurApiKey(userId, resolvedProviderId);
-  if (allWorkouts.length > 0) {
+
+  if (!fetchComplete) {
+    log(
+      'warn',
+      `[liftosaurService] Liftosaur history fetch for user ${userId} ended before the last page; importing what was fetched without deleting anything.`
+    );
+  }
+  if (fetchComplete && !parseComplete) {
+    log(
+      'warn',
+      `[liftosaurService] Some Liftosaur records for user ${userId} did not parse; importing the rest without deleting anything.`
+    );
+  }
+  const cleanup = fetchComplete && parseComplete ? syncDays : null;
+  // With a window, process even an empty fetch: the only workout in the
+  // window may have been deleted in Liftosaur.
+  if (allWorkouts.length > 0 || cleanup) {
     // Muscles come from Liftosaur's program-stats endpoint, asked only for
     // exercises that do not have any yet (see liftosaurMuscles.ts).
     await liftosaurDataProcessor.processLiftosaurWorkouts(
@@ -269,6 +317,7 @@ async function syncLiftosaurData(
       createdByUserId,
       allWorkouts,
       tz,
+      cleanup,
       (names) => resolveLiftosaurMuscles(apiKey, names)
     );
   }
@@ -313,8 +362,9 @@ async function syncLiftosaurData(
   }
 
   // The scheduler reads last_sync_at to decide when a daily sync is due, so a
-  // sync whose measurements failed leaves it alone to be retried next tick.
-  if (!measurementsFailed) {
+  // sync whose history fetch stopped early or whose measurements failed
+  // leaves it alone to be retried next tick.
+  if (fetchComplete && !measurementsFailed) {
     const client = await getSystemClient();
     try {
       await client.query(
@@ -329,7 +379,7 @@ async function syncLiftosaurData(
   } else {
     log(
       'warn',
-      `[liftosaurService] Liftosaur sync for user ${userId} did not import all measurements; last_sync_at not updated.`
+      `[liftosaurService] Liftosaur sync for user ${userId} did not import all ${fetchComplete ? 'measurements' : 'history'}; last_sync_at not updated.`
     );
   }
 
