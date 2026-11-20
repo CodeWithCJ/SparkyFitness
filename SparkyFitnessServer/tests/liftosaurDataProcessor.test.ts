@@ -387,7 +387,7 @@ describe('processLiftosaurWorkouts', () => {
       exercise_id: 'exercise-squat',
       entry_date: '2026-07-13',
       entry_time: '05:52',
-      duration_minutes: 6, // 3 * 120s timer
+      duration_minutes: 60, // the workout's duration: 3600s
       source_id: expect.stringContaining('_0'),
     });
     expect(squatCall[3]).toBe(CID);
@@ -407,7 +407,8 @@ describe('processLiftosaurWorkouts', () => {
       set_type: 'Working Set',
       weight: 83.91, // 185 lb -> kg
       reps: 5,
-      duration: 120,
+      duration: null, // rest timers are not set durations
+      rest_time: 120,
     });
 
     // Bulgarian Split Squat: 2 sets, no timers; not the first exercise so no
@@ -420,7 +421,7 @@ describe('processLiftosaurWorkouts', () => {
     });
   });
 
-  it('attributes whole-workout duration to the first exercise when no timers exist', async () => {
+  it('attributes whole-workout duration to the first exercise only', async () => {
     const text = [
       '2026-07-14 10:00:00 +00:00 / duration: 3600s / exercises: {',
       '  Squat / 3x5 100kg',

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { WebHideableTabId } from '@workspace/shared';
+import type { FeatureKey, WebHideableTabId } from '@workspace/shared';
 import type { WebTabsEditState } from '@/hooks/Settings/useHiddenWebTabs';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
 import { WebTabsSettings } from '@/pages/Settings/WebTabsSettings';
@@ -37,6 +37,16 @@ jest.mock('@/hooks/useCycle', () => ({
   useCycleSettings: () => ({ data: mockCycleSettings }),
 }));
 
+let mockFeaturesOff = new Set<FeatureKey>();
+jest.mock('@/hooks/Settings/useWebFeatures', () => ({
+  useWebFeatures: () => ({
+    isEnabled: (key: FeatureKey) =>
+      key === 'cycle'
+        ? mockCycleSettings?.enabled === true
+        : !mockFeaturesOff.has(key),
+  }),
+}));
+
 function renderSettings() {
   return render(
     <Accordion type="multiple" defaultValue={['web-tabs']}>
@@ -53,6 +63,28 @@ describe('WebTabsSettings', () => {
     mockHidden = new Set();
     mockEditState = 'ready';
     mockCycleSettings = null;
+    mockFeaturesOff = new Set();
+  });
+
+  it('keeps a tab of a feature turned off in Features, with a note', () => {
+    mockFeaturesOff = new Set<FeatureKey>(['labResults']);
+    renderSettings();
+    const labs = screen.getByRole('switch', { name: 'Lab results' });
+    expect(labs).toBeChecked();
+    expect(labs).toBeEnabled();
+    expect(labs).toHaveAccessibleDescription(
+      'Not shown: turned off in Features.'
+    );
+    expect(
+      screen.getAllByText('Not shown: turned off in Features.')
+    ).toHaveLength(1);
+  });
+
+  it('adds no note while every feature is on', () => {
+    renderSettings();
+    expect(
+      screen.queryByText('Not shown: turned off in Features.')
+    ).not.toBeInTheDocument();
   });
 
   it('shows a switch, on, for each tab that can be hidden', () => {

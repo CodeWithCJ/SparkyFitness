@@ -1357,6 +1357,7 @@ export { getExerciseDeletionImpact };
 export { deleteExerciseAndDependencies };
 export { deleteExerciseEntriesForUser };
 export { findExerciseByNameAndUserId };
+export { fillEmptyMuscles };
 export default {
   getExerciseById,
   getExerciseOwnerId,

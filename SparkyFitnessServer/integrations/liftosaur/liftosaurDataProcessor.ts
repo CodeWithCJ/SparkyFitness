@@ -342,6 +342,10 @@ async function processSingleWorkout(
   const workoutDurationMinutes = workout.durationSeconds
     ? Math.round(workout.durationSeconds / 60)
     : 0;
+  // Liftosaur only records the whole workout's duration. Like the Hevy
+  // integration, it goes to the first exercise of the session and the rest
+  // get 0, so daily exercise minutes match the workout without multiplying it.
+  let durationAllocated = false;
 
   for (
     let exerciseIndex = 0;
@@ -366,12 +370,8 @@ async function processSingleWorkout(
     // within a record.
     const sourceId = `${workout.id}_${exerciseIndex}`;
 
-    const durationMinutes =
-      mergedSets.timerSeconds > 0
-        ? Math.round(mergedSets.timerSeconds / 60)
-        : exerciseIndex === 0
-          ? workoutDurationMinutes
-          : 0;
+    const durationMinutes = durationAllocated ? 0 : workoutDurationMinutes;
+    durationAllocated = true;
 
     // 3. Prepare entry data
     const entryData = {
@@ -390,6 +390,7 @@ async function processSingleWorkout(
         weight: set.weightKg,
         reps: set.reps,
         duration: set.durationSeconds,
+        rest_time: set.restSeconds,
         rpe: set.rpe,
         notes: set.notes,
       })),
@@ -473,6 +474,8 @@ interface NormalizedSet {
   weightKg: number | null;
   reps: number | null;
   durationSeconds: number | null;
+  /** The program's rest timer for this set (target sets only). */
+  restSeconds: number | null;
   rpe: number | null;
   notes: string | null;
 }
@@ -483,12 +486,12 @@ interface NormalizedSet {
  * Precedence:
  * 1. Working sets come from completedSets (expanded by `count`).
  * 2. Warmup sets come from warmupSets (marked 'Warm-up').
- * 3. Target sets supply rest timers (`timerSeconds`) and fallback targets
- *    when completed sets are missing (e.g. an unfinished session).
+ * 3. Target sets supply rest timers (stored as the set's rest time, never
+ *    its duration) and fallback targets when completed sets are missing
+ *    (e.g. an unfinished session).
  */
 function mergeSets(exercise: LiftohistoryExercise): {
   sets: NormalizedSet[];
-  timerSeconds: number;
 } {
   const completed = expandSets(exercise.completedSets);
   const warmup = expandSets(exercise.warmupSets);
@@ -496,7 +499,6 @@ function mergeSets(exercise: LiftohistoryExercise): {
 
   const sets: NormalizedSet[] = [];
   let setNumber = 1;
-  let timerSeconds = 0;
 
   for (const set of warmup) {
     sets.push(toNormalizedSet(set, setNumber, 'Warm-up'));
@@ -514,14 +516,13 @@ function mergeSets(exercise: LiftohistoryExercise): {
     // Rest timers only exist on target sets.
     const timer = planned?.timerSeconds;
     if (timer && timer > 0) {
-      normalized.durationSeconds = timer;
-      timerSeconds += timer;
+      normalized.restSeconds = timer;
     }
     sets.push(normalized);
     setNumber += 1;
   }
 
-  return { sets, timerSeconds };
+  return { sets };
 }
 
 /** Expand `count`-grouped sets into one entry per actual set. */
@@ -549,6 +550,7 @@ function toNormalizedSet(
     weightKg,
     reps,
     durationSeconds: null,
+    restSeconds: null,
     rpe: set.rpe ?? null,
     notes,
   };
