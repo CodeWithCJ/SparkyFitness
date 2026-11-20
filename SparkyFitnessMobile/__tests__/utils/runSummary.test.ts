@@ -58,6 +58,18 @@ test('has no route for a recording of one fix', () => {
   expect(build({ points: [track[0]] }).route).toEqual([]);
 });
 
+test('times a run with no route by its clock, not 0:00', () => {
+  expect(build({ points: [], clockSeconds: 14.4 }).activeSeconds).toBe(14);
+  expect(build({ points: [track[0]], clockSeconds: 14 }).activeSeconds).toBe(
+    14
+  );
+});
+
+test('times a run with a route by its track, whatever the clock says', () => {
+  const fromTrack = build().activeSeconds;
+  expect(build({ clockSeconds: 9999 }).activeSeconds).toBe(fromTrack);
+});
+
 test('averages heart rate readings and has none without them', () => {
   expect(averageHeartRate([{ bpm: 140 }, { bpm: 151 }])).toBe(146);
   expect(averageHeartRate([])).toBeNull();

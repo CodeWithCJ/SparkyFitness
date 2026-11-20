@@ -1199,6 +1199,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           program,
           entryId: saved.entryId,
           form: saved.form,
+          clockSeconds: elapsedSeconds(session),
         });
       } catch (error) {
         addLog(
