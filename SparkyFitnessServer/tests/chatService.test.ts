@@ -1586,6 +1586,7 @@ describe('chatService', () => {
     };
 
     beforeEach(() => {
+      vi.mocked(getChatTurnStatus).mockReset().mockResolvedValue('pending');
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         aiServiceSetting
       );
