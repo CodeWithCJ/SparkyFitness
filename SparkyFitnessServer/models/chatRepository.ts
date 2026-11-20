@@ -618,7 +618,7 @@ export async function getChatTurnStatus(
 ): Promise<'pending' | 'gone' | undefined> {
   const client = await getClient(userId);
   try {
-    const { rows } = await client.query<{ pending: boolean }>(
+    const { rows }: { rows: { pending: boolean }[] } = await client.query(
       `SELECT prompt.created_at > now() - $3::int * interval '1 millisecond'
          AND NOT EXISTS (
            SELECT 1 FROM sparky_chat_history answer

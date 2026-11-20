@@ -273,7 +273,7 @@ describe.runIf(RUN)("chat in a family member's account", () => {
     const history = await signedInAs(DIARY, () =>
       chatRepository.getChatHistoryByUserId(DIARY, OWNER)
     );
-    expect(history.filter((row) => row.id === rowId)).toEqual([
+    expect(history.filter((row: { id: string }) => row.id === rowId)).toEqual([
       expect.objectContaining({
         content: 'Sample prompt',
         metadata: { turnId, account_user_id: OWNER },
