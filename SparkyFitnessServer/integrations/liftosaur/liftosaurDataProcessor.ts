@@ -31,6 +31,11 @@ import {
   moveEntryToSessionWithClient,
   upsertLiftosaurSessionWithClient,
 } from './liftosaurSessionRepository.js';
+import { emptyMuscleColumnSql } from '../../utils/muscleColumnSql.js';
+import {
+  normalizeToStringArray,
+  parseJsonArrayField,
+} from '../../utils/exerciseJsonFields.js';
 
 const LB_TO_KG = 0.45359237;
 
@@ -41,12 +46,23 @@ interface ExerciseRow {
   id: string;
   user_id?: string | null;
   primary_muscles?: unknown;
+  secondary_muscles?: unknown;
 }
 interface WorkoutPresetRow {
   id: number;
 }
 interface ExerciseEntryRow {
   id: string;
+}
+
+function toMuscleArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return normalizeToStringArray(value);
+  }
+  if (typeof value === 'string') {
+    return normalizeToStringArray(parseJsonArrayField(value));
+  }
+  return [];
 }
 
 function errorMessage(error: unknown): string {
@@ -190,6 +206,7 @@ async function resolveLibraryExercises(
       (bareName !== name ? (library.get(bareName) ?? null) : null);
     if (exercise) {
       if (mapping) await fillMissingMuscles(userId, exercise, mapping);
+      await backfillLiftosaurDiaryMuscles(userId, exercise);
     } else {
       exercise = await exerciseRepository.createExercise({
         user_id: userId,
@@ -204,6 +221,9 @@ async function resolveLibraryExercises(
             }
           : {}),
       });
+      if (exercise && mapping) {
+        await backfillLiftosaurDiaryMuscles(userId, exercise);
+      }
     }
     if (exercise) {
       library.set(name, exercise);
@@ -234,17 +254,66 @@ async function fillMissingMuscles(
     // The write re-checks emptiness itself (see fillEmptyMuscles), so a
     // stale snapshot or a second alias of the same row cannot overwrite
     // muscles, and saved secondary muscles are kept.
-    await exerciseRepository.fillEmptyMuscles(
+    const filled = await exerciseRepository.fillEmptyMuscles(
       userId,
       exercise.id,
       muscles.primary,
       muscles.secondary
     );
+    if (filled) {
+      exercise.primary_muscles = [...muscles.primary];
+      if (hasNoMuscles(exercise.secondary_muscles)) {
+        exercise.secondary_muscles = [...muscles.secondary];
+      }
+    }
   } catch (error) {
     log(
       'warn',
       `Skipping Liftosaur muscle backfill for exercise ${exercise.id}: ${errorMessage(error)}`
     );
+  }
+}
+
+/**
+ * Backfill muscles on existing Liftosaur diary entries that currently have
+ * empty muscle snapshots (e.g. entries imported before muscle mapping existed
+ * or during a previous lookup failure), so reports pick up their sets without
+ * overwriting populated snapshots or manual edits.
+ */
+async function backfillLiftosaurDiaryMuscles(
+  userId: string,
+  exercise: ExerciseRow
+): Promise<void> {
+  const primary = toMuscleArray(exercise.primary_muscles);
+  if (primary.length === 0) return;
+  const secondary = toMuscleArray(exercise.secondary_muscles);
+  const client = await getClient(userId);
+  try {
+    await client.query(
+      `UPDATE exercise_entries SET
+         primary_muscles = $1,
+         secondary_muscles = CASE WHEN ${emptyMuscleColumnSql('secondary_muscles')}
+           THEN $2 ELSE secondary_muscles END,
+         updated_at = NOW()
+       WHERE user_id = $3
+         AND exercise_id = $4
+         AND source = $5
+         AND ${emptyMuscleColumnSql('primary_muscles')}`,
+      [
+        JSON.stringify(primary),
+        JSON.stringify(secondary),
+        userId,
+        exercise.id,
+        LIFTOSAUR_SOURCE,
+      ]
+    );
+  } catch (error) {
+    log(
+      'warn',
+      `Skipping Liftosaur diary muscle backfill for exercise ${exercise.id}: ${errorMessage(error)}`
+    );
+  } finally {
+    client.release();
   }
 }
 
@@ -265,7 +334,7 @@ async function processLiftosaurWorkouts(
   cleanup?: LiftosaurCleanupRange | LiftosaurMuscleResolver | null,
   resolveMuscles?: LiftosaurMuscleResolver
 ) {
-  const actualCleanup = typeof cleanup === 'function' ? null : cleanup;
+  const actualCleanup = typeof cleanup === 'function' ? undefined : cleanup;
   const actualResolveMuscles =
     typeof cleanup === 'function' ? cleanup : resolveMuscles;
   log(

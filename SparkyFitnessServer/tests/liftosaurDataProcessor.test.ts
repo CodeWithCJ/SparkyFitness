@@ -442,6 +442,67 @@ describe('processLiftosaurWorkouts', () => {
       ['quadriceps'],
       ['glutes']
     );
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE exercise_entries SET'),
+      [
+        JSON.stringify(['quadriceps']),
+        JSON.stringify(['glutes']),
+        UID,
+        'exercise-squat',
+        'Liftosaur',
+      ]
+    );
+  });
+
+  it('backfills empty diary muscle snapshots during re-sync even when exercise already has muscles', async () => {
+    vi.mocked(
+      exerciseRepository.findExerciseByNameAndUserId
+    ).mockImplementation(
+      (name: string) =>
+        Promise.resolve(
+          name === 'Squat'
+            ? {
+                id: 'exercise-squat',
+                user_id: UID,
+                primary_muscles: '["quadriceps"]',
+                secondary_muscles: '["glutes"]',
+              }
+            : null
+        ) as any
+    );
+
+    await processLiftosaurWorkouts(UID, CID, parseSampleWorkouts());
+
+    expect(mockClient.query).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE exercise_entries SET'),
+      [
+        JSON.stringify(['quadriceps']),
+        JSON.stringify(['glutes']),
+        UID,
+        'exercise-squat',
+        'Liftosaur',
+      ]
+    );
+  });
+
+  it('applies default fetchedDayRange cleanup when resolver is the 5th argument', async () => {
+    const workouts = parseSampleWorkouts();
+    const id = String(workouts[0]!.id);
+    const resolveMuscles = vi.fn().mockResolvedValue(new Map());
+
+    await processLiftosaurWorkouts(UID, CID, workouts, 'UTC', resolveMuscles);
+
+    expect(
+      exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
+    ).toHaveBeenCalledWith(
+      mockClient,
+      UID,
+      '2026-07-13',
+      '2026-07-13',
+      'Liftosaur',
+      undefined,
+      [`${id}_Squat_0`, `${id}_Bulgarian Split Squat_0`]
+    );
   });
 
   it('reuses a row created earlier in the sync for a bare-name alias', async () => {
