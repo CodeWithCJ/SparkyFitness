@@ -406,6 +406,83 @@ describe('processLiftosaurWorkouts', () => {
     });
   });
 
+  it('imports only completed sets, never skipped planned ones', async () => {
+    const text = [
+      '2026-07-13 05:52:14 +00:00 / program: "P" / dayName: "D" / exercises: {',
+      '  Crunch, Cable / 1x8 40kg / target: 1x6-8 40kg @9 60s, 1x6-8 40kg @10 60s',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    const sets = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls[0]![2].sets as Array<Record<string, unknown>>;
+    expect(sets).toHaveLength(1);
+    expect(sets[0]).toMatchObject({ reps: 8, weight: 40 });
+  });
+
+  it('creates no session for a workout with no performed sets', async () => {
+    const text = [
+      '2026-07-13 05:52:14 +00:00 / program: "P" / dayName: "D" / exercises: {',
+      '  Lunge / target: 3x10 20kg 60s',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    // The workout returns before its preset and session are looked up or
+    // created (checked on the preset lookup, which comes first).
+    expect(
+      workoutPresetRepository.getWorkoutPresetByName
+    ).not.toHaveBeenCalled();
+    expect(workoutPresetRepository.createWorkoutPreset).not.toHaveBeenCalled();
+    expect(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).not.toHaveBeenCalled();
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+  });
+
+  it('gives the workout duration to the first imported exercise when the first one is skipped', async () => {
+    const text = [
+      '2026-07-14 10:00:00 +00:00 / duration: 3600s / exercises: {',
+      '  Lunge / target: 3x10 20kg',
+      '  Squat / 3x5 100kg',
+      '  Curl / 3x10 10kg',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    const calls = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0]![2]).toMatchObject({ duration_minutes: 60 });
+    expect(calls[1]![2]).toMatchObject({ duration_minutes: 0 });
+    // The skipped exercise gets no library row either.
+    expect(exerciseRepository.createExercise).not.toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Lunge' })
+    );
+  });
+
+  it('creates no entry for an exercise with no performed sets', async () => {
+    const text = [
+      '2026-07-13 05:52:14 +00:00 / program: "P" / dayName: "D" / exercises: {',
+      '  Squat / 3x5 100kg',
+      '  Lunge / target: 3x10 20kg 60s',
+      '}',
+    ].join('\n');
+
+    await processLiftosaurWorkouts(UID, CID, parseLiftohistory(text).workouts);
+
+    const calls = vi.mocked(
+      exerciseEntryRepository._createExerciseEntryWithClient
+    ).mock.calls;
+    expect(calls).toHaveLength(1);
+    expect(calls[0]![2]).toMatchObject({ exercise_id: 'exercise-squat' });
+  });
+
   it('attributes whole-workout duration to the first exercise only', async () => {
     const text = [
       '2026-07-14 10:00:00 +00:00 / duration: 3600s / exercises: {',

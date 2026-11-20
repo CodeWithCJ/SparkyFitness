@@ -218,6 +218,16 @@ async function processSingleWorkout(
     `Processing Liftosaur workout: ${workoutTitle} (${workout.date})`
   );
 
+  // A workout in which nothing was performed (only planned sets) gets no
+  // session at all, rather than an empty one.
+  if (!workout.exercises.some((ex) => mergeSets(ex).sets.length > 0)) {
+    log(
+      'debug',
+      `Skipping Liftosaur workout ${workout.id} with no performed sets`
+    );
+    return;
+  }
+
   // Find or create the reusable workout preset (the Liftosaur program name, or
   // a generic name for ad-hoc sessions) so the diary shows the whole workout as
   // a single grouped session instead of loose exercises.
@@ -263,6 +273,7 @@ async function processSingleWorkout(
   // Liftosaur only records the whole workout's duration. Like the Hevy
   // integration, it goes to the first exercise of the session and the rest
   // get 0, so daily exercise minutes match the workout without multiplying it.
+  // When earlier exercises are skipped, it goes to the first imported one.
   let durationAllocated = false;
 
   for (
@@ -271,6 +282,18 @@ async function processSingleWorkout(
     exerciseIndex++
   ) {
     const liftosaurExercise = workout.exercises[exerciseIndex]!;
+
+    // Merge completed/warmup/target sets into the flat set list SparkyFitness
+    // stores (see mergeSets). An exercise with no performed sets is skipped
+    // before anything is looked up or created for it.
+    const mergedSets = mergeSets(liftosaurExercise);
+    if (mergedSets.sets.length === 0) {
+      log(
+        'debug',
+        `Skipping Liftosaur exercise "${liftosaurExercise.name}" with no performed sets`
+      );
+      continue;
+    }
 
     // 1. Resolve exercise in SparkyFitness library: try exact name match
     //    first, then the bare name ("Squat"), then create a custom exercise
@@ -307,12 +330,6 @@ async function processSingleWorkout(
       kept.entries.add(entrySourceId(workout, exerciseIndex));
       continue;
     }
-
-    // 2. Merge completed/warmup/target sets into the flat set list SparkyFitness
-    //    stores. Liftosaur logs both what was done (completed) and what the
-    //    program prescribed (target); completed values win for reps/weight/RPE,
-    //    and target rest timers become per-set durations.
-    const mergedSets = mergeSets(liftosaurExercise);
 
     // Stable per-exercise identity so re-syncs update in place instead of
     // duplicating (see entrySourceId).
@@ -457,9 +474,10 @@ interface NormalizedSet {
  * Precedence:
  * 1. Working sets come from completedSets (expanded by `count`).
  * 2. Warmup sets come from warmupSets (marked 'Warm-up').
- * 3. Target sets supply rest timers (stored as the set's rest time, never
- *    its duration) and fallback targets when completed sets are missing
- *    (e.g. an unfinished session).
+ * 3. Target sets (the program's plan) only supply rest timers (stored as
+ *    the set's rest time, never its duration) and labels for the completed
+ *    set at the same position. A planned set with no completed counterpart
+ *    was skipped and is never imported.
  */
 function mergeSets(exercise: LiftohistoryExercise): {
   sets: NormalizedSet[];
@@ -476,14 +494,11 @@ function mergeSets(exercise: LiftohistoryExercise): {
     setNumber += 1;
   }
 
-  const mergedCount = Math.max(completed.length, target.length);
-  for (let i = 0; i < mergedCount; i += 1) {
-    const done = completed[i];
+  for (let i = 0; i < completed.length; i += 1) {
+    const done = completed[i]!;
     const planned = target[i];
-    const base = done ?? planned;
-    if (!base) continue;
-    const setType = mapSetType(base.label ?? planned?.label, false);
-    const normalized = toNormalizedSet(base, setNumber, setType);
+    const setType = mapSetType(done.label ?? planned?.label, false);
+    const normalized = toNormalizedSet(done, setNumber, setType);
     // Rest timers only exist on target sets.
     const timer = planned?.timerSeconds;
     if (timer && timer > 0) {
