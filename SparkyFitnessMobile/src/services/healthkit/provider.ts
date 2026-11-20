@@ -14,6 +14,9 @@ import {
   readHealthRecordsDetailed,
   readEarliestSampleDetailed,
   readMinMaxAvgByDayDetailed,
+  beginWaterDeletionRun,
+  cancelWaterDeletionRun,
+  commitWaterDeletionRun,
 } from './index';
 import { aggregateSleepSessions } from './dataAggregation';
 import { enrichSleepSessions } from './sleepBiometrics';
@@ -106,6 +109,9 @@ export const readEarliestRecord = async (
   readEarliestSampleDetailed(metric.recordType);
 
 export const healthReadProvider: HealthReadProvider = {
+  beginRun: beginWaterDeletionRun,
+  cancelWaterDeletionRun,
+  commitRun: commitWaterDeletionRun,
   readCumulativeByDay,
   // readMinMaxAvgByDayDetailed returns null for record types without a verified
   // day-statistics spec — the engine then falls back to the raw sample path.
