@@ -196,9 +196,27 @@ describe('/api/chat/stream approval capability', () => {
 });
 
 describe('resumable chat turns', () => {
+  it.each([null, 42, 'text', {}, { type: false }])(
+    'rejects an invalid message part %j before claiming the turn',
+    async (part) => {
+      vi.clearAllMocks();
+      const response = await request(app)
+        .post('/api/chat/stream')
+        .send({
+          turnId: first,
+          service_config_id: 'svc',
+          messages: [{ role: 'user', parts: [part] }],
+        });
+      expect(response.status).toBe(400);
+      expect(claimChatTurn).not.toHaveBeenCalled();
+      expect(chatService.processChatMessageStream).not.toHaveBeenCalled();
+    }
+  );
+
   it('runs a retried prompt once and only replays it within its account', async () => {
     vi.clearAllMocks();
     vi.mocked(claimChatTurn).mockResolvedValue(true);
+    vi.mocked(getChatTurnStatus).mockResolvedValue('pending');
     vi.mocked(chatService.processChatMessageStream).mockResolvedValue({
       stream: new ReadableStream({
         start(c) {
@@ -211,7 +229,19 @@ describe('resumable chat turns', () => {
       turnId: first,
       service_config_id: 'svc',
       approvals: true,
-      messages: [{ role: 'user', content: 'Hello' }],
+      messages: [
+        {
+          role: 'user',
+          parts: [
+            { type: 'text', text: 'Hello' },
+            {
+              type: 'file',
+              mediaType: 'image/png',
+              url: 'data:image/png;base64,AA==',
+            },
+          ],
+        },
+      ],
     };
     const [accepted, duplicate] = await Promise.all(
       [1, 2].map(() => request(app).post('/api/chat/stream').send(body))
@@ -233,6 +263,10 @@ describe('resumable chat turns', () => {
       expect.any(String)
     );
     expect(claimChatTurn).toHaveBeenCalledTimes(1);
+    const key = vi.mocked(claimChatTurn).mock.calls[0]![0];
+    vi.mocked(getChatTurnStatus).mockImplementation(async (row, actor) =>
+      row === key && actor === 'owner' ? 'gone' : undefined
+    );
     const route = '/api/chat/turns/' + first + '/stream';
     expect(
       (await request(app).get(route).set('x-other-actor', 'yes')).status
@@ -241,7 +275,60 @@ describe('resumable chat turns', () => {
     expect((await request(app).get(route).set('x-family', 'yes')).status).toBe(
       404
     );
+
+    // A Stop recorded on another worker overrides retained chunks here.
+    vi.mocked(getChatTurnStatus).mockResolvedValue('cancelled');
+    for (const result of [
+      await request(app).get(route),
+      await request(app).post('/api/chat/stream').send(body),
+    ]) {
+      expect(result.status).toBe(410);
+      expect(result.body).toEqual({ cancelled: true });
+    }
+    expect(chatService.processChatMessageStream).toHaveBeenCalledTimes(1);
   });
+  it('releases a live subscription when a remote Stop wins during lookup', async () => {
+    vi.clearAllMocks();
+    const turnId = '00000000-0000-4000-8000-000000000010';
+    let close!: () => void;
+    vi.mocked(claimChatTurn).mockResolvedValue(true);
+    vi.mocked(chatService.processChatMessageStream).mockResolvedValue({
+      stream: new ReadableStream({
+        start(controller) {
+          close = () => controller.close();
+        },
+      }),
+    });
+    let stopped!: () => void;
+    vi.mocked(getChatTurnStatus).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          stopped = () => resolve('cancelled');
+        })
+    );
+    const cancel = vi.spyOn(ReadableStream.prototype, 'cancel');
+    try {
+      const response = request(app)
+        .post('/api/chat/stream')
+        .send({
+          turnId,
+          service_config_id: 'svc',
+          messages: [{ role: 'user', content: 'Hello' }],
+        })
+        .expect(410, { cancelled: true })
+        .then(() => {});
+      await vi.waitFor(() =>
+        expect(getChatTurnStatus).toHaveBeenCalledTimes(1)
+      );
+      stopped();
+      await response;
+      expect(cancel).toHaveBeenCalledTimes(1);
+    } finally {
+      close();
+      cancel.mockRestore();
+    }
+  });
+
   it('recognizes a durable checkpoint after replay expires and never regenerates it', async () => {
     vi.clearAllMocks();
     vi.mocked(claimChatTurn).mockResolvedValue(false);
@@ -293,7 +380,13 @@ it('records a claimed approval continuation setup failure and returns its durabl
   const last = {
     id: second,
     role: 'assistant',
-    parts: [{ state: 'approval-responded' }],
+    parts: [
+      {
+        type: 'tool-logFood',
+        state: 'approval-responded',
+        approval: { id: first, approved: true },
+      },
+    ],
   };
   const error = 'The AI service could not complete the request.';
   vi.mocked(claimChatTurn).mockResolvedValue(true);

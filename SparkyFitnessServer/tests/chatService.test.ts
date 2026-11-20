@@ -2034,9 +2034,14 @@ describe('chatService', () => {
         scripted([doneStep]);
         vi.mocked(getChatTurnStatus).mockResolvedValueOnce('pending');
         vi.mocked(completeChatTurn).mockResolvedValueOnce(true);
-        await resume(true, pending.type, drainStream, {
+        const chunks = await resume(true, pending.type, drainStream, {
           turnId: 'continued-turn',
           rowId: 'continued-claim',
+        });
+        expect(chunks.at(-2)).toMatchObject({ type: 'finish' });
+        expect(chunks.at(-1)).toMatchObject({
+          type: 'message-metadata',
+          messageMetadata: { custom: { savedMessageId: 'row-1' } },
         });
         expect(completeChatTurn).toHaveBeenCalledWith(
           'continued-claim',
@@ -2054,6 +2059,62 @@ describe('chatService', () => {
           true
         );
       });
+      it('retains the approved tool output when the provider then fails', async () => {
+        scripted([[{ type: 'error', error: new Error('provider failed') }]]);
+        vi.mocked(getChatTurnStatus).mockResolvedValueOnce('pending');
+        await resume(true, pending.type, drainStream, {
+          turnId: 'continued-turn',
+          rowId: 'continued-claim',
+        });
+        expect(writeExecute).toHaveBeenCalledTimes(1);
+        expect(chatRepository.saveApprovalContinuation).toHaveBeenCalledWith(
+          'row-1',
+          actorUserId,
+          expect.objectContaining({
+            parts: expect.arrayContaining([
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-available',
+                output: 'saved',
+              }),
+            ]),
+          })
+        );
+      });
+      it.each([
+        ['cancelled', { type: 'abort' }],
+        [
+          { error: 'The chat request timed out.' },
+          { type: 'error', errorText: 'The chat request timed out.' },
+        ],
+        [
+          { error: 'Provider failed.' },
+          { type: 'error', errorText: 'Provider failed.' },
+        ],
+      ] as const)(
+        'reports the durable outcome when completion loses the race (%j)',
+        async (status, terminal) => {
+          scripted([doneStep]);
+          vi.mocked(getChatTurnStatus).mockResolvedValue('pending');
+          vi.mocked(completeChatTurn).mockImplementationOnce(async () => {
+            vi.mocked(getChatTurnStatus).mockResolvedValue(status);
+            return false;
+          });
+          const chunks = await run(
+            [userMessage],
+            true,
+            drainStream,
+            'turn',
+            'row'
+          );
+          expect(chunks.some((chunk) => chunk.type === 'text-delta')).toBe(
+            true
+          );
+          expect(chunks.some((chunk) => chunk.type === 'finish')).toBe(false);
+          expect(JSON.stringify(chunks)).not.toContain('savedMessageId');
+          expect(chunks.at(-1)).toEqual(terminal);
+        }
+      );
       it('approves once, updates the same row, and asks again for the next write', async () => {
         const model = scripted([callStep('sparky_test_write', 'write-2')]);
         const chunks = await resume(true);
@@ -2556,44 +2617,58 @@ describe('chatService', () => {
       expect(completeChatTurn).not.toHaveBeenCalled();
     });
 
-    it('aborts an active provider when Stop is recorded on a different worker', async () => {
-      vi.mocked(getChatTurnStatus)
-        .mockResolvedValueOnce('pending')
-        .mockResolvedValue('cancelled');
-      let providerAborted = false;
-      mockModelHolder.current = new MockLanguageModelV3({
-        doStream: async ({ abortSignal }) => ({
-          stream: new ReadableStream({
-            start(controller) {
-              abortSignal?.addEventListener(
-                'abort',
-                () => {
-                  providerAborted = true;
-                  controller.close();
-                },
-                { once: true }
-              );
-            },
+    it.each(['cancelled', { error: 'The chat request timed out.' }] as const)(
+      'aborts an active provider when durable status changes to %j',
+      async (status) => {
+        vi.mocked(getChatTurnStatus)
+          .mockResolvedValueOnce('pending')
+          .mockResolvedValue(status);
+        let providerAborted = false;
+        mockModelHolder.current = new MockLanguageModelV3({
+          doStream: async ({ abortSignal }) => ({
+            stream: new ReadableStream({
+              start(controller) {
+                abortSignal?.addEventListener(
+                  'abort',
+                  () => {
+                    providerAborted = true;
+                    controller.close();
+                  },
+                  { once: true }
+                );
+              },
+            }),
           }),
-        }),
-      });
-      const { stream } = await chatService.processChatMessageStream(
-        [{ role: 'user', content: 'Sample' }],
-        'svc-1',
-        activeUserId,
-        actorUserId,
-        false,
-        undefined,
-        undefined,
-        true,
-        'turn',
-        undefined,
-        'row'
-      );
-      await drainStream(stream);
-      expect(providerAborted).toBe(true);
-      expect(completeChatTurn).not.toHaveBeenCalled();
-    });
+        });
+        const { stream } = await chatService.processChatMessageStream(
+          [{ role: 'user', content: 'Sample' }],
+          'svc-1',
+          activeUserId,
+          actorUserId,
+          false,
+          undefined,
+          undefined,
+          true,
+          'turn',
+          undefined,
+          'row'
+        );
+        const chunks = await drainStream(stream);
+        expect(chunks.at(-1)).toEqual(
+          typeof status === 'object'
+            ? { type: 'error', errorText: status.error }
+            : { type: 'abort' }
+        );
+        if (typeof status === 'object')
+          expect(markChatTurnFailed).toHaveBeenCalledWith(
+            'row',
+            actorUserId,
+            status.error
+          );
+        expect(providerAborted).toBe(true);
+        expect(completeChatTurn).not.toHaveBeenCalled();
+      }
+    );
 
     it('aborts provider setup when another worker has already recorded Stop', async () => {
       vi.mocked(getChatTurnStatus).mockResolvedValueOnce('cancelled');

@@ -1344,6 +1344,119 @@ describe('ChatScreen history seeding', () => {
     }
   });
 
+  it('retries undelivered stops for their owner after local finish and during a later turn', async () => {
+    mockPhotoState.__mockChatIsRunning = true;
+    const acknowledgement = deferred<void>();
+    const stop = jest
+      .spyOn(chatApi, 'stopChatTurn')
+      .mockRejectedValueOnce(new Error('Offline'))
+      .mockReturnValueOnce(acknowledgement.promise)
+      .mockRejectedValueOnce(new Error('Offline again'))
+      .mockResolvedValue(undefined);
+    try {
+      let screen = renderScreen();
+      await screen.findByTestId('composer-cancel');
+      const send = () =>
+        mockTransportOptions.prepareSendMessagesRequest!({
+          messages: [{ role: 'user' }],
+        }).body.turnId;
+      const pressStop = () => fireEvent.press(screen.getByTestId('icon-stop'));
+      const foreground = () => {
+        const listeners = jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.filter(([event]) => event === 'change');
+        listeners.forEach(([, listener]) => listener('background'));
+        listeners.forEach(([, listener]) => listener('active'));
+      };
+      const first = send();
+      await act(async () => {
+        pressStop();
+        mockRuntimeCallbacks.onFinish({
+          isAbort: true,
+          isDisconnect: false,
+          isError: false,
+        });
+      });
+      expect(stop).toHaveBeenCalledWith(SERVER_CONFIG, first);
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ text2: 'Offline' })
+      );
+
+      mockGetActiveServerConfig.mockResolvedValue({
+        ...SERVER_CONFIG,
+        id: 'other',
+      });
+      await act(async () => foreground());
+      expect(stop).toHaveBeenCalledTimes(1);
+      screen.unmount();
+      mockGetActiveServerConfig.mockResolvedValue(SERVER_CONFIG);
+      screen = renderScreen();
+      await screen.findByTestId('composer-cancel');
+      await waitFor(() => expect(stop).toHaveBeenCalledTimes(2));
+      expect(stop).toHaveBeenLastCalledWith(SERVER_CONFIG, first);
+
+      const second = send();
+      await act(async () => pressStop());
+      expect(stop.mock.calls).toEqual([
+        [SERVER_CONFIG, first],
+        [SERVER_CONFIG, first],
+        [SERVER_CONFIG, second],
+      ]);
+      await act(async () => acknowledgement.resolve(undefined));
+      await act(async () => pressStop());
+      expect(stop).toHaveBeenCalledTimes(4);
+      expect(stop).toHaveBeenLastCalledWith(SERVER_CONFIG, second);
+      await act(async () => foreground());
+      expect(stop).toHaveBeenCalledTimes(4);
+      expect(mockReconnect).not.toHaveBeenCalled();
+      expect(expoFetch).not.toHaveBeenCalled();
+    } finally {
+      stop.mockRestore();
+    }
+  });
+
+  it('keeps a late Stop error private and retries on foreground after returning to the owner', async () => {
+    mockPhotoState.__mockChatIsRunning = true;
+    const delivery = deferred<void>();
+    const stop = jest
+      .spyOn(chatApi, 'stopChatTurn')
+      .mockImplementationOnce(async () => {
+        await delivery.promise;
+        throw Error('Connection lost');
+      })
+      .mockResolvedValue(undefined);
+    try {
+      const screen = renderScreen();
+      await screen.findByTestId('composer-cancel');
+      const id = mockTransportOptions.prepareSendMessagesRequest!({
+        messages: [{ role: 'user' }],
+      }).body.turnId;
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('icon-stop'));
+      });
+      mockGetActiveServerConfig.mockResolvedValue({
+        ...SERVER_CONFIG,
+        id: 'other',
+      });
+      await act(async () => delivery.resolve(undefined));
+      expect(Toast.show).not.toHaveBeenCalled();
+      mockGetActiveServerConfig.mockResolvedValue(SERVER_CONFIG);
+      await act(async () => {
+        const listeners = jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.filter(([event]) => event === 'change');
+        listeners.forEach(([, listener]) => listener('background'));
+        listeners.forEach(([, listener]) => listener('active'));
+      });
+      expect(stop.mock.calls).toEqual([
+        [SERVER_CONFIG, id],
+        [SERVER_CONFIG, id],
+      ]);
+    } finally {
+      stop.mockRestore();
+    }
+  });
+
   it.each(['background', 'after lookup'] as const)(
     'retains a disconnect received %s on a server without turn checkpoints',
     async (timing) => {

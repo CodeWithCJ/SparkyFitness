@@ -109,6 +109,17 @@ async function readReplay(
   }
 }
 
+// ChatThread remounts after restoring history. An undelivered Stop must
+// survive that remount, and only the originating account may retry it.
+type Cancellation = { id: string; owner: ServerConfig; sending: boolean };
+const cancellations = new Set<Cancellation>();
+
+function cancellationFor(owner: ServerConfig, id: string) {
+  for (const target of cancellations) {
+    if (target.id === id && sameChatAccount(owner, target.owner)) return target;
+  }
+}
+
 export function useChatTurnRecovery(
   owner: ServerConfig,
   seed: Seed,
@@ -116,6 +127,31 @@ export function useChatTurnRecovery(
   onError: (error: Error) => void
 ) {
   const pending = useRef(pendingHistoryTurn(seed));
+  const retryStops = useCallback(() => {
+    async function deliver(target: Cancellation) {
+      target.sending = true;
+      try {
+        if (!sameChatAccount(await getActiveServerConfig(), target.owner))
+          return;
+        await stopChatTurn(target.owner, target.id);
+        cancellations.delete(target);
+      } catch (error) {
+        if (
+          sameChatAccount(
+            await getActiveServerConfig().catch(() => null),
+            target.owner
+          )
+        )
+          onError(error instanceof Error ? error : Error(String(error)));
+      } finally {
+        target.sending = false;
+      }
+    }
+    for (const target of cancellations) {
+      if (!target.sending && sameChatAccount(owner, target.owner))
+        void deliver(target);
+    }
+  }, [owner, onError]);
   const reader = useRef<AbortController | undefined>(undefined);
   const backgrounded = useRef(false);
   const interrupted = useRef(false);
@@ -124,6 +160,10 @@ export function useChatTurnRecovery(
   const recover = useCallback(async () => {
     const id = pending.current;
     if (!id || reader.current) return;
+    if (cancellationFor(owner, id)) {
+      pending.current = undefined;
+      return;
+    }
     const controller = new AbortController();
     reader.current = controller;
     const { signal } = controller;
@@ -174,10 +214,16 @@ export function useChatTurnRecovery(
       reader.current?.abort();
       reader.current = undefined;
     }
-    if (AppState.currentState !== 'background') void recover();
+    if (AppState.currentState !== 'background') {
+      retryStops();
+      void recover();
+    }
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        if (backgrounded.current) void recover();
+        if (backgrounded.current) {
+          retryStops();
+          void recover();
+        }
         backgrounded.current = false;
       } else if (state === 'background') {
         backgrounded.current = true;
@@ -189,7 +235,7 @@ export function useChatTurnRecovery(
       stopReader();
       subscription.remove();
     };
-  }, [recover]);
+  }, [recover, retryStops]);
 
   const begin = useCallback((recoverable: boolean) => {
     reader.current?.abort();
@@ -201,18 +247,16 @@ export function useChatTurnRecovery(
     return pending.current;
   }, []);
 
-  const stop = useCallback(async () => {
+  const stop = useCallback(() => {
     const id = pending.current;
-    if (!id) return;
-    pending.current = undefined;
-    reader.current?.abort();
-    try {
-      const config = await getActiveServerConfig();
-      if (sameChatAccount(config, owner)) await stopChatTurn(config, id);
-    } catch (error) {
-      onError(error instanceof Error ? error : Error(String(error)));
+    if (id) {
+      if (!cancellationFor(owner, id))
+        cancellations.add({ id, owner, sending: false });
+      pending.current = undefined;
+      reader.current?.abort();
     }
-  }, [owner, onError]);
+    retryStops();
+  }, [owner, retryStops]);
 
   const finish = useCallback(
     (isAbort: boolean, isDisconnect: boolean, isError: boolean) => {

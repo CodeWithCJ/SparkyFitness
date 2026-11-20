@@ -445,7 +445,7 @@ const turnRequest = turnParams
       z.object({
         role: z.string(),
         id: z.string().optional(),
-        parts: z.array(z.unknown()).optional(),
+        parts: z.array(z.looseObject({ type: z.string() })).optional(),
       })
     ),
   })
@@ -474,10 +474,36 @@ async function sendChatTurn(
   actor: string,
   replay: Awaited<ReturnType<ChatTurnStreams['open']>>
 ) {
+  let durable: Awaited<ReturnType<typeof getChatTurnStatus>>;
+  try {
+    durable = await getChatTurnStatus(key, actor, CHAT_REQUEST_TIMEOUT_MS);
+  } finally {
+    // A remote Stop can win while open() is waiting for producer setup.
+    // Release the unused subscription on terminal status or a failed lookup.
+    if (
+      replay instanceof ReadableStream &&
+      durable !== 'pending' &&
+      durable !== 'gone'
+    ) {
+      await replay.cancel().catch(() => {});
+    }
+  }
+  if (
+    replay instanceof ReadableStream &&
+    (durable === 'pending' || durable === 'gone')
+  ) {
+    // A completed checkpoint ('gone') can still have a local replay.
+    res.set('X-Accel-Buffering', 'no');
+    return pipeUIMessageStreamToResponse({ response: res, stream: replay });
+  }
+  // A slow claim may still be pending when local setup has timed out.
   const status =
-    !replay || replay === 'gone' || replay === 'capacity'
-      ? await getChatTurnStatus(key, actor, CHAT_REQUEST_TIMEOUT_MS)
-      : replay;
+    (!durable || durable === 'pending') &&
+    replay &&
+    typeof replay === 'object' &&
+    'error' in replay
+      ? replay
+      : durable;
   if (!status && replay === 'capacity') {
     return res
       .set('Retry-After', '2')
@@ -489,10 +515,8 @@ async function sendChatTurn(
     return res.status(422).json({ error: status.error });
   }
   if (status === 'pending') return res.set('Retry-After', '2').sendStatus(503);
-  if (!status) return res.sendStatus(404);
   if (status === 'gone') return res.sendStatus(410);
-  res.set('X-Accel-Buffering', 'no');
-  return pipeUIMessageStreamToResponse({ response: res, stream: status });
+  return res.sendStatus(404);
 }
 
 router.get('/turns/:turnId/stream', authenticate, async (req, res) => {
