@@ -23,8 +23,10 @@ import {
 } from './liftosaurTypes.js';
 import {
   deleteLiftosaurSessionsNotInWithClient,
+  getStoredEntryDurationsWithClient,
   moveEntryToSessionWithClient,
   upsertLiftosaurSessionWithClient,
+  type StoredEntryDuration,
 } from './liftosaurSessionRepository.js';
 
 const LB_TO_KG = 0.45359237;
@@ -270,11 +272,18 @@ async function processSingleWorkout(
   const workoutDurationMinutes = workout.durationSeconds
     ? Math.round(workout.durationSeconds / 60)
     : 0;
-  // Liftosaur only records the whole workout's duration. Like the Hevy
-  // integration, it goes to the first exercise of the session and the rest
-  // get 0, so daily exercise minutes match the workout without multiplying it.
-  // When earlier exercises are skipped, it goes to the first imported one.
-  let durationAllocated = false;
+  // Liftosaur only records the whole workout's duration. It goes to one
+  // entry of the session and the rest get 0, so daily exercise minutes match
+  // the workout without multiplying it. That entry is the one that held it
+  // before when the workout was synced already (see chooseDurationOwner),
+  // else the first exercise with performed sets.
+  const importedSourceIds = workout.exercises.flatMap((exercise, index) =>
+    mergeSets(exercise).sets.length > 0 ? [entrySourceId(workout, index)] : []
+  );
+  const durationOwner = chooseDurationOwner(
+    importedSourceIds,
+    await getStoredEntryDurationsWithClient(client, userId, importedSourceIds)
+  );
 
   for (
     let exerciseIndex = 0;
@@ -335,8 +344,8 @@ async function processSingleWorkout(
     // duplicating (see entrySourceId).
     const sourceId = entrySourceId(workout, exerciseIndex);
 
-    const durationMinutes = durationAllocated ? 0 : workoutDurationMinutes;
-    durationAllocated = true;
+    const durationMinutes =
+      sourceId === durationOwner ? workoutDurationMinutes : 0;
 
     // 3. Prepare entry data
     const entryData = {
@@ -509,6 +518,35 @@ function mergeSets(exercise: LiftohistoryExercise): {
   }
 
   return { sets };
+}
+
+/**
+ * Which entry of a workout gets the whole workout duration (the others get
+ * 0), given the source ids of the exercises that are imported, in workout
+ * order, and what is already stored for them. Mirrors the Hevy import
+ * (hevyWorkoutRepository.ts) so a reorder in Liftosaur never moves the
+ * duration onto a second entry while a hand-edited one keeps its value:
+ *   1. an entry whose duration the user edited and that is above 0;
+ *   2. else the entry that already holds a duration (it got it last time);
+ *   3. else an entry whose duration the user edited (even to 0);
+ *   4. else the first imported exercise.
+ * Edited durations stay protected by the in-place update either way, so the
+ * workout is counted once.
+ */
+export function chooseDurationOwner(
+  sourceIds: string[],
+  stored: Map<string, StoredEntryDuration>
+): string | null {
+  const edited = (id: string) =>
+    stored.get(id)?.manual_fields.includes('duration_minutes') ?? false;
+  const minutes = (id: string) => stored.get(id)?.duration_minutes ?? 0;
+  return (
+    sourceIds.find((id) => edited(id) && minutes(id) > 0) ??
+    sourceIds.find((id) => minutes(id) > 0) ??
+    sourceIds.find((id) => edited(id)) ??
+    sourceIds[0] ??
+    null
+  );
 }
 
 /** Expand `count`-grouped sets into one entry per actual set. */
