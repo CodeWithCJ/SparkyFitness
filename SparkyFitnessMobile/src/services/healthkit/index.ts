@@ -2307,36 +2307,52 @@ const handleOvernightBodyTemperature: RecordHandler = async (
   );
 };
 
+let stagedIosWaterAnchor: string | null = null;
+
+export const beginWaterDeletionRun = (): void => {
+  stagedIosWaterAnchor = null;
+};
+
+export const commitWaterDeletionRun = async (): Promise<void> => {
+  if (stagedIosWaterAnchor) {
+    await saveHealthWaterSyncToken('ios', stagedIosWaterAnchor);
+    stagedIosWaterAnchor = null;
+  }
+};
+
 const handleHydration: RecordHandler = async (
   identifier,
   startDate,
-  endDate
+  endDate,
+  telemetry
 ) => {
   if (!SUPPORTED_HK_TYPES.has(identifier)) {
     return [];
   }
 
+  // 1. Window-based query for additions (preserves full-day sums and wider imports)
+  const quantityHandler = createQuantityHandler('Hydration');
+  const windowSamples = await quantityHandler(
+    identifier,
+    startDate,
+    endDate,
+    telemetry
+  );
+
+  // 2. Anchored query for deletions
   const savedAnchor = await loadHealthWaterSyncToken('ios');
   const unit = HEALTHKIT_UNIT_MAP.Hydration || 'L';
 
-  let res: {
-    readonly samples?: readonly unknown[];
-    readonly deletedSamples?: readonly { readonly uuid?: string }[];
-    readonly newAnchor?: string;
-  };
-
-  try {
-    if (savedAnchor) {
-      res = await queryQuantitySamplesWithAnchor(
+  const res = savedAnchor
+    ? await queryQuantitySamplesWithAnchor(
         identifier as Parameters<typeof queryQuantitySamplesWithAnchor>[0],
         {
           unit,
           anchor: savedAnchor,
           limit: 0,
         } as Parameters<typeof queryQuantitySamplesWithAnchor>[1]
-      );
-    } else {
-      res = await queryQuantitySamplesWithAnchor(
+      )
+    : await queryQuantitySamplesWithAnchor(
         identifier as Parameters<typeof queryQuantitySamplesWithAnchor>[0],
         {
           unit,
@@ -2344,54 +2360,14 @@ const handleHydration: RecordHandler = async (
           limit: 0,
         } as Parameters<typeof queryQuantitySamplesWithAnchor>[1]
       );
-    }
-  } catch (err) {
-    addLog(
-      `[HealthKit] Failed queryQuantitySamplesWithAnchor for Hydration: ${(err as Error).message}`,
-      'WARNING'
-    );
-    return [];
-  }
 
   if (res.newAnchor) {
-    await saveHealthWaterSyncToken('ios', res.newAnchor);
+    stagedIosWaterAnchor = res.newAnchor;
   }
 
-  const samples = Array.isArray(res.samples) ? res.samples : [];
   const deletedSamples = Array.isArray(res.deletedSamples)
     ? res.deletedSamples
     : [];
-
-  const filteredSamples = samples.filter((record) => {
-    if (isOwnWrittenBodySample(record as Record<string, unknown>)) return false;
-    return true;
-  });
-
-  const transform =
-    QUANTITY_TRANSFORMS.Hydration || ((base: Record<string, unknown>) => base);
-
-  const mappedSamples: Record<string, unknown>[] = filteredSamples.map((s) => {
-    const sample = s as {
-      startDate?: string;
-      endDate?: string;
-      quantity?: number;
-      sourceRevision?: { source?: { bundleIdentifier?: string } };
-      uuid?: string;
-      metadataTimeZone?: string;
-    };
-    const baseRecord: Record<string, unknown> = {
-      startTime: sample.startDate,
-      endTime: sample.endDate,
-      time: sample.startDate,
-      value: sample.quantity,
-      sourceBundleId: sample.sourceRevision?.source?.bundleIdentifier,
-      uuid: sample.uuid,
-    };
-    if (sample.metadataTimeZone) {
-      baseRecord.metadata = { HKTimeZone: sample.metadataTimeZone };
-    }
-    return transform(baseRecord, sample.quantity ?? 0);
-  });
 
   const mappedDeletions: Record<string, unknown>[] = [];
   for (const del of deletedSamples) {
@@ -2404,7 +2380,7 @@ const handleHydration: RecordHandler = async (
     }
   }
 
-  return [...mappedSamples, ...mappedDeletions];
+  return [...windowSamples, ...mappedDeletions];
 };
 
 // Registry mapping record types to their handlers

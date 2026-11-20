@@ -487,6 +487,19 @@ const withClientRecovery = async <T>(read: () => Promise<T>): Promise<T> => {
   }
 };
 
+let stagedAndroidWaterToken: string | null = null;
+
+export const beginWaterDeletionRun = (): void => {
+  stagedAndroidWaterToken = null;
+};
+
+export const commitWaterDeletionRun = async (): Promise<void> => {
+  if (stagedAndroidWaterToken) {
+    await saveHealthWaterSyncToken('android', stagedAndroidWaterToken);
+    stagedAndroidWaterToken = null;
+  }
+};
+
 const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
   try {
     const savedToken = await loadHealthWaterSyncToken('android');
@@ -499,7 +512,7 @@ const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
         recordTypes: ['Hydration'],
       });
       if (initial.nextChangesToken) {
-        await saveHealthWaterSyncToken('android', initial.nextChangesToken);
+        stagedAndroidWaterToken = initial.nextChangesToken;
       }
       if (initial.deletionChanges) {
         for (const del of initial.deletionChanges) {
@@ -511,44 +524,48 @@ const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
           }
         }
       }
-    } else {
-      while (hasMore) {
-        const changes = await getChanges({
-          changesToken: currentToken,
+      return deletedRecords;
+    }
+
+    let pageToken = currentToken;
+    while (hasMore) {
+      const changes = await getChanges({
+        changesToken: pageToken,
+        recordTypes: ['Hydration'],
+      });
+      if (changes.changesTokenExpired) {
+        const fresh = await getChanges({
           recordTypes: ['Hydration'],
         });
-        if (changes.changesTokenExpired) {
-          const fresh = await getChanges({
-            recordTypes: ['Hydration'],
-          });
-          if (fresh.nextChangesToken) {
-            await saveHealthWaterSyncToken('android', fresh.nextChangesToken);
-          }
-          break;
+        if (fresh.nextChangesToken) {
+          stagedAndroidWaterToken = fresh.nextChangesToken;
         }
-        if (changes.deletionChanges) {
-          for (const del of changes.deletionChanges) {
-            if (del.recordId) {
-              deletedRecords.push({
-                deleted: true,
-                source_id: del.recordId,
-              });
-            }
-          }
-        }
-        if (changes.nextChangesToken) {
-          currentToken = changes.nextChangesToken;
-          await saveHealthWaterSyncToken('android', currentToken);
-        }
-        hasMore = changes.hasMore && !!changes.nextChangesToken;
+        return [];
       }
+      if (changes.deletionChanges) {
+        for (const del of changes.deletionChanges) {
+          if (del.recordId) {
+            deletedRecords.push({
+              deleted: true,
+              source_id: del.recordId,
+            });
+          }
+        }
+      }
+      if (changes.nextChangesToken) {
+        pageToken = changes.nextChangesToken;
+      }
+      hasMore = changes.hasMore && !!changes.nextChangesToken;
     }
+    // Only stage the new token once pagination completes without throwing
+    stagedAndroidWaterToken = pageToken;
     return deletedRecords;
   } catch (error) {
     addLog(
       `[HealthConnectService] Failed reading changes for Hydration: ${(error as Error).message}`,
       'WARNING'
     );
+    stagedAndroidWaterToken = null;
     return [];
   }
 };

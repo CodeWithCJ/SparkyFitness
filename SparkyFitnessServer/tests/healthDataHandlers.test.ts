@@ -486,6 +486,7 @@ describe('waterHandler.handleBatch', () => {
             deleted: true,
             source_id: 'hk-del-1',
             affectedDates: ['2026-08-03'],
+            affectedDateCount: 1,
           },
         },
         {
@@ -493,7 +494,7 @@ describe('waterHandler.handleBatch', () => {
           data: {
             deleted: true,
             source_id: 'hk-del-2',
-            affectedDates: ['2026-08-03'],
+            affectedDateCount: 1,
           },
         },
       ]);
@@ -581,7 +582,106 @@ describe('waterHandler.handleBatch', () => {
           deleted: true,
           source_id: 'hk-del-1',
           affectedDates: ['2026-08-03'],
+          affectedDateCount: 1,
         },
+      });
+    });
+
+    it('gives tombstone precedence over an addition sharing (source, source_id) in the same batch', async () => {
+      vi.mocked(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).mockResolvedValue(['2026-08-03']);
+      vi.mocked(
+        measurementRepository.upsertWaterIntakeSamples
+      ).mockResolvedValue([]);
+
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            value: 250,
+            source: 'HealthKit',
+            source_id: 'shared-id-1',
+          }),
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+            source_id: 'shared-id-1',
+          }),
+        ],
+        ctx
+      );
+
+      // Deletion occurred
+      expect(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).toHaveBeenCalledWith('user-1', 'actor-1', 'HealthKit', ['shared-id-1']);
+
+      // Addition with same ID was superseded, so upsertWaterIntakeSamples was never called with it
+      expect(
+        measurementRepository.upsertWaterIntakeSamples
+      ).not.toHaveBeenCalled();
+
+      // Outcomes reflect tombstone precedence
+      expect(outcomes[0]).toEqual({
+        status: 'success',
+        data: {
+          deleted: true,
+          source_id: 'shared-id-1',
+          supersededByTombstone: true,
+        },
+      });
+      expect(outcomes[1]).toEqual({
+        status: 'success',
+        data: {
+          deleted: true,
+          source_id: 'shared-id-1',
+          affectedDates: ['2026-08-03'],
+          affectedDateCount: 1,
+        },
+      });
+    });
+
+    it('preserves deletion successes when primary container lookup fails', async () => {
+      vi.mocked(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).mockResolvedValue(['2026-08-03']);
+      vi.mocked(
+        waterContainerRepository.getPrimaryWaterContainerByUserId
+      ).mockRejectedValueOnce(new Error('DB connection error'));
+
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+            source_id: 'del-1',
+          }),
+          prepared({
+            value: 500,
+            source: 'HealthKit',
+            source_id: 'add-1',
+          }),
+        ],
+        ctx
+      );
+
+      // Deletion outcome succeeded
+      expect(outcomes[0]).toEqual({
+        status: 'success',
+        data: {
+          deleted: true,
+          source_id: 'del-1',
+          affectedDates: ['2026-08-03'],
+          affectedDateCount: 1,
+        },
+      });
+
+      // Addition outcome contains container error
+      expect(outcomes[1]).toEqual({
+        status: 'error',
+        error: 'DB connection error',
       });
     });
   });

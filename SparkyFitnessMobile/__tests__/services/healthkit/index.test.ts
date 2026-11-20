@@ -2687,15 +2687,15 @@ describe('readHealthRecordsDetailed', () => {
   test('reads Hydration with anchor and surfaces both samples and deletedSamples', async () => {
     await initHealthConnect();
 
-    mockQueryQuantitySamplesWithAnchor.mockResolvedValue({
-      samples: [
-        {
-          startDate: '2024-01-15T10:00:00Z',
-          endDate: '2024-01-15T10:00:00Z',
-          quantity: 0.5,
-          uuid: 'hk-water-add-1',
-        },
-      ],
+    mockQueryQuantitySamples.mockResolvedValueOnce([
+      {
+        startDate: '2024-01-15T10:00:00Z',
+        endDate: '2024-01-15T10:00:00Z',
+        quantity: 0.5,
+        uuid: 'hk-water-add-1',
+      },
+    ]);
+    mockQueryQuantitySamplesWithAnchor.mockResolvedValueOnce({
       deletedSamples: [
         {
           uuid: 'hk-water-del-1',
@@ -2719,7 +2719,7 @@ describe('readHealthRecordsDetailed', () => {
     expect(result.records[1]).toEqual({
       deleted: true,
       uuid: 'hk-water-del-1',
-      source_id: 'hk-del-1'.replace('del-1', 'water-del-1'),
+      source_id: 'hk-water-del-1',
     });
   });
 

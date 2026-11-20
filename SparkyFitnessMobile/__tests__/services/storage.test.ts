@@ -996,5 +996,23 @@ describe('storage', () => {
       await clearHealthWaterSyncToken('android');
       expect(await loadHealthWaterSyncToken('android')).toBeNull();
     });
+
+    test('scopes token by server configuration ID', async () => {
+      await saveHealthWaterSyncToken('android', 'server-1-token', 'server-1');
+      await saveHealthWaterSyncToken('android', 'server-2-token', 'server-2');
+
+      expect(await loadHealthWaterSyncToken('android', 'server-1')).toBe(
+        'server-1-token'
+      );
+      expect(await loadHealthWaterSyncToken('android', 'server-2')).toBe(
+        'server-2-token'
+      );
+
+      await clearHealthWaterSyncToken('android', 'server-1');
+      expect(await loadHealthWaterSyncToken('android', 'server-1')).toBeNull();
+      expect(await loadHealthWaterSyncToken('android', 'server-2')).toBe(
+        'server-2-token'
+      );
+    });
   });
 });

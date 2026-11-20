@@ -300,6 +300,7 @@ describe('processHealthData per-record error contract', () => {
           deleted: true,
           source_id: 'hk-del-123',
           affectedDates: ['2026-08-03'],
+          affectedDateCount: 1,
         },
       });
       expect(

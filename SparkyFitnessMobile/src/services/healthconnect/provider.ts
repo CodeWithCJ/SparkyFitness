@@ -24,6 +24,8 @@ import {
   enrichSleepSessions,
   keepMostDetailedSleepSessions,
   resetClientUnavailableState,
+  beginWaterDeletionRun,
+  commitWaterDeletionRun,
 } from './index';
 import { transformHealthRecords } from './dataTransformation';
 
@@ -151,10 +153,12 @@ export const readEarliestRecord = async (
  */
 export const beginRun = (): void => {
   resetClientUnavailableState();
+  beginWaterDeletionRun();
 };
 
 export const healthReadProvider: HealthReadProvider = {
   beginRun,
+  commitRun: commitWaterDeletionRun,
   readCumulativeByDay,
   readMinMaxAvgByDay,
   readRaw: readHealthRecordsDetailed,

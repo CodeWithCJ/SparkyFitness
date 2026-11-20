@@ -102,6 +102,8 @@ export interface HealthReadProvider {
    *  once per sync rather than once per app process. Synchronous and
    *  non-throwing: it must never be able to fail a sync. */
   beginRun?(): void;
+  /** Commits staged cursor/token state after a successful upload. */
+  commitRun?(): Promise<void>;
   /** Platform transform tables (record shapes and timezone metadata differ). */
   transform(records: unknown[], metric: MetricConfig): TransformOutput[];
 }
@@ -140,8 +142,13 @@ const finishTransform = (
     (waterFallbackToSum && metric.type === 'water' ? 'sum' : undefined);
 
   if (strategy) {
+    // Exclude deletion entries from aggregateByDay: deletions lack date/value and
+    // older servers do not support per-record water deletions (Thread 7).
+    const numericRecords = transformed.filter(
+      (r) => !('deleted' in r && (r as { deleted?: boolean }).deleted === true)
+    );
     const aggregated = aggregateByDay(
-      transformed as TransformedRecord[],
+      numericRecords as TransformedRecord[],
       metric.type,
       metric.unit,
       strategy
@@ -540,8 +547,11 @@ export const runForegroundSync = async (
         // rejection leaves the whole run's staging undrained and the next sync
         // re-collects. Wasteful when an unrelated record is the one rejected,
         // but the alternative silently strips telemetry from the rejected one.
-        if (telemetryUsable && (apiResponse?.recordErrors?.length ?? 0) === 0) {
-          await markEnrichedSessions(telemetry.drainCollected());
+        if ((apiResponse?.recordErrors?.length ?? 0) === 0) {
+          if (telemetryUsable) {
+            await markEnrichedSessions(telemetry.drainCollected());
+          }
+          await provider.commitRun?.();
         }
         return {
           success: true,
@@ -566,6 +576,7 @@ export const runForegroundSync = async (
     if (telemetryUsable) {
       await markEnrichedSessions(telemetry.drainCollected());
     }
+    await provider.commitRun?.();
     return { success: true, message: opts.emptyMessage, syncErrors };
   }
 
