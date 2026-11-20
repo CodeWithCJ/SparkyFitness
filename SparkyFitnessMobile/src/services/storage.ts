@@ -491,6 +491,47 @@ export const saveLastWritebackTime = async (): Promise<string | null> => {
   }
 };
 
+const HEALTH_WATER_SYNC_TOKEN_KEY = (platform: 'ios' | 'android') =>
+  `healthWaterSyncToken_${platform}`;
+
+export const loadHealthWaterSyncToken = async (
+  platform: 'ios' | 'android'
+): Promise<string | null> => {
+  try {
+    return await AsyncStorage.getItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform));
+  } catch (error) {
+    const message = getErrorMessage(error);
+    addLog(
+      `[Storage] Failed to retrieve water sync token: ${message}`,
+      'ERROR'
+    );
+    return null;
+  }
+};
+
+export const saveHealthWaterSyncToken = async (
+  platform: 'ios' | 'android',
+  token: string
+): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform), token);
+  } catch (error) {
+    const message = getErrorMessage(error);
+    addLog(`[Storage] Failed to save water sync token: ${message}`, 'ERROR');
+  }
+};
+
+export const clearHealthWaterSyncToken = async (
+  platform: 'ios' | 'android'
+): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform));
+  } catch (error) {
+    const message = getErrorMessage(error);
+    addLog(`[Storage] Failed to clear water sync token: ${message}`, 'ERROR');
+  }
+};
+
 export const saveBackgroundSyncEnabled = async (
   enabled: boolean
 ): Promise<void> => {

@@ -3,10 +3,12 @@ import {
   requestPermission,
   getGrantedPermissions,
   readRecords,
+  getChanges,
   aggregateRecord,
   aggregateGroupByDuration,
   aggregateGroupByPeriod,
 } from 'react-native-health-connect';
+import { loadHealthWaterSyncToken, saveHealthWaterSyncToken } from '../storage';
 import { addLog } from '../LogService';
 import {
   AggregatedHealthRecord,
@@ -485,7 +487,95 @@ const withClientRecovery = async <T>(read: () => Promise<T>): Promise<T> => {
   }
 };
 
+const readHydrationDeletions = async (): Promise<Record<string, unknown>[]> => {
+  try {
+    const savedToken = await loadHealthWaterSyncToken('android');
+    let currentToken = savedToken;
+    let hasMore = true;
+    const deletedRecords: Record<string, unknown>[] = [];
+
+    if (!currentToken) {
+      const initial = await getChanges({
+        recordTypes: ['Hydration'],
+      });
+      if (initial.nextChangesToken) {
+        await saveHealthWaterSyncToken('android', initial.nextChangesToken);
+      }
+      if (initial.deletionChanges) {
+        for (const del of initial.deletionChanges) {
+          if (del.recordId) {
+            deletedRecords.push({
+              deleted: true,
+              source_id: del.recordId,
+            });
+          }
+        }
+      }
+    } else {
+      while (hasMore) {
+        const changes = await getChanges({
+          changesToken: currentToken,
+          recordTypes: ['Hydration'],
+        });
+        if (changes.changesTokenExpired) {
+          const fresh = await getChanges({
+            recordTypes: ['Hydration'],
+          });
+          if (fresh.nextChangesToken) {
+            await saveHealthWaterSyncToken('android', fresh.nextChangesToken);
+          }
+          break;
+        }
+        if (changes.deletionChanges) {
+          for (const del of changes.deletionChanges) {
+            if (del.recordId) {
+              deletedRecords.push({
+                deleted: true,
+                source_id: del.recordId,
+              });
+            }
+          }
+        }
+        if (changes.nextChangesToken) {
+          currentToken = changes.nextChangesToken;
+          await saveHealthWaterSyncToken('android', currentToken);
+        }
+        hasMore = changes.hasMore && !!changes.nextChangesToken;
+      }
+    }
+    return deletedRecords;
+  } catch (error) {
+    addLog(
+      `[HealthConnectService] Failed reading changes for Hydration: ${(error as Error).message}`,
+      'WARNING'
+    );
+    return [];
+  }
+};
+
 export const readHealthRecordsDetailed = async (
+  recordType: string,
+  startDate: Date,
+  endDate: Date
+): Promise<HealthConnectReadResult> => {
+  const result = await readHealthRecordsDetailedInner(
+    recordType,
+    startDate,
+    endDate
+  );
+  if (recordType === 'Hydration') {
+    const deletions = await readHydrationDeletions();
+    if (deletions.length > 0) {
+      return {
+        records: [...result.records, ...deletions],
+        error: result.error,
+      };
+    }
+  }
+  return result;
+};
+
+const readHealthRecordsDetailedInner = async (
   recordType: string,
   startDate: Date,
   endDate: Date

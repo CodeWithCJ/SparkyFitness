@@ -27,6 +27,7 @@ import {
   isHealthDataAvailable,
   queryStatisticsCollectionForQuantity,
   queryQuantitySamples,
+  queryQuantitySamplesWithAnchor,
   queryWorkoutSamples,
   queryCategorySamples,
   queryCorrelationSamples,
@@ -50,6 +51,8 @@ const mockIsHealthDataAvailable = isHealthDataAvailable as jest.Mock;
 const mockQueryStatisticsCollection =
   queryStatisticsCollectionForQuantity as jest.Mock;
 const mockQueryQuantitySamples = queryQuantitySamples as jest.Mock;
+const mockQueryQuantitySamplesWithAnchor =
+  queryQuantitySamplesWithAnchor as jest.Mock;
 const mockQueryWorkoutSamples = queryWorkoutSamples as jest.Mock;
 const mockQueryCategorySamples = queryCategorySamples as jest.Mock;
 const mockQueryCorrelationSamples = queryCorrelationSamples as jest.Mock;
@@ -2679,6 +2682,45 @@ describe('readHealthRecordsDetailed', () => {
 
     expect(result.error).toBeUndefined();
     expect(result.records).toHaveLength(1);
+  });
+
+  test('reads Hydration with anchor and surfaces both samples and deletedSamples', async () => {
+    await initHealthConnect();
+
+    mockQueryQuantitySamplesWithAnchor.mockResolvedValue({
+      samples: [
+        {
+          startDate: '2024-01-15T10:00:00Z',
+          endDate: '2024-01-15T10:00:00Z',
+          quantity: 0.5,
+          uuid: 'hk-water-add-1',
+        },
+      ],
+      deletedSamples: [
+        {
+          uuid: 'hk-water-del-1',
+        },
+      ],
+      newAnchor: 'test-new-anchor-123',
+    });
+
+    const result = await readHealthRecordsDetailed(
+      'Hydration',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.records).toHaveLength(2);
+    expect(result.records[0]).toMatchObject({
+      uuid: 'hk-water-add-1',
+      volume: { inLiters: 0.5 },
+    });
+    expect(result.records[1]).toEqual({
+      deleted: true,
+      uuid: 'hk-water-del-1',
+      source_id: 'hk-del-1'.replace('del-1', 'water-del-1'),
+    });
   });
 
   test('returns an error envelope instead of a silent empty read when the query throws', async () => {

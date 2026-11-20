@@ -3,6 +3,7 @@ import {
   getRequestStatusForAuthorization,
   AuthorizationRequestStatus,
   queryQuantitySamples,
+  queryQuantitySamplesWithAnchor,
   queryStatisticsCollectionForQuantity,
   isHealthDataAvailable,
   queryCategorySamples,
@@ -16,6 +17,7 @@ import {
 import { Platform, Alert } from 'react-native';
 import { addLog } from '../LogService';
 import i18n from '../../localization/i18n';
+import { loadHealthWaterSyncToken, saveHealthWaterSyncToken } from '../storage';
 import { isAuthorizationNotDeterminedError } from '../../utils/healthErrors';
 import {
   AggregatedHealthRecord,
@@ -2305,6 +2307,106 @@ const handleOvernightBodyTemperature: RecordHandler = async (
   );
 };
 
+const handleHydration: RecordHandler = async (
+  identifier,
+  startDate,
+  endDate
+) => {
+  if (!SUPPORTED_HK_TYPES.has(identifier)) {
+    return [];
+  }
+
+  const savedAnchor = await loadHealthWaterSyncToken('ios');
+  const unit = HEALTHKIT_UNIT_MAP.Hydration || 'L';
+
+  let res: {
+    readonly samples?: readonly unknown[];
+    readonly deletedSamples?: readonly { readonly uuid?: string }[];
+    readonly newAnchor?: string;
+  };
+
+  try {
+    if (savedAnchor) {
+      res = await queryQuantitySamplesWithAnchor(
+        identifier as Parameters<typeof queryQuantitySamplesWithAnchor>[0],
+        {
+          unit,
+          anchor: savedAnchor,
+          limit: 0,
+        } as Parameters<typeof queryQuantitySamplesWithAnchor>[1]
+      );
+    } else {
+      res = await queryQuantitySamplesWithAnchor(
+        identifier as Parameters<typeof queryQuantitySamplesWithAnchor>[0],
+        {
+          unit,
+          filter: { date: { startDate, endDate } },
+          limit: 0,
+        } as Parameters<typeof queryQuantitySamplesWithAnchor>[1]
+      );
+    }
+  } catch (err) {
+    addLog(
+      `[HealthKit] Failed queryQuantitySamplesWithAnchor for Hydration: ${(err as Error).message}`,
+      'WARNING'
+    );
+    return [];
+  }
+
+  if (res.newAnchor) {
+    await saveHealthWaterSyncToken('ios', res.newAnchor);
+  }
+
+  const samples = Array.isArray(res.samples) ? res.samples : [];
+  const deletedSamples = Array.isArray(res.deletedSamples)
+    ? res.deletedSamples
+    : [];
+
+  const filteredSamples = samples.filter((record) => {
+    if (isOwnWrittenBodySample(record as Record<string, unknown>)) return false;
+    return true;
+  });
+
+  const transform =
+    QUANTITY_TRANSFORMS.Hydration || ((base: Record<string, unknown>) => base);
+
+  const mappedSamples: Record<string, unknown>[] = filteredSamples.map((s) => {
+    const sample = s as {
+      startDate?: string;
+      endDate?: string;
+      quantity?: number;
+      sourceRevision?: { source?: { bundleIdentifier?: string } };
+      uuid?: string;
+      metadataTimeZone?: string;
+    };
+    const baseRecord: Record<string, unknown> = {
+      startTime: sample.startDate,
+      endTime: sample.endDate,
+      time: sample.startDate,
+      value: sample.quantity,
+      sourceBundleId: sample.sourceRevision?.source?.bundleIdentifier,
+      uuid: sample.uuid,
+    };
+    if (sample.metadataTimeZone) {
+      baseRecord.metadata = { HKTimeZone: sample.metadataTimeZone };
+    }
+    return transform(baseRecord, sample.quantity ?? 0);
+  });
+
+  const mappedDeletions: Record<string, unknown>[] = [];
+  for (const del of deletedSamples) {
+    if (del.uuid) {
+      mappedDeletions.push({
+        deleted: true,
+        uuid: del.uuid,
+        source_id: del.uuid,
+      });
+    }
+  }
+
+  return [...mappedSamples, ...mappedDeletions];
+};
+
 // Registry mapping record types to their handlers
 const RECORD_HANDLERS: Record<string, RecordHandler> = {
   SleepSession: handleSleepSession,
@@ -2320,6 +2422,7 @@ const RECORD_HANDLERS: Record<string, RecordHandler> = {
   ExerciseSession: handleWorkout,
   BloodPressure: handleBloodPressure,
   Nutrition: handleNutrition,
+  Hydration: handleHydration,
 };
 
 // Read health records from HealthKit. A failed read returns an error envelope so

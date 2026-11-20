@@ -973,7 +973,7 @@ const waterHandler: HealthTypeHandler = {
     const outcomes: HandlerOutcome[] = new Array(entries.length);
     if (entries.length === 0) return outcomes;
 
-    // Group entries by source; each source is upserted independently.
+    // Group additions/updates by source.
     const entriesBySource = new Map<
       string,
       Array<{
@@ -983,9 +983,45 @@ const waterHandler: HealthTypeHandler = {
         waterMl: number;
       }>
     >();
+
+    // Group deletions by source.
+    const deletionsBySource = new Map<
+      string,
+      Array<{
+        index: number;
+        sourceId: string;
+      }>
+    >();
+
     for (let i = 0; i < entries.length; i++) {
       const item = entries[i];
       const source = (item.entry.source as string) || 'manual';
+
+      if (item.entry.deleted === true || item.entry.action === 'delete') {
+        if (!item.entry.source_id) {
+          outcomes[i] = {
+            status: 'error',
+            error: 'Missing source_id for water deletion',
+          };
+          continue;
+        }
+        if (source === 'manual') {
+          outcomes[i] = {
+            status: 'error',
+            error:
+              'Manual water entries cannot be deleted via health data sync',
+          };
+          continue;
+        }
+        const existingDeletions = deletionsBySource.get(source) || [];
+        existingDeletions.push({
+          index: i,
+          sourceId: String(item.entry.source_id),
+        });
+        deletionsBySource.set(source, existingDeletions);
+        continue;
+      }
+
       if (
         item.entry.value === null ||
         item.entry.value === undefined ||
@@ -1020,6 +1056,37 @@ const waterHandler: HealthTypeHandler = {
         waterMl: waterValue,
       });
       entriesBySource.set(source, existing);
+    }
+
+    // Process deletions first
+    for (const [source, deletionGroup] of deletionsBySource) {
+      if (deletionGroup.length === 0) continue;
+      const sourceIds = deletionGroup.map((d) => d.sourceId);
+      try {
+        const affectedDates =
+          await measurementRepository.deleteWaterIntakeSamplesBySourceIds(
+            ctx.userId,
+            ctx.actingUserId,
+            source,
+            sourceIds
+          );
+        deletionGroup.forEach((d) => {
+          outcomes[d.index] = {
+            status: 'success',
+            data: { deleted: true, source_id: d.sourceId, affectedDates },
+          };
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        log(
+          'error',
+          `[waterHandler.handleBatch] deleteWaterIntakeSamplesBySourceIds failed for source '${source}' (${deletionGroup.length} record(s)): ${msg}`,
+          error
+        );
+        deletionGroup.forEach((d) => {
+          outcomes[d.index] = { status: 'error', error: msg };
+        });
+      }
     }
 
     // Synced entries log against the user's default container, same as manual entries.

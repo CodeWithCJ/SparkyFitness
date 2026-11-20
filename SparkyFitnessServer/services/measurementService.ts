@@ -62,6 +62,7 @@ import {
   customMeasurementHandler,
   createCategoryResolver,
   HEALTH_TYPE_DISPLAY_NAMES,
+  HEALTH_TYPE_HANDLERS,
   invalidWorkoutReason,
 } from './healthDataHandlers.js';
 import { isUserOriginatedSource } from '../models/syncedDataRepository.js';
@@ -355,6 +356,48 @@ async function processHealthData(
   const pendingBatches = new Map<HandleBatchFn, PreparedHealthEntry[]>();
   for (const dataEntry of healthDataArray) {
     const { value, type, date, timestamp } = dataEntry;
+    const isDeletion =
+      dataEntry.deleted === true || dataEntry.action === 'delete';
+    if (isDeletion) {
+      if (!type) {
+        errors.push({
+          error: 'Missing required field: type in deletion entry',
+          entry: dataEntry,
+        });
+        continue;
+      }
+      if (!dataEntry.source_id) {
+        errors.push({
+          error: 'Missing required field: source_id for health data deletion',
+          entry: dataEntry,
+        });
+        continue;
+      }
+      const handler = resolveHandler(type);
+      if (handler !== HEALTH_TYPE_HANDLERS.water) {
+        skipped.push({
+          reason: `Deletion is currently only supported for water entries (received ${type})`,
+          entry: dataEntry,
+        });
+        continue;
+      }
+      const resolved =
+        date || timestamp ? resolveHealthEntryDate(dataEntry, tz) : null;
+      const group = pendingBatches.get(handler.handleBatch!);
+      const prepared: PreparedHealthEntry = {
+        entry: dataEntry,
+        parsedDate: resolved?.parsedDate ?? '',
+        entryTimestamp: resolved?.entryTimestamp ?? '',
+        entryHour: resolved?.entryHour ?? 0,
+      };
+      if (group) {
+        group.push(prepared);
+      } else {
+        pendingBatches.set(handler.handleBatch!, [prepared]);
+      }
+      continue;
+    }
+
     // Check for required fields. Note: 'value' is not required for complex types like SleepSession, Stress, Workout.
     const complexTypes = [
       'SleepSession',

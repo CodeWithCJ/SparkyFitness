@@ -19,6 +19,9 @@ import {
   takeIdentityChangeServerConfigIds,
   setOnServerConfigsChanged,
   getSavedServerUrls,
+  loadHealthWaterSyncToken,
+  saveHealthWaterSyncToken,
+  clearHealthWaterSyncToken,
   ServerConfig,
 } from '../../src/services/storage';
 import { CATEGORY_ORDER } from '../../src/HealthMetrics';
@@ -968,6 +971,30 @@ describe('storage', () => {
 
       await expect(saveServerConfig(config)).resolves.toBeUndefined();
       expect(await getAllServerConfigs()).toHaveLength(1);
+    });
+  });
+
+  describe('healthWaterSyncToken', () => {
+    test('saves, loads, and clears token for iOS and Android independently', async () => {
+      expect(await loadHealthWaterSyncToken('ios')).toBeNull();
+      expect(await loadHealthWaterSyncToken('android')).toBeNull();
+
+      await saveHealthWaterSyncToken('ios', 'ios-anchor-123');
+      await saveHealthWaterSyncToken('android', 'android-token-456');
+
+      expect(await loadHealthWaterSyncToken('ios')).toBe('ios-anchor-123');
+      expect(await loadHealthWaterSyncToken('android')).toBe(
+        'android-token-456'
+      );
+
+      await clearHealthWaterSyncToken('ios');
+      expect(await loadHealthWaterSyncToken('ios')).toBeNull();
+      expect(await loadHealthWaterSyncToken('android')).toBe(
+        'android-token-456'
+      );
+
+      await clearHealthWaterSyncToken('android');
+      expect(await loadHealthWaterSyncToken('android')).toBeNull();
     });
   });
 });

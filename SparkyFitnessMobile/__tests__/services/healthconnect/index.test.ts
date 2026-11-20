@@ -30,6 +30,7 @@ import {
   requestPermission,
   getGrantedPermissions,
   readRecords,
+  getChanges,
   aggregateRecord,
   aggregateGroupByDuration,
   aggregateGroupByPeriod,
@@ -90,6 +91,7 @@ const mockInitialize = initialize as jest.Mock;
 const mockRequestPermission = requestPermission as jest.Mock;
 const mockGetGrantedPermissions = getGrantedPermissions as jest.Mock;
 const mockReadRecords = readRecords as jest.Mock;
+const mockGetChanges = getChanges as jest.Mock;
 const mockAggregateRecord = aggregateRecord as jest.Mock;
 const mockAggregateGroupByDuration = aggregateGroupByDuration as jest.Mock;
 const mockAggregateGroupByPeriod = aggregateGroupByPeriod as jest.Mock;
@@ -479,6 +481,43 @@ describe('readHealthRecords', () => {
     );
 
     expect(result).toEqual([]);
+  });
+
+  test('reads Hydration and appends deletions reported by getChanges', async () => {
+    mockReadRecords.mockResolvedValueOnce({
+      records: [
+        {
+          metadata: { id: 'hc-water-1' },
+          volume: { inLiters: 0.5 },
+          startTime: '2024-01-15T10:00:00.000Z',
+        },
+      ],
+    });
+
+    mockGetChanges.mockResolvedValueOnce({
+      upsertionChanges: [],
+      deletionChanges: [{ recordId: 'hc-water-del-1' }],
+      nextChangesToken: 'new-hc-token-789',
+      hasMore: false,
+      changesTokenExpired: false,
+    });
+
+    const result = await readHealthRecordsDetailed(
+      'Hydration',
+      new Date('2024-01-15T00:00:00Z'),
+      new Date('2024-01-15T23:59:59Z')
+    );
+
+    expect(result.error).toBeUndefined();
+    expect(result.records).toHaveLength(2);
+    expect(result.records[0]).toMatchObject({
+      metadata: { id: 'hc-water-1' },
+      volume: { inLiters: 0.5 },
+    });
+    expect(result.records[1]).toEqual({
+      deleted: true,
+      source_id: 'hc-water-del-1',
+    });
   });
 
   test('does not call native readRecords when the requested window is invalid', async () => {

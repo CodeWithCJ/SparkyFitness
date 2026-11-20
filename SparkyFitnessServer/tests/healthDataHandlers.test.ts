@@ -23,6 +23,7 @@ import type { WaterContainerResponse } from '@workspace/shared';
 vi.mock('../models/measurementRepository.js', () => ({
   default: {
     upsertWaterIntakeSamples: vi.fn(),
+    deleteWaterIntakeSamplesBySourceIds: vi.fn(),
     bulkUpsertCustomMeasurements: vi.fn(),
     bulkUpsertCheckInMeasurements: vi.fn(),
     getCheckInMeasurementsByDateRange: vi.fn(),
@@ -452,6 +453,137 @@ describe('waterHandler.handleBatch', () => {
         error: 'Invalid value for water. Must be a valid number.',
       },
     ]);
+  });
+
+  describe('deletions', () => {
+    it('deletes water intake samples by source_id for healthkit / health connect', async () => {
+      vi.mocked(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).mockResolvedValue(['2026-08-03']);
+
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+            source_id: 'hk-del-1',
+          }),
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+            source_id: 'hk-del-2',
+          }),
+        ],
+        ctx
+      );
+
+      expect(outcomes).toEqual([
+        {
+          status: 'success',
+          data: {
+            deleted: true,
+            source_id: 'hk-del-1',
+            affectedDates: ['2026-08-03'],
+          },
+        },
+        {
+          status: 'success',
+          data: {
+            deleted: true,
+            source_id: 'hk-del-2',
+            affectedDates: ['2026-08-03'],
+          },
+        },
+      ]);
+
+      expect(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).toHaveBeenCalledWith('user-1', 'actor-1', 'HealthKit', [
+        'hk-del-1',
+        'hk-del-2',
+      ]);
+    });
+
+    it('rejects deletion of manual water entries with an error', async () => {
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'manual',
+            source_id: 'some-id',
+          }),
+        ],
+        ctx
+      );
+
+      expect(outcomes[0]).toEqual({
+        status: 'error',
+        error: 'Manual water entries cannot be deleted via health data sync',
+      });
+      expect(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).not.toHaveBeenCalled();
+    });
+
+    it('rejects deletion entries missing source_id', async () => {
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+          }),
+        ],
+        ctx
+      );
+
+      expect(outcomes[0]).toEqual({
+        status: 'error',
+        error: 'Missing source_id for water deletion',
+      });
+    });
+
+    it('handles mixed additions and deletions within the same batch', async () => {
+      vi.mocked(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).mockResolvedValue(['2026-08-03']);
+      vi.mocked(
+        measurementRepository.upsertWaterIntakeSamples
+      ).mockResolvedValue([{ id: 'upserted-row' }]);
+
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            value: 250,
+            source: 'HealthKit',
+            source_id: 'hk-add-1',
+          }),
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+            source_id: 'hk-del-1',
+          }),
+        ],
+        ctx
+      );
+
+      expect(outcomes[0]).toEqual({
+        status: 'success',
+        data: { id: 'upserted-row' },
+      });
+      expect(outcomes[1]).toEqual({
+        status: 'success',
+        data: {
+          deleted: true,
+          source_id: 'hk-del-1',
+          affectedDates: ['2026-08-03'],
+        },
+      });
+    });
   });
 });
 
