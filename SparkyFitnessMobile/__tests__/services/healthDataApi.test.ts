@@ -223,6 +223,61 @@ describe('healthDataApi', () => {
       expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
+    const gatewayTimeout = {
+      ok: false,
+      status: 504,
+      text: () => Promise.resolve('504 Gateway Time-out'),
+    };
+
+    test('retries a 504 by default', async () => {
+      mockFetch
+        .mockResolvedValueOnce(gatewayTimeout)
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+
+      const promise = fetchWithRetry('https://example.com', {}, retryConfig);
+
+      await jest.advanceTimersByTimeAsync(1_000);
+
+      const result = await promise;
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    test('throws the first 504 when retryOnTimeout is false', async () => {
+      mockFetch.mockResolvedValue(gatewayTimeout);
+
+      await expect(
+        fetchWithRetry(
+          'https://example.com',
+          {},
+          { ...retryConfig, retryOnTimeout: false }
+        )
+      ).rejects.toThrow('Server error: 504 - 504 Gateway Time-out');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    test('still retries other 5xx when retryOnTimeout is false', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 502,
+          text: () => Promise.resolve('Bad Gateway'),
+        })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+
+      const promise = fetchWithRetry(
+        'https://example.com',
+        {},
+        { ...retryConfig, retryOnTimeout: false }
+      );
+
+      await jest.advanceTimersByTimeAsync(1_000);
+
+      const result = await promise;
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
     test('calls notifySessionExpired on 401 with session auth', async () => {
       mockFetch.mockResolvedValue({
         ok: false,
@@ -649,6 +704,36 @@ describe('healthDataApi', () => {
         expect(accepted.flat().map((record) => record.value)).toEqual(
           data.map((record) => record.value)
         );
+      });
+
+      test('splits a chunk a proxy answers with 504, as most proxies stop waiting at 60 s', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockImplementation((_url: string, options?: RequestInit) =>
+          JSON.parse(String(options?.body)).length > CHUNK_SIZE / 2
+            ? Promise.resolve({
+                ok: false,
+                status: 504,
+                text: () => Promise.resolve('504 Gateway Time-out'),
+              })
+            : ok()
+        );
+
+        const data = Array.from({ length: CHUNK_SIZE }, (_, i) => ({
+          type: 'steps',
+          date: '2024-01-01',
+          value: i,
+        }));
+
+        const outcome = await settle(syncHealthData(data));
+
+        expect(outcome).toEqual({
+          value: { recordsSent: CHUNK_SIZE, recordErrors: [] },
+        });
+        expect(sentBodies().map((body) => body.length)).toEqual([
+          CHUNK_SIZE,
+          CHUNK_SIZE / 2,
+          CHUNK_SIZE / 2,
+        ]);
       });
 
       test('splits a timed-out sleep chunk too', async () => {

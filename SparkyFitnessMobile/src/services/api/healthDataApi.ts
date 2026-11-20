@@ -107,18 +107,37 @@ export const RETRY_BASE_DELAY_MS = 1_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+/**
+ * A 504 from a reverse proxy in front of the server: it stopped waiting for the
+ * answer. Most proxies give up after 60 s by default, well before
+ * FETCH_TIMEOUT_MS, so this is usually how a slow chunk shows up.
+ */
+class GatewayTimeoutError extends Error {
+  constructor(errorText: string) {
+    super(`Server error: 504 - ${errorText}`);
+    this.name = 'GatewayTimeoutError';
+  }
+}
+
+/** The request ran out of time, in the app (TimeoutError) or at a proxy (504). */
+const isRequestTimeout = (error: unknown): boolean =>
+  error instanceof TimeoutError || error instanceof GatewayTimeoutError;
+
 interface RetryConfig {
   timeoutMs: number;
   maxRetries: number;
   baseDelayMs: number;
   serverConfig?: ServerConfig;
-  /** false throws the first timeout instead of resending, so the caller can split. Default true. */
+  /**
+   * false throws the first timeout (the app's own, or a 504 from a proxy)
+   * instead of resending, so the caller can split. Default true.
+   */
   retryOnTimeout?: boolean;
 }
 
 /**
  * Wraps fetchWithTimeout with retry logic.
- * Retries on network errors, timeouts (unless retryOnTimeout is false), and 5xx responses.
+ * Retries on network errors, timeouts and 504s (unless retryOnTimeout is false), and other 5xx responses.
  * Does NOT retry on 4xx (including 401 which triggers session expiry).
  */
 export const _fetchWithRetry = async (
@@ -157,7 +176,13 @@ export const _fetchWithRetry = async (
 
       // 5xx — retryable
       const errorText = await response.text();
-      lastError = new Error(`Server error: ${response.status} - ${errorText}`);
+      lastError =
+        response.status === 504
+          ? new GatewayTimeoutError(errorText)
+          : new Error(`Server error: ${response.status} - ${errorText}`);
+      if (!retryOnTimeout && lastError instanceof GatewayTimeoutError) {
+        throw lastError;
+      }
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
 
@@ -165,7 +190,7 @@ export const _fetchWithRetry = async (
       if (lastError.message.startsWith('Server error: 4')) {
         throw lastError;
       }
-      if (!retryOnTimeout && lastError instanceof TimeoutError) {
+      if (!retryOnTimeout && isRequestTimeout(lastError)) {
         throw lastError;
       }
     }
@@ -413,8 +438,8 @@ const sendHealthDataChunked = async (
           maxRetries: MAX_RETRIES,
           baseDelayMs: RETRY_BASE_DELAY_MS,
           serverConfig,
-          // Resending a chunk the server could not finish in time only gives
-          // it the same work again; split it below instead.
+          // Resending a chunk the server could not finish in time (our timeout
+          // or a proxy's 504) only gives it the same work again; split it below.
           retryOnTimeout: !canSplit,
         }
       );
@@ -452,12 +477,16 @@ const sendHealthDataChunked = async (
       chunksSent += 1;
       chunks.shift();
     } catch (error) {
-      if (canSplit && error instanceof TimeoutError) {
+      if (canSplit && isRequestTimeout(error)) {
         // Simple measurements, sleep and nutrition are upserted by natural key,
         // so sending part of a chunk again cannot duplicate rows.
         const half = Math.ceil(chunk.length / 2);
+        const reason =
+          error instanceof GatewayTimeoutError
+            ? 'got 504 Gateway Timeout from a proxy'
+            : `timed out after ${FETCH_TIMEOUT_MS / 1000}s`;
         addLog(
-          `[API] Chunk ${chunkNumber}/${totalChunks} timed out after ${FETCH_TIMEOUT_MS / 1000}s; splitting its ${chunk.length} records into ${half} and ${chunk.length - half}`,
+          `[API] Chunk ${chunkNumber}/${totalChunks} ${reason}; splitting its ${chunk.length} records into ${half} and ${chunk.length - half}`,
           'WARNING'
         );
         chunks.splice(
