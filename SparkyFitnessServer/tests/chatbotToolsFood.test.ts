@@ -5849,8 +5849,9 @@ describe('sparky_get_food_diary', () => {
   });
 
   it('does not scale a serving count twice when the reference is in servings', async () => {
-    // Shape written by POST /food-entries/import-from-csv for 4.5 servings:
-    // serving_size is pinned to the quantity and the nutrients are totals.
+    // A stored entry whose reference is in servings: serving_size equals the
+    // quantity and the nutrients are the portion totals, so the scaling factor
+    // (quantity / serving_size) is 1.
     vi.mocked(foodEntryService.getFoodEntriesByDateRange).mockResolvedValue([
       {
         id: ENTRY_ID,

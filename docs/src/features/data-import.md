@@ -29,8 +29,17 @@ Field reference:
 | `brand` | No | Text | Optional brand, used to improve matching. |
 | `quantity` | Yes* | Number | Amount per the unit. *Not needed when importing as meal totals. |
 | `unit` | Yes* | Text | Matched against the known unit list (`g`, `kg`, `mg`, `oz`, `lb`, `ml`, `l`, `cup`, `tbsp`, `tsp`, `piece`, `slice`, `serving`, `can`, `bottle`, `packet`, `bag`, `bowl`, `plate`, `handful`, `scoop`, `bar`, `stick`, `whole`); a value that matches none is stored as-is (kept unchanged), so correct an unmatched unit before importing. |
-| `calories`, `protein`, `carbs`, `fat`, `saturated_fat`, `polyunsaturated_fat`, `monounsaturated_fat`, `trans_fat`, `cholesterol`, `sodium`, `potassium`, `dietary_fiber`, `sugars`, `vitamin_a`, `vitamin_c`, `calcium`, `iron` | No | Number | Standard nutrients; fill any subset you have. |
+| `calories`, `protein`, `carbs`, `fat`, `saturated_fat`, `polyunsaturated_fat`, `monounsaturated_fat`, `trans_fat`, `cholesterol`, `sodium`, `potassium`, `dietary_fiber`, `sugars`, `vitamin_a`, `vitamin_c`, `calcium`, `iron` | No | Number | Standard nutrients; fill any subset you have. Values are **per logged portion** (the totals for the `quantity` in `unit`): `calories` is the energy for the whole `quantity`, and the importer logs it as-is. |
 | *(any other column)* | No | Number | Any column beyond the base set is treated as a custom nutrient by its header name. |
+
+> [!NOTE]
+> **Per-portion totals.** A row's nutrient values are the totals for the logged `quantity` in `unit` — the convention of SparkyFitness' own export and of the major consumer diary exporters (MyFitnessPal, Lose It, Cronometer, FatSecret, and others). The importer pins the entry's serving basis to the portion (`serving_size = quantity`), so the scaling factor is 1 and the row logs its totals as-is: a row of `quantity = 200` and `calories = 150` logs `150` calories for the day. This is what makes a SparkyFitness export round-trip losslessly — export writes `calories × quantity / serving_size`, and with `serving_size = quantity` that is the total itself.
+>
+> When a row matches one of your own foods and **Override** is on, the food's stored nutrition is rewritten with the row's per-portion totals and its serving basis pinned to the portion; a plain import (Override off) never touches the food's stored serving size, so it stays a stable reference size.
+>
+> This applies to per-food rows. In [Import as meal totals](#importing-per-meal-totals-aggregate-files) mode, a row is a whole meal's nutrient *totals* (no quantity), so it is logged as a single serving carrying those totals as-is.
+>
+> If a file's nutrients are **per unit** rather than per portion (for example a composition-database export with a per-100 g basis), multiply each nutrient by `quantity` before importing, since the importer reads the columns as the portion's totals.
 
 ### Meal grouping
 

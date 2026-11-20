@@ -113,6 +113,10 @@ describe('importFoodDiaryEntriesInBulk', () => {
         name: 'Oatmeal',
         provider_type: 'csv_import',
         is_quick_food: true,
+        // The row's nutrients are per-portion totals, so the food's reference
+        // serving basis is the logged portion itself: "quantity units = these
+        // totals".
+        serving_size: 200,
         calories: 150,
       })
     );
@@ -120,10 +124,12 @@ describe('importFoodDiaryEntriesInBulk', () => {
     expect(result.errors).toHaveLength(0);
   });
 
-  it('pins serving_size to the row portion when a matched food row supplies nutrients', async () => {
-    // Matched variant is per-100g, but the row says 200g = 150 cal. Without a
-    // serving override the diary would rescale to 300; the override makes the
-    // snapshot per-200g so it displays the CSV totals 1:1.
+  it('pins serving_size to the portion (per-total) when a matched food row supplies nutrients', async () => {
+    // The CSV carries per-portion totals (150 cal for the 200-unit portion).
+    // The snapshot pins serving_size to the portion so the diary scaling
+    // factor (quantity / serving_size) is 1 and the entry shows the total as
+    // is — 150 for the day. Pinning serving_size to 1 would instead scale by
+    // quantity and show 150 * 200 = 30000, i.e. double-counting the total.
     (foodRepository.findVisibleFoodByName as any).mockResolvedValue({
       id: 'food-1',
       default_variant_id: 'variant-1',
@@ -295,7 +301,14 @@ describe('importFoodDiaryEntriesInBulk', () => {
     });
 
     const rows = [
-      { ...baseRow, meal_name: 'My Combo', food_name: 'Oatmeal' },
+      {
+        ...baseRow,
+        meal_name: 'My Combo',
+        food_name: 'Oatmeal',
+        quantity: '200',
+        unit: 'g',
+        calories: '150',
+      },
       { ...baseRow, meal_name: 'My Combo', food_name: 'Banana' },
     ];
     const result = await importFoodDiaryEntriesInBulk(
@@ -310,6 +323,18 @@ describe('importFoodDiaryEntriesInBulk', () => {
     );
     expect(foodRepository.createFoodEntry).toHaveBeenCalledTimes(2);
     expect(result.processed).toHaveLength(2);
+    // Meal-group leaves use the same per-total snapshot as single-food rows:
+    // serving_size pinned to the portion so the nutrient total is shown as-is.
+    expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        food_id: 'food-1',
+        quantity: 200,
+        serving_size: 200,
+        serving_unit: 'g',
+        calories: 150,
+      }),
+      'user-1'
+    );
   });
 
   it('expands a saved meal template when meal_name matches and rows have no food_name', async () => {
@@ -379,9 +404,77 @@ describe('importFoodDiaryEntriesInBulk', () => {
       'variant-1',
       'user-1',
       expect.objectContaining({
-        serving_size: '200',
+        serving_size: 200,
         serving_unit: 'g',
         calories: 150,
+      })
+    );
+  });
+
+  it('does not rewrite a csv-imported food serving basis on a plain re-import', async () => {
+    // Defect: the dedup path used to rewrite the food variant's serving_size
+    // to the row's quantity on every import, so a food's reference size became
+    // last-write-wins per log. A plain re-import (override off) must leave the
+    // stored food untouched.
+    (foodRepository.findVisibleFoodByName as any).mockResolvedValue(null);
+    (foodRepository.findFoodByProviderExternalId as any).mockResolvedValue({
+      id: 'prior-food-1',
+      default_variant_id: 'prior-variant-1',
+    });
+    (foodRepository.createFoodEntry as any).mockResolvedValue({
+      id: 'entry-1',
+    });
+
+    await importFoodDiaryEntriesInBulk(
+      'user-1',
+      'user-1',
+      [{ ...baseRow, quantity: '0.333', unit: 'scoop', calories: '120' }],
+      {}
+    );
+
+    expect(foodRepository.updateFoodVariantNutrition).not.toHaveBeenCalled();
+    expect(foodRepository.createFood).not.toHaveBeenCalled();
+    expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        food_id: 'prior-food-1',
+        variant_id: 'prior-variant-1',
+        quantity: 0.333,
+        serving_size: 0.333,
+        serving_unit: 'scoop',
+        calories: 120,
+      }),
+      'user-1'
+    );
+  });
+
+  it('rewrites a csv-imported food nutrition with serving_size = quantity when override is on', async () => {
+    // With override on the dedup path rewrites the stored nutrition, pinning
+    // serving_size to the logged portion (here 1, so 1) — the row's nutrients
+    // are per-portion totals.
+    (foodRepository.findVisibleFoodByName as any).mockResolvedValue(null);
+    (foodRepository.findFoodByProviderExternalId as any).mockResolvedValue({
+      id: 'prior-food-1',
+      default_variant_id: 'prior-variant-1',
+    });
+    (foodRepository.createFoodEntry as any).mockResolvedValue({
+      id: 'entry-1',
+    });
+
+    await importFoodDiaryEntriesInBulk(
+      'user-1',
+      'user-1',
+      [{ ...baseRow, quantity: '1', unit: 'scoop', calories: '120' }],
+      {},
+      true
+    );
+
+    expect(foodRepository.updateFoodVariantNutrition).toHaveBeenCalledWith(
+      'prior-variant-1',
+      'user-1',
+      expect.objectContaining({
+        serving_size: 1,
+        serving_unit: 'scoop',
+        calories: 120,
       })
     );
   });
@@ -445,6 +538,9 @@ describe('importFoodDiaryEntriesInBulk', () => {
     expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
       expect.objectContaining({
         custom_nutrients: expect.objectContaining({ omega3: 2.5 }),
+        // A custom-nutrient-only row still gets the per-total snapshot:
+        // serving_size pinned to the portion so the custom value is the total.
+        serving_size: 200,
       }),
       'user-1'
     );

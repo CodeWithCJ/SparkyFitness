@@ -7,7 +7,6 @@ import mealRepository from '../models/mealRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
 import type {
-  NutrientValue,
   FoodEntryInput,
   FoodVariantInput,
   MealFoodInput,
@@ -340,12 +339,16 @@ function rowHasAnyNutrients(row: FoodDiaryImportRow): boolean {
 }
 
 // The entry snapshot override for a row. When the row supplies its own
-// nutrients they represent the totals for the portion in quantity+unit, so we
-// also pin serving_size/serving_unit to that portion — otherwise the diary
-// would rescale the provided totals by (quantity / matched-variant
-// serving_size) and show the wrong numbers for a matched food whose serving
-// differs from the row. With no nutrients supplied we override nothing and let
-// the matched/selected variant drive the (correctly scaled) snapshot.
+// nutrients they represent the totals for the logged portion in quantity+unit —
+// the convention of SparkyFitness' own export and of every consumer diary
+// exporter (MFP, Lose It, Cronometer, FatSecret, ...). We pin
+// serving_size/serving_unit to that portion so the diary scaling factor
+// (quantity / serving_size) is 1 and the entry shows the provided totals
+// as-is. This is what makes a SparkyFitness export round-trip losslessly:
+// export writes calories × quantity / serving_size, and with
+// serving_size = quantity that is the total itself. With no nutrients supplied
+// we override nothing and let the matched/selected variant drive the
+// (correctly scaled) snapshot.
 function buildEntrySnapshotOverride(
   row: FoodDiaryImportRow
 ): Record<string, unknown> {
@@ -451,11 +454,12 @@ async function resolveFoodDiaryImportFood(
     // Override option: rewrite the matched variant's stored nutrition with the
     // imported values. Guarded to the user's OWN foods (the frontend also
     // forces scope to mine-only when override is on, but we re-check here so a
-    // family/public food is never mutated). The variant's serving basis is
-    // pinned to the row's portion, matching the imported totals.
+    // family/public food is never mutated). The row's nutrients are per-portion
+    // totals, so the variant's serving basis is pinned to the logged portion —
+    // the reference is "quantity units = these totals".
     if (overrideNutrition && hasNutrients && visible.user_id === userId) {
       await foodRepository.updateFoodVariantNutrition(variantId, userId, {
-        serving_size: row.quantity as NutrientValue,
+        serving_size: Number(row.quantity),
         serving_unit: row.unit,
         ...pickFilledNutrients(row),
         custom_nutrients: customNutrients,
@@ -472,9 +476,14 @@ async function resolveFoodDiaryImportFood(
   );
   if (prior) {
     const variantId = prior.default_variant_id || prior.default_variant?.id;
-    if (hasNutrients && variantId) {
+    // Rewrite the stored nutrition only when override is on — a food's
+    // serving basis is a stable reference size, not a per-log value, so a
+    // plain re-import of the same food at a different quantity must not
+    // clobber it. The row's nutrients are per-portion totals, so the serving
+    // basis is pinned to the logged portion.
+    if (overrideNutrition && hasNutrients && variantId) {
       await foodRepository.updateFoodVariantNutrition(variantId, userId, {
-        serving_size: row.quantity as NutrientValue,
+        serving_size: Number(row.quantity),
         serving_unit: row.unit,
         ...pickFilledNutrients(row),
         custom_nutrients: customNutrients,
@@ -499,7 +508,10 @@ async function resolveFoodDiaryImportFood(
     provider_type: 'csv_import',
     provider_external_id: foodName,
     provider_verified: false,
-    serving_size: row.quantity as NutrientValue,
+    // The row's nutrients are per-portion totals, so the food's reference
+    // serving basis is the logged portion itself: "quantity units = these
+    // totals". This is self-consistent regardless of which row created it.
+    serving_size: Number(row.quantity),
     serving_unit: row.unit,
     source: 'imported',
     ...pickFilledNutrients(row),
