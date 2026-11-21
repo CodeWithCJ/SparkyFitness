@@ -196,7 +196,13 @@ function mapNutrientGraphNutrients(
     }
   };
 
-  setIfNumber('calories', nutrients.energy_kcal);
+  setIfNumber(
+    'calories',
+    nutrients.energy_kcal ??
+      (typeof nutrients.energy_kj === 'number'
+        ? Math.round(nutrients.energy_kj / 4.184)
+        : undefined)
+  );
   setIfNumber('protein', nutrients.protein_g);
   setIfNumber('fat', nutrients.fat_g);
   setIfNumber('carbs', nutrients.carbohydrate_g);
@@ -205,7 +211,15 @@ function mapNutrientGraphNutrients(
   setIfNumber('polyunsaturated_fat', nutrients.pufa_g);
   setIfNumber('trans_fat', nutrients.trans_fat_g);
   setIfNumber('cholesterol', nutrients.cholesterol_mg);
-  setIfNumber('sodium', nutrients.sodium_mg);
+  setIfNumber(
+    'sodium',
+    nutrients.sodium_mg ??
+      (typeof (nutrients as Record<string, unknown>).salt_g === 'number'
+        ? Math.round(
+            ((nutrients as Record<string, unknown>).salt_g as number) * 400
+          )
+        : undefined)
+  );
   setIfNumber('potassium', nutrients.potassium_mg);
   setIfNumber('dietary_fiber', nutrients.fiber_g);
   setIfNumber('sugars', nutrients.sugars_g);
@@ -214,7 +228,12 @@ function mapNutrientGraphNutrients(
   setIfNumber('water_ml', nutrients.water_g);
   setIfNumber('alcohol_g', nutrients.alcohol_g);
   setIfNumber('caffeine_mg', nutrients.caffeine_mg);
-  setIfNumber('vitamin_a', nutrients.vitamin_a_rae_ug);
+  setIfNumber(
+    'vitamin_a',
+    nutrients.vitamin_a_rae_ug ??
+      ((nutrients as Record<string, unknown>).vitamin_a_ug as
+        number | undefined)
+  );
   setIfNumber('vitamin_c', nutrients.vitamin_c_mg);
 
   for (const [key, val] of Object.entries(nutrients)) {
@@ -300,7 +319,47 @@ export async function searchNutrientGraph(
   const results = response.data?.results || [];
   const scope = `${resolveCacheScope(ctx)}:${lang}`;
 
-  const foods = results.map((item) => {
+  const topResults = results.slice(0, 5);
+  const restResults = results.slice(5);
+
+  const enrichedTop: MappedProviderFood[] = await Promise.all(
+    topResults.map(async (item) => {
+      const cached = detailCache.get<MappedProviderFood>(
+        'nutrientgraph',
+        scope,
+        item.id
+      );
+      if (cached) {
+        return {
+          ...cached,
+          name: item.name || cached.name,
+        };
+      }
+      try {
+        const detail = await getNutrientGraphDetails(ctx, item.id);
+        if (detail) {
+          return {
+            ...detail,
+            name: item.name || detail.name,
+          };
+        }
+      } catch {
+        // Fall back to summary on error or rate limit
+      }
+      return buildSearchSummaryFood({
+        providerType: 'nutrientgraph',
+        externalId: item.id,
+        name: item.name,
+        brand: null,
+        calories:
+          typeof item.energy_kcal_per_100 === 'number'
+            ? item.energy_kcal_per_100
+            : undefined,
+      });
+    })
+  );
+
+  const restMapped = restResults.map((item) => {
     const cached = detailCache.get<MappedProviderFood>(
       'nutrientgraph',
       scope,
@@ -323,6 +382,8 @@ export async function searchNutrientGraph(
           : undefined,
     });
   });
+
+  const foods = [...enrichedTop, ...restMapped];
 
   const hasMore = results.length === pageSize;
 

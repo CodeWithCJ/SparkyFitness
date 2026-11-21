@@ -149,7 +149,34 @@ export async function searchCookTool(
     : [];
 
   const scope = resolveCacheScope(ctx);
-  const foods = ingredients.map((item) => {
+  const topIngredients = ingredients.slice(0, 5);
+  const restIngredients = ingredients.slice(5);
+
+  const enrichedTop: MappedProviderFood[] = await Promise.all(
+    topIngredients.map(async (item) => {
+      const externalId = `ing:${item.id}`;
+      const cached = detailCache.get<MappedProviderFood>(
+        'cooktool',
+        scope,
+        externalId
+      );
+      if (cached) return cached;
+      try {
+        const detail = await getCookToolDetails(ctx, externalId);
+        if (detail) return detail;
+      } catch {
+        // Fall back to summary
+      }
+      return buildSearchSummaryFood({
+        providerType: 'cooktool',
+        externalId,
+        name: item.name,
+        brand: null,
+      });
+    })
+  );
+
+  const restMapped = restIngredients.map((item) => {
     const externalId = `ing:${item.id}`;
     const cached = detailCache.get<MappedProviderFood>(
       'cooktool',
@@ -164,6 +191,8 @@ export async function searchCookTool(
       brand: null,
     });
   });
+
+  const foods = [...enrichedTop, ...restMapped];
 
   const hasMore = ingredients.length === pageSize;
 

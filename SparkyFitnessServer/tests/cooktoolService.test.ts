@@ -57,19 +57,24 @@ describe('CookTool Service', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('searches ingredients and returns summary foods with single request', async () => {
-      mockFetch.mockResolvedValueOnce(
-        mockJsonResponse({
-          data: [
-            { id: 6433, name: 'Bananas, raw' },
-            { id: 9999, name: 'Ingredient 9999' },
-          ],
-        })
-      );
+    it('searches ingredients and enriches top results', async () => {
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('/api/v1/ingredients?')) {
+          return mockJsonResponse({
+            data: [
+              { id: 6433, name: 'Bananas, raw' },
+              { id: 9999, name: 'Ingredient 9999' },
+            ],
+          });
+        }
+        if (url.includes('/ingredients/6433/nutrients')) {
+          return mockJsonResponse(ingredientNutrientsFixture);
+        }
+        return mockJsonResponse({ data: [] }, 404);
+      });
 
       const res = await searchCookTool(ctx, 'banana', 1, 20);
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).toContain('q=banana');
       expect(url).toContain('limit=20');
@@ -85,7 +90,10 @@ describe('CookTool Service', () => {
         default_variant: expect.objectContaining({
           serving_size: 100,
           serving_unit: 'g',
-          calories: 0,
+          calories: 89,
+          protein: 1.1,
+          carbs: 22.8,
+          fat: 0.3,
           is_default: true,
         }),
       });

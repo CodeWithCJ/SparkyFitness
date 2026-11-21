@@ -76,12 +76,19 @@ describe('NutrientGraph Service', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('searches with language and maps results with single request', async () => {
-      mockFetch.mockResolvedValueOnce(mockJsonResponse(searchBananaEnFixture));
+    it('searches with language and enriches top results', async () => {
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('/v1/food/search')) {
+          return mockJsonResponse(searchBananaEnFixture);
+        }
+        if (url.includes('fdc%3A173944')) {
+          return mockJsonResponse(foodFdcFixture);
+        }
+        return mockJsonResponse({ data: null }, 404);
+      });
 
       const res = await searchNutrientGraph(ctx, 'banana', 1, 3);
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).toContain('lang=en');
       expect(url).toContain('q=banana');
@@ -98,8 +105,8 @@ describe('NutrientGraph Service', () => {
         default_variant: expect.objectContaining({
           serving_size: 100,
           serving_unit: 'g',
-          calories: 89,
-          protein: 0,
+          calories: 165,
+          protein: 31,
           is_default: true,
         }),
       });
@@ -107,7 +114,12 @@ describe('NutrientGraph Service', () => {
     });
 
     it('falls back unsupported language to en', async () => {
-      mockFetch.mockResolvedValueOnce(mockJsonResponse(searchBananaEnFixture));
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('/v1/food/search')) {
+          return mockJsonResponse(searchBananaEnFixture);
+        }
+        return mockJsonResponse({ data: null }, 404);
+      });
 
       await searchNutrientGraph({ ...ctx, language: 'sv' }, 'banana');
 

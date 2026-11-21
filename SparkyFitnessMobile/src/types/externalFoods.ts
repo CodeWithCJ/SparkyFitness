@@ -38,6 +38,7 @@ export interface ExternalFoodItem {
   recipe_has_nutrition?: boolean;
   recipe_servings?: number | null;
   recipe_provider_id?: string;
+  has_core_nutrition?: boolean;
   id: string;
   name: string;
   brand: string | null;

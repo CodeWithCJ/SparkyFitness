@@ -63,12 +63,19 @@ describe('Food Info Service', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('searches foods and returns summary foods with single request', async () => {
-      mockFetch.mockResolvedValueOnce(mockJsonResponse(searchBananaFixture));
+    it('searches foods and enriches top results', async () => {
+      mockFetch.mockImplementation(async (url: string) => {
+        if (url.includes('/api/v1/foods/search')) {
+          return mockJsonResponse(searchBananaFixture);
+        }
+        if (url.includes('/foods/790774/panel')) {
+          return mockJsonResponse(panel790774Fixture);
+        }
+        return mockJsonResponse({ data: [] }, 404);
+      });
 
       const res = await searchFoodInfo(ctx, 'banana', 1, 3);
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).toContain('q=banana');
       expect(url).toContain('page=1');
@@ -85,7 +92,10 @@ describe('Food Info Service', () => {
         default_variant: expect.objectContaining({
           serving_size: 100,
           serving_unit: 'g',
-          calories: 0,
+          calories: 85,
+          protein: 0.7,
+          carbs: 20.1,
+          fat: 0.2,
           is_default: true,
         }),
       });

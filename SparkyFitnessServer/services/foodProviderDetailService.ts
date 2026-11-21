@@ -110,6 +110,9 @@ export function normalizeFoodForResponse(food: unknown): unknown {
     provider_type: nullToUndefined(
       record.provider_type as string | null | undefined
     ),
+    has_core_nutrition: nullToUndefined(
+      record.has_core_nutrition as boolean | null | undefined
+    ),
     default_variant: normalizeFoodVariantForResponse(record.default_variant),
     variants: Array.isArray(record.variants)
       ? record.variants.map((variant) =>

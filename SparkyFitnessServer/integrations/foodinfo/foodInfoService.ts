@@ -162,8 +162,34 @@ export async function searchFoodInfo(
 
   const items = Array.isArray(results) ? results : [];
   const scope = resolveCacheScope(ctx);
+  const topItems = items.slice(0, 5);
+  const restItems = items.slice(5);
 
-  const foods = items.map((item) => {
+  const enrichedTop: MappedProviderFood[] = await Promise.all(
+    topItems.map(async (item) => {
+      const idStr = String(item.id);
+      const cached = detailCache.get<MappedProviderFood>(
+        'food-info',
+        scope,
+        idStr
+      );
+      if (cached) return cached;
+      try {
+        const detail = await getFoodInfoDetails(ctx, idStr);
+        if (detail) return detail;
+      } catch {
+        // Fall back to summary
+      }
+      return buildSearchSummaryFood({
+        providerType: 'food-info',
+        externalId: idStr,
+        name: item.description,
+        brand: null,
+      });
+    })
+  );
+
+  const restMapped = restItems.map((item) => {
     const idStr = String(item.id);
     const cached = detailCache.get<MappedProviderFood>(
       'food-info',
@@ -180,6 +206,8 @@ export async function searchFoodInfo(
       })
     );
   });
+
+  const foods = [...enrichedTop, ...restMapped];
 
   const hasMore = items.length === pageSize;
 
