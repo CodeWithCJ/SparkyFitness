@@ -60,7 +60,9 @@
       "customMeasurements": "Mediciones personalizadas",
       "heartRateZones": "Zonas de frecuencia cardíaca",
       "heartRateZonesSubtitle": "Frecuencia cardíaca máxima y en reposo, método de zonas",
-      "nfcTags": "Etiquetas NFC"
+      "nfcTags": "Etiquetas NFC",
+      "offline": "Sin conexión",
+      "features": "Funciones"
     },
     "theme": {
       "title": "Tema",
@@ -396,6 +398,10 @@
     "meditationTimer": {
       "title": "Meditación completada",
       "body": "Abre SparkyFitness para guardar tu sesión."
+    },
+    "offlineUploads": {
+      "title": "Hay un entrenamiento pendiente de subir",
+      "body": "Abre SparkyFitness cuando haya conexión con tu servidor."
     }
   },
   "notificationSettings": {
@@ -510,7 +516,9 @@
     "oralCare": "Cuidado bucal",
     "oralCareSubtitle": "Muestra el cepillado frente a tu objetivo y racha",
     "bloodAlcohol": "Estimación de alcohol en sangre",
-    "bloodAlcoholSubtitle": "Mostrar una estimación aproximada de alcohol en sangre según las bebidas registradas en el Panel"
+    "bloodAlcoholSubtitle": "Mostrar una estimación aproximada de alcohol en sangre según las bebidas registradas en el Panel",
+    "wellness": "Bienestar",
+    "offInFeatures": "No se muestra: desactivado en Funciones"
   },
   "workoutSettings": {
     "title": "Ajustes de entrenamiento",
@@ -906,7 +914,9 @@
     "labResultAdd": "Añadir resultado de laboratorio",
     "labReportImport": "Importar informe",
     "treadmillSettings": "Cinta de correr y zancada",
-    "trainingCalendar": "Calendario de entrenamiento"
+    "trainingCalendar": "Calendario de entrenamiento",
+    "features": "Funciones",
+    "offlineSettings": "Sin conexión"
   },
   "nutrients": {
     "calories": "Calorías",
@@ -1388,7 +1398,7 @@
     "lookup": {
       "failed": "La búsqueda falló",
       "noMatch": "Sin coincidencia para el código de barras",
-      "nextSteps": "Puedes escanear la etiqueta nutricional o introducirla manualmente.",
+      "nextSteps": "Intenta escanear de nuevo, escanea la etiqueta nutricional o introduce el alimento manualmente.",
       "scanLabel": "Escanear etiqueta nutricional",
       "addManually": "Añadir alimento manualmente",
       "searching": "Buscando código de barras…",
@@ -2633,7 +2643,9 @@
     "reorderExercises": "Reordenar ejercicios",
     "workoutPlaceholder": "Entrenamiento",
     "useYesterday": "Usar ayer",
-    "useToday": "Usar hoy"
+    "useToday": "Usar hoy",
+    "savedOfflineTitle": "Guardado en este teléfono",
+    "savedOfflineMessage": "Se subirá cuando haya conexión con tu servidor."
   },
   "workoutForm": {
     "viewExercise": "Ver ejercicio",
@@ -3702,6 +3714,14 @@
       "dayCycle_one": "Ciclo de {{count}} día",
       "dayCycle_many": "Ciclo de {{count}} días",
       "dayCycle_other": "Ciclo de {{count}} días"
+    },
+    "loadFailed": "No se pudieron cargar tus ajustes.",
+    "off": {
+      "title": "El seguimiento del ciclo está desactivado",
+      "discreetTitle": "El bienestar está desactivado",
+      "description": "Se conserva tu historial. Vuelve a activarlo para verlo aquí de nuevo.",
+      "turnOn": "Activar",
+      "openFeatures": "Abrir Funciones"
     }
   },
   "cycleLog": {
@@ -4189,10 +4209,6 @@
       "wellness": "Ajustes de bienestar",
       "cyclePregnancy": "Ciclo y embarazo"
     },
-    "enable": {
-      "title": "Activar el seguimiento del ciclo y el embarazo",
-      "subtitle": "Activa el registro, las predicciones y el historial"
-    },
     "groups": {
       "features": "Configuración de funciones",
       "calculations": "Ajustes de cálculo del ciclo",
@@ -4226,6 +4242,16 @@
       "discreetSubtitle": "Oculta las etiquetas «Ciclo» o «Embarazo» en la interfaz",
       "exportSubtitle": "Descargar exportación de datos en JSON",
       "resetSubtitle": "Reiniciar el recorrido de configuración"
+    },
+    "loadFailed": "No se pudieron cargar estos ajustes.",
+    "feature": {
+      "on": "Activado",
+      "off": "Desactivado",
+      "hint": "Actívalo o desactívalo en Ajustes → Funciones."
+    },
+    "setup": {
+      "action": "Configurar",
+      "hint": "Responde a unas preguntas para finalizar la configuración."
     }
   },
   "cycleOnboarding": {
@@ -4504,7 +4530,10 @@
     "records_one": "{{count}} registro",
     "records_many": "{{count}} registros",
     "records_other": "{{count}} registros",
-    "energy": "{{value}} {{unit}}"
+    "energy": "{{value}} {{unit}}",
+    "brushes_one": "{{count}} cepillado",
+    "brushes_many": "{{count}} cepillados",
+    "brushes_other": "{{count}} cepillados"
   },
   "healthCategories": {
     "Common": "Comunes",
@@ -5963,7 +5992,9 @@
   },
   "activeWorkoutAutosave": {
     "failedTitle": "Entrenamiento no guardado",
-    "failedMessage": "Los cambios se conservan en este dispositivo y se reintentarán."
+    "failedMessage": "Los cambios se conservan en este dispositivo y se reintentarán.",
+    "offlineTitle": "Guardado en este teléfono",
+    "offlineMessage": "Tu entrenamiento se subirá cuando haya conexión con tu servidor."
   },
   "time": {
     "hoursShort": "h",
@@ -6150,7 +6181,11 @@
       "deskTag": "Etiqueta de escritorio",
       "tapped": "Escaneada",
       "tagWater": "Agua • 500 mL",
-      "logged": "Registrado"
+      "logged": "Registrado",
+      "offlinePush": "Día de empuje",
+      "offlineBadge": "Sin conexión",
+      "offlineSets": "12 series registradas",
+      "offlineWaiting": "Pendiente de subida"
     },
     "features": {
       "medications": {
@@ -6207,8 +6242,8 @@
       "checkIn": {
         "eyebrow": "REGISTRO GUIADO",
         "headline": "Registra en un solo flujo",
-        "body": "Registra tu estado de ánimo, mediciones y una foto de progreso en tres rápidos pasos. Actívalo en la configuración del Diario.",
-        "cta": "Abrir configuración del diario"
+        "body": "Registra tu estado de ánimo, tus medidas y una foto de progreso en tres pasos rápidos. Encuentra el Registro diario en el menú +.",
+        "cta": "Iniciar registro"
       },
       "strength": {
         "eyebrow": "HERRAMIENTAS DE FUERZA",
@@ -6251,6 +6286,12 @@
         "headline": "Registra con un toque",
         "body": "Coloca una etiqueta NFC en tu botella de agua, escritorio o cocina para registrar una bebida, alimento o comida. Toca con tu teléfono para registrar al instante, con opción de deshacer.",
         "cta": "Configurar etiquetas NFC"
+      },
+      "offlineWorkouts": {
+        "eyebrow": "ENTRENAMIENTOS SIN CONEXIÓN",
+        "headline": "Entrena sin señal",
+        "body": "Empieza, registra y termina un entrenamiento incluso sin conexión con tu servidor. Se guardará en tu teléfono y se subirá solo cuando vuelvas a conectarte. Mantén pulsados los ejercicios de la biblioteca para guardar también sus imágenes sin conexión.",
+        "cta": "Ajustes sin conexión"
       }
     }
   },
@@ -7104,7 +7145,8 @@
     "saving": "Guardando…",
     "saved": "Guardado",
     "saveFailed": "No se pudo guardar tu comentario. Toca para reintentar.",
-    "loadFailed": "No se pudo cargar tu comentario. Toca para intentarlo de nuevo."
+    "loadFailed": "No se pudo cargar tu comentario. Toca para intentarlo de nuevo.",
+    "queued": "Se enviará cuando vuelvas a tener conexión"
   },
   "adaptiveCoaching": {
     "reasons": {
@@ -7162,11 +7204,11 @@
     "rpeSubtitleWearOs": "Después de registrar una serie en el reloj, gira la corona o toca +/− para indicar la intensidad, de 5 a 10, y luego toca Guardar o toca Omitir.",
     "layoutTitle": "Diseño",
     "setScreenMetricsTitle": "Métricas en la pantalla de series",
-    "setScreenMetricsSubtitle": "Tiempo transcurrido, frecuencia cardíaca y calorías. Desactivar las mueve a su propia página después de la pantalla de series (después de Siguiente, cuando esa página está activa).",
+    "setScreenMetricsSubtitle": "Tiempo transcurrido, frecuencia cardíaca y calorías. Si está desactivado, se mueven a su propia página encima de la pantalla de series: desliza hacia abajo para verlos.",
     "upNextTitle": "Página Siguiente",
     "upNextSubtitle": "Una página a la que se accede deslizando hacia arriba desde la pantalla de series con el siguiente ejercicio, su objetivo y un botón Cambiar para realizar otro ejercicio primero.",
     "largerTextTitle": "Texto más grande en el reloj",
-    "largerTextSubtitle": "Texto más grande y los nuevos diseños en todo el reloj: Objetivos, Agua, Entrenamiento, Ayuno, Pasos y más. Desactivarlo mantiene el aspecto original.",
+    "largerTextSubtitle": "Texto más grande y los nuevos diseños en toda la app del reloj: Objetivos, Agua, Ayuno, Pasos y más. Si está desactivado, se mantiene el aspecto original.",
     "newWorkoutTitle": "Nueva vista de entrenamiento",
     "newWorkoutSubtitle": "Un botón para registrar serie (el toque doble también registra), un botón para editar la serie anterior, una página adicional con acciones de entrenamiento y un resumen único al finalizar. Desactivado mantiene la pantalla original de entrenamiento.",
     "topLineTitle": "Línea superior",
@@ -7562,7 +7604,7 @@
     "sessionNamePlaceholder": "Nombre de la sesión (opcional)",
     "addSession": "Añadir sesión",
     "assignmentRequired": "Añade al menos un entrenamiento al plan.",
-    "presetNotice": "Puedes añadir los entrenamientos guardados en tu biblioteca. Para planificar un solo ejercicio, utiliza la app web.",
+    "presetNotice": "Puedes añadir los entrenamientos guardados en tu biblioteca o ejercicios sueltos con sus propias series.",
     "deleteTitle": "Eliminar plan de entrenamiento",
     "deleteMessage": "¿Eliminar {{name}}? Se borrarán los entrenamientos futuros que este plan añadió a tu diario.",
     "deleteSuccess": "Plan de entrenamiento eliminado",
@@ -7600,7 +7642,19 @@
     "savedWorkout": "Entrenamiento guardado",
     "sessionPosition": "Sesión {{current}} de {{total}}",
     "setNumber": "Serie {{number}}",
-    "weightShort": "Peso"
+    "weightShort": "Peso",
+    "refreshedSessions_one": "{{count}} próxima sesión actualizada",
+    "refreshedSessions_many": "{{count}} próximas sesiones actualizadas",
+    "refreshedSessions_other": "{{count}} próximas sesiones actualizadas",
+    "removedSessions_one": "{{count}} próxima sesión eliminada",
+    "removedSessions_many": "{{count}} próximas sesiones eliminadas",
+    "removedSessions_other": "{{count}} próximas sesiones eliminadas",
+    "repsCount_one": "{{count}} rep",
+    "repsCount_many": "{{count}} reps",
+    "repsCount_other": "{{count}} reps",
+    "restCount_one": "{{count}} s de descanso",
+    "restCount_many": "{{count}} s de descanso",
+    "restCount_other": "{{count}} s de descanso"
   },
   "mood": {
     "logTitle": "Estado de ánimo",
@@ -8587,7 +8641,22 @@
     "insightWeekendShorter": "Duermes {{hours}} menos los fines de semana que entre semana.",
     "insightFullNights": "{{full}} de {{total}} noches alcanzaron las 7 horas.",
     "insightIrregular": "Tu hora de acostarte varía aproximadamente ±{{minutes}} min.",
-    "insightDurationChange": "El tiempo de sueño es {{change}} respecto al período anterior."
+    "insightDurationChange": "El tiempo de sueño es {{change}} respecto al período anterior.",
+    "negativeDuration": "-{{duration}}",
+    "needLoadFailed": "No se pudo cargar la necesidad de sueño para esta noche",
+    "needTonight": "Sueño necesario para esta noche",
+    "needTotal": "Total",
+    "needBaseline": "Línea base",
+    "needStrain": "Esfuerzo",
+    "needStrainHint": "De los entrenamientos de hoy",
+    "needDebt": "Recuperación de deuda",
+    "needDebtHint": "Parte de tu deuda de sueño de {{amount}}",
+    "needSurplusHint": "Parte de tu excedente de sueño de {{amount}}",
+    "recovery": "Recuperación",
+    "recoveryScore": "{{score}}/100",
+    "recoveryHint": "Tu predisposición: sueño, frecuencia cardíaca en reposo y VFC",
+    "trainingLoad": "Carga de entrenamiento",
+    "trainingLoadHint": "Minutos de entrenamiento ponderados por frecuencia cardíaca"
   },
   "reportsSettings": {
     "reset": "Restablecer",
@@ -8653,7 +8722,8 @@
       "measurementTimeline": "Cronología de mediciones",
       "oralCareBrushesChart": "Gráfica de cepillados por día",
       "oralCareMinutesChart": "Gráfica de minutos de cepillado",
-      "oralCareSummary": "Rachas y otros cuidados"
+      "oralCareSummary": "Rachas y otros cuidados",
+      "sleepNeed": "Sueño necesario para esta noche"
     },
     "hydrationSections": "Informe de hidratación",
     "measurementsSections": "Informe de medidas",
@@ -8940,8 +9010,8 @@
       "setUp": "Configurar un programa"
     },
     "partOfProgram": "Parte de tu programa de entrenamiento",
-    "openCalendar": "Abrir el calendario del programa",
-    "openCalendarHint": "Todos los entrenamientos en vista mensual",
+    "openCalendar": "Abrir el calendario de entrenamientos",
+    "openCalendarHint": "Programa y planifica entrenamientos, tanto realizados como próximos",
     "calendarScreen": {
       "minutes": "{{minutes}} min"
     },
@@ -9811,7 +9881,6 @@
     "previewTitle": "Vista previa",
     "previewDescription": "Cómo se ve Acciones rápidas con tus selecciones.",
     "lineNumber": "Línea {{number}}",
-    "needsCycle": "No se muestra: el seguimiento del ciclo está desactivado",
     "showAs": "Mostrar como",
     "showAsValue": "Mostrar como {{style}}",
     "styleList": "Lista",
@@ -9823,7 +9892,8 @@
     "buttonsDescription": "Se muestran uno al lado del otro en la parte inferior de la hoja.",
     "chooseCard": "Elige una tarjeta",
     "slotLabel": "Tarjeta {{number}}: {{name}}",
-    "slotHint": "Abre una lista para elegir qué va aquí"
+    "slotHint": "Abre una lista para elegir qué va aquí",
+    "offInFeatures": "No se muestra: desactivado en Funciones"
   },
   "calorieLink": {
     "action": "Vincular un entrenamiento sincronizado",
@@ -10264,7 +10334,16 @@
       "takePhoto": "Tomar foto",
       "tooLarge": "El archivo PDF es demasiado grande para leerse (límite de 14 MB).",
       "editHint": "Compara los datos con tu informe. Toca un valor para corregirlo. Cada resultado se guarda con la unidad y rango de referencia impresos.",
-      "saveUnconfirmed": "No se pudo confirmar el guardado del informe. Vuelve a guardar: solo se almacena una vez."
+      "saveUnconfirmed": "No se pudo confirmar el guardado del informe. Vuelve a guardar: solo se almacena una vez.",
+      "saveCount_one": "Guardar {{count}} resultado",
+      "saveCount_many": "Guardar {{count}} resultados",
+      "saveCount_other": "Guardar {{count}} resultados",
+      "saved_one": "{{count}} resultado guardado",
+      "saved_many": "{{count}} resultados guardados",
+      "saved_other": "{{count}} resultados guardados",
+      "deleted_one": "{{count}} resultado importado eliminado",
+      "deleted_many": "{{count}} resultados importados eliminados",
+      "deleted_other": "{{count}} resultados importados eliminados"
     },
     "moreActions": "Más acciones",
     "deleteMarker": "Eliminar marcador y todos sus resultados",
@@ -10275,14 +10354,20 @@
     "card": {
       "a11y": "Resultados de laboratorio",
       "empty": "Aún no hay resultados. Toca para añadir uno.",
-      "title": "Resultados de laboratorio"
+      "title": "Resultados de laboratorio",
+      "outOfRange_one": "{{count}} fuera del rango de referencia",
+      "outOfRange_many": "{{count}} fuera del rango de referencia",
+      "outOfRange_other": "{{count}} fuera del rango de referencia"
     },
     "rangeForSex": "Precompletado para adultos {{sex}} desde tu perfil. Los laboratorios varían, edítalo para que coincida con tu informe.",
     "rangeNoSex": "Este marcador varía según el sexo. Define tu sexo en el perfil para un rango adaptado o introduce el del informe.",
     "sex": {
       "female": "femenino",
       "male": "masculino"
-    }
+    },
+    "chartOtherUnits_one": "No se muestra {{count}} resultado por estar en otra unidad.",
+    "chartOtherUnits_many": "No se muestran {{count}} resultados por estar en otra unidad.",
+    "chartOtherUnits_other": "No se muestran {{count}} resultados por estar en otra unidad."
   },
   "oralCare": {
     "title": "Cuidado bucal",
@@ -10298,12 +10383,24 @@
       "title": "Objetivo de cepillado",
       "dailyTarget": "Cepillados al día",
       "targetTime": "Tiempo por cepillado",
-      "hint": "Los dentistas suelen recomendar cepillarse dos veces al día durante 2 minutos."
+      "hint": "Los dentistas suelen recomendar cepillarse dos veces al día durante 2 minutos.",
+      "perDay_one": "{{count}} vez al día",
+      "perDay_many": "{{count}} veces al día",
+      "perDay_other": "{{count}} veces al día"
     },
     "stats": {
       "brushed": "Cepillado realizado",
       "time": "Tiempo cepillándose",
-      "ofTarget": "{{brushed}} de {{target}}"
+      "ofTarget": "{{brushed}} de {{target}}",
+      "streak_one": "Racha: {{count}} día",
+      "streak_many": "Racha: {{count}} días",
+      "streak_other": "Racha: {{count}} días",
+      "best_one": "Mejor: {{count}} día",
+      "best_many": "Mejor: {{count}} días",
+      "best_other": "Mejor: {{count}} días",
+      "weekA11y_one": "Objetivo cumplido en {{count}} de los últimos 7 días",
+      "weekA11y_many": "Objetivo cumplido en {{count}} de los últimos 7 días",
+      "weekA11y_other": "Objetivo cumplido en {{count}} de los últimos 7 días"
     },
     "source": {
       "timer": "Temporizador",
@@ -10500,7 +10597,10 @@
     "next": "Página siguiente",
     "finishReview": "Confirma cada ingrediente antes de guardar.",
     "amountRequired": "Introduce la cantidad total de la receta en la unidad seleccionada. El volumen nunca se trata automáticamente como masa.",
-    "missingServings": "La fuente no tiene porciones de receta. Introduce las porciones para guardar para el seguimiento; la sincronización nutricional seguirá no disponible."
+    "missingServings": "La fuente no tiene porciones de receta. Introduce las porciones para guardar para el seguimiento; la sincronización nutricional seguirá no disponible.",
+    "recipeYield_one": "Esta receta produce {{servings}} porción",
+    "recipeYield_many": "Esta receta produce {{servings}} porciones",
+    "recipeYield_other": "Esta receta produce {{servings}} porciones"
   },
   "toolfallback": {
     "used": "Herramienta usada",
@@ -10698,7 +10798,10 @@
       "waterMissing": "El recipiente de agua ya no existe",
       "amount": "{{quantity}} {{unit}}",
       "food": "{{amount}} · {{meal}}",
-      "unsupported": "Actualiza la app para usar esta etiqueta"
+      "unsupported": "Actualiza la app para usar esta etiqueta",
+      "servings_one": "{{formattedCount}} porción",
+      "servings_many": "{{formattedCount}} porciones",
+      "servings_other": "{{formattedCount}} porciones"
     },
     "type": {
       "water": "Agua o bebida",
@@ -10706,14 +10809,23 @@
     },
     "container": {
       "add": "Añadir etiqueta NFC",
-      "hint": "Toca el adhesivo en esta botella para registrar una bebida"
+      "hint": "Toca el adhesivo en esta botella para registrar una bebida",
+      "count_one": "{{formattedCount}} etiqueta registra este envase",
+      "count_many": "{{formattedCount}} etiquetas registran este envase",
+      "count_other": "{{formattedCount}} etiquetas registran este envase"
     },
     "food": {
-      "hint": "Toca el adhesivo para registrar este alimento"
+      "hint": "Toca el adhesivo para registrar este alimento",
+      "count_one": "{{formattedCount}} etiqueta registra este alimento",
+      "count_many": "{{formattedCount}} etiquetas registran este alimento",
+      "count_other": "{{formattedCount}} etiquetas registran este alimento"
     },
     "meal": {
       "auto": "Por hora del día",
-      "hint": "Toca el adhesivo para registrar esta comida"
+      "hint": "Toca el adhesivo para registrar esta comida",
+      "count_one": "{{formattedCount}} etiqueta registra esta comida",
+      "count_many": "{{formattedCount}} etiquetas registran esta comida",
+      "count_other": "{{formattedCount}} etiquetas registran esta comida"
     }
   },
   "serverStatus": {
@@ -10722,7 +10834,8 @@
     "goToSettings": "Ir a Ajustes",
     "unreachableTitle": "Sin conexión con el servidor",
     "unreachableSubtitle": "Revisa tu conexión o inténtalo de nuevo.",
-    "tryAgain": "Reintentar"
+    "tryAgain": "Reintentar",
+    "offlineWorkouts": "Iniciar un entrenamiento guardado sin conexión"
   },
   "waterLog": {
     "title": "Bebidas",
@@ -10800,7 +10913,16 @@
     "summaryTitle": "Rachas y otros cuidados",
     "currentStreak": "Racha actual",
     "longestStreak": "Racha más larga",
-    "otherCare": "Hilo dental, enjuague bucal y otros"
+    "otherCare": "Hilo dental, enjuague bucal y otros",
+    "brushesTooltip_one": "{{count}} cepillado · {{date}}",
+    "brushesTooltip_many": "{{count}} cepillados · {{date}}",
+    "brushesTooltip_other": "{{count}} cepillados · {{date}}",
+    "insightStreak_one": "Tu racha más larga es de {{count}} día.",
+    "insightStreak_many": "Tu racha más larga es de {{count}} días.",
+    "insightStreak_other": "Tu racha más larga es de {{count}} días.",
+    "daysCount_one": "{{count}} día",
+    "daysCount_many": "{{count}} días",
+    "daysCount_other": "{{count}} días"
   },
   "treadmillSettings": {
     "title": "Cinta de correr y zancada",
@@ -10853,7 +10975,22 @@
     "watchScaleHint": "Se usa cuando mantienes la distancia del reloj en lugar de escribir la de la cinta. El reloj calcula según el balanceo de tu brazo y, cada vez que escribes la cifra de la cinta, aprende el nivel de desvío. Esto es automático.",
     "watchScaleWalk": "Caminatas",
     "watchScaleRun": "Carreras",
-    "watchScaleNone": "Aún no aprendido."
+    "watchScaleNone": "Aún no aprendido.",
+    "strideSummaryLearned_one": "{{stride}} · calculado a partir de {{count}} distancia",
+    "strideSummaryLearned_many": "{{stride}} · calculado a partir de {{count}} distancias",
+    "strideSummaryLearned_other": "{{stride}} · calculado a partir de {{count}} distancias",
+    "strideLearned_one": "Aprendido de {{count}} distancia real. Cada nueva distancia lo ajusta ligeramente.",
+    "strideLearned_many": "Aprendido de {{count}} distancias reales. Cada nueva distancia lo ajusta ligeramente.",
+    "strideLearned_other": "Aprendido de {{count}} distancias reales. Cada nueva distancia lo ajusta ligeramente.",
+    "watchScaleLower_one": "Reducido en un {{percent}}. Aprendido de {{count}} carrera.",
+    "watchScaleLower_many": "Reducido en un {{percent}}. Aprendido de {{count}} carreras.",
+    "watchScaleLower_other": "Reducido en un {{percent}}. Aprendido de {{count}} carreras.",
+    "watchScaleRaise_one": "Aumentado en un {{percent}}. Aprendido de {{count}} carrera.",
+    "watchScaleRaise_many": "Aumentado en un {{percent}}. Aprendido de {{count}} carreras.",
+    "watchScaleRaise_other": "Aumentado en un {{percent}}. Aprendido de {{count}} carreras.",
+    "watchScaleSame_one": "El reloj coincide con la cinta. Aprendido de {{count}} carrera.",
+    "watchScaleSame_many": "El reloj coincide con la cinta. Aprendido de {{count}} carreras.",
+    "watchScaleSame_other": "El reloj coincide con la cinta. Aprendido de {{count}} carreras."
   },
   "bloodAlcohol": {
     "title": "Alcohol en sangre estimado",
@@ -10915,7 +11052,13 @@
       "minutesExtra": "(+{{extra}} min extra)",
       "loadExtra": "(+{{extra}} extra)",
       "thisWeek": "Esta semana",
-      "ahead": "Próximos"
+      "ahead": "Próximos",
+      "extra_one": "{{formattedCount}} extra",
+      "extra_many": "{{formattedCount}} extras",
+      "extra_other": "{{formattedCount}} extras",
+      "sessionsLogged_one": "{{formattedCount}} sesión registrada",
+      "sessionsLogged_many": "{{formattedCount}} sesiones registradas",
+      "sessionsLogged_other": "{{formattedCount}} sesiones registradas"
     },
     "loadFailed": "No se pudo cargar tu calendario de entrenamiento.",
     "refreshFailed": "No se pudo actualizar. Mostrando el último resultado.",
@@ -10939,6 +11082,140 @@
     "weekTotalA11y": "{{done}} de {{planned}} sesiones planificadas completadas",
     "weekTotalShort": "{{done}}/{{planned}}",
     "weekTotalHeader": "Total",
-    "weekEmptyA11y": "Sin sesiones esta semana"
+    "weekEmptyA11y": "Sin sesiones esta semana",
+    "moreA11y_one": "{{formattedCount}} sesión más",
+    "moreA11y_many": "{{formattedCount}} sesiones más",
+    "moreA11y_other": "{{formattedCount}} sesiones más",
+    "weekLoggedA11y_one": "{{formattedCount}} sesión registrada",
+    "weekLoggedA11y_many": "{{formattedCount}} sesiones registradas",
+    "weekLoggedA11y_other": "{{formattedCount}} sesiones registradas",
+    "more_one": "+{{formattedCount}}",
+    "more_many": "+{{formattedCount}}",
+    "more_other": "+{{formattedCount}}",
+    "showEarlier_one": "Mostrar semana anterior ({{formattedCount}})",
+    "showEarlier_many": "Mostrar semanas anteriores ({{formattedCount}})",
+    "showEarlier_other": "Mostrar semanas anteriores ({{formattedCount}})"
+  },
+  "featureSettings": {
+    "title": "Funciones",
+    "description": "Activa o desactiva funciones completas en esta aplicación.",
+    "footnote": "Desactivar una función solo la oculta: no se elimina nada y las sincronizaciones e importaciones siguen funcionando.",
+    "loading": "Cargando",
+    "loadError": "No se pudo cargar este ajuste.",
+    "saveFailed": "No se pudo guardar este ajuste. Por favor, inténtalo de nuevo.",
+    "appOnly": "Solo esta aplicación. El sitio web tiene su propio interruptor.",
+    "serverTooOld": "Actualiza tu servidor SparkyFitness para cambiar esto.",
+    "groups": {
+      "health": "Salud",
+      "nutrition": "Nutrición",
+      "training": "Entrenamiento",
+      "wellbeing": "Bienestar"
+    },
+    "cycle": {
+      "title": "Ciclo y embarazo",
+      "discreetTitle": "Bienestar",
+      "description": "Realiza un seguimiento del período, la fertilidad y el embarazo.",
+      "scope": "Un solo interruptor para la aplicación y el sitio web.",
+      "setupAction": "Configurar",
+      "setupHint": "Responde a unas preguntas para finalizar la configuración."
+    },
+    "labResults": {
+      "title": "Resultados de laboratorio",
+      "description": "Registra análisis de sangre y sigue la evolución de cada marcador."
+    }
+  },
+  "offline": {
+    "keptMark": "Disponible sin conexión",
+    "keepOffline": "Mantener sin conexión",
+    "removeFromOffline": "Quitar de sin conexión",
+    "picturesTitle": "Imágenes de ejercicios",
+    "picturesOnMobileData": "Descargar imágenes con datos móviles",
+    "picturesOnMobileDataSubtitle": "Desactivado: las imágenes se descargan solo con Wi-Fi. Hasta 300 MB.",
+    "keptHeading": "Ejercicios guardados sin conexión",
+    "keptIntro": "Las imágenes del plan de esta semana y de tus entrenamientos guardados se conservan automáticamente. Para guardar más, mantén pulsados los ejercicios en la biblioteca.",
+    "keptRemove": "Toca para dejar de conservar sin conexión",
+    "presetOfflineNote": "Sin conexión: puedes iniciar o registrar este entrenamiento. Para modificarlo o duplicarlo se requiere conexión.",
+    "leave": {
+      "deleteMessage": "Al eliminar este servidor también se elimina lo que está pendiente en este teléfono y nunca llegará al servidor.",
+      "switchMessage": "Se mantendrán en este teléfono y se subirán cuando vuelvas a cambiar a este servidor.",
+      "uploadFirst": "Subir primero",
+      "deleteAnyway": "Eliminar de todos modos",
+      "switchAnyway": "Cambiar de todos modos",
+      "title_one": "{{count}} entrenamiento pendiente de subir",
+      "title_many": "{{count}} entrenamientos pendientes de subir",
+      "title_other": "{{count}} entrenamientos pendientes de subir"
+    },
+    "presetUpdateQueued": "El entrenamiento guardado se actualizará cuando vuelvas a tener conexión",
+    "presetUpdateSkipped": "El entrenamiento guardado \"{{name}}\" no se actualizó porque se modificó en otro lugar",
+    "presetUpdated": "Entrenamiento guardado \"{{name}}\" actualizado",
+    "diaryNote": "Solo los entrenamientos están disponibles sin conexión. Las comidas y otros registros requieren conexión.",
+    "diaryNothingSaved": "No hay nada guardado para este día",
+    "finishedTitle": "Guardado en este teléfono",
+    "finishedMessage": "Se subirá cuando haya conexión con tu servidor.",
+    "deleteSavedTitle": "Eliminado en este teléfono",
+    "deleteSavedMessage": "Se eliminará de tu servidor tan pronto como haya conexión.",
+    "startedTitle": "Iniciado sin conexión",
+    "startedMessage": "Este entrenamiento se guarda en este teléfono y se sube cuando haya conexión con tu servidor.",
+    "notReadyTitle": "Aún no está listo para entrenamientos sin conexión",
+    "notReadyMessage": "Conéctate a tu servidor una vez para que este teléfono guarde lo necesario para los entrenamientos.",
+    "banner": "Sin conexión: mostrando datos guardados en este teléfono",
+    "bannerHint": "Comprobar la conexión de nuevo",
+    "intro": "Los entrenamientos se pueden iniciar y registrar sin conexión. Se guardarán en este teléfono y se subirán cuando haya conexión con tu servidor.",
+    "waitingHeading": "Pendiente de subida",
+    "nothingWaiting": "No hay nada pendiente",
+    "nothingWaitingSubtitle": "Todo el contenido de este teléfono se ha subido.",
+    "waitingItem": "{{kind}}, {{date}}",
+    "uploadNow": "Subir ahora",
+    "uploadDone": "Todo se ha subido",
+    "uploadStillWaiting": "Algunos elementos aún están pendientes",
+    "uploadStillWaitingDetail": "Se mantendrán en este teléfono y se subirán cuando haya conexión con tu servidor.",
+    "storageHeading": "En este teléfono",
+    "storageTitle": "Guardado para uso sin conexión",
+    "storageValue": "{{size}} MB",
+    "refreshRow": "Actualizar ahora",
+    "refreshing": "Actualizando…",
+    "neverRefreshed": "Aún no se ha descargado. Conéctate a tu servidor una vez para preparar los entrenamientos sin conexión.",
+    "lastRefreshed": "Última actualización {{when}}",
+    "refreshDone": "Los datos guardados están al día",
+    "refreshFailed": "No se pudo actualizar",
+    "refreshFailedDetail": "No se pudo conectar con tu servidor. Se conserva lo que ya está guardado.",
+    "clearRow": "Borrar datos sin conexión",
+    "clearRowSubtitle": "Se conservan las subidas que aún están pendientes",
+    "clearTitle": "¿Borrar datos sin conexión?",
+    "clearMessage": "Los entrenamientos guardados, ejercicios y otros datos conservados para el uso sin conexión se eliminarán de este teléfono y se volverán a descargar la próxima vez. Se mantendrá todo lo pendiente de subir.",
+    "clearConfirm": "Borrar",
+    "status": {
+      "pending": "Pendiente de subida",
+      "sending": "Subiendo…",
+      "conflict": "Modificado en otro lugar. Toca para elegir.",
+      "needsSignIn": "Inicia sesión de nuevo para subir",
+      "failed": "El servidor no lo aceptó"
+    },
+    "conflict": {
+      "phoneSuffix": "(teléfono)",
+      "deletedTitle": "Eliminado en otro lugar",
+      "deletedMessage": "Este entrenamiento se eliminó en otro dispositivo mientras este teléfono estaba sin conexión.",
+      "saveAsNew": "Guardar como nuevo entrenamiento",
+      "discard": "Descartar la copia de este teléfono",
+      "changedTitle": "Modificado en otro lugar",
+      "changedMessage": "Este entrenamiento se modificó en otro dispositivo mientras este teléfono estaba sin conexión. ¿Cuál quieres conservar?",
+      "keepPhone": "Conservar el entrenamiento de este teléfono",
+      "keepServer": "Conservar la otra versión",
+      "saveSeparately": "Conservar ambos"
+    },
+    "kind": {
+      "workout": "Entrenamiento",
+      "other": "Cambio guardado"
+    },
+    "libraryNote": "Solo los entrenamientos y ejercicios están disponibles sin conexión. Todo lo demás en la Biblioteca requiere conexión.",
+    "keptAdded_one": "Se guardarán sin conexión las imágenes de {{count}} ejercicio",
+    "keptAdded_many": "Se guardarán sin conexión las imágenes de {{count}} ejercicios",
+    "keptAdded_other": "Se guardarán sin conexión las imágenes de {{count}} ejercicios",
+    "keptRemoved_one": "{{count}} ejercicio ya no se guarda sin conexión",
+    "keptRemoved_many": "{{count}} ejercicios ya no se guardan sin conexión",
+    "keptRemoved_other": "{{count}} ejercicios ya no se guardan sin conexión",
+    "selectedCount_one": "{{count}} seleccionado",
+    "selectedCount_many": "{{count}} seleccionados",
+    "selectedCount_other": "{{count}} seleccionados"
   }
 }

@@ -37,4 +37,14 @@
     <string name="widget_water_status_nothing_to_remove">呢度冇記錄任何飲水可以移除</string>
     <string name="sparky_water_widget_description">今日水份，附有加或者減一杯水嘅按鈕</string>
     <string name="widget_preview_water_amount">1,250 / 2,000 ml</string>
+    <string name="widget_kj_left">剩 %1$s kJ</string>
+    <string name="widget_kj_left_empty">剩 - kJ</string>
+    <string name="widget_open_diary">開日記</string>
+    <string name="widget_open_fasting">開斷食</string>
+    <string name="widget_kcal_eaten">已食 %1$s kcal</string>
+    <string name="widget_kj_eaten">已食 %1$s kJ</string>
+    <string name="widget_goal">目標</string>
+    <string name="widget_food">食物</string>
+    <string name="widget_burned">燒咗</string>
+    <string name="widget_amount_of_goal">%1$s / %2$s</string>
 </resources>

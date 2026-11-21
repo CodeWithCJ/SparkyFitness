@@ -797,7 +797,7 @@
     "editFoodDetailsDescription": "Ajusta los detalles del alimento antes de añadirlo a tu base de datos personalizada.",
     "addNewFood": "Añadir nuevo alimento",
     "addNewFoodDescription": "Introduce los detalles de un nuevo alimento para añadirlo a tu base de datos.",
-    "scanBarcodeDescription": "Coloca el código de barras del producto frente a la cámara.",
+    "scanBarcodeDescription": "Coloca el código de barras del producto frente a la cámara o usa una foto del mismo.",
     "importFromCSVDescription": "Importa un archivo CSV para añadir varios alimentos de una vez.",
     "yourFoods": "Tus alimentos",
     "yourMeals": "Tus comidas",
@@ -1011,11 +1011,11 @@
       "canUseExerciseLibrary": "Puede usar mi biblioteca de ejercicios y entrenamientos",
       "canUseExerciseLibraryHelp": "Permite al delegado ver y utilizar tus ejercicios personalizados y rutinas preestablecidas al cambiar de contexto. No otorga acceso a los registros del diario ni a la configuración del perfil.",
       "canManageCheckin": "Puede gestionar los datos de seguimiento",
-      "canManageCheckinHelp": "Permite al delegado registrar peso, medidas corporales, fotos de progreso, registros de sueño, estado de ánimo y estado de ayuno en tu nombre. Los registros del diario están bloqueados. Otorga acceso al perfil en modo de solo lectura.",
+      "canManageCheckinHelp": "Permite que el delegado registre el peso, las medidas corporales, las fotos de progreso, los registros de sueño, los registros de estado de ánimo y el estado de ayuno en tu nombre. También le da acceso a tus resultados de laboratorio. Los registros del diario están bloqueados. Proporciona acceso de solo lectura al perfil.",
       "canManageMedications": "Puede gestionar medicamentos",
       "canManageMedicationsHelp": "Permite al delegado registrar medicamentos, dosis, planes de titulación y zonas de inyección en tu nombre. Los registros del diario están bloqueados. Otorga acceso al perfil en modo de solo lectura.",
       "canViewReports": "Puede ver informes",
-      "canViewReportsHelp": "Permite al delegado ver gráficos, estadísticas y registros históricos en tu panel. No se conceden privilegios de escritura. Otorga acceso al perfil en modo de solo lectura.",
+      "canViewReportsHelp": "Permite que el delegado vea gráficos, estadísticas y registros históricos en tu panel. También le da acceso de solo lectura a tus resultados de laboratorio. No se otorgan permisos de escritura. Proporciona acceso de solo lectura al perfil.",
       "shareExternalProviders": "Compartir proveedores de datos externos",
       "shareExternalProvidersHelp": "Permite al delegado buscar alimentos/ejercicios utilizando tus proveedores de API configurados (p. ej., FatSecret, USDA). Las integraciones de salud (Garmin, Fitbit, etc.) son estrictamente privadas y nunca se comparten.",
       "accessEndDate": "Fecha de finalización del acceso (opcional)",
@@ -1508,8 +1508,7 @@
       "resetSuccessTitle": "Restablecimiento del perfil",
       "switchInFeatures": "El seguimiento del ciclo menstrual se activa o desactiva en Funciones.",
       "onInFeatures": "El seguimiento del ciclo está activo. Puedes desactivarlo en Funciones.",
-      "offInFeatures": "El seguimiento del ciclo está desactivado. Actívalo en Funciones.",
-      "openFeatures": "Abrir Funciones"
+      "offInFeatures": "El seguimiento del ciclo está desactivado. Actívalo en Funciones."
     },
     "nutrientGoalDirection": {
       "title": "Orientación del objetivo de nutrientes",
@@ -1549,9 +1548,9 @@
       "activityModerate": "Moderadamente activo (×1.55)",
       "activityNone": "Ninguno (×1.0)",
       "activityNotMuch": "Sedentario (×1.2)",
-      "adaptiveActivityHint": "En el modo adaptativo esta es la estimación alternativa hasta que tengas suficientes datos de seguimiento, y después sigue fijando los límites de plausibilidad. Tu TDEE medido se limita a ±500 kcal respecto a TMB × este multiplicador, así que un nivel demasiado bajo puede frenar un gasto realmente mayor.",
+      "adaptiveActivityHint": "En el modo Adaptativo, esto establece la referencia base de la fórmula y el margen de plausibilidad de ±500 kcal para cada estimación completa. La estimación mostrada cambia de forma gradual y vuelve hacia la referencia base de la fórmula cuando los datos pierden vigencia, por lo que un nivel de actividad subestimado puede mantenerla baja.",
       "adaptiveGoal": "Objetivo adaptativo",
-      "adaptiveGoalDescription": "Tu objetivo calórico se calcula a partir de tu gasto energético medido, comparando la ingesta registrada con la evolución de tu peso durante los últimos 28 días. Esta es la opción más precisa una vez que hayas llevado un registro constante de tu peso y de lo que comes durante unas semanas.",
+      "adaptiveGoalDescription": "Tu objetivo de calorías utiliza el gasto estimado a partir de los alimentos registrados y los pesos medidos. Los datos completos nuevos se incorporan de forma gradual, y los datos más antiguos van perdiendo peso hacia la referencia base de la fórmula basada en la TMB. Registrar con constancia ayuda, pero los alimentos sin registrar y las fluctuaciones del peso en la báscula añaden incertidumbre.",
       "allowNegativeAdjustment": "Permitir que la proyección de respaldo reduzca el objetivo",
       "dynamicGoal": "Objetivo dinámico",
       "dynamicGoalDescription": "Tu objetivo de calorías se ajustará dinámicamente según tu nivel de actividad diaria (p. ej., ejercicio, pasos). Es ideal para personas activas o cuyo nivel de actividad varía a diario.",
@@ -1670,9 +1669,9 @@
       "awaitingCalibrationTitle": "Esperando la Calibración de TDEE Adaptativo",
       "customPercentageUnreachable": "Más profundo que el ~{{percent}}% que permite tu límite de seguridad; el objetivo se elevará a ese límite.",
       "deficitCeilingHintEstimated": "En tu nivel de actividad actual, el déficit más profundo alcanzable es de aprox. {{percent}}%. Los modos más profundos se elevarán a tu límite de seguridad.",
-      "deficitCeilingHintMeasured": "Según tu TDEE medido, el déficit más profundo alcanzable es de aprox. {{percent}}%. Los modos más profundos se elevarán a tu límite de seguridad.",
-      "clampAdviceEstimated": ". Para perder peso más rápido, aumenta tu gasto mediante actividad o verifica que tu Nivel de Actividad no esté subestimado; este define el techo hasta que tengas suficiente historial para una base medida.",
-      "clampAdviceMeasured": ". Para perder peso más rápido, aumenta tu gasto real en lugar de reducir más la ingesta; tu base ya está medida, por lo que el ajuste del Nivel de Actividad ya no le afecta.",
+      "deficitCeilingHintMeasured": "Según tu GET estimado, el déficit máximo alcanzable es de aproximadamente un {{percent}} %. Los modos más intensos se ajustan automáticamente a tu límite mínimo de seguridad.",
+      "clampAdviceEstimated": ". Comprueba que tu nivel de actividad no esté subestimado: establece la referencia base de la fórmula y los límites de plausibilidad utilizados en todo el cálculo gradual del GET adaptativo.",
+      "clampAdviceMeasured": ". Con el GET adaptativo, el nivel de actividad sigue estableciendo la referencia base de la fórmula y los límites de plausibilidad, además de influir en el retorno gradual a esa referencia base a medida que los datos pierden vigencia.",
       "modeNames": {
         "maintain": "Mantenimiento",
         "recomp": "Recomposición corporal",
@@ -1793,7 +1792,7 @@
       "surplus": "Superávit",
       "deficit": "Déficit",
       "adaptiveFormula": "Fórmula: Calorías diarias promedio − (Cambio de peso diario en {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})",
-      "adaptiveFormulaExplainer": "{{kcalPerUnit}} kcal/{{massUnit}} es la energía que representa cada {{unitName}} de peso corporal, por lo que tu tendencia de peso se puede convertir en calorías. El peso corporal perdido o ganado es una mezcla de grasa (~{{fatPerUnit}} kcal/{{massUnit}}) y tejido magro y agua (~{{leanPerUnit}} kcal/{{massUnit}}), y {{kcalPerUnit}} refleja una combinación típica.",
+      "adaptiveFormulaExplainer": "El cálculo asume {{kcalPerUnit}} kcal/{{massUnit}} para un cambio sostenido de tejido. Un {{unitName}} de peso en la báscula también puede incluir agua, glucógeno y contenido digestivo; esta estimación no puede medir su energía ni tu composición corporal. La grasa (~{{fatPerUnit}} kcal/{{massUnit}}) y el tejido magro (~{{leanPerUnit}} kcal/{{massUnit}}) tienen densidades energéticas diferentes.",
       "adjustment": "Ajuste",
       "goalAdjustmentLabel": "Ajuste Objetivo:",
       "adaptiveWeightedFormula": "Fórmula: Ingesta diaria ponderada − (Cambio diario de peso observado en {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})",
@@ -1801,7 +1800,7 @@
     },
     "calorieBreakdown": {
       "confidence": "Confianza: {{level}}",
-      "adaptiveConfidenceCaveat": "Basado en {{days}} día(s) de registros calóricos. Registrar menos ingesta de la real hace que esta estimación sea alta; registra de manera constante para mejorarla.",
+      "adaptiveConfidenceCaveat": "Basado en {{days}} día(s) de registros de calorías. Registrar una ingesta menor a la real puede hacer que esta estimación sea demasiado baja; los días incompletos y las fluctuaciones de peso añaden incertidumbre.",
       "bodyFatUsed": "El valor medido anterior es utilizado por esta fórmula de TMB; la estimación se muestra como comparación.",
       "bodyFatMissing": "{{algorithm}} utiliza la grasa corporal, pero no hay mediciones registradas; añade una para obtener un objetivo preciso.",
       "bodyFatUnused": "Se muestra solo como referencia; {{algorithm}} no requiere la grasa corporal como dato de entrada.",
@@ -2155,7 +2154,10 @@
       "syncLabel": "Sincronizar:",
       "neverSynced": "Última sincronización: nunca",
       "garminServiceUnreachable": "Servicio de Garmin inalcanzable. No es posible sincronizar.",
-      "mcpServerSendsUserId": "Indica al servidor quién está chateando"
+      "mcpServerSendsUserId": "Indica al servidor quién está chateando",
+      "mcpServerToolCount_one": "El chat puede usar {{count}} herramienta",
+      "mcpServerToolCount_many": "El chat puede usar {{count}} herramientas",
+      "mcpServerToolCount_other": "El chat puede usar {{count}} herramientas"
     },
     "providerSpecificFields": {
       "appURL": "URL de la app",
@@ -2267,7 +2269,7 @@
     "oauthClients": {
       "authorizedAt": "Autorizado:",
       "description": "Revisar y revocar aplicaciones conectadas mediante Remote MCP OAuth",
-      "empty": "No hay actualmente aplicaciones que tengan acceso OAuth para tu cuenta.",
+      "empty": "Actualmente ninguna aplicación tiene acceso mediante OAuth a tu cuenta.",
       "loadError": "Error al cargar las aplicaciones conectadas.",
       "loading": "Cargando aplicaciones conectadas…",
       "permissions": "Permisos:",
@@ -2332,7 +2334,8 @@
       "footnote": "El diario y los ajustes siempre se muestran. Ocultar una pestaña solo cambia este sitio web: no se elimina nada y la aplicación móvil mantiene sus propios ajustes.",
       "saveError": "No se pudo guardar tu elección de pestañas. Por favor, inténtalo de nuevo.",
       "loadError": "No se pudieron cargar tus elecciones de pestañas.",
-      "actingOnBehalf": "Solo puedes cambiar las pestañas en tu propia cuenta."
+      "actingOnBehalf": "Solo puedes cambiar las pestañas en tu propia cuenta.",
+      "featureOff": "No se muestra: desactivado en Funciones."
     },
     "chatMcp": {
       "title": "Herramientas externas",
@@ -2382,7 +2385,13 @@
         "unreachable": "No se pudo conectar con el servidor. Comprueba la URL.",
         "policy": "La política de red no permite esta dirección.",
         "other": "El servidor no listó sus herramientas ({{reason}})."
-      }
+      },
+      "changedSummary_one": "{{count}} herramienta cambió desde que guardaste y se desmarcó. Revísala abajo.",
+      "changedSummary_many": "{{count}} herramientas cambiaron desde que guardaste y se desmarcaron. Revísalas abajo.",
+      "changedSummary_other": "{{count}} herramientas cambiaron desde que guardaste y se desmarcaron. Revísalas abajo.",
+      "goneSummary_one": "{{count}} herramienta ya no está en el servidor.",
+      "goneSummary_many": "{{count}} herramientas ya no están en el servidor.",
+      "goneSummary_other": "{{count}} herramientas ya no están en el servidor."
     },
     "features": {
       "title": "Funciones",
@@ -2401,6 +2410,17 @@
         "scope": "Un solo interruptor para el sitio web y la aplicación móvil.",
         "setupHint": "Responde a unas breves preguntas para terminar la configuración.",
         "setupAction": "Configurar"
+      },
+      "open": "Abrir Funciones",
+      "webOnly": "Solo este sitio web. La aplicación móvil tiene su propio interruptor.",
+      "serverTooOld": "Actualiza tu servidor SparkyFitness para cambiar esto.",
+      "off": {
+        "title": "{{name}} está desactivado",
+        "description": "Se conserva tu historial. Vuelve a activarlo para verlo aquí de nuevo.",
+        "turnOn": "Activar"
+      },
+      "labResults": {
+        "description": "Registra análisis de sangre y sigue la evolución de cada marcador."
       }
     }
   },
@@ -2982,26 +3002,26 @@
       "invalidMeasurements": "Mediciones no válidas para el cálculo del registro.",
       "navyMaleMath": "Fórmula (Hombre): 86,01 × log10(cintura - cuello) - 70,041 × log10(altura) + 36,76 (en pulgadas)\nCálculo: 86,01 × log10({{waist}}in - {{neck}}in) - 70,041 × log10({{height}}in) + 36,76\nCalculado: {{result}}%",
       "navyFemaleMath": "Fórmula (Mujer): 163,205 × log10(cintura + caderas - cuello) - 97,684 × log10(altura) - 78,387 (en pulgadas)\nCálculo: 163,205 × log10({{waist}}in + {{hips}}in - {{neck}}in) - 97,684 × log10({{height}}in) - 78,387\nCalculado: {{result}}%",
-      "fallbackInsufficient": "El objetivo utilizará la TMB alternativa ({{value}} {{unit}}) debido a datos insuficientes.",
-      "fallbackWeight": "El objetivo utilizará la TMB alternativa ({{value}} {{unit}}) porque faltan registros de peso (requiere al menos 2 registros de peso durante más de 7 días).",
-      "fallbackCalories": "El objetivo utilizará la TMB alternativa ({{value}} {{unit}}) porque faltan registros calóricos (requiere al menos 7 días con ≥200 kcal).",
-      "fallbackUnknown": "El objetivo utilizará la TMB alternativa ({{value}} {{unit}}) debido a: {{reason}}",
-      "fallbackRequiredDays": "El objetivo utilizará la TMB alternativa ({{value}} {{unit}}) hasta alcanzar {{required}} días de registros calóricos (actualmente {{days}}/{{required}} días registrados).",
+      "fallbackInsufficient": "El objetivo utilizará la referencia base de la fórmula basada en la TMB ({{value}} {{unit}}) debido a que los datos son insuficientes.",
+      "fallbackWeight": "El objetivo utilizará la referencia base de la fórmula basada en la TMB ({{value}} {{unit}}) porque los datos de peso son insuficientes (se requieren al menos {{readings}} días medidos en un periodo de {{span}} días o más).",
+      "fallbackCalories": "El objetivo utilizará la referencia base de la fórmula basada en la TMB ({{value}} {{unit}}) porque los datos de calorías son insuficientes (se requieren al menos {{required}} días con ≥200 kcal).",
+      "fallbackUnknown": "El objetivo utilizará la referencia base de la fórmula basada en la TMB ({{value}} {{unit}}) debido a: {{reason}}",
+      "fallbackRequiredDays": "El objetivo utilizará la referencia base de la fórmula basada en la TMB ({{value}} {{unit}}) hasta que se alcancen {{required}} días de registros de calorías (actualmente {{days}}/{{required}} días registrados).",
       "adaptiveTitle": "3. TDEE Adaptativo (Gasto Energético)",
       "fallbackEstimate": "Estimación Alternativa",
       "adaptiveTdee": "TDEE Adaptativo",
-      "adaptiveFormula": "Fórmula: Promedio de Calorías Diarias - (Cambio de Peso Diario en kg × 7700 kcal)",
+      "adaptiveFormula": "Fórmula: Calorías diarias promedio − (Cambio de peso diario en {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})",
       "adaptiveBypassedStatus": "Estado: Se omitió el cálculo directo ({{value}} {{unit}}) debido a un historial insuficiente.",
       "adaptiveChecklist": "Lista de verificación de TDEE adaptativo para dejar la estimación alternativa:",
-      "weightLogRequirement": "• Registros de Peso (2+ entradas durante 7+ días)",
+      "weightLogRequirement": "• Registros de peso ({{readings}}+ días medidos en un periodo de {{span}}+ días)",
       "weightLogsMissing": "❌ Faltante (registros de peso en Verificación)",
       "requirementMet": "✓ Cumplido",
-      "calorieLogRequirement": "• Registros de Calorías para cálculo de TDEE (7+ días ≥ 200 kcal)",
+      "calorieLogRequirement": "• Registros de calorías para el cálculo del GET y objetivos automáticos ({{required}}+ días ≥ 200 kcal)",
       "daysMissing": "❌ Faltante ({{days}}/{{required}} días registrados)",
       "daysMet": "✓ Cumplido ({{days}}/{{required}} días registrados)",
       "daysWarning": "⚠️ Incompleto ({{days}}/{{required}} días registrados)",
       "usingFallbackBmr": "Usando TMB alternativa × Multiplicador de actividad:",
-      "fallbackMath": "Cálculo: TMB ({{bmr}} kcal) × multiplicador de actividad ({{multiplier}}) = {{result}} {{unit}}",
+      "fallbackMath": "Cálculo: TMB ({{bmr}} {{unit}}) × multiplicador de actividad ({{multiplier}}) = {{result}} {{unit}}",
       "adaptiveActiveStatus": "Estado: Activo (línea base calculada desde los registros).",
       "averageDailyIntake": "Consumo calórico diario promedio:",
       "calculatedExpenditure": "Gasto calculado (TDEE):",
@@ -3022,7 +3042,7 @@
       "modeFixed": "Objetivo fijo",
       "modePercentage": "Recuperación por porcentaje",
       "tdeeSum": "({{intake}} {{sign}} {{delta}})",
-      "weightTrendCalories": "Energía de esa tendencia: −({{daily}} {{massUnit}}/día × {{kcalPerUnit}} kcal/{{massUnit}}) ≈ {{value}}",
+      "weightTrendCalories": "Energía según el ritmo de cambio de peso aplicado: −({{daily}} {{massUnit}}/día × {{kcalPerUnit}} kcal/{{massUnit}}) ≈ {{value}}",
       "weightTrendTerm": "Tendencia de peso: {{start}} → {{end}} ({{change}} a lo largo de los {{days}} días transcurridos entre el primer y el último día del periodo) = {{daily}} {{massUnit}}/día — medias de 7 días de tus pesos registrados, no las lecturas en sí, rellenando los días que faltan a partir de los días anterior y posterior",
       "averageDailyCalorieIntake": "Ingesta calórica media diaria: {{displayAdaptiveIntake}} {{energyUnitString}}",
       "calculatedExpenditureTDEE": "Gasto calculado (TDEE): {{energy}} {{energyUnitString}}",
@@ -5288,7 +5308,13 @@
     "acrophase": "Acrofase",
     "method2": "Método: {{method}}",
     "workdays2": "Días laborables: {{workdaysAvailable}}/{{workdaysNeeded}}",
-    "freeDays": "Días libres: {{freedaysAvailable}}/{{freedaysNeeded}}"
+    "freeDays": "Días libres: {{freedaysAvailable}}/{{freedaysNeeded}}",
+    "sleepSurplus": "Excedente de sueño",
+    "debtSurplus": "Excedente",
+    "debtSurplusDesc": "Vas al día con el sueño. Tu necesidad para esta noche es un poco menor.",
+    "trainingLoad": "Carga de entrenamiento",
+    "recovery": "Recuperación",
+    "recoveryScore": "{{score}}/100"
   },
   "chat": {
     "toolCategories": {
@@ -6918,12 +6944,7 @@
       "displayNameCapacityMlml": "{{displayName}} (<span>{{capacityMl}}</span>ml)",
       "energy": "Energía: {{energy}}"
     },
-    "ownerOnly": "Solo el propietario de la cuenta puede ver y cambiar esto.",
-    "off": {
-      "title": "{{name}} está desactivado",
-      "description": "Tu historial se conserva. Vuelve a activarlo para verlo aquí de nuevo.",
-      "turnOn": "Activar"
-    }
+    "ownerOnly": "Solo el propietario de la cuenta puede ver y cambiar esto."
   },
   "nutrientGoalDirection": {
     "min": "Mín.",
@@ -10178,16 +10199,16 @@
     "sourceFailed": "La fuente es inaccesible.",
     "retry": "Reintentar",
     "title": "Resultados del código de barras",
-    "yourFoods": "Tus alimentos",
+    "yourFoods": "Tus comidas",
     "fallback": "Alternativa",
     "basis": "Por {{quantity}} {{unit}}",
-    "sourceNotFound": "No se encontró ningún producto en esta fuente.",
+    "sourceNotFound": "No se ha encontrado el producto en esta fuente.",
     "useFood": "Usar alimento",
-    "notFound": "No se encontró ningún producto. Consulta otras fuentes o añade un alimento manualmente.",
+    "notFound": "No se ha encontrado el producto. Comprueba otras fuentes o añade una comida manualmente.",
     "otherSources": "Otras fuentes",
-    "loading": "Consultando otras fuentes…",
-    "alternativesFailed": "No se pudieron cargar otras fuentes.",
-    "noAlternatives": "No hay otras fuentes disponibles.",
+    "loading": "Comprobando en otras fuentes…",
+    "alternativesFailed": "No se han podido cargar otras fuentes.",
+    "noAlternatives": "No hay más fuentes disponibles.",
     "useSource": "Usar esta fuente"
   },
   "numericInput": {
@@ -10850,7 +10871,16 @@
       "readFailed": "No se pudo abrir ese archivo.",
       "photoTooLarge": "La foto es demasiado grande para leerse (límite 6 MB). Intenta con una foto más pequeña o una captura de pantalla.",
       "lockedAfterFailedSave": "El guardado no finalizó, por lo que esta revisión está bloqueada: Guardar de nuevo envía exactamente el mismo informe y se almacena solo una vez. Para cambiar los valores, vuelve a seleccionar el informe.",
-      "unconfirmedNoKey": "El guardado no finalizó y este navegador no puede marcar el informe para asegurar que se guarde solo una vez. Es posible que aún se esté guardando. Cierra esta ventana y comprueba tus resultados de laboratorio en unos minutos antes de importar algo más para evitar duplicados."
+      "unconfirmedNoKey": "El guardado no finalizó y este navegador no puede marcar el informe para asegurar que se guarde solo una vez. Es posible que aún se esté guardando. Cierra esta ventana y comprueba tus resultados de laboratorio en unos minutos antes de importar algo más para evitar duplicados.",
+      "saveCount_one": "Guardar {{count}} resultado",
+      "saveCount_many": "Guardar {{count}} resultados",
+      "saveCount_other": "Guardar {{count}} resultados",
+      "saved_one": "{{count}} resultado guardado",
+      "saved_many": "{{count}} resultados guardados",
+      "saved_other": "{{count}} resultados guardados",
+      "deleted_one": "{{count}} resultado importado eliminado",
+      "deleted_many": "{{count}} resultados importados eliminados",
+      "deleted_other": "{{count}} resultados importados eliminados"
     },
     "moreActions": "Más acciones",
     "deleteMarker": "Eliminar marcador y todos sus resultados",
@@ -10861,7 +10891,10 @@
     "notes": "Notas",
     "valueInvalid": "Introduce un marcador y un resultado numérico.",
     "historyCutOff": "El historial muestra como máximo los {{count}} resultados más recientes.",
-    "dateInvalid": "Introduce la fecha de la prueba."
+    "dateInvalid": "Introduce la fecha de la prueba.",
+    "chartOtherUnits_one": "No se muestra {{count}} resultado por estar en otra unidad.",
+    "chartOtherUnits_many": "No se muestran {{count}} resultados por estar en otra unidad.",
+    "chartOtherUnits_other": "No se muestran {{count}} resultados por estar en otra unidad."
   },
   "oralCare": {
     "title": "Cuidado bucal",
@@ -11108,7 +11141,10 @@
     "noDeclaredNutrition": "Sin nutrición declarada",
     "missingNutritionHint": "Esta receta de Mealie no tiene nutrición declarada. Calcúlala a partir de los ingredientes coincidentes.",
     "importAsMeal": "Importar ingredientes como una comida",
-    "searchMacros": "Proteínas {{protein}} g · Carbohidratos {{carbs}} g · Grasas {{fat}} g"
+    "searchMacros": "Proteínas {{protein}} g · Carbohidratos {{carbs}} g · Grasas {{fat}} g",
+    "recipeYield_one": "Esta receta produce {{servings}} porción",
+    "recipeYield_many": "Esta receta produce {{servings}} porciones",
+    "recipeYield_other": "Esta receta produce {{servings}} porciones"
   },
   "healthActivityTypes": {
     "american_football": "Fútbol americano",

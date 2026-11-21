@@ -108,7 +108,23 @@
       "temperatureUnit": "Temperatureinheit",
       "celsius": "Celsius (°C)",
       "fahrenheit": "Fahrenheit (°F)",
-      "glucoseUnit": "Glukose-Einheit"
+      "glucoseUnit": "Glukose-Einheit",
+      "bacFormula": {
+        "seidlDescription": "Anhand von Geschlecht, Körpergröße und Gewicht.",
+        "widmarkDescription": "Fester Körperwasseranteil nach Geschlecht. Benötigt Geschlecht und Gewicht.",
+        "watsonDescription": "Körperwasser anhand von Geschlecht, Alter, Körpergröße und Gewicht.",
+        "forrestDescription": "Anhand von Geschlecht und Body-Mass-Index (Körpergröße und Gewicht).",
+        "seidl": "Seidl",
+        "forrest": "Forrest",
+        "watson": "Watson (Standard)",
+        "widmark": "Widmark"
+      },
+      "bacDistributionFormula": "Formel zur Blutalkohol-Schätzung",
+      "bacEliminationRate": "Alkoholabbaurate (‰ pro Stunde)",
+      "bacEliminationRateHint": "Zwischen {{min}} und {{max}}, immer in ‰ pro Stunde. {{default}} ist ein gängiger Durchschnittswert.",
+      "bacDisplayUnit": "Einheit für Blutalkohol",
+      "bacPermille": "Promille (‰)",
+      "bacPercent": "Prozent (%)"
     },
     "waterTracking": {
       "title": "Wassererfassung",
@@ -675,7 +691,10 @@
       "resetError": "Onboarding konnte nicht zurückgesetzt werden. Bitte versuche es erneut.",
       "resetOnboarding": "Onboarding zurücksetzen und erneut ausführen",
       "resetSuccessDesc": "Das Onboarding wurde zurückgesetzt. Besuche die Registerkarte „Cycle Hub“, um mit dem Onboarding zu beginnen.",
-      "resetSuccessTitle": "Profil zurückgesetzt"
+      "resetSuccessTitle": "Profil zurückgesetzt",
+      "switchInFeatures": "Das Zyklus-Tracking wird unter „Funktionen“ ein- oder ausgeschaltet.",
+      "onInFeatures": "Das Zyklus-Tracking ist aktiviert. Du kannst es unter „Funktionen“ ausschalten.",
+      "offInFeatures": "Das Zyklus-Tracking ist deaktiviert. Schalte es unter „Funktionen“ ein."
     },
     "allergenPreferences": {
       "description": "Verfolge Allergene, vor denen du bei Lebensmitteln gewarnt werden möchtest",
@@ -1320,7 +1339,8 @@
       "appKeyLabel": "App-Schlüssel:",
       "syncLabel": "Synchronisierung:",
       "neverSynced": "Letzte Synchronisierung: noch nie",
-      "garminServiceUnreachable": "Der Garmin-Dienst ist nicht erreichbar. Eine Synchronisierung ist nicht möglich."
+      "garminServiceUnreachable": "Der Garmin-Dienst ist nicht erreichbar. Eine Synchronisierung ist nicht möglich.",
+      "mcpServerSendsUserId": "Teilt dem Server mit, wer chattet"
     },
     "providerSpecificFields": {
       "appURL": "App-URL",
@@ -1497,7 +1517,88 @@
       "footnote": "Tagebuch und Einstellungen werden immer angezeigt. Das Ausblenden eines Tabs wirkt sich nur auf diese Website aus: Es wird nichts gelöscht, und die mobile App behält ihre eigenen Einstellungen.",
       "saveError": "Deine Tab-Auswahl konnte nicht gespeichert werden. Bitte versuche es erneut.",
       "loadError": "Deine Tab-Auswahl konnte nicht geladen werden.",
-      "actingOnBehalf": "Du kannst die Tabs nur in deinem eigenen Konto ändern."
+      "actingOnBehalf": "Du kannst die Tabs nur in deinem eigenen Konto ändern.",
+      "featureOff": "Nicht angezeigt: unter „Funktionen“ deaktiviert."
+    },
+    "chatMcp": {
+      "title": "Externe Tools",
+      "description": "Dein Admin hat diese Dienste außerhalb von SparkyFitness hinzugefügt. Wenn ein Dienst aktiviert ist, kann Sparky Teile deines Chats dorthin senden und die Antworten auslesen. Alle Dienste sind deaktiviert, bis du sie einschaltest.",
+      "allow": "Sparky die Nutzung von {{name}} erlauben",
+      "loadError": "Externe Tools konnten nicht geladen werden.",
+      "saveError": "Speichern fehlgeschlagen. Bitte versuche es erneut.",
+      "accountId": "Sieht deine Konto-ID.",
+      "familyOff": "Externe Tools sind deaktiviert, während du das Profil einer anderen Person ansiehst.",
+      "retry": "Erneut versuchen",
+      "loading": "Externe Tools werden geladen…"
+    },
+    "mcpServer": {
+      "trustNote": "Alles, was die Assistenz an dieses Tool übergibt, wird an diesen Server gesendet, und die Rückmeldungen fließen in den Chat ein. Füge nur Server hinzu, denen du vertraust.",
+      "baseUrlLabel": "MCP-Server-URL",
+      "tokenLabel": "Bearer-Token (optional)",
+      "tokenKeepPlaceholder": "Leer lassen, um das gespeicherte Token beizubehalten",
+      "loadTools": "Tools laden",
+      "allowedCount": "{{count}} von {{max}} Tools ausgewählt.",
+      "loadingTools": "Tools werden geladen...",
+      "noTools": "Der Server führt keine Tools auf.",
+      "toolChanged": "Seit dem Speichern geändert. Wähle es erneut aus, um diese Version zuzulassen.",
+      "tokenUrlChanged": "Gib das Token erneut ein, wenn du die Server-URL änderst.",
+      "toolProblem": {
+        "not_object": "Das Eingabeschema beschreibt kein Objekt.",
+        "too_deep": "Das Eingabeschema ist zu tief verschachtelt.",
+        "malformed": "Das Eingabeschema ist fehlerhaft aufgebaut.",
+        "unreadable": "Das Eingabeschema kann nicht gelesen werden.",
+        "too_large": "Das Eingabeschema ist zu groß.",
+        "contains_token": "Das Eingabeschema enthält das Token.",
+        "name_too_long": "Der Name ist länger als 128 Zeichen.",
+        "name_blank_or_padded": "Der Name ist leer oder beginnt bzw. endet mit einem Leerzeichen."
+      },
+      "toolGone": "Der Server führt dieses Tool nicht mehr auf.",
+      "sendUserIdLabel": "Dem Server mitteilen, wer chattet",
+      "sendUserIdHelp": "Sendet die Benutzer-ID der angemeldeten Person im Header {{header}}, falls ein Server Daten personenbezogen speichert.",
+      "details": "Details",
+      "urlHelp": "Das Ändern der URL hebt die Auswahl der Tools auf.",
+      "urlCleared": "Die Auswahl der Tools wurde aufgehoben, da sich die URL geändert hat. Lade die Tools neu und wähle sie erneut aus.",
+      "limit": "Du hast die maximal zulässige Anzahl an Tools({{max}}) ausgewählt. Wähle eines ab, um ein anderes hinzuzufügen.",
+      "noneTicked": "Es sind noch keine Tools ausgewählt, daher kann Sparky diesen Server nicht verwenden.",
+      "detailsFor": "Details zu {{name}}",
+      "loadError": {
+        "auth": "Der Server hat das Token abgelehnt. Überprüfe das Bearer-Token.",
+        "timeout": "Der Server hat nicht innerhalb von {{seconds}} Sekunden geantwortet.",
+        "unreachable": "Der Server konnte nicht erreicht werden. Überprüfe die URL.",
+        "policy": "Diese Adresse ist gemäß der Netzwerkrichtlinie nicht zulässig.",
+        "other": "Der Server hat seine Tools nicht aufgelistet ({{reason}})."
+      },
+      "problem": "Der Chat kann dieses Tool nicht verwenden: {{reason}}"
+    },
+    "features": {
+      "title": "Funktionen",
+      "description": "Ganze Funktionen auf dieser Website ein- oder ausschalten",
+      "actingOnBehalf": "Nur die Kontoinhaberschaft kann Funktionen ein- oder ausschalten.",
+      "loadError": "Diese Einstellung konnte nicht geladen werden.",
+      "footnote": "Das Ausschalten einer Funktion blendet sie nur aus: Es wird nichts gelöscht und Synchronisierungen sowie Importe laufen weiter.",
+      "open": "Funktionen öffnen",
+      "webOnly": "Nur diese Website. Die mobile App hat einen eigenen Schalter.",
+      "serverTooOld": "Aktualisiere deinen SparkyFitness-Server, um dies zu ändern.",
+      "off": {
+        "title": "{{name}} ist ausgeschaltet",
+        "description": "Dein Verlauf bleibt erhalten. Schalte die Funktion wieder ein, um ihn hier wieder zu sehen.",
+        "turnOn": "Einschalten"
+      },
+      "groups": {
+        "health": "Gesundheit",
+        "nutrition": "Ernährung",
+        "training": "Training",
+        "wellbeing": "Wohlbefinden"
+      },
+      "cycle": {
+        "description": "Periode, Fruchtbarkeit und Schwangerschaft verfolgen.",
+        "scope": "Ein gemeinsamer Schalter für die Website und die mobile App.",
+        "setupHint": "Beantworte ein paar Fragen, um die Einrichtung abzuschließen.",
+        "setupAction": "Einrichten"
+      },
+      "labResults": {
+        "description": "Blutuntersuchungen erfassen und jeden Wert im Zeitverlauf verfolgen."
+      }
     }
   },
   "aboutDialog": {
@@ -2121,7 +2222,8 @@
     "scheduledWorkout": "Trainingseinheit",
     "activePlanLabel": "Aktiver Plan: {{name}}",
     "failedToLoadActivePlan": "Aktiver Trainingsplan konnte nicht geladen werden.",
-    "currentOfTotal": "({{current}} von {{total}})"
+    "currentOfTotal": "({{current}} von {{total}})",
+    "regenerationFailed": "Gespeichert, aber das Aktualisieren des Tagebuchs ist fehlgeschlagen. Bitte versuche es erneut."
   },
   "exerciseCard": {
     "title": "Übung",
@@ -2310,7 +2412,8 @@
     "selectBarcodeProvider": "Anbieter auswählen",
     "dataProvider": "Datenanbieter:",
     "aiEstimate": "KI-Schätzung (Zuverlässigkeit: {{ai_confidence}})",
-    "per": "Pro {{default_variant}}"
+    "per": "Pro {{default_variant}}",
+    "scanBarcodeOrLabel": "Barcode oder Etikett scannen"
   },
   "workoutPresetForm": {
     "createTitle": "Neue Trainingsvorlage erstellen",
@@ -3204,7 +3307,9 @@
       "candidatePlausibilityBand": "Plausibilitätsgrenzen basierend auf deinem Aktivitätslevel (×{{multiplier}}): {{min}}–{{max}} {{unit}}. Der rohe Kandidat liegt innerhalb dieses Bereichs; es folgt die Verlaufsanpassung.",
       "adaptiveHistoryAdjustment": "Verlaufsanpassung: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}} (der {{window}}-Tage-Durchschnitt nach dem Halten und Ausblenden älterer Schätzungen).",
       "activityCandidateCapped": "Nach der BMR-basierten Plausibilitätsdeckelung beträgt der Kandidat ohne Aktivität {{baseline}} {{unit}}; es folgt seine Verlaufsanpassung.",
-      "activityHistoryAdjustment": "Verlaufsanpassung des Aktivitäts-Basiswerts: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}}. Der Zielmodus und deine Sicherheitsuntergrenze gelten für diesen gefilterten Basiswert."
+      "activityHistoryAdjustment": "Verlaufsanpassung des Aktivitäts-Basiswerts: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}}. Der Zielmodus und deine Sicherheitsuntergrenze gelten für diesen gefilterten Basiswert.",
+      "oxfordMaleMathHenry2005": "Formel: ({{slope}} × Gewicht + {{intercept}}) × 239, für dein Alter\nRechnung: ({{slope}} × {{weight}} + {{intercept}}) × 239 = {{result}} kcal",
+      "oxfordFemaleMathHenry2005": "Formel: ({{slope}} × Gewicht + {{intercept}}) × 239, für dein Alter\nRechnung: ({{slope}} × {{weight}} + {{intercept}}) × 239 = {{result}} kcal"
     },
     "copyAllError": "Kopieren des gesamten Tages fehlgeschlagen.",
     "copyAllFromYesterday": "Alles von gestern kopieren",
@@ -3428,7 +3533,37 @@
       "pausedEarnBack": "Kalorien-Cycling ist pausiert: Trainingskalorien werden auf dein Ziel angerechnet.",
       "highDay": "Kalorienreicher Tag +{{amount}}",
       "lowDay": "Kalorienarmer Tag +{{amount}}"
-    }
+    },
+    "bloodAlcohol": {
+      "title": "Geschätzter Blutalkohol",
+      "failedToLoad": "Die Blutalkohol-Schätzung konnte nicht geladen werden.",
+      "disclaimer": "Nur eine grobe Schätzung. Dein tatsächlicher Blutalkoholwert kann um 20 % oder mehr abweichen. Verwende diesen Wert niemals, um deine Fahrtüchtigkeit zu beurteilen.",
+      "estimatedTimes": "Geschätzte Zeiten",
+      "inputs": {
+        "sex": "Geschlecht",
+        "weight": "Gewicht",
+        "height": "Körpergröße",
+        "age": "Geburtsdatum"
+      },
+      "missingInputs": "Um deinen Blutalkohol zu schätzen, ergänze bitte {{inputs}}. Bis dahin ist keine Schätzung möglich.",
+      "openProfile": "{{inputs}} im Profil hinterlegen",
+      "openCheckIn": "Gewicht und Körpergröße im Check-in erfassen",
+      "implausibleInputs": "Dein Gewicht und deine Körpergröße ergeben keine plausiblen Körperwerte, daher ist keine Schätzung möglich. Überprüfe deine aktuellen Werte im Check-in.",
+      "checkMeasurements": "Messwerte überprüfen",
+      "empty": "Für diesen Tag wurde kein Alkohol erfasst.",
+      "formulaFellBack": "Die {{formula}}-Formel passt nicht zu deinen Körpermaßen, daher verwendet diese Schätzung die Watson-Formel.",
+      "estimatedNow": "Aktuelle Schätzung",
+      "peak": "Geschätzter Höchstwert",
+      "legendCurve": "Geschätzter Blutalkohol (BAK)",
+      "legendNow": "Jetzt",
+      "legendDrink": "Erfasstes Getränk",
+      "legendEstimated": "Angenommene Zeit",
+      "drinks": "Gezählte Getränke",
+      "drink": "Getränk",
+      "gramsAlcohol": "{{grams}} g Alkohol"
+    },
+    "copyFoodError": "Lebensmittel konnte nicht kopiert werden.",
+    "copyFoodSuccess": "Lebensmittel kopiert."
   },
   "foodDiary": {
     "title": "Ernährungstagebuch",
@@ -3494,7 +3629,8 @@
     "fromPlan": "Aus Plan",
     "editFoodDatabase": "Lebensmitteldatenbank bearbeiten",
     "editFoodDatabaseDescription": "Bearbeite die Nährwertangaben für dieses Lebensmittel in deiner Datenbank.",
-    "editingTemporarilyUnavailable": "Das Bearbeiten von Lebensmitteldetails ist wegen Schemaänderungen vorübergehend nicht verfügbar."
+    "editingTemporarilyUnavailable": "Das Bearbeiten von Lebensmitteldetails ist wegen Schemaänderungen vorübergehend nicht verfügbar.",
+    "copyFood": "Lebensmittel kopieren"
   },
   "checkIn": {
     "neutral": "neutral",
@@ -5217,7 +5353,13 @@
     "zone_wind-down": "Entspannungsphase",
     "method2": "Methode: {{method}}",
     "workdays2": "Arbeitstage: {{workdaysAvailable}}/{{workdaysNeeded}}",
-    "freeDays": "Freie Tage: {{freedaysAvailable}}/{{freedaysNeeded}}"
+    "freeDays": "Freie Tage: {{freedaysAvailable}}/{{freedaysNeeded}}",
+    "sleepSurplus": "Schlafüberschuss",
+    "debtSurplus": "Überschuss",
+    "debtSurplusDesc": "Du hast einen Schlafvorsprung. Dein Schlafbedarf für heute Nacht ist etwas geringer.",
+    "trainingLoad": "Trainingsbelastung",
+    "recovery": "Erholung",
+    "recoveryScore": "{{score}}/100"
   },
   "medications": {
     "tabs": {
@@ -6505,7 +6647,8 @@
       "energyLevel": "Energielevel",
       "displayNameCapacityMlml": "{{displayName}} (<span>{{capacityMl}}</span>ml)",
       "energy": "Energie: {{energy}}"
-    }
+    },
+    "ownerOnly": "Nur die Kontoinhaberschaft kann dies sehen und ändern."
   },
   "chat": {
     "toolCategories": {
@@ -6739,7 +6882,79 @@
     "selectHeader": "Spalte auswählen",
     "imported": "Importiert: {{processedCount}}",
     "skipped": "Übersprungen: {{skippedCount}}",
-    "failed": "Fehlgeschlagen: {{errorsCount}}"
+    "failed": "Fehlgeschlagen: {{errorsCount}}",
+    "fieldDescriptions": {
+      "date": "Datum (ISO 8601: JJJJ-MM-TT; ein vollständiger Zeitstempel mit Uhrzeit wird ebenfalls akzeptiert, aber nur das Datum wird übernommen — die Uhrzeit entfällt und die Zeitzone bestimmt den jeweiligen Tag) — der Tag, an dem der Eintrag erfasst wurde.",
+      "source": "Text — Herkunft der Daten (Quelle).",
+      "notes": "Text — frei formulierte Notizen.",
+      "meal_type": "Text — einer deiner Mahlzeitentypen (Frühstück, Mittagessen, Abendessen, Snacks, …), Groß-/Kleinschreibung wird ignoriert.",
+      "meal_name": "Text — fasst Zeilen zu einer benannten Mahlzeit zusammen (Zeilen mit gleichem Datum, Mahlzeitentyp und Namen werden zu einer Mahlzeit).",
+      "food_name": "Text — das Lebensmittel, das mit deiner Bibliothek abgeglichen oder neu erstellt wird.",
+      "brand": "Text — optionale Marke zur besseren Zuordnung.",
+      "quantity": "Zahl — Menge pro Einheit, z. B. 200.",
+      "unit": "Text — bekannte Einheit (g, oz, ml, Tasse, Portion, …); nicht zugeordnete Werte werden unverändert übernommen.",
+      "name": "Text — der Name, der mit deiner Bibliothek abgeglichen oder neu erstellt wird.",
+      "serving_size": "Zahl — Menge pro Portion; der Teiler in der Nährwertformel.",
+      "serving_unit": "Text — Einheit für die Portionsgröße (g, oz, Tasse, …).",
+      "is_custom": "Wahrheitswert — `true` (wahr) kennzeichnet den Eintrag als benutzerdefiniert (jeder andere Wert gilt als falsch).",
+      "shared_with_public": "Wahrheitswert — `true` (wahr) teilt den Eintrag mit der öffentlichen Bibliothek (jeder andere Wert gilt als falsch).",
+      "is_default": "Wahrheitswert — `true` (wahr) legt dies als Standardvariante fest (jeder andere Wert gilt als falsch).",
+      "category": "Text — Übungskategorie (Kraft, Ausdauer, …).",
+      "calories_per_hour": "Zahl — geschätzter Kalorienverbrauch pro Stunde.",
+      "description": "Text — kurze Beschreibung der Übung.",
+      "force": "Text — `pull` (Ziehen), `push` (Drücken) oder `static` (Statisch), Groß-/Kleinschreibung wird ignoriert.",
+      "level": "Text — `beginner` (Anfänger), `intermediate` (Fortgeschritten) oder `expert` (Experte), Groß-/Kleinschreibung wird ignoriert.",
+      "mechanic": "Text — `isolation` (Isolationsübung) oder `compound` (Verbundübung), Groß-/Kleinschreibung wird ignoriert.",
+      "equipment": "Text — verwendete Ausrüstung (kommagetrennt).",
+      "primary_muscles": "Text — primär beanspruchte Muskeln (kommagetrennt).",
+      "secondary_muscles": "Text — sekundär beanspruchte Muskeln (kommagetrennt).",
+      "instructions": "Text — Anleitung zur Ausführung der Übung.",
+      "images": "Text — Bild-URLs (kommagetrennt).",
+      "entry_date": "Datum (ISO 8601: JJJJ-MM-TT; ein vollständiger Zeitstempel mit Uhrzeit wird ebenfalls akzeptiert, aber nur das Datum wird übernommen — die Uhrzeit entfällt und die Zeitzone bestimmt den jeweiligen Tag) — der Tag, an dem das Training durchgeführt wurde.",
+      "exercise_name": "Text — die Übung, die mit deiner Bibliothek abgeglichen oder neu erstellt wird.",
+      "exercise_force": "Text — `pull` (Ziehen), `push` (Drücken) oder `static` (Statisch), Groß-/Kleinschreibung wird ignoriert.",
+      "exercise_level": "Text — `beginner` (Anfänger), `intermediate` (Fortgeschritten) oder `expert` (Experte), Groß-/Kleinschreibung wird ignoriert.",
+      "exercise_mechanic": "Text — `isolation` (Isolationsübung) oder `compound` (Verbundübung), Groß-/Kleinschreibung wird ignoriert.",
+      "weight": "Zahl — Körpergewicht (in der angegebenen Gewichtseinheit).",
+      "weight_unit": "Text — Einheit für das Gewicht (kg oder lb).",
+      "body_fat": "Zahl — Körperfettanteil (%).",
+      "height": "Zahl — Körpergröße (in der angegebenen Längeneinheit).",
+      "neck": "Zahl — Halsumfang (in der angegebenen Längeneinheit).",
+      "waist": "Zahl — Taillenumfang (in der angegebenen Längeneinheit).",
+      "hips": "Zahl — Hüftumfang (in der angegebenen Längeneinheit).",
+      "length_unit": "Text — Einheit für die Längenfelder (cm, in, m).",
+      "bedtime": "Zeitstempel (ISO) — Schlafenszeit.",
+      "wake_time": "Zeitstempel (ISO) — Aufwachzeit.",
+      "duration_in_seconds": "Zahl — gesamte Schlafdauer in Sekunden.",
+      "time_asleep_in_seconds": "Zahl — tatsächliche Schlafzeit in Sekunden.",
+      "deep_sleep_seconds": "Zahl — Tiefschlaf in Sekunden.",
+      "light_sleep_seconds": "Zahl — Leichtschlaf in Sekunden.",
+      "rem_sleep_seconds": "Zahl — REM-Schlaf in Sekunden.",
+      "awake_sleep_seconds": "Zahl — Wachzeit in Sekunden.",
+      "sleep_score": "Zahl — Gesamtschlafbewertung (0–100).",
+      "stage_events": "Text (JSON-Array) — rohe Abfolge der Schlafphasen-Ereignisse.",
+      "type": "Text — welcher Mess- oder Vitalwert (dessen Name).",
+      "value": "Zahl — der zugehörige Wert.",
+      "mood_value": "Zahl — Stimmungswert (10–100).",
+      "mood_tags": "Text — durch senkrechte Striche getrennte Stimmungs-Tags (z. B. dankbar|energiegeladen).",
+      "calories": "Zahl — Kalorien (kcal).",
+      "protein": "Zahl — Eiweiß / Protein (g).",
+      "carbs": "Zahl — Kohlenhydrate (g).",
+      "fat": "Zahl — Gesamtfett (g).",
+      "saturated_fat": "Zahl — gesättigte Fettsäuren (g).",
+      "polyunsaturated_fat": "Zahl — mehrfach ungesättigte Fettsäuren (g).",
+      "monounsaturated_fat": "Zahl — einfach ungesättigte Fettsäuren (g).",
+      "trans_fat": "Zahl — Transfette (g).",
+      "cholesterol": "Zahl — Cholesterin (mg).",
+      "sodium": "Zahl — Natrium (mg).",
+      "potassium": "Zahl — Kalium (mg).",
+      "dietary_fiber": "Zahl — Ballaststoffe (g).",
+      "sugars": "Zahl — Zucker (g).",
+      "vitamin_a": "Zahl — Vitamin A (IE).",
+      "vitamin_c": "Zahl — Vitamin C (mg).",
+      "calcium": "Zahl — Kalzium (mg).",
+      "iron": "Zahl — Eisen (mg)."
+    }
   },
   "workoutLaps": {
     "lapsCount": "{{count}} Runden",
@@ -6829,7 +7044,10 @@
     "scopePublic": "Öffentlich",
     "title": "Tagebuchprotokoll importieren (CSV)",
     "uploadCsv": "CSV hochladen",
-    "validationErrorTitle": "Validierungsfehler"
+    "validationErrorTitle": "Validierungsfehler",
+    "aggregateLabel": "Als Mahlzeiten-Gesamtwerte importieren (pro Mahlzeit zusammengefasst)",
+    "aggregateDescription": "Diese Datei enthält eine Zeile pro Mahlzeit ohne Lebensmittelname oder Mengenangabe. Die Nährwerte jeder Zeile werden als eine einzelne Portion einer Mahlzeit erfasst, die nach ihrem Mahlzeitentyp benannt ist.",
+    "unit": "Einheit"
   },
   "healthDataImport": {
     "fileTooLarge": "Die ausgewählte Datei ist zu groß. Bitte lade eine Datei kleiner als 25 MB hoch.",
@@ -6860,7 +7078,23 @@
     "acceptedActivityTypes": "Zulässige Aktivitätstypen",
     "hydration": "Flüssigkeitszufuhr",
     "dailyWaterIntakeValuesAre": "Tägliche Wasseraufnahme. Werte werden in Milliliter umgerechnet.",
-    "mood": "Stimmung"
+    "mood": "Stimmung",
+    "unitPrompt": "Deine Datei enthält keine Einheitenspalte. Wähle die Einheit für die Werte aus, damit sie korrekt umgerechnet werden.",
+    "weightUnitLabel": "Gewichtseinheit",
+    "weightUnitRequired": "Deine Datei enthält keine Gewichtseinheit. Wähle vor dem Importieren kg oder lb aus.",
+    "lengthUnitLabel": "Längeneinheit",
+    "lengthUnitRequired": "Deine Datei enthält keine Längeneinheit. Wähle vor dem Importieren cm, in oder m aus.",
+    "weightUnitMissing": "Gewichtswerte sind vorhanden, aber es ist keine Einheit festgelegt. Wähle eine Einheit (kg oder lb) für diesen Import aus.",
+    "lengthUnitMissing": "{{type}} ist vorhanden, aber es ist keine Einheit festgelegt. Wähle eine Einheit (cm, in oder m) für diesen Import aus.",
+    "unitRequired": "Einheit erforderlich",
+    "fieldDescriptions": {
+      "unit": "Text — Einheit für den Wert (z. B. ml, L, oz, bpm, mmol/L); wird falls zutreffend umgerechnet."
+    },
+    "bodyMeasurementsDescription": "Gewicht, Körperfett, Körpergröße und Körperumfänge. Eine Zeile pro Tag. Wird ohne Quellenangabe gespeichert, sodass ein erneuter Import desselben Datums den Eintrag überschreibt.",
+    "sleepDescription": "Eine Schlafsitzung pro Zeile. Gib Schlafenszeit und Aufwachzeit (`bedtime`/`wake_time`) als ISO-Zeitstempel an. Die Spalten für Tiefschlaf, Leichtschlaf, REM und Wachzeit (`deep`/`light`/`rem`/`awake`) enthalten die Gesamtsekunden pro Phase. Für einen vollständigen Phasenverlauf kann optional ein JSON-Array in den Phasenereignissen (`stage_events`) eingetragen werden. Optionale Spalten für die Aufnahme-Zeitzone (`record_timezone` als IANA-Name, z. B. Europe/Berlin) und/oder den UTC-Versatz in Minuten (`record_utc_offset_minutes`) legen die Anzeige auf die Zeitzone der Aufzeichnung fest; ohne diese Angaben werden Zeiten in deiner Profil-Zeitzone angezeigt.",
+    "vitalsCustomDescription": "Ein Messwert pro Zeile. `type` (Typ) akzeptiert den Namen eines Vitalwerts ODER einen beliebigen benutzerdefinierten Kategorienamen — unbekannte Typen erstellen eine benutzerdefinierte Messkategorie mit diesem Namen oder verwenden eine bestehende.",
+    "dailyActivityDescription": "Tagesgesamtwerte wie Schritte, Distanz und verbrannte Kalorien. Hinweis: Bei Schritten (steps) und Aktivitätskalorien (active_calories) werden Notizen ignoriert; die Distanz wird als benutzerdefinierte Messung gespeichert.",
+    "moodDescription": "Eine importierte Stimmung pro Tag (ein erneuter Import desselben Datums ersetzt die importierte Stimmung dieses Tages). Selbst erfasste Stimmungen bleiben erhalten. Stimmungen, die vor diesem Update importiert wurden, werden wie eigene Einträge behandelt, sodass ein erneuter Import für diese Daten einen weiteren Eintrag anlegt. Der Stimmungswert (`mood_value`) liegt zwischen 10 und 100: 10 Traurig, 20 Wütend, 30 Besorgt, 40 Neutral, 50 Nachdenklich, 60 Ruhig, 70 Zuversichtlich, 80 Glücklich, 90 Begeistert. Stimmungs-Tags (`mood_tags`) sind optional und mit `|` getrennt (z. B. dankbar|energiegeladen)."
   },
   "copyFoodEntryDialog": {
     "descriptionAll": "Wähle das Zieldatum aus, um alle Lebensmitteleinträge dieses Tages zu kopieren.",
@@ -6870,7 +7104,15 @@
     "selectMealTypePlaceholder": "Art der Mahlzeit auswählen",
     "targetDate": "Zieldatum",
     "title": "Lebensmitteleinträge kopieren",
-    "titleAll": "Ganzen Tag kopieren"
+    "titleAll": "Ganzen Tag kopieren",
+    "copyTo": "Kopieren nach",
+    "descriptionFood": "Erfasse dieses Lebensmittel jetzt erneut oder wähle ein Datum und einen Mahlzeitentyp aus.",
+    "quick": {
+      "now": "Jetzt",
+      "today": "Heute",
+      "tomorrow": "Morgen"
+    },
+    "titleFood": "{{food}} kopieren"
   },
   "nutrientGoalDirection": {
     "min": "Min.",
@@ -8016,6 +8258,18 @@
       "genericEstimateVerifyIfAccuracy": "Allgemeine Schätzung – prüfe sie, wenn es auf Genauigkeit ankommt.",
       "useThis": "Übernehmen",
       "estimate2": "- Schätzung (Zuverlässigkeit: {{confidence}})"
+    },
+    "cooked": {
+      "switch": "Gekocht gewogen",
+      "sameBatchPrevious": "Gleiche Zubereitung wie am {{date}}: {{raw}} {{unit}} roh → {{cooked}} {{unit}} gekocht",
+      "sameBatchEntry": "Gleiche Zubereitung wie dieser Eintrag: {{raw}} {{unit}} roh → {{cooked}} {{unit}} gekocht",
+      "newBatch": "Neue Zubereitung",
+      "rawBatch": "Rohgewicht der Gesamtmenge ({{unit}})",
+      "cookedBatch": "Kochgewicht der Gesamtmenge ({{unit}})",
+      "eaten": "Gegessene Menge (gekocht, {{unit}})",
+      "result": "= {{raw}} {{unit}} roh · {{calories}} {{energyUnit}}",
+      "incomplete": "Gib die Gewichte ein, um die Rohmenge zu berechnen.",
+      "enterEaten": "Gib das gekochte Gewicht ein, das du gegessen hast."
     }
   },
   "healthMetrics": {
@@ -9386,6 +9640,33 @@
       "estimate2": "Schätzung (Zuverlässigkeit: {{ai_confidence}})",
       "custom": "Benutzerdefiniert",
       "aiEstimateConfidence": "KI-Schätzung (Zuverlässigkeit: {{confidence}})"
+    },
+    "barcodeImage": {
+      "upload": "Barcode-Bild hochladen",
+      "notFound": "In diesem Bild wurde kein Barcode gefunden. Versuche es mit einem schärferen Bild, auf dem der gesamte Barcode sichtbar ist.",
+      "unreadable": "Dieses Bild konnte nicht geöffnet werden. Versuche es mit einer JPEG- oder PNG-Datei."
+    },
+    "imageSourceInput": {
+      "dropOrPaste": "oder ein Bild hierher ziehen bzw. einen Screenshot einfügen"
+    },
+    "nutritionLabelImage": {
+      "title": "Nährwerttabelle scannen",
+      "dialogDescription": "Erstelle ein Lebensmittel anhand eines Fotos seiner Nährwerttabelle.",
+      "description": "Verwende ein Foto der Nährwerttabelle. Dein KI-Dienst liest die Werte aus und du kannst sie vor dem Speichern überprüfen.",
+      "upload": "Bild der Nährwerttabelle hochladen",
+      "reading": "Nährwerttabelle wird ausgelesen...",
+      "errors": {
+        "noAiService": "Zum Auslesen einer Nährwerttabelle wird ein KI-Dienst benötigt, der Bilder unterstützt. Füge einen unter Einstellungen → KI-Dienst hinzu.",
+        "aiServiceSetup": "Dein KI-Dienst kann nicht zum Auslesen von Nährwerttabellen verwendet werden: {{message}}",
+        "badImage": "Dieses Bild konnte nicht an deinen KI-Dienst gesendet werden. Versuche es mit einem JPEG- oder PNG-Foto.",
+        "unreadable": "Auf diesem Bild konnten keine Nährwertangaben erkannt werden. Versuche es mit einem schärferen Foto aus geringerer Entfernung.",
+        "unavailable": "Dein KI-Dienst hat nicht geantwortet. Bitte versuche es gleich noch einmal.",
+        "generic": "Die Nährwerttabelle konnte nicht ausgelesen werden. Bitte versuche es erneut."
+      }
+    },
+    "scanModes": {
+      "barcode": "Barcode",
+      "label": "Nährwerttabelle"
     }
   },
   "gitHubSponsorButton": {
@@ -9472,7 +9753,11 @@
     }
   },
   "toolfallback": {
-    "result": "Ergebnis:"
+    "result": "Ergebnis:",
+    "used": "Verwendetes Tool",
+    "error": "Fehler:",
+    "cancelled": "Abgebrochenes Tool",
+    "cancelledReason": "Abbruchgrund:"
   },
   "ui": {
     "confirmationDialog": {
@@ -10766,5 +11051,69 @@
     "missingNutritionHint": "Für dieses Mealie-Rezept sind keine Nährwerte angegeben. Berechne sie anhand der zugeordneten Zutaten.",
     "importAsMeal": "Zutaten als Mahlzeit importieren",
     "searchMacros": "Protein {{protein}} g · Kohlenhydrate {{carbs}} g · Fett {{fat}} g"
+  },
+  "healthActivityTypes": {
+    "american_football": "American Football",
+    "archery": "Bogenschießen",
+    "australian_football": "Australian Football",
+    "badminton": "Badminton",
+    "baseball": "Baseball",
+    "basketball": "Basketball",
+    "bowling": "Bowling",
+    "boxing": "Boxen",
+    "climbing": "Klettern",
+    "cricket": "Cricket",
+    "cross_training": "Crosstraining",
+    "curling": "Curling",
+    "cycling": "Radfahren",
+    "elliptical": "Crosstrainer",
+    "cycling_indoor": "Indoor Radfahren",
+    "equestrian_sports": "Reitsport",
+    "fencing": "Fechten",
+    "fishing": "Angeln",
+    "functional_strength_training": "Funktionelles Krafttraining",
+    "golf": "Golf",
+    "gymnastics": "Turnen",
+    "handball": "Handball",
+    "hiking": "Wandern",
+    "ice_hockey": "Eishockey",
+    "roller_hockey": "Rollhockey",
+    "hunting": "Jagen",
+    "lacrosse": "Lacrosse",
+    "martial_arts": "Kampfsport",
+    "mind_and_body": "Körper & Geist",
+    "breathing": "Atemübungen",
+    "paddle_sports": "Paddelsport",
+    "play": "Spielen",
+    "preparation_and_recovery": "Vorbereitung & Erholung",
+    "racquetball": "Racquetball",
+    "rowing": "Rudern",
+    "rowing_machine": "Rudergerät",
+    "rugby": "Rugby",
+    "running": "Laufen",
+    "running_treadmill": "Laufband",
+    "sailing": "Segeln",
+    "skating": "Skaten",
+    "ice_skating": "Schlittschuhlaufen",
+    "snowshoeing": "Schneeschuhwandern",
+    "soccer": "Fußball",
+    "softball": "Softball",
+    "squash": "Squash",
+    "stair_climbing_machine": "Treppensteiger",
+    "surfing": "Surfen",
+    "swimming_pool": "Beckenschwimmen",
+    "swimming_open_water": "Freiwasserschwimmen",
+    "table_tennis": "Tischtennis",
+    "tennis": "Tennis",
+    "track_and_field": "Leichtathletik",
+    "strength_training": "Krafttraining",
+    "weightlifting": "Gewichtheben",
+    "volleyball": "Volleyball",
+    "walking": "Gehen",
+    "walking_treadmill": "Gehen (Laufband)",
+    "water_fitness": "Wassergymnastik",
+    "water_polo": "Wasserball",
+    "water_sports": "Wassersport",
+    "wrestling": "Ringen"
   }
 }
