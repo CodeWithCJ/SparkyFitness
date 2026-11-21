@@ -1,0 +1,158 @@
+name: Close Inactive Draft PRs
+
+on:
+  schedule:
+    # Runs daily at 00:00 UTC
+    - cron: "0 0 * * *"
+  pull_request_target:
+    types: [opened, converted_to_draft]
+  workflow_dispatch: # Allows manual trigger from Actions tab for testing
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  notify-draft:
+    name: Notify on Draft PR
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.draft == true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post Draft Inactivity Notice
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            // Check if notice was already posted
+            const { data: comments } = await github.rest.issues.listComments({
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 50,
+            });
+
+            const alreadyNotified = comments.some(c =>
+              c.body && c.body.includes('Draft PR Notice')
+            );
+
+            if (alreadyNotified) {
+              console.log(`Notice already posted on PR #${prNumber}. Skipping.`);
+              return;
+            }
+
+            const noticeBody = [
+              '> ℹ️ **Draft PR Notice:** This draft PR will be automatically closed after **7 days of inactivity** (measured from the latest commit).',
+              '> Repository maintainers can comment `/keep-draft` to keep it open indefinitely (or `/allow-close` to re-enable auto-closure).',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body: noticeBody,
+            });
+            console.log(`Posted draft notice on PR #${prNumber}.`);
+
+  close-drafts:
+    name: Close Inactive Draft PRs
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close draft PRs inactive for 7 days
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+            const now = Date.now();
+
+            // Fetch open pull requests
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            for (const pr of prs) {
+              // Only target draft pull requests
+              if (!pr.draft) continue;
+
+              // 1. Fetch comments to check for /keep-draft or /allow-close commands
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                per_page: 100,
+              });
+
+              let isExcluded = false;
+              for (const comment of comments) {
+                // Dynamically verify commenter:
+                // - Owner (codewithcj or repository owner)
+                // - Anyone added under Repository Settings -> Collaborators ('COLLABORATOR')
+                // - Organization members ('MEMBER')
+                // Note: Past PR contributors are 'CONTRIBUTOR', which is NOT allowed.
+                const isAuthorized =
+                  comment.user.login.toLowerCase() === 'codewithcj' ||
+                  comment.user.login.toLowerCase() === context.repo.owner.toLowerCase() ||
+                  ['OWNER', 'COLLABORATOR', 'MEMBER'].includes(comment.author_association);
+
+                if (!isAuthorized) continue;
+
+                const body = (comment.body || '').trim().toLowerCase();
+                if (body.includes('/keep-draft') || body.includes('/no-autoclose')) {
+                  isExcluded = true;
+                } else if (body.includes('/allow-close')) {
+                  isExcluded = false; // Override back to normal
+                }
+              }
+
+              if (isExcluded) {
+                console.log(`PR #${pr.number} is marked with /keep-draft by an authorized collaborator. Skipping.`);
+                continue;
+              }
+
+              // 2. Fetch commits to inspect the latest commit timestamp
+              const { data: commits } = await github.rest.pulls.listCommits({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                per_page: 100,
+              });
+
+              if (!commits.length) continue;
+
+              const latestCommit = commits[commits.length - 1];
+              const commitDateStr =
+                latestCommit.commit.committer?.date ||
+                latestCommit.commit.author?.date;
+              const lastCommitTime = new Date(commitDateStr).getTime();
+              const timeSinceLastCommit = now - lastCommitTime;
+
+              // If the author has pushed within the last 7 days, keep it open
+              if (timeSinceLastCommit < SEVEN_DAYS_MS) {
+                const daysAgo = (timeSinceLastCommit / (1000 * 60 * 60 * 24)).toFixed(1);
+                console.log(`PR #${pr.number} had a commit ${daysAgo} days ago (< 7 days). Keeping open.`);
+                continue;
+              }
+
+              console.log(`Closing PR #${pr.number}: inactive for >7 days since last commit.`);
+
+              // 3. Post notification comment and close the PR
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: `This draft pull request has had no new commits for over 7 days and was automatically closed.\n\nIf you are still actively working on this, feel free to **Reopen** the PR at any time! Repository maintainers can also comment \`/keep-draft\` to keep it open indefinitely.`,
+              });
+
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                state: 'closed',
+              });
+            }
