@@ -115,10 +115,9 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
     t('foodRow.unknownFood', { defaultValue: 'Unknown food' });
   const timeLabel = formatTimeLabel(entry.entry_time, preferences?.time_format);
 
-  // A waiting entry has no server copy to open, and a logged meal's
-  // components are edited through the meal, which needs the server.
-  const detailAvailable =
-    !isPendingEntryId(entry.id) && !(readOnlyProp && isMealComponent);
+  // A waiting entry has no server copy to open. A logged meal's components
+  // open the meal, which the phone keeps for the last week.
+  const detailAvailable = !isPendingEntryId(entry.id);
 
   const handlePress = () => {
     if (!detailAvailable) {

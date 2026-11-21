@@ -6,6 +6,9 @@ import type {
   FoodEntryMeal,
   FoodEntryMealUpdateData,
 } from '../types/foodEntryMeals';
+import { queueFoodEntryMealUpdate } from '../offline/foodEntryMealUpdateHandOver';
+import type { FoodEntry } from '../types/foodEntries';
+import { serverMayBeDown } from '../utils/serverErrors';
 import { normalizeDate } from '../utils/dateUtils';
 import { foodEntryMealDetailQueryKey } from './queryKeys';
 import { invalidateFoodCache } from './invalidateFoodCache';
@@ -15,20 +18,64 @@ interface UseUpdateFoodEntryMealOptions {
   mealId: string;
   entryDate: string;
   onSuccess?: (meal: FoodEntryMeal) => void;
+  /** Called when the change is kept on the phone to upload later. */
+  onKeptOnPhone?: () => void;
+}
+
+/** A save: the request, and what the meal reads like while it waits. */
+interface MealChange {
+  payload: FoodEntryMealUpdateData;
+  /** The meal as one Diary entry: name, meal, date, time, note and totals. */
+  display: Partial<FoodEntry>;
+}
+
+interface KeptOnPhone {
+  keptOnPhone: true;
 }
 
 export function useUpdateFoodEntryMeal({
   mealId,
   entryDate,
   onSuccess,
+  onKeptOnPhone,
 }: UseUpdateFoodEntryMealOptions) {
   const queryClient = useQueryClient();
   const normalizedDate = normalizeDate(entryDate);
 
   const mutation = useMutation({
-    mutationFn: (payload: FoodEntryMealUpdateData) =>
-      updateFoodEntryMeal(mealId, payload),
+    mutationFn: async ({
+      payload,
+      display,
+    }: MealChange): Promise<FoodEntryMeal | KeptOnPhone> => {
+      try {
+        return await updateFoodEntryMeal(mealId, payload);
+      } catch (error) {
+        // With the server away the saved meal is kept and sent later. It holds
+        // the whole meal, so sending it twice leaves the same meal and even a
+        // timeout is kept.
+        if (
+          serverMayBeDown(error) &&
+          (await queueFoodEntryMealUpdate(mealId, entryDate, payload, display))
+        ) {
+          return { keptOnPhone: true };
+        }
+        throw error;
+      }
+    },
     onSuccess: (meal) => {
+      if ('keptOnPhone' in meal) {
+        Toast.show({
+          type: 'info',
+          text1: i18n.t('foodEntryAdd.queued', {
+            defaultValue: 'Saved on this phone',
+          }),
+          text2: i18n.t('foodEntryAdd.queuedMessage', {
+            defaultValue: 'It uploads when your server can be reached.',
+          }),
+        });
+        onKeptOnPhone?.();
+        return;
+      }
       onSuccess?.(meal);
     },
     onError: (error) => {
@@ -60,7 +107,10 @@ export function useUpdateFoodEntryMeal({
   };
 
   return {
-    updateMeal: mutation.mutate,
+    updateMeal: (
+      payload: FoodEntryMealUpdateData,
+      display: Partial<FoodEntry>
+    ) => mutation.mutate({ payload, display }),
     isPending: mutation.isPending,
     invalidateCache,
   };

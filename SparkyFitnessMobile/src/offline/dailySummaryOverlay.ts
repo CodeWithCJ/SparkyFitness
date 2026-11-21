@@ -7,6 +7,7 @@ import { CACHE_COLLECTIONS } from './collections';
 import { getOfflineDb } from './db';
 import { previewFromQueuedRow } from './foodEntryPreview';
 import { readSavedSingle } from './foodLibrary';
+import { FOOD_ENTRY_MEAL_UPDATE } from './foodEntryMealUpdateHandOver';
 import { FOOD_ENTRY_UPDATE } from './foodEntryUpdateHandOver';
 import { listUnconfirmedOutbox } from './outbox';
 import { signedInUserId } from './syncEngine';
@@ -80,7 +81,10 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
     );
     const rows = mine.filter((row) => row.entryDate === date);
     // A change that moves an entry between days touches both of them.
-    const hasChange = mine.some((row) => row.kind === FOOD_ENTRY_UPDATE);
+    const hasChange = mine.some(
+      (row) =>
+        row.kind === FOOD_ENTRY_UPDATE || row.kind === FOOD_ENTRY_MEAL_UPDATE
+    );
     if (rows.length === 0 && !hasChange) return NOTHING_WAITING;
 
     const foodEntries: FoodEntry[] = [];
@@ -129,7 +133,8 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
           serverConfigId,
           date,
           mine,
-          deletedFoodEntryIds
+          deletedFoodEntryIds,
+          deletedMealIds
         )
       : NO_ENTRY_CHANGES;
     return {
@@ -137,7 +142,7 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
       waterMl,
       // An entry moved to another day is off this one, like a deleted one.
       deletedFoodEntryIds: [...deletedFoodEntryIds, ...changes.movedOut],
-      deletedMealIds,
+      deletedMealIds: [...deletedMealIds, ...changes.replacedMeals],
       changedEntries: changes.inPlace,
     };
   } catch {

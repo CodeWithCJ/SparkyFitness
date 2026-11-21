@@ -37,6 +37,8 @@ export const CACHE_COLLECTIONS = {
   foodVariants: 'food_variants',
   /** The recent and most-used foods lists (one document). */
   foodRecents: 'food_recents',
+  /** A logged meal with its components, keyed by its id. */
+  loggedMeal: 'logged_meal',
   /** The person's meal types (one document). */
   mealTypes: 'meal_types',
   /** Markers the offline pack writes about itself. */
