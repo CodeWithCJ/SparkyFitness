@@ -162,9 +162,12 @@ const CopyFromYesterdaySheet = forwardRef<
   }, [mealTypes, checkedMealIds, isMealEnabled]);
 
   const handleCopySelected = useCallback(() => {
-    if (checkedIds.length === 0) return;
+    // While the source summary loads, isMealEnabled is true for every meal, so
+    // the pre-checked meal keeps checkedIds nonempty and the button would copy
+    // a possibly-empty meal. Wait until availability is known.
+    if (summaryLoading || checkedIds.length === 0) return;
     onCopy({ kind: 'selected', mealIds: checkedIds, targetDate });
-  }, [checkedIds, targetDate, onCopy]);
+  }, [summaryLoading, checkedIds, targetDate, onCopy]);
 
   const handleCopyAll = useCallback(() => {
     if (!hasAnySourceEntries) return;
@@ -276,7 +279,9 @@ const CopyFromYesterdaySheet = forwardRef<
                   accessibilityLabel={t('copyFromYesterday.copySelected', {
                     defaultValue: 'Copy Selected',
                   })}
-                  disabled={isPending || checkedIds.length === 0}
+                  disabled={
+                    isPending || summaryLoading || checkedIds.length === 0
+                  }
                 >
                   {t('copyFromYesterday.copySelected', {
                     defaultValue: 'Copy Selected',

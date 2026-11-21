@@ -335,4 +335,64 @@ describe('copying a meal reuses an existing target container (#3679)', () => {
       'user-1'
     );
   });
+
+  it('keeps two same-key source containers distinct on an empty target', async () => {
+    setupCopy();
+    // Two source containers share name, time and meal type but differ in
+    // quantity/notes (e.g. two "Breakfast" bowls). They must not collapse
+    // into one target container, which would drop the second's metadata.
+    const secondMeal = {
+      ...ORIGINAL_MEAL,
+      id: 'orig-meal-2',
+      quantity: 2,
+      notes: 'extra fruit',
+    };
+    vi.mocked(foodEntryMealRepository.getFoodEntryMealById).mockImplementation(
+      (id: string) =>
+        Promise.resolve(id === 'orig-meal-2' ? secondMeal : ORIGINAL_MEAL)
+    );
+    vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
+      [
+        GROUPED_ENTRY,
+        {
+          ...GROUPED_ENTRY,
+          id: 'oatmeal-2',
+          food_id: 'food-berry',
+          food_entry_meal_id: 'orig-meal-2',
+        },
+      ]
+    );
+    vi.mocked(
+      foodEntryMealRepository.getFoodEntryMealsByDate
+    ).mockResolvedValue([]);
+    // Echo the created row back (with an id) so the working list holds the
+    // fields the matcher reads.
+    vi.mocked(foodEntryMealRepository.createFoodEntryMeal).mockImplementation(
+      (payload: Record<string, unknown>) =>
+        Promise.resolve({
+          id: `created-${
+            vi.mocked(foodEntryMealRepository.createFoodEntryMeal).mock.calls
+              .length
+          }`,
+          ...payload,
+        })
+    );
+    await copyFoodEntries(
+      'user-1',
+      'user-1',
+      '2026-11-13',
+      'Breakfast',
+      '2026-11-14',
+      'Breakfast'
+    );
+    // Both containers are created, not merged: the second is not matched
+    // against the first, so it gets its own container.
+    expect(foodEntryMealRepository.createFoodEntryMeal).toHaveBeenCalledTimes(
+      2
+    );
+    expect(foodEntryMealRepository.createFoodEntryMeal).toHaveBeenCalledWith(
+      expect.objectContaining({ quantity: 2, notes: 'extra fruit' }),
+      'user-1'
+    );
+  });
 });

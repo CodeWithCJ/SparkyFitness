@@ -5,6 +5,7 @@ import {
   copyFoodEntriesFromYesterday,
   copyAllFoodEntriesFromYesterday,
 } from '../services/api/foodEntriesApi';
+import { getActiveServerConfig } from '../services/storage';
 import { invalidateFoodCache } from './invalidateFoodCache';
 
 /**
@@ -24,18 +25,27 @@ export function useCopyFromYesterday() {
 
   const mutation = useMutation({
     mutationFn: async (payload: CopyFromYesterdayPayload) => {
+      // Pin the account the copy started for, so a mid-copy account switch
+      // cannot redirect the remaining requests to the new account.
+      const serverConfig = await getActiveServerConfig();
       if (payload.kind === 'all') {
-        return copyAllFoodEntriesFromYesterday({
-          targetDate: payload.targetDate,
-        });
+        return copyAllFoodEntriesFromYesterday(
+          {
+            targetDate: payload.targetDate,
+          },
+          serverConfig ?? undefined
+        );
       }
       // Serially: the endpoint is per-meal, and keeping the order lets the
       // first failure surface before the rest are attempted.
       for (const mealId of payload.mealIds) {
-        await copyFoodEntriesFromYesterday({
-          mealType: mealId,
-          targetDate: payload.targetDate,
-        });
+        await copyFoodEntriesFromYesterday(
+          {
+            mealType: mealId,
+            targetDate: payload.targetDate,
+          },
+          serverConfig ?? undefined
+        );
       }
     },
     onSuccess: (_data, _payload) => {

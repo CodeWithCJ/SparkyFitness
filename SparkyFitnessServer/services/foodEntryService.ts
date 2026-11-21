@@ -1379,21 +1379,38 @@ async function copyFoodEntries(
       }
       return targetMeals!;
     };
-    const matchTargetMeal = (
-      meals: TargetMealRef[],
+    // A container's identity key: name + slot + type. Two source containers can
+    // share a key (different foods/notes), so they are distinct occurrences, not
+    // one. The key is what a copy is recognised by; the occurrence index is what
+    // keeps same-key containers apart.
+    const mealIdentityKey = (
       name: string,
       entryTime: string | null,
       mealTypeId: string
+    ): string =>
+      `${name.trim().toLowerCase()}|${entryTime ?? ''}|${mealTypeId}`;
+    // The i-th target container with a given key, in created_at order (the
+    // target query sorts same-key rows by created_at). Newly created containers
+    // are appended to the working list, so they keep that order within a call.
+    const nthTargetMeal = (
+      meals: TargetMealRef[],
+      key: string,
+      index: number
     ): string | null => {
-      const wanted = name.trim().toLowerCase();
+      let count = 0;
       for (const meal of meals) {
-        const sameName = meal.name.trim().toLowerCase() === wanted;
-        const sameTime = (meal.entry_time ?? null) === entryTime;
-        const sameType = meal.meal_type_id === mealTypeId;
-        if (sameName && sameTime && sameType) return meal.id;
+        if (
+          mealIdentityKey(meal.name, meal.entry_time, meal.meal_type_id) === key
+        ) {
+          if (count === index) return meal.id;
+          count++;
+        }
       }
       return null;
     };
+    // Occurrence index of each source container within its key group, assigned
+    // in iteration order so it matches the created_at order a prior copy made.
+    const sourceOccurrenceIndex = new Map<string, number>();
     for (const entry of sourceEntries) {
       log(
         'debug',
@@ -1412,16 +1429,19 @@ async function copyFoodEntries(
               authenticatedUserId
             );
           if (originalMeal) {
-            // Reuse an equivalent container already on the target date so a
-            // retry of a partly-failed copy does not create a second one and
-            // duplicate its entries (the per-entry check below is scoped to it).
-            const existingTargetId = matchTargetMeal(
-              await loadTargetMeals(),
+            const key = mealIdentityKey(
               originalMeal.name,
               originalMeal.entry_time ?? null,
               targetMealTypeId
             );
-            if (existingTargetId) {
+            // This source container's position among its same-key siblings, in
+            // iteration order - the order a prior copy created its target
+            // containers, so it lines up with their created_at order.
+            const occurrenceIndex = sourceOccurrenceIndex.get(key) ?? 0;
+            sourceOccurrenceIndex.set(key, occurrenceIndex + 1);
+            const meals = await loadTargetMeals();
+            const existingTargetId = nthTargetMeal(meals, key, occurrenceIndex);
+            if (existingTargetId !== null) {
               newFoodEntryMealId = existingTargetId;
             } else {
               const newMeal = await foodEntryMealRepository.createFoodEntryMeal(
@@ -1446,7 +1466,7 @@ async function copyFoodEntries(
             mealMapping.set(entry.food_entry_meal_id, newFoodEntryMealId);
             log(
               'debug',
-              `copyFoodEntries: ${existingTargetId ? 'Reused' : 'Duplicated'} meal container "${originalMeal.name}" (${entry.food_entry_meal_id} -> ${newFoodEntryMealId})`
+              `copyFoodEntries: ${existingTargetId !== null ? 'Reused' : 'Duplicated'} meal container "${originalMeal.name}" (${entry.food_entry_meal_id} -> ${newFoodEntryMealId})`
             );
           }
         }

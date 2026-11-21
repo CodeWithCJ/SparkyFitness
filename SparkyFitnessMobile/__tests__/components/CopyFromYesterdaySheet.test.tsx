@@ -163,6 +163,22 @@ describe('CopyFromYesterdaySheet', () => {
     expect(view.getByText('Copying...')).toBeTruthy();
   });
 
+  it('disables Copy Selected while the source summary is loading', () => {
+    useDailySummaryMock.mockReturnValue({
+      summary: undefined,
+      isLoading: true,
+    });
+    const onCopy = jest.fn();
+    const ref = createRef<CopyFromYesterdaySheetRef>();
+    const view = render(<CopyFromYesterdaySheet ref={ref} onCopy={onCopy} />);
+    act(() => ref.current?.present('2026-11-20'));
+
+    // The pre-checked meal keeps checkedIds nonempty, but the button is disabled
+    // until availability is known, so pressing it copies nothing.
+    fireEvent.press(view.getByLabelText('Copy Selected'));
+    expect(onCopy).not.toHaveBeenCalled();
+  });
+
   it('shows an error and retry when the source summary fails to load', () => {
     const refetch = jest.fn();
     useDailySummaryMock.mockReturnValue({
