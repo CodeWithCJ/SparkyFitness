@@ -154,7 +154,7 @@ jobs:
                   '',
                   'Feel free to **Reopen** when ready! Please ensure:',
                   '- Reviewer feedback and bot comments (CodeRabbit/Strix/CI) are resolved.',
-                  '- Validation proof (screenshots or test logs) is attached.',
+                  '- Validation proof (screenshots or screen recording) is attached.',
                   '- Marked **Ready for review**.',
                   '',
                   '*(Maintainers: comment `/keep-draft` to keep open)*',
