@@ -263,6 +263,30 @@ describe('AddSheet', () => {
     expect(onAddMood).toHaveBeenCalledTimes(1);
   });
 
+  it('invokes onCopyFromYesterday when the Copy from yesterday row is pressed', () => {
+    const onCopyFromYesterday = jest.fn();
+    const onDismissWithoutAction = jest.fn();
+    const { ref, getByText } = renderAddSheet({
+      onCopyFromYesterday,
+      onDismissWithoutAction,
+    });
+
+    act(() => ref.current?.present());
+    fireEvent.press(getByText('Copy from yesterday'));
+    act(() => mockBottomSheetControls.onDismiss?.());
+
+    expect(onCopyFromYesterday).toHaveBeenCalledTimes(1);
+    expect(onDismissWithoutAction).not.toHaveBeenCalled();
+  });
+
+  it('leaves the Copy from yesterday row out when it has no handler', () => {
+    const { ref, queryByText } = renderAddSheet();
+
+    act(() => ref.current?.present());
+
+    expect(queryByText('Copy from yesterday')).toBeNull();
+  });
+
   it('dismisses from Done without counting as an action', () => {
     const onDismissWithoutAction = jest.fn();
     const { ref, getByText } = renderAddSheet({ onDismissWithoutAction });

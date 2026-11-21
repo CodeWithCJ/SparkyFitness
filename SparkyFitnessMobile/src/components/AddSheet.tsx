@@ -59,6 +59,7 @@ interface AddSheetProps {
   onAddMood?: () => void;
   onAddMindfulness?: () => void;
   onAddOralCare?: () => void;
+  onCopyFromYesterday?: () => void;
   onRecordActivity?: () => void;
   onOpenCycle?: () => void;
   showCycleCard?: boolean;
@@ -94,6 +95,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       onAddMood,
       onAddMindfulness,
       onAddOralCare,
+      onCopyFromYesterday,
       onRecordActivity,
       onOpenCycle,
       showCycleCard,
@@ -557,6 +559,14 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         }),
         icon: ADD_MENU_ITEM_ICONS.oralCare,
         onPress: onAddOralCare,
+      },
+      copyFromYesterday: onCopyFromYesterday && {
+        label: labelOf('copyFromYesterday'),
+        hint: t('addSheet.copyFromYesterdayHint', {
+          defaultValue: 'Repeat meals',
+        }),
+        icon: ADD_MENU_ITEM_ICONS.copyFromYesterday,
+        onPress: onCopyFromYesterday,
       },
       askSparky: {
         label: labelOf('askSparky'),

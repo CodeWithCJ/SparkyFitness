@@ -1,5 +1,5 @@
 import './global.css'
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as SplashScreen from 'expo-splash-screen';
@@ -37,6 +37,10 @@ import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useAppLanguageForegroundSync } from './src/hooks/useAppLanguageForegroundSync';
 import { useAutoSyncOnOpen } from './src/hooks/useAutoSyncOnOpen';
 import { useAddSheetActions } from './src/hooks/useAddSheetActions';
+import { useCopyFromYesterday } from './src/hooks/useCopyFromYesterday';
+import CopyFromYesterdaySheet, {
+  type CopyFromYesterdaySheetRef,
+} from './src/components/CopyFromYesterdaySheet';
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import FoodPhotoFlow from './src/components/FoodPhotoFlow';
@@ -399,6 +403,10 @@ function AppContent() {
   const { shouldYieldObserverSync } = useAutoSyncOnOpen({ initialRoute, syncMutation });
   useAppStartup({ shouldYieldObserverSync });
 
+  const copyFromYesterdaySheetRef = useRef<CopyFromYesterdaySheetRef>(null);
+  const { copyFromYesterday, isPending: copyFromYesterdayPending } =
+    useCopyFromYesterday();
+
   const {
     rememberActiveTab,
     getLastActiveTab,
@@ -414,12 +422,17 @@ function AppContent() {
     handleStartCheckIn,
     handleAddMindfulness,
     handleAddOralCare,
+    handleCopyFromYesterday,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,
     handleSyncHealthData,
     handleAddSheetDismissWithoutAction,
-  } = useAddSheetActions({ syncMutation });
+  } = useAddSheetActions({
+    syncMutation,
+    presentCopyFromYesterday: (date) =>
+      copyFromYesterdaySheetRef.current?.present(date),
+  });
 
   const isAddMenuItemAvailable = useAddMenuItemAvailable();
   const cycleSheetLabel = useCycleSheetLabel();
@@ -1571,6 +1584,7 @@ function AppContent() {
           onAddMood={handleAddMood}
           onAddMindfulness={handleAddMindfulness}
           onAddOralCare={handleAddOralCare}
+          onCopyFromYesterday={handleCopyFromYesterday}
           onRecordActivity={handleRecordActivity}
           onAskSparky={handleAskSparky}
           onStartCheckIn={handleStartCheckIn}
@@ -1578,6 +1592,11 @@ function AppContent() {
           showCycleCard={isAddMenuItemAvailable('wellness')}
           cycleLabel={cycleSheetLabel}
           onDismissWithoutAction={handleAddSheetDismissWithoutAction}
+        />
+        <CopyFromYesterdaySheet
+          ref={copyFromYesterdaySheetRef}
+          isPending={copyFromYesterdayPending}
+          onCopy={copyFromYesterday}
         />
         <ReauthModal
           visible={showReauthModal}
