@@ -31,6 +31,7 @@ export const HEALTH_METRIC_SAMPLES_RESERVED_SOURCES = [
   'polar',
   'intervals',
   'intervals.icu',
+  'zeppbridge',
   'SparkyFitness Watch',
   'HealthKit',
   'apple_health',

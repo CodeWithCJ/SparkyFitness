@@ -13,6 +13,7 @@ import { Clipboard } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { RoutingProviderFields } from './RoutingProviderFields';
+import { ZeppBridgeFields } from './ZeppBridgeFields';
 import { McpServerFields } from './McpServerFields';
 import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
 import { WeatherProviderFields } from './WeatherProviderFields';
@@ -149,6 +150,20 @@ export const ProviderSpecificFields = ({
             autoComplete="off"
           />
         </div>
+      )}
+
+      {provider.provider_type === 'zeppbridge' && (
+        <ZeppBridgeFields
+          idPrefix="new"
+          baseUrl={provider.base_url}
+          appKey={provider.app_key}
+          onBaseUrlChange={(value) =>
+            setProvider((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setProvider((prev) => ({ ...prev, app_key: value }))
+          }
+        />
       )}
 
       {provider.provider_type === 'valhalla' && (

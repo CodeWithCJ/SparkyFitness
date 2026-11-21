@@ -42,6 +42,7 @@ const BASE_URL_FETCHING_PROVIDER_TYPES = new Set([
   'mealie',
   'tandoor',
   'norish',
+  'zeppbridge',
   OPEN_FOOD_FACTS_PROVIDER_TYPE,
   ROUTING_PROVIDER_TYPE,
   WEATHER_PROVIDER_TYPE,

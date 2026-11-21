@@ -9,6 +9,7 @@ export const MANUAL_SYNC_PROVIDERS = [
   'hevy',
   'liftosaur',
   'intervals',
+  'zeppbridge',
 ] as const;
 
 export type ManualSyncProvider = (typeof MANUAL_SYNC_PROVIDERS)[number];

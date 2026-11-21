@@ -105,6 +105,8 @@ const SyncRangeDialog = ({
         return 'Liftosaur';
       case 'intervals':
         return 'Intervals.icu';
+      case 'zeppbridge':
+        return 'ZeppBridge';
       case 'withings':
         return 'Withings';
       case 'googlehealth':

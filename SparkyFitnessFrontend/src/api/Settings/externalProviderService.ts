@@ -58,6 +58,7 @@ export const createExternalProvider = async (
         'norish',
         'valhalla',
         'open_meteo',
+        'zeppbridge',
       ].includes(payload.provider_type)
         ? null
         : payload.app_id || null,
@@ -73,6 +74,7 @@ export const createExternalProvider = async (
         'open_meteo',
         'openfoodfacts',
         'coros_mcp',
+        'zeppbridge',
       ].includes(payload.provider_type)
         ? payload.base_url || null
         : null,
@@ -713,6 +715,36 @@ export const handleDisconnectIntervals = async (providerId?: string) => {
   }
 };
 
+const fetchZeppBridgeStatus = async (
+  providerId: string
+): Promise<{ connected: boolean; lastSyncAt: string | null }> => {
+  return apiCall(
+    `/integrations/zeppbridge/status?providerId=${encodeURIComponent(providerId)}`
+  );
+};
+
+export const handleDisconnectZeppBridge = async (providerId?: string) => {
+  if (
+    !confirm(
+      i18n.t(
+        'integrations.zeppbridgeDisconnectConfirm',
+        'Are you sure you want to disconnect ZeppBridge? This will deactivate the integration until you re-enable it. Data already imported is kept.'
+      )
+    )
+  )
+    return;
+
+  try {
+    await apiCall(`/integrations/zeppbridge/disconnect`, {
+      method: 'POST',
+      body: JSON.stringify({ providerId }),
+    });
+  } catch (error: unknown) {
+    console.error('Error disconnecting from ZeppBridge:', error);
+    throw error;
+  }
+};
+
 const fetchStravaStatus = async (): Promise<OAuthStatusResponse> => {
   return apiCall('/integrations/strava/status');
 };
@@ -802,6 +834,14 @@ export const getEnrichedProviders = async (): Promise<
             enriched.intervals_pushed_since = status.pushedSince;
             break;
           }
+          case 'zeppbridge': {
+            const status = await fetchZeppBridgeStatus(provider.id);
+            enriched.zeppbridge_connect_status = status.connected
+              ? 'connected'
+              : 'disconnected';
+            enriched.zeppbridge_last_sync_at = status.lastSyncAt;
+            break;
+          }
           case 'strava': {
             if (provider.has_token) {
               const status = await fetchStravaStatus();
@@ -840,6 +880,9 @@ export const getEnrichedProviders = async (): Promise<
         }
         if (provider.provider_type === 'intervals') {
           enriched.intervals_connect_status = 'disconnected';
+        }
+        if (provider.provider_type === 'zeppbridge') {
+          enriched.zeppbridge_connect_status = 'disconnected';
         }
       }
 

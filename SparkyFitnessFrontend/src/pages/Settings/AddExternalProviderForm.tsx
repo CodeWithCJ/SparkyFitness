@@ -24,6 +24,7 @@ import {
   useSyncHevyMutation,
   useSyncLiftosaurMutation,
   useSyncIntervalsMutation,
+  useSyncZeppBridgeMutation,
 } from '@/hooks/Integrations/useIntegrations';
 import {
   useCreateExternalProviderMutation,
@@ -67,6 +68,8 @@ const AddExternalProviderForm = ({
     useSyncLiftosaurMutation();
   const { mutateAsync: syncIntervalsData, isPending: isSyncingIntervals } =
     useSyncIntervalsMutation();
+  const { mutateAsync: syncZeppBridgeData, isPending: isSyncingZeppBridge } =
+    useSyncZeppBridgeMutation();
   const { mutateAsync: loginGarmin, isPending: isLoggingInGarmin } =
     useLoginGarminMutation();
   const { mutateAsync: createExternalProvider, isPending: isCreatingProvider } =
@@ -93,6 +96,7 @@ const AddExternalProviderForm = ({
     isSyncingHevy ||
     isSyncingLiftosaur ||
     isSyncingIntervals ||
+    isSyncingZeppBridge ||
     isLoggingInGarmin ||
     isCreatingProvider ||
     isCreatingGlobal ||
@@ -257,6 +261,16 @@ const AddExternalProviderForm = ({
       if (newProvider.provider_type === 'intervals' && newProvider.is_active) {
         try {
           await syncIntervalsData({ providerId: createdProvider.id });
+        } catch (error: unknown) {
+          if (error instanceof Error) {
+            console.error(error);
+          }
+        }
+      }
+
+      if (newProvider.provider_type === 'zeppbridge' && newProvider.is_active) {
+        try {
+          await syncZeppBridgeData({ providerId: createdProvider.id });
         } catch (error: unknown) {
           if (error instanceof Error) {
             console.error(error);

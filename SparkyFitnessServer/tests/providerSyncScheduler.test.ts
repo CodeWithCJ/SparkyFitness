@@ -10,6 +10,7 @@ import stravaService from '../services/stravaService.js';
 import googleHealthService from '../services/googleHealthService.js';
 import hevyService from '../integrations/hevy/hevyService.js';
 import intervalsService from '../integrations/intervals/intervalsService.js';
+import zeppBridgeService from '../integrations/zeppbridge/zeppBridgeService.js';
 import hevyProviderRepository from '../integrations/hevy/hevyProviderRepository.js';
 import {
   PROVIDER_SYNC_CONFIGS,
@@ -88,6 +89,12 @@ vi.mock('../integrations/intervals/intervalsService.js', () => ({
   },
 }));
 
+vi.mock('../integrations/zeppbridge/zeppBridgeService.js', () => ({
+  default: {
+    syncZeppBridgeData: vi.fn(),
+  },
+}));
+
 vi.mock('../config/logging.js', () => ({
   log: vi.fn(),
 }));
@@ -129,8 +136,8 @@ describe('providerSyncScheduler', () => {
     vi.useRealTimers();
   });
 
-  it('contains configurations for all 11 providers', () => {
-    expect(PROVIDER_SYNC_CONFIGS).toHaveLength(11);
+  it('contains configurations for all 12 providers', () => {
+    expect(PROVIDER_SYNC_CONFIGS).toHaveLength(12);
     const providerNames = PROVIDER_SYNC_CONFIGS.map((c) => c.name);
     expect(providerNames).toEqual([
       'Withings',
@@ -144,6 +151,7 @@ describe('providerSyncScheduler', () => {
       'Hevy',
       'Liftosaur',
       'Intervals.icu',
+      'ZeppBridge',
     ]);
   });
 
@@ -816,10 +824,34 @@ describe('providerSyncScheduler', () => {
     );
   });
 
+  it('runs ZeppBridge with the provider id', async () => {
+    vi.mocked(externalProviderRepository.getProvidersByType).mockResolvedValue([
+      {
+        id: 'p-zepp',
+        user_id: 'u-zepp',
+        is_active: true,
+        sync_frequency: 'daily',
+      } as never,
+    ]);
+
+    const zeppConfig = PROVIDER_SYNC_CONFIGS.find(
+      (c) => c.name === 'ZeppBridge'
+    ) as ProviderSyncConfig;
+
+    expect(zeppConfig.types).toEqual(['zeppbridge']);
+    await runProviderSync(zeppConfig);
+
+    expect(zeppBridgeService.syncZeppBridgeData).toHaveBeenCalledWith(
+      'u-zepp',
+      'u-zepp',
+      'p-zepp'
+    );
+  });
+
   it('registers cron jobs on startup for each configured provider', () => {
     const tasks = startProviderSyncSchedulers();
-    expect(tasks).toHaveLength(11);
-    expect(cron.schedule).toHaveBeenCalledTimes(11);
+    expect(tasks).toHaveLength(12);
+    expect(cron.schedule).toHaveBeenCalledTimes(12);
     expect(cron.schedule).toHaveBeenCalledWith(
       '0 * * * *',
       expect.any(Function),
