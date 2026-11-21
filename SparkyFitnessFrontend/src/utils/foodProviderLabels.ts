@@ -1,17 +1,15 @@
+import { FOOD_PROVIDER_REGISTRY, FOOD_PROVIDER_TYPES } from '@workspace/shared';
+
 // Human-friendly names for the food data sources (foods.provider_type) stored
-// by the food import providers. `nutritionix` is a legacy provider type that
-// still appears on older rows but has no active backend support.
+// by the food import providers. Built from shared FOOD_PROVIDER_REGISTRY plus
+// legacy `nutritionix` (which still appears on older rows).
 const PROVIDER_DISPLAY_NAMES: Record<string, string> = {
-  openfoodfacts: 'Open Food Facts',
-  usda: 'USDA',
-  fatsecret: 'FatSecret',
-  mealie: 'Mealie',
-  tandoor: 'Tandoor',
-  yazio: 'Yazio',
-  norish: 'Norish',
-  swissfood: 'SwissFood',
-  'canadian-nutrient-file': 'Canadian Nutrient File',
-  livsmedelsverket: 'Swedish Food Agency (Livsmedelsverket)',
+  ...Object.fromEntries(
+    FOOD_PROVIDER_TYPES.map((type) => [
+      type,
+      FOOD_PROVIDER_REGISTRY[type].shortName,
+    ])
+  ),
   nutritionix: 'Nutritionix',
 };
 

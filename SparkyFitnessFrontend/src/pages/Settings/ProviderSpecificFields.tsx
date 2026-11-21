@@ -14,7 +14,10 @@ import { useTranslation, Trans } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { RoutingProviderFields } from './RoutingProviderFields';
 import { McpServerFields } from './McpServerFields';
-import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
+import {
+  MCP_SERVER_PROVIDER_TYPE,
+  getFoodProviderMetadata,
+} from '@workspace/shared';
 import { WeatherProviderFields } from './WeatherProviderFields';
 
 // Developer dashboards where each OAuth provider's Client ID/Secret and callback
@@ -80,23 +83,26 @@ export const ProviderSpecificFields = ({
     'polar',
     'intervals',
   ].includes(provider.provider_type || '');
-  const needsAppKey = [
-    'mealie',
-    'tandoor',
-    'norish',
-    'nutritionix',
-    'fatsecret',
-    'usda',
-    'withings',
-    'fitbit',
-    'oura',
-    'googlehealth',
-    'strava',
-    'polar',
-    'hevy',
-    'liftosaur',
-    'intervals',
-  ].includes(provider.provider_type || '');
+  const isFoodApiKeyProvider =
+    getFoodProviderMetadata(provider.provider_type)?.credentials === 'api_key';
+  const needsAppKey =
+    isFoodApiKeyProvider ||
+    [
+      'mealie',
+      'tandoor',
+      'norish',
+      'nutritionix',
+      'fatsecret',
+      'withings',
+      'fitbit',
+      'oura',
+      'googlehealth',
+      'strava',
+      'polar',
+      'hevy',
+      'liftosaur',
+      'intervals',
+    ].includes(provider.provider_type || '');
 
   const providerDashboard =
     OAUTH_PROVIDER_DASHBOARDS[provider.provider_type || ''];
@@ -776,6 +782,34 @@ export const ProviderSpecificFields = ({
               ),
             }}
           />
+        </p>
+      )}
+
+      {isFoodApiKeyProvider && provider.provider_type !== 'usda' && (
+        <p className="text-sm text-muted-foreground col-span-2 flex items-center gap-2">
+          {getFoodProviderMetadata(provider.provider_type)?.apiKeyUrl && (
+            <a
+              href={getFoodProviderMetadata(provider.provider_type)!.apiKeyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 underline"
+            >
+              {t(
+                `settings.foodProviders.${provider.provider_type}.apiKeyLink`,
+                t('settings.foodProviders.common.getApiKey', 'Get an API Key')
+              )}
+            </a>
+          )}
+          {getFoodProviderMetadata(provider.provider_type)?.termsUrl && (
+            <a
+              href={getFoodProviderMetadata(provider.provider_type)!.termsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground underline text-xs"
+            >
+              {t('settings.foodProviders.common.terms', 'Terms')}
+            </a>
+          )}
         </p>
       )}
 

@@ -2034,6 +2034,12 @@
     "syncFailed_other": "Failed to synchronize {{count}} providers."
   },
   "settings": {
+    "foodProviders": {
+      "common": {
+        "getApiKey": "Get an API Key",
+        "terms": "Terms"
+      }
+    },
     "chatMcp": {
       "title": "Outside tools",
       "description": "Your admin added these services from outside SparkyFitness. When one is on, Sparky can send it parts of your chat and read what it sends back. Each is off until you turn it on.",
