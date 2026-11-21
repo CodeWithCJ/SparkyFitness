@@ -19,6 +19,14 @@ export const CACHE_COLLECTIONS = {
   preferences: 'preferences',
   plateInventory: 'plate_inventory',
   profile: 'profile',
+  /** The person's foods, keyed by food id, searched by "brand name". */
+  food: 'food',
+  /** Every serving of a food, keyed by food id. */
+  foodVariants: 'food_variants',
+  /** The recent and most-used foods lists (one document). */
+  foodRecents: 'food_recents',
+  /** The person's meal types (one document). */
+  mealTypes: 'meal_types',
   /** Markers the offline pack writes about itself. */
   pack: 'pack',
 } as const;

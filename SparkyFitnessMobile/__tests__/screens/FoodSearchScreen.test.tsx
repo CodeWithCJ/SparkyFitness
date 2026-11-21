@@ -1423,6 +1423,38 @@ describe('FoodSearchScreen', () => {
     expect(scanCall[1]).not.toHaveProperty('providerId');
   });
 
+  describe('with the server unreachable', () => {
+    it('reads the foods kept on the phone, and nothing that needs the server', () => {
+      mockUseServerConnection.mockReturnValue({
+        isConnected: false,
+        status: 'unreachable',
+      } as any);
+
+      renderSearching(route);
+
+      // The saved foods, their recent lists and the preferences are read
+      // from the phone through the API clients.
+      expect(mockUseFoodSearch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ enabled: true })
+      );
+      expect(mockUseFoods).toHaveBeenCalledWith({ enabled: true });
+      // Favourites and meals have no saved copy yet.
+      expect(mockUseFavorites).toHaveBeenCalledWith({ enabled: false });
+    });
+
+    it('does not read anything while no server is set up', () => {
+      mockUseServerConnection.mockReturnValue({
+        isConnected: false,
+        status: 'notConfigured',
+      } as any);
+
+      renderSearching(route);
+
+      expect(mockUseFoods).toHaveBeenCalledWith({ enabled: false });
+    });
+  });
+
   describe('persisted "All Providers" default', () => {
     const twoProviders = {
       providers: [
