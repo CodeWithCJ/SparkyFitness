@@ -20,6 +20,13 @@ export function pendingEntryId(clientId: string): string {
   return `${PENDING_ENTRY_PREFIX}${clientId}`;
 }
 
+/** The replay key a waiting entry's id was made from. */
+export function pendingEntryClientId(id: string): string {
+  return id.startsWith(PENDING_ENTRY_PREFIX)
+    ? id.slice(PENDING_ENTRY_PREFIX.length)
+    : id;
+}
+
 /** True for an entry that is waiting on the phone, not yet on the server. */
 export function isPendingEntryId(id: string): boolean {
   return id.startsWith(PENDING_ENTRY_PREFIX);

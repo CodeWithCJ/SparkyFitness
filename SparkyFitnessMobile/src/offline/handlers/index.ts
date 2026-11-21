@@ -1,3 +1,4 @@
+import { registerFoodEntryDeleteHandlers } from './foodEntryDelete';
 import { registerFoodEntryHandlers } from './foodEntry';
 import { registerFoodEntryMealHandlers } from './foodEntryMeal';
 import { registerFollowUpHandlers } from './followUps';
@@ -19,4 +20,5 @@ export function registerAllOutboxHandlers(): void {
   registerWaterIntakeHandlers();
   registerFoodEntryHandlers();
   registerFoodEntryMealHandlers();
+  registerFoodEntryDeleteHandlers();
 }

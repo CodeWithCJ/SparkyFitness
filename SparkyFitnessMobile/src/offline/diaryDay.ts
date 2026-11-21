@@ -5,6 +5,7 @@ import type {
 } from '@workspace/shared';
 import { apiFetch } from '../services/api/apiClient';
 import type { FoodEntry } from '../types/foodEntries';
+import { FOOD_ENTRY_DELETE } from './foodEntryDeleteHandOver';
 import { previewFromQueuedRow } from './foodEntryPreview';
 import { accountGeneration, savedCopyReadable } from './accountGeneration';
 import { getActiveServerConfigId } from '../services/storage';
@@ -40,6 +41,8 @@ export interface OfflineDiaryDay {
   savedFood: FoodEntry[] | null;
   /** Food entries of that day still waiting to upload, as they will read. */
   waitingFood: FoodEntry[];
+  /** Food entries the server has whose removal is waiting to upload: hidden. */
+  deletedFood: string[];
 }
 
 /** Keeps the day's workouts from a diary load, for showing it offline. */
@@ -275,6 +278,7 @@ export async function readOfflineDiaryDay(
     deleted: [],
     savedFood: null,
     waitingFood: [],
+    deletedFood: [],
   };
   if (!(await savedCopyReadable())) return nothing;
   const serverConfigId = await getActiveServerConfigId();
@@ -326,6 +330,9 @@ export async function readOfflineDiaryDay(
     deleted,
     savedFood: savedFoodRow ? (savedFoodRow.payload as FoodEntry[]) : null,
     waitingFood,
+    deletedFood: rows
+      .filter((row) => row.kind === FOOD_ENTRY_DELETE)
+      .map((row) => row.entityId),
   };
 }
 
@@ -359,7 +366,9 @@ export function mergeWaitingWorkouts(
  */
 export function mergeWaitingFood(
   saved: readonly FoodEntry[],
-  waiting: readonly FoodEntry[]
+  waiting: readonly FoodEntry[],
+  deleted: readonly string[] = []
 ): FoodEntry[] {
-  return [...saved, ...waiting];
+  const gone = new Set(deleted);
+  return [...saved.filter((entry) => !gone.has(entry.id)), ...waiting];
 }

@@ -168,9 +168,13 @@ describe("a day's totals with entries waiting to upload", () => {
 
     it('returns the day unchanged when nothing is waiting', () => {
       const data = raw();
-      expect(applyWaitingToRawData(data, { foodEntries: [], waterMl: 0 })).toBe(
-        data
-      );
+      expect(
+        applyWaitingToRawData(data, {
+          foodEntries: [],
+          waterMl: 0,
+          deletedFoodEntryIds: [],
+        })
+      ).toBe(data);
     });
 
     it('counts a waiting entry in the list, the calories and the macros', async () => {
@@ -196,7 +200,11 @@ describe("a day's totals with entries waiting to upload", () => {
     it('adds the drinks to the water total', () => {
       const summary = buildDailySummary(
         DAY,
-        applyWaitingToRawData(raw(), { foodEntries: [], waterMl: 250 })
+        applyWaitingToRawData(raw(), {
+          foodEntries: [],
+          waterMl: 250,
+          deletedFoodEntryIds: [],
+        })
       );
 
       expect(summary.waterConsumed).toBe(1000);

@@ -652,7 +652,11 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       summary != null || offlineDay.savedFood != null || waitingFood.length > 0;
     const offlineFood = summary
       ? summary.foodEntries
-      : mergeWaitingFood(offlineDay.savedFood ?? [], waitingFood);
+      : mergeWaitingFood(
+          offlineDay.savedFood ?? [],
+          waitingFood,
+          offlineDay.deletedFood ?? []
+        );
     return (
       <ScrollView
         className="flex-1 bg-background"

@@ -4906,7 +4906,8 @@
     "errors": {
       "permission": "You don't have permission to edit this entry.",
       "saveFailed": "Failed to save changes",
-      "deleteFailed": "Failed to delete"
+      "deleteFailed": "Failed to delete",
+      "uploadingNow": "It is uploading right now. Try again in a moment."
     },
     "deleteConfirm": "Are you sure you want to delete this food entry?",
     "entryNotes": "Note for this entry"

@@ -9,6 +9,7 @@ import { previewFromQueuedRow } from './foodEntryPreview';
 import { readSavedSingle } from './foodLibrary';
 import { listUnconfirmedOutbox } from './outbox';
 import { signedInUserId } from './syncEngine';
+import { FOOD_ENTRY_DELETE } from './foodEntryDeleteHandOver';
 import { WATER_ADD, type WaterAddPayload } from './waterHandOver';
 
 /** What is waiting to upload for one day, ready to add to the day's totals. */
@@ -17,9 +18,15 @@ export interface WaitingForDay {
   foodEntries: FoodEntry[];
   /** Millilitres of drinks, where the phone can tell how much each press adds. */
   waterMl: number;
+  /** Entries the server has whose removal is waiting to upload. */
+  deletedFoodEntryIds: string[];
 }
 
-const NOTHING_WAITING: WaitingForDay = { foodEntries: [], waterMl: 0 };
+const NOTHING_WAITING: WaitingForDay = {
+  foodEntries: [],
+  waterMl: 0,
+  deletedFoodEntryIds: [],
+};
 
 /**
  * The food entries and drinks of one day that the server has not confirmed.
@@ -43,6 +50,7 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
     if (rows.length === 0) return NOTHING_WAITING;
 
     const foodEntries: FoodEntry[] = [];
+    const deletedFoodEntryIds: string[] = [];
     let waterMl = 0;
     const containers =
       (await readSavedSingle<WaterContainer[]>(
@@ -51,6 +59,10 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
         CACHE_COLLECTIONS.waterContainers
       )) ?? [];
     for (const row of rows) {
+      if (row.kind === FOOD_ENTRY_DELETE) {
+        deletedFoodEntryIds.push(row.entityId);
+        continue;
+      }
       if (row.kind === WATER_ADD) {
         const { containerId } = row.payload as WaterAddPayload;
         const container = containers.find((item) => item.id === containerId);
@@ -63,7 +75,7 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
       const preview = await previewFromQueuedRow(db, serverConfigId, row);
       if (preview) foodEntries.push(preview);
     }
-    return { foodEntries, waterMl };
+    return { foodEntries, waterMl, deletedFoodEntryIds };
   } catch {
     return NOTHING_WAITING;
   }

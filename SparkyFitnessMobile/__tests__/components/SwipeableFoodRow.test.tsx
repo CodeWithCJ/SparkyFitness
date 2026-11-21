@@ -152,7 +152,7 @@ describe('SwipeableFoodRow', () => {
       expect(mockNavigate).not.toHaveBeenCalled();
     });
 
-    it('has no adjust button and no long-press menu', () => {
+    it('has no adjust button, and the long-press menu offers only delete', () => {
       const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation();
       const onAdjustServing = jest.fn();
       const screen = renderRow(
@@ -169,8 +169,48 @@ describe('SwipeableFoodRow', () => {
       fireEvent(screen.getByText('Greek Yogurt'), 'longPress');
 
       expect(onAdjustServing).not.toHaveBeenCalled();
+      // Only Delete and Cancel: no "Adjust serving".
+      const buttons = alertSpy.mock.calls[0][2] as { text: string }[];
+      expect(buttons.map((button) => button.text)).toEqual([
+        'Delete',
+        'Cancel',
+      ]);
+    });
+
+    it('cannot delete a component of a logged meal, which goes through the meal', () => {
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation();
+      const screen = renderRow(
+        <SwipeableFoodRow
+          entry={createEntry({ food_entry_meal_id: 'fem-1' })}
+          nutrition={nutrition}
+          readOnly
+        />
+      );
+
+      fireEvent(screen.getByText('Greek Yogurt'), 'longPress');
+
       expect(alertSpy).not.toHaveBeenCalled();
-      expect(screen.queryByLabelText('Delete food')).toBeNull();
+    });
+
+    it('treats an entry waiting to upload the same way, even with the server up', () => {
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation();
+      const screen = renderRow(
+        <SwipeableFoodRow
+          entry={createEntry({ id: 'pending-abc' })}
+          nutrition={nutrition}
+          onAdjustServing={jest.fn()}
+        />
+      );
+
+      fireEvent.press(screen.getByText('Greek Yogurt'));
+      expect(mockNavigate).not.toHaveBeenCalled();
+
+      fireEvent(screen.getByText('Greek Yogurt'), 'longPress');
+      const buttons = alertSpy.mock.calls[0][2] as { text: string }[];
+      expect(buttons.map((button) => button.text)).toEqual([
+        'Delete',
+        'Cancel',
+      ]);
     });
   });
 });

@@ -56,12 +56,26 @@ export function applyWaitingToRawData(
   raw: DailySummaryRawData,
   waiting: WaitingForDay
 ): DailySummaryRawData {
-  if (waiting.foodEntries.length === 0 && waiting.waterMl === 0) return raw;
-  const addedCalories = calculateCaloriesConsumed(waiting.foodEntries);
+  const { deletedFoodEntryIds } = waiting;
+  if (
+    waiting.foodEntries.length === 0 &&
+    waiting.waterMl === 0 &&
+    deletedFoodEntryIds.length === 0
+  ) {
+    return raw;
+  }
+  // An entry the server has whose removal waits to upload is already out of
+  // the day's list and its calories are back, as they will be once it is gone.
+  const gone = new Set(deletedFoodEntryIds);
+  const removed = raw.foodEntries.filter((entry) => gone.has(entry.id));
+  const kept = raw.foodEntries.filter((entry) => !gone.has(entry.id));
+  const addedCalories =
+    calculateCaloriesConsumed(waiting.foodEntries) -
+    calculateCaloriesConsumed(removed);
   const { calorieBalance, waterIntakeBreakdown } = raw;
   return {
     ...raw,
-    foodEntries: [...raw.foodEntries, ...waiting.foodEntries],
+    foodEntries: [...kept, ...waiting.foodEntries],
     calorieBalance: calorieBalance && {
       ...calorieBalance,
       eaten: calorieBalance.eaten + addedCalories,
