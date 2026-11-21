@@ -152,7 +152,7 @@ describe('SwipeableFoodRow', () => {
       expect(mockNavigate).not.toHaveBeenCalled();
     });
 
-    it('has no adjust button, and the long-press menu offers only delete', () => {
+    it('opens the amount sheet instead of the detail screen, and the menu offers adjust and delete', () => {
       const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation();
       const onAdjustServing = jest.fn();
       const screen = renderRow(
@@ -164,14 +164,14 @@ describe('SwipeableFoodRow', () => {
         />
       );
 
-      // The calories are plain text, not the adjust button.
-      fireEvent.press(screen.getByText(/120 kcal/));
-      fireEvent(screen.getByText('Greek Yogurt'), 'longPress');
+      fireEvent.press(screen.getByText('Greek Yogurt'));
+      expect(onAdjustServing).toHaveBeenCalledTimes(1);
+      expect(mockNavigate).not.toHaveBeenCalled();
 
-      expect(onAdjustServing).not.toHaveBeenCalled();
-      // Only Delete and Cancel: no "Adjust serving".
+      fireEvent(screen.getByText('Greek Yogurt'), 'longPress');
       const buttons = alertSpy.mock.calls[0][2] as { text: string }[];
       expect(buttons.map((button) => button.text)).toEqual([
+        'Adjust serving',
         'Delete',
         'Cancel',
       ]);
@@ -194,20 +194,23 @@ describe('SwipeableFoodRow', () => {
 
     it('treats an entry waiting to upload the same way, even with the server up', () => {
       const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation();
+      const onAdjustServing = jest.fn();
       const screen = renderRow(
         <SwipeableFoodRow
           entry={createEntry({ id: 'pending-abc' })}
           nutrition={nutrition}
-          onAdjustServing={jest.fn()}
+          onAdjustServing={onAdjustServing}
         />
       );
 
       fireEvent.press(screen.getByText('Greek Yogurt'));
       expect(mockNavigate).not.toHaveBeenCalled();
+      expect(onAdjustServing).toHaveBeenCalledTimes(1);
 
       fireEvent(screen.getByText('Greek Yogurt'), 'longPress');
       const buttons = alertSpy.mock.calls[0][2] as { text: string }[];
       expect(buttons.map((button) => button.text)).toEqual([
+        'Adjust serving',
         'Delete',
         'Cancel',
       ]);

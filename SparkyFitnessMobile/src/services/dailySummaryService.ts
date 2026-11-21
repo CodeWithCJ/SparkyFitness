@@ -8,6 +8,7 @@ import {
 } from './api/foodEntriesApi';
 import { fetchDailySummary } from './api/dailySummaryApi';
 import {
+  applyUpdatedQuantities,
   readWaitingForDay,
   type WaitingForDay,
 } from '../offline/dailySummaryOverlay';
@@ -56,11 +57,12 @@ export function applyWaitingToRawData(
   raw: DailySummaryRawData,
   waiting: WaitingForDay
 ): DailySummaryRawData {
-  const { deletedFoodEntryIds } = waiting;
+  const { deletedFoodEntryIds, updatedQuantities } = waiting;
   if (
     waiting.foodEntries.length === 0 &&
     waiting.waterMl === 0 &&
-    deletedFoodEntryIds.length === 0
+    deletedFoodEntryIds.length === 0 &&
+    Object.keys(updatedQuantities).length === 0
   ) {
     return raw;
   }
@@ -68,10 +70,14 @@ export function applyWaitingToRawData(
   // the day's list and its calories are back, as they will be once it is gone.
   const gone = new Set(deletedFoodEntryIds);
   const removed = raw.foodEntries.filter((entry) => gone.has(entry.id));
-  const kept = raw.foodEntries.filter((entry) => !gone.has(entry.id));
+  const notGone = raw.foodEntries.filter((entry) => !gone.has(entry.id));
+  // An amount changed on the phone shows at once: the entry keeps its serving
+  // and its nutrition per serving, only the amount eaten moves.
+  const kept = applyUpdatedQuantities(notGone, updatedQuantities);
   const addedCalories =
     calculateCaloriesConsumed(waiting.foodEntries) -
-    calculateCaloriesConsumed(removed);
+    calculateCaloriesConsumed(removed) +
+    (calculateCaloriesConsumed(kept) - calculateCaloriesConsumed(notGone));
   const { calorieBalance, waterIntakeBreakdown } = raw;
   return {
     ...raw,

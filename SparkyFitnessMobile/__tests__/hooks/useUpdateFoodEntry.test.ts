@@ -17,6 +17,13 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+const mockQueueQuantity = jest.fn();
+const mockEditWaiting = jest.fn();
+jest.mock('../../src/offline/foodEntryUpdateHandOver', () => ({
+  queueFoodEntryQuantity: (...args: unknown[]) => mockQueueQuantity(...args),
+  editWaitingEntryQuantity: (...args: unknown[]) => mockEditWaiting(...args),
+}));
+
 const mockUpdateFoodEntry = updateFoodEntry as jest.MockedFunction<
   typeof updateFoodEntry
 >;
@@ -193,5 +200,83 @@ describe('useUpdateFoodEntry', () => {
     });
 
     invalidateSpy.mockRestore();
+  });
+});
+
+describe('useUpdateFoodEntry while the server is unreachable', () => {
+  let queryClient: QueryClient;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    queryClient = createTestQueryClient();
+  });
+
+  afterEach(() => queryClient.clear());
+
+  test('keeps a new amount on the phone', async () => {
+    mockUpdateFoodEntry.mockRejectedValue(
+      new TypeError('Network request failed')
+    );
+    mockQueueQuantity.mockResolvedValue(true);
+    const onKeptOnPhone = jest.fn();
+    const { result } = renderHook(
+      () =>
+        useUpdateFoodEntry({
+          entryId: 'e1',
+          entryDate: '2026-11-21',
+          onKeptOnPhone,
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await act(async () => {
+      result.current.updateEntry({ quantity: 3 });
+    });
+
+    await waitFor(() => expect(onKeptOnPhone).toHaveBeenCalledTimes(1));
+    expect(mockQueueQuantity).toHaveBeenCalledWith('e1', '2026-11-21', 3);
+  });
+
+  test('does not keep a change of more than the amount', async () => {
+    mockUpdateFoodEntry.mockRejectedValue(
+      new TypeError('Network request failed')
+    );
+    const { result } = renderHook(
+      () => useUpdateFoodEntry({ entryId: 'e1', entryDate: '2026-11-21' }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await act(async () => {
+      result.current.updateEntry({ quantity: 3, unit: 'g' });
+    });
+
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' })
+      )
+    );
+    expect(mockQueueQuantity).not.toHaveBeenCalled();
+  });
+
+  test('changes a waiting entry where it waits, without asking the server', async () => {
+    mockEditWaiting.mockResolvedValue('edited');
+    const onKeptOnPhone = jest.fn();
+    const { result } = renderHook(
+      () =>
+        useUpdateFoodEntry({
+          entryId: 'pending-abc',
+          entryDate: '2026-11-21',
+          onKeptOnPhone,
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await act(async () => {
+      result.current.updateEntry({ quantity: 2 });
+    });
+
+    await waitFor(() => expect(onKeptOnPhone).toHaveBeenCalledTimes(1));
+    expect(mockEditWaiting).toHaveBeenCalledWith('abc', 2);
+    expect(mockUpdateFoodEntry).not.toHaveBeenCalled();
   });
 });

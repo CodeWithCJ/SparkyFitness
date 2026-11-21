@@ -173,6 +173,7 @@ describe("a day's totals with entries waiting to upload", () => {
           foodEntries: [],
           waterMl: 0,
           deletedFoodEntryIds: [],
+          updatedQuantities: {},
         })
       ).toBe(data);
     });
@@ -204,6 +205,7 @@ describe("a day's totals with entries waiting to upload", () => {
           foodEntries: [],
           waterMl: 250,
           deletedFoodEntryIds: [],
+          updatedQuantities: {},
         })
       );
 

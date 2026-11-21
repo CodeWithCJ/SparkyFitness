@@ -53,9 +53,10 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
   );
 
   const isMealComponent = !!entry.food_entry_meal_id;
-  // A waiting entry is not on the server, so there is no detail or serving
-  // to open; and a logged meal's components are removed through the meal,
-  // which needs the server, so they cannot be deleted from a phone-only view.
+  // A waiting entry is not on the server, so there is no detail to open; and
+  // a logged meal's components are removed through the meal, which needs the
+  // server, so they cannot be deleted from a phone-only view. The amount can
+  // still be changed: it is kept on the phone and uploads later.
   const readOnly = readOnlyProp || isPendingEntryId(entry.id);
   const canDelete = !(readOnlyProp && isMealComponent);
   const getImageSource = useFoodImageSourceContext();
@@ -111,16 +112,18 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
   );
 
   const canQuickAdjust =
-    !readOnly &&
-    !isMealComponent &&
-    !!onAdjustServing &&
-    Number(entry.serving_size) > 0;
+    !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
   const name =
     entry.food_name ||
     t('foodRow.unknownFood', { defaultValue: 'Unknown food' });
   const timeLabel = formatTimeLabel(entry.entry_time, preferences?.time_format);
 
   const handlePress = () => {
+    if (readOnly) {
+      // No detail screen here; the row opens the amount sheet instead.
+      if (canQuickAdjust) onAdjustServing!(entry);
+      return;
+    }
     if (isMealComponent && entry.food_entry_meal_id) {
       navigation.navigate('EditLoggedMeal', {
         foodEntryMealId: entry.food_entry_meal_id,
@@ -180,9 +183,9 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
           <TouchableOpacity
             className="flex-1 mr-2"
             activeOpacity={0.7}
-            onPress={readOnly ? undefined : handlePress}
+            onPress={readOnly && !canQuickAdjust ? undefined : handlePress}
             onLongPress={canDelete ? handleLongPress : undefined}
-            disabled={readOnly && !canDelete}
+            disabled={readOnly && !canDelete && !canQuickAdjust}
           >
             <View className="flex-row flex-wrap items-baseline">
               <Text className="text-md text-text-primary" numberOfLines={1}>

@@ -17,6 +17,7 @@ const EMPTY: OfflineDiaryDay = {
   savedFood: null,
   waitingFood: [],
   deletedFood: [],
+  updatedFood: {},
 };
 
 /**

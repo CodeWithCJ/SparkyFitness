@@ -655,7 +655,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       : mergeWaitingFood(
           offlineDay.savedFood ?? [],
           waitingFood,
-          offlineDay.deletedFood ?? []
+          offlineDay.deletedFood ?? [],
+          offlineDay.updatedFood ?? {}
         );
     return (
       <ScrollView
@@ -701,6 +702,7 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
             goals={summary?.goals}
             calorieGoal={summary?.calorieGoal}
             readOnly
+            onAdjustServing={(entry) => servingSheetRef.current?.present(entry)}
             onAddFood={() =>
               navigation.navigate('FoodSearch', { date: selectedDate })
             }

@@ -10,6 +10,10 @@ import { readSavedSingle } from './foodLibrary';
 import { listUnconfirmedOutbox } from './outbox';
 import { signedInUserId } from './syncEngine';
 import { FOOD_ENTRY_DELETE } from './foodEntryDeleteHandOver';
+import {
+  FOOD_ENTRY_UPDATE,
+  type FoodEntryUpdatePayload,
+} from './foodEntryUpdateHandOver';
 import { WATER_ADD, type WaterAddPayload } from './waterHandOver';
 
 /** What is waiting to upload for one day, ready to add to the day's totals. */
@@ -20,12 +24,27 @@ export interface WaitingForDay {
   waterMl: number;
   /** Entries the server has whose removal is waiting to upload. */
   deletedFoodEntryIds: string[];
+  /** New amounts for entries the server has, by entry id. */
+  updatedQuantities: Record<string, number>;
+}
+
+/** Entries with the amounts the person changed on the phone applied. */
+export function applyUpdatedQuantities(
+  entries: readonly FoodEntry[],
+  updatedQuantities: Readonly<Record<string, number>>
+): FoodEntry[] {
+  return entries.map((entry) =>
+    entry.id in updatedQuantities
+      ? { ...entry, quantity: updatedQuantities[entry.id] }
+      : entry
+  );
 }
 
 const NOTHING_WAITING: WaitingForDay = {
   foodEntries: [],
   waterMl: 0,
   deletedFoodEntryIds: [],
+  updatedQuantities: {},
 };
 
 /**
@@ -51,6 +70,7 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
 
     const foodEntries: FoodEntry[] = [];
     const deletedFoodEntryIds: string[] = [];
+    const updatedQuantities: Record<string, number> = {};
     let waterMl = 0;
     const containers =
       (await readSavedSingle<WaterContainer[]>(
@@ -61,6 +81,12 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
     for (const row of rows) {
       if (row.kind === FOOD_ENTRY_DELETE) {
         deletedFoodEntryIds.push(row.entityId);
+        continue;
+      }
+      if (row.kind === FOOD_ENTRY_UPDATE) {
+        updatedQuantities[row.entityId] = (
+          row.payload as FoodEntryUpdatePayload
+        ).quantity;
         continue;
       }
       if (row.kind === WATER_ADD) {
@@ -75,7 +101,7 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
       const preview = await previewFromQueuedRow(db, serverConfigId, row);
       if (preview) foodEntries.push(preview);
     }
-    return { foodEntries, waterMl, deletedFoodEntryIds };
+    return { foodEntries, waterMl, deletedFoodEntryIds, updatedQuantities };
   } catch {
     return NOTHING_WAITING;
   }

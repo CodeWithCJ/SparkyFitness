@@ -5,7 +5,12 @@ import type {
 } from '@workspace/shared';
 import { apiFetch } from '../services/api/apiClient';
 import type { FoodEntry } from '../types/foodEntries';
+import { applyUpdatedQuantities } from './dailySummaryOverlay';
 import { FOOD_ENTRY_DELETE } from './foodEntryDeleteHandOver';
+import {
+  FOOD_ENTRY_UPDATE,
+  type FoodEntryUpdatePayload,
+} from './foodEntryUpdateHandOver';
 import { previewFromQueuedRow } from './foodEntryPreview';
 import { accountGeneration, savedCopyReadable } from './accountGeneration';
 import { getActiveServerConfigId } from '../services/storage';
@@ -43,6 +48,8 @@ export interface OfflineDiaryDay {
   waitingFood: FoodEntry[];
   /** Food entries the server has whose removal is waiting to upload: hidden. */
   deletedFood: string[];
+  /** New amounts for entries the server has, by entry id. */
+  updatedFood: Record<string, number>;
 }
 
 /** Keeps the day's workouts from a diary load, for showing it offline. */
@@ -279,6 +286,7 @@ export async function readOfflineDiaryDay(
     savedFood: null,
     waitingFood: [],
     deletedFood: [],
+    updatedFood: {},
   };
   if (!(await savedCopyReadable())) return nothing;
   const serverConfigId = await getActiveServerConfigId();
@@ -333,6 +341,14 @@ export async function readOfflineDiaryDay(
     deletedFood: rows
       .filter((row) => row.kind === FOOD_ENTRY_DELETE)
       .map((row) => row.entityId),
+    updatedFood: Object.fromEntries(
+      rows
+        .filter((row) => row.kind === FOOD_ENTRY_UPDATE)
+        .map((row) => [
+          row.entityId,
+          (row.payload as FoodEntryUpdatePayload).quantity,
+        ])
+    ),
   };
 }
 
@@ -367,8 +383,15 @@ export function mergeWaitingWorkouts(
 export function mergeWaitingFood(
   saved: readonly FoodEntry[],
   waiting: readonly FoodEntry[],
-  deleted: readonly string[] = []
+  deleted: readonly string[] = [],
+  updated: Readonly<Record<string, number>> = {}
 ): FoodEntry[] {
   const gone = new Set(deleted);
-  return [...saved.filter((entry) => !gone.has(entry.id)), ...waiting];
+  return [
+    ...applyUpdatedQuantities(
+      saved.filter((entry) => !gone.has(entry.id)),
+      updated
+    ),
+    ...waiting,
+  ];
 }
