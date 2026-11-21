@@ -15,8 +15,11 @@ const mockUseChallenges = jest.fn();
 const mockUseStandings = jest.fn();
 jest.mock('../../../src/hooks/useChallenges', () => ({
   useChallenges: () => mockUseChallenges(),
-  useChallengesStandings: (ids: string[], date: string | null) =>
-    mockUseStandings(ids, date),
+  useChallengesStandings: (
+    ids: string[],
+    date: string | null,
+    options?: { poll?: boolean }
+  ) => mockUseStandings(ids, date, options),
 }));
 
 jest.mock('../../../src/hooks/usePreferences', () => ({
@@ -80,7 +83,9 @@ describe('ChallengesCard', () => {
     mockUseChallenges.mockReturnValue({ challenges: [makeChallenge()] });
     renderCard();
     // The server's today picks the period, as on the web card.
-    expect(mockUseStandings).toHaveBeenCalledWith(['c1'], null);
+    expect(mockUseStandings).toHaveBeenCalledWith(['c1'], null, {
+      poll: true,
+    });
     expect(screen.getByText('#2 of 2 · 250 pts')).toBeTruthy();
     expect(screen.getByText('Alex leads with 400 pts')).toBeTruthy();
     fireEvent.press(screen.getByTestId('challenges-card-row-c1'));
@@ -125,7 +130,9 @@ describe('ChallengesCard', () => {
     });
     renderCard();
     // Standings are read for the running challenge only.
-    expect(mockUseStandings).toHaveBeenCalledWith(['c1'], null);
+    expect(mockUseStandings).toHaveBeenCalledWith(['c1'], null, {
+      poll: true,
+    });
     expect(screen.getByText('Starts in 5 days')).toBeTruthy();
     const rows = screen.getAllByTestId(/^challenges-card-row-/);
     expect(rows.map((row) => row.props.testID)).toEqual([

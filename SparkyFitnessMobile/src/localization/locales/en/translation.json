@@ -11089,6 +11089,7 @@
       "message": "Your scores in it are deleted. You can join again with a new invite code.",
       "title": "Leave this challenge?"
     },
+    "listRefreshFailed": "Could not refresh your challenges; showing the last ones loaded.",
     "loadFailed": "Could not load your challenges.",
     "memberCount_one": "{{count}} member",
     "memberCount_other": "{{count}} members",
@@ -11111,6 +11112,7 @@
       "previous": "Previous period",
       "week": "Weekly"
     },
+    "refreshFailed": "Could not refresh this challenge; showing what was loaded last.",
     "standings": {
       "daysHit": "{{hit}} of {{eligible}} days on goal",
       "empty": "Nobody has scored in this period yet.",

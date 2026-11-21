@@ -21,6 +21,7 @@ import ServerGate from '../components/ServerGate';
 import StatusView from '../components/StatusView';
 import { useChallenges } from '../hooks/useChallenges';
 import { useRefetchOnFocus } from '../hooks/useRefetchOnFocus';
+import ChallengeRefreshFailed from '../components/challenges/ChallengeRefreshFailed';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppLocale } from '../localization';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
@@ -139,7 +140,7 @@ const ChallengesScreen: React.FC<Props> = ({ navigation }) => {
   let body: React.ReactNode;
   if (isLoading) {
     body = <ActivityIndicator className="mt-8" />;
-  } else if (isError) {
+  } else if (isError && sorted.length === 0) {
     body = (
       <View className="items-center py-8">
         <Text className="text-text-secondary text-base mb-3">
@@ -187,7 +188,7 @@ const ChallengesScreen: React.FC<Props> = ({ navigation }) => {
       />
     );
   } else {
-    body = sorted.map((challenge) => (
+    const rows = sorted.map((challenge) => (
       <ChallengeRow
         key={challenge.id}
         challenge={challenge}
@@ -200,13 +201,26 @@ const ChallengesScreen: React.FC<Props> = ({ navigation }) => {
         }
       />
     ));
+    body = (
+      <>
+        {isError ? (
+          // A refresh failed: keep the list loaded last, and say so.
+          <ChallengeRefreshFailed
+            testID="challenges-refresh-failed"
+            message={t('challenges.listRefreshFailed', {
+              defaultValue:
+                'Could not refresh your challenges; showing the last ones loaded.',
+            })}
+            onRetry={() => void refetch()}
+          />
+        ) : null}
+        {rows}
+      </>
+    );
   }
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ServerGate>
         <ScrollView

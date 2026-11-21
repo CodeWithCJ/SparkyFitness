@@ -3,6 +3,9 @@ import { Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import {
+  CHALLENGE_FIND_FROM_ROWS,
+  challengeDisplayNameSchema,
+  filterStandingsByName,
   leadsChallenge,
   standingProgress,
   type ChallengeRules,
@@ -19,12 +22,8 @@ import {
 
 type StandingRow = ChallengeStandingsResponse['rows'][number];
 
-// Shows the find box once the list is longer than a glance (as on the web).
-const SEARCH_FROM_ROWS = 6;
-
-/** Lower case without accents, so "jose" finds "José". */
-const foldName = (name: string) =>
-  name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+// No display name is longer, so a longer query can match nothing.
+const FIND_MAX_LENGTH = challengeDisplayNameSchema.maxLength ?? 40;
 
 // Gold, silver and bronze for places 1 to 3.
 const PLACE_BLOCKS = [
@@ -131,10 +130,7 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
 
   const value = (n: number) => formatChallengeValue(n, rules.metric, units, t);
   const topTotal = standings.rows[0]?.total ?? 0;
-  const query = foldName(search.trim());
-  const rows = standings.rows.filter((row) =>
-    foldName(row.display_name).includes(query)
-  );
+  const rows = filterStandingsByName(standings.rows, search);
 
   return (
     <View>
@@ -147,7 +143,7 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
       ) : null}
       {/* Kept while a search is on, even if a refresh drops below the
           threshold, so the filter can always be cleared. */}
-      {standings.rows.length >= SEARCH_FROM_ROWS || search !== '' ? (
+      {standings.rows.length >= CHALLENGE_FIND_FROM_ROWS || search !== '' ? (
         <View className="flex-row items-center rounded-lg border border-border-subtle px-3 py-2 mb-1">
           <Icon name="search" size={16} color={textMuted} />
           <TextInput
@@ -156,6 +152,7 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
             style={{ fontSize: 15, padding: 0, includeFontPadding: false }}
             value={search}
             onChangeText={setSearch}
+            maxLength={FIND_MAX_LENGTH}
             placeholder={t('challenges.standings.find', {
               defaultValue: 'Find a member',
             })}

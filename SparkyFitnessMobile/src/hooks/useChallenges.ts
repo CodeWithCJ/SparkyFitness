@@ -5,9 +5,10 @@ import {
   useQueryClient,
   type UseQueryResult,
 } from '@tanstack/react-query';
-import type {
-  ChallengeStandingsResponse,
-  JoinChallengeBody,
+import {
+  challengeStandingsRefetchInterval,
+  type ChallengeStandingsResponse,
+  type JoinChallengeBody,
 } from '@workspace/shared';
 import {
   fetchChallenge,
@@ -78,6 +79,8 @@ export function useChallengeStandings(id: string, date: string | null) {
     queryKey: challengeStandingsQueryKey(id, date),
     queryFn: () => fetchChallengeStandings(id, date ?? undefined),
     enabled: Boolean(id),
+    // An open period is scored a minute or so after a save; read it again.
+    refetchInterval: challengeStandingsRefetchInterval,
   });
 }
 
@@ -106,16 +109,21 @@ function combineStandings(
 
 /**
  * Standings for several challenges at once (the dashboard card, the week
- * notification), keyed by challenge id.
+ * notification), keyed by challenge id. `poll` re-reads open periods every
+ * minute, as the server scores a save a minute or so later.
  */
 export function useChallengesStandings(
   ids: readonly string[],
-  date: string | null
+  date: string | null,
+  { poll = false }: { poll?: boolean } = {}
 ) {
   return useQueries({
     queries: ids.map((id) => ({
       queryKey: challengeStandingsQueryKey(id, date),
       queryFn: () => fetchChallengeStandings(id, date ?? undefined),
+      // Only for a screen showing them: the always-mounted week notification
+      // reads them again on return to the foreground instead.
+      refetchInterval: poll ? challengeStandingsRefetchInterval : false,
     })),
     combine: (results: UseQueryResult<ChallengeStandingsResponse>[]) =>
       combineStandings(ids, results),

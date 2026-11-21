@@ -6,7 +6,10 @@ import FormScreenChrome from '../components/FormScreenChrome';
 import FormInput from '../components/FormInput';
 import { useChallengeMutations } from '../hooks/useChallenges';
 import { ApiError } from '../services/api/errors';
-import { parseChallengeInviteCode } from '@workspace/shared';
+import {
+  challengeDisplayNameSchema,
+  parseChallengeInviteCode,
+} from '@workspace/shared';
 import type { RootStackScreenProps } from '../types/navigation';
 
 /** The server's error code (`CHALLENGE_FULL`, ...) in a failed request's body. */
@@ -22,7 +25,10 @@ function joinErrorCode(err: ApiError): string | undefined {
 
 type Props = RootStackScreenProps<'ChallengeJoin'>;
 
-const MAX_DISPLAY_NAME = 40;
+// The server's limit on the name other members see.
+const MAX_DISPLAY_NAME = challengeDisplayNameSchema.maxLength ?? 40;
+// A pasted link or message is read for its code; anything longer is not one.
+const MAX_PASTED_CODE = 2048;
 
 /** Join a challenge with an invite code and the name the other members see. */
 const ChallengeJoinScreen: React.FC<Props> = ({ navigation, route }) => {
@@ -141,6 +147,7 @@ const ChallengeJoinScreen: React.FC<Props> = ({ navigation, route }) => {
         <FormInput
           value={code}
           onChangeText={setCode}
+          maxLength={MAX_PASTED_CODE}
           placeholder={t('challenges.join.codePlaceholder', {
             defaultValue: 'Paste the code or link',
           })}

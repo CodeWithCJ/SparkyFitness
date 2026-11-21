@@ -59,7 +59,9 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({ navigation }) => {
   const runningIds = shown
     .filter((c) => challengeStateNow(c, now) === 'running')
     .map((c) => c.id);
-  const standings = useChallengesStandings(runningIds, null);
+  const standings = useChallengesStandings(runningIds, null, {
+    poll: true,
+  });
   const { preferences } = usePreferences({ enabled: shown.length > 0 });
   const energyUnit = useEnergyUnit();
   const units: ChallengeUnits = {

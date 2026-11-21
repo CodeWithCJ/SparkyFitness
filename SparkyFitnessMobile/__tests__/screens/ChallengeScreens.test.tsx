@@ -173,6 +173,25 @@ describe('ChallengesScreen', () => {
     }
   });
 
+  it('keeps the loaded list with a retry when a refresh fails', () => {
+    const refetch = jest.fn();
+    mockUseChallenges.mockReturnValue(
+      listState({ challenges: [makeChallenge()], isError: true, refetch })
+    );
+    renderList();
+    expect(screen.getByText('Family Cup')).toBeTruthy();
+    expect(screen.getByTestId('challenges-refresh-failed')).toBeTruthy();
+    fireEvent.press(screen.getByText('Retry'));
+    expect(refetch).toHaveBeenCalled();
+  });
+
+  it('says the list could not load when nothing was loaded', () => {
+    mockUseChallenges.mockReturnValue(listState({ isError: true }));
+    renderList();
+    expect(screen.getByText('Could not load your challenges.')).toBeTruthy();
+    expect(screen.queryByTestId('challenges-refresh-failed')).toBeNull();
+  });
+
   it('offers join by code when the user is in none', () => {
     mockUseChallenges.mockReturnValue(listState());
     renderList();
@@ -425,6 +444,20 @@ describe('ChallengeDetailScreen', () => {
     expect(screen.getByText('Alex')).toBeTruthy();
     fireEvent.press(screen.getByText('Retry'));
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps the loaded challenge with a retry when its refresh fails', () => {
+    const refetch = jest.fn();
+    mockUseChallenge.mockReturnValue({
+      data: makeChallenge(),
+      isLoading: false,
+      isError: true,
+      refetch,
+    });
+    renderDetail();
+    expect(screen.getByTestId('challenge-refresh-failed')).toBeTruthy();
+    expect(screen.getByText('Alex')).toBeTruthy();
+    expect(screen.queryByText('Could not load this challenge.')).toBeNull();
   });
 
   it('says so with a retry when the standings never loaded', () => {

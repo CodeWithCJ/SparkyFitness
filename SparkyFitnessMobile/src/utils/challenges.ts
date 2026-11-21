@@ -2,6 +2,7 @@ import type { TFunction } from 'i18next';
 import {
   challengeLeaders,
   challengeState,
+  challengeStateWords,
   challengeToday,
   leadsChallenge,
   localDateTimeToUtc,
@@ -107,40 +108,40 @@ export function challengePeriodLabel(
 /**
  * The challenge's state with its days to go (`challengeDaysToGo`): "Starts in
  * 5 days", "10 days left", "Last day", "Active" without an end date, "Ended".
- * A count of 1 has its own words, since some languages use the `_one` plural
- * for 21, 31 and so on too.
+ * The shared `challengeStateWords` picks the words, as on the web.
  */
 export function challengeStateText(
   state: ChallengeState,
   daysToGo: number | null,
   t: TFunction
 ): string {
-  if (state === 'ended') {
-    return t('challenges.state.ended', { defaultValue: 'Ended' });
-  }
-  if (state === 'upcoming') {
-    return daysToGo === 1
-      ? t('challenges.state.startsTomorrow', {
-          defaultValue: 'Starts tomorrow',
-        })
-      : t('challenges.state.startsIn', {
-          defaultValue_one: 'Starts in {{count}} day',
-          defaultValue_other: 'Starts in {{count}} days',
-          defaultValue: 'Starts in {{count}} days',
-          count: daysToGo ?? 0,
-        });
-  }
-  if (daysToGo === null) {
-    return t('challenges.state.active', { defaultValue: 'Active' });
-  }
-  return daysToGo === 1
-    ? t('challenges.state.lastDay', { defaultValue: 'Last day' })
-    : t('challenges.state.daysLeft', {
+  const words = challengeStateWords(state, daysToGo);
+  switch (words.key) {
+    case 'ended':
+      return t('challenges.state.ended', { defaultValue: 'Ended' });
+    case 'startsTomorrow':
+      return t('challenges.state.startsTomorrow', {
+        defaultValue: 'Starts tomorrow',
+      });
+    case 'startsIn':
+      return t('challenges.state.startsIn', {
+        defaultValue_one: 'Starts in {{count}} day',
+        defaultValue_other: 'Starts in {{count}} days',
+        defaultValue: 'Starts in {{count}} days',
+        count: words.count,
+      });
+    case 'active':
+      return t('challenges.state.active', { defaultValue: 'Active' });
+    case 'lastDay':
+      return t('challenges.state.lastDay', { defaultValue: 'Last day' });
+    case 'daysLeft':
+      return t('challenges.state.daysLeft', {
         defaultValue_one: '{{count}} day left',
         defaultValue_other: '{{count}} days left',
         defaultValue: '{{count}} days left',
-        count: daysToGo,
+        count: words.count,
       });
+  }
 }
 
 /** Short weekday names of the counted days, or null when every day counts. */

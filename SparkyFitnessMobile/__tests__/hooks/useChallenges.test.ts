@@ -1,11 +1,15 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
-import { useChallenges } from '../../src/hooks/useChallenges';
 import {
+  useChallenges,
+  useChallengesStandings,
+} from '../../src/hooks/useChallenges';
+import {
+  fetchChallengeStandings,
   fetchChallenges,
   fetchChallengesStatus,
 } from '../../src/services/api/challengesApi';
 import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
-import { makeChallenge } from '../helpers/challengeFixtures';
+import { makeChallenge, makeStandings } from '../helpers/challengeFixtures';
 
 jest.mock('../../src/services/api/challengesApi', () => ({
   fetchChallengesStatus: jest.fn(),
@@ -42,5 +46,24 @@ describe('useChallenges', () => {
     expect(result.current.challenges).toEqual([]);
     // The list read before is still cached; it is just not handed out.
     expect(queryClient.getQueryData(['challenges', 'list'])).toHaveLength(1);
+  });
+});
+
+describe('useChallengesStandings', () => {
+  it('names the challenges whose standings failed to load', async () => {
+    (fetchChallengeStandings as jest.Mock).mockImplementation(
+      async (id: string) => {
+        if (id === 'c2') throw new Error('offline');
+        return makeStandings({ challenge_id: id });
+      }
+    );
+    const queryClient = createTestQueryClient();
+    const { result } = renderHook(
+      () => useChallengesStandings(['c1', 'c2'], null),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect([...result.current.failedIds]).toEqual(['c2']);
+    expect([...result.current.byId.keys()]).toEqual(['c1']);
   });
 });

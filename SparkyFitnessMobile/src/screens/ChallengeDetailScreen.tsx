@@ -20,6 +20,7 @@ import {
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import ServerGate from '../components/ServerGate';
+import ChallengeRefreshFailed from '../components/challenges/ChallengeRefreshFailed';
 import ChallengeStandingsList from '../components/challenges/ChallengeStandingsList';
 import {
   useChallenge,
@@ -162,7 +163,7 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   let body: React.ReactNode;
   if (challengeQuery.isLoading) {
     body = <ActivityIndicator className="mt-8" />;
-  } else if (challengeQuery.isError || !challenge) {
+  } else if (!challenge) {
     body = (
       <View className="items-center py-8">
         <Text className="text-text-secondary text-base mb-3">
@@ -202,6 +203,17 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
     body = (
       <>
+        {challengeQuery.isError ? (
+          // A refresh failed: keep the challenge loaded last, and say so.
+          <ChallengeRefreshFailed
+            testID="challenge-refresh-failed"
+            message={t('challenges.refreshFailed', {
+              defaultValue:
+                'Could not refresh this challenge; showing what was loaded last.',
+            })}
+            onRetry={() => void challengeQuery.refetch()}
+          />
+        ) : null}
         <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
           <Text className="text-xl font-bold text-text-primary">
             {challenge.emoji
@@ -337,24 +349,14 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
           ) : null}
 
           {standingsQuery.isError && standings ? (
-            // A refresh failed: keep the last standings, and say so.
-            <View
+            <ChallengeRefreshFailed
               testID="challenge-standings-refresh-failed"
-              className="flex-row items-center justify-between rounded-lg bg-raised px-3 py-2 mb-2"
-            >
-              <Text className="flex-1 mr-3 text-xs text-text-secondary">
-                {t('challenges.standings.refreshFailed', {
-                  defaultValue:
-                    'Could not refresh the standings; showing the last ones loaded.',
-                })}
-              </Text>
-              <Button
-                variant="secondary"
-                onPress={() => void standingsQuery.refetch()}
-              >
-                {t('common.retry', { defaultValue: 'Retry' })}
-              </Button>
-            </View>
+              message={t('challenges.standings.refreshFailed', {
+                defaultValue:
+                  'Could not refresh the standings; showing the last ones loaded.',
+              })}
+              onRetry={() => void standingsQuery.refetch()}
+            />
           ) : null}
 
           {standingsQuery.isLoading ? (
@@ -398,10 +400,7 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   }
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ServerGate>
         <ScrollView
