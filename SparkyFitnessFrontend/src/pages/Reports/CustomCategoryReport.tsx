@@ -45,6 +45,21 @@ const HIDDEN_CUSTOM_METRICS = [
   'GLP Fullness',
   'GLP Energy',
 ];
+
+// Above this visible range a time of day on every tick is only clutter.
+const SUB_DAILY_TICK_MAX_SPAN_MS = 7 * 24 * 60 * 60 * 1000;
+
+const getTimestampSpan = (rows: { timestamp: number | null }[]): number => {
+  let min = Infinity;
+  let max = -Infinity;
+  for (const row of rows) {
+    if (row.timestamp === null) continue;
+    if (row.timestamp < min) min = row.timestamp;
+    if (row.timestamp > max) max = row.timestamp;
+  }
+  return max >= min ? max - min : 0;
+};
+
 export const CustomCategoryReport = ({
   customCategories,
   customMeasurementsData,
@@ -71,6 +86,12 @@ export const CustomCategoryReport = ({
   // ticks use.
   const formatChartDate = useMemo(
     () => createDateTickFormatter(formatDateInUserTimezone),
+    [formatDateInUserTimezone]
+  );
+
+  // Sub-daily categories ('All', 'Hourly') carry a time of day worth showing.
+  const formatChartDateTime = useMemo(
+    () => createDateTickFormatter(formatDateInUserTimezone, 'MMM dd HH:mm'),
     [formatDateInUserTimezone]
   );
 
@@ -118,6 +139,13 @@ export const CustomCategoryReport = ({
               ),
               chartScaleMode
             );
+            // Sub-daily categories show the time of day on the axis while the
+            // visible range is short enough for it to matter.
+            const xTickPattern =
+              category.frequency !== 'Daily' &&
+              getTimestampSpan(chartData) <= SUB_DAILY_TICK_MAX_SPAN_MS
+                ? 'MMM dd HH:mm'
+                : undefined;
 
             return (
               <ZoomableChart
@@ -160,6 +188,7 @@ export const CustomCategoryReport = ({
                             {...getTimeXAxisProps({
                               chartScaleMode,
                               formatDate: formatDateInUserTimezone,
+                              pattern: xTickPattern,
                             })}
                           />
                           <YAxis
@@ -191,7 +220,7 @@ export const CustomCategoryReport = ({
 
                                 return (
                                   <div className="p-2 bg-background border rounded-md shadow-md">
-                                    <p className="label">{`${formatChartDate(label)} `}</p>
+                                    <p className="label">{`${category.frequency === 'Daily' ? formatChartDate(label) : formatChartDateTime(label)} `}</p>
                                     {!isNaN(numericValue) ? (
                                       <p className="intro">{`${numericValue.toFixed(getPrecision('measurement', unit))} ${unit} `}</p>
                                     ) : (
