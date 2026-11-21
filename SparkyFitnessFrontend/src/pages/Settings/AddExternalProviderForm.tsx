@@ -271,10 +271,9 @@ const AddExternalProviderForm = ({
       if (newProvider.provider_type === 'zeppbridge' && newProvider.is_active) {
         try {
           await syncZeppBridgeData({ providerId: createdProvider.id });
-        } catch (error: unknown) {
-          if (error instanceof Error) {
-            console.error(error);
-          }
+        } catch {
+          // The provider is saved. The sync mutation has already shown its own
+          // error, and the person can sync again from the provider card.
         }
       }
 

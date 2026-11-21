@@ -734,15 +734,11 @@ export const handleDisconnectZeppBridge = async (providerId?: string) => {
   )
     return;
 
-  try {
-    await apiCall(`/integrations/zeppbridge/disconnect`, {
-      method: 'POST',
-      body: JSON.stringify({ providerId }),
-    });
-  } catch (error: unknown) {
-    console.error('Error disconnecting from ZeppBridge:', error);
-    throw error;
-  }
+  // A failure rejects to the caller, which shows it; nothing to log here.
+  await apiCall(`/integrations/zeppbridge/disconnect`, {
+    method: 'POST',
+    body: JSON.stringify({ providerId }),
+  });
 };
 
 const fetchStravaStatus = async (): Promise<OAuthStatusResponse> => {
