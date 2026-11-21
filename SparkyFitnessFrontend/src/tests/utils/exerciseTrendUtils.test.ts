@@ -94,15 +94,14 @@ describe('weekly bucketing keeps years apart', () => {
 });
 
 describe('calculateMaxWeightTrendData', () => {
-  it('reports 0 rather than -Infinity for an entry with no sets', () => {
+  it('draws no point (never -Infinity) for an entry with no sets', () => {
     const data: Record<string, ExerciseProgressResponse[]> = {
       Plank: [makeEntry({ sets: [] })],
     };
 
     const trend = calculateMaxWeightTrendData(data, {}, formatDate, parseISO);
 
-    expect(trend[0]?.maxWeight).toBe(0);
-    expect(trend[0]?.comparisonMaxWeight).toBe(0);
+    expect(trend).toEqual([]);
   });
 
   it('ignores null weights on timed sets', () => {
@@ -120,6 +119,45 @@ describe('calculateMaxWeightTrendData', () => {
     const trend = calculateMaxWeightTrendData(data, {}, formatDate, parseISO);
 
     expect(trend[0]?.maxWeight).toBe(20);
+  });
+});
+
+describe('counted sets', () => {
+  it('leaves warm-ups out of max weight, estimated 1RM and volume', () => {
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Curl: [
+        makeEntry({
+          sets: [
+            { set_number: 1, set_type: 'warmup', reps: 2, weight: 40 },
+            { set_number: 2, reps: 10, weight: 15 },
+          ],
+        }),
+      ] as ExerciseProgressResponse[],
+    };
+    expect(
+      calculateMaxWeightTrendData(data, {}, formatDate, parseISO)[0]?.maxWeight
+    ).toBe(15);
+    expect(
+      calculateEstimated1RMTrendData(data, {}, formatDate, parseISO)[0]
+        ?.estimated1RM
+    ).toBeCloseTo(20, 5);
+    expect(
+      calculateVolumeTrendData(data, {}, formatDate, parseISO)[0]?.volume
+    ).toBe(150);
+  });
+
+  it('draws no point for a workout plan row that was never started', () => {
+    const data: Record<string, ExerciseProgressResponse[]> = {
+      Curl: [
+        makeEntry({
+          provider_name: 'Workout Plan',
+          sets: [{ set_number: 1, reps: 10, weight: 50 }],
+        }),
+      ] as ExerciseProgressResponse[],
+    };
+    expect(calculateMaxWeightTrendData(data, {}, formatDate, parseISO)).toEqual(
+      []
+    );
   });
 });
 

@@ -1,6 +1,7 @@
 import {
   effectiveLoadKg,
-  epleyOneRepMaxKg,
+  countedTrendSets,
+  exerciseTrendEntryValueKg,
   resolveExerciseModality,
   type ExerciseProgressResponse,
 } from '@workspace/shared';
@@ -18,20 +19,21 @@ const setLoad = (entry: ExerciseProgressResponse, set: ProgressSet): number =>
     entry.body_weight_kg
   );
 
+// Per-entry values come from the shared rule the mobile exercise card uses
+// too: warm-ups, sets without reps and untouched workout-plan rows never count.
+// A day with only warm-ups or an untouched plan row has no point, rather
+// than a point at 0.
+const hasCountedSets = (entry: ExerciseProgressResponse): boolean =>
+  countedTrendSets(entry).length > 0;
+
 const entryVolume = (entry: ExerciseProgressResponse): number =>
-  entry.sets.reduce(
-    (sum, set) => sum + (set.reps ?? 0) * setLoad(entry, set),
-    0
-  );
+  exerciseTrendEntryValueKg(entry, 'volume');
 
 const entryMaxLoad = (entry: ExerciseProgressResponse): number =>
-  Math.max(...entry.sets.map((set) => setLoad(entry, set)), 0);
+  exerciseTrendEntryValueKg(entry, 'maxLoad');
 
 const entryMaxEstimated1RM = (entry: ExerciseProgressResponse): number =>
-  Math.max(
-    ...entry.sets.map((set) => epleyOneRepMaxKg(setLoad(entry, set), set.reps)),
-    0
-  );
+  exerciseTrendEntryValueKg(entry, 'estimated1RM');
 
 /**
  * Returns the Monday (week start) of the week containing the given date.
@@ -81,6 +83,7 @@ export const calculateVolumeTrendData = (
   const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
+    .filter(hasCountedSets)
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
@@ -120,6 +123,7 @@ export const calculateMaxWeightTrendData = (
   const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
+    .filter(hasCountedSets)
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
@@ -165,6 +169,7 @@ export const calculateEstimated1RMTrendData = (
   const formatStr = getTrendDateFormat(aggregationLevel);
   return Object.values(exerciseProgressData)
     .flat()
+    .filter(hasCountedSets)
     .reduce(
       (acc, entry) => {
         const date = formatDateInUserTimezone(
@@ -214,7 +219,10 @@ export const calculateRepsVsWeightScatterData = (
 
   exerciseData
     .flatMap((entry) =>
-      entry.sets.map((set) => ({ reps: set.reps, weight: setLoad(entry, set) }))
+      countedTrendSets(entry).map((set) => ({
+        reps: set.reps,
+        weight: setLoad(entry, set),
+      }))
     )
     .forEach((item) => {
       if (repWeightMap.has(item.reps ?? 0)) {

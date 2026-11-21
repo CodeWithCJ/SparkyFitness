@@ -4047,7 +4047,21 @@
     "deleteExercise": "Delete Exercise",
     "makePrivate": "Make private",
     "shareWithPublic": "Share with public",
-    "deleteSheetTitle": "Delete exercise"
+    "deleteSheetTitle": "Delete exercise",
+    "progress": {
+      "title": "Progress",
+      "weeks": "Weeks",
+      "months": "Months",
+      "years": "Years",
+      "estimated1RM": "Est. 1RM",
+      "heaviest": "Heaviest weight",
+      "volume": "Volume",
+      "volumeUnit": "{{unit}} × reps",
+      "weekOf": "Week of {{date}}",
+      "loadFailed": "Could not load progress",
+      "empty": "Nothing logged in this period",
+      "footnote": "Best per period. Dots mark new highs."
+    }
   },
   "mealTypeSettings": {
     "reorder": "Reorder {{name}}",
