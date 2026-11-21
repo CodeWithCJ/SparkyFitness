@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { cacheStats, getCacheRow } from '../offline/cacheStore';
+import { cacheCount, cacheStats, getCacheRow } from '../offline/cacheStore';
 import { CACHE_COLLECTIONS, PACK_COMPLETED_KEY } from '../offline/collections';
 import { getOfflineDb } from '../offline/db';
 import { subscribeOutboxChanged } from '../offline/events';
@@ -24,6 +24,10 @@ export interface OfflineStatus {
   pictureBytes: number;
   /** Exercises the person chose to keep pictures of, by name. */
   keptExercises: { id: string; name: string }[];
+  /** Foods, saved meals and days of the Diary kept for offline use. */
+  foodsKept: number;
+  mealsKept: number;
+  foodDaysKept: number;
 }
 
 const EMPTY: OfflineStatus = {
@@ -33,6 +37,9 @@ const EMPTY: OfflineStatus = {
   lastRefreshedAt: null,
   pictureBytes: 0,
   keptExercises: [],
+  foodsKept: 0,
+  mealsKept: 0,
+  foodDaysKept: 0,
 };
 
 async function readOfflineStatus(): Promise<OfflineStatus> {
@@ -72,6 +79,13 @@ async function readOfflineStatus(): Promise<OfflineStatus> {
     lastRefreshedAt: marker?.fetchedAt ?? null,
     pictureBytes: await offlineImageBytes(serverConfigId),
     keptExercises,
+    foodsKept: await cacheCount(db, serverConfigId, CACHE_COLLECTIONS.food),
+    mealsKept: await cacheCount(db, serverConfigId, CACHE_COLLECTIONS.meal),
+    foodDaysKept: await cacheCount(
+      db,
+      serverConfigId,
+      CACHE_COLLECTIONS.diaryFoodDay
+    ),
   };
 }
 

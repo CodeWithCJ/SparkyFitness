@@ -78,7 +78,7 @@ function kindLabel(row: OutboxRow, t: TFunction): string {
   if (row.kind.startsWith('workout_')) {
     return t('offline.kind.workout', { defaultValue: 'Workout' });
   }
-  if (row.kind.startsWith('food_entry') || row.kind === 'food.create') {
+  if (row.kind.startsWith('food')) {
     return t('offline.kind.food', { defaultValue: 'Food entry' });
   }
   if (row.kind.startsWith('water')) {
@@ -266,7 +266,7 @@ const OfflineSettingsScreen: React.FC<OfflineSettingsScreenProps> = () => {
       t('offline.clearTitle', { defaultValue: 'Clear offline data?' }),
       t('offline.clearMessage', {
         defaultValue:
-          'Saved workouts, exercises and other data kept for offline use are removed from this phone and downloaded again next time. Anything still waiting to upload is kept.',
+          'Saved workouts, exercises, foods, meals and other data kept for offline use are removed from this phone and downloaded again next time. Anything still waiting to upload is kept.',
       }),
       [
         {
@@ -312,7 +312,7 @@ const OfflineSettingsScreen: React.FC<OfflineSettingsScreenProps> = () => {
         <Text className="text-sm text-text-secondary mb-4">
           {t('offline.intro', {
             defaultValue:
-              'Workouts can be started and logged without a connection. They are kept on this phone and uploaded when your server can be reached.',
+              'Workouts, food, meals, new foods and drinks can be logged without a connection. They are kept on this phone and uploaded when your server can be reached.',
           })}
         </Text>
 
@@ -392,7 +392,7 @@ const OfflineSettingsScreen: React.FC<OfflineSettingsScreenProps> = () => {
               status.lastRefreshedAt == null
                 ? t('offline.neverRefreshed', {
                     defaultValue:
-                      'Not downloaded yet. Connect to your server once to prepare offline workouts.',
+                      'Not downloaded yet. Connect to your server once to prepare offline use.',
                   })
                 : t('offline.lastRefreshed', {
                     defaultValue: 'Last refreshed {{when}}',
@@ -445,6 +445,52 @@ const OfflineSettingsScreen: React.FC<OfflineSettingsScreenProps> = () => {
               defaultValue: 'Uploads still waiting are kept',
             })}
             onPress={confirmClear}
+          />
+        </SettingsRowGroup>
+
+        <Text className="text-base font-semibold text-text-primary mb-2 mt-6">
+          {t('offline.foodHeading', {
+            defaultValue: 'Food and water kept offline',
+          })}
+        </Text>
+        <Text className="text-sm text-text-secondary mb-2">
+          {t('offline.foodIntro', {
+            defaultValue:
+              'Your recent and most used foods, your own foods (up to 2,000), saved meals, your meal types and water containers are kept, along with the Diary and totals of the last week. They refresh whenever you are connected.',
+          })}
+        </Text>
+        <SettingsRowGroup>
+          <SettingsRow
+            testID="offline-foods-kept"
+            title={t('offline.foodsKeptTitle', { defaultValue: 'Foods' })}
+            subtitle={t('offline.foodsKeptValue', {
+              count: status.foodsKept,
+              defaultValue: '{{count}} foods',
+              defaultValue_one: '{{count}} food',
+              defaultValue_other: '{{count}} foods',
+            })}
+          />
+          <SettingsRow
+            testID="offline-meals-kept"
+            title={t('offline.mealsKeptTitle', { defaultValue: 'Saved meals' })}
+            subtitle={t('offline.mealsKeptValue', {
+              count: status.mealsKept,
+              defaultValue: '{{count}} meals',
+              defaultValue_one: '{{count}} meal',
+              defaultValue_other: '{{count}} meals',
+            })}
+          />
+          <SettingsRow
+            testID="offline-diary-days-kept"
+            title={t('offline.diaryDaysKeptTitle', {
+              defaultValue: 'Diary days',
+            })}
+            subtitle={t('offline.diaryDaysKeptValue', {
+              count: status.foodDaysKept,
+              defaultValue: '{{count}} days of food',
+              defaultValue_one: '{{count}} day of food',
+              defaultValue_other: '{{count}} days of food',
+            })}
           />
         </SettingsRowGroup>
 

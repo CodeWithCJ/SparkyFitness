@@ -533,11 +533,15 @@ describe('LibraryScreen', () => {
       } as unknown as ReturnType<typeof useServerConnection>);
     });
 
-    it('offers only workout presets and exercises', () => {
+    it('offers what the phone has saved: workouts, exercises, foods and meals', () => {
       const screen = renderScreen();
 
       expect(screen.getByTestId('offline-library')).toBeTruthy();
-      expect(screen.queryByText('Foods')).toBeNull();
+      for (const key of ['workoutPresets', 'exercises', 'foods', 'meals']) {
+        expect(screen.getByTestId(`offline-library-${key}`)).toBeTruthy();
+      }
+      // The rest of the Library needs the server.
+      expect(screen.queryByText('Meal plans')).toBeNull();
       expect(screen.queryByText("Can't reach your server")).toBeNull();
     });
 
@@ -553,6 +557,20 @@ describe('LibraryScreen', () => {
 
       fireEvent.press(screen.getByTestId('offline-library-exercises'));
       expect(navigation.navigate).toHaveBeenCalledWith('ExercisesLibrary');
+    });
+
+    it('opens the saved foods', () => {
+      const screen = renderScreen();
+
+      fireEvent.press(screen.getByTestId('offline-library-foods'));
+      expect(navigation.navigate).toHaveBeenCalledWith('FoodsLibrary');
+    });
+
+    it('opens the saved meals', () => {
+      const screen = renderScreen();
+
+      fireEvent.press(screen.getByTestId('offline-library-meals'));
+      expect(navigation.navigate).toHaveBeenCalledWith('MealsLibrary');
     });
   });
 });
