@@ -34,6 +34,8 @@ If you try to start a workout offline before the phone has ever refreshed, the a
 
 - Log a drink with the **+** button on the Dashboard's water card (the Dashboard shows your calories and the water card while your server cannot be reached), with a quick-add drink, or with the water page on your Apple Watch. The drink is kept on your phone and uploads later, and the amount shown goes up at once. Each press is uploaded once: if the connection drops while uploading, sending it again does not add a second drink. Taking a drink off (**−**) needs a connection. The water total is the amount your server had at last load plus the drinks waiting, so it is correct after the upload.
 
+- Log a saved meal with no connection: find it in Log food by name, log it, and it uploads later like a food entry. Meals you make up on the spot, new foods, barcode scans and AI photo logging still need a connection.
+
 These need a connection: deleting past workouts, creating new exercises or saved workouts, online exercise search, suggested alternatives, reports, food logging and the AI assistant.
 
 When the app cannot reach your server, an **Offline** strip shows at the top of the screens that work from saved data. Tap it to check the connection again. Screens that need the server show a **Start a saved workout offline** button.

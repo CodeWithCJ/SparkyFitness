@@ -5,8 +5,7 @@ import type {
 } from '@workspace/shared';
 import { apiFetch } from '../services/api/apiClient';
 import type { FoodEntry } from '../types/foodEntries';
-import { FOOD_ENTRY_CREATE } from './foodEntryHandOver';
-import { previewFromQueuedFoodEntry } from './foodEntryPreview';
+import { previewFromQueuedRow } from './foodEntryPreview';
 import { accountGeneration, savedCopyReadable } from './accountGeneration';
 import { getActiveServerConfigId } from '../services/storage';
 import { addDays, getTodayDate, normalizeDate } from '../utils/dateUtils';
@@ -318,8 +317,7 @@ export async function readOfflineDiaryDay(
   );
   const waitingFood: FoodEntry[] = [];
   for (const row of rows) {
-    if (row.kind !== FOOD_ENTRY_CREATE) continue;
-    const preview = await previewFromQueuedFoodEntry(db, serverConfigId, row);
+    const preview = await previewFromQueuedRow(db, serverConfigId, row);
     if (preview) waitingFood.push(preview);
   }
   return {

@@ -306,7 +306,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
 
   // Local meals (never mixed in while building a meal).
   const { searchResults: mealResults, isSearching: isMealSearching } =
-    useMealSearch(searchText, { enabled: isConnected && !isMealBuilderMode });
+    useMealSearch(searchText, {
+      // The meals are kept on the phone too, so a saved meal can be found
+      // with the server away (a saved meal can be logged offline).
+      enabled: canReadSavedFoods && !isMealBuilderMode,
+    });
 
   // Online provider results stream in below the local results, always fetched
   // (no separate Online tab). Provider is the user's default.

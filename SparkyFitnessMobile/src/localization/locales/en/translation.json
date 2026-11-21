@@ -6027,6 +6027,8 @@
     "customConfirm": "Show this range"
   },
   "foodEntryMeal": {
+    "queued": "Saved on this phone",
+    "queuedMessage": "It uploads when your server can be reached.",
     "failed": "Failed to add meal"
   },
   "foodSave": {

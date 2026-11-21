@@ -5,6 +5,7 @@ import type {
   FoodVariantDetail,
   FoodSearchResponse,
 } from '../types/foods';
+import type { Meal } from '../types/meals';
 import type { MealType } from '../types/mealTypes';
 import type { WaterContainer } from '../types/measurements';
 import { accountGeneration } from './accountGeneration';
@@ -31,6 +32,8 @@ const FOODS_PAGE_SIZE = 100;
 /** Foods whose other servings are kept too: the first this many. */
 export const FOOD_VARIANTS_KEPT = 100;
 const VARIANT_BATCH = 5;
+/** The most meals read back at once; a person's saved meals are far fewer. */
+const MEALS_READ_MAX = 1000;
 
 /** What the search matches, the way the server does: "brand name". */
 export function foodSearchName(food: Pick<FoodItem, 'name' | 'brand'>): string {
@@ -153,6 +156,11 @@ export async function refreshFoodLibrary(
     serviceName: SERVICE,
     operation: 'fetch water containers',
   });
+  const meals = await apiFetch<Meal[]>({
+    endpoint: '/api/meals',
+    serviceName: SERVICE,
+    operation: 'fetch meals',
+  });
   const own = await fetchOwnFoods(startedUnder, FOOD_LIBRARY_MAX);
   if (own == null || accountGeneration() !== startedUnder) return;
 
@@ -169,6 +177,16 @@ export async function refreshFoodLibrary(
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.mealTypes, [
     { key: SINGLE_DOCUMENT_KEY, payload: mealTypes },
   ]);
+  await replaceCacheCollection(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.meal,
+    (Array.isArray(meals) ? meals : []).map((meal) => ({
+      key: meal.id,
+      name: meal.name,
+      payload: meal,
+    }))
+  );
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterContainers, [
     { key: SINGLE_DOCUMENT_KEY, payload: containers },
   ]);
@@ -264,4 +282,45 @@ export async function readSavedSingle<T>(
     SINGLE_DOCUMENT_KEY
   );
   return row ? (row.payload as T) : null;
+}
+
+/** Every meal kept on the phone, by name; null when none were ever kept. */
+export async function readSavedMeals(
+  db: OfflineDb,
+  serverConfigId: string,
+  searchTerm = ''
+): Promise<Meal[] | null> {
+  const term = searchTerm.trim();
+  const { rows, total } = term
+    ? await searchCacheRowsPage(
+        db,
+        serverConfigId,
+        CACHE_COLLECTIONS.meal,
+        term,
+        MEALS_READ_MAX,
+        0
+      )
+    : await listCacheRowsPage(
+        db,
+        serverConfigId,
+        CACHE_COLLECTIONS.meal,
+        MEALS_READ_MAX,
+        0
+      );
+  if (total === 0 && !term) return null;
+  return rows.map((row) => row.payload as Meal);
+}
+
+export async function readSavedMeal(
+  db: OfflineDb,
+  serverConfigId: string,
+  mealId: string
+): Promise<Meal | null> {
+  const row = await getCacheRow(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.meal,
+    mealId
+  );
+  return row ? (row.payload as Meal) : null;
 }

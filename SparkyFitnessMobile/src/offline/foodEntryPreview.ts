@@ -1,10 +1,16 @@
 import type { FoodEntry } from '../types/foodEntries';
 import type { FoodDefaultVariant } from '../types/foods';
+import { buildMealDisplayValuesFromFoods } from '../utils/mealNutrition';
 import {
+  FOOD_ENTRY_CREATE,
   pendingEntryId,
   type FoodEntryCreatePayload,
 } from './foodEntryHandOver';
-import { readSavedFood, readSavedVariants } from './foodLibrary';
+import {
+  FOOD_ENTRY_MEAL_CREATE,
+  type FoodEntryMealPayload,
+} from './foodEntryMealHandOver';
+import { readSavedFood, readSavedMeal, readSavedVariants } from './foodLibrary';
 import type { OfflineDb, OutboxRow } from './types';
 
 /** The nutrients a diary entry snapshots, copied from a serving or a quick-add. */
@@ -100,4 +106,84 @@ export async function previewFromQueuedFoodEntry(
     serving_size: serving.serving_size,
     serving_unit: serving.serving_unit,
   };
+}
+
+/**
+ * A waiting logged meal as the Diary will show it once uploaded: one entry
+ * for the whole meal (the way a logged meal collapses), with the nutrition of
+ * the number of servings logged, from the meal as kept on the phone. Only a
+ * plain serving count of a saved meal can be worked out here: other units
+ * and customised ingredients are resolved by the server, so those are left
+ * out of the preview (they still upload).
+ */
+export async function previewFromQueuedMeal(
+  db: OfflineDb,
+  serverConfigId: string,
+  row: OutboxRow
+): Promise<FoodEntry | null> {
+  const payload = row.payload as FoodEntryMealPayload;
+  if (!payload.meal_template_id) return null;
+  if ((payload.foods ?? []).length > 0) return null;
+  if ((payload.unit || 'serving') !== 'serving') return null;
+  const meal = await readSavedMeal(
+    db,
+    serverConfigId,
+    payload.meal_template_id
+  );
+  if (!meal) return null;
+  const quantity = Number(payload.quantity) > 0 ? Number(payload.quantity) : 1;
+  const perServing = buildMealDisplayValuesFromFoods(
+    meal.foods,
+    meal,
+    'perServing'
+  );
+  const scaled = (value: number | undefined) =>
+    value === undefined ? undefined : value * quantity;
+  return {
+    id: pendingEntryId(row.entityId),
+    meal_id: meal.id,
+    meal_type: '',
+    meal_type_id: payload.meal_type_id,
+    quantity,
+    unit: payload.unit,
+    notes: payload.notes,
+    entry_date: payload.entry_date,
+    entry_time: payload.entry_time,
+    food_name: payload.name || meal.name,
+    // The whole portion is one entry, so its serving size is its quantity and
+    // the Diary's "value x quantity / serving size" gives the portion itself.
+    serving_size: quantity,
+    serving_unit: payload.unit,
+    calories: perServing.calories * quantity,
+    protein: scaled(perServing.protein),
+    carbs: scaled(perServing.carbs),
+    fat: scaled(perServing.fat),
+    dietary_fiber: scaled(perServing.fiber),
+    saturated_fat: scaled(perServing.saturatedFat),
+    sodium: scaled(perServing.sodium),
+    sugars: scaled(perServing.sugars),
+    trans_fat: scaled(perServing.transFat),
+    potassium: scaled(perServing.potassium),
+    calcium: scaled(perServing.calcium),
+    iron: scaled(perServing.iron),
+    caffeine_mg: scaled(perServing.caffeineMg),
+    water_ml: scaled(perServing.waterMl),
+    alcohol_g: scaled(perServing.alcoholG),
+    cholesterol: scaled(perServing.cholesterol),
+  };
+}
+
+/** The entry a waiting food or meal row will become, or null for any other row. */
+export async function previewFromQueuedRow(
+  db: OfflineDb,
+  serverConfigId: string,
+  row: OutboxRow
+): Promise<FoodEntry | null> {
+  if (row.kind === FOOD_ENTRY_CREATE) {
+    return previewFromQueuedFoodEntry(db, serverConfigId, row);
+  }
+  if (row.kind === FOOD_ENTRY_MEAL_CREATE) {
+    return previewFromQueuedMeal(db, serverConfigId, row);
+  }
+  return null;
 }

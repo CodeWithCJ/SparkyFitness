@@ -5,8 +5,7 @@ import { getServingVolume } from '../utils/unitConversions';
 import { savedCopyReadable } from './accountGeneration';
 import { CACHE_COLLECTIONS } from './collections';
 import { getOfflineDb } from './db';
-import { FOOD_ENTRY_CREATE } from './foodEntryHandOver';
-import { previewFromQueuedFoodEntry } from './foodEntryPreview';
+import { previewFromQueuedRow } from './foodEntryPreview';
 import { readSavedSingle } from './foodLibrary';
 import { listUnconfirmedOutbox } from './outbox';
 import { signedInUserId } from './syncEngine';
@@ -52,21 +51,17 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
         CACHE_COLLECTIONS.waterContainers
       )) ?? [];
     for (const row of rows) {
-      if (row.kind === FOOD_ENTRY_CREATE) {
-        const preview = await previewFromQueuedFoodEntry(
-          db,
-          serverConfigId,
-          row
-        );
-        if (preview) foodEntries.push(preview);
-      } else if (row.kind === WATER_ADD) {
+      if (row.kind === WATER_ADD) {
         const { containerId } = row.payload as WaterAddPayload;
         const container = containers.find((item) => item.id === containerId);
         // A linked container's credit is worked out by the server from its
         // food, so it cannot be counted here.
         const perPress = container ? getServingVolume(container) : null;
         if (perPress != null) waterMl += perPress;
+        continue;
       }
+      const preview = await previewFromQueuedRow(db, serverConfigId, row);
+      if (preview) foodEntries.push(preview);
     }
     return { foodEntries, waterMl };
   } catch {
