@@ -3283,7 +3283,32 @@ class MediaControlStore(private val context: Context) {
   private var currentVisitId = 0L
   private var reachabilityGeneration = 0L
   private var pollJob: Job? = null
+  private var responseTimeoutJob: Job? = null
   private var localRefreshJob: Job? = null
+
+  private fun markPhoneUnreachable() {
+    responseTimeoutJob?.cancel()
+    responseTimeoutJob = null
+    reachabilityGeneration += 1
+    _phoneReachable.value = false
+  }
+
+  private fun armPhoneResponseTimeout(startedAtGen: Long, visitId: Long) {
+    if (!_phoneReachable.value || responseTimeoutJob?.isActive == true) return
+    responseTimeoutJob = scope.launch {
+      delay(PHONE_RESPONSE_TIMEOUT_MS)
+      responseTimeoutJob = null
+      if (
+        observingPhone &&
+        visitId == currentVisitId &&
+        startedAtGen == reachabilityGeneration &&
+        _phoneReachable.value
+      ) {
+        reachabilityGeneration += 1
+        _phoneReachable.value = false
+      }
+    }
+  }
 
   private fun ensureVisitEpoch(): Long {
     if (visitEpoch > 0L) return visitEpoch
@@ -3332,6 +3357,8 @@ class MediaControlStore(private val context: Context) {
   }
 
   fun applyRemoteMediaState(state: PhoneMediaState) {
+    responseTimeoutJob?.cancel()
+    responseTimeoutJob = null
     reachabilityGeneration += 1
     _phoneReachable.value = true
     if (MediaControlLogic.shouldAcceptSnapshot(state, _phoneMedia.value)) {
@@ -3355,12 +3382,12 @@ class MediaControlStore(private val context: Context) {
       if (transport != null) {
         val startedAtGen = reachabilityGeneration
         val cmdSessionId = observationSessionId
+        armPhoneResponseTimeout(startedAtGen, currentVisitId)
         transport.sendLiveWithResult(OutboundPayloads.mediaControl(action.wireValue)) { delivered ->
           scope.launch {
             if (!delivered) {
               if (startedAtGen == reachabilityGeneration) {
-                reachabilityGeneration += 1
-                _phoneReachable.value = false
+                markPhoneUnreachable()
               }
               if (observingPhone && cmdSessionId == observationSessionId) {
                 dispatchLocalMediaKey(action)
@@ -3370,8 +3397,7 @@ class MediaControlStore(private val context: Context) {
         }
         return
       }
-      reachabilityGeneration += 1
-      _phoneReachable.value = false
+      markPhoneUnreachable()
     }
     dispatchLocalMediaKey(action)
   }
@@ -3394,12 +3420,12 @@ class MediaControlStore(private val context: Context) {
         val wireAction = if (direction > 0) "volumeUp" else "volumeDown"
         val startedAtGen = reachabilityGeneration
         val cmdSessionId = observationSessionId
+        armPhoneResponseTimeout(startedAtGen, currentVisitId)
         transport.sendLiveWithResult(OutboundPayloads.mediaControl(wireAction, count)) { delivered ->
           scope.launch {
             if (!delivered) {
               if (startedAtGen == reachabilityGeneration) {
-                reachabilityGeneration += 1
-                _phoneReachable.value = false
+                markPhoneUnreachable()
               }
               if (observingPhone && cmdSessionId == observationSessionId) {
                 adjustLocalVolume(direction, count)
@@ -3409,8 +3435,7 @@ class MediaControlStore(private val context: Context) {
         }
         return
       }
-      reachabilityGeneration += 1
-      _phoneReachable.value = false
+      markPhoneUnreachable()
     }
     adjustLocalVolume(direction, count)
   }
@@ -3422,6 +3447,8 @@ class MediaControlStore(private val context: Context) {
     observationSessionId += 1
     pollJob?.cancel()
     pollJob = null
+    responseTimeoutJob?.cancel()
+    responseTimeoutJob = null
     if (shouldObserve) {
       val epoch = ensureVisitEpoch()
       val visitId = currentVisitId + 1L
@@ -3442,8 +3469,7 @@ class MediaControlStore(private val context: Context) {
                 if (!observingPhone || visitId != currentVisitId) return@launch
                 if (!connected) {
                   if (checkGen == reachabilityGeneration) {
-                    reachabilityGeneration += 1
-                    _phoneReachable.value = false
+                    markPhoneUnreachable()
                   }
                   return@launch
                 }
@@ -3474,13 +3500,13 @@ class MediaControlStore(private val context: Context) {
   private fun requestPhoneState(epoch: Long, visitId: Long) {
     val transport = session ?: return
     val startedAtGen = reachabilityGeneration
+    armPhoneResponseTimeout(startedAtGen, visitId)
     transport.sendLiveWithResult(
       OutboundPayloads.mediaStateRequest(active = true, epoch = epoch, visitId = visitId)
     ) { delivered ->
       scope.launch {
         if (!delivered && startedAtGen == reachabilityGeneration) {
-          reachabilityGeneration += 1
-          _phoneReachable.value = false
+          markPhoneUnreachable()
         }
       }
     }
@@ -3522,6 +3548,7 @@ class MediaControlStore(private val context: Context) {
   companion object {
     private const val MEDIA_PREFS_NAME = "sparky_wear_media"
     private const val KEY_VISIT_EPOCH = "visit_epoch"
+    private const val PHONE_RESPONSE_TIMEOUT_MS = 3_500L
     private const val FALLBACK_POLL_MS = 4_000L
     private const val LEASE_RENEW_MS = 5 * 60_000L
   }
