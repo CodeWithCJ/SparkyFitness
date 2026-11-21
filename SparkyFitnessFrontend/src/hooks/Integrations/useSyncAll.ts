@@ -109,12 +109,19 @@ export const useSyncAllMutation = () => {
                 queryKey: externalProviderKeys.lists(),
               });
               break;
-            case 'zeppbridge':
-              await syncZeppBridgeData(provider.id);
+            case 'zeppbridge': {
+              const result = await syncZeppBridgeData(provider.id);
+              // Saved whatever it could; refresh even when some records failed.
               queryClient.invalidateQueries({
                 queryKey: externalProviderKeys.lists(),
               });
+              // A 200 with failed records is an incomplete sync, not a success.
+              if (result.failed > 0) {
+                failCount++;
+                continue;
+              }
               break;
+            }
           }
           successCount++;
         } catch (err) {

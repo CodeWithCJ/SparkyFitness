@@ -19,6 +19,7 @@ import { loadUserTimezone } from '../../utils/timezoneLoader.js';
 import {
   ZeppBridgeError,
   fetchZeppBridgeInfo,
+  MAX_SYNC_MS,
   fetchZeppBridgeWorkoutDetail,
   pullZeppBridgeRecords,
   type ZeppBridgeConnection,
@@ -141,6 +142,7 @@ async function getConnection(row: ProviderRow): Promise<ZeppBridgeConnection> {
     baseUrl: endpoint.url.replace(/\/+$/, ''),
     token,
     fetch: endpoint.fetch,
+    deadlineAt: Date.now() + MAX_SYNC_MS,
   };
 }
 
@@ -271,6 +273,7 @@ async function syncZeppBridgeData(
   const timezone = await loadUserTimezone(userId);
   const today = todayInZone(timezone);
   const to = endDate ?? today;
+  const automaticFrom = defaultFrom(row.last_sync_at, today, timezone);
   const from = startDate ?? defaultFrom(row.last_sync_at, to, timezone);
   log(
     'info',
@@ -310,9 +313,13 @@ async function syncZeppBridgeData(
 
   // The scheduler reads last_sync_at to decide when a daily sync is due, so a
   // sync with failed records leaves it alone to be retried next tick.
-  // A manual sync of an old range must not mark the recent days as synced.
-  const reachesToday = compareDays(to, today) >= 0;
-  if (total.failed === 0 && reachesToday) {
+  // The watermark moves only when this sync read everything an automatic one
+  // would have: from where the last sync left off (or the 30-day first read) up
+  // to today. A manual sync of an old week, or of one recent day, must not mark
+  // the days in between as synced.
+  const coversAutomaticRange =
+    compareDays(from, automaticFrom) <= 0 && compareDays(to, today) >= 0;
+  if (total.failed === 0 && coversAutomaticRange) {
     const client = await getSystemClient();
     try {
       await client.query(

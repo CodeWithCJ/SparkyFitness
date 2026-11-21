@@ -22,6 +22,7 @@ import {
   utcOffsetMinutesFromIsoString,
 } from '@workspace/shared';
 import {
+  applySummaryLaps,
   needsWorkoutDetail,
   type ZeppBridgeDetailCandidate,
 } from './zeppBridgeWorkoutDetail.js';
@@ -325,7 +326,21 @@ async function processWorkout(
       },
     }
   );
-  return { entryId: entry?.id ?? null };
+  const entryId: string | null = entry?.id ?? null;
+  // A workout with no route never gets laps from the detail pass, so its
+  // summary laps are stored here. They replace by lap index, so a re-sync is
+  // safe, and a failure here does not fail the workout.
+  if (entryId && (workout.route_point_count ?? 0) < 2) {
+    try {
+      await applySummaryLaps(userId, createdByUserId, entryId, workout);
+    } catch (error) {
+      log(
+        'warn',
+        `[zeppBridgeDataProcessor] Could not store the laps of workout ${String(workout.workout_id)}: ${errorMessage(error)}`
+      );
+    }
+  }
+  return { entryId };
 }
 
 // ---------------------------------------------------------------------------
@@ -521,7 +536,9 @@ async function processMetrics(
   // timestamps bucketed by the person's day.
   const pending = new Map<SampleMetric, PendingSample[]>();
   const add = (metric: SampleMetric, sample: PendingSample) => {
-    pending.set(metric, [...(pending.get(metric) ?? []), sample]);
+    const samples = pending.get(metric);
+    if (samples) samples.push(sample);
+    else pending.set(metric, [sample]);
   };
   for (const m of daily) {
     const target = SAMPLE_METRICS[m.metric];
@@ -550,13 +567,24 @@ async function processMetrics(
     days.add(day);
   }
   for (const [metric, samples] of pending) {
+    // Merged inside the span of this call, not replaced for the whole day: a
+    // person's day can straddle two spans of a long sync, and a replace would
+    // erase the readings the earlier span stored for it. (A loop, not
+    // Math.min(...), which cannot take a week of per-minute samples.)
+    let startMs = Number.POSITIVE_INFINITY;
+    let endMs = Number.NEGATIVE_INFINITY;
+    for (const sample of samples) {
+      const ms = sample.timestamp.getTime();
+      if (ms < startMs) startMs = ms;
+      if (ms > endMs) endMs = ms;
+    }
     await upsertSamplesByDay(
       userId,
       createdByUserId,
       metric,
       ZEPPBRIDGE_PROVIDER,
       samples,
-      { keepLinked: true }
+      { mode: 'merge', window: { startMs, endMs }, keepLinked: true }
     );
   }
   return days.size;

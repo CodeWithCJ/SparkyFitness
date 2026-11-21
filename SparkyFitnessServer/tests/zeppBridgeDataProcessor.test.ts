@@ -29,6 +29,7 @@ vi.mock('../services/healthMetricSampleWriter.js', () => ({
 }));
 vi.mock('../integrations/zeppbridge/zeppBridgeWorkoutDetail.js', () => ({
   needsWorkoutDetail: vi.fn().mockResolvedValue(false),
+  applySummaryLaps: vi.fn().mockResolvedValue(true),
 }));
 vi.mock('../config/logging.js', () => ({ log: vi.fn() }));
 
@@ -37,7 +38,10 @@ import {
   addRecords,
   emptyRecordSet,
 } from '../integrations/zeppbridge/zeppBridgeTypes.js';
-import { needsWorkoutDetail } from '../integrations/zeppbridge/zeppBridgeWorkoutDetail.js';
+import {
+  applySummaryLaps,
+  needsWorkoutDetail,
+} from '../integrations/zeppbridge/zeppBridgeWorkoutDetail.js';
 import exerciseEntryRepository from '../models/exerciseEntry.js';
 import exerciseRepository from '../models/exercise.js';
 import sleepRepository from '../models/sleepRepository.js';
@@ -275,6 +279,33 @@ describe('processZeppBridgeRecords', () => {
     expect(entry).not.toHaveProperty('workout_effort');
   });
 
+  it('stores summary laps for a workout with no route, and not for one with a route', async () => {
+    await processZeppBridgeRecords(
+      UID,
+      UID,
+      recordsOf(
+        { ...run, workout_id: 'indoor', route_point_count: 0 },
+        { ...run, workout_id: 'outdoor', route_point_count: 900 }
+      ),
+      TZ
+    );
+    expect(applySummaryLaps).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(applySummaryLaps).mock.calls[0]![3].workout_id).toBe(
+      'indoor'
+    );
+  });
+
+  it('keeps the workout when its laps cannot be stored', async () => {
+    vi.mocked(applySummaryLaps).mockRejectedValueOnce(new Error('db down'));
+    const result = await processZeppBridgeRecords(
+      UID,
+      UID,
+      recordsOf({ ...run, route_point_count: 0 }),
+      TZ
+    );
+    expect(result).toMatchObject({ workoutsImported: 1, workoutsFailed: 0 });
+  });
+
   it('keeps a max heart rate outside 100-250 out of the entry', async () => {
     await processZeppBridgeRecords(
       UID,
@@ -395,7 +426,16 @@ describe('processZeppBridgeRecords', () => {
     expect(hr[4]).toEqual([
       expect.objectContaining({ entry_date: '2026-11-01', bpm: 61 }),
     ]);
-    expect(hr[5]).toEqual({ keepLinked: true });
+    // Merged inside this call's own window, so a neighbouring span's readings
+    // for the same day are not erased.
+    expect(hr[5]).toEqual({
+      mode: 'merge',
+      window: {
+        startMs: Date.parse('2026-11-02T01:30:00Z'),
+        endMs: Date.parse('2026-11-02T01:30:00Z'),
+      },
+      keepLinked: true,
+    });
     expect(result.metricDays).toBe(2);
   });
 

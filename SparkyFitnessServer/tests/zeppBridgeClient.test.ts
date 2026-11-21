@@ -282,3 +282,66 @@ describe('fetchZeppBridgeWorkoutDetail', () => {
     expect(workouts[0]!.route).toHaveLength(1);
   });
 });
+
+describe('limits on what a ZeppBridge server can make a sync consume', () => {
+  it('stops following cursors after too many pages', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockImplementation(async () => json(page([], 'again')));
+    await expect(
+      pullZeppBridgeRecords(
+        connectionWith(fetchMock),
+        '2026-11-01',
+        '2026-11-02',
+        async () => {}
+      )
+    ).rejects.toMatchObject({ code: 'too_many_pages' });
+    // Bounded, not endless.
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(251);
+  });
+
+  it('refuses an answer that declares more than the size limit', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response('{}', {
+        status: 200,
+        headers: { 'content-length': String(200 * 1024 * 1024) },
+      })
+    );
+    await expect(
+      fetchZeppBridgeInfo(connectionWith(fetchMock))
+    ).rejects.toMatchObject({ code: 'response_too_large' });
+  });
+
+  it('stops reading an answer that streams more than the limit', async () => {
+    const chunk = new Uint8Array(8 * 1024 * 1024).fill(0x20);
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= 10) controller.close();
+        else {
+          sent += 1;
+          controller.enqueue(chunk);
+        }
+      },
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(stream, { status: 200 }));
+    await expect(
+      fetchZeppBridgeInfo(connectionWith(fetchMock))
+    ).rejects.toMatchObject({ code: 'response_too_large' });
+    // It gave up well before reading all 80 MB.
+    expect(sent).toBeLessThan(10);
+  });
+
+  it('makes no further request once the sync deadline has passed', async () => {
+    const fetchMock = vi.fn();
+    await expect(
+      fetchZeppBridgeInfo({
+        ...connectionWith(fetchMock),
+        deadlineAt: Date.now() - 1,
+      })
+    ).rejects.toMatchObject({ code: 'sync_timeout' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

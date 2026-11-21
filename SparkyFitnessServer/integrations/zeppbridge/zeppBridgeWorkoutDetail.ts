@@ -219,6 +219,28 @@ export async function needsWorkoutDetail(
   return false;
 }
 
+/**
+ * Stores the laps the summary already carries, for a workout that has no route
+ * to fetch (an indoor session). They replace by lap index, so doing it on every
+ * sync is safe and needs no extra request.
+ */
+export async function applySummaryLaps(
+  userId: string,
+  createdByUserId: string,
+  entryId: string,
+  workout: ZeppBridgeWorkout
+): Promise<boolean> {
+  const { laps } = buildWorkoutTrack(workout);
+  if (laps.length === 0) return false;
+  await exerciseEntryService.attachLapsToExerciseEntry(
+    userId,
+    createdByUserId,
+    entryId,
+    { laps }
+  );
+  return true;
+}
+
 export interface AppliedWorkoutDetail {
   route: boolean;
   heartRate: boolean;

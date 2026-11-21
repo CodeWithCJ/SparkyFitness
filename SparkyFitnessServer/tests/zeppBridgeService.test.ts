@@ -152,6 +152,37 @@ describe('syncZeppBridgeData', () => {
     expect(lastCallRange().days).toBe(30);
   });
 
+  it('does not move last_sync_at for a manual range that skips days an automatic sync would read', async () => {
+    // Last synced 20 days ago; a manual sync of just today would otherwise
+    // move the watermark and leave the 19 days between it and today unread.
+    providerRow.last_sync_at = daysAgo(20);
+    const today = new Date().toISOString().slice(0, 10);
+    await syncZeppBridgeData(UID, UID, 'p-1', today, today);
+    expect(queries.some((q) => q.sql.includes('last_sync_at = NOW()'))).toBe(
+      false
+    );
+
+    // A first-ever sync of one day is not a full first read either.
+    providerRow.last_sync_at = null;
+    await syncZeppBridgeData(UID, UID, 'p-1', today, today);
+    expect(queries.some((q) => q.sql.includes('last_sync_at = NOW()'))).toBe(
+      false
+    );
+
+    // A range reaching back past where the automatic one would start does.
+    providerRow.last_sync_at = daysAgo(20);
+    await syncZeppBridgeData(
+      UID,
+      UID,
+      'p-1',
+      new Date(Date.now() - 40 * 86_400_000).toISOString().slice(0, 10),
+      today
+    );
+    expect(queries.some((q) => q.sql.includes('last_sync_at = NOW()'))).toBe(
+      true
+    );
+  });
+
   it('does not move last_sync_at for a range that stops before today', async () => {
     await syncZeppBridgeData(UID, UID, 'p-1', '2026-01-01', '2026-01-07');
     expect(queries.some((q) => q.sql.includes('last_sync_at = NOW()'))).toBe(

@@ -15,6 +15,7 @@ vi.mock('../services/exerciseEntryService.js', () => ({
 }));
 
 import {
+  applySummaryLaps,
   applyWorkoutDetail,
   buildWorkoutTrack,
   needsWorkoutDetail,
@@ -243,6 +244,45 @@ describe('needsWorkoutDetail', () => {
         workout({ route_point_count: 0, sample_count: 600 })
       )
     ).toBe(true);
+  });
+});
+
+describe('applySummaryLaps', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it('stores the laps of the summary with the distance the watch gave', async () => {
+    const stored = await applySummaryLaps(
+      UID,
+      UID,
+      ENTRY,
+      workout({
+        route_point_count: 0,
+        laps: [
+          {
+            index: 1,
+            start_time: '2026-11-03T07:30:00+02:00',
+            end_time: '2026-11-03T07:40:00+02:00',
+            distance_m: 1000,
+          },
+        ],
+      })
+    );
+    expect(stored).toBe(true);
+    expect(
+      vi.mocked(exerciseEntryService.attachLapsToExerciseEntry).mock
+        .calls[0]![3]
+    ).toEqual({
+      laps: [expect.objectContaining({ lap_index: 1, distance_meters: 1000 })],
+    });
+  });
+
+  it('does nothing when the summary has no usable laps', async () => {
+    expect(await applySummaryLaps(UID, UID, ENTRY, workout({ laps: [] }))).toBe(
+      false
+    );
+    expect(
+      exerciseEntryService.attachLapsToExerciseEntry
+    ).not.toHaveBeenCalled();
   });
 });
 

@@ -447,11 +447,15 @@ export const useSyncZeppBridgeMutation = () => {
   return useMutation({
     mutationFn: ({ providerId, startDate, endDate }: SyncZeppBridgeVariables) =>
       syncZeppBridgeData(providerId, startDate, endDate),
-    onSuccess: (data: ZeppBridgeSyncResult) => {
+    // A long sync is written span by span, so a later span can fail after the
+    // earlier ones were saved: refresh the data whether or not it finished.
+    onSettled: () => {
       queryClient.invalidateQueries({
         queryKey: externalProviderKeys.lists(),
       });
       invalidateDiary();
+    },
+    onSuccess: (data: ZeppBridgeSyncResult) => {
       toast({
         // Some records could not be saved; the next sync covering their day retries them.
         variant: data?.failed ? 'destructive' : 'default',

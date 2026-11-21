@@ -21,6 +21,14 @@ import {
 /** ZeppBridge answers at most this many days per request. */
 export const MAX_DAYS_PER_REQUEST = 92;
 const PAGE_LIMIT = 2000;
+// What one span may hold. Per-minute heart rate over 92 days is about 66 pages
+// of 2000, so this leaves room for real data (500k records) while a server that
+// keeps handing out cursors is stopped instead of growing the sync without limit.
+const MAX_PAGES_PER_SPAN = 250;
+// The largest single answer read into memory.
+const MAX_BODY_BYTES = 50 * 1024 * 1024;
+/** How long one sync may keep talking to the remote server in all. */
+export const MAX_SYNC_MS = 20 * 60_000;
 const REQUEST_TIMEOUT_MS = 30_000;
 const MAX_RETRY_AFTER_MS = 60_000;
 const MAX_RATE_LIMIT_RETRIES = 3;
@@ -34,6 +42,8 @@ export interface ZeppBridgeConnection {
   baseUrl: string;
   token: string;
   fetch: typeof fetch;
+  /** Epoch ms after which no further request is made; unset means no limit. */
+  deadlineAt?: number;
 }
 
 export class ZeppBridgeError extends Error {
@@ -77,6 +87,58 @@ async function errorFromResponse(response: Response): Promise<ZeppBridgeError> {
   return new ZeppBridgeError(message, response.status, code, retryAfterMs);
 }
 
+/** Reads a JSON body without ever holding more than MAX_BODY_BYTES of it. */
+async function readJsonCapped(response: Response): Promise<unknown> {
+  const tooLarge = () =>
+    new ZeppBridgeError(
+      'ZeppBridge sent a larger answer than SparkyFitness accepts. Narrow the date range or check the ZeppBridge server.',
+      0,
+      'response_too_large'
+    );
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) throw tooLarge();
+
+  let text: string;
+  try {
+    const reader = response.body?.getReader();
+    if (!reader) {
+      text = await response.text();
+      if (text.length > MAX_BODY_BYTES) throw tooLarge();
+    } else {
+      const chunks: Uint8Array[] = [];
+      let received = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        received += value.byteLength;
+        if (received > MAX_BODY_BYTES) {
+          await reader.cancel();
+          throw tooLarge();
+        }
+        chunks.push(value);
+      }
+      text = Buffer.concat(chunks).toString('utf8');
+    }
+  } catch (error) {
+    if (error instanceof ZeppBridgeError) throw error;
+    // The connection dropped or timed out while the answer was coming in.
+    throw new ZeppBridgeError(
+      `Could not read the answer from ZeppBridge: ${error instanceof Error ? error.message : String(error)}`,
+      0
+    );
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    // A router, proxy or web page answered 200 with something that is not JSON.
+    throw new ZeppBridgeError(
+      'That address answered, but not like a ZeppBridge server.',
+      0,
+      'not_zeppbridge'
+    );
+  }
+}
+
 async function getJson(
   connection: ZeppBridgeConnection,
   path: string,
@@ -84,6 +146,18 @@ async function getJson(
 ): Promise<unknown> {
   const url = `${connection.baseUrl}${path}${query ? `?${query.toString()}` : ''}`;
   for (let attempt = 0; ; attempt += 1) {
+    const remaining =
+      connection.deadlineAt === undefined
+        ? Number.POSITIVE_INFINITY
+        : connection.deadlineAt - Date.now();
+    if (remaining <= 0) {
+      // A sync that has stopped answering to the app must not keep fetching.
+      throw new ZeppBridgeError(
+        'The ZeppBridge sync took too long and was stopped.',
+        0,
+        'sync_timeout'
+      );
+    }
     let response: Response;
     try {
       response = await connection.fetch(url, {
@@ -91,7 +165,7 @@ async function getJson(
           Authorization: `Bearer ${connection.token}`,
           Accept: 'application/json',
         },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        signal: AbortSignal.timeout(Math.min(REQUEST_TIMEOUT_MS, remaining)),
       });
     } catch (error) {
       // Never the URL or headers: they carry the token.
@@ -100,18 +174,7 @@ async function getJson(
         0
       );
     }
-    if (response.ok) {
-      try {
-        return await response.json();
-      } catch {
-        // A router, proxy or web page answered 200 with something that is not JSON.
-        throw new ZeppBridgeError(
-          'That address answered, but not like a ZeppBridge server.',
-          0,
-          'not_zeppbridge'
-        );
-      }
-    }
+    if (response.ok) return readJsonCapped(response);
     const failure = await errorFromResponse(response);
     if (failure.retryAfterMs !== null && attempt < MAX_RATE_LIMIT_RETRIES) {
       log(
@@ -180,8 +243,17 @@ async function fetchSpan(
   for (let restart = 0; ; restart += 1) {
     const set = emptyRecordSet();
     let cursor: string | null = null;
+    let pages = 0;
     try {
       do {
+        pages += 1;
+        if (pages > MAX_PAGES_PER_SPAN) {
+          throw new ZeppBridgeError(
+            `ZeppBridge sent more than ${MAX_PAGES_PER_SPAN} pages for ${span.from} to ${span.to}. Narrow the date range or check the ZeppBridge server.`,
+            0,
+            'too_many_pages'
+          );
+        }
         const query = new URLSearchParams({
           from: span.from,
           to: span.to,
