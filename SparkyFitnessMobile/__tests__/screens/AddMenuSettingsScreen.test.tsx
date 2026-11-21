@@ -8,6 +8,7 @@ import {
 } from '@testing-library/react-native';
 
 import AddMenuSettingsScreen from '../../src/screens/AddMenuSettingsScreen';
+import BottomSheetPicker from '../../src/components/BottomSheetPicker';
 import { ADD_MENU_ITEM_KEYS } from '../../src/constants/addMenuItems';
 import {
   useAppPreferencesStore,
@@ -238,6 +239,16 @@ describe('AddMenuSettingsScreen', () => {
       expect(screen.getByTestId('add-menu-slot-0-empty')).toBeTruthy();
       expect(useAppPreferencesStore.getState().addMenuCards[0]).toBe(
         'wellness'
+      );
+      // No tile's picker offers it.
+      const tilePickers = screen
+        .UNSAFE_getAllByType(BottomSheetPicker)
+        .filter((picker) => picker.props.title === 'Choose a tile');
+      expect(tilePickers).toHaveLength(4);
+      tilePickers.forEach((picker) =>
+        expect(
+          picker.props.options.map(({ value }: { value: string }) => value)
+        ).not.toContain('wellness')
       );
     });
 
