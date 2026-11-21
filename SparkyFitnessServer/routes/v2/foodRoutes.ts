@@ -17,6 +17,7 @@ import {
   isValidProviderType,
   searchProviderFoods,
 } from '../../services/externalFoodSearchService.js';
+import { getFoodProviderMetadata } from '@workspace/shared';
 import {
   fetchProviderFoodDetails,
   enrichWithCustomNutrients,
@@ -108,9 +109,12 @@ const searchHandler: RequestHandler<{ providerType: string }> = async (
     return;
   }
 
-  // Mealie also uses this search path to browse a selected recipe collection.
+  // Providers with allowsEmptyQuery (e.g. Mealie) use this path to browse collections.
   const query = req.query.query ?? '';
-  if (typeof query !== 'string' || (!query && providerType !== 'mealie')) {
+  if (
+    typeof query !== 'string' ||
+    (!query && !getFoodProviderMetadata(providerType)?.allowsEmptyQuery)
+  ) {
     res.status(400).json({ error: 'Missing query parameter' });
     return;
   }
