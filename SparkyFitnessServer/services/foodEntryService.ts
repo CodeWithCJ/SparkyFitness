@@ -1311,6 +1311,14 @@ async function getFoodEntriesByDateRange(
     throw error;
   }
 }
+// A meal container as seen on the target date: enough to match an equivalent
+// copy (name + slot + type) and link new entries to it.
+interface TargetMealRef {
+  id: string;
+  name: string;
+  entry_time: string | null;
+  meal_type_id: string;
+}
 async function copyFoodEntries(
   authenticatedUserId: string,
   actingUserId: string,
@@ -1358,6 +1366,34 @@ async function copyFoodEntries(
     // Key: old_food_entry_meal_id, Value: new_food_entry_meal_id
     const mealMapping = new Map();
     const entriesToCreate = [];
+    // Containers already on the target date, loaded once, so a retry of a
+    // partly-failed copy reuses the container it made before instead of
+    // creating a second one (the per-entry check below is scoped to it).
+    let targetMeals: TargetMealRef[] | null = null;
+    const loadTargetMeals = async (): Promise<TargetMealRef[]> => {
+      if (targetMeals === null) {
+        targetMeals = await foodEntryMealRepository.getFoodEntryMealsByDate(
+          authenticatedUserId,
+          targetDate
+        );
+      }
+      return targetMeals!;
+    };
+    const matchTargetMeal = (
+      meals: TargetMealRef[],
+      name: string,
+      entryTime: string | null,
+      mealTypeId: string
+    ): string | null => {
+      const wanted = name.trim().toLowerCase();
+      for (const meal of meals) {
+        const sameName = meal.name.trim().toLowerCase() === wanted;
+        const sameTime = (meal.entry_time ?? null) === entryTime;
+        const sameType = meal.meal_type_id === mealTypeId;
+        if (sameName && sameTime && sameType) return meal.id;
+      }
+      return null;
+    };
     for (const entry of sourceEntries) {
       log(
         'debug',
@@ -1376,28 +1412,41 @@ async function copyFoodEntries(
               authenticatedUserId
             );
           if (originalMeal) {
-            // Create a new meal container for the target date/slot
-            const newMeal = await foodEntryMealRepository.createFoodEntryMeal(
-              {
-                user_id: authenticatedUserId,
-                meal_template_id: originalMeal.meal_template_id,
-                meal_type_id: targetMealTypeId,
-                entry_date: targetDate,
-                entry_time: originalMeal.entry_time ?? null,
-                name: originalMeal.name,
-                description: originalMeal.description,
-                // The note travels with the meal container it describes.
-                notes: originalMeal.notes ?? null,
-                quantity: originalMeal.quantity,
-                unit: originalMeal.unit,
-              },
-              actingUserId
+            // Reuse an equivalent container already on the target date so a
+            // retry of a partly-failed copy does not create a second one and
+            // duplicate its entries (the per-entry check below is scoped to it).
+            const existingTargetId = matchTargetMeal(
+              await loadTargetMeals(),
+              originalMeal.name,
+              originalMeal.entry_time ?? null,
+              targetMealTypeId
             );
-            newFoodEntryMealId = newMeal.id;
+            if (existingTargetId) {
+              newFoodEntryMealId = existingTargetId;
+            } else {
+              const newMeal = await foodEntryMealRepository.createFoodEntryMeal(
+                {
+                  user_id: authenticatedUserId,
+                  meal_template_id: originalMeal.meal_template_id,
+                  meal_type_id: targetMealTypeId,
+                  entry_date: targetDate,
+                  entry_time: originalMeal.entry_time ?? null,
+                  name: originalMeal.name,
+                  description: originalMeal.description,
+                  // The note travels with the meal container it describes.
+                  notes: originalMeal.notes ?? null,
+                  quantity: originalMeal.quantity,
+                  unit: originalMeal.unit,
+                },
+                actingUserId
+              );
+              newFoodEntryMealId = newMeal.id;
+              targetMeals!.push(newMeal);
+            }
             mealMapping.set(entry.food_entry_meal_id, newFoodEntryMealId);
             log(
               'debug',
-              `copyFoodEntries: Duplicated meal container "${originalMeal.name}" (${entry.food_entry_meal_id} -> ${newFoodEntryMealId})`
+              `copyFoodEntries: ${existingTargetId ? 'Reused' : 'Duplicated'} meal container "${originalMeal.name}" (${entry.food_entry_meal_id} -> ${newFoodEntryMealId})`
             );
           }
         }

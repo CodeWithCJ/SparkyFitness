@@ -4,6 +4,7 @@ import foodEntryService, {
 } from '../services/foodEntryService.js';
 import foodRepository from '../models/foodRepository.js';
 import mealTypeRepository from '../models/mealType.js';
+import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 import { getClient } from '../db/poolManager.js';
 
 vi.mock('../models/foodRepository.js', () => ({
@@ -229,6 +230,108 @@ describe('copying a meal keeps cooked_quantity (#3534)', () => {
           cooked_quantity: null,
         }),
       ],
+      'user-1'
+    );
+  });
+});
+
+describe('copying a meal reuses an existing target container (#3679)', () => {
+  const ORIGINAL_MEAL = {
+    id: 'orig-meal',
+    user_id: 'user-1',
+    meal_template_id: null,
+    meal_type_id: 'meal-breakfast',
+    entry_date: '2026-11-13',
+    entry_time: '08:00',
+    name: 'Breakfast',
+    description: null,
+    notes: null,
+    quantity: 1,
+    unit: 'g',
+  };
+  const GROUPED_ENTRY = {
+    ...cookedEntry,
+    food_id: 'food-oatmeal',
+    food_entry_meal_id: 'orig-meal',
+    entry_time: '08:00',
+  };
+
+  function setupCopy() {
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue([
+      { id: 'meal-breakfast', name: 'Breakfast', user_id: null },
+    ]);
+    vi.mocked(foodRepository.getFoodEntriesByDateAndMealType).mockResolvedValue(
+      [GROUPED_ENTRY]
+    );
+    vi.mocked(foodEntryMealRepository.getFoodEntryMealById).mockResolvedValue(
+      ORIGINAL_MEAL
+    );
+    vi.mocked(foodRepository.getFoodEntryByDetails).mockResolvedValue(
+      undefined
+    );
+    vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue([]);
+  }
+
+  it('creates a container when the target date is empty', async () => {
+    setupCopy();
+    vi.mocked(
+      foodEntryMealRepository.getFoodEntryMealsByDate
+    ).mockResolvedValue([]);
+    vi.mocked(foodEntryMealRepository.createFoodEntryMeal).mockResolvedValue({
+      id: 'new-meal',
+    });
+    await copyFoodEntries(
+      'user-1',
+      'user-1',
+      '2026-11-13',
+      'Breakfast',
+      '2026-11-14',
+      'Breakfast'
+    );
+    expect(foodEntryMealRepository.createFoodEntryMeal).toHaveBeenCalledTimes(
+      1
+    );
+    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
+      [expect.objectContaining({ food_entry_meal_id: 'new-meal' })],
+      'user-1'
+    );
+  });
+
+  it('reuses the container a failed copy already made, so a retry does not duplicate', async () => {
+    setupCopy();
+    // A prior copy created the container but its entry write failed, so the
+    // retry lands on a date that already holds the container.
+    vi.mocked(
+      foodEntryMealRepository.getFoodEntryMealsByDate
+    ).mockResolvedValue([
+      {
+        id: 'new-meal',
+        name: 'Breakfast',
+        entry_time: '08:00',
+        meal_type_id: 'meal-breakfast',
+      },
+    ]);
+    await copyFoodEntries(
+      'user-1',
+      'user-1',
+      '2026-11-13',
+      'Breakfast',
+      '2026-11-14',
+      'Breakfast'
+    );
+    expect(foodEntryMealRepository.createFoodEntryMeal).not.toHaveBeenCalled();
+    // The per-entry check is scoped to the reused container, so it matches
+    // there and the entry is linked to it.
+    expect(foodRepository.getFoodEntryByDetails).toHaveBeenCalledWith(
+      'user-1',
+      'food-oatmeal',
+      'meal-breakfast',
+      '2026-11-14',
+      null,
+      'new-meal'
+    );
+    expect(foodRepository.bulkCreateFoodEntries).toHaveBeenCalledWith(
+      [expect.objectContaining({ food_entry_meal_id: 'new-meal' })],
       'user-1'
     );
   });
