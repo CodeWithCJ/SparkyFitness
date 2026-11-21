@@ -44,6 +44,7 @@ import {
   scanNutritionLabel,
 } from '../services/api/externalFoodSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
+import { serverMayBeDown } from '../utils/serverErrors';
 import { TimeoutError } from '../utils/concurrency';
 import { fireSuccessHaptic } from '../services/haptics';
 import {
@@ -382,9 +383,17 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
               defaultValue: 'Request timed out. Check your server connection.',
             })
           : (getApiErrorMessage(error) ??
-            t('foodScan.errors.lookupBarcode', {
-              defaultValue: "Couldn't look up this barcode. Please try again.",
-            }));
+            (serverMayBeDown(error)
+              ? // The phone has no copy of this barcode, and only the server
+                // can ask the providers, so say what is possible.
+                t('foodScan.errors.offlineBarcode', {
+                  defaultValue:
+                    "No connection. This barcode isn't in the foods saved on your phone.",
+                })
+              : t('foodScan.errors.lookupBarcode', {
+                  defaultValue:
+                    "Couldn't look up this barcode. Please try again.",
+                })));
       setLookupError({ barcode, message });
     } finally {
       if (isCurrentRequest()) {

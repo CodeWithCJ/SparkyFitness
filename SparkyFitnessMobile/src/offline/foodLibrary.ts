@@ -5,6 +5,10 @@ import type {
   FoodVariantDetail,
   FoodSearchResponse,
 } from '../types/foods';
+import type {
+  BarcodeLookupResult,
+  NormalizedFoodVariant,
+} from '../services/api/externalFoodSearchApi';
 import type { Meal } from '../types/meals';
 import type { MealType } from '../types/mealTypes';
 import type { WaterContainer } from '../types/measurements';
@@ -38,6 +42,16 @@ const MEALS_READ_MAX = 1000;
 /** What the search matches, the way the server does: "brand name". */
 export function foodSearchName(food: Pick<FoodItem, 'name' | 'brand'>): string {
   return `${food.brand ?? ''} ${food.name}`.trim();
+}
+
+/** The barcodes of the foods kept, each pointing at its food. */
+export function barcodeCacheRows(foods: readonly FoodItem[]): CacheWrite[] {
+  const rows: CacheWrite[] = [];
+  for (const food of foods) {
+    const barcode = food.barcode?.trim();
+    if (barcode) rows.push({ key: barcode, payload: { foodId: food.id } });
+  }
+  return rows;
 }
 
 export function foodCacheRows(foods: readonly FoodItem[]): CacheWrite[] {
@@ -170,6 +184,12 @@ export async function refreshFoodLibrary(
     serverConfigId,
     CACHE_COLLECTIONS.food,
     foodCacheRows(foods)
+  );
+  await replaceCacheCollection(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.foodBarcode,
+    barcodeCacheRows(foods)
   );
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.foodRecents, [
     { key: SINGLE_DOCUMENT_KEY, payload: usage },
@@ -323,4 +343,45 @@ export async function readSavedMeal(
     mealId
   );
   return row ? (row.payload as Meal) : null;
+}
+
+/**
+ * The food kept for a scanned barcode, shaped like a lookup the server
+ * answered from the person's own foods; null when no kept food has it. Only
+ * the person's kept foods are known here, never a provider's.
+ */
+export async function readSavedBarcodeResult(
+  db: OfflineDb,
+  serverConfigId: string,
+  barcode: string
+): Promise<BarcodeLookupResult | null> {
+  const row = await getCacheRow(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.foodBarcode,
+    barcode.trim()
+  );
+  const foodId = (row?.payload as { foodId?: string } | undefined)?.foodId;
+  if (!foodId) return null;
+  const food = await readSavedFood(db, serverConfigId, foodId);
+  if (!food?.default_variant) return null;
+  const variants = (await readSavedVariants(db, serverConfigId, foodId)) ?? [
+    food.default_variant,
+  ];
+  return {
+    source: 'local',
+    food: {
+      id: food.id,
+      name: food.name,
+      brand: food.brand,
+      barcode: barcode.trim(),
+      is_custom: food.is_custom,
+      provider_external_id: food.provider_external_id,
+      provider_type: food.provider_type ?? undefined,
+      provider_verified: food.provider_verified,
+      images: food.images ?? undefined,
+      default_variant: food.default_variant as NormalizedFoodVariant,
+      variants: variants as NormalizedFoodVariant[],
+    },
+  };
 }

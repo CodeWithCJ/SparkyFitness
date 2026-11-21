@@ -3032,6 +3032,7 @@
       "loadPhoto": "Failed to load photo.",
       "restartApp": "Unable to open gallery. Please restart the app.",
       "lookupBarcode": "Couldn't look up this barcode. Please try again.",
+      "offlineBarcode": "No connection. This barcode isn't in the foods saved on your phone.",
       "timeout": "Request timed out. Check your server connection.",
       "retryOnDevice": "This iPhone could not read the label."
     },

@@ -23,6 +23,7 @@ import {
   fetchFoodVariants,
 } from '../../src/services/api/foodsApi';
 import { fetchMealTypes } from '../../src/services/api/mealTypesApi';
+import { lookupBarcodeV2 } from '../../src/services/api/externalFoodSearchApi';
 import {
   fetchMeal,
   fetchMeals,
@@ -248,7 +249,10 @@ describe('the food library on the phone', () => {
 
   describe('through the API clients with the server away', () => {
     beforeEach(async () => {
-      serve([food('a', 'Apple'), food('b', 'Bread')]);
+      serve([
+        { ...food('a', 'Apple'), barcode: ' 5000000000017 ' } as FoodItem,
+        food('b', 'Bread'),
+      ]);
       await refreshFoodLibrary(db, 's1');
       mockApiFetch.mockRejectedValue(new TypeError('Network request failed'));
     });
@@ -263,6 +267,24 @@ describe('the food library on the phone', () => {
       await expect(
         fetchFoodsPage({ searchTerm: '', sortBy: 'calories:desc' })
       ).rejects.toBeInstanceOf(TypeError);
+    });
+
+    it('answers a barcode scan from the foods kept, with their servings', async () => {
+      const result = await lookupBarcodeV2('5000000000017');
+
+      expect(result.source).toBe('local');
+      expect(result.food).toMatchObject({
+        id: 'a',
+        name: 'Apple',
+        barcode: '5000000000017',
+      });
+      expect(result.food?.variants).toHaveLength(1);
+    });
+
+    it('does not answer a barcode the phone does not know', async () => {
+      await expect(lookupBarcodeV2('0000000000000')).rejects.toBeInstanceOf(
+        TypeError
+      );
     });
 
     it('finds a saved meal by name and opens one by id', async () => {
