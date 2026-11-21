@@ -234,6 +234,8 @@ export interface SaveFoodPayload {
   images?: string[];
   image_url?: string | null;
   image_source_url?: string | null;
+  /** Replay key from the offline queue; a repeat returns the food it made. */
+  client_id?: string;
 }
 
 /**

@@ -78,7 +78,7 @@ function kindLabel(row: OutboxRow, t: TFunction): string {
   if (row.kind.startsWith('workout_')) {
     return t('offline.kind.workout', { defaultValue: 'Workout' });
   }
-  if (row.kind.startsWith('food_entry')) {
+  if (row.kind.startsWith('food_entry') || row.kind === 'food.create') {
     return t('offline.kind.food', { defaultValue: 'Food entry' });
   }
   if (row.kind.startsWith('water')) {

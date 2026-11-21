@@ -31,6 +31,10 @@ import {
   pendingEntryId,
   queueFoodEntry,
 } from '../offline/foodEntryHandOver';
+import {
+  isQueueableFoodCreate,
+  queueFoodCreate,
+} from '../offline/foodCreateHandOver';
 import { newUuid } from '../utils/ids';
 
 /** True for an entry that is waiting on the phone, not yet on the server. */
@@ -189,10 +193,58 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
   const mutation = useMutation({
     mutationFn: async (input: AddFoodEntryInput) => {
       if (input.saveFoodPayload) {
-        const saved =
-          input.savedFood ??
-          (await saveFood(input.saveFoodPayload, input.saveFoodImages));
-        if (!input.savedFood) options?.onFoodSaved?.(saved);
+        const saveFoodPayload = input.saveFoodPayload;
+        // A plain new food can be kept on the phone and uploaded later with
+        // its entry. Both carry replay keys from the first request on.
+        const foodClientId = newUuid();
+        const entryClientId = newUuid();
+        const queueable =
+          !input.savedFood &&
+          isQueueableFoodCreate({
+            food: saveFoodPayload,
+            hasImages: Boolean(input.saveFoodImages),
+            hasExtraServings: Boolean(
+              input.saveThenCreateVariantPayload ||
+              (input.externalVariants && input.externalVariants.length > 0)
+            ),
+          });
+        let saved: FoodItem;
+        if (input.savedFood) {
+          saved = input.savedFood;
+        } else {
+          try {
+            saved = await saveFood(
+              queueable
+                ? { ...saveFoodPayload, client_id: foodClientId }
+                : saveFoodPayload,
+              input.saveFoodImages
+            );
+          } catch (error) {
+            const entry = input.createEntryPayload;
+            const queued =
+              queueable &&
+              (await queueAfterConnectionFailure(error, () =>
+                queueFoodCreate(
+                  foodClientId,
+                  entryClientId,
+                  saveFoodPayload,
+                  entry
+                )
+              ));
+            if (queued) {
+              return pendingEntryFrom(entryClientId, {
+                ...entry,
+                food_name: saveFoodPayload.name,
+                brand_name: saveFoodPayload.brand ?? undefined,
+                serving_size: saveFoodPayload.serving_size,
+                serving_unit: saveFoodPayload.serving_unit,
+                calories: saveFoodPayload.calories,
+              });
+            }
+            throw error;
+          }
+          options?.onFoodSaved?.(saved);
+        }
 
         let variantId = saved.default_variant?.id;
         let unit = input.createEntryPayload.unit;

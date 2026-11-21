@@ -6,6 +6,7 @@ import {
   pendingEntryId,
   type FoodEntryCreatePayload,
 } from './foodEntryHandOver';
+import { FOOD_CREATE, type FoodCreatePayload } from './foodCreateHandOver';
 import {
   FOOD_ENTRY_MEAL_CREATE,
   type FoodEntryMealPayload,
@@ -173,6 +174,30 @@ export async function previewFromQueuedMeal(
   };
 }
 
+/**
+ * A waiting new food and its entry as the Diary will show it: the food's own
+ * serving and nutrients, which the entry snapshots as they are.
+ */
+export function previewFromQueuedFoodCreate(row: OutboxRow): FoodEntry {
+  const { food, entry } = row.payload as FoodCreatePayload;
+  return {
+    id: pendingEntryId(row.entityId),
+    meal_type: '',
+    meal_type_id: entry.meal_type_id,
+    quantity: entry.quantity,
+    unit: entry.unit,
+    notes: entry.notes,
+    entry_date: entry.entry_date,
+    entry_time: entry.entry_time,
+    ...nutrientsOf(food),
+    calories: food.calories,
+    food_name: food.name,
+    brand_name: food.brand ?? undefined,
+    serving_size: food.serving_size,
+    serving_unit: food.serving_unit,
+  };
+}
+
 /** The entry a waiting food or meal row will become, or null for any other row. */
 export async function previewFromQueuedRow(
   db: OfflineDb,
@@ -182,6 +207,7 @@ export async function previewFromQueuedRow(
   if (row.kind === FOOD_ENTRY_CREATE) {
     return previewFromQueuedFoodEntry(db, serverConfigId, row);
   }
+  if (row.kind === FOOD_CREATE) return previewFromQueuedFoodCreate(row);
   if (row.kind === FOOD_ENTRY_MEAL_CREATE) {
     return previewFromQueuedMeal(db, serverConfigId, row);
   }

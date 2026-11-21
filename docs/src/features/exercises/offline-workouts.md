@@ -36,7 +36,8 @@ If you try to start a workout offline before the phone has ever refreshed, the a
 
 - Delete a food entry from the Diary with no connection. An entry that is still waiting to upload is simply taken out of the queue; one your server already has is removed when it can be reached, and it disappears from the Diary and the totals at once. Editing an entry or deleting a logged meal needs a connection.
 - Scan a barcode with no connection: a food in your library with that barcode is found and can be logged. A barcode your phone does not know needs a connection, because only your server can look it up with the food providers.
-- Log a saved meal with no connection: find it in Log food by name, log it, and it uploads later like a food entry. Meals you make up on the spot, new foods, barcode scans and AI photo logging still need a connection.
+- Create a new food and log it with no connection: a plain food (name, serving and nutrition, no picture, no extra servings, not imported from a provider) is kept on your phone with the entry and uploaded together, and the entry shows in the Diary at once. The food appears in your library after the upload. A new food for the library alone, or a second entry of a food that is still waiting, needs a connection.
+- Log a saved meal with no connection: find it in Log food by name, log it, and it uploads later like a food entry. Meals you make up on the spot, label scans and AI photo logging still need a connection.
 
 These need a connection: deleting past workouts, creating new exercises or saved workouts, online exercise search, suggested alternatives, reports, food logging and the AI assistant.
 
