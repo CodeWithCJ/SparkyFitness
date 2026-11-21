@@ -528,6 +528,11 @@ export const changeWaterIntake = async (params: {
   entryDate: string;
   changeDrinks: number;
   containerId: number;
+  /**
+   * Replay key for one "+" press (only valid with `changeDrinks` of 1). The
+   * server answers a repeat of the same key without logging another drink.
+   */
+  clientId?: string;
 }): Promise<WaterIntakeResponse> => {
   return apiFetch<WaterIntakeResponse>({
     endpoint: '/api/measurements/water-intake',
@@ -538,6 +543,7 @@ export const changeWaterIntake = async (params: {
       entry_date: params.entryDate,
       change_drinks: params.changeDrinks,
       container_id: params.containerId,
+      ...(params.clientId ? { client_id: params.clientId } : {}),
     },
   });
 };

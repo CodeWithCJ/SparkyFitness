@@ -6442,6 +6442,8 @@
   "waterIntake": {
     "updateFailed": "Error",
     "updateMessage": "Failed to update water intake. Please try again.",
+    "queued": "Saved on this phone",
+    "queuedMessage": "It uploads when your server can be reached.",
     "noPrimary": "No Primary Container",
     "noContainers": "No Water Containers",
     "multipleNoPrimary": "You have multiple water containers but none is marked as primary. Please set one as primary on the server.",

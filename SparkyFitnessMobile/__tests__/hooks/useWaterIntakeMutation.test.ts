@@ -1,6 +1,7 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ApiError } from '../../src/services/api/errors';
 import { useWaterIntakeMutation } from '../../src/hooks/useWaterIntakeMutation';
 import {
   fetchWaterContainers,
@@ -20,6 +21,11 @@ import {
 jest.mock('../../src/services/api/measurementsApi', () => ({
   fetchWaterContainers: jest.fn(),
   changeWaterIntake: jest.fn(),
+}));
+
+const mockQueueWaterDrink = jest.fn();
+jest.mock('../../src/offline/waterHandOver', () => ({
+  queueWaterDrink: (...args: unknown[]) => mockQueueWaterDrink(...args),
 }));
 
 jest.mock('../../src/services/LogService', () => ({
@@ -74,6 +80,7 @@ describe('useWaterIntakeMutation', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockQueueWaterDrink.mockReset();
     queryClient = createTestQueryClient();
   });
 
@@ -163,6 +170,7 @@ describe('useWaterIntakeMutation', () => {
         entryDate: testDate,
         changeDrinks: 1,
         containerId: 9,
+        clientId: expect.any(String),
       });
     });
   });
@@ -275,8 +283,91 @@ describe('useWaterIntakeMutation', () => {
           entryDate: testDate,
           changeDrinks: 1,
           containerId: 1,
+          clientId: expect.any(String),
         });
       });
+    });
+
+    test('a press made while the server is unreachable is kept for upload', async () => {
+      mockChangeWaterIntake.mockRejectedValue(
+        new TypeError('Network request failed')
+      );
+      mockQueueWaterDrink.mockResolvedValue(true);
+      queryClient.setQueryData(
+        dailySummaryQueryKey(testDate),
+        makeRawData(500)
+      );
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await waitFor(() => expect(result.current.isReady).toBe(true));
+
+      await act(async () => {
+        result.current.increment();
+      });
+
+      await waitFor(() => expect(mockQueueWaterDrink).toHaveBeenCalledTimes(1));
+      // The key the failed request carried is the key the upload will carry.
+      const sentKey = mockChangeWaterIntake.mock.calls[0][0].clientId;
+      expect(mockQueueWaterDrink).toHaveBeenCalledWith(sentKey, {
+        entryDate: testDate,
+        containerId: 1,
+      });
+      // The press stays on screen and no error is shown.
+      const cached = queryClient.getQueryData<DailySummaryRawData>(
+        dailySummaryQueryKey(testDate)
+      );
+      expect(cached?.waterIntake.water_ml).toBe(750);
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' })
+      );
+    });
+
+    test('a press that timed out is not queued, since the server may have it', async () => {
+      const { TimeoutError } = require('../../src/utils/concurrency');
+      mockChangeWaterIntake.mockRejectedValue(new TimeoutError('slow'));
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await waitFor(() => expect(result.current.isReady).toBe(true));
+
+      await act(async () => {
+        result.current.increment();
+      });
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error' })
+        )
+      );
+      expect(mockQueueWaterDrink).not.toHaveBeenCalled();
+    });
+
+    test('taking a drink off is never queued', async () => {
+      mockChangeWaterIntake.mockRejectedValue(
+        new TypeError('Network request failed')
+      );
+
+      const { result } = renderHook(
+        () => useWaterIntakeMutation({ date: testDate }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await waitFor(() => expect(result.current.isReady).toBe(true));
+
+      await act(async () => {
+        result.current.decrement();
+      });
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error' })
+        )
+      );
+      expect(mockQueueWaterDrink).not.toHaveBeenCalled();
     });
 
     test('decrement calls changeWaterIntake with -1', async () => {
@@ -401,7 +492,9 @@ describe('useWaterIntakeMutation', () => {
       const summary = makeRawData(500);
       queryClient.setQueryData(dailySummaryQueryKey(testDate), summary);
 
-      mockChangeWaterIntake.mockRejectedValue(new Error('Network error'));
+      // A refusal of the request itself (not a lost connection), which is
+      // never queued.
+      mockChangeWaterIntake.mockRejectedValue(new ApiError('Bad request', 400));
 
       const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
 

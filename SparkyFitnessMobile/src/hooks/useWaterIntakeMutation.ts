@@ -9,10 +9,16 @@ import {
 } from '../services/api/measurementsApi';
 import { getServingVolume } from '../utils/unitConversions';
 import type { DailySummaryRawData } from './useDailySummary';
-import type { WaterContainer } from '../types/measurements';
+import type {
+  WaterContainer,
+  WaterIntakeResponse,
+} from '../types/measurements';
 import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
 import { invalidateWaterIntakeQueries } from './invalidateWaterIntake';
 import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutBar';
+import { queueAfterConnectionFailure } from '../offline/queueAfterFailure';
+import { queueWaterDrink } from '../offline/waterHandOver';
+import { newUuid } from '../utils/ids';
 
 /**
  * Stand-in used when the user has no standard container of their own, matching
@@ -31,6 +37,40 @@ const DEFAULT_WATER_CONTAINER = {
 } as WaterContainer;
 
 const SELECTED_CONTAINER_KEY = '@SparkyFitness/selected-water-container';
+
+/** What logging a drink came to: the server's answer, or a waiting upload. */
+type DrinkResult =
+  { queued: false; response: WaterIntakeResponse } | { queued: true };
+
+/**
+ * Logs one drink. It carries a replay key from the first request on, so a
+ * request that reached the server but lost its answer cannot log twice when
+ * it is sent again. When the server cannot be reached the drink is kept on
+ * the phone and uploads later (never after a timeout: the server may have
+ * seen that request, and a person is told it failed instead of risking a
+ * second drink).
+ */
+async function logDrink(
+  entryDate: string,
+  containerId: number
+): Promise<DrinkResult> {
+  const clientId = newUuid();
+  try {
+    const response = await changeWaterIntake({
+      entryDate,
+      changeDrinks: 1,
+      containerId,
+      clientId,
+    });
+    return { queued: false, response };
+  } catch (error) {
+    const queued = await queueAfterConnectionFailure(error, () =>
+      queueWaterDrink(clientId, { entryDate, containerId })
+    );
+    if (queued) return { queued: true };
+    throw error;
+  }
+}
 
 interface UseWaterIntakeMutationOptions {
   date: string;
@@ -125,16 +165,34 @@ export function useWaterIntakeMutation({
     void AsyncStorage.setItem(SELECTED_CONTAINER_KEY, String(id));
   };
 
+  const showQueuedToast = () => {
+    Toast.show({
+      type: 'info',
+      text1: t('waterIntake.queued', {
+        defaultValue: 'Saved on this phone',
+      }),
+      text2: t('waterIntake.queuedMessage', {
+        defaultValue: 'It uploads when your server can be reached.',
+      }),
+    });
+  };
+
   const mutation = useMutation({
-    mutationFn: async (changeDrinks: number) => {
+    mutationFn: async (changeDrinks: number): Promise<DrinkResult> => {
       if (!activeContainer) {
         throw new Error('No water container configured');
       }
-      return changeWaterIntake({
-        entryDate: date,
-        changeDrinks,
-        containerId: activeContainer.id,
-      });
+      // Taking a drink off needs the server's current state, so only adding
+      // one can wait offline.
+      if (changeDrinks === 1) return logDrink(date, activeContainer.id);
+      return {
+        queued: false,
+        response: await changeWaterIntake({
+          entryDate: date,
+          changeDrinks,
+          containerId: activeContainer.id,
+        }),
+      };
     },
     onMutate: async (changeDrinks: number) => {
       if (!activeContainer) return;
@@ -165,14 +223,20 @@ export function useWaterIntakeMutation({
         }
       );
     },
-    onSuccess: (response) => {
+    onSuccess: (result) => {
+      // A drink waiting to upload keeps the amount shown from the press; the
+      // server's total does not include it yet.
+      if (result.queued) {
+        showQueuedToast();
+        return;
+      }
       queryClient.setQueryData<DailySummaryRawData>(
         dailySummaryQueryKey(date),
         (old) => {
           if (!old) return old;
           return {
             ...old,
-            waterIntake: { water_ml: response.water_ml },
+            waterIntake: { water_ml: result.response.water_ml },
           };
         }
       );
@@ -186,7 +250,10 @@ export function useWaterIntakeMutation({
         }),
       });
     },
-    onSettled: () => {
+    onSettled: (result) => {
+      // Refreshing now would replace the shown amount with one that lacks the
+      // waiting drink; the upload refreshes the day once it is confirmed.
+      if (result?.queued) return;
       invalidateWaterIntakeQueries(queryClient, date);
     },
   });
@@ -232,9 +299,12 @@ export function useWaterIntakeMutation({
   // foodWater x hydration_factor, which the client cannot predict, so the
   // server's total is what lands.
   const logPreset = useMutation({
-    mutationFn: (containerId: number) =>
-      changeWaterIntake({ entryDate: date, changeDrinks: 1, containerId }),
-    onSuccess: () => {
+    mutationFn: (containerId: number) => logDrink(date, containerId),
+    onSuccess: (result) => {
+      if (result.queued) {
+        showQueuedToast();
+        return;
+      }
       invalidateWaterIntakeQueries(queryClient, date);
     },
     onError: () => {

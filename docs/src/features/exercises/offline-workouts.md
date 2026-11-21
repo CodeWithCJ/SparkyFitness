@@ -27,10 +27,12 @@ If you try to start a workout offline before the phone has ever refreshed, the a
 - Finish the workout. The usual summary appears, and your feedback and the "update saved workout" answer are kept to send later.
 - Discard a workout.
 - Delete a saved workout from its detail screen. It disappears from your diary at once and is removed from the server when it can be reached.
-- See your workouts of the last 7 days in the **Diary**, and open them. Food, water, sleep and the other diary entries need a connection, and the diary says so. Older days are not kept on the phone.
+- See your workouts of the last 7 days in the **Diary**, and open them. Food, sleep and the other diary entries need a connection, and the diary says so. Older days are not kept on the phone.
 - Browse your saved workouts and your exercise library in the **Library** tab. Everything else in the Library (foods, meals, plans, reports) needs a connection, and the tab says so.
 
 - Log a workout after the fact (**Log past workout**, or the **Add workout** form) and edit a workout you already logged. The change is kept on your phone and uploads later, like any other offline workout.
+
+- Log a drink with the **+** button on the Dashboard's water card, or with a quick-add drink. The drink is kept on your phone and uploads later, and the amount shown goes up at once. Each press is uploaded once: if the connection drops while uploading, sending it again does not add a second drink. Taking a drink off (**−**) needs a connection. The water total is the amount your server had at last load plus the drinks waiting, so it is correct after the upload.
 
 These need a connection: deleting past workouts, creating new exercises or saved workouts, online exercise search, suggested alternatives, reports, food logging and the AI assistant.
 
