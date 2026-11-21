@@ -15,6 +15,12 @@ const searchBananaEnFixture = JSON.parse(
     'utf-8'
   )
 );
+const foodBananaFixture = JSON.parse(
+  fs.readFileSync(
+    new URL('./fixtures/nutrientgraph/food_fdc_173944.json', import.meta.url),
+    'utf-8'
+  )
+);
 const foodFdcFixture = JSON.parse(
   fs.readFileSync(
     new URL('./fixtures/nutrientgraph/food_fdc_171477.json', import.meta.url),
@@ -82,7 +88,7 @@ describe('NutrientGraph Service', () => {
           return mockJsonResponse(searchBananaEnFixture);
         }
         if (url.includes('fdc%3A173944')) {
-          return mockJsonResponse(foodFdcFixture);
+          return mockJsonResponse(foodBananaFixture);
         }
         return mockJsonResponse({ data: null }, 404);
       });
@@ -105,8 +111,10 @@ describe('NutrientGraph Service', () => {
         default_variant: expect.objectContaining({
           serving_size: 100,
           serving_unit: 'g',
-          calories: 165,
-          protein: 31,
+          calories: 89,
+          protein: 1.1,
+          carbs: 22.8,
+          fat: 0.3,
           is_default: true,
         }),
       });
