@@ -207,6 +207,7 @@ export default defineConfig({
             { text: 'Food Info', link: '/features/settings/food-info' },
             { text: 'Liftosaur', link: '/features/settings/liftosaur' },
             { text: 'Intervals.icu', link: '/features/settings/intervals' },
+            { text: 'ZeppBridge (Amazfit / Zepp)', link: '/features/settings/zeppbridge' },
             { text: 'Nutrient Display', link: '/features/settings/nutrient-display-settings' },
             { text: 'Login Management', link: '/features/settings/login-management' },
             { text: 'Google Health Connect', link: '/features/settings/google-health' },

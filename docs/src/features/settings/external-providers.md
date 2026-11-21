@@ -18,6 +18,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 - [Hevy](/features/settings/hevy)
 - [Liftosaur](/features/settings/liftosaur)
 - [Intervals.icu](/features/settings/intervals)
+- [ZeppBridge (Amazfit / Zepp)](/features/settings/zeppbridge)
 - [Canadian Nutrient File (Health Canada)](/features/settings/canadian-nutrient-file)
 - [Swedish Food Agency (Livsmedelsverket)](/features/settings/livsmedelsverket)
 - [CookTool](/features/settings/cooktool)

@@ -11,6 +11,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Clipboard } from 'lucide-react';
 import { RoutingProviderFields } from './RoutingProviderFields';
+import { ZeppBridgeFields } from './ZeppBridgeFields';
 import { ProviderSyncFrequencyFields } from './ProviderSyncFrequencyFields';
 import { WeatherProviderFields } from './WeatherProviderFields';
 import { McpServerFields } from './McpServerFields';
@@ -238,6 +239,20 @@ export const EditProviderForm = ({
             />
           </p>
         </>
+      )}
+      {editData.provider_type === 'zeppbridge' && (
+        <ZeppBridgeFields
+          idPrefix="edit"
+          keepExistingToken
+          baseUrl={editData.base_url}
+          appKey={editData.app_key}
+          onBaseUrlChange={(value) =>
+            setEditData((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setEditData((prev) => ({ ...prev, app_key: value }))
+          }
+        />
       )}
       {editData.provider_type === 'valhalla' && (
         <RoutingProviderFields

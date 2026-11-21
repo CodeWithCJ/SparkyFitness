@@ -23,6 +23,7 @@ export const providerRequirements: Record<string, string[]> = {
   hevy: ['app_key'],
   liftosaur: ['app_key'],
   intervals: ['app_id', 'app_key'],
+  zeppbridge: ['base_url', 'app_key'],
   yazio: ['app_id', 'app_key', 'yazio_client_id', 'yazio_client_secret'],
   coros_mcp: [],
 };
@@ -40,6 +41,10 @@ const providerFieldLabels: Record<string, Record<string, string>> = {
   intervals: {
     app_id: 'Athlete ID',
     app_key: 'API Key',
+  },
+  zeppbridge: {
+    base_url: 'ZeppBridge URL',
+    app_key: 'Pull token',
   },
 };
 
@@ -61,6 +66,7 @@ const PROVIDERS_WITHOUT_APP_ID = [
   'free-exercise-db',
   'wger',
   'liftosaur',
+  'zeppbridge',
   MCP_SERVER_PROVIDER_TYPE,
 ];
 const OAUTH_TOKEN_PROVIDERS = [

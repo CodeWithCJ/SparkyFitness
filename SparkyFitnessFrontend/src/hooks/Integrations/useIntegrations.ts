@@ -14,6 +14,9 @@ import {
   setIntervalsNutritionPush,
   removeIntervalsPushedData,
   IntervalsRemoveResult,
+  syncZeppBridgeData,
+  testZeppBridge,
+  ZeppBridgeSyncResult,
   loginGarmin,
   GarminLoginPayload,
 } from '@/api/Integrations/integrations';
@@ -47,6 +50,7 @@ import {
   handleManualSyncStrava,
   handleDisconnectLiftosaur,
   handleDisconnectIntervals,
+  handleDisconnectZeppBridge,
   fetchGarminStatus,
   GarminMfaPayload,
   resumeGarminLogin,
@@ -421,6 +425,103 @@ export const useDisconnectIntervalsMutation = () => {
 
   return useMutation({
     mutationFn: (providerId?: string) => handleDisconnectIntervals(providerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+    },
+  });
+};
+interface SyncZeppBridgeVariables {
+  providerId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export const useSyncZeppBridgeMutation = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const invalidateDiary = useDiaryInvalidation();
+
+  return useMutation({
+    mutationFn: ({ providerId, startDate, endDate }: SyncZeppBridgeVariables) =>
+      syncZeppBridgeData(providerId, startDate, endDate),
+    // A long sync is written span by span, so a later span can fail after the
+    // earlier ones were saved: refresh the data whether or not it finished.
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: externalProviderKeys.lists(),
+      });
+      invalidateDiary();
+    },
+    onSuccess: (data: ZeppBridgeSyncResult) => {
+      toast({
+        // Some records could not be saved; the next sync covering their day retries them.
+        variant:
+          data?.failed || data?.workoutDetailsFailed
+            ? 'destructive'
+            : 'default',
+        title: t(
+          'integrations.zeppbridgeSyncSuccessTitle',
+          'ZeppBridge synced successfully'
+        ),
+        description: t(
+          'integrations.zeppbridgeSyncDetails',
+          'Synced: {{sleepImported}} sleep sessions, {{workoutsImported}} workouts ({{workoutDetailsImported}} with route or heart rate), {{metricDays}} days of metrics ({{failed}} failed, {{workoutDetailsFailed}} workout details missing).',
+          {
+            sleepImported: data?.sleepImported ?? 0,
+            workoutsImported: data?.workoutsImported ?? 0,
+            workoutDetailsImported: data?.workoutDetailsImported ?? 0,
+            workoutDetailsFailed: data?.workoutDetailsFailed ?? 0,
+            metricDays: data?.metricDays ?? 0,
+            failed: data?.failed ?? 0,
+          }
+        ),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'integrations.zeppbridgeSyncError',
+        'ZeppBridge sync failed. Check the ZeppBridge URL and pull token in settings, and that the ZeppBridge server is running.'
+      ),
+    },
+  });
+};
+
+export const useTestZeppBridgeMutation = () => {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (providerId?: string) => testZeppBridge(providerId),
+    onSuccess: (data) => {
+      toast({
+        title: t(
+          'integrations.zeppbridgeTestSuccessTitle',
+          'ZeppBridge connection works'
+        ),
+        description: t(
+          'integrations.zeppbridgeTestSuccessDetails',
+          'ZeppBridge {{version}} answered.',
+          { version: data.version ?? '' }
+        ),
+      });
+    },
+    meta: {
+      errorMessage: t(
+        'integrations.zeppbridgeTestError',
+        'Could not connect to ZeppBridge. Check the URL (include http://) and the pull token.'
+      ),
+    },
+  });
+};
+
+export const useDisconnectZeppBridgeMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (providerId?: string) => handleDisconnectZeppBridge(providerId),
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: externalProviderKeys.lists(),
