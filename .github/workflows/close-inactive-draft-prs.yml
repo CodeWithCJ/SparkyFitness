@@ -150,14 +150,14 @@ jobs:
 
                 // 4. Post notification comment and close the PR
                 const closeMessage = [
-                  'This draft pull request has had no new commits for over 7 days and was automatically closed to keep the backlog tidy.',
+                  'This draft PR had no new commits for 7 days and was automatically closed.',
                   '',
-                  'You can reopen or resubmit this pull request whenever you are ready! Before re-opening or requesting review, please make sure:',
-                  '- **Address feedback:** All reviewer feedback and bot review comments (CodeRabbit, Strix, CI checks) are addressed and resolved.',
-                  '- **Testing & Validation proof:** Proper tests are passing and validation proof (test logs, screenshots, or screen recordings) is provided.',
-                  '- **Ready for review:** Mark the pull request as **Ready for review** once you are prepared for maintainer review.',
+                  'Feel free to **Reopen** when ready! Please ensure:',
+                  '- Reviewer feedback and bot comments (CodeRabbit/Strix/CI) are resolved.',
+                  '- Validation proof (screenshots or test logs) is attached.',
+                  '- Marked **Ready for review**.',
                   '',
-                  '*(Repository maintainers can comment `/keep-draft` to keep a draft PR open indefinitely.)*',
+                  '*(Maintainers: comment `/keep-draft` to keep open)*',
                 ].join('\n');
 
                 await github.rest.issues.createComment({
