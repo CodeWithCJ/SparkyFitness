@@ -81,6 +81,7 @@ export interface MappedProviderFood {
   default_variant: MappedVariant;
   variants: MappedVariant[];
   has_core_nutrition?: boolean;
+  has_calories?: boolean;
   [PARTIAL_SERVING_DATA]?: true;
 }
 
@@ -242,6 +243,9 @@ export function buildPer100gFood(
     });
   }
 
+  const hasCaloriesPresent =
+    typeof per100g.calories === 'number' && !isNaN(per100g.calories);
+
   return {
     name,
     brand: brand ?? null,
@@ -252,6 +256,7 @@ export function buildPer100gFood(
     default_variant: defaultVariant,
     variants,
     has_core_nutrition: hasCoreNutritionPresent,
+    has_calories: hasCaloriesPresent,
   };
 }
 
@@ -307,6 +312,8 @@ export function buildSearchSummaryFood(
     !isNaN(input.carbs) &&
     typeof input.fat === 'number' &&
     !isNaN(input.fat);
+  const hasCaloriesPresent =
+    typeof input.calories === 'number' && !isNaN(input.calories);
 
   const defaultVariant: MappedVariant = {
     serving_size,
@@ -328,6 +335,7 @@ export function buildSearchSummaryFood(
     default_variant: defaultVariant,
     variants: [defaultVariant],
     has_core_nutrition: hasCoreNutritionPresent,
+    has_calories: hasCaloriesPresent,
     [PARTIAL_SERVING_DATA]: true,
   };
 }

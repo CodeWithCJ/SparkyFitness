@@ -82,6 +82,7 @@ export interface Food {
   provider_type?: FoodProviderType | 'nutritionix';
   provider_verified?: boolean;
   has_core_nutrition?: boolean;
+  has_calories?: boolean;
   recipe_has_nutrition?: boolean;
   recipe_servings?: number | null;
   default_variant?: FoodVariant;

@@ -140,6 +140,36 @@ describe('per100gMapper (buildPer100gFood)', () => {
       });
       expect(summary[PARTIAL_SERVING_DATA]).toBe(true);
       expect(hasCoreNutrition(summary)).toBe(false);
+      expect(summary.has_calories).toBe(false);
+    });
+
+    it('sets has_calories true in summary when calories number is provided', () => {
+      const summary = buildSearchSummaryFood({
+        providerType: 'nutrientgraph' as any,
+        externalId: 'summary-2',
+        name: 'NutrientGraph Summary',
+        calories: 120,
+      });
+      expect(summary.has_calories).toBe(true);
+      expect(summary.has_core_nutrition).toBe(false);
+    });
+
+    it('sets has_calories in buildPer100gFood', () => {
+      const withCal = buildPer100gFood({
+        providerType: 'cooktool' as any,
+        externalId: 'with-cal',
+        name: 'With Calories',
+        per100g: { calories: 250 },
+      });
+      expect(withCal.has_calories).toBe(true);
+
+      const withoutCal = buildPer100gFood({
+        providerType: 'cooktool' as any,
+        externalId: 'without-cal',
+        name: 'Without Calories',
+        per100g: {},
+      });
+      expect(withoutCal.has_calories).toBe(false);
     });
   });
 });

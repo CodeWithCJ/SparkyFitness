@@ -99,7 +99,7 @@ describe('Food Info Service', () => {
           is_default: true,
         }),
       });
-      expect(res.pagination.hasMore).toBe(true);
+      expect(res.pagination.hasMore).toBe(false);
 
       const normalized = res.foods.map(normalizeFoodForResponse);
       expect(() =>
@@ -108,6 +108,13 @@ describe('Food Info Service', () => {
           pagination: res.pagination,
         })
       ).not.toThrow();
+    });
+
+    it('returns empty results and hasMore false for page > 1', async () => {
+      const res = await searchFoodInfo(ctx, 'banana', 2, 20);
+      expect(res.foods).toEqual([]);
+      expect(res.pagination.hasMore).toBe(false);
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 

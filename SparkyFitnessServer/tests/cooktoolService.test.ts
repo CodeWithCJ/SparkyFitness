@@ -97,6 +97,12 @@ describe('CookTool Service', () => {
           is_default: true,
         }),
       });
+      expect(res.foods[1]).toMatchObject({
+        name: 'Ingredient 9999',
+        provider_external_id: 'ing:9999',
+        has_core_nutrition: false,
+        has_calories: false,
+      });
       expect(res.pagination.hasMore).toBe(false);
     });
 

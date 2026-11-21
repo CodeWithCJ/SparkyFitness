@@ -150,6 +150,20 @@ export async function searchFoodInfo(
     };
   }
 
+  // food-info.org does not honour page or offset and returns identical results for all pages.
+  // Return empty on page > 1 and always report hasMore: false to prevent duplicate pagination loops.
+  if (page > 1) {
+    return {
+      foods: [],
+      pagination: {
+        page,
+        pageSize,
+        totalCount: 0,
+        hasMore: false,
+      },
+    };
+  }
+
   const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
   const headers = resolveHeaders(ctx.credentials?.app_key);
   const offset = Math.max(0, (page - 1) * pageSize);
@@ -209,15 +223,13 @@ export async function searchFoodInfo(
 
   const foods = [...enrichedTop, ...restMapped];
 
-  const hasMore = items.length === pageSize;
-
   return {
     foods,
     pagination: {
-      page,
+      page: 1,
       pageSize,
       totalCount: foods.length,
-      hasMore,
+      hasMore: false,
     },
   };
 }

@@ -9823,7 +9823,9 @@
       "label": "Nutrition label"
     },
     "foodResultCard": {
-      "gi": "GI: {{glycemic_index}}"
+      "gi": "GI: {{glycemic_index}}",
+      "tapForFullNutrition": "Tap for full nutrition",
+      "tapForNutrition": "Tap for nutrition"
     },
     "searchingBarcode": "Searching barcode",
     "lookingUp": "Looking up: {{barcode}}...",

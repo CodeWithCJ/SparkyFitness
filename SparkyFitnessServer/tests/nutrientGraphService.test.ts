@@ -110,6 +110,12 @@ describe('NutrientGraph Service', () => {
           is_default: true,
         }),
       });
+      expect(res.foods[1]).toMatchObject({
+        name: 'Bananas, ripe and slightly ripe, raw',
+        provider_external_id: 'fdc:1105314',
+        has_core_nutrition: false,
+        has_calories: true,
+      });
       expect(res.pagination.hasMore).toBe(true);
     });
 
