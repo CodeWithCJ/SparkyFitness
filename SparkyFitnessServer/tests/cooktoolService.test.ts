@@ -88,22 +88,29 @@ describe('CookTool Service', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(res.foods).toHaveLength(2);
-      expect(res.foods[0]).toEqual({
-        id: 'ing:6433',
+      expect(res.foods[0]).toMatchObject({
         name: 'Bananas, raw',
-        serving_size: 100,
-        serving_unit: 'g',
-        is_partial: true,
-        calories: undefined,
+        brand: null,
+        provider_external_id: 'ing:6433',
+        provider_type: 'cooktool',
+        is_custom: false,
+        default_variant: expect.objectContaining({
+          serving_size: 100,
+          serving_unit: 'g',
+          is_default: true,
+        }),
       });
-      expect(res.foods[1]).toEqual({
-        id: 'br:1994784',
+      expect(res.foods[1]).toMatchObject({
         name: 'Banana Chips',
         brand: 'Sun Brand',
-        serving_size: 100,
-        serving_unit: 'g',
-        is_partial: true,
-        calories: undefined,
+        provider_external_id: 'br:1994784',
+        provider_type: 'cooktool',
+        is_custom: false,
+        default_variant: expect.objectContaining({
+          serving_size: 100,
+          serving_unit: 'g',
+          is_default: true,
+        }),
       });
       expect(res.pagination.hasMore).toBe(false);
     });
@@ -124,7 +131,9 @@ describe('CookTool Service', () => {
       const res = await searchCookTool(ctx, 'banana', 1, 20);
 
       expect(res.foods).toHaveLength(1);
-      expect((res.foods[0] as { id: string }).id).toBe('ing:6433');
+      expect(
+        (res.foods[0] as { provider_external_id: string }).provider_external_id
+      ).toBe('ing:6433');
     });
 
     it('throws if both search requests fail', async () => {

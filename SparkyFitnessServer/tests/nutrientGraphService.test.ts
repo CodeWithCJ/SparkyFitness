@@ -89,13 +89,18 @@ describe('NutrientGraph Service', () => {
       expect(url).toContain('offset=0');
 
       expect(res.foods).toHaveLength(3);
-      expect(res.foods[0]).toEqual({
-        id: 'fdc:173944',
+      expect(res.foods[0]).toMatchObject({
         name: 'Bananas, raw',
-        calories: 89,
-        serving_size: 100,
-        serving_unit: 'g',
-        is_partial: true,
+        brand: null,
+        provider_external_id: 'fdc:173944',
+        provider_type: 'nutrientgraph',
+        is_custom: false,
+        default_variant: expect.objectContaining({
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 89,
+          is_default: true,
+        }),
       });
       expect(res.pagination.hasMore).toBe(true);
     });

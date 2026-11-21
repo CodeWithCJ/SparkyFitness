@@ -4,7 +4,10 @@ import type {
 } from '../foodProviders/types.js';
 import type { ProviderSearchResult } from '../../services/externalFoodSearchService.js';
 import { providerFetchJson } from '../foodProviders/httpClient.js';
-import { buildPer100gFood } from '../foodProviders/per100gMapper.js';
+import {
+  buildPer100gFood,
+  buildSearchSummaryFood,
+} from '../foodProviders/per100gMapper.js';
 import { detailCache } from '../foodProviders/detailCache.js';
 import type {
   MappedProviderFood,
@@ -243,17 +246,18 @@ export async function searchNutrientGraph(
   );
 
   const results = response.data?.results || [];
-  const foods = results.map((item) => ({
-    id: item.id,
-    name: item.name,
-    calories:
-      typeof item.energy_kcal_per_100 === 'number'
-        ? item.energy_kcal_per_100
-        : undefined,
-    serving_size: 100,
-    serving_unit: 'g',
-    is_partial: true,
-  }));
+  const foods = results.map((item) =>
+    buildSearchSummaryFood({
+      providerType: 'nutrientgraph',
+      externalId: item.id,
+      name: item.name,
+      brand: null,
+      calories:
+        typeof item.energy_kcal_per_100 === 'number'
+          ? item.energy_kcal_per_100
+          : undefined,
+    })
+  );
 
   const hasMore = results.length === pageSize;
 

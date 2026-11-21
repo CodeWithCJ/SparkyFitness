@@ -70,7 +70,7 @@ export interface MappedVariant {
 
 export interface MappedProviderFood {
   name: string;
-  brand?: string;
+  brand: string | null;
   barcode?: string;
   provider_external_id: string;
   provider_type: FoodProviderType;
@@ -220,12 +220,53 @@ export function buildPer100gFood(
 
   return {
     name,
-    brand: brand ?? undefined,
+    brand: brand ?? null,
     barcode: barcode ?? undefined,
     provider_external_id: String(externalId),
     provider_type: providerType,
     is_custom: false,
     default_variant: defaultVariant,
     variants,
+  };
+}
+
+export interface BuildSearchSummaryFoodInput {
+  providerType: FoodProviderType;
+  externalId: string;
+  name: string;
+  brand?: string | null;
+  barcode?: string | null;
+  calories?: number | null;
+  protein?: number | null;
+  carbs?: number | null;
+  fat?: number | null;
+  serving_size?: number;
+  serving_unit?: string;
+}
+
+export function buildSearchSummaryFood(
+  input: BuildSearchSummaryFoodInput
+): MappedProviderFood {
+  const serving_size = input.serving_size ?? 100;
+  const serving_unit = input.serving_unit ?? 'g';
+  const defaultVariant: MappedVariant = {
+    serving_size,
+    serving_unit,
+    calories: input.calories ?? 0,
+    protein: input.protein ?? 0,
+    carbs: input.carbs ?? 0,
+    fat: input.fat ?? 0,
+    is_default: true,
+  };
+
+  return {
+    name: input.name,
+    brand: input.brand ?? null,
+    barcode: input.barcode ?? undefined,
+    provider_external_id: String(input.externalId),
+    provider_type: input.providerType,
+    is_custom: false,
+    default_variant: defaultVariant,
+    variants: [defaultVariant],
   };
 }

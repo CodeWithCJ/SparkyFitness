@@ -34,6 +34,9 @@ function mockJsonResponse(data: unknown, status = 200) {
   };
 }
 
+import { normalizeFoodForResponse } from '../services/foodProviderDetailService.js';
+import { SearchResponseSchema } from '../schemas/foodSchemas.js';
+
 describe('Food Info Service', () => {
   const ctx: ProviderCallContext = {
     userId: 'user-1',
@@ -71,15 +74,27 @@ describe('Food Info Service', () => {
       expect(url).toContain('limit=3');
 
       expect(res.foods).toHaveLength(3);
-      expect(res.foods[0]).toEqual({
-        id: '790774',
+      expect(res.foods[0]).toMatchObject({
         name: 'Bananas, overripe, raw',
-        calories: undefined,
-        serving_size: 100,
-        serving_unit: 'g',
-        is_partial: true,
+        brand: null,
+        provider_external_id: '790774',
+        provider_type: 'food-info',
+        is_custom: false,
+        default_variant: expect.objectContaining({
+          serving_size: 100,
+          serving_unit: 'g',
+          is_default: true,
+        }),
       });
       expect(res.pagination.hasMore).toBe(true);
+
+      const normalized = res.foods.map(normalizeFoodForResponse);
+      expect(() =>
+        SearchResponseSchema.parse({
+          foods: normalized,
+          pagination: res.pagination,
+        })
+      ).not.toThrow();
     });
   });
 

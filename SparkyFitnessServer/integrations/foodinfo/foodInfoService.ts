@@ -4,7 +4,10 @@ import type {
 } from '../foodProviders/types.js';
 import type { ProviderSearchResult } from '../../services/externalFoodSearchService.js';
 import { providerFetchJson } from '../foodProviders/httpClient.js';
-import { buildPer100gFood } from '../foodProviders/per100gMapper.js';
+import {
+  buildPer100gFood,
+  buildSearchSummaryFood,
+} from '../foodProviders/per100gMapper.js';
 import { detailCache } from '../foodProviders/detailCache.js';
 import type {
   MappedProviderFood,
@@ -153,14 +156,14 @@ export async function searchFoodInfo(
   );
 
   const items = Array.isArray(results) ? results : [];
-  const foods = items.map((item) => ({
-    id: String(item.id),
-    name: item.description,
-    calories: undefined,
-    serving_size: 100,
-    serving_unit: 'g',
-    is_partial: true,
-  }));
+  const foods = items.map((item) =>
+    buildSearchSummaryFood({
+      providerType: 'food-info',
+      externalId: String(item.id),
+      name: item.description,
+      brand: null,
+    })
+  );
 
   const hasMore = items.length === pageSize;
 

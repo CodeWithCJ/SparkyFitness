@@ -4,7 +4,10 @@ import type {
 } from '../foodProviders/types.js';
 import type { ProviderSearchResult } from '../../services/externalFoodSearchService.js';
 import { providerFetchJson } from '../foodProviders/httpClient.js';
-import { buildPer100gFood } from '../foodProviders/per100gMapper.js';
+import {
+  buildPer100gFood,
+  buildSearchSummaryFood,
+} from '../foodProviders/per100gMapper.js';
 import { detailCache } from '../foodProviders/detailCache.js';
 import { altBarcode } from '../../utils/foodUtils.js';
 import type {
@@ -176,23 +179,22 @@ export async function searchCookTool(
   }
 
   const foods = [
-    ...ingredients.map((item) => ({
-      id: `ing:${item.id}`,
-      name: item.name,
-      serving_size: 100,
-      serving_unit: 'g',
-      is_partial: true,
-      calories: undefined,
-    })),
-    ...branded.map((item) => ({
-      id: `br:${item.id}`,
-      name: item.name,
-      brand: item.brand || item.brand_owner || undefined,
-      serving_size: 100,
-      serving_unit: 'g',
-      is_partial: true,
-      calories: undefined,
-    })),
+    ...ingredients.map((item) =>
+      buildSearchSummaryFood({
+        providerType: 'cooktool',
+        externalId: `ing:${item.id}`,
+        name: item.name,
+        brand: null,
+      })
+    ),
+    ...branded.map((item) =>
+      buildSearchSummaryFood({
+        providerType: 'cooktool',
+        externalId: `br:${item.id}`,
+        name: item.name,
+        brand: item.brand || item.brand_owner || null,
+      })
+    ),
   ];
 
   const hasMore =

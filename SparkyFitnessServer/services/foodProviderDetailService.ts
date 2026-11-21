@@ -89,22 +89,38 @@ export function normalizeFoodForResponse(food: unknown): unknown {
 
   const record = food as Record<string, unknown>;
 
+  const defaultVariant =
+    normalizeFoodVariantForResponse(record.default_variant) ||
+    normalizeFoodVariantForResponse({
+      serving_size: record.serving_size ?? 100,
+      serving_unit: record.serving_unit ?? 'g',
+      calories: record.calories ?? 0,
+      protein: record.protein ?? 0,
+      carbs: record.carbs ?? 0,
+      fat: record.fat ?? 0,
+      is_default: true,
+    });
+
   return {
     ...record,
     id: nullToUndefined(record.id as string | null | undefined),
     barcode: nullToUndefined(record.barcode as string | null | undefined),
     provider_external_id: nullToUndefined(
-      record.provider_external_id as string | null | undefined
+      (record.provider_external_id ?? record.id) as string | null | undefined
     ),
     provider_type: nullToUndefined(
       record.provider_type as string | null | undefined
     ),
-    default_variant: normalizeFoodVariantForResponse(record.default_variant),
+    brand: (record.brand as string | null | undefined) ?? null,
+    is_custom: (record.is_custom as boolean | undefined) ?? false,
+    default_variant: defaultVariant,
     variants: Array.isArray(record.variants)
       ? record.variants.map((variant) =>
           normalizeFoodVariantForResponse(variant)
         )
-      : nullToUndefined(record.variants as unknown[] | null | undefined),
+      : defaultVariant
+        ? [defaultVariant]
+        : nullToUndefined(record.variants as unknown[] | null | undefined),
   };
 }
 
