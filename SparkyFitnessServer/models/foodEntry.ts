@@ -5,6 +5,7 @@ import { log } from '../config/logging.js';
 import format from 'pg-format';
 import { sanitizeCustomNutrients } from '../utils/foodUtils.js';
 import { toImageArray } from '../utils/imageLocalizer.js';
+import { isUniqueViolationOn } from '../utils/uniqueViolation.js';
 import type { FoodEntryInput, FoodEntrySnapshot } from '../types/nutrition.js';
 import {
   copyFingerprintFor,
@@ -196,6 +197,25 @@ function reviewedCopyConflict() {
  *           type: object
  *           description: A JSON object for storing custom nutrient data.
  */
+
+const FOOD_ENTRY_CLIENT_ID_INDEX = 'idx_food_entries_user_client_id';
+
+/**
+ * The entry an earlier request with the same client id already created, if
+ * any. Lets the mobile offline queue replay a write without logging it twice.
+ */
+async function findFoodEntryByClientId(
+  client: PoolClient,
+  userId: string,
+  clientId: string
+) {
+  const existing = await client.query(
+    'SELECT * FROM food_entries WHERE user_id = $1 AND client_id = $2',
+    [userId, clientId]
+  );
+  return existing.rows[0];
+}
+
 async function createFoodEntry(
   entryData: FoodEntryInput,
   createdByUserId: string
@@ -207,6 +227,17 @@ async function createFoodEntry(
   const client = await getClient(entryData.user_id, createdByUserId); // User-specific operation
   try {
     await client.query('BEGIN');
+    if (entryData.client_id) {
+      const replayed = await findFoodEntryByClientId(
+        client,
+        entryData.user_id as string,
+        entryData.client_id
+      );
+      if (replayed) {
+        await client.query('ROLLBACK');
+        return replayed;
+      }
+    }
     let mealTypeId = entryData.meal_type_id;
     if (!mealTypeId && entryData.meal_type) {
       const typeRes = await client.query(
@@ -327,10 +358,10 @@ async function createFoodEntry(
          saturated_fat, polyunsaturated_fat, monounsaturated_fat, trans_fat, cholesterol, sodium,
          potassium, dietary_fiber, sugars, vitamin_a, vitamin_c, calcium, iron, glycemic_index, custom_nutrients, allergens, traces, updated_by_user_id,
          source, source_id, entry_time, images, notes, caffeine_mg, water_ml, alcohol_g,
-         cooked_quantity
+         cooked_quantity, client_id
        ) VALUES (
          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21,
-         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42, $43, $44, $45, $46
+         $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41::jsonb, $42, $43, $44, $45, $46, $47
        )
        -- Idempotent re-sync for provider-sourced entries (e.g. Health Connect):
        -- re-ingesting the same record updates it in place. Manual/web entries
@@ -442,12 +473,25 @@ async function createFoodEntry(
         // Cooked weight eaten (#3534). The route has already checked it;
         // provider re-syncs never send it (see DO UPDATE above).
         entryData.cooked_quantity ?? null,
+        entryData.client_id ?? null,
       ]
     );
     await client.query('COMMIT');
     return result.rows[0];
   } catch (error) {
     await client.query('ROLLBACK');
+    // Two copies of one replayed request raced: the other committed first.
+    if (
+      entryData.client_id &&
+      isUniqueViolationOn(error, FOOD_ENTRY_CLIENT_ID_INDEX)
+    ) {
+      const winner = await findFoodEntryByClientId(
+        client,
+        entryData.user_id as string,
+        entryData.client_id
+      );
+      if (winner) return winner;
+    }
     log('error', 'Error creating food entry with snapshot:', error);
     throw error;
   } finally {

@@ -59,8 +59,10 @@ describe('food_entries.cooked_quantity in the repository', () => {
     const [sql, params] = callFor('INSERT INTO food_entries');
     expect(sql).toContain('cooked_quantity');
     expect(sql).toContain('$46');
-    expect(params).toHaveLength(46);
+    expect(params).toHaveLength(47);
     expect(params[45]).toBe(300);
+    // client_id (the replay key) follows cooked_quantity and is null here.
+    expect(params[46]).toBeNull();
     // A re-sync keeps a user-added cooked weight only while quantity and unit
     // stay the same.
     const doUpdate = sql.slice(sql.indexOf('DO UPDATE'));
