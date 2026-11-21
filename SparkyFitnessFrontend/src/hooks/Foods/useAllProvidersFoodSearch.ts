@@ -122,7 +122,11 @@ async function fetchProviderResults(
   );
   return {
     items,
-    totalCount: data?.pagination?.totalCount ?? items.length,
+    totalCount:
+      typeof data?.pagination?.totalCount === 'number' &&
+      data.pagination.totalCount >= 0
+        ? data.pagination.totalCount
+        : items.length,
   };
 }
 

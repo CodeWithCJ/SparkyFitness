@@ -31,6 +31,7 @@ import {
   type ProviderLookupResult,
 } from '../../services/foodProviderLookupService.js';
 import { PARTIAL_SERVING_DATA } from '../../utils/foodRanking.js';
+import { hasCoreNutrition } from '../../integrations/foodProviders/per100gMapper.js';
 import { fetchProviderFoodDetails } from '../../services/foodProviderDetailService.js';
 import {
   resolveFoodPortion,
@@ -1305,20 +1306,25 @@ Actions:
 
               let f = result.food;
               // A search result built from a summary (OpenFoodFacts without
-              // Product Opener hydration, FatSecret without its detail call)
-              // can quote a different serving than the full record that
-              // log_external_food saves. Fetch the shown match's full record.
+              // Product Opener hydration, FatSecret without its detail call,
+              // or summary-only search results like Food-Info/CookTool)
+              // can quote a different serving or placeholder zero-nutrition.
+              // Fetch the shown match's full record.
               if (f[PARTIAL_SERVING_DATA] && f.provider_external_id) {
-                f =
-                  (await withinServingRetry(
-                    fetchVerifiedProviderFood(
-                      userId,
-                      result.source,
-                      String(f.provider_external_id),
-                      result.provider_id,
-                      AbortSignal.timeout(SERVING_RETRY_MS)
-                    )
-                  )) ?? f;
+                const detail = await withinServingRetry(
+                  fetchVerifiedProviderFood(
+                    userId,
+                    result.source,
+                    String(f.provider_external_id),
+                    result.provider_id,
+                    AbortSignal.timeout(SERVING_RETRY_MS)
+                  )
+                );
+                if (detail) {
+                  f = detail;
+                } else if (!hasCoreNutrition(f)) {
+                  return `Full details for "${args.food_name}" from ${result.source} are currently unavailable; refusing to quote zero-valued or unverified nutrition. Try another provider or official source.`;
+                }
               }
               let text = `### Found match in **${result.source}**:\n`;
               text += `**${f.name}**`;
@@ -1664,13 +1670,19 @@ Actions:
               // Same summary gap as in lookup_food_nutrition: save from the
               // full record so the reference matches what the lookup quoted.
               if (match[PARTIAL_SERVING_DATA] && match.provider_external_id) {
-                match =
-                  (await fetchVerifiedProviderFood(
-                    userId,
-                    result.source,
-                    String(match.provider_external_id),
-                    result.provider_id
-                  )) ?? match;
+                const detail = await fetchVerifiedProviderFood(
+                  userId,
+                  result.source,
+                  String(match.provider_external_id),
+                  result.provider_id
+                );
+                if (detail) {
+                  match = detail;
+                } else if (!hasCoreNutrition(match)) {
+                  return ERRORS.VALIDATION(
+                    `Full details for the selected ${result.source} item are unavailable; nothing was logged. Retry or ask for the label.`
+                  );
+                }
               }
               // Still the summary: its reference serving may not be the one
               // the lookup quoted, so a serving count could log the wrong

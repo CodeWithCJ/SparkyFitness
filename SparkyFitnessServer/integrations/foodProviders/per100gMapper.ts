@@ -1,4 +1,5 @@
 import type { FoodProviderType } from '@workspace/shared';
+import { PARTIAL_SERVING_DATA } from '../../utils/foodRanking.js';
 
 export type StandardNutrientField =
   | 'calories'
@@ -79,6 +80,8 @@ export interface MappedProviderFood {
   is_custom: boolean;
   default_variant: MappedVariant;
   variants: MappedVariant[];
+  has_core_nutrition?: boolean;
+  [PARTIAL_SERVING_DATA]?: true;
 }
 
 function roundOneDecimal(val: number | undefined): number | undefined {
@@ -104,6 +107,16 @@ export function buildPer100gFood(
   } = input;
 
   const defaultUnit = isLiquid ? 'ml' : 'g';
+
+  const hasCoreNutritionPresent =
+    typeof per100g.calories === 'number' &&
+    !isNaN(per100g.calories) &&
+    typeof per100g.protein === 'number' &&
+    !isNaN(per100g.protein) &&
+    typeof per100g.carbs === 'number' &&
+    !isNaN(per100g.carbs) &&
+    typeof per100g.fat === 'number' &&
+    !isNaN(per100g.fat);
 
   const defaultVariant: MappedVariant = {
     serving_size: 100,
@@ -238,6 +251,7 @@ export function buildPer100gFood(
     is_custom: false,
     default_variant: defaultVariant,
     variants,
+    has_core_nutrition: hasCoreNutritionPresent,
   };
 }
 
@@ -256,16 +270,26 @@ export interface BuildSearchSummaryFoodInput {
 }
 
 export function hasCoreNutrition(
-  food: MappedProviderFood | null | undefined
+  food: MappedProviderFood | Record<string, unknown> | null | undefined
 ): boolean {
   if (!food) return false;
-  const v = food.default_variant;
+  if (
+    'has_core_nutrition' in food &&
+    typeof (food as Record<string, unknown>).has_core_nutrition === 'boolean'
+  ) {
+    return Boolean((food as Record<string, unknown>).has_core_nutrition);
+  }
+  const v = (food as MappedProviderFood).default_variant;
   if (!v) return false;
   return (
-    (v.calories ?? 0) > 0 ||
-    (v.protein ?? 0) > 0 ||
-    (v.carbs ?? 0) > 0 ||
-    (v.fat ?? 0) > 0
+    typeof v.calories === 'number' &&
+    !isNaN(v.calories) &&
+    typeof v.protein === 'number' &&
+    !isNaN(v.protein) &&
+    typeof v.carbs === 'number' &&
+    !isNaN(v.carbs) &&
+    typeof v.fat === 'number' &&
+    !isNaN(v.fat)
   );
 }
 
@@ -274,6 +298,16 @@ export function buildSearchSummaryFood(
 ): MappedProviderFood {
   const serving_size = input.serving_size ?? 100;
   const serving_unit = input.serving_unit ?? 'g';
+  const hasCoreNutritionPresent =
+    typeof input.calories === 'number' &&
+    !isNaN(input.calories) &&
+    typeof input.protein === 'number' &&
+    !isNaN(input.protein) &&
+    typeof input.carbs === 'number' &&
+    !isNaN(input.carbs) &&
+    typeof input.fat === 'number' &&
+    !isNaN(input.fat);
+
   const defaultVariant: MappedVariant = {
     serving_size,
     serving_unit,
@@ -293,5 +327,7 @@ export function buildSearchSummaryFood(
     is_custom: false,
     default_variant: defaultVariant,
     variants: [defaultVariant],
+    has_core_nutrition: hasCoreNutritionPresent,
+    [PARTIAL_SERVING_DATA]: true,
   };
 }

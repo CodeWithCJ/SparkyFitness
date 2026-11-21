@@ -1520,8 +1520,11 @@ const EnhancedFoodSearch = ({
                     const loading = r.isLoading;
                     const errored = r.isError && !loading;
                     const count = r.totalCount;
-                    const empty = !loading && !errored && count === 0;
-                    const expandable = !loading && !errored && count > 0;
+                    const hasItems = r.items.length > 0;
+                    const empty =
+                      !loading && !errored && count === 0 && !hasItems;
+                    const expandable =
+                      !loading && !errored && (count > 0 || hasItems);
                     return (
                       <div
                         key={r.provider.id}

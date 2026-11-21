@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { buildPer100gFood } from '../integrations/foodProviders/per100gMapper.js';
+import {
+  buildPer100gFood,
+  buildSearchSummaryFood,
+  hasCoreNutrition,
+} from '../integrations/foodProviders/per100gMapper.js';
+import { PARTIAL_SERVING_DATA } from '../utils/foodRanking.js';
 
 describe('per100gMapper (buildPer100gFood)', () => {
   it('builds standard 100g default variant with proper rounding', () => {
@@ -95,5 +100,46 @@ describe('per100gMapper (buildPer100gFood)', () => {
     expect(cupBanana.serving_unit).toBe('1 cup, sliced (150 g)');
     // 89 * 1.5 = 133.5 -> 134
     expect(cupBanana.calories).toBe(134);
+  });
+
+  describe('hasCoreNutrition and buildSearchSummaryFood', () => {
+    it('returns true when all four core nutrients are present, even if 0', () => {
+      const water = buildPer100gFood({
+        providerType: 'cooktool' as any,
+        externalId: 'water-1',
+        name: 'Water',
+        per100g: {
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        },
+      });
+      expect(hasCoreNutrition(water)).toBe(true);
+    });
+
+    it('returns false when any core nutrient is missing', () => {
+      const partialFood = buildPer100gFood({
+        providerType: 'cooktool' as any,
+        externalId: 'partial-1',
+        name: 'Partial',
+        per100g: {
+          calories: 100,
+          protein: 5,
+          // carbs and fat missing
+        },
+      });
+      expect(hasCoreNutrition(partialFood)).toBe(false);
+    });
+
+    it('builds search summary with PARTIAL_SERVING_DATA and has_core_nutrition false when macros missing', () => {
+      const summary = buildSearchSummaryFood({
+        providerType: 'food-info' as any,
+        externalId: 'summary-1',
+        name: 'Summary Food',
+      });
+      expect(summary[PARTIAL_SERVING_DATA]).toBe(true);
+      expect(hasCoreNutrition(summary)).toBe(false);
+    });
   });
 });

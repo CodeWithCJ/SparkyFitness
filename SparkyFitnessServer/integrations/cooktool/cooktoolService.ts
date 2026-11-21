@@ -172,7 +172,7 @@ export async function searchCookTool(
     pagination: {
       page,
       pageSize,
-      totalCount: -1,
+      totalCount: foods.length,
       hasMore,
     },
   };
