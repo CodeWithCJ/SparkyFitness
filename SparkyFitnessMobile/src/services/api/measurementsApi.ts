@@ -1,4 +1,11 @@
 import { apiFetch } from './apiClient';
+import { putCacheRows } from '../../offline/cacheStore';
+import {
+  CACHE_COLLECTIONS,
+  SINGLE_DOCUMENT_KEY,
+} from '../../offline/collections';
+import { readSavedSingle } from '../../offline/foodLibrary';
+import { withOfflineFallback } from '../../offline/withOfflineFallback';
 import { ApiError } from './errors';
 import { getTodayDate } from '../../utils/dateUtils';
 
@@ -81,10 +88,23 @@ export const serverSupportsPerRecordWater = async (): Promise<boolean> => {
  * Fetches available water containers.
  */
 export const fetchWaterContainers = async (): Promise<WaterContainer[]> => {
-  return apiFetch<WaterContainer[]>({
-    endpoint: '/api/water-containers',
-    serviceName: 'Measurements API',
-    operation: 'fetch water containers',
+  return withOfflineFallback<WaterContainer[]>({
+    fetch: () =>
+      apiFetch<WaterContainer[]>({
+        endpoint: '/api/water-containers',
+        serviceName: 'Measurements API',
+        operation: 'fetch water containers',
+      }),
+    store: (db, serverConfigId, containers) =>
+      putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterContainers, [
+        { key: SINGLE_DOCUMENT_KEY, payload: containers },
+      ]),
+    read: (db, serverConfigId) =>
+      readSavedSingle<WaterContainer[]>(
+        db,
+        serverConfigId,
+        CACHE_COLLECTIONS.waterContainers
+      ),
   });
 };
 

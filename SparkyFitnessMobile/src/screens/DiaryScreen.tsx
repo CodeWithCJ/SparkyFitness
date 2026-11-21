@@ -335,7 +335,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const { summary, isLoading, isError, refetch } = useDailySummary({
     date: selectedDate,
-    enabled: isConnected,
+    // With the server away the day's totals come from the phone's copy plus
+    // what is waiting to upload.
+    enabled: isConnected || isOffline,
   });
   const { measurements, refetch: refetchMeasurements } = useMeasurements({
     date: selectedDate,
@@ -645,11 +647,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       offlineDay.deleted
     );
     const waitingFood = offlineDay.waitingFood ?? [];
-    const hasFoodDay = offlineDay.savedFood != null || waitingFood.length > 0;
-    const offlineFood = mergeWaitingFood(
-      offlineDay.savedFood ?? [],
-      waitingFood
-    );
+    // The day's summary from the phone already has the waiting entries in it.
+    const hasFoodDay =
+      summary != null || offlineDay.savedFood != null || waitingFood.length > 0;
+    const offlineFood = summary
+      ? summary.foodEntries
+      : mergeWaitingFood(offlineDay.savedFood ?? [], waitingFood);
     return (
       <ScrollView
         className="flex-1 bg-background"
@@ -679,10 +682,20 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
               'Food and workouts from the last week are available offline. Sleep and the other entries need a connection.',
           })}
         </Text>
+        {summary ? (
+          <DiaryCalorieMacroSummary
+            summary={summary}
+            showNetCarbs={preferences?.show_net_carbs === true}
+            customNutrientKeys={customNutrientKeys}
+            customNutrients={customNutrients}
+          />
+        ) : null}
         {hasFoodDay ? (
           <FoodSummary
             foodEntries={offlineFood}
             mealTypes={mealTypes}
+            goals={summary?.goals}
+            calorieGoal={summary?.calorieGoal}
             readOnly
             onAddFood={() =>
               navigation.navigate('FoodSearch', { date: selectedDate })

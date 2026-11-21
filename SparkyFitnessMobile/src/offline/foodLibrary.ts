@@ -6,6 +6,7 @@ import type {
   FoodSearchResponse,
 } from '../types/foods';
 import type { MealType } from '../types/mealTypes';
+import type { WaterContainer } from '../types/measurements';
 import { accountGeneration } from './accountGeneration';
 import {
   getCacheRow,
@@ -147,6 +148,11 @@ export async function refreshFoodLibrary(
     serviceName: SERVICE,
     operation: 'fetch meal types',
   });
+  const containers = await apiFetch<WaterContainer[]>({
+    endpoint: '/api/water-containers',
+    serviceName: SERVICE,
+    operation: 'fetch water containers',
+  });
   const own = await fetchOwnFoods(startedUnder, FOOD_LIBRARY_MAX);
   if (own == null || accountGeneration() !== startedUnder) return;
 
@@ -162,6 +168,9 @@ export async function refreshFoodLibrary(
   ]);
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.mealTypes, [
     { key: SINGLE_DOCUMENT_KEY, payload: mealTypes },
+  ]);
+  await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterContainers, [
+    { key: SINGLE_DOCUMENT_KEY, payload: containers },
   ]);
   await refreshVariants(db, serverConfigId, foods, startedUnder);
 }

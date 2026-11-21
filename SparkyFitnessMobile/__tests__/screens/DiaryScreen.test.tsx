@@ -781,6 +781,23 @@ describe('DiaryScreen sleep cards', () => {
     });
   });
 
+  test("while offline the calorie summary is shown from the phone's copy of the day", () => {
+    mockUseServerConnection.mockReturnValue({
+      isConnected: false,
+      isLoading: false,
+      status: 'unreachable',
+      refetch: jest.fn(),
+    } as unknown as ReturnType<typeof useServerConnection>);
+
+    renderScreen();
+
+    // The day's totals are read with the server away too (from the phone's
+    // copy and what is waiting to upload).
+    expect(mockUseDailySummary).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: true })
+    );
+  });
+
   test('a nap alone is enough to keep the day non-empty', () => {
     // Each sleep field independently suppresses the illustration, so a day holding
     // only an afternoon nap still renders as a real day.

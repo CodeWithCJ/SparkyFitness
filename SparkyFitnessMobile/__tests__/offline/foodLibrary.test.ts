@@ -107,6 +107,11 @@ describe('the food library on the phone', () => {
       if (endpoint === '/api/foods') {
         return { recentFoods: own.slice(0, 2), topFoods: [] };
       }
+      if (endpoint === '/api/water-containers') {
+        return [
+          { id: 4, name: 'Glass', volume: 500, servings_per_container: 2 },
+        ];
+      }
       if (endpoint === '/api/meal-types') {
         return [
           { id: 'm1', name: 'Breakfast', sort_order: 1, is_visible: true },
@@ -156,6 +161,10 @@ describe('the food library on the phone', () => {
       (await listCacheRows(db, 's1', CACHE_COLLECTIONS.mealTypes))[0].key
     ).toBe(SINGLE_DOCUMENT_KEY);
     expect(variantCalls).toHaveLength(3);
+    // The water containers are kept too, for the drinks logged offline.
+    expect(
+      (await listCacheRows(db, 's1', CACHE_COLLECTIONS.waterContainers))[0].key
+    ).toBe(SINGLE_DOCUMENT_KEY);
   });
 
   it('asks for the servings of only the first foods in a big library', async () => {

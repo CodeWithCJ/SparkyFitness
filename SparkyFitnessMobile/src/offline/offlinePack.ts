@@ -29,6 +29,7 @@ import {
 } from './collections';
 import { getOfflineDb } from './db';
 import { accountGeneration } from './accountGeneration';
+import { refreshRecentDailySummaries } from './dailySummaryCache';
 import { refreshRecentDiaryDays, refreshRecentFoodDays } from './diaryDay';
 import { refreshFoodLibrary } from './foodLibrary';
 import { notifyOutboxChanged } from './events';
@@ -301,6 +302,16 @@ async function refreshSteps(
     await refreshRecentFoodDays(db, serverConfigId, undefined, startedUnder);
   } catch (error) {
     addLog(`[Offline] Last week's food not refreshed: ${error}`, 'WARNING');
+  }
+  try {
+    await refreshRecentDailySummaries(
+      db,
+      serverConfigId,
+      undefined,
+      startedUnder
+    );
+  } catch (error) {
+    addLog(`[Offline] Last week's totals not refreshed: ${error}`, 'WARNING');
   }
   // Also after the marker: the foods are for logging food, and a failure here
   // leaves the library the phone already had.
