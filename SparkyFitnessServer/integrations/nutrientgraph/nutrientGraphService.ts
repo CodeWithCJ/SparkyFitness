@@ -255,7 +255,7 @@ export async function searchNutrientGraph(
   const topResults = results.slice(0, ENRICH_COUNT);
   const restResults = results.slice(ENRICH_COUNT);
 
-  const scope = resolveCacheScope(ctx);
+  const scope = `${resolveCacheScope(ctx)}:${lang}`;
   const enrichedTop: MappedProviderFood[] = [];
   for (let i = 0; i < topResults.length; i += ENRICH_CONCURRENCY) {
     const chunk = topResults.slice(i, i + ENRICH_CONCURRENCY);
@@ -339,7 +339,8 @@ export async function getNutrientGraphDetails(
     throw new Error('External ID is required for NutrientGraph details.');
   }
 
-  const scope = resolveCacheScope(ctx);
+  const lang = resolveLanguage(ctx.language);
+  const scope = `${resolveCacheScope(ctx)}:${lang}`;
   const cached = detailCache.get<MappedProviderFood>(
     'nutrientgraph',
     scope,
@@ -351,7 +352,6 @@ export async function getNutrientGraphDetails(
 
   const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
   const headers = resolveHeaders(ctx.credentials?.app_key);
-  const lang = resolveLanguage(ctx.language);
 
   const response = await providerFetchJson<NutrientGraphFoodResponse>(
     `${baseUrl}/v1/food/foods/${encodeURIComponent(externalId)}?lang=${lang}`,

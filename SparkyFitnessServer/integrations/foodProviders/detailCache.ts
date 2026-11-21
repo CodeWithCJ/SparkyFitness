@@ -75,16 +75,19 @@ export class DetailCache {
     let value: T;
     let ttl: number | undefined;
 
-    if (typeof arg1 === 'string' && typeof arg2 === 'string') {
-      const scope = arg1.trim() || 'default';
+    if (arg3 !== undefined) {
+      // 4 or 5 arguments: provider, scope, externalId, value, [ttlMs]
+      const scope =
+        typeof arg1 === 'string' && arg1.trim() ? arg1.trim() : 'default';
       key = `${arg0}:${scope}:${arg2}`;
       value = arg3 as T;
       ttl = arg4;
-    } else if (typeof arg1 === 'string') {
+    } else if (arg2 !== undefined && typeof arg2 !== 'number') {
+      // 3 arguments with non-numeric 3rd arg: provider, externalId, value
       key = `${arg0}:${arg1}`;
       value = arg2 as T;
-      ttl = arg3 as number | undefined;
     } else {
+      // 2 arguments, or 3 arguments where 3rd is ttlMs: key, value, [ttlMs]
       key = arg0;
       value = arg1 as T;
       ttl = arg2 as number | undefined;

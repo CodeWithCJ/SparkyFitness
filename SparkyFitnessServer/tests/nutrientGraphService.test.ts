@@ -171,6 +171,34 @@ describe('NutrientGraph Service', () => {
       expect(food?.name).toBe('Zwiebel, roh');
       expect(food?.provider_external_id).toBe('ciqual:20034');
     });
+
+    it('isolates cache by language so different languages get localized names for same ID', async () => {
+      // 1. Fetch in English
+      mockFetch.mockResolvedValueOnce(mockJsonResponse(foodCiqualFixture));
+      const foodEn = await getNutrientGraphDetails(
+        { ...ctx, language: 'en' },
+        'ciqual:20034'
+      );
+      expect(foodEn?.name).toBe('Onion, raw');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // 2. Fetch same ID in German — must not return cached English result
+      mockFetch.mockResolvedValueOnce(mockJsonResponse(foodCiqualFixture));
+      const foodDe = await getNutrientGraphDetails(
+        { ...ctx, language: 'de' },
+        'ciqual:20034'
+      );
+      expect(foodDe?.name).toBe('Zwiebel, roh');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+
+      // 3. Fetch again in German — must reuse German cache
+      const cachedDe = await getNutrientGraphDetails(
+        { ...ctx, language: 'de' },
+        'ciqual:20034'
+      );
+      expect(cachedDe?.name).toBe('Zwiebel, roh');
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('lookupNutrientGraphBarcode', () => {

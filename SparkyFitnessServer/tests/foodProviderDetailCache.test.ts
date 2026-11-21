@@ -66,4 +66,18 @@ describe('foodProvider detailCache', () => {
     });
     expect(cache.get('cooktool', 'user-scope-3', '12345')).toBeUndefined();
   });
+
+  it('correctly handles string values across 1-part, 2-part, and 3-part set forms', () => {
+    // 1-part raw key with string value
+    cache.set('raw_string_key', 'raw_value');
+    expect(cache.get('raw_string_key')).toBe('raw_value');
+
+    // 2-part key with string value
+    cache.set('provider_a', 'item_1', 'string_val_2');
+    expect(cache.get('provider_a', 'item_1')).toBe('string_val_2');
+
+    // 3-part scoped key with string value
+    cache.set('provider_b', 'scope_1', 'item_2', 'string_val_3');
+    expect(cache.get('provider_b', 'scope_1', 'item_2')).toBe('string_val_3');
+  });
 });
