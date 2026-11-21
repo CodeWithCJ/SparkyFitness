@@ -87,7 +87,7 @@ SparkyFitness integrates with external platforms, wearables, and reference datab
 - **Oura**
 - **Withings**
 - **COROS**
-- **Amazfit / Zepp** (experimental, via your own [ZeppBridge](https://github.com/lingcang728/ZeppBridge) server; see the [setup guide](https://codewithcj.github.io/SparkyFitness/features/settings/zeppbridge))
+- **Amazfit / Zepp** (experimental, via ZeppBridge)
 
 ### Workouts & Activity Tracking
 
