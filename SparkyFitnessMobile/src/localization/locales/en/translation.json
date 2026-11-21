@@ -5988,7 +5988,8 @@
     "copyAll": "Copy All",
     "copying": "Copying...",
     "success": "Copied from yesterday",
-    "failed": "Failed to copy from yesterday"
+    "failed": "Failed to copy from yesterday",
+    "loadError": "Could not load yesterday’s meals."
   },
   "foodDelete": {
     "failed": "Failed to delete food",

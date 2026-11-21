@@ -12,7 +12,11 @@ import { BottomSheetModal, BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { useCSSVariable } from 'uniwind';
 import { addDays } from '@workspace/shared';
 import Button from './ui/Button';
-import { sheetContainer, useSheetBackdrop } from './ui/sheetChrome';
+import {
+  sheetContainer,
+  useSheetBackdrop,
+  useSheetHardwareBack,
+} from './ui/sheetChrome';
 import Icon from './Icon';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { useDailySummary } from '../hooks/useDailySummary';
@@ -51,11 +55,18 @@ const CopyFromYesterdaySheet = forwardRef<
   const [targetDate, setTargetDate] = useState<string>('');
   const [checkedMealIds, setCheckedMealIds] = useState<Set<string>>(new Set());
 
+  const [isOpen, setIsOpen] = useState(false);
+
   const { mealTypes, defaultMealTypeId } = useMealTypes();
   // The source day is the day before the target, computed locally; the server
   // computes the same for the request.
   const sourceDate = targetDate ? addDays(targetDate, -1) : '';
-  const { summary, isLoading: summaryLoading } = useDailySummary({
+  const {
+    summary,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    refetch: refetchSummary,
+  } = useDailySummary({
     date: sourceDate,
     enabled: Boolean(sourceDate),
   });
@@ -83,6 +94,27 @@ const CopyFromYesterdaySheet = forwardRef<
     },
     dismiss: () => bottomSheetRef.current?.dismiss(),
   }));
+
+  // Track the open state so Android's hardware Back can dismiss the sheet
+  // instead of falling through to navigation. Set from both onAnimate and
+  // onChange (the library drops onAnimate when the open finishes before it
+  // reaches JS), cleared only in onDismiss.
+  const markOpen = useCallback(() => setIsOpen(true), []);
+  const handleAnimate = useCallback(
+    (_fromIndex: number, toIndex: number) => {
+      if (toIndex >= 0) markOpen();
+    },
+    [markOpen]
+  );
+  const handleChange = useCallback(
+    (index: number) => {
+      if (index >= 0) markOpen();
+    },
+    [markOpen]
+  );
+  const handleDismiss = useCallback(() => setIsOpen(false), []);
+
+  useSheetHardwareBack(isOpen, () => bottomSheetRef.current?.dismiss());
 
   const renderBackdrop = useSheetBackdrop();
 
@@ -119,20 +151,20 @@ const CopyFromYesterdaySheet = forwardRef<
     [isMealEnabled]
   );
 
-  const checkedNames = useMemo(() => {
-    const names: string[] = [];
+  const checkedIds = useMemo(() => {
+    const ids: string[] = [];
     for (const mealType of mealTypes) {
       if (checkedMealIds.has(mealType.id) && isMealEnabled(mealType.name)) {
-        names.push(mealType.name);
+        ids.push(mealType.id);
       }
     }
-    return names;
+    return ids;
   }, [mealTypes, checkedMealIds, isMealEnabled]);
 
   const handleCopySelected = useCallback(() => {
-    if (checkedNames.length === 0) return;
-    onCopy({ kind: 'selected', mealNames: checkedNames, targetDate });
-  }, [checkedNames, targetDate, onCopy]);
+    if (checkedIds.length === 0) return;
+    onCopy({ kind: 'selected', mealIds: checkedIds, targetDate });
+  }, [checkedIds, targetDate, onCopy]);
 
   const handleCopyAll = useCallback(() => {
     if (!hasAnySourceEntries) return;
@@ -148,6 +180,9 @@ const CopyFromYesterdaySheet = forwardRef<
       containerComponent={sheetContainer}
       backgroundStyle={{ backgroundColor: surfaceBg }}
       handleIndicatorStyle={{ backgroundColor: textMuted }}
+      onAnimate={handleAnimate}
+      onChange={handleChange}
+      onDismiss={handleDismiss}
     >
       <BottomSheetScrollView contentContainerClassName="pb-safe-or-8">
         {targetDate && (
@@ -165,7 +200,24 @@ const CopyFromYesterdaySheet = forwardRef<
               </Text>
             </View>
 
-            {!summaryLoading && !hasAnySourceEntries ? (
+            {summaryError && !summary ? (
+              <View className="mb-4 items-center">
+                <Text className="text-text-secondary text-sm mb-3 text-center">
+                  {t('copyFromYesterday.loadError', {
+                    defaultValue: 'Could not load yesterday’s meals.',
+                  })}
+                </Text>
+                <Button
+                  variant="secondary"
+                  accessibilityLabel={t('common.retry', {
+                    defaultValue: 'Retry',
+                  })}
+                  onPress={() => refetchSummary()}
+                >
+                  {t('common.retry', { defaultValue: 'Retry' })}
+                </Button>
+              </View>
+            ) : !summaryLoading && !hasAnySourceEntries ? (
               <Text className="text-text-secondary text-sm mb-4 text-center">
                 {t('copyFromYesterday.emptySource', {
                   defaultValue: 'There is nothing to copy from yesterday.',
@@ -224,7 +276,7 @@ const CopyFromYesterdaySheet = forwardRef<
                   accessibilityLabel={t('copyFromYesterday.copySelected', {
                     defaultValue: 'Copy Selected',
                   })}
-                  disabled={isPending || checkedNames.length === 0}
+                  disabled={isPending || checkedIds.length === 0}
                 >
                   {t('copyFromYesterday.copySelected', {
                     defaultValue: 'Copy Selected',

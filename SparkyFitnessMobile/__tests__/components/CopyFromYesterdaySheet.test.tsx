@@ -65,7 +65,7 @@ describe('CopyFromYesterdaySheet', () => {
     });
   });
 
-  it('copies the selected meals by name into the target date', () => {
+  it('copies the selected meals by id into the target date', () => {
     const onCopy = jest.fn();
     const ref = createRef<CopyFromYesterdaySheetRef>();
     const view = render(<CopyFromYesterdaySheet ref={ref} onCopy={onCopy} />);
@@ -77,7 +77,7 @@ describe('CopyFromYesterdaySheet', () => {
 
     expect(onCopy).toHaveBeenCalledWith({
       kind: 'selected',
-      mealNames: ['Breakfast', 'Lunch'],
+      mealIds: ['breakfast-id', 'lunch-id'],
       targetDate: '2026-11-20',
     });
   });
@@ -148,7 +148,7 @@ describe('CopyFromYesterdaySheet', () => {
     fireEvent.press(view.getByLabelText('Copy Selected'));
     expect(onCopy).toHaveBeenCalledWith({
       kind: 'selected',
-      mealNames: ['Breakfast'],
+      mealIds: ['breakfast-id'],
       targetDate: '2026-11-20',
     });
   });
@@ -161,5 +161,26 @@ describe('CopyFromYesterdaySheet', () => {
     act(() => ref.current?.present('2026-11-20'));
 
     expect(view.getByText('Copying...')).toBeTruthy();
+  });
+
+  it('shows an error and retry when the source summary fails to load', () => {
+    const refetch = jest.fn();
+    useDailySummaryMock.mockReturnValue({
+      summary: undefined,
+      isLoading: false,
+      isError: true,
+      refetch,
+    });
+    const ref = createRef<CopyFromYesterdaySheetRef>();
+    const view = render(
+      <CopyFromYesterdaySheet ref={ref} onCopy={jest.fn()} />
+    );
+    act(() => ref.current?.present('2026-11-20'));
+
+    expect(view.getByText('Could not load yesterday’s meals.')).toBeTruthy();
+    // The meal list is not shown and Copy All is blocked.
+    expect(view.queryByTestId('copy-yesterday-meal-breakfast-id')).toBeNull();
+    fireEvent.press(view.getByLabelText('Retry'));
+    expect(refetch).toHaveBeenCalled();
   });
 });

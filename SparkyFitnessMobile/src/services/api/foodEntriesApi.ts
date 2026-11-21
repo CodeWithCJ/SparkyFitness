@@ -207,8 +207,10 @@ export interface CopyFoodEntriesFromYesterdayPayload {
 
 /**
  * Copies one meal from the previous day into the same meal on `targetDate`.
- * The source day is `targetDate - 1`, computed server-side. The meal is matched
- * by name (case-insensitive); an empty source meal copies nothing.
+ * The source day is `targetDate - 1`, computed server-side. `mealType` is the
+ * meal type's id, which the server resolves before any name match, so a custom
+ * type sharing a system type's name is not resolved to the system one. An empty
+ * source meal copies nothing.
  */
 export const copyFoodEntriesFromYesterday = async (
   payload: CopyFoodEntriesFromYesterdayPayload
