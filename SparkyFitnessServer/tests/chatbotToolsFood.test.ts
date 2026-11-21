@@ -985,6 +985,52 @@ describe('lookup_food_nutrition', () => {
       { providerId: 'prov-cooktool' }
     );
   });
+
+  it('supports explicit provider_type: "nutrientgraph" in lookup_food_nutrition', async () => {
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      {
+        id: 'prov-ng',
+        provider_type: 'nutrientgraph',
+        provider_name: 'NutrientGraph',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          name: 'Potato, peeled, raw',
+          provider_external_id: 'ciqual:4008',
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 80,
+            protein: 2,
+            carbs: 17,
+            fat: 0.1,
+          },
+        },
+      ],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'lookup_food_nutrition',
+        food_name: 'Potato',
+        provider_type: 'nutrientgraph',
+      },
+      opts
+    );
+
+    expect(result).toContain('Found match in **nutrientgraph**');
+    expect(result).toContain('Potato, peeled, raw');
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-1',
+      'nutrientgraph',
+      'Potato',
+      { providerId: 'prov-ng' }
+    );
+  });
 });
 
 describe('barcode metadata', () => {

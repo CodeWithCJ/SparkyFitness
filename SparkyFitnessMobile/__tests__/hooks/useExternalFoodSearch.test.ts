@@ -722,6 +722,68 @@ describe('useExternalFoodSearch', () => {
     });
   });
 
+  test('reports nutrientgraph as a supported provider', () => {
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('pomme', 'nutrientgraph', {
+          providerId: 'provider-ng-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('does not fetch for non-public nutrientgraph without providerId', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('pomme', 'nutrientgraph'),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+    expect(result.current.searchResults).toEqual([]);
+  });
+
+  test('fetches for nutrientgraph with providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: 'ciqual:4008',
+          name: 'Potato, peeled, raw',
+          brand: undefined,
+          calories: 80,
+          protein: 2,
+          carbs: 17,
+          fat: 0.1,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'nutrientgraph',
+        },
+      ])
+    );
+
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('pomme', 'nutrientgraph', {
+          providerId: 'provider-ng-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'nutrientgraph',
+        'pomme',
+        1,
+        'provider-ng-1',
+        undefined
+      );
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('nutrientgraph');
+    });
+  });
+
   describe('query key', () => {
     test('includes provider type and search term', () => {
       expect(externalFoodSearchQueryKey('openfoodfacts', 'banana')).toEqual([

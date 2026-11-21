@@ -21,6 +21,7 @@ export const FOOD_PROVIDER_TYPES = [
   'canadian-nutrient-file',
   'livsmedelsverket',
   'cooktool',
+  'nutrientgraph',
 ] as const;
 
 export type FoodProviderType = (typeof FOOD_PROVIDER_TYPES)[number];
@@ -215,6 +216,21 @@ export const FOOD_PROVIDER_REGISTRY: Record<
     supportsBulkImport: false,
     apiKeyUrl: 'https://api.cooktool.org/',
     portalUrl: 'https://api.cooktool.org/docs/reference',
+  },
+  nutrientgraph: {
+    id: 'nutrientgraph',
+    displayName: 'NutrientGraph',
+    shortName: 'NutrientGraph',
+    isPublic: false,
+    credentials: 'api_key',
+    needsDetailFetch: true,
+    supportsBarcode: true,
+    supportsBulkImport: false,
+    supportedLanguages: ['en', 'fr', 'de', 'it', 'es'],
+    defaultLanguage: 'en',
+    apiKeyUrl: 'https://nutrientgraph.com/pricing/',
+    termsUrl: 'https://nutrientgraph.com/legal/terms/',
+    portalUrl: 'https://nutrientgraph.com/docs/',
   },
 };
 

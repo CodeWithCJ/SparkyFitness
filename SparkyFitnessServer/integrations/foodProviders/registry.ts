@@ -13,6 +13,7 @@ import {
   legacyLivsmedelsverketAdapter,
 } from './legacyAdapters.js';
 import { cooktoolAdapter } from '../cooktool/cooktoolService.js';
+import { nutrientGraphAdapter } from '../nutrientgraph/nutrientGraphService.js';
 
 export const FOOD_PROVIDER_ADAPTERS: Record<
   FoodProviderType,
@@ -29,6 +30,7 @@ export const FOOD_PROVIDER_ADAPTERS: Record<
   'canadian-nutrient-file': legacyCanadianNutrientFileAdapter,
   livsmedelsverket: legacyLivsmedelsverketAdapter,
   cooktool: cooktoolAdapter,
+  nutrientgraph: nutrientGraphAdapter,
 };
 
 export function getFoodProviderAdapter(
