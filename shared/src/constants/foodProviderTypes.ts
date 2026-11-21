@@ -213,7 +213,7 @@ export const FOOD_PROVIDER_REGISTRY: Record<
     isPublic: false,
     credentials: 'api_key',
     needsDetailFetch: true,
-    supportsBarcode: true,
+    supportsBarcode: false,
     supportsBulkImport: false,
     apiKeyUrl: 'https://api.cooktool.org/',
     portalUrl: 'https://api.cooktool.org/docs/reference',

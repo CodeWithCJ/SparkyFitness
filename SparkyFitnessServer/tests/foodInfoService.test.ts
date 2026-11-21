@@ -63,51 +63,17 @@ describe('Food Info Service', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('searches foods and enriches results with details', async () => {
-      mockFetch
-        .mockResolvedValueOnce(mockJsonResponse(searchBananaFixture))
-        .mockResolvedValueOnce(mockJsonResponse(panel790774Fixture))
-        .mockResolvedValueOnce(mockJsonResponse(panel790774Fixture))
-        .mockResolvedValueOnce(mockJsonResponse(panel790774Fixture));
+    it('searches foods and returns summary foods with single request', async () => {
+      mockFetch.mockResolvedValueOnce(mockJsonResponse(searchBananaFixture));
 
       const res = await searchFoodInfo(ctx, 'banana', 1, 3);
 
-      expect(mockFetch).toHaveBeenCalledTimes(4);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).toContain('q=banana');
+      expect(url).toContain('page=1');
       expect(url).toContain('limit=3');
-
-      expect(res.foods).toHaveLength(3);
-      expect(res.foods[0]).toMatchObject({
-        name: 'Bananas, overripe, raw',
-        brand: null,
-        provider_external_id: '790774',
-        provider_type: 'food-info',
-        is_custom: false,
-        default_variant: expect.objectContaining({
-          serving_size: 100,
-          serving_unit: 'g',
-          calories: 85,
-          protein: 0.7,
-          is_default: true,
-        }),
-      });
-      expect(res.pagination.hasMore).toBe(true);
-
-      const normalized = res.foods.map(normalizeFoodForResponse);
-      expect(() =>
-        SearchResponseSchema.parse({
-          foods: normalized,
-          pagination: res.pagination,
-        })
-      ).not.toThrow();
-    });
-
-    it('falls back to search summary when detail enrichment fails', async () => {
-      mockFetch.mockResolvedValueOnce(mockJsonResponse(searchBananaFixture));
-      // Remaining detail calls will fail since mockFetch is not configured for them
-
-      const res = await searchFoodInfo(ctx, 'banana', 1, 3);
+      expect(url).toContain('offset=0');
 
       expect(res.foods).toHaveLength(3);
       expect(res.foods[0]).toMatchObject({
@@ -123,6 +89,15 @@ describe('Food Info Service', () => {
           is_default: true,
         }),
       });
+      expect(res.pagination.hasMore).toBe(true);
+
+      const normalized = res.foods.map(normalizeFoodForResponse);
+      expect(() =>
+        SearchResponseSchema.parse({
+          foods: normalized,
+          pagination: res.pagination,
+        })
+      ).not.toThrow();
     });
   });
 
@@ -158,6 +133,21 @@ describe('Food Info Service', () => {
       const cached = await getFoodInfoDetails(ctx, '790774');
       expect(cached).toEqual(food);
       expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('respects requireNutrition option and returns null when food has zero nutrients', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockJsonResponse({
+          foodId: 999999,
+          description: 'Empty Food',
+          groups: [],
+          availableServings: [],
+        })
+      );
+      const food = await getFoodInfoDetails(ctx, '999999', {
+        requireNutrition: true,
+      });
+      expect(food).toBeNull();
     });
   });
 

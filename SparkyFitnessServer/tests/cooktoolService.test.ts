@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import {
   searchCookTool,
   getCookToolDetails,
-  lookupCookToolBarcode,
   cooktoolAdapter,
 } from '../integrations/cooktool/cooktoolService.js';
 import { detailCache } from '../integrations/foodProviders/detailCache.js';
@@ -13,15 +12,6 @@ const ingredientNutrientsFixture = JSON.parse(
   fs.readFileSync(
     new URL(
       './fixtures/cooktool/ingredient_6433_nutrients.json',
-      import.meta.url
-    ),
-    'utf-8'
-  )
-);
-const brandedCheeriosFixture = JSON.parse(
-  fs.readFileSync(
-    new URL(
-      './fixtures/cooktool/branded_gtin_00016000232310.json',
       import.meta.url
     ),
     'utf-8'
@@ -67,32 +57,25 @@ describe('CookTool Service', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('searches ingredients and enriches results with nutrients, excluding zero-nutrient items', async () => {
-      mockFetch
-        .mockResolvedValueOnce(
-          mockJsonResponse({
-            data: [
-              { id: 6433, name: 'Bananas, raw' },
-              { id: 9999, name: 'Zero nutrient empty ingredient' },
-            ],
-          })
-        )
-        .mockResolvedValueOnce(mockJsonResponse(ingredientNutrientsFixture))
-        .mockResolvedValueOnce(
-          mockJsonResponse({
-            ingredient_id: 9999,
-            ingredient_name: 'Zero nutrient empty ingredient',
-            country: 'US',
-            nutrient_count: 0,
-            nutrients: [],
-          })
-        );
+    it('searches ingredients and returns summary foods with single request', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockJsonResponse({
+          data: [
+            { id: 6433, name: 'Bananas, raw' },
+            { id: 9999, name: 'Ingredient 9999' },
+          ],
+        })
+      );
 
       const res = await searchCookTool(ctx, 'banana', 1, 20);
 
-      expect(mockFetch).toHaveBeenCalledTimes(3);
-      // The zero-nutrient item must be excluded from results
-      expect(res.foods).toHaveLength(1);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      const url = mockFetch.mock.calls[0][0] as string;
+      expect(url).toContain('q=banana');
+      expect(url).toContain('limit=20');
+      expect(url).toContain('offset=0');
+
+      expect(res.foods).toHaveLength(2);
       expect(res.foods[0]).toMatchObject({
         name: 'Bananas, raw',
         brand: null,
@@ -102,8 +85,7 @@ describe('CookTool Service', () => {
         default_variant: expect.objectContaining({
           serving_size: 100,
           serving_unit: 'g',
-          calories: 89,
-          protein: 1.1,
+          calories: 0,
           is_default: true,
         }),
       });
@@ -165,39 +147,21 @@ describe('CookTool Service', () => {
       expect(food?.provider_type).toBe('cooktool');
       expect(food?.default_variant.serving_size).toBe(100);
     });
-  });
 
-  describe('lookupCookToolBarcode', () => {
-    it('finds product by barcode', async () => {
-      mockFetch.mockResolvedValueOnce(mockJsonResponse(brandedCheeriosFixture));
-
-      const match = await lookupCookToolBarcode(ctx, '00016000232310');
-
-      expect(match).not.toBeNull();
-      expect(match?.name).toBe(
-        'Apple Cinnamon Cheerios Breakfast Cereal 2 Pack'
-      );
-      expect(match?.brand).toBe('Cheerios');
-      expect(match?.provider_type).toBe('cooktool');
-      expect(match?.barcode).toBe('00016000232310');
-    });
-
-    it('returns null if barcode is not found on any candidate format', async () => {
-      mockFetch.mockResolvedValue(
-        mockJsonResponse({ data: [], limit: 20, offset: 0 })
-      );
-
-      const match = await lookupCookToolBarcode(ctx, '999999999999');
-
-      expect(match).toBeNull();
+    it('respects requireNutrition option and returns null when food has zero nutrients', async () => {
+      // Branded product #1994784 has no nutrients (0 calories and 0 macros)
+      const foodWithNutrition = await getCookToolDetails(ctx, 'br:1994784', {
+        requireNutrition: true,
+      });
+      expect(foodWithNutrition).toBeNull();
     });
   });
 
   describe('cooktoolAdapter', () => {
-    it('exports all 3 required adapter functions', () => {
+    it('exports search and getDetails, without barcode support', () => {
       expect(cooktoolAdapter.search).toBe(searchCookTool);
       expect(cooktoolAdapter.getDetails).toBe(getCookToolDetails);
-      expect(cooktoolAdapter.lookupBarcode).toBe(lookupCookToolBarcode);
+      expect(cooktoolAdapter.lookupBarcode).toBeUndefined();
     });
   });
 });

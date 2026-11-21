@@ -23,7 +23,7 @@ export interface FoodProviderAdapter {
   getDetails(
     ctx: ProviderCallContext,
     externalId: string,
-    opts: { requireNutrition: boolean }
+    opts?: { requireNutrition?: boolean }
   ): Promise<unknown | null>;
   lookupBarcode?(
     ctx: ProviderCallContext,

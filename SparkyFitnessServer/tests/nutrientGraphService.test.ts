@@ -76,16 +76,12 @@ describe('NutrientGraph Service', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('searches with language and maps results', async () => {
-      mockFetch
-        .mockResolvedValueOnce(mockJsonResponse(searchBananaEnFixture))
-        .mockResolvedValueOnce(mockJsonResponse(foodFdcFixture))
-        .mockResolvedValueOnce(mockJsonResponse(foodFdcFixture))
-        .mockResolvedValueOnce(mockJsonResponse(foodFdcFixture));
+    it('searches with language and maps results with single request', async () => {
+      mockFetch.mockResolvedValueOnce(mockJsonResponse(searchBananaEnFixture));
 
       const res = await searchNutrientGraph(ctx, 'banana', 1, 3);
 
-      expect(mockFetch).toHaveBeenCalledTimes(4);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).toContain('lang=en');
       expect(url).toContain('q=banana');
@@ -102,8 +98,8 @@ describe('NutrientGraph Service', () => {
         default_variant: expect.objectContaining({
           serving_size: 100,
           serving_unit: 'g',
-          calories: 165,
-          protein: 31,
+          calories: 89,
+          protein: 0,
           is_default: true,
         }),
       });
@@ -198,6 +194,23 @@ describe('NutrientGraph Service', () => {
       );
       expect(cachedDe?.name).toBe('Zwiebel, roh');
       expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    it('respects requireNutrition option and returns null when food has zero nutrients', async () => {
+      mockFetch.mockResolvedValueOnce(
+        mockJsonResponse({
+          data: {
+            id: 'empty:1',
+            names: [{ lang: 'en', name: 'Zero nutrient food' }],
+            nutrients: {},
+            portions: [],
+          },
+        })
+      );
+      const food = await getNutrientGraphDetails(ctx, 'empty:1', {
+        requireNutrition: true,
+      });
+      expect(food).toBeNull();
     });
   });
 

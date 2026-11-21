@@ -255,6 +255,20 @@ export interface BuildSearchSummaryFoodInput {
   serving_unit?: string;
 }
 
+export function hasCoreNutrition(
+  food: MappedProviderFood | null | undefined
+): boolean {
+  if (!food) return false;
+  const v = food.default_variant;
+  if (!v) return false;
+  return (
+    (v.calories ?? 0) > 0 ||
+    (v.protein ?? 0) > 0 ||
+    (v.carbs ?? 0) > 0 ||
+    (v.fat ?? 0) > 0
+  );
+}
+
 export function buildSearchSummaryFood(
   input: BuildSearchSummaryFoodInput
 ): MappedProviderFood {

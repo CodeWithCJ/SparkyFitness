@@ -7,6 +7,7 @@ import { providerFetchJson } from '../foodProviders/httpClient.js';
 import {
   buildPer100gFood,
   buildSearchSummaryFood,
+  hasCoreNutrition,
 } from '../foodProviders/per100gMapper.js';
 import {
   detailCache,
@@ -219,9 +220,6 @@ function mapPortions(
   return result;
 }
 
-const ENRICH_COUNT = 10;
-const ENRICH_CONCURRENCY = 5;
-
 export async function searchNutrientGraph(
   ctx: ProviderCallContext,
   query: string,
@@ -252,59 +250,20 @@ export async function searchNutrientGraph(
   );
 
   const results = response.data?.results || [];
-  const topResults = results.slice(0, ENRICH_COUNT);
-  const restResults = results.slice(ENRICH_COUNT);
-
   const scope = `${resolveCacheScope(ctx)}:${lang}`;
-  const enrichedTop: MappedProviderFood[] = [];
-  for (let i = 0; i < topResults.length; i += ENRICH_CONCURRENCY) {
-    const chunk = topResults.slice(i, i + ENRICH_CONCURRENCY);
-    const chunkResults = await Promise.all(
-      chunk.map(async (item) => {
-        const cached = detailCache.get<MappedProviderFood>(
-          'nutrientgraph',
-          scope,
-          item.id
-        );
-        if (cached) {
-          return {
-            ...cached,
-            name: item.name || cached.name,
-          };
-        }
-        try {
-          const detail = await getNutrientGraphDetails(ctx, item.id);
-          if (detail) {
-            return {
-              ...detail,
-              name: item.name || detail.name,
-            };
-          }
-        } catch {
-          // Fall back to summary
-        }
-        return buildSearchSummaryFood({
-          providerType: 'nutrientgraph',
-          externalId: item.id,
-          name: item.name,
-          brand: null,
-          calories:
-            typeof item.energy_kcal_per_100 === 'number'
-              ? item.energy_kcal_per_100
-              : undefined,
-        });
-      })
-    );
-    enrichedTop.push(...chunkResults);
-  }
 
-  const restMapped = restResults.map((item) => {
+  const foods = results.map((item) => {
     const cached = detailCache.get<MappedProviderFood>(
       'nutrientgraph',
       scope,
       item.id
     );
-    if (cached) return cached;
+    if (cached) {
+      return {
+        ...cached,
+        name: item.name || cached.name,
+      };
+    }
     return buildSearchSummaryFood({
       providerType: 'nutrientgraph',
       externalId: item.id,
@@ -317,7 +276,6 @@ export async function searchNutrientGraph(
     });
   });
 
-  const foods = [...enrichedTop, ...restMapped];
   const hasMore = results.length === pageSize;
 
   return {
@@ -333,7 +291,8 @@ export async function searchNutrientGraph(
 
 export async function getNutrientGraphDetails(
   ctx: ProviderCallContext,
-  externalId: string
+  externalId: string,
+  opts?: { requireNutrition?: boolean }
 ): Promise<MappedProviderFood | null> {
   if (!externalId) {
     throw new Error('External ID is required for NutrientGraph details.');
@@ -347,6 +306,9 @@ export async function getNutrientGraphDetails(
     externalId
   );
   if (cached) {
+    if (opts?.requireNutrition && !hasCoreNutrition(cached)) {
+      return null;
+    }
     return cached;
   }
 
@@ -377,6 +339,9 @@ export async function getNutrientGraphDetails(
   });
 
   detailCache.set('nutrientgraph', scope, externalId, mapped);
+  if (opts?.requireNutrition && !hasCoreNutrition(mapped)) {
+    return null;
+  }
   return mapped;
 }
 

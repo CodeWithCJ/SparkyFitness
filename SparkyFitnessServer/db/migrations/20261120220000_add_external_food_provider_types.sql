@@ -2,7 +2,7 @@
 
 -- CookTool
 INSERT INTO public.external_provider_types (id, display_name, description)
-VALUES ('cooktool', 'CookTool', 'CookTool food nutrition API: USDA and European national food tables plus US branded products. Requires an API key.')
+VALUES ('cooktool', 'CookTool', 'CookTool food nutrition API: USDA food table and ingredient database. Requires an API key.')
 ON CONFLICT (id) DO UPDATE SET display_name = EXCLUDED.display_name, description = EXCLUDED.description;
 
 UPDATE public.external_provider_types
@@ -10,7 +10,7 @@ SET categories = ARRAY['food'],
     required_fields = ARRAY['app_key'],
     field_labels = '{"app_key": "CookTool API key"}'::jsonb,
     is_strictly_private = FALSE,
-    supports_barcode = TRUE
+    supports_barcode = FALSE
 WHERE id = 'cooktool';
 
 -- NutrientGraph

@@ -1,15 +1,14 @@
 # CookTool Food Database
 
-CookTool is a comprehensive food nutrition API providing access to canonical ingredients, national food tables, and over 2 million branded products.
+CookTool is a food nutrition API providing access to canonical ingredients and national food tables.
 
-SparkyFitness integrates with CookTool for **live food search**, **nutritional detail lookup**, and **barcode scanning**.
+SparkyFitness integrates with CookTool for **live food search** and **nutritional detail lookup**.
 
 ---
 
 ## Key Capabilities
 
-* **Extensive Product Database**: Access to thousands of reference ingredients and over 2 million branded products.
-* **Barcode Scanning**: Scan product barcodes (UPC-A, EAN-13, and GTIN-14) directly into your diary.
+* **Extensive Ingredient Database**: Access to thousands of reference ingredients and food tables.
 * **Smart Caching**: Retrieved food nutrition data is cached locally for 24 hours to conserve API quota.
 * **Privacy Focused**: Uses your personal CookTool API key, keeping credential management under your control.
 
@@ -30,4 +29,4 @@ SparkyFitness integrates with CookTool for **live food search**, **nutritional d
 3. Enter your CookTool API key into the **CookTool API key** field.
 4. Save the provider.
 
-Once active, CookTool will appear in food search results and barcode lookup throughout the web and mobile apps.
+Once active, CookTool will appear in food search results throughout the web and mobile apps.

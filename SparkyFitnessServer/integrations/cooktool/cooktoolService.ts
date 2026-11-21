@@ -7,12 +7,12 @@ import { providerFetchJson } from '../foodProviders/httpClient.js';
 import {
   buildPer100gFood,
   buildSearchSummaryFood,
+  hasCoreNutrition,
 } from '../foodProviders/per100gMapper.js';
 import {
   detailCache,
   resolveCacheScope,
 } from '../foodProviders/detailCache.js';
-import { altBarcode } from '../../utils/foodUtils.js';
 import { normalizeNutrientUnit } from '@workspace/shared';
 import { COOKTOOL_USDA_NUTRIENT_NAMES } from './cooktoolNutrients.js';
 import type {
@@ -27,17 +27,6 @@ interface CookToolIngredientSearchItem {
   name: string;
   category_id?: number | null;
   data_type?: string;
-}
-
-interface CookToolBrandedSearchItem {
-  id: number;
-  name: string;
-  brand?: string | null;
-  brand_owner?: string | null;
-  gtin_upc?: string | null;
-  market_country?: string | null;
-  category_id?: number | null;
-  data_quality?: string | null;
 }
 
 interface CookToolNutrientRow {
@@ -108,7 +97,6 @@ const NUTRIENT_NUMBER_TO_STANDARD: Record<number, StandardNutrientField> = {
   291: 'dietary_fiber',
   1079: 'dietary_fiber',
   269: 'sugars',
-  212: 'sugars',
   2000: 'sugars',
   // Vitamins
   320: 'vitamin_a',
@@ -123,9 +111,6 @@ const NUTRIENT_NUMBER_TO_STANDARD: Record<number, StandardNutrientField> = {
   221: 'alcohol_g',
   1018: 'alcohol_g',
 };
-
-const ENRICH_COUNT = 20;
-const ENRICH_CONCURRENCY = 5;
 
 export async function searchCookTool(
   ctx: ProviderCallContext,
@@ -163,59 +148,21 @@ export async function searchCookTool(
     ? ingredientsRes.data
     : [];
 
-  const summaryFoods = ingredients.map((item) =>
-    buildSearchSummaryFood({
+  const scope = resolveCacheScope(ctx);
+  const foods = ingredients.map((item) => {
+    const externalId = `ing:${item.id}`;
+    const cached = detailCache.get<MappedProviderFood>(
+      'cooktool',
+      scope,
+      externalId
+    );
+    if (cached) return cached;
+    return buildSearchSummaryFood({
       providerType: 'cooktool',
-      externalId: `ing:${item.id}`,
+      externalId,
       name: item.name,
       brand: null,
-    })
-  );
-
-  const topFoods = summaryFoods.slice(0, ENRICH_COUNT);
-
-  const scope = resolveCacheScope(ctx);
-  const enrichedTop: MappedProviderFood[] = [];
-  for (let i = 0; i < topFoods.length; i += ENRICH_CONCURRENCY) {
-    const chunk = topFoods.slice(i, i + ENRICH_CONCURRENCY);
-    const chunkResults = await Promise.all(
-      chunk.map(async (food) => {
-        const cached = detailCache.get<MappedProviderFood>(
-          'cooktool',
-          scope,
-          food.provider_external_id
-        );
-        if (cached) return cached;
-        if (food.provider_external_id.startsWith('ing:')) {
-          try {
-            const detail = await getCookToolDetails(
-              ctx,
-              food.provider_external_id
-            );
-            if (detail) return detail;
-          } catch {
-            // Fall back to summary
-          }
-        }
-        return food;
-      })
-    );
-    enrichedTop.push(...chunkResults);
-  }
-
-  // Filter out any foods where all nutrients are zero (junk / empty records)
-  const foods = enrichedTop.filter((food) => {
-    const variant = food.default_variant;
-    if (!variant) return false;
-    const hasCalories = (variant.calories ?? 0) > 0;
-    const hasMacros =
-      (variant.protein ?? 0) > 0 ||
-      (variant.carbs ?? 0) > 0 ||
-      (variant.fat ?? 0) > 0;
-    const hasProviderNutrients =
-      variant.provider_nutrients &&
-      Object.values(variant.provider_nutrients).some((val) => val > 0);
-    return hasCalories || hasMacros || hasProviderNutrients;
+    });
   });
 
   const hasMore = ingredients.length === pageSize;
@@ -225,7 +172,7 @@ export async function searchCookTool(
     pagination: {
       page,
       pageSize,
-      totalCount: foods.length,
+      totalCount: -1,
       hasMore,
     },
   };
@@ -233,7 +180,8 @@ export async function searchCookTool(
 
 export async function getCookToolDetails(
   ctx: ProviderCallContext,
-  externalId: string
+  externalId: string,
+  opts?: { requireNutrition?: boolean }
 ): Promise<MappedProviderFood | null> {
   if (!externalId) {
     throw new Error('External ID is required for CookTool details.');
@@ -246,6 +194,9 @@ export async function getCookToolDetails(
     externalId
   );
   if (cached) {
+    if (opts?.requireNutrition && !hasCoreNutrition(cached)) {
+      return null;
+    }
     return cached;
   }
 
@@ -293,6 +244,9 @@ export async function getCookToolDetails(
     });
 
     detailCache.set('cooktool', scope, externalId, mapped);
+    if (opts?.requireNutrition && !hasCoreNutrition(mapped)) {
+      return null;
+    }
     return mapped;
   }
 
@@ -306,63 +260,16 @@ export async function getCookToolDetails(
     });
 
     detailCache.set('cooktool', scope, externalId, mapped);
+    if (opts?.requireNutrition && !hasCoreNutrition(mapped)) {
+      return null;
+    }
     return mapped;
   }
 
   throw new Error(`Unsupported CookTool external ID format: ${externalId}`);
 }
 
-export async function lookupCookToolBarcode(
-  ctx: ProviderCallContext,
-  barcode: string
-): Promise<MappedProviderFood | null> {
-  if (!barcode) return null;
-
-  const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
-  const headers = resolveHeaders(ctx.credentials?.app_key);
-
-  const candidates: string[] = [barcode];
-  const alt = altBarcode(barcode);
-  if (alt && !candidates.includes(alt)) {
-    candidates.push(alt);
-  }
-  if (barcode.length < 14) {
-    const padded = barcode.padStart(14, '0');
-    if (!candidates.includes(padded)) {
-      candidates.push(padded);
-    }
-  }
-
-  for (const candidate of candidates) {
-    try {
-      const result = await providerFetchJson<{
-        data?: CookToolBrandedSearchItem[];
-      }>(`${baseUrl}/branded?gtin=${encodeURIComponent(candidate)}`, {
-        providerType: 'cooktool',
-        headers,
-        signal: ctx.signal,
-      });
-      if (result.data && result.data.length > 0) {
-        const item = result.data[0];
-        return buildPer100gFood({
-          providerType: 'cooktool',
-          externalId: `br:${item.id}`,
-          name: item.name,
-          brand: item.brand || item.brand_owner || undefined,
-          barcode: item.gtin_upc || barcode,
-          per100g: {},
-        });
-      }
-    } catch {
-      // Continue to next candidate
-    }
-  }
-
-  return null;
-}
-
 export const cooktoolAdapter: FoodProviderAdapter = {
   search: searchCookTool,
   getDetails: getCookToolDetails,
-  lookupBarcode: lookupCookToolBarcode,
 };

@@ -100,18 +100,6 @@ export function normalizeFoodForResponse(food: unknown): unknown {
 
   const record = food as Record<string, unknown>;
 
-  const defaultVariant =
-    normalizeFoodVariantForResponse(record.default_variant) ||
-    normalizeFoodVariantForResponse({
-      serving_size: record.serving_size ?? 100,
-      serving_unit: record.serving_unit ?? 'g',
-      calories: record.calories ?? 0,
-      protein: record.protein ?? 0,
-      carbs: record.carbs ?? 0,
-      fat: record.fat ?? 0,
-      is_default: true,
-    });
-
   return {
     ...record,
     id: nullToUndefined(record.id as string | null | undefined),
@@ -122,9 +110,7 @@ export function normalizeFoodForResponse(food: unknown): unknown {
     provider_type: nullToUndefined(
       record.provider_type as string | null | undefined
     ),
-    brand: (record.brand as string | null | undefined) ?? null,
-    is_custom: (record.is_custom as boolean | undefined) ?? false,
-    default_variant: defaultVariant,
+    default_variant: normalizeFoodVariantForResponse(record.default_variant),
     variants: Array.isArray(record.variants)
       ? record.variants.map((variant) =>
           normalizeFoodVariantForResponse(variant)

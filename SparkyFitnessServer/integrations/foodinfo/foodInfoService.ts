@@ -7,6 +7,7 @@ import { providerFetchJson } from '../foodProviders/httpClient.js';
 import {
   buildPer100gFood,
   buildSearchSummaryFood,
+  hasCoreNutrition,
 } from '../foodProviders/per100gMapper.js';
 import {
   detailCache,
@@ -101,7 +102,6 @@ const NUTRIENT_ID_TO_STANDARD: Record<number, StandardNutrientField> = {
   291: 'dietary_fiber',
   2000: 'sugars',
   269: 'sugars',
-  212: 'sugars',
   1258: 'saturated_fat',
   606: 'saturated_fat',
   1292: 'monounsaturated_fat',
@@ -132,9 +132,6 @@ const NUTRIENT_ID_TO_STANDARD: Record<number, StandardNutrientField> = {
   262: 'caffeine_mg',
 };
 
-const ENRICH_COUNT = 5;
-const ENRICH_CONCURRENCY = 3;
-
 export async function searchFoodInfo(
   ctx: ProviderCallContext,
   query: string,
@@ -155,48 +152,18 @@ export async function searchFoodInfo(
 
   const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
   const headers = resolveHeaders(ctx.credentials?.app_key);
+  const offset = Math.max(0, (page - 1) * pageSize);
   const encodedQuery = encodeURIComponent(query.trim());
 
   const results = await providerFetchJson<FoodInfoSearchItem[]>(
-    `${baseUrl}/foods/search?q=${encodedQuery}&limit=${pageSize}`,
+    `${baseUrl}/foods/search?q=${encodedQuery}&page=${page}&limit=${pageSize}&offset=${offset}`,
     { providerType: 'food-info', headers, signal: ctx.signal }
   );
 
   const items = Array.isArray(results) ? results : [];
-  const topItems = items.slice(0, ENRICH_COUNT);
-  const restItems = items.slice(ENRICH_COUNT);
-
   const scope = resolveCacheScope(ctx);
-  const enrichedTop: MappedProviderFood[] = [];
-  for (let i = 0; i < topItems.length; i += ENRICH_CONCURRENCY) {
-    const chunk = topItems.slice(i, i + ENRICH_CONCURRENCY);
-    const chunkResults = await Promise.all(
-      chunk.map(async (item) => {
-        const idStr = String(item.id);
-        const cached = detailCache.get<MappedProviderFood>(
-          'food-info',
-          scope,
-          idStr
-        );
-        if (cached) return cached;
-        try {
-          const detail = await getFoodInfoDetails(ctx, idStr);
-          if (detail) return detail;
-        } catch {
-          // Fall back to summary on error
-        }
-        return buildSearchSummaryFood({
-          providerType: 'food-info',
-          externalId: idStr,
-          name: item.description,
-          brand: null,
-        });
-      })
-    );
-    enrichedTop.push(...chunkResults);
-  }
 
-  const restFoods = restItems.map((item) => {
+  const foods = items.map((item) => {
     const idStr = String(item.id);
     const cached = detailCache.get<MappedProviderFood>(
       'food-info',
@@ -214,7 +181,6 @@ export async function searchFoodInfo(
     );
   });
 
-  const foods = [...enrichedTop, ...restFoods];
   const hasMore = items.length === pageSize;
 
   return {
@@ -230,7 +196,8 @@ export async function searchFoodInfo(
 
 export async function getFoodInfoDetails(
   ctx: ProviderCallContext,
-  externalId: string
+  externalId: string,
+  opts?: { requireNutrition?: boolean }
 ): Promise<MappedProviderFood | null> {
   if (!externalId) {
     throw new Error('External ID is required for Food Info details.');
@@ -243,6 +210,9 @@ export async function getFoodInfoDetails(
     externalId
   );
   if (cached) {
+    if (opts?.requireNutrition && !hasCoreNutrition(cached)) {
+      return null;
+    }
     return cached;
   }
 
@@ -314,6 +284,9 @@ export async function getFoodInfoDetails(
   });
 
   detailCache.set('food-info', scope, externalId, mapped);
+  if (opts?.requireNutrition && !hasCoreNutrition(mapped)) {
+    return null;
+  }
   return mapped;
 }
 
