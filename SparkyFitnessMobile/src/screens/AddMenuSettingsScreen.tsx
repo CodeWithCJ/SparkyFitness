@@ -6,6 +6,7 @@ import { useCSSVariable } from 'uniwind';
 
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import AddMenuPreview from '../components/AddMenuPreview';
+import FeaturesOffNotice from '../components/FeaturesOffNotice';
 import Icon from '../components/Icon';
 import AddMenuIconTile, {
   useAddMenuTintColors,
@@ -22,6 +23,7 @@ import {
   type AddMenuItemKey,
   type AddMenuRowStyle,
 } from '../constants/addMenuItems';
+import { useServerConnection } from '../hooks';
 import { useAddMenuItemAvailable } from '../hooks/useAddMenuItemAvailable';
 import { useAddMenuItemLabel } from '../hooks/useAddMenuItemLabel';
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -44,11 +46,15 @@ type AddMenuSettingsScreenProps = RootStackScreenProps<'AddMenuSettings'>;
  * Lays out the + sheet: the four big cards (tap one to pick what goes there)
  * and the rows under them (drag to reorder, switch off to hide). An item
  * appears in one place only. An item of a feature turned off in Settings →
- * Features, such as Wellness while cycle is off, is listed here and left out
- * of the sheet.
+ * Features, such as Wellness while cycle is off, is left out here as in the
+ * sheet (a tile holding one shows empty), with one line that says so; its
+ * place, tile and switch are kept for when the feature comes back.
  */
-const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
+const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
+  const { isConnected } = useServerConnection();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -107,16 +113,14 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
   );
   const rowGroups = useMemo(() => {
     const groups = groupRowsByStyle(
-      rowKeys(addMenuOrder, cards),
+      rowKeys(addMenuOrder, cards).filter(isAvailable),
       addMenuRowStyles
     );
     // Which line a pair or button lands on, counting only the ones shown.
     const lineOf = new Map<AddMenuItemKey, number>();
     for (const style of ['compact', 'action'] as const) {
       chunkIntoLines(
-        groups[style].filter(
-          (key) => isAvailable(key) && !hiddenAddMenuItems.includes(key)
-        )
+        groups[style].filter((key) => !hiddenAddMenuItems.includes(key))
       ).forEach((keys, index) =>
         keys.forEach((key) => lineOf.set(key, index + 1))
       );
@@ -158,16 +162,7 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
                 </Text>
                 <Icon name="chevron-expand" size={12} color={accentColor} />
               </Pressable>
-              {!isAvailable(key) ? (
-                <Text
-                  className="text-xs text-text-muted ml-2"
-                  numberOfLines={1}
-                >
-                  {t('addMenuSettings.offInFeatures', {
-                    defaultValue: 'Not shown: turned off in Features',
-                  })}
-                </Text>
-              ) : lineOf.has(key) ? (
+              {lineOf.has(key) ? (
                 <Text className="text-xs text-text-muted ml-2">
                   {t('addMenuSettings.lineNumber', {
                     defaultValue: 'Line {{number}}',
@@ -198,14 +193,17 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
     t,
     tintColors,
   ]);
+  // Only what the sheet can show: placing an item of a feature turned off
+  // would leave its tile empty.
   const pickerOptions = useMemo(
     () =>
-      ADD_MENU_ITEM_KEYS.map((key) => ({
+      ADD_MENU_ITEM_KEYS.filter(isAvailable).map((key) => ({
         value: key,
         label: labelFor(key),
       })),
-    [labelFor]
+    [isAvailable, labelFor]
   );
+  const someFeaturesOff = ADD_MENU_ITEM_KEYS.some((key) => !isAvailable(key));
   const isDefault =
     hiddenAddMenuItems.length === 0 &&
     Object.keys(addMenuRowStyles).length === 0 &&
@@ -221,6 +219,12 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
 
   const renderSlot = (slotIndex: number) => {
     const key = cards[slotIndex]!;
+    // A tile holding an item of a feature turned off is empty in the sheet,
+    // so it is shown empty here too, and keeps the item for when it is back.
+    const shown = isAvailable(key);
+    const name = shown
+      ? labelFor(key)
+      : t('addMenuSettings.emptySlot', { defaultValue: 'Empty' });
     return (
       <BottomSheetPicker<AddMenuItemKey>
         key={slotIndex}
@@ -239,7 +243,7 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
             accessibilityLabel={t('addMenuSettings.slotLabel', {
               defaultValue: 'Tile {{number}}: {{name}}',
               number: slotIndex + 1,
-              name: labelFor(key),
+              name,
             })}
             accessibilityHint={t('addMenuSettings.slotHint', {
               defaultValue: 'Opens a list to choose what goes here',
@@ -248,18 +252,26 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
             className="flex-1 items-center px-0.5"
             style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
           >
-            <AddMenuIconTile
-              icon={ADD_MENU_ITEM_ICONS[key]}
-              color={tintColors[ADD_MENU_ITEM_TINTS[key]]}
-              size="card"
-            />
+            {shown ? (
+              <AddMenuIconTile
+                icon={ADD_MENU_ITEM_ICONS[key]}
+                color={tintColors[ADD_MENU_ITEM_TINTS[key]]}
+                size="card"
+              />
+            ) : (
+              <View
+                testID={`add-menu-slot-${slotIndex}-empty`}
+                className="border border-dashed border-border-subtle"
+                style={{ width: 52, height: 52, borderRadius: 18 }}
+              />
+            )}
             <Text
-              className="text-text-primary text-sm font-medium mt-2 text-center"
+              className={`text-sm font-medium mt-2 text-center ${shown ? 'text-text-primary' : 'text-text-muted'}`}
               numberOfLines={1}
               adjustsFontSizeToFit
               minimumFontScale={0.8}
             >
-              {ADD_MENU_CARD_LABELS[key]?.(t) ?? labelFor(key)}
+              {shown ? (ADD_MENU_CARD_LABELS[key]?.(t) ?? name) : name}
             </Text>
           </Pressable>
         )}
@@ -370,6 +382,16 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = () => {
             </View>
           );
         })}
+        {someFeaturesOff && (
+          <FeaturesOffNotice
+            className="mt-4"
+            onManage={
+              isConnected
+                ? () => navigation.navigate('FeatureSettings')
+                : undefined
+            }
+          />
+        )}
         <View className="mt-6">
           <Button
             variant="secondary"

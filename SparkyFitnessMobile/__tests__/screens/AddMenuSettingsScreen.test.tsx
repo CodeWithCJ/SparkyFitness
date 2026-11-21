@@ -48,6 +48,10 @@ jest.mock('../../src/hooks/useMobileFeatures', () => ({
 jest.mock('../../src/hooks/useDiscreetMode', () => ({
   useDiscreetMode: () => ({ discreetMode: mockCycle.discreetMode }),
 }));
+let mockConnected = true;
+jest.mock('../../src/hooks', () => ({
+  useServerConnection: () => ({ isConnected: mockConnected }),
+}));
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -84,9 +88,11 @@ describe('AddMenuSettingsScreen', () => {
       mode: 'standard',
       discreetMode: false,
     });
+    mockConnected = true;
   });
 
   test('lists every row in the saved order, adding ones it lacks', () => {
+    Object.assign(mockCycle, { enabled: true });
     useAppPreferencesStore.setState({
       addMenuOrder: ['syncHealth', 'askSparky'],
     });
@@ -159,8 +165,8 @@ describe('AddMenuSettingsScreen', () => {
     ).toBeTruthy();
   });
 
-  describe('items the sheet leaves out', () => {
-    test('say why, and take no line', () => {
+  describe('items of a feature turned off', () => {
+    test('are left out, take no line, and the screen says so once', () => {
       act(() => {
         useAppPreferencesStore
           .getState()
@@ -168,17 +174,20 @@ describe('AddMenuSettingsScreen', () => {
       });
       renderScreen();
 
-      const wellness = screen.getByTestId('add-menu-row-wellness');
-      expect(
-        within(wellness).getByText('Not shown: turned off in Features')
-      ).toBeTruthy();
-      expect(within(wellness).queryByText(/^Line /)).toBeNull();
+      expect(screen.queryByTestId('add-menu-row-wellness')).toBeNull();
       // Mood and Mindfulness pair up on line 1: the missing item takes no
       // slot, so Mindfulness is not pushed to line 2.
       const mood = screen.getByTestId('add-menu-row-mood');
       expect(within(mood).getByText('Line 1')).toBeTruthy();
       const mindfulness = screen.getByTestId('add-menu-row-mindfulness');
       expect(within(mindfulness).getByText('Line 1')).toBeTruthy();
+      expect(screen.getAllByText('Some features are turned off')).toHaveLength(
+        1
+      );
+      // Its style is kept for when it comes back.
+      expect(useAppPreferencesStore.getState().addMenuRowStyles.wellness).toBe(
+        'compact'
+      );
     });
 
     test('never include Check-In, which needs no setting', () => {
@@ -190,7 +199,6 @@ describe('AddMenuSettingsScreen', () => {
       renderScreen();
 
       const checkIn = screen.getByTestId('add-menu-row-checkIn');
-      expect(within(checkIn).queryByText(/^Not shown:/)).toBeNull();
       expect(within(checkIn).getByText('Line 1')).toBeTruthy();
     });
 
@@ -198,7 +206,54 @@ describe('AddMenuSettingsScreen', () => {
       Object.assign(mockCycle, { enabled: true });
       renderScreen();
 
-      expect(screen.queryByText(/^Not shown:/)).toBeNull();
+      expect(screen.getByTestId('add-menu-row-wellness')).toBeTruthy();
+      expect(screen.queryByTestId('features-off-notice')).toBeNull();
+    });
+
+    test('keep their place when the rows around them move', () => {
+      renderScreen();
+
+      // Wellness sits between Progress Photos and Symptoms, and is off.
+      fireEvent(
+        screen.getByTestId('add-menu-drag-handle-symptoms'),
+        'accessibilityAction',
+        { nativeEvent: { actionName: 'decrement' } }
+      );
+
+      const state = useAppPreferencesStore.getState();
+      expect(
+        rowKeys(state.addMenuOrder, state.addMenuCards).slice(0, 4)
+      ).toEqual(['checkIn', 'symptoms', 'wellness', 'progressPhotos']);
+    });
+
+    test('leave their tile empty, and are not offered for one', () => {
+      useAppPreferencesStore
+        .getState()
+        .setAddMenuCards(['wellness', 'exercise', 'measurements', 'scanFood']);
+      renderScreen();
+
+      expect(
+        screen.getByTestId('add-menu-slot-0').props.accessibilityLabel
+      ).toBe('Tile 1: Empty');
+      expect(screen.getByTestId('add-menu-slot-0-empty')).toBeTruthy();
+      expect(useAppPreferencesStore.getState().addMenuCards[0]).toBe(
+        'wellness'
+      );
+    });
+
+    test('open Features from the line while connected', () => {
+      renderScreen();
+
+      fireEvent.press(screen.getByTestId('features-off-manage'));
+      expect(navigation.navigate).toHaveBeenCalledWith('FeatureSettings');
+    });
+
+    test('offer no way to Features while offline', () => {
+      mockConnected = false;
+      renderScreen();
+
+      expect(screen.getByTestId('features-off-notice')).toBeTruthy();
+      expect(screen.queryByTestId('features-off-manage')).toBeNull();
     });
   });
 
@@ -234,6 +289,7 @@ describe('AddMenuSettingsScreen', () => {
   });
 
   test('reordering a row updates the saved order', () => {
+    Object.assign(mockCycle, { enabled: true });
     renderScreen();
 
     fireEvent(

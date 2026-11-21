@@ -49,6 +49,10 @@ import { HeartRateZoneSettings } from './HeartRateZoneSettings';
 import { ProfileInformation } from './ProfileInformation';
 import { DataManagementSettings } from './DataManagementSettings';
 import { DataImportSettings } from './DataImportSettings';
+import {
+  settingsSectionElementId,
+  useOpenSettingsSections,
+} from '@/hooks/Settings/useOpenSettingsSections';
 
 export interface PasswordFormState {
   current_password: string;
@@ -99,6 +103,14 @@ const Settings = () => {
       defaultExpanded.push(section);
     }
   }
+
+  // Profile & Account is controlled, so Manage in Tabs can open Features above
+  // it on the page it is already on.
+  const {
+    openSections: openProfileSections,
+    setOpenSections: setOpenProfileSections,
+    openSection: openProfileSection,
+  } = useOpenSettingsSections(defaultExpanded[0] ?? null, location.key);
 
   const activeTab = (() => {
     if (section && SECTION_TO_TAB_MAP[section]) {
@@ -169,7 +181,8 @@ const Settings = () => {
           <Accordion
             type="multiple"
             className="w-full"
-            defaultValue={defaultExpanded}
+            value={openProfileSections}
+            onValueChange={setOpenProfileSections}
           >
             <AccordionItem
               value="profile-information"
@@ -183,11 +196,17 @@ const Settings = () => {
             >
               <PreferenceSettings />
             </AccordionItem>
-            <AccordionItem value="features" className="border rounded-lg mb-4">
+            <AccordionItem
+              value="features"
+              id={settingsSectionElementId('features')}
+              className="border rounded-lg mb-4 scroll-mt-4"
+            >
               <FeatureSettings />
             </AccordionItem>
             <AccordionItem value="web-tabs" className="border rounded-lg mb-4">
-              <WebTabsSettings />
+              <WebTabsSettings
+                onManageFeatures={() => openProfileSection('features')}
+              />
             </AccordionItem>
             <AccordionItem
               value="heart-rate-zones"

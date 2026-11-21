@@ -26,8 +26,8 @@ export type DashboardCardKey = (typeof DASHBOARD_CARD_KEYS)[number];
 
 /**
  * Cards that belong to an optional feature (Settings → Features): the
- * Dashboard leaves them out while it is off. Dashboard Settings keeps listing
- * them, so their place and switch are kept for when it comes back.
+ * Dashboard and Dashboard Settings leave them out while it is off, and their
+ * place and switch are kept for when it comes back.
  */
 export const DASHBOARD_CARD_FEATURES: Partial<
   Record<DashboardCardKey, FeatureKey>
