@@ -1,3 +1,4 @@
+import { registerFoodEntryHandlers } from './foodEntry';
 import { registerFollowUpHandlers } from './followUps';
 import { registerWaterIntakeHandlers } from './waterIntake';
 import { registerWorkoutSessionHandlers } from './workoutSession';
@@ -15,4 +16,5 @@ export function registerAllOutboxHandlers(): void {
   registerWorkoutSessionHandlers();
   registerFollowUpHandlers();
   registerWaterIntakeHandlers();
+  registerFoodEntryHandlers();
 }

@@ -24,6 +24,70 @@ import {
   servingVariantKey,
 } from '../utils/foodDetails';
 import { persistExternalVariants } from '../utils/persistExternalVariants';
+import { queueAfterConnectionFailure } from '../offline/queueAfterFailure';
+import {
+  isQueueableFoodEntry,
+  queueFoodEntry,
+} from '../offline/foodEntryHandOver';
+import { newUuid } from '../utils/ids';
+
+const PENDING_ENTRY_PREFIX = 'pending-';
+
+/** True for an entry that is waiting on the phone, not yet on the server. */
+export function isPendingEntry(entry: Pick<FoodEntry, 'id'>): boolean {
+  return entry.id.startsWith(PENDING_ENTRY_PREFIX);
+}
+
+/**
+ * A diary entry as it will read once uploaded, for the screens that carry on
+ * with the entry they were handed. Its id is the replay key, marked pending.
+ */
+function pendingEntryFrom(
+  clientId: string,
+  payload: CreateFoodEntryPayload
+): FoodEntry {
+  return {
+    id: `${PENDING_ENTRY_PREFIX}${clientId}`,
+    food_id: payload.food_id,
+    variant_id: payload.variant_id,
+    meal_type: '',
+    meal_type_id: payload.meal_type_id,
+    quantity: payload.quantity,
+    unit: payload.unit,
+    notes: payload.notes,
+    food_name: payload.food_name,
+    brand_name: payload.brand_name,
+    entry_date: payload.entry_date,
+    entry_time: payload.entry_time,
+    serving_size: payload.serving_size ?? payload.quantity,
+    serving_unit: payload.serving_unit ?? payload.unit,
+    calories: payload.calories ?? 0,
+  };
+}
+
+/**
+ * Logs an entry that needs nothing created first. It carries a replay key
+ * from the first request on, so a request that reached the server but lost
+ * its answer is logged once when it is sent again. When the server cannot be
+ * reached the entry is kept on the phone and uploads later, never after a
+ * timeout (the server may have it already).
+ */
+async function createOrQueueFoodEntry(
+  payload: CreateFoodEntryPayload
+): Promise<FoodEntry> {
+  const clientId = newUuid();
+  try {
+    return await createFoodEntry({ ...payload, client_id: clientId });
+  } catch (error) {
+    const queued =
+      isQueueableFoodEntry(payload) &&
+      (await queueAfterConnectionFailure(error, () =>
+        queueFoodEntry(clientId, payload)
+      ));
+    if (queued) return pendingEntryFrom(clientId, payload);
+    throw error;
+  }
+}
 
 export interface AddFoodEntryInput {
   saveFoodPayload?: SaveFoodPayload;
@@ -174,10 +238,22 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
           unit,
         });
       }
-      return createFoodEntry(input.createEntryPayload);
+      return createOrQueueFoodEntry(input.createEntryPayload);
     },
     onSuccess: (entry) => {
-      invalidateCache(entry.entry_date);
+      if (isPendingEntry(entry)) {
+        Toast.show({
+          type: 'info',
+          text1: t('foodEntryAdd.queued', {
+            defaultValue: 'Saved on this phone',
+          }),
+          text2: t('foodEntryAdd.queuedMessage', {
+            defaultValue: 'It uploads when your server can be reached.',
+          }),
+        });
+      } else {
+        invalidateCache(entry.entry_date);
+      }
       if (entry.meal_id) {
         invalidateMealUsageCaches(queryClient);
       }

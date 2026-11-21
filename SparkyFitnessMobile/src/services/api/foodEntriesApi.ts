@@ -52,6 +52,12 @@ export interface CreateFoodEntryPayload {
   custom_nutrients?: Record<string, string | number> | null;
   // Meal entry
   meal_id?: string;
+  /**
+   * Replay key (uuid). The server answers a repeat of the same key with the
+   * entry it already stored and logs nothing, so a request sent again after a
+   * lost answer cannot log twice.
+   */
+  client_id?: string;
 }
 
 /**

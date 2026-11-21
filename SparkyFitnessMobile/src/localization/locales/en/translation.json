@@ -4334,6 +4334,8 @@
     "other": "Other"
   },
   "foodEntryAdd": {
+    "queued": "Saved on this phone",
+    "queuedMessage": "It uploads when your server can be reached.",
     "errors": {
       "equivalentsNotSaved": "Some equivalent units could not be saved",
       "invalidAmount": "Invalid amount",
@@ -10988,6 +10990,8 @@
     },
     "kind": {
       "workout": "Workout",
+      "food": "Food entry",
+      "water": "Drink",
       "other": "Saved change"
     },
     "libraryNote": "Only workouts and exercises are available offline. Everything else in the Library needs a connection."
