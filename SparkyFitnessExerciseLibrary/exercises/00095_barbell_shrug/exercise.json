@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00095_barbell_shrug",
+  "numeric_id": "00095",
+  "slug": "barbell_shrug",
+  "name": "Barbell Shrug",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "traps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a barbell in front of you with an overhand grip.",
+    "Keep your arms straight and your back straight throughout the exercise.",
+    "Lift your shoulders up towards your ears as high as possible, squeezing your traps at the top.",
+    "Hold for a moment, then slowly lower your shoulders back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0095",
+    "free_id": "Barbell_Shrug"
+  }
+}

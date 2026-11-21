@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06322_rhomboids_smr",
+  "numeric_id": "06322",
+  "slug": "rhomboids_smr",
+  "name": "Rhomboids-SMR",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "intermediate",
+    "equipment": "foam roll",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lay down with your back on the floor. Place a foam roll underneath your upper back, and cross your arms in front of you, protracting your shoulders. This will be your starting position.",
+    "Raise your hips off of the ground, placing your weight onto the foam roll. Shift your weight to one side at a time, rolling over your middle and upper back. Pause at points of tension for 10-30 seconds."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Rhomboids-SMR"
+  }
+}

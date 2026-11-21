@@ -1,0 +1,40 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06362_shoulder_raise",
+  "numeric_id": "06362",
+  "slug": "shoulder_raise",
+  "name": "Shoulder Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Relax your arms to your sides and raise your shoulders up toward your ears, then back down."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Shoulder_Raise"
+  }
+}

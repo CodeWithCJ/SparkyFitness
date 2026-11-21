@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06434_stiff_legged_barbell_deadlift",
+  "numeric_id": "06434",
+  "slug": "stiff_legged_barbell_deadlift",
+  "name": "Stiff-Legged Barbell Deadlift",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Grasp a bar using an overhand grip (palms facing down). You may need some wrist wraps if using a significant amount of weight.",
+    "Stand with your torso straight and your legs spaced using a shoulder width or narrower stance. The knees should be slightly bent. This is your starting position.",
+    "Keeping the knees stationary, lower the barbell to over the top of your feet by bending at the hips while keeping your back straight. Keep moving forward as if you were going to pick something from the floor until you feel a stretch on the hamstrings. Inhale as you perform this movement.",
+    "Start bringing your torso up straight again by extending your hips until you are back at the starting position. Exhale as you perform this movement.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Stiff-Legged_Barbell_Deadlift"
+  }
+}

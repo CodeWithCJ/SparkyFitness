@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00097_barbell_side_split_squat_v_2",
+  "numeric_id": "00097",
+  "slug": "barbell_side_split_squat_v_2",
+  "name": "Barbell Side Split Squat V. 2",
+  "aliases": [
+    "Barbell Side Split Squat"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "calves",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet wider than shoulder-width apart, toes pointing slightly outwards.",
+    "Hold a barbell across your upper back, resting it on your shoulders.",
+    "Take a big step to the side with your right foot, keeping your left foot planted.",
+    "Bend your right knee and lower your body down into a squat position, keeping your chest up and your back straight.",
+    "Push through your right heel to return to the starting position.",
+    "Repeat on the other side, stepping out with your left foot.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0097",
+    "free_id": "Barbell_Side_Split_Squat"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06346_seated_hamstring",
+  "numeric_id": "06346",
+  "slug": "seated_hamstring",
+  "name": "Seated Hamstring",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "expert",
+    "equipment": "other",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "In a seated position with your legs extended, have your partner stand behind you. Now, lean forward as your partner braces your shoulders with their hands. This will be your starting position.",
+    "Attempt to push your torso back for 10-20 seconds, as your partner prevents any actual movement of your torso.",
+    "Now relax your muscles as your partner increases the stretch by gently pushing your torso forward for 10-20 seconds."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Seated_Hamstring"
+  }
+}

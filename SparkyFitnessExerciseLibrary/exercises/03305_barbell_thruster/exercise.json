@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03305_barbell_thruster",
+  "numeric_id": "03305",
+  "slug": "barbell_thruster",
+  "name": "Barbell Thruster",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "glutes",
+      "hamstrings",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart, holding a barbell at shoulder height with an overhand grip.",
+    "Lower into a squat position by bending your knees and pushing your hips back.",
+    "As you reach the bottom of the squat, explosively drive through your heels to stand up, simultaneously pressing the barbell overhead.",
+    "Lower the barbell back to shoulder height as you lower back into the squat position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3305",
+    "free_id": null
+  }
+}

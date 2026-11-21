@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06250_mountain_climbers",
+  "numeric_id": "06250",
+  "slug": "mountain_climbers",
+  "name": "Mountain Climbers",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "hamstrings",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Begin in a pushup position, with your weight supported by your hands and toes. Flexing the knee and hip, bring one leg until the knee is approximately under the hip. This will be your starting position.",
+    "Explosively reverse the positions of your legs, extending the bent leg until the leg is straight and supported by the toe, and bringing the other foot up with the hip and knee flexed. Repeat in an alternating fashion for 20-30 seconds."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Mountain_Climbers"
+  }
+}

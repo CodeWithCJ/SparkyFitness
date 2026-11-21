@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03213_side_to_side_toe_touch_male",
+  "numeric_id": "03213",
+  "slug": "side_to_side_toe_touch_male",
+  "name": "Side-To-Side Toe Touch (Male)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and your arms extended to the sides.",
+    "Bend at the waist to the right, reaching your right hand towards your right foot while keeping your left hand extended to the side.",
+    "Return to the starting position and then bend at the waist to the left, reaching your left hand towards your left foot while keeping your right hand extended to the side.",
+    "Repeat the side-to-side bending motion for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3213",
+    "free_id": null
+  }
+}

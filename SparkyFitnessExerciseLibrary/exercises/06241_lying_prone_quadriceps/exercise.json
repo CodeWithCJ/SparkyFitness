@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06241_lying_prone_quadriceps",
+  "numeric_id": "06241",
+  "slug": "lying_prone_quadriceps",
+  "name": "Lying Prone Quadriceps",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "expert",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lay face down on the floor with your partner kneeling beside you. Flex one knee and raise that leg off the ground, attempting to touch your glutes with your foot. Your partner should hold the knee and ankle. This will be your starting position.",
+    "Attempt to extend your knee while your partner prevents any actual movement.",
+    "After 10-20 seconds, relax your muscles as your partner gently pushes the foot towards your glutes, further stretching the quadriceps and hip flexors.",
+    "After 10-20 seconds, switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Lying_Prone_Quadriceps"
+  }
+}

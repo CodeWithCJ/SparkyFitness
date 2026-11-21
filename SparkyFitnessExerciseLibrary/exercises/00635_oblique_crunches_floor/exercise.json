@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00635_oblique_crunches_floor",
+  "numeric_id": "00635",
+  "slug": "oblique_crunches_floor",
+  "name": "Oblique Crunches Floor",
+  "aliases": [
+    "Oblique Crunches"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your back with your knees bent and feet flat on the floor.",
+    "Place your hands behind your head or cross them over your chest.",
+    "Engage your abs and lift your shoulder blades off the floor, rotating your torso to one side.",
+    "Pause for a moment, then lower your shoulder blades back down to the floor.",
+    "Repeat on the other side, alternating sides with each repetition."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0635",
+    "free_id": "Oblique_Crunches"
+  }
+}

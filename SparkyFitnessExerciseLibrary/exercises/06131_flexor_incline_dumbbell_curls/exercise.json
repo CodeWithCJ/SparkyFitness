@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06131_flexor_incline_dumbbell_curls",
+  "numeric_id": "06131",
+  "slug": "flexor_incline_dumbbell_curls",
+  "name": "Flexor Incline Dumbbell Curls",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Hold the dumbbell towards the side farther from you so that you have more weight on the side closest to you. (This can be done for a good effect on all bicep dumbbell exercises). Now do a normal incline dumbbell curl, but keep your wrists as far back as possible so as to neutralize any stress that is placed on them.",
+    "Sit on an incline bench that is angled at 45-degrees while holding a dumbbell on each hand.",
+    "Let your arms hang down on your sides, with the elbows in, and turn the palms of your hands forward with the thumbs pointing away from the body. Tip: You will keep this hand position throughout the movement as there should not be any twisting of the hands as they come up. This will be your starting position.",
+    "Curl up the two dumbbells at the same time until your biceps are fully contracted and exhale. Tip: Do not swing the arms or use momentum. Keep a controlled motion at all times. Hold the contracted position for a second at the top.",
+    "As you inhale, slowly go back to the starting position.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Flexor_Incline_Dumbbell_Curls"
+  }
+}

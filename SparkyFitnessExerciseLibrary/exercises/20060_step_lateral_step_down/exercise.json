@@ -1,0 +1,59 @@
+{
+  "id": "20060_step_lateral_step_down",
+  "numeric_id": "20060",
+  "slug": "step_lateral_step_down",
+  "name": "Step Lateral Step-Down",
+  "aliases": [
+    "Lateral Step-Down",
+    "Pelvic Drop Step Exercise"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "mobility",
+    "body_part": "thighs",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "abductors"
+    ],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "3-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "knee",
+    "target_conditions": [
+      "patellofemoral_tracking_dysfunction",
+      "gluteus_medius_weakness",
+      "knee_valgus_correction"
+    ],
+    "contraindications": [
+      "acute_patellar_tendon_rupture"
+    ],
+    "clinical_protocol": "Cornell Health Lower Extremity Strengthening Protocol"
+  },
+  "steps": [
+    "Stand tall on top of a low step or box (about 4 to 6 inches high) with your target leg bearing your weight on the edge.",
+    "Let your non-target leg hover freely off the side of the step.",
+    "Hinge your hips slightly back and bend your standing knee, slowly lowering your body until your hovering heel lightly taps the floor.",
+    "Keep your standing knee tracking straight over your second toe without caving inward.",
+    "Push through your standing heel to return to the starting position."
+  ],
+  "coaching_cues": [
+    "Do not put weight onto the foot tapping the floor; merely graze it like touching thin ice.",
+    "Keep your hips square and do not let your pelvis tilt or drop.",
+    "Lower slowly over a 3-second count to load the quadriceps eccentrically."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Lower Extremity Strengthening Protocol"
+  }
+}

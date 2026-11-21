@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06407_split_jerk",
+  "numeric_id": "06407",
+  "slug": "split_jerk",
+  "name": "Split Jerk",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "olympic weightlifting",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Standing with the weight racked on the front of the shoulders, begin with the dip. With your feet directly under your hips, flex the knees without moving the hips backward.",
+    "Go down only slightly, and reverse direction as powerfully as possible. Drive through the heels create as much speed and force as possible, and be sure to move your head out of the way as the bar leaves the shoulders. At this moment as the feet leave the floor, the feet must be placed into the receiving position as quickly as possible.",
+    "In the brief moment the feet are not actively driving against the platform, the athlete's effort to push the bar up will drive them down. The feet should be moved to a split stance, one foot forward, one foot back, with the knees partially bent. Receive the bar with the arms locked out overhead.",
+    "Return to a standing position, bringing the feet together."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Split_Jerk"
+  }
+}

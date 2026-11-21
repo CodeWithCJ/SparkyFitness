@@ -1,0 +1,39 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06423_standing_hip_flexors",
+  "numeric_id": "06423",
+  "slug": "standing_hip_flexors",
+  "name": "Standing Hip Flexors",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with the spine vertical, the left foot slightly in front of the right.",
+    "Bend both knees and lift the back heel off the floor as you press the right hip forward. You can't get a thorough, deep stretch in this position, however, because it's hard to relax the hip flexor and stand on it at the same time. Switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Standing_Hip_Flexors"
+  }
+}

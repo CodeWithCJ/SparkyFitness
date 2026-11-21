@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01582_reclining_big_toe_pose_with_rope",
+  "numeric_id": "01582",
+  "slug": "reclining_big_toe_pose_with_rope",
+  "name": "Reclining Big Toe Pose With Rope",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "calves",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your back with your legs extended and your arms by your sides.",
+    "Loop the rope around the ball of your right foot and hold the ends of the rope with your hands.",
+    "Slowly raise your right leg towards your chest, keeping your knee straight and your foot flexed.",
+    "Hold the stretch for a few seconds, then slowly lower your leg back down to the starting position.",
+    "Repeat with your left leg.",
+    "Continue alternating legs for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1582",
+    "free_id": null
+  }
+}

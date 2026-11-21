@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02567_seated_piriformis_stretch",
+  "numeric_id": "02567",
+  "slug": "seated_piriformis_stretch",
+  "name": "Seated Piriformis Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the ground with your legs extended in front of you.",
+    "Bend your right knee and place your right foot on the outside of your left knee.",
+    "Place your left elbow on the outside of your right knee and gently twist your torso to the right.",
+    "Hold the stretch for 20-30 seconds, then switch sides and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2567",
+    "free_id": null
+  }
+}

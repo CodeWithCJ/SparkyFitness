@@ -1,0 +1,58 @@
+{
+  "id": "20019_supine_hip_cross_over_stretch",
+  "numeric_id": "20019",
+  "slug": "supine_hip_cross_over_stretch",
+  "name": "Supine Hip Cross-Over Stretch",
+  "aliases": [
+    "Single-Leg Over",
+    "Supine Piriformis Cross-Over"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "hips",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "piriformis_syndrome",
+      "sciatica_relief",
+      "hip_rotator_tightness"
+    ],
+    "contraindications": [
+      "total_hip_replacement_with_posterior_precautions"
+    ],
+    "clinical_protocol": "NHS Piriformis & Hip Pain Management"
+  },
+  "steps": [
+    "Lie flat on your back with legs extended straight.",
+    "Bend your right knee and place your right foot on the outside of your left thigh or knee.",
+    "Use your left hand to gently guide your right knee across your body toward the floor on your left side.",
+    "Extend your right arm straight out to the right, keeping your right shoulder blade in contact with the mat.",
+    "Hold the gentle stretch in your outer hip and glute for 20 to 30 seconds while breathing deeply, then switch sides."
+  ],
+  "coaching_cues": [
+    "Do not force your knee all the way to the floor; listen to your body and stop at a gentle stretch.",
+    "Keep your right shoulder grounded on the floor.",
+    "Relax your neck and jaw as you breathe."
+  ],
+  "sources": {
+    "attribution": "NHS Hip Mobility and Sciatica Guidelines"
+  }
+}

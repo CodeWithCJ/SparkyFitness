@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01748_ez_bar_lying_close_grip_triceps_extension_behind_h",
+  "numeric_id": "01748",
+  "slug": "ez_bar_lying_close_grip_triceps_extension_behind_head",
+  "name": "Ez Bar Lying Close Grip Triceps Extension Behind Head",
+  "aliases": [
+    "Lying Close-Grip Barbell Triceps Extension Behind The Head"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on a bench with your feet flat on the ground and your head at the end of the bench.",
+    "Hold the ez barbell with a close grip, palms facing up, and extend your arms straight up over your chest.",
+    "Keeping your upper arms stationary, slowly lower the barbell behind your head by bending your elbows.",
+    "Pause for a moment, then extend your arms back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1748",
+    "free_id": "Lying_Close-Grip_Barbell_Triceps_Extension_Behind_The_Head"
+  }
+}

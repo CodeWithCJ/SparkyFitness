@@ -1,0 +1,59 @@
+{
+  "id": "20029_wall_sit",
+  "numeric_id": "20029",
+  "slug": "wall_sit",
+  "name": "Wall Sit",
+  "aliases": [
+    "Wall Squat Hold",
+    "Isometric Wall Squat"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "thighs",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "calves"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "knee",
+    "target_conditions": [
+      "patellar_tendon_pain",
+      "knee_rehabilitation",
+      "quad_endurance_deficit"
+    ],
+    "contraindications": [
+      "acute_knee_effusion_swelling"
+    ],
+    "clinical_protocol": "British Journal of Sports Medicine Isometric Tendon Protocol"
+  },
+  "steps": [
+    "Stand with your back flat against a smooth wall, with your feet shoulder-width apart and roughly 2 feet out from the wall.",
+    "Slide your back down the wall until your thighs are nearly parallel to the floor and your knees are bent at roughly 90 degrees.",
+    "Ensure your knees are directly above your ankles, not extending past your toes.",
+    "Press your entire back and shoulders firmly into the wall and rest your hands on your hips or crossed over your chest.",
+    "Hold this isometric position for the desired duration while breathing calmly, then slide back up."
+  ],
+  "coaching_cues": [
+    "Beginners can start at a higher angle (45 to 60 degrees) and gradually slide deeper as strength builds.",
+    "Do not rest your hands on your knees to support your weight.",
+    "Drive your heels down into the floor to keep tension distributed between quads and glutes."
+  ],
+  "sources": {
+    "attribution": "BJSM Isometric Quadriceps Loading Standards"
+  }
+}

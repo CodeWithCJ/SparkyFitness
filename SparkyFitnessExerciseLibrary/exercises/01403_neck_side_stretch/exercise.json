@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01403_neck_side_stretch",
+  "numeric_id": "01403",
+  "slug": "neck_side_stretch",
+  "name": "Neck Side Stretch",
+  "aliases": [
+    "Side Neck Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "neck",
+    "body_part": "neck",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "traps",
+      "neck"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand or sit up straight with your shoulders relaxed.",
+    "Tilt your head to one side, bringing your ear towards your shoulder.",
+    "Hold the stretch for 15-30 seconds.",
+    "Repeat on the other side.",
+    "Perform 2-4 sets on each side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1403",
+    "free_id": "Side_Neck_Stretch"
+  }
+}

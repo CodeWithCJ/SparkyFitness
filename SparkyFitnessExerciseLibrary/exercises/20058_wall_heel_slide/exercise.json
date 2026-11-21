@@ -1,0 +1,58 @@
+{
+  "id": "20058_wall_heel_slide",
+  "numeric_id": "20058",
+  "slug": "wall_heel_slide",
+  "name": "Wall Heel Slide",
+  "aliases": [
+    "Supine Wall Heel Slide",
+    "Knee Flexion on Wall"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "thighs",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "quadriceps"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "3-2-3-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "knee",
+    "target_conditions": [
+      "post_acl_knee_flexion_loss",
+      "knee_arthrofibrosis_prevention",
+      "total_knee_range_of_motion"
+    ],
+    "contraindications": [
+      "surgical_knee_flexion_angle_restriction"
+    ],
+    "clinical_protocol": "Cornell Health Post-Surgical Knee Protocol"
+  },
+  "steps": [
+    "Lie on your back with your glutes near a wall and legs resting vertically up against the wall.",
+    "Slowly slide the heel of your target leg downward along the wall, bending your knee as far as comfortably tolerated.",
+    "Let gravity assist the gentle bending of your knee into a pain-free stretch.",
+    "Pause at your maximum comfortable bend for 2 to 3 seconds.",
+    "Contract your quad and slide your heel back up the wall to the straight-leg starting position."
+  ],
+  "coaching_cues": [
+    "Wear a sock or place a small towel under your heel so it glides smoothly on the wall.",
+    "You can use your opposite foot to lightly support or guide the target foot if needed.",
+    "Never force into sharp joint pain; allow gentle progressive stretching."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+  }
+}

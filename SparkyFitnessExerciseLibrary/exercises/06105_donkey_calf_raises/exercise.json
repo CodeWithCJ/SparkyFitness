@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06105_donkey_calf_raises",
+  "numeric_id": "06105",
+  "slug": "donkey_calf_raises",
+  "name": "Donkey Calf Raises",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "other",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "For this exercise you will need access to a donkey calf raise machine. Start by positioning your lower back and hips under the padded lever provided. The tailbone area should be the one making contact with the pad.",
+    "Place both of your arms on the side handles and place the balls of your feet on the calf block with the heels extending off. Align the toes forward, inward or outward, depending on the area you wish to target, and straighten the knees without locking them. This will be your starting position.",
+    "Raise your heels as you breathe out by extending your ankles as high as possible and flexing your calf. Ensure that the knee is kept stationary at all times. There should be no bending at any time. Hold the contracted position by a second before you start to go back down.",
+    "Go back slowly to the starting position as you breathe in by lowering your heels as you bend the ankles until calves are stretched.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Donkey_Calf_Raises"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "id": "20102_cervical_isometric_rotation",
+  "numeric_id": "20102",
+  "slug": "cervical_isometric_rotation",
+  "name": "Cervical Isometric Rotation",
+  "aliases": [
+    "Resisted Neck Rotation",
+    "Neck Isometric Turn"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "neck",
+    "equipment": "body only",
+    "primary_muscles": [
+      "neck"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "isometric",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "neck",
+    "target_conditions": [
+      "cervical_rotational_instability",
+      "sternocleidomastoid_imbalance",
+      "whiplash_recovery"
+    ],
+    "contraindications": [
+      "acute_vertebral_artery_insufficiency"
+    ],
+    "clinical_protocol": "Physiopedia Cervical Stabilization Protocol"
+  },
+  "steps": [
+    "Sit or stand in an upright, balanced posture with your chin level.",
+    "Place your left hand on the left side of your head near your temple and cheekbone.",
+    "Attempt to turn your head to look over your left shoulder.",
+    "Use your hand to provide equal and opposite resistance, preventing any actual turning.",
+    "Hold the isometric rotation for 5 to 10 seconds while maintaining steady breathing.",
+    "Gradually release the pressure and repeat on the opposite side."
+  ],
+  "coaching_cues": [
+    "The head must remain facing squarely forward throughout the contraction.",
+    "Keep your jaw relaxed and teeth unclenched.",
+    "Apply smooth, controlled pressure without jerking."
+  ],
+  "sources": {
+    "attribution": "Physiopedia Cervical Stabilization Protocol"
+  }
+}

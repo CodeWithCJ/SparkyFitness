@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03116_band_fixed_back_underhand_pulldown",
+  "numeric_id": "03116",
+  "slug": "band_fixed_back_underhand_pulldown",
+  "name": "Band Fixed Back Underhand Pulldown",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "middle back",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the band to a sturdy anchor point above your head.",
+    "Stand facing the anchor point with your feet shoulder-width apart.",
+    "Grasp the band with an underhand grip, hands slightly wider than shoulder-width apart.",
+    "Step back to create tension in the band, keeping your arms fully extended.",
+    "Engage your core and squeeze your shoulder blades together.",
+    "Pull the band down towards your chest, leading with your elbows.",
+    "Pause for a moment at the bottom of the movement, feeling the contraction in your lats.",
+    "Slowly release the tension in the band and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3116",
+    "free_id": null
+  }
+}

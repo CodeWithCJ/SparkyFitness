@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00100_barbell_skier",
+  "numeric_id": "00100",
+  "slug": "barbell_skier",
+  "name": "Barbell Skier",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a barbell in front of your thighs with an overhand grip.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight and chest up.",
+    "Simultaneously lift the barbell up towards your shoulders while jumping slightly off the ground.",
+    "As you reach the top of the movement, quickly reverse the motion and lower the barbell back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0100",
+    "free_id": null
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01418_hug_keens_to_chest",
+  "numeric_id": "01418",
+  "slug": "hug_keens_to_chest",
+  "name": "Hug Keens To Chest",
+  "aliases": [
+    "Hug Knees To Chest"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes",
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart.",
+    "Bend your knees and lower your body down into a squat position.",
+    "As you squat down, bring your knees up towards your chest and hug them with your arms.",
+    "Hold this position for a moment, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1418",
+    "free_id": "Hug_Knees_To_Chest"
+  }
+}

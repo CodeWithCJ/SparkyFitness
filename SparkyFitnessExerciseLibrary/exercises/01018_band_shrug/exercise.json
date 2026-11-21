@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01018_band_shrug",
+  "numeric_id": "01018",
+  "slug": "band_shrug",
+  "name": "Band Shrug",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "traps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and place the band under your feet, holding the ends with your hands.",
+    "Keep your arms straight and relaxed, and let the band hang in front of your thighs.",
+    "Engage your traps by shrugging your shoulders upward, lifting the band as high as possible.",
+    "Hold the contraction for a moment, then slowly lower your shoulders back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1018",
+    "free_id": null
+  }
+}

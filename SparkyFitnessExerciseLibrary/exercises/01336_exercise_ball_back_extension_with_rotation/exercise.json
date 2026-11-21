@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01336_exercise_ball_back_extension_with_rotation",
+  "numeric_id": "01336",
+  "slug": "exercise_ball_back_extension_with_rotation",
+  "name": "Exercise Ball Back Extension With Rotation",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by lying face down on the stability ball with your hips resting on the ball and your feet firmly planted on the ground.",
+    "Place your hands behind your head or cross them over your chest.",
+    "Engage your core and slowly lift your upper body off the ball, extending your back until your body forms a straight line from your head to your heels.",
+    "Pause for a moment at the top, then slowly rotate your torso to one side, keeping your hips and legs stable.",
+    "Return to the center and repeat the rotation to the other side.",
+    "Lower your upper body back down to the starting position and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1336",
+    "free_id": null
+  }
+}

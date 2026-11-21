@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06364_side_hop_sprint",
+  "numeric_id": "06364",
+  "slug": "side_hop_sprint",
+  "name": "Side Hop-Sprint",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand to the side of a cone or hurdle.",
+    "Begin this drill by hopping sideways over the obstacle, rebounding out of your landing to hop back to where you started.",
+    "Hop for a prescribed number or repetitions as quickly as possible, and finish this drill by sprinting a short distance upon landing the last hop."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Side_Hop-Sprint"
+  }
+}

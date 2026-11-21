@@ -1,0 +1,56 @@
+{
+  "id": "20054_band_ankle_eversion",
+  "numeric_id": "20054",
+  "slug": "band_ankle_eversion",
+  "name": "Band Ankle Eversion",
+  "aliases": [
+    "Resistance Band Ankle Outward Pull",
+    "Peroneal Band Strengthener"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "bands",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "chronic_lateral_ankle_instability",
+      "peroneal_tendinopathy",
+      "recurrent_sprains"
+    ],
+    "contraindications": [
+      "acute_fibular_fracture"
+    ],
+    "clinical_protocol": "Cornell Health Physical Therapy Ankle Protocol"
+  },
+  "steps": [
+    "Sit on the floor with both legs extended straight in front of you.",
+    "Loop a resistance band around the outside of your target foot and secure the other end around your opposite foot.",
+    "Start with your target foot relaxed in a neutral position with tension on the band.",
+    "Rotate your target foot outward away from your other leg, lifting the outer edge of your foot against the band.",
+    "Pause for one count at peak outward turn, then slowly lower back to the center."
+  ],
+  "coaching_cues": [
+    "Keep your knee pointing straight up toward the ceiling without letting your whole leg roll outward.",
+    "Focus on the peroneal muscles along the outer side of your lower leg.",
+    "Control the return so the band does not snap your foot inward."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Physical Therapy Exercise Protocol"
+  }
+}

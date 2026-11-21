@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01747_ez_bar_french_press_on_exercise_ball",
+  "numeric_id": "01747",
+  "slug": "ez_bar_french_press_on_exercise_ball",
+  "name": "Ez Bar French Press On Exercise Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball and hold an EZ barbell with an overhand grip.",
+    "Extend your arms straight up, keeping your elbows close to your head.",
+    "Slowly lower the barbell behind your head by bending your elbows.",
+    "Pause for a moment, then extend your arms back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1747",
+    "free_id": null
+  }
+}

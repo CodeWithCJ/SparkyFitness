@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00691_seated_side_crunch_wall",
+  "numeric_id": "00691",
+  "slug": "seated_side_crunch_wall",
+  "name": "Seated Side Crunch (Wall)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the floor with your back against a wall and your legs extended in front of you.",
+    "Bend your knees and place your feet flat on the floor, hip-width apart.",
+    "Place your hands behind your head with your elbows pointing outwards.",
+    "Engage your abs and lean to one side, bringing your elbow towards your hip.",
+    "Pause for a moment, then return to the starting position.",
+    "Repeat on the other side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0691",
+    "free_id": null
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06018_backward_medicine_ball_throw",
+  "numeric_id": "06018",
+  "slug": "backward_medicine_ball_throw",
+  "name": "Backward Medicine Ball Throw",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "medicine ball",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "This exercise is best done with a partner. If you lack a partner, the ball can be thrown and retrieved or thrown against a wall.",
+    "Begin standing a few meters in front of your partner, both facing the same direction. Begin holding the ball between your legs.",
+    "Squat down and then forcefully reverse direction, coming to full extension and you toss the ball over your head to your partner.",
+    "Your partner can then roll the ball back to you. Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Backward_Medicine_Ball_Throw"
+  }
+}

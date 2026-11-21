@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00194_cable_overhead_triceps_extension_rope_attachment",
+  "numeric_id": "00194",
+  "slug": "cable_overhead_triceps_extension_rope_attachment",
+  "name": "Cable Overhead Triceps Extension (Rope Attachment)",
+  "aliases": [
+    "Cable Rope Overhead Triceps Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a rope to a cable machine at a high position.",
+    "Stand facing away from the machine with your feet shoulder-width apart.",
+    "Grasp the rope with both hands, palms facing each other, and bring your hands above your head.",
+    "Keep your upper arms close to your head and your elbows pointing forward.",
+    "Slowly lower the rope behind your head by bending your elbows.",
+    "Pause for a moment, then extend your arms back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0194",
+    "free_id": "Cable_Rope_Overhead_Triceps_Extension"
+  }
+}

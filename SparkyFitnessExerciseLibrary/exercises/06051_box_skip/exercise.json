@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06051_box_skip",
+  "numeric_id": "06051",
+  "slug": "box_skip",
+  "name": "Box Skip",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "You will need several boxes lined up about 8 feet apart.",
+    "Begin facing the first box with one leg slightly behind the other.",
+    "Drive off the back leg, attempting to gain as much height with the hips as possible.",
+    "Immediately upon landing on the box, drive the other leg forward and upward to gain height and distance, leaping from the box. Land between the first two boxes with the same leg that landed on the first box.",
+    "Then, step to the next box and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Box_Skip"
+  }
+}

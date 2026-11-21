@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06111_dumbbell_lunges",
+  "numeric_id": "06111",
+  "slug": "dumbbell_lunges",
+  "name": "Dumbbell Lunges",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "calves",
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your torso upright holding two dumbbells in your hands by your sides. This will be your starting position.",
+    "Step forward with your right leg around 2 feet or so from the foot being left stationary behind and lower your upper body down, while keeping the torso upright and maintaining balance. Inhale as you go down. Note: As in the other exercises, do not allow your knee to go forward beyond your toes as you come down, as this will put undue stress on the knee joint. Make sure that you keep your front shin perpendicular to the ground.",
+    "Using mainly the heel of your foot, push up and go back to the starting position as you exhale.",
+    "Repeat the movement for the recommended amount of repetitions and then perform with the left leg."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Dumbbell_Lunges"
+  }
+}

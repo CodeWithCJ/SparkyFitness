@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06349_seated_leg_tucks",
+  "numeric_id": "06349",
+  "slug": "seated_leg_tucks",
+  "name": "Seated Leg Tucks",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with the legs stretched out in front of you slightly below parallel and your arms holding on to the sides of the bench. Your torso should be leaning backwards around a 45-degree angle from the bench. This will be your starting position.",
+    "Bring the knees in toward you as you move your torso closer to them at the same time. Breathe out as you perform this movement.",
+    "After a second pause, go back to the starting position as you inhale.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Seated_Leg_Tucks"
+  }
+}

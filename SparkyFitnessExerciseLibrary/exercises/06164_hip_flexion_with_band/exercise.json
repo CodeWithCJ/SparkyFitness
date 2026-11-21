@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06164_hip_flexion_with_band",
+  "numeric_id": "06164",
+  "slug": "hip_flexion_with_band",
+  "name": "Hip Flexion With Band",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "bands",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Secure one end of the band to the lower portion of a post and attach the other to one ankle.",
+    "Face away from the attachment point of the band.",
+    "Keeping your head and your chest up, raise your knee up to 90 degrees and pause.",
+    "Return the leg to the starting position."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Hip_Flexion_with_Band"
+  }
+}

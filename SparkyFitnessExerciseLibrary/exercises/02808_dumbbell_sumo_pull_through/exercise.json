@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02808_dumbbell_sumo_pull_through",
+  "numeric_id": "02808",
+  "slug": "dumbbell_sumo_pull_through",
+  "name": "Dumbbell Sumo Pull Through",
+  "aliases": [
+    "Pull Through"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps",
+      "abdominals",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet wider than shoulder-width apart, toes pointed outwards.",
+    "Hold a dumbbell with both hands in front of your body, arms extended.",
+    "Bend your knees and lower your hips down into a squat position, keeping your back straight.",
+    "Lower the dumbbell down between your legs, keeping your arms straight.",
+    "Drive through your heels and extend your hips forward, pulling the dumbbell up and in front of your body.",
+    "Squeeze your glutes at the top of the movement, then lower the dumbbell back down between your legs.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2808",
+    "free_id": "Pull_Through"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06247_medicine_ball_scoop_throw",
+  "numeric_id": "06247",
+  "slug": "medicine_ball_scoop_throw",
+  "name": "Medicine Ball Scoop Throw",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "medicine ball",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Assume a semisquat stance with a medicine ball in your hands. Your arms should hang so the ball is near your feet.",
+    "Begin by thrusting the hips forward as you extend through the legs, jumping up.",
+    "As you do, swing your arms up and over your head, keeping them extended, releasing the ball at the peak of your movement. The goal is to throw the ball the greatest distance behind you."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Medicine_Ball_Scoop_Throw"
+  }
+}

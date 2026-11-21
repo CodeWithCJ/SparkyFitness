@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01262_cable_one_arm_decline_chest_fly",
+  "numeric_id": "01262",
+  "slug": "cable_one_arm_decline_chest_fly",
+  "name": "Cable One Arm Decline Chest Fly",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a D-handle to a low pulley cable machine and set the bench to a decline angle.",
+    "Lie down on the bench with your head towards the machine and grab the handle with your right hand.",
+    "Extend your arm straight up above your chest, keeping a slight bend in your elbow.",
+    "With a controlled motion, lower your arm out to the side until your hand is in line with your shoulder.",
+    "Pause for a moment, then reverse the motion and bring your arm back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to your left arm and repeat the exercise."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1262",
+    "free_id": null
+  }
+}

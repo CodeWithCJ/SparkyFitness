@@ -1,0 +1,39 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06283_piriformis_smr",
+  "numeric_id": "06283",
+  "slug": "piriformis_smr",
+  "name": "Piriformis-SMR",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "intermediate",
+    "equipment": "foam roll",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit with your buttocks on top of a foam roll. Bend your knees, and then cross one leg so that the ankle is over the knee. This will be your starting position.",
+    "Shift your weight to the side of the crossed leg, rolling over the buttocks until you feel tension in your upper glute. You may assist the stretch by using one hand to pull the bent knee towards your chest. Hold this position for 10-30 seconds, and then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Piriformis-SMR"
+  }
+}

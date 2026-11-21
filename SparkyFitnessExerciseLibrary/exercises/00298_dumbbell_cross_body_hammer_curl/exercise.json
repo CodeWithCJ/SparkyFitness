@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00298_dumbbell_cross_body_hammer_curl",
+  "numeric_id": "00298",
+  "slug": "dumbbell_cross_body_hammer_curl",
+  "name": "Dumbbell Cross Body Hammer Curl",
+  "aliases": [
+    "Cross Body Hammer Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with a dumbbell in each hand, palms facing your body.",
+    "Keep your elbows close to your torso and your upper arms stationary.",
+    "Exhale and curl the weights while contracting your biceps, bringing the dumbbells across your body towards your opposite shoulder.",
+    "Continue to raise the dumbbells until your biceps are fully contracted and the dumbbells are at shoulder level.",
+    "Hold the contracted position for a brief pause as you squeeze your biceps.",
+    "Inhale and slowly begin to lower the dumbbells back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0298",
+    "free_id": "Cross_Body_Hammer_Curl"
+  }
+}

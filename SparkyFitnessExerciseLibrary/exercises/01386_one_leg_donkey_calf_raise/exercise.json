@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01386_one_leg_donkey_calf_raise",
+  "numeric_id": "01386",
+  "slug": "one_leg_donkey_calf_raise",
+  "name": "One Leg Donkey Calf Raise",
+  "aliases": [
+    "Dumbbell Seated One-Leg Calf Raise"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, toes pointing forward.",
+    "Place your hands on a stable surface for support, such as a wall or a bar.",
+    "Lift one leg off the ground, keeping your knee slightly bent.",
+    "Raise your heel as high as possible, using your calf muscles.",
+    "Pause for a moment at the top, then slowly lower your heel back down.",
+    "Repeat for the desired number of repetitions, then switch legs."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1386",
+    "free_id": "Dumbbell_Seated_One-Leg_Calf_Raise"
+  }
+}

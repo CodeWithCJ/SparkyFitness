@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06256_natural_glute_ham_raise",
+  "numeric_id": "06256",
+  "slug": "natural_glute_ham_raise",
+  "name": "Natural Glute Ham Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "calves",
+      "glutes",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Using the leg pad of a lat pulldown machine or a preacher bench, position yourself so that your ankles are under the pads, knees on the seat, and you are facing away from the machine. You should be upright and maintaining good posture.",
+    "This will be your starting position. Lower yourself under control until your knees are almost completely straight.",
+    "Remaining in control, raise yourself back up to the starting position.",
+    "If you are unable to complete a rep, use a band, a partner, or push off of a box to aid in completing a repetition."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Natural_Glute_Ham_Raise"
+  }
+}

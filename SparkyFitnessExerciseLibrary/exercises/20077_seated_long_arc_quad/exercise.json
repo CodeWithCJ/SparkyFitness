@@ -1,0 +1,56 @@
+{
+  "id": "20077_seated_long_arc_quad",
+  "numeric_id": "20077",
+  "slug": "seated_long_arc_quad",
+  "name": "Seated Long Arc Quad",
+  "aliases": [
+    "Long Arc Quad",
+    "Active Seated Knee Extension"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "quads",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "knee",
+    "target_conditions": [
+      "quadriceps_weakness",
+      "knee_stiffness",
+      "patellofemoral_tracking"
+    ],
+    "contraindications": [
+      "severe_patellofemoral_arthrosis_with_active_crepitus"
+    ],
+    "clinical_protocol": "AAOS Knee Conditioning Protocol"
+  },
+  "steps": [
+    "Sit tall on a sturdy chair or examination table with your back supported and your knees bent at 90 degrees.",
+    "Rest your hands comfortably on your thighs or grip the sides of the seat for stability.",
+    "Slowly lift your target foot and straighten your leg out in front of you until your knee is fully extended and parallel to the floor.",
+    "Flex your ankle toward your shin and squeeze your quadriceps firmly at the top for 2 to 3 seconds.",
+    "Slowly lower your foot back down under control until it gently touches the floor."
+  ],
+  "coaching_cues": [
+    "Maintain an upright posture and avoid slouching or leaning back as your leg straightens.",
+    "Move smoothly without kicking or swinging using momentum.",
+    "Control the downward lowering phase over 2 full seconds."
+  ],
+  "sources": {
+    "attribution": "AAOS Knee Conditioning Protocol"
+  }
+}

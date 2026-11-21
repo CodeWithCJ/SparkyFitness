@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03672_back_and_forth_step",
+  "numeric_id": "03672",
+  "slug": "back_and_forth_step",
+  "name": "Back And Forth Step",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart.",
+    "Step forward with your right foot, bending your knee and lowering your body into a lunge position.",
+    "Push off with your right foot and step back to the starting position.",
+    "Repeat the movement with your left foot, alternating legs with each step.",
+    "Continue stepping back and forth, maintaining a steady pace.",
+    "Repeat for the desired duration or number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3672",
+    "free_id": null
+  }
+}

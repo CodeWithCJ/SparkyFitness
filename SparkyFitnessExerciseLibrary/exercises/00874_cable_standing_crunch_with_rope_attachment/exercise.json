@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00874_cable_standing_crunch_with_rope_attachment",
+  "numeric_id": "00874",
+  "slug": "cable_standing_crunch_with_rope_attachment",
+  "name": "Cable Standing Crunch (With Rope Attachment)",
+  "aliases": [
+    "Standing Rope Crunch"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a rope to a cable machine at chest height.",
+    "Stand facing away from the machine with your feet shoulder-width apart.",
+    "Hold the rope with both hands and bring it behind your head, keeping your elbows bent.",
+    "Engage your abs and slowly crunch your torso forward, bringing your elbows towards your knees.",
+    "Pause for a moment at the top of the crunch, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0874",
+    "free_id": "Standing_Rope_Crunch"
+  }
+}

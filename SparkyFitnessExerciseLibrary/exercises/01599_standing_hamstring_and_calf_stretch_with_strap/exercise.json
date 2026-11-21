@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01599_standing_hamstring_and_calf_stretch_with_strap",
+  "numeric_id": "01599",
+  "slug": "standing_hamstring_and_calf_stretch_with_strap",
+  "name": "Standing Hamstring And Calf Stretch With Strap",
+  "aliases": [
+    "Standing Hamstring and Calf Stretch"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand upright with your feet shoulder-width apart.",
+    "Hold the strap with both hands and place it around the ball of your foot.",
+    "Keep your leg straight and slowly lean forward from your hips, keeping your back straight.",
+    "Feel the stretch in your hamstring and calf muscles.",
+    "Hold the stretch for 20-30 seconds.",
+    "Release the stretch and repeat with the other leg.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1599",
+    "free_id": "Standing_Hamstring_and_Calf_Stretch"
+  }
+}

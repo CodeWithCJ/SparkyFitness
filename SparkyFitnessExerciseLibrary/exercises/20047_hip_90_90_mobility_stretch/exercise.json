@@ -1,0 +1,58 @@
+{
+  "id": "20047_hip_90_90_mobility_stretch",
+  "numeric_id": "20047",
+  "slug": "hip_90_90_mobility_stretch",
+  "name": "Hip 90-90 Mobility Stretch",
+  "aliases": [
+    "90-90 Hip Switch",
+    "Shin Box Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "hips",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "abductors"
+    ],
+    "level": "intermediate",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "transverse",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "hip_capsule_tightness",
+      "femoroacetabular_impingement_prevention",
+      "deep_glute_tightness"
+    ],
+    "contraindications": [
+      "total_hip_arthroplasty_precautions"
+    ],
+    "clinical_protocol": "Functional Range Conditioning (FRC) Hip Protocols"
+  },
+  "steps": [
+    "Sit on the floor with your front right leg bent at a 90-degree angle directly in front of you, shin perpendicular to your torso.",
+    "Position your rear left leg bent at a 90-degree angle out to the left, shin pointing backward.",
+    "Sit as tall as possible with your spine upright, using hands on the floor for balance if necessary.",
+    "Gently hinge forward from your hips over your front right shin until you feel a deep stretch in your right outer hip.",
+    "Hold for 20 to 30 seconds, sit back upright, switch your legs to the opposite side, and repeat."
+  ],
+  "coaching_cues": [
+    "Do not slouch through your lower back; think of leading forward with your sternum.",
+    "If your back hip feels pinched, place a yoga block or pillow under your front hip.",
+    "Breathe slowly and deeply to encourage tissue relaxation."
+  ],
+  "sources": {
+    "attribution": "Clinical Hip Capsule Mobility Guidelines"
+  }
+}

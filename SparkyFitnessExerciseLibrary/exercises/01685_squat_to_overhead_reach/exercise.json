@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01685_squat_to_overhead_reach",
+  "numeric_id": "01685",
+  "slug": "squat_to_overhead_reach",
+  "name": "Squat To Overhead Reach",
+  "aliases": [
+    "Overhead Squat"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "expert",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "abdominals",
+      "calves",
+      "lower back",
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and toes slightly turned out.",
+    "Lower your body down into a squat position by bending your knees and pushing your hips back.",
+    "As you come up from the squat, extend your arms overhead, reaching towards the ceiling.",
+    "Return to the starting position by lowering your arms and bending your knees to squat down again.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1685",
+    "free_id": "Overhead_Squat"
+  }
+}

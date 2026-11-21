@@ -1,0 +1,59 @@
+{
+  "id": "20002_prone_t_raise",
+  "numeric_id": "20002",
+  "slug": "prone_t_raise",
+  "name": "Prone T-Raise",
+  "aliases": [
+    "Floor T-Raise",
+    "Prone Scapular Retraction"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "upper back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "traps"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 3
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "rounded_shoulders",
+      "rhomboid_weakness",
+      "scapular_winging"
+    ],
+    "contraindications": [
+      "acute_cervical_radiculopathy"
+    ],
+    "clinical_protocol": "AAOS Rotator Cuff and Shoulder Conditioning Program"
+  },
+  "steps": [
+    "Lie face down on a comfortable exercise mat with your legs extended straight behind you.",
+    "Extend both arms directly out to your sides at 90 degrees to form the letter 'T', with your thumbs pointed upward toward the ceiling.",
+    "Squeeze your shoulder blades together to lift your straight arms 2 to 4 inches off the ground.",
+    "Pause at the top for one second, maintaining gentle tension between your shoulder blades.",
+    "Lower your arms smoothly back to the floor under control."
+  ],
+  "coaching_cues": [
+    "Do not shrug your shoulders toward your ears; keep your traps relaxed and depressed.",
+    "Initiate the movement by pinching the shoulder blades, not by flicking your wrists.",
+    "Breathe out as you lift and breathe in as you lower."
+  ],
+  "sources": {
+    "attribution": "AAOS Scapular Strengthening Guidelines"
+  }
+}

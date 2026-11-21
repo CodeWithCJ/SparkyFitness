@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00038_barbell_drag_curl",
+  "numeric_id": "00038",
+  "slug": "barbell_drag_curl",
+  "name": "Barbell Drag Curl",
+  "aliases": [
+    "Barbell Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a barbell with an underhand grip, palms facing up.",
+    "Let the barbell hang at arm's length in front of your thighs.",
+    "Keeping your upper arms stationary, curl the barbell up towards your chest by contracting your biceps.",
+    "Pause for a moment at the top, then slowly lower the barbell back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0038",
+    "free_id": "Barbell_Curl"
+  }
+}

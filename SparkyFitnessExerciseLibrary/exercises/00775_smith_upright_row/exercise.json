@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00775_smith_upright_row",
+  "numeric_id": "00775",
+  "slug": "smith_upright_row",
+  "name": "Smith Upright Row",
+  "aliases": [
+    "Smith Machine Upright Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "shoulders",
+      "traps"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, facing the smith machine.",
+    "Grasp the barbell with an overhand grip, hands slightly wider than shoulder-width apart.",
+    "Keep your back straight and your core engaged.",
+    "Pull the barbell up towards your chin, leading with your elbows.",
+    "Pause for a moment at the top, then slowly lower the barbell back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0775",
+    "free_id": "Smith_Machine_Upright_Row"
+  }
+}

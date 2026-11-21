@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00531_kettlebell_extended_range_one_arm_press_on_floor",
+  "numeric_id": "00531",
+  "slug": "kettlebell_extended_range_one_arm_press_on_floor",
+  "name": "Kettlebell Extended Range One Arm Press On Floor",
+  "aliases": [
+    "Extended Range One-Arm Kettlebell Floor Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by lying on your back on the floor with your knees bent and feet flat on the ground.",
+    "Hold a kettlebell in one hand, with your palm facing towards your feet.",
+    "Extend your arm straight up towards the ceiling, keeping your elbow locked and your wrist straight.",
+    "Slowly lower the kettlebell back down to the starting position, maintaining control throughout the movement.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0531",
+    "free_id": "Extended_Range_One-Arm_Kettlebell_Floor_Press"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03302_handstand",
+  "numeric_id": "03302",
+  "slug": "handstand",
+  "name": "Handstand",
+  "aliases": [
+    "Handstand Push-Ups"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "expert",
+    "equipment": "body only",
+    "primary_muscles": [
+      "triceps",
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Find an open space with enough room to perform a handstand.",
+    "Place your hands on the ground shoulder-width apart, fingers pointing forward.",
+    "Kick your legs up towards the wall, using your core and shoulders to maintain balance.",
+    "Once in a handstand position, engage your triceps to support your body weight.",
+    "Hold the handstand for as long as you can maintain balance.",
+    "To come down, slowly lower your legs back to the ground.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3302",
+    "free_id": "Handstand_Push-Ups"
+  }
+}

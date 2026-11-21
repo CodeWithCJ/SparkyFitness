@@ -1,0 +1,56 @@
+{
+  "id": "20109_hand_gripper_squeeze",
+  "numeric_id": "20109",
+  "slug": "hand_gripper_squeeze",
+  "name": "Hand Gripper Squeeze",
+  "aliases": [
+    "Grip Strengthener Squeeze",
+    "Hand Grip Squeeze"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "forearms",
+    "equipment": "other",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "crush",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "elbow_wrist",
+    "target_conditions": [
+      "generalized_grip_weakness",
+      "post_fracture_hand_reconditioning",
+      "forearm_atrophy"
+    ],
+    "contraindications": [
+      "acute_carpal_tunnel_syndrome_flare_up"
+    ],
+    "clinical_protocol": "Orthopaedic Hand Conditioning Protocol"
+  },
+  "steps": [
+    "Sit or stand comfortably holding a hand gripper, therapeutic stress ball, or putty in the palm of your hand.",
+    "Wrap all four fingers securely around one handle and your thumb around the other.",
+    "Squeeze the gripper firmly and evenly until the handles touch or maximum safe resistance is achieved.",
+    "Hold the squeeze for 2 to 3 seconds, focusing on full forearm engagement.",
+    "Slowly open your hand over 2 seconds to release the tension with control."
+  ],
+  "coaching_cues": [
+    "Distribute pressure evenly across all fingers, including your pinky and ring finger.",
+    "Do not allow the gripper to snap open; resist during the opening phase.",
+    "Keep your wrist straight and avoid bending it while squeezing."
+  ],
+  "sources": {
+    "attribution": "Orthopaedic Hand & Forearm Conditioning Protocol"
+  }
+}

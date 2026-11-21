@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03216_chest_tap_push_up_male",
+  "numeric_id": "03216",
+  "slug": "chest_tap_push_up_male",
+  "name": "Chest Tap Push-Up (Male)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a high plank position with your hands slightly wider than shoulder-width apart and your body in a straight line.",
+    "Lower your body towards the ground by bending your elbows, keeping them close to your sides.",
+    "As you lower yourself, tap your chest with your right hand.",
+    "Push yourself back up to the starting position.",
+    "Repeat the movement, this time tapping your chest with your left hand.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3216",
+    "free_id": null
+  }
+}

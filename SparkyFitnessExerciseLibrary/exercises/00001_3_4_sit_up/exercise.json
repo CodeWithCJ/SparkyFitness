@@ -12,7 +12,7 @@
     "modality": "bodyweight_reps",
     "category": "waist",
     "body_part": "waist",
-    "mechanic": "isolation",
+    "mechanic": "compound",
     "force": "pull",
     "level": "beginner",
     "equipment": "body only",
@@ -42,7 +42,7 @@
     "Initiate the movement by contracting your abdominals"
   ],
   "sources": {
-    "external_id": "00001",
-    "attribution": "SparkyFitness Media"
+    "hasan_id": "0001",
+    "free_id": "3_4_Sit-Up"
   }
 }

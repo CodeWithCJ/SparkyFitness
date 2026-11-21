@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01730_dumbbell_seated_bent_over_alternate_kickback",
+  "numeric_id": "01730",
+  "slug": "dumbbell_seated_bent_over_alternate_kickback",
+  "name": "Dumbbell Seated Bent Over Alternate Kickback",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with a dumbbell in each hand, palms facing inwards.",
+    "Bend forward at the waist, keeping your back straight and parallel to the ground.",
+    "Extend one arm straight back, keeping it close to your body, until your arm is fully extended.",
+    "Pause for a moment, then slowly lower the dumbbell back to the starting position.",
+    "Repeat with the other arm.",
+    "Continue alternating arms for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1730",
+    "free_id": null
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06109_dumbbell_floor_press",
+  "numeric_id": "06109",
+  "slug": "dumbbell_floor_press",
+  "name": "Dumbbell Floor Press",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "powerlifting",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lay on the floor holding dumbbells in your hands. Your knees can be bent. Begin with the weights fully extended above you.",
+    "Lower the weights until your upper arm comes in contact with the floor. You can tuck your elbows to emphasize triceps size and strength, or to focus on your chest angle your arms to the side.",
+    "Pause at the bottom, and then bring the weight together at the top by extending through the elbows."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Dumbbell_Floor_Press"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00740_sled_45_leg_wide_press",
+  "numeric_id": "00740",
+  "slug": "sled_45_leg_wide_press",
+  "name": "Sled 45в° Leg Wide Press",
+  "aliases": [
+    "Leg Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the sled machine to a 45-degree angle.",
+    "Sit on the sled machine with your back against the pad and your feet on the foot platform.",
+    "Position your feet wider than shoulder-width apart.",
+    "Push against the foot platform to extend your legs and straighten your knees.",
+    "Pause for a moment at the end of the movement, then slowly bend your knees to return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0740",
+    "free_id": "Leg_Press"
+  }
+}

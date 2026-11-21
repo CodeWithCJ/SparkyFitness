@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00237_cable_straight_arm_pulldown_with_rope",
+  "numeric_id": "00237",
+  "slug": "cable_straight_arm_pulldown_with_rope",
+  "name": "Cable Straight Arm Pulldown (With Rope)",
+  "aliases": [
+    "Rope Straight-Arm Pulldown"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a rope to the cable machine at the highest setting.",
+    "Stand facing the machine with your feet shoulder-width apart.",
+    "Grasp the rope with both hands, palms facing down.",
+    "Extend your arms fully in front of you, keeping your elbows slightly bent.",
+    "Engage your lats and slowly pull the rope down towards your thighs, keeping your arms straight.",
+    "Pause for a moment at the bottom, then slowly release the tension and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0237",
+    "free_id": "Rope_Straight-Arm_Pulldown"
+  }
+}

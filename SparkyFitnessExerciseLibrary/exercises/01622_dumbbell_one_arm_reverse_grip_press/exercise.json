@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01622_dumbbell_one_arm_reverse_grip_press",
+  "numeric_id": "01622",
+  "slug": "dumbbell_one_arm_reverse_grip_press",
+  "name": "Dumbbell One Arm Reverse Grip Press",
+  "aliases": [
+    "Dumbbell One-Arm Shoulder Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest",
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a flat bench with a dumbbell in one hand, palm facing towards your body.",
+    "Place your feet flat on the ground and keep your back straight.",
+    "Raise the dumbbell to shoulder height, keeping your elbow close to your body.",
+    "Press the dumbbell upwards until your arm is fully extended.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1622",
+    "free_id": "Dumbbell_One-Arm_Shoulder_Press"
+  }
+}

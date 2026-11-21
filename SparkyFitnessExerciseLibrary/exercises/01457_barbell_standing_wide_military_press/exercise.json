@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01457_barbell_standing_wide_military_press",
+  "numeric_id": "01457",
+  "slug": "barbell_standing_wide_military_press",
+  "name": "Barbell Standing Wide Military Press",
+  "aliases": [
+    "Standing Military Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold the barbell with an overhand grip, slightly wider than shoulder-width.",
+    "Lift the barbell to shoulder height, keeping your elbows slightly in front of the bar.",
+    "Press the barbell overhead, extending your arms fully.",
+    "Lower the barbell back to shoulder height and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1457",
+    "free_id": "Standing_Military_Press"
+  }
+}

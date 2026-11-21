@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06013_atlas_stone_trainer",
+  "numeric_id": "06013",
+  "slug": "atlas_stone_trainer",
+  "name": "Atlas Stone Trainer",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strongman",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "other",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "glutes",
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "This trainer is effective for developing Atlas Stone strength for those who don't have access to stones, and are typically made from bar ends or heavy pipe.",
+    "Begin by loading the desired weight onto the bar. Straddle the weight, wrapping your arms around the implement, bending at the hips.",
+    "Begin by pulling the weight up past the knees, extending through the hips. As the weight clears the knees, it can be lapped by resting it on your thighs and sitting back, hugging it tightly to your chest.",
+    "Finish the movement by extending through your hips and knees to raise the weight as high as possible. The weight can be returned to the lap or to the ground for successive repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Atlas_Stone_Trainer"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01300_lever_decline_chest_press",
+  "numeric_id": "01300",
+  "slug": "lever_decline_chest_press",
+  "name": "Lever Decline Chest Press",
+  "aliases": [
+    "Leverage Decline Chest Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and backrest of the leverage machine to a comfortable position.",
+    "Sit on the machine with your back against the backrest and your feet flat on the floor.",
+    "Grasp the handles with an overhand grip and position your hands slightly wider than shoulder-width apart.",
+    "Push the handles forward and away from your body until your arms are fully extended.",
+    "Slowly lower the handles back towards your chest, keeping your elbows slightly bent.",
+    "Pause for a moment at the bottom, then push the handles back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1300",
+    "free_id": "Leverage_Decline_Chest_Press"
+  }
+}

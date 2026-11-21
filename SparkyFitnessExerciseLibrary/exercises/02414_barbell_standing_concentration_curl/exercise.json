@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02414_barbell_standing_concentration_curl",
+  "numeric_id": "02414",
+  "slug": "barbell_standing_concentration_curl",
+  "name": "Barbell Standing Concentration Curl",
+  "aliases": [
+    "Standing Concentration Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a barbell in one hand, palm facing up.",
+    "Rest your opposite hand on your thigh for support.",
+    "Keeping your upper arm stationary, exhale and curl the weight up towards your shoulder.",
+    "Pause for a moment at the top, squeezing your biceps.",
+    "Inhale and slowly lower the weight back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2414",
+    "free_id": "Standing_Concentration_Curl"
+  }
+}

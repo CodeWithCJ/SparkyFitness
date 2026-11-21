@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03641_weighted_kneeling_step_with_swing",
+  "numeric_id": "03641",
+  "slug": "weighted_kneeling_step_with_swing",
+  "name": "Weighted Kneeling Step With Swing",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a kneeling position with your knees hip-width apart and your back straight.",
+    "Hold a weight in each hand, with your arms extended straight down in front of you.",
+    "Engage your core and swing the weights up and overhead, keeping your arms straight.",
+    "Lower the weights back down to the starting position and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3641",
+    "free_id": null
+  }
+}

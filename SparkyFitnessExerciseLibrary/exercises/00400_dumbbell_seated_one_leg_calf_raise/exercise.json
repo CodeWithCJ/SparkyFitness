@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00400_dumbbell_seated_one_leg_calf_raise",
+  "numeric_id": "00400",
+  "slug": "dumbbell_seated_one_leg_calf_raise",
+  "name": "Dumbbell Seated One Leg Calf Raise",
+  "aliases": [
+    "Dumbbell Seated One-Leg Calf Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench or chair with your feet flat on the ground and a dumbbell resting on your right thigh.",
+    "Extend your left leg straight out in front of you, keeping your foot flexed.",
+    "Place the ball of your right foot on an elevated surface, such as a step or weight plate.",
+    "Using your calf muscles, raise your right heel as high as possible.",
+    "Pause for a moment at the top, then slowly lower your heel back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch legs."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0400",
+    "free_id": "Dumbbell_Seated_One-Leg_Calf_Raise"
+  }
+}

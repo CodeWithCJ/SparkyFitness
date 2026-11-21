@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00489_hyperextension",
+  "numeric_id": "00489",
+  "slug": "hyperextension",
+  "name": "Hyperextension",
+  "aliases": [
+    "Reverse Hyperextension"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lower back",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the hyperextension bench so that your upper thighs are resting on the pad and your feet are secured.",
+    "Cross your arms over your chest or place your hands behind your head.",
+    "Lower your upper body towards the ground while keeping your back straight.",
+    "Pause for a moment at the bottom, then raise your upper body back up until it is in line with your legs.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0489",
+    "free_id": "Reverse_Hyperextension"
+  }
+}

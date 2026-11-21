@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00699_shoulder_tap_push_up",
+  "numeric_id": "00699",
+  "slug": "shoulder_tap_push_up",
+  "name": "Shoulder Tap Push-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a high plank position with your hands slightly wider than shoulder-width apart and your body in a straight line from head to heels.",
+    "Lower your body towards the ground by bending your elbows, keeping them close to your sides.",
+    "As you push back up, lift your right hand off the ground and tap your left shoulder.",
+    "Return your right hand to the ground and repeat the push-up, this time lifting your left hand and tapping your right shoulder.",
+    "Continue alternating shoulder taps with each push-up repetition.",
+    "Maintain a stable core and avoid excessive hip rotation throughout the exercise.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0699",
+    "free_id": null
+  }
+}

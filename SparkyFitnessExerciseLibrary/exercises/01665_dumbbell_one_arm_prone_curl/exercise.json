@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01665_dumbbell_one_arm_prone_curl",
+  "numeric_id": "01665",
+  "slug": "dumbbell_one_arm_prone_curl",
+  "name": "Dumbbell One Arm Prone Curl",
+  "aliases": [
+    "One Arm Dumbbell Preacher Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie face down on a flat bench with a dumbbell in one hand, palm facing down.",
+    "Extend your arm fully, letting it hang straight down towards the floor.",
+    "Keeping your upper arm stationary, curl the dumbbell up towards your shoulder by contracting your biceps.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1665",
+    "free_id": "One_Arm_Dumbbell_Preacher_Curl"
+  }
+}

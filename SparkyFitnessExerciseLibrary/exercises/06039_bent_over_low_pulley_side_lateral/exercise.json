@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06039_bent_over_low_pulley_side_lateral",
+  "numeric_id": "06039",
+  "slug": "bent_over_low_pulley_side_lateral",
+  "name": "Bent Over Low-Pulley Side Lateral",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "lower back",
+      "middle back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Select a weight and hold the handle of the low pulley with your right hand.",
+    "Bend at the waist until your torso is nearly parallel to the floor. Your legs should be slightly bent with your left hand placed on your lower left thigh. Your right arm should be hanging from your shoulder in front of you and with a slight bend at the elbow. This will be your starting position.",
+    "Raise your right arm, elbow slightly bent, to the side until the arm is parallel to the floor and in line with your right ear. Breathe out as you perform this step.",
+    "Slowly lower the weight back to the starting position as you breathe in.",
+    "Repeat for the recommended amount of repetitions and repeat the movement with the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Bent_Over_Low-Pulley_Side_Lateral"
+  }
+}

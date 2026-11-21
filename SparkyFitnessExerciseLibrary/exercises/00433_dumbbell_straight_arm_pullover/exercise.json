@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00433_dumbbell_straight_arm_pullover",
+  "numeric_id": "00433",
+  "slug": "dumbbell_straight_arm_pullover",
+  "name": "Dumbbell Straight Arm Pullover",
+  "aliases": [
+    "Straight-Arm Dumbbell Pullover"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "lats",
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on a bench with your head at one end and your feet planted firmly on the ground.",
+    "Hold a dumbbell with both hands and extend your arms straight above your chest.",
+    "Keeping your arms straight, slowly lower the dumbbell behind your head in an arc-like motion.",
+    "Pause for a moment, then raise the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0433",
+    "free_id": "Straight-Arm_Dumbbell_Pullover"
+  }
+}

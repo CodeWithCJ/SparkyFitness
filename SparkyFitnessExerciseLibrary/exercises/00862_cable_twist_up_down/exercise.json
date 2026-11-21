@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00862_cable_twist_up_down",
+  "numeric_id": "00862",
+  "slug": "cable_twist_up_down",
+  "name": "Cable Twist (Up-Down)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, facing the cable machine.",
+    "Hold the cable handle with both hands in front of your chest, keeping your arms slightly bent.",
+    "Engage your core and slowly rotate your torso to one side, keeping your hips and legs stable.",
+    "Pause for a moment at the end of the rotation, then slowly return to the starting position.",
+    "Repeat the rotation to the opposite side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0862",
+    "free_id": null
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00991_band_pull_through",
+  "numeric_id": "00991",
+  "slug": "band_pull_through",
+  "name": "Band Pull Through",
+  "aliases": [
+    "Pull Through"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "bands",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a resistance band to a sturdy anchor point at ground level.",
+    "Stand facing away from the anchor point with your feet shoulder-width apart.",
+    "Step forward to create tension in the band, keeping your knees slightly bent.",
+    "Hinge at the hips and push your glutes back, maintaining a slight bend in your knees.",
+    "Lower your torso until it is parallel to the ground, feeling a stretch in your hamstrings.",
+    "Drive your hips forward and squeeze your glutes to return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0991",
+    "free_id": "Pull_Through"
+  }
+}

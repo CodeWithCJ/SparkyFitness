@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06437_straight_raises_on_incline_bench",
+  "numeric_id": "06437",
+  "slug": "straight_raises_on_incline_bench",
+  "name": "Straight Raises On Incline Bench",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Place a bar on the ground behind the head of an incline bench.",
+    "Lay on the bench face down. With a pronated grip, pick the barbell up from the floor, keeping your arms straight. Allow the bar to hang straight down. This will be your starting position.",
+    "To begin, raise the barbell out in front of your head while keeping your arms extended.",
+    "Return to the starting position."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Straight_Raises_on_Incline_Bench"
+  }
+}

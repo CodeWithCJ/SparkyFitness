@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06456_two_arm_kettlebell_jerk",
+  "numeric_id": "06456",
+  "slug": "two_arm_kettlebell_jerk",
+  "name": "Two-Arm Kettlebell Jerk",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "calves",
+      "quadriceps",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Clean two kettlebells to your shoulders. Clean the kettlebells to your shoulders by extending through the legs and hips as you swing the kettlebells towards your shoulders. Rotate your wrists as you do so, so that the palms face forward. Squat down a few inches and reverse the motion rapidly driving both kettlebells overhead. Immediately after the initial push, squat down again and get under the kettlebells. Once the kettlebells are locked out, stand upright to complete the exercise."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Two-Arm_Kettlebell_Jerk"
+  }
+}

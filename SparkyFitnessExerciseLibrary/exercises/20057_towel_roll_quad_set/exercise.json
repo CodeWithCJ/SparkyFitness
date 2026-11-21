@@ -1,0 +1,56 @@
+{
+  "id": "20057_towel_roll_quad_set",
+  "numeric_id": "20057",
+  "slug": "towel_roll_quad_set",
+  "name": "Towel Roll Quad Set",
+  "aliases": [
+    "Quad Set with Towel",
+    "Isometric Quad Press"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "thighs",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-5-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "knee",
+    "target_conditions": [
+      "knee_arthroscopy_recovery",
+      "quadriceps_inhibition",
+      "patellar_tracking_deficit"
+    ],
+    "contraindications": [
+      "acute_quadriceps_rupture"
+    ],
+    "clinical_protocol": "Cornell Health Knee Rehabilitation Protocol"
+  },
+  "steps": [
+    "Sit on the floor or a firm bed with your target leg extended straight and opposite knee bent.",
+    "Place a small rolled towel or washcloth directly under the knee of your target leg.",
+    "Tighten your thigh muscles and press the back of your knee firmly down into the towel roll.",
+    "Hold the hard isometric quad contraction for 5 full seconds while feeling your kneecap pull upward.",
+    "Relax completely for 2 seconds, then repeat for the prescribed repetitions."
+  ],
+  "coaching_cues": [
+    "Focus on driving the back of your knee into the towel to activate the vastus medialis oblique.",
+    "Do not hold your breath during the 5-second hold; breathe steadily.",
+    "Ensure your heel stays in contact with the mat throughout."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Knee Conditioning Protocol"
+  }
+}

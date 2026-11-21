@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00986_band_one_arm_overhead_biceps_curl",
+  "numeric_id": "00986",
+  "slug": "band_one_arm_overhead_biceps_curl",
+  "name": "Band One Arm Overhead Biceps Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and place one end of the band under your foot.",
+    "Hold the other end of the band with your arm fully extended overhead, palm facing forward.",
+    "Keeping your upper arm stationary, curl your forearm towards your shoulder, squeezing your biceps.",
+    "Pause for a moment at the top, then slowly lower your forearm back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0986",
+    "free_id": null
+  }
+}

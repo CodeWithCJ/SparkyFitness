@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03292_elevator",
+  "numeric_id": "03292",
+  "slug": "elevator",
+  "name": "Elevator",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and your knees slightly bent.",
+    "Place your hands on your hips or cross them in front of your chest.",
+    "Keeping your back straight, slowly bend forward at the waist, lowering your upper body towards the ground.",
+    "Pause for a moment at the bottom, then slowly raise your upper body back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3292",
+    "free_id": null
+  }
+}

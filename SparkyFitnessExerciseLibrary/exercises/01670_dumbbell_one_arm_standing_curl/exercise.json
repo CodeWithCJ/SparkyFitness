@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01670_dumbbell_one_arm_standing_curl",
+  "numeric_id": "01670",
+  "slug": "dumbbell_one_arm_standing_curl",
+  "name": "Dumbbell One Arm Standing Curl",
+  "aliases": [
+    "Standing One-Arm Dumbbell Curl Over Incline Bench"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with a dumbbell in one hand, palm facing forward and arm fully extended.",
+    "Keeping your upper arm stationary, exhale and curl the weight upward while contracting your biceps.",
+    "Continue to raise the dumbbell until your biceps are fully contracted and the dumbbell is at shoulder level.",
+    "Hold the contracted position for a brief pause as you squeeze your biceps.",
+    "Inhale and slowly lower the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1670",
+    "free_id": "Standing_One-Arm_Dumbbell_Curl_Over_Incline_Bench"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01714_assisted_prone_rectus_femoris_stretch",
+  "numeric_id": "01714",
+  "slug": "assisted_prone_rectus_femoris_stretch",
+  "name": "Assisted Prone Rectus Femoris Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie face down on the ground with your legs straight.",
+    "Bend your right knee and reach back with your right hand to grab your right foot or ankle.",
+    "Gently pull your right foot or ankle towards your glutes, feeling a stretch in the front of your right thigh.",
+    "Hold the stretch for 20-30 seconds.",
+    "Release and repeat on the other side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1714",
+    "free_id": null
+  }
+}

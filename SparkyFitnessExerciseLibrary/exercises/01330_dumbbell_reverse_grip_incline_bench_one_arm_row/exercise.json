@@ -1,0 +1,54 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01330_dumbbell_reverse_grip_incline_bench_one_arm_row",
+  "numeric_id": "01330",
+  "slug": "dumbbell_reverse_grip_incline_bench_one_arm_row",
+  "name": "Dumbbell Reverse Grip Incline Bench One Arm Row",
+  "aliases": [
+    "One-Arm Dumbbell Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "shoulders",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up an incline bench at a 45-degree angle.",
+    "Place a dumbbell on the floor next to the bench.",
+    "Stand facing the bench with your feet shoulder-width apart.",
+    "Bend at the waist and place your left knee and left hand on the bench for support.",
+    "Pick up the dumbbell with your right hand using a reverse grip (palm facing down).",
+    "Keep your back straight and your core engaged.",
+    "Pull the dumbbell up towards your chest, keeping your elbow close to your body.",
+    "Squeeze your back muscles at the top of the movement.",
+    "Lower the dumbbell back down to the starting position in a controlled manner.",
+    "Repeat for the desired number of repetitions.",
+    "Switch sides and repeat the exercise with your left arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1330",
+    "free_id": "One-Arm_Dumbbell_Row"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03888_dumbbell_one_arm_snatch",
+  "numeric_id": "03888",
+  "slug": "dumbbell_one_arm_snatch",
+  "name": "Dumbbell One Arm Snatch",
+  "aliases": [
+    "Snatch"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "abdominals",
+      "biceps",
+      "lower back",
+      "shoulders",
+      "traps",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in one hand with an overhand grip.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight and chest up.",
+    "Lower the dumbbell towards the ground, keeping it close to your body.",
+    "Explosively extend your hips, knees, and ankles, driving the dumbbell upwards in a straight line.",
+    "As the dumbbell reaches shoulder height, quickly rotate your hand and punch it overhead, fully extending your arm.",
+    "Catch the dumbbell overhead with a slight bend in your knees and hips.",
+    "Lower the dumbbell back down to the starting position in a controlled manner.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3888",
+    "free_id": "Snatch"
+  }
+}

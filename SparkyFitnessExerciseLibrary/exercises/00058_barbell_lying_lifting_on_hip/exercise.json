@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00058_barbell_lying_lifting_on_hip",
+  "numeric_id": "00058",
+  "slug": "barbell_lying_lifting_on_hip",
+  "name": "Barbell Lying Lifting (On Hip)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back on a bench with your feet flat on the ground and your knees bent.",
+    "Hold the barbell with an overhand grip and position it on your hips.",
+    "Engaging your glutes, lift your hips off the bench until your body forms a straight line from your knees to your shoulders.",
+    "Pause for a moment at the top, then slowly lower your hips back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0058",
+    "free_id": null
+  }
+}

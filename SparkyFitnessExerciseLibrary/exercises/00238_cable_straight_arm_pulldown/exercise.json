@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00238_cable_straight_arm_pulldown",
+  "numeric_id": "00238",
+  "slug": "cable_straight_arm_pulldown",
+  "name": "Cable Straight Arm Pulldown",
+  "aliases": [
+    "Straight-Arm Pulldown"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "biceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a straight bar to the high pulley of a cable machine.",
+    "Stand facing the machine with your feet shoulder-width apart.",
+    "Grasp the bar with an overhand grip, keeping your arms straight and your palms facing down.",
+    "Engage your lats and pull the bar down towards your thighs, keeping your arms straight throughout the movement.",
+    "Pause for a moment at the bottom, then slowly return the bar to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0238",
+    "free_id": "Straight-Arm_Pulldown"
+  }
+}

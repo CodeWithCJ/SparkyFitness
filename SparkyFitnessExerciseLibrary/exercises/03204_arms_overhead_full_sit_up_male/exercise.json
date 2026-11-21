@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03204_arms_overhead_full_sit_up_male",
+  "numeric_id": "03204",
+  "slug": "arms_overhead_full_sit_up_male",
+  "name": "Arms Overhead Full Sit-Up (Male)",
+  "aliases": [
+    "Sit-Up"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your knees bent and feet flat on the ground.",
+    "Extend your arms overhead, keeping them straight.",
+    "Engaging your abs, slowly lift your upper body off the ground, curling forward until your torso is upright.",
+    "Pause for a moment at the top, then slowly lower your upper body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3204",
+    "free_id": "Sit-Up"
+  }
+}

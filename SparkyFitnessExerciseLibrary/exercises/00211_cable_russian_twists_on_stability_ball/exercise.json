@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00211_cable_russian_twists_on_stability_ball",
+  "numeric_id": "00211",
+  "slug": "cable_russian_twists_on_stability_ball",
+  "name": "Cable Russian Twists (On Stability Ball)",
+  "aliases": [
+    "Cable Russian Twists"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a stability ball with your feet flat on the ground and your knees bent at a 90-degree angle.",
+    "Hold the cable handle with both hands and extend your arms straight out in front of you.",
+    "Lean back slightly while keeping your back straight and your core engaged.",
+    "Twist your torso to the right, bringing the cable handle towards your right hip.",
+    "Pause for a moment, then twist your torso to the left, bringing the cable handle towards your left hip.",
+    "Continue alternating twists for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0211",
+    "free_id": "Cable_Russian_Twists"
+  }
+}

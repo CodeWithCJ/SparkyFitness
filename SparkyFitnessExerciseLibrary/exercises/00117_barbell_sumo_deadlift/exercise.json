@@ -1,0 +1,55 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00117_barbell_sumo_deadlift",
+  "numeric_id": "00117",
+  "slug": "barbell_sumo_deadlift",
+  "name": "Barbell Sumo Deadlift",
+  "aliases": [
+    "Barbell Deadlift"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "glutes",
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps",
+      "calves",
+      "forearms",
+      "lats",
+      "middle back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet wider than shoulder-width apart, toes pointing outwards.",
+    "Place a barbell on the ground in front of you, centered between your feet.",
+    "Bend your knees and lower your hips, keeping your back straight and chest up, to grip the barbell with an overhand grip.",
+    "Engage your core and drive through your heels to lift the barbell off the ground, extending your hips and knees simultaneously.",
+    "As you lift, keep your chest up and back straight, and push your hips forward to fully engage your glutes.",
+    "Pause for a moment at the top, then slowly lower the barbell back down to the starting position, maintaining control throughout the movement.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0117",
+    "free_id": "Barbell_Deadlift"
+  }
+}

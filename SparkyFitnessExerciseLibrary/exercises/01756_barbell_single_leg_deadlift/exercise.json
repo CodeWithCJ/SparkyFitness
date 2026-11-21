@@ -1,0 +1,54 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01756_barbell_single_leg_deadlift",
+  "numeric_id": "01756",
+  "slug": "barbell_single_leg_deadlift",
+  "name": "Barbell Single Leg Deadlift",
+  "aliases": [
+    "Barbell Deadlift"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "glutes",
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "forearms",
+      "lats",
+      "middle back",
+      "quadriceps",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet hip-width apart, holding a barbell in front of your thighs with an overhand grip.",
+    "Shift your weight onto your left foot and lift your right foot slightly off the ground.",
+    "Hinge forward at the hips, keeping your back straight and your right leg extended behind you for balance.",
+    "Lower the barbell towards the ground, keeping it close to your body and your left leg slightly bent.",
+    "Pause for a moment at the bottom, then engage your glutes and hamstrings to lift your torso back up to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1756",
+    "free_id": "Barbell_Deadlift"
+  }
+}

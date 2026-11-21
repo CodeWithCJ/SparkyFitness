@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02202_roller_hip_stretch",
+  "numeric_id": "02202",
+  "slug": "roller_hip_stretch",
+  "name": "Roller Hip Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "foam roll",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by sitting on the ground with your legs extended in front of you.",
+    "Place the roller under your glutes, just above your knees.",
+    "Lean back and place your hands on the ground behind you for support.",
+    "Engage your glutes and slowly roll the roller forward, bending your knees and bringing them towards your chest.",
+    "Pause for a moment at the end of the movement, feeling a stretch in your glutes.",
+    "Slowly roll the roller back to the starting position, extending your legs.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2202",
+    "free_id": null
+  }
+}

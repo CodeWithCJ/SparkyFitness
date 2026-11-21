@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00425_dumbbell_standing_one_arm_reverse_curl",
+  "numeric_id": "00425",
+  "slug": "dumbbell_standing_one_arm_reverse_curl",
+  "name": "Dumbbell Standing One Arm Reverse Curl",
+  "aliases": [
+    "Standing Dumbbell Reverse Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with your feet shoulder-width apart and hold a dumbbell in one hand with an overhand grip.",
+    "Keep your arm fully extended and close to your body, with your palm facing down.",
+    "Slowly curl the dumbbell up towards your shoulder, keeping your upper arm stationary.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0425",
+    "free_id": "Standing_Dumbbell_Reverse_Curl"
+  }
+}

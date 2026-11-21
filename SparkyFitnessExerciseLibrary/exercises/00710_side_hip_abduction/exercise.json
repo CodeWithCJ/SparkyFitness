@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00710_side_hip_abduction",
+  "numeric_id": "00710",
+  "slug": "side_hip_abduction",
+  "name": "Side Hip Abduction",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abductors"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and your hands on your hips.",
+    "Shift your weight to one leg and lift the opposite leg out to the side, keeping it straight.",
+    "Pause for a moment at the top, then slowly lower your leg back down to the starting position.",
+    "Repeat on the other side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0710",
+    "free_id": null
+  }
+}

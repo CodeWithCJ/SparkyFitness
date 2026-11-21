@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06428_standing_palms_up_barbell_behind_the_back_wrist_cu",
+  "numeric_id": "06428",
+  "slug": "standing_palms_up_barbell_behind_the_back_wrist_curl",
+  "name": "Standing Palms-Up Barbell Behind The Back Wrist Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing straight and holding a barbell behind your glutes at arm's length while using a pronated grip (palms will be facing back away from the glutes) and having your hands shoulder width apart from each other.",
+    "You should be looking straight forward while your feet are shoulder width apart from each other. This is the starting position.",
+    "While exhaling, slowly elevate the barbell up by curling your wrist in a semi-circular motion towards the ceiling. Note: Your wrist should be the only body part moving for this exercise.",
+    "Hold the contraction for a second and lower the barbell back down to the starting position while inhaling.",
+    "Repeat for the recommended amount of repetitions.",
+    "When finished, lower the barbell down to the squat rack or the floor by bending the knees. Tip: It is easiest to either pick it up from a squat rack or have a partner hand it to you."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Standing_Palms-Up_Barbell_Behind_The_Back_Wrist_Curl"
+  }
+}

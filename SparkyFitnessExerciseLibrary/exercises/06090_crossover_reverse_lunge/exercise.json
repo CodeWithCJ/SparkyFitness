@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06090_crossover_reverse_lunge",
+  "numeric_id": "06090",
+  "slug": "crossover_reverse_lunge",
+  "name": "Crossover Reverse Lunge",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "other",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "abductors",
+      "glutes",
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder width apart. This will be your starting position.",
+    "Perform a rear lunge by stepping back with one foot and flexing the hips and front knee. As you do so, rotate your torso across the front leg.",
+    "After a brief pause, return to the starting position and repeat on the other side, continuing in an alternating fashion."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Crossover_Reverse_Lunge"
+  }
+}

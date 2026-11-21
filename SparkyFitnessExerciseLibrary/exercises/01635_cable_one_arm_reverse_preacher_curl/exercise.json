@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01635_cable_one_arm_reverse_preacher_curl",
+  "numeric_id": "01635",
+  "slug": "cable_one_arm_reverse_preacher_curl",
+  "name": "Cable One Arm Reverse Preacher Curl",
+  "aliases": [
+    "Cable Preacher Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the cable machine so that the pulley is at the lowest position.",
+    "Stand facing the cable machine with your feet shoulder-width apart.",
+    "Grasp the cable handle with an underhand grip and position your upper arm against the preacher bench pad.",
+    "Keep your back straight and your core engaged throughout the exercise.",
+    "Slowly curl your forearm towards your bicep, keeping your upper arm stationary against the pad.",
+    "Pause for a moment at the top of the movement, squeezing your bicep.",
+    "Slowly lower the cable handle back to the starting position.",
+    "Repeat for the desired number of repetitions.",
+    "Switch arms and repeat the exercise."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1635",
+    "free_id": "Cable_Preacher_Curl"
+  }
+}

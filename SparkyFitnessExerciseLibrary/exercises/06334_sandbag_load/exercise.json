@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06334_sandbag_load",
+  "numeric_id": "06334",
+  "slug": "sandbag_load",
+  "name": "Sandbag Load",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strongman",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "biceps",
+      "calves",
+      "forearms",
+      "glutes",
+      "hamstrings",
+      "lower back",
+      "middle back",
+      "shoulders",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "To load sandbags or other objects, begin with the implements placed a distance from the loading platform, typically 50 feet.",
+    "Begin by lifting the sandbag. Sandbags are extremely awkward, and the manner of lifting them can vary depending on the particular sandbag used. Reach as far around it as possible, extending through the hips and knees to pull it up high. Shouldering is usually not allowed.",
+    "Move as quickly as possible to the platform, and load it, extending through your hips, knees, and ankles to get it as high as possible. Place it onto the platform, ensuring it doesn't fall off.",
+    "Return to the starting position to retrieve the next sandbag, and repeat until the event is completed."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Sandbag_Load"
+  }
+}

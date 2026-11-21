@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01284_dumbbell_lying_pullover_on_exercise_ball",
+  "numeric_id": "01284",
+  "slug": "dumbbell_lying_pullover_on_exercise_ball",
+  "name": "Dumbbell Lying Pullover On Exercise Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball and roll forward until your upper back is resting on the ball.",
+    "Hold a dumbbell with both hands and extend your arms straight up over your chest.",
+    "Slowly lower the dumbbell behind your head while keeping your arms straight.",
+    "Pause for a moment, then raise the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1284",
+    "free_id": null
+  }
+}

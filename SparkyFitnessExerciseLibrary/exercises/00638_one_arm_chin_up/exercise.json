@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00638_one_arm_chin_up",
+  "numeric_id": "00638",
+  "slug": "one_arm_chin_up",
+  "name": "One Arm Chin-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "expert",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lats",
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing a pull-up bar with your feet shoulder-width apart.",
+    "Reach up and grab the bar with an underhand grip, with one hand gripping the bar and the other hand holding your wrist for support.",
+    "Hang from the bar with your arm fully extended, keeping your body straight and your core engaged.",
+    "Pull yourself up towards the bar by bending your elbow and squeezing your back muscles.",
+    "Continue pulling until your chin is above the bar, then slowly lower yourself back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0638",
+    "free_id": "One_Arm_Chin-Up"
+  }
+}

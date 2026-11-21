@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06357_seated_two_arm_palms_up_low_pulley_wrist_curl",
+  "numeric_id": "06357",
+  "slug": "seated_two_arm_palms_up_low_pulley_wrist_curl",
+  "name": "Seated Two-Arm Palms-Up Low-Pulley Wrist Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Put a bench in front of a low pulley machine that has a barbell or EZ Curl attachment on it.",
+    "Move the bench far enough away so that when you bring the handle to the top of your thighs tension is created on the cable due to the weight stack being moved up.",
+    "Now hold the handle with both hands, palms up, using a shoulder-width grip.",
+    "Step back and sit on the bench with your feet about shoulder width apart, firmly on the floor.",
+    "Lean forward and place the forearms on your thighs with the back of your wrists over your knees. This will be your starting position.",
+    "Lower the bar as far as possible, while inhaling and keeping a tight grip.",
+    "Now curl the bar up as high as possible while contracting the forearms. Tip: Only the wrist should move; not the forearms.",
+    "After a second contraction at the top go back to the starting position as you inhale.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Seated_Two-Arm_Palms-Up_Low-Pulley_Wrist_Curl"
+  }
+}

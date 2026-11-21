@@ -1,0 +1,60 @@
+{
+  "id": "20095_supine_pelvic_tilt",
+  "numeric_id": "20095",
+  "slug": "supine_pelvic_tilt",
+  "name": "Supine Pelvic Tilt",
+  "aliases": [
+    "Pelvic Tilt",
+    "Posterior Pelvic Tilt"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "abdominals",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "lower back"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-2-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "spine",
+    "target_conditions": [
+      "excessive_lumbar_lordosis",
+      "lower_back_tightness",
+      "pelvic_motor_control"
+    ],
+    "contraindications": [
+      "acute_lumbar_disc_herniation_with_flexion_pain"
+    ],
+    "clinical_protocol": "AAOS Spine Conditioning Program"
+  },
+  "steps": [
+    "Lie on your back on a mat with your knees bent, feet flat on the floor, and arms resting at your sides.",
+    "Notice the small natural arch in your lower back between your spine and the mat.",
+    "Gently contract your abdominal muscles and squeeze your glutes to tilt your pelvis backward.",
+    "Press your lower back completely flat into the floor, eliminating the space under your lumbar spine.",
+    "Hold this flattened position for 5 seconds.",
+    "Relax your muscles and allow your pelvis to tilt forward back to its natural resting curve."
+  ],
+  "coaching_cues": [
+    "Think of rolling your belt buckle toward your chin as you flatten your spine.",
+    "Keep your feet flat and do not push with your legs; the movement comes from your abs and glutes.",
+    "Breathe smoothly and do not hold your breath."
+  ],
+  "sources": {
+    "attribution": "AAOS Spine Conditioning Program"
+  }
+}

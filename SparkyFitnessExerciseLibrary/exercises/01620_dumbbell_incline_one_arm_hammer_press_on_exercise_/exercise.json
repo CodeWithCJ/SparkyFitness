@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01620_dumbbell_incline_one_arm_hammer_press_on_exercise_",
+  "numeric_id": "01620",
+  "slug": "dumbbell_incline_one_arm_hammer_press_on_exercise_ball",
+  "name": "Dumbbell Incline One Arm Hammer Press On Exercise Ball",
+  "aliases": [
+    "Incline Dumbbell Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps",
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with a dumbbell in one hand.",
+    "Walk your feet forward and roll your body down until your head, neck, and upper back are supported on the ball.",
+    "Hold the dumbbell with your palm facing inward and your elbow bent at a 90-degree angle.",
+    "Press the dumbbell up towards the ceiling, straightening your arm.",
+    "Lower the dumbbell back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1620",
+    "free_id": "Incline_Dumbbell_Press"
+  }
+}

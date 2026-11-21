@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00466_gironda_sternum_chin",
+  "numeric_id": "00466",
+  "slug": "gironda_sternum_chin",
+  "name": "Gironda Sternum Chin",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "middle back",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing a high bar with your feet shoulder-width apart.",
+    "Reach up and grab the bar with an overhand grip, slightly wider than shoulder-width apart.",
+    "Hang from the bar with your arms fully extended and your body straight.",
+    "Engage your lats and biceps to pull your chest up towards the bar, leading with your sternum.",
+    "Pause for a moment at the top, then slowly lower yourself back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0466",
+    "free_id": null
+  }
+}

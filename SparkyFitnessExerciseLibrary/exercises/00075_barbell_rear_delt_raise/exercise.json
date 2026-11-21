@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00075_barbell_rear_delt_raise",
+  "numeric_id": "00075",
+  "slug": "barbell_rear_delt_raise",
+  "name": "Barbell Rear Delt Raise",
+  "aliases": [
+    "Barbell Rear Delt Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back",
+      "biceps",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a barbell with an overhand grip, palms facing down.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight.",
+    "Raise the barbell out to the sides, keeping your arms straight, until they are parallel to the ground.",
+    "Pause for a moment at the top, then slowly lower the barbell back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0075",
+    "free_id": "Barbell_Rear_Delt_Row"
+  }
+}

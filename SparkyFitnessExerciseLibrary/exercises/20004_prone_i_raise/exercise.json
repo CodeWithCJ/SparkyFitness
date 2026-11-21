@@ -1,0 +1,59 @@
+{
+  "id": "20004_prone_i_raise",
+  "numeric_id": "20004",
+  "slug": "prone_i_raise",
+  "name": "Prone I-Raise",
+  "aliases": [
+    "Floor I-Raise",
+    "Prone Scapular Depression"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "upper back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "middle back",
+      "triceps"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 3
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "elevated_shoulders",
+      "upper_trap_dominance",
+      "poor_scapular_depression"
+    ],
+    "contraindications": [
+      "acute_posterior_shoulder_dislocation"
+    ],
+    "clinical_protocol": "NASM Corrective Exercise Protocol"
+  },
+  "steps": [
+    "Lie face down with your arms straight alongside your torso, palms facing in toward your thighs.",
+    "Roll your shoulders back and down away from your ears, reaching your fingertips actively toward your heels.",
+    "Lift your straight arms a few inches off the floor, engaging your lats and lower scapular stabilizers.",
+    "Hold for two seconds at the top of the lift while keeping your forehead lightly touching the mat.",
+    "Gently lower your arms back down to rest."
+  ],
+  "coaching_cues": [
+    "Think of sliding your shoulder blades into your back pockets.",
+    "Keep the back of your neck long and avoid looking forward.",
+    "Engage your glutes slightly to stabilize your pelvis."
+  ],
+  "sources": {
+    "attribution": "NASM Scapular Depression Guidelines"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00195_cable_preacher_curl",
+  "numeric_id": "00195",
+  "slug": "cable_preacher_curl",
+  "name": "Cable Preacher Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the cable machine so that the preacher curl pad is at chest height.",
+    "Sit on the preacher curl bench and place your upper arms on the pad, gripping the cable attachment with an underhand grip.",
+    "Keep your back straight and your elbows tucked in at your sides.",
+    "Slowly curl the cable attachment up towards your shoulders, squeezing your biceps at the top of the movement.",
+    "Pause for a moment, then slowly lower the cable attachment back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0195",
+    "free_id": "Cable_Preacher_Curl"
+  }
+}

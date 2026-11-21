@@ -1,0 +1,60 @@
+{
+  "id": "20084_cross_body_shoulder_stretch",
+  "numeric_id": "20084",
+  "slug": "cross_body_shoulder_stretch",
+  "name": "Cross-Body Shoulder Stretch",
+  "aliases": [
+    "Crossover Arm Stretch",
+    "Posterior Shoulder Stretch",
+    "Horizontal Adduction Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "body only",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "middle back"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "posterior_shoulder_tightness",
+      "overhead_athlete_shoulder_stiffness",
+      "posterior_capsule_hypertonicity"
+    ],
+    "contraindications": [
+      "anterior_subacromial_impingement_pain_on_adduction"
+    ],
+    "clinical_protocol": "AAOS Shoulder Flexibility Protocol"
+  },
+  "steps": [
+    "Stand or sit tall with your shoulders relaxed and pulled back.",
+    "Bring your target arm straight across your chest at upper-chest height.",
+    "Use your opposite hand to grasp your target arm just above the elbow.",
+    "Gently pull your arm closer into your chest until you feel a firm, comfortable stretch in the back of your shoulder.",
+    "Hold the stretch steady for 20 to 30 seconds while breathing normally.",
+    "Slowly release the tension and repeat on the opposite arm."
+  ],
+  "coaching_cues": [
+    "Keep your target shoulder blade down and back; avoid shrugging the shoulder up toward your chin.",
+    "Do not twist your torso; keep your chest facing directly forward.",
+    "Apply gentle, consistent pressure without bouncing."
+  ],
+  "sources": {
+    "attribution": "AAOS Shoulder Conditioning & Flexibility Program"
+  }
+}

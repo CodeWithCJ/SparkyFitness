@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00778_spider_crawl_push_up",
+  "numeric_id": "00778",
+  "slug": "spider_crawl_push_up",
+  "name": "Spider Crawl Push Up",
+  "aliases": [
+    "Spider Crawl"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes",
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a push-up position with your hands slightly wider than shoulder-width apart and your feet together.",
+    "Bring your right knee towards your right elbow, keeping it off the ground.",
+    "As you bring your right knee back, simultaneously lower your body towards the ground by bending your elbows.",
+    "Push back up to the starting position and repeat with your left knee towards your left elbow.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0778",
+    "free_id": "Spider_Crawl"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02144_cable_seated_chest_press",
+  "numeric_id": "02144",
+  "slug": "cable_seated_chest_press",
+  "name": "Cable Seated Chest Press",
+  "aliases": [
+    "Cable Chest Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and cable handles to a comfortable position.",
+    "Sit on the bench with your back straight and feet flat on the floor.",
+    "Grasp the cable handles with an overhand grip at shoulder height.",
+    "Push the handles forward and away from your body, extending your arms fully.",
+    "Pause for a moment, then slowly bring the handles back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2144",
+    "free_id": "Cable_Chest_Press"
+  }
+}

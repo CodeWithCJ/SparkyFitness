@@ -1,0 +1,40 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06368_side_leg_raises",
+  "numeric_id": "06368",
+  "slug": "side_leg_raises",
+  "name": "Side Leg Raises",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand next to a chair, which you may hold onto as a support. Stand on one leg. This will be your starting position.",
+    "Keeping your leg straight, raise it as far out to the side as possible, and swing it back down, allowing it to cross the opposite leg.",
+    "Repeat this swinging motion 5-10 times, increasing the range of motion as you do so."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Side_Leg_Raises"
+  }
+}

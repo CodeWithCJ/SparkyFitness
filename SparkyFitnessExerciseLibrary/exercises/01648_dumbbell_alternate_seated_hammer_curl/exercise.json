@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01648_dumbbell_alternate_seated_hammer_curl",
+  "numeric_id": "01648",
+  "slug": "dumbbell_alternate_seated_hammer_curl",
+  "name": "Dumbbell Alternate Seated Hammer Curl",
+  "aliases": [
+    "Alternate Hammer Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with a dumbbell in each hand, palms facing your torso and arms extended down.",
+    "Keep your back straight and your elbows close to your torso.",
+    "Exhale and curl the dumbbell in your right hand towards your shoulder, keeping your upper arm stationary.",
+    "Continue to raise the dumbbell until your biceps are fully contracted and the dumbbell is at shoulder level.",
+    "Pause for a brief moment, then inhale and slowly lower the dumbbell back to the starting position.",
+    "Repeat the movement with your left arm.",
+    "Continue alternating arms for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1648",
+    "free_id": "Alternate_Hammer_Curl"
+  }
+}

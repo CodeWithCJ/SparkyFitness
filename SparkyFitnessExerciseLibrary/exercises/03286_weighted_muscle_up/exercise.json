@@ -1,0 +1,54 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03286_weighted_muscle_up",
+  "numeric_id": "03286",
+  "slug": "weighted_muscle_up",
+  "name": "Weighted Muscle Up",
+  "aliases": [
+    "Muscle Up"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "triceps",
+      "shoulders",
+      "chest",
+      "abdominals",
+      "forearms",
+      "middle back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by hanging from a pull-up bar with your palms facing away from you and your hands slightly wider than shoulder-width apart.",
+    "Engage your core and pull your body up towards the bar, leading with your chest.",
+    "As you reach the top of the movement, transition your grip so that your palms are facing towards you.",
+    "Continue pulling yourself up until your chest reaches the bar, then pause for a moment.",
+    "Slowly lower yourself back down to the starting position, maintaining control throughout the movement.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3286",
+    "free_id": "Muscle_Up"
+  }
+}

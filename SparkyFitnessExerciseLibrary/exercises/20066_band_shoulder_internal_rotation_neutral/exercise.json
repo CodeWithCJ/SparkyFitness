@@ -1,0 +1,58 @@
+{
+  "id": "20066_band_shoulder_internal_rotation_neutral",
+  "numeric_id": "20066",
+  "slug": "band_shoulder_internal_rotation_neutral",
+  "name": "Band Shoulder Internal Rotation in Neutral",
+  "aliases": [
+    "Standing Band Internal Rotation",
+    "Subscapularis Band Pull"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "chest"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "subscapularis_weakness",
+      "anterior_capsule_laxity",
+      "rotator_cuff_imbalance"
+    ],
+    "contraindications": [
+      "acute_subscapularis_tendon_repair_early_phase"
+    ],
+    "clinical_protocol": "Cornell Health Shoulder Band Strengthening"
+  },
+  "steps": [
+    "Anchor a resistance band at elbow height.",
+    "Stand sideways to the anchor point with your target arm closest to the anchor.",
+    "Bend your elbow to 90 degrees and hold the band handle with your forearm rotated outward away from your belly.",
+    "Keeping your elbow pinned to your side (with a small towel roll for feedback), rotate your forearm inward across your stomach.",
+    "Hold for one second against your belly, then slowly allow the band to rotate your forearm back out."
+  ],
+  "coaching_cues": [
+    "Keep your wrist straight and firm without curling it as you pull inward.",
+    "Keep your shoulder blade retracted and depressed, avoiding forward rounding.",
+    "Control the return phase smoothly."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Shoulder Band Strengthening Protocol"
+  }
+}

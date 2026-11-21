@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06071_cat_stretch",
+  "numeric_id": "06071",
+  "slug": "cat_stretch",
+  "name": "Cat Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "middle back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Position yourself on the floor on your hands and knees.",
+    "Pull your belly in and round your spine, lower back, shoulders, and neck, letting your head drop.",
+    "Hold for 15 seconds."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Cat_Stretch"
+  }
+}

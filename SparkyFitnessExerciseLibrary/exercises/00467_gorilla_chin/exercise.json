@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00467_gorilla_chin",
+  "numeric_id": "00467",
+  "slug": "gorilla_chin",
+  "name": "Gorilla Chin",
+  "aliases": [
+    "Gorilla Chin/Crunch"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "forearms",
+      "biceps",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and your knees slightly bent.",
+    "Grasp a pull-up bar with an overhand grip, slightly wider than shoulder-width apart.",
+    "Hang from the bar with your arms fully extended and your palms facing away from you.",
+    "Engage your core and pull your body up towards the bar, bringing your chin above the bar.",
+    "Pause for a moment at the top, then slowly lower your body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0467",
+    "free_id": "Gorilla_Chin_Crunch"
+  }
+}

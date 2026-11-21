@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00840_weighted_overhead_crunch_on_stability_ball",
+  "numeric_id": "00840",
+  "slug": "weighted_overhead_crunch_on_stability_ball",
+  "name": "Weighted Overhead Crunch (On Stability Ball)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a stability ball with your feet flat on the ground and your knees bent at a 90-degree angle.",
+    "Hold a weight plate or dumbbell with both hands and extend your arms overhead.",
+    "Engage your abs and slowly curl your torso forward, bringing your chest towards your knees.",
+    "Pause for a moment at the top, then slowly lower your torso back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0840",
+    "free_id": null
+  }
+}

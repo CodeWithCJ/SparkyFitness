@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01618_dumbbell_incline_hammer_press_on_exercise_ball",
+  "numeric_id": "01618",
+  "slug": "dumbbell_incline_hammer_press_on_exercise_ball",
+  "name": "Dumbbell Incline Hammer Press On Exercise Ball",
+  "aliases": [
+    "Incline Dumbbell Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps",
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with a dumbbell in each hand, palms facing each other.",
+    "Walk your feet forward and roll your body down the ball until your head, neck, and upper back are supported on the ball.",
+    "Hold the dumbbells at shoulder level, elbows bent and pointing out to the sides.",
+    "Press the dumbbells up and slightly inward, keeping your palms facing each other.",
+    "Extend your arms fully, squeezing your triceps at the top of the movement.",
+    "Slowly lower the dumbbells back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1618",
+    "free_id": "Incline_Dumbbell_Press"
+  }
+}

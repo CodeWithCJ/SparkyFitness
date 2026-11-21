@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00276_dead_bug",
+  "numeric_id": "00276",
+  "slug": "dead_bug",
+  "name": "Dead Bug",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your arms extended towards the ceiling.",
+    "Bend your knees and lift your legs off the ground, creating a 90-degree angle at your hips and knees.",
+    "Engage your core and lower back to press your lower back into the ground.",
+    "Slowly lower your right arm and left leg towards the ground, keeping them straight and hovering just above the floor.",
+    "Pause for a moment, then return to the starting position.",
+    "Repeat the movement with your left arm and right leg.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0276",
+    "free_id": "Dead_Bug"
+  }
+}

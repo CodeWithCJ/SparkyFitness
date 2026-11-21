@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01307_push_up_on_bosu_ball",
+  "numeric_id": "01307",
+  "slug": "push_up_on_bosu_ball",
+  "name": "Push Up On Bosu Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Place the bosu ball on the ground with the flat side facing up.",
+    "Position yourself in a push-up position with your hands on the outer edges of the bosu ball.",
+    "Engage your core and lower your body down towards the bosu ball by bending your elbows.",
+    "Push yourself back up to the starting position by extending your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1307",
+    "free_id": null
+  }
+}

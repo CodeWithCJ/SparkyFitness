@@ -1,0 +1,60 @@
+{
+  "id": "20024_lateral_lunge_with_pause",
+  "numeric_id": "20024",
+  "slug": "lateral_lunge_with_pause",
+  "name": "Lateral Lunge with Pause",
+  "aliases": [
+    "Side Lunge Mobility Hold",
+    "Frontal Plane Lunge"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "mobility",
+    "body_part": "thighs",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "adductors",
+      "glutes",
+      "hamstrings"
+    ],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "frontal",
+    "default_tempo": "2-2-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "adductor_tightness",
+      "lateral_hip_weakness",
+      "groin_stiffness"
+    ],
+    "contraindications": [
+      "acute_meniscus_tear"
+    ],
+    "clinical_protocol": "NASM Frontal Plane Functional Movement Training"
+  },
+  "steps": [
+    "Stand tall with feet hip-width apart and hands clasped comfortably in front of your chest.",
+    "Take a wide step to your right, keeping both feet pointed straight ahead.",
+    "Hinge your hips back and bend your right knee, lowering into a side lunge while keeping your left leg completely straight.",
+    "Pause at the bottom of the lunge for two full seconds, feeling a deep stretch along the inside of your straight left leg.",
+    "Push strongly off your right foot to return to the center standing position, then repeat to the left."
+  ],
+  "coaching_cues": [
+    "Keep the heel of your lunging foot firmly planted on the floor throughout.",
+    "Send your hips backward as if sitting into a chair behind your lunging leg.",
+    "Maintain an upright chest and open posture."
+  ],
+  "sources": {
+    "attribution": "NASM Corrective Exercise Frontal Plane Guide"
+  }
+}

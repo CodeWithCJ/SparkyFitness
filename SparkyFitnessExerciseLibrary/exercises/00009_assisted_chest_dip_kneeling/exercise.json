@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00009_assisted_chest_dip_kneeling",
+  "numeric_id": "00009",
+  "slug": "assisted_chest_dip_kneeling",
+  "name": "Assisted Chest Dip (Kneeling)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the machine to your desired height and secure your knees on the pad.",
+    "Grasp the handles with your palms facing down and your arms fully extended.",
+    "Lower your body by bending your elbows until your upper arms are parallel to the floor.",
+    "Pause for a moment, then push yourself back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0009",
+    "free_id": null
+  }
+}

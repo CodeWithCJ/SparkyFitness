@@ -1,0 +1,60 @@
+{
+  "id": "20012_glute_bridge_with_knee_lift",
+  "numeric_id": "20012",
+  "slug": "glute_bridge_with_knee_lift",
+  "name": "Glute Bridge with Knee Lift",
+  "aliases": [
+    "Marching Glute Bridge",
+    "Bridge March"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "glutes",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "abdominals",
+      "lower back"
+    ],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "lumbar_spine",
+    "target_conditions": [
+      "glute_amnesia",
+      "pelvic_instability",
+      "lumbar_lordosis"
+    ],
+    "contraindications": [
+      "acute_hamstring_strain"
+    ],
+    "clinical_protocol": "APTA Lumbopelvic Stability Protocol"
+  },
+  "steps": [
+    "Lie on your back with knees bent, feet flat on the floor hip-width apart, and arms resting along your sides.",
+    "Squeeze your glutes and push through your heels to lift your hips until your body forms a straight line from knees to shoulders.",
+    "Holding your hips level and steady, lift your right foot off the floor and bring your knee toward your chest at a 90-degree angle.",
+    "Lower the right foot back down without allowing your pelvis to drop or rotate.",
+    "Repeat the march with your left foot while keeping your glutes engaged and hips elevated."
+  ],
+  "coaching_cues": [
+    "Keep your pelvis level like a table; do not allow one hip to dip as you lift the opposite leg.",
+    "Lift with your glutes rather than arching with your lower back.",
+    "Take short, controlled breaths throughout."
+  ],
+  "sources": {
+    "attribution": "Clinical Pelvic Stabilization Guidelines"
+  }
+}

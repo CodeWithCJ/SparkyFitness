@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00153_cable_cross_over_lateral_pulldown",
+  "numeric_id": "00153",
+  "slug": "cable_cross_over_lateral_pulldown",
+  "name": "Cable Cross-Over Lateral Pulldown",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "middle back",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a cable handle to each side of a cable machine at shoulder height.",
+    "Stand in the middle of the machine with your feet shoulder-width apart.",
+    "Grasp the handles with an overhand grip and step back to create tension in the cables.",
+    "Lean forward slightly from the hips, keeping your back straight and your chest up.",
+    "Pull the handles down and across your body, squeezing your shoulder blades together.",
+    "Pause for a moment at the bottom of the movement, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0153",
+    "free_id": null
+  }
+}

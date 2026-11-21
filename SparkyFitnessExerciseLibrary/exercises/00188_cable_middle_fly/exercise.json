@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00188_cable_middle_fly",
+  "numeric_id": "00188",
+  "slug": "cable_middle_fly",
+  "name": "Cable Middle Fly",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach cables to both sides of a cable machine at chest height.",
+    "Stand in the center of the machine with one foot slightly in front of the other.",
+    "Grasp the handles with an overhand grip and extend your arms out to the sides.",
+    "Keep a slight bend in your elbows and maintain a slight forward lean.",
+    "Engage your chest muscles and bring your arms forward in a sweeping motion.",
+    "Pause for a moment at the center, then slowly return your arms back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0188",
+    "free_id": null
+  }
+}

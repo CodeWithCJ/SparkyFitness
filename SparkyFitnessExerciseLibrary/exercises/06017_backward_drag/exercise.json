@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06017_backward_drag",
+  "numeric_id": "06017",
+  "slug": "backward_drag",
+  "name": "Backward Drag",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strongman",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "calves",
+      "forearms",
+      "glutes",
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Load a sled with the desired weight, attaching a rope or straps to the sled that you can hold onto.",
+    "Begin the exercise by moving backwards for a given distance. Leaning back, extend through the legs for short steps to move as quickly as possible."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Backward_Drag"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00411_dumbbell_single_leg_squat",
+  "numeric_id": "00411",
+  "slug": "dumbbell_single_leg_squat",
+  "name": "Dumbbell Single Leg Squat",
+  "aliases": [
+    "Dumbbell Squat"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in each hand.",
+    "Extend one leg forward and keep it off the ground throughout the exercise.",
+    "Bend your standing leg and lower your body down as if sitting back into a chair.",
+    "Keep your chest up and your back straight.",
+    "Pause for a moment at the bottom, then push through your heel to return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch legs."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0411",
+    "free_id": "Dumbbell_Squat"
+  }
+}

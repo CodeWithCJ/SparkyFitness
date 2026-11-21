@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00501_jack_burpee",
+  "numeric_id": "00501",
+  "slug": "jack_burpee",
+  "name": "Jack Burpee",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "shoulders",
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a standing position with your feet shoulder-width apart.",
+    "Lower your body into a squat position, placing your hands on the ground in front of you.",
+    "Kick your feet back, landing in a push-up position.",
+    "Perform a push-up, lowering your chest to the ground and then pushing back up.",
+    "Jump your feet forward, landing in a squat position.",
+    "Jump up explosively, reaching your arms overhead.",
+    "Land softly and immediately lower back into the squat position to begin the next repetition."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0501",
+    "free_id": null
+  }
+}

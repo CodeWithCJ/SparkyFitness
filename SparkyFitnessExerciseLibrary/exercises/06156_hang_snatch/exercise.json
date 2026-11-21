@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06156_hang_snatch",
+  "numeric_id": "06156",
+  "slug": "hang_snatch",
+  "name": "Hang Snatch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "olympic weightlifting",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "expert",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "calves",
+      "forearms",
+      "glutes",
+      "lower back",
+      "quadriceps",
+      "shoulders",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Begin with a wide grip on the bar, with an overhand or hook grip. The feet should be directly below the hips with the feet turned out. Your knees should be slightly bent, and the torso inclined forward. The spine should be fully extended and the head facing forward. The bar should be at the hips. This will be your starting position.",
+    "Aggressively extend through the legs and hips. At peak extension, shrug the shoulders and allow the elbows to flex to the side.",
+    "As you move your feet into the receiving position, forcefully pull yourself below the bar as you elevate the bar overhead. Receive the bar with your body as low as possible and the arms fully extended overhead.",
+    "Return to a standing position with the weight overhead. Follow by returning the weight to the ground under control."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Hang_Snatch"
+  }
+}

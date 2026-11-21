@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00989_band_one_arm_twisting_chest_press",
+  "numeric_id": "00989",
+  "slug": "band_one_arm_twisting_chest_press",
+  "name": "Band One Arm Twisting Chest Press",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the band to a sturdy anchor point at chest height.",
+    "Stand with your side facing the anchor point and grab the band with one hand.",
+    "Step away from the anchor point to create tension in the band.",
+    "Position your feet shoulder-width apart and slightly bend your knees.",
+    "Bring your hand holding the band across your body, towards the opposite shoulder.",
+    "While maintaining tension in the band, push your hand forward and away from your body, extending your arm.",
+    "Slowly return to the starting position and repeat for the desired number of repetitions.",
+    "Switch sides and repeat the exercise with the other hand."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0989",
+    "free_id": null
+  }
+}

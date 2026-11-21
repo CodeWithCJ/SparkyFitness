@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00066_barbell_one_arm_side_deadlift",
+  "numeric_id": "00066",
+  "slug": "barbell_one_arm_side_deadlift",
+  "name": "Barbell One Arm Side Deadlift",
+  "aliases": [
+    "One-Arm Side Deadlift"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "expert",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back",
+      "abdominals",
+      "calves",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a barbell in one hand with an overhand grip.",
+    "Keep your back straight and your core engaged.",
+    "Bend at the hips and lower the barbell towards the outside of your leg, keeping your arm straight and your chest up.",
+    "Lower the barbell as far as you can while maintaining good form.",
+    "Pause for a moment, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0066",
+    "free_id": "One-Arm_Side_Deadlift"
+  }
+}

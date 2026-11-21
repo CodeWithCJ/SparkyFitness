@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03582_lunge_with_jump",
+  "numeric_id": "03582",
+  "slug": "lunge_with_jump",
+  "name": "Lunge With Jump",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart.",
+    "Take a step forward with your right foot, lowering your body into a lunge position.",
+    "Push off with your right foot and jump into the air, switching the position of your feet mid-air.",
+    "Land softly with your left foot forward and immediately lower your body into a lunge position.",
+    "Continue alternating between lunges and jumps for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3582",
+    "free_id": null
+  }
+}

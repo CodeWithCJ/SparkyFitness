@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00507_jackknife_sit_up",
+  "numeric_id": "00507",
+  "slug": "jackknife_sit_up",
+  "name": "Jackknife Sit-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your legs extended and your arms overhead.",
+    "Engage your core and lift your legs and upper body simultaneously, reaching your hands towards your toes.",
+    "Pause for a moment at the top, then slowly lower your legs and upper body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0507",
+    "free_id": "Jackknife_Sit-Up"
+  }
+}

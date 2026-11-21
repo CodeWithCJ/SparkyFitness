@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06006_alternating_cable_shoulder_press",
+  "numeric_id": "06006",
+  "slug": "alternating_cable_shoulder_press",
+  "name": "Alternating Cable Shoulder Press",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Move the cables to the bottom of the tower and select an appropriate weight.",
+    "Grasp the cables and hold them at shoulder height, palms facing forward. This will be your starting position.",
+    "Keeping your head and chest up, extend through the elbow to press one side directly over head.",
+    "After pausing at the top, return to the starting position and repeat on the opposite side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Alternating_Cable_Shoulder_Press"
+  }
+}

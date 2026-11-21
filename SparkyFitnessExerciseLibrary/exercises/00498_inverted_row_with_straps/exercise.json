@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00498_inverted_row_with_straps",
+  "numeric_id": "00498",
+  "slug": "inverted_row_with_straps",
+  "name": "Inverted Row With Straps",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up a suspension trainer or straps at chest height.",
+    "Stand facing the anchor point and grab the handles with an overhand grip.",
+    "Walk your feet forward, leaning back until your body is at an angle.",
+    "Keep your body straight and engage your core.",
+    "Pull your chest towards the handles, squeezing your shoulder blades together.",
+    "Pause for a moment at the top, then slowly lower yourself back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0498",
+    "free_id": "Inverted_Row_with_Straps"
+  }
+}

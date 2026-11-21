@@ -1,0 +1,58 @@
+{
+  "id": "20059_prone_knee_flexion",
+  "numeric_id": "20059",
+  "slug": "prone_knee_flexion",
+  "name": "Prone Knee Flexion",
+  "aliases": [
+    "Prone Hamstring Bend",
+    "Prone Active Knee Bend"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "hamstrings",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "knee",
+    "target_conditions": [
+      "hamstring_activation",
+      "knee_flexion_range_of_motion",
+      "post_arthroscopy_stiffness"
+    ],
+    "contraindications": [
+      "acute_hamstring_avulsion"
+    ],
+    "clinical_protocol": "Cornell Health Lower Extremity ROM Protocol"
+  },
+  "steps": [
+    "Lie face down on a mat with your legs extended straight and forehead resting comfortably on your hands.",
+    "Keep your pelvis pressed gently into the mat so your lower back does not arch.",
+    "Slowly bend your target knee, drawing your heel toward your glute through a full, comfortable range of motion.",
+    "Pause for one second at the top of the curl, engaging your hamstring muscles.",
+    "Slowly lower your foot back down to the floor under control."
+  ],
+  "coaching_cues": [
+    "Keep your hips flat on the mat; do not lift your hip as your knee bends.",
+    "Perform smoothly without swinging or kicking.",
+    "Focus on a clean, active contraction of the hamstring."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+  }
+}

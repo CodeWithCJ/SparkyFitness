@@ -1,0 +1,59 @@
+{
+  "id": "20069_band_wall_walk",
+  "numeric_id": "20069",
+  "slug": "band_wall_walk",
+  "name": "Band Wall Walk",
+  "aliases": [
+    "Banded Wall Crawl",
+    "Mini-Band Wall Walk"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "middle back",
+      "traps"
+    ],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "rotator_cuff_stabilization",
+      "scapular_dyskinesis",
+      "shoulder_burnout"
+    ],
+    "contraindications": [
+      "acute_acromioclavicular_joint_sprain"
+    ],
+    "clinical_protocol": "Cornell Health Shoulder Band Strengthening"
+  },
+  "steps": [
+    "Place a small resistance loop band around your wrists or forearms.",
+    "Stand facing a smooth wall with elbows bent at 90 degrees and forearms resting vertically against the wall at chest height.",
+    "Pull your wrists outward to create continuous outward tension on the band.",
+    "Maintaining that outward tension, slowly 'walk' your forearms upward along the wall in small alternating steps until your arms are nearly fully extended.",
+    "Walk your forearms back down in small controlled steps to chest height."
+  ],
+  "coaching_cues": [
+    "Keep continuous outward tension on the band; do not let your hands cave inward.",
+    "Keep your core braced so your lower back does not arch as your hands climb higher.",
+    "Move with tiny, deliberate hand steps."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Shoulder Band Strengthening Protocol"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00637_olympic_barbell_triceps_extension",
+  "numeric_id": "00637",
+  "slug": "olympic_barbell_triceps_extension",
+  "name": "Olympic Barbell Triceps Extension",
+  "aliases": [
+    "Incline Barbell Triceps Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart and holding the barbell with an overhand grip.",
+    "Raise the barbell above your head, fully extending your arms.",
+    "Keeping your upper arms close to your head, slowly lower the barbell behind your head by bending your elbows.",
+    "Pause for a moment, then extend your arms back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0637",
+    "free_id": "Incline_Barbell_Triceps_Extension"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01645_cable_two_arm_curl_on_incline_bench",
+  "numeric_id": "01645",
+  "slug": "cable_two_arm_curl_on_incline_bench",
+  "name": "Cable Two Arm Curl On Incline Bench",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an incline bench with your back against the pad and your feet flat on the ground.",
+    "Grasp the cable handles with an underhand grip, palms facing up, and your arms fully extended.",
+    "Keeping your upper arms stationary, exhale and curl the handles towards your shoulders while contracting your biceps.",
+    "Pause for a moment at the top of the movement, squeezing your biceps.",
+    "Inhale and slowly lower the handles back to the starting position, fully extending your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1645",
+    "free_id": null
+  }
+}

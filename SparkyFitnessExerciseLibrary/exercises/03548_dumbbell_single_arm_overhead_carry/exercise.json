@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03548_dumbbell_single_arm_overhead_carry",
+  "numeric_id": "03548",
+  "slug": "dumbbell_single_arm_overhead_carry",
+  "name": "Dumbbell Single Arm Overhead Carry",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand tall with your feet shoulder-width apart, holding a dumbbell in one hand.",
+    "Raise the dumbbell overhead, fully extending your arm.",
+    "Engage your core and keep your back straight as you walk forward, maintaining the dumbbell overhead.",
+    "Continue walking for the desired distance or time.",
+    "Switch hands and repeat the exercise."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3548",
+    "free_id": null
+  }
+}

@@ -95,6 +95,18 @@ function probeVideo(videoPath) {
   return { width, height, duration, sizeMb, sizeBytes, hasAudio };
 }
 
+function resolveInsideExerciseDir(exDir, relativePath, label) {
+  if (!relativePath || typeof relativePath !== 'string') {
+    throw new Error(`[${label}] Invalid relative path: ${JSON.stringify(relativePath)}`);
+  }
+  const resolved = path.resolve(exDir, relativePath);
+  const rel = path.relative(exDir, resolved);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) {
+    throw new Error(`[${label}] Path traversal detected: '${relativePath}' escapes exercise directory '${exDir}'`);
+  }
+  return resolved;
+}
+
 async function processExercise(dirName) {
   const exDir = path.join(exercisesDir, dirName);
   const jsonPath = path.join(exDir, 'exercise.json');
@@ -115,7 +127,14 @@ async function processExercise(dirName) {
     media.video_horizontal_path,
   ].filter(Boolean)));
 
-  const videoFiles = candidateVideos.filter((f) => fs.existsSync(path.join(exDir, f)));
+  const videoFiles = candidateVideos.filter((f) => {
+    try {
+      const resolved = resolveInsideExerciseDir(exDir, f, 'video');
+      return fs.existsSync(resolved);
+    } catch {
+      return false;
+    }
+  });
 
   if (videoFiles.length === 0) {
     console.log(`  ℹ️  No MP4 videos found on disk, skipping.`);
@@ -123,11 +142,11 @@ async function processExercise(dirName) {
   }
 
   // 1. Optimize all video files in folder
-  let primaryVideoPath = path.join(exDir, videoFiles[0]);
+  let primaryVideoPath = resolveInsideExerciseDir(exDir, videoFiles[0], 'primary_video');
   let primaryStats = probeVideo(primaryVideoPath);
 
   for (const vFile of videoFiles) {
-    const vPath = path.join(exDir, vFile);
+    const vPath = resolveInsideExerciseDir(exDir, vFile, 'video');
     if (!fs.existsSync(vPath)) continue;
 
     const stats = probeVideo(vPath);
@@ -197,7 +216,7 @@ async function processExercise(dirName) {
 
   // 2. Generate WebP Thumbnail (_thumb.webp) if missing or --force
   const thumbFileName = media.thumbnail_path || `${dirName}_thumb.webp`;
-  const thumbPath = path.join(exDir, thumbFileName);
+  const thumbPath = resolveInsideExerciseDir(exDir, thumbFileName, 'thumbnail_path');
 
   if (isForce || !fs.existsSync(thumbPath)) {
     const timestamp = media.thumbnail_timestamp ?? parseFloat((primaryStats.duration * 0.3).toFixed(2));

@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00864_dumbbell_upright_shoulder_external_rotation",
+  "numeric_id": "00864",
+  "slug": "dumbbell_upright_shoulder_external_rotation",
+  "name": "Dumbbell Upright Shoulder External Rotation",
+  "aliases": [
+    "External Rotation"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and hold a dumbbell in each hand with your palms facing your body.",
+    "Raise your arms out to the sides until they are parallel to the ground, keeping your elbows slightly bent.",
+    "Rotate your arms externally, bringing the dumbbells up towards your head while keeping your elbows in the same position.",
+    "Pause for a moment at the top, then slowly lower the dumbbells back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0864",
+    "free_id": "External_Rotation"
+  }
+}

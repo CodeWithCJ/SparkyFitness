@@ -1,0 +1,39 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06257_neck_smr",
+  "numeric_id": "06257",
+  "slug": "neck_smr",
+  "name": "Neck-SMR",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "intermediate",
+    "equipment": "other",
+    "primary_muscles": [
+      "neck"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Using a muscle roller or a rolling pin, place the roller behind your head and against your neck. Make sure that you do not place the roller directly against the spine, but turned slightly so that the roller is pressed against the muscles to either side of the spine. This will be your starting position.",
+    "Starting at the top of your neck, slowly roll down the muscles of your neck, pausing at points of tension for 10-30 seconds."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Neck-SMR"
+  }
+}

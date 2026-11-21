@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00873_cable_reverse_crunch",
+  "numeric_id": "00873",
+  "slug": "cable_reverse_crunch",
+  "name": "Cable Reverse Crunch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a cable to a low pulley and lie down facing up on a mat.",
+    "Hold the cable with both hands and extend your arms straight up towards the ceiling.",
+    "Bend your knees and lift your legs up, bringing your thighs towards your chest.",
+    "While keeping your upper body stable, curl your pelvis up towards your chest, lifting your hips off the mat.",
+    "Pause for a moment at the top, then slowly lower your hips back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0873",
+    "free_id": "Cable_Reverse_Crunch"
+  }
+}

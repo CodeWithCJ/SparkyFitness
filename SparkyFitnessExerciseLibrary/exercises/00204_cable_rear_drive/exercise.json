@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00204_cable_rear_drive",
+  "numeric_id": "00204",
+  "slug": "cable_rear_drive",
+  "name": "Cable Rear Drive",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a handle to a low pulley cable machine and stand facing away from the machine.",
+    "Grasp the handle with an overhand grip and extend your arms straight out in front of you.",
+    "Keeping your elbows stationary, pull the handle back towards your body, squeezing your triceps at the end of the movement.",
+    "Slowly return the handle to the starting position and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0204",
+    "free_id": null
+  }
+}

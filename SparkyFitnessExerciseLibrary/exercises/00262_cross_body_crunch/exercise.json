@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00262_cross_body_crunch",
+  "numeric_id": "00262",
+  "slug": "cross_body_crunch",
+  "name": "Cross Body Crunch",
+  "aliases": [
+    "Cross-Body Crunch"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your knees bent and feet flat on the ground.",
+    "Place your hands behind your head with your elbows pointing outwards.",
+    "Engaging your abs, lift your upper body off the ground and twist to bring your right elbow towards your left knee.",
+    "Pause for a moment at the top, then slowly lower your upper body back down to the starting position.",
+    "Repeat on the other side, bringing your left elbow towards your right knee.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0262",
+    "free_id": "Cross-Body_Crunch"
+  }
+}

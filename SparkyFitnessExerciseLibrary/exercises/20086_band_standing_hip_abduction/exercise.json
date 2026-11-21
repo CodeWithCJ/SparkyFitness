@@ -1,0 +1,59 @@
+{
+  "id": "20086_band_standing_hip_abduction",
+  "numeric_id": "20086",
+  "slug": "band_standing_hip_abduction",
+  "name": "Band Standing Hip Abduction",
+  "aliases": [
+    "Standing Resisted Hip Abduction",
+    "Band Lateral Leg Lift"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "abductors",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abductors"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "gluteus_medius_weakness",
+      "trendelenburg_gait",
+      "it_band_friction"
+    ],
+    "contraindications": [
+      "acute_greater_trochanteric_pain_syndrome_flare"
+    ],
+    "clinical_protocol": "AAOS Hip Strengthening Protocol"
+  },
+  "steps": [
+    "Stand tall with a resistance band looped around both ankles, holding a sturdy wall or chair for balance.",
+    "Keep your supporting leg slightly bent at the knee and your torso upright.",
+    "Slowly lift your target leg straight out to the side against the resistance of the band, keeping your toes pointing forward.",
+    "Lift outward approximately 30 to 45 degrees until you feel a firm contraction in your outer hip and glute.",
+    "Hold for 1 to 2 seconds at the peak abduction.",
+    "Slowly lower your foot back toward the center without letting your feet touch."
+  ],
+  "coaching_cues": [
+    "Do not lean your torso sideways to swing the leg; keep your upper body perfectly vertical.",
+    "Keep your toes pointing straight forward, not rotated upward toward the ceiling.",
+    "Squeeze the outer glute muscle on both the moving and stabilizing hips."
+  ],
+  "sources": {
+    "attribution": "AAOS Hip Conditioning & Gait Stability Protocol"
+  }
+}

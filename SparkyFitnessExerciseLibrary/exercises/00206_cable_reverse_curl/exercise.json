@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00206_cable_reverse_curl",
+  "numeric_id": "00206",
+  "slug": "cable_reverse_curl",
+  "name": "Cable Reverse Curl",
+  "aliases": [
+    "Reverse Cable Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a straight bar to a low pulley cable machine.",
+    "Stand facing the machine with your feet shoulder-width apart and your knees slightly bent.",
+    "Grasp the bar with an underhand grip, hands shoulder-width apart.",
+    "Keep your elbows close to your sides and your upper arms stationary throughout the exercise.",
+    "Exhale and curl the bar up towards your shoulders, contracting your biceps.",
+    "Pause for a moment at the top, squeezing your biceps.",
+    "Inhale and slowly lower the bar back to the starting position, fully extending your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0206",
+    "free_id": "Reverse_Cable_Curl"
+  }
+}

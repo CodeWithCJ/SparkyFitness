@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00305_dumbbell_decline_shrug",
+  "numeric_id": "00305",
+  "slug": "dumbbell_decline_shrug",
+  "name": "Dumbbell Decline Shrug",
+  "aliases": [
+    "Dumbbell Shrug"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "traps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up a decline bench at a 45-degree angle.",
+    "Lie face down on the bench with your chest and stomach resting against it.",
+    "Hold a dumbbell in each hand with your arms fully extended towards the floor.",
+    "Keeping your arms straight, raise your shoulders towards your ears as high as possible.",
+    "Hold the contraction for a moment, then slowly lower the dumbbells back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0305",
+    "free_id": "Dumbbell_Shrug"
+  }
+}

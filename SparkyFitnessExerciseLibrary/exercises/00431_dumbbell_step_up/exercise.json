@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00431_dumbbell_step_up",
+  "numeric_id": "00431",
+  "slug": "dumbbell_step_up",
+  "name": "Dumbbell Step-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand in front of a bench or step with a dumbbell in each hand, palms facing your body.",
+    "Place your right foot on the bench or step, ensuring your entire foot is in contact with the surface.",
+    "Push through your right heel and lift your body up onto the bench or step, straightening your right leg.",
+    "Bring your left foot up onto the bench or step, standing fully upright.",
+    "Step back down with your left foot, followed by your right foot, returning to the starting position.",
+    "Repeat for the desired number of repetitions, then switch legs."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0431",
+    "free_id": null
+  }
+}

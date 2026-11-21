@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06121_elevated_back_lunge",
+  "numeric_id": "06121",
+  "slug": "elevated_back_lunge",
+  "name": "Elevated Back Lunge",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Position a bar onto a rack at shoulder height loaded to an appropriate weight. Place a short, raised platform behind you.",
+    "Rack the bar onto your upper back, keeping your back arched and tight. Step onto your raised platform with both feet. This will be your starting position.",
+    "Begin by stepping backwards with one leg. Descend by flexing your hips and knees until your knee touches the floor.",
+    "Pause, and extend through the hips and knees to rise up, returning all the way to the starting position before alternating."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Elevated_Back_Lunge"
+  }
+}

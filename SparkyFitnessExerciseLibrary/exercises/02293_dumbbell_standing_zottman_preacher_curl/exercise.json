@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02293_dumbbell_standing_zottman_preacher_curl",
+  "numeric_id": "02293",
+  "slug": "dumbbell_standing_zottman_preacher_curl",
+  "name": "Dumbbell Standing Zottman Preacher Curl",
+  "aliases": [
+    "Zottman Preacher Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with a dumbbell in each hand, palms facing forward.",
+    "Place your upper arms against the preacher bench and keep your elbows slightly bent.",
+    "Curl the dumbbells up towards your shoulders while keeping your upper arms stationary.",
+    "At the top of the movement, rotate your wrists so that your palms are facing downward.",
+    "Slowly lower the dumbbells back to the starting position, rotating your wrists back to the starting position as well.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2293",
+    "free_id": "Zottman_Preacher_Curl"
+  }
+}

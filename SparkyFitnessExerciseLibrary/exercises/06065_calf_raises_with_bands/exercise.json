@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06065_calf_raises_with_bands",
+  "numeric_id": "06065",
+  "slug": "calf_raises_with_bands",
+  "name": "Calf Raises - With Bands",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "bands",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Grab an exercise band and stand on it with your toes making sure that the length of the band between the foot and the arms is the same for both sides.",
+    "While holding the handles of the band, raise the arms to the side of your head as if you were getting ready to perform a shoulder press. The palms should be facing forward with the elbows bent and to the sides. This movement will create tension on the band. This will be your starting position.",
+    "Keeping the hands by your shoulder, stand up on your toes as you exhale and contract the calves hard at the top of the movement.",
+    "After a one second contraction, slowly go back down to the starting position.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Calf_Raises_-_With_Bands"
+  }
+}

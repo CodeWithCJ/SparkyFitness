@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02205_roller_hip_lat_stretch",
+  "numeric_id": "02205",
+  "slug": "roller_hip_lat_stretch",
+  "name": "Roller Hip Lat Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "foam roll",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by kneeling on the ground with the roller positioned under your hips.",
+    "Place your hands on the roller for support.",
+    "Slowly roll the roller forward, extending your hips and stretching your glutes.",
+    "Hold the stretch for a few seconds, then roll back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2205",
+    "free_id": null
+  }
+}

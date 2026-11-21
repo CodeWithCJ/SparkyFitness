@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03296_front_lever",
+  "numeric_id": "03296",
+  "slug": "front_lever",
+  "name": "Front Lever",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lats",
+      "shoulders",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by hanging from a pull-up bar with an overhand grip, hands shoulder-width apart.",
+    "Engage your core and pull your shoulder blades down and back.",
+    "Bend your knees and tuck them towards your chest.",
+    "Simultaneously, lift your legs up and extend them straight out in front of you, keeping your body parallel to the ground.",
+    "Hold this position for as long as you can, aiming for a full front lever position.",
+    "To release, slowly lower your legs back down and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3296",
+    "free_id": null
+  }
+}

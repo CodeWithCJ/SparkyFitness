@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00776_snatch_pull",
+  "numeric_id": "00776",
+  "slug": "snatch_pull",
+  "name": "Snatch Pull",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "quadriceps",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "calves",
+      "lower back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and the barbell on the ground in front of you.",
+    "Bend your knees and hinge at the hips to lower into a squat position, gripping the barbell with an overhand grip.",
+    "Keep your back straight and chest up as you drive through your heels to lift the barbell off the ground, extending your hips and knees.",
+    "As the barbell reaches hip level, explosively pull it upwards, shrugging your shoulders and pulling your elbows high and to the sides.",
+    "As the barbell reaches its highest point, quickly drop underneath it, pulling yourself into a deep squat position.",
+    "Catch the barbell overhead with your arms fully extended and your knees bent.",
+    "Stand up by extending your hips and knees, keeping the barbell overhead.",
+    "Lower the barbell back down to the starting position by reversing the movement.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0776",
+    "free_id": "Snatch_Pull"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00331_dumbbell_incline_twisted_flyes",
+  "numeric_id": "00331",
+  "slug": "dumbbell_incline_twisted_flyes",
+  "name": "Dumbbell Incline Twisted Flyes",
+  "aliases": [
+    "Incline Dumbbell Flyes"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set an incline bench to a 45-degree angle and sit on it with a dumbbell in each hand, palms facing each other.",
+    "Lie back on the bench and press the dumbbells up to the starting position, directly above your chest, with your arms extended.",
+    "Lower the dumbbells out to the sides in a wide arc until you feel a stretch in your chest.",
+    "As you lower the dumbbells, rotate your wrists so that your palms face forward at the bottom of the movement.",
+    "Reverse the motion and bring the dumbbells back up to the starting position, squeezing your chest muscles together at the top.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0331",
+    "free_id": "Incline_Dumbbell_Flyes"
+  }
+}

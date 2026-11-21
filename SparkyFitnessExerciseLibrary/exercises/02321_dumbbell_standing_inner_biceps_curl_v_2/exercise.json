@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02321_dumbbell_standing_inner_biceps_curl_v_2",
+  "numeric_id": "02321",
+  "slug": "dumbbell_standing_inner_biceps_curl_v_2",
+  "name": "Dumbbell Standing Inner Biceps Curl V. 2",
+  "aliases": [
+    "Standing Inner-Biceps Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with a dumbbell in each hand, palms facing your torso.",
+    "Keep your elbows close to your torso and rotate the palms of your hands until they are facing forward.",
+    "While holding your upper arms stationary, curl the weights while contracting your biceps.",
+    "Continue to raise the weights until your biceps are fully contracted and the dumbbells are at shoulder level.",
+    "Hold the contracted position for a brief pause as you squeeze your biceps.",
+    "Slowly begin to bring the dumbbells back to the starting position as your breathe in.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2321",
+    "free_id": "Standing_Inner-Biceps_Curl"
+  }
+}

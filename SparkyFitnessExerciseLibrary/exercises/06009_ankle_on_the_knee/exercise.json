@@ -1,0 +1,40 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06009_ankle_on_the_knee",
+  "numeric_id": "06009",
+  "slug": "ankle_on_the_knee",
+  "name": "Ankle On The Knee",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "From a lying position, bend your knees and keep your feet on the floor.",
+    "Place your ankle of one foot on your opposite knee.",
+    "Grasp the thigh or knee of the bottom leg and pull both of your legs into the chest. Relax your neck and shoulders. Hold for 10-20 seconds and then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Ankle_On_The_Knee"
+  }
+}

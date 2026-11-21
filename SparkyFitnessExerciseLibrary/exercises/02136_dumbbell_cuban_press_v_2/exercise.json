@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02136_dumbbell_cuban_press_v_2",
+  "numeric_id": "02136",
+  "slug": "dumbbell_cuban_press_v_2",
+  "name": "Dumbbell Cuban Press V. 2",
+  "aliases": [
+    "Cuban Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in each hand at shoulder height with your palms facing down.",
+    "Keeping your core engaged and your back straight, press the dumbbells straight up overhead until your arms are fully extended.",
+    "Rotate your wrists so that your palms are facing forward.",
+    "Lower the dumbbells back down to shoulder height, rotating your wrists back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2136",
+    "free_id": "Cuban_Press"
+  }
+}

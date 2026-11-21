@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00221_cable_side_bend_crunch_bosu_ball",
+  "numeric_id": "00221",
+  "slug": "cable_side_bend_crunch_bosu_ball",
+  "name": "Cable Side Bend Crunch (Bosu Ball)",
+  "aliases": [
+    "Cable Crunch"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a cable handle in one hand.",
+    "Place the other hand on your hip.",
+    "Engage your core and slowly bend sideways towards the hand holding the cable, keeping your back straight.",
+    "Pause for a moment at the bottom of the movement, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0221",
+    "free_id": "Cable_Crunch"
+  }
+}

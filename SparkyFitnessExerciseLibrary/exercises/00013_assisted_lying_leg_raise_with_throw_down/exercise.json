@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00013_assisted_lying_leg_raise_with_throw_down",
+  "numeric_id": "00013",
+  "slug": "assisted_lying_leg_raise_with_throw_down",
+  "name": "Assisted Lying Leg Raise With Throw Down",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your legs extended and your arms by your sides.",
+    "Place your hands under your glutes for support.",
+    "Engage your core and lift your legs off the ground, keeping them straight.",
+    "Raise your legs until they are perpendicular to the ground.",
+    "Lower your legs back down to the starting position.",
+    "Simultaneously, throw your legs down towards the ground, keeping them straight.",
+    "Raise your legs back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0013",
+    "free_id": null
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "id": "20006_prone_scapular_squeeze",
+  "numeric_id": "20006",
+  "slug": "prone_scapular_squeeze",
+  "name": "Prone Scapular Squeeze",
+  "aliases": [
+    "Prone Scapular Retraction",
+    "Floor Scapular Pinch"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "upper back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "traps"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "frontal",
+    "default_tempo": "2-2-2-1",
+    "demonstration_reps": 3
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "scapular_dyskinesis",
+      "thoracic_slouch",
+      "neck_tension"
+    ],
+    "contraindications": [
+      "acute_thoracic_compression_fracture"
+    ],
+    "clinical_protocol": "APTA Posture & Scapular Guidance"
+  },
+  "steps": [
+    "Lie face down on an exercise mat with your hands resting gently at the back of your head or beside your temples.",
+    "Keep your elbows flared comfortably out to the sides.",
+    "Gently squeeze your shoulder blades together, lifting your elbows toward the ceiling while keeping your head relaxed.",
+    "Hold the shoulder blade contraction for two full seconds while breathing naturally.",
+    "Relax your shoulders and allow your elbows to return toward the floor."
+  ],
+  "coaching_cues": [
+    "Do not pull on your neck or lift your head high; the movement comes from your shoulder blades.",
+    "Think of holding a pencil between your shoulder blades at the peak of the squeeze.",
+    "Keep your breathing rhythmic and calm."
+  ],
+  "sources": {
+    "attribution": "Clinical Scapular Kinematics Protocols"
+  }
+}

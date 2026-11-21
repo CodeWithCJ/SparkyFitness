@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02812_dumbbell_step_up_split_squat",
+  "numeric_id": "02812",
+  "slug": "dumbbell_step_up_split_squat",
+  "name": "Dumbbell Step-Up Split Squat",
+  "aliases": [
+    "Dumbbell Squat"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "calves",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand in front of a bench or step with a dumbbell in each hand, palms facing your body.",
+    "Place your right foot on the bench or step, ensuring your entire foot is in contact with the surface.",
+    "Step up onto the bench or step with your right foot, pushing through your heel to lift your body up.",
+    "As you step up, simultaneously lift your left knee towards your chest.",
+    "Pause at the top of the movement, then slowly lower your left foot back to the ground while keeping your right foot on the bench or step.",
+    "Repeat the movement with your left foot on the bench or step.",
+    "Continue alternating between your right and left foot for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2812",
+    "free_id": "Dumbbell_Squat"
+  }
+}

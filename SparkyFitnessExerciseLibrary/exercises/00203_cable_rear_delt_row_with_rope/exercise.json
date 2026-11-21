@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00203_cable_rear_delt_row_with_rope",
+  "numeric_id": "00203",
+  "slug": "cable_rear_delt_row_with_rope",
+  "name": "Cable Rear Delt Row (With Rope)",
+  "aliases": [
+    "Cable Rope Rear-Delt Rows"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back",
+      "biceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a rope handle to a low pulley cable machine.",
+    "Stand facing the machine with your feet shoulder-width apart.",
+    "Grasp the rope handle with an overhand grip, palms facing each other.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight.",
+    "Keep your elbows slightly bent and pull the rope towards your chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the top of the movement, then slowly release the tension and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0203",
+    "free_id": "Cable_Rope_Rear-Delt_Rows"
+  }
+}

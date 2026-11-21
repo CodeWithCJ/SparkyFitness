@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00080_barbell_reverse_curl",
+  "numeric_id": "00080",
+  "slug": "barbell_reverse_curl",
+  "name": "Barbell Reverse Curl",
+  "aliases": [
+    "Reverse Barbell Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with your feet shoulder-width apart and hold a barbell with an overhand grip, palms facing down.",
+    "Keep your upper arms stationary and exhale as you curl the barbell upward, contracting your biceps.",
+    "Continue to raise the barbell until your biceps are fully contracted and the barbell is at shoulder level.",
+    "Hold the contracted position for a brief pause as you squeeze your biceps.",
+    "Inhale as you slowly lower the barbell back to the starting position, keeping your upper arms stationary.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0080",
+    "free_id": "Reverse_Barbell_Curl"
+  }
+}

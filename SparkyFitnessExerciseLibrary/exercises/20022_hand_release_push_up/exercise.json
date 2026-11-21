@@ -1,0 +1,60 @@
+{
+  "id": "20022_hand_release_push_up",
+  "numeric_id": "20022",
+  "slug": "hand_release_push_up",
+  "name": "Hand-Release Push-Up",
+  "aliases": [
+    "Dead-Stop Push-Up",
+    "Chest-to-Deck Push-Up"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "strength",
+    "body_part": "chest",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "middle back",
+      "abdominals"
+    ],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-1-1",
+    "demonstration_reps": 3
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "shoulder_impingement_prevention",
+      "core_sag_correction"
+    ],
+    "contraindications": [
+      "acute_sternoclavicular_joint_sprain"
+    ],
+    "clinical_protocol": "Tactical Strength & Conditioning Joint Protection Standard"
+  },
+  "steps": [
+    "Start in a high plank position with your hands slightly wider than shoulder-width and your body forming a straight line from heels to head.",
+    "Lower your chest and thighs smoothly to the floor in a controlled manner.",
+    "Once resting fully on the floor, lift both hands a few inches off the ground, squeezing your shoulder blades together briefly.",
+    "Place your hands firmly back on the mat beneath your shoulders.",
+    "Brace your core and press the floor away, driving your body back up in one cohesive unit to the top plank position."
+  ],
+  "coaching_cues": [
+    "Do not allow your hips to peel off the floor after your chest; your body must rise as a single rigid board.",
+    "Lifting the hands at the bottom eliminates joint bouncing and resets shoulder mechanics.",
+    "Keep elbows angled back at roughly 45 degrees, not flared out perpendicular to your body."
+  ],
+  "sources": {
+    "attribution": "NSCA Tactical Strength Joint Preservation Protocol"
+  }
+}

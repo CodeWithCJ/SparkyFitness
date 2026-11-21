@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00628_monster_walk",
+  "numeric_id": "00628",
+  "slug": "monster_walk",
+  "name": "Monster Walk",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes",
+      "abductors"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Place a resistance band around your ankles.",
+    "Stand with your feet shoulder-width apart and slightly bend your knees.",
+    "Take a step to the side with your right foot, maintaining tension on the resistance band.",
+    "Follow with your left foot, stepping to the side to return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0628",
+    "free_id": "Monster_Walk"
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00535_kettlebell_hang_clean",
+  "numeric_id": "00535",
+  "slug": "kettlebell_hang_clean",
+  "name": "Kettlebell Hang Clean",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "quadriceps",
+      "calves",
+      "lower back",
+      "shoulders",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in front of your thighs.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight.",
+    "Lower the kettlebell towards the ground, allowing it to swing between your legs.",
+    "Quickly extend your hips and knees, using the momentum to swing the kettlebell up to shoulder height.",
+    "As the kettlebell reaches shoulder height, rotate your wrists and catch the kettlebell in the rack position, with your elbow tucked in and the kettlebell resting on your forearm.",
+    "Lower the kettlebell back down to the starting position between your legs, and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0535",
+    "free_id": "Kettlebell_Hang_Clean"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03220_astride_jumps_male",
+  "numeric_id": "03220",
+  "slug": "astride_jumps_male",
+  "name": "Astride Jumps (Male)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart.",
+    "Bend your knees and lower your body into a squat position.",
+    "Jump explosively upwards, extending your legs and arms.",
+    "While in the air, spread your legs apart and bring your arms out to the sides.",
+    "Land softly with your feet shoulder-width apart, bending your knees to absorb the impact.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3220",
+    "free_id": null
+  }
+}

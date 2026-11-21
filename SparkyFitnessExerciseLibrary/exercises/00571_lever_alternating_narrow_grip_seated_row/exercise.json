@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00571_lever_alternating_narrow_grip_seated_row",
+  "numeric_id": "00571",
+  "slug": "lever_alternating_narrow_grip_seated_row",
+  "name": "Lever Alternating Narrow Grip Seated Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and footplate position to ensure proper alignment.",
+    "Sit on the machine with your back straight and feet flat on the footplate.",
+    "Grasp the handles with a narrow grip, palms facing each other.",
+    "Keep your chest up and shoulders back throughout the exercise.",
+    "Pull one handle towards your torso while keeping the other handle stationary.",
+    "Squeeze your shoulder blades together at the end of the movement.",
+    "Slowly return the handle to the starting position and repeat with the other side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0571",
+    "free_id": null
+  }
+}

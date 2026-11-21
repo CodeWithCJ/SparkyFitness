@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06222_linear_acceleration_wall_drill",
+  "numeric_id": "06222",
+  "slug": "linear_acceleration_wall_drill",
+  "name": "Linear Acceleration Wall Drill",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": null,
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "calves",
+      "glutes",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lean at around 45 degrees against a wall. Your feet should be together, glutes contracted.",
+    "Begin by lifting your right knee quickly, pausing, and then driving it straight down into the ground.",
+    "Switch legs, raising the opposite knee, and then attacking the ground straight down.",
+    "Repeat once more with your right leg, and as soon as the right foot strikes the ground hammer them out rapidly, alternating left and right as fast as you can."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Linear_Acceleration_Wall_Drill"
+  }
+}

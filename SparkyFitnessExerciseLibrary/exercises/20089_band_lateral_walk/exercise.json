@@ -1,0 +1,59 @@
+{
+  "id": "20089_band_lateral_walk",
+  "numeric_id": "20089",
+  "slug": "band_lateral_walk",
+  "name": "Band Lateral Walk",
+  "aliases": [
+    "Lateral Band Walk",
+    "Mini Band Side Steps",
+    "Crab Walk with Band"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "abductors",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abductors"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "frontal",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "gluteus_medius_hypotrophy",
+      "lateral_pelvic_instability",
+      "it_band_syndrome"
+    ],
+    "contraindications": [
+      "acute_greater_trochanteric_bursitis"
+    ],
+    "clinical_protocol": "Sports Medicine Hip & Core Protocol"
+  },
+  "steps": [
+    "Place a mini resistance band around your ankles or just above your knees.",
+    "Stand with feet shoulder-width apart in a quarter-squat athletic stance with your core braced and spine neutral.",
+    "Step laterally to the side with your lead foot, stretching the band wide.",
+    "Follow with your trailing foot, stepping in slowly while keeping enough width between your feet to maintain band tension.",
+    "Take several controlled steps in one direction, then reverse and step back in the opposite direction."
+  ],
+  "coaching_cues": [
+    "Keep your toes pointing straight ahead; do not turn your feet outward.",
+    "Do not let your feet come together or allow the band to go completely slack between steps.",
+    "Keep your hips level without bobbing up and down."
+  ],
+  "sources": {
+    "attribution": "Sports Medicine Hip & Core Stability Protocol"
+  }
+}

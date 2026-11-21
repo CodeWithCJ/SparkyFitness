@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02406_cable_reverse_grip_triceps_pushdown_sz_bar_with_ar",
+  "numeric_id": "02406",
+  "slug": "cable_reverse_grip_triceps_pushdown_sz_bar_with_arm_blaster",
+  "name": "Cable Reverse Grip Triceps Pushdown (Sz-Bar) (With Arm Blaster)",
+  "aliases": [
+    "Reverse Grip Triceps Pushdown"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a straight bar to the cable machine at the highest setting.",
+    "Stand facing the cable machine with your feet shoulder-width apart.",
+    "Grasp the bar with an underhand grip, palms facing up, and your hands shoulder-width apart.",
+    "Keep your elbows close to your sides and your upper arms stationary throughout the exercise.",
+    "Engage your triceps and slowly push the bar down until your arms are fully extended.",
+    "Pause for a moment at the bottom, then slowly return the bar to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2406",
+    "free_id": "Reverse_Grip_Triceps_Pushdown"
+  }
+}

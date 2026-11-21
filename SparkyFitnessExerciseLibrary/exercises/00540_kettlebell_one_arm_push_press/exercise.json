@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00540_kettlebell_one_arm_push_press",
+  "numeric_id": "00540",
+  "slug": "kettlebell_one_arm_push_press",
+  "name": "Kettlebell One Arm Push Press",
+  "aliases": [
+    "One-Arm Kettlebell Push Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals",
+      "calves",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in one hand at shoulder level.",
+    "Bend your knees slightly and engage your core.",
+    "Press the kettlebell overhead by extending your arm and fully extending your legs.",
+    "Lower the kettlebell back to the starting position by bending your knees and bringing the kettlebell back to your shoulder.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0540",
+    "free_id": "One-Arm_Kettlebell_Push_Press"
+  }
+}

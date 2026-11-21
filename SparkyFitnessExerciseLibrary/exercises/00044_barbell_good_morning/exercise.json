@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00044_barbell_good_morning",
+  "numeric_id": "00044",
+  "slug": "barbell_good_morning",
+  "name": "Barbell Good Morning",
+  "aliases": [
+    "Good Morning"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "lower back",
+      "abdominals",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart and the barbell resting on your upper back.",
+    "Keeping your back straight and your core engaged, hinge forward at the hips, pushing your buttocks back as if you were trying to touch the wall behind you with your glutes.",
+    "Lower your torso until it is parallel to the ground, feeling a stretch in your hamstrings.",
+    "Pause for a moment, then return to the starting position by squeezing your glutes and pushing your hips forward.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0044",
+    "free_id": "Good_Morning"
+  }
+}

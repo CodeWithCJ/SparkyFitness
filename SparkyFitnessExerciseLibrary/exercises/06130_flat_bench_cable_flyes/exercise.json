@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06130_flat_bench_cable_flyes",
+  "numeric_id": "06130",
+  "slug": "flat_bench_cable_flyes",
+  "name": "Flat Bench Cable Flyes",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Position a flat bench between two low pulleys so that when you are laying on it, your chest will be lined up with the cable pulleys.",
+    "Lay flat on the bench and keep your feet on the ground.",
+    "Have someone hand you the handles on each hand. You will grab each single handle attachment with a palms up grip.",
+    "Extend your arms by your side with a slight bend on your elbows. Tip: You will keep this bend constant through the whole movement. Your arms should be parallel to the floor. This is your starting position.",
+    "Now start lifting the arms in a semi-circle motion directly in front of you by pulling the cables together until both hands meet at the top of the movement. Squeeze your chest as you perform this motion and breathe out during this movement. Also, hold the contraction for a second at the top. Tip: When performed correctly, at the top position of this movement, your arms should be perpendicular to your torso and the floor touching above your chest.",
+    "Slowly come back to the starting position.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Flat_Bench_Cable_Flyes"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00494_incline_reverse_grip_push_up",
+  "numeric_id": "00494",
+  "slug": "incline_reverse_grip_push_up",
+  "name": "Incline Reverse Grip Push-Up",
+  "aliases": [
+    "Incline Push-Up Reverse Grip"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Place your hands on the edge of a bench or elevated surface, slightly wider than shoulder-width apart.",
+    "Extend your legs behind you, resting on the balls of your feet, creating a straight line from your head to your heels.",
+    "Lower your chest towards the bench by bending your elbows, keeping them close to your sides.",
+    "Pause for a moment at the bottom, then push yourself back up to the starting position by extending your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0494",
+    "free_id": "Incline_Push-Up_Reverse_Grip"
+  }
+}

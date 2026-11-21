@@ -1,0 +1,39 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06201_kneeling_forearm_stretch",
+  "numeric_id": "06201",
+  "slug": "kneeling_forearm_stretch",
+  "name": "Kneeling Forearm Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by kneeling on a mat with your palms flat and your fingers pointing back toward your knees.",
+    "Slowly lean back keeping your palms flat on the floor until you feel a stretch in your wrists and forearms. Hold for 20-30 seconds."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Kneeling_Forearm_Stretch"
+  }
+}

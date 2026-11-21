@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01012_band_twisting_overhead_press",
+  "numeric_id": "01012",
+  "slug": "band_twisting_overhead_press",
+  "name": "Band Twisting Overhead Press",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and place the band under your feet.",
+    "Hold the band handles at shoulder height with your palms facing forward.",
+    "Engage your core and press the band overhead, fully extending your arms.",
+    "As you press, twist your torso to one side, keeping your hips stable.",
+    "Pause for a moment at the top, then return to the starting position.",
+    "Repeat the press and twist on the opposite side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1012",
+    "free_id": null
+  }
+}

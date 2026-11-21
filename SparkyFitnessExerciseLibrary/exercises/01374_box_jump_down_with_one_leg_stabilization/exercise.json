@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01374_box_jump_down_with_one_leg_stabilization",
+  "numeric_id": "01374",
+  "slug": "box_jump_down_with_one_leg_stabilization",
+  "name": "Box Jump Down With One Leg Stabilization",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand in front of a box or platform with your feet shoulder-width apart.",
+    "Bend your knees and jump onto the box, landing softly with one foot on the box and the other foot hanging off the edge.",
+    "Stabilize yourself on the box with the foot that is on it, while keeping the other foot off the ground.",
+    "Hold this position for a few seconds, engaging your calf muscles to maintain balance.",
+    "Slowly step down with the foot that is on the box, returning to the starting position.",
+    "Repeat the exercise with the other leg."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1374",
+    "free_id": null
+  }
+}

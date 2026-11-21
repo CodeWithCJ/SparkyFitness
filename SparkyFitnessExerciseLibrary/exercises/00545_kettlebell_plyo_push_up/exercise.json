@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00545_kettlebell_plyo_push_up",
+  "numeric_id": "00545",
+  "slug": "kettlebell_plyo_push_up",
+  "name": "Kettlebell Plyo Push-Up",
+  "aliases": [
+    "Plyo Push-up"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a high plank position with your hands on the kettlebells, shoulder-width apart.",
+    "Lower your chest towards the ground, keeping your elbows close to your body.",
+    "Push through your hands explosively, lifting your hands off the kettlebells and extending your arms fully.",
+    "Land softly back on the kettlebells and immediately lower your chest back down for the next repetition.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0545",
+    "free_id": "Plyo_Push-up"
+  }
+}

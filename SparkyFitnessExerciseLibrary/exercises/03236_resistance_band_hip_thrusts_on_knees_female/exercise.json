@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03236_resistance_band_hip_thrusts_on_knees_female",
+  "numeric_id": "03236",
+  "slug": "resistance_band_hip_thrusts_on_knees_female",
+  "name": "Resistance Band Hip Thrusts On Knees (Female)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by kneeling on the ground with your knees hip-width apart and your feet flexed.",
+    "Wrap the resistance band around your thighs, just above your knees.",
+    "Place your hands on your hips or extend them out in front of you for balance.",
+    "Engage your glutes and core muscles.",
+    "Push your hips forward and squeeze your glutes as you lift your knees off the ground, extending your hips until your thighs are parallel to the ground.",
+    "Hold the position for a moment, then slowly lower your knees back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3236",
+    "free_id": null
+  }
+}

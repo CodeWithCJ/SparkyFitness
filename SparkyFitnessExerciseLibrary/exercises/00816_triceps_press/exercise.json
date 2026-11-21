@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00816_triceps_press",
+  "numeric_id": "00816",
+  "slug": "triceps_press",
+  "name": "Triceps Press",
+  "aliases": [
+    "Lying Triceps Press"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and your knees slightly bent.",
+    "Extend your arms straight out in front of you, parallel to the ground.",
+    "Bend your elbows and lower your body towards the ground, keeping your upper arms close to your sides.",
+    "Pause for a moment at the bottom, then push yourself back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0816",
+    "free_id": "Lying_Triceps_Press"
+  }
+}

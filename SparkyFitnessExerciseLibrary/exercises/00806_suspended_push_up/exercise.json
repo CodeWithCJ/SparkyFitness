@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00806_suspended_push_up",
+  "numeric_id": "00806",
+  "slug": "suspended_push_up",
+  "name": "Suspended Push-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Find a suspension trainer and adjust it to an appropriate height.",
+    "Stand facing away from the anchor point and hold the handles with an overhand grip.",
+    "Walk your feet forward, leaning your body forward until your weight is supported by the suspension trainer.",
+    "Keep your body straight from head to heels, engage your core, and lower your chest towards the handles.",
+    "Push through your chest and arms to return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0806",
+    "free_id": "Suspended_Push-Up"
+  }
+}

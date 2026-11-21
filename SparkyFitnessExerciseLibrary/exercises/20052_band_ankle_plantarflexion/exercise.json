@@ -1,0 +1,56 @@
+{
+  "id": "20052_band_ankle_plantarflexion",
+  "numeric_id": "20052",
+  "slug": "band_ankle_plantarflexion",
+  "name": "Band Ankle Plantarflexion",
+  "aliases": [
+    "Resistance Band Calf Press",
+    "Seated Ankle Point"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "bands",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "achilles_tendon_rehab",
+      "calf_weakness",
+      "ankle_sprain_recovery"
+    ],
+    "contraindications": [
+      "acute_achilles_tendon_tear"
+    ],
+    "clinical_protocol": "Cornell Health Physical Therapy Ankle Protocol"
+  },
+  "steps": [
+    "Sit on the floor with your leg straight and hold the ends of a resistance band in both hands.",
+    "Loop the middle of the band around the ball of your foot, keeping tension with your hands.",
+    "Begin with your ankle flexed back toward your body.",
+    "Point your foot and toes forward away from you like pressing a gas pedal, pushing against the band.",
+    "Pause at peak extension for one second, then slowly return your foot to the flexed starting position."
+  ],
+  "coaching_cues": [
+    "Push firmly through the ball of your foot rather than curling just your toes.",
+    "Maintain steady resistance with your arms without letting your elbows move.",
+    "Perform smoothly and steadily without jerky bounces."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Physical Therapy Exercise Protocol"
+  }
+}

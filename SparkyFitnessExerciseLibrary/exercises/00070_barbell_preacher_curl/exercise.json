@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00070_barbell_preacher_curl",
+  "numeric_id": "00070",
+  "slug": "barbell_preacher_curl",
+  "name": "Barbell Preacher Curl",
+  "aliases": [
+    "Barbell Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a preacher bench with your upper arms resting on the pad and your chest against the support.",
+    "Grasp the barbell with an underhand grip, slightly wider than shoulder-width apart.",
+    "Keeping your upper arms stationary, exhale and curl the barbell up towards your shoulders.",
+    "Pause for a moment at the top, squeezing your biceps.",
+    "Inhale and slowly lower the barbell back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0070",
+    "free_id": "Barbell_Curl"
+  }
+}

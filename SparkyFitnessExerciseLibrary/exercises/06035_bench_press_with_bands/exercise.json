@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06035_bench_press_with_bands",
+  "numeric_id": "06035",
+  "slug": "bench_press_with_bands",
+  "name": "Bench Press - With Bands",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "bands",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Using a flat bench secure a band under the leg of the bench that is nearest to your head.",
+    "Once the band is secure, grab it by both handles and lie down on the bench.",
+    "Extend your arms so that you are holding the band handles in front of you at shoulder width.",
+    "Once at shoulder width, rotate your wrists forward so that the palms of your hands are facing away from you. This will be your starting position.",
+    "Bring down the handles slowly until your elbow forms a 90 degree angle. Keep full control at all times.",
+    "As you breathe out, bring the handles up using your pectoral muscles. Lock your arms in the contracted position, squeeze your chest, hold for a second and then start coming down slowly. Tip: It should take at least twice as long to go down than to come up.",
+    "Repeat the movement for the prescribed amount of repetitions of your training program."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Bench_Press_-_With_Bands"
+  }
+}

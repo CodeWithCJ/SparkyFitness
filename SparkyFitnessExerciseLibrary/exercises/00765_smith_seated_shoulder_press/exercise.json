@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00765_smith_seated_shoulder_press",
+  "numeric_id": "00765",
+  "slug": "smith_seated_shoulder_press",
+  "name": "Smith Seated Shoulder Press",
+  "aliases": [
+    "Seated Cable Shoulder Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height so that the handles are at shoulder level.",
+    "Sit on the machine with your back against the pad and your feet flat on the floor.",
+    "Grasp the handles with an overhand grip and lift them off the supports, extending your arms fully.",
+    "Lower the handles down to shoulder level, keeping your elbows slightly bent.",
+    "Press the handles up overhead until your arms are fully extended.",
+    "Pause for a moment at the top, then slowly lower the handles back down to shoulder level.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0765",
+    "free_id": "Seated_Cable_Shoulder_Press"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00267_crunch_hands_overhead",
+  "numeric_id": "00267",
+  "slug": "crunch_hands_overhead",
+  "name": "Crunch (Hands Overhead)",
+  "aliases": [
+    "Crunch - Hands Overhead"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your knees bent and feet flat on the ground.",
+    "Extend your arms straight above your head.",
+    "Engaging your abs, lift your upper body off the ground, curling forward towards your knees.",
+    "Pause for a moment at the top, then slowly lower your upper body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0267",
+    "free_id": "Crunch_-_Hands_Overhead"
+  }
+}

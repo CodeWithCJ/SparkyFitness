@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06233_lying_crossover",
+  "numeric_id": "06233",
+  "slug": "lying_crossover",
+  "name": "Lying Crossover",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "expert",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abductors"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your back with your legs extended.",
+    "Cross one leg over your body with the knee bent, attempting to touch the knee to the ground. Your partner should kneel beside you, holding your shoulder down with one hand and controlling the crossed leg with the other. this will be your starting position.",
+    "Attempt to raise the bent knee off of the ground as your partner prevents any actual movement.",
+    "After 10-20 seconds, relax the leg as your partner gently presses the knee towards the floor. Repeat with the other side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Lying_Crossover"
+  }
+}

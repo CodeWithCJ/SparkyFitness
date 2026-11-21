@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02404_ez_bar_biceps_curl_with_arm_blaster",
+  "numeric_id": "02404",
+  "slug": "ez_bar_biceps_curl_with_arm_blaster",
+  "name": "Ez-Bar Biceps Curl (With Arm Blaster)",
+  "aliases": [
+    "EZ-Bar Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with your feet shoulder-width apart and hold the ez barbell with an underhand grip, palms facing up.",
+    "Place your upper arms against the arm blaster, keeping them stationary throughout the exercise.",
+    "Keeping your elbows close to your body, exhale and curl the barbell up towards your shoulders.",
+    "Pause for a moment at the top, squeezing your biceps.",
+    "Inhale and slowly lower the barbell back to the starting position, fully extending your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2404",
+    "free_id": "EZ-Bar_Curl"
+  }
+}

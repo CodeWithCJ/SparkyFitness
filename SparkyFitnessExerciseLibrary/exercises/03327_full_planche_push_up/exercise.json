@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03327_full_planche_push_up",
+  "numeric_id": "03327",
+  "slug": "full_planche_push_up",
+  "name": "Full Planche Push-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a push-up position with your hands placed slightly wider than shoulder-width apart.",
+    "Engage your core and lower your body down towards the ground, keeping your elbows close to your sides.",
+    "As you lower yourself, lean your body forward and lift your feet off the ground, balancing on your hands.",
+    "Continue to lower your body until your chest is just above the ground.",
+    "Push through your hands and extend your arms to lift your body back up to the starting position.",
+    "Maintain a straight line from your head to your heels throughout the movement.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3327",
+    "free_id": null
+  }
+}

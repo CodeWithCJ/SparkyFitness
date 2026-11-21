@@ -6,7 +6,8 @@
   "name": "Barbell Bench Press",
   "aliases": [
     "Flat Bench Press",
-    "Barbell Flat Bench"
+    "Barbell Flat Bench",
+    "Barbell Bench Press - Medium Grip"
   ],
   "taxonomy": {
     "modality": "weight_reps",
@@ -14,20 +15,20 @@
     "body_part": "chest",
     "mechanic": "compound",
     "force": "push",
-    "level": "intermediate",
+    "level": "beginner",
     "equipment": "barbell",
     "primary_muscles": [
       "chest"
     ],
     "secondary_muscles": [
-      "shoulders",
-      "triceps"
+      "triceps",
+      "shoulders"
     ]
   },
   "biomechanics": {
     "laterality": "bilateral",
     "movement_plane": "sagittal",
-    "default_tempo": "2-0-1-0",
+    "default_tempo": "2-0-2-0",
     "demonstration_reps": 2
   },
   "steps": [
@@ -45,7 +46,7 @@
     "Avoid flaring your elbows out to 90 degrees to protect the shoulder joint"
   ],
   "sources": {
-    "external_id": "00025",
-    "attribution": "SparkyFitness Media"
+    "hasan_id": "0025",
+    "free_id": "Barbell_Bench_Press_-_Medium_Grip"
   }
 }

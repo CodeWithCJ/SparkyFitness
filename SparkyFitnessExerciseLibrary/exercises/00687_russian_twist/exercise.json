@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00687_russian_twist",
+  "numeric_id": "00687",
+  "slug": "russian_twist",
+  "name": "Russian Twist",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the ground with your knees bent and feet flat on the floor.",
+    "Lean back slightly while keeping your back straight and your core engaged.",
+    "Hold your hands together in front of your chest or hold a weight if desired.",
+    "Lift your feet off the ground, balancing on your sit bones.",
+    "Twist your torso to the right, bringing your hands or weight towards the right side of your body.",
+    "Pause for a moment, then twist your torso to the left, bringing your hands or weight towards the left side of your body.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0687",
+    "free_id": "Russian_Twist"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "id": "20065_band_shoulder_external_rotation_neutral",
+  "numeric_id": "20065",
+  "slug": "band_shoulder_external_rotation_neutral",
+  "name": "Band Shoulder External Rotation in Neutral",
+  "aliases": [
+    "Standing Band External Rotation",
+    "Neutral Rotator Cuff Pull"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "middle back"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "rotator_cuff_weakness",
+      "shoulder_stability_deficit",
+      "postural_internal_rotation"
+    ],
+    "contraindications": [
+      "acute_shoulder_dislocation_acute_phase"
+    ],
+    "clinical_protocol": "Cornell Health Shoulder Band Strengthening"
+  },
+  "steps": [
+    "Anchor a resistance band at elbow height.",
+    "Stand sideways to the anchor point with the target arm on the outside.",
+    "Bend your elbow to 90 degrees and hold the band handle across your belly, placing a rolled towel between your elbow and ribs.",
+    "Keeping your elbow pinned firmly to your side, rotate your forearm outward away from your body against the band's resistance.",
+    "Pause at peak external rotation for one second, then slowly return your forearm across your stomach."
+  ],
+  "coaching_cues": [
+    "Keep your elbow pinned to the towel roll; do not allow your elbow to flare away from your ribs.",
+    "Maintain an upright posture and avoid twisting your torso to help move the band.",
+    "Move with smooth, steady control in both directions."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Shoulder Band Strengthening Protocol"
+  }
+}

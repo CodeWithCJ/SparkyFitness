@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03636_high_knee_against_wall",
+  "numeric_id": "03636",
+  "slug": "high_knee_against_wall",
+  "name": "High Knee Against Wall",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing a wall with your feet hip-width apart.",
+    "Place your hands on the wall for support.",
+    "Engage your core and lift your right knee up towards your chest, while keeping your left foot on the ground.",
+    "Quickly switch legs, bringing your left knee up towards your chest and lowering your right foot back down.",
+    "Continue alternating legs in a running motion, bringing your knees up as high as possible.",
+    "Maintain a fast pace and keep your upper body stable throughout the exercise.",
+    "Repeat for the desired duration or number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3636",
+    "free_id": null
+  }
+}

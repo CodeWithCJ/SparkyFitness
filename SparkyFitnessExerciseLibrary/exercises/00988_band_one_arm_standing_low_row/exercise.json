@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00988_band_one_arm_standing_low_row",
+  "numeric_id": "00988",
+  "slug": "band_one_arm_standing_low_row",
+  "name": "Band One Arm Standing Low Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the band to a stable anchor point at waist height.",
+    "Stand facing the anchor point with your feet shoulder-width apart.",
+    "Hold the band with one hand, palm facing inward, and step back to create tension in the band.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight.",
+    "Pull the band towards your waist, squeezing your shoulder blades together.",
+    "Pause for a moment at the top of the movement, then slowly release the band back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0988",
+    "free_id": null
+  }
+}

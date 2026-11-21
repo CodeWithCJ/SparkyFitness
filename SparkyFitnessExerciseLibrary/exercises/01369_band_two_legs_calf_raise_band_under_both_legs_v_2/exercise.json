@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01369_band_two_legs_calf_raise_band_under_both_legs_v_2",
+  "numeric_id": "01369",
+  "slug": "band_two_legs_calf_raise_band_under_both_legs_v_2",
+  "name": "Band Two Legs Calf Raise - (Band Under Both Legs) V. 2",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and place a resistance band under both feet.",
+    "Hold the ends of the band with your hands for stability.",
+    "Raise your heels off the ground as high as possible, using your calves.",
+    "Pause for a moment at the top, then slowly lower your heels back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1369",
+    "free_id": null
+  }
+}

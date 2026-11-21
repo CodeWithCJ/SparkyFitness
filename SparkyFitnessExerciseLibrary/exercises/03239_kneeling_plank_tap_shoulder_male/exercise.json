@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03239_kneeling_plank_tap_shoulder_male",
+  "numeric_id": "03239",
+  "slug": "kneeling_plank_tap_shoulder_male",
+  "name": "Kneeling Plank Tap Shoulder (Male)",
+  "aliases": [
+    "Plank"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a kneeling position with your hands on the ground, shoulder-width apart.",
+    "Extend your legs behind you, resting on your toes, and lift your body into a plank position.",
+    "Keeping your core engaged and your hips stable, lift one hand off the ground and tap the opposite shoulder.",
+    "Return the hand to the ground and repeat with the other hand.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3239",
+    "free_id": "Plank"
+  }
+}

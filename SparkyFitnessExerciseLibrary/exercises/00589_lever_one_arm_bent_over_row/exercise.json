@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00589_lever_one_arm_bent_over_row",
+  "numeric_id": "00589",
+  "slug": "lever_one_arm_bent_over_row",
+  "name": "Lever One Arm Bent Over Row",
+  "aliases": [
+    "Bent Over One-Arm Long Bar Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "lats",
+      "lower back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, knees slightly bent, and hold a barbell with an overhand grip.",
+    "Bend forward at the hips, keeping your back straight and your head up.",
+    "Let the barbell hang in front of you with your arms fully extended.",
+    "Pull the barbell up towards your chest, keeping your elbows close to your body.",
+    "Squeeze your shoulder blades together at the top of the movement.",
+    "Lower the barbell back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0589",
+    "free_id": "Bent_Over_One-Arm_Long_Bar_Row"
+  }
+}

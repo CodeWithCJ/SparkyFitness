@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00826_vertical_leg_raise_on_parallel_bars",
+  "numeric_id": "00826",
+  "slug": "vertical_leg_raise_on_parallel_bars",
+  "name": "Vertical Leg Raise (On Parallel Bars)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Hang from the parallel bars with your arms fully extended and your body straight.",
+    "Engage your core and lift your legs up in front of you, keeping them straight.",
+    "Continue lifting until your legs are parallel to the ground or slightly higher.",
+    "Pause for a moment at the top, then slowly lower your legs back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0826",
+    "free_id": null
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00171_cable_incline_fly",
+  "numeric_id": "00171",
+  "slug": "cable_incline_fly",
+  "name": "Cable Incline Fly",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the cable machine to a low position and attach the handles.",
+    "Sit on an incline bench with your back against the pad and feet flat on the floor.",
+    "Grasp the handles with an overhand grip and extend your arms straight out in front of you.",
+    "Keeping a slight bend in your elbows, open your arms out to the sides in a controlled motion.",
+    "Pause for a moment at the fully extended position, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0171",
+    "free_id": null
+  }
+}

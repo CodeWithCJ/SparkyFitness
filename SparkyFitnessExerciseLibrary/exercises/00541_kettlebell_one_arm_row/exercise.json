@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00541_kettlebell_one_arm_row",
+  "numeric_id": "00541",
+  "slug": "kettlebell_one_arm_row",
+  "name": "Kettlebell One Arm Row",
+  "aliases": [
+    "One-Arm Kettlebell Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in one hand with an overhand grip.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight and your core engaged.",
+    "Pull the kettlebell up towards your chest, keeping your elbow close to your body and squeezing your shoulder blades together.",
+    "Pause for a moment at the top, then slowly lower the kettlebell back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides and repeat with the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0541",
+    "free_id": "One-Arm_Kettlebell_Row"
+  }
+}

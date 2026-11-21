@@ -1,0 +1,39 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06117_dynamic_back_stretch",
+  "numeric_id": "06117",
+  "slug": "dynamic_back_stretch",
+  "name": "Dynamic Back Stretch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder width apart. This will be your starting position.",
+    "Keeping your arms straight, swing them straight up in front of you 5-10 times, increasing the range of motion each time until your arms are above your head."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Dynamic_Back_Stretch"
+  }
+}

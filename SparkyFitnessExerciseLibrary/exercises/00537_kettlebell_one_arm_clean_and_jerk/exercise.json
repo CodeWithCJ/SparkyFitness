@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00537_kettlebell_one_arm_clean_and_jerk",
+  "numeric_id": "00537",
+  "slug": "kettlebell_one_arm_clean_and_jerk",
+  "name": "Kettlebell One Arm Clean And Jerk",
+  "aliases": [
+    "One-Arm Kettlebell Clean and Jerk"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in one hand with an overhand grip.",
+    "Bend your knees slightly and hinge at the hips, lowering the kettlebell between your legs.",
+    "Explosively extend your hips, knees, and ankles, using the momentum to swing the kettlebell up to shoulder height.",
+    "As the kettlebell reaches shoulder height, rotate your wrist and punch your hand straight up, locking out your arm overhead.",
+    "Lower the kettlebell back down to the starting position and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0537",
+    "free_id": "One-Arm_Kettlebell_Clean_and_Jerk"
+  }
+}

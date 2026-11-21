@@ -1,0 +1,40 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06231_lying_bent_leg_groin",
+  "numeric_id": "06231",
+  "slug": "lying_bent_leg_groin",
+  "name": "Lying Bent Leg Groin",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "expert",
+    "equipment": "other",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your back with your knees bent and the soles of the feet pressed together. Have your partner hold your knees. This will be your starting position.",
+    "Attempt to squeeze your knees together, while your partner prevents any movement from occurring.",
+    "After 10-20 seconds, relax your muscles as your partner gently pushes your knees towards the floor. Be sure to inform your helper when the stretch is adequate to prevent injury or overstretching."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Lying_Bent_Leg_Groin"
+  }
+}

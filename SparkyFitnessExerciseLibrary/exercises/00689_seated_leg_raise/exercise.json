@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00689_seated_leg_raise",
+  "numeric_id": "00689",
+  "slug": "seated_leg_raise",
+  "name": "Seated Leg Raise",
+  "aliases": [
+    "Dumbbell Seated One-Leg Calf Raise"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals",
+      "calves"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a flat bench with your back straight and your feet flat on the ground.",
+    "Place your hands on the sides of the bench for support.",
+    "Keeping your legs straight, slowly raise them up in front of you until they are parallel to the ground.",
+    "Pause for a moment at the top, then slowly lower your legs back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0689",
+    "free_id": "Dumbbell_Seated_One-Leg_Calf_Raise"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00770_smith_squat",
+  "numeric_id": "00770",
+  "slug": "smith_squat",
+  "name": "Smith Squat",
+  "aliases": [
+    "Smith Machine Squat"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Set up the smith machine with the barbell at an appropriate height for your squat.",
+    "Stand with your feet shoulder-width apart, toes slightly turned out.",
+    "Position yourself under the barbell, resting it on your upper traps and shoulders.",
+    "Grip the barbell with a wide grip, slightly wider than shoulder-width apart.",
+    "Engage your core and unrack the barbell, stepping back to clear the rack.",
+    "Keeping your chest up and back straight, initiate the squat by bending at the hips and knees.",
+    "Lower your body until your thighs are parallel to the ground or slightly below.",
+    "Pause for a moment at the bottom, then drive through your heels to return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0770",
+    "free_id": "Smith_Machine_Squat"
+  }
+}

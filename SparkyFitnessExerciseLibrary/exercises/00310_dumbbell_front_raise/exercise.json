@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00310_dumbbell_front_raise",
+  "numeric_id": "00310",
+  "slug": "dumbbell_front_raise",
+  "name": "Dumbbell Front Raise",
+  "aliases": [
+    "Front Dumbbell Raise"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in each hand with your palms facing your thighs.",
+    "Keeping your arms straight, exhale and lift the dumbbells in front of you until they are at shoulder level.",
+    "Pause for a moment at the top, then inhale and slowly lower the dumbbells back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0310",
+    "free_id": "Front_Dumbbell_Raise"
+  }
+}

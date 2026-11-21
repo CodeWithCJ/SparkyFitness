@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01294_dumbbell_pullover_hip_extension_on_exercise_ball",
+  "numeric_id": "01294",
+  "slug": "dumbbell_pullover_hip_extension_on_exercise_ball",
+  "name": "Dumbbell Pullover Hip Extension On Exercise Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with your feet flat on the ground and the dumbbell resting on your thighs.",
+    "Slowly walk your feet forward, rolling the exercise ball down your back until your head, neck, and upper back are supported on the ball.",
+    "Hold the dumbbell with both hands and extend your arms straight up over your chest, keeping a slight bend in your elbows.",
+    "Lower the dumbbell behind your head, keeping your arms straight and maintaining control.",
+    "Pause for a moment, then raise the dumbbell back to the starting position.",
+    "While keeping your arms extended, lift your hips off the ground, squeezing your glutes and engaging your core.",
+    "Lower your hips back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1294",
+    "free_id": null
+  }
+}

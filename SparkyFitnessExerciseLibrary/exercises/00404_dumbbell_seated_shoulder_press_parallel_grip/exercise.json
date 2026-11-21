@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00404_dumbbell_seated_shoulder_press_parallel_grip",
+  "numeric_id": "00404",
+  "slug": "dumbbell_seated_shoulder_press_parallel_grip",
+  "name": "Dumbbell Seated Shoulder Press (Parallel Grip)",
+  "aliases": [
+    "Dumbbell Shoulder Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with a dumbbell in each hand, palms facing inward.",
+    "Raise the dumbbells to shoulder height, elbows bent and palms facing forward.",
+    "Press the dumbbells upward until your arms are fully extended overhead.",
+    "Pause for a moment at the top, then slowly lower the dumbbells back to shoulder height.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0404",
+    "free_id": "Dumbbell_Shoulder_Press"
+  }
+}

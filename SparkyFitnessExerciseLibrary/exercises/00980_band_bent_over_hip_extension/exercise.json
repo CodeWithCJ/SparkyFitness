@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00980_band_bent_over_hip_extension",
+  "numeric_id": "00980",
+  "slug": "band_bent_over_hip_extension",
+  "name": "Band Bent-Over Hip Extension",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the band to a sturdy anchor point at ankle height.",
+    "Stand facing away from the anchor point with your feet shoulder-width apart.",
+    "Step back to create tension in the band, keeping your knees slightly bent.",
+    "Hinge at the hips and lean forward, maintaining a neutral spine.",
+    "Extend your right leg straight back, squeezing your glutes at the top.",
+    "Lower your right leg back down and repeat with the left leg.",
+    "Continue alternating legs for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0980",
+    "free_id": null
+  }
+}

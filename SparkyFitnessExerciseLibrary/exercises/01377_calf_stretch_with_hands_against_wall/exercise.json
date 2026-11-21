@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01377_calf_stretch_with_hands_against_wall",
+  "numeric_id": "01377",
+  "slug": "calf_stretch_with_hands_against_wall",
+  "name": "Calf Stretch With Hands Against Wall",
+  "aliases": [
+    "Calf Stretch Hands Against Wall"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing a wall with your feet hip-width apart.",
+    "Place your hands against the wall at shoulder height.",
+    "Step your right foot back, keeping your heel on the ground and your leg straight.",
+    "Bend your left knee and lean forward, keeping your back leg straight and your heel on the ground.",
+    "Hold the stretch for 20-30 seconds.",
+    "Switch legs and repeat the stretch."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1377",
+    "free_id": "Calf_Stretch_Hands_Against_Wall"
+  }
+}

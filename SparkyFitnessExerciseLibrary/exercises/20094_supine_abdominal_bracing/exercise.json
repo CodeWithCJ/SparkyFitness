@@ -1,0 +1,60 @@
+{
+  "id": "20094_supine_abdominal_bracing",
+  "numeric_id": "20094",
+  "slug": "supine_abdominal_bracing",
+  "name": "Supine Abdominal Bracing",
+  "aliases": [
+    "Abdominal Bracing",
+    "Transverse Abdominis Activation",
+    "Drawing-In Maneuver"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "abdominals",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ],
+    "level": "beginner",
+    "force": "isometric",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "transverse",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "spine",
+    "target_conditions": [
+      "transversus_abdominis_inhibition",
+      "lumbar_segmental_instability",
+      "chronic_low_back_pain"
+    ],
+    "contraindications": [
+      "uncontrolled_hypertension_with_valsalva"
+    ],
+    "clinical_protocol": "AAOS Spine Conditioning Program"
+  },
+  "steps": [
+    "Lie on your back on the floor or a mat with your knees bent at 90 degrees and your feet flat on the floor.",
+    "Rest your arms comfortably at your sides and keep your head and shoulders relaxed.",
+    "Take a normal breath in, then as you exhale, gently tighten your deep abdominal muscles as if bracing for a light punch to the stomach.",
+    "Draw your navel slightly inward and flatten your lower back firmly against the floor.",
+    "Hold this firm abdominal contraction for 10 to 15 seconds while continuing to breathe shallowly.",
+    "Relax your muscles completely, then repeat for the prescribed repetitions."
+  ],
+  "coaching_cues": [
+    "Do not hold your breath; practice breathing steadily in and out while keeping your core braced.",
+    "Feel your lower back press flat against the floor.",
+    "Avoid curling your neck or shoulders off the floor."
+  ],
+  "sources": {
+    "attribution": "AAOS Spine Conditioning Program"
+  }
+}

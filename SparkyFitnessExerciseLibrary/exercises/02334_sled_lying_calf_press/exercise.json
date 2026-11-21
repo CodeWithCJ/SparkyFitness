@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02334_sled_lying_calf_press",
+  "numeric_id": "02334",
+  "slug": "sled_lying_calf_press",
+  "name": "Sled Lying Calf Press",
+  "aliases": [
+    "Calf Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the sled machine to a comfortable weight.",
+    "Sit on the sled machine with your back against the pad and your feet on the platform.",
+    "Place your toes and the balls of your feet on the edge of the platform, with your heels hanging off.",
+    "Push the platform away from you by extending your ankles, keeping your knees slightly bent.",
+    "Continue pushing until your calves are fully contracted.",
+    "Hold the contraction for a moment, then slowly lower the platform back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2334",
+    "free_id": "Calf_Press"
+  }
+}

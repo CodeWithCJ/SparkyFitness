@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00175_cable_kneeling_crunch",
+  "numeric_id": "00175",
+  "slug": "cable_kneeling_crunch",
+  "name": "Cable Kneeling Crunch",
+  "aliases": [
+    "Cable Crunch"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a rope handle to a high pulley and kneel down facing away from the machine.",
+    "Hold the rope handle with both hands and place it behind your head, keeping your elbows out to the sides.",
+    "Keeping your hips stationary, flex your waist and crunch your torso down towards your thighs.",
+    "Pause for a moment at the bottom, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0175",
+    "free_id": "Cable_Crunch"
+  }
+}

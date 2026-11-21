@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01419_iron_cross_stretch",
+  "numeric_id": "01419",
+  "slug": "iron_cross_stretch",
+  "name": "Iron Cross Stretch",
+  "aliases": [
+    "Iron Cross"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes",
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps",
+      "chest",
+      "lower back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your arms extended out to the sides.",
+    "Raise your legs up towards the ceiling, keeping them straight.",
+    "Slowly lower your legs to one side, aiming to touch the floor with your feet.",
+    "Hold the stretch for a few seconds, then return your legs to the starting position.",
+    "Repeat the stretch on the other side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1419",
+    "free_id": "Iron_Cross"
+  }
+}

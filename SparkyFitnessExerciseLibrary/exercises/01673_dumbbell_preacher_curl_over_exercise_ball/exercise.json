@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01673_dumbbell_preacher_curl_over_exercise_ball",
+  "numeric_id": "01673",
+  "slug": "dumbbell_preacher_curl_over_exercise_ball",
+  "name": "Dumbbell Preacher Curl Over Exercise Ball",
+  "aliases": [
+    "Preacher Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with your feet flat on the ground and your back straight.",
+    "Hold a dumbbell in one hand with an underhand grip, resting your elbow on the exercise ball.",
+    "Keeping your upper arm stationary, exhale and curl the dumbbell up towards your shoulder.",
+    "Pause for a moment at the top, then inhale and slowly lower the dumbbell back to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1673",
+    "free_id": "Preacher_Curl"
+  }
+}

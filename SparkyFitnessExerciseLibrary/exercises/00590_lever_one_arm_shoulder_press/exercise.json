@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00590_lever_one_arm_shoulder_press",
+  "numeric_id": "00590",
+  "slug": "lever_one_arm_shoulder_press",
+  "name": "Lever One Arm Shoulder Press",
+  "aliases": [
+    "Dumbbell One-Arm Shoulder Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and position yourself on the machine with your back against the pad.",
+    "Grasp the lever handle with one hand and position your elbow at a 90-degree angle.",
+    "Press the lever upward until your arm is fully extended overhead.",
+    "Pause for a moment at the top, then slowly lower the lever back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0590",
+    "free_id": "Dumbbell_One-Arm_Shoulder_Press"
+  }
+}

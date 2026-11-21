@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06163_hip_extension_with_bands",
+  "numeric_id": "06163",
+  "slug": "hip_extension_with_bands",
+  "name": "Hip Extension With Bands",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "bands",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Secure one end of the band to the lower portion of a post and attach the other to one ankle.",
+    "Facing the attachment point of the band, hold on to the column to stabilize yourself.",
+    "Keeping your head and your chest up, move the resisted leg back as far as you can while keeping the knee straight.",
+    "Return the leg to the starting position."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Hip_Extension_with_Bands"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "id": "20044_band_terminal_knee_extension",
+  "numeric_id": "20044",
+  "slug": "band_terminal_knee_extension",
+  "name": "Band Terminal Knee Extension",
+  "aliases": [
+    "Banded TKE",
+    "Standing Terminal Knee Extension",
+    "Terminal Knee Extension"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "thighs",
+    "equipment": "bands",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "calves"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-2-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "knee",
+    "target_conditions": [
+      "patellofemoral_pain_syndrome",
+      "quad_lag",
+      "post_acl_extension_deficit"
+    ],
+    "contraindications": [
+      "acute_knee_hyperextension_sprain"
+    ],
+    "clinical_protocol": "AAOS Knee Conditioning Guidelines"
+  },
+  "steps": [
+    "Secure a resistance loop band to an anchor point at knee height.",
+    "Step into the loop with your right leg, positioning the band behind the crease of your right knee.",
+    "Step back until there is gentle tension on the band, standing with your weight balanced on your left leg and right heel resting on the ground with the knee slightly bent.",
+    "Contract your right quadriceps muscle to push the back of your knee straight against the band's resistance until the leg is fully straight.",
+    "Hold the contraction for two seconds, focusing on the inner quad (VMO), then slowly allow the knee to soften forward."
+  ],
+  "coaching_cues": [
+    "Focus specifically on the teardrop muscle (vastus medialis) just above the inside of your kneecap.",
+    "Do not forcefully snap or hyperextend the knee joint.",
+    "Keep your hips square and upright throughout."
+  ],
+  "sources": {
+    "attribution": "AAOS Knee Rehabilitation Protocols"
+  }
+}

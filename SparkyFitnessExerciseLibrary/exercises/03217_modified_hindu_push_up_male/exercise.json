@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03217_modified_hindu_push_up_male",
+  "numeric_id": "03217",
+  "slug": "modified_hindu_push_up_male",
+  "name": "Modified Hindu Push-Up (Male)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a push-up position with your hands slightly wider than shoulder-width apart and your feet hip-width apart.",
+    "Lower your body towards the ground, bending your elbows and keeping your core engaged.",
+    "As you lower your body, shift your weight back and lift your hips up towards the ceiling, creating an inverted V shape with your body.",
+    "Continue to lower your body until your chest is just above the ground, then reverse the movement, pushing your hips back down and extending your arms to return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3217",
+    "free_id": null
+  }
+}

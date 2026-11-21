@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00292_dumbbell_one_arm_bent_over_row",
+  "numeric_id": "00292",
+  "slug": "dumbbell_one_arm_bent_over_row",
+  "name": "Dumbbell One Arm Bent-Over Row",
+  "aliases": [
+    "One-Arm Dumbbell Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "lats",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in one hand with your palm facing your body.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight and your core engaged.",
+    "Let the dumbbell hang straight down towards the floor, with your arm fully extended.",
+    "Pull the dumbbell up towards your chest, keeping your elbow close to your body and squeezing your shoulder blades together.",
+    "Pause for a moment at the top, then slowly lower the dumbbell back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0292",
+    "free_id": "One-Arm_Dumbbell_Row"
+  }
+}

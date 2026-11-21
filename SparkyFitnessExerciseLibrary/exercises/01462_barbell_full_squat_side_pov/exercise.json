@@ -1,0 +1,53 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01462_barbell_full_squat_side_pov",
+  "numeric_id": "01462",
+  "slug": "barbell_full_squat_side_pov",
+  "name": "Barbell Full Squat (Side Pov)",
+  "aliases": [
+    "Barbell Full Squat"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "abdominals",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, toes slightly turned out.",
+    "Hold the barbell across your upper back, resting it on your traps or rear delts.",
+    "Engage your core and keep your chest up as you begin to lower your body down.",
+    "Bend at the knees and hips, pushing your hips back and down as if sitting into a chair.",
+    "Lower your body until your thighs are parallel to the ground or slightly below.",
+    "Keep your knees in line with your toes and your weight in your heels.",
+    "Drive through your heels to stand back up, extending your hips and knees.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1462",
+    "free_id": "Barbell_Full_Squat"
+  }
+}

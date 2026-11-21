@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06473_yoke_walk",
+  "numeric_id": "06473",
+  "slug": "yoke_walk",
+  "name": "Yoke Walk",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strongman",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "abductors",
+      "adductors",
+      "calves",
+      "glutes",
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "The yoke is usually done with a yoke apparatus, but is sometimes seen with refrigerators or other heavy objects.",
+    "Begin by racking the apparatus across the back of the shoulders. With your head looking forward and back arched, lift the yoke by driving through the heels.",
+    "Begin walking as quickly as possible using short, quick steps. You may hold the side posts of the yoke to help steady it and hold it in position. Continue for the given distance as fast as possible, usually 75-100 feet."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Yoke_Walk"
+  }
+}

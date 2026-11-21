@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01721_barbell_reverse_grip_skullcrusher",
+  "numeric_id": "01721",
+  "slug": "barbell_reverse_grip_skullcrusher",
+  "name": "Barbell Reverse Grip Skullcrusher",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on a bench with your feet flat on the ground and your head at the end of the bench.",
+    "Hold the barbell with a reverse grip, palms facing towards your face, and your hands shoulder-width apart.",
+    "Extend your arms straight up over your chest, keeping your elbows in and your wrists straight.",
+    "Slowly lower the barbell towards your forehead by bending your elbows, keeping your upper arms stationary.",
+    "Pause for a moment at the bottom, then extend your arms back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1721",
+    "free_id": null
+  }
+}

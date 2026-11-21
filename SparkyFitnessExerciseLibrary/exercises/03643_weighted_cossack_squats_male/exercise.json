@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03643_weighted_cossack_squats_male",
+  "numeric_id": "03643",
+  "slug": "weighted_cossack_squats_male",
+  "name": "Weighted Cossack Squats (Male)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet wider than shoulder-width apart and toes pointing slightly outward.",
+    "Hold a weight in front of your chest with both hands.",
+    "Shift your weight to one side and lower your body by bending the knee of the side you shifted towards, while keeping the other leg straight.",
+    "Go as low as you can while maintaining balance and keeping your chest up.",
+    "Push through the heel of the bent leg to return to the starting position.",
+    "Repeat on the other side, alternating between legs."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3643",
+    "free_id": null
+  }
+}

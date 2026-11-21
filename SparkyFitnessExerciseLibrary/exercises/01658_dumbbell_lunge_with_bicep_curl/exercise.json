@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01658_dumbbell_lunge_with_bicep_curl",
+  "numeric_id": "01658",
+  "slug": "dumbbell_lunge_with_bicep_curl",
+  "name": "Dumbbell Lunge With Bicep Curl",
+  "aliases": [
+    "Dumbbell Bicep Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a dumbbell in each hand with your palms facing forward.",
+    "Take a step forward with your right foot, lowering your body into a lunge position. Your right knee should be bent at a 90-degree angle and your left knee should be hovering just above the ground.",
+    "As you lunge forward, simultaneously curl the dumbbells towards your shoulders, keeping your elbows close to your body.",
+    "Pause for a moment at the bottom of the lunge, then push through your right heel to return to the starting position, lowering the dumbbells back down to your sides.",
+    "Repeat the lunge and bicep curl on the opposite side, stepping forward with your left foot.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1658",
+    "free_id": "Dumbbell_Bicep_Curl"
+  }
+}

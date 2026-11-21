@@ -1,0 +1,57 @@
+{
+  "id": "20101_cervical_isometric_lateral_flexion",
+  "numeric_id": "20101",
+  "slug": "cervical_isometric_lateral_flexion",
+  "name": "Cervical Isometric Lateral Flexion",
+  "aliases": [
+    "Cervical Isometric Side Bending",
+    "Neck Side Isometric"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "neck",
+    "equipment": "body only",
+    "primary_muscles": [
+      "neck"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "isometric",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "neck",
+    "target_conditions": [
+      "lateral_cervical_strain",
+      "scalene_muscle_imbalance",
+      "torticollis_recovery"
+    ],
+    "contraindications": [
+      "cervical_foraminal_stenosis_with_ipsilateral_radiculopathy"
+    ],
+    "clinical_protocol": "Physiopedia Cervical Stabilization Protocol"
+  },
+  "steps": [
+    "Sit tall with your shoulders relaxed and spine upright.",
+    "Place the palm of your left hand flat against the left side of your head just above your ear.",
+    "Gently push your head sideways to the left as if attempting to tilt your ear to your shoulder.",
+    "Provide equal resistance with your hand so your head stays perfectly upright and still.",
+    "Hold the static contraction for 5 to 10 seconds while breathing naturally.",
+    "Slowly release, rest for a moment, and repeat on the right side."
+  ],
+  "coaching_cues": [
+    "Keep your eyes looking straight ahead and do not let your head rotate.",
+    "Avoid raising your shoulder up toward your ear to cheat the movement.",
+    "Use gentle, steady force (no more than 40% maximum effort)."
+  ],
+  "sources": {
+    "attribution": "Physiopedia Cervical Stabilization Protocol"
+  }
+}

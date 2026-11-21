@@ -1,0 +1,57 @@
+{
+  "id": "20105_dumbbell_forearm_pronation",
+  "numeric_id": "20105",
+  "slug": "dumbbell_forearm_pronation",
+  "name": "Dumbbell Forearm Pronation",
+  "aliases": [
+    "Forearm Pronation",
+    "Palm-Down Forearm Rotation"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "mobility",
+    "body_part": "forearms",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "elbow_wrist",
+    "target_conditions": [
+      "pronator_teres_syndrome",
+      "golfers_elbow_rehab",
+      "distal_radioulnar_joint_stiffness"
+    ],
+    "contraindications": [
+      "acute_proximal_radioulnar_subluxation"
+    ],
+    "clinical_protocol": "AAOS Wrist and Forearm Conditioning Program"
+  },
+  "steps": [
+    "Sit with your elbow bent at 90 degrees and your forearm resting flat on a table, holding a light dumbbell or hammer upright.",
+    "Hold the dumbbell near the bottom of the handle to create an asymmetric rotational lever arm.",
+    "Start with the weight upright and your thumb pointing to the ceiling.",
+    "Slowly rotate your forearm inward so your palm turns to face downward toward the table.",
+    "Pause for 1 second in full pronation, feeling the pronator muscles on the inside of your forearm.",
+    "Slowly rotate your forearm back to the vertical starting position."
+  ],
+  "coaching_cues": [
+    "Keep your elbow tucked against your side or anchored on the table; do not swing your shoulder.",
+    "Use a light weight; rotational torque increases significantly with a long lever arm.",
+    "Maintain smooth, controlled speed throughout the rotation."
+  ],
+  "sources": {
+    "attribution": "AAOS Wrist and Forearm Conditioning Program"
+  }
+}

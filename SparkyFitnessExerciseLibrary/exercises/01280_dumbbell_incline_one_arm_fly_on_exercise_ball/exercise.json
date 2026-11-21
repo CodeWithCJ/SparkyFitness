@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01280_dumbbell_incline_one_arm_fly_on_exercise_ball",
+  "numeric_id": "01280",
+  "slug": "dumbbell_incline_one_arm_fly_on_exercise_ball",
+  "name": "Dumbbell Incline One Arm Fly On Exercise Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with a dumbbell in one hand.",
+    "Walk your feet forward and roll your body down until your head, neck, and upper back are supported on the ball.",
+    "Hold the dumbbell with your arm extended straight up over your chest, palm facing inwards.",
+    "Slowly lower the dumbbell out to the side, keeping a slight bend in your elbow.",
+    "Pause for a moment when your arm is parallel to the ground.",
+    "Engage your chest muscles to bring the dumbbell back up to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1280",
+    "free_id": null
+  }
+}

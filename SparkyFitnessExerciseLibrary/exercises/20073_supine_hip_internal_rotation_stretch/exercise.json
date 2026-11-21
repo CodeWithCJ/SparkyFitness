@@ -1,0 +1,58 @@
+{
+  "id": "20073_supine_hip_internal_rotation_stretch",
+  "numeric_id": "20073",
+  "slug": "supine_hip_internal_rotation_stretch",
+  "name": "Supine Hip Internal Rotation Stretch",
+  "aliases": [
+    "Lying Windshield Wiper Hip Stretch",
+    "Supine Internal Hip Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "hips",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abductors"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "hip_internal_rotation_deficit",
+      "anterior_hip_impingement",
+      "lower_back_compensation"
+    ],
+    "contraindications": [
+      "total_hip_replacement_anterior_approach_precautions"
+    ],
+    "clinical_protocol": "Cornell Health Lower Extremity Range of Motion Protocol"
+  },
+  "steps": [
+    "Lie on your back with knees bent and feet flat on the floor, placed slightly wider than hip-width apart.",
+    "Keeping your left knee pointing up, slowly let your right knee drop inward toward the floor and toward your left ankle.",
+    "Keep both shoulder blades and your lower back resting comfortably on the mat.",
+    "Feel a gentle stretch in the outer hip and front of your right hip joint.",
+    "Hold for 20 to 30 seconds, return the right knee upright, and repeat with the left leg."
+  ],
+  "coaching_cues": [
+    "Do not force your knee to touch the floor; allow gravity to create a gentle, comfortable stretch.",
+    "If you experience sharp pinching inside the hip joint, stop the stretch immediately.",
+    "Breathe slowly and rhythmically."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+  }
+}

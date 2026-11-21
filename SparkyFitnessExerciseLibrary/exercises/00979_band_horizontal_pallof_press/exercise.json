@@ -1,0 +1,53 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00979_band_horizontal_pallof_press",
+  "numeric_id": "00979",
+  "slug": "band_horizontal_pallof_press",
+  "name": "Band Horizontal Pallof Press",
+  "aliases": [
+    "Pallof Press"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "chest",
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the band to a sturdy anchor point at waist height.",
+    "Stand perpendicular to the anchor point with your feet shoulder-width apart.",
+    "Grasp the band handle with both hands and step away from the anchor point to create tension in the band.",
+    "Bring your hands to your chest, keeping your elbows bent and close to your body.",
+    "Engage your core and maintain a stable stance.",
+    "Extend your arms straight out in front of you, pushing the band away from your body.",
+    "Hold the extended position for a few seconds, focusing on maintaining tension in your core.",
+    "Slowly bring your hands back to your chest, resisting the pull of the band.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0979",
+    "free_id": "Pallof_Press"
+  }
+}

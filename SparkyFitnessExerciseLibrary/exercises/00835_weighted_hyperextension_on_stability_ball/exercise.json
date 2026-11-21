@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00835_weighted_hyperextension_on_stability_ball",
+  "numeric_id": "00835",
+  "slug": "weighted_hyperextension_on_stability_ball",
+  "name": "Weighted Hyperextension (On Stability Ball)",
+  "aliases": [
+    "Weighted Ball Hyperextension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Position yourself face down on a stability ball with your hips resting on the ball and your feet against a wall for stability.",
+    "Place your hands behind your head or cross them over your chest.",
+    "Engage your core and slowly lift your upper body off the ball, extending your back until your body forms a straight line.",
+    "Pause for a moment at the top, then slowly lower your upper body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0835",
+    "free_id": "Weighted_Ball_Hyperextension"
+  }
+}

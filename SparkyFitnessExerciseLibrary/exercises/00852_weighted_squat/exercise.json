@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00852_weighted_squat",
+  "numeric_id": "00852",
+  "slug": "weighted_squat",
+  "name": "Weighted Squat",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, toes pointing slightly outward.",
+    "Hold a weight in front of your chest or on your shoulders.",
+    "Engage your core and keep your chest up as you lower your hips down and back, as if sitting into a chair.",
+    "Lower until your thighs are parallel to the ground, or as low as you can comfortably go.",
+    "Push through your heels to stand back up, squeezing your glutes at the top.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0852",
+    "free_id": "Weighted_Squat"
+  }
+}

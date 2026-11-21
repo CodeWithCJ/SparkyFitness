@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03007_resistance_band_leg_extension",
+  "numeric_id": "03007",
+  "slug": "resistance_band_leg_extension",
+  "name": "Resistance Band Leg Extension",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the resistance band to a sturdy anchor point and secure it around your ankle.",
+    "Stand facing the anchor point with your feet shoulder-width apart.",
+    "Keeping your core engaged and your upper body stable, extend your leg straight out in front of you.",
+    "Pause for a moment at the top, then slowly return your leg to the starting position.",
+    "Repeat for the desired number of repetitions, then switch legs."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3007",
+    "free_id": null
+  }
+}

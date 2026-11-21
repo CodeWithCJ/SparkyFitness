@@ -1,0 +1,59 @@
+{
+  "id": "20008_doorway_chest_stretch",
+  "numeric_id": "20008",
+  "slug": "doorway_chest_stretch",
+  "name": "Doorway Chest Stretch",
+  "aliases": [
+    "Pectoral Doorway Stretch",
+    "Doorframe Pec Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "chest",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "biceps"
+    ],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "pectoral_tightness",
+      "rounded_shoulders",
+      "thoracic_outlet_syndrome"
+    ],
+    "contraindications": [
+      "anterior_shoulder_dislocation_history"
+    ],
+    "clinical_protocol": "Mayo Clinic Orthopedic Flexibility Guidelines"
+  },
+  "steps": [
+    "Stand in the middle of an open doorway.",
+    "Place both forearms on the doorframe with your elbows bent at roughly 90 degrees at shoulder height.",
+    "Step one foot forward through the doorway until you feel a gentle, comfortable stretch across your chest and front shoulders.",
+    "Keep your torso upright and core lightly engaged; do not arch your lower back.",
+    "Hold the stretch steady for 20 to 30 seconds while taking slow, deep diaphragmatic breaths, then step back."
+  ],
+  "coaching_cues": [
+    "The stretch should feel pleasant and relieving, never sharp or pinching.",
+    "Vary elbow height slightly (above or below shoulder height) to target different fibers of the pectoral muscles.",
+    "Avoid letting your head jut forward during the stretch."
+  ],
+  "sources": {
+    "attribution": "Mayo Clinic Stretching and Flexibility Exercises"
+  }
+}

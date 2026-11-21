@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00529_kettlebell_double_snatch",
+  "numeric_id": "00529",
+  "slug": "kettlebell_double_snatch",
+  "name": "Kettlebell Double Snatch",
+  "aliases": [
+    "Double Kettlebell Snatch"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "expert",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "forearms",
+      "abdominals",
+      "glutes",
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in each hand at arm's length in front of your thighs.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back flat and chest up.",
+    "In one explosive motion, extend your hips, knees, and ankles, and simultaneously pull the kettlebells up towards your shoulders.",
+    "As the kettlebells reach shoulder level, rotate your wrists and punch the kettlebells overhead, fully extending your arms.",
+    "Lower the kettlebells back down to the starting position and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0529",
+    "free_id": "Double_Kettlebell_Snatch"
+  }
+}

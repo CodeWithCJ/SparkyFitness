@@ -1,0 +1,59 @@
+{
+  "id": "20048_open_book_stretch",
+  "numeric_id": "20048",
+  "slug": "open_book_stretch",
+  "name": "Open Book Stretch",
+  "aliases": [
+    "Side-Lying Thoracic Rotation",
+    "Open Book Stretch"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "upper back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "shoulders"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "transverse",
+    "default_tempo": "3-2-3-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "thoracic_spine",
+    "target_conditions": [
+      "thoracic_hypomobility",
+      "desk_slouch",
+      "rotator_cuff_compensations"
+    ],
+    "contraindications": [
+      "acute_rib_fracture"
+    ],
+    "clinical_protocol": "Mayo Clinic Thoracic Mobility Program"
+  },
+  "steps": [
+    "Lie on your side with your knees bent at 90 degrees and hips stacked, resting your head on a small pillow or mat.",
+    "Extend both arms straight out in front of your chest, resting your top palm directly on your bottom palm.",
+    "Keeping your knees glued together and resting on the floor, inhale and lift your top arm upward toward the ceiling.",
+    "Continue opening your top arm across to the opposite side, rotating your upper back and chest open to the ceiling like an opening book.",
+    "Follow your moving hand with your eyes, hold the stretch for two seconds, then slowly return your top arm to close the book."
+  ],
+  "coaching_cues": [
+    "Keep your knees firmly together; if your top knee lifts off the bottom knee, you have rotated too far into your lower back.",
+    "The rotation should feel like it comes strictly from your ribcage and upper back.",
+    "Exhale smoothly as your arm opens wide."
+  ],
+  "sources": {
+    "attribution": "Mayo Clinic Thoracic Spine Mobility Guidelines"
+  }
+}

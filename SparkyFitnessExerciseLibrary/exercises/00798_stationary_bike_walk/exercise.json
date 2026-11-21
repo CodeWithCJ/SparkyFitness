@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00798_stationary_bike_walk",
+  "numeric_id": "00798",
+  "slug": "stationary_bike_walk",
+  "name": "Stationary Bike Walk",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and position on the stationary bike to ensure proper alignment.",
+    "Place your feet on the pedals and secure them with the straps if available.",
+    "Start pedaling at a comfortable pace, keeping your back straight and core engaged.",
+    "Maintain a steady rhythm and increase the resistance level if desired.",
+    "Continue pedaling for the desired duration of your cardio workout.",
+    "Cool down by gradually reducing your pace and resistance level.",
+    "Stretch your leg muscles after the workout to prevent tightness and promote recovery."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0798",
+    "free_id": null
+  }
+}

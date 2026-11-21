@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01333_exercise_ball_back_extension_with_arms_extended",
+  "numeric_id": "01333",
+  "slug": "exercise_ball_back_extension_with_arms_extended",
+  "name": "Exercise Ball Back Extension With Arms Extended",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Place the stability ball on the ground and lie face down on top of it, with your hips resting on the ball and your feet against a wall for stability.",
+    "Extend your arms straight out in front of you, with your palms facing down.",
+    "Engage your core and slowly lift your upper body off the ball, keeping your back straight and your neck in line with your spine.",
+    "Pause for a moment at the top, then slowly lower your upper body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1333",
+    "free_id": null
+  }
+}

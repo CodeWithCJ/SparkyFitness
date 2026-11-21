@@ -1,0 +1,58 @@
+{
+  "id": "20062_sleeper_stretch",
+  "numeric_id": "20062",
+  "slug": "sleeper_stretch",
+  "name": "Sleeper Stretch",
+  "aliases": [
+    "Side-Lying Shoulder Internal Rotation Stretch",
+    "Posterior Capsule Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "shoulders",
+    "equipment": "body only",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "middle back"
+    ],
+    "level": "intermediate",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "glenohumeral_internal_rotation_deficit",
+      "shoulder_impingement",
+      "thrower_shoulder_stiffness"
+    ],
+    "contraindications": [
+      "acute_anterior_shoulder_subluxation"
+    ],
+    "clinical_protocol": "Cornell Health Shoulder Stretching Protocol"
+  },
+  "steps": [
+    "Lie on your target side with your head comfortably supported by a pillow.",
+    "Extend your target upper arm straight out in front of your shoulder at a 90-degree angle, with your elbow bent at 90 degrees pointing your fingers toward the ceiling.",
+    "Roll your body slightly backward (about 20 degrees) so you are resting on the back of your shoulder blade, not directly on the shoulder joint.",
+    "Use your opposite hand to gently guide the wrist of your target arm downward toward the floor.",
+    "Stop at the first sensation of a gentle stretch deep in the back of your shoulder and hold for 20 to 30 seconds."
+  ],
+  "coaching_cues": [
+    "Apply very gentle, steady pressure with your top hand; never force the wrist down or push through sharp pain.",
+    "The stretch should be felt in the back of the shoulder capsule, never in the front.",
+    "Breathe slowly and deeply to help the posterior rotator cuff relax."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Shoulder Range of Motion Protocol"
+  }
+}

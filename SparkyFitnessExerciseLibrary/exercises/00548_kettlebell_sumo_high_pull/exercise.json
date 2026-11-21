@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00548_kettlebell_sumo_high_pull",
+  "numeric_id": "00548",
+  "slug": "kettlebell_sumo_high_pull",
+  "name": "Kettlebell Sumo High Pull",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "traps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "glutes",
+      "hamstrings",
+      "adductors",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet wider than shoulder-width apart, toes pointing outwards.",
+    "Hold a kettlebell with both hands in front of your body, arms extended downwards.",
+    "Bend your knees and lower your hips into a squat position, keeping your back straight.",
+    "Drive through your heels and explosively extend your hips and knees, pulling the kettlebell up towards your chin.",
+    "As you pull the kettlebell up, keep your elbows high and wide, and squeeze your shoulder blades together.",
+    "Lower the kettlebell back down to the starting position and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0548",
+    "free_id": "Kettlebell_Sumo_High_Pull"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "id": "20099_cervical_isometric_flexion",
+  "numeric_id": "20099",
+  "slug": "cervical_isometric_flexion",
+  "name": "Cervical Isometric Flexion",
+  "aliases": [
+    "Neck Isometric Flexion",
+    "Resisted Neck Flexion"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "neck",
+    "equipment": "body only",
+    "primary_muscles": [
+      "neck"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "isometric",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "neck",
+    "target_conditions": [
+      "deep_cervical_flexor_weakness",
+      "forward_head_posture",
+      "cervicogenic_headaches"
+    ],
+    "contraindications": [
+      "acute_cervical_radiculopathy_flare"
+    ],
+    "clinical_protocol": "Physiopedia Cervical Stabilization Protocol"
+  },
+  "steps": [
+    "Sit or stand tall with good posture, relaxed shoulders, and your head in a neutral position.",
+    "Place the palm of one or both hands flat against your forehead.",
+    "Gently press your forehead forward into your palm as if attempting to nod your head forward.",
+    "Simultaneously press back with your hand using equal force so your head does not move at all.",
+    "Maintain this static isometric contraction for 5 to 10 seconds while breathing normally.",
+    "Slowly release the pressure, relax for 2 seconds, and repeat."
+  ],
+  "coaching_cues": [
+    "Use only moderate effort (about 30-50% maximum effort); do not strain.",
+    "Your head must remain completely still in a neutral position throughout.",
+    "Keep your shoulders down and relaxed."
+  ],
+  "sources": {
+    "attribution": "Physiopedia Cervical Stabilization & Isometric Protocol"
+  }
+}

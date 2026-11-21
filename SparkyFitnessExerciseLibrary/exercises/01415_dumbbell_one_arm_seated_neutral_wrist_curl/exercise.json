@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01415_dumbbell_one_arm_seated_neutral_wrist_curl",
+  "numeric_id": "01415",
+  "slug": "dumbbell_one_arm_seated_neutral_wrist_curl",
+  "name": "Dumbbell One Arm Seated Neutral Wrist Curl",
+  "aliases": [
+    "Seated Dumbbell Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower arms",
+    "body_part": "lower arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms",
+      "biceps"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your feet flat on the ground and hold a dumbbell in one hand, palm facing up.",
+    "Rest your forearm on your thigh, allowing your wrist to hang off the edge.",
+    "Keeping your forearm stationary, curl your wrist upward as far as possible.",
+    "Pause for a moment at the top, then slowly lower your wrist back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other hand."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1415",
+    "free_id": "Seated_Dumbbell_Curl"
+  }
+}

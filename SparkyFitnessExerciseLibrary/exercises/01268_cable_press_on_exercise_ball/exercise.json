@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01268_cable_press_on_exercise_ball",
+  "numeric_id": "01268",
+  "slug": "cable_press_on_exercise_ball",
+  "name": "Cable Press On Exercise Ball",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on an exercise ball with your feet flat on the ground and your knees at a 90-degree angle.",
+    "Hold the cable handles at chest height with your palms facing down and your elbows bent.",
+    "Engage your core and press the cable handles forward until your arms are fully extended.",
+    "Pause for a moment, then slowly release the tension and bring the cable handles back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1268",
+    "free_id": null
+  }
+}

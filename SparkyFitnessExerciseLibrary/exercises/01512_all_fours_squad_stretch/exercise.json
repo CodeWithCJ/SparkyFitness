@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01512_all_fours_squad_stretch",
+  "numeric_id": "01512",
+  "slug": "all_fours_squad_stretch",
+  "name": "All Fours Squad Stretch",
+  "aliases": [
+    "All Fours Quad Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start on all fours with your hands directly under your shoulders and your knees directly under your hips.",
+    "Extend one leg straight back, keeping your knee bent and your foot flexed.",
+    "Slowly lower your hips towards the ground, feeling a stretch in your quads.",
+    "Hold this position for 20-30 seconds.",
+    "Switch legs and repeat the stretch on the other side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1512",
+    "free_id": "All_Fours_Quad_Stretch"
+  }
+}

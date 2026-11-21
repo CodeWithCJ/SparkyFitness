@@ -205,35 +205,43 @@
       "properties": {
         "video_path": {
           "type": "string",
-          "description": "Relative path to default MP4 video demonstration"
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Relative filename to default MP4 video demonstration within the exercise directory"
         },
         "video_vertical_path": {
           "type": "string",
-          "description": "Relative path to vertical 9:16 MP4 video demonstration (ideal for mobile full-screen / portrait tutorial)"
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Relative filename to vertical 9:16 MP4 video demonstration within the exercise directory"
         },
         "video_horizontal_path": {
           "type": "string",
-          "description": "Relative path to horizontal 16:9 MP4 video demonstration (ideal for web, desktop, landscape, and compact logger)"
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Relative filename to horizontal 16:9 MP4 video demonstration within the exercise directory"
         },
         "animation_path": {
           "type": "string",
-          "description": "Relative path to looping preview animation (Animated WebP or GIF)"
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Relative filename to looping preview animation within the exercise directory"
         },
         "animation_vertical_path": {
           "type": "string",
-          "description": "Relative path to vertical 9:16 looping preview animation (Animated WebP or GIF)"
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Relative filename to vertical 9:16 looping preview animation within the exercise directory"
         },
         "animation_horizontal_path": {
           "type": "string",
-          "description": "Relative path to horizontal 16:9 looping preview animation (Animated WebP or GIF)"
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Relative filename to horizontal 16:9 looping preview animation within the exercise directory"
         },
         "gif_path": {
           "type": "string",
-          "description": "Legacy fallback path to looping preview animated GIF"
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Legacy fallback filename to looping preview animated GIF within the exercise directory"
         },
         "thumbnail_path": {
           "type": "string",
-          "description": "Relative path to card thumbnail image (WebP or JPG)"
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Relative filename to card thumbnail image within the exercise directory"
         },
         "thumbnail_timestamp": {
           "type": "number",
@@ -242,7 +250,8 @@
         },
         "image_path": {
           "type": "string",
-          "description": "Optional fallback static diagram for exercises without video"
+          "pattern": "^[a-zA-Z0-9_.-]+$",
+          "description": "Optional fallback static diagram filename within the exercise directory"
         }
       }
     },
@@ -260,6 +269,40 @@
       "description": "Short bullet points highlighting common form errors, breathing cues, or posture tips",
       "items": {
         "type": "string"
+      }
+    },
+    "rehabilitation": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "joint": {
+          "type": "string",
+          "enum": [
+            "neck",
+            "shoulder",
+            "elbow_wrist",
+            "thoracic_spine",
+            "lumbar_spine",
+            "hip",
+            "knee",
+            "ankle_foot"
+          ],
+          "description": "Primary anatomical joint or region targeted for rehabilitation"
+        },
+        "target_conditions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Targeted clinical or orthopedic conditions (e.g., runner_knee, rotator_cuff_impingement, sciatica)"
+        },
+        "contraindications": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Conditions or symptoms when this exercise should NOT be performed"
+        },
+        "clinical_protocol": {
+          "type": "string",
+          "description": "Clinical reference or guideline (e.g., AAOS Knee Protocol, McGill Spine, APTA)"
+        }
       }
     },
     "sources": {

@@ -1,0 +1,55 @@
+{
+  "id": "20093_toe_walking",
+  "numeric_id": "20093",
+  "slug": "toe_walking",
+  "name": "Toe Walking",
+  "aliases": [
+    "Plantarflexion Walking",
+    "Tip-Toe Walks"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "sagittal",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "gastrocnemius_soleus_weakness",
+      "achilles_tendon_endurance",
+      "ankle_stability"
+    ],
+    "contraindications": [
+      "acute_achilles_tendon_rupture"
+    ],
+    "clinical_protocol": "AAOS Foot and Ankle Conditioning Program"
+  },
+  "steps": [
+    "Stand upright in an open space with your feet hip-width apart.",
+    "Rise up as high as possible onto the balls of your feet and toes, lifting your heels completely off the ground.",
+    "Take small, steady steps forward while maintaining maximum height on your toes.",
+    "Walk for the prescribed duration or distance, keeping your calves contracted continuously."
+  ],
+  "coaching_cues": [
+    "Stay tall and maintain an engaged core for balance.",
+    "Do not allow your ankles to roll outward; keep weight evenly distributed across the balls of your feet and big toes.",
+    "Breathe evenly throughout the walk."
+  ],
+  "sources": {
+    "attribution": "AAOS Foot and Ankle Conditioning Program"
+  }
+}

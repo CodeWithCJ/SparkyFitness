@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01769_bodyweight_side_lying_biceps_curl",
+  "numeric_id": "01769",
+  "slug": "bodyweight_side_lying_biceps_curl",
+  "name": "Bodyweight Side Lying Biceps Curl",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your side with your legs extended and your head supported by your arm.",
+    "Hold your upper arm against your side and bend your elbow to curl your forearm towards your shoulder.",
+    "Pause for a moment at the top, then slowly lower your forearm back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1769",
+    "free_id": null
+  }
+}

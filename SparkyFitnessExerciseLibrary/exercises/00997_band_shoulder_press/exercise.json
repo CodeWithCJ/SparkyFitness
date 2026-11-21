@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00997_band_shoulder_press",
+  "numeric_id": "00997",
+  "slug": "band_shoulder_press",
+  "name": "Band Shoulder Press",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and place the band under your feet.",
+    "Hold the band with your palms facing forward and raise your hands to shoulder height, elbows bent.",
+    "Press the band overhead, fully extending your arms.",
+    "Pause for a moment at the top, then slowly lower the band back to shoulder height.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0997",
+    "free_id": null
+  }
+}

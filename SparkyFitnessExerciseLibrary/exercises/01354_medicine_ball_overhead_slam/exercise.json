@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01354_medicine_ball_overhead_slam",
+  "numeric_id": "01354",
+  "slug": "medicine_ball_overhead_slam",
+  "name": "Medicine Ball Overhead Slam",
+  "aliases": [
+    "Overhead Slam"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "medicine ball",
+    "primary_muscles": [
+      "middle back",
+      "lats"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a medicine ball with both hands above your head.",
+    "Engage your core and keep your back straight.",
+    "Bend your knees slightly and forcefully slam the medicine ball down to the ground in front of you.",
+    "As you slam the ball down, use your entire body to generate power, including your shoulders and core.",
+    "Catch the ball on the bounce and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1354",
+    "free_id": "Overhead_Slam"
+  }
+}

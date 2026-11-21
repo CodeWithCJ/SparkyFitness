@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01000_band_single_leg_reverse_calf_raise",
+  "numeric_id": "01000",
+  "slug": "band_single_leg_reverse_calf_raise",
+  "name": "Band Single Leg Reverse Calf Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet hip-width apart and place the band around the ball of your foot.",
+    "Hold onto a stable object for balance.",
+    "Slowly raise your heel off the ground, lifting your body weight onto the ball of your foot.",
+    "Pause for a moment at the top, then slowly lower your heel back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other leg."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1000",
+    "free_id": null
+  }
+}

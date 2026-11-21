@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00863_dumbbell_lying_external_shoulder_rotation",
+  "numeric_id": "00863",
+  "slug": "dumbbell_lying_external_shoulder_rotation",
+  "name": "Dumbbell Lying External Shoulder Rotation",
+  "aliases": [
+    "External Rotation"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your side on a flat bench with your upper arm against your side and your elbow bent 90 degrees.",
+    "Hold a dumbbell in your hand with your palm facing down.",
+    "Keeping your upper arm against your side, slowly rotate your forearm upward as far as possible.",
+    "Pause for a moment at the top, then slowly lower your forearm back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch sides."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0863",
+    "free_id": "External_Rotation"
+  }
+}

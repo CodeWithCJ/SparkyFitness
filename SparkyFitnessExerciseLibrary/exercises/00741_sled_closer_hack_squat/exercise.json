@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00741_sled_closer_hack_squat",
+  "numeric_id": "00741",
+  "slug": "sled_closer_hack_squat",
+  "name": "Sled Closer Hack Squat",
+  "aliases": [
+    "Hack Squat"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the sled machine to a comfortable weight and position yourself with your back against the pad.",
+    "Place your feet shoulder-width apart on the platform, toes slightly pointed outwards.",
+    "Grip the handles on the sides of the machine for stability.",
+    "Engage your core and slowly lower your body by bending your knees and hips, keeping your back straight.",
+    "Continue lowering until your thighs are parallel to the ground or slightly below.",
+    "Pause for a moment at the bottom, then push through your heels to extend your legs and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0741",
+    "free_id": "Hack_Squat"
+  }
+}

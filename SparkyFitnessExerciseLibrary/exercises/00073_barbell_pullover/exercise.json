@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00073_barbell_pullover",
+  "numeric_id": "00073",
+  "slug": "barbell_pullover",
+  "name": "Barbell Pullover",
+  "aliases": [
+    "Bent-Arm Barbell Pullover"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on a bench with your head at one end and your feet on the floor.",
+    "Hold a barbell with a shoulder-width grip and extend your arms straight above your chest.",
+    "Keeping your arms straight, lower the barbell behind your head in a controlled manner until you feel a stretch in your lats.",
+    "Pause for a moment, then raise the barbell back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0073",
+    "free_id": "Bent-Arm_Barbell_Pullover"
+  }
+}

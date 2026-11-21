@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06107_downward_facing_balance",
+  "numeric_id": "06107",
+  "slug": "downward_facing_balance",
+  "name": "Downward Facing Balance",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "intermediate",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie facedown on top of an exercise ball.",
+    "While resting on your stomach on the ball, walk your hands forward along the floor and lift your legs, extending your elbows and knees."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Downward_Facing_Balance"
+  }
+}

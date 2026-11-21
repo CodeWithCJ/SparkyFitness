@@ -1,0 +1,59 @@
+{
+  "id": "20106_dumbbell_forearm_supination",
+  "numeric_id": "20106",
+  "slug": "dumbbell_forearm_supination",
+  "name": "Dumbbell Forearm Supination",
+  "aliases": [
+    "Forearm Supination",
+    "Palm-Up Forearm Rotation"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "mobility",
+    "body_part": "forearms",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [
+      "biceps"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "elbow_wrist",
+    "target_conditions": [
+      "biceps_brachii_distal_tendon_stiffness",
+      "tennis_elbow_rehab",
+      "supinator_weakness"
+    ],
+    "contraindications": [
+      "acute_biceps_tendon_rupture"
+    ],
+    "clinical_protocol": "AAOS Wrist and Forearm Conditioning Program"
+  },
+  "steps": [
+    "Sit with your elbow bent at 90 degrees and your forearm resting on a table, holding a light dumbbell or hammer upright.",
+    "Grip the lower portion of the handle to provide asymmetric rotational resistance.",
+    "Start in the vertical neutral position with your thumb pointing up.",
+    "Slowly rotate your forearm outward so your palm turns upward to face the ceiling.",
+    "Hold for 1 second in full supination, contracting the supinator and biceps muscles.",
+    "Slowly return the dumbbell back to the vertical starting position."
+  ],
+  "coaching_cues": [
+    "Ensure your elbow remains firmly against your side or the table; do not let your elbow flare out.",
+    "Control the outward rotation slowly over 2 seconds; do not let the weight drop.",
+    "Keep your wrist straight and firm throughout."
+  ],
+  "sources": {
+    "attribution": "AAOS Wrist and Forearm Conditioning Program"
+  }
+}

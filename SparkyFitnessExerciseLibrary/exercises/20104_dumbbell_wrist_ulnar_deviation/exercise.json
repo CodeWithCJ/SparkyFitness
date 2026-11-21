@@ -1,0 +1,57 @@
+{
+  "id": "20104_dumbbell_wrist_ulnar_deviation",
+  "numeric_id": "20104",
+  "slug": "dumbbell_wrist_ulnar_deviation",
+  "name": "Dumbbell Wrist Ulnar Deviation",
+  "aliases": [
+    "Ulnar Deviation",
+    "Pinky-Down Wrist Tilt",
+    "Wrist Ulnar Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "mobility",
+    "body_part": "forearms",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "forearms"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "elbow_wrist",
+    "target_conditions": [
+      "tfcc_rehab",
+      "medial_epicondylalgia_golfers_elbow",
+      "wrist_stabilization"
+    ],
+    "contraindications": [
+      "acute_tfcc_tear_flare"
+    ],
+    "clinical_protocol": "AAOS Wrist and Forearm Conditioning Program"
+  },
+  "steps": [
+    "Sit tall with your forearm resting securely on a table or your thigh, hand extending over the edge.",
+    "Hold a light dumbbell with your thumb pointing straight up in a neutral position.",
+    "Keeping your forearm anchored, tilt your wrist downward toward the floor (in the direction of your pinky finger).",
+    "Hold for 1 second in controlled ulnar deviation.",
+    "Slowly raise your wrist back up to the neutral starting position."
+  ],
+  "coaching_cues": [
+    "Do not allow your elbow to lift off the table.",
+    "Move smoothly without snapping or bouncing at the end range.",
+    "Control both the downward tilt and the return upward."
+  ],
+  "sources": {
+    "attribution": "AAOS Wrist and Forearm Conditioning Program"
+  }
+}

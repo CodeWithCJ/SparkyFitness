@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02135_weighted_front_plank",
+  "numeric_id": "02135",
+  "slug": "weighted_front_plank",
+  "name": "Weighted Front Plank",
+  "aliases": [
+    "Plank"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by lying face down on the floor.",
+    "Place your forearms on the ground, with your elbows directly under your shoulders.",
+    "Extend your legs straight out behind you, with your toes on the ground.",
+    "Engage your core and lift your body off the ground, balancing on your forearms and toes.",
+    "Keep your body in a straight line from your head to your heels.",
+    "Hold this position for the desired amount of time.",
+    "Lower your body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2135",
+    "free_id": "Plank"
+  }
+}

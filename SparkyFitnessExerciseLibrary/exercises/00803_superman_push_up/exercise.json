@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00803_superman_push_up",
+  "numeric_id": "00803",
+  "slug": "superman_push_up",
+  "name": "Superman Push-Up",
+  "aliases": [
+    "Superman"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "compound",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "chest",
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "shoulders",
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start in a high plank position with your hands slightly wider than shoulder-width apart and your feet together.",
+    "Engage your core and lower your body towards the ground, keeping your elbows close to your sides.",
+    "As you lower your body, simultaneously lift your right arm and left leg off the ground, extending them straight out.",
+    "Pause for a moment at the top, then lower your arm and leg back down while pushing yourself back up to the starting position.",
+    "Repeat the movement, this time lifting your left arm and right leg.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0803",
+    "free_id": "Superman"
+  }
+}

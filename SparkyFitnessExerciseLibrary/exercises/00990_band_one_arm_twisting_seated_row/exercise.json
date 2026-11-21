@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00990_band_one_arm_twisting_seated_row",
+  "numeric_id": "00990",
+  "slug": "band_one_arm_twisting_seated_row",
+  "name": "Band One Arm Twisting Seated Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench or chair with your feet flat on the ground and your back straight.",
+    "Hold the band with one hand and extend your arm fully in front of you.",
+    "Keeping your back straight, pull the band towards your body by bending your elbow and squeezing your shoulder blades together.",
+    "At the same time, twist your torso towards the side of the pulling arm.",
+    "Pause for a moment at the top, then slowly release the tension in the band and return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch to the other arm."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0990",
+    "free_id": null
+  }
+}

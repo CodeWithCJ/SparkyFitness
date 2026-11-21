@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02138_stationary_bike_run_v_3",
+  "numeric_id": "02138",
+  "slug": "stationary_bike_run_v_3",
+  "name": "Stationary Bike Run V. 3",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "other",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and position to ensure proper alignment.",
+    "Place your feet on the pedals and secure them with the straps if available.",
+    "Start pedaling at a comfortable pace.",
+    "Maintain a steady rhythm and increase the resistance as desired.",
+    "Engage your core muscles to maintain stability and proper posture.",
+    "Continue pedaling for the desired duration of your workout.",
+    "Gradually decrease the resistance and slow down before coming to a complete stop.",
+    "Stretch your legs and cool down after the workout."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2138",
+    "free_id": null
+  }
+}

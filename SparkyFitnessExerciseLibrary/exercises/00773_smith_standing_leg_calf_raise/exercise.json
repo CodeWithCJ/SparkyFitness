@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00773_smith_standing_leg_calf_raise",
+  "numeric_id": "00773",
+  "slug": "smith_standing_leg_calf_raise",
+  "name": "Smith Standing Leg Calf Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the smith machine bar to a height that allows you to stand with your feet flat on the ground and your shoulders under the bar.",
+    "Position yourself under the bar with your feet shoulder-width apart and your toes pointing forward.",
+    "Place your hands on the bar for stability.",
+    "Engage your calves and slowly raise your heels off the ground, lifting your body up onto your toes.",
+    "Pause for a moment at the top, then slowly lower your heels back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0773",
+    "free_id": null
+  }
+}

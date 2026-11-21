@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01688_lunge_with_twist",
+  "numeric_id": "01688",
+  "slug": "lunge_with_twist",
+  "name": "Lunge With Twist",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart.",
+    "Take a step forward with your right foot, lowering your body into a lunge position.",
+    "As you lunge, twist your torso to the right, bringing your left elbow towards your right knee.",
+    "Pause for a moment, then return to the starting position.",
+    "Repeat on the other side, stepping forward with your left foot and twisting your torso to the left.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1688",
+    "free_id": null
+  }
+}

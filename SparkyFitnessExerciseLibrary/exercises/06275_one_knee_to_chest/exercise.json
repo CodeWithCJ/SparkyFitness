@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06275_one_knee_to_chest",
+  "numeric_id": "06275",
+  "slug": "one_knee_to_chest",
+  "name": "One Knee To Chest",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "stretching",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start off by lying on the floor.",
+    "Extend one leg straight and pull the other knee to your chest. Hold under the knee joint to protect the kneecap.",
+    "Gently tug that knee toward your nose.",
+    "Switch sides. This stretches the buttocks and lower back of the bent leg and the hip flexor of the straight leg."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "One_Knee_To_Chest"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02311_walking_on_stepmill",
+  "numeric_id": "02311",
+  "slug": "walking_on_stepmill",
+  "name": "Walking On Stepmill",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the stepmill machine to a comfortable level.",
+    "Step onto the machine and place your hands on the handrails for support.",
+    "Start walking by placing one foot on a step and then the other, alternating between legs.",
+    "Maintain an upright posture and engage your core muscles.",
+    "Continue walking for the desired duration or distance.",
+    "Gradually increase the intensity or speed as you become more comfortable with the exercise.",
+    "Remember to cool down and stretch after completing the exercise."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2311",
+    "free_id": null
+  }
+}

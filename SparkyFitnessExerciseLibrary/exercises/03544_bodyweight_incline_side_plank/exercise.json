@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03544_bodyweight_incline_side_plank",
+  "numeric_id": "03544",
+  "slug": "bodyweight_incline_side_plank",
+  "name": "Bodyweight Incline Side Plank",
+  "aliases": [
+    "Plank"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by lying on your side with your legs extended and stacked on top of each other.",
+    "Place your forearm on the ground directly below your shoulder, with your elbow bent at a 90-degree angle.",
+    "Engage your core and lift your hips off the ground, creating a straight line from your head to your feet.",
+    "Hold this position for the desired amount of time.",
+    "Lower your hips back down to the ground and repeat on the other side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3544",
+    "free_id": "Plank"
+  }
+}

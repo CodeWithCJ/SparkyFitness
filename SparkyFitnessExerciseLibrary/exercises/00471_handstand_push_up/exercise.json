@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00471_handstand_push_up",
+  "numeric_id": "00471",
+  "slug": "handstand_push_up",
+  "name": "Handstand Push-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "chest",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Find a wall and face away from it, standing a few feet away.",
+    "Place your hands on the ground shoulder-width apart and kick your feet up against the wall, coming into a handstand position.",
+    "Bend your elbows and lower your head towards the ground, keeping your body in a straight line.",
+    "Push through your hands and extend your arms to return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0471",
+    "free_id": null
+  }
+}

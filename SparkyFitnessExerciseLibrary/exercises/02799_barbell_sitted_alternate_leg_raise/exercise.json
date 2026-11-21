@@ -1,0 +1,41 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02799_barbell_sitted_alternate_leg_raise",
+  "numeric_id": "02799",
+  "slug": "barbell_sitted_alternate_leg_raise",
+  "name": "Barbell Sitted Alternate Leg Raise",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your back straight and hold a barbell across your thighs.",
+    "Keeping your legs straight, lift one leg up as high as possible while keeping the other leg on the ground.",
+    "Lower the raised leg back down and repeat with the other leg.",
+    "Continue alternating legs for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2799",
+    "free_id": null
+  }
+}

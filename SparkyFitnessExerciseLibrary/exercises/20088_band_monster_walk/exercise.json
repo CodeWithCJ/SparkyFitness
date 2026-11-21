@@ -1,0 +1,59 @@
+{
+  "id": "20088_band_monster_walk",
+  "numeric_id": "20088",
+  "slug": "band_monster_walk",
+  "name": "Band Monster Walk",
+  "aliases": [
+    "Monster Walk",
+    "Resisted Forward Diagonal Walk"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "glutes",
+    "equipment": "bands",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "abductors",
+      "quadriceps"
+    ],
+    "level": "beginner",
+    "force": "push",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "sagittal",
+    "default_tempo": "unpaced",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "dynamic_knee_valgus",
+      "hip_abductor_endurance",
+      "patellofemoral_tracking"
+    ],
+    "contraindications": [
+      "acute_knee_sprain"
+    ],
+    "clinical_protocol": "Sports Medicine Hip & Core Protocol"
+  },
+  "steps": [
+    "Place a mini resistance band around your ankles or just above your knees.",
+    "Stand with your feet shoulder-width apart in an athletic quarter-squat position with your knees bent and chest up.",
+    "Step forward and outward at a 45 degree angle with your right foot, maintaining tension on the band.",
+    "Follow by stepping forward and outward with your left foot in a wide, diagonal zig-zag pattern.",
+    "Continue stepping forward for the prescribed distance or repetitions, then reverse backwards using the same diagonal path."
+  ],
+  "coaching_cues": [
+    "Never allow your knees to cave inward; push knees actively outward against the band.",
+    "Maintain a steady quarter-squat depth throughout the entire walk.",
+    "Keep your feet wide enough that tension is maintained on the band at all times."
+  ],
+  "sources": {
+    "attribution": "University Sports Medicine Hip & Core Conditioning Protocol"
+  }
+}

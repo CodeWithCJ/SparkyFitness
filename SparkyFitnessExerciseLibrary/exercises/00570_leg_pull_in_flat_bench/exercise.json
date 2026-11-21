@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00570_leg_pull_in_flat_bench",
+  "numeric_id": "00570",
+  "slug": "leg_pull_in_flat_bench",
+  "name": "Leg Pull In Flat Bench",
+  "aliases": [
+    "Flat Bench Leg Pull-In"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a flat bench with your legs extended straight out in front of you.",
+    "Place your hands on the bench beside your hips for support.",
+    "Engage your abs and lift your legs off the ground, bringing your knees towards your chest.",
+    "Pause for a moment at the top, then slowly lower your legs back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0570",
+    "free_id": "Flat_Bench_Leg_Pull-In"
+  }
+}

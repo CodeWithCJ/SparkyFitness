@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00078_barbell_rear_lunge",
+  "numeric_id": "00078",
+  "slug": "barbell_rear_lunge",
+  "name": "Barbell Rear Lunge",
+  "aliases": [
+    "Barbell Lunge"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart and a barbell resting on your upper back.",
+    "Take a step backward with your right foot, landing on the ball of your foot.",
+    "Bend both knees to lower your body until your left thigh is parallel to the ground.",
+    "Push through your left heel to return to the starting position.",
+    "Repeat with the other leg."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0078",
+    "free_id": "Barbell_Lunge"
+  }
+}

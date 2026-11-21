@@ -1,0 +1,42 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06420_standing_dumbbell_straight_arm_front_delt_raise_ab",
+  "numeric_id": "06420",
+  "slug": "standing_dumbbell_straight_arm_front_delt_raise_above_head",
+  "name": "Standing Dumbbell Straight-Arm Front Delt Raise Above Head",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Hold the dumbbells in front of your thighs, palms facing your thighs.",
+    "Keep your arms straight with a slight bend at the elbows but keep them locked. This will be your starting position.",
+    "Raise the dumbbells in a semicircular motion to arm's length overhead as you exhale.",
+    "Slowly return to the starting position using the same path as you inhale.",
+    "Repeat for the recommended amount of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Standing_Dumbbell_Straight-Arm_Front_Delt_Raise_Above_Head"
+  }
+}

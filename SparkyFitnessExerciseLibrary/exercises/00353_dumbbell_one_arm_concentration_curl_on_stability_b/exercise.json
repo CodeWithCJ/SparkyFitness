@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00353_dumbbell_one_arm_concentration_curl_on_stability_b",
+  "numeric_id": "00353",
+  "slug": "dumbbell_one_arm_concentration_curl_on_stability_ball",
+  "name": "Dumbbell One Arm Concentration Curl (On Stability Ball)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a stability ball with your feet flat on the ground and your knees bent at a 90-degree angle.",
+    "Hold a dumbbell in one hand with your palm facing up and your arm extended down towards the floor.",
+    "Rest your elbow on the inside of your thigh, just above the knee.",
+    "Keeping your upper arm stationary, exhale and curl the dumbbell up towards your shoulder while contracting your biceps.",
+    "Pause for a moment at the top of the movement, then inhale and slowly lower the dumbbell back down to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms and repeat."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0353",
+    "free_id": null
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "id": "20090_ankle_pumps",
+  "numeric_id": "20090",
+  "slug": "ankle_pumps",
+  "name": "Ankle Pumps",
+  "aliases": [
+    "Active Ankle Flexion",
+    "Gas Pedal Pumps",
+    "Ankle Plantar/Dorsiflexion"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "1-1-1-1",
+    "demonstration_reps": 6
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "post_sprain_edema",
+      "post_surgical_circulation",
+      "ankle_stiffness"
+    ],
+    "contraindications": [
+      "acute_unreduced_ankle_fracture"
+    ],
+    "clinical_protocol": "AAOS Foot and Ankle Conditioning Program"
+  },
+  "steps": [
+    "Sit or lie comfortably with your legs extended straight in front of you.",
+    "Point your toes and feet forward away from your body as far as possible, as if depressing a car accelerator pedal.",
+    "Hold for 1 second in full plantarflexion.",
+    "Pull your toes and feet backward toward your shins into full dorsiflexion.",
+    "Hold for 1 second in dorsiflexion, feeling the calf and shin muscles alternately engage.",
+    "Continue pumping rhythmically between pointing and flexing for the prescribed repetitions."
+  ],
+  "coaching_cues": [
+    "Move strictly through your ankle joints while keeping your knees and hips still.",
+    "Perform smooth, rhythmic pumps to promote circulation and venous blood return.",
+    "Work through full available pain-free range of motion."
+  ],
+  "sources": {
+    "attribution": "AAOS Foot and Ankle Conditioning Program"
+  }
+}

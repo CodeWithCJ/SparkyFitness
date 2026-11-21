@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00970_band_assisted_pull_up",
+  "numeric_id": "00970",
+  "slug": "band_assisted_pull_up",
+  "name": "Band Assisted Pull-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": null,
+    "level": "beginner",
+    "equipment": "bands",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms",
+      "abdominals",
+      "middle back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the band to a pull-up bar or sturdy anchor point.",
+    "Step onto the band and grip the bar with your palms facing away from you, hands slightly wider than shoulder-width apart.",
+    "Hang with your arms fully extended, keeping your core engaged and your shoulders down and back.",
+    "Pull your body up towards the bar by squeezing your shoulder blades together and driving your elbows down towards your hips.",
+    "Continue pulling until your chin is above the bar, then slowly lower yourself back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0970",
+    "free_id": "Band_Assisted_Pull-Up"
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "id": "20068_band_shoulder_internal_rotation_90_degrees",
+  "numeric_id": "20068",
+  "slug": "band_shoulder_internal_rotation_90_degrees",
+  "name": "Band Shoulder Internal Rotation at 90 Degrees",
+  "aliases": [
+    "High Band Internal Rotation",
+    "Overhead Band Internal Rotation"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "shoulders",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "chest"
+    ],
+    "level": "intermediate",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "frontal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "overhead_deceleration_deficit",
+      "subscapularis_endurance"
+    ],
+    "contraindications": [
+      "acute_shoulder_impingement_pain_in_abduction"
+    ],
+    "clinical_protocol": "Cornell Health Shoulder Band Strengthening"
+  },
+  "steps": [
+    "Anchor a resistance band at shoulder height behind you.",
+    "Stand facing away from the anchor with your target upper arm raised to shoulder height and elbow bent at 90 degrees, holding the band with forearm vertical.",
+    "Rotate your forearm forward and downward until your forearm is parallel to the floor.",
+    "Pause for one count at the bottom of the internal rotation.",
+    "Slowly rotate your forearm back up to the vertical starting position under control."
+  ],
+  "coaching_cues": [
+    "Keep your upper arm level with your shoulder throughout the rotation.",
+    "Do not allow your shoulder to roll forward out of its socket at the bottom of the pull.",
+    "Maintain steady, controlled rhythm."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Shoulder Band Strengthening Protocol"
+  }
+}

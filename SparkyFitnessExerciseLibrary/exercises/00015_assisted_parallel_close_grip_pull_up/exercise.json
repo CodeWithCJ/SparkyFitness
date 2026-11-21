@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00015_assisted_parallel_close_grip_pull_up",
+  "numeric_id": "00015",
+  "slug": "assisted_parallel_close_grip_pull_up",
+  "name": "Assisted Parallel Close Grip Pull-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the machine to your desired weight and height.",
+    "Place your hands on the parallel bars with a close grip, palms facing each other.",
+    "Hang from the bars with your arms fully extended and your feet off the ground.",
+    "Engage your back muscles and pull your body up towards the bars, keeping your elbows close to your body.",
+    "Continue pulling until your chin is above the bars.",
+    "Pause for a moment at the top, then slowly lower your body back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0015",
+    "free_id": null
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06188_keg_load",
+  "numeric_id": "06188",
+  "slug": "keg_load",
+  "name": "Keg Load",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strongman",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "other",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "abdominals",
+      "biceps",
+      "calves",
+      "forearms",
+      "glutes",
+      "hamstrings",
+      "middle back",
+      "quadriceps",
+      "shoulders",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "To load kegs, place the desired number a distance from the loading platform, typically 30-50 feet.",
+    "Begin by grabbing the close handle of the first keg, tilting it onto its side to grab the opposite edge of the bottom of the keg. Lift the keg up to your chest.",
+    "The higher you can place the keg, the faster you should be able to move to the platform. Shouldering is usually not allowed. Be sure to keep a firm hold on the keg. Move as quickly as possible to the platform, and load it, extending through your hips, knees, and ankles to get it as high as possible.",
+    "Return to the starting position to retrieve the next keg, and repeat until the event is completed."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Keg_Load"
+  }
+}

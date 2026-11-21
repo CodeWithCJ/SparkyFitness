@@ -1,0 +1,59 @@
+{
+  "id": "20041_band_clamshell",
+  "numeric_id": "20041",
+  "slug": "band_clamshell",
+  "name": "Band Clamshell",
+  "aliases": [
+    "Resistance Loop Clamshell",
+    "Mini-Band Clam",
+    "Banded Clamshell"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "hips",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abductors"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ],
+    "level": "intermediate",
+    "force": "push",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "transverse",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "hip",
+    "target_conditions": [
+      "knee_valgus",
+      "hip_rotator_weakness",
+      "runner_knee"
+    ],
+    "contraindications": [
+      "acute_trochanteric_bursitis"
+    ],
+    "clinical_protocol": "APTA Hip Strengthening and Alignment Guidelines"
+  },
+  "steps": [
+    "Place a small resistance loop band around both thighs, resting just above your knees.",
+    "Lie on your side with hips bent at 45 degrees, knees bent at 90 degrees, and feet stacked together.",
+    "Engage your core to prevent your lower back or pelvis from rolling backward.",
+    "Open your top knee against the resistance of the band while keeping your feet touching.",
+    "Hold for one second at peak contraction, then lower slowly resisting the pull of the band."
+  ],
+  "coaching_cues": [
+    "Choose a light-to-medium band that allows full range of motion without compensating.",
+    "Control the descent; do not allow the band to snap your knees together.",
+    "Breathe out as you open and breathe in as you close."
+  ],
+  "sources": {
+    "attribution": "APTA Hip Stabilizer Clinical Protocol"
+  }
+}

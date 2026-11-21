@@ -1,0 +1,59 @@
+{
+  "id": "20049_thread_the_needle_stretch",
+  "numeric_id": "20049",
+  "slug": "thread_the_needle_stretch",
+  "name": "Thread the Needle Stretch",
+  "aliases": [
+    "Quadruped Thoracic Rotation",
+    "Thread the Needle"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "upper back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "neck"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "transverse",
+    "default_tempo": "3-2-3-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "thoracic_spine",
+    "target_conditions": [
+      "upper_back_knots",
+      "scapular_tension",
+      "cervical_stiffness"
+    ],
+    "contraindications": [
+      "acute_cervical_radiculopathy_flare"
+    ],
+    "clinical_protocol": "APTA Thoracic Spine Mobility Protocols"
+  },
+  "steps": [
+    "Start on all fours in tabletop position on a comfortable mat.",
+    "Lift your right hand and slide your right arm under your chest across to the left, with your palm facing up.",
+    "Lower your right shoulder and right temple gently down to rest on the mat, looking toward your left.",
+    "Feel a deep, pleasant stretch between your shoulder blades and through your upper back.",
+    "Hold for 3 to 5 seconds, press back up to tabletop through your left hand, and repeat on the opposite side."
+  ],
+  "coaching_cues": [
+    "Keep your hips centered directly above your knees as you thread your arm through.",
+    "Do not force your shoulder to the floor if mobility is limited; use a pillow under your shoulder if needed.",
+    "Breathe deeply into your upper ribcage."
+  ],
+  "sources": {
+    "attribution": "APTA Musculoskeletal Mobility Guidelines"
+  }
+}

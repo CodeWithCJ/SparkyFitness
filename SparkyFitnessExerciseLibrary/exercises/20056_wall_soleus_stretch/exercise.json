@@ -1,0 +1,56 @@
+{
+  "id": "20056_wall_soleus_stretch",
+  "numeric_id": "20056",
+  "slug": "wall_soleus_stretch",
+  "name": "Wall Soleus Stretch",
+  "aliases": [
+    "Bent-Knee Wall Calf Stretch",
+    "Deep Calf Wall Stretch"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "stretching",
+    "body_part": "calves",
+    "equipment": "body only",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "static",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "isometric",
+    "demonstration_reps": 1
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "achilles_insertion_tightness",
+      "limited_ankle_dorsiflexion",
+      "runner_stiffness"
+    ],
+    "contraindications": [
+      "acute_retrocalcaneal_bursitis_severe_flare"
+    ],
+    "clinical_protocol": "Cornell Health Lower Extremity ROM Protocol"
+  },
+  "steps": [
+    "Stand facing a wall with hands resting flat against the wall for support.",
+    "Step your target leg back slightly, about 6 to 12 inches behind your front foot.",
+    "Unlike the standard calf stretch, bend both knees and sink your hips straight downward toward the floor.",
+    "Keep your back heel pressed down on the floor as you bend your back knee deeper.",
+    "Feel a deep, focused stretch in the lower portion of your calf and Achilles tendon, holding for 20 to 30 seconds."
+  ],
+  "coaching_cues": [
+    "Bending the knee takes tension off the gastrocnemius to isolate the deeper soleus muscle.",
+    "Keep your weight distributed evenly and do not let your back heel lift.",
+    "Breathe comfortably and allow the lower calf to release."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Lower Extremity Range of Motion Protocol"
+  }
+}

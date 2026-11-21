@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00290_dumbbell_bench_seated_press",
+  "numeric_id": "00290",
+  "slug": "dumbbell_bench_seated_press",
+  "name": "Dumbbell Bench Seated Press",
+  "aliases": [
+    "Dumbbell Bench Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "shoulders",
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with a dumbbell in each hand, resting on your thighs.",
+    "Lean back and position the dumbbells to the sides of your chest, palms facing forward.",
+    "Press the dumbbells upward until your arms are fully extended.",
+    "Pause for a moment at the top, then slowly lower the dumbbells back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0290",
+    "free_id": "Dumbbell_Bench_Press"
+  }
+}

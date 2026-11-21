@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01332_exercise_ball_alternating_arm_ups",
+  "numeric_id": "01332",
+  "slug": "exercise_ball_alternating_arm_ups",
+  "name": "Exercise Ball Alternating Arm Ups",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "exercise ball",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the stability ball with your feet flat on the ground and your back straight.",
+    "Hold a dumbbell in each hand with your palms facing inwards and your arms extended down by your sides.",
+    "Engage your core and slowly lift one arm up towards your shoulder, keeping your elbow slightly bent.",
+    "Pause for a moment at the top, then slowly lower your arm back down to the starting position.",
+    "Repeat the movement with the other arm.",
+    "Continue alternating arms for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1332",
+    "free_id": null
+  }
+}

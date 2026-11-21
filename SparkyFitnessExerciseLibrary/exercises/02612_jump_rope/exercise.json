@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02612_jump_rope",
+  "numeric_id": "02612",
+  "slug": "jump_rope",
+  "name": "Jump Rope",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "calves",
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Hold the handles of the jump rope with your hands, palms facing inward.",
+    "Stand with your feet shoulder-width apart and knees slightly bent.",
+    "Swing the rope over your head and jump over it as it comes towards your feet.",
+    "Land softly on the balls of your feet and repeat the jump as the rope comes around again.",
+    "Continue jumping for the desired duration or number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2612",
+    "free_id": null
+  }
+}

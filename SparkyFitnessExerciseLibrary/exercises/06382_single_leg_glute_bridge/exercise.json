@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06382_single_leg_glute_bridge",
+  "numeric_id": "06382",
+  "slug": "single_leg_glute_bridge",
+  "name": "Single Leg Glute Bridge",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lay on the floor with your feet flat and knees bent.",
+    "Raise one leg off of the ground, pulling the knee to your chest. This will be your starting position.",
+    "Execute the movement by driving through the heel, extending your hip upward and raising your glutes off of the ground.",
+    "Extend as far as possible, pause and then return to the starting position."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Single_Leg_Glute_Bridge"
+  }
+}

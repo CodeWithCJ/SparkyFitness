@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01413_cable_reverse_one_arm_curl",
+  "numeric_id": "01413",
+  "slug": "cable_reverse_one_arm_curl",
+  "name": "Cable Reverse One Arm Curl",
+  "aliases": [
+    "Reverse Cable Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing a cable machine with your feet shoulder-width apart.",
+    "Grasp the cable handle with an underhand grip, palm facing down.",
+    "Keep your elbow close to your side and slowly curl your forearm up towards your shoulder.",
+    "Pause for a moment at the top, then slowly lower your forearm back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1413",
+    "free_id": "Reverse_Cable_Curl"
+  }
+}

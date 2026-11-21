@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06022_band_pull_apart",
+  "numeric_id": "06022",
+  "slug": "band_pull_apart",
+  "name": "Band Pull Apart",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "middle back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Begin with your arms extended straight out in front of you, holding the band with both hands.",
+    "Initiate the movement by performing a reverse fly motion, moving your hands out laterally to your sides.",
+    "Keep your elbows extended as you perform the movement, bringing the band to your chest. Ensure that you keep your shoulders back during the exercise.",
+    "Pause as you complete the movement, returning to the starting position under control."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Band_Pull_Apart"
+  }
+}

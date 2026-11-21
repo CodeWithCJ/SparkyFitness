@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00201_cable_pushdown",
+  "numeric_id": "00201",
+  "slug": "cable_pushdown",
+  "name": "Cable Pushdown",
+  "aliases": [
+    "Cable Incline Pushdown"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "triceps",
+      "lats"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a straight bar to a high pulley cable machine.",
+    "Stand facing the machine with your feet shoulder-width apart and a slight bend in your knees.",
+    "Grasp the bar with an overhand grip, hands shoulder-width apart.",
+    "Keep your elbows close to your sides and your upper arms stationary.",
+    "Exhale and push the bar down until your elbows are fully extended.",
+    "Pause for a moment, then inhale and slowly return the bar to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0201",
+    "free_id": "Cable_Incline_Pushdown"
+  }
+}

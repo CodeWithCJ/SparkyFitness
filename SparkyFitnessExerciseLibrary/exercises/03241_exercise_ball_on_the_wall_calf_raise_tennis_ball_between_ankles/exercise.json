@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03241_exercise_ball_on_the_wall_calf_raise_tennis_ball_between_ankles",
+  "numeric_id": "03241",
+  "slug": "exercise_ball_on_the_wall_calf_raise_tennis_ball_between_ankles",
+  "name": "Exercise Ball On The Wall Calf Raise (Tennis Ball Between Ankles)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "lower legs",
+    "body_part": "lower legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand facing a wall with your feet shoulder-width apart.",
+    "Place an exercise ball between the wall and your lower back.",
+    "Hold a dumbbell in each hand, with your arms extended by your sides.",
+    "Place a tennis ball between your ankles.",
+    "Raise your heels off the ground, lifting your body up onto your toes.",
+    "Pause for a moment at the top, then slowly lower your heels back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3241",
+    "free_id": null
+  }
+}

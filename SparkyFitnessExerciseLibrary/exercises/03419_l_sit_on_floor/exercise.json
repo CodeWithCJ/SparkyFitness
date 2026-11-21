@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03419_l_sit_on_floor",
+  "numeric_id": "03419",
+  "slug": "l_sit_on_floor",
+  "name": "L-Sit On Floor",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the floor with your legs extended in front of you.",
+    "Place your hands on the floor beside your hips, fingers pointing forward.",
+    "Engage your core and lift your legs off the ground, keeping them straight.",
+    "Try to bring your legs parallel to the floor, forming an 'L' shape with your body.",
+    "Hold this position for as long as you can.",
+    "Slowly lower your legs back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3419",
+    "free_id": null
+  }
+}

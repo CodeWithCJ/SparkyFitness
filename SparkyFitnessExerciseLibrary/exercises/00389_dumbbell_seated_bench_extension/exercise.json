@@ -1,0 +1,44 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00389_dumbbell_seated_bench_extension",
+  "numeric_id": "00389",
+  "slug": "dumbbell_seated_bench_extension",
+  "name": "Dumbbell Seated Bench Extension",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on a bench with your back straight and feet flat on the ground.",
+    "Hold a dumbbell with both hands and extend your arms straight up above your head.",
+    "Slowly lower the dumbbell behind your head, keeping your elbows close to your ears.",
+    "Pause for a moment, then raise the dumbbell back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0389",
+    "free_id": null
+  }
+}

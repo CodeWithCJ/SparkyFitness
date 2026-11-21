@@ -1,0 +1,56 @@
+{
+  "id": "20051_band_ankle_dorsiflexion",
+  "numeric_id": "20051",
+  "slug": "band_ankle_dorsiflexion",
+  "name": "Band Ankle Dorsiflexion",
+  "aliases": [
+    "Resistance Band Toe Pull",
+    "Ankle Flexion with Band"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "calves",
+    "equipment": "bands",
+    "primary_muscles": [
+      "calves"
+    ],
+    "secondary_muscles": [],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "ankle_foot",
+    "target_conditions": [
+      "shin_splints",
+      "foot_drop",
+      "post_ankle_sprain_weakness"
+    ],
+    "contraindications": [
+      "acute_anterior_tibial_tendon_rupture"
+    ],
+    "clinical_protocol": "Cornell Health Physical Therapy Ankle Protocol"
+  },
+  "steps": [
+    "Sit on the floor with your target leg extended straight in front of you.",
+    "Loop a resistance band around the ball of your foot and anchor the other end to a sturdy post in front of you.",
+    "Start with your foot pointed slightly forward with tension on the band.",
+    "Pull your toes and foot backward toward your shin against the resistance of the band, flexing your ankle fully.",
+    "Hold for one second at the top, then slowly release your foot forward under control."
+  ],
+  "coaching_cues": [
+    "Keep your leg straight without bending your knee to isolate the anterior shin muscles.",
+    "Control the return phase; do not let the band snap your foot forward.",
+    "Breathe out as you pull your toes back and breathe in as you release."
+  ],
+  "sources": {
+    "attribution": "Cornell Health Physical Therapy Exercise Protocol"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00555_kick_out_sit",
+  "numeric_id": "00555",
+  "slug": "kick_out_sit",
+  "name": "Kick Out Sit",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Sit on the edge of a bench or chair with your feet flat on the ground and your knees bent at a 90-degree angle.",
+    "Lean back slightly and place your hands on the edge of the bench or chair for support.",
+    "Engaging your hamstrings, lift your feet off the ground and extend your legs straight out in front of you.",
+    "Pause for a moment at the top, then slowly bend your knees and bring your feet back towards your body.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0555",
+    "free_id": null
+  }
+}

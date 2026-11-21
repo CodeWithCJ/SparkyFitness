@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01724_cable_rope_high_pulley_overhead_tricep_extension",
+  "numeric_id": "01724",
+  "slug": "cable_rope_high_pulley_overhead_tricep_extension",
+  "name": "Cable Rope High Pulley Overhead Tricep Extension",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "cable",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a rope to a high pulley and adjust the weight accordingly.",
+    "Stand facing away from the pulley machine with your feet shoulder-width apart.",
+    "Grasp the rope with both hands, palms facing down, and bring your hands above your head.",
+    "Keep your upper arms close to your head and perpendicular to the floor.",
+    "Slowly lower the rope behind your head by bending your elbows.",
+    "Pause for a moment, then extend your arms back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1724",
+    "free_id": null
+  }
+}

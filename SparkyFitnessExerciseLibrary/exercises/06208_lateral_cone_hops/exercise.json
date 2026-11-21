@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06208_lateral_cone_hops",
+  "numeric_id": "06208",
+  "slug": "lateral_cone_hops",
+  "name": "Lateral Cone Hops",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "plyometrics",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "other",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": [
+      "abductors",
+      "calves",
+      "glutes",
+      "hamstrings",
+      "quadriceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Position a number of cones in a row several feet apart.",
+    "Stand next to the end of the cones, facing 90 degrees to the direction of travel. This will be your starting position.",
+    "Begin the jump by dipping with the knees to initiate a stretch reflex, and immediately reverse direction to push off the ground, jumping up and sideways over the cone.",
+    "Use your legs to absorb impact upon landing, and rebound into the next jump, continuing down the row of cones."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Lateral_Cone_Hops"
+  }
+}

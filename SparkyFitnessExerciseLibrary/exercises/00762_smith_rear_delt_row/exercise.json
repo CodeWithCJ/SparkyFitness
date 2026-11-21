@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00762_smith_rear_delt_row",
+  "numeric_id": "00762",
+  "slug": "smith_rear_delt_row",
+  "name": "Smith Rear Delt Row",
+  "aliases": [
+    "Barbell Rear Delt Row"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back",
+      "biceps",
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and position yourself on the machine with your chest against the pad and your feet flat on the ground.",
+    "Grasp the handles with an overhand grip, slightly wider than shoulder-width apart.",
+    "Keep your back straight and your core engaged as you pull the handles towards your chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the top of the movement, then slowly release the handles back to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0762",
+    "free_id": "Barbell_Rear_Delt_Row"
+  }
+}

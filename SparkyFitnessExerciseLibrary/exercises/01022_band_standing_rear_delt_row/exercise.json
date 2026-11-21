@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01022_band_standing_rear_delt_row",
+  "numeric_id": "01022",
+  "slug": "band_standing_rear_delt_row",
+  "name": "Band Standing Rear Delt Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "middle back",
+      "biceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and place the band under your feet.",
+    "Hold the band handles with your palms facing each other and your arms extended in front of you.",
+    "Bend your knees slightly and hinge forward at the hips, keeping your back straight.",
+    "Pull the band towards your chest, squeezing your shoulder blades together.",
+    "Pause for a moment at the top, then slowly release the tension and return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1022",
+    "free_id": null
+  }
+}

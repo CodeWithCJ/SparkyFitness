@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02271_left_hook_boxing",
+  "numeric_id": "02271",
+  "slug": "left_hook_boxing",
+  "name": "Left Hook. Boxing",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "triceps",
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and your knees slightly bent.",
+    "Keep your left hand up to protect your face and your right hand by your chin.",
+    "Rotate your hips and pivot on your left foot as you extend your left arm forward in a punching motion.",
+    "Twist your torso and engage your core muscles to generate power in the punch.",
+    "Snap your arm back to the starting position and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2271",
+    "free_id": null
+  }
+}

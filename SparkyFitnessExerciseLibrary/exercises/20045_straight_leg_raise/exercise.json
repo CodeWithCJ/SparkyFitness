@@ -1,0 +1,58 @@
+{
+  "id": "20045_straight_leg_raise",
+  "numeric_id": "20045",
+  "slug": "straight_leg_raise",
+  "name": "Straight Leg Raise",
+  "aliases": [
+    "Supine SLR",
+    "Quad Straight Leg Lift"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "thighs",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "abdominals"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "unilateral_left",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "knee",
+    "target_conditions": [
+      "quad_inhibition",
+      "post_knee_arthroscopy",
+      "patellar_instability"
+    ],
+    "contraindications": [
+      "acute_quadriceps_tendon_repair_early_phase"
+    ],
+    "clinical_protocol": "Cleveland Clinic Early Knee Rehabilitation"
+  },
+  "steps": [
+    "Lie flat on your back on a mat with your left knee bent and left foot flat on the floor.",
+    "Extend your right leg straight out on the floor and flex your right foot upward.",
+    "Tighten the muscles on top of your right thigh so your knee is completely locked straight.",
+    "Maintaining that quad lock, lift your right leg roughly 12 inches off the floor until your thigh is parallel with your bent left thigh.",
+    "Hold for one to two seconds at the top, then slowly lower the straight leg back down to the floor."
+  ],
+  "coaching_cues": [
+    "Your knee must stay completely straight during the entire lift; do not allow it to bend.",
+    "Keep your lower back flat on the mat without arching.",
+    "Perform smoothly and steadily without kicking."
+  ],
+  "sources": {
+    "attribution": "Cleveland Clinic Knee Recovery Handouts"
+  }
+}

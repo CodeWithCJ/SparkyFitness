@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00065_barbell_one_arm_floor_press",
+  "numeric_id": "00065",
+  "slug": "barbell_one_arm_floor_press",
+  "name": "Barbell One Arm Floor Press",
+  "aliases": [
+    "One Arm Floor Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "intermediate",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back on the floor with your knees bent and feet flat on the ground.",
+    "Hold the barbell with one hand, palm facing up, and extend your arm straight up over your chest.",
+    "Slowly lower the barbell towards your chest, keeping your elbow close to your body.",
+    "Pause for a moment at the bottom, then push the barbell back up to the starting position.",
+    "Repeat for the desired number of repetitions, then switch arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0065",
+    "free_id": "One_Arm_Floor_Press"
+  }
+}

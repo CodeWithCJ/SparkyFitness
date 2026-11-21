@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "03639_bent_knee_lying_twist_male",
+  "numeric_id": "03639",
+  "slug": "bent_knee_lying_twist_male",
+  "name": "Bent Knee Lying Twist (Male)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "abdominals"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie flat on your back with your knees bent and feet flat on the ground.",
+    "Extend your arms out to the sides, perpendicular to your body.",
+    "Keeping your knees together, slowly lower them to one side, aiming to touch the ground with your knees.",
+    "Pause for a moment, then engage your core and slowly lift your knees back to the starting position.",
+    "Repeat the movement to the other side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "3639",
+    "free_id": null
+  }
+}

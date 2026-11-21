@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00598_lever_seated_hip_adduction",
+  "numeric_id": "00598",
+  "slug": "lever_seated_hip_adduction",
+  "name": "Lever Seated Hip Adduction",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat height and position yourself on the machine with your back against the backrest.",
+    "Place your feet on the footrests and grasp the handles for stability.",
+    "Engage your adductor muscles and slowly bring your legs together, squeezing your inner thighs.",
+    "Pause for a moment at the peak contraction, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0598",
+    "free_id": null
+  }
+}

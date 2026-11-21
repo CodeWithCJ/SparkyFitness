@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00300_dumbbell_deadlift",
+  "numeric_id": "00300",
+  "slug": "dumbbell_deadlift",
+  "name": "Dumbbell Deadlift",
+  "aliases": [
+    "Stiff-Legged Dumbbell Deadlift"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "dumbbell",
+    "primary_muscles": [
+      "glutes",
+      "hamstrings"
+    ],
+    "secondary_muscles": [
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, toes pointing forward.",
+    "Hold a dumbbell in each hand, palms facing your body, arms extended downwards.",
+    "Bend at your hips and knees, lowering the dumbbells towards the ground while keeping your back straight.",
+    "Push through your heels and extend your hips and knees, lifting the dumbbells back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0300",
+    "free_id": "Stiff-Legged_Dumbbell_Deadlift"
+  }
+}

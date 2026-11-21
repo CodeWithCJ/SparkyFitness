@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02810_barbell_split_squat_v_2",
+  "numeric_id": "02810",
+  "slug": "barbell_split_squat_v_2",
+  "name": "Barbell Split Squat V. 2",
+  "aliases": [
+    "Barbell Squat"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "calves",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing with your feet shoulder-width apart, holding a barbell across your upper back.",
+    "Take a large step forward with your right foot, keeping your torso upright.",
+    "Lower your body by bending your knees and hips until your right thigh is parallel to the ground.",
+    "Pause for a moment, then push through your right heel to return to the starting position.",
+    "Repeat with your left leg forward for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2810",
+    "free_id": "Barbell_Squat"
+  }
+}

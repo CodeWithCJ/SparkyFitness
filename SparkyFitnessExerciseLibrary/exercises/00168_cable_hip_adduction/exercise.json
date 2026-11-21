@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00168_cable_hip_adduction",
+  "numeric_id": "00168",
+  "slug": "cable_hip_adduction",
+  "name": "Cable Hip Adduction",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "adductors",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach the ankle cuff to your ankle and stand facing the cable machine.",
+    "Position yourself far enough away from the machine so that there is tension on the cable.",
+    "Place your hands on the machine for support.",
+    "Keeping your leg straight, slowly move your leg across your body towards the midline.",
+    "Pause for a moment at the end of the movement, then slowly return to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0168",
+    "free_id": "Cable_Hip_Adduction"
+  }
+}

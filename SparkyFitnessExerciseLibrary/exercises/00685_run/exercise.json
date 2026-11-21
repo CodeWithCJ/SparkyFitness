@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00685_run",
+  "numeric_id": "00685",
+  "slug": "run",
+  "name": "Run",
+  "aliases": [
+    "Chest Push with Run Release"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "cardio",
+    "body_part": "cardio",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps",
+      "chest"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves",
+      "abdominals",
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing upright with your feet hip-width apart.",
+    "Engage your core and keep your upper body relaxed.",
+    "Begin jogging in place, lifting your knees up towards your chest and landing softly on the balls of your feet.",
+    "Maintain a steady pace and continue jogging for the desired duration or distance.",
+    "Remember to breathe deeply and maintain good posture throughout the exercise."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0685",
+    "free_id": "Chest_Push_with_Run_Release"
+  }
+}

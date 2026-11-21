@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01008_band_step_up",
+  "numeric_id": "01008",
+  "slug": "band_step_up",
+  "name": "Band Step-Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Place a band around your thighs, just above your knees.",
+    "Stand facing a step or platform with your feet hip-width apart.",
+    "Step up onto the platform with your right foot, pushing through your heel.",
+    "Extend your left leg behind you, keeping it straight.",
+    "Lower your left foot back down to the ground.",
+    "Repeat with your left foot stepping up onto the platform.",
+    "Continue alternating legs for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1008",
+    "free_id": null
+  }
+}

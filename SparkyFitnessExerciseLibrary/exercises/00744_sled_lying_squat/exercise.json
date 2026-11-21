@@ -1,0 +1,49 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00744_sled_lying_squat",
+  "numeric_id": "00744",
+  "slug": "sled_lying_squat",
+  "name": "Sled Lying Squat",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "glutes"
+    ],
+    "secondary_muscles": [
+      "quadriceps",
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the sled machine to a comfortable weight.",
+    "Lie on your back on the sled machine with your feet on the footplate.",
+    "Position your feet shoulder-width apart and slightly angled outwards.",
+    "Grip the handles of the sled machine for stability.",
+    "Engage your glutes and core muscles.",
+    "Push through your heels and extend your legs to lift the sled.",
+    "Lower the sled back down by bending your knees and hips.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0744",
+    "free_id": null
+  }
+}

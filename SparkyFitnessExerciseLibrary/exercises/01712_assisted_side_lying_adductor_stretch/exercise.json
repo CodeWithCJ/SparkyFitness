@@ -1,0 +1,48 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01712_assisted_side_lying_adductor_stretch",
+  "numeric_id": "01712",
+  "slug": "assisted_side_lying_adductor_stretch",
+  "name": "Assisted Side Lying Adductor Stretch",
+  "aliases": [
+    "Adductor"
+  ],
+  "taxonomy": {
+    "modality": "duration",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": "static",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "adductors"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "glutes"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on your side with your legs straight and stacked on top of each other.",
+    "Bend your bottom leg slightly for stability.",
+    "Place your top foot on a stable surface, such as a bench or step.",
+    "Keeping your top leg straight, slowly lower it towards the ground, feeling a stretch in your inner thigh.",
+    "Hold the stretch for 20-30 seconds.",
+    "Return to the starting position and repeat on the other side."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1712",
+    "free_id": "Adductor"
+  }
+}

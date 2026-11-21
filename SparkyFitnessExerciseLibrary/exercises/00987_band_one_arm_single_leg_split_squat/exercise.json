@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00987_band_one_arm_single_leg_split_squat",
+  "numeric_id": "00987",
+  "slug": "band_one_arm_single_leg_split_squat",
+  "name": "Band One Arm Single Leg Split Squat",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet hip-width apart and place a resistance band around your ankles.",
+    "Extend one leg forward and rest the top of your foot on a bench or step behind you.",
+    "Hold onto a support with one hand for balance.",
+    "Bend your standing leg and lower your body down into a squat position, keeping your knee in line with your toes.",
+    "Push through your heel to return to the starting position.",
+    "Repeat for the desired number of repetitions, then switch legs."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0987",
+    "free_id": null
+  }
+}

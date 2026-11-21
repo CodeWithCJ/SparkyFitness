@@ -1,0 +1,58 @@
+{
+  "id": "20011_bent_leg_trunk_twist",
+  "numeric_id": "20011",
+  "slug": "bent_leg_trunk_twist",
+  "name": "Bent-Leg Trunk Twist",
+  "aliases": [
+    "Supine Knee Windshield Wipers",
+    "Bent-Knee Spinal Twist"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "waist",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lower back"
+    ],
+    "secondary_muscles": [
+      "abdominals"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "compound"
+  },
+  "biomechanics": {
+    "laterality": "alternating",
+    "movement_plane": "transverse",
+    "default_tempo": "3-2-3-1",
+    "demonstration_reps": 4
+  },
+  "rehabilitation": {
+    "joint": "lumbar_spine",
+    "target_conditions": [
+      "lumbar_stiffness",
+      "sacroiliac_joint_stiffness",
+      "morning_back_tightness"
+    ],
+    "contraindications": [
+      "acute_disc_herniation_with_radicular_pain_on_rotation"
+    ],
+    "clinical_protocol": "NHS Lower Back Pain Management Guidelines"
+  },
+  "steps": [
+    "Lie flat on your back with your knees bent, feet flat on the floor, and arms outstretched to the sides in a 'T' position.",
+    "Keeping your shoulders glued to the floor, slowly lower both knees to the right side toward the ground.",
+    "Pause in the gentle stretch for 2 to 3 seconds while exhaling deeply.",
+    "Engage your abdominal muscles to bring your knees back to the center position.",
+    "Slowly lower your knees to the left side and repeat the stretch."
+  ],
+  "coaching_cues": [
+    "Keep both shoulder blades resting comfortably on the floor at all times.",
+    "Move smoothly within your pain-free range of motion—do not force your knees to the floor.",
+    "Let gravity assist the stretch gently."
+  ],
+  "sources": {
+    "attribution": "NHS Musculoskeletal Lower Back Protocol"
+  }
+}

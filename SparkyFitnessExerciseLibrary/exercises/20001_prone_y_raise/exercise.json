@@ -1,0 +1,59 @@
+{
+  "id": "20001_prone_y_raise",
+  "numeric_id": "20001",
+  "slug": "prone_y_raise",
+  "name": "Prone Y-Raise",
+  "aliases": [
+    "Floor Y-Raise",
+    "Prone Lower Trap Raise"
+  ],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "mobility",
+    "body_part": "upper back",
+    "equipment": "body only",
+    "primary_muscles": [
+      "traps"
+    ],
+    "secondary_muscles": [
+      "shoulders",
+      "middle back"
+    ],
+    "level": "beginner",
+    "force": "pull",
+    "mechanic": "isolation"
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-1-2-1",
+    "demonstration_reps": 3
+  },
+  "rehabilitation": {
+    "joint": "shoulder",
+    "target_conditions": [
+      "forward_head_posture",
+      "thoracic_kyphosis",
+      "rotator_cuff_weakness"
+    ],
+    "contraindications": [
+      "acute_shoulder_impingement_flare"
+    ],
+    "clinical_protocol": "APTA Postural Restoration Guidelines"
+  },
+  "steps": [
+    "Lie face down on a mat with your legs extended straight and forehead resting gently on the floor or a small towel.",
+    "Extend your arms overhead at roughly a 30-degree angle from your body so they form the letter 'Y', with your thumbs pointing straight toward the ceiling.",
+    "Engage your mid-back and lower trapezius to lift your arms and chest a few inches off the floor without straining your neck.",
+    "Hold the top position for one to two seconds while focusing on squeezing your lower shoulder blades down and together.",
+    "Slowly lower your arms back to the starting position with controlled breathing."
+  ],
+  "coaching_cues": [
+    "Keep your thumbs pointed toward the ceiling throughout the movement to encourage external rotation.",
+    "Avoid hyperextending your lower back; focus movement exclusively in your shoulder blades.",
+    "Keep your neck neutral and gaze pointed straight at the floor."
+  ],
+  "sources": {
+    "attribution": "Clinical Posture & Scapular Stabilization Protocol"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00552_kettlebell_two_arm_clean",
+  "numeric_id": "00552",
+  "slug": "kettlebell_two_arm_clean",
+  "name": "Kettlebell Two Arm Clean",
+  "aliases": [
+    "Two-Arm Kettlebell Clean"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "shoulders",
+    "body_part": "shoulders",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "kettlebells",
+    "primary_muscles": [
+      "shoulders"
+    ],
+    "secondary_muscles": [
+      "traps",
+      "forearms",
+      "calves",
+      "glutes",
+      "hamstrings",
+      "lower back"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart, holding a kettlebell in front of your thighs with both hands, palms facing towards you.",
+    "Bend your knees slightly and hinge at the hips, lowering the kettlebell towards the ground.",
+    "Explosively extend your hips and knees, using the momentum to pull the kettlebell up towards your shoulders.",
+    "As the kettlebell reaches shoulder height, rotate your wrists and catch the kettlebell in the rack position, with your elbows tucked in and the kettlebell resting on the back of your forearm.",
+    "Lower the kettlebell back down to the starting position and repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0552",
+    "free_id": "Two-Arm_Kettlebell_Clean"
+  }
+}

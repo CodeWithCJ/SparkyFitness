@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01686_squat_to_overhead_reach_with_twist",
+  "numeric_id": "01686",
+  "slug": "squat_to_overhead_reach_with_twist",
+  "name": "Squat To Overhead Reach With Twist",
+  "aliases": [
+    "Overhead Squat"
+  ],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "expert",
+    "equipment": "body only",
+    "primary_muscles": [
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "glutes",
+      "hamstrings",
+      "abdominals",
+      "calves",
+      "lower back",
+      "shoulders",
+      "triceps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and toes slightly turned out.",
+    "Lower your body into a squat position by bending your knees and pushing your hips back.",
+    "As you come up from the squat, raise your arms overhead and twist your torso to one side.",
+    "Return to the starting position and repeat the squat, this time twisting your torso to the opposite side.",
+    "Continue alternating sides with each squat repetition."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1686",
+    "free_id": "Overhead_Squat"
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00186_cable_lying_triceps_extension_v_2",
+  "numeric_id": "00186",
+  "slug": "cable_lying_triceps_extension_v_2",
+  "name": "Cable Lying Triceps Extension V. 2",
+  "aliases": [
+    "Cable Lying Triceps Extension"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "cable",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Attach a rope handle to a low pulley cable machine.",
+    "Lie down on a flat bench facing up, with your head towards the cable machine.",
+    "Grasp the rope handle with both hands, palms facing each other, and extend your arms straight up over your chest.",
+    "Keeping your upper arms stationary, slowly lower the rope handle towards your forehead by bending your elbows.",
+    "Pause for a moment at the bottom, then extend your arms back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0186",
+    "free_id": "Cable_Lying_Triceps_Extension"
+  }
+}

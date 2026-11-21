@@ -1,0 +1,47 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00023_barbell_alternate_biceps_curl",
+  "numeric_id": "00023",
+  "slug": "barbell_alternate_biceps_curl",
+  "name": "Barbell Alternate Biceps Curl",
+  "aliases": [
+    "Barbell Curl"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "barbell",
+    "primary_muscles": [
+      "biceps"
+    ],
+    "secondary_muscles": [
+      "forearms"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand up straight with your feet shoulder-width apart and hold a barbell in each hand, palms facing forward.",
+    "Keep your upper arms stationary and exhale as you curl the weights while contracting your biceps.",
+    "Continue to raise the barbells until your biceps are fully contracted and the barbells are at shoulder level.",
+    "Hold the contracted position for a brief pause as you squeeze your biceps.",
+    "Inhale as you slowly begin to lower the barbells back to the starting position.",
+    "Repeat for the desired number of repetitions, alternating arms."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0023",
+    "free_id": "Barbell_Curl"
+  }
+}

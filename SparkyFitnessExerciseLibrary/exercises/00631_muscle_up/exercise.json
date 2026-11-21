@@ -1,0 +1,52 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00631_muscle_up",
+  "numeric_id": "00631",
+  "slug": "muscle_up",
+  "name": "Muscle Up",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "bodyweight_reps",
+    "category": "back",
+    "body_part": "back",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "intermediate",
+    "equipment": "body only",
+    "primary_muscles": [
+      "lats"
+    ],
+    "secondary_muscles": [
+      "biceps",
+      "triceps",
+      "shoulders",
+      "chest",
+      "abdominals",
+      "forearms",
+      "middle back",
+      "traps"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by hanging from a pull-up bar with your palms facing away from you and your arms fully extended.",
+    "Engage your core and pull your body up towards the bar, leading with your chest.",
+    "As you reach the top of the movement, transition your grip so that your palms are facing towards you.",
+    "Continue pulling yourself up until your chest is above the bar and your arms are fully flexed.",
+    "Reverse the movement by slowly lowering yourself back down to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0631",
+    "free_id": "Muscle_Up"
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00448_ez_barbell_decline_close_grip_face_press",
+  "numeric_id": "00448",
+  "slug": "ez_barbell_decline_close_grip_face_press",
+  "name": "Ez Barbell Decline Close Grip Face Press",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper arms",
+    "body_part": "upper arms",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "e-z curl bar",
+    "primary_muscles": [
+      "triceps"
+    ],
+    "secondary_muscles": [
+      "chest",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Lie on a decline bench with your head lower than your feet.",
+    "Grasp the ez barbell with a close grip, palms facing each other.",
+    "Extend your arms straight up above your chest, keeping your elbows close to your body.",
+    "Lower the barbell towards your forehead by bending your elbows.",
+    "Pause for a moment, then press the barbell back up to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0448",
+    "free_id": null
+  }
+}

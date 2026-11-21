@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "00796_standing_wheel_rollerout",
+  "numeric_id": "00796",
+  "slug": "standing_wheel_rollerout",
+  "name": "Standing Wheel Rollerout",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "other",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": [
+      "lower back",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Start by standing tall with your feet shoulder-width apart and the wheel roller in front of you.",
+    "Bend at your waist and slowly roll the wheel forward, keeping your back straight and your core engaged.",
+    "Continue rolling forward until you feel a stretch in your abs and your body is extended as far as possible.",
+    "Pause for a moment, then slowly roll the wheel back towards your body, returning to the starting position.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "0796",
+    "free_id": null
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "06216_leverage_high_row",
+  "numeric_id": "06216",
+  "slug": "leverage_high_row",
+  "name": "Leverage High Row",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "strength",
+    "body_part": "general",
+    "mechanic": "compound",
+    "force": "pull",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "middle back"
+    ],
+    "secondary_muscles": [
+      "lats"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Load an appropriate weight onto the pins and adjust the seat height so that you can just reach the handles above you. Adjust the knee pad to help keep you down. Grasp the handles with a pronated grip. This will be your starting position.",
+    "Pull the handles towards your torso, retracting your shoulder blades as you flex the elbow.",
+    "Pause at the bottom of the motion, and then slowly return the handles to the starting position.",
+    "For multiple repetitions, avoid completely returning the weight to the stops to keep tension on the muscles being worked."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": null,
+    "free_id": "Leverage_High_Row"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "02364_assisted_wide_grip_chest_dip_kneeling",
+  "numeric_id": "02364",
+  "slug": "assisted_wide_grip_chest_dip_kneeling",
+  "name": "Assisted Wide-Grip Chest Dip (Kneeling)",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "chest",
+    "body_part": "chest",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "machine",
+    "primary_muscles": [
+      "chest"
+    ],
+    "secondary_muscles": [
+      "triceps",
+      "shoulders"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the machine to your desired height and secure your knees on the pad.",
+    "Grasp the handles with a wide grip and keep your elbows slightly bent.",
+    "Lower your body by bending your elbows until your upper arms are parallel to the floor.",
+    "Push yourself back up to the starting position by extending your arms.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "2364",
+    "free_id": null
+  }
+}

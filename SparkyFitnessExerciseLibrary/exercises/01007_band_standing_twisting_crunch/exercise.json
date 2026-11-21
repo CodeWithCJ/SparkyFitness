@@ -1,0 +1,43 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01007_band_standing_twisting_crunch",
+  "numeric_id": "01007",
+  "slug": "band_standing_twisting_crunch",
+  "name": "Band Standing Twisting Crunch",
+  "aliases": [],
+  "taxonomy": {
+    "modality": "reps_only",
+    "category": "waist",
+    "body_part": "waist",
+    "mechanic": "isolation",
+    "force": null,
+    "level": "intermediate",
+    "equipment": "bands",
+    "primary_muscles": [
+      "abdominals"
+    ],
+    "secondary_muscles": []
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Stand with your feet shoulder-width apart and place the band around your upper back, crossing it in front of your chest.",
+    "Hold the ends of the band with your hands, keeping your elbows bent and close to your sides.",
+    "Engage your abs and twist your torso to one side, bringing your elbow towards the opposite knee.",
+    "Pause for a moment, then return to the starting position.",
+    "Repeat on the other side.",
+    "Continue alternating sides for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1007",
+    "free_id": null
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "../../schema/exercise.schema.json",
+  "id": "01464_sled_45_leg_press_back_pov",
+  "numeric_id": "01464",
+  "slug": "sled_45_leg_press_back_pov",
+  "name": "Sled 45в° Leg Press (Back Pov)",
+  "aliases": [
+    "Leg Press"
+  ],
+  "taxonomy": {
+    "modality": "weight_reps",
+    "category": "upper legs",
+    "body_part": "upper legs",
+    "mechanic": "compound",
+    "force": "push",
+    "level": "beginner",
+    "equipment": "machine",
+    "primary_muscles": [
+      "glutes",
+      "quadriceps"
+    ],
+    "secondary_muscles": [
+      "hamstrings",
+      "calves"
+    ]
+  },
+  "biomechanics": {
+    "laterality": "bilateral",
+    "movement_plane": "sagittal",
+    "default_tempo": "2-0-2-0",
+    "demonstration_reps": 2
+  },
+  "steps": [
+    "Adjust the seat of the sled machine so that your knees are at a 45-degree angle.",
+    "Sit on the sled machine with your back against the backrest and your feet shoulder-width apart on the footplate.",
+    "Grip the handles on the sides of the seat for stability.",
+    "Push the footplate away from your body by extending your legs, keeping your heels on the footplate.",
+    "Pause for a moment at the fully extended position.",
+    "Slowly bend your knees and lower the footplate back towards your body, controlling the movement.",
+    "Repeat for the desired number of repetitions."
+  ],
+  "coaching_cues": [
+    "Maintain controlled form throughout the entire range of motion",
+    "Avoid using momentum to complete repetitions"
+  ],
+  "sources": {
+    "hasan_id": "1464",
+    "free_id": "Leg_Press"
+  }
+}
