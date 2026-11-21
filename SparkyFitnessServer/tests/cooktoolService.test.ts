@@ -153,7 +153,7 @@ describe('CookTool Service', () => {
 
       // Verify cached on subsequent call
       const cached = await getCookToolDetails(ctx, 'ing:6433');
-      expect(cached).toBe(food);
+      expect(cached).toEqual(food);
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 

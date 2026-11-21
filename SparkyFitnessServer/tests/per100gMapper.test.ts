@@ -77,8 +77,10 @@ describe('per100gMapper (buildPer100gFood)', () => {
 
     const mediumBanana = food.variants[1];
     expect(mediumBanana.is_default).toBe(false);
-    expect(mediumBanana.serving_size).toBe(118);
-    expect(mediumBanana.serving_unit).toBe('1 medium (7" to 7-7/8" long)');
+    expect(mediumBanana.serving_size).toBe(1);
+    expect(mediumBanana.serving_unit).toBe(
+      '1 medium (7" to 7-7/8" long) (118 g)'
+    );
     // 89 * 1.18 = 105.02 -> 105
     expect(mediumBanana.calories).toBe(105);
     // 1.09 * 1.18 = 1.2862 -> 1.3
@@ -89,7 +91,8 @@ describe('per100gMapper (buildPer100gFood)', () => {
     expect(mediumBanana.potassium).toBe(422.4);
 
     const cupBanana = food.variants[2];
-    expect(cupBanana.serving_size).toBe(150);
+    expect(cupBanana.serving_size).toBe(1);
+    expect(cupBanana.serving_unit).toBe('1 cup, sliced (150 g)');
     // 89 * 1.5 = 133.5 -> 134
     expect(cupBanana.calories).toBe(134);
   });

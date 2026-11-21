@@ -145,9 +145,15 @@ export function buildPer100gFood(
       scaledNutrients[key] = Math.round(val * factor * 100) / 100;
     }
 
+    const portionDesc = portion.description?.trim() || 'portion';
+    const hasMetricSuffix = /\(\d+(?:\.\d+)?\s*(?:g|ml)\)$/i.test(portionDesc);
+    const servingUnit = hasMetricSuffix
+      ? portionDesc
+      : `${portionDesc} (${portion.grams} ${defaultUnit})`;
+
     variants.push({
-      serving_size: portion.grams,
-      serving_unit: portion.description || defaultUnit,
+      serving_size: 1,
+      serving_unit: servingUnit,
       calories: Math.round((per100g.calories ?? 0) * factor),
       protein: roundOneDecimal((per100g.protein ?? 0) * factor) ?? 0,
       carbs: roundOneDecimal((per100g.carbs ?? 0) * factor) ?? 0,

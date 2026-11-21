@@ -147,13 +147,15 @@ describe('NutrientGraph Service', () => {
 
       // Verify portions: primary portion is first variant after 100g
       expect(food?.variants).toHaveLength(4);
-      expect(food?.variants[1].serving_unit).toBe('1 cup, chopped or diced');
-      expect(food?.variants[1].serving_size).toBe(140);
+      expect(food?.variants[1].serving_unit).toBe(
+        '1 cup, chopped or diced (140 g)'
+      );
+      expect(food?.variants[1].serving_size).toBe(1);
       expect(food?.variants[1].calories).toBe(Math.round(165 * 1.4));
 
       // Verify cached
       const cached = await getNutrientGraphDetails(ctx, 'fdc:171477');
-      expect(cached).toBe(food);
+      expect(cached).toEqual(food);
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 

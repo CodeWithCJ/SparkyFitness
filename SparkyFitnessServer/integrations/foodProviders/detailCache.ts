@@ -52,7 +52,7 @@ export class DetailCache {
     // Refresh LRU order by re-inserting
     this.cache.delete(key);
     this.cache.set(key, entry);
-    return entry.value as T;
+    return structuredClone(entry.value) as T;
   }
 
   set<T>(key: string, value: T, ttlMs?: number): void;
@@ -107,7 +107,7 @@ export class DetailCache {
     }
 
     this.cache.set(key, {
-      value,
+      value: structuredClone(value),
       expiresAt: Date.now() + (ttlMs ?? this.defaultTtlMs),
     });
   }

@@ -150,13 +150,13 @@ describe('Food Info Service', () => {
 
       // Verify portions: availableServings had '1 Banana Peeled' (110g)
       expect(food?.variants).toHaveLength(2);
-      expect(food?.variants[1].serving_unit).toBe('1 Banana Peeled');
-      expect(food?.variants[1].serving_size).toBe(110);
+      expect(food?.variants[1].serving_unit).toBe('1 Banana Peeled (110 g)');
+      expect(food?.variants[1].serving_size).toBe(1);
       expect(food?.variants[1].calories).toBe(Math.round(85 * 1.1));
 
       // Verify caching
       const cached = await getFoodInfoDetails(ctx, '790774');
-      expect(cached).toBe(food);
+      expect(cached).toEqual(food);
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
   });
