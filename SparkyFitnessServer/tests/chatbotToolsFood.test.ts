@@ -1031,6 +1031,52 @@ describe('lookup_food_nutrition', () => {
       { providerId: 'prov-ng' }
     );
   });
+
+  it('supports explicit provider_type: "food-info" in lookup_food_nutrition', async () => {
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      {
+        id: 'prov-fi',
+        provider_type: 'food-info',
+        provider_name: 'Food Info',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          name: 'Bananas, overripe, raw',
+          provider_external_id: '790774',
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 85,
+            protein: 0.7,
+            carbs: 20.1,
+            fat: 0.2,
+          },
+        },
+      ],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'lookup_food_nutrition',
+        food_name: 'Banana',
+        provider_type: 'food-info',
+      },
+      opts
+    );
+
+    expect(result).toContain('Found match in **food-info**');
+    expect(result).toContain('Bananas, overripe, raw');
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-1',
+      'food-info',
+      'Banana',
+      { providerId: 'prov-fi' }
+    );
+  });
 });
 
 describe('barcode metadata', () => {

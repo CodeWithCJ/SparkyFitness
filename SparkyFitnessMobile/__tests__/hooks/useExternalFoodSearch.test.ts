@@ -784,6 +784,68 @@ describe('useExternalFoodSearch', () => {
     });
   });
 
+  test('reports food-info as a supported provider', () => {
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('banana', 'food-info', {
+          providerId: 'provider-fi-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('does not fetch for non-public food-info without providerId', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('banana', 'food-info'),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+    expect(result.current.searchResults).toEqual([]);
+  });
+
+  test('fetches for food-info with providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: '790774',
+          name: 'Bananas, overripe, raw',
+          brand: undefined,
+          calories: 85,
+          protein: 0.7,
+          carbs: 20.1,
+          fat: 0.2,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'food-info',
+        },
+      ])
+    );
+
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('banana', 'food-info', {
+          providerId: 'provider-fi-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'food-info',
+        'banana',
+        1,
+        'provider-fi-1',
+        undefined
+      );
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('food-info');
+    });
+  });
+
   describe('query key', () => {
     test('includes provider type and search term', () => {
       expect(externalFoodSearchQueryKey('openfoodfacts', 'banana')).toEqual([

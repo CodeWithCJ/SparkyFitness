@@ -204,6 +204,7 @@ export default defineConfig({
             { text: 'Swedish Food Agency', link: '/features/settings/livsmedelsverket' },
             { text: 'CookTool', link: '/features/settings/cooktool' },
             { text: 'NutrientGraph', link: '/features/settings/nutrientgraph' },
+            { text: 'Food Info', link: '/features/settings/food-info' },
             { text: 'Liftosaur', link: '/features/settings/liftosaur' },
             { text: 'Intervals.icu', link: '/features/settings/intervals' },
             { text: 'Nutrient Display', link: '/features/settings/nutrient-display-settings' },

@@ -22,6 +22,7 @@ export const FOOD_PROVIDER_TYPES = [
   'livsmedelsverket',
   'cooktool',
   'nutrientgraph',
+  'food-info',
 ] as const;
 
 export type FoodProviderType = (typeof FOOD_PROVIDER_TYPES)[number];
@@ -231,6 +232,19 @@ export const FOOD_PROVIDER_REGISTRY: Record<
     apiKeyUrl: 'https://nutrientgraph.com/pricing/',
     termsUrl: 'https://nutrientgraph.com/legal/terms/',
     portalUrl: 'https://nutrientgraph.com/docs/',
+  },
+  'food-info': {
+    id: 'food-info',
+    displayName: 'Food Info',
+    shortName: 'Food Info',
+    isPublic: false,
+    credentials: 'api_key',
+    needsDetailFetch: true,
+    supportsBarcode: false,
+    supportsBulkImport: false,
+    apiKeyUrl: 'https://food-info.org/developer',
+    termsUrl: 'https://food-info.org/terms',
+    portalUrl: 'https://food-info.org/developer',
   },
 };
 
