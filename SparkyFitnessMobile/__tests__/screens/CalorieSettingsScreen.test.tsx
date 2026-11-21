@@ -430,6 +430,18 @@ describe('CalorieSettingsScreen', () => {
     expect(queryByText('Eaten − Burned')).toBeNull();
   });
 
+  it('sends Percentage users to Dynamic before the separate-activity switch', () => {
+    mockPreferences.calorie_goal_adjustment_mode = 'percentage';
+    mockPreferences.goal_mode_calculation_method = 'adaptive';
+    const { getByText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    expect(
+      getByText(/choose Dynamic and turn on "Count activity calories/)
+    ).toBeTruthy();
+  });
+
   it('keeps the activity level hidden and earn-back wording for a Manual Dynamic target', () => {
     mockPreferences.calorie_goal_adjustment_mode = 'dynamic';
     mockPreferences.goal_mode_calculation_method = 'manual';

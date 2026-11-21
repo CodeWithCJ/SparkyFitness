@@ -530,14 +530,21 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           : t('calorieSettings.formulas.activityOnly', {
               defaultValue: 'Activity only (exercise + steps)',
             });
-    const net = adaptiveEarnBackSuppressed
-      ? t('calorieSettings.formulas.netAdaptive', {
-          defaultValue:
-            'Not used for Remaining. Turn on "Count activity calories separately" to credit today’s activity.',
-        })
-      : t('calorieSettings.formulas.eatenBurned', {
-          defaultValue: 'Eaten − Burned',
-        });
+    // The separate-activity switch exists only in Dynamic mode.
+    const net =
+      adaptiveEarnBackSuppressed && mode === 'percentage'
+        ? t('calorieSettings.formulas.netAdaptivePercentage', {
+            defaultValue:
+              'Not used for Remaining. To credit today’s activity, choose Dynamic and turn on "Count activity calories separately".',
+          })
+        : adaptiveEarnBackSuppressed
+          ? t('calorieSettings.formulas.netAdaptive', {
+              defaultValue:
+                'Not used for Remaining. Turn on "Count activity calories separately" to credit today’s activity.',
+            })
+          : t('calorieSettings.formulas.eatenBurned', {
+              defaultValue: 'Eaten − Burned',
+            });
 
     let remainingFormula: string;
     let remainingNote: string | null;
@@ -842,12 +849,12 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                     : activitySeparated
                       ? t('calorieSettings.adaptiveFallbackActivitySeparated', {
                           defaultValue:
-                            'Until Adaptive has {{days}} days of food logs, your target is BMR × this level. Describe your activity outside the steps and workouts that are counted separately.',
+                            'Until Adaptive has {{days}} days of food logs, your baseline is BMR × this level, before Goal Mode is applied. Describe your activity outside the steps and workouts that are counted separately.',
                           days: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
                         })
                       : t('calorieSettings.adaptiveFallbackActivityLevel', {
                           defaultValue:
-                            'Until Adaptive has {{days}} days of food logs, your target is BMR × this level, and your workouts are not added on top. Pick a level that includes your workouts.',
+                            'Until Adaptive has {{days}} days of food logs, your baseline is BMR × this level, before Goal Mode is applied, and your workouts are not added on top. Pick a level that includes your workouts.',
                           days: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
                         })}
               </Text>

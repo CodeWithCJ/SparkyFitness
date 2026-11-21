@@ -1335,12 +1335,12 @@ const CalculationSettings = () => {
                     {activitySeparated
                       ? t(
                           'settings.goalMode.adaptiveFallbackActivitySeparated',
-                          'Until Adaptive has {{days}} days of food logs, your target is BMR × this level. Describe your activity outside the steps and workouts that are counted separately.',
+                          'Until Adaptive has {{days}} days of food logs, your baseline is BMR × this level, before Goal Mode is applied. Describe your activity outside the steps and workouts that are counted separately.',
                           { days: ADAPTIVE_TDEE_GOAL_MIN_DAYS }
                         )
                       : t(
                           'settings.goalMode.adaptiveFallbackActivityLevel',
-                          'Until Adaptive has {{days}} days of food logs, your target is BMR × this level, and your workouts are not added on top. Pick a level that includes your workouts.',
+                          'Until Adaptive has {{days}} days of food logs, your baseline is BMR × this level, before Goal Mode is applied, and your workouts are not added on top. Pick a level that includes your workouts.',
                           { days: ADAPTIVE_TDEE_GOAL_MIN_DAYS }
                         )}
                   </p>
@@ -1434,15 +1434,21 @@ const CalculationSettings = () => {
                   {t('settings.calculationExplanation.netTitle', 'Net Energy')}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {adaptiveEarnBackSuppressed
+                  {adaptiveEarnBackSuppressed &&
+                  calorieGoalAdjustmentMode === 'percentage'
                     ? t(
-                        'settings.calculationExplanation.netAdaptive',
-                        'Not used for Remaining. Turn on "Count activity calories separately" below to credit today’s activity.'
+                        'settings.calculationExplanation.netAdaptivePercentage',
+                        'Not used for Remaining. To credit today’s activity, choose Dynamic and turn on "Count activity calories separately".'
                       )
-                    : t(
-                        'settings.calculationExplanation.netFormula',
-                        'Eaten - Total Burned'
-                      )}
+                    : adaptiveEarnBackSuppressed
+                      ? t(
+                          'settings.calculationExplanation.netAdaptive',
+                          'Not used for Remaining. Turn on "Count activity calories separately" below to credit today’s activity.'
+                        )
+                      : t(
+                          'settings.calculationExplanation.netFormula',
+                          'Eaten - Total Burned'
+                        )}
                 </p>
               </div>
             </div>

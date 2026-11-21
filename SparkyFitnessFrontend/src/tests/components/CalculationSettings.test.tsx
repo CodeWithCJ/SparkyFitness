@@ -365,6 +365,10 @@ describe('daily calorie goal adjustment cards', () => {
     expect(screen.getByTestId('adjustment-mode-description')).toHaveTextContent(
       /^Percentage Earn-Back: Only earn back a set percentage/
     );
+    // The separate-activity switch is a Dynamic-only control.
+    expect(
+      screen.getByText(/choose Dynamic and turn on "Count activity calories/)
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: /Device projection/ }));
     expect(
