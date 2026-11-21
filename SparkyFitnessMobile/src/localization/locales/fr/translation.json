@@ -1854,10 +1854,6 @@
       "wellness": "Paramètres bien-être",
       "cyclePregnancy": "Cycle et grossesse"
     },
-    "enable": {
-      "title": "Activer le suivi du cycle et de la grossesse",
-      "subtitle": "Active la saisie, les prévisions et l'historique"
-    },
     "groups": {
       "features": "Fonctionnalités",
       "calculations": "Calculs du cycle personnalisés",
@@ -9813,7 +9809,6 @@
     "previewTitle": "Aperçu",
     "previewDescription": "L'aspect des Actions rapides avec vos choix.",
     "lineNumber": "Ligne {{number}}",
-    "needsCycle": "Non affiché : le suivi du cycle est désactivé",
     "showAs": "Afficher en",
     "showAsValue": "Afficher en {{style}}",
     "styleList": "Liste",

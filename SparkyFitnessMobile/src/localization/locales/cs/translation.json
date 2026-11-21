@@ -2195,10 +2195,6 @@
       "wellness": "Nastavení pohody",
       "cyclePregnancy": "Cyklus a těhotenství"
     },
-    "enable": {
-      "title": "Povolit sledování cyklu a těhotenství",
-      "subtitle": "Zapnout zaznamenávání, předpovědi a historii"
-    },
     "groups": {
       "features": "Konfigurace funkcí",
       "calculations": "Přepsání výpočtů cyklu",

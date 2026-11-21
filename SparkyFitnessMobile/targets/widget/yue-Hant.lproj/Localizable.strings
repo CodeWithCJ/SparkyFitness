@@ -34,3 +34,7 @@
 "widget.control.remove_water.description" = "唔使打開 SparkyFitness 就可以由今日飲水量度扣返一杯.";
 "widget.control.calories_left.name" = "剩餘卡路里";
 "widget.control.calories_left.description" = "顯示您今日剩返嘅卡路里。撳一下就可以打開您嘅飲食日記.";
+"widget.kj_left" = "剩 kJ";
+"widget.kj" = "kJ";
+"widget.a11y.kj_left" = "剩 %@ kJ";
+"widget.a11y.kj" = "%@ kJ";
