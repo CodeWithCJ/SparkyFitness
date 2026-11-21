@@ -67,6 +67,7 @@ jobs:
           script: |
             const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
             const now = Date.now();
+            const failedPrs = [];
 
             // Fetch all open pull requests across all pages
             const prs = await github.paginate(github.rest.pulls.list, {
@@ -81,40 +82,7 @@ jobs:
               if (!pr.draft) continue;
 
               try {
-                // 1. Fetch all comments in order to evaluate /keep-draft or /allow-close commands
-                const comments = await github.paginate(github.rest.issues.listComments, {
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: pr.number,
-                  per_page: 100,
-                });
-                comments.sort((a, b) => a.id - b.id);
-
-                let isExcluded = false;
-                for (const comment of comments) {
-                  // Safely read commenter username with null guard against deleted accounts
-                  const login = comment.user?.login?.toLowerCase();
-                  const isAuthorized =
-                    login === 'codewithcj' ||
-                    login === context.repo.owner.toLowerCase() ||
-                    ['OWNER', 'COLLABORATOR', 'MEMBER'].includes(comment.author_association);
-
-                  if (!isAuthorized) continue;
-
-                  const body = (comment.body || '').trim().toLowerCase();
-                  if (body.includes('/keep-draft') || body.includes('/no-autoclose')) {
-                    isExcluded = true;
-                  } else if (body.includes('/allow-close')) {
-                    isExcluded = false; // Override back to normal
-                  }
-                }
-
-                if (isExcluded) {
-                  console.log(`PR #${pr.number} is marked with /keep-draft by an authorized collaborator. Skipping.`);
-                  continue;
-                }
-
-                // 2. Fetch the commit identified by pr.head.sha to inspect the latest commit timestamp
+                // 1. Fetch the commit identified by pr.head.sha to inspect the latest commit timestamp
                 const { data: latestCommit } = await github.rest.repos.getCommit({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -134,7 +102,7 @@ jobs:
                   continue;
                 }
 
-                // 3. Re-verify PR status before taking action to prevent race conditions
+                // 2. Re-verify PR status before taking action to prevent race conditions
                 const { data: currentPr } = await github.rest.pulls.get({
                   owner: context.repo.owner,
                   repo: context.repo.repo,
@@ -146,9 +114,51 @@ jobs:
                   continue;
                 }
 
+                // 3. Re-read comments immediately before closing to check for /keep-draft or /allow-close
+                const comments = await github.paginate(github.rest.issues.listComments, {
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  per_page: 100,
+                });
+                comments.sort((a, b) => a.id - b.id);
+
+                let isExcluded = false;
+                for (const comment of comments) {
+                  // Safely read commenter username with null guard against deleted accounts
+                  const login = comment.user?.login?.toLowerCase();
+                  const isAuthorized =
+                    login === 'codewithcj' ||
+                    login === context.repo.owner.toLowerCase() ||
+                    ['OWNER', 'COLLABORATOR', 'MEMBER'].includes(comment.author_association);
+
+                  if (!isAuthorized) continue;
+
+                  // Match standalone command lines (trimmed) to avoid triggering on casual text mentions
+                  const lines = (comment.body || '').split(/\r?\n/).map(l => l.trim().toLowerCase());
+                  if (lines.includes('/keep-draft') || lines.includes('/no-autoclose')) {
+                    isExcluded = true;
+                  } else if (lines.includes('/allow-close')) {
+                    isExcluded = false; // Override back to normal
+                  }
+                }
+
+                if (isExcluded) {
+                  console.log(`PR #${pr.number} is marked with /keep-draft by an authorized collaborator. Skipping.`);
+                  continue;
+                }
+
                 console.log(`Closing PR #${pr.number}: inactive for >7 days since last commit.`);
 
-                // 4. Post notification comment and close the PR
+                // 4. Close the PR first
+                await github.rest.pulls.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: pr.number,
+                  state: 'closed',
+                });
+
+                // 5. Post notification comment after successful closure
                 const closeMessage = [
                   'This draft PR had no new commits for 7 days and was automatically closed.',
                   '',
@@ -160,20 +170,22 @@ jobs:
                   '*(Maintainers: comment `/keep-draft` to keep open)*',
                 ].join('\n');
 
-                await github.rest.issues.createComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: pr.number,
-                  body: closeMessage,
-                });
-
-                await github.rest.pulls.update({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  pull_number: pr.number,
-                  state: 'closed',
-                });
+                try {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: pr.number,
+                    body: closeMessage,
+                  });
+                } catch (commentErr) {
+                  console.error(`Failed to post closure notice on PR #${pr.number}:`, commentErr);
+                }
               } catch (err) {
                 console.error(`Error processing draft PR #${pr.number}:`, err);
+                failedPrs.push(pr.number);
               }
+            }
+
+            if (failedPrs.length > 0) {
+              core.setFailed(`Failed to process draft PR(s): ${failedPrs.join(', ')}`);
             }
