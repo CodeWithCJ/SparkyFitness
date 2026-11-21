@@ -198,4 +198,70 @@ describe('FoodResultCard', () => {
     );
     expect(screen.getByText(/Family/i)).toBeInTheDocument();
   });
+
+  describe('summary foods with partial or missing nutrition', () => {
+    it('shows real calories and "Tap for full nutrition" when has_core_nutrition is false but has_calories is true', () => {
+      render(
+        <FoodResultCard
+          item={createFood({
+            has_core_nutrition: false,
+            has_calories: true,
+            default_variant: {
+              id: 'v1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 120,
+              protein: 0,
+              carbs: 0,
+              fat: 0,
+            },
+          })}
+          nutrientConfig={nutrientConfig}
+          onCardClick={jest.fn()}
+        />
+      );
+      expect(screen.getByText(/120 kcal/i)).toBeInTheDocument();
+      expect(screen.getByText(/Tap for full nutrition/i)).toBeInTheDocument();
+      expect(screen.queryByTestId('nutrient-grid')).not.toBeInTheDocument();
+    });
+
+    it('shows "Tap for nutrition" and no fake 0 kcal when both flags are false', () => {
+      render(
+        <FoodResultCard
+          item={createFood({
+            has_core_nutrition: false,
+            has_calories: false,
+            default_variant: {
+              id: 'v1',
+              serving_size: 100,
+              serving_unit: 'g',
+              calories: 0,
+              protein: 0,
+              carbs: 0,
+              fat: 0,
+            },
+          })}
+          nutrientConfig={nutrientConfig}
+          onCardClick={jest.fn()}
+        />
+      );
+      expect(screen.getByText(/Tap for nutrition/i)).toBeInTheDocument();
+      expect(screen.queryByText(/0 kcal/i)).not.toBeInTheDocument();
+      expect(screen.queryByTestId('nutrient-grid')).not.toBeInTheDocument();
+    });
+
+    it('renders normal nutrient grid when flags are undefined (legacy behavior)', () => {
+      render(
+        <FoodResultCard
+          item={createFood({
+            has_core_nutrition: undefined,
+            has_calories: undefined,
+          })}
+          nutrientConfig={nutrientConfig}
+          onCardClick={jest.fn()}
+        />
+      );
+      expect(screen.getByTestId('nutrient-grid')).toBeInTheDocument();
+    });
+  });
 });

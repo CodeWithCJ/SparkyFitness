@@ -21,6 +21,9 @@ SparkyFitness supports integration with the following health and fitness data pr
 - [ZeppBridge (Amazfit / Zepp)](/features/settings/zeppbridge)
 - [Canadian Nutrient File (Health Canada)](/features/settings/canadian-nutrient-file)
 - [Swedish Food Agency (Livsmedelsverket)](/features/settings/livsmedelsverket)
+- [CookTool](/features/settings/cooktool)
+- [NutrientGraph](/features/settings/nutrientgraph)
+- [Food Info](/features/settings/food-info)
 - Swiss Food Composition Database
 - OpenFoodFacts
 - USDA

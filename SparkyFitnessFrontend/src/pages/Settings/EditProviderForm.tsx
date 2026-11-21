@@ -15,7 +15,11 @@ import { ZeppBridgeFields } from './ZeppBridgeFields';
 import { ProviderSyncFrequencyFields } from './ProviderSyncFrequencyFields';
 import { WeatherProviderFields } from './WeatherProviderFields';
 import { McpServerFields } from './McpServerFields';
-import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
+import { FoodProviderApiKeyField } from './FoodProviderApiKeyField';
+import {
+  MCP_SERVER_PROVIDER_TYPE,
+  getFoodProviderMetadata,
+} from '@workspace/shared';
 import { isProviderTypeOffered } from '@/utils/settings';
 import { Trans, useTranslation } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
@@ -618,45 +622,19 @@ export const EditProviderForm = ({
           />
         </p>
       )}
-      {editData.provider_type === 'usda' && (
-        <>
-          <div>
-            <Label>{t('settings.editProviderForm.apiKey', 'API Key')}</Label>
-            <Input
-              type="password"
-              value={editData.app_key || ''}
-              onChange={(e) =>
-                setEditData((prev) => ({
-                  ...prev,
-                  app_key: e.target.value,
-                }))
-              }
-              placeholder={t(
-                'settings.editProviderForm.enterUSDAAPIKey',
-                'Enter USDA API Key'
-              )}
-              autoComplete="off"
-            />
-          </div>
-          <p className="text-sm text-muted-foreground col-span-2">
-            <Trans
-              i18nKey="settings.editProviderForm.getYourAPIKeyFrom3"
-              defaults={
-                'Get your API Key from the <link>USDA FoodData Central API Guide</link>.'
-              }
-              components={{
-                link: (
-                  <a
-                    href="https://fdc.nal.usda.gov/api-guide.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 underline"
-                  />
-                ),
-              }}
-            />
-          </p>
-        </>
+      {getFoodProviderMetadata(editData.provider_type)?.credentials ===
+        'api_key' && (
+        <FoodProviderApiKeyField
+          providerType={editData.provider_type || ''}
+          appKey={editData.app_key || ''}
+          onChange={(val) =>
+            setEditData((prev) => ({
+              ...prev,
+              app_key: val,
+            }))
+          }
+          idPrefix="edit"
+        />
       )}
       {editData.provider_type === 'withings' && (
         <>

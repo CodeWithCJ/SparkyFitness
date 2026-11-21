@@ -1,0 +1,409 @@
+{
+  "data": {
+    "id": "fdc:171477",
+    "type": "generic",
+    "names": [
+      {
+        "lang": "en",
+        "name": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
+        "method": "source",
+        "source": "fdc_sr_legacy"
+      },
+      {
+        "lang": "de",
+        "name": "Brat- oder Backhähnchen, Brust, nur Fleisch, gegart, gebraten",
+        "method": "machine_translation",
+        "translated_from": "en",
+        "check_status": "confirmed",
+        "model": "Claude Opus 5.5 (claude-opus-5-5)"
+      },
+      {
+        "lang": "es",
+        "name": "Pollo para asar o freír, pechuga, solo carne, cocinada, asada",
+        "method": "machine_translation",
+        "translated_from": "en",
+        "check_status": "confirmed",
+        "model": "Claude Opus 5.5 (claude-opus-5-5)"
+      },
+      {
+        "lang": "fr",
+        "name": "Poulet à rôtir ou à frire, blanc, viande seulement, cuit, rôti",
+        "method": "machine_translation",
+        "translated_from": "en",
+        "check_status": "confirmed",
+        "model": "Claude Opus 5.5 (claude-opus-5-5)"
+      },
+      {
+        "lang": "it",
+        "name": "Pollo da arrosto o da friggere, petto, solo carne, cotto, arrosto",
+        "method": "machine_translation",
+        "translated_from": "en",
+        "check_status": "confirmed",
+        "model": "Claude Opus 5.5 (claude-opus-5-5)"
+      }
+    ],
+    "group": "poultry",
+    "basis": "100 g",
+    "nutrients": {
+      "alcohol_g": 0,
+      "calcium_mg": 15,
+      "carbohydrate_g": 0,
+      "cholesterol_mg": 85,
+      "energy_kcal": 165,
+      "energy_kj": 690,
+      "fat_g": 3.57,
+      "fiber_g": 0,
+      "iron_mg": 1.04,
+      "mufa_g": 1.24,
+      "potassium_mg": 256,
+      "protein_g": 31.02,
+      "pufa_g": 0.77,
+      "saturated_fat_g": 1.01,
+      "sodium_mg": 74,
+      "sugars_g": 0,
+      "water_g": 65.26,
+      "added_sugars_g": null,
+      "trans_fat_g": null
+    },
+    "units": {
+      "alcohol_g": "g",
+      "calcium_mg": "mg",
+      "carbohydrate_g": "g",
+      "cholesterol_mg": "mg",
+      "energy_kcal": "kcal",
+      "energy_kj": "kJ",
+      "fat_g": "g",
+      "fiber_g": "g",
+      "iron_mg": "mg",
+      "mufa_g": "g",
+      "potassium_mg": "mg",
+      "protein_g": "g",
+      "pufa_g": "g",
+      "saturated_fat_g": "g",
+      "sodium_mg": "mg",
+      "sugars_g": "g",
+      "water_g": "g",
+      "added_sugars_g": "g",
+      "trans_fat_g": "g"
+    },
+    "portions": [
+      {
+        "description": "1 cup, chopped or diced",
+        "grams": 140,
+        "source": "fdc_sr_legacy food_portion id=88817"
+      },
+      {
+        "description": "1 unit (yield from 1 lb ready-to-cook chicken)",
+        "grams": 52,
+        "source": "fdc_sr_legacy food_portion id=88818"
+      },
+      {
+        "description": "0.5 breast, bone and skin removed",
+        "grams": 86,
+        "source": "fdc_sr_legacy food_portion id=88819"
+      }
+    ],
+    "primary_portion": {
+      "description": "1 cup, chopped or diced",
+      "grams": 140,
+      "source": "fdc_sr_legacy food_portion id=88817"
+    },
+    "source": {
+      "dataset": "fdc_sr_legacy",
+      "name": "USDA FoodData Central - SR Legacy",
+      "version": "2018-04",
+      "record_id": "171477",
+      "code": "5064",
+      "code_type": "ndb_number",
+      "url": "https://fdc.nal.usda.gov/food-details/171477/nutrients",
+      "retrieved": "2026-10-10",
+      "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+      "publication_date": "2019-04-01"
+    },
+    "mapping": {
+      "type": "source",
+      "sources": [
+        {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477"
+        }
+      ]
+    },
+    "description": {
+      "name_en": "Chicken, broilers or fryers, breast, meat only, cooked, roasted",
+      "base_name_en": "Chicken, broilers or fryers, breast, meat only",
+      "source_category": "Poultry Products",
+      "food_group_method": "SR food category map",
+      "preparation_state": "cooked",
+      "preparation_methods": ["roasted", "cooked"],
+      "processing": []
+    },
+    "carb_definition": "by_difference_incl_fibre",
+    "cluster": {
+      "cluster_id": "fdc:171477",
+      "is_preferred": true,
+      "relation": "preferred",
+      "note": "USDA crosswalk cluster: records of the same food from different USDA analyses; the preferred one is the catalogue entry"
+    },
+    "aliases": [],
+    "missing": ["added_sugars_g", "trans_fat_g"],
+    "flags": [],
+    "warnings": [],
+    "provenance": {
+      "nutrients": {
+        "alcohol_g": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1018",
+          "source_nutrient_name": "Alcohol, ethyl",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "calcium_mg": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1087",
+          "source_nutrient_name": "Calcium, Ca",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "carbohydrate_g": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1005",
+          "source_nutrient_name": "Carbohydrate, by difference",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "cholesterol_mg": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1253",
+          "source_nutrient_name": "Cholesterol",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "energy_kcal": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1008",
+          "source_nutrient_name": "Energy",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "energy_kj": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1062",
+          "source_nutrient_name": "Energy",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "fat_g": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1004",
+          "source_nutrient_name": "Total lipid (fat)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "fiber_g": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1079",
+          "source_nutrient_name": "Fiber, total dietary",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "iron_mg": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1089",
+          "source_nutrient_name": "Iron, Fe",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "mufa_g": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1292",
+          "source_nutrient_name": "Fatty acids, total monounsaturated",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "potassium_mg": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1092",
+          "source_nutrient_name": "Potassium, K",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "protein_g": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1003",
+          "source_nutrient_name": "Protein",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "pufa_g": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1293",
+          "source_nutrient_name": "Fatty acids, total polyunsaturated",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "saturated_fat_g": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1258",
+          "source_nutrient_name": "Fatty acids, total saturated",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "sodium_mg": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1093",
+          "source_nutrient_name": "Sodium, Na",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "sugars_g": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "2000",
+          "source_nutrient_name": "Total Sugars",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "water_g": {
+          "dataset": "fdc_sr_legacy",
+          "id": "171477",
+          "source_nutrient_id": "1051",
+          "source_nutrient_name": "Water",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        }
+      }
+    }
+  },
+  "meta": {
+    "request_id": "req_c73780a1a07bba49f6",
+    "api_version": "1",
+    "dataset": "food",
+    "dataset_version": "1.0.0",
+    "dataset_built_at": "2026-10-10T17:56:11Z",
+    "data_status": "released",
+    "sources": [
+      {
+        "id": "ah102",
+        "name": "USDA Agriculture Handbook No. 102, Food Yields Summarized by Different Stages of Preparation (1975)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/Classics/ah102.pdf",
+        "licence": "U.S. Government work (USDA), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "1975 (scanned PDF, ARS Classics)",
+        "attribution": "Matthews RH, Garrison YJ. Food Yields Summarized by Different Stages of Preparation. Agriculture Handbook No. 102, USDA, 1975."
+      },
+      {
+        "id": "ciqual",
+        "name": "ANSES-CIQUAL French food composition table 2025 (English edition)",
+        "url": "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202025_ENG_2025_11_03.xlsx",
+        "licence": "Licence Ouverte / Open Licence (Etalab). Reuse allowed, including commercial, on condition that the data are not altered, their meaning is not distorted, the source and version date are cited, and no ANSES endorsement is implied. No share-alike.",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2025 (file dated 2025-11-03)",
+        "attribution": "Anses. 2025. Ciqual French food composition table."
+      },
+      {
+        "id": "ciqual_fr",
+        "name": "ANSES-CIQUAL Table de composition nutritionnelle des aliments 2025 (French edition; used for official French names only)",
+        "url": "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202025_FR_2025_11_03.xlsx",
+        "licence": "Licence Ouverte / Open Licence (Etalab), same terms as the English edition.",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2025 (file dated 2025-11-03)",
+        "attribution": "Anses. 2025. Table de composition nutritionnelle des aliments Ciqual."
+      },
+      {
+        "id": "cooking_yields_meat",
+        "name": "USDA Table of Cooking Yields for Meat and Poultry (2014)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/retn/USDA_CookingYields_MeatPoultry.pdf",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2014",
+        "attribution": "USDA ARS Nutrient Data Laboratory. USDA Table of Cooking Yields for Meat and Poultry, 2014."
+      },
+      {
+        "id": "fdc_branded",
+        "name": "USDA FoodData Central - Branded Foods (Global Branded Food Products Database)",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_branded_food_csv_2026-04-30.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2026-04-30",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Branded Foods 2026-04-30 (data provided by GS1 US/1WorldSync/Label Insight/NielsenIQ/Euromonitor partners via the Global Branded Food Products Database)."
+      },
+      {
+        "id": "fdc_foundation",
+        "name": "USDA FoodData Central - Foundation Foods",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_csv_2026-04-30.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central data are public domain, published under CC0)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2026-04-30",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Foundation Foods 2026-04-30. fdc.nal.usda.gov"
+      },
+      {
+        "id": "fdc_sr_legacy",
+        "name": "USDA FoodData Central - SR Legacy",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_csv_2018-04.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2018-04",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, SR Legacy 2018-04."
+      },
+      {
+        "id": "fdc_survey",
+        "name": "USDA FoodData Central - Survey (FNDDS 2021-2023)",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_csv_2024-10-31.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2024-10-31",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Survey Foods (FNDDS 2021-2023), 2024-10-31."
+      },
+      {
+        "id": "fndds_ingredients",
+        "name": "USDA ARS 2021-2023 FNDDS At A Glance - FNDDS Ingredients (recipes, moisture change)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400530/apps/2021-2023%20FNDDS%20At%20A%20Glance%20-%20FNDDS%20Ingredients.xlsx",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2021-2023",
+        "attribution": "USDA ARS Food Surveys Research Group. FNDDS 2021-2023."
+      },
+      {
+        "id": "retn06",
+        "name": "USDA Table of Nutrient Retention Factors, Release 6 (2007)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/retn/retn06.txt",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "Release 6 (2007)",
+        "attribution": "USDA ARS Nutrient Data Laboratory. USDA Table of Nutrient Retention Factors, Release 6, 2007."
+      }
+    ],
+    "provenance_note": "Every value carries provenance (source, id or URL, retrieval date; method and confidence where an AI judged). Calculations list their inputs and method.",
+    "disclaimer": "Nutrition reference data. Not medical or dietary advice.",
+    "demo": true,
+    "demo_kind": "sample",
+    "demo_note": "Demo answer: a sample request from the site, answered by the real endpoint on the current data. Not metered and limited per IP address. For any other input, send your API key (X-API-Key) to the same path without /demo; a free key takes a minute.",
+    "usage": null
+  }
+}

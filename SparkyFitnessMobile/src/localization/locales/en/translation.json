@@ -4514,6 +4514,10 @@
     }
   },
   "foodSearch": {
+    "foodResultCard": {
+      "tapForFullNutrition": "Tap for full nutrition",
+      "tapForNutrition": "Tap for nutrition"
+    },
     "menu": {
       "newFood": "New Food",
       "newMeal": "New Meal",

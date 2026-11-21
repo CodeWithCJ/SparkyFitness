@@ -2034,6 +2034,24 @@
     "syncFailed_other": "Failed to synchronize {{count}} providers."
   },
   "settings": {
+    "foodProviders": {
+      "common": {
+        "getApiKey": "Get an API Key",
+        "terms": "Terms"
+      },
+      "cooktool": {
+        "help": "Free plan includes 1,000 lookups per day. Accept CookTool terms under your own key. Lookups are cached for 24 hours.",
+        "portalLabel": "CookTool Documentation"
+      },
+      "nutrientgraph": {
+        "help": "Free plan includes 2,500 units per month. Covers USDA, French CIQUAL, and US branded products in five languages. Lookups are cached for 24 hours.",
+        "portalLabel": "NutrientGraph Documentation"
+      },
+      "food-info": {
+        "help": "Free plan includes 100 requests per day. Access reference foods across multiple national food datasets. Lookups are cached for 24 hours.",
+        "portalLabel": "Food Info Developer Portal"
+      }
+    },
     "chatMcp": {
       "title": "Outside tools",
       "description": "Your admin added these services from outside SparkyFitness. When one is on, Sparky can send it parts of your chat and read what it sends back. Each is off until you turn it on.",
@@ -9827,7 +9845,9 @@
       "label": "Nutrition label"
     },
     "foodResultCard": {
-      "gi": "GI: {{glycemic_index}}"
+      "gi": "GI: {{glycemic_index}}",
+      "tapForFullNutrition": "Tap for full nutrition",
+      "tapForNutrition": "Tap for nutrition"
     },
     "searchingBarcode": "Searching barcode",
     "lookingUp": "Looking up: {{barcode}}...",
