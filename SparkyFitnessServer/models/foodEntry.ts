@@ -795,10 +795,10 @@ async function getFoodEntriesByDateAndMealType(
        LEFT JOIN meal_types mt ON fe.meal_type_id = mt.id
        LEFT JOIN food_entry_meals fem ON fe.food_entry_meal_id = fem.id
        LEFT JOIN foods f ON fe.food_id = f.id
-        WHERE fe.user_id = $1
-           AND fe.entry_date = $2
-           AND (LOWER(mt.name) = LOWER($3) OR fe.meal_type_id::text = $3)
-        ORDER BY fe.created_at ASC, fe.id ASC`,
+       WHERE fe.user_id = $1
+          AND fe.entry_date = $2
+          AND (LOWER(mt.name) = LOWER($3) OR fe.meal_type_id::text = $3)
+       ORDER BY fe.created_at ASC, fe.id ASC`,
       [userId, date, mealType]
     );
     log(
