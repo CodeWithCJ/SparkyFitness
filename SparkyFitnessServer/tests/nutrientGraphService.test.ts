@@ -77,11 +77,15 @@ describe('NutrientGraph Service', () => {
     });
 
     it('searches with language and maps results', async () => {
-      mockFetch.mockResolvedValueOnce(mockJsonResponse(searchBananaEnFixture));
+      mockFetch
+        .mockResolvedValueOnce(mockJsonResponse(searchBananaEnFixture))
+        .mockResolvedValueOnce(mockJsonResponse(foodFdcFixture))
+        .mockResolvedValueOnce(mockJsonResponse(foodFdcFixture))
+        .mockResolvedValueOnce(mockJsonResponse(foodFdcFixture));
 
       const res = await searchNutrientGraph(ctx, 'banana', 1, 3);
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).toContain('lang=en');
       expect(url).toContain('q=banana');
@@ -98,7 +102,8 @@ describe('NutrientGraph Service', () => {
         default_variant: expect.objectContaining({
           serving_size: 100,
           serving_unit: 'g',
-          calories: 89,
+          calories: 165,
+          protein: 31,
           is_default: true,
         }),
       });

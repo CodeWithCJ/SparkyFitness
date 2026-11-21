@@ -119,6 +119,9 @@ const NUTRIENT_NUMBER_TO_STANDARD: Record<number, StandardNutrientField> = {
   1018: 'alcohol_g',
 };
 
+const ENRICH_COUNT = 10;
+const ENRICH_CONCURRENCY = 5;
+
 export async function searchCookTool(
   ctx: ProviderCallContext,
   query: string,
@@ -178,7 +181,7 @@ export async function searchCookTool(
     throw error;
   }
 
-  const foods = [
+  const summaryFoods = [
     ...ingredients.map((item) =>
       buildSearchSummaryFood({
         providerType: 'cooktool',
@@ -196,6 +199,46 @@ export async function searchCookTool(
       })
     ),
   ];
+
+  const topFoods = summaryFoods.slice(0, ENRICH_COUNT);
+  const restFoods = summaryFoods.slice(ENRICH_COUNT);
+
+  const enrichedTop: MappedProviderFood[] = [];
+  for (let i = 0; i < topFoods.length; i += ENRICH_CONCURRENCY) {
+    const chunk = topFoods.slice(i, i + ENRICH_CONCURRENCY);
+    const chunkResults = await Promise.all(
+      chunk.map(async (food) => {
+        const cached = detailCache.get<MappedProviderFood>(
+          'cooktool',
+          food.provider_external_id
+        );
+        if (cached) return cached;
+        if (food.provider_external_id.startsWith('ing:')) {
+          try {
+            const detail = await getCookToolDetails(
+              ctx,
+              food.provider_external_id
+            );
+            if (detail) return detail;
+          } catch {
+            // Fall back to summary
+          }
+        }
+        return food;
+      })
+    );
+    enrichedTop.push(...chunkResults);
+  }
+
+  const restMapped = restFoods.map((food) => {
+    const cached = detailCache.get<MappedProviderFood>(
+      'cooktool',
+      food.provider_external_id
+    );
+    return cached || food;
+  });
+
+  const foods = [...enrichedTop, ...restMapped];
 
   const hasMore =
     ingredients.length === pageSize || branded.length === pageSize;

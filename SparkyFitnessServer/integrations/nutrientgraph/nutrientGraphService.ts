@@ -216,6 +216,9 @@ function mapPortions(
   return result;
 }
 
+const ENRICH_COUNT = 10;
+const ENRICH_CONCURRENCY = 5;
+
 export async function searchNutrientGraph(
   ctx: ProviderCallContext,
   query: string,
@@ -246,8 +249,57 @@ export async function searchNutrientGraph(
   );
 
   const results = response.data?.results || [];
-  const foods = results.map((item) =>
-    buildSearchSummaryFood({
+  const topResults = results.slice(0, ENRICH_COUNT);
+  const restResults = results.slice(ENRICH_COUNT);
+
+  const enrichedTop: MappedProviderFood[] = [];
+  for (let i = 0; i < topResults.length; i += ENRICH_CONCURRENCY) {
+    const chunk = topResults.slice(i, i + ENRICH_CONCURRENCY);
+    const chunkResults = await Promise.all(
+      chunk.map(async (item) => {
+        const cached = detailCache.get<MappedProviderFood>(
+          'nutrientgraph',
+          item.id
+        );
+        if (cached) {
+          return {
+            ...cached,
+            name: item.name || cached.name,
+          };
+        }
+        try {
+          const detail = await getNutrientGraphDetails(ctx, item.id);
+          if (detail) {
+            return {
+              ...detail,
+              name: item.name || detail.name,
+            };
+          }
+        } catch {
+          // Fall back to summary
+        }
+        return buildSearchSummaryFood({
+          providerType: 'nutrientgraph',
+          externalId: item.id,
+          name: item.name,
+          brand: null,
+          calories:
+            typeof item.energy_kcal_per_100 === 'number'
+              ? item.energy_kcal_per_100
+              : undefined,
+        });
+      })
+    );
+    enrichedTop.push(...chunkResults);
+  }
+
+  const restMapped = restResults.map((item) => {
+    const cached = detailCache.get<MappedProviderFood>(
+      'nutrientgraph',
+      item.id
+    );
+    if (cached) return cached;
+    return buildSearchSummaryFood({
       providerType: 'nutrientgraph',
       externalId: item.id,
       name: item.name,
@@ -256,9 +308,10 @@ export async function searchNutrientGraph(
         typeof item.energy_kcal_per_100 === 'number'
           ? item.energy_kcal_per_100
           : undefined,
-    })
-  );
+    });
+  });
 
+  const foods = [...enrichedTop, ...restMapped];
   const hasMore = results.length === pageSize;
 
   return {

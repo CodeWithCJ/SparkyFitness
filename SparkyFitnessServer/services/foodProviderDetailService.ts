@@ -106,7 +106,7 @@ export function normalizeFoodForResponse(food: unknown): unknown {
     id: nullToUndefined(record.id as string | null | undefined),
     barcode: nullToUndefined(record.barcode as string | null | undefined),
     provider_external_id: nullToUndefined(
-      (record.provider_external_id ?? record.id) as string | null | undefined
+      record.provider_external_id as string | null | undefined
     ),
     provider_type: nullToUndefined(
       record.provider_type as string | null | undefined
@@ -118,9 +118,7 @@ export function normalizeFoodForResponse(food: unknown): unknown {
       ? record.variants.map((variant) =>
           normalizeFoodVariantForResponse(variant)
         )
-      : defaultVariant
-        ? [defaultVariant]
-        : nullToUndefined(record.variants as unknown[] | null | undefined),
+      : nullToUndefined(record.variants as unknown[] | null | undefined),
   };
 }
 

@@ -63,12 +63,16 @@ describe('Food Info Service', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('searches foods and maps results', async () => {
-      mockFetch.mockResolvedValueOnce(mockJsonResponse(searchBananaFixture));
+    it('searches foods and enriches results with details', async () => {
+      mockFetch
+        .mockResolvedValueOnce(mockJsonResponse(searchBananaFixture))
+        .mockResolvedValueOnce(mockJsonResponse(panel790774Fixture))
+        .mockResolvedValueOnce(mockJsonResponse(panel790774Fixture))
+        .mockResolvedValueOnce(mockJsonResponse(panel790774Fixture));
 
       const res = await searchFoodInfo(ctx, 'banana', 1, 3);
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledTimes(4);
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).toContain('q=banana');
       expect(url).toContain('limit=3');
@@ -83,6 +87,8 @@ describe('Food Info Service', () => {
         default_variant: expect.objectContaining({
           serving_size: 100,
           serving_unit: 'g',
+          calories: 85,
+          protein: 0.7,
           is_default: true,
         }),
       });
@@ -95,6 +101,28 @@ describe('Food Info Service', () => {
           pagination: res.pagination,
         })
       ).not.toThrow();
+    });
+
+    it('falls back to search summary when detail enrichment fails', async () => {
+      mockFetch.mockResolvedValueOnce(mockJsonResponse(searchBananaFixture));
+      // Remaining detail calls will fail since mockFetch is not configured for them
+
+      const res = await searchFoodInfo(ctx, 'banana', 1, 3);
+
+      expect(res.foods).toHaveLength(3);
+      expect(res.foods[0]).toMatchObject({
+        name: 'Bananas, overripe, raw',
+        brand: null,
+        provider_external_id: '790774',
+        provider_type: 'food-info',
+        is_custom: false,
+        default_variant: expect.objectContaining({
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 0,
+          is_default: true,
+        }),
+      });
     });
   });
 

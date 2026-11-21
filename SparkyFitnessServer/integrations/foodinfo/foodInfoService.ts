@@ -128,6 +128,9 @@ const NUTRIENT_ID_TO_STANDARD: Record<number, StandardNutrientField> = {
   262: 'caffeine_mg',
 };
 
+const ENRICH_COUNT = 5;
+const ENRICH_CONCURRENCY = 3;
+
 export async function searchFoodInfo(
   ctx: ProviderCallContext,
   query: string,
@@ -156,15 +159,47 @@ export async function searchFoodInfo(
   );
 
   const items = Array.isArray(results) ? results : [];
-  const foods = items.map((item) =>
-    buildSearchSummaryFood({
+  const topItems = items.slice(0, ENRICH_COUNT);
+  const restItems = items.slice(ENRICH_COUNT);
+
+  const enrichedTop: MappedProviderFood[] = [];
+  for (let i = 0; i < topItems.length; i += ENRICH_CONCURRENCY) {
+    const chunk = topItems.slice(i, i + ENRICH_CONCURRENCY);
+    const chunkResults = await Promise.all(
+      chunk.map(async (item) => {
+        const idStr = String(item.id);
+        const cached = detailCache.get<MappedProviderFood>('food-info', idStr);
+        if (cached) return cached;
+        try {
+          const detail = await getFoodInfoDetails(ctx, idStr);
+          if (detail) return detail;
+        } catch {
+          // Fall back to summary on error
+        }
+        return buildSearchSummaryFood({
+          providerType: 'food-info',
+          externalId: idStr,
+          name: item.description,
+          brand: null,
+        });
+      })
+    );
+    enrichedTop.push(...chunkResults);
+  }
+
+  const restFoods = restItems.map((item) => {
+    const idStr = String(item.id);
+    const cached = detailCache.get<MappedProviderFood>('food-info', idStr);
+    if (cached) return cached;
+    return buildSearchSummaryFood({
       providerType: 'food-info',
-      externalId: String(item.id),
+      externalId: idStr,
       name: item.description,
       brand: null,
-    })
-  );
+    });
+  });
 
+  const foods = [...enrichedTop, ...restFoods];
   const hasMore = items.length === pageSize;
 
   return {

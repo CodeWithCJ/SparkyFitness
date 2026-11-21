@@ -82,11 +82,12 @@ describe('CookTool Service', () => {
               },
             ],
           })
-        );
+        )
+        .mockResolvedValueOnce(mockJsonResponse(ingredientNutrientsFixture));
 
       const res = await searchCookTool(ctx, 'banana', 1, 20);
 
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch).toHaveBeenCalledTimes(3);
       expect(res.foods).toHaveLength(2);
       expect(res.foods[0]).toMatchObject({
         name: 'Bananas, raw',
@@ -97,6 +98,8 @@ describe('CookTool Service', () => {
         default_variant: expect.objectContaining({
           serving_size: 100,
           serving_unit: 'g',
+          calories: 89,
+          protein: 1.1,
           is_default: true,
         }),
       });
