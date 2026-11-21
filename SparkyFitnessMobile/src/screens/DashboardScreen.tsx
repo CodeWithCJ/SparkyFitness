@@ -53,6 +53,8 @@ import TrainingLoadDashboardCard from '../components/TrainingLoadDashboardCard';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
+import OfflineBanner from '../components/OfflineBanner';
+import type { DailySummary } from '../types/dailySummary';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import {
   fastingRootQueryKey,
@@ -246,10 +248,18 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     dateColumnCollapsed,
   ]);
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const {
+    isConnected,
+    isLoading: isConnectionLoading,
+    status: connectionStatus,
+    refetch: recheckConnection,
+  } = useServerConnection();
+  // With the server away the Dashboard shows what the phone holds: the day's
+  // totals (the last copy plus what is waiting to upload) and the water card.
+  const isOffline = !isConnectionLoading && connectionStatus === 'unreachable';
   const { summary, isLoading, isError, refetch } = useDailySummary({
     date: selectedDate,
-    enabled: isConnected,
+    enabled: isConnected || isOffline,
   });
   const { profile } = useProfile();
   const {
@@ -281,7 +291,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     selectContainer: selectWaterContainer,
   } = useWaterIntakeMutation({
     date: selectedDate,
-    enabled: isConnected,
+    enabled: isConnected || isOffline,
   });
 
   // A linked container has no volume of its own, so state what one press logs
@@ -512,8 +522,87 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     queryClient,
   ]);
 
+  // The hydration card, shared by the full Dashboard and the one shown with the
+  // server away. The history screen reads the server, so it is not offered
+  // offline.
+  const renderHydrationGauge = (daySummary: DailySummary) => (
+    <HydrationGauge
+      key="hydration"
+      consumed={daySummary.waterConsumed}
+      goal={daySummary.waterGoal}
+      fromFoodMl={daySummary.waterFromFood}
+      unit={waterDisplayUnit}
+      containerVolume={servingVolume}
+      linkedPressLabel={linkedPressLabel}
+      onConfigure={
+        isContainersLoaded && !activeWaterContainer
+          ? () => navigation.navigate('WaterContainers')
+          : undefined
+      }
+      onPressHistory={
+        isOffline
+          ? undefined
+          : () =>
+              navigation.navigate('WaterLog', {
+                date: selectedDate,
+              })
+      }
+      onIncrement={isContainersLoaded ? incrementWater : undefined}
+      onDecrement={isContainersLoaded ? decrementWater : undefined}
+      disableDecrement={daySummary.waterConsumed <= 0}
+      containers={waterContainers}
+      activeContainerId={activeWaterContainer?.id}
+      onSelectContainer={selectWaterContainer}
+      quickAddPresets={quickAddOptions}
+      onQuickAdd={
+        isContainersLoaded ? (id: number) => logWaterPreset(id) : undefined
+      }
+    />
+  );
+
+  const renderOfflineDashboard = (daySummary: DailySummary) => {
+    const { eaten, burned, remaining, goal, progress } =
+      daySummary.calorieBalance;
+    return (
+      <ScrollView
+        className="flex-1 bg-background"
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: usesNativeTabs && verticalBar ? 12 : 0,
+          paddingBottom: 80 + activeWorkoutBarPadding,
+        }}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
+        automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={() => void recheckConnection()}
+            tintColor={accentColor || '#3B82F6'}
+          />
+        }
+      >
+        <OfflineBanner />
+        {calorieRingCardVisible &&
+        (daySummary.foodEntries.length > 0 || goal > 0) ? (
+          <CalorieRingCard
+            caloriesConsumed={eaten}
+            caloriesBurned={burned}
+            calorieGoal={eaten + remaining}
+            remainingCalories={remaining}
+            progressPercent={progress / 100}
+          />
+        ) : null}
+        {hydrationCardVisible ? renderHydrationGauge(daySummary) : null}
+      </ScrollView>
+    );
+  };
+
   // Render content based on state
   const renderContent = () => {
+    // The server is away but the phone holds the day: show what it can.
+    if (isOffline && summary) return renderOfflineDashboard(summary);
     // No server configured
     if (!isConnectionLoading && !isConnected) {
       return (
@@ -812,37 +901,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                 />
               ) : null;
             case 'hydration':
-              return hydrationCardVisible ? (
-                <HydrationGauge
-                  key="hydration"
-                  consumed={summary.waterConsumed}
-                  goal={summary.waterGoal}
-                  fromFoodMl={summary.waterFromFood}
-                  unit={waterDisplayUnit}
-                  containerVolume={servingVolume}
-                  linkedPressLabel={linkedPressLabel}
-                  onConfigure={
-                    isContainersLoaded && !activeWaterContainer
-                      ? () => navigation.navigate('WaterContainers')
-                      : undefined
-                  }
-                  onPressHistory={() =>
-                    navigation.navigate('WaterLog', { date: selectedDate })
-                  }
-                  onIncrement={isContainersLoaded ? incrementWater : undefined}
-                  onDecrement={isContainersLoaded ? decrementWater : undefined}
-                  disableDecrement={summary.waterConsumed <= 0}
-                  containers={waterContainers}
-                  activeContainerId={activeWaterContainer?.id}
-                  onSelectContainer={selectWaterContainer}
-                  quickAddPresets={quickAddOptions}
-                  onQuickAdd={
-                    isContainersLoaded
-                      ? (id: number) => logWaterPreset(id)
-                      : undefined
-                  }
-                />
-              ) : null;
+              return hydrationCardVisible
+                ? renderHydrationGauge(summary)
+                : null;
             case 'caffeine':
               return caffeineCardVisible ? (
                 <CaffeineCard

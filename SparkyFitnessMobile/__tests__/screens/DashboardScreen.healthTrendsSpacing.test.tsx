@@ -2,6 +2,7 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useServerConnection, useWaterIntakeMutation } from '../../src/hooks';
 import DashboardScreen from '../../src/screens/DashboardScreen';
 import {
   useAppPreferencesStore,
@@ -257,5 +258,39 @@ describe('DashboardScreen Health Trends spacing', () => {
     fireEvent.press(screen.getByTestId('dashboard-reports-link'));
 
     expect(mockNavigation.navigate).toHaveBeenCalledWith('Reports');
+  });
+});
+
+describe('DashboardScreen with the server unreachable', () => {
+  beforeEach(() => {
+    __resetAppPreferencesStoreForTests();
+    const store = useAppPreferencesStore.getState();
+    store.setDashboardCardOrder(['hydration']);
+    store.setHydrationCardVisible(true);
+    store.setCalorieRingCardVisible(false);
+    (useServerConnection as jest.Mock).mockReturnValue({
+      isConnected: false,
+      isLoading: false,
+      status: 'unreachable',
+      refetch: jest.fn(),
+    });
+  });
+
+  afterEach(() => {
+    (useServerConnection as jest.Mock).mockReturnValue({
+      isConnected: true,
+      isLoading: false,
+    });
+  });
+
+  it('shows the day kept on the phone, with the offline strip and the water card', () => {
+    renderDashboard();
+
+    expect(screen.getByTestId('offline-banner')).toBeTruthy();
+    // The water card is there to press, from the phone's containers.
+    expect(useWaterIntakeMutation).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: true })
+    );
+    expect(screen.queryByTestId('dashboard-reports-link')).toBeNull();
   });
 });
