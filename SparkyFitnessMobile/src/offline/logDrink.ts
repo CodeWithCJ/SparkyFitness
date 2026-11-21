@@ -2,7 +2,7 @@ import { changeWaterIntake } from '../services/api/measurementsApi';
 import type { WaterIntakeResponse } from '../types/measurements';
 import { newUuid } from '../utils/ids';
 import { queueAfterConnectionFailure } from './queueAfterFailure';
-import { queueWaterDrink } from './waterHandOver';
+import { queueWaterDrink, removeLatestDrinkOffline } from './waterHandOver';
 
 /** What logging a drink came to: the server's answer, or a waiting upload. */
 export type DrinkResult =
@@ -34,6 +34,40 @@ export async function logDrinkOrQueue(
       queueWaterDrink(clientId, { entryDate, containerId })
     );
     if (queued) return { queued: true };
+    throw error;
+  }
+}
+
+/** What taking a drink off came to. */
+export type DrinkRemoval =
+  | { kept: false; response: WaterIntakeResponse }
+  /** Done on the phone: it uploads when the server can be reached. */
+  | { kept: true; result: 'cancelled' | 'queued' | 'none' };
+
+/**
+ * Takes the latest drink of the day off. The request is not keyed (the server
+ * removes the latest drink each time), so it only waits on the phone when it
+ * certainly never arrived, never after a timeout; the phone then removes the
+ * latest drink it knows of by its id, which is safe to send again.
+ */
+export async function removeDrinkOrQueue(
+  entryDate: string,
+  containerId: number
+): Promise<DrinkRemoval> {
+  try {
+    const response = await changeWaterIntake({
+      entryDate,
+      changeDrinks: -1,
+      containerId,
+    });
+    return { kept: false, response };
+  } catch (error) {
+    let result: 'cancelled' | 'queued' | 'none' = 'none';
+    const kept = await queueAfterConnectionFailure(error, async () => {
+      result = await removeLatestDrinkOffline(entryDate);
+      return true;
+    });
+    if (kept) return { kept: true, result };
     throw error;
   }
 }

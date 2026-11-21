@@ -3,17 +3,19 @@ import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
-import {
-  fetchWaterContainers,
-  changeWaterIntake,
-} from '../services/api/measurementsApi';
+import { fetchWaterContainers } from '../services/api/measurementsApi';
 import { getServingVolume } from '../utils/unitConversions';
 import type { DailySummaryRawData } from './useDailySummary';
 import type { WaterContainer } from '../types/measurements';
 import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
 import { invalidateWaterIntakeQueries } from './invalidateWaterIntake';
 import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutBar';
-import { logDrinkOrQueue, type DrinkResult } from '../offline/logDrink';
+import {
+  logDrinkOrQueue,
+  removeDrinkOrQueue,
+  type DrinkRemoval,
+  type DrinkResult,
+} from '../offline/logDrink';
 
 /**
  * Stand-in used when the user has no standard container of their own, matching
@@ -139,21 +141,14 @@ export function useWaterIntakeMutation({
   };
 
   const mutation = useMutation({
-    mutationFn: async (changeDrinks: number): Promise<DrinkResult> => {
+    mutationFn: async (
+      changeDrinks: number
+    ): Promise<DrinkResult | DrinkRemoval> => {
       if (!activeContainer) {
         throw new Error('No water container configured');
       }
-      // Taking a drink off needs the server's current state, so only adding
-      // one can wait offline.
       if (changeDrinks === 1) return logDrinkOrQueue(date, activeContainer.id);
-      return {
-        queued: false,
-        response: await changeWaterIntake({
-          entryDate: date,
-          changeDrinks,
-          containerId: activeContainer.id,
-        }),
-      };
+      return removeDrinkOrQueue(date, activeContainer.id);
     },
     onMutate: async (changeDrinks: number) => {
       if (!activeContainer) return;
@@ -185,6 +180,12 @@ export function useWaterIntakeMutation({
       );
     },
     onSuccess: (result) => {
+      // A drink taken off on the phone: the day is read again, with the
+      // removal applied on top of what the phone has.
+      if ('kept' in result) {
+        if (result.kept && result.result === 'queued') showQueuedToast();
+        return;
+      }
       // A drink waiting to upload keeps the amount shown from the press; the
       // server's total does not include it yet.
       if (result.queued) {
@@ -214,7 +215,7 @@ export function useWaterIntakeMutation({
     onSettled: (result) => {
       // Refreshing now would replace the shown amount with one that lacks the
       // waiting drink; the upload refreshes the day once it is confirmed.
-      if (result?.queued) return;
+      if (result && 'queued' in result && result.queued) return;
       invalidateWaterIntakeQueries(queryClient, date);
     },
   });

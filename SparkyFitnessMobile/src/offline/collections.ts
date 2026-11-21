@@ -13,6 +13,8 @@ export const CACHE_COLLECTIONS = {
   diaryDay: 'diary_day',
   /** The server's whole summary of a day, keyed by YYYY-MM-DD. */
   dailySummary: 'daily_summary',
+  /** A day's itemized drinks (the water log), keyed by YYYY-MM-DD. */
+  waterLog: 'water_log',
   /** The person's water containers (one document). */
   waterContainers: 'water_containers',
   /** A day's food entries as the diary last loaded them, keyed by YYYY-MM-DD. */

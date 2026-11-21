@@ -94,7 +94,7 @@ export function applyWaitingToRawData(
     },
     waterIntake: {
       ...raw.waterIntake,
-      water_ml: (raw.waterIntake.water_ml || 0) + waiting.waterMl,
+      water_ml: Math.max(0, (raw.waterIntake.water_ml || 0) + waiting.waterMl),
     },
     waterIntakeBreakdown: waterIntakeBreakdown && {
       ...waterIntakeBreakdown,

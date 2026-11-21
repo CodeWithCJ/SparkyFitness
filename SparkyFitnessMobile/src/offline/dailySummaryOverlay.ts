@@ -1,7 +1,7 @@
 import { getActiveServerConfigId } from '../services/storage';
 import type { FoodEntry } from '../types/foodEntries';
 import type { WaterContainer } from '../types/measurements';
-import { getServingVolume } from '../utils/unitConversions';
+import { waterCreditMl } from '../utils/waterCredit';
 import { savedCopyReadable } from './accountGeneration';
 import { CACHE_COLLECTIONS } from './collections';
 import { getOfflineDb } from './db';
@@ -13,7 +13,12 @@ import { signedInUserId } from './syncEngine';
 import { FOOD_ENTRY_DELETE } from './foodEntryDeleteHandOver';
 import { NO_ENTRY_CHANGES, readFoodEntryChanges } from './foodEntryChanges';
 import { FOOD_ENTRY_MEAL_DELETE } from './foodEntryMealDeleteHandOver';
-import { WATER_ADD, type WaterAddPayload } from './waterHandOver';
+import {
+  WATER_ADD,
+  WATER_REMOVE,
+  type WaterAddPayload,
+  type WaterRemovePayload,
+} from './waterHandOver';
 
 /** What is waiting to upload for one day, ready to add to the day's totals. */
 export interface WaitingForDay {
@@ -101,10 +106,18 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
       if (row.kind === WATER_ADD) {
         const { containerId } = row.payload as WaterAddPayload;
         const container = containers.find((item) => item.id === containerId);
-        // A linked container's credit is worked out by the server from its
-        // food, so it cannot be counted here.
-        const perPress = container ? getServingVolume(container) : null;
+        // The amount one press counts, worked out as the server does it (a
+        // linked container's from its food and hydration factor).
+        const perPress = container ? waterCreditMl(container) : null;
         if (perPress != null) waterMl += perPress;
+        continue;
+      }
+      if (row.kind === WATER_REMOVE) {
+        // A drink the server has whose removal waits: its amount is off the
+        // day, and so is the food entry a linked container made with it.
+        const removed = row.payload as WaterRemovePayload;
+        waterMl -= removed.waterMl;
+        if (removed.foodEntryId) deletedFoodEntryIds.push(removed.foodEntryId);
         continue;
       }
       const preview = await previewFromQueuedRow(db, serverConfigId, row);

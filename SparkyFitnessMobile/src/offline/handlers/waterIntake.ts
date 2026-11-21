@@ -1,13 +1,20 @@
 import { invalidateWaterIntakeQueries } from '../../hooks/invalidateWaterIntake';
 import { queryClient } from '../../hooks/queryClient';
-import { changeWaterIntake } from '../../services/api/measurementsApi';
+import {
+  changeWaterIntake,
+  deleteWaterIntakeLogEntry,
+} from '../../services/api/measurementsApi';
+import { invalidateFoodCache } from '../../hooks/invalidateFoodCache';
 import { ApiError } from '../../services/api/errors';
 import { sendResultFromError } from '../syncEngine';
 import type { OutboxHandler, OutboxRow, SendResult } from '../types';
 import {
   WATER_ADD,
   WATER_PAYLOAD_VERSION,
+  WATER_REMOVE,
+  WATER_REMOVE_PAYLOAD_VERSION,
   type WaterAddPayload,
+  type WaterRemovePayload,
 } from '../waterHandOver';
 import { registerOutboxHandler } from './registry';
 
@@ -48,7 +55,37 @@ const handler: OutboxHandler = {
   },
 };
 
+async function sendRemove(row: OutboxRow): Promise<SendResult> {
+  const { logEntryId } = row.payload as WaterRemovePayload;
+  try {
+    await deleteWaterIntakeLogEntry(logEntryId);
+    return { outcome: 'synced' };
+  } catch (error) {
+    // Already gone is what was asked for.
+    if (error instanceof ApiError && error.statusCode === 404) {
+      return { outcome: 'synced' };
+    }
+    return sendResultFromError(error);
+  }
+}
+
+const removeHandler: OutboxHandler = {
+  kind: WATER_REMOVE,
+  payloadVersion: WATER_REMOVE_PAYLOAD_VERSION,
+  upgrade: (payload) => payload,
+  send: sendRemove,
+  onSynced: (row) => {
+    if (!row.entryDate) return;
+    invalidateWaterIntakeQueries(queryClient, row.entryDate);
+    // A linked container's drink took its food entry with it.
+    if ((row.payload as WaterRemovePayload).foodEntryId) {
+      invalidateFoodCache(queryClient, row.entryDate);
+    }
+  },
+};
+
 /** Makes queued drinks sendable. Called once at app start. */
 export function registerWaterIntakeHandlers(): void {
   registerOutboxHandler(handler);
+  registerOutboxHandler(removeHandler);
 }

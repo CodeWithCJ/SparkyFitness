@@ -1,4 +1,7 @@
-import { logDrinkOrQueue } from '../../src/offline/logDrink';
+import {
+  logDrinkOrQueue,
+  removeDrinkOrQueue,
+} from '../../src/offline/logDrink';
 import { changeWaterIntake } from '../../src/services/api/measurementsApi';
 import { ApiError } from '../../src/services/api/errors';
 import { TimeoutError } from '../../src/utils/concurrency';
@@ -8,8 +11,10 @@ jest.mock('../../src/services/api/measurementsApi', () => ({
   changeWaterIntake: jest.fn(),
 }));
 const mockQueue = jest.fn();
+const mockRemoveOffline = jest.fn();
 jest.mock('../../src/offline/waterHandOver', () => ({
   queueWaterDrink: (...args: unknown[]) => mockQueue(...args),
+  removeLatestDrinkOffline: (...args: unknown[]) => mockRemoveOffline(...args),
 }));
 
 const mockChange = changeWaterIntake as jest.MockedFunction<
@@ -90,5 +95,53 @@ describe('logDrinkOrQueue', () => {
     await expect(logDrinkOrQueue('2026-11-21', 4)).rejects.toBeInstanceOf(
       TypeError
     );
+  });
+});
+
+describe('removeDrinkOrQueue', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRemoveOffline.mockReset();
+  });
+
+  it('returns the server answer when the drink is taken off', async () => {
+    const response = { id: 'x', water_ml: 250, entry_date: '2026-11-21' };
+    mockChange.mockResolvedValue(response);
+
+    expect(await removeDrinkOrQueue('2026-11-21', 4)).toEqual({
+      kept: false,
+      response,
+    });
+    expect(mockChange).toHaveBeenCalledWith({
+      entryDate: '2026-11-21',
+      changeDrinks: -1,
+      containerId: 4,
+    });
+    expect(mockRemoveOffline).not.toHaveBeenCalled();
+  });
+
+  it('takes the latest drink off on the phone when the server was not reached', async () => {
+    mockChange.mockRejectedValue(new TypeError('Network request failed'));
+    mockRemoveOffline.mockResolvedValue('queued');
+
+    expect(await removeDrinkOrQueue('2026-11-21', 4)).toEqual({
+      kept: true,
+      result: 'queued',
+    });
+    expect(mockRemoveOffline).toHaveBeenCalledWith('2026-11-21');
+  });
+
+  it('does nothing on the phone after a timeout, since the server may have removed it', async () => {
+    mockChange.mockRejectedValue(new TimeoutError('Request', 1000));
+
+    await expect(removeDrinkOrQueue('2026-11-21', 4)).rejects.toThrow();
+    expect(mockRemoveOffline).not.toHaveBeenCalled();
+  });
+
+  it('passes a refusal on', async () => {
+    mockChange.mockRejectedValue(new ApiError('no', 400));
+
+    await expect(removeDrinkOrQueue('2026-11-21', 4)).rejects.toThrow();
+    expect(mockRemoveOffline).not.toHaveBeenCalled();
   });
 });

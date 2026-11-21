@@ -1,3 +1,4 @@
+import type { WaterIntakeLogEntry } from '@workspace/shared';
 import { apiFetch } from '../services/api/apiClient';
 import type { DailySummaryApiResponse } from '../services/api/dailySummaryApi';
 import { addDays, getTodayDate } from '../utils/dateUtils';
@@ -55,13 +56,24 @@ export async function refreshRecentDailySummaries(
     });
     if (accountGeneration() !== startedUnder) return;
     await storeDailySummary(db, serverConfigId, day, summary);
+    // The day's itemized drinks, so the latest one can be taken off offline.
+    const waterLog = await apiFetch<WaterIntakeLogEntry[]>({
+      endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(day)}/log`,
+      serviceName: 'Offline pack',
+      operation: "fetch the day's drinks",
+    });
+    if (accountGeneration() !== startedUnder) return;
+    await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterLog, [
+      { key: day, payload: waterLog },
+    ]);
   }
-  await db.run(
-    `DELETE FROM cache WHERE server_config_id = ? AND collection = ? AND key < ?`,
-    [
-      serverConfigId,
-      CACHE_COLLECTIONS.dailySummary,
-      addDays(today, -(DIARY_DAYS_KEPT - 1)),
-    ]
-  );
+  for (const collection of [
+    CACHE_COLLECTIONS.dailySummary,
+    CACHE_COLLECTIONS.waterLog,
+  ]) {
+    await db.run(
+      `DELETE FROM cache WHERE server_config_id = ? AND collection = ? AND key < ?`,
+      [serverConfigId, collection, addDays(today, -(DIARY_DAYS_KEPT - 1))]
+    );
+  }
 }
