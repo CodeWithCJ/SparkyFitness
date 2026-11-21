@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
+import {
+  MCP_SERVER_PROVIDER_TYPE,
+  getFoodProviderMetadata,
+} from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -990,7 +993,10 @@ export const ProviderCard = ({
 
         {(() => {
           const portal = PROVIDER_PORTALS[provider.provider_type];
-          if (!portal) return null;
+          const meta = getFoodProviderMetadata(provider.provider_type);
+          const portalUrl = portal?.url || meta?.portalUrl;
+          const portalLabel = portal?.label || meta?.displayName;
+          if (!portalUrl) return null;
           return (
             <p className="text-xs text-muted-foreground mt-1.5 max-w-2xl leading-relaxed">
               <Trans
@@ -998,11 +1004,11 @@ export const ProviderCard = ({
                 defaults={
                   'For more details or to manage your integration, visit the <link>{{label}}</link>.'
                 }
-                values={{ label: portal.label }}
+                values={{ label: portalLabel }}
                 components={{
                   link: (
                     <a
-                      href={portal.url}
+                      href={portalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline font-medium"

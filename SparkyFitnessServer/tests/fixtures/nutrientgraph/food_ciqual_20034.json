@@ -1,0 +1,404 @@
+{
+  "data": {
+    "id": "ciqual:20034",
+    "type": "generic",
+    "names": [
+      {
+        "lang": "en",
+        "name": "Onion, raw",
+        "method": "source",
+        "source": "ciqual"
+      },
+      {
+        "lang": "de",
+        "name": "Zwiebel, roh",
+        "method": "machine_translation",
+        "translated_from": "fr",
+        "check_status": "confirmed",
+        "model": "Claude Opus 5.5 (claude-opus-5-5)"
+      },
+      {
+        "lang": "es",
+        "name": "Cebolla, cruda",
+        "method": "machine_translation",
+        "translated_from": "fr",
+        "check_status": "confirmed",
+        "model": "Claude Opus 5.5 (claude-opus-5-5)"
+      },
+      {
+        "lang": "fr",
+        "name": "Oignon, cru",
+        "method": "source",
+        "source": "ciqual_fr"
+      },
+      {
+        "lang": "it",
+        "name": "Cipolla, cruda",
+        "method": "machine_translation",
+        "translated_from": "fr",
+        "check_status": "confirmed",
+        "model": "Claude Opus 5.5 (claude-opus-5-5)"
+      }
+    ],
+    "group": "vegetables",
+    "basis": "100 g",
+    "nutrients": {
+      "alcohol_g": 0,
+      "calcium_mg": 25,
+      "carbohydrate_g": 6.25,
+      "cholesterol_mg": 0,
+      "energy_kcal": 39,
+      "energy_kj": 164,
+      "fat_g": 0.62,
+      "fiber_g": 1.7,
+      "iron_mg": 0.00019,
+      "mufa_g": 0.013,
+      "potassium_mg": 190,
+      "protein_g": 1.1,
+      "pufa_g": 0.017,
+      "salt_g": 0.098,
+      "saturated_fat_g": 0.2,
+      "sodium_mg": 39,
+      "sugars_g": 4.8,
+      "water_g": 89.6,
+      "added_sugars_g": null,
+      "trans_fat_g": null
+    },
+    "units": {
+      "alcohol_g": "g",
+      "calcium_mg": "mg",
+      "carbohydrate_g": "g",
+      "cholesterol_mg": "mg",
+      "energy_kcal": "kcal",
+      "energy_kj": "kJ",
+      "fat_g": "g",
+      "fiber_g": "g",
+      "iron_mg": "mg",
+      "mufa_g": "g",
+      "potassium_mg": "mg",
+      "protein_g": "g",
+      "pufa_g": "g",
+      "salt_g": "g",
+      "saturated_fat_g": "g",
+      "sodium_mg": "mg",
+      "sugars_g": "g",
+      "water_g": "g",
+      "added_sugars_g": "g",
+      "trans_fat_g": "g"
+    },
+    "portions": [],
+    "primary_portion": null,
+    "source": {
+      "dataset": "ciqual",
+      "name": "ANSES-CIQUAL French food composition table 2025 (English edition)",
+      "version": "2025 (file dated 2025-11-03)",
+      "record_id": "20034",
+      "code": "20034",
+      "code_type": "ciqual_alim_code",
+      "url": "https://ciqual.anses.fr/#/aliments/20034",
+      "retrieved": "2026-10-10",
+      "licence": "Licence Ouverte / Open Licence (Etalab). Reuse allowed, including commercial, on condition that the data are not altered, their meaning is not distorted, the source and version date are cited, and no ANSES endorsement is implied. No share-alike.",
+      "publication_date": null
+    },
+    "mapping": {
+      "type": "source",
+      "sources": [
+        {
+          "dataset": "ciqual",
+          "id": "20034"
+        }
+      ]
+    },
+    "description": {
+      "name_en": "Onion, raw",
+      "base_name_en": "Onion",
+      "source_category": "fruits, vegetables, legumes and nuts / vegetables / vegetables, raw",
+      "food_group_method": "CIQUAL subgroup map",
+      "preparation_state": "raw",
+      "preparation_methods": [],
+      "processing": []
+    },
+    "carb_definition": "available_excl_fibre",
+    "cluster": {
+      "cluster_id": "ciqual:20034",
+      "is_preferred": true,
+      "relation": "preferred",
+      "note": "USDA crosswalk cluster: records of the same food from different USDA analyses; the preferred one is the catalogue entry"
+    },
+    "aliases": [],
+    "missing": ["added_sugars_g", "trans_fat_g"],
+    "flags": [
+      "portion_present: no portion with a gram (or ml) weight in the source"
+    ],
+    "warnings": [
+      {
+        "check_id": "portion_present",
+        "message": "no portion with a gram (or ml) weight in the source"
+      }
+    ],
+    "provenance": {
+      "nutrients": {
+        "alcohol_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Alcohol",
+          "source_nutrient_name": "Alcohol (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "calcium_mg": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Calcium",
+          "source_nutrient_name": "Calcium (mg 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "carbohydrate_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Carbohydrate",
+          "source_nutrient_name": "Carbohydrate (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "cholesterol_mg": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Cholesterol",
+          "source_nutrient_name": "Cholesterol (mg 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "energy_kcal": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Energy, Regulation EU No 1169 2011",
+          "source_nutrient_name": "Energy, Regulation EU No 1169 2011 (kcal 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "energy_kj": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Energy, Regulation EU No 1169 2011",
+          "source_nutrient_name": "Energy, Regulation EU No 1169 2011 (kJ 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "fat_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Fat",
+          "source_nutrient_name": "Fat (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "fiber_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Fibres",
+          "source_nutrient_name": "Fibres (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "iron_mg": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Iron",
+          "source_nutrient_name": "Iron (mg 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "mufa_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:FA mono",
+          "source_nutrient_name": "FA mono (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "potassium_mg": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Potassium",
+          "source_nutrient_name": "Potassium (mg 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "protein_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Protein",
+          "source_nutrient_name": "Protein (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "pufa_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:FA poly",
+          "source_nutrient_name": "FA poly (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "salt_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Salt",
+          "source_nutrient_name": "Salt (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "saturated_fat_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:FA saturated",
+          "source_nutrient_name": "FA saturated (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "sodium_mg": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Sodium",
+          "source_nutrient_name": "Sodium (mg 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "sugars_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Sugars",
+          "source_nutrient_name": "Sugars (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "water_g": {
+          "dataset": "ciqual",
+          "id": "20034",
+          "source_nutrient_id": "col:Water",
+          "source_nutrient_name": "Water (g 100g)",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        }
+      }
+    }
+  },
+  "meta": {
+    "request_id": "req_7ee49bbfcb2b0cb279",
+    "api_version": "1",
+    "dataset": "food",
+    "dataset_version": "1.0.0",
+    "dataset_built_at": "2026-10-10T17:56:11Z",
+    "data_status": "released",
+    "sources": [
+      {
+        "id": "ah102",
+        "name": "USDA Agriculture Handbook No. 102, Food Yields Summarized by Different Stages of Preparation (1975)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/Classics/ah102.pdf",
+        "licence": "U.S. Government work (USDA), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "1975 (scanned PDF, ARS Classics)",
+        "attribution": "Matthews RH, Garrison YJ. Food Yields Summarized by Different Stages of Preparation. Agriculture Handbook No. 102, USDA, 1975."
+      },
+      {
+        "id": "ciqual",
+        "name": "ANSES-CIQUAL French food composition table 2025 (English edition)",
+        "url": "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202025_ENG_2025_11_03.xlsx",
+        "licence": "Licence Ouverte / Open Licence (Etalab). Reuse allowed, including commercial, on condition that the data are not altered, their meaning is not distorted, the source and version date are cited, and no ANSES endorsement is implied. No share-alike.",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2025 (file dated 2025-11-03)",
+        "attribution": "Anses. 2025. Ciqual French food composition table."
+      },
+      {
+        "id": "ciqual_fr",
+        "name": "ANSES-CIQUAL Table de composition nutritionnelle des aliments 2025 (French edition; used for official French names only)",
+        "url": "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202025_FR_2025_11_03.xlsx",
+        "licence": "Licence Ouverte / Open Licence (Etalab), same terms as the English edition.",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2025 (file dated 2025-11-03)",
+        "attribution": "Anses. 2025. Table de composition nutritionnelle des aliments Ciqual."
+      },
+      {
+        "id": "cooking_yields_meat",
+        "name": "USDA Table of Cooking Yields for Meat and Poultry (2014)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/retn/USDA_CookingYields_MeatPoultry.pdf",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2014",
+        "attribution": "USDA ARS Nutrient Data Laboratory. USDA Table of Cooking Yields for Meat and Poultry, 2014."
+      },
+      {
+        "id": "fdc_branded",
+        "name": "USDA FoodData Central - Branded Foods (Global Branded Food Products Database)",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_branded_food_csv_2026-04-30.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2026-04-30",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Branded Foods 2026-04-30 (data provided by GS1 US/1WorldSync/Label Insight/NielsenIQ/Euromonitor partners via the Global Branded Food Products Database)."
+      },
+      {
+        "id": "fdc_foundation",
+        "name": "USDA FoodData Central - Foundation Foods",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_csv_2026-04-30.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central data are public domain, published under CC0)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2026-04-30",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Foundation Foods 2026-04-30. fdc.nal.usda.gov"
+      },
+      {
+        "id": "fdc_sr_legacy",
+        "name": "USDA FoodData Central - SR Legacy",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_csv_2018-04.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2018-04",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, SR Legacy 2018-04."
+      },
+      {
+        "id": "fdc_survey",
+        "name": "USDA FoodData Central - Survey (FNDDS 2021-2023)",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_csv_2024-10-31.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2024-10-31",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Survey Foods (FNDDS 2021-2023), 2024-10-31."
+      },
+      {
+        "id": "fndds_ingredients",
+        "name": "USDA ARS 2021-2023 FNDDS At A Glance - FNDDS Ingredients (recipes, moisture change)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400530/apps/2021-2023%20FNDDS%20At%20A%20Glance%20-%20FNDDS%20Ingredients.xlsx",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2021-2023",
+        "attribution": "USDA ARS Food Surveys Research Group. FNDDS 2021-2023."
+      },
+      {
+        "id": "retn06",
+        "name": "USDA Table of Nutrient Retention Factors, Release 6 (2007)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/retn/retn06.txt",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "Release 6 (2007)",
+        "attribution": "USDA ARS Nutrient Data Laboratory. USDA Table of Nutrient Retention Factors, Release 6, 2007."
+      }
+    ],
+    "provenance_note": "Every value carries provenance (source, id or URL, retrieval date; method and confidence where an AI judged). Calculations list their inputs and method.",
+    "disclaimer": "Nutrition reference data. Not medical or dietary advice.",
+    "demo": true,
+    "demo_kind": "sample",
+    "demo_note": "Demo answer: a sample request from the site, answered by the real endpoint on the current data. Not metered and limited per IP address. For any other input, send your API key (X-API-Key) to the same path without /demo; a free key takes a minute.",
+    "usage": null
+  }
+}
