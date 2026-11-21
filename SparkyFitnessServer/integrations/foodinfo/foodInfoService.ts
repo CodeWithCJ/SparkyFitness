@@ -59,7 +59,17 @@ interface FoodInfoPanelResponse {
 
 function resolveBaseUrl(providerBaseUrl?: string | null): string {
   if (!providerBaseUrl) return FOODINFO_DEFAULT_BASE_URL;
-  return providerBaseUrl.trim().replace(/\/+$/, '');
+  let trimmed = providerBaseUrl.trim().replace(/\/+$/, '');
+  if (
+    trimmed === 'https://food-info.org' ||
+    trimmed === 'http://food-info.org'
+  ) {
+    trimmed = 'https://api.food-info.org';
+  }
+  if (!trimmed.includes('/api/v1')) {
+    trimmed = `${trimmed}/api/v1`;
+  }
+  return trimmed;
 }
 
 function resolveHeaders(appKey?: string | null): Record<string, string> {
