@@ -10,6 +10,7 @@ import { readSavedSingle } from './foodLibrary';
 import { listUnconfirmedOutbox } from './outbox';
 import { signedInUserId } from './syncEngine';
 import { FOOD_ENTRY_DELETE } from './foodEntryDeleteHandOver';
+import { FOOD_ENTRY_MEAL_DELETE } from './foodEntryMealDeleteHandOver';
 import {
   FOOD_ENTRY_UPDATE,
   type FoodEntryUpdatePayload,
@@ -24,6 +25,8 @@ export interface WaitingForDay {
   waterMl: number;
   /** Entries the server has whose removal is waiting to upload. */
   deletedFoodEntryIds: string[];
+  /** Logged meals the server has whose removal is waiting to upload. */
+  deletedMealIds: string[];
   /** New amounts for entries the server has, by entry id. */
   updatedQuantities: Record<string, number>;
 }
@@ -40,10 +43,29 @@ export function applyUpdatedQuantities(
   );
 }
 
+/**
+ * Entries less those whose removal waits to upload: the entries themselves
+ * and every component of a logged meal that is waiting to be removed.
+ */
+export function withoutDeleted(
+  entries: readonly FoodEntry[],
+  deletedEntryIds: readonly string[],
+  deletedMealIds: readonly string[]
+): FoodEntry[] {
+  const gone = new Set(deletedEntryIds);
+  const goneMeals = new Set(deletedMealIds);
+  return entries.filter(
+    (entry) =>
+      !gone.has(entry.id) &&
+      !(entry.food_entry_meal_id && goneMeals.has(entry.food_entry_meal_id))
+  );
+}
+
 const NOTHING_WAITING: WaitingForDay = {
   foodEntries: [],
   waterMl: 0,
   deletedFoodEntryIds: [],
+  deletedMealIds: [],
   updatedQuantities: {},
 };
 
@@ -70,6 +92,7 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
 
     const foodEntries: FoodEntry[] = [];
     const deletedFoodEntryIds: string[] = [];
+    const deletedMealIds: string[] = [];
     const updatedQuantities: Record<string, number> = {};
     let waterMl = 0;
     const containers =
@@ -81,6 +104,10 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
     for (const row of rows) {
       if (row.kind === FOOD_ENTRY_DELETE) {
         deletedFoodEntryIds.push(row.entityId);
+        continue;
+      }
+      if (row.kind === FOOD_ENTRY_MEAL_DELETE) {
+        deletedMealIds.push(row.entityId);
         continue;
       }
       if (row.kind === FOOD_ENTRY_UPDATE) {
@@ -101,7 +128,13 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
       const preview = await previewFromQueuedRow(db, serverConfigId, row);
       if (preview) foodEntries.push(preview);
     }
-    return { foodEntries, waterMl, deletedFoodEntryIds, updatedQuantities };
+    return {
+      foodEntries,
+      waterMl,
+      deletedFoodEntryIds,
+      deletedMealIds,
+      updatedQuantities,
+    };
   } catch {
     return NOTHING_WAITING;
   }

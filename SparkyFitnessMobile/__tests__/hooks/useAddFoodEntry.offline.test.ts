@@ -26,9 +26,11 @@ jest.mock('../../src/offline/foodEntryHandOver', () => ({
 }));
 
 const mockQueueFoodCreate = jest.fn();
+const mockFindWaitingFood = jest.fn();
 jest.mock('../../src/offline/foodCreateHandOver', () => ({
   ...jest.requireActual('../../src/offline/foodCreateHandOver'),
   queueFoodCreate: (...args: unknown[]) => mockQueueFoodCreate(...args),
+  findWaitingFood: (...args: unknown[]) => mockFindWaitingFood(...args),
 }));
 const mockSaveFood = saveFood as jest.MockedFunction<typeof saveFood>;
 const mockCreate = createFoodEntry as jest.MockedFunction<
@@ -238,5 +240,82 @@ describe('useAddFoodEntry creating a food while the server is unreachable', () =
       )
     );
     expect(mockQueueFoodCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe('useAddFoodEntry logging a food that is still waiting to upload', () => {
+  const KEY = '11111111-1111-4111-8111-111111111111';
+  const waitingFood = {
+    name: 'Homemade bread',
+    brand: null,
+    serving_size: 50,
+    serving_unit: 'g',
+    calories: 130,
+    protein: 4,
+    carbs: 25,
+    fat: 1,
+  };
+  const entry = {
+    meal_type_id: 'meal-1',
+    quantity: 2,
+    unit: 'g',
+    entry_date: '2026-11-21',
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockQueueFoodCreate.mockReset();
+    mockFindWaitingFood.mockReset();
+  });
+
+  it('keeps the entry with the food, under the food key, without asking the server', async () => {
+    mockFindWaitingFood.mockResolvedValue({
+      foodClientId: KEY,
+      food: waitingFood,
+    });
+    mockQueueFoodCreate.mockResolvedValue(true);
+    const { result, onSuccess } = setup();
+
+    await act(async () => {
+      result.current.addEntry({
+        createEntryPayload: {
+          ...entry,
+          food_id: `pendingfood-${KEY}`,
+          variant_id: `pendingvariant-${KEY}`,
+        },
+      });
+    });
+
+    await waitFor(() => expect(onSuccess).toHaveBeenCalledTimes(1));
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(mockQueueFoodCreate).toHaveBeenCalledWith(
+      KEY,
+      expect.any(String),
+      waitingFood,
+      expect.not.objectContaining({ food_id: expect.anything() })
+    );
+    expect(isPendingEntry(onSuccess.mock.calls[0][0])).toBe(true);
+  });
+
+  it('fails plainly once the food has uploaded under another id', async () => {
+    mockFindWaitingFood.mockResolvedValue(null);
+    const { result, onSuccess } = setup();
+
+    await act(async () => {
+      result.current.addEntry({
+        createEntryPayload: {
+          ...entry,
+          food_id: `pendingfood-${KEY}`,
+          variant_id: `pendingvariant-${KEY}`,
+        },
+      });
+    });
+
+    await waitFor(() =>
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' })
+      )
+    );
+    expect(onSuccess).not.toHaveBeenCalled();
   });
 });

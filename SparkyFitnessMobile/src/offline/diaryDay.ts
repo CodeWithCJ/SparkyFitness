@@ -5,7 +5,8 @@ import type {
 } from '@workspace/shared';
 import { apiFetch } from '../services/api/apiClient';
 import type { FoodEntry } from '../types/foodEntries';
-import { applyUpdatedQuantities } from './dailySummaryOverlay';
+import { applyUpdatedQuantities, withoutDeleted } from './dailySummaryOverlay';
+import { FOOD_ENTRY_MEAL_DELETE } from './foodEntryMealDeleteHandOver';
 import { FOOD_ENTRY_DELETE } from './foodEntryDeleteHandOver';
 import {
   FOOD_ENTRY_UPDATE,
@@ -50,6 +51,8 @@ export interface OfflineDiaryDay {
   deletedFood: string[];
   /** New amounts for entries the server has, by entry id. */
   updatedFood: Record<string, number>;
+  /** Logged meals the server has whose removal is waiting to upload: hidden. */
+  deletedFoodMeals: string[];
 }
 
 /** Keeps the day's workouts from a diary load, for showing it offline. */
@@ -287,6 +290,7 @@ export async function readOfflineDiaryDay(
     waitingFood: [],
     deletedFood: [],
     updatedFood: {},
+    deletedFoodMeals: [],
   };
   if (!(await savedCopyReadable())) return nothing;
   const serverConfigId = await getActiveServerConfigId();
@@ -341,6 +345,9 @@ export async function readOfflineDiaryDay(
     deletedFood: rows
       .filter((row) => row.kind === FOOD_ENTRY_DELETE)
       .map((row) => row.entityId),
+    deletedFoodMeals: rows
+      .filter((row) => row.kind === FOOD_ENTRY_MEAL_DELETE)
+      .map((row) => row.entityId),
     updatedFood: Object.fromEntries(
       rows
         .filter((row) => row.kind === FOOD_ENTRY_UPDATE)
@@ -384,12 +391,12 @@ export function mergeWaitingFood(
   saved: readonly FoodEntry[],
   waiting: readonly FoodEntry[],
   deleted: readonly string[] = [],
-  updated: Readonly<Record<string, number>> = {}
+  updated: Readonly<Record<string, number>> = {},
+  deletedMeals: readonly string[] = []
 ): FoodEntry[] {
-  const gone = new Set(deleted);
   return [
     ...applyUpdatedQuantities(
-      saved.filter((entry) => !gone.has(entry.id)),
+      withoutDeleted(saved, deleted, deletedMeals),
       updated
     ),
     ...waiting,

@@ -22,6 +22,11 @@ import {
   type CacheWrite,
 } from './cacheStore';
 import { CACHE_COLLECTIONS, SINGLE_DOCUMENT_KEY } from './collections';
+import {
+  isPendingFoodId,
+  listWaitingFoods,
+  pendingFoodClientId,
+} from './foodCreateHandOver';
 import type { OfflineDb } from './types';
 
 const SERVICE = 'Offline pack';
@@ -239,12 +244,20 @@ export async function readSavedFoodsPage(
         pageSize,
         offset
       );
+  // New foods made on the phone and not yet uploaded are listed first.
+  const waiting = (await listWaitingFoods(db, serverConfigId)).filter(
+    ({ item }) =>
+      !term || foodSearchName(item).toLowerCase().includes(term.toLowerCase())
+  );
   // Nothing kept at all is "not available offline"; a search that matches
   // nothing among the kept foods is a real (empty) answer.
-  if (total === 0 && !term) return null;
+  if (total === 0 && !term && waiting.length === 0) return null;
   return {
-    foods: rows.map((row) => row.payload as FoodItem),
-    totalCount: total,
+    foods: [
+      ...(offset === 0 ? waiting.map(({ item }) => item) : []),
+      ...rows.map((row) => row.payload as FoodItem),
+    ],
+    totalCount: total + waiting.length,
   };
 }
 
@@ -253,6 +266,11 @@ export async function readSavedFood(
   serverConfigId: string,
   foodId: string
 ): Promise<FoodItem | null> {
+  if (isPendingFoodId(foodId)) {
+    const key = pendingFoodClientId(foodId);
+    const waiting = await listWaitingFoods(db, serverConfigId);
+    return waiting.find((item) => item.foodClientId === key)?.item ?? null;
+  }
   const row = await getCacheRow(
     db,
     serverConfigId,
@@ -272,12 +290,14 @@ export async function readSavedVariants(
   serverConfigId: string,
   foodId: string
 ): Promise<FoodVariantDetail[] | null> {
-  const kept = await getCacheRow(
-    db,
-    serverConfigId,
-    CACHE_COLLECTIONS.foodVariants,
-    foodId
-  );
+  const kept = isPendingFoodId(foodId)
+    ? null
+    : await getCacheRow(
+        db,
+        serverConfigId,
+        CACHE_COLLECTIONS.foodVariants,
+        foodId
+      );
   if (kept) return kept.payload as FoodVariantDetail[];
   const food = await readSavedFood(db, serverConfigId, foodId);
   if (!food?.default_variant?.id) return null;
@@ -288,6 +308,30 @@ export async function readSavedVariants(
       food_id: food.id,
     } as FoodVariantDetail,
   ];
+}
+
+/**
+ * The recent and most used foods kept on the phone, with the new foods
+ * waiting to upload at the top of the recent ones.
+ */
+export async function readSavedFoodUsage(
+  db: OfflineDb,
+  serverConfigId: string
+): Promise<FoodsResponse | null> {
+  const kept = await readSavedSingle<FoodsResponse>(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.foodRecents
+  );
+  const waiting = await listWaitingFoods(db, serverConfigId);
+  if (waiting.length === 0) return kept;
+  return {
+    recentFoods: [
+      ...waiting.map(({ item }) => item),
+      ...(kept?.recentFoods ?? []),
+    ],
+    topFoods: kept?.topFoods ?? [],
+  };
 }
 
 export async function readSavedSingle<T>(

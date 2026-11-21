@@ -17,6 +17,17 @@ import {
   queueFoodCreate,
 } from '../../src/offline/foodCreateHandOver';
 import { previewFromQueuedRow } from '../../src/offline/foodEntryPreview';
+import {
+  findWaitingFood,
+  listWaitingFoods,
+  pendingFoodId,
+} from '../../src/offline/foodCreateHandOver';
+import {
+  readSavedFood,
+  readSavedFoodsPage,
+  readSavedFoodUsage,
+  readSavedVariants,
+} from '../../src/offline/foodLibrary';
 import { createTestDb } from '../helpers/offlineTestDb';
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
@@ -175,5 +186,85 @@ describe('new food upload handler', () => {
         food: { ...food, provider_type: 'openfoodfacts' },
       })
     ).toBe(false);
+  });
+
+  describe('a new food made for the library alone', () => {
+    it('is created on upload, with no entry logged', async () => {
+      await queueFoodCreate(FOOD_KEY, null, food, null);
+      mockSave.mockResolvedValue(savedFood);
+
+      expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
+
+      expect(mockSave).toHaveBeenCalledWith(
+        expect.objectContaining({ client_id: FOOD_KEY })
+      );
+      expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('has no entry to show in the diary', async () => {
+      await queueFoodCreate(FOOD_KEY, null, food, null);
+      const [row] = await listUnconfirmedOutbox(db, 's1');
+
+      expect(await previewFromQueuedRow(db, 's1', row)).toBeNull();
+    });
+  });
+
+  describe('a food that is still waiting, read like any saved food', () => {
+    beforeEach(async () => {
+      await queueFoodCreate(FOOD_KEY, null, food, null);
+    });
+
+    it('is listed first in the search and the recents, and found by name', async () => {
+      const page = await readSavedFoodsPage(db, 's1', '', 1, 20);
+      expect(page?.foods.map((item) => item.id)).toEqual([
+        pendingFoodId(FOOD_KEY),
+      ]);
+      expect(
+        (await readSavedFoodsPage(db, 's1', 'bread', 1, 20))?.totalCount
+      ).toBe(1);
+      expect((await readSavedFoodsPage(db, 's1', 'zzz', 1, 20))?.foods).toEqual(
+        []
+      );
+      expect(
+        (await readSavedFoodUsage(db, 's1'))?.recentFoods.map((i) => i.name)
+      ).toEqual(['Homemade bread']);
+    });
+
+    it('opens by its pending id with its one serving', async () => {
+      const id = pendingFoodId(FOOD_KEY);
+
+      expect((await readSavedFood(db, 's1', id))?.name).toBe('Homemade bread');
+      const variants = await readSavedVariants(db, 's1', id);
+      expect(variants).toHaveLength(1);
+      expect(variants?.[0]).toMatchObject({
+        serving_size: 50,
+        serving_unit: 'g',
+        calories: 130,
+      });
+    });
+
+    it('is listed once however many entries wait with it, and not once uploaded', async () => {
+      await queueFoodCreate(FOOD_KEY, ENTRY_KEY, food, entry);
+      expect(await listWaitingFoods(db, 's1')).toHaveLength(1);
+      expect(await findWaitingFood(FOOD_KEY)).not.toBeNull();
+
+      mockSave.mockResolvedValue(savedFood);
+      mockCreate.mockResolvedValue({ id: 'e1' } as never);
+      await drainOutbox('manual');
+
+      expect(await listWaitingFoods(db, 's1')).toEqual([]);
+      expect(await findWaitingFood(FOOD_KEY)).toBeNull();
+    });
+
+    it('leaves out a quick food, which exists only for its entry', async () => {
+      await queueFoodCreate(
+        '33333333-3333-4333-8333-333333333333',
+        ENTRY_KEY,
+        { ...food, is_quick_food: true },
+        entry
+      );
+
+      expect(await listWaitingFoods(db, 's1')).toHaveLength(1);
+    });
   });
 });

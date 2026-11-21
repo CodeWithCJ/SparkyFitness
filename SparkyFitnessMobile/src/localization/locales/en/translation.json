@@ -6034,7 +6034,9 @@
     "failed": "Failed to add meal"
   },
   "foodSave": {
-    "failed": "Failed to save food"
+    "failed": "Failed to save food",
+    "queued": "Saved on this phone",
+    "queuedMessage": "It uploads when your server can be reached."
   },
   "favorites": {
     "updateFailed": "Failed to update favorites"

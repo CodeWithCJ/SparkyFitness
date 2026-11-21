@@ -32,7 +32,10 @@ import {
   queueFoodEntry,
 } from '../offline/foodEntryHandOver';
 import {
+  findWaitingFood,
+  isPendingFoodId,
   isQueueableFoodCreate,
+  pendingFoodClientId,
   queueFoodCreate,
 } from '../offline/foodCreateHandOver';
 import { newUuid } from '../utils/ids';
@@ -80,6 +83,29 @@ async function createOrQueueFoodEntry(
   payload: CreateFoodEntryPayload
 ): Promise<FoodEntry> {
   const clientId = newUuid();
+  // A food that is itself still waiting to upload has no id on the server
+  // yet: the entry goes up with the food, which the server answers with the
+  // food it already made when the key is repeated.
+  if (payload.food_id && isPendingFoodId(payload.food_id)) {
+    const waiting = await findWaitingFood(pendingFoodClientId(payload.food_id));
+    if (!waiting) throw new Error('The new food has been uploaded; try again');
+    const { food_id: _foodId, variant_id: _variantId, ...entry } = payload;
+    if (
+      !(await queueFoodCreate(
+        waiting.foodClientId,
+        clientId,
+        waiting.food,
+        entry
+      ))
+    ) {
+      throw new Error('Could not keep the entry on the phone');
+    }
+    return pendingEntryFrom(clientId, {
+      ...payload,
+      food_name: waiting.food.name,
+      calories: waiting.food.calories,
+    });
+  }
   try {
     return await createFoodEntry({ ...payload, client_id: clientId });
   } catch (error) {

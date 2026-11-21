@@ -53,12 +53,10 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
   );
 
   const isMealComponent = !!entry.food_entry_meal_id;
-  // A waiting entry is not on the server, so there is no detail to open; and
-  // a logged meal's components are removed through the meal, which needs the
-  // server, so they cannot be deleted from a phone-only view. The amount can
-  // still be changed: it is kept on the phone and uploads later.
+  // A waiting entry is not on the server, so there is no detail to open. The
+  // amount can still be changed and the entry (or its whole logged meal)
+  // deleted: both are kept on the phone and upload later.
   const readOnly = readOnlyProp || isPendingEntryId(entry.id);
-  const canDelete = !(readOnlyProp && isMealComponent);
   const getImageSource = useFoodImageSourceContext();
   const entryImage = diaryEntryImage(entry);
   const openLightbox = useOpenLightbox();
@@ -161,8 +159,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
     <Animated.View style={animatedStyle} onLayout={handleLayout}>
       <ReanimatedSwipeable
         ref={swipeableRef}
-        renderRightActions={canDelete ? renderRightActions : undefined}
-        enabled={canDelete}
+        renderRightActions={renderRightActions}
         overshootRight={false}
         rightThreshold={40}
       >
@@ -184,8 +181,7 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
             className="flex-1 mr-2"
             activeOpacity={0.7}
             onPress={readOnly && !canQuickAdjust ? undefined : handlePress}
-            onLongPress={canDelete ? handleLongPress : undefined}
-            disabled={readOnly && !canDelete && !canQuickAdjust}
+            onLongPress={handleLongPress}
           >
             <View className="flex-row flex-wrap items-baseline">
               <Text className="text-md text-text-primary" numberOfLines={1}>

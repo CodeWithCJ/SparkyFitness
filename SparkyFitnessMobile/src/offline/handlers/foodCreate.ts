@@ -22,6 +22,7 @@ async function sendCreate(row: OutboxRow): Promise<SendResult> {
       ...payload.food,
       client_id: payload.foodClientId,
     });
+    if (!payload.entry) return { outcome: 'synced' };
     const variant = food.default_variant;
     if (!variant?.id) {
       return { outcome: 'failed', error: 'The server returned no serving.' };

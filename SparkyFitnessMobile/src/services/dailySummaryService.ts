@@ -10,6 +10,7 @@ import { fetchDailySummary } from './api/dailySummaryApi';
 import {
   applyUpdatedQuantities,
   readWaitingForDay,
+  withoutDeleted,
   type WaitingForDay,
 } from '../offline/dailySummaryOverlay';
 import { resolveCollapsedFoodEntries } from '../utils/loggedMealCollapse';
@@ -57,20 +58,24 @@ export function applyWaitingToRawData(
   raw: DailySummaryRawData,
   waiting: WaitingForDay
 ): DailySummaryRawData {
-  const { deletedFoodEntryIds, updatedQuantities } = waiting;
+  const { deletedFoodEntryIds, deletedMealIds, updatedQuantities } = waiting;
   if (
     waiting.foodEntries.length === 0 &&
     waiting.waterMl === 0 &&
     deletedFoodEntryIds.length === 0 &&
+    deletedMealIds.length === 0 &&
     Object.keys(updatedQuantities).length === 0
   ) {
     return raw;
   }
   // An entry the server has whose removal waits to upload is already out of
   // the day's list and its calories are back, as they will be once it is gone.
-  const gone = new Set(deletedFoodEntryIds);
-  const removed = raw.foodEntries.filter((entry) => gone.has(entry.id));
-  const notGone = raw.foodEntries.filter((entry) => !gone.has(entry.id));
+  const notGone = withoutDeleted(
+    raw.foodEntries,
+    deletedFoodEntryIds,
+    deletedMealIds
+  );
+  const removed = raw.foodEntries.filter((entry) => !notGone.includes(entry));
   // An amount changed on the phone shows at once: the entry keeps its serving
   // and its nutrition per serving, only the amount eaten moves.
   const kept = applyUpdatedQuantities(notGone, updatedQuantities);

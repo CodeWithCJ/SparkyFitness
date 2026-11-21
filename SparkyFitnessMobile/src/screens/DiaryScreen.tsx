@@ -656,7 +656,8 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           offlineDay.savedFood ?? [],
           waitingFood,
           offlineDay.deletedFood ?? [],
-          offlineDay.updatedFood ?? {}
+          offlineDay.updatedFood ?? {},
+          offlineDay.deletedFoodMeals ?? []
         );
     return (
       <ScrollView

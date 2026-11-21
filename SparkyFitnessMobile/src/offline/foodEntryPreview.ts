@@ -178,8 +178,10 @@ export async function previewFromQueuedMeal(
  * A waiting new food and its entry as the Diary will show it: the food's own
  * serving and nutrients, which the entry snapshots as they are.
  */
-export function previewFromQueuedFoodCreate(row: OutboxRow): FoodEntry {
+export function previewFromQueuedFoodCreate(row: OutboxRow): FoodEntry | null {
   const { food, entry } = row.payload as FoodCreatePayload;
+  // A food made for the library alone has no entry to show.
+  if (!entry) return null;
   return {
     id: pendingEntryId(row.entityId),
     meal_type: '',

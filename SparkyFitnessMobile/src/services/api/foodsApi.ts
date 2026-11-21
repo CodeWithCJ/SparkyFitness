@@ -10,7 +10,7 @@ import {
   foodSearchName,
   readSavedFood,
   readSavedFoodsPage,
-  readSavedSingle,
+  readSavedFoodUsage,
   readSavedVariants,
 } from '../../offline/foodLibrary';
 import { withOfflineFallback } from '../../offline/withOfflineFallback';
@@ -53,12 +53,7 @@ export const fetchFoods = async (): Promise<FoodsResponse> => {
       putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.foodRecents, [
         { key: SINGLE_DOCUMENT_KEY, payload: usage },
       ]),
-    read: (db, serverConfigId) =>
-      readSavedSingle<FoodsResponse>(
-        db,
-        serverConfigId,
-        CACHE_COLLECTIONS.foodRecents
-      ),
+    read: (db, serverConfigId) => readSavedFoodUsage(db, serverConfigId),
   });
 };
 

@@ -34,6 +34,7 @@ import {
 } from '../../services/mealPlanSelection';
 import { useMealTypes, usePreferences } from '../../hooks';
 import { useSaveFood } from '../../hooks/useSaveFood';
+import { isPendingFoodId } from '../../offline/foodCreateHandOver';
 import {
   resolveSelectedVariant,
   useAddFoodEntry,
@@ -504,7 +505,13 @@ export function CreateFoodMode({
 
     const saveFoodForForm = async () => {
       if (portionDraft.length === 0 && !savedFoodRef.current) {
-        return saveFoodAsync(saveFoodPayload, imageArgs);
+        // A food made only for the library can wait on the phone.
+        return saveFoodAsync(
+          saveFoodPayload,
+          imageArgs,
+          undefined,
+          isLibraryMode
+        );
       }
       setIsPortionSaving(true);
       try {
@@ -846,14 +853,18 @@ export function CreateFoodMode({
       try {
         const savedFood = await saveFoodForForm();
         isSavingRef.current = true;
-        if (portionDraft.length === 0 && !savedFoodRef.current)
+        const waitsOnPhone = isPendingFoodId(savedFood.id);
+        if (portionDraft.length === 0 && !savedFoodRef.current && !waitsOnPhone)
           saveEquivalentsAsync(savedFood.id);
-        Toast.show({
-          type: 'success',
-          text1: t('createFood.success.foodSaved', {
-            defaultValue: 'Food saved',
-          }),
-        });
+        // A food kept on the phone is announced by the save itself.
+        if (!waitsOnPhone) {
+          Toast.show({
+            type: 'success',
+            text1: t('createFood.success.foodSaved', {
+              defaultValue: 'Food saved',
+            }),
+          });
+        }
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
         // Error toast is handled in the save hook.

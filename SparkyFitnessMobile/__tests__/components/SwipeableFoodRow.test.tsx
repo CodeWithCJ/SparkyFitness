@@ -177,7 +177,7 @@ describe('SwipeableFoodRow', () => {
       ]);
     });
 
-    it('cannot delete a component of a logged meal, which goes through the meal', () => {
+    it('deletes a component of a logged meal through the meal, which is kept on the phone', () => {
       const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation();
       const screen = renderRow(
         <SwipeableFoodRow
@@ -189,7 +189,11 @@ describe('SwipeableFoodRow', () => {
 
       fireEvent(screen.getByText('Greek Yogurt'), 'longPress');
 
-      expect(alertSpy).not.toHaveBeenCalled();
+      const buttons = alertSpy.mock.calls[0][2] as { text: string }[];
+      expect(buttons.map((button) => button.text)).toEqual([
+        'Delete',
+        'Cancel',
+      ]);
     });
 
     it('treats an entry waiting to upload the same way, even with the server up', () => {
