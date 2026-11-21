@@ -586,6 +586,8 @@ class WearOsParityTest {
             put("maxVolume", 15)
             put("hasSession", true)
             put("hasMetadataAccess", true)
+            put("epoch", 1760000000000.0)
+            put("seq", 7.0)
             put("updatedAt", 1760000000000.0)
         }
         val state = ContextPayloadMapper.parsePhoneMediaState(fullJson)
@@ -598,6 +600,8 @@ class WearOsParityTest {
         assertEquals(60, state.volumePercent)
         assertTrue(state.hasSession)
         assertTrue(state.hasMetadataAccess)
+        assertEquals(1760000000000L, state.epoch)
+        assertEquals(7L, state.seq)
 
         val fallbackJson = JSONObject().apply {
             put("type", "mediaState")
@@ -613,6 +617,8 @@ class WearOsParityTest {
         assertEquals(15, fallback.volume)
         assertEquals(100, fallback.volumePercent)
         assertFalse(fallback.hasMetadataAccess)
+        assertEquals(0L, fallback.epoch)
+        assertEquals(0L, fallback.seq)
 
         val noArtist = PhoneMediaState(title = "Track", artist = "  ", appName = "Symfonium")
         assertEquals("Symfonium", noArtist.secondaryLabel)
@@ -620,10 +626,67 @@ class WearOsParityTest {
         val control = OutboundPayloads.mediaControl("next")
         assertEquals("mediaControl", control.getString("type"))
         assertEquals("next", control.getString("action"))
+        assertFalse(control.has("steps"))
 
-        val req = OutboundPayloads.mediaStateRequest(active = true)
+        val multiStepVol = OutboundPayloads.mediaControl("volumeUp", steps = 3)
+        assertEquals("volumeUp", multiStepVol.getString("action"))
+        assertEquals(3, multiStepVol.getInt("steps"))
+
+        val req = OutboundPayloads.mediaStateRequest(active = true, epoch = 100L, visitId = 42L)
         assertEquals("mediaStateRequest", req.getString("type"))
         assertTrue(req.getBoolean("active"))
+        assertEquals(100L, req.getDouble("epoch").toLong())
+        assertEquals(42L, req.getDouble("visitId").toLong())
+    }
+
+    @Test
+    fun `media snapshot ordering rejects stale seq within epoch and accepts new epoch across clock rollback`() {
+        val current = PhoneMediaState(title = "Current", epoch = 200L, seq = 5L, updatedAtMs = 5000L)
+
+        // First snapshot is always accepted.
+        assertTrue(MediaControlLogic.shouldAcceptSnapshot(current, null))
+        // Newer seq in same epoch is accepted, even if wall clock jumped backward.
+        assertTrue(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "Next", epoch = 200L, seq = 6L, updatedAtMs = 1000L),
+                current
+            )
+        )
+        // Reordered earlier seq in same epoch is rejected.
+        assertFalse(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "Stale", epoch = 200L, seq = 4L, updatedAtMs = 9000L),
+                current
+            )
+        )
+        // Higher producer epoch (phone restart) is accepted even with lower seq and earlier clock.
+        assertTrue(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "Restarted", epoch = 201L, seq = 1L, updatedAtMs = 1000L),
+                current
+            )
+        )
+        // Delayed delivery from a retired producer epoch is rejected.
+        assertFalse(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "OldEpoch", epoch = 199L, seq = 99L, updatedAtMs = 9999L),
+                current
+            )
+        )
+        // Legacy snapshots without epoch fall back to updatedAtMs.
+        val legacyCurrent = PhoneMediaState(title = "Legacy", updatedAtMs = 5000L)
+        assertTrue(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "LegacyNew", updatedAtMs = 5001L),
+                legacyCurrent
+            )
+        )
+        assertFalse(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "LegacyOld", updatedAtMs = 4999L),
+                legacyCurrent
+            )
+        )
     }
 
     @Test

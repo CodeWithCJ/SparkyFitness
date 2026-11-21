@@ -394,6 +394,9 @@ describe('WatchSettingsScreen', () => {
       await waitFor(() => {
         expect(screen.getByTestId('watch-media-access-row')).toBeTruthy();
         expect(screen.getByText('Set up')).toBeTruthy();
+        expect(
+          screen.getByTestId('watch-media-access-row').props.accessibilityLabel
+        ).toBe('Now Playing track info, Set up');
       });
 
       fireEvent.press(screen.getByTestId('watch-media-access-row'));
@@ -411,14 +414,23 @@ describe('WatchSettingsScreen', () => {
       alertSpy.mockClear();
       openSettingsMock.mockClear();
       isEnabledMock.mockResolvedValueOnce(true);
+      openSettingsMock.mockRejectedValueOnce(new Error('activity not found'));
 
       renderScreen();
       await waitFor(() => {
         expect(screen.getByText('Enabled')).toBeTruthy();
+        expect(
+          screen.getByTestId('watch-media-access-row').props.accessibilityLabel
+        ).toBe('Now Playing track info, Enabled');
       });
       fireEvent.press(screen.getByTestId('watch-media-access-row'));
-      expect(alertSpy).not.toHaveBeenCalled();
       expect(openSettingsMock).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith(
+          'Unable to open Settings',
+          expect.stringContaining('SparkyFitness Media Controls')
+        );
+      });
     } finally {
       alertSpy.mockRestore();
       Object.defineProperty(Platform, 'OS', {

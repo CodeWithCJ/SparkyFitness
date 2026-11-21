@@ -458,6 +458,17 @@ class WearSessionManager private constructor(private val appContext: Context) :
     }
   }
 
+  override fun isPhoneConnected(onResult: (Boolean) -> Unit) {
+    scope.launch(Dispatchers.IO) {
+      val connected = try {
+        Wearable.getNodeClient(appContext).connectedNodes.await().isNotEmpty()
+      } catch (_: Throwable) {
+        false
+      }
+      onResult(connected)
+    }
+  }
+
   override fun sendWatchRunFinished(result: WatchRunResult) {
     val payload = OutboundPayloads.runFinished(result)
     outboundChannel.trySend(OutboundOp.Send(payload, "runFinished", result.clientId))

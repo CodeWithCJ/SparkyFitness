@@ -881,6 +881,8 @@ data class PhoneMediaState(
   val maxVolume: Int = 0,
   val hasSession: Boolean = false,
   val hasMetadataAccess: Boolean = false,
+  val epoch: Long = 0L,
+  val seq: Long = 0L,
   val updatedAtMs: Long = 0L
 ) {
   val volumePercent: Int?
@@ -910,5 +912,23 @@ object MediaControlLogic {
     if (manualTarget != null) return manualTarget
     if (watchMusicActive && phoneMedia?.isPlaying != true) return MediaTarget.WATCH
     return MediaTarget.PHONE
+  }
+
+  /**
+   * Accepts newer or equal snapshots while dropping stale/reordered deliveries:
+   * - When either snapshot carries a producer [PhoneMediaState.epoch], compares
+   *   by `(epoch, seq)` so a phone process restart cleanly advances the epoch
+   *   even if the system clock moved backward, while reordered deliveries in
+   *   the same or older epoch are still rejected.
+   * - Falls back to [PhoneMediaState.updatedAtMs] for legacy payloads without
+   *   an epoch.
+   */
+  fun shouldAcceptSnapshot(incoming: PhoneMediaState, current: PhoneMediaState?): Boolean {
+    if (current == null) return true
+    if (incoming.epoch > 0L || current.epoch > 0L) {
+      if (incoming.epoch != current.epoch) return incoming.epoch > current.epoch
+      return incoming.seq >= current.seq
+    }
+    return incoming.updatedAtMs >= current.updatedAtMs
   }
 }

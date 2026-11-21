@@ -68,6 +68,7 @@ import androidx.wear.compose.material.Text
 import com.SparkyApps.SparkyFitnessMobile.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
@@ -1341,7 +1342,7 @@ fun NowPlayingPage(store: MediaControlStore, isCurrentPage: Boolean = true) {
     modifier = Modifier
       .fillMaxSize()
       .wearRotaryStepper(isCurrentPage = isCurrentPage, pixelsPerStep = 28f) { steps ->
-        if (steps > 0) store.adjustVolume(1) else if (steps < 0) store.adjustVolume(-1)
+        if (steps != 0) store.adjustVolume(steps, target)
       }
       .padding(start = 14.dp, end = 14.dp, top = 24.dp, bottom = 18.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
@@ -1415,7 +1416,7 @@ fun NowPlayingPage(store: MediaControlStore, isCurrentPage: Boolean = true) {
           .size(36.dp)
           .clip(CircleShape)
           .background(SparkyColors.CardBg)
-          .clickable { store.sendTransport(MediaTransportAction.PREVIOUS) },
+          .clickable { store.sendTransport(MediaTransportAction.PREVIOUS, target) },
         contentAlignment = Alignment.Center
       ) {
         Icon(
@@ -1430,7 +1431,7 @@ fun NowPlayingPage(store: MediaControlStore, isCurrentPage: Boolean = true) {
           .size(46.dp)
           .clip(CircleShape)
           .background(SparkyColors.Cyan)
-          .clickable { store.sendTransport(MediaTransportAction.PLAY_PAUSE) },
+          .clickable { store.sendTransport(MediaTransportAction.PLAY_PAUSE, target) },
         contentAlignment = Alignment.Center
       ) {
         Icon(
@@ -1447,7 +1448,7 @@ fun NowPlayingPage(store: MediaControlStore, isCurrentPage: Boolean = true) {
           .size(36.dp)
           .clip(CircleShape)
           .background(SparkyColors.CardBg)
-          .clickable { store.sendTransport(MediaTransportAction.NEXT) },
+          .clickable { store.sendTransport(MediaTransportAction.NEXT, target) },
         contentAlignment = Alignment.Center
       ) {
         Icon(
@@ -1466,11 +1467,13 @@ fun NowPlayingPage(store: MediaControlStore, isCurrentPage: Boolean = true) {
       verticalAlignment = Alignment.CenterVertically
     ) {
       SmallPillButton(stringResource(R.string.now_playing_vol_down), SparkyColors.CardBg, Color.White) {
-        store.adjustVolume(-1)
+        store.adjustVolume(-1, target)
       }
       if (volumePercent != null) {
+        val formattedVolume = NumberFormat.getPercentInstance(Locale.getDefault())
+          .format(volumePercent / 100.0)
         Text(
-          text = "$volumePercent%",
+          text = formattedVolume,
           fontSize = 11.sp,
           fontWeight = FontWeight.Medium,
           color = SparkyColors.Muted,
@@ -1479,7 +1482,7 @@ fun NowPlayingPage(store: MediaControlStore, isCurrentPage: Boolean = true) {
         )
       }
       SmallPillButton(stringResource(R.string.now_playing_vol_up), SparkyColors.CardBg, Color.White) {
-        store.adjustVolume(1)
+        store.adjustVolume(1, target)
       }
     }
   }

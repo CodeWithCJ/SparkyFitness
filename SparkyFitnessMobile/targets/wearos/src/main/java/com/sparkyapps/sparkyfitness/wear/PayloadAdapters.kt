@@ -658,6 +658,8 @@ object ContextPayloadMapper {
       maxVolume = maxVolume,
       hasSession = obj.optBooleanOrNull("hasSession") ?: false,
       hasMetadataAccess = obj.optBooleanOrNull("hasMetadataAccess") ?: false,
+      epoch = obj.optDoubleOrNull("epoch")?.toLong()?.coerceAtLeast(0L) ?: 0L,
+      seq = obj.optDoubleOrNull("seq")?.toLong()?.coerceAtLeast(0L) ?: 0L,
       updatedAtMs = obj.optDoubleOrNull("updatedAt")?.toLong() ?: System.currentTimeMillis()
     )
   }
@@ -1010,16 +1012,26 @@ object OutboundPayloads {
       put("at", atMs.toDouble())
     }
 
-  fun mediaControl(action: String): JSONObject =
+  fun mediaControl(action: String, steps: Int = 1): JSONObject =
     JSONObject().apply {
       put("type", "mediaControl")
       put("action", action)
+      val clamped = steps.coerceIn(1, 5)
+      if (clamped > 1) {
+        put("steps", clamped)
+      }
     }
 
-  fun mediaStateRequest(active: Boolean): JSONObject =
+  fun mediaStateRequest(active: Boolean, epoch: Long? = null, visitId: Long? = null): JSONObject =
     JSONObject().apply {
       put("type", "mediaStateRequest")
       put("active", active)
+      if (epoch != null && epoch > 0L) {
+        put("epoch", epoch.toDouble())
+      }
+      if (visitId != null && visitId > 0L) {
+        put("visitId", visitId.toDouble())
+      }
     }
 }
 

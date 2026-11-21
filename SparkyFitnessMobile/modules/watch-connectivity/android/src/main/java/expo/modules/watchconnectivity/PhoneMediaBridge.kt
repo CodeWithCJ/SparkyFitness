@@ -25,6 +25,8 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
 
 private const val MEDIA_TAG = "PhoneMediaBridge"
+private const val MEDIA_PREFS_NAME = "sparky_phone_media_bridge"
+private const val KEY_SNAPSHOT_EPOCH = "snapshot_epoch"
 private const val VOLUME_CHANGED_ACTION = "android.media.VOLUME_CHANGED_ACTION"
 private const val EXTRA_VOLUME_STREAM_TYPE = "android.media.EXTRA_VOLUME_STREAM_TYPE"
 private const val AUTO_STOP_OBSERVING_MS = 15 * 60_000L
@@ -48,6 +50,12 @@ internal object PhoneMediaBridge {
 
   private var observing = false
   private var observationGeneration = 0L
+  private var activeVisitEpoch = 0L
+  private var activeVisitId = 0L
+  private var activeVisitStopped = false
+  private var snapshotEpoch = 0L
+  private var snapshotSeq = 0L
+  private var lastSnapshotTimestampMs = 0L
   private var observedAppContext: Context? = null
   private var sessionsChangedListener: MediaSessionManager.OnActiveSessionsChangedListener? = null
   private var boundController: MediaController? = null
@@ -141,10 +149,54 @@ internal object PhoneMediaBridge {
     }
   }
 
-  fun setWatchObserving(context: Context, active: Boolean) {
+  private fun compareVisit(
+    epoch: Long,
+    visitId: Long,
+    activeEpoch: Long,
+    activeId: Long
+  ): Int {
+    return if (epoch != activeEpoch) {
+      epoch.compareTo(activeEpoch)
+    } else {
+      visitId.compareTo(activeId)
+    }
+  }
+
+  private fun ensureSnapshotEpochOnMain(appCtx: Context): Long {
+    if (snapshotEpoch > 0L) return snapshotEpoch
+    val now = System.currentTimeMillis()
+    val next = try {
+      val prefs = appCtx.getSharedPreferences(MEDIA_PREFS_NAME, Context.MODE_PRIVATE)
+      val stored = prefs.getLong(KEY_SNAPSHOT_EPOCH, 0L)
+      val computed = maxOf(stored + 1L, now)
+      prefs.edit().putLong(KEY_SNAPSHOT_EPOCH, computed).apply()
+      computed
+    } catch (_: Throwable) {
+      maxOf(1L, now)
+    }
+    snapshotEpoch = next
+    return next
+  }
+
+  fun setWatchObserving(
+    context: Context,
+    active: Boolean,
+    epoch: Long? = null,
+    visitId: Long? = null
+  ) {
     val appCtx = context.applicationContext
     mainHandler.post {
+      val incomingEpoch = epoch ?: 0L
       if (active) {
+        if (visitId != null) {
+          val cmp = compareVisit(incomingEpoch, visitId, activeVisitEpoch, activeVisitId)
+          if (cmp < 0 || (cmp == 0 && activeVisitStopped)) {
+            return@post
+          }
+          activeVisitEpoch = incomingEpoch
+          activeVisitId = visitId
+          activeVisitStopped = false
+        }
         val wasObserving = observing
         observedAppContext = appCtx
         if (!wasObserving) {
@@ -164,15 +216,26 @@ internal object PhoneMediaBridge {
             attachSessionObserversOnMain(appCtx)
           }
         }
-        pushStateSnapshot(appCtx, force = !wasObserving)
+        // Always reply to explicit requests so a dropped send during a disconnect can recover.
+        pushStateSnapshot(appCtx, force = true)
       } else {
+        if (visitId != null) {
+          val cmp = compareVisit(incomingEpoch, visitId, activeVisitEpoch, activeVisitId)
+          if (cmp < 0) {
+            return@post
+          }
+          activeVisitEpoch = incomingEpoch
+          activeVisitId = visitId
+          activeVisitStopped = true
+        }
         stopObservingOnMain()
       }
     }
   }
 
-  fun handleCommand(context: Context, action: String) {
+  fun handleCommand(context: Context, action: String, steps: Int = 1) {
     if (action.isBlank()) return
+    val stepCount = steps.coerceIn(1, 5)
     val appCtx = context.applicationContext
     mainHandler.post {
       if (observing) {
@@ -210,7 +273,9 @@ internal object PhoneMediaBridge {
           when (val endpoint = resolveVolumeEndpoint(controller)) {
             is VolumeEndpoint.RemoteAdjustable -> {
               try {
-                endpoint.controller.adjustVolume(direction, AudioManager.FLAG_SHOW_UI)
+                repeat(stepCount) {
+                  endpoint.controller.adjustVolume(direction, AudioManager.FLAG_SHOW_UI)
+                }
               } catch (e: Throwable) {
                 Log.w(MEDIA_TAG, "controller.adjustVolume failed: ${e.message}")
               }
@@ -220,11 +285,13 @@ internal object PhoneMediaBridge {
             }
             VolumeEndpoint.LocalStream -> {
               try {
-                audioManager?.adjustStreamVolume(
-                  AudioManager.STREAM_MUSIC,
-                  direction,
-                  AudioManager.FLAG_SHOW_UI
-                )
+                repeat(stepCount) {
+                  audioManager?.adjustStreamVolume(
+                    AudioManager.STREAM_MUSIC,
+                    direction,
+                    AudioManager.FLAG_SHOW_UI
+                  )
+                }
               } catch (_: Throwable) {}
             }
           }
@@ -645,6 +712,12 @@ internal object PhoneMediaBridge {
     if (!force && snapshotKey == lastSentSnapshot) return
     lastSentSnapshot = snapshotKey
 
+    val epoch = ensureSnapshotEpochOnMain(appCtx)
+    val seq = ++snapshotSeq
+    val now = System.currentTimeMillis()
+    val updatedAt = maxOf(lastSnapshotTimestampMs + 1L, now)
+    lastSnapshotTimestampMs = updatedAt
+
     val payload = mutableMapOf<String, Any?>(
       "type" to "mediaState",
       "isPlaying" to isPlaying,
@@ -652,7 +725,9 @@ internal object PhoneMediaBridge {
       "maxVolume" to maxVolume,
       "hasSession" to hasSession,
       "hasMetadataAccess" to hasAccess,
-      "updatedAt" to System.currentTimeMillis().toDouble()
+      "epoch" to epoch.toDouble(),
+      "seq" to seq.toDouble(),
+      "updatedAt" to updatedAt.toDouble()
     )
     if (title != null) payload["title"] = title
     if (artist != null) payload["artist"] = artist

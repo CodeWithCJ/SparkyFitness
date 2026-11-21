@@ -56,10 +56,14 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   ];
   const { isConnected } = useServerConnection();
   const { customNutrients } = useCustomNutrients({ enabled: isConnected });
+  const canConfigureMediaAccess =
+    isAndroid &&
+    typeof WatchConnectivity?.openMediaAccessSettings === 'function';
   const [mediaAccessEnabled, setMediaAccessEnabled] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!isAndroid || !WatchConnectivity?.isMediaAccessEnabled) return;
+    if (!canConfigureMediaAccess || !WatchConnectivity?.isMediaAccessEnabled)
+      return;
     let cancelled = false;
     let requestId = 0;
     const checkAccess = () => {
@@ -86,13 +90,23 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
       cancelled = true;
       sub.remove();
     };
-  }, [isAndroid]);
+  }, [canConfigureMediaAccess]);
 
   const handlePressMediaAccess = useCallback(() => {
+    const opener = WatchConnectivity?.openMediaAccessSettings;
+    if (!opener) return;
     const openSettings = () => {
-      void WatchConnectivity?.openMediaAccessSettings?.().catch(
-        () => undefined
-      );
+      void opener().catch(() => {
+        Alert.alert(
+          t('watchSettings.mediaAccessOpenErrorTitle', {
+            defaultValue: 'Unable to open Settings',
+          }),
+          t('watchSettings.mediaAccessOpenErrorBody', {
+            defaultValue:
+              'Open Android Settings → Notifications → Notification read, reply & control and enable SparkyFitness Media Controls.',
+          })
+        );
+      });
     };
     if (mediaAccessEnabled) {
       openSettings();
@@ -480,7 +494,7 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
           </>
         )}
 
-        {isAndroid && (
+        {canConfigureMediaAccess && (
           <>
             <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
               {t('watchSettings.mediaControlsTitle', {
@@ -491,6 +505,19 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
               testID="watch-media-access-row"
               title={t('watchSettings.mediaAccessTitle', {
                 defaultValue: 'Now Playing track info',
+              })}
+              accessibilityLabel={t('watchSettings.mediaAccessA11yLabel', {
+                defaultValue: '{{title}}, {{status}}',
+                title: t('watchSettings.mediaAccessTitle', {
+                  defaultValue: 'Now Playing track info',
+                }),
+                status: mediaAccessEnabled
+                  ? t('watchSettings.mediaAccessEnabled', {
+                      defaultValue: 'Enabled',
+                    })
+                  : t('watchSettings.mediaAccessSetup', {
+                      defaultValue: 'Set up',
+                    }),
               })}
               subtitle={
                 mediaAccessEnabled

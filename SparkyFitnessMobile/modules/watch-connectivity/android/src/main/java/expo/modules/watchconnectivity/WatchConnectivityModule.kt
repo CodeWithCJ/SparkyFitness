@@ -1241,11 +1241,14 @@ internal object WatchConnectivityHub {
       }
       "mediaControl" -> {
         val action = payload["action"] as? String ?: return
-        PhoneMediaBridge.handleCommand(context, action)
+        val steps = asInt(payload["steps"]) ?: 1
+        PhoneMediaBridge.handleCommand(context, action, steps)
       }
       "mediaStateRequest" -> {
         val active = payload["active"] as? Boolean ?: true
-        PhoneMediaBridge.setWatchObserving(context, active)
+        val epoch = asDouble(payload["epoch"])?.toLong()?.takeIf { it > 0L }
+        val visitId = asDouble(payload["visitId"])?.toLong()?.takeIf { it > 0L }
+        PhoneMediaBridge.setWatchObserving(context, active, epoch, visitId)
       }
     }
   }
