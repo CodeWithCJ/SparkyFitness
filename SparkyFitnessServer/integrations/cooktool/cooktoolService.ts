@@ -1,9 +1,8 @@
 import type {
   FoodProviderAdapter,
-  ProviderSearchOptions,
-  ProviderDetailOptions,
-  ProviderBarcodeOptions,
+  ProviderCallContext,
 } from '../foodProviders/types.js';
+import type { ProviderSearchResult } from '../../services/externalFoodSearchService.js';
 import { providerFetchJson } from '../foodProviders/httpClient.js';
 import { buildPer100gFood } from '../foodProviders/per100gMapper.js';
 import { detailCache } from '../foodProviders/detailCache.js';
@@ -12,7 +11,6 @@ import type {
   MappedProviderFood,
   StandardNutrientField,
 } from '../foodProviders/per100gMapper.js';
-import type { FoodSearchItem } from '../../services/externalFoodSearchService.js';
 
 export const COOKTOOL_DEFAULT_BASE_URL = 'https://api.cooktool.org/api/v1';
 
@@ -118,25 +116,26 @@ const NUTRIENT_NUMBER_TO_STANDARD: Record<number, StandardNutrientField> = {
   1018: 'alcohol_g',
 };
 
-export async function searchCookTool(options: ProviderSearchOptions): Promise<{
-  foods: FoodSearchItem[];
-  totalCount?: number;
-  hasMore?: boolean;
-}> {
-  const {
-    query,
-    provider,
-    credentials,
-    page = 1,
-    pageSize = 20,
-    signal,
-  } = options;
+export async function searchCookTool(
+  ctx: ProviderCallContext,
+  query: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<ProviderSearchResult> {
   if (!query || !query.trim()) {
-    return { foods: [], totalCount: 0, hasMore: false };
+    return {
+      foods: [],
+      pagination: {
+        page,
+        pageSize,
+        totalCount: 0,
+        hasMore: false,
+      },
+    };
   }
 
-  const baseUrl = resolveBaseUrl(provider?.base_url);
-  const headers = resolveHeaders(credentials?.app_key ?? provider?.app_key);
+  const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
+  const headers = resolveHeaders(ctx.credentials?.app_key);
   const offset = Math.max(0, (page - 1) * pageSize);
   const encodedQuery = encodeURIComponent(query.trim());
 
@@ -148,11 +147,11 @@ export async function searchCookTool(options: ProviderSearchOptions): Promise<{
   const [ingredientsRes, brandedRes] = await Promise.allSettled([
     providerFetchJson<{ data?: CookToolIngredientSearchItem[] }>(
       `${baseUrl}/ingredients?q=${encodedQuery}&limit=${pageSize}&offset=${offset}`,
-      { provider: 'cooktool', headers, signal }
+      { providerType: 'cooktool', headers, signal: ctx.signal }
     ),
     providerFetchJson<{ data?: CookToolBrandedSearchItem[] }>(
       `${baseUrl}/branded?q=${encodedQuery}&limit=${pageSize}&offset=${offset}`,
-      { provider: 'cooktool', headers, signal }
+      { providerType: 'cooktool', headers, signal: ctx.signal }
     ),
   ]);
 
@@ -176,7 +175,7 @@ export async function searchCookTool(options: ProviderSearchOptions): Promise<{
     throw error;
   }
 
-  const foods: FoodSearchItem[] = [
+  const foods = [
     ...ingredients.map((item) => ({
       id: `ing:${item.id}`,
       name: item.name,
@@ -201,32 +200,37 @@ export async function searchCookTool(options: ProviderSearchOptions): Promise<{
 
   return {
     foods,
-    hasMore,
+    pagination: {
+      page,
+      pageSize,
+      totalCount: foods.length,
+      hasMore,
+    },
   };
 }
 
 export async function getCookToolDetails(
-  options: ProviderDetailOptions
-): Promise<MappedProviderFood> {
-  const { externalId, provider, credentials, signal } = options;
+  ctx: ProviderCallContext,
+  externalId: string
+): Promise<MappedProviderFood | null> {
   if (!externalId) {
     throw new Error('External ID is required for CookTool details.');
   }
 
-  const cached = detailCache.get('cooktool', externalId);
+  const cached = detailCache.get<MappedProviderFood>('cooktool', externalId);
   if (cached) {
     return cached;
   }
 
-  const baseUrl = resolveBaseUrl(provider?.base_url);
-  const headers = resolveHeaders(credentials?.app_key ?? provider?.app_key);
+  const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
+  const headers = resolveHeaders(ctx.credentials?.app_key);
 
   if (externalId.startsWith('ing:')) {
     const numericId = externalId.slice(4);
     const country = 'US';
     const response = await providerFetchJson<CookToolNutrientResponse>(
       `${baseUrl}/ingredients/${encodeURIComponent(numericId)}/nutrients?country=${country}`,
-      { provider: 'cooktool', headers, signal }
+      { providerType: 'cooktool', headers, signal: ctx.signal }
     );
 
     const per100g: Partial<Record<StandardNutrientField, number>> = {};
@@ -269,13 +273,13 @@ export async function getCookToolDetails(
 }
 
 export async function lookupCookToolBarcode(
-  options: ProviderBarcodeOptions
+  ctx: ProviderCallContext,
+  barcode: string
 ): Promise<MappedProviderFood | null> {
-  const { barcode, provider, credentials, signal } = options;
   if (!barcode) return null;
 
-  const baseUrl = resolveBaseUrl(provider?.base_url);
-  const headers = resolveHeaders(credentials?.app_key ?? provider?.app_key);
+  const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
+  const headers = resolveHeaders(ctx.credentials?.app_key);
 
   const candidates: string[] = [barcode];
   const alt = altBarcode(barcode);
@@ -294,9 +298,9 @@ export async function lookupCookToolBarcode(
       const result = await providerFetchJson<{
         data?: CookToolBrandedSearchItem[];
       }>(`${baseUrl}/branded?gtin=${encodeURIComponent(candidate)}`, {
-        provider: 'cooktool',
+        providerType: 'cooktool',
         headers,
-        signal,
+        signal: ctx.signal,
       });
       if (result.data && result.data.length > 0) {
         const item = result.data[0];

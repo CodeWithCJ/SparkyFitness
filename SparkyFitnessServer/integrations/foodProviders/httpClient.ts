@@ -12,7 +12,7 @@ export interface ProviderFetchJsonOptions<T> {
   providerType: FoodProviderType;
   headers?: Record<string, string>;
   signal?: AbortSignal;
-  schema: z.ZodType<T>;
+  schema?: z.ZodType<T>;
 }
 
 export async function providerFetchJson<T>(

@@ -1,201 +1,201 @@
 {
- "data": {
-  "query": "banana",
-  "lang": "en",
-  "type": null,
-  "count": 3,
-  "results": [
-   {
-    "id": "fdc:173944",
-    "type": "generic",
-    "name": "Bananas, raw",
-    "basis": "100 g",
-    "energy_kcal_per_100": 89,
-    "energy_provenance": {
-     "source": "fdc_sr_legacy",
-     "record_id": "173944",
-     "source_nutrient_id": "1008",
-     "retrieved": "2026-10-10",
-     "method": "copied from source"
-    },
-    "is_preferred": false,
-    "matched_name": "Bananas, raw",
-    "matched_lang": "en",
-    "score": 7.334,
-    "why": [
-     "name is the search words",
-     "state raw",
-     "used in 35 USDA survey recipes",
-     "USDA reference record"
-    ]
-   },
-   {
-    "id": "fdc:1105314",
-    "type": "generic",
-    "name": "Bananas, ripe and slightly ripe, raw",
-    "basis": "100 g",
-    "energy_kcal_per_100": 97,
-    "energy_provenance": {
-     "source": "fdc_foundation",
-     "record_id": "1105314",
-     "source_nutrient_id": "1008",
-     "retrieved": "2026-10-10",
-     "method": "copied from source"
-    },
-    "is_preferred": true,
-    "matched_name": "Bananas, ripe and slightly ripe, raw",
-    "matched_lang": "en",
-    "score": 6.534,
-    "why": [
-     "name is the search words",
-     "3 extra words",
-     "state raw",
-     "used in 35 USDA survey recipes",
-     "USDA reference record"
-    ]
-   },
-   {
-    "id": "fdc:1105073",
-    "type": "generic",
-    "name": "Bananas, overripe, raw",
-    "basis": "100 g",
-    "energy_kcal_per_100": 85,
-    "energy_provenance": {
-     "source": "fdc_foundation",
-     "record_id": "1105073",
-     "source_nutrient_id": "1008",
-     "retrieved": "2026-10-10",
-     "method": "copied from source"
-    },
-    "is_preferred": true,
-    "matched_name": "Bananas, overripe, raw",
-    "matched_lang": "en",
-    "score": 5.352,
-    "why": [
-     "name is the search words",
-     "1 extra word",
-     "state raw",
-     "used in 1 USDA survey recipes",
-     "USDA reference record"
-    ]
-   }
-  ],
-  "ranking": "Generic foods and dishes together, by a score computed from the data (each result's score and why): every word as a whole word (not only the start of a longer word), the name starting with the words or in USDA order ('Oil, olive'), not naming another food ('banana nectar', 'pomme de terre'), fewer extra words, the record for the food unspecified (NFS, average); raw or as sold before cooked; processed forms (powder, dried, canned, frozen, candied, smoked...), parts (skin), baby foods, brand and restaurant records only when asked for; foods used most in USDA FNDDS 2021-2023 survey recipes (half weight for names in other languages); preferred records; USDA reference records for English names, CIQUAL for other languages. Ties: fewer words, shorter name, id. Then branded products by full-text relevance (bm25)."
- },
- "meta": {
-  "request_id": "req_e1913dcf386457484c",
-  "api_version": "1",
-  "dataset": "food",
-  "dataset_version": "1.0.0",
-  "dataset_built_at": "2026-10-10T17:56:11Z",
-  "data_status": "released",
-  "sources": [
-   {
-    "id": "ah102",
-    "name": "USDA Agriculture Handbook No. 102, Food Yields Summarized by Different Stages of Preparation (1975)",
-    "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/Classics/ah102.pdf",
-    "licence": "U.S. Government work (USDA), public domain in the United States",
-    "commercial_redistribution_ok": true,
-    "retrieved": "2026-10-10",
-    "version": "1975 (scanned PDF, ARS Classics)",
-    "attribution": "Matthews RH, Garrison YJ. Food Yields Summarized by Different Stages of Preparation. Agriculture Handbook No. 102, USDA, 1975."
-   },
-   {
-    "id": "ciqual",
-    "name": "ANSES-CIQUAL French food composition table 2025 (English edition)",
-    "url": "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202025_ENG_2025_11_03.xlsx",
-    "licence": "Licence Ouverte / Open Licence (Etalab). Reuse allowed, including commercial, on condition that the data are not altered, their meaning is not distorted, the source and version date are cited, and no ANSES endorsement is implied. No share-alike.",
-    "commercial_redistribution_ok": true,
-    "retrieved": "2026-10-10",
-    "version": "2025 (file dated 2025-11-03)",
-    "attribution": "Anses. 2025. Ciqual French food composition table."
-   },
-   {
-    "id": "ciqual_fr",
-    "name": "ANSES-CIQUAL Table de composition nutritionnelle des aliments 2025 (French edition; used for official French names only)",
-    "url": "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202025_FR_2025_11_03.xlsx",
-    "licence": "Licence Ouverte / Open Licence (Etalab), same terms as the English edition.",
-    "commercial_redistribution_ok": true,
-    "retrieved": "2026-10-10",
-    "version": "2025 (file dated 2025-11-03)",
-    "attribution": "Anses. 2025. Table de composition nutritionnelle des aliments Ciqual."
-   },
-   {
-    "id": "cooking_yields_meat",
-    "name": "USDA Table of Cooking Yields for Meat and Poultry (2014)",
-    "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/retn/USDA_CookingYields_MeatPoultry.pdf",
-    "licence": "U.S. Government work (USDA ARS), public domain in the United States",
-    "commercial_redistribution_ok": true,
-    "retrieved": "2026-10-10",
-    "version": "2014",
-    "attribution": "USDA ARS Nutrient Data Laboratory. USDA Table of Cooking Yields for Meat and Poultry, 2014."
-   },
-   {
-    "id": "fdc_branded",
-    "name": "USDA FoodData Central - Branded Foods (Global Branded Food Products Database)",
-    "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_branded_food_csv_2026-04-30.zip",
-    "licence": "CC0 1.0 Universal (USDA FoodData Central)",
-    "commercial_redistribution_ok": true,
-    "retrieved": "2026-10-10",
-    "version": "2026-04-30",
-    "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Branded Foods 2026-04-30 (data provided by GS1 US/1WorldSync/Label Insight/NielsenIQ/Euromonitor partners via the Global Branded Food Products Database)."
-   },
-   {
-    "id": "fdc_foundation",
-    "name": "USDA FoodData Central - Foundation Foods",
-    "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_csv_2026-04-30.zip",
-    "licence": "CC0 1.0 Universal (USDA FoodData Central data are public domain, published under CC0)",
-    "commercial_redistribution_ok": true,
-    "retrieved": "2026-10-10",
-    "version": "2026-04-30",
-    "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Foundation Foods 2026-04-30. fdc.nal.usda.gov"
-   },
-   {
-    "id": "fdc_sr_legacy",
-    "name": "USDA FoodData Central - SR Legacy",
-    "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_csv_2018-04.zip",
-    "licence": "CC0 1.0 Universal (USDA FoodData Central)",
-    "commercial_redistribution_ok": true,
-    "retrieved": "2026-10-10",
-    "version": "2018-04",
-    "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, SR Legacy 2018-04."
-   },
-   {
-    "id": "fdc_survey",
-    "name": "USDA FoodData Central - Survey (FNDDS 2021-2023)",
-    "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_csv_2024-10-31.zip",
-    "licence": "CC0 1.0 Universal (USDA FoodData Central)",
-    "commercial_redistribution_ok": true,
-    "retrieved": "2026-10-10",
-    "version": "2024-10-31",
-    "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Survey Foods (FNDDS 2021-2023), 2024-10-31."
-   },
-   {
-    "id": "fndds_ingredients",
-    "name": "USDA ARS 2021-2023 FNDDS At A Glance - FNDDS Ingredients (recipes, moisture change)",
-    "url": "https://www.ars.usda.gov/ARSUserFiles/80400530/apps/2021-2023%20FNDDS%20At%20A%20Glance%20-%20FNDDS%20Ingredients.xlsx",
-    "licence": "U.S. Government work (USDA ARS), public domain in the United States",
-    "commercial_redistribution_ok": true,
-    "retrieved": "2026-10-10",
-    "version": "2021-2023",
-    "attribution": "USDA ARS Food Surveys Research Group. FNDDS 2021-2023."
-   },
-   {
-    "id": "retn06",
-    "name": "USDA Table of Nutrient Retention Factors, Release 6 (2007)",
-    "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/retn/retn06.txt",
-    "licence": "U.S. Government work (USDA ARS), public domain in the United States",
-    "commercial_redistribution_ok": true,
-    "retrieved": "2026-10-10",
-    "version": "Release 6 (2007)",
-    "attribution": "USDA ARS Nutrient Data Laboratory. USDA Table of Nutrient Retention Factors, Release 6, 2007."
-   }
-  ],
-  "provenance_note": "Every value carries provenance (source, id or URL, retrieval date; method and confidence where an AI judged). Calculations list their inputs and method.",
-  "disclaimer": "Nutrition reference data. Not medical or dietary advice.",
-  "demo": true,
-  "demo_kind": "sample",
-  "demo_note": "Demo answer: a sample request from the site, answered by the real endpoint on the current data. Not metered and limited per IP address. For any other input, send your API key (X-API-Key) to the same path without /demo; a free key takes a minute.",
-  "usage": null
- }
+  "data": {
+    "query": "banana",
+    "lang": "en",
+    "type": null,
+    "count": 3,
+    "results": [
+      {
+        "id": "fdc:173944",
+        "type": "generic",
+        "name": "Bananas, raw",
+        "basis": "100 g",
+        "energy_kcal_per_100": 89,
+        "energy_provenance": {
+          "source": "fdc_sr_legacy",
+          "record_id": "173944",
+          "source_nutrient_id": "1008",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "is_preferred": false,
+        "matched_name": "Bananas, raw",
+        "matched_lang": "en",
+        "score": 7.334,
+        "why": [
+          "name is the search words",
+          "state raw",
+          "used in 35 USDA survey recipes",
+          "USDA reference record"
+        ]
+      },
+      {
+        "id": "fdc:1105314",
+        "type": "generic",
+        "name": "Bananas, ripe and slightly ripe, raw",
+        "basis": "100 g",
+        "energy_kcal_per_100": 97,
+        "energy_provenance": {
+          "source": "fdc_foundation",
+          "record_id": "1105314",
+          "source_nutrient_id": "1008",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "is_preferred": true,
+        "matched_name": "Bananas, ripe and slightly ripe, raw",
+        "matched_lang": "en",
+        "score": 6.534,
+        "why": [
+          "name is the search words",
+          "3 extra words",
+          "state raw",
+          "used in 35 USDA survey recipes",
+          "USDA reference record"
+        ]
+      },
+      {
+        "id": "fdc:1105073",
+        "type": "generic",
+        "name": "Bananas, overripe, raw",
+        "basis": "100 g",
+        "energy_kcal_per_100": 85,
+        "energy_provenance": {
+          "source": "fdc_foundation",
+          "record_id": "1105073",
+          "source_nutrient_id": "1008",
+          "retrieved": "2026-10-10",
+          "method": "copied from source"
+        },
+        "is_preferred": true,
+        "matched_name": "Bananas, overripe, raw",
+        "matched_lang": "en",
+        "score": 5.352,
+        "why": [
+          "name is the search words",
+          "1 extra word",
+          "state raw",
+          "used in 1 USDA survey recipes",
+          "USDA reference record"
+        ]
+      }
+    ],
+    "ranking": "Generic foods and dishes together, by a score computed from the data (each result's score and why): every word as a whole word (not only the start of a longer word), the name starting with the words or in USDA order ('Oil, olive'), not naming another food ('banana nectar', 'pomme de terre'), fewer extra words, the record for the food unspecified (NFS, average); raw or as sold before cooked; processed forms (powder, dried, canned, frozen, candied, smoked...), parts (skin), baby foods, brand and restaurant records only when asked for; foods used most in USDA FNDDS 2021-2023 survey recipes (half weight for names in other languages); preferred records; USDA reference records for English names, CIQUAL for other languages. Ties: fewer words, shorter name, id. Then branded products by full-text relevance (bm25)."
+  },
+  "meta": {
+    "request_id": "req_e1913dcf386457484c",
+    "api_version": "1",
+    "dataset": "food",
+    "dataset_version": "1.0.0",
+    "dataset_built_at": "2026-10-10T17:56:11Z",
+    "data_status": "released",
+    "sources": [
+      {
+        "id": "ah102",
+        "name": "USDA Agriculture Handbook No. 102, Food Yields Summarized by Different Stages of Preparation (1975)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/Classics/ah102.pdf",
+        "licence": "U.S. Government work (USDA), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "1975 (scanned PDF, ARS Classics)",
+        "attribution": "Matthews RH, Garrison YJ. Food Yields Summarized by Different Stages of Preparation. Agriculture Handbook No. 102, USDA, 1975."
+      },
+      {
+        "id": "ciqual",
+        "name": "ANSES-CIQUAL French food composition table 2025 (English edition)",
+        "url": "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202025_ENG_2025_11_03.xlsx",
+        "licence": "Licence Ouverte / Open Licence (Etalab). Reuse allowed, including commercial, on condition that the data are not altered, their meaning is not distorted, the source and version date are cited, and no ANSES endorsement is implied. No share-alike.",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2025 (file dated 2025-11-03)",
+        "attribution": "Anses. 2025. Ciqual French food composition table."
+      },
+      {
+        "id": "ciqual_fr",
+        "name": "ANSES-CIQUAL Table de composition nutritionnelle des aliments 2025 (French edition; used for official French names only)",
+        "url": "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202025_FR_2025_11_03.xlsx",
+        "licence": "Licence Ouverte / Open Licence (Etalab), same terms as the English edition.",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2025 (file dated 2025-11-03)",
+        "attribution": "Anses. 2025. Table de composition nutritionnelle des aliments Ciqual."
+      },
+      {
+        "id": "cooking_yields_meat",
+        "name": "USDA Table of Cooking Yields for Meat and Poultry (2014)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/retn/USDA_CookingYields_MeatPoultry.pdf",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2014",
+        "attribution": "USDA ARS Nutrient Data Laboratory. USDA Table of Cooking Yields for Meat and Poultry, 2014."
+      },
+      {
+        "id": "fdc_branded",
+        "name": "USDA FoodData Central - Branded Foods (Global Branded Food Products Database)",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_branded_food_csv_2026-04-30.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2026-04-30",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Branded Foods 2026-04-30 (data provided by GS1 US/1WorldSync/Label Insight/NielsenIQ/Euromonitor partners via the Global Branded Food Products Database)."
+      },
+      {
+        "id": "fdc_foundation",
+        "name": "USDA FoodData Central - Foundation Foods",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_csv_2026-04-30.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central data are public domain, published under CC0)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2026-04-30",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Foundation Foods 2026-04-30. fdc.nal.usda.gov"
+      },
+      {
+        "id": "fdc_sr_legacy",
+        "name": "USDA FoodData Central - SR Legacy",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_csv_2018-04.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2018-04",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, SR Legacy 2018-04."
+      },
+      {
+        "id": "fdc_survey",
+        "name": "USDA FoodData Central - Survey (FNDDS 2021-2023)",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_csv_2024-10-31.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2024-10-31",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Survey Foods (FNDDS 2021-2023), 2024-10-31."
+      },
+      {
+        "id": "fndds_ingredients",
+        "name": "USDA ARS 2021-2023 FNDDS At A Glance - FNDDS Ingredients (recipes, moisture change)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400530/apps/2021-2023%20FNDDS%20At%20A%20Glance%20-%20FNDDS%20Ingredients.xlsx",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2021-2023",
+        "attribution": "USDA ARS Food Surveys Research Group. FNDDS 2021-2023."
+      },
+      {
+        "id": "retn06",
+        "name": "USDA Table of Nutrient Retention Factors, Release 6 (2007)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/retn/retn06.txt",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "Release 6 (2007)",
+        "attribution": "USDA ARS Nutrient Data Laboratory. USDA Table of Nutrient Retention Factors, Release 6, 2007."
+      }
+    ],
+    "provenance_note": "Every value carries provenance (source, id or URL, retrieval date; method and confidence where an AI judged). Calculations list their inputs and method.",
+    "disclaimer": "Nutrition reference data. Not medical or dietary advice.",
+    "demo": true,
+    "demo_kind": "sample",
+    "demo_note": "Demo answer: a sample request from the site, answered by the real endpoint on the current data. Not metered and limited per IP address. For any other input, send your API key (X-API-Key) to the same path without /demo; a free key takes a minute.",
+    "usage": null
+  }
 }

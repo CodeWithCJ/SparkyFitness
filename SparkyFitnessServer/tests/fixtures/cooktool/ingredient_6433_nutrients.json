@@ -4,22 +4,107 @@
   "country": "US",
   "nutrient_count": 106,
   "nutrients": [
-    { "nutrient_nbr": 203, "amount_per_100g": 1.09, "unit_name": "G", "source_code": "USDA" },
-    { "nutrient_nbr": 204, "amount_per_100g": 0.33, "unit_name": "G", "source_code": "USDA" },
-    { "nutrient_nbr": 205, "amount_per_100g": 22.84, "unit_name": "G", "source_code": "USDA" },
-    { "nutrient_nbr": 208, "amount_per_100g": 89, "unit_name": "KCAL", "source_code": "USDA" },
-    { "nutrient_nbr": 255, "amount_per_100g": 74.91, "unit_name": "G", "source_code": "USDA" },
-    { "nutrient_nbr": 291, "amount_per_100g": 2.6, "unit_name": "G", "source_code": "USDA" },
-    { "nutrient_nbr": 301, "amount_per_100g": 5, "unit_name": "MG", "source_code": "USDA" },
-    { "nutrient_nbr": 303, "amount_per_100g": 0.26, "unit_name": "MG", "source_code": "USDA" },
-    { "nutrient_nbr": 306, "amount_per_100g": 358, "unit_name": "MG", "source_code": "USDA" },
-    { "nutrient_nbr": 307, "amount_per_100g": 1, "unit_name": "MG", "source_code": "USDA" },
-    { "nutrient_nbr": 320, "amount_per_100g": 3, "unit_name": "UG", "source_code": "USDA" },
-    { "nutrient_nbr": 401, "amount_per_100g": 8.7, "unit_name": "MG", "source_code": "USDA" },
-    { "nutrient_nbr": 601, "amount_per_100g": 0, "unit_name": "MG", "source_code": "USDA" },
-    { "nutrient_nbr": 605, "amount_per_100g": 0, "unit_name": "G", "source_code": "USDA" },
-    { "nutrient_nbr": 606, "amount_per_100g": 0.112, "unit_name": "G", "source_code": "USDA" },
-    { "nutrient_nbr": 645, "amount_per_100g": 0.032, "unit_name": "G", "source_code": "USDA" },
-    { "nutrient_nbr": 646, "amount_per_100g": 0.073, "unit_name": "G", "source_code": "USDA" }
+    {
+      "nutrient_nbr": 203,
+      "amount_per_100g": 1.09,
+      "unit_name": "G",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 204,
+      "amount_per_100g": 0.33,
+      "unit_name": "G",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 205,
+      "amount_per_100g": 22.84,
+      "unit_name": "G",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 208,
+      "amount_per_100g": 89,
+      "unit_name": "KCAL",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 255,
+      "amount_per_100g": 74.91,
+      "unit_name": "G",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 291,
+      "amount_per_100g": 2.6,
+      "unit_name": "G",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 301,
+      "amount_per_100g": 5,
+      "unit_name": "MG",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 303,
+      "amount_per_100g": 0.26,
+      "unit_name": "MG",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 306,
+      "amount_per_100g": 358,
+      "unit_name": "MG",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 307,
+      "amount_per_100g": 1,
+      "unit_name": "MG",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 320,
+      "amount_per_100g": 3,
+      "unit_name": "UG",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 401,
+      "amount_per_100g": 8.7,
+      "unit_name": "MG",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 601,
+      "amount_per_100g": 0,
+      "unit_name": "MG",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 605,
+      "amount_per_100g": 0,
+      "unit_name": "G",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 606,
+      "amount_per_100g": 0.112,
+      "unit_name": "G",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 645,
+      "amount_per_100g": 0.032,
+      "unit_name": "G",
+      "source_code": "USDA"
+    },
+    {
+      "nutrient_nbr": 646,
+      "amount_per_100g": 0.073,
+      "unit_name": "G",
+      "source_code": "USDA"
+    }
   ]
 }

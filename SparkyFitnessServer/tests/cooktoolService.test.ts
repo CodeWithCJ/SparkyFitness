@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import fs from 'node:fs';
 import {
   searchCookTool,
   getCookToolDetails,
@@ -6,9 +7,26 @@ import {
   cooktoolAdapter,
 } from '../integrations/cooktool/cooktoolService.js';
 import { detailCache } from '../integrations/foodProviders/detailCache.js';
-import searchBananaFixture from './fixtures/cooktool/search_banana.json';
-import ingredientNutrientsFixture from './fixtures/cooktool/ingredient_6433_nutrients.json';
-import brandedCheeriosFixture from './fixtures/cooktool/branded_gtin_00016000232310.json';
+import type { ProviderCallContext } from '../integrations/foodProviders/types.js';
+
+const ingredientNutrientsFixture = JSON.parse(
+  fs.readFileSync(
+    new URL(
+      './fixtures/cooktool/ingredient_6433_nutrients.json',
+      import.meta.url
+    ),
+    'utf-8'
+  )
+);
+const brandedCheeriosFixture = JSON.parse(
+  fs.readFileSync(
+    new URL(
+      './fixtures/cooktool/branded_gtin_00016000232310.json',
+      import.meta.url
+    ),
+    'utf-8'
+  )
+);
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -24,12 +42,12 @@ function mockJsonResponse(data: unknown, status = 200) {
 }
 
 describe('CookTool Service', () => {
-  const credentials = { app_key: 'test_ctk_key_12345' };
-  const provider = {
-    id: 'p_cooktool_1',
-    provider_type: 'cooktool' as const,
-    app_key: 'test_ctk_key_12345',
-    is_active: true,
+  const ctx: ProviderCallContext = {
+    userId: 'user-1',
+    credentialUserId: 'user-1',
+    credentials: { app_key: 'test_ctk_key_12345' },
+    language: 'en',
+    autoScale: false,
   };
 
   beforeEach(() => {
@@ -43,12 +61,9 @@ describe('CookTool Service', () => {
 
   describe('searchCookTool', () => {
     it('returns empty result for blank or whitespace query', async () => {
-      const res = await searchCookTool({
-        query: '   ',
-        credentials,
-      });
+      const res = await searchCookTool(ctx, '   ');
       expect(res.foods).toEqual([]);
-      expect(res.hasMore).toBe(false);
+      expect(res.pagination.hasMore).toBe(false);
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
@@ -69,12 +84,7 @@ describe('CookTool Service', () => {
           })
         );
 
-      const res = await searchCookTool({
-        query: 'banana',
-        credentials,
-        page: 1,
-        pageSize: 20,
-      });
+      const res = await searchCookTool(ctx, 'banana', 1, 20);
 
       expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(res.foods).toHaveLength(2);
@@ -95,7 +105,7 @@ describe('CookTool Service', () => {
         is_partial: true,
         calories: undefined,
       });
-      expect(res.hasMore).toBe(false);
+      expect(res.pagination.hasMore).toBe(false);
     });
 
     it('still returns ingredients if branded search fails', async () => {
@@ -111,15 +121,10 @@ describe('CookTool Service', () => {
           headers: new Headers({ 'content-type': 'text/plain' }),
         });
 
-      const res = await searchCookTool({
-        query: 'banana',
-        credentials,
-        page: 1,
-        pageSize: 20,
-      });
+      const res = await searchCookTool(ctx, 'banana', 1, 20);
 
       expect(res.foods).toHaveLength(1);
-      expect(res.foods[0].id).toBe('ing:6433');
+      expect((res.foods[0] as { id: string }).id).toBe('ing:6433');
     });
 
     it('throws if both search requests fail', async () => {
@@ -139,12 +144,7 @@ describe('CookTool Service', () => {
           headers: new Headers(),
         });
 
-      await expect(
-        searchCookTool({
-          query: 'banana',
-          credentials,
-        })
-      ).rejects.toThrow();
+      await expect(searchCookTool(ctx, 'banana')).rejects.toThrow();
     });
   });
 
@@ -154,44 +154,34 @@ describe('CookTool Service', () => {
         mockJsonResponse(ingredientNutrientsFixture)
       );
 
-      const food = await getCookToolDetails({
-        externalId: 'ing:6433',
-        credentials,
-        provider,
-      });
+      const food = await getCookToolDetails(ctx, 'ing:6433');
 
-      expect(food.name).toBe('Bananas, raw');
-      expect(food.provider_type).toBe('cooktool');
-      expect(food.provider_external_id).toBe('ing:6433');
-      expect(food.default_variant.calories).toBe(89);
-      expect(food.default_variant.protein).toBe(1.1);
-      expect(food.default_variant.fat).toBe(0.3);
-      expect(food.default_variant.carbs).toBe(22.8);
-      expect(food.default_variant.dietary_fiber).toBe(2.6);
-      expect(food.default_variant.potassium).toBe(358);
-      expect(food.default_variant.sodium).toBe(1);
-      expect(food.default_variant.iron).toBe(0.3);
+      expect(food).not.toBeNull();
+      expect(food?.name).toBe('Bananas, raw');
+      expect(food?.provider_type).toBe('cooktool');
+      expect(food?.provider_external_id).toBe('ing:6433');
+      expect(food?.default_variant.calories).toBe(89);
+      expect(food?.default_variant.protein).toBe(1.1);
+      expect(food?.default_variant.fat).toBe(0.3);
+      expect(food?.default_variant.carbs).toBe(22.8);
+      expect(food?.default_variant.dietary_fiber).toBe(2.6);
+      expect(food?.default_variant.potassium).toBe(358);
+      expect(food?.default_variant.sodium).toBe(1);
+      expect(food?.default_variant.iron).toBe(0.3);
 
       // Verify cached on subsequent call
-      const cached = await getCookToolDetails({
-        externalId: 'ing:6433',
-        credentials,
-        provider,
-      });
+      const cached = await getCookToolDetails(ctx, 'ing:6433');
       expect(cached).toBe(food);
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });
 
     it('fetches branded detail and returns mapped food', async () => {
-      const food = await getCookToolDetails({
-        externalId: 'br:1994784',
-        credentials,
-        provider,
-      });
+      const food = await getCookToolDetails(ctx, 'br:1994784');
 
-      expect(food.name).toBe('CookTool Branded Product #1994784');
-      expect(food.provider_type).toBe('cooktool');
-      expect(food.default_variant.serving_size).toBe(100);
+      expect(food).not.toBeNull();
+      expect(food?.name).toBe('CookTool Branded Product #1994784');
+      expect(food?.provider_type).toBe('cooktool');
+      expect(food?.default_variant.serving_size).toBe(100);
     });
   });
 
@@ -199,11 +189,7 @@ describe('CookTool Service', () => {
     it('finds product by barcode', async () => {
       mockFetch.mockResolvedValueOnce(mockJsonResponse(brandedCheeriosFixture));
 
-      const match = await lookupCookToolBarcode({
-        barcode: '00016000232310',
-        credentials,
-        provider,
-      });
+      const match = await lookupCookToolBarcode(ctx, '00016000232310');
 
       expect(match).not.toBeNull();
       expect(match?.name).toBe(
@@ -219,11 +205,7 @@ describe('CookTool Service', () => {
         mockJsonResponse({ data: [], limit: 20, offset: 0 })
       );
 
-      const match = await lookupCookToolBarcode({
-        barcode: '999999999999',
-        credentials,
-        provider,
-      });
+      const match = await lookupCookToolBarcode(ctx, '999999999999');
 
       expect(match).toBeNull();
     });

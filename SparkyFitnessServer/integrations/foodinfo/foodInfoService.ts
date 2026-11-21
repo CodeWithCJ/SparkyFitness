@@ -1,8 +1,8 @@
 import type {
   FoodProviderAdapter,
-  ProviderSearchOptions,
-  ProviderDetailOptions,
+  ProviderCallContext,
 } from '../foodProviders/types.js';
+import type { ProviderSearchResult } from '../../services/externalFoodSearchService.js';
 import { providerFetchJson } from '../foodProviders/httpClient.js';
 import { buildPer100gFood } from '../foodProviders/per100gMapper.js';
 import { detailCache } from '../foodProviders/detailCache.js';
@@ -11,7 +11,6 @@ import type {
   StandardNutrientField,
   PortionMeasure,
 } from '../foodProviders/per100gMapper.js';
-import type { FoodSearchItem } from '../../services/externalFoodSearchService.js';
 
 export const FOODINFO_DEFAULT_BASE_URL = 'https://api.food-info.org/api/v1';
 
@@ -116,27 +115,35 @@ const NUTRIENT_ID_TO_STANDARD: Record<number, StandardNutrientField> = {
   262: 'caffeine_mg',
 };
 
-export async function searchFoodInfo(options: ProviderSearchOptions): Promise<{
-  foods: FoodSearchItem[];
-  totalCount?: number;
-  hasMore?: boolean;
-}> {
-  const { query, provider, credentials, pageSize = 20, signal } = options;
+export async function searchFoodInfo(
+  ctx: ProviderCallContext,
+  query: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<ProviderSearchResult> {
   if (!query || !query.trim()) {
-    return { foods: [], totalCount: 0, hasMore: false };
+    return {
+      foods: [],
+      pagination: {
+        page,
+        pageSize,
+        totalCount: 0,
+        hasMore: false,
+      },
+    };
   }
 
-  const baseUrl = resolveBaseUrl(provider?.base_url);
-  const headers = resolveHeaders(credentials?.app_key ?? provider?.app_key);
+  const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
+  const headers = resolveHeaders(ctx.credentials?.app_key);
   const encodedQuery = encodeURIComponent(query.trim());
 
   const results = await providerFetchJson<FoodInfoSearchItem[]>(
     `${baseUrl}/foods/search?q=${encodedQuery}&limit=${pageSize}`,
-    { provider: 'food-info', headers, signal }
+    { providerType: 'food-info', headers, signal: ctx.signal }
   );
 
   const items = Array.isArray(results) ? results : [];
-  const foods: FoodSearchItem[] = items.map((item) => ({
+  const foods = items.map((item) => ({
     id: String(item.id),
     name: item.description,
     calories: undefined,
@@ -149,29 +156,34 @@ export async function searchFoodInfo(options: ProviderSearchOptions): Promise<{
 
   return {
     foods,
-    hasMore,
+    pagination: {
+      page,
+      pageSize,
+      totalCount: foods.length,
+      hasMore,
+    },
   };
 }
 
 export async function getFoodInfoDetails(
-  options: ProviderDetailOptions
-): Promise<MappedProviderFood> {
-  const { externalId, provider, credentials, signal } = options;
+  ctx: ProviderCallContext,
+  externalId: string
+): Promise<MappedProviderFood | null> {
   if (!externalId) {
     throw new Error('External ID is required for Food Info details.');
   }
 
-  const cached = detailCache.get('food-info', externalId);
+  const cached = detailCache.get<MappedProviderFood>('food-info', externalId);
   if (cached) {
     return cached;
   }
 
-  const baseUrl = resolveBaseUrl(provider?.base_url);
-  const headers = resolveHeaders(credentials?.app_key ?? provider?.app_key);
+  const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
+  const headers = resolveHeaders(ctx.credentials?.app_key);
 
   const panel = await providerFetchJson<FoodInfoPanelResponse>(
     `${baseUrl}/foods/${encodeURIComponent(externalId)}/panel`,
-    { provider: 'food-info', headers, signal }
+    { providerType: 'food-info', headers, signal: ctx.signal }
   );
 
   const per100g: Partial<Record<StandardNutrientField, number>> = {};

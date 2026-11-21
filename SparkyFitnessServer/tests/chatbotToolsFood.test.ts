@@ -965,6 +965,7 @@ describe('lookup_food_nutrition', () => {
           },
         },
       ],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
     });
 
     const result = await tools.sparky_manage_food.execute!(
@@ -1011,6 +1012,7 @@ describe('lookup_food_nutrition', () => {
           },
         },
       ],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
     });
 
     const result = await tools.sparky_manage_food.execute!(
@@ -1057,6 +1059,7 @@ describe('lookup_food_nutrition', () => {
           },
         },
       ],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
     });
 
     const result = await tools.sparky_manage_food.execute!(

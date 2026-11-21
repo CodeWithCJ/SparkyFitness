@@ -1,12 +1,25 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import fs from 'node:fs';
 import {
   searchFoodInfo,
   getFoodInfoDetails,
   foodInfoAdapter,
 } from '../integrations/foodinfo/foodInfoService.js';
 import { detailCache } from '../integrations/foodProviders/detailCache.js';
-import searchBananaFixture from './fixtures/foodinfo/search_banana.json';
-import panel790774Fixture from './fixtures/foodinfo/panel_790774.json';
+import type { ProviderCallContext } from '../integrations/foodProviders/types.js';
+
+const searchBananaFixture = JSON.parse(
+  fs.readFileSync(
+    new URL('./fixtures/foodinfo/search_banana.json', import.meta.url),
+    'utf-8'
+  )
+);
+const panel790774Fixture = JSON.parse(
+  fs.readFileSync(
+    new URL('./fixtures/foodinfo/panel_790774.json', import.meta.url),
+    'utf-8'
+  )
+);
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -22,12 +35,12 @@ function mockJsonResponse(data: unknown, status = 200) {
 }
 
 describe('Food Info Service', () => {
-  const credentials = { app_key: 'test_fi_key_12345' };
-  const provider = {
-    id: 'p_fi_1',
-    provider_type: 'food-info' as const,
-    app_key: 'test_fi_key_12345',
-    is_active: true,
+  const ctx: ProviderCallContext = {
+    userId: 'user-1',
+    credentialUserId: 'user-1',
+    credentials: { app_key: 'test_fi_key_12345' },
+    language: 'en',
+    autoScale: false,
   };
 
   beforeEach(() => {
@@ -41,23 +54,16 @@ describe('Food Info Service', () => {
 
   describe('searchFoodInfo', () => {
     it('returns empty result for blank or whitespace query', async () => {
-      const res = await searchFoodInfo({
-        query: '   ',
-        credentials,
-      });
+      const res = await searchFoodInfo(ctx, '   ');
       expect(res.foods).toEqual([]);
-      expect(res.hasMore).toBe(false);
+      expect(res.pagination.hasMore).toBe(false);
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
     it('searches foods and maps results', async () => {
       mockFetch.mockResolvedValueOnce(mockJsonResponse(searchBananaFixture));
 
-      const res = await searchFoodInfo({
-        query: 'banana',
-        credentials,
-        pageSize: 3,
-      });
+      const res = await searchFoodInfo(ctx, 'banana', 1, 3);
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const url = mockFetch.mock.calls[0][0] as string;
@@ -73,7 +79,7 @@ describe('Food Info Service', () => {
         serving_unit: 'g',
         is_partial: true,
       });
-      expect(res.hasMore).toBe(true);
+      expect(res.pagination.hasMore).toBe(true);
     });
   });
 
@@ -81,39 +87,32 @@ describe('Food Info Service', () => {
     it('fetches food panel and maps nutrients and portions', async () => {
       mockFetch.mockResolvedValueOnce(mockJsonResponse(panel790774Fixture));
 
-      const food = await getFoodInfoDetails({
-        externalId: '790774',
-        credentials,
-        provider,
-      });
+      const food = await getFoodInfoDetails(ctx, '790774');
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       const url = mockFetch.mock.calls[0][0] as string;
       expect(url).toContain('/foods/790774/panel');
 
-      expect(food.name).toBe('Bananas, overripe, raw');
-      expect(food.provider_type).toBe('food-info');
-      expect(food.provider_external_id).toBe('790774');
-      expect(food.default_variant.calories).toBe(85);
-      expect(food.default_variant.protein).toBe(0.7);
-      expect(food.default_variant.fat).toBe(0.2);
-      expect(food.default_variant.carbs).toBe(20.1);
-      expect(food.default_variant.dietary_fiber).toBe(1.7);
-      expect(food.default_variant.water_ml).toBe(78.3);
-      expect(food.default_variant.vitamin_c).toBe(9.7);
+      expect(food).not.toBeNull();
+      expect(food?.name).toBe('Bananas, overripe, raw');
+      expect(food?.provider_type).toBe('food-info');
+      expect(food?.provider_external_id).toBe('790774');
+      expect(food?.default_variant.calories).toBe(85);
+      expect(food?.default_variant.protein).toBe(0.7);
+      expect(food?.default_variant.fat).toBe(0.2);
+      expect(food?.default_variant.carbs).toBe(20.1);
+      expect(food?.default_variant.dietary_fiber).toBe(1.7);
+      expect(food?.default_variant.water_ml).toBe(78.3);
+      expect(food?.default_variant.vitamin_c).toBe(9.7);
 
       // Verify portions: availableServings had '1 Banana Peeled' (110g)
-      expect(food.variants).toHaveLength(2);
-      expect(food.variants[1].serving_unit).toBe('1 Banana Peeled');
-      expect(food.variants[1].serving_size).toBe(110);
-      expect(food.variants[1].calories).toBe(Math.round(85 * 1.1));
+      expect(food?.variants).toHaveLength(2);
+      expect(food?.variants[1].serving_unit).toBe('1 Banana Peeled');
+      expect(food?.variants[1].serving_size).toBe(110);
+      expect(food?.variants[1].calories).toBe(Math.round(85 * 1.1));
 
       // Verify caching
-      const cached = await getFoodInfoDetails({
-        externalId: '790774',
-        credentials,
-        provider,
-      });
+      const cached = await getFoodInfoDetails(ctx, '790774');
       expect(cached).toBe(food);
       expect(mockFetch).toHaveBeenCalledTimes(1);
     });

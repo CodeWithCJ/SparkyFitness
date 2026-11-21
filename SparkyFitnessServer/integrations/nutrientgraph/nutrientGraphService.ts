@@ -1,9 +1,8 @@
 import type {
   FoodProviderAdapter,
-  ProviderSearchOptions,
-  ProviderDetailOptions,
-  ProviderBarcodeOptions,
+  ProviderCallContext,
 } from '../foodProviders/types.js';
+import type { ProviderSearchResult } from '../../services/externalFoodSearchService.js';
 import { providerFetchJson } from '../foodProviders/httpClient.js';
 import { buildPer100gFood } from '../foodProviders/per100gMapper.js';
 import { detailCache } from '../foodProviders/detailCache.js';
@@ -12,7 +11,6 @@ import type {
   StandardNutrientField,
   PortionMeasure,
 } from '../foodProviders/per100gMapper.js';
-import type { FoodSearchItem } from '../../services/externalFoodSearchService.js';
 
 export const NUTRIENTGRAPH_DEFAULT_BASE_URL = 'https://api.nutrientgraph.com';
 const SUPPORTED_LANGUAGES = ['en', 'fr', 'de', 'it', 'es'] as const;
@@ -216,38 +214,36 @@ function mapPortions(
 }
 
 export async function searchNutrientGraph(
-  options: ProviderSearchOptions
-): Promise<{
-  foods: FoodSearchItem[];
-  totalCount?: number;
-  hasMore?: boolean;
-}> {
-  const {
-    query,
-    provider,
-    credentials,
-    language,
-    page = 1,
-    pageSize = 20,
-    signal,
-  } = options;
+  ctx: ProviderCallContext,
+  query: string,
+  page: number = 1,
+  pageSize: number = 20
+): Promise<ProviderSearchResult> {
   if (!query || !query.trim()) {
-    return { foods: [], totalCount: 0, hasMore: false };
+    return {
+      foods: [],
+      pagination: {
+        page,
+        pageSize,
+        totalCount: 0,
+        hasMore: false,
+      },
+    };
   }
 
-  const baseUrl = resolveBaseUrl(provider?.base_url);
-  const headers = resolveHeaders(credentials?.app_key ?? provider?.app_key);
-  const lang = resolveLanguage(language);
+  const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
+  const headers = resolveHeaders(ctx.credentials?.app_key);
+  const lang = resolveLanguage(ctx.language);
   const offset = Math.max(0, (page - 1) * pageSize);
   const encodedQuery = encodeURIComponent(query.trim());
 
   const response = await providerFetchJson<NutrientGraphSearchResponse>(
     `${baseUrl}/v1/food/search?q=${encodedQuery}&lang=${lang}&limit=${pageSize}&offset=${offset}`,
-    { provider: 'nutrientgraph', headers, signal }
+    { providerType: 'nutrientgraph', headers, signal: ctx.signal }
   );
 
   const results = response.data?.results || [];
-  const foods: FoodSearchItem[] = results.map((item) => ({
+  const foods = results.map((item) => ({
     id: item.id,
     name: item.name,
     calories:
@@ -263,30 +259,38 @@ export async function searchNutrientGraph(
 
   return {
     foods,
-    hasMore,
+    pagination: {
+      page,
+      pageSize,
+      totalCount: foods.length,
+      hasMore,
+    },
   };
 }
 
 export async function getNutrientGraphDetails(
-  options: ProviderDetailOptions
-): Promise<MappedProviderFood> {
-  const { externalId, provider, credentials, language, signal } = options;
+  ctx: ProviderCallContext,
+  externalId: string
+): Promise<MappedProviderFood | null> {
   if (!externalId) {
     throw new Error('External ID is required for NutrientGraph details.');
   }
 
-  const cached = detailCache.get('nutrientgraph', externalId);
+  const cached = detailCache.get<MappedProviderFood>(
+    'nutrientgraph',
+    externalId
+  );
   if (cached) {
     return cached;
   }
 
-  const baseUrl = resolveBaseUrl(provider?.base_url);
-  const headers = resolveHeaders(credentials?.app_key ?? provider?.app_key);
-  const lang = resolveLanguage(language);
+  const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
+  const headers = resolveHeaders(ctx.credentials?.app_key);
+  const lang = resolveLanguage(ctx.language);
 
   const response = await providerFetchJson<NutrientGraphFoodResponse>(
     `${baseUrl}/v1/food/foods/${encodeURIComponent(externalId)}?lang=${lang}`,
-    { provider: 'nutrientgraph', headers, signal }
+    { providerType: 'nutrientgraph', headers, signal: ctx.signal }
   );
 
   const product = response.data;
@@ -312,19 +316,19 @@ export async function getNutrientGraphDetails(
 }
 
 export async function lookupNutrientGraphBarcode(
-  options: ProviderBarcodeOptions
+  ctx: ProviderCallContext,
+  barcode: string
 ): Promise<MappedProviderFood | null> {
-  const { barcode, provider, credentials, language, signal } = options;
   if (!barcode) return null;
 
-  const baseUrl = resolveBaseUrl(provider?.base_url);
-  const headers = resolveHeaders(credentials?.app_key ?? provider?.app_key);
-  const lang = resolveLanguage(language);
+  const baseUrl = resolveBaseUrl(ctx.credentials?.base_url);
+  const headers = resolveHeaders(ctx.credentials?.app_key);
+  const lang = resolveLanguage(ctx.language);
 
   try {
     const response = await providerFetchJson<NutrientGraphBarcodeResponse>(
       `${baseUrl}/v1/food/barcode/${encodeURIComponent(barcode)}`,
-      { provider: 'nutrientgraph', headers, signal }
+      { providerType: 'nutrientgraph', headers, signal: ctx.signal }
     );
 
     const { gtin14, product } = response.data;
@@ -350,19 +354,14 @@ export async function lookupNutrientGraphBarcode(
       });
     }
 
-    // If barcode response summary lacks nutrients, follow up with getDetails
     if (product.id) {
-      const detailed = await getNutrientGraphDetails({
-        externalId: product.id,
-        provider,
-        credentials,
-        language,
-        signal,
-      });
-      return {
-        ...detailed,
-        barcode: gtin14 || barcode,
-      };
+      const detailed = await getNutrientGraphDetails(ctx, product.id);
+      if (detailed) {
+        return {
+          ...detailed,
+          barcode: gtin14 || barcode,
+        };
+      }
     }
 
     return null;
