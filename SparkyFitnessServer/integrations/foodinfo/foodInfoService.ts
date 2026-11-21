@@ -8,7 +8,10 @@ import {
   buildPer100gFood,
   buildSearchSummaryFood,
 } from '../foodProviders/per100gMapper.js';
-import { detailCache } from '../foodProviders/detailCache.js';
+import {
+  detailCache,
+  resolveCacheScope,
+} from '../foodProviders/detailCache.js';
 import { normalizeNutrientUnit } from '@workspace/shared';
 import type {
   MappedProviderFood,
@@ -163,13 +166,18 @@ export async function searchFoodInfo(
   const topItems = items.slice(0, ENRICH_COUNT);
   const restItems = items.slice(ENRICH_COUNT);
 
+  const scope = resolveCacheScope(ctx);
   const enrichedTop: MappedProviderFood[] = [];
   for (let i = 0; i < topItems.length; i += ENRICH_CONCURRENCY) {
     const chunk = topItems.slice(i, i + ENRICH_CONCURRENCY);
     const chunkResults = await Promise.all(
       chunk.map(async (item) => {
         const idStr = String(item.id);
-        const cached = detailCache.get<MappedProviderFood>('food-info', idStr);
+        const cached = detailCache.get<MappedProviderFood>(
+          'food-info',
+          scope,
+          idStr
+        );
         if (cached) return cached;
         try {
           const detail = await getFoodInfoDetails(ctx, idStr);
@@ -190,14 +198,20 @@ export async function searchFoodInfo(
 
   const restFoods = restItems.map((item) => {
     const idStr = String(item.id);
-    const cached = detailCache.get<MappedProviderFood>('food-info', idStr);
-    if (cached) return cached;
-    return buildSearchSummaryFood({
-      providerType: 'food-info',
-      externalId: idStr,
-      name: item.description,
-      brand: null,
-    });
+    const cached = detailCache.get<MappedProviderFood>(
+      'food-info',
+      scope,
+      idStr
+    );
+    return (
+      cached ||
+      buildSearchSummaryFood({
+        providerType: 'food-info',
+        externalId: idStr,
+        name: item.description,
+        brand: null,
+      })
+    );
   });
 
   const foods = [...enrichedTop, ...restFoods];
@@ -222,7 +236,12 @@ export async function getFoodInfoDetails(
     throw new Error('External ID is required for Food Info details.');
   }
 
-  const cached = detailCache.get<MappedProviderFood>('food-info', externalId);
+  const scope = resolveCacheScope(ctx);
+  const cached = detailCache.get<MappedProviderFood>(
+    'food-info',
+    scope,
+    externalId
+  );
   if (cached) {
     return cached;
   }
@@ -294,7 +313,7 @@ export async function getFoodInfoDetails(
     portions,
   });
 
-  detailCache.set('food-info', externalId, mapped);
+  detailCache.set('food-info', scope, externalId, mapped);
   return mapped;
 }
 

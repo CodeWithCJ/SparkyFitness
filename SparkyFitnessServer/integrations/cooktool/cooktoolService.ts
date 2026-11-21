@@ -8,7 +8,10 @@ import {
   buildPer100gFood,
   buildSearchSummaryFood,
 } from '../foodProviders/per100gMapper.js';
-import { detailCache } from '../foodProviders/detailCache.js';
+import {
+  detailCache,
+  resolveCacheScope,
+} from '../foodProviders/detailCache.js';
 import { altBarcode } from '../../utils/foodUtils.js';
 import { normalizeNutrientUnit } from '@workspace/shared';
 import { COOKTOOL_USDA_NUTRIENT_NAMES } from './cooktoolNutrients.js';
@@ -171,6 +174,7 @@ export async function searchCookTool(
 
   const topFoods = summaryFoods.slice(0, ENRICH_COUNT);
 
+  const scope = resolveCacheScope(ctx);
   const enrichedTop: MappedProviderFood[] = [];
   for (let i = 0; i < topFoods.length; i += ENRICH_CONCURRENCY) {
     const chunk = topFoods.slice(i, i + ENRICH_CONCURRENCY);
@@ -178,6 +182,7 @@ export async function searchCookTool(
       chunk.map(async (food) => {
         const cached = detailCache.get<MappedProviderFood>(
           'cooktool',
+          scope,
           food.provider_external_id
         );
         if (cached) return cached;
@@ -234,7 +239,12 @@ export async function getCookToolDetails(
     throw new Error('External ID is required for CookTool details.');
   }
 
-  const cached = detailCache.get<MappedProviderFood>('cooktool', externalId);
+  const scope = resolveCacheScope(ctx);
+  const cached = detailCache.get<MappedProviderFood>(
+    'cooktool',
+    scope,
+    externalId
+  );
   if (cached) {
     return cached;
   }
@@ -282,7 +292,7 @@ export async function getCookToolDetails(
       providerNutrientStandard,
     });
 
-    detailCache.set('cooktool', externalId, mapped);
+    detailCache.set('cooktool', scope, externalId, mapped);
     return mapped;
   }
 
@@ -295,7 +305,7 @@ export async function getCookToolDetails(
       per100g: {},
     });
 
-    detailCache.set('cooktool', externalId, mapped);
+    detailCache.set('cooktool', scope, externalId, mapped);
     return mapped;
   }
 

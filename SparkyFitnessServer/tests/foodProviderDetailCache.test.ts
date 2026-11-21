@@ -48,4 +48,22 @@ describe('foodProvider detailCache', () => {
     expect(cache.get('c')).toBe(3);
     expect(cache.get('d')).toBe(4);
   });
+
+  it('isolates cache entries by scope to prevent cross-user poisoning', () => {
+    // Provider food with identical ID but different scopes (e.g. user-specific base_url or provider instance)
+    cache.set('cooktool', 'user-scope-1', '12345', {
+      name: 'Food 1 from User 1',
+    });
+    cache.set('cooktool', 'user-scope-2', '12345', {
+      name: 'Food 2 from User 2',
+    });
+
+    expect(cache.get('cooktool', 'user-scope-1', '12345')).toEqual({
+      name: 'Food 1 from User 1',
+    });
+    expect(cache.get('cooktool', 'user-scope-2', '12345')).toEqual({
+      name: 'Food 2 from User 2',
+    });
+    expect(cache.get('cooktool', 'user-scope-3', '12345')).toBeUndefined();
+  });
 });

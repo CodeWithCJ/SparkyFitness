@@ -1,6 +1,14 @@
+import type { ProviderCallContext } from './types.js';
+
 interface CacheEntry<T> {
   value: T;
   expiresAt: number;
+}
+
+export function resolveCacheScope(ctx: ProviderCallContext): string {
+  if (ctx.providerId) return ctx.providerId;
+  if (ctx.credentials?.base_url) return ctx.credentials.base_url.trim();
+  return ctx.credentialUserId || 'default';
 }
 
 export class DetailCache {
@@ -16,8 +24,23 @@ export class DetailCache {
     this.maxEntries = maxEntries;
   }
 
-  get<T>(providerOrKey: string, externalId?: string): T | undefined {
-    const key = externalId ? `${providerOrKey}:${externalId}` : providerOrKey;
+  get<T>(key: string): T | undefined;
+  get<T>(provider: string, externalId: string): T | undefined;
+  get<T>(provider: string, scope: string, externalId: string): T | undefined;
+  get<T>(
+    providerOrKey: string,
+    scopeOrExternalId?: string,
+    externalId?: string
+  ): T | undefined {
+    let key: string;
+    if (externalId !== undefined) {
+      const scope = scopeOrExternalId?.trim() || 'default';
+      key = `${providerOrKey}:${scope}:${externalId}`;
+    } else if (scopeOrExternalId !== undefined) {
+      key = `${providerOrKey}:${scopeOrExternalId}`;
+    } else {
+      key = providerOrKey;
+    }
     const entry = this.cache.get(key);
     if (!entry) return undefined;
 
@@ -32,22 +55,42 @@ export class DetailCache {
     return entry.value as T;
   }
 
+  set<T>(key: string, value: T, ttlMs?: number): void;
+  set<T>(provider: string, externalId: string, value: T, ttlMs?: number): void;
   set<T>(
-    providerOrKey: string,
-    externalIdOrValue: string | T,
-    valueOrTtl?: T | number,
+    provider: string,
+    scope: string,
+    externalId: string,
+    value: T,
     ttlMs?: number
+  ): void;
+  set<T>(
+    arg0: string,
+    arg1: unknown,
+    arg2?: unknown,
+    arg3?: unknown,
+    arg4?: number
   ): void {
-    if (typeof externalIdOrValue === 'string') {
-      const key = `${providerOrKey}:${externalIdOrValue}`;
-      this._set(key, valueOrTtl as T, ttlMs);
+    let key: string;
+    let value: T;
+    let ttl: number | undefined;
+
+    if (typeof arg1 === 'string' && typeof arg2 === 'string') {
+      const scope = arg1.trim() || 'default';
+      key = `${arg0}:${scope}:${arg2}`;
+      value = arg3 as T;
+      ttl = arg4;
+    } else if (typeof arg1 === 'string') {
+      key = `${arg0}:${arg1}`;
+      value = arg2 as T;
+      ttl = arg3 as number | undefined;
     } else {
-      this._set(
-        providerOrKey,
-        externalIdOrValue,
-        valueOrTtl as number | undefined
-      );
+      key = arg0;
+      value = arg1 as T;
+      ttl = arg2 as number | undefined;
     }
+
+    this._set(key, value, ttl);
   }
 
   private _set<T>(key: string, value: T, ttlMs?: number): void {

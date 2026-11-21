@@ -8,7 +8,10 @@ import {
   buildPer100gFood,
   buildSearchSummaryFood,
 } from '../foodProviders/per100gMapper.js';
-import { detailCache } from '../foodProviders/detailCache.js';
+import {
+  detailCache,
+  resolveCacheScope,
+} from '../foodProviders/detailCache.js';
 import type {
   MappedProviderFood,
   StandardNutrientField,
@@ -252,6 +255,7 @@ export async function searchNutrientGraph(
   const topResults = results.slice(0, ENRICH_COUNT);
   const restResults = results.slice(ENRICH_COUNT);
 
+  const scope = resolveCacheScope(ctx);
   const enrichedTop: MappedProviderFood[] = [];
   for (let i = 0; i < topResults.length; i += ENRICH_CONCURRENCY) {
     const chunk = topResults.slice(i, i + ENRICH_CONCURRENCY);
@@ -259,6 +263,7 @@ export async function searchNutrientGraph(
       chunk.map(async (item) => {
         const cached = detailCache.get<MappedProviderFood>(
           'nutrientgraph',
+          scope,
           item.id
         );
         if (cached) {
@@ -296,6 +301,7 @@ export async function searchNutrientGraph(
   const restMapped = restResults.map((item) => {
     const cached = detailCache.get<MappedProviderFood>(
       'nutrientgraph',
+      scope,
       item.id
     );
     if (cached) return cached;
@@ -333,8 +339,10 @@ export async function getNutrientGraphDetails(
     throw new Error('External ID is required for NutrientGraph details.');
   }
 
+  const scope = resolveCacheScope(ctx);
   const cached = detailCache.get<MappedProviderFood>(
     'nutrientgraph',
+    scope,
     externalId
   );
   if (cached) {
@@ -368,7 +376,7 @@ export async function getNutrientGraphDetails(
     portions,
   });
 
-  detailCache.set('nutrientgraph', externalId, mapped);
+  detailCache.set('nutrientgraph', scope, externalId, mapped);
   return mapped;
 }
 
