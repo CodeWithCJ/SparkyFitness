@@ -247,6 +247,7 @@ export const copyAllFoodEntriesFromYesterday = async (
     operation: 'copy all food entries from yesterday',
     method: 'POST',
     body: payload,
+    serverConfig,
   });
 };
 

@@ -366,9 +366,18 @@ describe('copying a meal reuses an existing target container (#3679)', () => {
       foodEntryMealRepository.getFoodEntryMealsByDate
     ).mockResolvedValue([]);
     // Echo the created row back (with an id) so the working list holds the
-    // fields the matcher reads.
+    // fields the matcher reads. The param is a supertype of FoodEntryMealInput
+    // (its required fields) so the mock satisfies the repository's signature.
     vi.mocked(foodEntryMealRepository.createFoodEntryMeal).mockImplementation(
-      (payload: Record<string, unknown>) =>
+      (payload: {
+        user_id: string;
+        entry_date: string;
+        name: string;
+        entry_time?: string | null;
+        meal_type_id?: string | null;
+        notes?: string | null;
+        quantity?: number | null;
+      }) =>
         Promise.resolve({
           id: `created-${
             vi.mocked(foodEntryMealRepository.createFoodEntryMeal).mock.calls
