@@ -7,14 +7,12 @@ import { CACHE_COLLECTIONS } from './collections';
 import { getOfflineDb } from './db';
 import { previewFromQueuedRow } from './foodEntryPreview';
 import { readSavedSingle } from './foodLibrary';
+import { FOOD_ENTRY_UPDATE } from './foodEntryUpdateHandOver';
 import { listUnconfirmedOutbox } from './outbox';
 import { signedInUserId } from './syncEngine';
 import { FOOD_ENTRY_DELETE } from './foodEntryDeleteHandOver';
+import { NO_ENTRY_CHANGES, readFoodEntryChanges } from './foodEntryChanges';
 import { FOOD_ENTRY_MEAL_DELETE } from './foodEntryMealDeleteHandOver';
-import {
-  FOOD_ENTRY_UPDATE,
-  type FoodEntryUpdatePayload,
-} from './foodEntryUpdateHandOver';
 import { WATER_ADD, type WaterAddPayload } from './waterHandOver';
 
 /** What is waiting to upload for one day, ready to add to the day's totals. */
@@ -27,20 +25,8 @@ export interface WaitingForDay {
   deletedFoodEntryIds: string[];
   /** Logged meals the server has whose removal is waiting to upload. */
   deletedMealIds: string[];
-  /** New amounts for entries the server has, by entry id. */
-  updatedQuantities: Record<string, number>;
-}
-
-/** Entries with the amounts the person changed on the phone applied. */
-export function applyUpdatedQuantities(
-  entries: readonly FoodEntry[],
-  updatedQuantities: Readonly<Record<string, number>>
-): FoodEntry[] {
-  return entries.map((entry) =>
-    entry.id in updatedQuantities
-      ? { ...entry, quantity: updatedQuantities[entry.id] }
-      : entry
-  );
+  /** Entries of the day the server has, changed on the phone, by entry id. */
+  changedEntries: Record<string, Partial<FoodEntry>>;
 }
 
 /**
@@ -66,7 +52,7 @@ const NOTHING_WAITING: WaitingForDay = {
   waterMl: 0,
   deletedFoodEntryIds: [],
   deletedMealIds: [],
-  updatedQuantities: {},
+  changedEntries: {},
 };
 
 /**
@@ -84,16 +70,17 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
     if (!serverConfigId) return NOTHING_WAITING;
     const db = await getOfflineDb();
     const userId = await signedInUserId(db, serverConfigId);
-    const rows = (await listUnconfirmedOutbox(db, serverConfigId)).filter(
-      (row) =>
-        row.entryDate === date && (row.userId == null || row.userId === userId)
+    const mine = (await listUnconfirmedOutbox(db, serverConfigId)).filter(
+      (row) => row.userId == null || row.userId === userId
     );
-    if (rows.length === 0) return NOTHING_WAITING;
+    const rows = mine.filter((row) => row.entryDate === date);
+    // A change that moves an entry between days touches both of them.
+    const hasChange = mine.some((row) => row.kind === FOOD_ENTRY_UPDATE);
+    if (rows.length === 0 && !hasChange) return NOTHING_WAITING;
 
     const foodEntries: FoodEntry[] = [];
     const deletedFoodEntryIds: string[] = [];
     const deletedMealIds: string[] = [];
-    const updatedQuantities: Record<string, number> = {};
     let waterMl = 0;
     const containers =
       (await readSavedSingle<WaterContainer[]>(
@@ -110,12 +97,7 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
         deletedMealIds.push(row.entityId);
         continue;
       }
-      if (row.kind === FOOD_ENTRY_UPDATE) {
-        updatedQuantities[row.entityId] = (
-          row.payload as FoodEntryUpdatePayload
-        ).quantity;
-        continue;
-      }
+      if (row.kind === FOOD_ENTRY_UPDATE) continue;
       if (row.kind === WATER_ADD) {
         const { containerId } = row.payload as WaterAddPayload;
         const container = containers.find((item) => item.id === containerId);
@@ -128,12 +110,22 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
       const preview = await previewFromQueuedRow(db, serverConfigId, row);
       if (preview) foodEntries.push(preview);
     }
+    const changes = hasChange
+      ? await readFoodEntryChanges(
+          db,
+          serverConfigId,
+          date,
+          mine,
+          deletedFoodEntryIds
+        )
+      : NO_ENTRY_CHANGES;
     return {
-      foodEntries,
+      foodEntries: [...foodEntries, ...changes.movedIn],
       waterMl,
-      deletedFoodEntryIds,
+      // An entry moved to another day is off this one, like a deleted one.
+      deletedFoodEntryIds: [...deletedFoodEntryIds, ...changes.movedOut],
       deletedMealIds,
-      updatedQuantities,
+      changedEntries: changes.inPlace,
     };
   } catch {
     return NOTHING_WAITING;

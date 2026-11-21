@@ -13,15 +13,13 @@ import {
 } from '../../src/offline/syncEngine';
 import type { OfflineDb } from '../../src/offline/types';
 import {
+  findWaitingFood,
   isQueueableFoodCreate,
+  listWaitingFoods,
+  pendingFoodId,
   queueFoodCreate,
 } from '../../src/offline/foodCreateHandOver';
 import { previewFromQueuedRow } from '../../src/offline/foodEntryPreview';
-import {
-  findWaitingFood,
-  listWaitingFoods,
-  pendingFoodId,
-} from '../../src/offline/foodCreateHandOver';
 import {
   readSavedFood,
   readSavedFoodsPage,

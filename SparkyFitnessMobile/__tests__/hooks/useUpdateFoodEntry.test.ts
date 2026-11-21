@@ -20,7 +20,10 @@ jest.mock('../../src/services/LogService', () => ({
 const mockQueueQuantity = jest.fn();
 const mockEditWaiting = jest.fn();
 jest.mock('../../src/offline/foodEntryUpdateHandOver', () => ({
-  queueFoodEntryQuantity: (...args: unknown[]) => mockQueueQuantity(...args),
+  displayFromPatch: jest.requireActual(
+    '../../src/offline/foodEntryUpdateHandOver'
+  ).displayFromPatch,
+  queueFoodEntryUpdate: (...args: unknown[]) => mockQueueQuantity(...args),
   editWaitingEntryQuantity: (...args: unknown[]) => mockEditWaiting(...args),
 }));
 
@@ -234,15 +237,56 @@ describe('useUpdateFoodEntry while the server is unreachable', () => {
     });
 
     await waitFor(() => expect(onKeptOnPhone).toHaveBeenCalledTimes(1));
-    expect(mockQueueQuantity).toHaveBeenCalledWith('e1', '2026-11-21', 3);
+    expect(mockQueueQuantity).toHaveBeenCalledWith(
+      'e1',
+      '2026-11-21',
+      { quantity: 3 },
+      { quantity: 3 }
+    );
   });
 
-  test('does not keep a change of more than the amount', async () => {
+  test('keeps a change of several fields, with what the server works out for the entry', async () => {
     mockUpdateFoodEntry.mockRejectedValue(
       new TypeError('Network request failed')
     );
+    mockQueueQuantity.mockResolvedValue(true);
+    const onKeptOnPhone = jest.fn();
     const { result } = renderHook(
-      () => useUpdateFoodEntry({ entryId: 'e1', entryDate: '2026-11-21' }),
+      () =>
+        useUpdateFoodEntry({
+          entryId: 'e1',
+          entryDate: '2026-11-21',
+          onKeptOnPhone,
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await act(async () => {
+      result.current.updateEntry(
+        { quantity: 3, meal_type_id: 'm2', entry_time: '19:30' },
+        { meal_type: 'Dinner' }
+      );
+    });
+
+    await waitFor(() => expect(onKeptOnPhone).toHaveBeenCalledTimes(1));
+    expect(onKeptOnPhone).toHaveBeenCalledWith({
+      quantity: 3,
+      meal_type_id: 'm2',
+      entry_time: '19:30',
+      meal_type: 'Dinner',
+    });
+    expect(mockQueueQuantity).toHaveBeenCalledWith(
+      'e1',
+      '2026-11-21',
+      { quantity: 3, meal_type_id: 'm2', entry_time: '19:30' },
+      expect.objectContaining({ meal_type: 'Dinner' })
+    );
+  });
+
+  test('does not keep a change to a waiting entry other than its amount', async () => {
+    const { result } = renderHook(
+      () =>
+        useUpdateFoodEntry({ entryId: 'pending-abc', entryDate: '2026-11-21' }),
       { wrapper: createQueryWrapper(queryClient) }
     );
 
@@ -255,6 +299,7 @@ describe('useUpdateFoodEntry while the server is unreachable', () => {
         expect.objectContaining({ type: 'error' })
       )
     );
+    expect(mockUpdateFoodEntry).not.toHaveBeenCalled();
     expect(mockQueueQuantity).not.toHaveBeenCalled();
   });
 

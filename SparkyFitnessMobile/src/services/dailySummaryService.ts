@@ -8,7 +8,6 @@ import {
 } from './api/foodEntriesApi';
 import { fetchDailySummary } from './api/dailySummaryApi';
 import {
-  applyUpdatedQuantities,
   readWaitingForDay,
   withoutDeleted,
   type WaitingForDay,
@@ -18,6 +17,7 @@ import { calculateExerciseStats } from '../utils/workoutSession';
 import type { DailySummary } from '../types/dailySummary';
 import type { DailyGoals } from '../types/goals';
 import type { FoodEntry } from '../types/foodEntries';
+import { applyEntryChanges } from '../offline/foodEntryChanges';
 import type {
   ExerciseSessionResponse,
   CalorieBalance,
@@ -58,13 +58,13 @@ export function applyWaitingToRawData(
   raw: DailySummaryRawData,
   waiting: WaitingForDay
 ): DailySummaryRawData {
-  const { deletedFoodEntryIds, deletedMealIds, updatedQuantities } = waiting;
+  const { deletedFoodEntryIds, deletedMealIds, changedEntries } = waiting;
   if (
     waiting.foodEntries.length === 0 &&
     waiting.waterMl === 0 &&
     deletedFoodEntryIds.length === 0 &&
     deletedMealIds.length === 0 &&
-    Object.keys(updatedQuantities).length === 0
+    Object.keys(changedEntries).length === 0
   ) {
     return raw;
   }
@@ -76,9 +76,8 @@ export function applyWaitingToRawData(
     deletedMealIds
   );
   const removed = raw.foodEntries.filter((entry) => !notGone.includes(entry));
-  // An amount changed on the phone shows at once: the entry keeps its serving
-  // and its nutrition per serving, only the amount eaten moves.
-  const kept = applyUpdatedQuantities(notGone, updatedQuantities);
+  // A change made on the phone shows at once, as it will read once uploaded.
+  const kept = applyEntryChanges(notGone, changedEntries);
   const addedCalories =
     calculateCaloriesConsumed(waiting.foodEntries) -
     calculateCaloriesConsumed(removed) +

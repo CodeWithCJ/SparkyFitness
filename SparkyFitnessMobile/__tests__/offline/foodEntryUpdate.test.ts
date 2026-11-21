@@ -1,14 +1,20 @@
 import { ApiError } from '../../src/services/api/errors';
 import { updateFoodEntry } from '../../src/services/api/foodEntriesApi';
 import { putCacheRows } from '../../src/offline/cacheStore';
+import { CACHE_COLLECTIONS } from '../../src/offline/collections';
 import { readWaitingForDay } from '../../src/offline/dailySummaryOverlay';
+import { queueFoodEntryDelete } from '../../src/offline/foodEntryDeleteHandOver';
 import { __setOfflineDbForTests } from '../../src/offline/db';
-import { mergeWaitingFood } from '../../src/offline/diaryDay';
+import {
+  mergeWaitingFood,
+  readOfflineDiaryDay,
+} from '../../src/offline/diaryDay';
 import { queueFoodCreate } from '../../src/offline/foodCreateHandOver';
 import { queueFoodEntry } from '../../src/offline/foodEntryHandOver';
 import {
   editWaitingEntryQuantity,
-  queueFoodEntryQuantity,
+  queueFoodEntryUpdate,
+  upgradeFoodEntryUpdate,
 } from '../../src/offline/foodEntryUpdateHandOver';
 import { __clearOutboxHandlersForTests } from '../../src/offline/handlers/registry';
 import { registerFoodEntryUpdateHandlers } from '../../src/offline/handlers/foodEntryUpdate';
@@ -77,17 +83,20 @@ describe('changing the amount of an entry with no connection', () => {
   });
 
   it('keeps one row per entry, holding the latest amount', async () => {
-    await queueFoodEntryQuantity('e1', DAY, 2);
-    await queueFoodEntryQuantity('e1', DAY, 3);
+    await queueFoodEntryUpdate('e1', DAY, { quantity: 2 }, { quantity: 2 });
+    await queueFoodEntryUpdate('e1', DAY, { quantity: 3 }, { quantity: 3 });
 
     const rows = await listUnconfirmedOutbox(db, 's1');
 
     expect(rows).toHaveLength(1);
-    expect(rows[0].payload).toEqual({ quantity: 3 });
+    expect(rows[0].payload).toEqual({
+      patch: { quantity: 3 },
+      display: { quantity: 3 },
+    });
   });
 
   it('uploads the amount and refreshes the day', async () => {
-    await queueFoodEntryQuantity('e1', DAY, 3);
+    await queueFoodEntryUpdate('e1', DAY, { quantity: 3 }, { quantity: 3 });
     mockUpdate.mockResolvedValue({ id: 'e1' } as never);
 
     expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
@@ -96,11 +105,11 @@ describe('changing the amount of an entry with no connection', () => {
   });
 
   it('counts an entry deleted meanwhile as done and parks a refusal', async () => {
-    await queueFoodEntryQuantity('e1', DAY, 3);
+    await queueFoodEntryUpdate('e1', DAY, { quantity: 3 }, { quantity: 3 });
     mockUpdate.mockRejectedValue(new ApiError('gone', 404));
     expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
 
-    await queueFoodEntryQuantity('e2', DAY, 3);
+    await queueFoodEntryUpdate('e2', DAY, { quantity: 3 }, { quantity: 3 });
     mockUpdate.mockRejectedValue(new ApiError('no', 403));
     await drainOutbox('manual');
     const [row] = await listUnconfirmedOutbox(db, 's1');
@@ -108,10 +117,10 @@ describe('changing the amount of an entry with no connection', () => {
   });
 
   it('shows the new amount in the totals and the offline list', async () => {
-    await queueFoodEntryQuantity('e1', DAY, 3);
+    await queueFoodEntryUpdate('e1', DAY, { quantity: 3 }, { quantity: 3 });
 
     const waiting = await readWaitingForDay(DAY);
-    expect(waiting.updatedQuantities).toEqual({ e1: 3 });
+    expect(waiting.changedEntries).toEqual({ e1: { quantity: 3 } });
 
     const raw = {
       foodEntries: [serverEntry],
@@ -134,9 +143,89 @@ describe('changing the amount of an entry with no connection', () => {
         [serverEntry as never],
         [],
         [],
-        waiting.updatedQuantities
+        waiting.changedEntries
       )[0].quantity
     ).toBe(3);
+  });
+
+  it('keeps every changed field, folding a later change into the same row', async () => {
+    await queueFoodEntryUpdate(
+      'e1',
+      DAY,
+      { quantity: 2, entry_time: '09:00' },
+      { quantity: 2, entry_time: '09:00' }
+    );
+    await queueFoodEntryUpdate(
+      'e1',
+      DAY,
+      { quantity: 3, notes: 'with honey' },
+      { quantity: 3, notes: 'with honey' }
+    );
+
+    const rows = await listUnconfirmedOutbox(db, 's1');
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].payload).toEqual({
+      patch: { quantity: 3, entry_time: '09:00', notes: 'with honey' },
+      display: { quantity: 3, entry_time: '09:00', notes: 'with honey' },
+    });
+  });
+
+  it('reads a change from before the other fields were kept', () => {
+    expect(upgradeFoodEntryUpdate({ quantity: 4 }, 1)).toEqual({
+      patch: { quantity: 4 },
+      display: { quantity: 4 },
+    });
+  });
+
+  describe('moving an entry to another day', () => {
+    const NEXT = '2026-11-22';
+
+    beforeEach(async () => {
+      // The day the entry is on, as kept at the last diary load.
+      await putCacheRows(db, 's1', CACHE_COLLECTIONS.diaryFoodDay, [
+        { key: DAY, payload: [serverEntry] },
+      ]);
+      await queueFoodEntryUpdate(
+        'e1',
+        DAY,
+        { entry_date: NEXT, meal_type_id: 'm2' },
+        { entry_date: NEXT, meal_type_id: 'm2', meal_type: 'Dinner' }
+      );
+    });
+
+    it('takes it off the day it was on', async () => {
+      const waiting = await readWaitingForDay(DAY);
+
+      expect(waiting.deletedFoodEntryIds).toEqual(['e1']);
+      expect((await readOfflineDiaryDay(DAY)).deletedFood).toEqual(['e1']);
+    });
+
+    it('brings it onto the new day as it will read, with its calories', async () => {
+      const waiting = await readWaitingForDay(NEXT);
+      expect(waiting.foodEntries).toHaveLength(1);
+      expect(waiting.foodEntries[0]).toMatchObject({
+        id: 'e1',
+        meal_type: 'Dinner',
+        entry_date: NEXT,
+        calories: 500,
+      });
+
+      const day = await readOfflineDiaryDay(NEXT);
+      expect(day.waitingFood.map((entry) => entry.id)).toEqual(['e1']);
+    });
+
+    it('does not bring it in once it is deleted, and sends the whole change', async () => {
+      await queueFoodEntryDelete('e1', NEXT);
+      expect((await readWaitingForDay(NEXT)).foodEntries).toEqual([]);
+
+      mockUpdate.mockResolvedValue({ id: 'e1' } as never);
+      await drainOutbox('manual');
+      expect(mockUpdate).toHaveBeenCalledWith('e1', {
+        entry_date: NEXT,
+        meal_type_id: 'm2',
+      });
+    });
   });
 
   describe('an entry still waiting to upload', () => {

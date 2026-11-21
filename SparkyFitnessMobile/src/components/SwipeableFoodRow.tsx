@@ -56,7 +56,6 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
   // A waiting entry is not on the server, so there is no detail to open. The
   // amount can still be changed and the entry (or its whole logged meal)
   // deleted: both are kept on the phone and upload later.
-  const readOnly = readOnlyProp || isPendingEntryId(entry.id);
   const getImageSource = useFoodImageSourceContext();
   const entryImage = diaryEntryImage(entry);
   const openLightbox = useOpenLightbox();
@@ -116,8 +115,13 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
     t('foodRow.unknownFood', { defaultValue: 'Unknown food' });
   const timeLabel = formatTimeLabel(entry.entry_time, preferences?.time_format);
 
+  // A waiting entry has no server copy to open, and a logged meal's
+  // components are edited through the meal, which needs the server.
+  const detailAvailable =
+    !isPendingEntryId(entry.id) && !(readOnlyProp && isMealComponent);
+
   const handlePress = () => {
-    if (readOnly) {
+    if (!detailAvailable) {
       // No detail screen here; the row opens the amount sheet instead.
       if (canQuickAdjust) onAdjustServing!(entry);
       return;
@@ -180,7 +184,9 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
           <TouchableOpacity
             className="flex-1 mr-2"
             activeOpacity={0.7}
-            onPress={readOnly && !canQuickAdjust ? undefined : handlePress}
+            onPress={
+              detailAvailable || canQuickAdjust ? handlePress : undefined
+            }
             onLongPress={handleLongPress}
           >
             <View className="flex-row flex-wrap items-baseline">

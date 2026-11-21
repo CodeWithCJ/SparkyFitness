@@ -5,6 +5,7 @@ import { ApiError } from '../../services/api/errors';
 import {
   FOOD_ENTRY_UPDATE,
   FOOD_ENTRY_UPDATE_PAYLOAD_VERSION,
+  upgradeFoodEntryUpdate,
   type FoodEntryUpdatePayload,
 } from '../foodEntryUpdateHandOver';
 import { sendResultFromError } from '../syncEngine';
@@ -12,10 +13,10 @@ import type { OutboxHandler, OutboxRow, SendResult } from '../types';
 import { registerOutboxHandler } from './registry';
 
 async function sendUpdate(row: OutboxRow): Promise<SendResult> {
-  const { quantity } = row.payload as FoodEntryUpdatePayload;
+  const { patch } = row.payload as FoodEntryUpdatePayload;
   try {
-    // Setting an amount twice leaves the same amount, so a repeat is safe.
-    await updateFoodEntry(row.entityId, { quantity });
+    // Setting values twice leaves the same values, so a repeat is safe.
+    await updateFoodEntry(row.entityId, patch);
     return { outcome: 'synced' };
   } catch (error) {
     if (error instanceof ApiError) {
@@ -35,10 +36,15 @@ async function sendUpdate(row: OutboxRow): Promise<SendResult> {
 const handler: OutboxHandler = {
   kind: FOOD_ENTRY_UPDATE,
   payloadVersion: FOOD_ENTRY_UPDATE_PAYLOAD_VERSION,
-  upgrade: (payload) => payload,
+  upgrade: upgradeFoodEntryUpdate,
   send: sendUpdate,
   onSynced: (row) => {
     if (row.entryDate) invalidateFoodCache(queryClient, row.entryDate);
+    // A move to another day changes that day too.
+    const { display } = row.payload as FoodEntryUpdatePayload;
+    if (display.entry_date && display.entry_date !== row.entryDate) {
+      invalidateFoodCache(queryClient, display.entry_date);
+    }
   },
 };
 

@@ -136,7 +136,7 @@ describe('SwipeableFoodRow', () => {
   describe('read only (the Diary read from the phone while offline)', () => {
     const nutrition = { calories: 120, protein: 15, carbs: 8, fat: 2 };
 
-    it('shows the entry but opens nothing when pressed', () => {
+    it('still opens the entry from the phone, so it can be edited offline', () => {
       const screen = renderRow(
         <SwipeableFoodRow
           entry={createEntry()}
@@ -148,16 +148,17 @@ describe('SwipeableFoodRow', () => {
 
       fireEvent.press(screen.getByText('Greek Yogurt'));
 
-      expect(screen.getByText('Greek Yogurt')).toBeTruthy();
-      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(mockNavigate).toHaveBeenCalledWith('FoodEntryView', {
+        entry: expect.objectContaining({ id: 'entry-1' }),
+      });
     });
 
-    it('opens the amount sheet instead of the detail screen, and the menu offers adjust and delete', () => {
+    it('opens the amount sheet for an entry waiting to upload, and the menu offers adjust and delete', () => {
       const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation();
       const onAdjustServing = jest.fn();
       const screen = renderRow(
         <SwipeableFoodRow
-          entry={createEntry()}
+          entry={createEntry({ id: 'pending-abc' })}
           nutrition={nutrition}
           onAdjustServing={onAdjustServing}
           readOnly

@@ -6,8 +6,9 @@ import {
   type UpdateFoodEntryPayload,
 } from '../services/api/foodEntriesApi';
 import {
+  displayFromPatch,
   editWaitingEntryQuantity,
-  queueFoodEntryQuantity,
+  queueFoodEntryUpdate,
 } from '../offline/foodEntryUpdateHandOver';
 import {
   isPendingEntryId,
@@ -21,19 +22,24 @@ import type { FoodEntry } from '../types/foodEntries';
 /** The waiting entry is being sent this moment, so it cannot be changed. */
 class UploadingNowError extends Error {}
 
-/** A change that was kept on the phone instead of reaching the server. */
-const KEPT_ON_PHONE = Symbol('keptOnPhone');
-type KeptOnPhone = typeof KEPT_ON_PHONE;
+/** A change kept on the phone instead of reaching the server, as it reads. */
+interface KeptOnPhone {
+  keptOnPhone: Partial<FoodEntry>;
+}
+
+function isKeptOnPhone(result: FoodEntry | KeptOnPhone): result is KeptOnPhone {
+  return 'keptOnPhone' in result;
+}
 
 interface UseUpdateFoodEntryOptions {
   entryId: string;
   entryDate: string;
   onSuccess?: (updatedEntry: FoodEntry) => void;
-  /** Called when the new amount is kept on the phone to upload later. */
-  onKeptOnPhone?: () => void;
+  /** Called when the change is kept on the phone, with what it changes. */
+  onKeptOnPhone?: (changes: Partial<FoodEntry>) => void;
 }
 
-/** True for a change that carries only a new amount, the one kept offline. */
+/** True for a change that carries only a new amount. */
 function isQuantityOnly(
   payload: UpdateFoodEntryPayload
 ): payload is UpdateFoodEntryPayload & { quantity: number } {
@@ -41,6 +47,16 @@ function isQuantityOnly(
     (key) => payload[key as keyof UpdateFoodEntryPayload] !== undefined
   );
   return keys.length === 1 && keys[0] === 'quantity';
+}
+
+/** A change and what it reads like on the entry while it waits. */
+interface EntryChange {
+  payload: UpdateFoodEntryPayload;
+  /**
+   * What the server works out from the request, for the entry shown while it
+   * waits: the new serving's nutrition, the new meal's name.
+   */
+  preview?: Partial<FoodEntry>;
 }
 
 export function useUpdateFoodEntry({
@@ -53,9 +69,10 @@ export function useUpdateFoodEntry({
   const normalizedDate = normalizeDate(entryDate);
 
   const mutation = useMutation({
-    mutationFn: async (
-      payload: UpdateFoodEntryPayload
-    ): Promise<FoodEntry | KeptOnPhone> => {
+    mutationFn: async ({
+      payload,
+      preview,
+    }: EntryChange): Promise<FoodEntry | KeptOnPhone> => {
       // An entry still waiting to upload is changed where it waits, so the
       // server only ever sees the final amount.
       if (isPendingEntryId(entryId) && isQuantityOnly(payload)) {
@@ -66,25 +83,33 @@ export function useUpdateFoodEntry({
         if (result === 'uploading') throw new UploadingNowError();
         if (result === 'gone')
           throw new Error('The entry is no longer waiting');
-        return KEPT_ON_PHONE;
+        return { keptOnPhone: { quantity: payload.quantity } };
+      }
+      // Only the amount of a waiting entry can change; it has no server copy.
+      if (isPendingEntryId(entryId)) {
+        throw new Error('A waiting entry can only change its amount');
       }
       try {
         return await updateFoodEntry(entryId, payload);
       } catch (error) {
-        // With the server away a new amount is kept and sent later. Setting
-        // an amount is safe to send again, so even a timeout is kept.
+        // With the server away the change is kept and sent later. Setting
+        // values is safe to send again, so even a timeout is kept.
         if (
           serverMayBeDown(error) &&
-          isQuantityOnly(payload) &&
-          (await queueFoodEntryQuantity(entryId, entryDate, payload.quantity))
+          (await queueFoodEntryUpdate(
+            entryId,
+            entryDate,
+            payload,
+            displayFromPatch(payload, preview)
+          ))
         ) {
-          return KEPT_ON_PHONE;
+          return { keptOnPhone: displayFromPatch(payload, preview) };
         }
         throw error;
       }
     },
     onSuccess: (updatedEntry) => {
-      if (updatedEntry === KEPT_ON_PHONE) {
+      if (isKeptOnPhone(updatedEntry)) {
         Toast.show({
           type: 'info',
           text1: i18n.t('foodEntryAdd.queued', {
@@ -94,7 +119,7 @@ export function useUpdateFoodEntry({
             defaultValue: 'It uploads when your server can be reached.',
           }),
         });
-        onKeptOnPhone?.();
+        onKeptOnPhone?.(updatedEntry.keptOnPhone);
         return;
       }
       onSuccess?.(updatedEntry);
@@ -128,7 +153,10 @@ export function useUpdateFoodEntry({
   };
 
   return {
-    updateEntry: mutation.mutate,
+    updateEntry: (
+      payload: UpdateFoodEntryPayload,
+      preview?: Partial<FoodEntry>
+    ) => mutation.mutate({ payload, preview }),
     isPending: mutation.isPending,
     invalidateCache,
   };

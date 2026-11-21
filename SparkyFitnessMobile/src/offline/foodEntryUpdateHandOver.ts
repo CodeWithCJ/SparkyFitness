@@ -1,3 +1,5 @@
+import type { FoodEntry } from '../types/foodEntries';
+import type { UpdateFoodEntryPayload } from '../services/api/foodEntriesApi';
 import { addLog } from '../services/LogService';
 import { getActiveServerConfigId } from '../services/storage';
 import { normalizeDate } from '../utils/dateUtils';
@@ -16,41 +18,115 @@ import {
 import { enqueueOutbox, listUnconfirmedOutbox } from './outbox';
 import { signedInUserId } from './syncEngine';
 
-/** A new amount for a food entry the server has, waiting to upload. */
+/** Changes to a food entry the server has, waiting to upload. */
 export const FOOD_ENTRY_UPDATE = 'food_entry.update';
 
 /** The payload shape of `food_entry.update`, as this build writes it. */
-export const FOOD_ENTRY_UPDATE_PAYLOAD_VERSION = 1;
+export const FOOD_ENTRY_UPDATE_PAYLOAD_VERSION = 2;
 
-/** The only change that can be kept on the phone: how much was eaten. */
 export interface FoodEntryUpdatePayload {
-  quantity: number;
+  /** The request, as the server's update takes it. */
+  patch: UpdateFoodEntryPayload;
+  /** The entry fields it changes, as the Diary shows them while it waits. */
+  display: Partial<FoodEntry>;
+}
+
+/** Version 1 held only a new amount. */
+export function upgradeFoodEntryUpdate(
+  payload: unknown,
+  fromVersion: number
+): FoodEntryUpdatePayload {
+  if (fromVersion < 2) {
+    const { quantity } = payload as { quantity: number };
+    return { patch: { quantity }, display: { quantity } };
+  }
+  return payload as FoodEntryUpdatePayload;
+}
+
+/** The request fields that are also fields of the entry as the Diary shows it. */
+const DISPLAY_KEYS = [
+  'quantity',
+  'unit',
+  'meal_type_id',
+  'entry_date',
+  'entry_time',
+  'notes',
+  'variant_id',
+  'cooked_quantity',
+  'food_name',
+  'brand_name',
+  'serving_size',
+  'serving_unit',
+  'calories',
+  'protein',
+  'carbs',
+  'fat',
+  'saturated_fat',
+  'sodium',
+  'dietary_fiber',
+  'sugars',
+  'trans_fat',
+  'potassium',
+  'calcium',
+  'iron',
+  'caffeine_mg',
+  'water_ml',
+  'alcohol_g',
+  'cholesterol',
+  'vitamin_a',
+  'vitamin_c',
+] as const;
+
+/**
+ * What a change reads like on the entry: the fields the request carries, and
+ * `preview` for what the server works out from them (a new serving's
+ * nutrition, the name of a new meal).
+ */
+export function displayFromPatch(
+  patch: UpdateFoodEntryPayload,
+  preview: Partial<FoodEntry> = {}
+): Partial<FoodEntry> {
+  const display: Record<string, unknown> = {};
+  for (const key of DISPLAY_KEYS) {
+    if (patch[key] !== undefined) display[key] = patch[key];
+  }
+  return { ...(display as Partial<FoodEntry>), ...preview };
 }
 
 /**
- * Queues a new amount for an entry the server has. Setting an amount is safe
- * to send again, so it is kept after any failure to reach the server, a
- * timeout included. Editing again before it uploads replaces the amount (one
- * row per entry). True once the row is written.
+ * Queues changes to an entry the server has. Setting values is safe to send
+ * again, so it is kept after any failure to reach the server, a timeout
+ * included. Changing it again before it uploads folds into the same row (one
+ * row per entry; the later value of a field wins). The row stays on the day
+ * the entry was on, so a move to another day is hidden from the right one.
+ * True once the row is written.
  */
-export async function queueFoodEntryQuantity(
+export async function queueFoodEntryUpdate(
   entryId: string,
   entryDate: string,
-  quantity: number
+  patch: UpdateFoodEntryPayload,
+  display: Partial<FoodEntry>
 ): Promise<boolean> {
   try {
     const serverConfigId = await getActiveServerConfigId();
     if (!serverConfigId) return false;
     const db = await getOfflineDb();
     const userId = await signedInUserId(db, serverConfigId);
-    const payload: FoodEntryUpdatePayload = { quantity };
+    const earlier = (await listUnconfirmedOutbox(db, serverConfigId)).find(
+      (row) => row.kind === FOOD_ENTRY_UPDATE && row.entityId === entryId
+    );
+    const before = earlier?.payload as FoodEntryUpdatePayload | undefined;
+    const payload: FoodEntryUpdatePayload = {
+      patch: { ...before?.patch, ...patch },
+      display: { ...before?.display, ...display },
+    };
     await enqueueOutbox(db, {
-      id: newUuid(),
+      id: earlier?.id ?? newUuid(),
       serverConfigId,
       userId,
       kind: FOOD_ENTRY_UPDATE,
       entityId: entryId,
-      entryDate: normalizeDate(entryDate),
+      entryDate: earlier?.entryDate ?? normalizeDate(entryDate),
       payload,
       payloadVersion: FOOD_ENTRY_UPDATE_PAYLOAD_VERSION,
     });
@@ -104,7 +180,11 @@ export async function editWaitingEntryQuantity(
     const current = row.payload as FoodCreatePayload;
     payload = {
       ...current,
-      entry: { ...current.entry, quantity, cooked_quantity: null },
+      entry: current.entry && {
+        ...current.entry,
+        quantity,
+        cooked_quantity: null,
+      },
     };
   } else {
     payload = {

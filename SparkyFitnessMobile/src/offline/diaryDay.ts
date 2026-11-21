@@ -5,13 +5,10 @@ import type {
 } from '@workspace/shared';
 import { apiFetch } from '../services/api/apiClient';
 import type { FoodEntry } from '../types/foodEntries';
-import { applyUpdatedQuantities, withoutDeleted } from './dailySummaryOverlay';
+import { withoutDeleted } from './dailySummaryOverlay';
+import { applyEntryChanges, readFoodEntryChanges } from './foodEntryChanges';
 import { FOOD_ENTRY_MEAL_DELETE } from './foodEntryMealDeleteHandOver';
 import { FOOD_ENTRY_DELETE } from './foodEntryDeleteHandOver';
-import {
-  FOOD_ENTRY_UPDATE,
-  type FoodEntryUpdatePayload,
-} from './foodEntryUpdateHandOver';
 import { previewFromQueuedRow } from './foodEntryPreview';
 import { accountGeneration, savedCopyReadable } from './accountGeneration';
 import { getActiveServerConfigId } from '../services/storage';
@@ -49,8 +46,8 @@ export interface OfflineDiaryDay {
   waitingFood: FoodEntry[];
   /** Food entries the server has whose removal is waiting to upload: hidden. */
   deletedFood: string[];
-  /** New amounts for entries the server has, by entry id. */
-  updatedFood: Record<string, number>;
+  /** Entries the server has, changed on the phone, by entry id. */
+  updatedFood: Record<string, Partial<FoodEntry>>;
   /** Logged meals the server has whose removal is waiting to upload: hidden. */
   deletedFoodMeals: string[];
 }
@@ -306,10 +303,10 @@ export async function readOfflineDiaryDay(
     ? (savedRow.payload as ExerciseSessionResponse[])
     : null;
   const userId = await signedInUserId(db, serverConfigId);
-  const rows = (await listUnconfirmedOutbox(db, serverConfigId)).filter(
-    (row) =>
-      row.entryDate === date && (row.userId == null || row.userId === userId)
+  const mine = (await listUnconfirmedOutbox(db, serverConfigId)).filter(
+    (row) => row.userId == null || row.userId === userId
   );
+  const rows = mine.filter((row) => row.entryDate === date);
   // One entry per workout, the way it will be once everything queued is
   // uploaded: a later row for the same workout (an update after the create,
   // when a waiting workout was resumed and finished again) replaces the
@@ -336,26 +333,29 @@ export async function readOfflineDiaryDay(
     const preview = await previewFromQueuedRow(db, serverConfigId, row);
     if (preview) waitingFood.push(preview);
   }
+  const deletedFood = rows
+    .filter((row) => row.kind === FOOD_ENTRY_DELETE)
+    .map((row) => row.entityId);
+  // Changes to entries the server has: in place, moved off this day, or
+  // moved onto it from another one.
+  const changes = await readFoodEntryChanges(
+    db,
+    serverConfigId,
+    date,
+    mine,
+    deletedFood
+  );
   return {
     saved,
     waiting: [...byId.values()],
     deleted,
     savedFood: savedFoodRow ? (savedFoodRow.payload as FoodEntry[]) : null,
-    waitingFood,
-    deletedFood: rows
-      .filter((row) => row.kind === FOOD_ENTRY_DELETE)
-      .map((row) => row.entityId),
+    waitingFood: [...waitingFood, ...changes.movedIn],
+    deletedFood: [...deletedFood, ...changes.movedOut],
     deletedFoodMeals: rows
       .filter((row) => row.kind === FOOD_ENTRY_MEAL_DELETE)
       .map((row) => row.entityId),
-    updatedFood: Object.fromEntries(
-      rows
-        .filter((row) => row.kind === FOOD_ENTRY_UPDATE)
-        .map((row) => [
-          row.entityId,
-          (row.payload as FoodEntryUpdatePayload).quantity,
-        ])
-    ),
+    updatedFood: changes.inPlace,
   };
 }
 
@@ -391,14 +391,11 @@ export function mergeWaitingFood(
   saved: readonly FoodEntry[],
   waiting: readonly FoodEntry[],
   deleted: readonly string[] = [],
-  updated: Readonly<Record<string, number>> = {},
+  updated: Readonly<Record<string, Partial<FoodEntry>>> = {},
   deletedMeals: readonly string[] = []
 ): FoodEntry[] {
   return [
-    ...applyUpdatedQuantities(
-      withoutDeleted(saved, deleted, deletedMeals),
-      updated
-    ),
+    ...applyEntryChanges(withoutDeleted(saved, deleted, deletedMeals), updated),
     ...waiting,
   ];
 }
