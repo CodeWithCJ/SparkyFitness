@@ -986,11 +986,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
               ) : null;
             case 'challenges':
               return challengesCardVisible ? (
-                <ChallengesCard
-                  key="challenges"
-                  navigation={navigation}
-                  selectedDate={selectedDate}
-                />
+                <ChallengesCard key="challenges" navigation={navigation} />
               ) : null;
             case 'mindfulness':
               return mindfulnessCardVisible ? (

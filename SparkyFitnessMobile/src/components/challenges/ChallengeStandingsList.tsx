@@ -1,5 +1,5 @@
-import React from 'react';
-import { Text, View } from 'react-native';
+import React, { useState } from 'react';
+import { Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import {
@@ -18,6 +18,13 @@ import {
 } from '../../utils/challenges';
 
 type StandingRow = ChallengeStandingsResponse['rows'][number];
+
+// Shows the find box once the list is longer than a glance (as on the web).
+const SEARCH_FROM_ROWS = 6;
+
+/** Lower case without accents, so "jose" finds "José". */
+const foldName = (name: string) =>
+  name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
 // Gold, silver and bronze for places 1 to 3.
 const PLACE_BLOCKS = [
@@ -106,9 +113,11 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
 }) => {
   const { t } = useTranslation();
   const locale = useAppLocale();
-  const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [
-    string,
-  ];
+  const [accentPrimary, textMuted] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-text-muted',
+  ]) as [string, string];
+  const [search, setSearch] = useState('');
 
   if (standings.rows.length === 0) {
     return (
@@ -122,6 +131,10 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
 
   const value = (n: number) => formatChallengeValue(n, rules.metric, units, t);
   const topTotal = standings.rows[0]?.total ?? 0;
+  const query = foldName(search.trim());
+  const rows = standings.rows.filter((row) =>
+    foldName(row.display_name).includes(query)
+  );
 
   return (
     <View>
@@ -132,7 +145,39 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
           crownColor={accentPrimary}
         />
       ) : null}
-      {standings.rows.map((row, index) => {
+      {/* Kept while a search is on, even if a refresh drops below the
+          threshold, so the filter can always be cleared. */}
+      {standings.rows.length >= SEARCH_FROM_ROWS || search !== '' ? (
+        <View className="flex-row items-center rounded-lg border border-border-subtle px-3 py-2 mb-1">
+          <Icon name="search" size={16} color={textMuted} />
+          <TextInput
+            testID="challenge-standings-find"
+            className="flex-1 ml-2 text-text-primary"
+            style={{ fontSize: 15, padding: 0, includeFontPadding: false }}
+            value={search}
+            onChangeText={setSearch}
+            placeholder={t('challenges.standings.find', {
+              defaultValue: 'Find a member',
+            })}
+            placeholderTextColor={textMuted}
+            accessibilityLabel={t('challenges.standings.find', {
+              defaultValue: 'Find a member',
+            })}
+            autoCapitalize="none"
+            autoCorrect={false}
+            clearButtonMode="while-editing"
+          />
+        </View>
+      ) : null}
+      {rows.length === 0 ? (
+        <Text className="text-sm text-text-secondary py-4 text-center">
+          {t('challenges.standings.noMatch', {
+            defaultValue: 'No member matches “{{query}}”.',
+            query: search.trim(),
+          })}
+        </Text>
+      ) : null}
+      {rows.map((row, index) => {
         const progress = standingProgress(rules, row, topTotal);
         const isMe = row.me === true;
         const detail =

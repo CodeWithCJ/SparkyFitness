@@ -11,7 +11,12 @@ import { useTranslation } from 'react-i18next';
 import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { addDays, challengeToday } from '@workspace/shared';
+import {
+  addDays,
+  challengeDaysToGo,
+  challengeStateNow,
+  challengeToday,
+} from '@workspace/shared';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
 import ServerGate from '../components/ServerGate';
@@ -30,6 +35,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatShortDate, getTodayDate } from '../utils/dateUtils';
 import {
   challengeRulesSummary,
+  challengeStateText,
   formatChallengeValue,
   type ChallengeUnits,
 } from '../utils/challenges';
@@ -137,9 +143,11 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       : null,
   });
 
-  // The challenge's own today, as the server counts its days.
+  // The challenge's own today, as the server counts its days. One clock for
+  // the day, the state and its day count, so they agree at midnight.
+  const now = new Date();
   const today = challenge
-    ? challengeToday(challenge.time_zone, new Date())
+    ? challengeToday(challenge.time_zone, now)
     : getTodayDate();
   const canGoBack =
     !!challenge && !!standings && standings.period_start > challenge.start_date;
@@ -218,6 +226,20 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               })}
             </Text>
           ) : null}
+          <View className="flex-row mt-3">
+            <View
+              testID="challenge-state"
+              className="rounded-full bg-accent-primary/10 px-2.5 py-1"
+            >
+              <Text className="text-xs font-semibold text-accent-primary">
+                {challengeStateText(
+                  challengeStateNow(challenge, now),
+                  challengeDaysToGo(challenge, now),
+                  t
+                )}
+              </Text>
+            </View>
+          </View>
           <Text className="text-xs text-text-muted mt-2">
             {dates}
             {' · '}
@@ -314,9 +336,30 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </Text>
           ) : null}
 
+          {standingsQuery.isError && standings ? (
+            // A refresh failed: keep the last standings, and say so.
+            <View
+              testID="challenge-standings-refresh-failed"
+              className="flex-row items-center justify-between rounded-lg bg-raised px-3 py-2 mb-2"
+            >
+              <Text className="flex-1 mr-3 text-xs text-text-secondary">
+                {t('challenges.standings.refreshFailed', {
+                  defaultValue:
+                    'Could not refresh the standings; showing the last ones loaded.',
+                })}
+              </Text>
+              <Button
+                variant="secondary"
+                onPress={() => void standingsQuery.refetch()}
+              >
+                {t('common.retry', { defaultValue: 'Retry' })}
+              </Button>
+            </View>
+          ) : null}
+
           {standingsQuery.isLoading ? (
             <ActivityIndicator className="my-4" />
-          ) : standingsQuery.isError || !standings ? (
+          ) : !standings ? (
             <View className="items-center py-4">
               <Text className="text-text-secondary text-sm mb-3">
                 {t('challenges.standings.loadFailed', {
@@ -332,6 +375,9 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             </View>
           ) : (
             <ChallengeStandingsList
+              // A search does not carry to another period, whose list may be
+              // too short to show the box that would clear it.
+              key={standings.period_start}
               standings={standings}
               rules={standings.rules}
               units={units}

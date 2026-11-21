@@ -82,20 +82,25 @@ export function useChallengeStandings(id: string, date: string | null) {
 }
 
 function combineStandings(
+  ids: readonly string[],
   results: UseQueryResult<ChallengeStandingsResponse>[]
 ): {
   byId: ReadonlyMap<string, ChallengeStandingsResponse>;
+  failedIds: ReadonlySet<string>;
   isLoading: boolean;
   isError: boolean;
 } {
   const byId = new Map<string, ChallengeStandingsResponse>();
-  for (const result of results) {
+  const failedIds = new Set<string>();
+  results.forEach((result, index) => {
     if (result.data) byId.set(result.data.challenge_id, result.data);
-  }
+    if (result.isError) failedIds.add(ids[index]);
+  });
   return {
     byId,
+    failedIds,
     isLoading: results.some((result) => result.isLoading),
-    isError: results.some((result) => result.isError),
+    isError: failedIds.size > 0,
   };
 }
 
@@ -112,7 +117,8 @@ export function useChallengesStandings(
       queryKey: challengeStandingsQueryKey(id, date),
       queryFn: () => fetchChallengeStandings(id, date ?? undefined),
     })),
-    combine: combineStandings,
+    combine: (results: UseQueryResult<ChallengeStandingsResponse>[]) =>
+      combineStandings(ids, results),
   });
 }
 

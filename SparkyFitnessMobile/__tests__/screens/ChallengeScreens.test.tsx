@@ -381,6 +381,158 @@ describe('ChallengeDetailScreen', () => {
     expect(screen.getByLabelText('Next period')).toBeDisabled();
   });
 
+  describe('state chip', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it.each([
+      // [now (UTC), start, end, chip]
+      ['2026-11-14T12:00:00Z', '2026-11-02', '2026-11-23', '10 days left'],
+      ['2026-11-14T12:00:00Z', '2026-11-02', '2026-11-14', 'Last day'],
+      ['2026-11-14T12:00:00Z', '2026-11-02', null, 'Active'],
+      ['2026-11-14T12:00:00Z', '2026-11-19', null, 'Starts in 5 days'],
+      ['2026-11-14T12:00:00Z', '2026-11-15', null, 'Starts tomorrow'],
+      ['2026-11-14T12:00:00Z', '2026-11-02', '2026-11-13', 'Ended'],
+    ])('on %s for %s to %s says "%s"', (now, start_date, end_date, chip) => {
+      jest.useFakeTimers({
+        now: new Date(now),
+        doNotFake: ['nextTick', 'setImmediate'],
+      });
+      mockUseChallenge.mockReturnValue({
+        ...mockUseChallenge(),
+        data: makeChallenge({ start_date, end_date }),
+      });
+      renderDetail();
+      expect(screen.getByTestId('challenge-state')).toHaveTextContent(chip);
+    });
+  });
+
+  it('keeps the last standings with a retry when a refresh fails', () => {
+    const refetch = jest.fn();
+    mockUseStandings.mockReturnValue({
+      data: makeStandings(),
+      isLoading: false,
+      isError: true,
+      refetch,
+    });
+    renderDetail();
+    expect(
+      screen.getByText(
+        'Could not refresh the standings; showing the last ones loaded.'
+      )
+    ).toBeTruthy();
+    expect(screen.getByText('Alex')).toBeTruthy();
+    fireEvent.press(screen.getByText('Retry'));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('says so with a retry when the standings never loaded', () => {
+    mockUseStandings.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      refetch: jest.fn(),
+    });
+    renderDetail();
+    expect(screen.getByText('Could not load the standings.')).toBeTruthy();
+    expect(
+      screen.queryByTestId('challenge-standings-refresh-failed')
+    ).toBeNull();
+  });
+
+  describe('find box', () => {
+    const names = ['Alex', 'Sam', 'José', 'Priya', 'Noah', 'Mia'];
+    const sixRows = () => {
+      const base = makeStandings();
+      return makeStandings({
+        rows: names.map((display_name, i) => ({
+          ...base.rows[i === 1 ? 1 : 0],
+          user_id: `0000000${i}-0000-4000-8000-000000000000`,
+          display_name,
+          rank: i + 1,
+          total: 600 - i * 50,
+          me: i === 1 ? true : undefined,
+        })),
+      });
+    };
+
+    it('is not shown for a short list', () => {
+      renderDetail();
+      expect(screen.queryByTestId('challenge-standings-find')).toBeNull();
+    });
+
+    it('finds a member without minding accents or case, and says when none match', () => {
+      mockUseStandings.mockReturnValue({
+        ...mockUseStandings(),
+        data: sixRows(),
+      });
+      renderDetail();
+      const box = screen.getByTestId('challenge-standings-find');
+      fireEvent.changeText(box, 'jose');
+      expect(screen.getByText('José')).toBeTruthy();
+      expect(screen.queryByText('Priya')).toBeNull();
+      fireEvent.changeText(box, 'zed');
+      expect(screen.getByText('No member matches “zed”.')).toBeTruthy();
+    });
+
+    it('stays while a search is on after a refresh shortens the list', () => {
+      mockUseStandings.mockReturnValue({
+        ...mockUseStandings(),
+        data: sixRows(),
+      });
+      const view = renderDetail();
+      fireEvent.changeText(screen.getByTestId('challenge-standings-find'), 'a');
+      mockUseStandings.mockReturnValue({
+        ...mockUseStandings(),
+        data: makeStandings(),
+      });
+      view.rerender(
+        <SafeAreaProvider initialMetrics={{ insets, frame }}>
+          <ChallengeDetailScreen
+            navigation={
+              mockNavigation as unknown as RootStackScreenProps<'ChallengeDetail'>['navigation']
+            }
+            route={{
+              key: 'ChallengeDetail-key',
+              name: 'ChallengeDetail',
+              params: { id: 'c1', name: 'Family Cup' },
+            }}
+          />
+        </SafeAreaProvider>
+      );
+      expect(screen.getByTestId('challenge-standings-find').props.value).toBe(
+        'a'
+      );
+    });
+
+    it('starts empty on another period', () => {
+      const lastWeek = {
+        ...sixRows(),
+        period_start: '2026-11-02',
+        period_end: '2026-11-08',
+      };
+      mockUseStandings.mockImplementation(
+        (_id: string, date: string | null) => ({
+          data: date === '2026-11-08' ? lastWeek : sixRows(),
+          isLoading: false,
+          isError: false,
+          refetch: jest.fn(),
+        })
+      );
+      renderDetail();
+      fireEvent.changeText(
+        screen.getByTestId('challenge-standings-find'),
+        'zed'
+      );
+      fireEvent.press(screen.getByLabelText('Previous period'));
+      expect(screen.getByTestId('challenge-standings-find').props.value).toBe(
+        ''
+      );
+      expect(screen.getByText('Priya')).toBeTruthy();
+    });
+  });
+
   it('leaves after confirming and goes back', async () => {
     mockLeave.mockResolvedValue(undefined);
     const alert = jest.spyOn(Alert, 'alert');

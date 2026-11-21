@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
@@ -13,13 +13,15 @@ import {
 import { useEnergyUnit } from '../../hooks/useEnergyUnit';
 import { usePreferences } from '../../hooks/usePreferences';
 import {
+  challengeDaysToGo,
   challengeLeaders,
-  challengeState,
+  challengeStateNow,
+  challengesForCard,
   leadsChallenge,
   ownChallengeStanding,
-  sortChallenges,
 } from '@workspace/shared';
 import {
+  challengeStateText,
   formatChallengeValue,
   type ChallengeUnits,
 } from '../../utils/challenges';
@@ -32,35 +34,33 @@ type ChallengesCardNavigation = CompositeNavigationProp<
 
 interface ChallengesCardProps {
   navigation: ChallengesCardNavigation;
-  selectedDate: string;
 }
 
 /** Most challenges the card lists; the rest are a tap away. */
 export const CHALLENGES_CARD_LIMIT = 3;
 
 /**
- * The user's place in each challenge running on the selected day. Hidden on a
- * server without Challenges and for anyone not in a running challenge.
+ * The user's place in each current challenge (`challengesForCard`: running,
+ * then upcoming, each judged on today in its own time zone, as on the web).
+ * Upcoming ones say when they start. Hidden on a server without Challenges
+ * and for anyone with no current challenge.
  */
-const ChallengesCard: React.FC<ChallengesCardProps> = ({
-  navigation,
-  selectedDate,
-}) => {
+const ChallengesCard: React.FC<ChallengesCardProps> = ({ navigation }) => {
   const { t } = useTranslation();
   const [accentPrimary] = useCSSVariable(['--color-accent-primary']) as [
     string,
   ];
   const { challenges } = useChallenges();
-  const running = useMemo(
-    () =>
-      sortChallenges(challenges, selectedDate)
-        .filter((c) => challengeState(c, selectedDate) === 'running')
-        .slice(0, CHALLENGES_CARD_LIMIT),
-    [challenges, selectedDate]
-  );
-  const ids = useMemo(() => running.map((c) => c.id), [running]);
-  const standings = useChallengesStandings(ids, selectedDate);
-  const { preferences } = usePreferences({ enabled: running.length > 0 });
+  // One clock for the list, the states and the day counts.
+  const now = new Date();
+  const shown = challengesForCard(challenges, CHALLENGES_CARD_LIMIT, now);
+  // Only running challenges have standings; the server's today picks the
+  // period, as on the web card.
+  const runningIds = shown
+    .filter((c) => challengeStateNow(c, now) === 'running')
+    .map((c) => c.id);
+  const standings = useChallengesStandings(runningIds, null);
+  const { preferences } = usePreferences({ enabled: shown.length > 0 });
   const energyUnit = useEnergyUnit();
   const units: ChallengeUnits = {
     distanceUnit:
@@ -68,7 +68,7 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
     energyUnit,
   };
 
-  if (running.length === 0) return null;
+  if (shown.length === 0) return null;
 
   return (
     <Pressable
@@ -85,7 +85,8 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
         </Text>
         <Icon name="chevron-forward" size={14} color={accentPrimary} />
       </View>
-      {running.map((challenge, index) => {
+      {shown.map((challenge, index) => {
+        const state = challengeStateNow(challenge, now);
         const period = standings.byId.get(challenge.id);
         const own = period ? ownChallengeStanding(period.rows) : null;
         const leader = period
@@ -94,18 +95,25 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({
         // In the units of the rules that scored the period, sent with it
         // (totals are formatted only once the period is in).
         const metric = (period ?? challenge).rules.metric;
-        const line = !period
-          ? ' '
-          : own
-            ? t('challenges.card.yourPlace', {
-                defaultValue: '#{{rank}} of {{members}} · {{total}}',
-                rank: own.rank,
-                members: period.rows.length,
-                total: formatChallengeValue(own.total, metric, units, t),
-              })
-            : t('challenges.card.noScore', {
-                defaultValue: 'No score yet',
-              });
+        const line =
+          state !== 'running'
+            ? challengeStateText(state, challengeDaysToGo(challenge, now), t)
+            : !period
+              ? standings.failedIds.has(challenge.id)
+                ? t('challenges.standings.loadFailed', {
+                    defaultValue: 'Could not load the standings.',
+                  })
+                : ' '
+              : own
+                ? t('challenges.card.yourPlace', {
+                    defaultValue: '#{{rank}} of {{members}} · {{total}}',
+                    rank: own.rank,
+                    members: period.rows.length,
+                    total: formatChallengeValue(own.total, metric, units, t),
+                  })
+                : t('challenges.card.noScore', {
+                    defaultValue: 'No score yet',
+                  });
         const leaderLine =
           !leader || !own
             ? null

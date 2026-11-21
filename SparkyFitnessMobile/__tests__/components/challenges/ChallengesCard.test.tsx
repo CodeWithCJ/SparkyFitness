@@ -15,7 +15,7 @@ const mockUseChallenges = jest.fn();
 const mockUseStandings = jest.fn();
 jest.mock('../../../src/hooks/useChallenges', () => ({
   useChallenges: () => mockUseChallenges(),
-  useChallengesStandings: (ids: string[], date: string) =>
+  useChallengesStandings: (ids: string[], date: string | null) =>
     mockUseStandings(ids, date),
 }));
 
@@ -28,12 +28,11 @@ jest.mock('../../../src/components/Icon', () => {
 });
 
 const navigation = { navigate: jest.fn() };
-const DAY = '2026-11-14';
+// Midday UTC on Saturday 2026-11-14; the fixtures' challenges are in UTC.
+const NOW = new Date('2026-11-14T12:00:00Z');
 
 const renderCard = () =>
-  render(
-    <ChallengesCard navigation={navigation as never} selectedDate={DAY} />
-  );
+  render(<ChallengesCard navigation={navigation as never} />);
 
 describe('ChallengesCard', () => {
   beforeAll(async () => {
@@ -41,9 +40,18 @@ describe('ChallengesCard', () => {
   });
 
   beforeEach(() => {
+    jest.useFakeTimers({ now: NOW, doNotFake: ['nextTick', 'setImmediate'] });
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  beforeEach(() => {
     jest.clearAllMocks();
     mockUseStandings.mockReturnValue({
       byId: new Map([['c1', makeStandings()]]),
+      failedIds: new Set(),
       isLoading: false,
     });
   });
@@ -59,6 +67,7 @@ describe('ChallengesCard', () => {
           }),
         ],
       ]),
+      failedIds: new Set(),
       isLoading: false,
     });
     mockUseChallenges.mockReturnValue({ challenges: [makeChallenge()] });
@@ -67,10 +76,11 @@ describe('ChallengesCard', () => {
     expect(screen.getByText('Alex leads with 400 steps')).toBeTruthy();
   });
 
-  it('shows the user’s place and the leader for the selected day', () => {
+  it('shows the user’s place and the leader in the current period', () => {
     mockUseChallenges.mockReturnValue({ challenges: [makeChallenge()] });
     renderCard();
-    expect(mockUseStandings).toHaveBeenCalledWith(['c1'], DAY);
+    // The server's today picks the period, as on the web card.
+    expect(mockUseStandings).toHaveBeenCalledWith(['c1'], null);
     expect(screen.getByText('#2 of 2 · 250 pts')).toBeTruthy();
     expect(screen.getByText('Alex leads with 400 pts')).toBeTruthy();
     fireEvent.press(screen.getByTestId('challenges-card-row-c1'));
@@ -102,9 +112,60 @@ describe('ChallengesCard', () => {
     expect(screen.queryByText(/leads with/)).toBeNull();
   });
 
-  it('is hidden when no challenge is running that day', () => {
+  it('lists an upcoming challenge after the running ones, with when it starts', () => {
     mockUseChallenges.mockReturnValue({
-      challenges: [makeChallenge({ start_date: '2026-12-01' })],
+      challenges: [
+        makeChallenge({
+          id: 'c2',
+          name: 'Winter Cup',
+          start_date: '2026-11-19',
+        }),
+        makeChallenge(),
+      ],
+    });
+    renderCard();
+    // Standings are read for the running challenge only.
+    expect(mockUseStandings).toHaveBeenCalledWith(['c1'], null);
+    expect(screen.getByText('Starts in 5 days')).toBeTruthy();
+    const rows = screen.getAllByTestId(/^challenges-card-row-/);
+    expect(rows.map((row) => row.props.testID)).toEqual([
+      'challenges-card-row-c1',
+      'challenges-card-row-c2',
+    ]);
+  });
+
+  it('says "Starts tomorrow" rather than a count of 1', () => {
+    mockUseChallenges.mockReturnValue({
+      challenges: [makeChallenge({ start_date: '2026-11-15' })],
+    });
+    renderCard();
+    expect(screen.getByText('Starts tomorrow')).toBeTruthy();
+  });
+
+  it('shows at most three challenges', () => {
+    mockUseChallenges.mockReturnValue({
+      challenges: ['a', 'b', 'c', 'd'].map((id) =>
+        makeChallenge({ id, name: id })
+      ),
+    });
+    renderCard();
+    expect(screen.getAllByTestId(/^challenges-card-row-/)).toHaveLength(3);
+  });
+
+  it('says so when a challenge’s standings failed to load', () => {
+    mockUseStandings.mockReturnValue({
+      byId: new Map(),
+      failedIds: new Set(['c1']),
+      isLoading: false,
+    });
+    mockUseChallenges.mockReturnValue({ challenges: [makeChallenge()] });
+    renderCard();
+    expect(screen.getByText('Could not load the standings.')).toBeTruthy();
+  });
+
+  it('is hidden when every challenge has ended', () => {
+    mockUseChallenges.mockReturnValue({
+      challenges: [makeChallenge({ end_date: '2026-11-13' })],
     });
     const { toJSON } = renderCard();
     expect(toJSON()).toBeNull();
