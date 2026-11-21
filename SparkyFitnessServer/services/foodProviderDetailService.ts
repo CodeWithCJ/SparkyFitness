@@ -73,6 +73,17 @@ export function normalizeFoodVariantForResponse(variant: unknown): unknown {
       record.custom_nutrients as
         Record<string, string | number> | null | undefined
     ),
+    provider_nutrients: nullToUndefined(
+      record.provider_nutrients as Record<string, number> | null | undefined
+    ),
+    provider_nutrient_units: nullToUndefined(
+      record.provider_nutrient_units as
+        Record<string, string> | null | undefined
+    ),
+    provider_nutrient_standard: nullToUndefined(
+      record.provider_nutrient_standard as
+        Record<string, string> | null | undefined
+    ),
     source: nullToUndefined(
       record.source as 'manual' | 'ai_estimate' | 'imported' | null | undefined
     ),

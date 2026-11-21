@@ -35,6 +35,7 @@ export interface BuildPer100gFoodInput {
   barcode?: string | null;
   per100g: Partial<Record<StandardNutrientField, number>>;
   providerNutrients?: Record<string, number>;
+  providerNutrientUnits?: Record<string, string>;
   providerNutrientStandard?: Record<string, string>;
   portions?: PortionMeasure[];
   isLiquid?: boolean;
@@ -64,6 +65,7 @@ export interface MappedVariant {
   water_ml?: number;
   alcohol_g?: number;
   provider_nutrients?: Record<string, number>;
+  provider_nutrient_units?: Record<string, string>;
   provider_nutrient_standard?: Record<string, string>;
   is_default: boolean;
 }
@@ -95,6 +97,7 @@ export function buildPer100gFood(
     barcode,
     per100g,
     providerNutrients = {},
+    providerNutrientUnits = {},
     providerNutrientStandard = {},
     portions = [],
     isLiquid = false,
@@ -126,6 +129,7 @@ export function buildPer100gFood(
     water_ml: roundOneDecimal(per100g.water_ml),
     alcohol_g: roundOneDecimal(per100g.alcohol_g),
     provider_nutrients: providerNutrients,
+    provider_nutrient_units: providerNutrientUnits,
     provider_nutrient_standard: providerNutrientStandard,
     is_default: true,
   };
@@ -213,6 +217,7 @@ export function buildPer100gFood(
           ? roundOneDecimal(per100g.alcohol_g * factor)
           : undefined,
       provider_nutrients: scaledNutrients,
+      provider_nutrient_units: providerNutrientUnits,
       provider_nutrient_standard: providerNutrientStandard,
       is_default: false,
     });

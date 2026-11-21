@@ -10,6 +10,8 @@ import {
 } from '../foodProviders/per100gMapper.js';
 import { detailCache } from '../foodProviders/detailCache.js';
 import { altBarcode } from '../../utils/foodUtils.js';
+import { normalizeNutrientUnit } from '@workspace/shared';
+import { COOKTOOL_USDA_NUTRIENT_NAMES } from './cooktoolNutrients.js';
 import type {
   MappedProviderFood,
   StandardNutrientField,
@@ -280,13 +282,24 @@ export async function getCookToolDetails(
 
     const per100g: Partial<Record<StandardNutrientField, number>> = {};
     const providerNutrients: Record<string, number> = {};
+    const providerNutrientUnits: Record<string, string> = {};
+    const providerNutrientStandard: Record<string, string> = {};
 
     for (const row of response.nutrients || []) {
       const stdKey = NUTRIENT_NUMBER_TO_STANDARD[row.nutrient_nbr];
       if (stdKey && per100g[stdKey] === undefined) {
         per100g[stdKey] = row.amount_per_100g;
       }
-      providerNutrients[`nutrient_${row.nutrient_nbr}`] = row.amount_per_100g;
+      const label =
+        COOKTOOL_USDA_NUTRIENT_NAMES[row.nutrient_nbr] ||
+        `nutrient_${row.nutrient_nbr}`;
+      providerNutrients[label] = row.amount_per_100g;
+      if (row.unit_name) {
+        providerNutrientUnits[label] = normalizeNutrientUnit(row.unit_name);
+      }
+      if (stdKey) {
+        providerNutrientStandard[label] = stdKey;
+      }
     }
 
     const mapped = buildPer100gFood({
@@ -295,6 +308,8 @@ export async function getCookToolDetails(
       name: response.ingredient_name || 'CookTool Ingredient',
       per100g,
       providerNutrients,
+      providerNutrientUnits,
+      providerNutrientStandard,
     });
 
     detailCache.set('cooktool', externalId, mapped);

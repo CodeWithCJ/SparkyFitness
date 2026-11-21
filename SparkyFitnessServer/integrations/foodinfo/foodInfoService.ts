@@ -9,6 +9,7 @@ import {
   buildSearchSummaryFood,
 } from '../foodProviders/per100gMapper.js';
 import { detailCache } from '../foodProviders/detailCache.js';
+import { normalizeNutrientUnit } from '@workspace/shared';
 import type {
   MappedProviderFood,
   StandardNutrientField,
@@ -236,6 +237,7 @@ export async function getFoodInfoDetails(
 
   const per100g: Partial<Record<StandardNutrientField, number>> = {};
   const providerNutrients: Record<string, number> = {};
+  const providerNutrientUnits: Record<string, string> = {};
   const providerNutrientStandard: Record<string, string> = {};
 
   for (const group of panel.groups || []) {
@@ -252,7 +254,10 @@ export async function getFoodInfoDetails(
       if (typeof row.amountPer100g === 'number' && !isNaN(row.amountPer100g)) {
         providerNutrients[row.name] = row.amountPer100g;
         if (row.unit) {
-          providerNutrientStandard[row.name] = row.unit;
+          providerNutrientUnits[row.name] = normalizeNutrientUnit(row.unit);
+        }
+        if (stdKey) {
+          providerNutrientStandard[row.name] = stdKey;
         }
       }
     }
@@ -284,6 +289,7 @@ export async function getFoodInfoDetails(
     name: panel.description || 'Food Info Item',
     per100g,
     providerNutrients,
+    providerNutrientUnits,
     providerNutrientStandard,
     portions,
   });

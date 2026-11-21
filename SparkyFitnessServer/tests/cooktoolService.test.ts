@@ -180,6 +180,13 @@ describe('CookTool Service', () => {
       expect(food?.default_variant.potassium).toBe(358);
       expect(food?.default_variant.sodium).toBe(1);
       expect(food?.default_variant.iron).toBe(0.3);
+      expect(food?.default_variant.provider_nutrients?.['Protein']).toBe(1.09);
+      expect(food?.default_variant.provider_nutrient_units?.['Protein']).toBe(
+        'g'
+      );
+      expect(
+        food?.default_variant.provider_nutrient_standard?.['Protein']
+      ).toBe('protein');
 
       // Verify cached on subsequent call
       const cached = await getCookToolDetails(ctx, 'ing:6433');
