@@ -517,10 +517,28 @@ describe('createGarminSync', () => {
         'Garmin snapshot to 1 not delivered: failed'
       );
 
-      h.sendMessage.mockResolvedValueOnce('tooLarge');
+      h.sendMessage
+        .mockResolvedValueOnce('tooLarge')
+        .mockResolvedValueOnce('tooLarge');
       await h.sync.resync('1');
       expect(h.log).toHaveBeenCalledWith(
         'Garmin cached snapshot is too large for 1; not sent'
+      );
+    });
+
+    test('a cached copy over the cap goes again without its nutrient rows', async () => {
+      const h = harness();
+      h.getCache.mockResolvedValue(cachedMessage);
+      h.sendMessage.mockResolvedValueOnce('tooLarge');
+
+      await h.sync.resync('1');
+
+      expect(h.sendMessage).toHaveBeenLastCalledWith('1', {
+        ...cachedMessage,
+        topics: { goals: { ...goals(900), nutrients: [] } },
+      });
+      expect(h.log).toHaveBeenCalledWith(
+        'Garmin cached snapshot is too large for 1; sent without its nutrient rows'
       );
     });
   });
@@ -619,6 +637,165 @@ describe('createGarminSync', () => {
       'Garmin topic water is too large for 1; not sent'
     );
     expect(h.log).toHaveBeenCalledTimes(2);
+  });
+
+  describe('a Goals topic over the cap on its own', () => {
+    // Over the cap while it carries nutrient rows, as with many custom ones.
+    const overWithRows = (
+      _deviceId: string,
+      message: GarminPhoneMessage
+    ): Promise<GarminSendResult> =>
+      Promise.resolve(
+        message.type === 'snapshot' &&
+          (message.topics.goals?.nutrients?.length ?? 0) > 0
+          ? 'tooLarge'
+          : 'sent'
+      );
+
+    test('goes again without its nutrient rows, so the calorie figures arrive', async () => {
+      const h = harness();
+      h.sendMessage.mockImplementation(overWithRows);
+
+      await h.publish(snapshot());
+
+      expect(h.sendMessage).toHaveBeenCalledTimes(2);
+      expect(h.sendMessage).toHaveBeenLastCalledWith('1', {
+        type: 'snapshot',
+        v: 1,
+        pushedAt: 1_000,
+        today: '2026-11-19',
+        owner: 'server-1',
+        topics: { goals: { ...goals(1200), nutrients: [] } },
+      });
+      expect(h.log).toHaveBeenCalledWith(
+        'Garmin topic goals is too large for 1; sent without its nutrient rows'
+      );
+    });
+
+    test('that send is recorded: the same topic is not tried again, a changed one is sent in full', async () => {
+      const h = harness();
+      h.sendMessage.mockImplementation(overWithRows);
+
+      await h.publish(snapshot());
+      await h.publish(snapshot({ pushedAt: 2_000 }));
+      expect(h.sendMessage).toHaveBeenCalledTimes(2);
+
+      await h.publish(snapshot({ pushedAt: 3_000, goals: goals(1300) }));
+      expect(h.sendMessage).toHaveBeenCalledTimes(4);
+      const full = h.sendMessage.mock.calls[2]?.[1];
+      expect(
+        full?.type === 'snapshot' ? full.topics.goals?.nutrients : null
+      ).toHaveLength(1);
+    });
+
+    test('still over the cap without its rows: logged and not recorded', async () => {
+      const h = harness();
+      h.sendMessage.mockResolvedValue('tooLarge');
+
+      await h.publish(snapshot());
+      await h.publish(snapshot({ pushedAt: 2_000 }));
+
+      expect(h.sendMessage).toHaveBeenCalledTimes(4);
+      expect(h.log).toHaveBeenCalledWith(
+        'Garmin topic goals is too large for 1; not sent'
+      );
+    });
+
+    test('a watch that goes away meanwhile is forgotten', async () => {
+      const h = harness();
+      // Both topics recorded, then a changed goals topic that is over the
+      // cap, and the watch gone by its send without rows.
+      h.sendMessage
+        .mockResolvedValueOnce('sent')
+        .mockResolvedValueOnce('tooLarge')
+        .mockResolvedValueOnce('notConnected');
+
+      await h.publish(snapshot({ water: { ml: 500 } }));
+      await h.publish(
+        snapshot({ pushedAt: 2_000, goals: goals(1300), water: { ml: 500 } })
+      );
+      await h.publish(
+        snapshot({ pushedAt: 3_000, goals: goals(1300), water: { ml: 500 } })
+      );
+
+      // Forgotten, so the next publish goes in full, `water` included.
+      expect(h.sentTopics()).toEqual([
+        ['1', ['goals', 'water']],
+        ['1', ['goals']],
+        ['1', ['goals']],
+        ['1', ['goals', 'water']],
+      ]);
+      expect(h.log).not.toHaveBeenCalledWith(
+        'Garmin topic goals is too large for 1; not sent'
+      );
+    });
+
+    test('in a split, goes without its rows and is recorded, then the split goes on', async () => {
+      const h = harness();
+      h.sendMessage.mockImplementation(overWithRows);
+
+      await h.publish(snapshot({ water: { ml: 500 } }));
+      await h.publish(snapshot({ pushedAt: 2_000, water: { ml: 500 } }));
+
+      expect(h.sentTopics()).toEqual([
+        ['1', ['goals', 'water']],
+        ['1', ['goals']],
+        ['1', ['goals']],
+        ['1', ['water']],
+      ]);
+      const trimmed = h.sendMessage.mock.calls[2]?.[1];
+      expect(
+        trimmed?.type === 'snapshot' ? trimmed.topics.goals?.nutrients : null
+      ).toEqual([]);
+    });
+
+    test('in a split, a watch gone by the send without rows stops the split and is forgotten', async () => {
+      const h = harness();
+      // Both topics recorded, then both changed: over the cap together and
+      // goals on its own, and the watch gone by its send without rows.
+      h.sendMessage
+        .mockResolvedValueOnce('sent')
+        .mockResolvedValueOnce('tooLarge')
+        .mockResolvedValueOnce('tooLarge')
+        .mockResolvedValueOnce('notConnected');
+
+      await h.publish(snapshot({ water: { ml: 500 } }));
+      await h.publish(
+        snapshot({ pushedAt: 2_000, goals: goals(1300), water: { ml: 600 } })
+      );
+      // `water` back to what was recorded: only a forgotten record sends it.
+      await h.publish(
+        snapshot({ pushedAt: 3_000, goals: goals(1300), water: { ml: 500 } })
+      );
+
+      expect(h.sentTopics()).toEqual([
+        ['1', ['goals', 'water']],
+        ['1', ['goals', 'water']],
+        ['1', ['goals']],
+        ['1', ['goals']],
+        ['1', ['goals', 'water']],
+      ]);
+    });
+
+    test('in a split, a record forgotten during the send without rows stops the split', async () => {
+      const h = harness();
+      h.sendMessage
+        .mockResolvedValueOnce('tooLarge')
+        .mockResolvedValueOnce('tooLarge')
+        .mockImplementationOnce(() => {
+          // A resync, a reconnect or an account change lands meanwhile.
+          h.sync.forgetAll();
+          return Promise.resolve('sent');
+        });
+
+      await h.publish(snapshot({ water: { ml: 500 } }));
+
+      expect(h.sentTopics()).toEqual([
+        ['1', ['goals', 'water']],
+        ['1', ['goals']],
+        ['1', ['goals']],
+      ]);
+    });
   });
 
   test('a failure while splitting stops the split and forgets the record', async () => {

@@ -28,13 +28,16 @@ class GoalsView extends WatchUi.View {
 
     // The longest the stale timer waits at once. A phone clock far ahead of
     // the watch's can put staleAt weeks away, past what a timer's
-    // milliseconds (a 32-bit Number) hold; a capped wait sets itself again.
+    // milliseconds (a 32-bit Number) hold; a capped wait sets itself again,
+    // reading the clock again, so a DST or time-zone change still lands on
+    // midnight.
     private const MAX_TIMER_SECONDS = 60 * 60;
 
     private var _scale as Float;
     // Nothing redraws a page left open, so "as of" would only appear with the
-    // next snapshot, which makes the figures fresh again. This one-shot timer
-    // wakes the page the second the figures on it turn old.
+    // next snapshot, which makes the figures fresh again, and yesterday's
+    // figures would stay after midnight. This one-shot timer wakes the page
+    // the second the figures on it turn old or stop being today's.
     private var _staleTimer as Timer.Timer;
     // Redraws when the wait for the first answer ends (SyncRequest).
     private var _waitTimer as Timer.Timer;
@@ -79,8 +82,8 @@ class GoalsView extends WatchUi.View {
         return pushedAt != null ? SyncTime.staleAt(pushedAt) : null;
     }
 
-    // Sets the timer for the snapshot in Storage: stopped when there is none
-    // or it is already old, else due when it turns old.
+    // Sets the timer for the snapshot in Storage: stopped when there is none,
+    // else due when it turns old or at local midnight, whichever comes first.
     private function setStaleTimer() as Void {
         _staleTimer.stop();
         var staleAt = storedStaleAt();
@@ -88,9 +91,10 @@ class GoalsView extends WatchUi.View {
         if (staleAt == null) {
             return;
         }
-        var wait = staleAt - Time.now().value();
-        if (wait <= 0) {
-            return;
+        var now = Time.now().value();
+        var wait = SyncTime.secondsToMidnight();
+        if (staleAt > now && staleAt - now < wait) {
+            wait = staleAt - now;
         }
         if (wait > MAX_TIMER_SECONDS) {
             wait = MAX_TIMER_SECONDS;
@@ -99,7 +103,8 @@ class GoalsView extends WatchUi.View {
     }
 
     // Set again first: a wait cut to MAX_TIMER_SECONDS ends before the
-    // figures are old, and then this only redraws the same page.
+    // figures are old or the day turns, and then this only redraws the same
+    // page.
     function onStaleTimer() as Void {
         setStaleTimer();
         WatchUi.requestUpdate();

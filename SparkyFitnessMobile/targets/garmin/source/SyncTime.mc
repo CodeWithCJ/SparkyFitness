@@ -30,6 +30,15 @@ module SyncTime {
         return Math.floor(epochMs / 1000.0d + STALE_AFTER_SECONDS).toNumber() + 1;
     }
 
+    // Seconds until the watch's next local midnight, 1 to a whole day: when
+    // figures stop being today's (Goals.isFor). Read from the wall clock, so
+    // a night with a DST change still lands on midnight.
+    function secondsToMidnight() as Number {
+        var clock = System.getClockTime();
+        var left = Gregorian.SECONDS_PER_DAY - (clock.hour * 60 * 60 + clock.min * 60 + clock.sec);
+        return left > 0 ? left : 1;
+    }
+
     // A phone clock running ahead of the watch's gives a negative age, which
     // counts as fresh rather than as a date in the future.
     function isStale(epochMs as Double, nowSeconds as Number) as Boolean {

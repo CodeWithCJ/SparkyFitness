@@ -100,6 +100,7 @@ jest.mock('../../src/services/storage', () => ({
 
 import {
   hasWatchTransport,
+  relinkGarminSync,
   sendContextToWatches,
   subscribeGarminSync,
   useGarminWatchSync,
@@ -344,6 +345,10 @@ describe('subscribeGarminSync', () => {
     expect(garmin.start.mock.invocationCallOrder[0]).toBeLessThan(
       garmin.refreshDevices.mock.invocationCallOrder[0] ?? 0
     );
+    // Both listeners first, so the status events the start causes are heard.
+    expect(
+      Math.max(...watch.addListener.mock.invocationCallOrder)
+    ).toBeLessThan(garmin.start.mock.invocationCallOrder[0] ?? 0);
   });
 
   test('passes on resyncs and status changes to the sync of the moment', () => {
@@ -438,6 +443,34 @@ describe('subscribeGarminSync', () => {
     for (const remove of removes) expect(remove).toHaveBeenCalledTimes(1);
     expect(garmin.forgetAll).toHaveBeenCalledTimes(1);
   });
+
+  test('useGarminWatchSync answers whether the sync has linked, turning true when Garmin becomes available', async () => {
+    mockedGetGarminSync.mockReturnValue(null);
+    const { result } = renderHook(() => useGarminWatchSync());
+    await act(flush);
+    expect(result.current).toBe(false);
+
+    mockedGetGarminSync.mockReturnValue(garmin);
+    await act(async () => {
+      relinkGarminSync();
+      await flush();
+    });
+
+    expect(result.current).toBe(true);
+  });
+
+  test('useGarminWatchSync is already true on the first render when Garmin was available at mount', () => {
+    // The first render's value, not the settled one: starting false would
+    // flip at once and make the bridge set up its listeners and push twice.
+    const seen: boolean[] = [];
+    renderHook(() => {
+      const linked = useGarminWatchSync();
+      seen.push(linked);
+      return linked;
+    });
+
+    expect(seen[0]).toBe(true);
+  });
 });
 
 describe('hasWatchTransport', () => {
@@ -498,6 +531,48 @@ describe('useWatchCheckInBridge Garmin account epoch', () => {
       expect.objectContaining({ owner: 'server-1' }),
       3
     );
+    unmount();
+  });
+
+  test('with Garmin available at mount, the listeners are set up once', async () => {
+    mockedSyncCredentials.mockResolvedValue('server-1');
+
+    const { unmount } = renderHook(() => useWatchCheckInBridge(true));
+    await act(flush);
+
+    expect(
+      watch.addListener.mock.calls.filter(
+        ([event]) => event === 'onContextRequest'
+      )
+    ).toHaveLength(1);
+    unmount();
+  });
+
+  test('Garmin becoming available after mount, with no other watch transport, adds the listeners and pushes', async () => {
+    mockedGetGarminSync.mockReturnValue(null);
+    mockedGarminEnabled.mockReturnValue(false);
+    mockedSyncCredentials.mockResolvedValue('server-1');
+
+    const { unmount } = renderHook(() => useWatchCheckInBridge(true));
+    await act(flush);
+    expect(watch.addListener).not.toHaveBeenCalledWith(
+      'onContextRequest',
+      expect.any(Function)
+    );
+
+    // The simulator switch, or Garmin Connect installed while the app runs.
+    mockedGarminEnabled.mockReturnValue(true);
+    mockedGetGarminSync.mockReturnValue(garmin);
+    await act(async () => {
+      relinkGarminSync();
+      await flush();
+    });
+
+    expect(watch.addListener).toHaveBeenCalledWith(
+      'onContextRequest',
+      expect.any(Function)
+    );
+    expect(garmin.publish).toHaveBeenCalledTimes(1);
     unmount();
   });
 });

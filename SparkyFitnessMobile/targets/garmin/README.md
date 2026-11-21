@@ -95,7 +95,7 @@ The Connect IQ simulator plays the watch, and the phone app (a real phone or an 
 5. In the simulator, choose **Connection → Start** (Ctrl+F1).
 6. Sign in on the phone. Settings → Garmin lists the simulated watch, and the app in the simulator gets today's numbers (it asks when it starts; restart it from the simulator's menu to ask again).
 
-In this mode the phone never tries Garmin's binder delivery, and the simulator keeps a phone message for a closed app in its mailbox rather than starting the background service (so the glance only changes once the app is opened), so test those two on a real watch. The switch takes effect at the next start of the app when the Garmin link was already running: close SparkyFitness from the recent apps and open it again (a Metro reload is not enough). Turn it off the same way to go back to watches. While it is on, the phone listens for the simulator on port 7381 on every network, so use a trusted Wi-Fi.
+In this mode the phone never tries Garmin's binder delivery, and the simulator keeps a phone message for a closed app in its mailbox rather than starting the background service (so the glance only changes once the app is opened), so test those two on a real watch. The switch takes effect at the next start of the app when the Garmin link was already running: force stop the app from its App info screen in Android settings (or `adb shell am force-stop` with the app's package), then open it again. Closing it from the recent apps does not end the process while a foreground service runs, such as a GPS recording, and a Metro reload is not enough. Turn it off the same way to go back to watches. While it is on, the phone listens for the simulator on port 7381 on every network, so use a trusted Wi-Fi.
 
 ## Background updates
 

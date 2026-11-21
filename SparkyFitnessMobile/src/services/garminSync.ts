@@ -173,6 +173,23 @@ export function snapshotMessage(
 }
 
 /**
+ * `message` with the Goals topic's nutrient rows left out, or null when it
+ * has none to leave out. What goes when a message is over the size cap on its
+ * own (many custom nutrients, or long names), so the calorie figures still
+ * reach the watch, which then shows them without rows.
+ */
+function withoutNutrientRows(
+  message: GarminSnapshotMessage
+): GarminSnapshotMessage | null {
+  const goals = message.topics.goals;
+  if (!goals?.nutrients?.length) return null;
+  return {
+    ...message,
+    topics: { ...message.topics, goals: { ...goals, nutrients: [] } },
+  };
+}
+
+/**
  * A cached message as the native side hands it back. Checked because it
  * crosses the bridge and may have been stored by an older build.
  */
@@ -188,8 +205,10 @@ function isSnapshotMessage(value: unknown): value is GarminSnapshotMessage {
 
 interface WatchState {
   /**
-   * Topic name -> `stableJson` of the copy the watch confirmed (`sent`).
-   * Null when what it holds is unknown, so its next message is in full.
+   * Topic name -> `stableJson` of the copy the watch confirmed (`sent`), or
+   * of the whole topic when only its copy without nutrient rows fit
+   * (`sendOversized`). Null when what it holds is unknown, so its next
+   * message is in full.
    */
   delivered: Map<string, string> | null;
   /**
@@ -354,10 +373,11 @@ export function createGarminSync(deps: GarminSyncDeps): GarminSync {
     // watch rewrites its `meta` from an envelope without topics.
     if (names.length === 0 && !full && !pushedAtStale(state, snapshot)) return;
 
-    const result = await deliver(
-      deviceId,
-      snapshotMessage(snapshot, pickTopics(snapshot.topics, names))
+    const message = snapshotMessage(
+      snapshot,
+      pickTopics(snapshot.topics, names)
     );
+    const result = await deliver(deviceId, message);
     // Forgotten while in flight: whatever this result says is out of date.
     if (generation !== state.generation) return;
     if (result === 'sent') {
@@ -365,14 +385,54 @@ export function createGarminSync(deps: GarminSyncDeps): GarminSync {
     } else if (result === 'tooLarge' && names.length > 1) {
       await sendEachTopic(deviceId, state, snapshot, names);
     } else if (result === 'tooLarge') {
-      // On its own over the cap: sending it again would only fail again. Not
-      // recorded, so it goes out once it has shrunk.
-      deps.log(
-        `Garmin topic ${names[0] ?? '(none)'} is too large for ${deviceId}; not sent`
+      await sendOversized(
+        deviceId,
+        state,
+        message,
+        `topic ${names[0] ?? '(none)'}`,
+        () => record(state, snapshot, names)
       );
     } else {
       lost(deviceId, result);
     }
+  }
+
+  /**
+   * A message over the cap on its own: sending it again would only fail
+   * again. One with nutrient rows goes again without them
+   * (`withoutNutrientRows`), and `onSent` runs when that arrives; publishes
+   * record the topic as sent then, so the same content is not tried on every
+   * push and any change sends it in full again. Anything else is logged and
+   * not recorded, so it goes out once it has shrunk. Answers false when the
+   * watch went away or was forgotten meanwhile, so a caller stops sending to
+   * it.
+   */
+  async function sendOversized(
+    deviceId: string,
+    state: WatchState,
+    message: GarminSnapshotMessage,
+    what: string,
+    onSent?: () => void
+  ): Promise<boolean> {
+    const generation = state.generation;
+    const trimmed = withoutNutrientRows(message);
+    if (trimmed) {
+      const result = await deliver(deviceId, trimmed);
+      if (generation !== state.generation) return false;
+      if (result === 'sent') {
+        onSent?.();
+        deps.log(
+          `Garmin ${what} is too large for ${deviceId}; sent without its nutrient rows`
+        );
+        return true;
+      }
+      if (result !== 'tooLarge') {
+        lost(deviceId, result);
+        return false;
+      }
+    }
+    deps.log(`Garmin ${what} is too large for ${deviceId}; not sent`);
+    return true;
   }
 
   /** Splits a snapshot that was over the size cap into one message per topic. */
@@ -384,15 +444,23 @@ export function createGarminSync(deps: GarminSyncDeps): GarminSync {
   ): Promise<void> {
     const generation = state.generation;
     for (const name of names) {
-      const result = await deliver(
-        deviceId,
-        snapshotMessage(snapshot, pickTopics(snapshot.topics, [name]))
+      const message = snapshotMessage(
+        snapshot,
+        pickTopics(snapshot.topics, [name])
       );
+      const result = await deliver(deviceId, message);
       if (generation !== state.generation) return;
       if (result === 'sent') {
         record(state, snapshot, [name]);
       } else if (result === 'tooLarge') {
-        deps.log(`Garmin topic ${name} is too large for ${deviceId}; not sent`);
+        const reachable = await sendOversized(
+          deviceId,
+          state,
+          message,
+          `topic ${name}`,
+          () => record(state, snapshot, [name])
+        );
+        if (!reachable) return;
       } else {
         // The watch went away or the SDK failed: the rest would fail too.
         lost(deviceId, result);
@@ -436,8 +504,8 @@ export function createGarminSync(deps: GarminSyncDeps): GarminSync {
     const message = cached === 'empty' ? ACCOUNT_CLEARED_MESSAGE : cached;
     const result = await deliver(deviceId, message);
     if (generation !== state.generation || result === 'sent') return;
-    if (result === 'tooLarge') {
-      deps.log(`Garmin cached snapshot is too large for ${deviceId}; not sent`);
+    if (result === 'tooLarge' && cached !== 'empty') {
+      await sendOversized(deviceId, state, cached, 'cached snapshot');
     } else {
       lost(deviceId, result);
     }

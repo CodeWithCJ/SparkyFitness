@@ -1513,10 +1513,11 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
    */
   isGarminSimulator?(): boolean;
   /**
-   * Sets that switch, starts the link again in the new mode when it was
-   * running in the other one, and resolves with the status, like
-   * `startGarmin()`. The simulator then needs `adb forward tcp:7381
-   * tcp:7381` and Connection → Start. Android only.
+   * Sets that switch and resolves with the status, like `startGarmin()`. A
+   * link already started keeps its mode until the app process starts again
+   * (the SDK cannot close its ADB connection); one not started yet in this
+   * process starts in the new mode. The simulator then needs `adb forward
+   * tcp:7381 tcp:7381` and Connection → Start. Android only.
    */
   setGarminSimulator?(on: boolean): Promise<GarminStatus>;
   /**

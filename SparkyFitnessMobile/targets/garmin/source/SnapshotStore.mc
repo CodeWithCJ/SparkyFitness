@@ -38,9 +38,10 @@ module SnapshotStore {
     }
 
     // When the phone built the stored figures (epoch ms). Every snapshot
-    // updates it, and the phone leaves out only topics that did not change,
-    // so it dates every stored topic. Null before the first snapshot and
-    // after accountCleared.
+    // that is stored updates it (one with a topic that could not be stored
+    // leaves it, and deletes that topic's older copy), and the phone leaves
+    // out only topics that did not change, so it dates every stored topic.
+    // Null before the first snapshot and after accountCleared.
     function pushedAt() as Double? {
         var meta = Wire.dictionary(readValue(KEY_META));
         return meta != null ? Wire.number(meta.get(META_PUSHED_AT)) : null;
@@ -92,15 +93,27 @@ module SnapshotStore {
             deleteTopics();
         }
 
+        // A topic not stored (object store full): the phone was told the
+        // message arrived, so it sends that topic again only when it changes
+        // or the watch asks (the app opening, a reconnect). Its older copy is
+        // deleted, so the next envelope without topics cannot date it as new,
+        // and `meta` is left as it was, so this message is not taken as
+        // applied (isLate). The other topics are still written, so each one
+        // the message carried is either current or gone.
+        var failed = false;
         var topics = Wire.dictionary(message.get(MESSAGE_TOPICS));
         if (topics != null) {
             for (var i = 0; i < TOPICS.size(); i++) {
                 var name = TOPICS[i];
                 var topic = Wire.dictionary(topics.get(name));
-                if (topic != null) {
-                    writeValue(name, topic as Dictionary<Storage.KeyType, Storage.ValueType>);
+                if (topic != null && !writeValue(name, topic as Dictionary<Storage.KeyType, Storage.ValueType>)) {
+                    Storage.deleteValue(name);
+                    failed = true;
                 }
             }
+        }
+        if (failed) {
+            return;
         }
 
         var newMeta = {META_OWNER => owner} as Dictionary<Storage.KeyType, Storage.ValueType>;
@@ -190,13 +203,15 @@ module SnapshotStore {
         return Storage.getValue(key) as Object?;
     }
 
-    // A full object store must not crash the app over a snapshot the phone
-    // will send again.
-    function writeValue(key as String, value as Storage.ValueType) as Void {
+    // A full object store must not crash the app; the caller decides what a
+    // failed write means. Returns whether it was stored.
+    function writeValue(key as String, value as Storage.ValueType) as Boolean {
         try {
             Storage.setValue(key, value);
+            return true;
         } catch (e instanceof Lang.Exception) {
             System.println("SnapshotStore: could not store " + key + ": " + e.getErrorMessage());
+            return false;
         }
     }
 }

@@ -1,4 +1,5 @@
 import Toybox.Lang;
+import Toybox.Timer;
 import Toybox.WatchUi;
 
 // Every nutrient the phone picked, for when the Goals page has more than it
@@ -36,7 +37,7 @@ module NutrientList {
     // updated in place, even while the list is covered; when today's goals
     // are gone or the number of rows changed (an account cleared, another
     // day, a different pick) it closes, at once when it is on top, else as
-    // soon as it is shown again (NutrientMenu.onShow).
+    // soon as it is shown again (NutrientMenu.onShow checks it every time).
     function refresh() as Void {
         var menu = _menu;
         if (menu != null) {
@@ -50,8 +51,6 @@ module NutrientList {
             if (onTop) {
                 _menu = null;
                 WatchUi.popView(WatchUi.SLIDE_IMMEDIATE);
-            } else {
-                menu.stale = true;
             }
             return;
         }
@@ -59,7 +58,6 @@ module NutrientList {
             menu.updateItem(item(rows[i], i), i);
         }
         menu.setFooter(footerText());
-        menu.stale = false;
         WatchUi.requestUpdate();
     }
 
@@ -93,10 +91,14 @@ module NutrientList {
 }
 
 class NutrientMenu extends WatchUi.Menu2 {
+    // The longest the day timer waits at once; it then reads the clock again.
+    private const MAX_TIMER_SECONDS = 60 * 60;
+
     // How many rows it was built with; refresh only updates them in place.
     var count as Number;
-    // Storage changed while it was covered in a way it cannot show.
-    var stale as Boolean;
+    // Wakes the list at local midnight while it is shown, when its rows stop
+    // being today's; nothing else would close a list left open.
+    private var _dayTimer as Timer.Timer;
 
     function initialize(count as Number, footer as String?) {
         if (footer != null) {
@@ -105,14 +107,36 @@ class NutrientMenu extends WatchUi.Menu2 {
             Menu2.initialize({:title => Rez.Strings.NutrientsTitle});
         }
         self.count = count;
-        stale = false;
+        _dayTimer = new Timer.Timer();
     }
 
+    // Checked whenever it is shown: Storage, or the day, may have changed
+    // while it was covered.
     function onShow() as Void {
         Menu2.onShow();
-        if (stale) {
-            NutrientList.sync(self, true);
+        setDayTimer();
+        NutrientList.sync(self, true);
+    }
+
+    function onHide() as Void {
+        Menu2.onHide();
+        _dayTimer.stop();
+    }
+
+    private function setDayTimer() as Void {
+        _dayTimer.stop();
+        var wait = SyncTime.secondsToMidnight();
+        if (wait > MAX_TIMER_SECONDS) {
+            wait = MAX_TIMER_SECONDS;
         }
+        _dayTimer.start(method(:onDayTimer), wait * 1000, false);
+    }
+
+    // Through refresh, which acts only on the open list and checks what is
+    // on top, so it never pops another view.
+    function onDayTimer() as Void {
+        setDayTimer();
+        NutrientList.refresh();
     }
 }
 

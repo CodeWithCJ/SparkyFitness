@@ -7263,7 +7263,7 @@
     "simulatorTitle": "Connect IQ simulator (ADB)",
     "simulatorHint": "Talk to the Connect IQ simulator on your computer instead of a watch. Run adb forward tcp:7381 tcp:7381, then choose Connection > Start in the simulator. Use a trusted network: while it is on, the phone listens for the simulator.",
     "simulatorFailed": "Could not switch the Garmin link. Try again.",
-    "simulatorRestart": "If the Garmin link was already running, close SparkyFitness from the recent apps and open it again to switch.",
+    "simulatorRestart": "If the Garmin link was already running, force stop the app from its App info screen in Android settings, then open it again to switch.",
     "watchesTitle": "Watches",
     "noWatches": "No Garmin watch found. Pair your watch in the Garmin Connect app.",
     "unnamedWatch": "Garmin watch",

@@ -238,7 +238,7 @@ function SimulatorSwitch() {
         >
           {t('garminSettings.simulatorRestart', {
             defaultValue:
-              'If the Garmin link was already running, close SparkyFitness from the recent apps and open it again to switch.',
+              'If the Garmin link was already running, force stop the app from its App info screen in Android settings, then open it again to switch.',
           })}
         </Text>
       )}

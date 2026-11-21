@@ -364,6 +364,11 @@ internal object GarminLink {
    * pushed to a watch that did not ask until JS has listened, so a background
    * start (a widget, an alarm, a job) leaves the watches alone. Never throws:
    * it runs inside Application.onCreate.
+   *
+   * Release eligibility (JS's `isGarminWatchEnabled()`) is not checked here:
+   * JS calls `stopGarmin` at start-up where it is false, and that stop can
+   * unregister a binder registration only in a process where the link runs,
+   * so a flag a development build left must still start it.
    */
   fun startAtProcessStart(context: Context) {
     try {
@@ -442,8 +447,11 @@ internal object GarminLink {
    */
   fun startFromJs(context: Context, onStatus: (Map<String, Any?>) -> Unit) {
     val appCtx = context.applicationContext
-    start(appCtx)
     main.post {
+      // On the main thread, after any stop already posted (stop() changes
+      // `started` there too), so a stop that ran first is followed by a
+      // fresh start instead of turning off the link this call started.
+      start(appCtx)
       // A stop still waiting for the SDK is overtaken: the link stays on and
       // the stop is answered as it is.
       answerPendingStop()
@@ -695,8 +703,11 @@ internal object GarminLink {
         onResult("failed")
         return@post
       }
-      // The SDK keeps one open listener per app and watch, so a second
-      // request while one is waiting shares its answer instead of replacing it.
+      // The SDK keeps one open listener per app and watch, and Garmin
+      // Connect's answer names only the watch and the app, so a second
+      // request while one is waiting shares its answer instead of replacing
+      // it (and a late answer to one that timed out is taken as the next
+      // one's: both are about the same prompt on the same watch).
       pendingOpens[entry.id]?.let {
         it.add(onResult)
         return@post
@@ -1811,13 +1822,19 @@ internal object GarminLink {
       0L
     }
 
-  // commit(), not apply(): a number handed out must be on disk before the
-  // message goes, or a process killed before the write, with the clock set
-  // back, would hand it out again and the watch would drop that message.
+  // commit(), not apply(), so the number is normally on disk before the
+  // message goes: a process killed before the write, with the clock set back,
+  // would hand it out again and the watch would drop that message. Best
+  // effort: a failed write (storage full) is logged and the send still goes,
+  // since failing every send would stop the watch updating; the number
+  // follows the clock, so only a restart with the clock set back could hand
+  // a lost one out again.
   private fun saveWireSeq(seq: Long) {
     val ctx = appContext ?: return
     try {
-      linkPrefs(ctx).edit().putLong(SEND_SEQ_KEY, seq).commit()
+      if (!linkPrefs(ctx).edit().putLong(SEND_SEQ_KEY, seq).commit()) {
+        Log.w(TAG, "Failed to store the Garmin send number")
+      }
     } catch (e: Throwable) {
       Log.w(TAG, "Failed to store the Garmin send number: ${e.message}")
     }

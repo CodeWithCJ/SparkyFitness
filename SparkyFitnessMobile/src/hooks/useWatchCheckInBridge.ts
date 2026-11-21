@@ -249,7 +249,7 @@ export function relinkGarminSync(): void {
   relinkGarmin?.();
 }
 
-export function subscribeGarminSync(): () => void {
+export function subscribeGarminSync(onLinked?: () => void): () => void {
   const watch = WatchConnectivity;
   if (!watch) return () => {};
   void stopGarminWhenDisabled();
@@ -260,14 +260,17 @@ export function subscribeGarminSync(): () => void {
     const garmin = getGarminSync();
     if (!garmin) return;
     linked = garmin;
-    subscriptions ??= [
-      watch.addListener('onGarminResync', ({ deviceId }) => {
-        void getGarminSync()?.resync(deviceId);
-      }),
-      watch.addListener('onGarminStatusChange', (status) => {
-        getGarminSync()?.updateStatus(status);
-      }),
-    ];
+    if (!subscriptions) {
+      subscriptions = [
+        watch.addListener('onGarminResync', ({ deviceId }) => {
+          void getGarminSync()?.resync(deviceId);
+        }),
+        watch.addListener('onGarminStatusChange', (status) => {
+          getGarminSync()?.updateStatus(status);
+        }),
+      ];
+      onLinked?.();
+    }
     // Listening before starting, so the status events the start causes are
     // not missed. An answer that lands after a newer status event is dropped
     // by the sync itself, so this needs no guard of its own.
@@ -289,10 +292,16 @@ export function subscribeGarminSync(): () => void {
 
 /**
  * Mounts `subscribeGarminSync` for as long as the bridge hook is mounted,
- * whether or not the server answers.
+ * whether or not the server answers. Answers whether the sync has linked,
+ * which turns true at most once per mount: already true when Garmin was
+ * available at mount, otherwise when it becomes so (the simulator switch,
+ * Garmin Connect installed while the app runs), so the bridge can then set
+ * up the listeners it skipped and push the current context.
  */
-export function useGarminWatchSync(): void {
-  useEffect(() => subscribeGarminSync(), []);
+export function useGarminWatchSync(): boolean {
+  const [linked, setLinked] = useState(() => getGarminSync() !== null);
+  useEffect(() => subscribeGarminSync(() => setLinked(true)), []);
+  return linked;
 }
 
 /** Clamps a goal-progress fraction to 0...1 — passing a goal always reads as 1. */
@@ -403,7 +412,7 @@ type StoredAckState = {
 export function useWatchCheckInBridge(enabled: boolean): void {
   // Garmin on its own, gated on `isGarminWatchEnabled()` inside rather than
   // on `enabled`: answering a Garmin watch needs no server.
-  useGarminWatchSync();
+  const garminLinked = useGarminWatchSync();
 
   // Acks are relayed inside the application context (which is latest-value-only
   // and survives the watch app being asleep), so they must accumulate across
@@ -1705,7 +1714,9 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     };
   });
 
-  // Subscriptions. Depends on `enabled` alone, so these are set up once.
+  // Subscriptions. Depends on `enabled` and `garminLinked` alone, so these
+  // are set up once, and again if Garmin links after mount on a phone where
+  // they were skipped for want of a watch transport.
   useEffect(() => {
     if (!enabled || !WatchConnectivity || !hasWatchTransport()) return;
 
@@ -1773,7 +1784,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       reachabilitySub.remove();
       appStateSub.remove();
     };
-  }, [enabled]);
+  }, [enabled, garminLinked]);
 
   // Push whenever what we'd send changes — `pushContext`'s identity tracks
   // every value it reads. This is what makes food logged on the phone reach the
@@ -1783,5 +1794,5 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   useEffect(() => {
     if (!enabled || !WatchConnectivity || !hasWatchTransport()) return;
     void pushContext();
-  }, [enabled, pushContext]);
+  }, [enabled, garminLinked, pushContext]);
 }

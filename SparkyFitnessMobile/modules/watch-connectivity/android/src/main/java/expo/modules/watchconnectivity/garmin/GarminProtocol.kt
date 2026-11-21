@@ -67,9 +67,10 @@ internal const val GARMIN_SEND_CAP_BYTES = GARMIN_MESSAGE_BYTE_CAP - GARMIN_STAM
 
 /**
  * The `seq` each message carries: one more than the last, or the clock in ms
- * when that is higher. The link stores it (synchronously) before the message
- * goes out, so within one origin it only rises, across process starts and
- * whatever the clock does. The watch can then drop a copy it gets again or
+ * when that is higher. The link stores it (synchronously, best effort) before
+ * the message goes out, so within one origin it only rises, across process
+ * starts and whatever the clock does, unless that write failed and the clock
+ * reads below that number at the next start. The watch can then drop a copy it gets again or
  * late (the watch may hand a message to both the open app and its background
  * service, or the open app's mailbox may hold what the service already
  * applied). Following the clock keeps the numbers readable as a time.

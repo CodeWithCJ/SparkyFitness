@@ -1994,8 +1994,10 @@ class WatchConnectivityModule : Module() {
       GarminLink.isSimulatorOn(ctx)
     }
 
-    // Sets that switch, restarts the link in the new mode when it was running
-    // in the other one, and resolves with the status like startGarmin.
+    // Sets that switch and resolves with the status like startGarmin. A link
+    // already started keeps its mode until the app process starts again (the
+    // SDK cannot close its ADB connection); one not started yet in this
+    // process starts in the new mode.
     AsyncFunction("setGarminSimulator") { on: Boolean, promise: Promise ->
       val ctx = appContext.reactContext
       if (ctx == null) {
