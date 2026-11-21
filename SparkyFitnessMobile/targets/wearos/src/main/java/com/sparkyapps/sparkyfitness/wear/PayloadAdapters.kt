@@ -644,6 +644,24 @@ object ContextPayloadMapper {
     )
   }
 
+  fun parsePhoneMediaState(obj: JSONObject): PhoneMediaState {
+    val maxVolume = maxOf(0, obj.optIntOrNull("maxVolume") ?: 0)
+    val rawVolume = maxOf(0, obj.optIntOrNull("volume") ?: 0)
+    val volume = if (maxVolume > 0) rawVolume.coerceAtMost(maxVolume) else rawVolume
+    return PhoneMediaState(
+      title = obj.optStringOrNull("title")?.trim()?.takeIf { it.isNotEmpty() },
+      artist = obj.optStringOrNull("artist")?.trim()?.takeIf { it.isNotEmpty() },
+      album = obj.optStringOrNull("album")?.trim()?.takeIf { it.isNotEmpty() },
+      appName = obj.optStringOrNull("appName")?.trim()?.takeIf { it.isNotEmpty() },
+      isPlaying = obj.optBooleanOrNull("isPlaying") ?: false,
+      volume = volume,
+      maxVolume = maxVolume,
+      hasSession = obj.optBooleanOrNull("hasSession") ?: false,
+      hasMetadataAccess = obj.optBooleanOrNull("hasMetadataAccess") ?: false,
+      updatedAtMs = obj.optDoubleOrNull("updatedAt")?.toLong() ?: System.currentTimeMillis()
+    )
+  }
+
   fun parseIsoMs(iso: String?): Long? {
     if (iso.isNullOrBlank()) return null
     for (pattern in listOf("yyyy-MM-dd'T'HH:mm:ss.SSSX", "yyyy-MM-dd'T'HH:mm:ssX", "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", "yyyy-MM-dd'T'HH:mm:ss'Z'")) {
@@ -990,6 +1008,18 @@ object OutboundPayloads {
       put("id", id)
       put("text", text)
       put("at", atMs.toDouble())
+    }
+
+  fun mediaControl(action: String): JSONObject =
+    JSONObject().apply {
+      put("type", "mediaControl")
+      put("action", action)
+    }
+
+  fun mediaStateRequest(active: Boolean): JSONObject =
+    JSONObject().apply {
+      put("type", "mediaStateRequest")
+      put("active", active)
     }
 }
 

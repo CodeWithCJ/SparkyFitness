@@ -1,9 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import {
+  Alert,
+  AppState,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
 
+import WatchConnectivity from '../../modules/watch-connectivity';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import Icon from '../components/Icon';
 import { ReorderSwitchList } from '../components/ReorderSwitchList';
 import SegmentedControl from '../components/SegmentedControl';
 import SettingsRow from '../components/SettingsRow';
@@ -41,8 +51,75 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const [textSecondary] = useCSSVariable(['--color-text-secondary']) as [
+    string,
+  ];
   const { isConnected } = useServerConnection();
   const { customNutrients } = useCustomNutrients({ enabled: isConnected });
+  const [mediaAccessEnabled, setMediaAccessEnabled] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!isAndroid || !WatchConnectivity?.isMediaAccessEnabled) return;
+    let cancelled = false;
+    let requestId = 0;
+    const checkAccess = () => {
+      const currentRequest = ++requestId;
+      void WatchConnectivity?.isMediaAccessEnabled?.()
+        .then((enabled) => {
+          if (!cancelled && currentRequest === requestId) {
+            setMediaAccessEnabled(enabled);
+          }
+        })
+        .catch(() => {
+          if (!cancelled && currentRequest === requestId) {
+            setMediaAccessEnabled(false);
+          }
+        });
+    };
+    checkAccess();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        checkAccess();
+      }
+    });
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
+  }, [isAndroid]);
+
+  const handlePressMediaAccess = useCallback(() => {
+    const openSettings = () => {
+      void WatchConnectivity?.openMediaAccessSettings?.().catch(
+        () => undefined
+      );
+    };
+    if (mediaAccessEnabled) {
+      openSettings();
+      return;
+    }
+    Alert.alert(
+      t('watchSettings.mediaAccessDisclosureTitle', {
+        defaultValue: 'Allow Notification Access?',
+      }),
+      t('watchSettings.mediaAccessDisclosureBody', {
+        defaultValue:
+          'Android requires Notification Access to read the currently playing song and artist for your Wear OS watch. SparkyFitness only reads active media sessions and ignores your messages and other notifications.',
+      }),
+      [
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+        {
+          text: t('watchSettings.mediaAccessOpenSettings', {
+            defaultValue: 'Open Settings',
+          }),
+          onPress: openSettings,
+        },
+      ]
+    );
+  }, [mediaAccessEnabled, t]);
 
   const watchPageOrder = useAppPreferencesStore((s) => s.watchPageOrder);
   const hiddenWatchPages = useAppPreferencesStore((s) => s.hiddenWatchPages);
@@ -398,6 +475,59 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
                   value={watchHoldCountdown}
                   onValueChange={setWatchHoldCountdown}
                 />
+              }
+            />
+          </>
+        )}
+
+        {isAndroid && (
+          <>
+            <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
+              {t('watchSettings.mediaControlsTitle', {
+                defaultValue: 'Media controls',
+              })}
+            </Text>
+            <SettingsRow
+              testID="watch-media-access-row"
+              title={t('watchSettings.mediaAccessTitle', {
+                defaultValue: 'Now Playing track info',
+              })}
+              subtitle={
+                mediaAccessEnabled
+                  ? t('watchSettings.mediaAccessEnabledSubtitle', {
+                      defaultValue:
+                        'Your watch shows the current song and artist while controlling phone media during workouts.',
+                    })
+                  : t('watchSettings.mediaAccessDisabledSubtitle', {
+                      defaultValue:
+                        'Play, skip and volume controls work automatically. Allow Notification Access so your watch can also show the current song and artist. Other notifications are ignored.',
+                    })
+              }
+              subtitleNumberOfLines={0}
+              onPress={handlePressMediaAccess}
+              rightAccessory={
+                <View className="flex-row items-center gap-1">
+                  <Text
+                    className={
+                      mediaAccessEnabled
+                        ? 'text-sm font-semibold text-text-success'
+                        : 'text-sm font-medium text-text-secondary'
+                    }
+                  >
+                    {mediaAccessEnabled
+                      ? t('watchSettings.mediaAccessEnabled', {
+                          defaultValue: 'Enabled',
+                        })
+                      : t('watchSettings.mediaAccessSetup', {
+                          defaultValue: 'Set up',
+                        })}
+                  </Text>
+                  <Icon
+                    name="chevron-forward"
+                    size={18}
+                    color={textSecondary}
+                  />
+                </View>
               }
             />
           </>

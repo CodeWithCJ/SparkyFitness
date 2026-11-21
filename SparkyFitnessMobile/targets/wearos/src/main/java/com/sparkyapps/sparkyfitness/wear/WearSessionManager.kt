@@ -61,6 +61,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
   val recordingStore = RecordingStore()
   val runStore = WatchRunStore(appContext)
   val demoStore = ExerciseDemoStore(appContext)
+  val mediaStore = MediaControlStore(appContext)
   val sensorsController = WatchSensorsController(appContext, this)
 
   private val _requestedPage = MutableStateFlow<WatchPage?>(null)
@@ -111,6 +112,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
     runStore.session = this
     runStore.sensors = sensorsController
     runStore.checkInStore = checkInStore
+    mediaStore.session = this
 
     sensorsController.startPassiveStepCounter { stepsToday ->
       checkInStore.updateLiveSteps(stepsToday)
@@ -411,6 +413,9 @@ class WearSessionManager private constructor(private val appContext: Context) :
           runStore.acknowledgeCue(id)
         }
       }
+      type == "mediaState" -> {
+        mediaStore.applyRemoteMediaState(ContextPayloadMapper.parsePhoneMediaState(json))
+      }
     }
   }
 
@@ -443,6 +448,13 @@ class WearSessionManager private constructor(private val appContext: Context) :
   override fun sendLiveOnly(payload: JSONObject) {
     scope.launch(Dispatchers.IO) {
       sendLiveMessage(payload)
+    }
+  }
+
+  override fun sendLiveWithResult(payload: JSONObject, onResult: (Boolean) -> Unit) {
+    scope.launch(Dispatchers.IO) {
+      val live = sendLiveMessage(payload)
+      onResult(live)
     }
   }
 

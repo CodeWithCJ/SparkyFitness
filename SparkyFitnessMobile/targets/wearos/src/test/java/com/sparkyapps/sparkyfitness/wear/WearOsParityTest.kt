@@ -7,6 +7,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -570,5 +571,110 @@ class WearOsParityTest {
         assertEquals("45m \u00B7 380/500 kcal", TileModels.formatExerciseHeadline(exerciseTile, resolveString))
         assertEquals("Goal 60m \u00B7 1 workout", TileModels.formatExerciseSubtitle(exerciseTile, resolveString, resolvePlural))
         assertEquals("Upper Body Push", exerciseTile.rows[0].title)
+    }
+
+    @Test
+    fun `phone media state parses metadata, volume percentage, and outbound payloads`() {
+        val fullJson = JSONObject().apply {
+            put("type", "mediaState")
+            put("title", "  Blinding Lights  ")
+            put("artist", "The Weeknd")
+            put("album", "After Hours")
+            put("appName", "Symfonium")
+            put("isPlaying", true)
+            put("volume", 9)
+            put("maxVolume", 15)
+            put("hasSession", true)
+            put("hasMetadataAccess", true)
+            put("updatedAt", 1760000000000.0)
+        }
+        val state = ContextPayloadMapper.parsePhoneMediaState(fullJson)
+        assertEquals("Blinding Lights", state.title)
+        assertEquals("The Weeknd", state.artist)
+        assertEquals("After Hours", state.album)
+        assertEquals("Symfonium", state.appName)
+        assertEquals("The Weeknd", state.secondaryLabel)
+        assertTrue(state.isPlaying)
+        assertEquals(60, state.volumePercent)
+        assertTrue(state.hasSession)
+        assertTrue(state.hasMetadataAccess)
+
+        val fallbackJson = JSONObject().apply {
+            put("type", "mediaState")
+            put("isPlaying", true)
+            put("volume", 20)
+            put("maxVolume", 15)
+            put("hasSession", true)
+            put("hasMetadataAccess", false)
+        }
+        val fallback = ContextPayloadMapper.parsePhoneMediaState(fallbackJson)
+        assertNull(fallback.title)
+        assertNull(fallback.secondaryLabel)
+        assertEquals(15, fallback.volume)
+        assertEquals(100, fallback.volumePercent)
+        assertFalse(fallback.hasMetadataAccess)
+
+        val noArtist = PhoneMediaState(title = "Track", artist = "  ", appName = "Symfonium")
+        assertEquals("Symfonium", noArtist.secondaryLabel)
+
+        val control = OutboundPayloads.mediaControl("next")
+        assertEquals("mediaControl", control.getString("type"))
+        assertEquals("next", control.getString("action"))
+
+        val req = OutboundPayloads.mediaStateRequest(active = true)
+        assertEquals("mediaStateRequest", req.getString("type"))
+        assertTrue(req.getBoolean("active"))
+    }
+
+    @Test
+    fun `media control target resolves phone by default and falls back to watch when offline or watch plays locally`() {
+        val phonePlaying = PhoneMediaState(isPlaying = true, hasSession = true)
+        val phonePaused = PhoneMediaState(isPlaying = false, hasSession = true)
+
+        assertEquals(
+            MediaTarget.PHONE,
+            MediaControlLogic.resolveEffectiveTarget(
+                manualTarget = null,
+                phoneReachable = true,
+                watchMusicActive = false,
+                phoneMedia = phonePlaying
+            )
+        )
+        assertEquals(
+            MediaTarget.WATCH,
+            MediaControlLogic.resolveEffectiveTarget(
+                manualTarget = null,
+                phoneReachable = true,
+                watchMusicActive = true,
+                phoneMedia = phonePaused
+            )
+        )
+        assertEquals(
+            MediaTarget.PHONE,
+            MediaControlLogic.resolveEffectiveTarget(
+                manualTarget = null,
+                phoneReachable = true,
+                watchMusicActive = true,
+                phoneMedia = phonePlaying
+            )
+        )
+        assertEquals(
+            MediaTarget.WATCH,
+            MediaControlLogic.resolveEffectiveTarget(
+                manualTarget = MediaTarget.PHONE,
+                phoneReachable = false,
+                watchMusicActive = false,
+                phoneMedia = phonePlaying
+            )
+        )
+        assertEquals(
+            MediaTarget.WATCH,
+            MediaControlLogic.resolveEffectiveTarget(
+                manualTarget = MediaTarget.WATCH,
+                phoneReachable = true,
+                watchMusicActive = false,
+                phoneMedia = phonePlaying
+            )
+        )
     }
 }

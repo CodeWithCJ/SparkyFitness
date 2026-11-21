@@ -7243,7 +7243,16 @@
     "countdownOff": "Off",
     "countdownSeconds": "{{seconds}} s",
     "holdCountdownTitle": "Countdown before holds",
-    "holdCountdownSubtitle": "A 3, 2, 1 Get ready screen before a timed hold starts, so you can get into position. Tap it to skip."
+    "holdCountdownSubtitle": "A 3, 2, 1 Get ready screen before a timed hold starts, so you can get into position. Tap it to skip.",
+    "mediaControlsTitle": "Media controls",
+    "mediaAccessTitle": "Now Playing track info",
+    "mediaAccessEnabledSubtitle": "Your watch shows the current song and artist while controlling phone media during workouts.",
+    "mediaAccessDisabledSubtitle": "Play, skip and volume controls work automatically. Allow Notification Access so your watch can also show the current song and artist. Other notifications are ignored.",
+    "mediaAccessEnabled": "Enabled",
+    "mediaAccessSetup": "Set up",
+    "mediaAccessDisclosureTitle": "Allow Notification Access?",
+    "mediaAccessDisclosureBody": "Android requires Notification Access to read the currently playing song and artist for your Wear OS watch. SparkyFitness only reads active media sessions and ignores your messages and other notifications.",
+    "mediaAccessOpenSettings": "Open Settings"
   },
   "progressPhotos": {
     "card": {

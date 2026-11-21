@@ -1,11 +1,14 @@
 package com.sparkyapps.sparkyfitness.wear
 
 import android.content.Context
+import android.media.AudioManager
 import android.os.Build
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.speech.tts.TextToSpeech
+import android.view.KeyEvent
 import com.SparkyApps.SparkyFitnessMobile.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -3245,11 +3248,252 @@ class WatchRunStore(private val context: Context) {
   }
 }
 
+class MediaControlStore(private val context: Context) {
+  private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+  private val audioManager: AudioManager?
+    get() = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
+  var session: WearSessionTransport? = null
+
+  private val _phoneMedia = MutableStateFlow<PhoneMediaState?>(null)
+  val phoneMedia: StateFlow<PhoneMediaState?> = _phoneMedia.asStateFlow()
+
+  private val _phoneReachable = MutableStateFlow(true)
+  val phoneReachable: StateFlow<Boolean> = _phoneReachable.asStateFlow()
+
+  private val _manualTarget = MutableStateFlow<MediaTarget?>(null)
+  val manualTarget: StateFlow<MediaTarget?> = _manualTarget.asStateFlow()
+
+  private val _watchPlaying = MutableStateFlow(false)
+  val watchPlaying: StateFlow<Boolean> = _watchPlaying.asStateFlow()
+
+  private val _watchVolume = MutableStateFlow(0)
+  val watchVolume: StateFlow<Int> = _watchVolume.asStateFlow()
+
+  private val _watchMaxVolume = MutableStateFlow(0)
+  val watchMaxVolume: StateFlow<Int> = _watchMaxVolume.asStateFlow()
+
+  private var appForeground = true
+  private var pageVisible = false
+  private var observingPhone = false
+  private var observationSessionId = 0L
+  private var reachabilityGeneration = 0L
+  private var pollJob: Job? = null
+  private var localRefreshJob: Job? = null
+
+  fun effectiveTarget(): MediaTarget = MediaControlLogic.resolveEffectiveTarget(
+    manualTarget = _manualTarget.value,
+    phoneReachable = _phoneReachable.value,
+    watchMusicActive = _watchPlaying.value,
+    phoneMedia = _phoneMedia.value
+  )
+
+  fun setAppForeground(foreground: Boolean) {
+    if (appForeground == foreground) return
+    appForeground = foreground
+    updateObservation()
+  }
+
+  fun setPageVisible(visible: Boolean) {
+    if (pageVisible == visible) return
+    pageVisible = visible
+    updateObservation()
+  }
+
+  fun toggleTarget() {
+    if (!_phoneReachable.value) return
+    val current = effectiveTarget()
+    _manualTarget.value = if (current == MediaTarget.PHONE) MediaTarget.WATCH else MediaTarget.PHONE
+    refreshLocalAudioState()
+    if (_manualTarget.value == MediaTarget.PHONE) {
+      requestPhoneState()
+    }
+    Haptics.click()
+  }
+
+  fun applyRemoteMediaState(state: PhoneMediaState) {
+    reachabilityGeneration += 1
+    _phoneReachable.value = true
+    _phoneMedia.value = state
+  }
+
+  fun refreshLocalAudioState() {
+    val am = audioManager ?: return
+    try {
+      _watchPlaying.value = am.isMusicActive
+      _watchVolume.value = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+      _watchMaxVolume.value = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+    } catch (_: Throwable) {}
+  }
+
+  fun sendTransport(action: MediaTransportAction) {
+    refreshLocalAudioState()
+    Haptics.click()
+    if (effectiveTarget() == MediaTarget.PHONE) {
+      val transport = session
+      if (transport != null) {
+        val startedAtGen = reachabilityGeneration
+        val cmdSessionId = observationSessionId
+        transport.sendLiveWithResult(OutboundPayloads.mediaControl(action.wireValue)) { delivered ->
+          scope.launch {
+            val sameObservation = observingPhone && cmdSessionId == observationSessionId
+            if (delivered) {
+              if (startedAtGen == reachabilityGeneration) {
+                reachabilityGeneration += 1
+                _phoneReachable.value = true
+              }
+            } else if (startedAtGen == reachabilityGeneration) {
+              reachabilityGeneration += 1
+              _phoneReachable.value = false
+              if (sameObservation) {
+                dispatchLocalMediaKey(action)
+              }
+            } else if (!_phoneReachable.value && sameObservation) {
+              dispatchLocalMediaKey(action)
+            }
+          }
+        }
+        return
+      }
+      reachabilityGeneration += 1
+      _phoneReachable.value = false
+    }
+    dispatchLocalMediaKey(action)
+  }
+
+  fun adjustVolume(direction: Int) {
+    if (direction == 0) return
+    val step = if (direction > 0) 1 else -1
+    refreshLocalAudioState()
+    Haptics.click()
+    if (effectiveTarget() == MediaTarget.PHONE) {
+      val transport = session
+      if (transport != null) {
+        _phoneMedia.value?.let { current ->
+          if (current.maxVolume > 0) {
+            val optimistic = (current.volume + step).coerceIn(0, current.maxVolume)
+            _phoneMedia.value = current.copy(volume = optimistic)
+          }
+        }
+        val wireAction = if (step > 0) "volumeUp" else "volumeDown"
+        val startedAtGen = reachabilityGeneration
+        val cmdSessionId = observationSessionId
+        transport.sendLiveWithResult(OutboundPayloads.mediaControl(wireAction)) { delivered ->
+          scope.launch {
+            val sameObservation = observingPhone && cmdSessionId == observationSessionId
+            if (delivered) {
+              if (startedAtGen == reachabilityGeneration) {
+                reachabilityGeneration += 1
+                _phoneReachable.value = true
+              }
+            } else if (startedAtGen == reachabilityGeneration) {
+              reachabilityGeneration += 1
+              _phoneReachable.value = false
+              if (sameObservation) {
+                adjustLocalVolume(step)
+              }
+            } else if (!_phoneReachable.value && sameObservation) {
+              adjustLocalVolume(step)
+            }
+          }
+        }
+        return
+      }
+      reachabilityGeneration += 1
+      _phoneReachable.value = false
+    }
+    adjustLocalVolume(step)
+  }
+
+  private fun updateObservation() {
+    val shouldObserve = appForeground && pageVisible
+    if (shouldObserve == observingPhone) return
+    observingPhone = shouldObserve
+    observationSessionId += 1
+    pollJob?.cancel()
+    pollJob = null
+    if (shouldObserve) {
+      refreshLocalAudioState()
+      requestPhoneState()
+      pollJob = scope.launch {
+        var msSinceLeaseRenew = 0L
+        while (isActive) {
+          delay(FALLBACK_POLL_MS)
+          msSinceLeaseRenew += FALLBACK_POLL_MS
+          refreshLocalAudioState()
+          val remote = _phoneMedia.value
+          if (remote == null || !remote.hasMetadataAccess) {
+            msSinceLeaseRenew = 0L
+            requestPhoneState()
+          } else if (msSinceLeaseRenew >= LEASE_RENEW_MS) {
+            msSinceLeaseRenew = 0L
+            requestPhoneState()
+          }
+        }
+      }
+    } else {
+      session?.sendLiveOnly(OutboundPayloads.mediaStateRequest(active = false))
+    }
+  }
+
+  private fun requestPhoneState() {
+    val transport = session ?: return
+    val startedAtGen = reachabilityGeneration
+    transport.sendLiveWithResult(OutboundPayloads.mediaStateRequest(active = true)) { delivered ->
+      scope.launch {
+        if (startedAtGen != reachabilityGeneration) return@launch
+        reachabilityGeneration += 1
+        _phoneReachable.value = delivered
+      }
+    }
+  }
+
+  private fun dispatchLocalMediaKey(action: MediaTransportAction) {
+    val am = audioManager ?: return
+    val keyCode = when (action) {
+      MediaTransportAction.PLAY_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+      MediaTransportAction.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
+      MediaTransportAction.PREVIOUS -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+    }
+    try {
+      val now = SystemClock.uptimeMillis()
+      am.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0))
+      am.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0))
+    } catch (_: Throwable) {}
+    localRefreshJob?.cancel()
+    localRefreshJob = scope.launch {
+      delay(300L)
+      refreshLocalAudioState()
+    }
+  }
+
+  private fun adjustLocalVolume(step: Int) {
+    val am = audioManager ?: return
+    try {
+      am.adjustStreamVolume(
+        AudioManager.STREAM_MUSIC,
+        if (step > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER,
+        AudioManager.FLAG_SHOW_UI
+      )
+      refreshLocalAudioState()
+    } catch (_: Throwable) {}
+  }
+
+  companion object {
+    private const val FALLBACK_POLL_MS = 4_000L
+    private const val LEASE_RENEW_MS = 5 * 60_000L
+  }
+}
+
 interface WearSessionTransport {
   fun sendWeightCheckIn(payload: JSONObject, onResult: (Boolean) -> Unit)
   fun sendWorkoutStartRequest(payload: JSONObject, onResult: (Boolean) -> Unit)
   fun sendMessageOrQueue(payload: JSONObject, queueType: String)
   fun sendLiveOnly(payload: JSONObject) {}
+  fun sendLiveWithResult(payload: JSONObject, onResult: (Boolean) -> Unit) {
+    sendLiveOnly(payload)
+    onResult(true)
+  }
   fun sendWatchRunFinished(result: WatchRunResult)
   fun sendHeartRateBatch(batch: HeartRateBatch)
   fun clearQueuedWatchTransfers() {}

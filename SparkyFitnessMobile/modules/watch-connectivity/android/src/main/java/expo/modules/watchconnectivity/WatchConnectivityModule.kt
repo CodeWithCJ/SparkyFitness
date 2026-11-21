@@ -1239,6 +1239,14 @@ internal object WatchConnectivityHub {
         rememberFinishedRun(context, event)
         activeModule?.emitEvent("onRunFinished", event)
       }
+      "mediaControl" -> {
+        val action = payload["action"] as? String ?: return
+        PhoneMediaBridge.handleCommand(context, action)
+      }
+      "mediaStateRequest" -> {
+        val active = payload["active"] as? Boolean ?: true
+        PhoneMediaBridge.setWatchObserving(context, active)
+      }
     }
   }
 
@@ -1938,6 +1946,18 @@ class WatchConnectivityModule : Module() {
 
     AsyncFunction("takeDroppedHeartRateBatchCount") {
       WatchConnectivityHub.takeDroppedHeartRateBatchCount()
+    }
+
+    AsyncFunction("isMediaAccessEnabled") {
+      val ctx = appContext.reactContext ?: return@AsyncFunction false
+      PhoneMediaBridge.isMediaAccessEnabled(ctx)
+    }
+
+    AsyncFunction("openMediaAccessSettings") {
+      val ctx = appContext.reactContext
+      if (ctx != null) {
+        PhoneMediaBridge.openMediaAccessSettings(ctx)
+      }
     }
   }
 
