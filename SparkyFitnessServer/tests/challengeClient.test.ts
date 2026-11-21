@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHALLENGE_STANDINGS_REFETCH_MS,
   challengeDaysToGo,
+  challengeStandingsRefetchInterval,
+  challengeStateWords,
+  filterStandingsByName,
   challengeLeaders,
   challengeState,
   challengeStateNow,
@@ -275,5 +279,54 @@ describe('standingProgress', () => {
     expect(
       standingProgress(rules('group_goal', 500), { total: 40 }, 40)
     ).toBeNull();
+  });
+});
+
+describe('filterStandingsByName', () => {
+  const rows = ['Alex', 'José', 'JOSEPHINE', 'Mia'].map((display_name) => ({
+    display_name,
+  }));
+
+  it('ignores case and accents, and trims the query', () => {
+    expect(
+      filterStandingsByName(rows, '  jose ').map((r) => r.display_name)
+    ).toEqual(['José', 'JOSEPHINE']);
+    expect(
+      filterStandingsByName(rows, 'Jos\u00e9').map((r) => r.display_name)
+    ).toEqual(['José', 'JOSEPHINE']);
+  });
+
+  it('keeps every row for an empty query and none for no match', () => {
+    expect(filterStandingsByName(rows, '')).toHaveLength(4);
+    expect(filterStandingsByName(rows, 'zed')).toEqual([]);
+  });
+});
+
+describe('challengeStateWords', () => {
+  it.each([
+    ['ended', null, { key: 'ended' }],
+    ['ended', 3, { key: 'ended' }],
+    ['upcoming', 1, { key: 'startsTomorrow' }],
+    ['upcoming', 5, { key: 'startsIn', count: 5 }],
+    ['upcoming', 21, { key: 'startsIn', count: 21 }],
+    ['running', null, { key: 'active' }],
+    ['running', 1, { key: 'lastDay' }],
+    ['running', 10, { key: 'daysLeft', count: 10 }],
+  ] as const)('%s with %s days to go', (state, days, words) => {
+    expect(challengeStateWords(state, days)).toEqual(words);
+  });
+});
+
+describe('challengeStandingsRefetchInterval', () => {
+  it('polls an open or unloaded period every minute and a final one never', () => {
+    expect(challengeStandingsRefetchInterval({ state: {} })).toBe(
+      CHALLENGE_STANDINGS_REFETCH_MS
+    );
+    expect(
+      challengeStandingsRefetchInterval({ state: { data: { final: false } } })
+    ).toBe(60 * 1000);
+    expect(
+      challengeStandingsRefetchInterval({ state: { data: { final: true } } })
+    ).toBe(false);
   });
 });

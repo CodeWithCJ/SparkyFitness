@@ -9,7 +9,9 @@ import {
   Trophy,
 } from 'lucide-react';
 import {
+  CHALLENGE_FIND_FROM_ROWS,
   challengeToday,
+  filterStandingsByName,
   leadsChallenge,
   standingProgress,
   type ChallengeDetail,
@@ -54,14 +56,8 @@ const PLACE_TEXT = [
   'text-slate-500 dark:text-slate-300',
   'text-orange-600 dark:text-orange-400',
 ];
-// Shows the find box once the table is longer than a glance.
-const SEARCH_FROM_ROWS = 6;
 // Block heights by place, so members tied on a place stand level.
 const PLACE_HEIGHTS = ['h-24', 'h-16', 'h-12'];
-
-/** Lower case without accents, so "jose" finds "José". */
-const foldName = (name: string) =>
-  name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
 const MemberAvatar = ({
   name,
@@ -182,10 +178,7 @@ const ChallengeLeaderboard = ({
     rules.metric !== 'active_minutes' && rules.metric !== 'hr_zone_minutes';
   const topTotal = data?.rows[0]?.total ?? 0;
   const showsProgress = rules.format !== 'group_goal';
-  const query = foldName(search.trim());
-  const rows =
-    data?.rows.filter((row) => foldName(row.display_name).includes(query)) ??
-    [];
+  const rows = data ? filterStandingsByName(data.rows, search) : [];
 
   return (
     <div className="space-y-3" data-testid="challenge-leaderboard">
@@ -288,7 +281,7 @@ const ChallengeLeaderboard = ({
           )}
           {/* Kept while a search is on, even if a refresh drops below the
               threshold, so the filter can always be cleared. */}
-          {(data.rows.length >= SEARCH_FROM_ROWS || search !== '') && (
+          {(data.rows.length >= CHALLENGE_FIND_FROM_ROWS || search !== '') && (
             <div className="relative max-w-xs">
               <Search
                 className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground"

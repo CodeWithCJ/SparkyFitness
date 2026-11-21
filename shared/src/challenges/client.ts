@@ -206,3 +206,62 @@ export function standingProgress(
   if (!rules.target) return null;
   return { fraction: clamp(row.total / rules.target), basis: 'target' };
 }
+
+/** A standings list shows its find-a-member box from this many rows. */
+export const CHALLENGE_FIND_FROM_ROWS = 6;
+
+/** Lower case without accents, so "jose" finds "José". */
+const foldName = (name: string) =>
+  name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/**
+ * The rows whose display name holds `query`, ignoring case and accents; all
+ * of them for an empty query.
+ */
+export function filterStandingsByName<Row extends { display_name: string }>(
+  rows: readonly Row[],
+  query: string
+): Row[] {
+  const folded = foldName(query.trim());
+  return rows.filter((row) => foldName(row.display_name).includes(folded));
+}
+
+/**
+ * Which words name a challenge's state, from `challengeState` and
+ * `challengeDaysToGo`: each app maps them to its own strings. A count of 1
+ * has its own words, as some languages use the `_one` plural for 21, 31 and
+ * so on too.
+ */
+export type ChallengeStateWords =
+  | { key: 'ended' | 'startsTomorrow' | 'active' | 'lastDay' }
+  | { key: 'startsIn' | 'daysLeft'; count: number };
+
+export function challengeStateWords(
+  state: ChallengeState,
+  daysToGo: number | null
+): ChallengeStateWords {
+  if (state === 'ended') return { key: 'ended' };
+  if (state === 'upcoming') {
+    return daysToGo === 1
+      ? { key: 'startsTomorrow' }
+      : { key: 'startsIn', count: daysToGo ?? 0 };
+  }
+  if (daysToGo === null) return { key: 'active' };
+  return daysToGo === 1
+    ? { key: 'lastDay' }
+    : { key: 'daysLeft', count: daysToGo };
+}
+
+/**
+ * How often an open period's standings are read again: the server scores a
+ * saved workout a minute or so later (score queue, 30 s quiet time), so the
+ * read right after the save still gets the old score. A final period never
+ * moves. Pass it as a query's `refetchInterval`.
+ */
+export const CHALLENGE_STANDINGS_REFETCH_MS = 60 * 1000;
+
+export function challengeStandingsRefetchInterval(query: {
+  state: { data?: { final: boolean } };
+}): number | false {
+  return query.state.data?.final ? false : CHALLENGE_STANDINGS_REFETCH_MS;
+}

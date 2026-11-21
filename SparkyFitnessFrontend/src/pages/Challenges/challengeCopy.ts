@@ -1,5 +1,6 @@
 import type { TFunction } from 'i18next';
 import {
+  challengeStateWords,
   CHALLENGE_MAX_BACKDATE_DAYS,
   CHALLENGE_MAX_LENGTH_DAYS,
   CHALLENGE_MAX_START_AHEAD_DAYS,
@@ -113,20 +114,25 @@ export function challengeStateText(
   state: ChallengeState,
   daysToGo: number | null
 ): string {
-  if (state === 'ended') return t('challenges.ended', 'Ended');
-  if (state === 'upcoming') {
-    return daysToGo === 1
-      ? t('challenges.state.startsTomorrow', 'Starts tomorrow')
-      : t('challenges.state.startsIn', 'Starts in {{count}} days', {
-          count: daysToGo ?? 0,
-        });
-  }
-  if (daysToGo === null) return t('challenges.state.active', 'Active');
-  return daysToGo === 1
-    ? t('challenges.state.lastDay', 'Last day')
-    : t('challenges.state.daysLeft', '{{count}} days left', {
-        count: daysToGo,
+  const words = challengeStateWords(state, daysToGo);
+  switch (words.key) {
+    case 'ended':
+      return t('challenges.ended', 'Ended');
+    case 'startsTomorrow':
+      return t('challenges.state.startsTomorrow', 'Starts tomorrow');
+    case 'startsIn':
+      return t('challenges.state.startsIn', 'Starts in {{count}} days', {
+        count: words.count,
       });
+    case 'active':
+      return t('challenges.state.active', 'Active');
+    case 'lastDay':
+      return t('challenges.state.lastDay', 'Last day');
+    case 'daysLeft':
+      return t('challenges.state.daysLeft', '{{count}} days left', {
+        count: words.count,
+      });
+  }
 }
 
 export function metricLabel(t: TFunction, metric: ChallengeMetric): string {
