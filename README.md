@@ -139,7 +139,12 @@ SparkyAI provides a conversational interface for logging data and reviewing prog
 - Upload food images for automatic meal logging
 - Retains conversation history for follow ups
 
-Note: AI features are currently in beta.
+### Supported AI Providers (BYOK & Local)
+
+- **Local & Self-Hosted**: Ollama, OpenAI-Compatible (LocalAI, vLLM, LM Studio)
+- **Cloud Providers**: OpenAI, Anthropic, Google Gemini, OpenRouter, Groq, Mistral, xAI (Grok), Perplexity
+
+Note: AI features are completely optional.
 
 ## Installation
 
