@@ -20,6 +20,7 @@ SparkyFitness supports integration with the following health and fitness data pr
 - [Intervals.icu](/features/settings/intervals)
 - [Canadian Nutrient File (Health Canada)](/features/settings/canadian-nutrient-file)
 - [Swedish Food Agency (Livsmedelsverket)](/features/settings/livsmedelsverket)
+- [CookTool](/features/settings/cooktool)
 - Swiss Food Composition Database
 - OpenFoodFacts
 - USDA

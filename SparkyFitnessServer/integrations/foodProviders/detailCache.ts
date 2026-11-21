@@ -16,7 +16,8 @@ export class DetailCache {
     this.maxEntries = maxEntries;
   }
 
-  get<T>(key: string): T | undefined {
+  get<T>(providerOrKey: string, externalId?: string): T | undefined {
+    const key = externalId ? `${providerOrKey}:${externalId}` : providerOrKey;
     const entry = this.cache.get(key);
     if (!entry) return undefined;
 
@@ -31,7 +32,25 @@ export class DetailCache {
     return entry.value as T;
   }
 
-  set<T>(key: string, value: T, ttlMs?: number): void {
+  set<T>(
+    providerOrKey: string,
+    externalIdOrValue: string | T,
+    valueOrTtl?: T | number,
+    ttlMs?: number
+  ): void {
+    if (typeof externalIdOrValue === 'string') {
+      const key = `${providerOrKey}:${externalIdOrValue}`;
+      this._set(key, valueOrTtl as T, ttlMs);
+    } else {
+      this._set(
+        providerOrKey,
+        externalIdOrValue,
+        valueOrTtl as number | undefined
+      );
+    }
+  }
+
+  private _set<T>(key: string, value: T, ttlMs?: number): void {
     if (value === null || value === undefined) return;
 
     if (this.cache.has(key)) {
@@ -60,3 +79,4 @@ export class DetailCache {
 }
 
 export const foodProviderDetailCache = new DetailCache();
+export const detailCache = foodProviderDetailCache;

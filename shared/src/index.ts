@@ -7,6 +7,7 @@ export * from './schemas/api/BloodAlcohol.api.zod.ts';
 export * from './schemas/api/FeatureChoices.api.zod.ts';
 export * from './schemas/api/CaffeineKinetics.api.zod.ts';
 export * from './schemas/api/CanadianNutrientFile.api.zod.ts';
+export * from './schemas/api/CookTool.api.zod.ts';
 export * from './schemas/api/Livsmedelsverket.api.zod.ts';
 export * from './schemas/api/CorosSync.api.zod.ts';
 export * from './schemas/api/CustomCategories.api.zod.ts';

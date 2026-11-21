@@ -2038,6 +2038,10 @@
       "common": {
         "getApiKey": "Get an API Key",
         "terms": "Terms"
+      },
+      "cooktool": {
+        "help": "Free plan includes 1,000 lookups per day. Accept CookTool terms under your own key. Lookups are cached for 24 hours.",
+        "portalLabel": "CookTool Documentation"
       }
     },
     "chatMcp": {

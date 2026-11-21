@@ -103,18 +103,21 @@ export async function providerFetchJson<T>(
     );
   }
 
-  const parsed = schema.safeParse(rawJson);
-  if (!parsed.success) {
-    log(
-      'warn',
-      `[providerFetchJson] ${providerType} schema validation failed:`,
-      parsed.error.issues.map((i) => ({ path: i.path, message: i.message }))
-    );
-    throw Object.assign(
-      new Error(`Unexpected response shape from ${providerType}`),
-      { status: 502 }
-    );
+  if (schema) {
+    const parsed = schema.safeParse(rawJson);
+    if (!parsed.success) {
+      log(
+        'warn',
+        `[providerFetchJson] ${providerType} schema validation failed:`,
+        parsed.error.issues.map((i) => ({ path: i.path, message: i.message }))
+      );
+      throw Object.assign(
+        new Error(`Unexpected response shape from ${providerType}`),
+        { status: 502 }
+      );
+    }
+    return parsed.data;
   }
 
-  return parsed.data;
+  return rawJson as T;
 }

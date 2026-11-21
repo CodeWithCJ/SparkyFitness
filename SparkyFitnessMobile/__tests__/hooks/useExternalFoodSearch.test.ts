@@ -660,6 +660,68 @@ describe('useExternalFoodSearch', () => {
     });
   });
 
+  test('reports cooktool as a supported provider', () => {
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('banana', 'cooktool', {
+          providerId: 'provider-ctk-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('does not fetch for non-public cooktool without providerId', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('banana', 'cooktool'),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+    expect(result.current.searchResults).toEqual([]);
+  });
+
+  test('fetches for cooktool with providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: 'ing:6433',
+          name: 'Bananas, raw',
+          brand: undefined,
+          calories: 89,
+          protein: 1.1,
+          carbs: 22.8,
+          fat: 0.3,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'cooktool',
+        },
+      ])
+    );
+
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('banana', 'cooktool', {
+          providerId: 'provider-ctk-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'cooktool',
+        'banana',
+        1,
+        'provider-ctk-1',
+        undefined
+      );
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('cooktool');
+    });
+  });
+
   describe('query key', () => {
     test('includes provider type and search term', () => {
       expect(externalFoodSearchQueryKey('openfoodfacts', 'banana')).toEqual([

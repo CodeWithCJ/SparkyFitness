@@ -939,6 +939,52 @@ describe('lookup_food_nutrition', () => {
       { providerId: 'prov-slv' }
     );
   });
+
+  it('supports explicit provider_type: "cooktool" in lookup_food_nutrition', async () => {
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      {
+        id: 'prov-cooktool',
+        provider_type: 'cooktool',
+        provider_name: 'CookTool',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          name: 'Bananas, raw',
+          provider_external_id: 'ing:6433',
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 89,
+            protein: 1.1,
+            carbs: 22.8,
+            fat: 0.3,
+          },
+        },
+      ],
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'lookup_food_nutrition',
+        food_name: 'Bananas',
+        provider_type: 'cooktool',
+      },
+      opts
+    );
+
+    expect(result).toContain('Found match in **cooktool**');
+    expect(result).toContain('Bananas, raw');
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-1',
+      'cooktool',
+      'Bananas',
+      { providerId: 'prov-cooktool' }
+    );
+  });
 });
 
 describe('barcode metadata', () => {

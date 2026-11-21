@@ -20,6 +20,7 @@ export const FOOD_PROVIDER_TYPES = [
   'swissfood',
   'canadian-nutrient-file',
   'livsmedelsverket',
+  'cooktool',
 ] as const;
 
 export type FoodProviderType = (typeof FOOD_PROVIDER_TYPES)[number];
@@ -202,6 +203,18 @@ export const FOOD_PROVIDER_REGISTRY: Record<
     licenseName: 'Creative Commons Attribution 4.0 (CC BY 4.0)',
     licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
     attributionText: 'Swedish Food Agency (Livsmedelsverket)',
+  },
+  cooktool: {
+    id: 'cooktool',
+    displayName: 'CookTool',
+    shortName: 'CookTool',
+    isPublic: false,
+    credentials: 'api_key',
+    needsDetailFetch: true,
+    supportsBarcode: true,
+    supportsBulkImport: false,
+    apiKeyUrl: 'https://api.cooktool.org/',
+    portalUrl: 'https://api.cooktool.org/docs/reference',
   },
 };
 

@@ -15,6 +15,7 @@ describe('getProviderDisplayName', () => {
     ['swissfood', 'SwissFood'],
     ['canadian-nutrient-file', 'Canadian Nutrient File'],
     ['livsmedelsverket', 'Swedish Food Agency (Livsmedelsverket)'],
+    ['cooktool', 'CookTool'],
     ['nutritionix', 'Nutritionix'],
   ])('maps %s to %s', (providerType: string, expected: string) => {
     expect(getProviderDisplayName(providerType)).toBe(expected);
@@ -35,11 +36,12 @@ describe('getProviderDisplayName', () => {
 
 describe('FOOD_PROVIDER_TYPES', () => {
   it('covers the active backend providers without legacy nutritionix', () => {
-    expect(FOOD_PROVIDER_TYPES).toHaveLength(10);
+    expect(FOOD_PROVIDER_TYPES).toHaveLength(11);
     expect(FOOD_PROVIDER_TYPES).not.toContain('nutritionix');
     expect(FOOD_PROVIDER_TYPES).toContain('openfoodfacts');
     expect(FOOD_PROVIDER_TYPES).toContain('usda');
     expect(FOOD_PROVIDER_TYPES).toContain('canadian-nutrient-file');
     expect(FOOD_PROVIDER_TYPES).toContain('livsmedelsverket');
+    expect(FOOD_PROVIDER_TYPES).toContain('cooktool');
   });
 });

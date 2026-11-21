@@ -12,6 +12,7 @@ import {
   legacyCanadianNutrientFileAdapter,
   legacyLivsmedelsverketAdapter,
 } from './legacyAdapters.js';
+import { cooktoolAdapter } from '../cooktool/cooktoolService.js';
 
 export const FOOD_PROVIDER_ADAPTERS: Record<
   FoodProviderType,
@@ -27,6 +28,7 @@ export const FOOD_PROVIDER_ADAPTERS: Record<
   swissfood: legacySwissFoodAdapter,
   'canadian-nutrient-file': legacyCanadianNutrientFileAdapter,
   livsmedelsverket: legacyLivsmedelsverketAdapter,
+  cooktool: cooktoolAdapter,
 };
 
 export function getFoodProviderAdapter(
