@@ -3,6 +3,7 @@ import type {
   ProviderCallContext,
 } from '../foodProviders/types.js';
 import type { ProviderSearchResult } from '../../services/externalFoodSearchService.js';
+import { normalizeNutrientUnit } from '@workspace/shared';
 import { providerFetchJson } from '../foodProviders/httpClient.js';
 import {
   buildPer100gFood,
@@ -89,6 +90,7 @@ interface NutrientGraphProduct {
   brand_name?: string | null;
   category?: string | null;
   nutrients?: NutrientGraphNutrients;
+  units?: Record<string, string>;
   portions?: NutrientGraphPortion[];
   primary_portion?: NutrientGraphPortion | null;
   missing?: string[];
@@ -142,17 +144,50 @@ function resolveFoodName(
   return names[0].name || fallback;
 }
 
+const NUTRIENTGRAPH_STANDARD_MAP: Record<string, StandardNutrientField> = {
+  energy_kcal: 'calories',
+  protein_g: 'protein',
+  fat_g: 'fat',
+  carbohydrate_g: 'carbs',
+  saturated_fat_g: 'saturated_fat',
+  mufa_g: 'monounsaturated_fat',
+  pufa_g: 'polyunsaturated_fat',
+  trans_fat_g: 'trans_fat',
+  cholesterol_mg: 'cholesterol',
+  sodium_mg: 'sodium',
+  potassium_mg: 'potassium',
+  fiber_g: 'dietary_fiber',
+  sugars_g: 'sugars',
+  calcium_mg: 'calcium',
+  iron_mg: 'iron',
+  water_g: 'water_ml',
+  alcohol_g: 'alcohol_g',
+  caffeine_mg: 'caffeine_mg',
+  vitamin_a_rae_ug: 'vitamin_a',
+  vitamin_c_mg: 'vitamin_c',
+};
+
 function mapNutrientGraphNutrients(
-  nutrients: NutrientGraphNutrients | undefined
+  nutrients: NutrientGraphNutrients | undefined,
+  units?: Record<string, string>
 ): {
   per100g: Partial<Record<StandardNutrientField, number>>;
   providerNutrients: Record<string, number>;
+  providerNutrientUnits: Record<string, string>;
+  providerNutrientStandard: Record<string, string>;
 } {
   const per100g: Partial<Record<StandardNutrientField, number>> = {};
   const providerNutrients: Record<string, number> = {};
+  const providerNutrientUnits: Record<string, string> = {};
+  const providerNutrientStandard: Record<string, string> = {};
 
   if (!nutrients) {
-    return { per100g, providerNutrients };
+    return {
+      per100g,
+      providerNutrients,
+      providerNutrientUnits,
+      providerNutrientStandard,
+    };
   }
 
   const setIfNumber = (field: StandardNutrientField, val?: number | null) => {
@@ -185,10 +220,23 @@ function mapNutrientGraphNutrients(
   for (const [key, val] of Object.entries(nutrients)) {
     if (typeof val === 'number' && !isNaN(val)) {
       providerNutrients[key] = val;
+      const u = units?.[key];
+      if (u) {
+        providerNutrientUnits[key] = normalizeNutrientUnit(u);
+      }
+      const std = NUTRIENTGRAPH_STANDARD_MAP[key];
+      if (std) {
+        providerNutrientStandard[key] = std;
+      }
     }
   }
 
-  return { per100g, providerNutrients };
+  return {
+    per100g,
+    providerNutrients,
+    providerNutrientUnits,
+    providerNutrientStandard,
+  };
 }
 
 function mapPortions(
@@ -316,16 +364,19 @@ export async function getNutrientGraphDetails(
   const headers = resolveHeaders(ctx.credentials?.app_key);
 
   const response = await providerFetchJson<NutrientGraphFoodResponse>(
-    `${baseUrl}/v1/food/foods/${encodeURIComponent(externalId)}?lang=${lang}`,
+    `${baseUrl}/v1/food/foods/${encodeURIComponent(externalId)}`,
     { providerType: 'nutrientgraph', headers, signal: ctx.signal }
   );
 
   const product = response.data;
   const name = resolveFoodName(product.names, lang);
   const brand = product.brand || product.brand_name || undefined;
-  const { per100g, providerNutrients } = mapNutrientGraphNutrients(
-    product.nutrients
-  );
+  const {
+    per100g,
+    providerNutrients,
+    providerNutrientUnits,
+    providerNutrientStandard,
+  } = mapNutrientGraphNutrients(product.nutrients, product.units);
   const portions = mapPortions(product.portions, product.primary_portion);
 
   const mapped = buildPer100gFood({
@@ -335,6 +386,8 @@ export async function getNutrientGraphDetails(
     brand,
     per100g,
     providerNutrients,
+    providerNutrientUnits,
+    providerNutrientStandard,
     portions,
   });
 
@@ -367,9 +420,12 @@ export async function lookupNutrientGraphBarcode(
     if (product.nutrients && Object.keys(product.nutrients).length > 0) {
       const name = resolveFoodName(product.names, lang);
       const brand = product.brand || product.brand_name || undefined;
-      const { per100g, providerNutrients } = mapNutrientGraphNutrients(
-        product.nutrients
-      );
+      const {
+        per100g,
+        providerNutrients,
+        providerNutrientUnits,
+        providerNutrientStandard,
+      } = mapNutrientGraphNutrients(product.nutrients, product.units);
       const portions = mapPortions(product.portions, product.primary_portion);
 
       return buildPer100gFood({
@@ -380,6 +436,8 @@ export async function lookupNutrientGraphBarcode(
         barcode: gtin14 || barcode,
         per100g,
         providerNutrients,
+        providerNutrientUnits,
+        providerNutrientStandard,
         portions,
       });
     }

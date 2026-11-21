@@ -78,9 +78,10 @@ export async function providerFetchJson<T>(
   }
 
   if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
     log(
       'warn',
-      `[providerFetchJson] ${providerType} responded with error status ${response.status}`
+      `[providerFetchJson] ${providerType} responded with error status ${response.status}: ${errorBody.slice(0, 500)}`
     );
     throw Object.assign(
       new Error(`${providerType} returned status ${response.status}`),

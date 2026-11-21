@@ -140,6 +140,16 @@ describe('NutrientGraph Service', () => {
       expect(food?.default_variant.sodium).toBe(74);
       expect(food?.default_variant.potassium).toBe(256);
       expect(food?.default_variant.water_ml).toBe(65.3);
+      expect(food?.default_variant.provider_nutrients?.protein_g).toBe(31.02);
+      expect(food?.default_variant.provider_nutrient_units?.protein_g).toBe(
+        'g'
+      );
+      expect(food?.default_variant.provider_nutrient_standard?.protein_g).toBe(
+        'protein'
+      );
+      expect(
+        food?.default_variant.provider_nutrient_standard?.energy_kcal
+      ).toBe('calories');
 
       // Verify portions: primary portion is first variant after 100g
       expect(food?.variants).toHaveLength(4);
