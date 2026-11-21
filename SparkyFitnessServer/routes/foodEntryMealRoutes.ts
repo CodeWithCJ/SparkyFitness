@@ -5,6 +5,7 @@ import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import {
+  clientRequestIdSchema,
   isEntryTimeString,
   foodPhotoLogRequestSchema,
   foodPhotoLogResponseSchema,
@@ -66,7 +67,15 @@ router.post('/', async (req, res, next) => {
       quantity,
       unit,
       entry_total_servings,
+      client_id,
     } = req.body;
+
+    // Replay key from the mobile offline queue; a repeat logs nothing new.
+    if (client_id !== undefined && client_id !== null) {
+      if (!clientRequestIdSchema.safeParse(client_id).success) {
+        return res.status(400).json({ error: 'client_id must be a uuid.' });
+      }
+    }
 
     if (
       entry_time !== null &&
@@ -127,6 +136,7 @@ router.post('/', async (req, res, next) => {
               ? Number(entry_total_servings)
               : null
             : undefined,
+        client_id: client_id ?? null,
         _clientMealModelVersion: clientMealModelVersion,
       } // mealData
     );

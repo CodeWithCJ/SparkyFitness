@@ -1,4 +1,4 @@
--- Migration: Add client_id to food_entries and water_intake_entries
+-- Migration: Add client_id to food_entries, water_intake_entries and food_entry_meals
 --
 -- The mobile app can queue a food entry or a drink while the server is out of
 -- reach and replay it later. A replay after a timeout may hit a request that
@@ -24,4 +24,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_food_entries_user_client_id
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_water_intake_entries_user_client_id
   ON public.water_intake_entries USING btree (user_id, client_id)
+  WHERE client_id IS NOT NULL;
+
+-- A logged meal is its parent row plus the component entries made from it, so
+-- the key sits on the parent: a repeat of a request whose parent was stored is
+-- answered with that meal instead of making a second one.
+ALTER TABLE public.food_entry_meals
+  ADD COLUMN IF NOT EXISTS client_id uuid;
+
+COMMENT ON COLUMN public.food_entry_meals.client_id IS 'Client-minted idempotency key from the mobile offline queue. NULL for meals not created through a replayable client.';
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_food_entry_meals_user_client_id
+  ON public.food_entry_meals USING btree (user_id, client_id)
   WHERE client_id IS NOT NULL;

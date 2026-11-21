@@ -3,6 +3,7 @@ import foodRepository from '../models/foodRepository.js';
 import foodEntryMealRepository, {
   type MealEntryMoveResult,
 } from '../models/foodEntryMealRepository.js';
+import { isUniqueViolationOn } from '../utils/uniqueViolation.js';
 import mealRepository from '../models/mealRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
@@ -123,6 +124,9 @@ interface LoggedComponentEntry {
 }
 
 /** A logged-meal payload as it arrives from the diary UI. */
+/** The unique index behind `food_entry_meals.client_id`, to spot a lost race. */
+const FOOD_ENTRY_MEAL_CLIENT_ID_INDEX = 'idx_food_entry_meals_user_client_id';
+
 interface LoggedMealInput {
   user_id?: string;
   meal_template_id?: string | null;
@@ -140,6 +144,8 @@ interface LoggedMealInput {
   foods?: MealFoodInput[];
   // Set by newer clients so the server can tell which nutrition model to use.
   _clientMealModelVersion?: number;
+  /** Replay key from the mobile offline queue; a repeat logs nothing new. */
+  client_id?: string | null;
 }
 
 /**
@@ -2443,6 +2449,30 @@ async function createFoodEntryMeal(
     `createFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, mealData: ${JSON.stringify(mealData)}`
   );
   try {
+    const targetUserId = mealData.user_id || authenticatedUserId;
+    if (mealData.client_id) {
+      // A request with this key already stored its meal (for example one that
+      // timed out on the phone but committed here): answer with that meal and
+      // log nothing. A parent with no components is what a request that died
+      // between the two writes leaves behind; it is removed and the meal made
+      // again, so a retry completes it instead of returning an empty meal.
+      const stored = await foodEntryMealRepository.findFoodEntryMealByClientId(
+        targetUserId,
+        mealData.client_id
+      );
+      if (stored) {
+        const components =
+          await foodEntryMealRepository.countFoodEntryMealComponents(
+            targetUserId,
+            stored.id
+          );
+        if (components > 0) return stored;
+        await foodEntryMealRepository.deleteFoodEntryMeal(
+          stored.id,
+          targetUserId
+        );
+      }
+    }
     // Backwards compatibility (issue #1023): clients on the new serving model
     // send X-Meal-Model-Version: 2. Old clients omit the header — for
     // serving-unit logs they expected the legacy special-case math
@@ -2511,26 +2541,45 @@ async function createFoodEntryMeal(
     );
 
     // 1. Create the parent food_entry_meals record with quantity, unit, name, description, and snapshotted yield.
-    const newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal(
-      {
-        user_id: mealData.user_id || authenticatedUserId, // Use target user ID
-        meal_template_id: mealData.meal_template_id || null,
-        meal_type_id: mealData.meal_type_id || null,
-        meal_type: mealData.meal_type,
-        entry_date: mealData.entry_date ?? '',
-        entry_time: mealData.entry_time ?? null,
-        name: name ?? '',
-        description: description,
-        // No meal-template fallback, unlike description: a note is authored
-        // for this occasion. The template's own note is shown beside it.
-        notes: mealData.notes ?? null,
-        quantity: Number(mealData.quantity) || 1.0, // Default to 1.0
-        unit: mealData.unit || 'serving', // Default to 'serving'
-        legacy_serving_unit_math: useLegacyServingMath,
-        entry_total_servings: portion.totalServings,
-      },
-      actingUserId
-    );
+    let newFoodEntryMeal;
+    try {
+      newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal(
+        {
+          user_id: targetUserId, // Use target user ID
+          meal_template_id: mealData.meal_template_id || null,
+          meal_type_id: mealData.meal_type_id || null,
+          meal_type: mealData.meal_type,
+          entry_date: mealData.entry_date ?? '',
+          entry_time: mealData.entry_time ?? null,
+          name: name ?? '',
+          description: description,
+          // No meal-template fallback, unlike description: a note is authored
+          // for this occasion. The template's own note is shown beside it.
+          notes: mealData.notes ?? null,
+          quantity: Number(mealData.quantity) || 1.0, // Default to 1.0
+          unit: mealData.unit || 'serving', // Default to 'serving'
+          legacy_serving_unit_math: useLegacyServingMath,
+          entry_total_servings: portion.totalServings,
+          client_id: mealData.client_id ?? null,
+        },
+        actingUserId
+      );
+    } catch (error) {
+      // A copy of this same request stored its meal first. That one is the
+      // meal; this one is the duplicate.
+      if (
+        mealData.client_id &&
+        isUniqueViolationOn(error, FOOD_ENTRY_MEAL_CLIENT_ID_INDEX)
+      ) {
+        const winner =
+          await foodEntryMealRepository.findFoodEntryMealByClientId(
+            targetUserId,
+            mealData.client_id
+          );
+        if (winner) return winner;
+      }
+      throw error;
+    }
     const resolvedMealTypeId = newFoodEntryMeal.meal_type_id;
 
     log(
