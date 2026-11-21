@@ -1,6 +1,6 @@
 import { apiFetch } from './apiClient';
 import { accountGeneration } from '../../offline/accountGeneration';
-import { saveDiaryDayWorkouts } from '../../offline/diaryDay';
+import { saveDiaryDayFood, saveDiaryDayWorkouts } from '../../offline/diaryDay';
 import type { DailyGoals } from '../../types/goals';
 import type { FoodEntry } from '../../types/foodEntries';
 import type {
@@ -48,9 +48,14 @@ export const fetchDailySummary = (
     // Saved only if the account is still the one that asked.
     const requestedUnder = accountGeneration();
     void request
-      .then((summary) =>
-        saveDiaryDayWorkouts(date, summary.exerciseSessions, requestedUnder)
-      )
+      .then(async (summary) => {
+        await saveDiaryDayWorkouts(
+          date,
+          summary.exerciseSessions,
+          requestedUnder
+        );
+        await saveDiaryDayFood(date, summary.foodEntries, requestedUnder);
+      })
       .catch(() => undefined);
   }
   return request;

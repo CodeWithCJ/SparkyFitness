@@ -10933,7 +10933,7 @@
     "presetUpdateQueued": "Saved workout will be updated when you are back online",
     "presetUpdateSkipped": "Saved workout \"{{name}}\" was not updated because it was changed elsewhere",
     "presetUpdated": "Saved workout \"{{name}}\" updated",
-    "diaryNote": "Only workouts are available offline. Food and other entries need a connection.",
+    "diaryNote": "Food and workouts from the last week are available offline. Sleep and the other entries need a connection.",
     "diaryNothingSaved": "Nothing saved for this day",
     "finishedTitle": "Saved on this phone",
     "finishedMessage": "It uploads when your server can be reached.",

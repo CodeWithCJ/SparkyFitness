@@ -26,16 +26,16 @@ import {
 import { persistExternalVariants } from '../utils/persistExternalVariants';
 import { queueAfterConnectionFailure } from '../offline/queueAfterFailure';
 import {
+  isPendingEntryId,
   isQueueableFoodEntry,
+  pendingEntryId,
   queueFoodEntry,
 } from '../offline/foodEntryHandOver';
 import { newUuid } from '../utils/ids';
 
-const PENDING_ENTRY_PREFIX = 'pending-';
-
 /** True for an entry that is waiting on the phone, not yet on the server. */
 export function isPendingEntry(entry: Pick<FoodEntry, 'id'>): boolean {
-  return entry.id.startsWith(PENDING_ENTRY_PREFIX);
+  return isPendingEntryId(entry.id);
 }
 
 /**
@@ -47,7 +47,7 @@ function pendingEntryFrom(
   payload: CreateFoodEntryPayload
 ): FoodEntry {
   return {
-    id: `${PENDING_ENTRY_PREFIX}${clientId}`,
+    id: pendingEntryId(clientId),
     food_id: payload.food_id,
     variant_id: payload.variant_id,
     meal_type: '',

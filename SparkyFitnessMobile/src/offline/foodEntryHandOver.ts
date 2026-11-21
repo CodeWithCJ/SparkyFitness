@@ -13,6 +13,18 @@ export const FOOD_ENTRY_CREATE = 'food_entry.create';
 /** The payload shape of `food_entry.create`, as this build writes it. */
 export const FOOD_ENTRY_PAYLOAD_VERSION = 1;
 
+const PENDING_ENTRY_PREFIX = 'pending-';
+
+/** The id a waiting entry is shown under until the server has given it one. */
+export function pendingEntryId(clientId: string): string {
+  return `${PENDING_ENTRY_PREFIX}${clientId}`;
+}
+
+/** True for an entry that is waiting on the phone, not yet on the server. */
+export function isPendingEntryId(id: string): boolean {
+  return id.startsWith(PENDING_ENTRY_PREFIX);
+}
+
 /** The request a food entry is sent with; its key travels as `client_id`. */
 export type FoodEntryCreatePayload = Omit<CreateFoodEntryPayload, 'client_id'>;
 

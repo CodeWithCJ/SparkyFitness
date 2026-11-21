@@ -132,4 +132,45 @@ describe('SwipeableFoodRow', () => {
 
     alertSpy.mockRestore();
   });
+
+  describe('read only (the Diary read from the phone while offline)', () => {
+    const nutrition = { calories: 120, protein: 15, carbs: 8, fat: 2 };
+
+    it('shows the entry but opens nothing when pressed', () => {
+      const screen = renderRow(
+        <SwipeableFoodRow
+          entry={createEntry()}
+          nutrition={nutrition}
+          onAdjustServing={jest.fn()}
+          readOnly
+        />
+      );
+
+      fireEvent.press(screen.getByText('Greek Yogurt'));
+
+      expect(screen.getByText('Greek Yogurt')).toBeTruthy();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('has no adjust button and no long-press menu', () => {
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation();
+      const onAdjustServing = jest.fn();
+      const screen = renderRow(
+        <SwipeableFoodRow
+          entry={createEntry()}
+          nutrition={nutrition}
+          onAdjustServing={onAdjustServing}
+          readOnly
+        />
+      );
+
+      // The calories are plain text, not the adjust button.
+      fireEvent.press(screen.getByText(/120 kcal/));
+      fireEvent(screen.getByText('Greek Yogurt'), 'longPress');
+
+      expect(onAdjustServing).not.toHaveBeenCalled();
+      expect(alertSpy).not.toHaveBeenCalled();
+      expect(screen.queryByLabelText('Delete food')).toBeNull();
+    });
+  });
 });

@@ -25,12 +25,19 @@ interface SwipeableFoodRowProps {
   entry: FoodEntry;
   nutrition: EntryNutrition;
   onAdjustServing?: (entry: FoodEntry) => void;
+  /**
+   * Shows the entry without anything that changes or opens it: no swipe to
+   * delete, no long-press menu, no detail screen. Used for the Diary read
+   * from the phone while the server is unreachable.
+   */
+  readOnly?: boolean;
 }
 
 const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
   entry,
   nutrition,
   onAdjustServing,
+  readOnly = false,
 }) => {
   const { t } = useTranslation();
   const { preferences } = usePreferences();
@@ -96,7 +103,10 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
   );
 
   const canQuickAdjust =
-    !isMealComponent && !!onAdjustServing && Number(entry.serving_size) > 0;
+    !readOnly &&
+    !isMealComponent &&
+    !!onAdjustServing &&
+    Number(entry.serving_size) > 0;
   const name =
     entry.food_name ||
     t('foodRow.unknownFood', { defaultValue: 'Unknown food' });
@@ -140,7 +150,8 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
     <Animated.View style={animatedStyle} onLayout={handleLayout}>
       <ReanimatedSwipeable
         ref={swipeableRef}
-        renderRightActions={renderRightActions}
+        renderRightActions={readOnly ? undefined : renderRightActions}
+        enabled={!readOnly}
         overshootRight={false}
         rightThreshold={40}
       >
@@ -161,8 +172,9 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
           <TouchableOpacity
             className="flex-1 mr-2"
             activeOpacity={0.7}
-            onPress={handlePress}
-            onLongPress={handleLongPress}
+            onPress={readOnly ? undefined : handlePress}
+            onLongPress={readOnly ? undefined : handleLongPress}
+            disabled={readOnly}
           >
             <View className="flex-row flex-wrap items-baseline">
               <Text className="text-md text-text-primary" numberOfLines={1}>

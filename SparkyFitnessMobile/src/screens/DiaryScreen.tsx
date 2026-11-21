@@ -46,7 +46,7 @@ import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
 import OfflineBanner from '../components/OfflineBanner';
 import { useOfflineDiaryDay } from '../hooks/useOfflineDiaryDay';
-import { mergeWaitingWorkouts } from '../offline/diaryDay';
+import { mergeWaitingFood, mergeWaitingWorkouts } from '../offline/diaryDay';
 import Button from '../components/ui/Button';
 import {
   useCustomNutrients,
@@ -644,6 +644,12 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       offlineDay.waiting,
       offlineDay.deleted
     );
+    const waitingFood = offlineDay.waitingFood ?? [];
+    const hasFoodDay = offlineDay.savedFood != null || waitingFood.length > 0;
+    const offlineFood = mergeWaitingFood(
+      offlineDay.savedFood ?? [],
+      waitingFood
+    );
     return (
       <ScrollView
         className="flex-1 bg-background"
@@ -670,10 +676,20 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         >
           {t('offline.diaryNote', {
             defaultValue:
-              'Only workouts are available offline. Food and other entries need a connection.',
+              'Food and workouts from the last week are available offline. Sleep and the other entries need a connection.',
           })}
         </Text>
-        {offlineDay.saved == null && sessions.length === 0 ? (
+        {hasFoodDay ? (
+          <FoodSummary
+            foodEntries={offlineFood}
+            mealTypes={mealTypes}
+            readOnly
+            onAddFood={() =>
+              navigation.navigate('FoodSearch', { date: selectedDate })
+            }
+          />
+        ) : null}
+        {offlineDay.saved == null && sessions.length === 0 && !hasFoodDay ? (
           <StatusView
             inline
             icon="cloud-offline"

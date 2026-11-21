@@ -11,6 +11,8 @@ export const CACHE_COLLECTIONS = {
   planDay: 'plan_day',
   /** A day's workouts as the diary last loaded them, keyed by YYYY-MM-DD. */
   diaryDay: 'diary_day',
+  /** A day's food entries as the diary last loaded them, keyed by YYYY-MM-DD. */
+  diaryFoodDay: 'diary_food_day',
   /** Recent and most-used exercises, keyed by the requested count. */
   suggestedExercises: 'suggested_exercises',
   /** Best / last / recent sets, keyed by `exerciseStatsCacheKey`. */

@@ -4,9 +4,12 @@ import type {
   PresetSessionResponse,
 } from '@workspace/shared';
 import { apiFetch } from '../services/api/apiClient';
+import type { FoodEntry } from '../types/foodEntries';
+import { FOOD_ENTRY_CREATE } from './foodEntryHandOver';
+import { previewFromQueuedFoodEntry } from './foodEntryPreview';
 import { accountGeneration, savedCopyReadable } from './accountGeneration';
 import { getActiveServerConfigId } from '../services/storage';
-import { addDays, getTodayDate } from '../utils/dateUtils';
+import { addDays, getTodayDate, normalizeDate } from '../utils/dateUtils';
 import type { Exercise } from '../types/exercise';
 import { buildLocalSession } from './buildLocalSession';
 import { getCacheRow, putCacheRows } from './cacheStore';
@@ -34,6 +37,10 @@ export interface OfflineDiaryDay {
   waiting: PresetSessionResponse[];
   /** Workouts of that day whose removal is waiting to upload: hidden. */
   deleted: string[];
+  /** The day's food entries as last loaded from the server; null if never. */
+  savedFood: FoodEntry[] | null;
+  /** Food entries of that day still waiting to upload, as they will read. */
+  waitingFood: FoodEntry[];
 }
 
 /** Keeps the day's workouts from a diary load, for showing it offline. */
@@ -58,6 +65,68 @@ export async function saveDiaryDayWorkouts(
   } catch {
     // Only a convenience for offline viewing.
   }
+}
+
+/** Keeps the day's food entries from a diary load, for showing it offline. */
+export async function saveDiaryDayFood(
+  date: string,
+  entries: FoodEntry[],
+  /** `accountGeneration()` when the request was made; a later one is dropped. */
+  requestedUnder: number = accountGeneration()
+): Promise<void> {
+  try {
+    const serverConfigId = await getActiveServerConfigId();
+    if (!serverConfigId || accountGeneration() !== requestedUnder) return;
+    await putCacheRows(
+      await getOfflineDb(),
+      serverConfigId,
+      CACHE_COLLECTIONS.diaryFoodDay,
+      [{ key: date, payload: entries }]
+    );
+    notifyDiaryDaySaved();
+  } catch {
+    // Only a convenience for offline viewing.
+  }
+}
+
+/**
+ * Saves the food entries of the last week with one request, so the Diary can
+ * show them with no connection whether or not each day was opened while
+ * online. Days older than the week are removed.
+ */
+export async function refreshRecentFoodDays(
+  db: OfflineDb,
+  serverConfigId: string,
+  today: string = getTodayDate(),
+  startedUnder: number = accountGeneration()
+): Promise<void> {
+  const first = addDays(today, -(DIARY_DAYS_KEPT - 1));
+  const entries = await apiFetch<FoodEntry[]>({
+    endpoint: `/api/food-entries/range/${encodeURIComponent(first)}/${encodeURIComponent(today)}`,
+    serviceName: 'Offline pack',
+    operation: "fetch the week's food entries",
+  });
+  if (accountGeneration() !== startedUnder) return;
+  const byDay = new Map<string, FoodEntry[]>();
+  for (let back = 0; back < DIARY_DAYS_KEPT; back += 1) {
+    byDay.set(addDays(today, -back), []);
+  }
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    // The server sends the calendar day; it may carry a time part.
+    const day = normalizeDate(entry.entry_date);
+    byDay.get(day)?.push(entry);
+  }
+  await putCacheRows(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.diaryFoodDay,
+    [...byDay].map(([key, payload]) => ({ key, payload }))
+  );
+  await db.run(
+    `DELETE FROM cache WHERE server_config_id = ? AND collection = ? AND key < ?`,
+    [serverConfigId, CACHE_COLLECTIONS.diaryFoodDay, first]
+  );
+  notifyDiaryDaySaved();
 }
 
 /** How many days back (today included) the phone keeps workouts for. */
@@ -201,10 +270,16 @@ export async function readOfflineDiaryDay(
   // Waits for an account change in progress. If its clean-up failed, nothing
   // is read: the saved day, the saved identity and so the queued workouts
   // that would be matched to it may all belong to the previous account.
-  if (!(await savedCopyReadable()))
-    return { saved: null, waiting: [], deleted: [] };
+  const nothing: OfflineDiaryDay = {
+    saved: null,
+    waiting: [],
+    deleted: [],
+    savedFood: null,
+    waitingFood: [],
+  };
+  if (!(await savedCopyReadable())) return nothing;
   const serverConfigId = await getActiveServerConfigId();
-  if (!serverConfigId) return { saved: null, waiting: [], deleted: [] };
+  if (!serverConfigId) return nothing;
   const db = await getOfflineDb();
   const savedRow = await getCacheRow(
     db,
@@ -235,7 +310,25 @@ export async function readOfflineDiaryDay(
   const deleted = rows
     .filter((row) => row.kind === WORKOUT_SESSION_DELETE)
     .map((row) => row.entityId);
-  return { saved, waiting: [...byId.values()], deleted };
+  const savedFoodRow = await getCacheRow(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.diaryFoodDay,
+    date
+  );
+  const waitingFood: FoodEntry[] = [];
+  for (const row of rows) {
+    if (row.kind !== FOOD_ENTRY_CREATE) continue;
+    const preview = await previewFromQueuedFoodEntry(db, serverConfigId, row);
+    if (preview) waitingFood.push(preview);
+  }
+  return {
+    saved,
+    waiting: [...byId.values()],
+    deleted,
+    savedFood: savedFoodRow ? (savedFoodRow.payload as FoodEntry[]) : null,
+    waitingFood,
+  };
 }
 
 /**
@@ -260,4 +353,15 @@ export function mergeWaitingWorkouts(
     if (!present.has(session.id)) merged.push(session);
   }
   return merged;
+}
+
+/**
+ * One list of food entries for the offline Diary: what the server last had
+ * for the day, then the entries still waiting to upload.
+ */
+export function mergeWaitingFood(
+  saved: readonly FoodEntry[],
+  waiting: readonly FoodEntry[]
+): FoodEntry[] {
+  return [...saved, ...waiting];
 }
