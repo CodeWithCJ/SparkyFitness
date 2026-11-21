@@ -601,6 +601,15 @@ const CalculationSettings = () => {
       goalModeCalculationMethod,
       adaptiveActivitySeparate
     );
+  // The Dynamic card's subtitle describes what Dynamic would do with the
+  // current calculation method, whichever card is selected.
+  const dynamicCardAdaptive =
+    bmr > 0 &&
+    isAdaptiveEarnBackSuppressed(
+      'dynamic',
+      goalModeCalculationMethod,
+      adaptiveActivitySeparate
+    );
   const calorieGoalOffset = bmr > 0 ? rawManualGoal - staticTdee : 0;
 
   let currentGoalBase =
@@ -1141,7 +1150,12 @@ const CalculationSettings = () => {
                     {t(card.titleKey, card.title)}
                   </span>
                   <span className="block text-xs text-muted-foreground">
-                    {t(card.summaryKey, card.summary)}
+                    {card.mode === 'dynamic' && dynamicCardAdaptive
+                      ? t(
+                          'settings.calorieGoalAdjustment.cardDynamicAdaptiveSummary',
+                          'Activity is already in your Adaptive target'
+                        )
+                      : t(card.summaryKey, card.summary)}
                   </span>
                 </span>
               </RadioGroupPrimitive.Item>
@@ -1157,6 +1171,15 @@ const CalculationSettings = () => {
               i18nKey="settings.goalMode.adaptiveGoalMatchedEvidence"
               defaults={
                 '<span>Adaptive Goal:</span> Estimates expenditure from food logs and measured weights over matching observation periods. New evidence is introduced gradually; earlier uncertain or capped evidence can still affect the result. Missing food logs and scale-weight fluctuations add uncertainty.'
+              }
+              components={{ span: <span className="font-medium" /> }}
+            />
+          ) : calorieGoalAdjustmentMode === 'dynamic' &&
+            adaptiveEarnBackSuppressed ? (
+            <Trans
+              i18nKey="settings.goalMode.dynamicGoalAdaptiveMethod"
+              defaults={
+                '<span>Dynamic Goal:</span> With the Adaptive calculation method, your target is learned from your food logs and weight trend, so it already includes your usual activity, and Remaining is Target minus Eaten. Turn on <span>Count activity calories separately</span> below to add each day’s steps and workouts to a baseline that leaves them out.'
               }
               components={{ span: <span className="font-medium" /> }}
             />
@@ -1232,7 +1255,8 @@ const CalculationSettings = () => {
               </div>
             )}
           {(calorieGoalAdjustmentMode === 'tdee' ||
-            calorieGoalAdjustmentMode === 'adaptive') && (
+            calorieGoalAdjustmentMode === 'adaptive' ||
+            goalModeCalculationMethod === 'adaptive') && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <Label
@@ -1250,7 +1274,7 @@ const CalculationSettings = () => {
                     setActivityLevel(value)
                   }
                 >
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger id="activity-level" className="w-48">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1305,6 +1329,22 @@ const CalculationSettings = () => {
                   )}
                 </p>
               )}
+              {calorieGoalAdjustmentMode !== 'adaptive' &&
+                calorieGoalAdjustmentMode !== 'tdee' && (
+                  <p className="text-sm text-muted-foreground italic mt-[-4px]">
+                    {activitySeparated
+                      ? t(
+                          'settings.goalMode.adaptiveFallbackActivitySeparated',
+                          'Until Adaptive has {{days}} days of food logs, your target is BMR × this level. Describe your activity outside the steps and workouts that are counted separately.',
+                          { days: ADAPTIVE_TDEE_GOAL_MIN_DAYS }
+                        )
+                      : t(
+                          'settings.goalMode.adaptiveFallbackActivityLevel',
+                          'Until Adaptive has {{days}} days of food logs, your target is BMR × this level, and your workouts are not added on top. Pick a level that includes your workouts.',
+                          { days: ADAPTIVE_TDEE_GOAL_MIN_DAYS }
+                        )}
+                  </p>
+                )}
               {calorieGoalAdjustmentMode === 'tdee' && (
                 <>
                   <p className="text-sm text-muted-foreground italic mt-[-4px]">
@@ -1362,20 +1402,25 @@ const CalculationSettings = () => {
                   )}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {calorieGoalAdjustmentMode === 'tdee'
+                  {adaptiveEarnBackSuppressed
                     ? t(
-                        'settings.calculationExplanation.burnedTdee',
-                        'Device total calories (BMR + active calories fallback)'
+                        'settings.calculationExplanation.burnedAdaptive',
+                        'Shown for reference. Your Adaptive target already includes your activity.'
                       )
-                    : includeBmrInNetCalories
+                    : calorieGoalAdjustmentMode === 'tdee'
                       ? t(
-                          'settings.calculationExplanation.burnedBmr',
-                          'Activity + BMR (Your base metabolism)'
+                          'settings.calculationExplanation.burnedTdee',
+                          'Device total calories (BMR + active calories fallback)'
                         )
-                      : t(
-                          'settings.calculationExplanation.burnedActivity',
-                          'Activity (Exercise & Steps only)'
-                        )}
+                      : includeBmrInNetCalories
+                        ? t(
+                            'settings.calculationExplanation.burnedBmr',
+                            'Activity + BMR (Your base metabolism)'
+                          )
+                        : t(
+                            'settings.calculationExplanation.burnedActivity',
+                            'Activity (Exercise & Steps only)'
+                          )}
                 </p>
               </div>
             </div>
@@ -1389,10 +1434,15 @@ const CalculationSettings = () => {
                   {t('settings.calculationExplanation.netTitle', 'Net Energy')}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {t(
-                    'settings.calculationExplanation.netFormula',
-                    'Eaten - Total Burned'
-                  )}
+                  {adaptiveEarnBackSuppressed
+                    ? t(
+                        'settings.calculationExplanation.netAdaptive',
+                        'Not used for Remaining. Turn on "Count activity calories separately" below to credit today’s activity.'
+                      )
+                    : t(
+                        'settings.calculationExplanation.netFormula',
+                        'Eaten - Total Burned'
+                      )}
                 </p>
               </div>
             </div>

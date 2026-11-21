@@ -27,6 +27,7 @@ import type { UserPreferences } from '../types/preferences';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
   ADAPTIVE_TDEE_CLAMP_KCAL,
+  ADAPTIVE_TDEE_GOAL_MIN_DAYS,
   DEFAULT_CUSTOM_CALORIE_SAFETY_FLOOR,
   MAX_CALORIE_SAFETY_FLOOR,
   MAX_GOAL_MODE_PERCENTAGE,
@@ -499,8 +500,12 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     adaptiveEarnBackConfigured && (summary?.calorieBalance?.bmr ?? 0) > 0;
   const showPercentage =
     normalized.mode === 'percentage' && !adaptiveEarnBackSuppressed;
+  // The Adaptive calculation method falls back on BMR × activity level in
+  // every mode, so the level has to be reachable whenever that method is used.
   const showActivityLevel =
-    normalized.mode === 'tdee' || normalized.mode === 'adaptive';
+    normalized.mode === 'tdee' ||
+    normalized.mode === 'adaptive' ||
+    normalized.goalModeCalculationMethod === 'adaptive';
   const showNegativeAdjustment = normalized.mode === 'tdee';
 
   const explanation = useMemo(() => {
@@ -508,8 +513,12 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
     const bmr = normalized.includeBmrInNetCalories;
     const pct = normalized.exerciseCaloriePercentage;
 
-    const burned =
-      mode === 'tdee'
+    const burned = adaptiveEarnBackSuppressed
+      ? t('calorieSettings.formulas.burnedAdaptive', {
+          defaultValue:
+            'Shown for reference. Your Adaptive target already includes your activity.',
+        })
+      : mode === 'tdee'
         ? t('calorieSettings.formulas.projectedTotal', {
             defaultValue:
               'Device total calories (BMR + active calories fallback)',
@@ -521,9 +530,14 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
           : t('calorieSettings.formulas.activityOnly', {
               defaultValue: 'Activity only (exercise + steps)',
             });
-    const net = t('calorieSettings.formulas.eatenBurned', {
-      defaultValue: 'Eaten − Burned',
-    });
+    const net = adaptiveEarnBackSuppressed
+      ? t('calorieSettings.formulas.netAdaptive', {
+          defaultValue:
+            'Not used for Remaining. Turn on "Count activity calories separately" to credit today’s activity.',
+        })
+      : t('calorieSettings.formulas.eatenBurned', {
+          defaultValue: 'Eaten − Burned',
+        });
 
     let remainingFormula: string;
     let remainingNote: string | null;
@@ -821,9 +835,21 @@ const CalorieSettingsScreen: React.FC<CalorieSettingsScreenProps> = () => {
                       defaultValue:
                         'Only used for the BMR + active calories fallback when a device total is unavailable.',
                     })
-                  : t('calorieSettings.activityBaseline', {
-                      defaultValue: 'Used as a baseline for TDEE.',
-                    })}
+                  : normalized.mode === 'adaptive'
+                    ? t('calorieSettings.activityBaseline', {
+                        defaultValue: 'Used as a baseline for TDEE.',
+                      })
+                    : activitySeparated
+                      ? t('calorieSettings.adaptiveFallbackActivitySeparated', {
+                          defaultValue:
+                            'Until Adaptive has {{days}} days of food logs, your target is BMR × this level. Describe your activity outside the steps and workouts that are counted separately.',
+                          days: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
+                        })
+                      : t('calorieSettings.adaptiveFallbackActivityLevel', {
+                          defaultValue:
+                            'Until Adaptive has {{days}} days of food logs, your target is BMR × this level, and your workouts are not added on top. Pick a level that includes your workouts.',
+                          days: ADAPTIVE_TDEE_GOAL_MIN_DAYS,
+                        })}
               </Text>
               {normalized.mode === 'adaptive' && (
                 <Text className="text-text-secondary text-sm mt-3">

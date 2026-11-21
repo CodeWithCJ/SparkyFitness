@@ -1200,6 +1200,8 @@
     "exerciseCaloriesDescription": "How much of your exercise calories are added back to your daily goal.",
     "activityLevel": "Activity Level",
     "activityBaseline": "Used as a baseline for TDEE.",
+    "adaptiveFallbackActivityLevel": "Until Adaptive has {{days}} days of food logs, your target is BMR × this level, and your workouts are not added on top. Pick a level that includes your workouts.",
+    "adaptiveFallbackActivitySeparated": "Until Adaptive has {{days}} days of food logs, your target is BMR × this level. Describe your activity outside the steps and workouts that are counted separately.",
     "adaptiveEstimateRangeWithUnit": "Activity Level sets the starting estimate and the ±{{amount}} {{unit}} plausibility range around BMR × this multiplier. Estimates can take several weeks to settle; weight fluctuations and incomplete food logs add uncertainty.",
     "allowNegative": "Allow Lower Fallback Projection",
     "negativeDescription": "When a device total is unavailable, let the BMR + active calories fallback lower your target.",
@@ -1231,6 +1233,8 @@
     "formulas": {
       "activityWithBmr": "Activity + BMR",
       "activityOnly": "Activity only (exercise + steps)",
+      "burnedAdaptive": "Shown for reference. Your Adaptive target already includes your activity.",
+      "netAdaptive": "Not used for Remaining. Turn on \"Count activity calories separately\" to credit today’s activity.",
       "eatenBurned": "Eaten − Burned",
       "projectedTotal": "Device total calories (BMR + active calories fallback)",
       "dynamic": "Goal − Net Energy",

@@ -356,7 +356,7 @@ describe('daily calorie goal adjustment cards', () => {
       'true'
     );
     expect(screen.getByTestId('adjustment-mode-description')).toHaveTextContent(
-      /^Dynamic Goal: Your calorie goal will dynamically adjust/
+      /^Dynamic Goal: With the Adaptive calculation method/
     );
 
     fireEvent.click(
@@ -370,6 +370,36 @@ describe('daily calorie goal adjustment cards', () => {
     expect(
       screen.getByText('Allow the fallback projection to lower the target')
     ).toBeInTheDocument();
+  });
+});
+
+describe('Dynamic goal with the Adaptive calculation method (#3689)', () => {
+  it('says activity is already in the target and shows the activity level it falls back on', () => {
+    render(<CalculationSettings />);
+    expect(screen.getByRole('radio', { name: /Dynamic/ })).toHaveTextContent(
+      'Activity is already in your Adaptive target'
+    );
+    expect(screen.getByLabelText('Activity level:')).toBeInTheDocument();
+    expect(
+      screen.getByText(/your workouts are not added on top/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Eaten - Total Burned')).toBeNull();
+    expect(
+      screen.getByText(/Shown for reference\. Your Adaptive target/)
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the earn-back wording and hides the activity level with a Manual target', () => {
+    mockMethod = 'manual';
+    render(<CalculationSettings />);
+    expect(screen.getByRole('radio', { name: /Dynamic/ })).toHaveTextContent(
+      'Adds your daily activity to your goal'
+    );
+    expect(screen.getByTestId('adjustment-mode-description')).toHaveTextContent(
+      /^Dynamic Goal: Your calorie goal will dynamically adjust/
+    );
+    expect(screen.queryByLabelText('Activity level:')).toBeNull();
+    expect(screen.getByText('Eaten - Total Burned')).toBeInTheDocument();
   });
 });
 
