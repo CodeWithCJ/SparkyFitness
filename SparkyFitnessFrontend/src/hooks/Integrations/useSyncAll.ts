@@ -4,6 +4,7 @@ import {
   syncLiftosaurData,
   syncIntervalsData,
   syncZeppBridgeData,
+  type ZeppBridgeSyncResult,
 } from '@/api/Integrations/integrations';
 import { useToast } from '@/hooks/use-toast';
 import { useTranslation } from 'react-i18next';
@@ -57,6 +58,9 @@ export const useSyncAllMutation = () => {
       // A Garmin sync with failed phases still answers 200, so it is neither
       // counted as a success nor as a failure; it gets its own toast.
       let garminWarning: ReturnType<typeof garminSyncWarning> = null;
+      // The last ZeppBridge sync that saved what it could but had records or
+      // workout details it could not store; shown with its counts below.
+      let zeppBridgeIncomplete: ZeppBridgeSyncResult | null = null;
 
       for (const provider of activeSyncProviders) {
         try {
@@ -118,6 +122,7 @@ export const useSyncAllMutation = () => {
               // A 200 with failed records, or workouts left without their route or
               // heart rate, is an incomplete sync, not a success.
               if (result.failed > 0 || result.workoutDetailsFailed > 0) {
+                zeppBridgeIncomplete = result;
                 failCount++;
                 continue;
               }
@@ -131,13 +136,36 @@ export const useSyncAllMutation = () => {
         }
       }
 
-      return { successCount, failCount, garminWarning };
+      return { successCount, failCount, garminWarning, zeppBridgeIncomplete };
     },
     onSuccess: (data) => {
       invalidateSyncData();
 
       if (data.garminWarning) {
         toast(data.garminWarning);
+      }
+
+      if (data.zeppBridgeIncomplete) {
+        const zepp = data.zeppBridgeIncomplete;
+        toast({
+          variant: 'destructive',
+          title: t(
+            'integrations.zeppbridgeSyncIncompleteTitle',
+            'ZeppBridge synced with problems'
+          ),
+          description: t(
+            'integrations.zeppbridgeSyncDetails',
+            'Synced: {{sleepImported}} sleep sessions, {{workoutsImported}} workouts ({{workoutDetailsImported}} with route or heart rate), {{metricDays}} days of metrics ({{failed}} failed, {{workoutDetailsFailed}} workout details missing).',
+            {
+              sleepImported: zepp.sleepImported ?? 0,
+              workoutsImported: zepp.workoutsImported ?? 0,
+              workoutDetailsImported: zepp.workoutDetailsImported ?? 0,
+              workoutDetailsFailed: zepp.workoutDetailsFailed ?? 0,
+              metricDays: zepp.metricDays ?? 0,
+              failed: zepp.failed ?? 0,
+            }
+          ),
+        });
       }
 
       if (data.successCount > 0) {

@@ -7871,6 +7871,7 @@
     "intervalsDisconnectConfirm": "Are you sure you want to disconnect from Intervals.icu? This will deactivate the integration until you re-enable it.",
     "zeppbridgeSyncSuccessTitle": "ZeppBridge synced successfully",
     "zeppbridgeSyncDetails": "Synced: {{sleepImported}} sleep sessions, {{workoutsImported}} workouts ({{workoutDetailsImported}} with route or heart rate), {{metricDays}} days of metrics ({{failed}} failed, {{workoutDetailsFailed}} workout details missing).",
+    "zeppbridgeSyncIncompleteTitle": "ZeppBridge synced with problems",
     "zeppbridgeSyncError": "ZeppBridge sync failed. Check the ZeppBridge URL and pull token in settings, and that the ZeppBridge server is running.",
     "zeppbridgeTestSuccessTitle": "ZeppBridge connection works",
     "zeppbridgeTestSuccessDetails": "ZeppBridge {{version}} answered.",

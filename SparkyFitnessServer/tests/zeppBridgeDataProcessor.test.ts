@@ -455,16 +455,16 @@ describe('processZeppBridgeRecords', () => {
       .mocked(upsertSamplesByDay)
       .mock.calls.find((c) => c[2] === 'hrv')!;
     // 05:00 UTC would be 19:00 on the 1st in Honolulu; noon on the 2nd is
-    // 22:00 UTC.
+    // 22:00 UTC, plus the half second that keeps it off a whole-minute reading.
     expect(
       (hrv[4] as Array<{ timestamp: Date }>)[0]!.timestamp.toISOString()
-    ).toBe('2026-11-02T22:00:00.000Z');
+    ).toBe('2026-11-02T22:00:00.500Z');
   });
 
-  it('keeps a daily value’s noon anchor and the day’s readings in separate, tight windows', async () => {
-    // In Pacific/Kiritimati (UTC+14) the noon anchor of 2 Nov is 22:00 UTC on
-    // 1 Nov, hours before the reading. One window over both would cover readings
-    // a neighbouring span stored in between and delete them.
+  it('lets a metric’s readings replace its daily value for the same day', async () => {
+    // One stored row holds a metric's samples for a day, and a merge replaces
+    // what lies inside its window, so the two forms would delete each other.
+    // When both arrive, the readings are written and the daily value is not.
     await processZeppBridgeRecords(
       UID,
       UID,
@@ -478,21 +478,63 @@ describe('processZeppBridgeRecords', () => {
         {
           record_type: 'metric_sample',
           metric: 'hrv_rmssd',
-          timestamp: '2026-11-02T01:00:00+00:00',
+          timestamp: '2026-11-02T16:00:00+00:00',
+          value: 51,
+        },
+        {
+          record_type: 'metric_sample',
+          metric: 'hrv_rmssd',
+          timestamp: '2026-11-02T18:00:00+00:00',
+          value: 53,
+        }
+      ),
+      TZ
+    );
+    const writes = vi
+      .mocked(upsertSamplesByDay)
+      .mock.calls.filter((c) => c[2] === 'hrv');
+    expect(writes).toHaveLength(1);
+    expect(writes[0]![4]).toEqual([
+      expect.objectContaining({ rmssd_ms: 51 }),
+      expect.objectContaining({ rmssd_ms: 53 }),
+    ]);
+  });
+
+  it('still writes a daily value when no readings of that metric arrive for the day', async () => {
+    await processZeppBridgeRecords(
+      UID,
+      UID,
+      recordsOf(
+        {
+          record_type: 'daily_metric',
+          date: '2026-11-02',
+          metric: 'hrv_rmssd',
+          value: 48,
+        },
+        {
+          record_type: 'metric_sample',
+          metric: 'hrv_rmssd',
+          timestamp: '2026-11-03T16:00:00+00:00',
           value: 51,
         }
       ),
-      'Pacific/Kiritimati'
+      TZ
     );
     const writes = vi
       .mocked(upsertSamplesByDay)
       .mock.calls.filter((c) => c[2] === 'hrv');
     expect(writes).toHaveLength(2);
-    const anchor = Date.parse('2026-11-01T22:00:00Z');
-    const reading = Date.parse('2026-11-02T01:00:00Z');
-    const windows = writes.map((c) => c[5]!.window);
-    expect(windows).toContainEqual({ startMs: anchor, endMs: anchor });
-    expect(windows).toContainEqual({ startMs: reading, endMs: reading });
+    const daily = writes.find(
+      (c) =>
+        (c[4] as Array<{ entry_date: string }>)[0]!.entry_date === '2026-11-02'
+    )!;
+    const anchor = (daily[4] as Array<{ timestamp: Date }>)[0]!.timestamp;
+    // 12:00 in New York is 17:00 UTC; half a second later, never a whole minute.
+    expect(anchor.toISOString()).toBe('2026-11-02T17:00:00.500Z');
+    expect(daily[5]!.window).toEqual({
+      startMs: anchor.getTime(),
+      endMs: anchor.getTime(),
+    });
   });
 
   it('writes each day’s readings separately, each in its own window', async () => {

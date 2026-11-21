@@ -535,13 +535,17 @@ async function processMetrics(
   // fall on the neighbouring day in far-west and far-east zones), and real
   // timestamps bucketed by the person's day.
   //
+  // health_metric_samples keeps ONE row per user, metric, day and provider, and
+  // a merge replaces whatever lies inside its window, so a daily value and the
+  // same metric's readings of that day would delete each other. ZeppBridge sends
+  // a metric in one form or the other, but if both arrive the readings win and
+  // the daily value is not written.
+  //
   // Each write is merged inside its own tight window, not replaced for the
   // whole day, because a person's day can straddle two spans of a long sync and
   // a wider window would delete the readings the other span stored. So they are
-  // grouped by metric, by the person's day and by kind: a daily value's noon
-  // anchor never shares a window with the day's readings, which can lie hours
-  // away from it. (Plain loops, not Math.min(...), which cannot take a day of
-  // per-minute samples.)
+  // grouped by metric, by the person's day and by kind. (Plain loops, not
+  // Math.min(...), which cannot take a day of per-minute samples.)
   interface SampleGroup {
     metric: SampleMetric;
     samples: PendingSample[];
@@ -565,16 +569,29 @@ async function processMetrics(
     if (ms < group.startMs) group.startMs = ms;
     if (ms > group.endMs) group.endMs = ms;
   };
+  const seriesDays = new Set<string>();
+  for (const s of metricSamples) {
+    const target = SAMPLE_METRICS[s.metric];
+    const at = new Date(s.timestamp);
+    if (target && Number.isFinite(at.getTime()) && Number.isFinite(s.value)) {
+      seriesDays.add(`${target.metric}|${instantToDay(at, timezone)}`);
+    }
+  }
   for (const m of daily) {
     const target = SAMPLE_METRICS[m.metric];
     if (!target) continue;
+    days.add(m.date);
+    if (seriesDays.has(`${target.metric}|${m.date}`)) continue;
     add('daily', target.metric, {
       entry_date: m.date,
-      timestamp: localDateTimeToUtc(`${m.date}T12:00`, timezone),
+      // Half a second after local noon, so it can never be the very same
+      // instant as a reading taken on a whole minute.
+      timestamp: new Date(
+        localDateTimeToUtc(`${m.date}T12:00`, timezone).getTime() + 500
+      ),
       device_name: ZEPPBRIDGE_SOURCE,
       [target.field]: m.value,
     });
-    days.add(m.date);
   }
   for (const s of metricSamples) {
     const target = SAMPLE_METRICS[s.metric];
