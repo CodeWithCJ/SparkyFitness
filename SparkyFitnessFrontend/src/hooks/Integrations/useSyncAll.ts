@@ -115,8 +115,9 @@ export const useSyncAllMutation = () => {
               queryClient.invalidateQueries({
                 queryKey: externalProviderKeys.lists(),
               });
-              // A 200 with failed records is an incomplete sync, not a success.
-              if (result.failed > 0) {
+              // A 200 with failed records, or workouts left without their route or
+              // heart rate, is an incomplete sync, not a success.
+              if (result.failed > 0 || result.workoutDetailsFailed > 0) {
                 failCount++;
                 continue;
               }

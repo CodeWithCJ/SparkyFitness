@@ -106,7 +106,7 @@ Check ZeppBridge's documentation for the current list.
 - **"ZeppBridge rejected the pull token":** the token must match `ZEPPBRIDGE_PULL_TOKEN` exactly. After ten wrong attempts in a minute ZeppBridge blocks the address for ten minutes.
 - **"Newer record format":** your ZeppBridge is newer than this SparkyFitness understands. Update SparkyFitness.
 - **No new data:** ZeppBridge only serves what it has synced. Check that `zeppbridge-cli sync` is running on its schedule.
-- **Wrong day for a night's sleep or a late workout:** check your timezone in SparkyFitness. Sleep and workout days use that setting; the ZeppBridge container's `TZ` does not change them. It still decides the day of daily metrics such as steps.
+- **Wrong day for a night's sleep or a late workout:** check your timezone in SparkyFitness. Sleep and workout days use that setting; the ZeppBridge container's `TZ` does not change them (ZeppBridge sends these times in UTC, and a time that carries a real UTC offset of its own is read in that offset). It still decides the day of daily metrics such as steps.
 
 ## Disconnecting
 

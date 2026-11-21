@@ -458,18 +458,22 @@ export const useSyncZeppBridgeMutation = () => {
     onSuccess: (data: ZeppBridgeSyncResult) => {
       toast({
         // Some records could not be saved; the next sync covering their day retries them.
-        variant: data?.failed ? 'destructive' : 'default',
+        variant:
+          data?.failed || data?.workoutDetailsFailed
+            ? 'destructive'
+            : 'default',
         title: t(
           'integrations.zeppbridgeSyncSuccessTitle',
           'ZeppBridge synced successfully'
         ),
         description: t(
           'integrations.zeppbridgeSyncDetails',
-          'Synced: {{sleepImported}} sleep sessions, {{workoutsImported}} workouts ({{workoutDetailsImported}} with route or heart rate), {{metricDays}} days of metrics ({{failed}} failed).',
+          'Synced: {{sleepImported}} sleep sessions, {{workoutsImported}} workouts ({{workoutDetailsImported}} with route or heart rate), {{metricDays}} days of metrics ({{failed}} failed, {{workoutDetailsFailed}} workout details missing).',
           {
             sleepImported: data?.sleepImported ?? 0,
             workoutsImported: data?.workoutsImported ?? 0,
             workoutDetailsImported: data?.workoutDetailsImported ?? 0,
+            workoutDetailsFailed: data?.workoutDetailsFailed ?? 0,
             metricDays: data?.metricDays ?? 0,
             failed: data?.failed ?? 0,
           }

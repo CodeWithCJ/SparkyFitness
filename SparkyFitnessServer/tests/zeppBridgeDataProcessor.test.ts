@@ -461,6 +461,80 @@ describe('processZeppBridgeRecords', () => {
     ).toBe('2026-11-02T22:00:00.000Z');
   });
 
+  it('keeps a daily value’s noon anchor and the day’s readings in separate, tight windows', async () => {
+    // In Pacific/Kiritimati (UTC+14) the noon anchor of 2 Nov is 22:00 UTC on
+    // 1 Nov, hours before the reading. One window over both would cover readings
+    // a neighbouring span stored in between and delete them.
+    await processZeppBridgeRecords(
+      UID,
+      UID,
+      recordsOf(
+        {
+          record_type: 'daily_metric',
+          date: '2026-11-02',
+          metric: 'hrv_rmssd',
+          value: 48,
+        },
+        {
+          record_type: 'metric_sample',
+          metric: 'hrv_rmssd',
+          timestamp: '2026-11-02T01:00:00+00:00',
+          value: 51,
+        }
+      ),
+      'Pacific/Kiritimati'
+    );
+    const writes = vi
+      .mocked(upsertSamplesByDay)
+      .mock.calls.filter((c) => c[2] === 'hrv');
+    expect(writes).toHaveLength(2);
+    const anchor = Date.parse('2026-11-01T22:00:00Z');
+    const reading = Date.parse('2026-11-02T01:00:00Z');
+    const windows = writes.map((c) => c[5]!.window);
+    expect(windows).toContainEqual({ startMs: anchor, endMs: anchor });
+    expect(windows).toContainEqual({ startMs: reading, endMs: reading });
+  });
+
+  it('writes each day’s readings separately, each in its own window', async () => {
+    await processZeppBridgeRecords(
+      UID,
+      UID,
+      recordsOf(
+        {
+          record_type: 'metric_sample',
+          metric: 'heart_rate',
+          timestamp: '2026-11-02T15:00:00+00:00',
+          value: 60,
+        },
+        {
+          record_type: 'metric_sample',
+          metric: 'heart_rate',
+          timestamp: '2026-11-02T15:05:00+00:00',
+          value: 62,
+        },
+        {
+          record_type: 'metric_sample',
+          metric: 'heart_rate',
+          timestamp: '2026-11-03T15:00:00+00:00',
+          value: 64,
+        }
+      ),
+      TZ
+    );
+    const writes = vi
+      .mocked(upsertSamplesByDay)
+      .mock.calls.filter((c) => c[2] === 'heart_rate');
+    expect(writes).toHaveLength(2);
+    expect(writes[0]![5]!.window).toEqual({
+      startMs: Date.parse('2026-11-02T15:00:00Z'),
+      endMs: Date.parse('2026-11-02T15:05:00Z'),
+    });
+    expect(writes[1]![5]!.window).toEqual({
+      startMs: Date.parse('2026-11-03T15:00:00Z'),
+      endMs: Date.parse('2026-11-03T15:00:00Z'),
+    });
+  });
+
   it('reads distance in kilometres as metres', async () => {
     await processZeppBridgeRecords(
       UID,

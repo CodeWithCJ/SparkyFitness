@@ -534,16 +534,41 @@ async function processMetrics(
   // Samples: a daily value anchored at local noon of its day (05:00 UTC would
   // fall on the neighbouring day in far-west and far-east zones), and real
   // timestamps bucketed by the person's day.
-  const pending = new Map<SampleMetric, PendingSample[]>();
-  const add = (metric: SampleMetric, sample: PendingSample) => {
-    const samples = pending.get(metric);
-    if (samples) samples.push(sample);
-    else pending.set(metric, [sample]);
+  //
+  // Each write is merged inside its own tight window, not replaced for the
+  // whole day, because a person's day can straddle two spans of a long sync and
+  // a wider window would delete the readings the other span stored. So they are
+  // grouped by metric, by the person's day and by kind: a daily value's noon
+  // anchor never shares a window with the day's readings, which can lie hours
+  // away from it. (Plain loops, not Math.min(...), which cannot take a day of
+  // per-minute samples.)
+  interface SampleGroup {
+    metric: SampleMetric;
+    samples: PendingSample[];
+    startMs: number;
+    endMs: number;
+  }
+  const groups = new Map<string, SampleGroup>();
+  const add = (
+    kind: 'daily' | 'series',
+    metric: SampleMetric,
+    sample: PendingSample
+  ) => {
+    const key = `${kind}|${metric}|${sample.entry_date}`;
+    const ms = sample.timestamp.getTime();
+    const group = groups.get(key);
+    if (!group) {
+      groups.set(key, { metric, samples: [sample], startMs: ms, endMs: ms });
+      return;
+    }
+    group.samples.push(sample);
+    if (ms < group.startMs) group.startMs = ms;
+    if (ms > group.endMs) group.endMs = ms;
   };
   for (const m of daily) {
     const target = SAMPLE_METRICS[m.metric];
     if (!target) continue;
-    add(target.metric, {
+    add('daily', target.metric, {
       entry_date: m.date,
       timestamp: localDateTimeToUtc(`${m.date}T12:00`, timezone),
       device_name: ZEPPBRIDGE_SOURCE,
@@ -558,7 +583,7 @@ async function processMetrics(
       continue;
     }
     const day = instantToDay(at, timezone);
-    add(target.metric, {
+    add('series', target.metric, {
       entry_date: day,
       timestamp: at,
       device_name: ZEPPBRIDGE_SOURCE,
@@ -566,25 +591,18 @@ async function processMetrics(
     });
     days.add(day);
   }
-  for (const [metric, samples] of pending) {
-    // Merged inside the span of this call, not replaced for the whole day: a
-    // person's day can straddle two spans of a long sync, and a replace would
-    // erase the readings the earlier span stored for it. (A loop, not
-    // Math.min(...), which cannot take a week of per-minute samples.)
-    let startMs = Number.POSITIVE_INFINITY;
-    let endMs = Number.NEGATIVE_INFINITY;
-    for (const sample of samples) {
-      const ms = sample.timestamp.getTime();
-      if (ms < startMs) startMs = ms;
-      if (ms > endMs) endMs = ms;
-    }
+  for (const group of groups.values()) {
     await upsertSamplesByDay(
       userId,
       createdByUserId,
-      metric,
+      group.metric,
       ZEPPBRIDGE_PROVIDER,
-      samples,
-      { mode: 'merge', window: { startMs, endMs }, keepLinked: true }
+      group.samples,
+      {
+        mode: 'merge',
+        window: { startMs: group.startMs, endMs: group.endMs },
+        keepLinked: true,
+      }
     );
   }
   return days.size;
