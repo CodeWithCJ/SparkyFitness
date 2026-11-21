@@ -67,28 +67,32 @@ describe('CookTool Service', () => {
       expect(mockFetch).not.toHaveBeenCalled();
     });
 
-    it('searches ingredients and branded in parallel and merges results', async () => {
+    it('searches ingredients and enriches results with nutrients, excluding zero-nutrient items', async () => {
       mockFetch
-        .mockResolvedValueOnce(
-          mockJsonResponse({ data: [{ id: 6433, name: 'Bananas, raw' }] })
-        )
         .mockResolvedValueOnce(
           mockJsonResponse({
             data: [
-              {
-                id: 1994784,
-                name: 'Banana Chips',
-                brand: 'Sun Brand',
-              },
+              { id: 6433, name: 'Bananas, raw' },
+              { id: 9999, name: 'Zero nutrient empty ingredient' },
             ],
           })
         )
-        .mockResolvedValueOnce(mockJsonResponse(ingredientNutrientsFixture));
+        .mockResolvedValueOnce(mockJsonResponse(ingredientNutrientsFixture))
+        .mockResolvedValueOnce(
+          mockJsonResponse({
+            ingredient_id: 9999,
+            ingredient_name: 'Zero nutrient empty ingredient',
+            country: 'US',
+            nutrient_count: 0,
+            nutrients: [],
+          })
+        );
 
       const res = await searchCookTool(ctx, 'banana', 1, 20);
 
       expect(mockFetch).toHaveBeenCalledTimes(3);
-      expect(res.foods).toHaveLength(2);
+      // The zero-nutrient item must be excluded from results
+      expect(res.foods).toHaveLength(1);
       expect(res.foods[0]).toMatchObject({
         name: 'Bananas, raw',
         brand: null,
@@ -103,58 +107,17 @@ describe('CookTool Service', () => {
           is_default: true,
         }),
       });
-      expect(res.foods[1]).toMatchObject({
-        name: 'Banana Chips',
-        brand: 'Sun Brand',
-        provider_external_id: 'br:1994784',
-        provider_type: 'cooktool',
-        is_custom: false,
-        default_variant: expect.objectContaining({
-          serving_size: 100,
-          serving_unit: 'g',
-          is_default: true,
-        }),
-      });
       expect(res.pagination.hasMore).toBe(false);
     });
 
-    it('still returns ingredients if branded search fails', async () => {
-      mockFetch
-        .mockResolvedValueOnce(
-          mockJsonResponse({ data: [{ id: 6433, name: 'Bananas, raw' }] })
-        )
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-          json: async () => ({}),
-          text: async () => 'Internal Server Error',
-          headers: new Headers({ 'content-type': 'text/plain' }),
-        });
-
-      const res = await searchCookTool(ctx, 'banana', 1, 20);
-
-      expect(res.foods).toHaveLength(1);
-      expect(
-        (res.foods[0] as { provider_external_id: string }).provider_external_id
-      ).toBe('ing:6433');
-    });
-
-    it('throws if both search requests fail', async () => {
-      mockFetch
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-          json: async () => ({}),
-          text: async () => 'Error 1',
-          headers: new Headers(),
-        })
-        .mockResolvedValueOnce({
-          ok: false,
-          status: 500,
-          json: async () => ({}),
-          text: async () => 'Error 2',
-          headers: new Headers(),
-        });
+    it('throws if ingredients search fails', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: async () => ({}),
+        text: async () => 'Internal Server Error',
+        headers: new Headers({ 'content-type': 'text/plain' }),
+      });
 
       await expect(searchCookTool(ctx, 'banana')).rejects.toThrow();
     });

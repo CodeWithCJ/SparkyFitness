@@ -121,7 +121,7 @@ const NUTRIENT_NUMBER_TO_STANDARD: Record<number, StandardNutrientField> = {
   1018: 'alcohol_g',
 };
 
-const ENRICH_COUNT = 10;
+const ENRICH_COUNT = 20;
 const ENRICH_CONCURRENCY = 5;
 
 export async function searchCookTool(
@@ -147,63 +147,29 @@ export async function searchCookTool(
   const offset = Math.max(0, (page - 1) * pageSize);
   const encodedQuery = encodeURIComponent(query.trim());
 
-  let ingredients: CookToolIngredientSearchItem[] = [];
-  let branded: CookToolBrandedSearchItem[] = [];
-  let ingredientsFailed = false;
-  let brandedFailed = false;
+  // CookTool's /branded endpoint only returns metadata (names/barcodes) with zero nutrients.
+  // We query canonical /ingredients exclusively so every result has verified nutritional data.
+  const ingredientsRes = await providerFetchJson<{
+    data?: CookToolIngredientSearchItem[];
+  }>(
+    `${baseUrl}/ingredients?q=${encodedQuery}&limit=${pageSize}&offset=${offset}`,
+    { providerType: 'cooktool', headers, signal: ctx.signal }
+  );
 
-  const [ingredientsRes, brandedRes] = await Promise.allSettled([
-    providerFetchJson<{ data?: CookToolIngredientSearchItem[] }>(
-      `${baseUrl}/ingredients?q=${encodedQuery}&limit=${pageSize}&offset=${offset}`,
-      { providerType: 'cooktool', headers, signal: ctx.signal }
-    ),
-    providerFetchJson<{ data?: CookToolBrandedSearchItem[] }>(
-      `${baseUrl}/branded?q=${encodedQuery}&limit=${pageSize}&offset=${offset}`,
-      { providerType: 'cooktool', headers, signal: ctx.signal }
-    ),
-  ]);
+  const ingredients = Array.isArray(ingredientsRes?.data)
+    ? ingredientsRes.data
+    : [];
 
-  if (ingredientsRes.status === 'fulfilled' && ingredientsRes.value.data) {
-    ingredients = ingredientsRes.value.data;
-  } else {
-    ingredientsFailed = true;
-  }
-
-  if (brandedRes.status === 'fulfilled' && brandedRes.value.data) {
-    branded = brandedRes.value.data;
-  } else {
-    brandedFailed = true;
-  }
-
-  if (ingredientsFailed && brandedFailed) {
-    const error =
-      ingredientsRes.status === 'rejected'
-        ? ingredientsRes.reason
-        : (brandedRes as PromiseRejectedResult).reason;
-    throw error;
-  }
-
-  const summaryFoods = [
-    ...ingredients.map((item) =>
-      buildSearchSummaryFood({
-        providerType: 'cooktool',
-        externalId: `ing:${item.id}`,
-        name: item.name,
-        brand: null,
-      })
-    ),
-    ...branded.map((item) =>
-      buildSearchSummaryFood({
-        providerType: 'cooktool',
-        externalId: `br:${item.id}`,
-        name: item.name,
-        brand: item.brand || item.brand_owner || null,
-      })
-    ),
-  ];
+  const summaryFoods = ingredients.map((item) =>
+    buildSearchSummaryFood({
+      providerType: 'cooktool',
+      externalId: `ing:${item.id}`,
+      name: item.name,
+      brand: null,
+    })
+  );
 
   const topFoods = summaryFoods.slice(0, ENRICH_COUNT);
-  const restFoods = summaryFoods.slice(ENRICH_COUNT);
 
   const enrichedTop: MappedProviderFood[] = [];
   for (let i = 0; i < topFoods.length; i += ENRICH_CONCURRENCY) {
@@ -232,18 +198,22 @@ export async function searchCookTool(
     enrichedTop.push(...chunkResults);
   }
 
-  const restMapped = restFoods.map((food) => {
-    const cached = detailCache.get<MappedProviderFood>(
-      'cooktool',
-      food.provider_external_id
-    );
-    return cached || food;
+  // Filter out any foods where all nutrients are zero (junk / empty records)
+  const foods = enrichedTop.filter((food) => {
+    const variant = food.default_variant;
+    if (!variant) return false;
+    const hasCalories = (variant.calories ?? 0) > 0;
+    const hasMacros =
+      (variant.protein ?? 0) > 0 ||
+      (variant.carbs ?? 0) > 0 ||
+      (variant.fat ?? 0) > 0;
+    const hasProviderNutrients =
+      variant.provider_nutrients &&
+      Object.values(variant.provider_nutrients).some((val) => val > 0);
+    return hasCalories || hasMacros || hasProviderNutrients;
   });
 
-  const foods = [...enrichedTop, ...restMapped];
-
-  const hasMore =
-    ingredients.length === pageSize || branded.length === pageSize;
+  const hasMore = ingredients.length === pageSize;
 
   return {
     foods,
