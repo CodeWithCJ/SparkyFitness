@@ -17,6 +17,7 @@ import { calculateExerciseStats } from '../utils/workoutSession';
 import type { DailySummary } from '../types/dailySummary';
 import type { DailyGoals } from '../types/goals';
 import type { FoodEntry } from '../types/foodEntries';
+import { serverMayBeDown } from '../utils/serverErrors';
 import { applyEntryChanges } from '../offline/foodEntryChanges';
 import type {
   ExerciseSessionResponse,
@@ -113,7 +114,12 @@ export async function loadDailySummaryRawData(
   const foodEntries = await resolveCollapsedFoodEntries(
     date,
     data.foodEntries
-  ).catch(() => data.foodEntries);
+  ).catch((error: unknown) => {
+    // Only a server that cannot be reached shows the meals as their
+    // components; any other failure is a real one.
+    if (serverMayBeDown(error)) return data.foodEntries;
+    throw error;
+  });
 
   const raw: DailySummaryRawData = {
     goals: data.goals,

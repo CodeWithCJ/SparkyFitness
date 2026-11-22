@@ -46,26 +46,32 @@ export async function refreshRecentDailySummaries(
   today: string = getTodayDate(),
   startedUnder: number = accountGeneration()
 ): Promise<void> {
+  let failed: unknown = null;
   for (let back = 0; back < DIARY_DAYS_KEPT; back += 1) {
     if (accountGeneration() !== startedUnder) return;
     const day = addDays(today, -back);
-    const summary = await apiFetch<DailySummaryApiResponse>({
-      endpoint: `/api/daily-summary?date=${encodeURIComponent(day)}`,
-      serviceName: 'Offline pack',
-      operation: "fetch the day's summary",
-    });
-    if (accountGeneration() !== startedUnder) return;
-    await storeDailySummary(db, serverConfigId, day, summary);
-    // The day's itemized drinks, so the latest one can be taken off offline.
-    const waterLog = await apiFetch<WaterIntakeLogEntry[]>({
-      endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(day)}/log`,
-      serviceName: 'Offline pack',
-      operation: "fetch the day's drinks",
-    });
-    if (accountGeneration() !== startedUnder) return;
-    await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterLog, [
-      { key: day, payload: waterLog },
-    ]);
+    try {
+      const summary = await apiFetch<DailySummaryApiResponse>({
+        endpoint: `/api/daily-summary?date=${encodeURIComponent(day)}`,
+        serviceName: 'Offline pack',
+        operation: "fetch the day's summary",
+      });
+      if (accountGeneration() !== startedUnder) return;
+      await storeDailySummary(db, serverConfigId, day, summary);
+      // The day's itemized drinks, so the latest one can be taken off offline.
+      const waterLog = await apiFetch<WaterIntakeLogEntry[]>({
+        endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(day)}/log`,
+        serviceName: 'Offline pack',
+        operation: "fetch the day's drinks",
+      });
+      if (accountGeneration() !== startedUnder) return;
+      await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterLog, [
+        { key: day, payload: waterLog },
+      ]);
+    } catch (error) {
+      // This day keeps the copy it had; the other days still refresh.
+      failed = error;
+    }
   }
   for (const collection of [
     CACHE_COLLECTIONS.dailySummary,
@@ -76,4 +82,7 @@ export async function refreshRecentDailySummaries(
       [serverConfigId, collection, addDays(today, -(DIARY_DAYS_KEPT - 1))]
     );
   }
+  // Told to the caller once every day has had its turn, so the pack knows the
+  // totals did not fully refresh and tries again.
+  if (failed) throw failed;
 }

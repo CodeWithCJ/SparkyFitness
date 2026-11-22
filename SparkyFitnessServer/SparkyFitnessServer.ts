@@ -700,7 +700,11 @@ app.get(
     // per-user DB copy — different users may have locally diverged the images
     // array, and this route is unauthenticated so we have no user context.
     try {
-      const exercise = await freeExerciseDBService.getExerciseById(exerciseId);
+      const exercise = await freeExerciseDBService.getExerciseById(
+        // A route parameter is a string; the template it went into before
+        // read an array the same way.
+        String(exerciseId)
+      );
       if (!exercise) {
         return res.status(404).send('Exercise not found.');
       }

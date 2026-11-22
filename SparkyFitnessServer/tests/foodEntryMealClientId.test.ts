@@ -80,6 +80,7 @@ describe('createFoodEntryMeal with a client id (offline replay)', () => {
     repo.findFoodEntryMealByClientId.mockResolvedValue({
       id: 'orphan',
       user_id: USER_ID,
+      created_at: new Date(Date.now() - 5 * 60 * 1000),
     } as never);
     repo.countFoodEntryMealComponents.mockResolvedValue(0);
 
@@ -89,6 +90,22 @@ describe('createFoodEntryMeal with a client id (offline replay)', () => {
     expect(repo.deleteFoodEntryMeal).toHaveBeenCalledWith('orphan', USER_ID);
     expect(repo.createFoodEntryMeal).toHaveBeenCalledTimes(1);
     expect(result).toBe(created);
+  });
+
+  it('does not clear an empty parent that is young: its request may still be writing the components', async () => {
+    repo.findFoodEntryMealByClientId.mockResolvedValue({
+      id: 'in-flight',
+      user_id: USER_ID,
+      created_at: new Date(Date.now() - 2000),
+    } as never);
+    repo.countFoodEntryMealComponents.mockResolvedValue(0);
+
+    await expect(
+      createFoodEntryMeal(USER_ID, USER_ID, request)
+    ).rejects.toMatchObject({ status: 503 });
+
+    expect(repo.deleteFoodEntryMeal).not.toHaveBeenCalled();
+    expect(repo.createFoodEntryMeal).not.toHaveBeenCalled();
   });
 
   it('answers with the winner when two copies race on the key', async () => {

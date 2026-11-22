@@ -8,6 +8,7 @@ import {
 } from '../../src/offline/cacheStore';
 import {
   CACHE_COLLECTIONS,
+  FOOD_PACK_COMPLETED_KEY,
   PACK_COMPLETED_KEY,
   SINGLE_DOCUMENT_KEY,
   exerciseStatsCacheKey,
@@ -222,6 +223,10 @@ describe('offline pack', () => {
   it('does not run again inside six hours unless asked', async () => {
     serveFrom(state);
     await refreshOfflinePack();
+    // The food part refreshed in full too (the fake server has no food routes).
+    await putCacheRows(db, 's1', CACHE_COLLECTIONS.pack, [
+      { key: FOOD_PACK_COMPLETED_KEY, payload: { completedAt: Date.now() } },
+    ]);
     mockApiFetch.mockClear();
 
     expect(await refreshOfflinePack()).toBe(false);
@@ -300,5 +305,29 @@ describe('offline pack', () => {
     );
     // The workout pack is not marked ready, as before.
     expect(await isOfflinePackReady(db, 's1')).toBe(false);
+  });
+
+  it('tries the food part again on the next refresh when it failed, though the workout pack is recent', async () => {
+    // The food requests fail; the workout data refreshes and is marked.
+    serveFrom(state);
+    expect(await refreshOfflinePack({ force: true })).toBe(true);
+    expect(
+      await getCacheRow(
+        db,
+        's1',
+        CACHE_COLLECTIONS.pack,
+        FOOD_PACK_COMPLETED_KEY
+      )
+    ).toBeNull();
+
+    // Not forced, and the workout pack is recent: only the food is asked for.
+    mockApiFetch.mockClear();
+    serveFrom(state);
+    await refreshOfflinePack();
+    const asked = mockApiFetch.mock.calls.map(([options]) => options.endpoint);
+    expect(
+      asked.some((endpoint) => endpoint.includes('/api/food-entries/range'))
+    ).toBe(true);
+    expect(asked).not.toContain('/api/identity/user');
   });
 });

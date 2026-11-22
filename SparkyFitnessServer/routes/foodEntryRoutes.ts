@@ -230,6 +230,7 @@ router.post(
 
       if (
         req.body.client_id !== undefined &&
+        req.body.client_id !== null &&
         !clientRequestIdSchema.safeParse(req.body.client_id).success
       ) {
         return res.status(400).json({

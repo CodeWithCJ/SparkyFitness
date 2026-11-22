@@ -23,6 +23,7 @@ import {
 } from './cacheStore';
 import {
   CACHE_COLLECTIONS,
+  FOOD_PACK_COMPLETED_KEY,
   PACK_COMPLETED_KEY,
   SINGLE_DOCUMENT_KEY,
   exerciseStatsCacheKey,
@@ -322,6 +323,20 @@ async function refreshWorkoutPack(
   return 'done';
 }
 
+/** True when the food part of the pack has not refreshed in full lately. */
+async function foodPackDue(
+  db: OfflineDb,
+  serverConfigId: string
+): Promise<boolean> {
+  const marker = await getCacheRow(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.pack,
+    FOOD_PACK_COMPLETED_KEY
+  );
+  return !marker || Date.now() - marker.fetchedAt >= PACK_MAX_AGE_MS;
+}
+
 async function refreshSteps(
   db: OfflineDb,
   serverConfigId: string,
@@ -330,6 +345,7 @@ async function refreshSteps(
   startedUnder: number
 ): Promise<boolean> {
   let workoutPackDone = false;
+  let workoutPackSkipped = false;
   try {
     const outcome = await refreshWorkoutPack(
       db,
@@ -339,26 +355,37 @@ async function refreshSteps(
       startedUnder
     );
     if (outcome === 'switched') return false;
-    // A pack that is still recent is not refreshed at all, food included, as
-    // before.
-    if (outcome === 'skipped') return false;
-    workoutPackDone = true;
+    workoutPackSkipped = outcome === 'skipped';
+    workoutPackDone = outcome === 'done';
   } catch (error) {
     if (await abandonedAfterSwitch()) return false;
     addLog(`[Offline] Workout data not refreshed: ${error}`, 'WARNING');
   }
 
+  // A recent workout pack is not repeated, but the food part has its own
+  // marker: one that failed last time is tried again now.
+  if (workoutPackSkipped && !(await foodPackDue(db, serverConfigId))) {
+    return false;
+  }
+
   // Each part below stands on its own: a failure in one (the workout data, a
   // day of workouts, the food) never keeps the others from refreshing, and
   // leaves what that part already had.
-  try {
-    await refreshRecentDiaryDays(db, serverConfigId, undefined, startedUnder);
-  } catch (error) {
-    addLog(`[Offline] Last week's workouts not refreshed: ${error}`, 'WARNING');
+  if (!workoutPackSkipped) {
+    try {
+      await refreshRecentDiaryDays(db, serverConfigId, undefined, startedUnder);
+    } catch (error) {
+      addLog(
+        `[Offline] Last week's workouts not refreshed: ${error}`,
+        'WARNING'
+      );
+    }
   }
+  let foodPackDone = true;
   try {
     await refreshRecentFoodDays(db, serverConfigId, undefined, startedUnder);
   } catch (error) {
+    foodPackDone = false;
     addLog(`[Offline] Last week's food not refreshed: ${error}`, 'WARNING');
   }
   try {
@@ -369,19 +396,27 @@ async function refreshSteps(
       startedUnder
     );
   } catch (error) {
+    foodPackDone = false;
     addLog(`[Offline] Last week's totals not refreshed: ${error}`, 'WARNING');
   }
-  // Also after the marker: the foods are for logging food, and a failure here
-  // leaves the library the phone already had.
+  // The foods are for logging food, and a failure here leaves the library the
+  // phone already had.
   try {
     await refreshFoodLibrary(db, serverConfigId, startedUnder);
   } catch (error) {
+    foodPackDone = false;
     addLog(`[Offline] Foods not refreshed: ${error}`, 'WARNING');
   }
   if (await abandonedAfterSwitch()) return false;
-  // True only when the workout data refreshed too: that is what the person is
-  // told, while the food and water parts have kept what they could.
-  return workoutPackDone;
+  if (foodPackDone) {
+    await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.pack, [
+      { key: FOOD_PACK_COMPLETED_KEY, payload: { completedAt: Date.now() } },
+    ]);
+  }
+  // True when what this run was asked to refresh completed: the workout data,
+  // or, when that was recent enough to skip, the food. A food refresh that
+  // failed after a good workout refresh is tried again on the next trigger.
+  return workoutPackSkipped ? foodPackDone : workoutPackDone;
 }
 
 let running: Promise<boolean> | null = null;

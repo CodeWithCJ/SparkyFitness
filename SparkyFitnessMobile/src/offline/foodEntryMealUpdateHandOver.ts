@@ -70,23 +70,6 @@ export async function queueFoodEntryMealUpdate(
   }
 }
 
-/** The totals of a meal the Diary shows: calories and the main macros. */
-export function mealTotalsDisplay(totals: {
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  fiber?: number;
-}): Partial<FoodEntry> {
-  return {
-    calories: totals.calories,
-    protein: totals.protein,
-    carbs: totals.carbs,
-    fat: totals.fat,
-    dietary_fiber: totals.fiber,
-  };
-}
-
 /** The logged meal as one Diary entry, from what a saved change says. */
 export function mealEntryFromChange(
   mealId: string,

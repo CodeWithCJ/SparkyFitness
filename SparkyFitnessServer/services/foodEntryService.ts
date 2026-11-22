@@ -125,6 +125,8 @@ interface LoggedComponentEntry {
 
 /** A logged-meal payload as it arrives from the diary UI. */
 /** The unique index behind `food_entry_meals.client_id`, to spot a lost race. */
+/** How long a logged meal with no components is left alone before a replay clears it. */
+const EMPTY_MEAL_GRACE_MS = 60 * 1000;
 const FOOD_ENTRY_MEAL_CLIENT_ID_INDEX = 'idx_food_entry_meals_user_client_id';
 
 interface LoggedMealInput {
@@ -2467,6 +2469,16 @@ async function createFoodEntryMeal(
             stored.id
           );
         if (components > 0) return stored;
+        // A parent with no components that is young may be a request that is
+        // still writing them (a retry sent while the first one is slow), not
+        // one that died. Removing it would break that request, so the retry is
+        // asked to come back; only a parent left empty for a while is cleared.
+        const ageMs = Date.now() - new Date(stored.created_at).getTime();
+        if (Number.isFinite(ageMs) && ageMs < EMPTY_MEAL_GRACE_MS) {
+          throw Object.assign(new Error('This meal is still being logged.'), {
+            status: 503,
+          });
+        }
         await foodEntryMealRepository.deleteFoodEntryMeal(
           stored.id,
           targetUserId

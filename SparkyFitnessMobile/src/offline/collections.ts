@@ -52,6 +52,13 @@ export const SINGLE_DOCUMENT_KEY = 'current';
 export const PACK_COMPLETED_KEY = 'completed';
 
 /**
+ * Marker written when the food, meals and day totals of the pack have all
+ * refreshed. Kept apart from the workout marker so a food refresh that failed
+ * is tried again on the next trigger, not after the workout pack's six hours.
+ */
+export const FOOD_PACK_COMPLETED_KEY = 'food_completed';
+
+/**
  * Last-time values are scoped by the saved workout they were done in, so the
  * same exercise is cached once per saved workout and once on its own.
  */

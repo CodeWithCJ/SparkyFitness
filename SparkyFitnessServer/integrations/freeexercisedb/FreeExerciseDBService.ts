@@ -67,8 +67,7 @@ class FreeExerciseDBService {
    * @param {string} exerciseId - The ID of the exercise (e.g., "Air_Bike").
    * @returns {Promise<object|null>} The exercise data or null if not found.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async getExerciseById(exerciseId: any) {
+  async getExerciseById(exerciseId: string) {
     const cacheKey = `exercise_${exerciseId}`;
     if (missingExerciseCache.has(cacheKey)) {
       return null;

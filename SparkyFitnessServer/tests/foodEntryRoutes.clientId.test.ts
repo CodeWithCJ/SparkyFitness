@@ -75,6 +75,14 @@ describe('POST / client_id', () => {
     expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
   });
 
+  it('accepts a null client id like the meal and food routes do', async () => {
+    const res = await request(app)
+      .post('/')
+      .send({ ...entry, client_id: null });
+
+    expect(res.status).toBe(201);
+  });
+
   it('still accepts requests with no client id', async () => {
     const res = await request(app).post('/').send(entry);
 

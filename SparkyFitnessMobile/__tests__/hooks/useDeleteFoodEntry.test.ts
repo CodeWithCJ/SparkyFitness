@@ -347,5 +347,34 @@ describe('useDeleteFoodEntry', () => {
         )
       );
     });
+
+    test('does not report a delete that cancelled nothing when it has just uploaded', async () => {
+      mockCancelWaiting.mockResolvedValue('gone');
+      const onSuccess = jest.fn();
+
+      const { result } = renderHook(
+        () =>
+          useDeleteFoodEntry({
+            entryId: 'pending-abc',
+            entryDate: '2026-11-21',
+            onSuccess,
+          }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await act(async () => {
+        result.current.deleteEntry();
+      });
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            text2:
+              'It has just uploaded. Try again once the Diary has refreshed.',
+          })
+        )
+      );
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(mockDeleteFoodEntry).not.toHaveBeenCalled();
+    });
   });
 });

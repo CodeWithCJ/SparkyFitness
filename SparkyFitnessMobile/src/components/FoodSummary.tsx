@@ -31,8 +31,6 @@ interface FoodSummaryProps {
     mealTypeName: string,
     entries: FoodEntry[]
   ) => void;
-  /** Rows without delete, adjust or detail; see `SwipeableFoodRow`. */
-  readOnly?: boolean;
 }
 
 interface MealSectionProps {
@@ -45,7 +43,6 @@ interface MealSectionProps {
     mealTypeName: string,
     entries: FoodEntry[]
   ) => void;
-  readOnly?: boolean;
 }
 
 const EmptyState: React.FC<{ onAddFood?: () => void }> = ({ onAddFood }) => {
@@ -72,7 +69,6 @@ const MealSection: React.FC<MealSectionProps> = ({
   calorieGoal,
   onAdjustServing,
   onPressMealType,
-  readOnly,
 }) => {
   const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
@@ -145,7 +141,6 @@ const MealSection: React.FC<MealSectionProps> = ({
             entry={entry}
             nutrition={nutrition}
             onAdjustServing={onAdjustServing}
-            readOnly={readOnly}
           />
         );
       })}
@@ -161,7 +156,6 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
   onAddFood,
   onAdjustServing,
   onPressMealType,
-  readOnly,
 }) => {
   if (foodEntries.length === 0) {
     return <EmptyState onAddFood={onAddFood} />;
@@ -189,7 +183,6 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
           calorieGoal={calorieGoal}
           onAdjustServing={onAdjustServing}
           onPressMealType={onPressMealType}
-          readOnly={readOnly}
         />
       ))}
     </View>
