@@ -131,11 +131,24 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
       // Work made under an account is only sent while that same account is
       // known to be signed in: never under another one, and not while the
       // signed-in person is unknown (just after an account switch). A row
-      // with no recorded account (queued while the phone did not know who
-      // was signed in) cannot be matched to anyone, so it waits for the
-      // person to tap Upload now.
+      // with no recorded account cannot be matched to anyone and is never
+      // sent, not even by Upload now: it would be written into whichever
+      // account is signed in. It is parked as needing attention, where the
+      // person can discard it.
       if (listed.userId == null) {
-        if (trigger !== 'manual') continue;
+        if (listed.status !== 'failed') {
+          await updateOutboxRow(
+            db,
+            listed.id,
+            {
+              status: 'failed',
+              lastError: 'No account was recorded for this upload',
+            },
+            undefined,
+            { onlyIfStatus: listed.status, onlyIfUpdatedAt: listed.updatedAt }
+          );
+        }
+        continue;
       } else if (listed.userId !== currentUserId) {
         continue;
       }

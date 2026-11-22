@@ -148,7 +148,7 @@ describe('offline sync engine', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
-  it('holds a row with no recorded account until the person asks', async () => {
+  it('never sends a row with no recorded account, not even when the person asks', async () => {
     await enqueueOutbox(db, {
       id: 'unowned',
       serverConfigId: 's1',
@@ -164,7 +164,9 @@ describe('offline sync engine', () => {
     expect(send).not.toHaveBeenCalled();
 
     await drainOutbox('manual');
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).not.toHaveBeenCalled();
+    // It is parked as needing attention, where it can be discarded.
+    expect((await getOutboxRow(db, 'unowned'))?.status).toBe('failed');
   });
 
   it('does not send a row that was discarded while an earlier one was going up', async () => {
@@ -383,12 +385,12 @@ describe('offline sync engine', () => {
     expect(summary.remaining).toBe(1);
   });
 
-  it('sends work made before anyone was known, whoever is signed in', async () => {
+  it('does not send work made before anyone was known, whoever is signed in', async () => {
     await queue('a', { userId: null });
 
     await drainOutbox('manual');
 
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).not.toHaveBeenCalled();
   });
 
   it('brings a payload written by an older build up to date before sending', async () => {
