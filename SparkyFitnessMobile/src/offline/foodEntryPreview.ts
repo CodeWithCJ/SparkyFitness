@@ -130,9 +130,10 @@ export async function previewFromQueuedFoodEntry(
 /**
  * A waiting logged meal as the Diary will show it once uploaded: one entry
  * for the whole meal (the way a logged meal collapses), with the nutrition of
- * the number of servings logged, from the meal as kept on the phone. Only a
- * plain serving count of a saved meal can be worked out here: other units
- * and customised ingredients are resolved by the server, so those are left
+ * the number of servings logged, from the meal as kept on the phone, or from
+ * the customised ingredients queued with it (each carries its own nutrition).
+ * Only a plain serving count can be worked out here: other units and
+ * ingredients without nutrition are resolved by the server, so those are left
  * out of the preview (they still upload).
  */
 export async function previewFromQueuedMeal(
@@ -142,8 +143,21 @@ export async function previewFromQueuedMeal(
 ): Promise<FoodEntry | null> {
   const payload = row.payload as FoodEntryMealPayload;
   if (!payload.meal_template_id) return null;
-  if ((payload.foods ?? []).length > 0) return null;
   if ((payload.unit || 'serving') !== 'serving') return null;
+  // Customised ingredients replace the saved meal's own, and carry their own
+  // nutrition; a row with none cannot be previewed.
+  const customised = payload.foods ?? [];
+  if (
+    customised.length > 0 &&
+    !customised.every(
+      (food) =>
+        !food.child_meal_id &&
+        typeof food.calories === 'number' &&
+        Number(food.serving_size) > 0
+    )
+  ) {
+    return null;
+  }
   const meal = await readSavedMeal(
     db,
     serverConfigId,
@@ -152,7 +166,9 @@ export async function previewFromQueuedMeal(
   if (!meal) return null;
   const quantity = Number(payload.quantity) > 0 ? Number(payload.quantity) : 1;
   const perServing = buildMealDisplayValuesFromFoods(
-    meal.foods,
+    customised.length > 0
+      ? (customised as unknown as typeof meal.foods)
+      : meal.foods,
     meal,
     'perServing'
   );

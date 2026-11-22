@@ -18,7 +18,10 @@ import {
 } from '../../src/offline/foodEntryUpdateHandOver';
 import { __clearOutboxHandlersForTests } from '../../src/offline/handlers/registry';
 import { registerFoodEntryUpdateHandlers } from '../../src/offline/handlers/foodEntryUpdate';
-import { listUnconfirmedOutbox } from '../../src/offline/outbox';
+import {
+  listUnconfirmedOutbox,
+  updateOutboxRow,
+} from '../../src/offline/outbox';
 import {
   IDENTITY_COLLECTION,
   IDENTITY_KEY,
@@ -229,6 +232,26 @@ describe('changing the amount of an entry with no connection', () => {
   });
 
   describe('an entry still waiting to upload', () => {
+    it('is refused once an upload was tried: the server may already hold the first amount', async () => {
+      await queueFoodEntry(KEY_A, {
+        meal_type_id: 'm1',
+        quantity: 1,
+        unit: 'serving',
+        entry_date: DAY,
+        food_name: 'Snack',
+        calories: 300,
+      });
+      const [row] = await listUnconfirmedOutbox(db, 's1');
+      await updateOutboxRow(db, row!.id, { attempts: 1 });
+
+      expect(await editWaitingEntryQuantity(KEY_A, 4)).toBe('uploading');
+      expect((await listUnconfirmedOutbox(db, 's1'))[0]!.payload).toMatchObject(
+        {
+          quantity: 1,
+        }
+      );
+    });
+
     it('is rewritten in place, so only the final amount is sent', async () => {
       await queueFoodEntry(KEY_A, {
         meal_type_id: 'm1',

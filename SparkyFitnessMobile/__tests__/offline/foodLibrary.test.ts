@@ -183,6 +183,19 @@ describe('the food library on the phone', () => {
     ).toBe(SINGLE_DOCUMENT_KEY);
   });
 
+  it('still saves the water containers when the meals cannot be fetched, and reports the refresh as incomplete', async () => {
+    serve([food('a', 'Apple')], '/api/meals');
+
+    await expect(refreshFoodLibrary(db, 's1')).rejects.toThrow();
+
+    expect(
+      (await listCacheRows(db, 's1', CACHE_COLLECTIONS.waterContainers))[0].key
+    ).toBe(SINGLE_DOCUMENT_KEY);
+    expect(
+      (await listCacheRows(db, 's1', CACHE_COLLECTIONS.food)).map((r) => r.key)
+    ).toEqual(['a']);
+  });
+
   it('asks for the servings of only the first foods in a big library', async () => {
     serve(Array.from({ length: 160 }, (_, i) => food(`f${i}`, `Food ${i}`)));
 

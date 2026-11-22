@@ -238,73 +238,101 @@ export async function refreshFoodLibrary(
   serverConfigId: string,
   startedUnder: number = accountGeneration()
 ): Promise<void> {
-  const usage = await apiFetch<FoodsResponse>({
-    endpoint: '/api/foods',
-    serviceName: SERVICE,
-    operation: 'fetch recent foods',
-  });
-  const mealTypes = await apiFetch<MealType[]>({
-    endpoint: '/api/meal-types',
-    serviceName: SERVICE,
-    operation: 'fetch meal types',
-  });
-  const containers = await apiFetch<WaterContainer[]>({
-    endpoint: '/api/water-containers',
-    serviceName: SERVICE,
-    operation: 'fetch water containers',
-  });
-  const meals = await apiFetch<Meal[]>({
-    endpoint: '/api/meals',
-    serviceName: SERVICE,
-    operation: 'fetch meals',
-  });
-  const own = await fetchOwnFoods(startedUnder, FOOD_LIBRARY_MAX);
-  if (own == null || accountGeneration() !== startedUnder) return;
+  // Each part stands on its own: one request failing never keeps the others
+  // from being saved (the water containers still update when the meals could
+  // not be fetched), and the first failure is reported once every part has had
+  // its turn, so the refresh is not recorded as complete.
+  let failed: unknown = null;
+  const part = async (work: () => Promise<void>): Promise<boolean> => {
+    try {
+      await work();
+      return true;
+    } catch (error) {
+      failed ??= error;
+      return false;
+    }
+  };
 
-  const foods = chooseFoodsToKeep(usage, own);
-  // Read before the collections are replaced.
-  const retained = await retainedForWaitingEntries(db, serverConfigId, foods);
-  await replaceCacheCollection(
-    db,
-    serverConfigId,
-    CACHE_COLLECTIONS.food,
-    foodCacheRows([...foods, ...retained.foods])
-  );
-  await replaceCacheCollection(
-    db,
-    serverConfigId,
-    CACHE_COLLECTIONS.foodBarcode,
-    barcodeCacheRows(foods)
-  );
-  await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.foodRecents, [
-    { key: SINGLE_DOCUMENT_KEY, payload: usage },
-  ]);
-  await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.mealTypes, [
-    { key: SINGLE_DOCUMENT_KEY, payload: mealTypes },
-  ]);
-  await replaceCacheCollection(
-    db,
-    serverConfigId,
-    CACHE_COLLECTIONS.meal,
-    (Array.isArray(meals) ? meals : []).map((meal) => ({
-      key: meal.id,
-      name: meal.name,
-      payload: meal,
-    }))
-  );
-  await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.pack, [
-    { key: MEALS_KEPT_KEY, payload: { keptAt: Date.now() } },
-  ]);
-  await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterContainers, [
-    { key: SINGLE_DOCUMENT_KEY, payload: containers },
-  ]);
-  await refreshVariants(
-    db,
-    serverConfigId,
-    foods,
-    startedUnder,
-    retained.variants
-  );
+  await part(async () => {
+    const mealTypes = await apiFetch<MealType[]>({
+      endpoint: '/api/meal-types',
+      serviceName: SERVICE,
+      operation: 'fetch meal types',
+    });
+    if (accountGeneration() !== startedUnder) return;
+    await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.mealTypes, [
+      { key: SINGLE_DOCUMENT_KEY, payload: mealTypes },
+    ]);
+  });
+  await part(async () => {
+    const containers = await apiFetch<WaterContainer[]>({
+      endpoint: '/api/water-containers',
+      serviceName: SERVICE,
+      operation: 'fetch water containers',
+    });
+    if (accountGeneration() !== startedUnder) return;
+    await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterContainers, [
+      { key: SINGLE_DOCUMENT_KEY, payload: containers },
+    ]);
+  });
+  await part(async () => {
+    const meals = await apiFetch<Meal[]>({
+      endpoint: '/api/meals',
+      serviceName: SERVICE,
+      operation: 'fetch meals',
+    });
+    if (accountGeneration() !== startedUnder) return;
+    await replaceCacheCollection(
+      db,
+      serverConfigId,
+      CACHE_COLLECTIONS.meal,
+      (Array.isArray(meals) ? meals : []).map((meal) => ({
+        key: meal.id,
+        name: meal.name,
+        payload: meal,
+      }))
+    );
+    await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.pack, [
+      { key: MEALS_KEPT_KEY, payload: { keptAt: Date.now() } },
+    ]);
+  });
+  // The foods, their barcodes, the recent lists and the servings go together.
+  await part(async () => {
+    const usage = await apiFetch<FoodsResponse>({
+      endpoint: '/api/foods',
+      serviceName: SERVICE,
+      operation: 'fetch recent foods',
+    });
+    const own = await fetchOwnFoods(startedUnder, FOOD_LIBRARY_MAX);
+    if (own == null || accountGeneration() !== startedUnder) return;
+
+    const foods = chooseFoodsToKeep(usage, own);
+    // Read before the collections are replaced.
+    const retained = await retainedForWaitingEntries(db, serverConfigId, foods);
+    await replaceCacheCollection(
+      db,
+      serverConfigId,
+      CACHE_COLLECTIONS.food,
+      foodCacheRows([...foods, ...retained.foods])
+    );
+    await replaceCacheCollection(
+      db,
+      serverConfigId,
+      CACHE_COLLECTIONS.foodBarcode,
+      barcodeCacheRows(foods)
+    );
+    await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.foodRecents, [
+      { key: SINGLE_DOCUMENT_KEY, payload: usage },
+    ]);
+    await refreshVariants(
+      db,
+      serverConfigId,
+      foods,
+      startedUnder,
+      retained.variants
+    );
+  });
+  if (failed) throw failed;
 }
 
 /** One page of the foods kept on the phone, by name; null when none are. */

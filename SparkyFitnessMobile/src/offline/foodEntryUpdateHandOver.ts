@@ -278,6 +278,11 @@ export async function editWaitingEntryQuantity(
   );
   if (!row) return 'gone';
   if (row.status === 'sending') return 'uploading';
+  // A create whose upload was already tried may be on the server (the answer
+  // can be lost), and a replay of the same key returns the stored entry
+  // without applying a changed body: the new amount would be reported saved
+  // and never stored. It is refused until the upload has finished.
+  if (row.attempts > 0) return 'uploading';
 
   let payload: unknown;
   if (row.kind === FOOD_ENTRY_CREATE) {
