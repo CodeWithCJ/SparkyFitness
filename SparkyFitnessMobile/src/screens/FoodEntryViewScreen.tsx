@@ -794,33 +794,38 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
   } = useUpdateFoodEntry({
     entryId: entry.id,
     entryDate: entry.entry_date,
-    onSuccess: (updatedEntry) => {
-      invalidateUpdateCache(selectedDate);
-      const mergedEntry = { ...entry, ...updatedEntry };
-      if (
-        updatedEntry.meal_type_id &&
-        updatedEntry.meal_type_id !== entry.meal_type_id
-      ) {
-        const mealType = mealTypes.find(
-          (candidate) => candidate.id === updatedEntry.meal_type_id
-        );
-        if (mealType) mergedEntry.meal_type = mealType.name;
-      }
-      setCreatedVariantOverride(null);
-      setEntry(mergedEntry);
-      setEditState({
-        isEditing: false,
-        selectedDate: normalizeDate(mergedEntry.entry_date),
-        entryTime: toHourMinute(mergedEntry.entry_time) || '',
-        entryNotes: mergedEntry.notes ?? '',
-        selectedMealId: mergedEntry.meal_type_id,
-        selectedVariantId: mergedEntry.variant_id,
-        quantityText: String(mergedEntry.quantity),
-        adjustedValues: null,
-        adjustedCustomNutrients: undefined,
-      });
-    },
+    onKeptOnPhone: (changes) => showUpdated(changes),
+    onSuccess: (updatedEntry) => showUpdated(updatedEntry),
   });
+
+  // Shows the entry as it reads after a change: the server's answer, or what a
+  // change kept on the phone will make of it.
+  function showUpdated(updatedEntry: Partial<FoodEntry>) {
+    invalidateUpdateCache(selectedDate);
+    const mergedEntry = { ...entry, ...updatedEntry };
+    if (
+      updatedEntry.meal_type_id &&
+      updatedEntry.meal_type_id !== entry.meal_type_id
+    ) {
+      const mealType = mealTypes.find(
+        (candidate) => candidate.id === updatedEntry.meal_type_id
+      );
+      if (mealType) mergedEntry.meal_type = mealType.name;
+    }
+    setCreatedVariantOverride(null);
+    setEntry(mergedEntry);
+    setEditState({
+      isEditing: false,
+      selectedDate: normalizeDate(mergedEntry.entry_date),
+      entryTime: toHourMinute(mergedEntry.entry_time) || '',
+      entryNotes: mergedEntry.notes ?? '',
+      selectedMealId: mergedEntry.meal_type_id,
+      selectedVariantId: mergedEntry.variant_id,
+      quantityText: String(mergedEntry.quantity),
+      adjustedValues: null,
+      adjustedCustomNutrients: undefined,
+    });
+  }
 
   const handleSave = () => {
     const payload: UpdateFoodEntryPayload = {};
@@ -893,7 +898,46 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
       return;
     }
 
-    updateEntry(payload);
+    // What the server works out from the request, for the entry shown while
+    // the change waits on the phone (it is replaced by the real one after).
+    const preview: Partial<FoodEntry> = {};
+    if (payload.meal_type_id) {
+      const mealType = mealTypes.find(
+        (candidate) => candidate.id === payload.meal_type_id
+      );
+      if (mealType) preview.meal_type = mealType.name;
+    }
+    if (payload.variant_id || adjustedValues) {
+      Object.assign(preview, {
+        serving_size: displayValues.servingSize,
+        serving_unit: displayValues.servingUnit,
+        calories: displayValues.calories,
+        protein: displayValues.protein,
+        carbs: displayValues.carbs,
+        fat: displayValues.fat,
+        saturated_fat: displayValues.saturatedFat,
+        sodium: displayValues.sodium,
+        dietary_fiber: displayValues.fiber,
+        sugars: displayValues.sugars,
+        trans_fat: displayValues.transFat,
+        potassium: displayValues.potassium,
+        calcium: displayValues.calcium,
+        iron: displayValues.iron,
+        caffeine_mg: displayValues.caffeineMg,
+        water_ml: displayValues.waterMl,
+        alcohol_g: displayValues.alcoholG,
+        cholesterol: displayValues.cholesterol,
+        vitamin_a: displayValues.vitaminA,
+        vitamin_c: displayValues.vitaminC,
+      });
+      // The serving's own nutrients ride along, so the entry's detail keeps
+      // them while the change waits.
+      if (selectedCustomNutrients !== undefined) {
+        preview.custom_nutrients = selectedCustomNutrients ?? {};
+      }
+    }
+    if (Object.keys(preview).length === 0) updateEntry(payload);
+    else updateEntry(payload, preview);
   };
 
   const {

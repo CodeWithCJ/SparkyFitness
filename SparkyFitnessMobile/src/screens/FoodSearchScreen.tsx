@@ -24,6 +24,7 @@ import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import OfflineBanner from '../components/OfflineBanner';
 import AnchoredMenu, {
   AnchorRect,
   measureAnchoredMenuTrigger,
@@ -136,7 +137,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   const { defaultColor: headerActionColor } = useHeaderActionColors();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const { isConnected } = useServerConnection();
+  const { isConnected, status: connectionStatus } = useServerConnection();
+  // The foods, their servings and the recent lists are kept on the phone, so
+  // they are read while the server is unreachable too (the API clients answer
+  // from the saved copy). Everything else on this screen needs the server.
+  const canReadSavedFoods = isConnected || connectionStatus === 'unreachable';
   const { profile } = useProfile();
   const ownershipFilter = useAppPreferencesStore(
     (s) => s.foodSearchOwnershipFilter
@@ -150,9 +155,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   // sections entirely, matching web.
   const onlineAllowedByOwnership =
     ownershipFilter === 'all' || ownershipFilter === 'public';
-  const { preferences } = usePreferences({ enabled: isConnected });
+  const { preferences } = usePreferences({ enabled: canReadSavedFoods });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({
-    enabled: isConnected,
+    enabled: canReadSavedFoods,
   });
   const { favoriteFoods, favoriteMeals } = useFavorites({
     enabled: isConnected,
@@ -259,9 +264,25 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     [toggleFoodSelection, t, selectionMaxItems]
   );
 
+  // Adding several foods at once sends them straight to the server and keeps
+  // nothing on the phone, so it waits for a connection.
+  const multiAddUnavailable = connectionStatus === 'unreachable';
+
   const openMultiAddReview = useCallback(() => {
+    if (multiAddUnavailable) {
+      Toast.show({
+        type: 'info',
+        text1: t('foodSearch.multiSelect.needsConnection', {
+          defaultValue: 'Adding several foods needs a connection',
+        }),
+        text2: t('foodSearch.multiSelect.needsConnectionHint', {
+          defaultValue: 'Add them one at a time to keep them on this phone.',
+        }),
+      });
+      return;
+    }
     navigation.navigate('FoodEntryMultiAdd', { date, mealTypeId });
-  }, [navigation, date, mealTypeId]);
+  }, [navigation, date, mealTypeId, multiAddUnavailable, t]);
 
   const handleSelectAllInSection = useCallback(
     (entries: LandingEntry[]) => {
@@ -296,13 +317,17 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   const { searchResults, isSearching, isSearchActive } = useFoodSearch(
     searchText,
     {
-      enabled: isConnected,
+      enabled: canReadSavedFoods,
     }
   );
 
   // Local meals (never mixed in while building a meal).
   const { searchResults: mealResults, isSearching: isMealSearching } =
-    useMealSearch(searchText, { enabled: isConnected && !isMealBuilderMode });
+    useMealSearch(searchText, {
+      // The meals are kept on the phone too, so a saved meal can be found
+      // with the server away (a saved meal can be logged offline).
+      enabled: canReadSavedFoods && !isMealBuilderMode,
+    });
 
   // Online provider results stream in below the local results, always fetched
   // (no separate Online tab). Provider is the user's default.
@@ -1395,7 +1420,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   // --- Body ---
 
   const renderBody = () => {
-    if (!isConnected) {
+    // With the server away the foods kept on the phone are still searched; only
+    // with no server at all is there nothing to show.
+    if (!canReadSavedFoods) {
       return (
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="cloud-offline" size={48} color={accentColor} />
@@ -1533,6 +1560,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
       {renderHeaderBar()}
+      {connectionStatus === 'unreachable' ? <OfflineBanner /> : null}
       {renderBody()}
       {/* Basket bar: visible whenever anything is selected in a
           diary-logging context, in or out of select mode, so a basket built
@@ -1581,6 +1609,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
             <Button
               variant="ghost"
               onPress={openMultiAddReview}
+              disabled={multiAddUnavailable}
               className="p-0"
               accessibilityLabel={t('foodSearch.multiSelect.review', {
                 defaultValue: 'Review',

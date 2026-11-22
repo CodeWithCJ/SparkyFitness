@@ -204,6 +204,39 @@ describe('MealsLibraryScreen', () => {
     expect(screen.queryByText('Overnight Oats')).toBeNull();
   });
 
+  it('shows the meals kept on the phone while the server cannot be reached', () => {
+    mockUseServerConnection.mockReturnValue({
+      status: 'unreachable',
+      isConnected: false,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    } as any);
+    mockUseMeals.mockReturnValue({
+      meals: [
+        {
+          id: 'meal-1',
+          name: 'Overnight Oats',
+          user_id: 'user-1',
+          is_public: false,
+          foods: [],
+        },
+      ],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    } as any);
+
+    const screen = renderScreen();
+
+    expect(screen.getByText('Overnight Oats')).toBeTruthy();
+    expect(screen.queryByText("Can't reach your server")).toBeNull();
+    expect(mockUseMeals).toHaveBeenCalledWith({ enabled: true });
+    // The Mealie import needs the server.
+    expect(screen.queryByText('Import Mealie ingredients')).toBeNull();
+  });
+
   it('shows the no-server state', () => {
     mockUseServerConnection.mockReturnValue({
       status: 'notConfigured',

@@ -46,7 +46,7 @@ import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
 import OfflineBanner from '../components/OfflineBanner';
 import { useOfflineDiaryDay } from '../hooks/useOfflineDiaryDay';
-import { mergeWaitingWorkouts } from '../offline/diaryDay';
+import { mergeWaitingFood, mergeWaitingWorkouts } from '../offline/diaryDay';
 import Button from '../components/ui/Button';
 import {
   useCustomNutrients,
@@ -335,7 +335,9 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
 
   const { summary, isLoading, isError, refetch } = useDailySummary({
     date: selectedDate,
-    enabled: isConnected,
+    // With the server away the day's totals come from the phone's copy plus
+    // what is waiting to upload.
+    enabled: isConnected || isOffline,
   });
   const { measurements, refetch: refetchMeasurements } = useMeasurements({
     date: selectedDate,
@@ -644,6 +646,19 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
       offlineDay.waiting,
       offlineDay.deleted
     );
+    const waitingFood = offlineDay.waitingFood ?? [];
+    // The day's summary from the phone already has the waiting entries in it.
+    const hasFoodDay =
+      summary != null || offlineDay.savedFood != null || waitingFood.length > 0;
+    const offlineFood = summary
+      ? summary.foodEntries
+      : mergeWaitingFood(
+          offlineDay.savedFood ?? [],
+          waitingFood,
+          offlineDay.deletedFood ?? [],
+          offlineDay.updatedFood ?? {},
+          offlineDay.deletedFoodMeals ?? []
+        );
     return (
       <ScrollView
         className="flex-1 bg-background"
@@ -670,10 +685,30 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
         >
           {t('offline.diaryNote', {
             defaultValue:
-              'Only workouts are available offline. Food and other entries need a connection.',
+              'Food and workouts from the last week are available offline. Sleep and the other entries need a connection.',
           })}
         </Text>
-        {offlineDay.saved == null && sessions.length === 0 ? (
+        {summary ? (
+          <DiaryCalorieMacroSummary
+            summary={summary}
+            showNetCarbs={preferences?.show_net_carbs === true}
+            customNutrientKeys={customNutrientKeys}
+            customNutrients={customNutrients}
+          />
+        ) : null}
+        {hasFoodDay ? (
+          <FoodSummary
+            foodEntries={offlineFood}
+            mealTypes={mealTypes}
+            goals={summary?.goals}
+            calorieGoal={summary?.calorieGoal}
+            onAdjustServing={(entry) => servingSheetRef.current?.present(entry)}
+            onAddFood={() =>
+              navigation.navigate('FoodSearch', { date: selectedDate })
+            }
+          />
+        ) : null}
+        {offlineDay.saved == null && sessions.length === 0 && !hasFoodDay ? (
           <StatusView
             inline
             icon="cloud-offline"

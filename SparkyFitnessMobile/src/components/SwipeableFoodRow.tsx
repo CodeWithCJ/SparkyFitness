@@ -8,6 +8,7 @@ import Animated from 'react-native-reanimated';
 import { DeleteRowAction } from './SwipeableDeleteRow';
 import { useRowCollapse } from '../hooks/useRowCollapse';
 import { useDeleteFoodEntry } from '../hooks/useDeleteFoodEntry';
+import { isPendingEntryId } from '../offline/foodEntryHandOver';
 import { useDeleteFoodEntryMeal } from '../hooks/useDeleteFoodEntryMeal';
 import { usePreferences } from '../hooks/usePreferences';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
@@ -43,6 +44,9 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
   );
 
   const isMealComponent = !!entry.food_entry_meal_id;
+  // A waiting entry is not on the server, so there is no detail to open. The
+  // amount can still be changed and the entry (or its whole logged meal)
+  // deleted: both are kept on the phone and upload later.
   const getImageSource = useFoodImageSourceContext();
   const entryImage = diaryEntryImage(entry);
   const openLightbox = useOpenLightbox();
@@ -102,7 +106,16 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
     t('foodRow.unknownFood', { defaultValue: 'Unknown food' });
   const timeLabel = formatTimeLabel(entry.entry_time, preferences?.time_format);
 
+  // A waiting entry has no server copy to open. A logged meal's components
+  // open the meal, which the phone keeps for the last week.
+  const detailAvailable = !isPendingEntryId(entry.id);
+
   const handlePress = () => {
+    if (!detailAvailable) {
+      // No detail screen here; the row opens the amount sheet instead.
+      if (canQuickAdjust) onAdjustServing!(entry);
+      return;
+    }
     if (isMealComponent && entry.food_entry_meal_id) {
       navigation.navigate('EditLoggedMeal', {
         foodEntryMealId: entry.food_entry_meal_id,
@@ -161,7 +174,9 @@ const SwipeableFoodRow: React.FC<SwipeableFoodRowProps> = ({
           <TouchableOpacity
             className="flex-1 mr-2"
             activeOpacity={0.7}
-            onPress={handlePress}
+            onPress={
+              detailAvailable || canQuickAdjust ? handlePress : undefined
+            }
             onLongPress={handleLongPress}
           >
             <View className="flex-row flex-wrap items-baseline">

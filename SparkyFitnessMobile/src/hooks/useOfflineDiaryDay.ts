@@ -10,7 +10,16 @@ import {
   offlineDiaryDayQueryKeyRoot,
 } from './queryKeys';
 
-const EMPTY: OfflineDiaryDay = { saved: null, waiting: [], deleted: [] };
+const EMPTY: OfflineDiaryDay = {
+  saved: null,
+  waiting: [],
+  deleted: [],
+  savedFood: null,
+  waitingFood: [],
+  deletedFood: [],
+  updatedFood: {},
+  deletedFoodMeals: [],
+};
 
 /**
  * A day's workouts from this phone: the copy saved at the last diary load

@@ -1,4 +1,5 @@
 import { ApiError } from '../../src/services/api/errors';
+import { bumpAccountGeneration } from '../../src/offline/accountGeneration';
 import { putCacheRows } from '../../src/offline/cacheStore';
 import { __setOfflineDbForTests } from '../../src/offline/db';
 import { subscribeUploadsConfirmed } from '../../src/offline/events';
@@ -26,6 +27,10 @@ jest.mock('expo-sqlite', () => ({}));
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 
 const KIND = 'test.thing';
@@ -106,6 +111,86 @@ describe('offline sync engine', () => {
     expect(onSynced).toHaveBeenCalledTimes(2);
   });
 
+  it('hands each handler the server the run started on, to send to', async () => {
+    await enqueueOutbox(db, {
+      id: 'only',
+      serverConfigId: 's1',
+      userId: 'u1',
+      kind: KIND,
+      entityId: 'e-only',
+      payload: {},
+      payloadVersion: 2,
+    });
+
+    await drainOutbox('reconnect');
+
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ id: 'only' }), {
+      serverConfig: { id: 's1', url: 'https://one' },
+    });
+  });
+
+  it('puts a claimed row back untouched when the account changes before its request', async () => {
+    await enqueueOutbox(db, {
+      id: 'held',
+      serverConfigId: 's1',
+      userId: 'u1',
+      kind: KIND,
+      entityId: 'e-held',
+      payload: {},
+      payloadVersion: 1, // upgraded first, which is awaited before the send
+    });
+    // The account changes while the row is being upgraded for sending.
+    const upgrade = jest.fn((payload: unknown) => {
+      bumpAccountGeneration();
+      return { ...(payload as object), upgraded: true };
+    });
+    __clearOutboxHandlersForTests();
+    registerOutboxHandler({
+      kind: KIND,
+      payloadVersion: 2,
+      upgrade,
+      send,
+      onSynced,
+    });
+
+    await drainOutbox('reconnect');
+
+    expect(send).not.toHaveBeenCalled();
+    expect((await getOutboxRow(db, 'held'))?.status).toBe('pending');
+  });
+
+  it('stops the run when the account changes while rows are going up, leaving the rest waiting', async () => {
+    for (const [id, at] of [
+      ['first', 1000],
+      ['second', 2000],
+    ] as const) {
+      await enqueueOutbox(
+        db,
+        {
+          id,
+          serverConfigId: 's1',
+          userId: 'u1',
+          kind: KIND,
+          entityId: `e-${id}`,
+          payload: {},
+          payloadVersion: 2,
+        },
+        at
+      );
+    }
+    // Someone else signs in while the first row's request is out.
+    send.mockImplementationOnce(async () => {
+      bumpAccountGeneration();
+      return { outcome: 'synced' } as SendResult;
+    });
+
+    const summary = await drainOutbox('reconnect');
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(summary.synced).toBe(1);
+    expect((await getOutboxRow(db, 'second'))?.status).toBe('pending');
+  });
+
   it('tells the app when the server confirmed something, and only then', async () => {
     const confirmed = jest.fn();
     const stop = subscribeUploadsConfirmed(confirmed);
@@ -148,7 +233,7 @@ describe('offline sync engine', () => {
     expect(send).toHaveBeenCalledTimes(1);
   });
 
-  it('holds a row with no recorded account until the person asks', async () => {
+  it('never sends a row with no recorded account, not even when the person asks', async () => {
     await enqueueOutbox(db, {
       id: 'unowned',
       serverConfigId: 's1',
@@ -164,7 +249,9 @@ describe('offline sync engine', () => {
     expect(send).not.toHaveBeenCalled();
 
     await drainOutbox('manual');
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).not.toHaveBeenCalled();
+    // It is parked as needing attention, where it can be discarded.
+    expect((await getOutboxRow(db, 'unowned'))?.status).toBe('failed');
   });
 
   it('does not send a row that was discarded while an earlier one was going up', async () => {
@@ -383,12 +470,12 @@ describe('offline sync engine', () => {
     expect(summary.remaining).toBe(1);
   });
 
-  it('sends work made before anyone was known, whoever is signed in', async () => {
+  it('does not send work made before anyone was known, whoever is signed in', async () => {
     await queue('a', { userId: null });
 
     await drainOutbox('manual');
 
-    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).not.toHaveBeenCalled();
   });
 
   it('brings a payload written by an older build up to date before sending', async () => {

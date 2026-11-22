@@ -45,21 +45,23 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({
   );
   const [refreshing, setRefreshing] = useState(false);
 
-  const { isConnected } = useServerConnection();
+  const { isConnected, status } = useServerConnection();
+  // The meals kept on the phone are read while the server is away.
+  const canRead = isConnected || status === 'unreachable';
   const { profile } = useProfile();
   const {
     meals,
     isLoading: isMealsLoading,
     isError: isMealsError,
     refetch: refetchMeals,
-  } = useMeals({ enabled: isConnected });
+  } = useMeals({ enabled: canRead });
   const {
     searchResults,
     isSearching,
     isSearchActive,
     isSearchError,
     refetch: refetchSearch,
-  } = useMealSearch(searchText, { enabled: isConnected });
+  } = useMealSearch(searchText, { enabled: canRead });
   const { favoriteMeals } = useFavorites({ enabled: isConnected });
   const favoriteMealIds = useMemo(
     () => new Set(favoriteMeals.map((m) => m.id)),
@@ -258,8 +260,8 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({
           })}
         </Button>
       ) : null}
-      {isConnected ? renderSearchBar() : null}
-      <ServerGate>{renderContent()}</ServerGate>
+      {canRead ? renderSearchBar() : null}
+      <ServerGate offlineCapable>{renderContent()}</ServerGate>
     </View>
   );
 };

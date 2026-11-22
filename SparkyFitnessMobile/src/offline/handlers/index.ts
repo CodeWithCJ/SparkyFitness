@@ -1,4 +1,12 @@
+import { registerFoodCreateHandlers } from './foodCreate';
+import { registerFoodEntryDeleteHandlers } from './foodEntryDelete';
+import { registerFoodEntryUpdateHandlers } from './foodEntryUpdate';
+import { registerFoodEntryHandlers } from './foodEntry';
+import { registerFoodEntryMealDeleteHandlers } from './foodEntryMealDelete';
+import { registerFoodEntryMealUpdateHandlers } from './foodEntryMealUpdate';
+import { registerFoodEntryMealHandlers } from './foodEntryMeal';
 import { registerFollowUpHandlers } from './followUps';
+import { registerWaterIntakeHandlers } from './waterIntake';
 import { registerWorkoutSessionHandlers } from './workoutSession';
 
 let registered = false;
@@ -13,4 +21,12 @@ export function registerAllOutboxHandlers(): void {
   registered = true;
   registerWorkoutSessionHandlers();
   registerFollowUpHandlers();
+  registerWaterIntakeHandlers();
+  registerFoodEntryHandlers();
+  registerFoodCreateHandlers();
+  registerFoodEntryMealHandlers();
+  registerFoodEntryDeleteHandlers();
+  registerFoodEntryMealDeleteHandlers();
+  registerFoodEntryMealUpdateHandlers();
+  registerFoodEntryUpdateHandlers();
 }

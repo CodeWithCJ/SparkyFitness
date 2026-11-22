@@ -76,7 +76,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
-  const { isConnected } = useServerConnection();
+  const { isConnected, status } = useServerConnection();
+  // The servings kept on the phone are read while the server is away.
+  const canRead = isConnected || status === 'unreachable';
   const { profile } = useProfile();
   const { preferences } = usePreferences({ enabled: isConnected });
   const showNetCarbs = preferences?.show_net_carbs === true;
@@ -94,7 +96,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
     isLoading: isVariantsLoading,
     isError: isVariantsError,
   } = useFoodVariants(food.id, {
-    enabled: isLocalFood && isConnected,
+    enabled: isLocalFood && canRead,
   });
   const canManageFood = !!(
     isLocalFood &&
@@ -625,7 +627,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
   return (
     <View className="flex-1 bg-background">
       {header}
-      <ServerGate>{renderContent()}</ServerGate>
+      <ServerGate offlineCapable>{renderContent()}</ServerGate>
 
       <ActionSheet
         ref={deleteSheetRef}

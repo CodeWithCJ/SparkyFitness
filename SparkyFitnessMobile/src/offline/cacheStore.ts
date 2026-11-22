@@ -121,7 +121,23 @@ function escapeLike(text: string): string {
   return text.replace(/[\\%_]/g, (char) => `\\${char}`);
 }
 
-/** Documents whose name contains the typed text, case-insensitively. */
+/**
+ * The conditions that make a name match typed text: every word of it appears
+ * in the name, in any order, case-insensitively ("celsius orange" finds
+ * "Celsius Sparkling Orange"), as a search on the server does.
+ */
+function wordMatch(text: string): { sql: string; params: string[] } {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return { sql: '1 = 1', params: [] };
+  return {
+    sql: words
+      .map(() => `name LIKE ? ESCAPE '\\' COLLATE NOCASE`)
+      .join(' AND '),
+    params: words.map((word) => `%${escapeLike(word)}%`),
+  };
+}
+
+/** Documents whose name contains every word of the typed text, in any order. */
 export async function searchCacheRows(
   db: OfflineDb,
   serverConfigId: string,
@@ -129,13 +145,14 @@ export async function searchCacheRows(
   text: string,
   limit: number
 ): Promise<CachedDocument[]> {
+  const match = wordMatch(text);
   const records = await db.all<CacheRecord>(
     `SELECT key, payload, fetched_at FROM cache
      WHERE server_config_id = ? AND collection = ?
-       AND name LIKE ? ESCAPE '\\' COLLATE NOCASE
+       AND ${match.sql}
      ORDER BY name COLLATE NOCASE, key
      LIMIT ?`,
-    [serverConfigId, collection, `%${escapeLike(text.trim())}%`, limit]
+    [serverConfigId, collection, ...match.params, limit]
   );
   return records.flatMap((record) => toDocument(record) ?? []);
 }
@@ -210,20 +227,20 @@ export async function searchCacheRowsPage(
   limit: number,
   offset: number
 ): Promise<{ rows: CachedDocument[]; total: number }> {
-  const pattern = `%${escapeLike(text.trim())}%`;
+  const match = wordMatch(text);
   const records = await db.all<CacheRecord>(
     `SELECT key, payload, fetched_at FROM cache
      WHERE server_config_id = ? AND collection = ?
-       AND name LIKE ? ESCAPE '\\' COLLATE NOCASE
+       AND ${match.sql}
      ORDER BY name COLLATE NOCASE, key
      LIMIT ? OFFSET ?`,
-    [serverConfigId, collection, pattern, limit, offset]
+    [serverConfigId, collection, ...match.params, limit, offset]
   );
   const count = await db.first<{ total: number }>(
     `SELECT COUNT(*) AS total FROM cache
      WHERE server_config_id = ? AND collection = ?
-       AND name LIKE ? ESCAPE '\\' COLLATE NOCASE`,
-    [serverConfigId, collection, pattern]
+       AND ${match.sql}`,
+    [serverConfigId, collection, ...match.params]
   );
   return {
     rows: records.flatMap((record) => toDocument(record) ?? []),

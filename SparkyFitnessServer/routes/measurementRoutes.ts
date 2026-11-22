@@ -356,6 +356,10 @@ router.get(
  *                 type: string
  *                 format: uuid
  *                 description: Optional target user ID (requires checkin permission).
+ *               client_id:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Optional idempotency key. Only valid with change_drinks of 1. A repeat returns the current totals without logging another drink.
  *             required: [entry_date, change_drinks, container_id]
  *     responses:
  *       200:
@@ -376,7 +380,7 @@ router.post(
         error: bodyResult.error.issues.map((i) => i.message).join(', '),
       });
     }
-    const { entry_date, change_drinks, container_id, user_id } =
+    const { entry_date, change_drinks, container_id, user_id, client_id } =
       bodyResult.data;
 
     const targetUserId = user_id || req.userId;
@@ -398,7 +402,8 @@ router.post(
         req.originalUserId || req.userId,
         entry_date,
         change_drinks,
-        container_id ?? null
+        container_id ?? null,
+        client_id ?? null
       );
       res.status(200).json(result);
     } catch (error) {

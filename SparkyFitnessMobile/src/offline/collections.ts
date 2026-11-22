@@ -11,6 +11,14 @@ export const CACHE_COLLECTIONS = {
   planDay: 'plan_day',
   /** A day's workouts as the diary last loaded them, keyed by YYYY-MM-DD. */
   diaryDay: 'diary_day',
+  /** The server's whole summary of a day, keyed by YYYY-MM-DD. */
+  dailySummary: 'daily_summary',
+  /** A day's itemized drinks (the water log), keyed by YYYY-MM-DD. */
+  waterLog: 'water_log',
+  /** The person's water containers (one document). */
+  waterContainers: 'water_containers',
+  /** A day's food entries as the diary last loaded them, keyed by YYYY-MM-DD. */
+  diaryFoodDay: 'diary_food_day',
   /** Recent and most-used exercises, keyed by the requested count. */
   suggestedExercises: 'suggested_exercises',
   /** Best / last / recent sets, keyed by `exerciseStatsCacheKey`. */
@@ -19,6 +27,20 @@ export const CACHE_COLLECTIONS = {
   preferences: 'preferences',
   plateInventory: 'plate_inventory',
   profile: 'profile',
+  /** The person's foods, keyed by food id, searched by "brand name". */
+  food: 'food',
+  /** The person's meals (saved templates), keyed by meal id. */
+  meal: 'meal',
+  /** A food's barcode, keyed by the barcode: points at the food's id. */
+  foodBarcode: 'food_barcode',
+  /** Every serving of a food, keyed by food id. */
+  foodVariants: 'food_variants',
+  /** The recent and most-used foods lists (one document). */
+  foodRecents: 'food_recents',
+  /** A logged meal with its components, keyed by its id. */
+  loggedMeal: 'logged_meal',
+  /** The person's meal types (one document). */
+  mealTypes: 'meal_types',
   /** Markers the offline pack writes about itself. */
   pack: 'pack',
 } as const;
@@ -26,8 +48,21 @@ export const CACHE_COLLECTIONS = {
 /** Key of a collection that holds exactly one document. */
 export const SINGLE_DOCUMENT_KEY = 'current';
 
+/**
+ * Marker written when the person's meals were last refreshed: an empty list
+ * that was fetched is an answer, not "never kept".
+ */
+export const MEALS_KEPT_KEY = 'meals_kept';
+
 /** Marker written when a full offline pack refresh has finished. */
 export const PACK_COMPLETED_KEY = 'completed';
+
+/**
+ * Marker written when the food, meals and day totals of the pack have all
+ * refreshed. Kept apart from the workout marker so a food refresh that failed
+ * is tried again on the next trigger, not after the workout pack's six hours.
+ */
+export const FOOD_PACK_COMPLETED_KEY = 'food_completed';
 
 /**
  * Last-time values are scoped by the saved workout they were done in, so the

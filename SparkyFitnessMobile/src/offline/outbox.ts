@@ -67,6 +67,19 @@ function toRow(record: OutboxRecord): OutboxRow {
   };
 }
 
+/**
+ * Whether a queued row belongs to the signed-in person. A row with no owner,
+ * or a phone that does not know who is signed in, matches nobody: the queue
+ * is keyed by server, so every reader that shows or cancels waiting work has
+ * to check the account itself.
+ */
+export function isOwnedBy(
+  row: { userId: string | null },
+  userId: string | null
+): boolean {
+  return userId != null && row.userId === userId;
+}
+
 /** What a new piece of work is queued with. */
 export interface OutboxEnqueue {
   /** A fresh uuid; also what `dependsOn` of a later row points at. */
@@ -83,8 +96,8 @@ export interface OutboxEnqueue {
 }
 
 /**
- * Queues work for the server. One unconfirmed row is kept per entity and
- * kind: queueing again replaces that row's payload with the newer one and
+ * Queues work for the server. One unconfirmed row is kept per account, entity
+ * and kind: queueing again replaces that row's payload with the newer one and
  * keeps its id, so rows that depend on it stay attached. Returns the id of
  * the row that now holds the work.
  */
@@ -94,12 +107,15 @@ export async function enqueueOutbox(
   now: number = Date.now()
 ): Promise<string> {
   return db.transaction(async (tx) => {
+    // Only this account's own waiting row is replaced: the queue is keyed by
+    // server, so another account's row under the same key is left alone.
     const existing = await tx.first<{ id: string }>(
       `SELECT id FROM outbox
        WHERE server_config_id = ? AND entity_id = ? AND kind = ?
+         AND user_id IS ?
          AND status IN (${UNCONFIRMED_SQL})
        ORDER BY created_at LIMIT 1`,
-      [item.serverConfigId, item.entityId, item.kind]
+      [item.serverConfigId, item.entityId, item.kind, item.userId]
     );
     if (existing) {
       await tx.run(
@@ -281,6 +297,127 @@ export async function deleteUnconfirmedForEntity(
       );
       await tx.run(`DELETE FROM outbox WHERE id = ?`, [row.id]);
     }
+  });
+}
+
+/**
+ * Rewrites the payload of one waiting row, only if it is still the version that
+ * was looked at (`observedUpdatedAt`) and is not being sent. Status, attempts
+ * and the row's own timestamp are left as they were, so the rewrite does not
+ * make older work look newer. False when the row changed, or is gone.
+ */
+export async function rewriteUnconfirmedPayload(
+  db: OfflineDb,
+  rowId: string,
+  observedUpdatedAt: number,
+  payload: unknown
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const row = await tx.first<{ status: string; updated_at: number }>(
+      `SELECT status, updated_at FROM outbox WHERE id = ?`,
+      [rowId]
+    );
+    if (
+      !row ||
+      row.status === 'sending' ||
+      row.status === 'synced' ||
+      row.updated_at !== observedUpdatedAt
+    ) {
+      return false;
+    }
+    await tx.run(`UPDATE outbox SET payload = ? WHERE id = ?`, [
+      JSON.stringify(payload),
+      rowId,
+    ]);
+    return true;
+  });
+}
+
+/**
+ * Removes one waiting row and the rows waiting on it, unless it is being sent.
+ * The status is checked inside the same transaction as the delete. Every
+ * other row of the same entity stays. True when the row was removed.
+ */
+export async function deleteUnconfirmedRow(
+  db: OfflineDb,
+  rowId: string,
+  isMine: (row: { userId: string | null }) => boolean = () => true,
+  /**
+   * The `updatedAt` of the row as it was looked at. A row replaced since (a
+   * newer edit keeps the id) has a different one and is left intact.
+   */
+  observedUpdatedAt?: number
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const row = await tx.first<{
+      status: string;
+      user_id: string | null;
+      updated_at: number;
+    }>(`SELECT status, user_id, updated_at FROM outbox WHERE id = ?`, [rowId]);
+    if (!row || row.status === 'sending' || row.status === 'synced') {
+      return false;
+    }
+    if (
+      observedUpdatedAt !== undefined &&
+      row.updated_at !== observedUpdatedAt
+    ) {
+      return false;
+    }
+    if (!isMine({ userId: row.user_id })) return false;
+    await tx.run(
+      `DELETE FROM outbox WHERE depends_on = ? AND status IN (${UNCONFIRMED_SQL})`,
+      [rowId]
+    );
+    await tx.run(`DELETE FROM outbox WHERE id = ?`, [rowId]);
+    return true;
+  });
+}
+
+/**
+ * Removes what is waiting under an entity key, unless one of those rows is
+ * being sent: the check and the delete are one transaction, so a row the
+ * upload takes in between is never removed under it. 'uploading' leaves
+ * everything in place.
+ */
+export async function deleteUnconfirmedUnlessSending(
+  db: OfflineDb,
+  serverConfigId: string,
+  entityId: string,
+  isMine: (row: { userId: string | null }) => boolean = () => true,
+  /**
+   * Rows this says "keep" about block the delete like a row being sent does,
+   * judged on the rows as they are inside the transaction (for example one
+   * whose upload was already tried, which the server may hold).
+   */
+  mustKeep: (row: { status: string; attempts: number }) => boolean = () => false
+): Promise<'deleted' | 'uploading' | 'none'> {
+  return db.transaction(async (tx) => {
+    const rows = (
+      await tx.all<{
+        id: string;
+        status: string;
+        attempts: number;
+        user_id: string | null;
+      }>(
+        `SELECT id, status, attempts, user_id FROM outbox
+         WHERE server_config_id = ? AND entity_id = ?
+           AND status IN (${UNCONFIRMED_SQL})`,
+        [serverConfigId, entityId]
+      )
+    ).filter((row) => isMine({ userId: row.user_id }));
+    if (rows.length === 0) return 'none';
+    if (rows.some((row) => row.status === 'sending' || mustKeep(row))) {
+      return 'uploading';
+    }
+    for (const row of rows) {
+      await tx.run(
+        `DELETE FROM outbox
+         WHERE depends_on = ? AND status IN (${UNCONFIRMED_SQL})`,
+        [row.id]
+      );
+      await tx.run(`DELETE FROM outbox WHERE id = ?`, [row.id]);
+    }
+    return 'deleted';
   });
 }
 

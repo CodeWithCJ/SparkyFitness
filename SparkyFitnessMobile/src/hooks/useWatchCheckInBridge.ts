@@ -17,11 +17,11 @@ import WatchConnectivity, {
 import {
   upsertCheckIn,
   fetchMeasurementsRange,
-  changeWaterIntake,
   fetchWaterContainers,
   fetchWaterIntakeLog,
   deleteWaterIntakeLogEntry,
 } from '../services/api/measurementsApi';
+import { logDrinkOrQueue } from '../offline/logDrink';
 import {
   listMedications,
   listEntries,
@@ -1231,13 +1231,15 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         handledWaterClientIdsRef.current.add(payload.clientId);
 
       try {
-        const response = await changeWaterIntake({
-          entryDate: payload.entryDate,
-          // One tap = one full serving of that container, same as the phone's
-          // own +/- button.
-          changeDrinks: 1,
-          containerId: payload.containerId,
-        });
+        // One tap = one full serving of that container, same as the phone's
+        // own + button. With the server away the drink is kept on the phone
+        // and uploads later, so the watch is told it is safe either way.
+        const result = await logDrinkOrQueue(
+          payload.entryDate,
+          payload.containerId,
+          payload.clientId
+        );
+        const response = result.queued ? null : result.response;
 
         if (response && typeof response.water_ml === 'number') {
           queryClient.setQueryData<DailySummaryRawData>(

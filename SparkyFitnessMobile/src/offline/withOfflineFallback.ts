@@ -18,15 +18,23 @@ interface OfflineFallbackOptions<T> {
 }
 
 async function readSaved<T>(
-  read: OfflineFallbackOptions<T>['read']
+  read: OfflineFallbackOptions<T>['read'],
+  askedUnder: number
 ): Promise<T | null> {
   try {
+    // The request was made by an earlier account: its saved copy is not the
+    // active account's to read, and the active account's is not its answer.
+    if (accountGeneration() !== askedUnder) return null;
     // Not while an account change is clearing the saved copy, nor after a
     // clean-up that failed: that copy may be the previous account's.
     if (!(await savedCopyReadable())) return null;
     const serverConfigId = await getActiveServerConfigId();
     if (!serverConfigId) return null;
-    return await read(await getOfflineDb(), serverConfigId);
+    const saved = await read(await getOfflineDb(), serverConfigId);
+    // The account can change while the copy is being read: that read may have
+    // come from the account that signed in meanwhile, so it is not returned.
+    if (accountGeneration() !== askedUnder) return null;
+    return saved;
   } catch {
     // The offline file being unreadable must never turn into a new error;
     // the caller reports the request's own failure instead.
@@ -48,8 +56,9 @@ export async function withOfflineFallback<T>({
   store,
   read,
 }: OfflineFallbackOptions<T>): Promise<T> {
+  const generation = accountGeneration();
   if (isServerKnownUnreachable()) {
-    const saved = await readSaved(read);
+    const saved = await readSaved(read, generation);
     if (saved !== null) {
       // No request was made, so nothing else would notice the server coming
       // back; the (throttled) connection re-check does.
@@ -59,13 +68,12 @@ export async function withOfflineFallback<T>({
   }
   // The answer belongs to the account that asked; if the account changed
   // while the request was out, it is returned but not saved.
-  const generation = accountGeneration();
   let value: T;
   try {
     value = await fetch();
   } catch (error) {
     if (!serverMayBeDown(error)) throw error;
-    const saved = await readSaved(read);
+    const saved = await readSaved(read, generation);
     if (saved === null) throw error;
     notifyOfflineFallbackUsed();
     return saved;

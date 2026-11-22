@@ -346,6 +346,27 @@ describe('FoodDetailScreen', () => {
     );
   });
 
+  it('shows the food from the phone while the server cannot be reached, without actions that need the server', () => {
+    mockUseServerConnection.mockReturnValue({
+      status: 'unreachable',
+      isConnected: false,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    } as any);
+
+    const screen = renderScreen();
+
+    expect(screen.queryByText("Can't reach your server")).toBeNull();
+    // The servings kept on the phone are asked for; editing and deleting are not.
+    expect(mockUseFoodVariants).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ enabled: true })
+    );
+    expect(screen.queryByText('Delete Food')).toBeNull();
+  });
+
   it('hides edit and delete actions for public foods owned by another user', () => {
     const screen = renderScreen({
       userId: 'user-2',

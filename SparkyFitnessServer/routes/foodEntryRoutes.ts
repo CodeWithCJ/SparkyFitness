@@ -10,6 +10,7 @@ import {
   CopySelectedFoodEntriesFromUserBodySchema,
   CopyReviewedFoodEntriesToUserBodySchema,
   CopySelectedFoodEntriesToUserBodySchema,
+  clientRequestIdSchema,
   isEntryTimeString,
   isValidCookedQuantity,
   lastCookedFoodEntryQuerySchema,
@@ -180,7 +181,7 @@ router.post('/import-from-csv', authenticate, async (req, res, next) => {
  *   post:
  *     summary: Create a new food entry
  *     tags: [Nutrition & Meals]
- *     description: Adds a new food entry to the user's diary for a specific meal and date.
+ *     description: Adds a new food entry to the user's diary for a specific meal and date. An optional `client_id` (UUID) makes the call idempotent. A repeat with the same id returns the entry the first call created.
  *     requestBody:
  *       required: true
  *       content:
@@ -224,6 +225,16 @@ router.post(
       ) {
         return res.status(400).json({
           error: 'cooked_quantity must be a positive number or null.',
+        });
+      }
+
+      if (
+        req.body.client_id !== undefined &&
+        req.body.client_id !== null &&
+        !clientRequestIdSchema.safeParse(req.body.client_id).success
+      ) {
+        return res.status(400).json({
+          error: 'client_id must be a UUID.',
         });
       }
 

@@ -59,10 +59,13 @@ async function queueFollowUp(item: {
     const serverConfigId = await getActiveServerConfigId();
     if (!serverConfigId) return false;
     const db = await getOfflineDb();
+    const userId = await signedInUserId(db, serverConfigId);
+    // Whose it is must be known (see the other queue writers).
+    if (userId == null) return false;
     await enqueueOutbox(db, {
       id: newUuid(),
       serverConfigId,
-      userId: await signedInUserId(db, serverConfigId),
+      userId,
       kind: item.kind,
       entityId: item.entityId,
       dependsOn:

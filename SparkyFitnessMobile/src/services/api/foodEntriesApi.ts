@@ -53,6 +53,12 @@ export interface CreateFoodEntryPayload {
   custom_nutrients?: Record<string, string | number> | null;
   // Meal entry
   meal_id?: string;
+  /**
+   * Replay key (uuid). The server answers a repeat of the same key with the
+   * entry it already stored and logs nothing, so a request sent again after a
+   * lost answer cannot log twice.
+   */
+  client_id?: string;
 }
 
 /**
@@ -75,7 +81,9 @@ export const fetchFoodEntriesRange = async (
  * Creates a food entry.
  */
 export const createFoodEntry = async (
-  payload: CreateFoodEntryPayload
+  payload: CreateFoodEntryPayload,
+  /** Send to this server, not whichever is active when the request goes out. */
+  serverConfig?: ServerConfig
 ): Promise<FoodEntry> => {
   return apiFetch<FoodEntry>({
     endpoint: '/api/food-entries/',
@@ -83,6 +91,7 @@ export const createFoodEntry = async (
     operation: 'create food entry',
     method: 'POST',
     body: payload,
+    serverConfig,
   });
 };
 
@@ -154,7 +163,8 @@ export const fetchLastCookedFoodEntry = async (
  */
 export const updateFoodEntry = async (
   id: string,
-  payload: UpdateFoodEntryPayload
+  payload: UpdateFoodEntryPayload,
+  serverConfig?: ServerConfig
 ): Promise<FoodEntry> => {
   return apiFetch<FoodEntry>({
     endpoint: `/api/food-entries/${id}`,
@@ -162,18 +172,23 @@ export const updateFoodEntry = async (
     operation: 'update food entry',
     method: 'PUT',
     body: payload,
+    serverConfig,
   });
 };
 
 /**
  * Deletes a food entry by ID.
  */
-export const deleteFoodEntry = async (id: string): Promise<void> => {
+export const deleteFoodEntry = async (
+  id: string,
+  serverConfig?: ServerConfig
+): Promise<void> => {
   await apiFetch<void>({
     endpoint: `/api/food-entries/${id}`,
     serviceName: 'Food Entries API',
     operation: 'delete food entry',
     method: 'DELETE',
+    serverConfig,
   });
 };
 
