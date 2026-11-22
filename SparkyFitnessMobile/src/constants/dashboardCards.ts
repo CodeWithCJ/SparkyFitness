@@ -20,6 +20,7 @@ export const DASHBOARD_CARD_KEYS = [
   'mindfulness',
   'oralCare',
   'labResults',
+  'challenges',
 ] as const;
 
 export type DashboardCardKey = (typeof DASHBOARD_CARD_KEYS)[number];
@@ -79,6 +80,8 @@ export const DASHBOARD_CARD_TITLES: Record<
     t('dashboardSettings.oralCare', { defaultValue: 'Oral care' }),
   labResults: (t) =>
     t('dashboardSettings.labResults', { defaultValue: 'Lab Results' }),
+  challenges: (t) =>
+    t('dashboardSettings.challenges', { defaultValue: 'Challenges' }),
 };
 
 export const DASHBOARD_CARD_SUBTITLES: Record<
@@ -159,5 +162,9 @@ export const DASHBOARD_CARD_SUBTITLES: Record<
   labResults: (t) =>
     t('dashboardSettings.labResultsSubtitle', {
       defaultValue: 'Show your latest lab results and which are out of range',
+    }),
+  challenges: (t) =>
+    t('dashboardSettings.challengesSubtitle', {
+      defaultValue: 'Show your place in the challenges you are in',
     }),
 };

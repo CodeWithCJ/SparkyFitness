@@ -12,29 +12,13 @@ import {
 } from '../utils/foodUtils.js';
 import {
   isValidProviderType,
-  resolveOpenFoodFactsProviderId,
   resolveProviderCredentials,
 } from './externalFoodSearchService.js';
+import { type FoodProviderType } from '@workspace/shared';
 import {
-  searchOpenFoodFactsByBarcodeFields,
-  hasCompleteOffCoreNutrition,
-  mapOpenFoodFactsProduct,
-} from '../integrations/openfoodfacts/openFoodFactsService.js';
-import {
-  getUsdaFoodDetails,
-  mapUsdaBarcodeProduct,
-} from '../integrations/usda/usdaService.js';
-import { mapFatSecretFood } from '../integrations/fatsecret/fatsecretService.js';
-import { getYazioFoodDetails } from '../integrations/yazio/yazioService.js';
-import { getSwissFoodDetails } from '../integrations/swissfood/swissFoodService.js';
-import { getCanadianNutrientFoodDetails } from '../integrations/cnf/cnfService.js';
-import { getLivsmedelsverketFoodDetails } from '../integrations/livsmedelsverket/livsmedelsverketService.js';
-import {
-  getFatSecretNutrients,
-  getMealieFoodDetails,
-  getTandoorFoodDetails,
-  getNorishFoodDetails,
-} from './foodIntegrationService.js';
+  FOOD_PROVIDER_ADAPTERS,
+  type ProviderCallContext,
+} from '../integrations/foodProviders/index.js';
 
 function nullToUndefined<T>(value: T | null | undefined): T | undefined {
   return value === null ? undefined : value;
@@ -89,6 +73,17 @@ export function normalizeFoodVariantForResponse(variant: unknown): unknown {
       record.custom_nutrients as
         Record<string, string | number> | null | undefined
     ),
+    provider_nutrients: nullToUndefined(
+      record.provider_nutrients as Record<string, number> | null | undefined
+    ),
+    provider_nutrient_units: nullToUndefined(
+      record.provider_nutrient_units as
+        Record<string, string> | null | undefined
+    ),
+    provider_nutrient_standard: nullToUndefined(
+      record.provider_nutrient_standard as
+        Record<string, string> | null | undefined
+    ),
     source: nullToUndefined(
       record.source as 'manual' | 'ai_estimate' | 'imported' | null | undefined
     ),
@@ -114,6 +109,12 @@ export function normalizeFoodForResponse(food: unknown): unknown {
     ),
     provider_type: nullToUndefined(
       record.provider_type as string | null | undefined
+    ),
+    has_core_nutrition: nullToUndefined(
+      record.has_core_nutrition as boolean | null | undefined
+    ),
+    has_calories: nullToUndefined(
+      record.has_calories as boolean | null | undefined
     ),
     default_variant: normalizeFoodVariantForResponse(record.default_variant),
     variants: Array.isArray(record.variants)
@@ -192,149 +193,20 @@ export async function fetchProviderFoodDetails({
     providerType
   );
 
-  switch (providerType) {
-    case 'openfoodfacts': {
-      const offProvider = await resolveOpenFoodFactsProviderId(
-        credentialUserId,
-        providerId
-      );
-      const data = await searchOpenFoodFactsByBarcodeFields(
-        externalId,
-        undefined,
-        language,
-        offProvider ? credentialUserId : undefined,
-        offProvider?.id,
-        offProvider?.scope ?? 'personal',
-        signal
-      );
-      if (
-        data.status === 1 &&
-        data.product &&
-        (!requireNutrition || hasCompleteOffCoreNutrition(data.product))
-      ) {
-        return mapOpenFoodFactsProduct(data.product, { language });
-      }
-      return null;
-    }
-
-    case 'usda': {
-      const data = await getUsdaFoodDetails(externalId, credentials.app_key);
-      if (data) {
-        return mapUsdaBarcodeProduct(data);
-      }
-      return null;
-    }
-
-    case 'fatsecret': {
-      const data = await getFatSecretNutrients(
-        externalId,
-        credentials.app_id,
-        credentials.app_key
-      );
-      if (data) {
-        return mapFatSecretFood(data);
-      }
-      return null;
-    }
-
-    case 'mealie': {
-      const result = await getMealieFoodDetails(
-        externalId,
-        credentials.base_url,
-        credentials.app_key,
-        dataUserId,
-        providerId
-      );
-      if (result) {
-        const { food: mealieFood, variant } = result;
-        return {
-          ...mealieFood,
-          default_variant: variant,
-          variants: [variant],
-        };
-      }
-      return null;
-    }
-
-    case 'tandoor': {
-      const result = await getTandoorFoodDetails(
-        externalId,
-        credentials.base_url,
-        credentials.app_key,
-        dataUserId,
-        providerId
-      );
-      if (result) {
-        const { food: tandoorFood, variant } = result;
-        return {
-          ...tandoorFood,
-          default_variant: variant,
-          variants: [variant],
-        };
-      }
-      return null;
-    }
-
-    case 'norish': {
-      const result = await getNorishFoodDetails(
-        externalId,
-        credentials.base_url,
-        credentials.app_key,
-        dataUserId,
-        providerId
-      );
-      if (result) {
-        const { food: norishFood, variant } = result;
-        return {
-          ...norishFood,
-          default_variant: variant,
-          variants: [variant],
-        };
-      }
-      return null;
-    }
-
-    case 'yazio': {
-      return (
-        (await getYazioFoodDetails(externalId, {
-          username: credentials.app_id,
-          password: credentials.app_key,
-          baseUrl: credentials.base_url,
-          language,
-        })) ?? null
-      );
-    }
-
-    case 'swissfood': {
-      return (
-        (await getSwissFoodDetails(
-          externalId,
-          language,
-          credentials.base_url || undefined
-        )) ?? null
-      );
-    }
-
-    case 'canadian-nutrient-file': {
-      return (
-        (await getCanadianNutrientFoodDetails(
-          externalId,
-          language,
-          credentials.base_url || undefined
-        )) ?? null
-      );
-    }
-
-    case 'livsmedelsverket': {
-      return (
-        (await getLivsmedelsverketFoodDetails(
-          externalId,
-          language,
-          credentials.base_url || undefined
-        )) ?? null
-      );
-    }
+  const adapter = FOOD_PROVIDER_ADAPTERS[providerType as FoodProviderType];
+  if (!adapter) {
+    return null;
   }
 
-  return null;
+  const ctx: ProviderCallContext = {
+    userId: dataUserId,
+    credentialUserId,
+    providerId,
+    credentials,
+    language,
+    autoScale: false,
+    signal,
+  };
+
+  return adapter.getDetails(ctx, externalId, { requireNutrition });
 }

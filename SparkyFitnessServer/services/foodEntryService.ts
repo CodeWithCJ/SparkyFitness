@@ -1311,6 +1311,14 @@ async function getFoodEntriesByDateRange(
     throw error;
   }
 }
+// A meal container as seen on the target date: enough to match an equivalent
+// copy (name + slot + type) and link new entries to it.
+interface TargetMealRef {
+  id: string;
+  name: string;
+  entry_time: string | null;
+  meal_type_id: string;
+}
 async function copyFoodEntries(
   authenticatedUserId: string,
   actingUserId: string,
@@ -1358,6 +1366,51 @@ async function copyFoodEntries(
     // Key: old_food_entry_meal_id, Value: new_food_entry_meal_id
     const mealMapping = new Map();
     const entriesToCreate = [];
+    // Containers already on the target date, loaded once, so a retry of a
+    // partly-failed copy reuses the container it made before instead of
+    // creating a second one (the per-entry check below is scoped to it).
+    let targetMeals: TargetMealRef[] | null = null;
+    const loadTargetMeals = async (): Promise<TargetMealRef[]> => {
+      if (targetMeals === null) {
+        targetMeals = await foodEntryMealRepository.getFoodEntryMealsByDate(
+          authenticatedUserId,
+          targetDate
+        );
+      }
+      return targetMeals!;
+    };
+    // A container's identity key: name + slot + type. Two source containers can
+    // share a key (different foods/notes), so they are distinct occurrences, not
+    // one. The key is what a copy is recognised by; the occurrence index is what
+    // keeps same-key containers apart.
+    const mealIdentityKey = (
+      name: string,
+      entryTime: string | null,
+      mealTypeId: string
+    ): string =>
+      `${name.trim().toLowerCase()}|${entryTime ?? ''}|${mealTypeId}`;
+    // The i-th target container with a given key, in created_at order (the
+    // target query sorts same-key rows by created_at). Newly created containers
+    // are appended to the working list, so they keep that order within a call.
+    const nthTargetMeal = (
+      meals: TargetMealRef[],
+      key: string,
+      index: number
+    ): string | null => {
+      let count = 0;
+      for (const meal of meals) {
+        if (
+          mealIdentityKey(meal.name, meal.entry_time, meal.meal_type_id) === key
+        ) {
+          if (count === index) return meal.id;
+          count++;
+        }
+      }
+      return null;
+    };
+    // Occurrence index of each source container within its key group, assigned
+    // in iteration order so it matches the created_at order a prior copy made.
+    const sourceOccurrenceIndex = new Map<string, number>();
     for (const entry of sourceEntries) {
       log(
         'debug',
@@ -1376,28 +1429,44 @@ async function copyFoodEntries(
               authenticatedUserId
             );
           if (originalMeal) {
-            // Create a new meal container for the target date/slot
-            const newMeal = await foodEntryMealRepository.createFoodEntryMeal(
-              {
-                user_id: authenticatedUserId,
-                meal_template_id: originalMeal.meal_template_id,
-                meal_type_id: targetMealTypeId,
-                entry_date: targetDate,
-                entry_time: originalMeal.entry_time ?? null,
-                name: originalMeal.name,
-                description: originalMeal.description,
-                // The note travels with the meal container it describes.
-                notes: originalMeal.notes ?? null,
-                quantity: originalMeal.quantity,
-                unit: originalMeal.unit,
-              },
-              actingUserId
+            const key = mealIdentityKey(
+              originalMeal.name,
+              originalMeal.entry_time ?? null,
+              targetMealTypeId
             );
-            newFoodEntryMealId = newMeal.id;
+            // This source container's position among its same-key siblings, in
+            // iteration order - the order a prior copy created its target
+            // containers, so it lines up with their created_at order.
+            const occurrenceIndex = sourceOccurrenceIndex.get(key) ?? 0;
+            sourceOccurrenceIndex.set(key, occurrenceIndex + 1);
+            const meals = await loadTargetMeals();
+            const existingTargetId = nthTargetMeal(meals, key, occurrenceIndex);
+            if (existingTargetId !== null) {
+              newFoodEntryMealId = existingTargetId;
+            } else {
+              const newMeal = await foodEntryMealRepository.createFoodEntryMeal(
+                {
+                  user_id: authenticatedUserId,
+                  meal_template_id: originalMeal.meal_template_id,
+                  meal_type_id: targetMealTypeId,
+                  entry_date: targetDate,
+                  entry_time: originalMeal.entry_time ?? null,
+                  name: originalMeal.name,
+                  description: originalMeal.description,
+                  // The note travels with the meal container it describes.
+                  notes: originalMeal.notes ?? null,
+                  quantity: originalMeal.quantity,
+                  unit: originalMeal.unit,
+                },
+                actingUserId
+              );
+              newFoodEntryMealId = newMeal.id;
+              targetMeals!.push(newMeal);
+            }
             mealMapping.set(entry.food_entry_meal_id, newFoodEntryMealId);
             log(
               'debug',
-              `copyFoodEntries: Duplicated meal container "${originalMeal.name}" (${entry.food_entry_meal_id} -> ${newFoodEntryMealId})`
+              `copyFoodEntries: ${existingTargetId !== null ? 'Reused' : 'Duplicated'} meal container "${originalMeal.name}" (${entry.food_entry_meal_id} -> ${newFoodEntryMealId})`
             );
           }
         }

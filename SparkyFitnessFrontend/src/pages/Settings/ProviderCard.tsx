@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
+import {
+  MCP_SERVER_PROVIDER_TYPE,
+  getFoodProviderMetadata,
+} from '@workspace/shared';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -56,6 +59,9 @@ import {
   useDisconnectIntervalsMutation,
   useSetIntervalsNutritionPushMutation,
   useRemoveIntervalsPushedDataMutation,
+  useSyncZeppBridgeMutation,
+  useDisconnectZeppBridgeMutation,
+  useTestZeppBridgeMutation,
   useConnectCorosMutation,
   useDisconnectCorosMutation,
   useManualSyncCorosMutation,
@@ -248,6 +254,15 @@ export const ProviderCard = ({
     isPending: isRemoveIntervalsPushedPending,
   } = useRemoveIntervalsPushedDataMutation();
 
+  const { mutate: syncZeppBridgeData, isPending: isSyncZeppBridgePending } =
+    useSyncZeppBridgeMutation();
+  const {
+    mutate: handleDisconnectZeppBridge,
+    isPending: isDisconnectZeppBridgePending,
+  } = useDisconnectZeppBridgeMutation();
+  const { mutate: testZeppBridge, isPending: isTestZeppBridgePending } =
+    useTestZeppBridgeMutation();
+
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false);
 
   const { mutateAsync: toggleProviderActiveStatus, isPending: statusPending } =
@@ -327,6 +342,13 @@ export const ProviderCard = ({
           ...mock,
         });
         break;
+      case 'zeppbridge':
+        syncZeppBridgeData({
+          providerId: provider.id,
+          startDate,
+          endDate,
+        });
+        break;
     }
   };
 
@@ -365,7 +387,10 @@ export const ProviderCard = ({
     isSyncIntervalsPending ||
     isDisconnectIntervalsPending ||
     isSetIntervalsPushPending ||
-    isRemoveIntervalsPushedPending;
+    isRemoveIntervalsPushedPending ||
+    isSyncZeppBridgePending ||
+    isDisconnectZeppBridgePending ||
+    isTestZeppBridgePending;
 
   const handleToggleActive = async (providerId: string, isActive: boolean) => {
     try {
@@ -443,7 +468,8 @@ export const ProviderCard = ({
       provider.garmin_connect_status === 'connected' ||
       provider.hevy_connect_status === 'connected' ||
       provider.liftosaur_connect_status === 'connected' ||
-      provider.intervals_connect_status === 'connected';
+      provider.intervals_connect_status === 'connected' ||
+      provider.zeppbridge_connect_status === 'connected';
 
     // Polar's is the only token expiry shown: the other OAuth providers refresh their
     // access tokens on their own, so their short expiry misleads users into reconnecting.
@@ -544,6 +570,15 @@ export const ProviderCard = ({
           disconnect: () => handleDisconnectIntervals(provider.id),
           sync: () => setIsSyncDialogOpen(true),
           lastSync: provider.intervals_last_sync_at,
+          tokenExpires: null,
+          hasToken: isLinked && provider.is_active,
+        };
+      case 'zeppbridge':
+        return {
+          connect: null,
+          disconnect: () => handleDisconnectZeppBridge(provider.id),
+          sync: () => setIsSyncDialogOpen(true),
+          lastSync: provider.zeppbridge_last_sync_at,
           tokenExpires: null,
           hasToken: isLinked && provider.is_active,
         };
@@ -990,7 +1025,10 @@ export const ProviderCard = ({
 
         {(() => {
           const portal = PROVIDER_PORTALS[provider.provider_type];
-          if (!portal) return null;
+          const meta = getFoodProviderMetadata(provider.provider_type);
+          const portalUrl = portal?.url || meta?.portalUrl;
+          const portalLabel = portal?.label || meta?.displayName;
+          if (!portalUrl) return null;
           return (
             <p className="text-xs text-muted-foreground mt-1.5 max-w-2xl leading-relaxed">
               <Trans
@@ -998,11 +1036,11 @@ export const ProviderCard = ({
                 defaults={
                   'For more details or to manage your integration, visit the <link>{{label}}</link>.'
                 }
-                values={{ label: portal.label }}
+                values={{ label: portalLabel }}
                 components={{
                   link: (
                     <a
-                      href={portal.url}
+                      href={portalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary hover:underline font-medium"
@@ -1063,6 +1101,44 @@ export const ProviderCard = ({
               'Activities that Intervals.icu received from Garmin Connect are skipped while Garmin is connected here, so they are not imported twice.'
             )}
           </p>
+        )}
+
+        {provider.provider_type === 'zeppbridge' && (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              <Trans
+                i18nKey="integrations.zeppbridgeThirdPartyNote"
+                defaults={
+                  'Third-party integration: it needs <repo>ZeppBridge</repo>, an independent project not supported by SparkyFitness, running on your own machine.'
+                }
+                components={{
+                  repo: (
+                    <a
+                      href="https://github.com/lingcang728/ZeppBridge"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-500 underline"
+                    />
+                  ),
+                }}
+              />
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {t(
+                'integrations.zeppbridgeDuplicateNote',
+                'If the Zepp app also writes to Apple Health or Health Connect and you sync that here too, the same night or workout can appear twice. Use one of the two.'
+              )}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={loading}
+              onClick={() => testZeppBridge(provider.id)}
+            >
+              {t('integrations.zeppbridgeTestButton', 'Test connection')}
+            </Button>
+          </div>
         )}
 
         {provider.provider_type === 'intervals' && (

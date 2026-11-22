@@ -13,6 +13,7 @@ import hevyService from '../integrations/hevy/hevyService.js';
 import hevyProviderRepository from '../integrations/hevy/hevyProviderRepository.js';
 import liftosaurService from '../integrations/liftosaur/liftosaurService.js';
 import intervalsService from '../integrations/intervals/intervalsService.js';
+import zeppBridgeService from '../integrations/zeppbridge/zeppBridgeService.js';
 import { log } from '../config/logging.js';
 import { startProviderSync } from './providerSyncClaim.js';
 import { isShuttingDown } from '../utils/shutdownHooks.js';
@@ -217,6 +218,15 @@ export const PROVIDER_SYNC_CONFIGS: readonly ProviderSyncConfig[] = [
     types: ['intervals'],
     sync: async (p) => {
       await intervalsService.syncIntervalsData(p.user_id, p.user_id, p.id);
+    },
+  },
+  {
+    // Pulls from the user's own ZeppBridge server; each run re-reads the last
+    // 3 days (30 on the first sync) so whole days are always rewritten.
+    name: 'ZeppBridge',
+    types: ['zeppbridge'],
+    sync: async (p) => {
+      await zeppBridgeService.syncZeppBridgeData(p.user_id, p.user_id, p.id);
     },
   },
 ];

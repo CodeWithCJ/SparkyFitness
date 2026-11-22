@@ -144,6 +144,12 @@ export type RootStackParamList = {
   RunProgramEdit: { id?: string; fromProgramId?: string } | undefined;
   PersonalRecords: undefined;
   LabResults: undefined;
+  /** The challenges the user is in, with join by code. */
+  Challenges: undefined;
+  /** One challenge's standings; `name` titles the screen until it loads. */
+  ChallengeDetail: { id: string; name?: string };
+  /** Join a challenge with an invite code; `code` prefills it. */
+  ChallengeJoin: { code?: string } | undefined;
   /** `marker` is a `LabMarker` id: `builtin:<key>` or `custom:<uuid>`. */
   LabResultDetail: { marker: string; name?: string };
   LabResultAdd: { marker?: string };

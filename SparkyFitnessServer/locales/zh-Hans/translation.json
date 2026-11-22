@@ -1,1 +1,24 @@
-{}
+{
+  "email": {
+    "passwordReset": {
+      "subject": "SparkyFitness 密码重置",
+      "intro": "你已申请重置 SparkyFitness 账户的密码。",
+      "actionPrompt": "请点击以下链接重置密码：",
+      "expiry": "此链接将在 {{expiresInHours}} 小时后失效。",
+      "ignoreNotice": "如果你没有申请重置密码，请忽略此邮件。"
+    },
+    "mfaCode": {
+      "subject": "你的 SparkyFitness 验证码",
+      "intro": "你的多因素验证码是：",
+      "expiry": "此验证码在 {{expiresInMinutes}} 分钟内有效。",
+      "ignoreNotice": "如果你没有申请此验证码，请忽略此邮件。"
+    },
+    "magicLink": {
+      "subject": "你的 SparkyFitness 登录链接",
+      "intro": "你已申请免密码登录 SparkyFitness 账户。",
+      "actionPrompt": "请点击以下链接登录：",
+      "expiry": "此链接将在 {{expiresInMinutes}} 分钟后失效，且仅能使用一次。",
+      "ignoreNotice": "如果你没有提出此请求，请忽略此邮件。"
+    }
+  }
+}

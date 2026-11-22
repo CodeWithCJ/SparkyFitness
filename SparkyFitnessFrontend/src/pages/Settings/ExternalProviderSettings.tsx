@@ -72,6 +72,8 @@ export interface ExternalDataProvider {
   intervals_push_nutrition?: boolean;
   intervals_pushed_days?: number;
   intervals_pushed_since?: string | null;
+  zeppbridge_last_sync_at?: string | null;
+  zeppbridge_connect_status?: 'connected' | 'disconnected';
   strava_last_sync_at?: string | null;
   strava_token_expires?: string | null;
   googlehealth_last_sync_at?: string | null;

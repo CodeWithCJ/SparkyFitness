@@ -223,6 +223,26 @@ const NotificationSettingsScreen: React.FC<
     [setOralCareRemindersEnabled]
   );
 
+  const challengeWeekNotificationsEnabled = useAppPreferencesStore(
+    (s) => s.challengeWeekNotificationsEnabled
+  );
+  const setChallengeWeekNotificationsEnabled = useAppPreferencesStore(
+    (s) => s.setChallengeWeekNotificationsEnabled
+  );
+
+  const handleChallengeWeekToggle = useCallback(
+    async (value: boolean) => {
+      if (!value) {
+        setChallengeWeekNotificationsEnabled(false);
+        return;
+      }
+      const status = await requestNotificationPermission();
+      bannerRef.current?.refresh();
+      if (status === 'granted') setChallengeWeekNotificationsEnabled(true);
+    },
+    [setChallengeWeekNotificationsEnabled]
+  );
+
   const oralCareReminderRows = useReminderTimeRows({
     times: oralCareReminderTimes,
     onChangeTimes: setOralCareReminderTimes,
@@ -691,6 +711,34 @@ const NotificationSettingsScreen: React.FC<
               }
             />
             {oralCareRemindersEnabled && oralCareReminderRows.rows}
+          </SettingsRowGroup>
+        )}
+
+        {notificationsEnabled && (
+          <SettingsRowGroup
+            title={t('notificationSettings.challenges', {
+              defaultValue: 'Challenges',
+            })}
+          >
+            <SettingsRow
+              title={t('notificationSettings.challengeWeek', {
+                defaultValue: 'Week leader',
+              })}
+              subtitle={t('notificationSettings.challengeWeekSubtitle', {
+                defaultValue:
+                  'The last evening of each challenge week: who leads each weekly challenge you are in',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  accessibilityLabel={t('notificationSettings.challengeWeek', {
+                    defaultValue: 'Week leader',
+                  })}
+                  value={challengeWeekNotificationsEnabled}
+                  onValueChange={handleChallengeWeekToggle}
+                />
+              }
+            />
           </SettingsRowGroup>
         )}
       </ScrollView>

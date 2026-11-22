@@ -566,6 +566,8 @@ export function _transformNormalizedFood(
     provider_external_id: food.provider_external_id,
     recipe_has_nutrition: food.recipe_has_nutrition,
     recipe_servings: food.recipe_servings,
+    has_core_nutrition: food.has_core_nutrition,
+    has_calories: food.has_calories,
     is_custom: food.is_custom,
     ...mapVariant(displayVariant),
     allergens: displayVariant.allergens,

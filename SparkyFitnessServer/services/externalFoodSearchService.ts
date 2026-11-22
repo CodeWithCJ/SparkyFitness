@@ -2,36 +2,21 @@ import { log } from '../config/logging.js';
 import externalProviderService from './externalProviderService.js';
 import preferenceService from './preferenceService.js';
 import {
-  searchOpenFoodFacts,
-  mapOpenFoodFactsProduct,
-} from '../integrations/openfoodfacts/openFoodFactsService.js';
-import {
-  searchUsdaFoods,
-  mapUsdaBarcodeProduct,
-} from '../integrations/usda/usdaService.js';
-import {
-  mapFatSecretSearchItem,
   mapFatSecretFood,
   foodNutrientCache,
   getFatSecretAccessToken,
 } from '../integrations/fatsecret/fatsecretService.js';
-import { searchYazioFoods } from '../integrations/yazio/yazioService.js';
-import { searchSwissFoods } from '../integrations/swissfood/swissFoodService.js';
-import { searchCanadianNutrientFoods } from '../integrations/cnf/cnfService.js';
-import { searchLivsmedelsverketFoods } from '../integrations/livsmedelsverket/livsmedelsverketService.js';
-import { isPublicFoodProvider } from '@workspace/shared';
-import {
-  searchFatSecretFoods,
-  getFatSecretNutrients,
-  searchMealieFoods,
-  searchTandoorFoods,
-  searchNorishFoods,
-} from './foodIntegrationService.js';
+import { isPublicFoodProvider, type FoodProviderType } from '@workspace/shared';
+import { getFatSecretNutrients } from './foodIntegrationService.js';
 import {
   rankProviderMatches,
   PARTIAL_SERVING_DATA,
   type ProviderFoodItem,
 } from '../utils/foodRanking.js';
+import {
+  FOOD_PROVIDER_ADAPTERS,
+  type ProviderCallContext,
+} from '../integrations/foodProviders/index.js';
 
 import type { ProviderType } from '../constants/foodProviders.js';
 import type { OpenFoodFactsCredentialScope } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
@@ -47,6 +32,7 @@ export interface ProviderCredentials {
   app_key?: string;
   base_url?: string;
   is_active?: boolean;
+  provider_options?: Record<string, unknown>;
 }
 
 export interface OpenFoodFactsProviderSelection {
@@ -142,6 +128,8 @@ export async function resolveProviderCredentials(
     app_id: details.app_id ?? undefined,
     app_key: details.app_key ?? undefined,
     base_url: details.base_url ?? undefined,
+    provider_options:
+      (details.provider_options as Record<string, unknown>) ?? undefined,
   };
 }
 
@@ -162,9 +150,10 @@ export interface ProviderSearchOptions {
   pageSize?: number;
   providerId?: string;
   autoScale?: boolean;
+  signal?: AbortSignal;
 }
 
-const EMPTY_PAGINATION = (
+export const EMPTY_PAGINATION = (
   page: number,
   pageSize: number
 ): ProviderSearchPagination => ({
@@ -298,190 +287,28 @@ export async function searchProviderFoods(
   const userPrefs = await preferenceService.getUserPreferences(userId, userId);
   const language = userPrefs?.language || 'en';
 
-  let foods: unknown[] = [];
-  let pagination = EMPTY_PAGINATION(page, pageSize);
-
-  switch (providerType) {
-    case 'openfoodfacts': {
-      const offProvider = await resolveOpenFoodFactsProviderId(
-        credentialUserId,
-        providerId
-      );
-      const result = await searchOpenFoodFacts(
-        query,
-        page,
-        language,
-
-        offProvider ? credentialUserId : undefined,
-        offProvider?.id,
-        pageSize,
-        offProvider?.scope ?? 'personal'
-      );
-      const products = (result.products || []).filter(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (p: Record<string, any>) =>
-          p.product_name || p[`product_name_${language}`] || p.product_name_en
-      );
-      foods = products
-        .map((p: Record<string, unknown>) =>
-          mapOpenFoodFactsProduct(p, { autoScale, language })
-        )
-        .filter(Boolean);
-      pagination = result.pagination;
-      break;
-    }
-
-    case 'usda': {
-      const result = await searchUsdaFoods(
-        query,
-        credentials.app_key,
-        page,
-        pageSize
-      );
-      const items = result.foods || [];
-      foods = items.map(mapUsdaBarcodeProduct).filter(Boolean);
-      pagination = result.pagination;
-      break;
-    }
-
-    case 'fatsecret': {
-      const result = await searchFatSecretFoods(
-        query,
-        credentials.app_id,
-        credentials.app_key,
-        page
-      );
-      const rawFoods = result.foods?.food;
-      const items = Array.isArray(rawFoods)
-        ? rawFoods
-        : rawFoods
-          ? [rawFoods]
-          : [];
-      const mapped = items
-        .map(mapFatSecretSearchItem)
-        .filter(
-          (x): x is NonNullable<typeof x> => x !== null && x !== undefined
-        );
-      // Only the first few results get a detail call, so they must be the
-      // ones that will rank first.
-      foods = await enrichFatSecretResults(
-        rankProviderMatches(mapped as ProviderFoodItem[], query),
-        credentials.app_id,
-        credentials.app_key
-      );
-      pagination = result.pagination;
-      break;
-    }
-
-    case 'mealie': {
-      const result = await searchMealieFoods(
-        query,
-        credentials.base_url,
-        credentials.app_key,
-
-        userId,
-        providerId,
-        page
-      );
-      foods = result.items || [];
-      pagination = result.pagination;
-      break;
-    }
-
-    case 'tandoor': {
-      const results = await searchTandoorFoods(
-        query,
-        credentials.base_url,
-        credentials.app_key,
-
-        userId,
-        providerId
-      );
-      foods = results || [];
-      pagination = {
-        page: 1,
-        pageSize: foods.length,
-        totalCount: foods.length,
-        hasMore: false,
-      };
-      break;
-    }
-
-    case 'norish': {
-      const results = await searchNorishFoods(
-        query,
-        credentials.base_url,
-        credentials.app_key,
-
-        userId,
-        providerId
-      );
-      foods = results || [];
-      pagination = {
-        page: 1,
-        pageSize: foods.length,
-        totalCount: foods.length,
-        hasMore: false,
-      };
-      break;
-    }
-
-    case 'yazio': {
-      const result = await searchYazioFoods(query, {
-        username: credentials.app_id,
-        password: credentials.app_key,
-        baseUrl: credentials.base_url,
-        page,
-        pageSize,
-        language,
-      });
-      foods = result.foods || [];
-      pagination = result.pagination;
-      break;
-    }
-
-    case 'swissfood': {
-      const result = await searchSwissFoods(
-        query,
-        page,
-        pageSize,
-        language,
-        credentials.base_url || undefined
-      );
-      foods = result.foods || [];
-      pagination = result.pagination;
-      break;
-    }
-
-    case 'canadian-nutrient-file': {
-      const result = await searchCanadianNutrientFoods(
-        query,
-        page,
-        pageSize,
-        language,
-        credentials.base_url || undefined
-      );
-      foods = result.foods || [];
-      pagination = result.pagination;
-      break;
-    }
-
-    case 'livsmedelsverket': {
-      const result = await searchLivsmedelsverketFoods(
-        query,
-        page,
-        pageSize,
-        language,
-        credentials.base_url || undefined
-      );
-      foods = result.foods || [];
-      pagination = result.pagination;
-      break;
-    }
+  const adapter = FOOD_PROVIDER_ADAPTERS[providerType as FoodProviderType];
+  if (!adapter) {
+    throw Object.assign(
+      new Error(`Unsupported provider type: ${providerType}`),
+      {
+        status: 400,
+      }
+    );
   }
 
-  // All VALID_PROVIDER_TYPES are food providers, so this covers every case above.
-  const ranked = rankProviderMatches(foods as ProviderFoodItem[], query);
+  const ctx: ProviderCallContext = {
+    userId,
+    credentialUserId,
+    providerId,
+    credentials,
+    language,
+    autoScale,
+    signal: opts.signal,
+  };
 
-  return { foods: ranked, pagination };
+  const result = await adapter.search(ctx, query, page, pageSize);
+  const ranked = rankProviderMatches(result.foods as ProviderFoodItem[], query);
+
+  return { foods: ranked, pagination: result.pagination };
 }

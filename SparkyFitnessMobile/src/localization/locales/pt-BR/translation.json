@@ -71,7 +71,9 @@
     "kJUnit": "kJ",
     "energy": "Energia",
     "apply": "Aplicar",
-    "reset": "Redefinir"
+    "reset": "Redefinir",
+    "search": "Buscar",
+    "noMatches": "Nenhum resultado"
   },
   "settings": {
     "app": "Configurações do App",
@@ -133,7 +135,9 @@
       "customMeasurements": "Medições Personalizadas",
       "heartRateZones": "Zonas de frequência cardíaca",
       "heartRateZonesSubtitle": "Frequência cardíaca máxima e de repouso, método das zonas",
-      "nfcTags": "Tags NFC"
+      "nfcTags": "Tags NFC",
+      "offline": "Offline",
+      "features": "Recursos"
     },
     "theme": {
       "title": "Tema",
@@ -321,7 +325,9 @@
     "mindfulness": "Atenção plena",
     "sleepingWristTemperature": "Temperatura do pulso durante o sono",
     "overnightBodyTemperature": "Temperatura corporal noturna",
-    "toothbrushing": "Escovação de dentes"
+    "toothbrushing": "Escovação de dentes",
+    "exercise": "Exercício",
+    "waistCircumference": "Circunferência da cintura"
   },
   "mindfulness": {
     "timer": {
@@ -1198,7 +1204,8 @@
     "saving": "Salvando…",
     "saved": "Salvo",
     "saveFailed": "Não foi possível salvar sua avaliação. Toque para tentar de novo.",
-    "loadFailed": "Não foi possível carregar sua avaliação. Toque para tentar de novo."
+    "loadFailed": "Não foi possível carregar sua avaliação. Toque para tentar de novo.",
+    "queued": "Será enviado quando você voltar a ficar online"
   },
   "adaptiveCoaching": {
     "reasons": {
@@ -1363,7 +1370,9 @@
       "dailyTitle": "Check-in de sintomas",
       "dailyBody": "Como você está hoje? Toque para registrar algum sintoma.",
       "nudgeTitle": "O episódio continua?",
-      "nudgeBody": "{{name}} está em curso há {{hours}} horas. Ainda continua ou já terminou?"
+      "nudgeBody": "{{name}} está em curso há {{hours}} horas. Ainda continua ou já terminou?",
+      "episodeEnded": "Episódio encerrado",
+      "otherServer": "Este lembrete é de outro servidor"
     },
     "builtIn": {
       "head": "Cabeça",
@@ -1598,6 +1607,10 @@
     "meditationTimer": {
       "title": "Meditação concluída",
       "body": "Abra o SparkyFitness para salvar a sua sessão."
+    },
+    "offlineUploads": {
+      "title": "Um treino está esperando para ser enviado",
+      "body": "Abra o SparkyFitness quando o seu servidor estiver acessível."
     }
   },
   "activeWorkout": {
@@ -1964,7 +1977,9 @@
       "routes": "Rotas",
       "routesSubtitle": "Desenhe, importe e salve rotas para seguir",
       "labResults": "Exames laboratoriais",
-      "labResultsSubtitle": "Exames de sangue e outros marcadores ao longo do tempo"
+      "labResultsSubtitle": "Exames de sangue e outros marcadores ao longo do tempo",
+      "trainingCalendar": "Calendário de treinos",
+      "trainingCalendarSubtitle": "Treinos planejados e concluídos, e carga por esporte"
     },
     "sleep": "Sono",
     "healthTrendsSettings": "Tendências de saúde",
@@ -2016,7 +2031,11 @@
     "labResults": "Exames laboratoriais",
     "labResultDetail": "Resultado de exame",
     "labResultAdd": "Adicionar resultado de exame",
-    "labReportImport": "Importar laudo"
+    "labReportImport": "Importar laudo",
+    "treadmillSettings": "Esteira e passada",
+    "trainingCalendar": "Calendário de treinos",
+    "features": "Recursos",
+    "offlineSettings": "Offline"
   },
   "healthCategories": {
     "Common": "Comuns",
@@ -2031,7 +2050,8 @@
     "Environment": "Ambiente",
     "Apple": "Apple",
     "unknown": "Outros",
-    "Hygiene": "Higiene"
+    "Hygiene": "Higiene",
+    "Exercise": "Exercício"
   },
   "healthSync": {
     "appleHealth": "Apple Health",
@@ -2135,7 +2155,35 @@
     "removeHeader": "Remover cabeçalho {{number}}",
     "hideHeaderValue": "Ocultar valor do cabeçalho",
     "showHeaderValue": "Mostrar valor do cabeçalho",
-    "noStandardMethods": "Nenhum método de login padrão está ativado neste servidor. Use uma chave de API ou fale com um administrador."
+    "noStandardMethods": "Nenhum método de login padrão está ativado neste servidor. Use uma chave de API ou fale com um administrador.",
+    "clientCertificate": {
+      "title": "Certificado de cliente",
+      "experimental": "Experimental",
+      "experimentalNote": "Este recurso é novo e pode não funcionar com todo proxy ou celular. Se algo falhar, remova o certificado e relate o problema.",
+      "help": "Só é necessário quando o seu proxy reverso exige certificado de cliente (TLS mútuo). Ele é enviado apenas aos seus servidores salvos.",
+      "installed": "Certificado instalado",
+      "expires": "Vence em {{date}}",
+      "expiresSoon": "Vence em breve, em {{date}}",
+      "expired": "Venceu em {{date}}. Importe um novo.",
+      "gap": "Esta versão do app não consegue usar o certificado em todas as requisições. Relate isso, por favor.",
+      "passwordPlaceholder": "Senha do certificado",
+      "import": "Importar",
+      "choose": "Importar certificado",
+      "replace": "Substituir certificado",
+      "remove": "Remover",
+      "restartHint": "Feche o app por completo e abra de novo para aplicar. Até lá, o servidor pode continuar respondendo como antes.",
+      "restartTitle": "Reinicie o app",
+      "restartAfterImport": "Para usar o certificado novo, feche o app por completo (deslize-o para fora na troca de apps), abra de novo e conecte.",
+      "restartAfterRemove": "Para parar de usar o certificado antigo, feche o app por completo (deslize-o para fora na troca de apps) e abra de novo.",
+      "connectionHint": "Se o seu servidor exige certificado de cliente, adicione-o em Opções avançadas.",
+      "connectionHintRestart": "Se o seu servidor exige certificado de cliente, adicione-o em Opções avançadas e depois feche e abra o app de novo.",
+      "errors": {
+        "wrongPassword": "Essa senha não abre este arquivo.",
+        "invalidFile": "Não foi possível ler este arquivo. Confira a senha e se é um arquivo .p12 ou .pfx. Um arquivo gerado com um OpenSSL recente pode precisar ser exportado de novo no formato legado.",
+        "noPrivateKey": "Este arquivo tem um certificado, mas nenhuma chave privada. Exporte de novo incluindo a chave.",
+        "storage": "Não foi possível salvar o certificado neste aparelho."
+      }
+    }
   },
   "onboarding": {
     "subtitle": "Seu acompanhamento de saúde e treino no seu próprio servidor",
@@ -2217,7 +2265,8 @@
     "permissionDenied": {
       "title": "Permissão negada",
       "read": "Conceda a permissão de {{metric}} em {{settings}}.",
-      "write": "Conceda a permissão de gravação de {{metric}} em {{settings}}."
+      "write": "Conceda a permissão de gravação de {{metric}} em {{settings}}.",
+      "writeRequired": "Conceda as permissões de que {{metric}} precisa em {{settings}}."
     },
     "removal": {
       "removed": "Removido",
@@ -2226,7 +2275,8 @@
       "partialMessage": "Alguns registros não puderam ser excluídos do {{store}}.",
       "errorMessage": "Não foi possível remover os dados do {{store}}.",
       "confirmTitle": "Remover todos os dados do {{store}}",
-      "confirmMessage": "Excluir todos os registros de nutrição e hidratação que o SparkyFitness gravou no {{store}} e desligar a gravação? Seu diário do SparkyFitness e os registros de outros apps não são afetados."
+      "confirmMessage": "Excluir todos os registros de nutrição e hidratação que o SparkyFitness gravou no {{store}} e desligar a gravação? Seu diário do SparkyFitness e os registros de outros apps não são afetados.",
+      "confirmMessageAll": "Excluir todos os registros que o SparkyFitness gravou em {{store}} (nutrição, hidratação, treinos e o resto) e desligar a gravação? O seu diário do SparkyFitness e os registros de outros apps não são afetados."
     },
     "range": {
       "title": "Período da sincronização",
@@ -2338,7 +2388,10 @@
       "adaptive": "Meta − consumidas",
       "fixed": "Meta − consumidas",
       "dynamicActivitySeparated": "Meta − Consumido + Atividade",
-      "tdeeWeekly": "GET projetado + Ajuste da meta semanal − Consumido"
+      "tdeeWeekly": "GET projetado + Ajuste da meta semanal − Consumido",
+      "burnedAdaptive": "Mostrado só como referência. A sua meta adaptativa já inclui a sua atividade.",
+      "netAdaptive": "Não entra nas calorias restantes. Ligue \"Contar as calorias de atividade separadamente\" para creditar a atividade de hoje.",
+      "netAdaptivePercentage": "Não entra nas calorias restantes. Para creditar a atividade de hoje, escolha Dinâmica e ligue \"Contar as calorias de atividade separadamente\"."
     },
     "notes": {
       "dynamic": "A meta cresce conforme você se mexe",
@@ -2447,7 +2500,9 @@
     },
     "energyUnitLabel": "Unidade de energia",
     "energyUnitKcal": "Calorias (kcal)",
-    "adaptiveEstimateRangeWithUnit": "O nível de atividade define a estimativa inicial e a faixa de plausibilidade de ±{{amount}} {{unit}} em torno de TMB × este fator. As estimativas podem levar algumas semanas para se estabilizar; oscilações de peso e registros de alimentos incompletos aumentam a incerteza."
+    "adaptiveEstimateRangeWithUnit": "O nível de atividade define a estimativa inicial e a faixa de plausibilidade de ±{{amount}} {{unit}} em torno de TMB × este fator. As estimativas podem levar algumas semanas para se estabilizar; oscilações de peso e registros de alimentos incompletos aumentam a incerteza.",
+    "adaptiveFallbackActivityLevel": "Até a meta adaptativa ter {{days}} dias de registros de alimentos, a sua base é TMB × este nível, antes de aplicar o modo de objetivo, e os seus treinos não são somados por cima. Escolha um nível que inclua os seus treinos.",
+    "adaptiveFallbackActivitySeparated": "Até a meta adaptativa ter {{days}} dias de registros de alimentos, a sua base é TMB × este nível, antes de aplicar o modo de objetivo. Descreva a sua atividade fora dos passos e treinos que são contados separadamente."
   },
   "dashboardSettings": {
     "updateFailed": "Falha ao atualizar a configuração.",
@@ -2496,7 +2551,11 @@
     "labResults": "Exames laboratoriais",
     "labResultsSubtitle": "Mostra os seus exames mais recentes e quais estão fora da faixa",
     "oralCare": "Saúde bucal",
-    "oralCareSubtitle": "Mostrar a escovação em relação à meta e a sua sequência"
+    "oralCareSubtitle": "Mostrar a escovação em relação à meta e a sua sequência",
+    "bloodAlcohol": "Estimativa de álcool no sangue",
+    "bloodAlcoholSubtitle": "Mostrar no painel uma estimativa aproximada de álcool no sangue a partir das bebidas registradas",
+    "wellness": "Bem-estar",
+    "offInFeatures": "Não exibido: desativado em Recursos"
   },
   "diarySettings": {
     "updateFailed": "Falha ao atualizar a configuração.",
@@ -2614,7 +2673,12 @@
     "workoutViewFocus": "Foco",
     "plannedPlaceholders": "Usar os valores planejados como sugestão",
     "plannedPlaceholdersSubtitle": "Treinos iniciados a partir de um plano ou de um treino salvo sugerem o peso e as repetições planejados, em vez dos da última sessão. Vale a partir do próximo treino que você iniciar.",
-    "plannedPlaceholdersAccessibility": "Usar os valores planejados como sugestão"
+    "plannedPlaceholdersAccessibility": "Usar os valores planejados como sugestão",
+    "restEndFocus": "Ir para a próxima série quando o descanso acabar",
+    "restEndFocusSubtitle": "Quando o cronômetro de descanso acabar sozinho, põe o cursor no primeiro valor da próxima série e abre o teclado.",
+    "restEndFocusAccessibility": "Ir para a próxima série quando o descanso acabar",
+    "treadmillStride": "Esteira e passada",
+    "treadmillStrideSubtitle": "Veja e defina a passada usada para estimar a distância indoor, e corrija uma esteira que marca a mais ou a menos."
   },
   "restPeriod": {
     "title": "Tempo de descanso",
@@ -3102,7 +3166,14 @@
     "resumeFailedTitle": "Não foi possível continuar o treino",
     "resumeFailedMessage": "Tente novamente.",
     "finishStampFailedTitle": "Não foi possível marcar o treino como concluído",
-    "finishStampFailedMessage": "Suas séries foram salvas, mas não foi possível marcar o treino como concluído. Tente de novo para concluí-lo."
+    "finishStampFailedMessage": "Suas séries foram salvas, mas não foi possível marcar o treino como concluído. Tente de novo para concluí-lo.",
+    "healthActivityType": "Tipo de atividade de saúde",
+    "healthActivityTypeAutomatic": "Automático ({{type}})",
+    "healthActivityTypeHintApple": "Usado quando seus treinos são gravados no Apple Health.",
+    "healthActivityTypeHintHealthConnect": "Usado quando seus treinos são gravados no Health Connect.",
+    "healthActivityTypeCommon": "Comuns",
+    "healthActivityTypeAll": "Todas as atividades",
+    "healthActivityTypeSearch": "Buscar atividades"
   },
   "cycleCard": {
     "mode": {
@@ -3382,10 +3453,6 @@
       "wellness": "Configurações de bem-estar",
       "cyclePregnancy": "Ciclo e gravidez"
     },
-    "enable": {
-      "title": "Ativar acompanhamento de ciclo e gravidez",
-      "subtitle": "Ativa o registro, as previsões e o histórico"
-    },
     "groups": {
       "features": "Recursos",
       "calculations": "Ajustes no cálculo do ciclo",
@@ -3419,6 +3486,16 @@
       "discreetSubtitle": "Oculta os nomes \"Ciclo\" e \"Gravidez\" na interface",
       "exportSubtitle": "Baixar os dados exportados em JSON",
       "resetSubtitle": "Recomeçar o passo a passo da configuração"
+    },
+    "loadFailed": "Não foi possível carregar estas configurações.",
+    "feature": {
+      "on": "Ativado",
+      "off": "Desativado",
+      "hint": "Ative ou desative em Configurações → Recursos."
+    },
+    "setup": {
+      "action": "Configurar",
+      "hint": "Responda algumas perguntas para terminar a configuração."
     }
   },
   "measurements": {
@@ -4163,7 +4240,11 @@
       "deskTag": "Tag da mesa",
       "tapped": "Tocada",
       "tagWater": "Água • 500 mL",
-      "logged": "Registrado"
+      "logged": "Registrado",
+      "offlinePush": "Treino A",
+      "offlineBadge": "Offline",
+      "offlineSets": "12 séries registradas",
+      "offlineWaiting": "Esperando envio"
     },
     "features": {
       "medications": {
@@ -4264,6 +4345,12 @@
         "headline": "Registre com um toque",
         "body": "Cole uma tag NFC na garrafa de água, na mesa ou no armário da cozinha e configure-a para registrar uma bebida, um alimento ou uma refeição salva. Encoste o celular nela para registrar, com Desfazer se foi sem querer.",
         "cta": "Configurar tags NFC"
+      },
+      "offlineWorkouts": {
+        "eyebrow": "TREINOS OFFLINE",
+        "headline": "Treine sem sinal",
+        "body": "Comece, registre e termine um treino mesmo quando o seu servidor não estiver acessível. Ele fica guardado no celular e é enviado sozinho quando você voltar a ficar online. Toque e segure exercícios na sua biblioteca para manter também as imagens deles offline.",
+        "cta": "Configurações offline"
       }
     }
   },
@@ -4752,6 +4839,18 @@
     "pickers": {
       "selectServing": "Selecionar porção",
       "selectMeal": "Selecionar refeição"
+    },
+    "cooked": {
+      "switch": "Pesei cozido",
+      "sameBatchPrevious": "Mesmo lote de {{date}}: {{raw}} {{unit}} cru → {{cooked}} {{unit}} cozido",
+      "sameBatchEntry": "Mesmo lote deste registro: {{raw}} {{unit}} cru → {{cooked}} {{unit}} cozido",
+      "newBatch": "Lote novo",
+      "rawBatch": "Peso cru do lote ({{unit}})",
+      "cookedBatch": "Peso cozido do lote ({{unit}})",
+      "eaten": "Você comeu (cozido, {{unit}})",
+      "result": "= {{raw}} {{unit}} cru · {{energy}}",
+      "incomplete": "Informe os pesos para calcular a quantidade crua.",
+      "enterEaten": "Informe o peso cozido que você comeu."
     }
   },
   "foodEntryMultiAdd": {
@@ -5255,7 +5354,8 @@
       "deleteFailed": "Falha ao excluir"
     },
     "deleteConfirm": "Tem certeza de que quer excluir este alimento registrado?",
-    "entryNotes": "Observação deste registro"
+    "entryNotes": "Observação deste registro",
+    "copyEntry": "Copiar alimento"
   },
   "presetSearch": {
     "title": "Iniciar treino",
@@ -5371,12 +5471,16 @@
       "snack": "Sugira um lanche rico em proteína"
     },
     "tools": {
-      "food": "Alimentação",
+      "food": "Alimento",
       "exercise": "Exercício",
       "checkin": "Check-in",
       "goals": "Metas",
       "lookedUp": "Consultou {{name}}",
-      "runProgram": "Programa de corrida"
+      "runProgram": "Programa de corrida",
+      "generic": "Ferramenta",
+      "outside": "uma ferramenta externa",
+      "outsideNamed": "{{server}}: {{tool}}",
+      "withAction": "{{tool}} ({{action}})"
     },
     "typing": "Sparky está digitando",
     "voice": {
@@ -5401,6 +5505,73 @@
       "cameraPermission": "Permissão da câmera necessária",
       "cameraPermissionBody": "Permita o acesso à câmera para adicionar uma foto.",
       "addFailed": "Não foi possível adicionar a foto"
+    },
+    "approval": {
+      "title": "Permitir esta etapa?",
+      "details": "Detalhes",
+      "allow": "Permitir",
+      "deny": "Negar",
+      "allowed": "Permitido",
+      "denied": "Negado",
+      "failed": "Não foi possível salvar sua resposta. Tente novamente.",
+      "working": "Trabalhando nisso…",
+      "done": "Pronto",
+      "notRun": "Não executado",
+      "cancelled": "Você enviou uma nova mensagem antes.",
+      "nothingChanged": "Nada foi alterado.",
+      "toolFailed": "Permitido, mas não funcionou",
+      "otherPending": "Responda a outra etapa para continuar.",
+      "composerHint": "Responda primeiro à etapa acima ou continue digitando para pulá-la.",
+      "announce": "O Sparky precisa da sua resposta: permitir esta etapa?",
+      "run": "Depois de ler {{server}}, o Sparky quer executar:",
+      "send": "Depois de ler {{server}}, o Sparky quer usar isto de {{otherServer}}:",
+      "runPlain": "O Sparky quer executar:",
+      "delete": "O Sparky quer excluir:",
+      "deleteAfter": "Depois de ler {{server}}, o Sparky quer excluir:",
+      "change": "O Sparky quer fazer esta alteração:",
+      "changeAfter": "Depois de ler {{server}}, o Sparky quer fazer esta alteração:",
+      "runCompleted": "Depois de ler {{server}}, o Sparky executou:",
+      "runPlainCompleted": "O Sparky executou:",
+      "sendCompleted": "Depois de ler {{server}}, o Sparky executou:",
+      "deleteCompleted": "Você permitiu que o Sparky excluísse:",
+      "deleteAfterCompleted": "Depois que o Sparky leu {{server}}, você permitiu que ele excluísse:",
+      "changeCompleted": "Você permitiu que o Sparky fizesse esta alteração:",
+      "changeAfterCompleted": "Depois que o Sparky leu {{server}}, você permitiu que ele fizesse esta alteração:",
+      "runFailed": "Depois de ler {{server}}, o Sparky tentou executar:",
+      "runPlainFailed": "O Sparky tentou executar:",
+      "sendFailed": "Depois de ler {{server}}, o Sparky tentou executar:",
+      "deleteFailed": "O Sparky tentou excluir:",
+      "deleteAfterFailed": "Depois de ler {{server}}, o Sparky tentou excluir:",
+      "changeFailed": "O Sparky tentou fazer esta alteração:",
+      "changeAfterFailed": "Depois de ler {{server}}, o Sparky tentou fazer esta alteração:",
+      "runUnused": "Depois de ler {{server}}, o Sparky quis executar:",
+      "runPlainUnused": "O Sparky quis executar:",
+      "sendUnused": "Depois de ler {{server}}, o Sparky quis usar isto de {{otherServer}}:",
+      "deleteUnused": "O Sparky quis excluir:",
+      "deleteAfterUnused": "Depois de ler {{server}}, o Sparky quis excluir:",
+      "changeUnused": "O Sparky quis fazer esta alteração:",
+      "changeAfterUnused": "Depois de ler {{server}}, o Sparky quis fazer esta alteração:"
+    },
+    "outsideSource": {
+      "delete": "Excluir esta mensagem",
+      "clear": "Limpar chat",
+      "failed": "Não foi possível excluir esta mensagem. Tente novamente.",
+      "deleteTitle": "Excluir esta resposta?",
+      "deleteBody": "Isso remove a resposta da conversa. Não desfaz nada que o Sparky já tenha alterado.",
+      "cancel": "Cancelar",
+      "confirmDelete": "Excluir",
+      "deleting": "Excluindo…",
+      "line": "Usou {{servers}}. Algo parece errado?"
+    },
+    "outsideError": {
+      "unavailable": "{{server}} não respondeu. Tente mais tarde.",
+      "turnedOff": "{{server}} está desligado para você nas configurações de IA."
+    },
+    "clearConfirm": {
+      "title": "Limpar o chat?",
+      "body": "Isso apaga para sempre o histórico de conversa com o Sparky. Não pode ser desfeito.",
+      "cancel": "Cancelar",
+      "clear": "Limpar"
     }
   },
   "foodImagePicker": {
@@ -5808,7 +5979,9 @@
     "reorderExercises": "Reordenar exercícios",
     "workoutPlaceholder": "Treino",
     "useYesterday": "Usar ontem",
-    "useToday": "Usar hoje"
+    "useToday": "Usar hoje",
+    "savedOfflineTitle": "Salvo neste celular",
+    "savedOfflineMessage": "Ele será enviado quando o seu servidor estiver acessível."
   },
   "mealMutations": {
     "createFailed": "Falha ao criar a refeição",
@@ -6129,7 +6302,14 @@
     "copy": "Copiar",
     "copying": "Copiando...",
     "duplicateTitle": "Não é possível copiar a refeição",
-    "duplicateMessage": "Por enquanto, refeições com nomes repetidos não podem ser usadas em Copiar refeição."
+    "duplicateMessage": "Por enquanto, refeições com nomes repetidos não podem ser usadas em Copiar refeição.",
+    "foodTitle": "Copiar alimento: {{food}}",
+    "copyTo": "Copiar para",
+    "quick": {
+      "now": "Agora",
+      "today": "Hoje",
+      "tomorrow": "Amanhã"
+    }
   },
   "ingredientRow": {
     "lastWarning": "Este é o último ingrediente. Adicione outro para poder salvar, ou use Excluir refeição para remover a refeição inteira.",
@@ -6205,7 +6385,9 @@
   },
   "foodEntryCopy": {
     "success": "Refeição copiada",
-    "failed": "Falha ao copiar a refeição"
+    "failed": "Falha ao copiar a refeição",
+    "foodSuccess": "Alimento copiado",
+    "foodFailed": "Falha ao copiar o alimento"
   },
   "foodDelete": {
     "failed": "Falha ao excluir o alimento",
@@ -6353,7 +6535,9 @@
   },
   "activeWorkoutAutosave": {
     "failedTitle": "Treino não salvo",
-    "failedMessage": "As alterações ficam guardadas neste aparelho e o envio será tentado de novo."
+    "failedMessage": "As alterações ficam guardadas neste aparelho e o envio será tentado de novo.",
+    "offlineTitle": "Salvo neste celular",
+    "offlineMessage": "Seu treino será enviado quando o seu servidor estiver acessível."
   },
   "medicalDisclaimer": {
     "text": "Apenas para acompanhamento e informação geral; não é orientação médica. Converse com seu profissional de saúde sobre questões médicas."
@@ -6747,6 +6931,14 @@
       "dayCycle_one": "Ciclo de {{count}} dia",
       "dayCycle_many": "Ciclo de {{count}} dias",
       "dayCycle_other": "Ciclo de {{count}} dias"
+    },
+    "loadFailed": "Não foi possível carregar as suas configurações.",
+    "off": {
+      "title": "O acompanhamento do ciclo está desativado",
+      "discreetTitle": "Bem-estar está desativado",
+      "description": "Seu histórico é mantido. Ative de novo para voltar a vê-lo aqui.",
+      "turnOn": "Ativar",
+      "openFeatures": "Abrir Recursos"
     }
   },
   "time": {
@@ -6931,7 +7123,32 @@
     "upNextTitle": "Página A seguir",
     "upNextSubtitle": "Uma página a um deslize para cima da tela da série, com o próximo exercício, a meta dele e um botão Trocar para fazer outro exercício antes.",
     "largerTextTitle": "Texto maior no relógio",
-    "largerTextSubtitle": "Letras maiores e os layouts novos em todo o relógio: Metas, Água, o treino, Jejum, Passos e mais. Desativado, mantém o visual original."
+    "largerTextSubtitle": "Letras maiores e os layouts novos em todo o relógio: Metas, Água, Jejum, Passos e mais. Desativado, mantém o visual original.",
+    "newWorkoutTitle": "Nova tela de treino",
+    "newWorkoutSubtitle": "Um botão Registrar série (toque duplo também registra), um botão para editar a série anterior, uma página Mais com as ações do treino e um resumo único ao terminar. Desativado, mantém a tela de treino original.",
+    "topLineTitle": "Linha superior",
+    "topLineDescription": "O que o topo do treino no relógio mostra primeiro: o tempo decorrido ou a frequência cardíaca e as calorias ao vivo. Toque nela no relógio para alternar.",
+    "topLineTime": "Tempo",
+    "topLineMetrics": "Métricas",
+    "countdownTitle": "Som e vibração da contagem regressiva",
+    "countdownDescription": "Som e toque em cada um dos últimos segundos de um descanso ou de uma isometria cronometrada, e um diferente no zero, para você se preparar sem olhar. Com o relógio no silencioso, só o toque é tocado.",
+    "countdownOff": "Desligado",
+    "countdownSeconds": "{{seconds}} s",
+    "holdCountdownTitle": "Contagem regressiva antes das isometrias",
+    "holdCountdownSubtitle": "Uma tela 3, 2, 1, Prepare-se antes de uma isometria cronometrada começar, para você se posicionar. Toque nela para pular.",
+    "newWorkoutSubtitleWearOs": "Um botão Registrar série, um botão para editar a série anterior, demonstrações dos exercícios, calculadora de anilhas, uma página Mais com as ações do treino e um resumo único ao terminar. Desativado, mantém a tela de treino original.",
+    "mediaControlsTitle": "Controles de mídia",
+    "mediaAccessTitle": "Informações da música tocando",
+    "mediaAccessEnabledSubtitle": "O relógio mostra a música e o artista atuais enquanto controla a mídia do celular durante os treinos.",
+    "mediaAccessDisabledSubtitle": "Os controles de tocar, pular e volume funcionam automaticamente. Permita o acesso às notificações para o relógio mostrar também a música e o artista atuais. As outras notificações são ignoradas.",
+    "mediaAccessEnabled": "Ativado",
+    "mediaAccessSetup": "Configurar",
+    "mediaAccessA11yLabel": "{{title}}, {{status}}",
+    "mediaAccessDisclosureTitle": "Permitir o acesso às notificações?",
+    "mediaAccessDisclosureBody": "O Android exige o acesso às notificações para ler a música e o artista que estão tocando e mostrá-los no relógio Wear OS. O SparkyFitness só lê as sessões de mídia ativas e ignora as suas mensagens e outras notificações.",
+    "mediaAccessOpenSettings": "Abrir configurações",
+    "mediaAccessOpenErrorTitle": "Não foi possível abrir as configurações",
+    "mediaAccessOpenErrorBody": "Abra Configurações do Android → Notificações → Leitura, resposta e controle de notificações e ative o SparkyFitness Media Controls."
   },
   "progressPhotos": {
     "card": {
@@ -7282,6 +7499,17 @@
         "title": "Ler rótulos no aparelho",
         "description": "Lê rótulos nutricionais com a Apple Intelligence neste aparelho. Se não conseguir ler um rótulo, usa o provedor de IA do servidor."
       }
+    },
+    "chatMcp": {
+      "title": "Ferramentas externas",
+      "description": "Seu administrador adicionou estes serviços de fora do SparkyFitness. Quando um está ligado, o Sparky pode enviar a ele partes da sua conversa e ler o que ele devolve. Todos ficam desligados até você ligá-los.",
+      "allow": "Deixar o Sparky usar {{name}}",
+      "loadError": "Não foi possível carregar as ferramentas externas.",
+      "saveError": "Não foi possível salvar. Tente novamente.",
+      "accountId": "Vê o ID da sua conta.",
+      "familyOff": "As ferramentas externas ficam desligadas enquanto você vê o perfil de outra pessoa.",
+      "retry": "Tentar novamente",
+      "loading": "Carregando ferramentas externas…"
     }
   },
   "voiceSettings": {
@@ -7394,7 +7622,7 @@
     "sessionNamePlaceholder": "Nome da sessão (opcional)",
     "addSession": "Adicionar sessão",
     "assignmentRequired": "Adicione pelo menos um treino ao plano.",
-    "presetNotice": "Você pode adicionar os treinos salvos na sua biblioteca. Para planejar um exercício avulso, use o app web.",
+    "presetNotice": "Você pode adicionar os treinos salvos na sua biblioteca, ou exercícios avulsos com as próprias séries.",
     "deleteTitle": "Excluir plano de treino",
     "deleteMessage": "Excluir {{name}}? Os próximos treinos que este plano adicionou ao diário serão removidos.",
     "deleteSuccess": "Plano de treino excluído",
@@ -7412,7 +7640,39 @@
     "emptySubtitle": "Programe os seus treinos salvos em dias fixos ou como um ciclo a percorrer.",
     "moreAssignments_one": "+{{count}} outro",
     "moreAssignments_many": "+{{count}} outros",
-    "moreAssignments_other": "+{{count}} outros"
+    "moreAssignments_other": "+{{count}} outros",
+    "invalidSetValues": "Alguns valores de série estão incompletos",
+    "activated": "Plano ativado",
+    "addExercise": "Adicionar exercício",
+    "addSet": "Adicionar série",
+    "deactivated": "Plano desativado",
+    "deletePlan": "Excluir plano",
+    "impactNote": "Este plano ativo preenche as próximas sessões no seu diário. As edições atualizam só as sessões planejadas; treinos que você registrou, começou ou terminou ficam intactos.",
+    "impactNoteForm": "Salvar atualiza as próximas sessões deste plano no diário. Treinos que você já registrou, começou ou terminou ficam intactos.",
+    "moveDownNamed": "Mover {{name}} para baixo",
+    "moveUpNamed": "Mover {{name}} para cima",
+    "noAssignmentsSubtitle": "Edite o plano para adicionar treinos.",
+    "noAssignmentsTitle": "Nenhum treino neste plano ainda",
+    "regenerationFailed": "Salvo, mas falhou ao atualizar o diário",
+    "removeSetNumber": "Remover série {{number}}",
+    "repsShort": "Repetições",
+    "restShort": "Descanso (s)",
+    "savedWorkout": "Treino salvo",
+    "sessionPosition": "Sessão {{current}} de {{total}}",
+    "setNumber": "Série {{number}}",
+    "weightShort": "Peso",
+    "refreshedSessions_one": "{{count}} sessão futura atualizada",
+    "refreshedSessions_many": "{{count}} sessões futuras atualizadas",
+    "refreshedSessions_other": "{{count}} sessões futuras atualizadas",
+    "removedSessions_one": "{{count}} sessão futura removida",
+    "removedSessions_many": "{{count}} sessões futuras removidas",
+    "removedSessions_other": "{{count}} sessões futuras removidas",
+    "repsCount_one": "{{count}} repetição",
+    "repsCount_many": "{{count}} repetições",
+    "repsCount_other": "{{count}} repetições",
+    "restCount_one": "{{count}} s de descanso",
+    "restCount_many": "{{count}} s de descanso",
+    "restCount_other": "{{count}} s de descanso"
   },
   "mood": {
     "logTitle": "Humor",
@@ -7639,7 +7899,8 @@
       "estimateRough_one": "Uma estimativa grosseira a partir de {{formattedCount}} passo com uma passada típica. Digite o que a esteira mostra e o app aprende a sua.",
       "estimateRough_many": "Uma estimativa grosseira a partir de {{formattedCount}} passos com uma passada típica. Digite o que a esteira mostra e o app aprende a sua.",
       "estimateRough_other": "Uma estimativa grosseira a partir de {{formattedCount}} passos com uma passada típica. Digite o que a esteira mostra e o app aprende a sua.",
-      "invalid": "Digite uma distância de zero ou mais."
+      "invalid": "Digite uma distância de zero ou mais.",
+      "corrected": "A esteira mostrou {{shown}} {{unit}}. Salvo como {{saved}} {{unit}} com a sua correção de esteira de {{percent}}."
     },
     "heartRate": "Frequência cardíaca",
     "errors": {
@@ -8050,7 +8311,8 @@
       "activity": "Água e exercício",
       "meals": "Distribuição de calorias nas refeições",
       "presets": "Metas predefinidas",
-      "weekly": "Planos semanais"
+      "weekly": "Planos semanais",
+      "goalWeight": "Meta de peso"
     },
     "meals": {
       "mustBe100": "As porcentagens das refeições precisam somar 100%.",
@@ -8182,7 +8444,16 @@
     "adaptiveNoteTodayWithUnit": "O modo adaptativo está ligado, então a sua meta de calorias muda todos os dias. Hoje ela é de {{calories}} {{unit}}. A base abaixo define quanto acima ou abaixo da manutenção estimada você quer ficar; não é uma meta diária fixa.",
     "cyclingNoteTodayWithUnit": "A ciclagem de calorias está ligada, então as calorias abaixo são a sua meta de base e cada dia fica mais alto ou mais baixo. Hoje a meta é de {{calories}} {{unit}}.",
     "cyclingPausedWeeklyPlan": "A ciclagem de calorias está pausada hoje por um plano semanal de metas ativo. As calorias abaixo definem diretamente a meta do plano para hoje.",
-    "adjustedGoalFailed": "Não foi possível carregar a meta ajustada de hoje."
+    "adjustedGoalFailed": "Não foi possível carregar a meta ajustada de hoje.",
+    "goalWeight": {
+      "description": "O seu peso-alvo. Os gráficos de peso o usam para mostrar o seu progresso.",
+      "placeholder": "Meta de peso ({{unit}})",
+      "invalid": "Informe um peso acima de zero.",
+      "save": "Salvar meta de peso",
+      "clear": "Limpar",
+      "saved": "Meta de peso salva.",
+      "saveFailed": "Falha ao salvar a meta de peso."
+    }
   },
   "reports": {
     "title": "Relatórios",
@@ -8378,7 +8649,22 @@
     "insightWeekendShorter": "Você dorme {{hours}} a menos no fim de semana do que nos dias úteis.",
     "insightFullNights": "{{full}} de {{total}} noites chegaram a 7 horas.",
     "insightIrregular": "Sua hora de dormir varia cerca de ±{{minutes}} min.",
-    "insightDurationChange": "O tempo dormindo está {{change}} em relação ao período anterior."
+    "insightDurationChange": "O tempo dormindo está {{change}} em relação ao período anterior.",
+    "negativeDuration": "-{{duration}}",
+    "needLoadFailed": "Não foi possível carregar a necessidade de sono desta noite",
+    "needTonight": "Necessidade de sono hoje à noite",
+    "needTotal": "Total",
+    "needBaseline": "Linha de base",
+    "needStrain": "Esforço",
+    "needStrainHint": "Dos treinos de hoje",
+    "needDebt": "Recuperação da dívida",
+    "needDebtHint": "Parte da sua dívida de sono de {{amount}}",
+    "needSurplusHint": "Parte do seu superávit de sono de {{amount}}",
+    "recovery": "Recuperação",
+    "recoveryScore": "{{score}}/100",
+    "recoveryHint": "Sua prontidão: sono, frequência cardíaca de repouso e VFC",
+    "trainingLoad": "Carga de treino",
+    "trainingLoadHint": "Minutos de treino ponderados pela frequência cardíaca"
   },
   "reportsSettings": {
     "reset": "Redefinir",
@@ -8444,7 +8730,8 @@
       "measurementTimeline": "Linha do tempo de medidas",
       "oralCareBrushesChart": "Gráfico de escovações por dia",
       "oralCareMinutesChart": "Gráfico de minutos escovando",
-      "oralCareSummary": "Sequências e outros cuidados"
+      "oralCareSummary": "Sequências e outros cuidados",
+      "sleepNeed": "Necessidade de sono hoje à noite"
     },
     "hydrationSections": "Relatório de hidratação",
     "measurementsSections": "Relatório de medidas",
@@ -8592,7 +8879,9 @@
     "distanceFailed": "Não foi possível salvar a distância.",
     "heartRate": "Frequência cardíaca",
     "jumpRopeSaved": "Pular corda salvo",
-    "watchJumpRopeSaved": "Pular corda do relógio salvo"
+    "watchJumpRopeSaved": "Pular corda do relógio salvo",
+    "treadmillCorrected": "O aparelho mostrou {{shown}} {{unit}}; salvo como {{saved}} {{unit}} com a sua correção de esteira.",
+    "treadmillCorrectionOn": "A sua correção de esteira de {{percent}} é descontada do número que você informar."
   },
   "runPrograms": {
     "startWhenTitle": "Iniciar {{name}}",
@@ -8732,8 +9021,8 @@
       "setUp": "Configurar um programa"
     },
     "partOfProgram": "Faz parte do seu programa de treino",
-    "openCalendar": "Abrir o calendário do programa",
-    "openCalendarHint": "Todos os treinos numa visão mensal",
+    "openCalendar": "Abrir o calendário de treinos",
+    "openCalendarHint": "Treinos de programas e planos, feitos e por vir",
     "calendarScreen": {
       "minutes": "{{minutes}} min"
     },
@@ -9610,7 +9899,6 @@
     "previewTitle": "Visualizar",
     "previewDescription": "Como as Ações rápidas ficam com as suas escolhas.",
     "lineNumber": "Linha {{number}}",
-    "needsCycle": "Oculto: o acompanhamento do ciclo está desativado",
     "showAs": "Mostrar como",
     "showAsValue": "Mostrar como {{style}}",
     "styleList": "Lista",
@@ -9622,7 +9910,8 @@
     "buttonsDescription": "Mostrados lado a lado, no fim do painel.",
     "chooseCard": "Escolher um bloco",
     "slotLabel": "Bloco {{number}}: {{name}}",
-    "slotHint": "Abre uma lista para escolher o que vai aqui"
+    "slotHint": "Abre uma lista para escolher o que vai aqui",
+    "offInFeatures": "Não exibido: desativado em Recursos"
   },
   "calorieLink": {
     "action": "Vincular um treino sincronizado",
@@ -10230,7 +10519,8 @@
     "unreachableSubtitle": "Confira sua conexão ou tente novamente.",
     "notConfiguredTitle": "Nenhum servidor configurado",
     "goToSettings": "Ir para as configurações",
-    "tryAgain": "Tentar novamente"
+    "tryAgain": "Tentar novamente",
+    "offlineWorkouts": "Comece um treino predefinido offline"
   },
   "waterLog": {
     "title": "Bebidas",
@@ -10551,5 +10841,399 @@
     "daysCount_many": "{{count}} dias",
     "daysCount_other": "{{count}} dias",
     "otherCare": "Fio dental, enxaguante e outros"
+  },
+  "toolfallback": {
+    "used": "Ferramenta usada",
+    "cancelled": "Ferramenta cancelada",
+    "error": "Erro:",
+    "cancelledReason": "Motivo do cancelamento:"
+  },
+  "healthActivityTypes": {
+    "american_football": "Futebol americano",
+    "archery": "Tiro com arco",
+    "australian_football": "Futebol australiano",
+    "badminton": "Badminton",
+    "baseball": "Beisebol",
+    "basketball": "Basquete",
+    "bowling": "Boliche",
+    "boxing": "Boxe",
+    "climbing": "Escalada",
+    "cricket": "Críquete",
+    "cross_training": "Treino cruzado",
+    "curling": "Curling",
+    "cycling": "Ciclismo",
+    "cycling_indoor": "Ciclismo indoor",
+    "elliptical": "Elíptico",
+    "equestrian_sports": "Hipismo",
+    "fencing": "Esgrima",
+    "fishing": "Pesca",
+    "functional_strength_training": "Treino funcional",
+    "golf": "Golfe",
+    "gymnastics": "Ginástica",
+    "handball": "Handebol",
+    "hiking": "Trilha",
+    "ice_hockey": "Hóquei no gelo",
+    "roller_hockey": "Hóquei sobre patins",
+    "hunting": "Caça",
+    "lacrosse": "Lacrosse",
+    "martial_arts": "Artes marciais",
+    "mind_and_body": "Mente e corpo",
+    "breathing": "Respiração",
+    "paddle_sports": "Esportes de remo",
+    "play": "Recreação",
+    "preparation_and_recovery": "Preparação e recuperação",
+    "racquetball": "Raquetebol",
+    "rowing": "Remo",
+    "rowing_machine": "Remo ergométrico",
+    "rugby": "Rúgbi",
+    "running": "Corrida",
+    "running_treadmill": "Corrida na esteira",
+    "sailing": "Vela",
+    "skating": "Patinação",
+    "ice_skating": "Patinação no gelo",
+    "snowshoeing": "Caminhada com raquetes de neve",
+    "soccer": "Futebol",
+    "softball": "Softbol",
+    "squash": "Squash",
+    "stair_climbing_machine": "Simulador de escada",
+    "surfing": "Surfe",
+    "swimming_pool": "Natação em piscina",
+    "swimming_open_water": "Natação em águas abertas",
+    "table_tennis": "Tênis de mesa",
+    "tennis": "Tênis",
+    "track_and_field": "Atletismo",
+    "strength_training": "Treino de força",
+    "weightlifting": "Levantamento de peso",
+    "volleyball": "Vôlei",
+    "walking": "Caminhada",
+    "walking_treadmill": "Caminhada indoor",
+    "water_fitness": "Hidroginástica",
+    "water_polo": "Polo aquático",
+    "water_sports": "Esportes aquáticos",
+    "wrestling": "Luta livre",
+    "yoga": "Ioga",
+    "barre": "Barre",
+    "core_training": "Treino de core",
+    "calisthenics": "Calistenia",
+    "cross_country_skiing": "Esqui cross-country",
+    "downhill_skiing": "Esqui alpino",
+    "stretching": "Alongamento",
+    "hiit": "Treino intervalado de alta intensidade",
+    "jump_rope": "Pular corda",
+    "kickboxing": "Kickboxing",
+    "pilates": "Pilates",
+    "snowboarding": "Snowboard",
+    "stairs": "Escadas",
+    "step_training": "Step",
+    "wheelchair_walk_pace": "Cadeira de rodas (ritmo de caminhada)",
+    "wheelchair_run_pace": "Cadeira de rodas (ritmo de corrida)",
+    "tai_chi": "Tai chi",
+    "mixed_cardio": "Cardio misto",
+    "exercise_class": "Aula de ginástica",
+    "boot_camp": "Boot camp",
+    "hand_cycling": "Handbike",
+    "disc_sports": "Esportes com disco",
+    "fitness_gaming": "Jogos de exercício",
+    "cardio_dance": "Dança aeróbica",
+    "social_dance": "Dança",
+    "pickleball": "Pickleball",
+    "cooldown": "Desaquecimento",
+    "underwater_diving": "Mergulho",
+    "paragliding": "Parapente",
+    "other": "Outro"
+  },
+  "treadmillSettings": {
+    "title": "Esteira e passada",
+    "unitFeet": "ft",
+    "unitMeters": "m",
+    "strideSection": "A sua passada",
+    "strideSectionHint": "Quanto você avança a cada passo. Em ambiente fechado não há GPS, então o app usa isso para transformar seus passos em distância.",
+    "walkingStride": "Passada na caminhada",
+    "runningStride": "Passada na corrida",
+    "strideSummaryTypical": "{{stride}} · típica",
+    "strideSummaryManual": "{{stride}} · definida por você",
+    "strideManual": "Definida por você. Novas distâncias a ajustam a partir daqui.",
+    "strideDefault": "Uma passada típica. O app aprende a sua cada vez que você digita a distância da esteira depois de uma caminhada ou corrida, ou você pode defini-la aqui.",
+    "strideInputA11y": "{{activity}} em {{unit}}",
+    "strideInvalid": "Essa passada não parece certa. Um passo costuma ter entre 0,3 e 2,5 m (1 e 8 ft).",
+    "measureStrideToggle": "Medir numa pista",
+    "measureStrideHint": "Caminhe ou corra uma distância que você sabe que é exata, como voltas numa pista. Depois informe os passos do app Saúde ou do relógio e essa distância.",
+    "calSteps": "Passos dados",
+    "calDistance": "Distância real",
+    "calShown": "A esteira mostrou",
+    "calibrateAction": "Definir minha passada",
+    "calibrateFailed": "Isso é curto demais ou não fecha. Use pelo menos 150 passos e 100 m, e confira os números.",
+    "calibrated": "A sua {{activity}} agora é {{stride}}.",
+    "reset": "Redefinir",
+    "resetA11y": "Redefinir {{activity}}",
+    "treadmillSection": "A sua esteira é precisa?",
+    "treadmillSectionHint": "Para uma esteira cujo painel marca errado. Corrige as distâncias que você digita a partir dela, no celular ou no relógio. Fica guardado neste celular.",
+    "treadmillRow": "Painel da esteira",
+    "treadmillSummaryOff": "Mais ou menos certo. Nada é alterado.",
+    "treadmillSummaryLong": "Mostra {{percent}} a mais do que você correu",
+    "treadmillSummaryShort": "Mostra {{percent}} a menos do que você correu",
+    "treadmillSummaryLongUnset": "Mostra mais do que você correu. Informe quanto.",
+    "treadmillSummaryShortUnset": "Mostra menos do que você correu. Informe quanto.",
+    "displayReads": "Comparado com o que você realmente correu, ela mostra",
+    "readsRight": "Mais ou menos certo",
+    "readsLong": "Mais",
+    "readsShort": "Menos",
+    "percentBy": "Em",
+    "percentA11y": "Percentual de erro da esteira",
+    "preview": "Quando ela mostra {{shown}} {{unit}}, são salvos {{saved}} {{unit}}.",
+    "previewNone": "Informe o tamanho do erro, até {{max}}%. Em 0, nada é alterado.",
+    "measureTreadmillToggle": "Não tem certeza? Calcule pelos seus passos",
+    "measureTreadmillHint": "Caminhe ou corra na esteira, depois informe os passos do app Saúde ou do relógio e o que a esteira mostrou. Seus passos vezes sua passada dão a distância real.",
+    "checkAction": "Conferir minha esteira",
+    "checkedLong": "Pelos seus passos, isso dá {{actual}} {{unit}}, então a esteira mostra {{percent}} a mais do que você fez.",
+    "checkedShort": "Pelos seus passos, isso dá {{actual}} {{unit}}, então a esteira mostra {{percent}} a menos do que você fez.",
+    "checkedSame": "Pelos seus passos, isso dá {{actual}} {{unit}}. A esteira está certa, então não há nada a corrigir.",
+    "useCorrection": "Usar esta correção",
+    "watchScale": "Estimativa do próprio relógio",
+    "watchScaleHint": "Usada quando você mantém a distância do relógio em vez de digitar a da esteira. O relógio estima pelo balanço do braço, e cada vez que você digita o número da esteira ele aprende quanto errou. Isso é automático.",
+    "watchScaleWalk": "Caminhadas",
+    "watchScaleRun": "Corridas",
+    "watchScaleNone": "Ainda não aprendida.",
+    "strideSummaryLearned_one": "{{stride}} · aprendida com {{count}} distância",
+    "strideSummaryLearned_many": "{{stride}} · aprendida com {{count}} distâncias",
+    "strideSummaryLearned_other": "{{stride}} · aprendida com {{count}} distâncias",
+    "strideLearned_one": "Aprendida com {{count}} distância real. Cada nova a ajusta um pouco.",
+    "strideLearned_many": "Aprendida com {{count}} distâncias reais. Cada nova a ajusta um pouco.",
+    "strideLearned_other": "Aprendida com {{count}} distâncias reais. Cada nova a ajusta um pouco.",
+    "watchScaleLower_one": "Reduzida em {{percent}}. Aprendida com {{count}} corrida.",
+    "watchScaleLower_many": "Reduzida em {{percent}}. Aprendida com {{count}} corridas.",
+    "watchScaleLower_other": "Reduzida em {{percent}}. Aprendida com {{count}} corridas.",
+    "watchScaleRaise_one": "Aumentada em {{percent}}. Aprendida com {{count}} corrida.",
+    "watchScaleRaise_many": "Aumentada em {{percent}}. Aprendida com {{count}} corridas.",
+    "watchScaleRaise_other": "Aumentada em {{percent}}. Aprendida com {{count}} corridas.",
+    "watchScaleSame_one": "O relógio bate com a esteira. Aprendido com {{count}} corrida.",
+    "watchScaleSame_many": "O relógio bate com a esteira. Aprendido com {{count}} corridas.",
+    "watchScaleSame_other": "O relógio bate com a esteira. Aprendido com {{count}} corridas."
+  },
+  "bloodAlcohol": {
+    "title": "Álcool no sangue estimado",
+    "estimatedNow": "Estimativa agora",
+    "peakAt": "Pico às {{time}}",
+    "unitPermille": "‰",
+    "unitPercent": "%",
+    "estimatedTimes": "Alguns horários de bebida foram estimados",
+    "disclaimer": "Apenas uma estimativa aproximada. O valor real pode variar 20% ou mais. Nunca use isto para decidir se está em condições de dirigir.",
+    "missingInputs": "Adicione estes dados ao seu perfil para ver uma estimativa:",
+    "missingSex": "Sexo: defina no seu perfil, no site",
+    "missingWeight": "Peso: registre em Medidas",
+    "missingHeight": "Altura: registre em Medidas",
+    "missingAge": "Idade: defina sua data de nascimento no seu perfil, no site",
+    "implausibleInputs": "Seu peso ou sua altura parecem errados, então não há estimativa. Confira o peso e a altura mais recentes em Medidas.",
+    "formulaFallback": "A fórmula escolhida não se aplica às suas medidas corporais, então é usada a fórmula de Watson."
+  },
+  "trainingCalendar": {
+    "load": {
+      "title": "Carga por esporte",
+      "subtitle": "De onde vem a sua carga de treino: corrida, ciclismo, caminhada, força e outros.",
+      "thisWeek": "Esta semana",
+      "thisMonth": "Este mês",
+      "weekly": "Carga semanal",
+      "noneYet": "Nenhum treino registrado ainda.",
+      "loadFailed": "Não foi possível carregar a sua carga por esporte.",
+      "method": "A carga é o tempo em minutos ponderado pela sua frequência cardíaca média (de 1 a 5, conforme o quanto ela chegou perto da máxima). Um treino sem frequência cardíaca conta com peso moderado 2, então uma sessão de força sem relógio ainda conta pelo tempo. As notas de esforço não são usadas.",
+      "openCalendar": "Abrir o calendário de treinos"
+    },
+    "sport": {
+      "running": "Corrida",
+      "cycling": "Ciclismo",
+      "walking": "Caminhada",
+      "cardio": "Cardio",
+      "strength": "Força",
+      "other": "Outro"
+    },
+    "status": {
+      "done": "Feito",
+      "partial": "Feito em parte",
+      "missed": "Perdido",
+      "upcoming": "A fazer"
+    },
+    "programWorkout": "{{name}} · treino {{number}}",
+    "workoutPlanFallback": "Plano de treino",
+    "weekOf": "Semana de {{date}}",
+    "minutesShort": "{{value}} min",
+    "minutesOf": "{{done}} de {{planned}} min",
+    "loadValue": "carga {{value}}",
+    "estimated": "(estimada, sem frequência cardíaca)",
+    "extra": "Extra",
+    "totals": {
+      "title": "Planejado × concluído",
+      "sessions": "{{done}} de {{planned}} sessões planejadas",
+      "minutes": "Tempo: {{done}} de {{planned}} min",
+      "load": "Carga de treino: {{done}} de {{planned}}",
+      "minutesDone": "Tempo: {{done}} min",
+      "loadDone": "Carga de treino: {{done}}",
+      "minutesExtra": "(+{{extra}} min extras)",
+      "loadExtra": "(+{{extra}} extra)",
+      "thisWeek": "Esta semana",
+      "ahead": "A fazer",
+      "extra_one": "{{formattedCount}} extra",
+      "extra_many": "{{formattedCount}} extras",
+      "extra_other": "{{formattedCount}} extras",
+      "sessionsLogged_one": "{{formattedCount}} sessão registrada",
+      "sessionsLogged_many": "{{formattedCount}} sessões registradas",
+      "sessionsLogged_other": "{{formattedCount}} sessões registradas"
+    },
+    "loadFailed": "Não foi possível carregar o seu calendário de treinos.",
+    "refreshFailed": "Não foi possível atualizar. Mostrando o último resultado.",
+    "emptyDay": "Nada planejado nem registrado neste dia.",
+    "planned": "Planejado",
+    "completed": "Concluído",
+    "month": "Mês",
+    "week": "Semana",
+    "previous": "Anterior",
+    "next": "Próximo",
+    "distanceKm": "{{value}} km",
+    "distanceMiles": "{{value}} mi",
+    "restDay": "Dia de descanso",
+    "hideEarlier": "Ocultar semanas anteriores",
+    "loadHelpA11y": "O que é carga de treino?",
+    "progressA11y": "{{done}} feitos, {{partial}} feitos em parte, {{missed}} perdidos, de {{planned}} planejados",
+    "markA11y": "{{sport}}, {{status}}",
+    "extraA11y": "extra, não planejado",
+    "dayA11y": "{{date}}: {{marks}}",
+    "dayA11yNone": "{{date}}, nada planejado nem registrado",
+    "weekTotalA11y": "{{done}} de {{planned}} sessões planejadas feitas",
+    "weekTotalShort": "{{done}}/{{planned}}",
+    "weekTotalHeader": "Total",
+    "weekEmptyA11y": "Nenhuma sessão nesta semana",
+    "moreA11y_one": "mais {{formattedCount}} sessão",
+    "moreA11y_many": "mais {{formattedCount}} sessões",
+    "moreA11y_other": "mais {{formattedCount}} sessões",
+    "weekLoggedA11y_one": "{{formattedCount}} sessão registrada",
+    "weekLoggedA11y_many": "{{formattedCount}} sessões registradas",
+    "weekLoggedA11y_other": "{{formattedCount}} sessões registradas",
+    "more_one": "+{{formattedCount}}",
+    "more_many": "+{{formattedCount}}",
+    "more_other": "+{{formattedCount}}",
+    "showEarlier_one": "Mostrar semana anterior ({{formattedCount}})",
+    "showEarlier_many": "Mostrar semanas anteriores ({{formattedCount}})",
+    "showEarlier_other": "Mostrar semanas anteriores ({{formattedCount}})"
+  },
+  "featureSettings": {
+    "title": "Recursos",
+    "description": "Ative ou desative recursos inteiros neste app.",
+    "footnote": "Desativar um recurso só o oculta: nada é excluído, e as sincronizações e importações continuam funcionando.",
+    "loading": "Carregando",
+    "loadError": "Não foi possível carregar esta configuração.",
+    "saveFailed": "Não foi possível salvar esta configuração. Tente de novo.",
+    "appOnly": "Vale só para este app. O site tem a sua própria chave.",
+    "serverTooOld": "Atualize o seu servidor SparkyFitness para mudar isto.",
+    "groups": {
+      "health": "Saúde",
+      "nutrition": "Nutrição",
+      "training": "Treino",
+      "wellbeing": "Bem-estar"
+    },
+    "cycle": {
+      "title": "Ciclo e gravidez",
+      "discreetTitle": "Bem-estar",
+      "description": "Acompanhe menstruação, fertilidade e gravidez.",
+      "scope": "Uma só chave para o app e o site.",
+      "setupAction": "Configurar",
+      "setupHint": "Responda algumas perguntas para terminar a configuração."
+    },
+    "labResults": {
+      "title": "Exames laboratoriais",
+      "description": "Registre exames de sangue e acompanhe cada marcador ao longo do tempo."
+    }
+  },
+  "offline": {
+    "keptAdded_one": "As imagens de {{count}} exercício serão mantidas offline",
+    "keptAdded_many": "As imagens de {{count}} exercícios serão mantidas offline",
+    "keptAdded_other": "As imagens de {{count}} exercícios serão mantidas offline",
+    "keptRemoved_one": "{{count}} exercício deixou de ser mantido offline",
+    "keptRemoved_many": "{{count}} exercícios deixaram de ser mantidos offline",
+    "keptRemoved_other": "{{count}} exercícios deixaram de ser mantidos offline",
+    "keptMark": "Mantido offline",
+    "selectedCount_one": "{{count}} selecionado",
+    "selectedCount_many": "{{count}} selecionados",
+    "selectedCount_other": "{{count}} selecionados",
+    "keepOffline": "Manter offline",
+    "removeFromOffline": "Tirar do offline",
+    "picturesTitle": "Imagens dos exercícios",
+    "picturesOnMobileData": "Baixar imagens nos dados móveis",
+    "picturesOnMobileDataSubtitle": "Desligado: as imagens só são baixadas no Wi-Fi. Até 300 MB.",
+    "keptHeading": "Exercícios mantidos offline",
+    "keptIntro": "As imagens do plano desta semana e dos seus treinos predefinidos são mantidas automaticamente. Para manter mais, toque e segure exercícios na biblioteca de exercícios.",
+    "keptRemove": "Toque para deixar de manter offline",
+    "presetOfflineNote": "Offline: você pode começar ou registrar este treino. Alterá-lo ou duplicá-lo exige conexão.",
+    "leave": {
+      "title_one": "{{count}} treino está esperando para ser enviado",
+      "title_many": "{{count}} treinos estão esperando para ser enviados",
+      "title_other": "{{count}} treinos estão esperando para ser enviados",
+      "deleteMessage": "Remover este servidor também remove o que está esperando neste celular, e isso nunca chegará ao servidor.",
+      "switchMessage": "Eles ficam neste celular e serão enviados quando você voltar para este servidor.",
+      "uploadFirst": "Enviar antes",
+      "deleteAnyway": "Remover mesmo assim",
+      "switchAnyway": "Trocar mesmo assim"
+    },
+    "presetUpdateQueued": "O treino predefinido será atualizado quando você voltar a ficar online",
+    "presetUpdateSkipped": "O treino predefinido \"{{name}}\" não foi atualizado porque foi alterado em outro lugar",
+    "presetUpdated": "Treino predefinido \"{{name}}\" atualizado",
+    "diaryNote": "Só os treinos ficam disponíveis offline. Alimentos e outros registros exigem conexão.",
+    "diaryNothingSaved": "Nada salvo neste dia",
+    "finishedTitle": "Salvo neste celular",
+    "finishedMessage": "Ele será enviado quando o seu servidor estiver acessível.",
+    "deleteSavedTitle": "Excluído neste celular",
+    "deleteSavedMessage": "Ele será removido do seu servidor assim que ele estiver acessível.",
+    "startedTitle": "Iniciado offline",
+    "startedMessage": "Este treino fica guardado neste celular e será enviado quando o seu servidor estiver acessível.",
+    "notReadyTitle": "Ainda não está pronto para treinos offline",
+    "notReadyMessage": "Conecte-se ao seu servidor uma vez para que este celular salve o que um treino precisa.",
+    "banner": "Offline: mostrando dados salvos neste celular",
+    "bannerHint": "Verifica a conexão de novo",
+    "intro": "Dá para começar e registrar treinos sem conexão. Eles ficam guardados neste celular e são enviados quando o seu servidor estiver acessível.",
+    "waitingHeading": "Esperando envio",
+    "nothingWaiting": "Nada esperando",
+    "nothingWaitingSubtitle": "Tudo o que estava neste celular foi enviado.",
+    "waitingItem": "{{kind}}, {{date}}",
+    "uploadNow": "Enviar agora",
+    "uploadDone": "Tudo foi enviado",
+    "uploadStillWaiting": "Alguns itens ainda estão esperando",
+    "uploadStillWaitingDetail": "Eles ficam neste celular e serão enviados quando o seu servidor estiver acessível.",
+    "storageHeading": "Neste celular",
+    "storageTitle": "Salvo para uso offline",
+    "storageValue": "{{size}} MB",
+    "refreshRow": "Atualizar agora",
+    "refreshing": "Atualizando…",
+    "neverRefreshed": "Ainda não baixado. Conecte-se ao seu servidor uma vez para preparar os treinos offline.",
+    "lastRefreshed": "Última atualização: {{when}}",
+    "refreshDone": "Os dados salvos estão em dia",
+    "refreshFailed": "Não foi possível atualizar",
+    "refreshFailedDetail": "Não foi possível acessar o seu servidor. O que já está salvo é mantido.",
+    "clearRow": "Limpar dados offline",
+    "clearRowSubtitle": "Os envios ainda pendentes são mantidos",
+    "clearTitle": "Limpar os dados offline?",
+    "clearMessage": "Treinos predefinidos, exercícios e outros dados guardados para uso offline são removidos deste celular e baixados de novo na próxima vez. O que ainda está esperando envio é mantido.",
+    "clearConfirm": "Limpar",
+    "status": {
+      "pending": "Esperando envio",
+      "sending": "Enviando…",
+      "conflict": "Alterado em outro lugar. Toque para escolher.",
+      "needsSignIn": "Entre de novo para enviar",
+      "failed": "O servidor não aceitou"
+    },
+    "conflict": {
+      "phoneSuffix": "(celular)",
+      "deletedTitle": "Excluído em outro lugar",
+      "deletedMessage": "Este treino foi excluído em outro aparelho enquanto este celular estava offline.",
+      "saveAsNew": "Salvar como um treino novo",
+      "discard": "Descartar a cópia deste celular",
+      "changedTitle": "Alterado em outro lugar",
+      "changedMessage": "Este treino foi alterado em outro aparelho enquanto este celular estava offline. Qual você quer manter?",
+      "keepPhone": "Manter o treino deste celular",
+      "keepServer": "Manter a outra versão",
+      "saveSeparately": "Manter os dois"
+    },
+    "kind": {
+      "workout": "Treino",
+      "other": "Alteração salva"
+    },
+    "libraryNote": "Só os treinos e exercícios ficam disponíveis offline. O resto da Biblioteca exige conexão."
   }
 }

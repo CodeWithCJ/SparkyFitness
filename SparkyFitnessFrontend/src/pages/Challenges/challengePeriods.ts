@@ -1,6 +1,5 @@
 import type { TFunction } from 'i18next';
 import {
-  addDays,
   challengePeriodsUpTo,
   type ChallengePeriod,
   type ChallengePointsRules,
@@ -24,27 +23,6 @@ export function periodRangeText(
     start: formatDay(start, 'MMM d'),
     end: formatDay(end, 'MMM d'),
   });
-}
-
-/** A day of the period before the one starting on `start`, or null before the challenge. */
-export function previousPeriodDay(
-  start: string,
-  challengeStart: string
-): string | null {
-  const day = addDays(start, -1);
-  return day < challengeStart ? null : day;
-}
-
-/** A day of the period after the one ending on `end`, or null past the end or today. */
-export function nextPeriodDay(
-  end: string,
-  challengeEnd: string | null,
-  today: string
-): string | null {
-  const day = addDays(end, 1);
-  if (challengeEnd && day > challengeEnd) return null;
-  if (day > today) return null;
-  return day;
 }
 
 /**

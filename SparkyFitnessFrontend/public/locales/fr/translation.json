@@ -694,8 +694,7 @@
       "resetSuccessTitle": "Profil réinitialisé",
       "switchInFeatures": "Le suivi du cycle s'active ou se désactive dans Fonctionnalités.",
       "onInFeatures": "Le suivi du cycle est activé. Vous pouvez le désactiver dans Fonctionnalités.",
-      "offInFeatures": "Le suivi du cycle est désactivé. Activez-le dans Fonctionnalités.",
-      "openFeatures": "Ouvrir Fonctionnalités"
+      "offInFeatures": "Le suivi du cycle est désactivé. Activez-le dans Fonctionnalités."
     },
     "nutrientGoalDirection": {
       "title": "Sens de l'objectif nutritionnel",
@@ -6785,12 +6784,7 @@
       "displayNameCapacityMlml": "{{displayName}} (<span>{{capacityMl}}</span> ml)",
       "energy": "Énergie : {{energy}}"
     },
-    "ownerOnly": "Seul le titulaire du compte peut voir et modifier ce paramètre.",
-    "off": {
-      "title": "{{name}} : fonctionnalité désactivée",
-      "description": "Votre historique est conservé. Réactivez la fonctionnalité pour le retrouver ici.",
-      "turnOn": "Activer"
-    }
+    "ownerOnly": "Seul le titulaire du compte peut voir et modifier ce paramètre."
   },
   "foodCsvImport": {
     "title": "Importer des données alimentaires",
