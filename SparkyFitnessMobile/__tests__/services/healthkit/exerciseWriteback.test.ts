@@ -221,6 +221,20 @@ describe('writeExerciseForDate', () => {
     expect(mockSave).toHaveBeenCalledTimes(1);
   });
 
+  it('never writes a walk the Apple Watch app recorded, whatever Health holds', async () => {
+    store.writebackWatchRunEntryIds = ['e1'];
+    // The watch's own workout has not reached this phone's Health yet.
+    mockQuery.mockResolvedValue([]);
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('still writes a walk logged on the phone when a watch run is remembered', async () => {
+    store.writebackWatchRunEntryIds = ['some-other-entry'];
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+
   it('ignores its own earlier copy when checking for overlaps', async () => {
     mockQuery.mockResolvedValue([
       {

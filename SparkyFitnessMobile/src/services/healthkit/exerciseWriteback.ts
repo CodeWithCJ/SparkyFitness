@@ -26,6 +26,7 @@ import {
   WATCH_SESSION_METADATA_KEY,
 } from './dataTransformation';
 import { loadHealthPreference, saveHealthPreference } from './preferences';
+import { loadWatchRunEntryIds } from './watchRunEntries';
 
 // Exercise write-back to Apple Health (#1750). One HKWorkout per diary session,
 // with its active energy and distance attached as samples so the Fitness app
@@ -325,12 +326,21 @@ export const writeExerciseForDate = async (
   version: number,
   context: ExerciseWriteContext
 ): Promise<void> => {
+  // A walk or run the Apple Watch app recorded is already in Apple Health, from
+  // the watch itself; its diary entry is never written back.
+  const watchRunEntries = await loadWatchRunEntryIds();
   const planned = planExerciseWrites(sessions, {
     date,
     timezone: context.timezone,
     bmrKcalPerDay: context.bmrKcalPerDay,
     formatWeightKg: context.formatWeightKg,
-  });
+  }).filter(
+    (write) =>
+      !(
+        write.kind === 'individual' &&
+        watchRunEntries.has(sessionIdOfKey(write.key))
+      )
+  );
 
   let writes = planned;
   if (planned.length > 0) {
