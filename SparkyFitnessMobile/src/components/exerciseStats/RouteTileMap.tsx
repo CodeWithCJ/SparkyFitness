@@ -103,7 +103,9 @@ const RouteTileMap: React.FC<RouteTileMapProps> = ({
           pointerEvents="none"
         >
           <Text className="text-[10px] text-white/90 font-medium">
-            {t('routes.osmAttribution', { defaultValue: '© OpenStreetMap' })}
+            {t('routes.mapAttribution', {
+              defaultValue: '© OpenMapTiles © OpenStreetMap',
+            })}
           </Text>
         </View>
       ) : null}
