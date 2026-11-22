@@ -25,6 +25,7 @@ import {
   type RecordingSnapshot,
 } from '../services/gpsRecordingService';
 import { attachExerciseEntryWatchTelemetry } from '../services/api/exerciseApi';
+import { noteWatchRunEntry } from '../services/healthkit/watchRunEntries';
 import { addLog } from '../services/LogService';
 import { useLiveHeartRateStore } from '../stores/liveHeartRateStore';
 import { notificationText } from '../utils/recordingNotification';
@@ -73,6 +74,9 @@ export function useWatchRecordingBridge(enabled: boolean): void {
   // discarded (a discard that deleted its entry may leave before the cleared
   // id is rendered, so `wasRecordingDiscarded` decides).
   const lastSession = useRef<RecordingSnapshot['session']>(null);
+  // Recordings the watch has sent readings for: it saves its own workout to
+  // Apple Health for them, once the phone says the recording was kept.
+  const watchRecorded = useRef<Set<string>>(new Set());
 
   // Declared first so the effects below read the current render's values.
   useEffect(() => {
@@ -182,6 +186,17 @@ export function useWatchRecordingBridge(enabled: boolean): void {
         lastSession.current?.id === lastSent.current.id &&
         lastSession.current.savedEntryId != null &&
         !wasRecordingDiscarded(lastSent.current.id);
+      // The watch writes its workout to Apple Health after this, so the diary
+      // entry must not be written back as a second one.
+      const keptEntryId = lastSession.current?.savedEntryId;
+      if (
+        saved &&
+        keptEntryId &&
+        watchRecorded.current.has(lastSent.current.id)
+      ) {
+        void noteWatchRunEntry(keptEntryId);
+      }
+      watchRecorded.current.delete(lastSent.current.id);
       endRecording(lastSent.current.id, unitRef.current, !saved);
       lastSent.current = null;
       lastSession.current = null;
@@ -241,6 +256,10 @@ export function useWatchRecordingBridge(enabled: boolean): void {
     const heartRate = WatchConnectivity.addListener(
       'onRecordingHeartRate',
       (payload: WatchRecordingHeartRatePayload) => {
+        watchRecorded.current.add(payload.sessionId);
+        // A recording kept before this batch arrived: its entry is known now.
+        const keptEntry = savedRecordingEntryId(payload.sessionId);
+        if (keptEntry) void noteWatchRunEntry(keptEntry);
         const readings = (payload.samples ?? []).map((sample) => ({
           t: Date.parse(sample.t),
           bpm: sample.bpm,
