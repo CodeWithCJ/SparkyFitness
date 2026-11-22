@@ -300,11 +300,14 @@ describe('measurementRepository.recomputeWaterAggregate', () => {
     );
 
     expect(total).toBe(450);
-    const [sumText, sumValues] = mockClient.query.mock.calls[0];
+    const [lockText, lockValues] = mockClient.query.mock.calls[0];
+    expect(lockText).toContain('pg_advisory_xact_lock');
+    expect(lockValues).toEqual(['water_aggregate:user-1:2026-09-05:manual']);
+    const [sumText, sumValues] = mockClient.query.mock.calls[1];
     expect(sumText).toContain('FROM water_intake_entries');
     expect(sumValues).toEqual(['user-1', '2026-09-05', 'manual']);
 
-    const [upsertText, upsertValues] = mockClient.query.mock.calls[1];
+    const [upsertText, upsertValues] = mockClient.query.mock.calls[2];
     expect(upsertText).toContain('ON CONFLICT (user_id, entry_date, source)');
     expect(upsertText).toContain('DO UPDATE SET water_ml = $3');
     expect(upsertValues).toEqual([
@@ -359,10 +362,10 @@ describe('measurementRepository.recomputeWaterAggregate', () => {
       'manual'
     );
 
-    // Exactly two queries ran (the SELECT SUM and the upsert) — nothing else
+    // Exactly three queries ran (the lock, the SELECT SUM and the upsert) — nothing else
     // in the day or for another source was queried or written.
-    expect(mockClient.query.mock.calls).toHaveLength(2);
-    const [, sumValues] = mockClient.query.mock.calls[0];
+    expect(mockClient.query.mock.calls).toHaveLength(3);
+    const [, sumValues] = mockClient.query.mock.calls[1];
     expect(sumValues[2]).toBe('manual');
   });
 

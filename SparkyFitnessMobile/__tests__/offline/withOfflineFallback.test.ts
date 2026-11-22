@@ -54,6 +54,22 @@ describe('withOfflineFallback', () => {
     expect(fallbackUsed).not.toHaveBeenCalled();
   });
 
+  it('does not answer from the new account copy when the account changed during a failed request', async () => {
+    const read = jest.fn(async () => 'saved');
+    const failure = new TypeError('Network request failed');
+
+    await expect(
+      withOfflineFallback({
+        fetch: async () => {
+          bumpAccountGeneration();
+          throw failure;
+        },
+        read,
+      })
+    ).rejects.toBe(failure);
+    expect(read).not.toHaveBeenCalled();
+  });
+
   it('does not keep an answer that arrived after the account changed', async () => {
     const store = jest.fn(async () => {});
 

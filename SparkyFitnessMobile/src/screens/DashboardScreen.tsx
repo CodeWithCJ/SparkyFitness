@@ -3,6 +3,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
+import { useWaitingWaterSummary } from '../hooks/useWaitingWaterSummary';
 import { hasSupplementNutrition, isShownByFeature } from '@workspace/shared';
 import React, {
   useCallback,
@@ -263,6 +264,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     date: selectedDate,
     enabled: isConnected || isOffline,
   });
+  // A day with no saved summary while the server is away still has its water
+  // card; only what is waiting to upload is counted.
+  const waitingOnlySummary = useWaitingWaterSummary(
+    selectedDate,
+    isOffline && !isLoading && !summary
+  );
   const { profile } = useProfile();
   const {
     preferences,
@@ -612,7 +619,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // Render content based on state
   const renderContent = () => {
     // The server is away but the phone holds the day: show what it can.
-    if (isOffline && summary) return renderOfflineDashboard(summary);
+    if (isOffline && (summary ?? waitingOnlySummary)) {
+      return renderOfflineDashboard((summary ?? waitingOnlySummary)!);
+    }
     // No server configured
     if (!isConnectionLoading && !isConnected) {
       return (

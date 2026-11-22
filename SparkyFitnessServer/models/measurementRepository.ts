@@ -1885,6 +1885,13 @@ async function recomputeWaterAggregate(
   entryDate: string,
   source: string
 ): Promise<number> {
+  // One recompute at a time per user, date and source: without it a drink a
+  // concurrent request committed after this sum was read would be left out of
+  // the total this call then writes over the newer one. Held until the
+  // transaction ends, so the next recompute reads every earlier drink.
+  await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+    `water_aggregate:${userId}:${entryDate}:${source}`,
+  ]);
   const sumRes = await client.query(
     `SELECT COALESCE(SUM(water_ml), 0) as total_ml
      FROM water_intake_entries
