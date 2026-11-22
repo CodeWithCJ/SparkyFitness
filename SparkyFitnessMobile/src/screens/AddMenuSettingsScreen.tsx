@@ -259,10 +259,17 @@ const AddMenuSettingsScreen: React.FC<AddMenuSettingsScreenProps> = ({
                 size="card"
               />
             ) : (
+              // A text color, not a border token: the border tokens
+              // nearly vanish on the raised tile row in the dark themes.
               <View
                 testID={`add-menu-slot-${slotIndex}-empty`}
-                className="border border-dashed border-border-subtle"
-                style={{ width: 52, height: 52, borderRadius: 18 }}
+                className="border-dashed border-text-secondary"
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 18,
+                  borderWidth: 1.5,
+                }}
               />
             )}
             <Text
