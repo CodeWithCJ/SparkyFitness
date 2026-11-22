@@ -822,7 +822,8 @@
     "sleepingWristTemperature": "Temperatura nadgarstka podczas snu",
     "overnightBodyTemperature": "Temperatura ciała w nocy",
     "toothbrushing": "Szczotkowanie zębów",
-    "exercise": "Ćwiczenie"
+    "exercise": "Ćwiczenie",
+    "waistCircumference": "Obwód talii"
   },
   "healthCategories": {
     "Common": "Ogólne",
@@ -1173,7 +1174,10 @@
       "fixed": "Cel − zjedzone",
       "projectedTotal": "Całkowite kalorie Health Connect (zapasowo BMR + kalorie aktywności)",
       "dynamicActivitySeparated": "Cel - Zjedzone + Aktywność",
-      "tdeeWeekly": "Prognozowane TDEE + tygodniowa korekta celu - Zjedzone"
+      "tdeeWeekly": "Prognozowane TDEE + tygodniowa korekta celu - Zjedzone",
+      "burnedAdaptive": "Wyświetlane informacyjnie. Twój cel adaptacyjny już uwzględnia Twoją aktywność.",
+      "netAdaptive": "Nieużywane dla „Pozostało”. Włącz „Licz kalorie aktywności osobno”, aby zaliczać dzisiejszą aktywność.",
+      "netAdaptivePercentage": "Nieużywane dla „Pozostało”. Aby zaliczać dzisiejszą aktywność, wybierz Dynamiczny i włącz „Licz kalorie aktywności osobno”."
     },
     "notes": {
       "dynamic": "Cel rośnie wraz z aktywnością",
@@ -1284,7 +1288,9 @@
       "chartHintTrainingShort": "Dotknij słupka, aby zobaczyć dany dzień. Dotknij dnia poniżej, aby przełączyć trening i odpoczynek.",
       "chartHintCustomHandle": "Dotknij słupka, aby zobaczyć dany dzień. Przeciągnij uchwyt nad słupkiem, aby go zmienić."
     },
-    "adaptiveEstimateRangeWithUnit": "Poziom aktywności ustawia oszacowanie początkowe oraz zakres wiarygodności ±{{amount}} {{unit}} wokół BMR × tego mnożnika. Oszacowania mogą potrzebować kilku tygodni na ustabilizowanie; wahania masy ciała i niekompletne zapisy żywieniowe zwiększają niepewność."
+    "adaptiveEstimateRangeWithUnit": "Poziom aktywności ustawia oszacowanie początkowe oraz zakres wiarygodności ±{{amount}} {{unit}} wokół BMR × tego mnożnika. Oszacowania mogą potrzebować kilku tygodni na ustabilizowanie; wahania masy ciała i niekompletne zapisy żywieniowe zwiększają niepewność.",
+    "adaptiveFallbackActivityLevel": "Dopóki Adaptacyjny nie zbierze {{days}} dni dzienników żywności, Twoja baza to BMR × ten poziom, przed zastosowaniem Trybu celu, a Twoje treningi nie są do niej doliczane. Wybierz poziom, który obejmuje Twoje treningi.",
+    "adaptiveFallbackActivitySeparated": "Dopóki Adaptacyjny nie zbierze {{days}} dni dzienników żywności, Twoja baza to BMR × ten poziom, przed zastosowaniem Trybu celu. Opisz swoją aktywność poza krokami i treningami, które są liczone osobno."
   },
   "dashboardSettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -7130,7 +7136,19 @@
     "countdownSeconds": "{{seconds}} s",
     "holdCountdownTitle": "Odliczanie przed pozycjami na czas",
     "holdCountdownSubtitle": "Ekran „3, 2, 1, gotowe” przed rozpoczęciem pozycji na czas, aby zdążyć się ustawić. Dotknij, aby pominąć.",
-    "newWorkoutSubtitleWearOs": "Przycisk zapisania serii, przycisk edycji poprzedniej serii, demonstracje ćwiczeń, kalkulator talerzy, strona Więcej z akcjami treningu i pojedyncze podsumowanie po zakończeniu treningu. Opcja wyłączona zachowuje oryginalny ekran treningu."
+    "newWorkoutSubtitleWearOs": "Przycisk zapisania serii, przycisk edycji poprzedniej serii, demonstracje ćwiczeń, kalkulator talerzy, strona Więcej z akcjami treningu i pojedyncze podsumowanie po zakończeniu treningu. Opcja wyłączona zachowuje oryginalny ekran treningu.",
+    "mediaControlsTitle": "Sterowanie multimediami",
+    "mediaAccessTitle": "Informacje o odtwarzanym utworze",
+    "mediaAccessEnabledSubtitle": "Zegarek pokazuje aktualny utwór i wykonawcę podczas sterowania multimediami z telefonu w trakcie treningów.",
+    "mediaAccessDisabledSubtitle": "Odtwarzanie, przewijanie i sterowanie głośnością działają automatycznie. Zezwól na dostęp do powiadomień, aby zegarek mógł też pokazywać aktualny utwór i wykonawcę. Inne powiadomienia są ignorowane.",
+    "mediaAccessEnabled": "Włączone",
+    "mediaAccessSetup": "Skonfiguruj",
+    "mediaAccessA11yLabel": "{{title}}, {{status}}",
+    "mediaAccessDisclosureTitle": "Zezwolić na dostęp do powiadomień?",
+    "mediaAccessDisclosureBody": "Android wymaga dostępu do powiadomień, aby odczytać aktualnie odtwarzany utwór i wykonawcę dla zegarka Wear OS. SparkyFitness odczytuje tylko aktywne sesje multimedialne i ignoruje Twoje wiadomości oraz inne powiadomienia.",
+    "mediaAccessOpenSettings": "Otwórz ustawienia",
+    "mediaAccessOpenErrorTitle": "Nie można otworzyć ustawień",
+    "mediaAccessOpenErrorBody": "Otwórz Ustawienia Androida → Powiadomienia → Odczyt, odpowiadanie i sterowanie powiadomieniami i włącz Sterowanie multimediami SparkyFitness."
   },
   "progressPhotos": {
     "card": {

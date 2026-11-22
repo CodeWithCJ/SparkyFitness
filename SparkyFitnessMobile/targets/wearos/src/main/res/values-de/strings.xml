@@ -344,4 +344,16 @@
         <item quantity="other">%1$d Sätze</item>
     </plurals>
     <string name="workout_new_plates_closest">Nächste: %1$s</string>
+    <string name="now_playing_source_phone">Handy</string>
+    <string name="now_playing_source_watch">Uhr</string>
+    <string name="now_playing_playing_on_phone">Läuft auf Handy</string>
+    <string name="now_playing_phone_media">Handy-Medien</string>
+    <string name="now_playing_playing_on_watch">Läuft auf Uhr</string>
+    <string name="now_playing_watch_media">Uhr-Medien</string>
+    <string name="now_playing_nothing_playing">Nichts läuft</string>
+    <string name="now_playing_enable_track_info">Titelinfos in Handy-Einstellungen aktivieren</string>
+    <string name="now_playing_previous">Vorheriger Titel</string>
+    <string name="now_playing_play">Abspielen</string>
+    <string name="now_playing_pause">Pausieren</string>
+    <string name="now_playing_next">Nächster Titel</string>
 </resources>
