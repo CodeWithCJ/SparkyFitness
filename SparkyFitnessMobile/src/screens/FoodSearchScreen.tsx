@@ -24,6 +24,7 @@ import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import OfflineBanner from '../components/OfflineBanner';
 import AnchoredMenu, {
   AnchorRect,
   measureAnchoredMenuTrigger,
@@ -1403,7 +1404,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   // --- Body ---
 
   const renderBody = () => {
-    if (!isConnected) {
+    // With the server away the foods kept on the phone are still searched; only
+    // with no server at all is there nothing to show.
+    if (!canReadSavedFoods) {
       return (
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="cloud-offline" size={48} color={accentColor} />
@@ -1541,6 +1544,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
       {renderHeaderBar()}
+      {connectionStatus === 'unreachable' ? <OfflineBanner /> : null}
       {renderBody()}
       {/* Basket bar: visible whenever anything is selected in a
           diary-logging context, in or out of select mode, so a basket built

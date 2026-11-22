@@ -1443,6 +1443,43 @@ describe('FoodSearchScreen', () => {
       expect(mockUseFavorites).toHaveBeenCalledWith({ enabled: false });
     });
 
+    it('lists a food kept on the phone that matches the search, with the offline strip', () => {
+      mockUseServerConnection.mockReturnValue({
+        isConnected: false,
+        status: 'unreachable',
+      } as any);
+      mockUseFoodSearch.mockReturnValue({
+        searchResults: [buildFood()],
+        isSearching: false,
+        isSearchActive: true,
+        isSearchError: false,
+      } as any);
+
+      const screen = renderSearching(route);
+
+      expect(screen.getByText('Grilled Chicken')).toBeTruthy();
+      expect(
+        screen.queryByText('Connect to a server to search foods')
+      ).toBeNull();
+      expect(
+        screen.getByText('Offline: showing data saved on this phone')
+      ).toBeTruthy();
+    });
+
+    it('says nothing saved was found, instead of asking for a server, when the search finds nothing', () => {
+      mockUseServerConnection.mockReturnValue({
+        isConnected: false,
+        status: 'unreachable',
+      } as any);
+
+      const screen = renderSearching(route, 'celsius');
+
+      expect(screen.getByText('No saved foods or meals found')).toBeTruthy();
+      expect(
+        screen.queryByText('Connect to a server to search foods')
+      ).toBeNull();
+    });
+
     it('does not read anything while no server is set up', () => {
       mockUseServerConnection.mockReturnValue({
         isConnected: false,
