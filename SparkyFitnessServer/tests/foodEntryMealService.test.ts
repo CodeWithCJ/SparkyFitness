@@ -138,6 +138,70 @@ describe('foodEntryMealService', () => {
       );
     });
 
+    it('rolls back the parent when writing the components fails, on one connection', async () => {
+      (mealRepository.getMealById as any).mockResolvedValue({
+        id: 'template-1',
+        name: 'Template Meal Name',
+        serving_size: 1,
+        total_servings: 1,
+        foods: [
+          {
+            food_id: 'food-1',
+            variant_id: 'variant-1',
+            quantity: 100,
+            unit: 'g',
+          },
+        ],
+      });
+      (
+        foodEntryMealRepository.createFoodEntryMealWithClient as any
+      ).mockImplementation((_client: unknown, data: any) => ({
+        id: 'new-meal-entry-id',
+        ...data,
+      }));
+      (foodRepository.getFoodById as any).mockResolvedValue({
+        id: 'food-1',
+        name: 'Food Name',
+        default_variant: { id: 'variant-1' },
+      });
+      (foodRepository.getFoodVariantById as any).mockResolvedValue({
+        id: 'variant-1',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 150,
+      });
+      const boom = new Error('component insert failed');
+      (foodRepository.bulkCreateFoodEntries as any).mockRejectedValueOnce(boom);
+      transactionClient.query.mockClear();
+      transactionClient.release.mockClear();
+
+      await expect(
+        createFoodEntryMeal('user-1', 'user-1', {
+          meal_template_id: 'template-1',
+          meal_type_id: 'breakfast-id',
+          meal_type: 'breakfast',
+          entry_date: '2026-06-19',
+          quantity: 1,
+          unit: 'serving',
+          _clientMealModelVersion: 2,
+        })
+      ).rejects.toBe(boom);
+
+      const statements = transactionClient.query.mock.calls.map((call) =>
+        String(call[0])
+      );
+      expect(statements).toEqual(['BEGIN', 'ROLLBACK']);
+      expect(transactionClient.release).toHaveBeenCalledTimes(1);
+      // Both writers got the exact connection the transaction runs on.
+      expect(
+        (foodEntryMealRepository.createFoodEntryMealWithClient as any).mock
+          .calls[0][0]
+      ).toBe(transactionClient);
+      expect(
+        (foodRepository.bulkCreateFoodEntries as any).mock.calls[0][2]
+      ).toEqual({ client: transactionClient });
+    });
+
     it('falls back to food default_variant when foodItem variant_id is missing or null', async () => {
       // Mock mealTemplate
       (mealRepository.getMealById as any).mockResolvedValue({

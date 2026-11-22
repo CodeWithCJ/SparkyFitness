@@ -7,7 +7,10 @@ import type {
   FoodEntryMeal,
   FoodEntryMealUpdateData,
 } from '../types/foodEntryMeals';
-import { queueFoodEntryMealUpdate } from '../offline/foodEntryMealUpdateHandOver';
+import {
+  dropSupersededMealUpdate,
+  queueFoodEntryMealUpdate,
+} from '../offline/foodEntryMealUpdateHandOver';
 import type { FoodEntry } from '../types/foodEntries';
 import { serverMayBeDown } from '../utils/serverErrors';
 import { normalizeDate } from '../utils/dateUtils';
@@ -49,8 +52,15 @@ export function useUpdateFoodEntryMeal({
       display,
     }: MealChange): Promise<FoodEntryMeal | KeptOnPhone> => {
       const startedUnder = accountGeneration();
+      const requestStartedAt = Date.now();
       try {
-        return await updateFoodEntryMeal(mealId, payload);
+        const saved = await updateFoodEntryMeal(mealId, payload);
+        // An older change still waiting on the phone must not replay over
+        // this save later.
+        await dropSupersededMealUpdate(mealId, requestStartedAt).catch(
+          () => undefined
+        );
+        return saved;
       } catch (error) {
         // With the server away the saved meal is kept and sent later. It holds
         // the whole meal, so sending it twice leaves the same meal and even a

@@ -10985,6 +10985,12 @@
       "needsSignIn": "Sign in again to upload",
       "failed": "The server did not accept it"
     },
+    "ownerless": {
+      "title": "No account recorded",
+      "message": "This upload was saved before the phone knew which account it belonged to, so it will not be sent. You can discard it.",
+      "discard": "Discard this upload",
+      "subtitle": "No account recorded. Tap to discard."
+    },
     "conflict": {
       "phoneSuffix": "(phone)",
       "deletedTitle": "Deleted somewhere else",

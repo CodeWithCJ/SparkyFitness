@@ -31,6 +31,12 @@ import {
   listWaitingFoods,
   pendingFoodClientId,
 } from './foodCreateHandOver';
+import {
+  FOOD_ENTRY_CREATE,
+  type FoodEntryCreatePayload,
+} from './foodEntryHandOver';
+import { isOwnedBy, listUnconfirmedOutbox } from './outbox';
+import { signedInUserId } from './syncEngine';
 import type { OfflineDb } from './types';
 
 const SERVICE = 'Offline pack';
@@ -122,6 +128,55 @@ async function fetchOwnFoods(
   return foods;
 }
 
+/**
+ * Foods (and their servings) that entries still waiting to upload were logged
+ * from but that fell out of the kept set. They are kept as they are until the
+ * entry uploads, so the offline Diary can still show its nutrition.
+ */
+async function retainedForWaitingEntries(
+  db: OfflineDb,
+  serverConfigId: string,
+  chosen: readonly FoodItem[]
+): Promise<{
+  foods: FoodItem[];
+  variants: { key: string; payload: FoodVariantDetail[] }[];
+}> {
+  const have = new Set(chosen.map((food) => food.id));
+  const userId = await signedInUserId(db, serverConfigId);
+  const ids = new Set<string>();
+  for (const row of await listUnconfirmedOutbox(db, serverConfigId)) {
+    if (row.kind !== FOOD_ENTRY_CREATE || !isOwnedBy(row, userId)) continue;
+    const foodId = (row.payload as FoodEntryCreatePayload).food_id;
+    if (foodId && !isPendingFoodId(foodId) && !have.has(foodId))
+      ids.add(foodId);
+  }
+  const foods: FoodItem[] = [];
+  const variants: { key: string; payload: FoodVariantDetail[] }[] = [];
+  for (const id of ids) {
+    const food = await getCacheRow(
+      db,
+      serverConfigId,
+      CACHE_COLLECTIONS.food,
+      id
+    );
+    if (!food) continue;
+    foods.push(food.payload as FoodItem);
+    const servings = await getCacheRow(
+      db,
+      serverConfigId,
+      CACHE_COLLECTIONS.foodVariants,
+      id
+    );
+    if (servings) {
+      variants.push({
+        key: id,
+        payload: servings.payload as FoodVariantDetail[],
+      });
+    }
+  }
+  return { foods, variants };
+}
+
 /** Whether the name has every word of the typed text, in any order. */
 function matchesAllWords(name: string, text: string): boolean {
   const lower = name.toLowerCase();
@@ -136,10 +191,12 @@ async function refreshVariants(
   db: OfflineDb,
   serverConfigId: string,
   foods: readonly FoodItem[],
-  startedUnder: number
+  startedUnder: number,
+  /** Servings of foods that waiting entries still need, kept as they were. */
+  retained: readonly { key: string; payload: FoodVariantDetail[] }[] = []
 ): Promise<void> {
   const wanted = foods.slice(0, FOOD_VARIANTS_KEPT);
-  const kept: { key: string; payload: FoodVariantDetail[] }[] = [];
+  const kept: { key: string; payload: FoodVariantDetail[] }[] = [...retained];
   for (let start = 0; start < wanted.length; start += VARIANT_BATCH) {
     if (accountGeneration() !== startedUnder) return;
     const batch = wanted.slice(start, start + VARIANT_BATCH);
@@ -205,11 +262,13 @@ export async function refreshFoodLibrary(
   if (own == null || accountGeneration() !== startedUnder) return;
 
   const foods = chooseFoodsToKeep(usage, own);
+  // Read before the collections are replaced.
+  const retained = await retainedForWaitingEntries(db, serverConfigId, foods);
   await replaceCacheCollection(
     db,
     serverConfigId,
     CACHE_COLLECTIONS.food,
-    foodCacheRows(foods)
+    foodCacheRows([...foods, ...retained.foods])
   );
   await replaceCacheCollection(
     db,
@@ -239,7 +298,13 @@ export async function refreshFoodLibrary(
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterContainers, [
     { key: SINGLE_DOCUMENT_KEY, payload: containers },
   ]);
-  await refreshVariants(db, serverConfigId, foods, startedUnder);
+  await refreshVariants(
+    db,
+    serverConfigId,
+    foods,
+    startedUnder,
+    retained.variants
+  );
 }
 
 /** One page of the foods kept on the phone, by name; null when none are. */

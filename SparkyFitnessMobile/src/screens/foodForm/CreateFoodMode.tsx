@@ -954,6 +954,7 @@ export function CreateFoodMode({
     addEntry({
       saveFoodPayload,
       saveFoodImages: imageArgs,
+      hasEquivalentServings: cleanEquivalents.length > 0,
       createEntryPayload: {
         meal_type_id: effectiveMealId,
         quantity,

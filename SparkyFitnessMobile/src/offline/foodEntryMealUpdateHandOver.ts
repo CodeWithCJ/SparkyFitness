@@ -10,7 +10,12 @@ import { normalizeDate } from '../utils/dateUtils';
 import { newUuid } from '../utils/ids';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged } from './events';
-import { enqueueOutbox, listUnconfirmedOutbox } from './outbox';
+import {
+  deleteUnconfirmedRow,
+  enqueueOutbox,
+  isOwnedBy,
+  listUnconfirmedOutbox,
+} from './outbox';
 import { signedInUserId } from './syncEngine';
 import type { OfflineDb } from './types';
 
@@ -134,6 +139,32 @@ export function applyMealChange(
     fat: display.fat ?? meal.fat,
     dietary_fiber: display.dietary_fiber ?? meal.dietary_fiber,
   };
+}
+
+/**
+ * After a logged meal was saved straight to the server: removes an older
+ * change still waiting on the phone for the same meal, which holds the whole
+ * meal and would otherwise replay over the newer save. A change queued after
+ * the save request was sent (`requestStartedAt`) is newer and stays, and so
+ * does one being sent this moment. Only that row is removed.
+ */
+export async function dropSupersededMealUpdate(
+  mealId: string,
+  requestStartedAt: number
+): Promise<void> {
+  const serverConfigId = await getActiveServerConfigId();
+  if (!serverConfigId) return;
+  const db = await getOfflineDb();
+  const userId = await signedInUserId(db, serverConfigId);
+  const waiting = (await listUnconfirmedOutbox(db, serverConfigId)).find(
+    (row) =>
+      row.kind === FOOD_ENTRY_MEAL_UPDATE &&
+      row.entityId === mealId &&
+      row.status !== 'sending' &&
+      isOwnedBy(row, userId)
+  );
+  if (!waiting || waiting.updatedAt >= requestStartedAt) return;
+  if (await deleteUnconfirmedRow(db, waiting.id)) notifyOutboxChanged();
 }
 
 /** The waiting change to a logged meal, if there is one. */

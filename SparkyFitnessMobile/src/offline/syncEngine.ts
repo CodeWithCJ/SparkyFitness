@@ -1,8 +1,13 @@
 import { ApiError } from '../services/api/errors';
 import { addLog } from '../services/LogService';
-import { getActiveServerConfigId } from '../services/storage';
+import {
+  getActiveServerConfig,
+  getActiveServerConfigId,
+  type ServerConfig,
+} from '../services/storage';
 import { serverMayBeDown } from '../utils/serverErrors';
 import { accountGeneration } from './accountGeneration';
+import { CACHE_COLLECTIONS, FOOD_PACK_COMPLETED_KEY } from './collections';
 import { getCacheRow } from './cacheStore';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged, notifyUploadsConfirmed } from './events';
@@ -118,6 +123,12 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
   // server (it is not counted twice, since a confirmed row leaves the overlay
   // and the server's total now holds it).
   let summariesOutdated = false;
+  // The account and server in force when the first food or water upload went
+  // out; the refresh after the run is made for them.
+  let refreshScope: {
+    startedUnder: number;
+    serverConfig: ServerConfig | null;
+  } | null = null;
   // A row waiting on another is looked at again once that one is confirmed,
   // so a workout and the feedback given on it go up in the same run.
   let toVisit = rows;
@@ -187,6 +198,16 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
           payloadVersion: handler.payloadVersion,
         });
         row = { ...row, payload, payloadVersion: handler.payloadVersion };
+      }
+      if (affectsDaySummary(row.kind) && refreshScope == null) {
+        const startedUnder = accountGeneration();
+        let serverConfig: ServerConfig | null = null;
+        try {
+          serverConfig = await getActiveServerConfig();
+        } catch {
+          // No refresh for this run; the pack refreshes the totals later.
+        }
+        refreshScope = { startedUnder, serverConfig };
       }
       let result: SendResult;
       try {
@@ -268,22 +289,34 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
     toVisit = synced > syncedBefore ? waitingOnOthers : [];
   }
 
-  if (summariesOutdated) {
-    const startedUnder = accountGeneration();
+  if (summariesOutdated && refreshScope) {
     try {
       // Loaded here, not at the top: it pulls in the API client, which a
       // module that only queues work should not need.
       const { refreshRecentDailySummaries } =
         await import('./dailySummaryCache');
-      await refreshRecentDailySummaries(
-        db,
-        serverConfigId,
-        undefined,
-        startedUnder
-      );
+      // The server and account the uploads were made for, read before the
+      // first of them was sent: a switch in the meantime stops the refresh
+      // instead of writing another server's totals under this one's key.
+      if (refreshScope.serverConfig?.id === serverConfigId) {
+        await refreshRecentDailySummaries(
+          db,
+          serverConfigId,
+          undefined,
+          refreshScope.startedUnder,
+          refreshScope.serverConfig
+        );
+      }
     } catch (error) {
-      // The next full refresh of the offline pack tries again.
+      // Due again: the next refresh of the offline pack does not wait out its
+      // six hours for the food and totals.
       addLog(`[Offline] Saved day totals not refreshed: ${error}`, 'WARNING');
+      await db
+        .run(
+          `DELETE FROM cache WHERE server_config_id = ? AND collection = ? AND key = ?`,
+          [serverConfigId, CACHE_COLLECTIONS.pack, FOOD_PACK_COMPLETED_KEY]
+        )
+        .catch(() => undefined);
     }
   }
   const remaining = (await listUnconfirmedOutbox(db, serverConfigId)).length;

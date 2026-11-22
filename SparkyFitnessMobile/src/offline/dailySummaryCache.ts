@@ -1,6 +1,7 @@
 import type { WaterIntakeLogEntry } from '@workspace/shared';
 import { apiFetch } from '../services/api/apiClient';
 import type { DailySummaryApiResponse } from '../services/api/dailySummaryApi';
+import type { ServerConfig } from '../services/storage';
 import { addDays, getTodayDate } from '../utils/dateUtils';
 import { accountGeneration } from './accountGeneration';
 import { getCacheRow, putCacheRows } from './cacheStore';
@@ -44,7 +45,9 @@ export async function refreshRecentDailySummaries(
   db: OfflineDb,
   serverConfigId: string,
   today: string = getTodayDate(),
-  startedUnder: number = accountGeneration()
+  startedUnder: number = accountGeneration(),
+  /** The server to ask; without it the active one is used when each request goes out. */
+  serverConfig?: ServerConfig
 ): Promise<void> {
   let failed: unknown = null;
   for (let back = 0; back < DIARY_DAYS_KEPT; back += 1) {
@@ -58,6 +61,7 @@ export async function refreshRecentDailySummaries(
         endpoint: `/api/daily-summary?date=${encodeURIComponent(day)}`,
         serviceName: 'Offline pack',
         operation: "fetch the day's summary",
+        serverConfig,
       });
       if (accountGeneration() !== startedUnder) return;
       await storeDailySummary(db, serverConfigId, day, summary);
@@ -70,6 +74,7 @@ export async function refreshRecentDailySummaries(
         endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(day)}/log`,
         serviceName: 'Offline pack',
         operation: "fetch the day's drinks",
+        serverConfig,
       });
       if (accountGeneration() !== startedUnder) return;
       await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterLog, [

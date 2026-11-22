@@ -24,6 +24,7 @@ import {
   refreshOfflineImages,
   setExercisesKeptOffline,
 } from '../offline/offlineImages';
+import { discardOwnerlessUpload } from '../offline/discardOwnerless';
 import { refreshOfflinePack } from '../offline/offlinePack';
 import Switch from '../components/ui/Switch';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
@@ -153,6 +154,36 @@ const OfflineSettingsScreen: React.FC<OfflineSettingsScreenProps> = () => {
       setRefreshing(false);
     }
   }, [t]);
+
+  // An upload with no account recorded is never sent (it could land in
+  // whichever account is signed in), so the person can only throw it away.
+  const askDiscardOwnerless = useCallback(
+    (row: OutboxRow) => {
+      Alert.alert(
+        t('offline.ownerless.title', {
+          defaultValue: 'No account recorded',
+        }),
+        t('offline.ownerless.message', {
+          defaultValue:
+            'This upload was saved before the phone knew which account it belonged to, so it will not be sent. You can discard it.',
+        }),
+        [
+          {
+            text: t('common.cancel', { defaultValue: 'Cancel' }),
+            style: 'cancel',
+          },
+          {
+            text: t('offline.ownerless.discard', {
+              defaultValue: 'Discard this upload',
+            }),
+            style: 'destructive',
+            onPress: () => void discardOwnerlessUpload(row.id),
+          },
+        ]
+      );
+    },
+    [t]
+  );
 
   const askConflictChoice = useCallback(
     (row: OutboxRow) => {
@@ -344,12 +375,20 @@ const OfflineSettingsScreen: React.FC<OfflineSettingsScreenProps> = () => {
                       })
                     : kindLabel(row, t)
                 }
-                subtitle={statusLabel(row.status, t)}
+                subtitle={
+                  row.userId == null
+                    ? t('offline.ownerless.subtitle', {
+                        defaultValue: 'No account recorded. Tap to discard.',
+                      })
+                    : statusLabel(row.status, t)
+                }
                 subtitleNumberOfLines={0}
                 onPress={
                   row.status === 'conflict'
                     ? () => askConflictChoice(row)
-                    : undefined
+                    : row.userId == null
+                      ? () => askDiscardOwnerless(row)
+                      : undefined
                 }
               />
             ))

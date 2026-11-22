@@ -96,11 +96,14 @@ export function useUpdateFoodEntry({
         throw new Error('A waiting entry can only change its amount');
       }
       const startedUnder = accountGeneration();
+      const requestStartedAt = Date.now();
       try {
         const saved = await updateFoodEntry(entryId, payload);
         // A change still waiting on the phone for these fields is older than
         // this save: it must not replay over it later.
-        await dropSupersededUpdate(entryId, payload).catch(() => undefined);
+        await dropSupersededUpdate(entryId, payload, requestStartedAt).catch(
+          () => undefined
+        );
         return saved;
       } catch (error) {
         // With the server away the change is kept and sent later. Setting

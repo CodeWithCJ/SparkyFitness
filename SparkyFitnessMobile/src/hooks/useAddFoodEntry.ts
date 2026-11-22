@@ -125,6 +125,8 @@ async function createOrQueueFoodEntry(
 
 export interface AddFoodEntryInput {
   saveFoodPayload?: SaveFoodPayload;
+  /** The form has equivalent servings to save after the food: that needs the server. */
+  hasEquivalentServings?: boolean;
   /** Reuse the food saved by this form's earlier attempt without another POST. */
   savedFood?: FoodItem;
   /**
@@ -236,6 +238,7 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
             hasImages: Boolean(input.saveFoodImages),
             hasExtraServings: Boolean(
               input.saveThenCreateVariantPayload ||
+              input.hasEquivalentServings ||
               (input.externalVariants && input.externalVariants.length > 0)
             ),
           });

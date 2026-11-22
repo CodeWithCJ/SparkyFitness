@@ -186,8 +186,8 @@ export function useWaterIntakeMutation({
         if (result.kept && result.result === 'queued') showQueuedToast();
         return;
       }
-      // A drink waiting to upload keeps the amount shown from the press; the
-      // server's total does not include it yet.
+      // A drink waiting to upload: the day is read again, and the read adds
+      // the waiting drinks (and a linked container's food) on top.
       if (result.queued) {
         showQueuedToast();
         return;
@@ -213,9 +213,8 @@ export function useWaterIntakeMutation({
       });
     },
     onSettled: (result) => {
-      // Refreshing now would replace the shown amount with one that lacks the
-      // waiting drink; the upload refreshes the day once it is confirmed.
-      if (result && 'queued' in result && result.queued) return;
+      // The summary read counts the waiting drinks, so a queued press is
+      // refreshed like any other.
       invalidateWaterIntakeQueries(queryClient, date);
     },
   });

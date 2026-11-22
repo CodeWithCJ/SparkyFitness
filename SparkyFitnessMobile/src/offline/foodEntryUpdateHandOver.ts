@@ -18,7 +18,7 @@ import {
   type FoodEntryMealPayload,
 } from './foodEntryMealHandOver';
 import {
-  deleteUnconfirmedForEntity,
+  deleteUnconfirmedRow,
   enqueueOutbox,
   isOwnedBy,
   listUnconfirmedOutbox,
@@ -191,7 +191,13 @@ export async function queueFoodEntryUpdate(
  */
 export async function dropSupersededUpdate(
   entryId: string,
-  saved: UpdateFoodEntryPayload
+  saved: UpdateFoodEntryPayload,
+  /**
+   * When the save request was sent. A change queued after that (by another
+   * screen whose request failed while this one was in flight) is newer than
+   * the save and is left alone.
+   */
+  requestStartedAt: number
 ): Promise<void> {
   const serverConfigId = await getActiveServerConfigId();
   if (!serverConfigId) return;
@@ -204,7 +210,7 @@ export async function dropSupersededUpdate(
       row.status !== 'sending' &&
       isOwnedBy(row, userId)
   );
-  if (!waiting) return;
+  if (!waiting || waiting.updatedAt >= requestStartedAt) return;
   const before = waiting.payload as FoodEntryUpdatePayload;
   const setNow = new Set(
     Object.keys(saved).filter(
@@ -216,7 +222,9 @@ export async function dropSupersededUpdate(
   ) as UpdateFoodEntryPayload;
   if (Object.keys(patch).length === Object.keys(before.patch).length) return;
   if (Object.keys(patch).length === 0) {
-    await deleteUnconfirmedForEntity(db, serverConfigId, entryId);
+    // Only this update goes; a delete or anything else waiting for the entry
+    // stays.
+    await deleteUnconfirmedRow(db, waiting.id);
   } else {
     // What the entry reads like while it waits drops what was just saved.
     const display = Object.fromEntries(

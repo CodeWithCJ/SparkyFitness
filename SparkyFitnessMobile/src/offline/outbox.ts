@@ -298,6 +298,34 @@ export async function deleteUnconfirmedForEntity(
 }
 
 /**
+ * Removes one waiting row and the rows waiting on it, unless it is being sent.
+ * The status is checked inside the same transaction as the delete. Every
+ * other row of the same entity stays. True when the row was removed.
+ */
+export async function deleteUnconfirmedRow(
+  db: OfflineDb,
+  rowId: string,
+  isMine: (row: { userId: string | null }) => boolean = () => true
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const row = await tx.first<{
+      status: string;
+      user_id: string | null;
+    }>(`SELECT status, user_id FROM outbox WHERE id = ?`, [rowId]);
+    if (!row || row.status === 'sending' || row.status === 'synced') {
+      return false;
+    }
+    if (!isMine({ userId: row.user_id })) return false;
+    await tx.run(
+      `DELETE FROM outbox WHERE depends_on = ? AND status IN (${UNCONFIRMED_SQL})`,
+      [rowId]
+    );
+    await tx.run(`DELETE FROM outbox WHERE id = ?`, [rowId]);
+    return true;
+  });
+}
+
+/**
  * Removes what is waiting under an entity key, unless one of those rows is
  * being sent: the check and the delete are one transaction, so a row the
  * upload takes in between is never removed under it. 'uploading' leaves
