@@ -11,10 +11,9 @@ const mockFitPoints = jest.fn();
 
 jest.mock('../../../src/utils/routeMapSupport', () => ({
   canShowRouteMap: jest.fn(() => true),
-  usesGoogleMapsOnAndroid: jest.fn(() => false),
 }));
 
-jest.mock('../../../src/components/maps/MapSurface', () => {
+jest.mock('../../../src/components/maps/RoutePreviewMapSurface', () => {
   const React = require('react') as typeof import('react');
   const { View } = require('react-native') as typeof import('react-native');
 
