@@ -11,7 +11,15 @@ import {
   FOOD_ENTRY_MEAL_CREATE,
   type FoodEntryMealPayload,
 } from './foodEntryMealHandOver';
-import { readSavedFood, readSavedMeal, readSavedVariants } from './foodLibrary';
+import {
+  readSavedFood,
+  readSavedMeal,
+  readSavedSingle,
+  readSavedVariants,
+} from './foodLibrary';
+import { CACHE_COLLECTIONS } from './collections';
+import { WATER_ADD, type WaterAddPayload } from './waterHandOver';
+import type { WaterContainer } from '../types/measurements';
 import type { OfflineDb, OutboxRow } from './types';
 
 /** The nutrients a diary entry snapshots, copied from a serving or a quick-add. */
@@ -38,14 +46,24 @@ const NUTRIENT_FIELDS = [
   'alcohol_g',
 ] as const;
 
+type Nutrients = Partial<Record<(typeof NUTRIENT_FIELDS)[number], number>> & {
+  custom_nutrients?: Record<string, string | number>;
+};
+
 function nutrientsOf(
-  source: Partial<Record<(typeof NUTRIENT_FIELDS)[number], number>>
-): Partial<Record<(typeof NUTRIENT_FIELDS)[number], number>> {
-  const picked: Partial<Record<(typeof NUTRIENT_FIELDS)[number], number>> = {};
+  source: Partial<Record<(typeof NUTRIENT_FIELDS)[number], number>> & {
+    custom_nutrients?: Record<string, string | number> | null;
+  }
+): Nutrients {
+  const picked: Nutrients = {};
   for (const field of NUTRIENT_FIELDS) {
     const value = source[field];
     if (typeof value === 'number') picked[field] = value;
   }
+  // The person's own nutrients ride along, so the Diary's totals and the
+  // entry's detail count them while the entry waits.
+  if (source.custom_nutrients)
+    picked.custom_nutrients = source.custom_nutrients;
   return picked;
 }
 
@@ -200,6 +218,61 @@ export function previewFromQueuedFoodCreate(row: OutboxRow): FoodEntry | null {
   };
 }
 
+/**
+ * The food entry a waiting drink makes when its container is linked to a
+ * food: the linked serving, at the amount one press logs. Null for a plain
+ * container, or when the food or serving is not kept on the phone.
+ */
+export async function previewFromQueuedDrink(
+  db: OfflineDb,
+  serverConfigId: string,
+  row: OutboxRow
+): Promise<FoodEntry | null> {
+  const { containerId, entryDate } = row.payload as WaterAddPayload;
+  const containers =
+    (await readSavedSingle<WaterContainer[]>(
+      db,
+      serverConfigId,
+      CACHE_COLLECTIONS.waterContainers
+    )) ?? [];
+  const container = containers.find((item) => item.id === containerId);
+  if (!container?.linked_food_id) return null;
+  const food = await readSavedFood(
+    db,
+    serverConfigId,
+    container.linked_food_id
+  );
+  const variants = await readSavedVariants(
+    db,
+    serverConfigId,
+    container.linked_food_id
+  );
+  const serving: FoodDefaultVariant | undefined =
+    variants?.find((variant) => variant.id === container.linked_variant_id) ??
+    food?.default_variant;
+  if (!food || !serving) return null;
+  const quantity =
+    Number(container.linked_quantity) > 0
+      ? Number(container.linked_quantity)
+      : 1;
+  return {
+    id: pendingEntryId(row.entityId),
+    meal_type: '',
+    meal_type_id: container.linked_meal_type_id ?? undefined,
+    quantity,
+    unit: serving.serving_unit,
+    entry_date: entryDate,
+    ...nutrientsOf(serving),
+    calories: serving.calories,
+    food_id: food.id,
+    variant_id: serving.id,
+    food_name: food.name,
+    brand_name: food.brand ?? undefined,
+    serving_size: serving.serving_size,
+    serving_unit: serving.serving_unit,
+  };
+}
+
 /** The entry a waiting food or meal row will become, or null for any other row. */
 export async function previewFromQueuedRow(
   db: OfflineDb,
@@ -213,5 +286,7 @@ export async function previewFromQueuedRow(
   if (row.kind === FOOD_ENTRY_MEAL_CREATE) {
     return previewFromQueuedMeal(db, serverConfigId, row);
   }
+  if (row.kind === WATER_ADD)
+    return previewFromQueuedDrink(db, serverConfigId, row);
   return null;
 }

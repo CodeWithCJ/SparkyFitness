@@ -8,6 +8,7 @@ import {
   isQueueableFoodCreate,
   queueFoodCreate,
 } from '../offline/foodCreateHandOver';
+import { accountGeneration } from '../offline/accountGeneration';
 import { queueAfterConnectionFailure } from '../offline/queueAfterFailure';
 import { newUuid } from '../utils/ids';
 import type { FoodItem } from '../types/foods';
@@ -42,11 +43,14 @@ async function saveOrKeep({
     });
   if (!queueable) return saveFood(payload, images);
   const clientId = newUuid();
+  const startedUnder = accountGeneration();
   try {
     return await saveFood({ ...payload, client_id: clientId }, images);
   } catch (error) {
-    const queued = await queueAfterConnectionFailure(error, () =>
-      queueFoodCreate(clientId, null, payload, null)
+    const queued = await queueAfterConnectionFailure(
+      error,
+      () => queueFoodCreate(clientId, null, payload, null),
+      startedUnder
     );
     if (queued) return foodFromWaiting(clientId, payload);
     throw error;

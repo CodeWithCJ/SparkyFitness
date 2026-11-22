@@ -47,6 +47,14 @@ export async function queueWaterDrink(
     // Whose it is must be known: a row nobody owns would be shown to, and
     // uploaded under, whichever account signs in next.
     if (userId == null) return false;
+    // The same press sent again (a redelivered tap) is the row already kept.
+    const kept = (await listUnconfirmedOutbox(db, serverConfigId)).find(
+      (row) =>
+        row.kind === WATER_ADD &&
+        row.entityId === clientId &&
+        isOwnedBy(row, userId)
+    );
+    if (kept) return true;
     await enqueueOutbox(db, {
       // A press is its own entity: two presses are two rows, never merged.
       id: newUuid(),

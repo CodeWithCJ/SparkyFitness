@@ -930,6 +930,11 @@ const FoodEntryViewScreen: React.FC<FoodEntryViewScreenProps> = ({
         vitamin_a: displayValues.vitaminA,
         vitamin_c: displayValues.vitaminC,
       });
+      // The serving's own nutrients ride along, so the entry's detail keeps
+      // them while the change waits.
+      if (selectedCustomNutrients !== undefined) {
+        preview.custom_nutrients = selectedCustomNutrients ?? {};
+      }
     }
     if (Object.keys(preview).length === 0) updateEntry(payload);
     else updateEntry(payload, preview);

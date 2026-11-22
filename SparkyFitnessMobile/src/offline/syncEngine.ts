@@ -2,7 +2,9 @@ import { ApiError } from '../services/api/errors';
 import { addLog } from '../services/LogService';
 import { getActiveServerConfigId } from '../services/storage';
 import { serverMayBeDown } from '../utils/serverErrors';
+import { accountGeneration } from './accountGeneration';
 import { getCacheRow } from './cacheStore';
+import { refreshRecentDailySummaries } from './dailySummaryCache';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged, notifyUploadsConfirmed } from './events';
 import { getOutboxHandler } from './handlers/registry';
@@ -97,6 +99,11 @@ function isDue(row: OutboxRow, trigger: DrainTrigger, now: number): boolean {
   }
 }
 
+/** Uploads that change a day's food or water totals. */
+function affectsDaySummary(kind: string): boolean {
+  return kind.startsWith('food') || kind.startsWith('water');
+}
+
 async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
   const db = await getOfflineDb();
   const now = Date.now();
@@ -107,6 +114,11 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
   const currentUserId = await signedInUserId(db, serverConfigId);
   const rows = await listUnconfirmedOutbox(db, serverConfigId);
   let synced = 0;
+  // Set once a food or drink upload is confirmed: the phone's saved copy of
+  // the day totals no longer counts it, so the copy is refreshed from the
+  // server (it is not counted twice, since a confirmed row leaves the overlay
+  // and the server's total now holds it).
+  let summariesOutdated = false;
   // A row waiting on another is looked at again once that one is confirmed,
   // so a workout and the feedback given on it go up in the same run.
   let toVisit = rows;
@@ -184,6 +196,7 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
         );
         if (!confirmed) continue;
         synced += 1;
+        if (affectsDaySummary(row.kind)) summariesOutdated = true;
         try {
           await handler.onSynced?.(row);
         } catch (error) {
@@ -243,6 +256,20 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
     toVisit = synced > syncedBefore ? waitingOnOthers : [];
   }
 
+  if (summariesOutdated) {
+    const startedUnder = accountGeneration();
+    try {
+      await refreshRecentDailySummaries(
+        db,
+        serverConfigId,
+        undefined,
+        startedUnder
+      );
+    } catch (error) {
+      // The next full refresh of the offline pack tries again.
+      addLog(`[Offline] Saved day totals not refreshed: ${error}`, 'WARNING');
+    }
+  }
   const remaining = (await listUnconfirmedOutbox(db, serverConfigId)).length;
   return { synced, remaining };
 }

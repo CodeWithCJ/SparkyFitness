@@ -6,6 +6,7 @@ import type {
   FoodEntryMeal,
   FoodEntryMealCreateData,
 } from '../types/foodEntryMeals';
+import { accountGeneration } from '../offline/accountGeneration';
 import { queueAfterConnectionFailure } from '../offline/queueAfterFailure';
 import {
   isQueueableFoodEntryMeal,
@@ -49,13 +50,16 @@ async function createOrQueueMeal(
   payload: FoodEntryMealCreateData
 ): Promise<FoodEntryMeal> {
   const clientId = newUuid();
+  const startedUnder = accountGeneration();
   try {
     return await createFoodEntryMeal({ ...payload, client_id: clientId });
   } catch (error) {
     const queued =
       isQueueableFoodEntryMeal(payload) &&
-      (await queueAfterConnectionFailure(error, () =>
-        queueFoodEntryMeal(clientId, payload)
+      (await queueAfterConnectionFailure(
+        error,
+        () => queueFoodEntryMeal(clientId, payload),
+        startedUnder
       ));
     if (queued) return pendingMealFrom(clientId, payload);
     throw error;

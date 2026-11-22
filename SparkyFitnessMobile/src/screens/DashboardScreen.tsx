@@ -1081,7 +1081,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   return (
     <View className="flex-1 bg-background">
       <HydrationReminderReconciler />
-      {!isConnectionLoading && isConnected ? (
+      {!isConnectionLoading && (isConnected || isOffline) ? (
         <DateNavigator
           title={t('navigation.dashboard', { defaultValue: 'Dashboard' })}
           selectedDate={selectedDate}

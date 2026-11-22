@@ -24,6 +24,7 @@ import {
   servingVariantKey,
 } from '../utils/foodDetails';
 import { persistExternalVariants } from '../utils/persistExternalVariants';
+import { accountGeneration } from '../offline/accountGeneration';
 import { queueAfterConnectionFailure } from '../offline/queueAfterFailure';
 import {
   isPendingEntryId,
@@ -83,6 +84,7 @@ async function createOrQueueFoodEntry(
   payload: CreateFoodEntryPayload
 ): Promise<FoodEntry> {
   const clientId = newUuid();
+  const startedUnder = accountGeneration();
   // A food that is itself still waiting to upload has no id on the server
   // yet: the entry goes up with the food, which the server answers with the
   // food it already made when the key is repeated.
@@ -111,8 +113,10 @@ async function createOrQueueFoodEntry(
   } catch (error) {
     const queued =
       isQueueableFoodEntry(payload) &&
-      (await queueAfterConnectionFailure(error, () =>
-        queueFoodEntry(clientId, payload)
+      (await queueAfterConnectionFailure(
+        error,
+        () => queueFoodEntry(clientId, payload),
+        startedUnder
       ));
     if (queued) return pendingEntryFrom(clientId, payload);
     throw error;
@@ -224,6 +228,7 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
         // its entry. Both carry replay keys from the first request on.
         const foodClientId = newUuid();
         const entryClientId = newUuid();
+        const startedUnder = accountGeneration();
         const queueable =
           !input.savedFood &&
           isQueueableFoodCreate({
@@ -249,13 +254,16 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
             const entry = input.createEntryPayload;
             const queued =
               queueable &&
-              (await queueAfterConnectionFailure(error, () =>
-                queueFoodCreate(
-                  foodClientId,
-                  entryClientId,
-                  saveFoodPayload,
-                  entry
-                )
+              (await queueAfterConnectionFailure(
+                error,
+                () =>
+                  queueFoodCreate(
+                    foodClientId,
+                    entryClientId,
+                    saveFoodPayload,
+                    entry
+                  ),
+                startedUnder
               ));
             if (queued) {
               return pendingEntryFrom(entryClientId, {
@@ -309,7 +317,9 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
           );
         }
 
-        return createFoodEntry({
+        // The food is on the server now; if only the entry cannot reach it,
+        // the entry is kept on the phone like any other.
+        return createOrQueueFoodEntry({
           ...input.createEntryPayload,
           food_id: saved.id,
           variant_id: variantId,
@@ -329,6 +339,8 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
             defaultValue: 'It uploads when your server can be reached.',
           }),
         });
+        // The Diary reloads the day, which now counts the waiting entry.
+        invalidateCache(entry.entry_date);
       } else {
         invalidateCache(entry.entry_date);
       }

@@ -265,6 +265,8 @@ export function useWaterIntakeMutation({
     onSuccess: (result) => {
       if (result.queued) {
         showQueuedToast();
+        // The day's total counts the waiting drink at once.
+        invalidateWaterIntakeQueries(queryClient, date);
         return;
       }
       invalidateWaterIntakeQueries(queryClient, date);

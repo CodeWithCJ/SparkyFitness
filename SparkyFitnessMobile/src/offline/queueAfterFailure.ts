@@ -1,3 +1,4 @@
+import { accountGeneration } from './accountGeneration';
 import { serverMayBeDown } from '../utils/serverErrors';
 import { TimeoutError } from '../utils/concurrency';
 
@@ -10,8 +11,17 @@ import { TimeoutError } from '../utils/concurrency';
  */
 export async function queueAfterConnectionFailure(
   error: unknown,
-  queue: () => Promise<boolean>
+  queue: () => Promise<boolean>,
+  /**
+   * `accountGeneration()` read before the request was sent. When the account
+   * changed while it was failing, the work is not kept: it would be queued
+   * under whoever is signed in now.
+   */
+  startedUnder?: number
 ): Promise<boolean> {
+  if (startedUnder !== undefined && accountGeneration() !== startedUnder) {
+    return false;
+  }
   if (!serverMayBeDown(error) || error instanceof TimeoutError) return false;
   if (isReadTimeout(error)) return false;
   return queue();

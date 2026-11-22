@@ -505,12 +505,14 @@ export function CreateFoodMode({
 
     const saveFoodForForm = async () => {
       if (portionDraft.length === 0 && !savedFoodRef.current) {
-        // A food made only for the library can wait on the phone.
+        // A food made only for the library can wait on the phone, unless it
+        // carries equivalent servings: those are saved after the food and
+        // would be lost, so that food needs the server.
         return saveFoodAsync(
           saveFoodPayload,
           imageArgs,
           undefined,
-          isLibraryMode
+          isLibraryMode && cleanEquivalents.length === 0
         );
       }
       setIsPortionSaving(true);

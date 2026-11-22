@@ -48,6 +48,12 @@ export const CACHE_COLLECTIONS = {
 /** Key of a collection that holds exactly one document. */
 export const SINGLE_DOCUMENT_KEY = 'current';
 
+/**
+ * Marker written when the person's meals were last refreshed: an empty list
+ * that was fetched is an answer, not "never kept".
+ */
+export const MEALS_KEPT_KEY = 'meals_kept';
+
 /** Marker written when a full offline pack refresh has finished. */
 export const PACK_COMPLETED_KEY = 'completed';
 

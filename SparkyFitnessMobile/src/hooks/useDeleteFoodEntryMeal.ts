@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { accountGeneration } from '../offline/accountGeneration';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import i18n from '../localization/i18n';
@@ -26,12 +27,14 @@ export function useDeleteFoodEntryMeal({
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const startedUnder = accountGeneration();
       try {
         await deleteFoodEntryMeal(mealId);
       } catch (error) {
         // With the server away the removal is kept and sent later. Deleting
         // is safe to send again, so even a timeout is kept.
         if (
+          accountGeneration() === startedUnder &&
           serverMayBeDown(error) &&
           (await queueFoodEntryMealDelete(mealId, entryDate))
         ) {

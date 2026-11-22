@@ -1,8 +1,13 @@
 import { changeWaterIntake } from '../services/api/measurementsApi';
+import { ApiError } from '../services/api/errors';
 import type { WaterIntakeResponse } from '../types/measurements';
 import { newUuid } from '../utils/ids';
+import { accountGeneration } from './accountGeneration';
 import { queueAfterConnectionFailure } from './queueAfterFailure';
 import { queueWaterDrink, removeLatestDrinkOffline } from './waterHandOver';
+
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** What logging a drink came to: the server's answer, or a waiting upload. */
 export type DrinkResult =
@@ -18,9 +23,17 @@ export type DrinkResult =
  */
 export async function logDrinkOrQueue(
   entryDate: string,
-  containerId: number
+  containerId: number,
+  /**
+   * The replay key of a press that arrives more than once (the watch sends a
+   * tap again until it is acknowledged): the same key is the same drink, on
+   * the server and in the waiting queue. Without one a fresh key is made.
+   */
+  pressKey?: string
 ): Promise<DrinkResult> {
-  const clientId = newUuid();
+  const clientId =
+    pressKey && UUID_PATTERN.test(pressKey) ? pressKey : newUuid();
+  const startedUnder = accountGeneration();
   try {
     const response = await changeWaterIntake({
       entryDate,
@@ -30,8 +43,10 @@ export async function logDrinkOrQueue(
     });
     return { queued: false, response };
   } catch (error) {
-    const queued = await queueAfterConnectionFailure(error, () =>
-      queueWaterDrink(clientId, { entryDate, containerId })
+    const queued = await queueAfterConnectionFailure(
+      error,
+      () => queueWaterDrink(clientId, { entryDate, containerId }),
+      startedUnder
     );
     if (queued) return { queued: true };
     throw error;
@@ -54,6 +69,7 @@ export async function removeDrinkOrQueue(
   entryDate: string,
   containerId: number
 ): Promise<DrinkRemoval> {
+  const startedUnder = accountGeneration();
   try {
     const response = await changeWaterIntake({
       entryDate,
@@ -63,10 +79,28 @@ export async function removeDrinkOrQueue(
     return { kept: false, response };
   } catch (error) {
     let result: 'cancelled' | 'queued' | 'none' = 'none';
-    const kept = await queueAfterConnectionFailure(error, async () => {
-      result = await removeLatestDrinkOffline(entryDate);
-      return true;
-    });
+    // Only a failure that says the request never arrived is replayed. A
+    // server error, a gateway timeout or "too many requests" can come after
+    // the server already took the drink off, and sending it again would take
+    // a second one; "bad gateway" and "unavailable" say the server never got
+    // it.
+    if (
+      error instanceof ApiError &&
+      error.statusCode !== 502 &&
+      error.statusCode !== 503
+    ) {
+      throw error;
+    }
+    const kept = await queueAfterConnectionFailure(
+      error,
+      async () => {
+        result = await removeLatestDrinkOffline(entryDate);
+        // Nothing was written when there was nothing to take off, or the
+        // phone could not store it: that is not a kept change.
+        return result !== 'none';
+      },
+      startedUnder
+    );
     if (kept) return { kept: true, result };
     throw error;
   }

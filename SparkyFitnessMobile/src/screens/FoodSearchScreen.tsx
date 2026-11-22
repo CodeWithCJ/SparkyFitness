@@ -264,9 +264,25 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     [toggleFoodSelection, t, selectionMaxItems]
   );
 
+  // Adding several foods at once sends them straight to the server and keeps
+  // nothing on the phone, so it waits for a connection.
+  const multiAddUnavailable = connectionStatus === 'unreachable';
+
   const openMultiAddReview = useCallback(() => {
+    if (multiAddUnavailable) {
+      Toast.show({
+        type: 'info',
+        text1: t('foodSearch.multiSelect.needsConnection', {
+          defaultValue: 'Adding several foods needs a connection',
+        }),
+        text2: t('foodSearch.multiSelect.needsConnectionHint', {
+          defaultValue: 'Add them one at a time to keep them on this phone.',
+        }),
+      });
+      return;
+    }
     navigation.navigate('FoodEntryMultiAdd', { date, mealTypeId });
-  }, [navigation, date, mealTypeId]);
+  }, [navigation, date, mealTypeId, multiAddUnavailable, t]);
 
   const handleSelectAllInSection = useCallback(
     (entries: LandingEntry[]) => {
@@ -1593,6 +1609,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
             <Button
               variant="ghost"
               onPress={openMultiAddReview}
+              disabled={multiAddUnavailable}
               className="p-0"
               accessibilityLabel={t('foodSearch.multiSelect.review', {
                 defaultValue: 'Review',

@@ -298,6 +298,45 @@ export async function deleteUnconfirmedForEntity(
 }
 
 /**
+ * Removes what is waiting under an entity key, unless one of those rows is
+ * being sent: the check and the delete are one transaction, so a row the
+ * upload takes in between is never removed under it. 'uploading' leaves
+ * everything in place.
+ */
+export async function deleteUnconfirmedUnlessSending(
+  db: OfflineDb,
+  serverConfigId: string,
+  entityId: string,
+  isMine: (row: { userId: string | null }) => boolean = () => true
+): Promise<'deleted' | 'uploading' | 'none'> {
+  return db.transaction(async (tx) => {
+    const rows = (
+      await tx.all<{
+        id: string;
+        status: string;
+        user_id: string | null;
+      }>(
+        `SELECT id, status, user_id FROM outbox
+         WHERE server_config_id = ? AND entity_id = ?
+           AND status IN (${UNCONFIRMED_SQL})`,
+        [serverConfigId, entityId]
+      )
+    ).filter((row) => isMine({ userId: row.user_id }));
+    if (rows.length === 0) return 'none';
+    if (rows.some((row) => row.status === 'sending')) return 'uploading';
+    for (const row of rows) {
+      await tx.run(
+        `DELETE FROM outbox
+         WHERE depends_on = ? AND status IN (${UNCONFIRMED_SQL})`,
+        [row.id]
+      );
+      await tx.run(`DELETE FROM outbox WHERE id = ?`, [row.id]);
+    }
+    return 'deleted';
+  });
+}
+
+/**
  * Drops safety copies of uploads confirmed more than a week ago. A row the
  * server has not confirmed is never removed here, however old it is.
  */

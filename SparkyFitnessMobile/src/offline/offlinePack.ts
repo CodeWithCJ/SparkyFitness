@@ -412,6 +412,13 @@ async function refreshSteps(
     await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.pack, [
       { key: FOOD_PACK_COMPLETED_KEY, payload: { completedAt: Date.now() } },
     ]);
+  } else {
+    // An earlier good marker must not hide this failure: the next trigger
+    // should try the food again, not wait out the six hours.
+    await db.run(
+      `DELETE FROM cache WHERE server_config_id = ? AND collection = ? AND key = ?`,
+      [serverConfigId, CACHE_COLLECTIONS.pack, FOOD_PACK_COMPLETED_KEY]
+    );
   }
   // True when what this run was asked to refresh completed: the workout data,
   // or, when that was recent enough to skip, the food. A food refresh that

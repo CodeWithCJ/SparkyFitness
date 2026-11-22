@@ -122,6 +122,11 @@ export function applyMealChange(
       patch.entry_time !== undefined ? patch.entry_time : meal.entry_time,
     quantity: patch.quantity ?? meal.quantity,
     unit: patch.unit ?? meal.unit,
+    // An explicit null is applied; a patch that omits it keeps what is kept.
+    entry_total_servings:
+      patch.entry_total_servings !== undefined
+        ? patch.entry_total_servings
+        : meal.entry_total_servings,
     foods,
     calories: display.calories ?? meal.calories,
     protein: display.protein ?? meal.protein,

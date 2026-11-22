@@ -71,7 +71,7 @@ export async function readFoodEntryChanges(
       continue;
     }
     if (row.kind !== FOOD_ENTRY_UPDATE || !row.entryDate) continue;
-    const { display } = row.payload as FoodEntryUpdatePayload;
+    const { display, original: kept } = row.payload as FoodEntryUpdatePayload;
     const from = normalizeDate(row.entryDate);
     const to = display.entry_date ? normalizeDate(display.entry_date) : from;
     if (from === date && to === date) {
@@ -79,15 +79,21 @@ export async function readFoodEntryChanges(
     } else if (from === date) {
       movedOut.push(row.entityId);
     } else if (to === date && !gone.has(row.entityId)) {
-      const source = await getCacheRow(
-        db,
-        serverConfigId,
-        CACHE_COLLECTIONS.diaryFoodDay,
-        from
-      );
-      const original = (source?.payload as FoodEntry[] | undefined)?.find(
-        (entry) => entry.id === row.entityId
-      );
+      // The copy kept with the change; older rows fall back to the day it
+      // came from, if that is still saved.
+      const source = kept
+        ? null
+        : await getCacheRow(
+            db,
+            serverConfigId,
+            CACHE_COLLECTIONS.diaryFoodDay,
+            from
+          );
+      const original =
+        kept ??
+        (source?.payload as FoodEntry[] | undefined)?.find(
+          (entry) => entry.id === row.entityId
+        );
       if (original) movedIn.push({ ...original, ...display });
     }
   }

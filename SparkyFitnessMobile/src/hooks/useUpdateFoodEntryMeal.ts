@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { accountGeneration } from '../offline/accountGeneration';
 import Toast from 'react-native-toast-message';
 import i18n from '../localization/i18n';
 import { updateFoodEntryMeal } from '../services/api/foodEntryMealsApi';
@@ -47,6 +48,7 @@ export function useUpdateFoodEntryMeal({
       payload,
       display,
     }: MealChange): Promise<FoodEntryMeal | KeptOnPhone> => {
+      const startedUnder = accountGeneration();
       try {
         return await updateFoodEntryMeal(mealId, payload);
       } catch (error) {
@@ -54,6 +56,7 @@ export function useUpdateFoodEntryMeal({
         // the whole meal, so sending it twice leaves the same meal and even a
         // timeout is kept.
         if (
+          accountGeneration() === startedUnder &&
           serverMayBeDown(error) &&
           (await queueFoodEntryMealUpdate(mealId, entryDate, payload, display))
         ) {

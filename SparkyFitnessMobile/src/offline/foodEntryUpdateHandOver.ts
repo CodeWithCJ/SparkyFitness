@@ -4,6 +4,8 @@ import { addLog } from '../services/LogService';
 import { getActiveServerConfigId } from '../services/storage';
 import { normalizeDate } from '../utils/dateUtils';
 import { newUuid } from '../utils/ids';
+import { getCacheRow } from './cacheStore';
+import { CACHE_COLLECTIONS } from './collections';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged } from './events';
 import { FOOD_CREATE, type FoodCreatePayload } from './foodCreateHandOver';
@@ -15,8 +17,14 @@ import {
   FOOD_ENTRY_MEAL_CREATE,
   type FoodEntryMealPayload,
 } from './foodEntryMealHandOver';
-import { enqueueOutbox, listUnconfirmedOutbox } from './outbox';
+import {
+  deleteUnconfirmedForEntity,
+  enqueueOutbox,
+  isOwnedBy,
+  listUnconfirmedOutbox,
+} from './outbox';
 import { signedInUserId } from './syncEngine';
+import type { OfflineDb } from './types';
 
 /** Changes to a food entry the server has, waiting to upload. */
 export const FOOD_ENTRY_UPDATE = 'food_entry.update';
@@ -29,6 +37,11 @@ export interface FoodEntryUpdatePayload {
   patch: UpdateFoodEntryPayload;
   /** The entry fields it changes, as the Diary shows them while it waits. */
   display: Partial<FoodEntry>;
+  /**
+   * The entry as it was on the day it was moved from, kept with a move so the
+   * day it moves to can show it even after the first day is refreshed.
+   */
+  original?: FoodEntry;
 }
 
 /** Version 1 held only a new amount. */
@@ -93,6 +106,23 @@ export function displayFromPatch(
   return { ...(display as Partial<FoodEntry>), ...preview };
 }
 
+/** The entry as the phone last saw it on a day, or null when it is not kept. */
+async function savedEntryOnDay(
+  db: OfflineDb,
+  serverConfigId: string,
+  day: string,
+  entryId: string
+): Promise<FoodEntry | null> {
+  const row = await getCacheRow(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.diaryFoodDay,
+    day
+  );
+  const entries = (row?.payload as FoodEntry[] | undefined) ?? [];
+  return entries.find((entry) => entry.id === entryId) ?? null;
+}
+
 /**
  * Queues changes to an entry the server has. Setting values is safe to send
  * again, so it is kept after any failure to reach the server, a timeout
@@ -123,6 +153,18 @@ export async function queueFoodEntryUpdate(
       patch: { ...before?.patch, ...patch },
       display: { ...before?.display, ...display },
     };
+    // An entry moved to another day is shown there from this copy of it, so
+    // it stays visible after the day it came from is replaced by a refresh.
+    const movedTo = payload.display.entry_date
+      ? normalizeDate(payload.display.entry_date)
+      : null;
+    const from = earlier?.entryDate ?? normalizeDate(entryDate);
+    if (movedTo && movedTo !== from) {
+      const original =
+        before?.original ??
+        (await savedEntryOnDay(db, serverConfigId, from, entryId));
+      if (original) payload.original = original;
+    }
     await enqueueOutbox(db, {
       id: earlier?.id ?? newUuid(),
       serverConfigId,
@@ -139,6 +181,63 @@ export async function queueFoodEntryUpdate(
     addLog(`[Offline] Could not queue the change: ${error}`, 'ERROR');
     return false;
   }
+}
+
+/**
+ * After a change was saved straight to the server: takes the fields it set out
+ * of any change still waiting on the phone for the same entry, so the older
+ * value never replays over the newer one. A waiting change left with nothing
+ * to send is removed. A change being sent this moment is left alone.
+ */
+export async function dropSupersededUpdate(
+  entryId: string,
+  saved: UpdateFoodEntryPayload
+): Promise<void> {
+  const serverConfigId = await getActiveServerConfigId();
+  if (!serverConfigId) return;
+  const db = await getOfflineDb();
+  const userId = await signedInUserId(db, serverConfigId);
+  const waiting = (await listUnconfirmedOutbox(db, serverConfigId)).find(
+    (row) =>
+      row.kind === FOOD_ENTRY_UPDATE &&
+      row.entityId === entryId &&
+      row.status !== 'sending' &&
+      isOwnedBy(row, userId)
+  );
+  if (!waiting) return;
+  const before = waiting.payload as FoodEntryUpdatePayload;
+  const setNow = new Set(
+    Object.keys(saved).filter(
+      (key) => saved[key as keyof UpdateFoodEntryPayload] !== undefined
+    )
+  );
+  const patch = Object.fromEntries(
+    Object.entries(before.patch).filter(([key]) => !setNow.has(key))
+  ) as UpdateFoodEntryPayload;
+  if (Object.keys(patch).length === Object.keys(before.patch).length) return;
+  if (Object.keys(patch).length === 0) {
+    await deleteUnconfirmedForEntity(db, serverConfigId, entryId);
+  } else {
+    // What the entry reads like while it waits drops what was just saved.
+    const display = Object.fromEntries(
+      Object.entries(before.display).filter(([key]) => !setNow.has(key))
+    ) as Partial<FoodEntry>;
+    await enqueueOutbox(db, {
+      id: waiting.id,
+      serverConfigId,
+      userId: waiting.userId,
+      kind: FOOD_ENTRY_UPDATE,
+      entityId: entryId,
+      entryDate: waiting.entryDate,
+      payload: {
+        patch,
+        display,
+        ...(before.original ? { original: before.original } : {}),
+      },
+      payloadVersion: waiting.payloadVersion,
+    });
+  }
+  notifyOutboxChanged();
 }
 
 /**

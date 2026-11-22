@@ -21,7 +21,11 @@ import {
   listCacheRowsPage,
   type CacheWrite,
 } from './cacheStore';
-import { CACHE_COLLECTIONS, SINGLE_DOCUMENT_KEY } from './collections';
+import {
+  CACHE_COLLECTIONS,
+  MEALS_KEPT_KEY,
+  SINGLE_DOCUMENT_KEY,
+} from './collections';
 import {
   isPendingFoodId,
   listWaitingFoods,
@@ -118,6 +122,16 @@ async function fetchOwnFoods(
   return foods;
 }
 
+/** Whether the name has every word of the typed text, in any order. */
+function matchesAllWords(name: string, text: string): boolean {
+  const lower = name.toLowerCase();
+  return text
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .every((word) => lower.includes(word));
+}
+
 async function refreshVariants(
   db: OfflineDb,
   serverConfigId: string,
@@ -125,6 +139,7 @@ async function refreshVariants(
   startedUnder: number
 ): Promise<void> {
   const wanted = foods.slice(0, FOOD_VARIANTS_KEPT);
+  const kept: { key: string; payload: FoodVariantDetail[] }[] = [];
   for (let start = 0; start < wanted.length; start += VARIANT_BATCH) {
     if (accountGeneration() !== startedUnder) return;
     const batch = wanted.slice(start, start + VARIANT_BATCH);
@@ -138,13 +153,19 @@ async function refreshVariants(
       )
     );
     if (accountGeneration() !== startedUnder) return;
-    await putCacheRows(
-      db,
-      serverConfigId,
-      CACHE_COLLECTIONS.foodVariants,
-      batch.map((food, index) => ({ key: food.id, payload: answers[index] }))
+    kept.push(
+      ...batch.map((food, index) => ({ key: food.id, payload: answers[index] }))
     );
   }
+  // Replaced as a whole, once every batch has answered: servings of foods that
+  // fell out of the kept set go, and a refresh that stops part-way leaves the
+  // earlier copy as it was.
+  await replaceCacheCollection(
+    db,
+    serverConfigId,
+    CACHE_COLLECTIONS.foodVariants,
+    kept
+  );
 }
 
 /**
@@ -212,6 +233,9 @@ export async function refreshFoodLibrary(
       payload: meal,
     }))
   );
+  await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.pack, [
+    { key: MEALS_KEPT_KEY, payload: { keptAt: Date.now() } },
+  ]);
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterContainers, [
     { key: SINGLE_DOCUMENT_KEY, payload: containers },
   ]);
@@ -246,8 +270,7 @@ export async function readSavedFoodsPage(
       );
   // New foods made on the phone and not yet uploaded are listed first.
   const waiting = (await listWaitingFoods(db, serverConfigId)).filter(
-    ({ item }) =>
-      !term || foodSearchName(item).toLowerCase().includes(term.toLowerCase())
+    ({ item }) => matchesAllWords(foodSearchName(item), term)
   );
   // Nothing kept at all is "not available offline"; a search that matches
   // nothing among the kept foods is a real (empty) answer.
@@ -371,7 +394,16 @@ export async function readSavedMeals(
         MEALS_READ_MAX,
         0
       );
-  if (total === 0 && !term) return null;
+  if (total === 0 && !term) {
+    // Nothing kept: an empty library that was fetched is a real answer.
+    const marker = await getCacheRow(
+      db,
+      serverConfigId,
+      CACHE_COLLECTIONS.pack,
+      MEALS_KEPT_KEY
+    );
+    return marker ? [] : null;
+  }
   return rows.map((row) => row.payload as Meal);
 }
 

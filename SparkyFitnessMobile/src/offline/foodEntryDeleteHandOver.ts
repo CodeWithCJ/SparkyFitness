@@ -5,9 +5,9 @@ import { newUuid } from '../utils/ids';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged } from './events';
 import {
-  deleteUnconfirmedForEntity,
+  deleteUnconfirmedUnlessSending,
+  isOwnedBy,
   enqueueOutbox,
-  listUnconfirmedOutbox,
 } from './outbox';
 import { signedInUserId } from './syncEngine';
 
@@ -69,12 +69,15 @@ export async function cancelWaitingEntry(
   const serverConfigId = await getActiveServerConfigId();
   if (!serverConfigId) return 'gone';
   const db = await getOfflineDb();
-  const rows = (await listUnconfirmedOutbox(db, serverConfigId)).filter(
-    (row) => row.entityId === entityId
+  const userId = await signedInUserId(db, serverConfigId);
+  const outcome = await deleteUnconfirmedUnlessSending(
+    db,
+    serverConfigId,
+    entityId,
+    (row) => isOwnedBy(row, userId)
   );
-  if (rows.length === 0) return 'gone';
-  if (rows.some((row) => row.status === 'sending')) return 'uploading';
-  await deleteUnconfirmedForEntity(db, serverConfigId, entityId);
+  if (outcome === 'none') return 'gone';
+  if (outcome === 'uploading') return 'uploading';
   notifyOutboxChanged();
   return 'cancelled';
 }

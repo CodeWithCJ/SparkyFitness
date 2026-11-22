@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { accountGeneration } from '../offline/accountGeneration';
 import Toast from 'react-native-toast-message';
 import i18n from '../localization/i18n';
 import {
@@ -9,6 +10,7 @@ import {
   displayFromPatch,
   editWaitingEntryQuantity,
   queueFoodEntryUpdate,
+  dropSupersededUpdate,
 } from '../offline/foodEntryUpdateHandOver';
 import {
   isPendingEntryId,
@@ -43,8 +45,12 @@ interface UseUpdateFoodEntryOptions {
 function isQuantityOnly(
   payload: UpdateFoodEntryPayload
 ): payload is UpdateFoodEntryPayload & { quantity: number } {
+  // A new amount clears the cooked weight (as on the server), so a request
+  // that carries "no cooked weight" next to it is still only an amount.
   const keys = Object.keys(payload).filter(
-    (key) => payload[key as keyof UpdateFoodEntryPayload] !== undefined
+    (key) =>
+      payload[key as keyof UpdateFoodEntryPayload] !== undefined &&
+      !(key === 'cooked_quantity' && payload.cooked_quantity === null)
   );
   return keys.length === 1 && keys[0] === 'quantity';
 }
@@ -89,12 +95,18 @@ export function useUpdateFoodEntry({
       if (isPendingEntryId(entryId)) {
         throw new Error('A waiting entry can only change its amount');
       }
+      const startedUnder = accountGeneration();
       try {
-        return await updateFoodEntry(entryId, payload);
+        const saved = await updateFoodEntry(entryId, payload);
+        // A change still waiting on the phone for these fields is older than
+        // this save: it must not replay over it later.
+        await dropSupersededUpdate(entryId, payload).catch(() => undefined);
+        return saved;
       } catch (error) {
         // With the server away the change is kept and sent later. Setting
         // values is safe to send again, so even a timeout is kept.
         if (
+          accountGeneration() === startedUnder &&
           serverMayBeDown(error) &&
           (await queueFoodEntryUpdate(
             entryId,

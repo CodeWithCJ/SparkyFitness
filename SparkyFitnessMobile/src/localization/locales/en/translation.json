@@ -4557,6 +4557,8 @@
       "selectAll": "Select all",
       "selected_one": "{{count}} selected",
       "selected_other": "{{count}} selected",
+      "needsConnection": "Adding several foods needs a connection",
+      "needsConnectionHint": "Add them one at a time to keep them on this phone.",
       "limitReached": "You can select up to {{limit}} foods",
       "foodCheckbox": "Select {{name}}"
     },

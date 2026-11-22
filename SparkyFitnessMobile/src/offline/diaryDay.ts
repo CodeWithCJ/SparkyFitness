@@ -338,8 +338,12 @@ export async function readOfflineDiaryDay(
   );
   const waitingFood: FoodEntry[] = [];
   for (const row of rows) {
-    const preview = await previewFromQueuedRow(db, serverConfigId, row);
-    if (preview) waitingFood.push(preview);
+    try {
+      const preview = await previewFromQueuedRow(db, serverConfigId, row);
+      if (preview) waitingFood.push(preview);
+    } catch {
+      // One entry that cannot be previewed never hides the rest of the day.
+    }
   }
   const deletedFood = rows
     .filter((row) => row.kind === FOOD_ENTRY_DELETE)
@@ -404,8 +408,15 @@ export function mergeWaitingFood(
   updated: Readonly<Record<string, Partial<FoodEntry>>> = {},
   deletedMeals: readonly string[] = []
 ): FoodEntry[] {
+  // The waiting copy of an entry wins over the same id already in the saved
+  // list (a copy of the day cached after the upload, or a moved entry the
+  // destination day already holds), so nothing shows twice.
+  const waitingIds = new Set(waiting.map((entry) => entry.id));
   return [
-    ...applyEntryChanges(withoutDeleted(saved, deleted, deletedMeals), updated),
+    ...applyEntryChanges(
+      withoutDeleted(saved, deleted, deletedMeals),
+      updated
+    ).filter((entry) => !waitingIds.has(entry.id)),
     ...waiting,
   ];
 }

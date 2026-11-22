@@ -61,6 +61,9 @@ const NOTHING_WAITING: WaitingForDay = {
   changedEntries: {},
 };
 
+/** What a press of the default drink counts, as the server does (2000 ml in 8). */
+const DEFAULT_DRINK_ML = 250;
+
 /**
  * The food entries and drinks of one day that the server has not confirmed.
  * A summary from the server (or the phone's copy of one) does not include
@@ -112,8 +115,19 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
         const container = containers.find((item) => item.id === containerId);
         // The amount one press counts, worked out as the server does it (a
         // linked container's from its food and hydration factor).
-        const perPress = container ? waterCreditMl(container) : null;
+        // No container (the default drink, or one no longer kept) counts the
+        // server's default of 250 ml.
+        const perPress = container
+          ? waterCreditMl(container)
+          : DEFAULT_DRINK_ML;
         if (perPress != null) waterMl += perPress;
+        // A container linked to a food also logs that food.
+        try {
+          const linked = await previewFromQueuedRow(db, serverConfigId, row);
+          if (linked) foodEntries.push(linked);
+        } catch {
+          // This drink's food is left out; the rest of the day still shows.
+        }
         continue;
       }
       if (row.kind === WATER_REMOVE) {
@@ -124,8 +138,14 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
         if (removed.foodEntryId) deletedFoodEntryIds.push(removed.foodEntryId);
         continue;
       }
-      const preview = await previewFromQueuedRow(db, serverConfigId, row);
-      if (preview) foodEntries.push(preview);
+      // One row that cannot be previewed never discards the others (a
+      // pending delete would otherwise reappear).
+      try {
+        const preview = await previewFromQueuedRow(db, serverConfigId, row);
+        if (preview) foodEntries.push(preview);
+      } catch {
+        // Left out of the preview; it still uploads.
+      }
     }
     const changes = hasChange
       ? await readFoodEntryChanges(

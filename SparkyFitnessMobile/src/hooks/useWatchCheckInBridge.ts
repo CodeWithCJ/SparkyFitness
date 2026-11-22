@@ -1236,7 +1236,8 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         // and uploads later, so the watch is told it is safe either way.
         const result = await logDrinkOrQueue(
           payload.entryDate,
-          payload.containerId
+          payload.containerId,
+          payload.clientId
         );
         const response = result.queued ? null : result.response;
 
