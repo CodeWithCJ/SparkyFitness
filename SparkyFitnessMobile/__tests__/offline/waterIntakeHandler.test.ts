@@ -6,6 +6,15 @@ import { registerWaterIntakeHandlers } from '../../src/offline/handlers/waterInt
 import { getOutboxRow, listUnconfirmedOutbox } from '../../src/offline/outbox';
 import { putCacheRows } from '../../src/offline/cacheStore';
 import {
+  CACHE_COLLECTIONS,
+  SINGLE_DOCUMENT_KEY,
+} from '../../src/offline/collections';
+import { readWaitingForDay } from '../../src/offline/dailySummaryOverlay';
+import {
+  applyWaitingToRawData,
+  buildDailySummary,
+} from '../../src/services/dailySummaryService';
+import {
   IDENTITY_COLLECTION,
   IDENTITY_KEY,
   drainOutbox,
@@ -82,6 +91,75 @@ describe('water drink upload handler', () => {
       });
     }
     expect(mockInvalidate).toHaveBeenCalledWith({}, '2026-11-21');
+  });
+
+  it('on a day with no saved summary, shows a food-linked drink as waiting and uploads it once after reconnecting', async () => {
+    const DAY = '2026-11-18';
+    await putCacheRows(db, 's1', CACHE_COLLECTIONS.waterContainers, [
+      {
+        key: SINGLE_DOCUMENT_KEY,
+        payload: [
+          {
+            id: 5,
+            name: 'Latte',
+            volume: 0,
+            servings_per_container: 1,
+            linked_food_id: 'food-9',
+          },
+        ],
+      },
+    ]);
+    await putCacheRows(db, 's1', CACHE_COLLECTIONS.food, [
+      {
+        key: 'food-9',
+        payload: {
+          id: 'food-9',
+          name: 'Latte',
+          default_variant: {
+            id: 'v9',
+            serving_size: 1,
+            serving_unit: 'cup',
+            calories: 120,
+          },
+        },
+      },
+    ]);
+    await queueWaterDrink(PRESS_A, { entryDate: DAY, containerId: 5 });
+
+    // Offline, no saved summary: the day is built from what is waiting.
+    const waiting = await readWaitingForDay(DAY);
+    const summary = buildDailySummary(
+      DAY,
+      applyWaitingToRawData(
+        {
+          goals: {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            dietary_fiber: 0,
+          },
+          foodEntries: [],
+          exerciseEntries: [],
+          waterIntake: { water_ml: 0 },
+          stepCalories: 0,
+        },
+        waiting
+      )
+    );
+    expect(summary.foodEntries).toHaveLength(1);
+    expect(summary.calorieGoal).toBe(0);
+
+    // Back online: it goes up once, under its key, and nothing is left waiting.
+    mockChange.mockResolvedValue({ id: 'x', water_ml: 0, entry_date: DAY });
+    expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
+    expect(mockChange).toHaveBeenCalledTimes(1);
+    expect(mockChange.mock.calls[0][0]).toMatchObject({
+      entryDate: DAY,
+      containerId: 5,
+      clientId: PRESS_A,
+    });
+    expect((await readWaitingForDay(DAY)).foodEntries).toEqual([]);
   });
 
   it('keeps the drink and stops the run while the server is away', async () => {

@@ -577,7 +577,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     />
   );
 
-  const renderOfflineDashboard = (daySummary: DailySummary) => {
+  const renderOfflineDashboard = (
+    daySummary: DailySummary,
+    hasSavedSummary: boolean
+  ) => {
     const { eaten, burned, remaining, goal, progress } =
       daySummary.calorieBalance;
     return (
@@ -601,7 +604,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         }
       >
         <OfflineBanner />
-        {calorieRingCardVisible &&
+        {hasSavedSummary &&
+        calorieRingCardVisible &&
         (daySummary.foodEntries.length > 0 || goal > 0) ? (
           <CalorieRingCard
             caloriesConsumed={eaten}
@@ -619,8 +623,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // Render content based on state
   const renderContent = () => {
     // The server is away but the phone holds the day: show what it can.
-    if (isOffline && (summary ?? waitingOnlySummary)) {
-      return renderOfflineDashboard((summary ?? waitingOnlySummary)!);
+    // Without a saved summary there are no totals: only the water card shows.
+    if (isOffline && summary) return renderOfflineDashboard(summary, true);
+    if (isOffline && waitingOnlySummary) {
+      return renderOfflineDashboard(waitingOnlySummary, false);
     }
     // No server configured
     if (!isConnectionLoading && !isConnected) {

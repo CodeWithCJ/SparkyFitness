@@ -2,7 +2,12 @@ import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { useServerConnection, useWaterIntakeMutation } from '../../src/hooks';
+import {
+  useDailySummary,
+  useServerConnection,
+  useWaterIntakeMutation,
+} from '../../src/hooks';
+import { useWaitingWaterSummary } from '../../src/hooks/useWaitingWaterSummary';
 import DashboardScreen from '../../src/screens/DashboardScreen';
 import {
   useAppPreferencesStore,
@@ -172,6 +177,28 @@ jest.mock('../../src/hooks', () => ({
   medicationsRootQueryKey: ['medications'],
 }));
 
+jest.mock('../../src/components/CalorieRingCard', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: () => <View testID="calorie-ring-card" />,
+  };
+});
+jest.mock('../../src/components/HydrationGauge', () => {
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: (props: { onIncrement?: unknown }) => (
+      <View
+        testID="hydration-gauge"
+        accessibilityLabel={props.onIncrement ? 'can-log' : 'cannot-log'}
+      />
+    ),
+  };
+});
+jest.mock('../../src/hooks/useWaitingWaterSummary', () => ({
+  useWaitingWaterSummary: jest.fn(() => undefined),
+}));
 jest.mock('../../src/hooks/useCheckInPhotos', () => ({
   useCheckInPhotoDates: jest.fn(() => ({ dates: [], isLoading: false })),
 }));
@@ -292,5 +319,55 @@ describe('DashboardScreen with the server unreachable', () => {
       expect.objectContaining({ enabled: true })
     );
     expect(screen.queryByTestId('dashboard-reports-link')).toBeNull();
+  });
+  describe('on a day with no saved summary', () => {
+    const waitingOnly: DailySummary = {
+      ...summary,
+      calorieGoal: 0,
+      remainingCalories: 0,
+      waterConsumed: 250,
+      waterFromFood: 250,
+      foodEntries: [
+        { id: 'queued-drink' } as DailySummary['foodEntries'][number],
+      ],
+      goals: { ...summary.goals, calories: 0 },
+    };
+
+    beforeEach(() => {
+      useAppPreferencesStore.getState().setCalorieRingCardVisible(true);
+      (useDailySummary as jest.Mock).mockReturnValue({
+        summary: undefined,
+        isLoading: false,
+        isError: true,
+        refetch: jest.fn(),
+      });
+      (useWaitingWaterSummary as jest.Mock).mockReturnValue(waitingOnly);
+    });
+
+    afterEach(() => {
+      (useDailySummary as jest.Mock).mockReturnValue({
+        summary,
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      });
+      (useWaitingWaterSummary as jest.Mock).mockReturnValue(undefined);
+    });
+
+    it('keeps the water controls and hides the calorie card even with a food-linked drink waiting', () => {
+      renderDashboard();
+
+      expect(
+        screen.getByTestId('hydration-gauge').props.accessibilityLabel
+      ).toBe('can-log');
+      expect(screen.queryByTestId('calorie-ring-card')).toBeNull();
+    });
+  });
+
+  it('still shows the calorie card for a day the phone has saved', () => {
+    useAppPreferencesStore.getState().setCalorieRingCardVisible(true);
+    renderDashboard();
+
+    expect(screen.getByTestId('calorie-ring-card')).toBeTruthy();
   });
 });
