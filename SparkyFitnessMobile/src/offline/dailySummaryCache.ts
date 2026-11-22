@@ -50,6 +50,9 @@ export async function refreshRecentDailySummaries(
   for (let back = 0; back < DIARY_DAYS_KEPT; back += 1) {
     if (accountGeneration() !== startedUnder) return;
     const day = addDays(today, -back);
+    // The day's totals and its itemized drinks are separate requests: one
+    // failing never keeps the other from updating, and either failure leaves
+    // the refresh marked incomplete so the pack tries again.
     try {
       const summary = await apiFetch<DailySummaryApiResponse>({
         endpoint: `/api/daily-summary?date=${encodeURIComponent(day)}`,
@@ -58,6 +61,10 @@ export async function refreshRecentDailySummaries(
       });
       if (accountGeneration() !== startedUnder) return;
       await storeDailySummary(db, serverConfigId, day, summary);
+    } catch (error) {
+      failed = error;
+    }
+    try {
       // The day's itemized drinks, so the latest one can be taken off offline.
       const waterLog = await apiFetch<WaterIntakeLogEntry[]>({
         endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(day)}/log`,
@@ -69,7 +76,6 @@ export async function refreshRecentDailySummaries(
         { key: day, payload: waterLog },
       ]);
     } catch (error) {
-      // This day keeps the copy it had; the other days still refresh.
       failed = error;
     }
   }
