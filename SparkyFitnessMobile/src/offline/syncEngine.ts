@@ -4,7 +4,6 @@ import { getActiveServerConfigId } from '../services/storage';
 import { serverMayBeDown } from '../utils/serverErrors';
 import { accountGeneration } from './accountGeneration';
 import { getCacheRow } from './cacheStore';
-import { refreshRecentDailySummaries } from './dailySummaryCache';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged, notifyUploadsConfirmed } from './events';
 import { getOutboxHandler } from './handlers/registry';
@@ -259,6 +258,10 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
   if (summariesOutdated) {
     const startedUnder = accountGeneration();
     try {
+      // Loaded here, not at the top: it pulls in the API client, which a
+      // module that only queues work should not need.
+      const { refreshRecentDailySummaries } =
+        await import('./dailySummaryCache');
       await refreshRecentDailySummaries(
         db,
         serverConfigId,
