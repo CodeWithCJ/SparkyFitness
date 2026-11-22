@@ -1383,7 +1383,6 @@
     "cyclePregnancy": "Cycle & Pregnancy",
     "cyclePregnancySubtitle": "Show the wellness card on the Dashboard",
     "wellness": "Wellness",
-    "offInFeatures": "Not shown: turned off in Features",
     "medications": "Medications",
     "medicationsSubtitle": "Show the medications card on the Dashboard",
     "symptoms": "Symptoms",
@@ -2930,6 +2929,8 @@
     "loadError": "Could not load this setting.",
     "saveFailed": "Could not save this setting. Please try again.",
     "appOnly": "Only this app. The website has its own switch.",
+    "someOff": "Some features are turned off",
+    "manage": "Manage",
     "serverTooOld": "Update your SparkyFitness server to change this.",
     "groups": {
       "health": "Health",
@@ -4172,7 +4173,6 @@
     "previewTitle": "Preview",
     "previewDescription": "How Quick Actions looks with your choices.",
     "lineNumber": "Line {{number}}",
-    "offInFeatures": "Not shown: turned off in Features",
     "showAs": "Show as",
     "showAsValue": "Show as {{style}}",
     "styleList": "List",
@@ -4184,6 +4184,7 @@
     "buttonsDescription": "Shown side by side at the bottom of the sheet.",
     "chooseCard": "Choose a tile",
     "slotLabel": "Tile {{number}}: {{name}}",
+    "emptySlot": "Empty",
     "slotHint": "Opens a list to choose what goes here"
   },
   "mealPlans": {
