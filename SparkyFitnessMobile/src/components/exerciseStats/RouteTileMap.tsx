@@ -4,8 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useCSSVariable, useUniwind } from 'uniwind';
 import type { GpsTrackPoint } from '@workspace/shared';
 import { routeRegion, usableRoutePoints } from '../../utils/cardioSession';
-import { usesGoogleMapsOnAndroid } from '../../utils/routeMapSupport';
-import MapSurface from '../maps/MapSurface';
+import MapSurface from '../maps/RoutePreviewMapSurface';
 import type { MapSurfaceHandle } from '../maps/mapSurfaceTypes';
 import RouteLine from './RouteLine';
 
@@ -19,12 +18,13 @@ interface RouteTileMapProps {
 
 /**
  * The GPS track over a real map: Apple Maps on iOS, OpenStreetMap vector tiles
- * on Android. No API key on either. Same start dot and finish ring as the
- * plain line.
+ * on Android (also in builds with a Google Maps key; see
+ * `RoutePreviewMapSurface.android.tsx`). No API key on either. Same start dot
+ * and finish ring as the plain line, which is also what it falls back to when
+ * the map cannot load.
  *
  * The map is a still picture of the route: panning and zooming are off so it
- * never takes the screen's scroll. On Android builds with a Google Maps key it
- * renders in lite mode; MapLibre and Apple Maps ignore it.
+ * never takes the screen's scroll.
  */
 const RouteTileMap: React.FC<RouteTileMapProps> = ({
   points,
@@ -62,7 +62,7 @@ const RouteTileMap: React.FC<RouteTileMapProps> = ({
 
   if (!region || coordinates.length < 2) return null;
 
-  const showOsmCredit = Platform.OS === 'android' && !usesGoogleMapsOnAndroid();
+  const showOsmCredit = Platform.OS === 'android';
 
   return (
     <View
@@ -85,7 +85,6 @@ const RouteTileMap: React.FC<RouteTileMapProps> = ({
         dark={isDark}
         interactive={false}
         attribution={false}
-        lite
         hideFromAccessibility
         onDidFailLoadingMap={() => setMapFailed(true)}
         lines={[{ points: coordinates, color: routeColor, width: 4 }]}
