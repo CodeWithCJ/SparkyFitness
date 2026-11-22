@@ -688,7 +688,8 @@ const ConfirmAmountPicker: React.FC<{
               </Text>
               <Text className="text-xs text-text-secondary mt-0.5">
                 {formatDisplayNumber(selectedValue)} {selectedUnit} ·{' '}
-                {formatDisplayNumber(livePreview.calories, 0)} kcal
+                {formatDisplayNumber(livePreview.calories, 0)}{' '}
+                {t('actionTags.scan.kcalUnit', { defaultValue: 'kcal' })}
                 {livePreview.goalPercent !== null
                   ? ` · ${formatDisplayNumber(livePreview.goalPercent, 0)}% ${t(
                       'actionTags.scan.ofGoal',
@@ -704,13 +705,16 @@ const ConfirmAmountPicker: React.FC<{
           {!isWater ? (
             <View className="flex-row justify-between mt-3 pt-3 border-t border-border">
               <Text className="text-xs text-text-secondary">
-                P: {formatDisplayNumber(livePreview.protein, 1)} g
+                {t('actionTags.scan.proteinShort', { defaultValue: 'P:' })}{' '}
+                {formatDisplayNumber(livePreview.protein, 1)} g
               </Text>
               <Text className="text-xs text-text-secondary">
-                C: {formatDisplayNumber(livePreview.carbs, 1)} g
+                {t('actionTags.scan.carbsShort', { defaultValue: 'C:' })}{' '}
+                {formatDisplayNumber(livePreview.carbs, 1)} g
               </Text>
               <Text className="text-xs text-text-secondary">
-                F: {formatDisplayNumber(livePreview.fat, 1)} g
+                {t('actionTags.scan.fatShort', { defaultValue: 'F:' })}{' '}
+                {formatDisplayNumber(livePreview.fat, 1)} g
               </Text>
             </View>
           ) : null}
@@ -763,7 +767,9 @@ const ConfirmAmountPicker: React.FC<{
             <FormInput
               value={customTime}
               onChangeText={setCustomTime}
-              placeholder="HH:MM"
+              placeholder={t('actionTags.scan.timePlaceholder', {
+                defaultValue: 'HH:MM',
+              })}
               keyboardType="numbers-and-punctuation"
               maxLength={11}
             />

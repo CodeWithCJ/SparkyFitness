@@ -6525,7 +6525,12 @@
       "mealContext": "Meal",
       "ofGoal": "of daily goal",
       "quickAmounts": "Quick amounts",
-      "tapToLogActive": "Tap to log immediately"
+      "tapToLogActive": "Tap to log immediately",
+      "kcalUnit": "kcal",
+      "proteinShort": "P:",
+      "carbsShort": "C:",
+      "fatShort": "F:",
+      "timePlaceholder": "HH:MM"
     },
     "form": {
       "errors": {
@@ -6576,7 +6581,9 @@
       "allowCustomTimestamp": "Allow custom timestamp on scan",
       "allowCustomTimestampHint": "When off, logs immediately at the current time. When on, shows a time field during scan.",
       "presetAmountsLabel": "Preset amounts (ml for drinks, or item units)",
-      "tapToLog": "Tap amount to log immediately"
+      "tapToLog": "Tap amount to log immediately",
+      "tooManyPresets": "Enter up to 8 preset amounts",
+      "invalidPresetAmount": "Each preset amount must be a valid number greater than 0 and at most 10000"
     },
     "unsupportedTitle": "This phone cannot use NFC tags",
     "unsupportedSubtitle": "NFC tags need a phone with NFC.",
@@ -6606,7 +6613,8 @@
       "amount": "{{quantity}} {{unit}}",
       "food": "{{amount}} · {{meal}}",
       "unsupported": "Update the app to use this tag",
-      "servings": "{{formattedCount}} servings"
+      "servingsFormatted_one": "{{formattedCount}} serving",
+      "servingsFormatted_other": "{{formattedCount}} servings"
     },
     "type": {
       "water": "Water or drink",
@@ -6617,20 +6625,23 @@
       "count_one": "{{formattedCount}} tag logs this container",
       "count_other": "{{formattedCount}} tags log this container",
       "hint": "Tap a sticker on this bottle to log a drink",
-      "count": "{{formattedCount}} tags log this container"
+      "countFormatted_one": "{{formattedCount}} tag logs this container",
+      "countFormatted_other": "{{formattedCount}} tags log this container"
     },
     "food": {
       "count_one": "{{formattedCount}} tag logs this food",
       "count_other": "{{formattedCount}} tags log this food",
       "hint": "Tap a sticker to log this food",
-      "count": "{{formattedCount}} tags log this food"
+      "countFormatted_one": "{{formattedCount}} tag logs this food",
+      "countFormatted_other": "{{formattedCount}} tags log this food"
     },
     "meal": {
       "auto": "By time of day",
       "count_one": "{{formattedCount}} tag logs this meal",
       "count_other": "{{formattedCount}} tags log this meal",
       "hint": "Tap a sticker to log this meal",
-      "count": "{{formattedCount}} tags log this meal"
+      "countFormatted_one": "{{formattedCount}} tag logs this meal",
+      "countFormatted_other": "{{formattedCount}} tags log this meal"
     }
   },
   "waterContainers": {

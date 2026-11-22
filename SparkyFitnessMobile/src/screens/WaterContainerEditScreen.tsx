@@ -694,7 +694,7 @@ const WaterContainerEditScreen: React.FC<WaterContainerEditScreenProps> = ({
             }
             subtitle={
               tagsForContainer > 0
-                ? t('actionTags.container.count', {
+                ? t('actionTags.container.countFormatted', {
                     count: tagsForContainer,
                     formattedCount: formatLocalizedNumber(tagsForContainer),
                     defaultValue: '{{formattedCount}} tags log this container',

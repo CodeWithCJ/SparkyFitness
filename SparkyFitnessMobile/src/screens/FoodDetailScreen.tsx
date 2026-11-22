@@ -593,7 +593,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
             }
             subtitle={
               tagsForFood > 0
-                ? t('actionTags.food.count', {
+                ? t('actionTags.food.countFormatted', {
                     count: tagsForFood,
                     formattedCount: formatLocalizedNumber(tagsForFood),
                     defaultValue: '{{formattedCount}} tags log this food',
