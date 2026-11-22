@@ -17,15 +17,15 @@ import {
   listUnconfirmedOutbox,
   updateOutboxRow,
 } from '../../src/offline/outbox';
-import { drainOutbox } from '../../src/offline/syncEngine';
+import {
+  IDENTITY_COLLECTION,
+  IDENTITY_KEY,
+  drainOutbox,
+} from '../../src/offline/syncEngine';
 import type { OfflineDb } from '../../src/offline/types';
 import { WORKOUT_SESSION_CREATE } from '../../src/offline/workoutHandOver';
 import { isSessionAwaitingServer } from '../../src/offline/sessionAwaitingServer';
 import { putCacheRows } from '../../src/offline/cacheStore';
-import {
-  IDENTITY_COLLECTION,
-  IDENTITY_KEY,
-} from '../../src/offline/syncEngine';
 import { createTestDb } from '../helpers/offlineTestDb';
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
