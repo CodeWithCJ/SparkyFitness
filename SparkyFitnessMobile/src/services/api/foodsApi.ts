@@ -1,3 +1,4 @@
+import type { ServerConfig } from '../storage';
 import { apiFetch } from './apiClient';
 import { postPayloadWithImages } from './imageUploadClient';
 import type { ImageUploadArgs } from '../../utils/pickerImages';
@@ -242,7 +243,9 @@ export interface SaveFoodPayload {
  */
 export const saveFood = async (
   food: SaveFoodPayload,
-  images?: ImageUploadArgs
+  images?: ImageUploadArgs,
+  /** Send to this server, not whichever is active when the request goes out (plain foods only). */
+  serverConfig?: ServerConfig
 ): Promise<FoodItem> => {
   const sendJson = (payload: Record<string, unknown>) =>
     apiFetch<FoodItem>({
@@ -251,6 +254,7 @@ export const saveFood = async (
       operation: 'save food',
       method: 'POST',
       body: payload,
+      serverConfig,
     });
 
   if (!images) {

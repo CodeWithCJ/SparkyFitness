@@ -100,7 +100,9 @@ describe('new food upload handler', () => {
     expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
 
     expect(mockSave).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Homemade bread', client_id: FOOD_KEY })
+      expect.objectContaining({ name: 'Homemade bread', client_id: FOOD_KEY }),
+      undefined,
+      undefined
     );
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -110,7 +112,8 @@ describe('new food upload handler', () => {
         quantity: 2,
         entry_date: '2026-11-21',
         client_id: ENTRY_KEY,
-      })
+      }),
+      undefined
     );
     expect(mockInvalidate).toHaveBeenCalledWith(
       expect.anything(),
@@ -194,7 +197,9 @@ describe('new food upload handler', () => {
       expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
 
       expect(mockSave).toHaveBeenCalledWith(
-        expect.objectContaining({ client_id: FOOD_KEY })
+        expect.objectContaining({ client_id: FOOD_KEY }),
+        undefined,
+        undefined
       );
       expect(mockCreate).not.toHaveBeenCalled();
     });

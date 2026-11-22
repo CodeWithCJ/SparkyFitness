@@ -27,6 +27,10 @@ jest.mock('expo-sqlite', () => ({}));
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 
 const KIND = 'test.thing';
@@ -105,6 +109,54 @@ describe('offline sync engine', () => {
     expect(summary).toEqual({ synced: 2, remaining: 0 });
     expect((await getOutboxRow(db, 'first'))?.status).toBe('synced');
     expect(onSynced).toHaveBeenCalledTimes(2);
+  });
+
+  it('hands each handler the server the run started on, to send to', async () => {
+    await enqueueOutbox(db, {
+      id: 'only',
+      serverConfigId: 's1',
+      userId: 'u1',
+      kind: KIND,
+      entityId: 'e-only',
+      payload: {},
+      payloadVersion: 2,
+    });
+
+    await drainOutbox('reconnect');
+
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({ id: 'only' }), {
+      serverConfig: { id: 's1', url: 'https://one' },
+    });
+  });
+
+  it('puts a claimed row back untouched when the account changes before its request', async () => {
+    await enqueueOutbox(db, {
+      id: 'held',
+      serverConfigId: 's1',
+      userId: 'u1',
+      kind: KIND,
+      entityId: 'e-held',
+      payload: {},
+      payloadVersion: 1, // upgraded first, which is awaited before the send
+    });
+    // The account changes while the row is being upgraded for sending.
+    const upgrade = jest.fn((payload: unknown) => {
+      bumpAccountGeneration();
+      return { ...(payload as object), upgraded: true };
+    });
+    __clearOutboxHandlersForTests();
+    registerOutboxHandler({
+      kind: KIND,
+      payloadVersion: 2,
+      upgrade,
+      send,
+      onSynced,
+    });
+
+    await drainOutbox('reconnect');
+
+    expect(send).not.toHaveBeenCalled();
+    expect((await getOutboxRow(db, 'held'))?.status).toBe('pending');
   });
 
   it('stops the run when the account changes while rows are going up, leaving the rest waiting', async () => {

@@ -190,7 +190,8 @@ describe('editing a logged meal with no connection', () => {
     expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
     expect(mockUpdate).toHaveBeenCalledWith(
       'fem-1',
-      expect.objectContaining({ name: 'Big porridge', quantity: 2 })
+      expect.objectContaining({ name: 'Big porridge', quantity: 2 }),
+      undefined
     );
     expect(mockInvalidate).toHaveBeenCalledWith({}, DAY);
     expect(mockInvalidate).toHaveBeenCalledWith({}, NEXT);

@@ -1,3 +1,4 @@
+import type { ServerConfig } from '../storage';
 import { apiFetch } from './apiClient';
 import { CACHE_COLLECTIONS } from '../../offline/collections';
 import { putCacheRows } from '../../offline/cacheStore';
@@ -17,7 +18,8 @@ import type {
  * Creates a logged meal (food_entry_meals row + N component food_entries).
  */
 export const createFoodEntryMeal = async (
-  payload: FoodEntryMealCreateData
+  payload: FoodEntryMealCreateData,
+  serverConfig?: ServerConfig
 ): Promise<FoodEntryMeal> => {
   return apiFetch<FoodEntryMeal>({
     endpoint: '/api/food-entry-meals',
@@ -25,6 +27,7 @@ export const createFoodEntryMeal = async (
     operation: 'create food entry meal',
     method: 'POST',
     body: payload,
+    serverConfig,
   });
 };
 
@@ -43,7 +46,8 @@ export const fetchFoodEntryMealsByDate = async (
  */
 export const updateFoodEntryMeal = async (
   id: string,
-  payload: FoodEntryMealUpdateData
+  payload: FoodEntryMealUpdateData,
+  serverConfig?: ServerConfig
 ): Promise<FoodEntryMeal> => {
   return apiFetch<FoodEntryMeal>({
     endpoint: `/api/food-entry-meals/${id}`,
@@ -51,6 +55,7 @@ export const updateFoodEntryMeal = async (
     operation: 'update food entry meal',
     method: 'PUT',
     body: payload,
+    serverConfig,
   });
 };
 
@@ -78,12 +83,16 @@ export const getFoodEntryMealWithComponents = async (
 /**
  * Deletes a logged meal (cascades to component food_entries on the server).
  */
-export const deleteFoodEntryMeal = async (id: string): Promise<void> => {
+export const deleteFoodEntryMeal = async (
+  id: string,
+  serverConfig?: ServerConfig
+): Promise<void> => {
   await apiFetch<void>({
     endpoint: `/api/food-entry-meals/${id}`,
     serviceName: 'FoodEntryMeals API',
     operation: 'delete food entry meal',
     method: 'DELETE',
+    serverConfig,
   });
 };
 

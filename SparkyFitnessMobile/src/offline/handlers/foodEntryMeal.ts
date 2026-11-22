@@ -8,15 +8,26 @@ import {
   type FoodEntryMealPayload,
 } from '../foodEntryMealHandOver';
 import { sendResultFromError } from '../syncEngine';
-import type { OutboxHandler, OutboxRow, SendResult } from '../types';
+import type {
+  OutboxHandler,
+  OutboxRow,
+  SendContext,
+  SendResult,
+} from '../types';
 import { registerOutboxHandler } from './registry';
 
-async function sendCreate(row: OutboxRow): Promise<SendResult> {
+async function sendCreate(
+  row: OutboxRow,
+  context?: SendContext
+): Promise<SendResult> {
   const payload = row.payload as FoodEntryMealPayload;
   try {
     // The key is the meal's own id; the server answers a repeat with the meal
     // it stored and logs nothing, so a retry is always safe.
-    await createFoodEntryMeal({ ...payload, client_id: row.entityId });
+    await createFoodEntryMeal(
+      { ...payload, client_id: row.entityId },
+      context?.serverConfig
+    );
     return { outcome: 'synced' };
   } catch (error) {
     // The meal or a food in it was deleted while the entry waited (404), or

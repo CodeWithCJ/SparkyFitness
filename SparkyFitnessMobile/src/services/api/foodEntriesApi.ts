@@ -1,3 +1,4 @@
+import type { ServerConfig } from '../storage';
 import { apiFetch } from './apiClient';
 import { ApiError } from './errors';
 import type { FoodEntry } from '../../types/foodEntries';
@@ -80,7 +81,9 @@ export const fetchFoodEntriesRange = async (
  * Creates a food entry.
  */
 export const createFoodEntry = async (
-  payload: CreateFoodEntryPayload
+  payload: CreateFoodEntryPayload,
+  /** Send to this server, not whichever is active when the request goes out. */
+  serverConfig?: ServerConfig
 ): Promise<FoodEntry> => {
   return apiFetch<FoodEntry>({
     endpoint: '/api/food-entries/',
@@ -88,6 +91,7 @@ export const createFoodEntry = async (
     operation: 'create food entry',
     method: 'POST',
     body: payload,
+    serverConfig,
   });
 };
 
@@ -159,7 +163,8 @@ export const fetchLastCookedFoodEntry = async (
  */
 export const updateFoodEntry = async (
   id: string,
-  payload: UpdateFoodEntryPayload
+  payload: UpdateFoodEntryPayload,
+  serverConfig?: ServerConfig
 ): Promise<FoodEntry> => {
   return apiFetch<FoodEntry>({
     endpoint: `/api/food-entries/${id}`,
@@ -167,18 +172,23 @@ export const updateFoodEntry = async (
     operation: 'update food entry',
     method: 'PUT',
     body: payload,
+    serverConfig,
   });
 };
 
 /**
  * Deletes a food entry by ID.
  */
-export const deleteFoodEntry = async (id: string): Promise<void> => {
+export const deleteFoodEntry = async (
+  id: string,
+  serverConfig?: ServerConfig
+): Promise<void> => {
   await apiFetch<void>({
     endpoint: `/api/food-entries/${id}`,
     serviceName: 'Food Entries API',
     operation: 'delete food entry',
     method: 'DELETE',
+    serverConfig,
   });
 };
 

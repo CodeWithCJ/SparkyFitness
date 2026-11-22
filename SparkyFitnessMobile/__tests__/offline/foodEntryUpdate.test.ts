@@ -95,6 +95,7 @@ describe('changing the amount of an entry with no connection', () => {
     expect(rows[0].payload).toEqual({
       patch: { quantity: 3 },
       display: { quantity: 3 },
+      times: { quantity: expect.any(Number) },
     });
   });
 
@@ -103,7 +104,7 @@ describe('changing the amount of an entry with no connection', () => {
     mockUpdate.mockResolvedValue({ id: 'e1' } as never);
 
     expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
-    expect(mockUpdate).toHaveBeenCalledWith('e1', { quantity: 3 });
+    expect(mockUpdate).toHaveBeenCalledWith('e1', { quantity: 3 }, undefined);
     expect(mockInvalidate).toHaveBeenCalledWith({}, DAY);
   });
 
@@ -171,6 +172,11 @@ describe('changing the amount of an entry with no connection', () => {
     expect(rows[0].payload).toEqual({
       patch: { quantity: 3, entry_time: '09:00', notes: 'with honey' },
       display: { quantity: 3, entry_time: '09:00', notes: 'with honey' },
+      times: {
+        quantity: expect.any(Number),
+        entry_time: expect.any(Number),
+        notes: expect.any(Number),
+      },
     });
   });
 
@@ -224,10 +230,14 @@ describe('changing the amount of an entry with no connection', () => {
 
       mockUpdate.mockResolvedValue({ id: 'e1' } as never);
       await drainOutbox('manual');
-      expect(mockUpdate).toHaveBeenCalledWith('e1', {
-        entry_date: NEXT,
-        meal_type_id: 'm2',
-      });
+      expect(mockUpdate).toHaveBeenCalledWith(
+        'e1',
+        {
+          entry_date: NEXT,
+          meal_type_id: 'm2',
+        },
+        undefined
+      );
     });
   });
 

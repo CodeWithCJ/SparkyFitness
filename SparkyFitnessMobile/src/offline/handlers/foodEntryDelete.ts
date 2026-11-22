@@ -7,12 +7,20 @@ import {
   FOOD_ENTRY_DELETE_PAYLOAD_VERSION,
 } from '../foodEntryDeleteHandOver';
 import { sendResultFromError } from '../syncEngine';
-import type { OutboxHandler, OutboxRow, SendResult } from '../types';
+import type {
+  OutboxHandler,
+  OutboxRow,
+  SendContext,
+  SendResult,
+} from '../types';
 import { registerOutboxHandler } from './registry';
 
-async function sendDelete(row: OutboxRow): Promise<SendResult> {
+async function sendDelete(
+  row: OutboxRow,
+  context?: SendContext
+): Promise<SendResult> {
   try {
-    await deleteFoodEntry(row.entityId);
+    await deleteFoodEntry(row.entityId, context?.serverConfig);
     return { outcome: 'synced' };
   } catch (error) {
     // Already gone is what was asked for.

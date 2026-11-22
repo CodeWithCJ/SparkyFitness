@@ -33,6 +33,8 @@ export interface FoodEntryMealUpdatePayload {
    * time, note and the totals the screen showed when it was saved.
    */
   display: Partial<FoodEntry>;
+  /** When the person saved this change (epoch ms); see `FoodEntryUpdatePayload.times`. */
+  editedAt?: number;
 }
 
 /**
@@ -62,7 +64,11 @@ export async function queueFoodEntryMealUpdate(
         row.entityId === mealId &&
         isOwnedBy(row, userId)
     );
-    const payload: FoodEntryMealUpdatePayload = { patch, display };
+    const payload: FoodEntryMealUpdatePayload = {
+      patch,
+      display,
+      editedAt: Date.now(),
+    };
     await enqueueOutbox(db, {
       id: earlier?.id ?? newUuid(),
       serverConfigId,
@@ -166,7 +172,12 @@ export async function dropSupersededMealUpdate(
       row.status !== 'sending' &&
       isOwnedBy(row, userId)
   );
-  if (!waiting || waiting.updatedAt >= requestStartedAt) return;
+  if (!waiting) return;
+  const editedAt =
+    (waiting.payload as FoodEntryMealUpdatePayload).editedAt ??
+    waiting.createdAt;
+  // Saved after the request was sent: newer than it, so it stays.
+  if (editedAt >= requestStartedAt) return;
   if (
     await deleteUnconfirmedRow(db, waiting.id, undefined, waiting.updatedAt)
   ) {

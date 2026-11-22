@@ -117,6 +117,17 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
   await deleteOldSyncedOutbox(db, now);
   const serverConfigId = await getActiveServerConfigId();
   if (!serverConfigId) return { synced: 0, remaining: 0 };
+  // The server every request of this run is sent to: handlers use it instead
+  // of resolving the active one when their request goes out. A switch after
+  // this point cannot carry a row to another account's server.
+  let runServerConfig: ServerConfig | undefined;
+  try {
+    const active = await getActiveServerConfig();
+    if (active?.id === serverConfigId) runServerConfig = active;
+  } catch {
+    // Without it a handler falls back to the active server, and the
+    // generation check before each send still applies.
+  }
 
   const currentUserId = await signedInUserId(db, serverConfigId);
   const rows = await listUnconfirmedOutbox(db, serverConfigId);
@@ -212,17 +223,25 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
         row = { ...row, payload, payloadVersion: handler.payloadVersion };
       }
       if (affectsDaySummary(row.kind) && refreshScope == null) {
-        let serverConfig: ServerConfig | null = null;
-        try {
-          serverConfig = await getActiveServerConfig();
-        } catch {
-          // No refresh for this run; the pack refreshes the totals later.
-        }
-        refreshScope = { startedUnder, serverConfig };
+        refreshScope = { startedUnder, serverConfig: runServerConfig ?? null };
+      }
+      // The claim and the upgrade above were awaited: look once more, right
+      // before the request, and put the row back untouched if the account
+      // changed meanwhile.
+      if (accountGeneration() !== startedUnder) {
+        await updateOutboxRow(
+          db,
+          row.id,
+          { status: listed.status },
+          undefined,
+          { onlyIfStatus: 'sending' }
+        );
+        stopped = true;
+        break;
       }
       let result: SendResult;
       try {
-        result = await handler.send(row);
+        result = await handler.send(row, { serverConfig: runServerConfig });
       } catch (error) {
         result = sendResultFromError(error);
       }

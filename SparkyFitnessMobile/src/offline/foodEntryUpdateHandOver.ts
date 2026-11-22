@@ -43,6 +43,13 @@ export interface FoodEntryUpdatePayload {
    * day it moves to can show it even after the first day is refreshed.
    */
   original?: FoodEntry;
+  /**
+   * When each field of `patch` was last set by the person (epoch ms). It is
+   * not the row's own timestamp, which the upload moves on every claim and
+   * retry: a field is older than a save only if the person set it before the
+   * save was sent.
+   */
+  times?: Record<string, number>;
 }
 
 /** Version 1 held only a new amount. */
@@ -153,9 +160,17 @@ export async function queueFoodEntryUpdate(
         isOwnedBy(row, userId)
     );
     const before = earlier?.payload as FoodEntryUpdatePayload | undefined;
+    const editedAt = Date.now();
+    const times: Record<string, number> = { ...before?.times };
+    for (const key of Object.keys(patch)) {
+      if (patch[key as keyof UpdateFoodEntryPayload] !== undefined) {
+        times[key] = editedAt;
+      }
+    }
     const payload: FoodEntryUpdatePayload = {
       patch: { ...before?.patch, ...patch },
       display: { ...before?.display, ...display },
+      times,
     };
     // An entry moved to another day is shown there from this copy of it, so
     // it stays visible after the day it came from is replaced by a refresh.
@@ -214,17 +229,23 @@ export async function dropSupersededUpdate(
       row.status !== 'sending' &&
       isOwnedBy(row, userId)
   );
-  if (!waiting || waiting.updatedAt >= requestStartedAt) return;
+  if (!waiting) return;
   const before = waiting.payload as FoodEntryUpdatePayload;
-  const setNow = new Set(
+  // A field is superseded only if the save set it and the person had set it
+  // before that save was sent. Rows from older builds carry no times: the
+  // row's creation time stands in.
+  const superseded = new Set(
     Object.keys(saved).filter(
-      (key) => saved[key as keyof UpdateFoodEntryPayload] !== undefined
+      (key) =>
+        saved[key as keyof UpdateFoodEntryPayload] !== undefined &&
+        key in before.patch &&
+        (before.times?.[key] ?? waiting.createdAt) < requestStartedAt
     )
   );
+  if (superseded.size === 0) return;
   const patch = Object.fromEntries(
-    Object.entries(before.patch).filter(([key]) => !setNow.has(key))
+    Object.entries(before.patch).filter(([key]) => !superseded.has(key))
   ) as UpdateFoodEntryPayload;
-  if (Object.keys(patch).length === Object.keys(before.patch).length) return;
   if (Object.keys(patch).length === 0) {
     // Only this update goes; a delete or anything else waiting for the entry
     // stays.
@@ -232,14 +253,17 @@ export async function dropSupersededUpdate(
   } else {
     // What the entry reads like while it waits drops what was just saved.
     const display = Object.fromEntries(
-      Object.entries(before.display).filter(([key]) => !setNow.has(key))
+      Object.entries(before.display).filter(([key]) => !superseded.has(key))
     ) as Partial<FoodEntry>;
+    const times = Object.fromEntries(
+      Object.entries(before.times ?? {}).filter(([key]) => !superseded.has(key))
+    );
     // Only if the row is still the one that was read, and without touching its
-    // timestamp: an edit queued in between is kept as it is, and the fields
-    // that remain keep the time they were queued.
+    // timestamp: an edit queued in between is kept as it is.
     await rewriteUnconfirmedPayload(db, waiting.id, waiting.updatedAt, {
       patch,
       display,
+      times,
       ...(before.original ? { original: before.original } : {}),
     });
   }

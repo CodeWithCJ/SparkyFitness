@@ -9,14 +9,22 @@ import {
   type FoodEntryUpdatePayload,
 } from '../foodEntryUpdateHandOver';
 import { sendResultFromError } from '../syncEngine';
-import type { OutboxHandler, OutboxRow, SendResult } from '../types';
+import type {
+  OutboxHandler,
+  OutboxRow,
+  SendContext,
+  SendResult,
+} from '../types';
 import { registerOutboxHandler } from './registry';
 
-async function sendUpdate(row: OutboxRow): Promise<SendResult> {
+async function sendUpdate(
+  row: OutboxRow,
+  context?: SendContext
+): Promise<SendResult> {
   const { patch } = row.payload as FoodEntryUpdatePayload;
   try {
     // Setting values twice leaves the same values, so a repeat is safe.
-    await updateFoodEntry(row.entityId, patch);
+    await updateFoodEntry(row.entityId, patch, context?.serverConfig);
     return { outcome: 'synced' };
   } catch (error) {
     if (error instanceof ApiError) {

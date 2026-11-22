@@ -9,15 +9,23 @@ import {
   type FoodEntryMealUpdatePayload,
 } from '../foodEntryMealUpdateHandOver';
 import { sendResultFromError } from '../syncEngine';
-import type { OutboxHandler, OutboxRow, SendResult } from '../types';
+import type {
+  OutboxHandler,
+  OutboxRow,
+  SendContext,
+  SendResult,
+} from '../types';
 import { registerOutboxHandler } from './registry';
 
-async function sendUpdate(row: OutboxRow): Promise<SendResult> {
+async function sendUpdate(
+  row: OutboxRow,
+  context?: SendContext
+): Promise<SendResult> {
   const { patch } = row.payload as FoodEntryMealUpdatePayload;
   try {
     // The request holds the whole meal, so sending it twice leaves the same
     // meal.
-    await updateFoodEntryMeal(row.entityId, patch);
+    await updateFoodEntryMeal(row.entityId, patch, context?.serverConfig);
     return { outcome: 'synced' };
   } catch (error) {
     if (error instanceof ApiError) {

@@ -77,7 +77,7 @@ describe('deleting a logged meal with no connection', () => {
     mockDelete.mockResolvedValue(undefined);
 
     expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
-    expect(mockDelete).toHaveBeenCalledWith('fem-1');
+    expect(mockDelete).toHaveBeenCalledWith('fem-1', undefined);
     expect(mockInvalidate).toHaveBeenCalledWith({}, DAY);
     expect(mockInvalidateMeals).toHaveBeenCalled();
   });

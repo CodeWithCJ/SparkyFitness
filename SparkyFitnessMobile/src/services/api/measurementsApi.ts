@@ -1,3 +1,4 @@
+import type { ServerConfig } from '../storage';
 import { apiFetch } from './apiClient';
 import { getCacheRow, putCacheRows } from '../../offline/cacheStore';
 import {
@@ -569,12 +570,15 @@ export const changeWaterIntake = async (params: {
    * server answers a repeat of the same key without logging another drink.
    */
   clientId?: string;
+  /** Send to this server, not whichever is active when the request goes out. */
+  serverConfig?: ServerConfig;
 }): Promise<WaterIntakeResponse> => {
   return apiFetch<WaterIntakeResponse>({
     endpoint: '/api/measurements/water-intake',
     serviceName: 'Measurements API',
     operation: 'change water intake',
     method: 'POST',
+    serverConfig: params.serverConfig,
     body: {
       entry_date: params.entryDate,
       change_drinks: params.changeDrinks,
@@ -588,11 +592,15 @@ export const changeWaterIntake = async (params: {
  * Deletes one logged drink. The server also decrements the day's total, so
  * callers only need to refresh — no separate total adjustment.
  */
-export const deleteWaterIntakeLogEntry = async (id: string): Promise<void> => {
+export const deleteWaterIntakeLogEntry = async (
+  id: string,
+  serverConfig?: ServerConfig
+): Promise<void> => {
   await apiFetch<unknown>({
     endpoint: `/api/v2/measurements/water-intake/log/${encodeURIComponent(id)}`,
     serviceName: 'Measurements API',
     operation: 'delete water intake log entry',
     method: 'DELETE',
+    serverConfig,
   });
 };

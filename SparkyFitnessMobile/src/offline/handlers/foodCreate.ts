@@ -10,31 +10,46 @@ import {
   type FoodCreatePayload,
 } from '../foodCreateHandOver';
 import { sendResultFromError } from '../syncEngine';
-import type { OutboxHandler, OutboxRow, SendResult } from '../types';
+import type {
+  OutboxHandler,
+  OutboxRow,
+  SendContext,
+  SendResult,
+} from '../types';
 import { registerOutboxHandler } from './registry';
 
-async function sendCreate(row: OutboxRow): Promise<SendResult> {
+async function sendCreate(
+  row: OutboxRow,
+  context?: SendContext
+): Promise<SendResult> {
   const payload = row.payload as FoodCreatePayload;
   try {
     // The food's key makes this safe to send again: a repeat of a request
     // that already created it is answered with that food.
-    const food = await saveFood({
-      ...payload.food,
-      client_id: payload.foodClientId,
-    });
+    const food = await saveFood(
+      {
+        ...payload.food,
+        client_id: payload.foodClientId,
+      },
+      undefined,
+      context?.serverConfig
+    );
     if (!payload.entry) return { outcome: 'synced' };
     const variant = food.default_variant;
     if (!variant?.id) {
       return { outcome: 'failed', error: 'The server returned no serving.' };
     }
     // The entry's key is the row's own id, as for any queued entry.
-    await createFoodEntry({
-      ...payload.entry,
-      food_id: food.id,
-      variant_id: variant.id,
-      unit: variant.serving_unit,
-      client_id: row.entityId,
-    });
+    await createFoodEntry(
+      {
+        ...payload.entry,
+        food_id: food.id,
+        variant_id: variant.id,
+        unit: variant.serving_unit,
+        client_id: row.entityId,
+      },
+      context?.serverConfig
+    );
     return { outcome: 'synced' };
   } catch (error) {
     if (

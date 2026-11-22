@@ -255,4 +255,37 @@ describe('a direct save and the older changes still waiting on the phone', () =>
     expect(await deleteUnconfirmedRow(db, 'upd2', undefined, 2000)).toBe(true);
     expect(await getOutboxRow(db, 'upd2')).toBeNull();
   });
+
+  it('judges a waiting field by when the person set it, not by upload retries', async () => {
+    // quantity was set at 1000, then the drain claimed and retried the row,
+    // which moved the row's own timestamp to 9000.
+    await enqueueOutbox(
+      db,
+      {
+        id: 'retried',
+        serverConfigId: 's1',
+        userId: 'u1',
+        kind: FOOD_ENTRY_UPDATE,
+        entityId: ENTRY,
+        entryDate: DAY,
+        payload: {
+          patch: { quantity: 2, notes: 'later' },
+          display: { quantity: 2, notes: 'later' },
+          times: { quantity: 1000, notes: 7000 },
+        },
+        payloadVersion: 2,
+      },
+      9000
+    );
+
+    // A save sent at 5000: quantity (1000) is older and goes, notes (7000) was
+    // set after the save started and stays.
+    await dropSupersededUpdate(ENTRY, { quantity: 3, notes: 'direct' }, 5000);
+
+    const row = await getOutboxRow(db, 'retried');
+    expect((row?.payload as { patch: object }).patch).toEqual({
+      notes: 'later',
+    });
+    expect((row?.payload as { times: object }).times).toEqual({ notes: 7000 });
+  });
 });

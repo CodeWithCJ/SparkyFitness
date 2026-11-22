@@ -7,7 +7,12 @@ import {
 import { invalidateFoodCache } from '../../hooks/invalidateFoodCache';
 import { ApiError } from '../../services/api/errors';
 import { sendResultFromError } from '../syncEngine';
-import type { OutboxHandler, OutboxRow, SendResult } from '../types';
+import type {
+  OutboxHandler,
+  OutboxRow,
+  SendContext,
+  SendResult,
+} from '../types';
 import {
   WATER_ADD,
   WATER_PAYLOAD_VERSION,
@@ -18,7 +23,10 @@ import {
 } from '../waterHandOver';
 import { registerOutboxHandler } from './registry';
 
-async function sendAdd(row: OutboxRow): Promise<SendResult> {
+async function sendAdd(
+  row: OutboxRow,
+  context?: SendContext
+): Promise<SendResult> {
   const { entryDate, containerId } = row.payload as WaterAddPayload;
   try {
     // The key is the press's own id; the server answers a repeat with the
@@ -28,6 +36,7 @@ async function sendAdd(row: OutboxRow): Promise<SendResult> {
       changeDrinks: 1,
       containerId,
       clientId: row.entityId,
+      serverConfig: context?.serverConfig,
     });
     return { outcome: 'synced' };
   } catch (error) {
@@ -55,10 +64,13 @@ const handler: OutboxHandler = {
   },
 };
 
-async function sendRemove(row: OutboxRow): Promise<SendResult> {
+async function sendRemove(
+  row: OutboxRow,
+  context?: SendContext
+): Promise<SendResult> {
   const { logEntryId } = row.payload as WaterRemovePayload;
   try {
-    await deleteWaterIntakeLogEntry(logEntryId);
+    await deleteWaterIntakeLogEntry(logEntryId, context?.serverConfig);
     return { outcome: 'synced' };
   } catch (error) {
     // Already gone is what was asked for.

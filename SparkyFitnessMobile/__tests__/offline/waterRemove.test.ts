@@ -154,7 +154,7 @@ describe('taking a drink off with no connection', () => {
     await removeLatestDrinkOffline(DAY);
     mockDelete.mockResolvedValue(undefined);
     expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
-    expect(mockDelete).toHaveBeenCalledWith('new');
+    expect(mockDelete).toHaveBeenCalledWith('new', undefined);
     expect(mockInvalidateWater).toHaveBeenCalledWith({}, DAY);
     expect(mockInvalidateFood).toHaveBeenCalledWith({}, DAY);
 
