@@ -4,6 +4,7 @@ import {
   CANCEL_RETRY_DELAYS_MS,
   cancelChallengeWeekNotifications,
   challengeWeekNoticeContent,
+  dismissDeliveredChallengeWeekNotifications,
   enqueueChallengeWeekNotificationTask,
   scheduleChallengeWeekNotifications,
 } from '../../src/services/challengeWeekNotificationService';
@@ -16,6 +17,9 @@ import {
 const mockSchedule = Notifications.scheduleNotificationAsync as jest.Mock;
 const mockCancel = Notifications.cancelScheduledNotificationAsync as jest.Mock;
 const mockGetAll = Notifications.getAllScheduledNotificationsAsync as jest.Mock;
+const mockGetPresented =
+  Notifications.getPresentedNotificationsAsync as jest.Mock;
+const mockDismiss = Notifications.dismissNotificationAsync as jest.Mock;
 
 const notice: ChallengeWeekNotice = {
   challengeId: 'c1',
@@ -132,6 +136,36 @@ describe('cancelChallengeWeekNotifications', () => {
       mockGetAll.mockResolvedValue([]);
       mockCancel.mockResolvedValue(undefined);
     });
+  });
+});
+
+describe('dismissDeliveredChallengeWeekNotifications', () => {
+  const shown = (identifier: string, kind: string) => ({
+    request: { identifier, content: { data: { kind } } },
+  });
+
+  it('dismisses only the challenge week notices already shown', async () => {
+    mockGetPresented.mockResolvedValueOnce([
+      shown('a', CHALLENGE_WEEK_LEADER_KIND),
+      shown('b', 'mood-checkin'),
+    ]);
+    await dismissDeliveredChallengeWeekNotifications();
+    expect(mockDismiss).toHaveBeenCalledTimes(1);
+    expect(mockDismiss).toHaveBeenCalledWith('a');
+  });
+
+  it('does not throw when the shown notices cannot be read or dismissed', async () => {
+    mockGetPresented.mockRejectedValueOnce(new Error('denied'));
+    await expect(
+      dismissDeliveredChallengeWeekNotifications()
+    ).resolves.toBeUndefined();
+    mockGetPresented.mockResolvedValueOnce([
+      shown('a', CHALLENGE_WEEK_LEADER_KIND),
+    ]);
+    mockDismiss.mockRejectedValueOnce(new Error('gone'));
+    await expect(
+      dismissDeliveredChallengeWeekNotifications()
+    ).resolves.toBeUndefined();
   });
 });
 

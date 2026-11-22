@@ -24,6 +24,7 @@ import { refreshClientCertificateHosts } from '../services/clientCertificate';
 import { clearAndroidWidgetSnapshots } from '../services/androidWidgetSyncService';
 import {
   cancelChallengeWeekNotifications,
+  dismissDeliveredChallengeWeekNotifications,
   enqueueChallengeWeekNotificationTask,
 } from '../services/challengeWeekNotificationService';
 import {
@@ -107,10 +108,12 @@ export function useAuth() {
       // names, members and totals, and no account to tell them apart. With
       // the cache gone the reconciler waits for the new account's reads and
       // would leave them scheduled, so they are cancelled here, in its queue
-      // so a run already under way cannot schedule them again after.
-      void enqueueChallengeWeekNotificationTask(
-        cancelChallengeWeekNotifications
-      );
+      // so a run already under way cannot schedule them again after. Those
+      // already shown are dismissed too.
+      void enqueueChallengeWeekNotificationTask(async () => {
+        await cancelChallengeWeekNotifications();
+        await dismissDeliveredChallengeWeekNotifications();
+      });
       // The Siri and Shortcuts copy holds the previous login and proxy
       // headers; the dashboard writes a fresh one once the new identity's
       // preferences and container load.

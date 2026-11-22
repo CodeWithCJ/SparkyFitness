@@ -107,6 +107,39 @@ export async function cancelChallengeWeekNotifications(): Promise<boolean> {
   }
 }
 
+/**
+ * Dismisses the challenge week notices already shown, so one delivered for
+ * the previous account does not stay in the tray or on the lock screen after
+ * an identity change: a notice that has fired is no longer scheduled, so
+ * `cancelChallengeWeekNotifications` cannot reach it.
+ */
+export async function dismissDeliveredChallengeWeekNotifications(): Promise<void> {
+  let presented: Notifications.Notification[];
+  try {
+    presented = await Notifications.getPresentedNotificationsAsync();
+  } catch (err) {
+    addLog(
+      `dismissDeliveredChallengeWeekNotifications could not list: ${(err as Error).message}`,
+      'WARNING'
+    );
+    return;
+  }
+  const results = await Promise.allSettled(
+    presented
+      .filter(
+        (n) => n.request.content.data?.kind === CHALLENGE_WEEK_LEADER_KIND
+      )
+      .map((n) => Notifications.dismissNotificationAsync(n.request.identifier))
+  );
+  const failed = results.filter((r) => r.status === 'rejected').length;
+  if (failed > 0) {
+    addLog(
+      `dismissDeliveredChallengeWeekNotifications left ${failed} shown`,
+      'WARNING'
+    );
+  }
+}
+
 let queue: Promise<void> = Promise.resolve();
 
 /**

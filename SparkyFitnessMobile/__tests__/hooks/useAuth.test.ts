@@ -14,6 +14,7 @@ import { clearAndroidWidgetSnapshots } from '../../src/services/androidWidgetSyn
 import { addLog } from '../../src/services/LogService';
 import {
   cancelChallengeWeekNotifications,
+  dismissDeliveredChallengeWeekNotifications,
   enqueueChallengeWeekNotificationTask,
 } from '../../src/services/challengeWeekNotificationService';
 import { useGuidedCheckInStore } from '../../src/stores/guidedCheckInStore';
@@ -73,6 +74,9 @@ jest.mock('../../src/offline/offlineImages', () => ({
 }));
 jest.mock('../../src/services/challengeWeekNotificationService', () => ({
   cancelChallengeWeekNotifications: jest.fn().mockResolvedValue(true),
+  dismissDeliveredChallengeWeekNotifications: jest
+    .fn()
+    .mockResolvedValue(undefined),
   enqueueChallengeWeekNotificationTask: jest.fn(
     async (task: () => Promise<unknown>) => {
       await task();
@@ -261,7 +265,7 @@ describe('useAuth', () => {
     expect(mockClearAuthCookies).toHaveBeenCalledTimes(1);
   });
 
-  test("identity changed callback cancels the previous account's challenge week notices in their queue", async () => {
+  test("identity changed callback cancels and dismisses the previous account's challenge week notices in their queue", async () => {
     renderUseAuth();
     await act(async () => {});
 
@@ -270,10 +274,9 @@ describe('useAuth', () => {
       await identityChangedCb();
     });
 
-    expect(enqueueChallengeWeekNotificationTask).toHaveBeenCalledWith(
-      cancelChallengeWeekNotifications
-    );
+    expect(enqueueChallengeWeekNotificationTask).toHaveBeenCalledTimes(1);
     expect(cancelChallengeWeekNotifications).toHaveBeenCalledTimes(1);
+    expect(dismissDeliveredChallengeWeekNotifications).toHaveBeenCalledTimes(1);
   });
 
   test('identity changed callback drops the image caches', async () => {
