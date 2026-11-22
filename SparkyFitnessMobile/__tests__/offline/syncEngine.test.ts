@@ -1,4 +1,5 @@
 import { ApiError } from '../../src/services/api/errors';
+import { bumpAccountGeneration } from '../../src/offline/accountGeneration';
 import { putCacheRows } from '../../src/offline/cacheStore';
 import { __setOfflineDbForTests } from '../../src/offline/db';
 import { subscribeUploadsConfirmed } from '../../src/offline/events';
@@ -104,6 +105,38 @@ describe('offline sync engine', () => {
     expect(summary).toEqual({ synced: 2, remaining: 0 });
     expect((await getOutboxRow(db, 'first'))?.status).toBe('synced');
     expect(onSynced).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops the run when the account changes while rows are going up, leaving the rest waiting', async () => {
+    for (const [id, at] of [
+      ['first', 1000],
+      ['second', 2000],
+    ] as const) {
+      await enqueueOutbox(
+        db,
+        {
+          id,
+          serverConfigId: 's1',
+          userId: 'u1',
+          kind: KIND,
+          entityId: `e-${id}`,
+          payload: {},
+          payloadVersion: 2,
+        },
+        at
+      );
+    }
+    // Someone else signs in while the first row's request is out.
+    send.mockImplementationOnce(async () => {
+      bumpAccountGeneration();
+      return { outcome: 'synced' } as SendResult;
+    });
+
+    const summary = await drainOutbox('reconnect');
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(summary.synced).toBe(1);
+    expect((await getOutboxRow(db, 'second'))?.status).toBe('pending');
   });
 
   it('tells the app when the server confirmed something, and only then', async () => {

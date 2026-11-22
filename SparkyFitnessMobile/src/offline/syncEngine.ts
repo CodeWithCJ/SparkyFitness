@@ -109,6 +109,9 @@ function affectsDaySummary(kind: string): boolean {
 }
 
 async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
+  // Read before the account and server are: a switch at any point after this
+  // is noticed before the next row is sent.
+  const startedUnder = accountGeneration();
   const db = await getOfflineDb();
   const now = Date.now();
   await deleteOldSyncedOutbox(db, now);
@@ -176,6 +179,15 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
       // Written by a newer build than this one: leave it for that build.
       if (!handler) continue;
 
+      // A request goes to whichever server and account are active when it is
+      // made, not the ones this run read at its start. If either changed, the
+      // rest of the run stops: the remaining rows belong to the earlier
+      // account and wait for it.
+      if (accountGeneration() !== startedUnder) {
+        stopped = true;
+        break;
+      }
+
       // Claim the row as it was listed: still in that status and still that
       // version of it. The list was read before earlier rows were sent, which
       // can take a while; a row discarded in the meantime, or replaced by
@@ -200,7 +212,6 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
         row = { ...row, payload, payloadVersion: handler.payloadVersion };
       }
       if (affectsDaySummary(row.kind) && refreshScope == null) {
-        const startedUnder = accountGeneration();
         let serverConfig: ServerConfig | null = null;
         try {
           serverConfig = await getActiveServerConfig();
