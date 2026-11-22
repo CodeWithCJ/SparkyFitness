@@ -54,6 +54,9 @@ overrides:
   # immutability). Both apps lint with --max-warnings 0, so adopting it is a
   # refactor, not an upgrade. Pinned until that work is scheduled.
   eslint-plugin-react-hooks: "7.0.1"
+  # react-devtools-core (via react-native) allows ^1.6.1; keep it off the
+  # versions with known CVEs (CVE-2026-9277, CVE-2026-13311).
+  shell-quote: "^1.12.0"
   side-channel: "1.0.6"
   tailwindcss: "4.3.3"
   "tsx>esbuild": "0.28.1"

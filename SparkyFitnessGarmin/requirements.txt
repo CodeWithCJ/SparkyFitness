@@ -1,5 +1,5 @@
-fastapi==0.111.0
-uvicorn==0.30.1
+fastapi==0.165.0
+uvicorn==0.54.0
 garminconnect @ git+https://github.com/cyberjunky/python-garminconnect.git@0.3.20
 curl-cffi==0.15.0
 ua-generator==2.0.25
