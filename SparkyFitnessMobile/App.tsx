@@ -1,5 +1,5 @@
 import './global.css'
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as SplashScreen from 'expo-splash-screen';
@@ -37,6 +37,10 @@ import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useAppLanguageForegroundSync } from './src/hooks/useAppLanguageForegroundSync';
 import { useAutoSyncOnOpen } from './src/hooks/useAutoSyncOnOpen';
 import { useAddSheetActions } from './src/hooks/useAddSheetActions';
+import { useCopyFromYesterday } from './src/hooks/useCopyFromYesterday';
+import CopyFromYesterdaySheet, {
+  type CopyFromYesterdaySheetRef,
+} from './src/components/CopyFromYesterdaySheet';
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import FoodPhotoFlow from './src/components/FoodPhotoFlow';
@@ -50,6 +54,9 @@ import {
   SafeLabResultAdd,
   SafeLabResultDetail,
   SafeLabResults,
+  SafeChallenges,
+  SafeChallengeDetail,
+  SafeChallengeJoin,
   SafePersonalRecords,
   SafeTrainingCalendar,
   SafeWatchRunLive,
@@ -220,6 +227,7 @@ import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import MoodCheckinReminderReconciler from './src/components/MoodCheckinReminderReconciler';
 import OralCareReminderReconciler from './src/components/OralCareReminderReconciler';
+import ChallengeWeekNotificationReconciler from './src/components/ChallengeWeekNotificationReconciler';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
 import { useIOSWidgetLanguageRefresh } from './src/hooks/useIOSWidgetLanguageRefresh';
@@ -399,6 +407,10 @@ function AppContent() {
   const { shouldYieldObserverSync } = useAutoSyncOnOpen({ initialRoute, syncMutation });
   useAppStartup({ shouldYieldObserverSync });
 
+  const copyFromYesterdaySheetRef = useRef<CopyFromYesterdaySheetRef>(null);
+  const { copyFromYesterday, isPending: copyFromYesterdayPending } =
+    useCopyFromYesterday();
+
   const {
     rememberActiveTab,
     getLastActiveTab,
@@ -414,12 +426,17 @@ function AppContent() {
     handleStartCheckIn,
     handleAddMindfulness,
     handleAddOralCare,
+    handleCopyFromYesterday,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,
     handleSyncHealthData,
     handleAddSheetDismissWithoutAction,
-  } = useAddSheetActions({ syncMutation });
+  } = useAddSheetActions({
+    syncMutation,
+    presentCopyFromYesterday: (date) =>
+      copyFromYesterdaySheetRef.current?.present(date),
+  });
 
   const isAddMenuItemAvailable = useAddMenuItemAvailable();
   const cycleSheetLabel = useCycleSheetLabel();
@@ -735,6 +752,25 @@ function AppContent() {
             name="LabResults"
             component={SafeLabResults}
             options={createStackScreenOptions(t('screens.labResults', { defaultValue: 'Lab results' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="Challenges"
+            component={SafeChallenges}
+            options={createStackScreenOptions(t('challenges.title', { defaultValue: 'Challenges' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="ChallengeDetail"
+            component={SafeChallengeDetail}
+            options={({ route }) => createStackScreenOptions(route.params.name ?? t('challenges.title', { defaultValue: 'Challenges' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="ChallengeJoin"
+            component={SafeChallengeJoin}
+            options={createStackScreenOptions(t('challenges.join.title', { defaultValue: 'Join a challenge' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="LabResultDetail"
@@ -1571,6 +1607,7 @@ function AppContent() {
           onAddMood={handleAddMood}
           onAddMindfulness={handleAddMindfulness}
           onAddOralCare={handleAddOralCare}
+          onCopyFromYesterday={handleCopyFromYesterday}
           onRecordActivity={handleRecordActivity}
           onAskSparky={handleAskSparky}
           onStartCheckIn={handleStartCheckIn}
@@ -1578,6 +1615,11 @@ function AppContent() {
           showCycleCard={isAddMenuItemAvailable('wellness')}
           cycleLabel={cycleSheetLabel}
           onDismissWithoutAction={handleAddSheetDismissWithoutAction}
+        />
+        <CopyFromYesterdaySheet
+          ref={copyFromYesterdaySheetRef}
+          isPending={copyFromYesterdayPending}
+          onCopy={copyFromYesterday}
         />
         <ReauthModal
           visible={showReauthModal}
@@ -1616,6 +1658,7 @@ function AppContent() {
         <MedicationReminderReconciler />
         <MoodCheckinReminderReconciler />
         <OralCareReminderReconciler />
+        <ChallengeWeekNotificationReconciler />
         <SafeAreaToast />
         </LightboxProvider>
       </SafeAreaProvider>

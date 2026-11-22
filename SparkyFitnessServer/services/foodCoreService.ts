@@ -36,7 +36,13 @@ import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
 import {
   alcoholGramsForServing,
   BARCODE_FALLBACK_PROVIDER_ID,
+  getFoodProviderMetadata,
+  type FoodProviderType,
 } from '@workspace/shared';
+import {
+  FOOD_PROVIDER_ADAPTERS,
+  type ProviderCallContext,
+} from '../integrations/foodProviders/index.js';
 
 /** A food row as returned by the repository. */
 interface FoodRow {
@@ -1263,6 +1269,62 @@ async function lookupBarcode(
           'warn',
           `YAZIO barcode lookup failed for ${barcode}:`,
           captureSurfaceable(yazioError)
+        );
+      }
+    }
+    // Try other registered barcode providers via generic adapter
+    if (
+      provider &&
+      provider.provider_type !== 'fatsecret' &&
+      provider.provider_type !== 'usda' &&
+      provider.provider_type !== 'yazio' &&
+      provider.provider_type !== 'openfoodfacts' &&
+      FOOD_PROVIDER_ADAPTERS[provider.provider_type as FoodProviderType]
+        ?.lookupBarcode &&
+      getFoodProviderMetadata(provider.provider_type)?.supportsBarcode
+    ) {
+      try {
+        const adapter =
+          FOOD_PROVIDER_ADAPTERS[provider.provider_type as FoodProviderType];
+        const ctx: ProviderCallContext = {
+          userId,
+          credentialUserId,
+          providerId: provider.id,
+          credentials: {
+            app_id: provider.app_id ?? undefined,
+            app_key: provider.app_key ?? undefined,
+            base_url: provider.base_url ?? undefined,
+            is_active: provider.is_active ?? undefined,
+            provider_options:
+              (provider.provider_options as Record<string, unknown>) ??
+              undefined,
+          },
+          language,
+          autoScale,
+          signal: options.signal,
+        };
+        const mappedFood = await adapter.lookupBarcode!(ctx, barcode);
+        options.signal?.throwIfAborted();
+        if (mappedFood) {
+          const rawFood =
+            (mappedFood as { barcode_raw?: unknown }).barcode_raw ?? mappedFood;
+          return {
+            source: provider.provider_type,
+            food: mappedFood,
+            barcode_raw: rawFood,
+            ...sourceMetadata(
+              provider.id,
+              provider.provider_name ??
+                getFoodProviderMetadata(provider.provider_type)?.displayName ??
+                provider.provider_type
+            ),
+          };
+        }
+      } catch (adapterError) {
+        log(
+          'warn',
+          `${provider.provider_type} barcode lookup failed for ${barcode}:`,
+          captureSurfaceable(adapterError)
         );
       }
     }

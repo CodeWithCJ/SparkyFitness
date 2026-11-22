@@ -857,3 +857,78 @@ data class EnergyDisplay(val isKj: Boolean) {
     fun of(context: WatchContext?): EnergyDisplay = EnergyDisplay(isKj = context?.energyUnit == "kJ")
   }
 }
+
+// ---- Phone Media Control Models ----
+
+enum class MediaTarget {
+  PHONE,
+  WATCH
+}
+
+enum class MediaTransportAction(val wireValue: String) {
+  PLAY_PAUSE("playPause"),
+  NEXT("next"),
+  PREVIOUS("previous")
+}
+
+data class PhoneMediaState(
+  val title: String? = null,
+  val artist: String? = null,
+  val album: String? = null,
+  val appName: String? = null,
+  val isPlaying: Boolean = false,
+  val volume: Int = 0,
+  val maxVolume: Int = 0,
+  val hasSession: Boolean = false,
+  val hasMetadataAccess: Boolean = false,
+  val epoch: Long = 0L,
+  val seq: Long = 0L,
+  val updatedAtMs: Long = 0L
+) {
+  val volumePercent: Int?
+    get() = if (maxVolume > 0) ((volume.coerceIn(0, maxVolume) * 100f) / maxVolume).roundToInt() else null
+
+  val secondaryLabel: String?
+    get() = artist?.takeIf { it.isNotBlank() } ?: appName?.takeIf { it.isNotBlank() }
+}
+
+object MediaControlLogic {
+  /**
+   * Resolves whether the Now Playing page should target the paired phone or
+   * local watch audio:
+   * - If the user explicitly picked a target and it is reachable, honor it.
+   * - If the phone is not reachable, fall back to local watch audio.
+   * - If the watch itself is actively playing local audio while the phone is
+   *   not playing, automatically target local watch audio.
+   * - Otherwise default to controlling the paired phone.
+   */
+  fun resolveEffectiveTarget(
+    manualTarget: MediaTarget?,
+    phoneReachable: Boolean,
+    watchMusicActive: Boolean,
+    phoneMedia: PhoneMediaState?
+  ): MediaTarget {
+    if (!phoneReachable) return MediaTarget.WATCH
+    if (manualTarget != null) return manualTarget
+    if (watchMusicActive && phoneMedia?.isPlaying != true) return MediaTarget.WATCH
+    return MediaTarget.PHONE
+  }
+
+  /**
+   * Accepts newer or equal snapshots while dropping stale/reordered deliveries:
+   * - When either snapshot carries a producer [PhoneMediaState.epoch], compares
+   *   by `(epoch, seq)` so a phone process restart cleanly advances the epoch
+   *   even if the system clock moved backward, while reordered deliveries in
+   *   the same or older epoch are still rejected.
+   * - Falls back to [PhoneMediaState.updatedAtMs] for legacy payloads without
+   *   an epoch.
+   */
+  fun shouldAcceptSnapshot(incoming: PhoneMediaState, current: PhoneMediaState?): Boolean {
+    if (current == null) return true
+    if (incoming.epoch > 0L || current.epoch > 0L) {
+      if (incoming.epoch != current.epoch) return incoming.epoch > current.epoch
+      return incoming.seq >= current.seq
+    }
+    return incoming.updatedAtMs >= current.updatedAtMs
+  }
+}

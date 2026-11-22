@@ -21,6 +21,7 @@ export const ADD_MENU_ITEM_KEYS = [
   'mood',
   'mindfulness',
   'oralCare',
+  'copyFromYesterday',
   'askSparky',
   'syncHealth',
 ] as const;
@@ -74,6 +75,8 @@ export const ADD_MENU_ITEM_LABELS: Record<
   mindfulness: (t) =>
     t('addSheet.mindfulness', { defaultValue: 'Mindfulness' }),
   oralCare: (t) => t('addSheet.oralCare', { defaultValue: 'Oral care' }),
+  copyFromYesterday: (t) =>
+    t('addSheet.copyFromYesterday', { defaultValue: 'Copy from yesterday' }),
   askSparky: (t) => t('addSheet.askSparky', { defaultValue: 'Ask Sparky' }),
   syncHealth: (t) =>
     t('addSheet.syncHealthShort', { defaultValue: 'Sync Health' }),
@@ -100,6 +103,7 @@ export const ADD_MENU_ITEM_ICONS: Record<AddMenuItemKey, IconName> = {
   mood: 'mood',
   mindfulness: 'exercise-yoga',
   oralCare: 'oral-care',
+  copyFromYesterday: 'copy',
   askSparky: 'sparkles',
   syncHealth: 'sync',
 };
@@ -120,6 +124,7 @@ export const ADD_MENU_ITEM_TINTS: Record<AddMenuItemKey, AddMenuItemTint> = {
   mood: 'amber',
   mindfulness: 'sky',
   oralCare: 'sky',
+  copyFromYesterday: 'sky',
   askSparky: 'accent',
   syncHealth: 'accent',
 };
@@ -154,6 +159,7 @@ export const ADD_MENU_ITEM_ROW_STYLES: Record<AddMenuItemKey, AddMenuRowStyle> =
     mood: 'compact',
     mindfulness: 'compact',
     oralCare: 'list',
+    copyFromYesterday: 'list',
     askSparky: 'action',
     syncHealth: 'action',
   };

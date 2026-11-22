@@ -2034,6 +2034,24 @@
     "syncFailed_other": "Failed to synchronize {{count}} providers."
   },
   "settings": {
+    "foodProviders": {
+      "common": {
+        "getApiKey": "Get an API Key",
+        "terms": "Terms"
+      },
+      "cooktool": {
+        "help": "Free plan includes 1,000 lookups per day. Accept CookTool terms under your own key. Lookups are cached for 24 hours.",
+        "portalLabel": "CookTool Documentation"
+      },
+      "nutrientgraph": {
+        "help": "Free plan includes 2,500 units per month. Covers USDA, French CIQUAL, and US branded products in five languages. Lookups are cached for 24 hours.",
+        "portalLabel": "NutrientGraph Documentation"
+      },
+      "food-info": {
+        "help": "Free plan includes 100 requests per day. Access reference foods across multiple national food datasets. Lookups are cached for 24 hours.",
+        "portalLabel": "Food Info Developer Portal"
+      }
+    },
     "chatMcp": {
       "title": "Outside tools",
       "description": "Your admin added these services from outside SparkyFitness. When one is on, Sparky can send it parts of your chat and read what it sends back. Each is off until you turn it on.",
@@ -2802,12 +2820,15 @@
     },
     "calculationExplanation": {
       "adaptiveEstimateFootnote": "* Gradually adjusts your Daily Goal using estimates from food and weight records. Weight fluctuations and incomplete logs add uncertainty.",
+      "burnedAdaptive": "Shown for reference. Your Adaptive target already includes your activity.",
       "burnedActivity": "Activity (Exercise & Steps only)",
       "burnedBmr": "Activity + BMR (Your base metabolism)",
       "burnedTdee": "Device total calories (BMR + active calories fallback)",
       "burnedTitle": "Burned Calories",
       "dynamicFootnote": "* Ideal for fueling workouts and active recovery.",
       "fixedFootnote": "* Ideal for strict caloric deficits and weight management.",
+      "netAdaptive": "Not used for Remaining. Turn on \"Count activity calories separately\" below to credit today’s activity.",
+      "netAdaptivePercentage": "Not used for Remaining. To credit today’s activity, choose Dynamic and turn on \"Count activity calories separately\".",
       "netFormula": "Eaten - Total Burned",
       "netTitle": "Net Energy",
       "percentageFootnote": "* Creates a safety buffer to avoid overeating from over-estimated calorie burns.",
@@ -2850,6 +2871,7 @@
       "cardAdaptiveSummary": "Learns from your intake and weight trend",
       "cardDynamic": "Dynamic",
       "cardDynamicSummary": "Adds your daily activity to your goal",
+      "cardDynamicAdaptiveSummary": "Activity is already in your Adaptive target",
       "cardFixed": "Fixed",
       "cardFixedSummary": "The same target whatever you do",
       "cardPercentage": "Percentage earn-back",
@@ -3012,10 +3034,13 @@
       "kJJoules": "kJ (Joules)",
       "adaptiveGoalMatchedEvidence": "<span>Adaptive Goal:</span> Estimates expenditure from food logs and measured weights over matching observation periods. New evidence is introduced gradually; earlier uncertain or capped evidence can still affect the result. Missing food logs and scale-weight fluctuations add uncertainty.",
       "dynamicGoalYourCalorieGoal": "<span>Dynamic Goal:</span> Your calorie goal will dynamically adjust based on your daily activity level (e.g., exercise, steps). This is ideal for active individuals or those whose activity levels vary daily.",
+      "dynamicGoalAdaptiveMethod": "<span>Dynamic Goal:</span> With the Adaptive calculation method, your target is learned from your food logs and weight trend, so it already includes your usual activity, and Remaining is Target minus Eaten. Turn on <span>Count activity calories separately</span> below to add each day’s steps and workouts to a baseline that leaves them out.",
       "fixedGoalYourCalorieGoal": "<span>Fixed Goal:</span> Your calorie goal will remain fixed, regardless of your daily activity. This is suitable for individuals with consistent activity levels or those who prefer a stable target.",
       "percentageEarnBackOnlyEarn": "<span>Percentage Earn-Back:</span> Only earn back a set percentage of your exercise calories. For example, 50% creates a safety buffer to avoid overeating from over-estimated burns.",
       "deviceProjectionUsesHealthConnect": "<span>Device Projection:</span> Uses device total calories (Health Connect, Garmin or Polar) when available, projects the current burn to midnight, and applies Goal Mode directly to that TDEE. Falls back to BMR plus active calories when no device total is available.",
       "adaptivePlausibilityBandHint": "💡 In Adaptive mode this sets the formula baseline and the ±{{band}} {{unit}} plausibility band for each complete estimate. The displayed estimate changes gradually and returns toward the formula baseline when evidence ages, so an understated activity level can hold it down.",
+      "adaptiveFallbackActivityLevel": "Until Adaptive has {{days}} days of food logs, your baseline is BMR × this level, before Goal Mode is applied, and your workouts are not added on top. Pick a level that includes your workouts.",
+      "adaptiveFallbackActivitySeparated": "Until Adaptive has {{days}} days of food logs, your baseline is BMR × this level, before Goal Mode is applied. Describe your activity outside the steps and workouts that are counted separately.",
       "bodyRecomposition10": "Body Recomposition (-10%)",
       "cut15": "Cut (-15%)",
       "highCut20": "High Cut (-20%)",
@@ -3387,6 +3412,18 @@
       "mcpServerToolCount_other": "Chat may use {{count}} tools",
       "mcpServerSendsUserId": "Tells the server who is chatting"
     },
+    "zeppBridgeProvider": {
+      "warningTitle": "Third-party integration: requires ZeppBridge",
+      "warningInstall": "ZeppBridge is an independent open-source project. It is not made, maintained or supported by SparkyFitness. This integration only works if you install and run ZeppBridge yourself. See <repo>the ZeppBridge project on GitHub</repo> for what it is and how to set it up.",
+      "warningDueDiligence": "ZeppBridge signs in to your Zepp account and keeps a copy of your health data on your own machine. Please do your own due diligence before installing it: read its documentation and <privacy>privacy notes</privacy>, check what access it asks for, and decide whether you trust it. Use it at your own risk.",
+      "warningExperimental": "This integration is experimental. It was built from ZeppBridge’s published API and has had limited testing with real devices.",
+      "baseUrlLabel": "ZeppBridge URL",
+      "tokenLabel": "Pull token",
+      "tokenPlaceholder": "The token set as ZEPPBRIDGE_PULL_TOKEN",
+      "overviewNote": "SparkyFitness only reads from your own ZeppBridge server (run `zeppbridge-cli serve`). It never contacts Zepp and never sees your Zepp login.",
+      "urlNote": "Type the full address including http:// (or https://). Inside Docker, put both containers on one network and use the container name, for example http://zeppbridge-serve:43921.",
+      "privateNetworkNote": "A private or LAN address works for admin accounts. On a server with several users, an admin has to allow private network providers first."
+    },
     "routingProvider": {
       "baseUrlLabel": "Valhalla server URL",
       "apiKeyLabel": "API key (optional)",
@@ -3585,13 +3622,13 @@
       "title": "Tabs",
       "description": "Choose which main tabs show on the website",
       "cycleOn": "On",
-      "cycleOff": "Off",
       "cycleHint": "{{name}} is turned on or off in Features, above.",
+      "someFeaturesOff": "Some features are turned off",
+      "manageFeatures": "Manage",
       "footnote": "Diary and Settings always show. Hiding a tab only changes this website: nothing is deleted, and the mobile app keeps its own settings.",
       "saveError": "Could not save your tab choice. Please try again.",
       "loadError": "Could not load your tab choices.",
-      "actingOnBehalf": "You can only change the tabs on your own account.",
-      "featureOff": "Not shown: turned off in Features."
+      "actingOnBehalf": "You can only change the tabs on your own account."
     },
     "features": {
       "title": "Features",
@@ -7832,6 +7869,17 @@
     "intervalsAthleteIdPlaceholder": "Enter Athlete ID (i12345)",
     "intervalsApiKeyPlaceholder": "Enter API Key",
     "intervalsDisconnectConfirm": "Are you sure you want to disconnect from Intervals.icu? This will deactivate the integration until you re-enable it.",
+    "zeppbridgeSyncSuccessTitle": "ZeppBridge synced successfully",
+    "zeppbridgeSyncDetails": "Synced: {{sleepImported}} sleep sessions, {{workoutsImported}} workouts ({{workoutDetailsImported}} with route or heart rate), {{metricDays}} days of metrics ({{failed}} failed, {{workoutDetailsFailed}} workout details missing).",
+    "zeppbridgeSyncIncompleteTitle": "ZeppBridge synced with problems",
+    "zeppbridgeSyncError": "ZeppBridge sync failed. Check the ZeppBridge URL and pull token in settings, and that the ZeppBridge server is running.",
+    "zeppbridgeTestSuccessTitle": "ZeppBridge connection works",
+    "zeppbridgeTestSuccessDetails": "ZeppBridge {{version}} answered.",
+    "zeppbridgeTestError": "Could not connect to ZeppBridge. Check the URL (include http://) and the pull token.",
+    "zeppbridgeTestButton": "Test connection",
+    "zeppbridgeDisconnectConfirm": "Are you sure you want to disconnect ZeppBridge? This will deactivate the integration until you re-enable it. Data already imported is kept.",
+    "zeppbridgeThirdPartyNote": "Third-party integration: it needs <repo>ZeppBridge</repo>, an independent project not supported by SparkyFitness, running on your own machine.",
+    "zeppbridgeDuplicateNote": "If the Zepp app also writes to Apple Health or Health Connect and you sync that here too, the same night or workout can appear twice. Use one of the two.",
     "intervalsPushLabel": "Push daily nutrition to Intervals.icu",
     "intervalsPushingSince": "Pushing since {{date}}",
     "intervalsPushedRemain": "{{count}} days of pushed data remain",
@@ -9798,7 +9846,9 @@
       "label": "Nutrition label"
     },
     "foodResultCard": {
-      "gi": "GI: {{glycemic_index}}"
+      "gi": "GI: {{glycemic_index}}",
+      "tapForFullNutrition": "Tap for full nutrition",
+      "tapForNutrition": "Tap for nutrition"
     },
     "searchingBarcode": "Searching barcode",
     "lookingUp": "Looking up: {{barcode}}...",
@@ -11525,7 +11575,8 @@
       "km": "{{value}} km",
       "days_one": "{{count}} day",
       "days_other": "{{count}} days",
-      "metres": "{{value}} m"
+      "metres": "{{value}} m",
+      "feet": "{{value}} ft"
     },
     "units": {
       "points": "points",
@@ -11534,7 +11585,8 @@
       "miles": "miles",
       "km": "km",
       "days": "days",
-      "metres": "metres"
+      "metres": "metres",
+      "feet": "feet"
     },
     "periodRange": "{{start}} – {{end}}",
     "widget": {

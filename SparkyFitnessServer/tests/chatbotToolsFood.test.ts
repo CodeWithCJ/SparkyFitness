@@ -939,6 +939,147 @@ describe('lookup_food_nutrition', () => {
       { providerId: 'prov-slv' }
     );
   });
+
+  it('supports explicit provider_type: "cooktool" in lookup_food_nutrition', async () => {
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      {
+        id: 'prov-cooktool',
+        provider_type: 'cooktool',
+        provider_name: 'CookTool',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          name: 'Bananas, raw',
+          provider_external_id: 'ing:6433',
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 89,
+            protein: 1.1,
+            carbs: 22.8,
+            fat: 0.3,
+          },
+        },
+      ],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'lookup_food_nutrition',
+        food_name: 'Bananas',
+        provider_type: 'cooktool',
+      },
+      opts
+    );
+
+    expect(result).toContain('Found match in **cooktool**');
+    expect(result).toContain('Bananas, raw');
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-1',
+      'cooktool',
+      'Bananas',
+      { providerId: 'prov-cooktool' }
+    );
+  });
+
+  it('supports explicit provider_type: "nutrientgraph" in lookup_food_nutrition', async () => {
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      {
+        id: 'prov-ng',
+        provider_type: 'nutrientgraph',
+        provider_name: 'NutrientGraph',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          name: 'Potato, peeled, raw',
+          provider_external_id: 'ciqual:4008',
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 80,
+            protein: 2,
+            carbs: 17,
+            fat: 0.1,
+          },
+        },
+      ],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'lookup_food_nutrition',
+        food_name: 'Potato',
+        provider_type: 'nutrientgraph',
+      },
+      opts
+    );
+
+    expect(result).toContain('Found match in **nutrientgraph**');
+    expect(result).toContain('Potato, peeled, raw');
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-1',
+      'nutrientgraph',
+      'Potato',
+      { providerId: 'prov-ng' }
+    );
+  });
+
+  it('supports explicit provider_type: "food-info" in lookup_food_nutrition', async () => {
+    vi.mocked(
+      externalProviderRepository.getActiveProvidersByTypes
+    ).mockResolvedValue([
+      {
+        id: 'prov-fi',
+        provider_type: 'food-info',
+        provider_name: 'Food Info',
+      },
+    ]);
+    vi.mocked(searchProviderFoods).mockResolvedValue({
+      foods: [
+        {
+          name: 'Bananas, overripe, raw',
+          provider_external_id: '790774',
+          default_variant: {
+            serving_size: 100,
+            serving_unit: 'g',
+            calories: 85,
+            protein: 0.7,
+            carbs: 20.1,
+            fat: 0.2,
+          },
+        },
+      ],
+      pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+    });
+
+    const result = await tools.sparky_manage_food.execute!(
+      {
+        action: 'lookup_food_nutrition',
+        food_name: 'Banana',
+        provider_type: 'food-info',
+      },
+      opts
+    );
+
+    expect(result).toContain('Found match in **food-info**');
+    expect(result).toContain('Bananas, overripe, raw');
+    expect(searchProviderFoods).toHaveBeenCalledWith(
+      'user-1',
+      'food-info',
+      'Banana',
+      { providerId: 'prov-fi' }
+    );
+  });
 });
 
 describe('barcode metadata', () => {
@@ -3054,6 +3195,178 @@ describe('log_external_food', () => {
       } finally {
         vi.useRealTimers();
       }
+    });
+  });
+
+  describe('Food-Info cold cache and partial nutrition handling', () => {
+    const summaryBanana = {
+      name: 'Bananas, overripe, raw',
+      brand: null,
+      provider_external_id: '790774',
+      provider_type: 'food-info',
+      default_variant: {
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 0,
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+        is_default: true,
+      },
+      has_core_nutrition: false,
+      [PARTIAL_SERVING_DATA]: true as const,
+    };
+
+    const hydratedBanana = {
+      name: 'Bananas, overripe, raw',
+      brand: null,
+      provider_external_id: '790774',
+      provider_type: 'food-info',
+      default_variant: {
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 85,
+        protein: 0.7,
+        carbs: 20.1,
+        fat: 0.2,
+        is_default: true,
+      },
+      has_core_nutrition: true,
+    };
+
+    function mockFoodInfoSearch() {
+      vi.mocked(
+        externalProviderRepository.getActiveProvidersByTypes
+      ).mockResolvedValue([
+        {
+          id: 'prov-fi',
+          provider_type: 'food-info',
+          provider_name: 'Food Info',
+        },
+      ]);
+      vi.mocked(searchProviderFoods).mockResolvedValue({
+        foods: [summaryBanana],
+        pagination: { page: 1, pageSize: 20, totalCount: 1, hasMore: false },
+      });
+    }
+
+    it('hydrates Food-Info search summary with detail fetch in lookup_food_nutrition', async () => {
+      mockFoodInfoSearch();
+      vi.mocked(fetchProviderFoodDetails).mockResolvedValue(hydratedBanana);
+
+      const result = await tools.sparky_manage_food.execute!(
+        {
+          action: 'lookup_food_nutrition',
+          food_name: 'Banana',
+          provider_type: 'food-info',
+        },
+        opts
+      );
+
+      expect(fetchProviderFoodDetails).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerType: 'food-info',
+          externalId: '790774',
+          requireNutrition: true,
+        })
+      );
+      expect(result).toContain('Found match in **food-info**');
+      expect(result).toContain('Energy: 85 kcal');
+      expect(result).toContain('Protein: 0.7g');
+    });
+
+    it('refuses to quote zero-valued nutrition in lookup_food_nutrition when detail fetch fails', async () => {
+      mockFoodInfoSearch();
+      vi.mocked(fetchProviderFoodDetails).mockResolvedValue(null);
+
+      const result = await tools.sparky_manage_food.execute!(
+        {
+          action: 'lookup_food_nutrition',
+          food_name: 'Banana',
+          provider_type: 'food-info',
+        },
+        opts
+      );
+
+      expect(result).toContain(
+        'currently unavailable; refusing to quote zero-valued or unverified nutrition'
+      );
+      expect(result).not.toContain('Energy: 0 kcal');
+    });
+
+    it('hydrates Food-Info search summary with detail fetch in log_external_food', async () => {
+      mockFoodInfoSearch();
+      vi.mocked(fetchProviderFoodDetails).mockResolvedValue(hydratedBanana);
+      vi.mocked(foodCoreService.createFood).mockResolvedValue({
+        id: FOOD_ID,
+        name: 'Bananas, overripe, raw',
+        default_variant: {
+          id: VARIANT_ID,
+          serving_size: 100,
+          serving_unit: 'g',
+          calories: 85,
+          protein: 0.7,
+          carbs: 20.1,
+          fat: 0.2,
+        },
+      } as never);
+      vi.mocked(foodEntryService.createFoodEntry).mockResolvedValue({
+        id: ENTRY_ID,
+        food_name: 'Bananas, overripe, raw',
+      });
+
+      const result = await tools.sparky_manage_food.execute!(
+        {
+          action: 'log_external_food',
+          food_name: 'Banana',
+          external_id: '790774',
+          provider_type: 'food-info',
+          meal_type: 'breakfast',
+          quantity: 100,
+          unit: 'g',
+        },
+        opts
+      );
+
+      expect(fetchProviderFoodDetails).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerType: 'food-info',
+          externalId: '790774',
+          requireNutrition: true,
+        })
+      );
+      expect(foodCoreService.createFood).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({
+          name: 'Bananas, overripe, raw',
+          calories: 85,
+        })
+      );
+      expect(result).toContain('logged 100 g');
+    });
+
+    it('refuses to save zero-valued nutrition in log_external_food when detail fetch fails', async () => {
+      mockFoodInfoSearch();
+      vi.mocked(fetchProviderFoodDetails).mockResolvedValue(null);
+
+      const result = await tools.sparky_manage_food.execute!(
+        {
+          action: 'log_external_food',
+          food_name: 'Banana',
+          external_id: '790774',
+          provider_type: 'food-info',
+          meal_type: 'breakfast',
+          quantity: 100,
+          unit: 'g',
+        },
+        opts
+      );
+
+      expect(result).toContain(
+        'Full details for the selected food-info item are unavailable; nothing was logged'
+      );
+      expect(foodCoreService.createFood).not.toHaveBeenCalled();
+      expect(foodEntryService.createFoodEntry).not.toHaveBeenCalled();
     });
   });
 

@@ -8,7 +8,7 @@ import {
   type AddMenuItemKey,
   type AddMenuRowStyle,
 } from '../constants/addMenuItems';
-import { resolveKeyOrder } from './reorderUtils';
+import { mergeSubsetOrder, resolveKeyOrder } from './reorderUtils';
 
 /**
  * The saved card slots, made safe to use: unknown and repeated items are
@@ -126,12 +126,11 @@ export function mergeGroupOrder(
   cards: readonly AddMenuItemKey[],
   reorderedGroup: readonly AddMenuItemKey[]
 ): AddMenuItemKey[] {
-  const rows = rowKeys(order, cards);
-  const queue = [...reorderedGroup];
-  const next = rows.map((key) =>
-    reorderedGroup.includes(key) ? (queue.shift() ?? key) : key
+  return mergeRowOrder(
+    order,
+    cards,
+    mergeSubsetOrder(rowKeys(order, cards), reorderedGroup)
   );
-  return mergeRowOrder(order, cards, next);
 }
 
 /**

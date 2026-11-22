@@ -88,6 +88,9 @@ import {
   BARCODE_FALLBACK_PROVIDER_ID,
   type BarcodeLookupResponse,
   type BarcodeCandidate,
+  FOOD_PROVIDER_TYPES,
+  getFoodProviderMetadata,
+  type FoodProviderType,
 } from '@workspace/shared';
 
 // Stable empty fallback so the providers reference does not change each render
@@ -624,8 +627,39 @@ const EnhancedFoodSearch = ({
         page?: number
       ) => Promise<ProviderSearchPage>
     >
-  >(
-    () => ({
+  >(() => {
+    const genericHandler =
+      (type: FoodProviderType) =>
+      async (
+        term: string,
+        id: string,
+        _provider: DataProvider,
+        page?: number
+      ) => {
+        const pageSize = getFoodProviderMetadata(type)?.pageSizeFromDisplayLimit
+          ? itemDisplayLimit
+          : undefined;
+        const data = await queryClient.fetchQuery(
+          searchFoodsV2Options(type, term, id, pageSize, undefined, page)
+        );
+        return {
+          items: data.foods.map((food: Food) => ({
+            provider_type: type,
+            food,
+          })),
+          hasMore: data.pagination?.hasMore ?? false,
+        };
+      };
+
+    const handlers: Record<
+      string,
+      (
+        term: string,
+        providerId: string,
+        provider: DataProvider,
+        page?: number
+      ) => Promise<ProviderSearchPage>
+    > = {
       openfoodfacts: async (term, _id, _provider, page) => {
         const data = await queryClient.fetchQuery(
           searchFoodsV2Options(
@@ -660,159 +694,16 @@ const EnhancedFoodSearch = ({
           hasMore: false,
         };
       },
-      fatsecret: async (term, id, _provider, page) => {
-        const data = await queryClient.fetchQuery(
-          searchFoodsV2Options(
-            'fatsecret',
-            term,
-            id,
-            undefined,
-            undefined,
-            page
-          )
-        );
-        return {
-          items: data.foods.map((food: Food) => ({
-            provider_type: 'fatsecret' as const,
-            food,
-          })),
-          hasMore: data.pagination?.hasMore ?? false,
-        };
-      },
-      usda: async (term, id, _provider, page) => {
-        const data = await queryClient.fetchQuery(
-          searchFoodsV2Options(
-            'usda',
-            term,
-            id,
-            itemDisplayLimit,
-            undefined,
-            page
-          )
-        );
-        return {
-          items: data.foods.map((food: Food) => ({
-            provider_type: 'usda' as const,
-            food,
-          })),
-          hasMore: data.pagination?.hasMore ?? false,
-        };
-      },
-      mealie: async (term, id, _provider, page) => {
-        const data = await queryClient.fetchQuery(
-          searchFoodsV2Options('mealie', term, id, undefined, undefined, page)
-        );
-        return {
-          items: data.foods.map((food: Food) => ({
-            provider_type: 'mealie' as const,
-            food,
-          })),
-          hasMore: data.pagination?.hasMore ?? false,
-        };
-      },
-      tandoor: async (term, id, _provider, page) => {
-        const data = await queryClient.fetchQuery(
-          searchFoodsV2Options('tandoor', term, id, undefined, undefined, page)
-        );
-        return {
-          items: data.foods.map((food: Food) => ({
-            provider_type: 'tandoor' as const,
-            food,
-          })),
-          hasMore: data.pagination?.hasMore ?? false,
-        };
-      },
-      yazio: async (term, id, _provider, page) => {
-        const data = await queryClient.fetchQuery(
-          searchFoodsV2Options(
-            'yazio',
-            term,
-            id,
-            itemDisplayLimit,
-            undefined,
-            page
-          )
-        );
-        return {
-          items: data.foods.map((food: Food) => ({
-            provider_type: 'yazio' as const,
-            food,
-          })),
-          hasMore: data.pagination?.hasMore ?? false,
-        };
-      },
-      norish: async (term, id, _provider, page) => {
-        const data = await queryClient.fetchQuery(
-          searchFoodsV2Options('norish', term, id, undefined, undefined, page)
-        );
-        return {
-          items: data.foods.map((food: Food) => ({
-            provider_type: 'norish' as const,
-            food,
-          })),
-          hasMore: data.pagination?.hasMore ?? false,
-        };
-      },
-      swissfood: async (term, id, _provider, page) => {
-        const data = await queryClient.fetchQuery(
-          searchFoodsV2Options(
-            'swissfood',
-            term,
-            id,
-            undefined,
-            undefined,
-            page
-          )
-        );
-        return {
-          items: data.foods.map((food: Food) => ({
-            provider_type: 'swissfood' as const,
-            food,
-          })),
-          hasMore: data.pagination?.hasMore ?? false,
-        };
-      },
-      'canadian-nutrient-file': async (term, id, _provider, page) => {
-        const data = await queryClient.fetchQuery(
-          searchFoodsV2Options(
-            'canadian-nutrient-file',
-            term,
-            id,
-            undefined,
-            undefined,
-            page
-          )
-        );
-        return {
-          items: data.foods.map((food: Food) => ({
-            provider_type: 'canadian-nutrient-file' as const,
-            food,
-          })),
-          hasMore: data.pagination?.hasMore ?? false,
-        };
-      },
-      livsmedelsverket: async (term, id, _provider, page) => {
-        const data = await queryClient.fetchQuery(
-          searchFoodsV2Options(
-            'livsmedelsverket',
-            term,
-            id,
-            undefined,
-            undefined,
-            page
-          )
-        );
-        return {
-          items: data.foods.map((food: Food) => ({
-            provider_type: 'livsmedelsverket' as const,
-            food,
-          })),
-          hasMore: data.pagination?.hasMore ?? false,
-        };
-      },
-    }),
-    [queryClient, autoScaleOpenFoodFactsImports, itemDisplayLimit]
-  );
+    };
+
+    for (const type of FOOD_PROVIDER_TYPES) {
+      if (type !== 'openfoodfacts') {
+        handlers[type] = genericHandler(type);
+      }
+    }
+
+    return handlers;
+  }, [queryClient, autoScaleOpenFoodFactsImports, itemDisplayLimit]);
 
   // Online results stream in alongside local results, using the default
   // provider. Online searches start at 3 characters to limit provider calls.
@@ -1629,8 +1520,11 @@ const EnhancedFoodSearch = ({
                     const loading = r.isLoading;
                     const errored = r.isError && !loading;
                     const count = r.totalCount;
-                    const empty = !loading && !errored && count === 0;
-                    const expandable = !loading && !errored && count > 0;
+                    const hasItems = r.items.length > 0;
+                    const empty =
+                      !loading && !errored && count === 0 && !hasItems;
+                    const expandable =
+                      !loading && !errored && (count > 0 || hasItems);
                     return (
                       <div
                         key={r.provider.id}

@@ -19,6 +19,9 @@ import {
   takeIdentityChangeServerConfigIds,
   setOnServerConfigsChanged,
   getSavedServerUrls,
+  loadHealthWaterSyncToken,
+  saveHealthWaterSyncToken,
+  clearHealthWaterSyncToken,
   ServerConfig,
 } from '../../src/services/storage';
 import { CATEGORY_ORDER } from '../../src/HealthMetrics';
@@ -968,6 +971,58 @@ describe('storage', () => {
 
       await expect(saveServerConfig(config)).resolves.toBeUndefined();
       expect(await getAllServerConfigs()).toHaveLength(1);
+    });
+  });
+
+  describe('healthWaterSyncToken', () => {
+    test('saves, loads, and clears token for iOS and Android independently', async () => {
+      expect(await loadHealthWaterSyncToken('ios')).toBeNull();
+      expect(await loadHealthWaterSyncToken('android')).toBeNull();
+
+      await saveHealthWaterSyncToken('ios', 'ios-anchor-123');
+      await saveHealthWaterSyncToken('android', 'android-token-456');
+
+      expect(await loadHealthWaterSyncToken('ios')).toBe('ios-anchor-123');
+      expect(await loadHealthWaterSyncToken('android')).toBe(
+        'android-token-456'
+      );
+
+      await clearHealthWaterSyncToken('ios');
+      expect(await loadHealthWaterSyncToken('ios')).toBeNull();
+      expect(await loadHealthWaterSyncToken('android')).toBe(
+        'android-token-456'
+      );
+
+      await clearHealthWaterSyncToken('android');
+      expect(await loadHealthWaterSyncToken('android')).toBeNull();
+    });
+
+    test('scopes token by server configuration ID', async () => {
+      await saveHealthWaterSyncToken('android', 'server-1-token', 'server-1');
+      await saveHealthWaterSyncToken('android', 'server-2-token', 'server-2');
+
+      expect(await loadHealthWaterSyncToken('android', 'server-1')).toBe(
+        'server-1-token'
+      );
+      expect(await loadHealthWaterSyncToken('android', 'server-2')).toBe(
+        'server-2-token'
+      );
+
+      await clearHealthWaterSyncToken('android', 'server-1');
+      expect(await loadHealthWaterSyncToken('android', 'server-1')).toBeNull();
+      expect(await loadHealthWaterSyncToken('android', 'server-2')).toBe(
+        'server-2-token'
+      );
+    });
+
+    test('propagates storage errors instead of silently returning null', async () => {
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('Storage failure'));
+
+      await expect(loadHealthWaterSyncToken('android')).rejects.toThrow(
+        'Storage failure'
+      );
     });
   });
 });

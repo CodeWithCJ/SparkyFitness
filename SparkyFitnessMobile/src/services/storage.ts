@@ -491,6 +491,66 @@ export const saveLastWritebackTime = async (): Promise<string | null> => {
   }
 };
 
+const HEALTH_WATER_SYNC_TOKEN_KEY = (
+  platform: 'ios' | 'android',
+  configId?: string | null
+) =>
+  configId
+    ? `healthWaterSyncToken_${platform}_${configId}`
+    : `healthWaterSyncToken_${platform}`;
+
+export const loadHealthWaterSyncToken = async (
+  platform: 'ios' | 'android',
+  configId?: string | null
+): Promise<string | null> => {
+  const resolvedConfigId =
+    configId !== undefined ? configId : await getActiveServerConfigId();
+  if (resolvedConfigId) {
+    const scoped = await AsyncStorage.getItem(
+      HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId)
+    );
+    if (scoped != null) return scoped;
+  }
+  return await AsyncStorage.getItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform));
+};
+
+export const saveHealthWaterSyncToken = async (
+  platform: 'ios' | 'android',
+  token: string,
+  configId?: string | null
+): Promise<void> => {
+  try {
+    const resolvedConfigId =
+      configId !== undefined ? configId : await getActiveServerConfigId();
+    await AsyncStorage.setItem(
+      HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId),
+      token
+    );
+  } catch (error) {
+    const message = getErrorMessage(error);
+    addLog(`[Storage] Failed to save water sync token: ${message}`, 'ERROR');
+  }
+};
+
+export const clearHealthWaterSyncToken = async (
+  platform: 'ios' | 'android',
+  configId?: string | null
+): Promise<void> => {
+  try {
+    const resolvedConfigId =
+      configId !== undefined ? configId : await getActiveServerConfigId();
+    if (resolvedConfigId) {
+      await AsyncStorage.removeItem(
+        HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId)
+      );
+    }
+    await AsyncStorage.removeItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform));
+  } catch (error) {
+    const message = getErrorMessage(error);
+    addLog(`[Storage] Failed to clear water sync token: ${message}`, 'ERROR');
+  }
+};
+
 export const saveBackgroundSyncEnabled = async (
   enabled: boolean
 ): Promise<void> => {

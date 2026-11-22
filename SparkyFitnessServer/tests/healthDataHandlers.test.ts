@@ -23,6 +23,7 @@ import type { WaterContainerResponse } from '@workspace/shared';
 vi.mock('../models/measurementRepository.js', () => ({
   default: {
     upsertWaterIntakeSamples: vi.fn(),
+    deleteWaterIntakeSamplesBySourceIds: vi.fn(),
     bulkUpsertCustomMeasurements: vi.fn(),
     bulkUpsertCheckInMeasurements: vi.fn(),
     getCheckInMeasurementsByDateRange: vi.fn(),
@@ -452,6 +453,237 @@ describe('waterHandler.handleBatch', () => {
         error: 'Invalid value for water. Must be a valid number.',
       },
     ]);
+  });
+
+  describe('deletions', () => {
+    it('deletes water intake samples by source_id for healthkit / health connect', async () => {
+      vi.mocked(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).mockResolvedValue(['2026-08-03']);
+
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+            source_id: 'hk-del-1',
+          }),
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+            source_id: 'hk-del-2',
+          }),
+        ],
+        ctx
+      );
+
+      expect(outcomes).toEqual([
+        {
+          status: 'success',
+          data: {
+            deleted: true,
+            source_id: 'hk-del-1',
+            affectedDates: ['2026-08-03'],
+            affectedDateCount: 1,
+          },
+        },
+        {
+          status: 'success',
+          data: {
+            deleted: true,
+            source_id: 'hk-del-2',
+            affectedDateCount: 1,
+          },
+        },
+      ]);
+
+      expect(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).toHaveBeenCalledWith('user-1', 'actor-1', 'HealthKit', [
+        'hk-del-1',
+        'hk-del-2',
+      ]);
+    });
+
+    it('rejects deletion of manual water entries with an error', async () => {
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'manual',
+            source_id: 'some-id',
+          }),
+        ],
+        ctx
+      );
+
+      expect(outcomes[0]).toEqual({
+        status: 'error',
+        error: 'Manual water entries cannot be deleted via health data sync',
+      });
+      expect(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).not.toHaveBeenCalled();
+    });
+
+    it('rejects deletion entries missing source_id', async () => {
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+          }),
+        ],
+        ctx
+      );
+
+      expect(outcomes[0]).toEqual({
+        status: 'error',
+        error: 'Missing source_id for water deletion',
+      });
+    });
+
+    it('handles mixed additions and deletions within the same batch', async () => {
+      vi.mocked(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).mockResolvedValue(['2026-08-03']);
+      vi.mocked(
+        measurementRepository.upsertWaterIntakeSamples
+      ).mockResolvedValue([{ id: 'upserted-row' }]);
+
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            value: 250,
+            source: 'HealthKit',
+            source_id: 'hk-add-1',
+          }),
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+            source_id: 'hk-del-1',
+          }),
+        ],
+        ctx
+      );
+
+      expect(outcomes[0]).toEqual({
+        status: 'success',
+        data: { id: 'upserted-row' },
+      });
+      expect(outcomes[1]).toEqual({
+        status: 'success',
+        data: {
+          deleted: true,
+          source_id: 'hk-del-1',
+          affectedDates: ['2026-08-03'],
+          affectedDateCount: 1,
+        },
+      });
+    });
+
+    it('gives tombstone precedence over an addition sharing (source, source_id) in the same batch', async () => {
+      vi.mocked(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).mockResolvedValue(['2026-08-03']);
+      vi.mocked(
+        measurementRepository.upsertWaterIntakeSamples
+      ).mockResolvedValue([]);
+
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            value: 250,
+            source: 'HealthKit',
+            source_id: 'shared-id-1',
+          }),
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+            source_id: 'shared-id-1',
+          }),
+        ],
+        ctx
+      );
+
+      // Deletion occurred
+      expect(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).toHaveBeenCalledWith('user-1', 'actor-1', 'HealthKit', ['shared-id-1']);
+
+      // Addition with same ID was superseded, so upsertWaterIntakeSamples was never called with it
+      expect(
+        measurementRepository.upsertWaterIntakeSamples
+      ).not.toHaveBeenCalled();
+
+      // Outcomes reflect tombstone precedence
+      expect(outcomes[0]).toEqual({
+        status: 'success',
+        data: {
+          deleted: true,
+          source_id: 'shared-id-1',
+          supersededByTombstone: true,
+        },
+      });
+      expect(outcomes[1]).toEqual({
+        status: 'success',
+        data: {
+          deleted: true,
+          source_id: 'shared-id-1',
+          affectedDates: ['2026-08-03'],
+          affectedDateCount: 1,
+        },
+      });
+    });
+
+    it('preserves deletion successes when primary container lookup fails', async () => {
+      vi.mocked(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).mockResolvedValue(['2026-08-03']);
+      vi.mocked(
+        waterContainerRepository.getPrimaryWaterContainerByUserId
+      ).mockRejectedValueOnce(new Error('DB connection error'));
+
+      const outcomes = await waterHandler.handleBatch!(
+        [
+          prepared({
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+            source_id: 'del-1',
+          }),
+          prepared({
+            value: 500,
+            source: 'HealthKit',
+            source_id: 'add-1',
+          }),
+        ],
+        ctx
+      );
+
+      // Deletion outcome succeeded
+      expect(outcomes[0]).toEqual({
+        status: 'success',
+        data: {
+          deleted: true,
+          source_id: 'del-1',
+          affectedDates: ['2026-08-03'],
+          affectedDateCount: 1,
+        },
+      });
+
+      // Addition outcome contains container error
+      expect(outcomes[1]).toEqual({
+        status: 'error',
+        error: 'DB connection error',
+      });
+    });
   });
 });
 

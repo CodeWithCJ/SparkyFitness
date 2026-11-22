@@ -66,6 +66,8 @@ export const NormalizedFoodSchema = z.object({
   provider_external_id: z.string().optional(),
   provider_type: z.string().optional(),
   provider_verified: z.boolean().optional(),
+  has_core_nutrition: z.boolean().optional(),
+  has_calories: z.boolean().optional(),
   // Transient Mealie recipe context, never persisted on a library food.
   recipe_has_nutrition: z.boolean().optional(),
   recipe_servings: z.number().finite().positive().nullable().optional(),

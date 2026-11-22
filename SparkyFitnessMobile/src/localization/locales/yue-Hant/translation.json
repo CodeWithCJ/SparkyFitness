@@ -400,6 +400,103 @@
         "right_hip": "右髖",
         "unknown": "未知"
       }
+    },
+    "adherence": {
+      "screenTitle": "依從度",
+      "openTitle": "依從度同紀錄",
+      "openSubtitle": "清單、連續紀錄、月曆同用藥歷史",
+      "openA11y": "打開依從度總覽同用藥紀錄",
+      "title": "依從度總覽",
+      "loading": "載入緊依從度...",
+      "loadFailed": "載入依從度失敗.",
+      "noMedications": "加藥物先可以開始追蹤依從度.",
+      "dosesToday": "今日劑量",
+      "doses": "劑量",
+      "windowAdherence_other": "{{count}} 日依從度",
+      "perfectDays_other": "全對日子（{{count}} 日）",
+      "ringA11y_other": "{{count}} 日內依從度 {{pct}}%",
+      "ringLabel_other": "{{count}} 日",
+      "lastDays_other": "最近 {{count}} 日",
+      "streak_other": "連續 {{count}} 日",
+      "barPrn_other": "{{date}}：{{count}} 次需要時服用",
+      "barNone": "{{date}}：冇劑量",
+      "barTaken": "{{date}}：{{due}} 次中已服 {{taken}} 次",
+      "viewingDate": "睇緊 {{date}}",
+      "backToToday": "返去今日"
+    },
+    "checklist": {
+      "titleToday": "今日清單",
+      "title": "藥物清單",
+      "noneToday": "今日冇預定劑量.",
+      "noneDay": "呢日冇預定劑量.",
+      "loggedToday_other": "今日已記錄 {{completed}} / {{count}} 次劑量.",
+      "loggedDay_other": "呢日已記錄 {{completed}} / {{count}} 次劑量."
+    },
+    "today": {
+      "dueToday": "今日要服",
+      "asNeeded": "需要時",
+      "medicationsTitle": "今日藥物",
+      "medicationsTitleDay": "藥物",
+      "supplementsTitle": "今日補充品",
+      "supplementsTitleDay": "補充品",
+      "dueDay": "應服",
+      "noMedicationDoses": "今日冇預定劑量，可以喺下面記錄需要時服用嘅藥物.",
+      "noSupplementDoses": "今日冇預定劑量，可以喺下面記錄需要時服用嘅補充品.",
+      "noMedicationDosesDay": "呢日冇預定劑量，可以喺下面記錄需要時服用嘅藥物.",
+      "noSupplementDosesDay": "呢日冇預定劑量，可以喺下面記錄需要時服用嘅補充品.",
+      "noPrnMedications": "未設定需要時服用或者非預定嘅藥物.",
+      "noPrnSupplements": "未設定需要時服用或者非預定嘅補充品.",
+      "loggedActivity": "今日已記錄",
+      "loggedActivityDescription": "您喺呢日食咗或者跳過嘅所有嘢.",
+      "loadingHistory": "載入緊紀錄…",
+      "prnTaken": "需要時",
+      "snoozed": "稍後提示"
+    },
+    "calendar": {
+      "title": "藥物紀錄月曆",
+      "titleAll": "紀錄月曆",
+      "titleSupplements": "補充品紀錄月曆",
+      "empty": "加藥物就會喺呢度見到佢嘅紀錄月曆.",
+      "filterTitle": "顯示",
+      "allEntries": "全部",
+      "allMedications": "全部藥物",
+      "allSupplements": "全部補充品",
+      "monthTotal_other": "{{month}} 已記錄 {{count}} 次劑量",
+      "previousMonth": "上個月",
+      "nextMonth": "下個月",
+      "allTaken": "全部已服",
+      "partialTaken": "部分已服",
+      "mostlySkipped": "大部分跳過",
+      "allSkipped": "全部跳過",
+      "snoozedOnly": "只有稍後提示",
+      "sideEffect": "副作用症狀",
+      "generalSymptom": "一般症狀",
+      "tooltipTaken_other": "已服 {{count}} 次",
+      "tooltipPrn_other": "需要時 {{count}} 次",
+      "tooltipSkipped_other": "跳過 {{count}} 次",
+      "tooltipSnoozed_other": "延後 {{count}} 次",
+      "tooltipSymptoms": "症狀：{{names}}"
+    },
+    "dayLog": {
+      "titleDay": "{{date}} 嘅紀錄",
+      "empty": "呢日冇任何紀錄.",
+      "unknownMedication": "藥物",
+      "editA11y": "編輯 {{name}}",
+      "deleteA11y": "刪除 {{name}}",
+      "deleteTitle": "刪除紀錄",
+      "deleteMessage": "確定刪除 {{name}} 呢次已記錄劑量？",
+      "deleted": "已刪除 {{name}} 紀錄",
+      "deleteFailed": "刪除 {{name}} 紀錄失敗"
+    },
+    "entryEdit": {
+      "title": "編輯已記錄劑量",
+      "takenAt": "服用時間",
+      "setTime": "設定時間",
+      "status": "狀態",
+      "noSite": "冇部位",
+      "saved": "劑量已更新",
+      "saveFailed": "儲存失敗：{{error}}",
+      "site": "注射部位"
     }
   },
   "common": {
@@ -467,7 +564,14 @@
     "more": "更多",
     "undo": "還原",
     "all": "全部",
-    "builtIn": "內置"
+    "builtIn": "內置",
+    "kcalUnit": "kcal",
+    "kJUnit": "kJ",
+    "energy": "熱量",
+    "apply": "套用",
+    "reset": "重設",
+    "search": "搜尋",
+    "noMatches": "冇符合結果"
   },
   "workout": {
     "calories": "卡路里",
@@ -776,7 +880,32 @@
     "bodyweightBannerNoWeight": "徒手動作：會計入您嘅體重加上您輸入嘅重量，用負號表示輔助，記錄體重先可以計算訓練量.",
     "modalityWeightDistance": "重量同距離（負重行走）",
     "modalityWeightDuration": "重量同時長（負重支撐）",
-    "addWarmups": "加熱身"
+    "addWarmups": "加熱身",
+    "caloriesPerHourWithUnit": "每小時熱量（{{unit}}）",
+    "replaceWithOther": "換做另一個動作…",
+    "doAnotherFirst": "先做另一個動作…",
+    "swapTitle": "換 {{name}}",
+    "doNowSets_other": "即刻做 · {{count}} 組",
+    "sessionStatus": {
+      "planned": "已計劃",
+      "in_progress": "進行緊",
+      "partial": "部分完成",
+      "completed": "已完成"
+    },
+    "resumeWorkout": "繼續運動",
+    "resumeConflictTitle": "運動喺其他地方改咗",
+    "resumeConflictMessage": "呢次運動喺另一部機或者另一個分頁更新咗。重新載入再試.",
+    "resumeFailedTitle": "繼續唔到運動",
+    "resumeFailedMessage": "請再試一次.",
+    "finishStampFailedTitle": "標記唔到運動為完成",
+    "finishStampFailedMessage": "您嘅組數已儲存，但標記完成失敗。再試一次就完成.",
+    "healthActivityType": "健康活動類型",
+    "healthActivityTypeAutomatic": "自動（{{type}}）",
+    "healthActivityTypeHintApple": "當您嘅運動寫入 Apple 健康時使用.",
+    "healthActivityTypeHintHealthConnect": "當您嘅運動寫入 Health Connect 時使用.",
+    "healthActivityTypeCommon": "常用",
+    "healthActivityTypeAll": "所有活動",
+    "healthActivityTypeSearch": "搜尋活動"
   },
   "healthMetrics": {
     "basalBodyTemperature": "基礎體溫",
@@ -839,7 +968,12 @@
     "environmentalAudioExposure": "環境噪音暴露",
     "headphoneAudioExposure": "耳機音量暴露",
     "unknown": "健康指標",
-    "bodyWaterMass": "身體水分量"
+    "bodyWaterMass": "身體水分量",
+    "mindfulness": "靜心",
+    "sleepingWristTemperature": "訓緊覺時手腕溫度",
+    "overnightBodyTemperature": "整夜體溫",
+    "toothbrushing": "刷牙",
+    "exercise": "運動"
   },
   "settings": {
     "app": "App 設定",
@@ -896,7 +1030,15 @@
       "ai": "AI",
       "fasting": "斷食",
       "goals": "目標",
-      "reports": "報告"
+      "reports": "報告",
+      "offline": "離線",
+      "features": "功能",
+      "addMenu": "快速操作",
+      "nfcTags": "NFC 標籤",
+      "wearOs": "Wear OS",
+      "customMeasurements": "自訂測量",
+      "heartRateZones": "心率區間",
+      "heartRateZonesSubtitle": "最大同靜息心率、區間方法"
     },
     "theme": {
       "title": "主題",
@@ -920,6 +1062,12 @@
     "cameraShutter": {
       "title": "相機快門聲",
       "subtitle": "影相嗰陣播放快門聲."
+    },
+    "glucoseUnit": {
+      "title": "血糖單位",
+      "subtitle": "用喺血糖圖表.",
+      "saveFailed": "儲存血糖單位失敗.",
+      "loadFailed": "載入唔到偏好設定。撳一下再試."
     }
   },
   "languageSettings": {
@@ -992,7 +1140,25 @@
     "chooseDate": "揀日期",
     "chooseDateHint": "開啟日期選擇器",
     "goToToday": "去今日",
-    "goToTodayHint": "返回今日"
+    "goToTodayHint": "返回今日",
+    "mealCaloriesWithUnit": "{{calories}} {{unit}}",
+    "nutritionSummaryWithUnit": "{{calories}} {{unit}} · P {{protein}} g · C {{carbs}} g · F {{fat}} g",
+    "selectedNutritionWithUnit": "已選：{{calories}} {{unit}} · P {{protein}} g · C {{carbs}} g · F {{fat}} g",
+    "copyTo": "複製緊去 {{name}}",
+    "copyToFamily": "複製去家庭",
+    "copyMealOptions": "複製餐",
+    "chooseCopyRecipient": "揀接收人",
+    "noCopyRecipients": "冇家庭成員有複製權限",
+    "copySourceFailed": "載入唔到來源餐",
+    "copySourceEmpty": "呢餐冇食物紀錄",
+    "copyToMember": "複製去 {{name}}",
+    "copyToFamilySuccess": "已複製去家庭日誌",
+    "copyOwnStale": "您嘅來源餐有變",
+    "copyOwnStaleGuidance": "您最新餐會打開俾您睇.",
+    "copyServerUpdateRequired": "需要更新伺服器",
+    "copyServerUpdateGuidance": "更新您嘅 SparkyFitness 伺服器，先可以複製食物俾家庭成員.",
+    "copyMealTypesFailed": "載入唔到目標餐。請再試一次.",
+    "copyCaloriesWithUnit": "{{calories}} {{unit}}"
   },
   "notifications": {
     "title": "通知",
@@ -1001,7 +1167,10 @@
       "workoutTimer": "訓練計時器",
       "fasting": "斷食",
       "hydration": "飲水提醒",
-      "ongoingWorkout": "進行中嘅訓練"
+      "ongoingWorkout": "進行中嘅訓練",
+      "moodCheckin": "心情打卡",
+      "oralCare": "刷牙提示",
+      "mindfulness": "冥想計時器"
     },
     "actions": {
       "completeSet": "攪掂一組",
@@ -1039,6 +1208,26 @@
     "fastingPreEnd": {
       "title": "斷食目標快將結束",
       "body": "您嘅斷食仲有 {{minutes}} 分鐘就到目標."
+    },
+    "offlineUploads": {
+      "title": "有次運動等緊上傳",
+      "body": "伺服器連得返就開 SparkyFitness."
+    },
+    "moodCheckin": {
+      "title": "您今日心情點？",
+      "body": "快速打個卡：心情、精力同專注."
+    },
+    "oralCare": {
+      "title": "夠鐘刷牙",
+      "body": "花兩分鐘刷牙，然後記錄."
+    },
+    "brushingTimer": {
+      "title": "刷完牙喇",
+      "body": "開 SparkyFitness 儲存刷牙紀錄."
+    },
+    "meditationTimer": {
+      "title": "冥想完成",
+      "body": "開 SparkyFitness 儲存您嘅時段."
     }
   },
   "activeWorkout": {
@@ -1148,7 +1337,8 @@
     "setDetail": {
       "addNote": "為呢一組加個備註…",
       "notesForSet": "第 {{setNumber}} 組嘅備註",
-      "notes": "組備註"
+      "notes": "組備註",
+      "deleteSet": "刪除呢組"
     },
     "setRow": {
       "changeType": "更改第 {{setNumber}} 組嘅類型",
@@ -1217,7 +1407,53 @@
       "rampPlaceholder": "關閉（{{unit}}）",
       "rampHint": "喺同一場訓練入面，第一組之後嘅每組正式組會自動預填加重（或減輕）呢個量，熱身組同降重組會跳過."
     },
-    "failedToDeleteWorkout": "無法由日誌刪除已放棄嘅訓練時段."
+    "failedToDeleteWorkout": "無法由日誌刪除已放棄嘅訓練時段.",
+    "now": {
+      "label": "而家",
+      "upNext": "下一項",
+      "swap": "交換",
+      "swapLabel": "換 {{name}}",
+      "setOf": "第 {{number}} 組，共 {{total}} 組",
+      "warmupOf": "熱身第 {{number}} 組，共 {{total}} 組",
+      "then": "之後 {{name}}"
+    },
+    "focus": {
+      "media": {
+        "minimize": "縮到最細",
+        "minimizeLabel": "縮細 {{name}} 圖片",
+        "expandLabel": "放大 {{name}} 圖片",
+        "expandHint": "長按開全螢幕",
+        "pause": "暫停",
+        "play": "播放",
+        "pauseLabel": "暫停 {{name}} 動畫",
+        "playLabel": "播放 {{name}} 動畫",
+        "openFullScreen": "全螢幕睇 {{name}} 圖片",
+        "openFullScreenHint": "開張圖俾您放大睇"
+      },
+      "sets": {
+        "weightHeader": "重量（{{unit}}）",
+        "weightInput": "第 {{setNumber}} 組重量",
+        "repsInput": "第 {{setNumber}} 組次數",
+        "effortInput": "第 {{setNumber}} 組{{metric}}",
+        "increaseWeight": "加第 {{setNumber}} 組重量",
+        "decreaseWeight": "減第 {{setNumber}} 組重量",
+        "increaseReps": "加第 {{setNumber}} 組次數",
+        "decreaseReps": "減第 {{setNumber}} 組次數"
+      },
+      "chips": {
+        "label": "第 {{number}} 個動作，共 {{total}} 個，{{name}}，{{status}}",
+        "done": "已完成",
+        "inProgress": "進行緊",
+        "todo": "未開始"
+      },
+      "plan": "計劃：{{sets}} × {{reps}}",
+      "lastTime": "上次：{{sets}}",
+      "previous": "上一項",
+      "next": "下一項",
+      "previousLabel": "上一個動作，{{name}}",
+      "nextLabel": "下一個動作，{{name}}",
+      "backToCurrent": "返去而家"
+    }
   },
   "addSheet": {
     "food": "食材",
@@ -1240,7 +1476,20 @@
     "mindfulness": "正念",
     "mood": "心情",
     "recordActivity": "記錄活動",
-    "recordActivityHint": "用 GPS 追蹤步行、跑步或者踩單車"
+    "recordActivityHint": "用 GPS 追蹤步行、跑步或者踩單車",
+    "title": "快速操作",
+    "scanShort": "掃描",
+    "measureShort": "測量",
+    "symptomsHealth": "症狀同健康",
+    "syncHealthShort": "同步健康數據",
+    "photosHint": "相片",
+    "symptomsHint": "記錄",
+    "moodHint": "追蹤狀態",
+    "mindfulnessHint": "呼吸、靜心",
+    "checkIn": "每日打卡",
+    "checkInHint": "習慣",
+    "oralCare": "口腔護理",
+    "oralCareHint": "刷牙、用牙線"
   },
   "screens": {
     "foods": "食材",
@@ -1332,7 +1581,11 @@
       "equipment": "裝備",
       "equipmentSubtitle": "跑鞋同其他裝備",
       "routes": "路線",
-      "routesSubtitle": "畫、匯入同儲存路線嚟跟"
+      "routesSubtitle": "畫、匯入同儲存路線嚟跟",
+      "trainingCalendar": "訓練日曆",
+      "trainingCalendarSubtitle": "計劃同已完成嘅運動，同按運動種類嘅負荷",
+      "labResults": "化驗結果",
+      "labResultsSubtitle": "驗血同其他指標隨時間變化"
     },
     "sleep": "瞓覺",
     "healthTrendsSettings": "健康趨勢",
@@ -1375,7 +1628,25 @@
     "runProgramRace": "規劃比賽",
     "activityShare": "分享活動",
     "routes": "路線",
-    "routeDraw": "畫路線"
+    "routeDraw": "畫路線",
+    "features": "功能",
+    "addMenuSettings": "快速操作",
+    "wearOsSettings": "Wear OS",
+    "offlineSettings": "離線",
+    "heartRateReport": "心率",
+    "watchRunLiveJumpRope": "手錶跳繩",
+    "trainingCalendar": "訓練日曆",
+    "treadmillSettings": "跑步機同步幅",
+    "fitnessTest": "體能測試",
+    "fitnessTestResult": "體能測試",
+    "heartRateZonesSettings": "心率區間",
+    "routeEdit": "編輯路線",
+    "routeGenerate": "生成路線",
+    "compareReport": "比較",
+    "labResults": "化驗結果",
+    "labResultDetail": "化驗結果",
+    "labResultAdd": "加化驗結果",
+    "labReportImport": "匯入報告"
   },
   "healthCategories": {
     "Common": "常用",
@@ -1389,7 +1660,9 @@
     "Cycling": "踩單車",
     "Environment": "環境",
     "Apple": "蘋果",
-    "unknown": "其他"
+    "unknown": "其他",
+    "Hygiene": "個人護理",
+    "Exercise": "運動"
   },
   "healthSync": {
     "appleHealth": "Apple Health",
@@ -1493,7 +1766,35 @@
     "removeHeader": "移除第 {{number}} 個標頭",
     "hideHeaderValue": "隱藏標頭數值",
     "showHeaderValue": "顯示標頭數值",
-    "noStandardMethods": "呢個伺服器而家冇啟用任何標準登入方式，請用 API 金鑰，或者聯絡管理員."
+    "noStandardMethods": "呢個伺服器而家冇啟用任何標準登入方式，請用 API 金鑰，或者聯絡管理員.",
+    "clientCertificate": {
+      "title": "用戶端憑證",
+      "experimental": "實驗功能",
+      "experimentalNote": "呢個功能幾新，未必個個代理或者手機都用得。如果有嘢唔得，移除憑證並回報問題.",
+      "help": "只喺您嘅反向代理要求用戶端憑證（雙向 TLS）時先需要。憑證只會傳去您儲存咗嘅伺服器.",
+      "installed": "憑證已安裝",
+      "expires": "{{date}} 到期",
+      "expiresSoon": "即將 {{date}} 到期",
+      "expired": "已喺 {{date}} 到期。請匯入新嘅.",
+      "gap": "呢個版本嘅 App 唔可以每個請求都用憑證。請回報.",
+      "passwordPlaceholder": "憑證密碼",
+      "import": "匯入",
+      "choose": "匯入憑證",
+      "replace": "取代憑證",
+      "remove": "移除",
+      "restartHint": "完全關閉再重開 App 先會生效。喺生效之前，伺服器可能照舊回應.",
+      "restartTitle": "重開 App",
+      "restartAfterImport": "想用新憑證，就要完全關閉 App（喺切換器向上掃走），再開返，然後重新連接.",
+      "restartAfterRemove": "想停用舊憑證，就要完全關閉 App（喺切換器向上掃走），再開返.",
+      "connectionHint": "如果伺服器要求用戶端憑證，喺「進階選項」加入.",
+      "connectionHintRestart": "如果伺服器要求用戶端憑證，喺「進階選項」加入，然後完全關閉再重開 App.",
+      "errors": {
+        "wrongPassword": "呢個密碼開唔到呢個檔案.",
+        "invalidFile": "讀唔到呢個檔案。檢查密碼，同埋確認係 .p12 或 .pfx 檔。用較新 OpenSSL 整嗰啲檔案，可能要再用舊格式匯出.",
+        "noPrivateKey": "呢個檔案有憑證但冇私密金鑰。請連金鑰一齊重新匯出.",
+        "storage": "憑證存唔到落呢部機."
+      }
+    }
   },
   "onboarding": {
     "subtitle": "您嘅自架健身追蹤器",
@@ -1536,7 +1837,8 @@
     "perPress": "{{value}} {{unit}}",
     "logDrinkFailed": "記錄唔到嗰杯飲品",
     "exerciseStatistics": "統計",
-    "reportsLink": "報告"
+    "reportsLink": "報告",
+    "ofCaloriesWithUnit": "共 {{value}} {{unit}}"
   },
   "syncScreen": {
     "healthConnectSettings": "Health Connect 設定",
@@ -1561,7 +1863,8 @@
       "title": "需要權限",
       "backgroundAccess": "背景同步需要背景存取權限，請喺 Health Connect 設定度授予權限.",
       "allTitle": "需要權限",
-      "allMessage": "有啲權限未授予，請喺 {{settings}} 啟用所有需要嘅健康權限，先可以同步全部資料."
+      "allMessage": "有啲權限未授予，請喺 {{settings}} 啟用所有需要嘅健康權限，先可以同步全部資料.",
+      "writebackMessage": "所有指標都會同步。想寫返資料，就要喺{{settings}}授權缺咗嘅權限."
     },
     "permissionError": {
       "title": "權限錯誤",
@@ -1573,7 +1876,8 @@
     "permissionDenied": {
       "title": "權限被拒",
       "read": "請喺 {{settings}} 授予 {{metric}} 權限.",
-      "write": "請喺 {{settings}} 授予 {{metric}} 寫入權限."
+      "write": "請喺 {{settings}} 授予 {{metric}} 寫入權限.",
+      "writeRequired": "請喺{{settings}}授權 {{metric}} 需要嘅權限."
     },
     "removal": {
       "removed": "已移除",
@@ -1582,7 +1886,8 @@
       "partialMessage": "有啲記錄刪唔走，由 {{store}} .",
       "errorMessage": "由 {{store}} 移除唔到資料.",
       "confirmTitle": "移除所有 {{store}} 資料",
-      "confirmMessage": "刪除 SparkyFitness 寫入 {{store}} 嘅所有營養同水分記錄，並關閉寫回功能？您嘅 SparkyFitness 日記同伺服器資料唔受影響."
+      "confirmMessage": "刪除 SparkyFitness 寫入 {{store}} 嘅所有營養同水分記錄，並關閉寫回功能？您嘅 SparkyFitness 日記同伺服器資料唔受影響.",
+      "confirmMessageAll": "確定刪除 SparkyFitness 寫入 {{store}} 嘅所有紀錄（營養、飲水、運動等等），並關閉回寫？您嘅 SparkyFitness 日誌同其他 App 嘅紀錄唔受影響."
     },
     "range": {
       "title": "同步範圍",
@@ -1645,7 +1950,7 @@
     "modeLabel": "卡路里模式",
     "adjustmentMode": "調整模式",
     "modeDescription": "控制您嘅每日卡路里目標會點樣隨活動調整.",
-    "deviceProjectionDescription": "今日嘅 Health Connect 總卡路里會推算到午夜；已攪掂嘅日子用已記錄嘅總數，目標模式會套用喺推算值上.",
+    "deviceProjectionDescription": "當日裝置總熱量（Health Connect、Garmin 或 Polar）會推算到午夜；已完成嘅日子用紀錄總數。目標模式會套用落呢個 TDEE，BMR + 活動熱量作為備用.",
     "deviceProjectionFallback": "只會喺冇裝置總數嗰陣，用 BMR基礎代謝率 + 活動卡路里嚟做後備.",
     "exerciseCaloriesApplied": "已套用運動卡路里",
     "exerciseCaloriesDescription": "您嘅運動卡路里有幾多會加返入每日目標.",
@@ -1682,19 +1987,22 @@
       "activityWithBmr": "活動 + BMR基礎代謝率",
       "activityOnly": "淨計活動（運動 + 步數）",
       "eatenBurned": "攝取 − 消耗",
-      "projectedTotal": "Health Connect 總卡路里（BMR基礎代謝率 + 活動卡路里後備）",
+      "projectedTotal": "裝置總熱量（BMR + 活動熱量備用）",
       "dynamic": "目標 − 淨能量",
       "percentageWithBmr": "目標 − 攝取 + BMR基礎代謝率 + 運動 {{percentage}}%",
       "percentage": "目標 − 攝取 + 運動 {{percentage}}%",
       "tdee": "推算 TDEE每日總能量消耗 × 目標模式 − 攝取",
       "adaptive": "目標 − 攝取",
-      "fixed": "目標 − 攝取"
+      "fixed": "目標 − 攝取",
+      "dynamicActivitySeparated": "目標 − 已食 + 活動",
+      "tdeeWeekly": "推算 TDEE + 每週目標調整 − 已食"
     },
     "notes": {
       "dynamic": "目標會隨住您郁而增長",
       "tdee": "推算值會喺午夜同裝置總數收斂",
       "adaptive": "目標 = 適應性 TDEE每日總能量消耗",
-      "fixed": "活動唔會改變您嘅預算"
+      "fixed": "活動唔會改變您嘅預算",
+      "adaptiveWeekly": "目標 = 自適應 TDEE + 每週目標調整"
     },
     "externalFormula": "公式",
     "goalMode": {
@@ -1712,7 +2020,8 @@
       "customPercentageDescription": "正數加卡路里；負數造成赤字，限制喺 ±40%.",
       "calculationMethod": "計算方法",
       "methodAdaptive": "自適應",
-      "methodManual": "手動"
+      "methodManual": "手動",
+      "weekly": "每週體重變化"
     },
     "safetyFloor": {
       "title": "安全下限",
@@ -1727,7 +2036,75 @@
     "useExternalBmr": "用檢查記錄同同步裝置量度嘅 BMR基礎代謝率",
     "useExternalBmrHint": "預設係關——您未開之前一律用您揀嘅公式，開咗之後，檢查記錄入面記低嘅 BMR，或者由智能磅 / 健康服務同步嘅 BMR基礎代謝率，會喺嗰日取代公式（前提係對您嚟講生理上合理）.",
     "useExternalBmrIosNote": "Apple Health入面嘅靜止能量已經包埋輕度日常活動，所以建議將活動量設做「無」（×1，0），避免計兩次.",
-    "adaptiveEarnBack": "自適應目標已經包含活動。剩餘卡路里係目標減已食。運動回饋只適用於手動目標."
+    "adaptiveEarnBack": "自適應目標已經包含活動。剩餘卡路里係目標減已食。運動回饋只適用於手動目標.",
+    "adaptiveActivitySeparate": "分開計算活動熱量",
+    "adaptiveActivitySeparateHint": "學習一個唔計歷史活動嘅基準，今日嘅步數同運動只計一次，唔會再加 BMR。呢個要穩定嘅飲食、體重、步數同運動紀錄。紀錄未夠之前，用 BMR × 您嘅非運動活動係數.",
+    "adaptiveActivitySeparateReporting": "開咗「包括靜息熱量」時，BMR 仍計入燃燒同淨能量。只有步數同運動會加到您嘅剩餘熱量預算.",
+    "adaptiveEstimateRangeWithUnit": "活動水平決定起始估算，同埋以 BMR × 呢個係數為中心嘅 ±{{amount}} {{unit}} 合理範圍。估算可能要幾星期先穩定；體重波動同飲食紀錄唔齊會增加不確定性.",
+    "weeklyGoal": {
+      "description": "揀您每星期想減幾多或者增幾多，或者保持體重不變.",
+      "direction": "體重目標",
+      "maintain": "保持體重不變",
+      "lose": "減重",
+      "gain": "增重",
+      "rate": "每週體重變化",
+      "amount": "每週變化幅度",
+      "amountHint": "輸入正數。方向由您揀嘅體重目標決定.",
+      "unit": "每週單位",
+      "poundsAmount": "每週變化磅數",
+      "poundsHint": "輸入餘下嘅磅，0 至少於 14.",
+      "invalidRate": "輸入大於 0、最多每週 {{max}} kg 嘅幅度.",
+      "dailyAdjustment": "推算每日調整：{{sign}}{{amount}} {{unit}}",
+      "estimateHint": "您嘅每週目標會換算成每日熱量調整。呢個係估算；您設定嘅安全下限可能會限制減重.",
+      "kilograms": "kg",
+      "grams": "g",
+      "pounds": "lb",
+      "stonePounds": "st / lb",
+      "stones": "st"
+    },
+    "adjustMacrosWithExercise": "運動熱量會調整百分比宏量目標",
+    "adjustMacrosWithExerciseHint": "當運動為每日預算加熱量時，用您儲存嘅百分比提高蛋白質、碳水同脂肪目標。會跟從運動回補設定。以克為單位嘅目標不變。改動由今日起生效，之前嘅日子保留原本設定.",
+    "useMoveRingActiveCalories": "用 Move 圓環計活動熱量",
+    "useMoveRingActiveCaloriesHint": "預設關閉，活動熱量由 Apple 健康「活動能量」總數提供。開啟後會用您嘅 Move 圓環，同健身 App 一致。圓環計 Apple Watch 同 iPhone 量到嘅嘢，其他 App 存去 Apple 健康嘅運動都可能計入。冇圓環嘅日子（例如關咗「活動」權限）用活動能量總數。只影響改動之後同步嘅日子.",
+    "energyUnitLabel": "能量單位",
+    "energyUnitKcal": "卡路里（kcal）",
+    "energyUnitKj": "千焦（kJ）",
+    "energyUnitDescription": "全個 App、小工具同手錶顯示同輸入能量嘅方式。網頁版都會一齊改.",
+    "cycling": {
+      "title": "熱量循環",
+      "description": "訓練日食多啲，休息日食少啲。每週總數不變：您嘅每日目標 × 7.",
+      "unavailable": "當運動熱量已加返落目標時用唔到：您記錄運動嗰日目標已經升咗。想循環熱量，揀「自適應」或「固定」，或者用全日自適應目標.",
+      "off": "關閉",
+      "pausedByWeeklyPlan": "每週目標計劃生效中，所以計劃設定嘅日子會暫停熱量循環.",
+      "trainingPercent": "訓練日額外",
+      "needTrainingDays": "揀 1 至 6 個訓練日同大於 0 嘅百分比，否則每日都會一樣.",
+      "needDifferentDays": "最少要兩日用唔同百分比，否則每日都會一樣.",
+      "atFloor": "安全下限",
+      "previewNote": "根據今日目標。變化由碳水承擔，蛋白質不變.",
+      "replaceCustomTitle": "取代您嘅自訂日子？",
+      "replaceCustomMessage": "「訓練／休息」會用訓練日數同一個百分比套用到每日，所以您嘅自訂百分比會被取代.",
+      "replaceCustomConfirm": "取代",
+      "waitingForTarget": "今日熱量目標載入之後，您嘅日子會喺呢度顯示.",
+      "baseAtFloorWithUnit": "您嘅每日目標（{{target}} {{unit}}）已經等於或低過安全下限（{{floor}} {{unit}}），所以冇日子可以再低，每日都會一樣。目標高過下限，或者用更低嘅自訂下限，循環就會生效.",
+      "weekTotalWithBase": "本週：{{total}} / {{budget}} {{unit}}（每日目標 {{target}} × 7）",
+      "decrease": "降低 1%",
+      "increase": "提高 1%",
+      "dayPercent": "{{day}}：平衡一週之前嘅百分比",
+      "trainingDay": "訓練日",
+      "restDay": "休息",
+      "today": "今日",
+      "vsTargetWithUnit": "對比每日目標 {{change}} {{unit}}（{{percent}}）",
+      "chartTarget": "每日目標 {{value}}",
+      "chartFloor": "安全下限 {{value}}",
+      "chartBarLabel": "{{day}}：{{target}}，{{change}}",
+      "atFloorShort": "下限",
+      "markRest": "將 {{day}} 設為休息日",
+      "markTraining": "將 {{day}} 設為訓練日",
+      "trainingRestShort": "訓練／休息",
+      "customShort": "自訂",
+      "chartHintTrainingShort": "撳一條柱睇嗰日。撳下面嘅日子切換訓練同休息.",
+      "chartHintCustomHandle": "撳一條柱睇嗰日。拖柱頂嘅把手就可以改."
+    }
   },
   "dashboardSettings": {
     "updateFailed": "更新設定失敗.",
@@ -1772,7 +2149,15 @@
     "mood": "心情",
     "moodSubtitle": "顯示今日心情、7 日趨勢同快速記錄",
     "trainingLoad": "訓練負荷",
-    "trainingLoadSubtitle": "顯示今個星期同您平時訓練嘅比較，仲會提您休息"
+    "trainingLoadSubtitle": "顯示今個星期同您平時訓練嘅比較，仲會提您休息",
+    "wellness": "健康",
+    "offInFeatures": "唔顯示：已喺「功能」關閉",
+    "bloodAlcohol": "酒精濃度估算",
+    "bloodAlcoholSubtitle": "喺主頁顯示根據已記錄酒類嘅粗略酒精濃度估算",
+    "labResults": "化驗結果",
+    "labResultsSubtitle": "顯示最新化驗結果同邊啲超範圍",
+    "oralCare": "口腔護理",
+    "oralCareSubtitle": "顯示刷牙對比目標同連續紀錄"
   },
   "diarySettings": {
     "updateFailed": "更新設定失敗.",
@@ -1836,7 +2221,21 @@
     "consolidateReminders": "合併提醒",
     "consolidateRemindersSubtitle": "將同一時間排定嘅藥物合併做一個通知.",
     "medicationSnoozeInterval": "稍後提醒",
-    "snoozeMinutesOption": "{{minutes}} 分鐘"
+    "snoozeMinutesOption": "{{minutes}} 分鐘",
+    "moodCheckins": "心情打卡",
+    "moodCheckinReminders": "打卡提示",
+    "moodCheckinRemindersSubtitle": "每日提您記錄心情",
+    "moodCheckinReminderTime": "提示 {{number}}",
+    "moodCheckinReminderTimeAccessibility": "提示 {{number}}，{{time}}",
+    "moodCheckinAddReminder": "加提示",
+    "moodCheckinRemoveReminder": "刪除提示 {{number}}",
+    "oralCare": "口腔護理",
+    "oralCareReminders": "刷牙提示",
+    "oralCareRemindersSubtitle": "每日提您刷牙",
+    "oralCareReminderTime": "提示 {{number}}",
+    "oralCareReminderTimeAccessibility": "刷牙提示 {{number}}，{{time}}",
+    "oralCareRemoveReminder": "刪除刷牙提示 {{number}}",
+    "oralCareAddReminder": "加提示"
   },
   "workoutSettings": {
     "title": "訓練設定",
@@ -1860,7 +2259,26 @@
     "duckMusicSubtitle": "播放訓練嗶聲或語音提示時，會短暫降低其他 App 嘅音樂音量.",
     "duckMusicAccessibility": "提示時降低音樂音量",
     "warmupCalculator": "熱身計算器",
-    "warmupCalculatorSubtitle": "幫您加落動作嘅熱身組計漸進重量，同埋佢會取整到嘅重量."
+    "warmupCalculatorSubtitle": "幫您加落動作嘅熱身組計漸進重量，同埋佢會取整到嘅重量.",
+    "restEndFocus": "休息完自動跳去下一組",
+    "restEndFocusSubtitle": "休息計時器自己完咗，就將游標放去下一組第一個數值，再彈出鍵盤.",
+    "restEndFocusAccessibility": "休息完自動跳去下一組",
+    "plannedPlaceholders": "用計劃值做提示",
+    "plannedPlaceholdersSubtitle": "由計劃或者已儲存運動開始嘅訓練，會建議佢嘅計劃重量同次數，而唔係上次嘅。由您下次開始嘅運動生效.",
+    "plannedPlaceholdersAccessibility": "用計劃值做提示",
+    "treadmillStride": "跑步機同步幅",
+    "treadmillStrideSubtitle": "睇同設定用嚟估算室內距離嘅步幅，同校正讀長咗或者短咗嘅跑步機.",
+    "nowCard": "「而家」卡片",
+    "nowCardSubtitle": "釘住要即刻做嗰組喺動作清單上面：大隻字嘅目標、動作相片、下一項，同「交換」去做另一個動作.",
+    "workoutView": "運動檢視",
+    "workoutViewSubtitle": "「清單」會用一個可滾動清單顯示所有動作；「專注」一次顯示一個動作，配大張相卡.",
+    "workoutViewGuidedSubtitle": "引導式運動一定用清單。關咗引導模式先會用「專注」.",
+    "workoutViewList": "清單",
+    "workoutViewFocus": "專注",
+    "focusMedia": "動作相片",
+    "focusMediaSubtitle": "用大相卡或者細縮圖打開專注檢視。運動途中都可以改.",
+    "focusMediaLarge": "大",
+    "focusMediaSmall": "細"
   },
   "restPeriod": {
     "title": "休息時間",
@@ -1997,7 +2415,8 @@
       "notPaired": "未配對手錶",
       "unsupported": "呢個平台唔支援",
       "reachable": "手錶 App 而家連到",
-      "notReachable": "手錶 App 唔喺前景"
+      "notReachable": "手錶 App 唔喺前景",
+      "wearOsTitle": "Wear OS"
     }
   },
   "cycleCard": {
@@ -2322,10 +2741,6 @@
       "wellness": "健康設定",
       "cyclePregnancy": "週期同懷孕"
     },
-    "enable": {
-      "title": "啟用週期同懷孕追蹤",
-      "subtitle": "開啟記錄、預測同歷史"
-    },
     "groups": {
       "features": "功能設定",
       "calculations": "週期計算覆寫",
@@ -2359,6 +2774,16 @@
       "discreetSubtitle": "喺介面隱藏 「週期」 或 「懷孕」 標籤",
       "exportSubtitle": "下載 JSON 資料匯出",
       "resetSubtitle": "重新開始設定導覽"
+    },
+    "loadFailed": "載入唔到呢啲設定.",
+    "feature": {
+      "on": "已開啟",
+      "off": "已關閉",
+      "hint": "喺「設定 → 功能」開關."
+    },
+    "setup": {
+      "action": "設定",
+      "hint": "答幾個問題就設定好."
     }
   },
   "measurements": {
@@ -2384,7 +2809,8 @@
       "weightStones": "以石計體重",
       "weightPounds": "以磅計體重",
       "heightFeet": "以呎計身高",
-      "heightInches": "以吋計身高"
+      "heightInches": "以吋計身高",
+      "bmrWithUnitInUnit": "BMR（{{unit}}）"
     },
     "validation": {
       "invalid": "無效 {{label}}",
@@ -2398,7 +2824,8 @@
       "invalidHeight": "無效身高",
       "feetInchesNumber": "為呎同吋輸入數字.",
       "bodyFatRange": "體脂 % 必須喺 0 至 100 之間.",
-      "bodyWaterRange": "身體水分 % 必須喺 0 至 100 之間."
+      "bodyWaterRange": "身體水分 % 必須喺 0 至 100 之間.",
+      "bmrRangeWithUnit": "BMR 必須介乎 {{min}} 至 {{max}} {{unit}}."
     },
     "nothingToSave": "冇嘢要儲存",
     "enterValue": "輸入或者清除至少一個數值.",
@@ -2469,14 +2896,27 @@
     "label": {
       "analyzing": "分析標籤中…",
       "retake": "重新影",
-      "usePhoto": "用呢張相"
+      "usePhoto": "用呢張相",
+      "cropHelp": "拖角框住營養標籤.",
+      "cropPhoto": "營養標籤相片",
+      "cropMove": "移動標籤框",
+      "cropTopLeft": "左上角框選把手",
+      "cropTopRight": "右上角框選把手",
+      "cropBottomLeft": "左下角框選把手",
+      "cropBottomRight": "右下角框選把手",
+      "cropLeft": "向左移",
+      "cropRight": "向右移",
+      "cropUp": "向上移",
+      "cropDown": "向下移"
     },
     "lookup": {
       "failed": "查詢失敗",
       "noMatch": "搵唔到呢個條碼",
-      "nextSteps": "您可以掃描營養標籤或者手動輸入.",
+      "nextSteps": "再掃一次、掃營養標籤，或者手動輸入食物.",
       "scanLabel": "掃描營養標籤",
-      "addManually": "手動新增食材"
+      "addManually": "手動新增食材",
+      "searching": "查緊條碼…",
+      "retry": "再查一次"
     },
     "photo": {
       "frameMeal": "將成餐食材框入去",
@@ -2485,7 +2925,9 @@
       "logManually": "手動記錄"
     },
     "barcode": {
-      "typeInstead": "改為輸入條碼"
+      "typeInstead": "改為輸入條碼",
+      "scanAgain": "再掃一次",
+      "restartCamera": "重開相機"
     },
     "manual": {
       "title": "輸入條碼",
@@ -2507,7 +2949,11 @@
     "labelReadOnDevice": "喺呢部 iPhone 讀取嘅標籤",
     "labelReadByServer": "由伺服器 AI 讀取嘅標籤",
     "retryWithServer": "用伺服器 AI 再讀一次",
-    "retryOnDevice": "喺呢部 iPhone 再讀一次"
+    "retryOnDevice": "喺呢部 iPhone 再讀一次",
+    "camera": {
+      "unavailable": "相機用唔到",
+      "restartHelp": "重開相機再試."
+    }
   },
   "cycleToday": {
     "menstrualFlow": "經量",
@@ -2744,11 +3190,17 @@
     "remaining": "剩返",
     "over": "超咗",
     "title": "摘要",
-    "healthConnectProjectionSource": "Health Connect 總卡路里",
+    "healthConnectProjectionSource": "裝置總熱量",
     "fallbackProjectionSource": "基礎代謝率(BMR) + 活動卡路里後備",
     "legacyProjectionSource": "裝置推算",
     "collapse": "收起呢一節",
-    "expand": "展開呢一節"
+    "expand": "展開呢一節",
+    "projectedTdeeWithUnit": "推算 TDEE：{{value}} {{unit}}",
+    "goalModeTargetWithUnit": "目標模式目標：{{value}} {{unit}}",
+    "cycling": {
+      "highDay": "高熱量日 +{{amount}} {{unit}}",
+      "lowDay": "低熱量日 −{{amount}} {{unit}}"
+    }
   },
   "dateRange": {
     "removeTitle": "揀要移除嘅日期範圍",
@@ -2827,7 +3279,14 @@
       "add": "+ 加份量",
       "saveFailed": "儲存唔晒所有份量。請再試多次儲存."
     },
-    "scanNutritionLabel": "掃營養標籤"
+    "scanNutritionLabel": "掃營養標籤",
+    "caloriesRequiredWithUnit": "熱量（{{unit}}）*",
+    "saltG": "鹽（克）",
+    "sodiumEntryUnit": "鈉輸入單位",
+    "sodiumShort": "鈉",
+    "saltShort": "鹽",
+    "sodiumOption": "鈉（毫克）",
+    "saltOption": "鹽（克）"
   },
   "exerciseHistory": {
     "noSetData": "冇組資料",
@@ -3009,13 +3468,57 @@
       "caloriesInValue": "1,540",
       "caloriesOutValue": "255",
       "eightAm": "早上 8:00",
-      "eyebrow": "iOS 26"
+      "eyebrow": "iOS 26",
+      "offlinePush": "推日",
+      "offlineBadge": "離線",
+      "offlineSets": "已記錄 12 組",
+      "offlineWaiting": "等緊上傳",
+      "zoneTwoBase": "Zone 2 基礎",
+      "weekThree": "第 3 星期",
+      "easyRun": "輕鬆跑 • 40 分鐘",
+      "zoneTwoRange": "125–142 bpm",
+      "riverLoop": "河畔圈",
+      "routeDistance": "5.2 km",
+      "routeClimb": "爬升 48 m",
+      "followRoads": "跟道路",
+      "checkIn": "打卡",
+      "stepTwoOfThree": "第 2 步，共 3 步",
+      "checkInStepName": "測量",
+      "saveContinue": "儲存並繼續",
+      "plates": "槓片",
+      "plateTarget": "100 kg",
+      "plateBar": "槓鈴 20 kg",
+      "platesPerSide": "每邊 20 + 20",
+      "heartRate": "心率",
+      "zoneTwo": "Zone 2",
+      "maxResting": "最大 185 • 靜息 52",
+      "customZones": "您自己嘅",
+      "compare": "比較",
+      "thirtyDays": "30 日",
+      "sleepVsMood": "訓覺對比心情",
+      "moodHigher": "心情較高",
+      "watchApp": "手錶 App",
+      "caloriesLeftBadge": "剩 1,515",
+      "waterMeds": "飲水 • 藥物",
+      "fastingSteps": "斷食 • 步數",
+      "weeklyGoal": "每週目標",
+      "weeklyRate": "−0.5 kg",
+      "dailyTarget": "每日目標",
+      "dailyAdjustment": "≈ −550 kcal",
+      "vitaminD": "維他命 D",
+      "labLow": "偏低",
+      "labValue": "18 ng/mL",
+      "labRange": "範圍 30–100",
+      "deskTag": "枱頭標籤",
+      "tapped": "已感應",
+      "tagWater": "飲水 • 500 mL",
+      "logged": "已記錄"
     },
     "features": {
       "medications": {
         "eyebrow": "藥物",
         "headline": "追蹤您嘅藥物",
-        "body": "新增您嘅藥物、設定劑量時間表，喺儀表板記錄每次劑量，仲可以加提醒.",
+        "body": "加入藥物、設定服藥時間表、喺主頁記錄每次劑量（可設提示），再用月曆同劑量紀錄檢視依從度.",
         "cta": "設定藥物"
       },
       "cycle": {
@@ -3050,6 +3553,72 @@
         "headline": "影餐相，記錄巨量營養",
         "body": "趕時間嗰陣，用相片估算營養.",
         "cta": "試吓"
+      },
+      "offlineWorkouts": {
+        "eyebrow": "離線運動",
+        "headline": "冇訊號都練到",
+        "body": "即使連唔到伺服器，都可以開始、記錄同完成運動。紀錄會留喺您部手機，一有網就自己上傳。喺動作庫長按動作，仲可以連相片一齊離線保存.",
+        "cta": "離線設定"
+      },
+      "labResults": {
+        "eyebrow": "化驗結果",
+        "headline": "化驗結果集中一處",
+        "body": "可以手動加入驗血結果，或者由 PDF 或相片匯入化驗報告。逐個指標對比參考範圍、隨時間畫圖，仲可以喺主頁睇邊啲超範圍.",
+        "cta": "打開化驗結果"
+      },
+      "nfcTags": {
+        "eyebrow": "NFC 標籤",
+        "headline": "一觸即記",
+        "body": "喺水樽、枱頭或者廚房櫃貼張 NFC 標籤，設定為記錄一杯飲品、一樣食物或者一個已儲存餐。用手機拍一下就得，唔小心記錯都有「復原」.",
+        "cta": "設定 NFC 標籤"
+      },
+      "running": {
+        "eyebrow": "跑步",
+        "headline": "用跑步計劃訓練",
+        "body": "跟 Zone 2 基礎計劃，有心率指引；設定每週里數目標同比賽倒數；做引導式體能測試定配速；每次跑完睇分段.",
+        "cta": "打開跑步計劃"
+      },
+      "routes": {
+        "eyebrow": "路線",
+        "headline": "規劃同跟隨路線",
+        "body": "喺衛星地圖畫路線、貼返落道路、生成指定距離嘅圈，仲可以喺 Apple Watch 跟隨已儲存路線.",
+        "cta": "打開路線"
+      },
+      "checkIn": {
+        "eyebrow": "引導式打卡",
+        "headline": "一個流程搞掂打卡",
+        "body": "用三個步驟記錄心情、測量同進度相片。「每日打卡」喺 + 選單搵到.",
+        "cta": "開始打卡"
+      },
+      "strength": {
+        "eyebrow": "力量工具",
+        "headline": "更醒目嘅力量訓練",
+        "body": "釘住要即刻做嗰組、一撳換動作、換動作時保留組數，仲可以用槓片計算器上槓.",
+        "cta": "打開運動設定"
+      },
+      "heartRate": {
+        "eyebrow": "心率",
+        "headline": "心率區間，您話事",
+        "body": "設定您自己嘅最大同靜息心率同區間方法，再深入睇詳細心率報告.",
+        "cta": "打開區間設定"
+      },
+      "reports": {
+        "eyebrow": "報告同比較",
+        "headline": "睇您嘅習慣點樣相關",
+        "body": "瀏覽營養、飲水、訓覺、心情同測量報告，再用「比較」睇一個習慣同另一個有冇關係，或者開始新習慣之後有冇變.",
+        "cta": "打開報告"
+      },
+      "watch": {
+        "eyebrow": "Apple Watch 同 Wear OS",
+        "headline": "您嘅一日喺手腕",
+        "body": "手錶 App 而家支援 Apple Watch 同 Wear OS。睇目標、記錄飲水、體重、斷食同藥物，做運動會儲存到您嘅日誌；Apple Watch 仲有用力評分、跳繩同路線跟隨。喺手錶設定揀您嘅頁面.",
+        "cta": "打開手錶設定"
+      },
+      "weeklyGoal": {
+        "eyebrow": "體重目標",
+        "headline": "設定每週體重目標",
+        "body": "揀您每星期想減或者增幾多，Sparky 就會計出您嘅每日熱量目標.",
+        "cta": "打開熱量設定"
       }
     }
   },
@@ -3247,7 +3816,9 @@
     "startFastEarly": "即刻開始斷食",
     "eatingWindowOpened": "窗口已開啟",
     "eatingWindowCloses": "窗口關閉",
-    "settings": "斷食設定"
+    "settings": "斷食設定",
+    "logMealToEnd": "記錄餐點以結束斷食",
+    "autoFastEndsWithMeal": "您嘅斷食時間由餐點自動計算，記錄食物就會結束."
   },
   "exerciseDetail": {
     "sharedPublicly": "運動已公開分享",
@@ -3286,7 +3857,8 @@
     "deleteSheetTitle": "刪除動作",
     "duplicate": "複製動作",
     "viewImages": "全螢幕檢視圖片",
-    "duplicateName": "{{name}}（副本）"
+    "duplicateName": "{{name}}（副本）",
+    "caloriesPerHourWithUnit": "{{unit}} / 小時"
   },
   "mealTypeSettings": {
     "reorder": "重新排序 {{name}}",
@@ -3411,7 +3983,10 @@
       "thursday": "四",
       "friday": "五",
       "saturday": "六"
-    }
+    },
+    "nutritionLineWithUnit": "{{calories}} {{unit}} · {{protein}} g 蛋白質 · {{carbs}} g 碳水 · {{fat}} g 脂肪",
+    "mealTypeNutritionAccessibilityWithUnit": "{{mealType}} 合共 {{calories}} {{unit}}，蛋白質 {{protein}} g，碳水 {{carbs}} g，脂肪 {{fat}} g",
+    "caloriesValueWithUnit": "{{value}} {{unit}}"
   },
   "mealDetail": {
     "sharedPublicly": "餐膳已公開分享",
@@ -3442,7 +4017,16 @@
     "deleteMeal": "刪除餐膳",
     "makesSummary_other": "整到 {{servings}} {{servingLabel}} · {{count}} {{ingredientLabel}}",
     "items_other": "{{formattedCount}} 項",
-    "notes": "備註"
+    "notes": "備註",
+    "resetToTemplate": "回復範本",
+    "reset": "重設",
+    "editIngredientQuantity": "編輯 {{name}} 份量：{{quantity}} {{unit}}",
+    "addFood": "加食物",
+    "removeIngredient": "由餐中移除",
+    "quantity": "份量",
+    "changeUnit": "改單位",
+    "selectUnit": "揀單位",
+    "savedPortions": "已儲存份數"
   },
   "dailyNutritionDetails": {
     "title": "營養詳情",
@@ -3473,7 +4057,9 @@
       "selectFoodInstead": "揀食材，唔好揀另一個餐膳.",
       "savedFoodUnitFailed": "食材已儲存，但新單位冇儲存到",
       "savedFoodUnitFailedDetails": "您仍然可以加呢種食材，然後再試吓儲存嗰個單位.",
-      "chooseDifferentServing": "揀另一個份量."
+      "chooseDifferentServing": "揀另一個份量.",
+      "tagNeedsSavedServing": "揀呢樣食物其中一個已儲存份量",
+      "tagNeedsSavedServingDetails": "標籤每次都記錄一個已儲存份量，所以喺呢度改咗嘅份量用唔到."
     },
     "actions": {
       "adjustNutrition": "調整營養",
@@ -3501,6 +4087,18 @@
     "pickers": {
       "selectServing": "揀份量",
       "selectMeal": "揀餐膳"
+    },
+    "cooked": {
+      "switch": "秤咗熟重",
+      "sameBatchPrevious": "同 {{date}} 同一批：生 {{raw}} {{unit}} → 熟 {{cooked}} {{unit}}",
+      "sameBatchEntry": "同呢筆紀錄同一批：生 {{raw}} {{unit}} → 熟 {{cooked}} {{unit}}",
+      "newBatch": "新一批",
+      "rawBatch": "呢批生重（{{unit}}）",
+      "cookedBatch": "呢批熟重（{{unit}}）",
+      "eaten": "您食咗（熟重，{{unit}}）",
+      "result": "= {{raw}} {{unit}} 生 · {{energy}}",
+      "incomplete": "輸入重量先計到生重.",
+      "enterEaten": "輸入您食咗嘅熟重."
     }
   },
   "exerciseSearch": {
@@ -3705,7 +4303,9 @@
       "volume": "總量",
       "calories": "卡路里",
       "avgHeartRate": "平均心率",
-      "maxHeartRate": "最高心率"
+      "maxHeartRate": "最高心率",
+      "energy": "熱量",
+      "effort": "用力程度"
     },
     "errors": {
       "needsExercise": "訓練需要至少一個動作",
@@ -3746,7 +4346,9 @@
       "distance": "距離",
       "avgHeartRate": "平均心率",
       "steps": "步數",
-      "pace": "配速"
+      "pace": "配速",
+      "caloriesCounted": "已計入每日總數",
+      "effort": "用力程度"
     },
     "labels": {
       "sets": "組數",
@@ -3889,7 +4491,9 @@
       "invalidAmount": "無效數量",
       "amountRequired": "數量一定要大過零.",
       "noMealType": "冇餐段",
-      "noMealTypesAvailable": "冇可用嘅餐段，請檢查您嘅帳號設定."
+      "noMealTypesAvailable": "冇可用嘅餐段，請檢查您嘅帳號設定.",
+      "loadingMealTypes": "餐類仲載入緊。請等一陣再試.",
+      "mealTypesLoadFailed": "載入餐類失敗。請再試一次."
     }
   },
   "foodDetail": {
@@ -3938,7 +4542,8 @@
       "deleteFailed": "刪除失敗"
     },
     "deleteConfirm": "您確定要刪除呢條食材紀錄？",
-    "entryNotes": "呢條紀錄嘅備註"
+    "entryNotes": "呢條紀錄嘅備註",
+    "copyEntry": "複製食物"
   },
   "presetSearch": {
     "title": "開始訓練",
@@ -4076,12 +4681,16 @@
       "snack": "推薦一個高蛋白小食"
     },
     "tools": {
-      "food": "食材",
+      "food": "食物",
       "exercise": "運動",
-      "checkin": "簽到",
+      "checkin": "打卡",
       "goals": "目標",
-      "lookedUp": "已查詢 {{name}}",
-      "runProgram": "訓練計劃"
+      "lookedUp": "查咗{{name}}",
+      "runProgram": "執行計劃",
+      "generic": "工具",
+      "outside": "一個外部工具",
+      "outsideNamed": "{{server}}：{{tool}}",
+      "withAction": "{{tool}}（{{action}}）"
     },
     "typing": "Sparky 輸入緊",
     "voice": {
@@ -4096,6 +4705,83 @@
       "aiErrorMessage": "您嘅 AI 供應商冇回應。請再試多次，或者改用手動傳送.",
       "noSpeechTitle": "偵測唔到語音",
       "noSpeechMessage": "偵測唔到語音。請再試一次."
+    },
+    "attachments": {
+      "addPhoto": "加相",
+      "takePhoto": "影相",
+      "chooseFromLibrary": "由相簿揀",
+      "removePhoto": "移除相片",
+      "previewPhoto": "預覽相片",
+      "cameraPermission": "需要相機權限",
+      "cameraPermissionBody": "開相機權限先可以加相.",
+      "addFailed": "加唔到相"
+    },
+    "approval": {
+      "title": "批准呢一步？",
+      "run": "讀完 {{server}} 之後，Sparky 想執行：",
+      "send": "讀完 {{server}} 之後，Sparky 想用 {{otherServer}} 嘅呢樣：",
+      "details": "詳情",
+      "allow": "允許",
+      "deny": "拒絕",
+      "allowed": "已允許",
+      "denied": "已拒絕",
+      "failed": "儲存唔到您嘅答覆。請再試一次.",
+      "runPlain": "Sparky 想執行：",
+      "delete": "Sparky 想刪除：",
+      "deleteAfter": "讀完 {{server}} 之後，Sparky 想刪除：",
+      "change": "Sparky 想咁樣改：",
+      "changeAfter": "讀完 {{server}} 之後，Sparky 想咁樣改：",
+      "working": "處理緊…",
+      "done": "搞掂",
+      "notRun": "冇執行",
+      "cancelled": "您搶先傳咗新訊息.",
+      "nothingChanged": "乜都冇改到.",
+      "toolFailed": "已允許，但做唔到",
+      "otherPending": "答埋另一步先繼續.",
+      "composerHint": "先答上面嗰步，或者繼續打字略過.",
+      "announce": "Sparky 等您答覆：批准呢一步？",
+      "runCompleted": "讀完 {{server}} 之後，Sparky 執行了：",
+      "runPlainCompleted": "Sparky 執行了：",
+      "sendCompleted": "讀完 {{server}} 之後，Sparky 執行了：",
+      "deleteCompleted": "您批准咗 Sparky 刪除：",
+      "deleteAfterCompleted": "Sparky 讀完 {{server}} 之後，您批准咗佢刪除：",
+      "changeCompleted": "您批准咗 Sparky 咁樣改：",
+      "changeAfterCompleted": "Sparky 讀完 {{server}} 之後，您批准咗佢咁樣改：",
+      "runFailed": "讀完 {{server}} 之後，Sparky 試過執行：",
+      "runPlainFailed": "Sparky 試過執行：",
+      "sendFailed": "讀完 {{server}} 之後，Sparky 試過執行：",
+      "deleteFailed": "Sparky 試過刪除：",
+      "deleteAfterFailed": "讀完 {{server}} 之後，Sparky 試過刪除：",
+      "changeFailed": "Sparky 試過咁樣改：",
+      "changeAfterFailed": "讀完 {{server}} 之後，Sparky 試過咁樣改：",
+      "runUnused": "讀完 {{server}} 之後，Sparky 原本想執行：",
+      "runPlainUnused": "Sparky 原本想執行：",
+      "sendUnused": "讀完 {{server}} 之後，Sparky 原本想用 {{otherServer}} 嘅呢樣：",
+      "deleteUnused": "Sparky 原本想刪除：",
+      "deleteAfterUnused": "讀完 {{server}} 之後，Sparky 原本想刪除：",
+      "changeUnused": "Sparky 原本想咁樣改：",
+      "changeAfterUnused": "讀完 {{server}} 之後，Sparky 原本想咁樣改："
+    },
+    "outsideSource": {
+      "line": "用咗 {{servers}}。有嘢唔對？",
+      "delete": "刪除呢個訊息",
+      "clear": "清空對話",
+      "failed": "刪除唔到呢個訊息。請再試一次.",
+      "deleteTitle": "刪除呢個回覆？",
+      "deleteBody": "呢個會由對話移除回覆，但唔會復原 Sparky 已經改咗嘅嘢.",
+      "cancel": "取消",
+      "confirmDelete": "刪除",
+      "deleting": "刪除緊…"
+    },
+    "outsideError": {
+      "unavailable": "{{server}} 冇回應。遲啲再試.",
+      "turnedOff": "{{server}} 已喺 AI 設定為您關閉."
+    },
+    "clearConfirm": {
+      "title": "清空對話？",
+      "body": "呢個會永久刪除您嘅 Sparky 對話紀錄，唔可以復原.",
+      "cancel": "取消",
+      "clear": "清空"
     }
   },
   "foodImagePicker": {
@@ -4239,7 +4925,10 @@
       "totals": "總計",
       "addFood": "新增食材",
       "addedFood": "食材",
-      "pickedFoodNote": "由您嘅食材加入，移除佢再加過，先可以改數量."
+      "pickedFoodNote": "由您嘅食材加入，移除佢再加過，先可以改數量.",
+      "rowSummaryWithUnit": "{{grams}} g · {{calories}} {{energyUnit}}",
+      "macroSummaryWithUnit": "{{calories}} {{unit}} · {{protein}}P · {{carbs}}C · {{fat}}F",
+      "pickedRowSummaryWithUnit": "{{quantity}} {{unit}} · {{calories}} {{energyUnit}}"
     },
     "match": {
       "useYourFood": "嚟自您嘅食材： {{name}} · 撳一下用佢",
@@ -4300,7 +4989,8 @@
       "distance": "距離（{{unit}}）",
       "avgHeartRate": "平均心率（bpm）",
       "notes": "備註",
-      "notesPlaceholder": "備註（選填）…"
+      "notesPlaceholder": "備註（選填）…",
+      "caloriesWithUnit": "熱量（{{unit}}）"
     },
     "actions": {
       "useYesterday": "琴日用",
@@ -4340,7 +5030,8 @@
     "accessibility": {
       "addFood": "新增食材",
       "copyMeal": "複製餐膳去另一日"
-    }
+    },
+    "targetCaloriesWithUnit": "目標：{{calories}} {{unit}}"
   },
   "nutrientTrends": {
     "title": "{{nutrient}} 趨勢",
@@ -4488,7 +5179,9 @@
     "reorderExercises": "重新排序動作",
     "workoutPlaceholder": "訓練",
     "useYesterday": "琴日用",
-    "useToday": "今日用"
+    "useToday": "今日用",
+    "savedOfflineTitle": "已存喺呢部手機",
+    "savedOfflineMessage": "伺服器連得返就會上傳."
   },
   "mealMutations": {
     "createFailed": "建立餐膳失敗",
@@ -4635,13 +5328,24 @@
       "tooltipMacro": "{{percent}}% {{macroLabel}}",
       "otherMacro": "其他",
       "avgCalories": "平均",
-      "noAverage": "—"
+      "noAverage": "—",
+      "tooltipWithUnit": "已攝取 {{formattedCount}} {{unit}}",
+      "avgCaloriesValueWithUnit": "{{formattedCount}} {{unit}}"
     },
     "noTrendData": "冇足夠數據顯示趨勢.",
     "vo2max": {
       "title": "VO2 Max",
       "loadFailed": "載入唔到 VO2 Max 數據",
-      "empty": "呢段時間冇 VO2 Max 數據"
+      "empty": "呢段時間冇 VO2 Max 數據",
+      "estimateTitle": "最大攝氧量（估算）",
+      "estimateNote": "根據您記錄嘅跑步估算。唔係實測；有同步讀數就會取代佢."
+    },
+    "heartRate": {
+      "title": "靜息心率",
+      "avgLabel": "平均",
+      "rangeLabel": "範圍",
+      "loadFailed": "載入心率數據失敗",
+      "empty": "呢段時間冇心率數據"
     }
   },
   "exerciseLibrary": {
@@ -4756,7 +5460,14 @@
     "copy": "複製",
     "copying": "複製緊…",
     "duplicateTitle": "複製唔到餐膳",
-    "duplicateMessage": "重複嘅餐段名稱而家唔可以用嚟複製餐膳."
+    "duplicateMessage": "重複嘅餐段名稱而家唔可以用嚟複製餐膳.",
+    "foodTitle": "複製食物：{{food}}",
+    "copyTo": "複製去",
+    "quick": {
+      "now": "而家",
+      "today": "今日",
+      "tomorrow": "聽日"
+    }
   },
   "ingredientRow": {
     "lastWarning": "呢個係最後一種食材，加多一種先可以儲存，或者用刪除餐膳移走成餐.",
@@ -4828,7 +5539,9 @@
   },
   "foodEntryCopy": {
     "success": "餐膳已複製",
-    "failed": "複製餐膳失敗"
+    "failed": "複製餐膳失敗",
+    "foodSuccess": "食物已複製",
+    "foodFailed": "複製食物失敗"
   },
   "foodDelete": {
     "failed": "刪除食材失敗",
@@ -4976,7 +5689,8 @@
       "h1": "-1 小時",
       "h3": "-3 小時",
       "started": "已開始",
-      "episode": "發作"
+      "episode": "發作",
+      "d1": "-1日"
     },
     "name": "症狀名稱",
     "nameRequired": "請輸入症狀名稱.",
@@ -5033,7 +5747,9 @@
       "dailyTitle": "症狀登記",
       "dailyBody": "今日感覺點呀？撳一下記錄任何症狀.",
       "nudgeTitle": "發作仲進行緊？",
-      "nudgeBody": "{{name}} 已經持續咗 {{hours}} 小時，佢仲進行緊定係已經結束？"
+      "nudgeBody": "{{name}} 已經持續咗 {{hours}} 小時，佢仲進行緊定係已經結束？",
+      "episodeEnded": "呢次症狀已結束",
+      "otherServer": "呢個提示來自另一個伺服器"
     },
     "builtIn": {
       "head": "頭部",
@@ -5192,7 +5908,11 @@
     "episode": {
       "ongoing": "進行緊",
       "peak": "高峰 {{n}}"
-    }
+    },
+    "startDate": "日期",
+    "startDateA11y": "開始日期，{{date}}",
+    "startTime": "時間",
+    "startTimeA11y": "開始時間，{{time}}"
   },
   "waterIntake": {
     "updateFailed": "錯誤",
@@ -5207,7 +5927,9 @@
   },
   "activeWorkoutAutosave": {
     "failedTitle": "訓練未儲存",
-    "failedMessage": "改動留咗喺呢部機，會再試."
+    "failedMessage": "改動留咗喺呢部機，會再試.",
+    "offlineTitle": "已存喺呢部手機",
+    "offlineMessage": "伺服器連得返就會上傳您嘅運動."
   },
   "medicalDisclaimer": {
     "text": "只用嚟追蹤同一般資訊，唔係醫療建議，有醫療問題，同您嘅醫護人員傾吓."
@@ -5597,6 +6319,14 @@
     "ring": {
       "day": "第 {{day}} 日",
       "dayCycle_other": "{{count}} 日週期"
+    },
+    "loadFailed": "載入唔到您嘅設定.",
+    "off": {
+      "title": "週期追蹤已關閉",
+      "discreetTitle": "健康功能已關閉",
+      "description": "您嘅歷史仍然保留。開返就會喺度再見到.",
+      "turnOn": "開啟",
+      "openFeatures": "打開功能"
     }
   },
   "time": {
@@ -5643,7 +6373,9 @@
     "breathsPerMinute": "{{value}}/分鐘",
     "error": "錯誤",
     "workouts_other": "{{count}} 次訓練",
-    "records_other": "{{count}} 條紀錄"
+    "records_other": "{{count}} 條紀錄",
+    "energy": "{{value}} {{unit}}",
+    "brushes_other": "{{count}} 次刷牙"
   },
   "sleep": {
     "wakeUp": "起身",
@@ -5681,7 +6413,16 @@
     "restingHeartRate": "靜息心率",
     "percentUnit": "%",
     "bpmUnit": "bpm",
-    "quality": "瞓覺質素"
+    "quality": "瞓覺質素",
+    "overnightHrv": "整夜 HRV",
+    "skinTemperature": "皮膚溫度",
+    "skinTemperatureDeviation": "皮膚溫度對比平時",
+    "msUnit": "ms",
+    "celsiusUnit": "°C",
+    "fahrenheitUnit": "°F",
+    "showTrendHint": "顯示過去 30 晚呢個值",
+    "trendLoadFailed": "載入唔到趨勢",
+    "trendNotEnoughData": "晚數仲未夠，未睇到趨勢"
   },
   "foodProvenance": {
     "aiEstimate": "AI 估算",
@@ -5789,7 +6530,8 @@
     "rangeSection": "播放",
     "rangeA11y": "揀播放幾耐之前",
     "deltaBadge": "Δ {{value}}",
-    "frameCountRanged": "{{current}} / {{total}} · {{range}}"
+    "frameCountRanged": "{{current}} / {{total}} · {{range}}",
+    "historyDescriptionCappedCheckIn": "您最近 {{limit}} 張，最新嘅排先."
   },
   "waterContainers": {
     "title": "水容器",
@@ -5877,7 +6619,8 @@
     "estimatedTimes": "有啲劑量時間係估嘅",
     "legendCurve": "體內咖啡因",
     "legendThreshold": "門檻 {{threshold}} 毫克",
-    "unitMg": "mg 毫克"
+    "unitMg": "mg 毫克",
+    "tomorrow": "聽日"
   },
   "foodEntryMultiAdd": {
     "title": "檢視",
@@ -6007,7 +6750,28 @@
     "setInputCrown": "數碼錶冠",
     "nutrientsDescription": "喺手錶嘅熱量環下面揀要顯示嘅營養素，再拖曳排好次序. 每一項都會顯示今日嘅攝取量同目標嘅對比.",
     "rpeTitle": "RPE",
-    "rpeSubtitle": "喺手錶度記錄完一組動作之後，轉動數碼錶冠嚟揀佢有幾吃力（1 至 10），然後撳「儲存」，或者撳「跳過」."
+    "rpeSubtitle": "喺手錶度記錄完一組動作之後，轉動數碼錶冠嚟揀佢有幾吃力（1 至 10），然後撳「儲存」，或者撳「跳過」.",
+    "rpeSubtitleWearOs": "喺手錶記錄完一組之後，轉錶冠或者撳 +／− 揀有幾吃力（5 至 10），然後撳「儲存」或者「略過」.",
+    "layoutTitle": "版面",
+    "setScreenMetricsTitle": "組數畫面嘅指標",
+    "setScreenMetricsSubtitle": "經過時間、心率同熱量。關閉就會搬去組數畫面上方嘅獨立頁：向下掃就見到.",
+    "upNextTitle": "下一項頁",
+    "upNextSubtitle": "組數畫面向上掃一頁，有下一個動作、目標，同一個「交換」掣去先做另一個動作.",
+    "newWorkoutTitle": "新運動檢視",
+    "largerTextTitle": "手錶大字",
+    "largerTextSubtitle": "整個手錶用大字同新版面：目標、飲水、斷食、步數等等。關閉就保留原本外觀.",
+    "newWorkoutSubtitle": "有「記錄組」掣（連撳兩下都會記錄）、編輯上一組掣、運動操作嘅更多頁，完成時一個總覽。關閉就保留原本運動畫面.",
+    "newWorkoutSubtitleWearOs": "有「記錄組」掣、編輯上一組掣、動作示範、槓片計算器、運動操作嘅更多頁，完成時一個總覽。關閉就保留原本運動畫面.",
+    "topLineTitle": "頂行",
+    "topLineDescription": "手錶運動畫面頂部先顯示咩：經過時間，或者即時心率同熱量。喺手錶撳一下就切換.",
+    "topLineTime": "時間",
+    "topLineMetrics": "指標",
+    "countdownTitle": "倒數聲同震動",
+    "countdownDescription": "休息或者計時保持嘅最後幾秒，每聲加一下震，到零會用另一個聲，等您唔使睇都知要準備。手錶靜音時只會震.",
+    "countdownOff": "關閉",
+    "countdownSeconds": "{{seconds}} 秒",
+    "holdCountdownTitle": "保持前倒數",
+    "holdCountdownSubtitle": "計時保持開始前有 3、2、1「準備」畫面，等您擺好位。撳一下可以略過."
   },
   "guidedWorkout": {
     "cue": {
@@ -6070,7 +6834,8 @@
     "saving": "儲存中…",
     "saved": "已儲存",
     "saveFailed": "無法儲存您嘅回饋，撳一下重試.",
-    "loadFailed": "無法載入您嘅回饋，撳一下再試."
+    "loadFailed": "無法載入您嘅回饋，撳一下再試.",
+    "queued": "有網就會發出"
   },
   "adaptiveCoaching": {
     "reasons": {
@@ -6197,7 +6962,13 @@
       "cadence": "平均步頻",
       "spm": "{{value}} spm",
       "strideLength": "步幅",
-      "shareImage": "以圖片分享"
+      "shareImage": "以圖片分享",
+      "weather": "天氣",
+      "degreesC": "{{value}}°C",
+      "degreesF": "{{value}}°F",
+      "caloriesWithUnit": "{{value}} {{unit}}",
+      "splits": "分段",
+      "effort": "用力程度"
     },
     "consistency": {
       "title": "訓練穩定性",
@@ -6246,7 +7017,59 @@
       "repetition": "重複",
       "range": "{{fast}} – {{slow}} {{unit}}",
       "fromEffort": "按您最近嘅最佳跑步建立。閾值配速約為 {{pace}} {{unit}}.",
-      "fromTypical_other": "按您最近 {{formattedCount}} 次跑步估算，所以唔係咁精確。一次 3 公里或以上嘅用力跑步可以令佢更精確."
+      "fromTypical_other": "按您最近 {{formattedCount}} 次跑步估算，所以唔係咁精確。一次 3 公里或以上嘅用力跑步可以令佢更精確.",
+      "fromTest": "根據您最新嘅體能測試。閾值配速大約 {{pace}} {{unit}}."
+    },
+    "runningForm": {
+      "title": "跑步姿勢",
+      "subtitle": "您跑步嘅每分鐘步頻同步幅",
+      "average": "平均 {{value}}",
+      "change": "對比之前嘅跑，{{value}}",
+      "hint": "跑步機要量到步數先會計."
+    },
+    "runEstimates": {
+      "title": "跑步估算",
+      "subtitle": "根據您嘅配速、心率、體重同爬升估算。唔係實測，所以可能有幾個百分比偏差.",
+      "loadFailed": "載入唔到您嘅跑步估算.",
+      "about": "≈ {{value}}",
+      "vo2Unit": "最大攝氧量 VO₂（ml/kg/min）",
+      "vo2Basis_other": "根據過去 6 星期 {{count}} 次跑步",
+      "watts": "≈ {{value}} W",
+      "powerUnit": "跑步功率（{{perKg}} W/kg）",
+      "powerBasis_other": "過去 4 星期 {{count}} 次跑步平均"
+    },
+    "fitness": {
+      "level": {
+        "high": "可以應付高強度訓練.",
+        "moderate": "一般訓練冇問題，但唔好去到最盡.",
+        "low": "未恢復。最好輕鬆一日或者休息.",
+        "noData": "資料仲未夠。記錄運動同訓覺就睇到準備度."
+      },
+      "form": {
+        "fresh": "清爽：近期訓練相對您嘅基礎算輕.",
+        "tired": "疲累：近期訓練相對您嘅基礎算重.",
+        "neutral": "平衡：近期訓練同您嘅基礎匹配.",
+        "learning": "仲喺摸緊您嘅正常水平，繼續記錄."
+      },
+      "factor": {
+        "form": "訓練狀態",
+        "sleep": "訓覺",
+        "restingHeartRate": "靜息心率",
+        "hrv": "HRV"
+      },
+      "vital": {
+        "hrv": "{{current}} ms，對比您平時 {{baseline}} ms",
+        "hrvNights": "{{current}} ms，對比您平時 {{baseline}} ms（{{count}} 晚中位數）",
+        "restingHeartRate": "{{current}} bpm，對比您平時 {{baseline}} bpm",
+        "restingHeartRateNights": "{{current}} bpm，對比您平時 {{baseline}} bpm（{{count}} 晚中位數）"
+      },
+      "loadFailed": "載入唔到您嘅準備度.",
+      "outOf": "準備度（100 分滿分）",
+      "fitness": "體能",
+      "fatigue": "疲勞",
+      "formLabel": "狀態",
+      "title": "準備度同狀態",
+      "subtitle": "根據訓練狀態、訓覺同靜息心率，睇您今日有幾準備好."
     }
   },
   "aiSettings": {
@@ -6265,6 +7088,17 @@
         "title": "喺裝置內掃描標籤",
         "description": "用呢部裝置嘅 Apple Intelligence 讀取營養標籤，如果讀唔到，就會改用伺服器 AI 供應商."
       }
+    },
+    "chatMcp": {
+      "title": "外部工具",
+      "description": "您嘅管理員由 SparkyFitness 以外加入咗呢啲服務。開咗一個之後，Sparky 可以傳對話內容俾佢，亦可以讀返佢回傳嘅嘢。預設每個都係關閉.",
+      "allow": "准 Sparky 用 {{name}}",
+      "loadError": "載入唔到外部工具.",
+      "saveError": "儲存唔到。請再試一次.",
+      "accountId": "會見到您嘅帳戶 ID.",
+      "familyOff": "您睇緊其他人嘅資料時，外部工具會關閉.",
+      "retry": "再試",
+      "loading": "載入緊外部工具…"
     }
   },
   "mindfulness": {
@@ -6490,7 +7324,7 @@
     "sessionNamePlaceholder": "節次名稱（可選）",
     "addSession": "加節次",
     "assignmentRequired": "至少加一堂訓練落計劃.",
-    "presetNotice": "您可以加儲存咗喺庫入面嘅訓練。想規劃單一動作，請用網頁版.",
+    "presetNotice": "您可以加動作庫入面已儲存嘅運動，或者加入自帶組數嘅單一動作.",
     "deleteTitle": "刪除訓練計劃",
     "deleteMessage": "刪除 {{name}}？呢個計劃加入日記嘅未來訓練會被移除.",
     "deleteSuccess": "訓練計劃已刪除",
@@ -6506,7 +7340,31 @@
     "loadFailed": "載入唔到訓練計劃",
     "emptyTitle": "未有訓練計劃",
     "emptySubtitle": "喺指定日期安排您儲存嘅訓練，或者作為您順序完成嘅循環.",
-    "moreAssignments_other": "+{{count}} 項以上"
+    "moreAssignments_other": "+{{count}} 項以上",
+    "invalidSetValues": "有啲組數值未填齊",
+    "activated": "計劃已啟用",
+    "addExercise": "加動作",
+    "addSet": "加組",
+    "deactivated": "計劃已停用",
+    "deletePlan": "刪除計劃",
+    "impactNote": "呢個生效計劃會將即將嘅訓練填入日誌。修改只會更新計劃時段；您已記錄、開始或者完成嘅運動唔會受影響.",
+    "impactNoteForm": "儲存會更新呢個計劃即將嘅日誌時段。您已記錄、開始或者完成嘅運動唔會受影響.",
+    "moveDownNamed": "將 {{name}} 移落",
+    "moveUpNamed": "將 {{name}} 移上",
+    "noAssignmentsSubtitle": "編輯計劃加運動.",
+    "noAssignmentsTitle": "呢個計劃仲未有運動",
+    "refreshedSessions_other": "已更新 {{count}} 個即將時段",
+    "regenerationFailed": "已儲存，但更新日誌失敗",
+    "removedSessions_other": "已移除 {{count}} 個即將時段",
+    "removeSetNumber": "刪除第 {{number}} 組",
+    "repsCount_other": "{{count}} 次",
+    "repsShort": "次數",
+    "restCount_other": "休息 {{count}} 秒",
+    "restShort": "休息（秒）",
+    "savedWorkout": "已儲存運動",
+    "sessionPosition": "第 {{current}} 節，共 {{total}} 節",
+    "setNumber": "第 {{number}} 組",
+    "weightShort": "重量"
   },
   "mood": {
     "logTitle": "記錄心情",
@@ -6574,7 +7432,10 @@
     "energyA11y": "能量 {{value}}/5",
     "focusA11y": "專注度 {{value}}/5",
     "energyOutOfFive": "能量 {{value}}/5",
-    "focusOutOfFive": "專注度 {{value}}/5"
+    "focusOutOfFive": "專注度 {{value}}/5",
+    "reminderOfferTitle": "每日提您？",
+    "reminderOfferBody": "每晚提您打卡。時間可以喺「設定 → App 設定 → 通知」改或者加多幾個.",
+    "reminderOfferAccept": "提我"
   },
   "customNutrients": {
     "title": "自訂營養素",
@@ -6621,7 +7482,8 @@
   },
   "equipmentHub": {
     "title": "裝備",
-    "shoesSubtitle": "跑鞋同佢嘅里程"
+    "shoesSubtitle": "跑鞋同佢嘅里程",
+    "platesSubtitle": "您有嘅槓鈴同槓片，用喺槓片計算器"
   },
   "fastingSettings": {
     "title": "斷食設定",
@@ -6644,7 +7506,9 @@
     "eatingWindowAlertHint": "喺達成斷食目標同進食窗口開咗嗰陣提醒.",
     "save": "儲存斷食設定",
     "saved": "斷食設定已儲存",
-    "saveFailed": "儲存唔到斷食設定"
+    "saveFailed": "儲存唔到斷食設定",
+    "calorieThresholdWithUnit": "熱量門檻（{{unit}}）",
+    "calorieThresholdRangeWithUnit": "輸入 0 至 {{max}} 嘅整數."
   },
   "fastingReport": {
     "range": {
@@ -6721,7 +7585,8 @@
       "hint": "可選。輸入您嘅跑步機或者機器顯示嘅距離.",
       "estimateLearned_other": "按您嘅步幅由 {{formattedCount}} 步估算。改成啱您部跑步機，應用程式會繼續學習.",
       "estimateRough_other": "按典型步幅由 {{formattedCount}} 步粗略估算。輸入您部跑步機顯示嘅數值，應用程式會學習您嘅步幅.",
-      "invalid": "輸入零或者更大嘅距離."
+      "invalid": "輸入零或者更大嘅距離.",
+      "corrected": "跑步機顯示 {{shown}} {{unit}}。已按您 {{percent}} 嘅跑步機修正，儲存為 {{saved}} {{unit}}."
     },
     "heartRate": "心率",
     "errors": {
@@ -6745,7 +7610,8 @@
     "activity": {
       "walk": "行路",
       "run": "跑步",
-      "ride": "踩單車"
+      "ride": "踩單車",
+      "jumpRope": "跳繩"
     },
     "permission": {
       "denied": "SparkyFitness 要位置權限先記錄到您嘅路線。您可以喺設定度允許.",
@@ -6878,7 +7744,9 @@
       "increase": "增加 {{label}}",
       "complete": "間歇完成",
       "round": "第 {{round}} 輪，共 {{rounds}} 輪",
-      "next": "下一個：{{name}} {{time}}"
+      "next": "下一個：{{name}} {{time}}",
+      "brisk": "快走",
+      "zone2": "Zone 2 跑"
     },
     "program": {
       "title": "訓練計劃",
@@ -6901,7 +7769,9 @@
         "tenKToHalf": "10K 至半馬",
         "fasterHalf": "更快嘅半馬",
         "beginnerMarathon": "新手馬拉松",
-        "advancedMarathon": "進階馬拉松"
+        "advancedMarathon": "進階馬拉松",
+        "zone2Base": "Zone 2 基礎",
+        "zone2Base4": "Zone 2 基礎（每星期四次）"
       },
       "beginner5kDescription": "新手 5K：九個星期，每星期跑三次。您交替跑步同行路，並逐步加到 30 分鐘嘅跑步.",
       "workoutLabel": "{{name}} · 第 {{week}} 週，跑步 {{run}}",
@@ -6966,11 +7836,11 @@
       "advancedMarathonDescription": "進階馬拉松：十六個星期，每星期跑五次，包含速度或者節奏訓練同逐步加到三個鐘嘅長跑。啱有經驗嘅跑者.",
       "halfMarathon4Description": "半馬拉松：十二個星期，每星期跑四次，長跑逐步加到約兩個鐘。啱跑得輕鬆 30 分鐘嘅人.",
       "tenKToHalf4Description": "10K 至半馬：十個星期，每星期跑四次，長跑逐步加到約兩個鐘。啱跑得到 10K 嘅人.",
-      "beginnerMarathon4Description": "新手馬拉松：十八個星期，每星期跑四次，長跑逐步加到 2⅔ 個鐘並有減量期。啱跑得到 10K 嘅人.",
-      "fasterHalf4Description": "更快嘅半馬：十個星期，每星期跑四次，包含速度訓練、輕鬆跑同含節奏訓練嘅長跑。啱之前跑過半馬嘅人.",
+      "beginnerMarathon4Description": "新手馬拉松：十八星期，每星期四次跑步，長跑逐步加到 2 小時 30 分，最後減量。適合跑到 10K 嘅人.",
+      "fasterHalf4Description": "更快半馬：十星期，每星期四次跑步，有速度課、輕鬆跑同長跑。適合以前跑過半馬嘅人.",
       "marathonDescription": "馬拉松：十六個星期，每星期跑四次，長跑逐步加到約 2¾ 個鐘並有減量期。啱已經規律跑步嘅人.",
       "outlineWalk": "第 1 週：訓練係 {{weekOne}} 分鐘。逐步加到 {{peak}} 分鐘嘅急步行.",
-      "outline": "第 1 週：訓練係 {{weekOne}} 分鐘。逐步加到 {{peak}} 分鐘嘅跑步.",
+      "outline": "第 1 星期：每節 {{weekOne}} 分鐘，逐步加到 {{peak}} 分鐘訓練量.",
       "minutes": "{{minutes}} 分鐘",
       "workoutsDone": "已完成 {{done}} 堂，共 {{total}} 堂",
       "optionLabel": "{{name}} · {{weeks}} 個星期，每星期 {{runs}} 堂訓練",
@@ -6980,7 +7850,10 @@
       "switchMessage": "您會由第 1 週開始新計劃。您喺而家計劃入面嘅進度唔會保留.",
       "switchConfirm": "轉",
       "startDayPast": "{{date}} 開始。您嘅下一次訓練會由今日起排程.",
-      "customWorkoutLabel": "{{name}} · {{workout}}"
+      "customWorkoutLabel": "{{name}} · {{workout}}",
+      "zone2BaseDescription": "Zone 2 基礎：十星期，每星期三次輕鬆跑，全程壓住 Zone 2 心率（或者講嘢測試），逐漸增加時間，長跑最多 70 分鐘。適合跑到 30 分鐘嘅人.",
+      "zone2Base4Description": "Zone 2 基礎：十星期，每星期四次輕鬆跑，全程壓住 Zone 2 心率（或者講嘢測試），逐漸增加時間，長跑最多 70 分鐘。適合跑到 30 分鐘嘅人.",
+      "goalUseRaceDay": "用比賽日（{{date}}）"
     },
     "watch": {
       "title": "用咩嚟記錄",
@@ -7000,7 +7873,8 @@
       "outdoorWalk": "戶外行路",
       "indoorWalk": "室內行路",
       "outdoorRide": "戶外踩單車",
-      "indoorRide": "室內踩單車"
+      "indoorRide": "室內踩單車",
+      "jumpRope": "跳繩"
     },
     "gps": {
       "good": "GPS 良好",
@@ -7039,7 +7913,8 @@
       "easyTitle": "輕鬆段心率",
       "easyDescription": "當您喺輕鬆段嘅心率出咗呢個範圍嗰陣提醒您.",
       "warmTitle": "熱身同緩和心率",
-      "warmDescription": "當您喺熱身或者緩和嗰陣嘅心率出咗呢個範圍嗰陣提醒您."
+      "warmDescription": "當您喺熱身或者緩和嗰陣嘅心率出咗呢個範圍嗰陣提醒您.",
+      "wearOsDescription": "要您嘅 Wear OS 手錶。心率離開呢個範圍時會震，開咗語音提示仲會講出嚟."
     },
     "suggestedRanges": {
       "title": "建議範圍",
@@ -7051,7 +7926,35 @@
       "tempo": "節奏跑 {{range}}",
       "marathonPace": "馬拉松配速 {{range}}",
       "strides": "跨步跑 {{range}}",
-      "paceSourceRace": "按您最近嘅比賽：{{race}}."
+      "paceSourceRace": "按您最近嘅比賽：{{race}}.",
+      "paceSourceTest": "根據您 {{date}} 嘅 {{test}}.",
+      "heartRateSourceUser": "根據您最大心率 {{max}} bpm.",
+      "heartRateSourceReserve": "根據您嘅心率儲備區間，最大心率 {{max}} bpm.",
+      "heartRateSourceCustom": "根據您自訂嘅心率區間."
+    },
+    "route": {
+      "title": "路線",
+      "none": "唔用路線",
+      "watchHint": "手錶會顯示條線，每個轉向都會震."
+    },
+    "splitsTable": {
+      "km": "公里",
+      "mi": "英里",
+      "pace": "配速",
+      "elev": "爬升",
+      "hr": "心率"
+    },
+    "zone2": {
+      "target": "Zone 2：{{min}}–{{max}} bpm",
+      "targetSpoken": "Zone 2，每分鐘 {{min}} 至 {{max}} 次",
+      "inside": "喺 Zone 2。保持呢個強度.",
+      "above": "高過 Zone 2。放慢啲，或者行到心率穩定返.",
+      "below": "低過 Zone 2。可以加快少少.",
+      "waiting": "等緊心率讀數…",
+      "talkTest": "Zone 2：輕鬆到可以講完整句子。如果只講到幾個字，就慢啲.",
+      "noRange": "喺個人資料加出生日期，就睇到 Zone 2 嘅心率範圍。之前就用講嘢測試.",
+      "zoneCheck": "Zone 檢查：喺平坦熟悉嘅路線用同上次一樣嘅強度跑，記低配速同覺得輕唔輕鬆。如果同樣心率而家配速快咗，代表您有氧能力進步緊.",
+      "driftNote": "長跑時心率會升幾下，所以 20 分鐘之後範圍上限會鬆少少."
     }
   },
   "goals": {
@@ -7064,7 +7967,10 @@
     "fields": {
       "water": "水分（{{unit}}）",
       "exerciseMinutes": "運動時長（分鐘）",
-      "steps": "每日步數"
+      "steps": "每日步數",
+      "exerciseCaloriesWithUnit": "運動熱量（{{unit}}）",
+      "baselineCaloriesWithUnit": "基準熱量（{{unit}}）",
+      "calories": "熱量（{{unit}}）"
     },
     "adaptiveNote": "自適應模式開咗，所以您嘅熱量目標每日都會變。下面嘅基準設定您目標同估算維持熱量相差幾遠；佢唔係固定嘅每日目標.",
     "customNutrients": {
@@ -7077,7 +7983,8 @@
       "activity": "水分同運動",
       "meals": "餐膳熱量分配",
       "presets": "目標預設",
-      "weekly": "每週計劃"
+      "weekly": "每週計劃",
+      "goalWeight": "目標體重"
     },
     "meals": {
       "mustBe100": "餐膳百分比加埋一定要係 100%.",
@@ -7086,7 +7993,8 @@
       "distributeRemaining": "平均分配剩餘",
       "lock": "鎖定 {{meal}}",
       "unlock": "解鎖 {{meal}}",
-      "mealPercent": "{{meal}}（%）"
+      "mealPercent": "{{meal}}（%）",
+      "mealCaloriesWithUnit": "{{meal}}（{{calories}} {{unit}}）"
     },
     "directions": {
       "minimum": "最低",
@@ -7163,7 +8071,8 @@
       "nameLabel": "預設名稱",
       "nameRequired": "為預設改個名.",
       "editDescription": "預設係一組儲存咗嘅目標。將佢套用到您嘅目標，或者喺週計劃度指派到一星期嘅各日.",
-      "notFound": "搵唔到呢個預設."
+      "notFound": "搵唔到呢個預設.",
+      "summaryWithUnit": "{{calories}} {{unit}}，{{protein}}g 蛋白質，{{carbs}}g 碳水，{{fat}}g 脂肪"
     },
     "weekly": {
       "sectionDescription": "喺一星期嘅各日用唔同嘅目標預設，例如訓練日用好啲嘅熱量.",
@@ -7201,7 +8110,20 @@
         "saturday": "星期六",
         "sunday": "星期日"
       }
-    }
+    },
+    "adaptiveNoteTodayWithUnit": "已開啟自適應模式，所以您嘅熱量目標每日都會變。今日係 {{calories}} {{unit}}。下面嘅基準決定您想高過或者低過估算維持量幾多；唔係固定每日目標.",
+    "goalWeight": {
+      "description": "您想達到嘅體重。體重圖表會用佢顯示進度.",
+      "placeholder": "目標體重（{{unit}}）",
+      "invalid": "輸入大於零嘅體重.",
+      "save": "儲存目標體重",
+      "clear": "清除",
+      "saved": "目標體重已儲存.",
+      "saveFailed": "儲存目標體重失敗."
+    },
+    "cyclingNoteTodayWithUnit": "已開啟熱量循環，所以下面嘅熱量係基礎目標，每日會高啲或者低啲。今日係 {{calories}} {{unit}}.",
+    "cyclingPausedWeeklyPlan": "今日熱量循環因每週目標計劃生效而暫停。下面嘅熱量就係今日計劃目標.",
+    "adjustedGoalFailed": "載入唔到今日調整後嘅目標."
   },
   "reports": {
     "title": "報告",
@@ -7220,7 +8142,54 @@
     "measurementsSubtitle": "體重、身體組成、身體尺寸同步數",
     "insights": "值得留意嘅地方",
     "substances": "咖啡因同酒精",
-    "substancesSubtitle": "每日咖啡因、酒精總量同每星期比較"
+    "substancesSubtitle": "每日咖啡因、酒精總量同每星期比較",
+    "compare": "比較",
+    "compareSubtitle": "兩樣嘢點樣一齊變",
+    "heartRate": "心率",
+    "heartRateSubtitle": "靜息心率趨勢同區間分佈",
+    "details": "睇報告詳情",
+    "heartRateChangeVsPrevious": "對比上一期 {{change}} bpm",
+    "averageRestingHr": "平均靜息心率",
+    "restingHrRange": "靜息心率範圍",
+    "heartRateRecovery1Min": "1 分鐘恢復",
+    "heartRateRecoveryHint": "運動後 1 分鐘心率跌幅",
+    "restingHrTrend": "靜息心率趨勢",
+    "restingHrTrendImproving": "↓ {{bpm}} bpm（改善中）",
+    "restingHrTrendElevated": "↑ {{bpm}} bpm（偏高）",
+    "restingHrTrendStable": "穩定",
+    "restingHrTrendHint": "後半段讀數對比前半段",
+    "heartRateWorkoutFallback": "運動",
+    "heartRateDaytimeAvg": "日間平均",
+    "heartRateSleepingAvg": "訓緊覺平均",
+    "heartRateSleepDip": "對比日間 {{percent}}%",
+    "heartRateLowest": "最低",
+    "heartRateHighest": "最高",
+    "heartRateDayTimeline": "一日心率變化",
+    "heartRatePreviousDay": "前一日",
+    "heartRateNextDay": "第二日",
+    "heartRateDayEmpty": "呢日冇心率讀數",
+    "heartRateLegendSleep": "訓緊覺",
+    "heartRateLegendWorkout": "運動",
+    "heartRateDayFigures": "當日數字",
+    "heartRateRangeTooltip": "平均 {{avg}} bpm（{{min}}–{{max}}）· {{date}}",
+    "heartRateRangeHint": "長按一日就會喺下面打開",
+    "heartRateRangeTimeline": "每日平均心率",
+    "heartRateRangeEmpty": "呢段時間冇心率讀數",
+    "recordedDays": "有紀錄嘅日子",
+    "daysRatio": "{{totalDays}} 日入面 {{daysWithData}} 日",
+    "heartRateLoadFailed": "載入心率數據失敗",
+    "heartRateEmpty": "呢段時間冇記錄心率數據",
+    "restingHeartRateTrend": "靜息心率趨勢",
+    "heartRateZones": "心率區間",
+    "zoneSource": "您嘅區間：{{method}}，最大心率 {{max}} bpm（{{source}}）.",
+    "zoneSourceDefault": "您嘅區間載入之前，先用典型區間（以 190 bpm 最大心率計百分比）.",
+    "zoneSettingsLink": "心率區間設定",
+    "heartRateSummary": "心率摘要",
+    "heartRateInsights": "靜息心率分析",
+    "insightAthletic": "您嘅平均靜息心率屬運動員水平（低於 60 bpm），反映心血管效率好好.",
+    "insightNormal": "健康成人靜息心率一般介乎 60 至 100 bpm。數字越低通常代表心血管體能越好.",
+    "oralCare": "口腔護理",
+    "oralCareSubtitle": "刷牙對比目標、連續紀錄同時間"
   },
   "nutritionReport": {
     "title": "營養",
@@ -7266,7 +8235,8 @@
     "insightUp": "您嘅平均熱量比上一期多咗 {{pct}}%.",
     "insightDown": "您嘅平均熱量比上一期少咗 {{pct}}%.",
     "insightWeekday": "{{weekday}} 係您最高熱量嘅一日，平均 {{kcal}}.",
-    "insightStreak_other": "您最長嘅記錄連續日數係 {{count}} 日."
+    "insightStreak_other": "您最長嘅記錄連續日數係 {{count}} 日.",
+    "kcalWithUnit": "{{value}} {{unit}}"
   },
   "moodReport": {
     "title": "心情",
@@ -7343,7 +8313,22 @@
     "insightWeekendShorter": "您週末比平日夜晚瞓少 {{hours}} 個鐘.",
     "insightFullNights": "{{full}} 晚（共 {{total}} 晚）達到 7 個鐘.",
     "insightIrregular": "您嘅上床時間波動約 ±{{minutes}} 分鐘.",
-    "insightDurationChange": "瞓覺時長比起上一期{{change}}."
+    "insightDurationChange": "瞓覺時長比起上一期{{change}}.",
+    "negativeDuration": "-{{duration}}",
+    "needLoadFailed": "載入唔到今晚嘅訓覺需求",
+    "needTonight": "今晚訓覺需求",
+    "needTotal": "總計",
+    "needBaseline": "基準",
+    "needStrain": "負荷",
+    "needStrainHint": "根據今日運動",
+    "needDebt": "補債",
+    "needDebtHint": "您 {{amount}} 訓覺債嘅一部分",
+    "needSurplusHint": "您 {{amount}} 訓覺盈餘嘅一部分",
+    "recovery": "恢復",
+    "recoveryScore": "{{score}}/100",
+    "recoveryHint": "您嘅準備度：訓覺、靜息心率同 HRV",
+    "trainingLoad": "訓練負荷",
+    "trainingLoadHint": "按心率加權嘅運動分鐘"
   },
   "reportsSettings": {
     "reset": "重設",
@@ -7401,7 +8386,16 @@
       "caffeineSummary": "咖啡因摘要",
       "alcoholChart": "酒精圖表",
       "alcoholSummary": "酒精摘要",
-      "substancesWeekly": "每星期比較"
+      "substancesWeekly": "每星期比較",
+      "sleepNeed": "今晚訓覺需求",
+      "restingHrChart": "靜息心率圖",
+      "heartRateRangeTimeline": "每日平均心率",
+      "heartRateDayTimeline": "一日心率變化",
+      "heartRateZones": "強度區間",
+      "measurementTimeline": "測量時間線",
+      "oralCareBrushesChart": "每日刷牙次數圖",
+      "oralCareMinutesChart": "刷牙分鐘圖",
+      "oralCareSummary": "連續紀錄同其他護理"
     },
     "hydrationSections": "水分報告",
     "measurementsSections": "身體量度報告",
@@ -7409,7 +8403,9 @@
     "nutrientsDescription": "揀營養報告喺「您嘅營養素」下平均嘅維他命、礦物質同其他營養素，並拖嚟設定佢哋嘅次序。包含自訂營養素.",
     "nutrientReorderHint": "改呢種營養素喺報告入面嘅位置",
     "substancesSections": "咖啡因同酒精報告",
-    "exerciseSections": "運動報告"
+    "exerciseSections": "運動報告",
+    "heartRateSections": "心率報告",
+    "oralCareSections": "口腔護理報告"
   },
   "hydrationReport": {
     "title": "水分",
@@ -7533,7 +8529,11 @@
     "saveDistance": "更新",
     "distanceInvalid": "輸入機器顯示嘅距離.",
     "distanceFailed": "儲存唔到距離.",
-    "heartRate": "心率"
+    "heartRate": "心率",
+    "jumpRopeSaved": "跳繩已儲存",
+    "watchJumpRopeSaved": "手錶跳繩已儲存",
+    "treadmillCorrected": "機器顯示 {{shown}} {{unit}}；已按您嘅跑步機修正，儲存為 {{saved}} {{unit}}.",
+    "treadmillCorrectionOn": "您輸入嘅數字會扣減 {{percent}} 嘅跑步機修正."
   },
   "runPrograms": {
     "startWhenTitle": "開始 {{name}}",
@@ -7564,7 +8564,9 @@
         "tenKToHalf": "每星期有一次短跑、一次中程跑同一次長跑。長跑由 65 分鐘加到 115 分鐘，第 4、8 個星期輕啲，最後兩個星期喺比賽日前減量.",
         "fasterHalf": "每星期有一次速度訓練、一次輕鬆跑同一次長跑。長跑由 70 分鐘加到 110 分鐘，第 6、8 個星期用 25 同 30 分鐘嘅節奏跑取代速度訓練，最後兩個星期減量.",
         "beginnerMarathon": "每星期有一次短跑、一次中程跑同一次長跑。長跑由 70 分鐘加到 2½ 個鐘，每第四個星期輕啲，最後三個星期喺比賽日前減量.",
-        "advancedMarathon": "大部份星期有兩次輕鬆跑、一次速度或者節奏訓練、一次中程跑同一次長跑。長跑由 90 分鐘加到三個鐘，每第四個星期輕啲，最後兩個星期喺比賽日前減量."
+        "advancedMarathon": "大部份星期有兩次輕鬆跑、一次速度或者節奏訓練、一次中程跑同一次長跑。長跑由 90 分鐘加到三個鐘，每第四個星期輕啲，最後兩個星期喺比賽日前減量.",
+        "zone2Base": "每星期有短跑、中距離跑同長跑，全部輕鬆並壓住 Zone 2。Zone 2 時間由每星期 100 加到 155 分鐘，長跑由 40 加到 70 分鐘，第 4 同第 8 星期較輕鬆。第 6、7、9 星期短跑尾段加四次放鬆加速跑。第 4、8、10 星期嘅中距離跑係 Zone 檢查.",
+        "zone2Base4": "每星期有兩次短跑、中距離跑同長跑，全部輕鬆並壓住 Zone 2。Zone 2 時間由每星期 130 加到 190 分鐘，長跑由 40 加到 70 分鐘，第 4 同第 8 星期較輕鬆。第 6、7、9 星期第一次跑尾段加四次放鬆加速跑。第 4、8、10 星期嘅中距離跑係 Zone 檢查."
       },
       "rest": {
         "title": "休息日",
@@ -7574,7 +8576,8 @@
         "returnToRunning": "跑與跑之間留一兩日，例如星期一、星期四同星期六，並保持每次跑步輕鬆同可以傾偈。其他日子休息、行路或者輕鬆踩單車。如果途中任何地方越嚟越痛，就退回上一個星期.",
         "fourRun": "每星期四次跑步嗰陣，至少安排一個完整休息日，而且連續跑步唔可以超過兩日。長跑前一日保持輕鬆或者空閒，長跑後一日休息或者交叉訓練。其他日子用嚟休息、行路或者低衝擊交叉訓練.",
         "advanced": "每星期五次跑步嗰陣，安排兩日休息或者交叉訓練，並避免連續跑步超過兩次。速度或者節奏訓練同長跑至少相隔兩日，兩者前後嘅日子保持輕鬆，較輕嘅星期多啲休息.",
-        "longDistance": "長跑前一日保持輕鬆或者空閒，長跑後一日休息。安排其他跑步，令兩個辛苦嘅日子唔相鄰，並用空閒日子休息、行路或者低衝擊交叉訓練."
+        "longDistance": "長跑前一日保持輕鬆或者空閒，長跑後一日休息。安排其他跑步，令兩個辛苦嘅日子唔相鄰，並用空閒日子休息、行路或者低衝擊交叉訓練.",
+        "zone2Base": "跑同跑之間盡量隔一日休息，長跑放喺休息日之後一兩日。輕鬆跑好易累積，覺得冇力就休息，唔好硬跑快啲。其餘日子休息或者交叉訓練."
       },
       "title": "計劃點樣運作",
       "workout": {
@@ -7600,6 +8603,11 @@
       "pace": {
         "title": "配速範圍",
         "body": "喺「您嘅比賽配速」下輸入最近嘅比賽時間，「記錄」螢幕就可以為各類段落建議配速範圍。呢啲係估算：炎熱、坡道或者疲勞嘅一星期都會改變佢哋，所以當佢哋係參考，兩者唔一致嗰陣以努力程度為準."
+      },
+      "zone2": {
+        "title": "Zone 2 跑",
+        "body": "Zone 2 係輕鬆有氧跑：大約您最大心率 60 至 70%。Zone 2 跑係壓住心率範圍，唔係壓配速，因為同一個配速喺熱天或者攰嘅星期會更辛苦。記錄畫面會顯示範圍，同埋話您知高過定低過。冇心率讀數就用講嘢測試：您應該講到完整句子。長跑時心率會升幾下，20 分鐘之後上限會鬆少少。呼吸輕鬆嘅話，高幾下冇所謂；覺得辛苦就慢啲或者行。範圍係由您自己嘅心率區間設定得出；如果冇設最大心率，就按年齡估算，可能有十下以上偏差。覺得太輕鬆或者太辛苦，就信講嘢測試.",
+        "check": "第 4、8、10 星期各有一次 Zone 檢查：就係中距離跑。喺同一條平坦熟悉路線，用同上次一樣嘅心率或者強度跑，再對比配速。如果同樣辛苦但配速快咗，代表基礎進步緊。慢咗就唔好硬推：訓覺、熱同壓力都會反映喺度."
       }
     },
     "start": "開始計劃",
@@ -7772,7 +8780,80 @@
       "tooShort": "時間少過我哋嘅建議：呢個距離至少需要 {{min}} 個星期。揀一個較後嘅比賽日.",
       "tooFewDays": "至少揀兩日嚟跑步.",
       "create": "建立並開始計劃",
-      "open": "規劃比賽"
+      "open": "規劃比賽",
+      "useTest": "用最新測試嚟計劃",
+      "useTestDescription": "用您 {{date}} 嘅 {{test}} 定您嘅程度同比賽日配速.",
+      "fromTest": "起始程度：{{level}}。比賽日配速大約 {{pace}}.",
+      "estimateFromTest": "比賽日計劃大約 {{minutes}} 分鐘，配速跟您體能測試指出嘅水平；之後可以喺計劃改."
+    },
+    "goals": {
+      "title": "跑步目標",
+      "intro": "設定每週里數目標，同埋倒數嘅比賽.",
+      "set": "設定目標",
+      "edit": "編輯",
+      "none": "冇",
+      "unit": {
+        "km": "km",
+        "miles": "mi"
+      },
+      "weeklyLabel": "每週里數（{{unit}}）",
+      "weeklyProgress": "本週 {{done}} / {{target}} {{unit}}",
+      "weeklyReached": "已達每週目標",
+      "weeklyNeeded_other": "每日大約 {{amount}} {{unit}} 就達到（仲有 {{count}} 日）",
+      "raceNameLabel": "比賽名稱",
+      "raceDefaultName": "比賽日",
+      "raceDistanceLabel": "比賽距離（{{unit}}）",
+      "raceDateLabel": "比賽日",
+      "pickDate": "揀個日期",
+      "clearRace": "移除比賽",
+      "raceToday": "比賽日就係今日",
+      "raceIn_other": "仲有 {{count}} 日",
+      "racePast_other": "{{count}} 日前",
+      "errors": {
+        "distance": "輸入大於零嘅距離，或者留空.",
+        "raceDay": "揀比賽日，或者清除比賽名稱同距離.",
+        "save": "儲存唔到您嘅目標。請再試一次."
+      }
+    },
+    "realign": {
+      "title": "重新對齊您嘅計劃",
+      "titleMore": "您仲有時間剩",
+      "titleTight": "您嘅目標日期太趕",
+      "titleForced": "照樣繼續",
+      "intro": "您漏咗啲時間。重新對齊會重組餘下計劃，令您仍然喺目標日完成，保留長跑、減量同最後一節.",
+      "introMore": "您距離目標日嘅日數多過訓練節數。重複幾星期基礎可以令進程更穩定，亦一樣喺目標日完結.",
+      "introForced": "呢個會刪走足夠嘅節數，令計劃喺目標日完結。要跳過嘅嘢好多，進程會比原本單薄。減量同最後一節仍然保留.",
+      "what": "第 {{week}} 星期，第 {{run}} 次跑 · {{minutes}} 分鐘",
+      "before_other": "而家：仲有 {{count}} 節，{{date}} 結束.",
+      "after_other": "之後：{{count}} 節，{{date}} 結束.",
+      "changes": "有咩改動",
+      "changesMore": "加咗咩",
+      "change": {
+        "droppedRepeat": "刪走{{what}}：同嗰星期另一次跑重複",
+        "droppedShortest": "刪走{{what}}：嗰星期最短嘅跑",
+        "merged": "將{{what}}摺入下一星期：較輕鬆嘅星期合併",
+        "added": "再做一次{{what}}，作為額外基礎星期",
+        "repeated": "重複{{what}}"
+      },
+      "eased_other": "您停咗 {{days}} 日，所以接下來 {{count}} 節嘅跑會減輕 {{percent}}%.",
+      "kept": "減量同最後一節完全不變.",
+      "spare_other": "目標日前有 {{count}} 個訓練日留空：一次只可以加咁多.",
+      "accept": "重新對齊計劃",
+      "notNow": "而家唔改",
+      "back": "返回",
+      "done": "您嘅計劃已重新對齊",
+      "error": "重新對齊唔到您嘅計劃",
+      "tight_other": "距離目標日只剩 {{count}} 個訓練日，但仲有 {{left}} 節.",
+      "reason": {
+        "noTimeLeft": "目標日之前已經冇訓練日剩.",
+        "taperDoesNotFit": "已經冇位放減量同最後一節.",
+        "tooMuchToDrop": "要全部塞入就要刪走好多基礎訓練.",
+        "tooFewWeeks_other": "{{count}} 星期對呢個比賽嚟講太短."
+      },
+      "choose": "您揀之前唔會改:",
+      "later": "將目標移到 {{date}}",
+      "lower": "改計劃做 {{distance}}",
+      "continue": "照樣繼續"
     }
   },
   "speechVoice": {
@@ -7821,7 +8902,8 @@
     "indoorNote": "室內距離係手錶嘅估算。您可以喺結束嗰陣更正做跑步機嘅數字.",
     "starting": "喺您隻手錶度開始緊…",
     "startingHint": "抬起手腕並開啟 SparkyFitness（如果佢冇自動開始）。手錶一收到請求，訓練就會開始.",
-    "controlFailed": "連唔到您隻手錶"
+    "controlFailed": "連唔到您隻手錶",
+    "jumpingRope": "手錶跳繩"
   },
   "trainingLoadCard": {
     "loadFailed": "載入唔到您嘅訓練負荷.",
@@ -7836,7 +8918,11 @@
     "spike": "大幅上升：放鬆啲",
     "takeRest": "休息一日或者做輕鬆訓練.",
     "ready": "您休息夠喇，準備就緒.",
-    "explain": "加埋您嘅訓練時長同強度。平時係您嘅 4 星期平均。長條顯示最近 4 個星期；綠色係今個星期."
+    "explain": "加埋您嘅訓練時長同強度。平時係您嘅 4 星期平均。長條顯示最近 4 個星期；綠色係今個星期.",
+    "readiness": "準備度 {{score}}",
+    "readinessHigh": "應付到高強度訓練",
+    "readinessModerate": "一般訓練冇問題",
+    "readinessLow": "今日輕鬆啲"
   },
   "paceReference": {
     "title": "您嘅比賽配速",
@@ -7859,7 +8945,11 @@
     "save": "儲存",
     "clear": "清除",
     "watch": "都喺我隻 Apple Watch 上用",
-    "watchHint": "將手錶提供嘅計劃訓練限制喺呢啲範圍。淨係跑步."
+    "watchHint": "將手錶提供嘅計劃訓練限制喺呢啲範圍。淨係跑步.",
+    "wearOs": "亦用喺我嘅 Wear OS 手錶",
+    "testNote": "您有體能測試，所以只要測試仲喺度，配速就由最新測試決定。刪咗測試就會再用呢個比賽時間.",
+    "collapsedTest": "您嘅體能測試決定您嘅配速",
+    "collapsedEmpty": "加個近期比賽時間就可以定配速"
   },
   "allergens": {
     "trace": "含微量：{{name}}",
@@ -7964,6 +9054,1708 @@
     "saveAsRouteFailed": "儲存唔到路線",
     "fileTooLarge": "嗰個檔案太大",
     "fileTooLargeHint": "路線檔案最多可以去到 10 MB.",
-    "drawLimit": "呢個已經係路線喺度可以容納嘅最多點數。還原啲或者儲存呢條."
+    "drawLimit": "呢個已經係路線喺度可以容納嘅最多點數。還原啲或者儲存呢條.",
+    "watch": {
+      "title": "唔帶手機都跑得到",
+      "hint": "喺手錶留一份，然後喺手錶「有氧」開始，手機留喺屋企.",
+      "start": "喺手錶開始",
+      "send": "傳去手錶",
+      "sendAgain": "再傳一次",
+      "remove": "由手錶移除",
+      "sent": "已傳去您手錶",
+      "pending": "已傳，等手錶確認.",
+      "onWatch": "喺您手錶",
+      "outdated": "過時，再傳一次",
+      "full": "手錶滿咗。由手錶移除一條路線，再傳呢條.",
+      "sendFailed": "傳唔到路線去手錶",
+      "removeFailed": "由手錶移除唔到路線",
+      "startFailed": "喺手錶開始唔到",
+      "startTitle": "喺手錶開始",
+      "startMessage": "手錶會跟住路線，每個轉向都會震."
+    },
+    "generateRoute": "生成圈或者來回路線",
+    "generateUnavailable": "生成路線要有路線供應商。喺網頁版「設定 > 外部供應商」加一個。您仍然可以喺地圖畫路線.",
+    "generate": "生成",
+    "regenerate": "試另一個方向",
+    "distanceLabel": "距離",
+    "distanceRange": "揀 {{min}} 至 {{max}} {{unit}}.",
+    "startFrom": "由綠色大頭針開始。撳地圖可以移動佢.",
+    "startUnknown": "等緊您嘅位置。或者撳地圖揀起點.",
+    "useMyLocation": "我嘅位置",
+    "turnCount_other": "{{count}} 個轉向",
+    "style": {
+      "title": "路線風格",
+      "surface": "地面",
+      "hills": "坡度",
+      "any": "任何",
+      "trails": "山徑",
+      "roads": "馬路",
+      "flat": "較平",
+      "hilly": "較多斜坡",
+      "avoidSteps": "避開樓梯",
+      "avoidBusyRoads": "避開繁忙馬路"
+    },
+    "option": {
+      "title": "選項 {{n}}",
+      "flatter": "較平",
+      "moreTrail": "多啲山徑",
+      "shorter": "較短"
+    },
+    "followRoads": "跟住馬路",
+    "followRoadsNeedsProvider": "要路線供應商。喺網頁版「設定 > 外部供應商」加一個.",
+    "followRoadsUnrouted": "冇馬路線嘅段落會顯示成直線。可以重試，或者關閉「跟住馬路」直接存直線.",
+    "editorPointLimit": "一條路線最多 {{max}} 點。刪一個點先可以再加.",
+    "followBefore": "前面跟住馬路",
+    "followAfter": "後面跟住馬路",
+    "straightBefore": "前面直線",
+    "straightAfter": "後面直線",
+    "deletePoint": "刪除點",
+    "editLine": "喺地圖改路線",
+    "mapSatellite": "衛星圖",
+    "mapStandard": "地圖",
+    "mapUnavailable": "呢個版本唔可以喺地圖畫路線.",
+    "osmAttribution": "© OpenStreetMap",
+    "redo": "重做",
+    "findingRoute": "搵緊路線",
+    "turns": "轉向",
+    "showFewerTurns": "顯示少啲",
+    "showAllTurns_other": "顯示全部 {{count}} 個轉向",
+    "activity": {
+      "run": "跑步",
+      "walk": "行路",
+      "ride": "踩單車",
+      "hike": "行山"
+    },
+    "shape": {
+      "loop": "環圈",
+      "outAndBack": "來回"
+    },
+    "generateError": {
+      "noRoute": "嗰度搵唔到路線。試另一個位置或者另一個距離.",
+      "rateLimited": "路線要求太多。等幾分鐘再試.",
+      "engineError": "路線服務有問題。轉頭再試.",
+      "timeout": "路線服務用咗太耐。再試一次.",
+      "notConfigured": "未設定路線供應商。喺網頁版「設定 > 外部供應商」加一個.",
+      "invalid": "呢啲點冇得規劃路線.",
+      "unknown": "生成唔到路線."
+    },
+    "cue": {
+      "depart": "起步",
+      "straight": "繼續直行",
+      "slight_left": "偏左",
+      "left": "轉左",
+      "sharp_left": "急轉左",
+      "slight_right": "偏右",
+      "right": "轉右",
+      "sharp_right": "急轉右",
+      "uturn": "掉頭",
+      "arrive": "到達"
+    },
+    "goBack": "返回",
+    "followRoadsTooMany": "跟住馬路最多 {{max}} 點。撤銷啲點，或者關閉「跟住馬路」先儲存."
+  },
+  "compareReport": {
+    "screen": {
+      "retry": "再試一次",
+      "tooOld": "比較功能要新版 SparkyFitness 伺服器。請更新您嘅伺服器.",
+      "loadFailed": "載入唔到呢個比較."
+    },
+    "groups": {
+      "feelings": "您嘅感受",
+      "sleep": "瞓覺",
+      "meditation": "冥想",
+      "food": "飲食",
+      "training": "訓練",
+      "body": "身體"
+    },
+    "metrics": {
+      "mood": "心情",
+      "energy": "精力",
+      "focus": "專注力",
+      "timeAsleep": "瞓覺時數",
+      "sleepScore": "瞓覺分數",
+      "overnightHrv": "整夜 HRV",
+      "restingHeartRate": "靜息心率",
+      "bedtime": "入睡時間",
+      "bedtimeConsistency": "入睡時間穩定度",
+      "meditationMinutes": "冥想分鐘",
+      "meditationSessions7d": "冥想次數（7 天）",
+      "meditated": "有冥想",
+      "calories": "熱量",
+      "protein": "蛋白質",
+      "carbs": "碳水",
+      "fat": "脂肪",
+      "caffeine": "咖啡因",
+      "alcohol": "酒精",
+      "workoutMinutes": "運動分鐘",
+      "cardioMinutes": "有氧分鐘",
+      "strengthVolume": "力量訓練量",
+      "trainingLoad": "訓練負荷",
+      "weightTrend": "體重趨勢",
+      "steps": "步數"
+    },
+    "metricNouns": {
+      "meditated": "冥想緊"
+    },
+    "phrase": {
+      "lastNights": "昨晚嘅{{metric}}",
+      "daysYou": "您有{{verb}}嘅日數",
+      "your": "您嘅{{metric}}",
+      "yourWhen": "您{{timing}}嘅{{metric}}"
+    },
+    "timing": {
+      "sameDay": "同一日",
+      "thatDay": "嗰日",
+      "nextDay": "第二日",
+      "dayAfterYouWoke": "您醒之後嗰日",
+      "thatNight": "嗰晚",
+      "dayBefore": "前一日",
+      "nightBefore": "前一晚",
+      "twoNightsBefore": "前兩晚",
+      "sameNight": "同一晚",
+      "nextNight": "第二晚",
+      "sameWeek": "同一星期",
+      "nextWeek": "下一星期"
+    },
+    "yesNo": {
+      "onDays": "您有{{yes}}嘅日子",
+      "dayAfter": "您{{yes}}之後嗰日",
+      "dayBefore": "您{{yes}}之前嗰日",
+      "nightAfter": "您{{yes}}之後嗰晚",
+      "nightBefore": "您{{yes}}之前嗰晚",
+      "twoNightsBefore": "您{{yes}}之前兩晚"
+    },
+    "verdict": {
+      "question": "{{a}} 同 {{b}} {{timing}} 有冇關係？",
+      "days_other": "{{count}} 日",
+      "weeks_other": "{{count}} 星期",
+      "strength": {
+        "weak": "弱",
+        "moderate": "中等",
+        "strong": "強"
+      },
+      "linkedHeadline": "有，{{strength}}嘅關係",
+      "linkedPositive": "當 {{a}} {{aDirection}}，{{b}} {{timing}}都{{bDirection}}.",
+      "linkedNegative": "當 {{a}} {{aDirection}}，{{b}} {{timing}}{{bDirection}}.",
+      "noLinkHeadline": "冇明顯關係",
+      "noLinkDetail": "呢 {{n}} 入面，兩者同步變化嘅程度唔比隨機多.",
+      "longerSpan": "時間範圍長啲，弱嘅關係會容易睇到啲.",
+      "differenceHeadline": "有，有分別",
+      "differenceHigher": "{{when}}，{{outcome}}高過{{others}}.",
+      "differenceLower": "{{when}}，{{outcome}}低過{{others}}.",
+      "differenceLater": "{{when}}，{{outcome}}遲過{{others}}.",
+      "differenceEarlier": "{{when}}，{{outcome}}早過{{others}}.",
+      "noDifferenceHeadline": "冇明顯分別",
+      "noDifferenceDetail": "呢 {{n}} 入面，您嘅{{outcome}}喺兩類日子之間嘅差異唔夠大，唔可以排除隨機.",
+      "tooFewHeadline": "日子仲未夠",
+      "tooFewHeadlineWeeks": "星期仲未夠",
+      "tooFewDetail": "您得 {{n}}，要有 {{needed}} 先答到.",
+      "logDays_other": "再記錄多 {{count}} 日{{weaker}}，或者揀長啲嘅範圍.",
+      "logWeeks_other": "再記錄多 {{count}} 星期{{weaker}}，或者揀長啲嘅範圍.",
+      "needsHistory": "每日會同您之前兩星期比較，所以最少要有一星期紀錄先得.",
+      "fewYesHeadline": "您{{yes}}嘅日子仲未夠",
+      "fewYesDetail": "您得 {{n}}，要有 {{needed}} 先答到。試吓長啲嘅範圍.",
+      "fewNoHeadline": "冇{{yesNoun}}嘅日子仲未夠",
+      "fewNoDetail": "呢段時間您幾乎日日都{{yes}}，冇嘢可以對比。試吓長啲嘅範圍.",
+      "noVariationHeadline": "仲未有嘢可以比較",
+      "noVariationDetail": "呢段時間{{metric}}每次都一樣，冇嘢可以比較.",
+      "noVariationGeneric": "其中一項喺呢段時間冇變過.",
+      "longerSpanDifference": "範圍長啲，細微分別會容易睇到啲."
+    },
+    "howSure": {
+      "differenceHigher": "比{{others}}高 {{diff}}（各自對比您自身正常值）",
+      "differenceLower": "比{{others}}低 {{diff}}（各自對比您自身正常值）",
+      "differenceLater": "比{{others}}遲 {{diff}} 分鐘（各自對比您自身正常值）",
+      "differenceEarlier": "比{{others}}早 {{diff}} 分鐘（各自對比您自身正常值）",
+      "differenceSame": "同{{others}}差不多（各自對比您自身正常值）"
+    },
+    "since": {
+      "question": "自從我開始定期{{habit}}之後，{{outcome}}有冇變？",
+      "changedHeadline": "有，有變",
+      "changedDetail": "由 {{start}} 起，您嘅{{outcome}}平均 {{since}}，之前係 {{before}}（{{diff}}）.",
+      "changedDetailLastYear": "過去一年，您嘅{{outcome}}平均 {{since}}，您開始之前一年係 {{before}}（{{diff}}）.",
+      "noChangeHeadline": "冇明顯變化",
+      "noChangeDetail": "由 {{start}} 起，您嘅{{outcome}}平均 {{since}}，之前係 {{before}}，差異唔夠大，唔可以排除隨機.",
+      "noChangeDetailLastYear": "過去一年，您嘅{{outcome}}平均 {{since}}，您開始之前一年係 {{before}}，差異唔夠大，唔可以排除隨機.",
+      "minutesLater": "遲 {{minutes}} 分鐘",
+      "minutesEarlier": "早 {{minutes}} 分鐘",
+      "fewBeforeHeadline": "{{start}} 之前嘅資料仲未夠",
+      "fewSinceHeadline": "由 {{start}} 起嘅資料仲未夠",
+      "fewValuesDetail": "您有 {{n}} 個{{outcome}}紀錄，要有 {{needed}} 先答到.",
+      "shortSinceDetail": "到而家為止過咗 {{days}}，要有 {{needed}} 先答到.",
+      "shortBeforeDetail": "您嘅{{outcome}}紀錄由嗰時之前 {{days}} 開始，要有 {{needed}} 先答到.",
+      "noStartHeadline": "揀返您開始嗰日",
+      "noStartDetail": "之後就會比較您嗰日之前同之後嘅{{outcome}}.",
+      "regularity_other": "{{count}} 星期入面您有 {{weeksKept}} 星期保持到.",
+      "alreadyRising": "⚠ 您開始之前{{metric}}已經升緊.",
+      "alreadyFalling": "⚠ 您開始之前{{metric}}已經跌緊.",
+      "alreadyLater": "⚠ 您開始之前{{metric}}已經遲緊.",
+      "alreadyEarlier": "⚠ 您開始之前{{metric}}已經早緊.",
+      "caveat": "幾個月內好多嘢都會變；呢個只係顯示您開始之後有變化，唔代表係{{habit}}造成.",
+      "startLabel": "由",
+      "startTitle": "開始日期",
+      "suggested": "（建議）",
+      "pickDate": "揀個日期",
+      "lineLabel": "線：{{metric}} ≥",
+      "lineTitle": "{{metric}} 達到或以上",
+      "chartBefore": "之前",
+      "chartSince": "之後",
+      "chartLine": "線 {{line}}",
+      "chartLabel": "{{metric}} 隨時間變化，{{start}}之前同之後",
+      "typicalRange": "通常介乎 {{low}} 至 {{high}}（之前：{{beforeLow}}–{{beforeHigh}}）.",
+      "aboveLine": "有 {{since}} 日達到或者超過 {{line}}（之前：{{before}}）."
+    },
+    "stats": {
+      "pTiny": "p < 0.001",
+      "p": "p {{p}}",
+      "correlation": "r {{r}} · 95% 範圍 {{low}} 至 {{high}} · {{p}} · {{n}}",
+      "difference": "差異 {{diff}} · 95% 範圍 {{low}} 至 {{high}} · {{p}} · {{n}}",
+      "differenceMinutes": "差異 {{diff}} 分鐘 · 95% 範圍 {{low}} 至 {{high}} 分鐘 · {{p}} · {{n}}"
+    },
+    "direction": {
+      "higher": "比平時高",
+      "lower": "比平時低",
+      "later": "比平時遲",
+      "earlier": "比平時早"
+    },
+    "logged": {
+      "weight": "體重",
+      "sleep": "瞓覺",
+      "workouts": "運動",
+      "meditation": "冥想"
+    },
+    "answer": {
+      "throughYesterday": "截至昨日",
+      "throughLastWeek": "截至上星期",
+      "throughDate": "截至 {{date}}"
+    },
+    "chart": {
+      "eachDay": "每日一點",
+      "eachWeek": "每星期一啲",
+      "overTime": "隨時間",
+      "axis": "{{metric}} 對比您平時",
+      "axisYesNo": "{{metric}}（有或冇）",
+      "axisDaysYou": "您{{verb}}嘅日數對比平時",
+      "range": "{{metric}} {{min}}–{{max}}",
+      "noDots": "仲未有兩樣都有嘅日子",
+      "noDotsWeeks": "仲未有兩樣都有嘅星期",
+      "noOverTime": "呢段時間冇任何紀錄",
+      "dotsLabel": "每點係一組 {{a}} 同 {{b}}",
+      "overTimeLabel": "{{a}} 同 {{b}} 隨時間變化，各自按自己範圍縮放"
+    },
+    "bars": {
+      "yesDays": "您{{yes}}嘅日子",
+      "noDays": "冇{{yesNoun}}嘅日子",
+      "otherDays": "其他日子",
+      "otherNights": "其他晚上",
+      "meanAndDays_other": "{{mean}} · {{count}} 日",
+      "meanAndNights_other": "{{mean}} · {{count}} 晚"
+    },
+    "checks": {
+      "ownNormal": "✓ 對比您自身正常值",
+      "notProof": "有關係，唔等於有因果",
+      "seemsFirst": "睇落係{{metric}}先出現",
+      "comesFirst": "{{metric}}先出現",
+      "otherWay": "反方向嘅關係更強",
+      "cantTell": "分唔到邊個先",
+      "weekendHolds": "扣除週末因素後仍然成立",
+      "weekendMay": "呢個可能係平日同週末嘅差異"
+    },
+    "sentence": {
+      "something": "某樣嘢",
+      "sometime": "某段時間",
+      "does": "係咪",
+      "goWith": "同…有關係",
+      "questionMark": "？",
+      "firstTitle": "第一項",
+      "secondTitle": "第二項",
+      "timingTitle": "時間點",
+      "dayByDay": "逐日",
+      "weekByWeek": "逐星期",
+      "sameDay": "同一日",
+      "nextDay": "第二日",
+      "dayBefore": "前一日",
+      "sameWeek": "同一星期",
+      "nextWeek": "下一星期",
+      "since": "由",
+      "iStarted": "我開始",
+      "regularlyHas": "定期，係咪已經",
+      "changed": "變咗？",
+      "sinceHabit": "自從某個習慣開始",
+      "beforeVsSince": "之前對比之後"
+    },
+    "span": {
+      "30d": "30 日",
+      "60d": "60 日",
+      "90d": "90 日",
+      "6m": "6 個月",
+      "1y": "1 年"
+    },
+    "start": {
+      "suggestions": "試吓呢幾個",
+      "recent": "您近期嘅問題"
+    },
+    "title": "比較"
+  },
+  "plates": {
+    "title": "槓片同槓鈴",
+    "calculatorTitle": "槓片計算器",
+    "enterWeight": "請先輸入呢組嘅重量.",
+    "collarsWeight": "卡扣 {{weight}} {{unit}}",
+    "loadSummary": "每邊 {{perSide}} {{unit}} · 合共 {{total}} {{unit}}",
+    "cannotLoad": "您嘅槓片砌唔到啱啱 {{weight}} {{unit}}.",
+    "nearestBelow": "最接近（低過）：{{weight}} {{unit}}",
+    "nearestAbove": "最接近（高過）：{{weight}} {{unit}}",
+    "shortBy": "差 {{diff}} {{unit}} 先到目標",
+    "overBy": "超過目標 {{diff}} {{unit}}",
+    "nothingBelow": "目標輕過空槓鈴（連卡扣）.",
+    "nothingAbove": "目標重過您啲槓片可以加到嘅上限.",
+    "tooLarge": "器材太多，搵唔到。刪減啲槓片或者對數.",
+    "barKind": {
+      "barbell": "槓鈴",
+      "womens": "女子槓鈴",
+      "ez": "EZ 槓",
+      "trap": "六角槓",
+      "other": "其他槓鈴"
+    },
+    "useKgPlates": "用公斤槓片",
+    "useLbPlates": "用磅槓片",
+    "presetHint": "由標準組合開始，下面可以再改.",
+    "platesHeading": "槓片（{{unit}}）",
+    "barsHeading": "槓鈴（{{unit}}）",
+    "plateWeight": "重量",
+    "addPlate": "加槓片",
+    "removePlate": "刪除 {{weight}} 槓片",
+    "barName": "名稱",
+    "addBar": "加槓鈴",
+    "removeBar": "刪除槓鈴 {{name}}",
+    "collarsCount": "計埋卡扣",
+    "collarWeight": "一個卡扣重量（{{unit}}）",
+    "resetToStandard": "回復標準",
+    "invalid": "檢查重量同對數：重量最多三位小數，每種槓片只列一次，對數係 1 至 20 嘅整數.",
+    "dismiss": "關閉槓片計算機",
+    "startFrom": "由……開始",
+    "fewerPairs": "少一對 {{weight}}",
+    "morePairs": "多一對 {{weight}}",
+    "pairsCount_other": "{{count}} 對",
+    "pairsShort_other": "{{count}} 對",
+    "barWeightLabel": "槓重",
+    "collarsHint": "每個負重加上槓箍嘅重量.",
+    "saveFailed": "儲存唔到槓片同槓重",
+    "resetTitle": "重設為標準？",
+    "resetDescription": "您儲存嘅槓片同槓重會移除，再用返標準組.",
+    "resetFailed": "重設唔到槓片同槓重",
+    "loadFailed": "載入唔到您嘅槓片同槓重.",
+    "graphicLabel": "{{bar}} {{unit}} 槓，每邊 {{perSide}} {{unit}}",
+    "graphicNotExact": "您嘅槓片砌唔到啱啱 {{weight}} {{unit}}.",
+    "graphicNearest": "槓片：最接近 {{weight}} {{unit}}",
+    "graphicBelowBar": "槓片：比槓重更輕",
+    "targetWeight": "目標重量：{{weight}} {{unit}}",
+    "availableEquipment": "可用器材",
+    "manage": "管理",
+    "platesUnit": "槓片（{{unit}}）",
+    "barUnit": "槓（{{unit}}）",
+    "calculatorShort": "計算機",
+    "barCard": "槓 {{number}}：{{name}}",
+    "removeBarShort": "移除",
+    "barWeightUnit": "重量（{{unit}}）"
+  },
+  "barcodeSources": {
+    "currentSource": "來源：{{name}}",
+    "local": "您嘅食物",
+    "external": "網上供應商",
+    "fallback": "Open Food Facts 備用",
+    "otherSources": "其他來源",
+    "empty": "冇其他來源可用",
+    "error": "載入唔到條碼來源。請再試一次.",
+    "comparison": "逐個結果對比標籤上嘅份量。克同毫升係唔同嘅基準.",
+    "retry": "載入唔到來源。撳一下再試.",
+    "providerError": "來源用唔到",
+    "noMatch": "冇符合",
+    "basis": "每 {{size}} {{unit}}",
+    "macrosWithUnit": "{{calories}} {{unit}} · 蛋白質 {{protein}} g · 碳水 {{carbs}} g · 脂肪 {{fat}} g",
+    "unknown": "—"
+  },
+  "featureSettings": {
+    "title": "功能",
+    "description": "喺呢個 App 開關整個功能.",
+    "footnote": "關閉功能只係收埋佢：唔會刪除任何嘢，同步同匯入照樣運行.",
+    "loading": "載入緊",
+    "loadError": "載入唔到呢個設定.",
+    "saveFailed": "儲存唔到呢個設定。請再試一次.",
+    "appOnly": "只限呢個 App。網站有自己嘅開關.",
+    "serverTooOld": "想改呢個，就要更新您嘅 SparkyFitness 伺服器.",
+    "groups": {
+      "health": "健康",
+      "nutrition": "營養",
+      "training": "訓練",
+      "wellbeing": "身心健康"
+    },
+    "cycle": {
+      "title": "週期同懷孕",
+      "discreetTitle": "健康",
+      "description": "追蹤經期、生育同懷孕.",
+      "scope": "App 同網站共用一個開關.",
+      "setupAction": "設定",
+      "setupHint": "答幾個問題就設定好."
+    },
+    "labResults": {
+      "title": "化驗結果",
+      "description": "記錄驗血同隨時間追蹤每個指標."
+    }
+  },
+  "addMenuSettings": {
+    "reorder": "重排 {{name}}",
+    "reorderHint": "改呢行喺「快速操作」嘅位置",
+    "reset": "回復預設",
+    "cardsTitle": "圖磚",
+    "cardsDescription": "「快速操作」頂部四個圖磚。撳一個就可以揀放咩。揀已經放咗嘅嘢就會互換位置.",
+    "rowsTitle": "清單",
+    "rowsDescription": "圖磚下面嘅行。拖把手可以移動。關閉一行就會收埋.",
+    "previewTitle": "預覽",
+    "previewDescription": "您揀完之後「快速操作」嘅樣.",
+    "lineNumber": "第 {{number}} 行",
+    "offInFeatures": "唔顯示：已喺「功能」關閉",
+    "showAs": "顯示為",
+    "showAsValue": "顯示為{{style}}",
+    "styleList": "清單",
+    "stylePair": "一對",
+    "styleButton": "按鈕",
+    "pairsTitle": "一對對",
+    "pairsDescription": "清單下面一行兩個。得一個就會佔成行.",
+    "buttonsTitle": "按鈕",
+    "buttonsDescription": "喺面板底部並排顯示.",
+    "chooseCard": "揀一個圖磚",
+    "slotLabel": "圖磚 {{number}}：{{name}}",
+    "slotHint": "打開清單揀放咩"
+  },
+  "calorieLink": {
+    "action": "連結已同步運動",
+    "linked": "已連結已同步運動",
+    "title": "連結已同步運動",
+    "description": "如果手錶或者健康 App 都記錄咗呢節，就將兩邊連結，令熱量只計一次。兩邊估算都會保留.",
+    "loading": "搵緊已同步運動...",
+    "loadError": "載入唔到已同步運動.",
+    "none": "呢日搵唔到已同步運動.",
+    "workoutFallback": "運動",
+    "minutes": "{{value}} 分鐘",
+    "caloriesWithUnit": "{{value}} {{unit}}",
+    "sameSession": "同一節",
+    "sameTime": "時間有重疊",
+    "countHeading": "計入每日總數",
+    "sparkyfitness": "呢次運動（{{value}}）",
+    "synced": "已同步運動（{{value}}）",
+    "higher": "兩者較高（{{value}}）",
+    "lower": "兩者較低（{{value}}）",
+    "average": "平均值（{{value}}）",
+    "custom": "自訂總數",
+    "customLabelWithUnit": "呢節合共（{{unit}}）",
+    "link": "連結運動",
+    "unlink": "取消連結",
+    "linkError": "連結運動失敗.",
+    "unlinkError": "取消連結失敗."
+  },
+  "guidedCheckIn": {
+    "stepOfTotal": "打卡：第 {{step}} 步，共 {{total}} 步",
+    "skip": "略過",
+    "skipA11y": "略過呢一步",
+    "saveAndContinue": "儲存並繼續",
+    "finish": "完成",
+    "done": "打卡完成",
+    "skipUnsavedTitle": "略過呢一步？",
+    "skipUnsavedMessage": "您喺呢步改嘅嘢唔會儲存.",
+    "backA11y": "返去上一步",
+    "backUnsavedTitle": "退回上一步？",
+    "resumeTitle": "繼續您嘅打卡？",
+    "resumeMessage": "您喺第 {{step}} 步（共 {{total}} 步）停咗.",
+    "startOver": "由頭開始"
+  },
+  "actionTags": {
+    "waiting": {
+      "title": "將手機貼住 NFC 標籤",
+      "hint": "手機背面貼實標籤，直到完成為止."
+    },
+    "scan": {
+      "logged": "已記錄 {{summary}}",
+      "tapToUndo": "撳一下復原",
+      "undoFailed": "復原唔到",
+      "tooSoon": "啱啱先記咗",
+      "title": "NFC 標籤",
+      "noServer": "連唔到您嘅伺服器",
+      "noServerSubtitle": "檢查連線，再拍多次標籤.",
+      "running": "記錄緊…",
+      "confirmTitle": "記錄 {{label}}？",
+      "confirmAction": "記錄",
+      "unknownTitle": "您嘅帳戶未設定呢個標籤",
+      "unknownSubtitle": "乜都冇記錄。設定咗就會知拍一下做咩.",
+      "setUp": "設定呢個標籤",
+      "missingTitle": "呢個標籤指向嘅嘢已刪除",
+      "missingSubtitle": "乜都冇記錄。揀返標籤應該做咩.",
+      "fix": "修正呢個標籤",
+      "serverTooOld": "您嘅伺服器未支援 NFC 標籤",
+      "failed": "記錄唔到",
+      "serverTooOldSubtitle": "更新您嘅 SparkyFitness 伺服器再試.",
+      "failedSubtitle": "乜都冇記錄。檢查連線再試."
+    },
+    "form": {
+      "errors": {
+        "labelRequired": "俾個名個標籤",
+        "containerRequired": "揀一個水容器",
+        "drinks": "每次拍嘅杯數要係 1 至 {{max}} 嘅整數",
+        "amount": "輸入大於零嘅份量",
+        "itemRequired": "揀一樣食物或者一餐",
+        "invalid": "檢查份量同名，再試一次。標籤乜都冇寫入."
+      },
+      "holdToWrite": "將手機貼住 NFC 標籤",
+      "written": "標籤已準備好",
+      "overwriteTitle": "呢個標籤已經有資料",
+      "overwriteSparky": "佢已經係另一個 SparkyFitness 標籤。取代之後，嗰個標籤就會用唔到.",
+      "overwriteOther": "入面有其他嘢，例如連結或者卡片。要用呢個標籤取代佢？",
+      "replace": "取代",
+      "writeFailed": "寫唔入標籤",
+      "writeFailedHint": "手機要穩定貼住標籤。鎖咗或者貼喺金屬上嘅標籤寫唔到.",
+      "saved": "標籤已儲存",
+      "saveFailed": "儲存唔到標籤",
+      "deleteTitle": "移除呢個標籤？",
+      "deleteMessage": "貼紙會保留連結，但拍佢就唔會再記錄任何嘢.",
+      "deleteFailed": "移除唔到標籤",
+      "editTitle": "編輯 NFC 標籤",
+      "createTitle": "設定 NFC 標籤",
+      "loading": "載入緊標籤…",
+      "action": "佢應該做咩？",
+      "container": "容器",
+      "containerPlaceholder": "揀一個容器",
+      "drinks": "每次拍幾杯",
+      "name": "名稱",
+      "namePlaceholder": "例如：枱頭水樽",
+      "askFirst": "記錄前先問",
+      "askFirstHint": "每次拍都彈「記錄」或者「取消」，唔會即刻記錄.",
+      "writeHint": "儲存時，將手機貼住標籤寫入。金屬表面（例如鋼水樽）要用抗金屬標籤.",
+      "writeAgain": "再寫一次落標籤",
+      "delete": "移除呢個標籤",
+      "serverTooOld": "您嘅伺服器未支援食物同餐標籤。更新伺服器再試.",
+      "amountIn": "每次拍份量（{{unit}}）",
+      "servings": "每次拍份數",
+      "mealType": "記錄去",
+      "mealTypeHint": "按一日時間就用每種餐類嘅慣常時間，同快速記錄一樣.",
+      "foodOrMeal": "食物或者餐",
+      "foodOrMealPlaceholder": "揀一樣食物或者一餐"
+    },
+    "unsupportedTitle": "呢部手機用唔到 NFC 標籤",
+    "unsupportedSubtitle": "NFC 標籤要有支援 NFC 嘅手機.",
+    "disabledTitle": "NFC 已關閉",
+    "disabledSubtitle": "喺手機設定開返 NFC，再返嚟.",
+    "list": {
+      "holdToScan": "將手機貼住 NFC 標籤",
+      "notOurs": "嗰個唔係 SparkyFitness 標籤",
+      "scanFailed": "讀唔到標籤",
+      "add": "設定標籤",
+      "asksFirst": "記錄前先問",
+      "loading": "載入緊標籤…",
+      "serverTooOld": "您嘅伺服器未支援 NFC 標籤",
+      "loadFailed": "載入 NFC 標籤失敗",
+      "serverTooOldSubtitle": "更新您嘅 SparkyFitness 伺服器先可以用.",
+      "loadFailedSubtitle": "檢查連線再試.",
+      "emptyTitle": "仲未有 NFC 標籤",
+      "emptySubtitle": "喺水樽或者杯貼張 NFC 標籤，喺呢度設定，然後拍一下記錄飲品.",
+      "scan": "掃描標籤"
+    },
+    "title": "NFC 標籤",
+    "action": {
+      "water": "{{drinks}} × {{name}}",
+      "waterMissing": "水容器已經刪除",
+      "servings_other": "{{formattedCount}} 份",
+      "amount": "{{quantity}} {{unit}}",
+      "food": "{{amount}} · {{meal}}",
+      "unsupported": "更新 App 先可以用呢個標籤"
+    },
+    "type": {
+      "water": "水或者飲品",
+      "foodOrMeal": "食物或者餐"
+    },
+    "container": {
+      "add": "加 NFC 標籤",
+      "count_other": "{{formattedCount}} 個標籤記錄呢個容器",
+      "hint": "拍呢個水樽上嘅貼紙就記錄飲品"
+    },
+    "food": {
+      "count_other": "{{formattedCount}} 個標籤記錄呢樣食物",
+      "hint": "拍貼紙就記錄呢樣食物"
+    },
+    "meal": {
+      "auto": "按一日時間",
+      "count_other": "{{formattedCount}} 個標籤記錄呢餐",
+      "hint": "拍貼紙就記錄呢餐"
+    }
+  },
+  "bloodAlcohol": {
+    "title": "估算酒精濃度",
+    "estimatedNow": "而家估算",
+    "peakAt": "最高峰喺 {{time}}",
+    "unitPermille": "‰",
+    "unitPercent": "%",
+    "estimatedTimes": "有啲飲酒時間係估嘅",
+    "disclaimer": "只係粗略估算，實際數值可能相差 20% 或者更多。絕對唔可以靠佢判斷您揸唔揸得車.",
+    "missingInputs": "喺個人資料加以下資料就睇到估算：",
+    "missingSex": "性別：喺網頁版個人資料設定",
+    "missingWeight": "體重：喺「測量」記錄",
+    "missingHeight": "身高：喺「測量」記錄",
+    "missingAge": "年齡：喺網頁版個人資料設定出生日期",
+    "implausibleInputs": "您嘅體重或者身高睇落唔對，所以冇估算。去「測量」檢查最新體重同身高.",
+    "formulaFallback": "您揀嘅公式唔配合您嘅身體數據，所以用 Watson 公式."
+  },
+  "customCategories": {
+    "title": "自訂測量",
+    "add": "加類別",
+    "loading": "載入緊自訂測量...",
+    "loadFailed": "載入自訂測量失敗",
+    "loadFailedSubtitle": "檢查連線再試.",
+    "emptyTitle": "仲未有自訂類別",
+    "emptySubtitle": "加個類別（例如血糖）就可以追蹤您自己嘅測量.",
+    "editNamed": "編輯 {{name}}",
+    "deleteNamed": "刪除 {{name}}",
+    "deleteTitle": "刪除類別",
+    "deleteMessage": "刪除 {{name}}？喺佢下面記錄嘅測量就唔會再顯示.",
+    "deleteSuccess": "類別已刪除",
+    "deleteFailed": "刪除類別失敗"
+  },
+  "customCategoryEdit": {
+    "createTitle": "加類別",
+    "editTitle": "編輯類別",
+    "loading": "載入緊類別...",
+    "name": "名稱",
+    "namePlaceholder": "例如：血糖",
+    "nameHelp": "用嚟同步嘅內部識別名",
+    "displayName": "顯示名稱（選填）",
+    "displayNamePlaceholder": "例如：早晨血糖",
+    "displayNameHelp": "選填，喺 App 顯示嘅自訂名稱",
+    "measurementType": "測量類型",
+    "measurementTypePlaceholder": "例如：mg/dL",
+    "unitPrecisionNote": "用標準單位（例如 kcal、mmHg、bpm）會自動最佳化圖表精確度.",
+    "dataType": "資料類型",
+    "dataTypeNumeric": "數值",
+    "dataTypeText": "文字",
+    "frequency": "頻率",
+    "frequencyAll": "不限（紀錄數量無限）",
+    "frequencyDaily": "每日（一日一筆）",
+    "frequencyHourly": "每小時（一小時一筆）",
+    "frequencyAllShort": "不限",
+    "frequencyDailyShort": "每日",
+    "frequencyHourlyShort": "每小時",
+    "errors": {
+      "title": "檢查表單",
+      "required": "名稱同測量類型都一定要填."
+    },
+    "saveSuccess": "類別已儲存",
+    "saveFailed": "儲存類別失敗"
+  },
+  "treadmillSettings": {
+    "title": "跑步機同步幅",
+    "unitFeet": "ft",
+    "unitMeters": "m",
+    "strideSection": "您嘅步幅",
+    "strideSectionHint": "一步行幾遠。室內冇 GPS，所以 App 用佢將步數變成距離.",
+    "walkingStride": "行路步幅",
+    "runningStride": "跑步步幅",
+    "strideSummaryTypical": "{{stride}} · 典型值",
+    "strideSummaryManual": "{{stride}} · 由您設定",
+    "strideSummaryLearned_other": "{{stride}} · 由 {{count}} 個距離學返嚟",
+    "strideManual": "由您設定。之後新距離會喺此基礎微調.",
+    "strideLearned_other": "由 {{count}} 個真實距離學返嚟。每個新距離都會微調.",
+    "strideDefault": "典型步幅。每次您行或者跑完輸入跑步機距離，佢就會學您嘅步幅；您亦可以喺度自己設.",
+    "strideInputA11y": "{{activity}}，單位 {{unit}}",
+    "strideInvalid": "呢個步幅睇落唔對。一步通常介乎 0.3 至 2.5 m（1 至 8 ft）.",
+    "measureStrideToggle": "喺跑道量",
+    "measureStrideHint": "行或者跑一段您肯定正確嘅距離，例如跑道幾圈。然後輸入健康 App 或者手錶嘅步數，同埋實際距離.",
+    "calSteps": "步數",
+    "calDistance": "實際距離",
+    "calShown": "跑步機顯示",
+    "calibrateAction": "設定我嘅步幅",
+    "calibrateFailed": "太短或者加唔埋。最少要 150 步同 100 m，再檢查數字.",
+    "calibrated": "您嘅{{activity}}而家係 {{stride}}.",
+    "reset": "重設",
+    "resetA11y": "重設{{activity}}",
+    "treadmillSection": "您嘅跑步機準唔準？",
+    "treadmillSectionHint": "用喺螢幕讀數偏咗嘅跑步機。會修正您由佢輸入嘅距離，手機同手錶都適用。設定存喺呢部手機.",
+    "treadmillRow": "跑步機顯示",
+    "treadmillSummaryOff": "差不多準。冇改任何嘢.",
+    "treadmillSummaryLong": "顯示多過您實際跑咗 {{percent}}",
+    "treadmillSummaryShort": "顯示少過您實際跑咗 {{percent}}",
+    "treadmillSummaryLongUnset": "顯示多過您實際跑咗。輸入多幾多.",
+    "treadmillSummaryShortUnset": "顯示少過您實際跑咗。輸入少幾多.",
+    "displayReads": "對比您實際跑咗，佢顯示",
+    "readsRight": "差不多準",
+    "readsLong": "多咗",
+    "readsShort": "少咗",
+    "percentBy": "幅度",
+    "percentA11y": "跑步機偏差百分比",
+    "preview": "當佢顯示 {{shown}} {{unit}}，會儲存 {{saved}} {{unit}}.",
+    "previewNone": "輸入偏差幾多，最多 {{max}}%。0 就唔會改.",
+    "measureTreadmillToggle": "唔確定？用步數計出嚟",
+    "measureTreadmillHint": "喺跑步機行或者跑，然後輸入健康 App 或者手錶嘅步數，同跑步機顯示嘅數。步數乘步幅就係實際距離.",
+    "checkAction": "檢查我嘅跑步機",
+    "checkedLong": "按您步數實際係 {{actual}} {{unit}}，即係跑步機顯示多咗 {{percent}}.",
+    "checkedShort": "按您步數實際係 {{actual}} {{unit}}，即係跑步機顯示少咗 {{percent}}.",
+    "checkedSame": "按您步數實際係 {{actual}} {{unit}}。跑步機啱，冇嘢要改.",
+    "useCorrection": "用呢個修正",
+    "watchScale": "手錶自己嘅估算",
+    "watchScaleHint": "當您保留手錶距離而唔輸入跑步機數字時用。手錶靠手臂擺動估，每次您輸入跑步機數字佢就會學偏差。全自動.",
+    "watchScaleWalk": "行路",
+    "watchScaleRun": "跑步",
+    "watchScaleNone": "仲未學到.",
+    "watchScaleLower_other": "調低 {{percent}}，由 {{count}} 次跑步學返嚟.",
+    "watchScaleRaise_other": "調高 {{percent}}，由 {{count}} 次跑步學返嚟.",
+    "watchScaleSame_other": "手錶同跑步機一致，由 {{count}} 次跑步學返嚟."
+  },
+  "fitnessTest": {
+    "cue": {
+      "complete": "測試完成。慢落嚟收操."
+    },
+    "retest": {
+      "dueTitle": "夠鐘重新測試",
+      "overdueTitle": "您嘅配速可能過時",
+      "body_other": "您上次體能測試係 {{formattedCount}} 星期前。重測會更新訓練配速，同埋睇到體能有咩變化.",
+      "action": "重測",
+      "later": "遲啲",
+      "sameTreadmill": "您上次喺跑步機測，所以重測都由跑步機開始.",
+      "sameOutdoor": "您上次喺戶外測，所以重測都由戶外開始."
+    },
+    "badge": {
+      "title": "體能測試",
+      "line": "{{test}}：{{result}}"
+    },
+    "live": {
+      "complete": "測試完成。慢落嚟然後撳「完成」.",
+      "5k": "平均用力跑。仲有 {{remaining}} {{unit}} 到 5 公里.",
+      "cooper": "跑得幾遠得幾遠。仲有 {{time}}.",
+      "30minLast20": "保持呢個配速：最後 20 分鐘決定您嘅閾值。仲有 {{time}}.",
+      "30minFirst10": "進入穩定而吃力嘅強度。最後 20 分鐘會喺 {{time}} 後開始.",
+      "5kIndoor": "平均用力跑。跑步機到 5 公里就撳「完成」。時間 {{time}}.",
+      "30minFirst10Indoor": "進入穩定而吃力嘅強度。到 10:00（即 {{time}} 之後），記低跑步機嘅距離."
+    },
+    "finished": {
+      "threshold": "閾值配速 {{pace}}，5K 大約 {{time}}。儲存就會設定您嘅訓練配速.",
+      "incomplete": "測試未到目標就停咗，所以會當普通跑步儲存，配速不變.",
+      "adjusted": "已按 {{incline}}% 坡度調整：{{raw}} 當 {{adjusted}}.",
+      "needDistance": "輸入跑步機顯示嘅距離先儲存到測試。未輸入就會當普通跑步儲存.",
+      "badSplit": "10:00 嘅距離要大過零、少過總距離.",
+      "badTime": "用分同秒輸入您到 5 公里嘅時間，例如 24:30."
+    },
+    "paces": {
+      "tempo": "節奏跑 {{range}}",
+      "marathon": "馬拉松配速 {{range}}",
+      "stride": "加速跑 {{range}}"
+    },
+    "panel": {
+      "emptyTitle": "搵您嘅訓練配速",
+      "emptyBody": "做一次引導式體能測試：5K 計時、30 分鐘全力跑，或者 12 分鐘 Cooper 測試。結果會設定訓練配速，亦可以開始計劃.",
+      "take": "做體能測試",
+      "title": "您嘅體能測試",
+      "latest": "{{date}} 嘅 {{test}}：{{result}}",
+      "paces": "閾值配速 {{pace}}，5K 大約 {{time}}。您嘅訓練配速跟呢個測試.",
+      "startProgram": "由我嘅測試開始 {{program}}",
+      "planRace": "計劃比賽",
+      "open": "測試同配速",
+      "compactHint": "做引導式體能測試"
+    },
+    "steps": {
+      "warmUp": "先用 10 至 15 分鐘輕鬆跑熱身，然後返嚟開始.",
+      "flat": "揀條平坦開揚嘅路線，手機要帶埋。暫停唔會計.",
+      "5k": "用您保持得平均嘅最快速度跑 5 公里。到 5 公里嘅時間就係結果；之後繼續跑收操.",
+      "30min": "用您保持得穩定嘅最強度跑 30 分鐘。閾值配速係最後 20 分鐘嘅平均配速，所以唔好開頭衝太快.",
+      "cooper": "12 分鐘內跑得幾遠得幾遠。跑到嘅距離就係結果."
+    },
+    "setup": {
+      "voiceDescription": "測試完成時會語音提示.",
+      "start": "開始測試",
+      "outdoor": "戶外（GPS）",
+      "indoor": "跑步機",
+      "indoorNote": "喺跑步機冇 GPS 追蹤。測試會計時，完成時您輸入跑步機顯示嘅距離同坡度。會當室內跑儲存，並標記為體能測試.",
+      "outdoorNote": "戶外用您手機嘅 GPS 記錄，當一次跑步，並喺活動標記為體能測試.",
+      "sameAsLast": "建議用呢個，因為您上次都係咁."
+    },
+    "delete": {
+      "title": "刪除呢個測試？",
+      "message": "活動會留喺您日誌。訓練配速會跟返最新剩低嘅測試.",
+      "confirm": "刪除",
+      "error": "刪除唔到測試",
+      "action": "刪除呢個測試"
+    },
+    "result": {
+      "missing": "呢個測試已經冇儲存.",
+      "when": "{{date}} · {{test}}",
+      "derived": "閾值配速 {{pace}}。以 5K 計大約 {{time}}.",
+      "changeTitle": "對比您 {{date}} 嘅測試",
+      "changeThreshold": "閾值配速：{{change}}.",
+      "pacesTitle": "您嘅訓練配速",
+      "pacesBody": "呢啲而家會設定您嘅配速區間，同埋計劃同比賽嘅建議範圍.",
+      "plan": "由呢個測試開始計劃",
+      "5k": "5K 用時 {{time}}",
+      "cooperMiles": "12 分鐘內 {{distance}} mi",
+      "cooperMeters": "12 分鐘內 {{distance}} m",
+      "30min": "最後 20 分鐘 {{pace}}"
+    },
+    "describe": {
+      "5k": "用您保持得平均嘅最快速度跑 5 公里。時間會設定您嘅配速.",
+      "30min": "全力跑 30 分鐘。閾值配速係最後 20 分鐘嘅平均配速.",
+      "cooper": "12 分鐘內跑得幾遠得幾遠。距離會換算成 5K 時間."
+    },
+    "intro": "體能測試係一次用力而有量度嘅跑。會用手機 GPS 記錄，結果會設定您輕鬆跑、節奏跑、間歇同比賽計劃嘅配速.",
+    "choose": "開始呢個測試",
+    "history": {
+      "title": "您嘅測試",
+      "empty": "仲未有測試。您嘅結果同配速會喺呢度列出.",
+      "rowTitle": "{{date}} · {{test}}",
+      "paces": "閾值 {{threshold}} · 輕鬆 {{easy}}",
+      "limit": "顯示您最新 {{limit}} 次測試."
+    },
+    "type": {
+      "5k": "5K 計時測試",
+      "30min": "30 分鐘全力跑",
+      "cooper": "12 分鐘 Cooper 測試"
+    },
+    "pacePerUnit": "{{pace}}/{{unit}}",
+    "perMile": "mi",
+    "perKm": "km",
+    "paceRange": "{{fast}}–{{slow}}/{{unit}}",
+    "change": {
+      "same": "冇變",
+      "faster": "每{{unit}}快 {{seconds}} 秒",
+      "slower": "每{{unit}}慢 {{seconds}} 秒"
+    },
+    "indoor": {
+      "timeTitle": "到 5 公里時間",
+      "timeHint": "已填您嘅計時。如果跑步機 5 公里顯示另一個時間，可以改.",
+      "splitTitle": "10:00 時嘅距離",
+      "splitHint": "10 分鐘後跑步機顯示嘅距離。最後 20 分鐘會定閾值配速。留空就當平均配速.",
+      "cooperHint": "將 12 分鐘後跑步機顯示嘅距離輸入上面「距離」欄.",
+      "inclineTitle": "坡度",
+      "inclineHint": "0% 嘅跑步機會低估戶外強度；1% 大約等於戶外平地跑。輸入您跑嘅坡度.",
+      "inclineInvalid": "輸入 0 至 15 嘅坡度.",
+      "adjustTitle": "按坡度調整",
+      "adjustDescription": "按每 1% 坡度嘅跑步成本，將您嘅用力換算成戶外平地。1% 唔會改。關閉就照原本數字."
+    },
+    "lastSurface": "您上次喺：{{surface}} 測。新測試會由同一樣開始，開始前可以改.",
+    "surface": {
+      "indoor": "跑步機",
+      "outdoor": "戶外",
+      "inclineAdjusted": "跑步機，坡度 {{incline}}%，已調整",
+      "inclineNotAdjusted": "跑步機，坡度 {{incline}}%，未調整"
+    }
+  },
+  "heartRateZones": {
+    "title": "心率區間",
+    "description": "您嘅區間決定新運動各區時間點樣計、訓練負荷點樣判斷，同跑步會建議咩範圍.",
+    "yourZones": "您嘅區間",
+    "maxHrSummary": "最大心率 {{max}} bpm。{{source}}.",
+    "zoneRange": "{{lower}}–{{upper}} bpm",
+    "zoneRangeOpen": "{{lower}}+ bpm",
+    "tier": {
+      "light": "輕度",
+      "moderate": "中度",
+      "vigorous": "劇烈",
+      "peak": "極限"
+    },
+    "display": {
+      "title": "顯示",
+      "five": "5 個區間",
+      "four": "4 個等級",
+      "hint": "四級係輕度（1 同 2 區）、中度（3 區）、劇烈（4 區）同極限（5 區）。只係顯示變，區間照樣按五個計同儲存."
+    },
+    "fellBack": "您揀嘅方法要更多資料，所以顯示為最大心率百分比.",
+    "maxHr": "最大心率（bpm）",
+    "maxHrHint": "留空就按出生日期計.",
+    "restingHr": "靜息心率（bpm）",
+    "customFloors": "每個區間由幾多開始（bpm）",
+    "floorLabel": "區間 {{zone}} 由（bpm）開始",
+    "historyNote": "改動適用於而家之後記錄或者同步嘅運動。以往運動已儲存嘅區間時間唔會重算.",
+    "reset": "重設為預設",
+    "saved": "心率區間已儲存",
+    "loadFailed": "載入唔到您嘅區間。撳一下重試.",
+    "method": {
+      "title": "區間點樣計",
+      "percentMax": "最大心率百分比",
+      "heartRateReserve": "心率儲備",
+      "custom": "自訂區間",
+      "percentMaxHint": "區間由最大心率 50、60、70、80、90% 開始.",
+      "heartRateReserveHint": "區間係靜息同心率最大差距嘅 50、60、70、80、90%（Karvonen）。需要靜息心率.",
+      "customHint": "設定每個區間由幾多 bpm 開始。低於 1 區嘅時間唔計."
+    },
+    "source": {
+      "user": "由您設定",
+      "age": "由出生日期推算",
+      "observed": "由運動中最高心率得出",
+      "fallback": "典型值；加您出生日期或者自己設"
+    },
+    "chart": {
+      "method": "區間：{{method}}。改設定唔會影響以往運動.",
+      "mixed": "以往運動用咗多過一種方法計區間。改設定唔會影響以往運動.",
+      "device": "由手錶或者裝置設定嘅區間"
+    },
+    "appleImport": "用 Apple Health 區間",
+    "appleReading": "讀緊 Apple Health…",
+    "appleImported": "已填入 Apple Health 區間。儲存先會保留.",
+    "appleHint": "由 Apple Health 填入做自訂區間。最大心率不變，空白嘅靜息心率亦會填。儲存先會保留.",
+    "appleFailed": "Apple Health 冇分享五個心率區間。檢查健康權限有冇開，再試.",
+    "errors": {
+      "maxRange": "最大心率要介乎 {{min}} 至 {{max}} bpm.",
+      "restingRange": "靜息心率要介乎 {{min}} 至 {{max}} bpm.",
+      "needsResting": "心率儲備區間需要靜息心率.",
+      "customFloors": "每個區間要由前一個之上開始，介乎 30 至 250 bpm.",
+      "saveFailed": "儲存唔到。檢查數值再試."
+    }
+  },
+  "workoutEffort": {
+    "value": "{{rating}}/10"
+  },
+  "trainingCalendar": {
+    "load": {
+      "title": "按運動類型睇負荷",
+      "subtitle": "您嘅訓練負荷嚟自邊度：跑步、踩單車、行路、力量同其他.",
+      "thisWeek": "本星期",
+      "thisMonth": "本月",
+      "weekly": "每週負荷",
+      "noneYet": "仲未記錄運動.",
+      "loadFailed": "載入唔到按運動類型嘅負荷.",
+      "method": "負荷係以平均心率加權嘅分鐘（1 至 5，視乎接近最大心率幾多）。冇心率嘅運動按中度權重 2 計，所以冇戴錶嘅力量訓練都按時間計到。唔用自評強度.",
+      "openCalendar": "打開訓練日曆"
+    },
+    "sport": {
+      "running": "跑步",
+      "cycling": "踩單車",
+      "walking": "行路",
+      "cardio": "有氧",
+      "strength": "力量",
+      "other": "其他"
+    },
+    "status": {
+      "done": "已完成",
+      "partial": "部分完成",
+      "missed": "已錯過",
+      "upcoming": "即將"
+    },
+    "programWorkout": "{{name}} · 第 {{number}} 節",
+    "workoutPlanFallback": "訓練計劃",
+    "weekOf": "{{date}} 起嘅一星期",
+    "minutesShort": "{{value}} 分鐘",
+    "minutesOf": "{{planned}} 分鐘之中 {{done}}",
+    "loadValue": "負荷 {{value}}",
+    "estimated": "（估算，冇心率）",
+    "extra": "額外",
+    "totals": {
+      "title": "計劃對比完成",
+      "sessions": "{{planned}} 節之中完成 {{done}} 節",
+      "extra_other": "額外 {{formattedCount}}",
+      "minutes": "時間 {{planned}} 分鐘之中 {{done}}",
+      "load": "訓練負荷 {{planned}} 之中 {{done}}",
+      "sessionsLogged_other": "已記錄 {{formattedCount}} 節",
+      "minutesDone": "時間 {{done}} 分鐘",
+      "loadDone": "訓練負荷 {{done}}",
+      "minutesExtra": "（額外 +{{extra}} 分鐘）",
+      "loadExtra": "（額外 +{{extra}}）",
+      "thisWeek": "本星期",
+      "ahead": "即將"
+    },
+    "loadFailed": "載入唔到您嘅訓練日曆.",
+    "refreshFailed": "更新唔到。顯示緊上次結果.",
+    "emptyDay": "呢日冇計劃或者紀錄.",
+    "planned": "已計劃",
+    "completed": "已完成",
+    "month": "月",
+    "week": "星期",
+    "previous": "上一頁",
+    "next": "下一頁",
+    "distanceKm": "{{value}} km",
+    "distanceMiles": "{{value}} mi",
+    "restDay": "休息日",
+    "hideEarlier": "收起之前嘅星期",
+    "loadHelpA11y": "咩係訓練負荷？",
+    "progressA11y": "{{planned}} 節之中：{{done}} 節完成、{{partial}} 節部分完成、{{missed}} 節錯過",
+    "markA11y": "{{sport}}，{{status}}",
+    "extraA11y": "額外，未計劃",
+    "moreA11y_other": "再多 {{formattedCount}} 節",
+    "dayA11y": "{{date}}：{{marks}}",
+    "dayA11yNone": "{{date}}，冇計劃或者紀錄",
+    "weekTotalA11y": "{{planned}} 節之中完成 {{done}} 節",
+    "weekTotalShort": "{{done}}/{{planned}}",
+    "weekTotalHeader": "總計",
+    "weekLoggedA11y_other": "已記錄 {{formattedCount}} 節",
+    "weekEmptyA11y": "本星期冇運動",
+    "more_other": "+{{formattedCount}}",
+    "showEarlier_other": "顯示之前嘅星期（{{formattedCount}}）"
+  },
+  "labs": {
+    "add": "加檢驗結果",
+    "changeMarker": "更改",
+    "chartEmpty": "仲未有結果",
+    "chartOtherUnits_other": "有 {{count}} 個結果用其他單位，冇畫入圖.",
+    "createCustom": "將「{{name}}」加做新指標",
+    "date": "檢驗日期",
+    "dateFuture": "檢驗日期唔可以係將來.",
+    "deleteFailed": "刪除唔到結果",
+    "deleteMessage": "刪除呢個檢驗結果？",
+    "deleteTitle": "刪除結果",
+    "empty": "仲未有檢驗結果。加個 HbA1c、LDL 或者維他命 D 之類嘅結果，就可以一路追蹤.",
+    "latest": "最新",
+    "loadFailed": "載入唔到您嘅檢驗結果.",
+    "markerDataFailed": "載入唔到您儲存嘅結果，所以填唔到單位同範圍.",
+    "noMatches": "冇相符嘅指標",
+    "noResults": "冇結果",
+    "notesPlaceholder": "加備註（可選）",
+    "rangeHigh": "上限",
+    "rangeInvalid": "輸入數字，下限唔可以高過上限.",
+    "rangeLow": "下限",
+    "rangeOptional": "參考範圍（可選）",
+    "referenceRange": "參考範圍：{{range}}",
+    "saveFailed": "儲存唔到檢驗結果",
+    "searchPlaceholder": "搵指標（HbA1c、LDL…）",
+    "status": {
+      "high": "偏高",
+      "inRange": "範圍內",
+      "low": "偏低"
+    },
+    "unit": "單位",
+    "value": "結果",
+    "card": {
+      "a11y": "檢驗結果",
+      "empty": "仲未有結果。撳一下加一個.",
+      "outOfRange_other": "{{count}} 個超出參考範圍",
+      "title": "檢驗結果"
+    },
+    "rangeForSex": "已按您個人資料嘅{{sex}}成人預填。唔同化驗所唔同，可以改成您報告嘅範圍.",
+    "rangeNoSex": "呢個指標男女唔同。喺個人資料設性別就有合適範圍，或者輸入報告嘅範圍.",
+    "sex": {
+      "female": "女性",
+      "male": "男性"
+    },
+    "markers": {
+      "hba1c": "HbA1c",
+      "fasting_glucose": "空腹血糖",
+      "total_cholesterol": "總膽固醇",
+      "hdl": "HDL 膽固醇",
+      "ldl": "LDL 膽固醇",
+      "triglycerides": "三酸甘油脂",
+      "vitamin_d": "維他命 D（25-OH）",
+      "tsh": "TSH",
+      "ferritin": "鐵蛋白",
+      "vitamin_b12": "維他命 B12",
+      "creatinine": "肌酸酐",
+      "egfr": "eGFR",
+      "alt": "ALT",
+      "ast": "AST",
+      "non_hdl": "非 HDL 膽固醇",
+      "apob": "載脂蛋白 B",
+      "vldl": "VLDL 膽固醇",
+      "fasting_insulin": "空腹胰島素",
+      "wbc": "白血球",
+      "rbc": "紅血球",
+      "hemoglobin": "血紅蛋白",
+      "hematocrit": "血細胞比容",
+      "mcv": "MCV",
+      "platelets": "血小板",
+      "sodium": "鈉",
+      "potassium": "鉀",
+      "chloride": "氯",
+      "bicarbonate": "碳酸氫鹽（CO2）",
+      "calcium": "鈣",
+      "magnesium": "鎂",
+      "phosphorus": "磷",
+      "bun": "BUN",
+      "uric_acid": "尿酸",
+      "albumin": "白蛋白",
+      "total_protein": "總蛋白",
+      "alp": "鹼性磷酸酶",
+      "total_bilirubin": "總膽紅素",
+      "ggt": "GGT",
+      "free_t4": "游離 T4",
+      "free_t3": "游離 T3",
+      "iron": "鐵",
+      "tibc": "TIBC",
+      "transferrin_saturation": "運鐵蛋白飽和度",
+      "folate": "葉酸",
+      "crp": "hs-CRP",
+      "esr": "ESR",
+      "homocysteine": "同型半胱氨酸",
+      "cortisol": "皮質醇（早上）",
+      "psa": "PSA",
+      "testosterone": "睪固酮（總量）",
+      "estradiol": "雌二醇",
+      "lipoprotein_a": "脂蛋白(a)",
+      "ketones": "酮體（β-羥丁酸）",
+      "c_peptide": "C-胜肽",
+      "fructosamine": "果糖胺",
+      "neutrophils": "中性白血球",
+      "lymphocytes": "淋巴細胞",
+      "monocytes": "單核細胞",
+      "eosinophils": "嗜酸性白血球",
+      "mch": "MCH",
+      "mchc": "MCHC",
+      "rdw": "RDW",
+      "mpv": "MPV",
+      "globulin": "球蛋白",
+      "direct_bilirubin": "直接膽紅素",
+      "anion_gap": "陰離子間隙",
+      "bun_creatinine_ratio": "BUN／肌酸酐比率",
+      "cystatin_c": "胱抑素 C",
+      "urine_albumin_creatinine": "尿白蛋白／肌酸酐比率",
+      "amylase": "澱粉酶",
+      "lipase": "脂肪酶",
+      "ldh": "LDH",
+      "ck": "肌酸激酶",
+      "ammonia": "氨",
+      "zinc": "鋅",
+      "copper": "銅",
+      "selenium": "硒",
+      "vitamin_b6": "維他命 B6",
+      "vitamin_a": "維他命 A",
+      "vitamin_e": "維他命 E",
+      "pth": "PTH",
+      "igf_1": "IGF-1",
+      "dhea_s": "DHEA-S",
+      "free_testosterone": "游離睪固酮",
+      "shbg": "SHBG",
+      "fsh": "FSH",
+      "lh": "LH",
+      "progesterone": "黃體酮",
+      "prolactin": "催乳素",
+      "tpo_antibodies": "TPO 抗體"
+    },
+    "rangeFromReport": "用您報告印嘅範圍。會同呢個結果一齊儲存.",
+    "import": {
+      "blocked": {
+        "duplicate": "已經由呢份報告加入咗."
+      },
+      "cameraDenied": "影相要用相機權限.",
+      "chooseAnother": "揀另一份報告",
+      "choosePdf": "揀 PDF",
+      "choosePhoto": "揀相片或者截圖",
+      "cta": "由報告匯入",
+      "includeRow": "包括{{name}}",
+      "intro": "揀一份檢驗報告 PDF，或者報告嘅相片／截圖。您嘅 AI 供應商會讀佢，儲存之前您會先睇結果。報告本身唔會儲存.",
+      "newMarker": "新指標",
+      "pickFailed": "開唔到嗰個檔案.",
+      "reading": "讀緊您嘅報告…",
+      "saveCount_other": "儲存 {{count}} 個結果",
+      "saved_other": "已儲存 {{count}} 個結果",
+      "scanFailed": "讀唔到嗰份報告.",
+      "takePhoto": "影相",
+      "tooLarge": "呢個 PDF 太大讀唔到（上限 14 MB）.",
+      "editHint": "對住報告核對數值。撳個數值可以改。每個結果會同報告印嘅單位同參考範圍一齊儲存.",
+      "valueFor": "{{name}} 嘅結果",
+      "deleteTitle": "刪除匯入嘅結果",
+      "deleteMessage": "刪除所有由報告匯入嘅結果，同埋您自建而留空嘅指標？您自己輸入嘅結果會保留.",
+      "deleted_other": "已刪除 {{count}} 個匯入結果",
+      "deleteFailed": "刪除唔到匯入嘅結果",
+      "saveFailed": "儲存唔到報告。冇嘢儲存到.",
+      "warning": {
+        "unit": "您之前嘅結果用 {{earlierUnit}}，但呢份報告用 {{reportUnit}}。單位唔會換算."
+      },
+      "saveUnconfirmed": "確認唔到報告已儲存。再撳儲存：只會存一次.",
+      "lockedAfterFailedSave": "儲存未完成，所以呢個檢視鎖咗：再撳儲存會送返完全同一份報告，只會存一次。要改數值就重新揀份報告."
+    },
+    "moreActions": "更多操作",
+    "deleteMarker": "刪除指標同所有結果",
+    "deleteMarkerTitle": "刪除指標",
+    "deleteMarkerMessage": "刪除{{name}}同佢所有結果？冇得撤銷.",
+    "deleteMarkerFailed": "刪除唔到指標"
+  },
+  "serverStatus": {
+    "notConfiguredTitle": "未設定伺服器",
+    "notConfiguredSubtitle": "喺「設定」設定伺服器連線.",
+    "goToSettings": "去設定",
+    "unreachableTitle": "連唔到您嘅伺服器",
+    "unreachableSubtitle": "檢查連線或者再試.",
+    "tryAgain": "再試",
+    "offlineWorkouts": "離線開始已儲存嘅運動"
+  },
+  "waterLog": {
+    "title": "飲品",
+    "history": "紀錄",
+    "open": "飲品紀錄",
+    "drink": "飲品",
+    "linkedDrink": "連結到食物紀錄",
+    "noWaterCredit": "唔計水分",
+    "deleteTitle": "刪除飲品",
+    "deleteMessage": "刪除呢杯飲品？",
+    "deleteLinkedMessage": "刪除呢杯飲品？佢嘅食物紀錄都會刪埋.",
+    "deleteDrink": "刪除 {{time}} 嘅{{name}}",
+    "deleteFailed": "刪除唔到嗰杯飲品",
+    "loading": "載緊飲品…",
+    "loadFailed": "載入唔到飲品",
+    "loadFailedSubtitle": "檢查連線再試.",
+    "emptyTitle": "仲未記錄飲品",
+    "emptySubtitle": "用水量按鈕、飲品預設、手錶或者同步 App 記錄嘅飲品會喺呢度顯示."
+  },
+  "recipeImport": {
+    "inactive": "未啟用",
+    "inactiveManagement": "喺「設定」啟用呢個供應商先匯入到食譜。已儲存嘅選擇仍然可以喺度管理.",
+    "syncEnergy": "能量",
+    "syncProtein": "蛋白質",
+    "syncCarbs": "碳水化合物",
+    "syncFat": "脂肪",
+    "syncSaturatedFat": "飽和脂肪",
+    "syncTransFat": "反式脂肪",
+    "syncUnsaturatedFat": "不飽和脂肪",
+    "syncCholesterol": "膽固醇",
+    "syncSodium": "鈉",
+    "syncFiber": "膳食纖維",
+    "syncSugars": "糖",
+    "syncPotassium": "鉀",
+    "syncVitaminA": "維他命 A",
+    "syncVitaminC": "維他命 C",
+    "syncCalcium": "鈣",
+    "syncIron": "鐵",
+    "syncCaffeine": "咖啡因",
+    "syncAlcohol": "酒精",
+    "syncWater": "水分",
+    "syncSavedValues": "呢啲係已儲存嘅食材數值。要加入食物庫修正，就用修正後嘅食物變體代替受影響食材，核對數值再儲存餐單.",
+    "syncSavedAt": "上次儲存：{{date}}",
+    "syncSavedAtUnknown": "冇上次儲存時間資料.",
+    "syncPartial": "部分：已知 {{known}}/{{total}} 個數值",
+    "syncSkippedUnknown": "已略過：冇已知食材數值.",
+    "syncCoverageHelp": "部分總和只包括已知食材數值。略過嘅數值喺 Mealie 保持不變.",
+    "syncSkippedUnsupported": "{{nutrient}} — Mealie 唔支援.",
+    "syncReviewTitle": "核對營養同步",
+    "syncMeal": "已儲存餐單：{{name}}",
+    "syncReviewDescription": "喺取代 Mealie 食譜營養之前，先核對已儲存餐單嘅營養。只會送營養資料.",
+    "loadingSyncPreview": "載緊現時營養…",
+    "syncServings": "Mealie 份數：{{servings}}",
+    "syncSourceChanged": "呢個食譜喺 Mealie 改咗。確認之前先核對現時食譜同份數.",
+    "syncPerServing": "每份 Mealie 營養",
+    "syncNutrient": "營養素",
+    "syncCurrent": "Mealie 現有",
+    "syncProposed": "已儲存餐單",
+    "refreshSyncPreview": "更新預覽",
+    "confirmSync": "確認營養同步",
+    "syncReviewHelp": "更新 Mealie 之前，核對並確認現時已儲存餐單嘅營養。日誌改動係分開嘅.",
+    "syncNeedsCompleteMeal": "同步之前，先核對已儲存餐單嘅食材同補齊營養.",
+    "sourceIngredient": "Mealie 食材",
+    "savedChoice": "已儲存選擇",
+    "savedSuggestion": "由上次匯入建議",
+    "confirmSavedChoice": "確認已儲存選擇",
+    "confirmSavedChoiceFor": "確認{{name}}嘅已儲存選擇",
+    "forgetSavedChoice": "忘記已儲存選擇",
+    "forgetSavedChoiceFor": "忘記{{name}}嘅已儲存選擇",
+    "forgetFailed": "忘記唔到已儲存選擇。再試.",
+    "noteNeedsReview": "呢個備註以份量開頭，可能係指另一樣食材。儲存前分開核對.",
+    "hideSavedChoices": "收起已儲存選擇",
+    "manageSavedChoices": "管理已儲存選擇",
+    "manageSavedChoicesHelp": "已儲存選擇係將來匯入嘅建議。忘記一個唔會影響已儲存餐單同日誌.",
+    "loadingSavedChoices": "載緊已儲存選擇…",
+    "savedSourceIngredient": "來源食材",
+    "savedFoodUnavailable": "食物不可用",
+    "savedMappingPair": "{{ingredient}} → {{food}}",
+    "savedMappingRatio": "{{quantity}} {{unit}} / 1 {{sourceUnit}}",
+    "sourceUnit": "來源單位",
+    "noSavedChoices": "呢個供應商冇已儲存選擇.",
+    "selectedFoodAmount": "已選食物同份量",
+    "savedChoiceHelp": "儲存之前先核對呢個已儲存選擇同整份食譜嘅份量.",
+    "matchesFor": "{{name}} 嘅相符項目 — 揀一個再核對份量.",
+    "sourceReviewWarnings": "核對下面缺少嘅來源份量、單位同份數。輸入計營養時會用嘅整份食譜份量.",
+    "missingSourceServingsReview": "輸入已儲存餐單嘅份數。之後要同步營養，喺 Mealie 設定正數份數再更新營養預覽.",
+    "sourceWarning": "同步營養之前先核對來源食譜.",
+    "incompleteCoreNutrition": "主要營養唔齊。揀一個完整嘅食物變體.",
+    "sourceAmount": "整份食譜原份量：{{quantity}} {{unit}}",
+    "notProvided": "未提供",
+    "confirmed": "已確認",
+    "unresolved": "待確認",
+    "missingNutrients": "缺少營養素：{{nutrients}}",
+    "loadingFood": "載緊已選食物…",
+    "variantNutritionEnergy": "{{size}} {{unit}}：{{calories}} {{energyUnit}} · 蛋白質 {{protein}} g · 碳水 {{carbs}} g · 脂肪 {{fat}} g",
+    "foodUnavailable": "載入唔到食物詳情。再試.",
+    "reopenReview": "重新打開食譜匯入檢視，再揀呢樣食材.",
+    "chooseFoodFor": "為{{name}}揀食物",
+    "chooseFood": "揀食物或者份量",
+    "reviewSuggestions": "核對候選項目，然後確認食物、變體同整份食譜份量.",
+    "noCandidates": "搵唔到候選。自己揀食物.",
+    "suggested": "建議 — 需要核對",
+    "candidateNutritionEnergy": "每份 {{calories}} {{energyUnit}} · 蛋白質 {{protein}} g · 碳水 {{carbs}} g · 脂肪 {{fat}} g",
+    "issues": {
+      "missing_quantity": "來源份量缺失。輸入整份食譜份量.",
+      "missing_unit": "來源單位缺失。揀一個明確而相容嘅單位.",
+      "unstructured_food": "來源食物身份要人手核對.",
+      "linked_recipe": "連結食譜唔可以喺度匯入。用有明確食材嘅食譜.",
+      "mapping_unavailable": "已儲存食物對應不可用。再揀一次食物.",
+      "incomplete_nutrition": "部分可選營養素未知。已知營養仍然可以用.",
+      "incompatible_unit": "核對已選食物單位嘅份量。體積唔會當質量."
+    },
+    "reviewCandidate": "核對{{name}}",
+    "invalidAmounts": "輸入名稱同正數份數或者煮熟克數.",
+    "saveFailed": "儲存唔到食譜.",
+    "saved": "餐單已儲存。用正常餐單流程記錄您嘅份量.",
+    "openMeal": "打開已儲存餐單",
+    "chooseRecipe": "揀另一個食譜",
+    "batchExplanation": "食材份量係整份食譜計。煮熟重量只用嚟定份量分母；之後記錄時先輸入食咗幾克.",
+    "mealName": "餐單名稱",
+    "servings": "食譜份數",
+    "grams": "煮熟克數",
+    "servingsOnly": "只用份數",
+    "finishedWeight": "成道菜煮熟後（唔計鍋）幾克（可選）",
+    "unresolvedRows": "仲要確認嘅食材：{{amount}}",
+    "match": "搵食物候選",
+    "matchAi": "用 AI 建議相符",
+    "progress": "配對緊 {{done}} / {{total}} 樣食材",
+    "checkLibrary": "再試之前檢查您嘅餐單庫。儲存結果唔確定.",
+    "save": "儲存可重用餐單",
+    "sourceTitle": "Mealie 來源",
+    "syncExplanation": "按 Mealie 原食譜每份更新營養。同步期間唔好喺 Mealie 改食譜：同時改營養會被覆蓋。食材份量唔會送.",
+    "syncUnavailable": "呢個餐單只係用嚟記錄。用完整而冇改嘅份量重新匯入原本食譜，先可以同步營養.",
+    "lastSynced": "上次同步：{{date}}",
+    "synced": "營養已同步到 Mealie.",
+    "sync": "同步營養到 Mealie",
+    "previewFailed": "預覽唔到食譜.",
+    "selectProvider": "揀您已設定嘅 Mealie 來源.",
+    "loadingRecipes": "載緊食譜…",
+    "noProvider": "先喺「設定」設定一個啟用咗嘅 Mealie 食物供應商.",
+    "search": "搵 Mealie 食譜",
+    "noRecipes": "搵唔到食譜.",
+    "previous": "上一頁",
+    "next": "下一頁",
+    "title": "匯入 Mealie 食材",
+    "ownerOnly": "切換去您自己嘅個人資料先可以匯入或者同步食譜.",
+    "suggestFailed": "載入唔到建議。自己揀食物.",
+    "finishReview": "儲存之前確認每樣食材.",
+    "amountRequired": "用已選單位輸入整份食譜份量。體積唔會自動當質量.",
+    "missingServings": "來源冇食譜份數。輸入份數先儲存到作記錄；營養同步仍然不可用.",
+    "reviewIngredients": "核對食材",
+    "recipeYield_other": "食譜可做 {{servings}} 份",
+    "noDeclaredNutrition": "冇申報營養",
+    "missingNutritionHint": "呢個 Mealie 食譜冇申報營養。用配對到嘅食材計.",
+    "importAsMeal": "將食材匯入做餐單",
+    "searchMacros": "蛋白質 {{protein}} g · 碳水 {{carbs}} g · 脂肪 {{fat}} g"
+  },
+  "measurementTimeline": {
+    "glucose": "血糖（CGM）",
+    "title": "測量時間線",
+    "category": "測量",
+    "previous": "前一日",
+    "next": "第二日",
+    "source": "來源",
+    "unit": "單位",
+    "error": "載入唔到測量讀數.",
+    "loading": "載緊讀數…",
+    "empty": "呢日冇帶時間嘅讀數。揀個自訂類別睇匯入／API 讀數，或者由 Apple Health 同步血糖.",
+    "meals": "已記錄食物 · 餐單標記",
+    "foodError": "載入唔到已記錄食物.",
+    "food": "食物",
+    "noTime": "冇記錄時間",
+    "note": "呢啲係記錄咗嘅事件，唔係已證實嘅成因。運動結束時間用記錄時長。冇時間嘅紀錄同每日總數唔會放上曲線。即時讀數同警報請用您嘅感應器 App.",
+    "layerMeal": "食物",
+    "layerExercise": "運動",
+    "layerSleep": "訓覺",
+    "layerMedication": "藥物",
+    "layerStress": "壓力",
+    "layerCaffeine": "咖啡因",
+    "layerAlcohol": "酒精",
+    "layerHydration": "水分",
+    "context": "已記錄背景 · 顯示層",
+    "contextLoading": "載緊已記錄背景…",
+    "contextError": "載入唔到已記錄背景.",
+    "carbs": "碳水",
+    "unavailable": "部分背景不可用：{{layers}}",
+    "dailyTotal": "每日總計",
+    "dailyAverage": "每日平均",
+    "noBodyMeasurements": "呢段時間冇身體測量",
+    "options": "圖表選項",
+    "resetZoom": "重設縮放",
+    "explore": "縮放同拖動",
+    "inspect": "睇讀數",
+    "inspectHint": "按住一個讀數睇佢嘅數值.",
+    "zoomHint": "雙指縮放 · 左右拖動",
+    "layerOptions": "背景層",
+    "events": "事件詳情",
+    "eventsInView": "範圍內事件",
+    "noEventsInView": "呢個範圍冇帶時間嘅事件."
+  },
+  "oralCare": {
+    "title": "口腔護理",
+    "loading": "載緊口腔護理…",
+    "loadFailed": "載入唔到口腔護理",
+    "sessions": "次數",
+    "empty": "呢日冇紀錄",
+    "coveredBySync": "Apple Health 亦有記錄 · 只計一次",
+    "types": {
+      "brushing": "刷牙",
+      "flossing": "用牙線",
+      "mouthwash": "漱口水",
+      "tongueCleaning": "清潔舌頭",
+      "other": "其他"
+    },
+    "actions": {
+      "log": "記錄",
+      "startTimer": "開始計時"
+    },
+    "card": {
+      "a11y": "口腔護理，已刷 {{brushed}} 次，目標 {{target}} 次"
+    },
+    "delete": {
+      "title": "刪除呢次紀錄？",
+      "synced": "下次同步會返嚟，除非您喺健康 App 都刪咗."
+    },
+    "errors": {
+      "save": "儲存唔到紀錄.",
+      "delete": "刪除唔到紀錄.",
+      "goal": "儲存唔到目標."
+    },
+    "goal": {
+      "title": "刷牙目標",
+      "dailyTarget": "每日刷牙次數",
+      "targetTime": "每次時長",
+      "hint": "牙醫通常建議每日刷兩次、每次 2 分鐘.",
+      "perDay_other": "每日 {{count}} 次"
+    },
+    "log": {
+      "addTitle": "記錄口腔護理",
+      "editTitle": "編輯紀錄",
+      "type": "類型",
+      "name": "名稱",
+      "namePlaceholder": "例如：水牙線機",
+      "time": "時間",
+      "duration": "時長（可選）",
+      "minutes": "分鐘",
+      "minutesShort": "分鐘",
+      "seconds": "秒",
+      "secondsShort": "秒",
+      "tooLong": "一次最多 60 分鐘.",
+      "notes": "備註（可選）",
+      "notesA11y": "備註",
+      "timerHint": "{{time}}，每次四分一個口腔。會幫您儲存刷牙紀錄.",
+      "timerTitle": "跟計時器刷牙",
+      "startTimerA11y": "開始 {{time}} 刷牙計時"
+    },
+    "source": {
+      "timer": "計時器",
+      "health": "Apple Health"
+    },
+    "stats": {
+      "brushed": "已刷",
+      "ofTarget": "{{target}} 次之中 {{brushed}} 次",
+      "time": "刷牙時間",
+      "streak_other": "連續 {{count}} 日",
+      "best_other": "最佳：{{count}} 日",
+      "weekA11y_other": "過去 7 日有 {{count}} 日達標"
+    },
+    "timer": {
+      "title": "刷牙計時器",
+      "subtitle": "{{time}}，每次四分一個口腔",
+      "upperLeft": "左上",
+      "upperRight": "右上",
+      "lowerRight": "右下",
+      "lowerLeft": "左下",
+      "done": "搞掂！撳「儲存」",
+      "ready": "準備好",
+      "start": "開始",
+      "pause": "暫停",
+      "resume": "繼續",
+      "save": "儲存",
+      "doneShort": "搞掂！",
+      "paused": "已暫停"
+    }
+  },
+  "oralCareReport": {
+    "title": "口腔護理",
+    "loadFailed": "載入唔到口腔護理數據",
+    "empty": "呢段時間冇口腔護理紀錄",
+    "brushesTooltip_other": "{{count}} 次刷牙 · {{date}}",
+    "minutesTooltip": "{{time}} · {{date}}",
+    "goalDays": "達標",
+    "goalDaysValue": "{{total}} 日之中 {{met}} 日",
+    "brushesPerDay": "每日刷牙次數",
+    "minutesPerDay": "每日刷牙時間",
+    "insightGoal": "您有 {{percent}}% 嘅日子每日刷 {{target}} 次.",
+    "insightStreak_other": "您最長連續 {{count}} 日.",
+    "brushesChart": "每日刷牙次數",
+    "minutesChart": "每日刷牙分鐘",
+    "summaryTitle": "連續紀錄同其他護理",
+    "currentStreak": "現時連續",
+    "longestStreak": "最長連續",
+    "daysCount_other": "{{count}} 日",
+    "otherCare": "牙線、漱口水同其他"
+  },
+  "healthActivityTypes": {
+    "american_football": "美式足球",
+    "archery": "射箭",
+    "australian_football": "澳式足球",
+    "badminton": "羽毛球",
+    "baseball": "棒球",
+    "basketball": "籃球",
+    "bowling": "保齡球",
+    "boxing": "拳擊",
+    "climbing": "攀爬",
+    "cricket": "板球",
+    "cross_training": "交叉訓練",
+    "curling": "冰壺",
+    "cycling": "踩單車",
+    "cycling_indoor": "室內單車",
+    "elliptical": "橢圓機",
+    "equestrian_sports": "馬術",
+    "fencing": "劍擊",
+    "fishing": "釣魚",
+    "functional_strength_training": "功能性力量訓練",
+    "golf": "高爾夫球",
+    "gymnastics": "體操",
+    "handball": "手球",
+    "hiking": "行山",
+    "ice_hockey": "冰上曲棍球",
+    "roller_hockey": "滾軸曲棍球",
+    "hunting": "打獵",
+    "lacrosse": "長曲棍球",
+    "martial_arts": "武術",
+    "mind_and_body": "身心運動",
+    "breathing": "呼吸練習",
+    "paddle_sports": "槳類運動",
+    "play": "玩樂",
+    "preparation_and_recovery": "準備同恢復",
+    "racquetball": "壁球拍",
+    "rowing": "划艇",
+    "rowing_machine": "划船機",
+    "rugby": "欖球",
+    "running": "跑步",
+    "running_treadmill": "跑步機跑步",
+    "sailing": "帆船",
+    "skating": "溜冰",
+    "ice_skating": "溜冰",
+    "snowshoeing": "雪鞋行",
+    "soccer": "足球",
+    "softball": "壘球",
+    "squash": "壁球",
+    "stair_climbing_machine": "樓梯機",
+    "surfing": "衝浪",
+    "swimming_pool": "泳池游水",
+    "swimming_open_water": "公開水域游水",
+    "table_tennis": "乒乓球",
+    "tennis": "網球",
+    "track_and_field": "田徑",
+    "strength_training": "力量訓練",
+    "weightlifting": "舉重",
+    "volleyball": "排球",
+    "walking": "行路",
+    "walking_treadmill": "室內行路",
+    "water_fitness": "水中健身",
+    "water_polo": "水球",
+    "water_sports": "水上運動",
+    "wrestling": "摔跤",
+    "yoga": "瑜伽",
+    "barre": "芭蕾塑形",
+    "core_training": "核心訓練",
+    "calisthenics": "徒手健身",
+    "cross_country_skiing": "越野滑雪",
+    "downhill_skiing": "高山滑雪",
+    "stretching": "伸展",
+    "hiit": "高強度間歇訓練",
+    "jump_rope": "跳繩",
+    "kickboxing": "踢拳",
+    "pilates": "普拉提",
+    "snowboarding": "單板滑雪",
+    "stairs": "樓梯",
+    "step_training": "踏板訓練",
+    "wheelchair_walk_pace": "輪椅（行路速度）",
+    "wheelchair_run_pace": "輪椅（跑步速度）",
+    "tai_chi": "太極",
+    "mixed_cardio": "混合有氧",
+    "exercise_class": "健身班",
+    "boot_camp": "循環訓練班",
+    "hand_cycling": "手搖單車",
+    "disc_sports": "飛碟運動",
+    "fitness_gaming": "健身遊戲",
+    "cardio_dance": "有氧舞蹈",
+    "social_dance": "跳舞",
+    "pickleball": "匹克球",
+    "cooldown": "緩和",
+    "underwater_diving": "潛水",
+    "paragliding": "滑翔傘",
+    "other": "其他"
+  },
+  "toolfallback": {
+    "used": "已用工具",
+    "cancelled": "已取消工具",
+    "error": "錯誤：",
+    "cancelledReason": "取消原因："
+  },
+  "offline": {
+    "keptAdded_other": "{{count}} 個動作嘅圖片會離線保留",
+    "keptRemoved_other": "{{count}} 個動作唔再離線保留",
+    "keptMark": "已離線保留",
+    "selectedCount_other": "已選 {{count}} 個",
+    "keepOffline": "離線保留",
+    "removeFromOffline": "取消離線保留",
+    "picturesTitle": "動作圖片",
+    "picturesOnMobileData": "用流動數據下載圖片",
+    "picturesOnMobileDataSubtitle": "關閉：只用 Wi-Fi 下載圖片。最多 300 MB.",
+    "keptHeading": "已離線保留嘅動作",
+    "keptIntro": "本星期計劃同您已儲存運動嘅圖片會自動保留。要保留多啲，喺動作庫長按動作.",
+    "keptRemove": "撳一下停止離線保留",
+    "presetOfflineNote": "離線：您可以開始或者記錄呢個運動。改動同複製就要連線.",
+    "leave": {
+      "title_other": "{{count}} 個運動等緊上載",
+      "deleteMessage": "移除呢個伺服器亦會刪走喺呢部手機等緊嘅嘢，永遠去唔到伺服器.",
+      "switchMessage": "佢哋會留喺呢部手機，等您切換返呢個伺服器時上載.",
+      "uploadFirst": "先上載",
+      "deleteAnyway": "照樣移除",
+      "switchAnyway": "照樣切換"
+    },
+    "presetUpdateQueued": "連線返就會更新已儲存運動",
+    "presetUpdateSkipped": "已儲存運動「{{name}}」冇更新，因為喺其他地方改咗",
+    "presetUpdated": "已儲存運動「{{name}}」已更新",
+    "diaryNote": "離線只有運動可用。食物同其他紀錄要連線.",
+    "diaryNothingSaved": "呢日冇儲存任何嘢",
+    "finishedTitle": "已儲存喺呢部手機",
+    "finishedMessage": "連得到您伺服器就會上載.",
+    "deleteSavedTitle": "已喺呢部手機刪除",
+    "deleteSavedMessage": "連得到伺服器就會由嗰邊移除.",
+    "startedTitle": "已離線開始",
+    "startedMessage": "呢個運動會留喺呢部手機，連得到伺服器就上載.",
+    "notReadyTitle": "仲未準備好離線運動",
+    "notReadyMessage": "連一次您嘅伺服器，呢部手機先儲到運動需要嘅嘢.",
+    "banner": "離線：顯示緊儲存喺呢部手機嘅數據",
+    "bannerHint": "再檢查連線",
+    "intro": "唔連線都可以開始同記錄運動。會留喺呢部手機，連得到伺服器就上載.",
+    "waitingHeading": "等緊上載",
+    "nothingWaiting": "冇嘢等緊",
+    "nothingWaitingSubtitle": "呢部手機所有嘢都上載咗.",
+    "waitingItem": "{{kind}}，{{date}}",
+    "uploadNow": "即刻上載",
+    "uploadDone": "全部已上載",
+    "uploadStillWaiting": "仲有啲項目等緊",
+    "uploadStillWaitingDetail": "佢哋會留喺呢部手機，連得到伺服器就上載.",
+    "storageHeading": "喺呢部手機",
+    "storageTitle": "離線用儲存",
+    "storageValue": "{{size}} MB",
+    "refreshRow": "即刻更新",
+    "refreshing": "更新緊…",
+    "neverRefreshed": "仲未下載。連一次您嘅伺服器準備離線運動.",
+    "lastRefreshed": "上次更新 {{when}}",
+    "refreshDone": "已儲存數據係最新",
+    "refreshFailed": "更新唔到",
+    "refreshFailedDetail": "連唔到您嘅伺服器。已儲存嘅會保留.",
+    "clearRow": "清除離線數據",
+    "clearRowSubtitle": "等緊上載嘅會保留",
+    "clearTitle": "清除離線數據？",
+    "clearMessage": "為離線用而儲存嘅運動、動作同其他數據會由呢部手機移除，下次再下載。等緊上載嘅會保留.",
+    "clearConfirm": "清除",
+    "status": {
+      "pending": "等緊上載",
+      "sending": "上載緊…",
+      "conflict": "喺其他地方改咗。撳一下揀.",
+      "needsSignIn": "重新登入先上載到",
+      "failed": "伺服器冇接受"
+    },
+    "conflict": {
+      "phoneSuffix": "（手機）",
+      "deletedTitle": "喺其他地方刪咗",
+      "deletedMessage": "呢部手機離線期間，呢個運動喺另一部裝置刪咗.",
+      "saveAsNew": "另存做新運動",
+      "discard": "棄掉呢部手機嘅副本",
+      "changedTitle": "喺其他地方改咗",
+      "changedMessage": "呢部手機離線期間，呢個運動喺另一部裝置改咗。您想保留邊個？",
+      "keepPhone": "保留呢部手機嘅運動",
+      "keepServer": "保留另一個版本",
+      "saveSeparately": "兩個都保留"
+    },
+    "kind": {
+      "workout": "運動",
+      "other": "已儲存改動"
+    },
+    "libraryNote": "離線只有運動同動作可用。圖庫其他嘢要連線."
   }
 }

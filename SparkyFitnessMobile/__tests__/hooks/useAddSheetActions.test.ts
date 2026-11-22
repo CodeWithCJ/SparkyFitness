@@ -3,7 +3,10 @@ import { renderHook } from '@testing-library/react-native';
 import { CommonActions } from '@react-navigation/native';
 import { navigationRef } from '../../src/components/ActiveWorkoutBar';
 import { queryClient } from '../../src/hooks/queryClient';
-import { cycleSettingsQueryKey } from '../../src/hooks/queryKeys';
+import {
+  cycleSettingsQueryKey,
+  serverConnectionQueryKey,
+} from '../../src/hooks/queryKeys';
 import { useAddSheetActions } from '../../src/hooks/useAddSheetActions';
 import { initializeI18n } from '../../src/localization/i18n';
 import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
@@ -237,5 +240,69 @@ describe('useAddSheetActions handleOpenCycle', () => {
     expect(dispatch).toHaveBeenCalledWith(
       CommonActions.navigate({ name: 'CycleOnboarding', params: undefined })
     );
+  });
+});
+
+describe('useAddSheetActions handleCopyFromYesterday', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    isReady.mockReturnValue(true);
+    queryClient.clear();
+    useDiaryDateStore.setState({ selectedDate: '2026-10-22' });
+  });
+
+  afterAll(() => {
+    queryClient.clear();
+  });
+
+  const renderWithPresent = (presentCopyFromYesterday: jest.Mock) =>
+    renderHook(() =>
+      useAddSheetActions({
+        syncMutation: syncMutationStub,
+        presentCopyFromYesterday,
+      })
+    ).result.current;
+
+  it('presents the sheet for the Diary route active date', () => {
+    queryClient.setQueryData(serverConnectionQueryKey, true);
+    getRootState.mockReturnValue(
+      rootStateWithDiaryParams({ selectedDate: '2026-10-20' }) as ReturnType<
+        typeof navigationRef.getRootState
+      >
+    );
+    const presentCopyFromYesterday = jest.fn();
+
+    renderWithPresent(presentCopyFromYesterday).handleCopyFromYesterday();
+
+    expect(presentCopyFromYesterday).toHaveBeenCalledWith('2026-10-20');
+  });
+
+  it('falls back to the diary store date when the route has none', () => {
+    queryClient.setQueryData(serverConnectionQueryKey, true);
+    getRootState.mockReturnValue(
+      rootStateWithDiaryParams() as ReturnType<
+        typeof navigationRef.getRootState
+      >
+    );
+    const presentCopyFromYesterday = jest.fn();
+
+    renderWithPresent(presentCopyFromYesterday).handleCopyFromYesterday();
+
+    expect(presentCopyFromYesterday).toHaveBeenCalledWith('2026-10-22');
+  });
+
+  it('prompts for a server connection and presents nothing while disconnected', () => {
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const presentCopyFromYesterday = jest.fn();
+
+    renderWithPresent(presentCopyFromYesterday).handleCopyFromYesterday();
+
+    expect(presentCopyFromYesterday).not.toHaveBeenCalled();
+    expect(alertSpy).toHaveBeenCalledWith(
+      'No Server Connected',
+      expect.stringContaining('copy from yesterday'),
+      expect.any(Array)
+    );
+    alertSpy.mockRestore();
   });
 });

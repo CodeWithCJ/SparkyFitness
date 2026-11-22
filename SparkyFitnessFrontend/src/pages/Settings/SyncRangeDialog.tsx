@@ -105,6 +105,8 @@ const SyncRangeDialog = ({
         return 'Liftosaur';
       case 'intervals':
         return 'Intervals.icu';
+      case 'zeppbridge':
+        return 'ZeppBridge';
       case 'withings':
         return 'Withings';
       case 'googlehealth':
@@ -307,7 +309,8 @@ const SyncRangeDialog = ({
           </div>
         </div>
 
-        {mockDataEnabled && (
+        {/* ZeppBridge's sync takes no capture or replay options, so the controls would do nothing. */}
+        {mockDataEnabled && providerType !== 'zeppbridge' && (
           <div className="grid gap-3 rounded-md border border-dashed p-3">
             <p className="text-xs font-semibold text-muted-foreground">
               {t('syncRangeDialog.troubleshooting', 'Troubleshooting')}

@@ -1,0 +1,23 @@
+{
+  "query": "banana",
+  "results": [
+    {
+      "id": 6433,
+      "fdc_id": 173944,
+      "name": "Bananas, raw",
+      "tier": "ingredient"
+    },
+    {
+      "id": 7955,
+      "fdc_id": 790774,
+      "name": "Bananas, overripe, raw",
+      "tier": "ingredient"
+    },
+    {
+      "id": 7956,
+      "fdc_id": 790991,
+      "name": "Bananas, ripe and slightly ripe, raw",
+      "tier": "ingredient"
+    }
+  ]
+}

@@ -1330,6 +1330,27 @@ describe('own-app exclusion (writeback feedback-loop guard)', () => {
     });
     expect(result).toHaveLength(1);
   });
+
+  test('transforms deleted Hydration records to deletion entries', () => {
+    const records = [
+      {
+        deleted: true,
+        uuid: 'sample-deleted-uuid-1',
+      },
+    ];
+    const result = transformHealthRecords(records, {
+      recordType: 'Hydration',
+      unit: 'ml',
+      type: 'water',
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual({
+      type: 'water',
+      deleted: true,
+      source_id: 'sample-deleted-uuid-1',
+      source: 'HealthKit',
+    });
+  });
 });
 
 describe('mapDietarySample (dietary reverse mapper)', () => {

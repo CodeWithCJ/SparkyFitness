@@ -3,10 +3,12 @@ import {
   requestPermission,
   getGrantedPermissions,
   readRecords,
+  getChanges,
   aggregateRecord,
   aggregateGroupByDuration,
   aggregateGroupByPeriod,
 } from 'react-native-health-connect';
+import { loadHealthWaterSyncToken, saveHealthWaterSyncToken } from '../storage';
 import { addLog } from '../LogService';
 import {
   AggregatedHealthRecord,
@@ -485,7 +487,169 @@ const withClientRecovery = async <T>(read: () => Promise<T>): Promise<T> => {
   }
 };
 
+interface StagedWaterRun {
+  token: string | null;
+  configId: string | null;
+  cancelled: boolean;
+}
+const stagedWaterRuns = new Map<number, StagedWaterRun>();
+let nextWaterRunId = 1;
+
+export const beginWaterDeletionRun = (configId?: string | null): number => {
+  const runId = nextWaterRunId++;
+  stagedWaterRuns.set(runId, {
+    token: null,
+    configId: configId ?? null,
+    cancelled: false,
+  });
+  return runId;
+};
+
+export const cancelWaterDeletionRun = (runId?: number): void => {
+  if (runId !== undefined) {
+    const staged = stagedWaterRuns.get(runId);
+    if (staged) {
+      staged.cancelled = true;
+      staged.token = null;
+    }
+  } else {
+    for (const staged of stagedWaterRuns.values()) {
+      staged.cancelled = true;
+      staged.token = null;
+    }
+  }
+};
+
+export const commitWaterDeletionRun = async (runId?: number): Promise<void> => {
+  if (runId !== undefined) {
+    const staged = stagedWaterRuns.get(runId);
+    if (!staged) return;
+    stagedWaterRuns.delete(runId);
+    if (staged.token && !staged.cancelled) {
+      await saveHealthWaterSyncToken('android', staged.token, staged.configId);
+    }
+  } else {
+    for (const [id, staged] of Array.from(stagedWaterRuns.entries())) {
+      stagedWaterRuns.delete(id);
+      if (staged.token && !staged.cancelled) {
+        await saveHealthWaterSyncToken(
+          'android',
+          staged.token,
+          staged.configId
+        );
+      }
+    }
+  }
+};
+
+const readHydrationDeletions = async (
+  runId?: number
+): Promise<Record<string, unknown>[]> => {
+  const staged = runId != null ? stagedWaterRuns.get(runId) : undefined;
+  try {
+    const savedToken = await loadHealthWaterSyncToken(
+      'android',
+      staged?.configId
+    );
+    let currentToken = savedToken;
+    let hasMore = true;
+    const deletedRecords: Record<string, unknown>[] = [];
+
+    if (!currentToken) {
+      const initial = await getChanges({
+        recordTypes: ['Hydration'],
+      });
+      if (initial.nextChangesToken && staged && !staged.cancelled) {
+        staged.token = initial.nextChangesToken;
+      }
+      if (initial.deletionChanges) {
+        for (const del of initial.deletionChanges) {
+          if (del.recordId) {
+            deletedRecords.push({
+              deleted: true,
+              source_id: del.recordId,
+            });
+          }
+        }
+      }
+      return deletedRecords;
+    }
+
+    let pageToken = currentToken;
+    while (hasMore) {
+      const changes = await getChanges({
+        changesToken: pageToken,
+        recordTypes: ['Hydration'],
+      });
+      if (changes.changesTokenExpired) {
+        const fresh = await getChanges({
+          recordTypes: ['Hydration'],
+        });
+        if (fresh.nextChangesToken && staged && !staged.cancelled) {
+          staged.token = fresh.nextChangesToken;
+        }
+        return [];
+      }
+      if (changes.deletionChanges) {
+        for (const del of changes.deletionChanges) {
+          if (del.recordId) {
+            deletedRecords.push({
+              deleted: true,
+              source_id: del.recordId,
+            });
+          }
+        }
+      }
+      if (changes.nextChangesToken) {
+        pageToken = changes.nextChangesToken;
+      }
+      hasMore = changes.hasMore && !!changes.nextChangesToken;
+    }
+    // Only stage the new token once pagination completes without throwing and run is not cancelled
+    if (staged && !staged.cancelled) {
+      staged.token = pageToken;
+    }
+    return deletedRecords;
+  } catch (error) {
+    addLog(
+      `[HealthConnectService] Failed reading changes for Hydration: ${(error as Error).message}`,
+      'WARNING'
+    );
+    if (staged) {
+      staged.token = null;
+    }
+    return [];
+  }
+};
+
 export const readHealthRecordsDetailed = async (
+  recordType: string,
+  startDate: Date,
+  endDate: Date,
+  _telemetry?: TelemetryRunContext,
+  runId?: number
+): Promise<HealthConnectReadResult> => {
+  if (recordType === 'Hydration') {
+    // Establish deletion baseline/changes query BEFORE reading sample window
+    // so any sample deleted during or after the window read is detected on the next sync
+    const deletions = await readHydrationDeletions(runId);
+    const result = await readHealthRecordsDetailedInner(
+      recordType,
+      startDate,
+      endDate
+    );
+    if (deletions.length > 0) {
+      return {
+        records: [...result.records, ...deletions],
+        error: result.error,
+      };
+    }
+    return result;
+  }
+  return readHealthRecordsDetailedInner(recordType, startDate, endDate);
+};
+
+const readHealthRecordsDetailedInner = async (
   recordType: string,
   startDate: Date,
   endDate: Date

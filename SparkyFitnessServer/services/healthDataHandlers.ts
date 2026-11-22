@@ -973,7 +973,7 @@ const waterHandler: HealthTypeHandler = {
     const outcomes: HandlerOutcome[] = new Array(entries.length);
     if (entries.length === 0) return outcomes;
 
-    // Group entries by source; each source is upserted independently.
+    // Group additions/updates by source.
     const entriesBySource = new Map<
       string,
       Array<{
@@ -983,9 +983,45 @@ const waterHandler: HealthTypeHandler = {
         waterMl: number;
       }>
     >();
+
+    // Group deletions by source.
+    const deletionsBySource = new Map<
+      string,
+      Array<{
+        index: number;
+        sourceId: string;
+      }>
+    >();
+
     for (let i = 0; i < entries.length; i++) {
       const item = entries[i];
       const source = (item.entry.source as string) || 'manual';
+
+      if (item.entry.deleted === true || item.entry.action === 'delete') {
+        if (!item.entry.source_id) {
+          outcomes[i] = {
+            status: 'error',
+            error: 'Missing source_id for water deletion',
+          };
+          continue;
+        }
+        if (source === 'manual') {
+          outcomes[i] = {
+            status: 'error',
+            error:
+              'Manual water entries cannot be deleted via health data sync',
+          };
+          continue;
+        }
+        const existingDeletions = deletionsBySource.get(source) || [];
+        existingDeletions.push({
+          index: i,
+          sourceId: String(item.entry.source_id),
+        });
+        deletionsBySource.set(source, existingDeletions);
+        continue;
+      }
+
       if (
         item.entry.value === null ||
         item.entry.value === undefined ||
@@ -1022,13 +1058,106 @@ const waterHandler: HealthTypeHandler = {
       entriesBySource.set(source, existing);
     }
 
+    // Process deletions first
+    for (const [source, deletionGroup] of deletionsBySource) {
+      if (deletionGroup.length === 0) continue;
+      const sourceIds = deletionGroup.map((d) => d.sourceId);
+      try {
+        const affectedDates =
+          await measurementRepository.deleteWaterIntakeSamplesBySourceIds(
+            ctx.userId,
+            ctx.actingUserId,
+            source,
+            sourceIds
+          );
+        // `affectedDates` is group-wide: repeating it on every outcome makes
+        // the response O(entries x distinct dates). Report it once on the first entry, plus a count.
+        deletionGroup.forEach((d, pos) => {
+          outcomes[d.index] = {
+            status: 'success',
+            data: {
+              deleted: true,
+              source_id: d.sourceId,
+              affectedDateCount: affectedDates.length,
+              ...(pos === 0 ? { affectedDates } : {}),
+            },
+          };
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        log(
+          'error',
+          `[waterHandler.handleBatch] deleteWaterIntakeSamplesBySourceIds failed for source '${source}' (${deletionGroup.length} record(s)): ${msg}`,
+          error
+        );
+        deletionGroup.forEach((d) => {
+          outcomes[d.index] = { status: 'error', error: msg };
+        });
+      }
+    }
+
+    // Exclude additions that share (source, source_id) with a tombstone in the same batch
+    // so the deletion is the final state.
+    for (const [source, deletionGroup] of deletionsBySource) {
+      if (deletionGroup.length === 0) continue;
+      const deletedSourceIds = new Set(deletionGroup.map((d) => d.sourceId));
+      const group = entriesBySource.get(source);
+      if (group) {
+        const filteredGroup: typeof group = [];
+        for (const item of group) {
+          const itemSourceId = item.entry.source_id as string | undefined;
+          if (itemSourceId && deletedSourceIds.has(itemSourceId)) {
+            // Tombstone takes precedence over addition with same ID in same batch
+            outcomes[item.index] = {
+              status: 'success',
+              data: {
+                deleted: true,
+                source_id: itemSourceId,
+                supersededByTombstone: true,
+              },
+            };
+          } else {
+            filteredGroup.push(item);
+          }
+        }
+        entriesBySource.set(source, filteredGroup);
+      }
+    }
+
+    // If there are no additions to process, return early without querying primary container
+    const totalAdditions = Array.from(entriesBySource.values()).reduce(
+      (sum, g) => sum + g.length,
+      0
+    );
+    if (totalAdditions === 0) {
+      return outcomes;
+    }
+
     // Synced entries log against the user's default container, same as manual entries.
-    const primaryContainer =
-      await waterContainerRepository.getPrimaryWaterContainerByUserId(
-        ctx.userId
+    let primaryContainerId: number | null = null;
+    let primaryContainerName = 'Default';
+    try {
+      const primaryContainer =
+        await waterContainerRepository.getPrimaryWaterContainerByUserId(
+          ctx.userId
+        );
+      primaryContainerId = primaryContainer?.id ?? null;
+      primaryContainerName = primaryContainer?.name || 'Default';
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log(
+        'error',
+        `[waterHandler.handleBatch] Failed to fetch primary container: ${msg}`,
+        error
       );
-    const primaryContainerId = primaryContainer?.id ?? null;
-    const primaryContainerName = primaryContainer?.name || 'Default';
+      // Contain container lookup failure to addition outcomes, preserving deletion successes
+      for (const [, group] of entriesBySource) {
+        group.forEach((g) => {
+          outcomes[g.index] = { status: 'error', error: msg };
+        });
+      }
+      return outcomes;
+    }
 
     for (const [source, group] of entriesBySource) {
       if (group.length === 0) continue;

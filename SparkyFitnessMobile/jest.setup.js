@@ -78,6 +78,11 @@ jest.mock('react-native-nitro-modules', () => ({
 jest.mock('@kingstinct/react-native-healthkit', () => ({
   requestAuthorization: jest.fn().mockResolvedValue(true),
   queryQuantitySamples: jest.fn(),
+  queryQuantitySamplesWithAnchor: jest.fn().mockResolvedValue({
+    samples: [],
+    deletedSamples: [],
+    newAnchor: 'mock-anchor',
+  }),
   queryCategorySamples: jest.fn(),
   queryStatisticsForQuantity: jest.fn(),
   queryStatisticsCollectionForQuantity: jest.fn().mockResolvedValue([]),
@@ -136,6 +141,13 @@ jest.mock('react-native-health-connect', () => ({
   requestPermission: jest.fn().mockResolvedValue([]),
   getGrantedPermissions: jest.fn().mockResolvedValue([]),
   readRecords: jest.fn().mockResolvedValue({ records: [] }),
+  getChanges: jest.fn().mockResolvedValue({
+    upsertionChanges: [],
+    deletionChanges: [],
+    nextChangesToken: 'mock-token',
+    hasMore: false,
+    changesTokenExpired: false,
+  }),
   requestExerciseRoute: jest.fn().mockResolvedValue([]),
   aggregateRecord: jest.fn().mockResolvedValue({}),
   aggregateGroupByDuration: jest.fn().mockResolvedValue([]),
