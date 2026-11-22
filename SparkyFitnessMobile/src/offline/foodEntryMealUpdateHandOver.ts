@@ -167,7 +167,11 @@ export async function dropSupersededMealUpdate(
       isOwnedBy(row, userId)
   );
   if (!waiting || waiting.updatedAt >= requestStartedAt) return;
-  if (await deleteUnconfirmedRow(db, waiting.id)) notifyOutboxChanged();
+  if (
+    await deleteUnconfirmedRow(db, waiting.id, undefined, waiting.updatedAt)
+  ) {
+    notifyOutboxChanged();
+  }
 }
 
 /** The waiting change to a logged meal, if there is one. */

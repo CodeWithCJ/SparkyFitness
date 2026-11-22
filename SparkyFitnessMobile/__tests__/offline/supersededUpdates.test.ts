@@ -9,10 +9,12 @@ import {
   queueFoodEntryUpdate,
 } from '../../src/offline/foodEntryUpdateHandOver';
 import {
+  deleteUnconfirmedRow,
   deleteUnconfirmedUnlessSending,
   enqueueOutbox,
   getOutboxRow,
   listUnconfirmedOutbox,
+  rewriteUnconfirmedPayload,
   updateOutboxRow,
 } from '../../src/offline/outbox';
 import {
@@ -194,5 +196,63 @@ describe('a direct save and the older changes still waiting on the phone', () =>
     expect(await getOutboxRow(db, 'retried')).not.toBeNull();
     expect(await getOutboxRow(db, 'claimed')).not.toBeNull();
     expect(await getOutboxRow(db, 'fresh')).toBeNull();
+  });
+
+  it('keeps the time a waiting field was queued when a save removes part of the row', async () => {
+    await enqueueOutbox(
+      db,
+      {
+        id: 'upd',
+        serverConfigId: 's1',
+        userId: 'u1',
+        kind: FOOD_ENTRY_UPDATE,
+        entityId: ENTRY,
+        entryDate: DAY,
+        payload: {
+          patch: { quantity: 2, notes: 'x' },
+          display: { quantity: 2, notes: 'x' },
+        },
+        payloadVersion: 2,
+      },
+      1000
+    );
+
+    await dropSupersededUpdate(ENTRY, { quantity: 3 }, 5000);
+
+    const row = await getOutboxRow(db, 'upd');
+    expect((row?.payload as { patch: object }).patch).toEqual({ notes: 'x' });
+    // Not moved forward to the time of the cleanup, so a later save still
+    // sees these fields as older than itself.
+    expect(row?.updatedAt).toBe(1000);
+  });
+
+  it('leaves a row alone that was replaced after it was looked at', async () => {
+    await enqueueOutbox(
+      db,
+      {
+        id: 'upd2',
+        serverConfigId: 's1',
+        userId: 'u1',
+        kind: FOOD_ENTRY_UPDATE,
+        entityId: ENTRY,
+        entryDate: DAY,
+        payload: { patch: { notes: 'new' }, display: { notes: 'new' } },
+        payloadVersion: 2,
+      },
+      2000
+    );
+
+    // The row was read at 1000, then an edit replaced it (same id, 2000).
+    expect(
+      await rewriteUnconfirmedPayload(db, 'upd2', 1000, { patch: {} })
+    ).toBe(false);
+    expect(await deleteUnconfirmedRow(db, 'upd2', undefined, 1000)).toBe(false);
+    expect(
+      ((await getOutboxRow(db, 'upd2'))?.payload as { patch: object }).patch
+    ).toEqual({ notes: 'new' });
+
+    // The version that was looked at is still removed.
+    expect(await deleteUnconfirmedRow(db, 'upd2', undefined, 2000)).toBe(true);
+    expect(await getOutboxRow(db, 'upd2')).toBeNull();
   });
 });

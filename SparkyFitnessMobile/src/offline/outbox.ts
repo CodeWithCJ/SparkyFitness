@@ -301,6 +301,39 @@ export async function deleteUnconfirmedForEntity(
 }
 
 /**
+ * Rewrites the payload of one waiting row, only if it is still the version that
+ * was looked at (`observedUpdatedAt`) and is not being sent. Status, attempts
+ * and the row's own timestamp are left as they were, so the rewrite does not
+ * make older work look newer. False when the row changed, or is gone.
+ */
+export async function rewriteUnconfirmedPayload(
+  db: OfflineDb,
+  rowId: string,
+  observedUpdatedAt: number,
+  payload: unknown
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const row = await tx.first<{ status: string; updated_at: number }>(
+      `SELECT status, updated_at FROM outbox WHERE id = ?`,
+      [rowId]
+    );
+    if (
+      !row ||
+      row.status === 'sending' ||
+      row.status === 'synced' ||
+      row.updated_at !== observedUpdatedAt
+    ) {
+      return false;
+    }
+    await tx.run(`UPDATE outbox SET payload = ? WHERE id = ?`, [
+      JSON.stringify(payload),
+      rowId,
+    ]);
+    return true;
+  });
+}
+
+/**
  * Removes one waiting row and the rows waiting on it, unless it is being sent.
  * The status is checked inside the same transaction as the delete. Every
  * other row of the same entity stays. True when the row was removed.
@@ -308,14 +341,26 @@ export async function deleteUnconfirmedForEntity(
 export async function deleteUnconfirmedRow(
   db: OfflineDb,
   rowId: string,
-  isMine: (row: { userId: string | null }) => boolean = () => true
+  isMine: (row: { userId: string | null }) => boolean = () => true,
+  /**
+   * The `updatedAt` of the row as it was looked at. A row replaced since (a
+   * newer edit keeps the id) has a different one and is left intact.
+   */
+  observedUpdatedAt?: number
 ): Promise<boolean> {
   return db.transaction(async (tx) => {
     const row = await tx.first<{
       status: string;
       user_id: string | null;
-    }>(`SELECT status, user_id FROM outbox WHERE id = ?`, [rowId]);
+      updated_at: number;
+    }>(`SELECT status, user_id, updated_at FROM outbox WHERE id = ?`, [rowId]);
     if (!row || row.status === 'sending' || row.status === 'synced') {
+      return false;
+    }
+    if (
+      observedUpdatedAt !== undefined &&
+      row.updated_at !== observedUpdatedAt
+    ) {
       return false;
     }
     if (!isMine({ userId: row.user_id })) return false;

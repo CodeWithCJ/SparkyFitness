@@ -20,6 +20,7 @@ import {
 import {
   deleteUnconfirmedRow,
   enqueueOutbox,
+  rewriteUnconfirmedPayload,
   isOwnedBy,
   listUnconfirmedOutbox,
 } from './outbox';
@@ -227,25 +228,19 @@ export async function dropSupersededUpdate(
   if (Object.keys(patch).length === 0) {
     // Only this update goes; a delete or anything else waiting for the entry
     // stays.
-    await deleteUnconfirmedRow(db, waiting.id);
+    await deleteUnconfirmedRow(db, waiting.id, undefined, waiting.updatedAt);
   } else {
     // What the entry reads like while it waits drops what was just saved.
     const display = Object.fromEntries(
       Object.entries(before.display).filter(([key]) => !setNow.has(key))
     ) as Partial<FoodEntry>;
-    await enqueueOutbox(db, {
-      id: waiting.id,
-      serverConfigId,
-      userId: waiting.userId,
-      kind: FOOD_ENTRY_UPDATE,
-      entityId: entryId,
-      entryDate: waiting.entryDate,
-      payload: {
-        patch,
-        display,
-        ...(before.original ? { original: before.original } : {}),
-      },
-      payloadVersion: waiting.payloadVersion,
+    // Only if the row is still the one that was read, and without touching its
+    // timestamp: an edit queued in between is kept as it is, and the fields
+    // that remain keep the time they were queued.
+    await rewriteUnconfirmedPayload(db, waiting.id, waiting.updatedAt, {
+      patch,
+      display,
+      ...(before.original ? { original: before.original } : {}),
     });
   }
   notifyOutboxChanged();
