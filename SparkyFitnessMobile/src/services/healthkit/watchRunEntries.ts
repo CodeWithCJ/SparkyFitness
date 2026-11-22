@@ -35,6 +35,9 @@ export function noteWatchRunEntry(entryId: string): Promise<void> {
 }
 
 export async function loadWatchRunEntryIds(): Promise<Set<string>> {
+  // Wait for notes already requested, so a read never misses one that is
+  // between its read and its write. `pending` never rejects.
+  await pending;
   try {
     return new Set((await loadHealthPreference<string[]>(KEY)) ?? []);
   } catch {

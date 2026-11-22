@@ -36,6 +36,13 @@ describe('watch run entries', () => {
     expect([...(await loadWatchRunEntryIds())]).toEqual(['e1', 'e2']);
   });
 
+  it('includes a note still being written when read', async () => {
+    const noting = noteWatchRunEntry('e1');
+    const ids = await loadWatchRunEntryIds();
+    await noting;
+    expect(ids.has('e1')).toBe(true);
+  });
+
   it('keeps only the most recent entries', async () => {
     for (let i = 0; i < 505; i += 1) await noteWatchRunEntry(`e${i}`);
     const ids = await loadWatchRunEntryIds();
