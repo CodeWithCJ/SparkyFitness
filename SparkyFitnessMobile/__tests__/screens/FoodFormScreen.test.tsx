@@ -2385,6 +2385,8 @@ describe('FoodFormScreen', () => {
 
     await waitFor(() => {
       expect(mockAddEntry).toHaveBeenCalledWith({
+        // No equivalent servings in this form, so the food may wait on the phone.
+        hasEquivalentServings: false,
         saveFoodPayload: expect.objectContaining({
           name: 'Custom Meal Food',
           brand: 'Brand Co',
