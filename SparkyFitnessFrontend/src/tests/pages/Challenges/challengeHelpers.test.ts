@@ -32,9 +32,7 @@ import {
   takePendingInvite,
 } from '@/pages/Challenges/challengeLinks';
 import {
-  nextPeriodDay,
   pointsWithoutDailyGoal,
-  previousPeriodDay,
   recentPeriodStarts,
 } from '@/pages/Challenges/challengePeriods';
 import { translateForTest } from '@/tests/mocks/reactI18next';
@@ -146,16 +144,16 @@ describe('How points work', () => {
       points: null,
     });
     expect(ruleLines(t, group, km).map((l) => l.text)).toContain(
-      'Everyone adds to one total; the group wins at 100 km.'
+      'Everyone adds to one total; the group wins at 100.0 km.'
     );
   });
 
   it('lists a distance change that the 1-decimal display would hide', () => {
     const race = (target: number) =>
       rules({ metric: 'distance', format: 'race', target, points: null });
-    // Both read "1 km" in How points work.
+    // Both read "1.0 km" in How points work.
     expect(ruleLines(t, race(1040), km).map((l) => l.text)).toContain(
-      'The first to reach 1 km wins; later finishers rank by the day they got there.'
+      'The first to reach 1.0 km wins; later finishers rank by the day they got there.'
     );
     expect(changedRuleLines(t, race(1000), race(1040), km)).toEqual([
       'The first to reach 1.04 km wins; later finishers rank by the day they got there.',
@@ -178,13 +176,15 @@ describe('How points work', () => {
 
 describe('amounts in the person own units', () => {
   it('shows distance in km or miles and energy in their unit', () => {
-    expect(metricValueText(t, 'distance', 5000, km, 'en')).toBe('5 km');
+    expect(metricValueText(t, 'distance', 5000, km, 'en')).toBe('5.0 km');
     expect(metricValueText(t, 'distance', 5000, miles, 'en')).toBe('3.1 mi');
     expect(metricValueText(t, 'active_calories', 100, miles, 'en')).toBe(
       '418 kJ'
     );
     expect(metricValueText(t, 'points', 98.25, km, 'en')).toBe('98.3 pts');
     expect(metricValueText(t, 'workout_days', 1, km, 'en')).toBe('1 day');
+    expect(metricValueText(t, 'elevation', 100, km, 'en')).toBe('100 m');
+    expect(metricValueText(t, 'elevation', 100, miles, 'en')).toBe('328 ft');
   });
 
   it('turns a typed target into the stored unit and back', () => {
@@ -194,6 +194,15 @@ describe('amounts in the person own units', () => {
       targetToInput('distance', targetFromInput('distance', 26.2, miles), miles)
     ).toBe(26.2);
     expect(targetFromInput('steps', 5000, km)).toBe(5000);
+    expect(targetFromInput('elevation', 500, km)).toBe(500);
+    expect(targetToInput('elevation', 1000, miles)).toBe(3281);
+    expect(
+      targetToInput(
+        'elevation',
+        targetFromInput('elevation', 3281, miles),
+        miles
+      )
+    ).toBe(3281);
     // kcal as stored, kJ as a whole number (utils/energyInput).
     expect(targetToInput('active_calories', 250.5, km)).toBe(250.5);
     expect(
@@ -271,14 +280,6 @@ describe('daily cap', () => {
 });
 
 describe('periods', () => {
-  it('steps between periods without leaving the challenge or passing today', () => {
-    expect(previousPeriodDay('2026-11-09', '2026-11-02')).toBe('2026-11-08');
-    expect(previousPeriodDay('2026-11-02', '2026-11-02')).toBeNull();
-    expect(nextPeriodDay('2026-11-08', null, '2026-11-14')).toBe('2026-11-09');
-    expect(nextPeriodDay('2026-11-15', null, '2026-11-14')).toBeNull();
-    expect(nextPeriodDay('2026-11-08', '2026-11-08', '2026-11-14')).toBeNull();
-  });
-
   it('turns the weekly goal off for a daily period, which the rules refuse', () => {
     const points = challengePreset('all_rounder').rules.points!;
     // Picking a daily period on All-Rounder

@@ -311,6 +311,7 @@ describe('appPreferencesStore', () => {
         'mindfulness',
         'oralCare',
         'labResults',
+        'challenges',
       ]);
     });
 

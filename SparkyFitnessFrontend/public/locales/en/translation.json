@@ -11575,7 +11575,8 @@
       "km": "{{value}} km",
       "days_one": "{{count}} day",
       "days_other": "{{count}} days",
-      "metres": "{{value}} m"
+      "metres": "{{value}} m",
+      "feet": "{{value}} ft"
     },
     "units": {
       "points": "points",
@@ -11584,7 +11585,8 @@
       "miles": "miles",
       "km": "km",
       "days": "days",
-      "metres": "metres"
+      "metres": "metres",
+      "feet": "feet"
     },
     "periodRange": "{{start}} – {{end}}",
     "widget": {

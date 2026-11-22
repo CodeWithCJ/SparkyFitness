@@ -9,6 +9,7 @@ import {
   MOOD_CHECKIN_KIND,
   ORAL_CARE_REMINDER_KIND,
 } from '../utils/checkinReminderTimes';
+import { CHALLENGE_WEEK_LEADER_KIND } from '../utils/challenges';
 import i18n from '../localization/i18n';
 import { fireSuccessHaptic } from './haptics';
 import {
@@ -29,6 +30,7 @@ export const MOOD_CHECKIN_CHANNEL_ID = 'mood-checkin';
 export const ORAL_CARE_CHANNEL_ID = 'oral-care';
 const MINDFULNESS_CHANNEL_ID = 'mindfulness';
 export const MEDICATION_REMINDER_CHANNEL_ID = 'medication-reminders';
+export const CHALLENGES_CHANNEL_ID = 'challenges';
 const EXACT_ALARM_PROMPT_KEY = '@SparkyFitness/exactAlarmPromptShown';
 
 export function notificationCopy(
@@ -227,6 +229,14 @@ export async function ensureOralCareChannel(): Promise<void> {
   });
 }
 
+export async function ensureChallengesChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(CHALLENGES_CHANNEL_ID, {
+    name: notificationCopy('notifications.channels.challenges', 'Challenges'),
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
+
 async function ensureMindfulnessChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(MINDFULNESS_CHANNEL_ID, {
@@ -324,7 +334,9 @@ export async function initNotifications(): Promise<void> {
         const isRestPing = category === REST_COMPLETE_CATEGORY;
         const kind = notification.request.content.data?.kind;
         const isMoodCheckin =
-          kind === MOOD_CHECKIN_KIND || kind === ORAL_CARE_REMINDER_KIND;
+          kind === MOOD_CHECKIN_KIND ||
+          kind === ORAL_CARE_REMINDER_KIND ||
+          kind === CHALLENGE_WEEK_LEADER_KIND;
         // iOS also runs this while the app is frontmost-but-inactive (screen
         // locking, app switcher), where the chime never plays — so there the
         // ping carries the cue itself instead of being hidden as a duplicate.
