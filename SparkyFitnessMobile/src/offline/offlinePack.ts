@@ -208,13 +208,19 @@ async function refreshOnce(force: boolean): Promise<boolean> {
   }
 }
 
-async function refreshSteps(
+/**
+ * What a workout needs to start with no connection: identity, preferences,
+ * plates, saved workouts, the exercise library, last-time values and the
+ * plans, then the completed marker. 'switched' when the account changed under
+ * it, 'skipped' when the pack is recent enough, 'done' otherwise.
+ */
+async function refreshWorkoutPack(
   db: OfflineDb,
   serverConfigId: string,
   force: boolean,
   abandonedAfterSwitch: () => Promise<boolean>,
   startedUnder: number
-): Promise<boolean> {
+): Promise<'done' | 'skipped' | 'switched'> {
   if (!force) {
     const marker = await getCacheRow(
       db,
@@ -222,7 +228,9 @@ async function refreshSteps(
       CACHE_COLLECTIONS.pack,
       PACK_COMPLETED_KEY
     );
-    if (marker && Date.now() - marker.fetchedAt < PACK_MAX_AGE_MS) return false;
+    if (marker && Date.now() - marker.fetchedAt < PACK_MAX_AGE_MS) {
+      return 'skipped';
+    }
   }
 
   const identity = await apiFetch<IdentityResponse>({
@@ -230,7 +238,7 @@ async function refreshSteps(
     serviceName: SERVICE,
     operation: 'fetch signed-in user',
   });
-  if (await abandonedAfterSwitch()) return false;
+  if (await abandonedAfterSwitch()) return 'switched';
   if (identity.authenticatedUserId) {
     await putCacheRows(db, serverConfigId, IDENTITY_COLLECTION, [
       { key: IDENTITY_KEY, payload: { id: identity.authenticatedUserId } },
@@ -242,7 +250,7 @@ async function refreshSteps(
     serviceName: SERVICE,
     operation: 'fetch preferences',
   });
-  if (await abandonedAfterSwitch()) return false;
+  if (await abandonedAfterSwitch()) return 'switched';
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.preferences, [
     { key: SINGLE_DOCUMENT_KEY, payload: preferences },
   ]);
@@ -252,13 +260,13 @@ async function refreshSteps(
     serviceName: SERVICE,
     operation: 'fetch plate inventory',
   });
-  if (await abandonedAfterSwitch()) return false;
+  if (await abandonedAfterSwitch()) return 'switched';
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.plateInventory, [
     { key: SINGLE_DOCUMENT_KEY, payload: plates },
   ]);
 
   const presets = await fetchAllPresets();
-  if (await abandonedAfterSwitch()) return false;
+  if (await abandonedAfterSwitch()) return 'switched';
   await replaceCacheCollection(
     db,
     serverConfigId,
@@ -271,7 +279,7 @@ async function refreshSteps(
   );
 
   const exercises = await fetchAllExercises();
-  if (await abandonedAfterSwitch()) return false;
+  if (await abandonedAfterSwitch()) return 'switched';
   await replaceCacheCollection(
     db,
     serverConfigId,
@@ -286,13 +294,42 @@ async function refreshSteps(
   await refreshStats(db, serverConfigId, presets);
   await refreshPlanDays(db, serverConfigId);
 
-  if (await abandonedAfterSwitch()) return false;
+  if (await abandonedAfterSwitch()) return 'switched';
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.pack, [
     { key: PACK_COMPLETED_KEY, payload: { completedAt: Date.now() } },
   ]);
+  return 'done';
+}
 
-  // After the marker: what a workout needs is ready, and a failure here only
-  // leaves the Diary with the days it already had.
+async function refreshSteps(
+  db: OfflineDb,
+  serverConfigId: string,
+  force: boolean,
+  abandonedAfterSwitch: () => Promise<boolean>,
+  startedUnder: number
+): Promise<boolean> {
+  let workoutPackDone = false;
+  try {
+    const outcome = await refreshWorkoutPack(
+      db,
+      serverConfigId,
+      force,
+      abandonedAfterSwitch,
+      startedUnder
+    );
+    if (outcome === 'switched') return false;
+    // A pack that is still recent is not refreshed at all, food included, as
+    // before.
+    if (outcome === 'skipped') return false;
+    workoutPackDone = true;
+  } catch (error) {
+    if (await abandonedAfterSwitch()) return false;
+    addLog(`[Offline] Workout data not refreshed: ${error}`, 'WARNING');
+  }
+
+  // Each part below stands on its own: a failure in one (the workout data, a
+  // day of workouts, the food) never keeps the others from refreshing, and
+  // leaves what that part already had.
   try {
     await refreshRecentDiaryDays(db, serverConfigId, undefined, startedUnder);
   } catch (error) {
@@ -321,7 +358,9 @@ async function refreshSteps(
     addLog(`[Offline] Foods not refreshed: ${error}`, 'WARNING');
   }
   if (await abandonedAfterSwitch()) return false;
-  return true;
+  // True only when the workout data refreshed too: that is what the person is
+  // told, while the food and water parts have kept what they could.
+  return workoutPackDone;
 }
 
 let running: Promise<boolean> | null = null;

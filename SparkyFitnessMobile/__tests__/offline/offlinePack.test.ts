@@ -263,4 +263,26 @@ describe('offline pack', () => {
     expect(await refreshOfflinePack({ force: true })).toBe(true);
     expect(await isOfflinePackReady(db, 's1')).toBe(true);
   });
+
+  it('still refreshes the food and water when the workout data could not be refreshed', async () => {
+    // The last-time values fail the way a dropped connection does.
+    serveFrom({ ...state, failOn: '/api/v2/exercises/stats/batch' });
+
+    // The person is told it did not fully refresh...
+    expect(await refreshOfflinePack({ force: true })).toBe(false);
+
+    // ...but the food and the water were still asked for.
+    const asked = mockApiFetch.mock.calls.map(([options]) => options.endpoint);
+    expect(
+      asked.some((endpoint) => endpoint.includes('/api/food-entries/range'))
+    ).toBe(true);
+    expect(
+      asked.some((endpoint) => endpoint.includes('/api/daily-summary'))
+    ).toBe(true);
+    expect(asked.some((endpoint) => endpoint.startsWith('/api/foods'))).toBe(
+      true
+    );
+    // The workout pack is not marked ready, as before.
+    expect(await isOfflinePackReady(db, 's1')).toBe(false);
+  });
 });
