@@ -125,8 +125,6 @@ interface LoggedComponentEntry {
 
 /** A logged-meal payload as it arrives from the diary UI. */
 /** The unique index behind `food_entry_meals.client_id`, to spot a lost race. */
-/** How long a logged meal with no components is left alone before a replay clears it. */
-const EMPTY_MEAL_GRACE_MS = 60 * 1000;
 const FOOD_ENTRY_MEAL_CLIENT_ID_INDEX = 'idx_food_entry_meals_user_client_id';
 
 interface LoggedMealInput {
@@ -2455,44 +2453,14 @@ async function createFoodEntryMeal(
     if (mealData.client_id) {
       // A request with this key already stored its meal (for example one that
       // timed out on the phone but committed here): answer with that meal and
-      // log nothing. A parent with no components is what a request that died
-      // between the two writes leaves behind; it is removed and the meal made
-      // again, so a retry completes it instead of returning an empty meal.
+      // log nothing. The parent and its components are written in one
+      // transaction, so a stored meal is always a finished one, even one with
+      // no foods, and is never rebuilt.
       const stored = await foodEntryMealRepository.findFoodEntryMealByClientId(
         targetUserId,
         mealData.client_id
       );
-      if (stored) {
-        const components =
-          await foodEntryMealRepository.countFoodEntryMealComponents(
-            targetUserId,
-            stored.id
-          );
-        if (components > 0) return stored;
-        // A parent with no components that is young may be a request that is
-        // still writing them (a retry sent while the first one is slow), not
-        // one that died. Removing it would break that request, so the retry is
-        // asked to come back; only a parent left empty for a while is cleared.
-        const ageMs = Date.now() - new Date(stored.created_at).getTime();
-        if (Number.isFinite(ageMs) && ageMs < EMPTY_MEAL_GRACE_MS) {
-          throw Object.assign(new Error('This meal is still being logged.'), {
-            status: 503,
-          });
-        }
-        const removed = await foodEntryMealRepository.deleteEmptyFoodEntryMeal(
-          stored.id,
-          targetUserId
-        );
-        // Components arrived between the count and the delete: that request
-        // finished its meal after all, so it is the answer.
-        if (!removed) {
-          const now = await foodEntryMealRepository.findFoodEntryMealByClientId(
-            targetUserId,
-            mealData.client_id
-          );
-          if (now) return now;
-        }
-      }
+      if (stored) return stored;
     }
     // Backwards compatibility (issue #1023): clients on the new serving model
     // send X-Meal-Model-Version: 2. Old clients omit the header — for
@@ -2561,33 +2529,74 @@ async function createFoodEntryMeal(
       authenticatedUserId
     );
 
-    // 1. Create the parent food_entry_meals record with quantity, unit, name, description, and snapshotted yield.
+    // The parent and its components are one transaction: a request that dies
+    // part-way leaves nothing behind, so a replayed key never meets a
+    // half-written meal.
+    const client = await getClient(targetUserId, actingUserId);
     let newFoodEntryMeal;
     try {
-      newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal(
-        {
-          user_id: targetUserId, // Use target user ID
-          meal_template_id: mealData.meal_template_id || null,
-          meal_type_id: mealData.meal_type_id || null,
-          meal_type: mealData.meal_type,
-          entry_date: mealData.entry_date ?? '',
-          entry_time: mealData.entry_time ?? null,
-          name: name ?? '',
-          description: description,
-          // No meal-template fallback, unlike description: a note is authored
-          // for this occasion. The template's own note is shown beside it.
-          notes: mealData.notes ?? null,
-          quantity: Number(mealData.quantity) || 1.0, // Default to 1.0
-          unit: mealData.unit || 'serving', // Default to 'serving'
-          legacy_serving_unit_math: useLegacyServingMath,
-          entry_total_servings: portion.totalServings,
-          client_id: mealData.client_id ?? null,
-        },
-        actingUserId
+      await client.query('BEGIN');
+      // 1. Create the parent food_entry_meals record with quantity, unit, name, description, and snapshotted yield.
+      newFoodEntryMeal =
+        await foodEntryMealRepository.createFoodEntryMealWithClient(
+          client,
+          {
+            user_id: targetUserId, // Use target user ID
+            meal_template_id: mealData.meal_template_id || null,
+            meal_type_id: mealData.meal_type_id || null,
+            meal_type: mealData.meal_type,
+            entry_date: mealData.entry_date ?? '',
+            entry_time: mealData.entry_time ?? null,
+            name: name ?? '',
+            description: description,
+            // No meal-template fallback, unlike description: a note is authored
+            // for this occasion. The template's own note is shown beside it.
+            notes: mealData.notes ?? null,
+            quantity: Number(mealData.quantity) || 1.0, // Default to 1.0
+            unit: mealData.unit || 'serving', // Default to 'serving'
+            legacy_serving_unit_math: useLegacyServingMath,
+            entry_total_servings: portion.totalServings,
+            client_id: mealData.client_id ?? null,
+          },
+          actingUserId
+        );
+      log(
+        'info',
+        `Portion multiplier: ${portion.multiplier} (consumed: ${Number(mealData.quantity) || 1.0}, total_servings: ${portion.totalServings}, has_template: ${!!mealData.meal_template_id}, legacy_client: ${isLegacyClient}, legacy_math: ${useLegacyServingMath})`
       );
+      // 2. Create component food_entries records with scaled quantities.
+      // buildLeafFoodEntries recursively flattens any linked sub-meals so the
+      // diary only ever stores leaf foods (see MEAL_COMPOSITION_PLAN.md).
+      const entriesToCreate = await buildLeafFoodEntries(
+        foodsToProcess,
+        portion.multiplier,
+        {
+          authenticatedUserId,
+          actingUserId,
+          targetUserId: newFoodEntryMeal.user_id, // target user from the created meal
+          mealTypeId: newFoodEntryMeal.meal_type_id,
+          entryDate: mealData.entry_date ?? '',
+          entryTime: newFoodEntryMeal.entry_time ?? null,
+          foodEntryMealId: newFoodEntryMeal.id,
+        }
+      );
+      if (entriesToCreate.length > 0) {
+        await foodRepository.bulkCreateFoodEntries(
+          entriesToCreate,
+          authenticatedUserId,
+          { client }
+        );
+        log(
+          'info',
+          `Created ${entriesToCreate.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}.`
+        );
+      }
+      await client.query('COMMIT');
     } catch (error) {
-      // A copy of this same request stored its meal first. That one is the
-      // meal; this one is the duplicate.
+      await client.query('ROLLBACK').catch(() => undefined);
+      // A copy of this same request committed its meal first (the insert
+      // waited for it, so that meal is complete). That one is the meal; this
+      // one is the duplicate.
       if (
         mealData.client_id &&
         isUniqueViolationOn(error, FOOD_ENTRY_MEAL_CLIENT_ID_INDEX)
@@ -2597,53 +2606,11 @@ async function createFoodEntryMeal(
             targetUserId,
             mealData.client_id
           );
-        if (winner) {
-          // The winner may still be writing its components: hand back a
-          // meal only once it has them, else ask the retry to come back.
-          const components =
-            await foodEntryMealRepository.countFoodEntryMealComponents(
-              targetUserId,
-              winner.id
-            );
-          if (components > 0) return winner;
-          throw Object.assign(new Error('This meal is still being logged.'), {
-            status: 503,
-          });
-        }
+        if (winner) return winner;
       }
       throw error;
-    }
-    const resolvedMealTypeId = newFoodEntryMeal.meal_type_id;
-
-    log(
-      'info',
-      `Portion multiplier: ${portion.multiplier} (consumed: ${Number(mealData.quantity) || 1.0}, total_servings: ${portion.totalServings}, has_template: ${!!mealData.meal_template_id}, legacy_client: ${isLegacyClient}, legacy_math: ${useLegacyServingMath})`
-    );
-    // 2. Create component food_entries records with scaled quantities.
-    // buildLeafFoodEntries recursively flattens any linked sub-meals so the
-    // diary only ever stores leaf foods (see MEAL_COMPOSITION_PLAN.md).
-    const entriesToCreate = await buildLeafFoodEntries(
-      foodsToProcess,
-      portion.multiplier,
-      {
-        authenticatedUserId,
-        actingUserId,
-        targetUserId: newFoodEntryMeal.user_id, // target user from the created meal
-        mealTypeId: resolvedMealTypeId,
-        entryDate: mealData.entry_date ?? '',
-        entryTime: newFoodEntryMeal.entry_time ?? null,
-        foodEntryMealId: newFoodEntryMeal.id,
-      }
-    );
-    if (entriesToCreate.length > 0) {
-      await foodRepository.bulkCreateFoodEntries(
-        entriesToCreate,
-        authenticatedUserId
-      );
-      log(
-        'info',
-        `Created ${entriesToCreate.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}.`
-      );
+    } finally {
+      client.release();
     }
     return newFoodEntryMeal;
   } catch (error) {

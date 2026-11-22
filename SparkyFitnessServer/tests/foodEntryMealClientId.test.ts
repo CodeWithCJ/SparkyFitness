@@ -1,7 +1,12 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 
+const fakeClient = vi.hoisted(() => ({
+  query: vi.fn(),
+  release: vi.fn(),
+}));
+
 vi.mock('../db/poolManager.js', () => ({
-  getClient: vi.fn(),
+  getClient: vi.fn(async () => fakeClient),
   getSystemClient: vi.fn(),
 }));
 vi.mock('../models/foodRepository.js', () => ({
@@ -9,11 +14,8 @@ vi.mock('../models/foodRepository.js', () => ({
 }));
 vi.mock('../models/foodEntryMealRepository.js', () => ({
   default: {
-    createFoodEntryMeal: vi.fn(),
+    createFoodEntryMealWithClient: vi.fn(),
     findFoodEntryMealByClientId: vi.fn(),
-    countFoodEntryMealComponents: vi.fn(),
-    deleteFoodEntryMeal: vi.fn(),
-    deleteEmptyFoodEntryMeal: vi.fn(),
   },
 }));
 vi.mock('../models/mealRepository.js', () => ({
@@ -46,76 +48,61 @@ const request = {
 
 const created = { id: 'new-meal', user_id: USER_ID, meal_type_id: 'mt-1' };
 
+function statements(): string[] {
+  return fakeClient.query.mock.calls.map((call) => String(call[0]));
+}
+
 describe('createFoodEntryMeal with a client id (offline replay)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    repo.createFoodEntryMeal.mockResolvedValue(created as never);
+    fakeClient.query.mockResolvedValue({ rows: [], rowCount: 0 });
+    repo.createFoodEntryMealWithClient.mockResolvedValue(created as never);
     repo.findFoodEntryMealByClientId.mockResolvedValue(null);
     vi.mocked(foodRepository.bulkCreateFoodEntries).mockResolvedValue(
       undefined as never
     );
   });
 
-  it('stores the key on the meal it creates', async () => {
-    await createFoodEntryMeal(USER_ID, USER_ID, request);
+  it('stores the key on the meal it creates, in one transaction', async () => {
+    const result = await createFoodEntryMeal(USER_ID, USER_ID, request);
 
-    expect(repo.createFoodEntryMeal).toHaveBeenCalledWith(
+    expect(result).toBe(created);
+    expect(repo.createFoodEntryMealWithClient).toHaveBeenCalledWith(
+      fakeClient,
       expect.objectContaining({ client_id: CLIENT_ID }),
       USER_ID
     );
+    expect(statements()).toEqual(['BEGIN', 'COMMIT']);
+    expect(fakeClient.release).toHaveBeenCalledTimes(1);
   });
 
   it('returns the meal an earlier request stored and logs nothing', async () => {
     const stored = { id: 'stored-meal', user_id: USER_ID };
     repo.findFoodEntryMealByClientId.mockResolvedValue(stored as never);
-    repo.countFoodEntryMealComponents.mockResolvedValue(1);
 
     const result = await createFoodEntryMeal(USER_ID, USER_ID, request);
 
+    // A stored meal is always a finished one, even one with no foods, so it is
+    // never cleared or rebuilt.
     expect(result).toBe(stored);
-    expect(repo.createFoodEntryMeal).not.toHaveBeenCalled();
-    expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
+    expect(repo.createFoodEntryMealWithClient).not.toHaveBeenCalled();
+    expect(fakeClient.query).not.toHaveBeenCalled();
   });
 
-  it('finishes a meal whose parent was stored but whose components never were', async () => {
-    repo.findFoodEntryMealByClientId.mockResolvedValue({
-      id: 'orphan',
-      user_id: USER_ID,
-      created_at: new Date(Date.now() - 5 * 60 * 1000),
-    } as never);
-    repo.countFoodEntryMealComponents.mockResolvedValue(0);
-    repo.deleteEmptyFoodEntryMeal.mockResolvedValue(true);
-
-    const result = await createFoodEntryMeal(USER_ID, USER_ID, request);
-
-    // The empty parent goes, and the meal is made again in full.
-    expect(repo.deleteEmptyFoodEntryMeal).toHaveBeenCalledWith(
-      'orphan',
-      USER_ID
-    );
-    expect(repo.createFoodEntryMeal).toHaveBeenCalledTimes(1);
-    expect(result).toBe(created);
-  });
-
-  it('does not clear an empty parent that is young: its request may still be writing the components', async () => {
-    repo.findFoodEntryMealByClientId.mockResolvedValue({
-      id: 'in-flight',
-      user_id: USER_ID,
-      created_at: new Date(Date.now() - 2000),
-    } as never);
-    repo.countFoodEntryMealComponents.mockResolvedValue(0);
+  it('rolls everything back when writing the meal fails', async () => {
+    repo.createFoodEntryMealWithClient.mockRejectedValue(new Error('boom'));
 
     await expect(
       createFoodEntryMeal(USER_ID, USER_ID, request)
-    ).rejects.toMatchObject({ status: 503 });
+    ).rejects.toThrow('boom');
 
-    expect(repo.deleteEmptyFoodEntryMeal).not.toHaveBeenCalled();
-    expect(repo.createFoodEntryMeal).not.toHaveBeenCalled();
+    expect(statements()).toEqual(['BEGIN', 'ROLLBACK']);
+    expect(fakeClient.release).toHaveBeenCalledTimes(1);
   });
 
   it('answers with the winner when two copies race on the key', async () => {
     const winner = { id: 'winner', user_id: USER_ID };
-    repo.createFoodEntryMeal.mockRejectedValue(
+    repo.createFoodEntryMealWithClient.mockRejectedValue(
       Object.assign(new Error('duplicate key'), {
         code: '23505',
         constraint: INDEX,
@@ -124,53 +111,14 @@ describe('createFoodEntryMeal with a client id (offline replay)', () => {
     repo.findFoodEntryMealByClientId
       .mockResolvedValueOnce(null) // before the insert
       .mockResolvedValueOnce(winner as never); // after losing the race
-    repo.countFoodEntryMealComponents.mockResolvedValue(1);
 
     const result = await createFoodEntryMeal(USER_ID, USER_ID, request);
 
+    // The insert only fails once the other copy has committed, so that meal is
+    // whole.
     expect(result).toBe(winner);
+    expect(statements()).toEqual(['BEGIN', 'ROLLBACK']);
     expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
-  });
-
-  it('asks a retry to come back while the race winner has no components yet', async () => {
-    repo.createFoodEntryMeal.mockRejectedValue(
-      Object.assign(new Error('duplicate key'), {
-        code: '23505',
-        constraint: INDEX,
-      })
-    );
-    repo.findFoodEntryMealByClientId
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({ id: 'winner', user_id: USER_ID } as never);
-    repo.countFoodEntryMealComponents.mockResolvedValue(0);
-
-    await expect(
-      createFoodEntryMeal(USER_ID, USER_ID, request)
-    ).rejects.toMatchObject({ status: 503 });
-  });
-
-  it('answers with the meal when its components arrive before the empty parent is cleared', async () => {
-    const stored = {
-      id: 'late',
-      user_id: USER_ID,
-      created_at: new Date(Date.now() - 5 * 60 * 1000),
-    };
-    repo.findFoodEntryMealByClientId.mockResolvedValue(stored as never);
-    repo.countFoodEntryMealComponents.mockResolvedValue(0);
-    repo.deleteEmptyFoodEntryMeal.mockResolvedValue(false);
-
-    const result = await createFoodEntryMeal(USER_ID, USER_ID, request);
-
-    expect(result).toBe(stored);
-    expect(repo.createFoodEntryMeal).not.toHaveBeenCalled();
-  });
-
-  it('passes on any other failure', async () => {
-    repo.createFoodEntryMeal.mockRejectedValue(new Error('boom'));
-
-    await expect(
-      createFoodEntryMeal(USER_ID, USER_ID, request)
-    ).rejects.toThrow('boom');
   });
 
   it('does not look anything up for a request without a key', async () => {
@@ -180,9 +128,5 @@ describe('createFoodEntryMeal with a client id (offline replay)', () => {
     } as never);
 
     expect(repo.findFoodEntryMealByClientId).not.toHaveBeenCalled();
-    expect(repo.createFoodEntryMeal).toHaveBeenCalledWith(
-      expect.objectContaining({ client_id: null }),
-      USER_ID
-    );
   });
 });

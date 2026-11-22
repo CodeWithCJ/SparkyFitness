@@ -43,23 +43,6 @@ async function findFoodEntryMealByClientId(userId: string, clientId: string) {
   }
 }
 
-/** How many component entries a logged meal has. */
-async function countFoodEntryMealComponents(
-  userId: string,
-  foodEntryMealId: string
-): Promise<number> {
-  const client = await getClient(userId);
-  try {
-    const result = await client.query(
-      'SELECT COUNT(*)::int AS total FROM food_entries WHERE food_entry_meal_id = $1',
-      [foodEntryMealId]
-    );
-    return Number(result.rows[0]?.total ?? 0);
-  } finally {
-    client.release();
-  }
-}
-
 /** The subset of fields an update may change. */
 type FoodEntryMealUpdate = Partial<FoodEntryMealInput>;
 
@@ -413,31 +396,6 @@ async function deleteFoodEntryMeal(foodEntryMealId: string, userId: string) {
     client.release();
   }
 }
-/**
- * Deletes a logged meal only while it still has no component entries, in one
- * statement, so a slow request that is writing its components right now can
- * never lose them to a cleanup. False when the meal has components (or is gone).
- */
-async function deleteEmptyFoodEntryMeal(
-  foodEntryMealId: string,
-  userId: string
-): Promise<boolean> {
-  const client = await getClient(userId);
-  try {
-    const result = await client.query(
-      `DELETE FROM food_entry_meals m
-      WHERE m.id = $1 AND m.user_id = $2
-        AND NOT EXISTS (
-          SELECT 1 FROM food_entries e WHERE e.food_entry_meal_id = m.id
-        )
-      RETURNING m.id`,
-      [foodEntryMealId, userId]
-    );
-    return (result.rowCount ?? 0) > 0;
-  } finally {
-    client.release();
-  }
-}
 // Result of a metadata-only meal-type move.
 export interface MealEntryMoveResult {
   id: string;
@@ -524,25 +482,22 @@ async function setFoodEntryMealImages(
 export { setFoodEntryMealImages };
 export { createFoodEntryMeal };
 export { findFoodEntryMealByClientId };
-export { countFoodEntryMealComponents };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealById };
 export { getFoodEntryMealsByDate };
 export { getFoodEntryMealsByDateRange };
 export { deleteFoodEntryMeal };
-export { deleteEmptyFoodEntryMeal };
 export { moveFoodEntryMealToMealType };
 export default {
   setFoodEntryMealImages,
   createFoodEntryMeal,
+  createFoodEntryMealWithClient,
   findFoodEntryMealByClientId,
-  countFoodEntryMealComponents,
   updateFoodEntryMeal,
   getFoodEntryMealById,
   getFoodEntryMealsByDate,
   getFoodEntryMealsByDateRange,
   deleteFoodEntryMeal,
-  deleteEmptyFoodEntryMeal,
   moveFoodEntryMealToMealType,
 };
 

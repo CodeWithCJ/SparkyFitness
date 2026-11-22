@@ -290,107 +290,104 @@ router.post('/', async (req, res, next) => {
  *       404:
  *         description: A referenced food or variant was not found.
  */
-router.post(
-  '/from-photo-estimate',
-  checkPermissionMiddleware('diary'),
-  async (req, res, next) => {
-    // The router mounts `authenticate` but not the diary permission check, so
-    // this route asks for it explicitly.
-    const parsed = foodPhotoLogRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        error: 'Invalid food photo log payload.',
-        code: 'INVALID_REQUEST',
-        issues: parsed.error.issues,
-      });
-    }
+router.post('/from-photo-estimate', async (req, res, next) => {
+  // The router-level diary permission check has already run for every
+  // target; this resolves the real caller the same way it does.
+  const parsed = foodPhotoLogRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: 'Invalid food photo log payload.',
+      code: 'INVALID_REQUEST',
+      issues: parsed.error.issues,
+    });
+  }
 
-    const userId = req.userId;
-    const targetUserId = req.body?.user_id || userId;
-    if (targetUserId !== userId) {
-      const hasPermission = await canAccessUserData(
-        targetUserId,
-        'diary',
-        userId
-      );
-      if (!hasPermission) {
-        return res.status(403).json({ error: 'Forbidden', code: 'FORBIDDEN' });
-      }
-    }
-
-    try {
-      const result = await foodPhotoLogService.createPhotoLoggedMeal(
-        targetUserId,
-        userId,
-        parsed.data
-      );
-      log(
-        'info',
-        `User ${userId} logged a ${parsed.data.mode} photo estimate with ${parsed.data.items.length} item(s)`
-      );
-      clearUserTdeeCache(targetUserId);
-
-      // The reusable template is built AFTER the log commits, deliberately.
-      //
-      // It reads the entries back out of the diary, so it cannot see them while
-      // they are still uncommitted. More importantly the diary rows are the
-      // thing the user asked for and the template is a convenience on top: if
-      // template creation fails, losing a correctly logged meal to roll it back
-      // would be the worse outcome. The response reports meal_template_id as
-      // null instead, and "convert to meal" remains available.
-      let mealTemplateId: string | null = null;
-      const saveAsMeal = parsed.data.save_as_meal;
-      if (saveAsMeal && result.food_entry_meal_id) {
-        try {
-          const meal = await mealService.createMealFromDiaryEntries(
-            targetUserId,
-            parsed.data.entry_date,
-            parsed.data.meal_type,
-            saveAsMeal.name,
-            parsed.data.description,
-            false,
-            result.food_entry_meal_id,
-            // The diary holds the portion that was eaten; the template should
-            // hold the whole dish, so scale the entries back up by the
-            // reciprocal of the multiplier the log applied, and record the
-            // serving model that reproduces that portion from the template.
-            (parsed.data.serving_size * parsed.data.total_servings) /
-              parsed.data.consumed_quantity,
-            parsed.data.total_servings,
-            parsed.data.serving_size,
-            parsed.data.serving_unit
-          );
-          mealTemplateId = meal?.id ?? null;
-        } catch (mealError) {
-          log(
-            'warn',
-            `Photo estimate logged for user ${userId} but the meal template could not be saved: ${
-              mealError instanceof Error ? mealError.message : String(mealError)
-            }`
-          );
-        }
-      }
-
-      return res.status(201).json(
-        foodPhotoLogResponseSchema.parse({
-          ...result,
-          meal_template_id: mealTemplateId,
-        })
-      );
-    } catch (err) {
-      if (err instanceof PhotoLogError) {
-        const status =
-          err.code === 'FOOD_NOT_FOUND' || err.code === 'VARIANT_NOT_FOUND'
-            ? 404
-            : err.code === 'FORBIDDEN'
-              ? 403
-              : 400;
-        return res.status(status).json({ error: err.message, code: err.code });
-      }
-      return next(err);
+  const actorId = req.originalUserId || req.authenticatedUserId || req.userId;
+  const userId = actorId;
+  const targetUserId = req.body?.user_id || req.userId;
+  if (targetUserId !== actorId) {
+    const hasPermission = await canAccessUserData(
+      targetUserId,
+      'diary',
+      actorId
+    );
+    if (!hasPermission) {
+      return res.status(403).json({ error: 'Forbidden', code: 'FORBIDDEN' });
     }
   }
-);
+
+  try {
+    const result = await foodPhotoLogService.createPhotoLoggedMeal(
+      targetUserId,
+      userId,
+      parsed.data
+    );
+    log(
+      'info',
+      `User ${userId} logged a ${parsed.data.mode} photo estimate with ${parsed.data.items.length} item(s)`
+    );
+    clearUserTdeeCache(targetUserId);
+
+    // The reusable template is built AFTER the log commits, deliberately.
+    //
+    // It reads the entries back out of the diary, so it cannot see them while
+    // they are still uncommitted. More importantly the diary rows are the
+    // thing the user asked for and the template is a convenience on top: if
+    // template creation fails, losing a correctly logged meal to roll it back
+    // would be the worse outcome. The response reports meal_template_id as
+    // null instead, and "convert to meal" remains available.
+    let mealTemplateId: string | null = null;
+    const saveAsMeal = parsed.data.save_as_meal;
+    if (saveAsMeal && result.food_entry_meal_id) {
+      try {
+        const meal = await mealService.createMealFromDiaryEntries(
+          targetUserId,
+          parsed.data.entry_date,
+          parsed.data.meal_type,
+          saveAsMeal.name,
+          parsed.data.description,
+          false,
+          result.food_entry_meal_id,
+          // The diary holds the portion that was eaten; the template should
+          // hold the whole dish, so scale the entries back up by the
+          // reciprocal of the multiplier the log applied, and record the
+          // serving model that reproduces that portion from the template.
+          (parsed.data.serving_size * parsed.data.total_servings) /
+            parsed.data.consumed_quantity,
+          parsed.data.total_servings,
+          parsed.data.serving_size,
+          parsed.data.serving_unit
+        );
+        mealTemplateId = meal?.id ?? null;
+      } catch (mealError) {
+        log(
+          'warn',
+          `Photo estimate logged for user ${userId} but the meal template could not be saved: ${
+            mealError instanceof Error ? mealError.message : String(mealError)
+          }`
+        );
+      }
+    }
+
+    return res.status(201).json(
+      foodPhotoLogResponseSchema.parse({
+        ...result,
+        meal_template_id: mealTemplateId,
+      })
+    );
+  } catch (err) {
+    if (err instanceof PhotoLogError) {
+      const status =
+        err.code === 'FOOD_NOT_FOUND' || err.code === 'VARIANT_NOT_FOUND'
+          ? 404
+          : err.code === 'FORBIDDEN'
+            ? 403
+            : 400;
+      return res.status(status).json({ error: err.message, code: err.code });
+    }
+    return next(err);
+  }
+});
 
 /**
  * @swagger
