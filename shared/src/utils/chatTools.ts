@@ -1,4 +1,10 @@
-type Translate = (key: string, options?: Record<string, unknown>) => string;
+// Two overloads rather than one optional `options`, so i18next's own `t`
+// (whose overloads need options to be present when passed) fits it on both
+// i18next 26 and 27.
+type Translate = {
+  (key: string): string;
+  (key: string, options: Record<string, string | number>): string;
+};
 
 export function humanizeChatKey(value: string): string {
   const words = value.replace(/_/g, ' ').replace(/\s+/g, ' ').trim();

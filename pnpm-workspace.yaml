@@ -58,7 +58,7 @@ overrides:
   # versions with known CVEs (CVE-2026-9277, CVE-2026-13311).
   shell-quote: "^1.12.0"
   side-channel: "1.0.6"
-  tailwindcss: "4.3.3"
+  tailwindcss: "4.3.5"
   "tsx>esbuild": "0.28.1"
   # vite's and tsx's own esbuild dependency both resolve to 0.28.2, whose
   # published @esbuild/linux-x64 binary reports "0.27.4" to its own
@@ -71,7 +71,7 @@ overrides:
   # unrelated pins other packages need. Pinned one patch back until it's
   # resolved upstream.
   "vite>esbuild": "0.28.1"
-  zustand: "5.0.16"
+  zustand: "5.1.0"
 
 packageExtensions:
   "@kingstinct/react-native-healthkit@13":
