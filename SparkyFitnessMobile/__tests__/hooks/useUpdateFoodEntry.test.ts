@@ -24,6 +24,7 @@ jest.mock('../../src/offline/foodEntryUpdateHandOver', () => ({
     '../../src/offline/foodEntryUpdateHandOver'
   ).displayFromPatch,
   queueFoodEntryUpdate: (...args: unknown[]) => mockQueueQuantity(...args),
+  dropSupersededUpdate: jest.fn(async () => undefined),
   editWaitingEntryQuantity: (...args: unknown[]) => mockEditWaiting(...args),
 }));
 

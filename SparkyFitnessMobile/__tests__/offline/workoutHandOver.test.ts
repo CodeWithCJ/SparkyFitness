@@ -21,6 +21,11 @@ import {
   __resetActiveWorkoutStoreForTests,
   useActiveWorkoutStore,
 } from '../../src/stores/activeWorkoutStore';
+import { putCacheRows } from '../../src/offline/cacheStore';
+import {
+  IDENTITY_COLLECTION,
+  IDENTITY_KEY,
+} from '../../src/offline/syncEngine';
 import { createTestDb } from '../helpers/offlineTestDb';
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
@@ -85,6 +90,10 @@ describe('handing the live workout to the upload queue', () => {
     __resetActiveWorkoutStoreForTests();
     db = await createTestDb();
     __setOfflineDbForTests(db);
+    // Someone is signed in: work queued with no owner is refused.
+    await putCacheRows(db, 's1', IDENTITY_COLLECTION, [
+      { key: IDENTITY_KEY, payload: { id: 'u1' } },
+    ]);
   });
 
   afterEach(() => {
@@ -163,6 +172,9 @@ describe('saving a past workout or an edit while the server is away', () => {
   beforeEach(async () => {
     db = await createTestDb();
     __setOfflineDbForTests(db);
+    await putCacheRows(db, 's1', IDENTITY_COLLECTION, [
+      { key: IDENTITY_KEY, payload: { id: 'u1' } },
+    ]);
   });
 
   afterEach(() => {

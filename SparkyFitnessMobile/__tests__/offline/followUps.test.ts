@@ -21,6 +21,11 @@ import { drainOutbox } from '../../src/offline/syncEngine';
 import type { OfflineDb } from '../../src/offline/types';
 import { WORKOUT_SESSION_CREATE } from '../../src/offline/workoutHandOver';
 import { isSessionAwaitingServer } from '../../src/offline/sessionAwaitingServer';
+import { putCacheRows } from '../../src/offline/cacheStore';
+import {
+  IDENTITY_COLLECTION,
+  IDENTITY_KEY,
+} from '../../src/offline/syncEngine';
 import { createTestDb } from '../helpers/offlineTestDb';
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
@@ -58,6 +63,10 @@ describe('feedback and saved-workout updates given offline', () => {
     jest.clearAllMocks();
     db = await createTestDb();
     __setOfflineDbForTests(db);
+    // Someone is signed in: work queued with no owner is refused.
+    await putCacheRows(db, 's1', IDENTITY_COLLECTION, [
+      { key: IDENTITY_KEY, payload: { id: 'u1' } },
+    ]);
     __clearOutboxHandlersForTests();
     registerFollowUpHandlers();
   });
