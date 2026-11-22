@@ -6503,6 +6503,9 @@
       "running": "Logging…",
       "confirmTitle": "Log {{label}}?",
       "confirmAction": "Log it",
+      "selectedAmount": "Amount: {{amount}} {{unit}}",
+      "customAmount": "Custom amount ({{unit}})",
+      "drinksUnit": "drinks",
       "unknownTitle": "This tag is not set up on your account",
       "unknownSubtitle": "Nothing was logged. Set it up to choose what a tap does.",
       "setUp": "Set up this tag",
@@ -6512,7 +6515,17 @@
       "serverTooOld": "Your server does not support NFC tags yet",
       "failed": "Could not log that",
       "serverTooOldSubtitle": "Update your SparkyFitness server, then try again.",
-      "failedSubtitle": "Nothing was logged. Check your connection and try again."
+      "failedSubtitle": "Nothing was logged. Check your connection and try again.",
+      "amountAndUnit": "Amount & unit",
+      "configureTag": "Tag settings",
+      "confirmWithCalories": "Log (+{{calories}} kcal)",
+      "customTime": "Time (HH:MM)",
+      "doubleScanNotice": "Scanned again shortly after the previous scan — confirm to log again.",
+      "lastUsedAmount": "Last: {{value}} {{unit}}",
+      "mealContext": "Meal",
+      "ofGoal": "of daily goal",
+      "quickAmounts": "Quick amounts",
+      "tapToLogActive": "Tap to log immediately"
     },
     "form": {
       "errors": {
@@ -6547,6 +6560,8 @@
       "namePlaceholder": "e.g. Desk bottle",
       "askFirst": "Ask before logging",
       "askFirstHint": "Shows a Log or Cancel prompt on every tap instead of logging at once.",
+      "allowAmountAdjustment": "Allow amount/multiplier adjustment on confirmation",
+      "allowAmountAdjustmentHint": "Lets you pick a quick preset or custom amount in the confirmation prompt while keeping the default pre-selected.",
       "writeHint": "When you save, hold your phone to the tag to write it. On metal, such as a steel bottle, use an on-metal tag.",
       "writeAgain": "Write to a tag again",
       "delete": "Remove this tag",
@@ -6556,7 +6571,12 @@
       "mealType": "Log to",
       "mealTypeHint": "By time of day uses each meal type’s usual time, as quick logging does.",
       "foodOrMeal": "Food or meal",
-      "foodOrMealPlaceholder": "Choose a food or meal"
+      "foodOrMealPlaceholder": "Choose a food or meal",
+      "advancedMode": "Advanced presets & ml mode",
+      "allowCustomTimestamp": "Allow custom timestamp on scan",
+      "allowCustomTimestampHint": "When off, logs immediately at the current time. When on, shows a time field during scan.",
+      "presetAmountsLabel": "Preset amounts (ml for drinks, or item units)",
+      "tapToLog": "Tap amount to log immediately"
     },
     "unsupportedTitle": "This phone cannot use NFC tags",
     "unsupportedSubtitle": "NFC tags need a phone with NFC.",
@@ -6585,7 +6605,8 @@
       "servings_other": "{{formattedCount}} servings",
       "amount": "{{quantity}} {{unit}}",
       "food": "{{amount}} · {{meal}}",
-      "unsupported": "Update the app to use this tag"
+      "unsupported": "Update the app to use this tag",
+      "servings": "{{formattedCount}} servings"
     },
     "type": {
       "water": "Water or drink",
@@ -6595,18 +6616,21 @@
       "add": "Add NFC tag",
       "count_one": "{{formattedCount}} tag logs this container",
       "count_other": "{{formattedCount}} tags log this container",
-      "hint": "Tap a sticker on this bottle to log a drink"
+      "hint": "Tap a sticker on this bottle to log a drink",
+      "count": "{{formattedCount}} tags log this container"
     },
     "food": {
       "count_one": "{{formattedCount}} tag logs this food",
       "count_other": "{{formattedCount}} tags log this food",
-      "hint": "Tap a sticker to log this food"
+      "hint": "Tap a sticker to log this food",
+      "count": "{{formattedCount}} tags log this food"
     },
     "meal": {
       "auto": "By time of day",
       "count_one": "{{formattedCount}} tag logs this meal",
       "count_other": "{{formattedCount}} tags log this meal",
-      "hint": "Tap a sticker to log this meal"
+      "hint": "Tap a sticker to log this meal",
+      "count": "{{formattedCount}} tags log this meal"
     }
   },
   "waterContainers": {

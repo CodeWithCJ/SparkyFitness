@@ -152,6 +152,7 @@ router.post('/scan', async (req, res, next) => {
  *                 type: object
  *                 description: "Discriminated on `type`. `water` takes container_id and drinks; `food` takes food_id, variant_id, quantity, unit and meal; `meal` takes meal_template_id, quantity, unit and meal. The `meal` field is mode auto (time of day) or mode fixed with a meal_type_id."
  *               ask_before_running: {type: boolean}
+ *               allow_amount_adjustment: {type: boolean}
  *     responses:
  *       201:
  *         description: The saved tag
@@ -217,6 +218,7 @@ router.post('/', async (req, res, next) => {
  *               label: {type: string, minLength: 1, maxLength: 120}
  *               action: {type: object}
  *               ask_before_running: {type: boolean}
+ *               allow_amount_adjustment: {type: boolean}
  *     responses:
  *       200:
  *         description: The updated tag

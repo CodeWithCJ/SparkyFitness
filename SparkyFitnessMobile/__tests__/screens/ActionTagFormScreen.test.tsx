@@ -154,6 +154,11 @@ describe('ActionTagFormScreen', () => {
       label: 'Stanley',
       action: { type: 'water', container_id: 7, drinks: 1 },
       ask_before_running: false,
+      allow_amount_adjustment: false,
+      allow_custom_timestamp: false,
+      advanced_mode: false,
+      tap_to_log: false,
+      preset_amounts: null,
     });
     expect(writeTag.mock.invocationCallOrder[0]).toBeLessThan(
       createTag.mock.invocationCallOrder[0]
@@ -226,6 +231,11 @@ describe('ActionTagFormScreen', () => {
         meal: { mode: 'auto' },
       },
       ask_before_running: false,
+      allow_amount_adjustment: false,
+      allow_custom_timestamp: false,
+      advanced_mode: false,
+      tap_to_log: false,
+      preset_amounts: null,
     });
   });
 
@@ -439,6 +449,7 @@ describe('ActionTagFormScreen', () => {
             meal: { mode: 'auto' },
           },
           ask_before_running: false,
+          allow_amount_adjustment: false,
           last_run_at: null,
           created_at: '',
           updated_at: '',
@@ -463,6 +474,7 @@ describe('ActionTagFormScreen', () => {
           label: 'Vitamins',
           action: { type: 'medication' },
           ask_before_running: false,
+          allow_amount_adjustment: false,
           last_run_at: null,
           created_at: '',
           updated_at: '',

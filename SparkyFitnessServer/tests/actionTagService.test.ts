@@ -69,6 +69,11 @@ function tag(overrides: Partial<ActionTagResponse> = {}): ActionTagResponse {
     label: 'Stanley',
     action: { type: 'water', container_id: 7, drinks: 1 },
     ask_before_running: false,
+    allow_amount_adjustment: false,
+    allow_custom_timestamp: false,
+    advanced_mode: false,
+    tap_to_log: false,
+    preset_amounts: null,
     last_run_at: null,
     created_at: '2026-10-30T00:00:00.000Z',
     updated_at: '2026-10-30T00:00:00.000Z',
@@ -84,6 +89,7 @@ describe('scanActionTag', () => {
       previousRunAt: null,
       claimedAt: new Date('2026-10-30T12:00:00.000Z'),
     });
+    vi.mocked(measurementService.upsertWaterIntake).mockReset();
     vi.mocked(waterContainerRepository.getWaterContainerById).mockResolvedValue(
       { id: 7, name: 'Stanley (1 L)' } as Awaited<
         ReturnType<typeof waterContainerRepository.getWaterContainerById>
@@ -162,6 +168,10 @@ describe('scanActionTag', () => {
     );
     await expect(scanActionTag(USER, USER, BODY)).rejects.toThrow('db down');
     expect(repo.releaseActionTagRun).toHaveBeenCalledOnce();
+  });
+
+  afterEach(() => {
+    vi.mocked(measurementService.upsertWaterIntake).mockReset();
   });
 });
 
@@ -412,5 +422,108 @@ describe('food and meal tags', () => {
         drinks: 1,
       })
     ).toBe(false);
+  });
+});
+
+describe('Phase 1 amount and multiplier adjustments', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-30T12:30:00.000Z'));
+    vi.mocked(repo.releaseActionTagRun).mockResolvedValue(undefined);
+    vi.mocked(repo.claimActionTagRun).mockResolvedValue({
+      previousRunAt: null,
+      claimedAt: new Date('2026-10-30T12:30:00.000Z'),
+    });
+    vi.mocked(waterContainerRepository.getWaterContainerById).mockResolvedValue(
+      { id: 7, name: 'Stanley (1 L)' } as Awaited<
+        ReturnType<typeof waterContainerRepository.getWaterContainerById>
+      >
+    );
+    vi.mocked(foodRepository.getFoodById).mockResolvedValue({
+      id: FOOD_ID,
+      name: 'Greek yogurt',
+      brand: null,
+    } as FoodRow);
+    vi.mocked(foodRepository.getFoodVariantById).mockResolvedValue({
+      id: VARIANT_ID,
+      food_id: FOOD_ID,
+      serving_size: 170,
+      serving_unit: 'g',
+      calories: 100,
+    } as VariantRow);
+    vi.mocked(foodRepository.createFoodEntry).mockResolvedValue({
+      id: 'entry-1',
+    } as Awaited<ReturnType<typeof foodRepository.createFoodEntry>>);
+    vi.mocked(mealTypeRepository.getAllMealTypes).mockResolvedValue(
+      MEAL_TYPES as Awaited<
+        ReturnType<typeof mealTypeRepository.getAllMealTypes>
+      >
+    );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('asks for confirmation when allow_amount_adjustment is enabled', async () => {
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({ allow_amount_adjustment: true })
+    );
+    const result = await scanActionTag(USER, USER, BODY);
+    expect(result.status).toBe('needs_confirmation');
+    expect(repo.claimActionTagRun).not.toHaveBeenCalled();
+  });
+
+  it('applies drinks_override when confirmed with allow_amount_adjustment enabled', async () => {
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({ allow_amount_adjustment: true })
+    );
+    const result = await scanActionTag(USER, USER, {
+      ...BODY,
+      confirmed: true,
+      drinks_override: 3,
+    });
+    expect(result.status).toBe('done');
+    expect(result.summary).toBe('3 × Stanley (1 L)');
+    expect(measurementService.upsertWaterIntake).toHaveBeenCalledWith(
+      USER,
+      USER,
+      '2026-10-30',
+      3,
+      7
+    );
+  });
+
+  it('applies quantity_override when confirmed on a food tag with allow_amount_adjustment enabled', async () => {
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({ action: FOOD_ACTION, allow_amount_adjustment: true })
+    );
+    const result = await scanActionTag(USER, USER, {
+      ...BODY,
+      confirmed: true,
+      quantity_override: 85,
+    });
+    expect(result.status).toBe('done');
+    expect(result.summary).toBe('85 g Greek yogurt');
+    expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ quantity: 85 }),
+      USER
+    );
+  });
+
+  it('ignores overrides when allow_amount_adjustment is disabled', async () => {
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({ action: FOOD_ACTION, allow_amount_adjustment: false })
+    );
+    await scanActionTag(USER, USER, {
+      ...BODY,
+      confirmed: true,
+      quantity_override: 500,
+    });
+    expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ quantity: 170 }),
+      USER
+    );
   });
 });

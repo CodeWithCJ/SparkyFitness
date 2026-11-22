@@ -28,6 +28,9 @@ type RunnerContext = {
   userId: string;
   authenticatedUserId: string;
   entryDate: string;
+  entryTime?: string;
+  mealTypeIdOverride?: string;
+  waterMlOverride?: number;
 };
 
 type LoggedRow = NonNullable<ScanActionTagResponse['logged']>;
@@ -57,10 +60,27 @@ function amountSummary(quantity: number, unit: string, name: string): string {
     : `${quantity} ${unit} ${name}`;
 }
 
-/**
- * The food and the variant a food tag names, or null when either was deleted
- * or the variant no longer belongs to the food.
- */
+function normalizeTime(rawTime: string | undefined, tz: string): string {
+  if (!rawTime) return clockInZone(tz);
+  return rawTime.length === 5 ? `${rawTime}:00` : rawTime;
+}
+
+function containerVolumeInMl(volume: unknown, unit: unknown): number {
+  const numericVolume = Number(volume);
+  if (!Number.isFinite(numericVolume) || numericVolume <= 0) return 250;
+  const normalizedUnit = String(unit ?? 'ml')
+    .trim()
+    .toLowerCase();
+  if (
+    normalizedUnit === 'l' ||
+    normalizedUnit === 'liter' ||
+    normalizedUnit === 'litre'
+  ) {
+    return numericVolume * 1000;
+  }
+  return numericVolume;
+}
+
 async function loadFoodTarget(userId: string, action: FoodAction) {
   const food = await foodRepository.getFoodById(action.food_id, userId);
   if (!food) return null;
@@ -69,19 +89,10 @@ async function loadFoodTarget(userId: string, action: FoodAction) {
     userId
   );
   if (!variant || String(variant.food_id) !== String(food.id)) return null;
-  // The amount is in the unit the tag was saved with. If the serving's unit
-  // was changed since, 170 g would log as 170 of the new unit, so the tag is
-  // treated as pointing at something that no longer exists.
   if (!sameUnit(action.unit, variant.serving_unit || 'serving')) return null;
   return { food, variant };
 }
 
-/**
- * The saved meal a meal tag names, or null when it was deleted or its serving
- * unit no longer matches the tag. A logged meal's portion is the amount in the
- * meal's own unit (servings, or grams for a meal measured by weight), so any
- * other unit would log the wrong share of the meal.
- */
 async function loadMealTarget(userId: string, action: MealAction) {
   const meal = await mealRepository.getMealById(
     action.meal_template_id,
@@ -92,23 +103,25 @@ async function loadMealTarget(userId: string, action: MealAction) {
   return meal;
 }
 
-/**
- * The meal type a food or meal tap logs into. A fixed meal type wins while it
- * exists; otherwise the time of day in the person's own zone picks it, by the
- * same rule a drink from a linked water container uses.
- */
 async function resolveMealTypeId(
   userId: string,
   choice: TagMealChoice,
-  tz: string
+  tz: string,
+  mealTypeIdOverride?: string
 ): Promise<string | null> {
   const allTypes: MealTypeRow[] =
     await mealTypeRepository.getAllMealTypes(userId);
-  // Only meal types the diary shows: an entry in a hidden one would not
-  // appear anywhere. A fixed type that was hidden or deleted falls back to
-  // the time of day, which is also what the app shows for it.
   const visible = allTypes.filter((type) => type.is_visible !== false);
   const mealTypes = visible.length > 0 ? visible : allTypes;
+
+  if (mealTypeIdOverride) {
+    const wantedOverride = mealTypeIdOverride.toLowerCase();
+    const matchedOverride = mealTypes.find(
+      (type) => type.id.toLowerCase() === wantedOverride
+    );
+    if (matchedOverride) return matchedOverride.id;
+  }
+
   if (choice.mode === 'fixed') {
     const wanted = choice.meal_type_id.toLowerCase();
     const fixed = mealTypes.find((type) => type.id.toLowerCase() === wanted);
@@ -122,34 +135,47 @@ type Runner<T extends TagAction> = (
   action: T
 ) => Promise<RunnerResult>;
 
-// One runner per action type. The mapped type makes adding a type to
-// tagActionSchema without a runner here a compile error.
 const RUNNERS: {
   [K in TagActionType]: Runner<Extract<TagAction, { type: K }>>;
 } = {
   water: async (context, action) => {
-    // upsertWaterIntake falls back to a default 250 ml for an unknown
-    // container without saying so, so a deleted container is checked here.
     const container = await waterContainerRepository.getWaterContainerById(
       action.container_id,
       context.userId
     );
     if (!container) return null;
+
+    let effectiveDrinks = action.drinks;
+    let summaryLabel = `${action.drinks} × ${container.name}`;
+    if (context.waterMlOverride !== undefined) {
+      const containerMl = containerVolumeInMl(container.volume, container.unit);
+      effectiveDrinks = Math.min(
+        20,
+        Math.max(1, Math.round(context.waterMlOverride / containerMl))
+      );
+      summaryLabel = `${Math.round(context.waterMlOverride)} ml (${container.name})`;
+    }
+
     await measurementService.upsertWaterIntake(
       context.userId,
       context.authenticatedUserId,
       context.entryDate,
-      action.drinks,
+      effectiveDrinks,
       action.container_id
     );
-    return { summary: `${action.drinks} × ${container.name}` };
+    return { summary: summaryLabel };
   },
   food: async (context, action) => {
     const target = await loadFoodTarget(context.userId, action);
     if (!target) return null;
     const { food, variant } = target;
     const tz = await loadUserTimezone(context.userId);
-    const mealTypeId = await resolveMealTypeId(context.userId, action.meal, tz);
+    const mealTypeId = await resolveMealTypeId(
+      context.userId,
+      action.meal,
+      tz,
+      context.mealTypeIdOverride
+    );
     const unit: string = variant.serving_unit || 'serving';
     const entry = await foodRepository.createFoodEntry(
       {
@@ -160,7 +186,7 @@ const RUNNERS: {
         quantity: action.quantity,
         unit,
         entry_date: context.entryDate,
-        entry_time: clockInZone(tz),
+        entry_time: normalizeTime(context.entryTime, tz),
         food_entry_meal_id: null,
         meal_plan_template_id: null,
         ...buildFoodEntrySnapshot(food, variant),
@@ -175,12 +201,15 @@ const RUNNERS: {
     };
   },
   meal: async (context, action) => {
-    // createFoodEntryMeal only warns about a missing template and would log an
-    // empty meal, so a deleted one is checked here.
     const meal = await loadMealTarget(context.userId, action);
     if (!meal) return null;
     const tz = await loadUserTimezone(context.userId);
-    const mealTypeId = await resolveMealTypeId(context.userId, action.meal, tz);
+    const mealTypeId = await resolveMealTypeId(
+      context.userId,
+      action.meal,
+      tz,
+      context.mealTypeIdOverride
+    );
     const logged = await foodEntryService.createFoodEntryMeal(
       context.userId,
       context.authenticatedUserId,
@@ -189,10 +218,9 @@ const RUNNERS: {
         meal_template_id: meal.id,
         meal_type_id: mealTypeId,
         entry_date: context.entryDate,
-        entry_time: clockInZone(tz),
+        entry_time: normalizeTime(context.entryTime, tz),
         quantity: action.quantity,
         unit: action.unit,
-        // The serving model current clients use (issue #1023).
         _clientMealModelVersion: 2,
       }
     );
@@ -205,10 +233,6 @@ const RUNNERS: {
   },
 };
 
-/**
- * True when what an action points at exists for this person, so a tag is never
- * saved pointing at a food, meal or container its first tap could not log.
- */
 export async function actionTargetExists(
   userId: string,
   action: TagAction
@@ -232,15 +256,10 @@ function runAction(
   context: RunnerContext,
   action: TagAction
 ): Promise<RunnerResult> {
-  // The cast keeps the lookup type-safe per member of the union.
   const runner = RUNNERS[action.type] as Runner<TagAction>;
   return runner(context, action);
 }
 
-/**
- * Runs the action saved for a tag code. Never logs for a code that is not bound
- * to this person, so another person's sticker cannot write into this account.
- */
 export async function scanActionTag(
   userId: string,
   authenticatedUserId: string,
@@ -253,9 +272,20 @@ export async function scanActionTag(
   );
   if (!tag) return { status: 'unknown_tag', tag: null, summary: null };
 
-  if (tag.ask_before_running && !body.confirmed) {
+  const allowsAdjustment = Boolean(
+    tag.allow_amount_adjustment || tag.advanced_mode
+  );
+  if ((tag.ask_before_running || allowsAdjustment) && !body.confirmed) {
     return { status: 'needs_confirmation', tag, summary: null };
   }
+
+  const effectiveAction: TagAction = allowsAdjustment
+    ? tag.action.type === 'water' && body.drinks_override !== undefined
+      ? { ...tag.action, drinks: body.drinks_override }
+      : tag.action.type !== 'water' && body.quantity_override !== undefined
+        ? { ...tag.action, quantity: body.quantity_override }
+        : tag.action
+    : tag.action;
 
   const claim = await claimActionTagRun(
     userId,
@@ -267,8 +297,19 @@ export async function scanActionTag(
 
   try {
     const result = await runAction(
-      { userId, authenticatedUserId, entryDate: body.entry_date },
-      tag.action
+      {
+        userId,
+        authenticatedUserId,
+        entryDate: body.entry_date,
+        // Only apply a custom timestamp when explicitly enabled on the tag.
+        entryTime: tag.allow_custom_timestamp ? body.entry_time : undefined,
+        mealTypeIdOverride: body.meal_type_id,
+        waterMlOverride:
+          tag.action.type === 'water' && allowsAdjustment
+            ? body.water_ml_override
+            : undefined,
+      },
+      effectiveAction
     );
     if (!result) {
       await releaseActionTagRun(userId, tag.id, claim, authenticatedUserId);
