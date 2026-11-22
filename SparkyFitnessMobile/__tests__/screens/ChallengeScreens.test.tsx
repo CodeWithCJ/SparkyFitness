@@ -355,6 +355,11 @@ describe('ChallengeDetailScreen', () => {
   });
 
   it('steps back to the previous week and forward again', () => {
+    // Saturday Nov 14, inside the current week (Nov 9 to 15).
+    jest.useFakeTimers({
+      now: new Date('2026-11-14T12:00:00Z'),
+      doNotFake: ['nextTick', 'setImmediate'],
+    });
     const lastWeek = makeStandings({
       period_start: '2026-11-02',
       period_end: '2026-11-08',
@@ -382,6 +387,32 @@ describe('ChallengeDetailScreen', () => {
     // instead of keeping Nov 9 once that week is over.
     fireEvent.press(screen.getByLabelText('Next period'));
     expect(mockUseStandings).toHaveBeenLastCalledWith('c1', null);
+    jest.useRealTimers();
+  });
+
+  it('steps to the next week, not past it, when the current week it holds is from before today', () => {
+    // Monday Nov 16: the cached current week (Nov 9 to 15) has ended.
+    jest.useFakeTimers({
+      now: new Date('2026-11-16T12:00:00Z'),
+      doNotFake: ['nextTick', 'setImmediate'],
+    });
+    const twoWeeksBack = makeStandings({
+      period_start: '2026-11-02',
+      period_end: '2026-11-08',
+      final: true,
+    });
+    mockUseStandings.mockImplementation((_id: string, date: string | null) => ({
+      data: date === '2026-11-08' ? twoWeeksBack : makeStandings(),
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    }));
+    renderDetail();
+    fireEvent.press(screen.getByLabelText('Previous period'));
+    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-08');
+    fireEvent.press(screen.getByLabelText('Next period'));
+    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-09');
+    jest.useRealTimers();
   });
 
   it('stops at the final week of a challenge that has ended', () => {
@@ -411,8 +442,7 @@ describe('ChallengeDetailScreen', () => {
     fireEvent.press(screen.getByLabelText('Previous period'));
     expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-01');
     fireEvent.press(screen.getByLabelText('Next period'));
-    // Back on the period the server calls current (here the final one).
-    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', null);
+    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-02');
     // The server would answer any later day with this week again.
     expect(screen.getByLabelText('Next period')).toBeDisabled();
   });

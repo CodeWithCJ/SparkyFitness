@@ -318,12 +318,16 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
                 // The current period goes back to `null`, so the screen
                 // follows today into the next period instead of staying on
                 // this date once it ends.
+                // Only a current period that still holds today counts: one
+                // loaded before the day turned over would skip a period.
                 const current = currentPeriodQuery.data;
+                const reachesCurrent =
+                  !!current &&
+                  current.period_start <= today &&
+                  today <= current.period_end &&
+                  nextDay >= current.period_start;
                 setPeriodDay(
-                  nextDay > today ||
-                    (current && nextDay >= current.period_start)
-                    ? null
-                    : nextDay
+                  nextDay > today || reachesCurrent ? null : nextDay
                 );
               }}
               disabled={!canGoForward}

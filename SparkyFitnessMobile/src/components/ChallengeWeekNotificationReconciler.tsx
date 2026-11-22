@@ -119,10 +119,12 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
   useEffect(() => {
     if (waitingRef.current) return;
     void enqueueChallengeWeekNotificationTask(async () => {
-      await cancelChallengeWeekNotifications();
+      // A cancel that still failed after its retries is tried again on the
+      // next return to the app too, also while the notice is turned off.
+      const cancelled = await cancelChallengeWeekNotifications();
       const list = noticesRef.current;
       if (list.length === 0) {
-        incompleteRef.current = false;
+        incompleteRef.current = !cancelled;
         return;
       }
       if (!(await hasNotificationPermission())) {
@@ -137,14 +139,15 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
   // Scores change while the app is closed; re-read them on return.
   const lastRefresh = useRef(0);
   useEffect(() => {
-    if (!active) return;
     lastRefresh.current = Date.now();
+    // Listens while turned off too, for a retry that only cancels.
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       if (incompleteRef.current) {
         incompleteRef.current = false;
         setRetryRevision((revision) => revision + 1);
       }
+      if (!active) return;
       if (Date.now() - lastRefresh.current < FOREGROUND_REFRESH_MS) return;
       lastRefresh.current = Date.now();
       void queryClient.invalidateQueries({ queryKey: challengesQueryKeyRoot });

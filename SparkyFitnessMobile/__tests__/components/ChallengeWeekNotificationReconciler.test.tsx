@@ -206,6 +206,19 @@ describe('ChallengeWeekNotificationReconciler', () => {
       await waitFor(() => expect(mockSchedule).toHaveBeenCalledTimes(1));
     });
 
+    it('cancels again on return while turned off when every cancel failed', async () => {
+      useAppPreferencesStore.setState({
+        challengeWeekNotificationsEnabled: false,
+      });
+      mockCancel.mockResolvedValueOnce(false);
+      renderReconciler();
+      await waitFor(() => expect(mockCancel).toHaveBeenCalledTimes(1));
+
+      await returnToApp();
+      await waitFor(() => expect(mockCancel).toHaveBeenCalledTimes(2));
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+
     it('schedules again when the OS refused one, but not when all went in', async () => {
       mockSchedule.mockResolvedValueOnce([]);
       renderReconciler();
