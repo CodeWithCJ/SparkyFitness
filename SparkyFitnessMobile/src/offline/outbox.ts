@@ -96,8 +96,8 @@ export interface OutboxEnqueue {
 }
 
 /**
- * Queues work for the server. One unconfirmed row is kept per entity and
- * kind: queueing again replaces that row's payload with the newer one and
+ * Queues work for the server. One unconfirmed row is kept per account, entity
+ * and kind: queueing again replaces that row's payload with the newer one and
  * keeps its id, so rows that depend on it stay attached. Returns the id of
  * the row that now holds the work.
  */
@@ -107,12 +107,15 @@ export async function enqueueOutbox(
   now: number = Date.now()
 ): Promise<string> {
   return db.transaction(async (tx) => {
+    // Only this account's own waiting row is replaced: the queue is keyed by
+    // server, so another account's row under the same key is left alone.
     const existing = await tx.first<{ id: string }>(
       `SELECT id FROM outbox
        WHERE server_config_id = ? AND entity_id = ? AND kind = ?
+         AND user_id IS ?
          AND status IN (${UNCONFIRMED_SQL})
        ORDER BY created_at LIMIT 1`,
-      [item.serverConfigId, item.entityId, item.kind]
+      [item.serverConfigId, item.entityId, item.kind, item.userId]
     );
     if (existing) {
       await tx.run(

@@ -16,6 +16,7 @@ import { notifyOutboxChanged } from './events';
 import {
   deleteUnconfirmedForEntity,
   enqueueOutbox,
+  isOwnedBy,
   listUnconfirmedOutbox,
 } from './outbox';
 import { signedInUserId } from './syncEngine';
@@ -181,7 +182,10 @@ export async function queueWorkoutUpdate(
     // uploaded under, whichever account signs in next.
     if (userId == null) return false;
     const earlier = (await listUnconfirmedOutbox(db, serverConfigId)).find(
-      (row) => row.kind === WORKOUT_SESSION_UPDATE && row.entityId === sessionId
+      (row) =>
+        row.kind === WORKOUT_SESSION_UPDATE &&
+        row.entityId === sessionId &&
+        isOwnedBy(row, userId)
     );
     const earlierBody =
       (earlier?.payload as WorkoutSessionUpdatePayload | undefined)?.body ?? {};

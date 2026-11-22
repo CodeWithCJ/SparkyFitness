@@ -4,6 +4,7 @@ import { newUuid } from '../utils/ids';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged } from './events';
 import type { WaterIntakeLogEntry } from '@workspace/shared';
+import { savedCopyReadable } from './accountGeneration';
 import { getCacheRow } from './cacheStore';
 import { CACHE_COLLECTIONS } from './collections';
 import {
@@ -100,6 +101,10 @@ export interface WaterRemovePayload {
 export async function removeLatestDrinkOffline(
   entryDate: string
 ): Promise<'cancelled' | 'queued' | 'none' | 'busy'> {
+  // The saved drink list belongs to whoever it was made for: it is not read
+  // while that is in doubt (just after an account switch), like every other
+  // offline reader.
+  if (!(await savedCopyReadable())) return 'none';
   const serverConfigId = await getActiveServerConfigId();
   if (!serverConfigId) return 'none';
   const db = await getOfflineDb();

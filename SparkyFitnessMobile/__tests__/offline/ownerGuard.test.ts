@@ -88,4 +88,38 @@ describe('offline work belongs to the account that made it', () => {
     await signIn('alice');
     expect(await removeLatestDrinkOffline(DAY)).toBe('cancelled');
   });
+
+  it("keeps each account's waiting row under the same key apart", async () => {
+    const row = (id: string, userId: string, quantity: number) =>
+      enqueueOutbox(db, {
+        id,
+        serverConfigId: 's1',
+        userId,
+        kind: WATER_ADD,
+        entityId: 'shared-key',
+        entryDate: DAY,
+        payload: { ...drink, quantity },
+        payloadVersion: 1,
+      });
+    await row('alice-row', 'alice', 1);
+    // Bob writes under the same server, entity key and kind.
+    await row('bob-row', 'bob', 2);
+
+    const rows = await listUnconfirmedOutbox(db, 's1');
+    expect(rows.map((item) => [item.id, item.userId]).sort()).toEqual([
+      ['alice-row', 'alice'],
+      ['bob-row', 'bob'],
+    ]);
+    // The same account writing again still replaces its own row.
+    await row('alice-again', 'alice', 3);
+    const after = await listUnconfirmedOutbox(db, 's1');
+    expect(after).toHaveLength(2);
+    expect(
+      (
+        after.find((item) => item.userId === 'alice')?.payload as {
+          quantity: number;
+        }
+      ).quantity
+    ).toBe(3);
+  });
 });

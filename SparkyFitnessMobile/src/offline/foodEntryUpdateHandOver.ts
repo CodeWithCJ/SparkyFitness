@@ -146,7 +146,10 @@ export async function queueFoodEntryUpdate(
     // uploaded under, whichever account signs in next.
     if (userId == null) return false;
     const earlier = (await listUnconfirmedOutbox(db, serverConfigId)).find(
-      (row) => row.kind === FOOD_ENTRY_UPDATE && row.entityId === entryId
+      (row) =>
+        row.kind === FOOD_ENTRY_UPDATE &&
+        row.entityId === entryId &&
+        isOwnedBy(row, userId)
     );
     const before = earlier?.payload as FoodEntryUpdatePayload | undefined;
     const payload: FoodEntryUpdatePayload = {

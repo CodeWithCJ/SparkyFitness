@@ -57,7 +57,10 @@ export async function queueFoodEntryMealUpdate(
     // uploaded under, whichever account signs in next.
     if (userId == null) return false;
     const earlier = (await listUnconfirmedOutbox(db, serverConfigId)).find(
-      (row) => row.kind === FOOD_ENTRY_MEAL_UPDATE && row.entityId === mealId
+      (row) =>
+        row.kind === FOOD_ENTRY_MEAL_UPDATE &&
+        row.entityId === mealId &&
+        isOwnedBy(row, userId)
     );
     const payload: FoodEntryMealUpdatePayload = { patch, display };
     await enqueueOutbox(db, {

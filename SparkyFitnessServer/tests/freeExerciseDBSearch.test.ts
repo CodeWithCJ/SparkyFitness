@@ -380,6 +380,35 @@ describe('FreeExerciseDBService.getExerciseById', () => {
     expect(axios.get).toHaveBeenCalledTimes(1);
   });
 
+  it('does not remember an id that is not shaped like an exercise id', async () => {
+    vi.mocked(axios.get).mockRejectedValue(notFound());
+    const odd = `${'x'.repeat(300)}`;
+
+    await freeExerciseDBService.getExerciseById(odd);
+    await freeExerciseDBService.getExerciseById(odd);
+
+    // Each caller-chosen oddity is asked upstream afresh, never parked in memory.
+    expect(axios.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps working, without remembering more, once the missing-id cache is full', async () => {
+    vi.mocked(axios.get).mockRejectedValue(notFound());
+
+    for (let i = 0; i < 1005; i += 1) {
+      await expect(
+        freeExerciseDBService.getExerciseById(`missing_${i}`)
+      ).resolves.toBeNull();
+    }
+    vi.mocked(axios.get).mockClear();
+
+    // An id remembered before the cache filled up is still skipped.
+    await freeExerciseDBService.getExerciseById('missing_0');
+    expect(axios.get).not.toHaveBeenCalled();
+    // One past the limit is simply asked again.
+    await freeExerciseDBService.getExerciseById('missing_1004');
+    expect(axios.get).toHaveBeenCalledTimes(1);
+  });
+
   it('asks again after a failure that is not a 404, such as a timeout', async () => {
     vi.mocked(axios.get).mockRejectedValue(
       Object.assign(new Error('timeout'), { isAxiosError: true })

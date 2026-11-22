@@ -13,8 +13,14 @@ const githubCache = new NodeCache({ stdTTL: 3600 });
 // pictures or a repeated lookup does not ask GitHub again for each one every
 // time; other failures (a timeout, a rate limit) are not remembered.
 const MISSING_EXERCISE_TTL_SECONDS = 15 * 60;
+// Callers choose the ids that end up here (the public image route passes the
+// raw path segment), so the cache is bounded in entries, and only ids shaped
+// like a real exercise id are remembered at all.
+const MISSING_EXERCISE_MAX_KEYS = 1000;
+const REMEMBERABLE_EXERCISE_ID = /^[A-Za-z0-9_-]{1,100}$/;
 const missingExerciseCache = new NodeCache({
   stdTTL: MISSING_EXERCISE_TTL_SECONDS,
+  maxKeys: MISSING_EXERCISE_MAX_KEYS,
 });
 const DATASET_TTL_MS = 60 * 60 * 1000;
 // Bound a stalled shared download so it cannot block every exercise search indefinitely.
@@ -95,7 +101,14 @@ class FreeExerciseDBService {
       if (axios.isAxiosError(error) && error.response?.status === 404) {
         // Not in the dataset: say so once, then skip it until the entry
         // expires.
-        missingExerciseCache.set(cacheKey, true);
+        if (REMEMBERABLE_EXERCISE_ID.test(exerciseId)) {
+          try {
+            missingExerciseCache.set(cacheKey, true);
+          } catch {
+            // Full: the id is simply looked up again next time. Entries
+            // expire after 15 minutes, so room comes back.
+          }
+        }
       }
       log(
         'error',
