@@ -86,3 +86,39 @@ describe('POST /exercise-entries duplicate-check wiring', () => {
     expect(options).toEqual({ skipDuplicateCheck: false });
   });
 });
+
+describe('POST /exercise-entries record_timezone', () => {
+  const body = {
+    exercise_id: '11111111-1111-1111-1111-111111111111',
+    duration_minutes: 30,
+    entry_date: '2026-11-21',
+    entry_time: '10:56',
+  };
+
+  it('stores the zone the entry time was read in', async () => {
+    await request(app)
+      .post('/exercise-entries')
+      .send({ ...body, record_timezone: 'America/Los_Angeles' })
+      .expect(201);
+
+    const [, , entry] = vi.mocked(exerciseService.createExerciseEntry).mock
+      .calls[0];
+    expect(entry).toMatchObject({ record_timezone: 'America/Los_Angeles' });
+  });
+
+  it('leaves the zone empty when none is sent', async () => {
+    await request(app).post('/exercise-entries').send(body).expect(201);
+
+    const [, , entry] = vi.mocked(exerciseService.createExerciseEntry).mock
+      .calls[0];
+    expect(entry).toMatchObject({ record_timezone: null });
+  });
+
+  it('refuses a zone that does not exist', async () => {
+    await request(app)
+      .post('/exercise-entries')
+      .send({ ...body, record_timezone: 'Mars/Olympus' })
+      .expect(400);
+    expect(exerciseService.createExerciseEntry).not.toHaveBeenCalled();
+  });
+});

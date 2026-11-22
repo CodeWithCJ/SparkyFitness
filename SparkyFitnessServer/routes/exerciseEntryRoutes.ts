@@ -33,6 +33,7 @@ import {
   setExerciseEntryEffortRequestSchema,
   setCalorieLinkRequestSchema,
   isEntryTimeString,
+  isValidTimeZone,
 } from '@workspace/shared';
 import exerciseCalorieLinkService, {
   CalorieLinkError,
@@ -374,6 +375,19 @@ router.post(
           error: 'entry_time must be in HH:MM (24h) format.',
         });
       }
+      // The zone `entry_time` was read in, when it is not the profile's.
+      const record_timezone =
+        entryData.record_timezone === '' ? null : entryData.record_timezone;
+      if (
+        record_timezone !== null &&
+        record_timezone !== undefined &&
+        (typeof record_timezone !== 'string' ||
+          !isValidTimeZone(record_timezone))
+      ) {
+        return res.status(400).json({
+          error: 'record_timezone must be an IANA time zone.',
+        });
+      }
       if (activity_details && typeof activity_details === 'string') {
         try {
           entryData.activity_details = JSON.parse(activity_details);
@@ -436,6 +450,7 @@ router.post(
           calories_applied: caloriesApplied,
           entry_date,
           entry_time,
+          record_timezone: record_timezone ?? null,
           notes,
           sets,
           reps,

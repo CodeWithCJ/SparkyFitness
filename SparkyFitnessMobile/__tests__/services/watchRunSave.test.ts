@@ -67,6 +67,8 @@ test('logs the entry, route and telemetry from the watch figures', async () => {
       exercise_id: 'ex1',
       entry_date: '2026-10-10',
       entry_time: '07:05',
+      // The time is read on this phone, so its zone travels with it.
+      record_timezone: expect.any(String),
       distance: 3,
     })
   );

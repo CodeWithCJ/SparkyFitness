@@ -158,6 +158,8 @@ describe('saveRecordedActivity', () => {
       exercise_id: 'ex-1',
       entry_date: '2026-10-06',
       entry_time: '07:05',
+      // The time is read on this phone, so its zone travels with it.
+      record_timezone: expect.any(String),
       duration_minutes: 25,
     });
     expect(entry.distance).toBeCloseTo(2.5, 2);
