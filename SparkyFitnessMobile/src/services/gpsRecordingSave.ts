@@ -26,7 +26,7 @@ import { assignShoeToExerciseEntry, fetchShoes } from './api/shoesApi';
 import { findShoeThatReachedLimit } from './shoeWear';
 import type { ShoeResponse } from '@workspace/shared';
 import { buildActivitySetsPayload } from '../utils/workoutSession';
-import { toLocalDateString } from '../utils/dateUtils';
+import { getDeviceTimezone, toLocalDateString } from '../utils/dateUtils';
 import {
   computeLaps,
   computeSplits,
@@ -183,7 +183,11 @@ export async function saveRecordedActivity(
 ): Promise<SavedRecording> {
   const indoor = session.indoor === true;
   const started = new Date(session.startedAt);
+  // Date, time and zone are read together, before any await: a zone change
+  // during the save must not pair one zone's day with another's time.
   const entryDate = toLocalDateString(started);
+  const entryTime = `${pad(started.getHours())}:${pad(started.getMinutes())}`;
+  const recordTimezone = getDeviceTimezone();
   const durationSeconds = Math.max(1, Math.round(elapsedSeconds(session)));
   const trackPoints = indoor ? [] : toWorkoutGpsPoints(points);
   const hasRoute = trackPoints.length >= MIN_ROUTE_POINTS;
@@ -215,7 +219,9 @@ export async function saveRecordedActivity(
         : exercise.name,
       duration_minutes: Math.round((durationSeconds / 60) * 100) / 100,
       entry_date: entryDate,
-      entry_time: `${pad(started.getHours())}:${pad(started.getMinutes())}`,
+      entry_time: entryTime,
+      // The time above is read on this phone, which may not be in the profile's zone.
+      record_timezone: recordTimezone,
       distance: distanceKm,
       ...(form && {
         avg_cadence: form.avgCadence,

@@ -469,6 +469,26 @@ export const createExerciseEntryRequestSchema = z
     calories_burned: z.coerce.number().min(0).default(0),
     entry_date: dateStringSchema,
     entry_time: timeStringSchema.nullish(),
+    /**
+     * The IANA zone `entry_time` was read in, when it is not the profile's
+     * (a phone abroad). Without it the time is taken in the profile zone.
+     */
+    record_timezone: z
+      .string()
+      .min(1)
+      .max(64)
+      .refine(
+        (zone) => {
+          try {
+            new Intl.DateTimeFormat('en-US', { timeZone: zone });
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: 'Unknown time zone' }
+      )
+      .nullish(),
     notes: z.string().nullable().optional(),
     sets: z.array(exerciseEntrySetRequestSchema).optional(),
     reps: z.coerce.number().nullable().optional(),

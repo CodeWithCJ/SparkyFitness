@@ -543,6 +543,8 @@ export interface CreateExerciseEntryPayload {
   entry_date: string;
   /** Local start time, `HH:MM` (24h). */
   entry_time?: string;
+  /** The IANA zone `entry_time` was read in (the phone's), when it may not be the profile's. */
+  record_timezone?: string | null;
   distance?: number | null;
   avg_heart_rate?: number | null;
   /** Steps per minute. */
