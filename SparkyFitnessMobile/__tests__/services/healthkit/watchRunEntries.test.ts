@@ -31,6 +31,11 @@ describe('watch run entries', () => {
     expect([...(await loadWatchRunEntryIds())]).toEqual(['e1']);
   });
 
+  it('keeps every id when two notes overlap', async () => {
+    await Promise.all([noteWatchRunEntry('e1'), noteWatchRunEntry('e2')]);
+    expect([...(await loadWatchRunEntryIds())]).toEqual(['e1', 'e2']);
+  });
+
   it('keeps only the most recent entries', async () => {
     for (let i = 0; i < 505; i += 1) await noteWatchRunEntry(`e${i}`);
     const ids = await loadWatchRunEntryIds();

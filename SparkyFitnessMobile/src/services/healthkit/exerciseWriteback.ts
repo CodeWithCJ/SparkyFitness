@@ -243,6 +243,17 @@ const sessionIdOfKey = (key: string): string =>
   key.replace(/^sparky-exercise-(?:individual|preset)-/, '');
 
 /**
+ * A walk or run the Apple Watch app recorded, which is already in Apple
+ * Health from the watch. Accepts a key with or without its `@<day>` suffix.
+ */
+const isWatchRunWrite = (
+  write: { kind: string; key: string },
+  watchRunEntries: ReadonlySet<string>
+): boolean =>
+  write.kind === 'individual' &&
+  watchRunEntries.has(sessionIdOfKey(write.key.replace(/@[^@]*$/, '')));
+
+/**
  * Workouts other sources saved around the day (other apps, watches, and our
  * own Apple Watch app, whose sessions are already in Apple Health), never the
  * ones this write-back saved. Needs Workout read access; iOS hides a read
@@ -334,13 +345,7 @@ export const writeExerciseForDate = async (
     timezone: context.timezone,
     bmrKcalPerDay: context.bmrKcalPerDay,
     formatWeightKg: context.formatWeightKg,
-  }).filter(
-    (write) =>
-      !(
-        write.kind === 'individual' &&
-        watchRunEntries.has(sessionIdOfKey(write.key))
-      )
-  );
+  }).filter((write) => !isWatchRunWrite(write, watchRunEntries));
 
   let writes = planned;
   if (planned.length > 0) {
@@ -407,6 +412,16 @@ export const writeExerciseForDate = async (
   }
 
   for (const write of writes) {
+    // Read again at the point of the write: a watch run noted during the
+    // Health reads above is not in the first snapshot, and its watch workout
+    // may not have synced yet for the overlap check to catch it.
+    if (isWatchRunWrite(write, await loadWatchRunEntryIds())) {
+      addLog(
+        `[Writeback] Exercise ${date}: skipped "${write.title}", the Apple Watch app recorded it`,
+        'INFO'
+      );
+      continue;
+    }
     const save = buildWorkoutSave(write, version, context.timezone);
     const quantities = save.quantities.filter((q) =>
       grantedTypes.includes(q.quantityType as SampleTypeIdentifierWriteable)

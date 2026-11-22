@@ -26,6 +26,7 @@ import {
 import type { RecordedPoint } from '../../src/utils/gpsRecording';
 import type { RecordingSession } from '../../src/services/gpsRecordingService';
 import type { Exercise } from '../../src/types/exercise';
+import * as dateUtils from '../../src/utils/dateUtils';
 
 jest.mock('../../src/services/api/exerciseApi');
 jest.mock('../../src/services/api/shoesApi');
@@ -146,6 +147,27 @@ describe('resolveRecordingExercise', () => {
 });
 
 describe('saveRecordedActivity', () => {
+  it('sends the zone read with the date, even if the zone changes during the save', async () => {
+    const zone = jest
+      .spyOn(dateUtils, 'getDeviceTimezone')
+      .mockReturnValue('America/Los_Angeles');
+    mockedSearch.mockImplementationOnce(async (name: string) => {
+      // The phone lands in another zone while the save is under way.
+      zone.mockReturnValue('Asia/Tokyo');
+      return [{ id: 'ex-1', name, modality: 'duration_distance' } as Exercise];
+    });
+    try {
+      await saveRecordedActivity(session, points, 'km');
+      expect(mockedCreateEntry.mock.calls[0][0]).toMatchObject({
+        entry_date: '2026-10-06',
+        entry_time: '07:05',
+        record_timezone: 'America/Los_Angeles',
+      });
+    } finally {
+      zone.mockRestore();
+    }
+  });
+
   it('logs the entry, then attaches the route and per-km splits', async () => {
     const saved = await saveRecordedActivity(session, points, 'km');
 

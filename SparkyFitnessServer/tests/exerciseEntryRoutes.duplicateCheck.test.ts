@@ -106,8 +106,19 @@ describe('POST /exercise-entries record_timezone', () => {
     expect(entry).toMatchObject({ record_timezone: 'America/Los_Angeles' });
   });
 
-  it('leaves the zone empty when none is sent', async () => {
+  it('passes no zone when none is sent, so a retry keeps the stored one', async () => {
     await request(app).post('/exercise-entries').send(body).expect(201);
+
+    const [, , entry] = vi.mocked(exerciseService.createExerciseEntry).mock
+      .calls[0];
+    expect(entry.record_timezone).toBeUndefined();
+  });
+
+  it('clears the zone when an empty one is sent', async () => {
+    await request(app)
+      .post('/exercise-entries')
+      .send({ ...body, record_timezone: '' })
+      .expect(201);
 
     const [, , entry] = vi.mocked(exerciseService.createExerciseEntry).mock
       .calls[0];

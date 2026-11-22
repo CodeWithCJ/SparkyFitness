@@ -450,7 +450,10 @@ router.post(
           calories_applied: caloriesApplied,
           entry_date,
           entry_time,
-          record_timezone: record_timezone ?? null,
+          // Omitted stays undefined: an assigned-workout retry updates the
+          // stored row, and null there would erase its zone. The insert path
+          // defaults to null itself.
+          record_timezone,
           notes,
           sets,
           reps,

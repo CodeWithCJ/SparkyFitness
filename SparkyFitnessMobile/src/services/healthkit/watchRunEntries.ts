@@ -12,14 +12,26 @@ const MAX_REMEMBERED = 500;
  * workout has always synced into the phone's Health, and a watch run's
  * Health workout carries the watch's own run id, not the entry's.
  */
-export async function noteWatchRunEntry(entryId: string): Promise<void> {
-  try {
-    const known = (await loadHealthPreference<string[]>(KEY)) ?? [];
-    if (known.includes(entryId)) return;
-    await saveHealthPreference(KEY, [...known, entryId].slice(-MAX_REMEMBERED));
-  } catch {
-    // Best effort: without the note write-back falls back to comparing times.
-  }
+// Each update reads the list the previous one wrote: two overlapping calls
+// (a recording bridge callback and saveWatchRun) would otherwise read the same
+// list and the later write would drop the earlier id.
+let pending: Promise<void> = Promise.resolve();
+
+export function noteWatchRunEntry(entryId: string): Promise<void> {
+  const next = pending.then(async () => {
+    try {
+      const known = (await loadHealthPreference<string[]>(KEY)) ?? [];
+      if (known.includes(entryId)) return;
+      await saveHealthPreference(
+        KEY,
+        [...known, entryId].slice(-MAX_REMEMBERED)
+      );
+    } catch {
+      // Best effort: without the note write-back falls back to comparing times.
+    }
+  });
+  pending = next;
+  return next;
 }
 
 export async function loadWatchRunEntryIds(): Promise<Set<string>> {

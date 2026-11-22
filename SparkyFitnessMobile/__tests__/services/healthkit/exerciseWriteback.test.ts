@@ -229,6 +229,17 @@ describe('writeExerciseForDate', () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 
+  it('skips a walk noted as a watch run while Apple Health was being read', async () => {
+    // The note lands during the overlap read, after the first snapshot.
+    mockQuery.mockImplementation(() => {
+      store.writebackWatchRunEntryIds = ['e1'];
+      return Promise.resolve([]);
+    });
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(mockSave).not.toHaveBeenCalled();
+    expect(store[`writebackExerciseKeys:${DAY}`]).toEqual([]);
+  });
+
   it('still writes a walk logged on the phone when a watch run is remembered', async () => {
     store.writebackWatchRunEntryIds = ['some-other-entry'];
     await writeExerciseForDate(DAY, [walk()], 1, context);
