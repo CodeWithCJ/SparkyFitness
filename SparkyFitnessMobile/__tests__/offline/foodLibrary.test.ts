@@ -191,6 +191,29 @@ describe('the food library on the phone', () => {
     expect(variantCalls).toHaveLength(FOOD_VARIANTS_KEPT);
   });
 
+  it('finds a food when every typed word is in its name, in any order', async () => {
+    serve([
+      food('a', 'Sparkling Orange', 'Celsius'),
+      food('b', 'Orange Juice', 'Tropicana'),
+      food('c', 'Celsius Berry'),
+    ]);
+    await refreshFoodLibrary(db, 's1');
+
+    const ids = async (term: string) =>
+      (await readSavedFoodsPage(db, 's1', term, 1, 20))?.foods.map(
+        (item) => item.id
+      );
+    expect(await ids('celsius orange')).toEqual(['a']);
+    expect(await ids('orange celsius')).toEqual(['a']);
+    expect(await ids('  orange   ')).toEqual(['b', 'a'].sort());
+    // A word that is nowhere finds nothing, though the others are there.
+    expect(await ids('celsius lemon')).toEqual([]);
+    // The count follows the same rule.
+    expect(
+      (await readSavedFoodsPage(db, 's1', 'celsius orange', 1, 20))?.totalCount
+    ).toBe(1);
+  });
+
   it('finds a food by brand or name, ignoring case, and pages the list', async () => {
     serve([
       food('a', 'Apple', 'Orchard'),
