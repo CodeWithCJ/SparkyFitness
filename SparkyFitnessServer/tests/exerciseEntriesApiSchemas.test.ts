@@ -33,6 +33,35 @@ function runSchema(schemaName: any, payload: any) {
 describe('Exercise entry API schemas', () => {
   const exerciseId = '11111111-1111-4111-8111-111111111111';
 
+  const entryBody = {
+    exercise_id: '123e4567-e89b-42d3-a456-426614174000',
+    entry_date: '2026-11-21',
+    entry_time: '10:56',
+    duration_minutes: 25,
+  };
+
+  it('accepts the zone an entry time was read in', () => {
+    const result = runSchema('createExerciseEntryRequestSchema', {
+      ...entryBody,
+      record_timezone: 'America/Los_Angeles',
+    });
+    expect(result.success).toBe(true);
+    expect(result.data.record_timezone).toBe('America/Los_Angeles');
+  });
+
+  it('keeps accepting an entry with no zone', () => {
+    const result = runSchema('createExerciseEntryRequestSchema', entryBody);
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a zone that does not exist', () => {
+    const result = runSchema('createExerciseEntryRequestSchema', {
+      ...entryBody,
+      record_timezone: 'Mars/Olympus',
+    });
+    expect(result.success).toBe(false);
+  });
+
   it('accepts preset-based create payloads', () => {
     const result = runSchema('createPresetSessionRequestSchema', {
       workout_preset_id: 42,

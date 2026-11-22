@@ -8,11 +8,13 @@ import {
 import { resolveRecordingExercise } from '../../src/services/gpsRecordingSave';
 import { saveWatchRun } from '../../src/services/watchRunSave';
 import { measureWatchRunForm } from '../../src/services/stepDistance';
+import { noteWatchRunEntry } from '../../src/services/healthkit/watchRunEntries';
 import type { WatchRunPayload } from '../../src/utils/watchRun';
 
 jest.mock('../../src/services/api/exerciseApi');
 jest.mock('../../src/services/gpsRecordingSave');
 jest.mock('../../src/services/stepDistance');
+jest.mock('../../src/services/healthkit/watchRunEntries');
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 
 const T0 = new Date(2026, 9, 10, 7, 5).getTime();
@@ -62,11 +64,15 @@ test('logs the entry, route and telemetry from the watch figures', async () => {
 
   expect(saved).toEqual({ entryId: 'e1', form: null });
   expect(created).toHaveBeenCalledWith('e1', null);
+  // The watch saved this run to Apple Health itself, so write-back skips it.
+  expect(noteWatchRunEntry).toHaveBeenCalledWith('e1');
   expect(createExerciseEntry).toHaveBeenCalledWith(
     expect.objectContaining({
       exercise_id: 'ex1',
       entry_date: '2026-10-10',
       entry_time: '07:05',
+      // The time is read on this phone, so its zone travels with it.
+      record_timezone: expect.any(String),
       distance: 3,
     })
   );
