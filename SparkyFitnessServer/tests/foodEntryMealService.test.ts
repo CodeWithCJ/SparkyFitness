@@ -22,7 +22,7 @@ vi.mock('../models/foodRepository.js', () => ({
 
 vi.mock('../models/foodEntryMealRepository.js', () => ({
   default: {
-    createFoodEntryMeal: vi.fn(),
+    createFoodEntryMealWithClient: vi.fn(),
     updateFoodEntryMeal: vi.fn(),
     moveFoodEntryMealToMealType: vi.fn(),
     getFoodEntryMealById: vi.fn(),
@@ -75,12 +75,12 @@ describe('foodEntryMealService', () => {
       });
 
       // Mock createFoodEntryMeal repository
-      (foodEntryMealRepository.createFoodEntryMeal as any).mockImplementation(
-        (data: any) => ({
-          id: 'new-meal-entry-id',
-          ...data,
-        })
-      );
+      (
+        foodEntryMealRepository.createFoodEntryMealWithClient as any
+      ).mockImplementation((_client: unknown, data: any) => ({
+        id: 'new-meal-entry-id',
+        ...data,
+      }));
 
       // Mock getFoodById & getFoodVariantById
       (foodRepository.getFoodById as any).mockResolvedValue({
@@ -111,7 +111,10 @@ describe('foodEntryMealService', () => {
 
       expect(result.name).toBe('Template Meal Name');
       expect(result.description).toBe('Template Description');
-      expect(foodEntryMealRepository.createFoodEntryMeal).toHaveBeenCalledWith(
+      expect(
+        foodEntryMealRepository.createFoodEntryMealWithClient
+      ).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({
           name: 'Template Meal Name',
           description: 'Template Description',
@@ -130,7 +133,8 @@ describe('foodEntryMealService', () => {
             variant_id: 'variant-1',
           }),
         ],
-        'user-1'
+        'user-1',
+        { client: expect.anything() }
       );
     });
 
@@ -151,12 +155,12 @@ describe('foodEntryMealService', () => {
         ],
       });
 
-      (foodEntryMealRepository.createFoodEntryMeal as any).mockImplementation(
-        (data: any) => ({
-          id: 'new-meal-entry-id',
-          ...data,
-        })
-      );
+      (
+        foodEntryMealRepository.createFoodEntryMealWithClient as any
+      ).mockImplementation((_client: unknown, data: any) => ({
+        id: 'new-meal-entry-id',
+        ...data,
+      }));
 
       (foodRepository.getFoodById as any).mockResolvedValue({
         id: 'food-no-variant',
@@ -187,7 +191,8 @@ describe('foodEntryMealService', () => {
             quantity: 100,
           }),
         ],
-        'user-1'
+        'user-1',
+        { client: expect.anything() }
       );
     });
   });
@@ -299,12 +304,12 @@ describe('foodEntryMealService', () => {
         }
       );
 
-      (foodEntryMealRepository.createFoodEntryMeal as any).mockImplementation(
-        (data: any) => ({
-          id: 'new-meal-entry-id',
-          ...data,
-        })
-      );
+      (
+        foodEntryMealRepository.createFoodEntryMealWithClient as any
+      ).mockImplementation((_client: unknown, data: any) => ({
+        id: 'new-meal-entry-id',
+        ...data,
+      }));
 
       (foodRepository.getFoodById as any).mockResolvedValue({
         id: 'rice',
@@ -342,7 +347,8 @@ describe('foodEntryMealService', () => {
             quantity: 100,
           }),
         ],
-        'user-1'
+        'user-1',
+        { client: expect.anything() }
       );
     });
   });
@@ -759,7 +765,9 @@ describe('foodEntryMealService', () => {
         calories: 20,
       });
 
-      vi.mocked(foodEntryMealRepository.createFoodEntryMeal).mockResolvedValue({
+      vi.mocked(
+        foodEntryMealRepository.createFoodEntryMealWithClient
+      ).mockResolvedValue({
         id: 'entry-soup-1',
         user_id: 'user-1',
         meal_type_id: 'lunch-id',
@@ -778,7 +786,10 @@ describe('foodEntryMealService', () => {
       });
 
       // Assert snapshot field (250 * 8 = 2000 ml total yield) was saved into food_entry_meals repository
-      expect(foodEntryMealRepository.createFoodEntryMeal).toHaveBeenCalledWith(
+      expect(
+        foodEntryMealRepository.createFoodEntryMealWithClient
+      ).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({
           entry_total_servings: 2000,
           quantity: 500,
@@ -796,7 +807,8 @@ describe('foodEntryMealService', () => {
             quantity: 500,
           }),
         ],
-        'user-1'
+        'user-1',
+        { client: expect.anything() }
       );
     });
 

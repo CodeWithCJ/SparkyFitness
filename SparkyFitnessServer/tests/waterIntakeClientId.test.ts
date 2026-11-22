@@ -79,9 +79,11 @@ describe('upsertWaterIntake client_id (offline replay)', () => {
     );
 
     expect(insert).not.toHaveBeenCalled();
+    // The total is brought in line before answering, in case the first
+    // attempt stopped between its two writes.
     expect(
       measurementRepository.recomputeWaterAggregateForUser
-    ).not.toHaveBeenCalled();
+    ).toHaveBeenCalledTimes(1);
     expect(res).toEqual(TOTALS);
   });
 
