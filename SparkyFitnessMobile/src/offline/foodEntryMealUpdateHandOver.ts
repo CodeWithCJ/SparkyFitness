@@ -48,6 +48,9 @@ export async function queueFoodEntryMealUpdate(
     if (!serverConfigId) return false;
     const db = await getOfflineDb();
     const userId = await signedInUserId(db, serverConfigId);
+    // Whose it is must be known: a row nobody owns would be shown to, and
+    // uploaded under, whichever account signs in next.
+    if (userId == null) return false;
     const earlier = (await listUnconfirmedOutbox(db, serverConfigId)).find(
       (row) => row.kind === FOOD_ENTRY_MEAL_UPDATE && row.entityId === mealId
     );

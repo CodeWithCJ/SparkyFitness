@@ -67,6 +67,19 @@ function toRow(record: OutboxRecord): OutboxRow {
   };
 }
 
+/**
+ * Whether a queued row belongs to the signed-in person. A row with no owner,
+ * or a phone that does not know who is signed in, matches nobody: the queue
+ * is keyed by server, so every reader that shows or cancels waiting work has
+ * to check the account itself.
+ */
+export function isOwnedBy(
+  row: { userId: string | null },
+  userId: string | null
+): boolean {
+  return userId != null && row.userId === userId;
+}
+
 /** What a new piece of work is queued with. */
 export interface OutboxEnqueue {
   /** A fresh uuid; also what `dependsOn` of a later row points at. */

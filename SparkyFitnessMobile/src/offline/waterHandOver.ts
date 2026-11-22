@@ -9,6 +9,7 @@ import { CACHE_COLLECTIONS } from './collections';
 import {
   deleteUnconfirmedForEntity,
   enqueueOutbox,
+  isOwnedBy,
   listUnconfirmedOutbox,
 } from './outbox';
 import { signedInUserId } from './syncEngine';
@@ -43,6 +44,9 @@ export async function queueWaterDrink(
     if (!serverConfigId) return false;
     const db = await getOfflineDb();
     const userId = await signedInUserId(db, serverConfigId);
+    // Whose it is must be known: a row nobody owns would be shown to, and
+    // uploaded under, whichever account signs in next.
+    if (userId == null) return false;
     await enqueueOutbox(db, {
       // A press is its own entity: two presses are two rows, never merged.
       id: newUuid(),
@@ -91,7 +95,13 @@ export async function removeLatestDrinkOffline(
   const serverConfigId = await getActiveServerConfigId();
   if (!serverConfigId) return 'none';
   const db = await getOfflineDb();
-  const rows = await listUnconfirmedOutbox(db, serverConfigId);
+  const userId = await signedInUserId(db, serverConfigId);
+  // Only this account's waiting work: the queue is shared by everyone who
+  // signs in on the phone. The saved water log is the signed-in person's too.
+  if (userId == null) return 'none';
+  const rows = (await listUnconfirmedOutbox(db, serverConfigId)).filter((row) =>
+    isOwnedBy(row, userId)
+  );
 
   const waiting = rows
     .filter(
@@ -124,7 +134,6 @@ export async function removeLatestDrinkOffline(
   if (!latest) return 'none';
 
   try {
-    const userId = await signedInUserId(db, serverConfigId);
     const payload: WaterRemovePayload = {
       entryDate,
       logEntryId: latest.id,

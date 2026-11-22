@@ -20,7 +20,7 @@ import { CACHE_COLLECTIONS } from './collections';
 import { getOfflineDb } from './db';
 import { notifyDiaryDaySaved } from './events';
 import { refreshLoggedMeals } from './loggedMeals';
-import { listUnconfirmedOutbox } from './outbox';
+import { isOwnedBy, listUnconfirmedOutbox } from './outbox';
 import { signedInUserId } from './syncEngine';
 import type { OfflineDb, OutboxRow } from './types';
 import {
@@ -311,8 +311,8 @@ export async function readOfflineDiaryDay(
     ? (savedRow.payload as ExerciseSessionResponse[])
     : null;
   const userId = await signedInUserId(db, serverConfigId);
-  const mine = (await listUnconfirmedOutbox(db, serverConfigId)).filter(
-    (row) => row.userId == null || row.userId === userId
+  const mine = (await listUnconfirmedOutbox(db, serverConfigId)).filter((row) =>
+    isOwnedBy(row, userId)
   );
   const rows = mine.filter((row) => row.entryDate === date);
   // One entry per workout, the way it will be once everything queued is

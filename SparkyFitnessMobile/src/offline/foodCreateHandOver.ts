@@ -6,7 +6,7 @@ import { getActiveServerConfigId } from '../services/storage';
 import { newUuid } from '../utils/ids';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged } from './events';
-import { enqueueOutbox, listUnconfirmedOutbox } from './outbox';
+import { enqueueOutbox, isOwnedBy, listUnconfirmedOutbox } from './outbox';
 import { signedInUserId } from './syncEngine';
 import type { OfflineDb } from './types';
 
@@ -117,7 +117,7 @@ export async function listWaitingFoods(
   const byKey = new Map<string, WaitingFood>();
   for (const row of await listUnconfirmedOutbox(db, serverConfigId)) {
     if (row.kind !== FOOD_CREATE) continue;
-    if (row.userId != null && row.userId !== userId) continue;
+    if (!isOwnedBy(row, userId)) continue;
     const payload = row.payload as FoodCreatePayload;
     if (payload.food.is_quick_food) continue;
     if (byKey.has(payload.foodClientId)) continue;
@@ -185,6 +185,9 @@ export async function queueFoodCreate(
     if (!serverConfigId) return false;
     const db = await getOfflineDb();
     const userId = await signedInUserId(db, serverConfigId);
+    // Whose it is must be known: a row nobody owns would be shown to, and
+    // uploaded under, whichever account signs in next.
+    if (userId == null) return false;
     const plainFood: Omit<SaveFoodPayload, 'client_id'> & {
       client_id?: string;
     } = { ...food };

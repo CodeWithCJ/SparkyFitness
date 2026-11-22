@@ -9,7 +9,7 @@ import { previewFromQueuedRow } from './foodEntryPreview';
 import { readSavedSingle } from './foodLibrary';
 import { FOOD_ENTRY_MEAL_UPDATE } from './foodEntryMealUpdateHandOver';
 import { FOOD_ENTRY_UPDATE } from './foodEntryUpdateHandOver';
-import { listUnconfirmedOutbox } from './outbox';
+import { isOwnedBy, listUnconfirmedOutbox } from './outbox';
 import { signedInUserId } from './syncEngine';
 import { FOOD_ENTRY_DELETE } from './foodEntryDeleteHandOver';
 import { NO_ENTRY_CHANGES, readFoodEntryChanges } from './foodEntryChanges';
@@ -77,7 +77,7 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
     const db = await getOfflineDb();
     const userId = await signedInUserId(db, serverConfigId);
     const mine = (await listUnconfirmedOutbox(db, serverConfigId)).filter(
-      (row) => row.userId == null || row.userId === userId
+      (row) => isOwnedBy(row, userId)
     );
     const rows = mine.filter((row) => row.entryDate === date);
     // A change that moves an entry between days touches both of them.
