@@ -30,7 +30,11 @@ async function readSaved<T>(
     if (!(await savedCopyReadable())) return null;
     const serverConfigId = await getActiveServerConfigId();
     if (!serverConfigId) return null;
-    return await read(await getOfflineDb(), serverConfigId);
+    const saved = await read(await getOfflineDb(), serverConfigId);
+    // The account can change while the copy is being read: that read may have
+    // come from the account that signed in meanwhile, so it is not returned.
+    if (accountGeneration() !== askedUnder) return null;
+    return saved;
   } catch {
     // The offline file being unreadable must never turn into a new error;
     // the caller reports the request's own failure instead.

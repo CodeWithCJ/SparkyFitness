@@ -1103,6 +1103,19 @@ async function updateFoodEntry(
           const oldDate = String(linkedRow.entry_date).substring(0, 10);
           const newDate = String(updatedEntry.entry_date).substring(0, 10);
 
+          // Both days' totals are locked, in the one fixed order, before the
+          // ledger row moves, so a move one way and a move the other way
+          // cannot wait on each other.
+          const source = linkedRow.source || 'manual';
+          await measurementRepository.lockWaterAggregates(
+            client,
+            authenticatedUserId,
+            [
+              { entryDate: oldDate, source },
+              { entryDate: newDate, source },
+            ]
+          );
+
           await client.query(
             `UPDATE water_intake_entries
              SET water_ml = $1, entry_date = $2
@@ -1112,7 +1125,6 @@ async function updateFoodEntry(
 
           // Moving the entry to another day leaves two days to rebuild.
           const dates = oldDate === newDate ? [newDate] : [newDate, oldDate];
-          const source = linkedRow.source || 'manual';
           for (const date of dates) {
             await measurementRepository.recomputeWaterAggregate(
               client,

@@ -70,6 +70,40 @@ describe('withOfflineFallback', () => {
     expect(read).not.toHaveBeenCalled();
   });
 
+  it('does not return a saved copy when the account changed while it was being read', async () => {
+    const failure = new TypeError('Network request failed');
+    let finishRead: (value: string) => void = () => {};
+    let readStarted: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      readStarted = resolve;
+    });
+    const read = jest.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          finishRead = resolve;
+          readStarted();
+        })
+    );
+
+    const answer = withOfflineFallback({
+      fetch: async () => {
+        throw failure;
+      },
+      read,
+    });
+    const outcome = answer.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error })
+    );
+    await started;
+    // The account changes with the read still pending.
+    bumpAccountGeneration();
+    finishRead('another account copy');
+
+    expect(await outcome).toEqual({ error: failure });
+    expect(fallbackUsed).not.toHaveBeenCalled();
+  });
+
   it('does not keep an answer that arrived after the account changed', async () => {
     const store = jest.fn(async () => {});
 
