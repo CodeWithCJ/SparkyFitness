@@ -46,16 +46,19 @@ overrides:
   # resolved differently across the workspace the check was silently missing
   # (tests/betterAuthSchemaCheck.integration.test.ts catches it). Keep them on
   # the exact versions better-auth itself depends on.
-  "@better-auth/utils": "0.5.0"
-  "@better-fetch/fetch": "1.3.2"
+  "@better-auth/utils": "0.5.1"
+  "@better-fetch/fetch": "1.3.3"
   "@expo/dom-webview": "57.0.1"
   assistant-cloud: "0.2.8"
   # 7.1 turns on the React Compiler rule set (set-state-in-effect, refs,
   # immutability). Both apps lint with --max-warnings 0, so adopting it is a
   # refactor, not an upgrade. Pinned until that work is scheduled.
   eslint-plugin-react-hooks: "7.0.1"
+  # react-devtools-core (via react-native) allows ^1.6.1; keep it off the
+  # versions with known CVEs (CVE-2026-9277, CVE-2026-13311).
+  shell-quote: "^1.12.0"
   side-channel: "1.0.6"
-  tailwindcss: "4.3.3"
+  tailwindcss: "4.3.5"
   "tsx>esbuild": "0.28.1"
   # vite's and tsx's own esbuild dependency both resolve to 0.28.2, whose
   # published @esbuild/linux-x64 binary reports "0.27.4" to its own
@@ -68,7 +71,7 @@ overrides:
   # unrelated pins other packages need. Pinned one patch back until it's
   # resolved upstream.
   "vite>esbuild": "0.28.1"
-  zustand: "5.0.16"
+  zustand: "5.1.0"
 
 packageExtensions:
   "@kingstinct/react-native-healthkit@13":
