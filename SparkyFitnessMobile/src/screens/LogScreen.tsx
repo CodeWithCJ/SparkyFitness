@@ -23,7 +23,6 @@ import Icon, { IconName } from '../components/Icon';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   getLogs,
   clearLogs,
@@ -178,7 +177,6 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<LogStatus[]>([]);
 
@@ -353,10 +351,7 @@ const LogScreen: React.FC<LogScreenProps> = ({ navigation }) => {
   );
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <FlatList
         data={filteredLogs}

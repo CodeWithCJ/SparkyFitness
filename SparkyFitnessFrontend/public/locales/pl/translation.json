@@ -2256,8 +2256,7 @@
       "resetSuccessTitle": "Reset profilu",
       "switchInFeatures": "Śledzenie cyklu włącza się i wyłącza w sekcji Funkcje.",
       "onInFeatures": "Śledzenie cyklu jest włączone. Możesz je wyłączyć w sekcji Funkcje.",
-      "offInFeatures": "Śledzenie cyklu jest wyłączone. Włącz je w sekcji Funkcje.",
-      "openFeatures": "Otwórz Funkcje"
+      "offInFeatures": "Śledzenie cyklu jest wyłączone. Włącz je w sekcji Funkcje."
     },
     "nutrientGoalDirection": {
       "title": "Sposób interpretacji celu dla składników odżywczych",
@@ -3083,7 +3082,8 @@
       "footnote": "Karty Dziennik i Ustawienia są zawsze widoczne. Ukrycie karty zmienia tylko tę stronę: nic nie jest usuwane, a aplikacja mobilna ma własne ustawienia.",
       "saveError": "Nie udało się zapisać wyboru kart. Spróbuj ponownie.",
       "loadError": "Nie udało się wczytać wyboru kart.",
-      "actingOnBehalf": "Karty można zmieniać tylko na własnym koncie."
+      "actingOnBehalf": "Karty można zmieniać tylko na własnym koncie.",
+      "featureOff": "Nie pokazano: wyłączona w Funkcje."
     },
     "chatMcp": {
       "title": "Narzędzia zewnętrzne",
@@ -3158,6 +3158,17 @@
         "scope": "Jeden przełącznik dla strony i aplikacji mobilnej.",
         "setupHint": "Odpowiedz na kilka pytań, aby dokończyć konfigurację.",
         "setupAction": "Skonfiguruj"
+      },
+      "open": "Otwórz Funkcje",
+      "webOnly": "Tylko ta strona. Aplikacja mobilna ma własny przełącznik.",
+      "serverTooOld": "Aby to zmienić, zaktualizuj serwer SparkyFitness.",
+      "off": {
+        "title": "{{name}} jest wyłączone",
+        "description": "Twoja historia zostaje zachowana. Włącz ponownie, aby znów ją tu zobaczyć.",
+        "turnOn": "Włącz"
+      },
+      "labResults": {
+        "description": "Zapisuj wyniki badań krwi i śledź każdy marker w czasie."
       }
     }
   },
@@ -5359,7 +5370,13 @@
     "baselineError": "Nie udało się obliczyć punktu odniesienia zapotrzebowania na sen",
     "method2": "Metoda: {{method}}",
     "workdays2": "Dni robocze: {{workdaysAvailable}}/{{workdaysNeeded}}",
-    "freeDays": "Dni wolne: {{freedaysAvailable}}/{{freedaysNeeded}}"
+    "freeDays": "Dni wolne: {{freedaysAvailable}}/{{freedaysNeeded}}",
+    "sleepSurplus": "Nadwyżka snu",
+    "debtSurplus": "Nadwyżka",
+    "debtSurplusDesc": "Masz nadwyżkę snu. Dzisiejsze zapotrzebowanie jest nieco niższe.",
+    "trainingLoad": "Obciążenie treningowe",
+    "recovery": "Regeneracja",
+    "recoveryScore": "{{score}}/100"
   },
   "medications": {
     "tabs": {
@@ -6376,12 +6393,7 @@
       "displayNameCapacityMlml": "{{displayName}} (<span>{{capacityMl}}</span> ml)",
       "energy": "Energia: {{energy}}"
     },
-    "ownerOnly": "Tylko właściciel konta może to widzieć i zmieniać.",
-    "off": {
-      "title": "{{name}} jest wyłączone",
-      "description": "Twoja historia jest zachowana. Włącz ponownie, aby zobaczyć ją tutaj.",
-      "turnOn": "Włącz"
-    }
+    "ownerOnly": "Tylko właściciel konta może to widzieć i zmieniać."
   },
   "onboarding": {
     "completeSetup": "Zakończ konfigurację",
@@ -8248,6 +8260,18 @@
       "genericEstimateVerifyIfAccuracy": "Ogólny szacunek — zweryfikuj, jeśli liczy się dokładność.",
       "useThis": "Użyj tego",
       "estimate2": "— szacunek {{confidence}}"
+    },
+    "cooked": {
+      "switch": "Zważone po ugotowaniu",
+      "sameBatchPrevious": "Ta sama partia co {{date}}: {{raw}} {{unit}} na surowo → {{cooked}} {{unit}} po ugotowaniu",
+      "sameBatchEntry": "Ta sama partia co ten wpis: {{raw}} {{unit}} na surowo → {{cooked}} {{unit}} po ugotowaniu",
+      "newBatch": "Nowa partia",
+      "rawBatch": "Masa surowa partii ({{unit}})",
+      "cookedBatch": "Masa partii po ugotowaniu ({{unit}})",
+      "eaten": "Zjedzono (po ugotowaniu, {{unit}})",
+      "result": "= {{raw}} {{unit}} na surowo · {{calories}} {{energyUnit}}",
+      "incomplete": "Wprowadź masy, aby obliczyć ilość surową.",
+      "enterEaten": "Wprowadź zjedzoną masę po ugotowaniu."
     }
   },
   "healthMetrics": {

@@ -26,7 +26,6 @@ import Switch from '../components/ui/Switch';
 import { useFollowRoadsRoute } from '../hooks/useFollowRoadsRoute';
 import { usePreferences } from '../hooks/usePreferences';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import MapSurface from '../components/maps/MapSurface';
 import type { MapSurfaceHandle } from '../components/maps/mapSurfaceTypes';
 import { addLog } from '../services/LogService';
@@ -85,7 +84,6 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
   const routeId = nav.params?.routeId;
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { preferences } = usePreferences();
   const unit = preferences?.default_distance_unit ?? 'km';
   const lineColor = useCSSVariable('--color-accent-primary') as string;
@@ -237,10 +235,7 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
   // are unavailable; this covers a stale link or unsupported screen state.
   if (!canShowRouteMap()) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <View className="flex-1 bg-background items-center justify-center px-6">
           <Text className="text-text-secondary text-base text-center">
@@ -254,10 +249,7 @@ const RouteDrawScreen: React.FC<Props> = ({ navigation, route: nav }) => {
   }
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <View className="flex-1 bg-background">
         <MapSurface

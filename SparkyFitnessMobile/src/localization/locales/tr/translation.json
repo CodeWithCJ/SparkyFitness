@@ -2166,10 +2166,6 @@
       "wellness": "Sağlıklı Yaşam Ayarları",
       "cyclePregnancy": "Döngü ve Gebelik"
     },
-    "enable": {
-      "title": "Döngü ve Gebelik Takibini Etkinleştir",
-      "subtitle": "Kaydı, tahminleri ve geçmişi aç"
-    },
     "groups": {
       "features": "Özellik Yapılandırması",
       "calculations": "Döngü Hesaplama Geçersiz Kılmaları",

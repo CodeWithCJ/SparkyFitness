@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import type { ActionTagResponse } from '@workspace/shared';
@@ -10,7 +9,6 @@ import { useServerConnection } from '../hooks';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { ApiError } from '../services/api/errors';
 import { scanActionTag } from '../services/api/actionTagsApi';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { refreshAfterTagAction, undoTagAction } from '../services/tagActions';
 import type { RootStackScreenProps } from '../types/navigation';
 import { toLocalDateString } from '../utils/dateUtils';
@@ -36,8 +34,6 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   route,
 }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const { code } = route.params;
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
@@ -270,10 +266,7 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {content()}
     </View>

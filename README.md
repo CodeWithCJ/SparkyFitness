@@ -102,6 +102,10 @@ SparkyFitness can sync data from multiple health and fitness platforms:
 - **Free Exercise DB** (Github)
 - **Wger**
 - **Intervals.ICU**
+- **NIH Dietary Supplement Label Database**
+- **Liftosaur**
+- **Valhalla**
+- **Open Metro**
 
 Integrations automatically sync activity data such as steps, workouts, and sleep, along with health metrics like weight and body measurements, to your SparkyFitness server.
 

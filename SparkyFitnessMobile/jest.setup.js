@@ -18,6 +18,22 @@ jest.mock('expo-localization', () => ({
       textDirection: 'ltr',
     },
   ]),
+  getCalendars: jest.fn(() => [
+    {
+      calendar: 'gregory',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      uses24hourClock: false,
+      firstWeekday: 1,
+    },
+  ]),
+  useCalendars: jest.fn(() => [
+    {
+      calendar: 'gregory',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      uses24hourClock: false,
+      firstWeekday: 1,
+    },
+  ]),
 }));
 
 // Mock radon-ide (ESM module that Jest can't transform)
@@ -62,6 +78,11 @@ jest.mock('react-native-nitro-modules', () => ({
 jest.mock('@kingstinct/react-native-healthkit', () => ({
   requestAuthorization: jest.fn().mockResolvedValue(true),
   queryQuantitySamples: jest.fn(),
+  queryQuantitySamplesWithAnchor: jest.fn().mockResolvedValue({
+    samples: [],
+    deletedSamples: [],
+    newAnchor: 'mock-anchor',
+  }),
   queryCategorySamples: jest.fn(),
   queryStatisticsForQuantity: jest.fn(),
   queryStatisticsCollectionForQuantity: jest.fn().mockResolvedValue([]),
@@ -120,6 +141,13 @@ jest.mock('react-native-health-connect', () => ({
   requestPermission: jest.fn().mockResolvedValue([]),
   getGrantedPermissions: jest.fn().mockResolvedValue([]),
   readRecords: jest.fn().mockResolvedValue({ records: [] }),
+  getChanges: jest.fn().mockResolvedValue({
+    upsertionChanges: [],
+    deletionChanges: [],
+    nextChangesToken: 'mock-token',
+    hasMore: false,
+    changesTokenExpired: false,
+  }),
   requestExerciseRoute: jest.fn().mockResolvedValue([]),
   aggregateRecord: jest.fn().mockResolvedValue({}),
   aggregateGroupByDuration: jest.fn().mockResolvedValue([]),
@@ -973,3 +1001,13 @@ jest.mock('react-native-safe-area-context', () => {
     },
   };
 });
+
+// The offline file (src/offline/) opens expo-sqlite, a native module. Tests of
+// the offline code supply their own database through `__setOfflineDbForTests`;
+// everywhere else an open simply fails, which the offline code treats as
+// "nothing stored" and logs.
+jest.mock('expo-sqlite', () => ({
+  openDatabaseAsync: jest.fn(() =>
+    Promise.reject(new Error('expo-sqlite is not available in tests'))
+  ),
+}));

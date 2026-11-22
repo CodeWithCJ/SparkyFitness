@@ -9,9 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import CalendarSheet, {
@@ -60,8 +58,6 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
   const tr = (label: string) =>
     translateBuiltInSymptomLabel(builtInLabels, label);
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { entryId, date } = route.params || {};
 
   const today = getTodayDate();
@@ -404,10 +400,7 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
       : 'body';
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       {entryId && !existingEntry && isEntryLoading ? (

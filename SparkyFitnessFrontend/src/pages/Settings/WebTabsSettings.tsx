@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useCycleSettings } from '@/hooks/useCycle';
 import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
+import { useChallengesAvailable } from '@/hooks/Challenges/useChallenges';
 import {
   useHiddenWebTabs,
   useSetWebTabHidden,
@@ -14,6 +15,7 @@ import {
 import {
   cycleTabIcon,
   cycleTabLabel,
+  webTabFeature,
   webTabIcon,
   webTabLabel,
 } from '@/constants/webTabs';
@@ -29,6 +31,11 @@ export const WebTabsSettings = () => {
   const { setTabHidden } = useSetWebTabHidden();
   const { data: cycleSettings } = useCycleSettings();
   const { isEnabled: isFeatureOn } = useWebFeatures();
+  // Challenges is offered only while the admin switch is on.
+  const { available: challengesAvailable } = useChallengesAvailable();
+  const tabIds = WEB_HIDEABLE_TAB_IDS.filter(
+    (id) => id !== 'challenges' || challengesAvailable
+  );
 
   return (
     <>
@@ -64,18 +71,34 @@ export const WebTabsSettings = () => {
             </Button>
           </div>
         )}
-        {WEB_HIDEABLE_TAB_IDS.map((id) => {
+        {tabIds.map((id) => {
           const switchId = `web-tab-${id}`;
+          const feature = webTabFeature(id);
+          // The tab's own choice is kept while its feature is off, so turning
+          // the feature back on brings the tab back as it was.
+          const featureOff = feature !== undefined && !isFeatureOn(feature);
+          const noteId = `${switchId}-feature-off`;
           return (
             <div key={id} className="flex items-center justify-between gap-4">
-              <Label htmlFor={switchId} className="flex items-center gap-2">
-                <TabIcon icon={webTabIcon(id)} />
-                {webTabLabel(t, id)}
-              </Label>
+              <div className="space-y-0.5">
+                <Label htmlFor={switchId} className="flex items-center gap-2">
+                  <TabIcon icon={webTabIcon(id)} />
+                  {webTabLabel(t, id)}
+                </Label>
+                {featureOff && (
+                  <p id={noteId} className="text-xs text-muted-foreground">
+                    {t(
+                      'settings.webTabs.featureOff',
+                      'Not shown: turned off in Features.'
+                    )}
+                  </p>
+                )}
+              </div>
               <Switch
                 id={switchId}
                 checked={!hidden.has(id)}
                 disabled={editState !== 'ready'}
+                aria-describedby={featureOff ? noteId : undefined}
                 onCheckedChange={(visible) => setTabHidden(id, !visible)}
               />
             </div>

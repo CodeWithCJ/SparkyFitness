@@ -42,12 +42,17 @@ The Liftosaur integration allows you to automatically import workouts, exercise 
 - **Workouts**: Workouts completed in Liftosaur are automatically parsed and imported into SparkyFitness.
 - **Sets, Reps, and Weights**: Completed sets, warmup sets, repetitions, weights (kg/lb), RPE, and notes are preserved. Reusable workout presets and session entries are created so workouts group cleanly in your Diary.
 
+- **Muscles**: Each exercise gets the target and synergist muscles Liftosaur assigns it, including any muscle changes you made to that exercise in Liftosaur, so Liftosaur workouts count toward the muscle-group reports, body map and recovery view. Liftosaur's finer muscle groups are combined into SparkyFitness's (front, side and rear delts become *shoulders*, abs and obliques become *abdominals*); hip flexors have no SparkyFitness equivalent and are left out.
+  - Muscles are filled in once, when an exercise first syncs or while it has none. Muscles you set on the exercise in SparkyFitness are never overwritten, and later muscle changes in Liftosaur are not copied over an exercise that already has muscles.
+  - Liftosaur custom exercises Liftosaur cannot describe stay without muscles; you can set them by editing the exercise in SparkyFitness.
+  - Diary entries keep the muscles the exercise had when they were synced. Workouts synced before muscles were supported get them when they are synced again: use **Sync Range** over your history (or a full sync) once.
+
 ![Liftosaur Exercise Diary Entry](/liftosaur_exercise_log.png)
 
 ### Body Measurements
 - **Measurements**: Body weight and measurement entries logged in Liftosaur are automatically imported into SparkyFitness.
 - **Which ones**: weight, body fat, neck, waist and hips map to your check-in measurements; chest, shoulders, biceps, calves, thighs and forearms map to custom measurement categories of the same name.
-- **Left and right**: SparkyFitness keeps one value per limb measurement, so the right-side value from Liftosaur is the one imported (for example, Liftosaur's `biceps_right` becomes `Biceps`). Left-side values are not imported.
+- **Left and right**: SparkyFitness keeps one value per limb measurement, so the right-side value from Liftosaur is the one imported (for example, Liftosaur's `bicepRight` becomes `Biceps`). Left-side values are not imported.
 
 ---
 

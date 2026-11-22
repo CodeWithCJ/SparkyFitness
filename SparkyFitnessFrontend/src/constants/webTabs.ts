@@ -8,11 +8,13 @@ import {
   FlaskConical,
   Pill,
   Target,
+  Trophy,
   Utensils,
 } from 'lucide-react';
 import {
   WEB_HIDEABLE_TAB_IDS,
   filterByFeature,
+  type ChoiceFeatureKey,
   type FeatureKey,
   type SharedCycleSettings,
   type WebHideableTabId,
@@ -36,11 +38,12 @@ const MODULE_TABS: readonly ModuleTabDefinition[] = [
   { id: 'checkin', path: '/checkin', inPlusMenu: true },
   { id: 'cycle', path: '/cycle', inPlusMenu: true, feature: 'cycle' },
   { id: 'medications', path: '/medications', inPlusMenu: true },
-  { id: 'labs', path: '/labs', inPlusMenu: true },
+  { id: 'labs', path: '/labs', inPlusMenu: true, feature: 'labResults' },
   { id: 'reports', path: '/reports', inPlusMenu: false },
   { id: 'foods', path: '/foods', inPlusMenu: true },
   { id: 'exercises', path: '/exercises', inPlusMenu: true },
   { id: 'goals', path: '/goals', inPlusMenu: true },
+  { id: 'challenges', path: '/challenges', inPlusMenu: true },
 ];
 
 const TAB_ICONS: Record<WebHideableTabId, LucideIcon> = {
@@ -51,6 +54,7 @@ const TAB_ICONS: Record<WebHideableTabId, LucideIcon> = {
   foods: Utensils,
   exercises: Dumbbell,
   goals: Target,
+  challenges: Trophy,
 };
 
 type CycleTabSettings = Pick<SharedCycleSettings, 'mode' | 'discreet_mode'>;
@@ -71,11 +75,29 @@ export function webTabLabel(t: TFunction, id: WebHideableTabId): string {
       return t('exercise.title', 'Exercises');
     case 'goals':
       return t('nav.goals', 'Goals');
+    case 'challenges':
+      return t('nav.challenges', 'Challenges');
   }
 }
 
 export function webTabIcon(id: WebHideableTabId): LucideIcon {
   return TAB_ICONS[id];
+}
+
+/** A feature switched per platform, named like its tab. */
+export function choiceFeatureLabel(
+  t: TFunction,
+  feature: ChoiceFeatureKey
+): string {
+  switch (feature) {
+    case 'labResults':
+      return webTabLabel(t, 'labs');
+  }
+}
+
+/** The optional feature a tab belongs to, if any (Settings > Features). */
+export function webTabFeature(id: WebHideableTabId): FeatureKey | undefined {
+  return MODULE_TABS.find((tab) => tab.id === id)?.feature;
 }
 
 /** Discreet mode names cycle Wellness, so a shared screen never says Cycle. */
@@ -103,17 +125,20 @@ export interface VisibleModuleTab {
 }
 
 /**
- * The module tabs to show the owner: those whose feature is on, less the
- * ones they hid. Cycle's label and icon follow its settings (discreet mode).
+ * The module tabs to show the owner: those whose feature is on, challenges
+ * while the admin switch is on, less the ones they hid. Cycle's label and
+ * icon follow its settings (discreet mode).
  */
 export function visibleModuleTabs(
   t: TFunction,
   hidden: ReadonlySet<WebHideableTabId>,
   isFeatureOn: (key: FeatureKey) => boolean,
-  cycleSettings: CycleTabSettings | null | undefined
+  cycleSettings: CycleTabSettings | null | undefined,
+  challengesAvailable = false
 ): VisibleModuleTab[] {
   return filterByFeature(MODULE_TABS, isFeatureOn).flatMap(
     (tab): VisibleModuleTab[] => {
+      if (tab.id === 'challenges' && !challengesAvailable) return [];
       if (tab.id === 'cycle') {
         return [
           {

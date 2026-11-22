@@ -1,1 +1,24 @@
-{}
+{
+  "email": {
+    "passwordReset": {
+      "subject": "SparkyFitness 密碼重設",
+      "intro": "您已申請重設 SparkyFitness 帳戶嘅密碼。",
+      "actionPrompt": "請撳下面條連結重設密碼：",
+      "expiry": "呢條連結會於 {{expiresInHours}} 小時後失效。",
+      "ignoreNotice": "如果您冇申請重設密碼，請忽略呢封電郵。"
+    },
+    "mfaCode": {
+      "subject": "您嘅 SparkyFitness 驗證碼",
+      "intro": "您嘅多重驗證碼係：",
+      "expiry": "呢個驗證碼 {{expiresInMinutes}} 分鐘內有效。",
+      "ignoreNotice": "如果您冇申請呢個驗證碼，請忽略呢封電郵。"
+    },
+    "magicLink": {
+      "subject": "您嘅 SparkyFitness 登入連結",
+      "intro": "您已申請免密碼登入 SparkyFitness 帳戶。",
+      "actionPrompt": "請撳下面條連結登入：",
+      "expiry": "呢條連結會於 {{expiresInMinutes}} 分鐘後失效，而且只可以用一次。",
+      "ignoreNotice": "如果您冇提出呢個要求，請忽略呢封電郵。"
+    }
+  }
+}

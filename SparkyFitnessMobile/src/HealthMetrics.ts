@@ -1286,6 +1286,10 @@ export function getHealthMetricLabel(
       });
     case 'boneMass':
       return t('healthMetrics.boneMass', { defaultValue: 'Bone Mass' });
+    case 'waistCircumference':
+      return t('healthMetrics.waistCircumference', {
+        defaultValue: 'Waist Circumference',
+      });
     case 'bodyWaterMass':
       return t('healthMetrics.bodyWaterMass', {
         defaultValue: 'Body Water Mass',

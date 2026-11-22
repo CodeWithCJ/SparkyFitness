@@ -30,18 +30,29 @@ import {
   type TelemetryRunContext,
 } from './telemetryBudget';
 import { queryClient } from '../../hooks/queryClient';
+import { createSerialQueue } from '../../utils/serialQueue';
 import {
   glucoseSamplesQueryKeyRoot,
   glucoseContextQueryKeyRoot,
 } from '../../hooks/queryKeys';
 import { syncAllDayHeartRate, syncAllDayGlucose } from './heartRateSamplesSync';
-import { getActiveServerConfig, type ServerConfig } from '../storage';
+import {
+  getActiveServerConfig,
+  getActiveServerConfigId,
+  type ServerConfig,
+} from '../storage';
 import {
   alignToLocalDayStart,
   buildForegroundWindows,
   type SyncDuration,
   type SyncWindows,
 } from '../../utils/syncUtils';
+
+/**
+ * Serial queue shared across foreground and background sync runs to ensure that
+ * sample collection, server upload, and cursor commits never interleave.
+ */
+export const runSerializedSync = createSerialQueue();
 
 const METRIC_FETCH_CONCURRENCY = 3;
 const METRIC_TIMEOUT_MS = 60_000; // 60s per metric query
@@ -74,7 +85,8 @@ export interface HealthReadProvider {
     recordType: string,
     startDate: Date,
     endDate: Date,
-    telemetry?: TelemetryRunContext
+    telemetry?: TelemetryRunContext,
+    runId?: number
   ): Promise<ReadResult>;
   /** Earliest stored sample for the metric across all history (history-import
    *  floor probe). No data = { records: [] }; failures = { error }, never null. */
@@ -100,8 +112,12 @@ export interface HealthReadProvider {
   /** Clears platform run-scoped state before a run's reads begin. Android uses
    *  it to reset the Health Connect reconnect attempt, so "reconnect once" is
    *  once per sync rather than once per app process. Synchronous and
-   *  non-throwing: it must never be able to fail a sync. */
-  beginRun?(): void;
+   *  non-throwing: it must never be able to fail a sync. Returns runId when tracked. */
+  beginRun?(configId?: string | null): number | void;
+  /** Discards staged water deletion tokens/anchors when the water read fails or times out. */
+  cancelWaterDeletionRun?(runId?: number): void;
+  /** Commits staged cursor/token state after a successful upload. */
+  commitRun?(runId?: number): Promise<void>;
   /** Platform transform tables (record shapes and timezone metadata differ). */
   transform(records: unknown[], metric: MetricConfig): TransformOutput[];
 }
@@ -126,7 +142,8 @@ const finishTransform = (
   metric: HealthMetric,
   records: unknown[],
   error: string | undefined,
-  waterFallbackToSum: boolean
+  waterFallbackToSum: boolean,
+  runId?: number
 ): CollectedMetric => {
   // The transform preserves each pre-aggregated record's own `type` (cumulative reads
   // emit e.g. 'total_calories' while the metric config may carry a different type).
@@ -140,8 +157,24 @@ const finishTransform = (
     (waterFallbackToSum && metric.type === 'water' ? 'sum' : undefined);
 
   if (strategy) {
+    // If the legacy sum fallback discards tombstones, do not advance the deletion
+    // cursor past them so they can be synced when per-record capability is restored.
+    if (waterFallbackToSum && metric.type === 'water') {
+      const hadDeletedRecords = transformed.some(
+        (r) => 'deleted' in r && (r as { deleted?: boolean }).deleted === true
+      );
+      if (hadDeletedRecords) {
+        provider.cancelWaterDeletionRun?.(runId);
+      }
+    }
+
+    // Exclude deletion entries from aggregateByDay: deletions lack date/value and
+    // older servers do not support per-record water deletions (Thread 7).
+    const numericRecords = transformed.filter(
+      (r) => !('deleted' in r && (r as { deleted?: boolean }).deleted === true)
+    );
     const aggregated = aggregateByDay(
-      transformed as TransformedRecord[],
+      numericRecords as TransformedRecord[],
       metric.type,
       metric.unit,
       strategy
@@ -157,7 +190,8 @@ const collectMetric = async (
   metric: HealthMetric,
   windows: SyncWindows,
   waterFallbackToSum: boolean,
-  telemetry: TelemetryRunContext
+  telemetry: TelemetryRunContext,
+  runId?: number
 ): Promise<CollectedMetric> => {
   const readKind = metricReadKind(metric);
 
@@ -175,7 +209,8 @@ const collectMetric = async (
         metric,
         result.records,
         result.error,
-        waterFallbackToSum
+        waterFallbackToSum,
+        runId
       );
     }
     // null = capability missing on this platform → raw path below.
@@ -237,12 +272,21 @@ const collectMetric = async (
           )
         : rawStart;
 
-  const result = await provider.readRaw(
-    metric.recordType,
-    readStart,
-    windows.end,
-    telemetry
-  );
+  const result =
+    runId !== undefined
+      ? await provider.readRaw(
+          metric.recordType,
+          readStart,
+          windows.end,
+          telemetry,
+          runId
+        )
+      : await provider.readRaw(
+          metric.recordType,
+          readStart,
+          windows.end,
+          telemetry
+        );
   const rawRecords = result.records;
 
   if (!rawRecords || rawRecords.length === 0) {
@@ -259,7 +303,8 @@ const collectMetric = async (
     metric,
     processed,
     result.error,
-    waterFallbackToSum
+    waterFallbackToSum,
+    runId
   );
 };
 
@@ -280,6 +325,8 @@ export const collectHealthData = async (
     timeoutLabelPrefix: string;
     timeoutMs?: number;
     telemetry: TelemetryRunContext;
+    configId?: string | null;
+    runId?: number;
   }
 ): Promise<MetricSyncOutcome[]> => {
   // Required, not defaulted: an omitted context used to fall back to the
@@ -288,7 +335,11 @@ export const collectHealthData = async (
   // Every run shell must state its own policy.
   const telemetry = opts.telemetry;
 
-  provider.beginRun?.();
+  const runId =
+    opts.runId ??
+    (typeof provider.beginRun === 'function'
+      ? (provider.beginRun(opts.configId) ?? undefined)
+      : undefined);
 
   // Probed once per run, and only when a per-record water metric is enabled.
   const waterFallbackToSum = metrics.some(
@@ -306,7 +357,14 @@ export const collectHealthData = async (
     METRIC_FETCH_CONCURRENCY,
     (metric) =>
       withTimeout(
-        collectMetric(provider, metric, windows, waterFallbackToSum, telemetry),
+        collectMetric(
+          provider,
+          metric,
+          windows,
+          waterFallbackToSum,
+          telemetry,
+          runId
+        ),
         opts.timeoutMs ?? METRIC_TIMEOUT_MS,
         `${opts.timeoutLabelPrefix} for ${metric.recordType}`
       ),
@@ -315,7 +373,7 @@ export const collectHealthData = async (
     }
   );
 
-  return results.map((result, index) => {
+  const outcomes = results.map((result, index) => {
     const metric = metrics[index];
 
     if (result.status === 'skipped') {
@@ -348,6 +406,17 @@ export const collectHealthData = async (
       ...(result.reason instanceof TimeoutError ? { timedOut: true } : {}),
     };
   });
+
+  // If a water metric read was rejected or timed out, cancel staged deletion tokens
+  // so timed-out or failed reads can never advance the sync cursor
+  const waterFailed = outcomes.some(
+    (o) => o.metric.type === 'water' && o.status !== 'fulfilled'
+  );
+  if (waterFailed) {
+    provider.cancelWaterDeletionRun?.(runId);
+  }
+
+  return outcomes;
 };
 
 /**
@@ -448,13 +517,8 @@ export const runForegroundSync = async (
   healthMetricStates: HealthMetricStates,
   opts: ForegroundSyncOptions
 ): Promise<SyncResult> => {
-  const windows = buildForegroundWindows(syncDuration);
-  // The account this sync is for, taken before anything else runs. The
-  // detached all-day heart rate phase uploads only to it, so an account change
-  // during the sync can never send this sync's readings to the next account.
-  const account: ServerConfig | null = await getActiveServerConfig().catch(
-    () => null
-  );
+  const initialConfigId =
+    (await getActiveServerConfigId().catch(() => null)) ?? null;
 
   const enabledMetricStates =
     healthMetricStates && typeof healthMetricStates === 'object'
@@ -463,6 +527,7 @@ export const runForegroundSync = async (
   const metricsToSync = HEALTH_METRICS.filter(
     (metric) => enabledMetricStates[metric.stateKey]
   );
+  const windows = buildForegroundWindows(syncDuration);
 
   // Interactive (a user is present to answer a route-consent dialog) but still
   // bounded: this window is the user's full configured sync range, so an
@@ -473,169 +538,232 @@ export const runForegroundSync = async (
     force: opts.forceTelemetry ?? false,
   });
 
-  const outcomes = await collectHealthData(provider, metricsToSync, windows, {
-    timeoutLabelPrefix: opts.timeoutLabelPrefix,
-    telemetry,
-  });
-
-  // Decided here, from the settled outcomes, and used for both drain sites
-  // below.
-  const telemetryUsable = sessionTelemetryOutcomesUsable(outcomes);
-
-  const allTransformedData: HealthDataPayload = [];
-  const syncErrors: { type: string; error: string }[] = [];
-
-  for (const outcome of outcomes) {
-    const type = outcome.metric.recordType;
-
-    if (outcome.status === 'skipped') {
-      addLog(`${opts.logTag} Skipping ${type}: ${outcome.error}`, 'WARNING');
-      syncErrors.push({ type, error: outcome.error ?? 'Skipped' });
-      continue;
-    }
-
-    if (outcome.status === 'rejected') {
-      addLog(
-        `${opts.logTag} Error processing ${type}: ${outcome.error}`,
-        'ERROR'
-      );
-      syncErrors.push({ type, error: outcome.error ?? 'Unknown error' });
-      continue;
-    }
-
-    if (outcome.data.length > 0) {
-      allTransformedData.push(...outcome.data);
-    }
-    if (outcome.error) {
-      syncErrors.push({ type, error: outcome.error });
-    }
+  // Resolve interactive route consent before entering the serial queue
+  // so an unanswered consent prompt cannot block background syncs in the queue.
+  if (telemetry.interactive && provider.prepareInteractiveRead) {
+    await provider.prepareInteractiveRead(metricsToSync, windows, telemetry);
   }
 
-  // Outbound phase: SparkyFitness diary → OS health store. Runs before the inbound
-  // result is returned, in its own try/catch so a writeback failure never affects
-  // the inbound sync outcome.
-  try {
-    await runWriteback();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    addLog(`${opts.logTag} Writeback phase failed: ${message}`, 'ERROR');
-  }
+  return runSerializedSync(async () => {
+    const configId =
+      (await getActiveServerConfigId().catch(() => null)) ?? null;
+    if (configId !== initialConfigId) {
+      return {
+        success: false,
+        error: 'Active account changed while queued; aborted.',
+        syncErrors: [],
+      };
+    }
 
-  const result = await uploadInbound();
-  // Started after the main upload and not awaited: this best-effort phase
-  // (several window reads, each with its own timeout) must neither delay the
-  // upload nor keep the sync pending past the sync-on-open watchdog.
-  startAllDaySamplesPhase();
-  return result;
+    // The account this sync is for, verified upon entering the queue. The
+    // detached all-day heart rate phase uploads only to it, so an account change
+    // during the sync can never send this sync's readings to the next account.
+    const account: ServerConfig | null = await getActiveServerConfig().catch(
+      () => null
+    );
 
-  async function uploadInbound(): Promise<SyncResult> {
-    if (allTransformedData.length > 0) {
-      try {
-        const apiResponse = await api.syncHealthData(allTransformedData);
+    const runId =
+      typeof provider.beginRun === 'function'
+        ? (provider.beginRun(configId) ?? undefined)
+        : undefined;
 
-        // Commit the telemetry reuse cache only on a fully accepted upload; see
-        // the invariant on markEnrichedSessions. Per-record rejections carry no
-        // usable record identity (RecordSyncError.entry is an opaque echo), so
-        // there is no way to commit just the accepted subset — a partial
-        // rejection leaves the whole run's staging undrained and the next sync
-        // re-collects. Wasteful when an unrelated record is the one rejected,
-        // but the alternative silently strips telemetry from the rejected one.
-        if (telemetryUsable && (apiResponse?.recordErrors?.length ?? 0) === 0) {
-          await markEnrichedSessions(telemetry.drainCollected());
+    const allTransformedData: HealthDataPayload = [];
+    const syncErrors: { type: string; error: string }[] = [];
+    let telemetryUsable = false;
+
+    try {
+      const outcomes = await collectHealthData(
+        provider,
+        metricsToSync,
+        windows,
+        {
+          timeoutLabelPrefix: opts.timeoutLabelPrefix,
+          telemetry,
+          configId,
+          runId,
         }
-        return {
-          success: true,
-          apiResponse,
-          syncErrors,
-          uploadErrors: apiResponse?.recordErrors ?? [],
-        };
+      );
+
+      // Decided here, from the settled outcomes, and used for both drain sites
+      // below.
+      telemetryUsable = sessionTelemetryOutcomesUsable(outcomes);
+
+      for (const outcome of outcomes) {
+        const type = outcome.metric.recordType;
+
+        if (outcome.status === 'skipped') {
+          addLog(
+            `${opts.logTag} Skipping ${type}: ${outcome.error}`,
+            'WARNING'
+          );
+          syncErrors.push({ type, error: outcome.error ?? 'Skipped' });
+          continue;
+        }
+
+        if (outcome.status === 'rejected') {
+          addLog(
+            `${opts.logTag} Error processing ${type}: ${outcome.error}`,
+            'ERROR'
+          );
+          syncErrors.push({ type, error: outcome.error ?? 'Unknown error' });
+          continue;
+        }
+
+        if (outcome.data.length > 0) {
+          allTransformedData.push(...outcome.data);
+        }
+        if (outcome.error) {
+          syncErrors.push({ type, error: outcome.error });
+        }
+      }
+
+      // Outbound phase: SparkyFitness diary → OS health store. Runs before the inbound
+      // result is returned, in its own try/catch so a writeback failure never affects
+      // the inbound sync outcome.
+      try {
+        await runWriteback();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        addLog(
-          `${opts.logTag} Error sending data to server: ${message}`,
-          'ERROR'
-        );
-        return { success: false, error: message, syncErrors };
+        addLog(`${opts.logTag} Writeback phase failed: ${message}`, 'ERROR');
+      }
+
+      const result = await uploadInbound();
+      // Started after the main upload and not awaited: this best-effort phase
+      // (several window reads, each with its own timeout) must neither delay the
+      // upload nor keep the sync pending past the sync-on-open watchdog.
+      startAllDaySamplesPhase();
+      return result;
+    } finally {
+      if (runId != null) {
+        provider.cancelWaterDeletionRun?.(runId);
       }
     }
 
-    // A run that legitimately found no new records still commits what it read.
-    // Still gated: an empty payload is also what a timed-out session read leaves
-    // behind when it was the only metric with data, and those staged keys belong
-    // to sessions the server never saw.
-    if (telemetryUsable) {
-      await markEnrichedSessions(telemetry.drainCollected());
-    }
-    return { success: true, message: opts.emptyMessage, syncErrors };
-  }
+    async function uploadInbound(): Promise<SyncResult> {
+      const currentConfigId = await getActiveServerConfigId();
+      if (currentConfigId !== configId) {
+        provider.cancelWaterDeletionRun?.(runId);
+        return {
+          success: false,
+          error: 'Active account changed during sync; aborted.',
+          syncErrors,
+        };
+      }
 
-  function startAllDaySamplesPhase(): void {
-    // Passive heart rate and glucose readings for report timelines. Each
-    // follows its existing metric toggle and is isolated like writeback:
-    // a failure is logged, never added to syncErrors, and re-sent by the next run
-    // since each upload replaces its own window. One run at a time: a sync that
-    // finds the previous phase still going queues its own to start after it.
-    const heartRateEnabled = metricsToSync.some(
-      (metric) => metric.recordType === 'HeartRate'
-    );
-    const glucoseEnabled = metricsToSync.some(
-      (metric) => metric.recordType === 'BloodGlucose'
-    );
-    if (!heartRateEnabled && !glucoseEnabled) {
-      return;
+      if (allTransformedData.length > 0) {
+        try {
+          const apiResponse = await api.syncHealthData(allTransformedData);
+
+          // Commit the telemetry reuse cache only on a fully accepted upload; see
+          // the invariant on markEnrichedSessions. Per-record rejections carry no
+          // usable record identity (RecordSyncError.entry is an opaque echo), so
+          // there is no way to commit just the accepted subset — a partial
+          // rejection leaves the whole run's staging undrained and the next sync
+          // re-collects. Wasteful when an unrelated record is the one rejected,
+          // but the alternative silently strips telemetry from the rejected one.
+          if ((apiResponse?.recordErrors?.length ?? 0) === 0) {
+            if (telemetryUsable) {
+              await markEnrichedSessions(telemetry.drainCollected());
+            }
+            await provider.commitRun?.(runId);
+          }
+          return {
+            success: true,
+            apiResponse,
+            syncErrors,
+            uploadErrors: apiResponse?.recordErrors ?? [],
+          };
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          addLog(
+            `${opts.logTag} Error sending data to server: ${message}`,
+            'ERROR'
+          );
+          return { success: false, error: message, syncErrors };
+        }
+      }
+
+      // A run that legitimately found no new records still commits what it read.
+      // Still gated: an empty payload is also what a timed-out session read leaves
+      // behind when it was the only metric with data, and those staged keys belong
+      // to sessions the server never saw.
+      if (telemetryUsable) {
+        await markEnrichedSessions(telemetry.drainCollected());
+      }
+      await provider.commitRun?.(runId);
+      return { success: true, message: opts.emptyMessage, syncErrors };
     }
-    if (!account) return;
-    if (allDayHeartRateInFlight) {
-      addLog(
-        `${opts.logTag} All-day readings queued behind the last sync's upload`,
-        'DEBUG'
+
+    function startAllDaySamplesPhase(): void {
+      // Passive heart rate and glucose readings for report timelines. Each
+      // follows its existing metric toggle and is isolated like writeback:
+      // a failure is logged, never added to syncErrors, and re-sent by the next run
+      // since each upload replaces its own window. One run at a time: a sync that
+      // finds the previous phase still going queues its own to start after it.
+      const heartRateEnabled = metricsToSync.some(
+        (metric) => metric.recordType === 'HeartRate'
       );
-    }
-    runAllDayHeartRatePhase(async () => {
-      try {
-        const heartRate = heartRateEnabled
-          ? await syncAllDayHeartRate(
+      const glucoseEnabled = metricsToSync.some(
+        (metric) => metric.recordType === 'BloodGlucose'
+      );
+      if (!heartRateEnabled && !glucoseEnabled) {
+        return;
+      }
+      if (!account) return;
+      if (allDayHeartRateInFlight) {
+        addLog(
+          `${opts.logTag} All-day readings queued behind the last sync's upload`,
+          'DEBUG'
+        );
+      }
+      runAllDayHeartRatePhase(async () => {
+        try {
+          const heartRate = heartRateEnabled
+            ? await syncAllDayHeartRate(
+                provider,
+                account,
+                windows.aggregatedStart,
+                windows.end,
+                telemetry,
+                opts.logTag
+              )
+            : { samplesUploaded: 0 };
+          if (glucoseEnabled) {
+            const glucose = await syncAllDayGlucose(
               provider,
               account,
               windows.aggregatedStart,
               windows.end,
               telemetry,
               opts.logTag
-            )
-          : { samplesUploaded: 0 };
-        if (glucoseEnabled) {
-          const glucose = await syncAllDayGlucose(
-            provider,
-            account,
-            windows.aggregatedStart,
-            windows.end,
-            telemetry,
-            opts.logTag
-          );
-          if (glucose.samplesUploaded > 0) {
-            // This phase finishes after the main sync's cache refresh. Refresh
-            // again so an already-open chart does not keep an empty first read.
-            void queryClient.invalidateQueries({
-              queryKey: glucoseSamplesQueryKeyRoot,
-            });
-            void queryClient.invalidateQueries({
-              queryKey: glucoseContextQueryKeyRoot,
-            });
+            );
+            if (glucose.samplesUploaded > 0) {
+              // This phase finishes after the main sync's cache refresh. Refresh
+              // again so an already-open chart does not keep an empty first read.
+              void queryClient.invalidateQueries({
+                queryKey: glucoseSamplesQueryKeyRoot,
+              });
+              void queryClient.invalidateQueries({
+                queryKey: glucoseContextQueryKeyRoot,
+              });
+            }
           }
-        }
-        if (heartRate.samplesUploaded > 0) {
+          if (heartRate.samplesUploaded > 0) {
+            addLog(
+              `${opts.logTag} Uploaded ${heartRate.samplesUploaded} all-day heart rate readings`,
+              'INFO'
+            );
+          }
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
           addLog(
-            `${opts.logTag} Uploaded ${heartRate.samplesUploaded} all-day heart rate readings`,
-            'INFO'
+            `${opts.logTag} All-day readings phase failed: ${message}`,
+            'ERROR'
           );
         }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        addLog(
-          `${opts.logTag} All-day readings phase failed: ${message}`,
-          'ERROR'
-        );
-      }
-    });
-  }
+      });
+    }
+  });
 };

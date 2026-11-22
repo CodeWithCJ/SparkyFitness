@@ -1,5 +1,5 @@
 import './global.css'
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as SplashScreen from 'expo-splash-screen';
@@ -32,10 +32,15 @@ import {
 } from './src/hooks/useStartLiveWorkout';
 import WatchConnectivity from './modules/watch-connectivity';
 import { useAppStartup } from './src/hooks/useAppStartup';
+import { useOfflineUploads } from './src/hooks/useOfflineUploads';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useAppLanguageForegroundSync } from './src/hooks/useAppLanguageForegroundSync';
 import { useAutoSyncOnOpen } from './src/hooks/useAutoSyncOnOpen';
 import { useAddSheetActions } from './src/hooks/useAddSheetActions';
+import { useCopyFromYesterday } from './src/hooks/useCopyFromYesterday';
+import CopyFromYesterdaySheet, {
+  type CopyFromYesterdaySheetRef,
+} from './src/components/CopyFromYesterdaySheet';
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import FoodPhotoFlow from './src/components/FoodPhotoFlow';
@@ -135,6 +140,7 @@ import {
   SafeWatchSettings,
   SafeAddMenuSettings,
   SafeDiarySettings,
+  SafeOfflineSettings,
   SafeCustomCategories,
   SafeCustomCategoryEdit,
   SafeWorkoutSettings,
@@ -251,6 +257,15 @@ function WatchCheckInGate() {
 }
 
 /**
+ * Keeps the phone ready for offline use (#1983). It reads the connection
+ * through useServerConnection, so it must render inside the navigator.
+ */
+function OfflineUploadsGate() {
+  useOfflineUploads();
+  return null;
+}
+
+/**
  * App icon long-press shortcuts (iOS Home Screen, Android launcher). Needs a
  * server connection, since the iOS "Log water" posts straight to the server.
  */
@@ -308,9 +323,10 @@ function WatchWorkoutGate() {
   }, [t, distanceUnit]);
   const watchSupported = WatchConnectivity?.isSupported() === true;
   const [telemetryPending, setTelemetryPending] = useState(false);
-  const { isConnected: isServerConnected } = useServerConnection({
-    enablePolling: watchSupported && telemetryPending,
-  });
+  const { isConnected: isServerConnected, status: serverConnectionStatus } =
+    useServerConnection({
+      enablePolling: watchSupported && telemetryPending,
+    });
   const watchStartNavigation = useMemo(
     () =>
       ({
@@ -333,13 +349,22 @@ function WatchWorkoutGate() {
     handleWatchFinishedWorkout
   );
   // A watch-started workout never opens the active-workout screen, which is
-  // what normally loads the history its targets are resolved from.
-  useLiveWorkoutInputsCapture(isServerConnected);
+  // what normally loads the history its targets are resolved from. With the
+  // server away the history comes from what this phone saved (#1983).
+  useLiveWorkoutInputsCapture(
+    isServerConnected || serverConnectionStatus === 'unreachable'
+  );
   useWatchSetTargetsSync(watchSupported);
   useWatchRecordingBridge(watchSupported);
   useWatchRunBridge(watchSupported, isServerConnected);
   useWatchRouteBridge(watchSupported);
-  useWatchWorkoutStart(watchSupported, isServerConnected, startLiveWorkout);
+  // A start from the wrist goes ahead with the server away too: the workout
+  // then begins on this phone and uploads later (#1983).
+  useWatchWorkoutStart(
+    watchSupported,
+    isServerConnected || serverConnectionStatus === 'unreachable',
+    startLiveWorkout
+  );
   useWatchPlanSync(watchSupported);
   useWatchWorkoutEdit(watchSupported);
   return null;
@@ -378,6 +403,10 @@ function AppContent() {
   const { shouldYieldObserverSync } = useAutoSyncOnOpen({ initialRoute, syncMutation });
   useAppStartup({ shouldYieldObserverSync });
 
+  const copyFromYesterdaySheetRef = useRef<CopyFromYesterdaySheetRef>(null);
+  const { copyFromYesterday, isPending: copyFromYesterdayPending } =
+    useCopyFromYesterday();
+
   const {
     rememberActiveTab,
     getLastActiveTab,
@@ -393,12 +422,17 @@ function AppContent() {
     handleStartCheckIn,
     handleAddMindfulness,
     handleAddOralCare,
+    handleCopyFromYesterday,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,
     handleSyncHealthData,
     handleAddSheetDismissWithoutAction,
-  } = useAddSheetActions({ syncMutation });
+  } = useAddSheetActions({
+    syncMutation,
+    presentCopyFromYesterday: (date) =>
+      copyFromYesterdaySheetRef.current?.present(date),
+  });
 
   const isAddMenuItemAvailable = useAddMenuItemAvailable();
   const cycleSheetLabel = useCycleSheetLabel();
@@ -533,6 +567,7 @@ function AppContent() {
     >
       <WatchCheckInGate />
       <QuickActionsGate />
+      <OfflineUploadsGate />
       <WatchWorkoutGate />
       <PendingPresetUpdatePrompt />
       <SafeAreaProvider>
@@ -1316,6 +1351,11 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.workoutSettings', { defaultValue: 'Workout Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
+            name="OfflineSettings"
+            component={SafeOfflineSettings}
+            options={createStackScreenOptions(t('screens.offlineSettings', { defaultValue: 'Offline' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
             name="WarmupSettings"
             component={SafeWarmupSettings}
             options={createStackScreenOptions(t('screens.warmupSettings', { defaultValue: 'Warm-up Calculator' }), { headerBackTitle: t('screens.workoutSettings', { defaultValue: 'Workout Settings' }) })}
@@ -1544,6 +1584,7 @@ function AppContent() {
           onAddMood={handleAddMood}
           onAddMindfulness={handleAddMindfulness}
           onAddOralCare={handleAddOralCare}
+          onCopyFromYesterday={handleCopyFromYesterday}
           onRecordActivity={handleRecordActivity}
           onAskSparky={handleAskSparky}
           onStartCheckIn={handleStartCheckIn}
@@ -1551,6 +1592,11 @@ function AppContent() {
           showCycleCard={isAddMenuItemAvailable('wellness')}
           cycleLabel={cycleSheetLabel}
           onDismissWithoutAction={handleAddSheetDismissWithoutAction}
+        />
+        <CopyFromYesterdaySheet
+          ref={copyFromYesterdaySheetRef}
+          isPending={copyFromYesterdayPending}
+          onCopy={copyFromYesterday}
         />
         <ReauthModal
           visible={showReauthModal}

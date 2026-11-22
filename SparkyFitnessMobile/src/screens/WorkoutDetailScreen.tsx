@@ -1,3 +1,4 @@
+import { serverMayBeDown } from '../utils/serverErrors';
 import React, {
   useCallback,
   useEffect,
@@ -8,6 +9,9 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { isServerKnownUnreachable } from '../offline/connection';
+import { queueAfterConnectionFailure } from '../offline/queueAfterFailure';
+import { queueWorkoutUpdate } from '../offline/workoutHandOver';
 import { useQueryClient } from '@tanstack/react-query';
 import Animated, { LinearTransition } from 'react-native-reanimated';
 import FadeView from '../components/FadeView';
@@ -98,7 +102,10 @@ import {
 } from '../hooks/useScreenHeader';
 import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { RootStackScreenProps } from '../types/navigation';
-import type { UpdatePresetSessionRequest } from '@workspace/shared';
+import type {
+  PresetSessionResponse,
+  UpdatePresetSessionRequest,
+} from '@workspace/shared';
 import {
   canEditGroupedWorkout,
   effectiveLoadKg,
@@ -237,7 +244,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     updateSession,
     isPending: isSaving,
     invalidateCache: invalidateSessionCache,
-  } = useUpdateWorkout();
+  } = useUpdateWorkout({ quietWhenServerAway: true });
   const [isEditing, setIsEditing] = useState(false);
   const [editNotes, setEditNotes] = useState('');
 
@@ -461,6 +468,32 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
       armWatchForActiveSession(t);
       navigation.replace('ActiveWorkout');
     } catch (error) {
+      if (serverMayBeDown(error)) {
+        // No server (#1983): resume on this phone. Reopening is skipped; the
+        // first save once the server is back presents the revision this
+        // screen saw, so a change made elsewhere meanwhile is noticed, and
+        // finishing stamps the session finished again.
+        const store = useActiveWorkoutStore.getState();
+        store.startWorkout(session);
+        if (session.revision != null) {
+          useActiveWorkoutStore.setState({
+            offlineBaseRevision: Number(session.revision),
+          });
+        }
+        armWatchForActiveSession(t);
+        Toast.show({
+          type: 'info',
+          text1: t('offline.startedTitle', {
+            defaultValue: 'Started offline',
+          }),
+          text2: t('offline.startedMessage', {
+            defaultValue:
+              'This workout is kept on this phone and uploads when your server can be reached.',
+          }),
+        });
+        navigation.replace('ActiveWorkout');
+        return;
+      }
       if (error instanceof ApiError && error.statusCode === 409) {
         // Retrying with the same revision would fail again: pull the
         // server's current session into this screen so the next Resume
@@ -633,7 +666,44 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             }
           : {}),
       };
-      const updatedSession = await updateSession({ id: session.id, payload });
+      // No server (#1983): the change stays on this phone and uploads later,
+      // presenting the revision this screen saw so a change made elsewhere is
+      // noticed. The Diary then shows the workout with its change waiting.
+      const revision =
+        session.revision != null ? Number(session.revision) : null;
+      const queueEdit = () =>
+        queueWorkoutUpdate(session.id, payload, revision, editedDate);
+      let savedOffline = false;
+      let updatedSession: PresetSessionResponse | null = null;
+      if (isServerKnownUnreachable()) {
+        savedOffline = await queueEdit();
+      }
+      if (!savedOffline) {
+        try {
+          updatedSession = await updateSession({ id: session.id, payload });
+        } catch (error) {
+          if (!(await queueAfterConnectionFailure(error, queueEdit))) {
+            throw error;
+          }
+          savedOffline = true;
+        }
+      }
+      if (savedOffline || updatedSession == null) {
+        Toast.show({
+          type: 'info',
+          text1: t('workoutAdd.savedOfflineTitle', {
+            defaultValue: 'Saved on this phone',
+          }),
+          text2: t('workoutAdd.savedOfflineMessage', {
+            defaultValue: 'It uploads when your server can be reached.',
+          }),
+        });
+        setIsEditing(false);
+        setEditNotes('');
+        deactivateSet();
+        navigation.goBack();
+        return;
+      }
       invalidateSessionCache(editedDate);
       if (dateChanged) invalidateSessionCache(normalizedDate);
       setSession(updatedSession);
@@ -659,6 +729,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     invalidateSessionCache,
     deactivateSet,
     exercisesModifiedRef,
+    navigation,
     t,
   ]);
 
@@ -1026,7 +1097,8 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Native-header mode: the glass header (above) replaces the custom header,
   // and the KeyboardAwareScrollView must be the screen root for the large
-  // title to attach. Fallback mode keeps the custom header + padded wrapper.
+  // title to attach. Fallback mode keeps the custom header, which reserves
+  // the status bar itself, inside a plain background wrapper.
   const content = (
     <>
       {header}
@@ -1333,11 +1405,7 @@ const WorkoutDetailScreen: React.FC<Props> = ({ navigation, route }) => {
 
   if (usesNativeHeader) return content;
 
-  return (
-    <View className="flex-1 bg-background" style={{ paddingTop: insets.top }}>
-      {content}
-    </View>
-  );
+  return <View className="flex-1 bg-background">{content}</View>;
 };
 
 export default WorkoutDetailScreen;

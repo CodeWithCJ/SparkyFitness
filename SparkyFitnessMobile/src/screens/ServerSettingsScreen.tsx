@@ -1,3 +1,7 @@
+import {
+  confirmLeavingServer,
+  forgetServerOfflineData,
+} from '../offline/leaveServerGuard';
 import { clearBackgroundWater } from '../services/backgroundWater';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -97,6 +101,14 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({
         return;
       }
     }
+    // Uploads waiting for the server being left stay on this phone.
+    if (
+      activeConfig?.id != null &&
+      activeConfig.id !== configId &&
+      !(await confirmLeavingServer(activeConfig.id, 'switch', t))
+    ) {
+      return;
+    }
     try {
       await setActiveServerConfig(configId);
       await notifyIdentityChanged();
@@ -128,9 +140,11 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({
   };
 
   const handleDeleteConfig = async (configId: string): Promise<void> => {
+    if (!(await confirmLeavingServer(configId, 'delete', t))) return;
     try {
       const wasActive = configId === activeConfig?.id;
       await deleteServerConfig(configId);
+      await forgetServerOfflineData(configId);
       // The shortcut's copy of the login belongs to the server just removed.
       if (wasActive) await clearBackgroundWater();
       const remaining = await getAllServerConfigs();
@@ -337,10 +351,7 @@ const ServerSettingsScreen: React.FC<ServerSettingsScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{

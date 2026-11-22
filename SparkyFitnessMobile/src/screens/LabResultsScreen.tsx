@@ -16,7 +16,6 @@ import LabStatusBadge from '../components/labs/LabStatusBadge';
 import { useRefetchOnFocus } from '../hooks/useRefetchOnFocus';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useDeleteLabImports, useLabMarkers } from '../hooks/useLabResults';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDateLabel } from '../utils/dateUtils';
 import {
   effectiveLabRange,
@@ -32,7 +31,6 @@ type Props = RootStackScreenProps<'LabResults'>;
 const LabResultsScreen: React.FC<Props> = ({ navigation }) => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const { markers, isLoading, isError, refetch } = useLabMarkers();
   const deleteImports = useDeleteLabImports();
@@ -111,10 +109,7 @@ const LabResultsScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 bg-background"

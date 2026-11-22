@@ -4,7 +4,6 @@ import { Alert, ScrollView, Text, View } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import FormInput from '../components/FormInput';
 import Button from '../components/ui/Button';
@@ -14,7 +13,6 @@ import { lookupBarcodeV2 } from '../services/api/externalFoodSearchApi';
 import { foodsQueryKey } from '../hooks/queryKeys';
 import type { RootStackScreenProps } from '../types/navigation';
 import { useScreenHeader, SAVE_LABEL } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 
 type EditBarcodeScreenProps = RootStackScreenProps<'EditBarcode'>;
 
@@ -40,8 +38,6 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({
     scannedBarcodeNonce,
   } = route.params;
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const textSecondary = useCSSVariable('--color-text-secondary') as string;
 
@@ -258,10 +254,7 @@ const EditBarcodeScreen: React.FC<EditBarcodeScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ScrollView

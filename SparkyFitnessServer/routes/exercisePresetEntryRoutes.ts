@@ -61,11 +61,17 @@ function handleRouteError(error: any, res: any, next: any) {
  *       preset for stats scoping while using the client-supplied exercise/set structure
  *       verbatim, keeping the session editable like any other client-authored session.
  *       Returns the full nested grouped session payload used by the mobile client.
+ *       A client may mint the session `id` itself. Repeating a create with an `id` the caller already created
+ *       returns the stored session with 200 and creates nothing, so a client that lost the first answer can retry.
  *     security:
  *       - cookieAuth: []
  *     responses:
+ *       200:
+ *         description: A session with the supplied `id` already exists for this user; it is returned unchanged.
  *       201:
  *         description: The grouped workout session was created successfully.
+ *       409:
+ *         description: The supplied `id` cannot be used.
  *       400:
  *         description: Invalid request body.
  *       401:
@@ -83,14 +89,17 @@ router.post('/', isAuthenticated, async (req, res, next) => {
         parsedBody.error
       );
     }
-    const groupedWorkout = await exerciseService.createGroupedWorkoutSession(
-      req.userId,
+    const { session, replayed } =
+      await exerciseService.createOrReplayGroupedWorkoutSession(
+        req.userId,
 
-      req.originalUserId || req.userId,
-      parsedBody.data
-    );
-    const response = presetSessionResponseSchema.parse(groupedWorkout);
-    res.status(201).json(response);
+        req.originalUserId || req.userId,
+        parsedBody.data
+      );
+    const response = presetSessionResponseSchema.parse(session);
+    // 200 tells a client that minted the id that this was a repeat: nothing
+    // was created and the stored session may be older than what it sent.
+    res.status(replayed ? 200 : 201).json(response);
   } catch (error) {
     log('error', 'Error creating grouped workout session:', error);
     handleRouteError(error, res, next);

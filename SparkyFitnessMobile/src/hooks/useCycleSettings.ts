@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import {
   useQuery,
   useMutation,
@@ -13,7 +14,10 @@ import {
   cycleOverviewQueryKey,
   cycleSettingsQueryKey,
 } from './queryKeys';
+import { startedOn } from './queryOwner';
+import { serverOnScreen } from './serverOnScreen';
 import { addLog } from '../services/LogService';
+import type { ServerConfig } from '../services/storage';
 import type { SharedCycleSettings } from '../types/womensHealth';
 
 type CycleSettingsBody = Partial<SharedCycleSettings> & {
@@ -21,27 +25,23 @@ type CycleSettingsBody = Partial<SharedCycleSettings> & {
   reset_onboarding?: boolean;
 };
 
+/** A settings change, bound when it is made to the account on screen
+ * (`serverOnScreen`), so a write queued behind another one, or sent during a
+ * server switch, never reaches the account switched to. */
+interface BoundWrite<T> {
+  change: T;
+  serverConfig: ServerConfig;
+}
+
+const NO_SERVER_ON_SCREEN = new Error('No server on screen');
+
 // Settings writes run one at a time, so a quick off and on lands in order.
 const CYCLE_SETTINGS_SCOPE = { id: 'cycle-settings' };
 
-/** The cached settings query itself, which goes away when the cache is cleared. */
-const findCycleSettingsQuery = (queryClient: QueryClient) =>
-  queryClient
-    .getQueryCache()
-    .find({ queryKey: cycleSettingsQueryKey, exact: true });
-
-/**
- * useAuth clears the cache when the account or server changes, so a write
- * whose cached settings are gone by the time it answers was made for an
- * account that is no longer on screen: its answer must not be shown, and
- * callers must not act on it. Returned from `onMutate`.
- */
-const startedOn = (queryClient: QueryClient) => {
-  const startedFrom = findCycleSettingsQuery(queryClient);
-  return {
-    isCurrent: () => findCycleSettingsQuery(queryClient) === startedFrom,
-  };
-};
+/** Drops an answer whose cached settings were cleared meanwhile (another
+ * account or server took over). Returned from `onMutate`. */
+const startCycleSettingsWrite = (queryClient: QueryClient) =>
+  startedOn(queryClient, cycleSettingsQueryKey);
 
 const showSavedCycleSettings = (
   queryClient: QueryClient,
@@ -80,18 +80,21 @@ function previousValuesOf(
 
 function useSaveFailedToast() {
   const { t } = useTranslation();
-  return (error: unknown) => {
-    addLog(`Failed to update cycle settings: ${error}`, 'ERROR');
-    Toast.show({
-      type: 'error',
-      text1: t('cycleSettings.updateFailed', {
-        defaultValue: 'Update failed',
-      }),
-      text2: t('cycleSettings.saveFailed', {
-        defaultValue: 'Could not save cycle settings. Please try again.',
-      }),
-    });
-  };
+  return useCallback(
+    (error: unknown) => {
+      addLog(`Failed to update cycle settings: ${error}`, 'ERROR');
+      Toast.show({
+        type: 'error',
+        text1: t('cycleSettings.updateFailed', {
+          defaultValue: 'Update failed',
+        }),
+        text2: t('cycleSettings.saveFailed', {
+          defaultValue: 'Could not save cycle settings. Please try again.',
+        }),
+      });
+    },
+    [t]
+  );
 }
 
 /**
@@ -114,9 +117,10 @@ export function useCycleSettings() {
 
   const mutation = useMutation({
     scope: CYCLE_SETTINGS_SCOPE,
-    mutationFn: (body: CycleSettingsBody) => putSettings(body),
-    onMutate: async (newVars) => {
-      const started = startedOn(queryClient);
+    mutationFn: ({ change, serverConfig }: BoundWrite<CycleSettingsBody>) =>
+      putSettings(change, serverConfig),
+    onMutate: async ({ change: newVars }) => {
+      const started = startCycleSettingsWrite(queryClient);
 
       // Cancel outgoing refetches so they don't overwrite optimistic update
       await queryClient.cancelQueries({ queryKey: cycleSettingsQueryKey });
@@ -154,7 +158,7 @@ export function useCycleSettings() {
         showSavedCycleSettings(queryClient, data);
       }
     },
-    onError: (error, variables, context) => {
+    onError: (error, { change }, context) => {
       // Undo what this write changed, unless another account took over
       // meanwhile: its cache is not ours to touch.
       const previous = context?.previousSettings;
@@ -163,7 +167,7 @@ export function useCycleSettings() {
           cycleSettingsQueryKey,
           (current) =>
             current
-              ? { ...current, ...previousValuesOf(variables, previous) }
+              ? { ...current, ...previousValuesOf(change, previous) }
               : current
         );
       }
@@ -171,14 +175,40 @@ export function useCycleSettings() {
     },
   });
 
+  const { mutate, mutateAsync } = mutation;
+  type WriteOptions = Parameters<typeof mutate>[1];
+  const updateSettings = useCallback(
+    (change: CycleSettingsBody, options?: WriteOptions) => {
+      const serverConfig = serverOnScreen(queryClient);
+      if (!serverConfig) {
+        showSaveFailed(NO_SERVER_ON_SCREEN);
+        return;
+      }
+      mutate({ change, serverConfig }, options);
+    },
+    [queryClient, mutate, showSaveFailed]
+  );
+  // A flow whose other writes must reach the same account (the cycle setup)
+  // passes the server it bound; otherwise, the server on screen now.
+  const updateSettingsAsync = useCallback(
+    (
+      change: CycleSettingsBody,
+      serverConfig: ServerConfig | null = serverOnScreen(queryClient)
+    ) => {
+      if (!serverConfig) return Promise.reject(NO_SERVER_ON_SCREEN);
+      return mutateAsync({ change, serverConfig });
+    },
+    [queryClient, mutateAsync]
+  );
+
   return {
     settings: query.data,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,
     refetch: query.refetch,
-    updateSettings: mutation.mutate,
-    updateSettingsAsync: mutation.mutateAsync,
+    updateSettings,
+    updateSettingsAsync,
     isUpdating: mutation.isPending,
   };
 }
@@ -186,26 +216,43 @@ export function useCycleSettings() {
 /**
  * Turns cycle tracking on or off: only `enabled`, never `mark_onboarded`, so
  * the first time cycle is on its setup runs. Cycle is one switch for the
- * whole account, so this also shows or hides it on the website. An answer for
- * an account no longer on screen is not shown, and what `onMutate` returns
- * carries that check (`isCurrent`) for callers that act on the answer.
+ * whole account, so this also shows or hides it on the website. The change
+ * goes to the account on screen when it is made, never one switched to
+ * meanwhile. An answer for an account no longer on screen is not shown, and
+ * what `onMutate` returns carries that check (`isCurrent`) for callers that act
+ * on the answer.
  */
 export function useSetCycleEnabled() {
   const queryClient = useQueryClient();
   const showSaveFailed = useSaveFailedToast();
-  return useMutation({
+  const { mutate, isPending } = useMutation({
     scope: CYCLE_SETTINGS_SCOPE,
-    mutationFn: (enabled: boolean) => putSettings({ enabled }),
+    mutationFn: ({ change: enabled, serverConfig }: BoundWrite<boolean>) =>
+      putSettings({ enabled }, serverConfig),
     onMutate: async () => {
-      const started = startedOn(queryClient);
+      const started = startCycleSettingsWrite(queryClient);
       // A read already on its way answers with the value from before this
       // change; landing after it, it would undo the switch on screen.
       await queryClient.cancelQueries({ queryKey: cycleSettingsQueryKey });
       return started;
     },
-    onSuccess: (data, _enabled, started) => {
+    onSuccess: (data, _write, started) => {
       if (started.isCurrent()) showSavedCycleSettings(queryClient, data);
     },
     onError: (error) => showSaveFailed(error),
   });
+
+  type WriteOptions = Parameters<typeof mutate>[1];
+  const setEnabled = useCallback(
+    (enabled: boolean, options?: WriteOptions) => {
+      const serverConfig = serverOnScreen(queryClient);
+      if (!serverConfig) {
+        showSaveFailed(NO_SERVER_ON_SCREEN);
+        return;
+      }
+      mutate({ change: enabled, serverConfig }, options);
+    },
+    [queryClient, mutate, showSaveFailed]
+  );
+  return { mutate: setEnabled, isPending };
 }

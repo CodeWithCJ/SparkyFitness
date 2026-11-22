@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useSleepAnalytics } from '../hooks/useSleepAnalytics';
+import { useSleepNeed } from '../hooks/useSleepNeed';
 import { formatLocalizedNumber, getAppLocale } from '../localization';
 import ReportScreenLayout from '../components/reports/ReportScreenLayout';
 import ReportInsights from '../components/reports/ReportInsights';
@@ -39,12 +40,45 @@ const formatSeconds = (
   t: ReturnType<typeof useTranslation>['t']
 ): string => {
   if (seconds === null) return '-';
-  const totalMinutes = Math.round(seconds / 60);
-  return t('sleepAnalytics.duration', {
+  // Format the magnitude and sign it once: flooring a negative total would
+  // split -7 min into "-1h -7m". Sleep need's debt part goes negative when
+  // there is a sleep surplus.
+  const totalMinutes = Math.round(Math.abs(seconds) / 60);
+  const duration = t('sleepAnalytics.duration', {
     defaultValue: '{{hours}}h {{minutes}}m',
-    hours: Math.floor(totalMinutes / 60),
-    minutes: totalMinutes % 60,
+    hours: formatLocalizedNumber(Math.floor(totalMinutes / 60)),
+    minutes: formatLocalizedNumber(totalMinutes % 60),
   });
+  return seconds < 0 && totalMinutes > 0
+    ? t('sleepAnalytics.negativeDuration', {
+        defaultValue: '-{{duration}}',
+        duration,
+      })
+    : duration;
+};
+
+/**
+ * Ties the Debt recovery row to the sleep debt the web report shows: tonight
+ * only pays back part of it (a quarter, capped at 2 h), and a negative debt is
+ * a surplus that lowers tonight's need.
+ */
+const debtHint = (
+  debtHours: number | null | undefined,
+  t: ReturnType<typeof useTranslation>['t']
+): string | undefined => {
+  if (debtHours == null || Math.round(Math.abs(debtHours) * 60) === 0) {
+    return undefined;
+  }
+  const amount = formatSeconds(Math.abs(debtHours) * 3600, t);
+  return debtHours > 0
+    ? t('sleepAnalytics.needDebtHint', {
+        defaultValue: 'Part of your {{amount}} sleep debt',
+        amount,
+      })
+    : t('sleepAnalytics.needSurplusHint', {
+        defaultValue: 'Part of your {{amount}} sleep surplus',
+        amount,
+      });
 };
 
 const formatClock = (minutes: number | null): string => {
@@ -68,6 +102,11 @@ const SleepAnalyticsScreen: React.FC<SleepAnalyticsScreenProps> = () => {
   } = useReportCustomization();
   const { analytics, previousAnalytics, isLoading, isError } =
     useSleepAnalytics({ window: reportWindow });
+  const {
+    data: sleepNeed,
+    isError: sleepNeedFailed,
+    refetch: refetchSleepNeed,
+  } = useSleepNeed();
   const days = reportWindow.days;
 
   const header = useScreenHeader({
@@ -153,9 +192,105 @@ const SleepAnalyticsScreen: React.FC<SleepAnalyticsScreenProps> = () => {
     []
   );
 
+  const sleepNeedCard =
+    isSectionShown('sleep.need') && sleepNeed ? (
+      <ReportSummaryCard
+        title={t('sleepAnalytics.needTonight', {
+          defaultValue: 'Sleep need tonight',
+        })}
+        rows={[
+          {
+            label: t('sleepAnalytics.needTotal', {
+              defaultValue: 'Total',
+            }),
+            value: formatSeconds(sleepNeed.total_need * 3600, t),
+            testID: 'sleep-need-total',
+          },
+          {
+            label: t('sleepAnalytics.needBaseline', {
+              defaultValue: 'Baseline',
+            }),
+            value: formatSeconds(sleepNeed.baseline_need * 3600, t),
+            testID: 'sleep-need-baseline',
+          },
+          {
+            label: t('sleepAnalytics.needStrain', {
+              defaultValue: 'Strain',
+            }),
+            value: formatSeconds((sleepNeed.strain_addition ?? 0) * 3600, t),
+            hint: t('sleepAnalytics.needStrainHint', {
+              defaultValue: "From today's workouts",
+            }),
+            testID: 'sleep-need-strain',
+          },
+          {
+            label: t('sleepAnalytics.needDebt', {
+              defaultValue: 'Debt recovery',
+            }),
+            value: formatSeconds((sleepNeed.debt_addition ?? 0) * 3600, t),
+            hint: debtHint(sleepNeed.current_debt_hours, t),
+            testID: 'sleep-need-debt',
+          },
+          ...(sleepNeed.recovery_score_yesterday != null
+            ? [
+                {
+                  label: t('sleepAnalytics.recovery', {
+                    defaultValue: 'Recovery',
+                  }),
+                  value: t('sleepAnalytics.recoveryScore', {
+                    defaultValue: '{{score}}/100',
+                    score: formatLocalizedNumber(
+                      Math.round(sleepNeed.recovery_score_yesterday)
+                    ),
+                  }),
+                  hint: t('sleepAnalytics.recoveryHint', {
+                    defaultValue:
+                      'Your readiness: sleep, resting heart rate and HRV',
+                  }),
+                  testID: 'sleep-need-recovery',
+                },
+              ]
+            : []),
+          ...(sleepNeed.training_load_score != null
+            ? [
+                {
+                  label: t('sleepAnalytics.trainingLoad', {
+                    defaultValue: 'Training load',
+                  }),
+                  value: formatLocalizedNumber(
+                    Math.round(sleepNeed.training_load_score)
+                  ),
+                  hint: t('sleepAnalytics.trainingLoadHint', {
+                    defaultValue: 'Heart-rate-weighted workout minutes',
+                  }),
+                  testID: 'sleep-need-training-load',
+                },
+              ]
+            : []),
+        ]}
+      />
+    ) : isSectionShown('sleep.need') && sleepNeedFailed ? (
+      <StatusView
+        icon="sleep-bedtime"
+        iconTone="muted"
+        inline
+        title={t('sleepAnalytics.needLoadFailed', {
+          defaultValue: "Couldn't load tonight's sleep need",
+        })}
+        action={{
+          label: t('common.retry', { defaultValue: 'Retry' }),
+          onPress: () => {
+            void refetchSleepNeed();
+          },
+          variant: 'secondary',
+        }}
+      />
+    ) : null;
+
   if (!isLoading && !isError && analytics && analytics.nightsWithData === 0) {
     return (
       <ReportScreenLayout header={header} {...rangeProps}>
+        {sleepNeedCard}
         <StatusView
           icon="sleep-bedtime"
           iconTone="muted"
@@ -495,19 +630,22 @@ const SleepAnalyticsScreen: React.FC<SleepAnalyticsScreenProps> = () => {
   return (
     <ReportScreenLayout header={header} {...rangeProps}>
       {isLoading || isError ? (
-        <StatusView
-          loading={isLoading}
-          icon="sleep-bedtime"
-          iconTone="muted"
-          inline
-          title={
-            isError
-              ? t('sleepAnalytics.loadFailed', {
-                  defaultValue: 'Failed to load sleep data',
-                })
-              : undefined
-          }
-        />
+        <View>
+          {sleepNeedCard}
+          <StatusView
+            loading={isLoading}
+            icon="sleep-bedtime"
+            iconTone="muted"
+            inline
+            title={
+              isError
+                ? t('sleepAnalytics.loadFailed', {
+                    defaultValue: 'Failed to load sleep data',
+                  })
+                : undefined
+            }
+          />
+        </View>
       ) : (
         <View>
           {isSectionShown('sleep.overview') && highlights.length > 0 ? (
@@ -516,6 +654,7 @@ const SleepAnalyticsScreen: React.FC<SleepAnalyticsScreenProps> = () => {
           {isSectionShown('sleep.insights') ? (
             <ReportInsights lines={insightLines} testIDPrefix="sleep" />
           ) : null}
+          {sleepNeedCard}
           {isSectionShown('sleep.stages') && analytics ? (
             <ReportSummaryCard
               title={t('sleepAnalytics.stages', {

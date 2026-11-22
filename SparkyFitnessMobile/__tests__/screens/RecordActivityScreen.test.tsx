@@ -19,6 +19,7 @@ import {
   setPaceBandPreference,
   setRecordingPaceBand,
   setRecordingAutoPause,
+  markRecordingSaveComplete,
   useGpsRecording,
   type RecordingSession,
   type RecordingSnapshot,
@@ -57,6 +58,9 @@ jest.mock('../../src/services/gpsRecordingService', () => {
     setRecordingAudioCues: jest.fn(() => Promise.resolve()),
     finishRecording: jest.fn(() => Promise.resolve()),
     discardRecording: jest.fn(() => Promise.resolve()),
+    markRecordingSaveComplete: jest.fn(() => Promise.resolve()),
+    beginRecordingSave: jest.fn(),
+    endRecordingSave: jest.fn(),
     getHeartRateSamples: jest.fn(() => Promise.resolve([])),
     elapsedSeconds: jest.fn(() => 754),
     getRecordingPreferences: jest.fn(() =>
@@ -217,21 +221,20 @@ describe('RecordActivityScreen', () => {
     return undefined;
   };
 
-  it('renders its header below the status bar on the custom-header path', async () => {
-    // On Android (and iOS 26+ with Liquid Glass off) the hook returns a bar
-    // the screen has to render inside a root padded with the top inset.
+  it('leaves the status bar to its header bar on the custom-header path', async () => {
+    // On Android (and iOS 26+ with Liquid Glass off) the bar the hook returns
+    // reserves the status bar itself (#3465); a padded root would add it twice.
     state(null);
     jest
       .mocked(useScreenHeader)
       .mockReturnValue(<Text testID="screen-header-bar">Record Activity</Text>);
     try {
-      // Two insets, so a fixed padding that happens to match one cannot pass.
       for (const top of [24, 48]) {
         mockInsets.top = top;
         const custom = await renderScreen();
-        expect(paddingTopAbove(custom.getByTestId('screen-header-bar'))).toBe(
-          top
-        );
+        expect(
+          paddingTopAbove(custom.getByTestId('screen-header-bar'))
+        ).toBeUndefined();
         custom.unmount();
       }
 
@@ -1053,6 +1056,61 @@ describe('RecordActivityScreen', () => {
         expect.anything()
       )
     );
+  });
+
+  it('marks the save complete before clearing the recording', async () => {
+    state(session({ status: 'finished', finishedAt: Date.now() }), track);
+    jest
+      .mocked(saveRecordedActivity)
+      .mockResolvedValue({ entryId: 'entry-1', entryDate: '2026-10-06' });
+    const screen = await renderScreen();
+
+    fireEvent.press(screen.getByText('Save activity'));
+
+    await waitFor(() => expect(discardRecording).toHaveBeenCalled());
+    // A session left behind after this point holds a finished save, which a
+    // Discard must not delete.
+    expect(
+      jest.mocked(saveRecordedActivity).mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      jest.mocked(markRecordingSaveComplete).mock.invocationCallOrder[0]
+    );
+    expect(
+      jest.mocked(markRecordingSaveComplete).mock.invocationCallOrder[0]
+    ).toBeLessThan(jest.mocked(discardRecording).mock.invocationCallOrder[0]);
+    // Clearing after a save is not the person discarding it.
+    expect(discardRecording).toHaveBeenCalledWith();
+  });
+
+  it('still opens the summary when marking the save complete fails', async () => {
+    state(session({ status: 'finished', finishedAt: Date.now() }), track);
+    jest
+      .mocked(saveRecordedActivity)
+      .mockResolvedValue({ entryId: 'entry-1', entryDate: '2026-10-06' });
+    jest
+      .mocked(markRecordingSaveComplete)
+      .mockRejectedValueOnce(new Error('disk'));
+    const screen = await renderScreen();
+
+    fireEvent.press(screen.getByText('Save activity'));
+
+    await waitFor(() =>
+      expect(navigation.replace).toHaveBeenCalledWith(
+        'RunSummary',
+        expect.anything()
+      )
+    );
+  });
+
+  it('does not mark a failed save complete', async () => {
+    state(session({ status: 'finished', finishedAt: Date.now() }), track);
+    jest.mocked(saveRecordedActivity).mockRejectedValue(new Error('offline'));
+    const screen = await renderScreen();
+
+    fireEvent.press(screen.getByText('Save activity'));
+
+    await waitFor(() => expect(saveRecordedActivity).toHaveBeenCalled());
+    expect(markRecordingSaveComplete).not.toHaveBeenCalled();
   });
 
   it('shows a spinner, not Start, until the saved-session check finishes', async () => {

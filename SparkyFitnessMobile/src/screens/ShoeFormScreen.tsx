@@ -25,7 +25,6 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useShoeMutations, useShoes } from '../hooks/useShoes';
 import { getAppLocale } from '../localization';
 import { addLog } from '../services/LogService';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatDate, toLocalDateString } from '../utils/dateUtils';
 import { kmToMiles, milesToKm } from '../utils/unitConversions';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -420,8 +419,6 @@ const ShoeForm: React.FC<{
 
 const ShoeFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { preferences } = usePreferences();
   const distanceUnit =
     (preferences?.default_distance_unit as 'km' | 'miles') ?? 'km';
@@ -441,10 +438,7 @@ const ShoeFormScreen: React.FC<Props> = ({ navigation, route }) => {
   const ready = !shoeId || (!isLoading && !isError && shoe !== null);
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {ready ? (
         <ShoeForm

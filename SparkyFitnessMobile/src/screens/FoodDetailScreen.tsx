@@ -43,7 +43,6 @@ import {
 import { foodDeletionImpactQueryKey, foodsQueryKey } from '../hooks/queryKeys';
 import { getFoodDeletionImpact, updateFood } from '../services/api/foodsApi';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   buildExternalVariantOptions,
   buildLocalVariantOptions,
@@ -72,7 +71,6 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
   const { item, updatedItem, updatedSelectedVariantId, updatedBarcode } =
     route.params;
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textPrimary] = useCSSVariable([
     '--color-accent-primary',
@@ -625,10 +623,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ServerGate>{renderContent()}</ServerGate>
 

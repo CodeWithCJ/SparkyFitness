@@ -5,6 +5,7 @@
  * decides what they may do. A mocked repository can't show that: the refusal
  * comes from row-level security. Skips unless a test database is reachable.
  */
+import { randomUUID } from 'node:crypto';
 import pg from 'pg';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
@@ -13,7 +14,14 @@ import {
   getSystemClient,
 } from '../db/poolManager.js';
 import { buildChatbotTools } from '../ai/tools/index.js';
-import chatRepository from '../models/chatRepository.js';
+import chatRepository, {
+  claimChatTurnPrompt,
+  cancelChatTurn,
+  completeChatTurn,
+  markChatTurnFailed,
+  settleFailedApprovalTurn,
+  getChatTurnStatus,
+} from '../models/chatRepository.js';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
 
 async function dbReachable(): Promise<boolean> {
@@ -235,6 +243,270 @@ describe.runIf(RUN)("chat in a family member's account", () => {
     expect(await history(OWNER)).toEqual([]);
     expect(await history()).toEqual(['in my own profile']);
   });
+
+  it('claims a delegated turn once across concurrent database connections', async () => {
+    const rowId = '00000000-0000-4000-b100-000000000005';
+    const turnId = '00000000-0000-4000-b100-000000000006';
+    const parts = [{ type: 'text', text: 'Sample prompt' }];
+    const claim = () =>
+      signedInAs(DIARY, () =>
+        claimChatTurnPrompt(rowId, DIARY, 'Sample prompt', parts, {
+          turnId,
+          account_user_id: OWNER,
+        })
+      );
+    expect((await Promise.all([claim(), claim()])).sort()).toEqual([
+      false,
+      true,
+    ]);
+    expect(
+      await signedInAs(REPORTS, () => getChatTurnStatus(rowId, REPORTS, 300000))
+    ).toBeUndefined();
+    const status = (ms: number) =>
+      signedInAs(DIARY, () => getChatTurnStatus(rowId, DIARY, ms));
+    expect(await status(300_000)).toBe('pending');
+    expect(await status(0)).toEqual({ error: 'The chat request timed out.' });
+    await signedInAs(DIARY, () =>
+      chatRepository.saveChatHistory({
+        user_id: DIARY,
+        content: 'Answer',
+        messageType: 'assistant',
+        metadata: { turnId, account_user_id: OWNER },
+      })
+    );
+    expect(await status(300_000)).toBe('gone');
+    const history = await signedInAs(DIARY, () =>
+      chatRepository.getChatHistoryByUserId(DIARY, OWNER)
+    );
+    expect(history.filter((row: { id: string }) => row.id === rowId)).toEqual([
+      expect.objectContaining({
+        content: 'Sample prompt',
+        metadata: { turnId, account_user_id: OWNER },
+        parts,
+      }),
+    ]);
+  });
+
+  it('persists stop-before-claim without a visible synthetic prompt, and rejects late results', async () => {
+    const id = '00000000-0000-4000-b100-000000000011';
+    await signedInAs(DIARY, async () => {
+      await cancelChatTurn(id, DIARY, OWNER, id);
+      expect(
+        await claimChatTurnPrompt(id, DIARY, 'Late prompt', [], { turnId: id })
+      ).toBe(false);
+      await markChatTurnFailed(id, DIARY, 'Late error');
+      expect(
+        await completeChatTurn(
+          id,
+          DIARY,
+          { id, metadata: {}, content: 'Late answer', parts: [] },
+          false
+        )
+      ).toBe(false);
+      expect(await getChatTurnStatus(id, DIARY, 300000)).toBe('cancelled');
+      expect(
+        await chatRepository.getChatHistoryByUserId(DIARY, OWNER)
+      ).not.toContainEqual(expect.objectContaining({ id }));
+    });
+  });
+
+  it('uses the absolute claim deadline and preserves failures across readers', async () => {
+    const id = '00000000-0000-4000-b100-000000000012';
+    await signedInAs(DIARY, async () => {
+      await claimChatTurnPrompt(id, DIARY, 'Sample', [], {
+        turnId: id,
+        turnDeadline: Date.now() - 1000,
+      });
+      expect(await getChatTurnStatus(id, DIARY, 300000)).toEqual({
+        error: 'The chat request timed out.',
+      });
+      expect(
+        await completeChatTurn(
+          id,
+          DIARY,
+          { id, metadata: {}, content: 'Late answer', parts: [] },
+          false
+        )
+      ).toBe(false);
+      await markChatTurnFailed(id, DIARY, 'Provider unavailable');
+      await cancelChatTurn(id, DIARY, DIARY, id);
+      expect(await getChatTurnStatus(id, DIARY, 300000)).toEqual({
+        error: 'Provider unavailable',
+      });
+    });
+  });
+
+  it('projects an approval checkpoint onto its saved assistant until the second turn completes', async () => {
+    const original = '00000000-0000-4000-b100-000000000013';
+    const assistant = '00000000-0000-4000-b100-000000000014';
+    const id = '00000000-0000-4000-b100-000000000015';
+    await signedInAs(DIARY, async () => {
+      await claimChatTurnPrompt(original, DIARY, 'Sample approval', [], {
+        turnId: original,
+      });
+      expect(
+        await completeChatTurn(
+          original,
+          DIARY,
+          {
+            id: assistant,
+            metadata: { turnId: original },
+            content: 'Approval',
+            parts: [],
+          },
+          false
+        )
+      ).toBe(true);
+      await claimChatTurnPrompt(id, DIARY, '', [], {
+        turnId: id,
+        turnHidden: true,
+        continuationOf: assistant,
+      });
+      const history = () => chatRepository.getChatHistoryByUserId(DIARY);
+      expect(await history()).toContainEqual(
+        expect.objectContaining({
+          id: assistant,
+          metadata: { turnId: original, pendingTurnId: id },
+        })
+      );
+      expect(
+        await completeChatTurn(
+          id,
+          DIARY,
+          {
+            id: assistant,
+            metadata: { turnId: id },
+            content: 'Approved',
+            parts: [],
+          },
+          true
+        )
+      ).toBe(true);
+      expect(await history()).toContainEqual(
+        expect.objectContaining({ id: assistant, metadata: { turnId: id } })
+      );
+      expect(await history()).not.toContainEqual(
+        expect.objectContaining({ id })
+      );
+      expect(await getChatTurnStatus(original, DIARY, 300000)).toBe('gone');
+      expect(await getChatTurnStatus(id, DIARY, 300000)).toBe('gone');
+    });
+  });
+
+  it.each(['failed', 'cancelled'] as const)(
+    'settles a %s approval and keeps the original reply and terminal outcome',
+    async (terminal) => {
+      const id = randomUUID();
+      const assistant = randomUUID();
+      const originalTurn = randomUUID();
+      const scope =
+        terminal === 'cancelled'
+          ? {}
+          : {
+              account_user_id: OWNER,
+              chat_conversation_id: randomUUID(),
+            };
+      const metadata = { ...scope, turnId: originalTurn };
+      const pending = [{ state: 'approval-requested' }];
+      const responded = [{ state: 'approval-responded' }];
+      const parts = [
+        { state: 'output-available', output: { diaryEntry: 'saved' } },
+      ];
+      const failure = 'The provider failed after the diary write.';
+      await signedInAs(DIARY, async () => {
+        await chatRepository.saveChatHistory({
+          id: assistant,
+          user_id: DIARY,
+          messageType: 'assistant',
+          content: 'Original reply',
+          metadata,
+          parts: pending,
+        });
+        await claimChatTurnPrompt(id, DIARY, '', [], {
+          ...scope,
+          turnId: id,
+          turnHidden: true,
+          continuationOf: assistant,
+        });
+        expect(
+          await chatRepository.claimChatApproval(
+            assistant,
+            DIARY,
+            pending,
+            responded,
+            id
+          )
+        ).toBe(true);
+        await markChatTurnFailed(id, DIARY, 'Generic stream failure');
+        expect(await getChatTurnStatus(id, DIARY, 300000)).toBe('pending');
+
+        if (terminal === 'cancelled') {
+          await cancelChatTurn(id, DIARY, DIARY, id);
+        } else {
+          // If the assistant no longer belongs to this approval, its update
+          // affects zero rows. The earlier checkpoint write must roll back.
+          await chatRepository.saveApprovalContinuation(assistant, DIARY, {
+            content: 'Original reply',
+            parts: responded,
+            metadata: { ...metadata, turnId: randomUUID() },
+          });
+          await expect(
+            settleFailedApprovalTurn(id, DIARY, failure, {
+              id: assistant,
+              parts,
+            })
+          ).rejects.toThrow('Approval continuation disappeared.');
+          expect(await getChatTurnStatus(id, DIARY, 300000)).toBe('pending');
+          expect(
+            (await chatRepository.getChatHistoryEntryById(assistant, DIARY))
+              ?.parts
+          ).toEqual(responded);
+          await chatRepository.saveApprovalContinuation(assistant, DIARY, {
+            content: 'Original reply',
+            parts: responded,
+            metadata,
+          });
+        }
+        const expected =
+          terminal === 'cancelled' ? 'cancelled' : { error: failure };
+        expect(
+          await settleFailedApprovalTurn(id, DIARY, failure, {
+            id: assistant,
+            parts,
+          })
+        ).toEqual(expected);
+        expect(
+          await settleFailedApprovalTurn(id, DIARY, 'Late error', {
+            id: assistant,
+            parts: [],
+          })
+        ).toEqual(expected);
+        expect(await getChatTurnStatus(id, DIARY, 300000)).toEqual(expected);
+        expect(
+          await chatRepository.getChatHistoryEntryById(assistant, DIARY)
+        ).toMatchObject({
+          content: 'Original reply',
+          parts,
+          metadata,
+        });
+        const history = await chatRepository.getChatHistoryByUserId(
+          DIARY,
+          scope.account_user_id ?? DIARY
+        );
+        expect(history).toContainEqual(
+          expect.objectContaining({
+            id: assistant,
+            content: 'Original reply',
+            parts,
+            metadata:
+              terminal === 'cancelled'
+                ? metadata
+                : { ...metadata, pendingTurnId: id },
+          })
+        );
+      });
+    }
+  );
 
   it("uses the delegate's own AI service in the owner's account", async () => {
     const active = await signedInAs(DIARY, () =>

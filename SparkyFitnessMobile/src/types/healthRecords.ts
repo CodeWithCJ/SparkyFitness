@@ -345,6 +345,14 @@ export interface TransformedToothbrushingSession extends RecordTimezoneMetadata 
   value: number;
 }
 
+/** Deletion entry for provider-managed samples (e.g. HealthKit dietary water, Health Connect hydration). */
+export interface TransformedDeletionEntry {
+  type: string;
+  deleted: true;
+  source_id: string;
+  source?: string;
+}
+
 /** Union type for all possible transform outputs */
 export type TransformOutput =
   | TransformedRecord
@@ -352,7 +360,8 @@ export type TransformOutput =
   | TransformedExerciseSession
   | TransformedNutritionEntry
   | TransformedMindfulnessSession
-  | TransformedToothbrushingSession;
+  | TransformedToothbrushingSession
+  | TransformedDeletionEntry;
 
 // ==========================================
 // SYNC RESULT TYPES (Phase 5)

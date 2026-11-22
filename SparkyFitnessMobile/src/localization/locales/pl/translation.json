@@ -136,7 +136,9 @@
       "customMeasurements": "Własne pomiary",
       "heartRateZones": "Strefy tętna",
       "heartRateZonesSubtitle": "Maksymalne i spoczynkowe tętno, metoda stref",
-      "nfcTags": "Tagi NFC"
+      "nfcTags": "Tagi NFC",
+      "offline": "Offline",
+      "features": "Funkcje"
     },
     "theme": {
       "title": "Motyw",
@@ -324,6 +326,10 @@
     "meditationTimer": {
       "title": "Medytacja zakończona",
       "body": "Otwórz SparkyFitness, aby zapisać sesję."
+    },
+    "offlineUploads": {
+      "title": "Trening czeka na przesłanie",
+      "body": "Otwórz SparkyFitness, gdy serwer będzie dostępny."
     }
   },
   "activeWorkout": {
@@ -685,7 +691,9 @@
       "equipment": "Sprzęt",
       "equipmentSubtitle": "Buty i pozostały ekwipunek",
       "labResults": "Wyniki badań",
-      "labResultsSubtitle": "Badania krwi i inne wskaźniki w czasie"
+      "labResultsSubtitle": "Badania krwi i inne wskaźniki w czasie",
+      "trainingCalendar": "Kalendarz treningów",
+      "trainingCalendarSubtitle": "Zaplanowane i ukończone treningi oraz obciążenie treningowe wg sportu"
     },
     "duplicateExercise": "Zduplikuj ćwiczenie",
     "symptomLog": "Zapis objawu",
@@ -723,7 +731,6 @@
     "watchRunLiveRun": "Bieg na zegarku",
     "watchWalkLive": "Spacer na zegarku",
     "allergenSettings": "Alergeny",
-    "runProgramCalendar": "Kalendarz programu",
     "runProgramWorkout": "Trening",
     "runProgramEdit": "Edytuj plan",
     "runProgramNew": "Nowy plan",
@@ -744,7 +751,10 @@
     "labResultDetail": "Wynik badania",
     "labResultAdd": "Dodaj wynik badania",
     "labReportImport": "Import wyniku",
-    "treadmillSettings": "Bieżnia i krok"
+    "treadmillSettings": "Bieżnia i krok",
+    "trainingCalendar": "Kalendarz treningów",
+    "features": "Funkcje",
+    "offlineSettings": "Offline"
   },
   "healthMetrics": {
     "steps": "Kroki",
@@ -932,7 +942,35 @@
     "removeHeader": "Usuń nagłówek {{number}}",
     "hideHeaderValue": "Ukryj wartość nagłówka",
     "showHeaderValue": "Pokaż wartość nagłówka",
-    "noStandardMethods": "Na tym serwerze nie włączono standardowych metod logowania. Użyj klucza API lub skontaktuj się z administratorem."
+    "noStandardMethods": "Na tym serwerze nie włączono standardowych metod logowania. Użyj klucza API lub skontaktuj się z administratorem.",
+    "clientCertificate": {
+      "title": "Certyfikat klienta",
+      "experimental": "Eksperymentalne",
+      "experimentalNote": "Ta funkcja jest nowa i może nie działać z każdym proxy lub telefonem. Jeśli coś się nie uda, usuń certyfikat i zgłoś problem.",
+      "help": "Potrzebne tylko wtedy, gdy Twój reverse proxy wymaga certyfikatu klienta (mutual TLS). Jest wysyłany wyłącznie do zapisanych serwerów.",
+      "installed": "Certyfikat zainstalowany",
+      "expires": "Wygasa {{date}}",
+      "expiresSoon": "Wygasa wkrótce, {{date}}",
+      "expired": "Wygasł {{date}}. Zaimportuj nowy.",
+      "gap": "Ta wersja aplikacji nie może używać certyfikatu przy każdym żądaniu. Prosimy o zgłoszenie tego problemu.",
+      "passwordPlaceholder": "Hasło certyfikatu",
+      "import": "Importuj",
+      "choose": "Zaimportuj certyfikat",
+      "replace": "Zamień certyfikat",
+      "remove": "Usuń",
+      "restartHint": "Całkowicie zamknij i otwórz ponownie aplikację, aby zmiana zaczęła obowiązywać. Do tego czasu serwer może jeszcze odpowiadać jak wcześniej.",
+      "restartTitle": "Uruchom aplikację ponownie",
+      "restartAfterImport": "Aby użyć nowego certyfikatu, całkowicie zamknij aplikację (odrzuć ją w przełączniku aplikacji) i otwórz ją ponownie, a następnie się połącz.",
+      "restartAfterRemove": "Aby przestać używać starego certyfikatu, całkowicie zamknij aplikację (odrzuć ją w przełączniku aplikacji) i otwórz ją ponownie.",
+      "connectionHint": "Jeśli Twój serwer wymaga certyfikatu klienta, dodaj go w opcjach zaawansowanych.",
+      "connectionHintRestart": "Jeśli Twój serwer wymaga certyfikatu klienta, dodaj go w opcjach zaawansowanych, a następnie całkowicie zamknij i otwórz ponownie aplikację.",
+      "errors": {
+        "wrongPassword": "To hasło nie otwiera tego pliku.",
+        "invalidFile": "Nie udało się odczytać tego pliku. Sprawdź hasło oraz to, czy jest to plik .p12 lub .pfx. Plik utworzony nowszym OpenSSL może wymagać ponownego wyeksportowania w starszym formacie.",
+        "noPrivateKey": "Ten plik zawiera certyfikat, ale brakuje w nim klucza prywatnego. Wyeksportuj go ponownie z dołączonym kluczem.",
+        "storage": "Nie udało się zapisać certyfikatu na tym urządzeniu."
+      }
+    }
   },
   "onboarding": {
     "subtitle": "Twój własny dziennik fitness",
@@ -1297,7 +1335,9 @@
     "oralCare": "Higiena jamy ustnej",
     "oralCareSubtitle": "Pokazuje szczotkowanie względem celu i Twoją serię",
     "bloodAlcohol": "Szacunek alkoholu we krwi",
-    "bloodAlcoholSubtitle": "Pokaż zgrubny szacunek alkoholu we krwi na podstawie zapisanych drinków na Pulpicie"
+    "bloodAlcoholSubtitle": "Pokaż zgrubny szacunek alkoholu we krwi na podstawie zapisanych drinków na Pulpicie",
+    "wellness": "Samopoczucie",
+    "offInFeatures": "Nie pokazano: wyłączone w Funkcje"
   },
   "diarySettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -2797,10 +2837,6 @@
       "wellness": "Ustawienia dobrego samopoczucia",
       "cyclePregnancy": "Cykl i ciąża"
     },
-    "enable": {
-      "title": "Włącz monitorowanie cyklu i ciąży",
-      "subtitle": "Włącz zapisywanie, prognozy i historię"
-    },
     "groups": {
       "features": "Konfiguracja funkcji",
       "calculations": "Korekty obliczeń cyklu",
@@ -2834,6 +2870,16 @@
       "discreetSubtitle": "Ukrywa w interfejsie etykiety „Cykl” i „Ciąża”",
       "exportSubtitle": "Pobierz eksport danych JSON",
       "resetSubtitle": "Uruchom ponownie przewodnik konfiguracji"
+    },
+    "loadFailed": "Nie udało się wczytać tych ustawień.",
+    "feature": {
+      "on": "Włączono",
+      "off": "Wyłączono",
+      "hint": "Włącz lub wyłącz w Ustawieniach → Funkcje."
+    },
+    "setup": {
+      "action": "Skonfiguruj",
+      "hint": "Odpowiedz na kilka pytań, aby dokończyć konfigurację."
     }
   },
   "measurements": {
@@ -3578,7 +3624,11 @@
       "deskTag": "Tag na biurku",
       "tapped": "Dotknięto",
       "tagWater": "Woda • 500 mL",
-      "logged": "Zapisano"
+      "logged": "Zapisano",
+      "offlinePush": "Trening push",
+      "offlineBadge": "Offline",
+      "offlineSets": "Zapisano 12 serii",
+      "offlineWaiting": "Czeka na przesłanie"
     },
     "features": {
       "medications": {
@@ -3679,6 +3729,12 @@
         "headline": "Zapisz jednym dotknięciem",
         "body": "Przyklej tag NFC na butelce wody, biurku lub szafce kuchennej i ustaw go tak, aby zapisywał napój, produkt lub zapisany posiłek. Przyłóż telefon, aby zapisać, z opcją Cofnij, jeśli nie o to chodziło.",
         "cta": "Skonfiguruj tagi NFC"
+      },
+      "offlineWorkouts": {
+        "eyebrow": "TRENINGI OFFLINE",
+        "headline": "Trenuj bez zasięgu",
+        "body": "Rozpocznij, zapisz i zakończ trening, nawet gdy serwer jest nieosiągalny. Trening zostaje zapisany na telefonie i prześle się sam, gdy wrócisz do sieci. Przytrzymaj ćwiczenia w bibliotece, aby ich zdjęcia były też dostępne offline.",
+        "cta": "Ustawienia offline"
       }
     }
   },
@@ -4060,6 +4116,18 @@
     "pickers": {
       "selectServing": "Wybierz porcję",
       "selectMeal": "Wybierz posiłek"
+    },
+    "cooked": {
+      "switch": "Zważone po ugotowaniu",
+      "sameBatchPrevious": "Ta sama partia co {{date}}: {{raw}} {{unit}} na surowo → {{cooked}} {{unit}} po ugotowaniu",
+      "sameBatchEntry": "Ta sama partia co ten wpis: {{raw}} {{unit}} na surowo → {{cooked}} {{unit}} po ugotowaniu",
+      "newBatch": "Nowa partia",
+      "rawBatch": "Masa surowa partii ({{unit}})",
+      "cookedBatch": "Masa partii po ugotowaniu ({{unit}})",
+      "eaten": "Zjedzono (po ugotowaniu, {{unit}})",
+      "result": "= {{raw}} {{unit}} na surowo · {{energy}}",
+      "incomplete": "Wprowadź masy, aby obliczyć ilość surową.",
+      "enterEaten": "Wprowadź zjedzoną masę po ugotowaniu."
     }
   },
   "exerciseSearch": {
@@ -5172,7 +5240,9 @@
     "reorderExercises": "Zmień kolejność ćwiczeń",
     "workoutPlaceholder": "Trening",
     "useYesterday": "Użyj wczoraj",
-    "useToday": "Użyj dzisiaj"
+    "useToday": "Użyj dzisiaj",
+    "savedOfflineTitle": "Zapisano na tym telefonie",
+    "savedOfflineMessage": "Prześle się, gdy serwer będzie dostępny."
   },
   "mealMutations": {
     "createFailed": "Nie udało się utworzyć posiłku",
@@ -5970,7 +6040,9 @@
   },
   "activeWorkoutAutosave": {
     "failedTitle": "Nie zapisano treningu",
-    "failedMessage": "Zmiany są przechowywane na tym urządzeniu i zostaną ponownie wysłane."
+    "failedMessage": "Zmiany są przechowywane na tym urządzeniu i zostaną ponownie wysłane.",
+    "offlineTitle": "Zapisano na tym telefonie",
+    "offlineMessage": "Trening prześle się, gdy serwer będzie dostępny."
   },
   "medicalDisclaimer": {
     "text": "Tylko do śledzenia i ogólnych informacji, to nie jest porada medyczna. W sprawach zdrowotnych skonsultuj się z lekarzem."
@@ -6364,6 +6436,14 @@
       "dayCycle_one": "{{count}}-dniowy cykl",
       "dayCycle_few": "{{count}}-dniowe cykle",
       "dayCycle_many": "{{count}}-dniowy cykl"
+    },
+    "loadFailed": "Nie udało się wczytać ustawień.",
+    "off": {
+      "title": "Śledzenie cyklu jest wyłączone",
+      "discreetTitle": "Samopoczucie jest wyłączone",
+      "description": "Twoja historia zostaje zachowana. Włącz ponownie, aby znów ją tu zobaczyć.",
+      "turnOn": "Włącz",
+      "openFeatures": "Otwórz Funkcje"
     }
   },
   "time": {
@@ -6667,7 +6747,8 @@
     "saving": "Zapisywanie…",
     "saved": "Zapisano",
     "saveFailed": "Nie udało się zapisać Twojej opinii. Spróbuj ponownie.",
-    "loadFailed": "Nie udało się wczytać Twojej opinii."
+    "loadFailed": "Nie udało się wczytać Twojej opinii.",
+    "queued": "Zostanie wysłane, gdy wrócisz do sieci"
   },
   "adaptiveCoaching": {
     "reasons": {
@@ -7048,7 +7129,8 @@
     "countdownOff": "Wyłączone",
     "countdownSeconds": "{{seconds}} s",
     "holdCountdownTitle": "Odliczanie przed pozycjami na czas",
-    "holdCountdownSubtitle": "Ekran „3, 2, 1, gotowe” przed rozpoczęciem pozycji na czas, aby zdążyć się ustawić. Dotknij, aby pominąć."
+    "holdCountdownSubtitle": "Ekran „3, 2, 1, gotowe” przed rozpoczęciem pozycji na czas, aby zdążyć się ustawić. Dotknij, aby pominąć.",
+    "newWorkoutSubtitleWearOs": "Przycisk zapisania serii, przycisk edycji poprzedniej serii, demonstracje ćwiczeń, kalkulator talerzy, strona Więcej z akcjami treningu i pojedyncze podsumowanie po zakończeniu treningu. Opcja wyłączona zachowuje oryginalny ekran treningu."
   },
   "progressPhotos": {
     "card": {
@@ -8576,7 +8658,22 @@
     "insightWeekendShorter": "W weekendy śpisz o {{hours}} krócej niż w dni robocze.",
     "insightFullNights": "{{full}} z {{total}} nocy osiągnęło 7 godzin.",
     "insightIrregular": "Twoja pora snu waha się o około ±{{minutes}} min.",
-    "insightDurationChange": "Czas snu jest {{change}} względem poprzedniego okresu."
+    "insightDurationChange": "Czas snu jest {{change}} względem poprzedniego okresu.",
+    "negativeDuration": "-{{duration}}",
+    "needLoadFailed": "Nie udało się wczytać dzisiejszego zapotrzebowania na sen",
+    "needTonight": "Zapotrzebowanie na sen dziś w nocy",
+    "needTotal": "Razem",
+    "needBaseline": "Baza",
+    "needStrain": "Obciążenie",
+    "needStrainHint": "Z dzisiejszych treningów",
+    "needDebt": "Odrabianie niedoboru",
+    "needDebtHint": "Część Twojego niedoboru snu ({{amount}})",
+    "needSurplusHint": "Część Twojej nadwyżki snu ({{amount}})",
+    "recovery": "Regeneracja",
+    "recoveryScore": "{{score}}/100",
+    "recoveryHint": "Twoja gotowość: sen, tętno spoczynkowe i HRV",
+    "trainingLoad": "Obciążenie treningowe",
+    "trainingLoadHint": "Minuty treningu ważone tętnem"
   },
   "reportsSettings": {
     "reset": "Resetuj",
@@ -8642,7 +8739,8 @@
       "measurementTimeline": "Oś czasu pomiarów",
       "oralCareBrushesChart": "Wykres szczotkowań dziennie",
       "oralCareMinutesChart": "Wykres minut szczotkowania",
-      "oralCareSummary": "Serie i inne zabiegi"
+      "oralCareSummary": "Serie i inne zabiegi",
+      "sleepNeed": "Zapotrzebowanie na sen dziś w nocy"
     },
     "hydrationSections": "Raport nawodnienia",
     "measurementsSections": "Raport pomiarów",
@@ -8932,36 +9030,10 @@
       "setUp": "Skonfiguruj program"
     },
     "partOfProgram": "Część Twojego programu treningowego",
-    "openCalendar": "Otwórz kalendarz programu",
-    "openCalendarHint": "Wszystkie treningi w widoku miesiąca",
-    "monthGrid": {
-      "previous": "Poprzedni miesiąc",
-      "next": "Następny miesiąc",
-      "dayA11yNone": "{{date}}, brak treningów",
-      "dayA11y_one": "{{date}}, {{formattedCount}} trening",
-      "dayA11y_few": "{{date}}, {{formattedCount}} treningi",
-      "dayA11y_many": "{{date}}, {{formattedCount}} treningów"
-    },
+    "openCalendar": "Otwórz kalendarz treningów",
+    "openCalendarHint": "Treningi programu i planu, wykonane i nadchodzące",
     "calendarScreen": {
-      "noProgram": "Rozpocznij program treningowy, aby zobaczyć jego kalendarz.",
-      "progress": "{{done}} z {{total}} treningów ukończonych",
-      "doneOn": "Ukończono {{date}}",
-      "done": "Ukończono",
-      "dueOn": "Następny · {{date}}",
-      "notScheduled": "Niezaplanowany",
-      "minutes": "{{minutes}} min",
-      "legendDone": "Ukończony",
-      "legendAhead": "Do wykonania lub zaplanowane",
-      "noWorkoutsDay": "Brak treningu programu w tym dniu.",
-      "pickDays_one": "Jeszcze {{count}} trening nie jest w kalendarzu. Wybierz dni treningowe na ekranie programu, aby zobaczyć, kiedy każdy wypadnie.",
-      "pickDays_few": "Jeszcze {{count}} treningi nie są w kalendarzu. Wybierz dni treningowe na ekranie programu, aby zobaczyć, kiedy każdy wypadnie.",
-      "pickDays_many": "Jeszcze {{count}} treningów nie jest w kalendarzu. Wybierz dni treningowe na ekranie programu, aby zobaczyć, kiedy każdy wypadnie.",
-      "pastGoal_one": "{{count}} trening nie zmieści się przed datą celu.",
-      "pastGoal_few": "{{count}} treningi nie zmieszczą się przed datą celu.",
-      "pastGoal_many": "{{count}} treningów nie zmieści się przed datą celu.",
-      "allWorkouts": "Wszystkie treningi",
-      "today": "Dziś",
-      "due": "Następny"
+      "minutes": "{{minutes}} min"
     },
     "detail": {
       "workoutTitle": "Tydzień {{week}}, bieg {{run}}",
@@ -9809,7 +9881,6 @@
     "previewTitle": "Podgląd",
     "previewDescription": "Tak wyglądają szybkie akcje z Twoim wyborem.",
     "lineNumber": "Linia {{number}}",
-    "needsCycle": "Niewidoczne: śledzenie cyklu jest wyłączone",
     "showAs": "Pokaż jako",
     "showAsValue": "Pokaż jako {{style}}",
     "styleList": "Lista",
@@ -9821,7 +9892,8 @@
     "buttonsDescription": "Wyświetlane obok siebie na dole arkusza.",
     "chooseCard": "Wybierz kafelek",
     "slotLabel": "Kafelek {{number}}: {{name}}",
-    "slotHint": "Otwiera listę wyboru tego, co tu trafi"
+    "slotHint": "Otwiera listę wyboru tego, co tu trafi",
+    "offInFeatures": "Nie pokazano: wyłączone w Funkcje"
   },
   "calorieLink": {
     "action": "Powiąż trening z urządzenia",
@@ -10429,7 +10501,8 @@
     "goToSettings": "Przejdź do Ustawień",
     "unreachableTitle": "Nie można połączyć się z serwerem",
     "unreachableSubtitle": "Sprawdź połączenie lub spróbuj ponownie.",
-    "tryAgain": "Spróbuj ponownie"
+    "tryAgain": "Spróbuj ponownie",
+    "offlineWorkouts": "Rozpocznij zapisany trening offline"
   },
   "waterLog": {
     "title": "Napoje",
@@ -10934,5 +11007,215 @@
     "missingAge": "Wiek: ustaw datę urodzenia w profilu na stronie",
     "implausibleInputs": "Twoja masa ciała lub wzrost wygląda na błędny, więc szacunek nie jest dostępny. Sprawdź najnowszą masę ciała i wzrost w Pomiarach.",
     "formulaFallback": "Wybrany wzór nie pasuje do Twoich pomiarów ciała, więc używany jest wzór Watsona."
+  },
+  "trainingCalendar": {
+    "load": {
+      "title": "Obciążenie wg sportu",
+      "subtitle": "Skąd pochodzi Twoje obciążenie treningowe: bieganie, kolarstwo, chodzenie, trening siłowy i inne.",
+      "thisWeek": "Ten tydzień",
+      "thisMonth": "Ten miesiąc",
+      "weekly": "Obciążenie tygodniowe",
+      "noneYet": "Nie zapisano jeszcze żadnych treningów.",
+      "loadFailed": "Nie udało się wczytać obciążenia wg sportu.",
+      "method": "Obciążenie to minuty ważone Twoim średnim tętnem (od 1 do 5, w zależności od tego, jak blisko Twojego maksimum przebiegał trening). Trening bez zapisanego tętna liczy się z umiarkowaną wagą 2, więc trening siłowy bez zegarka nadal liczy się według czasu. Oceny wysiłku nie są używane.",
+      "openCalendar": "Otwórz kalendarz treningów"
+    },
+    "sport": {
+      "running": "Bieganie",
+      "cycling": "Kolarstwo",
+      "walking": "Chodzenie",
+      "cardio": "Cardio",
+      "strength": "Trening siłowy",
+      "other": "Inne"
+    },
+    "status": {
+      "done": "Wykonany",
+      "partial": "Częściowo wykonany",
+      "missed": "Przepuszczony",
+      "upcoming": "Nadchodzący"
+    },
+    "programWorkout": "{{name}} · trening {{number}}",
+    "workoutPlanFallback": "Plan treningu",
+    "weekOf": "Tydzień od {{date}}",
+    "minutesShort": "{{value}} min",
+    "minutesOf": "{{done}} z {{planned}} min",
+    "loadValue": "obciążenie {{value}}",
+    "estimated": "(szacowane, bez tętna)",
+    "extra": "Dodatkowe",
+    "totals": {
+      "title": "Zaplanowane a ukończone",
+      "sessions": "{{done}} z {{planned}} zaplanowanych sesji",
+      "extra_one": "{{formattedCount}} dodatkowa",
+      "extra_few": "{{formattedCount}} dodatkowe",
+      "extra_many": "{{formattedCount}} dodatkowych",
+      "minutes": "Czas {{done}} z {{planned}} min",
+      "load": "Obciążenie treningowe {{done}} z {{planned}}",
+      "sessionsLogged_one": "{{formattedCount}} zapisana sesja",
+      "sessionsLogged_few": "{{formattedCount}} zapisane sesje",
+      "sessionsLogged_many": "{{formattedCount}} zapisanych sesji",
+      "minutesDone": "Czas {{done}} min",
+      "loadDone": "Obciążenie treningowe {{done}}",
+      "minutesExtra": "(+{{extra}} min dodatkowo)",
+      "loadExtra": "(+{{extra}} dodatkowo)",
+      "thisWeek": "Ten tydzień",
+      "ahead": "Nadchodzące"
+    },
+    "loadFailed": "Nie udało się wczytać kalendarza treningów.",
+    "refreshFailed": "Nie udało się odświeżyć. Wyświetlanie ostatniego wyniku.",
+    "emptyDay": "Brak zaplanowanych i zapisanych treningów w tym dniu.",
+    "planned": "Zaplanowany",
+    "completed": "Ukończony",
+    "month": "Miesiąc",
+    "week": "Tydzień",
+    "previous": "Poprzedni",
+    "next": "Następny",
+    "distanceKm": "{{value}} km",
+    "distanceMiles": "{{value}} mi",
+    "restDay": "Dzień odpoczynku",
+    "hideEarlier": "Ukryj wcześniejsze tygodnie",
+    "loadHelpA11y": "Co to jest obciążenie treningowe?",
+    "progressA11y": "{{done}} wykonanych, {{partial}} częściowo wykonanych, {{missed}} przepuszczonych, z {{planned}} zaplanowanych",
+    "markA11y": "{{sport}}, {{status}}",
+    "extraA11y": "dodatkowe, niezaplanowane",
+    "moreA11y_one": "Jeszcze {{formattedCount}} sesja",
+    "moreA11y_few": "Jeszcze {{formattedCount}} sesje",
+    "moreA11y_many": "Jeszcze {{formattedCount}} sesji",
+    "dayA11y": "{{date}}: {{marks}}",
+    "dayA11yNone": "{{date}}, nic nie zaplanowano ani nie zapisano",
+    "weekTotalA11y": "{{done}} z {{planned}} zaplanowanych sesji wykonanych",
+    "weekTotalShort": "{{done}}/{{planned}}",
+    "weekTotalHeader": "Razem",
+    "weekLoggedA11y_one": "{{formattedCount}} zapisana sesja",
+    "weekLoggedA11y_few": "{{formattedCount}} zapisane sesje",
+    "weekLoggedA11y_many": "{{formattedCount}} zapisanych sesji",
+    "weekEmptyA11y": "Brak sesji w tym tygodniu",
+    "more_one": "+{{formattedCount}}",
+    "more_few": "+{{formattedCount}}",
+    "more_many": "+{{formattedCount}}",
+    "showEarlier_one": "Pokaż wcześniejszy tydzień ({{formattedCount}})",
+    "showEarlier_few": "Pokaż wcześniejsze tygodnie ({{formattedCount}})",
+    "showEarlier_many": "Pokaż wcześniejsze tygodnie ({{formattedCount}})"
+  },
+  "featureSettings": {
+    "title": "Funkcje",
+    "description": "Włączaj i wyłączaj całe funkcje w tej aplikacji.",
+    "footnote": "Wyłączenie funkcji tylko ją ukrywa: nic nie jest usuwane, a synchronizacje i importy działają dalej.",
+    "loading": "Wczytywanie",
+    "loadError": "Nie udało się wczytać tego ustawienia.",
+    "saveFailed": "Nie udało się zapisać tego ustawienia. Spróbuj ponownie.",
+    "appOnly": "Tylko ta aplikacja. Strona ma własny przełącznik.",
+    "serverTooOld": "Aby to zmienić, zaktualizuj serwer SparkyFitness.",
+    "groups": {
+      "health": "Zdrowie",
+      "nutrition": "Odżywianie",
+      "training": "Trening",
+      "wellbeing": "Samopoczucie"
+    },
+    "cycle": {
+      "title": "Cykl i ciąża",
+      "discreetTitle": "Samopoczucie",
+      "description": "Śledź miesiączki, płodność i ciążę.",
+      "scope": "Jeden przełącznik dla aplikacji i strony.",
+      "setupAction": "Skonfiguruj",
+      "setupHint": "Odpowiedz na kilka pytań, aby dokończyć konfigurację."
+    },
+    "labResults": {
+      "title": "Wyniki badań",
+      "description": "Zapisuj wyniki badań krwi i śledź każdy marker w czasie."
+    }
+  },
+  "offline": {
+    "keptAdded_one": "Zdjęcia {{count}} ćwiczenia będą przechowywane offline",
+    "keptAdded_few": "Zdjęcia {{count}} ćwiczeń będą przechowywane offline",
+    "keptAdded_many": "Zdjęcia {{count}} ćwiczeń będą przechowywane offline",
+    "keptRemoved_one": "{{count}} ćwiczenie nie będzie już przechowywane offline",
+    "keptRemoved_few": "{{count}} ćwiczenia nie będą już przechowywane offline",
+    "keptRemoved_many": "{{count}} ćwiczeń nie będzie już przechowywane offline",
+    "keptMark": "Przechowywane offline",
+    "selectedCount_one": "Wybrano {{count}}",
+    "selectedCount_few": "Wybrano {{count}}",
+    "selectedCount_many": "Wybrano {{count}}",
+    "keepOffline": "Przechowuj offline",
+    "removeFromOffline": "Nie przechowuj offline",
+    "picturesTitle": "Zdjęcia ćwiczeń",
+    "picturesOnMobileData": "Pobieraj zdjęcia przez dane mobilne",
+    "picturesOnMobileDataSubtitle": "Wyłączone: zdjęcia pobierają się tylko przez Wi-Fi. Maksymalnie 300 MB.",
+    "keptHeading": "Ćwiczenia przechowywane offline",
+    "keptIntro": "Zdjęcia planu na ten tydzień i zapisanych treningów są przechowywane automatycznie. Aby przechowywać więcej, przytrzymaj ćwiczenia w bibliotece ćwiczeń.",
+    "keptRemove": "Dotknij, aby przestać przechowywać offline",
+    "presetOfflineNote": "Offline: możesz rozpocząć lub zapisać ten trening. Zmiany i duplikowanie wymagają połączenia.",
+    "leave": {
+      "title_one": "{{count}} trening czeka na przesłanie",
+      "title_few": "{{count}} treningi czekają na przesłanie",
+      "title_many": "{{count}} treningów czeka na przesłanie",
+      "deleteMessage": "Usunięcie tego serwera usuwa też dane czekające na telefonie i nigdy nie trafią one na serwer.",
+      "switchMessage": "Zostają na tym telefonie i prześlą się po przełączeniu z powrotem na ten serwer.",
+      "uploadFirst": "Najpierw prześlij",
+      "deleteAnyway": "Usuń mimo to",
+      "switchAnyway": "Przełącz mimo to"
+    },
+    "presetUpdateQueued": "Zapisany trening zostanie zaktualizowany po powrocie do sieci",
+    "presetUpdateSkipped": "Zapisany trening „{{name}}” nie został zaktualizowany, ponieważ zmieniono go gdzie indziej",
+    "presetUpdated": "Zaktualizowano zapisany trening „{{name}}”",
+    "diaryNote": "Offline dostępne są tylko treningi. Produkty i inne wpisy wymagają połączenia.",
+    "diaryNothingSaved": "Nic nie zapisano na ten dzień",
+    "finishedTitle": "Zapisano na tym telefonie",
+    "finishedMessage": "Prześle się, gdy serwer będzie dostępny.",
+    "deleteSavedTitle": "Usunięto na tym telefonie",
+    "deleteSavedMessage": "Zostanie usunięty z serwera, gdy tylko będzie dostępny.",
+    "startedTitle": "Rozpoczęto offline",
+    "startedMessage": "Ten trening jest przechowywany na tym telefonie i prześle się, gdy serwer będzie dostępny.",
+    "notReadyTitle": "Brak gotowości do treningów offline",
+    "notReadyMessage": "Połącz się z serwerem raz, aby ten telefon mógł zapisać to, czego wymaga trening.",
+    "banner": "Offline: wyświetlanie danych zapisanych na tym telefonie",
+    "bannerHint": "Sprawdza połączenie ponownie",
+    "intro": "Treningi można rozpoczynać i zapisywać bez połączenia. Są przechowywane na tym telefonie i przesyłane, gdy serwer będzie dostępny.",
+    "waitingHeading": "Czeka na przesłanie",
+    "nothingWaiting": "Nic nie czeka",
+    "nothingWaitingSubtitle": "Wszystko z tego telefonu zostało już przesłane.",
+    "waitingItem": "{{kind}}, {{date}}",
+    "uploadNow": "Prześlij teraz",
+    "uploadDone": "Wszystko przesłano",
+    "uploadStillWaiting": "Niektóre elementy nadal czekają",
+    "uploadStillWaitingDetail": "Zostają na tym telefonie i prześlą się, gdy serwer będzie dostępny.",
+    "storageHeading": "Na tym telefonie",
+    "storageTitle": "Zapisane do użytku offline",
+    "storageValue": "{{size}} MB",
+    "refreshRow": "Odśwież teraz",
+    "refreshing": "Odświeżanie…",
+    "neverRefreshed": "Jeszcze nie pobrano. Połącz się raz z serwerem, aby przygotować treningi offline.",
+    "lastRefreshed": "Ostatnio odświeżono {{when}}",
+    "refreshDone": "Zapisane dane są aktualne",
+    "refreshFailed": "Nie udało się odświeżyć",
+    "refreshFailedDetail": "Serwer jest nieosiągalny. To, co już zapisano, zostaje zachowane.",
+    "clearRow": "Wyczyść dane offline",
+    "clearRowSubtitle": "Czekające na przesłanie elementy zostają zachowane",
+    "clearTitle": "Wyczyścić dane offline?",
+    "clearMessage": "Zapisane treningi, ćwiczenia i inne dane przechowywane do użytku offline zostaną usunięte z tego telefonu i pobrane ponownie następnym razem. Wszystko, co czeka na przesłanie, zostaje zachowane.",
+    "clearConfirm": "Wyczyść",
+    "status": {
+      "pending": "Czeka na przesłanie",
+      "sending": "Przesyłanie…",
+      "conflict": "Zmieniono gdzie indziej. Dotknij, aby wybrać.",
+      "needsSignIn": "Zaloguj się ponownie, aby przesłać",
+      "failed": "Serwer go nie przyjął"
+    },
+    "conflict": {
+      "phoneSuffix": "(telefon)",
+      "deletedTitle": "Usunięto gdzie indziej",
+      "deletedMessage": "Ten trening został usunięty na innym urządzeniu, gdy ten telefon był offline.",
+      "saveAsNew": "Zapisz jako nowy trening",
+      "discard": "Odrzuć kopię z tego telefonu",
+      "changedTitle": "Zmieniono gdzie indziej",
+      "changedMessage": "Ten trening został zmieniony na innym urządzeniu, gdy ten telefon był offline. Którą wersję chcesz zachować?",
+      "keepPhone": "Zachowaj trening z tego telefonu",
+      "keepServer": "Zachowaj tę drugą wersję",
+      "saveSeparately": "Zachowaj obie"
+    },
+    "kind": {
+      "workout": "Trening",
+      "other": "Zapisana zmiana"
+    },
+    "libraryNote": "Offline dostępne są tylko treningi i ćwiczenia. Cała reszta Biblioteki wymaga połączenia."
   }
 }

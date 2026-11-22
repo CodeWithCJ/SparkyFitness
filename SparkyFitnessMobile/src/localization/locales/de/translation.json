@@ -70,7 +70,9 @@
     "kJUnit": "kJ",
     "kcalUnit": "kcal",
     "apply": "Anwenden",
-    "reset": "Zurücksetzen"
+    "reset": "Zurücksetzen",
+    "search": "Suchen",
+    "noMatches": "Keine Übereinstimmungen"
   },
   "settings": {
     "app": "App-Einstellungen",
@@ -823,7 +825,8 @@
     "mindfulness": "Achtsamkeit",
     "sleepingWristTemperature": "Handgelenkstemperatur im Schlaf",
     "overnightBodyTemperature": "Körpertemperatur über Nacht",
-    "toothbrushing": "Zähneputzen"
+    "toothbrushing": "Zähneputzen",
+    "exercise": "Übung"
   },
   "familyDiary": {
     "title": "Familientagebücher",
@@ -1322,7 +1325,9 @@
       "equipment": "Ausrüstung",
       "equipmentSubtitle": "Schuhe und andere Ausrüstung",
       "labResults": "Laborwerte",
-      "labResultsSubtitle": "Bluttests und weitere Marker im Zeitverlauf"
+      "labResultsSubtitle": "Bluttests und weitere Marker im Zeitverlauf",
+      "trainingCalendar": "Trainingskalender",
+      "trainingCalendarSubtitle": "Geplante und absolvierte Trainingseinheiten sowie Trainingsbelastung nach Sportart"
     },
     "sleep": "Schlaf",
     "healthTrendsSettings": "Gesundheitstrends",
@@ -1360,7 +1365,6 @@
     "watchRunLiveRun": "Lauf auf deiner Uhr",
     "watchWalkLive": "Gehen auf deiner Uhr",
     "allergenSettings": "Allergene",
-    "runProgramCalendar": "Programmkalender",
     "runProgramWorkout": "Training",
     "runProgramEdit": "Plan bearbeiten",
     "runProgramNew": "Neuer Plan",
@@ -1380,7 +1384,9 @@
     "labResults": "Laborwerte",
     "labResultDetail": "Laborwert",
     "labResultAdd": "Laborwert hinzufügen",
-    "labReportImport": "Bericht importieren"
+    "labReportImport": "Bericht importieren",
+    "trainingCalendar": "Trainingskalender",
+    "treadmillSettings": "Laufband & Schrittlänge"
   },
   "healthCategories": {
     "Common": "Allgemein",
@@ -1395,7 +1401,8 @@
     "Environment": "Umgebung",
     "Apple": "Apple",
     "unknown": "Sonstiges",
-    "Hygiene": "Hygiene"
+    "Hygiene": "Hygiene",
+    "Exercise": "Übung"
   },
   "healthSync": {
     "appleHealth": "Apple Health",
@@ -1499,7 +1506,34 @@
     "removeHeader": "Header {{number}} entfernen",
     "hideHeaderValue": "Header-Wert ausblenden",
     "showHeaderValue": "Header-Wert anzeigen",
-    "noStandardMethods": "Auf diesem Server sind derzeit keine Standard-Anmeldemethoden aktiviert. Bitte verwende einen API-Schlüssel oder wende dich an eine Administratorin oder einen Administrator."
+    "noStandardMethods": "Auf diesem Server sind derzeit keine Standard-Anmeldemethoden aktiviert. Bitte verwende einen API-Schlüssel oder wende dich an eine Administratorin oder einen Administrator.",
+    "clientCertificate": {
+      "experimental": "experimentell",
+      "experimentalNote": "Diese Funktion ist neu und funktioniert möglicherweise nicht mit jedem Proxy oder jedem Telefon. Sollte etwas nicht funktionieren, entfernen Sie das Zertifikat und melden Sie das Problem.",
+      "help": "Dies ist nur erforderlich, wenn Ihr Reverse-Proxy ein Client-Zertifikat benötigt (mutual TLS). Es wird ausschließlich an die von Ihnen gespeicherten Server gesendet.",
+      "installed": "Zertifikat installiert",
+      "expires": "Gültig bis {{date}}",
+      "expiresSoon": "Läuft bald ab, am {{date}}",
+      "expired": "Am {{date}} abgelaufen. Importieren Sie ein neues.",
+      "gap": "Diese Version der App kann das Zertifikat nicht bei jeder Anfrage verwenden. Bitte melden Sie diesen Fehler.",
+      "passwordPlaceholder": "Zertifikatskennwort",
+      "import": "importieren",
+      "choose": "Zertifikat importieren",
+      "replace": "Zertifikat ersetzen",
+      "remove": "entfernen",
+      "restartHint": "Schließen Sie die App vollständig und öffnen Sie sie erneut, damit die Änderungen wirksam werden. Bis dahin antwortet der Server möglicherweise noch wie bisher.",
+      "restartTitle": "App neu starten",
+      "restartAfterImport": "m das neue Zertifikat zu verwenden, schließen Sie die App vollständig (wischen Sie sie im App-Umschalter weg) und öffnen Sie sie erneut. Stellen Sie anschließend eine Verbindung her.",
+      "restartAfterRemove": "Um die Verwendung des alten Zertifikats zu stoppen, schließen Sie die App vollständig (wischen Sie sie im App-Umschalter weg) und öffnen Sie sie erneut.",
+      "connectionHint": "Falls Ihr Server ein Client-Zertifikat erfordert, fügen Sie dieses unter „Erweiterte Optionen“ hinzu.",
+      "connectionHintRestart": "Falls Ihr Server ein Client-Zertifikat erfordert, fügen Sie dieses unter „Erweiterte Optionen“ hinzu und schließen Sie die App anschließend vollständig, bevor Sie sie erneut öffnen.",
+      "errors": {
+        "wrongPassword": "Mit diesem Passwort lässt sich diese Datei nicht öffnen.",
+        "invalidFile": "Diese Datei konnte nicht gelesen werden. Überprüfen Sie das Passwort und stellen Sie sicher, dass es sich um eine .p12- oder .pfx-Datei handelt. Eine Datei, die mit einer neueren OpenSSL-Version erstellt wurde, muss möglicherweise erneut im legacy Format exportiert werden.",
+        "noPrivateKey": "Diese Datei enthält ein Zertifikat, aber keinen privaten Schlüssel. Exportieren Sie die Datei erneut, wobei der Schlüssel enthalten sein muss.",
+        "storage": "Das Zertifikat konnte auf diesem Gerät nicht gespeichert werden."
+      }
+    }
   },
   "onboarding": {
     "subtitle": "Dein selbst gehosteter Fitness-Tracker",
@@ -1581,7 +1615,8 @@
     "permissionDenied": {
       "title": "Berechtigung verweigert",
       "read": "Bitte erteile die Berechtigung für {{metric}} in den {{settings}}.",
-      "write": "Bitte erteile die Schreibberechtigung für {{metric}} in den {{settings}}."
+      "write": "Bitte erteile die Schreibberechtigung für {{metric}} in den {{settings}}.",
+      "writeRequired": "Bitte erteilen Sie die Berechtigungen, die {{metric}} benötigt, unter {{settings}}."
     },
     "removal": {
       "removed": "Entfernt",
@@ -1590,7 +1625,8 @@
       "partialMessage": "Einige Datensätze konnten nicht aus {{store}} gelöscht werden.",
       "errorMessage": "Daten konnten nicht aus {{store}} entfernt werden.",
       "confirmTitle": "Alle {{store}}-Daten entfernen",
-      "confirmMessage": "Alle Ernährungs- und Flüssigkeitseinträge löschen, die SparkyFitness in {{store}} geschrieben hat, und die Rückübertragung deaktivieren? Dein SparkyFitness-Tagebuch und Einträge aus anderen Apps sind nicht betroffen."
+      "confirmMessage": "Alle Ernährungs- und Flüssigkeitseinträge löschen, die SparkyFitness in {{store}} geschrieben hat, und die Rückübertragung deaktivieren? Dein SparkyFitness-Tagebuch und Einträge aus anderen Apps sind nicht betroffen.",
+      "confirmMessageAll": "Alle von SparkyFitness in {{store}} gespeicherten Einträge (Ernährung, Flüssigkeitszufuhr, Trainingseinheiten und alles andere) löschen und die Rückübertragung deaktivieren? Dein SparkyFitness-Tagebuch und Einträge aus anderen Apps sind davon nicht betroffen."
     },
     "range": {
       "title": "Synchronisierungszeitraum",
@@ -1858,7 +1894,9 @@
     "labResults": "Laborwerte",
     "labResultsSubtitle": "Zeigt deine neuesten Laborwerte und welche außerhalb des Referenzbereichs liegen",
     "oralCare": "Mundpflege",
-    "oralCareSubtitle": "Zähneputzen im Vergleich zu deinem Ziel und deiner Serie anzeigen"
+    "oralCareSubtitle": "Zähneputzen im Vergleich zu deinem Ziel und deiner Serie anzeigen",
+    "bloodAlcohol": "Geschätzter Blutalkoholwert",
+    "bloodAlcoholSubtitle": "Auf dem Dashboard eine grobe Schätzung des Blutalkoholspiegels anhand der erfassten Getränke anzeigen"
   },
   "diarySettings": {
     "updateFailed": "Einstellung konnte nicht aktualisiert werden.",
@@ -1975,7 +2013,11 @@
     "focusMediaSmall": "Klein",
     "plannedPlaceholders": "Geplante Werte als Platzhalter verwenden",
     "plannedPlaceholdersSubtitle": "Bei Workouts, die aus einem Plan oder einem gespeicherten Workout gestartet werden, werden die geplanten Gewichte und Wiederholungen statt der Werte der letzten Einheit vorgeschlagen. Gilt ab dem nächsten gestarteten Workout.",
-    "plannedPlaceholdersAccessibility": "Geplante Werte als Platzhalter verwenden"
+    "plannedPlaceholdersAccessibility": "Geplante Werte als Platzhalter verwenden",
+    "restEndFocus": "Konzentriere dich auf den nächsten Satz, sobald die Pause vorbei ist",
+    "restEndFocusSubtitle": "Wenn ein Pausentimer von selbst abgelaufen ist, setze den Cursor auf den ersten Wert des nächsten Satzes und öffne die Tastatur.",
+    "restEndFocusAccessibility": "Konzentriere dich auf den nächsten Satz, sobald die Pause vorbei ist",
+    "treadmillStrideSubtitle": "Zeigen Sie die Schrittlänge an, die zur Schätzung der Distanz in Innenräumen verwendet wird, und stellen Sie sie ein, um ein Laufband zu korrigieren, das zu lange oder zu kurze Strecken anzeigt."
   },
   "restPeriod": {
     "title": "Pausenzeit",
@@ -2452,7 +2494,14 @@
     "resumeFailedTitle": "Workout konnte nicht fortgesetzt werden",
     "resumeFailedMessage": "Bitte versuche es erneut.",
     "finishStampFailedTitle": "Workout konnte nicht als abgeschlossen markiert werden",
-    "finishStampFailedMessage": "Deine Sätze wurden gespeichert, aber das Markieren des Workouts als abgeschlossen ist fehlgeschlagen. Versuche es erneut, um es abzuschließen."
+    "finishStampFailedMessage": "Deine Sätze wurden gespeichert, aber das Markieren des Workouts als abgeschlossen ist fehlgeschlagen. Versuche es erneut, um es abzuschließen.",
+    "healthActivityType": "Art der Gesundheitsaktivität",
+    "healthActivityTypeAutomatic": "Automatisch ({{type}})",
+    "healthActivityTypeHintApple": "Wird verwendet, wenn Ihre Trainingseinheiten in „Apple Health“ gespeichert werden.",
+    "healthActivityTypeHintHealthConnect": "Wird verwendet, wenn Ihre Trainingseinheiten an Health Connect übertragen werden.",
+    "healthActivityTypeCommon": "Allgemein",
+    "healthActivityTypeAll": "Alle Aktivitäten",
+    "healthActivityTypeSearch": "Suchaktivitäten"
   },
   "cycleCard": {
     "mode": {
@@ -2727,10 +2776,6 @@
     "title": {
       "wellness": "Wellness-Einstellungen",
       "cyclePregnancy": "Zyklus & Schwangerschaft"
-    },
-    "enable": {
-      "title": "Zyklus- & Schwangerschafts-Tracking aktivieren",
-      "subtitle": "Protokollierung, Vorhersagen und Verlauf aktivieren"
     },
     "groups": {
       "features": "Funktionskonfiguration",
@@ -7340,7 +7385,35 @@
     "emptyTitle": "Noch keine Trainingspläne",
     "emptySubtitle": "Plane deine gespeicherten Trainings an festen Tagen oder als Zyklus, den du der Reihe nach durchläufst.",
     "moreAssignments_one": "+{{count}} weiteres",
-    "moreAssignments_other": "+{{count}} weitere"
+    "moreAssignments_other": "+{{count}} weitere",
+    "invalidSetValues": "Einige festgelegte Werte sind unvollständig",
+    "activated": "Plan aktiviert",
+    "addExercise": "Übung hinzufügen",
+    "addSet": "Satz hinzufügen",
+    "deactivated": "Tarif deaktiviert",
+    "deletePlan": "Plan löschen",
+    "impactNote": "Dieser aktive Plan trägt die anstehenden Trainingseinheiten in Ihren Kalender ein. Bei Änderungen werden nur die geplanten Trainingseinheiten aktualisiert; Trainingseinheiten, die Sie bereits erfasst, begonnen oder abgeschlossen haben, bleiben davon unberührt.",
+    "impactNoteForm": "Durch das Speichern werden die anstehenden Trainingseinträge in diesem Plan aktualisiert. Trainingseinheiten, die du bereits erfasst, begonnen oder abgeschlossen hast, bleiben davon unberührt.",
+    "moveDownNamed": "{{name}} nach unten verschieben",
+    "moveUpNamed": "{{name}} nach oben verschieben",
+    "noAssignmentsSubtitle": "Bearbeite den Plan, um Trainingseinheiten hinzuzufügen.",
+    "noAssignmentsTitle": "In diesem Plan sind noch keine Trainingseinheiten enthalten",
+    "refreshedSessions_one": "Aktualisiert: {{count}} bevorstehende Sitzung",
+    "refreshedSessions_other": "Aktualisiert: {{count}} bevorstehende Sitzungen",
+    "regenerationFailed": "Gespeichert, aber das Aktualisieren des Tagebuchs ist fehlgeschlagen",
+    "removedSessions_one": "{{count}} bevorstehende Sitzung entfernt",
+    "removedSessions_other": "{{count}} bevorstehende Sitzungen entfernt",
+    "removeSetNumber": "Satz {{number}} entfernen",
+    "repsCount_one": "{{count}} Wiederholung",
+    "repsCount_other": "{{count}} Wiederholungen",
+    "repsShort": "Wiederholungen",
+    "restCount_one": "{{count}} Sekunde Pause",
+    "restCount_other": "{{count}} Sekunden Pause",
+    "restShort": "Pause (s)",
+    "savedWorkout": "Gespeichertes Training",
+    "sessionPosition": "Sitzung {{current}} von {{total}}",
+    "setNumber": "Satz {{number}}",
+    "weightShort": "Gewicht"
   },
   "mood": {
     "logTitle": "Stimmung",
@@ -8633,31 +8706,8 @@
     "partOfProgram": "Teil deines Trainingsprogramms",
     "openCalendar": "Programmkalender öffnen",
     "openCalendarHint": "Alle Trainings in der Monatsansicht",
-    "monthGrid": {
-      "previous": "Vorheriger Monat",
-      "next": "Nächster Monat",
-      "dayA11yNone": "{{date}}, keine Trainings",
-      "dayA11y_one": "{{date}}, {{formattedCount}} Training",
-      "dayA11y_other": "{{date}}, {{formattedCount}} Trainings"
-    },
     "calendarScreen": {
-      "noProgram": "Starte ein Trainingsprogramm, um seinen Kalender zu sehen.",
-      "progress": "{{done}} von {{total}} Trainings erledigt",
-      "doneOn": "Erledigt am {{date}}",
-      "done": "Erledigt",
-      "dueOn": "Als Nächstes · {{date}}",
-      "notScheduled": "Nicht geplant",
-      "minutes": "{{minutes}} min",
-      "legendDone": "Erledigt",
-      "legendAhead": "Fällig oder geplant",
-      "noWorkoutsDay": "Kein Programmtraining an diesem Tag.",
-      "pickDays_one": "{{count}} weiteres Training steht noch nicht im Kalender. Wähle deine Trainingstage in der Programmansicht, um zu sehen, wann es ansteht.",
-      "pickDays_other": "{{count}} weitere Trainings stehen noch nicht im Kalender. Wähle deine Trainingstage in der Programmansicht, um zu sehen, wann jedes ansteht.",
-      "pastGoal_one": "{{count}} Training passt nicht mehr vor dein Zieldatum.",
-      "pastGoal_other": "{{count}} Trainings passen nicht mehr vor dein Zieldatum.",
-      "allWorkouts": "Alle Trainings",
-      "today": "Heute",
-      "due": "Als Nächstes"
+      "minutes": "{{minutes}} min"
     },
     "detail": {
       "workoutTitle": "Woche {{week}}, Lauf {{run}}",
@@ -9483,7 +9533,6 @@
     "previewTitle": "Vorschau",
     "previewDescription": "So sehen die Schnellaktionen mit deiner Auswahl aus.",
     "lineNumber": "Zeile {{number}}",
-    "needsCycle": "Ausgeblendet: Zyklus-Tracking ist aus",
     "showAs": "Anzeigen als",
     "showAsValue": "Anzeigen als {{style}}",
     "styleList": "Liste",
@@ -10406,5 +10455,75 @@
     "finishReview": "Bestätige vor dem Speichern alle Zutaten.",
     "amountRequired": "Gib die Menge für das gesamte Rezept in der gewählten Einheit ein. Volumen wird niemals automatisch als Masse behandelt.",
     "missingServings": "In der Quelle sind keine Portionen angegeben. Gib die Portionsanzahl ein, um das Rezept zum Tracken zu speichern; die Nährwert-Synchronisierung bleibt deaktiviert."
+  },
+  "toolfallback": {
+    "used": "Verwendetes Tool",
+    "error": "Fehler:",
+    "cancelled": "Abgebrochenes Tool",
+    "cancelledReason": "Abbruchgrund:"
+  },
+  "healthActivityTypes": {
+    "american_football": "American Football",
+    "archery": "Bogenschießen",
+    "australian_football": "Australian Football",
+    "badminton": "Badminton",
+    "baseball": "Baseball",
+    "basketball": "Basketball",
+    "bowling": "Bowling",
+    "boxing": "Boxen",
+    "climbing": "Klettern",
+    "cricket": "Cricket",
+    "cross_training": "Crosstraining",
+    "curling": "Curling",
+    "cycling": "Radfahren",
+    "elliptical": "Crosstrainer",
+    "cycling_indoor": "Indoor Radfahren",
+    "equestrian_sports": "Reitsport",
+    "fencing": "Fechten",
+    "fishing": "Angeln",
+    "functional_strength_training": "Funktionelles Krafttraining",
+    "golf": "Golf",
+    "gymnastics": "Turnen",
+    "handball": "Handball",
+    "hiking": "Wandern",
+    "ice_hockey": "Eishockey",
+    "roller_hockey": "Rollhockey",
+    "hunting": "Jagen",
+    "lacrosse": "Lacrosse",
+    "martial_arts": "Kampfsport",
+    "mind_and_body": "Körper & Geist",
+    "breathing": "Atemübungen",
+    "paddle_sports": "Paddelsport",
+    "play": "Spielen",
+    "preparation_and_recovery": "Vorbereitung & Erholung",
+    "racquetball": "Racquetball",
+    "rowing": "Rudern",
+    "rowing_machine": "Rudergerät",
+    "rugby": "Rugby",
+    "running": "Laufen",
+    "running_treadmill": "Laufband",
+    "sailing": "Segeln",
+    "skating": "Skaten",
+    "ice_skating": "Schlittschuhlaufen",
+    "snowshoeing": "Schneeschuhwandern",
+    "soccer": "Fußball",
+    "softball": "Softball",
+    "squash": "Squash",
+    "stair_climbing_machine": "Treppensteiger",
+    "surfing": "Surfen",
+    "swimming_pool": "Beckenschwimmen",
+    "swimming_open_water": "Freiwasserschwimmen",
+    "table_tennis": "Tischtennis",
+    "tennis": "Tennis",
+    "track_and_field": "Leichtathletik",
+    "strength_training": "Krafttraining",
+    "weightlifting": "Gewichtheben",
+    "volleyball": "Volleyball",
+    "walking": "Gehen",
+    "walking_treadmill": "Gehen (Laufband)",
+    "water_fitness": "Wassergymnastik",
+    "water_polo": "Wasserball",
+    "water_sports": "Wassersport",
+    "wrestling": "Ringen"
   }
 }

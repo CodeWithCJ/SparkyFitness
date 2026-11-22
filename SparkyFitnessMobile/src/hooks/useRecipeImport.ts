@@ -36,6 +36,7 @@ import { useProfile } from './useProfile';
 import { invalidateFoodCache } from './invalidateFoodCache';
 import { invalidateMealCaches } from './useMeals';
 import { profileQueryKey, serverConfigsQueryKey } from './queryKeys';
+import { serverOnScreen } from './serverOnScreen';
 
 /** Native auth clears identity queries on account/server replacement. */
 export function observeRecipeImportOwner(
@@ -45,9 +46,7 @@ export function observeRecipeImportOwner(
   let accountRetained = true;
   const identity = () => {
     const profile = client.getQueryData<{ id: string }>(profileQueryKey);
-    const config = client.getQueryData<{
-      activeConfig: { id: string; url: string } | null;
-    }>(serverConfigsQueryKey)?.activeConfig;
+    const config = serverOnScreen(client);
     return {
       profileId: profile?.id,
       config: config ? `${config.id}:${config.url}` : undefined,
@@ -86,9 +85,7 @@ function recipeImportConnection(
   client: QueryClient,
   scope: string | null
 ): ServerConfig | null {
-  const config = client.getQueryData<{ activeConfig: ServerConfig | null }>(
-    serverConfigsQueryKey
-  )?.activeConfig;
+  const config = serverOnScreen(client);
   const profile = client.getQueryData<{ id: string }>(profileQueryKey);
   return config &&
     profile &&

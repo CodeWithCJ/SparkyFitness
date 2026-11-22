@@ -24,9 +24,18 @@ import {
 import ShareStatusBadge from '../components/ShareStatusBadge';
 import SafeImage from '../components/SafeImage';
 import Icon from '../components/Icon';
+import FooterActionBar from '../components/FooterActionBar';
+import Button from '../components/ui/Button';
+import Toast from 'react-native-toast-message';
+import { useKeptExercises } from '../hooks/useKeptExercises';
+import { notifyOutboxChanged } from '../offline/events';
+import {
+  refreshOfflineImages,
+  setExercisesKeptOffline,
+} from '../offline/offlineImages';
+import { getActiveServerConfigId } from '../services/storage';
 import { CATEGORY_ICON_MAP } from '../utils/workoutSession';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { Exercise } from '../types/exercise';
@@ -40,7 +49,6 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [textSecondary, textPrimary] = useCSSVariable([
     '--color-text-secondary',
@@ -55,7 +63,10 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
     (s) => s.setExercisesLibraryOwnershipFilter
   );
 
-  const { isConnected } = useServerConnection();
+  const { isConnected, status: connectionStatus } = useServerConnection();
+  // A server that is set up but not answering: the list then comes from
+  // what the phone saved (src/offline/).
+  const canShowData = isConnected || connectionStatus === 'unreachable';
   const { profile } = useProfile();
   const { getImageSource } = useExerciseImageSource();
 
@@ -69,17 +80,66 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
     isFetchingNextPage,
     loadMore,
     refetch,
-  } = useExercisesLibrary(searchText, { enabled: isConnected });
+  } = useExercisesLibrary(searchText, { enabled: canShowData });
   const filteredExercises = useMemo(
     () => filterByOwnership(exercises, ownershipFilter, profile?.id),
     [exercises, ownershipFilter, profile?.id]
   );
 
+  // Long-press selects exercises to keep (or stop keeping) their pictures
+  // offline (#1983). Null when not selecting.
+  const keptIds = useKeptExercises();
+  const [selectedIds, setSelectedIds] = useState<Set<string> | null>(null);
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current ?? []);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const applyKeepOffline = useCallback(
+    async (keep: boolean) => {
+      const ids = [...(selectedIds ?? [])];
+      setSelectedIds(null);
+      const serverConfigId = await getActiveServerConfigId();
+      if (!serverConfigId || ids.length === 0) return;
+      await setExercisesKeptOffline(serverConfigId, ids, keep);
+      notifyOutboxChanged();
+      Toast.show({
+        type: 'success',
+        text1: keep
+          ? t('offline.keptAdded', {
+              count: ids.length,
+              defaultValue:
+                'Pictures of {{count}} exercises will be kept offline',
+              defaultValue_one:
+                'Pictures of {{count}} exercise will be kept offline',
+              defaultValue_other:
+                'Pictures of {{count}} exercises will be kept offline',
+            })
+          : t('offline.keptRemoved', {
+              count: ids.length,
+              defaultValue: '{{count}} exercises no longer kept offline',
+              defaultValue_one: '{{count}} exercise no longer kept offline',
+              defaultValue_other: '{{count}} exercises no longer kept offline',
+            }),
+      });
+      void refreshOfflineImages();
+    },
+    [selectedIds, t]
+  );
+
   const handleExercisePress = useCallback(
     (exercise: Exercise) => {
+      if (selectedIds != null) {
+        toggleSelected(exercise.id);
+        return;
+      }
       navigation.navigate('ExerciseDetail', { item: exercise });
     },
-    [navigation]
+    [navigation, selectedIds, toggleSelected]
   );
 
   const renderEmpty = () => {
@@ -156,8 +216,26 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
         }`}
         activeOpacity={0.7}
         onPress={() => handleExercisePress(item)}
+        onLongPress={() => toggleSelected(item.id)}
+        accessibilityState={
+          selectedIds != null
+            ? { selected: selectedIds.has(item.id) }
+            : undefined
+        }
+        testID={`exercise-row-${item.id}`}
       >
         <View className="flex-row items-center gap-3">
+          {selectedIds != null && (
+            <Icon
+              name={
+                selectedIds.has(item.id)
+                  ? 'checkmark-circle-filled'
+                  : 'checkmark-circle'
+              }
+              size={24}
+              color={selectedIds.has(item.id) ? textPrimary : textSecondary}
+            />
+          )}
           <SafeImage
             source={image ? getImageSource(image) : null}
             style={{ width: 44, height: 44, borderRadius: 8 }}
@@ -179,6 +257,16 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
                 {item.name}
               </Text>
               <ShareStatusBadge status={status} />
+              {keptIds.has(item.id) && (
+                <Icon
+                  name="cloud-offline"
+                  size={14}
+                  color={textSecondary}
+                  accessibilityLabel={t('offline.keptMark', {
+                    defaultValue: 'Kept offline',
+                  })}
+                />
+              )}
             </View>
             {item.category ? (
               <Text className="text-sm mt-0.5" style={{ color: textSecondary }}>
@@ -231,6 +319,7 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
         data={filteredExercises}
         keyExtractor={(item) => item.id}
         renderItem={renderRow}
+        extraData={[selectedIds, keptIds]}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={
           <PaginatedLibraryFooter
@@ -286,12 +375,9 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
-      {isConnected ? (
+      {canShowData ? (
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
@@ -301,7 +387,51 @@ const ExercisesLibraryScreen: React.FC<ExercisesLibraryScreenProps> = ({
           isSearching={isSearching}
         />
       ) : null}
-      <ServerGate>{renderContent()}</ServerGate>
+      <ServerGate offlineCapable>{renderContent()}</ServerGate>
+      {selectedIds != null ? (
+        <FooterActionBar>
+          <Text
+            testID="exercise-selection-count"
+            className="text-sm text-text-secondary text-center mb-2"
+          >
+            {t('offline.selectedCount', {
+              count: selectedIds.size,
+              defaultValue: '{{count}} selected',
+              defaultValue_one: '{{count}} selected',
+              defaultValue_other: '{{count}} selected',
+            })}
+          </Text>
+          <View className="flex-row gap-2">
+            <Button
+              testID="exercise-selection-keep"
+              className="flex-1"
+              disabled={selectedIds.size === 0}
+              onPress={() => void applyKeepOffline(true)}
+            >
+              {t('offline.keepOffline', { defaultValue: 'Keep offline' })}
+            </Button>
+            <Button
+              testID="exercise-selection-remove"
+              variant="outline"
+              className="flex-1"
+              disabled={selectedIds.size === 0}
+              onPress={() => void applyKeepOffline(false)}
+            >
+              {t('offline.removeFromOffline', {
+                defaultValue: 'Remove from offline',
+              })}
+            </Button>
+          </View>
+          <Button
+            testID="exercise-selection-cancel"
+            variant="ghost"
+            className="mt-1"
+            onPress={() => setSelectedIds(null)}
+          >
+            {t('common.cancel', { defaultValue: 'Cancel' })}
+          </Button>
+        </FooterActionBar>
+      ) : null}
     </View>
   );
 };

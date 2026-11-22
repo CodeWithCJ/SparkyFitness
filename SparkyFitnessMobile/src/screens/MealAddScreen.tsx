@@ -1,18 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  Platform,
-  ScrollView,
-  Alert,
-} from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useFocusEffect } from '@react-navigation/native';
 import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from '../components/BottomSheetPicker';
 import Button from '../components/ui/Button';
@@ -146,7 +138,6 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   );
   const isEditMode = route.params?.mode === 'edit';
   const editMealId = isEditMode ? route.params.mealId : undefined;
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor, textMuted, proteinColor, carbsColor, fatColor] =
     useCSSVariable([
@@ -510,6 +501,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   const isSaving = isPending || isUpdatePending;
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: isEditMode
       ? t('mealBuilder.editTitle', { defaultValue: 'Edit Meal' })
       : t('mealBuilder.createTitle', { defaultValue: 'Create Meal' }),
@@ -533,12 +525,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   if (isEditMode && isEditMealLoading && !editMeal) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={
-          Platform.OS === 'android' ? { paddingTop: insets.top } : undefined
-        }
-      >
+      <View className="flex-1 bg-background">
         {header}
         <StatusView
           loading
@@ -550,12 +537,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
 
   if (isEditMode && (isEditMealError || !editMeal)) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={
-          Platform.OS === 'android' ? { paddingTop: insets.top } : undefined
-        }
-      >
+      <View className="flex-1 bg-background">
         {header}
         <StatusView
           icon="alert-circle"
@@ -578,10 +560,7 @@ const MealAddScreen: React.FC<MealAddScreenProps> = ({ navigation, route }) => {
   }
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ScrollView

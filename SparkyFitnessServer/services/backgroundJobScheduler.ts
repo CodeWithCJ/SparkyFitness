@@ -8,6 +8,11 @@ import { scheduleDemoMidnightReset } from './demoSeedService.js';
 import { log } from '../config/logging.js';
 import { scheduledJobsDisabled } from '../utils/scheduledJobs.js';
 import { runNightlyNutritionPush } from '../integrations/intervals/intervalsNutritionPush.js';
+import {
+  finalizePeriods,
+  nightlyCatchUp,
+  processScoreQueue,
+} from './challengeService.js';
 
 // Backup scheduling is handled by services/backupScheduler.ts
 // Session cleanup scheduling
@@ -29,6 +34,40 @@ const scheduleSessionCleanup = async () => {
       }
     } catch (error) {
       log('error', '[CRON] Passkey ticket cleanup failed:', error);
+    }
+  });
+};
+
+// Challenges: score queued member-days every minute (a day is scored once it
+// has been quiet for 30 s, so a burst of edits is scored once), re-score the
+// last days nightly for steps and late syncs, and freeze finished periods
+// hourly once their 48 h late-sync window has passed. Each tick runs on one
+// instance; every step is safe to run twice.
+const scheduleChallengeJobs = () => {
+  scheduleJob(
+    'challenge-score-queue',
+    '* * * * *',
+    async () => {
+      try {
+        await processScoreQueue();
+      } catch (error) {
+        log('error', '[CRON] Challenge scoring failed:', error);
+      }
+    },
+    { noOverlap: true }
+  );
+  scheduleJob('challenge-catch-up', '30 2 * * *', async () => {
+    try {
+      await nightlyCatchUp();
+    } catch (error) {
+      log('error', '[CRON] Challenge catch-up failed:', error);
+    }
+  });
+  scheduleJob('challenge-finalize', '15 * * * *', async () => {
+    try {
+      await finalizePeriods();
+    } catch (error) {
+      log('error', '[CRON] Challenge finalise failed:', error);
     }
   });
 };
@@ -55,4 +94,5 @@ export async function scheduleBackgroundJobs(): Promise<void> {
     }
   );
   scheduleDemoMidnightReset();
+  scheduleChallengeJobs();
 }

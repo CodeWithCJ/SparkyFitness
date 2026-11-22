@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Platform, View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -167,6 +167,7 @@ export default function MindfulnessLogScreen({ navigation, route }: Props) {
       });
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title,
     nativeTitle: title,
     left: {
@@ -189,12 +190,7 @@ export default function MindfulnessLogScreen({ navigation, route }: Props) {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      // Like MeasurementsAdd: iOS presents this as a sheet that already starts
-      // below the status bar, so only Android needs the top inset.
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <KeyboardAwareScrollView

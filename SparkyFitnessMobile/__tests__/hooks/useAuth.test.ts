@@ -55,6 +55,19 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+// The offline file is the phone's own SQLite; these tests are about what the
+// identity change does around it, so it is replaced here.
+const mockClearAllCache = jest.fn();
+jest.mock('../../src/offline/db', () => ({
+  getOfflineDb: jest.fn(async () => ({})),
+}));
+jest.mock('../../src/offline/cacheStore', () => ({
+  clearAllCache: (...args: unknown[]) => mockClearAllCache(...args),
+}));
+jest.mock('../../src/offline/offlineImages', () => ({
+  clearAllOfflineImages: jest.fn().mockResolvedValue(undefined),
+}));
+
 const mockSetOnSessionExpired = setOnSessionExpired as jest.MockedFunction<
   typeof setOnSessionExpired
 >;
@@ -88,6 +101,8 @@ describe('useAuth', () => {
     renderHook(() => useAuth(), { wrapper: createQueryWrapper(queryClient) });
 
   beforeEach(() => {
+    mockClearAllCache.mockReset();
+    mockClearAllCache.mockResolvedValue(undefined);
     jest.clearAllMocks();
     queryClient = createTestQueryClient();
   });
@@ -250,6 +265,41 @@ describe('useAuth', () => {
     // so a departed account's progress photos would stay on the device.
     expect(mockClearMemoryCache).toHaveBeenCalledTimes(1);
     expect(mockClearDiskCache).toHaveBeenCalledTimes(1);
+  });
+
+  test('identity changed callback waits for the offline cache to be cleared, trying again if it fails', async () => {
+    mockClearAllCache
+      .mockRejectedValueOnce(new Error('database is locked'))
+      .mockResolvedValue(undefined);
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(mockClearAllCache).toHaveBeenCalledTimes(2);
+    expect(mockAddLog).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to clear offline data (attempt 1 of 3)'),
+      'ERROR'
+    );
+    // The rest of the identity change still runs.
+    expect(mockClearAuthCookies).toHaveBeenCalledTimes(1);
+  });
+
+  test('identity changed callback reports a cache clear that keeps failing and carries on', async () => {
+    mockClearAllCache.mockRejectedValue(new Error('disk full'));
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(mockClearAllCache).toHaveBeenCalledTimes(3);
+    expect(mockClearAuthCookies).toHaveBeenCalledTimes(1);
   });
 
   test('identity changed callback drops the cookie jar', async () => {

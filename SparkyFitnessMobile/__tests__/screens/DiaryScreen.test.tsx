@@ -52,6 +52,12 @@ jest.mock('@react-navigation/native', () => {
   };
 });
 
+import { useOfflineDiaryDay } from '../../src/hooks/useOfflineDiaryDay';
+
+jest.mock('../../src/hooks/useOfflineDiaryDay', () => ({
+  useOfflineDiaryDay: jest.fn(() => ({ saved: null, waiting: [] })),
+}));
+
 jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(),
   useDailySummary: jest.fn(),
@@ -724,6 +730,27 @@ describe('DiaryScreen sleep cards', () => {
     // The food and exercise sections still render, empty, as the day's scaffolding.
     expect(getByTestId('food-summary')).toBeTruthy();
     expect(getByTestId('exercise-summary')).toBeTruthy();
+  });
+
+  test('a workout waiting to upload keeps an empty server day from showing the empty illustration', () => {
+    // The server has nothing for the day yet (reconnected, upload still going
+    // up): the waiting workout is on the day, so the day is not empty.
+    configureSleep({ wakeUp: null, naps: [], bedTime: null });
+    (useOfflineDiaryDay as jest.Mock).mockReturnValue({
+      saved: null,
+      waiting: [
+        { type: 'preset', id: 'w-1', name: 'Waiting push', exercises: [] },
+      ],
+    });
+
+    const { queryByTestId, getByTestId } = renderScreen();
+
+    expect(queryByTestId('empty-day')).toBeNull();
+    expect(getByTestId('exercise-summary')).toBeTruthy();
+    (useOfflineDiaryDay as jest.Mock).mockReturnValue({
+      saved: null,
+      waiting: [],
+    });
   });
 
   test('a nap alone is enough to keep the day non-empty', () => {

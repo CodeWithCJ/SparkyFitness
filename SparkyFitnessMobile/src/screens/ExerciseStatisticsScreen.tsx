@@ -20,7 +20,6 @@ import { usePreferences } from '../hooks/usePreferences';
 import { useProfile } from '../hooks/useProfile';
 import { formatLocalizedNumber } from '../localization';
 import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SegmentedControl from '../components/SegmentedControl';
 import ReportRangeControl from '../components/reports/ReportRangeControl';
@@ -119,7 +118,6 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const defaultRange = useAppPreferencesStore((s) => s.reportDefaultRange);
   const hiddenSections = useAppPreferencesStore((s) => s.hiddenReportSections);
   const isSectionShown = (key: ReportSectionKey) =>
@@ -619,10 +617,7 @@ const ExerciseStatisticsScreen: React.FC<ExerciseStatisticsScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1"

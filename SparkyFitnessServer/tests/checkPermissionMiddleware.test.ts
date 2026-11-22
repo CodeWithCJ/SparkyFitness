@@ -212,6 +212,28 @@ describe('checkPermissionMiddleware', () => {
     );
   });
 
+  it('checks the read permission for a read-only POST that asks for it by name', async () => {
+    // The offline stats batch is a POST only because its list is long; it asks
+    // for 'diary_read' so a read-only delegate can use it like the GET.
+    mockedCanAccess.mockResolvedValue(true);
+    const mw = checkPermissionMiddleware('diary_read');
+    const { promise } = run(mw, {
+      method: 'POST',
+      query: {},
+      body: {},
+      userId: 'victim',
+      originalUserId: 'delegate',
+      authenticatedUserId: 'delegate',
+    });
+    await promise;
+
+    expect(mockedCanAccess).toHaveBeenCalledWith(
+      'victim',
+      'diary_read',
+      'delegate'
+    );
+  });
+
   it('checks an array-valued target instead of silently skipping it', async () => {
     // A repeated query key (?targetUserId=a&targetUserId=b) arrives as an array;
     // it must not slip past the guard while a handler reading the same param

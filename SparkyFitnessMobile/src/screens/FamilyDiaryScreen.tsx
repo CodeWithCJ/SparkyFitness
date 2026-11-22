@@ -14,7 +14,6 @@ import Button from '../components/ui/Button';
 import { useFamilyDailySummary } from '../hooks';
 import { familyUsersQueryKey } from '../hooks/queryKeys';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { ApiError } from '../services/api/errors';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
@@ -37,7 +36,6 @@ const FamilyDiaryScreen: React.FC<FamilyDiaryScreenProps> = ({
   const energyUnit = useEnergyUnit();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const calendarRef = useRef<CalendarSheetRef>(null);
   const [selectedDate, setSelectedDate] = useState(
@@ -184,10 +182,7 @@ const FamilyDiaryScreen: React.FC<FamilyDiaryScreenProps> = ({
   );
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <DateNavigator
         title={t('familyDiary.diary', { defaultValue: 'Family diary' })}

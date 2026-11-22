@@ -2091,6 +2091,62 @@ async function upsertWaterIntakeSamples(
   }
 }
 
+/**
+ * Deletes water intake samples matching the specified user, source, and source IDs,
+ * and recomputes the water_intake daily aggregate totals for all affected dates.
+ *
+ * Guarantees:
+ * - Enforces RLS context via getClient(userId, actingUserId).
+ * - Only deletes entries matching source (never touches manual or other sources).
+ * - Recomputes the daily aggregate for every affected entry_date.
+ * - Returns array of unique affected entry_date strings.
+ */
+async function deleteWaterIntakeSamplesBySourceIds(
+  userId: string,
+  actingUserId: string,
+  source: string,
+  sourceIds: string[]
+): Promise<string[]> {
+  if (!sourceIds || sourceIds.length === 0) {
+    return [];
+  }
+  const client = await getClient(userId, actingUserId);
+  try {
+    await client.query('BEGIN');
+
+    const deleteRes = await client.query(
+      `DELETE FROM water_intake_entries
+       WHERE user_id = $1 AND source = $2 AND source_id = ANY($3)
+       RETURNING entry_date`,
+      [userId, source, sourceIds]
+    );
+
+    const affectedDates: string[] = Array.from(
+      new Set(
+        deleteRes.rows.map((r: { entry_date: unknown }) => String(r.entry_date))
+      )
+    );
+
+    for (const dateStr of affectedDates) {
+      await recomputeWaterAggregate(
+        client,
+        userId,
+        actingUserId,
+        dateStr,
+        source
+      );
+    }
+
+    await client.query('COMMIT');
+    return affectedDates;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function getWaterIntakeLogsByDates(userId: string, dates: string[]) {
   const client = await getClient(userId);
   try {
@@ -2312,6 +2368,7 @@ export default {
   deleteWaterIntake,
   insertWaterIntakeLog,
   upsertWaterIntakeSamples,
+  deleteWaterIntakeSamplesBySourceIds,
   getWaterIntakeLogByDate,
   getWaterIntakeLogsByDates,
   deleteWaterIntakeLog,

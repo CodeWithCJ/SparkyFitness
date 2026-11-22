@@ -87,6 +87,18 @@
     <string name="now_playing_title">Now Playing</string>
     <string name="now_playing_vol_down">Vol −</string>
     <string name="now_playing_vol_up">Vol +</string>
+    <string name="now_playing_source_phone">Phone</string>
+    <string name="now_playing_source_watch">Watch</string>
+    <string name="now_playing_playing_on_phone">Playing on phone</string>
+    <string name="now_playing_phone_media">Phone media</string>
+    <string name="now_playing_playing_on_watch">Playing on watch</string>
+    <string name="now_playing_watch_media">Watch media</string>
+    <string name="now_playing_nothing_playing">Nothing playing</string>
+    <string name="now_playing_enable_track_info">Enable track info in phone settings</string>
+    <string name="now_playing_previous">Previous track</string>
+    <string name="now_playing_play">Play</string>
+    <string name="now_playing_pause">Pause</string>
+    <string name="now_playing_next">Next track</string>
 
     <!-- Fasting Screen -->
     <string name="fasting_title">Fasting</string>

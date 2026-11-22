@@ -9,7 +9,6 @@ import { useFamilyUsers } from '../hooks';
 import { useFamilyCopySource } from '../hooks/useFamilyDiary';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import { canCopyFamilyDiary, familyDiaryUserName } from '../utils/familyDiary';
 import { filterFoodEntriesByMealTypeId } from '../utils/mealNutrition';
@@ -23,7 +22,6 @@ const FamilyMembersScreen: React.FC<FamilyMembersScreenProps> = ({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const copySource = route.params?.copySource;
   const {
     data: users = [],
@@ -61,10 +59,7 @@ const FamilyMembersScreen: React.FC<FamilyMembersScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isLoading || loadingSource ? (
         <StatusView

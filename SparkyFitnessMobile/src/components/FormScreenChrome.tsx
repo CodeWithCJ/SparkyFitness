@@ -103,7 +103,6 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
   keyboardAccessory,
   children,
 }) => {
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
   const saveItem: HeaderItem = {
@@ -121,12 +120,7 @@ const FormScreenChrome: React.FC<FormScreenChromeProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      // An iOS sheet reports no top inset, so there only pushed screens get
-      // room for the status bar.
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <KeyboardAwareScrollView

@@ -11,6 +11,7 @@ import {
   HEALTH_CONNECT_SOURCE,
 } from '../../types/healthRecords';
 import { toLocalDateString } from '../../utils/dateUtils';
+import { BODY_CLIENT_RECORD_PREFIX } from '../shared/bodyWriteback';
 import type { MindfulnessSessionType } from '@workspace/shared';
 import {
   BLOOD_GLUCOSE_MG_DL_PER_MMOL_L,
@@ -59,6 +60,17 @@ export const isOwnWrittenExerciseRecord = (rec: unknown): boolean => {
   const id = (rec as { metadata?: { clientRecordId?: unknown } } | null)
     ?.metadata?.clientRecordId;
   return typeof id === 'string' && id.startsWith(EXERCISE_CLIENT_RECORD_PREFIX);
+};
+
+/**
+ * True for a record body measurement write-back (#2465) wrote, by its client
+ * record id. The read side skips these: the value came from the check-in. Matched
+ * by id rather than this app's package, as the dev seed tool writes body records too.
+ */
+export const isOwnWrittenBodyRecord = (rec: unknown): boolean => {
+  const id = (rec as { metadata?: { clientRecordId?: unknown } } | null)
+    ?.metadata?.clientRecordId;
+  return typeof id === 'string' && id.startsWith(BODY_CLIENT_RECORD_PREFIX);
 };
 
 let ownPackageName: string | null = null;
@@ -1046,6 +1058,15 @@ VALUE_TRANSFORMERS['ActiveCaloriesBurned'] = createCalorieTransformer(
 VALUE_TRANSFORMERS['TotalCaloriesBurned'] = createCalorieTransformer(
   'total_calories',
   'TotalCalories'
+);
+
+// Body write-back's own records are never imported (see isOwnWrittenBodyRecord).
+(['Weight', 'BodyFat', 'Height', 'BoneMass', 'BodyWaterMass'] as const).forEach(
+  (type) => {
+    const base = VALUE_TRANSFORMERS[type];
+    VALUE_TRANSFORMERS[type] = (rec, metricConfig, index) =>
+      isOwnWrittenBodyRecord(rec) ? null : base(rec, metricConfig, index);
+  }
 );
 
 // ============================================================================

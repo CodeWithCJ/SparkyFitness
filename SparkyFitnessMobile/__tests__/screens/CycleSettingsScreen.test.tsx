@@ -6,6 +6,7 @@ import Toast from 'react-native-toast-message';
 import CycleSettingsScreen from '../../src/screens/CycleSettingsScreen';
 import { cycleSettingsQueryKey } from '../../src/hooks/queryKeys';
 import { getSettings, putSettings } from '../../src/services/api/cycleApi';
+import { showServerOnScreen, testServer } from '../hooks/queryTestUtils';
 
 jest.mock('../../src/services/api/cycleApi', () => ({
   ...jest.requireActual('../../src/services/api/cycleApi'),
@@ -73,6 +74,7 @@ function renderScreen(initialSettings: any) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
+  showServerOnScreen(queryClient);
   if (initialSettings !== undefined) {
     queryClient.setQueryData(cycleSettingsQueryKey, initialSettings);
   }
@@ -177,9 +179,10 @@ describe('CycleSettingsScreen', () => {
       const { getByText } = renderScreen(baseSettings);
       confirmReset(getByText);
       await waitFor(() =>
-        expect(mockPutSettings).toHaveBeenCalledWith({
-          reset_onboarding: true,
-        })
+        expect(mockPutSettings).toHaveBeenCalledWith(
+          { reset_onboarding: true },
+          testServer
+        )
       );
       await waitFor(() => expect(successToast()).toBe(true));
     });
@@ -225,9 +228,10 @@ describe('CycleSettingsScreen', () => {
     fireEvent(cycleLengthInput, 'blur');
 
     await waitFor(() => {
-      expect(mockPutSettings).toHaveBeenCalledWith({
-        avg_cycle_length_override: null,
-      });
+      expect(mockPutSettings).toHaveBeenCalledWith(
+        { avg_cycle_length_override: null },
+        testServer
+      );
     });
   });
 });

@@ -169,6 +169,10 @@ const SECTION_LABELS: Record<
     t('reportsSettings.sections.sleepWeekend', {
       defaultValue: 'Weekdays vs weekends',
     }),
+  'sleep.need': (t) =>
+    t('reportsSettings.sections.sleepNeed', {
+      defaultValue: 'Sleep need tonight',
+    }),
   'sleep.nights': (t) =>
     t('reportsSettings.sections.sleepNights', { defaultValue: 'Nights' }),
   'nutrition.fats': (t) =>
@@ -401,10 +405,7 @@ const ReportsSettingsScreen: React.FC<ReportsSettingsScreenProps> = () => {
       : SECTION_LABELS[key as keyof typeof SECTION_LABELS](t);
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{

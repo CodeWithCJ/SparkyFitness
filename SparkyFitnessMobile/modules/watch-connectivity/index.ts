@@ -1329,6 +1329,17 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
     headers: Record<string, string>
   ): Promise<void>;
   clearServerCredentials?(): Promise<void>;
+  /**
+   * Android only: whether SparkyFitness has Notification Access so the Wear OS
+   * Now Playing screen can display track title and artist from the phone's
+   * active media session. Transport and volume controls work without this.
+   */
+  isMediaAccessEnabled?(): Promise<boolean>;
+  /**
+   * Android only: opens Android's Notification Access settings screen so the
+   * user can grant or revoke media session metadata access for Wear OS.
+   */
+  openMediaAccessSettings?(): Promise<void>;
 }
 
 const WatchConnectivityModule: WatchConnectivityModuleType | null =

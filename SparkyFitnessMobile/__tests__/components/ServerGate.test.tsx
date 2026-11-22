@@ -94,4 +94,52 @@ describe('ServerGate', () => {
     expect(UNSAFE_queryByType(ActivityIndicator)).toBeTruthy();
     expect(queryByText("Can't reach your server")).toBeNull();
   });
+  it('offers the way to saved workouts when the server cannot be reached', () => {
+    mockConnection.status = 'unreachable';
+    const { getByTestId } = renderGate();
+
+    fireEvent.press(getByTestId('server-status-offline-workouts'));
+    expect(mockNavigate).toHaveBeenCalledWith('WorkoutPresetsLibrary');
+  });
+
+  it('does not offer offline workouts when no server is set up', () => {
+    mockConnection.status = 'notConfigured';
+    const { queryByTestId } = renderGate();
+
+    expect(queryByTestId('server-status-offline-workouts')).toBeNull();
+  });
+
+  describe('for a screen that works from saved data', () => {
+    const renderOfflineCapable = () =>
+      render(
+        <ServerGate offlineCapable>
+          <Text>Screen content</Text>
+        </ServerGate>
+      );
+
+    it('shows the content under an offline strip when the server cannot be reached', () => {
+      mockConnection.status = 'unreachable';
+      const { getByText, getByTestId, queryByText } = renderOfflineCapable();
+
+      expect(getByText('Screen content')).toBeTruthy();
+      expect(queryByText("Can't reach your server")).toBeNull();
+      fireEvent.press(getByTestId('offline-banner'));
+      expect(mockRefetch).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows no offline strip while connected', () => {
+      const { getByText, queryByTestId } = renderOfflineCapable();
+
+      expect(getByText('Screen content')).toBeTruthy();
+      expect(queryByTestId('offline-banner')).toBeNull();
+    });
+
+    it('still blocks when no server is set up', () => {
+      mockConnection.status = 'notConfigured';
+      const { getByText, queryByText } = renderOfflineCapable();
+
+      expect(getByText('No server configured')).toBeTruthy();
+      expect(queryByText('Screen content')).toBeNull();
+    });
+  });
 });
