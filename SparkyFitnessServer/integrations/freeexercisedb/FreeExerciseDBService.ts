@@ -8,6 +8,14 @@ const GITHUB_RAW_BASE_URL =
 const EXERCISES_PATH = 'exercises'; // No leading slash for API
 // Initialize cache for GitHub API responses (e.g., 1 hour TTL)
 const githubCache = new NodeCache({ stdTTL: 3600 });
+// Exercises the upstream dataset answered 404 for (an id it does not have, such
+// as one imported from another app). Remembered for a while so a page of
+// pictures or a repeated lookup does not ask GitHub again for each one every
+// time; other failures (a timeout, a rate limit) are not remembered.
+const MISSING_EXERCISE_TTL_SECONDS = 15 * 60;
+const missingExerciseCache = new NodeCache({
+  stdTTL: MISSING_EXERCISE_TTL_SECONDS,
+});
 const DATASET_TTL_MS = 60 * 60 * 1000;
 // Bound a stalled shared download so it cannot block every exercise search indefinitely.
 const DATASET_REQUEST_TIMEOUT_MS = 15 * 1000;
@@ -62,6 +70,9 @@ class FreeExerciseDBService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getExerciseById(exerciseId: any) {
     const cacheKey = `exercise_${exerciseId}`;
+    if (missingExerciseCache.has(cacheKey)) {
+      return null;
+    }
     let exercise = githubCache.get(cacheKey);
     if (exercise) {
       console.log(
@@ -82,6 +93,11 @@ class FreeExerciseDBService {
       githubCache.set(cacheKey, exercise);
       return exercise;
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // Not in the dataset: say so once, then skip it until the entry
+        // expires.
+        missingExerciseCache.set(cacheKey, true);
+      }
       log(
         'error',
         `[FreeExerciseDBService] Error fetching exercise ${exerciseId}:`,
@@ -222,6 +238,7 @@ class FreeExerciseDBService {
 
 export function resetFreeExerciseDBCache() {
   githubCache.flushAll();
+  missingExerciseCache.flushAll();
   dataset = null;
   exercisesDatasetPromise = null;
   lastDatasetFetchFailureAt = null;

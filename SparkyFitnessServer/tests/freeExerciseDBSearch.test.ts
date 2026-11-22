@@ -354,3 +354,51 @@ describe('FreeExerciseDBService search', () => {
     expect(axios.get).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('FreeExerciseDBService.getExerciseById', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetFreeExerciseDBCache();
+    vi.mocked(axios.isAxiosError).mockImplementation(
+      (error: unknown): error is import('axios').AxiosError =>
+        typeof error === 'object' && error !== null && 'isAxiosError' in error
+    );
+  });
+
+  const notFound = () =>
+    Object.assign(new Error('Request failed with status code 404'), {
+      isAxiosError: true,
+      response: { status: 404 },
+    });
+
+  it('does not ask upstream again for an exercise it does not have', async () => {
+    vi.mocked(axios.get).mockRejectedValue(notFound());
+
+    expect(await freeExerciseDBService.getExerciseById('hevy_1')).toBeNull();
+    expect(await freeExerciseDBService.getExerciseById('hevy_1')).toBeNull();
+
+    expect(axios.get).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks again after a failure that is not a 404, such as a timeout', async () => {
+    vi.mocked(axios.get).mockRejectedValue(
+      Object.assign(new Error('timeout'), { isAxiosError: true })
+    );
+
+    await freeExerciseDBService.getExerciseById('Chest_Press');
+    await freeExerciseDBService.getExerciseById('Chest_Press');
+
+    expect(axios.get).toHaveBeenCalledTimes(2);
+  });
+
+  it('still returns and caches an exercise it finds', async () => {
+    vi.mocked(axios.get).mockResolvedValue({ data: { name: 'Air Bike' } });
+
+    expect(await freeExerciseDBService.getExerciseById('Air_Bike')).toEqual({
+      name: 'Air Bike',
+    });
+    await freeExerciseDBService.getExerciseById('Air_Bike');
+
+    expect(axios.get).toHaveBeenCalledTimes(1);
+  });
+});
