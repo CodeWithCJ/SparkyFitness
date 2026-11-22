@@ -44,8 +44,15 @@ export const PACK_MAX_AGE_MS = 6 * 60 * 60 * 1000;
 const PRESET_PAGE_SIZE = 50;
 /** The exercise search route's largest page. */
 const EXERCISE_PAGE_SIZE = 100;
-/** The stats batch route's largest request. */
-const STATS_BATCH_SIZE = 100;
+/**
+ * How many exercise and preset pairs one stats request asks for. The route
+ * takes up to 100, but it reads each pair's history, so a big diary makes a
+ * request that size slower than the default 30 s timeout; small requests
+ * each finish well inside it.
+ */
+const STATS_BATCH_SIZE = 20;
+/** A stats request that reads a long history gets more time than usual. */
+const STATS_TIMEOUT_MS = 90_000;
 /** A runaway guard; no library is this many pages. */
 const MAX_PAGES = 500;
 
@@ -137,6 +144,7 @@ async function refreshStats(
         body: { items: items.slice(start, start + STATS_BATCH_SIZE) },
         serviceName: SERVICE,
         operation: 'fetch last-time values',
+        timeoutMs: STATS_TIMEOUT_MS,
       });
     } catch (error) {
       // A server from before this route: last-time values are then kept only
@@ -291,8 +299,21 @@ async function refreshWorkoutPack(
     }))
   );
 
-  await refreshStats(db, serverConfigId, presets);
-  await refreshPlanDays(db, serverConfigId);
+  // Last-time values and the plan days are extras: a workout starts without
+  // them, so a failure here (a slow history read, a dropped connection) keeps
+  // what the phone had and never keeps the rest of the refresh from finishing.
+  try {
+    await refreshStats(db, serverConfigId, presets);
+  } catch (error) {
+    if (await abandonedAfterSwitch()) return 'switched';
+    addLog(`[Offline] Last-time values not refreshed: ${error}`, 'WARNING');
+  }
+  try {
+    await refreshPlanDays(db, serverConfigId);
+  } catch (error) {
+    if (await abandonedAfterSwitch()) return 'switched';
+    addLog(`[Offline] Plans not refreshed: ${error}`, 'WARNING');
+  }
 
   if (await abandonedAfterSwitch()) return 'switched';
   await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.pack, [
