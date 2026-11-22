@@ -350,4 +350,16 @@
     <string name="workout_new_summary_active">Ativo</string>
     <string name="workout_new_changed_preset">Você alterou %1$s</string>
     <string name="workout_new_keep_short">Manter</string>
+    <string name="now_playing_source_phone">Celular</string>
+    <string name="now_playing_source_watch">Relógio</string>
+    <string name="now_playing_playing_on_phone">Tocando no celular</string>
+    <string name="now_playing_phone_media">Mídia do celular</string>
+    <string name="now_playing_playing_on_watch">Tocando no relógio</string>
+    <string name="now_playing_watch_media">Mídia do relógio</string>
+    <string name="now_playing_nothing_playing">Nada tocando</string>
+    <string name="now_playing_enable_track_info">Ative as informações da música nas configurações do celular</string>
+    <string name="now_playing_previous">Faixa anterior</string>
+    <string name="now_playing_play">Reproduzir</string>
+    <string name="now_playing_pause">Pausar</string>
+    <string name="now_playing_next">Próxima faixa</string>
 </resources>

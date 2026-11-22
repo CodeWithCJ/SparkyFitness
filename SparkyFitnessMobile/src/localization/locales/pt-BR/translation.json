@@ -326,7 +326,8 @@
     "sleepingWristTemperature": "Temperatura do pulso durante o sono",
     "overnightBodyTemperature": "Temperatura corporal noturna",
     "toothbrushing": "Escovação de dentes",
-    "exercise": "Exercício"
+    "exercise": "Exercício",
+    "waistCircumference": "Circunferência da cintura"
   },
   "mindfulness": {
     "timer": {
@@ -2387,7 +2388,10 @@
       "adaptive": "Meta − consumidas",
       "fixed": "Meta − consumidas",
       "dynamicActivitySeparated": "Meta − Consumido + Atividade",
-      "tdeeWeekly": "GET projetado + Ajuste da meta semanal − Consumido"
+      "tdeeWeekly": "GET projetado + Ajuste da meta semanal − Consumido",
+      "burnedAdaptive": "Mostrado só como referência. A sua meta adaptativa já inclui a sua atividade.",
+      "netAdaptive": "Não entra nas calorias restantes. Ligue \"Contar as calorias de atividade separadamente\" para creditar a atividade de hoje.",
+      "netAdaptivePercentage": "Não entra nas calorias restantes. Para creditar a atividade de hoje, escolha Dinâmica e ligue \"Contar as calorias de atividade separadamente\"."
     },
     "notes": {
       "dynamic": "A meta cresce conforme você se mexe",
@@ -2496,7 +2500,9 @@
     },
     "energyUnitLabel": "Unidade de energia",
     "energyUnitKcal": "Calorias (kcal)",
-    "adaptiveEstimateRangeWithUnit": "O nível de atividade define a estimativa inicial e a faixa de plausibilidade de ±{{amount}} {{unit}} em torno de TMB × este fator. As estimativas podem levar algumas semanas para se estabilizar; oscilações de peso e registros de alimentos incompletos aumentam a incerteza."
+    "adaptiveEstimateRangeWithUnit": "O nível de atividade define a estimativa inicial e a faixa de plausibilidade de ±{{amount}} {{unit}} em torno de TMB × este fator. As estimativas podem levar algumas semanas para se estabilizar; oscilações de peso e registros de alimentos incompletos aumentam a incerteza.",
+    "adaptiveFallbackActivityLevel": "Até a meta adaptativa ter {{days}} dias de registros de alimentos, a sua base é TMB × este nível, antes de aplicar o modo de objetivo, e os seus treinos não são somados por cima. Escolha um nível que inclua os seus treinos.",
+    "adaptiveFallbackActivitySeparated": "Até a meta adaptativa ter {{days}} dias de registros de alimentos, a sua base é TMB × este nível, antes de aplicar o modo de objetivo. Descreva a sua atividade fora dos passos e treinos que são contados separadamente."
   },
   "dashboardSettings": {
     "updateFailed": "Falha ao atualizar a configuração.",
@@ -7130,7 +7136,19 @@
     "countdownSeconds": "{{seconds}} s",
     "holdCountdownTitle": "Contagem regressiva antes das isometrias",
     "holdCountdownSubtitle": "Uma tela 3, 2, 1, Prepare-se antes de uma isometria cronometrada começar, para você se posicionar. Toque nela para pular.",
-    "newWorkoutSubtitleWearOs": "Um botão Registrar série, um botão para editar a série anterior, demonstrações dos exercícios, calculadora de anilhas, uma página Mais com as ações do treino e um resumo único ao terminar. Desativado, mantém a tela de treino original."
+    "newWorkoutSubtitleWearOs": "Um botão Registrar série, um botão para editar a série anterior, demonstrações dos exercícios, calculadora de anilhas, uma página Mais com as ações do treino e um resumo único ao terminar. Desativado, mantém a tela de treino original.",
+    "mediaControlsTitle": "Controles de mídia",
+    "mediaAccessTitle": "Informações da música tocando",
+    "mediaAccessEnabledSubtitle": "O relógio mostra a música e o artista atuais enquanto controla a mídia do celular durante os treinos.",
+    "mediaAccessDisabledSubtitle": "Os controles de tocar, pular e volume funcionam automaticamente. Permita o acesso às notificações para o relógio mostrar também a música e o artista atuais. As outras notificações são ignoradas.",
+    "mediaAccessEnabled": "Ativado",
+    "mediaAccessSetup": "Configurar",
+    "mediaAccessA11yLabel": "{{title}}, {{status}}",
+    "mediaAccessDisclosureTitle": "Permitir o acesso às notificações?",
+    "mediaAccessDisclosureBody": "O Android exige o acesso às notificações para ler a música e o artista que estão tocando e mostrá-los no relógio Wear OS. O SparkyFitness só lê as sessões de mídia ativas e ignora as suas mensagens e outras notificações.",
+    "mediaAccessOpenSettings": "Abrir configurações",
+    "mediaAccessOpenErrorTitle": "Não foi possível abrir as configurações",
+    "mediaAccessOpenErrorBody": "Abra Configurações do Android → Notificações → Leitura, resposta e controle de notificações e ative o SparkyFitness Media Controls."
   },
   "progressPhotos": {
     "card": {

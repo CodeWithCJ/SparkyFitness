@@ -356,4 +356,16 @@
     <string name="workout_new_summary_active">Aktywny</string>
     <string name="workout_new_changed_preset">Zmieniono %1$s</string>
     <string name="workout_new_keep_short">Zachowaj</string>
+    <string name="now_playing_source_phone">Telefon</string>
+    <string name="now_playing_source_watch">Zegarek</string>
+    <string name="now_playing_playing_on_phone">Odtwarzanie w telefonie</string>
+    <string name="now_playing_phone_media">Multimedia telefonu</string>
+    <string name="now_playing_playing_on_watch">Odtwarzanie na zegarku</string>
+    <string name="now_playing_watch_media">Multimedia zegarka</string>
+    <string name="now_playing_nothing_playing">Nic nie jest odtwarzane</string>
+    <string name="now_playing_enable_track_info">Włącz informacje o utworze w ustawieniach telefonu</string>
+    <string name="now_playing_previous">Poprzedni utwór</string>
+    <string name="now_playing_play">Odtwórz</string>
+    <string name="now_playing_pause">Pauza</string>
+    <string name="now_playing_next">Następny utwór</string>
 </resources>
