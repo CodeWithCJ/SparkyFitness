@@ -12,10 +12,11 @@ import Toast from 'react-native-toast-message';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import {
-  addDays,
   challengeDaysToGo,
   challengeStateNow,
   challengeToday,
+  nextChallengePeriodDay,
+  previousChallengePeriodDay,
 } from '@workspace/shared';
 import Button from '../components/ui/Button';
 import Icon from '../components/Icon';
@@ -153,15 +154,19 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const today = challenge
     ? challengeToday(challenge.time_zone, now)
     : getTodayDate();
-  const canGoBack =
-    !!challenge && !!standings && standings.period_start > challenge.start_date;
+  const previousDay =
+    challenge && standings
+      ? previousChallengePeriodDay(standings.period_start, challenge.start_date)
+      : null;
+  const canGoBack = previousDay !== null;
   // Not past today, and not past the end: the server answers a later date
-  // with the final period again.
+  // with the final period again. The current period has no Next.
   const canGoForward =
+    !!challenge &&
     !!standings &&
     periodDay !== null &&
-    standings.period_end < today &&
-    (!challenge?.end_date || standings.period_end < challenge.end_date);
+    nextChallengePeriodDay(standings.period_end, challenge.end_date, today) !==
+      null;
 
   let body: React.ReactNode;
   if (challengeQuery.isLoading) {
@@ -270,9 +275,7 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
         <View className="bg-surface rounded-xl p-4 mb-3 shadow-sm">
           <View className="flex-row items-center justify-between mb-2">
             <Pressable
-              onPress={() =>
-                standings && setPeriodDay(addDays(standings.period_start, -1))
-              }
+              onPress={() => previousDay && setPeriodDay(previousDay)}
               disabled={!canGoBack}
               hitSlop={8}
               accessibilityRole="button"
@@ -314,21 +317,17 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
             <Pressable
               onPress={() => {
                 if (!standings) return;
-                const nextDay = addDays(standings.period_end, 1);
-                // The current period goes back to `null`, so the screen
-                // follows today into the next period instead of staying on
-                // this date once it ends.
-                // Only a current period that still holds today counts: one
-                // loaded before the day turned over would skip a period.
-                const current = currentPeriodQuery.data;
-                const reachesCurrent =
-                  !!current &&
-                  current.period_start <= today &&
-                  today <= current.period_end &&
-                  nextDay >= current.period_start;
-                setPeriodDay(
-                  nextDay > today || reachesCurrent ? null : nextDay
+                // Today as of the press, and the current period only while
+                // it still holds today, so Next never skips a period after
+                // midnight. Reaching the current period goes back to `null`,
+                // so the screen follows today into the next one.
+                const next = nextChallengePeriodDay(
+                  standings.period_end,
+                  challenge.end_date,
+                  challengeToday(challenge.time_zone),
+                  currentPeriodQuery.data
                 );
+                if (next) setPeriodDay(next.day);
               }}
               disabled={!canGoForward}
               hitSlop={8}

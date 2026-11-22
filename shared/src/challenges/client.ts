@@ -1,12 +1,14 @@
 import { challengeInviteCodeSchema } from '../schemas/api/Challenges.api.zod.ts';
-import type { ChallengeRules } from './rules.ts';
-import { daysBetween, instantToDay } from '../utils/timezone.ts';
+import type { ChallengeMetric, ChallengeRules } from './rules.ts';
+import { addDays, daysBetween, instantToDay } from '../utils/timezone.ts';
+import { energyFromKcal, type EnergyUnit } from '../utils/energyUnit.ts';
 
 /**
  * Challenge helpers both apps use on what the server sends: whether a
  * challenge is upcoming, running or ended, the caller's own
- * standing, who leads a period, the invite code in pasted text and today in a
- * challenge's time zone. Keep web and mobile on these so they cannot drift.
+ * standing, who leads a period, the invite code in pasted text, today in a
+ * challenge's time zone, totals in the account's units and stepping between
+ * periods. Keep web and mobile on these so they cannot drift.
  */
 
 type StandingFields = { rank: number; total: number; me?: boolean };
@@ -264,4 +266,165 @@ export function challengeStandingsRefetchInterval(query: {
   state: { data?: { final: boolean } };
 }): number | false {
   return query.state.data?.final ? false : CHALLENGE_STANDINGS_REFETCH_MS;
+}
+
+export type ChallengeDistanceUnit = 'km' | 'miles';
+
+export interface ChallengeValueUnits {
+  distanceUnit: ChallengeDistanceUnit;
+  energyUnit: EnergyUnit;
+}
+
+const METRES_PER_KM = 1000;
+const METRES_PER_MILE = 1609.344;
+const METRES_PER_FOOT = 0.3048;
+
+/** Stored metres of distance in the account's distance unit. */
+export function challengeDistanceFromMetres(
+  metres: number,
+  unit: ChallengeDistanceUnit
+): number {
+  return metres / (unit === 'miles' ? METRES_PER_MILE : METRES_PER_KM);
+}
+
+/** A distance in the account's unit as the metres the server stores. */
+export function challengeDistanceToMetres(
+  value: number,
+  unit: ChallengeDistanceUnit
+): number {
+  return value * (unit === 'miles' ? METRES_PER_MILE : METRES_PER_KM);
+}
+
+/**
+ * Stored metres of elevation in the account's unit: feet for a miles
+ * account, metres otherwise (as the workout stats show climbing).
+ */
+export function challengeElevationFromMetres(
+  metres: number,
+  unit: ChallengeDistanceUnit
+): number {
+  return unit === 'miles' ? metres / METRES_PER_FOOT : metres;
+}
+
+/** An elevation in the account's unit as the metres the server stores. */
+export function challengeElevationToMetres(
+  value: number,
+  unit: ChallengeDistanceUnit
+): number {
+  return unit === 'miles' ? value * METRES_PER_FOOT : value;
+}
+
+/**
+ * A metric amount ready to show: `amount` in the unit `key` names, already
+ * rounded, to be formatted with these fraction digits and the app's own
+ * words for `key` (`energy` takes the energy unit's label). Distance shows
+ * one decimal (`distanceDigits` more, to tell two saved values apart).
+ */
+export interface ChallengeValueParts {
+  key:
+    | 'points'
+    | 'steps'
+    | 'minutes'
+    | 'km'
+    | 'miles'
+    | 'days'
+    | 'energy'
+    | 'metres'
+    | 'feet';
+  amount: number;
+  minimumFractionDigits: number;
+  maximumFractionDigits: number;
+}
+
+/** How a stored total of `metric` shows in the account's units. */
+export function challengeValueParts(
+  metric: ChallengeMetric,
+  value: number,
+  units: ChallengeValueUnits,
+  distanceDigits = 1
+): ChallengeValueParts {
+  const whole = (
+    key: ChallengeValueParts['key'],
+    amount: number
+  ): ChallengeValueParts => ({
+    key,
+    amount: Math.round(amount),
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+  switch (metric) {
+    case 'points':
+      return {
+        key: 'points',
+        amount: Math.round(value * 10) / 10,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 1,
+      };
+    case 'steps':
+      return whole('steps', value);
+    case 'active_minutes':
+    case 'hr_zone_minutes':
+      return whole('minutes', value);
+    case 'distance': {
+      const digits = Math.max(1, distanceDigits);
+      const factor = 10 ** digits;
+      return {
+        key: units.distanceUnit === 'miles' ? 'miles' : 'km',
+        amount:
+          Math.round(
+            challengeDistanceFromMetres(value, units.distanceUnit) * factor
+          ) / factor,
+        minimumFractionDigits: 1,
+        maximumFractionDigits: digits,
+      };
+    }
+    case 'workout_days':
+      return whole('days', value);
+    case 'active_calories':
+      return whole('energy', energyFromKcal(value, units.energyUnit));
+    case 'elevation':
+      return whole(
+        units.distanceUnit === 'miles' ? 'feet' : 'metres',
+        challengeElevationFromMetres(value, units.distanceUnit)
+      );
+  }
+}
+
+/**
+ * A day of the period before the one starting on `periodStart`, or null when
+ * that period would start before the challenge.
+ */
+export function previousChallengePeriodDay(
+  periodStart: string,
+  challengeStart: string
+): string | null {
+  const day = addDays(periodStart, -1);
+  return day < challengeStart ? null : day;
+}
+
+/**
+ * Where Next goes from the period ending on `periodEnd`: null when there is
+ * no next period yet (past the challenge's end, or after `today`, which the
+ * server answers with the last period again); `{ day: null }` for the current
+ * period, so the screen follows today into the next one once it ends; or
+ * `{ day }`, a day of the next period. Pass `today` read when Next is
+ * pressed, not when the screen last drew. `current` is the current period as
+ * last loaded; it counts only while it still holds today, since one loaded
+ * before midnight would make Next skip a period.
+ */
+export function nextChallengePeriodDay(
+  periodEnd: string,
+  challengeEnd: string | null,
+  today: string,
+  current?: { period_start: string; period_end: string } | null
+): { day: string | null } | null {
+  const day = addDays(periodEnd, 1);
+  if (challengeEnd && day > challengeEnd) return null;
+  if (day > today) return null;
+  const reachesCurrent =
+    !!current &&
+    current.period_start <= today &&
+    today <= current.period_end &&
+    day >= current.period_start;
+  return { day: reachesCurrent ? null : day };
 }

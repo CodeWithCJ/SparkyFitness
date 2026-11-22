@@ -7,11 +7,16 @@ import {
   CHALLENGE_PR_TYPES,
   challengeDayEffort,
   challengeStepPoints,
-  energyFromKcal,
+  challengeDistanceFromMetres,
+  challengeDistanceToMetres,
+  challengeElevationFromMetres,
+  challengeElevationToMetres,
+  challengeValueParts,
   challengeLeaders,
   defaultHeartRateZones,
   leadsChallenge,
   ownChallengeStanding,
+  type ChallengeDistanceUnit,
   type EnergyUnit,
   type ActivitySport,
   type ChallengeFormat,
@@ -26,8 +31,6 @@ import {
   type ChallengeState,
 } from '@workspace/shared';
 import { kcalFromEnergyInput, shownEnergyInput } from '@/utils/energyInput';
-
-type DistanceUnit = 'km' | 'miles';
 
 /**
  * Wording for Challenges. Every number comes from the challenge's own rules
@@ -246,7 +249,7 @@ export function weekdayLabel(t: TFunction, isoDay: number): string {
 }
 
 export interface MetricUnits {
-  distanceUnit: DistanceUnit;
+  distanceUnit: ChallengeDistanceUnit;
   energyUnit: EnergyUnit;
   /** The energy unit's label ("kcal" or "kJ"). */
   energyLabel: string;
@@ -256,7 +259,8 @@ const round1 = (n: number) => Math.round(n * 10) / 10;
 
 /**
  * A metric amount for display, in the person's own units (distance is stored
- * in metres, shown to `distanceDigits` decimals).
+ * in metres, shown to one decimal or up to `distanceDigits`). The shared
+ * `challengeValueParts` converts and rounds, as on mobile.
  */
 export function metricValueText(
   t: TFunction,
@@ -266,57 +270,46 @@ export function metricValueText(
   locale?: string,
   distanceDigits = 1
 ): string {
-  const fmt = (n: number, digits = 0) =>
-    n.toLocaleString(locale, { maximumFractionDigits: digits });
-  switch (metric) {
+  const parts = challengeValueParts(metric, value, units, distanceDigits);
+  const amount = parts.amount.toLocaleString(locale, {
+    minimumFractionDigits: parts.minimumFractionDigits,
+    maximumFractionDigits: parts.maximumFractionDigits,
+  });
+  switch (parts.key) {
     case 'points':
-      return t('challenges.values.points', '{{value}} pts', {
-        value: fmt(round1(value), 1),
-      });
+      return t('challenges.values.points', '{{value}} pts', { value: amount });
     case 'steps':
       return t('challenges.values.steps', '{{value}} steps', {
-        value: fmt(Math.round(value)),
+        value: amount,
       });
-    case 'active_minutes':
-    case 'hr_zone_minutes':
+    case 'minutes':
       return t('challenges.values.minutes', '{{value}} min', {
-        value: fmt(Math.round(value)),
+        value: amount,
       });
-    case 'distance': {
-      const shown = shownDistance(value, units.distanceUnit);
-      return units.distanceUnit === 'miles'
-        ? t('challenges.values.miles', '{{value}} mi', {
-            value: fmt(shown, distanceDigits),
-          })
-        : t('challenges.values.km', '{{value}} km', {
-            value: fmt(shown, distanceDigits),
-          });
-    }
-    case 'workout_days':
+    case 'miles':
+      return t('challenges.values.miles', '{{value}} mi', { value: amount });
+    case 'km':
+      return t('challenges.values.km', '{{value}} km', { value: amount });
+    case 'days':
       return t('challenges.values.days', '{{count}} days', {
-        count: Math.round(value),
+        count: parts.amount,
         defaultValue_one: '{{count}} day',
         defaultValue_other: '{{count}} days',
       });
-    case 'active_calories':
-      return `${fmt(Math.round(energyFromKcal(value, units.energyUnit)))} ${units.energyLabel}`;
-    case 'elevation':
-      return t('challenges.values.metres', '{{value}} m', {
-        value: fmt(Math.round(value)),
-      });
+    case 'energy':
+      return `${amount} ${units.energyLabel}`;
+    case 'feet':
+      return t('challenges.values.feet', '{{value}} ft', { value: amount });
+    case 'metres':
+      return t('challenges.values.metres', '{{value}} m', { value: amount });
   }
 }
 
-const METRES_PER_MILE = 1609.344;
-
-/** Metres in the person's distance unit. */
-const shownDistance = (metres: number, unit: DistanceUnit) =>
-  unit === 'miles' ? metres / METRES_PER_MILE : metres / 1000;
-
 /**
  * A stored target or daily cap as the number the host types: distance in
- * km or miles (stored in metres), energy in the account's unit (stored in
- * kcal), anything else in the metric's own unit.
+ * km or miles and elevation in metres or feet (both stored in metres), energy
+ * in the account's unit (stored in kcal), anything else in the metric's own
+ * unit.
  */
 export function targetToInput(
   metric: ChallengeMetric,
@@ -324,7 +317,9 @@ export function targetToInput(
   units: MetricUnits
 ): number {
   if (metric === 'distance')
-    return round1(shownDistance(stored, units.distanceUnit));
+    return round1(challengeDistanceFromMetres(stored, units.distanceUnit));
+  if (metric === 'elevation')
+    return Math.round(challengeElevationFromMetres(stored, units.distanceUnit));
   if (metric === 'active_calories')
     return Number(shownEnergyInput(stored, units.energyUnit));
   return stored;
@@ -336,9 +331,9 @@ export function targetFromInput(
   units: MetricUnits
 ): number {
   if (metric === 'distance')
-    return units.distanceUnit === 'miles'
-      ? typed * METRES_PER_MILE
-      : typed * 1000;
+    return challengeDistanceToMetres(typed, units.distanceUnit);
+  if (metric === 'elevation')
+    return challengeElevationToMetres(typed, units.distanceUnit);
   if (metric === 'active_calories')
     return Number(kcalFromEnergyInput(typed, units.energyUnit));
   return typed;
@@ -367,7 +362,9 @@ export function targetUnitLabel(
     case 'active_calories':
       return units.energyLabel;
     case 'elevation':
-      return t('challenges.units.metres', 'metres');
+      return units.distanceUnit === 'miles'
+        ? t('challenges.units.feet', 'feet')
+        : t('challenges.units.metres', 'metres');
   }
 }
 

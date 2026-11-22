@@ -2,6 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   CHALLENGE_STANDINGS_REFETCH_MS,
   challengeDaysToGo,
+  challengeDistanceFromMetres,
+  challengeDistanceToMetres,
+  challengeElevationFromMetres,
+  challengeElevationToMetres,
+  challengeValueParts,
+  nextChallengePeriodDay,
+  previousChallengePeriodDay,
   challengeStandingsRefetchInterval,
   challengeStateWords,
   filterStandingsByName,
@@ -328,5 +335,112 @@ describe('challengeStandingsRefetchInterval', () => {
     expect(
       challengeStandingsRefetchInterval({ state: { data: { final: true } } })
     ).toBe(false);
+  });
+});
+
+describe('challengeValueParts', () => {
+  const km = { distanceUnit: 'km', energyUnit: 'kcal' } as const;
+  const miles = { distanceUnit: 'miles', energyUnit: 'kJ' } as const;
+  const shown = (p: ReturnType<typeof challengeValueParts>) => [
+    p.key,
+    p.amount,
+    p.minimumFractionDigits,
+    p.maximumFractionDigits,
+  ];
+
+  it('shows elevation in feet for a miles account and metres otherwise', () => {
+    expect(shown(challengeValueParts('elevation', 100, km))).toEqual([
+      'metres',
+      100,
+      0,
+      0,
+    ]);
+    expect(shown(challengeValueParts('elevation', 100, miles))).toEqual([
+      'feet',
+      328,
+      0,
+      0,
+    ]);
+  });
+
+  it('shows distance to exactly one decimal, or more when asked', () => {
+    expect(shown(challengeValueParts('distance', 5000, km))).toEqual([
+      'km',
+      5,
+      1,
+      1,
+    ]);
+    expect(shown(challengeValueParts('distance', 42195, miles))).toEqual([
+      'miles',
+      26.2,
+      1,
+      1,
+    ]);
+    expect(challengeValueParts('distance', 5250, km, 3)).toMatchObject({
+      amount: 5.25,
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 3,
+    });
+  });
+
+  it('rounds points to one decimal, counts to whole numbers, energy in its unit', () => {
+    expect(challengeValueParts('points', 98.25, km)).toMatchObject({
+      key: 'points',
+      amount: 98.3,
+      maximumFractionDigits: 1,
+    });
+    expect(challengeValueParts('steps', 12345.6, km).amount).toBe(12346);
+    expect(challengeValueParts('hr_zone_minutes', 95.4, km)).toMatchObject({
+      key: 'minutes',
+      amount: 95,
+    });
+    expect(challengeValueParts('workout_days', 4, km).key).toBe('days');
+    expect(challengeValueParts('active_calories', 100, miles)).toMatchObject({
+      key: 'energy',
+      amount: 418,
+    });
+  });
+
+  it('converts typed distance and elevation to stored metres and back', () => {
+    expect(challengeDistanceToMetres(10, 'km')).toBe(10000);
+    expect(challengeDistanceFromMetres(1609.344, 'miles')).toBe(1);
+    expect(challengeElevationToMetres(500, 'km')).toBe(500);
+    expect(challengeElevationFromMetres(500, 'km')).toBe(500);
+    expect(challengeElevationToMetres(1000, 'miles')).toBeCloseTo(304.8);
+    expect(challengeElevationFromMetres(304.8, 'miles')).toBeCloseTo(1000);
+  });
+});
+
+describe('period steps', () => {
+  const current = { period_start: '2026-11-09', period_end: '2026-11-15' };
+
+  it('steps back without leaving the challenge', () => {
+    expect(previousChallengePeriodDay('2026-11-09', '2026-11-02')).toBe(
+      '2026-11-08'
+    );
+    expect(previousChallengePeriodDay('2026-11-02', '2026-11-02')).toBeNull();
+  });
+
+  it('steps forward, never past today or the end', () => {
+    expect(nextChallengePeriodDay('2026-11-08', null, '2026-11-14')).toEqual({
+      day: '2026-11-09',
+    });
+    expect(nextChallengePeriodDay('2026-11-15', null, '2026-11-14')).toBeNull();
+    expect(
+      nextChallengePeriodDay('2026-11-08', '2026-11-08', '2026-11-14')
+    ).toBeNull();
+  });
+
+  it('opens the current period when Next reaches it', () => {
+    expect(
+      nextChallengePeriodDay('2026-11-08', null, '2026-11-14', current)
+    ).toEqual({ day: null });
+  });
+
+  it('steps one period after midnight when the loaded current period has ended', () => {
+    // Loaded on Sunday Nov 15; Next pressed on Monday Nov 16.
+    expect(
+      nextChallengePeriodDay('2026-11-08', null, '2026-11-16', current)
+    ).toEqual({ day: '2026-11-09' });
   });
 });

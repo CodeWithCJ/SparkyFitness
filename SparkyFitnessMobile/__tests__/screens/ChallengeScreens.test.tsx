@@ -415,6 +415,33 @@ describe('ChallengeDetailScreen', () => {
     jest.useRealTimers();
   });
 
+  it('reads today when Next is pressed, so a screen left open past midnight steps one week', () => {
+    // Sunday Nov 15, the last day of the current week (Nov 9 to 15).
+    jest.useFakeTimers({
+      now: new Date('2026-11-15T23:30:00Z'),
+      doNotFake: ['nextTick', 'setImmediate'],
+    });
+    const lastWeek = makeStandings({
+      period_start: '2026-11-02',
+      period_end: '2026-11-08',
+      final: true,
+    });
+    mockUseStandings.mockImplementation((_id: string, date: string | null) => ({
+      data: date === '2026-11-08' ? lastWeek : makeStandings(),
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    }));
+    renderDetail();
+    fireEvent.press(screen.getByLabelText('Previous period'));
+    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-08');
+    // Monday Nov 16 with no redraw: the cached week no longer holds today.
+    jest.setSystemTime(new Date('2026-11-16T00:30:00Z'));
+    fireEvent.press(screen.getByLabelText('Next period'));
+    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-09');
+    jest.useRealTimers();
+  });
+
   it('stops at the final week of a challenge that has ended', () => {
     mockUseChallenge.mockReturnValue({
       data: makeChallenge({ start_date: '2026-10-26', end_date: '2026-11-08' }),

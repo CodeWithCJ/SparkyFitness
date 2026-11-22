@@ -13,6 +13,8 @@ import {
   challengeToday,
   filterStandingsByName,
   leadsChallenge,
+  nextChallengePeriodDay,
+  previousChallengePeriodDay,
   standingProgress,
   type ChallengeDetail,
   type ChallengeStandingsResponse,
@@ -37,11 +39,7 @@ import { cn } from '@/lib/utils';
 import { getInitials } from '@/utils/settings';
 import LoadError from './LoadError';
 import { metricValueText, type MetricUnits } from './challengeCopy';
-import {
-  nextPeriodDay,
-  periodRangeText,
-  previousPeriodDay,
-} from './challengePeriods';
+import { periodRangeText } from './challengePeriods';
 
 export type StandingRow = ChallengeStandingsResponse['rows'][number];
 
@@ -167,11 +165,23 @@ const ChallengeLeaderboard = ({
   // The rules that scored the period shown come with its standings.
   const rules = data?.rules ?? challenge.rules;
   const previous = data
-    ? previousPeriodDay(data.period_start, challenge.start_date)
+    ? previousChallengePeriodDay(data.period_start, challenge.start_date)
     : null;
   const next = data
-    ? nextPeriodDay(data.period_end, challenge.end_date, today)
+    ? nextChallengePeriodDay(data.period_end, challenge.end_date, today)
     : null;
+  // Today as of the click, so a page left open past midnight never skips a
+  // period.
+  const goToNext = () => {
+    const step =
+      data &&
+      nextChallengePeriodDay(
+        data.period_end,
+        challenge.end_date,
+        challengeToday(challenge.time_zone)
+      );
+    if (step) goTo(step.day);
+  };
   const value = (n: number) =>
     metricValueText(t, rules.metric, n, units, i18n.language);
   const showsMinutes =
@@ -222,7 +232,7 @@ const ChallengeLeaderboard = ({
             variant="outline"
             size="icon"
             disabled={!next}
-            onClick={() => next && goTo(next)}
+            onClick={goToNext}
             aria-label={t('challenges.leaderboard.next', 'Next period')}
           >
             <ChevronRight className="h-4 w-4" />

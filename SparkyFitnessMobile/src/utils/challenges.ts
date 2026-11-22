@@ -4,6 +4,7 @@ import {
   challengeState,
   challengeStateWords,
   challengeToday,
+  challengeValueParts,
   leadsChallenge,
   localDateTimeToUtc,
   ownChallengeStanding,
@@ -14,28 +15,22 @@ import {
   type ChallengeState,
   type ChallengeStandingsResponse,
   type ChallengeSummary,
-  type EnergyUnit,
+  type ChallengeValueUnits,
 } from '@workspace/shared';
 import { formatLocalizedNumber, getAppLocale } from '../localization';
-import { formatEnergy } from './energyUnit';
+import { energyUnitLabel } from './energyUnit';
 
 type StandingRow = ChallengeStandingsResponse['rows'][number];
 
-export type ChallengeDistanceUnit = 'km' | 'miles';
+export type { ChallengeDistanceUnit } from '@workspace/shared';
 
-export interface ChallengeUnits {
-  distanceUnit: ChallengeDistanceUnit;
-  energyUnit: EnergyUnit;
-}
+export type ChallengeUnits = ChallengeValueUnits;
 
 /** `data.kind` of the week notification, for the tap handler and cancelling. */
 export const CHALLENGE_WEEK_LEADER_KIND = 'challenge-week-leader';
 
 /** The hour (challenge time) of the "who leads this week" notification on a week's last day. */
 export const WEEK_LEADER_NOTIFICATION_HOUR = 20;
-
-const METRES_PER_MILE = 1609.344;
-const FEET_PER_METRE = 3.28084;
 
 export function challengeMetricLabel(
   metric: ChallengeMetric,
@@ -175,69 +170,67 @@ export function challengeRulesSummary(
   return parts.join(' · ');
 }
 
-/** A standing total in its metric's unit, using the account's distance and energy units. */
+/**
+ * A standing total in its metric's unit, using the account's distance and
+ * energy units. The shared `challengeValueParts` converts and rounds, as on
+ * the web.
+ */
 export function formatChallengeValue(
   value: number,
   metric: ChallengeMetric,
   units: ChallengeUnits,
   t: TFunction
 ): string {
-  const whole = (n: number) =>
-    formatLocalizedNumber(Math.round(n), { maximumFractionDigits: 0 });
-  switch (metric) {
+  const parts = challengeValueParts(metric, value, units);
+  const amount = formatLocalizedNumber(parts.amount, {
+    minimumFractionDigits: parts.minimumFractionDigits,
+    maximumFractionDigits: parts.maximumFractionDigits,
+  });
+  switch (parts.key) {
     case 'points':
       return t('challenges.value.points', {
         defaultValue: '{{value}} pts',
-        value: formatLocalizedNumber(Math.round(value * 10) / 10, {
-          maximumFractionDigits: 1,
-        }),
+        value: amount,
       });
     case 'steps':
       return t('challenges.value.steps', {
         defaultValue: '{{value}} steps',
-        value: whole(value),
+        value: amount,
       });
-    case 'active_minutes':
-    case 'hr_zone_minutes':
+    case 'minutes':
       return t('challenges.value.minutes', {
         defaultValue: '{{value}} min',
-        value: whole(value),
+        value: amount,
       });
-    case 'distance': {
-      const miles = units.distanceUnit === 'miles';
-      const amount = formatLocalizedNumber(
-        value / (miles ? METRES_PER_MILE : 1000),
-        { maximumFractionDigits: 1, minimumFractionDigits: 1 }
-      );
-      return miles
-        ? t('challenges.value.miles', {
-            defaultValue: '{{value}} mi',
-            value: amount,
-          })
-        : t('challenges.value.km', {
-            defaultValue: '{{value}} km',
-            value: amount,
-          });
-    }
-    case 'workout_days':
+    case 'miles':
+      return t('challenges.value.miles', {
+        defaultValue: '{{value}} mi',
+        value: amount,
+      });
+    case 'km':
+      return t('challenges.value.km', {
+        defaultValue: '{{value}} km',
+        value: amount,
+      });
+    case 'days':
       return t('challenges.value.workoutDays', {
         defaultValue_one: '{{count}} day',
         defaultValue_other: '{{count}} days',
         defaultValue: '{{count}} days',
-        count: Math.round(value),
+        count: parts.amount,
       });
-    case 'active_calories':
-      return formatEnergy(value, units.energyUnit, t);
-    case 'elevation':
-      return units.distanceUnit === 'miles'
-        ? t('challenges.value.feet', {
-            defaultValue: '{{value}} ft',
-            value: whole(value * FEET_PER_METRE),
-          })
-        : t('challenges.value.metres', {
-            defaultValue: '{{value}} m',
-            value: whole(value),
-          });
+    case 'energy':
+      return `${amount} ${energyUnitLabel(units.energyUnit, t)}`;
+    case 'feet':
+      return t('challenges.value.feet', {
+        defaultValue: '{{value}} ft',
+        value: amount,
+      });
+    case 'metres':
+      return t('challenges.value.metres', {
+        defaultValue: '{{value}} m',
+        value: amount,
+      });
   }
 }
 
