@@ -37,6 +37,10 @@ import { createTestDb } from '../helpers/offlineTestDb';
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 jest.mock('../../src/services/api/apiClient', () => ({
   apiFetch: jest.fn(),
@@ -191,7 +195,7 @@ describe('editing a logged meal with no connection', () => {
     expect(mockUpdate).toHaveBeenCalledWith(
       'fem-1',
       expect.objectContaining({ name: 'Big porridge', quantity: 2 }),
-      undefined
+      expect.anything()
     );
     expect(mockInvalidate).toHaveBeenCalledWith({}, DAY);
     expect(mockInvalidate).toHaveBeenCalledWith({}, NEXT);

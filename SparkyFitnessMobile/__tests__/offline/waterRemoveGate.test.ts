@@ -13,6 +13,10 @@ import { createTestDb } from '../helpers/offlineTestDb';
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 // Just after an account switch the saved copy is not trusted yet.
 jest.mock('../../src/offline/accountGeneration', () => ({

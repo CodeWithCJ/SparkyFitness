@@ -23,6 +23,10 @@ import { createTestDb } from '../helpers/offlineTestDb';
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 jest.mock('../../src/services/api/foodEntryMealsApi', () => ({
   deleteFoodEntryMeal: jest.fn(),
@@ -77,7 +81,7 @@ describe('deleting a logged meal with no connection', () => {
     mockDelete.mockResolvedValue(undefined);
 
     expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
-    expect(mockDelete).toHaveBeenCalledWith('fem-1', undefined);
+    expect(mockDelete).toHaveBeenCalledWith('fem-1', expect.anything());
     expect(mockInvalidate).toHaveBeenCalledWith({}, DAY);
     expect(mockInvalidateMeals).toHaveBeenCalled();
   });

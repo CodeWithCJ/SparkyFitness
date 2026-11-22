@@ -37,6 +37,10 @@ import { createTestDb } from '../helpers/offlineTestDb';
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
   ...jest.requireActual('../../src/services/api/foodEntriesApi'),
@@ -104,7 +108,11 @@ describe('changing the amount of an entry with no connection', () => {
     mockUpdate.mockResolvedValue({ id: 'e1' } as never);
 
     expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
-    expect(mockUpdate).toHaveBeenCalledWith('e1', { quantity: 3 }, undefined);
+    expect(mockUpdate).toHaveBeenCalledWith(
+      'e1',
+      { quantity: 3 },
+      expect.anything()
+    );
     expect(mockInvalidate).toHaveBeenCalledWith({}, DAY);
   });
 
@@ -236,7 +244,7 @@ describe('changing the amount of an entry with no connection', () => {
           entry_date: NEXT,
           meal_type_id: 'm2',
         },
-        undefined
+        expect.anything()
       );
     });
   });

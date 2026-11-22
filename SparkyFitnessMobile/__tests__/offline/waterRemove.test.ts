@@ -28,6 +28,10 @@ import { createTestDb } from '../helpers/offlineTestDb';
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 jest.mock('../../src/services/api/measurementsApi', () => ({
   changeWaterIntake: jest.fn(),
@@ -154,7 +158,7 @@ describe('taking a drink off with no connection', () => {
     await removeLatestDrinkOffline(DAY);
     mockDelete.mockResolvedValue(undefined);
     expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
-    expect(mockDelete).toHaveBeenCalledWith('new', undefined);
+    expect(mockDelete).toHaveBeenCalledWith('new', expect.anything());
     expect(mockInvalidateWater).toHaveBeenCalledWith({}, DAY);
     expect(mockInvalidateFood).toHaveBeenCalledWith({}, DAY);
 

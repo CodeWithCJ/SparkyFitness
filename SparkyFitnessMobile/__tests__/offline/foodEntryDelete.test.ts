@@ -32,6 +32,10 @@ import { createTestDb } from '../helpers/offlineTestDb';
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
   ...jest.requireActual('../../src/services/api/foodEntriesApi'),
@@ -84,7 +88,7 @@ describe('deleting a food entry with no connection', () => {
 
       expect(await drainOutbox('manual')).toEqual({ synced: 1, remaining: 0 });
 
-      expect(mockDelete).toHaveBeenCalledWith('entry-1', undefined);
+      expect(mockDelete).toHaveBeenCalledWith('entry-1', expect.anything());
       // The day is the calendar day, not the instant it came as.
       expect(mockInvalidate).toHaveBeenCalledWith({}, DAY);
     });

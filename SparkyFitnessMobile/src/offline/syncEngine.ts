@@ -125,8 +125,14 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
     const active = await getActiveServerConfig();
     if (active?.id === serverConfigId) runServerConfig = active;
   } catch {
-    // Without it a handler falls back to the active server, and the
-    // generation check before each send still applies.
+    // Handled below: without a captured server nothing is sent.
+  }
+  // A handler given no server would resolve the active one when its request
+  // goes out, which after an account switch is another account's. Send
+  // nothing; the rows stay queued for the next run.
+  if (!runServerConfig) {
+    const waiting = await listUnconfirmedOutbox(db, serverConfigId);
+    return { synced: 0, remaining: waiting.length };
   }
 
   const currentUserId = await signedInUserId(db, serverConfigId);

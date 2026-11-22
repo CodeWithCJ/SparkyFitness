@@ -31,6 +31,10 @@ import { createTestDb } from '../helpers/offlineTestDb';
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 jest.mock('../../src/services/api/foodEntriesApi', () => ({
   createFoodEntry: jest.fn(),
@@ -102,7 +106,7 @@ describe('new food upload handler', () => {
     expect(mockSave).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Homemade bread', client_id: FOOD_KEY }),
       undefined,
-      undefined
+      expect.anything()
     );
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -113,7 +117,7 @@ describe('new food upload handler', () => {
         entry_date: '2026-11-21',
         client_id: ENTRY_KEY,
       }),
-      undefined
+      expect.anything()
     );
     expect(mockInvalidate).toHaveBeenCalledWith(
       expect.anything(),
@@ -199,7 +203,7 @@ describe('new food upload handler', () => {
       expect(mockSave).toHaveBeenCalledWith(
         expect.objectContaining({ client_id: FOOD_KEY }),
         undefined,
-        undefined
+        expect.anything()
       );
       expect(mockCreate).not.toHaveBeenCalled();
     });

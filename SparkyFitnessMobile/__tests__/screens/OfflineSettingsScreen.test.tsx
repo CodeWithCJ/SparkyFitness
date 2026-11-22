@@ -23,6 +23,10 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 
 jest.mock('../../src/hooks/useRefetchOnFocus', () => ({
