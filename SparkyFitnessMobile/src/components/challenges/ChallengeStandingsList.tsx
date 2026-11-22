@@ -25,12 +25,9 @@ type StandingRow = ChallengeStandingsResponse['rows'][number];
 // No display name is longer, so a longer query can match nothing.
 const FIND_MAX_LENGTH = challengeDisplayNameSchema.maxLength ?? 40;
 
-// Gold, silver and bronze for places 1 to 3.
-const PLACE_BLOCKS = [
-  'bg-amber-400 h-20',
-  'bg-slate-300 h-14',
-  'bg-orange-400 h-10',
-];
+// Block heights for places 1 to 3; their gold, silver and bronze are the
+// theme's category tokens (JS only), read in the list.
+const PLACE_HEIGHTS = ['h-20', 'h-14', 'h-10'];
 
 /** The first letter of a display name (a whole character, emoji included). */
 const initialOf = (name: string) =>
@@ -55,7 +52,8 @@ const Podium: React.FC<{
   standings: ChallengeStandingsResponse;
   value: (n: number) => string;
   crownColor: string;
-}> = ({ standings, value, crownColor }) => {
+  placeColors: readonly [string, string, string];
+}> = ({ standings, value, crownColor, placeColors }) => {
   const top = standings.rows.filter((row) => row.total > 0).slice(0, 3);
   if (top.length === 0) return null;
   const slots: (StandingRow | undefined)[] = [top[1], top[0], top[2]];
@@ -84,9 +82,17 @@ const Podium: React.FC<{
             </Text>
             <Text className="text-xs text-text-muted">{value(row.total)}</Text>
             <View
-              className={`mt-1 w-full items-center justify-center rounded-t-lg ${PLACE_BLOCKS[place]}`}
+              className={`mt-1 w-full items-center justify-center overflow-hidden rounded-t-lg ${PLACE_HEIGHTS[place]}`}
             >
-              <Text className="text-lg font-bold text-black">{row.rank}</Text>
+              {/* A tint of the place colour, so the rank in the theme's text
+                  colour reads in light and dark themes alike. */}
+              <View
+                className="absolute inset-0"
+                style={{ backgroundColor: placeColors[place], opacity: 0.45 }}
+              />
+              <Text className="text-lg font-bold text-text-primary">
+                {row.rank}
+              </Text>
             </View>
           </View>
         );
@@ -112,10 +118,13 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
 }) => {
   const { t } = useTranslation();
   const locale = useAppLocale();
-  const [accentPrimary, textMuted] = useCSSVariable([
+  const [accentPrimary, textMuted, gold, silver, bronze] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-muted',
-  ]) as [string, string];
+    '--color-cat-amber',
+    '--color-cat-slate',
+    '--color-cat-orange',
+  ]) as [string, string, string, string, string];
   const [search, setSearch] = useState('');
 
   if (standings.rows.length === 0) {
@@ -139,6 +148,7 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
           standings={standings}
           value={value}
           crownColor={accentPrimary}
+          placeColors={[gold, silver, bronze]}
         />
       ) : null}
       {/* Kept while a search is on, even if a refresh drops below the
@@ -177,6 +187,12 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
       {rows.map((row, index) => {
         const progress = standingProgress(rules, row, topTotal);
         const isMe = row.me === true;
+        const shownName = isMe
+          ? t('challenges.standings.you', {
+              defaultValue: '{{name}} (you)',
+              name: row.display_name,
+            })
+          : row.display_name;
         const detail =
           rules.format === 'hit_goal' &&
           rules.targetPer === 'day' &&
@@ -205,12 +221,20 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
               index > 0 ? 'border-t border-border-subtle' : ''
             } ${isMe ? 'bg-accent-primary/10 -mx-4 px-4' : ''}`}
             accessible
-            accessibilityLabel={t('challenges.standings.rowA11y', {
-              defaultValue: '{{rank}}. {{name}}, {{total}}',
-              rank: row.rank,
-              name: row.display_name,
-              total: formatChallengeValue(row.total, rules.metric, units, t),
-            })}
+            accessibilityLabel={[
+              t('challenges.standings.rowA11y', {
+                defaultValue: '{{rank}}. {{name}}, {{total}}',
+                rank: row.rank,
+                name: shownName,
+                total: formatChallengeValue(row.total, rules.metric, units, t),
+              }),
+              detail,
+              showsTrophy(standings, row)
+                ? t('challenges.standings.winner', { defaultValue: 'Winner' })
+                : null,
+            ]
+              .filter(Boolean)
+              .join(', ')}
           >
             <Text className="w-8 text-base font-bold text-text-secondary">
               {row.rank}
@@ -223,12 +247,7 @@ const ChallengeStandingsList: React.FC<ChallengeStandingsListProps> = ({
                 className="text-base font-semibold text-text-primary"
                 numberOfLines={1}
               >
-                {isMe
-                  ? t('challenges.standings.you', {
-                      defaultValue: '{{name}} (you)',
-                      name: row.display_name,
-                    })
-                  : row.display_name}
+                {shownName}
               </Text>
               {detail ? (
                 <Text className="text-xs text-text-muted mt-0.5">{detail}</Text>

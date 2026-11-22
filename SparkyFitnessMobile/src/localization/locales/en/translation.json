@@ -11044,6 +11044,7 @@
       "a11y": "Challenges",
       "leader": "{{name}} leads with {{total}}",
       "noScore": "No score yet",
+      "refreshFailed": "Could not refresh; showing the last loaded",
       "youLead": "You lead",
       "yourPlace": "#{{rank}} of {{members}} · {{total}}"
     },
@@ -11126,6 +11127,7 @@
       "noMatch": "No member matches “{{query}}”.",
       "refreshFailed": "Could not refresh the standings; showing the last ones loaded.",
       "rowA11y": "{{rank}}. {{name}}, {{total}}",
+      "winner": "Winner",
       "you": "{{name}} (you)"
     },
     "state": {

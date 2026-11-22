@@ -62,6 +62,9 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // null is the challenge's current period; a day picks an earlier one.
   const [periodDay, setPeriodDay] = useState<string | null>(null);
   const challengeQuery = useChallenge(id);
+  // The current period (the same query when it is the one shown), so Next
+  // can tell when it reaches it.
+  const currentPeriodQuery = useChallengeStandings(id, null);
   const standingsQuery = useChallengeStandings(id, periodDay);
   const { refetch: refetchChallenge } = challengeQuery;
   const { refetch: refetchStandings } = standingsQuery;
@@ -309,14 +312,20 @@ const ChallengeDetailScreen: React.FC<Props> = ({ navigation, route }) => {
               ) : null}
             </View>
             <Pressable
-              onPress={() =>
-                standings &&
+              onPress={() => {
+                if (!standings) return;
+                const nextDay = addDays(standings.period_end, 1);
+                // The current period goes back to `null`, so the screen
+                // follows today into the next period instead of staying on
+                // this date once it ends.
+                const current = currentPeriodQuery.data;
                 setPeriodDay(
-                  addDays(standings.period_end, 1) > today
+                  nextDay > today ||
+                    (current && nextDay >= current.period_start)
                     ? null
-                    : addDays(standings.period_end, 1)
-                )
-              }
+                    : nextDay
+                );
+              }}
               disabled={!canGoForward}
               hitSlop={8}
               accessibilityRole="button"

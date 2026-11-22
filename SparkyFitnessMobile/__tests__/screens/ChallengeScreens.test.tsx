@@ -290,6 +290,20 @@ describe('ChallengeDetailScreen', () => {
     expect(bar).toHaveStyle({ width: '63%' });
   });
 
+  it('reads the shown name, detail and winner in each row label', () => {
+    mockUseStandings.mockReturnValue({
+      ...mockUseStandings(),
+      data: makeStandings({ final: true }),
+    });
+    renderDetail();
+    expect(
+      screen.getByLabelText('2. Sam (you), 250 pts, 120 active min')
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText('1. Alex, 400 pts, 180 active min, Winner')
+    ).toBeTruthy();
+  });
+
   it('has no podium or row bars for a group goal', () => {
     mockUseStandings.mockReturnValue({
       data: makeStandings({
@@ -364,8 +378,10 @@ describe('ChallengeDetailScreen', () => {
     // The challenge started on Nov 2, so there is no earlier week.
     expect(screen.getByLabelText('Previous period')).toBeDisabled();
 
+    // Next reaches the current week, so the screen follows today again
+    // instead of keeping Nov 9 once that week is over.
     fireEvent.press(screen.getByLabelText('Next period'));
-    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-09');
+    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', null);
   });
 
   it('stops at the final week of a challenge that has ended', () => {
@@ -395,7 +411,8 @@ describe('ChallengeDetailScreen', () => {
     fireEvent.press(screen.getByLabelText('Previous period'));
     expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-01');
     fireEvent.press(screen.getByLabelText('Next period'));
-    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', '2026-11-02');
+    // Back on the period the server calls current (here the final one).
+    expect(mockUseStandings).toHaveBeenLastCalledWith('c1', null);
     // The server would answer any later day with this week again.
     expect(screen.getByLabelText('Next period')).toBeDisabled();
   });

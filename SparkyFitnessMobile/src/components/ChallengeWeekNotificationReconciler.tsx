@@ -45,6 +45,11 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
   const active = prefEnabled && notificationsEnabled;
 
   const [languageRevision, setLanguageRevision] = useState(0);
+  // Bumped on return to the app when the last run left notices unscheduled
+  // (no permission yet, or the OS refused one), so it is tried again once
+  // per return; unchanged standings would not run it otherwise.
+  const [retryRevision, setRetryRevision] = useState(0);
+  const incompleteRef = useRef(false);
   useEffect(() => {
     const onLanguageChanged = () =>
       setLanguageRevision((revision) => revision + 1);
@@ -91,6 +96,7 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
   const signature = JSON.stringify([
     waiting,
     languageRevision,
+    retryRevision,
     notices.map((n) => [
       n.challengeId,
       n.fireAt.getTime(),
@@ -115,9 +121,16 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
     void enqueueChallengeWeekNotificationTask(async () => {
       await cancelChallengeWeekNotifications();
       const list = noticesRef.current;
-      if (list.length > 0 && (await hasNotificationPermission())) {
-        await scheduleChallengeWeekNotifications(list);
+      if (list.length === 0) {
+        incompleteRef.current = false;
+        return;
       }
+      if (!(await hasNotificationPermission())) {
+        incompleteRef.current = true;
+        return;
+      }
+      const ids = await scheduleChallengeWeekNotifications(list);
+      incompleteRef.current = ids.length < list.length;
     });
   }, [signature]);
 
@@ -128,6 +141,10 @@ const ChallengeWeekNotificationReconciler: React.FC = () => {
     lastRefresh.current = Date.now();
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
+      if (incompleteRef.current) {
+        incompleteRef.current = false;
+        setRetryRevision((revision) => revision + 1);
+      }
       if (Date.now() - lastRefresh.current < FOREGROUND_REFRESH_MS) return;
       lastRefresh.current = Date.now();
       void queryClient.invalidateQueries({ queryKey: challengesQueryKeyRoot });

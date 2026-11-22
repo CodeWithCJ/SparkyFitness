@@ -17,6 +17,7 @@ import {
   dismissDeliveredChallengeWeekNotifications,
   enqueueChallengeWeekNotificationTask,
 } from '../../src/services/challengeWeekNotificationService';
+import { beginAccountChange } from '../../src/offline/accountGeneration';
 import { useGuidedCheckInStore } from '../../src/stores/guidedCheckInStore';
 import type { ServerConfig } from '../../src/services/storage';
 import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
@@ -72,6 +73,13 @@ jest.mock('../../src/offline/cacheStore', () => ({
 jest.mock('../../src/offline/offlineImages', () => ({
   clearAllOfflineImages: jest.fn().mockResolvedValue(undefined),
 }));
+jest.mock('../../src/offline/accountGeneration', () => {
+  const actual = jest.requireActual('../../src/offline/accountGeneration');
+  return {
+    ...actual,
+    beginAccountChange: jest.fn(actual.beginAccountChange),
+  };
+});
 jest.mock('../../src/services/challengeWeekNotificationService', () => ({
   cancelChallengeWeekNotifications: jest.fn().mockResolvedValue(true),
   dismissDeliveredChallengeWeekNotifications: jest
@@ -277,6 +285,30 @@ describe('useAuth', () => {
     expect(enqueueChallengeWeekNotificationTask).toHaveBeenCalledTimes(1);
     expect(cancelChallengeWeekNotifications).toHaveBeenCalledTimes(1);
     expect(dismissDeliveredChallengeWeekNotifications).toHaveBeenCalledTimes(1);
+  });
+
+  test('identity changed callback queues the challenge week cancel before it waits on the account change', async () => {
+    let finishAccountChange: () => void = () => {};
+    (beginAccountChange as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishAccountChange = resolve;
+        })
+    );
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    let done: Promise<void> = Promise.resolve();
+    await act(async () => {
+      done = identityChangedCb() as Promise<void>;
+    });
+    // Still waiting on the account change, and the cancel is already queued.
+    expect(enqueueChallengeWeekNotificationTask).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finishAccountChange();
+      await done;
+    });
   });
 
   test('identity changed callback drops the image caches', async () => {

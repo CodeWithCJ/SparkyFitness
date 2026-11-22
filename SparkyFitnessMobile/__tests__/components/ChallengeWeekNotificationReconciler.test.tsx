@@ -1,6 +1,7 @@
 import React from 'react';
 import { act, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AppState } from 'react-native';
 
 import ChallengeWeekNotificationReconciler from '../../src/components/ChallengeWeekNotificationReconciler';
 import {
@@ -176,5 +177,49 @@ describe('ChallengeWeekNotificationReconciler', () => {
     await waitFor(() => expect(mockStandings).toHaveBeenCalled());
     await waitFor(() => expect(mockHasPermission).toHaveBeenCalled());
     expect(mockSchedule).not.toHaveBeenCalled();
+  });
+
+  describe('trying again on return to the app', () => {
+    const returnToApp = async () => {
+      const listener = (AppState.addEventListener as jest.Mock).mock.calls.at(
+        -1
+      )![1] as (state: string) => void;
+      await act(async () => {
+        listener('active');
+      });
+    };
+
+    beforeEach(() => {
+      jest
+        .spyOn(AppState, 'addEventListener')
+        .mockImplementation(() => ({ remove: jest.fn() }) as never);
+    });
+
+    it('schedules once permission was granted while away', async () => {
+      mockHasPermission.mockResolvedValue(false);
+      renderReconciler();
+      await waitFor(() => expect(mockHasPermission).toHaveBeenCalled());
+      expect(mockSchedule).not.toHaveBeenCalled();
+
+      mockHasPermission.mockResolvedValue(true);
+      await returnToApp();
+      await waitFor(() => expect(mockSchedule).toHaveBeenCalledTimes(1));
+    });
+
+    it('schedules again when the OS refused one, but not when all went in', async () => {
+      mockSchedule.mockResolvedValueOnce([]);
+      renderReconciler();
+      await waitFor(() => expect(mockSchedule).toHaveBeenCalledTimes(1));
+
+      mockSchedule.mockResolvedValueOnce(['challenge_week_c1']);
+      await returnToApp();
+      await waitFor(() => expect(mockSchedule).toHaveBeenCalledTimes(2));
+
+      await returnToApp();
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
+      expect(mockSchedule).toHaveBeenCalledTimes(2);
+    });
   });
 });

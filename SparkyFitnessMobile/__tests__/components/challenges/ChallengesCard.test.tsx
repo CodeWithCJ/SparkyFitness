@@ -98,6 +98,7 @@ describe('ChallengesCard', () => {
   it('says so when the user leads', () => {
     mockUseStandings.mockReturnValue({
       byId: new Map([['c1', standingsSeenBy(makeStandings(), FRIEND)]]),
+      failedIds: new Set(),
       isLoading: false,
     });
     mockUseChallenges.mockReturnValue({ challenges: [makeChallenge()] });
@@ -109,6 +110,7 @@ describe('ChallengesCard', () => {
   it('says "You lead" on a shared first place', () => {
     mockUseStandings.mockReturnValue({
       byId: new Map([['c1', makeSharedLeadStandings()]]),
+      failedIds: new Set(),
       isLoading: false,
     });
     mockUseChallenges.mockReturnValue({ challenges: [makeChallenge()] });
@@ -168,6 +170,20 @@ describe('ChallengesCard', () => {
     mockUseChallenges.mockReturnValue({ challenges: [makeChallenge()] });
     renderCard();
     expect(screen.getByText('Could not load the standings.')).toBeTruthy();
+  });
+
+  it('says when the standings shown could not be refreshed', () => {
+    mockUseStandings.mockReturnValue({
+      byId: new Map([['c1', makeStandings()]]),
+      failedIds: new Set(['c1']),
+      isLoading: false,
+    });
+    mockUseChallenges.mockReturnValue({ challenges: [makeChallenge()] });
+    renderCard();
+    expect(screen.getByText('#2 of 2 · 250 pts')).toBeTruthy();
+    expect(
+      screen.getByText('Could not refresh; showing the last loaded')
+    ).toBeTruthy();
   });
 
   it('is hidden when every challenge has ended', () => {

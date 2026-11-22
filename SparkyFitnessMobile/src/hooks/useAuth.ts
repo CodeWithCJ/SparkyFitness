@@ -80,6 +80,17 @@ export function useAuth() {
       // succeeds; restore waits until the ids are read and purged.
       notifyWatchTelemetryAccountSwitch(takeIdentityChangeServerConfigIds);
       queryClient.clear();
+      // The challenge week notices carry the previous account's challenge
+      // names, members and totals, and no account to tell them apart. With
+      // the cache gone the reconciler waits for the new account's reads and
+      // would leave them scheduled, so they are cancelled here, in its queue
+      // so a run already under way cannot schedule them again after. Queued
+      // before any await, so a run for the new account always comes after.
+      // Those already shown are dismissed too.
+      void enqueueChallengeWeekNotificationTask(async () => {
+        await cancelChallengeWeekNotifications();
+        await dismissDeliveredChallengeWeekNotifications();
+      });
       // Data saved for offline use belongs to the previous account too; the
       // next refresh downloads the new one's. Waiting uploads are kept and
       // stay with the account that made them.
@@ -103,16 +114,6 @@ export function useAuth() {
       // after it.
       void clearAndroidWidgetSnapshots().catch((err: unknown) => {
         addLog(`Failed to clear the widget snapshots: ${err}`, 'WARNING');
-      });
-      // The challenge week notices carry the previous account's challenge
-      // names, members and totals, and no account to tell them apart. With
-      // the cache gone the reconciler waits for the new account's reads and
-      // would leave them scheduled, so they are cancelled here, in its queue
-      // so a run already under way cannot schedule them again after. Those
-      // already shown are dismissed too.
-      void enqueueChallengeWeekNotificationTask(async () => {
-        await cancelChallengeWeekNotifications();
-        await dismissDeliveredChallengeWeekNotifications();
       });
       // The Siri and Shortcuts copy holds the previous login and proxy
       // headers; the dashboard writes a fresh one once the new identity's

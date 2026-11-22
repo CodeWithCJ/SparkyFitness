@@ -157,6 +157,14 @@ const ChallengesCard: React.FC<ChallengesCardProps> = ({ navigation }) => {
                 {leaderLine}
               </Text>
             ) : null}
+            {period && standings.failedIds.has(challenge.id) ? (
+              // Still the last standings loaded; say they are not fresh.
+              <Text className="text-xs text-text-muted mt-0.5">
+                {t('challenges.card.refreshFailed', {
+                  defaultValue: 'Could not refresh; showing the last loaded',
+                })}
+              </Text>
+            ) : null}
           </Pressable>
         );
       })}
