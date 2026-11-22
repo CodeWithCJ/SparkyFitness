@@ -376,12 +376,28 @@ const ConfirmAmountPicker: React.FC<{
         value: drinks,
       }));
     }
+    const baseAmount =
+      variantServingSize && baseUnit !== selectedUnit
+        ? selectedUnit === 'serving'
+          ? defaultValue / variantServingSize
+          : baseUnit === 'serving'
+            ? defaultValue * variantServingSize
+            : defaultValue
+        : defaultValue;
+
     return MULTIPLIER_PRESETS.map((mult) => ({
       key: `mult-${mult}`,
       label: `${mult}\u00d7`,
-      value: Number((defaultValue * mult).toFixed(2)),
+      value: Number((baseAmount * mult).toFixed(2)),
     }));
-  }, [defaultValue, isWater, selectedUnit, tag.preset_amounts]);
+  }, [
+    baseUnit,
+    defaultValue,
+    isWater,
+    selectedUnit,
+    tag.preset_amounts,
+    variantServingSize,
+  ]);
 
   const { goals } = useGoalsQuery(entryDate);
   const { adjustedGoal } = useAdjustedDailyGoal(entryDate, true);
