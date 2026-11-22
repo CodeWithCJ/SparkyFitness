@@ -8,7 +8,7 @@
   },
   "devDependencies": {
     "husky": "^9.1.7",
-    "lint-staged": "^17.5.0",
+    "lint-staged": "^17.6.1",
     "prettier": "3.9.10"
   },
   "lint-staged": {
@@ -26,6 +26,6 @@
     ]
   },
   "dependencies": {
-    "js-yaml": "^5.4.1"
+    "js-yaml": "^5.5.0"
   }
 }
