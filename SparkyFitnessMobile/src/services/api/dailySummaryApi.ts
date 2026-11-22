@@ -54,8 +54,16 @@ export const fetchDailySummary = (
   // The person's own day is kept, so the Diary's totals and goals can be shown
   // with no connection (#1983). The saved copy has no waiting uploads in it;
   // `loadDailySummaryRawData` adds those.
+  // Set only when the server answered: a copy read from the phone because the
+  // server is away must not be written back into the Diary's saved days, where
+  // it could replace newer entries.
+  let answeredByServer = false;
   const request = withOfflineFallback<DailySummaryApiResponse>({
-    fetch: fetchFromServer,
+    fetch: async () => {
+      const summary = await fetchFromServer();
+      answeredByServer = true;
+      return summary;
+    },
     store: (db, serverConfigId, summary) =>
       storeDailySummary(db, serverConfigId, date, summary),
     read: (db, serverConfigId) =>
@@ -66,6 +74,7 @@ export const fetchDailySummary = (
   const requestedUnder = accountGeneration();
   void request
     .then(async (summary) => {
+      if (!answeredByServer) return;
       await saveDiaryDayWorkouts(
         date,
         summary.exerciseSessions,

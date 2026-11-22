@@ -50,6 +50,7 @@ export async function refreshLoggedMeals(
       )
     ),
   ];
+  let failed: unknown = null;
   for (const id of ids) {
     if (accountGeneration() !== startedUnder) return;
     try {
@@ -62,8 +63,10 @@ export async function refreshLoggedMeals(
       await putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.loggedMeal, [
         { key: id, name: meal.name, payload: meal },
       ]);
-    } catch {
-      // Keeps the copy it had.
+    } catch (error) {
+      // Keeps the copy it had and goes on with the other meals; the failure
+      // is reported below so the refresh is not marked complete.
+      failed = error;
     }
   }
   const keep = new Set(ids);
@@ -79,4 +82,7 @@ export async function refreshLoggedMeals(
       );
     }
   }
+  // Told to the caller once every meal has had its turn, so the pack tries
+  // again instead of recording a refresh that left a meal missing.
+  if (failed) throw failed;
 }

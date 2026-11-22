@@ -9,7 +9,10 @@ import { readWaitingForDay } from '../../src/offline/dailySummaryOverlay';
 import { __setOfflineDbForTests } from '../../src/offline/db';
 import { __clearOutboxHandlersForTests } from '../../src/offline/handlers/registry';
 import { registerWaterIntakeHandlers } from '../../src/offline/handlers/waterIntake';
-import { listUnconfirmedOutbox } from '../../src/offline/outbox';
+import {
+  listUnconfirmedOutbox,
+  updateOutboxRow,
+} from '../../src/offline/outbox';
 import {
   IDENTITY_COLLECTION,
   IDENTITY_KEY,
@@ -103,6 +106,15 @@ describe('taking a drink off with no connection', () => {
 
     expect(await removeLatestDrinkOffline(DAY)).toBe('cancelled');
     expect(await listUnconfirmedOutbox(db, 's1')).toEqual([]);
+  });
+
+  it('leaves a waiting drink alone once its upload was tried: the server may have it', async () => {
+    await queueWaterDrink(KEY_A, { entryDate: DAY, containerId: 4 });
+    const [row] = await listUnconfirmedOutbox(db, 's1');
+    await updateOutboxRow(db, row!.id, { attempts: 1 });
+
+    expect(await removeLatestDrinkOffline(DAY)).toBe('busy');
+    expect(await listUnconfirmedOutbox(db, 's1')).toHaveLength(1);
   });
 
   it('otherwise removes the latest manual drink the server has, by its id', async () => {

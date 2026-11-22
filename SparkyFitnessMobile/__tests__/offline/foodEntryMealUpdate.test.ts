@@ -327,11 +327,15 @@ describe('editing a logged meal with no connection', () => {
       return { ...meal, id: 'fem-1', name: 'Fresh' } as never;
     });
 
-    await refreshLoggedMeals(db, 's1', [
-      component('c1', 1, 'fem-1'),
-      component('c2', 1, 'fem-1'),
-      component('c3', 1, 'fem-2'),
-    ] as never);
+    // The failing meal is reported once the others have had their turn, so the
+    // pack does not record a complete refresh with a meal missing.
+    await expect(
+      refreshLoggedMeals(db, 's1', [
+        component('c1', 1, 'fem-1'),
+        component('c2', 1, 'fem-1'),
+        component('c3', 1, 'fem-2'),
+      ] as never)
+    ).rejects.toThrow('offline');
 
     const kept = await getCacheRow(
       db,

@@ -57,7 +57,7 @@ export async function logDrinkOrQueue(
 export type DrinkRemoval =
   | { kept: false; response: WaterIntakeResponse }
   /** Done on the phone: it uploads when the server can be reached. */
-  | { kept: true; result: 'cancelled' | 'queued' | 'none' };
+  | { kept: true; result: 'cancelled' | 'queued' | 'none' | 'busy' };
 
 /**
  * Takes the latest drink of the day off. The request is not keyed (the server
@@ -78,7 +78,7 @@ export async function removeDrinkOrQueue(
     });
     return { kept: false, response };
   } catch (error) {
-    let result: 'cancelled' | 'queued' | 'none' = 'none';
+    let result: 'cancelled' | 'queued' | 'none' | 'busy' = 'none';
     // Only a failure that says the request never arrived is replayed. A
     // server error, a gateway timeout or "too many requests" can come after
     // the server already took the drink off, and sending it again would take
@@ -95,9 +95,9 @@ export async function removeDrinkOrQueue(
       error,
       async () => {
         result = await removeLatestDrinkOffline(entryDate);
-        // Nothing was written when there was nothing to take off, or the
-        // phone could not store it: that is not a kept change.
-        return result !== 'none';
+        // Nothing was written when there was nothing to take off, the phone
+        // could not store it, or the drink is mid-upload: not a kept change.
+        return result !== 'none' && result !== 'busy';
       },
       startedUnder
     );

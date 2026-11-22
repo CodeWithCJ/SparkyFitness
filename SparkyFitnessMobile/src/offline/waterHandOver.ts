@@ -99,7 +99,7 @@ export interface WaterRemovePayload {
  */
 export async function removeLatestDrinkOffline(
   entryDate: string
-): Promise<'cancelled' | 'queued' | 'none'> {
+): Promise<'cancelled' | 'queued' | 'none' | 'busy'> {
   const serverConfigId = await getActiveServerConfigId();
   if (!serverConfigId) return 'none';
   const db = await getOfflineDb();
@@ -119,6 +119,10 @@ export async function removeLatestDrinkOffline(
         row.status !== 'sending'
     )
     .sort((a, b) => b.createdAt - a.createdAt)[0];
+  // A drink whose upload was already tried may be on the server (the answer
+  // can be lost), and cancelling it here would drop the only record of it:
+  // it has to finish uploading first.
+  if (waiting && waiting.attempts > 0) return 'busy';
   if (waiting) {
     await deleteUnconfirmedForEntity(db, serverConfigId, waiting.entityId);
     notifyOutboxChanged();
