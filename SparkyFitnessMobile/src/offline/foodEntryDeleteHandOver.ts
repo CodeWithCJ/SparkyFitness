@@ -74,7 +74,10 @@ export async function cancelWaitingEntry(
     db,
     serverConfigId,
     entityId,
-    (row) => isOwnedBy(row, userId)
+    (row) => isOwnedBy(row, userId),
+    // An upload that was already tried may have reached the server; removing
+    // the row would drop the only record of it.
+    (row) => row.attempts > 0
   );
   if (outcome === 'none') return 'gone';
   if (outcome === 'uploading') return 'uploading';

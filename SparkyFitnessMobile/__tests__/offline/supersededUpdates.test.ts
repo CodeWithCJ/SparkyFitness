@@ -9,9 +9,11 @@ import {
   queueFoodEntryUpdate,
 } from '../../src/offline/foodEntryUpdateHandOver';
 import {
+  deleteUnconfirmedUnlessSending,
   enqueueOutbox,
   getOutboxRow,
   listUnconfirmedOutbox,
+  updateOutboxRow,
 } from '../../src/offline/outbox';
 import {
   IDENTITY_COLLECTION,
@@ -141,5 +143,56 @@ describe('a direct save and the older changes still waiting on the phone', () =>
 
     expect(await getOutboxRow(db, 'orphan')).toBeNull();
     expect(await getOutboxRow(db, 'owned')).not.toBeNull();
+  });
+
+  it('deletes a waiting row only if, as it is inside the transaction, it is neither being sent nor already tried', async () => {
+    const queue = (id: string, entityId: string) =>
+      enqueueOutbox(db, {
+        id,
+        serverConfigId: 's1',
+        userId: 'u1',
+        kind: FOOD_ENTRY_DELETE,
+        entityId,
+        payload: {},
+        payloadVersion: 1,
+      });
+    const tried = (row: { attempts: number }) => row.attempts > 0;
+    await queue('fresh', 'e-fresh');
+    await queue('retried', 'e-retried');
+    await updateOutboxRow(db, 'retried', { attempts: 2 });
+    await queue('claimed', 'e-claimed');
+    await updateOutboxRow(db, 'claimed', { status: 'sending' });
+
+    expect(
+      await deleteUnconfirmedUnlessSending(
+        db,
+        's1',
+        'e-retried',
+        undefined,
+        tried
+      )
+    ).toBe('uploading');
+    expect(
+      await deleteUnconfirmedUnlessSending(
+        db,
+        's1',
+        'e-claimed',
+        undefined,
+        tried
+      )
+    ).toBe('uploading');
+    expect(
+      await deleteUnconfirmedUnlessSending(
+        db,
+        's1',
+        'e-fresh',
+        undefined,
+        tried
+      )
+    ).toBe('deleted');
+
+    expect(await getOutboxRow(db, 'retried')).not.toBeNull();
+    expect(await getOutboxRow(db, 'claimed')).not.toBeNull();
+    expect(await getOutboxRow(db, 'fresh')).toBeNull();
   });
 });

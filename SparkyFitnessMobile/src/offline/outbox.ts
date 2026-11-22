@@ -335,23 +335,32 @@ export async function deleteUnconfirmedUnlessSending(
   db: OfflineDb,
   serverConfigId: string,
   entityId: string,
-  isMine: (row: { userId: string | null }) => boolean = () => true
+  isMine: (row: { userId: string | null }) => boolean = () => true,
+  /**
+   * Rows this says "keep" about block the delete like a row being sent does,
+   * judged on the rows as they are inside the transaction (for example one
+   * whose upload was already tried, which the server may hold).
+   */
+  mustKeep: (row: { status: string; attempts: number }) => boolean = () => false
 ): Promise<'deleted' | 'uploading' | 'none'> {
   return db.transaction(async (tx) => {
     const rows = (
       await tx.all<{
         id: string;
         status: string;
+        attempts: number;
         user_id: string | null;
       }>(
-        `SELECT id, status, user_id FROM outbox
+        `SELECT id, status, attempts, user_id FROM outbox
          WHERE server_config_id = ? AND entity_id = ?
            AND status IN (${UNCONFIRMED_SQL})`,
         [serverConfigId, entityId]
       )
     ).filter((row) => isMine({ userId: row.user_id }));
     if (rows.length === 0) return 'none';
-    if (rows.some((row) => row.status === 'sending')) return 'uploading';
+    if (rows.some((row) => row.status === 'sending' || mustKeep(row))) {
+      return 'uploading';
+    }
     for (const row of rows) {
       await tx.run(
         `DELETE FROM outbox

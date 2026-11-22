@@ -7,7 +7,7 @@ import type { WaterIntakeLogEntry } from '@workspace/shared';
 import { getCacheRow } from './cacheStore';
 import { CACHE_COLLECTIONS } from './collections';
 import {
-  deleteUnconfirmedForEntity,
+  deleteUnconfirmedUnlessSending,
   enqueueOutbox,
   isOwnedBy,
   listUnconfirmedOutbox,
@@ -119,14 +119,26 @@ export async function removeLatestDrinkOffline(
         row.status !== 'sending'
     )
     .sort((a, b) => b.createdAt - a.createdAt)[0];
-  // A drink whose upload was already tried may be on the server (the answer
-  // can be lost), and cancelling it here would drop the only record of it:
-  // it has to finish uploading first.
-  if (waiting && waiting.attempts > 0) return 'busy';
   if (waiting) {
-    await deleteUnconfirmedForEntity(db, serverConfigId, waiting.entityId);
-    notifyOutboxChanged();
-    return 'cancelled';
+    // A drink whose upload was already tried may be on the server (the answer
+    // can be lost), and cancelling it would drop the only record of it, so it
+    // has to finish uploading first. The checks and the delete are one
+    // transaction: a row the upload claims, or retries, in between is never
+    // removed under it.
+    const outcome = await deleteUnconfirmedUnlessSending(
+      db,
+      serverConfigId,
+      waiting.entityId,
+      (row) => isOwnedBy(row, userId),
+      (row) => row.attempts > 0
+    );
+    if (outcome === 'deleted') {
+      notifyOutboxChanged();
+      return 'cancelled';
+    }
+    // 'uploading', or gone because it has just been confirmed: either way the
+    // saved drinks do not show it yet.
+    return 'busy';
   }
 
   const alreadyRemoved = new Set(
