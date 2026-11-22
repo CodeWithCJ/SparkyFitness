@@ -29,6 +29,10 @@ const router = express.Router();
 
 // Middleware to protect routes
 router.use(authenticate); // Use the authenticate middleware function
+// Every handler here writes or reads diary data, possibly for another account
+// the caller switched to: check the real caller against it (never the
+// switched context) before any handler runs.
+router.use(checkPermissionMiddleware('diary'));
 /**
  * @swagger
  * /food-entry-meals:
@@ -99,13 +103,15 @@ router.post('/', async (req, res, next) => {
     }
 
     const userId = req.userId; // From authMiddleware
+    // The real caller, never the account they switched to.
+    const actorId = req.originalUserId || req.authenticatedUserId || userId;
     // Determine target user
     const targetUserId = req.body.user_id || userId;
-    if (targetUserId !== userId) {
+    if (targetUserId !== actorId) {
       const hasPermission = await { canAccessUserData }.canAccessUserData(
         targetUserId,
         'diary',
-        userId
+        actorId
       );
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
@@ -116,7 +122,7 @@ router.post('/', async (req, res, next) => {
       Number(req.header('x-meal-model-version')) || 1;
     const newFoodEntryMeal = await foodEntryService.createFoodEntryMeal(
       targetUserId, // Use targetUserId
-      userId, // actingUserId is the authenticated user
+      actorId, // actingUserId is the authenticated user
       {
         user_id: targetUserId, // Ensure this is passed
         meal_template_id,
@@ -593,18 +599,19 @@ router.put('/:id', async (req, res, next) => {
         .json({ message: 'FoodEntryMeal not found or permission denied.' });
     }
     const targetUserId = existingMeal.user_id;
-    // Check write permission if target is not self
-    if (targetUserId !== userId) {
+    const actorId = req.originalUserId || req.authenticatedUserId || userId;
+    // Check write permission if target is not the real caller
+    if (targetUserId !== actorId) {
       const hasPermission = await { canAccessUserData }.canAccessUserData(
         targetUserId,
         'diary',
-        userId
+        actorId
       );
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
     const updatedFoodEntryMeal = await foodEntryService.updateFoodEntryMeal(
       targetUserId, // owner ID
-      userId, // actingUserId
+      actorId, // actingUserId
       id, // foodEntryMealId
       {
         name,

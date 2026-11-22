@@ -658,6 +658,14 @@ async function upsertWaterIntake(
           clientId
         );
       if (alreadyLogged) {
+        // The first attempt may have stopped between writing the drink and
+        // updating the day's total: bring the total in line before answering.
+        await measurementRepository.recomputeWaterAggregateForUser(
+          authenticatedUserId,
+          actingUserId,
+          entryDate,
+          'manual'
+        );
         return await hydrationTotalsService.resolveWaterTotalsForDate(
           authenticatedUserId,
           actingUserId,

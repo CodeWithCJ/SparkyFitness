@@ -2479,10 +2479,19 @@ async function createFoodEntryMeal(
             status: 503,
           });
         }
-        await foodEntryMealRepository.deleteFoodEntryMeal(
+        const removed = await foodEntryMealRepository.deleteEmptyFoodEntryMeal(
           stored.id,
           targetUserId
         );
+        // Components arrived between the count and the delete: that request
+        // finished its meal after all, so it is the answer.
+        if (!removed) {
+          const now = await foodEntryMealRepository.findFoodEntryMealByClientId(
+            targetUserId,
+            mealData.client_id
+          );
+          if (now) return now;
+        }
       }
     }
     // Backwards compatibility (issue #1023): clients on the new serving model
@@ -2588,7 +2597,19 @@ async function createFoodEntryMeal(
             targetUserId,
             mealData.client_id
           );
-        if (winner) return winner;
+        if (winner) {
+          // The winner may still be writing its components: hand back a
+          // meal only once it has them, else ask the retry to come back.
+          const components =
+            await foodEntryMealRepository.countFoodEntryMealComponents(
+              targetUserId,
+              winner.id
+            );
+          if (components > 0) return winner;
+          throw Object.assign(new Error('This meal is still being logged.'), {
+            status: 503,
+          });
+        }
       }
       throw error;
     }

@@ -13,6 +13,7 @@ vi.mock('../models/foodEntryMealRepository.js', () => ({
     findFoodEntryMealByClientId: vi.fn(),
     countFoodEntryMealComponents: vi.fn(),
     deleteFoodEntryMeal: vi.fn(),
+    deleteEmptyFoodEntryMeal: vi.fn(),
   },
 }));
 vi.mock('../models/mealRepository.js', () => ({
@@ -83,11 +84,15 @@ describe('createFoodEntryMeal with a client id (offline replay)', () => {
       created_at: new Date(Date.now() - 5 * 60 * 1000),
     } as never);
     repo.countFoodEntryMealComponents.mockResolvedValue(0);
+    repo.deleteEmptyFoodEntryMeal.mockResolvedValue(true);
 
     const result = await createFoodEntryMeal(USER_ID, USER_ID, request);
 
     // The empty parent goes, and the meal is made again in full.
-    expect(repo.deleteFoodEntryMeal).toHaveBeenCalledWith('orphan', USER_ID);
+    expect(repo.deleteEmptyFoodEntryMeal).toHaveBeenCalledWith(
+      'orphan',
+      USER_ID
+    );
     expect(repo.createFoodEntryMeal).toHaveBeenCalledTimes(1);
     expect(result).toBe(created);
   });
@@ -104,7 +109,7 @@ describe('createFoodEntryMeal with a client id (offline replay)', () => {
       createFoodEntryMeal(USER_ID, USER_ID, request)
     ).rejects.toMatchObject({ status: 503 });
 
-    expect(repo.deleteFoodEntryMeal).not.toHaveBeenCalled();
+    expect(repo.deleteEmptyFoodEntryMeal).not.toHaveBeenCalled();
     expect(repo.createFoodEntryMeal).not.toHaveBeenCalled();
   });
 
@@ -119,11 +124,45 @@ describe('createFoodEntryMeal with a client id (offline replay)', () => {
     repo.findFoodEntryMealByClientId
       .mockResolvedValueOnce(null) // before the insert
       .mockResolvedValueOnce(winner as never); // after losing the race
+    repo.countFoodEntryMealComponents.mockResolvedValue(1);
 
     const result = await createFoodEntryMeal(USER_ID, USER_ID, request);
 
     expect(result).toBe(winner);
     expect(foodRepository.bulkCreateFoodEntries).not.toHaveBeenCalled();
+  });
+
+  it('asks a retry to come back while the race winner has no components yet', async () => {
+    repo.createFoodEntryMeal.mockRejectedValue(
+      Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint: INDEX,
+      })
+    );
+    repo.findFoodEntryMealByClientId
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'winner', user_id: USER_ID } as never);
+    repo.countFoodEntryMealComponents.mockResolvedValue(0);
+
+    await expect(
+      createFoodEntryMeal(USER_ID, USER_ID, request)
+    ).rejects.toMatchObject({ status: 503 });
+  });
+
+  it('answers with the meal when its components arrive before the empty parent is cleared', async () => {
+    const stored = {
+      id: 'late',
+      user_id: USER_ID,
+      created_at: new Date(Date.now() - 5 * 60 * 1000),
+    };
+    repo.findFoodEntryMealByClientId.mockResolvedValue(stored as never);
+    repo.countFoodEntryMealComponents.mockResolvedValue(0);
+    repo.deleteEmptyFoodEntryMeal.mockResolvedValue(false);
+
+    const result = await createFoodEntryMeal(USER_ID, USER_ID, request);
+
+    expect(result).toBe(stored);
+    expect(repo.createFoodEntryMeal).not.toHaveBeenCalled();
   });
 
   it('passes on any other failure', async () => {

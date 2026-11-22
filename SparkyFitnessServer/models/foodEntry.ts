@@ -402,6 +402,10 @@ async function createFoodEntry(
            allergens = EXCLUDED.allergens,
            traces = EXCLUDED.traces,
            updated_by_user_id = EXCLUDED.updated_by_user_id,
+           -- A replayed request's key is kept on the row it updated, so a
+           -- repeat of that request finds it; a re-sync without one keeps
+           -- the key already there.
+           client_id = COALESCE(EXCLUDED.client_id, food_entries.client_id),
            entry_time = EXCLUDED.entry_time,
            caffeine_mg = EXCLUDED.caffeine_mg,
            water_ml = EXCLUDED.water_ml,

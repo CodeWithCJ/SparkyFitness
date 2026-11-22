@@ -413,6 +413,31 @@ async function deleteFoodEntryMeal(foodEntryMealId: string, userId: string) {
     client.release();
   }
 }
+/**
+ * Deletes a logged meal only while it still has no component entries, in one
+ * statement, so a slow request that is writing its components right now can
+ * never lose them to a cleanup. False when the meal has components (or is gone).
+ */
+async function deleteEmptyFoodEntryMeal(
+  foodEntryMealId: string,
+  userId: string
+): Promise<boolean> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `DELETE FROM food_entry_meals m
+      WHERE m.id = $1 AND m.user_id = $2
+        AND NOT EXISTS (
+          SELECT 1 FROM food_entries e WHERE e.food_entry_meal_id = m.id
+        )
+      RETURNING m.id`,
+      [foodEntryMealId, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
 // Result of a metadata-only meal-type move.
 export interface MealEntryMoveResult {
   id: string;
@@ -505,6 +530,7 @@ export { getFoodEntryMealById };
 export { getFoodEntryMealsByDate };
 export { getFoodEntryMealsByDateRange };
 export { deleteFoodEntryMeal };
+export { deleteEmptyFoodEntryMeal };
 export { moveFoodEntryMealToMealType };
 export default {
   setFoodEntryMealImages,
@@ -516,6 +542,7 @@ export default {
   getFoodEntryMealsByDate,
   getFoodEntryMealsByDateRange,
   deleteFoodEntryMeal,
+  deleteEmptyFoodEntryMeal,
   moveFoodEntryMealToMealType,
 };
 
