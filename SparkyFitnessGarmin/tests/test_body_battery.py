@@ -116,6 +116,38 @@ class ProjectBodyBatteryFallbackTests(unittest.TestCase):
             project_body_battery_fallback(["unexpected"], "2026-11-22"), []
         )
 
+    def test_rejects_non_finite_or_boolean_totals_while_keeping_zero(self):
+        self.assertEqual(
+            project_body_battery_fallback(
+                [
+                    {
+                        "charged": float("nan"),
+                        "drained": float("inf"),
+                        "bodyBatteryValuesArray": [[1, None]],
+                    }
+                ],
+                "2026-11-22",
+            ),
+            [],
+        )
+        self.assertEqual(
+            project_body_battery_fallback(
+                [{"charged": 0, "drained": True, "bodyBatteryValuesArray": []}],
+                "2026-11-22",
+            ),
+            [
+                {
+                    "date": "2026-11-22",
+                    "body_battery_highest": None,
+                    "body_battery_lowest": None,
+                    "body_battery_at_wake": None,
+                    "body_battery_charged": 0,
+                    "body_battery_drained": None,
+                    "body_battery_current": None,
+                }
+            ],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

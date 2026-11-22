@@ -129,8 +129,10 @@ def project_body_battery_fallback(body_battery_data, current_date):
         bb_highest = max(valid_bb_values, default=None)
         bb_lowest = min(valid_bb_values, default=None)
         bb_current = valid_bb_values[-1] if valid_bb_values else None
-        bb_charged = bb_entry.get("charged")
-        bb_drained = bb_entry.get("drained")
+        raw_charged = bb_entry.get("charged")
+        raw_drained = bb_entry.get("drained")
+        bb_charged = raw_charged if _is_valid_body_battery_value(raw_charged) else None
+        bb_drained = raw_drained if _is_valid_body_battery_value(raw_drained) else None
 
         if any(
             v is not None
