@@ -6534,6 +6534,7 @@
       "configureTag": "Tag settings",
       "confirmWithCalories": "Log (+{{calories}} kcal)",
       "customTime": "Time (HH:MM)",
+      "invalidTime": "Enter a valid time (e.g. 08:30 or 8:30 PM).",
       "doubleScanNotice": "Scanned again shortly after the previous scan — confirm to log again.",
       "lastUsedAmount": "Last: {{value}} {{unit}}",
       "mealContext": "Meal",
