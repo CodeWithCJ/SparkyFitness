@@ -343,6 +343,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       './plugins/withExactAlarmModule',
       './plugins/withBackgroundWater',
       './plugins/withQuickActionLaunchGuard',
+      './plugins/withTabletRotation',
       './plugins/withWorkoutNotification',
       './plugins/withWearOs',
       './plugins/withEnrichedMarkdownNoMath',
