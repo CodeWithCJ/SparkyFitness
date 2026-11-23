@@ -35,6 +35,14 @@ interface FoodSummaryProps {
   ) => void;
 }
 
+const MEAL_EMOJIS: Record<string, string> = {
+  breakfast: '☕',
+  lunch: '🥪',
+  snack: '🍏',
+  snacks: '🍏',
+  dinner: '🍽️',
+};
+
 interface MealSectionProps {
   group: MealGroup;
   goals?: DailyGoals;
@@ -45,6 +53,8 @@ interface MealSectionProps {
     mealTypeName: string,
     entries: FoodEntry[]
   ) => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
 const EmptyState: React.FC<{ onAddFood?: () => void }> = ({ onAddFood }) => {
@@ -71,9 +81,15 @@ const MealSection: React.FC<MealSectionProps> = ({
   calorieGoal,
   onAdjustServing,
   onPressMealType,
-}) => {
+  isFirst = false,
+  isLast = false,
+}: MealSectionProps) => {
   const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+
+  const emoji = group.isSystem
+    ? MEAL_EMOJIS[group.name.toLowerCase()]
+    : undefined;
 
   const label = getMealGroupLabel(group, t);
   // Single canonical MEAL_CONFIG lookup (read once, reuse both fields). A
@@ -99,8 +115,14 @@ const MealSection: React.FC<MealSectionProps> = ({
   const headerContent = (
     <>
       {/* The meal icon sits on the timeline rail that runs past its entries. */}
-      <View className="w-9 h-9 rounded-full bg-accent-primary/10 items-center justify-center">
-        <Icon name={icon} size={18} color={accentPrimary} />
+      <View className="w-9 h-9 rounded-full bg-surface items-center justify-center">
+        <View className="w-full h-full rounded-full bg-accent-primary/10 items-center justify-center">
+          {emoji ? (
+            <Text className="text-xl leading-none">{emoji}</Text>
+          ) : (
+            <Icon name={icon} size={18} color={accentPrimary} />
+          )}
+        </View>
       </View>
       <View className="flex-1">
         <Text className="text-base font-bold text-text-secondary">{label}</Text>
@@ -131,7 +153,17 @@ const MealSection: React.FC<MealSectionProps> = ({
   );
 
   return (
-    <View className="bg-surface rounded-xl p-4 overflow-hidden shadow-sm">
+    <View className="bg-surface rounded-xl p-4 shadow-sm relative">
+      {/* Timeline vertical rail: runs through the header and entries, bridging across the gap to the next meal card */}
+      <View
+        className="absolute bg-border"
+        style={{
+          left: 33.5,
+          width: 1,
+          top: isFirst ? 34 : -8,
+          bottom: isLast ? 28 : -8,
+        }}
+      />
       {onPressMealType ? (
         <Pressable
           onPress={() =>
@@ -152,10 +184,6 @@ const MealSection: React.FC<MealSectionProps> = ({
         </View>
       )}
       <View>
-        <View
-          className="absolute top-0 bottom-0 bg-border"
-          style={{ left: 17.5, width: 1 }}
-        />
         {group.entries.map((entry, index) => {
           const nutrition = calculateEntryNutrition(entry);
           return (
@@ -201,7 +229,7 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
 
   return (
     <View className="gap-2 mb-2">
-      {groups.map((group) => (
+      {groups.map((group, index) => (
         <MealSection
           key={
             group.mealTypeId
@@ -213,6 +241,8 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
           calorieGoal={calorieGoal}
           onAdjustServing={onAdjustServing}
           onPressMealType={onPressMealType}
+          isFirst={index === 0}
+          isLast={index === groups.length - 1}
         />
       ))}
     </View>

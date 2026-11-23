@@ -17,10 +17,6 @@ import {
   History,
   Utensils,
   ClipboardCopy,
-  Cookie,
-  Moon,
-  Sun,
-  Sunrise,
   Copy,
   PlusCircle,
   Users,
@@ -94,34 +90,43 @@ const MOBILE_NUTRIENT_LABEL_OVERRIDES: Record<
 };
 
 // The diary reads as one timeline: each meal sits on a vertical rail with an
-// icon for its time of day, and each entry hangs off the rail with its own dot.
+// icon or emoji for its meal type, and each entry hangs off the rail with its own dot.
 const MEAL_ICON_STYLES: Record<
   string,
-  { Icon: typeof Utensils; className: string }
+  { emoji?: string; Icon?: typeof Utensils; className: string }
 > = {
   breakfast: {
-    Icon: Sunrise,
+    emoji: '☕',
     className:
-      'bg-amber-100 text-amber-600 ring-amber-200 dark:bg-amber-900/40 dark:text-amber-300 dark:ring-amber-800',
+      'bg-amber-100 ring-amber-200 dark:bg-amber-900/40 dark:ring-amber-800',
   },
   lunch: {
-    Icon: Sun,
+    emoji: '🥪',
     className:
-      'bg-orange-100 text-orange-600 ring-orange-200 dark:bg-orange-900/40 dark:text-orange-300 dark:ring-orange-800',
+      'bg-orange-100 ring-orange-200 dark:bg-orange-900/40 dark:ring-orange-800',
+  },
+  snack: {
+    emoji: '🍏',
+    className:
+      'bg-green-100 ring-green-200 dark:bg-green-900/40 dark:ring-green-800',
   },
   snacks: {
-    Icon: Cookie,
+    emoji: '🍏',
     className:
-      'bg-green-100 text-green-700 ring-green-200 dark:bg-green-900/40 dark:text-green-300 dark:ring-green-800',
+      'bg-green-100 ring-green-200 dark:bg-green-900/40 dark:ring-green-800',
   },
   dinner: {
-    Icon: Moon,
+    emoji: '🍽️',
     className:
-      'bg-indigo-100 text-indigo-600 ring-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:ring-indigo-800',
+      'bg-indigo-100 ring-indigo-200 dark:bg-indigo-900/40 dark:ring-indigo-800',
   },
 };
 
-const DEFAULT_MEAL_ICON_STYLE = {
+const DEFAULT_MEAL_ICON_STYLE: {
+  emoji?: string;
+  Icon: typeof Utensils;
+  className: string;
+} = {
   Icon: Utensils,
   className:
     'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700',
@@ -304,7 +309,7 @@ const MealCard = ({
     mealIconStyleFor(meal.type) ??
     mealIconStyleFor(meal.name) ??
     DEFAULT_MEAL_ICON_STYLE;
-  const MealIcon = mealIconStyle.Icon;
+  const MealIcon = mealIconStyle.Icon ?? Utensils;
   const mealStartTime = meal.defaultTime
     ? formatTimeOfDayString(meal.defaultTime, timeFormat)
     : null;
@@ -394,13 +399,6 @@ const MealCard = ({
   return (
     <>
       <Card className="relative">
-        {/* One rail runs through every meal: it starts at the card's top and
-            reaches past its bottom across the grid gap, so stacked meal cards
-            read as a single timeline. The meal icon sits on top of it. */}
-        <span
-          className="pointer-events-none absolute -bottom-4 left-[44px] top-0 w-px bg-border"
-          aria-hidden="true"
-        />
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
             <div className="flex items-center gap-3">
@@ -411,7 +409,13 @@ const MealCard = ({
                 )}
                 aria-hidden="true"
               >
-                <MealIcon className="h-5 w-5" />
+                {mealIconStyle.emoji ? (
+                  <span className="text-xl leading-none select-none">
+                    {mealIconStyle.emoji}
+                  </span>
+                ) : (
+                  <MealIcon className="h-5 w-5 text-muted-foreground" />
+                )}
               </div>
               <div className="min-w-0">
                 <CardTitle className="text-lg sm:text-xl dark:text-slate-300">
