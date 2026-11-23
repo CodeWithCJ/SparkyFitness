@@ -170,6 +170,27 @@ describe('MCP OAuth Better Auth interceptor', () => {
     expect(response.body.error).toBe('invalid_redirect_uri');
   });
 
+  it('rejects registrations with too many or overlong redirect URIs before matching them', async () => {
+    const tooMany = await request(app)
+      .post('/api/auth/oauth2/register')
+      .send({
+        redirect_uris: Array.from(
+          { length: 17 },
+          (_, index) => `https://attacker.example/callback/${index}`
+        ),
+      });
+    expect(tooMany.status).toBe(400);
+    expect(tooMany.body.error).toBe('invalid_client_metadata');
+
+    const overlong = await request(app)
+      .post('/api/auth/oauth2/register')
+      .send({
+        redirect_uris: [`https://attacker.example/${'a'.repeat(2048)}`],
+      });
+    expect(overlong.status).toBe(400);
+    expect(overlong.body.error).toBe('invalid_client_metadata');
+  });
+
   it('fails closed when registration uses an unparsed JSON media type', async () => {
     const response = await request(app)
       .post('/api/auth/oauth2/register')

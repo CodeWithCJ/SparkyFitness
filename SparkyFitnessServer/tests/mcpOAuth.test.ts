@@ -159,6 +159,8 @@ describe('MCP OAuth URLs', () => {
       'https://example.com/*/x/*',
       'http://example.com/r/*',
       'https://localhost/r/*',
+      'https://127.0.0.2/r/*',
+      'https://127.255.0.1/r/*',
       'https://Example.com/r/*',
       'https://example.com/a/../r/*',
       'https://example.com/r/?q=1/*',

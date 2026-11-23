@@ -6,6 +6,11 @@ import {
   isMcpOAuthRedirectUriAllowed,
 } from '../utils/mcpOAuth.js';
 
+// Bounds the work an unauthenticated registration can cause. Gemini, the
+// largest known client, sends six redirect URIs.
+const MAX_REGISTRATION_REDIRECT_URIS = 16;
+const MAX_REGISTRATION_REDIRECT_URI_LENGTH = 2048;
+
 const oauthConsentDeletionSchema = z.object({
   id: z.string().uuid(),
 });
@@ -119,12 +124,17 @@ export async function interceptMcpOAuthAuthRequest(
     const redirectUris = body?.redirect_uris;
     if (
       !Array.isArray(redirectUris) ||
-      !redirectUris.every((uri): uri is string => typeof uri === 'string')
+      redirectUris.length > MAX_REGISTRATION_REDIRECT_URIS ||
+      !redirectUris.every(
+        (uri): uri is string =>
+          typeof uri === 'string' &&
+          uri.length <= MAX_REGISTRATION_REDIRECT_URI_LENGTH
+      )
     ) {
       res.status(400).json({
         error: 'invalid_client_metadata',
         error_description:
-          'Dynamic client registration requires a JSON redirect_uris array.',
+          'Dynamic client registration requires a JSON redirect_uris array of at most 16 URIs, each at most 2048 characters.',
       });
       return true;
     }
@@ -141,7 +151,7 @@ export async function interceptMcpOAuthAuthRequest(
         {
           clientName:
             typeof body?.client_name === 'string'
-              ? body.client_name
+              ? body.client_name.slice(0, 256)
               : undefined,
           rejectedRedirectUris: redirectUris.filter(
             (uri) => !isMcpOAuthRedirectUriAllowed(uri, allowedRedirectUris)

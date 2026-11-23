@@ -1,5 +1,6 @@
 import { constantTimeEqual, makeSignature } from 'better-auth/crypto';
 import {
+  isMcpOAuthLoopbackHostname,
   MCP_OAUTH_GEMINI_REDIRECT_PATTERNS,
   MCP_OAUTH_LOOPBACK_REDIRECT_PATTERNS,
   parseMcpOAuthPathPrefixPattern,
@@ -33,15 +34,6 @@ function configuredPublicUrl(): string | null {
   return withScheme.replace(/\/$/, '');
 }
 
-function isLoopbackHostname(hostname: string): boolean {
-  const ipv4Octets = hostname.split('.');
-  const isIpv4Loopback =
-    ipv4Octets.length === 4 &&
-    ipv4Octets[0] === '127' &&
-    ipv4Octets.every((octet) => /^\d+$/.test(octet) && Number(octet) <= 255);
-  return hostname === 'localhost' || hostname === '[::1]' || isIpv4Loopback;
-}
-
 /** Reports whether the configured public MCP resource satisfies MCP URL rules. */
 export function getMcpOAuthAvailability(): McpOAuthAvailability {
   const configured = configuredPublicUrl();
@@ -66,7 +58,7 @@ export function getMcpOAuthAvailability(): McpOAuthAvailability {
 
   if (
     url.protocol !== 'https:' &&
-    !(url.protocol === 'http:' && isLoopbackHostname(url.hostname))
+    !(url.protocol === 'http:' && isMcpOAuthLoopbackHostname(url.hostname))
   ) {
     return {
       available: false,
@@ -194,7 +186,7 @@ export function isMcpOAuthRedirectUriAllowed(
     );
   }
 
-  if (url.protocol !== 'http:' || !isLoopbackHostname(url.hostname)) {
+  if (url.protocol !== 'http:' || !isMcpOAuthLoopbackHostname(url.hostname)) {
     return false;
   }
 

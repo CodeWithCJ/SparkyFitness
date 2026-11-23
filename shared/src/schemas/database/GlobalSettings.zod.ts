@@ -29,11 +29,18 @@ export const MCP_OAUTH_GEMINI_REDIRECT_PATTERNS = [
   'https://oauth-redirect-test.googleusercontent.com/a/*',
 ] as const;
 
-const MCP_OAUTH_LOOPBACK_HOSTNAMES = new Set([
-  'localhost',
-  '127.0.0.1',
-  '[::1]',
-]);
+/**
+ * Reports whether a parsed URL hostname is loopback: `localhost`, `[::1]` or
+ * any address in 127.0.0.0/8.
+ */
+export function isMcpOAuthLoopbackHostname(hostname: string): boolean {
+  const ipv4Octets = hostname.split('.');
+  const isIpv4Loopback =
+    ipv4Octets.length === 4 &&
+    ipv4Octets[0] === '127' &&
+    ipv4Octets.every((octet) => /^\d+$/.test(octet) && Number(octet) <= 255);
+  return hostname === 'localhost' || hostname === '[::1]' || isIpv4Loopback;
+}
 
 /**
  * Parses an HTTPS path-prefix pattern such as
@@ -61,7 +68,7 @@ export function parseMcpOAuthPathPrefixPattern(
     url.password ||
     url.search ||
     url.hash ||
-    MCP_OAUTH_LOOPBACK_HOSTNAMES.has(url.hostname) ||
+    isMcpOAuthLoopbackHostname(url.hostname) ||
     url.pathname === '/' ||
     // Reject anything URL parsing rewrote (case, dot segments, encodings).
     `${url.origin}${url.pathname}` !== base
