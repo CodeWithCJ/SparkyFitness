@@ -3672,7 +3672,7 @@
       "mcpOAuthAccessWarning": "Approving an application gives it full MCP access, including tools that can write or delete data. Only approve applications you trust.",
       "mcpOAuthHttpsRequired": "Remote MCP OAuth requires public HTTPS. Plain HTTP is supported only for loopback development.",
       "mcpOAuthRedirectAllowlist": "Allowed OAuth redirect URIs",
-      "mcpOAuthRedirectAllowlistDescription": "Enter one exact URI or loopback pattern per line. Use http://localhost:*, http://127.0.0.1:*, or http://[::1]:* to allow desktop clients on any local callback port.",
+      "mcpOAuthRedirectAllowlistDescription": "Enter one exact URI or pattern per line. Use http://localhost:*, http://127.0.0.1:*, or http://[::1]:* to allow desktop clients on any local callback port. An HTTPS URI ending in /* allows any path below it on that host, as Gemini needs (https://oauth-redirect.googleusercontent.com/r/*).",
       "saveMcpOAuthRedirects": "Save OAuth redirect allowlist",
       "mcpOAuthRedirectsUpdated": "OAuth redirect allowlist updated successfully.",
       "mcpOAuthRedirectsFailed": "Failed to save the OAuth redirect allowlist.",

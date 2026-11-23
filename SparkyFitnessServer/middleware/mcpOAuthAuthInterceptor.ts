@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
+import { log } from '../config/logging.js';
 import {
   isMcpOAuthAuthEndpointPath,
   isMcpOAuthRedirectUriAllowed,
@@ -134,6 +135,19 @@ export async function interceptMcpOAuthAuthRequest(
         isMcpOAuthRedirectUriAllowed(uri, allowedRedirectUris)
       )
     ) {
+      log(
+        'warn',
+        'MCP OAuth client registration refused: redirect URI not allowed.',
+        {
+          clientName:
+            typeof body?.client_name === 'string'
+              ? body.client_name
+              : undefined,
+          rejectedRedirectUris: redirectUris.filter(
+            (uri) => !isMcpOAuthRedirectUriAllowed(uri, allowedRedirectUris)
+          ),
+        }
+      );
       return sendInvalidRedirectUri(res);
     }
   }

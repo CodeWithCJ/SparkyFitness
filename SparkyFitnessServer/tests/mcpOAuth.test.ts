@@ -3,9 +3,14 @@ import express from 'express';
 // @ts-expect-error TS7016: no types for supertest
 import request from 'supertest';
 import { makeSignature } from 'better-auth/crypto';
+import {
+  mcpOAuthAllowedRedirectUriSchema,
+  parseMcpOAuthPathPrefixPattern,
+} from '@workspace/shared';
 import { createMcpOAuthAuthGate } from '../middleware/mcpOAuthAuthInterceptor.js';
 import {
   classifyMcpOAuthMetadataPath,
+  DEFAULT_MCP_OAUTH_ALLOWED_REDIRECT_URIS,
   createMcpOAuthAuthorizationRedirectValidator,
   getMcpOAuthAvailability,
   getMcpLoopbackJwksUrl,
@@ -91,6 +96,83 @@ describe('MCP OAuth URLs', () => {
     expect(
       isMcpOAuthRedirectUriAllowed('https://attacker.example/callback', allowed)
     ).toBe(false);
+  });
+
+  it('matches Gemini callbacks through HTTPS path-prefix patterns only', () => {
+    const allowed = ['https://oauth-redirect.googleusercontent.com/r/*'];
+    expect(
+      isMcpOAuthRedirectUriAllowed(
+        'https://oauth-redirect.googleusercontent.com/r/my-project',
+        allowed
+      )
+    ).toBe(true);
+    for (const uri of [
+      'https://oauth-redirect.googleusercontent.com/r/',
+      'https://oauth-redirect.googleusercontent.com/a/my-project',
+      'https://oauth-redirect.googleusercontent.com/r/x#frag',
+      'https://evil.example/r/my-project',
+      'https://oauth-redirect.googleusercontent.com.evil.example/r/x',
+      'http://oauth-redirect.googleusercontent.com/r/my-project',
+      'https://user@oauth-redirect.googleusercontent.com/r/my-project',
+      'https://oauth-redirect.googleusercontent.com:8443/r/my-project',
+    ]) {
+      expect(isMcpOAuthRedirectUriAllowed(uri, allowed)).toBe(false);
+    }
+  });
+
+  it('ships every Google Gemini callback host in the default allowlist', () => {
+    for (const host of [
+      'oauth-redirect',
+      'oauth-redirect-sandbox',
+      'oauth-redirect-test',
+    ]) {
+      for (const path of ['r', 'a']) {
+        expect(
+          isMcpOAuthRedirectUriAllowed(
+            `https://${host}.googleusercontent.com/${path}/my-project`,
+            DEFAULT_MCP_OAUTH_ALLOWED_REDIRECT_URIS
+          )
+        ).toBe(true);
+      }
+    }
+    expect(
+      isMcpOAuthRedirectUriAllowed(
+        'https://oauth-redirect-evil.googleusercontent.com/r/my-project',
+        DEFAULT_MCP_OAUTH_ALLOWED_REDIRECT_URIS
+      )
+    ).toBe(false);
+  });
+
+  it('accepts only well-formed path-prefix patterns in the allowlist', () => {
+    expect(
+      parseMcpOAuthPathPrefixPattern(
+        'https://oauth-redirect.googleusercontent.com/r/*'
+      )
+    ).toEqual({
+      origin: 'https://oauth-redirect.googleusercontent.com',
+      pathPrefix: '/r/',
+    });
+    for (const pattern of [
+      'https://example.com/*',
+      'https://example.com/r*',
+      'https://*.example.com/r/*',
+      'https://example.com/*/x/*',
+      'http://example.com/r/*',
+      'https://localhost/r/*',
+      'https://Example.com/r/*',
+      'https://example.com/a/../r/*',
+      'https://example.com/r/?q=1/*',
+    ]) {
+      expect(parseMcpOAuthPathPrefixPattern(pattern)).toBeNull();
+      expect(mcpOAuthAllowedRedirectUriSchema.safeParse(pattern).success).toBe(
+        false
+      );
+    }
+    expect(
+      mcpOAuthAllowedRedirectUriSchema.safeParse(
+        'https://oauth-redirect.googleusercontent.com/a/*'
+      ).success
+    ).toBe(true);
   });
 
   it('rechecks authorization redirects against the current administrator allowlist', async () => {

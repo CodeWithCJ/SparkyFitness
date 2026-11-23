@@ -1,11 +1,16 @@
 import { constantTimeEqual, makeSignature } from 'better-auth/crypto';
-import { MCP_OAUTH_LOOPBACK_REDIRECT_PATTERNS } from '@workspace/shared';
+import {
+  MCP_OAUTH_GEMINI_REDIRECT_PATTERNS,
+  MCP_OAUTH_LOOPBACK_REDIRECT_PATTERNS,
+  parseMcpOAuthPathPrefixPattern,
+} from '@workspace/shared';
 
 export const MCP_OAUTH_SCOPE = 'sparky:mcp';
 
 export const DEFAULT_MCP_OAUTH_ALLOWED_REDIRECT_URIS = [
   'https://claude.ai/api/mcp/auth_callback',
   'https://claude.com/api/mcp/auth_callback',
+  ...MCP_OAUTH_GEMINI_REDIRECT_PATTERNS,
   ...MCP_OAUTH_LOOPBACK_REDIRECT_PATTERNS,
 ] as const;
 
@@ -154,7 +159,20 @@ export function getMcpLoopbackJwksUrl(): string {
   return `http://127.0.0.1:${port}/api/auth/jwks`;
 }
 
-/** Matches exact redirect URIs and the explicit loopback-any-port patterns. */
+function matchesPathPrefixPattern(url: URL, pattern: string): boolean {
+  const parsed = parseMcpOAuthPathPrefixPattern(pattern);
+  return (
+    parsed !== null &&
+    url.origin === parsed.origin &&
+    url.pathname.startsWith(parsed.pathPrefix) &&
+    url.pathname.length > parsed.pathPrefix.length
+  );
+}
+
+/**
+ * Matches exact redirect URIs, the explicit loopback-any-port patterns, and
+ * HTTPS path-prefix patterns ending in `/*` (used by Gemini's callbacks).
+ */
 export function isMcpOAuthRedirectUriAllowed(
   redirectUri: string,
   allowedRedirectUris: readonly string[]
@@ -166,6 +184,14 @@ export function isMcpOAuthRedirectUriAllowed(
     url = new URL(redirectUri);
   } catch {
     return false;
+  }
+
+  if (url.username || url.password || url.hash) return false;
+
+  if (url.protocol === 'https:') {
+    return allowedRedirectUris.some((pattern) =>
+      matchesPathPrefixPattern(url, pattern)
+    );
   }
 
   if (url.protocol !== 'http:' || !isLoopbackHostname(url.hostname)) {

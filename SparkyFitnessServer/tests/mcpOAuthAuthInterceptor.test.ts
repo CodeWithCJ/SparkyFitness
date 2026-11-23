@@ -7,6 +7,7 @@ import {
   hasCanonicalRequestPath,
   interceptMcpOAuthAuthRequest,
 } from '../middleware/mcpOAuthAuthInterceptor.js';
+import { DEFAULT_MCP_OAUTH_ALLOWED_REDIRECT_URIS } from '../utils/mcpOAuth.js';
 
 const getSessionUserId = vi.fn<() => Promise<string | null>>();
 const revokeAuthorization =
@@ -121,6 +122,43 @@ describe('MCP OAuth Better Auth interceptor', () => {
 
     expect(claudeResponse.status).toBe(418);
     expect(loopbackResponse.status).toBe(418);
+  });
+
+  // Google's MCP OAuth guide lists these six callback prefixes; Gemini
+  // registers them together, so every one must be allowed by default.
+  const geminiRegistrationRedirects = [
+    'https://oauth-redirect.googleusercontent.com/r/app-123-fitness-example',
+    'https://oauth-redirect-sandbox.googleusercontent.com/r/app-123-fitness-example',
+    'https://oauth-redirect-test.googleusercontent.com/r/app-123-fitness-example',
+    'https://oauth-redirect.googleusercontent.com/a/app-123-fitness-example',
+    'https://oauth-redirect-sandbox.googleusercontent.com/a/app-123-fitness-example',
+    'https://oauth-redirect-test.googleusercontent.com/a/app-123-fitness-example',
+  ];
+
+  it('accepts a Gemini registration with all six Google callbacks under the default allowlist', async () => {
+    getAllowedRedirectUris.mockResolvedValue([
+      ...DEFAULT_MCP_OAUTH_ALLOWED_REDIRECT_URIS,
+    ]);
+    const response = await request(app).post('/api/auth/oauth2/register').send({
+      client_name: 'Google',
+      redirect_uris: geminiRegistrationRedirects,
+      token_endpoint_auth_method: 'client_secret_post',
+    });
+
+    expect(response.status).toBe(418);
+  });
+
+  it('refuses a Gemini registration when only the production callbacks are allowed', async () => {
+    getAllowedRedirectUris.mockResolvedValue([
+      'https://oauth-redirect.googleusercontent.com/r/*',
+      'https://oauth-redirect.googleusercontent.com/a/*',
+    ]);
+    const response = await request(app)
+      .post('/api/auth/oauth2/register')
+      .send({ redirect_uris: geminiRegistrationRedirects });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error).toBe('invalid_redirect_uri');
   });
 
   it('rejects registration redirects outside the administrator allowlist', async () => {
