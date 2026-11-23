@@ -14,6 +14,7 @@ import {
   heartRateReportQueryKeyRoot,
   heartRateSamplesQueryKeyRoot,
   heartRateDaySleepQueryKeyRoot,
+  shoesQueryKey,
 } from './queryKeys';
 
 const dailySummaryQueryFamily = ['dailySummary'] as const;
@@ -50,6 +51,9 @@ export function refreshHealthSyncCache(queryClient: QueryClient) {
   void queryClient.invalidateQueries({
     queryKey: heartRateDaySleepQueryKeyRoot,
   });
+  // The server links synced runs to the default pair of shoes, so the pairs'
+  // mileage changes with the workouts this sync uploaded.
+  void queryClient.invalidateQueries({ queryKey: shoesQueryKey });
   // VO2 max arrives in the same sync as a custom measurement.
   void queryClient.invalidateQueries({ queryKey: vo2MaxRangeQueryKeyRoot });
   // Resting heart rate and recovery arrive in the same sync; the report's

@@ -3,6 +3,7 @@ import {
   exerciseHistoryQueryKey,
   exerciseHistoryResetQueryKey,
   foodsQueryKey,
+  shoesQueryKey,
 } from '../../src/hooks/queryKeys';
 import { createTestQueryClient, type QueryClient } from './queryTestUtils';
 
@@ -40,6 +41,8 @@ describe('refreshHealthSyncCache', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sleep'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sleepRange'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sleepNeed'] });
+    // Synced runs are linked to the default pair, so its mileage changes.
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: shoesQueryKey });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ['exerciseHistory'],
       refetchType: 'none',
