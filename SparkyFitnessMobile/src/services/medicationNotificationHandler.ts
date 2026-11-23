@@ -310,6 +310,37 @@ async function recordSnoozedReminder(
   });
 }
 
+/**
+ * Forgets every snoozed reminder record, for when every medication reminder
+ * has just been cancelled (reminders or Medications turned off). A record
+ * left behind would still mark its slot as snoozed once they are back on the
+ * same day, and that dose would then get no reminder at all.
+ */
+export async function clearSnoozedMedicationReminders(): Promise<void> {
+  await withPendingActionsLock(async () => {
+    await writeSnoozedReminders([]);
+  });
+}
+
+/**
+ * Forgets the snooze records of these reminders, for when their snoozed copies
+ * were cancelled (those of a server switched away from): a record left behind
+ * would keep that dose silent for the rest of the day once its server is back.
+ */
+export async function removeSnoozedMedicationReminders(
+  baseKeys: Iterable<string>
+): Promise<void> {
+  const keys = new Set(baseKeys);
+  if (keys.size === 0) return;
+  await withPendingActionsLock(async () => {
+    const existing = await readSnoozedReminders();
+    const filtered = existing.filter((item) => !keys.has(item.baseKey));
+    if (filtered.length !== existing.length) {
+      await writeSnoozedReminders(filtered);
+    }
+  });
+}
+
 async function removeSnoozedReminder(baseKey: string | null): Promise<void> {
   if (!baseKey) return;
   await withPendingActionsLock(async () => {

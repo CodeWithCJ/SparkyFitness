@@ -18,6 +18,7 @@ import {
   useSaveCustomMeasurementMutation,
 } from '@/hooks/CheckIn/useCheckIn';
 import type { PregnancyVitals } from '@/hooks/usePregnancy';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 
 interface VitalsCardProps {
   pregnancyId: string;
@@ -42,6 +43,7 @@ export default function VitalsCard({
   const createCategory = useCreateCustomCategoryMutation();
   const saveCustom = useSaveCustomMeasurementMutation();
   const { data: customCategories } = useCustomCategories();
+  const showSupplements = useWebFeatures().isShown('medications');
 
   const [weightInput, setWeightInput] = useState('');
   const [isEditingWeight, setIsEditingWeight] = useState(false);
@@ -167,85 +169,93 @@ export default function VitalsCard({
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Prenatal Supplement Quick-Log */}
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            {t('pregnancy.vitals.prenatalSupplements', 'Prenatal Supplements')}
-          </p>
-
-          {!vitals.prenatalMedication && !vitals.supplementMedication ? (
-            <p className="text-xs text-muted-foreground">
+        {/* Prenatal Supplement Quick-Log, while Medications is on
+            (Settings > Features) */}
+        {showSupplements && (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
               {t(
-                'pregnancy.vitals.noPrenatalsLinked',
-                'No prenatal medications linked. Link medications in settings to track compliance.'
+                'pregnancy.vitals.prenatalSupplements',
+                'Prenatal Supplements'
               )}
             </p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {vitals.prenatalMedication && (
-                <button
-                  type="button"
-                  onClick={() => handleMedToggle(vitals.prenatalMedication!)}
-                  disabled={
-                    createMedEntry.isPending || deleteMedEntry.isPending
-                  }
-                  className={cn(
-                    'flex items-center gap-2 rounded-xl border p-3 text-left text-xs transition',
-                    vitals.prenatalMedication.loggedToday
-                      ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-800 dark:text-emerald-300'
-                      : 'border-muted bg-muted/40 hover:bg-muted text-muted-foreground'
-                  )}
-                >
-                  <Pill className="h-4 w-4 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold truncate">
-                      {vitals.prenatalMedication.name}
-                    </p>
-                    <p className="text-[10px] mt-0.5">
-                      {vitals.prenatalMedication.loggedToday
-                        ? t('pregnancy.vitals.meds.taken', 'Taken today')
-                        : t('pregnancy.vitals.meds.notTaken', 'Log dose')}
-                    </p>
-                  </div>
-                  {vitals.prenatalMedication.loggedToday && (
-                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                  )}
-                </button>
-              )}
 
-              {vitals.supplementMedication && (
-                <button
-                  type="button"
-                  onClick={() => handleMedToggle(vitals.supplementMedication!)}
-                  disabled={
-                    createMedEntry.isPending || deleteMedEntry.isPending
-                  }
-                  className={cn(
-                    'flex items-center gap-2 rounded-xl border p-3 text-left text-xs transition',
-                    vitals.supplementMedication.loggedToday
-                      ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-800 dark:text-emerald-300'
-                      : 'border-muted bg-muted/40 hover:bg-muted text-muted-foreground'
-                  )}
-                >
-                  <Pill className="h-4 w-4 shrink-0" />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-semibold truncate">
-                      {vitals.supplementMedication.name}
-                    </p>
-                    <p className="text-[10px] mt-0.5">
-                      {vitals.supplementMedication.loggedToday
-                        ? t('pregnancy.vitals.meds.taken', 'Taken today')
-                        : t('pregnancy.vitals.meds.notTaken', 'Log dose')}
-                    </p>
-                  </div>
-                  {vitals.supplementMedication.loggedToday && (
-                    <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-                  )}
-                </button>
-              )}
-            </div>
-          )}
-        </div>
+            {!vitals.prenatalMedication && !vitals.supplementMedication ? (
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  'pregnancy.vitals.noPrenatalsLinked',
+                  'No prenatal medications linked. Link medications in settings to track compliance.'
+                )}
+              </p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {vitals.prenatalMedication && (
+                  <button
+                    type="button"
+                    onClick={() => handleMedToggle(vitals.prenatalMedication!)}
+                    disabled={
+                      createMedEntry.isPending || deleteMedEntry.isPending
+                    }
+                    className={cn(
+                      'flex items-center gap-2 rounded-xl border p-3 text-left text-xs transition',
+                      vitals.prenatalMedication.loggedToday
+                        ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-800 dark:text-emerald-300'
+                        : 'border-muted bg-muted/40 hover:bg-muted text-muted-foreground'
+                    )}
+                  >
+                    <Pill className="h-4 w-4 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold truncate">
+                        {vitals.prenatalMedication.name}
+                      </p>
+                      <p className="text-[10px] mt-0.5">
+                        {vitals.prenatalMedication.loggedToday
+                          ? t('pregnancy.vitals.meds.taken', 'Taken today')
+                          : t('pregnancy.vitals.meds.notTaken', 'Log dose')}
+                      </p>
+                    </div>
+                    {vitals.prenatalMedication.loggedToday && (
+                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    )}
+                  </button>
+                )}
+
+                {vitals.supplementMedication && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleMedToggle(vitals.supplementMedication!)
+                    }
+                    disabled={
+                      createMedEntry.isPending || deleteMedEntry.isPending
+                    }
+                    className={cn(
+                      'flex items-center gap-2 rounded-xl border p-3 text-left text-xs transition',
+                      vitals.supplementMedication.loggedToday
+                        ? 'border-emerald-500/30 bg-emerald-500/5 text-emerald-800 dark:text-emerald-300'
+                        : 'border-muted bg-muted/40 hover:bg-muted text-muted-foreground'
+                    )}
+                  >
+                    <Pill className="h-4 w-4 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold truncate">
+                        {vitals.supplementMedication.name}
+                      </p>
+                      <p className="text-[10px] mt-0.5">
+                        {vitals.supplementMedication.loggedToday
+                          ? t('pregnancy.vitals.meds.taken', 'Taken today')
+                          : t('pregnancy.vitals.meds.notTaken', 'Log dose')}
+                      </p>
+                    </div>
+                    {vitals.supplementMedication.loggedToday && (
+                      <Check className="h-4 w-4 text-emerald-600 shrink-0" />
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Weight Tracker */}
         <div className="rounded-xl border border-muted/55 p-3.5 space-y-2">

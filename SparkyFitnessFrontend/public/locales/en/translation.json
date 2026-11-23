@@ -3656,6 +3656,9 @@
         "setupHint": "Answer a few questions to finish setting it up.",
         "setupAction": "Set up"
       },
+      "medications": {
+        "description": "Medications, supplements and GLP-1 tracking. Supplement nutrients still count in your totals."
+      },
       "labResults": {
         "description": "Record blood tests and follow each marker over time."
       }

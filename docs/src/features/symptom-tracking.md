@@ -11,7 +11,7 @@ SparkyFitness provides a comprehensive, generic symptom and episode tracking eng
 * **Quick Logs**: Log quick single-point occurrences in seconds.
 * **Symptom-Free Days**: Record days without symptoms to establish true baseline correlations.
 * **Visual Location Maps**: Tappable SVG head and body maps with multi-region selection and chip fallbacks.
-* **Triggers & Relief**: Track custom and built-in triggers, relief methods, and medication effectiveness (*Helped*, *Partly*, *Didn't help*).
+* **Triggers & Relief**: Track custom and built-in triggers, relief methods, and medication effectiveness (*Helped*, *Partly*, *Didn't help*). On the website the form offers medications to link only while Medications is turned on in **Settings → Features**; an entry that already has one keeps it.
 * **Auto-Correlated Context**: Automatically surfaces day-before (D-1) and day-of (D0) food names, water, sleep, exercise, medication logs, and cycle phase without duplicate entry.
 * **Reports & Clinician Export**: View monthly symptom days, acute-medication days with overuse cautions, episode comparison tables, and doctor-ready exports.
 

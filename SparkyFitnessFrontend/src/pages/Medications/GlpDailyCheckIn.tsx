@@ -7,7 +7,7 @@ import { Utensils, Brain, Soup, Zap, Activity } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
-import { todayInZone } from '@workspace/shared';
+import { GLP1_CHECKIN_CATEGORY_NAMES, todayInZone } from '@workspace/shared';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import type { UpdateCustomMeasurementsRequest } from '@workspace/shared';
 import {
@@ -18,8 +18,8 @@ import {
 import { useAddCategoryMutation } from '@/hooks/Settings/useCustomCategories';
 
 // GLP-1 daily check-in metrics, stored as standard daily custom-measurement categories so they
-// also flow into the Check-in page and Reports. `name` is the stable identifier we match on;
-// `label` is the friendly display name.
+// also flow into the Check-in page and Reports. `name` is the stable identifier we match on
+// (shared with mobile as GLP1_CHECKIN_CATEGORY_NAMES); `label` is the friendly display name.
 const GLP_METRICS: {
   key: string;
   name: string;
@@ -31,7 +31,7 @@ const GLP_METRICS: {
 }[] = [
   {
     key: 'hunger',
-    name: 'GLP Hunger',
+    name: GLP1_CHECKIN_CATEGORY_NAMES.hunger,
     defaultLabel: 'Hunger',
     Icon: Utensils,
     color: 'text-orange-500',
@@ -39,7 +39,7 @@ const GLP_METRICS: {
   },
   {
     key: 'food_noise',
-    name: 'GLP Food Noise',
+    name: GLP1_CHECKIN_CATEGORY_NAMES.food_noise,
     defaultLabel: 'Food noise',
     Icon: Brain,
     color: 'text-violet-500',
@@ -47,7 +47,7 @@ const GLP_METRICS: {
   },
   {
     key: 'fullness',
-    name: 'GLP Fullness',
+    name: GLP1_CHECKIN_CATEGORY_NAMES.fullness,
     defaultLabel: 'Fullness',
     Icon: Soup,
     color: 'text-emerald-500',
@@ -55,7 +55,7 @@ const GLP_METRICS: {
   },
   {
     key: 'energy',
-    name: 'GLP Energy',
+    name: GLP1_CHECKIN_CATEGORY_NAMES.energy,
     defaultLabel: 'Energy',
     Icon: Zap,
     color: 'text-amber-500',

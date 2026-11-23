@@ -2946,6 +2946,10 @@
       "setupAction": "Set up",
       "setupHint": "Answer a few questions to finish setting it up."
     },
+    "medications": {
+      "title": "Medications",
+      "description": "Medications, supplements and GLP-1 tracking. While it is off, reminders stop and come back when you turn it on; supplement nutrients still count in your totals."
+    },
     "labResults": {
       "title": "Lab results",
       "description": "Record blood tests and follow each marker over time."

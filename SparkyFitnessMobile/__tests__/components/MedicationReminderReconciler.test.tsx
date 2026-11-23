@@ -8,7 +8,14 @@ import {
   useMedications,
   useMedicationEntries,
 } from '../../src/hooks/useMedications';
-import { reconcileMedicationReminders } from '../../src/services/medicationReminderService';
+import { useMedicationsFeatureState } from '../../src/hooks/useMedicationsFeatureState';
+import { useServerConfigs } from '../../src/hooks/useServerConfigs';
+import type { MedicationsFeatureState } from '../../src/utils/medicationsFeatureState';
+import {
+  cancelMedicationRemindersOfOtherServers,
+  reconcileMedicationReminders,
+} from '../../src/services/medicationReminderService';
+import { retryPendingMedicationActions } from '../../src/services/medicationNotificationHandler';
 import { maybePromptForExactAlarmPermission } from '../../src/services/notifications';
 import {
   __resetAppPreferencesStoreForTests,
@@ -21,8 +28,21 @@ jest.mock('../../src/hooks/useMedications', () => ({
   useMedicationEntries: jest.fn(),
 }));
 
+jest.mock('../../src/hooks/useMedicationsFeatureState', () => ({
+  useMedicationsFeatureState: jest.fn(),
+}));
+
+jest.mock('../../src/hooks/useServerConfigs', () => ({
+  useServerConfigs: jest.fn(),
+}));
+
 jest.mock('../../src/services/medicationReminderService', () => ({
   reconcileMedicationReminders: jest.fn(async () => undefined),
+  cancelMedicationRemindersOfOtherServers: jest.fn(async () => undefined),
+}));
+
+jest.mock('../../src/services/medicationNotificationHandler', () => ({
+  retryPendingMedicationActions: jest.fn(async () => false),
 }));
 
 jest.mock('../../src/services/notifications', () => ({
@@ -36,6 +56,8 @@ const mockUseMedications = useMedications as jest.MockedFunction<
 const mockUseMedicationEntries = useMedicationEntries as jest.MockedFunction<
   typeof useMedicationEntries
 >;
+const mockUseFeatureState = jest.mocked(useMedicationsFeatureState);
+const mockUseServerConfigs = jest.mocked(useServerConfigs);
 const mockReconcile = reconcileMedicationReminders as jest.MockedFunction<
   typeof reconcileMedicationReminders
 >;
@@ -75,13 +97,40 @@ function mockQueries({
   return { refetchMeds, refetchEntries };
 }
 
+function mockFeatureState(state: MedicationsFeatureState) {
+  const refetch = jest.fn();
+  mockUseFeatureState.mockReturnValue({ state, refetch } as never);
+  return refetch;
+}
+
+function mockActiveServer(server: 'active' | 'none' | 'loading') {
+  mockUseServerConfigs.mockReturnValue({
+    allConfigs: [],
+    activeConfig:
+      server === 'active'
+        ? { id: 'server-1', url: 'https://example.test', apiKey: 'key' }
+        : null,
+    refetch: jest.fn(),
+    isLoading: server === 'loading',
+  } as never);
+}
+
 describe('MedicationReminderReconciler', () => {
   let appStateSpy: jest.SpyInstance;
   let removeSubscription: jest.Mock;
 
+  // Every AppState listener the component registered hears the change.
+  const emitAppState = (state: string) => {
+    for (const [, handler] of appStateSpy.mock.calls) {
+      (handler as (next: string) => void)(state);
+    }
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
+    mockFeatureState('on');
+    mockActiveServer('active');
     removeSubscription = jest.fn();
     appStateSpy = jest
       .spyOn(AppState, 'addEventListener')
@@ -97,7 +146,9 @@ describe('MedicationReminderReconciler', () => {
 
     const { toJSON } = render(<MedicationReminderReconciler />);
 
-    expect(mockReconcile).toHaveBeenCalledWith(medications, entries);
+    expect(mockReconcile).toHaveBeenCalledWith(medications, entries, {
+      active: true,
+    });
     expect(toJSON()).toBeNull();
   });
 
@@ -139,14 +190,15 @@ describe('MedicationReminderReconciler', () => {
 
       // The empty reconcile is the cancellation sweep for already-scheduled
       // reminders; it must run even though the queries never load.
-      expect(mockReconcile).toHaveBeenCalledWith([], []);
+      expect(mockReconcile).toHaveBeenCalledWith([], [], { active: false });
       expect(mockUseMedications).toHaveBeenCalledWith(
         expect.objectContaining({ enabled: false })
       );
       expect(mockUseMedicationEntries).toHaveBeenCalledWith(
         expect.objectContaining({ enabled: false })
       );
-      expect(appStateSpy).not.toHaveBeenCalled();
+      // Only the feature choices listener; the clock poll stays off.
+      expect(appStateSpy).toHaveBeenCalledTimes(1);
     }
   );
 
@@ -321,5 +373,163 @@ describe('MedicationReminderReconciler', () => {
     unmount();
 
     expect(removeSubscription).toHaveBeenCalled();
+  });
+
+  describe('Medications turned on or off (#3487)', () => {
+    it('cancels every reminder, with the queries off and no exact-alarm prompt, while Medications is off', () => {
+      mockFeatureState('off');
+      mockQueries({ meds: timedMedications, medEntries: entries });
+
+      render(<MedicationReminderReconciler />);
+
+      expect(mockReconcile).toHaveBeenCalledTimes(1);
+      expect(mockReconcile).toHaveBeenCalledWith([], [], { active: false });
+      expect(mockUseMedications).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: false })
+      );
+      expect(mockUseMedicationEntries).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: false })
+      );
+      expect(mockMaybePrompt).not.toHaveBeenCalled();
+      // The reminder settings are kept for when it comes back.
+      expect(useAppPreferencesStore.getState().medicationRemindersEnabled).toBe(
+        true
+      );
+    });
+
+    it.each(['active', 'loading'] as const)(
+      "leaves the active server's reminders as they are while it is not known whether Medications is on (server %s)",
+      (server) => {
+        mockFeatureState('unknown');
+        mockActiveServer(server);
+        mockQueries({ meds: timedMedications, medEntries: entries });
+
+        render(<MedicationReminderReconciler />);
+
+        expect(mockReconcile).not.toHaveBeenCalled();
+        expect(mockMaybePrompt).not.toHaveBeenCalled();
+        expect(mockUseMedications).toHaveBeenCalledWith(
+          expect.objectContaining({ enabled: false })
+        );
+        // Only the reminders of a server switched away from stop.
+        expect(cancelMedicationRemindersOfOtherServers).toHaveBeenCalled();
+        // Waiting Taken / Skip presses are replayed: the reconcile that
+        // flushes them is not run.
+        expect(retryPendingMedicationActions).toHaveBeenCalled();
+      }
+    );
+
+    it.each<MedicationsFeatureState>(['on', 'off'])(
+      "does not cancel other servers' reminders or replay presses itself once the state is known (%s)",
+      (state) => {
+        mockFeatureState(state);
+        mockQueries({ meds: medications, medEntries: entries });
+
+        render(<MedicationReminderReconciler />);
+
+        expect(mockReconcile).toHaveBeenCalledTimes(1);
+        expect(cancelMedicationRemindersOfOtherServers).not.toHaveBeenCalled();
+        expect(retryPendingMedicationActions).not.toHaveBeenCalled();
+      }
+    );
+
+    it.each([
+      ['medication reminders pref', { medicationRemindersEnabled: false }],
+      ['app notifications toggle', { notificationsEnabled: false }],
+    ])(
+      'cancels every reminder when the %s is turned off while it is not known whether Medications is on',
+      (_label, prefs) => {
+        mockFeatureState('unknown');
+        mockActiveServer('active');
+        mockQueries();
+
+        render(<MedicationReminderReconciler />);
+        expect(mockReconcile).not.toHaveBeenCalled();
+
+        act(() => {
+          useAppPreferencesStore.setState(prefs);
+        });
+
+        expect(mockReconcile).toHaveBeenLastCalledWith([], [], {
+          active: false,
+        });
+      }
+    );
+
+    it('cancels every reminder when there is no server at all', () => {
+      mockFeatureState('unknown');
+      mockActiveServer('none');
+      mockQueries();
+
+      render(<MedicationReminderReconciler />);
+
+      expect(mockReconcile).toHaveBeenCalledWith([], [], { active: false });
+    });
+
+    it('schedules the reminders again once Medications is turned back on', () => {
+      mockFeatureState('off');
+      mockQueries();
+      const { rerender } = render(<MedicationReminderReconciler />);
+      expect(mockReconcile).toHaveBeenLastCalledWith([], [], {
+        active: false,
+      });
+
+      mockFeatureState('on');
+      mockQueries({ meds: timedMedications, medEntries: entries });
+      rerender(<MedicationReminderReconciler />);
+
+      expect(mockReconcile).toHaveBeenLastCalledWith(
+        timedMedications,
+        entries,
+        { active: true }
+      );
+      expect(mockMaybePrompt).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves the schedule alone while the choices reload after being known, even when the hide-names setting changes', () => {
+      mockQueries({ meds: medications, medEntries: entries });
+      const { rerender } = render(<MedicationReminderReconciler />);
+      expect(mockReconcile).toHaveBeenCalledTimes(1);
+
+      mockFeatureState('unknown');
+      rerender(<MedicationReminderReconciler />);
+      act(() => {
+        useAppPreferencesStore.setState({ medicationReminderHideNames: true });
+      });
+
+      expect(mockReconcile).toHaveBeenCalledTimes(1);
+    });
+
+    it.each<MedicationsFeatureState>(['on', 'off', 'unknown'])(
+      'reads the feature choices again when the app returns to the foreground (%s)',
+      (state) => {
+        const refetchChoices = mockFeatureState(state);
+        mockQueries({ meds: medications, medEntries: entries });
+
+        render(<MedicationReminderReconciler />);
+
+        act(() => emitAppState('background'));
+        expect(refetchChoices).not.toHaveBeenCalled();
+
+        act(() => emitAppState('active'));
+        expect(refetchChoices).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    it('reads only the feature choices on return while reminders are off', () => {
+      useAppPreferencesStore.setState({ medicationRemindersEnabled: false });
+      const refetchChoices = mockFeatureState('on');
+      const { refetchMeds, refetchEntries } = mockQueries();
+
+      const { unmount } = render(<MedicationReminderReconciler />);
+      act(() => emitAppState('active'));
+
+      expect(refetchChoices).toHaveBeenCalledTimes(1);
+      expect(refetchMeds).not.toHaveBeenCalled();
+      expect(refetchEntries).not.toHaveBeenCalled();
+
+      unmount();
+      expect(removeSubscription).toHaveBeenCalledTimes(1);
+    });
   });
 });

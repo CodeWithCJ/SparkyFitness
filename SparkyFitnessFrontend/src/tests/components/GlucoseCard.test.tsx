@@ -4,7 +4,20 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import GlucoseCard from '@/pages/Reports/GlucoseCard';
 import { useGlucoseContext } from '@/hooks/Reports/useGlucoseContext';
 import { useHealthMetricSamples } from '@/hooks/useGenericHealth';
+import { setWebFeatureChoices } from '@/tests/mocks/webFeatures';
 
+jest.mock(
+  '@/hooks/Settings/useFeatureChoices',
+  () => jest.requireActual('@/tests/mocks/webFeatures').featureChoicesModule
+);
+jest.mock(
+  '@/hooks/useCycle',
+  () => jest.requireActual('@/tests/mocks/webFeatures').cycleModule
+);
+let mockActingOnBehalf = false;
+jest.mock('@/contexts/ActiveUserContext', () => ({
+  useActiveUser: () => ({ isActingOnBehalf: mockActingOnBehalf }),
+}));
 jest.mock('@/hooks/Reports/useGlucoseContext', () => ({
   useGlucoseContext: jest.fn(),
 }));
@@ -60,12 +73,14 @@ jest.mock('recharts', () => ({
   Tooltip: () => null,
 }));
 const mealsQuery = jest.mocked(useGlucoseContext);
-beforeEach(() =>
+beforeEach(() => {
+  mockActingOnBehalf = false;
+  setWebFeatureChoices({});
   mealsQuery.mockReturnValue({
     data: { events: [], unavailable: [] },
     isError: false,
-  } as unknown as ReturnType<typeof useGlucoseContext>)
-);
+  } as unknown as ReturnType<typeof useGlucoseContext>);
+});
 const query = jest.mocked(useHealthMetricSamples);
 const samples = [
   { t: '2026-11-03T10:00:00Z', mmol_l: 5 },
@@ -329,4 +344,103 @@ it('keeps an observation imported two stored dates away in the current account d
   expect(JSON.parse(screen.getByTestId('points').textContent || '[]')).toEqual([
     { time: Date.parse('2026-11-03T10:30:00Z'), value: 5 },
   ]);
+});
+
+describe('the medications layer', () => {
+  const medicationDay = (unavailable: string[] = []) => {
+    mealsQuery.mockReturnValue({
+      data: {
+        events: [
+          {
+            id: 'dose1',
+            kind: 'medication',
+            day: '2026-11-03',
+            start: '2026-11-03T10:00:00Z',
+            label: 'Metformin',
+          },
+          {
+            id: 'meal1',
+            kind: 'meal',
+            day: '2026-11-03',
+            start: '2026-11-03T10:30:00Z',
+            label: 'Oatmeal',
+          },
+        ],
+        unavailable,
+      },
+      isError: false,
+    } as unknown as ReturnType<typeof useGlucoseContext>);
+    query.mockReturnValue(
+      result([{ metric: 'blood_glucose', source_provider: 'mobile', samples }])
+    );
+  };
+  // A new element each time, so a rerender reads the changed choices.
+  const card = () => (
+    <GlucoseCard startDate="2026-11-03" endDate="2026-11-03" />
+  );
+
+  it('shows the layer and its doses only while medications is on (or its choice is loading)', () => {
+    medicationDay(['medication']);
+    const { rerender } = render(card());
+    expect(screen.getByLabelText('Medications')).toBeChecked();
+    expect(screen.getAllByText(/Metformin/).length).toBeGreaterThan(0);
+    expect(screen.getByText(/Some context is unavailable/)).toBeInTheDocument();
+
+    setWebFeatureChoices(undefined);
+    rerender(card());
+    expect(screen.getByLabelText('Medications')).toBeInTheDocument();
+
+    setWebFeatureChoices({ medications: false });
+    rerender(card());
+    expect(screen.queryByLabelText('Medications')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Metformin/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Food')).toBeChecked();
+    expect(screen.getAllByText(/Oatmeal/).length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(/Some context is unavailable/)
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the layer choice for when medications comes back', () => {
+    medicationDay();
+    const { rerender } = render(card());
+    fireEvent.click(screen.getByLabelText('Medications'));
+    expect(screen.getByLabelText('Medications')).not.toBeChecked();
+
+    setWebFeatureChoices({ medications: false });
+    rerender(card());
+    expect(screen.queryByLabelText('Medications')).not.toBeInTheDocument();
+
+    setWebFeatureChoices({ medications: true });
+    rerender(card());
+    expect(screen.getByLabelText('Medications')).not.toBeChecked();
+    expect(screen.getByLabelText('Food')).toBeChecked();
+  });
+
+  it('keeps the hidden layer on while another layer is toggled', () => {
+    medicationDay();
+    const { rerender } = render(card());
+    setWebFeatureChoices({ medications: false });
+    rerender(card());
+    fireEvent.click(screen.getByLabelText('Food'));
+    expect(screen.getByLabelText('Food')).not.toBeChecked();
+
+    setWebFeatureChoices({ medications: true });
+    rerender(card());
+    expect(screen.getByLabelText('Medications')).toBeChecked();
+    expect(screen.getAllByText(/Metformin/).length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Food')).not.toBeChecked();
+  });
+
+  it("shows the layer to someone acting for the owner, whatever the owner's choice", () => {
+    setWebFeatureChoices({ medications: false });
+    medicationDay();
+    const { rerender } = render(card());
+    expect(screen.queryByLabelText('Medications')).not.toBeInTheDocument();
+
+    mockActingOnBehalf = true;
+    rerender(card());
+    expect(screen.getByLabelText('Medications')).toBeInTheDocument();
+    expect(screen.getAllByText(/Metformin/).length).toBeGreaterThan(0);
+  });
 });

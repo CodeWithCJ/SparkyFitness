@@ -19,8 +19,11 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { MedicationDetail, MedicationEntry } from '@workspace/shared';
 import { isDoseLogged } from '../utils/medications';
 import { addLog } from './LogService';
-import { getActiveServerConfig } from './storage';
+import { getActiveServerConfig, getActiveServerConfigId } from './storage';
+import { belongsToOtherServer } from './notificationServerScope';
 import {
+  clearSnoozedMedicationReminders,
+  removeSnoozedMedicationReminders,
   flushPendingMedicationNotificationActions,
   syncSnoozedMedicationReminders,
 } from './medicationNotificationHandler';
@@ -31,10 +34,25 @@ const REPEAT_MINUTES = [10, 20, 30];
 // bounded lookahead and the repeat pings stay today-only.
 const REMINDER_LOOKAHEAD_DAYS = 7;
 
+/** What the caller decided about the reminders before they are reconciled. */
+export interface MedicationReminderScope {
+  /**
+   * False cancels and dismisses every medication reminder (Medications is
+   * turned off in Settings → Features, #3487, or the caller has reminders
+   * off); true schedules them as the reminder preferences allow. Required so
+   * no caller can forget the feature.
+   */
+  active: boolean;
+}
+
 interface QueuedReconcileBatch {
+  /** `otherServers` only cancels the reminders of other servers
+   * (`cancelMedicationRemindersOfOtherServers`); its data is unused. */
+  kind: 'reconcile' | 'otherServers';
   medications: MedicationDetail[];
   entries: MedicationEntry[];
   entriesDate: string;
+  active: boolean;
   promise: Promise<void>;
   resolve: () => void;
   reject: (reason?: unknown) => void;
@@ -55,9 +73,11 @@ function resolveCurrentTimezoneAndToday(): {
 }
 
 function createQueuedReconcileBatch(
+  kind: QueuedReconcileBatch['kind'],
   medications: MedicationDetail[],
   entries: MedicationEntry[],
-  entriesDate: string
+  entriesDate: string,
+  active: boolean
 ): QueuedReconcileBatch {
   let resolve!: () => void;
   let reject!: (reason?: unknown) => void;
@@ -65,7 +85,16 @@ function createQueuedReconcileBatch(
     resolve = res;
     reject = rej;
   });
-  return { medications, entries, entriesDate, promise, resolve, reject };
+  return {
+    kind,
+    medications,
+    entries,
+    entriesDate,
+    active,
+    promise,
+    resolve,
+    reject,
+  };
 }
 
 function dequeueReconcileBatch(): QueuedReconcileBatch | null {
@@ -166,22 +195,91 @@ async function scheduleReminder(
   }
 }
 
-async function cancelAndDismissAllMedicationReminders(): Promise<void> {
+type ReminderData = Record<string, unknown> | null | undefined;
+
+/** Cancels and dismisses the medication reminders `matches` picks, and
+ * returns the base keys of the snoozed copies among them. */
+async function cancelAndDismissAllMedicationReminders(
+  matches: (data: NonNullable<ReminderData>) => boolean = () => true
+): Promise<Set<string>> {
+  const snoozedBaseKeys = new Set<string>();
+  const isMedicationReminder = (data: ReminderData) => {
+    if (!data?.medicationId || !matches(data)) return false;
+    if (data.isSnoozed === 'true') {
+      const baseKey = data.baseKey ?? data.key;
+      if (typeof baseKey === 'string') snoozedBaseKeys.add(baseKey);
+    }
+    return true;
+  };
   const all = await Notifications.getAllScheduledNotificationsAsync();
   const medIds = all
-    .filter((n) => n.content.data?.medicationId)
+    .filter((n) => isMedicationReminder(n.content.data))
     .map((n) => n.identifier);
   if (medIds.length > 0) await cancelReminders(medIds);
   if (typeof Notifications.getPresentedNotificationsAsync === 'function') {
     const presented =
       await Notifications.getPresentedNotificationsAsync().catch(() => []);
     const presentedIds = presented
-      .filter((n) => n.request.content.data?.medicationId)
+      .filter((n) => isMedicationReminder(n.request.content.data))
       .map((n) => n.request.identifier);
     if (presentedIds.length > 0) {
       await dismissPresentedReminders(presentedIds);
     }
   }
+  return snoozedBaseKeys;
+}
+
+/**
+ * Cancels and dismisses the reminders made for a server other than the active
+ * one, and leaves the active server's alone. For while it is not known yet
+ * whether Medications is on for the active account (#3487): its own reminders
+ * stay as they are, but those of an account switched away from stop. Reminders
+ * without a server stamp (from an older build) count as the active server's.
+ *
+ * It goes through the reconcile queue, so it runs after a pass already under
+ * way, and replaces a pass still waiting (the last caller wins, as with the
+ * reconcile's own data): a pass made for the previous server cannot schedule
+ * that server's reminders again after this.
+ */
+export function cancelMedicationRemindersOfOtherServers(): Promise<void> {
+  if (queuedReconcileBatch) {
+    queuedReconcileBatch.kind = 'otherServers';
+  } else {
+    queuedReconcileBatch = createQueuedReconcileBatch(
+      'otherServers',
+      [],
+      [],
+      '',
+      false
+    );
+  }
+  const batchPromise = queuedReconcileBatch.promise;
+  if (!activeReconcileRunning) {
+    void drainReconcileQueue();
+  }
+  return batchPromise;
+}
+
+async function cancelRemindersOfOtherServersOnce(): Promise<void> {
+  let activeServerId: string | null;
+  try {
+    // Only the stored id, no keychain read: a failed keychain or keystore read
+    // must not make the active server look like none, and so cancel its
+    // reminders too.
+    activeServerId = await getActiveServerConfigId();
+  } catch {
+    // Not known which server is active: every reminder stays as it is.
+    return;
+  }
+  const snoozedBaseKeys = await cancelAndDismissAllMedicationReminders((data) =>
+    belongsToOtherServer(
+      typeof data.serverId === 'string' ? data.serverId : null,
+      activeServerId
+    )
+  );
+  // Their snoozed copies are gone; a record left behind would keep the dose
+  // silent for the rest of the day once that server is back.
+  await removeSnoozedMedicationReminders(snoozedBaseKeys);
 }
 
 /**
@@ -196,21 +294,28 @@ async function cancelAndDismissAllMedicationReminders(): Promise<void> {
  *
  * @param medications - Active medications from the API
  * @param entries - Today's medication entries from the API
+ * @param scope - Whether reminders may be scheduled at all; a queued pass
+ *   runs with the last caller's, as it does with its data
  */
 export function reconcileMedicationReminders(
   medications: MedicationDetail[],
-  entries: MedicationEntry[]
+  entries: MedicationEntry[],
+  scope: MedicationReminderScope
 ): Promise<void> {
   const entriesDate = resolveCurrentTimezoneAndToday().today;
   if (queuedReconcileBatch) {
+    queuedReconcileBatch.kind = 'reconcile';
     queuedReconcileBatch.medications = medications;
     queuedReconcileBatch.entries = entries;
     queuedReconcileBatch.entriesDate = entriesDate;
+    queuedReconcileBatch.active = scope.active;
   } else {
     queuedReconcileBatch = createQueuedReconcileBatch(
+      'reconcile',
       medications,
       entries,
-      entriesDate
+      entriesDate,
+      scope.active
     );
   }
 
@@ -232,12 +337,17 @@ async function drainReconcileQueue(): Promise<void> {
     let batch = dequeueReconcileBatch();
     while (batch) {
       try {
-        await reconcileMedicationRemindersOnce(
-          batch.medications,
-          batch.entries,
-          batch.entriesDate,
-          drainState
-        );
+        if (batch.kind === 'otherServers') {
+          await cancelRemindersOfOtherServersOnce();
+        } else {
+          await reconcileMedicationRemindersOnce(
+            batch.medications,
+            batch.entries,
+            batch.entriesDate,
+            batch.active,
+            drainState
+          );
+        }
         batch.resolve();
       } catch (err) {
         batch.reject(err);
@@ -253,6 +363,7 @@ async function reconcileMedicationRemindersOnce(
   medications: MedicationDetail[],
   entries: MedicationEntry[],
   entriesDate: string,
+  active: boolean,
   drainState: ReconcileDrainState
 ): Promise<void> {
   // Each reminder is stamped with the server it was made for, so the iOS
@@ -263,9 +374,19 @@ async function reconcileMedicationRemindersOnce(
   if (flushedAny) {
     drainState.flushedDuringDrain = true;
   }
+  // The presses flushed above are logged whatever happens next; with
+  // reminders off only the reminders go, and no preference is written.
   const prefs = useAppPreferencesStore.getState();
-  if (!prefs.medicationRemindersEnabled || !prefs.notificationsEnabled) {
+  if (
+    !active ||
+    !prefs.medicationRemindersEnabled ||
+    !prefs.notificationsEnabled
+  ) {
     await cancelAndDismissAllMedicationReminders();
+    // The snoozed copies went with them, so their records go too: turned
+    // back on the same day, a slot still recorded as snoozed would get no
+    // reminder at all.
+    await clearSnoozedMedicationReminders();
     return;
   }
 

@@ -38,14 +38,20 @@ jest.mock('@/hooks/useCycle', () => ({
 }));
 
 let mockFeaturesOff = new Set<FeatureKey>();
-jest.mock('@/hooks/Settings/useWebFeatures', () => ({
-  useWebFeatures: () => ({
-    isEnabled: (key: FeatureKey) =>
-      key === 'cycle'
-        ? mockCycleSettings?.enabled === true
-        : !mockFeaturesOff.has(key),
-  }),
-}));
+jest.mock('@/hooks/Settings/useWebFeatures', () => {
+  const isEnabled = (key: FeatureKey) =>
+    key === 'cycle'
+      ? mockCycleSettings?.enabled === true
+      : !mockFeaturesOff.has(key);
+  return {
+    useWebFeatures: () => ({
+      isEnabled,
+      // Someone acting for the owner sees every feature's entry points.
+      isShown: (key: FeatureKey) =>
+        mockEditState === 'actingOnBehalf' || isEnabled(key),
+    }),
+  };
+});
 
 let mockChallengesAvailable = false;
 jest.mock('@/hooks/Challenges/useChallenges', () => ({
@@ -91,6 +97,18 @@ describe('WebTabsSettings', () => {
     expect(mockSetTabHidden).not.toHaveBeenCalled();
   });
 
+  it('leaves out the Medications row while medications is off, keeping its choice', () => {
+    mockHidden = new Set<WebHideableTabId>(['medications']);
+    mockFeaturesOff = new Set<FeatureKey>(['medications']);
+    renderSettings();
+    expect(
+      screen.queryByRole('switch', { name: 'Medications' })
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByRole('switch')).toHaveLength(6);
+    expect(screen.getAllByText('Some features are turned off')).toHaveLength(1);
+    expect(mockSetTabHidden).not.toHaveBeenCalled();
+  });
+
   it('opens Features from the line', () => {
     mockFeaturesOff = new Set<FeatureKey>(['labResults']);
     renderSettings();
@@ -123,6 +141,17 @@ describe('WebTabsSettings', () => {
     mockEditState = 'actingOnBehalf';
     mockFeaturesOff = new Set<FeatureKey>(['labResults']);
     renderSettings();
+    expect(
+      screen.queryByText('Some features are turned off')
+    ).not.toBeInTheDocument();
+  });
+
+  it("lists the Medications row, off limits, to someone acting for the owner, whatever the owner's choice", () => {
+    mockEditState = 'actingOnBehalf';
+    mockFeaturesOff = new Set<FeatureKey>(['medications']);
+    renderSettings();
+    expect(screen.getByRole('switch', { name: 'Medications' })).toBeDisabled();
+    expect(screen.getAllByRole('switch')).toHaveLength(7);
     expect(
       screen.queryByText('Some features are turned off')
     ).not.toBeInTheDocument();

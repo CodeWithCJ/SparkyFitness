@@ -2,6 +2,8 @@
 
 Track scheduled and as-needed medications and supplements, log each dose as taken or skipped, and see how consistently you take them. The same data is available in the web app (**Medications**) and the mobile app (**Library → Medications**, or the Medications card on the Dashboard).
 
+Medications are on by default. To hide them, turn them off in **Settings → Features**: the website and the mobile app each have their own switch, so you can keep them in one and hide them in the other. The switch covers everything on this page, supplements and GLP-1 tracking included. Turning it off only hides them: the tab, the Add menu entry and the Medications report on the website, the Library row, the Dashboard card and the reminder settings in the app, and the other places listed in [User Settings](/features/user-settings). In the app, medication reminders also stop while it is off. Your medications, doses and reminder settings are kept and come back when you turn it on again. Supplement nutrients still count in your nutrition totals, and the AI assistant can still log and read your medications. For now, the watch's Medications page still shows and logs your doses while it is off. With a server older than this switch, medications stay on and the switch asks you to update the server.
+
 ---
 
 ## 1. Logging Doses

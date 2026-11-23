@@ -32,6 +32,7 @@ import {
 import {
   CustomCategoriesResponse,
   CustomMeasurementsResponse,
+  GLP1_CHECKIN_CATEGORY_NAMES,
   getPrecision,
 } from '@workspace/shared';
 
@@ -40,10 +41,7 @@ const HIDDEN_CUSTOM_METRICS = [
   ...RESPIRATION_METRICS, // Shown in dedicated Respiration card
   'Average SpO2', // Shown in Sleep tab SpO2 card
   'Average Overnight HRV', // Shown in Sleep tab HRV card
-  'GLP Hunger',
-  'GLP Food Noise',
-  'GLP Fullness',
-  'GLP Energy',
+  ...Object.values(GLP1_CHECKIN_CATEGORY_NAMES), // Shown in the Medications report
 ];
 export const CustomCategoryReport = ({
   customCategories,
