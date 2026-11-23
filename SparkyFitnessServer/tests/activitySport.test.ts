@@ -268,6 +268,32 @@ describe('classifyActivitySport — notes templates', () => {
   });
 });
 
+describe('classifyActivitySport — long notes', () => {
+  // Notes are free text the person can make as long as they like, and the
+  // classifier runs on every new entry, so matching must stay linear.
+  it.each([
+    ['Garmin', 'Garmin activity: ' + '('.repeat(200_000)],
+    ['Garmin FIT', 'Garmin FIT import: ' + '('.repeat(200_000)],
+    ['Strava', 'Synced from Strava. Type:' + ' '.repeat(200_000) + 'x'],
+    ['Polar', 'Logged from Polar Flow:' + ' '.repeat(200_000) + 'x'],
+    ['COROS', 'Logged from COROS:' + ' '.repeat(200_000)],
+    ['repeated prefixes', 'Logged from Polar Flow: x '.repeat(10_000)],
+  ])('classifies crafted %s notes quickly', (_source, notes) => {
+    const started = performance.now();
+    classifyActivitySport({ exerciseName: 'Session', notes });
+    expect(performance.now() - started).toBeLessThan(250);
+  });
+
+  it('still reads the sport from a template followed by long text', () => {
+    expect(
+      classifyActivitySport({
+        exerciseName: 'Session',
+        notes: 'Synced from Strava. Type: Run. ' + 'n'.repeat(5_000),
+      }).sport
+    ).toBe('running');
+  });
+});
+
 describe('classifyActivitySport — free-text names', () => {
   it('classifies manual entries by name', () => {
     expect(classifyActivitySport({ exerciseName: 'Antwerp Walking' })).toEqual({
