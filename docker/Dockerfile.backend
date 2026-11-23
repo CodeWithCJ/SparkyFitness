@@ -3,7 +3,8 @@
 # Stage 1: Install workspace dependencies and deploy server
 FROM --platform=$BUILDPLATFORM node:26.13.1-alpine AS backend_builder
 
-RUN corepack enable
+# Node 25+ no longer ships Corepack, so install it before enabling it.
+RUN npm install -g corepack@0.36.0 && corepack enable
 
 WORKDIR /app
 

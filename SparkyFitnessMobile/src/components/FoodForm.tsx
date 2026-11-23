@@ -1,4 +1,10 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -646,17 +652,28 @@ const FoodForm: React.FC<FoodFormProps> = ({
           return next.form;
         });
       } else {
-        setForm((prev) => {
-          preciseNumericValuesRef.current = {
-            ...preciseNumericValuesRef.current,
-            ...buildPreciseNumericValuesFromVariant(selection.variant),
-          };
-          lastServingSizeRef.current = selection.variant.serving_size;
-          return applyVariantToFormState(prev, selection.variant);
-        });
+        setForm((prev) => applyVariantToFormState(prev, selection.variant));
       }
     }
   }
+
+  // The precise values and last serving size that go with an existing-variant
+  // selection are written after the render commits, not inside the state
+  // updater above: an updater runs during render, and a discarded render must
+  // not leave these refs ahead of the form that Save reads.
+  const latestSelectionRef = useRef(selection);
+  useLayoutEffect(() => {
+    latestSelectionRef.current = selection;
+  });
+  useLayoutEffect(() => {
+    const current = latestSelectionRef.current;
+    if (!current || current.kind === 'draft') return;
+    preciseNumericValuesRef.current = {
+      ...preciseNumericValuesRef.current,
+      ...buildPreciseNumericValuesFromVariant(current.variant),
+    };
+    lastServingSizeRef.current = current.variant.serving_size;
+  }, [selectionKey]);
 
   const [syncedVariants, setSyncedVariants] = useState<
     FoodUnitVariant[] | null | undefined
@@ -1136,15 +1153,21 @@ const FoodForm: React.FC<FoodFormProps> = ({
       }
       // Update both representations without triggering serving-size auto-scaling
       // or replacing the selected variant and the rest of the live draft.
-      setForm((previous) => {
-        preciseNumericValuesRef.current = {
-          ...preciseNumericValuesRef.current,
-          ...buildPreciseNumericValues(patch),
-        };
-        return { ...previous, ...displayPatch };
-      });
+      setForm((previous) => ({ ...previous, ...displayPatch }));
     }
   }
+
+  // Same rule as the selection refs above: the precise values for a scan are
+  // written after the render that shows it has committed.
+  useLayoutEffect(() => {
+    if (!nutritionLabelScan) return;
+    preciseNumericValuesRef.current = {
+      ...preciseNumericValuesRef.current,
+      ...buildPreciseNumericValues(
+        labelScanToNutritionPatch(nutritionLabelScan.result)
+      ),
+    };
+  }, [nutritionLabelScan]);
 
   const handleSubmitPress = () => {
     if (!showManualUpdateBanner) {

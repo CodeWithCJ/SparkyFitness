@@ -212,7 +212,9 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
     .map((e) => e.symptom_name_snapshot);
   // The hook falls back to a fresh [] while entries load, so compare content
   // rather than the array reference or this would re-sync on every render.
-  const cycleSymptomKey = JSON.stringify(cycleSymptomNames);
+  // The date is part of the key so an unsaved selection never carries over to
+  // another day whose saved symptoms happen to be the same (often both empty).
+  const cycleSymptomKey = JSON.stringify([date, cycleSymptomNames]);
   const [syncedSymptomKey, setSyncedSymptomKey] = useState<string | null>(null);
   if (syncedSymptomKey !== cycleSymptomKey) {
     setSyncedSymptomKey(cycleSymptomKey);
