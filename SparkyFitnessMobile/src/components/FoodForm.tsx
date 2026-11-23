@@ -184,31 +184,40 @@ type FieldRefName =
   | 'alcoholG';
 
 /**
- * Scales a compatible-unit draft variant to the current serving size. Writes
- * the precise nutrition values it settled on into `precise` (the form's
- * unrounded numeric mirror) and returns the next form and serving size.
+ * Scales a compatible-unit draft variant to the current serving size. Pure: it
+ * returns the next form, the serving size it settled on and the precise
+ * nutrition values (the form's unrounded numeric mirror) for the caller to
+ * store once the render has committed.
  */
 function resolveCompatibleDraft(
   previous: FoodFormData,
   variant: FoodUnitVariant,
-  precise: Partial<Record<NumericFoodFormField, number>>
-): { form: FoodFormData; servingSize: number } {
+  precise: Readonly<Partial<Record<NumericFoodFormField, number>>>
+): {
+  form: FoodFormData;
+  servingSize: number;
+  precise: Partial<Record<NumericFoodFormField, number>>;
+} {
   const currentServingSize =
     precise.servingSize ?? parseDecimalInput(previous.servingSize);
   const nextServingSize = isPositiveNumber(currentServingSize)
     ? currentServingSize
     : variant.serving_size;
   const scaledVariant = scaleCompatibleDraftVariant(variant, nextServingSize);
+  const nextPrecise: Partial<Record<NumericFoodFormField, number>> = {
+    ...precise,
+  };
   NUTRITION_FIELDS.forEach((field) => {
-    precise[field as NumericFoodFormField] = getScaledVariantNumericValue(
+    nextPrecise[field as NumericFoodFormField] = getScaledVariantNumericValue(
       field as Exclude<NumericFoodFormField, 'servingSize'>,
       scaledVariant
     );
   });
-  precise.servingSize = nextServingSize;
+  nextPrecise.servingSize = nextServingSize;
   return {
     form: applyCompatibleDraftToFormState(previous, variant, scaledVariant),
     servingSize: nextServingSize,
+    precise: nextPrecise,
   };
 }
 
@@ -362,6 +371,31 @@ const FoodForm: React.FC<FoodFormProps> = ({
   const lastServingSizeRef = useRef(
     parseDecimalInput(initialValues?.servingSize ?? '')
   );
+
+  // A compatible-unit draft selection changes the form inside a state updater,
+  // which runs during render. The refs that go with it (the precise numeric
+  // mirror and the last serving size) are written here instead, after that
+  // render has committed, from the committed form, so a discarded render never
+  // leaves them ahead of what Save reads.
+  const [pendingCompatibleDraft, setPendingCompatibleDraft] = useState<{
+    variant: FoodUnitVariant;
+  } | null>(null);
+  const latestFormRef = useRef(form);
+  useLayoutEffect(() => {
+    latestFormRef.current = form;
+  });
+  useLayoutEffect(() => {
+    if (!pendingCompatibleDraft) return;
+    const next = resolveCompatibleDraft(
+      latestFormRef.current,
+      pendingCompatibleDraft.variant,
+      preciseNumericValuesRef.current
+    );
+    preciseNumericValuesRef.current = next.precise;
+    if (isPositiveNumber(next.servingSize)) {
+      lastServingSizeRef.current = next.servingSize;
+    }
+  }, [pendingCompatibleDraft]);
   const [hasTouchedAutoScale, setHasTouchedAutoScale] = useState(false);
 
   // Captured at the moment of an incompatible unit swap (the one that opens
@@ -438,17 +472,16 @@ const FoodForm: React.FC<FoodFormProps> = ({
   };
 
   const applyCompatibleDraftSelection = (variant: FoodUnitVariant) => {
-    setForm((previous) => {
-      const next = resolveCompatibleDraft(
-        previous,
-        variant,
-        preciseNumericValuesRef.current
-      );
-      if (isPositiveNumber(next.servingSize)) {
-        lastServingSizeRef.current = next.servingSize;
-      }
-      return next.form;
-    });
+    setForm(
+      (previous) =>
+        resolveCompatibleDraft(
+          previous,
+          variant,
+          preciseNumericValuesRef.current
+        ).form
+    );
+    // The refs that go with the new form are written after it commits.
+    setPendingCompatibleDraft({ variant });
   };
 
   const update = (field: keyof FoodFormData, value: string) => {
@@ -640,17 +673,15 @@ const FoodForm: React.FC<FoodFormProps> = ({
             : { ...prev, servingUnit: selection.variant.serving_unit }
         );
       } else if (selection.kind === 'draft') {
-        setForm((previous) => {
-          const next = resolveCompatibleDraft(
-            previous,
-            selection.variant,
-            preciseNumericValuesRef.current
-          );
-          if (isPositiveNumber(next.servingSize)) {
-            lastServingSizeRef.current = next.servingSize;
-          }
-          return next.form;
-        });
+        setForm(
+          (previous) =>
+            resolveCompatibleDraft(
+              previous,
+              selection.variant,
+              preciseNumericValuesRef.current
+            ).form
+        );
+        setPendingCompatibleDraft({ variant: selection.variant });
       } else {
         setForm((prev) => applyVariantToFormState(prev, selection.variant));
       }
