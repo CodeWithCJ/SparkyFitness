@@ -36,6 +36,7 @@ from service import (
     map_garmin_stress_to_mood,
     mock_filename,
     meters_to_km,
+    project_body_battery_fallback,
     project_daily_calorie_metrics,
     safe_convert,
     seconds_to_minutes,
@@ -1336,40 +1337,13 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                         logger.info(
                             f"[GARMIN_SYNC] get_body_battery({current_date}) fallback RAW RESPONSE: {body_battery_data}"
                         )
-                        if (
-                            body_battery_data
-                            and isinstance(body_battery_data, list)
-                            and len(body_battery_data) > 0
+                        for entry in project_body_battery_fallback(
+                            body_battery_data, current_date
                         ):
-                            for bb_entry in body_battery_data:
-                                # Extract from bodyBatteryValuesArray if available
-                                bb_values = bb_entry.get("bodyBatteryValuesArray", [])
-                                bb_highest = (
-                                    max([v[1] for v in bb_values], default=None)
-                                    if bb_values
-                                    else None
-                                )
-                                bb_lowest = (
-                                    min([v[1] for v in bb_values], default=None)
-                                    if bb_values
-                                    else None
-                                )
-                                bb_current = bb_values[-1][1] if bb_values else None
-
-                                logger.info(
-                                    f"[GARMIN_SYNC] Body battery fallback entry: highest={bb_highest}, lowest={bb_lowest}, charged={bb_entry.get('charged')}, drained={bb_entry.get('drained')}"
-                                )
-                                health_data["body_battery"].append(
-                                    {
-                                        "date": current_date,
-                                        "body_battery_highest": bb_highest,
-                                        "body_battery_lowest": bb_lowest,
-                                        "body_battery_at_wake": None,  # Not available in this endpoint
-                                        "body_battery_charged": bb_entry.get("charged"),
-                                        "body_battery_drained": bb_entry.get("drained"),
-                                        "body_battery_current": bb_current,
-                                    }
-                                )
+                            logger.info(
+                                f"[GARMIN_SYNC] Body battery fallback entry: highest={entry['body_battery_highest']}, lowest={entry['body_battery_lowest']}, charged={entry['body_battery_charged']}, drained={entry['body_battery_drained']}"
+                            )
+                            health_data["body_battery"].append(entry)
                     except Exception as e:
                         logger.warning(
                             f"Could not retrieve body battery data for {current_date}: {e}"

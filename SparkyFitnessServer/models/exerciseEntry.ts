@@ -6,6 +6,7 @@ import {
   type ExerciseEntryHrZonesInitializer,
   type ExercisePresetEntries,
   type WorkoutSessionStatusSet,
+  classifyActivitySport,
 } from '@workspace/shared';
 import { getClient, getSystemClient } from '../db/poolManager.js';
 import type { PoolClient } from 'pg';
@@ -17,6 +18,7 @@ import activityDetailsRepository from './activityDetailsRepository.js';
 import * as workoutTelemetryRepository from './workoutTelemetryRepository.js';
 import { bodyWeightJoinSql } from '../utils/exerciseLoadSql.js';
 import { assertSetWeightSign } from '../utils/setWeightSign.js';
+import { getDefaultShoeForRunWithClient } from './shoeRepository.js';
 import {
   mergeManualFields,
   storedManualFields,
@@ -1194,7 +1196,35 @@ interface ExerciseEntryCreateInput {
   superset_group?: string | number | null;
   entry_time?: string | null;
   record_timezone?: string | null;
+  /** A pair the caller chose; left out, a new run gets the default pair. */
+  shoe_id?: string | null;
   sets?: ExerciseEntrySetInput[] | null;
+}
+
+/**
+ * The shoe a newly created entry starts with: the one the caller set, else
+ * the user's default pair when the entry is a run (see
+ * getDefaultShoeForRunWithClient for the date rule). Applies to every source
+ * (provider syncs, imports, the diary, the AI chat, the app's recorder),
+ * because they all create entries here. Only new entries get it: an entry
+ * updated in place keeps the shoe the user set or removed.
+ */
+async function shoeForNewEntryWithClient(
+  client: PoolClient,
+  userId: string,
+  entryData: ExerciseEntryCreateInput,
+  snapshot: { name?: string | null; category?: string | null }
+): Promise<string | null> {
+  if (entryData.shoe_id !== undefined) {
+    return typeof entryData.shoe_id === 'string' ? entryData.shoe_id : null;
+  }
+  const { sport } = classifyActivitySport({
+    exerciseName: entryData.exercise_name || snapshot.name,
+    category: snapshot.category,
+    notes: entryData.notes,
+  });
+  if (sport !== 'running') return null;
+  return getDefaultShoeForRunWithClient(client, userId, entryData.entry_date);
 }
 
 async function _createExerciseEntryWithClient(
@@ -1386,6 +1416,7 @@ async function _createExerciseEntryWithClient(
         ...telemetryValuesFrom(entryData),
         entryData.record_timezone ?? null,
         snapshot.health_activity_type ?? null,
+        await shoeForNewEntryWithClient(client, userId, entryData, snapshot),
       ];
       const hasClientId = entryData.id !== undefined && entryData.id !== null;
       const idColumn = hasClientId ? ', id' : '';
@@ -1397,7 +1428,7 @@ async function _createExerciseEntryWithClient(
         'equipment, primary_muscles, secondary_muscles, instructions, images, ' +
         'distance, avg_heart_rate, exercise_preset_entry_id, sort_order, steps, water_estimated, ' +
         'superset_group, entry_time, modality';
-      const allColumns = `${baseColumns}, ${EXERCISE_ENTRY_TELEMETRY_COLUMNS.join(', ')}, record_timezone, health_activity_type${idColumn}`;
+      const allColumns = `${baseColumns}, ${EXERCISE_ENTRY_TELEMETRY_COLUMNS.join(', ')}, record_timezone, health_activity_type, shoe_id${idColumn}`;
       const placeholders = entryValues
         .map((_, index) => `$${index + 1}`)
         .join(', ');

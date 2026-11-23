@@ -420,8 +420,9 @@ const DAILY_FIELD_METRICS = new Set([
 
 const SAMPLE_METRICS: Record<string, { metric: SampleMetric; field: string }> =
   {
+    // ZeppBridge sends both hrv (device proprietary score) and hrv_rmssd
+    // (physiological RMSSD in milliseconds). Only hrv_rmssd is RMSSD.
     hrv_rmssd: { metric: 'hrv', field: 'rmssd_ms' },
-    hrv: { metric: 'hrv', field: 'rmssd_ms' },
     spo2: { metric: 'spo2', field: 'percentage' },
     respiratory_rate: { metric: 'respiration', field: 'brpm' },
     stress: { metric: 'stress', field: 'level' },

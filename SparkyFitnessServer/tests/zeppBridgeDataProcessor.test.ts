@@ -696,4 +696,31 @@ describe('processZeppBridgeRecords with a real ZeppBridge answer', () => {
       record_utc_offset_minutes: null,
     });
   });
+
+  it('imports hrv_rmssd as RMSSD and ignores proprietary hrv scores', async () => {
+    await processZeppBridgeRecords(
+      UID,
+      UID,
+      recordsOf(
+        {
+          record_type: 'metric_sample',
+          metric: 'hrv_rmssd',
+          timestamp: '2026-11-07T20:48:00+00:00',
+          value: 120,
+        },
+        {
+          record_type: 'metric_sample',
+          metric: 'hrv',
+          timestamp: '2026-11-07T20:48:00+00:00',
+          value: 160.46,
+        }
+      ),
+      TZ
+    );
+    const writes = vi
+      .mocked(upsertSamplesByDay)
+      .mock.calls.filter((c) => c[2] === 'hrv');
+    expect(writes).toHaveLength(1);
+    expect(writes[0]![4]).toEqual([expect.objectContaining({ rmssd_ms: 120 })]);
+  });
 });
