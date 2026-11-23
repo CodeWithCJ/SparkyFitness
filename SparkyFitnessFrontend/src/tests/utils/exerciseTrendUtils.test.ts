@@ -151,6 +151,8 @@ describe('counted sets', () => {
       Curl: [
         makeEntry({
           provider_name: 'Workout Plan',
+          edited: false,
+          session: null,
           sets: [{ set_number: 1, reps: 10, weight: 50 }],
         }),
       ] as ExerciseProgressResponse[],

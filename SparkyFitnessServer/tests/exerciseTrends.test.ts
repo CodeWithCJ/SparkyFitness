@@ -29,6 +29,8 @@ function entry(
     category: 'Strength',
     modality: 'weight_reps',
     body_weight_kg: null,
+    edited: false,
+    session: null,
     sets: sets.map((set, index) => ({
       set_number: index + 1,
       set_type: 'working',
@@ -66,6 +68,17 @@ describe('countedTrendSets', () => {
     });
     expect(countedTrendSets(e)).toEqual([]);
   });
+
+  it.each(['edited', 'session'] as const)(
+    'keeps a workout plan row whose %s is missing',
+    (field) => {
+      const e = entry('2026-11-02', [{ weight: 30, reps: 8 }], {
+        provider_name: 'Workout Plan',
+      });
+      delete e[field];
+      expect(countedTrendSets(e)).toHaveLength(1);
+    }
+  );
 
   it('counts a workout plan row the member edited without ticking', () => {
     const e = entry('2026-11-02', [{ weight: 30, reps: 8 }], {

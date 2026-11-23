@@ -30,7 +30,9 @@ export const EXERCISE_TREND_MAX_YEARS = 10;
  * The sets of an entry that count toward a trend: none while the entry is only
  * planned (the shared `isPlannedEntryRow`, the rule challenges score by: a
  * prefilled plan row counts once it is started, ticked, finished or edited),
- * otherwise every set with reps that is not a warm-up.
+ * otherwise every set with reps that is not a warm-up. A response missing
+ * `edited` or `session` (both optional in the contract) says nothing about the
+ * row, so its sets stay counted.
  */
 export function countedTrendSets(
   entry: Pick<
@@ -38,12 +40,15 @@ export function countedTrendSets(
     'provider_name' | 'sets' | 'edited' | 'session'
   >
 ): ProgressSet[] {
-  const planned = isPlannedEntryRow({
-    source: entry.provider_name,
-    edited: entry.edited ?? false,
-    sets: entry.sets,
-    session: entry.session ?? null,
-  });
+  const planned =
+    entry.edited !== undefined &&
+    entry.session !== undefined &&
+    isPlannedEntryRow({
+      source: entry.provider_name,
+      edited: entry.edited,
+      sets: entry.sets,
+      session: entry.session,
+    });
   if (planned) return [];
   return entry.sets.filter(
     (set) => !isWarmupSetType(set.set_type) && (Number(set.reps) || 0) > 0

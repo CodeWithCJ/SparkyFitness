@@ -46,6 +46,8 @@ const entry = (
     category: 'Strength',
     modality: 'weight_reps',
     body_weight_kg: null,
+    edited: false,
+    session: null,
     sets: sets.map((set, index) => ({ set_number: index + 1, ...set })),
   }) as ExerciseProgressResponse;
 
