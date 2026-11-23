@@ -295,3 +295,30 @@ export async function assignShoeToExerciseEntry(
     client.release();
   }
 }
+
+/**
+ * The pair a new run dated `entryDate` should be linked to: the user's active
+ * default pair, if the run is on or after the day they got it (its purchase
+ * date, else the day it was added, in `timezone`). A pair can't have been worn
+ * before that, so a history import doesn't fill today's pair with old
+ * mileage. Returns null when there is no such pair.
+ *
+ * `timezone` must be a valid IANA zone (see utils/timezoneLoader.ts): this runs
+ * inside the callers' import transactions, where a failed statement would
+ * abort the whole import.
+ */
+export async function getDefaultShoeForRunWithClient(
+  client: PoolClient,
+  userId: string,
+  entryDate: string,
+  timezone: string
+): Promise<string | null> {
+  const result = await client.query<{ id: string }>(
+    `SELECT id FROM shoes
+     WHERE user_id = $1 AND is_default AND status = 'active'
+       AND $2::date >= COALESCE(purchase_date, (created_at AT TIME ZONE $3)::date)
+     LIMIT 1`,
+    [userId, entryDate, timezone]
+  );
+  return result.rows[0]?.id ?? null;
+}
