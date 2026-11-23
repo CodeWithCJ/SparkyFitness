@@ -364,6 +364,45 @@ describe('foodRepository snapshot functions', () => {
       expect(params[31]).toEqual(['e1', 'e2', 'e3']);
     });
 
+    it('leaves out entries whose unit changes but cannot be converted', async () => {
+      mockClient.query
+        .mockResolvedValueOnce({}) // BEGIN
+        .mockResolvedValueOnce({
+          rows: [
+            // old serving size unknown: no way to convert, so not touched
+            {
+              id: 'e1',
+              quantity: '3',
+              serving_size: null,
+              serving_unit: 'piece',
+              images: [],
+            },
+            // same unit: updated as before, quantity kept
+            {
+              id: 'e2',
+              quantity: '2',
+              serving_size: null,
+              serving_unit: 'oz',
+              images: [],
+            },
+          ],
+        })
+        .mockResolvedValueOnce({ rowCount: 1 })
+        .mockResolvedValueOnce({}); // COMMIT
+
+      await foodRepository.updateFoodEntriesSnapshot(
+        userId,
+        foodId,
+        variantId,
+        makeSnapshotData({ serving_size: 1, serving_unit: 'oz' }),
+        false
+      );
+
+      const [, params] = sqlCalls()[1];
+      expect(params[29]).toEqual([]);
+      expect(params[31]).toEqual(['e2']);
+    });
+
     it('should default custom_nutrients to {} when null or undefined', async () => {
       for (const falsy of [null, undefined]) {
         mockSelectThenUpdate(1);

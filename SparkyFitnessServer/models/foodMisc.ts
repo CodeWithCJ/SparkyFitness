@@ -558,9 +558,19 @@ async function updateFoodEntriesSnapshot(
     const toNumber = (value: number | string | null | undefined) =>
       value === null || value === undefined ? null : Number(value);
     const newServingSize = toNumber(newSnapshotData.serving_size);
+    // Entries whose serving unit changes but whose quantity cannot be carried
+    // into it (old serving size unknown) are left out of the update entirely:
+    // taking the new serving without a converted quantity is the bug this
+    // conversion exists to prevent.
+    const updatableIds: string[] = [];
+    const newUnit = (newSnapshotData.serving_unit ?? '').trim();
     for (const row of rows) {
+      const unitChanged = (row.serving_unit ?? '').trim() !== newUnit;
       const quantity = toNumber(row.quantity);
-      if (quantity === null) continue;
+      if (quantity === null) {
+        if (!unitChanged) updatableIds.push(String(row.id));
+        continue;
+      }
       const converted = convertEntryQuantity(
         quantity,
         toNumber(row.serving_size),
@@ -568,7 +578,11 @@ async function updateFoodEntriesSnapshot(
         newServingSize,
         newSnapshotData.serving_unit ?? null
       );
-      if (converted === null) continue;
+      if (converted === null) {
+        if (!unitChanged) updatableIds.push(String(row.id));
+        continue;
+      }
+      updatableIds.push(String(row.id));
       convertedIds.push(String(row.id));
       convertedQuantities.push(converted);
     }
@@ -654,7 +668,7 @@ async function updateFoodEntriesSnapshot(
         variantId,
         convertedIds,
         convertedQuantities,
-        rows.map((row) => String(row.id)),
+        updatableIds,
         // Postgres rejects a bind with more parameters than the statement
         // references, so $33 is only supplied when the SET clause uses it.
         ...(syncImages ? [JSON.stringify(newSnapshotData.images ?? [])] : []),
