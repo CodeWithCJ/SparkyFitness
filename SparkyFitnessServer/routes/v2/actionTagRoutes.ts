@@ -94,8 +94,12 @@ router.get('/', async (req, res, next) => {
  *       content:
  *         application/json:
  *           schema:
+ *             type: object
  *             required: [tag_code, entry_date]
  *             properties:
+ *               tag_code: {type: string, description: 32 lowercase hex characters}
+ *               entry_date: {type: string, format: date}
+ *               confirmed: {type: boolean}
  *     responses:
  *       200:
  *         description: The outcome of the scan
@@ -139,9 +143,15 @@ router.post('/scan', async (req, res, next) => {
  *       content:
  *         application/json:
  *           schema:
+ *             type: object
  *             required: [tag_code, label, action]
  *             properties:
+ *               tag_code: {type: string, description: 32 lowercase hex characters}
+ *               label: {type: string, minLength: 1, maxLength: 120}
  *               action:
+ *                 type: object
+ *                 description: "Discriminated on `type`. `water` takes container_id and drinks; `food` takes food_id, variant_id, quantity, unit and meal; `meal` takes meal_template_id, quantity, unit and meal. The `meal` field is mode auto (time of day) or mode fixed with a meal_type_id."
+ *               ask_before_running: {type: boolean}
  *     responses:
  *       201:
  *         description: The saved tag
@@ -196,12 +206,17 @@ router.post('/', async (req, res, next) => {
  *         name: id
  *         required: true
  *         schema:
+ *           type: string
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
+ *             type: object
  *             properties:
+ *               label: {type: string, minLength: 1, maxLength: 120}
+ *               action: {type: object}
+ *               ask_before_running: {type: boolean}
  *     responses:
  *       200:
  *         description: The updated tag
@@ -262,6 +277,7 @@ router.patch('/:id', async (req, res, next) => {
  *         name: id
  *         required: true
  *         schema:
+ *           type: string
  *     responses:
  *       200:
  *         description: Deleted
