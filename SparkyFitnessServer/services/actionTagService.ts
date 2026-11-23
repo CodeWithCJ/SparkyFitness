@@ -36,7 +36,11 @@ type RunnerContext = {
 type LoggedRow = NonNullable<ScanActionTagResponse['logged']>;
 
 /** `null` means the thing the tag points at no longer exists; nothing was logged. */
-type RunnerResult = { summary: string; logged?: LoggedRow } | null;
+type RunnerResult = {
+  summary: string;
+  logged?: LoggedRow;
+  drinks?: number;
+} | null;
 
 type FoodAction = Extract<TagAction, { type: 'food' }>;
 type MealAction = Extract<TagAction, { type: 'meal' }>;
@@ -58,6 +62,23 @@ function amountSummary(quantity: number, unit: string, name: string): string {
   return unit === 'serving'
     ? `${quantity} × ${name}`
     : `${quantity} ${unit} ${name}`;
+}
+
+function entryHourMinute(
+  entryTime: string | undefined,
+  tz: string
+): { hour: number; minute: number } {
+  if (entryTime) {
+    const match = entryTime.trim().match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+    if (match) {
+      const hour = Number(match[1]);
+      const minute = Number(match[2]);
+      if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+        return { hour, minute };
+      }
+    }
+  }
+  return userHourMinute(tz);
 }
 
 function normalizeTime(rawTime: string | undefined, tz: string): string {
@@ -107,7 +128,8 @@ async function resolveMealTypeId(
   userId: string,
   choice: TagMealChoice,
   tz: string,
-  mealTypeIdOverride?: string
+  mealTypeIdOverride?: string,
+  entryTime?: string
 ): Promise<string | null> {
   const allTypes: MealTypeRow[] =
     await mealTypeRepository.getAllMealTypes(userId);
@@ -127,7 +149,9 @@ async function resolveMealTypeId(
     const fixed = mealTypes.find((type) => type.id.toLowerCase() === wanted);
     if (fixed) return fixed.id;
   }
-  return pickMealTypeForTime(mealTypes, userHourMinute(tz))?.id ?? null;
+  return (
+    pickMealTypeForTime(mealTypes, entryHourMinute(entryTime, tz))?.id ?? null
+  );
 }
 
 type Runner<T extends TagAction> = (
@@ -153,7 +177,7 @@ const RUNNERS: {
         20,
         Math.max(1, Math.round(context.waterMlOverride / containerMl))
       );
-      summaryLabel = `${Math.round(context.waterMlOverride)} ml (${container.name})`;
+      summaryLabel = `${effectiveDrinks} × ${container.name}`;
     }
 
     await measurementService.upsertWaterIntake(
@@ -163,7 +187,7 @@ const RUNNERS: {
       effectiveDrinks,
       action.container_id
     );
-    return { summary: summaryLabel };
+    return { summary: summaryLabel, drinks: effectiveDrinks };
   },
   food: async (context, action) => {
     const target = await loadFoodTarget(context.userId, action);
@@ -174,7 +198,8 @@ const RUNNERS: {
       context.userId,
       action.meal,
       tz,
-      context.mealTypeIdOverride
+      context.mealTypeIdOverride,
+      context.entryTime
     );
     const unit: string = variant.serving_unit || 'serving';
     const entry = await foodRepository.createFoodEntry(
@@ -208,7 +233,8 @@ const RUNNERS: {
       context.userId,
       action.meal,
       tz,
-      context.mealTypeIdOverride
+      context.mealTypeIdOverride,
+      context.entryTime
     );
     const logged = await foodEntryService.createFoodEntryMeal(
       context.userId,
@@ -275,7 +301,12 @@ export async function scanActionTag(
   const allowsAdjustment = Boolean(
     tag.allow_amount_adjustment || tag.advanced_mode
   );
-  if ((tag.ask_before_running || allowsAdjustment) && !body.confirmed) {
+  if (
+    (tag.ask_before_running ||
+      allowsAdjustment ||
+      Boolean(tag.allow_custom_timestamp)) &&
+    !body.confirmed
+  ) {
     return { status: 'needs_confirmation', tag, summary: null };
   }
 
@@ -315,9 +346,14 @@ export async function scanActionTag(
       await releaseActionTagRun(userId, tag.id, claim, authenticatedUserId);
       return { status: 'target_missing', tag, summary: null };
     }
+    const resolvedAction: TagAction =
+      result.drinks !== undefined && effectiveAction.type === 'water'
+        ? { ...effectiveAction, drinks: result.drinks }
+        : effectiveAction;
+
     return {
       status: 'done',
-      tag,
+      tag: { ...tag, action: resolvedAction },
       summary: result.summary,
       logged: result.logged ?? null,
     };

@@ -6,6 +6,7 @@ import {
   type ActionTagPresetAmounts,
   type ActionTagResponse,
   type CreateActionTagBody,
+  type TagAction,
   type UpdateActionTagBody,
 } from '@workspace/shared';
 
@@ -20,7 +21,7 @@ export class ActionTagLimitError extends Error {
   }
 }
 
-export interface ActionTagRunClaim {
+export interface RunClaim {
   previousRunAt: Date | null;
   claimedAt: Date;
 }
@@ -214,31 +215,25 @@ export async function deleteActionTag(
 
 export async function claimActionTagRun(
   userId: string,
-  tagId: string,
+  id: string,
   debounceSeconds: number,
   authenticatedUserId?: string
-): Promise<ActionTagRunClaim | null> {
+): Promise<RunClaim | null> {
   const client = await getClient(userId, authenticatedUserId);
   try {
     const result = await client.query(
-      `WITH prev AS (
-         SELECT last_run_at AS previous_run_at
-         FROM action_tags
-         WHERE id = $1 AND user_id = $2
-       )
-       UPDATE action_tags SET
-         last_run_at = date_trunc('milliseconds', NOW()),
-         updated_by_user_id = $3,
-         updated_at = NOW()
-       FROM prev
-       WHERE action_tags.id = $1
-         AND action_tags.user_id = $2
-         AND (
-           prev.previous_run_at IS NULL
-           OR prev.previous_run_at <= NOW() - ($4::int * INTERVAL '1 second')
-         )
-       RETURNING prev.previous_run_at, action_tags.last_run_at AS claimed_at`,
-      [tagId, userId, authenticatedUserId ?? userId, debounceSeconds]
+      // Truncated to milliseconds so the value read back (a JS Date) equals the
+      // stored one exactly, which releaseActionTagRun compares against.
+      `UPDATE action_tags t SET last_run_at = date_trunc('milliseconds', NOW())
+       FROM (
+         SELECT id, last_run_at AS previous
+         FROM action_tags WHERE id = $1 AND user_id = $2 FOR UPDATE
+       ) o
+       WHERE t.id = o.id
+         AND (o.previous IS NULL
+              OR o.previous < NOW() - make_interval(secs => $3))
+       RETURNING o.previous AS previous_run_at, t.last_run_at AS claimed_at`,
+      [id, userId, debounceSeconds]
     );
     const row = result.rows[0] as
       { previous_run_at?: unknown; claimed_at?: unknown } | undefined;
@@ -254,22 +249,26 @@ export async function claimActionTagRun(
   }
 }
 
+/** Puts back the timestamp a failed run claimed, so the next tap is not dropped,
+ * unless a newer scan has claimed the tag since. */
 export async function releaseActionTagRun(
   userId: string,
-  tagId: string,
-  claim: ActionTagRunClaim,
+  id: string,
+  claim: RunClaim,
   authenticatedUserId?: string
 ): Promise<void> {
   const client = await getClient(userId, authenticatedUserId);
   try {
+    // Only while this claim is still the latest: a slow action that fails after
+    // another scan has claimed the tag must not make the next tap run at once.
     await client.query(
-      `UPDATE action_tags SET
-         last_run_at = $3,
-         updated_at = NOW()
+      `UPDATE action_tags SET last_run_at = $3
        WHERE id = $1 AND user_id = $2 AND last_run_at = $4`,
-      [tagId, userId, claim.previousRunAt, claim.claimedAt]
+      [id, userId, claim.previousRunAt, claim.claimedAt]
     );
   } finally {
     client.release();
   }
 }
+
+export type { TagAction };

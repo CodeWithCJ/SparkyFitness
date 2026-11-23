@@ -33,6 +33,7 @@ import { refreshAfterTagAction, undoTagAction } from '../services/tagActions';
 import type { RootStackScreenProps } from '../types/navigation';
 import { formatLocalizedNumber } from '../localization';
 import { toLocalDateString } from '../utils/dateUtils';
+import { sumMealFoodField } from '../utils/mealNutrition';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 
 type ActionTagScanScreenProps = RootStackScreenProps<'ActionTagScan'>;
@@ -237,6 +238,7 @@ const ConfirmAmountPicker: React.FC<{
   const [customTime, setCustomTime] = useState<string>(() =>
     formatCurrentTimeHhMm()
   );
+  const [timeError, setTimeError] = useState<string | null>(null);
 
   const waterUsesMl = useMemo(
     () =>
@@ -498,11 +500,8 @@ const ConfirmAmountPicker: React.FC<{
       | {
           name?: string;
           serving_quantity?: number;
-          calories?: number;
-          protein?: number;
-          carbs?: number;
-          fat?: number;
           image_url?: string | null;
+          foods?: Parameters<typeof sumMealFoodField>[0];
         }
       | undefined;
     const boundedMealQty = Math.min(
@@ -514,10 +513,17 @@ const ConfirmAmountPicker: React.FC<{
       Number(mealData?.serving_quantity ?? action.quantity)
     );
     const ratio = boundedMealQty / baseQty;
-    const calories = Math.round(Number(mealData?.calories ?? 0) * ratio);
-    const protein = Number((Number(mealData?.protein ?? 0) * ratio).toFixed(1));
-    const carbs = Number((Number(mealData?.carbs ?? 0) * ratio).toFixed(1));
-    const fat = Number((Number(mealData?.fat ?? 0) * ratio).toFixed(1));
+    const mealFoods = mealData?.foods ?? [];
+    const calories = Math.round(
+      sumMealFoodField(mealFoods, 'calories') * ratio
+    );
+    const protein = Number(
+      (sumMealFoodField(mealFoods, 'protein') * ratio).toFixed(1)
+    );
+    const carbs = Number(
+      (sumMealFoodField(mealFoods, 'carbs') * ratio).toFixed(1)
+    );
+    const fat = Number((sumMealFoodField(mealFoods, 'fat') * ratio).toFixed(1));
     return {
       title: mealData?.name ?? tag.label,
       imageUri: mealData?.image_url ?? null,
@@ -533,6 +539,7 @@ const ConfirmAmountPicker: React.FC<{
   }, [
     action,
     containerMl,
+    meal,
     dailyCalorieGoal,
     food,
     isWater,
@@ -546,8 +553,12 @@ const ConfirmAmountPicker: React.FC<{
   ]);
 
   const buildConfirmOptions = useCallback(
-    (explicitValue?: number): ScanConfirmOptions => {
+    (
+      explicitValue?: number,
+      explicitUnit?: string
+    ): ScanConfirmOptions | null => {
       const targetVal = explicitValue ?? selectedValue;
+      const targetUnit = explicitUnit ?? selectedUnit;
       const options: ScanConfirmOptions = {};
 
       if (isWater) {
@@ -561,11 +572,11 @@ const ConfirmAmountPicker: React.FC<{
         }
       } else {
         let quantityInActionUnit = targetVal;
-        if (selectedUnit !== action.unit) {
+        if (targetUnit !== action.unit) {
           if (
             action.type === 'food' &&
             variantServingSize &&
-            selectedUnit === 'serving'
+            targetUnit === 'serving'
           ) {
             quantityInActionUnit = targetVal * variantServingSize;
           } else {
@@ -585,9 +596,16 @@ const ConfirmAmountPicker: React.FC<{
 
       if (allowCustomTimestamp) {
         const validTime = normalizeHhMm(customTime);
-        if (validTime) {
-          options.entryTime = validTime;
+        if (!validTime) {
+          setTimeError(
+            t('actionTags.scan.invalidTime', {
+              defaultValue: 'Enter a valid time (e.g. 08:30 or 8:30 PM).',
+            })
+          );
+          return null;
         }
+        setTimeError(null);
+        options.entryTime = validTime;
       }
       return options;
     },
@@ -600,18 +618,33 @@ const ConfirmAmountPicker: React.FC<{
       selectedUnit,
       selectedValue,
       variantServingSize,
+      t,
     ]
   );
 
-  const handleSelectPreset = (value: number) => {
+  const handleSelectPreset = (value: number, unitOverride?: string) => {
+    const effectiveUnit = unitOverride ?? selectedUnit;
+    if (unitOverride) {
+      setSelectedUnit(unitOverride);
+    }
     setSelectedValue(value);
     setCustomInput(formatInputNumber(value));
     if (tapToLogEnabled) {
       triggerScanHaptic('medium');
-      void saveLastUsedAmount(tag.id, { value, unit: selectedUnit });
-      onConfirm(buildConfirmOptions(value));
+      void saveLastUsedAmount(tag.id, { value, unit: effectiveUnit });
+      const nextOptions = buildConfirmOptions(value, effectiveUnit);
+      if (nextOptions) {
+        onConfirm(nextOptions);
+      }
     } else {
       triggerScanHaptic('light');
+    }
+  };
+
+  const handleTimeChange = (text: string) => {
+    setCustomTime(text);
+    if (timeError) {
+      setTimeError(null);
     }
   };
 
@@ -782,13 +815,16 @@ const ConfirmAmountPicker: React.FC<{
             </Text>
             <FormInput
               value={customTime}
-              onChangeText={setCustomTime}
+              onChangeText={handleTimeChange}
               placeholder={t('actionTags.scan.timePlaceholder', {
                 defaultValue: 'HH:MM',
               })}
               keyboardType="numbers-and-punctuation"
               maxLength={11}
             />
+            {timeError ? (
+              <Text className="text-xs text-red-500 mt-1">{timeError}</Text>
+            ) : null}
           </View>
         ) : null}
 
@@ -820,8 +856,7 @@ const ConfirmAmountPicker: React.FC<{
                 }
                 className="py-2.5 px-4"
                 onPress={() => {
-                  setSelectedUnit(lastUsed.unit);
-                  handleSelectPreset(lastUsed.value);
+                  handleSelectPreset(lastUsed.value, lastUsed.unit);
                 }}
               >
                 {t('actionTags.scan.lastUsedAmount', {
@@ -911,7 +946,12 @@ const ConfirmAmountPicker: React.FC<{
         <View className="pt-1">
           <Button
             variant="primary"
-            onPress={() => onConfirm(buildConfirmOptions())}
+            onPress={() => {
+              const nextOptions = buildConfirmOptions();
+              if (nextOptions) {
+                onConfirm(nextOptions);
+              }
+            }}
           >
             {livePreview.calories > 0
               ? t('actionTags.scan.confirmWithCalories', {
@@ -938,6 +978,7 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const [phase, setPhase] = useState<Phase>({ kind: 'running' });
   const lastTagRef = useRef<ActionTagResponse | null>(null);
+  const doubleScanShownRef = useRef(false);
   const startedRef = useRef(false);
 
   const entryDate = useMemo(() => toLocalDateString(new Date()), []);
@@ -1001,7 +1042,8 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
           }
           case 'too_soon': {
             const knownTag = result.tag ?? lastTagRef.current;
-            if (knownTag) {
+            if (knownTag && !doubleScanShownRef.current) {
+              doubleScanShownRef.current = true;
               setPhase({
                 kind: 'confirm',
                 tag: knownTag,
