@@ -6,6 +6,14 @@ if (typeof globalThis.TextEncoder === 'undefined')
 if (typeof globalThis.TextDecoder === 'undefined')
   globalThis.TextDecoder = TextDecoder;
 
+// Node 26 has a global `ErrorEvent`, so react-test-renderer reports an
+// uncaught render error through `window.dispatchEvent`, which the native Jest
+// environment's `window` (an alias of the global object) does not have.
+// Returning true makes React fall back to console.error, as it did under jsdom.
+if (typeof window === 'object' && typeof window.dispatchEvent !== 'function') {
+  window.dispatchEvent = () => true;
+}
+
 // The native Jest environment flushes some async React updates later than
 // jsdom did, so `waitFor`/`findBy*` can need a little over RNTL's default one
 // second after a rejected request. This only raises the failure deadline.
