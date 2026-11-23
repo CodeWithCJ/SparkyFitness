@@ -418,23 +418,33 @@ function sportFromWithingsSourceId(
  * Google Health write no activity type into notes at all, so they have no
  * entry here and fall through to name matching.
  */
+// Every pattern is written so no two parts can match the same characters (the
+// capture never starts with whitespace, and the Garmin capture holds no
+// parenthesis), which keeps matching linear: overlapping parts backtrack
+// quadratically on long notes, and the classifier runs on every new entry.
 const NOTES_SPORT_PATTERNS: readonly RegExp[] = [
-  /^garmin activity:.*\(([^)]+)\)\s*$/i,
-  /^garmin fit import:.*\(([^)]+)\)\s*$/i,
-  /logged from coros(?: \(summary only\))?:\s*([^.(]+)/i,
-  /synced from (?:strava|intervals\.icu)\.\s*type:\s*([^.]+)\./i,
-  // ZeppBridge's own pattern, written so the whitespace and the capture cannot
-  // match the same characters (the first captured character is not a space).
+  /^garmin activity:.*\(([^()]+)\)\s*$/i,
+  /^garmin fit import:.*\(([^()]+)\)\s*$/i,
+  /logged from coros(?: \(summary only\))?:\s*([^.(\s][^.(]*)/i,
+  /synced from (?:strava|intervals\.icu)\.\s*type:\s*([^.\s][^.]*)\./i,
   /synced from zeppbridge\.\s*type:\s*([^.\s][^.]*)\./i,
-  /logged from polar flow:\s*([^.]+)\./i,
-  /logged from oura workout:\s*([^.]+)\./i,
-  /logged from withings workout:\s*([^.]+)\./i,
+  /logged from polar flow:\s*([^.\s][^.]*)\./i,
+  /logged from oura workout:\s*([^.\s][^.]*)\./i,
+  /logged from withings workout:\s*([^.\s][^.]*)\./i,
   /activity type:\s*([^,\n]+)/i,
 ];
 
+/**
+ * Provider notes templates name the sport within their first few dozen
+ * characters, so only the start of the notes is read. Anything longer is text
+ * the user wrote, and reading all of it would only cost time.
+ */
+const MAX_NOTES_CHARS = 1000;
+
 function sportFromNotes(notes: string): ActivitySport {
+  const head = notes.slice(0, MAX_NOTES_CHARS);
   for (const pattern of NOTES_SPORT_PATTERNS) {
-    const match = pattern.exec(notes);
+    const match = pattern.exec(head);
     if (match?.[1]) {
       const sport = mapRawSportValue(match[1]);
       if (sport !== 'other') return sport;
