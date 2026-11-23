@@ -509,7 +509,10 @@ describe('ExerciseDetailScreen', () => {
 
     it('shows the trend card for a bodyweight exercise', () => {
       mockUseExerciseStats.mockReturnValue(statsWithSessions(2));
-      const screen = renderScreen({ id: uuidId, equipment: ['body only'] });
+      const screen = renderScreen({
+        id: uuidId,
+        modality: 'bodyweight_reps',
+      });
       expect(screen.getByTestId('trend-card')).toBeTruthy();
     });
 
