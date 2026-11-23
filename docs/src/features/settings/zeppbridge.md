@@ -105,7 +105,7 @@ Check ZeppBridge's documentation for the current list.
 - **"Could not connect to ZeppBridge":** check the URL includes `http://`, the `serve` container is running, and both containers share a network. On a multi-user server, see the private address note above.
 - **"ZeppBridge rejected the pull token":** the token must match `ZEPPBRIDGE_PULL_TOKEN` exactly. After ten wrong attempts in a minute ZeppBridge blocks the address for ten minutes.
 - **"Newer record format":** your ZeppBridge is newer than this SparkyFitness understands. Update SparkyFitness.
-- **No new data:** ZeppBridge only serves what it has synced. Check that `zeppbridge-cli sync` is running on its schedule.
+- **No new data:** ZeppBridge only serves what it has synced. Check that `zeppbridge-cli sync` is running on its schedule. In ZeppBridge 3.2.1 and earlier, `zeppbridge-cli sync` only runs the account connector, so if you connected only the official authorization, keep the desktop app running to sync that path until upgrading to a release with scheduled official sync.
 - **Wrong day for a night's sleep or a late workout:** check your timezone in SparkyFitness. Sleep and workout days use that setting; the ZeppBridge container's `TZ` does not change them (ZeppBridge sends these times in UTC, and a time that carries a real UTC offset of its own is read in that offset). It still decides the day of daily metrics such as steps.
 
 ## Disconnecting
