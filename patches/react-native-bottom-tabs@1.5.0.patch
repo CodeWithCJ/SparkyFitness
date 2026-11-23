@@ -1,9 +1,9 @@
 diff --git a/ios/ProminentTab.swift b/ios/ProminentTab.swift
 new file mode 100644
-index 0000000000000000000000000000000000000000..49404f6768001f6733ce53277614c7b30b33cb99
+index 0000000000000000000000000000000000000000..c330f1d1dadade78e738e471eebcbcd9658cc353
 --- /dev/null
 +++ b/ios/ProminentTab.swift
-@@ -0,0 +1,164 @@
+@@ -0,0 +1,172 @@
 +import SwiftUI
 +
 +#if !os(macOS)
@@ -35,6 +35,7 @@ index 0000000000000000000000000000000000000000..49404f6768001f6733ce53277614c7b3
 +        controller: tabController,
 +        addKey: addItem?.key,
 +        title: addItem?.title,
++        tabBarHidden: props.tabBarHidden,
 +        onAdd: onAdd)
 +
 +      let title = props.filteredItems.first { $0.role == .search }?.title
@@ -75,6 +76,11 @@ index 0000000000000000000000000000000000000000..49404f6768001f6733ce53277614c7b3
 +    }
 +    weak var controller: UITabBarController?
 +    var onAdd: ((String) -> Void)?
++    /// The app asked for the tab bar to be hidden (`tabBarHidden`). The button
++    /// goes with the system bar: hidden, so it draws nothing and cannot be tapped.
++    var tabBarHidden = false {
++      didSet { if tabBarHidden != oldValue { setNeedsLayout() } }
++    }
 +    private let glass = UIVisualEffectView(effect: nil)
 +    private let button = UIButton(type: .system)
 +
@@ -134,8 +140,9 @@ index 0000000000000000000000000000000000000000..49404f6768001f6733ce53277614c7b3
 +      guard let root = superview else { return }
 +      let barBounds = controller?.tabBar.bounds ?? .zero
 +      let vertical = barBounds.height > barBounds.width
-+      glass.isHidden = !vertical
-+      if !vertical { return }
++      let barHidden = tabBarHidden || (controller?.tabBar.isHidden ?? false)
++      glass.isHidden = !vertical || barHidden
++      if glass.isHidden { return }
 +      let s = Self.size
 +      let pill = pillFrame()
 +      let midX = pill?.midX ?? root.bounds.maxX - 48
@@ -148,7 +155,7 @@ index 0000000000000000000000000000000000000000..49404f6768001f6733ce53277614c7b3
 +  enum SideAddButton {
 +    static func update(
 +      controller: UITabBarController, addKey: String?, title: String?,
-+      onAdd: @escaping (String) -> Void
++      tabBarHidden: Bool, onAdd: @escaping (String) -> Void
 +    ) {
 +      let bar = controller.tabBar
 +      let existing = controller.view.subviews.compactMap { $0 as? SideAddHost }.first
@@ -162,6 +169,7 @@ index 0000000000000000000000000000000000000000..49404f6768001f6733ce53277614c7b3
 +      host.addTitle = title
 +      host.controller = controller
 +      host.onAdd = onAdd
++      host.tabBarHidden = tabBarHidden
 +      controller.view.bringSubviewToFront(host)
 +      host.setNeedsLayout()
 +      DispatchQueue.main.async { host.setNeedsLayout() }

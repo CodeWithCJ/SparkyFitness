@@ -732,6 +732,14 @@ export function useCustomFoodForm({
     queryClient,
   ]);
 
+  // Name, brand, barcode and notes belong to the form's identity (the food or
+  // the provider result being edited), not to the nutrient list. They are
+  // re-seeded only when that identity changes; a custom-nutrient refetch
+  // rebuilds the variants below but keeps what the user already typed.
+  const [formIdentity, setFormIdentity] = useState<
+    readonly [typeof food, typeof initialVariants] | null
+  >(null);
+
   useOnChange(
     [
       autoScaleOnlineImports,
@@ -743,14 +751,22 @@ export function useCustomFoodForm({
       resetForm,
     ],
     () => {
+      const isNewForm =
+        formIdentity === null ||
+        formIdentity[0] !== food ||
+        formIdentity[1] !== initialVariants;
+      if (isNewForm) setFormIdentity([food, initialVariants]);
+
       if (food) {
-        setFormData({
-          name: food.name || '',
-          brand: food.brand || '',
-          is_quick_food: food.is_quick_food || false,
-          barcode: food.barcode || '',
-          notes: food.notes || '',
-        });
+        if (isNewForm) {
+          setFormData({
+            name: food.name || '',
+            brand: food.brand || '',
+            is_quick_food: food.is_quick_food || false,
+            barcode: food.barcode || '',
+            notes: food.notes || '',
+          });
+        }
         // A provider search result has no `images` array yet — its photo is the
         // single upstream `image_url`. Seed the picker with it so importing
         // keeps the image the user saw on the search card; the server downloads
@@ -784,13 +800,15 @@ export function useCustomFoodForm({
           });
         }
       } else if (initialVariants && initialVariants.length > 0) {
-        setFormData({
-          name: '',
-          brand: '',
-          is_quick_food: false,
-          barcode: '',
-          notes: '',
-        });
+        if (isNewForm) {
+          setFormData({
+            name: '',
+            brand: '',
+            is_quick_food: false,
+            barcode: '',
+            notes: '',
+          });
+        }
         const mapped = initialVariants.map((variant) =>
           foodVariantToFormVariant({
             ...variant,
