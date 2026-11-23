@@ -2614,7 +2614,11 @@ describe('_createExerciseEntryWithClient default shoe', () => {
     create = exports._createExerciseEntryWithClient as typeof create;
   });
 
-  function makeClient(exerciseName: string, defaultShoe: string | null) {
+  function makeClient(
+    exerciseName: string,
+    defaultShoe: string | null,
+    timezone: string | null = 'Europe/Berlin'
+  ) {
     const calls: { sql: string; params: unknown[] }[] = [];
     return {
       calls,
@@ -2624,6 +2628,9 @@ describe('_createExerciseEntryWithClient default shoe', () => {
           return Promise.resolve({
             rows: [{ name: exerciseName, category: 'Cardio' }],
           });
+        }
+        if (/FROM user_preferences/.test(sql)) {
+          return Promise.resolve({ rows: [{ timezone }] });
         }
         if (/FROM shoes/.test(sql)) {
           return Promise.resolve({
@@ -2664,7 +2671,25 @@ describe('_createExerciseEntryWithClient default shoe', () => {
     expect(shoeQuery.sql).toMatch(
       /is_default AND status = 'active'[\s\S]*COALESCE\(purchase_date, \(created_at AT TIME ZONE \$3\)::date\)/
     );
-    expect(shoeQuery.params.slice(0, 2)).toEqual(['user-1', '2026-11-20']);
+    expect(shoeQuery.params).toEqual(['user-1', '2026-11-20', 'Europe/Berlin']);
+    // The timezone is read over the creation's own connection.
+    expect(
+      client.calls.some(({ sql }) => /FROM user_preferences/.test(sql))
+    ).toBe(true);
+  });
+
+  it('uses UTC for a missing or invalid stored timezone', async () => {
+    const client = makeClient('Running', 'shoe-1', 'Not/AZone');
+    await create(
+      client,
+      'user-1',
+      entry,
+      'actor-1',
+      'HealthConnect',
+      'preset-entry-1'
+    );
+
+    expect(shoeQueryOf(client)!.params[2]).toBe('UTC');
   });
 
   it('recognises a run by its provider notes when the name says nothing', async () => {

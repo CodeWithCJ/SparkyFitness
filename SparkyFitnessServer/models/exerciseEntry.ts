@@ -19,7 +19,6 @@ import * as workoutTelemetryRepository from './workoutTelemetryRepository.js';
 import { bodyWeightJoinSql } from '../utils/exerciseLoadSql.js';
 import { assertSetWeightSign } from '../utils/setWeightSign.js';
 import { getDefaultShoeForRunWithClient } from './shoeRepository.js';
-import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import {
   mergeManualFields,
   storedManualFields,
@@ -1225,13 +1224,7 @@ async function shoeForNewEntryWithClient(
     notes: entryData.notes,
   });
   if (sport !== 'running') return null;
-  const timezone = await loadUserTimezone(userId);
-  return getDefaultShoeForRunWithClient(
-    client,
-    userId,
-    entryData.entry_date,
-    timezone
-  );
+  return getDefaultShoeForRunWithClient(client, userId, entryData.entry_date);
 }
 
 async function _createExerciseEntryWithClient(
