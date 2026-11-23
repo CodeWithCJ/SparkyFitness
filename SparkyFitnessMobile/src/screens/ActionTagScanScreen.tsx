@@ -33,8 +33,10 @@ import { refreshAfterTagAction, undoTagAction } from '../services/tagActions';
 import type { RootStackScreenProps } from '../types/navigation';
 import { formatLocalizedNumber } from '../localization';
 import { toLocalDateString } from '../utils/dateUtils';
-import { buildMealDisplayValuesFromFoods } from '../utils/mealNutrition';
-import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
+import {
+  buildMealDisplayValuesFromFoods,
+  getMealTypeDisplayLabel,
+} from '../utils/mealNutrition';
 
 type ActionTagScanScreenProps = RootStackScreenProps<'ActionTagScan'>;
 
@@ -545,7 +547,6 @@ const ConfirmAmountPicker: React.FC<{
     dailyCalorieGoal,
     food,
     isWater,
-    meal,
     selectedUnit,
     selectedValue,
     tag.label,
@@ -1085,7 +1086,7 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   useEffect(() => {
     if (!isConnected || startedRef.current) return;
     startedRef.current = true;
-    // `run` only sets state after the server has answered, never synchronously.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void run(false);
   }, [isConnected, run]);
 
