@@ -164,7 +164,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
@@ -190,7 +190,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
@@ -237,7 +237,7 @@ jobs:
         with:
           # 22.5 or newer: the offline tests run their SQL on Node's built-in
           # SQLite (node:sqlite). 24 matches the other jobs.
-          node-version: "24"
+          node-version: "26"
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
@@ -279,7 +279,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
@@ -345,7 +345,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
@@ -446,7 +446,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "26"
           cache: "pnpm"
           cache-dependency-path: pnpm-lock.yaml
 
