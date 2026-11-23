@@ -1086,7 +1086,15 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   useEffect(() => {
     if (!isConnected || startedRef.current) return;
     startedRef.current = true;
-    void run(false);
+    let cancelled = false;
+    void Promise.resolve().then(() => {
+      if (!cancelled) {
+        void run(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [isConnected, run]);
 
   const header = useScreenHeader({

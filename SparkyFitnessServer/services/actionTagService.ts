@@ -172,7 +172,13 @@ const RUNNERS: {
     let effectiveDrinks = action.drinks;
     let summaryLabel = `${action.drinks} × ${container.name}`;
     if (context.waterMlOverride !== undefined) {
-      const containerMl = containerVolumeInMl(container.volume, container.unit);
+      const containerServings = Math.max(
+        1,
+        Number((container as { servings?: unknown }).servings ?? 1) || 1
+      );
+      const containerMl =
+        containerVolumeInMl(container.volume, container.unit) /
+        containerServings;
       effectiveDrinks = Math.min(
         20,
         Math.max(1, Math.round(context.waterMlOverride / containerMl))
@@ -334,7 +340,7 @@ export async function scanActionTag(
         entryDate: body.entry_date,
         // Only apply a custom timestamp when explicitly enabled on the tag.
         entryTime: tag.allow_custom_timestamp ? body.entry_time : undefined,
-        mealTypeIdOverride: body.meal_type_id,
+        mealTypeIdOverride: body.confirmed ? body.meal_type_id : undefined,
         waterMlOverride:
           tag.action.type === 'water' && allowsAdjustment
             ? body.water_ml_override

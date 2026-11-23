@@ -546,6 +546,13 @@ describe('Phase 1 amount and multiplier adjustments', () => {
       entry_time: '08:00',
     });
     expect(doneResult.status).toBe('done');
+    expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entry_time: '08:00:00',
+        meal_type_id: BREAKFAST_ID,
+      }),
+      USER
+    );
   });
 
   it('applies meal_type_id override for food tags', async () => {

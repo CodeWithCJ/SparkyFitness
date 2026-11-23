@@ -39,7 +39,7 @@ export interface TagActionContext {
 
 function amountLabel(t: TFunction, quantity: number, unit: string): string {
   return unit === 'serving'
-    ? t('actionTags.action.servingsFormatted', {
+    ? t('actionTags.action.servings', {
         count: quantity,
         formattedCount: formatLocalizedNumber(quantity),
         defaultValue: '{{formattedCount}} servings',
