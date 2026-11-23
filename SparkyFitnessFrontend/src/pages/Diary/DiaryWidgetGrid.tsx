@@ -11,6 +11,8 @@ export interface DiaryWidget {
   title: string;
   icon: ComponentType<{ className?: string }>;
   render: () => ReactNode;
+  /** Drop the frame outside edit mode (meal cards form one timeline). */
+  seamless?: boolean;
 }
 
 interface DiaryWidgetGridProps {

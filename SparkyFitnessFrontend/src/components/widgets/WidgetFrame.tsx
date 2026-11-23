@@ -8,6 +8,8 @@ interface WidgetFrameProps {
   widgetKey: string;
   title: string;
   editMode: boolean;
+  /** Drop the border and background (and let content overflow) outside edit mode. */
+  seamless?: boolean;
   isMax: boolean;
   onToggleMax: () => void;
   onHide: () => void;
@@ -30,6 +32,7 @@ const WidgetFrame = ({
   widgetKey,
   title,
   editMode,
+  seamless = false,
   isMax,
   onToggleMax,
   onHide,
@@ -51,7 +54,19 @@ const WidgetFrame = ({
   }, [onMeasure, widgetKey]);
 
   return (
-    <div className="relative h-full w-full overflow-hidden rounded-lg border border-border/60 bg-card">
+    <div
+      className={
+        seamless && !editMode
+          ? 'relative h-full w-full'
+          : 'relative h-full w-full overflow-hidden rounded-lg border border-border/60 bg-card'
+      }
+    >
+      {seamless && !editMode && (
+        <span
+          className="pointer-events-none absolute -bottom-4 left-[44px] top-0 w-px bg-border"
+          aria-hidden="true"
+        />
+      )}
       {/* Natural-height inner content. Child Card chrome is flattened so only
           the frame's border shows. Content is top-aligned; when the tile is
           taller (row-equalized), the extra space sits inside this one border. */}

@@ -4699,6 +4699,8 @@
     "noFoodsAddedYet": "No foods added yet"
   },
   "mealCard": {
+    "fromTime": "from {{time}}",
+    "nothingLogged": "Nothing logged yet, add food",
     "addFoodToMeal": "Add Food to {{mealName}}",
     "copyFood": "Copy food",
     "searchFoodsForMeal": "Search for foods to add to your {{mealName}}.",
