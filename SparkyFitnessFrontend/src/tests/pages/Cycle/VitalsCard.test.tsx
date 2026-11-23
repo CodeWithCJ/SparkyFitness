@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { PregnancyVitals } from '@/hooks/usePregnancy';
 import VitalsCard from '@/pages/Cycle/pregnancy/VitalsCard';
 import { setWebFeatureChoices } from '@/tests/mocks/webFeatures';
+import { renderWithClient } from '@/tests/test-utils';
 
 jest.mock('react-i18next', () =>
   jest.requireActual('@/tests/mocks/reactI18next')
@@ -55,10 +55,8 @@ const vitals: PregnancyVitals = {
 };
 
 function renderCard() {
-  return render(
-    <QueryClientProvider client={new QueryClient()}>
-      <VitalsCard pregnancyId="p-1" vitals={vitals} date="2026-11-22" />
-    </QueryClientProvider>
+  return renderWithClient(
+    <VitalsCard pregnancyId="p-1" vitals={vitals} date="2026-11-22" />
   );
 }
 

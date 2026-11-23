@@ -2,9 +2,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import {
+  clearSnoozedMedicationReminders,
   initMedicationNotificationActions,
   MEDICATION_NOTIFICATION_TASK_NAME,
   PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY,
+  removeSnoozedMedicationReminders,
 } from '../../src/services/medicationNotificationHandler';
 import {
   addNotificationResponseListener,
@@ -824,5 +826,56 @@ describe('logging a dose from a notification action', () => {
         Platform.OS = prevOS;
       }
     });
+  });
+});
+
+describe('forgetting snooze records (#3487)', () => {
+  const SNOOZED_KEY = 'snoozed_medication_reminders';
+  const record = (baseKey: string) => ({
+    baseKey,
+    entryDate: '2026-07-28',
+    doses: [{ medicationId: 'med-1', scheduleId: 'sched-1' }],
+  });
+  const storedKeys = async () =>
+    (
+      JSON.parse((await AsyncStorage.getItem(SNOOZED_KEY)) ?? '[]') as {
+        baseKey: string;
+      }[]
+    ).map((item) => item.baseKey);
+
+  afterEach(async () => {
+    jest.restoreAllMocks();
+    await AsyncStorage.removeItem(SNOOZED_KEY);
+  });
+
+  it('says so when a removal cannot be written, and tries it again on the next call', async () => {
+    await AsyncStorage.setItem(
+      SNOOZED_KEY,
+      JSON.stringify([record('slot-a'), record('slot-b')])
+    );
+    jest
+      .spyOn(AsyncStorage, 'setItem')
+      .mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(removeSnoozedMedicationReminders(['slot-a'])).resolves.toBe(
+      false
+    );
+    expect(await storedKeys()).toEqual(['slot-a', 'slot-b']);
+
+    // No snoozed copy is left to name it, so the next call (here with no
+    // keys of its own) removes it.
+    await expect(removeSnoozedMedicationReminders([])).resolves.toBe(true);
+    expect(await storedKeys()).toEqual(['slot-b']);
+  });
+
+  it('says so when the records cannot be cleared', async () => {
+    await AsyncStorage.setItem(SNOOZED_KEY, JSON.stringify([record('slot-a')]));
+    jest
+      .spyOn(AsyncStorage, 'removeItem')
+      .mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(clearSnoozedMedicationReminders()).resolves.toBe(false);
+    await expect(clearSnoozedMedicationReminders()).resolves.toBe(true);
+    expect(await AsyncStorage.getItem(SNOOZED_KEY)).toBeNull();
   });
 });

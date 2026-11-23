@@ -62,3 +62,29 @@ export function notifyUploadsConfirmed(): void {
     }
   }
 }
+
+const accountChangedListeners = new Set<Listener>();
+
+/** Runs `listener` once an account change has finished clearing the old one. */
+export function subscribeAccountChanged(listener: Listener): () => void {
+  accountChangedListeners.add(listener);
+  return () => {
+    accountChangedListeners.delete(listener);
+  };
+}
+
+/**
+ * Tells the app the account on the phone changed and the previous one's
+ * caches and cookies are gone. `queryClient.clear()` does not tell the
+ * observers already mounted, so a component that lives outside the screens
+ * (no focus to refetch on) renders again on this to read the new account.
+ */
+export function notifyAccountChanged(): void {
+  for (const listener of [...accountChangedListeners]) {
+    try {
+      listener();
+    } catch {
+      // One listener's failure must not stop the others being told.
+    }
+  }
+}

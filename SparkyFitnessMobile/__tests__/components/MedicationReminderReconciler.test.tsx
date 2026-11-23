@@ -22,6 +22,12 @@ import {
   useAppPreferencesStore,
 } from '../../src/stores/appPreferencesStore';
 import { getTodayDate } from '../../src/utils/dateUtils';
+import * as offlineEvents from '../../src/offline/events';
+import { notifyAccountChanged } from '../../src/offline/events';
+import {
+  accountGeneration,
+  bumpAccountGeneration,
+} from '../../src/offline/accountGeneration';
 
 jest.mock('../../src/hooks/useMedications', () => ({
   useMedications: jest.fn(),
@@ -148,8 +154,63 @@ describe('MedicationReminderReconciler', () => {
 
     expect(mockReconcile).toHaveBeenCalledWith(medications, entries, {
       active: true,
+      accountGeneration: accountGeneration(),
     });
     expect(toJSON()).toBeNull();
+  });
+
+  it('renders again and reconciles once an account change is done, with nothing else changing', () => {
+    mockQueries({ meds: medications, medEntries: entries });
+    render(<MedicationReminderReconciler />);
+    expect(mockReconcile).toHaveBeenCalledTimes(1);
+
+    // The account change cancelled every reminder; the cleared cache does not
+    // tell the queries, and nothing else on screen changes.
+    act(() => {
+      notifyAccountChanged();
+    });
+
+    expect(mockReconcile).toHaveBeenCalledTimes(2);
+    expect(mockReconcile).toHaveBeenLastCalledWith(medications, entries, {
+      active: true,
+      accountGeneration: accountGeneration(),
+    });
+  });
+
+  it('stops listening for account changes once unmounted', () => {
+    mockQueries({ meds: medications, medEntries: entries });
+    const unsubscribe = jest.fn();
+    const subscribe = jest
+      .spyOn(offlineEvents, 'subscribeAccountChanged')
+      .mockReturnValue(unsubscribe);
+    const { unmount } = render(<MedicationReminderReconciler />);
+    expect(subscribe).toHaveBeenCalledTimes(1);
+
+    unmount();
+
+    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    subscribe.mockRestore();
+  });
+
+  it('passes the account its data were read for, so the queue drops a reconcile that comes after an account change started', () => {
+    mockQueries({ meds: medications, medEntries: entries });
+    const readUnder = accountGeneration();
+    const { rerender } = render(<MedicationReminderReconciler />);
+    expect(mockReconcile).toHaveBeenLastCalledWith(medications, entries, {
+      active: true,
+      accountGeneration: readUnder,
+    });
+
+    bumpAccountGeneration();
+    act(() => {
+      notifyAccountChanged();
+    });
+    rerender(<MedicationReminderReconciler />);
+
+    expect(mockReconcile).toHaveBeenLastCalledWith(medications, entries, {
+      active: true,
+      accountGeneration: readUnder + 1,
+    });
   });
 
   it('enables both queries scoped to today while reminders are active', () => {
@@ -190,7 +251,10 @@ describe('MedicationReminderReconciler', () => {
 
       // The empty reconcile is the cancellation sweep for already-scheduled
       // reminders; it must run even though the queries never load.
-      expect(mockReconcile).toHaveBeenCalledWith([], [], { active: false });
+      expect(mockReconcile).toHaveBeenCalledWith([], [], {
+        active: false,
+        accountGeneration: accountGeneration(),
+      });
       expect(mockUseMedications).toHaveBeenCalledWith(
         expect.objectContaining({ enabled: false })
       );
@@ -383,7 +447,10 @@ describe('MedicationReminderReconciler', () => {
       render(<MedicationReminderReconciler />);
 
       expect(mockReconcile).toHaveBeenCalledTimes(1);
-      expect(mockReconcile).toHaveBeenCalledWith([], [], { active: false });
+      expect(mockReconcile).toHaveBeenCalledWith([], [], {
+        active: false,
+        accountGeneration: accountGeneration(),
+      });
       expect(mockUseMedications).toHaveBeenCalledWith(
         expect.objectContaining({ enabled: false })
       );
@@ -419,6 +486,29 @@ describe('MedicationReminderReconciler', () => {
       }
     );
 
+    it('cancels the reminders of the server switched away from again when the active server changes while it is not known', () => {
+      mockFeatureState('unknown');
+      mockActiveServer('active');
+      mockQueries();
+      const { rerender } = render(<MedicationReminderReconciler />);
+      expect(cancelMedicationRemindersOfOtherServers).toHaveBeenCalledTimes(1);
+
+      mockUseServerConfigs.mockReturnValue({
+        allConfigs: [],
+        activeConfig: {
+          id: 'server-2',
+          url: 'https://other.example.test',
+          apiKey: 'key',
+        },
+        refetch: jest.fn(),
+        isLoading: false,
+      } as never);
+      rerender(<MedicationReminderReconciler />);
+
+      expect(cancelMedicationRemindersOfOtherServers).toHaveBeenCalledTimes(2);
+      expect(mockReconcile).not.toHaveBeenCalled();
+    });
+
     it.each<MedicationsFeatureState>(['on', 'off'])(
       "does not cancel other servers' reminders or replay presses itself once the state is known (%s)",
       (state) => {
@@ -452,6 +542,7 @@ describe('MedicationReminderReconciler', () => {
 
         expect(mockReconcile).toHaveBeenLastCalledWith([], [], {
           active: false,
+          accountGeneration: accountGeneration(),
         });
       }
     );
@@ -463,7 +554,10 @@ describe('MedicationReminderReconciler', () => {
 
       render(<MedicationReminderReconciler />);
 
-      expect(mockReconcile).toHaveBeenCalledWith([], [], { active: false });
+      expect(mockReconcile).toHaveBeenCalledWith([], [], {
+        active: false,
+        accountGeneration: accountGeneration(),
+      });
     });
 
     it('schedules the reminders again once Medications is turned back on', () => {
@@ -472,6 +566,7 @@ describe('MedicationReminderReconciler', () => {
       const { rerender } = render(<MedicationReminderReconciler />);
       expect(mockReconcile).toHaveBeenLastCalledWith([], [], {
         active: false,
+        accountGeneration: accountGeneration(),
       });
 
       mockFeatureState('on');
@@ -481,7 +576,7 @@ describe('MedicationReminderReconciler', () => {
       expect(mockReconcile).toHaveBeenLastCalledWith(
         timedMedications,
         entries,
-        { active: true }
+        { active: true, accountGeneration: accountGeneration() }
       );
       expect(mockMaybePrompt).toHaveBeenCalledTimes(1);
     });

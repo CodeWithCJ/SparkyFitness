@@ -5,9 +5,14 @@ import { Platform } from 'react-native';
 import { localDateTimeToUtc } from '@workspace/shared';
 
 import {
+  cancelMedicationRemindersForAccountChange,
   cancelMedicationRemindersOfOtherServers,
   reconcileMedicationReminders,
 } from '../../src/services/medicationReminderService';
+import {
+  accountGeneration,
+  bumpAccountGeneration,
+} from '../../src/offline/accountGeneration';
 import * as storage from '../../src/services/storage';
 import type { ServerConfig } from '../../src/services/storage';
 import {
@@ -437,15 +442,9 @@ describe('reconcileMedicationReminders', () => {
       expect(mockCancel).not.toHaveBeenCalled();
     });
 
-    it('runs after a pass under way and replaces one still waiting, so the previous server cannot schedule again', async () => {
-      // The pass under way was made for server A; then the person switched
-      // to server B, whose choices are not known yet.
-      jest
-        .spyOn(storage, 'getActiveServerConfig')
-        .mockResolvedValue({ id: 'server-a' } as ServerConfig);
-      jest
-        .spyOn(storage, 'getActiveServerConfigId')
-        .mockResolvedValue('server-b');
+    // A notification store the scheduling, listing and cancelling mocks
+    // share, so a later pass sees what an earlier one scheduled.
+    const useNotificationStore = () => {
       const scheduled = new Map<string, Notifications.NotificationRequest>();
       let nextId = 0;
       mockSchedule.mockImplementation(async (request) => {
@@ -465,7 +464,158 @@ describe('reconcileMedicationReminders', () => {
       mockCancel.mockImplementation(async (id: string) => {
         scheduled.delete(id);
       });
+      return scheduled;
+    };
+    const scheduledFor = (medicationId: string) =>
+      mockSchedule.mock.calls.some(
+        ([request]) => request.content.data?.medicationId === medicationId
+      );
 
+    it('runs after a pass under way, and a waiting pass read for the previous server does nothing', async () => {
+      // The pass under way was made for server A; then the person switched
+      // to server B, whose choices are not known yet.
+      jest
+        .spyOn(storage, 'getActiveServerConfig')
+        .mockResolvedValue({ id: 'server-a' } as ServerConfig);
+      jest
+        .spyOn(storage, 'getActiveServerConfigId')
+        .mockResolvedValue('server-b');
+      const scheduled = useNotificationStore();
+
+      const underWay = reconcileMedicationReminders([buildMedication()], [], {
+        active: true,
+      });
+      const waiting = reconcileMedicationReminders(
+        [buildMedication({ id: 'med-2' })],
+        [],
+        { active: true, serverId: 'server-a' }
+      );
+      const cancel = cancelMedicationRemindersOfOtherServers();
+      await Promise.all([underWay, waiting, cancel]);
+
+      expect(scheduledFor('med-1')).toBe(true);
+      expect(scheduledFor('med-2')).toBe(false);
+      expect([...scheduled.values()]).toEqual([]);
+    });
+
+    it("keeps a waiting Medications-off pass when the other servers' cancel joins it", async () => {
+      jest
+        .spyOn(storage, 'getActiveServerConfig')
+        .mockResolvedValue({ id: 'server-b' } as ServerConfig);
+      jest
+        .spyOn(storage, 'getActiveServerConfigId')
+        .mockResolvedValue('server-b');
+      const scheduled = useNotificationStore();
+
+      const underWay = reconcileMedicationReminders([buildMedication()], [], {
+        active: true,
+      });
+      // Medications was turned off while that pass ran, and then the state
+      // became unknown (a read failed) before the off pass started.
+      const off = reconcileMedicationReminders([], [], { active: false });
+      const cancel = cancelMedicationRemindersOfOtherServers();
+      await Promise.all([underWay, off, cancel]);
+
+      expect(scheduledFor('med-1')).toBe(true);
+      // The off pass still ran: this server's reminders are gone too.
+      expect([...scheduled.values()]).toEqual([]);
+    });
+
+    it('does nothing for a pass read for another server, but still logs waiting presses', async () => {
+      jest
+        .spyOn(storage, 'getActiveServerConfigId')
+        .mockResolvedValue('server-b');
+      const handlerMod =
+        require('../../src/services/medicationNotificationHandler') as typeof import('../../src/services/medicationNotificationHandler');
+      const flushSpy = jest
+        .spyOn(handlerMod, 'flushPendingMedicationNotificationActions')
+        .mockResolvedValue(false);
+      mockGetAllScheduled.mockResolvedValue([
+        pendingRequest('this-server', {
+          medicationId: 'med-1',
+          key: BASE_KEY,
+          serverId: 'server-b',
+        }),
+      ]);
+
+      await reconcileMedicationReminders([buildMedication()], [], {
+        active: false,
+        serverId: 'server-a',
+      });
+
+      expect(flushSpy).toHaveBeenCalled();
+      expect(mockCancel).not.toHaveBeenCalled();
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('when the account on the phone changes', () => {
+    const AsyncStorage =
+      require('@react-native-async-storage/async-storage') as {
+        setItem: (k: string, v: string) => Promise<void>;
+        getItem: (k: string) => Promise<string | null>;
+        removeItem: (k: string) => Promise<void>;
+      };
+
+    afterEach(async () => {
+      jest.restoreAllMocks();
+      await AsyncStorage.removeItem('snoozed_medication_reminders');
+    });
+
+    // A notification store the scheduling, listing and cancelling mocks
+    // share, so a later pass sees what an earlier one scheduled.
+    const useNotificationStore = () => {
+      const scheduled = new Map<string, Notifications.NotificationRequest>();
+      let nextId = 0;
+      mockSchedule.mockImplementation(async (request) => {
+        const identifier = `n-${nextId++}`;
+        scheduled.set(
+          identifier,
+          pendingRequest(
+            identifier,
+            request.content.data as Record<string, string>
+          )
+        );
+        return identifier;
+      });
+      mockGetAllScheduled.mockImplementation(async () => [
+        ...scheduled.values(),
+      ]);
+      mockCancel.mockImplementation(async (id: string) => {
+        scheduled.delete(id);
+      });
+      return scheduled;
+    };
+    const scheduledFor = (medicationId: string) =>
+      mockSchedule.mock.calls.some(
+        ([request]) => request.content.data?.medicationId === medicationId
+      );
+    const medicationsScheduled = (
+      scheduled: Map<string, Notifications.NotificationRequest>
+    ) =>
+      new Set(
+        [...scheduled.values()].map(
+          (request) => request.content.data?.medicationId
+        )
+      );
+
+    it("cancels every medication reminder, drops the previous account's waiting pass and forgets the snoozes", async () => {
+      jest
+        .spyOn(storage, 'getActiveServerConfigId')
+        .mockResolvedValue('server-a');
+      await AsyncStorage.setItem(
+        'snoozed_medication_reminders',
+        JSON.stringify([
+          {
+            baseKey: BASE_KEY,
+            entryDate: TODAY,
+            doses: [{ medicationId: 'med-1', scheduleId: 'sched-1' }],
+          },
+        ])
+      );
+      const scheduled = useNotificationStore();
+
+      // Same server, another account: the stamps cannot tell them apart.
       const underWay = reconcileMedicationReminders([buildMedication()], [], {
         active: true,
       });
@@ -474,15 +624,78 @@ describe('reconcileMedicationReminders', () => {
         [],
         { active: true }
       );
-      const cancel = cancelMedicationRemindersOfOtherServers();
-      await Promise.all([underWay, waiting, cancel]);
+      const change = cancelMedicationRemindersForAccountChange();
+      // The new account's reconcile joins the same waiting work, and runs
+      // after the cancel, so its reminders stay.
+      const next = reconcileMedicationReminders(
+        [buildMedication({ id: 'med-3' })],
+        [],
+        { active: true }
+      );
+      await Promise.all([underWay, waiting, change, next]);
 
-      expect(
-        mockSchedule.mock.calls.some(
-          ([request]) => request.content.data?.medicationId === 'med-2'
-        )
-      ).toBe(false);
-      expect(mockSchedule).toHaveBeenCalled();
+      expect(scheduledFor('med-1')).toBe(true);
+      expect(scheduledFor('med-2')).toBe(false);
+      expect(medicationsScheduled(scheduled)).toEqual(new Set(['med-3']));
+      expect(await AsyncStorage.getItem('snoozed_medication_reminders')).toBe(
+        null
+      );
+    });
+
+    it.each([
+      ['another account on the same server', 'server-a'],
+      ['another server', 'server-b'],
+    ])(
+      "drops a pass read before a change to %s, without taking the place of the new account's",
+      async (_label, activeServerId) => {
+        jest
+          .spyOn(storage, 'getActiveServerConfigId')
+          .mockResolvedValue(activeServerId);
+        const scheduled = useNotificationStore();
+
+        // The background task started its reads for the previous account.
+        const readUnder = accountGeneration();
+        const underWay = reconcileMedicationReminders([buildMedication()], [], {
+          active: true,
+        });
+        // The account changes, as useAuth does it: the cancel, then the count.
+        const change = cancelMedicationRemindersForAccountChange();
+        bumpAccountGeneration();
+        const fresh = reconcileMedicationReminders(
+          [buildMedication({ id: 'med-3' })],
+          [],
+          { active: true }
+        );
+        const stale = reconcileMedicationReminders(
+          [buildMedication({ id: 'med-2' })],
+          [],
+          { active: true, serverId: 'server-a', accountGeneration: readUnder }
+        );
+        await Promise.all([underWay, change, fresh, stale]);
+
+        expect(scheduledFor('med-2')).toBe(false);
+        expect(medicationsScheduled(scheduled)).toEqual(new Set(['med-3']));
+      }
+    );
+
+    it('skips a waiting pass when the account changes before it runs', async () => {
+      jest
+        .spyOn(storage, 'getActiveServerConfigId')
+        .mockResolvedValue('server-a');
+      const scheduled = useNotificationStore();
+
+      const underWay = reconcileMedicationReminders([buildMedication()], [], {
+        active: false,
+      });
+      const waiting = reconcileMedicationReminders(
+        [buildMedication({ id: 'med-2' })],
+        [],
+        { active: true, accountGeneration: accountGeneration() }
+      );
+      bumpAccountGeneration();
+      await Promise.all([underWay, waiting]);
+
+      expect(scheduledFor('med-2')).toBe(false);
       expect([...scheduled.values()]).toEqual([]);
     });
   });

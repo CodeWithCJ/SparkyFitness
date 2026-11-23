@@ -19,6 +19,8 @@ import { syncMedicationActiveUser } from '../services/backgroundWater';
 import { retryPendingMedicationActions } from '../services/medicationNotificationHandler';
 import { syncNativeMedicationSnoozeMinutes } from '../services/medicationNativeSync';
 import { addLog } from '../services/LogService';
+import { accountGeneration } from '../offline/accountGeneration';
+import { subscribeAccountChanged } from '../offline/events';
 import i18n from '../localization/i18n';
 
 const FOREGROUND_CLOCK_POLL_MS = 30_000;
@@ -52,10 +54,28 @@ const MedicationReminderReconciler: React.FC = () => {
   // reminders of an account that is gone.
   const { activeConfig, isLoading: isLoadingServer } = useServerConfigs();
   const noActiveServer = !isLoadingServer && !activeConfig;
+  // A switch to another server runs the reconcile below again, so the
+  // reminders of the one switched away from stop even while the new one's
+  // choices are not known.
+  const activeServerId = activeConfig?.id ?? null;
   const remindersActive =
     featureState === 'on' && medicationRemindersEnabled && notificationsEnabled;
   const [languageRevision, setLanguageRevision] = useState(0);
   const [, bumpResumeRevision] = useReducer((n: number) => n + 1, 0);
+  // An account change cancels every medication reminder and clears the query
+  // cache, which does not tell the queries below. Rendering again makes them
+  // read the new account, and the reconcile below runs again, so its
+  // reminders come back without waiting for the app to return to the
+  // foreground.
+  const [accountRevision, bumpAccountRevision] = useReducer(
+    (n: number) => n + 1,
+    0
+  );
+  useEffect(() => subscribeAccountChanged(bumpAccountRevision), []);
+  // The account this render's data were read for. An effect runs after its
+  // render, so one that runs only once an account change has started would
+  // reconcile the previous account's medications; the queue drops it.
+  const readUnderAccount = accountGeneration();
 
   // `useCalendars()` re-renders on iOS `significantTimeChangeNotification`,
   // while the foreground poll below covers Android (`expo-localization` 57.0.2
@@ -133,7 +153,7 @@ const MedicationReminderReconciler: React.FC = () => {
     reconcileMedicationReminders(
       remindersActive ? (medications ?? []) : [],
       remindersActive ? (todayEntries ?? []) : [],
-      { active: remindersActive }
+      { active: remindersActive, accountGeneration: readUnderAccount }
     ).catch((error) => {
       addLog(
         `Medication reminder reconciliation failed: ${(error as Error).message}`,
@@ -147,6 +167,7 @@ const MedicationReminderReconciler: React.FC = () => {
     isLoadingEntries,
     featureState,
     noActiveServer,
+    activeServerId,
     remindersActive,
     medicationRemindersEnabled,
     notificationsEnabled,
@@ -156,6 +177,8 @@ const MedicationReminderReconciler: React.FC = () => {
     today,
     timezone,
     languageRevision,
+    accountRevision,
+    readUnderAccount,
   ]);
 
   useEffect(() => {

@@ -26,6 +26,10 @@ import {
 } from '../../src/services/medicationReminderService';
 import { retryPendingMedicationActions } from '../../src/services/medicationNotificationHandler';
 import { queryClient } from '../../src/hooks/queryClient';
+import {
+  accountGeneration,
+  bumpAccountGeneration,
+} from '../../src/offline/accountGeneration';
 import { featureChoicesQueryKey } from '../../src/hooks/queryKeys';
 import {
   __resetAppPreferencesStoreForTests,
@@ -1706,6 +1710,8 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       expect(mockReconcile).toHaveBeenCalledTimes(1);
       expect(mockReconcile).toHaveBeenCalledWith(medications, entries, {
         active: true,
+        serverId: 'test-config-id',
+        accountGeneration: accountGeneration(),
       });
       expect(mockCancelOtherServers).not.toHaveBeenCalled();
       expect(mockRetryPresses).not.toHaveBeenCalled();
@@ -1719,7 +1725,13 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       expect(mockListMedications).not.toHaveBeenCalled();
       expect(mockListEntries).not.toHaveBeenCalled();
       expect(mockReconcile).toHaveBeenCalledTimes(1);
-      expect(mockReconcile).toHaveBeenCalledWith([], [], { active: false });
+      // Bound to the server read at the start, so a switch made meanwhile
+      // cannot cancel another server's reminders.
+      expect(mockReconcile).toHaveBeenCalledWith([], [], {
+        active: false,
+        serverId: 'test-config-id',
+        accountGeneration: accountGeneration(),
+      });
       expect(mockCancelOtherServers).not.toHaveBeenCalled();
       expect(mockRetryPresses).not.toHaveBeenCalled();
     });
@@ -1732,6 +1744,8 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
 
       expect(mockReconcile).toHaveBeenCalledWith(medications, entries, {
         active: true,
+        serverId: 'test-config-id',
+        accountGeneration: accountGeneration(),
       });
     });
 
@@ -1764,6 +1778,25 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       expect(mockReconcile).toHaveBeenCalledWith([], [], { active: false });
       expect(mockCancelOtherServers).not.toHaveBeenCalled();
       expect(mockRetryPresses).not.toHaveBeenCalled();
+    });
+
+    test('binds its passes to the account signed in when it started reading', async () => {
+      const startedUnder = accountGeneration();
+      mockFetchChoices.mockResolvedValue(medicationsOn);
+      mockListMedications.mockImplementation(async () => {
+        // The person signs in to another account while the reads run.
+        bumpAccountGeneration();
+        return medications;
+      });
+
+      await triggerManualSync();
+
+      expect(mockReconcile).toHaveBeenCalledWith(medications, entries, {
+        active: true,
+        serverId: 'test-config-id',
+        accountGeneration: startedUnder,
+      });
+      expect(accountGeneration()).not.toBe(startedUnder);
     });
 
     describe('a newer read by the app wins', () => {
@@ -1801,6 +1834,8 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
         expect(mockReconcile).toHaveBeenCalledTimes(1);
         expect(mockReconcile).toHaveBeenCalledWith(medications, entries, {
           active: true,
+          serverId: 'test-config-id',
+          accountGeneration: accountGeneration(),
         });
       });
     });

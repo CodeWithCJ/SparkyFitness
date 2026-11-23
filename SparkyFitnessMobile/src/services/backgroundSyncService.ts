@@ -3,6 +3,7 @@ import * as BackgroundTask from 'expo-background-task';
 import type { FeatureChoicesResponse } from '@workspace/shared';
 import { registerAllOutboxHandlers } from '../offline/handlers';
 import { drainOutbox } from '../offline/syncEngine';
+import { accountGeneration as currentAccountGeneration } from '../offline/accountGeneration';
 import { remindAboutLongWaitingUploads } from '../offline/waitingReminder';
 import { AppState, Platform } from 'react-native';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
@@ -457,6 +458,22 @@ const reconcileMedicationRemindersInBackground = async (): Promise<void> => {
     return;
   }
 
+  // The passes below are bound to the account signed in now and to the
+  // server active now. One read before an account change (another server, or
+  // another account on the same one) is dropped when it reaches the queue,
+  // and one that runs after a switch to another server does nothing (an
+  // unreadable id binds nothing). The reads below follow whichever account
+  // is signed in when each one is sent, so the account is taken before them.
+  const accountGeneration = currentAccountGeneration();
+  let serverId: string | null | undefined;
+  try {
+    serverId =
+      typeof getActiveServerConfigId === 'function'
+        ? await getActiveServerConfigId()
+        : undefined;
+  } catch {
+    serverId = undefined;
+  }
   const readStartedAt = Date.now();
   let featureState: MedicationsFeatureState = 'unknown';
   let readFailure = 'empty answer';
@@ -490,7 +507,11 @@ const reconcileMedicationRemindersInBackground = async (): Promise<void> => {
 
   if (featureState === 'off') {
     if (await deferToNewerRead()) return;
-    await reconcileMedicationReminders([], [], { active: false });
+    await reconcileMedicationReminders([], [], {
+      active: false,
+      serverId,
+      accountGeneration,
+    });
     return;
   }
 
@@ -500,7 +521,11 @@ const reconcileMedicationRemindersInBackground = async (): Promise<void> => {
     listEntries({ fromDate: today, toDate: today }),
   ]);
   if (await deferToNewerRead()) return;
-  await reconcileMedicationReminders(medications, entries, { active: true });
+  await reconcileMedicationReminders(medications, entries, {
+    active: true,
+    serverId,
+    accountGeneration,
+  });
 };
 
 TaskManager.defineTask(BACKGROUND_TASK_NAME, async () => {
