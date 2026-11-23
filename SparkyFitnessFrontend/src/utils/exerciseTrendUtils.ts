@@ -22,7 +22,8 @@ const setLoad = (entry: ExerciseProgressResponse, set: ProgressSet): number =>
 // Per-entry values come from the shared rule the mobile exercise card uses
 // too: warm-ups, sets without reps and untouched workout-plan rows never count.
 // A day with only warm-ups or an untouched plan row has no point, rather
-// than a point at 0.
+// than a point at 0. Dates come from the primary series alone, as they always
+// have here, so a comparison value shows only beside a counted primary point.
 const hasCountedSets = (entry: ExerciseProgressResponse): boolean =>
   countedTrendSets(entry).length > 0;
 
