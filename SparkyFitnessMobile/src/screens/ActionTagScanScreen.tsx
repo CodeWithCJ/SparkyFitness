@@ -1086,7 +1086,6 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   useEffect(() => {
     if (!isConnected || startedRef.current) return;
     startedRef.current = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void run(false);
   }, [isConnected, run]);
 
