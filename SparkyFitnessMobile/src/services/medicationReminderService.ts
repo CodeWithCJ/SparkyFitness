@@ -301,7 +301,7 @@ async function cancelAllRemindersOnce(): Promise<void> {
   await cancelAndDismissAllMedicationReminders();
   if (!(await clearSnoozedMedicationReminders())) {
     addLog(
-      'Medication reminders were cancelled but their snooze records could not be cleared; the next full cancel tries again',
+      'Medication reminders were cancelled but their snooze records could not be cleared; while the app runs they are left out of the snooze sync and removed by its next write that works',
       'WARNING'
     );
   }

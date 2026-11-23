@@ -264,12 +264,21 @@ async function removePendingAction(record: {
   });
 }
 
-async function readSnoozedReminders(): Promise<
-  SnoozedMedicationReminderRecord[]
+/**
+ * The stored records, or null when the store could not be read. Unreadable
+ * contents count as none, as they always have: the next write replaces them.
+ */
+async function tryReadSnoozedReminders(): Promise<
+  SnoozedMedicationReminderRecord[] | null
 > {
+  let raw: string | null;
   try {
-    const raw = await AsyncStorage.getItem(SNOOZED_MEDICATION_REMINDERS_KEY);
-    if (!raw) return [];
+    raw = await AsyncStorage.getItem(SNOOZED_MEDICATION_REMINDERS_KEY);
+  } catch {
+    return null;
+  }
+  if (!raw) return [];
+  try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed)
       ? (parsed as SnoozedMedicationReminderRecord[])
@@ -277,6 +286,12 @@ async function readSnoozedReminders(): Promise<
   } catch {
     return [];
   }
+}
+
+async function readSnoozedReminders(): Promise<
+  SnoozedMedicationReminderRecord[]
+> {
+  return (await tryReadSnoozedReminders()) ?? [];
 }
 
 async function writeSnoozedReminders(
@@ -306,13 +321,17 @@ async function recordSnoozedReminder(
     const existing = await readSnoozedReminders();
     const filtered = existing.filter((item) => item.baseKey !== baseKey);
     filtered.push({ baseKey, entryDate, doses });
-    return writeSnoozedReminders(filtered);
+    const written = await writeSnoozedReminders(filtered);
+    // Snoozed again since its old record was to go: this record stays.
+    if (written) snoozeRemovalsToRetry.delete(baseKey);
+    return written;
   });
 }
 
-// Snooze records whose removal could not be written; the next removal tries
-// them again, since their snoozed copies are already gone and nothing else
-// would name them.
+// Snooze records whose removal could not be written (or whose store could
+// not be read): their snoozed copies are already gone and nothing else would
+// name them, so the next removal tries them again and the reconcile's snooze
+// sync leaves them out meanwhile, so they cannot keep a dose silent.
 let snoozeRemovalsToRetry = new Set<string>();
 
 /**
@@ -321,12 +340,19 @@ let snoozeRemovalsToRetry = new Set<string>();
  * account changed). A record left behind would still mark its slot as snoozed
  * once they are back on the same day, and that dose would then get no
  * reminder at all. Answers false when the store could not be written; the
- * next full cancel tries again.
+ * records it could read are then left out of the snooze sync for as long as
+ * the app runs, and removed by the next write that works.
  */
 export async function clearSnoozedMedicationReminders(): Promise<boolean> {
   return withPendingActionsLock(async () => {
+    const existing = await tryReadSnoozedReminders();
     const written = await writeSnoozedReminders([]);
-    if (written) snoozeRemovalsToRetry = new Set();
+    if (written) {
+      snoozeRemovalsToRetry = new Set();
+    } else {
+      for (const item of existing ?? [])
+        snoozeRemovalsToRetry.add(item.baseKey);
+    }
     return written;
   });
 }
@@ -335,16 +361,24 @@ export async function clearSnoozedMedicationReminders(): Promise<boolean> {
  * Forgets the snooze records of these reminders, for when their snoozed copies
  * were cancelled (those of a server switched away from): a record left behind
  * would keep that dose silent for the rest of the day once its server is back.
- * Answers false when the store could not be written; those keys are tried
- * again on the next call.
+ * Answers false when the store could not be read or written; those keys are
+ * tried again on the next call.
  */
 export async function removeSnoozedMedicationReminders(
   baseKeys: Iterable<string>
 ): Promise<boolean> {
-  const keys = new Set([...snoozeRemovalsToRetry, ...baseKeys]);
-  if (keys.size === 0) return true;
+  const requested = [...baseKeys];
+  if (requested.length === 0 && snoozeRemovalsToRetry.size === 0) return true;
   return withPendingActionsLock(async () => {
-    const existing = await readSnoozedReminders();
+    // Taken under the lock: a slot snoozed again while this waited has left
+    // the retry set, and its new record stays.
+    const keys = new Set([...snoozeRemovalsToRetry, ...requested]);
+    if (keys.size === 0) return true;
+    const existing = await tryReadSnoozedReminders();
+    if (existing === null) {
+      snoozeRemovalsToRetry = keys;
+      return false;
+    }
     const filtered = existing.filter((item) => !keys.has(item.baseKey));
     const written =
       filtered.length === existing.length ||
@@ -384,7 +418,13 @@ export async function syncSnoozedMedicationReminders(
   todayEntries?: MedicationEntry[]
 ): Promise<Set<string>> {
   return withPendingActionsLock(async () => {
-    const existing = await readSnoozedReminders();
+    const stored = await readSnoozedReminders();
+    // Records an earlier removal or clear could not write away are not
+    // snoozes any more: left out here, and dropped by the write below.
+    const removalsToRetry = snoozeRemovalsToRetry;
+    const existing = stored.filter(
+      (item) => !removalsToRetry.has(item.baseKey)
+    );
     const candidates = new Map<
       string,
       {
@@ -425,7 +465,17 @@ export async function syncSnoozedMedicationReminders(
       }
     }
 
-    if (candidates.size === 0) return new Set<string>();
+    if (candidates.size === 0) {
+      // Only records left out above remained: they go now.
+      if (
+        stored.length > 0 &&
+        (await writeSnoozedReminders([])) &&
+        snoozeRemovalsToRetry === removalsToRetry
+      ) {
+        snoozeRemovalsToRetry = new Set();
+      }
+      return new Set<string>();
+    }
 
     const entriesByDate = new Map<string, Promise<MedicationEntry[] | null>>();
     const getEntriesForDate = (
@@ -493,8 +543,12 @@ export async function syncSnoozedMedicationReminders(
     const retainedStorage = existing.filter((item) =>
       retainedBaseKeys.has(item.baseKey)
     );
-    if (retainedStorage.length !== existing.length) {
-      await writeSnoozedReminders(retainedStorage);
+    if (
+      retainedStorage.length !== stored.length &&
+      (await writeSnoozedReminders(retainedStorage)) &&
+      snoozeRemovalsToRetry === removalsToRetry
+    ) {
+      snoozeRemovalsToRetry = new Set();
     }
     return retainedBaseKeys;
   });
