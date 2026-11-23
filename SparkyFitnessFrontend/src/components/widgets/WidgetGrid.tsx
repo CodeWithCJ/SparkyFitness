@@ -39,6 +39,11 @@ export interface Widget {
   title: string;
   icon: ComponentType<{ className?: string }>;
   render: () => ReactNode;
+  /**
+   * Show the widget without its frame outside edit mode, so neighbouring
+   * widgets can read as one piece (the diary's meal timeline).
+   */
+  seamless?: boolean;
 }
 
 interface WidgetGridProps {
@@ -337,6 +342,7 @@ const WidgetGridInner = ({
                     widgetKey={w.key}
                     title={w.title}
                     editMode={effectiveEditMode}
+                    seamless={w.seamless}
                     isMax={maximized === w.key}
                     onToggleMax={() =>
                       setMaximized((cur) => (cur === w.key ? null : w.key))

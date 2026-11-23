@@ -296,13 +296,20 @@ const MealCard = ({
 
   return (
     <>
-      <Card>
+      <Card className="relative">
+        {/* One rail runs through every meal: it starts at the card's top and
+            reaches past its bottom across the grid gap, so stacked meal cards
+            read as a single timeline. The meal icon sits on top of it. */}
+        <span
+          className="pointer-events-none absolute -bottom-4 left-[44px] top-0 w-px bg-border"
+          aria-hidden="true"
+        />
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
             <div className="flex items-center gap-3">
               <div
                 className={cn(
-                  'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ring-4',
+                  'relative z-10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full ring-4',
                   mealIconStyle.className
                 )}
                 aria-hidden="true"
@@ -455,10 +462,6 @@ const MealCard = ({
         <CardContent>
           {meal.entries.length === 0 ? (
             <div className="relative pl-12">
-              <span
-                className="absolute bottom-0 left-5 top-0 w-px bg-border"
-                aria-hidden="true"
-              />
               <button
                 type="button"
                 className="w-full rounded-xl border border-dashed border-muted-foreground/40 py-6 text-center text-sm text-muted-foreground transition-colors hover:bg-muted/50"
@@ -469,10 +472,6 @@ const MealCard = ({
             </div>
           ) : (
             <div className="relative space-y-3 pl-12">
-              <span
-                className="absolute bottom-0 left-5 top-0 w-px bg-border"
-                aria-hidden="true"
-              />
               {meal.entries.map((item) => {
                 // Changed entry to item
                 const entryNutrition = getEntryNutrition(item);
@@ -578,6 +577,10 @@ const MealCard = ({
                     >
                       <span
                         className="absolute -left-[33px] top-5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background transition-colors group-hover:bg-primary"
+                        aria-hidden="true"
+                      />
+                      <span
+                        className="absolute -left-[23px] top-6 h-px w-[23px] bg-border"
                         aria-hidden="true"
                       />
                       <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-3">
@@ -741,6 +744,10 @@ const MealCard = ({
                       className="absolute -left-[33px] top-5 h-2.5 w-2.5 rounded-full border-2 border-primary bg-background transition-colors group-hover:bg-primary"
                       aria-hidden="true"
                     />
+                    <span
+                      className="absolute -left-[23px] top-6 h-px w-[23px] bg-border"
+                      aria-hidden="true"
+                    />
                     {entryImageSrc && (
                       <button
                         type="button"
@@ -868,17 +875,19 @@ const MealCard = ({
 
               <Separator />
 
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-2 gap-4">
-                <span className="font-semibold dark:text-slate-300">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center pt-2 gap-4">
+                <span className="shrink-0 font-semibold dark:text-slate-300">
                   {t('mealCard.mealTotal', {
                     mealName: t(`common.${meal.type}`, meal.name),
                     defaultValue: `${meal.name} Total:`,
                   })}
                 </span>
                 <div
-                  className="grid gap-x-2 gap-y-2 text-xs sm:text-sm w-full sm:w-[35%] sm:ml-auto"
+                  className="grid w-full gap-x-2 gap-y-2 text-xs sm:flex-1 sm:text-sm"
                   style={{
-                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '40px' : '60px'}, 1fr))`,
+                    // Fill the row beside the label; wrap only when the
+                    // nutrients no longer fit across it.
+                    gridTemplateColumns: `repeat(auto-fit, minmax(${isMobile ? '56px' : '80px'}, 1fr))`,
                   }}
                 >
                   {visibleNutrientsForGrid.map((nutrient) => {

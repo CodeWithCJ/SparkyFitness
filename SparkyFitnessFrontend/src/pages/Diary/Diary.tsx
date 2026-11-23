@@ -427,6 +427,7 @@ const Diary = () => {
         key: mealWidgetKey(mealTypeObj.id),
         title: mealTypeObj.name,
         icon: UtensilsCrossed,
+        seamless: true,
         render: () => (
           <MealCard
             meal={{
