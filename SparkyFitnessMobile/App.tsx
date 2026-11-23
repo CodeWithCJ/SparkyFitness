@@ -580,7 +580,7 @@ function AppContent() {
             with "No safe area value available". */}
         <LightboxProvider>
         <UniwindInsetsBridge />
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <HorizontalInsetsFrame>
         <Stack.Navigator
           screenLayout={usesLiquidGlassNavigation

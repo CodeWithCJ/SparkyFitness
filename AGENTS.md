@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-11-21*
+*Last updated: 2026-11-22*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -33,7 +33,7 @@ For `docs/` and `SparkyFitnessGarmin/`, there is no package-level `AGENTS.md`. `
 
 - `SparkyFitnessFrontend/` - React 19 + Vite web app.
 - `SparkyFitnessServer/` - Express 5 + PostgreSQL backend API.
-- `SparkyFitnessMobile/` - Expo SDK 57 / React Native 0.86 app.
+- `SparkyFitnessMobile/` - Expo SDK 58 / React Native 0.88 app.
 - `shared/` - source-first TypeScript workspace package for `@workspace/shared` schemas, constants, and timezone/day helpers.
 - `docs/` - VitePress documentation site.
 - `docs/readme/` - translated copies of the root `README.md` (`README_<lang>.md`), outside the VitePress `srcDir`. The language bar at the top of `README.md` links to them; when the root README changes substantially, the translations go stale.

@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import {
   DEFAULT_SHOE_RETIREMENT_DISTANCE_KM,
@@ -60,7 +61,7 @@ export const ShoeFormDialog: React.FC<ShoeFormDialogProps> = ({
   const [retirementDistance, setRetirementDistance] = useState('');
   const [isDefault, setIsDefault] = useState(false);
 
-  useEffect(() => {
+  useOnChange([open, shoe], () => {
     if (!open) return;
     setName(shoe?.name ?? '');
     setBrand(shoe?.brand ?? '');
@@ -77,8 +78,7 @@ export const ShoeFormDialog: React.FC<ShoeFormDialogProps> = ({
       )
     );
     setIsDefault(shoe?.is_default ?? false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, shoe]);
+  });
 
   const retirementValue = Number(retirementDistance);
   const startingValue = Number(startingDistance || 0);

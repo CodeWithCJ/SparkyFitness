@@ -1,3 +1,5 @@
+import { createInFlightGuard } from '../utils/duplicatePress';
+import { createCell } from '../utils/mutableCell';
 import React, {
   useCallback,
   useEffect,
@@ -153,14 +155,16 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   const actionSheetRef = useRef<ActionSheetRef>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
   // The picker is a native modal; without this a double tap opens two.
-  const pickerLock = useRef(false);
+  const [pickerLock] = useState(createInFlightGuard);
   // A picked photo is shrunk before its upload starts, so `isUploading` alone
   // would let Finish leave while it is still on its way.
   const [isPicking, setIsPicking] = useState(false);
-  const uploadedRef = useRef(false);
+  const [uploadedCell] = useState(() => createCell(false));
   // Set when the navigator closes the step while a photo is still on its way,
   // so the check-in is confirmed once that photo has landed.
-  const closeWhenSettledRef = useRef<(() => void) | null>(null);
+  const [closeWhenSettled] = useState(() =>
+    createCell<(() => void) | null>(null)
+  );
 
   const { days, isLoading, isError, refetch } = useCheckInPhotoGallery();
   const { photos: dayPhotos } = useCheckInPhotosByDate(selectedDate);
@@ -227,16 +231,16 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   const canCompare = allRows.length >= 2;
 
   const handleFinish = useCallback(() => {
-    if (pickerLock.current) return;
-    guidedCheckIn?.finish({ saved: uploadedRef.current });
-  }, [guidedCheckIn]);
+    if (pickerLock.isActive()) return;
+    guidedCheckIn?.finish({ saved: uploadedCell.get() });
+  }, [guidedCheckIn, pickerLock, uploadedCell]);
   const isPhotoPending = isPicking || isUploading || isDeleting;
   // Photos are saved as they are added, so going back drops nothing, and
   // the flow keeps knowing a photo was saved.
   const handleBack = useCallback(() => {
-    if (pickerLock.current) return;
-    guidedCheckIn?.back?.(false, { saved: uploadedRef.current });
-  }, [guidedCheckIn]);
+    if (pickerLock.isActive()) return;
+    guidedCheckIn?.back?.(false, { saved: uploadedCell.get() });
+  }, [guidedCheckIn, pickerLock, uploadedCell]);
   // Photos save as they are added, so on the last step closing is finishing.
   // System Back and the iOS swipe down close the sheet without the header;
   // they finish with the same confirmation.
@@ -246,11 +250,11 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
       const { type } = event.data.action;
       if (type !== 'GO_BACK' && type !== 'POP') return;
       const close = () =>
-        guidedCheckIn.onNavigatorClose({ saved: uploadedRef.current });
-      if (pickerLock.current) closeWhenSettledRef.current = close;
+        guidedCheckIn.onNavigatorClose({ saved: uploadedCell.get() });
+      if (pickerLock.isActive()) closeWhenSettled.set(close);
       else close();
     });
-  }, [guidedCheckIn, navigation]);
+  }, [guidedCheckIn, navigation, closeWhenSettled, pickerLock, uploadedCell]);
 
   const header = useScreenHeader({
     // Pushed, the bar sits below the status bar. In the check-in it is a
@@ -291,8 +295,7 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
   // on it. One pick is one request, so the uploads stay serial anyway.
   const uploadFrom = useCallback(
     async (source: 'camera' | 'library', type: PhotoType) => {
-      if (pickerLock.current) return;
-      pickerLock.current = true;
+      if (!pickerLock.tryEnter()) return;
       setIsPicking(true);
       try {
         let uri: string | undefined;
@@ -320,7 +323,7 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
         // The server upserts on (user_id, entry_date, photo_type), so an
         // upload over an existing angle replaces it with no delete first.
         await uploadAsync({ date: selectedDate, type, uri });
-        uploadedRef.current = true;
+        uploadedCell.set(true);
       } catch (err) {
         Toast.show({
           type: 'error',
@@ -330,13 +333,13 @@ const ProgressPhotosScreen: React.FC<Props> = ({ navigation, route }) => {
           text2: getApiErrorMessage(err) ?? undefined,
         });
       } finally {
-        pickerLock.current = false;
+        pickerLock.leave();
         setIsPicking(false);
-        closeWhenSettledRef.current?.();
-        closeWhenSettledRef.current = null;
+        closeWhenSettled.get()?.();
+        closeWhenSettled.set(null);
       }
     },
-    [t, uploadAsync, selectedDate]
+    [t, uploadAsync, selectedDate, pickerLock, uploadedCell, closeWhenSettled]
   );
 
   const removePhoto = useCallback(

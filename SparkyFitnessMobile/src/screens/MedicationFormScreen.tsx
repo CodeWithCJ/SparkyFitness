@@ -2,6 +2,7 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
 } from 'react';
@@ -196,7 +197,9 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
   // A lookup finishes after a render of its own, and a refetch may have
   // changed the saved medication since, so it reads the base from here.
   const latestBaseForm = useRef(baseForm);
-  latestBaseForm.current = baseForm;
+  useLayoutEffect(() => {
+    latestBaseForm.current = baseForm;
+  });
   const form: FormState = useMemo(
     () => ({ ...baseForm, ...edits }),
     [baseForm, edits]
@@ -218,7 +221,9 @@ const MedicationFormScreen: React.FC<MedicationFormScreenProps> = ({
   // after it was turned off: a result must not leave a supplement-only type on
   // a medication.
   const isSupplementRef = useRef(isSupplement);
-  isSupplementRef.current = isSupplement;
+  useLayoutEffect(() => {
+    isSupplementRef.current = isSupplement;
+  });
   const [lookupNote, setLookupNote] = useState<string | null>(null);
 
   // Fills the form from a supplement found by barcode or read from a photo.

@@ -1,10 +1,5 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { createCell } from '../utils/mutableCell';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -88,7 +83,9 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
 
   const [range, setRange] = useState<TimelapseRange>('3m');
   const [custom, setCustom] = useState<CustomRange | null>(null);
-  const rangeSheetRef = useRef<DateRangeSheetRef>(null);
+  const [rangeSheet] = useState(() =>
+    createCell<DateRangeSheetRef | null>(null)
+  );
 
   // Oldest → newest: the whole point is watching the change accumulate.
   const allFrames = useMemo(() => framesForAngle(days, angle), [days, angle]);
@@ -165,7 +162,7 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
               selected: range === window,
               onPress: () =>
                 window === 'custom'
-                  ? rangeSheetRef.current?.present()
+                  ? rangeSheet.get()?.present()
                   : setRange(window),
             })
           ),
@@ -390,7 +387,7 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
       <View className="pt-2">{body()}</View>
 
       <DateRangeSheet
-        ref={rangeSheetRef}
+        ref={(node) => rangeSheet.set(node)}
         // The days that have this angle, so a range can be drawn around the
         // photos rather than guessed at - the same dots the gallery's picker
         // shows.

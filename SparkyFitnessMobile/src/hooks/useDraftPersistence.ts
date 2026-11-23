@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import {
   saveDraft,
@@ -37,9 +37,11 @@ export function useDraftPersistence<T extends FormDraft>(
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistenceEnabledRef = useRef(true);
   const stateRef = useRef(state);
-  stateRef.current = state;
   const isEditModeRef = useRef(isEditMode);
-  isEditModeRef.current = isEditMode;
+  useLayoutEffect(() => {
+    stateRef.current = state;
+    isEditModeRef.current = isEditMode;
+  });
 
   const cancelPendingSave = useCallback(() => {
     if (saveTimeoutRef.current) {

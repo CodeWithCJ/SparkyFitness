@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import { getCalendars } from 'expo-localization';
 import { Platform } from 'react-native';
 import { localDateTimeToUtc } from '@workspace/shared';
@@ -911,7 +912,7 @@ describe('reconcileMedicationReminders', () => {
       expect(mockSetChannel).toHaveBeenCalledWith(
         'medication-reminders',
         expect.objectContaining({
-          importance: Notifications.AndroidImportance.HIGH,
+          importance: AndroidImportance.HIGH,
         })
       );
     });

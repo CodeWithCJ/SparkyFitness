@@ -135,7 +135,6 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
     if (!isConnected || startedRef.current) return;
     startedRef.current = true;
     // `run` only sets state after the server has answered, never synchronously.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void run(false);
   }, [isConnected, run]);
 

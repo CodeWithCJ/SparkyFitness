@@ -149,11 +149,21 @@ export function CreateFoodMode({
   const [barcodeInput, setBarcodeInput] = useState(params.barcode ?? '');
   const { pendingScannedBarcode, scannedBarcodeNonce } = params;
 
+  // Consume a one-shot navigation param: applied once per nonce, then cleared
+  // with setParams.
+  const [appliedBarcodeNonce, setAppliedBarcodeNonce] = useState<
+    typeof scannedBarcodeNonce | null
+  >(null);
+  const hasPendingScan =
+    scannedBarcodeNonce != null && pendingScannedBarcode != null;
+  if (!hasPendingScan) {
+    if (appliedBarcodeNonce !== null) setAppliedBarcodeNonce(null);
+  } else if (appliedBarcodeNonce !== scannedBarcodeNonce) {
+    setAppliedBarcodeNonce(scannedBarcodeNonce);
+    setBarcodeInput(pendingScannedBarcode);
+  }
   useEffect(() => {
     if (scannedBarcodeNonce == null || pendingScannedBarcode == null) return;
-    // Consume a one-shot navigation param: guarded by the nonce and paired with
-    // clearing the param via setParams, so it can't move to a render-time derive.
-    setBarcodeInput(pendingScannedBarcode);
     navigation.setParams({
       pendingScannedBarcode: undefined,
       scannedBarcodeNonce: undefined,
@@ -232,19 +242,15 @@ export function CreateFoodMode({
         : (defaultMealTypeId ?? undefined);
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
-  useEffect(() => {
-    if (isMealTypesLoading || isMealTypesError || mealTypes.length === 0)
-      return;
-    if (selectedMealId && !mealTypes.some((mt) => mt.id === selectedMealId)) {
-      setSelectedMealId(defaultMealTypeId ?? undefined);
-    }
-  }, [
-    isMealTypesLoading,
-    isMealTypesError,
-    mealTypes,
-    selectedMealId,
-    defaultMealTypeId,
-  ]);
+  if (
+    !isMealTypesLoading &&
+    !isMealTypesError &&
+    mealTypes.length > 0 &&
+    selectedMealId &&
+    !mealTypes.some((mt) => mt.id === selectedMealId)
+  ) {
+    setSelectedMealId(defaultMealTypeId ?? undefined);
+  }
 
   const [entryTime, setEntryTime] = useState(params.entryTime ?? '');
   const entryTimeTouched = useRef(params.entryTime !== undefined);

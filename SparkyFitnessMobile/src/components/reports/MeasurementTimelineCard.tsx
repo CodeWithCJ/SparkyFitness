@@ -93,9 +93,9 @@ export default function MeasurementTimelineCard({
   const { state: transformState } = useChartTransformState();
   const { matrix, offset, origin } = transformState;
   const resetZoom = useCallback(() => {
-    matrix.value = scale(1, 1);
-    offset.value = scale(1, 1);
-    origin.value = { x: 0, y: 0 };
+    matrix.set(scale(1, 1));
+    offset.set(scale(1, 1));
+    origin.set({ x: 0, y: 0 });
   }, [matrix, offset, origin]);
   const [chosenDay, setDay] = useState(endDate);
   const day =
@@ -246,10 +246,12 @@ export default function MeasurementTimelineCard({
       transformState.zoomActive,
     ]
   );
-  useEffect(
-    () => setViewport({ from: 0, to: dayLength }),
-    [day, dayLength, sourceChoice, categoryId, glucoseUnit]
-  );
+  const viewportKey = `${day}|${dayLength}|${sourceChoice}|${categoryId}|${glucoseUnit}`;
+  const [lastViewportKey, setLastViewportKey] = useState(viewportKey);
+  if (lastViewportKey !== viewportKey) {
+    setLastViewportKey(viewportKey);
+    setViewport({ from: 0, to: dayLength });
+  }
   const windowEvents = visibleEvents.filter(
     (event) =>
       event.minutes !== null &&

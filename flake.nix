@@ -17,10 +17,10 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        # Pin the toolchain used across the Docker images: Node 24 + pnpm 10.x.
+        # Pin the toolchain used across the Docker images: Node 26 + pnpm 10.x.
         # pnpm 10 is required because the repo still uses the `pnpm` field in
         # package.json (overrides/patchedDependencies), which pnpm 11 ignores.
-        nodejs = pkgs.nodejs_24;
+        nodejs = pkgs.nodejs_26;
         # nixpkgs keeps `pnpm_10` frozen at 10.34.0 (insecure) on some releases and ships the maintained
         # 10.x as `pnpm_10_latest`; nixos-unstable made `pnpm_10` the maintained one and dropped the alias.
         pnpm = pkgs.pnpm_10_latest or pkgs.pnpm_10;

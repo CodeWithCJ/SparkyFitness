@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { Trans, useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import DayNavigator from '@/components/DayNavigator';
@@ -88,12 +89,12 @@ export default function Medications() {
     () => dateParam || today
   );
 
-  useEffect(() => {
+  useOnChange([dateParam, today, selectedDate], () => {
     const targetDate = dateParam || today;
     if (targetDate !== selectedDate) {
       setSelectedDate(targetDate);
     }
-  }, [dateParam, today, selectedDate]);
+  });
 
   const thirtyDaysAgo = useMemo(
     () => addDays(selectedDate, -30),
@@ -157,17 +158,18 @@ export default function Medications() {
   // Supplement-only users land on the Supplements view — but only as a one-time soft
   // default that never overrides a filter the user has already chosen and saved.
   const [autoDefaulted, setAutoDefaulted] = useState(false);
-  useEffect(() => {
+  const supplementsOnly =
+    !loadingMeds && meds.length > 0 && meds.every((m) => m.is_supplement);
+  useOnChange([autoDefaulted, loadingMeds, supplementsOnly], () => {
     if (autoDefaulted || loadingMeds) return;
     setAutoDefaulted(true);
     if (
       localStorage.getItem('medications.subtypeFilter') === null &&
-      meds.length > 0 &&
-      meds.every((m) => m.is_supplement)
+      supplementsOnly
     ) {
       setSubtype('supplements');
     }
-  }, [autoDefaulted, loadingMeds, meds]);
+  });
 
   // Mutations
   const removeMedMutation = useDeleteMedicationMutation();

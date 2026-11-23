@@ -168,7 +168,11 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
         )
       : '';
 
-  useEffect(() => {
+  const [hydratedLog, setHydratedLog] = useState<{ log: typeof log } | null>(
+    null
+  );
+  if (hydratedLog === null || hydratedLog.log !== log) {
+    setHydratedLog({ log });
     if (log) {
       setFlowLevel(log.flow_level ?? null);
       setMucus(log.cervical_mucus ?? null);
@@ -186,7 +190,7 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
       setIntercourseProtected(null);
       setCervicalPosition(null);
     }
-  }, [log]);
+  }
 
   // Hydrate the weight field only while the user hasn't typed in it, so a
   // background measurements refetch can't overwrite an in-progress edit.
@@ -203,18 +207,24 @@ const CycleTodayView: React.FC<CycleTodayViewProps> = ({
     setWeight(text);
   };
 
-  useEffect(() => {
-    const names = symptomEntries
-      .filter((e) => e.source === 'cycle')
-      .map((e) => e.symptom_name_snapshot);
-    // The hook falls back to a fresh [] while entries load, so keep the
-    // previous reference when content is unchanged or this effect loops.
+  const cycleSymptomNames = symptomEntries
+    .filter((e) => e.source === 'cycle')
+    .map((e) => e.symptom_name_snapshot);
+  // The hook falls back to a fresh [] while entries load, so compare content
+  // rather than the array reference or this would re-sync on every render.
+  // The date is part of the key so an unsaved selection never carries over to
+  // another day whose saved symptoms happen to be the same (often both empty).
+  const cycleSymptomKey = JSON.stringify([date, cycleSymptomNames]);
+  const [syncedSymptomKey, setSyncedSymptomKey] = useState<string | null>(null);
+  if (syncedSymptomKey !== cycleSymptomKey) {
+    setSyncedSymptomKey(cycleSymptomKey);
     setSelectedSymptoms((prev) =>
-      prev.length === names.length && prev.every((n, i) => n === names[i])
+      prev.length === cycleSymptomNames.length &&
+      prev.every((n, i) => n === cycleSymptomNames[i])
         ? prev
-        : names
+        : cycleSymptomNames
     );
-  }, [symptomEntries]);
+  }
 
   const handleToggleSymptom = (symptom: CycleSymptomDef) => {
     const name = symptom.displayName.toLowerCase();

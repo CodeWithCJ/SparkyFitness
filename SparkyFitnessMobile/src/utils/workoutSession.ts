@@ -63,6 +63,7 @@ import { getDefaultRestSec } from './workoutSupersets';
 import { formatLocalizedNumber } from '../localization';
 import { wodScoreFormat } from './wodScore';
 import { energyUnitLabel, roundedEnergy } from './energyUnit';
+import type { TranslateFn } from '../localization/translateFn';
 
 // The superset/reorder algebra lives in its own module; re-exported here so
 // the many existing import sites keep working.
@@ -3040,7 +3041,7 @@ export function plateTargetKg(
  * The keys are static per branch so the i18n audit can verify them.
  */
 export const getWorkoutSessionStatusLabel = (
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TranslateFn,
   status: string
 ): string => {
   switch (status) {

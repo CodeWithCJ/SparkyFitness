@@ -6,6 +6,7 @@ import {
   Text,
   View,
   type LayoutChangeEvent,
+  type ScrollViewInstance,
 } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ExerciseEntryResponse } from '@workspace/shared';
@@ -47,7 +48,7 @@ function ActiveWorkoutFocusChips({
     '--color-text-secondary',
     '--color-icon-success',
   ]) as [string, string, string, string];
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const viewportWidthRef = useRef(0);
 
   const scrollToIndex = useCallback((index: number, animated: boolean) => {

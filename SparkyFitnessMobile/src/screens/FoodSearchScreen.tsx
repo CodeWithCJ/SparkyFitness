@@ -19,6 +19,7 @@ import {
   SectionList,
   TextInput,
   Platform,
+  type ViewInstance,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -216,7 +217,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   } | null>(null);
 
   // "+" New Food / New Meal menu, anchored under the button.
-  const addButtonRef = useRef<View>(null);
+  const addButtonRef = useRef<ViewInstance>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<AnchorRect | null>(null);
 
@@ -334,18 +335,18 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   const { providers } = useExternalProviders({ enabled: isConnected });
   const getProviderColor = useProviderColor(providers);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-  const hasUserSelectedProvider = useRef(false);
+  const [hasUserSelectedProvider, setHasUserSelectedProvider] = useState(false);
 
   // Sync to the user's default (or first) provider until the user taps the
   // online section header to peek at a different provider's results.
-  React.useEffect(() => {
-    if (providers.length === 0) return;
+  const defaultProviderChoice = (() => {
+    if (providers.length === 0) return null;
     if (
-      hasUserSelectedProvider.current &&
+      hasUserSelectedProvider &&
       ((selectedProvider === ALL_PROVIDERS_VALUE && providers.length > 1) ||
         providers.some((provider) => provider.id === selectedProvider))
     ) {
-      return;
+      return null;
     }
     // Persisted "All Providers" default. It has its own boolean preference rather
     // than living in default_food_data_provider_id, which is a uuid column and
@@ -357,20 +358,20 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       preferences?.food_search_all_providers_default &&
       providers.length > 1
     ) {
-      setSelectedProvider(ALL_PROVIDERS_VALUE);
-      return;
+      return ALL_PROVIDERS_VALUE;
     }
     const defaultId = preferences?.default_food_data_provider_id;
     const defaultProvider = defaultId
       ? providers.find((provider) => provider.id === defaultId)
       : undefined;
-    setSelectedProvider(defaultProvider?.id ?? providers[0].id);
-  }, [
-    preferences?.default_food_data_provider_id,
-    preferences?.food_search_all_providers_default,
-    providers,
-    selectedProvider,
-  ]);
+    return defaultProvider?.id ?? providers[0].id;
+  })();
+  if (
+    defaultProviderChoice !== null &&
+    defaultProviderChoice !== selectedProvider
+  ) {
+    setSelectedProvider(defaultProviderChoice);
+  }
 
   const providerOptions = useMemo(() => {
     const opts = providers.map((p) => ({
@@ -393,7 +394,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   }, [providers, t]);
   // Temporary peek at another provider; does not change the saved default.
   const handleSelectProvider = useCallback((id: string) => {
-    hasUserSelectedProvider.current = true;
+    setHasUserSelectedProvider(true);
     setSelectedProvider(id);
   }, []);
 
@@ -426,10 +427,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   // query resets it.
   const [showAllFoods, setShowAllFoods] = useState(false);
   const [showAllMeals, setShowAllMeals] = useState(false);
-  React.useEffect(() => {
+  const [lastSearchText, setLastSearchText] = useState(searchText);
+  if (lastSearchText !== searchText) {
+    setLastSearchText(searchText);
     setShowAllFoods(false);
     setShowAllMeals(false);
-  }, [searchText]);
+  }
   const handleShowAllLocal = useCallback((section: 'foods' | 'meals') => {
     if (section === 'foods') setShowAllFoods(true);
     else setShowAllMeals(true);

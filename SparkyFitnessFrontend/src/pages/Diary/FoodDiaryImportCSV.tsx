@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -292,20 +293,20 @@ const FoodDiaryImportCSV = ({
 
   // Overriding stored food nutrition only applies to the user's own foods, so
   // family/public matching is disabled while it is on.
-  useEffect(() => {
+  useOnChange([overrideNutrition], () => {
     if (overrideNutrition) {
       setIncludeFamily(false);
       setIncludePublic(false);
     }
-  }, [overrideNutrition]);
+  });
 
   // Default the aggregate toggle on when the confirmed mapping is a per-meal
   // aggregate file; the user can still turn it off.
-  useEffect(() => {
+  useOnChange([mappingConfirmed, looksAggregate], () => {
     if (mappingConfirmed && looksAggregate) {
       setAggregateMode(true);
     }
-  }, [mappingConfirmed, looksAggregate]);
+  });
 
   const validateHeaders = (fileHeaders: string[] | undefined) =>
     !!fileHeaders && BASE_HEADERS.every((h) => fileHeaders.includes(h));

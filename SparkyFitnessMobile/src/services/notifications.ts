@@ -1,6 +1,7 @@
 import { Alert, AppState, Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import {
@@ -84,12 +85,12 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
         'notifications.channels.workoutTimer',
         'Workout timer'
       ),
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: AndroidImportance.HIGH,
       enableVibrate: true,
     });
     await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
       name: notificationCopy('notifications.channels.fasting', 'Fasting'),
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: AndroidImportance.HIGH,
       enableVibrate: true,
     });
     await Notifications.setNotificationChannelAsync(HYDRATION_CHANNEL_ID, {
@@ -97,7 +98,7 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
         'notifications.channels.hydration',
         'Hydration reminders'
       ),
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: AndroidImportance.HIGH,
       enableVibrate: true,
     });
     await ensureMoodCheckinChannel();
@@ -109,7 +110,7 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
           'notifications.channels.medicationReminders',
           'Medication reminders'
         ),
-        importance: Notifications.AndroidImportance.HIGH,
+        importance: AndroidImportance.HIGH,
         enableVibrate: true,
       }
     );
@@ -212,7 +213,7 @@ export async function ensureMoodCheckinChannel(): Promise<void> {
       'notifications.channels.moodCheckin',
       'Mood check-ins'
     ),
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     enableVibrate: true,
   });
 }
@@ -224,7 +225,7 @@ export async function ensureOralCareChannel(): Promise<void> {
       'notifications.channels.oralCare',
       'Brushing reminders'
     ),
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     enableVibrate: true,
   });
 }
@@ -233,7 +234,7 @@ export async function ensureChallengesChannel(): Promise<void> {
   if (Platform.OS !== 'android') return;
   await Notifications.setNotificationChannelAsync(CHALLENGES_CHANNEL_ID, {
     name: notificationCopy('notifications.channels.challenges', 'Challenges'),
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: AndroidImportance.DEFAULT,
   });
 }
 
@@ -244,7 +245,7 @@ async function ensureMindfulnessChannel(): Promise<void> {
       'notifications.channels.mindfulness',
       'Meditation timer'
     ),
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     enableVibrate: true,
   });
 }
@@ -258,7 +259,7 @@ export async function ensureMedicationReminderChannel(): Promise<void> {
         'notifications.channels.medicationReminders',
         'Medication reminders'
       ),
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: AndroidImportance.HIGH,
       enableVibrate: true,
     }
   );
@@ -271,7 +272,7 @@ export async function ensureSymptomReminderChannel(): Promise<void> {
       'notifications.channels.symptomReminders',
       'Symptom reminders'
     ),
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     enableVibrate: true,
   });
 }

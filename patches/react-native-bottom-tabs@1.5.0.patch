@@ -1,9 +1,9 @@
 diff --git a/ios/ProminentTab.swift b/ios/ProminentTab.swift
 new file mode 100644
-index 0000000..1111111
+index 0000000000000000000000000000000000000000..c330f1d1dadade78e738e471eebcbcd9658cc353
 --- /dev/null
 +++ b/ios/ProminentTab.swift
-@@ -0,0 +1,164 @@
+@@ -0,0 +1,172 @@
 +import SwiftUI
 +
 +#if !os(macOS)
@@ -35,6 +35,7 @@ index 0000000..1111111
 +        controller: tabController,
 +        addKey: addItem?.key,
 +        title: addItem?.title,
++        tabBarHidden: props.tabBarHidden,
 +        onAdd: onAdd)
 +
 +      let title = props.filteredItems.first { $0.role == .search }?.title
@@ -75,6 +76,11 @@ index 0000000..1111111
 +    }
 +    weak var controller: UITabBarController?
 +    var onAdd: ((String) -> Void)?
++    /// The app asked for the tab bar to be hidden (`tabBarHidden`). The button
++    /// goes with the system bar: hidden, so it draws nothing and cannot be tapped.
++    var tabBarHidden = false {
++      didSet { if tabBarHidden != oldValue { setNeedsLayout() } }
++    }
 +    private let glass = UIVisualEffectView(effect: nil)
 +    private let button = UIButton(type: .system)
 +
@@ -134,8 +140,9 @@ index 0000000..1111111
 +      guard let root = superview else { return }
 +      let barBounds = controller?.tabBar.bounds ?? .zero
 +      let vertical = barBounds.height > barBounds.width
-+      glass.isHidden = !vertical
-+      if !vertical { return }
++      let barHidden = tabBarHidden || (controller?.tabBar.isHidden ?? false)
++      glass.isHidden = !vertical || barHidden
++      if glass.isHidden { return }
 +      let s = Self.size
 +      let pill = pillFrame()
 +      let midX = pill?.midX ?? root.bounds.maxX - 48
@@ -148,7 +155,7 @@ index 0000000..1111111
 +  enum SideAddButton {
 +    static func update(
 +      controller: UITabBarController, addKey: String?, title: String?,
-+      onAdd: @escaping (String) -> Void
++      tabBarHidden: Bool, onAdd: @escaping (String) -> Void
 +    ) {
 +      let bar = controller.tabBar
 +      let existing = controller.view.subviews.compactMap { $0 as? SideAddHost }.first
@@ -162,6 +169,7 @@ index 0000000..1111111
 +      host.addTitle = title
 +      host.controller = controller
 +      host.onAdd = onAdd
++      host.tabBarHidden = tabBarHidden
 +      controller.view.bringSubviewToFront(host)
 +      host.setNeedsLayout()
 +      DispatchQueue.main.async { host.setNeedsLayout() }
@@ -169,7 +177,7 @@ index 0000000..1111111
 +  }
 +#endif
 diff --git a/ios/TabView/NewTabView.swift b/ios/TabView/NewTabView.swift
-index 2f18f21..b7dedd8 100644
+index bc9e6eff24d9543d82ef9b50aaef1c695c85f7da..7e41d4bc4a035fc5395ec5b8635e10b252472eee 100644
 --- a/ios/TabView/NewTabView.swift
 +++ b/ios/TabView/NewTabView.swift
 @@ -19,6 +19,14 @@ struct NewTabView: AnyTabView {
@@ -187,17 +195,17 @@ index 2f18f21..b7dedd8 100644
    @ViewBuilder
    var body: some View {
      TabView(selection: $props.selectedPage) {
-@@ -38,7 +46,7 @@ struct NewTabView: AnyTabView {
+@@ -42,7 +50,7 @@ struct NewTabView: AnyTabView {
                onSelect: onSelect
              )
  
--            Tab(value: tabData.key, role: tabData.role?.convert()) {
+-            Tab(value: tabData.key, role: tabData.role.flatMap { $0.convert() }) {
 +            Tab(value: tabData.key, role: tabRole(for: tabData)) {
                RepresentableView(view: child.view)
                  .ignoresSafeArea(.container, edges: .all)
                  .tabAppear(using: context)
 diff --git a/ios/TabViewImpl.swift b/ios/TabViewImpl.swift
-index 68053e1..df8cba5 100644
+index 6de510d0190ee9fc99b99a68f2e8f021c3776391..bd03acafeedd5bdd311a73232a9a1a54f909e002 100644
 --- a/ios/TabViewImpl.swift
 +++ b/ios/TabViewImpl.swift
 @@ -70,6 +70,7 @@ struct TabViewImpl: View {

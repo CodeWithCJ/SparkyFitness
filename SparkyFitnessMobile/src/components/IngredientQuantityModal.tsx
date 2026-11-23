@@ -7,7 +7,7 @@ import {
   Text,
   TouchableOpacity,
   View,
-  type TextInput,
+  type TextInputInstance,
 } from 'react-native';
 import {
   KeyboardAvoidingView,
@@ -75,7 +75,7 @@ export default function IngredientQuantityModal({
 }: IngredientQuantityModalProps) {
   const { t } = useTranslation();
   const energyUnit = useEnergyUnit();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [accentColorRaw, textSecondaryColorRaw] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-secondary',

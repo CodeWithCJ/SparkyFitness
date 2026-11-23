@@ -47,6 +47,7 @@ import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { energyUnitLabel } from '../utils/energyUnit';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import type { TranslateFn } from '../localization/translateFn';
 
 type MealAddScreenProps = RootStackScreenProps<'MealAdd'>;
 
@@ -55,10 +56,7 @@ const SERVING_UNIT_OPTIONS = MEAL_SERVING_UNITS.map((unit) => ({
   value: unit,
 }));
 
-function getServingUnitLabel(
-  unit: string,
-  t: (key: string, options?: Record<string, unknown>) => string
-): string {
+function getServingUnitLabel(unit: string, t: TranslateFn): string {
   const labels: Record<string, string> = {
     serving: t('mealBuilder.units.serving', { defaultValue: 'serving' }),
     g: t('mealBuilder.units.g', { defaultValue: 'g' }),

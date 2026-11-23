@@ -805,9 +805,11 @@ describe('workoutLiveActivity', () => {
     });
 
     it('does not show toasts or alerts on update failures', async () => {
-      const alertSpy = jest
-        .spyOn(global, 'alert')
-        .mockImplementation(() => undefined);
+      // The native test environment has no global `alert`, so install one.
+      const alertSpy = jest.fn();
+      const globalWithAlert = global as { alert?: unknown };
+      const previousAlert = globalWithAlert.alert;
+      globalWithAlert.alert = alertSpy;
       await initHydrated();
       useActiveWorkoutStore.getState().startWorkout(makeSession());
       await flushPromises();
@@ -818,7 +820,7 @@ describe('workoutLiveActivity', () => {
       await flushPromises();
 
       expect(alertSpy).not.toHaveBeenCalled();
-      alertSpy.mockRestore();
+      globalWithAlert.alert = previousAlert;
     });
   });
 });

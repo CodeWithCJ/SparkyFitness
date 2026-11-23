@@ -65,6 +65,7 @@ describe('FoodScanScreen', () => {
     navigate: jest.fn(),
     dispatch: jest.fn(),
     isFocused: jest.fn(() => true),
+    addListener: jest.fn(() => jest.fn()),
   } as any;
 
   const mockRoute = {

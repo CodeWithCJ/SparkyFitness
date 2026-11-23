@@ -1,6 +1,12 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, Text, View, type TextInput } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  Text,
+  View,
+  type TextInputInstance,
+} from 'react-native';
 import {
   KeyboardAvoidingView,
   KeyboardProvider,
@@ -28,7 +34,7 @@ export default function ActiveWorkoutRenameModal({
   onSubmit,
 }: ActiveWorkoutRenameModalProps) {
   const { t } = useTranslation();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [value, setValue] = useState(initialName);
   // Re-seed the field to the current name each time the dialog opens.
   const [wasVisible, setWasVisible] = useState(visible);

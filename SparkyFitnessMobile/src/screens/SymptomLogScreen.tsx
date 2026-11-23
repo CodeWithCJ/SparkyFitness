@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -126,43 +126,40 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
       : []
   );
 
-  const hydratedRef = useRef(false);
-  useEffect(() => {
-    if (existingEntry && !hydratedRef.current) {
-      hydratedRef.current = true;
-      // One-time form initialization from the async-loaded entry.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSymptomName(existingEntry.symptom_name_snapshot ?? '');
-      setSymptomId(existingEntry.symptom_id ?? null);
-      setIsEpisodic(Boolean(existingEntry.started_at));
-      if (existingEntry.severity !== null) {
-        setSeverity(existingEntry.severity);
-      }
-      setBodyLocations(existingEntry.body_locations ?? []);
-      setQualities(existingEntry.qualities ?? []);
-      setAssociatedSymptoms(existingEntry.associated_symptoms ?? []);
-      setTriggers(existingEntry.triggers ?? []);
-      setImpact(existingEntry.impact ?? null);
-      setContextText(existingEntry.context_text ?? '');
-      setStartedAt(existingEntry.started_at ?? null);
-      if (existingEntry.symptom_id && definitions.length > 0) {
-        const def = definitions.find((d) => d.id === existingEntry.symptom_id);
-        if (def?.scale_type) {
-          setScaleType(def.scale_type as SymptomScaleType);
-        }
-      }
-      if (existingEntry.treatments) {
-        setTreatments(
-          existingEntry.treatments.map((t) => ({
-            name_snapshot: t.name_snapshot,
-            kind: t.kind,
-            effectiveness: t.effectiveness ?? 'unknown',
-            notes: t.notes,
-          }))
-        );
+  const [hydrated, setHydrated] = useState(false);
+  if (existingEntry && !hydrated) {
+    // One-time form initialization from the async-loaded entry.
+    setHydrated(true);
+    setSymptomName(existingEntry.symptom_name_snapshot ?? '');
+    setSymptomId(existingEntry.symptom_id ?? null);
+    setIsEpisodic(Boolean(existingEntry.started_at));
+    if (existingEntry.severity !== null) {
+      setSeverity(existingEntry.severity);
+    }
+    setBodyLocations(existingEntry.body_locations ?? []);
+    setQualities(existingEntry.qualities ?? []);
+    setAssociatedSymptoms(existingEntry.associated_symptoms ?? []);
+    setTriggers(existingEntry.triggers ?? []);
+    setImpact(existingEntry.impact ?? null);
+    setContextText(existingEntry.context_text ?? '');
+    setStartedAt(existingEntry.started_at ?? null);
+    if (existingEntry.symptom_id && definitions.length > 0) {
+      const def = definitions.find((d) => d.id === existingEntry.symptom_id);
+      if (def?.scale_type) {
+        setScaleType(def.scale_type as SymptomScaleType);
       }
     }
-  }, [existingEntry, definitions]);
+    if (existingEntry.treatments) {
+      setTreatments(
+        existingEntry.treatments.map((t) => ({
+          name_snapshot: t.name_snapshot,
+          kind: t.kind,
+          effectiveness: t.effectiveness ?? 'unknown',
+          notes: t.notes,
+        }))
+      );
+    }
+  }
 
   const { logEntry, updateEntry, endEpisode, removeEntry } =
     useSymptomActions();
