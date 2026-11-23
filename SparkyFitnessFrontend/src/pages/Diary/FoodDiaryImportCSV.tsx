@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,6 +60,7 @@ interface FoodDiaryImportCSVProps {
     scope: FoodDiaryImportScope,
     overrideNutrition: boolean
   ) => Promise<FoodDiaryImportResult>;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
 interface CSVRow {
@@ -201,7 +203,10 @@ const parseCSV = (
   };
 };
 
-const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
+const FoodDiaryImportCSV = ({
+  onSave,
+  onDirtyChange,
+}: FoodDiaryImportCSVProps) => {
   const { t } = useTranslation();
   const { formatDate, parseDateInUserTimezone } = usePreferences();
   const { data: mealTypes } = useMealTypes();
@@ -242,6 +247,13 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
   const [resolvedDecimal, setResolvedDecimal] = useState<DecimalFormat>('us');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // The launcher confirms closing only while this form is dirty. A successful
+  // import clears the table, so a clean state closes freely.
+  const isDirty = csvData.length > 0 || csvText.trim() !== '' || showMapping;
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
+
   const preview = useMemo(
     () =>
       loadedText
@@ -281,20 +293,20 @@ const FoodDiaryImportCSV = ({ onSave }: FoodDiaryImportCSVProps) => {
 
   // Overriding stored food nutrition only applies to the user's own foods, so
   // family/public matching is disabled while it is on.
-  useEffect(() => {
+  useOnChange([overrideNutrition], () => {
     if (overrideNutrition) {
       setIncludeFamily(false);
       setIncludePublic(false);
     }
-  }, [overrideNutrition]);
+  });
 
   // Default the aggregate toggle on when the confirmed mapping is a per-meal
   // aggregate file; the user can still turn it off.
-  useEffect(() => {
+  useOnChange([mappingConfirmed, looksAggregate], () => {
     if (mappingConfirmed && looksAggregate) {
       setAggregateMode(true);
     }
-  }, [mappingConfirmed, looksAggregate]);
+  });
 
   const validateHeaders = (fileHeaders: string[] | undefined) =>
     !!fileHeaders && BASE_HEADERS.every((h) => fileHeaders.includes(h));

@@ -28,6 +28,8 @@ export const foodEntryKeys = {
   byDate: (date: string) => [...foodEntryKeys.all, 'date', date] as const,
   foodIntake: (date: string) =>
     [...foodEntryKeys.all, 'foodIntake', date] as const,
+  lastCooked: (foodId: string) =>
+    [...foodEntryKeys.all, 'lastCooked', foodId] as const,
 };
 
 export const foodEntryMealKeys = {
@@ -59,4 +61,10 @@ export const caffeineKeys = {
   all: ['caffeine'] as const,
   active: (date: string, userId?: string) =>
     [...caffeineKeys.all, 'active', date, userId ?? 'current'] as const,
+};
+
+export const bloodAlcoholKeys = {
+  all: ['bloodAlcohol'] as const,
+  estimate: (date: string) =>
+    [...bloodAlcoholKeys.all, 'estimate', date] as const,
 };

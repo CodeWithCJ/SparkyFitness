@@ -18,6 +18,13 @@ jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
 }));
 
+const mockQueueDelete = jest.fn();
+const mockCancelWaiting = jest.fn();
+jest.mock('../../src/offline/foodEntryDeleteHandOver', () => ({
+  queueFoodEntryDelete: (...args: unknown[]) => mockQueueDelete(...args),
+  cancelWaitingEntry: (...args: unknown[]) => mockCancelWaiting(...args),
+}));
+
 jest.spyOn(Alert, 'alert').mockImplementation(() => {});
 
 const mockDeleteFoodEntry = deleteFoodEntry as jest.MockedFunction<
@@ -225,5 +232,149 @@ describe('useDeleteFoodEntry', () => {
     });
 
     invalidateSpy.mockRestore();
+  });
+
+  describe('with the server unreachable', () => {
+    const wrapper = () => ({ wrapper: createQueryWrapper(queryClient) });
+
+    test('keeps the removal for later, even after a timeout', async () => {
+      const { TimeoutError } = require('../../src/utils/concurrency');
+      mockDeleteFoodEntry.mockRejectedValue(new TimeoutError('Request', 1000));
+      mockQueueDelete.mockResolvedValue(true);
+      const onSuccess = jest.fn();
+
+      const { result } = renderHook(
+        () =>
+          useDeleteFoodEntry({
+            entryId: 'entry-1',
+            entryDate: '2026-11-21',
+            onSuccess,
+          }),
+        wrapper()
+      );
+      await act(async () => {
+        result.current.deleteEntry();
+      });
+
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+      expect(mockQueueDelete).toHaveBeenCalledWith('entry-1', '2026-11-21');
+      expect(Toast.show).not.toHaveBeenCalled();
+    });
+
+    test('reports the failure when the removal could not be kept either', async () => {
+      mockDeleteFoodEntry.mockRejectedValue(
+        new TypeError('Network request failed')
+      );
+      mockQueueDelete.mockResolvedValue(false);
+
+      const { result } = renderHook(
+        () =>
+          useDeleteFoodEntry({ entryId: 'entry-1', entryDate: '2026-11-21' }),
+        wrapper()
+      );
+      await act(async () => {
+        result.current.deleteEntry();
+      });
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error' })
+        )
+      );
+    });
+
+    test('does not keep a removal the server refused', async () => {
+      const { ApiError } = require('../../src/services/api/errors');
+      mockDeleteFoodEntry.mockRejectedValue(new ApiError('no', 403));
+
+      const { result } = renderHook(
+        () =>
+          useDeleteFoodEntry({ entryId: 'entry-1', entryDate: '2026-11-21' }),
+        wrapper()
+      );
+      await act(async () => {
+        result.current.deleteEntry();
+      });
+
+      await waitFor(() => expect(Toast.show).toHaveBeenCalled());
+      expect(mockQueueDelete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('an entry waiting to upload', () => {
+    test('is taken out of the queue, never sent to the server', async () => {
+      mockCancelWaiting.mockResolvedValue('cancelled');
+      const onSuccess = jest.fn();
+
+      const { result } = renderHook(
+        () =>
+          useDeleteFoodEntry({
+            entryId: 'pending-abc',
+            entryDate: '2026-11-21',
+            onSuccess,
+          }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await act(async () => {
+        result.current.deleteEntry();
+      });
+
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+      expect(mockCancelWaiting).toHaveBeenCalledWith('abc');
+      expect(mockDeleteFoodEntry).not.toHaveBeenCalled();
+    });
+
+    test('says so when it is uploading this moment', async () => {
+      mockCancelWaiting.mockResolvedValue('uploading');
+
+      const { result } = renderHook(
+        () =>
+          useDeleteFoodEntry({
+            entryId: 'pending-abc',
+            entryDate: '2026-11-21',
+          }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await act(async () => {
+        result.current.deleteEntry();
+      });
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            text2: 'It is uploading right now. Try again in a moment.',
+          })
+        )
+      );
+    });
+
+    test('does not report a delete that cancelled nothing when it has just uploaded', async () => {
+      mockCancelWaiting.mockResolvedValue('gone');
+      const onSuccess = jest.fn();
+
+      const { result } = renderHook(
+        () =>
+          useDeleteFoodEntry({
+            entryId: 'pending-abc',
+            entryDate: '2026-11-21',
+            onSuccess,
+          }),
+        { wrapper: createQueryWrapper(queryClient) }
+      );
+      await act(async () => {
+        result.current.deleteEntry();
+      });
+
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({
+            text2:
+              'It has just uploaded. Try again once the Diary has refreshed.',
+          })
+        )
+      );
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(mockDeleteFoodEntry).not.toHaveBeenCalled();
+    });
   });
 });

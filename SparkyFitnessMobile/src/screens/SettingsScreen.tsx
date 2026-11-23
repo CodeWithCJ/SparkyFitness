@@ -243,6 +243,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
             }
           />
 
+          {activeConfig && (
+            <SettingsRow
+              icon="cloud-offline"
+              title={t('settings.rows.offline', { defaultValue: 'Offline' })}
+              onPress={() => navigation.navigate('OfflineSettings')}
+              iconColor={catSlate}
+            />
+          )}
+
           <SectionErrorBoundary
             sectionName={t('settings.title', { defaultValue: 'Settings' })}
           >
@@ -315,6 +324,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   title={t('settings.rows.ai', { defaultValue: 'AI' })}
                   onPress={() => navigation.navigate('AiSettings')}
                   iconColor={catTeal}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
+                  icon="feature-settings"
+                  title={t('settings.rows.features', {
+                    defaultValue: 'Features',
+                  })}
+                  onPress={() => navigation.navigate('FeatureSettings')}
+                  iconColor={catViolet}
                 />
               )}
               {isConnected && (

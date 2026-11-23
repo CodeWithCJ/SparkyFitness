@@ -25,6 +25,12 @@ Track your diet, manage meals, and analyze your nutritional intake.
 | **Daily Diary**        | `list_diary`                        | "What have I eaten today?"                                                      |
 | **Copy Entries**       | `copy_from_yesterday`               | "Copy my breakfast from yesterday to today."                                    |
 | **Nutrition Analysis** | `get_nutritional_summary`           | "Give me a breakdown of my macros for the last 7 days."                         |
+| **Active Caffeine**    | `sparky_get_caffeine_kinetics`      | "How much caffeine is still active, and how much is left at bedtime?"           |
+| **Blood Alcohol**      | `sparky_get_blood_alcohol`          | "What is my estimated blood alcohol curve for today?"                           |
+
+::: warning
+**Blood Alcohol** returns a rough [estimate](/features/diary/blood-alcohol) from your logged drinks and profile, never a measurement. It can be off by 20% or more and must never be used to judge whether you are fit to drive. It is only available for your own account.
+:::
 
 ::: info
 **Quick Add** mirrors the checkbox in the web and mobile food forms: the food is logged to your diary for that date but stays out of your food list, search, favorites, and recents. It applies to whichever path the assistant already uses — `log_external_food` for a match from a provider such as OpenFoodFacts or USDA, `create_food` for a custom or homemade food — so asking for Quick Add never costs you the verified provider nutrition. It applies only to foods being added for the first time: if the food is already in your food list, it stays there and the assistant tells you Quick Add was not applied, because hiding it would remove a food you already rely on. Ask for it explicitly ("quick add", "don't save this to my foods"); otherwise foods the assistant creates are saved to your list as usual.

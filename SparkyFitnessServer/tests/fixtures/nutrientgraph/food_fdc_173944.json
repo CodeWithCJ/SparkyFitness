@@ -1,0 +1,65 @@
+{
+  "data": {
+    "id": "fdc:173944",
+    "type": "generic",
+    "names": [
+      {
+        "lang": "en",
+        "name": "Bananas, raw",
+        "method": "source",
+        "source": "fdc_sr_legacy"
+      }
+    ],
+    "group": "fruits",
+    "basis": "100 g",
+    "nutrients": {
+      "alcohol_g": 0,
+      "calcium_mg": 5,
+      "carbohydrate_g": 22.84,
+      "cholesterol_mg": 0,
+      "energy_kcal": 89,
+      "energy_kj": 371,
+      "fat_g": 0.33,
+      "fiber_g": 2.6,
+      "iron_mg": 0.26,
+      "mufa_g": 0.032,
+      "potassium_mg": 358,
+      "protein_g": 1.09,
+      "pufa_g": 0.073,
+      "saturated_fat_g": 0.112,
+      "sodium_mg": 1,
+      "sugars_g": 12.23,
+      "water_g": 74.91,
+      "added_sugars_g": null,
+      "trans_fat_g": 0
+    },
+    "units": {
+      "alcohol_g": "g",
+      "calcium_mg": "mg",
+      "carbohydrate_g": "g",
+      "cholesterol_mg": "mg",
+      "energy_kcal": "kcal",
+      "energy_kj": "kJ",
+      "fat_g": "g",
+      "fiber_g": "g",
+      "iron_mg": "mg",
+      "mufa_g": "g",
+      "potassium_mg": "mg",
+      "protein_g": "g",
+      "pufa_g": "g",
+      "saturated_fat_g": "g",
+      "sodium_mg": "mg",
+      "sugars_g": "g",
+      "water_g": "g",
+      "added_sugars_g": "g",
+      "trans_fat_g": "g"
+    },
+    "portions": [
+      {
+        "description": "1 medium (7\" to 7-7/8\" long)",
+        "gram_weight": 118,
+        "is_default": true
+      }
+    ]
+  }
+}

@@ -12,6 +12,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '../lib/auth-client';
 import { fetchIdentityUser, switchUserContext } from '@/api/Auth/auth';
 import { apiCall, clearDemoRestrictions } from '@/api/api';
+import { clearPendingInvite } from '@/pages/Challenges/challengeLinks';
 
 export interface User {
   id: string;
@@ -134,7 +135,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
         clearDemoRestrictions();
         clearCacheOnAccountChange(user?.id, extUser.id);
       }
-      setUser(sessionUser);
+      // Applied once this effect has finished: its checks above read the
+      // previous `user`, and the lookup below must see that same pass.
+      queueMicrotask(() => setUser(sessionUser));
 
       // Fetch Authoritative Data (Active Context)
       // This runs on every session update to ensure we are strictly in sync with the backend.
@@ -182,10 +185,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
           );
         });
 
-      setIsSyncing(false);
+      queueMicrotask(() => setIsSyncing(false));
     } else if (session?.user && user && user.id === session.user.id) {
       // Same user - just update 2FA status if changed
-      setIsSyncing(false);
+      queueMicrotask(() => setIsSyncing(false));
     }
   }, [session, user, clearCacheOnAccountChange]);
 
@@ -269,7 +272,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
             );
           });
       }
-      setIsSyncing(false);
+      queueMicrotask(() => setIsSyncing(false));
     }
   }, [session, sessionLoading, user, lastManualSignIn, queryClient]);
 
@@ -297,6 +300,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     setUser(null);
     identityLookupRef.current = null;
     clearDemoRestrictions();
+    clearPendingInvite();
     queryClient.clear();
     window.location.href = '/';
   }, [queryClient]);

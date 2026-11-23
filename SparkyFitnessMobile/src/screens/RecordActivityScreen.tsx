@@ -53,7 +53,6 @@ import IntervalSetup, {
 } from '../components/recording/IntervalSetup';
 import RouteMap from '../components/exerciseStats/RouteMap';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useIndoorDistanceEstimate } from '../hooks/useIndoorDistanceEstimate';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { correctTreadmillDistance } from '../utils/treadmillCorrection';
@@ -73,6 +72,9 @@ import { formatLocalizedNumber, getAppLocale } from '../localization';
 import {
   RecordingPermissionError,
   discardRecording,
+  beginRecordingSave,
+  endRecordingSave,
+  markRecordingSaveComplete,
   elapsedSeconds,
   planCompleted,
   finishRecording,
@@ -272,7 +274,6 @@ function recordingTitle(
 const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const { updateMutation: updateShoe } = useShoeMutations();
   const { preferences } = usePreferences();
@@ -356,29 +357,24 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   // (the Diary card's Start, or Start today's workout); otherwise it is just
   // offered on its own card, because most recordings are a plain walk or run.
   const wantsProgramWorkout = route.params?.programWorkout === true;
-  const programApplied = useRef(false);
-  useEffect(() => {
-    if (!wantsProgramWorkout || programApplied.current || !programLoaded)
-      return;
-    programApplied.current = true;
+  const [programApplied, setProgramApplied] = useState(false);
+  if (wantsProgramWorkout && !programApplied && programLoaded) {
+    setProgramApplied(true);
     if (programWorkout && programStatus) {
       setActivity(programStatus.program.activity);
       setIntervalChoice('program');
     }
-  }, [wantsProgramWorkout, programLoaded, programWorkout, programStatus]);
+  }
   // A program that ended or was left while it was chosen.
-  useEffect(() => {
-    if (intervalChoice === 'program' && programLoaded && !programWorkout) {
-      setIntervalChoice('off');
-    }
-  }, [intervalChoice, programLoaded, programWorkout]);
+  if (intervalChoice === 'program' && programLoaded && !programWorkout) {
+    setIntervalChoice('off');
+  }
   // The run/walk presets are not offered for a walk or ride, so switching to
   // one drops a run/walk preset rather than leaving a choice the picker lacks.
-  useEffect(() => {
-    if (activity === 'run') return;
+  if (activity !== 'run') {
     const preset = INTERVAL_PRESETS.find((p) => p.id === intervalChoice);
     if (preset?.options.style === 'runWalk') setIntervalChoice('off');
-  }, [activity, intervalChoice]);
+  }
   // Optional pace ranges for a plan's fast and easy stretches, this run only.
   // Paces for tempo, marathon-pace and stride stretches, set from a recent race.
   const [effortPace, setEffortPace] = useState<Partial<
@@ -400,8 +396,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const easyBand = easyPace.band ?? defaultEasyPaceBand(distanceUnit);
   // Distance steps follow GPS distance, so going indoors drops a distance
   // plan: Custom goes back to timed work, a distance preset to no plan.
-  useEffect(() => {
-    if (!indoor) return;
+  if (indoor) {
     if (intervalChoice === 'custom') {
       if (usesWorkDistance(customIntervals)) {
         setCustomIntervals({
@@ -410,11 +405,11 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           workUnit: undefined,
         });
       }
-      return;
+    } else {
+      const preset = INTERVAL_PRESETS.find((p) => p.id === intervalChoice);
+      if (preset && usesWorkDistance(preset.options)) setIntervalChoice('off');
     }
-    const preset = INTERVAL_PRESETS.find((p) => p.id === intervalChoice);
-    if (preset && usesWorkDistance(preset.options)) setIntervalChoice('off');
-  }, [indoor, intervalChoice, customIntervals]);
+  }
   const [warmOpen, setWarmOpen] = useState(false);
   const warmBand = warmPace.band ?? defaultWarmPaceBand(distanceUnit);
   const basePlan = useMemo<IntervalPlan | undefined>(() => {
@@ -538,9 +533,11 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   // Tempo, stride and marathon-pace ranges come from the latest fitness test or
   // the saved race; once it is
   // cleared or the activity changes, the ranges applied from it no longer apply.
-  useEffect(() => {
+  const [effortPaceSource, setEffortPaceSource] = useState(suggested.byEffort);
+  if (effortPaceSource !== suggested.byEffort) {
+    setEffortPaceSource(suggested.byEffort);
     setEffortPace(null);
-  }, [suggested.byEffort]);
+  }
   const suggestedHeartRate = watchAvailable ? suggested.heartRate : null;
   const useSuggestedRangesNow = () => {
     if (suggestedPaceChoice) {
@@ -692,12 +689,14 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     [points, session?.status, unitMeters]
   );
   const lapMarks = session?.laps;
+  const sessionStatus = session?.status;
+  const sessionFinishedAt = session?.finishedAt;
   const laps = useMemo(
     () =>
-      session?.status === 'finished' && lapMarks && lapMarks.length > 0
-        ? computeLaps(points, lapMarks, session.finishedAt ?? undefined)
+      sessionStatus === 'finished' && lapMarks && lapMarks.length > 0
+        ? computeLaps(points, lapMarks, sessionFinishedAt ?? undefined)
         : [],
-    [points, session?.status, session?.finishedAt, lapMarks]
+    [points, sessionStatus, sessionFinishedAt, lapMarks]
   );
   const lapBarsFor = useMemo(
     () => splitBars(laps, unitMeters),
@@ -855,14 +854,16 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   // voice cues on, spoken.
   useEffect(() => {
     if (countdownLeft === null) return;
-    if (countdownLeft === 0) {
-      setCountdownLeft(null);
-      void handleStart();
-      return;
-    }
     fireSelectionHaptic();
     if (audioCues) speakRecordingCue(String(countdownLeft));
-    const id = setTimeout(() => setCountdownLeft(countdownLeft - 1), 1000);
+    const id = setTimeout(() => {
+      if (countdownLeft - 1 === 0) {
+        setCountdownLeft(null);
+        void handleStart();
+      } else {
+        setCountdownLeft(countdownLeft - 1);
+      }
+    }, 1000);
     return () => clearTimeout(id);
   }, [countdownLeft, audioCues, handleStart]);
 
@@ -904,6 +905,10 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     [run, t]
   );
 
+  const [testTimeText, setTestTimeText] = useState<string | null>(null);
+  const [testSplitText, setTestSplitText] = useState('');
+  const [inclineText, setInclineText] = useState('1');
+  const [adjustForIncline, setAdjustForIncline] = useState(true);
   const handleDiscard = useCallback(() => {
     Alert.alert(
       t('recordActivity.discard.title', {
@@ -925,7 +930,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress: () =>
             void run(
               async () => {
-                await discardRecording();
+                await discardRecording({ discarded: true });
                 // The screen stays mounted. A distance typed for this session
                 // must not be offered as the next one's estimate.
                 setIndoorDistanceText(null);
@@ -999,10 +1004,6 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         : null;
 
   // A treadmill test's extra answers, asked after Finish.
-  const [testTimeText, setTestTimeText] = useState<string | null>(null);
-  const [testSplitText, setTestSplitText] = useState('');
-  const [inclineText, setInclineText] = useState('1');
-  const [adjustForIncline, setAdjustForIncline] = useState(true);
   const inclineValue =
     inclineText.trim() === '' ? null : parseDecimalInput(inclineText);
   const inclineInvalid =
@@ -1091,6 +1092,8 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     if (!session) return;
     setBusy(true);
     try {
+      // Refused while the recording bar is discarding this recording.
+      beginRecordingSave(session.id);
       const saved = await saveRecordedActivity(
         session,
         points,
@@ -1125,6 +1128,16 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
             testToSave.adjustForIncline !== false,
         });
       }
+      // Everything a Discard should undo is saved now. From here on a session
+      // that is still around (a failed clear, the app killed before it) holds
+      // a finished save, so a Discard must not delete its entry. Best effort:
+      // the save itself went through, so nothing here reports it as failed.
+      await markRecordingSaveComplete(session.id).catch((error: unknown) =>
+        addLog(
+          `[GPS Recording] Could not mark the save complete: ${error}`,
+          'WARNING'
+        )
+      );
       // Ticks a program workout off only if the plan was followed to its end; a run cut short can be tried again. The day is the one the run
       // started on, so a run saved after midnight still counts for its own day.
       let program: RunSummaryParams['program'] = null;
@@ -1188,6 +1201,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           program,
           entryId: saved.entryId,
           form: saved.form,
+          clockSeconds: elapsedSeconds(session),
         });
       } catch (error) {
         addLog(
@@ -1220,6 +1234,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         }),
       });
     } finally {
+      endRecordingSave(session.id);
       setBusy(false);
     }
   }, [
@@ -2308,10 +2323,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   })();
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 bg-background"

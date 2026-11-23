@@ -126,7 +126,9 @@ export const MindfulnessSection: React.FC<MindfulnessSectionProps> = ({
   const [phaseSecondsLeft, setPhaseSecondsLeft] = useState(4);
   const [breathElapsed, setBreathElapsed] = useState(0);
   const breathPhaseRef = useRef<BreathPhase>('Inhale');
-  breathPhaseRef.current = breathPhase;
+  useEffect(() => {
+    breathPhaseRef.current = breathPhase;
+  });
 
   // Meditation Timer State
   const [isTimerRunning, setIsTimerRunning] = useState(false);

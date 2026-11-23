@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import type { View } from 'react-native';
+import { findNodeHandle, type ViewInstance } from 'react-native';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { ImageFormat, makeImageFromView } from '@shopify/react-native-skia';
@@ -10,10 +10,12 @@ import { ImageFormat, makeImageFromView } from '@shopify/react-native-skia';
  * without choosing; other failures throw.
  */
 export async function shareActivityImage(options: {
-  cardRef: RefObject<View | null>;
+  cardRef: RefObject<ViewInstance | null>;
   name: string;
 }): Promise<boolean> {
-  const image = await makeImageFromView(options.cardRef);
+  const image = await makeImageFromView({
+    current: findNodeHandle(options.cardRef.current) ?? null,
+  });
   if (!image) throw new Error('Could not capture the share image');
   const bytes = image.encodeToBytes(ImageFormat.PNG, 100);
 

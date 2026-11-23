@@ -3,6 +3,8 @@
 The Cycle Hub is a self-hosted, privacy-first suite designed to track, calculate, and analyze menstrual health, fertility, and pregnancy. This document outlines how to utilize the period and cycle features.
 
 ## 1. Onboarding & Settings
+Cycle tracking is off until you turn it on in **Settings -> Features**, on the website or in the mobile app. It is one switch for both. The first time, it asks a few questions to set it up; turning it off later only hides it, and turning it back on brings your history back. If you open the Cycle tab's address, or the app's Cycle Hub, while it is off, you get the setup the first time, and after that a short notice with **Turn on**, so you never have to answer the setup again. While it is off, the website and the app also leave cycle out of other places: the reproductive data Apple Health and Health Connect sync (in the check-in, measurement entry, Reports and the app's Diary), the symptoms you logged in the Cycle tab or Cycle Hub (in the symptom history, calendars and the app's Symptoms card), the app's Dashboard card and + menu row, and the cycle column of the website's symptoms CSV.
+
 To configure your cycle preferences, navigate to **Settings -> Cycle & Pregnancy**. Here you can set:
 * **Current Mode**: Select between *Standard* (Period Tracking), *TTC* (Trying to Conceive), *Pregnancy*, *Postpartum*, or *Menopause*.
 * **Cycle & Period Length**: Input your average cycle length (e.g. 28 days) and average period duration (e.g. 5 days) as fallbacks.

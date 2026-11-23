@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ListPlus, Plus, Search } from 'lucide-react';
 import {
@@ -68,7 +68,10 @@ export function NutrientPicker({
   onAdd: (picks: NutrientPick[]) => void;
 }) {
   const { t } = useTranslation();
-  const rootRef = useRef<HTMLDivElement>(null);
+  const [dialogNode, setDialogNode] = useState<HTMLElement | null>(null);
+  const rootRef = useCallback((node: HTMLDivElement | null) => {
+    setDialogNode(node?.closest<HTMLElement>('[role="dialog"]') ?? null);
+  }, []);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [newName, setNewName] = useState('');
@@ -286,8 +289,6 @@ export function NutrientPicker({
   // the popover height and flips against the dialog's visible box rather than the viewport
   // — without it, a popover opening upward from low in the dialog overflows past the
   // dialog's scrolled top and its search box is clipped out of reach.
-  const dialogNode =
-    rootRef.current?.closest<HTMLElement>('[role="dialog"]') ?? null;
 
   const trimmedNewName = newName.trim();
   const newNameCollides =

@@ -15,7 +15,7 @@ interface ItemProps {
   option: PickerOption | null;
   height: number;
   index: number;
-  currentScrollIndex: Animated.AnimatedAddition<number>;
+  currentScrollIndex: Animated.AnimatedAddition;
   visibleRest: number;
   rotationFunction: (x: number) => number;
   opacityFunction: (x: number) => number;

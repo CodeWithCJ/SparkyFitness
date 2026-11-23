@@ -7,11 +7,18 @@ import {
   calculateCustomNutrientTotals,
 } from './api/foodEntriesApi';
 import { fetchDailySummary } from './api/dailySummaryApi';
+import {
+  readWaitingForDay,
+  withoutDeleted,
+  type WaitingForDay,
+} from '../offline/dailySummaryOverlay';
 import { resolveCollapsedFoodEntries } from '../utils/loggedMealCollapse';
 import { calculateExerciseStats } from '../utils/workoutSession';
 import type { DailySummary } from '../types/dailySummary';
 import type { DailyGoals } from '../types/goals';
 import type { FoodEntry } from '../types/foodEntries';
+import { serverMayBeDown } from '../utils/serverErrors';
+import { applyEntryChanges } from '../offline/foodEntryChanges';
 import type {
   ExerciseSessionResponse,
   CalorieBalance,
@@ -41,13 +48,80 @@ export interface DailySummaryRawData {
   calorieCycling?: CalorieCyclingDay;
 }
 
+/**
+ * Adds what is waiting to upload to a day's numbers. The server's summary, or
+ * the phone's copy of it, does not include those entries yet: they are listed
+ * with the day's food, counted in the calories, macros and the calorie
+ * balance, and added to the water total. Once uploaded they are in the
+ * server's numbers and no longer waiting, so nothing is counted twice.
+ */
+export function applyWaitingToRawData(
+  raw: DailySummaryRawData,
+  waiting: WaitingForDay
+): DailySummaryRawData {
+  const { deletedFoodEntryIds, deletedMealIds, changedEntries } = waiting;
+  if (
+    waiting.foodEntries.length === 0 &&
+    waiting.waterMl === 0 &&
+    deletedFoodEntryIds.length === 0 &&
+    deletedMealIds.length === 0 &&
+    Object.keys(changedEntries).length === 0
+  ) {
+    return raw;
+  }
+  // An entry the server has whose removal waits to upload is already out of
+  // the day's list and its calories are back, as they will be once it is gone.
+  const notGone = withoutDeleted(
+    raw.foodEntries,
+    deletedFoodEntryIds,
+    deletedMealIds
+  );
+  const removed = raw.foodEntries.filter((entry) => !notGone.includes(entry));
+  // A change made on the phone shows at once, as it will read once uploaded.
+  const kept = applyEntryChanges(notGone, changedEntries);
+  const addedCalories =
+    calculateCaloriesConsumed(waiting.foodEntries) -
+    calculateCaloriesConsumed(removed) +
+    (calculateCaloriesConsumed(kept) - calculateCaloriesConsumed(notGone));
+  const { calorieBalance, waterIntakeBreakdown } = raw;
+  return {
+    ...raw,
+    foodEntries: [...kept, ...waiting.foodEntries],
+    calorieBalance: calorieBalance && {
+      ...calorieBalance,
+      eaten: calorieBalance.eaten + addedCalories,
+      net: calorieBalance.net + addedCalories,
+      remaining: calorieBalance.remaining - addedCalories,
+    },
+    waterIntake: {
+      ...raw.waterIntake,
+      water_ml: Math.max(0, (raw.waterIntake.water_ml || 0) + waiting.waterMl),
+    },
+    waterIntakeBreakdown: waterIntakeBreakdown && {
+      ...waterIntakeBreakdown,
+      manual_ml:
+        (Number(waterIntakeBreakdown.manual_ml) || 0) + waiting.waterMl,
+    },
+  };
+}
+
 export async function loadDailySummaryRawData(
   date: string
 ): Promise<DailySummaryRawData> {
   const data = await fetchDailySummary(date);
-  const foodEntries = await resolveCollapsedFoodEntries(date, data.foodEntries);
+  // Collapsing logged meals asks the server for their totals. With the server
+  // away the day still shows, with a logged meal as its component entries.
+  const foodEntries = await resolveCollapsedFoodEntries(
+    date,
+    data.foodEntries
+  ).catch((error: unknown) => {
+    // Only a server that cannot be reached shows the meals as their
+    // components; any other failure is a real one.
+    if (serverMayBeDown(error)) return data.foodEntries;
+    throw error;
+  });
 
-  return {
+  const raw: DailySummaryRawData = {
     goals: data.goals,
     foodEntries,
     exerciseEntries: data.exerciseSessions,
@@ -59,6 +133,7 @@ export async function loadDailySummaryRawData(
     adjustedGoals: data.adjustedGoals ?? null,
     calorieCycling: data.calorieCycling,
   };
+  return applyWaitingToRawData(raw, await readWaitingForDay(date));
 }
 
 export function buildDailySummary(

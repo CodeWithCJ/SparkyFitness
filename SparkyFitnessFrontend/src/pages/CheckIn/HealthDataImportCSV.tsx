@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,7 @@ import CsvFormatBar from '@/components/CsvImport/CsvFormatBar';
 import CsvFormatPreview from '@/components/CsvImport/CsvFormatPreview';
 import CsvImportResultPanel from '@/components/CsvImport/CsvImportResultPanel';
 import CsvHeaderMappingDialog from '@/components/CsvImport/CsvHeaderMappingDialog';
+import { HEALTH_CSV_FIELD_DESCRIPTIONS } from '@/components/CsvImport/csvFieldDescriptions';
 import { NUMERIC_COLUMNS_BY_CATEGORY } from '@/utils/healthDataImport';
 
 // Calendar date-picker cell, matching the compact popover pattern used by
@@ -145,7 +146,11 @@ const MoodTagsCell = ({
   );
 };
 
-const HealthDataImportCSV = () => {
+const HealthDataImportCSV = ({
+  onDirtyChange,
+}: {
+  onDirtyChange: (dirty: boolean) => void;
+}) => {
   const { t } = useTranslation();
   const csvFormat = useCsvFormat();
   const {
@@ -185,6 +190,13 @@ const HealthDataImportCSV = () => {
     () => (loadedText ? csvFormat.parse(loadedText, { numericColumns }) : null),
     [loadedText, csvFormat, numericColumns]
   );
+
+  // The launcher confirms closing only while this form is dirty. A successful
+  // import clears the rows, so a clean state closes freely.
+  const isDirty = csvData.length > 0 || showMapping;
+  useEffect(() => {
+    onDirtyChange(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const handleFileUploadWithReset: typeof handleFileUpload = (event) => {
     csvFormat.resetForNewInput();
@@ -351,6 +363,7 @@ const HealthDataImportCSV = () => {
             onHeaderMappingChange={setHeaderMapping}
             onConfirm={handleConfirmMapping}
             onCancel={handleCancelMapping}
+            fieldDescriptions={HEALTH_CSV_FIELD_DESCRIPTIONS}
           />
 
           {(needsWeightUnit || needsLengthUnit) && (

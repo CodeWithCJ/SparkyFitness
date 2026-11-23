@@ -1,5 +1,5 @@
 import React, { forwardRef, useMemo } from 'react';
-import { Text, View } from 'react-native';
+import { Text, View, type ViewInstance } from 'react-native';
 import { Image } from 'expo-image';
 import Svg, { Circle, Path } from 'react-native-svg';
 import type { GpsTrackPoint } from '@workspace/shared';
@@ -97,7 +97,7 @@ const RouteDrawing: React.FC<RouteDrawingProps> = ({
  * PNG) with the route and headline stats drawn over it. Everything is sized
  * from `width`, so the image captured from it is the same at any preview size.
  */
-const ActivityShareCard = forwardRef<View, ActivityShareCardProps>(
+const ActivityShareCard = forwardRef<ViewInstance, ActivityShareCardProps>(
   (
     { width, photoUri, template, color, title, dateText, stats, route },
     ref

@@ -5,7 +5,6 @@ export {
   fastingRootQueryKey,
   chatHistoryQueryKey,
   medicationsRootQueryKey,
-  caffeineActiveRootQueryKey,
 } from './queryKeys';
 export { useServerConnection } from './useServerConnection';
 export { useServerConfigs } from './useServerConfigs';
@@ -85,6 +84,7 @@ export type { ProviderSearchResult } from './useAllProvidersSearch';
 export { useMealTypes } from './useMealTypes';
 export { useDeleteFood } from './useDeleteFood';
 export { useCaffeineKinetics } from './useCaffeineKinetics';
+export { useBloodAlcohol } from './useBloodAlcohol';
 export { useFoodVariants } from './useFoodVariants';
 export type { StepsDataPoint, WeightDataPoint } from './useMeasurementsRange';
 export { useHealthTrends } from './useHealthTrends';
@@ -111,7 +111,6 @@ export { useCustomNutrients } from './useCustomNutrients';
 export type { UserCustomNutrient } from './useCustomNutrients';
 export { useNutrientDisplayPreferences } from './useNutrientDisplayPreferences';
 export { useChatHistory } from './useChatHistory';
-export { useCycleMode } from './useCycleMode';
 export { useMedications } from './useMedications';
 export {
   useSetFoodEntryImages,

@@ -29,7 +29,9 @@ import {
   toNumber,
   parseCsv,
   DEFAULT_CSV_FORMAT,
+  type CreatePresetSessionRequest,
   type PresetSessionExerciseRequest,
+  type PresetSessionResponse,
   type UpdateExerciseEntryRequest,
 } from '@workspace/shared';
 import {
@@ -290,6 +292,53 @@ async function getExerciseStats(
     lastSet: lastRow ? mapSetStatsRow(lastRow) : null,
     recentSessions: recentRows.map(mapRecentSessionRow),
   };
+}
+
+/** How many exercises of one batch are read from the database at a time. */
+const EXERCISE_STATS_BATCH_CONCURRENCY = 5;
+
+/**
+ * Stats for many exercise and preset pairs in one call (offline preparation
+ * on mobile). Each pair gets exactly what `getExerciseStats` returns for it;
+ * a pair asked for twice is answered once. Results keep the request order.
+ */
+async function getExerciseStatsBatch(
+  userId: string,
+  items: ReadonlyArray<{ exerciseId: string; presetId?: number }>
+) {
+  const seen = new Set<string>();
+  const unique = items.filter((item) => {
+    const key = `${item.exerciseId}|${item.presetId ?? ''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const results: Array<{
+    exerciseId: string;
+    presetId: number | null;
+    stats: Awaited<ReturnType<typeof getExerciseStats>>;
+  }> = [];
+  for (
+    let start = 0;
+    start < unique.length;
+    start += EXERCISE_STATS_BATCH_CONCURRENCY
+  ) {
+    const chunk = unique.slice(start, start + EXERCISE_STATS_BATCH_CONCURRENCY);
+    const chunkResults = await Promise.all(
+      chunk.map(async (item) => ({
+        exerciseId: item.exerciseId,
+        presetId: item.presetId ?? null,
+        stats: await getExerciseStats(
+          userId,
+          item.exerciseId,
+          null,
+          item.presetId ?? null
+        ),
+      }))
+    );
+    results.push(...chunkResults);
+  }
+  return results;
 }
 async function getAvailableEquipment() {
   try {
@@ -1941,6 +1990,65 @@ async function getGroupedWorkoutSessionById(userId: any, presetEntryId: any) {
   return getGroupedExerciseSessionById(userId, presetEntryId);
 }
 
+/**
+ * Postgres unique-violation on the session's primary key: the client-minted
+ * id is already taken, by this user (a repeated create) or by someone else.
+ */
+function isPresetEntryIdTaken(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const pgError = error as { code?: unknown; constraint?: unknown };
+  return (
+    pgError.code === '23505' &&
+    pgError.constraint === 'exercise_preset_entries_pkey'
+  );
+}
+
+/**
+ * Creates a grouped workout session, or, when the request carries a
+ * client-minted `id` that this user has already created, returns that stored
+ * session untouched (`replayed: true`). A client that never heard the answer
+ * to its first create can therefore send it again without making a second
+ * workout. The stored copy may be older than the repeated request, so the
+ * caller follows a replay with an ordinary update.
+ */
+async function createOrReplayGroupedWorkoutSession(
+  userId: string,
+  actingUserId: string,
+  sessionData: CreatePresetSessionRequest
+): Promise<{ session: PresetSessionResponse; replayed: boolean }> {
+  const clientSessionId = sessionData.id ?? null;
+  if (clientSessionId !== null) {
+    const existing = await getGroupedExerciseSessionById(
+      userId,
+      clientSessionId
+    );
+    if (existing) return { session: existing, replayed: true };
+  }
+  try {
+    const session: PresetSessionResponse | null =
+      await createGroupedWorkoutSession(userId, actingUserId, sessionData);
+    if (!session) {
+      throw createServiceError(500, 'Created workout session was not found.');
+    }
+    return { session, replayed: false };
+  } catch (error) {
+    if (clientSessionId === null || !isPresetEntryIdTaken(error)) throw error;
+    // The id was taken between the lookup and the insert. If it is this
+    // user's (two copies of the same create racing), hand back the stored
+    // session. Otherwise it belongs to someone else, which row-level
+    // security hides from the lookup: refuse without saying whose it is.
+    const existing = await getGroupedExerciseSessionById(
+      userId,
+      clientSessionId
+    );
+    if (existing) return { session: existing, replayed: true };
+    throw createServiceError(
+      409,
+      'A workout session with this id cannot be created.'
+    );
+  }
+}
+
 async function createGroupedWorkoutSession(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1981,6 +2089,7 @@ async function createGroupedWorkoutSession(
           client,
           userId,
           {
+            id: sessionData.id ?? null,
             workout_preset_id,
             name: name || workoutPreset.name,
             description:
@@ -2015,6 +2124,7 @@ async function createGroupedWorkoutSession(
           client,
           userId,
           {
+            id: sessionData.id ?? null,
             workout_preset_id: null,
             name,
             description: description ?? null,
@@ -2754,6 +2864,7 @@ export { getExercisesWithPagination };
 export { searchExercises };
 export { searchExercisesPaginated };
 export { getExerciseStats };
+export { getExerciseStatsBatch };
 export { getAvailableEquipment };
 export { getAvailableMuscleGroups };
 export { createExercise };
@@ -2783,6 +2894,7 @@ export { updateExerciseEntriesSnapshot };
 export { getActivityDetailsByExerciseEntryIdAndProvider };
 export { logWorkoutPresetGrouped };
 export { createGroupedWorkoutSession };
+export { createOrReplayGroupedWorkoutSession };
 export { updateGroupedWorkoutSession };
 export { getGroupedWorkoutSessionById };
 export default {
@@ -2792,6 +2904,7 @@ export default {
   searchExercises,
   searchExercisesPaginated,
   getExerciseStats,
+  getExerciseStatsBatch,
   getAvailableEquipment,
   getAvailableMuscleGroups,
   createExercise,
@@ -2820,6 +2933,7 @@ export default {
   getActivityDetailsByExerciseEntryIdAndProvider,
   logWorkoutPresetGrouped,
   createGroupedWorkoutSession,
+  createOrReplayGroupedWorkoutSession,
   updateGroupedWorkoutSession,
   getGroupedWorkoutSessionById,
 };

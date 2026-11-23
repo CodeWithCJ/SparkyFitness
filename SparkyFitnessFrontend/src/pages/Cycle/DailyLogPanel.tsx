@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { Trans, useTranslation } from 'react-i18next';
 import {
   FLOW_LEVELS,
@@ -93,9 +94,9 @@ export default function DailyLogPanel(props: DailyLogPanelProps) {
   const totalSleepHours = totalSleepSeconds / 3600;
 
   // Reseed when the day (or its server value) changes.
-  useEffect(() => {
+  useOnChange([date, log], () => {
     setDraft(toDraft(log));
-  }, [date, log]);
+  });
 
   const save = (patch: Partial<Draft>) => {
     const next = { ...draft, ...patch };

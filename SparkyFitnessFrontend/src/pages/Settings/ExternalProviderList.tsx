@@ -243,6 +243,7 @@ const ExternalProviderList = ({
         editData.provider_type === 'tandoor' ||
         editData.provider_type === 'norish' ||
         editData.provider_type === 'valhalla' ||
+        editData.provider_type === 'zeppbridge' ||
         editData.provider_type === 'open_meteo' ||
         editData.provider_type === 'free-exercise-db' ||
         editData.provider_type === 'openfoodfacts' ||
@@ -301,6 +302,7 @@ const ExternalProviderList = ({
         editData.provider_type === 'hevy' ||
         editData.provider_type === 'liftosaur' ||
         editData.provider_type === 'intervals' ||
+        editData.provider_type === 'zeppbridge' ||
         editData.provider_type === 'strava' ||
         editData.provider_type === 'polar' ||
         editData.provider_type === 'coros_mcp'

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { FooterSaveBar } from '../components/FormScreenChrome';
 import CalendarSheet, {
@@ -60,8 +58,6 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
   const tr = (label: string) =>
     translateBuiltInSymptomLabel(builtInLabels, label);
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { entryId, date } = route.params || {};
 
   const today = getTodayDate();
@@ -130,43 +126,40 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
       : []
   );
 
-  const hydratedRef = useRef(false);
-  useEffect(() => {
-    if (existingEntry && !hydratedRef.current) {
-      hydratedRef.current = true;
-      // One-time form initialization from the async-loaded entry.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSymptomName(existingEntry.symptom_name_snapshot ?? '');
-      setSymptomId(existingEntry.symptom_id ?? null);
-      setIsEpisodic(Boolean(existingEntry.started_at));
-      if (existingEntry.severity !== null) {
-        setSeverity(existingEntry.severity);
-      }
-      setBodyLocations(existingEntry.body_locations ?? []);
-      setQualities(existingEntry.qualities ?? []);
-      setAssociatedSymptoms(existingEntry.associated_symptoms ?? []);
-      setTriggers(existingEntry.triggers ?? []);
-      setImpact(existingEntry.impact ?? null);
-      setContextText(existingEntry.context_text ?? '');
-      setStartedAt(existingEntry.started_at ?? null);
-      if (existingEntry.symptom_id && definitions.length > 0) {
-        const def = definitions.find((d) => d.id === existingEntry.symptom_id);
-        if (def?.scale_type) {
-          setScaleType(def.scale_type as SymptomScaleType);
-        }
-      }
-      if (existingEntry.treatments) {
-        setTreatments(
-          existingEntry.treatments.map((t) => ({
-            name_snapshot: t.name_snapshot,
-            kind: t.kind,
-            effectiveness: t.effectiveness ?? 'unknown',
-            notes: t.notes,
-          }))
-        );
+  const [hydrated, setHydrated] = useState(false);
+  if (existingEntry && !hydrated) {
+    // One-time form initialization from the async-loaded entry.
+    setHydrated(true);
+    setSymptomName(existingEntry.symptom_name_snapshot ?? '');
+    setSymptomId(existingEntry.symptom_id ?? null);
+    setIsEpisodic(Boolean(existingEntry.started_at));
+    if (existingEntry.severity !== null) {
+      setSeverity(existingEntry.severity);
+    }
+    setBodyLocations(existingEntry.body_locations ?? []);
+    setQualities(existingEntry.qualities ?? []);
+    setAssociatedSymptoms(existingEntry.associated_symptoms ?? []);
+    setTriggers(existingEntry.triggers ?? []);
+    setImpact(existingEntry.impact ?? null);
+    setContextText(existingEntry.context_text ?? '');
+    setStartedAt(existingEntry.started_at ?? null);
+    if (existingEntry.symptom_id && definitions.length > 0) {
+      const def = definitions.find((d) => d.id === existingEntry.symptom_id);
+      if (def?.scale_type) {
+        setScaleType(def.scale_type as SymptomScaleType);
       }
     }
-  }, [existingEntry, definitions]);
+    if (existingEntry.treatments) {
+      setTreatments(
+        existingEntry.treatments.map((t) => ({
+          name_snapshot: t.name_snapshot,
+          kind: t.kind,
+          effectiveness: t.effectiveness ?? 'unknown',
+          notes: t.notes,
+        }))
+      );
+    }
+  }
 
   const { logEntry, updateEntry, endEpisode, removeEntry } =
     useSymptomActions();
@@ -404,10 +397,7 @@ export default function SymptomLogScreen({ navigation, route }: Props) {
       : 'body';
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       {entryId && !existingEntry && isEntryLoading ? (

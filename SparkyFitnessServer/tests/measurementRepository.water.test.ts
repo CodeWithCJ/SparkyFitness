@@ -300,11 +300,17 @@ describe('measurementRepository.recomputeWaterAggregate', () => {
     );
 
     expect(total).toBe(450);
-    const [sumText, sumValues] = mockClient.query.mock.calls[0];
+    // The lock key is built in PostgreSQL from the DATE-cast day, so two
+    // spellings of one day share a lock.
+    const [lockKeyText, lockKeyValues] = mockClient.query.mock.calls[0];
+    expect(lockKeyText).toContain('entry_date::date');
+    expect(lockKeyText).toContain('ORDER BY lock_key');
+    expect(lockKeyValues).toEqual(['user-1', ['2026-09-05'], ['manual']]);
+    const [sumText, sumValues] = mockClient.query.mock.calls[2];
     expect(sumText).toContain('FROM water_intake_entries');
     expect(sumValues).toEqual(['user-1', '2026-09-05', 'manual']);
 
-    const [upsertText, upsertValues] = mockClient.query.mock.calls[1];
+    const [upsertText, upsertValues] = mockClient.query.mock.calls[3];
     expect(upsertText).toContain('ON CONFLICT (user_id, entry_date, source)');
     expect(upsertText).toContain('DO UPDATE SET water_ml = $3');
     expect(upsertValues).toEqual([
@@ -359,10 +365,11 @@ describe('measurementRepository.recomputeWaterAggregate', () => {
       'manual'
     );
 
-    // Exactly two queries ran (the SELECT SUM and the upsert) — nothing else
-    // in the day or for another source was queried or written.
-    expect(mockClient.query.mock.calls).toHaveLength(2);
-    const [, sumValues] = mockClient.query.mock.calls[0];
+    // Exactly four queries ran (the lock key, the lock, the SELECT SUM and the
+    // upsert) — nothing else in the day or for another source was queried or
+    // written.
+    expect(mockClient.query.mock.calls).toHaveLength(4);
+    const [, sumValues] = mockClient.query.mock.calls[2];
     expect(sumValues[2]).toBe('manual');
   });
 
@@ -505,5 +512,98 @@ describe('measurementRepository.incrementWaterData', () => {
       'GREATEST(0::numeric, water_intake.water_ml + $3::numeric)'
     );
     expect(values[2]).toBe(59.147000000000006);
+  });
+});
+
+describe('measurementRepository.deleteWaterIntakeSamplesBySourceIds', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockClient: any;
+
+  beforeEach(() => {
+    mockClient = {
+      query: vi.fn().mockImplementation((queryText: string) => {
+        if (queryText.includes('DELETE FROM water_intake_entries')) {
+          return Promise.resolve({
+            rows: [{ entry_date: '2026-08-03' }, { entry_date: '2026-08-04' }],
+          });
+        }
+        if (queryText.includes('SELECT COALESCE(SUM(water_ml)')) {
+          return Promise.resolve({ rows: [{ total_ml: 500 }] });
+        }
+        return Promise.resolve({ rows: [{}] });
+      }),
+      release: vi.fn(),
+    };
+    vi.mocked(getClient).mockResolvedValue(mockClient);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns empty array early when sourceIds is empty', async () => {
+    const res = await measurementRepository.deleteWaterIntakeSamplesBySourceIds(
+      'user-1',
+      'user-1',
+      'HealthKit',
+      []
+    );
+    expect(res).toEqual([]);
+    expect(getClient).not.toHaveBeenCalled();
+  });
+
+  it('deletes rows matching user, source, and sourceIds and recomputes aggregates for affected dates', async () => {
+    const res = await measurementRepository.deleteWaterIntakeSamplesBySourceIds(
+      'user-1',
+      'user-1',
+      'HealthKit',
+      ['uuid-1', 'uuid-2']
+    );
+
+    expect(res).toEqual(['2026-08-03', '2026-08-04']);
+
+    // Check DELETE query
+    const deleteCall = mockClient.query.mock.calls.find(
+      (c: [string, unknown[]]) =>
+        typeof c[0] === 'string' &&
+        c[0].includes('DELETE FROM water_intake_entries')
+    );
+    expect(deleteCall).toBeDefined();
+    expect(deleteCall[1]).toEqual([
+      'user-1',
+      'HealthKit',
+      ['uuid-1', 'uuid-2'],
+    ]);
+
+    // Check recompute queries for affected dates
+    const recomputeCalls = mockClient.query.mock.calls.filter(
+      (c: [string, unknown[]]) =>
+        typeof c[0] === 'string' && c[0].includes('INSERT INTO water_intake')
+    );
+    expect(recomputeCalls).toHaveLength(2);
+    expect(recomputeCalls[0][1][1]).toBe('2026-08-03');
+    expect(recomputeCalls[1][1][1]).toBe('2026-08-04');
+  });
+
+  it('rolls back transaction on query error', async () => {
+    mockClient.query.mockImplementation((queryText: string) => {
+      if (queryText === 'BEGIN') return Promise.resolve({});
+      if (queryText.includes('DELETE FROM water_intake_entries')) {
+        return Promise.reject(new Error('db error'));
+      }
+      return Promise.resolve({ rows: [] });
+    });
+
+    await expect(
+      measurementRepository.deleteWaterIntakeSamplesBySourceIds(
+        'user-1',
+        'user-1',
+        'HealthKit',
+        ['uuid-1']
+      )
+    ).rejects.toThrow('db error');
+
+    expect(mockClient.query).toHaveBeenCalledWith('ROLLBACK');
+    expect(mockClient.release).toHaveBeenCalled();
   });
 });

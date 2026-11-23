@@ -119,4 +119,27 @@ describe('buildFoodEntryCopyPayload', () => {
     );
     expect(payload.entry_time).toBe('21:36');
   });
+
+  it('keeps the cooked weight eaten with a gram quantity (#3534)', () => {
+    const payload = buildFoodEntryCopyPayload(
+      { ...baseEntry, quantity: 120, unit: 'g', cooked_quantity: 300 },
+      '2026-11-02',
+      'lunch-id'
+    );
+    expect(payload.quantity).toBe(120);
+    expect(payload.cooked_quantity).toBe(300);
+  });
+
+  it('sends no cooked weight when the entry has none or is not by weight', () => {
+    expect(
+      buildFoodEntryCopyPayload(baseEntry, '2026-11-02', 'lunch-id')
+    ).not.toHaveProperty('cooked_quantity');
+    expect(
+      buildFoodEntryCopyPayload(
+        { ...baseEntry, cooked_quantity: 300 },
+        '2026-11-02',
+        'lunch-id'
+      )
+    ).not.toHaveProperty('cooked_quantity');
+  });
 });

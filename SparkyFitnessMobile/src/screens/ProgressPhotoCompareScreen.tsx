@@ -13,7 +13,6 @@ import {
   formatSignedWeightChange,
   framesForAngle,
 } from '@workspace/shared';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import i18n from '../localization/i18n';
 import Icon from '../components/Icon';
@@ -27,7 +26,6 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useCheckInPhotoGallery } from '../hooks/useCheckInPhotos';
 import { useCheckInPhotoSource } from '../hooks/useCheckInPhotoSource';
 import { usePreferences } from '../hooks/usePreferences';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { formatShortDate } from '../utils/dateUtils';
 import {
   formatWeightDisplay,
@@ -52,8 +50,6 @@ type Side = 'before' | 'after';
  */
 const ProgressPhotoCompareScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [accentPrimary, mutedColor] = useCSSVariable([
     '--color-accent-primary',
@@ -228,10 +224,7 @@ const ProgressPhotoCompareScreen: React.FC<Props> = ({ navigation, route }) => {
 
   if (isLoading) {
     return (
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+      <View className="flex-1 bg-background">
         {header}
         <View className="py-16 items-center">
           <ActivityIndicator size="small" color={accentPrimary} />
@@ -241,10 +234,7 @@ const ProgressPhotoCompareScreen: React.FC<Props> = ({ navigation, route }) => {
   }
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ScrollView contentContainerClassName="px-4 py-3">

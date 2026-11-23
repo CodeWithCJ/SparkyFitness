@@ -413,3 +413,53 @@ describe('exerciseService.getExerciseStats', () => {
     expect(result.bestSet?.entryDate).toBe('2025-12-31');
   });
 });
+
+describe('exerciseService.getExerciseStatsBatch', () => {
+  const userId = 'user-1';
+  const exerciseA = '11111111-1111-4111-8111-111111111111';
+  const exerciseB = '22222222-2222-4222-8222-222222222222';
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(exerciseEntryDb.getBestSetForExercise).mockResolvedValue(null);
+    vi.mocked(exerciseEntryDb.getLastSetForExercise).mockResolvedValue(null);
+    vi.mocked(exerciseEntryDb.getRecentSessionsForExercise).mockResolvedValue(
+      []
+    );
+  });
+
+  it('answers each pair once, in request order, scoped to its preset', async () => {
+    const result = await exerciseService.getExerciseStatsBatch(userId, [
+      { exerciseId: exerciseA, presetId: 42 },
+      { exerciseId: exerciseB },
+      { exerciseId: exerciseA, presetId: 42 },
+    ]);
+
+    expect(result).toEqual([
+      {
+        exerciseId: exerciseA,
+        presetId: 42,
+        stats: { bestSet: null, lastSet: null, recentSessions: [] },
+      },
+      {
+        exerciseId: exerciseB,
+        presetId: null,
+        stats: { bestSet: null, lastSet: null, recentSessions: [] },
+      },
+    ]);
+    const recentCalls = vi.mocked(exerciseEntryDb.getRecentSessionsForExercise)
+      .mock.calls;
+    expect(recentCalls).toHaveLength(2);
+    expect(recentCalls[0]).toEqual([userId, exerciseA, null, undefined, 42]);
+    expect(recentCalls[1]).toEqual([userId, exerciseB, null, undefined, null]);
+  });
+
+  it('keeps the same exercise under two presets as two answers', async () => {
+    const result = await exerciseService.getExerciseStatsBatch(userId, [
+      { exerciseId: exerciseA, presetId: 1 },
+      { exerciseId: exerciseA, presetId: 2 },
+    ]);
+
+    expect(result.map((item) => item.presetId)).toEqual([1, 2]);
+  });
+});

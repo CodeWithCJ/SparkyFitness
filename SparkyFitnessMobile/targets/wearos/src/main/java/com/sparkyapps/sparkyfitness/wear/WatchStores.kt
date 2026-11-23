@@ -1,11 +1,14 @@
 package com.sparkyapps.sparkyfitness.wear
 
 import android.content.Context
+import android.media.AudioManager
 import android.os.Build
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.speech.tts.TextToSpeech
+import android.view.KeyEvent
 import com.SparkyApps.SparkyFitnessMobile.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,12 +34,15 @@ import kotlin.math.sqrt
 
 object Haptics {
   private var appContext: Context? = null
+  var hapticsEnabledProvider: () -> Boolean = { true }
+  var restBuzzEnabledProvider: () -> Boolean = { true }
 
   fun init(context: Context) {
     appContext = context.applicationContext
   }
 
-  private fun vibrate(ms: Long = 35L, amplitude: Int = VibrationEffect.DEFAULT_AMPLITUDE) {
+  private fun vibrate(ms: Long = 35L, amplitude: Int = VibrationEffect.DEFAULT_AMPLITUDE, force: Boolean = false) {
+    if (!force && !hapticsEnabledProvider()) return
     val ctx = appContext ?: return
     try {
       val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -50,6 +56,20 @@ object Haptics {
     } catch (_: Throwable) {}
   }
 
+  private fun vibrateWaveform(timings: LongArray, amplitudes: IntArray) {
+    val ctx = appContext ?: return
+    try {
+      val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        val vm = ctx.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
+        vm?.defaultVibrator
+      } else {
+        @Suppress("DEPRECATION")
+        ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator
+      }
+      vibrator?.vibrate(VibrationEffect.createWaveform(timings, amplitudes, -1))
+    } catch (_: Throwable) {}
+  }
+
   fun click() = vibrate(20L, 120)
   fun start() = vibrate(45L, 180)
   fun stop() = vibrate(55L, 200)
@@ -57,6 +77,25 @@ object Haptics {
   fun warning() = vibrate(80L, 240)
   fun failure() = vibrate(100L, 255)
   fun directionUp() = vibrate(25L, 150)
+
+  /**
+   * Short audible beep + crisp tap for each of the last seconds of a rest or
+   * timed hold countdown. Audio plays only when watch ringer mode is normal.
+   */
+  fun countdownTick() {
+    if (!restBuzzEnabledProvider()) return
+    CountdownAudio.playTick(appContext)
+    vibrate(30L, 175, force = true)
+  }
+
+  /**
+   * Rising chime + distinct double pulse when a rest or timed hold reaches 0.
+   */
+  fun countdownEnd() {
+    if (!restBuzzEnabledProvider()) return
+    CountdownAudio.playEndChime(appContext)
+    vibrateWaveform(longArrayOf(0L, 70L, 55L, 110L), intArrayOf(0, 210, 0, 255))
+  }
 }
 
 class WatchRunSpeaker(context: Context) {
@@ -64,10 +103,13 @@ class WatchRunSpeaker(context: Context) {
   private var ready = false
 
   init {
+    val appContext = context.applicationContext
     try {
-      tts = TextToSpeech(context.applicationContext) { status ->
+      tts = TextToSpeech(appContext) { status ->
         if (status == TextToSpeech.SUCCESS) {
-          val res = tts?.setLanguage(Locale.getDefault())
+          val tag = runCatching { appContext.getString(R.string.tts_language) }.getOrNull()
+          val targetLocale = tag?.takeIf { it.isNotBlank() }?.let { Locale.forLanguageTag(it) } ?: Locale.US
+          val res = tts?.setLanguage(targetLocale)
           if (res == TextToSpeech.LANG_MISSING_DATA || res == TextToSpeech.LANG_NOT_SUPPORTED) {
             tts?.language = Locale.US
           }
@@ -924,6 +966,14 @@ class WorkoutSessionStore(private val context: Context) {
   var session: WearSessionTransport? = null
   var sensors: WatchSensorsController? = null
   var checkInStore: CheckInStore? = null
+  var demoStore: ExerciseDemoStore? = null
+
+  data class PendingRpeCompletion(
+    val step: WorkoutStep,
+    val values: SetValues,
+    val durationSeconds: Int?,
+    val completedAtMs: Long
+  )
 
   private val _phase = MutableStateFlow(Phase.IDLE)
   val phase: StateFlow<Phase> = _phase.asStateFlow()
@@ -955,8 +1005,20 @@ class WorkoutSessionStore(private val context: Context) {
   private val _restRemainingSeconds = MutableStateFlow(0)
   val restRemainingSeconds: StateFlow<Int> = _restRemainingSeconds.asStateFlow()
 
+  private val _restDurationSeconds = MutableStateFlow(0)
+  val restDurationSeconds: StateFlow<Int> = _restDurationSeconds.asStateFlow()
+
+  private val _restEndsAtMs = MutableStateFlow<Long?>(null)
+  val restEndsAtMsFlow: StateFlow<Long?> = _restEndsAtMs.asStateFlow()
+
+  private val _restPausedRemaining = MutableStateFlow<Int?>(null)
+  val restPausedRemaining: StateFlow<Int?> = _restPausedRemaining.asStateFlow()
+
   private val _elapsedSeconds = MutableStateFlow(0)
   val elapsedSeconds: StateFlow<Int> = _elapsedSeconds.asStateFlow()
+
+  private val _workoutStartedAtMs = MutableStateFlow<Long?>(null)
+  val workoutStartedAtMs: StateFlow<Long?> = _workoutStartedAtMs.asStateFlow()
 
   private val _capRemainingSeconds = MutableStateFlow<Int?>(null)
   val capRemainingSeconds: StateFlow<Int?> = _capRemainingSeconds.asStateFlow()
@@ -970,6 +1032,12 @@ class WorkoutSessionStore(private val context: Context) {
   private val _activePrBanner = MutableStateFlow<String?>(null)
   val activePrBanner: StateFlow<String?> = _activePrBanner.asStateFlow()
 
+  private val _prBannerExercise = MutableStateFlow<String?>(null)
+  val prBannerExercise: StateFlow<String?> = _prBannerExercise.asStateFlow()
+
+  private val _prBannerSetId = MutableStateFlow<String?>(null)
+  val prBannerSetId: StateFlow<String?> = _prBannerSetId.asStateFlow()
+
   private val _currentHeartRate = MutableStateFlow<Double?>(null)
   val currentHeartRate: StateFlow<Double?> = _currentHeartRate.asStateFlow()
 
@@ -982,6 +1050,46 @@ class WorkoutSessionStore(private val context: Context) {
   private val _completedSetsCount = MutableStateFlow(0)
   val completedSetsCount: StateFlow<Int> = _completedSetsCount.asStateFlow()
 
+  private val _completedSetIds = MutableStateFlow<Set<String>>(emptySet())
+  val completedSetIdsFlow: StateFlow<Set<String>> = _completedSetIds.asStateFlow()
+
+  private val _loggedSetOrder = MutableStateFlow<List<String>>(emptyList())
+  val loggedSetOrder: StateFlow<List<String>> = _loggedSetOrder.asStateFlow()
+
+  private val _setValues = MutableStateFlow<Map<String, SetValues>>(emptyMap())
+  val setValuesFlow: StateFlow<Map<String, SetValues>> = _setValues.asStateFlow()
+
+  private val _getReadySetId = MutableStateFlow<String?>(null)
+  val getReadySetId: StateFlow<String?> = _getReadySetId.asStateFlow()
+
+  private val _getReadyEndsAtMs = MutableStateFlow<Long?>(null)
+  val getReadyEndsAtMs: StateFlow<Long?> = _getReadyEndsAtMs.asStateFlow()
+
+  private val _holdSetId = MutableStateFlow<String?>(null)
+  val holdSetId: StateFlow<String?> = _holdSetId.asStateFlow()
+
+  private val _holdEndsAtMs = MutableStateFlow<Long?>(null)
+  val holdEndsAtMs: StateFlow<Long?> = _holdEndsAtMs.asStateFlow()
+
+  private val _holdTotalSeconds = MutableStateFlow(0)
+  val holdTotalSeconds: StateFlow<Int> = _holdTotalSeconds.asStateFlow()
+
+  private val _holdFinishedSetId = MutableStateFlow<String?>(null)
+  val holdFinishedSetId: StateFlow<String?> = _holdFinishedSetId.asStateFlow()
+
+  private val _stopwatchSetId = MutableStateFlow<String?>(null)
+  val stopwatchSetId: StateFlow<String?> = _stopwatchSetId.asStateFlow()
+
+  private val _stopwatchStartedAtMs = MutableStateFlow<Long?>(null)
+  val stopwatchStartedAtMs: StateFlow<Long?> = _stopwatchStartedAtMs.asStateFlow()
+
+  private val _stopwatchStoppedSeconds = MutableStateFlow<Map<String, Int>>(emptyMap())
+  val stopwatchStoppedSeconds: StateFlow<Map<String, Int>> = _stopwatchStoppedSeconds.asStateFlow()
+
+  private val pendingRpeQueue = ArrayDeque<PendingRpeCompletion>()
+  private val _pendingRpe = MutableStateFlow<PendingRpeCompletion?>(null)
+  val pendingRpe: StateFlow<PendingRpeCompletion?> = _pendingRpe.asStateFlow()
+
   private val _completedSummary = MutableStateFlow<WorkoutSummary?>(null)
   val completedSummary: StateFlow<WorkoutSummary?> = _completedSummary.asStateFlow()
 
@@ -991,17 +1099,34 @@ class WorkoutSessionStore(private val context: Context) {
   private val _startErrorMessage = MutableStateFlow<String?>(null)
   val startErrorMessage: StateFlow<String?> = _startErrorMessage.asStateFlow()
 
+  private val restCues = CountdownCues(scope)
+  private val holdCues = CountdownCues(scope)
+  private val getReadyCues = CountdownCues(scope)
+
   private var startedAtMs: Long = 0L
   private var restEndsAtMs: Long = 0L
+  private var restSkippedAtMs: Long? = null
+  private var lastPhoneRest: PhoneRest? = null
   private var activeSetTimerStartMs: Long? = null
+  private var holdStartedAtMs: Long? = null
+  private var getReadyHoldSeconds: Int = 0
+  private var getReadyGeneration: Int = 0
   private var totalVolumeKg: Double = 0.0
   private var planModifiedOnWatch: Boolean = false
   private var tickerJob: Job? = null
   private var restTimerJob: Job? = null
   private var setTimerJob: Job? = null
+  private var getReadyJob: Job? = null
+  private var holdTimerJob: Job? = null
   private var prBannerJob: Job? = null
   private var startTimeoutJob: Job? = null
   private val completedSetIds = mutableSetOf<String>()
+  private val wristLoggedSetIds = mutableSetOf<String>()
+  private val phoneConfirmedSetIds = mutableSetOf<String>()
+  private val pendingUnlogs = mutableSetOf<String>()
+  private val unconfirmedCompletions = LinkedHashMap<String, CompletedSet>()
+  private var targetRevision: Double = Double.NEGATIVE_INFINITY
+  private var targetOverrides: Map<String, SetValues> = emptyMap()
   private val celebratedPrSetIds = mutableSetOf<String>()
   private val hrReadings = mutableListOf<Double>()
 
@@ -1015,11 +1140,176 @@ class WorkoutSessionStore(private val context: Context) {
   val isWorkoutActive: Boolean
     get() = _phase.value != Phase.IDLE && _phase.value != Phase.COMPLETED && _phase.value != Phase.ASKING_PRESET_UPDATE
 
+  val isResting: Boolean
+    get() = _phase.value == Phase.REST
+
   val weightUnit: WeightUnit
     get() = checkInStore?.unit?.value ?: WeightUnit.KG
 
   val usesMiles: Boolean
     get() = checkInStore?.watchContext?.value?.distanceUnit == "mi"
+
+  private fun usesNewWorkoutView(): Boolean =
+    checkInStore?.watchContext?.value?.effectiveNewWorkout == true
+
+  private fun countdownSeconds(): Int =
+    if (usesNewWorkoutView()) {
+      checkInStore?.watchContext?.value?.effectiveWorkoutCountdown ?: 0
+    } else {
+      0
+    }
+
+  private fun holdCountdownEnabled(): Boolean =
+    checkInStore?.watchContext?.value?.effectiveHoldCountdown != false
+
+  fun activeDemoKeys(): Set<String> =
+    _plan.value?.exercises?.mapNotNull { it.imageKey }?.toSet().orEmpty()
+
+  fun isCompleted(step: WorkoutStep): Boolean = completedSetIds.contains(step.setId)
+
+  val loggedSteps: List<WorkoutStep>
+    get() {
+      val byId = _steps.value.associateBy { it.setId }
+      return _loggedSetOrder.value.mapNotNull { byId[it] }
+    }
+
+  val upcomingExercises: List<WorkoutStep>
+    get() {
+      val cur = currentStep
+      val currentId = cur?.exerciseEntryId
+      val currentRun = cur?.supersetRun
+      val seen = HashSet<String>()
+      val startIdx = min(_stepIndex.value, _steps.value.size)
+      return _steps.value.drop(startIdx).filter { step ->
+        step.exerciseEntryId != currentId &&
+          (currentRun == null || step.supersetRun != currentRun) &&
+          !isCompleted(step) &&
+          seen.add(step.exerciseEntryId)
+      }
+    }
+
+  fun exercisePosition(step: WorkoutStep): Pair<Int, Int> {
+    var blocks = 0
+    var mine = 0
+    var prevRun: Int? = null
+    for (ex in _plan.value?.exercises.orEmpty()) {
+      if (ex.supersetRun == null || ex.supersetRun != prevRun) blocks += 1
+      prevRun = ex.supersetRun
+      if (ex.exerciseEntryId == step.exerciseEntryId) mine = blocks
+    }
+    return max(mine, 1) to max(blocks, 1)
+  }
+
+  fun supersetBadge(step: WorkoutStep): String? {
+    val run = step.supersetRun ?: return null
+    val members = ActiveWorkoutPlan.adjacentSupersetRuns(_plan.value?.exercises.orEmpty())
+      .firstOrNull { group -> group.any { it.exerciseEntryId == step.exerciseEntryId } }
+      ?: return null
+    val place = members.indexOfFirst { it.exerciseEntryId == step.exerciseEntryId }
+    if (place < 0) return null
+    val letter = ('A'.code + abs(run) % 26).toChar()
+    return "$letter${place + 1}"
+  }
+
+  fun supersetPartnerNext(step: WorkoutStep): String? {
+    val all = _steps.value
+    val idx = all.indexOfFirst { it.setId == step.setId }
+    if (idx < 0 || idx + 1 >= all.size) return null
+    val run = step.supersetRun ?: return null
+    val next = all[idx + 1]
+    if (next.supersetRun != run || next.exerciseEntryId == step.exerciseEntryId) return null
+    return supersetBadge(next)
+  }
+
+  fun completedSetCount(exerciseEntryId: String): Int =
+    _steps.value.count { it.exerciseEntryId == exerciseEntryId && isCompleted(it) }
+
+  fun isExerciseComplete(exercise: PlannedExercise): Boolean =
+    exercise.sets.isNotEmpty() && exercise.sets.all { completedSetIds.contains(it.setId) }
+
+  fun restAfterCurrentSet(): Int {
+    val step = currentStep ?: return 0
+    val all = _steps.value
+    val nextIdx = RestRule.nextIndex(
+      afterLogging = _stepIndex.value,
+      isDone = all.map { isCompleted(it) }
+    ) ?: return 0
+    return RestRule.restAfter(step.toRestStepFacts(), all[nextIdx].toRestStepFacts())
+  }
+
+  fun valuesFor(step: WorkoutStep): SetValues {
+    val override = _setValues.value[step.setId]
+    return SetValues(
+      weightKg = override?.weightKg ?: step.targetWeightKg,
+      reps = override?.reps ?: step.targetReps,
+      durationSec = override?.durationSec ?: step.targetDurationSec,
+      previousDurationSec = override?.previousDurationSec ?: step.previousDurationSec,
+      distanceKm = override?.distanceKm ?: step.targetDistanceKm
+    )
+  }
+
+  fun setValue(
+    setId: String,
+    weightKg: Double? = null,
+    reps: Double? = null,
+    distanceKm: Double? = null,
+    notifyPhone: Boolean = true
+  ) {
+    val prev = _setValues.value[setId] ?: SetValues()
+    val updated = prev.copy(
+      weightKg = weightKg ?: prev.weightKg,
+      reps = reps ?: prev.reps,
+      distanceKm = distanceKm ?: prev.distanceKm
+    )
+    _setValues.value = _setValues.value + (setId to updated)
+    if (currentStep?.setId == setId) {
+      weightKg?.let { _draftWeight.value = weightUnit.displayedFromKg(it) }
+      reps?.let { _draftReps.value = it.roundToInt() }
+      distanceKm?.let { _draftDistanceKm.value = it }
+    }
+    if (completedSetIds.contains(setId)) {
+      recalculateTotalVolume()
+      unconfirmedCompletions[setId]?.let { existing ->
+        unconfirmedCompletions[setId] = existing.copy(
+          weightKg = weightKg ?: existing.weightKg,
+          reps = reps ?: existing.reps,
+          distanceKm = distanceKm ?: existing.distanceKm
+        )
+      }
+    }
+    if (notifyPhone && (weightKg != null || reps != null || distanceKm != null)) {
+      val curPlan = _plan.value ?: return
+      session?.sendMessageOrQueue(
+        OutboundPayloads.workoutEdit(
+          sessionId = curPlan.sessionId,
+          clientId = UUID.randomUUID().toString(),
+          action = WorkoutEditAction.SetValuesEdit(
+            setId = setId,
+            weightKg = weightKg,
+            reps = reps,
+            distanceKm = distanceKm,
+            atMs = System.currentTimeMillis(),
+            armedAtMs = curPlan.armedAtMs
+          )
+        ),
+        "workoutEdit"
+      )
+    }
+  }
+
+  private fun recalculateTotalVolume() {
+    var vol = 0.0
+    for (step in _steps.value) {
+      if (!completedSetIds.contains(step.setId) || step.timed) continue
+      val v = valuesFor(step)
+      val w = v.weightKg
+      val r = v.reps
+      if (w != null && w > 0.0 && r != null && r > 0.0) {
+        vol += w * r
+      }
+    }
+    totalVolumeKg = vol
+  }
 
   fun requestStartPreset(presetId: String) {
     if (_startingPresetId.value != null) return
@@ -1058,23 +1348,55 @@ class WorkoutSessionStore(private val context: Context) {
     _startErrorMessage.value = null
 
     val isSameSession = _plan.value?.sessionId == incoming.sessionId && _phase.value != Phase.IDLE
-    _plan.value = incoming
-
-    val builtSteps = flattenSteps(incoming)
-    _steps.value = builtSteps
-    checkAndCelebratePrs(incoming.prSetIds)
+    val prevStepId = currentStep?.setId
+    val normalizedIncoming = incoming.copy(
+      exercises = ActiveWorkoutPlan.normalizedSupersetExercises(incoming.exercises)
+    )
+    _plan.value = normalizedIncoming
 
     if (!isSameSession) {
+      targetRevision = Double.NEGATIVE_INFINITY
+      targetOverrides = emptyMap()
+    }
+    val builtSteps = applyTargetOverrides(flattenSteps(normalizedIncoming))
+    _steps.value = builtSteps
+    demoStore?.prune(activeDemoKeys())
+
+    if (!isSameSession) {
+      cancelGetReady()
+      clearHold()
+      clearStopwatch()
+      restCues.cancel()
+      restTimerJob?.cancel()
       startedAtMs = incoming.startedAtMs ?: System.currentTimeMillis()
+      _workoutStartedAtMs.value = startedAtMs
+      restEndsAtMs = 0L
+      restSkippedAtMs = null
+      lastPhoneRest = null
+      _restRemainingSeconds.value = 0
+      _restDurationSeconds.value = 0
+      _restEndsAtMs.value = null
+      _restPausedRemaining.value = null
+      clearPendingRpeQueue()
+      _setValues.value = emptyMap()
       completedSetIds.clear()
+      wristLoggedSetIds.clear()
+      phoneConfirmedSetIds.clear()
+      pendingUnlogs.clear()
+      unconfirmedCompletions.clear()
       celebratedPrSetIds.clear()
       celebratedPrSetIds.addAll(incoming.prSetIds)
+      _completedSetIds.value = emptySet()
+      _loggedSetOrder.value = emptyList()
       hrReadings.clear()
       totalVolumeKg = 0.0
       planModifiedOnWatch = false
       _completedSetsCount.value = 0
       _activeCalories.value = 0.0
       _completedSummary.value = null
+      _prBannerExercise.value = null
+      _prBannerSetId.value = null
+      _activePrBanner.value = null
       _stepIndex.value = 0
       _phase.value = Phase.ACTIVE_SET
       checkInStore?.setWorkoutPageActive(true)
@@ -1098,8 +1420,22 @@ class WorkoutSessionStore(private val context: Context) {
       )
       Haptics.start()
     } else {
-      val clampedIdx = min(_stepIndex.value, max(0, builtSteps.size - 1))
-      _stepIndex.value = clampedIdx
+      val keptIdx = prevStepId?.let { id -> builtSteps.indexOfFirst { it.setId == id } }
+      val nextIdx = when {
+        keptIdx != null && keptIdx >= 0 -> keptIdx
+        else -> {
+          val firstOpen = builtSteps.indexOfFirst { !completedSetIds.contains(it.setId) }
+          if (firstOpen >= 0) firstOpen else builtSteps.size
+        }
+      }
+      _stepIndex.value = nextIdx
+      syncLoggedOrder(builtSteps)
+      // Cancel Get Ready if its set was removed or is no longer current.
+      val grId = _getReadySetId.value
+      if (grId != null && (builtSteps.none { it.setId == grId } || currentStep?.setId != grId)) {
+        cancelGetReady()
+      }
+      checkAndCelebratePrs(incoming.prSetIds)
       seedDraftsForCurrentStep()
     }
   }
@@ -1115,62 +1451,172 @@ class WorkoutSessionStore(private val context: Context) {
     )
   }
 
+  private fun applyTargetOverrides(steps: List<WorkoutStep>): List<WorkoutStep> {
+    if (targetOverrides.isEmpty()) return steps
+    return steps.map { step ->
+      val t = targetOverrides[step.setId] ?: return@map step
+      step.copy(
+        targetWeightKg = t.weightKg ?: step.targetWeightKg,
+        targetReps = t.reps ?: step.targetReps,
+        targetDurationSec = t.durationSec ?: step.targetDurationSec,
+        previousDurationSec = t.previousDurationSec ?: step.previousDurationSec,
+        targetDistanceKm = t.distanceKm ?: step.targetDistanceKm
+      )
+    }
+  }
+
   fun applySetTargetsUpdate(update: ContextPayloadMapper.SetTargetsUpdate) {
     val curPlan = _plan.value ?: return
     if (curPlan.sessionId != update.sessionId) return
-    val updatedSteps = _steps.value.map { step ->
-      val t = update.targets[step.setId]
-      if (t != null) {
-        step.copy(
-          targetWeightKg = t.weightKg ?: step.targetWeightKg,
-          targetReps = t.reps ?: step.targetReps,
-          targetDurationSec = t.durationSec ?: step.targetDurationSec,
-          previousDurationSec = t.previousDurationSec ?: step.previousDurationSec,
-          targetDistanceKm = t.distanceKm ?: step.targetDistanceKm
-        )
-      } else step
-    }
+    if (update.revision <= targetRevision) return
+    targetRevision = update.revision
+    targetOverrides = update.targets
+    val updatedSteps = applyTargetOverrides(flattenSteps(curPlan))
     _steps.value = updatedSteps
+
+    // Reconcile completions while preserving in-flight wrist logs and pending unlogs
+    val phoneDone = update.completedSetIds
+    val synced = SetCompletionSync.reconcile(
+      phoneDone = phoneDone,
+      prevPhoneConfirmed = phoneConfirmedSetIds,
+      prevWristLogged = wristLoggedSetIds,
+      prevPendingUnlogs = pendingUnlogs
+    )
+    phoneConfirmedSetIds.clear()
+    phoneConfirmedSetIds.addAll(synced.phoneConfirmed)
+    wristLoggedSetIds.clear()
+    wristLoggedSetIds.addAll(synced.wristLogged)
+    pendingUnlogs.clear()
+    pendingUnlogs.addAll(synced.pendingUnlogs)
+    unconfirmedCompletions.entries.removeAll { (setId, completed) ->
+      setId !in synced.completed || (setId !in synced.wristLogged && completed.rpe == null)
+    }
+    if (pendingRpeQueue.removeAll { it.step.setId !in synced.completed }) {
+      _pendingRpe.value = pendingRpeQueue.firstOrNull()
+    }
+
+    val curStepBefore = currentStep
     completedSetIds.clear()
-    completedSetIds.addAll(update.completedSetIds)
+    completedSetIds.addAll(synced.completed)
+    _completedSetIds.value = completedSetIds.toSet()
     _completedSetsCount.value = completedSetIds.size
+    syncLoggedOrder(updatedSteps)
+    recalculateTotalVolume()
+
+    // Cancel Get Ready if its set was completed on the phone
+    val grId = _getReadySetId.value
+    if (grId != null && completedSetIds.contains(grId)) {
+      cancelGetReady()
+    }
+
+    // If the phone logged the set currently on screen, advance to the next open set
+    if (curStepBefore != null &&
+      phoneDone.contains(curStepBefore.setId) &&
+      !wristLoggedSetIds.contains(curStepBefore.setId) &&
+      _stepIndex.value < updatedSteps.size &&
+      updatedSteps[_stepIndex.value].setId == curStepBefore.setId &&
+      completedSetIds.contains(curStepBefore.setId)
+    ) {
+      val nextOpen = RestRule.nextIndex(_stepIndex.value, updatedSteps.map { completedSetIds.contains(it.setId) })
+      _stepIndex.value = nextOpen ?: updatedSteps.size
+    }
+
+    // Sync phone rest state when update accounts for all wrist-logged sets
+    val incomingRest = update.rest
+    val phoneCaughtUp = wristLoggedSetIds.all { phoneDone.contains(it) }
+    if (incomingRest != null && phoneCaughtUp && incomingRest != lastPhoneRest) {
+      lastPhoneRest = incomingRest
+      when (incomingRest) {
+        is PhoneRest.Resting -> {
+          if (_phase.value != Phase.COMPLETED && _phase.value != Phase.ASKING_PRESET_UPDATE) {
+            val now = System.currentTimeMillis()
+            val remSec = max(0, ((incomingRest.endsAtMs - now) / 1000L).toInt())
+            if (remSec > 0 && !StaleRest.isStale(incomingRest.endsAtMs, incomingRest.durationSeconds, restSkippedAtMs)) {
+              startRestUntil(incomingRest.endsAtMs, max(incomingRest.durationSeconds, remSec))
+            }
+          }
+        }
+        is PhoneRest.Paused -> {
+          if (_phase.value == Phase.REST) {
+            restTimerJob?.cancel()
+            restCues.cancel()
+            _restPausedRemaining.value = max(0, _restRemainingSeconds.value)
+          }
+        }
+        is PhoneRest.Ready -> {
+          if (_phase.value == Phase.REST) {
+            stopRestInternal()
+            _phase.value = Phase.ACTIVE_SET
+          }
+        }
+      }
+    }
+
     checkAndCelebratePrs(update.prSetIds)
     seedDraftsForCurrentStep()
+  }
+
+  private fun syncLoggedOrder(allSteps: List<WorkoutStep> = _steps.value) {
+    _loggedSetOrder.value = LoggedSetOrder.synced(
+      order = _loggedSetOrder.value,
+      completed = completedSetIds,
+      planOrder = allSteps.map { it.setId }
+    )
   }
 
   private fun checkAndCelebratePrs(prSetIds: Set<String>) {
     val newPrs = prSetIds.subtract(celebratedPrSetIds)
     if (newPrs.isNotEmpty()) {
       celebratedPrSetIds.addAll(newPrs)
+      val firstId = newPrs.first()
+      val matchedStep = _steps.value.firstOrNull { it.setId == firstId }
+      _prBannerSetId.value = firstId
+      _prBannerExercise.value = matchedStep?.exerciseName ?: ""
       _activePrBanner.value = context.getString(R.string.workout_new_pr_banner)
       Haptics.success()
       prBannerJob?.cancel()
       prBannerJob = scope.launch {
-        delay(3500)
-        _activePrBanner.value = null
+        delay(5000)
+        dismissPrBanner()
       }
     }
   }
 
+  fun dismissPrBanner() {
+    prBannerJob?.cancel()
+    prBannerJob = null
+    _activePrBanner.value = null
+    _prBannerExercise.value = null
+    _prBannerSetId.value = null
+  }
+
   fun adjustReps(delta: Int) {
-    _draftReps.value = max(0, _draftReps.value + delta)
+    val next = max(0, _draftReps.value + delta)
+    _draftReps.value = next
+    currentStep?.let { setValue(it.setId, reps = next.toDouble(), notifyPhone = false) }
     Haptics.click()
   }
 
   fun setDraftReps(reps: Int) {
-    _draftReps.value = max(0, reps)
+    val next = max(0, reps)
+    _draftReps.value = next
+    currentStep?.let { setValue(it.setId, reps = next.toDouble(), notifyPhone = true) }
   }
 
   fun adjustWeight(deltaSteps: Int) {
     val u = weightUnit
     val step = if (u == WeightUnit.KG) 1.25 else 2.5
-    val next = max(0.0, _draftWeight.value + deltaSteps * step)
-    _draftWeight.value = (next * 100.0).roundToInt() / 100.0
+    val next = max(0.0, ((_draftWeight.value + deltaSteps * step) * 100.0).roundToInt() / 100.0)
+    _draftWeight.value = next
+    currentStep?.let { setValue(it.setId, weightKg = u.toKg(next), notifyPhone = false) }
     Haptics.click()
   }
 
   fun setDraftWeight(value: Double) {
-    _draftWeight.value = max(0.0, (value * 100.0).roundToInt() / 100.0)
+    val clamped = if (currentStep?.bodyweight == true) value else max(0.0, value)
+    val rounded = (clamped * 100.0).roundToInt() / 100.0
+    _draftWeight.value = rounded
+    currentStep?.let { setValue(it.setId, weightKg = weightUnit.toKg(rounded), notifyPhone = true) }
   }
 
   fun adjustDuration(deltaSeconds: Int) {
@@ -1179,11 +1625,14 @@ class WorkoutSessionStore(private val context: Context) {
   }
 
   fun adjustDistance(deltaSteps: Int) {
-    val stepKm = if (usesMiles) 0.0160934 else 0.01 // ~0.01 mi or 10m
-    val next = max(0.0, _draftDistanceKm.value + deltaSteps * stepKm)
-    _draftDistanceKm.value = (next * 1000.0).roundToInt() / 1000.0
+    val stepKm = if (usesMiles) 0.0160934 else 0.01
+    val next = max(0.0, ((_draftDistanceKm.value + deltaSteps * stepKm) * 1000.0).roundToInt() / 1000.0)
+    _draftDistanceKm.value = next
+    currentStep?.let { setValue(it.setId, distanceKm = next, notifyPhone = false) }
     Haptics.click()
   }
+
+  // ---- Classic Timed Set Timer ----
 
   fun startSetTimer() {
     val plan = _plan.value ?: return
@@ -1231,15 +1680,212 @@ class WorkoutSessionStore(private val context: Context) {
     Haptics.stop()
   }
 
+  // ---- New Workout View: Get Ready + Planned Hold Countdown + Open Stopwatch ----
+
+  fun isGetReady(step: WorkoutStep): Boolean = _getReadySetId.value == step.setId
+
+  fun isHoldRunning(step: WorkoutStep): Boolean =
+    _holdSetId.value == step.setId && _holdEndsAtMs.value != null
+
+  fun beginHold(setId: String, seconds: Int) {
+    if (seconds <= 0 || _getReadySetId.value == setId) return
+    if (_holdSetId.value == setId && _holdEndsAtMs.value != null) return
+    if (!holdCountdownEnabled()) {
+      startPlannedHold(setId, seconds)
+      return
+    }
+    cancelGetReady()
+    val endsAt = System.currentTimeMillis() + GET_READY_SECONDS * 1000L
+    _getReadySetId.value = setId
+    _getReadyEndsAtMs.value = endsAt
+    getReadyHoldSeconds = seconds
+    val ticks = countdownSeconds() > 0
+    if (ticks) Haptics.countdownTick()
+    getReadyCues.schedule(
+      endsAtMs = endsAt,
+      seconds = if (ticks) GET_READY_SECONDS else 0,
+      tick = { Haptics.countdownTick() },
+      end = { Haptics.countdownEnd() }
+    )
+    val gen = ++getReadyGeneration
+    getReadyJob = scope.launch {
+      delay(GET_READY_SECONDS * 1000L)
+      if (getReadyGeneration == gen) {
+        finishGetReady()
+      }
+    }
+  }
+
+  fun skipGetReady() {
+    val setId = _getReadySetId.value ?: return
+    if (completedSetIds.contains(setId) || currentStep?.setId != setId) {
+      cancelGetReady()
+      return
+    }
+    val secs = getReadyHoldSeconds
+    cancelGetReady()
+    startPlannedHold(setId, secs)
+  }
+
+  fun cancelGetReady() {
+    getReadyGeneration += 1
+    getReadyJob?.cancel()
+    getReadyJob = null
+    getReadyCues.cancel()
+    _getReadySetId.value = null
+    _getReadyEndsAtMs.value = null
+    getReadyHoldSeconds = 0
+  }
+
+  private fun finishGetReady() {
+    val setId = _getReadySetId.value ?: return
+    val secs = getReadyHoldSeconds
+    val valid = !completedSetIds.contains(setId) && currentStep?.setId == setId
+    _getReadySetId.value = null
+    _getReadyEndsAtMs.value = null
+    getReadyHoldSeconds = 0
+    getReadyJob = null
+    if (valid && secs > 0) {
+      startPlannedHold(setId, secs)
+    }
+  }
+
+  private fun startPlannedHold(setId: String, seconds: Int) {
+    val curPlan = _plan.value ?: return
+    clearHold()
+    val nowMs = System.currentTimeMillis()
+    val endsAt = nowMs + seconds.toLong() * 1000L
+    holdStartedAtMs = nowMs
+    _holdSetId.value = setId
+    _holdTotalSeconds.value = seconds
+    _holdEndsAtMs.value = endsAt
+    _holdFinishedSetId.value = null
+    session?.sendMessageOrQueue(
+      OutboundPayloads.setTimerStarted(curPlan.sessionId, setId, nowMs, curPlan.armedAtMs),
+      "setTimerStarted"
+    )
+    val cuesSec = countdownSeconds()
+    val cuesOwnEnd = cuesSec > 0 && endsAt > nowMs
+    if (cuesOwnEnd) {
+      holdCues.schedule(
+        endsAtMs = endsAt,
+        seconds = cuesSec,
+        tick = { Haptics.countdownTick() },
+        end = { Haptics.countdownEnd() }
+      )
+    } else {
+      Haptics.start()
+    }
+    holdTimerJob = scope.launch {
+      val waitMs = max(0L, endsAt - System.currentTimeMillis())
+      delay(waitMs)
+      if (_holdSetId.value == setId && _holdEndsAtMs.value == endsAt) {
+        _holdEndsAtMs.value = null
+        _holdFinishedSetId.value = setId
+        if (!cuesOwnEnd) Haptics.countdownEnd()
+        completeFinishedHold(setId = setId, durationSec = seconds, startedMs = nowMs)
+      }
+    }
+  }
+
+  private fun completeFinishedHold(setId: String, durationSec: Int, startedMs: Long) {
+    if (!usesNewWorkoutView()) return
+    val step = _steps.value.firstOrNull { it.setId == setId } ?: run {
+      clearHold()
+      return
+    }
+    if (isCompleted(step)) {
+      clearHold()
+      return
+    }
+    completeStepNewView(
+      step = step,
+      forcedHoldDurationSec = max(1, durationSec),
+      forcedHoldStartedAtMs = startedMs
+    )
+  }
+
+  fun holdRemainingSeconds(setId: String, nowMs: Long = System.currentTimeMillis()): Int {
+    if (_holdSetId.value != setId) return 0
+    val ends = _holdEndsAtMs.value ?: return 0
+    return max(0, ((ends - nowMs + 500L) / 1000L).toInt())
+  }
+
+  fun clearHold() {
+    holdTimerJob?.cancel()
+    holdTimerJob = null
+    holdCues.cancel()
+    holdStartedAtMs = null
+    _holdSetId.value = null
+    _holdEndsAtMs.value = null
+    _holdTotalSeconds.value = 0
+    _holdFinishedSetId.value = null
+  }
+
+  fun isStopwatchRunning(setId: String): Boolean =
+    _stopwatchSetId.value == setId && _stopwatchStartedAtMs.value != null
+
+  fun stopwatchElapsedSeconds(setId: String, nowMs: Long = System.currentTimeMillis()): Int? {
+    if (_stopwatchSetId.value == setId) {
+      val start = _stopwatchStartedAtMs.value
+      if (start != null) return max(0, ((nowMs - start) / 1000L).toInt())
+    }
+    return _stopwatchStoppedSeconds.value[setId]
+  }
+
+  fun startStopwatch(setId: String) {
+    val curPlan = _plan.value ?: return
+    val nowMs = System.currentTimeMillis()
+    _stopwatchSetId.value = setId
+    _stopwatchStartedAtMs.value = nowMs
+    session?.sendMessageOrQueue(
+      OutboundPayloads.setTimerStarted(curPlan.sessionId, setId, nowMs, curPlan.armedAtMs),
+      "setTimerStarted"
+    )
+    Haptics.start()
+  }
+
+  fun stopStopwatch(setId: String) {
+    val curPlan = _plan.value ?: return
+    if (_stopwatchSetId.value != setId) return
+    val startMs = _stopwatchStartedAtMs.value ?: return
+    val elapsed = max(1, ((System.currentTimeMillis() - startMs) / 1000L).toInt())
+    _stopwatchStartedAtMs.value = null
+    _stopwatchSetId.value = null
+    _stopwatchStoppedSeconds.value = _stopwatchStoppedSeconds.value + (setId to elapsed)
+    session?.sendMessageOrQueue(
+      OutboundPayloads.setTimerStopped(curPlan.sessionId, setId, elapsed, startMs),
+      "setTimerStopped"
+    )
+    Haptics.stop()
+  }
+
+  private fun clearStopwatch() {
+    _stopwatchSetId.value = null
+    _stopwatchStartedAtMs.value = null
+    _stopwatchStoppedSeconds.value = emptyMap()
+  }
+
+  // ---- Mid-Workout Edits ----
+
   fun applyEdit(action: WorkoutEditAction) {
     val curPlan = _plan.value ?: return
-    planModifiedOnWatch = true
+    if (action !is WorkoutEditAction.SetValuesEdit) {
+      planModifiedOnWatch = true
+    }
     session?.sendMessageOrQueue(
       OutboundPayloads.workoutEdit(curPlan.sessionId, UUID.randomUUID().toString(), action),
       "workoutEdit"
     )
 
-    // Optimistically update local plan & steps
+    if (action is WorkoutEditAction.DoExerciseNow) {
+      jumpToExercise(action.exerciseEntryId)
+      return
+    }
+    if (action is WorkoutEditAction.SetValuesEdit) {
+      return
+    }
+
     val updatedExercises = curPlan.exercises.toMutableList()
     when (action) {
       is WorkoutEditAction.AddSet -> {
@@ -1247,16 +1893,18 @@ class WorkoutSessionStore(private val context: Context) {
         if (exIdx >= 0) {
           val ex = updatedExercises[exIdx]
           val template = ex.sets.lastOrNull()
+          val templateOverride = template?.setId?.let { targetOverrides[it] }
           val newSet = PlannedSet(
             setId = "watch_set_${UUID.randomUUID()}",
-            targetReps = template?.targetReps ?: 10.0,
-            targetWeightKg = template?.targetWeightKg,
+            targetReps = templateOverride?.reps ?: template?.targetReps ?: 10.0,
+            targetWeightKg = templateOverride?.weightKg ?: template?.targetWeightKg,
             restSeconds = template?.restSeconds ?: 60,
+            restAfterSeconds = template?.restAfterSeconds,
             setType = "normal",
-            targetDurationSec = template?.targetDurationSec,
+            targetDurationSec = templateOverride?.durationSec ?: template?.targetDurationSec,
             timed = template?.timed,
             carry = template?.carry,
-            targetDistanceKm = template?.targetDistanceKm,
+            targetDistanceKm = templateOverride?.distanceKm ?: template?.targetDistanceKm,
             weighted = template?.weighted
           )
           updatedExercises[exIdx] = ex.copy(sets = ex.sets + newSet)
@@ -1265,8 +1913,19 @@ class WorkoutSessionStore(private val context: Context) {
       is WorkoutEditAction.DeleteSet -> {
         for (i in updatedExercises.indices) {
           val ex = updatedExercises[i]
-          if (ex.sets.any { it.setId == action.setId } && ex.sets.size > 1) {
-            updatedExercises[i] = ex.copy(sets = ex.sets.filterNot { it.setId == action.setId })
+          if (ex.sets.any { it.setId == action.setId }) {
+            var removed = false
+            if (ex.sets.size > 1) {
+              updatedExercises[i] = ex.copy(sets = ex.sets.filterNot { it.setId == action.setId })
+              removed = true
+            } else if (updatedExercises.size > 1) {
+              updatedExercises.removeAt(i)
+              removed = true
+            }
+            if (removed) {
+              pruneRemovedSetIds(listOf(action.setId))
+            }
+            break
           }
         }
       }
@@ -1300,26 +1959,61 @@ class WorkoutSessionStore(private val context: Context) {
       }
       is WorkoutEditAction.DeleteExercise -> {
         if (updatedExercises.size > 1) {
+          val removedSetIds = updatedExercises
+            .filter { it.exerciseEntryId == action.exerciseEntryId }
+            .flatMap { it.sets.map { s -> s.setId } }
+            .toSet()
           updatedExercises.removeAll { it.exerciseEntryId == action.exerciseEntryId }
+          pruneRemovedSetIds(removedSetIds)
         }
       }
+      else -> {}
     }
-    val nextPlan = curPlan.copy(exercises = updatedExercises)
+    val nextPlan = curPlan.copy(
+      exercises = ActiveWorkoutPlan.normalizedSupersetExercises(updatedExercises)
+    )
     _plan.value = nextPlan
-    val nextSteps = flattenSteps(nextPlan)
+    val nextSteps = applyTargetOverrides(flattenSteps(nextPlan))
     _steps.value = nextSteps
+    syncLoggedOrder(nextSteps)
+    recalculateTotalVolume()
     _stepIndex.value = min(_stepIndex.value, max(0, nextSteps.size - 1))
     seedDraftsForCurrentStep()
     Haptics.click()
   }
+
+  private fun pruneRemovedSetIds(removedIds: Collection<String>) {
+    if (removedIds.isEmpty()) return
+    val idSet = removedIds.toSet()
+    unconfirmedCompletions.keys.removeAll(idSet)
+    completedSetIds.removeAll(idSet)
+    wristLoggedSetIds.removeAll(idSet)
+    phoneConfirmedSetIds.removeAll(idSet)
+    pendingUnlogs.removeAll(idSet)
+    _completedSetIds.value = completedSetIds.toSet()
+    _completedSetsCount.value = completedSetIds.size
+    if (pendingRpeQueue.removeAll { it.step.setId in idSet }) {
+      _pendingRpe.value = pendingRpeQueue.firstOrNull()
+    }
+  }
+
+  // ---- Completing & Uncompleting Sets ----
 
   fun completeCurrentSet() {
     if (_setTimerRunning.value) {
       stopSetTimer()
     }
     val step = currentStep ?: return
+    if (usesNewWorkoutView()) {
+      completeCurrentSetNewView(step)
+      return
+    }
     completedSetIds.add(step.setId)
+    wristLoggedSetIds.add(step.setId)
+    pendingUnlogs.remove(step.setId)
+    _completedSetIds.value = completedSetIds.toSet()
     _completedSetsCount.value = completedSetIds.size
+    syncLoggedOrder()
 
     val rpeEnabled = checkInStore?.watchContext?.value?.rpeEnabled == true
     if (rpeEnabled && _phase.value == Phase.ACTIVE_SET) {
@@ -1331,6 +2025,222 @@ class WorkoutSessionStore(private val context: Context) {
     commitCurrentSetAndAdvance(rpe = null)
   }
 
+  private fun completeCurrentSetNewView(step: WorkoutStep) {
+    completeStepNewView(step)
+  }
+
+  private fun completeStepNewView(
+    step: WorkoutStep,
+    forcedHoldDurationSec: Int? = null,
+    forcedHoldStartedAtMs: Long? = null
+  ) {
+    if (isCompleted(step)) return
+    val curPlan = _plan.value ?: return
+    val nowMs = System.currentTimeMillis()
+    var loggedDuration: Int? = null
+    if (step.timed) {
+      if (forcedHoldDurationSec != null) {
+        loggedDuration = max(1, forcedHoldDurationSec)
+        val startedMs = forcedHoldStartedAtMs ?: (nowMs - loggedDuration * 1000L)
+        session?.sendMessageOrQueue(
+          OutboundPayloads.setTimerStopped(curPlan.sessionId, step.setId, loggedDuration, startedMs),
+          "setTimerStopped"
+        )
+        if (_holdSetId.value == step.setId || _holdFinishedSetId.value == step.setId) {
+          clearHold()
+        }
+      } else if (_holdSetId.value == step.setId) {
+        val total = _holdTotalSeconds.value
+        val rem = holdRemainingSeconds(step.setId, nowMs)
+        val startedMs = holdStartedAtMs ?: (nowMs - max(1, total - rem) * 1000L)
+        loggedDuration = if (_holdFinishedSetId.value == step.setId) {
+          max(1, total)
+        } else {
+          max(1, total - rem)
+        }
+        session?.sendMessageOrQueue(
+          OutboundPayloads.setTimerStopped(curPlan.sessionId, step.setId, loggedDuration, startedMs),
+          "setTimerStopped"
+        )
+        clearHold()
+      } else if (isStopwatchRunning(step.setId)) {
+        stopStopwatch(step.setId)
+        loggedDuration = _stopwatchStoppedSeconds.value[step.setId] ?: 1
+      } else {
+        loggedDuration = _stopwatchStoppedSeconds.value[step.setId]
+          ?: step.targetDurationSec
+          ?: step.previousDurationSec
+          ?: _draftDurationSeconds.value
+      }
+    }
+
+    val vals = valuesFor(step)
+    val weightKg = if (step.bodyweight && !step.weighted && (vals.weightKg == null || vals.weightKg == 0.0)) {
+      null
+    } else {
+      vals.weightKg
+    }
+    val frozenValues = vals.copy(weightKg = weightKg, durationSec = loggedDuration)
+    _setValues.value = _setValues.value + (step.setId to frozenValues)
+
+    val wasDisplayedStep = currentStep?.setId == step.setId
+    completedSetIds.add(step.setId)
+    wristLoggedSetIds.add(step.setId)
+    pendingUnlogs.remove(step.setId)
+    _completedSetIds.value = completedSetIds.toSet()
+    _completedSetsCount.value = completedSetIds.size
+    syncLoggedOrder()
+    recalculateTotalVolume()
+    Haptics.success()
+
+    // Determine next incomplete step and rest via RestRule.
+    // If a background hold finished while the user navigated to another set,
+    // keep the user on their current set unless every set is now complete.
+    val all = _steps.value
+    val stepPos = all.indexOfFirst { it.setId == step.setId }.takeIf { it >= 0 } ?: _stepIndex.value
+    val allDone = all.all { isCompleted(it) }
+    if (allDone) {
+      cancelGetReady()
+      stopRestInternal()
+      _stepIndex.value = all.size
+      _phase.value = Phase.ACTIVE_SET
+    } else if (wasDisplayedStep) {
+      val nextIdx = RestRule.nextIndex(stepPos, all.map { isCompleted(it) })
+      val restSec = if (nextIdx != null) {
+        RestRule.restAfter(step.toRestStepFacts(), all[nextIdx].toRestStepFacts())
+      } else {
+        0
+      }
+      if (nextIdx != null) {
+        _stepIndex.value = nextIdx
+        seedDraftsForCurrentStep()
+        if (restSec > 0) {
+          startRestTimer(restSec)
+        } else {
+          _phase.value = Phase.ACTIVE_SET
+        }
+      }
+    }
+
+    // Deliver the set completion immediately so a phone-initiated finish (or
+    // watch restart) while the RPE prompt is open never drops the logged set.
+    sendCompletedSetPayload(curPlan.sessionId, step, frozenValues, loggedDuration, rpe = null, completedAtMs = nowMs)
+
+    val rpeEnabled = checkInStore?.watchContext?.value?.rpeEnabled == true
+    if (rpeEnabled) {
+      enqueuePendingRpe(
+        PendingRpeCompletion(
+          step = step,
+          values = frozenValues,
+          durationSeconds = loggedDuration,
+          completedAtMs = nowMs
+        )
+      )
+    }
+  }
+
+  private fun enqueuePendingRpe(item: PendingRpeCompletion) {
+    pendingRpeQueue.addLast(item)
+    _pendingRpe.value = pendingRpeQueue.firstOrNull()
+  }
+
+  private fun clearPendingRpeQueue() {
+    pendingRpeQueue.clear()
+    _pendingRpe.value = null
+  }
+
+  fun submitPendingRpe(rpe: Double?) {
+    val pending = pendingRpeQueue.removeFirstOrNull() ?: return
+    _pendingRpe.value = pendingRpeQueue.firstOrNull()
+    if (rpe == null) return
+    val curPlan = _plan.value ?: run {
+      clearPendingRpeQueue()
+      return
+    }
+    if (!completedSetIds.contains(pending.step.setId)) return
+    if (phoneConfirmedSetIds.contains(pending.step.setId)) {
+      // Phone already confirmed the completion: send an RPE-only follow-up so
+      // any phone-side weight/reps edits made in the meantime are preserved.
+      val rpeUpdate = CompletedSet(
+        clientId = UUID.randomUUID().toString(),
+        sessionId = curPlan.sessionId,
+        setId = pending.step.setId,
+        rpe = rpe,
+        rpeOnly = true,
+        completedAtMs = pending.completedAtMs
+      )
+      unconfirmedCompletions[pending.step.setId] = rpeUpdate
+      session?.sendMessageOrQueue(OutboundPayloads.setCompleted(rpeUpdate), "setCompleted")
+    } else {
+      val latestValues = _setValues.value[pending.step.setId] ?: pending.values
+      sendCompletedSetPayload(
+        sessionId = curPlan.sessionId,
+        step = pending.step,
+        values = latestValues,
+        durationSeconds = pending.durationSeconds,
+        rpe = rpe,
+        completedAtMs = pending.completedAtMs,
+        rpeOnly = true
+      )
+    }
+  }
+
+  private fun sendCompletedSetPayload(
+    sessionId: String,
+    step: WorkoutStep,
+    values: SetValues,
+    durationSeconds: Int?,
+    rpe: Double?,
+    completedAtMs: Long,
+    rpeOnly: Boolean = false
+  ) {
+    val completed = CompletedSet(
+      clientId = UUID.randomUUID().toString(),
+      sessionId = sessionId,
+      setId = step.setId,
+      weightKg = values.weightKg,
+      reps = if (step.timed || step.carry) null else values.reps,
+      duration = if (step.timed) durationSeconds else null,
+      distanceKm = if (step.carry) values.distanceKm else step.targetDistanceKm,
+      rpe = rpe,
+      rpeOnly = rpeOnly,
+      completedAtMs = completedAtMs
+    )
+    unconfirmedCompletions[step.setId] = completed
+    session?.sendMessageOrQueue(OutboundPayloads.setCompleted(completed), "setCompleted")
+  }
+
+  fun uncompleteStep(step: WorkoutStep): Boolean {
+    val curPlan = _plan.value ?: return false
+    if (!completedSetIds.contains(step.setId)) return false
+    if (pendingRpeQueue.removeAll { it.step.setId == step.setId }) {
+      _pendingRpe.value = pendingRpeQueue.firstOrNull()
+    }
+    completedSetIds.remove(step.setId)
+    wristLoggedSetIds.remove(step.setId)
+    unconfirmedCompletions.remove(step.setId)
+    pendingUnlogs.add(step.setId)
+    _completedSetIds.value = completedSetIds.toSet()
+    _completedSetsCount.value = completedSetIds.size
+    syncLoggedOrder()
+    recalculateTotalVolume()
+
+    // If we were past the last set or resting, return cursor to the unlogged set
+    val idx = _steps.value.indexOfFirst { it.setId == step.setId }
+    if (idx >= 0) {
+      stopRestInternal()
+      _stepIndex.value = idx
+      _phase.value = Phase.ACTIVE_SET
+      seedDraftsForCurrentStep()
+    }
+    session?.sendMessageOrQueue(
+      OutboundPayloads.setUncompleted(UUID.randomUUID().toString(), curPlan.sessionId, step.setId),
+      "setUncompleted"
+    )
+    Haptics.click()
+    return true
+  }
+
   fun submitRpe(rpe: Double?) {
     _draftRpe.value = rpe
     commitCurrentSetAndAdvance(rpe = rpe)
@@ -1340,27 +2250,30 @@ class WorkoutSessionStore(private val context: Context) {
     val plan = _plan.value ?: return
     val step = currentStep ?: return
     val weightKg = if (step.bodyweight && !step.weighted) null else weightUnit.toKg(_draftWeight.value)
-    if (weightKg != null && _draftReps.value > 0 && !step.timed) {
-      totalVolumeKg += weightKg * _draftReps.value
-    }
-    val completed = CompletedSet(
-      clientId = UUID.randomUUID().toString(),
-      sessionId = plan.sessionId,
-      setId = step.setId,
+    val frozen = SetValues(
       weightKg = weightKg,
       reps = if (step.timed) null else _draftReps.value.toDouble(),
-      duration = if (step.timed) _draftDurationSeconds.value else null,
-      distanceKm = if (step.carry) _draftDistanceKm.value else step.targetDistanceKm,
-      rpe = rpe
+      durationSec = if (step.timed) _draftDurationSeconds.value else null,
+      distanceKm = if (step.carry) _draftDistanceKm.value else step.targetDistanceKm
     )
-    session?.sendMessageOrQueue(OutboundPayloads.setCompleted(completed), "setCompleted")
+    _setValues.value = _setValues.value + (step.setId to frozen)
+    recalculateTotalVolume()
+    sendCompletedSetPayload(
+      sessionId = plan.sessionId,
+      step = step,
+      values = frozen,
+      durationSeconds = frozen.durationSec,
+      rpe = rpe,
+      completedAtMs = System.currentTimeMillis()
+    )
     Haptics.success()
 
-    val nextIndex = _stepIndex.value + 1
-    if (nextIndex >= _steps.value.size) {
+    val all = _steps.value
+    val nextIndex = RestRule.nextIndex(_stepIndex.value, all.map { isCompleted(it) })
+    if (nextIndex == null) {
       finishWorkout(notifyPhone = true)
     } else {
-      val restSec = step.restSeconds
+      val restSec = RestRule.restAfter(step.toRestStepFacts(), all[nextIndex].toRestStepFacts())
       _stepIndex.value = nextIndex
       seedDraftsForCurrentStep()
       if (restSec > 0) {
@@ -1374,9 +2287,8 @@ class WorkoutSessionStore(private val context: Context) {
   fun skipRest() {
     val plan = _plan.value
     val prevEnds = restEndsAtMs
-    restTimerJob?.cancel()
-    _restRemainingSeconds.value = 0
-    restEndsAtMs = 0L
+    restSkippedAtMs = System.currentTimeMillis()
+    stopRestInternal()
     if (plan != null && prevEnds > 0L) {
       session?.sendMessageOrQueue(
         OutboundPayloads.restChanged(plan.sessionId, prevEnds, null),
@@ -1388,13 +2300,28 @@ class WorkoutSessionStore(private val context: Context) {
   }
 
   fun addRestSeconds(extra: Int = 15) {
+    adjustRest(extra)
+  }
+
+  fun adjustRest(deltaSeconds: Int) {
     val plan = _plan.value
     val prevEnds = restEndsAtMs
-    _restRemainingSeconds.value = max(0, _restRemainingSeconds.value + extra)
-    restEndsAtMs = System.currentTimeMillis() + (_restRemainingSeconds.value * 1000L)
+    val now = System.currentTimeMillis()
+    val currentRem = if (prevEnds > 0L) max(0, ((prevEnds - now + 500L) / 1000L).toInt()) else _restRemainingSeconds.value
+    val nextRem = currentRem + deltaSeconds
+    if (nextRem <= 0) {
+      skipRest()
+      return
+    }
+    val nextEnds = now + nextRem.toLong() * 1000L
+    val nextDuration = max(_restDurationSeconds.value, nextRem)
+    if (deltaSeconds < 0) {
+      restSkippedAtMs = now
+    }
+    startRestUntil(nextEnds, nextDuration)
     if (plan != null && prevEnds > 0L) {
       session?.sendMessageOrQueue(
-        OutboundPayloads.restChanged(plan.sessionId, prevEnds, restEndsAtMs),
+        OutboundPayloads.restChanged(plan.sessionId, prevEnds, nextEnds),
         "restChanged"
       )
     }
@@ -1405,21 +2332,24 @@ class WorkoutSessionStore(private val context: Context) {
     val step = currentStep ?: return
     val curIdx = _stepIndex.value
     val nextIdx = _steps.value.withIndex().indexOfFirst { (idx, s) ->
-      idx > curIdx && s.exerciseEntryId != step.exerciseEntryId
+      idx > curIdx && s.exerciseEntryId != step.exerciseEntryId && !isCompleted(s)
     }
     if (nextIdx >= 0) {
+      cancelGetReady()
+      stopRestInternal()
       _stepIndex.value = nextIdx
       seedDraftsForCurrentStep()
       _phase.value = Phase.ACTIVE_SET
       Haptics.click()
-    } else {
+    } else if (!usesNewWorkoutView()) {
       finishWorkout(notifyPhone = true)
     }
   }
 
   fun jumpToStep(index: Int) {
     if (index in _steps.value.indices) {
-      restTimerJob?.cancel()
+      cancelGetReady()
+      stopRestInternal()
       _stepIndex.value = index
       seedDraftsForCurrentStep()
       _phase.value = Phase.ACTIVE_SET
@@ -1427,10 +2357,45 @@ class WorkoutSessionStore(private val context: Context) {
     }
   }
 
+  fun goToStep(setId: String) {
+    val idx = _steps.value.indexOfFirst { it.setId == setId }
+    if (idx >= 0) jumpToStep(idx)
+  }
+
+  fun jumpToExercise(exerciseEntryId: String) {
+    val all = _steps.value
+    val idx = all.indexOfFirst { it.exerciseEntryId == exerciseEntryId && !isCompleted(it) }
+      .takeIf { it >= 0 }
+      ?: all.indexOfFirst { it.exerciseEntryId == exerciseEntryId }
+    if (idx >= 0) jumpToStep(idx)
+  }
+
+  fun handleRemoteWorkoutStop(sessionId: String, discarded: Boolean) {
+    when (
+      RemoteWorkoutStop.decide(
+        activeSessionId = _plan.value?.sessionId,
+        incomingSessionId = sessionId,
+        isWorkoutActive = isWorkoutActive,
+        discarded = discarded
+      )
+    ) {
+      RemoteWorkoutStop.Action.IGNORE -> Unit
+      RemoteWorkoutStop.Action.DISCARD -> discardWorkout(notifyPhone = false)
+      RemoteWorkoutStop.Action.FINISH -> finishWorkout(notifyPhone = false)
+    }
+  }
+
   fun finishWorkout(notifyPhone: Boolean) {
     val plan = _plan.value ?: return
+    // Logged sets were already sent immediately on completion; dismiss any unanswered RPE prompts.
+    clearPendingRpeQueue()
+    val pendingCompletions = unconfirmedCompletions.values.toList()
+    unconfirmedCompletions.clear()
     tickerJob?.cancel()
-    restTimerJob?.cancel()
+    cancelGetReady()
+    clearHold()
+    clearStopwatch()
+    stopRestInternal()
     setTimerJob?.cancel()
     _setTimerRunning.value = false
     sensors?.stopWorkoutSensors()
@@ -1440,9 +2405,25 @@ class WorkoutSessionStore(private val context: Context) {
     val avgHr = _averageHeartRate.value
     val maxHr = hrReadings.maxOrNull()
     val kcal = _activeCalories.value.takeIf { it > 0 }
+    val newView = usesNewWorkoutView()
+    val askPreset = notifyPhone && plan.fromPreset == true && planModifiedOnWatch
 
     if (notifyPhone) {
-      session?.sendMessageOrQueue(OutboundPayloads.workoutStop(plan.sessionId), "workoutStop")
+      // In new workout view, tell the phone to hold its preset prompt while the
+      // watch summary's Update/Keep card is open.
+      if (newView && askPreset) {
+        session?.sendMessageOrQueue(
+          OutboundPayloads.presetUpdateAnswer(plan.sessionId, update = false, waiting = true),
+          "presetUpdateAnswer"
+        )
+      }
+      // Bundle any unconfirmed completions in workoutStop so the phone applies
+      // them before closing the session even if an earlier setCompleted fell
+      // back to a DataItem and arrives after a live workoutStop.
+      session?.sendMessageOrQueue(
+        OutboundPayloads.workoutStop(plan.sessionId, pendingCompletions),
+        "workoutStop"
+      )
     }
 
     _completedSummary.value = WorkoutSummary(
@@ -1453,9 +2434,10 @@ class WorkoutSessionStore(private val context: Context) {
       volumeKg = totalVolumeKg,
       averageBpm = avgHr,
       maxBpm = maxHr,
-      activeEnergyKcal = kcal
+      activeEnergyKcal = kcal,
+      changedPresetName = if (newView && askPreset) plan.workoutName else null
     )
-    if (notifyPhone && plan.fromPreset == true && planModifiedOnWatch) {
+    if (!newView && askPreset) {
       _phase.value = Phase.ASKING_PRESET_UPDATE
     } else {
       _phase.value = Phase.COMPLETED
@@ -1466,19 +2448,38 @@ class WorkoutSessionStore(private val context: Context) {
   fun answerPresetUpdate(update: Boolean) {
     val plan = _plan.value
     if (plan != null) {
-      session?.sendMessageOrQueue(
-        OutboundPayloads.presetUpdateAnswer(plan.sessionId, update),
-        "presetUpdateAnswer"
-      )
+      sendPresetUpdateAnswer(plan.sessionId, update)
     }
     _phase.value = Phase.COMPLETED
     Haptics.click()
   }
 
+  fun sendPresetUpdateAnswer(sessionId: String, update: Boolean) {
+    session?.sendMessageOrQueue(
+      OutboundPayloads.presetUpdateAnswer(sessionId, update, waiting = false),
+      "presetUpdateAnswer"
+    )
+  }
+
+  fun rateWorkoutEffort(sessionId: String, rating: Int) {
+    session?.sendMessageOrQueue(
+      OutboundPayloads.workoutEffort(sessionId, rating.coerceIn(1, 10)),
+      "workoutEffort"
+    )
+    Haptics.success()
+  }
+
   fun discardWorkout(notifyPhone: Boolean = true) {
     val plan = _plan.value
+    clearPendingRpeQueue()
+    unconfirmedCompletions.clear()
+    targetRevision = Double.NEGATIVE_INFINITY
+    targetOverrides = emptyMap()
     tickerJob?.cancel()
-    restTimerJob?.cancel()
+    cancelGetReady()
+    clearHold()
+    clearStopwatch()
+    stopRestInternal()
     setTimerJob?.cancel()
     _setTimerRunning.value = false
     sensors?.stopWorkoutSensors()
@@ -1493,34 +2494,80 @@ class WorkoutSessionStore(private val context: Context) {
     _steps.value = emptyList()
     _stepIndex.value = 0
     _completedSummary.value = null
+    _workoutStartedAtMs.value = null
     _phase.value = Phase.IDLE
     Haptics.stop()
   }
 
   fun dismissSummary() {
+    unconfirmedCompletions.clear()
+    targetRevision = Double.NEGATIVE_INFINITY
+    targetOverrides = emptyMap()
     _plan.value = null
     _steps.value = emptyList()
     _stepIndex.value = 0
     _completedSummary.value = null
+    _workoutStartedAtMs.value = null
     _phase.value = Phase.IDLE
   }
 
-  private fun startRestTimer(seconds: Int) {
+  private fun stopRestInternal() {
     restTimerJob?.cancel()
-    _restRemainingSeconds.value = seconds
-    restEndsAtMs = System.currentTimeMillis() + seconds * 1000L
+    restTimerJob = null
+    restCues.cancel()
+    restEndsAtMs = 0L
+    _restRemainingSeconds.value = 0
+    _restDurationSeconds.value = 0
+    _restEndsAtMs.value = null
+    _restPausedRemaining.value = null
+  }
+
+  private fun startRestTimer(seconds: Int) {
+    val endsAt = System.currentTimeMillis() + seconds.toLong() * 1000L
+    startRestUntil(endsAt, seconds)
+  }
+
+  private fun startRestUntil(endsAtMs: Long, totalDurationSec: Int) {
+    restTimerJob?.cancel()
+    restCues.cancel()
+    restEndsAtMs = endsAtMs
+    _restEndsAtMs.value = endsAtMs
+    _restDurationSeconds.value = max(1, totalDurationSec)
+    _restPausedRemaining.value = null
+    _restRemainingSeconds.value = max(0, ((endsAtMs - System.currentTimeMillis() + 500L) / 1000L).toInt())
     _phase.value = Phase.REST
+
+    val cuesSec = countdownSeconds()
+    val cuesOwnEnd = cuesSec > 0 && endsAtMs > System.currentTimeMillis()
+    if (cuesOwnEnd) {
+      restCues.schedule(
+        endsAtMs = endsAtMs,
+        seconds = cuesSec,
+        tick = { Haptics.countdownTick() },
+        end = { Haptics.countdownEnd() }
+      )
+    }
+
     restTimerJob = scope.launch {
-      while (isActive && _restRemainingSeconds.value > 0) {
-        delay(1000)
-        val next = _restRemainingSeconds.value - 1
-        _restRemainingSeconds.value = next
-        if (next in 1..3) Haptics.click()
-        if (next <= 0) {
-          Haptics.start()
+      while (isActive && _phase.value == Phase.REST) {
+        val rem = max(0, ((endsAtMs - System.currentTimeMillis() + 500L) / 1000L).toInt())
+        _restRemainingSeconds.value = rem
+        if (!cuesOwnEnd && !usesNewWorkoutView() && rem in 1..3) {
+          Haptics.click()
+        }
+        if (System.currentTimeMillis() >= endsAtMs || rem <= 0) {
+          if (!cuesOwnEnd) {
+            if (usesNewWorkoutView()) Haptics.countdownEnd() else Haptics.start()
+          }
+          restTimerJob = null
+          restEndsAtMs = 0L
+          _restRemainingSeconds.value = 0
+          _restDurationSeconds.value = 0
+          _restEndsAtMs.value = null
           _phase.value = Phase.ACTIVE_SET
           break
         }
+        delay(500)
       }
     }
   }
@@ -1551,45 +2598,21 @@ class WorkoutSessionStore(private val context: Context) {
   private fun seedDraftsForCurrentStep() {
     val step = currentStep ?: return
     val u = weightUnit
-    _draftReps.value = (step.targetReps ?: 10.0).toInt()
-    val kg = step.targetWeightKg ?: 20.0
-    _draftWeight.value = (u.fromKg(kg) * 10.0).roundToInt() / 10.0
-    _draftDurationSeconds.value = step.targetDurationSec ?: step.previousDurationSec ?: 30
-    _draftDistanceKm.value = step.targetDistanceKm ?: 0.05
+    val vals = valuesFor(step)
+    _draftReps.value = (vals.reps ?: 10.0).roundToInt()
+    val kg = vals.weightKg ?: 20.0
+    _draftWeight.value = u.displayedFromKg(kg)
+    _draftDurationSeconds.value = vals.durationSec ?: vals.previousDurationSec ?: 30
+    _draftDistanceKm.value = vals.distanceKm ?: 0.05
     _draftRpe.value = null
     _setTimerRunning.value = false
     _setTimerElapsedSeconds.value = 0
   }
 
-  private fun flattenSteps(plan: ActiveWorkoutPlan): List<WorkoutStep> {
-    val out = mutableListOf<WorkoutStep>()
-    plan.exercises.forEach { ex ->
-      val totalSets = ex.sets.size
-      ex.sets.forEachIndexed { idx, set ->
-        out.add(
-          WorkoutStep(
-            setId = set.setId,
-            exerciseEntryId = ex.exerciseEntryId,
-            exerciseName = ex.name,
-            setIndexInExercise = idx + 1,
-            totalSetsInExercise = totalSets,
-            setType = set.setType,
-            supersetRun = ex.supersetRun,
-            bodyweight = ex.bodyweight == true,
-            timed = set.timed == true,
-            carry = set.carry == true,
-            weighted = set.weighted == true,
-            targetWeightKg = set.targetWeightKg,
-            targetReps = set.targetReps,
-            targetDurationSec = set.targetDurationSec,
-            previousDurationSec = set.previousDurationSec,
-            targetDistanceKm = set.targetDistanceKm,
-            restSeconds = set.restSeconds
-          )
-        )
-      }
-    }
-    return out
+  private fun flattenSteps(plan: ActiveWorkoutPlan): List<WorkoutStep> = plan.flattenSteps()
+
+  companion object {
+    const val GET_READY_SECONDS = 3
   }
 }
 
@@ -2225,11 +3248,324 @@ class WatchRunStore(private val context: Context) {
   }
 }
 
+class MediaControlStore(private val context: Context) {
+  private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+  private val audioManager: AudioManager?
+    get() = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+
+  var session: WearSessionTransport? = null
+
+  private val _phoneMedia = MutableStateFlow<PhoneMediaState?>(null)
+  val phoneMedia: StateFlow<PhoneMediaState?> = _phoneMedia.asStateFlow()
+
+  // Stays false until a paired phone answers with a `mediaState` snapshot so
+  // an older phone build without media-bridge support falls back to watch audio.
+  private val _phoneReachable = MutableStateFlow(false)
+  val phoneReachable: StateFlow<Boolean> = _phoneReachable.asStateFlow()
+
+  private val _manualTarget = MutableStateFlow<MediaTarget?>(null)
+  val manualTarget: StateFlow<MediaTarget?> = _manualTarget.asStateFlow()
+
+  private val _watchPlaying = MutableStateFlow(false)
+  val watchPlaying: StateFlow<Boolean> = _watchPlaying.asStateFlow()
+
+  private val _watchVolume = MutableStateFlow(0)
+  val watchVolume: StateFlow<Int> = _watchVolume.asStateFlow()
+
+  private val _watchMaxVolume = MutableStateFlow(0)
+  val watchMaxVolume: StateFlow<Int> = _watchMaxVolume.asStateFlow()
+
+  private var appForeground = true
+  private var pageVisible = false
+  private var observingPhone = false
+  private var observationSessionId = 0L
+  private var visitEpoch = 0L
+  private var currentVisitId = 0L
+  private var reachabilityGeneration = 0L
+  private var pollJob: Job? = null
+  private var responseTimeoutJob: Job? = null
+  private var localRefreshJob: Job? = null
+
+  private fun markPhoneUnreachable() {
+    responseTimeoutJob?.cancel()
+    responseTimeoutJob = null
+    reachabilityGeneration += 1
+    _phoneReachable.value = false
+  }
+
+  private fun armPhoneResponseTimeout(startedAtGen: Long, visitId: Long) {
+    if (!_phoneReachable.value || responseTimeoutJob?.isActive == true) return
+    responseTimeoutJob = scope.launch {
+      delay(PHONE_RESPONSE_TIMEOUT_MS)
+      responseTimeoutJob = null
+      if (
+        observingPhone &&
+        visitId == currentVisitId &&
+        startedAtGen == reachabilityGeneration &&
+        _phoneReachable.value
+      ) {
+        reachabilityGeneration += 1
+        _phoneReachable.value = false
+      }
+    }
+  }
+
+  private fun ensureVisitEpoch(): Long {
+    if (visitEpoch > 0L) return visitEpoch
+    val now = System.currentTimeMillis()
+    val next = try {
+      val prefs = context.getSharedPreferences(MEDIA_PREFS_NAME, Context.MODE_PRIVATE)
+      val stored = prefs.getLong(KEY_VISIT_EPOCH, 0L)
+      val computed = maxOf(stored + 1L, now)
+      prefs.edit().putLong(KEY_VISIT_EPOCH, computed).apply()
+      computed
+    } catch (_: Throwable) {
+      maxOf(1L, now)
+    }
+    visitEpoch = next
+    return next
+  }
+
+  fun effectiveTarget(): MediaTarget = MediaControlLogic.resolveEffectiveTarget(
+    manualTarget = _manualTarget.value,
+    phoneReachable = _phoneReachable.value,
+    watchMusicActive = _watchPlaying.value,
+    phoneMedia = _phoneMedia.value
+  )
+
+  fun setAppForeground(foreground: Boolean) {
+    if (appForeground == foreground) return
+    appForeground = foreground
+    updateObservation()
+  }
+
+  fun setPageVisible(visible: Boolean) {
+    if (pageVisible == visible) return
+    pageVisible = visible
+    updateObservation()
+  }
+
+  fun toggleTarget() {
+    if (!_phoneReachable.value) return
+    val current = effectiveTarget()
+    _manualTarget.value = if (current == MediaTarget.PHONE) MediaTarget.WATCH else MediaTarget.PHONE
+    refreshLocalAudioState()
+    if (_manualTarget.value == MediaTarget.PHONE && observingPhone && visitEpoch > 0L && currentVisitId > 0L) {
+      requestPhoneState(visitEpoch, currentVisitId)
+    }
+    Haptics.click()
+  }
+
+  fun applyRemoteMediaState(state: PhoneMediaState) {
+    responseTimeoutJob?.cancel()
+    responseTimeoutJob = null
+    reachabilityGeneration += 1
+    _phoneReachable.value = true
+    if (MediaControlLogic.shouldAcceptSnapshot(state, _phoneMedia.value)) {
+      _phoneMedia.value = state
+    }
+  }
+
+  fun refreshLocalAudioState() {
+    val am = audioManager ?: return
+    try {
+      _watchPlaying.value = am.isMusicActive
+      _watchVolume.value = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+      _watchMaxVolume.value = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+    } catch (_: Throwable) {}
+  }
+
+  fun sendTransport(action: MediaTransportAction, target: MediaTarget = effectiveTarget()) {
+    Haptics.click()
+    if (target == MediaTarget.PHONE) {
+      val transport = session
+      if (transport != null) {
+        val startedAtGen = reachabilityGeneration
+        val cmdSessionId = observationSessionId
+        armPhoneResponseTimeout(startedAtGen, currentVisitId)
+        transport.sendLiveWithResult(OutboundPayloads.mediaControl(action.wireValue)) { delivered ->
+          scope.launch {
+            if (!delivered) {
+              if (startedAtGen == reachabilityGeneration) {
+                markPhoneUnreachable()
+              }
+              if (observingPhone && cmdSessionId == observationSessionId) {
+                dispatchLocalMediaKey(action)
+              }
+            }
+          }
+        }
+        return
+      }
+      markPhoneUnreachable()
+    }
+    dispatchLocalMediaKey(action)
+  }
+
+  fun adjustVolume(steps: Int, target: MediaTarget = effectiveTarget()) {
+    if (steps == 0) return
+    val clampedSteps = steps.coerceIn(-5, 5)
+    val direction = if (clampedSteps > 0) 1 else -1
+    val count = abs(clampedSteps)
+    Haptics.click()
+    if (target == MediaTarget.PHONE) {
+      val transport = session
+      if (transport != null) {
+        _phoneMedia.value?.let { current ->
+          if (current.maxVolume > 0) {
+            val optimistic = (current.volume + clampedSteps).coerceIn(0, current.maxVolume)
+            _phoneMedia.value = current.copy(volume = optimistic)
+          }
+        }
+        val wireAction = if (direction > 0) "volumeUp" else "volumeDown"
+        val startedAtGen = reachabilityGeneration
+        val cmdSessionId = observationSessionId
+        armPhoneResponseTimeout(startedAtGen, currentVisitId)
+        transport.sendLiveWithResult(OutboundPayloads.mediaControl(wireAction, count)) { delivered ->
+          scope.launch {
+            if (!delivered) {
+              if (startedAtGen == reachabilityGeneration) {
+                markPhoneUnreachable()
+              }
+              if (observingPhone && cmdSessionId == observationSessionId) {
+                adjustLocalVolume(direction, count)
+              }
+            }
+          }
+        }
+        return
+      }
+      markPhoneUnreachable()
+    }
+    adjustLocalVolume(direction, count)
+  }
+
+  private fun updateObservation() {
+    val shouldObserve = appForeground && pageVisible
+    if (shouldObserve == observingPhone) return
+    observingPhone = shouldObserve
+    observationSessionId += 1
+    pollJob?.cancel()
+    pollJob = null
+    responseTimeoutJob?.cancel()
+    responseTimeoutJob = null
+    if (shouldObserve) {
+      val epoch = ensureVisitEpoch()
+      val visitId = currentVisitId + 1L
+      currentVisitId = visitId
+      refreshLocalAudioState()
+      requestPhoneState(epoch, visitId)
+      pollJob = scope.launch {
+        var msSinceLeaseRenew = 0L
+        while (isActive) {
+          delay(FALLBACK_POLL_MS)
+          msSinceLeaseRenew += FALLBACK_POLL_MS
+          refreshLocalAudioState()
+          val transport = session
+          if (transport != null) {
+            val checkGen = reachabilityGeneration
+            transport.isPhoneConnected { connected ->
+              scope.launch {
+                if (!observingPhone || visitId != currentVisitId) return@launch
+                if (!connected) {
+                  if (checkGen == reachabilityGeneration) {
+                    markPhoneUnreachable()
+                  }
+                  return@launch
+                }
+                val remote = _phoneMedia.value
+                if (!_phoneReachable.value || remote == null || !remote.hasMetadataAccess) {
+                  msSinceLeaseRenew = 0L
+                  requestPhoneState(epoch, visitId)
+                } else if (msSinceLeaseRenew >= LEASE_RENEW_MS) {
+                  msSinceLeaseRenew = 0L
+                  requestPhoneState(epoch, visitId)
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      val stopEpoch = visitEpoch
+      val stopVisitId = currentVisitId
+      if (stopEpoch > 0L && stopVisitId > 0L) {
+        session?.sendLiveOnly(
+          OutboundPayloads.mediaStateRequest(active = false, epoch = stopEpoch, visitId = stopVisitId)
+        )
+      }
+    }
+  }
+
+  private fun requestPhoneState(epoch: Long, visitId: Long) {
+    val transport = session ?: return
+    val startedAtGen = reachabilityGeneration
+    armPhoneResponseTimeout(startedAtGen, visitId)
+    transport.sendLiveWithResult(
+      OutboundPayloads.mediaStateRequest(active = true, epoch = epoch, visitId = visitId)
+    ) { delivered ->
+      scope.launch {
+        if (!delivered && startedAtGen == reachabilityGeneration) {
+          markPhoneUnreachable()
+        }
+      }
+    }
+  }
+
+  private fun dispatchLocalMediaKey(action: MediaTransportAction) {
+    val am = audioManager ?: return
+    val keyCode = when (action) {
+      MediaTransportAction.PLAY_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+      MediaTransportAction.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
+      MediaTransportAction.PREVIOUS -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+    }
+    try {
+      val now = SystemClock.uptimeMillis()
+      am.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0))
+      am.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0))
+    } catch (_: Throwable) {}
+    localRefreshJob?.cancel()
+    localRefreshJob = scope.launch {
+      delay(300L)
+      refreshLocalAudioState()
+    }
+  }
+
+  private fun adjustLocalVolume(direction: Int, count: Int = 1) {
+    val am = audioManager ?: return
+    try {
+      repeat(count.coerceIn(1, 5)) {
+        am.adjustStreamVolume(
+          AudioManager.STREAM_MUSIC,
+          if (direction > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER,
+          AudioManager.FLAG_SHOW_UI
+        )
+      }
+      refreshLocalAudioState()
+    } catch (_: Throwable) {}
+  }
+
+  companion object {
+    private const val MEDIA_PREFS_NAME = "sparky_wear_media"
+    private const val KEY_VISIT_EPOCH = "visit_epoch"
+    private const val PHONE_RESPONSE_TIMEOUT_MS = 3_500L
+    private const val FALLBACK_POLL_MS = 4_000L
+    private const val LEASE_RENEW_MS = 5 * 60_000L
+  }
+}
+
 interface WearSessionTransport {
   fun sendWeightCheckIn(payload: JSONObject, onResult: (Boolean) -> Unit)
   fun sendWorkoutStartRequest(payload: JSONObject, onResult: (Boolean) -> Unit)
   fun sendMessageOrQueue(payload: JSONObject, queueType: String)
   fun sendLiveOnly(payload: JSONObject) {}
+  fun sendLiveWithResult(payload: JSONObject, onResult: (Boolean) -> Unit) {
+    sendLiveOnly(payload)
+    onResult(true)
+  }
+  fun isPhoneConnected(onResult: (Boolean) -> Unit) {
+    onResult(true)
+  }
   fun sendWatchRunFinished(result: WatchRunResult)
   fun sendHeartRateBatch(batch: HeartRateBatch)
   fun clearQueuedWatchTransfers() {}

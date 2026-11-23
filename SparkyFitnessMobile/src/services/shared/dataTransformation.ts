@@ -273,6 +273,25 @@ export const createTransformHealthRecords =
       try {
         const rec = record as Record<string, unknown>;
 
+        // Handle deletion entries (e.g. from HKAnchoredObjectQuery or HC getChanges)
+        if (rec.deleted === true) {
+          const sourceId =
+            (rec.source_id as string) ||
+            (rec.uuid as string) ||
+            (rec.id as string) ||
+            (rec.metadata as { id?: string } | undefined)?.id;
+          if (sourceId) {
+            transformedData.push({
+              type,
+              deleted: true,
+              source_id: sourceId,
+              source,
+            } as TransformOutput);
+            successCount++;
+          }
+          return;
+        }
+
         // Handle pre-aggregated records (from deduplicating aggregation functions)
         // These have value and date at top level — raw platform records never do
         if (rec.value !== undefined && rec.date) {

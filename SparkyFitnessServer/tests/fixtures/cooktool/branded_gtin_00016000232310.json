@@ -1,0 +1,16 @@
+{
+  "data": [
+    {
+      "id": 1994784,
+      "name": "Apple Cinnamon Cheerios Breakfast Cereal 2 Pack",
+      "brand": "Cheerios",
+      "brand_owner": "GENERAL MILLS SALES INC.",
+      "gtin_upc": "00016000232310",
+      "market_country": "US",
+      "category_id": null,
+      "data_quality": "medium"
+    }
+  ],
+  "limit": 20,
+  "offset": 0
+}

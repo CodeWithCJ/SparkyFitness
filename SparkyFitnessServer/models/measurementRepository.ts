@@ -1743,6 +1743,7 @@ export { upsertStepData };
 export { upsertWaterData };
 export { incrementWaterData };
 export { recomputeWaterAggregate };
+export { lockWaterAggregates };
 export { recomputeWaterAggregateForUser };
 export { getWaterIntakesByDates };
 export { getWaterIntakeEntryById };
@@ -1778,6 +1779,23 @@ export { getExternalBmrByDateRange };
 
 // ── Water Intake Entries (granular drink-by-drink tracking) ──────────────
 
+export const WATER_ENTRY_CLIENT_ID_INDEX =
+  'idx_water_intake_entries_user_client_id';
+
+/** The drink an earlier request with this client id already logged, if any. */
+async function findWaterIntakeLogByClientId(userId: string, clientId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'SELECT * FROM water_intake_entries WHERE user_id = $1 AND client_id = $2',
+      [userId, clientId]
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
+
 async function insertWaterIntakeLog(
   userId: string,
   actingUserId: string,
@@ -1792,15 +1810,17 @@ async function insertWaterIntakeLog(
   // must not rewrite history, following container_name's existing precedent.
   foodEntryId: string | null = null,
   hydrationFactor: number | null = null,
-  client?: PoolClient
+  client?: PoolClient,
+  // Mobile offline-queue idempotency key (water_intake_entries.client_id).
+  clientId: string | null = null
 ) {
   const ownClient = !client;
   const activeClient = client ?? (await getClient(actingUserId));
   try {
     const result = await activeClient.query(
       `INSERT INTO water_intake_entries
-        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at, food_entry_id, hydration_factor)
-       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()), $9, $10)
+        (user_id, entry_date, water_ml, container_id, container_name, source, created_at, created_by_user_id, logged_at, food_entry_id, hydration_factor, client_id)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW(), $7, COALESCE($8, NOW()), $9, $10, $11)
        RETURNING *`,
       [
         userId,
@@ -1813,6 +1833,7 @@ async function insertWaterIntakeLog(
         loggedAt,
         foodEntryId,
         hydrationFactor,
+        clientId,
       ]
     );
     return result.rows[0];
@@ -1844,6 +1865,45 @@ async function insertWaterIntakeLog(
  * wiping the user's tapped-in drink log because a CSV import omitted a
  * source column would destroy real data.
  */
+/** A day and source whose daily water total is rebuilt from the drinks ledger. */
+interface WaterAggregateKey {
+  entryDate: string;
+  source: string;
+}
+
+/**
+ * Takes the transaction-scoped lock of every (date, source) total in `keys`,
+ * so a recompute never reads the ledger while another transaction's
+ * not-yet-committed drink for that day is about to be counted, and a stale
+ * sum is never written over a newer one. Held until the transaction ends.
+ *
+ * The date is cast to a DATE in PostgreSQL before the lock key is built, so
+ * '2026-09-05' and '2026-09-05 00:00:00' (which are the same day to the
+ * database) name one lock. The locks are taken in one fixed order, by key
+ * hash and not by the caller's order, so two transactions touching the same
+ * days in opposite order cannot wait on each other. A transaction that
+ * rebuilds more than one total, or writes the ledger first, takes all its
+ * locks here before the first write.
+ */
+async function lockWaterAggregates(
+  client: PoolClient,
+  userId: string,
+  keys: WaterAggregateKey[]
+): Promise<void> {
+  if (keys.length === 0) return;
+  const hashes = await client.query(
+    `SELECT DISTINCT hashtext('water_aggregate:' || $1::text || ':' ||
+                              to_char(k.entry_date::date, 'YYYY-MM-DD') || ':' ||
+                              k.source) AS lock_key
+     FROM unnest($2::text[], $3::text[]) AS k(entry_date, source)
+     ORDER BY lock_key`,
+    [userId, keys.map((key) => key.entryDate), keys.map((key) => key.source)]
+  );
+  for (const row of hashes.rows as Array<{ lock_key: number }>) {
+    await client.query('SELECT pg_advisory_xact_lock($1)', [row.lock_key]);
+  }
+}
+
 /**
  * Recomputes and stores the water_intake daily aggregate for one
  * (user, entry_date, source) from the CURRENT contents of water_intake_entries
@@ -1865,6 +1925,9 @@ async function recomputeWaterAggregate(
   entryDate: string,
   source: string
 ): Promise<number> {
+  // One recompute at a time per user, date and source (see
+  // lockWaterAggregates).
+  await lockWaterAggregates(client, userId, [{ entryDate, source }]);
   const sumRes = await client.query(
     `SELECT COALESCE(SUM(water_ml), 0) as total_ml
      FROM water_intake_entries
@@ -1932,6 +1995,16 @@ async function upsertWaterIntakeSamples(
   const client = await getClient(actingUserId);
   try {
     await client.query('BEGIN');
+    // Every total this batch rebuilds is locked first, in one fixed order,
+    // before the first ledger write.
+    await lockWaterAggregates(
+      client,
+      userId,
+      samples.map((sample) => ({
+        entryDate: sample.entryDate,
+        source: sample.source,
+      }))
+    );
 
     const writtenRows: Array<Record<string, unknown>> = [];
     const affectedDatesBySource = new Map<string, Set<string>>();
@@ -2083,6 +2156,79 @@ async function upsertWaterIntakeSamples(
 
     await client.query('COMMIT');
     return writtenRows;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Deletes water intake samples matching the specified user, source, and source IDs,
+ * and recomputes the water_intake daily aggregate totals for all affected dates.
+ *
+ * Guarantees:
+ * - Enforces RLS context via getClient(userId, actingUserId).
+ * - Only deletes entries matching source (never touches manual or other sources).
+ * - Recomputes the daily aggregate for every affected entry_date.
+ * - Returns array of unique affected entry_date strings.
+ */
+async function deleteWaterIntakeSamplesBySourceIds(
+  userId: string,
+  actingUserId: string,
+  source: string,
+  sourceIds: string[]
+): Promise<string[]> {
+  if (!sourceIds || sourceIds.length === 0) {
+    return [];
+  }
+  const client = await getClient(userId, actingUserId);
+  try {
+    await client.query('BEGIN');
+
+    // Lock the totals this delete will rebuild before it writes: find the days
+    // first, lock them in the fixed order, then delete.
+    const found = await client.query(
+      `SELECT DISTINCT entry_date::text AS entry_date
+       FROM water_intake_entries
+       WHERE user_id = $1 AND source = $2 AND source_id = ANY($3)`,
+      [userId, source, sourceIds]
+    );
+    await lockWaterAggregates(
+      client,
+      userId,
+      found.rows.map((row: { entry_date: string }) => ({
+        entryDate: row.entry_date,
+        source,
+      }))
+    );
+
+    const deleteRes = await client.query(
+      `DELETE FROM water_intake_entries
+       WHERE user_id = $1 AND source = $2 AND source_id = ANY($3)
+       RETURNING entry_date`,
+      [userId, source, sourceIds]
+    );
+
+    const affectedDates: string[] = Array.from(
+      new Set(
+        deleteRes.rows.map((r: { entry_date: unknown }) => String(r.entry_date))
+      )
+    );
+
+    for (const dateStr of affectedDates) {
+      await recomputeWaterAggregate(
+        client,
+        userId,
+        actingUserId,
+        dateStr,
+        source
+      );
+    }
+
+    await client.query('COMMIT');
+    return affectedDates;
   } catch (error) {
     await client.query('ROLLBACK');
     throw error;
@@ -2303,6 +2449,7 @@ export default {
   upsertWaterData,
   incrementWaterData,
   recomputeWaterAggregate,
+  lockWaterAggregates,
   recomputeWaterAggregateForUser,
   getWaterIntakeByDate,
   getWaterIntakesByDates,
@@ -2311,7 +2458,9 @@ export default {
   updateWaterIntake,
   deleteWaterIntake,
   insertWaterIntakeLog,
+  findWaterIntakeLogByClientId,
   upsertWaterIntakeSamples,
+  deleteWaterIntakeSamplesBySourceIds,
   getWaterIntakeLogByDate,
   getWaterIntakeLogsByDates,
   deleteWaterIntakeLog,

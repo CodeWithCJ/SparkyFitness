@@ -29,6 +29,7 @@ export function useExerciseSearchHook({
   initialSearchSource,
 }: ExerciseSearchProps) {
   const { user } = useAuth();
+  const userId = user?.id;
 
   const { loggingLevel, itemDisplayLimit, language } = usePreferences();
   const [searchTerm, setSearchTerm] = useState('');
@@ -82,10 +83,10 @@ export function useExerciseSearchHook({
       ) {
         try {
           const recent = await queryClient.fetchQuery(
-            recentExercisesOptions(user?.id || '', itemDisplayLimit)
+            recentExercisesOptions(userId || '', itemDisplayLimit)
           );
           const top = await queryClient.fetchQuery(
-            topExercisesOptions(user?.id || '', itemDisplayLimit)
+            topExercisesOptions(userId || '', itemDisplayLimit)
           );
           setRecentExercises(recent);
           setTopExercises(top);
@@ -136,7 +137,7 @@ export function useExerciseSearchHook({
       muscleGroupFilter,
       searchSource,
       selectedProviderId,
-      user?.id,
+      userId,
       selectedProviderType,
       language,
     ]
@@ -161,8 +162,13 @@ export function useExerciseSearchHook({
   };
 
   useEffect(() => {
-    if (searchSource === 'internal' && user?.id) handleSearch('', true);
-  }, [searchSource, user?.id, handleSearch]);
+    if (searchSource === 'internal' && userId) {
+      // Started once the effect has finished: the search sets loading state.
+      queueMicrotask(() => {
+        void handleSearch('', true);
+      });
+    }
+  }, [searchSource, userId, handleSearch]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -203,7 +209,11 @@ export function useExerciseSearchHook({
   }, [queryClient, loggingLevel]);
 
   useEffect(() => {
-    if (searchSource === 'external') fetchProviders();
+    if (searchSource === 'external') {
+      queueMicrotask(() => {
+        void fetchProviders();
+      });
+    }
   }, [searchSource, fetchProviders]);
 
   const handleEquipmentToggle = (equipment: string) =>

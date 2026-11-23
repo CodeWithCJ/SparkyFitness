@@ -660,6 +660,192 @@ describe('useExternalFoodSearch', () => {
     });
   });
 
+  test('reports cooktool as a supported provider', () => {
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('banana', 'cooktool', {
+          providerId: 'provider-ctk-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('does not fetch for non-public cooktool without providerId', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('banana', 'cooktool'),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+    expect(result.current.searchResults).toEqual([]);
+  });
+
+  test('fetches for cooktool with providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: 'ing:6433',
+          name: 'Bananas, raw',
+          brand: undefined,
+          calories: 89,
+          protein: 1.1,
+          carbs: 22.8,
+          fat: 0.3,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'cooktool',
+        },
+      ])
+    );
+
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('banana', 'cooktool', {
+          providerId: 'provider-ctk-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'cooktool',
+        'banana',
+        1,
+        'provider-ctk-1',
+        undefined
+      );
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('cooktool');
+    });
+  });
+
+  test('reports nutrientgraph as a supported provider', () => {
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('pomme', 'nutrientgraph', {
+          providerId: 'provider-ng-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('does not fetch for non-public nutrientgraph without providerId', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('pomme', 'nutrientgraph'),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+    expect(result.current.searchResults).toEqual([]);
+  });
+
+  test('fetches for nutrientgraph with providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: 'ciqual:4008',
+          name: 'Potato, peeled, raw',
+          brand: undefined,
+          calories: 80,
+          protein: 2,
+          carbs: 17,
+          fat: 0.1,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'nutrientgraph',
+        },
+      ])
+    );
+
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('pomme', 'nutrientgraph', {
+          providerId: 'provider-ng-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'nutrientgraph',
+        'pomme',
+        1,
+        'provider-ng-1',
+        undefined
+      );
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('nutrientgraph');
+    });
+  });
+
+  test('reports food-info as a supported provider', () => {
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('banana', 'food-info', {
+          providerId: 'provider-fi-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+  });
+
+  test('does not fetch for non-public food-info without providerId', () => {
+    const { result } = renderHook(
+      () => useExternalFoodSearch('banana', 'food-info'),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    expect(result.current.isProviderSupported).toBe(true);
+    expect(mockSearchExternalFoods).not.toHaveBeenCalled();
+    expect(result.current.searchResults).toEqual([]);
+  });
+
+  test('fetches for food-info with providerId', async () => {
+    mockSearchExternalFoods.mockResolvedValue(
+      makePaginatedResult([
+        {
+          id: '790774',
+          name: 'Bananas, overripe, raw',
+          brand: undefined,
+          calories: 85,
+          protein: 0.7,
+          carbs: 20.1,
+          fat: 0.2,
+          serving_size: 100,
+          serving_unit: 'g',
+          source: 'food-info',
+        },
+      ])
+    );
+
+    const { result } = renderHook(
+      () =>
+        useExternalFoodSearch('banana', 'food-info', {
+          providerId: 'provider-fi-1',
+        }),
+      { wrapper: createQueryWrapper(queryClient) }
+    );
+
+    await waitFor(() => {
+      expect(mockSearchExternalFoods).toHaveBeenCalledWith(
+        'food-info',
+        'banana',
+        1,
+        'provider-fi-1',
+        undefined
+      );
+      expect(result.current.searchResults).toHaveLength(1);
+      expect(result.current.searchResults[0].source).toBe('food-info');
+    });
+  });
+
   describe('query key', () => {
     test('includes provider type and search term', () => {
       expect(externalFoodSearchQueryKey('openfoodfacts', 'banana')).toEqual([

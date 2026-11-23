@@ -11,6 +11,7 @@ import {
   pregnancyOverviewQueryKey,
 } from './queryKeys';
 import { useRefetchOnFocus } from './useRefetchOnFocus';
+import type { ServerConfig } from '../services/storage';
 import type { SharedPregnancy } from '@workspace/shared';
 
 /** Current active pregnancy record (or null when none). */
@@ -64,9 +65,16 @@ export function usePregnancyMutations() {
     queryClient.invalidateQueries({ queryKey: pregnancyOverviewQueryKey });
   };
 
+  // `serverConfig` binds a write to an account (the cycle setup's); without
+  // it, the active server when the request goes out.
   const createMutation = useMutation({
-    mutationFn: (body: Omit<SharedPregnancy, 'id' | 'user_id'>) =>
-      createPregnancy(body),
+    mutationFn: ({
+      body,
+      serverConfig,
+    }: {
+      body: Omit<SharedPregnancy, 'id' | 'user_id'>;
+      serverConfig?: ServerConfig;
+    }) => createPregnancy(body, serverConfig),
     onSuccess: invalidate,
   });
 
@@ -74,10 +82,12 @@ export function usePregnancyMutations() {
     mutationFn: ({
       id,
       body,
+      serverConfig,
     }: {
       id: string;
       body: Partial<SharedPregnancy>;
-    }) => updatePregnancy(id, body),
+      serverConfig?: ServerConfig;
+    }) => updatePregnancy(id, body, serverConfig),
     onSuccess: invalidate,
   });
 

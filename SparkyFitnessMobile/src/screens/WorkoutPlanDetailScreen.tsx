@@ -17,7 +17,6 @@ import {
 } from '../hooks';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import type { WorkoutPlanAssignment } from '../types/workoutPlans';
 import { formatDateLabel, toLocalDateString } from '../utils/dateUtils';
@@ -38,7 +37,6 @@ const WorkoutPlanDetailScreen: React.FC<WorkoutPlanDetailScreenProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const { runNavigationAction } = useNavigationActionGuard(navigation);
   const { preferences } = usePreferences();
@@ -342,10 +340,7 @@ const WorkoutPlanDetailScreen: React.FC<WorkoutPlanDetailScreenProps> = ({
     plan.entry_mode === 'prefill';
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ServerGate>
         <ScrollView

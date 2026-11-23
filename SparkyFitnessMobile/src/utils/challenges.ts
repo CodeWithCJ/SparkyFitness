@@ -1,0 +1,332 @@
+import type { TFunction } from 'i18next';
+import {
+  challengeLeaders,
+  challengeState,
+  challengeStateWords,
+  challengeToday,
+  challengeValueParts,
+  leadsChallenge,
+  localDateTimeToUtc,
+  ownChallengeStanding,
+  type ChallengeFormat,
+  type ChallengeMetric,
+  type ChallengePeriod,
+  type ChallengeRules,
+  type ChallengeState,
+  type ChallengeStandingsResponse,
+  type ChallengeSummary,
+  type ChallengeValueUnits,
+} from '@workspace/shared';
+import { formatLocalizedNumber, getAppLocale } from '../localization';
+import { energyUnitLabel } from './energyUnit';
+
+type StandingRow = ChallengeStandingsResponse['rows'][number];
+
+export type { ChallengeDistanceUnit } from '@workspace/shared';
+
+export type ChallengeUnits = ChallengeValueUnits;
+
+/** `data.kind` of the week notification, for the tap handler and cancelling. */
+export const CHALLENGE_WEEK_LEADER_KIND = 'challenge-week-leader';
+
+/** The hour (challenge time) of the "who leads this week" notification on a week's last day. */
+export const WEEK_LEADER_NOTIFICATION_HOUR = 20;
+
+export function challengeMetricLabel(
+  metric: ChallengeMetric,
+  t: TFunction
+): string {
+  switch (metric) {
+    case 'points':
+      return t('challenges.metric.points', { defaultValue: 'Points' });
+    case 'steps':
+      return t('challenges.metric.steps', { defaultValue: 'Steps' });
+    case 'active_minutes':
+      return t('challenges.metric.activeMinutes', {
+        defaultValue: 'Active minutes',
+      });
+    case 'hr_zone_minutes':
+      return t('challenges.metric.hrZoneMinutes', {
+        defaultValue: 'Heart-rate zone minutes',
+      });
+    case 'distance':
+      return t('challenges.metric.distance', { defaultValue: 'Distance' });
+    case 'workout_days':
+      return t('challenges.metric.workoutDays', {
+        defaultValue: 'Workout days',
+      });
+    case 'active_calories':
+      return t('challenges.metric.activeCalories', {
+        defaultValue: 'Active calories',
+      });
+    case 'elevation':
+      return t('challenges.metric.elevation', { defaultValue: 'Elevation' });
+  }
+}
+
+export function challengeFormatLabel(
+  format: ChallengeFormat,
+  t: TFunction
+): string {
+  switch (format) {
+    case 'leaderboard':
+      return t('challenges.format.leaderboard', {
+        defaultValue: 'Leaderboard',
+      });
+    case 'race':
+      return t('challenges.format.race', { defaultValue: 'Race to a target' });
+    case 'hit_goal':
+      return t('challenges.format.hitGoal', { defaultValue: 'Hit the goal' });
+    case 'group_goal':
+      return t('challenges.format.groupGoal', { defaultValue: 'Group goal' });
+  }
+}
+
+export function challengePeriodLabel(
+  period: ChallengePeriod,
+  t: TFunction
+): string {
+  switch (period) {
+    case 'day':
+      return t('challenges.period.day', { defaultValue: 'Daily' });
+    case 'week':
+      return t('challenges.period.week', { defaultValue: 'Weekly' });
+    case 'month':
+      return t('challenges.period.month', { defaultValue: 'Monthly' });
+    case 'challenge':
+      return t('challenges.period.challenge', {
+        defaultValue: 'Whole challenge',
+      });
+  }
+}
+
+/**
+ * The challenge's state with its days to go (`challengeDaysToGo`): "Starts in
+ * 5 days", "10 days left", "Last day", "Active" without an end date, "Ended".
+ * The shared `challengeStateWords` picks the words, as on the web.
+ */
+export function challengeStateText(
+  state: ChallengeState,
+  daysToGo: number | null,
+  t: TFunction
+): string {
+  const words = challengeStateWords(state, daysToGo);
+  switch (words.key) {
+    case 'ended':
+      return t('challenges.state.ended', { defaultValue: 'Ended' });
+    case 'startsTomorrow':
+      return t('challenges.state.startsTomorrow', {
+        defaultValue: 'Starts tomorrow',
+      });
+    case 'startsIn':
+      return t('challenges.state.startsIn', {
+        defaultValue_one: 'Starts in {{count}} day',
+        defaultValue_other: 'Starts in {{count}} days',
+        defaultValue: 'Starts in {{count}} days',
+        count: words.count,
+      });
+    case 'active':
+      return t('challenges.state.active', { defaultValue: 'Active' });
+    case 'lastDay':
+      return t('challenges.state.lastDay', { defaultValue: 'Last day' });
+    case 'daysLeft':
+      return t('challenges.state.daysLeft', {
+        defaultValue_one: '{{count}} day left',
+        defaultValue_other: '{{count}} days left',
+        defaultValue: '{{count}} days left',
+        count: words.count,
+      });
+  }
+}
+
+/** Short weekday names of the counted days, or null when every day counts. */
+export function challengeDaysLabel(
+  days: readonly number[],
+  locale: string = getAppLocale()
+): string | null {
+  if (days.length >= 7) return null;
+  // 2024-01-01 was a Monday, so ISO weekday n is 2024-01-0n.
+  return [...days]
+    .sort((a, b) => a - b)
+    .map((day) =>
+      new Date(2024, 0, day).toLocaleDateString(locale, { weekday: 'short' })
+    )
+    .join(', ');
+}
+
+/** "Points · Weekly · Leaderboard", plus the counted days when not all. */
+export function challengeRulesSummary(
+  rules: ChallengeRules,
+  t: TFunction,
+  locale?: string
+): string {
+  const parts = [
+    challengeMetricLabel(rules.metric, t),
+    challengePeriodLabel(rules.period, t),
+    challengeFormatLabel(rules.format, t),
+  ];
+  const days = challengeDaysLabel(rules.days, locale);
+  if (days) parts.push(days);
+  return parts.join(' · ');
+}
+
+/**
+ * A standing total in its metric's unit, using the account's distance and
+ * energy units. The shared `challengeValueParts` converts and rounds, as on
+ * the web.
+ */
+export function formatChallengeValue(
+  value: number,
+  metric: ChallengeMetric,
+  units: ChallengeUnits,
+  t: TFunction
+): string {
+  const parts = challengeValueParts(metric, value, units);
+  const amount = formatLocalizedNumber(parts.amount, {
+    minimumFractionDigits: parts.minimumFractionDigits,
+    maximumFractionDigits: parts.maximumFractionDigits,
+  });
+  switch (parts.key) {
+    case 'points':
+      return t('challenges.value.points', {
+        defaultValue: '{{value}} pts',
+        value: amount,
+      });
+    case 'steps':
+      return t('challenges.value.steps', {
+        defaultValue: '{{value}} steps',
+        value: amount,
+      });
+    case 'minutes':
+      return t('challenges.value.minutes', {
+        defaultValue: '{{value}} min',
+        value: amount,
+      });
+    case 'miles':
+      return t('challenges.value.miles', {
+        defaultValue: '{{value}} mi',
+        value: amount,
+      });
+    case 'km':
+      return t('challenges.value.km', {
+        defaultValue: '{{value}} km',
+        value: amount,
+      });
+    case 'days':
+      return t('challenges.value.workoutDays', {
+        defaultValue_one: '{{count}} day',
+        defaultValue_other: '{{count}} days',
+        defaultValue: '{{count}} days',
+        count: parts.amount,
+      });
+    case 'energy':
+      return `${amount} ${energyUnitLabel(units.energyUnit, t)}`;
+    case 'feet':
+      return t('challenges.value.feet', {
+        defaultValue: '{{value}} ft',
+        value: amount,
+      });
+    case 'metres':
+      return t('challenges.value.metres', {
+        defaultValue: '{{value}} m',
+        value: amount,
+      });
+  }
+}
+
+/** A trophy belongs to a final period's winners only. */
+export function showsTrophy(
+  standings: Pick<ChallengeStandingsResponse, 'final'>,
+  row: StandingRow
+): boolean {
+  return standings.final && row.winner;
+}
+
+/**
+ * When the week's "who leads" notification fires: 8 PM on the last day of a
+ * weekly period (Sunday, or the challenge's end day when it ends mid-week),
+ * in the challenge's time zone, where its week closes at midnight. Null for
+ * other periods, a frozen week or a time already past.
+ */
+export function weekLeaderNotificationDate(
+  challenge: Pick<ChallengeSummary, 'time_zone'> & {
+    rules: Pick<ChallengeRules, 'period'>;
+  },
+  standings: Pick<ChallengeStandingsResponse, 'period_end' | 'final'>,
+  now: Date
+): Date | null {
+  if (challenge.rules.period !== 'week' || standings.final) return null;
+  const hour = String(WEEK_LEADER_NOTIFICATION_HOUR).padStart(2, '0');
+  const local = `${standings.period_end}T${hour}:00`;
+  let fireAt: Date;
+  try {
+    fireAt = localDateTimeToUtc(local, challenge.time_zone);
+  } catch {
+    // A zone this device's Intl data does not know: device time instead.
+    fireAt = new Date(local);
+  }
+  return fireAt.getTime() > now.getTime() ? fireAt : null;
+}
+
+/** One weekly challenge's "who leads" notification, already formatted. */
+export interface ChallengeWeekNotice {
+  challengeId: string;
+  /** With the challenge's emoji in front when it has one. */
+  challengeName: string;
+  fireAt: Date;
+  leaderName: string;
+  /** The leader's total with its unit, e.g. "412 pts". */
+  leaderTotal: string;
+  leaderIsMe: boolean;
+  /** The user's own place, when they are not the leader. */
+  own: { rank: number; total: string } | null;
+}
+
+/**
+ * The week notifications to schedule: one per running weekly challenge whose
+ * week has a leader and whose evening is still ahead. Standings come from the
+ * last time the app loaded them, so the text says who leads, not who won.
+ */
+export function buildChallengeWeekNotices(
+  challenges: readonly ChallengeSummary[],
+  standingsById: ReadonlyMap<string, ChallengeStandingsResponse>,
+  units: ChallengeUnits,
+  t: TFunction,
+  now: Date
+): ChallengeWeekNotice[] {
+  const notices: ChallengeWeekNotice[] = [];
+  for (const challenge of challenges) {
+    if (
+      challengeState(challenge, challengeToday(challenge.time_zone, now)) !==
+      'running'
+    )
+      continue;
+    const standings = standingsById.get(challenge.id);
+    if (!standings) continue;
+    const fireAt = weekLeaderNotificationDate(challenge, standings, now);
+    const leader = challengeLeaders(standings.rows)[0] ?? null;
+    if (!fireAt || !leader) continue;
+    // In the units of the rules that score this week, sent with its standings
+    const metric = standings.rules.metric;
+    const own = ownChallengeStanding(standings.rows);
+    const leaderIsMe = leadsChallenge(own);
+    notices.push({
+      challengeId: challenge.id,
+      challengeName: challenge.emoji
+        ? `${challenge.emoji} ${challenge.name}`
+        : challenge.name,
+      fireAt,
+      leaderName: leader.display_name,
+      leaderTotal: formatChallengeValue(leader.total, metric, units, t),
+      leaderIsMe,
+      own:
+        own && !leaderIsMe
+          ? {
+              rank: own.rank,
+              total: formatChallengeValue(own.total, metric, units, t),
+            }
+          : null,
+    });
+  }
+  return notices;
+}

@@ -1,9 +1,6 @@
 package com.sparkyapps.sparkyfitness.wear
 
 import android.content.Context
-import android.media.AudioManager
-import android.os.SystemClock
-import android.view.KeyEvent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,9 +18,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Watch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -57,10 +63,12 @@ import androidx.wear.compose.foundation.lazy.ScalingLazyListState
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.CircularProgressIndicator
+import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.Text
 import com.SparkyApps.SparkyFitnessMobile.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
@@ -884,6 +892,8 @@ fun WatchKeypadSheet(
   title: String,
   initialValue: Double,
   allowDecimal: Boolean,
+  allowNegative: Boolean = false,
+  allowZero: Boolean = false,
   onConfirm: (Double) -> Unit,
   onCancel: () -> Unit
 ) {
@@ -898,7 +908,7 @@ fun WatchKeypadSheet(
     modifier = Modifier
       .fillMaxSize()
       .background(Color.Black)
-      .padding(horizontal = 10.dp, vertical = 8.dp),
+      .padding(horizontal = 10.dp, vertical = 18.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.SpaceBetween
   ) {
@@ -907,6 +917,20 @@ fun WatchKeypadSheet(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+      if (allowNegative) {
+        Box(
+          modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(SparkyColors.CardBg)
+            .clickable {
+              text = if (text.startsWith("-")) text.removePrefix("-") else "-$text"
+              Haptics.click()
+            }
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+          Text("±", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+        }
+      }
       Text(
         text = text.ifEmpty { "0" },
         fontSize = 18.sp,
@@ -948,11 +972,17 @@ fun WatchKeypadSheet(
                   when (key) {
                     "✓" -> {
                       val parsed = text.toDoubleOrNull()
-                      if (parsed != null && parsed > 0) onConfirm(parsed) else onCancel()
+                      val valid = when {
+                        parsed == null -> false
+                        allowNegative -> true
+                        allowZero -> parsed >= 0.0
+                        else -> parsed > 0.0
+                      }
+                      if (valid && parsed != null) onConfirm(parsed) else onCancel()
                     }
                     "C" -> text = ""
-                    "." -> if (!text.contains(".")) text += "."
-                    else -> if (text.length < 6) text += key
+                    "." -> if (!text.contains(".")) text += if (text.isEmpty() || text == "-") "0." else "."
+                    else -> if (text.length < 7) text += key
                   }
                 },
               contentAlignment = Alignment.Center
@@ -1228,75 +1258,232 @@ fun TrendChartPage(store: CheckInStore, isCurrentPage: Boolean = true) {
 }
 
 @Composable
-fun NowPlayingPage(isCurrentPage: Boolean = true) {
-  val context = LocalContext.current
-  val audioManager = remember(context) {
-    context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+fun NowPlayingPage(store: MediaControlStore, isCurrentPage: Boolean = true) {
+  val phoneMedia by store.phoneMedia.collectAsState()
+  val phoneReachable by store.phoneReachable.collectAsState()
+  val manualTarget by store.manualTarget.collectAsState()
+  val watchPlaying by store.watchPlaying.collectAsState()
+  val watchVolume by store.watchVolume.collectAsState()
+  val watchMaxVolume by store.watchMaxVolume.collectAsState()
+
+  DisposableEffect(isCurrentPage) {
+    store.setPageVisible(isCurrentPage)
+    onDispose {
+      if (isCurrentPage) {
+        store.setPageVisible(false)
+      }
+    }
   }
 
-  fun sendMediaKey(keyCode: Int) {
-    val am = audioManager ?: return
-    try {
-      val now = SystemClock.uptimeMillis()
-      am.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0))
-      am.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0))
-      Haptics.click()
-    } catch (_: Throwable) {}
+  val target = MediaControlLogic.resolveEffectiveTarget(
+    manualTarget = manualTarget,
+    phoneReachable = phoneReachable,
+    watchMusicActive = watchPlaying,
+    phoneMedia = phoneMedia
+  )
+  val isPhoneTarget = target == MediaTarget.PHONE
+  val isPlaying = if (isPhoneTarget) phoneMedia?.isPlaying == true else watchPlaying
+  val volumePercent = if (isPhoneTarget) {
+    phoneMedia?.volumePercent
+  } else if (watchMaxVolume > 0) {
+    ((watchVolume.coerceIn(0, watchMaxVolume) * 100f) / watchMaxVolume).roundToInt()
+  } else {
+    null
   }
 
-  fun adjustVolume(direction: Int) {
-    val am = audioManager ?: return
-    try {
-      am.adjustStreamVolume(
-        AudioManager.STREAM_MUSIC,
-        if (direction > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER,
-        AudioManager.FLAG_SHOW_UI
-      )
-      Haptics.click()
-    } catch (_: Throwable) {}
+  val primaryText: String
+  val secondaryText: String?
+  val primaryColor: Color
+  if (isPhoneTarget) {
+    val remote = phoneMedia
+    when {
+      remote?.title != null -> {
+        primaryText = remote.title
+        secondaryText = remote.secondaryLabel
+        primaryColor = Color.White
+      }
+      remote != null && !remote.hasMetadataAccess -> {
+        primaryText = stringResource(
+          if (remote.isPlaying) R.string.now_playing_playing_on_phone else R.string.now_playing_phone_media
+        )
+        secondaryText = stringResource(R.string.now_playing_enable_track_info)
+        primaryColor = SparkyColors.Cyan
+      }
+      remote != null && remote.hasMetadataAccess -> {
+        if (remote.isPlaying) {
+          primaryText = stringResource(R.string.now_playing_playing_on_phone)
+          secondaryText = remote.secondaryLabel
+          primaryColor = SparkyColors.Cyan
+        } else if (remote.hasSession) {
+          primaryText = remote.appName ?: stringResource(R.string.now_playing_phone_media)
+          secondaryText = remote.artist
+          primaryColor = SparkyColors.Cyan
+        } else {
+          primaryText = stringResource(R.string.now_playing_nothing_playing)
+          secondaryText = null
+          primaryColor = SparkyColors.Muted
+        }
+      }
+      else -> {
+        primaryText = stringResource(R.string.now_playing_title)
+        secondaryText = null
+        primaryColor = SparkyColors.Cyan
+      }
+    }
+  } else {
+    primaryText = stringResource(
+      if (watchPlaying) R.string.now_playing_playing_on_watch else R.string.now_playing_watch_media
+    )
+    secondaryText = null
+    primaryColor = SparkyColors.Cyan
   }
 
   Column(
     modifier = Modifier
       .fillMaxSize()
       .wearRotaryStepper(isCurrentPage = isCurrentPage, pixelsPerStep = 28f) { steps ->
-        if (steps > 0) adjustVolume(1) else if (steps < 0) adjustVolume(-1)
+        if (steps != 0) store.adjustVolume(steps, target)
       }
-      .padding(horizontal = 14.dp, vertical = 18.dp),
+      .padding(start = 14.dp, end = 14.dp, top = 24.dp, bottom = 18.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center
   ) {
+    Row(
+      modifier = Modifier
+        .clip(RoundedCornerShape(10.dp))
+        .background(SparkyColors.CardBg)
+        .then(
+          if (phoneReachable) {
+            Modifier.clickable { store.toggleTarget() }
+          } else {
+            Modifier
+          }
+        )
+        .padding(horizontal = 8.dp, vertical = 3.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+      Icon(
+        imageVector = if (isPhoneTarget) Icons.Rounded.PhoneAndroid else Icons.Rounded.Watch,
+        contentDescription = null,
+        tint = if (isPhoneTarget) SparkyColors.Cyan else SparkyColors.Muted,
+        modifier = Modifier.size(11.dp)
+      )
+      Text(
+        text = stringResource(
+          if (isPhoneTarget) R.string.now_playing_source_phone else R.string.now_playing_source_watch
+        ),
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Medium,
+        color = if (isPhoneTarget) SparkyColors.Cyan else SparkyColors.Muted
+      )
+    }
+
+    Spacer(Modifier.height(6.dp))
+
     Text(
-      text = stringResource(R.string.now_playing_title),
+      text = primaryText,
       fontSize = 13.sp,
       fontWeight = FontWeight.SemiBold,
-      color = SparkyColors.Cyan
+      color = primaryColor,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+      textAlign = TextAlign.Center,
+      modifier = Modifier.fillMaxWidth()
     )
-    Spacer(Modifier.height(10.dp))
+    if (secondaryText != null) {
+      Text(
+        text = secondaryText,
+        fontSize = 10.sp,
+        color = SparkyColors.Muted,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(top = 1.dp)
+      )
+    }
+
+    Spacer(Modifier.height(8.dp))
+
     Row(
       horizontalArrangement = Arrangement.spacedBy(10.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
-      RoundStepperButton("⏮") { sendMediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS) }
       Box(
         modifier = Modifier
-          .size(44.dp)
+          .size(36.dp)
           .clip(CircleShape)
-          .background(SparkyColors.Cyan)
-          .clickable { sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) },
+          .background(SparkyColors.CardBg)
+          .clickable { store.sendTransport(MediaTransportAction.PREVIOUS, target) },
         contentAlignment = Alignment.Center
       ) {
-        Text("⏯", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Icon(
+          imageVector = Icons.Rounded.SkipPrevious,
+          contentDescription = stringResource(R.string.now_playing_previous),
+          tint = Color.White,
+          modifier = Modifier.size(20.dp)
+        )
       }
-      RoundStepperButton("⏭") { sendMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT) }
+      Box(
+        modifier = Modifier
+          .size(46.dp)
+          .clip(CircleShape)
+          .background(SparkyColors.Cyan)
+          .clickable { store.sendTransport(MediaTransportAction.PLAY_PAUSE, target) },
+        contentAlignment = Alignment.Center
+      ) {
+        Icon(
+          imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+          contentDescription = stringResource(
+            if (isPlaying) R.string.now_playing_pause else R.string.now_playing_play
+          ),
+          tint = Color.Black,
+          modifier = Modifier.size(24.dp)
+        )
+      }
+      Box(
+        modifier = Modifier
+          .size(36.dp)
+          .clip(CircleShape)
+          .background(SparkyColors.CardBg)
+          .clickable { store.sendTransport(MediaTransportAction.NEXT, target) },
+        contentAlignment = Alignment.Center
+      ) {
+        Icon(
+          imageVector = Icons.Rounded.SkipNext,
+          contentDescription = stringResource(R.string.now_playing_next),
+          tint = Color.White,
+          modifier = Modifier.size(20.dp)
+        )
+      }
     }
-    Spacer(Modifier.height(10.dp))
+
+    Spacer(Modifier.height(8.dp))
+
     Row(
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      horizontalArrangement = Arrangement.spacedBy(6.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
-      SmallPillButton(stringResource(R.string.now_playing_vol_down), SparkyColors.CardBg, Color.White) { adjustVolume(-1) }
-      SmallPillButton(stringResource(R.string.now_playing_vol_up), SparkyColors.CardBg, Color.White) { adjustVolume(1) }
+      SmallPillButton(stringResource(R.string.now_playing_vol_down), SparkyColors.CardBg, Color.White) {
+        store.adjustVolume(-1, target)
+      }
+      if (volumePercent != null) {
+        val formattedVolume = NumberFormat.getPercentInstance(Locale.getDefault())
+          .format(volumePercent / 100.0)
+        Text(
+          text = formattedVolume,
+          fontSize = 11.sp,
+          fontWeight = FontWeight.Medium,
+          color = SparkyColors.Muted,
+          textAlign = TextAlign.Center,
+          modifier = Modifier.widthIn(min = 30.dp)
+        )
+      }
+      SmallPillButton(stringResource(R.string.now_playing_vol_up), SparkyColors.CardBg, Color.White) {
+        store.adjustVolume(1, target)
+      }
     }
   }
 }
@@ -1585,20 +1772,8 @@ fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
       }
     } else {
       item {
-        val resolvedDuration = model.inBedDurationText?.let {
-          stringResource(R.string.tile_sleep_in_bed, it)
-        } ?: model.durationText
-        val resolvedWindow = when (val window = model.window) {
-          is SleepWindow.NoSleepLogged -> stringResource(R.string.tile_sleep_no_logged)
-          is SleepWindow.BedWake -> "${window.bedtime} \u2013 ${window.wakeTime}"
-          is SleepWindow.Naps -> context.resources.getQuantityString(
-            R.plurals.tile_sleep_naps,
-            window.count,
-            window.count,
-            window.durationText
-          )
-          is SleepWindow.InBed -> stringResource(R.string.tile_sleep_in_bed, window.durationText)
-        }
+        val resolvedDuration = TileModels.formatSleepDuration(context, model)
+        val resolvedWindow = TileModels.formatSleepWindow(context, model.window)
         Column(
           horizontalAlignment = Alignment.CenterHorizontally,
           modifier = Modifier.padding(bottom = 8.dp)

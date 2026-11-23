@@ -52,9 +52,18 @@ interface FeatureDefinition {
 
 export const OPTIONAL_FEATURES = {
   cycle: { group: 'health', defaultEnabled: false, storage: 'cycleSettings' },
+  labResults: { group: 'health', defaultEnabled: true, storage: 'choices' },
 } as const satisfies Record<string, FeatureDefinition>;
 
 export type FeatureKey = keyof typeof OPTIONAL_FEATURES;
+
+/** The features switched through `feature_choices`, one choice per platform
+ * (`PATCH /api/user-preferences/features` takes only these). */
+export type ChoiceFeatureKey = {
+  [K in FeatureKey]: (typeof OPTIONAL_FEATURES)[K]['storage'] extends 'choices'
+    ? K
+    : never;
+}[FeatureKey];
 
 export const FEATURE_KEYS = Object.keys(OPTIONAL_FEATURES) as FeatureKey[];
 
@@ -177,14 +186,20 @@ export function isFeatureExplicitlyOff(
   return sources.choices?.[platform]?.[key] === false;
 }
 
+/** Whether something of this feature shows: always when it has none. */
+export function isShownByFeature(
+  feature: FeatureKey | undefined,
+  isEnabled: (key: FeatureKey) => boolean
+): boolean {
+  return feature === undefined || isEnabled(feature);
+}
+
 /** Keeps the items with no feature, and those whose feature is on. */
 export function filterByFeature<T extends { feature?: FeatureKey }>(
   items: readonly T[],
   isEnabled: (key: FeatureKey) => boolean
 ): T[] {
-  return items.filter(
-    (item) => item.feature === undefined || isEnabled(item.feature)
-  );
+  return items.filter((item) => isShownByFeature(item.feature, isEnabled));
 }
 
 /**
@@ -203,3 +218,29 @@ export const FEATURE_CUSTOM_CATEGORIES: Partial<
     'intermenstrual_bleeding',
   ],
 };
+
+/**
+ * The custom category names to leave out of this app's measurement lists: those
+ * of features the person turned off on purpose. Settings > Custom Categories
+ * keeps listing them, and health sync keeps storing them.
+ */
+export function hiddenFeatureCustomCategories(
+  platform: FeaturePlatform,
+  sources: FeatureSources
+): ReadonlySet<string> {
+  return new Set(
+    FEATURE_KEYS.filter((key) =>
+      isFeatureExplicitlyOff(key, platform, sources)
+    ).flatMap((key) => FEATURE_CUSTOM_CATEGORIES[key] ?? [])
+  );
+}
+
+/** The categories to list, less the hidden ones. */
+export function withoutHiddenCategories<T extends { name: string }>(
+  categories: readonly T[],
+  hidden: ReadonlySet<string>
+): T[] {
+  return hidden.size === 0
+    ? [...categories]
+    : categories.filter((category) => !hidden.has(category.name));
+}

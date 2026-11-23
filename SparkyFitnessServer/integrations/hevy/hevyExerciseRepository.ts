@@ -1,5 +1,6 @@
 import { getClient } from '../../db/poolManager.js';
 import type { PoolClient, QueryResult } from 'pg';
+import { emptyMuscleColumnSql } from '../../utils/muscleColumnSql.js';
 
 export interface HevyLibraryExercise {
   id: string;
@@ -41,7 +42,7 @@ async function findTemplateIdsWithMuscles(
     const result: QueryResult<{ source_id: string }> = await client.query(
       `SELECT DISTINCT source_id FROM exercises
        WHERE user_id = $1 AND source = 'Hevy' AND source_id = ANY($2::text[])
-         AND regexp_replace(COALESCE(primary_muscles, ''), '\\s', '', 'g') NOT IN ('', '[]', 'null')`,
+         AND NOT (${emptyMuscleColumnSql('primary_muscles')})`,
       [userId, templateIds]
     );
     return result.rows.map((row) => row.source_id);
@@ -85,17 +86,17 @@ async function fillMissingMuscles(
     await client.query(
       `UPDATE exercises SET
          primary_muscles = CASE WHEN
-           regexp_replace(COALESCE(primary_muscles, ''), '\\s', '', 'g') IN ('', '[]', 'null')
+           ${emptyMuscleColumnSql('primary_muscles')}
            THEN $1 ELSE primary_muscles END,
          secondary_muscles = CASE WHEN
-           regexp_replace(COALESCE(secondary_muscles, ''), '\\s', '', 'g') IN ('', '[]', 'null')
+           ${emptyMuscleColumnSql('secondary_muscles')}
            THEN $2 ELSE secondary_muscles END,
          source_id = $3, updated_at = NOW()
        WHERE id = $4 AND user_id = $5 AND source = 'Hevy'
          AND (source_id IS NULL OR source_id = '' OR source_id = $3)
          AND (source_id IS NULL OR source_id = ''
-           OR (regexp_replace(COALESCE(primary_muscles, ''), '\\s', '', 'g') IN ('', '[]', 'null') AND $1::text <> '[]')
-           OR (regexp_replace(COALESCE(secondary_muscles, ''), '\\s', '', 'g') IN ('', '[]', 'null') AND $2::text <> '[]'))`,
+           OR (${emptyMuscleColumnSql('primary_muscles')} AND $1::text <> '[]')
+           OR (${emptyMuscleColumnSql('secondary_muscles')} AND $2::text <> '[]'))`,
       [
         JSON.stringify(primary),
         JSON.stringify(secondary),

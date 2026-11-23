@@ -7,7 +7,7 @@ import {
   Text,
   TouchableOpacity,
   View,
-  type TextInput,
+  type TextInputInstance,
 } from 'react-native';
 import {
   KeyboardAvoidingView,
@@ -17,6 +17,7 @@ import { useCSSVariable } from 'uniwind';
 import { getConversionFactor } from '@workspace/shared';
 import { formatLocalizedNumber } from '../localization';
 import Button from './ui/Button';
+import SafeAreaModalBackdrop from './SafeAreaModalBackdrop';
 import StepperInput from './StepperInput';
 import Icon from './Icon';
 import { DECIMAL_INPUT_REGEX, parseDecimalInput } from '../utils/numericInput';
@@ -74,7 +75,7 @@ export default function IngredientQuantityModal({
 }: IngredientQuantityModalProps) {
   const { t } = useTranslation();
   const energyUnit = useEnergyUnit();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [accentColorRaw, textSecondaryColorRaw] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-secondary',
@@ -272,9 +273,7 @@ export default function IngredientQuantityModal({
     >
       <KeyboardProvider>
         <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-          <Pressable
-            className="flex-1 justify-center px-6"
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          <SafeAreaModalBackdrop
             onPress={onClose}
             accessibilityLabel={t('common.cancel', { defaultValue: 'Cancel' })}
           >
@@ -442,7 +441,7 @@ export default function IngredientQuantityModal({
                 </Button>
               </View>
             </Pressable>
-          </Pressable>
+          </SafeAreaModalBackdrop>
         </KeyboardAvoidingView>
       </KeyboardProvider>
     </Modal>

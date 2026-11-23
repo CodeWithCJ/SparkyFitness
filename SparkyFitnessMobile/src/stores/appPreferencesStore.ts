@@ -116,6 +116,7 @@ export const PREFERENCE_DEFAULTS = {
   exerciseCardVisible: true,
   hydrationCardVisible: true,
   caffeineCardVisible: true,
+  bloodAlcoholCardVisible: true,
   fastingCardVisible: true,
   cycleCardVisible: true,
   askSparkyVisible: true,
@@ -128,6 +129,7 @@ export const PREFERENCE_DEFAULTS = {
   mindfulnessCardVisible: true,
   oralCareCardVisible: false,
   labResultsCardVisible: true,
+  challengesCardVisible: true,
   trainingLoadCardVisible: true,
   dashboardCardOrder: [...DASHBOARD_CARD_KEYS] as DashboardCardKey[],
   medicationRemindersEnabled: true,
@@ -143,6 +145,7 @@ export const PREFERENCE_DEFAULTS = {
   checkinReminderTimes: [DEFAULT_CHECKIN_REMINDER_TIME] as string[],
   oralCareRemindersEnabled: false,
   oralCareReminderTimes: [...DEFAULT_ORAL_CARE_REMINDER_TIMES] as string[],
+  challengeWeekNotificationsEnabled: true,
   liquidGlassTabBarEnabled: false,
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
@@ -159,6 +162,7 @@ export const PREFERENCE_DEFAULTS = {
   focusNextSetOnRestEnd: true,
   plannedValuesAsPlaceholders: false,
   warmupCalculatorEnabled: true,
+  offlinePicturesOnMobileData: false,
   warmupMethod: DEFAULT_WARMUP_METHOD.map((step) => ({ ...step })),
   warmupPlateRounding: { ...DEFAULT_WARMUP_PLATE_ROUNDING },
   warmupDumbbellRounding: { ...DEFAULT_WARMUP_DUMBBELL_ROUNDING },
@@ -219,6 +223,7 @@ export type AppPreferencesData = {
   exerciseCardVisible: boolean;
   hydrationCardVisible: boolean;
   caffeineCardVisible: boolean;
+  bloodAlcoholCardVisible: boolean;
   fastingCardVisible: boolean;
   cycleCardVisible: boolean;
   askSparkyVisible: boolean;
@@ -231,6 +236,7 @@ export type AppPreferencesData = {
   mindfulnessCardVisible: boolean;
   oralCareCardVisible: boolean;
   labResultsCardVisible: boolean;
+  challengesCardVisible: boolean;
   trainingLoadCardVisible: boolean;
   dashboardCardOrder: DashboardCardKey[];
   medicationRemindersEnabled: boolean;
@@ -246,6 +252,7 @@ export type AppPreferencesData = {
   checkinReminderTimes: string[];
   oralCareRemindersEnabled: boolean;
   oralCareReminderTimes: string[];
+  challengeWeekNotificationsEnabled: boolean;
   liquidGlassTabBarEnabled: boolean;
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
@@ -293,6 +300,8 @@ export type AppPreferencesData = {
   plannedValuesAsPlaceholders: boolean;
   /** Offer "Add warm-ups" on an exercise's menu. */
   warmupCalculatorEnabled: boolean;
+  /** Download exercise pictures for offline use on mobile data too (#1983). */
+  offlinePicturesOnMobileData: boolean;
   /** The warm-up ramp: percent of the working weight x reps, ascending. */
   warmupMethod: WarmupMethodStep[];
   /** Step warm-up weights round to on a bar, per display unit. */
@@ -395,6 +404,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setExerciseCardVisible: (value: boolean) => void;
   setHydrationCardVisible: (value: boolean) => void;
   setCaffeineCardVisible: (value: boolean) => void;
+  setBloodAlcoholCardVisible: (value: boolean) => void;
   setFastingCardVisible: (value: boolean) => void;
   setCycleCardVisible: (value: boolean) => void;
   setAskSparkyVisible: (value: boolean) => void;
@@ -407,6 +417,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setMindfulnessCardVisible: (value: boolean) => void;
   setOralCareCardVisible: (value: boolean) => void;
   setLabResultsCardVisible: (value: boolean) => void;
+  setChallengesCardVisible: (value: boolean) => void;
   setTrainingLoadCardVisible: (value: boolean) => void;
   setDashboardCardOrder: (order: DashboardCardKey[]) => void;
   setMedicationRemindersEnabled: (value: boolean) => void;
@@ -423,6 +434,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setCheckinReminderTimes: (times: string[]) => void;
   setOralCareRemindersEnabled: (enabled: boolean) => void;
   setOralCareReminderTimes: (times: string[]) => void;
+  setChallengeWeekNotificationsEnabled: (enabled: boolean) => void;
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
@@ -439,6 +451,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setFocusNextSetOnRestEnd: (value: boolean) => void;
   setPlannedValuesAsPlaceholders: (value: boolean) => void;
   setWarmupCalculatorEnabled: (value: boolean) => void;
+  setOfflinePicturesOnMobileData: (value: boolean) => void;
   setWarmupMethod: (steps: readonly WarmupMethodStep[]) => void;
   setWarmupPlateRounding: (unit: 'kg' | 'lbs', value: number) => void;
   setWarmupDumbbellRounding: (unit: 'kg' | 'lbs', value: number) => void;
@@ -571,6 +584,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setExerciseCardVisible: (value) => set({ exerciseCardVisible: value }),
       setHydrationCardVisible: (value) => set({ hydrationCardVisible: value }),
       setCaffeineCardVisible: (value) => set({ caffeineCardVisible: value }),
+      setBloodAlcoholCardVisible: (value) =>
+        set({ bloodAlcoholCardVisible: value }),
       setFastingCardVisible: (value) => set({ fastingCardVisible: value }),
       setCycleCardVisible: (value) => set({ cycleCardVisible: value }),
       setAskSparkyVisible: (value) => set({ askSparkyVisible: value }),
@@ -589,6 +604,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setOralCareCardVisible: (value) => set({ oralCareCardVisible: value }),
       setLabResultsCardVisible: (value) =>
         set({ labResultsCardVisible: value }),
+      setChallengesCardVisible: (value) =>
+        set({ challengesCardVisible: value }),
       setTrainingLoadCardVisible: (value) =>
         set({ trainingLoadCardVisible: value }),
       setDashboardCardOrder: (order) => set({ dashboardCardOrder: order }),
@@ -615,6 +632,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ oralCareRemindersEnabled: enabled }),
       setOralCareReminderTimes: (times) =>
         set({ oralCareReminderTimes: normalizeOralCareReminderTimes(times) }),
+      setChallengeWeekNotificationsEnabled: (enabled) =>
+        set({ challengeWeekNotificationsEnabled: enabled }),
       setLiquidGlassTabBarEnabled: (value) =>
         set({ liquidGlassTabBarEnabled: value }),
       setActiveWorkoutMetricColumn: (value) =>
@@ -641,6 +660,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ plannedValuesAsPlaceholders: value }),
       setWarmupCalculatorEnabled: (value) =>
         set({ warmupCalculatorEnabled: value }),
+      setOfflinePicturesOnMobileData: (value) =>
+        set({ offlinePicturesOnMobileData: value }),
       setWarmupMethod: (steps) =>
         set({ warmupMethod: normalizeWarmupMethod(steps) }),
       setWarmupPlateRounding: (unit, value) =>
@@ -821,6 +842,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         exerciseCardVisible: state.exerciseCardVisible,
         hydrationCardVisible: state.hydrationCardVisible,
         caffeineCardVisible: state.caffeineCardVisible,
+        bloodAlcoholCardVisible: state.bloodAlcoholCardVisible,
         fastingCardVisible: state.fastingCardVisible,
         cycleCardVisible: state.cycleCardVisible,
         askSparkyVisible: state.askSparkyVisible,
@@ -833,6 +855,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         mindfulnessCardVisible: state.mindfulnessCardVisible,
         oralCareCardVisible: state.oralCareCardVisible,
         labResultsCardVisible: state.labResultsCardVisible,
+        challengesCardVisible: state.challengesCardVisible,
         trainingLoadCardVisible: state.trainingLoadCardVisible,
         dashboardCardOrder: state.dashboardCardOrder,
         medicationRemindersEnabled: state.medicationRemindersEnabled,
@@ -848,6 +871,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         checkinReminderTimes: state.checkinReminderTimes,
         oralCareRemindersEnabled: state.oralCareRemindersEnabled,
         oralCareReminderTimes: state.oralCareReminderTimes,
+        challengeWeekNotificationsEnabled:
+          state.challengeWeekNotificationsEnabled,
         liquidGlassTabBarEnabled: state.liquidGlassTabBarEnabled,
         // Older persisted blobs without these keys backfill via the default
         // shallow merge — no version bump needed.
@@ -866,6 +891,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         focusNextSetOnRestEnd: state.focusNextSetOnRestEnd,
         plannedValuesAsPlaceholders: state.plannedValuesAsPlaceholders,
         warmupCalculatorEnabled: state.warmupCalculatorEnabled,
+        offlinePicturesOnMobileData: state.offlinePicturesOnMobileData,
         warmupMethod: state.warmupMethod,
         warmupPlateRounding: state.warmupPlateRounding,
         warmupDumbbellRounding: state.warmupDumbbellRounding,

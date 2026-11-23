@@ -7,7 +7,6 @@ import Toast from 'react-native-toast-message';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useCardioSessionDetail } from '../hooks/useCardioSessionDetail';
 import { getAppLocale } from '../localization';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import {
   METERS_PER_KM,
@@ -55,7 +54,6 @@ const CardioSessionScreen: React.FC<CardioSessionScreenProps> = ({
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const header = useScreenHeader({
     title: session.exerciseName,
@@ -170,10 +168,7 @@ const CardioSessionScreen: React.FC<CardioSessionScreenProps> = ({
       : 0;
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1"

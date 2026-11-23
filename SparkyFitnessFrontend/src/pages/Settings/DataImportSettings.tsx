@@ -48,10 +48,22 @@ const ImportLauncher = ({
   icon: LucideIcon;
   title: string;
   description: string;
-  children: (close: () => void) => ReactNode;
+  children: (
+    close: () => void,
+    onDirtyChange: (dirty: boolean) => void
+  ) => ReactNode;
 }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const openDialog = () => {
+    setDirty(false);
+    setOpen(true);
+  };
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) setDirty(false);
+  };
   return (
     <div className="flex items-start justify-between gap-4 rounded-md border p-3">
       <div className="flex items-start gap-3">
@@ -61,23 +73,24 @@ const ImportLauncher = ({
           <p className="text-xs text-muted-foreground">{description}</p>
         </div>
       </div>
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <Button
           variant="outline"
           className="flex shrink-0 items-center gap-2"
-          onClick={() => setOpen(true)}
+          onClick={openDialog}
         >
           <Upload className="h-4 w-4" />
           {t('settings.dataImport.importButton', 'Import')}
         </Button>
         <DialogContent
           requireConfirmation
+          confirmWhen={dirty}
           className="w-[98vw] max-w-[1800px] h-[92vh] max-h-[92vh] overflow-y-auto"
         >
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
           </DialogHeader>
-          {children(() => setOpen(false))}
+          {children(() => setOpen(false), setDirty)}
         </DialogContent>
       </Dialog>
     </div>
@@ -155,7 +168,12 @@ export const DataImportSettings = () => {
             'Add reusable foods (with servings and nutrition) to your food library.'
           )}
         >
-          {() => <FoodImportFromCSV onSave={handleFoodSave} />}
+          {(_, onDirtyChange) => (
+            <FoodImportFromCSV
+              onSave={handleFoodSave}
+              onDirtyChange={onDirtyChange}
+            />
+          )}
         </ImportLauncher>
         <ImportLauncher
           icon={NotebookPen}
@@ -165,7 +183,12 @@ export const DataImportSettings = () => {
             'Log past meals to your food diary by date and meal type, matching or creating foods as needed.'
           )}
         >
-          {() => <FoodDiaryImportCSV onSave={handleFoodDiarySave} />}
+          {(_, onDirtyChange) => (
+            <FoodDiaryImportCSV
+              onSave={handleFoodDiarySave}
+              onDirtyChange={onDirtyChange}
+            />
+          )}
         </ImportLauncher>
 
         <ImportLauncher
@@ -179,7 +202,9 @@ export const DataImportSettings = () => {
             'Import body measurements, sleep, vitals, activity, hydration, and mood.'
           )}
         >
-          {() => <HealthDataImportCSV />}
+          {(_, onDirtyChange) => (
+            <HealthDataImportCSV onDirtyChange={onDirtyChange} />
+          )}
         </ImportLauncher>
 
         <ImportLauncher
@@ -193,7 +218,12 @@ export const DataImportSettings = () => {
             'Add reusable exercises to your exercise database.'
           )}
         >
-          {() => <ExerciseImportCSV onSave={handleExerciseSave} />}
+          {(_, onDirtyChange) => (
+            <ExerciseImportCSV
+              onSave={handleExerciseSave}
+              onDirtyChange={onDirtyChange}
+            />
+          )}
         </ImportLauncher>
 
         <ImportLauncher
@@ -207,8 +237,11 @@ export const DataImportSettings = () => {
             'Import past workouts, sets, reps, and weights.'
           )}
         >
-          {(close) => (
-            <ExerciseEntryHistoryImportCSV onImportComplete={close} />
+          {(close, onDirtyChange) => (
+            <ExerciseEntryHistoryImportCSV
+              onImportComplete={close}
+              onDirtyChange={onDirtyChange}
+            />
           )}
         </ImportLauncher>
 
@@ -223,7 +256,9 @@ export const DataImportSettings = () => {
             'Import workouts and activity data from binary .fit files.'
           )}
         >
-          {() => <ExerciseImportFit />}
+          {(_, onDirtyChange) => (
+            <ExerciseImportFit onDirtyChange={onDirtyChange} />
+          )}
         </ImportLauncher>
       </div>
     </div>

@@ -1,17 +1,13 @@
 import React, { useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { CartesianChart, Line } from 'victory-native';
-import { DashPathEffect } from '@shopify/react-native-skia';
-import { useCSSVariable } from 'uniwind';
 import {
   activeCaffeineAt,
   caffeineCurve,
   thresholdCrossingTime,
 } from '@workspace/shared';
 import type { CaffeineActiveResponse } from '@workspace/shared';
-import { useChartFont, CHART_LABEL_FONT_SIZE } from './charts/chartFormatting';
-import LineSeriesMark from './charts/LineSeriesMark';
+import KineticsCurveChart from './charts/KineticsCurveChart';
 import { usePreferences } from '../hooks/usePreferences';
 import {
   formatDateToTimeLabel,
@@ -36,13 +32,7 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
   isLoading,
 }) => {
   const { t } = useTranslation();
-  const font = useChartFont(CHART_LABEL_FONT_SIZE);
   const { preferences } = usePreferences();
-  const [accentColor, dangerColor, textMuted] = useCSSVariable([
-    '--color-accent-primary',
-    '--color-icon-danger',
-    '--color-text-muted',
-  ]) as [string, string, string];
 
   const clockLabel = (value: number | string | Date) => {
     const d = value instanceof Date ? value : new Date(value);
@@ -125,10 +115,8 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
       kinetics.half_life_hours,
       15
     ).map((point) => ({
-      ...point,
-      // A constant series is how a threshold line is drawn here: victory-native
-      // has no reference-line primitive.
-      threshold: kinetics.threshold_mg,
+      t: point.t,
+      value: point.mg,
     }));
   }, [kinetics, windowMs]);
 
@@ -214,69 +202,19 @@ const CaffeineCard: React.FC<CaffeineCardProps> = ({
         </View>
       </View>
 
-      <View style={{ height: 150 }} testID="caffeine-chart">
-        <CartesianChart
-          data={chartData}
-          xKey="t"
-          yKeys={['mg', 'threshold']}
-          domainPadding={{ left: 10, right: 10, top: 12 }}
-          xAxis={{
-            font,
-            tickCount: 4,
-            labelColor: textMuted,
-            formatXLabel: (value: number) => clockLabel(value),
-          }}
-          yAxis={[{ font, tickCount: 4, labelColor: textMuted }]}
-        >
-          {({ points }) => (
-            <>
-              {/* Dashed so it reads as a limit rather than a second series. */}
-              <Line
-                points={points.threshold}
-                color={dangerColor}
-                strokeWidth={1}
-              >
-                <DashPathEffect intervals={[4, 4]} />
-              </Line>
-              <LineSeriesMark
-                points={points.mg}
-                color={accentColor}
-                strokeWidth={2}
-                curveType="linear"
-                connectMissingData
-              />
-            </>
-          )}
-        </CartesianChart>
-      </View>
-
-      {/* The plot carries two series and no axis legend, so name them. */}
-      <View className="flex-row justify-center items-center gap-4 mt-1">
-        <View className="flex-row items-center gap-1.5">
-          <View
-            style={{ width: 14, height: 2, backgroundColor: accentColor }}
-          />
-          <Text className="text-text-muted text-[11px]">
-            {t('caffeine.legendCurve', { defaultValue: 'Active caffeine' })}
-          </Text>
-        </View>
-        <View className="flex-row items-center gap-1.5">
-          <View
-            style={{
-              width: 14,
-              height: 0,
-              borderTopWidth: 1,
-              borderStyle: 'dashed',
-              borderColor: dangerColor,
-            }}
-          />
-          <Text className="text-text-muted text-[11px]">
-            {t('caffeine.legendThreshold', {
-              defaultValue: '{{threshold}}mg threshold',
-            }).replace('{{threshold}}', String(kinetics.threshold_mg))}
-          </Text>
-        </View>
-      </View>
+      <KineticsCurveChart
+        data={chartData}
+        testID="caffeine-chart"
+        curveLabel={t('caffeine.legendCurve', {
+          defaultValue: 'Active caffeine',
+        })}
+        threshold={{
+          value: kinetics.threshold_mg,
+          label: t('caffeine.legendThreshold', {
+            defaultValue: '{{threshold}}mg threshold',
+          }).replace('{{threshold}}', String(kinetics.threshold_mg)),
+        }}
+      />
 
       <Text className="text-text-muted text-xs text-center mt-1">
         {crossingAt && new Date(crossingAt).getTime() >= dayStartMs

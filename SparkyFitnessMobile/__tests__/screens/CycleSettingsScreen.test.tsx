@@ -1,15 +1,20 @@
 import React from 'react';
+import { Alert, type AlertButton } from 'react-native';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Toast from 'react-native-toast-message';
 import CycleSettingsScreen from '../../src/screens/CycleSettingsScreen';
 import { cycleSettingsQueryKey } from '../../src/hooks/queryKeys';
-import { putSettings } from '../../src/services/api/cycleApi';
+import { getSettings, putSettings } from '../../src/services/api/cycleApi';
+import { showServerOnScreen, testServer } from '../hooks/queryTestUtils';
 
 jest.mock('../../src/services/api/cycleApi', () => ({
   ...jest.requireActual('../../src/services/api/cycleApi'),
+  getSettings: jest.fn(),
   putSettings: jest.fn(),
 }));
 
+const mockGetSettings = getSettings as jest.MockedFunction<typeof getSettings>;
 const mockPutSettings = putSettings as jest.MockedFunction<typeof putSettings>;
 
 jest.mock('../../src/components/BottomSheetPicker', () => {
@@ -69,7 +74,10 @@ function renderScreen(initialSettings: any) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   });
-  queryClient.setQueryData(cycleSettingsQueryKey, initialSettings);
+  showServerOnScreen(queryClient);
+  if (initialSettings !== undefined) {
+    queryClient.setQueryData(cycleSettingsQueryKey, initialSettings);
+  }
   return {
     queryClient,
     ...render(
@@ -93,6 +101,7 @@ const baseSettings = {
   dismissed_prompts: [],
   terminology: 'default',
   discreet_mode: false,
+  onboarded_at: '2026-07-08T00:00:00Z',
 };
 
 describe('CycleSettingsScreen', () => {
@@ -104,11 +113,91 @@ describe('CycleSettingsScreen', () => {
     }));
   });
 
-  it('renders settings fields when enabled is true', async () => {
+  it('renders settings fields while cycle is on and set up', async () => {
     const { getByText } = renderScreen(baseSettings);
-    expect(getByText('Enable Cycle & Pregnancy Tracking')).toBeTruthy();
+    expect(getByText('Turned on')).toBeTruthy();
     expect(getByText('Tracking Mode')).toBeTruthy();
     expect(getByText('Birth Control Method')).toBeTruthy();
+  });
+
+  it('has no switch of its own, and links to Features', () => {
+    const { getByText, queryByText } = renderScreen(baseSettings);
+    expect(queryByText('Enable Cycle & Pregnancy Tracking')).toBeNull();
+    fireEvent.press(getByText('Turned on'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('FeatureSettings');
+  });
+
+  it('shows cycle as off, instead of loading forever, when it was never set up', () => {
+    const { getByText, queryByText } = renderScreen(null);
+    expect(getByText('Turned off')).toBeTruthy();
+    expect(queryByText('Tracking Mode')).toBeNull();
+    expect(queryByText('Reset Onboarding Wizard')).toBeNull();
+  });
+
+  it('hides the details while cycle is turned off', () => {
+    const { getByText, queryByText } = renderScreen({
+      ...baseSettings,
+      enabled: false,
+    });
+    expect(getByText('Turned off')).toBeTruthy();
+    expect(queryByText('Tracking Mode')).toBeNull();
+  });
+
+  it('offers the setup, not the details, while cycle is on but not set up', () => {
+    const { getByText, queryByText } = renderScreen({
+      ...baseSettings,
+      onboarded_at: null,
+    });
+    expect(queryByText('Tracking Mode')).toBeNull();
+    fireEvent.press(getByText('Set up'));
+    expect(mockNavigation.navigate).toHaveBeenCalledWith('CycleOnboarding');
+  });
+
+  it('offers Retry when the settings could not load', async () => {
+    mockGetSettings
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(baseSettings);
+    const { findByText, queryByText } = renderScreen(undefined);
+    fireEvent.press(await findByText('Retry'));
+    expect(await findByText('Tracking Mode')).toBeTruthy();
+    expect(queryByText('Retry')).toBeNull();
+  });
+
+  describe('reset', () => {
+    const confirmReset = (getByText: (text: string) => unknown) => {
+      const alert = jest.spyOn(Alert, 'alert');
+      fireEvent.press(getByText('Reset Onboarding Wizard') as never);
+      const buttons = alert.mock.calls[0][2] as AlertButton[];
+      buttons.find((button) => button.style === 'destructive')?.onPress?.();
+    };
+    const successToast = () =>
+      jest
+        .mocked(Toast.show)
+        .mock.calls.some(([options]) => options?.type === 'success');
+
+    it('says it is done once the server confirms it', async () => {
+      const { getByText } = renderScreen(baseSettings);
+      confirmReset(getByText);
+      await waitFor(() =>
+        expect(mockPutSettings).toHaveBeenCalledWith(
+          { reset_onboarding: true },
+          testServer
+        )
+      );
+      await waitFor(() => expect(successToast()).toBe(true));
+    });
+
+    it('never says it is done when it failed', async () => {
+      mockPutSettings.mockRejectedValueOnce(new Error('offline'));
+      const { getByText } = renderScreen(baseSettings);
+      confirmReset(getByText);
+      await waitFor(() =>
+        expect(jest.mocked(Toast.show)).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'error' })
+        )
+      );
+      expect(successToast()).toBe(false);
+    });
   });
 
   it('switches the native header title on discreet mode', () => {
@@ -139,9 +228,10 @@ describe('CycleSettingsScreen', () => {
     fireEvent(cycleLengthInput, 'blur');
 
     await waitFor(() => {
-      expect(mockPutSettings).toHaveBeenCalledWith({
-        avg_cycle_length_override: null,
-      });
+      expect(mockPutSettings).toHaveBeenCalledWith(
+        { avg_cycle_length_override: null },
+        testServer
+      );
     });
   });
 });

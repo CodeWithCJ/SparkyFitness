@@ -1,11 +1,18 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, Text, View, type TextInput } from 'react-native';
+import {
+  Modal,
+  Pressable,
+  Text,
+  View,
+  type TextInputInstance,
+} from 'react-native';
 import {
   KeyboardAvoidingView,
   KeyboardProvider,
 } from 'react-native-keyboard-controller';
 import Button from './ui/Button';
+import SafeAreaModalBackdrop from './SafeAreaModalBackdrop';
 import FormInput from './FormInput';
 
 interface ActiveWorkoutRenameModalProps {
@@ -27,7 +34,7 @@ export default function ActiveWorkoutRenameModal({
   onSubmit,
 }: ActiveWorkoutRenameModalProps) {
   const { t } = useTranslation();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [value, setValue] = useState(initialName);
   // Re-seed the field to the current name each time the dialog opens.
   const [wasVisible, setWasVisible] = useState(visible);
@@ -53,9 +60,7 @@ export default function ActiveWorkoutRenameModal({
           keyboard on both platforms (RN's own KAV is a no-op on Android). */}
       <KeyboardProvider>
         <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-          <Pressable
-            className="flex-1 justify-center px-6"
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          <SafeAreaModalBackdrop
             onPress={onCancel}
             accessibilityLabel={t('workout.dismissRename', {
               defaultValue: 'Dismiss rename',
@@ -95,7 +100,7 @@ export default function ActiveWorkoutRenameModal({
                 </Button>
               </View>
             </Pressable>
-          </Pressable>
+          </SafeAreaModalBackdrop>
         </KeyboardAvoidingView>
       </KeyboardProvider>
     </Modal>

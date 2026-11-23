@@ -132,6 +132,19 @@ export interface LiftosaurMeasurementItem {
   date?: string; // ISO string
 }
 
+/** One entry of GET /api/v1/measurements (keys the user has values for). */
+export interface LiftosaurMeasurementIndexEntry {
+  key: string;
+  category?: string;
+  count?: number;
+  latest?: LiftosaurMeasurementItem;
+}
+
+/** The `data` envelope of GET /api/v1/measurements. */
+export interface LiftosaurMeasurementIndexData {
+  measurements: LiftosaurMeasurementIndexEntry[];
+}
+
 export interface LiftosaurMeasurementResponseData {
   key: string;
   category: string;

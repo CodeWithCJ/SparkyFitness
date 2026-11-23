@@ -24,7 +24,9 @@ describe('buildWidgetKeys', () => {
       'meal:a',
       'meal:b',
       'exercise',
+      'challenges',
       'caffeine',
+      'bloodAlcohol',
     ]);
   });
 });

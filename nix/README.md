@@ -40,7 +40,7 @@ nix build .#sparkyfitness-garmin
 
 ```bash
 nix develop
-# provides node 24, pnpm and postgresql
+# provides node 26, pnpm and postgresql
 ```
 
 ## NixOS deployment

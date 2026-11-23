@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   calculatePlateLoad,
   plateCalcInputFor,
@@ -53,6 +54,7 @@ export default function PlateCalculatorSheet({
       : (result?.below ?? result?.above ?? null);
   const ownedPlates = inventory.plates.filter((plate) => plate.pairs > 0);
 
+  const insets = useSafeAreaInsets();
   const handleManage = () => {
     onClose();
     if (navigationRef?.isReady?.()) navigationRef.navigate('PlateInventory');
@@ -67,7 +69,14 @@ export default function PlateCalculatorSheet({
     >
       <Pressable
         className="flex-1 justify-end"
-        style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+        // The sheet sits inside the safe area: beside the Duo's vertical bar
+        // the side inset is the strip, and a full-width sheet runs under it.
+        style={{
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+          paddingTop: insets.top,
+        }}
         onPress={onClose}
         accessibilityLabel={t('plates.dismiss', {
           defaultValue: 'Close plate calculator',

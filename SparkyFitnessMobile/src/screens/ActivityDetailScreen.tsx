@@ -18,7 +18,6 @@ import ProgramWorkoutBadge from '../components/recording/ProgramWorkoutBadge';
 import FitnessTestBadge from '../components/recording/FitnessTestBadge';
 import ShoePickerCard from '../components/ShoePickerCard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   useScreenHeader,
   SAVE_LABEL,
@@ -101,7 +100,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-border-subtle',
     '--color-text-muted',
   ]) as [string, string, string];
-  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { getImageSource } = useExerciseImageSource();
 
@@ -246,7 +244,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // is still honored at runtime; the compiler just skips optimizing this
   // component. Suppress the bailout rather than rewrite the working id counter.
   const addDraftSet = useCallback(
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     (_exerciseId?: string) => {
       const id = `set-${nextSetIdRef.current++}`;
       setDraftSets((prev) => {
@@ -699,10 +696,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <KeyboardAwareScrollView

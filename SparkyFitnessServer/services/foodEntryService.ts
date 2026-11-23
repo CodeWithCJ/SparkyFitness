@@ -3,6 +3,7 @@ import foodRepository from '../models/foodRepository.js';
 import foodEntryMealRepository, {
   type MealEntryMoveResult,
 } from '../models/foodEntryMealRepository.js';
+import { isUniqueViolationOn } from '../utils/uniqueViolation.js';
 import mealRepository from '../models/mealRepository.js';
 import familyAccessRepository from '../models/familyAccessRepository.js';
 import { log } from '../config/logging.js';
@@ -29,6 +30,8 @@ import {
   type FoodEntryCopyFingerprintVersion,
   hasExactReviewedFoodEntrySnapshot,
   isDayString,
+  isCookedWeightUnit,
+  type LastCookedFoodEntry,
   foodVolumeToMl,
   resolveExerciseCalories,
 } from '@workspace/shared';
@@ -121,6 +124,9 @@ interface LoggedComponentEntry {
 }
 
 /** A logged-meal payload as it arrives from the diary UI. */
+/** The unique index behind `food_entry_meals.client_id`, to spot a lost race. */
+const FOOD_ENTRY_MEAL_CLIENT_ID_INDEX = 'idx_food_entry_meals_user_client_id';
+
 interface LoggedMealInput {
   user_id?: string;
   meal_template_id?: string | null;
@@ -138,6 +144,8 @@ interface LoggedMealInput {
   foods?: MealFoodInput[];
   // Set by newer clients so the server can tell which nutrition model to use.
   _clientMealModelVersion?: number;
+  /** Replay key from the mobile offline queue; a repeat logs nothing new. */
+  client_id?: string | null;
 }
 
 /**
@@ -763,12 +771,62 @@ async function importFoodDiaryEntriesInBulk(
   };
 }
 
+function cookedWeightUnitError() {
+  return Object.assign(
+    new Error(
+      'cooked_quantity is only allowed for weight units (g, kg, oz, lb).'
+    ),
+    { statusCode: 400 }
+  );
+}
+
+/**
+ * The cooked weight an updated entry ends up with (#3534). A value the client
+ * sends wins. Without one, a quantity or unit change on its own clears it,
+ * because the stored cooked weight belonged to the old quantity and would
+ * skew the factor pre-filled next time. Otherwise the stored value stays.
+ */
+function resolveUpdatedCookedQuantity(
+  entryData: FoodEntryInput,
+  existingEntry: {
+    quantity?: unknown;
+    unit?: string | null;
+    cooked_quantity?: number | null;
+  }
+): number | null {
+  const finalUnit =
+    entryData.unit !== undefined ? entryData.unit : existingEntry.unit;
+  if (entryData.cooked_quantity !== undefined) {
+    if (entryData.cooked_quantity !== null && !isCookedWeightUnit(finalUnit)) {
+      throw cookedWeightUnitError();
+    }
+    return entryData.cooked_quantity;
+  }
+  const quantityChanged =
+    entryData.quantity !== undefined &&
+    entryData.quantity !== null &&
+    Number(entryData.quantity) !== Number(existingEntry.quantity);
+  const unitChanged =
+    entryData.unit !== undefined && entryData.unit !== existingEntry.unit;
+  if (quantityChanged || unitChanged || !isCookedWeightUnit(finalUnit)) {
+    return null;
+  }
+  return existingEntry.cooked_quantity ?? null;
+}
+
 async function createFoodEntry(
   authenticatedUserId: string,
   actingUserId: string,
   entryData: FoodEntryInput
 ) {
   try {
+    if (
+      entryData.cooked_quantity !== undefined &&
+      entryData.cooked_quantity !== null &&
+      !isCookedWeightUnit(entryData.unit)
+    ) {
+      throw cookedWeightUnitError();
+    }
     const entryWithUser = {
       ...entryData,
       user_id: entryData.user_id || authenticatedUserId,
@@ -969,6 +1027,7 @@ async function updateFoodEntry(
         // a quantity tweak) omit the key and must not wipe the user's note.
         notes:
           entryData.notes !== undefined ? entryData.notes : existingEntry.notes,
+        cooked_quantity: resolveUpdatedCookedQuantity(entryData, existingEntry),
       }, // Ensure meal_type_id and correct variant_id are passed
       newSnapshotData // Pass the new snapshot data
     );
@@ -1044,6 +1103,19 @@ async function updateFoodEntry(
           const oldDate = String(linkedRow.entry_date).substring(0, 10);
           const newDate = String(updatedEntry.entry_date).substring(0, 10);
 
+          // Both days' totals are locked, in the one fixed order, before the
+          // ledger row moves, so a move one way and a move the other way
+          // cannot wait on each other.
+          const source = linkedRow.source || 'manual';
+          await measurementRepository.lockWaterAggregates(
+            client,
+            authenticatedUserId,
+            [
+              { entryDate: oldDate, source },
+              { entryDate: newDate, source },
+            ]
+          );
+
           await client.query(
             `UPDATE water_intake_entries
              SET water_ml = $1, entry_date = $2
@@ -1053,7 +1125,6 @@ async function updateFoodEntry(
 
           // Moving the entry to another day leaves two days to rebuild.
           const dates = oldDate === newDate ? [newDate] : [newDate, oldDate];
-          const source = linkedRow.source || 'manual';
           for (const date of dates) {
             await measurementRepository.recomputeWaterAggregate(
               client,
@@ -1218,6 +1289,24 @@ async function getFoodEntriesByDate(
     throw error;
   }
 }
+/**
+ * The person's most recent cooked entry of a food, for pre-filling the batch
+ * yield in the add form (#3534). Null when there is none.
+ */
+async function getLastCookedFoodEntry(
+  targetUserId: string,
+  foodId: string
+): Promise<LastCookedFoodEntry | null> {
+  const row = await foodRepository.getLastCookedFoodEntry(targetUserId, foodId);
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    entry_date: String(row.entry_date),
+    quantity: Number(row.quantity),
+    unit: row.unit ?? null,
+    cooked_quantity: Number(row.cooked_quantity),
+  };
+}
 async function getFoodEntriesByDateRange(
   authenticatedUserId: string,
   targetUserId: string,
@@ -1239,6 +1328,14 @@ async function getFoodEntriesByDateRange(
     );
     throw error;
   }
+}
+// A meal container as seen on the target date: enough to match an equivalent
+// copy (name + slot + type) and link new entries to it.
+interface TargetMealRef {
+  id: string;
+  name: string;
+  entry_time: string | null;
+  meal_type_id: string;
 }
 async function copyFoodEntries(
   authenticatedUserId: string,
@@ -1287,6 +1384,51 @@ async function copyFoodEntries(
     // Key: old_food_entry_meal_id, Value: new_food_entry_meal_id
     const mealMapping = new Map();
     const entriesToCreate = [];
+    // Containers already on the target date, loaded once, so a retry of a
+    // partly-failed copy reuses the container it made before instead of
+    // creating a second one (the per-entry check below is scoped to it).
+    let targetMeals: TargetMealRef[] | null = null;
+    const loadTargetMeals = async (): Promise<TargetMealRef[]> => {
+      if (targetMeals === null) {
+        targetMeals = await foodEntryMealRepository.getFoodEntryMealsByDate(
+          authenticatedUserId,
+          targetDate
+        );
+      }
+      return targetMeals!;
+    };
+    // A container's identity key: name + slot + type. Two source containers can
+    // share a key (different foods/notes), so they are distinct occurrences, not
+    // one. The key is what a copy is recognised by; the occurrence index is what
+    // keeps same-key containers apart.
+    const mealIdentityKey = (
+      name: string,
+      entryTime: string | null,
+      mealTypeId: string
+    ): string =>
+      `${name.trim().toLowerCase()}|${entryTime ?? ''}|${mealTypeId}`;
+    // The i-th target container with a given key, in created_at order (the
+    // target query sorts same-key rows by created_at). Newly created containers
+    // are appended to the working list, so they keep that order within a call.
+    const nthTargetMeal = (
+      meals: TargetMealRef[],
+      key: string,
+      index: number
+    ): string | null => {
+      let count = 0;
+      for (const meal of meals) {
+        if (
+          mealIdentityKey(meal.name, meal.entry_time, meal.meal_type_id) === key
+        ) {
+          if (count === index) return meal.id;
+          count++;
+        }
+      }
+      return null;
+    };
+    // Occurrence index of each source container within its key group, assigned
+    // in iteration order so it matches the created_at order a prior copy made.
+    const sourceOccurrenceIndex = new Map<string, number>();
     for (const entry of sourceEntries) {
       log(
         'debug',
@@ -1305,28 +1447,44 @@ async function copyFoodEntries(
               authenticatedUserId
             );
           if (originalMeal) {
-            // Create a new meal container for the target date/slot
-            const newMeal = await foodEntryMealRepository.createFoodEntryMeal(
-              {
-                user_id: authenticatedUserId,
-                meal_template_id: originalMeal.meal_template_id,
-                meal_type_id: targetMealTypeId,
-                entry_date: targetDate,
-                entry_time: originalMeal.entry_time ?? null,
-                name: originalMeal.name,
-                description: originalMeal.description,
-                // The note travels with the meal container it describes.
-                notes: originalMeal.notes ?? null,
-                quantity: originalMeal.quantity,
-                unit: originalMeal.unit,
-              },
-              actingUserId
+            const key = mealIdentityKey(
+              originalMeal.name,
+              originalMeal.entry_time ?? null,
+              targetMealTypeId
             );
-            newFoodEntryMealId = newMeal.id;
+            // This source container's position among its same-key siblings, in
+            // iteration order - the order a prior copy created its target
+            // containers, so it lines up with their created_at order.
+            const occurrenceIndex = sourceOccurrenceIndex.get(key) ?? 0;
+            sourceOccurrenceIndex.set(key, occurrenceIndex + 1);
+            const meals = await loadTargetMeals();
+            const existingTargetId = nthTargetMeal(meals, key, occurrenceIndex);
+            if (existingTargetId !== null) {
+              newFoodEntryMealId = existingTargetId;
+            } else {
+              const newMeal = await foodEntryMealRepository.createFoodEntryMeal(
+                {
+                  user_id: authenticatedUserId,
+                  meal_template_id: originalMeal.meal_template_id,
+                  meal_type_id: targetMealTypeId,
+                  entry_date: targetDate,
+                  entry_time: originalMeal.entry_time ?? null,
+                  name: originalMeal.name,
+                  description: originalMeal.description,
+                  // The note travels with the meal container it describes.
+                  notes: originalMeal.notes ?? null,
+                  quantity: originalMeal.quantity,
+                  unit: originalMeal.unit,
+                },
+                actingUserId
+              );
+              newFoodEntryMealId = newMeal.id;
+              targetMeals!.push(newMeal);
+            }
             mealMapping.set(entry.food_entry_meal_id, newFoodEntryMealId);
             log(
               'debug',
-              `copyFoodEntries: Duplicated meal container "${originalMeal.name}" (${entry.food_entry_meal_id} -> ${newFoodEntryMealId})`
+              `copyFoodEntries: ${existingTargetId !== null ? 'Reused' : 'Duplicated'} meal container "${originalMeal.name}" (${entry.food_entry_meal_id} -> ${newFoodEntryMealId})`
             );
           }
         }
@@ -1381,6 +1539,8 @@ async function copyFoodEntries(
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
           notes: entry.notes ?? null,
+          // Copying a day keeps the cooked weight with its quantity (#3534).
+          cooked_quantity: entry.cooked_quantity ?? null,
         });
         log(
           'debug',
@@ -1551,6 +1711,8 @@ async function copyFoodEntriesFromUser(
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
           notes: entry.notes ?? null,
+          // Copying a day keeps the cooked weight with its quantity (#3534).
+          cooked_quantity: entry.cooked_quantity ?? null,
         });
       }
     }
@@ -1924,6 +2086,8 @@ async function copyFoodEntriesToUser(
           custom_nutrients: sanitizeCustomNutrients(entry.custom_nutrients),
           // The note travels with the entry it describes.
           notes: entry.notes ?? null,
+          // Copying a day keeps the cooked weight with its quantity (#3534).
+          cooked_quantity: entry.cooked_quantity ?? null,
         });
       }
     }
@@ -2366,6 +2530,19 @@ async function createFoodEntryMeal(
     `createFoodEntryMeal in foodEntryService: authenticatedUserId: ${authenticatedUserId}, actingUserId: ${actingUserId}, mealData: ${JSON.stringify(mealData)}`
   );
   try {
+    const targetUserId = mealData.user_id || authenticatedUserId;
+    if (mealData.client_id) {
+      // A request with this key already stored its meal (for example one that
+      // timed out on the phone but committed here): answer with that meal and
+      // log nothing. The parent and its components are written in one
+      // transaction, so a stored meal is always a finished one, even one with
+      // no foods, and is never rebuilt.
+      const stored = await foodEntryMealRepository.findFoodEntryMealByClientId(
+        targetUserId,
+        mealData.client_id
+      );
+      if (stored) return stored;
+    }
     // Backwards compatibility (issue #1023): clients on the new serving model
     // send X-Meal-Model-Version: 2. Old clients omit the header — for
     // serving-unit logs they expected the legacy special-case math
@@ -2433,58 +2610,88 @@ async function createFoodEntryMeal(
       authenticatedUserId
     );
 
-    // 1. Create the parent food_entry_meals record with quantity, unit, name, description, and snapshotted yield.
-    const newFoodEntryMeal = await foodEntryMealRepository.createFoodEntryMeal(
-      {
-        user_id: mealData.user_id || authenticatedUserId, // Use target user ID
-        meal_template_id: mealData.meal_template_id || null,
-        meal_type_id: mealData.meal_type_id || null,
-        meal_type: mealData.meal_type,
-        entry_date: mealData.entry_date ?? '',
-        entry_time: mealData.entry_time ?? null,
-        name: name ?? '',
-        description: description,
-        // No meal-template fallback, unlike description: a note is authored
-        // for this occasion. The template's own note is shown beside it.
-        notes: mealData.notes ?? null,
-        quantity: Number(mealData.quantity) || 1.0, // Default to 1.0
-        unit: mealData.unit || 'serving', // Default to 'serving'
-        legacy_serving_unit_math: useLegacyServingMath,
-        entry_total_servings: portion.totalServings,
-      },
-      actingUserId
-    );
-    const resolvedMealTypeId = newFoodEntryMeal.meal_type_id;
-
-    log(
-      'info',
-      `Portion multiplier: ${portion.multiplier} (consumed: ${Number(mealData.quantity) || 1.0}, total_servings: ${portion.totalServings}, has_template: ${!!mealData.meal_template_id}, legacy_client: ${isLegacyClient}, legacy_math: ${useLegacyServingMath})`
-    );
-    // 2. Create component food_entries records with scaled quantities.
-    // buildLeafFoodEntries recursively flattens any linked sub-meals so the
-    // diary only ever stores leaf foods (see MEAL_COMPOSITION_PLAN.md).
-    const entriesToCreate = await buildLeafFoodEntries(
-      foodsToProcess,
-      portion.multiplier,
-      {
-        authenticatedUserId,
-        actingUserId,
-        targetUserId: newFoodEntryMeal.user_id, // target user from the created meal
-        mealTypeId: resolvedMealTypeId,
-        entryDate: mealData.entry_date ?? '',
-        entryTime: newFoodEntryMeal.entry_time ?? null,
-        foodEntryMealId: newFoodEntryMeal.id,
-      }
-    );
-    if (entriesToCreate.length > 0) {
-      await foodRepository.bulkCreateFoodEntries(
-        entriesToCreate,
-        authenticatedUserId
-      );
+    // The parent and its components are one transaction: a request that dies
+    // part-way leaves nothing behind, so a replayed key never meets a
+    // half-written meal.
+    const client = await getClient(targetUserId, actingUserId);
+    let newFoodEntryMeal;
+    try {
+      await client.query('BEGIN');
+      // 1. Create the parent food_entry_meals record with quantity, unit, name, description, and snapshotted yield.
+      newFoodEntryMeal =
+        await foodEntryMealRepository.createFoodEntryMealWithClient(
+          client,
+          {
+            user_id: targetUserId, // Use target user ID
+            meal_template_id: mealData.meal_template_id || null,
+            meal_type_id: mealData.meal_type_id || null,
+            meal_type: mealData.meal_type,
+            entry_date: mealData.entry_date ?? '',
+            entry_time: mealData.entry_time ?? null,
+            name: name ?? '',
+            description: description,
+            // No meal-template fallback, unlike description: a note is authored
+            // for this occasion. The template's own note is shown beside it.
+            notes: mealData.notes ?? null,
+            quantity: Number(mealData.quantity) || 1.0, // Default to 1.0
+            unit: mealData.unit || 'serving', // Default to 'serving'
+            legacy_serving_unit_math: useLegacyServingMath,
+            entry_total_servings: portion.totalServings,
+            client_id: mealData.client_id ?? null,
+          },
+          actingUserId
+        );
       log(
         'info',
-        `Created ${entriesToCreate.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}.`
+        `Portion multiplier: ${portion.multiplier} (consumed: ${Number(mealData.quantity) || 1.0}, total_servings: ${portion.totalServings}, has_template: ${!!mealData.meal_template_id}, legacy_client: ${isLegacyClient}, legacy_math: ${useLegacyServingMath})`
       );
+      // 2. Create component food_entries records with scaled quantities.
+      // buildLeafFoodEntries recursively flattens any linked sub-meals so the
+      // diary only ever stores leaf foods (see MEAL_COMPOSITION_PLAN.md).
+      const entriesToCreate = await buildLeafFoodEntries(
+        foodsToProcess,
+        portion.multiplier,
+        {
+          authenticatedUserId,
+          actingUserId,
+          targetUserId: newFoodEntryMeal.user_id, // target user from the created meal
+          mealTypeId: newFoodEntryMeal.meal_type_id,
+          entryDate: mealData.entry_date ?? '',
+          entryTime: newFoodEntryMeal.entry_time ?? null,
+          foodEntryMealId: newFoodEntryMeal.id,
+        }
+      );
+      if (entriesToCreate.length > 0) {
+        await foodRepository.bulkCreateFoodEntries(
+          entriesToCreate,
+          authenticatedUserId,
+          { client }
+        );
+        log(
+          'info',
+          `Created ${entriesToCreate.length} component food entries for food_entry_meal ${newFoodEntryMeal.id}.`
+        );
+      }
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      // A copy of this same request committed its meal first (the insert
+      // waited for it, so that meal is complete). That one is the meal; this
+      // one is the duplicate.
+      if (
+        mealData.client_id &&
+        isUniqueViolationOn(error, FOOD_ENTRY_MEAL_CLIENT_ID_INDEX)
+      ) {
+        const winner =
+          await foodEntryMealRepository.findFoodEntryMealByClientId(
+            targetUserId,
+            mealData.client_id
+          );
+        if (winner) return winner;
+      }
+      throw error;
+    } finally {
+      client.release();
     }
     return newFoodEntryMeal;
   } catch (error) {
@@ -4123,6 +4330,7 @@ export { copySelectedFoodEntriesFromUser };
 export { copySelectedFoodEntriesToUser };
 export { importFoodDiaryEntriesInBulk };
 export default {
+  getLastCookedFoodEntry,
   createFoodEntry,
   deleteFoodEntry,
   updateFoodEntry,

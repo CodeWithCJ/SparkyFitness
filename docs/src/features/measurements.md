@@ -35,7 +35,7 @@ Below the form, the **Recent Measurements** list shows your latest logged weight
 
 ## See your progress
 
-- Open **Reports → Measurements** for a chart per metric, including every custom category
+- Open **Reports → Measurements** for a chart per metric, including every custom category. While cycle tracking is turned off in **Settings → Features**, the reproductive categories Apple Health and Health Connect sync (menstrual flow, ovulation tests and similar) are left out of the charts, the table view and the check-in, and in the mobile app out of measurement entry, the Reports → Measurements chart and the Diary; their data is kept, and **Settings → Custom Categories** (in the app, **Settings → Custom Measurements**) still lists them
 - Switch to the table view, pick **Body Measurements** (or a custom category), and use **Download (CSV)** to export the full history
 
 > [!TIP]

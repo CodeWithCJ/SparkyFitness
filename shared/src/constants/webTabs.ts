@@ -6,7 +6,8 @@
  * Web only: the mobile app keeps its own dashboard card, quick action and
  * watch page settings on the device. Diary (home), Settings and Admin always
  * show, and cycle keeps its own switch (`cycle_settings.enabled`), so none of
- * them is listed here.
+ * them is listed here. Challenges also needs the admin switch
+ * (`enable_challenges`) and the person's own account.
  */
 export const WEB_TABS_PAGE_KEY = 'web-tabs';
 
@@ -18,6 +19,7 @@ export const WEB_HIDEABLE_TAB_IDS = [
   'foods',
   'exercises',
   'goals',
+  'challenges',
 ] as const;
 
 export type WebHideableTabId = (typeof WEB_HIDEABLE_TAB_IDS)[number];

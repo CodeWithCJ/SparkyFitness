@@ -7,9 +7,15 @@ import {
   localDateToDay,
   mainSleepEntry,
   resolveRecordZone,
+  sessionLoad,
   userHourMinute,
 } from '@workspace/shared';
+import reportRepository from '../models/reportRepository.js';
+import heartRateZoneService from './heartRateZoneService.js';
 import {
+  STRAIN_LOAD_FOR_MAX_ADDITION,
+  STRAIN_MAX_ADDITION_HOURS,
+  MAX_TRAINING_LOAD_SCORE,
   DECAY_LAMBDA,
   DEFAULT_SLEEP_NEED_HOURS,
   DEBT_WINDOW_DAYS,
@@ -17,6 +23,7 @@ import {
   MCTQ_CONFIG,
   CHRONOTYPE_BOUNDARIES,
 } from '../constants/sleepScienceConstants.js';
+import { getRecoveryScore } from './reportService.js';
 // ==========================================
 // UTILITY FUNCTIONS
 // ==========================================
@@ -557,6 +564,60 @@ async function getMCTQStats(userId: any) {
 // ==========================================
 // DAILY NEED (WHOOP-style decomposition)
 // ==========================================
+/**
+ * Strain for one day from its logged workouts (Apple Health, Health Connect,
+ * manual): minutes weighted by heart rate zone, the same measure as the
+ * training load report, so a workout with no granular zones still counts. Null
+ * when nothing was logged, so the breakdown can tell "no training data" from
+ * "rest day".
+ */
+async function getDayStrain(
+  userId: string,
+  day: string
+): Promise<{ loadScore: number; addition: number } | null> {
+  try {
+    const [sessions, zones] = await Promise.all([
+      reportRepository.getTrainingLoadSessions(userId, day, day),
+      heartRateZoneService.resolveZonesForUser(userId),
+    ]);
+    if (sessions.length === 0) return null;
+    const load = sessions.reduce(
+      (sum, session) => sum + sessionLoad(session, zones.floors),
+      0
+    );
+    const loadScore = Math.min(
+      MAX_TRAINING_LOAD_SCORE,
+      Math.round(load * 100) / 100
+    );
+    const addition =
+      STRAIN_MAX_ADDITION_HOURS *
+      Math.min(1, loadScore / STRAIN_LOAD_FOR_MAX_ADDITION);
+    return { loadScore, addition };
+  } catch (err) {
+    log('warn', `Failed to compute training strain for user ${userId}:`, err);
+    return null;
+  }
+}
+/**
+ * How recovered the person is on the morning of `day`: the readiness score
+ * from the night before's sleep against tonight's need and, when a watch
+ * recorded them, resting heart rate and HRV against their own 14-night
+ * baseline (Apple Health and Health Connect attach both to sleep entries),
+ * blended with training form. Null when there is no data for it or the lookup
+ * fails, so a missing figure never blocks the sleep need.
+ */
+async function getMorningRecovery(
+  userId: string,
+  day: string,
+  sleepNeedHours: number
+): Promise<number | null> {
+  try {
+    return await getRecoveryScore(userId, day, sleepNeedHours);
+  } catch (err) {
+    log('warn', `Failed to compute recovery score for user ${userId}:`, err);
+    return null;
+  }
+}
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function getDailyNeed(userId: any, targetDate: any) {
   log(
@@ -570,7 +631,8 @@ async function getDailyNeed(userId: any, targetDate: any) {
   // Calculate sleep debt for strain/debt components
   const debtData = await calculateSleepDebt(userId);
   // Simple decomposition
-  const strainAddition = 0; // Would need training data integration
+  const strain = await getDayStrain(userId, String(targetDate));
+  const strainAddition = strain?.addition ?? 0;
   const debtAddition = Math.min(debtData.currentDebt * 0.25, 2.0);
   const napSubtraction = 0; // Would need nap detection
   const totalNeed = Math.max(
@@ -579,6 +641,11 @@ async function getDailyNeed(userId: any, targetDate: any) {
       MCTQ_CONFIG.maxSleepNeed + 2,
       baselineNeed + strainAddition + debtAddition - napSubtraction
     )
+  );
+  const recoveryScore = await getMorningRecovery(
+    userId,
+    String(targetDate),
+    totalNeed
   );
   const breakdown = {
     date: targetDate,
@@ -589,10 +656,10 @@ async function getDailyNeed(userId: any, targetDate: any) {
     total_need: Math.round(totalNeed * 100) / 100,
     method: profile?.sleep_need_method || 'default',
     confidence: profile?.sleep_need_confidence || 'low',
-    training_load_score: null,
+    training_load_score: strain?.loadScore ?? null,
     current_debt_hours: debtData.currentDebt,
     nap_minutes: 0,
-    recovery_score_yesterday: null,
+    recovery_score_yesterday: recoveryScore,
   };
   // Cache it
   try {

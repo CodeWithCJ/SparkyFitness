@@ -32,6 +32,7 @@ import {
   CUSTOM_PRESET_ID,
 } from '../constants/fasting';
 import { addLog } from '../services/LogService';
+import type { TranslateFn } from '../localization/translateFn';
 
 const MS_PER_HOUR = 1000 * 60 * 60;
 const MIN_CUSTOM_HOURS = 1;
@@ -45,7 +46,7 @@ export interface FastingProtocolSheetRef {
 }
 
 function getPresetCopy(
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TranslateFn,
   id: string,
   field: 'name' | 'description',
   fallback: string

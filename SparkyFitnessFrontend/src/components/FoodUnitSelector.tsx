@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Check, Sparkles, Clock, CalendarDays, X } from 'lucide-react';
 import {
@@ -45,6 +46,7 @@ import {
   recipeImportInitialQuantity,
   recipeImportNutritionGaps,
   toHourMinute,
+  isCookedWeightUnit,
   type AiConfidence,
   type ConfidenceTone,
 } from '@workspace/shared';
@@ -79,6 +81,10 @@ const getValidAiConfidence = (
 };
 
 import { AiEstimateSection } from '@/components/FoodUnitSelector/AiEstimateSection';
+import {
+  CookedWeightSection,
+  type CookedWeightResult,
+} from '@/components/FoodUnitSelector/CookedWeightSection';
 import FavoriteStarButton from '@/components/FavoriteStarButton';
 import { MarkdownView } from '@/components/ui/MarkdownView';
 import { MarkdownEditor } from '@/components/ui/MarkdownEditor';
@@ -95,7 +101,8 @@ interface FoodUnitSelectorProps {
     selectedVariant: FoodVariant,
     entryTime?: string | null,
     mealType?: string | null,
-    notes?: string | null
+    notes?: string | null,
+    cookedQuantity?: number | null
   ) => void;
   showUnitSelector?: boolean;
   initialQuantity?: number;
@@ -112,6 +119,12 @@ interface FoodUnitSelectorProps {
     name: string;
     default_time?: string | null;
   }>;
+  /**
+   * Offer "Weighed it cooked" for weight units (#3534). Only the diary turns
+   * it on: the meal builder, meal plans and recipe imports share this dialog
+   * but store no cooked weight.
+   */
+  showCookedWeight?: boolean;
 }
 
 const FoodUnitSelector = ({
@@ -129,6 +142,7 @@ const FoodUnitSelector = ({
   defaultMealTime,
   showMealTypeSelect,
   availableMealTypes,
+  showCookedWeight = false,
 }: FoodUnitSelectorProps) => {
   const { t } = useTranslation();
   const {
@@ -165,11 +179,16 @@ const FoodUnitSelector = ({
   const [entryNotes, setEntryNotes] = useState('');
   const [mealType, setMealType] = useState('');
   const [loading, setLoading] = useState(false);
+  const [cookedEnabled, setCookedEnabled] = useState(false);
+  const [cookedResult, setCookedResult] = useState<CookedWeightResult | null>(
+    null
+  );
 
-  const wasOpenRef = useRef(false);
-
-  useEffect(() => {
-    if (open && !wasOpenRef.current) {
+  // Initialization must only run on the open transition; initialTime and the
+  // other inputs are snapshotted then (a minute-boundary initialTime change
+  // while open must not re-trigger).
+  useOnChange([open], () => {
+    if (open) {
       if (initialTime !== undefined) {
         setEntryTime(initialTime || '');
       } else {
@@ -194,12 +213,7 @@ const FoodUnitSelector = ({
         setMealType(matched);
       }
     }
-    wasOpenRef.current = open;
-    // Initialization must only run on the open transition; initialTime and the
-    // other inputs are snapshotted then (a minute-boundary initialTime change
-    // while open must not re-trigger).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  });
 
   const resolvedDefaultMealTime = (() => {
     if (showMealTypeSelect && availableMealTypes) {
@@ -253,7 +267,14 @@ const FoodUnitSelector = ({
     selectedVariant,
     onVariantSelect: (_variantId, variant) => {
       setSelectedVariant(variant);
-      if (!preserveInitialAmountUnit) setQuantity(variant.serving_size);
+      // A calculated raw quantity stays valid for another variant of the same
+      // unit; resetting it would no longer match the cooked weight eaten.
+      const keepsCookedQuantity =
+        cookedEnabled &&
+        cookedResult !== null &&
+        variant.serving_unit === selectedVariant?.serving_unit;
+      if (!preserveInitialAmountUnit && !keepsCookedQuantity)
+        setQuantity(variant.serving_size);
     },
   });
   const selectedAiConfidence = getValidAiConfidence(
@@ -266,189 +287,13 @@ const FoodUnitSelector = ({
     [preserveInitialAmountUnit]
   );
 
-  const loadVariantsData = useCallback(async () => {
+  const loadVariantsData = useCallback(() => {
     debug(loggingLevel, 'Loading food variants for food ID:', food?.id);
-    setLoading(true);
-    try {
-      const data = await queryClient.fetchQuery(foodVariantsOptions(food.id));
-
-      const primaryUnit: FoodVariant = {
-        id: food.default_variant?.id || food.id,
-        serving_size: food.default_variant?.serving_size || 100,
-        serving_unit: food.default_variant?.serving_unit || 'g',
-        serving_description: food.default_variant?.serving_description,
-        calories: preserveInitialAmountUnit
-          ? (food.default_variant?.calories ?? Number.NaN)
-          : food.default_variant?.calories || 0,
-        protein: preserveInitialAmountUnit
-          ? (food.default_variant?.protein ?? Number.NaN)
-          : food.default_variant?.protein || 0,
-        carbs: preserveInitialAmountUnit
-          ? (food.default_variant?.carbs ?? Number.NaN)
-          : food.default_variant?.carbs || 0,
-        fat: preserveInitialAmountUnit
-          ? (food.default_variant?.fat ?? Number.NaN)
-          : food.default_variant?.fat || 0,
-        saturated_fat: optionalNutrient(food.default_variant?.saturated_fat),
-        polyunsaturated_fat: optionalNutrient(
-          food.default_variant?.polyunsaturated_fat
-        ),
-        monounsaturated_fat: optionalNutrient(
-          food.default_variant?.monounsaturated_fat
-        ),
-        trans_fat: optionalNutrient(food.default_variant?.trans_fat),
-        cholesterol: optionalNutrient(food.default_variant?.cholesterol),
-        sodium: optionalNutrient(food.default_variant?.sodium),
-        potassium: optionalNutrient(food.default_variant?.potassium),
-        dietary_fiber: optionalNutrient(food.default_variant?.dietary_fiber),
-        sugars: optionalNutrient(food.default_variant?.sugars),
-        vitamin_a: optionalNutrient(food.default_variant?.vitamin_a),
-        vitamin_c: optionalNutrient(food.default_variant?.vitamin_c),
-        calcium: optionalNutrient(food.default_variant?.calcium),
-        iron: optionalNutrient(food.default_variant?.iron),
-        caffeine_mg: optionalNutrient(food.default_variant?.caffeine_mg),
-        water_ml: optionalNutrient(food.default_variant?.water_ml),
-        alcohol_g: optionalNutrient(food.default_variant?.alcohol_g),
-        abv_percent: food.default_variant?.abv_percent,
-        custom_nutrients: food.default_variant?.custom_nutrients,
-        source: food.default_variant?.source,
-        ai_confidence: food.default_variant?.ai_confidence,
-      };
-
-      let combinedVariants: FoodVariant[] = [primaryUnit];
-
-      if (data && data.length > 0) {
-        info(loggingLevel, 'Food variants loaded successfully:', data);
-        const variantsFromDb = data.map((variant) => ({
-          id: variant.id,
-          serving_size: variant.serving_size,
-          serving_unit: variant.serving_unit,
-          serving_description: variant.serving_description,
-          calories: preserveInitialAmountUnit
-            ? variant.calories
-            : variant.calories || 0,
-          protein: preserveInitialAmountUnit
-            ? variant.protein
-            : variant.protein || 0,
-          carbs: preserveInitialAmountUnit ? variant.carbs : variant.carbs || 0,
-          fat: preserveInitialAmountUnit ? variant.fat : variant.fat || 0,
-          saturated_fat: optionalNutrient(variant.saturated_fat),
-          polyunsaturated_fat: optionalNutrient(variant.polyunsaturated_fat),
-          monounsaturated_fat: optionalNutrient(variant.monounsaturated_fat),
-          trans_fat: optionalNutrient(variant.trans_fat),
-          cholesterol: optionalNutrient(variant.cholesterol),
-          sodium: optionalNutrient(variant.sodium),
-          potassium: optionalNutrient(variant.potassium),
-          dietary_fiber: optionalNutrient(variant.dietary_fiber),
-          sugars: optionalNutrient(variant.sugars),
-          vitamin_a: optionalNutrient(variant.vitamin_a),
-          vitamin_c: optionalNutrient(variant.vitamin_c),
-          calcium: optionalNutrient(variant.calcium),
-          iron: optionalNutrient(variant.iron),
-          caffeine_mg: optionalNutrient(variant.caffeine_mg),
-          water_ml: optionalNutrient(variant.water_ml),
-          alcohol_g: optionalNutrient(variant.alcohol_g),
-          abv_percent: variant.abv_percent,
-          custom_nutrients: variant.custom_nutrients,
-          // Preserve AI provenance so the dropdown can badge AI-source variants.
-          source: variant.source,
-          ai_confidence: variant.ai_confidence,
-        }));
-
-        const otherVariants = variantsFromDb.filter(
-          (variant) => variant.id !== primaryUnit.id
-        );
-        combinedVariants = [primaryUnit, ...otherVariants];
-      } else {
-        info(
-          loggingLevel,
-          'No additional variants found, using primary food unit only.'
-        );
-      }
-
-      setVariants(combinedVariants);
-      const firstCombinedVariant = combinedVariants[0];
-      if (initialVariantId && firstCombinedVariant) {
-        const variantToSelect = combinedVariants.find(
-          (v) => v.id === initialVariantId
-        );
-        setSelectedVariant(variantToSelect || firstCombinedVariant);
-      } else if (firstCombinedVariant) {
-        setSelectedVariant(firstCombinedVariant);
-      }
-    } catch (err) {
-      error(loggingLevel, 'Error loading variants:', err);
-      const primaryUnit: FoodVariant = {
-        id: food.default_variant?.id || food.id,
-        serving_size: food.default_variant?.serving_size || 100,
-        serving_unit: food.default_variant?.serving_unit || 'g',
-        serving_description: food.default_variant?.serving_description,
-        calories: preserveInitialAmountUnit
-          ? (food.default_variant?.calories ?? Number.NaN)
-          : food.default_variant?.calories || 0,
-        protein: preserveInitialAmountUnit
-          ? (food.default_variant?.protein ?? Number.NaN)
-          : food.default_variant?.protein || 0,
-        carbs: preserveInitialAmountUnit
-          ? (food.default_variant?.carbs ?? Number.NaN)
-          : food.default_variant?.carbs || 0,
-        fat: preserveInitialAmountUnit
-          ? (food.default_variant?.fat ?? Number.NaN)
-          : food.default_variant?.fat || 0,
-        saturated_fat: optionalNutrient(food.default_variant?.saturated_fat),
-        polyunsaturated_fat: optionalNutrient(
-          food.default_variant?.polyunsaturated_fat
-        ),
-        monounsaturated_fat: optionalNutrient(
-          food.default_variant?.monounsaturated_fat
-        ),
-        trans_fat: optionalNutrient(food.default_variant?.trans_fat),
-        cholesterol: optionalNutrient(food.default_variant?.cholesterol),
-        sodium: optionalNutrient(food.default_variant?.sodium),
-        potassium: optionalNutrient(food.default_variant?.potassium),
-        dietary_fiber: optionalNutrient(food.default_variant?.dietary_fiber),
-        sugars: optionalNutrient(food.default_variant?.sugars),
-        vitamin_a: optionalNutrient(food.default_variant?.vitamin_a),
-        vitamin_c: optionalNutrient(food.default_variant?.vitamin_c),
-        calcium: optionalNutrient(food.default_variant?.calcium),
-        iron: optionalNutrient(food.default_variant?.iron),
-        caffeine_mg: optionalNutrient(food.default_variant?.caffeine_mg),
-        water_ml: optionalNutrient(food.default_variant?.water_ml),
-        alcohol_g: optionalNutrient(food.default_variant?.alcohol_g),
-        abv_percent: food.default_variant?.abv_percent,
-        custom_nutrients: food.default_variant?.custom_nutrients,
-        source: food.default_variant?.source,
-        ai_confidence: food.default_variant?.ai_confidence,
-      };
-      setVariants([primaryUnit]);
-      setSelectedVariant(primaryUnit);
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    food,
-    queryClient,
-    loggingLevel,
-    initialVariantId,
-    preserveInitialAmountUnit,
-    optionalNutrient,
-  ]);
-
-  useEffect(() => {
-    debug(loggingLevel, 'FoodUnitSelector open/food useEffect triggered.', {
-      open,
-      food,
-      initialQuantity,
-      initialUnit,
-      initialVariantId,
-    });
-    if (open && food) {
-      recipeAmount.current = null;
-      if (food.id && !food.id.startsWith('temp-')) {
-        loadVariantsData();
-      } else {
+    return queryClient
+      .fetchQuery(foodVariantsOptions(food.id))
+      .then((data) => {
         const primaryUnit: FoodVariant = {
-          id: food.default_variant?.id || 'default',
+          id: food.default_variant?.id || food.id,
           serving_size: food.default_variant?.serving_size || 100,
           serving_unit: food.default_variant?.serving_unit || 'g',
           serving_description: food.default_variant?.serving_description,
@@ -489,24 +334,230 @@ const FoodUnitSelector = ({
           source: food.default_variant?.source,
           ai_confidence: food.default_variant?.ai_confidence,
         };
-        const allVariants =
-          food.variants && food.variants.length > 0
-            ? food.variants
-            : [primaryUnit];
-        setVariants(allVariants);
-        const selected =
-          (initialVariantId &&
-            allVariants.find((v) => v.id === initialVariantId)) ||
-          allVariants[0] ||
-          null;
-        setSelectedVariant(selected);
+
+        let combinedVariants: FoodVariant[] = [primaryUnit];
+
+        if (data && data.length > 0) {
+          info(loggingLevel, 'Food variants loaded successfully:', data);
+          const variantsFromDb = data.map((variant) => ({
+            id: variant.id,
+            serving_size: variant.serving_size,
+            serving_unit: variant.serving_unit,
+            serving_description: variant.serving_description,
+            calories: preserveInitialAmountUnit
+              ? variant.calories
+              : variant.calories || 0,
+            protein: preserveInitialAmountUnit
+              ? variant.protein
+              : variant.protein || 0,
+            carbs: preserveInitialAmountUnit
+              ? variant.carbs
+              : variant.carbs || 0,
+            fat: preserveInitialAmountUnit ? variant.fat : variant.fat || 0,
+            saturated_fat: optionalNutrient(variant.saturated_fat),
+            polyunsaturated_fat: optionalNutrient(variant.polyunsaturated_fat),
+            monounsaturated_fat: optionalNutrient(variant.monounsaturated_fat),
+            trans_fat: optionalNutrient(variant.trans_fat),
+            cholesterol: optionalNutrient(variant.cholesterol),
+            sodium: optionalNutrient(variant.sodium),
+            potassium: optionalNutrient(variant.potassium),
+            dietary_fiber: optionalNutrient(variant.dietary_fiber),
+            sugars: optionalNutrient(variant.sugars),
+            vitamin_a: optionalNutrient(variant.vitamin_a),
+            vitamin_c: optionalNutrient(variant.vitamin_c),
+            calcium: optionalNutrient(variant.calcium),
+            iron: optionalNutrient(variant.iron),
+            caffeine_mg: optionalNutrient(variant.caffeine_mg),
+            water_ml: optionalNutrient(variant.water_ml),
+            alcohol_g: optionalNutrient(variant.alcohol_g),
+            abv_percent: variant.abv_percent,
+            custom_nutrients: variant.custom_nutrients,
+            // Preserve AI provenance so the dropdown can badge AI-source variants.
+            source: variant.source,
+            ai_confidence: variant.ai_confidence,
+          }));
+
+          const otherVariants = variantsFromDb.filter(
+            (variant) => variant.id !== primaryUnit.id
+          );
+          combinedVariants = [primaryUnit, ...otherVariants];
+        } else {
+          info(
+            loggingLevel,
+            'No additional variants found, using primary food unit only.'
+          );
+        }
+
+        setVariants(combinedVariants);
+        const firstCombinedVariant = combinedVariants[0];
+        if (initialVariantId && firstCombinedVariant) {
+          const variantToSelect = combinedVariants.find(
+            (v) => v.id === initialVariantId
+          );
+          setSelectedVariant(variantToSelect || firstCombinedVariant);
+        } else if (firstCombinedVariant) {
+          setSelectedVariant(firstCombinedVariant);
+        }
+      })
+      .catch((err: unknown) => {
+        error(loggingLevel, 'Error loading variants:', err);
+        const primaryUnit: FoodVariant = {
+          id: food.default_variant?.id || food.id,
+          serving_size: food.default_variant?.serving_size || 100,
+          serving_unit: food.default_variant?.serving_unit || 'g',
+          serving_description: food.default_variant?.serving_description,
+          calories: preserveInitialAmountUnit
+            ? (food.default_variant?.calories ?? Number.NaN)
+            : food.default_variant?.calories || 0,
+          protein: preserveInitialAmountUnit
+            ? (food.default_variant?.protein ?? Number.NaN)
+            : food.default_variant?.protein || 0,
+          carbs: preserveInitialAmountUnit
+            ? (food.default_variant?.carbs ?? Number.NaN)
+            : food.default_variant?.carbs || 0,
+          fat: preserveInitialAmountUnit
+            ? (food.default_variant?.fat ?? Number.NaN)
+            : food.default_variant?.fat || 0,
+          saturated_fat: optionalNutrient(food.default_variant?.saturated_fat),
+          polyunsaturated_fat: optionalNutrient(
+            food.default_variant?.polyunsaturated_fat
+          ),
+          monounsaturated_fat: optionalNutrient(
+            food.default_variant?.monounsaturated_fat
+          ),
+          trans_fat: optionalNutrient(food.default_variant?.trans_fat),
+          cholesterol: optionalNutrient(food.default_variant?.cholesterol),
+          sodium: optionalNutrient(food.default_variant?.sodium),
+          potassium: optionalNutrient(food.default_variant?.potassium),
+          dietary_fiber: optionalNutrient(food.default_variant?.dietary_fiber),
+          sugars: optionalNutrient(food.default_variant?.sugars),
+          vitamin_a: optionalNutrient(food.default_variant?.vitamin_a),
+          vitamin_c: optionalNutrient(food.default_variant?.vitamin_c),
+          calcium: optionalNutrient(food.default_variant?.calcium),
+          iron: optionalNutrient(food.default_variant?.iron),
+          caffeine_mg: optionalNutrient(food.default_variant?.caffeine_mg),
+          water_ml: optionalNutrient(food.default_variant?.water_ml),
+          alcohol_g: optionalNutrient(food.default_variant?.alcohol_g),
+          abv_percent: food.default_variant?.abv_percent,
+          custom_nutrients: food.default_variant?.custom_nutrients,
+          source: food.default_variant?.source,
+          ai_confidence: food.default_variant?.ai_confidence,
+        };
+        setVariants([primaryUnit]);
+        setSelectedVariant(primaryUnit);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [
+    food,
+    queryClient,
+    loggingLevel,
+    initialVariantId,
+    preserveInitialAmountUnit,
+    optionalNutrient,
+  ]);
+
+  useOnChange(
+    [
+      open,
+      food,
+      initialQuantity,
+      initialUnit,
+      initialVariantId,
+      initialTime,
+      loadVariantsData,
+      loggingLevel,
+      resetConversionState,
+      preserveInitialAmountUnit,
+      optionalNutrient,
+    ],
+    () => {
+      if (open && food) {
+        if (food.id && !food.id.startsWith('temp-')) {
+          setLoading(true);
+        } else {
+          const primaryUnit: FoodVariant = {
+            id: food.default_variant?.id || 'default',
+            serving_size: food.default_variant?.serving_size || 100,
+            serving_unit: food.default_variant?.serving_unit || 'g',
+            serving_description: food.default_variant?.serving_description,
+            calories: preserveInitialAmountUnit
+              ? (food.default_variant?.calories ?? Number.NaN)
+              : food.default_variant?.calories || 0,
+            protein: preserveInitialAmountUnit
+              ? (food.default_variant?.protein ?? Number.NaN)
+              : food.default_variant?.protein || 0,
+            carbs: preserveInitialAmountUnit
+              ? (food.default_variant?.carbs ?? Number.NaN)
+              : food.default_variant?.carbs || 0,
+            fat: preserveInitialAmountUnit
+              ? (food.default_variant?.fat ?? Number.NaN)
+              : food.default_variant?.fat || 0,
+            saturated_fat: optionalNutrient(
+              food.default_variant?.saturated_fat
+            ),
+            polyunsaturated_fat: optionalNutrient(
+              food.default_variant?.polyunsaturated_fat
+            ),
+            monounsaturated_fat: optionalNutrient(
+              food.default_variant?.monounsaturated_fat
+            ),
+            trans_fat: optionalNutrient(food.default_variant?.trans_fat),
+            cholesterol: optionalNutrient(food.default_variant?.cholesterol),
+            sodium: optionalNutrient(food.default_variant?.sodium),
+            potassium: optionalNutrient(food.default_variant?.potassium),
+            dietary_fiber: optionalNutrient(
+              food.default_variant?.dietary_fiber
+            ),
+            sugars: optionalNutrient(food.default_variant?.sugars),
+            vitamin_a: optionalNutrient(food.default_variant?.vitamin_a),
+            vitamin_c: optionalNutrient(food.default_variant?.vitamin_c),
+            calcium: optionalNutrient(food.default_variant?.calcium),
+            iron: optionalNutrient(food.default_variant?.iron),
+            caffeine_mg: optionalNutrient(food.default_variant?.caffeine_mg),
+            water_ml: optionalNutrient(food.default_variant?.water_ml),
+            alcohol_g: optionalNutrient(food.default_variant?.alcohol_g),
+            abv_percent: food.default_variant?.abv_percent,
+            custom_nutrients: food.default_variant?.custom_nutrients,
+            source: food.default_variant?.source,
+            ai_confidence: food.default_variant?.ai_confidence,
+          };
+          const allVariants =
+            food.variants && food.variants.length > 0
+              ? food.variants
+              : [primaryUnit];
+          setVariants(allVariants);
+          const selected =
+            (initialVariantId &&
+              allVariants.find((v) => v.id === initialVariantId)) ||
+            allVariants[0] ||
+            null;
+          setSelectedVariant(selected);
+        }
+        setQuantity(
+          initialQuantity !== undefined
+            ? initialQuantity
+            : food.default_variant?.serving_size || 1
+        );
+        resetConversionState();
       }
-      setQuantity(
-        initialQuantity !== undefined
-          ? initialQuantity
-          : food.default_variant?.serving_size || 1
-      );
-      resetConversionState();
+    }
+  );
+
+  useEffect(() => {
+    debug(loggingLevel, 'FoodUnitSelector open/food useEffect triggered.', {
+      open,
+      food,
+      initialQuantity,
+      initialUnit,
+      initialVariantId,
+    });
+    if (open && food) {
+      recipeAmount.current = null;
+      if (food.id && !food.id.startsWith('temp-')) {
+        void loadVariantsData();
+      }
     }
   }, [
     open,
@@ -527,6 +578,11 @@ const FoodUnitSelector = ({
     debug(loggingLevel, 'Handling submit.');
 
     if (quantity === undefined || recipeMissingCore) return;
+    if (cookedSectionShown && cookedEnabled && !cookedResult) return;
+    const cookedActive = cookedSectionShown && cookedEnabled && cookedResult;
+    const cookedQuantity = cookedActive ? cookedResult.cookedQuantity : null;
+    // The raw quantity always comes from the same result as the cooked weight.
+    const submitQuantity = cookedActive ? cookedResult.rawQuantity : quantity;
 
     if (isConverting) {
       const convertedVariant = buildConvertedVariant();
@@ -549,12 +605,13 @@ const FoodUnitSelector = ({
         };
         onSelect(
           food,
-          quantity,
+          submitQuantity,
           variantWithId.serving_unit,
           variantWithId,
           entryTime || null,
           showMealTypeSelect ? mealType : null,
-          entryNotes.trim() || null
+          entryNotes.trim() || null,
+          cookedQuantity
         );
         onOpenChange(false);
         setQuantity(1);
@@ -574,12 +631,13 @@ const FoodUnitSelector = ({
       });
       onSelect(
         food,
-        quantity,
+        submitQuantity,
         selectedVariant.serving_unit,
         selectedVariant,
         entryTime || null,
         showMealTypeSelect ? mealType : null,
-        entryNotes.trim() || null
+        entryNotes.trim() || null,
+        cookedQuantity
       );
       onOpenChange(false);
       setQuantity(1);
@@ -642,6 +700,23 @@ const FoodUnitSelector = ({
   const displayUnit = isConverting
     ? pendingUnit.trim() || '?'
     : selectedVariant?.serving_unit || '';
+  // Converting to a new unit saves a variant first; the cooked weight is only
+  // offered on a unit the food already has.
+  const cookedSectionShown =
+    showCookedWeight && !isConverting && isCookedWeightUnit(displayUnit);
+  useOnChange([cookedSectionShown], () => {
+    if (cookedSectionShown) return;
+    setCookedEnabled(false);
+    setCookedResult(null);
+  });
+  const handleCookedChange = useCallback(
+    (enabled: boolean, result: CookedWeightResult | null) => {
+      setCookedEnabled(enabled);
+      setCookedResult(result);
+      if (enabled && result) setQuantity(result.rawQuantity);
+    },
+    []
+  );
   const initialAmountFactor = initialUnit
     ? getConversionFactor(displayUnit, initialUnit)
     : null;
@@ -763,6 +838,7 @@ const FoodUnitSelector = ({
                     min="0.01"
                     decimals={3}
                     required
+                    disabled={cookedSectionShown && cookedEnabled}
                     value={quantity}
                     onValueChange={(newQuantity) => {
                       debug(loggingLevel, 'Quantity changed:', newQuantity);
@@ -870,6 +946,21 @@ const FoodUnitSelector = ({
                   </div>
                 </div>
               </div>
+
+              {cookedSectionShown && (
+                <CookedWeightSection
+                  key={`${food.id}-${displayUnit}`}
+                  unit={displayUnit}
+                  previousFoodId={food.id}
+                  caloriesFor={(rawQuantity) =>
+                    activeVariant
+                      ? ((activeVariant.calories || 0) * rawQuantity) /
+                        (activeVariant.serving_size || 1)
+                      : null
+                  }
+                  onChange={handleCookedChange}
+                />
+              )}
 
               {showMealTypeSelect &&
                 availableMealTypes &&
@@ -1241,6 +1332,7 @@ const FoodUnitSelector = ({
                   disabled={
                     createFoodVariantMutation.isPending ||
                     recipeMissingCore ||
+                    (cookedSectionShown && cookedEnabled && !cookedResult) ||
                     (preserveInitialAmountUnit &&
                       (quantity === undefined ||
                         !Number.isFinite(quantity) ||

@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import Button from '../components/ui/Button';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
   calculateFamilyCopyTotals,
@@ -35,7 +34,6 @@ const FamilyMealDetailScreen: React.FC<FamilyMealDetailScreenProps> = ({
   );
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const [selectedIds, setSelectedIds] = useState(
     () => new Set(entries.map((entry) => entry.id))
   );
@@ -88,10 +86,7 @@ const FamilyMealDetailScreen: React.FC<FamilyMealDetailScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{

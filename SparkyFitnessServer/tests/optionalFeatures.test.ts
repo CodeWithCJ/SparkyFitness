@@ -9,12 +9,15 @@ import {
   featureChoicesSchema,
   featureStorage,
   filterByFeature,
+  hiddenFeatureCustomCategories,
   isFeatureEnabled,
   isFeatureEnabledAnywhere,
   isFeatureExplicitlyOff,
   isFeatureKey,
   platformFeatureChoicesSchema,
   userPreferencesSchema,
+  withoutCycleHubSymptoms,
+  withoutHiddenCategories,
   type FeatureKey,
 } from '@workspace/shared';
 
@@ -25,9 +28,10 @@ function keys(count: number, value: boolean | null = true) {
 }
 
 describe('optional features registry', () => {
-  it('lists cycle, stored in cycle_settings', () => {
-    expect(FEATURE_KEYS).toEqual(['cycle']);
+  it('lists cycle, stored in cycle_settings, and lab results, chosen per app', () => {
+    expect(FEATURE_KEYS).toEqual(['cycle', 'labResults']);
     expect(featureStorage('cycle')).toBe('cycleSettings');
+    expect(featureStorage('labResults')).toBe('choices');
   });
 
   it('keeps choices for the website and the mobile app', () => {
@@ -36,7 +40,8 @@ describe('optional features registry', () => {
 
   it('recognises only its own keys', () => {
     expect(isFeatureKey('cycle')).toBe(true);
-    expect(isFeatureKey('labResults')).toBe(false);
+    expect(isFeatureKey('labResults')).toBe(true);
+    expect(isFeatureKey('notAFeature')).toBe(false);
     // Inherited object members are not features.
     expect(isFeatureKey('toString')).toBe(false);
     expect(isFeatureKey('__proto__')).toBe(false);
@@ -89,6 +94,45 @@ describe('cycle on and off', () => {
   });
 });
 
+describe('lab results on and off', () => {
+  it.each(FEATURE_PLATFORMS)('is on by default (%s)', (platform) => {
+    for (const choices of [undefined, null, {}, { web: {}, mobile: {} }]) {
+      expect(
+        isFeatureEnabled('labResults', platform, {
+          choices,
+          cycleEnabled: undefined,
+        })
+      ).toBe(true);
+      expect(
+        isFeatureExplicitlyOff('labResults', platform, {
+          choices,
+          cycleEnabled: undefined,
+        })
+      ).toBe(false);
+    }
+  });
+
+  it('is turned off in one app only', () => {
+    const sources = {
+      choices: { mobile: { labResults: false } },
+      cycleEnabled: undefined,
+    };
+    expect(isFeatureEnabled('labResults', 'mobile', sources)).toBe(false);
+    expect(isFeatureExplicitlyOff('labResults', 'mobile', sources)).toBe(true);
+    expect(isFeatureEnabled('labResults', 'web', sources)).toBe(true);
+    expect(isFeatureEnabledAnywhere('labResults', sources)).toBe(true);
+  });
+
+  it('never reads lab results from cycle_settings', () => {
+    expect(
+      isFeatureEnabled('labResults', 'web', {
+        choices: undefined,
+        cycleEnabled: false,
+      })
+    ).toBe(true);
+  });
+});
+
 describe('filterByFeature', () => {
   const items: { id: string; feature?: FeatureKey }[] = [
     { id: 'diary' },
@@ -102,6 +146,57 @@ describe('filterByFeature', () => {
     ]);
     expect(filterByFeature(items, () => false).map((item) => item.id)).toEqual([
       'diary',
+    ]);
+  });
+});
+
+describe('hiddenFeatureCustomCategories', () => {
+  it.each(FEATURE_PLATFORMS)(
+    'hides the reproductive categories only while cycle is turned off on purpose (%s)',
+    (platform) => {
+      expect(
+        hiddenFeatureCustomCategories(platform, {
+          choices: undefined,
+          cycleEnabled: false,
+        })
+      ).toEqual(new Set(FEATURE_CUSTOM_CATEGORIES.cycle));
+      for (const cycleEnabled of [true, null, undefined]) {
+        expect(
+          hiddenFeatureCustomCategories(platform, {
+            choices: undefined,
+            cycleEnabled,
+          }).size
+        ).toBe(0);
+      }
+    }
+  );
+});
+
+describe('withoutHiddenCategories', () => {
+  it('leaves out the hidden category names and keeps the rest', () => {
+    const categories = [
+      { id: '1', name: 'blood_glucose' },
+      { id: '2', name: 'menstruation_flow' },
+    ];
+    expect(
+      withoutHiddenCategories(categories, new Set(['menstruation_flow']))
+    ).toEqual([{ id: '1', name: 'blood_glucose' }]);
+    expect(withoutHiddenCategories(categories, new Set())).toEqual(categories);
+  });
+});
+
+describe('withoutCycleHubSymptoms', () => {
+  it('leaves out only symptoms logged in the cycle hub', () => {
+    const entries = [
+      { id: 'a', source: 'manual' },
+      { id: 'b', source: 'cycle' },
+      { id: 'c', source: null },
+      { id: 'd' },
+    ];
+    expect(withoutCycleHubSymptoms(entries).map((entry) => entry.id)).toEqual([
+      'a',
+      'c',
+      'd',
     ]);
   });
 });

@@ -14,7 +14,8 @@
     "wellness": "Samopoczucie",
     "symptoms": "Objawy",
     "sparkyFitnessV": "SparkyFitness v{{version}}",
-    "labs": "Wyniki badań"
+    "labs": "Wyniki badań",
+    "challenges": "Wyzwania"
   },
   "aboutDialog": {
     "title": "O SparkyFitness",
@@ -102,7 +103,14 @@
       "replaceSuccess": "Ćwiczenie zamienione",
       "suggestedTab": "Proponowane",
       "caloriesPerHourWithUnit": "Kalorie/godz. ({{unit}})",
-      "caloriesPerHourHintWithUnit": "Pozostaw puste, aby użyć obliczonych przez system kalorii na godzinę ({{newExerciseCalories}} {{unit}}/godz.)."
+      "caloriesPerHourHintWithUnit": "Pozostaw puste, aby użyć obliczonych przez system kalorii na godzinę ({{newExerciseCalories}} {{unit}}/godz.).",
+      "healthActivityTypeLabel": "Typ aktywności zdrowotnej",
+      "healthActivityTypeAutomatic": "Automatycznie ({{type}})",
+      "healthActivityTypeHint": "Używane, gdy aplikacja mobilna zapisuje Twoje treningi w Apple Health lub Health Connect.",
+      "healthActivityTypeCommon": "Częste",
+      "healthActivityTypeAll": "Wszystkie aktywności",
+      "healthActivityTypeSearch": "Szukaj aktywności",
+      "healthActivityTypeNoMatches": "Brak wyników"
     },
     "addWorkoutPresetDialog": {
       "searchResultsTitle": "Wyniki wyszukiwania",
@@ -347,7 +355,9 @@
       "headersMapped": "Nagłówki zostały przypisane",
       "mapRequiredFields": "Nagłówki CSV nie pasują do wymaganego formatu. Zmapuj pola, aby kontynuować.",
       "parseSuccessful": "Pomyślnie przeanalizowano",
-      "readError": "Nie udało się odczytać wybranego pliku."
+      "readError": "Nie udało się odczytać wybranego pliku.",
+      "reparsePending": "Proszę czekać",
+      "reparsePendingDescription": "Zmiana formatu jest jeszcze przetwarzana. Spróbuj ponownie za chwilę."
     },
     "playbackModal": {
       "voiceLabel": "Głos:",
@@ -1500,7 +1510,8 @@
     "scheduledWorkout": "Sesja treningowa",
     "activePlanLabel": "Aktywny plan: {{name}}",
     "failedToLoadActivePlan": "Nie udało się wczytać aktywnego planu treningu.",
-    "currentOfTotal": "({{current}} z {{total}})"
+    "currentOfTotal": "({{current}} z {{total}})",
+    "regenerationFailed": "Zapisano, ale odświeżenie dziennika nie powiodło się. Spróbuj ponownie."
   },
   "foodSearchDialog": {
     "title": "Szukaj i dodaj produkty",
@@ -1535,7 +1546,7 @@
     "editFoodDetailsDescription": "Dostosuj wartości przed dodaniem do bazy.",
     "addNewFood": "Dodaj nowy produkt",
     "addNewFoodDescription": "Wprowadź dane nowego produktu, który zostanie dodany do Twojej bazy.",
-    "scanBarcodeDescription": "Umieść kod kreskowy produktu przed kamerą.",
+    "scanBarcodeDescription": "Umieść kod kreskowy produktu przed kamerą albo użyj jego zdjęcia.",
     "importFromCSVDescription": "Importuj plik CSV, aby dodać wiele produktów naraz.",
     "yourFoods": "Twoje produkty",
     "yourMeals": "Twoje posiłki",
@@ -1565,7 +1576,8 @@
     "selectBarcodeProvider": "Wybierz dostawcę",
     "dataProvider": "Dostawca danych:",
     "aiEstimate": "szacunek AI {{ai_confidence}}",
-    "per": "Na {{default_variant}}"
+    "per": "Na {{default_variant}}",
+    "scanBarcodeOrLabel": "Skanuj kod kreskowy lub etykietę"
   },
   "settings": {
     "profileInformation": {
@@ -1659,7 +1671,23 @@
       "temperatureUnit": "Jednostka temperatury",
       "celsius": "Celsjusz (°C)",
       "fahrenheit": "Fahrenheit (°F)",
-      "glucoseUnit": "Jednostka glukozy"
+      "glucoseUnit": "Jednostka glukozy",
+      "bacDistributionFormula": "Wzór szacowania alkoholu we krwi",
+      "bacFormula": {
+        "widmark": "Widmark",
+        "widmarkDescription": "Stały udział wody w ciele zależnie od płci. Wymaga płci i masy ciała.",
+        "watson": "Watson (domyślny)",
+        "watsonDescription": "Woda w ciele na podstawie płci, wieku, wzrostu i masy ciała.",
+        "seidl": "Seidl",
+        "seidlDescription": "Na podstawie płci, wzrostu i masy ciała.",
+        "forrest": "Forrest",
+        "forrestDescription": "Na podstawie płci i wskaźnika masy ciała (wzrostu i masy ciała)."
+      },
+      "bacEliminationRate": "Szybkość eliminacji alkoholu (‰ na godzinę)",
+      "bacEliminationRateHint": "Pomiędzy {{min}} a {{max}}, zawsze w ‰ na godzinę. {{default}} to typowa średnia.",
+      "bacDisplayUnit": "Jednostka alkoholu we krwi",
+      "bacPermille": "Promile (‰)",
+      "bacPercent": "Procent (%)"
     },
     "waterTracking": {
       "title": "Śledzenie wody",
@@ -2194,8 +2222,6 @@
     "cycle": {
       "title": "Cykl i ciąża",
       "description": "Zarządzaj zdrowiem reprodukcyjnym oraz monitorowaniem cyklu menstruacyjnego i ciąży",
-      "enableLabel": "Włącz monitorowanie cyklu i ciąży",
-      "enableHint": "Włącz centrum zdrowia reprodukcyjnego. Po włączeniu na pasku bocznym pojawi się odpowiednia karta.",
       "mode": "Tryb monitora",
       "bcMethod": "Antykoncepcja",
       "terminology": "Terminologia",
@@ -2228,7 +2254,10 @@
       "resetError": "Nie udało się zresetować konfiguracji początkowej. Spróbuj ponownie.",
       "resetOnboarding": "Zresetuj i uruchom ponownie konfigurację początkową",
       "resetSuccessDesc": "Konfiguracja początkowa została zresetowana. Odwiedź kartę Centrum cyklu, aby rozpocząć konfigurację.",
-      "resetSuccessTitle": "Reset profilu"
+      "resetSuccessTitle": "Reset profilu",
+      "switchInFeatures": "Śledzenie cyklu włącza się i wyłącza w sekcji Funkcje.",
+      "onInFeatures": "Śledzenie cyklu jest włączone. Możesz je wyłączyć w sekcji Funkcje.",
+      "offInFeatures": "Śledzenie cyklu jest wyłączone. Włącz je w sekcji Funkcje."
     },
     "nutrientGoalDirection": {
       "title": "Sposób interpretacji celu dla składników odżywczych",
@@ -2259,7 +2288,10 @@
       "remainingActivitySeparated": "Cel dzienny - Zjedzone + Aktywność (Kroki i treningi, bez BMR)",
       "activitySeparatedFootnote": "Po zapisaniu baza adaptacyjna wyklucza historyczną aktywność; dzisiejsze kroki i treningi są zaliczane raz, bez BMR. Wartości podglądu liczone przez serwer używają Twoich zapisanych ustawień.",
       "remainingTdeeWeekly": "Prognozowane TDEE + tygodniowa korekta − Zjedzone",
-      "adaptiveEstimateFootnote": "* Stopniowo dostosowuje Dzienny cel na podstawie szacunków z zapisów produktów i masy ciała. Wahania masy ciała i niekompletne zapisy zwiększają niepewność."
+      "adaptiveEstimateFootnote": "* Stopniowo dostosowuje Dzienny cel na podstawie szacunków z zapisów produktów i masy ciała. Wahania masy ciała i niekompletne zapisy zwiększają niepewność.",
+      "burnedAdaptive": "Wyświetlane informacyjnie. Twój cel adaptacyjny już uwzględnia Twoją aktywność.",
+      "netAdaptive": "Nieużywane dla „Pozostało”. Włącz poniżej „Licz kalorie aktywności osobno”, aby zaliczać dzisiejszą aktywność.",
+      "netAdaptivePercentage": "Nieużywane dla „Pozostało”. Aby zaliczać dzisiejszą aktywność, wybierz Dynamiczny i włącz „Licz kalorie aktywności osobno”."
     },
     "calorieGoalAdjustment": {
       "activityHeavy": "Bardzo aktywny (×1,725)",
@@ -2293,7 +2325,8 @@
       "cardPercentage": "Procentowy zwrot kalorii",
       "cardPercentageSummary": "Dodaje z powrotem część kalorii z treningu",
       "cardDevice": "Projekcja z urządzenia",
-      "cardDeviceSummary": "Projektuje całkowity wydatek energetyczny z Twojego urządzenia do północy"
+      "cardDeviceSummary": "Projektuje całkowity wydatek energetyczny z Twojego urządzenia do północy",
+      "cardDynamicAdaptiveSummary": "Aktywność jest już uwzględniona w Twoim celu adaptacyjnym"
     },
     "dataImport": {
       "checkin": {
@@ -2461,7 +2494,10 @@
       "adaptiveWeightIntervalTip": "Zapisuj rzeczywistą masę ciała o stałych porach, prowadząc zapisy żywienia w całym obserwowanym okresie.",
       "adaptiveFoodIntervalTip": "Zapisuj posiłki tak kompletnie, jak to możliwe; kwalifikujący się dzień może nadal być częściowy.",
       "adaptiveGoalMatchedEvidence": "<span>Cel adaptacyjny:</span> Szacuje wydatek energetyczny na podstawie zapisów żywienia i zmierzonych pomiarów masy ciała w odpowiadających sobie okresach obserwacji. Nowe dane są wprowadzane stopniowo; wcześniejsze dane niepewne lub ograniczone mogą nadal wpływać na wynik. Brakujące zapisy żywienia i wahania masy ciała ważonej zwiększają niepewność.",
-      "adaptivePlausibilityBandHint": "💡 W trybie adaptacyjnym ustawia to bazę wzorcową oraz pasmo wiarygodności ±{{band}} {{unit}} dla każdego kompletnego oszacowania. Wyświetlane oszacowanie zmienia się stopniowo i wraca w stronę bazy wzorcowej, gdy dane się starzeją, więc zaniżony poziom aktywności może je utrzymywać w dół."
+      "adaptivePlausibilityBandHint": "💡 W trybie adaptacyjnym ustawia to bazę wzorcową oraz pasmo wiarygodności ±{{band}} {{unit}} dla każdego kompletnego oszacowania. Wyświetlane oszacowanie zmienia się stopniowo i wraca w stronę bazy wzorcowej, gdy dane się starzeją, więc zaniżony poziom aktywności może je utrzymywać w dół.",
+      "dynamicGoalAdaptiveMethod": "<span>Cel dynamiczny:</span> Przy metodzie obliczania adaptacyjnej Twój cel jest wyuczony z Twoich dzienników żywności i trendu masy ciała, więc już obejmuje Twoją zwykłą aktywność, a „Pozostało” to cel minus zjedzone. Włącz poniżej <span>Licz kalorie aktywności osobno</span>, aby dodawać kroki i treningi każdego dnia do bazy, która ich nie obejmuje.",
+      "adaptiveFallbackActivityLevel": "Dopóki Adaptacyjny nie zbierze {{days}} dni dzienników żywności, Twoja baza to BMR × ten poziom, przed zastosowaniem Trybu celu, a Twoje treningi nie są do niej doliczane. Wybierz poziom, który obejmuje Twoje treningi.",
+      "adaptiveFallbackActivitySeparated": "Dopóki Adaptacyjny nie zbierze {{days}} dni dzienników żywności, Twoja baza to BMR × ten poziom, przed zastosowaniem Trybu celu. Opisz swoją aktywność poza krokami i treningami, które są liczone osobno."
     },
     "mfa": {
       "confirmPassword": "Potwierdź hasło, aby kontynuować",
@@ -2873,7 +2909,11 @@
       "appKeyLabel": "App Key:",
       "syncLabel": "Synchronizacja:",
       "neverSynced": "Ostatnia synchronizacja: nigdy",
-      "garminServiceUnreachable": "Usługa Garmin niedostępna. Synchronizacja nie jest możliwa."
+      "garminServiceUnreachable": "Usługa Garmin niedostępna. Synchronizacja nie jest możliwa.",
+      "mcpServerToolCount_one": "Czat może użyć {{count}} narzędzie",
+      "mcpServerToolCount_few": "Czat może użyć {{count}} narzędzia",
+      "mcpServerToolCount_many": "Czat może użyć {{count}} narzędzi",
+      "mcpServerSendsUserId": "Mówi serwerowi, kto czatuje"
     },
     "providerSpecificFields": {
       "appURL": "Adres URL aplikacji",
@@ -3046,11 +3086,98 @@
       "description": "Wybierz, które główne karty są widoczne na stronie",
       "cycleOn": "Wł.",
       "cycleOff": "Wył.",
-      "cycleHint": "{{name}} ma własny przełącznik wł./wył. w zakładce ustawień Samopoczucie.",
+      "cycleHint": "{{name}} włącza się i wyłącza w sekcji Funkcje powyżej.",
       "footnote": "Karty Dziennik i Ustawienia są zawsze widoczne. Ukrycie karty zmienia tylko tę stronę: nic nie jest usuwane, a aplikacja mobilna ma własne ustawienia.",
       "saveError": "Nie udało się zapisać wyboru kart. Spróbuj ponownie.",
       "loadError": "Nie udało się wczytać wyboru kart.",
-      "actingOnBehalf": "Karty można zmieniać tylko na własnym koncie."
+      "actingOnBehalf": "Karty można zmieniać tylko na własnym koncie.",
+      "featureOff": "Nie pokazano: wyłączona w Funkcje."
+    },
+    "chatMcp": {
+      "title": "Narzędzia zewnętrzne",
+      "description": "Te usługi dodał administrator spoza SparkyFitness. Gdy któraś jest włączona, Sparky może wysyłać jej części czatu i odczytywać jej odpowiedzi. Każda jest wyłączona, dopóki jej nie włączysz.",
+      "allow": "Pozwól Sparky używać {{name}}",
+      "loadError": "Nie udało się wczytać narzędzi zewnętrznych.",
+      "saveError": "Nie udało się zapisać. Spróbuj ponownie.",
+      "accountId": "Widzi Twój identyfikator konta.",
+      "familyOff": "Narzędzia zewnętrzne są wyłączone, gdy przeglądasz czyjś profil.",
+      "retry": "Spróbuj ponownie",
+      "loading": "Wczytywanie narzędzi zewnętrznych…"
+    },
+    "mcpServer": {
+      "trustNote": "To, co asystent przekaże tym narzędziom, trafia na ten serwer, a to, co wróci, wchodzi do czatu. Dodawaj tylko serwery, którym ufasz.",
+      "baseUrlLabel": "Adres URL serwera MCP",
+      "tokenLabel": "Token Bearer (opcjonalnie)",
+      "tokenKeepPlaceholder": "Pozostaw puste, aby zachować zapisany token",
+      "loadTools": "Wczytaj narzędzia",
+      "loadingTools": "Wczytywanie narzędzi...",
+      "allowedCount": "Zaznaczono {{count}} z {{max}} narzędzi.",
+      "noTools": "Serwer nie udostępnia żadnych narzędzi.",
+      "toolChanged": "Zmienione od czasu zapisania. Zaznacz ponownie, aby zezwolić na tę wersję.",
+      "tokenUrlChanged": "Po zmianie adresu URL serwera wpisz token ponownie.",
+      "toolProblem": {
+        "not_object": "Jego schemat wejścia nie opisuje obiektu.",
+        "too_deep": "Jego schemat wejścia jest zagnieżdżony zbyt głęboko.",
+        "malformed": "Jego schemat wejścia jest uszkodzony.",
+        "unreadable": "Nie udało się odczytać jego schematu wejścia.",
+        "too_large": "Jego schemat wejścia jest zbyt duży.",
+        "contains_token": "Jego schemat wejścia zawiera token.",
+        "name_too_long": "Jego nazwa ma więcej niż 128 znaków.",
+        "name_blank_or_padded": "Jego nazwa jest pusta albo zaczyna się lub kończy spacją."
+      },
+      "toolGone": "Serwer nie udostępnia już tego narzędzia.",
+      "sendUserIdLabel": "Powiedz serwerowi, kto czatuje",
+      "sendUserIdHelp": "Wysyła identyfikator użytkownika zalogowanej osoby w nagłówku {{header}}, dla serwera przechowującego dane per użytkownik.",
+      "details": "Szczegóły",
+      "urlHelp": "Zmiana adresu URL usuwa zaznaczone narzędzia.",
+      "urlCleared": "Zaznaczone narzędzia zostały wyczyszczone, ponieważ zmienił się adres URL. Wczytaj narzędzia i zaznacz je ponownie.",
+      "limit": "Zaznaczono już maksymalną dozwoloną liczbę narzędzi ({{max}}). Odznacz jedno, aby dodać kolejne.",
+      "noneTicked": "Nie zaznaczono jeszcze żadnych narzędzi, więc Sparky nie może używać tego serwera.",
+      "changedSummary_one": "{{count}} narzędzie zmieniło się od zapisania i zostało odznaczone. Sprawdź je poniżej.",
+      "changedSummary_few": "{{count}} narzędzia zmieniły się od zapisania i zostały odznaczone. Sprawdź je poniżej.",
+      "changedSummary_many": "{{count}} narzędzi zmieniło się od zapisania i zostało odznaczone. Sprawdź je poniżej.",
+      "goneSummary_one": "{{count}} narzędzie nie jest już na serwerze.",
+      "goneSummary_few": "{{count}} narzędzia nie są już na serwerze.",
+      "goneSummary_many": "{{count}} narzędzi nie jest już na serwerze.",
+      "detailsFor": "Szczegóły: {{name}}",
+      "problem": "Czat nie może użyć tego narzędzia: {{reason}}",
+      "loadError": {
+        "auth": "Serwer odrzucił token. Sprawdź token Bearer.",
+        "timeout": "Serwer nie odpowiedział w ciągu {{seconds}} s.",
+        "unreachable": "Nie udało się połączyć z serwerem. Sprawdź adres URL.",
+        "policy": "Ten adres jest niedozwolony przez politykę sieciową.",
+        "other": "Serwer nie wylistował swoich narzędzi ({{reason}})."
+      }
+    },
+    "features": {
+      "title": "Funkcje",
+      "description": "Włączaj i wyłączaj całe funkcje na tej stronie",
+      "actingOnBehalf": "Tylko właściciel konta może włączać i wyłączać funkcje.",
+      "loadError": "Nie udało się wczytać tego ustawienia.",
+      "footnote": "Wyłączenie funkcji tylko ją ukrywa: nic nie jest usuwane, a synchronizacje i importy działają dalej.",
+      "groups": {
+        "health": "Zdrowie",
+        "nutrition": "Odżywianie",
+        "training": "Trening",
+        "wellbeing": "Samopoczucie"
+      },
+      "cycle": {
+        "description": "Śledź okresy, płodność i ciążę.",
+        "scope": "Jeden przełącznik dla strony i aplikacji mobilnej.",
+        "setupHint": "Odpowiedz na kilka pytań, aby dokończyć konfigurację.",
+        "setupAction": "Skonfiguruj"
+      },
+      "open": "Otwórz Funkcje",
+      "webOnly": "Tylko ta strona. Aplikacja mobilna ma własny przełącznik.",
+      "serverTooOld": "Aby to zmienić, zaktualizuj serwer SparkyFitness.",
+      "off": {
+        "title": "{{name}} jest wyłączone",
+        "description": "Twoja historia zostaje zachowana. Włącz ponownie, aby znów ją tu zobaczyć.",
+        "turnOn": "Włącz"
+      },
+      "labResults": {
+        "description": "Zapisuj wyniki badań krwi i śledź każdy marker w czasie."
+      }
     }
   },
   "admin": {
@@ -3268,6 +3395,11 @@
       "automaticallySyncedWithYourCurrent": "✓ Automatycznie synchronizowane z bieżącym adresem URL. Sufiks ścieżki jest zablokowany ze względów bezpieczeństwa routingu.",
       "expertEnsureYourBaseURL": "⚠️ Tryb ekspercki: upewnij się, że Twój bazowy adres URL jest osiągalny z internetu, aby dostawca OIDC mógł zwrócić dane.",
       "none": "brak"
+    },
+    "challenges": {
+      "title": "Wyzwania",
+      "label": "Zezwalaj na wyzwania i rankingi grupowe na tym serwerze",
+      "help": "Użytkownicy mogą rozpoczynać wyzwania, zapraszać innych kodem i widzieć nawzajem swoje wyniki, nigdy swoje dzienniki. Po wyłączeniu wyzwania są ukryte, a punktacja się zatrzymuje; nic nie jest usuwane."
     }
   },
   "goals": {
@@ -3620,8 +3752,6 @@
       "cunninghamMath": "Wzór: 500 + 22 × LBM (gdzie LBM = masa ciała × (1 − BF/100))\nObliczenia: 500 + 22 × ({{weight}} kg × (1 − {{bodyFat}}/100)) = {{result}} kcal",
       "harrisMaleMath": "Wzór: 13,397 × masa ciała + 4,799 × wzrost − 5,677 × wiek + 88,362\nObliczenia: 13,397 × {{weight}} + 4,799 × {{height}} − 5,677 × {{age}} + 88,362 = {{result}} kcal",
       "harrisFemaleMath": "Wzór: 9,247 × masa ciała + 3,098 × wzrost − 4,33 × wiek + 447,593\nObliczenia: 9,247 × {{weight}} + 3,098 × {{height}} − 4,33 × {{age}} + 447,593 = {{result}} kcal",
-      "oxfordMaleMath": "Wzór: 14,2 × masa ciała + 593\nObliczenia: 14,2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "Wzór: 10,9 × masa ciała + 677\nObliczenia: 10,9 × {{weight}} + 677 = {{result}} kcal",
       "bmiBodyFatMath": "Wzór: 1,2 × BMI + 0,23 × wiek − stała ({{constant}})\nObliczenia: 1,2 × {{bmi}} (BMI) + 0,23 × {{age}} − {{constant}} = {{result}}%",
       "invalidMeasurements": "Nieprawidłowe pomiary do obliczenia.",
       "navyMaleMath": "Wzór (mężczyzna): 86,01 × log10(talia − szyja) − 70,041 × log10(wzrost) + 36,76 (w calach)\nObliczenia: 86,01 × log10({{waist}}in − {{neck}}in) − 70,041 × log10({{height}}in) + 36,76\nWynik: {{result}}%",
@@ -3722,7 +3852,9 @@
       "candidatePlausibilityBand": "Limity wiarygodności z Twojego poziomu aktywności (×{{multiplier}}): {{min}}–{{max}} {{unit}}. Surowy kandydat mieści się w tym zakresie; następuje korekta historii.",
       "adaptiveHistoryAdjustment": "Korekta historii: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}} (średnia {{window}}-dniowa po utrzymaniu i zanikaniu starszych oszacowań).",
       "activityCandidateCapped": "Po limicie wiarygodności opartym na BMR kandydat z wyłączoną aktywnością wynosi {{baseline}} {{unit}}; następuje jego korekta historii.",
-      "activityHistoryAdjustment": "Korekta historii bazy aktywności: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}}. Tryb celu i bezpieczne minimum mają zastosowanie do tej filtrowanej bazy."
+      "activityHistoryAdjustment": "Korekta historii bazy aktywności: {{candidate}} {{sign}} {{adjustment}} = {{result}} {{unit}}. Tryb celu i bezpieczne minimum mają zastosowanie do tej filtrowanej bazy.",
+      "oxfordMaleMathHenry2005": "Wzór: ({{slope}} × masa ciała + {{intercept}}) × 239, dla Twojego wieku\nObliczenia: ({{slope}} × {{weight}} + {{intercept}}) × 239 = {{result}} kcal",
+      "oxfordFemaleMathHenry2005": "Wzór: ({{slope}} × masa ciała + {{intercept}}) × 239, dla Twojego wieku\nObliczenia: ({{slope}} × {{weight}} + {{intercept}}) × 239 = {{result}} kcal"
     },
     "copyAllError": "Nie udało się skopiować całego dnia.",
     "copyAllFromYesterday": "Skopiuj wszystko z wczoraj",
@@ -3936,6 +4068,36 @@
       "stepFloor": "Utrzymano na bezpiecznym minimum; pozostałe dni oddają różnicę.",
       "pausedWeeklyPlan": "Cyklowanie kalorii jest dziś wstrzymane: plan celu tygodniowego ustala ten dzień.",
       "pausedEarnBack": "Cyklowanie kalorii jest wstrzymane: kalorie z treningu są dodawane z powrotem do celu."
+    },
+    "copyFoodError": "Nie udało się skopiować produktu.",
+    "copyFoodSuccess": "Produkt skopiowany.",
+    "bloodAlcohol": {
+      "title": "Szacowany alkohol we krwi",
+      "failedToLoad": "Nie udało się wczytać szacunku alkoholu we krwi.",
+      "disclaimer": "Tylko zgrubny szacunek. Realna zawartość alkoholu we krwi może różnić się o 20% lub więcej. Nigdy nie używaj go do decyzji, czy możesz prowadzić pojazd.",
+      "estimatedTimes": "Szacowane czasy",
+      "inputs": {
+        "sex": "płeć",
+        "weight": "masa ciała",
+        "height": "wzrost",
+        "age": "data urodzenia"
+      },
+      "missingInputs": "Aby oszacować alkohol we krwi, uzupełnij: {{inputs}}. Do tego czasu szacunek nie jest dostępny.",
+      "openProfile": "Ustaw {{inputs}} w swoim profilu",
+      "openCheckIn": "Zapisz masę ciała i wzrost we Wpisie dnia",
+      "implausibleInputs": "Twoja masa ciała i wzrost nie dają wiarygodnych wartości, więc szacunek nie jest dostępny. Sprawdź najnowsze wartości we Wpisie dnia.",
+      "checkMeasurements": "Sprawdź pomiary",
+      "empty": "Na ten dzień nie zapisano alkoholu.",
+      "formulaFellBack": "Wzór {{formula}} nie pasuje do Twoich pomiarów ciała, więc ten szacunek używa wzoru Watsona.",
+      "estimatedNow": "Szacunek teraz",
+      "peak": "Szacowany szczyt",
+      "legendCurve": "Szacowany BAC",
+      "legendNow": "Teraz",
+      "legendDrink": "Zapisany drink",
+      "legendEstimated": "Przyjęty czas",
+      "drinks": "Policzone drinki",
+      "drink": "Drink",
+      "gramsAlcohol": "{{grams}} g alkoholu"
     }
   },
   "foodDiary": {
@@ -4002,7 +4164,8 @@
     "fromPlan": "Z planu",
     "editFoodDatabase": "Edytuj bazę produktów",
     "editFoodDatabaseDescription": "Edytuj informacje o wartościach odżywczych tego produktu w swojej bazie.",
-    "editingTemporarilyUnavailable": "Edycja szczegółów produktu jest chwilowo niedostępna z powodu zmian schematu."
+    "editingTemporarilyUnavailable": "Edycja szczegółów produktu jest chwilowo niedostępna z powodu zmian schematu.",
+    "copyFood": "Kopiuj produkt"
   },
   "checkIn": {
     "neutral": "Neutralnie",
@@ -5220,7 +5383,13 @@
     "baselineError": "Nie udało się obliczyć punktu odniesienia zapotrzebowania na sen",
     "method2": "Metoda: {{method}}",
     "workdays2": "Dni robocze: {{workdaysAvailable}}/{{workdaysNeeded}}",
-    "freeDays": "Dni wolne: {{freedaysAvailable}}/{{freedaysNeeded}}"
+    "freeDays": "Dni wolne: {{freedaysAvailable}}/{{freedaysNeeded}}",
+    "sleepSurplus": "Nadwyżka snu",
+    "debtSurplus": "Nadwyżka",
+    "debtSurplusDesc": "Masz nadwyżkę snu. Dzisiejsze zapotrzebowanie jest nieco niższe.",
+    "trainingLoad": "Obciążenie treningowe",
+    "recovery": "Regeneracja",
+    "recoveryScore": "{{score}}/100"
   },
   "medications": {
     "tabs": {
@@ -6236,7 +6405,8 @@
       "energyLevel": "Poziom energii",
       "displayNameCapacityMlml": "{{displayName}} (<span>{{capacityMl}}</span> ml)",
       "energy": "Energia: {{energy}}"
-    }
+    },
+    "ownerOnly": "Tylko właściciel konta może to widzieć i zmieniać."
   },
   "onboarding": {
     "completeSetup": "Zakończ konfigurację",
@@ -6566,6 +6736,85 @@
     "sparkyChatInterface": {
       "chatError": "Błąd czatu",
       "failedToProcessMessagePlease": "Nie udało się przetworzyć wiadomości. Sprawdź ustawienia usługi AI."
+    },
+    "approval": {
+      "title": "Zezwolić na ten krok?",
+      "run": "Po przeczytaniu <bold>{{server}}</bold> Sparky chce uruchomić <bold>{{tool}}</bold>.",
+      "send": "Po przeczytaniu <bold>{{server}}</bold> Sparky chce użyć <bold>{{tool}}</bold> z <bold>{{otherServer}}</bold>.",
+      "details": "Szczegóły",
+      "allow": "Zezwól",
+      "deny": "Odmów",
+      "allowed": "Zezwolono",
+      "denied": "Odmówiono",
+      "failed": "Nie udało się zapisać odpowiedzi. Spróbuj ponownie.",
+      "runPlain": "Sparky chce uruchomić <bold>{{tool}}</bold>.",
+      "delete": "Sparky chce usunąć <bold>{{summary}}</bold>.",
+      "deleteAfter": "Po przeczytaniu <bold>{{server}}</bold> Sparky chce usunąć <bold>{{summary}}</bold>.",
+      "change": "Sparky chce wprowadzić tę zmianę: <bold>{{summary}}</bold>.",
+      "changeAfter": "Po przeczytaniu <bold>{{server}}</bold> Sparky chce wprowadzić tę zmianę: <bold>{{summary}}</bold>.",
+      "working": "Pracuję nad tym…",
+      "done": "Gotowe",
+      "notRun": "Nie uruchomiono",
+      "cancelled": "Najpierw wysłano nową wiadomość.",
+      "nothingChanged": "Nic nie zostało zmienione.",
+      "toolFailed": "Zezwolono, ale nie zadziałało",
+      "otherPending": "Odpowiedz na drugi krok, aby kontynuować.",
+      "composerHint": "Najpierw odpowiedz na powyższy krok albo pisz dalej, aby go pominąć.",
+      "announce": "Sparky czeka na Twoją odpowiedź: Zezwolić na ten krok?",
+      "runCompleted": "Po przeczytaniu <bold>{{server}}</bold> Sparky uruchomił <bold>{{tool}}</bold>.",
+      "runPlainCompleted": "Sparky uruchomił <bold>{{tool}}</bold>.",
+      "sendCompleted": "Po przeczytaniu <bold>{{server}}</bold> Sparky uruchomił <bold>{{tool}}</bold>.",
+      "deleteCompleted": "Zezwolono Sparky na usunięcie <bold>{{summary}}</bold>.",
+      "deleteAfterCompleted": "Gdy Sparky przeczytał <bold>{{server}}</bold>, zezwolono mu na usunięcie <bold>{{summary}}</bold>.",
+      "changeCompleted": "Zezwolono Sparky na wprowadzenie tej zmiany: <bold>{{summary}}</bold>.",
+      "changeAfterCompleted": "Gdy Sparky przeczytał <bold>{{server}}</bold>, zezwolono mu na wprowadzenie tej zmiany: <bold>{{summary}}</bold>.",
+      "runFailed": "Po przeczytaniu <bold>{{server}}</bold> Sparky próbował uruchomić <bold>{{tool}}</bold>.",
+      "runPlainFailed": "Sparky próbował uruchomić <bold>{{tool}}</bold>.",
+      "sendFailed": "Po przeczytaniu <bold>{{server}}</bold> Sparky próbował uruchomić <bold>{{tool}}</bold>.",
+      "deleteFailed": "Sparky próbował usunąć <bold>{{summary}}</bold>.",
+      "deleteAfterFailed": "Po przeczytaniu <bold>{{server}}</bold> Sparky próbował usunąć <bold>{{summary}}</bold>.",
+      "changeFailed": "Sparky próbował wprowadzić tę zmianę: <bold>{{summary}}</bold>.",
+      "changeAfterFailed": "Po przeczytaniu <bold>{{server}}</bold> Sparky próbował wprowadzić tę zmianę: <bold>{{summary}}</bold>.",
+      "runUnused": "Po przeczytaniu <bold>{{server}}</bold> Sparky chciał uruchomić <bold>{{tool}}</bold>.",
+      "runPlainUnused": "Sparky chciał uruchomić <bold>{{tool}}</bold>.",
+      "sendUnused": "Po przeczytaniu <bold>{{server}}</bold> Sparky chciał użyć <bold>{{tool}}</bold> z <bold>{{otherServer}}</bold>.",
+      "deleteUnused": "Sparky chciał usunąć <bold>{{summary}}</bold>.",
+      "deleteAfterUnused": "Po przeczytaniu <bold>{{server}}</bold> Sparky chciał usunąć <bold>{{summary}}</bold>.",
+      "changeUnused": "Sparky chciał wprowadzić tę zmianę: <bold>{{summary}}</bold>.",
+      "changeAfterUnused": "Po przeczytaniu <bold>{{server}}</bold> Sparky chciał wprowadzić tę zmianę: <bold>{{summary}}</bold>."
+    },
+    "outsideSource": {
+      "line": "Użyto <bold>{{servers}}</bold>. Coś wygląda nie tak?",
+      "delete": "Usuń tę wiadomość",
+      "clear": "Wyczyść czat",
+      "failed": "Nie udało się usunąć tej wiadomości. Spróbuj ponownie.",
+      "deleteTitle": "Usunąć tę odpowiedź?",
+      "deleteBody": "Spowoduje to usunięcie odpowiedzi z czatu. Nie cofnie żadnych zmian, które Sparky już wprowadził.",
+      "cancel": "Anuluj",
+      "confirmDelete": "Usuń",
+      "deleting": "Usuwanie…"
+    },
+    "tools": {
+      "generic": "Narzędzie",
+      "outside": "narzędzie zewnętrzne",
+      "outsideNamed": "{{server}}: {{tool}}",
+      "withAction": "{{tool}} ({{action}})",
+      "runProgram": "Uruchom program",
+      "food": "Produkt",
+      "exercise": "Ćwiczenie",
+      "checkin": "Wpis dnia",
+      "goals": "Cele",
+      "lookedUp": "Wyszukano {{name}}"
+    },
+    "outsideError": {
+      "unavailable": "{{server}} nie odpowiedział. Spróbuj ponownie później.",
+      "turnedOff": "{{server}} jest dla Ciebie wyłączony w ustawieniach AI."
+    },
+    "clearConfirm": {
+      "title": "Wyczyścić czat?",
+      "body": "Trwale usuwa to historię czatu ze Sparky. Tej operacji nie można cofnąć.",
+      "cancel": "Anuluj",
+      "clear": "Wyczyść"
     }
   },
   "foodCsvImport": {
@@ -6606,7 +6855,9 @@
     "missingDefaultValidationError": "Co najmniej jeden wariant każdego produktu musi być ustawiony jako jednostka domyślna.",
     "missingDefaultWarning": "Uwaga: liczba produktów bez ustawionego wariantu domyślnego: {{count}}. Ustaw co najmniej jeden wariant jako domyślny (podświetlony na żółto poniżej).",
     "showAllRows": "Pokaż wszystkie wiersze ({{count}})",
-    "upfrontNote": "Uwaga: każdy produkt musi mieć co najmniej jeden wariant ustawiony jako jednostka domyślna (Is Default = True)."
+    "upfrontNote": "Uwaga: każdy produkt musi mieć co najmniej jeden wariant ustawiony jako jednostka domyślna (Is Default = True).",
+    "reparsePendingTitle": "Proszę czekać",
+    "reparsePendingDescription": "Zmiana formatu jest jeszcze przetwarzana. Spróbuj ponownie za chwilę."
   },
   "foods": {
     "providerVerified": "Zweryfikowany produkt",
@@ -6759,7 +7010,79 @@
     "viewErrors": "Pokaż nieudane wiersze",
     "imported": "Zaimportowano: {{processedCount}}",
     "skipped": "Pominięto: {{skippedCount}}",
-    "failed": "Nie powiodło się: {{errorsCount}}"
+    "failed": "Nie powiodło się: {{errorsCount}}",
+    "fieldDescriptions": {
+      "date": "Data (ISO 8601: YYYY-MM-DD; pełny znacznik czasu również jest akceptowany, ale zachowywana jest tylko data — pora dnia jest pomijana, a strefa czasowa decyduje, który dzień) — dzień, w którym zapisano wpis.",
+      "source": "Tekst — skąd pochodzą dane.",
+      "notes": "Tekst — dowolne notatki.",
+      "meal_type": "Tekst — jeden z Twoich typów posiłków (breakfast, lunch, dinner, snacks, …), bez rozróżniania wielkości liter.",
+      "meal_name": "Tekst — grupuje wiersze w nazwany posiłek (wiersze o tej samej dacie, typie posiłku i nazwie stają się jednym posiłkiem).",
+      "food_name": "Tekst — produkt do dopasowania w Twojej bibliotece lub do utworzenia.",
+      "brand": "Tekst — opcjonalna marka, używana do lepszego dopasowania.",
+      "quantity": "Liczba — ilość na jednostkę, np. 200.",
+      "unit": "Tekst — znana jednostka (g, oz, ml, cup, serving, …); niedopasowane wartości są zachowywane bez zmian.",
+      "name": "Tekst — nazwa do dopasowania w Twojej bibliotece lub do utworzenia.",
+      "serving_size": "Liczba — ilość na porcję; dzielnik we wzorze wartości odżywczych.",
+      "serving_unit": "Tekst — jednostka dla serving_size (g, oz, cup, …).",
+      "is_custom": "Wartość logiczna — `true` oznacza element własny (każda inna wartość to false).",
+      "shared_with_public": "Wartość logiczna — `true` udostępnia element w bibliotece publicznej (każda inna wartość to false).",
+      "is_default": "Wartość logiczna — `true` czyni ten element wariantem domyślnym (każda inna wartość to false).",
+      "category": "Tekst — kategoria ćwiczenia (strength, cardio, …).",
+      "calories_per_hour": "Liczba — szacowane spalone kalorie na godzinę.",
+      "description": "Tekst — krótki opis ćwiczenia.",
+      "force": "Tekst — `pull`, `push` lub `static` (bez rozróżniania wielkości liter).",
+      "level": "Tekst — `beginner`, `intermediate` lub `expert` (bez rozróżniania wielkości liter).",
+      "mechanic": "Tekst — `isolation` lub `compound` (bez rozróżniania wielkości liter).",
+      "equipment": "Tekst — używany sprzęt (oddzielony przecinkami).",
+      "primary_muscles": "Tekst — mięśnie główne (oddzielone przecinkami).",
+      "secondary_muscles": "Tekst — mięśnie pomocnicze (oddzielone przecinkami).",
+      "instructions": "Tekst — jak wykonać ćwiczenie.",
+      "images": "Tekst — adresy URL obrazów (oddzielone przecinkami).",
+      "entry_date": "Data (ISO 8601: YYYY-MM-DD; pełny znacznik czasu również jest akceptowany, ale zachowywana jest tylko data — pora dnia jest pomijana, a strefa czasowa decyduje, który dzień) — dzień, w którym wykonano trening.",
+      "exercise_name": "Tekst — ćwiczenie do dopasowania w Twojej bibliotece lub do utworzenia.",
+      "exercise_force": "Tekst — `pull`, `push` lub `static` (bez rozróżniania wielkości liter).",
+      "exercise_level": "Tekst — `beginner`, `intermediate` lub `expert` (bez rozróżniania wielkości liter).",
+      "exercise_mechanic": "Tekst — `isolation` lub `compound` (bez rozróżniania wielkości liter).",
+      "weight": "Liczba — masa ciała (w weight_unit).",
+      "weight_unit": "Tekst — jednostka masy (kg lub lb).",
+      "body_fat": "Liczba — procent tkanki tłuszczowej (%).",
+      "height": "Liczba — wzrost (w length_unit).",
+      "neck": "Liczba — obwód szyi (w length_unit).",
+      "waist": "Liczba — obwód talii (w length_unit).",
+      "hips": "Liczba — obwód bioder (w length_unit).",
+      "length_unit": "Tekst — jednostka pól długości (cm, in, m).",
+      "bedtime": "Znacznik czasu (ISO) — pora snu.",
+      "wake_time": "Znacznik czasu (ISO) — pobudka.",
+      "duration_in_seconds": "Liczba — całkowity czas snu, w sekundach.",
+      "time_asleep_in_seconds": "Liczba — czas snu, w sekundach.",
+      "deep_sleep_seconds": "Liczba — sen głęboki, w sekundach.",
+      "light_sleep_seconds": "Liczba — sen lekki, w sekundach.",
+      "rem_sleep_seconds": "Liczba — sen REM, w sekundach.",
+      "awake_sleep_seconds": "Liczba — czuwanie, w sekundach.",
+      "sleep_score": "Liczba — ogólna ocena snu (0–100).",
+      "stage_events": "Tekst (tablica JSON) — surowa sekwencja zdarzeń faz snu.",
+      "type": "Tekst — nazwa metryki lub parametru życiowego.",
+      "value": "Liczba — jej wartość.",
+      "mood_value": "Liczba — wynik nastroju (10–100).",
+      "mood_tags": "Tekst — tagi nastroju oddzielone pionową kreską (np. grateful|energetic).",
+      "calories": "Liczba — kalorie (kcal).",
+      "protein": "Liczba — białko (g).",
+      "carbs": "Liczba — węglowodany (g).",
+      "fat": "Liczba — tłuszcz całkowity (g).",
+      "saturated_fat": "Liczba — tłuszcz nasycony (g).",
+      "polyunsaturated_fat": "Liczba — tłuszcz wielonienasycony (g).",
+      "monounsaturated_fat": "Liczba — tłuszcz jednonienasycony (g).",
+      "trans_fat": "Liczba — tłuszcz trans (g).",
+      "cholesterol": "Liczba — cholesterol (mg).",
+      "sodium": "Liczba — sód (mg).",
+      "potassium": "Liczba — potas (mg).",
+      "dietary_fiber": "Liczba — błonnik pokarmowy (g).",
+      "sugars": "Liczba — cukry (g).",
+      "vitamin_a": "Liczba — witamina A (IU).",
+      "vitamin_c": "Liczba — witamina C (mg).",
+      "calcium": "Liczba — wapń (mg).",
+      "iron": "Liczba — żelazo (mg)."
+    }
   },
   "diaryCsvImport": {
     "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB.",
@@ -6793,7 +7116,10 @@
     "matchScopeDescription": "Dopasowanie nazwy produktu poza zaznaczonymi zakresami zostanie zignorowane, a zamiast tego zostanie utworzony nowy produkt na podstawie kolumn z wartościami odżywczymi wiersza.",
     "mealType": "Posiłek",
     "overrideDescription": "Gdy wiersz pasuje do jednego z Twoich produktów, zapisane wartości odżywcze tego wariantu produktu zostaną zastąpione wartościami z importu. Dotyczy tylko elementów „Moje elementy” — dopasowanie rodzinne i publiczne są wyłączone.",
-    "overrideLabel": "Zastąp wartości odżywcze istniejącego produktu zaimportowanymi wartościami"
+    "overrideLabel": "Zastąp wartości odżywcze istniejącego produktu zaimportowanymi wartościami",
+    "aggregateLabel": "Importuj jako sumy posiłków (agregat per posiłek)",
+    "aggregateDescription": "Ten plik ma jeden wiersz na posiłek, bez nazwy i ilości produktu. Zapisz wartości odżywcze każdego wiersza jako jedną porcję posiłku nazwanego według jego typu.",
+    "unit": "Jednostka"
   },
   "healthDataImport": {
     "fileTooLarge": "Wybrany plik jest zbyt duży. Prześlij plik mniejszy niż 25 MB.",
@@ -6824,7 +7150,23 @@
     "acceptedActivityTypes": "Akceptowane typy aktywności",
     "hydration": "Nawodnienie",
     "dailyWaterIntakeValuesAre": "Dzienne przyjmowanie wody. Wartości są przeliczane na mililitry.",
-    "mood": "Nastrój"
+    "mood": "Nastrój",
+    "unitPrompt": "Twój plik nie ma kolumny jednostek. Wybierz jednostkę dla wartości, aby poprawnie je przeliczyć.",
+    "weightUnitLabel": "Jednostka masy",
+    "weightUnitRequired": "Twój plik nie ma jednostki masy. Przed importem wybierz kg lub lb.",
+    "lengthUnitLabel": "Jednostka długości",
+    "lengthUnitRequired": "Twój plik nie ma jednostki długości. Przed importem wybierz cm, in lub m.",
+    "weightUnitMissing": "Masa jest obecna, ale jednostka nie jest ustawiona. Wybierz jednostkę (kg lub lb) dla tego importu.",
+    "lengthUnitMissing": "{{type}} jest obecne, ale jednostka nie jest ustawiona. Wybierz jednostkę (cm, in lub m) dla tego importu.",
+    "unitRequired": "Wymagana jednostka",
+    "fieldDescriptions": {
+      "unit": "Tekst — jednostka wartości (np. ml, L, oz, bpm, mmol/L); w miarę możliwości konwertowana."
+    },
+    "bodyMeasurementsDescription": "Masa ciała, tkanka tłuszczowa, wzrost i obwody ciała. Jeden wiersz na dzień. Przechowywane bez etykiety źródła, więc ponowny import daty nadpisuje te dane.",
+    "sleepDescription": "Jedna sesja snu na wiersz. Podaj bedtime/wake_time jako znaczniki czasu ISO. Kolumny deep/light/rem/awake to sumy sekund per faza. Pełną oś czasu faz uzyskasz, opcjonalnie umieszczając tablicę JSON w stage_events. Opcjonalne kolumny record_timezone (nazwa IANA, np. America/New_York) i/lub record_utc_offset_minutes przypinają wyświetlanie do strefy, w której zapisano sen; bez nich czasy wyświetlają się w strefie czasowej profilu.",
+    "vitalsCustomDescription": "Jeden odczyt na wiersz. Pole `type` przyjmuje nazwę parametru życiowego LUB dowolną nazwę kategorii własnej — nieznane typy tworzą lub ponownie używają kategorii pomiaru własnego według nazwy.",
+    "dailyActivityDescription": "Dzienne sumy, takie jak kroki, dystans i spalone kalorie. Uwaga: kroki i active_calories ignorują notatki; dystans jest przechowywany jako pomiar własny.",
+    "moodDescription": "Jeden importowany nastrój na dzień (ponowny import daty zastępuje importowany nastrój tego dnia). Nastrój zapisany samodzielnie jest zachowywany. Nastrój zaimportowany przed tą aktualizacją jest traktowany jako własny, więc ponowny import tych dat doda drugi wpis. mood_value to 10-100: 10 Smutny, 20 Zły, 30 Zaniepokojony, 40 Neutralny, 50 Zamyślony, 60 Spokojny, 70 Pewny siebie, 80 Szczęśliwy, 90 Podekscytowany. mood_tags jest opcjonalne, oddzielone pionową kreską (np. grateful|energetic)."
   },
   "workoutLaps": {
     "lap": "Okrążenie",
@@ -7327,7 +7669,15 @@
     "mealType": "Typ posiłku",
     "selectMealTypePlaceholder": "Wybierz typ posiłku",
     "title": "Kopiuj wpisy produktów",
-    "titleAll": "Kopiuj cały dzień"
+    "titleAll": "Kopiuj cały dzień",
+    "copyTo": "Kopiuj do",
+    "descriptionFood": "Zapisz ten produkt ponownie teraz albo wybierz datę i typ posiłku.",
+    "quick": {
+      "now": "Teraz",
+      "today": "Dzisiaj",
+      "tomorrow": "Jutro"
+    },
+    "titleFood": "Kopiuj {{food}}"
   },
   "copied": "Skopiowano!",
   "customNutrients": {
@@ -7923,6 +8273,18 @@
       "genericEstimateVerifyIfAccuracy": "Ogólny szacunek — zweryfikuj, jeśli liczy się dokładność.",
       "useThis": "Użyj tego",
       "estimate2": "— szacunek {{confidence}}"
+    },
+    "cooked": {
+      "switch": "Zważone po ugotowaniu",
+      "sameBatchPrevious": "Ta sama partia co {{date}}: {{raw}} {{unit}} na surowo → {{cooked}} {{unit}} po ugotowaniu",
+      "sameBatchEntry": "Ta sama partia co ten wpis: {{raw}} {{unit}} na surowo → {{cooked}} {{unit}} po ugotowaniu",
+      "newBatch": "Nowa partia",
+      "rawBatch": "Masa surowa partii ({{unit}})",
+      "cookedBatch": "Masa partii po ugotowaniu ({{unit}})",
+      "eaten": "Zjedzono (po ugotowaniu, {{unit}})",
+      "result": "= {{raw}} {{unit}} na surowo · {{calories}} {{energyUnit}}",
+      "incomplete": "Wprowadź masy, aby obliczyć ilość surową.",
+      "enterEaten": "Wprowadź zjedzoną masę po ugotowaniu."
     }
   },
   "healthMetrics": {
@@ -9357,6 +9719,33 @@
       "estimate2": "szacunek {{ai_confidence}}",
       "custom": "Niestandardowa",
       "aiEstimateConfidence": "Szacunek AI (pewność {{confidence}})"
+    },
+    "barcodeImage": {
+      "upload": "Prześlij obraz kodu kreskowego",
+      "notFound": "Na tym obrazie nie znaleziono kodu kreskowego. Spróbuj ostrzejszego zdjęcia z całym kodem w kadrze.",
+      "unreadable": "Nie udało się otworzyć tego obrazu. Użyj pliku JPEG lub PNG."
+    },
+    "imageSourceInput": {
+      "dropOrPaste": "albo upuść tutaj obraz, albo wklej zrzut ekranu"
+    },
+    "nutritionLabelImage": {
+      "title": "Skanuj etykietę żywieniową",
+      "dialogDescription": "Utwórz produkt ze zdjęcia jego etykiety żywieniowej.",
+      "description": "Użyj zdjęcia panelu wartości odżywczych. Twoja usługa AI odczyta wartości, a Ty sprawdzisz je przed zapisaniem produktu.",
+      "upload": "Prześlij obraz etykiety",
+      "reading": "Odczytywanie etykiety...",
+      "errors": {
+        "noAiService": "Odczytanie etykiety wymaga usługi AI obsługującej obrazy. Dodaj ją w Ustawienia → Usługa AI.",
+        "aiServiceSetup": "Twojej usługi AI nie można użyć do odczytu etykiet: {{message}}",
+        "badImage": "Nie udało się wysłać tego obrazu do usługi AI. Użyj zdjęcia JPEG lub PNG.",
+        "unreadable": "Nie odczytano z tego obrazu żadnych wartości odżywczych. Spróbuj ostrzejszego, bliższego zdjęcia etykiety.",
+        "unavailable": "Twoja usługa AI nie odpowiedziała. Spróbuj ponownie za chwilę.",
+        "generic": "Nie udało się odczytać etykiety. Spróbuj ponownie."
+      }
+    },
+    "scanModes": {
+      "barcode": "Kod kreskowy",
+      "label": "Etykieta żywieniowa"
     }
   },
   "gitHubSponsorButton": {
@@ -9443,7 +9832,11 @@
     }
   },
   "toolfallback": {
-    "result": "Wynik:"
+    "result": "Wynik:",
+    "used": "Użyte narzędzie",
+    "cancelled": "Anulowane narzędzie",
+    "error": "Błąd:",
+    "cancelledReason": "Powód anulowania:"
   },
   "ui": {
     "confirmationDialog": {
@@ -10765,5 +11158,472 @@
     "importAsMeal": "Importuj składniki jako posiłek",
     "searchMacros": "Białko {{protein}} g · Węglowodany {{carbs}} g · Tłuszcz {{fat}} g",
     "unsavedIngredients": "Zapisz lub odrzuć zmiany składników przed synchronizacją wartości odżywczych do Mealie."
+  },
+  "healthActivityTypes": {
+    "american_football": "Futbol amerykański",
+    "archery": "Łucznictwo",
+    "australian_football": "Futbol australijski",
+    "badminton": "Badminton",
+    "baseball": "Baseball",
+    "basketball": "Koszykówka",
+    "bowling": "Kręgle",
+    "boxing": "Boks",
+    "climbing": "Wspinaczka",
+    "cricket": "Krykiet",
+    "cross_training": "Trening mieszany",
+    "curling": "Curling",
+    "cycling": "Kolarstwo",
+    "cycling_indoor": "Kolarstwo na miejscu",
+    "elliptical": "Orbitrek",
+    "equestrian_sports": "Jeździectwo",
+    "fencing": "Szermierka",
+    "fishing": "Wędkarstwo",
+    "functional_strength_training": "Trening siłowy funkcjonalny",
+    "golf": "Golf",
+    "gymnastics": "Gimnastyka",
+    "handball": "Piłka ręczna",
+    "hiking": "Wędrówki piesze",
+    "ice_hockey": "Hokej na lodzie",
+    "roller_hockey": "Hokej na wrotkach",
+    "hunting": "Polowanie",
+    "lacrosse": "Lacrosse",
+    "martial_arts": "Sztuki walki",
+    "mind_and_body": "Ciało i umysł",
+    "breathing": "Oddech",
+    "paddle_sports": "Sporty wiosłowe",
+    "play": "Zabawa",
+    "preparation_and_recovery": "Przygotowanie i regeneracja",
+    "racquetball": "Racquetball",
+    "rowing": "Wioślarstwo",
+    "rowing_machine": "Ergometr wioślarski",
+    "rugby": "Rugby",
+    "running": "Bieganie",
+    "running_treadmill": "Bieganie na bieżni",
+    "sailing": "Żeglarstwo",
+    "skating": "Wrotkarstwo",
+    "ice_skating": "Łyżwiarstwo",
+    "snowshoeing": "Marsze w rakietach śnieżnych",
+    "soccer": "Piłka nożna",
+    "softball": "Softball",
+    "squash": "Squash",
+    "stair_climbing_machine": "Stopnica",
+    "surfing": "Surfing",
+    "swimming_pool": "Pływanie na basenie",
+    "swimming_open_water": "Pływanie na wodach otwartych",
+    "table_tennis": "Tenis stołowy",
+    "tennis": "Tenis",
+    "track_and_field": "Lekkoatletyka",
+    "strength_training": "Trening siłowy",
+    "weightlifting": "Podnoszenie ciężarów",
+    "volleyball": "Siatkówka",
+    "walking": "Chodzenie",
+    "walking_treadmill": "Chodzenie w pomieszczeniach",
+    "water_fitness": "Fitness w wodzie",
+    "water_polo": "Piłka wodna",
+    "water_sports": "Sporty wodne",
+    "wrestling": "Zapasy",
+    "yoga": "Joga",
+    "barre": "Barre",
+    "core_training": "Trening core",
+    "calisthenics": "Kalistenika",
+    "cross_country_skiing": "Biegi narciarskie",
+    "downhill_skiing": "Narciarstwo zjazdowe",
+    "stretching": "Rozciąganie",
+    "hiit": "Trening interwałowy o wysokiej intensywności (HIIT)",
+    "jump_rope": "Skakanka",
+    "kickboxing": "Kickboxing",
+    "pilates": "Pilates",
+    "snowboarding": "Snowboard",
+    "stairs": "Schody",
+    "step_training": "Step",
+    "wheelchair_walk_pace": "Wózek (tempo marszu)",
+    "wheelchair_run_pace": "Wózek (tempo biegu)",
+    "tai_chi": "Tai chi",
+    "mixed_cardio": "Cardio mieszane",
+    "exercise_class": "Zajęcia fitness",
+    "boot_camp": "Boot camp",
+    "hand_cycling": "Kolarstwo ręczne",
+    "disc_sports": "Frisbee",
+    "fitness_gaming": "Gry ruchowe (fitness)",
+    "cardio_dance": "Taniec cardio",
+    "social_dance": "Taniec",
+    "pickleball": "Pickleball",
+    "cooldown": "Schłodzenie",
+    "underwater_diving": "Nurkowanie",
+    "paragliding": "Paralotniarstwo",
+    "other": "Inne"
+  },
+  "challenges": {
+    "title": "Wyzwania",
+    "dates": "{{start}} – {{end}}",
+    "datesOpen": "Od {{start}}",
+    "memberCount_one": "{{count}} członek",
+    "memberCount_few": "{{count}} członków",
+    "memberCount_many": "{{count}} członków",
+    "state": {
+      "active": "Trwa",
+      "startsTomorrow": "Zaczyna się jutro",
+      "startsIn_one": "Zaczyna się za {{count}} dzień",
+      "startsIn_few": "Zaczyna się za {{count}} dni",
+      "startsIn_many": "Zaczyna się za {{count}} dni",
+      "lastDay": "Ostatni dzień",
+      "daysLeft_one": "Został {{count}} dzień",
+      "daysLeft_few": "Zostały {{count}} dni",
+      "daysLeft_many": "Zostało {{count}} dni"
+    },
+    "host": "Gospodarz",
+    "ended": "Zakończone",
+    "rules": {
+      "edit": "Zmień zasady",
+      "noPeriodLeft": "Nie został już żaden okres, do którego zmiana mogłaby się zastosować.",
+      "fromNext": "Zmiana liczy się od {{day}}, więc trwający okres zachowuje swoje zasady. Każdy członek widzi ją w dzienniku zasad.",
+      "beforeStart": "Wyzwanie jeszcze się nie rozpoczęło, więc zmiana liczy się od początku.",
+      "save": "Zapisz zasady",
+      "everyDay": "Każdego dnia",
+      "dayRange": "{{from}} do {{to}}",
+      "saved": "Zasady zapisane. Wszyscy w wyzwaniu widzą zmianę."
+    },
+    "leave": {
+      "button": "Opuść",
+      "title": "Opuścić to wyzwanie?",
+      "last": "Jesteś ostatnim członkiem, więc wyzwanie zostanie usunięte.",
+      "host": "Twoje wyniki w nim zostaną usunięte, a gospodarstwo przejdzie na członka, który dołączył jako pierwszy.",
+      "member": "Twoje wyniki w nim zostaną usunięte. Możesz dołączyć ponownie z nowym zaproszeniem.",
+      "done": "Opuszczono wyzwanie"
+    },
+    "tabs": {
+      "standings": "Wyniki",
+      "how": "Jak działają punkty",
+      "log": "Zmiany zasad",
+      "members": "Członkowie"
+    },
+    "how": {
+      "upcoming": "Od {{day}}:",
+      "exampleTitle": "Przykładowy dzień",
+      "example": "Trening {{minutes}}-minutowy w strefie {{zone}} daje {{effort}}, a {{steps}} kroków dodaje {{stepPoints}}: {{total}} punktów.",
+      "exampleCapped": "Trening {{minutes}}-minutowy w strefie {{zone}} daje {{effort}}, a {{steps}} kroków dodaje {{stepPoints}}: {{uncapped}} punktów, ograniczone do dziennego limitu {{total}}.",
+      "what": "{{format}} z {{metric}}, punktowane {{period}}.",
+      "race": "Pierwszy, kto osiągnie {{target}}, wygrywa; kolejni są klasyfikowani według dnia osiągnięcia.",
+      "hitGoalDay": "Wygrywają wszyscy, którzy osiągną {{target}} każdego liczonego dnia.",
+      "hitGoalPeriod": "Wygrywają wszyscy, którzy osiągną {{target}} w okresie.",
+      "groupGoal": "Wszyscy dokładają do jednej sumy; grupa wygrywa przy {{target}}.",
+      "target": "Cel: {{target}}.",
+      "leaderboard": "Najwyższa suma wygrywa.",
+      "days": "Liczone dni: {{days}}.",
+      "window": "Liczą się tylko treningi rozpoczęte między {{start}} a {{end}}.",
+      "bestDays_one": "Liczy się tylko Twój najlepszy dzień każdego tygodnia.",
+      "bestDays_few": "Liczą się tylko Twoje najlepsze {{count}} dni każdego tygodnia.",
+      "bestDays_many": "Liczy się tylko Twoje najlepsze {{count}} dni każdego tygodnia.",
+      "dailyCap": "Jeden dzień dodaje co najwyżej {{cap}}.",
+      "zoneFrom": "Liczą się minuty w strefie tętna {{zone}} i wyższych, według Twoich własnych stref.",
+      "zones": "Wysiłek, według Twoich własnych stref tętna: {{rates}} punktów za minutę w strefach 1–5.",
+      "noHr": "Poniżej strefy 1: {{below}} za minutę. Brak tętna w ogóle: {{none}} za minutę.",
+      "strength": "Podnoszenie daje co najmniej {{rate}} za minutę, bo odpoczynek między seriami obniża tętno.",
+      "tiers": "Do {{full}} minut dziennie liczy się w pełni, najpierw minuty o najwyższej stawce; kolejne {{half}} liczy się w {{pct}}%, a reszta w ogóle.",
+      "tiersFullOnly": "Do {{full}} minut dziennie się liczy, najpierw minuty o najwyższej stawce; reszta nie.",
+      "steps": "Kroki: 1 punkt za {{per}}, do {{cap}} dziennie.",
+      "pr": "Rekordy osobiste: +{{bonus}} za każdy, najwyżej {{max}} dziennie.",
+      "streak": "Seria: +{{bonus}} dziennie od {{from}}. dnia z rzędu.",
+      "beatAverage": "Pobij własną średnią z {{days}} dni: +{{bonus}}.",
+      "goal": "Własny cel tygodniowy ({{pct}}% powyżej Twoich ostatnich {{weeks}} tygodni): do +{{max}}, wypłacany częściowo za częściową realizację.",
+      "include": "Liczy się tylko: {{sports}}.",
+      "exclude": "Pominięto: {{sports}}.",
+      "minMinutes": "Treningi krótsze niż {{minutes}} minut się nie liczą.",
+      "manualIgnore": "Treningi wpisane ręcznie się nie liczą.",
+      "manualCap": "Treningi wpisane ręcznie liczą się do {{minutes}} minut dziennie.",
+      "merge": "Trening zsynchronizowany z dwóch źródeł liczy się raz.",
+      "prSome": "Rekordy osobiste (tylko {{types}}): +{{bonus}} za każdy, najwyżej {{max}} dziennie."
+    },
+    "leaderboard": {
+      "you": "Ty",
+      "previous": "Poprzedni okres",
+      "final": "Końcowy",
+      "live": "W trakcie",
+      "current": "Bieżący",
+      "next": "Następny okres",
+      "groupProgress": "Razem: {{total}} z {{target}}",
+      "groupReached": "Cel osiągnięty!",
+      "empty": "Brak wyników w tym okresie.",
+      "member": "Członek",
+      "total": "Suma",
+      "minutes": "Aktywne min",
+      "winner": "Zwycięzca",
+      "reachedOn": "Osiągnięto {{day}}",
+      "daysHit": "Cel osiągnięty w {{hit}} z {{eligible}} dni",
+      "leads": "Prowadzi",
+      "find": "Znajdź członka",
+      "noMatch": "Brak pasującego członka.",
+      "progress": "Postęp",
+      "ofLeader": "{{percent}}% sumy lidera",
+      "ofTarget": "{{percent}}% celu",
+      "ofDays": "Cel osiągnięty w {{percent}}% dni"
+    },
+    "joined": "Dołączono {{day}}",
+    "invite": {
+      "title": "Zaproś osoby",
+      "copied": "Skopiowano",
+      "copyFailed": "Nie udało się skopiować",
+      "active": "Kod zaproszenia działa do {{when}}.",
+      "none": "Żaden kod zaproszenia nie jest aktywny.",
+      "shownOnce": "Udostępnij ten link lub kod teraz; zostanie pokazany tylko raz.",
+      "link": "Link zaproszenia",
+      "copyLink": "Kopiuj link",
+      "code": "Kod zaproszenia",
+      "copyCode": "Kopiuj kod",
+      "newCode": "Utwórz nowy kod",
+      "create": "Utwórz kod zaproszenia",
+      "revoke": "Wyłącz kod",
+      "revoked": "Kod zaproszenia wyłączony"
+    },
+    "editor": {
+      "scoring": "Co się liczy i kto wygrywa",
+      "metric": "Co się liczy",
+      "format": "Format",
+      "period": "Punktowane",
+      "target": "Cel ({{unit}})",
+      "targetPer": "Cel dotyczy",
+      "targetPerDay": "Każdego dnia",
+      "targetPerPeriod": "Sumy okresu",
+      "periodLocked": "Okresu nie można zmienić po rozpoczęciu wyzwania.",
+      "targetRequired": "Ten format wymaga celu.",
+      "time": "Dni i godziny",
+      "days": "Liczone dni",
+      "timeWindow": "Tylko treningi rozpoczęte w oknie czasowym",
+      "windowStart": "Od",
+      "windowEnd": "Do",
+      "bestDays": "Liczą się tylko najlepsze dni każdego tygodnia",
+      "bestDaysCount": "Najlepszych dni w tygodniu",
+      "dailyCap": "Ogranicz, ile może dodać jeden dzień",
+      "dailyCapValue": "Dzienny limit ({{unit}})",
+      "zoneFrom": "Licz minuty od strefy tętna",
+      "points": "Konstruktor punktów",
+      "zoneRates": "Punkty za minutę w strefach tętna 1–5",
+      "zoneN": "Strefa {{zone}}",
+      "belowZoneRate": "Poniżej strefy 1 (za minutę)",
+      "noHrRate": "Brak tętna (za minutę)",
+      "strengthFloor": "Dolna granica dla podnoszenia",
+      "strengthFloorValue": "Co najmniej (za minutę)",
+      "minuteTiers": "Dzienne progi minut",
+      "tierFull": "Minuty liczone w pełni",
+      "tierHalf": "Potem minuty w obniżonej stawce",
+      "tierRate": "Obniżona stawka (%)",
+      "steps": "Punkty za kroki",
+      "stepsPerPoint": "Kroki na 1 punkt",
+      "stepsCap": "Najwięcej punktów za kroki dziennie",
+      "pr": "Premia za rekord osobisty",
+      "prBonus": "Punktów za rekord",
+      "prMax": "Najwięcej rekordów dziennie",
+      "streak": "Premia za serię",
+      "streakFrom": "Od dnia",
+      "streakBonus": "Punktów dziennie",
+      "beatAverage": "Premia za pobicie średniej",
+      "beatAverageBonus": "Punkty",
+      "goal": "Premia za dostosowujący się cel tygodniowy",
+      "goalNeedsWeek": "Cel tygodniowy wymaga wyzwania punktowanego co najmniej tygodniowo.",
+      "goalMax": "Najwięcej punktów",
+      "goalStretch": "Powyżej własnej średniej (%)",
+      "activities": "Które treningi się liczą",
+      "includeSports": "Tylko te sporty (nic nie zaznaczono: każdy sport)",
+      "excludeSports": "Pomiń te sporty",
+      "minMinutes": "Najkrótszy liczący się trening (minuty)",
+      "manualEntries": "Treningi wpisane ręcznie",
+      "manualCap": "Najwięcej minut wpisanych ręcznie dziennie",
+      "mergeDuplicates": "Licz trening zsynchronizowany z dwóch źródeł raz",
+      "notAllowed": "Niedozwolone tutaj. Pozostaje {{value}}."
+    },
+    "join": {
+      "button": "Dołącz kodem",
+      "displayName": "Twoja nazwa w tym wyzwaniu",
+      "goalType": "Twój cel tygodniowy",
+      "errors": {
+        "invalid": "Ten kod zaproszenia jest nieprawidłowy lub wygasł. Poproś gospodarza o nowy.",
+        "ended": "To wyzwanie już się zakończyło.",
+        "lateJoinClosed": "To wyzwanie się rozpoczęło i nie przyjmuje późniejszych dołączających.",
+        "full": "To wyzwanie jest pełne.",
+        "rateLimited": "Zbyt wiele prób. Odczekaj kilka minut i spróbuj ponownie.",
+        "generic": "Nie udało się dołączyć. Spróbuj ponownie."
+      },
+      "title": "Dołącz do wyzwania",
+      "description": "Wklej link lub kod zaproszenia. Członkowie widzą Twoją nazwę wyświetlaną i Twoje wyniki, nigdy Twojego dziennika ani adresu e-mail.",
+      "code": "Link lub kod zaproszenia",
+      "badCode": "To nie wygląda na kod zaproszenia.",
+      "submit": "Dołącz"
+    },
+    "create": {
+      "button": "Nowe wyzwanie",
+      "endBeforeStart": "Koniec nie może być przed początkiem.",
+      "tooLong": "Wyzwanie trwa najwyżej {{days}} dni.",
+      "endNeeded": "Wyzwanie punktowane jako jeden okres wymaga daty końca.",
+      "title": "Rozpocznij wyzwanie",
+      "description": "Wybierz szablon, a potem zmień, co chcesz. Członkowie widzą Twoje zasady i każdą późniejszą zmianę.",
+      "presets": "Szablony",
+      "name": "Nazwa",
+      "emoji": "Emoji",
+      "descriptionLabel": "Opis (opcjonalnie)",
+      "start": "Rozpoczyna się",
+      "end": "Kończy się",
+      "endOptional": "Kończy się (opcjonalnie)",
+      "timeZone": "Dni kończą się o północy w strefie {{zone}}.",
+      "memberLimit": "Najwięcej członków",
+      "lateJoin": "Zezwalaj na dołączanie po rozpoczęciu",
+      "rules": "Zasady",
+      "submit": "Utwórz wyzwanie",
+      "created": "Wyzwanie utworzone",
+      "startOutOfRange": "Początek musi mieścić się między {{earliest}} a {{latest}}.",
+      "errors": {
+        "invalidDates": "Wyzwanie może zacząć się najwyżej {{back}} dni temu i najwyżej {{ahead}} dni od dziś oraz trwać najwyżej {{length}} dni.",
+        "generic": "Nie udało się utworzyć wyzwania. Spróbuj ponownie.",
+        "rateLimited": "Zbyt wiele nowych wyzwań. Odczekaj kilka minut i spróbuj ponownie."
+      },
+      "rulesInvalid": "Jedno z ustawień zasad jest puste lub poza zakresem.",
+      "memberLimitRange": "Limit członków musi mieścić się między 2 a {{max}}."
+    },
+    "ownOnly": "Wyzwania są osobiste. Przełącz się z powrotem na własne konto, aby zobaczyć swoje.",
+    "disabled": "Wyzwania są wyłączone na tym serwerze. Administrator może je włączyć w Ustawieniach administratora.",
+    "notFound": "Nie znaleziono tego wyzwania albo nie jesteś jego członkiem.",
+    "empty": "Nie masz jeszcze wyzwań. Rozpocznij jedno i zaproś znajomych lub rodzinę albo dołącz kodem zaproszenia.",
+    "goalTypes": {
+      "lose_weight": "Zmniejszenie masy ciała (aktywne minuty)",
+      "build_muscle": "Budowa mięśni (podnoszenie)",
+      "endurance": "Wytrzymałość (dystans)",
+      "stay_active": "Utrzymanie aktywności (dni treningowe)"
+    },
+    "member": {
+      "days": "Ich ostatnie dni w tym wyzwaniu.",
+      "periods": "Ich ostatnie okresy w tym wyzwaniu.",
+      "place": "#{{rank}}",
+      "none": "Brak wyniku"
+    },
+    "log": {
+      "removed": "Już nie obowiązuje: {{rule}}",
+      "empty": "Brak zmian zasad.",
+      "changed": "{{name}} zmienił zasady {{when}}",
+      "formerMember": "Były członek",
+      "created": "Zasady ustawione przy utworzeniu wyzwania",
+      "effective": "Obowiązuje od {{day}}"
+    },
+    "presets": {
+      "all_rounder": {
+        "name": "Wszechstronny",
+        "description": "Punkty za wysiłek według tętna, kroki, rekordy i serie. Tygodniowo, liczy się 5 najlepszych dni."
+      },
+      "workweek_hustle": {
+        "name": "Tygodniowy sprint",
+        "description": "Najwięcej kroków od poniedziałku do piątku."
+      },
+      "weekend_warrior": {
+        "name": "Wojownik weekendu",
+        "description": "Najwięcej kroków w sobotę i niedzielę."
+      },
+      "daily_showdown": {
+        "name": "Codzienna potyczka",
+        "description": "Najwięcej kroków w jednym dniu."
+      },
+      "race_to_100k_steps": {
+        "name": "Wyścig do 100 tys. kroków",
+        "description": "Pierwszy, kto osiągnie 100 000 kroków, wygrywa."
+      },
+      "most_km_this_month": {
+        "name": "Najwięcej km w tym miesiącu",
+        "description": "Największy dystans w miesiącu kalendarzowym."
+      },
+      "consistency_30_day": {
+        "name": "30-dniowa regularność",
+        "description": "Najwięcej dni z treningiem 20 minut lub dłuższym, w ciągu 30 dni."
+      }
+    },
+    "metrics": {
+      "points": "Punkty",
+      "steps": "Kroki",
+      "active_minutes": "Aktywne minuty",
+      "hr_zone_minutes": "Minuty w strefach tętna",
+      "distance": "Dystans",
+      "workout_days": "Dni treningowe",
+      "active_calories": "Kalorie z aktywności",
+      "elevation": "Przewyższenie"
+    },
+    "formats": {
+      "leaderboard": "Ranking",
+      "race": "Wyścig do celu",
+      "hit_goal": "Osiągnij cel",
+      "group_goal": "Cel grupowy"
+    },
+    "periods": {
+      "day": "Dziennie",
+      "week": "Tygodniowo",
+      "month": "Miesięcznie",
+      "challenge": "Całe wyzwanie"
+    },
+    "manualEntries": {
+      "count": "Licz",
+      "cap": "Licz do limitu",
+      "ignore": "Ignoruj"
+    },
+    "sports": {
+      "running": "Bieganie",
+      "cycling": "Kolarstwo",
+      "walking": "Chód",
+      "hiking": "Turystyka piesza",
+      "swimming": "Pływanie",
+      "rowing": "Wioślarstwo",
+      "fitness_equipment": "Sprzęt na siłowni",
+      "strength": "Trening siłowy",
+      "other": "Inne"
+    },
+    "weekdays": {
+      "mon": "Pon",
+      "tue": "Wt",
+      "wed": "Śr",
+      "thu": "Czw",
+      "fri": "Pt",
+      "sat": "Sob",
+      "sun": "Nd"
+    },
+    "values": {
+      "points": "{{value}} pkt",
+      "steps": "{{value}} kroków",
+      "minutes": "{{value}} min",
+      "miles": "{{value}} mi",
+      "km": "{{value}} km",
+      "days_one": "{{count}} dzień",
+      "days_few": "{{count}} dni",
+      "days_many": "{{count}} dni",
+      "metres": "{{value}} m"
+    },
+    "units": {
+      "points": "punkty",
+      "steps": "kroki",
+      "minutes": "minuty",
+      "miles": "mile",
+      "km": "km",
+      "days": "dni",
+      "metres": "metry"
+    },
+    "periodRange": "{{start}} – {{end}}",
+    "widget": {
+      "title": "Wyniki wyzwania",
+      "all": "Wszystkie wyzwania",
+      "place": "#{{rank}} z {{members}} · {{total}}",
+      "noScore": "Brak wyniku",
+      "youLead": "Prowadzisz",
+      "youShareLead": "Dzielisz się prowadzeniem",
+      "leader": "{{name}} prowadzi z {{total}}"
+    },
+    "retry": "Spróbuj ponownie",
+    "errors": {
+      "load": "Nie udało się wczytać Twoich wyzwań.",
+      "loadOne": "Nie udało się wczytać tego wyzwania.",
+      "standings": "Nie udało się wczytać wyników.",
+      "standingsRefresh": "Nie udało się odświeżyć wyników; pokazywane są ostatnio wczytane.",
+      "ruleChanges": "Nie udało się wczytać zmian zasad.",
+      "hostOnly": "Może to zrobić tylko gospodarz. Gospodarstwo mogło przejść na inną osobę.",
+      "periodLocked": "Okresu nie można zmienić po rozpoczęciu wyzwania.",
+      "action": "To nie doszło do skutku. Spróbuj ponownie."
+    },
+    "prTypes": {
+      "lift": "podnoszenie",
+      "distance": "dystans",
+      "pace": "tempo"
+    }
   }
 }

@@ -2,12 +2,21 @@ import {
   getChatApprovalSummary,
   type ApprovalSummary,
 } from '../ai/chatApprovalSummary.js';
-import chatRepository from '../models/chatRepository.js';
+import chatRepository, {
+  claimChatTurnPrompt,
+  completeChatTurn,
+  getChatTurnStatus,
+  markChatTurnFailed,
+  settleFailedApprovalTurn,
+} from '../models/chatRepository.js';
 import measurementRepository from '../models/measurementRepository.js';
 import userRepository from '../models/userRepository.js';
 import preferenceRepository from '../models/preferenceRepository.js';
 import { log } from '../config/logging.js';
+import { isConnectionError } from '../db/connectRetry.js';
 import { describeError } from '../utils/errors.js';
+import { chatTurnFailure } from './chatTurnStreams.js';
+import { runWithAbortSignal } from '../utils/abortScope.js';
 import {
   getDefaultModel,
   getOpenAiCompatibleBaseUrl,
@@ -90,6 +99,7 @@ import {
   RetryError,
   generateText,
   streamText,
+  toUIMessageStream,
   stepCountIs,
   hasToolCall,
   convertToModelMessages,
@@ -165,7 +175,7 @@ const CORE_PROFILE_MAX_PROVIDER_RETRIES = 1;
 // unbounded otherwise — the chat path never had a timeout, unlike
 // providerDispatch.ts). Generous: a slow local model streaming a long answer
 // with several tool round-trips can legitimately take minutes.
-const CHAT_REQUEST_TIMEOUT_MS = 5 * 60_000;
+export const CHAT_REQUEST_TIMEOUT_MS = 5 * 60_000;
 
 async function handleAiServiceSettings(
   action: string,
@@ -1932,9 +1942,12 @@ function toolPartToText(part: ChatMessagePart): string | null {
   return `[Earlier this conversation you called ${toolName}(${input}) and it returned: ${output || '(no output)'}]`;
 }
 
+const INTERRUPTED_TOOL_WARNING =
+  'Stopped before a result came back. It may have run; check before trying again.';
+
 function settleChatApprovals<T extends { type: string }>(
   parts: T[],
-  errorText = 'Stopped before a result came back. It may have run; check before trying again.'
+  errorText = INTERRUPTED_TOOL_WARNING
 ): T[] {
   return parts.map((part) => {
     const current = part as T & ChatMessagePart;
@@ -1951,6 +1964,57 @@ function settleChatApprovals<T extends { type: string }>(
       ...(current.approval?.approved === false ? {} : { errorText }),
     };
   });
+}
+
+function failedApprovalParts(continuation: UIMessage, response: UIMessage) {
+  // Keep the original reply and any tool effects, including tools from later
+  // steps. New prose and pending cards belong only to a committed answer.
+  const results = new Map<string, UIMessage['parts'][number]>();
+  for (const part of settleChatApprovals(response.parts)) {
+    if (!('toolCallId' in part)) continue;
+    if (part.state === 'input-available') {
+      results.set(part.toolCallId, {
+        ...part,
+        state: 'output-error',
+        errorText: INTERRUPTED_TOOL_WARNING,
+      });
+    } else if (part.state.startsWith('output-')) {
+      results.set(part.toolCallId, part);
+    }
+  }
+  const parts = settleChatApprovals(continuation.parts).map((part) => {
+    if (!('toolCallId' in part)) return part;
+    const completed = results.get(part.toolCallId);
+    results.delete(part.toolCallId);
+    return completed ?? part;
+  });
+  return [...parts, ...results.values()];
+}
+
+// The transaction is idempotent even when the connection drops after COMMIT.
+// Retry the captured result only; invoking the tool again could duplicate a diary write.
+async function persistFailedApproval(
+  ...args: Parameters<typeof settleFailedApprovalTurn>
+) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await settleFailedApprovalTurn(...args);
+    } catch (error) {
+      const code =
+        error && typeof error === 'object' && 'code' in error
+          ? error.code
+          : undefined;
+      // PostgreSQL connection exception, serialization failure, deadlock or lock timeout.
+      const retryable =
+        isConnectionError(error) ||
+        (typeof code === 'string' && code.startsWith('08')) ||
+        code === '40001' ||
+        code === '40P01' ||
+        code === '55P03';
+      if (!retryable || attempt >= 3) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 100 * attempt));
+    }
+  }
 }
 
 // Maps one client message part to a CoreMessage part; unknown parts fall back
@@ -2134,7 +2198,7 @@ const KEYWORD_RULES: { category: ChatToolCategorySlug; keywords: RegExp }[] = [
   {
     category: 'food',
     keywords:
-      /\b(eat|ate|eating|food|foods|meal|meals|water|drink|drank|drinking|ml|oz|cup|cups|breakfast|lunch|dinner|snack|snacks|calories?|kcal|macro|macros|protein|carbs|fat|banana|apple|chicken|nutrition|nutrients?|coffee|tea|juice|smoothie|recipe|favou?rite\w*|meal\s*plan\w*|meal\s*template\w*|custom\s+nutrient\w*|micronutrient\w*|water\s+container\w*|water\s+bottle\w*|allerg\w*|intoleran\w*|anaphyla\w*|barcode|bar\s?code|UPC|EAN)\b/i,
+      /\b(eat|ate|eating|food|foods|meal|meals|water|drink|drank|drinking|ml|oz|cup|cups|breakfast|lunch|dinner|snack|snacks|calories?|kcal|macro|macros|protein|carbs|fat|banana|apple|chicken|nutrition|nutrients?|coffee|tea|juice|smoothie|alcohol\w*|beers?|wines?|drunk|tipsy|intoxicat\w*|blood\s+alcohol|bac|promille|recipe|favou?rite\w*|meal\s*plan\w*|meal\s*template\w*|custom\s+nutrient\w*|micronutrient\w*|water\s+container\w*|water\s+bottle\w*|allerg\w*|intoleran\w*|anaphyla\w*|barcode|bar\s?code|UPC|EAN)\b/i,
   },
   {
     category: 'checkin',
@@ -2184,6 +2248,11 @@ const ON_DEMAND_TOOLS: { tool: string; keywords: RegExp }[] = [
     tool: 'sparky_get_caffeine_kinetics',
     keywords:
       /\b(caffeine|coffee|espresso|latte|cappuccino|tea|energy\s+drinks?|cola|bedtime|sleep|half-?life)\b/i,
+  },
+  {
+    tool: 'sparky_get_blood_alcohol',
+    keywords:
+      /\b(alcohol\w*|drunk|tipsy|intoxicat\w*|hangover|beers?|wines?|vodka|whisk(?:e)?y|cocktails?|bac|blood\s+alcohol|promille|per\s?mille)\b/i,
   },
 ];
 
@@ -2266,7 +2335,8 @@ async function classifyUserIntent(
   modelInstance: Parameters<typeof generateText>[0]['model'],
   serviceType: string,
   modelName: string,
-  providerOptions?: Record<string, Record<string, JSONValue>>
+  providerOptions?: Record<string, Record<string, JSONValue>>,
+  signal?: AbortSignal
 ): Promise<ChatToolCategorySlug[]> {
   const lastUserMessage = [...messages]
     .reverse()
@@ -2332,7 +2402,10 @@ Your response must contain ONLY the matched domain names as a comma-separated li
           // Reasoning models (gpt-5.x, o-series) accept only the default.
           ...(sendTemperature && { temperature: 0 }),
           maxRetries: 0,
-          abortSignal: AbortSignal.timeout(10000), // 10s timeout to prevent hanging the chat turn
+          abortSignal: AbortSignal.any([
+            AbortSignal.timeout(10000),
+            ...(signal ? [signal] : []),
+          ]),
         })
     );
 
@@ -2983,37 +3056,76 @@ const EMPTY_TOOL_RESPONSE_TEXT =
 const EMPTY_RESPONSE_ERROR_TEXT =
   'The AI service returned an empty response. Please try again.';
 
-// Some providers (notably Gemini via MALFORMED_FUNCTION_CALL) end a tool-calling
-// turn with finishReason 'error' and an empty completion instead of a thrown
-// error, so the stream closes cleanly and clients render nothing. Inject an
-// explicit error chunk so the UI surfaces a failure instead of staying silent.
-function withEmptyCompletionGuard(
-  stream: ReadableStream<UIMessageChunk>
+// The standalone SDK converter exposes the stream that awaits onFinish. The
+// result method and downstream pipeThrough transforms add a readable whose
+// cancellation can finish before the SDK commits the approval history.
+function chatOutputStream(
+  stream: ReadableStream<UIMessageChunk>,
+  resumable: boolean,
+  committed: () => { terminal?: UIMessageChunk; metadata?: UIMessageChunk }
 ): ReadableStream<UIMessageChunk> {
+  const reader = stream.getReader();
+  let cancelled = false;
   let sawContent = false;
-  return stream.pipeThrough(
-    new TransformStream<UIMessageChunk, UIMessageChunk>({
-      transform(chunk, controller) {
-        if (
-          chunk.type === 'text-delta' ||
-          chunk.type === 'reasoning-delta' ||
-          chunk.type.startsWith('tool-')
-        ) {
-          sawContent = true;
+  let providerTerminal: UIMessageChunk | undefined;
+  function publish(
+    controller: ReadableStreamDefaultController<UIMessageChunk>,
+    chunk: UIMessageChunk
+  ) {
+    if (
+      chunk.type === 'text-delta' ||
+      chunk.type === 'reasoning-delta' ||
+      chunk.type.startsWith('tool-')
+    )
+      sawContent = true;
+    if (
+      chunk.type === 'finish' &&
+      (chunk.finishReason === 'error' || !sawContent)
+    ) {
+      controller.enqueue({
+        type: 'error',
+        errorText: EMPTY_RESPONSE_ERROR_TEXT,
+      });
+    }
+    controller.enqueue(chunk);
+  }
+  return new ReadableStream({
+    async pull(controller) {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (cancelled) return;
+        if (done) {
+          reader.releaseLock();
+          const { terminal, metadata } = committed();
+          const outcome = terminal ?? providerTerminal;
+          if (outcome) publish(controller, outcome);
+          if (metadata) controller.enqueue(metadata);
+          controller.close();
+          return;
         }
+        // The SDK emits the terminal chunk before it awaits onFinish.
         if (
-          chunk.type === 'finish' &&
-          (chunk.finishReason === 'error' || !sawContent)
+          resumable &&
+          (value.type === 'finish' ||
+            value.type === 'abort' ||
+            value.type === 'error')
         ) {
-          controller.enqueue({
-            type: 'error',
-            errorText: EMPTY_RESPONSE_ERROR_TEXT,
-          });
+          providerTerminal = value;
+          continue;
         }
-        controller.enqueue(chunk);
-      },
-    })
-  );
+        publish(controller, value);
+        return;
+      }
+    },
+    async cancel(reason) {
+      cancelled = true;
+      try {
+        await reader.cancel(reason);
+      } finally {
+        reader.releaseLock();
+      }
+    },
+  });
 }
 
 // Shape provider usage into the keys @assistant-ui/react-ai-sdk's
@@ -3040,6 +3152,28 @@ export function mapUsageToMetadata(u: LanguageModelUsage) {
   };
 }
 
+export async function claimChatTurn(
+  rowId: string,
+  turnId: string,
+  prompt: ChatMessage,
+  actorId: string,
+  accountId: string,
+  conversationId?: string,
+  deadlineMs = Date.now() + CHAT_REQUEST_TIMEOUT_MS
+) {
+  const continuation = prompt.role === 'assistant';
+  const { content, parts } = continuation
+    ? { content: '', parts: [] }
+    : describeUserMessage(toCoreMessages([prompt])[0]);
+  return claimChatTurnPrompt(rowId, actorId, content, parts, {
+    ...accountHistoryMetadata(accountId, actorId),
+    ...(conversationId ? { chat_conversation_id: conversationId } : {}),
+    turnId,
+    turnDeadline: deadlineMs,
+    ...(continuation ? { turnHidden: true, continuationOf: prompt.id } : {}),
+  });
+}
+
 async function processChatMessageStream(
   messages: ChatMessage[],
   serviceConfigId: string,
@@ -3048,11 +3182,66 @@ async function processChatMessageStream(
   actorIsAdmin = false,
   toolCategories?: readonly string[],
   conversationId?: string,
-  approvals = false
+  approvals = false,
+  turnId?: string,
+  producerSignal?: AbortSignal,
+  rowId?: string
 ) {
   let continuation: UIMessage | undefined;
+  let continuationContent = '';
   let streamStarted = false;
+  const cancellation = new AbortController();
+  const signal = AbortSignal.any([
+    producerSignal ?? AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
+    cancellation.signal,
+  ]);
+  let durableTerminal:
+    Extract<UIMessageChunk, { type: 'abort' | 'error' }> | undefined;
+  const terminalForStatus = (
+    state: Awaited<ReturnType<typeof getChatTurnStatus>>
+  ): NonNullable<typeof durableTerminal> =>
+    state === 'cancelled'
+      ? { type: 'abort' }
+      : {
+          type: 'error',
+          errorText:
+            typeof state === 'object'
+              ? state.error
+              : chatStreamErrorMessage(undefined),
+        };
+  let poll: NodeJS.Timeout | undefined;
+  let monitoring = Boolean(rowId);
+  function stopMonitoring() {
+    monitoring = false;
+    clearTimeout(poll);
+    signal.removeEventListener('abort', stopMonitoring);
+  }
+  async function checkCancellation() {
+    if (!rowId || !monitoring) return;
+    try {
+      const state = await getChatTurnStatus(
+        rowId,
+        authenticatedUserId,
+        CHAT_REQUEST_TIMEOUT_MS
+      );
+      if (!monitoring) return;
+      if (state !== 'pending') {
+        durableTerminal = terminalForStatus(state);
+        cancellation.abort();
+        return;
+      }
+    } catch (error) {
+      // A producer unable to check its durable permission to run must stop.
+      cancellation.abort(error);
+      return;
+    }
+    if (monitoring)
+      poll = setTimeout(() => void checkCancellation(), 1000).unref();
+  }
+  signal.addEventListener('abort', stopMonitoring, { once: true });
   try {
+    await checkCancellation();
+    if (rowId || producerSignal) signal.throwIfAborted();
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new Error('Invalid messages format.');
     }
@@ -3100,7 +3289,8 @@ async function processChatMessageStream(
           aiService.service_type,
           authenticatedUserId,
           modelName
-        )
+        ),
+        signal
       );
     }
 
@@ -3152,6 +3342,7 @@ async function processChatMessageStream(
         | {
             account_user_id?: string;
             chat_conversation_id?: string;
+            turnId?: string;
           }
         | undefined;
       if (
@@ -3203,16 +3394,20 @@ async function processChatMessageStream(
           },
         };
       });
+      if (rowId || producerSignal) signal.throwIfAborted();
       if (
         !(await chatRepository.claimChatApproval(
           saved.id,
           authenticatedUserId,
           saved.parts,
-          parts
+          parts,
+          rowId
         ))
       ) {
         throw new Error('Approval already answered.');
       }
+      continuationContent = saved.content ?? '';
+      turnId ??= metadata?.turnId;
       continuation = {
         id: saved.id,
         role: 'assistant',
@@ -3222,6 +3417,7 @@ async function processChatMessageStream(
       messages = [...messages.slice(0, -1), continuation];
     }
     if (!isContinuation && lastMessage?.role === 'user') {
+      if (rowId || producerSignal) signal.throwIfAborted();
       await chatRepository.cancelChatApprovals(
         authenticatedUserId,
         userId,
@@ -3301,7 +3497,11 @@ async function processChatMessageStream(
         .find((message) => message.role === 'user')
     );
 
-    const result = streamText({
+    if (rowId || producerSignal) signal.throwIfAborted();
+    let providerError: string | undefined;
+    // Built-in tools can do several database operations. An SDK abort also
+    // fences subsequent database acquisitions inside a running tool.
+    const request = {
       model: modelInstance,
       system: buildChatSystem(aiService.service_type, systemPromptContent),
       messages: llmMessages as NonNullable<
@@ -3357,6 +3557,7 @@ async function processChatMessageStream(
         // keyword match, and is skipped entirely when the user picks tool
         // categories manually, so this path can be the first request a model
         // ever sees.
+        providerError = chatStreamErrorMessage(error);
         noteStreamParameterRejection(aiService.service_type, modelName, error);
         log(
           'error',
@@ -3370,7 +3571,7 @@ async function processChatMessageStream(
         toolProfile === 'core'
           ? CORE_PROFILE_MAX_PROVIDER_RETRIES
           : MAX_PROVIDER_RETRIES,
-      abortSignal: AbortSignal.timeout(CHAT_REQUEST_TIMEOUT_MS),
+      abortSignal: signal,
       onStepFinish({ toolResults }) {
         if (toolResults && toolResults.length > 0) {
           const sizes = toolResults
@@ -3386,181 +3587,309 @@ async function processChatMessageStream(
           `[chat] provider=${aiService.service_type} model=${modelName} cacheReadTokens=${observedUsage?.inputTokenDetails?.cacheReadTokens ?? 0} inputTokens=${observedUsage?.inputTokens ?? 0} noCacheTokens=${observedUsage?.inputTokenDetails?.noCacheTokens ?? 0} cacheWriteTokens=${observedUsage?.inputTokenDetails?.cacheWriteTokens ?? 0} outputTokens=${observedUsage?.outputTokens ?? 0} totalTokens=${observedUsage?.totalTokens ?? 0}`
         );
       },
-    });
+    } satisfies Parameters<typeof streamText>[0];
+    const startProvider = () => streamText(request);
+    const result = rowId
+      ? runWithAbortSignal(signal, startProvider)
+      : startProvider();
 
     streamStarted = true;
+    async function endUncommittedTurn(
+      claimId: string,
+      response: UIMessage,
+      errorText = chatStreamErrorMessage(undefined)
+    ) {
+      if (continuation) {
+        const state = await persistFailedApproval(
+          claimId,
+          authenticatedUserId,
+          durableTerminal?.type === 'error'
+            ? durableTerminal.errorText
+            : errorText,
+          {
+            id: continuation.id,
+            parts: failedApprovalParts(continuation, response),
+          }
+        );
+        durableTerminal = terminalForStatus(state);
+        return;
+      }
+      const readStatus = () =>
+        getChatTurnStatus(
+          claimId,
+          authenticatedUserId,
+          CHAT_REQUEST_TIMEOUT_MS
+        );
+      let state = await readStatus();
+      if (state === 'pending') {
+        durableTerminal ??= { type: 'error', errorText };
+      } else {
+        durableTerminal = terminalForStatus(state);
+      }
+      if (
+        durableTerminal.type === 'error' &&
+        (state === 'pending' || typeof state === 'object')
+      ) {
+        await markChatTurnFailed(
+          claimId,
+          authenticatedUserId,
+          durableTerminal.errorText
+        );
+        // Stop may have won the conditional failure write on another worker.
+        state = await readStatus();
+        if (state !== 'pending') durableTerminal = terminalForStatus(state);
+      }
+    }
     let savedMessageId: string | undefined;
     let usageMetadata:
       ReturnType<typeof mapUsageToMetadata>['custom'] | undefined;
     return {
-      stream: withEmptyCompletionGuard(
-        result
-          .toUIMessageStream({
-            sendSources: true,
-            ...(continuation ? { originalMessages: [continuation] } : {}),
-            generateMessageId: () => randomUUID(),
-            onFinish: async ({ responseMessage, isAborted }) => {
-              if (isAborted && !continuation) return;
-              if (!continuation) {
-                const lastUser = [...conversationMessages]
-                  .reverse()
-                  .find((msg) => msg.role === 'user');
-                await chatRepository.saveChatHistory({
-                  user_id: authenticatedUserId,
-                  metadata: {
-                    ...accountHistoryMetadata(userId, authenticatedUserId),
-                    ...(conversationId
-                      ? { chat_conversation_id: conversationId }
-                      : {}),
-                  },
-                  content: userMessageContent,
-                  messageType: 'user',
-                  parts: Array.isArray(lastUser?.content)
-                    ? lastUser.content
-                    : [{ type: 'text', text: String(lastUser?.content || '') }],
-                });
-              }
-              const parts: unknown[] = settleChatApprovals([
-                ...responseMessage.parts,
-              ]);
-              const estimate = foodPhotoEstimateSink.get();
-              if (estimate)
-                parts.push({
-                  type: FOOD_PHOTO_ESTIMATE_PART_TYPE,
-                  data: estimate,
-                });
-              const content = responseMessage.parts
-                .filter((part) => part.type === 'text')
-                .map((part) => part.text)
-                .join('');
-              const askPart = responseMessage.parts.find(
-                (part) => part.type === ASK_USER_PART_TYPE
-              );
-              if (
-                !content.trim() &&
-                !askPart &&
-                !estimate &&
-                !responseMessage.parts.some((part) =>
-                  part.type.startsWith('tool-')
-                )
-              ) {
-                log(
-                  'warn',
-                  `Skipping empty assistant chat history for user ${userId}`
-                );
-                return;
-              }
-              const history = {
+      stream: chatOutputStream(
+        toUIMessageStream({
+          stream: result.stream,
+          tools,
+          sendSources: true,
+          ...(continuation ? { originalMessages: [continuation] } : {}),
+          generateMessageId: () => randomUUID(),
+          onFinish: async ({
+            responseMessage,
+            isAborted,
+            finishReason,
+            outcome,
+            isCancelled,
+          }) => {
+            stopMonitoring();
+            if (
+              rowId &&
+              (providerError ||
+                finishReason === 'error' ||
+                outcome.status === 'failed' ||
+                signal.aborted ||
+                isAborted ||
+                isCancelled)
+            ) {
+              const errorText =
+                signal.reason?.name === 'TimeoutError'
+                  ? chatTurnFailure(signal)
+                  : (providerError ??
+                    (finishReason === 'error'
+                      ? EMPTY_RESPONSE_ERROR_TEXT
+                      : chatStreamErrorMessage(
+                          outcome.status === 'failed'
+                            ? outcome.error
+                            : undefined
+                        )));
+              await endUncommittedTurn(rowId, responseMessage, errorText);
+              return;
+            }
+            if (isAborted && !continuation) return;
+            if (!continuation && !turnId) {
+              const lastUser = [...conversationMessages]
+                .reverse()
+                .find((msg) => msg.role === 'user');
+              await chatRepository.saveChatHistory({
                 user_id: authenticatedUserId,
                 metadata: {
-                  custom: {
-                    outsideSource: outsideSource(),
-                    savedMessageId: responseMessage.id,
-                  },
                   ...accountHistoryMetadata(userId, authenticatedUserId),
                   ...(conversationId
                     ? { chat_conversation_id: conversationId }
                     : {}),
                 },
-                content:
-                  content.trim() ||
-                  (askPart
-                    ? askUserPartToText(askPart as ChatMessagePart)
-                    : '') ||
-                  '',
-                messageType: 'assistant' as const,
-                parts,
-              };
-              if (continuation) {
-                await chatRepository.saveApprovalContinuation(
-                  continuation.id,
-                  authenticatedUserId,
-                  history
+                content: userMessageContent,
+                messageType: 'user',
+                parts: Array.isArray(lastUser?.content)
+                  ? lastUser.content
+                  : [{ type: 'text', text: String(lastUser?.content || '') }],
+              });
+            }
+            const parts: unknown[] = settleChatApprovals([
+              ...responseMessage.parts,
+            ]);
+            const estimate = foodPhotoEstimateSink.get();
+            if (estimate)
+              parts.push({
+                type: FOOD_PHOTO_ESTIMATE_PART_TYPE,
+                data: estimate,
+              });
+            const content = responseMessage.parts
+              .filter((part) => part.type === 'text')
+              .map((part) => part.text)
+              .join('');
+            const askPart = responseMessage.parts.find(
+              (part) => part.type === ASK_USER_PART_TYPE
+            );
+            if (
+              !content.trim() &&
+              !askPart &&
+              !estimate &&
+              !responseMessage.parts.some((part) =>
+                part.type.startsWith('tool-')
+              )
+            ) {
+              if (rowId)
+                await endUncommittedTurn(
+                  rowId,
+                  responseMessage,
+                  EMPTY_RESPONSE_ERROR_TEXT
                 );
-              } else {
-                await chatRepository.saveChatHistory({
-                  ...history,
-                  id: responseMessage.id,
-                });
-              }
-              savedMessageId = responseMessage.id;
-            },
-            messageMetadata: ({ part }) => {
-              if (
-                (part.type === 'tool-result' || part.type === 'tool-error') &&
-                toolServers[part.toolName]
-              )
-                outsideServers.add(toolServers[part.toolName]);
-              if (part.type === 'tool-approval-request') {
-                const serverId = currentToolServerIds[part.toolCall.toolName];
-                if (serverId) toolServerIds[part.toolCall.toolName] = serverId;
-                approvalSources[part.toolCall.toolCallId] = [...outsideServers];
-              }
-              if (
-                ![
-                  'tool-result',
-                  'tool-error',
-                  'tool-approval-request',
-                  'finish',
-                ].includes(part.type)
-              )
-                return undefined;
-              if (part.type === 'finish')
-                usageMetadata = mapUsageToMetadata(part.totalUsage).custom;
-              return {
+              log(
+                'warn',
+                `Skipping empty assistant chat history for user ${userId}`
+              );
+              return;
+            }
+            const history = {
+              user_id: authenticatedUserId,
+              metadata: {
+                ...(turnId ? { turnId } : {}),
                 custom: {
-                  ...(part.type === 'finish'
-                    ? mapUsageToMetadata(part.totalUsage).custom
-                    : {}),
                   outsideSource: outsideSource(),
+                  savedMessageId: responseMessage.id,
                 },
-              };
-            },
-            onError: chatStreamErrorMessage,
-          })
-          .pipeThrough(
-            new TransformStream<UIMessageChunk, UIMessageChunk>({
-              transform(chunk, controller) {
-                controller.enqueue(chunk);
+                ...accountHistoryMetadata(userId, authenticatedUserId),
+                ...(conversationId
+                  ? { chat_conversation_id: conversationId }
+                  : {}),
               },
-              flush(controller) {
-                if (savedMessageId)
-                  controller.enqueue({
-                    type: 'message-metadata',
-                    messageMetadata: {
-                      custom: {
-                        ...usageMetadata,
-                        outsideSource: outsideSource(),
-                        savedMessageId,
-                      },
-                    },
-                  });
+              content:
+                content.trim() ||
+                (askPart
+                  ? askUserPartToText(askPart as ChatMessagePart)
+                  : '') ||
+                '',
+              messageType: 'assistant' as const,
+              parts,
+            };
+            if (rowId) {
+              let completed: boolean;
+              try {
+                completed = await completeChatTurn(
+                  rowId,
+                  authenticatedUserId,
+                  { ...history, id: continuation?.id ?? responseMessage.id },
+                  Boolean(continuation)
+                );
+              } catch (error) {
+                if (!continuation) throw error;
+                log(
+                  'error',
+                  'Could not commit the chat approval completion:',
+                  describeError(error)
+                );
+                completed = false;
+              }
+              if (!completed) {
+                await endUncommittedTurn(rowId, responseMessage);
+                return;
+              }
+            } else if (continuation) {
+              await chatRepository.saveApprovalContinuation(
+                continuation.id,
+                authenticatedUserId,
+                history
+              );
+            } else {
+              await chatRepository.saveChatHistory({
+                ...history,
+                id: responseMessage.id,
+              });
+            }
+            savedMessageId = responseMessage.id;
+          },
+          messageMetadata: ({ part }) => {
+            if (
+              (part.type === 'tool-result' || part.type === 'tool-error') &&
+              toolServers[part.toolName]
+            )
+              outsideServers.add(toolServers[part.toolName]);
+            if (part.type === 'tool-approval-request') {
+              const serverId = currentToolServerIds[part.toolCall.toolName];
+              if (serverId) toolServerIds[part.toolCall.toolName] = serverId;
+              approvalSources[part.toolCall.toolCallId] = [...outsideServers];
+            }
+            if (
+              ![
+                'tool-result',
+                'tool-error',
+                'tool-approval-request',
+                'finish',
+              ].includes(part.type)
+            )
+              return undefined;
+            if (part.type === 'finish')
+              usageMetadata = mapUsageToMetadata(part.totalUsage).custom;
+            return {
+              custom: {
+                ...(part.type === 'finish'
+                  ? mapUsageToMetadata(part.totalUsage).custom
+                  : {}),
+                outsideSource: outsideSource(),
               },
-            })
-          )
+            };
+          },
+          onError: chatStreamErrorMessage,
+        }),
+        Boolean(rowId),
+        () => ({
+          terminal: durableTerminal,
+          metadata: savedMessageId
+            ? {
+                type: 'message-metadata',
+                messageMetadata: {
+                  custom: {
+                    ...usageMetadata,
+                    outsideSource: outsideSource(),
+                    savedMessageId,
+                  },
+                },
+              }
+            : undefined,
+        })
       ),
     };
   } catch (error) {
-    if (continuation && !streamStarted) {
-      // The claim is already saved, so settle it or the card waits forever;
-      // a failure here must not hide the original error.
-      try {
-        await chatRepository.saveApprovalContinuation(
-          continuation.id,
-          authenticatedUserId,
-          {
-            content: '',
-            parts: settleChatApprovals(continuation.parts, 'Did not run.'),
-            metadata: continuation.metadata,
-          }
-        );
-      } catch (saveError) {
-        log(
-          'error',
-          `Could not settle approval ${continuation.id}:`,
-          describeError(saveError)
-        );
+    stopMonitoring();
+    if (continuation) {
+      const parts = settleChatApprovals(
+        continuation.parts,
+        streamStarted ? undefined : 'Did not run.'
+      );
+      if (rowId) {
+        const errorText =
+          durableTerminal?.type === 'error'
+            ? durableTerminal.errorText
+            : signal.reason?.name === 'TimeoutError'
+              ? chatTurnFailure(signal)
+              : chatStreamErrorMessage(error);
+        await persistFailedApproval(rowId, authenticatedUserId, errorText, {
+          id: continuation.id,
+          parts,
+        });
+      } else {
+        try {
+          await chatRepository.saveApprovalContinuation(
+            continuation.id,
+            authenticatedUserId,
+            {
+              content: continuationContent,
+              parts,
+              metadata: continuation.metadata,
+            }
+          );
+        } catch (saveError) {
+          log(
+            'error',
+            `Could not settle approval ${continuation.id}:`,
+            describeError(saveError)
+          );
+        }
       }
+    } else if (rowId && durableTerminal?.type === 'error') {
+      await markChatTurnFailed(
+        rowId,
+        authenticatedUserId,
+        durableTerminal.errorText
+      );
     }
     log(
       'error',

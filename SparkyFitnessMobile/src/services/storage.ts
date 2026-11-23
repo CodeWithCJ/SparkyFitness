@@ -70,6 +70,27 @@ const getRawStoredConfigs = async (): Promise<StoredServerConfig[]> => {
 };
 
 /**
+ * The URLs of every saved server, read from AsyncStorage alone (no keys or
+ * tokens). Unlike `getAllServerConfigs`, a storage failure rejects instead of
+ * reading as "no servers", so a caller that must not act on a failed read (the
+ * hosts the TLS client certificate may be sent to) can tell the two apart.
+ */
+export const getSavedServerUrls = async (): Promise<string[]> => {
+  const jsonValue = await AsyncStorage.getItem(SERVER_CONFIGS_KEY);
+  if (jsonValue == null) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonValue);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  return parsed.flatMap((entry: { url?: unknown }) =>
+    typeof entry?.url === 'string' ? [entry.url] : []
+  );
+};
+
+/**
  * Saves a new server configuration or updates an existing one.
  * The API key is stored in SecureStore; only id and url go to AsyncStorage.
  * Also sets the saved/updated config as the active one.
@@ -124,6 +145,9 @@ export const saveServerConfig = async (config: ServerConfig): Promise<void> => {
     }
 
     await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
+    // The saved list has changed, so the hosts the TLS client certificate may
+    // be offered to must follow now, not after the steps below that can fail.
+    notifyServerConfigsChanged();
     activeServerConfigCache = undefined;
     await setActiveServerConfig(config.id);
   } catch (e) {
@@ -315,6 +339,32 @@ export const setActiveServerConfig = async (
   }
 };
 
+let onServerConfigsChanged: (() => void) | null = null;
+
+/**
+ * Runs after a server config is saved or deleted, for anything derived from
+ * the list of saved servers (the hosts the TLS client certificate may be
+ * presented to). Registered by the app rather than imported here, so storage
+ * does not load native modules.
+ */
+export const setOnServerConfigsChanged = (
+  callback: (() => void) | null
+): void => {
+  onServerConfigsChanged = callback;
+};
+
+/** The saved list is already written, so a failing listener must not fail the caller. */
+const notifyServerConfigsChanged = (): void => {
+  try {
+    onServerConfigsChanged?.();
+  } catch (e) {
+    addLog(
+      `[Storage] Server config listener failed: ${getErrorMessage(e)}`,
+      'WARNING'
+    );
+  }
+};
+
 let onServerConfigDeleted: ((configId: string) => Promise<void>) | null = null;
 
 /**
@@ -337,6 +387,9 @@ export const deleteServerConfig = async (configId: string): Promise<void> => {
     let stored = await getRawStoredConfigs();
     stored = stored.filter((config) => config.id !== configId);
     await AsyncStorage.setItem(SERVER_CONFIGS_KEY, JSON.stringify(stored));
+    // The server is off the saved list: stop offering it the TLS client
+    // certificate now, whether or not the credential clean-up below succeeds.
+    notifyServerConfigsChanged();
     activeServerConfigCache = undefined;
     await SecureStore.deleteItemAsync(secureStoreKey(configId));
     await SecureStore.deleteItemAsync(sessionTokenSecureStoreKey(configId));
@@ -435,6 +488,66 @@ export const saveLastWritebackTime = async (): Promise<string | null> => {
     const message = getErrorMessage(error);
     addLog(`[Storage] Failed to save writeback time: ${message}`, 'ERROR');
     return null;
+  }
+};
+
+const HEALTH_WATER_SYNC_TOKEN_KEY = (
+  platform: 'ios' | 'android',
+  configId?: string | null
+) =>
+  configId
+    ? `healthWaterSyncToken_${platform}_${configId}`
+    : `healthWaterSyncToken_${platform}`;
+
+export const loadHealthWaterSyncToken = async (
+  platform: 'ios' | 'android',
+  configId?: string | null
+): Promise<string | null> => {
+  const resolvedConfigId =
+    configId !== undefined ? configId : await getActiveServerConfigId();
+  if (resolvedConfigId) {
+    const scoped = await AsyncStorage.getItem(
+      HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId)
+    );
+    if (scoped != null) return scoped;
+  }
+  return await AsyncStorage.getItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform));
+};
+
+export const saveHealthWaterSyncToken = async (
+  platform: 'ios' | 'android',
+  token: string,
+  configId?: string | null
+): Promise<void> => {
+  try {
+    const resolvedConfigId =
+      configId !== undefined ? configId : await getActiveServerConfigId();
+    await AsyncStorage.setItem(
+      HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId),
+      token
+    );
+  } catch (error) {
+    const message = getErrorMessage(error);
+    addLog(`[Storage] Failed to save water sync token: ${message}`, 'ERROR');
+  }
+};
+
+export const clearHealthWaterSyncToken = async (
+  platform: 'ios' | 'android',
+  configId?: string | null
+): Promise<void> => {
+  try {
+    const resolvedConfigId =
+      configId !== undefined ? configId : await getActiveServerConfigId();
+    if (resolvedConfigId) {
+      await AsyncStorage.removeItem(
+        HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId)
+      );
+    }
+    await AsyncStorage.removeItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform));
+  } catch (error) {
+    const message = getErrorMessage(error);
+    addLog(`[Storage] Failed to clear water sync token: ${message}`, 'ERROR');
   }
 };
 

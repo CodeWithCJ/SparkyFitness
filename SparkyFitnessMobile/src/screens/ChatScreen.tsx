@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -21,8 +22,8 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type TextInputProps,
+  type TextInputInstance,
 } from 'react-native';
-import { fetch as expoFetch } from 'expo/fetch';
 import { getLocales } from 'expo-localization';
 import {
   ExpoSpeechRecognitionModule,
@@ -49,10 +50,8 @@ import {
   type Attachment,
   type MessageRole,
 } from '@assistant-ui/react-native';
-import {
-  useChatRuntime,
-  AssistantChatTransport,
-} from '@assistant-ui/react-ai-sdk';
+import { useChatRuntime } from '@assistant-ui/react-ai-sdk';
+import { chatFetch, NativeChatTransport } from '../services/api/chatTransport';
 import {
   chatApprovalResponsesReady,
   ASK_USER_TOOL_NAME,
@@ -79,6 +78,7 @@ import { CHAT_SUGGESTIONS } from '../constants/chat';
 import {
   getActiveServerConfig,
   proxyHeadersToRecord,
+  type ServerConfig,
 } from '../services/storage';
 import { getAuthHeaders } from '../services/api/authService';
 import { normalizeUrl } from '../services/api/apiClient';
@@ -99,8 +99,13 @@ import {
   usePreferences,
   chatHistoryQueryKey,
 } from '../hooks';
+import {
+  sameChatAccount,
+  useChatTurnRecovery,
+} from '../hooks/useChatTurnRecovery';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
+import type { TranslateFn } from '../localization/translateFn';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
 type InitialMessages = NonNullable<
@@ -165,53 +170,23 @@ function ChatKeyboardAvoidingView(
 
 /** Builds the assistant-ui runtime bound to our streaming endpoint. */
 function useSparkyChatRuntime({
-  baseUrl,
+  serverConfig,
+  onRecovered,
+  settledTurnId,
   serviceConfigId,
   conversationId,
   initialMessages,
 }: {
-  baseUrl: string;
+  serverConfig: ServerConfig;
+  onRecovered: (history: NonNullable<InitialMessages>, turnId: string) => void;
+  settledTurnId?: string;
   serviceConfigId: string;
   conversationId: string;
   initialMessages: InitialMessages;
 }) {
   const { t } = useTranslation();
-  const transport = useMemo(
-    () =>
-      new AssistantChatTransport({
-        api: `${baseUrl}/api/chat/stream`,
-        // expo/fetch exposes a real ReadableStream body; RN's global fetch does not.
-        fetch: expoFetch as unknown as typeof globalThis.fetch,
-        // Resolved per request so auth/proxy headers stay current.
-        headers: async () => {
-          const config = await getActiveServerConfig();
-          return config
-            ? {
-                ...proxyHeadersToRecord(config.proxyHeaders),
-                ...getAuthHeaders(config),
-              }
-            : {};
-        },
-        // Merged into the request body alongside `messages`; the server reads it.
-        body: {
-          service_config_id: serviceConfigId,
-          conversationId,
-          approvals: true,
-        },
-      }),
-    [baseUrl, serviceConfigId, conversationId]
-  );
-
-  // Thread-level safety net: a per-message error box can't render if the stream
-  // fails before any assistant message exists, so surface a toast too. The server's
-  // stream onError mapper passes provider error messages through, so this shows them.
-  return useChatRuntime({
-    joinStrategy: 'none',
-    sendAutomaticallyWhen: chatApprovalResponsesReady,
-    transport,
-    // Seed prior history (the runtime ignores changes after mount — see ChatThread's key).
-    messages: initialMessages,
-    onError: (error: Error) => {
+  const reportError = useCallback(
+    (error: Error) => {
       addLog('Chat stream error', 'ERROR', [error?.message ?? String(error)]);
       Toast.show({
         type: 'error',
@@ -223,7 +198,79 @@ function useSparkyChatRuntime({
           }),
       });
     },
+    [t]
+  );
+  const { begin, finish, handleError, stop } = useChatTurnRecovery(
+    serverConfig,
+    initialMessages ?? [],
+    settledTurnId,
+    onRecovered,
+    reportError
+  );
+  const transport = useMemo(
+    () =>
+      new NativeChatTransport({
+        api: `${normalizeUrl(serverConfig.url)}/api/chat/stream`,
+        // expo/fetch exposes a real ReadableStream body; RN's global fetch does not.
+        fetch: chatFetch,
+        // Resolved per request so auth/proxy headers stay current.
+        headers: async () => {
+          const config = await getActiveServerConfig();
+          if (!sameChatAccount(config, serverConfig))
+            throw Error(t('chat.error', { defaultValue: 'Chat error' }));
+          return {
+            ...proxyHeadersToRecord(config.proxyHeaders),
+            ...getAuthHeaders(config),
+          };
+        },
+        prepareSendMessagesRequest: ({
+          body,
+          id,
+          messages,
+          trigger,
+          messageId,
+          requestMetadata,
+        }) => {
+          const turnId = begin(
+            messages.at(-1)?.role === 'user' ||
+              chatApprovalResponsesReady({ messages })
+          );
+          return {
+            body: {
+              ...body,
+              id,
+              messages,
+              trigger,
+              messageId,
+              metadata: requestMetadata,
+              ...(turnId && { turnId }),
+            },
+          };
+        },
+        // Merged into the request body alongside `messages`; the server reads it.
+        body: {
+          service_config_id: serviceConfigId,
+          conversationId,
+          approvals: true,
+        },
+      }),
+    [serverConfig, serviceConfigId, conversationId, begin, t]
+  );
+
+  // Thread-level safety net: a per-message error box can't render if the stream
+  // fails before any assistant message exists, so surface a toast too. The server's
+  // stream onError mapper passes provider error messages through, so this shows them.
+  const runtime = useChatRuntime({
+    joinStrategy: 'none',
+    sendAutomaticallyWhen: chatApprovalResponsesReady,
+    transport,
+    // Seed prior history (the runtime ignores changes after mount — see ChatThread's key).
+    messages: initialMessages,
+    onError: handleError,
+    onFinish: ({ isAbort, isDisconnect, isError }) =>
+      finish(isAbort, isDisconnect, isError),
   });
+  return { runtime, stop };
 }
 
 /** A single chat bubble. Rendered inside the message context. */
@@ -455,7 +502,7 @@ function LocalComposerInput({
   ...props
 }: LocalComposerInputProps) {
   const aui = useAui();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const composerText = useAuiState((s) => s.composer.text);
   const [localText, setLocalText] = useState(composerText);
   const localTextRef = useRef(composerText);
@@ -489,7 +536,6 @@ function LocalComposerInput({
     }
 
     if (composerText !== localTextRef.current) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       applyLocalText(composerText);
     }
   }, [applyLocalText, composerText]);
@@ -1032,19 +1078,31 @@ function ComposerPhotoPickerButton({
   );
 }
 
+type ChatComposer = ReturnType<ReturnType<typeof useAui>['composer']>;
+type ConnectComposer = (composer: ChatComposer) => () => void;
+
 /** The bottom input row. Send/Cancel stay on assistant-ui actions. */
 function Composer({
+  connectComposer,
+  onStop,
   autoFocusReady,
   voiceServiceConfigId,
   voiceInputEnabled,
   onOpenLightbox,
 }: {
+  connectComposer: ConnectComposer;
+  onStop: () => void;
   autoFocusReady: boolean;
   voiceServiceConfigId?: string | null;
   voiceInputEnabled: boolean;
   onOpenLightbox: (images: string[], index?: number) => void;
 }) {
   const { t } = useTranslation();
+  const aui = useAui();
+  useLayoutEffect(
+    () => connectComposer(aui.composer()),
+    [aui, connectComposer]
+  );
   const [recording, setRecording] = useState(false);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [pickerBusy, setPickerBusy] = useState(false);
@@ -1187,10 +1245,13 @@ function Composer({
           </ComposerPrimitive.Send>
         </ThreadPrimitive.If>
         <ThreadPrimitive.If running>
-          <ComposerPrimitive.Cancel>
-            <View className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center">
+          <ComposerPrimitive.Cancel asChild>
+            <Pressable
+              onPress={onStop}
+              className="bg-accent-primary rounded-full w-10 h-10 items-center justify-center"
+            >
               <Icon name="stop" size={18} color="#ffffff" />
-            </View>
+            </Pressable>
           </ComposerPrimitive.Cancel>
         </ThreadPrimitive.If>
       </View>
@@ -1217,7 +1278,7 @@ function RunningReporter({
 
 /** The live thread. Only mounted once baseUrl + serviceConfigId are known. */
 function getLocalizedSuggestionLabel(
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TranslateFn,
   labelKey: string,
   defaultLabel: string
 ): string {
@@ -1244,7 +1305,10 @@ function getLocalizedSuggestionLabel(
 }
 
 function ChatThread({
-  baseUrl,
+  connectComposer,
+  serverConfig,
+  onRecovered,
+  settledTurnId,
   serviceConfigId,
   voiceServiceConfigId,
   voiceInputEnabled,
@@ -1254,8 +1318,11 @@ function ChatThread({
   autoFocusReady,
   onClearChat,
 }: {
+  connectComposer: ConnectComposer;
   onClearChat: () => void;
-  baseUrl: string;
+  serverConfig: ServerConfig;
+  onRecovered: (history: NonNullable<InitialMessages>, turnId: string) => void;
+  settledTurnId?: string;
   serviceConfigId: string;
   voiceServiceConfigId?: string | null;
   voiceInputEnabled: boolean;
@@ -1266,8 +1333,10 @@ function ChatThread({
 }) {
   const { t } = useTranslation();
   const { lightboxProps, openLightbox } = useImageLightbox();
-  const runtime = useSparkyChatRuntime({
-    baseUrl,
+  const { runtime, stop } = useSparkyChatRuntime({
+    serverConfig,
+    onRecovered,
+    settledTurnId,
     serviceConfigId,
     conversationId,
     initialMessages,
@@ -1400,6 +1469,8 @@ function ChatThread({
         </View>
 
         <Composer
+          connectComposer={connectComposer}
+          onStop={stop}
           key={`${voiceInputEnabled}:${voiceServiceConfigId ?? 'system'}`}
           autoFocusReady={autoFocusReady}
           voiceServiceConfigId={voiceServiceConfigId}
@@ -1443,12 +1514,51 @@ export default function ChatScreen({
     ? insets.top + IOS_SMALL_NATIVE_HEADER_HEIGHT + CHAT_KEYBOARD_EXTRA_SPACING
     : CHAT_KEYBOARD_EXTRA_SPACING;
 
-  const [baseUrl, setBaseUrl] = useState<string | null>(null);
+  const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null);
+  const baseUrl = serverConfig ? normalizeUrl(serverConfig.url) : null;
+  const [restoredHistory, setRestoredHistory] = useState<{
+    messages: NonNullable<InitialMessages>;
+    turnId: string;
+  }>();
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [running, setRunning] = useState(false);
   // Remounting ChatThread by key resets the in-memory runtime (it ignores
   // `messages` changes after mount), so bump this to clear the thread.
   const [threadKey, setThreadKey] = useState(0);
+  const activeComposer = useRef<ChatComposer | undefined>(undefined);
+  const recoveryDraft = useRef<
+    | Pick<ReturnType<ChatComposer['getState']>, 'text' | 'attachments'>
+    | undefined
+  >(undefined);
+  const connectComposer = useCallback<ConnectComposer>((composer) => {
+    activeComposer.current = composer;
+    const draft = recoveryDraft.current;
+    recoveryDraft.current = undefined;
+    if (draft) {
+      if (draft.text) composer.setText(draft.text);
+      for (const attachment of draft.attachments) {
+        if (attachment.content)
+          void composer
+            .addAttachment({ ...attachment, content: attachment.content })
+            .catch((error: unknown) => {
+              addLog('Could not restore chat attachment', 'ERROR', [
+                String(error),
+              ]);
+            });
+      }
+    }
+    return () => {
+      activeComposer.current = undefined;
+    };
+  }, []);
+  const onRecovered = useCallback(
+    (messages: NonNullable<InitialMessages>, turnId: string) => {
+      recoveryDraft.current = activeComposer.current?.getState();
+      setRestoredHistory({ messages, turnId });
+      setThreadKey((k) => k + 1);
+    },
+    []
+  );
   // Kept across reopening the chat so session-affine providers keep their
   // session; rotated when the history is cleared or the provider changes.
   const chatConversationId = useAppPreferencesStore(
@@ -1486,7 +1596,7 @@ export default function ChatScreen({
       try {
         const config = await getActiveServerConfig();
         if (cancelled) return;
-        setBaseUrl(config ? normalizeUrl(config.url) : null);
+        setServerConfig(config);
       } catch (error) {
         // getActiveServerConfig re-throws on storage failure; without this the
         // spinner would hang forever. Fall through to the "no server" branch.
@@ -1505,7 +1615,7 @@ export default function ChatScreen({
   const { data: historyData, isLoading: loadingHistory } = useChatHistory({
     enabled: !!baseUrl,
   });
-  const initialMessages = historyData ?? [];
+  const initialMessages = restoredHistory?.messages ?? historyData ?? [];
 
   const serviceConfigId = setting?.id ?? null;
 
@@ -1516,7 +1626,10 @@ export default function ChatScreen({
       void (async () => {
         // The history is global, not per provider; refetch so the new thread seeds from the latest messages.
         await queryClient.refetchQueries({ queryKey: chatHistoryQueryKey });
-        if (!cancelled) startChatConversation(serviceConfigId);
+        if (!cancelled) {
+          setRestoredHistory(undefined);
+          startChatConversation(serviceConfigId);
+        }
       })();
       return () => {
         cancelled = true;
@@ -1552,6 +1665,8 @@ export default function ChatScreen({
               await clearAllChatHistory();
               // Reset the raw (pre-select) cache so a remount seeds an empty thread.
               queryClient.setQueryData(chatHistoryQueryKey, []);
+              recoveryDraft.current = undefined;
+              setRestoredHistory(undefined);
               startChatConversation(serviceConfigId);
               setThreadKey((k) => k + 1);
             } catch (error) {
@@ -1599,7 +1714,6 @@ export default function ChatScreen({
     <View
       className="flex-1 bg-background"
       style={{
-        paddingTop: usesNativeHeader ? undefined : insets.top,
         paddingBottom: insets.bottom,
       }}
     >
@@ -1620,7 +1734,7 @@ export default function ChatScreen({
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator color={accent} />
           </View>
-        ) : !baseUrl ? (
+        ) : !serverConfig ? (
           <Centered
             text={t('chat.noServer', {
               defaultValue:
@@ -1641,8 +1755,11 @@ export default function ChatScreen({
           </View>
         ) : (
           <ChatThread
+            connectComposer={connectComposer}
             key={threadKey}
-            baseUrl={baseUrl}
+            serverConfig={serverConfig}
+            onRecovered={onRecovered}
+            settledTurnId={restoredHistory?.turnId}
             serviceConfigId={serviceConfigId}
             voiceServiceConfigId={preferences?.active_voice_ai_service_id}
             voiceInputEnabled={

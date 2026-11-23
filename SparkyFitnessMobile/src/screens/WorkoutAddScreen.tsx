@@ -1,4 +1,10 @@
 import React, { useRef, useCallback, useEffect, useState } from 'react';
+import { isServerKnownUnreachable } from '../offline/connection';
+import {
+  queueWorkoutCreate,
+  queueWorkoutUpdate,
+} from '../offline/workoutHandOver';
+import { queueAfterConnectionFailure } from '../offline/queueAfterFailure';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -11,7 +17,6 @@ import {
 import FadeView from '../components/FadeView';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import FormInput from '../components/FormInput';
@@ -73,7 +78,6 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     !!route.params?.skipDraftLoad ||
     (!!route.params?.selectedExercise && !isEditMode);
 
-  const insets = useSafeAreaInsets();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
   const exerciseListRef = useRef<WorkoutFormExerciseListHandle>(null);
 
@@ -178,12 +182,12 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     createSession,
     isPending: isCreating,
     invalidateCache: invalidateCreateCache,
-  } = useCreateWorkout();
+  } = useCreateWorkout({ quietWhenServerAway: true });
   const {
     updateSession,
     isPending: isUpdating,
     invalidateCache: invalidateUpdateCache,
-  } = useUpdateWorkout();
+  } = useUpdateWorkout({ quietWhenServerAway: true });
   const isPending = isCreating || isUpdating;
   const { preferences, isLoading: isPreferencesLoading } = usePreferences();
   const weightUnit = preferences?.default_weight_unit ?? 'kg';
@@ -198,17 +202,14 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Populate the edit form once after the preferences query settles so
   // the initial unit conversion is correct without overwriting later edits.
-  // Tracked in state (not a ref) so the loading gate below re-renders
-  // deterministically once population completes.
-  const [hasPopulatedEdit, setHasPopulatedEdit] = useState(false);
+  // The reducer marks the draft as populated, so the loading gate below
+  // re-renders from state without a second state update in the effect.
+  const hasPopulatedEdit = state.populatedFromSession === true;
   useEffect(() => {
     if (!isEditMode || !session || hasPopulatedEdit || isPreferencesLoading) {
       return;
     }
 
-    // One-time initialization from the async-loaded session; setting state
-    // synchronously here is intentional and mirrors the populate() side effect.
-    setHasPopulatedEdit(true);
     populate(session, weightUnit as 'kg' | 'lbs', distanceUnit);
   }, [
     isEditMode,
@@ -290,6 +291,19 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   const canReorder = canReorderDraftExercises(state.exercises);
 
+  // No server (#1983): the workout is kept on this phone and uploads later.
+  const showSavedOnPhone = useCallback(() => {
+    Toast.show({
+      type: 'info',
+      text1: t('workoutAdd.savedOfflineTitle', {
+        defaultValue: 'Saved on this phone',
+      }),
+      text2: t('workoutAdd.savedOfflineMessage', {
+        defaultValue: 'It uploads when your server can be reached.',
+      }),
+    });
+  }, [t]);
+
   const handleFinish = useCallback(() => {
     if (!submission.canSave) {
       Toast.show({
@@ -324,7 +338,30 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                   ? { exercises: submission.payloadExercises }
                   : {}),
               };
-              await updateSession({ id: session.id, payload });
+              const revision =
+                session.revision != null ? Number(session.revision) : null;
+              const queueEdit = () =>
+                queueWorkoutUpdate(
+                  session.id,
+                  payload,
+                  revision,
+                  submission.entryDate
+                );
+              let savedOffline = false;
+              if (isServerKnownUnreachable()) {
+                savedOffline = await queueEdit();
+              }
+              if (!savedOffline) {
+                try {
+                  await updateSession({ id: session.id, payload });
+                } catch (error) {
+                  if (!(await queueAfterConnectionFailure(error, queueEdit))) {
+                    throw error;
+                  }
+                  savedOffline = true;
+                }
+              }
+              if (savedOffline) showSavedOnPhone();
               invalidateUpdateCache(submission.entryDate);
               navigation.pop(2);
             } else {
@@ -337,7 +374,24 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 finished_at: new Date().toISOString(),
                 exercises: submission.payloadExercises,
               };
-              await createSession(payload);
+              const queueCreate = () => queueWorkoutCreate(payload);
+              let savedOffline = false;
+              if (isServerKnownUnreachable()) {
+                savedOffline = await queueCreate();
+              }
+              if (!savedOffline) {
+                try {
+                  await createSession(payload);
+                } catch (error) {
+                  if (
+                    !(await queueAfterConnectionFailure(error, queueCreate))
+                  ) {
+                    throw error;
+                  }
+                  savedOffline = true;
+                }
+              }
+              if (savedOffline) showSavedOnPhone();
               await discardDraft();
               invalidateCreateCache(submission.entryDate);
               navigation.pop(popCount);
@@ -361,6 +415,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
     submission,
     isEditMode,
     session,
+    showSavedOnPhone,
     exercisesModifiedRef,
     createSession,
     updateSession,
@@ -408,10 +463,7 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isInitializingEditForm ? (
         <StatusView loading />

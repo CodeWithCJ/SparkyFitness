@@ -3,7 +3,8 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
-import { hasSupplementNutrition } from '@workspace/shared';
+import { useWaitingWaterSummary } from '../hooks/useWaitingWaterSummary';
+import { hasSupplementNutrition, isShownByFeature } from '@workspace/shared';
 import React, {
   useCallback,
   useEffect,
@@ -20,6 +21,7 @@ import {
   ScrollView,
   Text,
   View,
+  type ScrollViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -37,6 +39,7 @@ import HydrationReminderReconciler from '../components/HydrationReminderReconcil
 import HealthTrendsPager from '../components/HealthTrendsPager';
 import HydrationGauge from '../components/HydrationGauge';
 import CaffeineCard from '../components/CaffeineCard';
+import BloodAlcoholCard from '../components/BloodAlcoholCard';
 import { useBackgroundWaterSync } from '../hooks/useBackgroundWaterSync';
 import Icon from '../components/Icon';
 import MacroCard from '../components/MacroCard';
@@ -47,18 +50,22 @@ import MoodCard from '../components/mood/MoodCard';
 import LabResultsCard from '../components/labs/LabResultsCard';
 import OralCareCard from '../components/oralCare/OralCareCard';
 import { oralCareQueryKeyRoot } from '../hooks/useOralCare';
+import ChallengesCard from '../components/challenges/ChallengesCard';
+import { challengesQueryKeyRoot } from '../hooks/useChallenges';
 import ProgressPhotosCard from '../components/ProgressPhotosCard';
 import TrainingLoadDashboardCard from '../components/TrainingLoadDashboardCard';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
+import OfflineBanner from '../components/OfflineBanner';
+import type { DailySummary } from '../types/dailySummary';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import {
-  caffeineActiveRootQueryKey,
   fastingRootQueryKey,
   medicationsRootQueryKey,
   useCustomNutrients,
   useDailySummary,
+  useBloodAlcohol,
   useCaffeineKinetics,
   useHealthTrends,
   useMeasurements,
@@ -70,6 +77,7 @@ import {
   useWidgetSync,
 } from '../hooks';
 import { useCheckInPhotoDates } from '../hooks/useCheckInPhotos';
+import { invalidateIntakeKinetics } from '../hooks/invalidateIntakeKinetics';
 import {
   moodEntriesRootQueryKey,
   labLatestQueryKey,
@@ -77,6 +85,7 @@ import {
   trainingLoadRootQueryKey,
 } from '../hooks/queryKeys';
 import { useDateColumnCollapsed } from '../hooks/useDateColumnCollapsed';
+import { crossfadeHeaderColumn } from '../../modules/side-bar-metrics';
 import { useHeaderActionColors } from '../hooks/useHeaderActionColors';
 import {
   useMindfulnessDay,
@@ -92,6 +101,8 @@ import {
   selectVisibleHealthTrends,
 } from '../utils/healthTrendPreferences';
 import { resolveDashboardCardOrder } from '../utils/dashboardCardPreferences';
+import { DASHBOARD_CARD_FEATURES } from '../constants/dashboardCards';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import type { RootStackParamList, TabParamList } from '../types/navigation';
 import { formatDateLabel, getDateRelationToToday } from '../utils/dateUtils';
 import {
@@ -128,7 +139,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const goToToday = useDiaryDateStore((s) => s.goToToday);
   const syncTodayRollover = useDiaryDateStore((s) => s.syncTodayRollover);
   const [trendsRange, setTrendsRange] = useState<HealthTrendDateRange>('7d');
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
 
   // Only reset to today when the calendar day has actually changed (midnight rollover)
@@ -168,6 +179,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   // A live activity lengthens the status cluster in a side-bar pose and can
   // push the date buttons onto the Add button; then only the calendar stays.
   const dateColumnCollapsed = useDateColumnCollapsed(verticalBar);
+  const lastDateCollapsedRef = useRef<boolean | null>(null);
   const { defaultColor: nativeHeaderActionColor } = useHeaderActionColors();
   const datePastColor =
     (useCSSVariable('--color-date-past') as string) || '#f97316';
@@ -176,6 +188,22 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
 
   const syncNativeHeaderDatePicker = useCallback(() => {
     if (!usesNativeTabs) return;
+    // Beside a vertical bar, wait for the first measurement: setting all three
+    // date buttons and collapsing a moment later makes the pill jump.
+    if (dateColumnCollapsed === null) return;
+    // The system swaps native bar items with no animation: when the group
+    // changes under an already-visible pill, dissolve it instead of popping.
+    // Only on the screen being looked at: the screen under a pushed one still
+    // follows the live activity (so its buttons are right on return), and the
+    // column on show then belongs to the screen on top.
+    if (
+      lastDateCollapsedRef.current !== null &&
+      lastDateCollapsedRef.current !== dateColumnCollapsed &&
+      navigation.isFocused()
+    ) {
+      crossfadeHeaderColumn();
+    }
+    lastDateCollapsedRef.current = dateColumnCollapsed;
 
     const relation = getDateRelationToToday(selectedDate);
     const dateTintColor =
@@ -195,7 +223,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         tintColor: nativeHeaderActionColor,
         dateTintColor,
         compactCalendarButton: verticalBar,
-        collapseToCalendar: dateColumnCollapsed,
+        collapseToCalendar: dateColumnCollapsed ?? false,
         accessibilityLabel: t('dashboard.chooseDate', {
           defaultValue: 'Choose dashboard date',
         }),
@@ -224,11 +252,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     dateColumnCollapsed,
   ]);
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const {
+    isConnected,
+    isLoading: isConnectionLoading,
+    status: connectionStatus,
+    refetch: recheckConnection,
+  } = useServerConnection();
+  // With the server away the Dashboard shows what the phone holds: the day's
+  // totals (the last copy plus what is waiting to upload) and the water card.
+  const isOffline = !isConnectionLoading && connectionStatus === 'unreachable';
   const { summary, isLoading, isError, refetch } = useDailySummary({
     date: selectedDate,
-    enabled: isConnected,
+    enabled: isConnected || isOffline,
   });
+  // A day with no saved summary while the server is away still has its water
+  // card; only what is waiting to upload is counted.
+  const waitingOnlySummary = useWaitingWaterSummary(
+    selectedDate,
+    isOffline && !isLoading && !summary
+  );
   const { profile } = useProfile();
   const {
     preferences,
@@ -259,7 +301,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     selectContainer: selectWaterContainer,
   } = useWaterIntakeMutation({
     date: selectedDate,
-    enabled: isConnected,
+    enabled: isConnected || isOffline,
   });
 
   // A linked container has no volume of its own, so state what one press logs
@@ -389,6 +431,14 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     isLoading: isCaffeineLoading,
     refetch: refetchCaffeine,
   } = useCaffeineKinetics(selectedDate, caffeineCardVisible);
+  const bloodAlcoholCardVisible = useAppPreferencesStore(
+    (s) => s.bloodAlcoholCardVisible
+  );
+  const {
+    estimate: bloodAlcoholEstimate,
+    nowMs: bloodAlcoholNowMs,
+    isLoading: isBloodAlcoholLoading,
+  } = useBloodAlcohol(selectedDate, bloodAlcoholCardVisible);
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
@@ -412,6 +462,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const oralCareCardVisible = useAppPreferencesStore(
     (s) => s.oralCareCardVisible
   );
+  const challengesCardVisible = useAppPreferencesStore(
+    (s) => s.challengesCardVisible
+  );
   const trainingLoadCardVisible = useAppPreferencesStore(
     (s) => s.trainingLoadCardVisible
   );
@@ -423,9 +476,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     deleteSession: deleteMindfulSession,
   } = useMindfulnessMutations(selectedDate);
 
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
   const orderedDashboardCards = useMemo(
-    () => resolveDashboardCardOrder(dashboardCardOrder),
-    [dashboardCardOrder]
+    () =>
+      resolveDashboardCardOrder(dashboardCardOrder).filter((cardKey) =>
+        isShownByFeature(DASHBOARD_CARD_FEATURES[cardKey], isFeatureOn)
+      ),
+    [dashboardCardOrder, isFeatureOn]
   );
 
   useLayoutEffect(() => {
@@ -448,8 +505,8 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       refetchCustomNutrients(),
       refetchNutrientPrefs(),
       refetchCaffeine(),
-      // CaffeineCard and FastingCard own their own queries; nudge them on pull-to-refresh.
-      queryClient.invalidateQueries({ queryKey: caffeineActiveRootQueryKey }),
+      // The intake curve cards and FastingCard own their own queries; nudge them on pull-to-refresh.
+      invalidateIntakeKinetics(queryClient),
       queryClient.invalidateQueries({ queryKey: fastingRootQueryKey }),
       // MedicationsCard owns its own queries.
       queryClient.invalidateQueries({ queryKey: medicationsRootQueryKey }),
@@ -460,6 +517,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       queryClient.invalidateQueries({ queryKey: labMarkersQueryKey }),
       queryClient.invalidateQueries({ queryKey: labLatestQueryKey }),
       queryClient.invalidateQueries({ queryKey: oralCareQueryKeyRoot }),
+      // ChallengesCard owns its queries.
+      challengesCardVisible
+        ? queryClient.invalidateQueries({ queryKey: challengesQueryKeyRoot })
+        : Promise.resolve(),
       // TrainingLoadDashboardCard owns its query, and a pull is not a focus.
       trainingLoadCardVisible
         ? queryClient.invalidateQueries({ queryKey: trainingLoadRootQueryKey })
@@ -475,11 +536,99 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     refetchNutrientPrefs,
     refetchCaffeine,
     trainingLoadCardVisible,
+    challengesCardVisible,
     queryClient,
   ]);
 
+  // The hydration card, shared by the full Dashboard and the one shown with the
+  // server away. The history screen reads the server, so it is not offered
+  // offline.
+  const renderHydrationGauge = (daySummary: DailySummary) => (
+    <HydrationGauge
+      key="hydration"
+      consumed={daySummary.waterConsumed}
+      goal={daySummary.waterGoal}
+      fromFoodMl={daySummary.waterFromFood}
+      unit={waterDisplayUnit}
+      containerVolume={servingVolume}
+      linkedPressLabel={linkedPressLabel}
+      onConfigure={
+        isContainersLoaded && !activeWaterContainer
+          ? () => navigation.navigate('WaterContainers')
+          : undefined
+      }
+      onPressHistory={
+        isOffline
+          ? undefined
+          : () =>
+              navigation.navigate('WaterLog', {
+                date: selectedDate,
+              })
+      }
+      onIncrement={isContainersLoaded ? incrementWater : undefined}
+      onDecrement={isContainersLoaded ? decrementWater : undefined}
+      disableDecrement={daySummary.waterConsumed <= 0}
+      containers={waterContainers}
+      activeContainerId={activeWaterContainer?.id}
+      onSelectContainer={selectWaterContainer}
+      quickAddPresets={quickAddOptions}
+      onQuickAdd={
+        isContainersLoaded ? (id: number) => logWaterPreset(id) : undefined
+      }
+    />
+  );
+
+  const renderOfflineDashboard = (
+    daySummary: DailySummary,
+    hasSavedSummary: boolean
+  ) => {
+    const { eaten, burned, remaining, goal, progress } =
+      daySummary.calorieBalance;
+    return (
+      <ScrollView
+        className="flex-1 bg-background"
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: usesNativeTabs && verticalBar ? 12 : 0,
+          paddingBottom: 80 + activeWorkoutBarPadding,
+        }}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
+        automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={() => void recheckConnection()}
+            tintColor={accentColor || '#3B82F6'}
+          />
+        }
+      >
+        <OfflineBanner />
+        {hasSavedSummary &&
+        calorieRingCardVisible &&
+        (daySummary.foodEntries.length > 0 || goal > 0) ? (
+          <CalorieRingCard
+            caloriesConsumed={eaten}
+            caloriesBurned={burned}
+            calorieGoal={eaten + remaining}
+            remainingCalories={remaining}
+            progressPercent={progress / 100}
+          />
+        ) : null}
+        {hydrationCardVisible ? renderHydrationGauge(daySummary) : null}
+      </ScrollView>
+    );
+  };
+
   // Render content based on state
   const renderContent = () => {
+    // The server is away but the phone holds the day: show what it can.
+    // Without a saved summary there are no totals: only the water card shows.
+    if (isOffline && summary) return renderOfflineDashboard(summary, true);
+    if (isOffline && waitingOnlySummary) {
+      return renderOfflineDashboard(waitingOnlySummary, false);
+    }
     // No server configured
     if (!isConnectionLoading && !isConnected) {
       return (
@@ -778,37 +927,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                 />
               ) : null;
             case 'hydration':
-              return hydrationCardVisible ? (
-                <HydrationGauge
-                  key="hydration"
-                  consumed={summary.waterConsumed}
-                  goal={summary.waterGoal}
-                  fromFoodMl={summary.waterFromFood}
-                  unit={waterDisplayUnit}
-                  containerVolume={servingVolume}
-                  linkedPressLabel={linkedPressLabel}
-                  onConfigure={
-                    isContainersLoaded && !activeWaterContainer
-                      ? () => navigation.navigate('WaterContainers')
-                      : undefined
-                  }
-                  onPressHistory={() =>
-                    navigation.navigate('WaterLog', { date: selectedDate })
-                  }
-                  onIncrement={isContainersLoaded ? incrementWater : undefined}
-                  onDecrement={isContainersLoaded ? decrementWater : undefined}
-                  disableDecrement={summary.waterConsumed <= 0}
-                  containers={waterContainers}
-                  activeContainerId={activeWaterContainer?.id}
-                  onSelectContainer={selectWaterContainer}
-                  quickAddPresets={quickAddOptions}
-                  onQuickAdd={
-                    isContainersLoaded
-                      ? (id: number) => logWaterPreset(id)
-                      : undefined
-                  }
-                />
-              ) : null;
+              return hydrationCardVisible
+                ? renderHydrationGauge(summary)
+                : null;
             case 'caffeine':
               return caffeineCardVisible ? (
                 <CaffeineCard
@@ -816,6 +937,16 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   kinetics={caffeineKinetics}
                   nowMs={caffeineNowMs}
                   isLoading={isCaffeineLoading}
+                />
+              ) : null;
+            case 'bloodAlcohol':
+              return bloodAlcoholCardVisible ? (
+                <BloodAlcoholCard
+                  key="bloodAlcohol"
+                  date={selectedDate}
+                  estimate={bloodAlcoholEstimate}
+                  nowMs={bloodAlcoholNowMs}
+                  isLoading={isBloodAlcoholLoading}
                 />
               ) : null;
             case 'fasting':
@@ -930,6 +1061,10 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   selectedDate={selectedDate}
                 />
               ) : null;
+            case 'challenges':
+              return challengesCardVisible ? (
+                <ChallengesCard key="challenges" navigation={navigation} />
+              ) : null;
             case 'mindfulness':
               return mindfulnessCardVisible ? (
                 <MindfulnessCard
@@ -976,7 +1111,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   return (
     <View className="flex-1 bg-background">
       <HydrationReminderReconciler />
-      {!isConnectionLoading && isConnected ? (
+      {!isConnectionLoading && (isConnected || isOffline) ? (
         <DateNavigator
           title={t('navigation.dashboard', { defaultValue: 'Dashboard' })}
           selectedDate={selectedDate}

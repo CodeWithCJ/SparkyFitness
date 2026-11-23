@@ -4,7 +4,7 @@ import { log } from '../config/logging.js';
 import { normalizeBarcode } from '../utils/foodUtils.js';
 import {
   buildSqlSearch,
-  buildSqlExactMatchOrder,
+  buildSqlRelevanceOrder,
 } from '../utils/dbSearchHelper.js';
 import { isValidProviderType } from '../constants/foodProviders.js';
 import {
@@ -37,6 +37,8 @@ type BooleanLike = boolean | string | number | null | undefined;
  */
 export interface FoodInput extends NutrientFields {
   id?: string;
+  /** Replay key from the mobile offline queue (see `idx_foods_user_client_id`). */
+  client_id?: string | null;
   name: string;
   user_id: string;
   brand?: string | null;
@@ -203,10 +205,15 @@ async function searchFoods(
         queryParams.push(...searchParams);
         paramIndex = nextParamIndex;
 
-        const exactMatchParamIndex = paramIndex;
-        queryParams.push(`%${name}%`);
-        paramIndex++;
-        orderByClause = ` ORDER BY ${buildSqlExactMatchOrder("CONCAT(f.brand, ' ', f.name)", exactMatchParamIndex)}, f.name ASC`;
+        const relevance = buildSqlRelevanceOrder(
+          'f.name',
+          "CONCAT(f.brand, ' ', f.name)",
+          name as string,
+          paramIndex
+        );
+        queryParams.push(...relevance.queryParams);
+        paramIndex = relevance.nextParamIndex;
+        orderByClause = ` ORDER BY ${relevance.orderClause}, f.name ASC`;
       }
     } else if (checkCustom) {
       query += ` AND f.name = $${paramIndex++}`;
@@ -245,8 +252,8 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
   // 1. Create the food entry
   const foodResult = await client.query(
     `INSERT INTO foods (
-        name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, images, notes, created_at, updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified, images, notes`,
+        name, is_custom, user_id, brand, barcode, provider_external_id, shared_with_public, provider_type, provider_verified, is_quick_food, images, notes, client_id, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, now(), now()) RETURNING id, name, brand, is_custom, user_id, shared_with_public, is_quick_food, provider_external_id, provider_type, provider_verified, images, notes`,
     [
       foodData.name,
       sanitizeBoolean(foodData.is_custom) ?? true,
@@ -260,6 +267,7 @@ async function createFoodWithClient(client: PoolClient, foodData: FoodInput) {
       sanitizeBoolean(foodData.is_quick_food) ?? false,
       JSON.stringify(resolveImageInput(foodData)),
       sanitizeNotes(foodData.notes) ?? null,
+      foodData.client_id ?? null,
     ]
   );
   const newFood = foodResult.rows[0];
@@ -543,6 +551,24 @@ async function findFoodByBarcode(barcode: string, userId: string) {
     client.release();
   }
 }
+/** The food an earlier request with this key already created, if any. */
+async function findFoodByClientId(userId: string, clientId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `SELECT
+        f.id, f.name, f.brand, f.barcode, f.is_custom, f.user_id, f.shared_with_public, f.provider_external_id, f.provider_type, f.provider_verified, f.images, f.notes,
+        ${DEFAULT_VARIANT_JSON_SQL}
+      FROM foods f
+      ${PREFERRED_DEFAULT_VARIANT_JOIN_SQL}
+      WHERE f.user_id = $1 AND f.client_id = $2`,
+      [userId, clientId]
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
+}
 async function getFoodById(foodId: string, userId: string) {
   const client = await getClient(userId); // User-specific operation (RLS will handle access)
   try {
@@ -796,10 +822,15 @@ async function getFoodsWithPagination(
     const selectQueryParams = [...queryParams];
     let selectParamIndex = paramIndex;
     if (searchTerm) {
-      const exactMatchParamIndex = selectParamIndex;
-      selectQueryParams.push(`%${searchTerm}%`);
-      selectParamIndex++;
-      orderByClause = `${buildSqlExactMatchOrder("CONCAT(f.brand, ' ', f.name)", exactMatchParamIndex)}, ${orderByClause}`;
+      const relevance = buildSqlRelevanceOrder(
+        'f.name',
+        "CONCAT(f.brand, ' ', f.name)",
+        searchTerm,
+        selectParamIndex
+      );
+      selectQueryParams.push(...relevance.queryParams);
+      selectParamIndex = relevance.nextParamIndex;
+      orderByClause = `${relevance.orderClause}, ${orderByClause}`;
     }
     query += ` ORDER BY ${orderByClause}`;
     query += ` LIMIT $${selectParamIndex} OFFSET $${selectParamIndex + 1}`;
@@ -1806,6 +1837,7 @@ export { findVisibleFoodByName };
 export { findFoodByProviderExternalId };
 export { updateFoodVariantNutrition };
 export { getFoodById };
+export { findFoodByClientId };
 export { getFoodOwnerId };
 export { updateFood };
 export { deleteFood };
@@ -1833,6 +1865,7 @@ export default {
   findFoodByProviderExternalId,
   updateFoodVariantNutrition,
   getFoodById,
+  findFoodByClientId,
   getFoodOwnerId,
   updateFood,
   deleteFood,

@@ -1,13 +1,29 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { Alert, Platform } from 'react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 
 import WatchSettingsScreen from '../../src/screens/WatchSettingsScreen';
+import WatchConnectivity from '../../modules/watch-connectivity';
 import { WATCH_PAGE_KEYS } from '../../src/constants/watchPages';
 import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
 import { initializeI18n } from '../../src/localization/i18n';
+
+jest.mock('../../modules/watch-connectivity', () => ({
+  __esModule: true,
+  default: {
+    isSupported: jest.fn(() => true),
+    isMediaAccessEnabled: jest.fn(async () => false),
+    openMediaAccessSettings: jest.fn(async () => undefined),
+  },
+}));
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: () => null,
@@ -306,5 +322,121 @@ describe('WatchSettingsScreen', () => {
     expect(useAppPreferencesStore.getState().watchSetInputStyle).toBe('keypad');
     fireEvent.press(screen.getByText('Digital Crown'));
     expect(useAppPreferencesStore.getState().watchSetInputStyle).toBe('crown');
+  });
+
+  test('on Android (Wear OS), shows New workout view and its sub-options while hiding iOS-only settings', async () => {
+    const originalOs = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    try {
+      renderScreen();
+      await waitFor(() => {
+        expect(WatchConnectivity?.isMediaAccessEnabled).toHaveBeenCalled();
+      });
+      const prefs = () => useAppPreferencesStore.getState();
+
+      expect(screen.queryByTestId('watch-double-tap-switch')).toBeNull();
+      expect(screen.queryByText('Digital Crown')).toBeNull();
+      expect(
+        screen.queryByTestId('watch-set-screen-metrics-switch')
+      ).toBeNull();
+      expect(screen.queryByTestId('watch-up-next-switch')).toBeNull();
+      expect(screen.queryByTestId('watch-larger-text-switch')).toBeNull();
+
+      const newWorkoutToggle = screen.getByTestId('watch-new-workout-switch');
+      expect(newWorkoutToggle).toBeTruthy();
+      expect(screen.queryByText('Countdown sound & haptic')).toBeNull();
+
+      fireEvent(newWorkoutToggle, 'valueChange', true);
+      expect(prefs().watchNewWorkout).toBe(true);
+      expect(screen.getByText('Top line')).toBeTruthy();
+      expect(screen.getByText('Countdown sound & haptic')).toBeTruthy();
+      expect(screen.getByTestId('watch-hold-countdown-switch')).toBeTruthy();
+
+      fireEvent.press(screen.getByText('Metrics'));
+      expect(prefs().watchWorkoutTopLine).toBe('metrics');
+      fireEvent.press(screen.getByText('5 s'));
+      expect(prefs().watchWorkoutCountdown).toBe(5);
+      fireEvent(
+        screen.getByTestId('watch-hold-countdown-switch'),
+        'valueChange',
+        false
+      );
+      expect(prefs().watchHoldCountdown).toBe(false);
+    } finally {
+      Object.defineProperty(Platform, 'OS', {
+        value: originalOs,
+        configurable: true,
+      });
+    }
+  });
+
+  test('hides Now Playing track info row on iOS and shows disclosure flow on Android', async () => {
+    renderScreen();
+    expect(screen.queryByTestId('watch-media-access-row')).toBeNull();
+
+    const originalOs = Platform.OS;
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const isEnabledMock = WatchConnectivity?.isMediaAccessEnabled as jest.Mock;
+    const openSettingsMock =
+      WatchConnectivity?.openMediaAccessSettings as jest.Mock;
+    isEnabledMock.mockResolvedValueOnce(false);
+
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    try {
+      const { unmount } = renderScreen();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('watch-media-access-row')).toBeTruthy();
+        expect(screen.getByText('Set up')).toBeTruthy();
+        expect(
+          screen.getByTestId('watch-media-access-row').props.accessibilityLabel
+        ).toBe('Now Playing track info, Set up');
+      });
+
+      fireEvent.press(screen.getByTestId('watch-media-access-row'));
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      const buttons = alertSpy.mock.calls[0][2] as {
+        text?: string;
+        onPress?: () => void;
+      }[];
+      const openBtn = buttons.find((b) => b.text === 'Open Settings');
+      expect(openBtn).toBeDefined();
+      openBtn?.onPress?.();
+      expect(openSettingsMock).toHaveBeenCalledTimes(1);
+
+      unmount();
+      alertSpy.mockClear();
+      openSettingsMock.mockClear();
+      isEnabledMock.mockResolvedValueOnce(true);
+      openSettingsMock.mockRejectedValueOnce(new Error('activity not found'));
+
+      renderScreen();
+      await waitFor(() => {
+        expect(screen.getByText('Enabled')).toBeTruthy();
+        expect(
+          screen.getByTestId('watch-media-access-row').props.accessibilityLabel
+        ).toBe('Now Playing track info, Enabled');
+      });
+      fireEvent.press(screen.getByTestId('watch-media-access-row'));
+      expect(openSettingsMock).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith(
+          'Unable to open Settings',
+          expect.stringContaining('SparkyFitness Media Controls')
+        );
+      });
+    } finally {
+      alertSpy.mockRestore();
+      Object.defineProperty(Platform, 'OS', {
+        value: originalOs,
+        configurable: true,
+      });
+    }
   });
 });

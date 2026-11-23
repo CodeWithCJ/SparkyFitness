@@ -45,9 +45,10 @@ export interface ExerciseCSVData {
 
 interface ImportFromCSVProps {
   onSave: (exerciseData: Omit<ExerciseCSVData, 'id'>[]) => Promise<void>;
+  onDirtyChange: (dirty: boolean) => void;
 }
 
-const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
+const ImportFromCSV = ({ onSave, onDirtyChange }: ImportFromCSVProps) => {
   const { t } = useTranslation();
 
   // Exercise definitions have no date column, so this importer's format bar
@@ -74,7 +75,7 @@ const ImportFromCSV = ({ onSave }: ImportFromCSVProps) => {
     handleConfirmMapping,
     handleCancelMapping,
     handleSubmit,
-  } = useExerciseImport(onSave, csvFormat.options);
+  } = useExerciseImport(onSave, csvFormat.options, onDirtyChange);
 
   const preview = useMemo(
     () =>

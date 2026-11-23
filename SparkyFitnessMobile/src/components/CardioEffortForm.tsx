@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, View, type TextInput } from 'react-native';
+import { Pressable, Text, View, type TextInputInstance } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
 import {
@@ -238,8 +238,8 @@ export default function CardioEffortForm({
     handleLogRef.current = handleLog;
   });
 
-  const durationInputRef = useRef<TextInput>(null);
-  const distanceInputRef = useRef<TextInput>(null);
+  const durationInputRef = useRef<TextInputInstance>(null);
+  const distanceInputRef = useRef<TextInputInstance>(null);
 
   // Register the form's accessory handle (live only) so the screen's sticky
   // keyboard bar can dispatch Next/Log to the focused field, exactly like a

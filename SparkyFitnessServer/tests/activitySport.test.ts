@@ -55,6 +55,17 @@ describe('classifyActivitySport — provider-declared', () => {
     ).toEqual({ sport: 'cycling', confidence: 'declared' });
   });
 
+  it('reads the ZeppBridge workout type from the activity blob', () => {
+    expect(
+      classifyActivitySport({
+        exerciseName: 'Run',
+        category: 'cardio',
+        providerName: 'ZeppBridge',
+        detailData: { effective_type: 'outdoor_running', source: 'official' },
+      })
+    ).toEqual({ sport: 'running', confidence: 'declared' });
+  });
+
   it('trusts the Strava sport_type over a user-written activity title', () => {
     // Strava exercise_name is a free-text title the athlete chose, so keyword
     // matching on it is exactly what must NOT decide the sport.
@@ -226,6 +237,34 @@ describe('classifyActivitySport — notes templates', () => {
         notes: 'Synced from Strava. Type: VirtualRide. Moving time: 45min.',
       }).sport
     ).toBe('cycling');
+  });
+
+  it('reads the ZeppBridge notes template', () => {
+    expect(
+      classifyActivitySport({
+        exerciseName: 'Workout',
+        notes: 'Synced from ZeppBridge. Type: outdoor_running.',
+      })
+    ).toEqual({ sport: 'running', confidence: 'inferred' });
+  });
+
+  it('reads the ZeppBridge notes template with extra spaces after the colon', () => {
+    expect(
+      classifyActivitySport({
+        exerciseName: 'Workout',
+        notes: 'Synced from ZeppBridge. Type:   cycling.',
+      }).sport
+    ).toBe('cycling');
+  });
+
+  it('does not slow down on a long run of spaces in a ZeppBridge note', () => {
+    const notes = `Synced from ZeppBridge. Type:${' '.repeat(50_000)}`;
+    const started = performance.now();
+    expect(
+      classifyActivitySport({ exerciseName: 'Workout', notes }).sport
+    ).toBe('other');
+    // A backtracking pattern takes seconds to minutes here.
+    expect(performance.now() - started).toBeLessThan(500);
   });
 });
 

@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -176,11 +177,11 @@ const ExerciseDatabaseManager = () => {
   } = useBulkSelection(selectedIdsFromTable);
 
   // Clear selection when exiting edit mode
-  useEffect(() => {
+  useOnChange([isEditMode], () => {
     if (!isEditMode) {
       setRowSelection({});
     }
-  }, [isEditMode]);
+  });
 
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 

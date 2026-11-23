@@ -8,6 +8,7 @@ import type { Food, NutritionixItem } from '@/types/food';
 import type { DataProvider } from '@/types/settings';
 
 import type { FoodProviderType } from '@workspace/shared';
+import { getFoodProviderMetadata } from '@workspace/shared';
 
 // A single online provider result, tagged with its source so the UI can render
 // the correct edit/detail flow. Mirrors the per-provider mapping used by the
@@ -76,10 +77,6 @@ const allProvidersFoodSearchKey = (
     itemDisplayLimit,
   ] as const;
 
-// Providers whose single-provider search caps results at the food display
-// limit (see FoodSearch.tsx search handlers); kept in parity here.
-const PAGE_SIZE_PROVIDERS = ['usda', 'yazio'];
-
 async function fetchProviderResults(
   provider: DataProvider,
   query: string,
@@ -102,7 +99,8 @@ async function fetchProviderResults(
     return { items, totalCount: items.length };
   }
 
-  const pageSize = PAGE_SIZE_PROVIDERS.includes(provider.provider_type)
+  const pageSize = getFoodProviderMetadata(provider.provider_type)
+    ?.pageSizeFromDisplayLimit
     ? options.itemDisplayLimit
     : undefined;
   const data = await searchFoodsV2(
@@ -124,7 +122,11 @@ async function fetchProviderResults(
   );
   return {
     items,
-    totalCount: data?.pagination?.totalCount ?? items.length,
+    totalCount:
+      typeof data?.pagination?.totalCount === 'number' &&
+      data.pagination.totalCount >= 0
+        ? data.pagination.totalCount
+        : items.length,
   };
 }
 

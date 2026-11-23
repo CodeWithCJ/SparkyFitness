@@ -211,5 +211,159 @@ describe('liftosaurMeasurementsService', () => {
 
       expect(result).toEqual({ imported: 0, failedKeys: [], failedRecords: 1 });
     });
+
+    describe('measurement index', () => {
+      const INDEX_URL = /\/api\/v1\/measurements$/;
+      const page = (
+        key: string,
+        values: { timestamp: number; value: string }[]
+      ) => Promise.resolve(axiosOk({ data: { key, values, hasMore: false } }));
+
+      it('uses the API key names for limb measurements', async () => {
+        const nowMs = Date.now();
+        vi.mocked(axios.get).mockImplementation((url) => {
+          if (INDEX_URL.test(url)) {
+            return Promise.resolve(
+              axiosOk({
+                data: {
+                  measurements: [
+                    {
+                      key: 'bicepRight',
+                      latest: { timestamp: nowMs, value: '40cm' },
+                    },
+                    {
+                      key: 'calfRight',
+                      latest: { timestamp: nowMs, value: '38cm' },
+                    },
+                    {
+                      key: 'thighRight',
+                      latest: { timestamp: nowMs, value: '60cm' },
+                    },
+                    {
+                      key: 'forearmRight',
+                      latest: { timestamp: nowMs, value: '30cm' },
+                    },
+                  ],
+                },
+              })
+            );
+          }
+          const key = url.split('/').pop()!;
+          const values: Record<string, string> = {
+            bicepRight: '40cm',
+            calfRight: '38cm',
+            thighRight: '60cm',
+            forearmRight: '30cm',
+          };
+          return page(
+            key,
+            values[key] ? [{ timestamp: nowMs, value: values[key] }] : []
+          );
+        });
+
+        const result = await importMeasurementsFromLiftosaur(
+          'user-1',
+          'user-1',
+          'test-key',
+          'UTC',
+          nowMs - 100000
+        );
+
+        expect(result).toEqual({
+          imported: 4,
+          failedKeys: [],
+          failedRecords: 0,
+        });
+        expect(measurementService.processHealthData).toHaveBeenCalledWith(
+          expect.arrayContaining([
+            expect.objectContaining({ type: 'Biceps', value: 40 }),
+            expect.objectContaining({ type: 'Calves', value: 38 }),
+            expect.objectContaining({ type: 'Thighs', value: 60 }),
+            expect.objectContaining({ type: 'Forearms', value: 30 }),
+          ]),
+          'user-1',
+          'user-1'
+        );
+      });
+
+      it('fetches only keys the index lists with values inside the window', async () => {
+        const nowMs = Date.now();
+        vi.mocked(axios.get).mockImplementation((url) => {
+          if (INDEX_URL.test(url)) {
+            return Promise.resolve(
+              axiosOk({
+                data: {
+                  measurements: [
+                    {
+                      key: 'weight',
+                      latest: { timestamp: nowMs, value: '80kg' },
+                    },
+                    {
+                      key: 'waist',
+                      latest: { timestamp: nowMs - 10_000_000, value: '90cm' },
+                    },
+                  ],
+                },
+              })
+            );
+          }
+          return page('weight', [{ timestamp: nowMs, value: '80kg' }]);
+        });
+
+        await importMeasurementsFromLiftosaur(
+          'user-1',
+          'user-1',
+          'test-key',
+          'UTC',
+          nowMs - 100000
+        );
+
+        const fetched = vi
+          .mocked(axios.get)
+          .mock.calls.map(([url]) => url)
+          .filter((url) => !INDEX_URL.test(url));
+        expect(fetched).toHaveLength(1);
+        expect(fetched[0]).toMatch(/\/measurements\/weight$/);
+      });
+
+      it('fetches every supported key when the index request fails', async () => {
+        const nowMs = Date.now();
+        vi.mocked(axios.get).mockImplementation((url) => {
+          if (INDEX_URL.test(url)) {
+            return Promise.reject(new Error('timeout'));
+          }
+          return page('x', []);
+        });
+
+        await importMeasurementsFromLiftosaur(
+          'user-1',
+          'user-1',
+          'test-key',
+          'UTC',
+          nowMs - 100000
+        );
+
+        // index + all 11 supported keys
+        expect(vi.mocked(axios.get)).toHaveBeenCalledTimes(12);
+      });
+
+      it('does not fail the sync when Liftosaur rejects a key (400)', async () => {
+        const nowMs = mockKeyFailure('waist', 400);
+
+        const result = await importMeasurementsFromLiftosaur(
+          'user-1',
+          'user-1',
+          'test-key',
+          'UTC',
+          nowMs - 100000
+        );
+
+        expect(result).toEqual({
+          imported: 1,
+          failedKeys: [],
+          failedRecords: 0,
+        });
+      });
+    });
   });
 });

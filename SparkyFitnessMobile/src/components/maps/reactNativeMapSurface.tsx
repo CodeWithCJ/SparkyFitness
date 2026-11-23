@@ -71,7 +71,6 @@ const ReactNativeMapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
       dark = false,
       satellite = false,
       interactive = true,
-      lite = false,
       showUserLocation = false,
       hideFromAccessibility = false,
       lines = [],
@@ -125,7 +124,6 @@ const ReactNativeMapSurface = forwardRef<MapSurfaceHandle, MapSurfaceProps>(
           longitudeDelta: initialViewport.longitudeDelta,
         }}
         mapType={satellite ? 'hybrid' : 'standard'}
-        liteMode={lite}
         scrollEnabled={interactive}
         zoomEnabled={interactive}
         rotateEnabled={interactive}

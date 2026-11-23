@@ -1,9 +1,19 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import {
+  Alert,
+  AppState,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
 
+import WatchConnectivity from '../../modules/watch-connectivity';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import Icon from '../components/Icon';
 import { ReorderSwitchList } from '../components/ReorderSwitchList';
 import SegmentedControl from '../components/SegmentedControl';
 import SettingsRow from '../components/SettingsRow';
@@ -41,8 +51,89 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const [textSecondary] = useCSSVariable(['--color-text-secondary']) as [
+    string,
+  ];
   const { isConnected } = useServerConnection();
   const { customNutrients } = useCustomNutrients({ enabled: isConnected });
+  const canConfigureMediaAccess =
+    isAndroid &&
+    typeof WatchConnectivity?.openMediaAccessSettings === 'function';
+  const [mediaAccessEnabled, setMediaAccessEnabled] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!canConfigureMediaAccess || !WatchConnectivity?.isMediaAccessEnabled)
+      return;
+    let cancelled = false;
+    let requestId = 0;
+    const checkAccess = () => {
+      const currentRequest = ++requestId;
+      void WatchConnectivity?.isMediaAccessEnabled?.()
+        .then((enabled) => {
+          if (!cancelled && currentRequest === requestId) {
+            setMediaAccessEnabled(enabled);
+          }
+        })
+        .catch(() => {
+          if (!cancelled && currentRequest === requestId) {
+            setMediaAccessEnabled(false);
+          }
+        });
+    };
+    checkAccess();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        checkAccess();
+      }
+    });
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
+  }, [canConfigureMediaAccess]);
+
+  const handlePressMediaAccess = useCallback(() => {
+    const opener = WatchConnectivity?.openMediaAccessSettings;
+    if (!opener) return;
+    const openSettings = () => {
+      void opener().catch(() => {
+        Alert.alert(
+          t('watchSettings.mediaAccessOpenErrorTitle', {
+            defaultValue: 'Unable to open Settings',
+          }),
+          t('watchSettings.mediaAccessOpenErrorBody', {
+            defaultValue:
+              'Open Android Settings → Notifications → Notification read, reply & control and enable SparkyFitness Media Controls.',
+          })
+        );
+      });
+    };
+    if (mediaAccessEnabled) {
+      openSettings();
+      return;
+    }
+    Alert.alert(
+      t('watchSettings.mediaAccessDisclosureTitle', {
+        defaultValue: 'Allow Notification Access?',
+      }),
+      t('watchSettings.mediaAccessDisclosureBody', {
+        defaultValue:
+          'Android requires Notification Access to read the currently playing song and artist for your Wear OS watch. SparkyFitness only reads active media sessions and ignores your messages and other notifications.',
+      }),
+      [
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+        {
+          text: t('watchSettings.mediaAccessOpenSettings', {
+            defaultValue: 'Open Settings',
+          }),
+          onPress: openSettings,
+        },
+      ]
+    );
+  }, [mediaAccessEnabled, t]);
 
   const watchPageOrder = useAppPreferencesStore((s) => s.watchPageOrder);
   const hiddenWatchPages = useAppPreferencesStore((s) => s.hiddenWatchPages);
@@ -147,10 +238,7 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{
@@ -238,164 +326,237 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
               activeKey={watchSetInputStyle}
               onSelect={setWatchSetInputStyle}
             />
+          </>
+        )}
 
+        <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
+          {t('watchSettings.layoutTitle', { defaultValue: 'Layout' })}
+        </Text>
+        {/* The original iOS workout screen's layout choices; the new view has its own. */}
+        {!isAndroid && !watchNewWorkout && (
+          <>
+            <SettingsRow
+              title={t('watchSettings.setScreenMetricsTitle', {
+                defaultValue: 'Metrics on the set screen',
+              })}
+              subtitle={t('watchSettings.setScreenMetricsSubtitle', {
+                defaultValue:
+                  'Elapsed time, heart rate and calories. Off moves them to their own page above the set screen: swipe down to see them.',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  testID="watch-set-screen-metrics-switch"
+                  value={watchSetScreenMetrics}
+                  onValueChange={setWatchSetScreenMetrics}
+                />
+              }
+            />
+            <SettingsRow
+              title={t('watchSettings.upNextTitle', {
+                defaultValue: 'Up Next page',
+              })}
+              subtitle={t('watchSettings.upNextSubtitle', {
+                defaultValue:
+                  'A page one swipe up from the set screen with the next exercise, its target, and a Swap button to do another exercise first.',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  testID="watch-up-next-switch"
+                  value={watchUpNextPage}
+                  onValueChange={setWatchUpNextPage}
+                />
+              }
+            />
+          </>
+        )}
+        {!isAndroid && (
+          <SettingsRow
+            title={t('watchSettings.largerTextTitle', {
+              defaultValue: 'Larger text on the watch',
+            })}
+            subtitle={t('watchSettings.largerTextSubtitle', {
+              defaultValue:
+                'Larger type and the newer layouts across the watch: Goals, Water, Fasting, Steps and more. Off keeps the original look.',
+            })}
+            subtitleNumberOfLines={0}
+            rightAccessory={
+              <Switch
+                testID="watch-larger-text-switch"
+                value={watchLargerText}
+                onValueChange={setWatchLargerText}
+              />
+            }
+          />
+        )}
+        <SettingsRow
+          title={t('watchSettings.newWorkoutTitle', {
+            defaultValue: 'New workout view',
+          })}
+          subtitle={
+            isAndroid
+              ? t('watchSettings.newWorkoutSubtitleWearOs', {
+                  defaultValue:
+                    'A Log set button, a button to edit the previous set, exercise demos, plate calculator, a more page with the workout actions, and a single summary when you finish. Off keeps the original workout screen.',
+                })
+              : t('watchSettings.newWorkoutSubtitle', {
+                  defaultValue:
+                    'A Log set button (double tap logs too), a button to edit the previous set, a more page with the workout actions, and a single summary when you finish. Off keeps the original workout screen.',
+                })
+          }
+          subtitleNumberOfLines={0}
+          rightAccessory={
+            <Switch
+              testID="watch-new-workout-switch"
+              value={watchNewWorkout}
+              onValueChange={setWatchNewWorkout}
+            />
+          }
+        />
+        {watchNewWorkout && (
+          <>
             <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
-              {t('watchSettings.layoutTitle', { defaultValue: 'Layout' })}
+              {t('watchSettings.topLineTitle', {
+                defaultValue: 'Top line',
+              })}
             </Text>
-            {/* The original workout screen's layout choices; the new view has its own. */}
-            {!watchNewWorkout && (
-              <>
-                <SettingsRow
-                  title={t('watchSettings.setScreenMetricsTitle', {
-                    defaultValue: 'Metrics on the set screen',
-                  })}
-                  subtitle={t('watchSettings.setScreenMetricsSubtitle', {
-                    defaultValue:
-                      'Elapsed time, heart rate and calories. Off moves them to their own page above the set screen: swipe down to see them.',
-                  })}
-                  subtitleNumberOfLines={0}
-                  rightAccessory={
-                    <Switch
-                      testID="watch-set-screen-metrics-switch"
-                      value={watchSetScreenMetrics}
-                      onValueChange={setWatchSetScreenMetrics}
-                    />
-                  }
-                />
-                <SettingsRow
-                  title={t('watchSettings.upNextTitle', {
-                    defaultValue: 'Up Next page',
-                  })}
-                  subtitle={t('watchSettings.upNextSubtitle', {
-                    defaultValue:
-                      'A page one swipe up from the set screen with the next exercise, its target, and a Swap button to do another exercise first.',
-                  })}
-                  subtitleNumberOfLines={0}
-                  rightAccessory={
-                    <Switch
-                      testID="watch-up-next-switch"
-                      value={watchUpNextPage}
-                      onValueChange={setWatchUpNextPage}
-                    />
-                  }
-                />
-              </>
-            )}
-            <SettingsRow
-              title={t('watchSettings.largerTextTitle', {
-                defaultValue: 'Larger text on the watch',
-              })}
-              subtitle={t('watchSettings.largerTextSubtitle', {
+            <Text className="text-text-secondary text-sm mb-4">
+              {t('watchSettings.topLineDescription', {
                 defaultValue:
-                  'Larger type and the newer layouts across the watch: Goals, Water, Fasting, Steps and more. Off keeps the original look.',
+                  'What the top of the watch workout shows first: the elapsed time or live heart rate and calories. Tap it on the watch to switch.',
+              })}
+            </Text>
+            <SegmentedControl<WatchWorkoutTopLine>
+              segments={[
+                {
+                  key: 'time',
+                  label: t('watchSettings.topLineTime', {
+                    defaultValue: 'Time',
+                  }),
+                },
+                {
+                  key: 'metrics',
+                  label: t('watchSettings.topLineMetrics', {
+                    defaultValue: 'Metrics',
+                  }),
+                },
+              ]}
+              activeKey={watchWorkoutTopLine}
+              onSelect={setWatchWorkoutTopLine}
+            />
+            <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
+              {t('watchSettings.countdownTitle', {
+                defaultValue: 'Countdown sound & haptic',
+              })}
+            </Text>
+            <Text className="text-text-secondary text-sm mb-4">
+              {t('watchSettings.countdownDescription', {
+                defaultValue:
+                  'Sound and tap for each of the last seconds of a rest or a timed hold, and a different one at zero, so you know to get ready without looking. With the watch on silent only the tap plays.',
+              })}
+            </Text>
+            <SegmentedControl<`${WatchWorkoutCountdown}`>
+              segments={WATCH_WORKOUT_COUNTDOWNS.map((seconds) => ({
+                key: `${seconds}` as const,
+                label:
+                  seconds === 0
+                    ? t('watchSettings.countdownOff', {
+                        defaultValue: 'Off',
+                      })
+                    : t('watchSettings.countdownSeconds', {
+                        defaultValue: '{{seconds}} s',
+                        seconds,
+                      }),
+              }))}
+              activeKey={`${watchWorkoutCountdown}`}
+              onSelect={(key) =>
+                setWatchWorkoutCountdown(Number(key) as WatchWorkoutCountdown)
+              }
+            />
+            <SettingsRow
+              title={t('watchSettings.holdCountdownTitle', {
+                defaultValue: 'Countdown before holds',
+              })}
+              subtitle={t('watchSettings.holdCountdownSubtitle', {
+                defaultValue:
+                  'A 3, 2, 1 Get ready screen before a timed hold starts, so you can get into position. Tap it to skip.',
               })}
               subtitleNumberOfLines={0}
               rightAccessory={
                 <Switch
-                  testID="watch-larger-text-switch"
-                  value={watchLargerText}
-                  onValueChange={setWatchLargerText}
+                  testID="watch-hold-countdown-switch"
+                  value={watchHoldCountdown}
+                  onValueChange={setWatchHoldCountdown}
                 />
               }
             />
+          </>
+        )}
+
+        {canConfigureMediaAccess && (
+          <>
+            <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
+              {t('watchSettings.mediaControlsTitle', {
+                defaultValue: 'Media controls',
+              })}
+            </Text>
             <SettingsRow
-              title={t('watchSettings.newWorkoutTitle', {
-                defaultValue: 'New workout view',
+              testID="watch-media-access-row"
+              title={t('watchSettings.mediaAccessTitle', {
+                defaultValue: 'Now Playing track info',
               })}
-              subtitle={t('watchSettings.newWorkoutSubtitle', {
-                defaultValue:
-                  'A Log set button (double tap logs too), a button to edit the previous set, a more page with the workout actions, and a single summary when you finish. Off keeps the original workout screen.',
+              accessibilityLabel={t('watchSettings.mediaAccessA11yLabel', {
+                defaultValue: '{{title}}, {{status}}',
+                title: t('watchSettings.mediaAccessTitle', {
+                  defaultValue: 'Now Playing track info',
+                }),
+                status: mediaAccessEnabled
+                  ? t('watchSettings.mediaAccessEnabled', {
+                      defaultValue: 'Enabled',
+                    })
+                  : t('watchSettings.mediaAccessSetup', {
+                      defaultValue: 'Set up',
+                    }),
               })}
+              subtitle={
+                mediaAccessEnabled
+                  ? t('watchSettings.mediaAccessEnabledSubtitle', {
+                      defaultValue:
+                        'Your watch shows the current song and artist while controlling phone media during workouts.',
+                    })
+                  : t('watchSettings.mediaAccessDisabledSubtitle', {
+                      defaultValue:
+                        'Play, skip and volume controls work automatically. Allow Notification Access so your watch can also show the current song and artist. Other notifications are ignored.',
+                    })
+              }
               subtitleNumberOfLines={0}
+              onPress={handlePressMediaAccess}
               rightAccessory={
-                <Switch
-                  testID="watch-new-workout-switch"
-                  value={watchNewWorkout}
-                  onValueChange={setWatchNewWorkout}
-                />
+                <View className="flex-row items-center gap-1">
+                  <Text
+                    className={
+                      mediaAccessEnabled
+                        ? 'text-sm font-semibold text-text-success'
+                        : 'text-sm font-medium text-text-secondary'
+                    }
+                  >
+                    {mediaAccessEnabled
+                      ? t('watchSettings.mediaAccessEnabled', {
+                          defaultValue: 'Enabled',
+                        })
+                      : t('watchSettings.mediaAccessSetup', {
+                          defaultValue: 'Set up',
+                        })}
+                  </Text>
+                  <Icon
+                    name="chevron-forward"
+                    size={18}
+                    color={textSecondary}
+                  />
+                </View>
               }
             />
-            {watchNewWorkout && (
-              <>
-                <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
-                  {t('watchSettings.topLineTitle', {
-                    defaultValue: 'Top line',
-                  })}
-                </Text>
-                <Text className="text-text-secondary text-sm mb-4">
-                  {t('watchSettings.topLineDescription', {
-                    defaultValue:
-                      'What the top of the watch workout shows first: the elapsed time or live heart rate and calories. Tap it on the watch to switch.',
-                  })}
-                </Text>
-                <SegmentedControl<WatchWorkoutTopLine>
-                  segments={[
-                    {
-                      key: 'time',
-                      label: t('watchSettings.topLineTime', {
-                        defaultValue: 'Time',
-                      }),
-                    },
-                    {
-                      key: 'metrics',
-                      label: t('watchSettings.topLineMetrics', {
-                        defaultValue: 'Metrics',
-                      }),
-                    },
-                  ]}
-                  activeKey={watchWorkoutTopLine}
-                  onSelect={setWatchWorkoutTopLine}
-                />
-                <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
-                  {t('watchSettings.countdownTitle', {
-                    defaultValue: 'Countdown sound & haptic',
-                  })}
-                </Text>
-                <Text className="text-text-secondary text-sm mb-4">
-                  {t('watchSettings.countdownDescription', {
-                    defaultValue:
-                      'Sound and tap for each of the last seconds of a rest or a timed hold, and a different one at zero, so you know to get ready without looking. With the watch on silent only the tap plays.',
-                  })}
-                </Text>
-                <SegmentedControl<`${WatchWorkoutCountdown}`>
-                  segments={WATCH_WORKOUT_COUNTDOWNS.map((seconds) => ({
-                    key: `${seconds}` as const,
-                    label:
-                      seconds === 0
-                        ? t('watchSettings.countdownOff', {
-                            defaultValue: 'Off',
-                          })
-                        : t('watchSettings.countdownSeconds', {
-                            defaultValue: '{{seconds}} s',
-                            seconds,
-                          }),
-                  }))}
-                  activeKey={`${watchWorkoutCountdown}`}
-                  onSelect={(key) =>
-                    setWatchWorkoutCountdown(
-                      Number(key) as WatchWorkoutCountdown
-                    )
-                  }
-                />
-                <SettingsRow
-                  title={t('watchSettings.holdCountdownTitle', {
-                    defaultValue: 'Countdown before holds',
-                  })}
-                  subtitle={t('watchSettings.holdCountdownSubtitle', {
-                    defaultValue:
-                      'A 3, 2, 1 Get ready screen before a timed hold starts, so you can get into position. Tap it to skip.',
-                  })}
-                  subtitleNumberOfLines={0}
-                  rightAccessory={
-                    <Switch
-                      testID="watch-hold-countdown-switch"
-                      value={watchHoldCountdown}
-                      onValueChange={setWatchHoldCountdown}
-                    />
-                  }
-                />
-              </>
-            )}
           </>
         )}
 

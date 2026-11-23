@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -627,7 +628,9 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   // worker never persists writes built from a STALE closure (CodeRabbit:
   // "no stale closure over old customTypes").
   const customTypesRef = useRef(customTypes);
-  customTypesRef.current = customTypes;
+  useLayoutEffect(() => {
+    customTypesRef.current = customTypes;
+  });
 
   /**
    * Optimistic gap assignment while a reorder is pending (gapKey → ordered ids).
@@ -1094,10 +1097,7 @@ const MealTypeSettingsScreen: React.FC<MealTypeSettingsScreenProps> = () => {
   );
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isLoading ? (
         <View className="flex-1 items-center justify-center">

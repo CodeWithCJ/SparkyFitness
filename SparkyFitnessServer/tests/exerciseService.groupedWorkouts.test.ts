@@ -14,7 +14,10 @@ import exercisePresetEntryRepository from '../models/exercisePresetEntryReposito
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import calorieCalculationService from '../services/CalorieCalculationService.js';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
-import { getGroupedExerciseSessionByIdWithClient } from '../services/exerciseEntryHistoryService.js';
+import {
+  getGroupedExerciseSessionById,
+  getGroupedExerciseSessionByIdWithClient,
+} from '../services/exerciseEntryHistoryService.js';
 import exerciseService from '../services/exerciseService.js';
 import { canEditGroupedWorkout } from '@workspace/shared';
 import * as workoutTelemetryRepository from '../models/workoutTelemetryRepository.js';
@@ -156,6 +159,119 @@ describe('exerciseService grouped workouts', () => {
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(client.query).not.toHaveBeenCalledWith('COMMIT');
     expect(client.release).toHaveBeenCalled();
+  });
+  describe('create with a client-minted id', () => {
+    const sessionId = '22222222-2222-4222-8222-222222222222';
+    const storedSession = { id: sessionId, name: 'Stored', exercises: [] };
+    const request = {
+      id: sessionId,
+      name: 'Offline Workout',
+      entry_date: '2026-03-12',
+      source: 'sparky',
+      exercises: [],
+    };
+
+    it('returns the stored session and creates nothing when the id was already created', async () => {
+      vi.mocked(getGroupedExerciseSessionById).mockResolvedValue(
+        storedSession as never
+      );
+      const result = await exerciseService.createOrReplayGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        request
+      );
+      expect(result).toEqual({ session: storedSession, replayed: true });
+      expect(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).not.toHaveBeenCalled();
+      expect(client.query).not.toHaveBeenCalledWith('BEGIN');
+    });
+
+    it('creates the session with the supplied id when it is new', async () => {
+      vi.mocked(getGroupedExerciseSessionById).mockResolvedValue(null);
+      vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mockResolvedValue({ id: sessionId } as never);
+      vi.mocked(getGroupedExerciseSessionByIdWithClient).mockResolvedValue(
+        storedSession as never
+      );
+      const result = await exerciseService.createOrReplayGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        request
+      );
+      expect(result).toEqual({ session: storedSession, replayed: false });
+      const createArgs = vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mock.calls[0];
+      expect(createArgs[2]).toMatchObject({ id: sessionId });
+      expect(client.query).toHaveBeenCalledWith('COMMIT');
+    });
+
+    it('returns the stored session when two copies of the create race', async () => {
+      vi.mocked(getGroupedExerciseSessionById)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(storedSession as never);
+      vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mockRejectedValue(
+        Object.assign(new Error('duplicate key'), {
+          code: '23505',
+          constraint: 'exercise_preset_entries_pkey',
+        })
+      );
+      const result = await exerciseService.createOrReplayGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        request
+      );
+      expect(result).toEqual({ session: storedSession, replayed: true });
+      expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    });
+
+    it('refuses with 409 when the id belongs to someone else', async () => {
+      vi.mocked(getGroupedExerciseSessionById).mockResolvedValue(null);
+      vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mockRejectedValue(
+        Object.assign(new Error('duplicate key'), {
+          code: '23505',
+          constraint: 'exercise_preset_entries_pkey',
+        })
+      );
+      await expect(
+        exerciseService.createOrReplayGroupedWorkoutSession(
+          'user-1',
+          'actor-1',
+          request
+        )
+      ).rejects.toMatchObject({ status: 409 });
+    });
+
+    it('does not look anything up when the request carries no id', async () => {
+      vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mockResolvedValue({ id: 'preset-entry-1' } as never);
+      vi.mocked(getGroupedExerciseSessionByIdWithClient).mockResolvedValue(
+        storedSession as never
+      );
+      const result = await exerciseService.createOrReplayGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        {
+          name: 'Plain',
+          entry_date: '2026-03-12',
+          source: 'manual',
+          exercises: [],
+        }
+      );
+      expect(result.replayed).toBe(false);
+      expect(getGroupedExerciseSessionById).not.toHaveBeenCalled();
+      const createArgs = vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mock.calls[0];
+      expect(createArgs[2]).toMatchObject({ id: null });
+    });
   });
   it('persists superset_group on freeform grouped workout creation', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message

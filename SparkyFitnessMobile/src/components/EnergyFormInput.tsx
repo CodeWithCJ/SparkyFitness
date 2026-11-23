@@ -1,5 +1,5 @@
 import { forwardRef } from 'react';
-import type { TextInput } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import FormInput from './FormInput';
 import { useEnergyInputText } from '../hooks/useEnergyInputText';
 
@@ -19,7 +19,7 @@ interface EnergyFormInputProps extends Omit<
  * A `FormInput` for an energy value: the form keeps kcal, the field shows and
  * takes the account's unit (see `useEnergyInputText`).
  */
-const EnergyFormInput = forwardRef<TextInput, EnergyFormInputProps>(
+const EnergyFormInput = forwardRef<TextInputInstance, EnergyFormInputProps>(
   ({ kcalValue, onChangeKcal, ...rest }, ref) => {
     const { text, onChangeText } = useEnergyInputText(kcalValue, onChangeKcal);
     return (

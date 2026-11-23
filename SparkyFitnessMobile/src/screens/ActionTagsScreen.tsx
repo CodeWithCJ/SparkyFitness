@@ -18,7 +18,6 @@ import { useCancelNfcOnBlur } from '../hooks/useCancelNfcOnBlur';
 import { useNfcSupport } from '../hooks/useNfcSupport';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { ApiError } from '../services/api/errors';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { cancelNfcRequest, readTag } from '../services/nfc/nfcService';
 import { describeTagAction } from '../services/tagActions';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -28,7 +27,6 @@ type ActionTagsScreenProps = RootStackScreenProps<'ActionTags'>;
 const ActionTagsScreen: React.FC<ActionTagsScreenProps> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const [refreshing, setRefreshing] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -204,7 +202,7 @@ const ActionTagsScreen: React.FC<ActionTagsScreenProps> = ({ navigation }) => {
                 })}
               </Text>
             </View>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           <StatusView
@@ -235,10 +233,7 @@ const ActionTagsScreen: React.FC<ActionTagsScreenProps> = ({ navigation }) => {
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ServerGate>{content()}</ServerGate>
       <NfcWaitingCard

@@ -1,11 +1,13 @@
 import type { QueryClient } from '@tanstack/react-query';
 import {
+  bloodAlcoholRootQueryKey,
   exerciseHistoryResetQueryKey,
   glucoseSamplesQueryKeyRoot,
   glucoseContextQueryKeyRoot,
   customMeasurementsRootQueryKey,
   skinTemperatureQueryKeyRoot,
   sleepDayQueryKeyRoot,
+  sleepNeedQueryKey,
   sleepRangeQueryKeyRoot,
   vo2MaxRangeQueryKeyRoot,
   heartRateRangeQueryKeyRoot,
@@ -28,6 +30,8 @@ export function refreshHealthSyncCache(queryClient: QueryClient) {
   void queryClient.invalidateQueries({ queryKey: dailySummaryQueryFamily });
   void queryClient.invalidateQueries({ queryKey: ['goalsRange'] });
   void queryClient.invalidateQueries({ queryKey: measurementsQueryFamily });
+  // The blood alcohol estimate reads the latest weight and height.
+  void queryClient.invalidateQueries({ queryKey: bloodAlcoholRootQueryKey });
   void queryClient.invalidateQueries({
     queryKey: measurementsRangeQueryFamily,
   });
@@ -36,6 +40,8 @@ export function refreshHealthSyncCache(queryClient: QueryClient) {
   // restart (reload) refetches /api/sleep.
   void queryClient.invalidateQueries({ queryKey: sleepDayQueryKeyRoot });
   void queryClient.invalidateQueries({ queryKey: sleepRangeQueryKeyRoot });
+  // Sleep need reads the same sleep plus the workouts synced alongside it.
+  void queryClient.invalidateQueries({ queryKey: sleepNeedQueryKey });
   // Sleeping wrist temperature is written with the night's sleep.
   void queryClient.invalidateQueries({
     queryKey: skinTemperatureQueryKeyRoot,

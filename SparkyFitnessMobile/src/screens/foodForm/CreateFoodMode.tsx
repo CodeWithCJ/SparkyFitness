@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { formatLocalizedNumber } from '../../localization';
-import { View, TouchableOpacity, Platform, Text } from 'react-native';
+import { View, TouchableOpacity, Text } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { StackActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
@@ -35,6 +34,7 @@ import {
 } from '../../services/mealPlanSelection';
 import { useMealTypes, usePreferences } from '../../hooks';
 import { useSaveFood } from '../../hooks/useSaveFood';
+import { isPendingFoodId } from '../../offline/foodCreateHandOver';
 import {
   resolveSelectedVariant,
   useAddFoodEntry,
@@ -122,7 +122,6 @@ export function CreateFoodMode({
   const dateLocale = translationI18n.language.startsWith('pl')
     ? 'pl-PL'
     : 'en-US';
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [textPrimary, textSecondary] = useCSSVariable([
     '--color-text-primary',
@@ -150,11 +149,21 @@ export function CreateFoodMode({
   const [barcodeInput, setBarcodeInput] = useState(params.barcode ?? '');
   const { pendingScannedBarcode, scannedBarcodeNonce } = params;
 
+  // Consume a one-shot navigation param: applied once per nonce, then cleared
+  // with setParams.
+  const [appliedBarcodeNonce, setAppliedBarcodeNonce] = useState<
+    typeof scannedBarcodeNonce | null
+  >(null);
+  const hasPendingScan =
+    scannedBarcodeNonce != null && pendingScannedBarcode != null;
+  if (!hasPendingScan) {
+    if (appliedBarcodeNonce !== null) setAppliedBarcodeNonce(null);
+  } else if (appliedBarcodeNonce !== scannedBarcodeNonce) {
+    setAppliedBarcodeNonce(scannedBarcodeNonce);
+    setBarcodeInput(pendingScannedBarcode);
+  }
   useEffect(() => {
     if (scannedBarcodeNonce == null || pendingScannedBarcode == null) return;
-    // Consume a one-shot navigation param: guarded by the nonce and paired with
-    // clearing the param via setParams, so it can't move to a render-time derive.
-    setBarcodeInput(pendingScannedBarcode);
     navigation.setParams({
       pendingScannedBarcode: undefined,
       scannedBarcodeNonce: undefined,
@@ -233,19 +242,15 @@ export function CreateFoodMode({
         : (defaultMealTypeId ?? undefined);
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
-  useEffect(() => {
-    if (isMealTypesLoading || isMealTypesError || mealTypes.length === 0)
-      return;
-    if (selectedMealId && !mealTypes.some((mt) => mt.id === selectedMealId)) {
-      setSelectedMealId(defaultMealTypeId ?? undefined);
-    }
-  }, [
-    isMealTypesLoading,
-    isMealTypesError,
-    mealTypes,
-    selectedMealId,
-    defaultMealTypeId,
-  ]);
+  if (
+    !isMealTypesLoading &&
+    !isMealTypesError &&
+    mealTypes.length > 0 &&
+    selectedMealId &&
+    !mealTypes.some((mt) => mt.id === selectedMealId)
+  ) {
+    setSelectedMealId(defaultMealTypeId ?? undefined);
+  }
 
   const [entryTime, setEntryTime] = useState(params.entryTime ?? '');
   const entryTimeTouched = useRef(params.entryTime !== undefined);
@@ -506,7 +511,15 @@ export function CreateFoodMode({
 
     const saveFoodForForm = async () => {
       if (portionDraft.length === 0 && !savedFoodRef.current) {
-        return saveFoodAsync(saveFoodPayload, imageArgs);
+        // A food made only for the library can wait on the phone, unless it
+        // carries equivalent servings: those are saved after the food and
+        // would be lost, so that food needs the server.
+        return saveFoodAsync(
+          saveFoodPayload,
+          imageArgs,
+          undefined,
+          isLibraryMode && cleanEquivalents.length === 0
+        );
       }
       setIsPortionSaving(true);
       try {
@@ -848,14 +861,18 @@ export function CreateFoodMode({
       try {
         const savedFood = await saveFoodForForm();
         isSavingRef.current = true;
-        if (portionDraft.length === 0 && !savedFoodRef.current)
+        const waitsOnPhone = isPendingFoodId(savedFood.id);
+        if (portionDraft.length === 0 && !savedFoodRef.current && !waitsOnPhone)
           saveEquivalentsAsync(savedFood.id);
-        Toast.show({
-          type: 'success',
-          text1: t('createFood.success.foodSaved', {
-            defaultValue: 'Food saved',
-          }),
-        });
+        // A food kept on the phone is announced by the save itself.
+        if (!waitsOnPhone) {
+          Toast.show({
+            type: 'success',
+            text1: t('createFood.success.foodSaved', {
+              defaultValue: 'Food saved',
+            }),
+          });
+        }
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
         // Error toast is handled in the save hook.
@@ -943,6 +960,7 @@ export function CreateFoodMode({
     addEntry({
       saveFoodPayload,
       saveFoodImages: imageArgs,
+      hasEquivalentServings: cleanEquivalents.length > 0,
       createEntryPayload: {
         meal_type_id: effectiveMealId,
         quantity,
@@ -960,6 +978,7 @@ export function CreateFoodMode({
     : t('createFood.actions.addFood', { defaultValue: 'Add Food' });
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: t('createFood.title', { defaultValue: 'New Food' }),
     left: {
       kind: 'dismiss',
@@ -986,10 +1005,7 @@ export function CreateFoodMode({
   } = useRetryLabelScan(params, navigation);
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <FoodForm

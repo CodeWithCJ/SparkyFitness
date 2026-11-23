@@ -4,8 +4,10 @@ import {
   HealthDataPayload,
   _fetchWithRetry as fetchWithRetry,
   CHUNK_SIZE,
+  FETCH_TIMEOUT_MS,
   SESSION_CHUNK_SIZE,
 } from '../../src/services/api/healthDataApi';
+import { TimeoutError } from '../../src/utils/concurrency';
 import {
   getActiveServerConfig,
   ServerConfig,
@@ -41,6 +43,19 @@ const mockEnsureTimezoneBootstrapped =
   ensureTimezoneBootstrapped as jest.MockedFunction<
     typeof ensureTimezoneBootstrapped
   >;
+
+// Never answers; rejects like real fetch once the request is aborted.
+const hangUntilAborted = (
+  _url: string,
+  options?: RequestInit
+): Promise<never> =>
+  new Promise((_resolve, reject) => {
+    options?.signal?.addEventListener('abort', () => {
+      const err = new Error('The operation was aborted');
+      err.name = 'AbortError';
+      reject(err);
+    });
+  });
 
 describe('healthDataApi', () => {
   const mockFetch = jest.fn();
@@ -157,6 +172,110 @@ describe('healthDataApi', () => {
 
       await assertion;
       expect(mockFetch).toHaveBeenCalledTimes(3);
+    });
+
+    test('retries a timeout by default', async () => {
+      mockFetch
+        .mockImplementationOnce(hangUntilAborted)
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+
+      const promise = fetchWithRetry('https://example.com', {}, retryConfig);
+
+      await jest.advanceTimersByTimeAsync(30_000);
+      await jest.advanceTimersByTimeAsync(1_000);
+
+      const result = await promise;
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    test('throws the first timeout when retryOnTimeout is false', async () => {
+      mockFetch.mockImplementation(hangUntilAborted);
+
+      const promise = fetchWithRetry(
+        'https://example.com',
+        {},
+        { ...retryConfig, retryOnTimeout: false }
+      );
+      const assertion = expect(promise).rejects.toBeInstanceOf(TimeoutError);
+
+      await jest.advanceTimersByTimeAsync(30_000);
+
+      await assertion;
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    test('still retries network errors when retryOnTimeout is false', async () => {
+      mockFetch
+        .mockRejectedValueOnce(new Error('Network error'))
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+
+      const promise = fetchWithRetry(
+        'https://example.com',
+        {},
+        { ...retryConfig, retryOnTimeout: false }
+      );
+
+      await jest.advanceTimersByTimeAsync(1_000);
+
+      const result = await promise;
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    const gatewayTimeout = {
+      ok: false,
+      status: 504,
+      text: () => Promise.resolve('504 Gateway Time-out'),
+    };
+
+    test('retries a 504 by default', async () => {
+      mockFetch
+        .mockResolvedValueOnce(gatewayTimeout)
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+
+      const promise = fetchWithRetry('https://example.com', {}, retryConfig);
+
+      await jest.advanceTimersByTimeAsync(1_000);
+
+      const result = await promise;
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+    });
+
+    test('throws the first 504 when retryOnTimeout is false', async () => {
+      mockFetch.mockResolvedValue(gatewayTimeout);
+
+      await expect(
+        fetchWithRetry(
+          'https://example.com',
+          {},
+          { ...retryConfig, retryOnTimeout: false }
+        )
+      ).rejects.toThrow('Server error: 504 - 504 Gateway Time-out');
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    test('still retries other 5xx when retryOnTimeout is false', async () => {
+      mockFetch
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 502,
+          text: () => Promise.resolve('Bad Gateway'),
+        })
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+
+      const promise = fetchWithRetry(
+        'https://example.com',
+        {},
+        { ...retryConfig, retryOnTimeout: false }
+      );
+
+      await jest.advanceTimersByTimeAsync(1_000);
+
+      const result = await promise;
+      expect(result.ok).toBe(true);
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
 
     test('calls notifySessionExpired on 401 with session auth', async () => {
@@ -504,6 +623,196 @@ describe('healthDataApi', () => {
 
         expect(result).toEqual({ recordsSent: 2, recordErrors: [] });
         expect(mockFetch).toHaveBeenCalled();
+      });
+    });
+
+    describe('timeout splitting', () => {
+      const ok = () =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+
+      // Server that cannot finish more than `maxRecords` records in time.
+      const slowServer =
+        (maxRecords: number) => (url: string, options?: RequestInit) =>
+          JSON.parse(String(options?.body)).length > maxRecords
+            ? hangUntilAborted(url, options)
+            : ok();
+
+      // Advances fake time until the promise settles (timeouts plus backoff).
+      const settle = async <T>(promise: Promise<T>) => {
+        const outcome = promise.then(
+          (value) => ({ value }),
+          (error: unknown) => ({ error })
+        );
+        let done = false;
+        void outcome.then(() => {
+          done = true;
+        });
+        for (let i = 0; i < 50 && !done; i++) {
+          await jest.advanceTimersByTimeAsync(FETCH_TIMEOUT_MS);
+        }
+        return outcome;
+      };
+
+      const sentBodies = () =>
+        mockFetch.mock.calls.map(
+          ([, options]) =>
+            JSON.parse(options.body) as { type: string; value: number }[]
+        );
+
+      test('splits a timed-out simple chunk in half instead of resending it', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockImplementation(slowServer(CHUNK_SIZE / 2));
+
+        const data = Array.from({ length: CHUNK_SIZE }, (_, i) => ({
+          type: 'steps',
+          date: '2024-01-01',
+          value: i,
+        }));
+
+        const outcome = await settle(syncHealthData(data));
+
+        expect(outcome).toEqual({
+          value: { recordsSent: CHUNK_SIZE, recordErrors: [] },
+        });
+        expect(sentBodies().map((body) => body.length)).toEqual([
+          CHUNK_SIZE,
+          CHUNK_SIZE / 2,
+          CHUNK_SIZE / 2,
+        ]);
+      });
+
+      test('keeps halving until the chunks fit, sending every record once in order', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        const fits = CHUNK_SIZE / 4;
+        mockFetch.mockImplementation(slowServer(fits));
+
+        const data = Array.from({ length: CHUNK_SIZE }, (_, i) => ({
+          type: 'steps',
+          date: '2024-01-01',
+          value: i,
+        }));
+
+        const outcome = await settle(syncHealthData(data));
+
+        expect(outcome).toEqual({
+          value: { recordsSent: CHUNK_SIZE, recordErrors: [] },
+        });
+        const accepted = sentBodies().filter((body) => body.length <= fits);
+        expect(accepted.flat().map((record) => record.value)).toEqual(
+          data.map((record) => record.value)
+        );
+      });
+
+      test('splits a chunk a proxy answers with 504, as most proxies stop waiting at 60 s', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockImplementation((_url: string, options?: RequestInit) =>
+          JSON.parse(String(options?.body)).length > CHUNK_SIZE / 2
+            ? Promise.resolve({
+                ok: false,
+                status: 504,
+                text: () => Promise.resolve('504 Gateway Time-out'),
+              })
+            : ok()
+        );
+
+        const data = Array.from({ length: CHUNK_SIZE }, (_, i) => ({
+          type: 'steps',
+          date: '2024-01-01',
+          value: i,
+        }));
+
+        const outcome = await settle(syncHealthData(data));
+
+        expect(outcome).toEqual({
+          value: { recordsSent: CHUNK_SIZE, recordErrors: [] },
+        });
+        expect(sentBodies().map((body) => body.length)).toEqual([
+          CHUNK_SIZE,
+          CHUNK_SIZE / 2,
+          CHUNK_SIZE / 2,
+        ]);
+      });
+
+      test('splits a timed-out sleep chunk too', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockImplementation(slowServer(SESSION_CHUNK_SIZE / 2));
+
+        const data = Array.from({ length: SESSION_CHUNK_SIZE }, (_, i) => ({
+          type: 'SleepSession',
+          date: '2024-01-01',
+          value: i,
+        })) as HealthDataPayload;
+
+        const outcome = await settle(syncHealthData(data));
+
+        expect(outcome).toEqual({
+          value: { recordsSent: SESSION_CHUNK_SIZE, recordErrors: [] },
+        });
+        expect(sentBodies().map((body) => body.length)).toEqual([
+          SESSION_CHUNK_SIZE,
+          SESSION_CHUNK_SIZE / 2,
+          SESSION_CHUNK_SIZE / 2,
+        ]);
+      });
+
+      test('never splits an exercise/workout chunk; retries it whole', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockImplementation(hangUntilAborted);
+
+        const data = Array.from({ length: 4 }, (_, i) => ({
+          type: 'ExerciseSession',
+          date: '2024-01-01',
+          value: i,
+          source: 'healthkit',
+        })) as HealthDataPayload;
+
+        const outcome = await settle(syncHealthData(data));
+
+        expect(outcome).toEqual({ error: expect.any(TimeoutError) });
+        expect(sentBodies().map((body) => body.length)).toEqual([4, 4, 4]);
+      });
+
+      test('retries a single record that times out rather than splitting forever', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        mockFetch.mockImplementation(hangUntilAborted);
+
+        const outcome = await settle(
+          syncHealthData([{ type: 'steps', date: '2024-01-01', value: 1 }])
+        );
+
+        expect(outcome).toEqual({ error: expect.any(TimeoutError) });
+        expect(mockFetch).toHaveBeenCalledTimes(3);
+      });
+
+      test('reports partial progress when a split piece fails for another reason', async () => {
+        mockGetActiveServerConfig.mockResolvedValue(testConfig);
+        let call = 0;
+        mockFetch.mockImplementation((url: string, options?: RequestInit) => {
+          call += 1;
+          if (call === 1) return hangUntilAborted(url, options);
+          if (call === 2) return ok();
+          return Promise.resolve({
+            ok: false,
+            status: 500,
+            text: () => Promise.resolve('Overloaded'),
+          });
+        });
+
+        const data = Array.from({ length: CHUNK_SIZE }, (_, i) => ({
+          type: 'steps',
+          date: '2024-01-01',
+          value: i,
+        }));
+
+        const outcome = await settle(syncHealthData(data));
+
+        expect(outcome).toEqual({ error: expect.any(Error) });
+        expect((outcome as { error: Error }).error.message).toContain(
+          `Sync partially completed: ${CHUNK_SIZE / 2} of ${CHUNK_SIZE} records sent. Failed on chunk 2/2`
+        );
       });
     });
 

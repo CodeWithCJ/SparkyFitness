@@ -10,7 +10,8 @@ import {
   Platform,
   LayoutAnimation,
   Alert,
-  type TextInput,
+  type TextInputInstance,
+  type ScrollViewInstance,
 } from 'react-native';
 import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
@@ -52,6 +53,12 @@ import {
   type ProxyHeader,
 } from '../services/storage';
 import { addLog } from '../services/LogService';
+import {
+  clientCertificateConnectionHint,
+  setPendingClientCertificateServer,
+  shouldSuggestClientCertificate,
+} from '../services/clientCertificate';
+import ClientCertificateSection from './ClientCertificateSection';
 import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
 import { pasteFromClipboard } from '../utils/keyboardFocus';
 import {
@@ -70,6 +77,8 @@ interface ServerConfigModalProps {
   onSuccess: () => void;
   onDismiss: () => void;
 }
+
+const newConfigId = () => Date.now().toString();
 
 const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   visible,
@@ -91,11 +100,15 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   }));
 
   // Form state
-  const scrollViewRef = useRef<ScrollView>(null);
-  const serverUrlInputRef = useRef<TextInput>(null);
-  const apiKeyInputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
+  const serverUrlInputRef = useRef<TextInputInstance>(null);
+  const apiKeyInputRef = useRef<TextInputInstance>(null);
   const [serverUrl, setServerUrl] = useState('');
   const [isServerUrlFocused, setIsServerUrlFocused] = useState(false);
+  // Bumped after a certificate import, to ask the server for its sign-in
+  // options again: a server that needs the certificate was answered with the
+  // defaults before it, and an SSO-only server would show no SSO button.
+  const [certificateReloadKey, setCertificateReloadKey] = useState(0);
   const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
   const [authTab, setAuthTab] = useState<AuthTab>('signIn');
   const [email, setEmail] = useState('');
@@ -124,8 +137,23 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const [mfaCode, setMfaCode] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
 
+  /** Strip empty rows so we only persist real headers. */
+  const cleanedHeaders = () =>
+    proxyHeaders.filter((h) => h.name.trim() && h.value.trim());
+
   // Reset form when modal opens or closes
-  useEffect(() => {
+  const [lastReset, setLastReset] = useState<{
+    visible: boolean;
+    editingConfig: typeof editingConfig;
+    defaultAuthTab: typeof defaultAuthTab;
+  } | null>(null);
+  if (
+    lastReset === null ||
+    lastReset.visible !== visible ||
+    lastReset.editingConfig !== editingConfig ||
+    lastReset.defaultAuthTab !== defaultAuthTab
+  ) {
+    setLastReset({ visible, editingConfig, defaultAuthTab });
     if (!visible) {
       setServerUrl('');
       setError('');
@@ -135,47 +163,77 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       // Closing unmounts the focused input without firing onBlur, which
       // would leave a stale focus flag suppressing the URL echo on reopen.
       setIsServerUrlFocused(false);
+    } else {
+      setError('');
+      setLoading(false);
+      setStep('form');
+      setMfaCode('');
+      setEmailOtpSent(false);
+      setEmail('');
+      setPassword('');
+      setShowPassword(false);
+      setShowApiKey(false);
+      setShowHeaders({});
+
+      setAdvancedExpanded(false);
+
+      if (editingConfig) {
+        setServerUrl(editingConfig.url);
+        setApiKey(
+          editingConfig.authType === 'apiKey' ? editingConfig.apiKey : ''
+        );
+        setProxyHeaders(editingConfig.proxyHeaders ?? []);
+        const tab =
+          defaultAuthTab ??
+          (editingConfig.authType === 'apiKey' ? 'apiKey' : 'signIn');
+        setAuthTab(tab);
+      } else {
+        setServerUrl('');
+        setApiKey('');
+        setProxyHeaders([]);
+        setAuthTab(defaultAuthTab ?? 'signIn');
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (!visible) {
+      void setPendingClientCertificateServer(null);
       return;
     }
-
-    setError('');
-    setLoading(false);
-    setStep('form');
-    setMfaCode('');
-    setEmailOtpSent(false);
-    setEmail('');
-    setPassword('');
-    setShowPassword(false);
-    setShowApiKey(false);
-    setShowHeaders({});
-
-    setAdvancedExpanded(false);
-    chevronRotation.value = -90;
-
-    if (editingConfig) {
-      setServerUrl(editingConfig.url);
-      setApiKey(
-        editingConfig.authType === 'apiKey' ? editingConfig.apiKey : ''
-      );
-      setProxyHeaders(editingConfig.proxyHeaders ?? []);
-      const tab =
-        defaultAuthTab ??
-        (editingConfig.authType === 'apiKey' ? 'apiKey' : 'signIn');
-      setAuthTab(tab);
-    } else {
-      setServerUrl('');
-      setApiKey('');
-      setProxyHeaders([]);
-      setAuthTab(defaultAuthTab ?? 'signIn');
-    }
-
+    chevronRotation.set(-90);
     clearPendingProxyHeaders();
   }, [visible, editingConfig, defaultAuthTab, chevronRotation]);
+
+  // The URL's validity decides the settings and the HTTP warning; both follow
+  // the same triggers as the debounced fetch below.
+  const urlCheck = (() => {
+    if (!visible || !serverUrl) return { fetchable: false, error: null };
+    const url = normalizeUrl(serverUrl);
+    const lowerUrl = url.toLowerCase();
+    if (!lowerUrl.startsWith('http://') && !lowerUrl.startsWith('https://')) {
+      return { fetchable: false, error: null };
+    }
+    const validationError = getInsecureUrlError(
+      url,
+      t('auth.errors.httpsRequired', {
+        defaultValue: 'HTTPS is required for server connections.',
+      })
+    );
+    return { fetchable: !validationError, error: validationError ?? '' };
+  })();
+  const [lastFetchKey, setLastFetchKey] = useState<string | null>(null);
+  const fetchKey = `${serverUrl}|${visible}|${isServerUrlFocused}|${certificateReloadKey}`;
+  if (lastFetchKey !== fetchKey) {
+    setLastFetchKey(fetchKey);
+    if (!urlCheck.fetchable) setAuthSettings(null);
+    if (urlCheck.error !== null) setError(urlCheck.error);
+  }
 
   // Fetch settings dynamically whenever the URL changes
   useEffect(() => {
     if (!visible || !serverUrl) {
-      setAuthSettings(null);
+      void setPendingClientCertificateServer(null);
       return;
     }
 
@@ -189,21 +247,25 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         })
       );
       if (validationError) {
-        setError(validationError);
-        setAuthSettings(null);
+        void setPendingClientCertificateServer(null);
         return;
       }
-
-      // Clear HTTP warning if URL is now secure/valid
-      setError('');
     } else {
-      setAuthSettings(null);
+      void setPendingClientCertificateServer(null);
       return;
     }
 
     let isMounted = true;
     const fetchSettings = async () => {
       try {
+        // A server that is not saved yet may still require the TLS client
+        // certificate, so it has to be an allowed host before the request. Not
+        // while the address is still being typed, though: a half-typed
+        // `sparky.example.co` could be someone else's server, and it would be
+        // offered the certificate. The check runs again when the field is left.
+        if (!isServerUrlFocused) {
+          await setPendingClientCertificateServer(url);
+        }
         const settings = await fetchAuthSettings(
           url,
           proxyHeadersToRecord(cleanedHeaders())
@@ -231,7 +293,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     // Re-fetch only when the URL or visibility changes; `cleanedHeaders()` is read
     // at fetch time so proxy-header keystrokes don't re-trigger the debounced fetch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverUrl, visible]);
+  }, [serverUrl, visible, isServerUrlFocused, certificateReloadKey]);
 
   // On small screens the error banner can push the primary action below the
   // fold; scroll the bottom of the card back into view once the banner has
@@ -248,7 +310,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const next = !advancedExpanded;
     setAdvancedExpanded(next);
-    chevronRotation.value = withTiming(next ? 0 : -90, { duration: 200 });
+    chevronRotation.set(withTiming(next ? 0 : -90, { duration: 200 }));
   };
 
   const handleAddHeader = () => {
@@ -269,11 +331,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     );
   };
 
-  /** Strip empty rows so we only persist real headers. */
-  const cleanedHeaders = () =>
-    proxyHeaders.filter((h) => h.name.trim() && h.value.trim());
-
-  const getConfigId = () => editingConfig?.id ?? Date.now().toString();
+  const getConfigId = () => editingConfig?.id ?? newConfigId();
 
   const saveConfig = async (url: string, overrides: Partial<ServerConfig>) => {
     await saveServerConfig({
@@ -333,6 +391,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setLoading(true);
     setError('');
     setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
+    // Pressing a button leaves the URL field focused (the form keeps the
+    // keyboard up), so the address is not yet allowed to receive the TLS client
+    // certificate. Pressing Connect is the user saying the address is final.
+    await setPendingClientCertificateServer(url);
 
     try {
       const result = await login(url, email.trim(), password);
@@ -370,11 +432,16 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       if (err instanceof LoginError) {
         setError(err.message);
       } else {
+        const failed = t('auth.errors.connectionFailed', {
+          defaultValue:
+            'Could not connect to server. Check the URL and try again.',
+        });
+        // A proxy that wants a client certificate drops the connection, which
+        // looks the same as an unreachable server.
         setError(
-          t('auth.errors.connectionFailed', {
-            defaultValue:
-              'Could not connect to server. Check the URL and try again.',
-          })
+          shouldSuggestClientCertificate()
+            ? `${failed} ${clientCertificateConnectionHint(t)}`
+            : failed
         );
       }
     } finally {
@@ -407,6 +474,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setLoading(true);
     setError('');
     setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
+    // Pressing a button leaves the URL field focused (the form keeps the
+    // keyboard up), so the address is not yet allowed to receive the TLS client
+    // certificate. Pressing Connect is the user saying the address is final.
+    await setPendingClientCertificateServer(url);
 
     try {
       const result = await loginWithOidc(url, providerId);
@@ -463,6 +534,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     setLoading(true);
     setError('');
     setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
+    // Pressing a button leaves the URL field focused (the form keeps the
+    // keyboard up), so the address is not yet allowed to receive the TLS client
+    // certificate. Pressing Connect is the user saying the address is final.
+    await setPendingClientCertificateServer(url);
 
     try {
       const result = await loginWithPasskey(url);
@@ -646,6 +721,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
     setLoading(true);
     setError('');
+    // Pressing a button leaves the URL field focused (the form keeps the
+    // keyboard up), so the address is not yet allowed to receive the TLS client
+    // certificate. Pressing Connect is the user saying the address is final.
+    await setPendingClientCertificateServer(url);
 
     try {
       const response = await fetchWithTimeout(
@@ -1283,6 +1362,12 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
                         </View>
                       </View>
                     ))}
+
+                    <ClientCertificateSection
+                      onImported={() =>
+                        setCertificateReloadKey((key) => key + 1)
+                      }
+                    />
                   </View>
                 )}
 

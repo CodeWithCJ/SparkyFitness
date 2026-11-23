@@ -6,7 +6,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, type ViewInstance } from 'react-native';
 import Animated, {
   FadeInDown,
   FadeOutUp,
@@ -619,7 +619,7 @@ function ActiveWorkoutExerciseCard({
   const [hasRenderedCollapsed, setHasRenderedCollapsed] = useState(!expanded);
   if (!expanded && !hasRenderedCollapsed) setHasRenderedCollapsed(true);
 
-  const metricAnchorRef = useRef<View>(null);
+  const metricAnchorRef = useRef<ViewInstance>(null);
   const openMetricMenu = () => {
     measureAnchoredMenuTrigger(metricAnchorRef.current, (anchor) =>
       onPressMetricHeader(anchor, clampedToRpe)

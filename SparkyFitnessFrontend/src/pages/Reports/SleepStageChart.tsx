@@ -6,6 +6,7 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { formatTimeInZone, sleepEntryZone } from '@/utils/timeFormatters';
 import ZoomableChart from '@/components/ZoomableChart';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useIsMounted } from '@/hooks/useIsMounted';
 
 interface SleepStageChartProps {
   sleepChartData: SleepChartData;
@@ -37,11 +38,7 @@ const SleepStageChart = ({ sleepChartData }: SleepStageChartProps) => {
   const { formatDateInUserTimezone, dateFormat, timeFormat, timezone } =
     usePreferences();
   const { resolvedTheme } = useTheme();
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   if (
     !sleepChartData ||

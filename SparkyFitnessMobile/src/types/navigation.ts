@@ -116,6 +116,7 @@ export type RootStackParamList = {
     selectedEntryIds: string[];
   };
   CycleSettings: undefined;
+  FeatureSettings: undefined;
   CycleOnboarding: undefined;
   CycleHub: undefined;
   CycleLogModal: { date?: string } | undefined;
@@ -135,14 +136,20 @@ export type RootStackParamList = {
     | undefined;
   WorkoutPlanDetail: { template: WorkoutPlanTemplate };
   RunPrograms: undefined;
-  RunProgramCalendar: undefined;
-  RunProgramWorkout: { index: number };
+  /** `programId` is the program the row was shown for; a different active program is "not in your program any more". */
+  RunProgramWorkout: { index: number; programId: string };
   RunProgramRace: { distance?: RaceDistance; raceDay?: string } | undefined;
   FitnessTest: undefined;
   FitnessTestResult: { id: string };
   RunProgramEdit: { id?: string; fromProgramId?: string } | undefined;
   PersonalRecords: undefined;
   LabResults: undefined;
+  /** The challenges the user is in, with join by code. */
+  Challenges: undefined;
+  /** One challenge's standings; `name` titles the screen until it loads. */
+  ChallengeDetail: { id: string; name?: string };
+  /** Join a challenge with an invite code; `code` prefills it. */
+  ChallengeJoin: { code?: string } | undefined;
   /** `marker` is a `LabMarker` id: `builtin:<key>` or `custom:<uuid>`. */
   LabResultDetail: { marker: string; name?: string };
   LabResultAdd: { marker?: string };
@@ -152,6 +159,7 @@ export type RootStackParamList = {
   /** `routeId` opens a saved route in the editor and saves over it. */
   RouteDraw: { routeId?: string } | undefined;
   RouteGenerate: undefined;
+  TrainingCalendar: undefined;
   WatchRunLive: undefined;
   MealPlanForm: { template?: MealPlanTemplate; initialMeal?: Meal } | undefined;
   // #2115, Phase 12: mobile-only water-container CRUD.
@@ -423,6 +431,8 @@ export type RootStackParamList = {
   };
   ActiveWorkout:
     { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
+  // Native modal over ActiveWorkout; reads and reorders the live session.
+  WorkoutReorder: undefined;
   // Post-save celebration for a finished live workout. Renders entirely from
   // the store snapshot captured before `clearWorkout()`; only calories arrive
   // via a post-save session refetch.
@@ -516,6 +526,7 @@ export type RootStackParamList = {
   WatchSettings: undefined;
   AddMenuSettings: undefined;
   DiarySettings: undefined;
+  OfflineSettings: undefined;
   CustomCategories: undefined;
   CustomCategoryEdit: { categoryId?: string } | undefined;
   WorkoutSettings: undefined;

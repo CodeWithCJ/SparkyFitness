@@ -176,6 +176,7 @@ const HIDDEN_ROUTES = new Set<string>([
   'FoodPhotoFlow',
   'EditBarcode',
   'ExerciseSearch',
+  'WorkoutReorder',
   'WorkoutAdd',
   'ActivityAdd',
   'RecordActivity',
@@ -418,6 +419,12 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   const stackBottomOffset = hasSideBar
     ? insets.bottom + LIQUID_GLASS_VERTICAL_GAP
     : insets.bottom;
+  // Leaving native tabs re-syncs the held transition to the current snapshot.
+  const [wasUsingNativeTabs, setWasUsingNativeTabs] = useState(usesNativeTabs);
+  if (wasUsingNativeTabs !== usesNativeTabs) {
+    setWasUsingNativeTabs(usesNativeTabs);
+    if (!usesNativeTabs) setStackTransition(stackTransitionSnapshot);
+  }
   const isClosingToTabs = isClosingToTabsTransition(navInfo, stackTransition);
   const shouldSitAboveTabs =
     usesNativeTabs && (isClosingToTabs || navInfo.isOnTabs);
@@ -446,10 +453,7 @@ const ActiveWorkoutBar: React.FC<ActiveWorkoutBarProps> = ({
   ]);
 
   useEffect(() => {
-    if (!usesNativeTabs) {
-      setStackTransition(stackTransitionSnapshot);
-      return;
-    }
+    if (!usesNativeTabs) return;
 
     const listener = (snapshot: StackTransitionSnapshot) => {
       setStackTransition((prev) => {

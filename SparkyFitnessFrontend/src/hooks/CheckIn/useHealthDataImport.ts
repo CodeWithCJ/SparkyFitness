@@ -71,6 +71,11 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
   const [weightUnitOverride, setWeightUnitOverride] = useState('');
   const [lengthUnitOverride, setLengthUnitOverride] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // The pending reparse-on-format-change timer, if any. The two effects below
+  // are mutually exclusive (one requires mappingConfirmed, the other not), so
+  // at most one timer is live at a time. Cleared on a successful import so a
+  // delayed reparse can't restore the rows we just cleared.
+  const reparseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const config = useMemo(() => getCategoryConfig(category), [category]);
   const headers = config.requiredHeaders;
@@ -204,20 +209,30 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
     const currentKey = `${category}|${loadedText}|${JSON.stringify(csvFormat)}`;
     if (lastEvaluatedKeyRef.current === currentKey) return;
     const timer = setTimeout(() => {
+      reparseTimerRef.current = null;
       evaluateAndParse(loadedText);
     }, REPARSE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    reparseTimerRef.current = timer;
+    return () => {
+      if (reparseTimerRef.current === timer) reparseTimerRef.current = null;
+      clearTimeout(timer);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [csvFormat, loadedText, category]);
 
   useEffect(() => {
     if (!mappingConfirmed || showMapping) return;
     const timer = setTimeout(() => {
+      reparseTimerRef.current = null;
       setCsvData(
         parseHealthCSV(rawCsvText, category, headerMapping, csvFormat)
       );
     }, REPARSE_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
+    reparseTimerRef.current = timer;
+    return () => {
+      if (reparseTimerRef.current === timer) reparseTimerRef.current = null;
+      clearTimeout(timer);
+    };
   }, [
     csvFormat,
     rawCsvText,
@@ -375,6 +390,13 @@ export function useHealthDataImport(csvFormat: CsvFormatOptions) {
       // failed, leave the rows in place (with their errors shown below) so
       // the user can fix and resubmit instead of retyping the whole import.
       if (aggregate.errors.length === 0) {
+        // A pending reparse (scheduled by a format-bar change) could fire after
+        // this clear and restore the rows we just imported, re-enabling the
+        // close prompt and letting them be submitted again. Cancel it first.
+        if (reparseTimerRef.current) {
+          clearTimeout(reparseTimerRef.current);
+          reparseTimerRef.current = null;
+        }
         setCsvData([]);
         if (fileInputRef.current) fileInputRef.current.value = '';
       }

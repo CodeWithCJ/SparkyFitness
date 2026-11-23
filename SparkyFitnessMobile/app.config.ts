@@ -13,7 +13,8 @@ const ANDROID_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
 const IOS_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
 const DEV_APPLE_TEAM_ID = process.env.EXPO_DEV_APPLE_TEAM_ID || '';
 const PROD_APPLE_TEAM_ID = process.env.EXPO_PROD_APPLE_TEAM_ID || '';
-// Optional. With it, Android draws cardio routes over Google Maps; without
+// Optional. With it, Android's route editors use Google Maps (still route
+// previews stay on OpenStreetMap, see RoutePreviewMapSurface.android.tsx); without
 // it, Android draws them over OpenStreetMap vector tiles with MapLibre, no key
 // needed. iOS uses Apple Maps and needs no key either. Supply it from the
 // build environment (an EAS secret, for instance), never from the repo.
@@ -84,6 +85,13 @@ const androidPermissions = [
   'android.permission.health.WRITE_EXERCISE',
   'android.permission.health.WRITE_ACTIVE_CALORIES_BURNED',
   'android.permission.health.WRITE_DISTANCE',
+  // Body measurement write-back (#2465): the check-in's weight, body fat,
+  // height, bone mass and body water.
+  'android.permission.health.WRITE_WEIGHT',
+  'android.permission.health.WRITE_BODY_FAT',
+  'android.permission.health.WRITE_HEIGHT',
+  'android.permission.health.WRITE_BONE_MASS',
+  'android.permission.health.WRITE_BODY_WATER_MASS',
   // Exact rest-complete alerts: without this special access (user-granted via
   // "Alarms & reminders" on Android 13+), expo-notifications falls back to
   // inexact alarms that the OS batches ~15s late.
@@ -95,17 +103,13 @@ const devAndroidPermissions = [
   'android.permission.health.WRITE_BASAL_METABOLIC_RATE',
   'android.permission.health.WRITE_BLOOD_GLUCOSE',
   'android.permission.health.WRITE_BLOOD_PRESSURE',
-  'android.permission.health.WRITE_BODY_FAT',
   'android.permission.health.WRITE_BODY_TEMPERATURE',
-  'android.permission.health.WRITE_BODY_WATER_MASS',
-  'android.permission.health.WRITE_BONE_MASS',
   'android.permission.health.WRITE_CERVICAL_MUCUS',
   'android.permission.health.WRITE_CYCLING_PEDALING_CADENCE',
   'android.permission.health.WRITE_EXERCISE_ROUTE',
   'android.permission.health.WRITE_ELEVATION_GAINED',
   'android.permission.health.WRITE_FLOORS_CLIMBED',
   'android.permission.health.WRITE_HEART_RATE',
-  'android.permission.health.WRITE_HEIGHT',
   // WRITE_HYDRATION moved to the base androidPermissions list (writeback feature).
   'android.permission.health.WRITE_LEAN_BODY_MASS',
   'android.permission.health.WRITE_INTERMENSTRUAL_BLEEDING',
@@ -121,7 +125,6 @@ const devAndroidPermissions = [
   'android.permission.health.WRITE_STEPS_CADENCE',
   'android.permission.health.WRITE_TOTAL_CALORIES_BURNED',
   'android.permission.health.WRITE_VO2_MAX',
-  'android.permission.health.WRITE_WEIGHT',
   'android.permission.health.WRITE_WHEELCHAIR_PUSHES',
 ];
 
@@ -265,6 +268,8 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       ...(isDev ? devPlugins : []),
       ...(config.plugins ?? []),
       'expo-image',
+      // Local database behind offline workouts (src/offline/).
+      'expo-sqlite',
       [
         // System voice input (Android/iOS speech recognition) for chat dictation.
         'expo-speech-recognition',
@@ -330,7 +335,6 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       './plugins/withWorkoutNotification',
       './plugins/withWearOs',
       './plugins/withEnrichedMarkdownNoMath',
-      './plugins/withSceneLifecycle',
       [
         'react-native-maps',
         {

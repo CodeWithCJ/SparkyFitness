@@ -13,7 +13,7 @@ Before you begin, ensure you have the following installed:
 
 ### For Local Development (without Docker)
 
-- **Node.js 18+** and **npm**: The JavaScript runtime and package manager.
+- **Node.js 26+** and **npm**: The JavaScript runtime and package manager.
 - **PostgreSQL 15+**: The database server.
 - **Git**: For version control.
 

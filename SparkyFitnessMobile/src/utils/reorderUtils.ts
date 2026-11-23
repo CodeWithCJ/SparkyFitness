@@ -23,6 +23,23 @@ export function moveItem<T>(
 }
 
 /**
+ * The full order after part of it was rearranged: the keys in `reordered`
+ * take the places those keys held, in their new order, and every other key
+ * stays where it was. A list that shows only some keys (the rest belong to a
+ * feature turned off, or to another group) saves its order this way, so the
+ * keys it left out keep their places for when they show again.
+ */
+export function mergeSubsetOrder<K extends string>(
+  full: readonly K[],
+  reordered: readonly K[]
+): K[] {
+  const queue = [...reordered];
+  return full.map((key) =>
+    reordered.includes(key) ? (queue.shift() ?? key) : key
+  );
+}
+
+/**
  * A saved order of keys, reconciled against the registry it was saved from.
  *
  * Keys the saved order does not know about (added to the registry after it was

@@ -118,11 +118,6 @@ jest.mock('../../src/components/RestPeriodSheet', () => {
   };
 });
 
-jest.mock('../../src/components/WorkoutReorderList', () => ({
-  __esModule: true,
-  default: () => null,
-}));
-
 jest.mock('../../src/components/WorkoutDurationSheet', () => {
   const React = require('react');
   const Component = React.forwardRef((_props: any, ref: any) => {

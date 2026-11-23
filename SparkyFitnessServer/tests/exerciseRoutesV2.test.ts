@@ -10,6 +10,7 @@ vi.mock('../services/exerciseService.js', () => ({
   default: {
     searchExercisesPaginated: vi.fn(),
     getExerciseStats: vi.fn(),
+    getExerciseStatsBatch: vi.fn(),
   },
 }));
 
@@ -541,5 +542,81 @@ describe('GET /v2/exercises/:exerciseId/stats', () => {
 
     expect(res.statusCode).toBe(403);
     expect(exerciseService.getExerciseStats).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /v2/exercises/stats/batch', () => {
+  const EXERCISE_A = '11111111-1111-4111-8111-111111111111';
+  const EXERCISE_B = '22222222-2222-4222-8222-222222222222';
+  const emptyStats = { bestSet: null, lastSet: null, recentSessions: [] };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    permissionHandlerRef.current = (_req, _res, next) => next();
+  });
+
+  it('returns one stats item per requested pair', async () => {
+    const items = [
+      { exerciseId: EXERCISE_A, presetId: 42, stats: emptyStats },
+      { exerciseId: EXERCISE_B, presetId: null, stats: emptyStats },
+    ];
+    vi.mocked(exerciseService.getExerciseStatsBatch).mockResolvedValue(items);
+
+    const res = await request(app)
+      .post('/v2/exercises/stats/batch')
+      .send({
+        items: [
+          { exerciseId: EXERCISE_A, presetId: 42 },
+          { exerciseId: EXERCISE_B },
+        ],
+      });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toEqual({ items });
+    expect(exerciseService.getExerciseStatsBatch).toHaveBeenCalledWith(
+      'user-123',
+      [{ exerciseId: EXERCISE_A, presetId: 42 }, { exerciseId: EXERCISE_B }]
+    );
+  });
+
+  it('returns 400 for an empty item list', async () => {
+    const res = await request(app)
+      .post('/v2/exercises/stats/batch')
+      .send({ items: [] });
+
+    expect(res.statusCode).toBe(400);
+    expect(exerciseService.getExerciseStatsBatch).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 for more than 100 items', async () => {
+    const res = await request(app)
+      .post('/v2/exercises/stats/batch')
+      .send({
+        items: Array.from({ length: 101 }, () => ({ exerciseId: EXERCISE_A })),
+      });
+
+    expect(res.statusCode).toBe(400);
+    expect(exerciseService.getExerciseStatsBatch).not.toHaveBeenCalled();
+  });
+
+  it('returns 400 when an exerciseId is not a UUID', async () => {
+    const res = await request(app)
+      .post('/v2/exercises/stats/batch')
+      .send({ items: [{ exerciseId: 'not-a-uuid' }] });
+
+    expect(res.statusCode).toBe(400);
+    expect(exerciseService.getExerciseStatsBatch).not.toHaveBeenCalled();
+  });
+
+  it('is refused without diary permission', async () => {
+    permissionHandlerRef.current = (_req, res) =>
+      res.status(403).json({ error: 'Forbidden' });
+
+    const res = await request(app)
+      .post('/v2/exercises/stats/batch')
+      .send({ items: [{ exerciseId: EXERCISE_A }] });
+
+    expect(res.statusCode).toBe(403);
+    expect(exerciseService.getExerciseStatsBatch).not.toHaveBeenCalled();
   });
 });

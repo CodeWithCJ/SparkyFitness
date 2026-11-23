@@ -48,6 +48,7 @@ app-example
 # committed copy is a dev identifier baked into the repo.
 /targets/widget/Info.plist
 /targets/widget/generated.entitlements
+/targets/widget/ClientCertificateIdentity.swift
 /targets/watch/Info.plist
 /targets/watch/generated.entitlements
 /targets/watch-widget/Info.plist

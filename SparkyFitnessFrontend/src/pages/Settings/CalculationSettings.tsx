@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { BmrAlgorithm } from '@/services/bmrService';
 import { BodyFatAlgorithm } from '@/services/bodyCompositionService';
 
@@ -262,12 +263,12 @@ const CalculationSettings = () => {
     mode: savedCalorieCyclingMode,
     offsets: [...savedCalorieCyclingOffsets],
   });
-  useEffect(() => {
+  useOnChange([savedCalorieCyclingMode, savedCalorieCyclingOffsets], () => {
     setCalorieCycling({
       mode: savedCalorieCyclingMode,
       offsets: [...savedCalorieCyclingOffsets],
     });
-  }, [savedCalorieCyclingMode, savedCalorieCyclingOffsets]);
+  });
   // The weekday the cycling chart and the Live Preview show; today until a
   // day is picked on the chart.
   const [pickedCyclingDay, setPickedCyclingDay] = useState<number | null>(null);
@@ -348,113 +349,116 @@ const CalculationSettings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    // When context preferences are loaded, update local state
-    if (contextBmrAlgorithm) {
-      setBmrAlgorithm(contextBmrAlgorithm);
-    }
-    if (contextBodyFatAlgorithm) {
-      setBodyFatAlgorithm(contextBodyFatAlgorithm);
-    }
-    if (contextIncludeBmrInNetCalories !== undefined) {
-      setIncludeBmrInNetCalories(contextIncludeBmrInNetCalories);
-    }
-    if (contextUseExternalBmr !== undefined) {
-      setUseExternalBmr(contextUseExternalBmr);
-    }
-    if (contextShowNetCarbs !== undefined) {
-      setShowNetCarbs(contextShowNetCarbs);
-    }
-    if (contextFatBreakdownAlgorithm) {
-      setFatBreakdownAlgorithm(contextFatBreakdownAlgorithm);
-    }
-    if (contextMineralCalculationAlgorithm) {
-      setMineralCalculationAlgorithm(contextMineralCalculationAlgorithm);
-    }
-    if (contextVitaminCalculationAlgorithm) {
-      setVitaminCalculationAlgorithm(contextVitaminCalculationAlgorithm);
-    }
-    if (contextSugarCalculationAlgorithm) {
-      setSugarCalculationAlgorithm(contextSugarCalculationAlgorithm);
-    }
-    if (contextAddedSugarAlgorithm) {
-      setAddedSugarAlgorithm(contextAddedSugarAlgorithm);
-    }
-    if (contextCalorieGoalAdjustmentMode) {
-      setCalorieGoalAdjustmentMode(
-        toSelectableMode(contextCalorieGoalAdjustmentMode)
-      );
-    }
-    if (contextExerciseCaloriePercentage !== undefined) {
-      setExerciseCaloriePercentage(contextExerciseCaloriePercentage);
-    }
-    if (contextTdeeAllowNegativeAdjustment !== undefined) {
-      setTdeeAllowNegativeAdjustment(contextTdeeAllowNegativeAdjustment);
-    }
-    if (contextActivityLevel) {
-      setActivityLevel(contextActivityLevel);
-    }
-    if (contextGoalMode) {
-      setGoalMode(contextGoalMode);
-    }
-    if (contextGoalModeCalculationMethod) {
-      setGoalModeCalculationMethod(contextGoalModeCalculationMethod);
-    }
-    setAdaptiveActivitySeparate(contextAdaptiveActivitySeparate ?? false);
-    setAdjustMacrosWithExercise(contextAdjustMacrosWithExercise ?? false);
-    if (contextGoalModeCustomPercentage !== undefined) {
-      setGoalModeCustomPercentage(contextGoalModeCustomPercentage);
-      setCustomPercentageInput(String(contextGoalModeCustomPercentage));
-    }
-    if (contextCalorieSafetyFloorMode !== undefined) {
-      setCalorieSafetyFloorMode(contextCalorieSafetyFloorMode);
-    }
-    if (contextCalorieSafetyFloorValue !== undefined) {
-      setCalorieSafetyFloorValue(contextCalorieSafetyFloorValue);
-      setCalorieSafetyFloorInput(
-        String(
-          Math.round(
-            convertEnergy(contextCalorieSafetyFloorValue, 'kcal', energyUnit)
+  useOnChange(
+    [
+      contextBmrAlgorithm,
+      contextBodyFatAlgorithm,
+      contextIncludeBmrInNetCalories,
+      contextUseExternalBmr,
+      contextShowNetCarbs,
+      contextFatBreakdownAlgorithm,
+      contextMineralCalculationAlgorithm,
+      contextVitaminCalculationAlgorithm,
+      contextSugarCalculationAlgorithm,
+      contextAddedSugarAlgorithm,
+      contextCalorieGoalAdjustmentMode,
+      contextExerciseCaloriePercentage,
+      contextTdeeAllowNegativeAdjustment,
+      contextActivityLevel,
+      contextGoalMode,
+      contextGoalModeCalculationMethod,
+      contextAdaptiveActivitySeparate,
+      contextAdjustMacrosWithExercise,
+      contextGoalModeCustomPercentage,
+      contextCalorieSafetyFloorMode,
+      contextCalorieSafetyFloorValue,
+      convertEnergy,
+      energyUnit,
+    ],
+    () => {
+      // When context preferences are loaded, update local state
+      if (contextBmrAlgorithm) {
+        setBmrAlgorithm(contextBmrAlgorithm);
+      }
+      if (contextBodyFatAlgorithm) {
+        setBodyFatAlgorithm(contextBodyFatAlgorithm);
+      }
+      if (contextIncludeBmrInNetCalories !== undefined) {
+        setIncludeBmrInNetCalories(contextIncludeBmrInNetCalories);
+      }
+      if (contextUseExternalBmr !== undefined) {
+        setUseExternalBmr(contextUseExternalBmr);
+      }
+      if (contextShowNetCarbs !== undefined) {
+        setShowNetCarbs(contextShowNetCarbs);
+      }
+      if (contextFatBreakdownAlgorithm) {
+        setFatBreakdownAlgorithm(contextFatBreakdownAlgorithm);
+      }
+      if (contextMineralCalculationAlgorithm) {
+        setMineralCalculationAlgorithm(contextMineralCalculationAlgorithm);
+      }
+      if (contextVitaminCalculationAlgorithm) {
+        setVitaminCalculationAlgorithm(contextVitaminCalculationAlgorithm);
+      }
+      if (contextSugarCalculationAlgorithm) {
+        setSugarCalculationAlgorithm(contextSugarCalculationAlgorithm);
+      }
+      if (contextAddedSugarAlgorithm) {
+        setAddedSugarAlgorithm(contextAddedSugarAlgorithm);
+      }
+      if (contextCalorieGoalAdjustmentMode) {
+        setCalorieGoalAdjustmentMode(
+          toSelectableMode(contextCalorieGoalAdjustmentMode)
+        );
+      }
+      if (contextExerciseCaloriePercentage !== undefined) {
+        setExerciseCaloriePercentage(contextExerciseCaloriePercentage);
+      }
+      if (contextTdeeAllowNegativeAdjustment !== undefined) {
+        setTdeeAllowNegativeAdjustment(contextTdeeAllowNegativeAdjustment);
+      }
+      if (contextActivityLevel) {
+        setActivityLevel(contextActivityLevel);
+      }
+      if (contextGoalMode) {
+        setGoalMode(contextGoalMode);
+      }
+      if (contextGoalModeCalculationMethod) {
+        setGoalModeCalculationMethod(contextGoalModeCalculationMethod);
+      }
+      setAdaptiveActivitySeparate(contextAdaptiveActivitySeparate ?? false);
+      setAdjustMacrosWithExercise(contextAdjustMacrosWithExercise ?? false);
+      if (contextGoalModeCustomPercentage !== undefined) {
+        setGoalModeCustomPercentage(contextGoalModeCustomPercentage);
+        setCustomPercentageInput(String(contextGoalModeCustomPercentage));
+      }
+      if (contextCalorieSafetyFloorMode !== undefined) {
+        setCalorieSafetyFloorMode(contextCalorieSafetyFloorMode);
+      }
+      if (contextCalorieSafetyFloorValue !== undefined) {
+        setCalorieSafetyFloorValue(contextCalorieSafetyFloorValue);
+        setCalorieSafetyFloorInput(
+          String(
+            Math.round(
+              convertEnergy(contextCalorieSafetyFloorValue, 'kcal', energyUnit)
+            )
           )
-        )
-      );
+        );
+      }
+      // Since preferences are loaded by the PreferencesProvider at a higher level,
+      // we can assume they are available by the time this component renders.
+      // Set isLoading to false after initial render with context values.
+      setIsLoading(false);
     }
-    // Since preferences are loaded by the PreferencesProvider at a higher level,
-    // we can assume they are available by the time this component renders.
-    // Set isLoading to false after initial render with context values.
-    setIsLoading(false);
-  }, [
-    contextBmrAlgorithm,
-    contextBodyFatAlgorithm,
-    contextIncludeBmrInNetCalories,
-    contextUseExternalBmr,
-    contextShowNetCarbs,
-    contextFatBreakdownAlgorithm,
-    contextMineralCalculationAlgorithm,
-    contextVitaminCalculationAlgorithm,
-    contextSugarCalculationAlgorithm,
-    contextAddedSugarAlgorithm,
-    contextCalorieGoalAdjustmentMode,
-    contextExerciseCaloriePercentage,
-    contextTdeeAllowNegativeAdjustment,
-    contextActivityLevel,
-    contextGoalMode,
-    contextGoalModeCalculationMethod,
-    contextAdaptiveActivitySeparate,
-    contextAdjustMacrosWithExercise,
-    contextGoalModeCustomPercentage,
-    contextCalorieSafetyFloorMode,
-    contextCalorieSafetyFloorValue,
-    convertEnergy,
-    energyUnit,
-  ]);
+  );
 
-  useEffect(() => {
+  useOnChange([contextGoalModeWeeklyChangeKg], () => {
     if (contextGoalModeWeeklyChangeKg !== undefined) {
       setGoalModeWeeklyChangeKg(contextGoalModeWeeklyChangeKg);
       setWeeklyRateValid(true);
     }
-  }, [contextGoalModeWeeklyChangeKg]);
+  });
 
   const handleSave = async () => {
     if (goalMode === 'weekly' && !weeklyRateValid) return;
@@ -598,6 +602,15 @@ const CalculationSettings = () => {
     bmr > 0 &&
     isAdaptiveEarnBackSuppressed(
       calorieGoalAdjustmentMode,
+      goalModeCalculationMethod,
+      adaptiveActivitySeparate
+    );
+  // The Dynamic card's subtitle describes what Dynamic would do with the
+  // current calculation method, whichever card is selected.
+  const dynamicCardAdaptive =
+    bmr > 0 &&
+    isAdaptiveEarnBackSuppressed(
+      'dynamic',
       goalModeCalculationMethod,
       adaptiveActivitySeparate
     );
@@ -1141,7 +1154,12 @@ const CalculationSettings = () => {
                     {t(card.titleKey, card.title)}
                   </span>
                   <span className="block text-xs text-muted-foreground">
-                    {t(card.summaryKey, card.summary)}
+                    {card.mode === 'dynamic' && dynamicCardAdaptive
+                      ? t(
+                          'settings.calorieGoalAdjustment.cardDynamicAdaptiveSummary',
+                          'Activity is already in your Adaptive target'
+                        )
+                      : t(card.summaryKey, card.summary)}
                   </span>
                 </span>
               </RadioGroupPrimitive.Item>
@@ -1157,6 +1175,15 @@ const CalculationSettings = () => {
               i18nKey="settings.goalMode.adaptiveGoalMatchedEvidence"
               defaults={
                 '<span>Adaptive Goal:</span> Estimates expenditure from food logs and measured weights over matching observation periods. New evidence is introduced gradually; earlier uncertain or capped evidence can still affect the result. Missing food logs and scale-weight fluctuations add uncertainty.'
+              }
+              components={{ span: <span className="font-medium" /> }}
+            />
+          ) : calorieGoalAdjustmentMode === 'dynamic' &&
+            adaptiveEarnBackSuppressed ? (
+            <Trans
+              i18nKey="settings.goalMode.dynamicGoalAdaptiveMethod"
+              defaults={
+                '<span>Dynamic Goal:</span> With the Adaptive calculation method, your target is learned from your food logs and weight trend, so it already includes your usual activity, and Remaining is Target minus Eaten. Turn on <span>Count activity calories separately</span> below to add each day’s steps and workouts to a baseline that leaves them out.'
               }
               components={{ span: <span className="font-medium" /> }}
             />
@@ -1232,7 +1259,8 @@ const CalculationSettings = () => {
               </div>
             )}
           {(calorieGoalAdjustmentMode === 'tdee' ||
-            calorieGoalAdjustmentMode === 'adaptive') && (
+            calorieGoalAdjustmentMode === 'adaptive' ||
+            goalModeCalculationMethod === 'adaptive') && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <Label
@@ -1250,7 +1278,7 @@ const CalculationSettings = () => {
                     setActivityLevel(value)
                   }
                 >
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger id="activity-level" className="w-48">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1305,6 +1333,22 @@ const CalculationSettings = () => {
                   )}
                 </p>
               )}
+              {calorieGoalAdjustmentMode !== 'adaptive' &&
+                calorieGoalAdjustmentMode !== 'tdee' && (
+                  <p className="text-sm text-muted-foreground italic mt-[-4px]">
+                    {activitySeparated
+                      ? t(
+                          'settings.goalMode.adaptiveFallbackActivitySeparated',
+                          'Until Adaptive has {{days}} days of food logs, your baseline is BMR × this level, before Goal Mode is applied. Describe your activity outside the steps and workouts that are counted separately.',
+                          { days: ADAPTIVE_TDEE_GOAL_MIN_DAYS }
+                        )
+                      : t(
+                          'settings.goalMode.adaptiveFallbackActivityLevel',
+                          'Until Adaptive has {{days}} days of food logs, your baseline is BMR × this level, before Goal Mode is applied, and your workouts are not added on top. Pick a level that includes your workouts.',
+                          { days: ADAPTIVE_TDEE_GOAL_MIN_DAYS }
+                        )}
+                  </p>
+                )}
               {calorieGoalAdjustmentMode === 'tdee' && (
                 <>
                   <p className="text-sm text-muted-foreground italic mt-[-4px]">
@@ -1362,20 +1406,25 @@ const CalculationSettings = () => {
                   )}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {calorieGoalAdjustmentMode === 'tdee'
+                  {adaptiveEarnBackSuppressed
                     ? t(
-                        'settings.calculationExplanation.burnedTdee',
-                        'Device total calories (BMR + active calories fallback)'
+                        'settings.calculationExplanation.burnedAdaptive',
+                        'Shown for reference. Your Adaptive target already includes your activity.'
                       )
-                    : includeBmrInNetCalories
+                    : calorieGoalAdjustmentMode === 'tdee'
                       ? t(
-                          'settings.calculationExplanation.burnedBmr',
-                          'Activity + BMR (Your base metabolism)'
+                          'settings.calculationExplanation.burnedTdee',
+                          'Device total calories (BMR + active calories fallback)'
                         )
-                      : t(
-                          'settings.calculationExplanation.burnedActivity',
-                          'Activity (Exercise & Steps only)'
-                        )}
+                      : includeBmrInNetCalories
+                        ? t(
+                            'settings.calculationExplanation.burnedBmr',
+                            'Activity + BMR (Your base metabolism)'
+                          )
+                        : t(
+                            'settings.calculationExplanation.burnedActivity',
+                            'Activity (Exercise & Steps only)'
+                          )}
                 </p>
               </div>
             </div>
@@ -1389,10 +1438,21 @@ const CalculationSettings = () => {
                   {t('settings.calculationExplanation.netTitle', 'Net Energy')}
                 </p>
                 <p className="text-gray-600 dark:text-gray-400">
-                  {t(
-                    'settings.calculationExplanation.netFormula',
-                    'Eaten - Total Burned'
-                  )}
+                  {adaptiveEarnBackSuppressed &&
+                  calorieGoalAdjustmentMode === 'percentage'
+                    ? t(
+                        'settings.calculationExplanation.netAdaptivePercentage',
+                        'Not used for Remaining. To credit today’s activity, choose Dynamic and turn on "Count activity calories separately".'
+                      )
+                    : adaptiveEarnBackSuppressed
+                      ? t(
+                          'settings.calculationExplanation.netAdaptive',
+                          'Not used for Remaining. Turn on "Count activity calories separately" below to credit today’s activity.'
+                        )
+                      : t(
+                          'settings.calculationExplanation.netFormula',
+                          'Eaten - Total Burned'
+                        )}
                 </p>
               </div>
             </div>

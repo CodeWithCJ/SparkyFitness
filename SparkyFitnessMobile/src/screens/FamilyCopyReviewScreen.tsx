@@ -11,7 +11,6 @@ import Button from '../components/ui/Button';
 import { useCopyFamilyFoodEntries } from '../hooks/useCopyFamilyFoodEntries';
 import { useMealTypes } from '../hooks/useMealTypes';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { RootStackScreenProps } from '../types/navigation';
 import {
@@ -68,7 +67,6 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
   );
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const calendarRef = useRef<CalendarSheetRef>(null);
   const submitInFlightRef = useRef(false);
   const wasPendingRef = useRef(false);
@@ -269,10 +267,7 @@ const FamilyCopyReviewScreen: React.FC<FamilyCopyReviewScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{

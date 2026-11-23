@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import {
   Dialog,
   DialogContent,
@@ -51,15 +52,14 @@ export const CustomNutrientDialog = ({
   const [aliases, setAliases] = useState<string[]>(initialAliases);
 
   // Reset the fields to the provided initial values each time the dialog opens.
-  useEffect(() => {
+  useOnChange([open], () => {
     if (open) {
       setName(initialName);
       setUnit(initialUnit);
       setAliases(initialAliases);
     }
     // Only re-seed on open; initial props are captured at open time.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open]);
+  });
 
   const handleSave = async () => {
     if (!name.trim() || !unit.trim()) {

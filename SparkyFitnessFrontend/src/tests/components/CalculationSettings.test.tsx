@@ -356,7 +356,7 @@ describe('daily calorie goal adjustment cards', () => {
       'true'
     );
     expect(screen.getByTestId('adjustment-mode-description')).toHaveTextContent(
-      /^Dynamic Goal: Your calorie goal will dynamically adjust/
+      /^Dynamic Goal: With the Adaptive calculation method/
     );
 
     fireEvent.click(
@@ -365,11 +365,45 @@ describe('daily calorie goal adjustment cards', () => {
     expect(screen.getByTestId('adjustment-mode-description')).toHaveTextContent(
       /^Percentage Earn-Back: Only earn back a set percentage/
     );
+    // The separate-activity switch is a Dynamic-only control.
+    expect(
+      screen.getByText(/choose Dynamic and turn on "Count activity calories/)
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('radio', { name: /Device projection/ }));
     expect(
       screen.getByText('Allow the fallback projection to lower the target')
     ).toBeInTheDocument();
+  });
+});
+
+describe('Dynamic goal with the Adaptive calculation method (#3689)', () => {
+  it('says activity is already in the target and shows the activity level it falls back on', () => {
+    render(<CalculationSettings />);
+    expect(screen.getByRole('radio', { name: /Dynamic/ })).toHaveTextContent(
+      'Activity is already in your Adaptive target'
+    );
+    expect(screen.getByLabelText('Activity level:')).toBeInTheDocument();
+    expect(
+      screen.getByText(/your workouts are not added on top/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Eaten - Total Burned')).toBeNull();
+    expect(
+      screen.getByText(/Shown for reference\. Your Adaptive target/)
+    ).toBeInTheDocument();
+  });
+
+  it('keeps the earn-back wording and hides the activity level with a Manual target', () => {
+    mockMethod = 'manual';
+    render(<CalculationSettings />);
+    expect(screen.getByRole('radio', { name: /Dynamic/ })).toHaveTextContent(
+      'Adds your daily activity to your goal'
+    );
+    expect(screen.getByTestId('adjustment-mode-description')).toHaveTextContent(
+      /^Dynamic Goal: Your calorie goal will dynamically adjust/
+    );
+    expect(screen.queryByLabelText('Activity level:')).toBeNull();
+    expect(screen.getByText('Eaten - Total Burned')).toBeInTheDocument();
   });
 });
 
@@ -593,7 +627,7 @@ it('explains a past day with the settings and weight it was calculated from', ()
   );
 
   // Today's settings are Maintain with Mifflin-St Jeor at 80 kg.
-  expect(screen.getByText(/14\.2 × 92 \+ 593/)).toBeInTheDocument();
+  expect(screen.getByText(/0\.0592 × 92 \+ 2\.48/)).toBeInTheDocument();
   expect(screen.getByText(/Cut Deficit \(-15%\)/)).toBeInTheDocument();
   expect(screen.queryByText('Maintain (0% change)')).not.toBeInTheDocument();
 });

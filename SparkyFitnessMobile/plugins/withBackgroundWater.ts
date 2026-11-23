@@ -22,7 +22,9 @@ import {
 import fs from 'fs';
 import path from 'path';
 
-// Both are compiled into the app target. The intents live in the widget target's
+const CLIENT_CERTIFICATE_SOURCE = 'ClientCertificateIdentity.swift';
+
+// All are compiled into the app target. The intents live in the widget target's
 // folder because the Lock Screen controls there run the same code; the provider
 // is app-only.
 const IOS_SOURCES = [
@@ -33,6 +35,14 @@ const IOS_SOURCES = [
   {
     from: ['plugins', 'ios', 'ShortcutProvider.swift'],
     name: 'ShortcutProvider.swift',
+  },
+  // The TLS client certificate the intents present to the user's server. The
+  // module's own copy is in a pod the intents cannot import from the widget
+  // extension, so the same file is compiled into the app target here and into
+  // the widget by targets/widget/expo-target.config.js.
+  {
+    from: ['modules', 'client-certificate', 'ios', CLIENT_CERTIFICATE_SOURCE],
+    name: CLIENT_CERTIFICATE_SOURCE,
   },
 ] as const;
 

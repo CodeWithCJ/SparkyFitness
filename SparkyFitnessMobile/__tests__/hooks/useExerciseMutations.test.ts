@@ -1,6 +1,7 @@
 import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { ApiError } from '../../src/services/api/errors';
 import {
   useCreateWorkout,
   useUpdateWorkout,
@@ -99,6 +100,42 @@ describe('useExerciseMutations', () => {
         exercises: [],
       });
       expect(createResult).toEqual(responseData);
+    });
+
+    it('stays quiet when the server is away and the caller keeps the workout on the phone', async () => {
+      mockCreateWorkout.mockRejectedValue(
+        new TypeError('Network request failed')
+      );
+      const { result } = renderHook(
+        () => useCreateWorkout({ quietWhenServerAway: true }),
+        { wrapper }
+      );
+
+      await act(async () => {
+        await result.current
+          .createSession({ name: 'Push Day', exercises: [] } as any)
+          .catch(() => undefined);
+      });
+
+      expect(Toast.show).not.toHaveBeenCalled();
+    });
+
+    it('still announces a failure that is not a lost connection', async () => {
+      mockCreateWorkout.mockRejectedValue(new ApiError('invalid', 400));
+      const { result } = renderHook(
+        () => useCreateWorkout({ quietWhenServerAway: true }),
+        { wrapper }
+      );
+
+      await act(async () => {
+        await result.current
+          .createSession({ name: 'Push Day', exercises: [] } as any)
+          .catch(() => undefined);
+      });
+
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' })
+      );
     });
 
     it('shows alert on error', async () => {

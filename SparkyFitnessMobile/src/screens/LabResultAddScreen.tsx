@@ -7,7 +7,6 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Toast from 'react-native-toast-message';
 import {
@@ -65,7 +64,6 @@ const startingRange = (marker: LabMarker) =>
 
 const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t, i18n } = useTranslation();
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const [textMuted] = useCSSVariable(['--color-text-muted']) as [string];
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
@@ -112,7 +110,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // What the form filled in last, so a range left over from another unit can
   // be told apart from one the person typed.
-  const prefill = useRef<LabFormPrefill | null>(null);
+  const [prefill, setPrefill] = useState<LabFormPrefill | null>(null);
 
   const applyDefaults = (next: {
     unit: string;
@@ -124,7 +122,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
       low: rangeText(next.low),
       high: rangeText(next.high),
     };
-    prefill.current = filled;
+    setPrefill(filled);
     setUnit(filled.unit);
     setLowText(filled.low);
     setHighText(filled.high);
@@ -133,18 +131,18 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // Changing the unit of a range the form filled in invalidates that range.
   const settledRange = dropStalePrefilledRange(
     { unit, low: lowText, high: highText },
-    prefill.current,
+    prefill,
     selection?.kind === 'builtin' ? selection.key : null
   );
   const handleUnitCommitted = () => {
-    const base = prefill.current;
+    const base = prefill;
     const edited =
       base !== null && (lowText !== base.low || highText !== base.high);
     setLowText(settledRange.low);
     setHighText(settledRange.high);
     // A range the person edited is theirs from here on, so it must never be
     // taken for the form's own fill-in on a later unit change.
-    prefill.current = edited ? null : { unit, ...settledRange };
+    setPrefill(edited ? null : { unit, ...settledRange });
   };
 
   // The form is filled in from the marker's latest result and the profile's
@@ -364,10 +362,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 px-4 py-3"

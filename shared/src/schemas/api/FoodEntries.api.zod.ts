@@ -50,6 +50,34 @@ export const foodEntryResponseSchema = z.object({
   // Per-occurrence markdown note. Never derived from the parent food's notes,
   // and not selected by every food-entry query, so keep it optional.
   notes: z.string().nullish(),
+  // Cooked weight eaten, in the same unit as `quantity` (which stays the raw
+  // weight). NULL when the entry was not weighed cooked. Not selected by
+  // every food-entry query, so optional.
+  cooked_quantity: z.number().nullish(),
 });
 
 export type FoodEntryResponse = z.infer<typeof foodEntryResponseSchema>;
+
+// GET /api/food-entries/last-cooked (#3534): the person's most recent entry of
+// a food that was weighed cooked, so the form can pre-fill the batch yield.
+export const lastCookedFoodEntryQuerySchema = z.object({
+  food_id: z.uuid(),
+  userId: z.uuid().optional(),
+});
+
+export const lastCookedFoodEntrySchema = z.object({
+  id: z.string(),
+  entry_date: z.string(),
+  quantity: z.number(),
+  unit: z.string().nullable(),
+  cooked_quantity: z.number(),
+});
+
+export const lastCookedFoodEntryResponseSchema = z.object({
+  entry: lastCookedFoodEntrySchema.nullable(),
+});
+
+export type LastCookedFoodEntry = z.infer<typeof lastCookedFoodEntrySchema>;
+export type LastCookedFoodEntryResponse = z.infer<
+  typeof lastCookedFoodEntryResponseSchema
+>;

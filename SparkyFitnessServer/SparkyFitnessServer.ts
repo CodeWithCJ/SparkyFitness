@@ -88,6 +88,7 @@ import stravaRoutes from './routes/stravaRoutes.js';
 import hevyRoutes from './routes/hevyRoutes.js';
 import liftosaurRoutes from './routes/liftosaurRoutes.js';
 import intervalsRoutes from './routes/intervalsRoutes.js';
+import zeppBridgeRoutes from './routes/zeppBridgeRoutes.js';
 import moodRoutes from './routes/moodRoutes.js';
 import fastingRoutes from './routes/fastingRoutes.js';
 import adaptiveTdeeRoutes from './routes/adaptiveTdeeRoutes.js';
@@ -120,6 +121,7 @@ import shoeRoutesV2 from './routes/v2/shoeRoutes.js';
 import plateInventoryRoutesV2 from './routes/v2/plateInventoryRoutes.js';
 import actionTagRoutesV2 from './routes/v2/actionTagRoutes.js';
 import routeRoutesV2 from './routes/v2/routeRoutes.js';
+import challengeRoutesV2 from './routes/v2/challengeRoutes.js';
 import backupRoutes from './routes/backupRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 import reviewRoutes from './routes/reviewRoutes.js';
@@ -699,7 +701,11 @@ app.get(
     // per-user DB copy — different users may have locally diverged the images
     // array, and this route is unauthenticated so we have no user context.
     try {
-      const exercise = await freeExerciseDBService.getExerciseById(exerciseId);
+      const exercise = await freeExerciseDBService.getExerciseById(
+        // A route parameter is a string; the template it went into before
+        // read an array the same way.
+        String(exerciseId)
+      );
       if (!exercise) {
         return res.status(404).send('Exercise not found.');
       }
@@ -855,6 +861,7 @@ app.use('/api/integrations/strava', stravaRoutes);
 app.use('/api/integrations/hevy', hevyRoutes);
 app.use('/api/integrations/liftosaur', liftosaurRoutes);
 app.use('/api/integrations/intervals', intervalsRoutes);
+app.use('/api/integrations/zeppbridge', zeppBridgeRoutes);
 app.use('/api/mood', moodRoutes);
 app.use('/api/fasting', fastingRoutes);
 app.use('/api/admin', adminRoutes);
@@ -880,6 +887,7 @@ app.use('/api/v2/shoes', shoeRoutesV2);
 app.use('/api/v2/plate-inventory', plateInventoryRoutesV2);
 app.use('/api/v2/action-tags', actionTagRoutesV2);
 app.use('/api/v2/routes', routeRoutesV2);
+app.use('/api/v2/challenges', challengeRoutesV2);
 app.use('/api/workout-presets', workoutPresetRoutes);
 app.use('/api/workout-plan-templates', workoutPlanTemplateRoutes);
 app.use('/api/review', reviewRoutes);

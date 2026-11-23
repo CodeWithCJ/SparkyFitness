@@ -166,7 +166,9 @@ const Auth = () => {
   // which aborts the first -- the AbortError swallowed below. Read it through a
   // ref so a preferences load cannot disturb an in-flight request.
   const loggingLevelRef = useRef(loggingLevel);
-  loggingLevelRef.current = loggingLevel;
+  useEffect(() => {
+    loggingLevelRef.current = loggingLevel;
+  });
   const passkeyAutofillStartedRef = useRef(false);
 
   useEffect(() => {

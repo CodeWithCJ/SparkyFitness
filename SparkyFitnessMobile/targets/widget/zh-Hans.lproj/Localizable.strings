@@ -34,3 +34,7 @@
 "widget.water.title" = "水";
 "widget.control.scan_food.name" = "扫描食物";
 "widget.control.search_food.name" = "记录食物";
+"widget.kj_left" = "剩 kJ";
+"widget.kj" = "kJ";
+"widget.a11y.kj_left" = "剩 %@ kJ";
+"widget.a11y.kj" = "%@ kJ";

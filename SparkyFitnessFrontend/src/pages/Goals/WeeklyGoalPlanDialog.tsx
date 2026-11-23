@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { useOnChange } from '@/hooks/useOnChange';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CalendarDays } from 'lucide-react';
@@ -26,7 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   useCreateWeeklyPlanMutation,
   useUpdateWeeklyPlanMutation,
@@ -69,7 +70,7 @@ export const WeeklyGoalPlanDialog = ({
   const [currentWeeklyPlan, setCurrentWeeklyPlan] =
     useState<WeeklyGoalPlan | null>(null);
 
-  useEffect(() => {
+  useOnChange([open, plan], () => {
     if (open) {
       if (plan) {
         setCurrentWeeklyPlan({ ...plan });
@@ -80,7 +81,7 @@ export const WeeklyGoalPlanDialog = ({
         } as WeeklyGoalPlan);
       }
     }
-  }, [open, plan]);
+  });
 
   const handleSaveWeeklyPlan = async () => {
     if (!currentWeeklyPlan || !user) return;

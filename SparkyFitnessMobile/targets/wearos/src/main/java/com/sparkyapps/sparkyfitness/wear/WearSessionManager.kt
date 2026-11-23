@@ -23,19 +23,22 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import androidx.core.content.ContextCompat
-import com.google.android.gms.wearable.DataClient
-import com.google.android.gms.wearable.Wearable
-import com.google.android.gms.wearable.WearableListenerService
 import com.SparkyApps.SparkyFitnessMobile.R
-import kotlinx.coroutines.CoroutineScope
+import com.google.android.gms.wearable.Asset
+import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMap
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.Wearable
+import com.google.android.gms.wearable.WearableListenerService
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -57,6 +60,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
   val workoutStore = WorkoutSessionStore(appContext)
   val recordingStore = RecordingStore()
   val runStore = WatchRunStore(appContext)
+  val demoStore = ExerciseDemoStore(appContext)
+  val mediaStore = MediaControlStore(appContext)
   val sensorsController = WatchSensorsController(appContext, this)
 
   private val _requestedPage = MutableStateFlow<WatchPage?>(null)
@@ -68,6 +73,20 @@ class WearSessionManager private constructor(private val appContext: Context) :
   private var telemetryOwner: String = "watch"
   private val seenCommandKeys = LinkedHashSet<String>()
   private val lastContextRequestMs = AtomicLong(0L)
+  private val outboundSeq = AtomicLong(0L)
+
+  private sealed interface OutboundOp {
+    data class Send(
+      val payload: JSONObject,
+      val queueType: String,
+      val queueKey: String,
+      val onResult: ((Boolean) -> Unit)? = null
+    ) : OutboundOp
+
+    data object ClearQueued : OutboundOp
+  }
+
+  private val outboundChannel = Channel<OutboundOp>(Channel.UNLIMITED)
 
   private fun firstTime(key: String?): Boolean {
     if (key.isNullOrEmpty()) return true
@@ -80,21 +99,50 @@ class WearSessionManager private constructor(private val appContext: Context) :
 
   init {
     Haptics.init(appContext)
+    Haptics.hapticsEnabledProvider = { checkInStore.watchContext.value.effectiveHapticsEnabled }
+    Haptics.restBuzzEnabledProvider = { checkInStore.watchContext.value.effectiveRestBuzzEnabled }
     checkInStore.session = this
     workoutStore.session = this
     workoutStore.sensors = sensorsController
     workoutStore.checkInStore = checkInStore
+    workoutStore.demoStore = demoStore
     recordingStore.session = this
     recordingStore.sensors = sensorsController
     recordingStore.checkInStore = checkInStore
     runStore.session = this
     runStore.sensors = sensorsController
     runStore.checkInStore = checkInStore
+    mediaStore.session = this
 
     sensorsController.startPassiveStepCounter { stepsToday ->
       checkInStore.updateLiveSteps(stepsToday)
     }
+    startOutboundWorker()
     pullInitialDataItems()
+  }
+
+  private fun startOutboundWorker() {
+    scope.launch(Dispatchers.IO) {
+      for (op in outboundChannel) {
+        when (op) {
+          is OutboundOp.Send -> {
+            val live = sendLiveMessage(op.payload)
+            if (!live) {
+              enqueueDataItem(op.queueType, op.queueKey, op.payload)
+            }
+            op.onResult?.invoke(live)
+          }
+          OutboundOp.ClearQueued -> {
+            try {
+              Wearable.getDataClient(appContext).deleteDataItems(
+                android.net.Uri.parse("wear://*$PREFIX_WATCH_TO_PHONE"),
+                DataClient.FILTER_PREFIX
+              ).await()
+            } catch (_: Throwable) {}
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -156,6 +204,19 @@ class WearSessionManager private constructor(private val appContext: Context) :
             val dataMap = DataMapItem.fromDataItem(item).dataMap
             val raw = dataMap.getString("json") ?: continue
             handleIncomingPayloadString(raw)
+          } else if (path.startsWith(PREFIX_PHONE_TO_WATCH_EXERCISE_IMAGE)) {
+            val dataMap = DataMapItem.fromDataItem(item).dataMap
+            val key = dataMap.getString("key")
+            val index = dataMap.getInt("index", -1)
+            val validTarget = !key.isNullOrEmpty() && index in 0..ExerciseDemoFiles.MAX_INDEX
+            val gen = demoStore.currentGeneration()
+            val asset = dataMap.getAsset("asset")
+            val bytes = if (validTarget) readExerciseImageBytes(dataMap) else null
+            if (validTarget && bytes == null && asset != null) continue
+            if (validTarget && bytes != null) {
+              demoStore.receive(key!!, index, bytes, workoutStore.activeDemoKeys(), expectedGeneration = gen)
+            }
+            Wearable.getDataClient(appContext).deleteDataItems(item.uri).await()
           } else if (path.startsWith(PREFIX_PHONE_TO_WATCH)) {
             val dataMap = DataMapItem.fromDataItem(item).dataMap
             val raw = dataMap.getString("json")
@@ -175,6 +236,25 @@ class WearSessionManager private constructor(private val appContext: Context) :
     }
   }
 
+  private suspend fun readExerciseImageBytes(dataMap: DataMap): ByteArray? {
+    dataMap.getByteArray("data")?.let { return it }
+    val asset = dataMap.getAsset("asset") ?: return null
+    return readAssetBytes(asset)
+  }
+
+  private suspend fun readAssetBytes(asset: Asset): ByteArray? {
+    return try {
+      val response = Wearable.getDataClient(appContext).getFdForAsset(asset).await()
+      try {
+        response.inputStream?.use { it.readBytes() }
+      } finally {
+        response.release()
+      }
+    } catch (_: Throwable) {
+      null
+    }
+  }
+
   fun onMessageReceived(event: MessageEvent) {
     val raw = String(event.data, StandardCharsets.UTF_8)
     handleIncomingPayloadString(raw)
@@ -187,6 +267,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
       if (event.type == DataEvent.TYPE_DELETED && path == PATH_CONTEXT) {
         scope.launch {
           checkInStore.clearAccountState(newOwnerId = null)
+          demoStore.clear()
           clearQueuedWatchTransfers()
         }
         continue
@@ -195,6 +276,25 @@ class WearSessionManager private constructor(private val appContext: Context) :
       if (path == PATH_CONTEXT) {
         val raw = DataMapItem.fromDataItem(item).dataMap.getString("json") ?: continue
         handleIncomingPayloadString(raw)
+      } else if (path.startsWith(PREFIX_PHONE_TO_WATCH_EXERCISE_IMAGE)) {
+        val dataMap = DataMapItem.fromDataItem(item).dataMap
+        val key = dataMap.getString("key")
+        val index = dataMap.getInt("index", -1)
+        val validTarget = !key.isNullOrEmpty() && index in 0..ExerciseDemoFiles.MAX_INDEX
+        val inlineBytes = dataMap.getByteArray("data")
+        val asset = dataMap.getAsset("asset")
+        val gen = demoStore.currentGeneration()
+        val uri = item.uri
+        scope.launch(Dispatchers.IO) {
+          val bytes = if (validTarget) inlineBytes ?: asset?.let { readAssetBytes(it) } else null
+          if (validTarget && bytes == null && asset != null) return@launch
+          if (validTarget && bytes != null) {
+            demoStore.receive(key!!, index, bytes, workoutStore.activeDemoKeys(), expectedGeneration = gen)
+          }
+          try {
+            Wearable.getDataClient(appContext).deleteDataItems(uri).await()
+          } catch (_: Throwable) {}
+        }
       } else if (path.startsWith(PREFIX_PHONE_TO_WATCH)) {
         val raw = DataMapItem.fromDataItem(item).dataMap.getString("json")
         if (raw != null) handleIncomingPayloadString(raw)
@@ -224,7 +324,20 @@ class WearSessionManager private constructor(private val appContext: Context) :
     when {
       type == "accountCleared" -> {
         checkInStore.clearAccountState(newOwnerId = null)
+        demoStore.clear()
         clearQueuedWatchTransfers()
+      }
+      type == "exerciseImage" -> {
+        val key = json.optString("key")
+        val index = json.optInt("index", -1)
+        val dataBase64 = json.optString("dataBase64")
+        if (key.isNotEmpty() && index in 0..ExerciseDemoFiles.MAX_INDEX && dataBase64.isNotEmpty()) {
+          val keepKeys = workoutStore.activeDemoKeys()
+          val gen = demoStore.currentGeneration()
+          scope.launch(Dispatchers.IO) {
+            demoStore.receiveBase64(key, index, dataBase64, keepKeys, expectedGeneration = gen)
+          }
+        }
       }
       type == "context" || json.has("today") || json.has("caloriesConsumed") || json.has("waterConsumedMl") -> {
         checkInStore.applyRemoteContextJson(json, rawJson = raw)
@@ -252,10 +365,12 @@ class WearSessionManager private constructor(private val appContext: Context) :
         bringAppToForeground()
       }
       type == "workoutStop" -> {
-        val identity = listOf(json.optString("sessionId"), json.optString("stoppedAt"))
+        val sessionId = json.optString("sessionId")
+        val identity = listOf(sessionId, json.optString("stoppedAt"))
         if (identity.all { it.isNotEmpty() } &&
           !firstTime("workoutStop:${identity.joinToString("|")}")) return
-        workoutStore.discardWorkout(notifyPhone = false)
+        val discarded = json.optBoolean("discarded", false)
+        workoutStore.handleRemoteWorkoutStop(sessionId = sessionId, discarded = discarded)
       }
       type == "setTargetsUpdate" || type == "setTargets" -> {
         val update = ContextPayloadMapper.parseSetTargets(json) ?: return
@@ -298,6 +413,9 @@ class WearSessionManager private constructor(private val appContext: Context) :
           runStore.acknowledgeCue(id)
         }
       }
+      type == "mediaState" -> {
+        mediaStore.applyRemoteMediaState(ContextPayloadMapper.parsePhoneMediaState(json))
+      }
     }
   }
 
@@ -311,13 +429,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
   }
 
   override fun sendWeightCheckIn(payload: JSONObject, onResult: (Boolean) -> Unit) {
-    scope.launch(Dispatchers.IO) {
-      val live = sendLiveMessage(payload)
-      if (!live) {
-        enqueueDataItem("checkIn", payload.optString("clientId", UUID.randomUUID().toString()), payload)
-      }
-      onResult(live)
-    }
+    val key = payload.optString("clientId").ifEmpty { UUID.randomUUID().toString() }
+    outboundChannel.trySend(OutboundOp.Send(payload, "checkIn", key, onResult))
   }
 
   override fun sendWorkoutStartRequest(payload: JSONObject, onResult: (Boolean) -> Unit) {
@@ -328,13 +441,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
   }
 
   override fun sendMessageOrQueue(payload: JSONObject, queueType: String) {
-    scope.launch(Dispatchers.IO) {
-      val live = sendLiveMessage(payload)
-      if (!live) {
-        val key = payload.optString("clientId").ifEmpty { UUID.randomUUID().toString() }
-        enqueueDataItem(queueType, key, payload)
-      }
-    }
+    val key = payload.optString("clientId").ifEmpty { UUID.randomUUID().toString() }
+    outboundChannel.trySend(OutboundOp.Send(payload, queueType, key))
   }
 
   override fun sendLiveOnly(payload: JSONObject) {
@@ -343,43 +451,45 @@ class WearSessionManager private constructor(private val appContext: Context) :
     }
   }
 
-  override fun sendWatchRunFinished(result: WatchRunResult) {
-    val payload = OutboundPayloads.runFinished(result)
+  override fun sendLiveWithResult(payload: JSONObject, onResult: (Boolean) -> Unit) {
     scope.launch(Dispatchers.IO) {
       val live = sendLiveMessage(payload)
-      if (!live) {
-        enqueueDataItem("runFinished", result.clientId, payload)
-      }
+      onResult(live)
     }
+  }
+
+  override fun isPhoneConnected(onResult: (Boolean) -> Unit) {
+    scope.launch(Dispatchers.IO) {
+      val connected = try {
+        Wearable.getNodeClient(appContext).connectedNodes.await().isNotEmpty()
+      } catch (_: Throwable) {
+        false
+      }
+      onResult(connected)
+    }
+  }
+
+  override fun sendWatchRunFinished(result: WatchRunResult) {
+    val payload = OutboundPayloads.runFinished(result)
+    outboundChannel.trySend(OutboundOp.Send(payload, "runFinished", result.clientId))
   }
 
   override fun sendHeartRateBatch(batch: HeartRateBatch) {
     if (telemetryOwner == "phone") return
     val payload = OutboundPayloads.heartRateBatch(batch)
-    scope.launch(Dispatchers.IO) {
-      val live = sendLiveMessage(payload)
-      if (!live) {
-        enqueueDataItem("heartRateBatch", batch.clientId, payload)
-      }
-    }
+    outboundChannel.trySend(OutboundOp.Send(payload, "heartRateBatch", batch.clientId))
   }
 
   override fun clearQueuedWatchTransfers() {
-    scope.launch(Dispatchers.IO) {
-      try {
-        Wearable.getDataClient(appContext).deleteDataItems(
-          android.net.Uri.parse("wear://*$PREFIX_WATCH_TO_PHONE"),
-          DataClient.FILTER_PREFIX
-        ).await()
-      } catch (_: Throwable) {}
-    }
+    outboundChannel.trySend(OutboundOp.ClearQueued)
   }
 
   private suspend fun sendLiveMessage(payload: JSONObject): Boolean {
     return try {
+      val bytes = payload.toString().toByteArray(StandardCharsets.UTF_8)
+      if (bytes.size > MAX_INLINE_WEARABLE_BYTES) return false
       val nodes = Wearable.getNodeClient(appContext).connectedNodes.await()
       if (nodes.isEmpty()) return false
-      val bytes = payload.toString().toByteArray(StandardCharsets.UTF_8)
       val msgClient = Wearable.getMessageClient(appContext)
       for (node in nodes) {
         msgClient.sendMessage(node.id, PATH_MESSAGE, bytes).await()
@@ -396,6 +506,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
       val req = PutDataMapRequest.create("$PREFIX_WATCH_TO_PHONE$type/$safeKey").apply {
         dataMap.putString("json", payload.toString())
         dataMap.putLong("ts", System.currentTimeMillis())
+        dataMap.putLong("seq", outboundSeq.incrementAndGet())
       }.asPutDataRequest().setUrgent()
       Wearable.getDataClient(appContext).putDataItem(req).await()
     } catch (_: Throwable) {}
@@ -405,7 +516,9 @@ class WearSessionManager private constructor(private val appContext: Context) :
     const val PATH_CONTEXT = "/sparky/context"
     const val PATH_MESSAGE = "/sparky/message"
     const val PREFIX_PHONE_TO_WATCH = "/sparky/transfer/phone/"
+    const val PREFIX_PHONE_TO_WATCH_EXERCISE_IMAGE = "/sparky/transfer/phone/exerciseImage/"
     const val PREFIX_WATCH_TO_PHONE = "/sparky/transfer/watch/"
+    private const val MAX_INLINE_WEARABLE_BYTES = 80 * 1024
 
     @Volatile
     private var INSTANCE: WearSessionManager? = null

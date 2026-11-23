@@ -1,6 +1,7 @@
-import { getCaffeineDosesForWindow } from '../models/foodMisc.js';
+import { getNutrientDosesForWindow } from '../models/foodMisc.js';
 import { getUserPreferences } from '../models/preferenceRepository.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
+import { resolveDoseInstant } from '../utils/doseInstant.js';
 import {
   addDays,
   localDateTimeToUtc,
@@ -55,35 +56,19 @@ export async function getActiveCaffeineKinetics(
   const startDate = addDays(date, -2);
   const endDate = bedtimeCalendarDate;
 
-  const rawDoses = await getCaffeineDosesForWindow(userId, startDate, endDate);
+  const rawDoses = await getNutrientDosesForWindow(
+    userId,
+    startDate,
+    endDate,
+    'caffeine_mg'
+  );
 
   let hasEstimatedTimes = false;
   const windowEndMs = new Date(bedtimeAt).getTime() + 2 * 60 * 60 * 1000;
   const rawDosesMapped: CaffeineDose[] = [];
 
   for (const raw of rawDoses) {
-    let atInstant: string;
-    let isEstimated: boolean;
-
-    if (raw.source === 'supplement' && raw.taken_at) {
-      atInstant = new Date(raw.taken_at).toISOString();
-      isEstimated = false;
-    } else {
-      let timeStr: string;
-      if (raw.entry_time) {
-        timeStr = raw.entry_time.slice(0, 5);
-        isEstimated = false;
-      } else if (raw.meal_default_time) {
-        timeStr = raw.meal_default_time.slice(0, 5);
-        isEstimated = true;
-      } else {
-        timeStr = '12:00';
-        isEstimated = true;
-      }
-
-      const utcDate = localDateTimeToUtc(`${raw.entry_date}T${timeStr}`, tz);
-      atInstant = utcDate.toISOString();
-    }
+    const { at: atInstant, isEstimated } = resolveDoseInstant(raw, tz);
 
     // Exclude doses after the current day's active window (bedtime + 2h)
     if (new Date(atInstant).getTime() <= windowEndMs) {
@@ -92,7 +77,7 @@ export async function getActiveCaffeineKinetics(
       }
       rawDosesMapped.push({
         at: atInstant,
-        mg: raw.caffeine_mg,
+        mg: raw.amount,
         name: raw.name,
         is_estimated: isEstimated,
       });

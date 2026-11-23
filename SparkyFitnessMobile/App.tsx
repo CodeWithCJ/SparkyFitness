@@ -1,5 +1,5 @@
 import './global.css'
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as SplashScreen from 'expo-splash-screen';
@@ -20,8 +20,9 @@ import { FoodImageSourceProvider } from './src/components/FoodImageSourceProvide
 import { LightboxProvider } from './src/components/LightboxProvider';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
-import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useCycleMode, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, useWatchRouteBridge, usePreferences } from './src/hooks';
+import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, useWatchRouteBridge, usePreferences } from './src/hooks';
 import { useCycleSheetLabel } from './src/hooks/useAddMenuItemLabel';
+import { useAddMenuItemAvailable } from './src/hooks/useAddMenuItemAvailable';
 import { configureRunLiveActivity } from './src/services/runLiveActivity';
 import { useWatchWorkoutStart } from './src/hooks/useWatchWorkoutStart';
 import { useLiveWorkoutInputsCapture } from './src/hooks/useLiveWorkoutInputsCapture';
@@ -31,10 +32,15 @@ import {
 } from './src/hooks/useStartLiveWorkout';
 import WatchConnectivity from './modules/watch-connectivity';
 import { useAppStartup } from './src/hooks/useAppStartup';
+import { useOfflineUploads } from './src/hooks/useOfflineUploads';
 import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useAppLanguageForegroundSync } from './src/hooks/useAppLanguageForegroundSync';
 import { useAutoSyncOnOpen } from './src/hooks/useAutoSyncOnOpen';
 import { useAddSheetActions } from './src/hooks/useAddSheetActions';
+import { useCopyFromYesterday } from './src/hooks/useCopyFromYesterday';
+import CopyFromYesterdaySheet, {
+  type CopyFromYesterdaySheetRef,
+} from './src/components/CopyFromYesterdaySheet';
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import FoodPhotoFlow from './src/components/FoodPhotoFlow';
@@ -48,10 +54,13 @@ import {
   SafeLabResultAdd,
   SafeLabResultDetail,
   SafeLabResults,
+  SafeChallenges,
+  SafeChallengeDetail,
+  SafeChallengeJoin,
   SafePersonalRecords,
+  SafeTrainingCalendar,
   SafeWatchRunLive,
   SafeRunPrograms,
-  SafeRunProgramCalendar,
   SafeRunProgramEdit,
   SafeRoutes,
   SafeRouteDetail,
@@ -96,6 +105,7 @@ import {
   SafeActivityAdd,
   SafeWorkoutDetail,
   SafeActiveWorkout,
+  SafeWorkoutReorder,
   SafeWorkoutComplete,
   SafeActivityDetail,
   SafeFastingDetail,
@@ -133,6 +143,7 @@ import {
   SafeWatchSettings,
   SafeAddMenuSettings,
   SafeDiarySettings,
+  SafeOfflineSettings,
   SafeCustomCategories,
   SafeCustomCategoryEdit,
   SafeWorkoutSettings,
@@ -168,6 +179,7 @@ import {
   SafeFamilyMealDetail,
   SafeFamilyCopyReview,
   SafeCycleSettings,
+  SafeFeatureSettings,
   SafeCycleOnboarding,
   SafeCycleHub,
   SafeCycleLogModal,
@@ -215,6 +227,7 @@ import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import MoodCheckinReminderReconciler from './src/components/MoodCheckinReminderReconciler';
 import OralCareReminderReconciler from './src/components/OralCareReminderReconciler';
+import ChallengeWeekNotificationReconciler from './src/components/ChallengeWeekNotificationReconciler';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
 import { useIOSWidgetLanguageRefresh } from './src/hooks/useIOSWidgetLanguageRefresh';
@@ -244,6 +257,15 @@ function WatchCheckInGate() {
   const { isConnected: isServerConnected } = useServerConnection();
   useWatchCheckInBridge(isServerConnected);
   useWatchFastingBridge(isServerConnected);
+  return null;
+}
+
+/**
+ * Keeps the phone ready for offline use (#1983). It reads the connection
+ * through useServerConnection, so it must render inside the navigator.
+ */
+function OfflineUploadsGate() {
+  useOfflineUploads();
   return null;
 }
 
@@ -305,9 +327,10 @@ function WatchWorkoutGate() {
   }, [t, distanceUnit]);
   const watchSupported = WatchConnectivity?.isSupported() === true;
   const [telemetryPending, setTelemetryPending] = useState(false);
-  const { isConnected: isServerConnected } = useServerConnection({
-    enablePolling: watchSupported && telemetryPending,
-  });
+  const { isConnected: isServerConnected, status: serverConnectionStatus } =
+    useServerConnection({
+      enablePolling: watchSupported && telemetryPending,
+    });
   const watchStartNavigation = useMemo(
     () =>
       ({
@@ -330,13 +353,22 @@ function WatchWorkoutGate() {
     handleWatchFinishedWorkout
   );
   // A watch-started workout never opens the active-workout screen, which is
-  // what normally loads the history its targets are resolved from.
-  useLiveWorkoutInputsCapture(isServerConnected);
+  // what normally loads the history its targets are resolved from. With the
+  // server away the history comes from what this phone saved (#1983).
+  useLiveWorkoutInputsCapture(
+    isServerConnected || serverConnectionStatus === 'unreachable'
+  );
   useWatchSetTargetsSync(watchSupported);
   useWatchRecordingBridge(watchSupported);
   useWatchRunBridge(watchSupported, isServerConnected);
   useWatchRouteBridge(watchSupported);
-  useWatchWorkoutStart(watchSupported, isServerConnected, startLiveWorkout);
+  // A start from the wrist goes ahead with the server away too: the workout
+  // then begins on this phone and uploads later (#1983).
+  useWatchWorkoutStart(
+    watchSupported,
+    isServerConnected || serverConnectionStatus === 'unreachable',
+    startLiveWorkout
+  );
   useWatchPlanSync(watchSupported);
   useWatchWorkoutEdit(watchSupported);
   return null;
@@ -375,6 +407,10 @@ function AppContent() {
   const { shouldYieldObserverSync } = useAutoSyncOnOpen({ initialRoute, syncMutation });
   useAppStartup({ shouldYieldObserverSync });
 
+  const copyFromYesterdaySheetRef = useRef<CopyFromYesterdaySheetRef>(null);
+  const { copyFromYesterday, isPending: copyFromYesterdayPending } =
+    useCopyFromYesterday();
+
   const {
     rememberActiveTab,
     getLastActiveTab,
@@ -390,14 +426,19 @@ function AppContent() {
     handleStartCheckIn,
     handleAddMindfulness,
     handleAddOralCare,
+    handleCopyFromYesterday,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,
     handleSyncHealthData,
     handleAddSheetDismissWithoutAction,
-  } = useAddSheetActions({ syncMutation });
+  } = useAddSheetActions({
+    syncMutation,
+    presentCopyFromYesterday: (date) =>
+      copyFromYesterdaySheetRef.current?.present(date),
+  });
 
-  const { enabled: cycleEnabled } = useCycleMode();
+  const isAddMenuItemAvailable = useAddMenuItemAvailable();
   const cycleSheetLabel = useCycleSheetLabel();
 
   const [primary, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
@@ -501,6 +542,8 @@ function AppContent() {
         OralCare: 'oral-care',
         // Route generation; without a routing provider the screen explains that.
         RouteGenerate: 'routes/generate',
+        // Planned against completed training: sparkyfitnessmobile://training-calendar
+        TrainingCalendar: 'training-calendar',
         // An NFC tag tap: https://tag.sparkyfitness.com/t/<code> (#941).
         ActionTagScan: 't/:code',
       },
@@ -528,6 +571,7 @@ function AppContent() {
     >
       <WatchCheckInGate />
       <QuickActionsGate />
+      <OfflineUploadsGate />
       <WatchWorkoutGate />
       <PendingPresetUpdatePrompt />
       <SafeAreaProvider>
@@ -536,7 +580,7 @@ function AppContent() {
             with "No safe area value available". */}
         <LightboxProvider>
         <UniwindInsetsBridge />
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <HorizontalInsetsFrame>
         <Stack.Navigator
           screenLayout={usesLiquidGlassNavigation
@@ -650,11 +694,6 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.runPrograms', { defaultValue: 'Training programs' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
           />
           <Stack.Screen
-            name="RunProgramCalendar"
-            component={SafeRunProgramCalendar}
-            options={createStackScreenOptions(t('screens.runProgramCalendar', { defaultValue: 'Program calendar' }), { headerBackTitle: t('screens.runPrograms', { defaultValue: 'Training programs' }) })}
-          />
-          <Stack.Screen
             name="RunProgramRace"
             component={SafeRunProgramRace}
             options={createStackScreenOptions(t('screens.runProgramRace', { defaultValue: 'Plan a race' }), { headerBackTitle: t('screens.runPrograms', { defaultValue: 'Training programs' }) })}
@@ -677,7 +716,7 @@ function AppContent() {
           <Stack.Screen
             name="RunProgramWorkout"
             component={SafeRunProgramWorkout}
-            options={createStackScreenOptions(t('screens.runProgramWorkout', { defaultValue: 'Workout' }), { headerBackTitle: t('screens.runProgramCalendar', { defaultValue: 'Program calendar' }) })}
+            options={createStackScreenOptions(t('screens.runProgramWorkout', { defaultValue: 'Workout' }), { headerBackTitle: t('screens.trainingCalendar', { defaultValue: 'Training calendar' }) })}
           />
           <Stack.Screen
             name="Routes"
@@ -705,9 +744,33 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.personalRecords', { defaultValue: 'Personal records' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
           />
           <Stack.Screen
+            name="TrainingCalendar"
+            component={SafeTrainingCalendar}
+            options={createStackScreenOptions(t('screens.trainingCalendar', { defaultValue: 'Training calendar' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
             name="LabResults"
             component={SafeLabResults}
             options={createStackScreenOptions(t('screens.labResults', { defaultValue: 'Lab results' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="Challenges"
+            component={SafeChallenges}
+            options={createStackScreenOptions(t('challenges.title', { defaultValue: 'Challenges' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="ChallengeDetail"
+            component={SafeChallengeDetail}
+            options={({ route }) => createStackScreenOptions(route.params.name ?? t('challenges.title', { defaultValue: 'Challenges' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="ChallengeJoin"
+            component={SafeChallengeJoin}
+            options={createStackScreenOptions(t('challenges.join.title', { defaultValue: 'Join a challenge' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="LabResultDetail"
@@ -1083,6 +1146,13 @@ function AppContent() {
             }}
           />
           <Stack.Screen
+            name="WorkoutReorder"
+            component={SafeWorkoutReorder}
+            options={createStackScreenOptions(t('workoutReorder.title', { defaultValue: 'Reorder exercises' }), {
+              presentation: 'modal',
+            })}
+          />
+          <Stack.Screen
             name="WorkoutComplete"
             component={SafeWorkoutComplete}
             options={{
@@ -1304,6 +1374,11 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.workoutSettings', { defaultValue: 'Workout Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
+            name="OfflineSettings"
+            component={SafeOfflineSettings}
+            options={createStackScreenOptions(t('screens.offlineSettings', { defaultValue: 'Offline' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
             name="WarmupSettings"
             component={SafeWarmupSettings}
             options={createStackScreenOptions(t('screens.warmupSettings', { defaultValue: 'Warm-up Calculator' }), { headerBackTitle: t('screens.workoutSettings', { defaultValue: 'Workout Settings' }) })}
@@ -1347,6 +1422,11 @@ function AppContent() {
             name="WhatsNew"
             component={SafeWhatsNew}
             options={createStackScreenOptions(t('screens.whatsNew', { defaultValue: "What's New" }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="FeatureSettings"
+            component={SafeFeatureSettings}
+            options={createStackScreenOptions(t('screens.features', { defaultValue: 'Features' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
             name="CycleSettings"
@@ -1527,13 +1607,19 @@ function AppContent() {
           onAddMood={handleAddMood}
           onAddMindfulness={handleAddMindfulness}
           onAddOralCare={handleAddOralCare}
+          onCopyFromYesterday={handleCopyFromYesterday}
           onRecordActivity={handleRecordActivity}
           onAskSparky={handleAskSparky}
           onStartCheckIn={handleStartCheckIn}
           onOpenCycle={handleOpenCycle}
-          showCycleCard={cycleEnabled}
+          showCycleCard={isAddMenuItemAvailable('wellness')}
           cycleLabel={cycleSheetLabel}
           onDismissWithoutAction={handleAddSheetDismissWithoutAction}
+        />
+        <CopyFromYesterdaySheet
+          ref={copyFromYesterdaySheetRef}
+          isPending={copyFromYesterdayPending}
+          onCopy={copyFromYesterday}
         />
         <ReauthModal
           visible={showReauthModal}
@@ -1572,6 +1658,7 @@ function AppContent() {
         <MedicationReminderReconciler />
         <MoodCheckinReminderReconciler />
         <OralCareReminderReconciler />
+        <ChallengeWeekNotificationReconciler />
         <SafeAreaToast />
         </LightboxProvider>
       </SafeAreaProvider>

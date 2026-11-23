@@ -267,7 +267,7 @@ If you have run a [fitness test](/features/exercises/fitness-tests), the zones a
 
 ## Maps on Android
 
-The route map uses Apple Maps on iOS. On Android it uses OpenStreetMap (drawn natively with MapLibre) unless the build was made with a Google Maps API key, in which case it keeps Google Maps. The OpenStreetMap path needs no key, billing account or Google Play Services; see [Environment Variables](/install/environment-variables) for `GOOGLE_MAPS_ANDROID_API_KEY`. Its tiles come from OpenFreeMap and need a network connection; when they cannot load, the map area stays blank while the rest of the screen works normally.
+The route map uses Apple Maps on iOS. On Android it uses OpenStreetMap (drawn natively with MapLibre) unless the build was made with a Google Maps API key, in which case the route editors keep Google Maps. The still route preview on a finished activity or saved route always uses OpenStreetMap on Android, because Google Maps shows a blank map rather than an error when its key is refused. The OpenStreetMap path needs no key, billing account or Google Play Services; see [Environment Variables](/install/environment-variables) for `GOOGLE_MAPS_ANDROID_API_KEY`. Its tiles come from OpenFreeMap and need a network connection; when they cannot load, the route preview falls back to the plain route line.
 
 ## Weather
 

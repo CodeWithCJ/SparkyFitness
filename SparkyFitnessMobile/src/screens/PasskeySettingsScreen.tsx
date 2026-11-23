@@ -42,6 +42,37 @@ import type { RootStackScreenProps } from '../types/navigation';
 
 type PasskeySettingsScreenProps = RootStackScreenProps<'PasskeySettings'>;
 
+async function loadPasskeyList(
+  url: string,
+  sessionToken: string,
+  handlers: {
+    proxyHeaders: Record<string, string>;
+    onLoginEnabled: (enabled: boolean) => void;
+    onList: (list: MobilePasskeyRecord[]) => void;
+    onError: (message: string) => void;
+    onSettled: () => void;
+  }
+) {
+  // Unknown settings leave adding available; the server still has the final say.
+  fetchAuthSettings(url, handlers.proxyHeaders)
+    .then((settings) =>
+      handlers.onLoginEnabled(settings.passkey?.enabled !== false)
+    )
+    .catch(() => handlers.onLoginEnabled(true));
+  try {
+    const list = await getPasskeys(url, sessionToken);
+    // Sort newest first
+    list.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+    handlers.onList(list);
+  } catch (err) {
+    handlers.onError(err instanceof Error ? err.message : String(err));
+  }
+  handlers.onSettled();
+}
+
 const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
   const { t } = useTranslation();
   const passkeyAuthMethods =
@@ -80,54 +111,57 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
   const [reauthVisible, setReauthVisible] = useState(false);
   const pendingPasskeyName = useRef<string | null>(null);
 
-  const fetchList = React.useCallback(async () => {
+  const canFetchList =
+    !!activeConfig &&
+    activeConfig.authType === 'session' &&
+    !!activeConfig.sessionToken;
+
+  // A new account starts loading again; one that cannot list passkeys is done.
+  const [listedConfig, setListedConfig] = useState(activeConfig);
+  if (listedConfig !== activeConfig) {
+    setListedConfig(activeConfig);
+    setLoading(canFetchList);
+  } else if (!canFetchList && loading) {
+    setLoading(false);
+  }
+
+  const loadList = React.useCallback(async () => {
     if (
       !activeConfig ||
       activeConfig.authType !== 'session' ||
       !activeConfig.sessionToken
     ) {
+      return;
+    }
+    await loadPasskeyList(activeConfig.url, activeConfig.sessionToken, {
+      proxyHeaders: proxyHeadersToRecord(activeConfig.proxyHeaders),
+      onLoginEnabled: setPasskeyLoginEnabled,
+      onList: setPasskeys,
+      onError: (msg) =>
+        Toast.show({
+          type: 'error',
+          text1: t('common.error', { defaultValue: 'Error' }),
+          text2: t('passkeySettings.loadFailed', {
+            defaultValue: 'Failed to load passkeys: {{error}}',
+            error: msg,
+          }),
+        }),
+      onSettled: () => setLoading(false),
+    });
+  }, [activeConfig, t]);
+
+  const fetchList = React.useCallback(async () => {
+    if (!canFetchList) {
       setLoading(false);
       return;
     }
     setLoading(true);
-    // Unknown settings leave adding available; the server still has the final say.
-    fetchAuthSettings(
-      activeConfig.url,
-      proxyHeadersToRecord(activeConfig.proxyHeaders)
-    )
-      .then((settings) =>
-        setPasskeyLoginEnabled(settings.passkey?.enabled !== false)
-      )
-      .catch(() => setPasskeyLoginEnabled(true));
-    try {
-      const list = await getPasskeys(
-        activeConfig.url,
-        activeConfig.sessionToken
-      );
-      // Sort newest first
-      list.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-      setPasskeys(list);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      Toast.show({
-        type: 'error',
-        text1: t('common.error', { defaultValue: 'Error' }),
-        text2: t('passkeySettings.loadFailed', {
-          defaultValue: 'Failed to load passkeys: {{error}}',
-          error: msg,
-        }),
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [activeConfig, t]);
+    await loadList();
+  }, [canFetchList, loadList]);
 
   useEffect(() => {
-    fetchList();
-  }, [fetchList]);
+    void loadList();
+  }, [loadList]);
 
   const registerPasskeyWithConfig = async (
     url: string,
@@ -308,10 +342,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
   const isSessionAuth = activeConfig && activeConfig.authType === 'session';
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <ScrollView

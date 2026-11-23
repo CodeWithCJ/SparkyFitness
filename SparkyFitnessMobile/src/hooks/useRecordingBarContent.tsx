@@ -154,7 +154,7 @@ export function useRecordingBarContent({
           }),
           style: 'destructive',
           onPress: () => {
-            discardRecording().catch((error: unknown) =>
+            discardRecording({ discarded: true }).catch((error: unknown) =>
               report(
                 t('recordActivity.errors.discard', {
                   defaultValue: 'Could not discard recording',

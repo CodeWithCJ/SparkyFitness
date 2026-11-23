@@ -166,10 +166,26 @@ if (sparkyEmbedWearOsRelease) {
     tasks.matching { it.name == "mergeReleaseResources" || it.name == "generateReleaseResValues" }.configureEach {
         dependsOn("embedWearOsReleaseApk")
     }
+    // The copy writes into src/release/res/raw, which more tasks read than the
+    // two above (navigation resources, lint, packaging...). Gradle 9 rejects a
+    // task reading another task's output with no ordering between them, so
+    // order every release task after the copy. Ordering only: nothing is added
+    // to the task graph.
+    tasks.configureEach {
+        if (it.name != "embedWearOsReleaseApk" && it.name.contains("Release")) {
+            it.mustRunAfter("embedWearOsReleaseApk")
+        }
+    }
 }
 
 tasks.matching { it.name == "mergeDebugResources" || it.name == "generateDebugResValues" }.configureEach {
     dependsOn("embedWearOsDebugApk")
+}
+// Same ordering rule for the debug copy (see above).
+tasks.configureEach {
+    if (it.name != "embedWearOsDebugApk" && it.name.contains("Debug")) {
+        it.mustRunAfter("embedWearOsDebugApk")
+    }
 }
 `;
       modConfig.modResults.contents = `${modConfig.modResults.contents.trimEnd()}\n${snippet}`;

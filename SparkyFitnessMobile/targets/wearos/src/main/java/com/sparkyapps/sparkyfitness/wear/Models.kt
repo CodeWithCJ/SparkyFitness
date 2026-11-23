@@ -1,23 +1,21 @@
 package com.sparkyapps.sparkyfitness.wear
 
-import androidx.annotation.StringRes
-import com.SparkyApps.SparkyFitnessMobile.R
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-enum class WatchPage(val key: String, val label: String, @StringRes val labelRes: Int) {
-  GOALS("goals", "Goals", R.string.page_goals),
-  WATER("water", "Water", R.string.page_water),
-  MEDICATIONS("medications", "Medications", R.string.page_medications),
-  ENTRY("entry", "Weight", R.string.page_weight),
-  TREND("trend", "Trend", R.string.page_trend),
-  WORKOUT("workout", "Workout", R.string.page_workout),
-  NOW_PLAYING("nowPlaying", "Now Playing", R.string.page_now_playing),
-  FASTING("fasting", "Fasting", R.string.page_fasting),
-  STEPS("steps", "Steps", R.string.page_steps);
+enum class WatchPage(val key: String, val label: String) {
+  GOALS("goals", "Goals"),
+  WATER("water", "Water"),
+  MEDICATIONS("medications", "Medications"),
+  ENTRY("entry", "Weight"),
+  TREND("trend", "Trend"),
+  WORKOUT("workout", "Workout"),
+  NOW_PLAYING("nowPlaying", "Now Playing"),
+  FASTING("fasting", "Fasting"),
+  STEPS("steps", "Steps");
 
   companion object {
     val defaultOrder = listOf(
@@ -33,8 +31,9 @@ enum class WeightUnit(val rawValue: String, val suffix: String) {
   KG("kg", "kg"),
   LBS("lbs", "lbs");
 
-  fun fromKg(kg: Double): Double = if (this == LBS) kg * 2.20462262185 else kg
-  fun toKg(value: Double): Double = if (this == LBS) value / 2.20462262185 else value
+  fun fromKg(kg: Double): Double = if (this == LBS) kg / WeightRounding.KG_PER_LB else kg
+  fun toKg(value: Double): Double = if (this == LBS) value * WeightRounding.KG_PER_LB else value
+  fun displayedFromKg(kg: Double): Double = WeightRounding.displayed(kg = kg, lbs = this == LBS)
 
   companion object {
     fun fromRaw(raw: String?): WeightUnit? = when (raw?.lowercase()) {
@@ -373,6 +372,12 @@ data class WatchContext(
   val energyUnit: String? = null,
   val doubleTapEnabled: Boolean? = null,
   val rpeEnabled: Boolean? = null,
+  val newWorkout: Boolean? = null,
+  val workoutCountdown: Int? = null,
+  val holdCountdown: Boolean? = null,
+  val workoutTopLine: String? = null,
+  val heartRateZoneFloors: List<Double>? = null,
+  val exerciseDoNow: Boolean? = null,
   val medications: MedicationSnapshot? = null,
   val fast: WatchFast? = null,
   val fastSynced: Boolean = false,
@@ -390,6 +395,27 @@ data class WatchContext(
 ) {
   val effectiveWeightUnit: WeightUnit
     get() = weightUnit ?: WeightUnit.KG
+
+  val effectiveHapticsEnabled: Boolean
+    get() = hapticsEnabled != false
+
+  val effectiveRestBuzzEnabled: Boolean
+    get() = effectiveHapticsEnabled && restAlertsEnabled != false
+
+  val effectiveNewWorkout: Boolean
+    get() = newWorkout == true
+
+  val effectiveWorkoutCountdown: Int
+    get() = if (effectiveNewWorkout) maxOf(0, workoutCountdown ?: 3) else 0
+
+  val effectiveHoldCountdown: Boolean
+    get() = effectiveNewWorkout && holdCountdown != false
+
+  val effectiveWorkoutTopLineIsMetrics: Boolean
+    get() = workoutTopLine == "metrics"
+
+  val effectiveExerciseDoNow: Boolean
+    get() = exerciseDoNow == true
 
   val hasSeed: Boolean
     get() = todayWeightKg != null || lastWeightKg != null
@@ -441,6 +467,7 @@ data class PlannedSet(
   val targetReps: Double? = null,
   val targetWeightKg: Double? = null,
   val restSeconds: Int = 60,
+  val restAfterSeconds: Int? = null,
   val setType: String? = null,
   val targetDurationSec: Int? = null,
   val previousDurationSec: Int? = null,
@@ -455,6 +482,11 @@ data class PlannedExercise(
   val name: String,
   val supersetRun: Int? = null,
   val bodyweight: Boolean? = null,
+  val equipment: String? = null,
+  val plates: WatchPlateConfig? = null,
+  val imageKey: String? = null,
+  val imageCount: Int? = null,
+  val muscle: String? = null,
   val sets: List<PlannedSet>
 )
 
@@ -472,7 +504,160 @@ data class ActiveWorkoutPlan(
   val pausedAtMs: Long? = null,
   val excludedPauseSeconds: Int = 0,
   val prSetIds: Set<String> = emptySet()
-)
+) {
+  /** Maps each superset member's `exerciseEntryId` to its partner names. */
+  fun supersetPartners(): Map<String, String> {
+    val partners = HashMap<String, String>()
+    for (members in adjacentSupersetRuns(exercises)) {
+      for (member in members) {
+        val others = members.filter { it.exerciseEntryId != member.exerciseEntryId }.map { it.name }
+        if (others.isNotEmpty()) {
+          partners[member.exerciseEntryId] = others.joinToString(", ")
+        }
+      }
+    }
+    return partners
+  }
+
+  /**
+   * Flattens [exercises] into the watch's linear step sequence:
+   * - Interleaves adjacent 2+ exercise `supersetRun` blocks round-robin so
+   *   supersets alternate exercises even when [setOrder] is empty or when new
+   *   sets are added locally on the watch before the phone echoes an update.
+   * - Clears `supersetRun` on dissolved 1-exercise singletons.
+   * - Honors [setOrder] for all phone-known set IDs while inserting any
+   *   locally-added watch sets right after their round-robin predecessor.
+   */
+  fun flattenSteps(): List<WorkoutStep> {
+    val normalizedExercises = normalizedSupersetExercises(exercises)
+    val partners = ActiveWorkoutPlan(
+      sessionId = sessionId,
+      workoutName = workoutName,
+      exercises = normalizedExercises,
+      setOrder = setOrder
+    ).supersetPartners()
+
+    fun buildStep(ex: PlannedExercise, idx: Int, set: PlannedSet): WorkoutStep = WorkoutStep(
+      setId = set.setId,
+      exerciseEntryId = ex.exerciseEntryId,
+      exerciseName = ex.name,
+      setIndexInExercise = idx + 1,
+      totalSetsInExercise = ex.sets.size,
+      setType = set.setType,
+      supersetRun = ex.supersetRun,
+      supersetWith = partners[ex.exerciseEntryId],
+      bodyweight = ex.bodyweight == true,
+      timed = set.timed == true,
+      carry = set.carry == true,
+      weighted = set.weighted == true,
+      targetWeightKg = set.targetWeightKg,
+      targetReps = set.targetReps,
+      targetDurationSec = set.targetDurationSec,
+      previousDurationSec = set.previousDurationSec,
+      targetDistanceKm = set.targetDistanceKm,
+      restSeconds = set.restSeconds,
+      restAfterSeconds = set.restAfterSeconds,
+      equipment = ex.equipment,
+      plates = ex.plates,
+      imageKey = ex.imageKey,
+      imageCount = ex.imageCount,
+      muscle = ex.muscle
+    )
+
+    val interleaved = ArrayList<WorkoutStep>()
+    var i = 0
+    while (i < normalizedExercises.size) {
+      val first = normalizedExercises[i]
+      val run = first.supersetRun
+      if (run == null) {
+        first.sets.forEachIndexed { idx, set ->
+          interleaved.add(buildStep(first, idx, set))
+        }
+        i += 1
+        continue
+      }
+      var end = i + 1
+      while (end < normalizedExercises.size && normalizedExercises[end].supersetRun == run) {
+        end += 1
+      }
+      val members = normalizedExercises.subList(i, end)
+      val roundCount = members.maxOfOrNull { it.sets.size } ?: 0
+      for (round in 0 until roundCount) {
+        for (member in members) {
+          val set = member.sets.getOrNull(round) ?: continue
+          interleaved.add(buildStep(member, round, set))
+        }
+      }
+      i = end
+    }
+
+    if (setOrder.isEmpty()) return interleaved
+    val byId = interleaved.associateBy { it.setId }
+    val ordered = ArrayList<WorkoutStep>(interleaved.size)
+    val seen = HashSet<String>(interleaved.size)
+    for (id in setOrder) {
+      val step = byId[id] ?: continue
+      if (seen.add(id)) ordered.add(step)
+    }
+    if (ordered.isEmpty()) return interleaved
+    if (ordered.size == interleaved.size) return ordered
+
+    for (idx in interleaved.indices) {
+      val step = interleaved[idx]
+      if (!seen.add(step.setId)) continue
+      val prevId = if (idx > 0) interleaved[idx - 1].setId else null
+      val insertAt = if (prevId != null) {
+        val prevPos = ordered.indexOfFirst { it.setId == prevId }
+        if (prevPos >= 0) prevPos + 1 else ordered.size
+      } else {
+        0
+      }
+      ordered.add(insertAt, step)
+    }
+    return ordered
+  }
+
+  companion object {
+    /** Returns maximal adjacent runs of 2+ exercises sharing a non-null `supersetRun`. */
+    fun adjacentSupersetRuns(list: List<PlannedExercise>): List<List<PlannedExercise>> {
+      val runs = ArrayList<List<PlannedExercise>>()
+      var i = 0
+      while (i < list.size) {
+        val run = list[i].supersetRun
+        if (run == null) {
+          i += 1
+          continue
+        }
+        var end = i + 1
+        while (end < list.size && list[end].supersetRun == run) {
+          end += 1
+        }
+        if (end - i >= 2) {
+          runs.add(list.subList(i, end))
+        }
+        i = end
+      }
+      return runs
+    }
+
+    /** Clears `supersetRun` on any exercise not part of an adjacent 2+ run. */
+    fun normalizedSupersetExercises(list: List<PlannedExercise>): List<PlannedExercise> {
+      val validEntryIds = adjacentSupersetRuns(list)
+        .flatten()
+        .mapTo(HashSet()) { it.exerciseEntryId }
+      if (list.none { it.supersetRun != null && it.exerciseEntryId !in validEntryIds }) {
+        return list
+      }
+      return list.map { ex ->
+        if (ex.supersetRun != null && ex.exerciseEntryId !in validEntryIds) {
+          ex.copy(supersetRun = null)
+        } else {
+          ex
+        }
+      }
+    }
+  }
+}
 
 data class IntervalTimingUpdate(
   val sessionId: String,
@@ -490,6 +675,7 @@ data class WorkoutStep(
   val totalSetsInExercise: Int,
   val setType: String?,
   val supersetRun: Int?,
+  val supersetWith: String? = null,
   val bodyweight: Boolean,
   val timed: Boolean,
   val carry: Boolean,
@@ -499,8 +685,23 @@ data class WorkoutStep(
   val targetDurationSec: Int?,
   val previousDurationSec: Int?,
   val targetDistanceKm: Double?,
-  val restSeconds: Int
-)
+  val restSeconds: Int,
+  val restAfterSeconds: Int? = null,
+  val equipment: String? = null,
+  val plates: WatchPlateConfig? = null,
+  val imageKey: String? = null,
+  val imageCount: Int? = null,
+  val muscle: String? = null
+) {
+  fun toRestStepFacts(): RestStepFacts = RestStepFacts(
+    exerciseEntryId = exerciseEntryId,
+    supersetRun = supersetRun,
+    setNumber = setIndexInExercise,
+    isDrop = setType.equals("drop", ignoreCase = true),
+    ownRestSeconds = restAfterSeconds,
+    restBeforeSeconds = restSeconds
+  )
+}
 
 data class SetValues(
   val weightKg: Double? = null,
@@ -525,6 +726,7 @@ data class CompletedSet(
   val duration: Int? = null,
   val distanceKm: Double? = null,
   val rpe: Double? = null,
+  val rpeOnly: Boolean = false,
   val completedAtMs: Long = System.currentTimeMillis()
 )
 
@@ -550,7 +752,8 @@ data class WorkoutSummary(
   val volumeKg: Double,
   val averageBpm: Double?,
   val maxBpm: Double?,
-  val activeEnergyKcal: Double?
+  val activeEnergyKcal: Double?,
+  val changedPresetName: String? = null
 )
 
 sealed class WorkoutEditAction {
@@ -559,6 +762,15 @@ sealed class WorkoutEditAction {
   data class SetSetType(val setId: String, val type: String) : WorkoutEditAction()
   data class AddExercise(val exerciseId: String) : WorkoutEditAction()
   data class DeleteExercise(val exerciseEntryId: String) : WorkoutEditAction()
+  data class DoExerciseNow(val exerciseEntryId: String, val anchorEntryId: String) : WorkoutEditAction()
+  data class SetValuesEdit(
+    val setId: String,
+    val weightKg: Double? = null,
+    val reps: Double? = null,
+    val distanceKm: Double? = null,
+    val atMs: Long = System.currentTimeMillis(),
+    val armedAtMs: Long? = null
+  ) : WorkoutEditAction()
 }
 
 // ---- Phone GPS Recording Models ----
@@ -643,5 +855,80 @@ data class EnergyDisplay(val isKj: Boolean) {
     val KCAL = EnergyDisplay(isKj = false)
 
     fun of(context: WatchContext?): EnergyDisplay = EnergyDisplay(isKj = context?.energyUnit == "kJ")
+  }
+}
+
+// ---- Phone Media Control Models ----
+
+enum class MediaTarget {
+  PHONE,
+  WATCH
+}
+
+enum class MediaTransportAction(val wireValue: String) {
+  PLAY_PAUSE("playPause"),
+  NEXT("next"),
+  PREVIOUS("previous")
+}
+
+data class PhoneMediaState(
+  val title: String? = null,
+  val artist: String? = null,
+  val album: String? = null,
+  val appName: String? = null,
+  val isPlaying: Boolean = false,
+  val volume: Int = 0,
+  val maxVolume: Int = 0,
+  val hasSession: Boolean = false,
+  val hasMetadataAccess: Boolean = false,
+  val epoch: Long = 0L,
+  val seq: Long = 0L,
+  val updatedAtMs: Long = 0L
+) {
+  val volumePercent: Int?
+    get() = if (maxVolume > 0) ((volume.coerceIn(0, maxVolume) * 100f) / maxVolume).roundToInt() else null
+
+  val secondaryLabel: String?
+    get() = artist?.takeIf { it.isNotBlank() } ?: appName?.takeIf { it.isNotBlank() }
+}
+
+object MediaControlLogic {
+  /**
+   * Resolves whether the Now Playing page should target the paired phone or
+   * local watch audio:
+   * - If the user explicitly picked a target and it is reachable, honor it.
+   * - If the phone is not reachable, fall back to local watch audio.
+   * - If the watch itself is actively playing local audio while the phone is
+   *   not playing, automatically target local watch audio.
+   * - Otherwise default to controlling the paired phone.
+   */
+  fun resolveEffectiveTarget(
+    manualTarget: MediaTarget?,
+    phoneReachable: Boolean,
+    watchMusicActive: Boolean,
+    phoneMedia: PhoneMediaState?
+  ): MediaTarget {
+    if (!phoneReachable) return MediaTarget.WATCH
+    if (manualTarget != null) return manualTarget
+    if (watchMusicActive && phoneMedia?.isPlaying != true) return MediaTarget.WATCH
+    return MediaTarget.PHONE
+  }
+
+  /**
+   * Accepts newer or equal snapshots while dropping stale/reordered deliveries:
+   * - When either snapshot carries a producer [PhoneMediaState.epoch], compares
+   *   by `(epoch, seq)` so a phone process restart cleanly advances the epoch
+   *   even if the system clock moved backward, while reordered deliveries in
+   *   the same or older epoch are still rejected.
+   * - Falls back to [PhoneMediaState.updatedAtMs] for legacy payloads without
+   *   an epoch.
+   */
+  fun shouldAcceptSnapshot(incoming: PhoneMediaState, current: PhoneMediaState?): Boolean {
+    if (current == null) return true
+    if (incoming.epoch > 0L || current.epoch > 0L) {
+      if (incoming.epoch != current.epoch) return incoming.epoch > current.epoch
+      return incoming.seq >= current.seq
+    }
+    return incoming.updatedAtMs >= current.updatedAtMs
   }
 }
