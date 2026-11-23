@@ -161,6 +161,40 @@ function scheduledKeys(): string[] {
   );
 }
 
+// A notification store the scheduling, listing and cancelling mocks share, so
+// a later pass sees what an earlier one scheduled.
+function notificationStore(): Map<string, Notifications.NotificationRequest> {
+  const scheduled = new Map<string, Notifications.NotificationRequest>();
+  let nextId = 0;
+  mockSchedule.mockImplementation(async (request) => {
+    const identifier = `n-${nextId++}`;
+    scheduled.set(
+      identifier,
+      pendingRequest(identifier, request.content.data as Record<string, string>)
+    );
+    return identifier;
+  });
+  mockGetAllScheduled.mockImplementation(async () => [...scheduled.values()]);
+  mockCancel.mockImplementation(async (id: string) => {
+    scheduled.delete(id);
+  });
+  return scheduled;
+}
+
+function scheduledFor(medicationId: string): boolean {
+  return mockSchedule.mock.calls.some(
+    ([request]) => request.content.data?.medicationId === medicationId
+  );
+}
+
+function medicationsScheduled(
+  scheduled: Map<string, Notifications.NotificationRequest>
+): Set<unknown> {
+  return new Set(
+    [...scheduled.values()].map((request) => request.content.data?.medicationId)
+  );
+}
+
 describe('reconcileMedicationReminders', () => {
   beforeEach(() => {
     jest.useFakeTimers({ now: NOW });
@@ -442,35 +476,6 @@ describe('reconcileMedicationReminders', () => {
       expect(mockCancel).not.toHaveBeenCalled();
     });
 
-    // A notification store the scheduling, listing and cancelling mocks
-    // share, so a later pass sees what an earlier one scheduled.
-    const useNotificationStore = () => {
-      const scheduled = new Map<string, Notifications.NotificationRequest>();
-      let nextId = 0;
-      mockSchedule.mockImplementation(async (request) => {
-        const identifier = `n-${nextId++}`;
-        scheduled.set(
-          identifier,
-          pendingRequest(
-            identifier,
-            request.content.data as Record<string, string>
-          )
-        );
-        return identifier;
-      });
-      mockGetAllScheduled.mockImplementation(async () => [
-        ...scheduled.values(),
-      ]);
-      mockCancel.mockImplementation(async (id: string) => {
-        scheduled.delete(id);
-      });
-      return scheduled;
-    };
-    const scheduledFor = (medicationId: string) =>
-      mockSchedule.mock.calls.some(
-        ([request]) => request.content.data?.medicationId === medicationId
-      );
-
     it('runs after a pass under way, and a waiting pass read for the previous server does nothing', async () => {
       // The pass under way was made for server A; then the person switched
       // to server B, whose choices are not known yet.
@@ -480,7 +485,7 @@ describe('reconcileMedicationReminders', () => {
       jest
         .spyOn(storage, 'getActiveServerConfigId')
         .mockResolvedValue('server-b');
-      const scheduled = useNotificationStore();
+      const scheduled = notificationStore();
 
       const underWay = reconcileMedicationReminders([buildMedication()], [], {
         active: true,
@@ -505,7 +510,7 @@ describe('reconcileMedicationReminders', () => {
       jest
         .spyOn(storage, 'getActiveServerConfigId')
         .mockResolvedValue('server-b');
-      const scheduled = useNotificationStore();
+      const scheduled = notificationStore();
 
       const underWay = reconcileMedicationReminders([buildMedication()], [], {
         active: true,
@@ -562,43 +567,6 @@ describe('reconcileMedicationReminders', () => {
       await AsyncStorage.removeItem('snoozed_medication_reminders');
     });
 
-    // A notification store the scheduling, listing and cancelling mocks
-    // share, so a later pass sees what an earlier one scheduled.
-    const useNotificationStore = () => {
-      const scheduled = new Map<string, Notifications.NotificationRequest>();
-      let nextId = 0;
-      mockSchedule.mockImplementation(async (request) => {
-        const identifier = `n-${nextId++}`;
-        scheduled.set(
-          identifier,
-          pendingRequest(
-            identifier,
-            request.content.data as Record<string, string>
-          )
-        );
-        return identifier;
-      });
-      mockGetAllScheduled.mockImplementation(async () => [
-        ...scheduled.values(),
-      ]);
-      mockCancel.mockImplementation(async (id: string) => {
-        scheduled.delete(id);
-      });
-      return scheduled;
-    };
-    const scheduledFor = (medicationId: string) =>
-      mockSchedule.mock.calls.some(
-        ([request]) => request.content.data?.medicationId === medicationId
-      );
-    const medicationsScheduled = (
-      scheduled: Map<string, Notifications.NotificationRequest>
-    ) =>
-      new Set(
-        [...scheduled.values()].map(
-          (request) => request.content.data?.medicationId
-        )
-      );
-
     it("cancels every medication reminder, drops the previous account's waiting pass and forgets the snoozes", async () => {
       jest
         .spyOn(storage, 'getActiveServerConfigId')
@@ -613,7 +581,7 @@ describe('reconcileMedicationReminders', () => {
           },
         ])
       );
-      const scheduled = useNotificationStore();
+      const scheduled = notificationStore();
 
       // Same server, another account: the stamps cannot tell them apart.
       const underWay = reconcileMedicationReminders([buildMedication()], [], {
@@ -651,7 +619,7 @@ describe('reconcileMedicationReminders', () => {
         jest
           .spyOn(storage, 'getActiveServerConfigId')
           .mockResolvedValue(activeServerId);
-        const scheduled = useNotificationStore();
+        const scheduled = notificationStore();
 
         // The background task started its reads for the previous account.
         const readUnder = accountGeneration();
@@ -682,7 +650,7 @@ describe('reconcileMedicationReminders', () => {
       jest
         .spyOn(storage, 'getActiveServerConfigId')
         .mockResolvedValue('server-a');
-      const scheduled = useNotificationStore();
+      const scheduled = notificationStore();
 
       const underWay = reconcileMedicationReminders([buildMedication()], [], {
         active: false,

@@ -19,6 +19,7 @@ import {
   takeIdentityChangeServerConfigIds,
   setOnServerConfigsChanged,
   getSavedServerUrls,
+  getSavedActiveServerConfigId,
   loadHealthWaterSyncToken,
   saveHealthWaterSyncToken,
   clearHealthWaterSyncToken,
@@ -893,6 +894,61 @@ describe('storage', () => {
         .spyOn(AsyncStorage, 'getItem')
         .mockRejectedValueOnce(new Error('storage down'));
       await expect(getAllServerConfigs()).resolves.toEqual([]);
+    });
+  });
+
+  describe('getSavedActiveServerConfigId', () => {
+    test('names the active saved server, without its keychain entry', async () => {
+      await saveServerConfig({
+        id: 'u1',
+        url: 'https://a.example',
+        apiKey: 'k',
+      });
+      clearServerConfigCache();
+      const keychain = jest
+        .spyOn(SecureStore, 'getItemAsync')
+        .mockRejectedValue(new Error('keychain locked'));
+
+      try {
+        expect(await getActiveServerConfig()).toBeNull();
+        expect(await getSavedActiveServerConfigId()).toBe('u1');
+      } finally {
+        keychain.mockRestore();
+      }
+    });
+
+    test('is null when no server is active', async () => {
+      expect(await getSavedActiveServerConfigId()).toBeNull();
+    });
+
+    test('is null when the stored id names a server no longer saved', async () => {
+      await saveServerConfig({
+        id: 'gone',
+        url: 'https://a.example',
+        apiKey: 'k',
+      });
+      // A delete cut short: the list was written, the active id was not
+      // cleared.
+      await AsyncStorage.setItem('serverConfigs', '[]');
+      clearServerConfigCache();
+
+      expect(await getSavedActiveServerConfigId()).toBeNull();
+    });
+
+    test('rejects when storage cannot be read', async () => {
+      await saveServerConfig({
+        id: 'u1',
+        url: 'https://a.example',
+        apiKey: 'k',
+      });
+      clearServerConfigCache();
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('storage down'));
+
+      await expect(getSavedActiveServerConfigId()).rejects.toThrow(
+        'storage down'
+      );
     });
   });
 

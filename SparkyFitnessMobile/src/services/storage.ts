@@ -173,6 +173,22 @@ export const getActiveServerConfigId = async (): Promise<string | null> => {
 };
 
 /**
+ * The active server's id when it names a saved server, read from AsyncStorage
+ * alone (no keys or tokens), so a failed keychain read does not make it look
+ * like none. Null when none is active, or when the stored id names a server
+ * that is no longer saved (a delete cut short before it cleared the id). A
+ * storage failure rejects instead of reading as "none".
+ */
+export const getSavedActiveServerConfigId = async (): Promise<
+  string | null
+> => {
+  const activeId = await getActiveServerConfigId();
+  if (activeId === null) return null;
+  const saved = await getRawStoredConfigs();
+  return saved.some((entry) => entry.id === activeId) ? activeId : null;
+};
+
+/**
  * Retrieves the currently active server configuration.
  */
 export const getActiveServerConfig = async (): Promise<ServerConfig | null> => {

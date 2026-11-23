@@ -51,13 +51,15 @@ const MedicationReminderReconciler: React.FC = () => {
     useMedicationsFeatureState();
   // With no server at all (its configuration deleted, or none set up yet) the
   // reminders are cancelled as before Features: nothing else removes the
-  // reminders of an account that is gone.
-  const { activeConfig, isLoading: isLoadingServer } = useServerConfigs();
-  const noActiveServer = !isLoadingServer && !activeConfig;
+  // reminders of an account that is gone. That is read from the stored active
+  // id: a configuration whose keychain read failed, or a failed read, is not
+  // "no server", and is handled like any other state that is not known.
+  const { activeConfigId, isLoading: isLoadingServer } = useServerConfigs();
+  const noActiveServer = !isLoadingServer && activeConfigId === null;
   // A switch to another server runs the reconcile below again, so the
   // reminders of the one switched away from stop even while the new one's
   // choices are not known.
-  const activeServerId = activeConfig?.id ?? null;
+  const activeServerId = activeConfigId ?? null;
   const remindersActive =
     featureState === 'on' && medicationRemindersEnabled && notificationsEnabled;
   const [languageRevision, setLanguageRevision] = useState(0);

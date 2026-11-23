@@ -109,13 +109,23 @@ function mockFeatureState(state: MedicationsFeatureState) {
   return refetch;
 }
 
-function mockActiveServer(server: 'active' | 'none' | 'loading') {
+function mockActiveServer(
+  server: 'active' | 'none' | 'loading' | 'keychainFailed' | 'readFailed'
+) {
   mockUseServerConfigs.mockReturnValue({
     allConfigs: [],
     activeConfig:
       server === 'active'
         ? { id: 'server-1', url: 'https://example.test', apiKey: 'key' }
         : null,
+    // The stored id: kept when only the keychain read failed, unknown while
+    // loading or after a failed read.
+    activeConfigId:
+      server === 'active' || server === 'keychainFailed'
+        ? 'server-1'
+        : server === 'none'
+          ? null
+          : undefined,
     refetch: jest.fn(),
     isLoading: server === 'loading',
   } as never);
@@ -464,7 +474,7 @@ describe('MedicationReminderReconciler', () => {
       );
     });
 
-    it.each(['active', 'loading'] as const)(
+    it.each(['active', 'loading', 'keychainFailed', 'readFailed'] as const)(
       "leaves the active server's reminders as they are while it is not known whether Medications is on (server %s)",
       (server) => {
         mockFeatureState('unknown');
@@ -500,6 +510,7 @@ describe('MedicationReminderReconciler', () => {
           url: 'https://other.example.test',
           apiKey: 'key',
         },
+        activeConfigId: 'server-2',
         refetch: jest.fn(),
         isLoading: false,
       } as never);
