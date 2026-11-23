@@ -23,8 +23,8 @@ export type ExerciseTrendPeriod = 'week' | 'month' | 'year';
 /** Periods shown for the week and month views; the year view shows them all. */
 export const EXERCISE_TREND_PERIOD_COUNT = 12;
 
-/** How many years back the year view reads, so the request stays bounded. */
-export const EXERCISE_TREND_MAX_YEARS = 10;
+/** Where the year view starts reading, so it covers all history. */
+export const EXERCISE_TREND_ALL_HISTORY_START = '1970-01-01';
 
 /**
  * The sets of an entry that count toward a trend: none while the entry is only
@@ -100,22 +100,20 @@ export function exerciseTrendPeriodStart(
 }
 
 /**
- * The first day a trend view reads, ending on `today`: the last 12 weeks, the
- * last 12 months, or the last 10 years, each counting the current one.
+ * The first day a trend view reads, ending on `today`: the last 12 weeks or
+ * the last 12 months, each counting the current one, or all history.
  */
 export function exerciseTrendWindowStart(
   today: string,
   period: ExerciseTrendPeriod,
   weekStartsOn: WeekStart = 1
 ): string {
+  if (period === 'year') return EXERCISE_TREND_ALL_HISTORY_START;
   const current = exerciseTrendPeriodStart(today, period, weekStartsOn);
   if (period === 'week') {
     return addDays(current, -7 * (EXERCISE_TREND_PERIOD_COUNT - 1));
   }
   const year = Number(current.slice(0, 4));
-  if (period === 'year') {
-    return `${year - (EXERCISE_TREND_MAX_YEARS - 1)}-01-01`;
-  }
   const monthIndex =
     year * 12 + Number(current.slice(5, 7)) - EXERCISE_TREND_PERIOD_COUNT;
   const startYear = Math.floor(monthIndex / 12);

@@ -16,7 +16,7 @@ import { getTodayDate } from '../utils/dateUtils';
 
 /**
  * One exercise's trend for the exercise detail card: the last 12 weeks, the
- * last 12 months or the last 10 years, one point per period, built by the
+ * last 12 months or all history by year, one point per period, built by the
  * shared `buildExerciseTrend` (no warm-ups, no sets without reps, nothing
  * from a row `isPlannedEntryRow` calls planned). Weeks begin on the
  * account's first day of the week.

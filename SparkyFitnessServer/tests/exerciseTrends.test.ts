@@ -196,8 +196,8 @@ describe('exerciseTrendWindowStart', () => {
     expect(exerciseTrendWindowStart('2026-12-31', 'month')).toBe('2026-01-01');
   });
 
-  it('caps the year view at 10 years', () => {
-    expect(exerciseTrendWindowStart('2026-11-21', 'year')).toBe('2017-01-01');
+  it('reads all history for the year view', () => {
+    expect(exerciseTrendWindowStart('2026-11-21', 'year')).toBe('1970-01-01');
   });
 });
 
