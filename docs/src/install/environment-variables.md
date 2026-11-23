@@ -228,7 +228,7 @@ Configures code signing, bundle identifiers, and shared App Groups when building
 
 SparkyFitness natively supports loading sensitive configuration values from files mounted by **Docker Compose secrets**, **Docker Swarm**, or **Kubernetes**.
 
-Any backend environment variable `VAR` can be supplied via a corresponding `VAR_FILE` environment variable pointing to the mounted secret file. When `VAR_FILE` is provided and `VAR` is unset, empty, or contains only whitespace, the server automatically reads and trims the secret from the specified file on startup.
+Any backend environment variable `VAR` that starts with `SPARKY_FITNESS_` or `BETTER_AUTH_`, as well as `HTTP_PROXY`, `HTTPS_PROXY` and `GARMIN_MICROSERVICE_URL`, can be supplied via a corresponding `VAR_FILE` environment variable pointing to the mounted secret file. When `VAR_FILE` is provided and `VAR` is unset, empty, or contains only whitespace, the server automatically reads and trims the secret from the specified file on startup. Other `*_FILE` variables, such as ones set by other tools, are ignored.
 
 | Environment Variable                | File-Based Alternative (`*_FILE`)        | Description                             |
 | :---------------------------------- | :--------------------------------------- | :-------------------------------------- |
