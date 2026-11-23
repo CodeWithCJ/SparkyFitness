@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-22_
+_Last updated: 2026-11-23_
 
 SparkyFitness Mobile is a React Native 0.88 + Expo SDK 58 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -22,6 +22,7 @@ This is the package guide for `SparkyFitnessMobile/`. Work from this directory f
 - Primary stack: React 19.3, React Native 0.88, Expo SDK 58, TypeScript 6, React Navigation 7, TanStack Query 5, Uniwind / TailwindCSS v4, Reanimated 4, Skia, Victory Native, Expo Background Task / Task Manager / Notifications, Zustand, assistant-ui + AI SDK (chat).
 - `victory-native` stays on 42.x. 43 imports the separate `react-native-skia` package (2.15.5) instead of `@shopify/react-native-skia`, so the bundle holds two Skia copies and the app dies at launch with "Tried to register two views with the same name SkiaPictureView" (Jest mocks Skia, so tests do not catch it). Move to 43 only together with a Skia move to the `react-native-skia` package.
 - `@/*` maps to this package and `@workspace/shared` maps to `../shared/src/index.ts`.
+- React Compiler is on (`experiments.reactCompiler` in `app.json`) and memoizes a plain function call in a component body once per mount when nothing reactive goes into it, so a value that changes outside React (`accountGeneration()`, `getTodayDate()`, `Date.now()`) must be read through a hook (`useSyncExternalStore`, state) or inside an effect or callback. Jest does not run the compiler, so tests do not catch it.
 - Prefer `@workspace/shared` schemas, constants, date/timezone helpers, and types over local duplicates.
 - The app talks to the backend under `/api`; health uploads go to `POST /api/health-data`.
 - Global `fetch` is Expo's WinterCG `expo/fetch`, so React Native's `{uri, name, type}` FormData file parts throw "Unsupported FormDataPart implementation". Append an `expo-file-system` `File` (it implements Blob) for multipart uploads; see `pregnancyPhotosApi.ts`.

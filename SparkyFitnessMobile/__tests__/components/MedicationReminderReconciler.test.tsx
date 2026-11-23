@@ -174,8 +174,12 @@ describe('MedicationReminderReconciler', () => {
     render(<MedicationReminderReconciler />);
     expect(mockReconcile).toHaveBeenCalledTimes(1);
 
-    // The account change cancelled every reminder; the cleared cache does not
-    // tell the queries, and nothing else on screen changes.
+    // The account change (as useAuth makes it: the count goes up, then the
+    // event once the old account is cleared) cancelled every reminder; the
+    // cleared cache does not tell the queries, and nothing else on screen
+    // changes.
+    const before = accountGeneration();
+    bumpAccountGeneration();
     act(() => {
       notifyAccountChanged();
     });
@@ -183,7 +187,18 @@ describe('MedicationReminderReconciler', () => {
     expect(mockReconcile).toHaveBeenCalledTimes(2);
     expect(mockReconcile).toHaveBeenLastCalledWith(medications, entries, {
       active: true,
-      accountGeneration: accountGeneration(),
+      accountGeneration: before + 1,
+    });
+
+    // And every account change after it, not only the first.
+    bumpAccountGeneration();
+    act(() => {
+      notifyAccountChanged();
+    });
+    expect(mockReconcile).toHaveBeenCalledTimes(3);
+    expect(mockReconcile).toHaveBeenLastCalledWith(medications, entries, {
+      active: true,
+      accountGeneration: before + 2,
     });
   });
 

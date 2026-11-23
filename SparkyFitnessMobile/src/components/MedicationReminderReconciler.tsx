@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { useCalendars } from 'expo-localization';
 
@@ -64,20 +64,22 @@ const MedicationReminderReconciler: React.FC = () => {
     featureState === 'on' && medicationRemindersEnabled && notificationsEnabled;
   const [languageRevision, setLanguageRevision] = useState(0);
   const [, bumpResumeRevision] = useReducer((n: number) => n + 1, 0);
-  // An account change cancels every medication reminder and clears the query
-  // cache, which does not tell the queries below. Rendering again makes them
-  // read the new account, and the reconcile below runs again, so its
-  // reminders come back without waiting for the app to return to the
-  // foreground.
-  const [accountRevision, bumpAccountRevision] = useReducer(
-    (n: number) => n + 1,
-    0
-  );
-  useEffect(() => subscribeAccountChanged(bumpAccountRevision), []);
   // The account this render's data were read for. An effect runs after its
   // render, so one that runs only once an account change has started would
   // reconcile the previous account's medications; the queue drops it.
-  const readUnderAccount = accountGeneration();
+  // Read through a hook, never by calling accountGeneration() in the body:
+  // React Compiler memoizes such a call once per mounted component, so the
+  // first account's number would stay and every reconcile after an account
+  // change would be dropped.
+  // An account change cancels every medication reminder and clears the query
+  // cache, which does not tell the queries below. The account-changed event
+  // renders this again, so they read the new account and the reconcile below
+  // runs again: its reminders come back without waiting for the app to return
+  // to the foreground.
+  const readUnderAccount = useSyncExternalStore(
+    subscribeAccountChanged,
+    accountGeneration
+  );
 
   // `useCalendars()` re-renders on iOS `significantTimeChangeNotification`,
   // while the foreground poll below covers Android (`expo-localization` 57.0.2
@@ -179,7 +181,6 @@ const MedicationReminderReconciler: React.FC = () => {
     today,
     timezone,
     languageRevision,
-    accountRevision,
     readUnderAccount,
   ]);
 
