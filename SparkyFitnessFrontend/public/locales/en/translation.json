@@ -3622,13 +3622,13 @@
       "title": "Tabs",
       "description": "Choose which main tabs show on the website",
       "cycleOn": "On",
-      "cycleOff": "Off",
       "cycleHint": "{{name}} is turned on or off in Features, above.",
+      "someFeaturesOff": "Some features are turned off",
+      "manageFeatures": "Manage",
       "footnote": "Diary and Settings always show. Hiding a tab only changes this website: nothing is deleted, and the mobile app keeps its own settings.",
       "saveError": "Could not save your tab choice. Please try again.",
       "loadError": "Could not load your tab choices.",
-      "actingOnBehalf": "You can only change the tabs on your own account.",
-      "featureOff": "Not shown: turned off in Features."
+      "actingOnBehalf": "You can only change the tabs on your own account."
     },
     "features": {
       "title": "Features",

@@ -5,10 +5,9 @@ import {
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
-  type NativeSyntheticEvent,
-  type TextInputSelectionChangeEventData,
+  type TextInputSelectionChangeEvent,
+  type TextInputInstance,
 } from 'react-native';
 import {
   NOTES_MAX_LENGTH,
@@ -196,7 +195,7 @@ function MarkdownNotesField({
     setDraft(seeded);
   }
 
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const selectionRef = useRef({ start: seeded.length, end: seeded.length });
   // Applied for one render after a toolbar insert, then released. Holding a
   // controlled `selection` permanently fights the platform on Android and makes
@@ -237,9 +236,7 @@ function MarkdownNotesField({
     setPreview((current) => !current);
   };
 
-  const onSelectionChange = (
-    event: NativeSyntheticEvent<TextInputSelectionChangeEventData>
-  ) => {
+  const onSelectionChange = (event: TextInputSelectionChangeEvent) => {
     selectionRef.current = event.nativeEvent.selection;
     // The platform has caught up with a programmatic move; stop forcing it.
     if (pendingSelection) setPendingSelection(null);

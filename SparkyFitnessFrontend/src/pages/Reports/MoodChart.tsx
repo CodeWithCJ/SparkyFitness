@@ -17,6 +17,7 @@ import type { MoodEntry } from '@/types/mood';
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { getTimeXAxisProps, prepareTimeChartData } from '@/utils/chartUtils';
+import { useIsMounted } from '@/hooks/useIsMounted';
 
 /** A built-in mood as "<emoji> <name>", or the raw tag for a user's own mood. */
 function moodTagLabel(tag: string): string {
@@ -42,11 +43,7 @@ interface FormattedMoodEntry {
 const MoodChart = ({ data, title }: MoodChartProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, chartScaleMode } = usePreferences();
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   const formattedData = React.useMemo(() => {
     const checkinCounts = new Map<string, number>();

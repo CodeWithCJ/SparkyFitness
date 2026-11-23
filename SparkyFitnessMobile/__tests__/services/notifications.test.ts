@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import * as Haptics from 'expo-haptics';
 import { createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { Alert, AppState, Platform } from 'react-native';
@@ -163,7 +164,7 @@ describe('notifications service', () => {
       expect(mockSetChannel).toHaveBeenCalledWith(
         'workout-timer',
         expect.objectContaining({
-          importance: Notifications.AndroidImportance.HIGH,
+          importance: AndroidImportance.HIGH,
         })
       );
     });
@@ -177,7 +178,7 @@ describe('notifications service', () => {
       expect(mockSetChannel).toHaveBeenCalledWith(
         'fasting',
         expect.objectContaining({
-          importance: Notifications.AndroidImportance.HIGH,
+          importance: AndroidImportance.HIGH,
         })
       );
     });
@@ -205,7 +206,7 @@ describe('notifications service', () => {
         'mood-checkin',
         expect.objectContaining({
           name: 'Mood check-ins',
-          importance: Notifications.AndroidImportance.HIGH,
+          importance: AndroidImportance.HIGH,
         })
       );
       expect(ids.indexOf('mood-checkin')).toBeLessThan(

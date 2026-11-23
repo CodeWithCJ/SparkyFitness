@@ -300,11 +300,17 @@ describe('measurementRepository.recomputeWaterAggregate', () => {
     );
 
     expect(total).toBe(450);
-    const [sumText, sumValues] = mockClient.query.mock.calls[0];
+    // The lock key is built in PostgreSQL from the DATE-cast day, so two
+    // spellings of one day share a lock.
+    const [lockKeyText, lockKeyValues] = mockClient.query.mock.calls[0];
+    expect(lockKeyText).toContain('entry_date::date');
+    expect(lockKeyText).toContain('ORDER BY lock_key');
+    expect(lockKeyValues).toEqual(['user-1', ['2026-09-05'], ['manual']]);
+    const [sumText, sumValues] = mockClient.query.mock.calls[2];
     expect(sumText).toContain('FROM water_intake_entries');
     expect(sumValues).toEqual(['user-1', '2026-09-05', 'manual']);
 
-    const [upsertText, upsertValues] = mockClient.query.mock.calls[1];
+    const [upsertText, upsertValues] = mockClient.query.mock.calls[3];
     expect(upsertText).toContain('ON CONFLICT (user_id, entry_date, source)');
     expect(upsertText).toContain('DO UPDATE SET water_ml = $3');
     expect(upsertValues).toEqual([
@@ -359,10 +365,11 @@ describe('measurementRepository.recomputeWaterAggregate', () => {
       'manual'
     );
 
-    // Exactly two queries ran (the SELECT SUM and the upsert) — nothing else
-    // in the day or for another source was queried or written.
-    expect(mockClient.query.mock.calls).toHaveLength(2);
-    const [, sumValues] = mockClient.query.mock.calls[0];
+    // Exactly four queries ran (the lock key, the lock, the SELECT SUM and the
+    // upsert) — nothing else in the day or for another source was queried or
+    // written.
+    expect(mockClient.query.mock.calls).toHaveLength(4);
+    const [, sumValues] = mockClient.query.mock.calls[2];
     expect(sumValues[2]).toBe('manual');
   });
 
@@ -584,7 +591,7 @@ describe('measurementRepository.deleteWaterIntakeSamplesBySourceIds', () => {
       if (queryText.includes('DELETE FROM water_intake_entries')) {
         return Promise.reject(new Error('db error'));
       }
-      return Promise.resolve({});
+      return Promise.resolve({ rows: [] });
     });
 
     await expect(

@@ -2,6 +2,7 @@ import foodRepository from '../models/foodRepository.js';
 import preferenceService from './preferenceService.js';
 import externalProviderService from './externalProviderService.js';
 import { log } from '../config/logging.js';
+import { isUniqueViolationOn } from '../utils/uniqueViolation.js';
 import {
   sanitizeCustomNutrients,
   normalizeBarcode,
@@ -216,8 +217,19 @@ function deriveAlcoholGramsIfMissing<
   return data;
 }
 
+const FOOD_CLIENT_ID_INDEX = 'idx_foods_user_client_id';
+
 async function createFood(authenticatedUserId: string, foodData: FoodInput) {
   try {
+    // A repeat of a request that already created the food (the phone's answer
+    // was lost) gets that food back and nothing is created twice.
+    if (foodData.client_id) {
+      const stored = await foodRepository.findFoodByClientId(
+        authenticatedUserId,
+        foodData.client_id
+      );
+      if (stored) return stored;
+    }
     if (foodData.barcode) {
       const existingFood = await foodRepository.findFoodByBarcode(
         foodData.barcode,
@@ -255,14 +267,29 @@ async function createFood(authenticatedUserId: string, foodData: FoodInput) {
       }
     }
     const processedFoodData = deriveAlcoholGramsIfMissing(foodData);
-    const newFood = await foodRepository.createFood({
-      ...processedFoodData,
-      glycemic_index: processedFoodData.glycemic_index || null,
-      custom_nutrients: sanitizeCustomNutrients(
-        processedFoodData.custom_nutrients
-      ),
-    });
-    return newFood;
+    try {
+      const newFood = await foodRepository.createFood({
+        ...processedFoodData,
+        glycemic_index: processedFoodData.glycemic_index || null,
+        custom_nutrients: sanitizeCustomNutrients(
+          processedFoodData.custom_nutrients
+        ),
+      });
+      return newFood;
+    } catch (insertError) {
+      // Two copies of the same request raced; the other one won.
+      if (
+        foodData.client_id &&
+        isUniqueViolationOn(insertError, FOOD_CLIENT_ID_INDEX)
+      ) {
+        const winner = await foodRepository.findFoodByClientId(
+          authenticatedUserId,
+          foodData.client_id
+        );
+        if (winner) return winner;
+      }
+      throw insertError;
+    }
   } catch (error) {
     log(
       'error',

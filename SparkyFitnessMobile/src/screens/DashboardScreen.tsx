@@ -3,6 +3,7 @@ import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
+import { useWaitingWaterSummary } from '../hooks/useWaitingWaterSummary';
 import { hasSupplementNutrition, isShownByFeature } from '@workspace/shared';
 import React, {
   useCallback,
@@ -20,6 +21,7 @@ import {
   ScrollView,
   Text,
   View,
+  type ScrollViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
@@ -55,6 +57,8 @@ import TrainingLoadDashboardCard from '../components/TrainingLoadDashboardCard';
 import SegmentedControl, { type Segment } from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
 import { ServerStatusView } from '../components/ServerGate';
+import OfflineBanner from '../components/OfflineBanner';
+import type { DailySummary } from '../types/dailySummary';
 import { NUTRIENT_META, getNutrientLabel } from '../constants/nutrients';
 import {
   fastingRootQueryKey,
@@ -135,7 +139,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const goToToday = useDiaryDateStore((s) => s.goToToday);
   const syncTodayRollover = useDiaryDateStore((s) => s.syncTodayRollover);
   const [trendsRange, setTrendsRange] = useState<HealthTrendDateRange>('7d');
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
 
   // Only reset to today when the calendar day has actually changed (midnight rollover)
@@ -248,11 +252,25 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     dateColumnCollapsed,
   ]);
 
-  const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
+  const {
+    isConnected,
+    isLoading: isConnectionLoading,
+    status: connectionStatus,
+    refetch: recheckConnection,
+  } = useServerConnection();
+  // With the server away the Dashboard shows what the phone holds: the day's
+  // totals (the last copy plus what is waiting to upload) and the water card.
+  const isOffline = !isConnectionLoading && connectionStatus === 'unreachable';
   const { summary, isLoading, isError, refetch } = useDailySummary({
     date: selectedDate,
-    enabled: isConnected,
+    enabled: isConnected || isOffline,
   });
+  // A day with no saved summary while the server is away still has its water
+  // card; only what is waiting to upload is counted.
+  const waitingOnlySummary = useWaitingWaterSummary(
+    selectedDate,
+    isOffline && !isLoading && !summary
+  );
   const { profile } = useProfile();
   const {
     preferences,
@@ -283,7 +301,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     selectContainer: selectWaterContainer,
   } = useWaterIntakeMutation({
     date: selectedDate,
-    enabled: isConnected,
+    enabled: isConnected || isOffline,
   });
 
   // A linked container has no volume of its own, so state what one press logs
@@ -522,8 +540,95 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     queryClient,
   ]);
 
+  // The hydration card, shared by the full Dashboard and the one shown with the
+  // server away. The history screen reads the server, so it is not offered
+  // offline.
+  const renderHydrationGauge = (daySummary: DailySummary) => (
+    <HydrationGauge
+      key="hydration"
+      consumed={daySummary.waterConsumed}
+      goal={daySummary.waterGoal}
+      fromFoodMl={daySummary.waterFromFood}
+      unit={waterDisplayUnit}
+      containerVolume={servingVolume}
+      linkedPressLabel={linkedPressLabel}
+      onConfigure={
+        isContainersLoaded && !activeWaterContainer
+          ? () => navigation.navigate('WaterContainers')
+          : undefined
+      }
+      onPressHistory={
+        isOffline
+          ? undefined
+          : () =>
+              navigation.navigate('WaterLog', {
+                date: selectedDate,
+              })
+      }
+      onIncrement={isContainersLoaded ? incrementWater : undefined}
+      onDecrement={isContainersLoaded ? decrementWater : undefined}
+      disableDecrement={daySummary.waterConsumed <= 0}
+      containers={waterContainers}
+      activeContainerId={activeWaterContainer?.id}
+      onSelectContainer={selectWaterContainer}
+      quickAddPresets={quickAddOptions}
+      onQuickAdd={
+        isContainersLoaded ? (id: number) => logWaterPreset(id) : undefined
+      }
+    />
+  );
+
+  const renderOfflineDashboard = (
+    daySummary: DailySummary,
+    hasSavedSummary: boolean
+  ) => {
+    const { eaten, burned, remaining, goal, progress } =
+      daySummary.calorieBalance;
+    return (
+      <ScrollView
+        className="flex-1 bg-background"
+        style={{ flex: 1 }}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: usesNativeTabs && verticalBar ? 12 : 0,
+          paddingBottom: 80 + activeWorkoutBarPadding,
+        }}
+        showsVerticalScrollIndicator={false}
+        contentInsetAdjustmentBehavior={usesNativeTabs ? 'automatic' : 'never'}
+        automaticallyAdjustsScrollIndicatorInsets={usesNativeTabs}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={() => void recheckConnection()}
+            tintColor={accentColor || '#3B82F6'}
+          />
+        }
+      >
+        <OfflineBanner />
+        {hasSavedSummary &&
+        calorieRingCardVisible &&
+        (daySummary.foodEntries.length > 0 || goal > 0) ? (
+          <CalorieRingCard
+            caloriesConsumed={eaten}
+            caloriesBurned={burned}
+            calorieGoal={eaten + remaining}
+            remainingCalories={remaining}
+            progressPercent={progress / 100}
+          />
+        ) : null}
+        {hydrationCardVisible ? renderHydrationGauge(daySummary) : null}
+      </ScrollView>
+    );
+  };
+
   // Render content based on state
   const renderContent = () => {
+    // The server is away but the phone holds the day: show what it can.
+    // Without a saved summary there are no totals: only the water card shows.
+    if (isOffline && summary) return renderOfflineDashboard(summary, true);
+    if (isOffline && waitingOnlySummary) {
+      return renderOfflineDashboard(waitingOnlySummary, false);
+    }
     // No server configured
     if (!isConnectionLoading && !isConnected) {
       return (
@@ -822,37 +927,9 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                 />
               ) : null;
             case 'hydration':
-              return hydrationCardVisible ? (
-                <HydrationGauge
-                  key="hydration"
-                  consumed={summary.waterConsumed}
-                  goal={summary.waterGoal}
-                  fromFoodMl={summary.waterFromFood}
-                  unit={waterDisplayUnit}
-                  containerVolume={servingVolume}
-                  linkedPressLabel={linkedPressLabel}
-                  onConfigure={
-                    isContainersLoaded && !activeWaterContainer
-                      ? () => navigation.navigate('WaterContainers')
-                      : undefined
-                  }
-                  onPressHistory={() =>
-                    navigation.navigate('WaterLog', { date: selectedDate })
-                  }
-                  onIncrement={isContainersLoaded ? incrementWater : undefined}
-                  onDecrement={isContainersLoaded ? decrementWater : undefined}
-                  disableDecrement={summary.waterConsumed <= 0}
-                  containers={waterContainers}
-                  activeContainerId={activeWaterContainer?.id}
-                  onSelectContainer={selectWaterContainer}
-                  quickAddPresets={quickAddOptions}
-                  onQuickAdd={
-                    isContainersLoaded
-                      ? (id: number) => logWaterPreset(id)
-                      : undefined
-                  }
-                />
-              ) : null;
+              return hydrationCardVisible
+                ? renderHydrationGauge(summary)
+                : null;
             case 'caffeine':
               return caffeineCardVisible ? (
                 <CaffeineCard
@@ -1034,7 +1111,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   return (
     <View className="flex-1 bg-background">
       <HydrationReminderReconciler />
-      {!isConnectionLoading && isConnected ? (
+      {!isConnectionLoading && (isConnected || isOffline) ? (
         <DateNavigator
           title={t('navigation.dashboard', { defaultValue: 'Dashboard' })}
           selectedDate={selectedDate}

@@ -27,6 +27,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    // unpdf 2 is ESM-only; left external, vi.mock('unpdf') in a test no
+    // longer reaches the service's own import, so the scan tests ran the
+    // real library. Inlining it lets the mock apply to both.
+    server: { deps: { inline: ['unpdf'] } },
     include: ['**/tests/**/*.test.ts'],
     env: {
       // Uses the .env / CI value when present, otherwise a per-run random key.

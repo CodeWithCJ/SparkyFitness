@@ -1,4 +1,3 @@
-import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   BarChart,
@@ -12,6 +11,7 @@ import {
 import { usePreferences } from '@/contexts/PreferencesContext';
 
 import { useTranslation } from 'react-i18next';
+import { useIsMounted } from '@/hooks/useIsMounted';
 interface StressDataPoint {
   time: string;
   stress_level: number;
@@ -25,11 +25,7 @@ interface StressChartProps {
 const StressChart = ({ data, title }: StressChartProps) => {
   const { t } = useTranslation();
   const { formatTime } = usePreferences();
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   // Filter out data points where 'data' is -1 or -2 (Garmin's way of indicating no data)
   const filteredData = data.filter((point) => point.stress_level >= 0);

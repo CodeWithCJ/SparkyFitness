@@ -5,6 +5,7 @@ import {
   Pressable,
   Text,
   View,
+  type ViewInstance,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SymbolView } from 'expo-symbols';
@@ -618,7 +619,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     id: string;
     anchor: AnchorRect;
   } | null>(null);
-  const menuTriggerRefs = useRef<Record<string, View | null>>({});
+  const menuTriggerRefs = useRef<Record<string, ViewInstance | null>>({});
 
   const {
     title,
@@ -662,7 +663,7 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
   // writes twice. The left slot is navigation, and at least one screen uses
   // the primary sugar for a wizard Back (CycleOnboardingScreen) where rapid
   // repeated presses are exactly what the user means.
-  const allowPress = useRef(createDuplicatePressGuard()).current;
+  const [allowPress] = useState(() => createDuplicatePressGuard());
 
   const goBack = () => navigation.goBack();
   // A menu item's own press only exists on the custom path: measure the
@@ -697,7 +698,9 @@ export function useScreenHeader(config: ScreenHeaderConfig): React.ReactNode {
     registerHandlers(item, id, 'right');
     return { item, id };
   });
-  handlersRef.current = nextHandlers;
+  useLayoutEffect(() => {
+    handlersRef.current = nextHandlers;
+  });
 
   // Every visible facet of a menu item, so filter selections, badge state, and
   // relabeled entries rebuild the native button.

@@ -1,9 +1,10 @@
 # syntax=docker/dockerfile:1.4
 
 # Stage 1: Install workspace dependencies and deploy server
-FROM --platform=$BUILDPLATFORM node:24.22.1-alpine AS backend_builder
+FROM --platform=$BUILDPLATFORM node:26.13.1-alpine AS backend_builder
 
-RUN corepack enable
+# Node 25+ no longer ships Corepack, so install it before enabling it.
+RUN npm install -g corepack@0.36.0 && corepack enable
 
 WORKDIR /app
 
@@ -30,7 +31,7 @@ COPY shared/ shared/
 RUN pnpm --filter=sparkyfitnessserver deploy /deploy
 
 # Stage 2: Runtime container for backend
-FROM node:24.22.1-alpine
+FROM node:26.13.1-alpine
 
 WORKDIR /app/SparkyFitnessServer
 

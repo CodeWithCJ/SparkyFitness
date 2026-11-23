@@ -133,7 +133,7 @@ nix build .#sparkyfitness-server
 nix build .#sparkyfitness-frontend
 nix build .#sparkyfitness-garmin
 
-nix develop   # dev shell with node 24, pnpm and postgresql
+nix develop   # dev shell with node 26, pnpm and postgresql
 ```
 
 The `pnpmDeps.hash` values pinned in the flake must be refreshed whenever

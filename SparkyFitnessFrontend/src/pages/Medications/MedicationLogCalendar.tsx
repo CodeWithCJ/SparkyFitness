@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import {
   buildMonthGrid,
@@ -139,11 +140,11 @@ export default function MedicationLogCalendar({
 
   // A selection made under one filter can survive a switch that hides it, leaving
   // the calendar pinned to an item the list no longer offers.
-  useEffect(() => {
+  useOnChange([isAllSelected, selectedMedId, visibleMedIds], () => {
     if (!isAllSelected && !visibleMedIds.has(selectedMedId)) {
       setSelectedMedId(ALL_MEDS);
     }
-  }, [isAllSelected, selectedMedId, visibleMedIds]);
+  });
 
   const [month, setMonth] = useState(() => selectedDate.slice(0, 7));
 

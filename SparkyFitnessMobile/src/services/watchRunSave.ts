@@ -6,10 +6,11 @@ import {
   createExerciseEntry,
 } from './api/exerciseApi';
 import { resolveRecordingExercise } from './gpsRecordingSave';
+import { noteWatchRunEntry } from './healthkit/watchRunEntries';
 import { addLog } from './LogService';
 import { measureWatchRunForm, type WatchRunForm } from './stepDistance';
 import { buildActivitySetsPayload } from '../utils/workoutSession';
-import { toLocalDateString } from '../utils/dateUtils';
+import { getDeviceTimezone, toLocalDateString } from '../utils/dateUtils';
 import {
   computeLaps,
   computeSplits,
@@ -113,6 +114,8 @@ export async function saveWatchRun(
       duration_minutes: Math.round((durationSeconds / 60) * 100) / 100,
       entry_date: toLocalDateString(started),
       entry_time: `${pad(started.getHours())}:${pad(started.getMinutes())}`,
+      // The time above is read on this phone, which may not be in the profile's zone.
+      record_timezone: getDeviceTimezone(),
       distance: distanceKm,
       ...(form && {
         avg_cadence: form.avgCadence,
@@ -126,6 +129,8 @@ export async function saveWatchRun(
       }),
     });
     entryId = created.id;
+    // The watch saved this workout to Apple Health itself: write-back leaves it out.
+    await noteWatchRunEntry(entryId);
     await onEntryCreated(entryId, form);
   }
 

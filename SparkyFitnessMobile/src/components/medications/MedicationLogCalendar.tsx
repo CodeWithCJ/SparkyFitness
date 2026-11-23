@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
@@ -89,9 +89,11 @@ const MedicationLogCalendar: React.FC<MedicationLogCalendarProps> = ({
   const [selectedMedId, setSelectedMedId] = useState(ALL_MEDS);
 
   // Picking a day elsewhere (the adjacent-month cells, Back to today) brings its month in.
-  useEffect(() => {
+  const [lastSelectedDate, setLastSelectedDate] = useState(selectedDate);
+  if (lastSelectedDate !== selectedDate) {
+    setLastSelectedDate(selectedDate);
     setMonth(selectedDate.slice(0, 7));
-  }, [selectedDate]);
+  }
 
   const loggableMeds = useMemo(
     () => medications.filter((m) => m.is_active),

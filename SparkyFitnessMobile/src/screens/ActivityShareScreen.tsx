@@ -7,6 +7,7 @@ import {
   TextInput,
   View,
   useWindowDimensions,
+  type ViewInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
@@ -84,7 +85,7 @@ const ActivityShareScreen: React.FC<ActivityShareScreenProps> = ({ route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  const cardRef = useRef<React.ComponentRef<typeof View>>(null);
+  const cardRef = useRef<ViewInstance>(null);
 
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [template, setTemplate] = useState<ActivityShareTemplate>('classic');

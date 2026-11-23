@@ -3082,6 +3082,7 @@ CREATE TABLE public.food_entries (
     water_ml numeric,
     alcohol_g numeric,
     cooked_quantity numeric,
+    client_id uuid,
     CONSTRAINT chk_food_or_meal_id CHECK (((food_id IS NULL) OR (meal_id IS NULL))),
     CONSTRAINT food_entries_cooked_quantity_positive CHECK (((cooked_quantity IS NULL) OR (cooked_quantity > (0)::numeric))),
     CONSTRAINT food_entries_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text)),
@@ -3146,6 +3147,13 @@ COMMENT ON COLUMN public.food_entries.cooked_quantity IS 'Cooked weight eaten, i
 
 
 --
+-- Name: COLUMN food_entries.client_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entries.client_id IS 'Client-minted idempotency key from the mobile offline queue. NULL for entries not created through a replayable client.';
+
+
+--
 -- Name: food_entry_meals; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3168,6 +3176,7 @@ CREATE TABLE public.food_entry_meals (
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
     notes text,
     entry_total_servings numeric,
+    client_id uuid,
     CONSTRAINT food_entry_meals_entry_total_servings_positive CHECK (((entry_total_servings IS NULL) OR (entry_total_servings > (0)::numeric))),
     CONSTRAINT food_entry_meals_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
@@ -3213,6 +3222,13 @@ COMMENT ON COLUMN public.food_entry_meals.notes IS 'Per-occurrence markdown note
 --
 
 COMMENT ON COLUMN public.food_entry_meals.entry_total_servings IS 'Snapshotted total dish yield of the meal in its unit when logged. NULL falls back to the live meal template.';
+
+
+--
+-- Name: COLUMN food_entry_meals.client_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.food_entry_meals.client_id IS 'Client-minted idempotency key from the mobile offline queue. NULL for meals not created through a replayable client.';
 
 
 --
@@ -3324,6 +3340,7 @@ CREATE TABLE public.foods (
     provider_verified boolean DEFAULT false NOT NULL,
     images jsonb DEFAULT '[]'::jsonb NOT NULL,
     notes text,
+    client_id uuid,
     CONSTRAINT foods_images_is_array CHECK ((jsonb_typeof(images) = 'array'::text))
 );
 
@@ -3333,6 +3350,13 @@ CREATE TABLE public.foods (
 --
 
 COMMENT ON COLUMN public.foods.notes IS 'Owner-authored markdown reference note for this food (e.g. how it is ordered or prepared).';
+
+
+--
+-- Name: COLUMN foods.client_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.foods.client_id IS 'Client-minted idempotency key from the mobile offline queue. NULL for foods not created through a replayable client.';
 
 
 --
@@ -6113,7 +6137,8 @@ CREATE TABLE public.water_intake_entries (
     logged_at timestamp with time zone DEFAULT now() NOT NULL,
     source_id character varying(255),
     food_entry_id uuid,
-    hydration_factor numeric(4,3)
+    hydration_factor numeric(4,3),
+    client_id uuid
 );
 
 
@@ -6136,6 +6161,13 @@ COMMENT ON COLUMN public.water_intake_entries.food_entry_id IS 'Set when this dr
 --
 
 COMMENT ON COLUMN public.water_intake_entries.hydration_factor IS 'The factor in force when this drink was logged, snapshotted like container_name so later container edits do not rewrite history. NULL on rows predating the column (treat as 1.0).';
+
+
+--
+-- Name: COLUMN water_intake_entries.client_id; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.water_intake_entries.client_id IS 'Client-minted idempotency key from the mobile offline queue. NULL for entries not created through a replayable client.';
 
 
 --
@@ -8672,6 +8704,13 @@ CREATE INDEX idx_food_entries_food_entry_meal_id ON public.food_entries USING bt
 
 
 --
+-- Name: idx_food_entries_user_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_food_entries_user_client_id ON public.food_entries USING btree (user_id, client_id) WHERE (client_id IS NOT NULL);
+
+
+--
 -- Name: idx_food_entries_user_source_source_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8683,6 +8722,13 @@ CREATE UNIQUE INDEX idx_food_entries_user_source_source_id ON public.food_entrie
 --
 
 CREATE INDEX idx_food_entry_meals_meal_template_id ON public.food_entry_meals USING btree (meal_template_id);
+
+
+--
+-- Name: idx_food_entry_meals_user_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_food_entry_meals_user_client_id ON public.food_entry_meals USING btree (user_id, client_id) WHERE (client_id IS NOT NULL);
 
 
 --
@@ -8753,6 +8799,13 @@ CREATE INDEX idx_foods_provider_type_user_id ON public.foods USING btree (provid
 --
 
 CREATE INDEX idx_foods_shared_public_name ON public.foods USING btree (shared_with_public, is_quick_food, name);
+
+
+--
+-- Name: idx_foods_user_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_foods_user_client_id ON public.foods USING btree (user_id, client_id) WHERE (client_id IS NOT NULL);
 
 
 --
@@ -9467,6 +9520,13 @@ CREATE INDEX idx_vitals_user_date ON public.vitals_entries USING btree (user_id,
 --
 
 CREATE INDEX idx_water_intake_entries_food_entry_id ON public.water_intake_entries USING btree (food_entry_id) WHERE (food_entry_id IS NOT NULL);
+
+
+--
+-- Name: idx_water_intake_entries_user_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_water_intake_entries_user_client_id ON public.water_intake_entries USING btree (user_id, client_id) WHERE (client_id IS NOT NULL);
 
 
 --

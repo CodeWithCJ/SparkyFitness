@@ -90,11 +90,16 @@ const CookedWeightSection: React.FC<CookedWeightSectionProps> = ({
   // The last cooked entry arrives after the screen opens. Pre-tick the switch
   // once it does, unless the person has already touched the section.
   const [touched, setTouched] = useState(false);
-  useEffect(() => {
-    if (touched || editingYield !== null || previousYield === null) return;
+  const shouldPreTick =
+    !touched && editingYield === null && previousYield !== null;
+  const [wasPreTicked, setWasPreTicked] = useState(false);
+  if (shouldPreTick && !wasPreTicked) {
+    setWasPreTicked(true);
     setEnabled(true);
     setSource('previous');
-  }, [touched, editingYield, previousYield]);
+  } else if (!shouldPreTick && wasPreTicked) {
+    setWasPreTicked(false);
+  }
 
   const eaten = positiveOrUndefined(eatenText);
   const reusedYield =

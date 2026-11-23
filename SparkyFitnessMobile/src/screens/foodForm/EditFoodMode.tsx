@@ -178,15 +178,18 @@ export function EditFoodMode({
   // the fallback selection lands without AI provenance. When the server-backed
   // variants resolve, swap in the matching saved variant so the inline AI
   // badge surfaces on first render (not only after switching units and back).
-  useEffect(() => {
-    if (savedUnitVariants.length === 0) return;
-    setPendingUnitSelection((prev) => {
-      if (!prev || prev.kind !== 'existing' || !prev.variant.id) return prev;
-      const match = savedUnitVariants.find((v) => v.id === prev.variant.id);
-      if (!match || match === prev.variant) return prev;
-      return { ...prev, variant: match };
-    });
-  }, [savedUnitVariants]);
+  if (
+    savedUnitVariants.length > 0 &&
+    pendingUnitSelection?.kind === 'existing' &&
+    pendingUnitSelection.variant.id
+  ) {
+    const match = savedUnitVariants.find(
+      (v) => v.id === pendingUnitSelection.variant.id
+    );
+    if (match && match !== pendingUnitSelection.variant) {
+      setPendingUnitSelection({ ...pendingUnitSelection, variant: match });
+    }
+  }
   const [currentVariantId, setCurrentVariantId] = useState(variantId);
   const [variantBaselineValues, setVariantBaselineValues] = useState<
     Partial<FoodFormData>

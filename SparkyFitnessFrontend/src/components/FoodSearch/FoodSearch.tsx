@@ -1,4 +1,5 @@
 import { useFoodResultNutrientConfig } from '@/hooks/Foods/useFoodResultNutrientConfig';
+import { useOnChange } from '@/hooks/useOnChange';
 import {
   useState,
   useEffect,
@@ -197,21 +198,13 @@ const EnhancedFoodSearch = ({
   // Debounced term for the local-food query so it does not refetch on every
   // keystroke (meals and online have their own debounced effects).
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  useOnChange([searchTerm], () => {
+    if (!searchTerm.trim()) setDebouncedSearchTerm('');
+  });
   useEffect(() => {
-    if (!searchTerm.trim()) {
-      setDebouncedSearchTerm('');
-      return;
-    }
+    if (!searchTerm.trim()) return;
     const timer = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
     return () => clearTimeout(timer);
-  }, [searchTerm]);
-  // A new search supersedes any barcode-scanned product.
-  useEffect(() => {
-    if (searchTerm.trim()) {
-      barcodeRequest.current += 1;
-      setScannedBarcode(null);
-      setIsOnlineLoading(false);
-    }
   }, [searchTerm]);
   const [meals, setMeals] = useState<Meal[]>([]);
   const [isMealLoading, setIsMealLoading] = useState(false);
@@ -255,14 +248,26 @@ const EnhancedFoodSearch = ({
     requestId: number;
   } | null>(null);
   const barcodeRequest = useRef(0);
+  // A new search supersedes any barcode-scanned product.
+  useOnChange([searchTerm], () => {
+    if (searchTerm.trim()) {
+      setScannedBarcode(null);
+      setIsOnlineLoading(false);
+    }
+  });
   useEffect(() => {
-    barcodeRequest.current += 1;
+    if (searchTerm.trim()) barcodeRequest.current += 1;
+  }, [searchTerm]);
+  useOnChange([user?.id, user?.activeUserId], () => {
     setScannedBarcode(null);
     setBarcodeProviderId(null);
     setIsOnlineLoading(false);
     setEditingProduct(null);
     setShowEditDialog(false);
     setShowBarcodeScanner(false);
+  });
+  useEffect(() => {
+    barcodeRequest.current += 1;
   }, [user?.id, user?.activeUserId]);
 
   const queryClient = useQueryClient();
@@ -510,14 +515,14 @@ const EnhancedFoodSearch = ({
   // If providers drop to one while the "All Providers" sentinel is still
   // selected, clear it so we fall back to a real provider instead of stranding
   // the selector on __all__ (which would show a blank value and no results).
-  useEffect(() => {
+  useOnChange([manualProviderId, foodProviderOptions.length], () => {
     if (
       manualProviderId === ALL_PROVIDERS_VALUE &&
       foodProviderOptions.length <= 1
     ) {
       setManualProviderId(null);
     }
-  }, [manualProviderId, foodProviderOptions.length]);
+  });
 
   // Which By Source provider sections are expanded (All Providers mode). Reset
   // when the query changes so stale sections don't stay open.
@@ -556,9 +561,9 @@ const EnhancedFoodSearch = ({
   // Collapse expanded By Source sections when the aggregated query changes.
   // Keyed on the hook's debounced term (not the faster local debounce) so it
   // fires in step with the results the sections are showing, not ~300ms early.
-  useEffect(() => {
+  useOnChange([allProvidersDebouncedSearch], () => {
     setExpandedProviders(new Set());
-  }, [allProvidersDebouncedSearch]);
+  });
 
   // Top Matches: interleave each provider's top results (round-robin by rank).
   const topMatches = useMemo(
@@ -596,10 +601,7 @@ const EnhancedFoodSearch = ({
     [queryClient]
   );
 
-  useEffect(() => {
-    // Invalidate any in-flight meal search immediately, so a slow prior request
-    // can't flash stale results during the new debounce window.
-    mealSearchSeq.current += 1;
+  useOnChange([searchTerm, showMeals, isSearchEmpty, handleMealSearch], () => {
     if (!showMeals || isSearchEmpty) {
       setMeals([]);
       setIsMealLoading(false);
@@ -607,6 +609,13 @@ const EnhancedFoodSearch = ({
     }
     setMeals([]);
     setIsMealLoading(true);
+  });
+
+  useEffect(() => {
+    // Invalidate any in-flight meal search immediately, so a slow prior request
+    // can't flash stale results during the new debounce window.
+    mealSearchSeq.current += 1;
+    if (!showMeals || isSearchEmpty) return;
     const handler = setTimeout(() => {
       handleMealSearch(searchTerm);
     }, 500);
@@ -707,37 +716,79 @@ const EnhancedFoodSearch = ({
 
   // Online results stream in alongside local results, using the default
   // provider. Online searches start at 3 characters to limit provider calls.
+  // The state resets run first (during render, see useOnChange); the debounced
+  // request itself runs in the effect below.
+  useOnChange(
+    [
+      searchTerm,
+      selectedFoodDataProvider,
+      foodDataProviders,
+      searchHandlers,
+      t,
+      ownershipFilter,
+    ],
+    () => {
+      // In All Providers mode the aggregated hook owns the online results, so this
+      // single-provider effect must fully no-op. Without this guard it runs on
+      // every keystroke (searchTerm is a dependency), finds no matching provider
+      // for the __all__ sentinel, and calls setExternalResults([]) each time; a
+      // fresh [] is never === the previous one, so it re-renders the whole
+      // component on every keystroke and lags typing.
+      if (selectedFoodDataProvider === ALL_PROVIDERS_VALUE) {
+        return;
+      }
+      if (ownershipFilter === 'mine' || ownershipFilter === 'family') {
+        setExternalResults([]);
+        setHasOnlineSearchBeenPerformed(false);
+        setIsOnlineLoading(false);
+        return;
+      }
+      const term = searchTerm.trim();
+      // Each new search (or provider switch) starts a fresh page 1, so reset the
+      // paging cursor and "has more" flag alongside the results below. Clear
+      // isLoadingMore too, so a Load more that was in flight during the switch
+      // does not leave the new search's button stuck disabled/spinning until the
+      // stale request resolves.
+      setExternalPage(1);
+      setExternalHasMore(false);
+      setIsLoadingMore(false);
+      if (term.length < 3) {
+        setExternalResults([]);
+        setHasOnlineSearchBeenPerformed(false);
+        setIsOnlineLoading(false);
+        return;
+      }
+      const provider = foodDataProviders.find(
+        (p) => p.id === selectedFoodDataProvider
+      );
+      const providerSearch = provider
+        ? searchHandlers[provider.provider_type]
+        : undefined;
+      if (!provider || !providerSearch) {
+        setExternalResults([]);
+        setIsOnlineLoading(false);
+        return;
+      }
+      // Show the online section as loading the moment the term changes, rather
+      // than waiting out the 600ms debounce. Otherwise the previous provider's
+      // results linger in the ~300ms gap between the local debounce settling and
+      // the timeout firing, reading as if they belong to the new term. The
+      // < 3 char / no-provider guards above already prevent a spurious spinner.
+      setIsOnlineLoading(true);
+    }
+  );
+
   useEffect(() => {
-    // In All Providers mode the aggregated hook owns the online results, so this
-    // single-provider effect must fully no-op. Without this guard it runs on
-    // every keystroke (searchTerm is a dependency), finds no matching provider
-    // for the __all__ sentinel, and calls setExternalResults([]) each time; a
-    // fresh [] is never === the previous one, so it re-renders the whole
-    // component on every keystroke and lags typing.
     if (selectedFoodDataProvider === ALL_PROVIDERS_VALUE) {
       return;
     }
     if (ownershipFilter === 'mine' || ownershipFilter === 'family') {
-      setExternalResults([]);
-      setHasOnlineSearchBeenPerformed(false);
-      setIsOnlineLoading(false);
       return;
     }
     const term = searchTerm.trim();
-    // Each new search (or provider switch) starts a fresh page 1, so reset the
-    // paging cursor and "has more" flag alongside the results below, and
-    // invalidate any "Load more" fetch still in flight from the previous search.
-    // Clear isLoadingMore too, so a Load more that was in flight during the
-    // switch does not leave the new search's button stuck disabled/spinning
-    // until the stale request resolves.
+    // Invalidate any "Load more" fetch still in flight from the previous search.
     searchToken.current += 1;
-    setExternalPage(1);
-    setExternalHasMore(false);
-    setIsLoadingMore(false);
     if (term.length < 3) {
-      setExternalResults([]);
-      setHasOnlineSearchBeenPerformed(false);
-      setIsOnlineLoading(false);
       return;
     }
     const provider = foodDataProviders.find(
@@ -747,17 +798,9 @@ const EnhancedFoodSearch = ({
       ? searchHandlers[provider.provider_type]
       : undefined;
     if (!provider || !providerSearch) {
-      setExternalResults([]);
-      setIsOnlineLoading(false);
       return;
     }
     let active = true;
-    // Show the online section as loading the moment the term changes, rather
-    // than waiting out the 600ms debounce. Otherwise the previous provider's
-    // results linger in the ~300ms gap between the local debounce settling and
-    // this timeout firing, reading as if they belong to the new term. The
-    // < 3 char / no-provider guards above already prevent a spurious spinner.
-    setIsOnlineLoading(true);
     const handler = setTimeout(async () => {
       setSearchProviderId(provider.id);
       setHasOnlineSearchBeenPerformed(true);

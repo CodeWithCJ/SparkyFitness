@@ -130,6 +130,24 @@ describe('FoodsLibraryScreen', () => {
     mockFoods([]);
   });
 
+  it('shows the foods kept on the phone while the server cannot be reached', () => {
+    mockUseServerConnection.mockReturnValue({
+      status: 'unreachable',
+      isConnected: false,
+      isLoading: false,
+    } as any);
+    mockFoods([createFood()]);
+
+    const screen = renderScreen();
+
+    expect(screen.getByText('Grilled Chicken')).toBeTruthy();
+    expect(screen.queryByText("Can't reach your server")).toBeNull();
+    // The list is read from the phone, so it is asked for while offline.
+    expect(mockUseFoodsLibrary).toHaveBeenCalledWith('', { enabled: true });
+    // Favourites need the server.
+    expect(mockUseFavorites).toHaveBeenCalledWith({ enabled: false });
+  });
+
   it('lists foods and navigates to FoodDetail when a food is pressed', () => {
     mockFoods([
       createFood(),

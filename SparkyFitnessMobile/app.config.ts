@@ -13,7 +13,8 @@ const ANDROID_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
 const IOS_PROD_BUNDLE_IDENTIFIER = 'com.SparkyApps.SparkyFitnessMobile';
 const DEV_APPLE_TEAM_ID = process.env.EXPO_DEV_APPLE_TEAM_ID || '';
 const PROD_APPLE_TEAM_ID = process.env.EXPO_PROD_APPLE_TEAM_ID || '';
-// Optional. With it, Android draws cardio routes over Google Maps; without
+// Optional. With it, Android's route editors use Google Maps (still route
+// previews stay on OpenStreetMap, see RoutePreviewMapSurface.android.tsx); without
 // it, Android draws them over OpenStreetMap vector tiles with MapLibre, no key
 // needed. iOS uses Apple Maps and needs no key either. Supply it from the
 // build environment (an EAS secret, for instance), never from the repo.
@@ -334,7 +335,6 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       './plugins/withWorkoutNotification',
       './plugins/withWearOs',
       './plugins/withEnrichedMarkdownNoMath',
-      './plugins/withSceneLifecycle',
       [
         'react-native-maps',
         {

@@ -1,7 +1,13 @@
 import { ApiError } from '../services/api/errors';
 import { addLog } from '../services/LogService';
-import { getActiveServerConfigId } from '../services/storage';
+import {
+  getActiveServerConfig,
+  getActiveServerConfigId,
+  type ServerConfig,
+} from '../services/storage';
 import { serverMayBeDown } from '../utils/serverErrors';
+import { accountGeneration } from './accountGeneration';
+import { CACHE_COLLECTIONS, FOOD_PACK_COMPLETED_KEY } from './collections';
 import { getCacheRow } from './cacheStore';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged, notifyUploadsConfirmed } from './events';
@@ -97,16 +103,52 @@ function isDue(row: OutboxRow, trigger: DrainTrigger, now: number): boolean {
   }
 }
 
+/** Uploads that change a day's food or water totals. */
+function affectsDaySummary(kind: string): boolean {
+  return kind.startsWith('food') || kind.startsWith('water');
+}
+
 async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
+  // Read before the account and server are: a switch at any point after this
+  // is noticed before the next row is sent.
+  const startedUnder = accountGeneration();
   const db = await getOfflineDb();
   const now = Date.now();
   await deleteOldSyncedOutbox(db, now);
   const serverConfigId = await getActiveServerConfigId();
   if (!serverConfigId) return { synced: 0, remaining: 0 };
+  // The server every request of this run is sent to: handlers use it instead
+  // of resolving the active one when their request goes out. A switch after
+  // this point cannot carry a row to another account's server.
+  let runServerConfig: ServerConfig | undefined;
+  try {
+    const active = await getActiveServerConfig();
+    if (active?.id === serverConfigId) runServerConfig = active;
+  } catch {
+    // Handled below: without a captured server nothing is sent.
+  }
+  // A handler given no server would resolve the active one when its request
+  // goes out, which after an account switch is another account's. Send
+  // nothing; the rows stay queued for the next run.
+  if (!runServerConfig) {
+    const waiting = await listUnconfirmedOutbox(db, serverConfigId);
+    return { synced: 0, remaining: waiting.length };
+  }
 
   const currentUserId = await signedInUserId(db, serverConfigId);
   const rows = await listUnconfirmedOutbox(db, serverConfigId);
   let synced = 0;
+  // Set once a food or drink upload is confirmed: the phone's saved copy of
+  // the day totals no longer counts it, so the copy is refreshed from the
+  // server (it is not counted twice, since a confirmed row leaves the overlay
+  // and the server's total now holds it).
+  let summariesOutdated = false;
+  // The account and server in force when the first food or water upload went
+  // out; the refresh after the run is made for them.
+  let refreshScope: {
+    startedUnder: number;
+    serverConfig: ServerConfig | null;
+  } | null = null;
   // A row waiting on another is looked at again once that one is confirmed,
   // so a workout and the feedback given on it go up in the same run.
   let toVisit = rows;
@@ -120,11 +162,24 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
       // Work made under an account is only sent while that same account is
       // known to be signed in: never under another one, and not while the
       // signed-in person is unknown (just after an account switch). A row
-      // with no recorded account (queued while the phone did not know who
-      // was signed in) cannot be matched to anyone, so it waits for the
-      // person to tap Upload now.
+      // with no recorded account cannot be matched to anyone and is never
+      // sent, not even by Upload now: it would be written into whichever
+      // account is signed in. It is parked as needing attention, where the
+      // person can discard it.
       if (listed.userId == null) {
-        if (trigger !== 'manual') continue;
+        if (listed.status !== 'failed') {
+          await updateOutboxRow(
+            db,
+            listed.id,
+            {
+              status: 'failed',
+              lastError: 'No account was recorded for this upload',
+            },
+            undefined,
+            { onlyIfStatus: listed.status, onlyIfUpdatedAt: listed.updatedAt }
+          );
+        }
+        continue;
       } else if (listed.userId !== currentUserId) {
         continue;
       }
@@ -140,6 +195,15 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
       const handler = getOutboxHandler(listed.kind);
       // Written by a newer build than this one: leave it for that build.
       if (!handler) continue;
+
+      // A request goes to whichever server and account are active when it is
+      // made, not the ones this run read at its start. If either changed, the
+      // rest of the run stops: the remaining rows belong to the earlier
+      // account and wait for it.
+      if (accountGeneration() !== startedUnder) {
+        stopped = true;
+        break;
+      }
 
       // Claim the row as it was listed: still in that status and still that
       // version of it. The list was read before earlier rows were sent, which
@@ -164,9 +228,26 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
         });
         row = { ...row, payload, payloadVersion: handler.payloadVersion };
       }
+      if (affectsDaySummary(row.kind) && refreshScope == null) {
+        refreshScope = { startedUnder, serverConfig: runServerConfig ?? null };
+      }
+      // The claim and the upgrade above were awaited: look once more, right
+      // before the request, and put the row back untouched if the account
+      // changed meanwhile.
+      if (accountGeneration() !== startedUnder) {
+        await updateOutboxRow(
+          db,
+          row.id,
+          { status: listed.status },
+          undefined,
+          { onlyIfStatus: 'sending' }
+        );
+        stopped = true;
+        break;
+      }
       let result: SendResult;
       try {
-        result = await handler.send(row);
+        result = await handler.send(row, { serverConfig: runServerConfig });
       } catch (error) {
         result = sendResultFromError(error);
       }
@@ -184,6 +265,7 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
         );
         if (!confirmed) continue;
         synced += 1;
+        if (affectsDaySummary(row.kind)) summariesOutdated = true;
         try {
           await handler.onSynced?.(row);
         } catch (error) {
@@ -243,6 +325,36 @@ async function drainOnce(trigger: DrainTrigger): Promise<DrainSummary> {
     toVisit = synced > syncedBefore ? waitingOnOthers : [];
   }
 
+  if (summariesOutdated && refreshScope) {
+    try {
+      // Loaded here, not at the top: it pulls in the API client, which a
+      // module that only queues work should not need.
+      const { refreshRecentDailySummaries } =
+        await import('./dailySummaryCache');
+      // The server and account the uploads were made for, read before the
+      // first of them was sent: a switch in the meantime stops the refresh
+      // instead of writing another server's totals under this one's key.
+      if (refreshScope.serverConfig?.id === serverConfigId) {
+        await refreshRecentDailySummaries(
+          db,
+          serverConfigId,
+          undefined,
+          refreshScope.startedUnder,
+          refreshScope.serverConfig
+        );
+      }
+    } catch (error) {
+      // Due again: the next refresh of the offline pack does not wait out its
+      // six hours for the food and totals.
+      addLog(`[Offline] Saved day totals not refreshed: ${error}`, 'WARNING');
+      await db
+        .run(
+          `DELETE FROM cache WHERE server_config_id = ? AND collection = ? AND key = ?`,
+          [serverConfigId, CACHE_COLLECTIONS.pack, FOOD_PACK_COMPLETED_KEY]
+        )
+        .catch(() => undefined);
+    }
+  }
   const remaining = (await listUnconfirmedOutbox(db, serverConfigId)).length;
   return { synced, remaining };
 }

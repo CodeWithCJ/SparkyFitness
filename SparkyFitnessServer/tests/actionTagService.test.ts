@@ -526,4 +526,75 @@ describe('Phase 1 amount and multiplier adjustments', () => {
       USER
     );
   });
+
+  it('requires confirmation and applies entry_time when allow_custom_timestamp is enabled', async () => {
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({ allow_custom_timestamp: true })
+    );
+
+    const needsConfirm = await scanActionTag(USER, USER, BODY);
+    expect(needsConfirm.status).toBe('needs_confirmation');
+    expect(repo.claimActionTagRun).not.toHaveBeenCalled();
+
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({ action: FOOD_ACTION, allow_custom_timestamp: true })
+    );
+
+    const doneResult = await scanActionTag(USER, USER, {
+      ...BODY,
+      confirmed: true,
+      entry_time: '08:00',
+    });
+    expect(doneResult.status).toBe('done');
+  });
+
+  it('applies meal_type_id override for food tags', async () => {
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({ action: FOOD_ACTION, allow_amount_adjustment: true })
+    );
+
+    await scanActionTag(USER, USER, {
+      ...BODY,
+      confirmed: true,
+      meal_type_id: SNACKS_ID,
+    });
+
+    expect(foodRepository.createFoodEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ meal_type_id: SNACKS_ID }),
+      USER
+    );
+  });
+
+  it('converts water_ml_override into whole container drinks', async () => {
+    vi.mocked(waterContainerRepository.getWaterContainerById).mockResolvedValue(
+      {
+        id: 7,
+        name: 'Bottle (500 ml)',
+        volume: 500,
+        unit: 'ml',
+      } as never
+    );
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({
+        action: { type: 'water', container_id: 7, drinks: 1 },
+        allow_amount_adjustment: true,
+      })
+    );
+
+    const result = await scanActionTag(USER, USER, {
+      ...BODY,
+      confirmed: true,
+      water_ml_override: 1000,
+    });
+
+    expect(result.status).toBe('done');
+    expect(result.summary).toBe('2 × Bottle (500 ml)');
+    expect(measurementService.upsertWaterIntake).toHaveBeenCalledWith(
+      USER,
+      USER,
+      '2026-10-30',
+      2,
+      7
+    );
+  });
 });

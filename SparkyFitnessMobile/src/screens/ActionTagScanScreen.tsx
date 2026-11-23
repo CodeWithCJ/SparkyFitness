@@ -33,7 +33,7 @@ import { refreshAfterTagAction, undoTagAction } from '../services/tagActions';
 import type { RootStackScreenProps } from '../types/navigation';
 import { formatLocalizedNumber } from '../localization';
 import { toLocalDateString } from '../utils/dateUtils';
-import { sumMealFoodField } from '../utils/mealNutrition';
+import { buildMealDisplayValuesFromFoods } from '../utils/mealNutrition';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 
 type ActionTagScanScreenProps = RootStackScreenProps<'ActionTagScan'>;
@@ -499,31 +499,33 @@ const ConfirmAmountPicker: React.FC<{
     const mealData = meal as
       | {
           name?: string;
-          serving_quantity?: number;
+          serving_size?: number | null;
+          serving_unit?: string | null;
+          total_servings?: number | null;
           image_url?: string | null;
-          foods?: Parameters<typeof sumMealFoodField>[0];
+          foods?: Parameters<typeof buildMealDisplayValuesFromFoods>[0];
         }
       | undefined;
     const boundedMealQty = Math.min(
       ACTION_TAG_MAX_QUANTITY,
       Math.max(0.01, selectedValue)
     );
-    const baseQty = Math.max(
-      0.01,
-      Number(mealData?.serving_quantity ?? action.quantity)
-    );
-    const ratio = boundedMealQty / baseQty;
     const mealFoods = mealData?.foods ?? [];
-    const calories = Math.round(
-      sumMealFoodField(mealFoods, 'calories') * ratio
+    const perServing = buildMealDisplayValuesFromFoods(
+      mealFoods,
+      {
+        serving_size: mealData?.serving_size,
+        serving_unit: mealData?.serving_unit,
+        total_servings: mealData?.total_servings,
+      },
+      'perServing'
     );
+    const calories = Math.round((perServing.calories ?? 0) * boundedMealQty);
     const protein = Number(
-      (sumMealFoodField(mealFoods, 'protein') * ratio).toFixed(1)
+      ((perServing.protein ?? 0) * boundedMealQty).toFixed(1)
     );
-    const carbs = Number(
-      (sumMealFoodField(mealFoods, 'carbs') * ratio).toFixed(1)
-    );
-    const fat = Number((sumMealFoodField(mealFoods, 'fat') * ratio).toFixed(1));
+    const carbs = Number(((perServing.carbs ?? 0) * boundedMealQty).toFixed(1));
+    const fat = Number(((perServing.fat ?? 0) * boundedMealQty).toFixed(1));
     return {
       title: mealData?.name ?? tag.label,
       imageUri: mealData?.image_url ?? null,
@@ -562,7 +564,7 @@ const ConfirmAmountPicker: React.FC<{
       const options: ScanConfirmOptions = {};
 
       if (isWater) {
-        if (selectedUnit === 'ml') {
+        if (targetUnit === 'ml') {
           const ml = Math.min(10000, Math.max(1, Math.round(targetVal)));
           options.override = { water_ml_override: ml };
         } else {
@@ -978,7 +980,6 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   const { isConnected, isLoading: isConnectionLoading } = useServerConnection();
   const [phase, setPhase] = useState<Phase>({ kind: 'running' });
   const lastTagRef = useRef<ActionTagResponse | null>(null);
-  const doubleScanShownRef = useRef(false);
   const startedRef = useRef(false);
 
   const entryDate = useMemo(() => toLocalDateString(new Date()), []);
@@ -1041,16 +1042,6 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
             return;
           }
           case 'too_soon': {
-            const knownTag = result.tag ?? lastTagRef.current;
-            if (knownTag && !doubleScanShownRef.current) {
-              doubleScanShownRef.current = true;
-              setPhase({
-                kind: 'confirm',
-                tag: knownTag,
-                doubleScanNotice: true,
-              });
-              return;
-            }
             Toast.show({
               type: 'info',
               text1: t('actionTags.scan.tooSoon', {
@@ -1094,7 +1085,7 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
   useEffect(() => {
     if (!isConnected || startedRef.current) return;
     startedRef.current = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // `run` only sets state after the server has answered, never synchronously.
     void run(false);
   }, [isConnected, run]);
 

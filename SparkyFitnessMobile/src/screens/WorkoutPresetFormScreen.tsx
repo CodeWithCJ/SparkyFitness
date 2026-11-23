@@ -43,6 +43,7 @@ import type {
   WorkoutPresetUpdatePayload,
 } from '../services/api/workoutPresetsApi';
 import { buildExerciseReplaceContext } from '../utils/exerciseReplace';
+import type { TranslateFn } from '../localization/translateFn';
 
 type CreateParams = Extract<
   RootStackParamList['WorkoutPresetForm'],
@@ -112,10 +113,7 @@ const FORMATS: readonly WorkoutFormat[] = [
   'for_time',
 ] as const;
 
-function getFormatLabel(
-  format: WorkoutFormat,
-  t: (key: string, options?: { defaultValue?: string }) => string
-): string {
+function getFormatLabel(format: WorkoutFormat, t: TranslateFn): string {
   switch (format) {
     case 'standard':
       return t('workoutPresetForm.formatStandard', {

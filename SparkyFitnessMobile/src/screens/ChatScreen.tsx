@@ -22,6 +22,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type TextInputProps,
+  type TextInputInstance,
 } from 'react-native';
 import { getLocales } from 'expo-localization';
 import {
@@ -104,6 +105,7 @@ import {
 } from '../hooks/useChatTurnRecovery';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import type { RootStackScreenProps } from '../types/navigation';
+import type { TranslateFn } from '../localization/translateFn';
 
 /** Seed (initial) messages accepted by `useChatRuntime`. */
 type InitialMessages = NonNullable<
@@ -500,7 +502,7 @@ function LocalComposerInput({
   ...props
 }: LocalComposerInputProps) {
   const aui = useAui();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const composerText = useAuiState((s) => s.composer.text);
   const [localText, setLocalText] = useState(composerText);
   const localTextRef = useRef(composerText);
@@ -534,7 +536,6 @@ function LocalComposerInput({
     }
 
     if (composerText !== localTextRef.current) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       applyLocalText(composerText);
     }
   }, [applyLocalText, composerText]);
@@ -1277,7 +1278,7 @@ function RunningReporter({
 
 /** The live thread. Only mounted once baseUrl + serviceConfigId are known. */
 function getLocalizedSuggestionLabel(
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TranslateFn,
   labelKey: string,
   defaultLabel: string
 ): string {

@@ -8,6 +8,7 @@ import {
 } from '../../src/offline/cacheStore';
 import {
   CACHE_COLLECTIONS,
+  FOOD_PACK_COMPLETED_KEY,
   PACK_COMPLETED_KEY,
   SINGLE_DOCUMENT_KEY,
   exerciseStatsCacheKey,
@@ -30,6 +31,10 @@ import { getTodayDate } from '../../src/utils/dateUtils';
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 jest.mock('../../src/services/api/apiClient', () => ({
   apiFetch: jest.fn(),
@@ -222,6 +227,10 @@ describe('offline pack', () => {
   it('does not run again inside six hours unless asked', async () => {
     serveFrom(state);
     await refreshOfflinePack();
+    // The food part refreshed in full too (the fake server has no food routes).
+    await putCacheRows(db, 's1', CACHE_COLLECTIONS.pack, [
+      { key: FOOD_PACK_COMPLETED_KEY, payload: { completedAt: Date.now() } },
+    ]);
     mockApiFetch.mockClear();
 
     expect(await refreshOfflinePack()).toBe(false);
@@ -262,5 +271,67 @@ describe('offline pack', () => {
 
     expect(await refreshOfflinePack({ force: true })).toBe(true);
     expect(await isOfflinePackReady(db, 's1')).toBe(true);
+  });
+
+  it('finishes the refresh when only the last-time values or the plans fail, and asks for them in small requests', async () => {
+    serveFrom({ ...state, failOn: '/api/v2/exercises/stats/batch' });
+
+    expect(await refreshOfflinePack({ force: true })).toBe(true);
+    expect(await isOfflinePackReady(db, 's1')).toBe(true);
+
+    serveFrom({ ...state, failOn: '/api/workout-plan-templates/active/' });
+    expect(await refreshOfflinePack({ force: true })).toBe(true);
+
+    const batches = mockApiFetch.mock.calls
+      .map(([options]) => options)
+      .filter((options) => options.endpoint === '/api/v2/exercises/stats/batch')
+      .map((options) => (options.body as { items: unknown[] }).items.length);
+    expect(Math.max(...batches)).toBeLessThanOrEqual(20);
+  });
+
+  it('still refreshes the food and water when the workout data could not be refreshed', async () => {
+    // The exercise library fails the way a dropped connection does.
+    serveFrom({ ...state, failOn: '/api/v2/exercises/search' });
+
+    // The person is told it did not fully refresh...
+    expect(await refreshOfflinePack({ force: true })).toBe(false);
+
+    // ...but the food and the water were still asked for.
+    const asked = mockApiFetch.mock.calls.map(([options]) => options.endpoint);
+    expect(
+      asked.some((endpoint) => endpoint.includes('/api/food-entries/range'))
+    ).toBe(true);
+    expect(
+      asked.some((endpoint) => endpoint.includes('/api/daily-summary'))
+    ).toBe(true);
+    expect(asked.some((endpoint) => endpoint.startsWith('/api/foods'))).toBe(
+      true
+    );
+    // The workout pack is not marked ready, as before.
+    expect(await isOfflinePackReady(db, 's1')).toBe(false);
+  });
+
+  it('tries the food part again on the next refresh when it failed, though the workout pack is recent', async () => {
+    // The food requests fail; the workout data refreshes and is marked.
+    serveFrom(state);
+    expect(await refreshOfflinePack({ force: true })).toBe(true);
+    expect(
+      await getCacheRow(
+        db,
+        's1',
+        CACHE_COLLECTIONS.pack,
+        FOOD_PACK_COMPLETED_KEY
+      )
+    ).toBeNull();
+
+    // Not forced, and the workout pack is recent: only the food is asked for.
+    mockApiFetch.mockClear();
+    serveFrom(state);
+    await refreshOfflinePack();
+    const asked = mockApiFetch.mock.calls.map(([options]) => options.endpoint);
+    expect(
+      asked.some((endpoint) => endpoint.includes('/api/food-entries/range'))
+    ).toBe(true);
+    expect(asked).not.toContain('/api/identity/user');
   });
 });

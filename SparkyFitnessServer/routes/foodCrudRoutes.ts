@@ -2,6 +2,7 @@ import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
 import { log } from '../config/logging.js';
+import { clientRequestIdSchema } from '@workspace/shared';
 import foodService from '../services/foodService.js';
 import preferenceService from '../services/preferenceService.js';
 import externalProviderService from '../services/externalProviderService.js';
@@ -225,6 +226,12 @@ router.post('/', authenticate, uploadImages, async (req, res, next) => {
     // 400 rather than a constraint violation from the insert.
     if (typeof body.name !== 'string' || body.name.trim() === '') {
       return res.status(400).json({ error: 'Food name is required.' });
+    }
+    // Replay key from the mobile offline queue; a repeat creates nothing new.
+    if (body.client_id !== undefined && body.client_id !== null) {
+      if (!clientRequestIdSchema.safeParse(body.client_id).success) {
+        return res.status(400).json({ error: 'client_id must be a uuid.' });
+      }
     }
     const foodData = {
       ...body,

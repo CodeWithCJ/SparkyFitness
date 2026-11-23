@@ -70,12 +70,21 @@ jest.mock('../../../src/components/charts/chartFormatting', () => ({
 jest.mock('victory-native', () => {
   const ReactModule: typeof import('react') = require('react');
   const { View } = require('react-native');
+  const sharedValue = <T,>(initial: T) => ({
+    value: initial,
+    get() {
+      return this.value;
+    },
+    set(next: T) {
+      this.value = next;
+    },
+  });
   const transform = {
-    panActive: { value: false },
-    zoomActive: { value: false },
-    matrix: { value: [] },
-    offset: { value: [] },
-    origin: { value: { x: 0, y: 0 } },
+    panActive: sharedValue(false),
+    zoomActive: sharedValue(false),
+    matrix: sharedValue<number[]>([]),
+    offset: sharedValue<number[]>([]),
+    origin: sharedValue({ x: 0, y: 0 }),
   };
   return {
     useChartTransformState: () => ({ state: transform }),

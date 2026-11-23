@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import { Platform, type TextInput } from 'react-native';
+import { Platform, type TextInputInstance } from 'react-native';
 import {
   KeyboardController,
   KeyboardEvents,
@@ -23,7 +23,7 @@ const IME_RETRY_DELAYS_MS = [100, 400];
  * Returns a cleanup that cancels pending retries, shaped for an effect return.
  */
 export function scheduleAndroidImeShowRetry(
-  ref: RefObject<TextInput | null>
+  ref: RefObject<TextInputInstance | null>
 ): (() => void) | undefined {
   if (Platform.OS !== 'android') return undefined;
   const timers = IME_RETRY_DELAYS_MS.map((delay) =>
@@ -64,7 +64,7 @@ export function runAfterKeyboardSettles(
  * retry above. Returns the retry cleanup, shaped for an effect return.
  */
 export function focusWithAndroidImeRetry(
-  ref: RefObject<TextInput | null>
+  ref: RefObject<TextInputInstance | null>
 ): (() => void) | undefined {
   ref.current?.focus();
   return scheduleAndroidImeShowRetry(ref);
@@ -79,7 +79,7 @@ export function focusWithAndroidImeRetry(
  * and edit what landed).
  */
 export async function pasteFromClipboard(
-  ref: RefObject<TextInput | null>,
+  ref: RefObject<TextInputInstance | null>,
   setValue: (text: string) => void
 ): Promise<void> {
   setValue(await Clipboard.getString());

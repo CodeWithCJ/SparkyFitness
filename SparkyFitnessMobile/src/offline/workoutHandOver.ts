@@ -16,6 +16,7 @@ import { notifyOutboxChanged } from './events';
 import {
   deleteUnconfirmedForEntity,
   enqueueOutbox,
+  isOwnedBy,
   listUnconfirmedOutbox,
 } from './outbox';
 import { signedInUserId } from './syncEngine';
@@ -77,6 +78,9 @@ export async function queueActiveWorkoutForUpload(options: {
     if (!serverConfigId) return null;
     const db = await getOfflineDb();
     const userId = await signedInUserId(db, serverConfigId);
+    // Whose it is must be known: a row nobody owns would be shown to, and
+    // uploaded under, whichever account signs in next.
+    if (userId == null) return null;
     const finished =
       options.finishedAt != null ? { finished_at: options.finishedAt } : {};
 
@@ -133,6 +137,9 @@ export async function queueWorkoutCreate(
     if (!serverConfigId) return false;
     const db = await getOfflineDb();
     const userId = await signedInUserId(db, serverConfigId);
+    // Whose it is must be known: a row nobody owns would be shown to, and
+    // uploaded under, whichever account signs in next.
+    if (userId == null) return false;
     const id = body.id ?? newUuid();
     await enqueueOutbox(db, {
       id: newUuid(),
@@ -171,8 +178,14 @@ export async function queueWorkoutUpdate(
     if (!serverConfigId) return false;
     const db = await getOfflineDb();
     const userId = await signedInUserId(db, serverConfigId);
+    // Whose it is must be known: a row nobody owns would be shown to, and
+    // uploaded under, whichever account signs in next.
+    if (userId == null) return false;
     const earlier = (await listUnconfirmedOutbox(db, serverConfigId)).find(
-      (row) => row.kind === WORKOUT_SESSION_UPDATE && row.entityId === sessionId
+      (row) =>
+        row.kind === WORKOUT_SESSION_UPDATE &&
+        row.entityId === sessionId &&
+        isOwnedBy(row, userId)
     );
     const earlierBody =
       (earlier?.payload as WorkoutSessionUpdatePayload | undefined)?.body ?? {};
@@ -211,6 +224,9 @@ export async function queueWorkoutSessionDelete(
     if (!serverConfigId) return false;
     const db = await getOfflineDb();
     const userId = await signedInUserId(db, serverConfigId);
+    // Whose it is must be known: a row nobody owns would be shown to, and
+    // uploaded under, whichever account signs in next.
+    if (userId == null) return false;
     await db.transaction(async (tx) => {
       await deleteUnconfirmedForEntity(tx, serverConfigId, sessionId);
       await enqueueOutbox(tx, {

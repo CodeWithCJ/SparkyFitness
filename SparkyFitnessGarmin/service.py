@@ -98,6 +98,61 @@ def project_daily_calorie_metrics(summary_data, current_date, requested_metrics)
     }
 
 
+def _is_valid_body_battery_value(value):
+    return (
+        value is not None
+        and not isinstance(value, bool)
+        and isinstance(value, (int, float))
+        and math.isfinite(value)
+    )
+
+
+def project_body_battery_fallback(body_battery_data, current_date):
+    """Build valid body_battery records from Garmin get_body_battery() fallback responses."""
+    if not isinstance(body_battery_data, list):
+        return []
+
+    records = []
+    for bb_entry in body_battery_data:
+        if not isinstance(bb_entry, dict):
+            continue
+
+        raw_values = bb_entry.get("bodyBatteryValuesArray")
+        bb_values = raw_values if isinstance(raw_values, list) else []
+        valid_bb_values = [
+            v[1]
+            for v in bb_values
+            if isinstance(v, (list, tuple))
+            and len(v) > 1
+            and _is_valid_body_battery_value(v[1])
+        ]
+        bb_highest = max(valid_bb_values, default=None)
+        bb_lowest = min(valid_bb_values, default=None)
+        bb_current = valid_bb_values[-1] if valid_bb_values else None
+        raw_charged = bb_entry.get("charged")
+        raw_drained = bb_entry.get("drained")
+        bb_charged = raw_charged if _is_valid_body_battery_value(raw_charged) else None
+        bb_drained = raw_drained if _is_valid_body_battery_value(raw_drained) else None
+
+        if any(
+            v is not None
+            for v in (bb_highest, bb_lowest, bb_charged, bb_drained, bb_current)
+        ):
+            records.append(
+                {
+                    "date": current_date,
+                    "body_battery_highest": bb_highest,
+                    "body_battery_lowest": bb_lowest,
+                    "body_battery_at_wake": None,  # Not available in this endpoint
+                    "body_battery_charged": bb_charged,
+                    "body_battery_drained": bb_drained,
+                    "body_battery_current": bb_current,
+                }
+            )
+
+    return records
+
+
 def safe_convert(value, conversion_func):
     """Safely apply a conversion function to a value, returning None if the value is None."""
     return conversion_func(value) if value is not None else None

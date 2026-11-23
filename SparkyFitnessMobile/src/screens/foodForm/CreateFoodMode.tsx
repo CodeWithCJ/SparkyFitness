@@ -34,6 +34,7 @@ import {
 } from '../../services/mealPlanSelection';
 import { useMealTypes, usePreferences } from '../../hooks';
 import { useSaveFood } from '../../hooks/useSaveFood';
+import { isPendingFoodId } from '../../offline/foodCreateHandOver';
 import {
   resolveSelectedVariant,
   useAddFoodEntry,
@@ -148,11 +149,21 @@ export function CreateFoodMode({
   const [barcodeInput, setBarcodeInput] = useState(params.barcode ?? '');
   const { pendingScannedBarcode, scannedBarcodeNonce } = params;
 
+  // Consume a one-shot navigation param: applied once per nonce, then cleared
+  // with setParams.
+  const [appliedBarcodeNonce, setAppliedBarcodeNonce] = useState<
+    typeof scannedBarcodeNonce | null
+  >(null);
+  const hasPendingScan =
+    scannedBarcodeNonce != null && pendingScannedBarcode != null;
+  if (!hasPendingScan) {
+    if (appliedBarcodeNonce !== null) setAppliedBarcodeNonce(null);
+  } else if (appliedBarcodeNonce !== scannedBarcodeNonce) {
+    setAppliedBarcodeNonce(scannedBarcodeNonce);
+    setBarcodeInput(pendingScannedBarcode);
+  }
   useEffect(() => {
     if (scannedBarcodeNonce == null || pendingScannedBarcode == null) return;
-    // Consume a one-shot navigation param: guarded by the nonce and paired with
-    // clearing the param via setParams, so it can't move to a render-time derive.
-    setBarcodeInput(pendingScannedBarcode);
     navigation.setParams({
       pendingScannedBarcode: undefined,
       scannedBarcodeNonce: undefined,
@@ -231,19 +242,15 @@ export function CreateFoodMode({
         : (defaultMealTypeId ?? undefined);
   const selectedMealType = mealTypes.find((mt) => mt.id === effectiveMealId);
 
-  useEffect(() => {
-    if (isMealTypesLoading || isMealTypesError || mealTypes.length === 0)
-      return;
-    if (selectedMealId && !mealTypes.some((mt) => mt.id === selectedMealId)) {
-      setSelectedMealId(defaultMealTypeId ?? undefined);
-    }
-  }, [
-    isMealTypesLoading,
-    isMealTypesError,
-    mealTypes,
-    selectedMealId,
-    defaultMealTypeId,
-  ]);
+  if (
+    !isMealTypesLoading &&
+    !isMealTypesError &&
+    mealTypes.length > 0 &&
+    selectedMealId &&
+    !mealTypes.some((mt) => mt.id === selectedMealId)
+  ) {
+    setSelectedMealId(defaultMealTypeId ?? undefined);
+  }
 
   const [entryTime, setEntryTime] = useState(params.entryTime ?? '');
   const entryTimeTouched = useRef(params.entryTime !== undefined);
@@ -504,7 +511,15 @@ export function CreateFoodMode({
 
     const saveFoodForForm = async () => {
       if (portionDraft.length === 0 && !savedFoodRef.current) {
-        return saveFoodAsync(saveFoodPayload, imageArgs);
+        // A food made only for the library can wait on the phone, unless it
+        // carries equivalent servings: those are saved after the food and
+        // would be lost, so that food needs the server.
+        return saveFoodAsync(
+          saveFoodPayload,
+          imageArgs,
+          undefined,
+          isLibraryMode && cleanEquivalents.length === 0
+        );
       }
       setIsPortionSaving(true);
       try {
@@ -846,14 +861,18 @@ export function CreateFoodMode({
       try {
         const savedFood = await saveFoodForForm();
         isSavingRef.current = true;
-        if (portionDraft.length === 0 && !savedFoodRef.current)
+        const waitsOnPhone = isPendingFoodId(savedFood.id);
+        if (portionDraft.length === 0 && !savedFoodRef.current && !waitsOnPhone)
           saveEquivalentsAsync(savedFood.id);
-        Toast.show({
-          type: 'success',
-          text1: t('createFood.success.foodSaved', {
-            defaultValue: 'Food saved',
-          }),
-        });
+        // A food kept on the phone is announced by the save itself.
+        if (!waitsOnPhone) {
+          Toast.show({
+            type: 'success',
+            text1: t('createFood.success.foodSaved', {
+              defaultValue: 'Food saved',
+            }),
+          });
+        }
         navigation.dispatch(StackActions.pop(returnDepth));
       } catch {
         // Error toast is handled in the save hook.
@@ -941,6 +960,7 @@ export function CreateFoodMode({
     addEntry({
       saveFoodPayload,
       saveFoodImages: imageArgs,
+      hasEquivalentServings: cleanEquivalents.length > 0,
       createEntryPayload: {
         meal_type_id: effectiveMealId,
         quantity,

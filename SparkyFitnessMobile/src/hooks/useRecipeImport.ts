@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import {
   useMutation,
   useQuery,
@@ -286,6 +292,88 @@ export function useRecipeSource(mealId: string, scope: string | null) {
   };
 }
 
+interface RecipeImportReviewState {
+  key: string;
+  mappings: Record<string, RecipeImportMapping>;
+  suggestions: RecipeImportSuggestionResponse['ingredients'];
+  warnings: string[];
+  progress: { done: number; total: number } | null;
+  suggesting: boolean;
+  saving: boolean;
+  error: Error | null;
+  saved: RecipeImportSaveResponse | null;
+  uncertain: boolean;
+}
+
+/**
+ * The review's authoritative state, readable synchronously from async
+ * handlers (a React state mirror would lag a render behind a `suggest` loop),
+ * plus the identity of the review it belongs to. Components read it through
+ * `useSyncExternalStore`.
+ */
+class RecipeImportSession {
+  private snapshot: RecipeImportReviewState;
+  private identityToken: { key: string };
+  private mounted = true;
+  private currentScope: string | null;
+  private listeners = new Set<() => void>();
+
+  constructor(initial: RecipeImportReviewState, scope: string | null) {
+    this.snapshot = initial;
+    this.identityToken = { key: initial.key };
+    this.currentScope = scope;
+  }
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+
+  getSnapshot = () => this.snapshot;
+
+  get state() {
+    return this.snapshot;
+  }
+
+  get scope() {
+    return this.currentScope;
+  }
+
+  setScope(scope: string | null) {
+    this.currentScope = scope;
+  }
+
+  setMounted(mounted: boolean) {
+    this.mounted = mounted;
+  }
+
+  isMounted() {
+    return this.mounted;
+  }
+
+  /** The token a handler captures; a new key replaces it and orphans old handlers. */
+  reviewFor(key: string) {
+    if (this.identityToken.key !== key) this.identityToken = { key };
+    return this.identityToken;
+  }
+
+  isReview(review: { key: string }) {
+    return this.identityToken === review;
+  }
+
+  /** Called during render when the review key changed: no notification needed. */
+  resetFor(key: string, fresh: () => RecipeImportReviewState) {
+    if (this.snapshot.key !== key) this.snapshot = fresh();
+  }
+
+  update(patch: Partial<RecipeImportReviewState>) {
+    this.snapshot = { ...this.snapshot, ...patch };
+    this.listeners.forEach((listener) => listener());
+  }
+}
+
 export function useRecipeImport(
   preview: RecipeImportPreview,
   scope: string | null
@@ -293,54 +381,47 @@ export function useRecipeImport(
   const { t } = useTranslation();
   const client = useQueryClient();
   const key = `${scope}:${preview.providerId}:${preview.recipeSlug}:${preview.sourceFingerprint}`;
-  function initial() {
+  function initial(): RecipeImportReviewState {
     return {
       key,
       mappings: scope ? recipeImportInitialMappings(preview.ingredients) : {},
-      suggestions: [] as RecipeImportSuggestionResponse['ingredients'],
-      warnings: [] as string[],
-      progress: null as { done: number; total: number } | null,
+      suggestions: [],
+      warnings: [],
+      progress: null,
       suggesting: false,
       saving: false,
-      error: null as Error | null,
-      saved: null as RecipeImportSaveResponse | null,
+      error: null,
+      saved: null,
       uncertain: false,
     };
   }
-  const [state, setState] = useState(initial);
-  const stateRef = useRef(state);
-  const retainedScope = useRef(scope);
-  retainedScope.current = scope;
-  const identity = useRef({ key });
-  if (identity.current.key !== key) identity.current = { key };
-  const review = identity.current;
-  if (state.key !== key) {
-    const fresh = initial();
-    stateRef.current = fresh;
-    setState(fresh);
-  } else stateRef.current = state;
-  const alive = useRef(true);
+  const [session] = useState(() => new RecipeImportSession(initial(), scope));
+  session.resetFor(key, initial);
+  const review = session.reviewFor(key);
+  const state = useSyncExternalStore(session.subscribe, session.getSnapshot);
+  useLayoutEffect(() => {
+    session.setScope(scope);
+  });
   useEffect(() => {
-    alive.current = true;
+    session.setMounted(true);
     return () => {
-      alive.current = false;
+      session.setMounted(false);
     };
-  }, []);
-  const valid = () => alive.current && !!scope && identity.current === review;
-  function update(patch: Partial<typeof state>) {
+  }, [session]);
+  const valid = () =>
+    session.isMounted() && !!scope && session.isReview(review);
+  function update(patch: Partial<RecipeImportReviewState>) {
     if (!valid()) return;
-    const next = { ...stateRef.current, ...patch };
-    stateRef.current = next;
-    setState(next);
+    session.update(patch);
   }
   function confirm(mapping: RecipeImportMapping) {
-    if (!valid() || stateRef.current.saved || stateRef.current.saving) return;
+    if (!valid() || session.state.saved || session.state.saving) return;
     update({
       mappings: {
-        ...stateRef.current.mappings,
+        ...session.state.mappings,
         [mapping.ingredientId]: mapping,
       },
-      suggestions: stateRef.current.suggestions.filter(
+      suggestions: session.state.suggestions.filter(
         (row) => row.ingredientId !== mapping.ingredientId
       ),
       error: null,
@@ -350,9 +431,8 @@ export function useRecipeImport(
     ingredientId: string,
     mappingId: string
   ): Promise<boolean> {
-    if (!valid() || stateRef.current.saving || stateRef.current.saved)
-      return false;
-    const mappings = { ...stateRef.current.mappings };
+    if (!valid() || session.state.saving || session.state.saved) return false;
+    const mappings = { ...session.state.mappings };
     delete mappings[ingredientId];
     update({ mappings });
     return forgetOwnedRecipeMapping(
@@ -364,13 +444,12 @@ export function useRecipeImport(
     );
   }
   async function suggest(useAi: boolean) {
-    if (!valid() || stateRef.current.suggesting || stateRef.current.saved)
-      return;
+    if (!valid() || session.state.suggesting || session.state.saved) return;
     const ids = preview.ingredients
       .filter(
         (row) =>
           !row.issues.includes('linked_recipe') &&
-          !stateRef.current.mappings[row.ingredientId]
+          !session.state.mappings[row.ingredientId]
       )
       .map((row) => row.ingredientId);
     update({
@@ -383,28 +462,28 @@ export function useRecipeImport(
       let done = 0;
       for (const group of unresolvedRecipeIngredientBatches(
         ids,
-        new Set(Object.keys(stateRef.current.mappings))
+        new Set(Object.keys(session.state.mappings))
       )) {
         if (!valid()) return;
-        const batch = group.filter((id) => !stateRef.current.mappings[id]);
+        const batch = group.filter((id) => !session.state.mappings[id]);
         if (batch.length) {
           const response = await suggestRecipe({
             providerId: preview.providerId,
             recipeSlug: preview.recipeSlug,
             sourceFingerprint: preview.sourceFingerprint,
             ingredientIds: batch,
-            confirmedIngredientIds: Object.keys(stateRef.current.mappings),
+            confirmedIngredientIds: Object.keys(session.state.mappings),
             useAi,
           });
           if (!valid()) return;
           update({
             suggestions: mergeRecipeImportSuggestions(
-              stateRef.current.suggestions,
+              session.state.suggestions,
               response.ingredients,
-              new Set(Object.keys(stateRef.current.mappings))
+              new Set(Object.keys(session.state.mappings))
             ),
             warnings: [
-              ...new Set([...stateRef.current.warnings, ...response.warnings]),
+              ...new Set([...session.state.warnings, ...response.warnings]),
             ],
           });
         }
@@ -434,8 +513,8 @@ export function useRecipeImport(
     >
   ) {
     if (!valid()) throw new Error('OWNER_REQUIRED');
-    if (stateRef.current.saved) return stateRef.current.saved;
-    if (stateRef.current.saving || stateRef.current.uncertain)
+    if (session.state.saved) return session.state.saved;
+    if (session.state.saving || session.state.uncertain)
       throw new Error(
         t('recipeImport.checkLibrary', {
           defaultValue:
@@ -443,7 +522,7 @@ export function useRecipeImport(
         })
       );
     const mappings = preview.ingredients.map(
-      (row) => stateRef.current.mappings[row.ingredientId]
+      (row) => session.state.mappings[row.ingredientId]
     );
     if (
       !mappings.length ||
@@ -466,7 +545,7 @@ export function useRecipeImport(
     // Auth changes clear these existing identity queries. Keep watching until the
     // request settles, even if the import workspace has already unmounted.
     const owner = observeRecipeImportOwner(client);
-    const retained = () => owner.isCurrent() && retainedScope.current === scope;
+    const retained = () => owner.isCurrent() && session.scope === scope;
     const refresh = (mealId?: string) => {
       if (!retained()) return;
       invalidateMealCaches(client, mealId);
@@ -504,5 +583,5 @@ export function useRecipeImport(
       });
     }
   }
-  return { ...stateRef.current, confirm, forgetSavedMapping, suggest, save };
+  return { ...state, confirm, forgetSavedMapping, suggest, save };
 }

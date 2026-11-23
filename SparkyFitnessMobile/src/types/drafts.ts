@@ -71,6 +71,8 @@ export interface WorkoutDraft {
   type: 'workout';
   name: string;
   nameManuallySet?: boolean;
+  /** Set by the reducer once an edit form has been filled from its session. */
+  populatedFromSession?: boolean;
   description?: string;
   entryDate: string;
   notes?: string;

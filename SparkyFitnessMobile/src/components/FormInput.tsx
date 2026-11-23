@@ -6,6 +6,7 @@ import {
   type StyleProp,
   type TextInputProps,
   type ViewStyle,
+  type TextInputInstance,
 } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 
@@ -54,7 +55,7 @@ type FormInputProps = Omit<TextInputProps, 'placeholderTextColor'> & {
  * Themed TextInput with explicit padding to fix iOS text alignment.
  * Drop-in replacement for TextInput — accepts all TextInput props.
  */
-const FormInput = forwardRef<TextInput, FormInputProps>(
+const FormInput = forwardRef<TextInputInstance, FormInputProps>(
   (
     { className = '', style, placeholderTextColor, onFocus, onBlur, ...props },
     ref
@@ -67,7 +68,7 @@ const FormInput = forwardRef<TextInput, FormInputProps>(
     ]) as [string, string, string, string];
     const [isFocused, setIsFocused] = useState(false);
 
-    const innerRef = useRef<TextInput>(null);
+    const innerRef = useRef<TextInputInstance>(null);
     const { autoFocus } = props;
 
     // autoFocus takes focus natively as the view attaches, which on Android

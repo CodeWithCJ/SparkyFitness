@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import {
   COOKED_WEIGHT_DECIMALS,
@@ -87,11 +88,11 @@ export const CookedWeightSection = ({
   // The last cooked entry arrives after the dialog opens. Pre-tick the switch
   // once it does, unless the person has already touched the section.
   const [touched, setTouched] = useState(false);
-  useEffect(() => {
+  useOnChange([touched, editingYield, previousYield], () => {
     if (touched || editingYield !== null || previousYield === null) return;
     setEnabled(true);
     setSource('previous');
-  }, [touched, editingYield, previousYield]);
+  });
 
   const reusedYield =
     source === 'entry'

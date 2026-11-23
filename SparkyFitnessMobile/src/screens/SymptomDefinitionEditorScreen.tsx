@@ -92,7 +92,6 @@ export default function SymptomDefinitionEditorScreen({
     if (existing && !hydratedRef.current) {
       hydratedRef.current = true;
       // One-time form initialization from the async-loaded definition.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setName(existing.display_name ?? existing.name);
       setCategory(
         (existing.category as SymptomDefinitionCategory) ?? 'general'

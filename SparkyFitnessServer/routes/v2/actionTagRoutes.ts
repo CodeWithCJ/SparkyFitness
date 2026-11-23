@@ -100,6 +100,11 @@ router.get('/', async (req, res, next) => {
  *               tag_code: {type: string, description: 32 lowercase hex characters}
  *               entry_date: {type: string, format: date}
  *               confirmed: {type: boolean}
+-               drinks_override: {type: number}
+-               quantity_override: {type: number}
+-               water_ml_override: {type: number}
+-               meal_type_id: {type: string}
+-               entry_time: {type: string, description: "HH:MM time string"}
  *     responses:
  *       200:
  *         description: The outcome of the scan
@@ -153,6 +158,10 @@ router.post('/scan', async (req, res, next) => {
  *                 description: "Discriminated on `type`. `water` takes container_id and drinks; `food` takes food_id, variant_id, quantity, unit and meal; `meal` takes meal_template_id, quantity, unit and meal. The `meal` field is mode auto (time of day) or mode fixed with a meal_type_id."
  *               ask_before_running: {type: boolean}
  *               allow_amount_adjustment: {type: boolean}
+-               allow_custom_timestamp: {type: boolean}
+-               advanced_mode: {type: boolean}
+-               tap_to_log: {type: boolean}
+-               preset_amounts: {type: object, nullable: true}
  *     responses:
  *       201:
  *         description: The saved tag
@@ -219,6 +228,10 @@ router.post('/', async (req, res, next) => {
  *               action: {type: object}
  *               ask_before_running: {type: boolean}
  *               allow_amount_adjustment: {type: boolean}
+-               allow_custom_timestamp: {type: boolean}
+-               advanced_mode: {type: boolean}
+-               tap_to_log: {type: boolean}
+-               preset_amounts: {type: object, nullable: true}
  *     responses:
  *       200:
  *         description: The updated tag

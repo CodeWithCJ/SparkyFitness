@@ -8,7 +8,7 @@ import {
   FlatList,
   useWindowDimensions,
   AppState,
-  type ViewToken,
+  type ListViewToken,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import SafeImage from './SafeImage';
@@ -107,7 +107,7 @@ const ImageLightbox: React.FC<ImageLightboxProps> = ({
   // Stable identity via empty deps: FlatList rejects a changing
   // onViewableItemsChanged, and reading a ref during render is disallowed.
   const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    ({ viewableItems }: { viewableItems: ListViewToken[] }) => {
       const first = viewableItems[0];
       if (first?.index != null) setIndex(first.index);
     },

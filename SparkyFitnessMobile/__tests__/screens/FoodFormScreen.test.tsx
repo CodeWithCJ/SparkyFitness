@@ -2385,6 +2385,8 @@ describe('FoodFormScreen', () => {
 
     await waitFor(() => {
       expect(mockAddEntry).toHaveBeenCalledWith({
+        // No equivalent servings in this form, so the food may wait on the phone.
+        hasEquivalentServings: false,
         saveFoodPayload: expect.objectContaining({
           name: 'Custom Meal Food',
           brand: 'Brand Co',
@@ -2720,9 +2722,13 @@ describe('FoodFormScreen', () => {
     await waitFor(() => {
       // Second argument is the optional image payload — undefined when the
       // user added no photos, which keeps the request plain JSON.
+      // The last argument lets a plain food made for the library wait on the
+      // phone when the server cannot be reached.
       expect(mockSaveFoodAsync).toHaveBeenCalledWith(
         expect.objectContaining({ barcode: '0123456789012' }),
-        undefined
+        undefined,
+        undefined,
+        true
       );
     });
   });

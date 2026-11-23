@@ -257,6 +257,11 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
       invalidateUpdateCache(effectiveDate ?? undefined);
       navigation.goBack();
     },
+    // Kept on the phone: the day is read again with the meal on it.
+    onKeptOnPhone: () => {
+      invalidateUpdateCache(effectiveDate ?? undefined);
+      navigation.goBack();
+    },
   });
 
   const {
@@ -406,7 +411,26 @@ const EditLoggedMealScreen: React.FC<EditLoggedMealScreenProps> = ({
       })),
     };
 
-    updateMeal(payload);
+    // The meal as one Diary entry while the save waits on the phone: the
+    // totals are the ones this screen shows for the saved amounts.
+    updateMeal(payload, {
+      food_name: effectiveName,
+      meal_type: payload.meal_type,
+      meal_type_id: effectiveMealId,
+      quantity,
+      unit: meal.unit,
+      entry_date: effectiveDate,
+      entry_time: effectiveEntryTime || null,
+      notes: effectiveNotes.trim() || null,
+      calories: baseTotals.calories * templateScale * scaleFactor,
+      protein: baseTotals.protein * templateScale * scaleFactor,
+      carbs: baseTotals.carbs * templateScale * scaleFactor,
+      fat: baseTotals.fat * templateScale * scaleFactor,
+      dietary_fiber:
+        baseTotals.fiber != null
+          ? baseTotals.fiber * templateScale * scaleFactor
+          : undefined,
+    });
   };
 
   // Diary drill-in, so the left slot stays a back chevron (not a modal X).

@@ -475,6 +475,34 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
 });
 
 /**
+ * Pan rather than a paging list: the page is one tall, keyboard-aware
+ * column inside the screen's vertical scroll, and a nested horizontal list
+ * would mount neighbouring pages and fight that scroll. The offsets keep
+ * vertical scrolling and the steppers working.
+ */
+function SwipeDetector({
+  onSwipe,
+  children,
+}: {
+  onSwipe: (delta: -1 | 1) => void;
+  children: React.ReactNode;
+}) {
+  const swipe = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-20, 20])
+        .failOffsetY([-12, 12])
+        .runOnJS(true)
+        .onEnd((e) => {
+          const delta = swipePageDelta(e.translationX, e.velocityX);
+          if (delta !== 0) onSwipe(delta);
+        }),
+    [onSwipe]
+  );
+  return <GestureDetector gesture={swipe}>{children}</GestureDetector>;
+}
+
+/**
  * The active workout's one-exercise view: a numbered pager, the selected
  * exercise's media / title / context / set editor, and Prev / Next. A
  * horizontal swipe turns the page. The view follows the active set to its
@@ -548,10 +576,10 @@ function ActiveWorkoutFocusView({
       // Each exercise opens at its photo, not where the last one was scrolled.
       scrollRef.current?.scrollTo({ y: 0, animated: false });
       if (reducedMotion) return;
-      slide.value = direction * SLIDE_OFFSET;
-      fade.value = 0;
-      slide.value = withTiming(0, { duration: SLIDE_MS });
-      fade.value = withTiming(1, { duration: SLIDE_MS });
+      slide.set(direction * SLIDE_OFFSET);
+      fade.set(0);
+      slide.set(withTiming(0, { duration: SLIDE_MS }));
+      fade.set(withTiming(1, { duration: SLIDE_MS }));
     },
     [reducedMotion, slide, fade, scrollRef, onDismissKeyboard]
   );
@@ -632,19 +660,6 @@ function ActiveWorkoutFocusView({
   // column inside the screen's vertical scroll, and a nested horizontal list
   // would mount neighbouring pages and fight that scroll. The offsets keep
   // vertical scrolling and the steppers working.
-  const swipe = useMemo(
-    () =>
-      Gesture.Pan()
-        .activeOffsetX([-20, 20])
-        .failOffsetY([-12, 12])
-        .runOnJS(true)
-        .onEnd((e) => {
-          const delta = swipePageDelta(e.translationX, e.velocityX);
-          if (delta !== 0) goBy(delta);
-        }),
-    [goBy]
-  );
-
   // Ramp rounding for store-side resolution follows the unit the rows render in.
   const setStoreWeightUnit = useActiveWorkoutStore((s) => s.setWeightUnit);
   useEffect(() => {
@@ -731,7 +746,7 @@ function ActiveWorkoutFocusView({
             historyScopeSettled={historyScopeSettled}
           />
         ))}
-        <GestureDetector gesture={swipe}>
+        <SwipeDetector onSwipe={goBy}>
           <Animated.View style={pageStyle}>
             <FocusExercisePage
               key={exercise.id}
@@ -755,7 +770,7 @@ function ActiveWorkoutFocusView({
               {navButton(next, 1)}
             </View>
           </Animated.View>
-        </GestureDetector>
+        </SwipeDetector>
         {children}
       </KeyboardAwareScrollView>
     </>

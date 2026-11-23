@@ -451,7 +451,9 @@ describe('FoodEntryViewScreen', () => {
         serving_size: 1,
         serving_unit: 'oz',
         calories: 120,
-      })
+      }),
+      // What the new serving reads like while the change waits on the phone.
+      expect.objectContaining({ serving_unit: 'oz', calories: 120 })
     );
     expect(screen.queryByText('Create Draft Unit')).toBeNull();
   });
