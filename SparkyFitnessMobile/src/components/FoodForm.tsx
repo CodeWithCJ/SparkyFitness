@@ -1,16 +1,22 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ActivityIndicator,
   ScrollView,
   KeyboardAvoidingView,
   Platform,
   useWindowDimensions,
+  type TextInputInstance,
 } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import BottomSheetPicker from './BottomSheetPicker';
@@ -154,6 +160,67 @@ const androidSparkleStyle =
 // Confidence tone colors for the inline post-estimate AI badge; mirrors the picker sheet.
 type AiToneColors = Record<ConfidenceTone, string>;
 
+type FieldRefName =
+  | 'name'
+  | 'brand'
+  | 'servingSize'
+  | 'calories'
+  | 'protein'
+  | 'fat'
+  | 'carbs'
+  | 'fiber'
+  | 'saturatedFat'
+  | 'transFat'
+  | 'sodium'
+  | 'sugars'
+  | 'potassium'
+  | 'cholesterol'
+  | 'calcium'
+  | 'iron'
+  | 'vitaminA'
+  | 'vitaminC'
+  | 'caffeineMg'
+  | 'waterMl'
+  | 'alcoholG';
+
+/**
+ * Scales a compatible-unit draft variant to the current serving size. Pure: it
+ * returns the next form, the serving size it settled on and the precise
+ * nutrition values (the form's unrounded numeric mirror) for the caller to
+ * store once the render has committed.
+ */
+function resolveCompatibleDraft(
+  previous: FoodFormData,
+  variant: FoodUnitVariant,
+  precise: Readonly<Partial<Record<NumericFoodFormField, number>>>
+): {
+  form: FoodFormData;
+  servingSize: number;
+  precise: Partial<Record<NumericFoodFormField, number>>;
+} {
+  const currentServingSize =
+    precise.servingSize ?? parseDecimalInput(previous.servingSize);
+  const nextServingSize = isPositiveNumber(currentServingSize)
+    ? currentServingSize
+    : variant.serving_size;
+  const scaledVariant = scaleCompatibleDraftVariant(variant, nextServingSize);
+  const nextPrecise: Partial<Record<NumericFoodFormField, number>> = {
+    ...precise,
+  };
+  NUTRITION_FIELDS.forEach((field) => {
+    nextPrecise[field as NumericFoodFormField] = getScaledVariantNumericValue(
+      field as Exclude<NumericFoodFormField, 'servingSize'>,
+      scaledVariant
+    );
+  });
+  nextPrecise.servingSize = nextServingSize;
+  return {
+    form: applyCompatibleDraftToFormState(previous, variant, scaledVariant),
+    servingSize: nextServingSize,
+    precise: nextPrecise,
+  };
+}
+
 const FoodForm: React.FC<FoodFormProps> = ({
   initialValues,
   nutritionLabelScan,
@@ -208,7 +275,14 @@ const FoodForm: React.FC<FoodFormProps> = ({
     return initial;
   });
 
-  useEffect(() => {
+  // Re-sync from the prop when its content changes (compared by content, as
+  // the parent may hand over a fresh object each render).
+  const customNutrientsPropKey = JSON.stringify(customNutrientsProp ?? null);
+  const [syncedCustomNutrientsKey, setSyncedCustomNutrientsKey] = useState(
+    customNutrientsPropKey
+  );
+  if (syncedCustomNutrientsKey !== customNutrientsPropKey) {
+    setSyncedCustomNutrientsKey(customNutrientsPropKey);
     setCustomNutrientForm((prev) => {
       const next: Record<string, string> = {};
       if (customNutrientsProp) {
@@ -222,7 +296,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         Object.entries(next).every(([k, v]) => prev[k] === v);
       return sameKeys ? prev : next;
     });
-  }, [customNutrientsProp]);
+  }
 
   const updateCustomNutrient = (name: string, text: string) => {
     if (!DECIMAL_INPUT_REGEX.test(text)) return;
@@ -297,21 +371,61 @@ const FoodForm: React.FC<FoodFormProps> = ({
   const lastServingSizeRef = useRef(
     parseDecimalInput(initialValues?.servingSize ?? '')
   );
-  const hasTouchedAutoScaleRef = useRef(false);
+
+  // A compatible-unit draft selection changes the form inside a state updater,
+  // which runs during render. The refs that go with it (the precise numeric
+  // mirror and the last serving size) are written here instead, after that
+  // render has committed, from the committed form, so a discarded render never
+  // leaves them ahead of what Save reads.
+  const [pendingCompatibleDraft, setPendingCompatibleDraft] = useState<{
+    variant: FoodUnitVariant;
+  } | null>(null);
+  const latestFormRef = useRef(form);
+  useLayoutEffect(() => {
+    latestFormRef.current = form;
+  });
+  useLayoutEffect(() => {
+    if (!pendingCompatibleDraft) return;
+    const next = resolveCompatibleDraft(
+      latestFormRef.current,
+      pendingCompatibleDraft.variant,
+      preciseNumericValuesRef.current
+    );
+    preciseNumericValuesRef.current = next.precise;
+    if (isPositiveNumber(next.servingSize)) {
+      lastServingSizeRef.current = next.servingSize;
+    }
+  }, [pendingCompatibleDraft]);
+  const [hasTouchedAutoScale, setHasTouchedAutoScale] = useState(false);
 
   // Captured at the moment of an incompatible unit swap (the one that opens
   // the "manual update required" banner). Only used to know the post-swap
   // `fromUnit` for the AI request — the SCALING anchor is the food's trusted
-  // default variant (see `trustedAnchorRef`), not the row's pre-swap state.
-  const swapContextRef = useRef<{
+  // default variant (see `trustedAnchor`), not the row's pre-swap state.
+  const [swapContext, setSwapContext] = useState<{
     fromUnit: string;
   } | null>(null);
   // The food's trusted default variant — AI estimates ALWAYS scale from this.
   // Matches the web behavior of anchoring on the food's default so sequential
   // AI estimates don't compound off each other (`g default → cup AI → ml`
-  // anchors on `g default`, not on the AI cup value). Initialized from
-  // `unitSelector.variants` whenever the variant list changes.
-  const trustedAnchorRef = useRef<FoodUnitVariant | null>(null);
+  // anchors on `g default`, not on the AI cup value). Re-derived from
+  // `unitSelector.variants` whenever the variant list changes. Prefer a
+  // non-AI default so AI estimates always scale from a manual ground
+  // truth; if every variant is AI (unusual), the explicit default still
+  // wins; final fallback is the first variant.
+  const trustedAnchor = useMemo<FoodUnitVariant | null>(() => {
+    const variants = unitSelector?.variants;
+    if (!variants?.length) return null;
+    return (
+      variants.find(
+        (v) => v.is_default === true && v.source !== 'ai_estimate'
+      ) ??
+      variants.find((v) => v.source !== 'ai_estimate') ??
+      variants.find((v) => v.is_default === true) ??
+      variants[0] ??
+      null
+    );
+  }, [unitSelector?.variants]);
   const [isEstimatingAi, setIsEstimatingAi] = useState(false);
   // European labels print salt in grams where the food stores sodium in mg.
   // The unit only changes how the sodium field is typed; form.sodium stays
@@ -349,59 +463,25 @@ const FoodForm: React.FC<FoodFormProps> = ({
     error: 'bg-bg-danger-subtle',
   };
 
-  const fieldRefs = {
-    name: useRef<TextInput>(null),
-    brand: useRef<TextInput>(null),
-    servingSize: useRef<TextInput>(null),
-    calories: useRef<TextInput>(null),
-    protein: useRef<TextInput>(null),
-    fat: useRef<TextInput>(null),
-    carbs: useRef<TextInput>(null),
-    fiber: useRef<TextInput>(null),
-    saturatedFat: useRef<TextInput>(null),
-    transFat: useRef<TextInput>(null),
-    sodium: useRef<TextInput>(null),
-    sugars: useRef<TextInput>(null),
-    potassium: useRef<TextInput>(null),
-    cholesterol: useRef<TextInput>(null),
-    calcium: useRef<TextInput>(null),
-    iron: useRef<TextInput>(null),
-    vitaminA: useRef<TextInput>(null),
-    vitaminC: useRef<TextInput>(null),
-    caffeineMg: useRef<TextInput>(null),
-    waterMl: useRef<TextInput>(null),
-    alcoholG: useRef<TextInput>(null),
-  };
+  const fieldRefs = useRef<
+    Partial<Record<FieldRefName, TextInputInstance | null>>
+  >({});
 
-  const focusField = (field: keyof typeof fieldRefs) => {
-    fieldRefs[field].current?.focus();
+  const focusField = (field: FieldRefName) => {
+    fieldRefs.current[field]?.focus();
   };
 
   const applyCompatibleDraftSelection = (variant: FoodUnitVariant) => {
-    setForm((previous) => {
-      const currentServingSize =
-        preciseNumericValuesRef.current.servingSize ??
-        parseDecimalInput(previous.servingSize);
-      const nextServingSize = isPositiveNumber(currentServingSize)
-        ? currentServingSize
-        : variant.serving_size;
-      const scaledVariant = scaleCompatibleDraftVariant(
-        variant,
-        nextServingSize
-      );
-      NUTRITION_FIELDS.forEach((field) => {
-        preciseNumericValuesRef.current[field as NumericFoodFormField] =
-          getScaledVariantNumericValue(
-            field as Exclude<NumericFoodFormField, 'servingSize'>,
-            scaledVariant
-          );
-      });
-      preciseNumericValuesRef.current.servingSize = nextServingSize;
-      if (isPositiveNumber(nextServingSize)) {
-        lastServingSizeRef.current = nextServingSize;
-      }
-      return applyCompatibleDraftToFormState(previous, variant, scaledVariant);
-    });
+    setForm(
+      (previous) =>
+        resolveCompatibleDraft(
+          previous,
+          variant,
+          preciseNumericValuesRef.current
+        ).form
+    );
+    // The refs that go with the new form are written after it commits.
+    setPendingCompatibleDraft({ variant });
   };
 
   const update = (field: keyof FoodFormData, value: string) => {
@@ -533,7 +613,19 @@ const FoodForm: React.FC<FoodFormProps> = ({
     }
   }, [form.servingSize]);
 
-  useEffect(() => {
+  const [syncedUnitSelector, setSyncedUnitSelector] = useState<{
+    selectedSelection: FoodUnitSelectionResult | null | undefined;
+    variants: FoodUnitVariant[] | undefined;
+  } | null>(null);
+  if (
+    syncedUnitSelector === null ||
+    syncedUnitSelector.selectedSelection !== unitSelector?.selectedSelection ||
+    syncedUnitSelector.variants !== unitSelector?.variants
+  ) {
+    setSyncedUnitSelector({
+      selectedSelection: unitSelector?.selectedSelection,
+      variants: unitSelector?.variants,
+    });
     const normalizedSelection = normalizeSelectedUnitSelection(
       unitSelector?.selectedSelection
     );
@@ -544,7 +636,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
         normalizedSelection.requiresNutritionUpdate
       )
     );
-    setSelectedSavedVariantId((previous) => {
+    setSelectedSavedVariantId(() => {
       if (normalizedSelection?.kind === 'existing') {
         return normalizedSelection.variant.id;
       }
@@ -559,80 +651,98 @@ const FoodForm: React.FC<FoodFormProps> = ({
 
       return unitSelector?.variants[0]?.id;
     });
-  }, [unitSelector?.selectedSelection, unitSelector?.variants]);
+  }
 
   const selection = unitSelector?.selectedSelection;
   const selectionRequiresNutritionUpdate =
     selection?.kind === 'draft' ? selection.requiresNutritionUpdate : false;
 
-  useEffect(() => {
-    if (!selection) return;
-    if (selection.kind === 'draft' && selection.requiresNutritionUpdate) {
-      setForm((prev) =>
-        prev.servingUnit === selection.variant.serving_unit
-          ? prev
-          : { ...prev, servingUnit: selection.variant.serving_unit }
-      );
-      return;
+  const selectionKey = selection
+    ? `${selection.kind}|${selection.variant?.id}|${selection.variant?.serving_unit}|${selectionRequiresNutritionUpdate}`
+    : null;
+  const [syncedSelectionKey, setSyncedSelectionKey] = useState<string | null>(
+    null
+  );
+  if (syncedSelectionKey !== selectionKey) {
+    setSyncedSelectionKey(selectionKey);
+    if (selection) {
+      if (selection.kind === 'draft' && selection.requiresNutritionUpdate) {
+        setForm((prev) =>
+          prev.servingUnit === selection.variant.serving_unit
+            ? prev
+            : { ...prev, servingUnit: selection.variant.serving_unit }
+        );
+      } else if (selection.kind === 'draft') {
+        setForm(
+          (previous) =>
+            resolveCompatibleDraft(
+              previous,
+              selection.variant,
+              preciseNumericValuesRef.current
+            ).form
+        );
+        setPendingCompatibleDraft({ variant: selection.variant });
+      } else {
+        setForm((prev) => applyVariantToFormState(prev, selection.variant));
+      }
     }
-    if (selection.kind === 'draft') {
-      applyCompatibleDraftSelection(selection.variant);
-      return;
-    }
+  }
+
+  // The precise values and last serving size that go with an existing-variant
+  // selection are written after the render commits, not inside the state
+  // updater above: an updater runs during render, and a discarded render must
+  // not leave these refs ahead of the form that Save reads.
+  const latestSelectionRef = useRef(selection);
+  useLayoutEffect(() => {
+    latestSelectionRef.current = selection;
+  });
+  useLayoutEffect(() => {
+    const current = latestSelectionRef.current;
+    if (!current || current.kind === 'draft') return;
     preciseNumericValuesRef.current = {
       ...preciseNumericValuesRef.current,
-      ...buildPreciseNumericValuesFromVariant(selection.variant),
+      ...buildPreciseNumericValuesFromVariant(current.variant),
     };
-    lastServingSizeRef.current = selection.variant.serving_size;
-    setForm((prev) => applyVariantToFormState(prev, selection.variant));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selection?.kind,
-    selection?.variant?.id,
-    selection?.variant?.serving_unit,
-    selectionRequiresNutritionUpdate,
-  ]);
+    lastServingSizeRef.current = current.variant.serving_size;
+  }, [selectionKey]);
 
-  useEffect(() => {
-    if (!unitSelector?.variants?.length) {
+  const [syncedVariants, setSyncedVariants] = useState<
+    FoodUnitVariant[] | null | undefined
+  >(null);
+  if (syncedVariants === null || syncedVariants !== unitSelector?.variants) {
+    setSyncedVariants(unitSelector?.variants);
+    const variants = unitSelector?.variants;
+    if (!variants?.length) {
       setSelectedSavedVariantId(undefined);
-      trustedAnchorRef.current = null;
-      return;
+    } else {
+      setSelectedSavedVariantId((previous) =>
+        previous && variants.some((variant) => variant.id === previous)
+          ? previous
+          : variants[0]?.id
+      );
     }
+  }
 
-    setSelectedSavedVariantId((previous) =>
-      previous &&
-      unitSelector.variants.some((variant) => variant.id === previous)
-        ? previous
-        : unitSelector.variants[0]?.id
-    );
-
-    // Refresh the trusted anchor whenever the variant list changes. Prefer
-    // a non-AI default so AI estimates always scale from a manual ground
-    // truth; if every variant is AI (unusual), the explicit default still
-    // wins; final fallback is the first variant.
-    const variants = unitSelector.variants;
-    trustedAnchorRef.current =
-      variants.find(
-        (v) => v.is_default === true && v.source !== 'ai_estimate'
-      ) ??
-      variants.find((v) => v.source !== 'ai_estimate') ??
-      variants.find((v) => v.is_default === true) ??
-      variants[0] ??
-      null;
-  }, [unitSelector?.variants]);
-
-  useEffect(() => {
+  const [syncedAutoScale, setSyncedAutoScale] = useState<{
+    show: boolean;
+    initial: boolean;
+  } | null>(null);
+  if (
+    syncedAutoScale === null ||
+    syncedAutoScale.show !== showAutoScaleNutrition ||
+    syncedAutoScale.initial !== initialAutoScaleNutritionEnabled
+  ) {
+    setSyncedAutoScale({
+      show: showAutoScaleNutrition,
+      initial: initialAutoScaleNutritionEnabled,
+    });
     if (!showAutoScaleNutrition) {
-      hasTouchedAutoScaleRef.current = false;
+      setHasTouchedAutoScale(false);
       setAutoScaleNutrition(false);
-      return;
-    }
-
-    if (!hasTouchedAutoScaleRef.current) {
+    } else if (!hasTouchedAutoScale) {
       setAutoScaleNutrition(initialAutoScaleNutritionEnabled);
     }
-  }, [initialAutoScaleNutritionEnabled, showAutoScaleNutrition]);
+  }
 
   const handleUnitSelectorSelection = async (
     selection: FoodUnitSelectionResult
@@ -640,7 +750,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     // For incompatible swaps that surface the manual-update banner, capture
     // the unit so the inline AI button knows what it's converting FROM. The
     // scaling anchor itself is always the food's trusted default variant (see
-    // `trustedAnchorRef`) — not the pre-swap form state — so sequential AI
+    // `trustedAnchor`) — not the pre-swap form state — so sequential AI
     // estimates don't compound off each other.
     if (
       selection.kind === 'draft' &&
@@ -648,13 +758,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
     ) {
       const prevUnit = form.servingUnit;
       if (prevUnit && prevUnit !== selection.variant.serving_unit) {
-        swapContextRef.current = { fromUnit: selection.variant.serving_unit };
+        setSwapContext({ fromUnit: selection.variant.serving_unit });
       } else {
-        swapContextRef.current = null;
+        setSwapContext(null);
       }
     } else {
       // Any non-swap path invalidates the AI anchor.
-      swapContextRef.current = null;
+      setSwapContext(null);
     }
 
     const nextSelection = normalizeSelectedUnitSelection(
@@ -685,13 +795,13 @@ const FoodForm: React.FC<FoodFormProps> = ({
         // anchor unit (what AI would actually convert to), not the pre-swap
         // form state. Keeps auto-scale ON only when AI has a real path forward.
         const canAiConvert = shouldOfferAiConversion(
-          trustedAnchorRef.current?.serving_unit ?? '',
+          trustedAnchor?.serving_unit ?? '',
           nextSelection.variant.serving_unit
         );
 
         if (!canAiConvert) {
           setAutoScaleNutrition(false);
-          hasTouchedAutoScaleRef.current = true;
+          setHasTouchedAutoScale(true);
         }
 
         setForm((previous) =>
@@ -724,8 +834,8 @@ const FoodForm: React.FC<FoodFormProps> = ({
    * which prompts the user to keep or remove the badge.
    */
   const handleAiEstimate = async () => {
-    const context = swapContextRef.current;
-    const anchor = trustedAnchorRef.current;
+    const context = swapContext;
+    const anchor = trustedAnchor;
     if (!context || !anchor) return;
     if (!(Number.isFinite(anchor.serving_size) && anchor.serving_size > 0)) {
       Toast.show({
@@ -866,7 +976,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
       // tags — buildVariantFromFormData spreads this variant on submit.
       void unitSelector?.onUnitSelectionChange?.(aiSelection);
 
-      swapContextRef.current = null;
+      setSwapContext(null);
     } catch {
       const message = t('foodForm.ai.estimateFailed', {
         defaultValue: 'AI estimate failed.',
@@ -888,7 +998,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     field: keyof FoodFormData,
     placeholder: string,
     required?: boolean,
-    nextField?: keyof typeof fieldRefs
+    nextField?: FieldRefName
   ) => (
     <View className="gap-1.5">
       <Text className="text-text-secondary text-sm font-medium">
@@ -896,7 +1006,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
         {required ? ' *' : ''}
       </Text>
       <FormInput
-        ref={fieldRefs[field as keyof typeof fieldRefs]}
+        ref={(node) => {
+          fieldRefs.current[field as FieldRefName] = node;
+        }}
         placeholder={placeholder}
         value={form[field]}
         onChangeText={(v) => update(field, v)}
@@ -913,7 +1025,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
     field: keyof FoodFormData,
     unit?: string,
     required?: boolean,
-    nextField?: keyof typeof fieldRefs
+    nextField?: FieldRefName
   ) => (
     <View className="gap-1.5 flex-1">
       <Text className="text-text-secondary text-sm font-medium">
@@ -922,7 +1034,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
         {required ? ' *' : ''}
       </Text>
       <FormInput
-        ref={fieldRefs[field as keyof typeof fieldRefs]}
+        ref={(node) => {
+          fieldRefs.current[field as FieldRefName] = node;
+        }}
         placeholder="0"
         value={form[field]}
         onChangeText={(v) => {
@@ -957,7 +1071,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
           className={sodiumPickerInline ? 'flex-row gap-1.5' : 'gap-1.5'}
         >
           <FormInput
-            ref={fieldRefs.sodium}
+            ref={(node) => {
+              fieldRefs.current.sodium = node;
+            }}
             className={sodiumPickerInline ? 'flex-1' : ''}
             style={{ minWidth: 0 }}
             accessibilityLabel={label}
@@ -1055,21 +1171,33 @@ const FoodForm: React.FC<FoodFormProps> = ({
       ),
     });
 
-  useEffect(() => {
-    if (!nutritionLabelScan) return;
-    const patch = labelScanToNutritionPatch(nutritionLabelScan.result);
-    const displayValues = buildDisplayFormState(patch);
-    const displayPatch: Partial<FoodFormData> = {};
-    for (const field of Object.keys(patch) as (keyof FoodFormData)[]) {
-      displayPatch[field] = displayValues[field];
+  const [appliedLabelScan, setAppliedLabelScan] =
+    useState<typeof nutritionLabelScan>(undefined);
+  if (appliedLabelScan !== nutritionLabelScan) {
+    setAppliedLabelScan(nutritionLabelScan);
+    if (nutritionLabelScan) {
+      const patch = labelScanToNutritionPatch(nutritionLabelScan.result);
+      const displayValues = buildDisplayFormState(patch);
+      const displayPatch: Partial<FoodFormData> = {};
+      for (const field of Object.keys(patch) as (keyof FoodFormData)[]) {
+        displayPatch[field] = displayValues[field];
+      }
+      // Update both representations without triggering serving-size auto-scaling
+      // or replacing the selected variant and the rest of the live draft.
+      setForm((previous) => ({ ...previous, ...displayPatch }));
     }
-    // Update both representations without triggering serving-size auto-scaling
-    // or replacing the selected variant and the rest of the live draft.
+  }
+
+  // Same rule as the selection refs above: the precise values for a scan are
+  // written after the render that shows it has committed.
+  useLayoutEffect(() => {
+    if (!nutritionLabelScan) return;
     preciseNumericValuesRef.current = {
       ...preciseNumericValuesRef.current,
-      ...buildPreciseNumericValues(patch),
+      ...buildPreciseNumericValues(
+        labelScanToNutritionPatch(nutritionLabelScan.result)
+      ),
     };
-    setForm((previous) => ({ ...previous, ...displayPatch }));
   }, [nutritionLabelScan]);
 
   const handleSubmitPress = () => {
@@ -1257,7 +1385,7 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 })}
                 value={autoScaleNutrition}
                 onValueChange={(value) => {
-                  hasTouchedAutoScaleRef.current = true;
+                  setHasTouchedAutoScale(true);
                   setAutoScaleNutrition(value);
                 }}
               />
@@ -1271,10 +1399,10 @@ const FoodForm: React.FC<FoodFormProps> = ({
                 // unconditional now — the button is the affordance.
                 const canAiConvert =
                   aiEstimatesAvailable &&
-                  swapContextRef.current != null &&
-                  trustedAnchorRef.current != null &&
+                  swapContext != null &&
+                  trustedAnchor != null &&
                   shouldOfferAiConversion(
-                    trustedAnchorRef.current.serving_unit,
+                    trustedAnchor.serving_unit,
                     form.servingUnit
                   );
                 return (
@@ -1374,7 +1502,9 @@ const FoodForm: React.FC<FoodFormProps> = ({
               })}
             </Text>
             <FormInput
-              ref={fieldRefs.calories}
+              ref={(node) => {
+                fieldRefs.current.calories = node;
+              }}
               placeholder="0"
               value={caloriesInput.text}
               onChangeText={(v) => {

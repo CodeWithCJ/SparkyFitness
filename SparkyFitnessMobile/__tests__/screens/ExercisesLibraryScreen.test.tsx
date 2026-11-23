@@ -11,6 +11,22 @@ import {
 } from '../../src/stores/appPreferencesStore';
 import { pressHeaderMenuAction } from './helpers/nativeHeaderTestUtils';
 
+jest.mock('../../src/offline/offlineImages', () => ({
+  setExercisesKeptOffline: jest.fn(async () => {}),
+  refreshOfflineImages: jest.fn(async () => {}),
+}));
+jest.mock('../../src/hooks/useKeptExercises', () => ({
+  useKeptExercises: jest.fn(() => new Set(['ex-2'])),
+}));
+jest.mock('../../src/services/storage', () => ({
+  ...jest.requireActual('../../src/services/storage'),
+  getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
+}));
+
 jest.mock('../../src/hooks', () => ({
   useExercisesLibrary: jest.fn(),
   useServerConnection: jest.fn(),
@@ -215,5 +231,57 @@ describe('ExercisesLibraryScreen', () => {
     expect(screen.getByText('Failed to load exercises')).toBeTruthy();
     fireEvent.press(screen.getByText('Retry'));
     expect(refetch).toHaveBeenCalled();
+  });
+  it('selects exercises with a long press and keeps their pictures offline', async () => {
+    const { setExercisesKeptOffline } = jest.requireMock(
+      '../../src/offline/offlineImages'
+    ) as { setExercisesKeptOffline: jest.Mock };
+    mockUseExercisesLibrary.mockReturnValue(
+      buildHookReturn({
+        exercises: [
+          createExercise('ex-1', 'Bench Press'),
+          createExercise('ex-2', 'Squat'),
+        ],
+      })
+    );
+    const screen = renderScreen();
+    await waitFor(() => expect(screen.getByText('Bench Press')).toBeTruthy());
+    // Already kept: marked in the list.
+    expect(screen.getByLabelText('Kept offline')).toBeTruthy();
+
+    fireEvent(screen.getByTestId('exercise-row-ex-1'), 'longPress');
+    // While selecting, a tap selects instead of opening the exercise.
+    fireEvent.press(screen.getByText('Squat'));
+    expect(navigation.navigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId('exercise-selection-count')).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('exercise-selection-keep'));
+    });
+
+    expect(setExercisesKeptOffline).toHaveBeenCalledWith(
+      's1',
+      ['ex-1', 'ex-2'],
+      true
+    );
+    expect(screen.queryByTestId('exercise-selection-count')).toBeNull();
+  });
+
+  it('leaves selection without changing anything on Cancel', async () => {
+    mockUseExercisesLibrary.mockReturnValue(
+      buildHookReturn({ exercises: [createExercise('ex-1', 'Bench Press')] })
+    );
+    const screen = renderScreen();
+    await waitFor(() => expect(screen.getByText('Bench Press')).toBeTruthy());
+
+    fireEvent(screen.getByTestId('exercise-row-ex-1'), 'longPress');
+    fireEvent.press(screen.getByTestId('exercise-selection-cancel'));
+
+    expect(screen.queryByTestId('exercise-selection-count')).toBeNull();
+    fireEvent.press(screen.getByText('Bench Press'));
+    expect(navigation.navigate).toHaveBeenCalledWith(
+      'ExerciseDetail',
+      expect.anything()
+    );
   });
 });

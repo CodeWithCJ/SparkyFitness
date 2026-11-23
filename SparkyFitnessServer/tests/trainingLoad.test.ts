@@ -27,6 +27,31 @@ describe('sessionLoad', () => {
     ).toBe(150);
   });
 
+  it('weights recorded zone time before the average heart rate', () => {
+    expect(
+      sessionLoad(
+        {
+          durationMinutes: 60,
+          avgHeartRate: 113.3,
+          zoneSeconds: [
+            { zoneIndex: 1, seconds: 3000 },
+            { zoneIndex: 5, seconds: 600 },
+          ],
+        },
+        FLOORS_190
+      )
+    ).toBe(100);
+  });
+
+  it('falls back to the average heart rate without recorded zones', () => {
+    expect(
+      sessionLoad(
+        { durationMinutes: 60, avgHeartRate: 113.3, zoneSeconds: [] },
+        FLOORS_190
+      )
+    ).toBe(60);
+  });
+
   it('counts a session with no heart rate as moderate', () => {
     expect(
       sessionLoad({ durationMinutes: 30, avgHeartRate: null }, FLOORS_190)

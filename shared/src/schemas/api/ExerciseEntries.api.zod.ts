@@ -58,6 +58,35 @@ export const exerciseStatsQuerySchema = z.object({
   presetId: z.coerce.number().int().positive().optional(),
 });
 
+/** Most items one batch stats request may carry. */
+export const EXERCISE_STATS_BATCH_MAX_ITEMS = 100;
+
+/**
+ * Body of POST /api/v2/exercises/stats/batch: the same question as the
+ * per-exercise stats endpoint, asked for many exercises in one request so a
+ * client preparing offline data does not send one request per exercise.
+ */
+export const exerciseStatsBatchRequestSchema = z
+  .object({
+    items: z
+      .array(
+        z
+          .object({
+            exerciseId: z.string().uuid(),
+            /** Scopes recentSessions, as `presetId` does on the single endpoint. */
+            presetId: z.number().int().positive().optional(),
+          })
+          .strict()
+      )
+      .min(1)
+      .max(EXERCISE_STATS_BATCH_MAX_ITEMS),
+  })
+  .strict();
+
+export type ExerciseStatsBatchRequest = z.infer<
+  typeof exerciseStatsBatchRequestSchema
+>;
+
 // --- Building blocks ---
 
 /**
@@ -89,6 +118,8 @@ export const exerciseSnapshotResponseSchema = z
     updated_at: z.string().nullable().optional(),
     tags: z.array(z.string()).nullable().optional(),
     duration_min: z.number().nullable().optional(),
+    /** Health activity type override (#1750); null is Automatic. Optional: older servers omit it. */
+    health_activity_type: z.string().nullable().optional(),
   })
   .strict();
 
@@ -247,6 +278,11 @@ export const wodScoreDetailDataSchema = z.object({
 // Both sources can also be provided together (e.g. client starts from a preset with client-supplied sets).
 export const createPresetSessionRequestSchema = z
   .object({
+    // Session id minted by the client (offline workouts, #1983). Makes the
+    // create safe to repeat: a second request with the same id returns the
+    // stored session (200) instead of creating another (201). Omitted, the
+    // server assigns the id as before.
+    id: z.string().uuid().optional(),
     workout_preset_id: z.number().int().nullable().optional(),
     entry_date: dateStringSchema,
     name: z.string().nullable().optional(),
@@ -400,6 +436,12 @@ export const attachExerciseEntryWatchTelemetryRequestSchema = z
      * leaves the duration and everything else on the entry alone.
      */
     strideLengthCm: z.number().positive().max(500).nullable().optional(),
+    /**
+     * Average cadence of the entry, in steps per minute; null clears it.
+     * Telemetry only, like `strideLengthCm`: a run filed before its steps had
+     * reached Apple Health gets its cadence filled in afterwards.
+     */
+    avgCadence: z.number().positive().max(400).nullable().optional(),
   })
   .strict()
   .refine(
@@ -407,11 +449,12 @@ export const attachExerciseEntryWatchTelemetryRequestSchema = z
       body.hrSamples !== undefined ||
       body.activeEnergyKcal !== undefined ||
       body.strideLengthCm !== undefined ||
+      body.avgCadence !== undefined ||
       (body.durationMinutes !== undefined && body.durationMinutes > 0) ||
       (body.appleZones !== undefined && body.appleZones.length > 0),
     {
       message:
-        'At least one of hrSamples, activeEnergyKcal, durationMinutes, strideLengthCm, or appleZones is required.',
+        'At least one of hrSamples, activeEnergyKcal, durationMinutes, strideLengthCm, avgCadence, or appleZones is required.',
     }
   );
 
@@ -426,6 +469,26 @@ export const createExerciseEntryRequestSchema = z
     calories_burned: z.coerce.number().min(0).default(0),
     entry_date: dateStringSchema,
     entry_time: timeStringSchema.nullish(),
+    /**
+     * The IANA zone `entry_time` was read in, when it is not the profile's
+     * (a phone abroad). Without it the time is taken in the profile zone.
+     */
+    record_timezone: z
+      .string()
+      .min(1)
+      .max(64)
+      .refine(
+        (zone) => {
+          try {
+            new Intl.DateTimeFormat('en-US', { timeZone: zone });
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: 'Unknown time zone' }
+      )
+      .nullish(),
     notes: z.string().nullable().optional(),
     sets: z.array(exerciseEntrySetRequestSchema).optional(),
     reps: z.coerce.number().nullable().optional(),
@@ -732,6 +795,29 @@ export const exerciseStatsResponseSchema = z
   })
   .strict();
 
+/**
+ * Response of POST /api/v2/exercises/stats/batch. One item per requested
+ * exercise and preset pair, in request order, each holding what the single
+ * endpoint returns for that pair. A pair asked for twice is answered once.
+ */
+export const exerciseStatsBatchResponseSchema = z
+  .object({
+    items: z.array(
+      z
+        .object({
+          exerciseId: z.string(),
+          presetId: z.number().int().nullable(),
+          stats: exerciseStatsResponseSchema,
+        })
+        .strict()
+    ),
+  })
+  .strict();
+
+export type ExerciseStatsBatchResponse = z.infer<
+  typeof exerciseStatsBatchResponseSchema
+>;
+
 // --- Types ---
 
 export type ExerciseHistoryQuery = z.infer<typeof exerciseHistoryQuerySchema>;
@@ -869,6 +955,8 @@ export const calorieLinkSuggestionsResponseSchema = z.object({
     .object({
       resolution: calorieLinkResolutionSchema,
       synced_entry_id: z.string().nullable(),
+      /** Persisted custom session total in kcal; absent for other resolutions. */
+      custom_calories: z.number().min(0).optional(),
     })
     .nullable(),
   candidates: z.array(calorieLinkCandidateSchema),

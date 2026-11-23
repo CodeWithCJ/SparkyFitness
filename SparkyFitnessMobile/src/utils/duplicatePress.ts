@@ -50,3 +50,27 @@ export const createDuplicatePressGuard = (
     return true;
   };
 };
+
+/**
+ * Synchronous in-flight latch for one async action: `tryEnter` returns false
+ * while a previous run has not called `leave`. Unlike `busy` state it blocks a
+ * second tap that lands before the next render.
+ */
+export const createInFlightGuard = (): {
+  tryEnter: () => boolean;
+  leave: () => void;
+  isActive: () => boolean;
+} => {
+  let inFlight = false;
+  return {
+    tryEnter: () => {
+      if (inFlight) return false;
+      inFlight = true;
+      return true;
+    },
+    leave: () => {
+      inFlight = false;
+    },
+    isActive: () => inFlight,
+  };
+};

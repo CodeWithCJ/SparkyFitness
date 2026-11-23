@@ -294,6 +294,24 @@ describe('CycleTodayView deferred symptom save', () => {
     expect(mockDeleteEntryAsync).not.toHaveBeenCalled();
   });
 
+  it('drops an unsaved symptom selection when the date changes', () => {
+    const { getByLabelText, getByText, queryByText, rerender } = render(
+      <CycleTodayView date="2026-08-01" />
+    );
+
+    fireEvent.press(getByLabelText('toggle-symptom:Nausea'));
+    expect(getByText('Nausea:on')).toBeTruthy();
+
+    // Same date: the draft stays.
+    rerender(<CycleTodayView date="2026-08-01" />);
+    expect(getByText('Nausea:on')).toBeTruthy();
+
+    // Another day with the same (empty) saved symptoms: nothing carries over.
+    rerender(<CycleTodayView date="2026-08-02" />);
+    expect(queryByText('Nausea:on')).toBeNull();
+    expect(getByText('Nausea:off')).toBeTruthy();
+  });
+
   it('creates toggled-on symptoms on Save', async () => {
     const { getByLabelText, getByText } = render(
       <CycleTodayView date="2026-08-01" />

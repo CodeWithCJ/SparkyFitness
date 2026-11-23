@@ -39,6 +39,15 @@ final class CheckInStore: ObservableObject {
     private let pendingMedicationKey = "sparky.watch.pendingMedicationTaps"
 
     private init() {
+        #if DEBUG
+        // A screenshot seed persists through `apply(context:)`; a normal launch
+        // must not keep showing it in place of the phone's real context.
+        if defaults.bool(forKey: ScreenshotSeed.seededKey), !ScreenshotSeed.isEnabled {
+            [contextKey, pendingKey, lastCapturedKey, pendingWaterKey,
+             pendingWaterDeleteKey, pendingMedicationKey].forEach { defaults.removeObject(forKey: $0) }
+            defaults.removeObject(forKey: ScreenshotSeed.seededKey)
+        }
+        #endif
         load()
     }
 
@@ -71,7 +80,12 @@ final class CheckInStore: ObservableObject {
     /// The value the delta line compares against. Nil on first-ever use.
     var comparisonWeightKg: Double? { context.lastWeightKg }
 
-    var needsFirstRunEntry: Bool { !context.hasSeed || context.isSeedStale }
+    /// Not asked for when the phone hides the weight page: the gate would block every
+    /// other page for a number the user chose not to log on the watch.
+    var needsFirstRunEntry: Bool {
+        (!context.hasSeed || context.isSeedStale)
+            && !(context.hiddenPages ?? []).contains(WatchPage.entry.rawValue)
+    }
 
     // MARK: - Capture
 

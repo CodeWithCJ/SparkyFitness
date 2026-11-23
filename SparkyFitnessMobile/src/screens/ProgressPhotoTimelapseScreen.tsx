@@ -1,10 +1,5 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { createCell } from '../utils/mutableCell';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -13,7 +8,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Image } from 'expo-image';
 import { useCSSVariable } from 'uniwind';
@@ -29,7 +23,6 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useCheckInPhotoGallery } from '../hooks/useCheckInPhotos';
 import { useCheckInPhotoSource } from '../hooks/useCheckInPhotoSource';
 import { usePreferences } from '../hooks/usePreferences';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   framesForAngle,
   framesInRange,
@@ -74,8 +67,6 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
   route,
 }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const dateLocale = i18n.language.startsWith('pl') ? 'pl-PL' : 'en-US';
   const [accentPrimary, mutedColor] = useCSSVariable([
     '--color-accent-primary',
@@ -92,7 +83,9 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
 
   const [range, setRange] = useState<TimelapseRange>('3m');
   const [custom, setCustom] = useState<CustomRange | null>(null);
-  const rangeSheetRef = useRef<DateRangeSheetRef>(null);
+  const [rangeSheet] = useState(() =>
+    createCell<DateRangeSheetRef | null>(null)
+  );
 
   // Oldest → newest: the whole point is watching the change accumulate.
   const allFrames = useMemo(() => framesForAngle(days, angle), [days, angle]);
@@ -169,7 +162,7 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
               selected: range === window,
               onPress: () =>
                 window === 'custom'
-                  ? rangeSheetRef.current?.present()
+                  ? rangeSheet.get()?.present()
                   : setRange(window),
             })
           ),
@@ -389,15 +382,12 @@ const ProgressPhotoTimelapseScreen: React.FC<Props> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <View className="pt-2">{body()}</View>
 
       <DateRangeSheet
-        ref={rangeSheetRef}
+        ref={(node) => rangeSheet.set(node)}
         // The days that have this angle, so a range can be drawn around the
         // photos rather than guessed at - the same dots the gallery's picker
         // shows.

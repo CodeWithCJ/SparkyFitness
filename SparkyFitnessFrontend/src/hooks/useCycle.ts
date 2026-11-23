@@ -1,4 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
+import { startedOn } from '@/utils/queryOwner';
 import * as cycleService from '@/api/Cycle/cycleService';
 import type {
   SharedCycleSettings,
@@ -69,20 +75,39 @@ export const useCycleLogs = (start: string, end: string) =>
     },
   });
 
+// Settings writes run one at a time, so a quick off and on lands in order.
+const CYCLE_SETTINGS_SCOPE = { id: 'cycle-settings' };
+
+const showSavedCycleSettings = (
+  queryClient: QueryClient,
+  data: SharedCycleSettings
+) => {
+  queryClient.setQueryData(cycleKeys.settings(), data);
+  queryClient.invalidateQueries({ queryKey: cycleKeys.settings() });
+  queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
+  queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
+  // A symptom's context carries its cycle phase only while cycle is on.
+  queryClient.invalidateQueries({ queryKey: ['symptom-context'] });
+};
+
+/** A settings write's answer is shown only for the account it was made for
+ * (`startedOn`); returned from `onMutate`. */
+const startCycleSettingsWrite = (queryClient: QueryClient) =>
+  startedOn(queryClient, cycleKeys.settings());
+
 export const useUpsertCycleSettingsMutation = () => {
   const queryClient = useQueryClient();
   return useMutation({
+    scope: CYCLE_SETTINGS_SCOPE,
     mutationFn: (
       body: Partial<SharedCycleSettings> & {
         mark_onboarded?: boolean;
         reset_onboarding?: boolean;
       }
     ) => cycleService.putSettings(body),
-    onSuccess: (data) => {
-      queryClient.setQueryData(cycleKeys.settings(), data);
-      queryClient.invalidateQueries({ queryKey: cycleKeys.settings() });
-      queryClient.invalidateQueries({ queryKey: ['cycle-overview'] });
-      queryClient.invalidateQueries({ queryKey: ['cycle-fertility'] });
+    onMutate: () => startCycleSettingsWrite(queryClient),
+    onSuccess: (data, _body, started) => {
+      if (started.isCurrent()) showSavedCycleSettings(queryClient, data);
     },
     meta: {
       errorMessage: i18n.t(
@@ -90,6 +115,32 @@ export const useUpsertCycleSettingsMutation = () => {
         'Could not save cycle settings.'
       ),
       successMessage: i18n.t('hooks.useCycle.settingsSaved', 'Settings saved.'),
+    },
+  });
+};
+
+/**
+ * Turns cycle tracking on or off: only `enabled`, never `mark_onboarded`, so
+ * the first time cycle is on its tab opens the setup wizard. Cycle is one
+ * switch for the whole account, so this also shows or hides it in the app.
+ * An answer for an account no longer on screen is not shown, and what
+ * `onMutate` returns carries that check (`isCurrent`) for callers that act on
+ * the answer.
+ */
+export const useSetCycleEnabledMutation = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    scope: CYCLE_SETTINGS_SCOPE,
+    mutationFn: (enabled: boolean) => cycleService.putSettings({ enabled }),
+    onMutate: () => startCycleSettingsWrite(queryClient),
+    onSuccess: (data, _enabled, started) => {
+      if (started.isCurrent()) showSavedCycleSettings(queryClient, data);
+    },
+    meta: {
+      errorMessage: i18n.t(
+        'hooks.useCycle.couldNotSaveCycleSettings',
+        'Could not save cycle settings.'
+      ),
     },
   });
 };

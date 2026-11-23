@@ -171,6 +171,8 @@ const ICON_MAP = {
   'cycling-rest': { sf: 'moon', ion: 'moon-outline' },
   'watch-settings': { sf: 'applewatch', ion: 'watch-outline' },
   'app-settings': { sf: 'slider.horizontal.3', ion: 'options-outline' },
+  'feature-settings': { sf: 'switch.2', ion: 'toggle-outline' },
+  'lab-results': { sf: 'flask', ion: 'flask-outline' },
   logs: { sf: 'doc.plaintext', ion: 'document-text-outline' },
   about: { sf: 'info.circle', ion: 'information-circle-outline' },
   'whats-new': { sf: 'gift', ion: 'gift-outline' },

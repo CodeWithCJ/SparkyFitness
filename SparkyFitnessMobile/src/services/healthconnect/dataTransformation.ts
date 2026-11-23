@@ -11,6 +11,7 @@ import {
   HEALTH_CONNECT_SOURCE,
 } from '../../types/healthRecords';
 import { toLocalDateString } from '../../utils/dateUtils';
+import { BODY_CLIENT_RECORD_PREFIX } from '../shared/bodyWriteback';
 import type { MindfulnessSessionType } from '@workspace/shared';
 import {
   BLOOD_GLUCOSE_MG_DL_PER_MMOL_L,
@@ -44,7 +45,36 @@ export {
 // Google's guidance we skip records whose dataOrigin is our own package. The
 // package name is injected from the service layer (setOwnPackageName) so this
 // pure module needs no expo-application import.
+/** Every clientRecordId exercise write-back (#1750) writes starts with this. */
+// The 'sparky-' namespace of writebackMappers' SPARKY_CLIENT_RECORD_PREFIX
+// (spelled out here because writebackMappers imports this module).
+export const EXERCISE_CLIENT_RECORD_PREFIX = 'sparky-exercise-';
+
+/**
+ * True for a record exercise write-back wrote, by its client record id. The
+ * read side skips these (the diary session they came from is already in
+ * Sparky). Matched by id rather than this app's package, because the dev seed
+ * tool also writes sessions from this app and those must still be imported.
+ */
+export const isOwnWrittenExerciseRecord = (rec: unknown): boolean => {
+  const id = (rec as { metadata?: { clientRecordId?: unknown } } | null)
+    ?.metadata?.clientRecordId;
+  return typeof id === 'string' && id.startsWith(EXERCISE_CLIENT_RECORD_PREFIX);
+};
+
+/**
+ * True for a record body measurement write-back (#2465) wrote, by its client
+ * record id. The read side skips these: the value came from the check-in. Matched
+ * by id rather than this app's package, as the dev seed tool writes body records too.
+ */
+export const isOwnWrittenBodyRecord = (rec: unknown): boolean => {
+  const id = (rec as { metadata?: { clientRecordId?: unknown } } | null)
+    ?.metadata?.clientRecordId;
+  return typeof id === 'string' && id.startsWith(BODY_CLIENT_RECORD_PREFIX);
+};
+
 let ownPackageName: string | null = null;
+export const getOwnPackageName = (): string | null => ownPackageName;
 export const setOwnPackageName = (pkg: string | null): void => {
   ownPackageName = pkg;
 };
@@ -796,6 +826,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
 
   ExerciseSession: (rec, record, _metricConfig, output) => {
     if (!rec.startTime || !rec.endTime) return;
+    // Written from the diary by exercise write-back (#1750); already in Sparky.
+    if (isOwnWrittenExerciseRecord(rec)) return;
 
     const start = new Date(rec.startTime as string).getTime();
     const end = new Date(rec.endTime as string).getTime();
@@ -1026,6 +1058,15 @@ VALUE_TRANSFORMERS['ActiveCaloriesBurned'] = createCalorieTransformer(
 VALUE_TRANSFORMERS['TotalCaloriesBurned'] = createCalorieTransformer(
   'total_calories',
   'TotalCalories'
+);
+
+// Body write-back's own records are never imported (see isOwnWrittenBodyRecord).
+(['Weight', 'BodyFat', 'Height', 'BoneMass', 'BodyWaterMass'] as const).forEach(
+  (type) => {
+    const base = VALUE_TRANSFORMERS[type];
+    VALUE_TRANSFORMERS[type] = (rec, metricConfig, index) =>
+      isOwnWrittenBodyRecord(rec) ? null : base(rec, metricConfig, index);
+  }
 );
 
 // ============================================================================

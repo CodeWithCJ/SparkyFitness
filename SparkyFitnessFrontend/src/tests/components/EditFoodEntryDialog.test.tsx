@@ -15,6 +15,8 @@ jest.mock('@/contexts/PreferencesContext', () => ({
     loggingLevel: 'DEBUG',
     energyUnit: 'kcal' as const,
     convertEnergy: (value: number) => value,
+    getEnergyUnitString: (unit: string) => unit,
+    formatDate: (date: string) => date,
     nutrientDisplayPreferences: [],
   }),
 }));
@@ -54,6 +56,7 @@ jest.mock('@/hooks/Diary/useFoodEntries', () => ({
   useUpdateFoodEntryMutation: () => ({
     mutateAsync: mockUpdateFoodEntry,
   }),
+  useLastCookedFoodEntry: () => ({ data: null }),
   // Used by the per-entry photo override control.
   useSetFoodEntryImagesMutation: () => ({
     mutateAsync: jest.fn(),
@@ -375,6 +378,138 @@ describe('EditFoodEntryDialog', () => {
         }),
       });
       expect(mockOnOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  describe('Weighed it cooked (#3534)', () => {
+    const cookedEntry: FoodEntry = {
+      ...entry,
+      quantity: 120,
+      cooked_quantity: 300,
+    };
+
+    it('reopens with the stored yield and cooked weight, and saves both quantities', async () => {
+      render(
+        <EditFoodEntryDialog
+          entry={cookedEntry}
+          open
+          onOpenChange={jest.fn()}
+          availableMealTypes={mealTypes}
+        />
+      );
+      const toggle = await screen.findByRole('switch', {
+        name: 'Weighed it cooked',
+      });
+      expect(toggle).toHaveAttribute('aria-checked', 'true');
+      expect(
+        screen.getByText('Same batch as this entry: 120 g raw → 300 g cooked')
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText('You ate (cooked, g)')).toHaveValue('300');
+      expect(screen.getByLabelText(/^Quantity$/i)).toHaveValue('120');
+
+      fireEvent.change(screen.getByLabelText('You ate (cooked, g)'), {
+        target: { value: '200' },
+      });
+      expect(screen.getByLabelText(/^Quantity$/i)).toHaveValue('80');
+
+      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+      await waitFor(() =>
+        expect(mockUpdateFoodEntry).toHaveBeenCalledWith({
+          id: 'entry-1',
+          data: expect.objectContaining({
+            quantity: 80,
+            unit: 'g',
+            cooked_quantity: 200,
+          }),
+        })
+      );
+    });
+
+    it('clears the cooked weight when the switch is turned off', async () => {
+      render(
+        <EditFoodEntryDialog
+          entry={cookedEntry}
+          open
+          onOpenChange={jest.fn()}
+          availableMealTypes={mealTypes}
+        />
+      );
+      fireEvent.click(
+        await screen.findByRole('switch', { name: 'Weighed it cooked' })
+      );
+      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+      await waitFor(() =>
+        expect(mockUpdateFoodEntry).toHaveBeenCalledWith({
+          id: 'entry-1',
+          data: expect.objectContaining({
+            quantity: 120,
+            cooked_quantity: null,
+          }),
+        })
+      );
+    });
+
+    it('sends null for an entry that was never weighed cooked', async () => {
+      render(
+        <EditFoodEntryDialog
+          entry={entry}
+          open
+          onOpenChange={jest.fn()}
+          availableMealTypes={mealTypes}
+        />
+      );
+      expect(
+        await screen.findByRole('switch', { name: 'Weighed it cooked' })
+      ).toHaveAttribute('aria-checked', 'false');
+      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+      await waitFor(() =>
+        expect(mockUpdateFoodEntry).toHaveBeenCalledWith({
+          id: 'entry-1',
+          data: expect.objectContaining({ cooked_quantity: null }),
+        })
+      );
+    });
+    it('saves an untouched kg entry with its stored raw quantity', async () => {
+      mockFoodData = {
+        id: 'food-1',
+        name: 'Rice',
+        is_custom: true,
+        default_variant: {
+          id: 'default-variant',
+          serving_size: 1,
+          serving_unit: 'kg',
+          calories: 3600,
+          protein: 70,
+          carbs: 790,
+          fat: 10,
+        },
+      };
+      render(
+        <EditFoodEntryDialog
+          entry={{
+            ...entry,
+            quantity: 0.125,
+            unit: 'kg',
+            cooked_quantity: 0.3,
+          }}
+          open
+          onOpenChange={jest.fn()}
+          availableMealTypes={mealTypes}
+        />
+      );
+      expect(
+        await screen.findByRole('switch', { name: 'Weighed it cooked' })
+      ).toHaveAttribute('aria-checked', 'true');
+      fireEvent.click(screen.getByRole('button', { name: /Save Changes/i }));
+      await waitFor(() =>
+        expect(mockUpdateFoodEntry).toHaveBeenCalledWith({
+          id: 'entry-1',
+          data: expect.objectContaining({
+            quantity: 0.125,
+            cooked_quantity: 0.3,
+          }),
+        })
+      );
     });
   });
 });

@@ -3,6 +3,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import { View, FlatList, RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
+import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
 import ServerGate from '../components/ServerGate';
 import LibrarySearchBar from '../components/LibrarySearchBar';
@@ -15,7 +16,6 @@ import {
   useServerConnection,
   useProfile,
 } from '../hooks';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
@@ -33,7 +33,6 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor] = useCSSVariable(['--color-accent-primary']) as [string];
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
@@ -46,21 +45,23 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({
   );
   const [refreshing, setRefreshing] = useState(false);
 
-  const { isConnected } = useServerConnection();
+  const { isConnected, status } = useServerConnection();
+  // The meals kept on the phone are read while the server is away.
+  const canRead = isConnected || status === 'unreachable';
   const { profile } = useProfile();
   const {
     meals,
     isLoading: isMealsLoading,
     isError: isMealsError,
     refetch: refetchMeals,
-  } = useMeals({ enabled: isConnected });
+  } = useMeals({ enabled: canRead });
   const {
     searchResults,
     isSearching,
     isSearchActive,
     isSearchError,
     refetch: refetchSearch,
-  } = useMealSearch(searchText, { enabled: isConnected });
+  } = useMealSearch(searchText, { enabled: canRead });
   const { favoriteMeals } = useFavorites({ enabled: isConnected });
   const favoriteMealIds = useMemo(
     () => new Set(favoriteMeals.map((m) => m.id)),
@@ -246,13 +247,21 @@ const MealsLibraryScreen: React.FC<MealsLibraryScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
-      {isConnected ? renderSearchBar() : null}
-      <ServerGate>{renderContent()}</ServerGate>
+      {isConnected ? (
+        <Button
+          variant="secondary"
+          className="mx-4 my-2"
+          onPress={() => navigation.navigate('RecipeImport')}
+        >
+          {t('recipeImport.title', {
+            defaultValue: 'Import Mealie ingredients',
+          })}
+        </Button>
+      ) : null}
+      {canRead ? renderSearchBar() : null}
+      <ServerGate offlineCapable>{renderContent()}</ServerGate>
     </View>
   );
 };

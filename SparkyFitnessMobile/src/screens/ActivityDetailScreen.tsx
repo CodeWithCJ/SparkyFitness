@@ -18,7 +18,6 @@ import ProgramWorkoutBadge from '../components/recording/ProgramWorkoutBadge';
 import FitnessTestBadge from '../components/recording/FitnessTestBadge';
 import ShoePickerCard from '../components/ShoePickerCard';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   useScreenHeader,
   SAVE_LABEL,
@@ -61,7 +60,7 @@ import type { WorkoutDraftSet } from '../types/drafts';
 import type { ExerciseEntrySetResponse } from '@workspace/shared';
 import {
   canEditGroupedWorkout,
-  isAppLoggedWorkoutSource,
+  isCalorieLinkWorkoutSource,
   energyFromKcal,
 } from '@workspace/shared';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
@@ -101,7 +100,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
     '--color-border-subtle',
     '--color-text-muted',
   ]) as [string, string, string];
-  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const { getImageSource } = useExerciseImageSource();
 
@@ -111,9 +109,9 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   const normalizedDate = normalizeDate(entryDate);
   const { name, duration, calories } = getWorkoutSummary(session, t);
 
-  // Only a workout logged in the app can be linked to a synced one.
+  // App-logged workouts and stable Hevy imports can link to a synced session.
   const canLinkSynced =
-    isAppLoggedWorkoutSource(session.source) &&
+    isCalorieLinkWorkoutSource(session.source) &&
     session.exercise_snapshot?.name !== 'Active Calories';
 
   const firstImage = session.exercise_snapshot?.images?.[0];
@@ -246,7 +244,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // is still honored at runtime; the compiler just skips optimizing this
   // component. Suppress the bailout rather than rewrite the working id counter.
   const addDraftSet = useCallback(
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     (_exerciseId?: string) => {
       const id = `set-${nextSetIdRef.current++}`;
       setDraftSets((prev) => {
@@ -699,10 +696,7 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <KeyboardAwareScrollView

@@ -1,5 +1,12 @@
 import { vi, beforeEach, describe, expect, it } from 'vitest';
 
+vi.mock('../db/poolManager.js', () => ({
+  getClient: vi.fn().mockResolvedValue({
+    query: vi.fn().mockResolvedValue({ rows: [] }),
+    release: vi.fn(),
+  }),
+  getSystemClient: vi.fn(),
+}));
 vi.mock('../models/foodRepository.js', () => ({
   default: {
     findVisibleFoodByName: vi.fn(),
@@ -15,6 +22,7 @@ vi.mock('../models/foodRepository.js', () => ({
 vi.mock('../models/foodEntryMealRepository.js', () => ({
   default: {
     createFoodEntryMeal: vi.fn(),
+    createFoodEntryMealWithClient: vi.fn(),
   },
 }));
 
@@ -323,7 +331,9 @@ describe('importFoodDiaryEntriesInBulk', () => {
       total_servings: 1,
       foods: [],
     });
-    (foodEntryMealRepository.createFoodEntryMeal as any).mockResolvedValue({
+    (
+      foodEntryMealRepository.createFoodEntryMealWithClient as any
+    ).mockResolvedValue({
       id: 'parent-1',
       user_id: 'user-1',
       meal_type_id: 'breakfast-id',
@@ -347,7 +357,10 @@ describe('importFoodDiaryEntriesInBulk', () => {
       {}
     );
 
-    expect(foodEntryMealRepository.createFoodEntryMeal).toHaveBeenCalledWith(
+    expect(
+      foodEntryMealRepository.createFoodEntryMealWithClient
+    ).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({ meal_template_id: 'meal-1' }),
       'user-1'
     );

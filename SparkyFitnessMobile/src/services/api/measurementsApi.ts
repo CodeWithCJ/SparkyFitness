@@ -1,4 +1,12 @@
+import type { ServerConfig } from '../storage';
 import { apiFetch } from './apiClient';
+import { getCacheRow, putCacheRows } from '../../offline/cacheStore';
+import {
+  CACHE_COLLECTIONS,
+  SINGLE_DOCUMENT_KEY,
+} from '../../offline/collections';
+import { readSavedSingle } from '../../offline/foodLibrary';
+import { withOfflineFallback } from '../../offline/withOfflineFallback';
 import { ApiError } from './errors';
 import { getTodayDate } from '../../utils/dateUtils';
 
@@ -81,10 +89,23 @@ export const serverSupportsPerRecordWater = async (): Promise<boolean> => {
  * Fetches available water containers.
  */
 export const fetchWaterContainers = async (): Promise<WaterContainer[]> => {
-  return apiFetch<WaterContainer[]>({
-    endpoint: '/api/water-containers',
-    serviceName: 'Measurements API',
-    operation: 'fetch water containers',
+  return withOfflineFallback<WaterContainer[]>({
+    fetch: () =>
+      apiFetch<WaterContainer[]>({
+        endpoint: '/api/water-containers',
+        serviceName: 'Measurements API',
+        operation: 'fetch water containers',
+      }),
+    store: (db, serverConfigId, containers) =>
+      putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterContainers, [
+        { key: SINGLE_DOCUMENT_KEY, payload: containers },
+      ]),
+    read: (db, serverConfigId) =>
+      readSavedSingle<WaterContainer[]>(
+        db,
+        serverConfigId,
+        CACHE_COLLECTIONS.waterContainers
+      ),
   });
 };
 
@@ -517,10 +538,26 @@ export const deleteCustomMeasurement = async (id: string): Promise<void> => {
 export const fetchWaterIntakeLog = async (
   date: string
 ): Promise<WaterIntakeLogEntry[]> => {
-  return apiFetch<WaterIntakeLogEntry[]>({
-    endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(date)}/log`,
-    serviceName: 'Measurements API',
-    operation: 'fetch water intake log',
+  return withOfflineFallback<WaterIntakeLogEntry[]>({
+    fetch: () =>
+      apiFetch<WaterIntakeLogEntry[]>({
+        endpoint: `/api/v2/measurements/water-intake/${encodeURIComponent(date)}/log`,
+        serviceName: 'Measurements API',
+        operation: 'fetch water intake log',
+      }),
+    store: (db, serverConfigId, log) =>
+      putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.waterLog, [
+        { key: date, payload: log },
+      ]),
+    read: async (db, serverConfigId) => {
+      const row = await getCacheRow(
+        db,
+        serverConfigId,
+        CACHE_COLLECTIONS.waterLog,
+        date
+      );
+      return row ? (row.payload as WaterIntakeLogEntry[]) : null;
+    },
   });
 };
 
@@ -528,16 +565,25 @@ export const changeWaterIntake = async (params: {
   entryDate: string;
   changeDrinks: number;
   containerId: number;
+  /**
+   * Replay key for one "+" press (only valid with `changeDrinks` of 1). The
+   * server answers a repeat of the same key without logging another drink.
+   */
+  clientId?: string;
+  /** Send to this server, not whichever is active when the request goes out. */
+  serverConfig?: ServerConfig;
 }): Promise<WaterIntakeResponse> => {
   return apiFetch<WaterIntakeResponse>({
     endpoint: '/api/measurements/water-intake',
     serviceName: 'Measurements API',
     operation: 'change water intake',
     method: 'POST',
+    serverConfig: params.serverConfig,
     body: {
       entry_date: params.entryDate,
       change_drinks: params.changeDrinks,
       container_id: params.containerId,
+      ...(params.clientId ? { client_id: params.clientId } : {}),
     },
   });
 };
@@ -546,11 +592,15 @@ export const changeWaterIntake = async (params: {
  * Deletes one logged drink. The server also decrements the day's total, so
  * callers only need to refresh — no separate total adjustment.
  */
-export const deleteWaterIntakeLogEntry = async (id: string): Promise<void> => {
+export const deleteWaterIntakeLogEntry = async (
+  id: string,
+  serverConfig?: ServerConfig
+): Promise<void> => {
   await apiFetch<unknown>({
     endpoint: `/api/v2/measurements/water-intake/log/${encodeURIComponent(id)}`,
     serviceName: 'Measurements API',
     operation: 'delete water intake log entry',
     method: 'DELETE',
+    serverConfig,
   });
 };

@@ -26,7 +26,7 @@ import { assignShoeToExerciseEntry, fetchShoes } from './api/shoesApi';
 import { findShoeThatReachedLimit } from './shoeWear';
 import type { ShoeResponse } from '@workspace/shared';
 import { buildActivitySetsPayload } from '../utils/workoutSession';
-import { toLocalDateString } from '../utils/dateUtils';
+import { getDeviceTimezone, toLocalDateString } from '../utils/dateUtils';
 import {
   computeLaps,
   computeSplits,
@@ -39,6 +39,9 @@ import {
   type RecordingActivity,
   type DiaryActivity,
 } from '../utils/gpsRecording';
+
+/** The fewest points the server takes as a route (`points` is `.min(2)`). */
+const MIN_ROUTE_POINTS = 2;
 
 /** Library names the three activities are logged under. */
 const EXERCISE_NAMES: Record<DiaryActivity, string> = {
@@ -157,6 +160,11 @@ export interface SavedRecording {
  * session, so retrying only re-sends the track (the server replaces it) and
  * never logs the activity twice.
  *
+ * An outdoor session stopped before the phone had a GPS fix has fewer than the
+ * two points a route needs: it is saved with its time and no distance or route
+ * rather than sending a track the server rejects, which used to leave the
+ * entry behind and every retry failing the same way (#3470).
+ *
  * An indoor session has no route: its distance is whatever the person read off
  * the machine (`indoorDistanceKm`, null to leave it out), and there is no
  * track to send. `indoorEstimate` is the step-based distance it was prefilled
@@ -175,13 +183,21 @@ export async function saveRecordedActivity(
 ): Promise<SavedRecording> {
   const indoor = session.indoor === true;
   const started = new Date(session.startedAt);
+  // Date, time and zone are read together, before any await: a zone change
+  // during the save must not pair one zone's day with another's time.
   const entryDate = toLocalDateString(started);
+  const entryTime = `${pad(started.getHours())}:${pad(started.getMinutes())}`;
+  const recordTimezone = getDeviceTimezone();
   const durationSeconds = Math.max(1, Math.round(elapsedSeconds(session)));
+  const trackPoints = indoor ? [] : toWorkoutGpsPoints(points);
+  const hasRoute = trackPoints.length >= MIN_ROUTE_POINTS;
   const distanceKm: number | null = indoor
     ? indoorDistanceKm != null && indoorDistanceKm > 0
       ? Math.round(indoorDistanceKm * 1000) / 1000
       : null
-    : Math.round(summarizeRecording(points).distanceMeters) / METERS_PER_KM;
+    : hasRoute
+      ? Math.round(summarizeRecording(points).distanceMeters) / METERS_PER_KM
+      : null;
 
   let entryId = session.savedEntryId;
   let wornOutShoe: ShoeResponse | null = null;
@@ -203,7 +219,9 @@ export async function saveRecordedActivity(
         : exercise.name,
       duration_minutes: Math.round((durationSeconds / 60) * 100) / 100,
       entry_date: entryDate,
-      entry_time: `${pad(started.getHours())}:${pad(started.getMinutes())}`,
+      entry_time: entryTime,
+      // The time above is read on this phone, which may not be in the profile's zone.
+      record_timezone: recordTimezone,
       distance: distanceKm,
       ...(form && {
         avg_cadence: form.avgCadence,
@@ -217,7 +235,7 @@ export async function saveRecordedActivity(
       }),
     });
     entryId = created.id;
-    await markRecordingSaved(entryId, form);
+    await markRecordingSaved(session.id, entryId, form);
     // Once, with the entry: a retry of a failed track upload must not teach
     // the same session twice. Best effort, never part of the save failing.
     try {
@@ -229,7 +247,8 @@ export async function saveRecordedActivity(
             ? indoorEstimate.distanceKm
             : indoorDistanceKm
         );
-      } else if (session.finishedAt != null) {
+      } else if (hasRoute && session.finishedAt != null) {
+        // No route means no distance to learn a stride from.
         await learnFromOutdoorRecording(
           {
             activity: session.activity,
@@ -253,11 +272,11 @@ export async function saveRecordedActivity(
     }
   }
 
-  if (!indoor) {
+  if (hasRoute) {
     const unitMeters =
       distanceUnit === 'miles' ? METERS_PER_MILE : METERS_PER_KM;
     await attachExerciseEntryGpsTrack(entryId, {
-      points: toWorkoutGpsPoints(points),
+      points: trackPoints,
       // Laps the person marked replace the automatic splits: they are the
       // intervals they meant to compare.
       laps: splitsToLapWindows(

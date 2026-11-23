@@ -1,5 +1,7 @@
 ## Sparky Buddy (AI Assistant)
+
 ### Core AI Features
+
 - **Food Recognition**: Analyze food photos for automatic logging and nutrition extraction
 - **Nutrition Analysis**: Intelligent nutrition information extraction from text and images
 - **Meal Suggestions**: AI-powered meal recommendations and recipe generation
@@ -11,6 +13,7 @@
 - **Training, run and plan reviews**: See [Adaptive coaching](/features/exercises/adaptive-coaching) for the strength and run reviews and for plan weight changes.
 
 ### Chat Interface
+
 - **Image Upload**: Send photos for food analysis
 - **Text Input**: Natural language food descriptions, questions, and commands
 - **History**: Persistent chat conversation history with session grouping
@@ -34,6 +37,7 @@ Open **Settings → Developer & Integrations → AI Service Settings → Voice i
 AI transcription requires an updated client and server, with the database migrations applied. Native microphone/speech-recognition dependencies require a rebuilt mobile app, not just an over-the-air JavaScript update.
 
 ### Food Integration
+
 - **Auto-Logging**: Directly add recognized foods to diary with confirmation
 - **Nutrition Confirmation**: Review and edit AI suggestions before logging
 - **Meal Context**: Understand meal timing and context for accurate logging
@@ -46,6 +50,52 @@ The web chat's **Food preferences and tasks** panel shows lasting food preferenc
 Multi-step food tasks keep their ingredient selections, portion variants, source evidence and next step. Ingredients that still need matching remain in the draft with incomplete nutrition. Saving a draft does not publish a recipe or add food to the diary. Select a task to inspect its checkpoint and operation history, cancel remaining work, or resume it in chat. Resume does not start a background job.
 
 This information belongs to the signed-in person and is not shared with family diary viewers.
+
+## Tools from an outside MCP server
+
+An admin can give chat the tools of another MCP server, such as a notes app or a home automation server, so the assistant can use them next to its own.
+
+Whatever the assistant passes to these tools is sent to that server, and what comes back enters the chat. Add only servers you trust. Admins should add only servers that hold no personal data or that keep each person's data separate.
+
+The admin can see each tool's full definition in **Details**. Changed tools are switched off until the admin ticks them again. Replies never load images from other sites.
+
+Each person turns on each server for their own chat in **AI service settings** on the web or **AI** settings in the app, under **Tools from outside servers**. Every server is off by default. Turning on a server lets chat use only the tools the admin allowed.
+
+Outside results are shown to the assistant only in the reply that read them. The raw result stays in the saved chat history, which you can delete. The assistant can read those details again, and should ask before repeating a call that changes data.
+
+In current apps, deletes in chat always ask for your approval through an **Allow / Deny** card. After reading an outside server, every change in that reply asks for approval. If a reply looks wrong or asks for something unexpected, tap **Deny** and delete that message.
+
+### Add a server
+
+1. Go to **Admin → Global Data Providers**, select **Add New Data Provider**, give it a name and choose the type **MCP tool server**. Only an admin can add or configure one. Each person chooses whether to use it in their own AI settings.
+2. Enter the server's URL, the address of its Streamable HTTP endpoint (for example `https://tools.example.com/mcp`), and a bearer token if the server needs one. When you edit a saved server, leave the token blank to keep the saved one. Changing its URL needs the token entered again and clears the ticked tools. A server that only speaks the older SSE transport, or that needs an OAuth sign-in, cannot be added.
+3. Select **Load tools**. Every tool the server lists is shown. Tick the ones chat may use, up to 20 per server. A tool chat would leave out is listed with the reason and cannot be ticked. A tool you allowed earlier that the server no longer lists is marked, so you can untick it.
+4. Turn on **Tell the server who is chatting** only for a server that keeps data per person (see below).
+5. Turn on **Activate this provider** and save; chat reads only active servers. Nothing is allowed until you tick it, so a new server gives chat no tools until then. If a server changes a tool's name, description or input, chat stops using it until an admin loads the tools again and saves.
+
+A server on your own network works too, since only an admin adds one. Over plain `http` the token is sent unencrypted, so use `https` unless the network is one you trust.
+
+### When chat uses them
+
+- Only when chat chooses its tools itself, which is the default. Picking categories under **Chatbot tools**, even all of them with **Full**, leaves them out until you select **Clear all**. So does the **core** tool profile for small local models.
+- At most 40 tools from all servers together. Servers are taken in name order, then each server's tools in name order; the rest are left out, and the SparkyFitness log says how many.
+- Each tool is named after its server, for example `mcp_household_tools__search`.
+- A server that is down or slow is skipped, and chat goes on without it. It has 5 seconds to connect and 5 more to list its tools, and a call has 30 seconds to answer. A server that failed to list its tools is tried again after 15 seconds.
+- The tool list is kept for a minute. Saving the provider applies a change at once.
+- SparkyFitness's own [MCP server](/features/mcp-server) does not offer these tools to the apps that connect to it.
+
+### Tell the server who is chatting
+
+With this on, each call carries the signed-in person's user ID in the `X-SparkyFitness-User-Id` header, so the server can keep each person's data apart. With it off, the server is not told who is chatting, so it cannot tell people apart. Either way, chat offers no outside tools after switching to a family member's profile: that person shared their data with you, not with the outside server. The server should accept the header only together with the token, since SparkyFitness does not sign it.
+
+### Limits and safety
+
+- Chat reads only the text of an answer; images and other parts are left out, and the assistant is told how many.
+- An answer longer than 8,000 characters is cut, and the assistant is told to ask for less. A server that can return a lot should offer filters or a limit; SparkyFitness does not page through results.
+- A tool's description is cut at 1,024 characters.
+- Every allowed tool's input schema goes with every chat request, so one the model provider refuses would fail every chat. A schema is checked first: it must describe an object, follow JSON Schema's draft-07 rules, and be at most 32 KB and 32 levels deep. A tool that fails is left out. The check covers what model providers commonly refuse, but a provider can still refuse a schema that passes.
+- The token is sent only to the server's URL, never to another host or port on a redirect. If the server repeats it in a description, an answer or an error, it is replaced with `[redacted]`. A tool whose name or input schema holds the token is left out.
+- What the assistant passes to a tool is not written to the SparkyFitness log.
 
 ## Troubleshooting AI Providers
 

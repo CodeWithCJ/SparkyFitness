@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useIsMounted } from '@/hooks/useIsMounted';
 
 interface SetPerformanceAnalysisChartProps {
   setPerformanceData: {
@@ -29,7 +30,7 @@ const SetPerformanceAnalysisChart = ({
 }: SetPerformanceAnalysisChartProps) => {
   const { t } = useTranslation();
   const { weightUnit, convertWeight } = usePreferences();
-  const [isMounted, setIsMounted] = React.useState(false);
+  const isMounted = useIsMounted();
 
   // avgWeight arrives in kg. Convert once here so the bars, the Y-axis ticks
   // and the tooltip all read in the selected unit — previously only the
@@ -42,10 +43,6 @@ const SetPerformanceAnalysisChart = ({
       })),
     [setPerformanceData, convertWeight, weightUnit]
   );
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   if (!setPerformanceData || setPerformanceData.length === 0) {
     return null;

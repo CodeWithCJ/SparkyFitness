@@ -3,16 +3,19 @@ import { useTranslation } from 'react-i18next';
 import { useState, useEffect, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Toast from 'react-native-toast-message';
-import {
-  fetchWaterContainers,
-  changeWaterIntake,
-} from '../services/api/measurementsApi';
+import { fetchWaterContainers } from '../services/api/measurementsApi';
 import { getServingVolume } from '../utils/unitConversions';
 import type { DailySummaryRawData } from './useDailySummary';
 import type { WaterContainer } from '../types/measurements';
 import { dailySummaryQueryKey, waterContainersQueryKey } from './queryKeys';
 import { invalidateWaterIntakeQueries } from './invalidateWaterIntake';
 import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutBar';
+import {
+  logDrinkOrQueue,
+  removeDrinkOrQueue,
+  type DrinkRemoval,
+  type DrinkResult,
+} from '../offline/logDrink';
 
 /**
  * Stand-in used when the user has no standard container of their own, matching
@@ -125,16 +128,27 @@ export function useWaterIntakeMutation({
     void AsyncStorage.setItem(SELECTED_CONTAINER_KEY, String(id));
   };
 
+  const showQueuedToast = () => {
+    Toast.show({
+      type: 'info',
+      text1: t('waterIntake.queued', {
+        defaultValue: 'Saved on this phone',
+      }),
+      text2: t('waterIntake.queuedMessage', {
+        defaultValue: 'It uploads when your server can be reached.',
+      }),
+    });
+  };
+
   const mutation = useMutation({
-    mutationFn: async (changeDrinks: number) => {
+    mutationFn: async (
+      changeDrinks: number
+    ): Promise<DrinkResult | DrinkRemoval> => {
       if (!activeContainer) {
         throw new Error('No water container configured');
       }
-      return changeWaterIntake({
-        entryDate: date,
-        changeDrinks,
-        containerId: activeContainer.id,
-      });
+      if (changeDrinks === 1) return logDrinkOrQueue(date, activeContainer.id);
+      return removeDrinkOrQueue(date, activeContainer.id);
     },
     onMutate: async (changeDrinks: number) => {
       if (!activeContainer) return;
@@ -165,14 +179,26 @@ export function useWaterIntakeMutation({
         }
       );
     },
-    onSuccess: (response) => {
+    onSuccess: (result) => {
+      // A drink taken off on the phone: the day is read again, with the
+      // removal applied on top of what the phone has.
+      if ('kept' in result) {
+        if (result.kept && result.result === 'queued') showQueuedToast();
+        return;
+      }
+      // A drink waiting to upload: the day is read again, and the read adds
+      // the waiting drinks (and a linked container's food) on top.
+      if (result.queued) {
+        showQueuedToast();
+        return;
+      }
       queryClient.setQueryData<DailySummaryRawData>(
         dailySummaryQueryKey(date),
         (old) => {
           if (!old) return old;
           return {
             ...old,
-            waterIntake: { water_ml: response.water_ml },
+            waterIntake: { water_ml: result.response.water_ml },
           };
         }
       );
@@ -186,7 +212,9 @@ export function useWaterIntakeMutation({
         }),
       });
     },
-    onSettled: () => {
+    onSettled: (result) => {
+      // The summary read counts the waiting drinks, so a queued press is
+      // refreshed like any other.
       invalidateWaterIntakeQueries(queryClient, date);
     },
   });
@@ -232,9 +260,14 @@ export function useWaterIntakeMutation({
   // foodWater x hydration_factor, which the client cannot predict, so the
   // server's total is what lands.
   const logPreset = useMutation({
-    mutationFn: (containerId: number) =>
-      changeWaterIntake({ entryDate: date, changeDrinks: 1, containerId }),
-    onSuccess: () => {
+    mutationFn: (containerId: number) => logDrinkOrQueue(date, containerId),
+    onSuccess: (result) => {
+      if (result.queued) {
+        showQueuedToast();
+        // The day's total counts the waiting drink at once.
+        invalidateWaterIntakeQueries(queryClient, date);
+        return;
+      }
       invalidateWaterIntakeQueries(queryClient, date);
     },
     onError: () => {

@@ -11,8 +11,16 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Clipboard } from 'lucide-react';
 import { RoutingProviderFields } from './RoutingProviderFields';
+import { ZeppBridgeFields } from './ZeppBridgeFields';
 import { ProviderSyncFrequencyFields } from './ProviderSyncFrequencyFields';
 import { WeatherProviderFields } from './WeatherProviderFields';
+import { McpServerFields } from './McpServerFields';
+import { FoodProviderApiKeyField } from './FoodProviderApiKeyField';
+import {
+  MCP_SERVER_PROVIDER_TYPE,
+  getFoodProviderMetadata,
+} from '@workspace/shared';
+import { isProviderTypeOffered } from '@/utils/settings';
 import { Trans, useTranslation } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { toast } from '@/hooks/use-toast';
@@ -44,6 +52,9 @@ export const EditProviderForm = ({
   // Fatsecret shares the credential fields with Nutritionix, but its dashboard
   // issues OAuth 2.0 Client ID / Client Secret rather than an App ID / App Key.
   const isFatsecret = editData.provider_type === 'fatsecret';
+  // The API refuses to change a tool server into another type, or another
+  // type into one.
+  const isMcpServer = provider.provider_type === MCP_SERVER_PROVIDER_TYPE;
   return (
     <form
       onSubmit={(e) => {
@@ -72,6 +83,7 @@ export const EditProviderForm = ({
             {t('settings.editProviderForm.providerType', 'Provider Type')}
           </Label>
           <Select
+            disabled={isMcpServer}
             value={editData.provider_type || ''}
             onValueChange={(value) =>
               setEditData((prev) => ({
@@ -92,12 +104,15 @@ export const EditProviderForm = ({
             </SelectTrigger>
             <SelectContent>
               {(providerTypes || [])
+                .filter(
+                  (type) =>
+                    isProviderTypeOffered(type, isAdminMode) &&
+                    (type.id === MCP_SERVER_PROVIDER_TYPE) === isMcpServer
+                )
                 .map((type) => ({
                   value: type.id,
                   label: type.display_name,
-                  is_strictly_private: type.is_strictly_private,
                 }))
-                .filter((type) => !isAdminMode || !type.is_strictly_private)
                 .map((type) => (
                   <SelectItem key={type.value} value={type.value}>
                     {type.label}
@@ -225,6 +240,20 @@ export const EditProviderForm = ({
           </p>
         </>
       )}
+      {editData.provider_type === 'zeppbridge' && (
+        <ZeppBridgeFields
+          idPrefix="edit"
+          keepExistingToken
+          baseUrl={editData.base_url}
+          appKey={editData.app_key}
+          onBaseUrlChange={(value) =>
+            setEditData((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setEditData((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
       {editData.provider_type === 'valhalla' && (
         <RoutingProviderFields
           idPrefix="edit"
@@ -235,6 +264,25 @@ export const EditProviderForm = ({
           }
           onAppKeyChange={(value) =>
             setEditData((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
+      {isMcpServer && (
+        <McpServerFields
+          idPrefix="edit"
+          providerId={provider.id}
+          savedBaseUrl={provider.base_url}
+          baseUrl={editData.base_url}
+          appKey={editData.app_key}
+          options={editData.provider_options}
+          onBaseUrlChange={(value) =>
+            setEditData((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setEditData((prev) => ({ ...prev, app_key: value }))
+          }
+          onOptionsChange={(options) =>
+            setEditData((prev) => ({ ...prev, provider_options: options }))
           }
         />
       )}
@@ -574,45 +622,19 @@ export const EditProviderForm = ({
           />
         </p>
       )}
-      {editData.provider_type === 'usda' && (
-        <>
-          <div>
-            <Label>{t('settings.editProviderForm.apiKey', 'API Key')}</Label>
-            <Input
-              type="password"
-              value={editData.app_key || ''}
-              onChange={(e) =>
-                setEditData((prev) => ({
-                  ...prev,
-                  app_key: e.target.value,
-                }))
-              }
-              placeholder={t(
-                'settings.editProviderForm.enterUSDAAPIKey',
-                'Enter USDA API Key'
-              )}
-              autoComplete="off"
-            />
-          </div>
-          <p className="text-sm text-muted-foreground col-span-2">
-            <Trans
-              i18nKey="settings.editProviderForm.getYourAPIKeyFrom3"
-              defaults={
-                'Get your API Key from the <link>USDA FoodData Central API Guide</link>.'
-              }
-              components={{
-                link: (
-                  <a
-                    href="https://fdc.nal.usda.gov/api-guide.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-500 underline"
-                  />
-                ),
-              }}
-            />
-          </p>
-        </>
+      {getFoodProviderMetadata(editData.provider_type)?.credentials ===
+        'api_key' && (
+        <FoodProviderApiKeyField
+          providerType={editData.provider_type || ''}
+          appKey={editData.app_key || ''}
+          onChange={(val) =>
+            setEditData((prev) => ({
+              ...prev,
+              app_key: val,
+            }))
+          }
+          idPrefix="edit"
+        />
       )}
       {editData.provider_type === 'withings' && (
         <>

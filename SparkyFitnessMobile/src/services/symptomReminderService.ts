@@ -2,53 +2,27 @@ import * as Notifications from 'expo-notifications';
 import i18n from '../localization/i18n';
 import { addLog } from './LogService';
 import {
-  ensureSymptomReminderChannel,
   hasNotificationPermission,
+  SYMPTOM_EPISODE_NUDGE_CATEGORY,
 } from './notifications';
+import { currentServerId } from './notificationServerScope';
 
 const SYMPTOM_REMINDER_CHANNEL_ID = 'symptom-reminders';
-const SYMPTOM_EPISODE_NUDGE_CATEGORY = 'symptom-episode-nudge';
-
-const SYMPTOM_ACTION_END_EPISODE = 'symptom-end-episode';
-const SYMPTOM_ACTION_STILL_ONGOING = 'symptom-still-ongoing';
 
 const ONGOING_NUDGE_PREFIX = 'symptom_nudge_';
-
-export async function ensureSymptomNotificationCategory(): Promise<void> {
-  try {
-    await ensureSymptomReminderChannel();
-    await Notifications.setNotificationCategoryAsync(
-      SYMPTOM_EPISODE_NUDGE_CATEGORY,
-      [
-        {
-          identifier: SYMPTOM_ACTION_END_EPISODE,
-          buttonTitle: i18n.t('symptoms.actions.endNow', {
-            defaultValue: 'End now',
-          }),
-          options: { isDestructive: false },
-        },
-        {
-          identifier: SYMPTOM_ACTION_STILL_ONGOING,
-          buttonTitle: i18n.t('symptoms.actions.stillOngoing', {
-            defaultValue: 'Still ongoing',
-          }),
-          options: { isDestructive: false },
-        },
-      ]
-    );
-  } catch (err) {
-    addLog(
-      `ensureSymptomNotificationCategory failed: ${(err as Error).message}`,
-      'ERROR'
-    );
-  }
-}
 
 export async function scheduleOngoingEpisodeNudge(
   episodeId: string,
   symptomName: string,
   startedAt: string,
-  nudgeHours = 24
+  {
+    nudgeHours = 24,
+    serverId: knownServerId,
+  }: {
+    nudgeHours?: number;
+    /** The server the episode lives on; defaults to the active one. */
+    serverId?: string;
+  } = {}
 ): Promise<void> {
   const notifId = `${ONGOING_NUDGE_PREFIX}${episodeId}`;
   try {
@@ -59,6 +33,16 @@ export async function scheduleOngoingEpisodeNudge(
     const triggerTime = startTime + nudgeHours * 60 * 60 * 1000;
     const now = Date.now();
     if (triggerTime <= now) return;
+    const serverId = knownServerId ?? (await currentServerId());
+    if (!serverId) {
+      // Without a server stamp a button press could act on whichever server
+      // is active later, so don't schedule a nudge that can't be scoped.
+      addLog(
+        '[Symptoms] No active server; ongoing episode nudge not scheduled',
+        'WARNING'
+      );
+      return;
+    }
 
     await Notifications.scheduleNotificationAsync({
       identifier: notifId,
@@ -74,7 +58,9 @@ export async function scheduleOngoingEpisodeNudge(
         }),
         sound: true,
         categoryIdentifier: SYMPTOM_EPISODE_NUDGE_CATEGORY,
-        data: { episodeId, symptomName },
+        // The server the episode lives on, so a button pressed after a
+        // server switch is not sent to another server.
+        data: { episodeId, symptomName, serverId },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,

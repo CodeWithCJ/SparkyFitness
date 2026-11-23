@@ -1213,6 +1213,9 @@ export function getHealthMetricLabel(
       return t('healthMetrics.toothbrushing', {
         defaultValue: 'Toothbrushing',
       });
+    case 'exercise':
+      // The exercise write-back metric (#1750); the read side is `exerciseSession`.
+      return t('healthMetrics.exercise', { defaultValue: 'Exercise' });
     case 'basalBodyTemperature':
       return t('healthMetrics.basalBodyTemperature', {
         defaultValue: 'Basal Body Temperature',
@@ -1283,6 +1286,10 @@ export function getHealthMetricLabel(
       });
     case 'boneMass':
       return t('healthMetrics.boneMass', { defaultValue: 'Bone Mass' });
+    case 'waistCircumference':
+      return t('healthMetrics.waistCircumference', {
+        defaultValue: 'Waist Circumference',
+      });
     case 'bodyWaterMass':
       return t('healthMetrics.bodyWaterMass', {
         defaultValue: 'Body Water Mass',
@@ -1433,6 +1440,8 @@ export function getHealthCategoryLabel(
       return t('healthCategories.Apple', { defaultValue: 'Apple' });
     case 'Hygiene':
       return t('healthCategories.Hygiene', { defaultValue: 'Hygiene' });
+    case 'Exercise':
+      return t('healthCategories.Exercise', { defaultValue: 'Exercise' });
     default:
       return t('healthCategories.unknown', { defaultValue: 'Other' });
   }

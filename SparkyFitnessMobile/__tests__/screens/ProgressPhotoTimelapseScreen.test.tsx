@@ -357,11 +357,15 @@ describe('ProgressPhotoTimelapseScreen', () => {
       mockUseScreenHeader.mockImplementation(() => null);
     });
 
-    it('keeps its own header below the status bar (Android, iOS 26+ with Liquid Glass off)', () => {
+    // The header bar reserves the status bar itself (#3465), so a root that
+    // padded too would show the room twice.
+    it('leaves the status bar to its header bar (Android, iOS 26+ with Liquid Glass off)', () => {
       mockNativeHeadersActive = false;
       const { getByText } = renderScreen();
 
-      expect(paddingAbove(getByText('Screen header'), 'paddingTop')).toBe(47);
+      expect(
+        paddingAbove(getByText('Screen header'), 'paddingTop')
+      ).toBeUndefined();
     });
 
     it('adds no top inset under the native iOS header', () => {

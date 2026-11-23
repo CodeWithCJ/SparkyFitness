@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -15,6 +15,7 @@ import { Wind } from 'lucide-react';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { parseISO } from 'date-fns';
 import { getRespirationStatus } from '@/utils/reportUtil';
+import { useIsMounted } from '@/hooks/useIsMounted';
 
 interface RespirationDataPoint {
   date: string;
@@ -30,11 +31,7 @@ interface SleepRespirationCardProps {
 const SleepRespirationCard = ({ data }: SleepRespirationCardProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   // Process data
   const { chartData, stats, latestValue } = useMemo(() => {

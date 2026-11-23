@@ -3,6 +3,7 @@ import {
   glucoseContextQueryKeyRoot,
   dailySummaryQueryKey,
   waterIntakeLogQueryKey,
+  bloodAlcoholQueryKey,
   caffeineActiveQueryKey,
 } from '../../src/hooks/queryKeys';
 import type { TagAction } from '@workspace/shared';
@@ -72,6 +73,7 @@ describe('tag actions', () => {
         dailySummaryQueryKey('2026-10-30'),
         waterIntakeLogQueryKey('2026-10-30'),
         caffeineActiveQueryKey('2026-10-30'),
+        bloodAlcoholQueryKey('2026-10-30'),
       ])
     );
   });

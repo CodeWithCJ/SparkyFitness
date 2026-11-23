@@ -32,6 +32,15 @@ export function isAppLoggedWorkoutSource(
   );
 }
 
+/** Workout sources whose stable entries can carry a manual calorie link. */
+export function isCalorieLinkWorkoutSource(
+  source: string | null | undefined
+): boolean {
+  return (
+    isAppLoggedWorkoutSource(source) || source?.trim().toLowerCase() === 'hevy'
+  );
+}
+
 /** A set time this far outside the synced workout's window still matches. */
 export const CALORIE_LINK_MATCH_SLACK_MS = 10 * 60 * 1000;
 
@@ -58,6 +67,27 @@ export interface LinkedCalories {
 const round1 = (value: number): number => Math.round(value * 10) / 10;
 
 /**
+ * The side a resolution counts whatever the two estimates are, or null for
+ * `higher` and `lower`, which pick by them. `average` and `custom` put their
+ * figure on the SparkyFitness side.
+ */
+export function calorieLinkFixedSide(
+  resolution: CalorieLinkResolution
+): 'manual' | 'synced' | null {
+  switch (resolution) {
+    case 'sparkyfitness':
+    case 'average':
+    case 'custom':
+      return 'manual';
+    case 'synced':
+      return 'synced';
+    case 'higher':
+    case 'lower':
+      return null;
+  }
+}
+
+/**
  * Decides what each side of a link counts. The pair always counts one figure:
  * the side not chosen is set to 0, and `average` and `custom` put their figure
  * on the SparkyFitness side.
@@ -76,26 +106,26 @@ export function resolveLinkedCalories({
     manualCounted: 0,
     syncedCounted: null,
   };
-  switch (resolution) {
-    case 'sparkyfitness':
-      return keepManual;
-    case 'synced':
-      return keepSynced;
-    case 'higher':
-      return manualTotal >= syncedTotal ? keepManual : keepSynced;
-    case 'lower':
-      return manualTotal <= syncedTotal ? keepManual : keepSynced;
-    case 'average':
-      return {
-        manualCounted: round1((manualTotal + syncedTotal) / 2),
-        syncedCounted: 0,
-      };
-    case 'custom':
-      return {
-        manualCounted: round1(Math.max(0, customCalories ?? 0)),
-        syncedCounted: 0,
-      };
-  }
+  if (resolution === 'average')
+    return {
+      manualCounted: round1((manualTotal + syncedTotal) / 2),
+      syncedCounted: 0,
+    };
+  if (resolution === 'custom')
+    return {
+      manualCounted: round1(Math.max(0, customCalories ?? 0)),
+      syncedCounted: 0,
+    };
+  const side =
+    calorieLinkFixedSide(resolution) ??
+    ((
+      resolution === 'higher'
+        ? manualTotal >= syncedTotal
+        : manualTotal <= syncedTotal
+    )
+      ? 'manual'
+      : 'synced');
+  return side === 'manual' ? keepManual : keepSynced;
 }
 
 /**

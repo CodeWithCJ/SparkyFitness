@@ -1,5 +1,6 @@
 import { z } from 'zod/v4';
 import {
+  clientRequestIdSchema,
   isDayString,
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
@@ -125,8 +126,15 @@ export const UpsertWaterIntakeBodySchema = z
     ),
     container_id: nullableOptionalLegacyNumber,
     user_id: optionalLegacyString,
+    // Replay key from the mobile offline queue. One key names one drink, so it
+    // is only accepted with a single "+" press.
+    client_id: clientRequestIdSchema.optional(),
   })
-  .loose();
+  .loose()
+  .refine((body) => body.client_id === undefined || body.change_drinks === 1, {
+    path: ['client_id'],
+    message: 'client_id is only valid when change_drinks is 1',
+  });
 
 export type UpsertWaterIntakeBody = z.infer<typeof UpsertWaterIntakeBodySchema>;
 

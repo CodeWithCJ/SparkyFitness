@@ -33,11 +33,13 @@ describe('refreshHealthSyncCache', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dailySummary'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['measurements'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['bloodAlcohol'] });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ['measurementsRange'],
     });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sleep'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sleepRange'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['sleepNeed'] });
     expect(invalidateSpy).toHaveBeenCalledWith({
       queryKey: ['exerciseHistory'],
       refetchType: 'none',

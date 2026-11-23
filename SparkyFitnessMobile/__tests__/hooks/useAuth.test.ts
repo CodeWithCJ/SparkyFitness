@@ -12,6 +12,12 @@ import { clearServerConfigCache } from '../../src/services/storage';
 import { clearBackgroundWater } from '../../src/services/backgroundWater';
 import { clearAndroidWidgetSnapshots } from '../../src/services/androidWidgetSyncService';
 import { addLog } from '../../src/services/LogService';
+import {
+  cancelChallengeWeekNotifications,
+  dismissDeliveredChallengeWeekNotifications,
+  enqueueChallengeWeekNotificationTask,
+} from '../../src/services/challengeWeekNotificationService';
+import { beginAccountChange } from '../../src/offline/accountGeneration';
 import { useGuidedCheckInStore } from '../../src/stores/guidedCheckInStore';
 import type { ServerConfig } from '../../src/services/storage';
 import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
@@ -28,7 +34,12 @@ jest.mock('../../src/services/api/authService', () => ({
 jest.mock('../../src/services/storage', () => ({
   clearServerConfigCache: jest.fn(),
   setOnServerConfigDeleted: jest.fn(),
+  setOnServerConfigsChanged: jest.fn(),
   takeIdentityChangeServerConfigIds: jest.fn(async () => []),
+}));
+
+jest.mock('../../src/services/clientCertificate', () => ({
+  refreshClientCertificateHosts: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('expo-image', () => ({
@@ -48,6 +59,37 @@ jest.mock('../../src/services/androidWidgetSyncService', () => ({
 
 jest.mock('../../src/services/LogService', () => ({
   addLog: jest.fn(),
+}));
+
+// The offline file is the phone's own SQLite; these tests are about what the
+// identity change does around it, so it is replaced here.
+const mockClearAllCache = jest.fn();
+jest.mock('../../src/offline/db', () => ({
+  getOfflineDb: jest.fn(async () => ({})),
+}));
+jest.mock('../../src/offline/cacheStore', () => ({
+  clearAllCache: (...args: unknown[]) => mockClearAllCache(...args),
+}));
+jest.mock('../../src/offline/offlineImages', () => ({
+  clearAllOfflineImages: jest.fn().mockResolvedValue(undefined),
+}));
+jest.mock('../../src/offline/accountGeneration', () => {
+  const actual = jest.requireActual('../../src/offline/accountGeneration');
+  return {
+    ...actual,
+    beginAccountChange: jest.fn(actual.beginAccountChange),
+  };
+});
+jest.mock('../../src/services/challengeWeekNotificationService', () => ({
+  cancelChallengeWeekNotifications: jest.fn().mockResolvedValue(true),
+  dismissDeliveredChallengeWeekNotifications: jest
+    .fn()
+    .mockResolvedValue(undefined),
+  enqueueChallengeWeekNotificationTask: jest.fn(
+    async (task: () => Promise<unknown>) => {
+      await task();
+    }
+  ),
 }));
 
 const mockSetOnSessionExpired = setOnSessionExpired as jest.MockedFunction<
@@ -83,6 +125,8 @@ describe('useAuth', () => {
     renderHook(() => useAuth(), { wrapper: createQueryWrapper(queryClient) });
 
   beforeEach(() => {
+    mockClearAllCache.mockReset();
+    mockClearAllCache.mockResolvedValue(undefined);
     jest.clearAllMocks();
     queryClient = createTestQueryClient();
   });
@@ -108,6 +152,24 @@ describe('useAuth', () => {
     expect(mockSetOnNoConfigs).toHaveBeenCalledWith(expect.any(Function));
     expect(mockSetOnIdentityChanged).toHaveBeenCalledTimes(1);
     expect(mockSetOnIdentityChanged).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  test('keeps the client certificate hosts in step with the saved servers', async () => {
+    const { setOnServerConfigsChanged } = jest.requireMock(
+      '../../src/services/storage'
+    ) as { setOnServerConfigsChanged: jest.Mock };
+    const { refreshClientCertificateHosts } = jest.requireMock(
+      '../../src/services/clientCertificate'
+    ) as { refreshClientCertificateHosts: jest.Mock };
+    renderUseAuth();
+
+    await act(async () => {});
+
+    // Once at start, for servers saved before this build.
+    expect(refreshClientCertificateHosts).toHaveBeenCalledTimes(1);
+    const onChanged = setOnServerConfigsChanged.mock.calls[0][0] as () => void;
+    onChanged();
+    expect(refreshClientCertificateHosts).toHaveBeenCalledTimes(2);
   });
 
   test('identity changed callback drops every cached query', async () => {
@@ -211,6 +273,44 @@ describe('useAuth', () => {
     expect(mockClearAuthCookies).toHaveBeenCalledTimes(1);
   });
 
+  test("identity changed callback cancels and dismisses the previous account's challenge week notices in their queue", async () => {
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(enqueueChallengeWeekNotificationTask).toHaveBeenCalledTimes(1);
+    expect(cancelChallengeWeekNotifications).toHaveBeenCalledTimes(1);
+    expect(dismissDeliveredChallengeWeekNotifications).toHaveBeenCalledTimes(1);
+  });
+
+  test('identity changed callback queues the challenge week cancel before it waits on the account change', async () => {
+    let finishAccountChange: () => void = () => {};
+    (beginAccountChange as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishAccountChange = resolve;
+        })
+    );
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    let done: Promise<void> = Promise.resolve();
+    await act(async () => {
+      done = identityChangedCb() as Promise<void>;
+    });
+    // Still waiting on the account change, and the cancel is already queued.
+    expect(enqueueChallengeWeekNotificationTask).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finishAccountChange();
+      await done;
+    });
+  });
+
   test('identity changed callback drops the image caches', async () => {
     renderUseAuth();
     await act(async () => {});
@@ -227,6 +327,41 @@ describe('useAuth', () => {
     // so a departed account's progress photos would stay on the device.
     expect(mockClearMemoryCache).toHaveBeenCalledTimes(1);
     expect(mockClearDiskCache).toHaveBeenCalledTimes(1);
+  });
+
+  test('identity changed callback waits for the offline cache to be cleared, trying again if it fails', async () => {
+    mockClearAllCache
+      .mockRejectedValueOnce(new Error('database is locked'))
+      .mockResolvedValue(undefined);
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(mockClearAllCache).toHaveBeenCalledTimes(2);
+    expect(mockAddLog).toHaveBeenCalledWith(
+      expect.stringContaining('Failed to clear offline data (attempt 1 of 3)'),
+      'ERROR'
+    );
+    // The rest of the identity change still runs.
+    expect(mockClearAuthCookies).toHaveBeenCalledTimes(1);
+  });
+
+  test('identity changed callback reports a cache clear that keeps failing and carries on', async () => {
+    mockClearAllCache.mockRejectedValue(new Error('disk full'));
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    await act(async () => {
+      await identityChangedCb();
+    });
+
+    expect(mockClearAllCache).toHaveBeenCalledTimes(3);
+    expect(mockClearAuthCookies).toHaveBeenCalledTimes(1);
   });
 
   test('identity changed callback drops the cookie jar', async () => {

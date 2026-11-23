@@ -1,5 +1,11 @@
 import React from 'react';
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  waitFor,
+} from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -13,6 +19,13 @@ import {
   pickChatImageFromCamera,
   pickChatImagesFromLibrary,
 } from '../../src/utils/pickImage';
+import * as chatApi from '../../src/services/api/chatApi';
+import {
+  chatFetch,
+  NativeChatTransport,
+  PrematureChatClose,
+} from '../../src/services/api/chatTransport';
+import { fetch as expoFetch } from 'expo/fetch';
 import ChatScreen from '../../src/screens/ChatScreen';
 import { getActiveServerConfig } from '../../src/services/storage';
 import { useActiveAiServiceSetting, useChatHistory } from '../../src/hooks';
@@ -107,13 +120,46 @@ jest.mock('expo-speech-recognition', () => {
   };
 });
 
+type TestTransportOptions = {
+  prepareSendMessagesRequest?: (request: {
+    messages: { role: string; parts?: { type: string; state: string }[] }[];
+  }) => {
+    body: { turnId?: string };
+  };
+};
+let mockTransportOptions: TestTransportOptions;
+const mockReconnect = jest.fn();
+const mockDecode = jest.fn();
+const mockRuntimeMount = jest.fn();
+let mockRuntimeCallbacks: {
+  onFinish: (event: {
+    isAbort: boolean;
+    isDisconnect: boolean;
+    isError: boolean;
+  }) => void;
+  onError: (error: Error) => void;
+};
 jest.mock('@assistant-ui/react-ai-sdk', () => ({
   __esModule: true,
-  AssistantChatTransport: class AssistantChatTransport {},
+  AssistantChatTransport: class AssistantChatTransport {
+    constructor(options: TestTransportOptions) {
+      if (options.prepareSendMessagesRequest) mockTransportOptions = options;
+    }
+    reconnectToStream = mockReconnect;
+    processResponseStream(body: unknown) {
+      return mockDecode(body);
+    }
+  },
   useChatRuntime: (options: {
     onError?: (error: Error) => void;
     messages?: unknown;
   }) => {
+    const React: typeof import('react') = require('react');
+    React.useState(() => {
+      mockRuntimeMount();
+      return undefined;
+    });
+    mockRuntimeCallbacks = options as typeof mockRuntimeCallbacks;
     (global as any).__mockCapturedOnError = options?.onError;
     (global as any).__mockCapturedMessages = options?.messages;
     return {};
@@ -133,6 +179,10 @@ jest.mock('@assistant-ui/react-native', () => {
       React.createElement(React.Fragment, null, children),
     useAui: () => ({
       composer: () => ({
+        getState: () => ({
+          text: mockPhotoState.__mockComposerText,
+          attachments: mockPhotoState.__mockComposerAttachments,
+        }),
         setText: (value: string) => {
           // By default the echo back through `composer.text` is synchronous. Set
           // `__mockComposerDeferEchoes` to hold it so a test can drive the
@@ -164,13 +214,13 @@ jest.mock('@assistant-ui/react-native', () => {
     },
     useAuiState: <T,>(
       selector: (state: {
-        thread: { isRunning: boolean };
+        thread: { isRunning: boolean; messages: never[] };
         composer: { text: string; attachments: readonly unknown[] };
         message: MockPhotoMessage;
       }) => T
     ) =>
       selector({
-        thread: { isRunning: mockPhotoState.__mockChatIsRunning },
+        thread: { isRunning: mockPhotoState.__mockChatIsRunning, messages: [] },
         composer: {
           text: mockPhotoState.__mockComposerText ?? '',
           attachments: mockPhotoState.__mockComposerAttachments,
@@ -1206,6 +1256,766 @@ describe('ChatScreen history seeding', () => {
     expect((global as any).__mockCapturedMessages).toBe(seed);
   });
 
+  it('recovers the saved quick replies after a localized Expo disconnect arrives on foreground', async () => {
+    const screen = renderScreen();
+    await screen.findByTestId('composer-send');
+    const turnId = mockTransportOptions.prepareSendMessagesRequest!({
+      messages: [{ role: 'user' }],
+    }).body.turnId;
+    expect(turnId).toMatch(/^[0-9a-f-]{36}$/);
+    const entries: chatApi.ChatHistoryEntry[] = [
+      {
+        id: 'u',
+        message_type: 'user',
+        content: 'ciao',
+        metadata: { turnId },
+        created_at: '',
+      },
+      {
+        id: 'a',
+        message_type: 'assistant',
+        content: '',
+        metadata: { turnId },
+        created_at: '',
+        parts: [
+          {
+            type: 'tool-sparky_ask_user',
+            toolCallId: 'q',
+            state: 'output-available',
+            input: { question: 'Confermi?', options: ['Sì', 'No'] },
+            output: { asked: true },
+          },
+        ],
+      },
+    ];
+    const load = jest
+      .spyOn(chatApi, 'loadChatHistory')
+      .mockResolvedValue(entries);
+    const callbacks = mockRuntimeCallbacks;
+    const listeners = jest
+      .mocked(AppState.addEventListener)
+      .mock.calls.filter(([event]) => event === 'change');
+    try {
+      await act(async () => {
+        listeners.forEach(([, notify]) => notify('background'));
+        listeners.forEach(([, notify]) => notify('active'));
+        jest
+          .mocked(expoFetch)
+          .mockRejectedValueOnce(new Error('La connessione è stata persa.'));
+        await chatFetch('https://sparky.example/api/chat/stream', {
+          method: 'POST',
+        }).catch((error) => callbacks.onError(error));
+        callbacks.onFinish({
+          isAbort: false,
+          isDisconnect: false,
+          isError: true,
+        });
+      });
+      await waitFor(() =>
+        expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
+          chatApi.mapHistoryToInitialMessages(entries)
+        )
+      );
+      expect(Toast.show).not.toHaveBeenCalled();
+      expect(expoFetch).toHaveBeenCalledTimes(1);
+      expect(mockReconnect).not.toHaveBeenCalled();
+      expect(load).toHaveBeenCalledWith(SERVER_CONFIG, expect.anything());
+    } finally {
+      load.mockRestore();
+    }
+  });
+
+  it.each(['finish', 'early EOF'] as const)(
+    'recovers a background live stream only on premature closure (%s)',
+    async (ending) => {
+      const screen = renderScreen();
+      await screen.findByTestId('composer-send');
+      const id = mockTransportOptions.prepareSendMessagesRequest!({
+        messages: [{ role: 'user' }],
+      }).body.turnId;
+      const entries: chatApi.ChatHistoryEntry[] = [
+        {
+          id: 'u',
+          message_type: 'user',
+          content: 'prompt',
+          metadata: { turnId: id },
+          created_at: '',
+        },
+        {
+          id: 'a',
+          message_type: 'assistant',
+          content: 'full response',
+          metadata: { turnId: id },
+          created_at: '',
+        },
+      ];
+      const load = jest
+        .spyOn(chatApi, 'loadChatHistory')
+        .mockResolvedValue(entries);
+      const web = jest.requireActual<typeof import('stream/web')>('stream/web');
+      const originalStreams = {
+        ReadableStream: globalThis.ReadableStream,
+        TransformStream: globalThis.TransformStream,
+      };
+      Object.assign(globalThis, {
+        ReadableStream: web.ReadableStream,
+        TransformStream: web.TransformStream,
+      });
+      class TestTransport extends NativeChatTransport {
+        decode() {
+          return this.processResponseStream(
+            new ReadableStream({
+              start(controller) {
+                controller.close();
+              },
+            })
+          );
+        }
+      }
+      const notify = (state: 'background' | 'active') =>
+        jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.filter(([event]) => event === 'change')
+          .forEach(([, listener]) => listener(state));
+      try {
+        await act(async () => notify('background'));
+        mockDecode.mockReturnValueOnce(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue({
+                type: 'text-delta',
+                id: 't',
+                delta: 'partial',
+              });
+              if (ending === 'finish') controller.enqueue({ type: 'finish' });
+              controller.close();
+            },
+          })
+        );
+        const reader = new TestTransport({}).decode().getReader();
+        expect((await reader.read()).value?.type).toBe('text-delta');
+        if (ending === 'finish') {
+          expect((await reader.read()).value?.type).toBe('finish');
+          expect((await reader.read()).done).toBe(true);
+        } else {
+          const failure = await reader.read().catch((error: Error) => error);
+          expect(failure).toBeInstanceOf(PrematureChatClose);
+          if (failure instanceof Error) mockRuntimeCallbacks.onError(failure);
+        }
+        mockRuntimeCallbacks.onFinish({
+          isAbort: false,
+          isDisconnect: false,
+          isError: ending !== 'finish',
+        });
+        expect(load).not.toHaveBeenCalled();
+        await act(async () => notify('active'));
+        if (ending === 'early EOF') {
+          await waitFor(() =>
+            expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
+              chatApi.mapHistoryToInitialMessages(entries)
+            )
+          );
+          expect(load).toHaveBeenCalledTimes(1);
+        } else expect(load).not.toHaveBeenCalled();
+        expect(Toast.show).not.toHaveBeenCalled();
+        expect(mockReconnect).not.toHaveBeenCalled();
+        expect(expoFetch).not.toHaveBeenCalled();
+      } finally {
+        Object.assign(globalThis, originalStreams);
+        load.mockRestore();
+      }
+    }
+  );
+
+  it('restores a follow-up draft and photo into the replacement runtime without sending', async () => {
+    const id = 'c37bc122-75db-4e57-aac0-e58bfff12131';
+    const prompt: chatApi.ChatHistoryEntry = {
+      id: 'u',
+      message_type: 'user',
+      content: 'prompt',
+      metadata: { turnId: id },
+      created_at: '',
+    };
+    const answer: chatApi.ChatHistoryEntry = {
+      ...prompt,
+      id: 'a',
+      message_type: 'assistant',
+      content: 'response',
+    };
+    mockUseChatHistory.mockReturnValue({
+      ...mockUseChatHistory(),
+      data: chatApi.mapHistoryToInitialMessages([prompt]),
+    });
+    const reading = deferred<chatApi.ChatHistoryEntry[]>();
+    const load = jest
+      .spyOn(chatApi, 'loadChatHistory')
+      .mockReturnValueOnce(reading.promise);
+    const image = {
+      id: 'image',
+      name: 'meal.jpg',
+      type: 'image',
+      contentType: 'image/jpeg',
+      content: [{ type: 'image', image: 'data:image/jpeg;base64,Image' }],
+    };
+    mockRuntimeMount.mockImplementation(() => {
+      mockPhotoState.__mockComposerText = '';
+      mockPhotoState.__mockComposerAttachments = [];
+    });
+    try {
+      const screen = renderScreen();
+      const input = await screen.findByPlaceholderText('Message Sparky…');
+      fireEvent.changeText(input, 'What about dinner?');
+      mockPhotoState.__mockComposerAttachments = [image];
+      await act(async () => reading.resolve([prompt, answer]));
+      expect(mockRuntimeMount).toHaveBeenCalledTimes(2);
+      expect(mockPhotoState.__mockComposerText).toBe('What about dinner?');
+      expect(mockPhotoState.__mockComposerAddAttachment).toHaveBeenCalledWith(
+        image
+      );
+      screen.rerenderThread();
+      expect(screen.getByPlaceholderText('Message Sparky…').props.value).toBe(
+        'What about dinner?'
+      );
+      expect(expoFetch).not.toHaveBeenCalled();
+    } finally {
+      mockRuntimeMount.mockReset();
+      load.mockRestore();
+    }
+  });
+
+  it('stops the specific approval continuation only on an explicit composer press', async () => {
+    mockPhotoState.__mockChatIsRunning = true;
+    const stop = jest
+      .spyOn(chatApi, 'stopChatTurn')
+      .mockResolvedValue(undefined);
+    try {
+      const screen = renderScreen();
+      await screen.findByTestId('composer-cancel');
+      const send = mockTransportOptions.prepareSendMessagesRequest!;
+      const first = send({ messages: [{ role: 'user' }] }).body.turnId;
+      const continued = send({
+        messages: [
+          {
+            role: 'assistant',
+            parts: [{ type: 'tool-example', state: 'approval-responded' }],
+          },
+        ],
+      }).body.turnId;
+      expect(continued).toMatch(/^[a-f0-9-]{36}$/);
+      expect(continued).not.toBe(first);
+      await act(async () => {
+        jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.filter(([event]) => event === 'change')
+          .forEach(([, notify]) => notify('background'));
+      });
+      expect(stop).not.toHaveBeenCalled();
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('icon-stop'));
+      });
+      expect(stop).toHaveBeenCalledTimes(1);
+      expect(stop).toHaveBeenCalledWith(SERVER_CONFIG, continued);
+    } finally {
+      stop.mockRestore();
+    }
+  });
+
+  it('retries undelivered stops for their owner after local finish and during a later turn', async () => {
+    mockPhotoState.__mockChatIsRunning = true;
+    const acknowledgement = deferred<void>();
+    const stop = jest
+      .spyOn(chatApi, 'stopChatTurn')
+      .mockRejectedValueOnce(new Error('Offline'))
+      .mockReturnValueOnce(acknowledgement.promise)
+      .mockRejectedValueOnce(new Error('Offline again'))
+      .mockResolvedValue(undefined);
+    try {
+      let screen = renderScreen();
+      await screen.findByTestId('composer-cancel');
+      const send = () =>
+        mockTransportOptions.prepareSendMessagesRequest!({
+          messages: [{ role: 'user' }],
+        }).body.turnId;
+      const pressStop = () => fireEvent.press(screen.getByTestId('icon-stop'));
+      const foreground = () => {
+        const listeners = jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.filter(([event]) => event === 'change');
+        listeners.forEach(([, listener]) => listener('background'));
+        listeners.forEach(([, listener]) => listener('active'));
+      };
+      const first = send();
+      await act(async () => {
+        pressStop();
+        mockRuntimeCallbacks.onFinish({
+          isAbort: true,
+          isDisconnect: false,
+          isError: false,
+        });
+      });
+      expect(stop).toHaveBeenCalledWith(SERVER_CONFIG, first);
+      expect(Toast.show).toHaveBeenCalledWith(
+        expect.objectContaining({ text2: 'Offline' })
+      );
+
+      mockGetActiveServerConfig.mockResolvedValue({
+        ...SERVER_CONFIG,
+        id: 'other',
+      });
+      await act(async () => foreground());
+      expect(stop).toHaveBeenCalledTimes(1);
+      screen.unmount();
+      mockGetActiveServerConfig.mockResolvedValue(SERVER_CONFIG);
+      screen = renderScreen();
+      await screen.findByTestId('composer-cancel');
+      await waitFor(() => expect(stop).toHaveBeenCalledTimes(2));
+      expect(stop).toHaveBeenLastCalledWith(SERVER_CONFIG, first);
+
+      const second = send();
+      await act(async () => pressStop());
+      expect(stop.mock.calls).toEqual([
+        [SERVER_CONFIG, first],
+        [SERVER_CONFIG, first],
+        [SERVER_CONFIG, second],
+      ]);
+      await act(async () => acknowledgement.resolve(undefined));
+      await act(async () => pressStop());
+      expect(stop).toHaveBeenCalledTimes(4);
+      expect(stop).toHaveBeenLastCalledWith(SERVER_CONFIG, second);
+      await act(async () => foreground());
+      expect(stop).toHaveBeenCalledTimes(4);
+      expect(mockReconnect).not.toHaveBeenCalled();
+      expect(expoFetch).not.toHaveBeenCalled();
+    } finally {
+      stop.mockRestore();
+    }
+  });
+
+  it.each(['acknowledged', 'failed'] as const)(
+    'coalesces foreground and explicit retries while an outstanding Stop is %s',
+    async (outcome) => {
+      mockPhotoState.__mockChatIsRunning = true;
+      const delivery = deferred<void>();
+      const stop = jest
+        .spyOn(chatApi, 'stopChatTurn')
+        .mockImplementationOnce(async () => {
+          await delivery.promise;
+          if (outcome === 'failed') throw Error('Connection lost');
+        })
+        .mockRejectedValueOnce(new Error('Still offline'))
+        .mockResolvedValue(undefined);
+      try {
+        const screen = renderScreen();
+        await screen.findByTestId('composer-cancel');
+        const id = mockTransportOptions.prepareSendMessagesRequest!({
+          messages: [{ role: 'user' }],
+        }).body.turnId;
+        const pressStop = () =>
+          fireEvent.press(screen.getByTestId('icon-stop'));
+        await act(async () => {
+          pressStop();
+        });
+        await act(async () => {
+          pressStop();
+          const listeners = jest
+            .mocked(AppState.addEventListener)
+            .mock.calls.filter(([event]) => event === 'change');
+          listeners.forEach(([, listener]) => listener('background'));
+          listeners.forEach(([, listener]) => listener('active'));
+          mockRuntimeCallbacks.onFinish({
+            isAbort: true,
+            isDisconnect: false,
+            isError: false,
+          });
+        });
+        expect(stop.mock.calls).toEqual([[SERVER_CONFIG, id]]);
+        await act(async () => delivery.resolve(undefined));
+        if (outcome === 'failed') {
+          expect(stop.mock.calls).toEqual([
+            [SERVER_CONFIG, id],
+            [SERVER_CONFIG, id],
+          ]);
+          expect(Toast.show).toHaveBeenCalledTimes(1);
+          expect(Toast.show).toHaveBeenCalledWith(
+            expect.objectContaining({ text2: 'Still offline' })
+          );
+          // Another attempt needs a fresh trigger after the queued retry fails.
+          await act(async () => {
+            pressStop();
+          });
+          expect(stop.mock.calls[2]).toEqual([SERVER_CONFIG, id]);
+        } else {
+          expect(stop.mock.calls).toEqual([[SERVER_CONFIG, id]]);
+          expect(Toast.show).not.toHaveBeenCalled();
+        }
+        expect(expoFetch).not.toHaveBeenCalled();
+      } finally {
+        stop.mockRestore();
+      }
+    }
+  );
+
+  it('keeps a late Stop error private and retries on foreground after returning to the owner', async () => {
+    mockPhotoState.__mockChatIsRunning = true;
+    const delivery = deferred<void>();
+    const stop = jest
+      .spyOn(chatApi, 'stopChatTurn')
+      .mockImplementationOnce(async () => {
+        await delivery.promise;
+        throw Error('Connection lost');
+      })
+      .mockResolvedValue(undefined);
+    try {
+      const screen = renderScreen();
+      await screen.findByTestId('composer-cancel');
+      const id = mockTransportOptions.prepareSendMessagesRequest!({
+        messages: [{ role: 'user' }],
+      }).body.turnId;
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('icon-stop'));
+      });
+      await act(async () => {
+        fireEvent.press(screen.getByTestId('icon-stop'));
+      });
+      mockGetActiveServerConfig.mockResolvedValue({
+        ...SERVER_CONFIG,
+        id: 'other',
+      });
+      await act(async () => delivery.resolve(undefined));
+      expect(stop).toHaveBeenCalledTimes(1);
+      expect(Toast.show).not.toHaveBeenCalled();
+      mockGetActiveServerConfig.mockResolvedValue(SERVER_CONFIG);
+      await act(async () => {
+        const listeners = jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.filter(([event]) => event === 'change');
+        listeners.forEach(([, listener]) => listener('background'));
+        listeners.forEach(([, listener]) => listener('active'));
+      });
+      expect(stop.mock.calls).toEqual([
+        [SERVER_CONFIG, id],
+        [SERVER_CONFIG, id],
+      ]);
+    } finally {
+      stop.mockRestore();
+    }
+  });
+
+  it.each(['background', 'after lookup'] as const)(
+    'retains a disconnect received %s on a server without turn checkpoints',
+    async (timing) => {
+      const screen = renderScreen();
+      await screen.findByTestId('composer-send');
+      mockTransportOptions.prepareSendMessagesRequest!({
+        messages: [{ role: 'user' }],
+      });
+      const load = jest.spyOn(chatApi, 'loadChatHistory').mockResolvedValue([
+        {
+          id: 'old',
+          message_type: 'user',
+          content: 'prompt',
+          created_at: '',
+        },
+      ]);
+      const callbacks = mockRuntimeCallbacks;
+      const notify = (state: 'background' | 'active') => {
+        jest
+          .mocked(AppState.addEventListener)
+          .mock.calls.filter(([event]) => event === 'change')
+          .forEach(([, listener]) => listener(state));
+      };
+      const failure = async () => {
+        jest
+          .mocked(expoFetch)
+          .mockRejectedValueOnce(new Error('La connessione è stata persa.'));
+        await chatFetch('https://sparky.example/api/chat/stream', {
+          method: 'POST',
+        }).catch((error) => callbacks.onError(error));
+        callbacks.onFinish({
+          isAbort: false,
+          isDisconnect: false,
+          isError: true,
+        });
+      };
+      try {
+        await act(async () => {
+          notify('background');
+          if (timing === 'background') await failure();
+          notify('active');
+        });
+        if (timing === 'after lookup') await act(failure);
+        await waitFor(() =>
+          expect(Toast.show).toHaveBeenCalledWith(
+            expect.objectContaining({ text2: 'La connessione è stata persa.' })
+          )
+        );
+        expect(Toast.show).toHaveBeenCalledTimes(1);
+        expect(mockReconnect).not.toHaveBeenCalled();
+        expect(expoFetch).toHaveBeenCalledTimes(1);
+      } finally {
+        load.mockRestore();
+      }
+    }
+  );
+
+  it.each([
+    { transport: 'http', failed: true },
+    { transport: 'http', failed: false },
+    { transport: 'stream', failed: true },
+    { transport: 'stream', failed: false },
+  ])(
+    'adopts committed approval history after a terminal $transport response (failed=$failed)',
+    async ({ transport, failed }) => {
+      const turnId = 'c37bc122-75db-4e57-aac0-e58bfff12131';
+      const original = 'e21bc122-75db-4e57-aac0-e58bfff12132';
+      const pending: chatApi.ChatHistoryEntry = {
+        id: 'assistant',
+        message_type: 'assistant',
+        created_at: '',
+        content: 'Log this meal?',
+        metadata: { turnId: original, pendingTurnId: turnId },
+        parts: [
+          { type: 'text', text: 'Log this meal?' },
+          {
+            type: 'tool-log_food',
+            toolCallId: 'call',
+            state: 'approval-requested',
+            input: {},
+            approval: { id: 'a' },
+          },
+        ],
+      };
+      const settled: chatApi.ChatHistoryEntry = {
+        ...pending,
+        metadata: failed ? pending.metadata : { turnId: original },
+        parts: [
+          { type: 'text', text: 'Log this meal?' },
+          {
+            type: 'tool-log_food',
+            toolCallId: 'call',
+            state: 'output-available',
+            input: {},
+            output: { saved: true },
+          },
+        ],
+      };
+      const seed = chatApi.mapHistoryToInitialMessages([pending]);
+      mockUseChatHistory.mockReturnValue({
+        ...mockUseChatHistory(),
+        data: seed,
+      });
+      const refresh = deferred<chatApi.ChatHistoryEntry[]>();
+      const load = jest
+        .spyOn(chatApi, 'loadChatHistory')
+        .mockResolvedValueOnce([pending])
+        .mockReturnValueOnce(refresh.promise);
+      const error = 'Provider unavailable';
+      if (transport === 'http') {
+        const responseBody = JSON.stringify(
+          failed ? { error } : { cancelled: true }
+        );
+        mockReconnect.mockImplementationOnce(async () => {
+          if (failed) {
+            mockRuntimeCallbacks.onError(new Error(error));
+            mockRuntimeCallbacks.onFinish({
+              isAbort: false,
+              isDisconnect: false,
+              isError: true,
+            });
+          }
+          throw Object.assign(new Error(responseBody), {
+            statusCode: failed ? 422 : 410,
+            responseBody,
+          });
+        });
+      } else {
+        mockReconnect.mockResolvedValueOnce({
+          getReader: () => ({
+            read: async () => ({
+              done: false,
+              value: failed
+                ? { type: 'error', errorText: error }
+                : { type: 'abort' },
+            }),
+            cancel: async () => {},
+            releaseLock: () => {},
+          }),
+        });
+      }
+      try {
+        renderScreen();
+        await waitFor(() => expect(load).toHaveBeenCalledTimes(2));
+        expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(seed);
+        expect(mockReconnect.mock.invocationCallOrder[0]).toBeLessThan(
+          load.mock.invocationCallOrder[1]!
+        );
+        await act(async () => {
+          // The original live transport may finish while the replay is refreshing history.
+          if (failed) mockRuntimeCallbacks.onError(new Error(error));
+          mockRuntimeCallbacks.onFinish({
+            isAbort: !failed,
+            isDisconnect: false,
+            isError: failed,
+          });
+          refresh.resolve([settled]);
+        });
+        await waitFor(() =>
+          expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
+            chatApi.mapHistoryToInitialMessages([settled])
+          )
+        );
+        expect(mockReconnect).toHaveBeenCalledTimes(1);
+        expect(load).toHaveBeenCalledTimes(2);
+        if (failed) {
+          expect(Toast.show).toHaveBeenCalledTimes(1);
+          expect(Toast.show).toHaveBeenCalledWith(
+            expect.objectContaining({ text2: error })
+          );
+        } else expect(Toast.show).not.toHaveBeenCalled();
+        expect(expoFetch).not.toHaveBeenCalled();
+      } finally {
+        load.mockRestore();
+      }
+    }
+  );
+
+  it('keeps a transport exception recoverable and retries an interrupted post-failure history read without replay', async () => {
+    const turnId = 'c37bc122-75db-4e57-aac0-e58bfff12131';
+    const prompt: chatApi.ChatHistoryEntry = {
+      id: 'u',
+      message_type: 'user',
+      content: 'request',
+      created_at: '',
+      metadata: { turnId },
+    };
+    const settled = { ...prompt, metadata: { turnId, turnState: 'failed' } };
+    const seed = chatApi.mapHistoryToInitialMessages([prompt]);
+    mockUseChatHistory.mockReturnValue({ ...mockUseChatHistory(), data: seed });
+    const load = jest
+      .spyOn(chatApi, 'loadChatHistory')
+      .mockResolvedValueOnce([prompt])
+      .mockResolvedValueOnce([prompt])
+      .mockRejectedValueOnce(Error('History offline'))
+      .mockResolvedValueOnce([settled]);
+    const foreground = () => {
+      const listeners = jest
+        .mocked(AppState.addEventListener)
+        .mock.calls.filter(([event]) => event === 'change');
+      listeners.forEach(([, notify]) => notify('background'));
+      listeners.forEach(([, notify]) => notify('active'));
+    };
+    mockReconnect
+      .mockRejectedValueOnce(new Error('Connection lost'))
+      .mockRejectedValueOnce(
+        Object.assign(Error('unprocessable'), {
+          statusCode: 422,
+          responseBody: JSON.stringify({ error: 'Provider failure' }),
+        })
+      );
+    try {
+      renderScreen();
+      await waitFor(() =>
+        expect(Toast.show).toHaveBeenCalledWith(
+          expect.objectContaining({ text2: 'Connection lost' })
+        )
+      );
+      expect(load).toHaveBeenCalledTimes(1);
+      await act(async () => foreground());
+      expect(load).toHaveBeenCalledTimes(3);
+      expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(seed);
+      await act(async () => foreground());
+      await waitFor(() =>
+        expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
+          chatApi.mapHistoryToInitialMessages([settled])
+        )
+      );
+      expect(Toast.show).toHaveBeenCalledTimes(2);
+      expect(Toast.show).toHaveBeenLastCalledWith(
+        expect.objectContaining({ text2: 'Provider failure' })
+      );
+      expect(mockReconnect).toHaveBeenCalledTimes(2);
+      expect(load).toHaveBeenCalledTimes(4);
+      expect(expoFetch).not.toHaveBeenCalled();
+    } finally {
+      load.mockRestore();
+    }
+  });
+
+  it('reattaches a cold pending turn using the read-only transport then restores the saved answer', async () => {
+    const turnId = 'c37bc122-75db-4e57-aac0-e58bfff12131';
+    const user: chatApi.ChatHistoryEntry = {
+      id: 'u',
+      message_type: 'user',
+      metadata: { turnId },
+      parts: [],
+      content: 'prompt',
+      created_at: '',
+    };
+    const answer: chatApi.ChatHistoryEntry = {
+      ...user,
+      id: 'a',
+      message_type: 'assistant',
+      content: 'answer',
+    };
+    mockUseChatHistory.mockReturnValue({
+      ...mockUseChatHistory(),
+      data: chatApi.mapHistoryToInitialMessages([user]),
+    });
+    const load = jest
+      .spyOn(chatApi, 'loadChatHistory')
+      .mockResolvedValueOnce([user])
+      .mockResolvedValueOnce([user, answer]);
+    const read = jest
+      .fn()
+      .mockResolvedValueOnce({
+        done: false,
+        value: { type: 'tool-input-available' },
+      })
+      .mockResolvedValueOnce({ done: true });
+    mockReconnect.mockResolvedValueOnce({
+      getReader: () => ({
+        read,
+        cancel: async () => {},
+        releaseLock: () => {},
+      }),
+    });
+    try {
+      const screen = renderScreen();
+      await waitFor(() =>
+        expect(Reflect.get(globalThis, '__mockCapturedMessages')).toEqual(
+          chatApi.mapHistoryToInitialMessages([user, answer])
+        )
+      );
+      expect(mockReconnect).toHaveBeenCalledTimes(1);
+      expect(mockReconnect).toHaveBeenCalledWith({
+        chatId: turnId,
+        abortSignal: expect.anything(),
+      });
+      expect(read).toHaveBeenCalledTimes(2);
+      expect(expoFetch).not.toHaveBeenCalled();
+      // More exchanges have been saved since the immediate recovery remount.
+      const latest = chatApi.mapHistoryToInitialMessages([
+        user,
+        answer,
+        { ...answer, id: 'newer', content: 'later exchange' },
+      ]);
+      mockUseChatHistory.mockReturnValue({
+        ...mockUseChatHistory(),
+        data: latest,
+      });
+      mockUseActiveAiServiceSetting.mockReturnValue({
+        ...mockUseActiveAiServiceSetting(),
+        data: { ...ACTIVE_SETTING, id: 'new-provider' },
+      });
+      screen.rerenderThread();
+      await waitFor(() =>
+        expect(Reflect.get(globalThis, '__mockCapturedMessages')).toBe(latest)
+      );
+    } finally {
+      load.mockRestore();
+    }
+  });
+
   it('holds the loading gate (no thread) while history is loading', async () => {
     mockUseChatHistory.mockReturnValue({
       data: undefined,
@@ -1262,6 +2072,8 @@ describe('ChatScreen photo attachments', () => {
   });
 
   afterEach(() => {
+    // Unmount before removing the useEffect-backed navigation hook mock.
+    cleanup();
     jest.mocked(useFocusEffect).mockReset();
     jest.restoreAllMocks();
   });

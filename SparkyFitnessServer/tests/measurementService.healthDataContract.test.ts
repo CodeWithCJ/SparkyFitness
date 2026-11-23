@@ -270,4 +270,84 @@ describe('processHealthData per-record error contract', () => {
     // Skips do not fail the batch.
     expect(result.message).toBe('All health data successfully processed.');
   });
+
+  describe('deletion entries', () => {
+    it('processes deleted water entry without value or date', async () => {
+      measurementRepository.deleteWaterIntakeSamplesBySourceIds = vi
+        .fn()
+        .mockResolvedValue(['2026-08-03']);
+
+      const result = await measurementService.processHealthData(
+        [
+          {
+            type: 'water',
+            deleted: true,
+            source_id: 'hk-del-123',
+            source: 'HealthKit',
+          },
+        ],
+        userId,
+        actingUserId
+      );
+
+      expect(result.errors).toEqual([]);
+      expect(result.skipped).toEqual([]);
+      expect(result.processed).toHaveLength(1);
+      expect(result.processed[0]).toEqual({
+        type: 'water',
+        status: 'success',
+        data: {
+          deleted: true,
+          source_id: 'hk-del-123',
+          affectedDates: ['2026-08-03'],
+          affectedDateCount: 1,
+        },
+      });
+      expect(
+        measurementRepository.deleteWaterIntakeSamplesBySourceIds
+      ).toHaveBeenCalledWith(userId, actingUserId, 'HealthKit', ['hk-del-123']);
+    });
+
+    it('skips deletion entry for unsupported metric types', async () => {
+      const result = await measurementService.processHealthData(
+        [
+          {
+            type: 'Workout',
+            deleted: true,
+            source_id: 'workout-del-1',
+            source: 'HealthKit',
+          },
+        ],
+        userId,
+        actingUserId
+      );
+
+      expect(result.processed).toEqual([]);
+      expect(result.errors).toEqual([]);
+      expect(result.skipped).toHaveLength(1);
+      expect(result.skipped[0].reason).toContain(
+        'Deletion is currently only supported for water entries'
+      );
+    });
+
+    it('reports error if deletion entry is missing source_id', async () => {
+      const result = await measurementService.processHealthData(
+        [
+          {
+            type: 'water',
+            deleted: true,
+            source: 'HealthKit',
+          },
+        ],
+        userId,
+        actingUserId
+      );
+
+      expect(result.processed).toEqual([]);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0].error).toContain(
+        'Missing required field: source_id'
+      );
+    });
+  });
 });

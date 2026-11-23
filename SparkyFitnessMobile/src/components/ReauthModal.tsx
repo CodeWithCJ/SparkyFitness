@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  type ScrollViewInstance,
 } from 'react-native';
 import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
@@ -67,7 +68,7 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
   ]) as [string, string, string];
 
   // Config state
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
   const [config, setConfig] = useState<ServerConfig | null>(null);
   const [authSettings, setAuthSettings] = useState<AuthSettings | null>(null);
 
@@ -87,17 +88,25 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
   const [mfaCode, setMfaCode] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
 
-  // Load configs and reset when modal opens
+  // Reset when the modal opens (or is re-pointed at another expired server).
+  const openKey = visible ? (expiredConfigId ?? '') : null;
+  const [lastOpenKey, setLastOpenKey] = useState(openKey);
+  if (lastOpenKey !== openKey) {
+    setLastOpenKey(openKey);
+    if (openKey !== null) {
+      setError('');
+      setEmail('');
+      setPassword('');
+      setLoading(false);
+      setStep('credentials');
+      setMfaCode('');
+      setEmailOtpSent(false);
+    }
+  }
+
+  // Load configs when modal opens
   useEffect(() => {
     if (!visible) return;
-
-    setError('');
-    setEmail('');
-    setPassword('');
-    setLoading(false);
-    setStep('credentials');
-    setMfaCode('');
-    setEmailOtpSent(false);
 
     const loadConfig = async () => {
       const allConfigs = await getAllServerConfigs();
@@ -133,11 +142,11 @@ const ReauthModal: React.FC<ReauthModalProps> = ({
   // The server's auth settings decide which sign-in methods to offer
   // (email fields, OIDC providers). A failed fetch falls back to email-only so
   // the user can always attempt credentials.
+  if ((!visible || !config) && authSettings !== null) {
+    setAuthSettings(null);
+  }
   useEffect(() => {
-    if (!visible || !config) {
-      setAuthSettings(null);
-      return;
-    }
+    if (!visible || !config) return;
 
     let isMounted = true;
     const fetchSettings = async () => {

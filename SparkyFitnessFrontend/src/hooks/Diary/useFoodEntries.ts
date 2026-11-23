@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   loadFoodEntries,
   createFoodEntry,
+  createFoodEntryCopy,
   updateFoodEntry,
   removeFoodEntry,
   copyFoodEntries,
@@ -25,6 +26,7 @@ import {
   type CopyFoodEntriesFromUserPayload,
   type CopyFoodEntriesToUserPayload,
   importFoodDiaryEntriesFromCsv,
+  getLastCookedFoodEntry,
 } from '@/api/Diary/foodEntryService';
 import type { FoodDiaryImportRow, FoodDiaryImportScope } from '@/types/diary';
 
@@ -83,6 +85,19 @@ export const foodEntryMealDetailsOptions = (id: string) =>
         'Failed to load meal details.'
       ),
     },
+  });
+
+/** Last cooked entry of a food, for pre-filling "Weighed it cooked" (#3534). */
+export const useLastCookedFoodEntry = (
+  foodId: string | undefined,
+  enabled: boolean
+) =>
+  useQuery({
+    queryKey: foodEntryKeys.lastCooked(foodId ?? ''),
+    queryFn: () => getLastCookedFoodEntry(foodId ?? ''),
+    enabled: enabled && !!foodId,
+    // Only a convenience: a failure leaves the form without a pre-filled yield.
+    retry: false,
   });
 
 export const useCreateFoodEntryMutation = () => {
@@ -144,6 +159,20 @@ export const useDeleteFoodEntryMutation = () => {
     meta: {
       successMessage: t('diary.deleteSuccess', 'Entry deleted.'),
       errorMessage: t('diary.deleteError', 'Failed to delete entry.'),
+    },
+  });
+};
+
+export const useCopySingleFoodEntryMutation = () => {
+  const { t } = useTranslation();
+  const invalidate = useFoodEntryInvalidation();
+
+  return useMutation({
+    mutationFn: createFoodEntryCopy,
+    onSuccess: () => invalidate(),
+    meta: {
+      successMessage: t('diary.copyFoodSuccess', 'Food copied.'),
+      errorMessage: t('diary.copyFoodError', 'Failed to copy food.'),
     },
   });
 };

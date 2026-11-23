@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import { queryClient } from './queryClient';
-import { serverConnectionQueryKey } from './queryKeys';
+import { cycleSettingsQueryKey, serverConnectionQueryKey } from './queryKeys';
 import { useSyncHealthData } from './useSyncHealthData';
 import { promptForActiveWorkoutConflict } from './useStartLiveWorkout';
 import { startGuidedCheckIn } from './useGuidedCheckIn';
@@ -20,6 +20,7 @@ import { navigationRef as rootNavigationRef } from '../components/ActiveWorkoutB
 import { NON_ADD_TABS, type NonAddTabName } from '../components/TabsLayout';
 import { useDiaryDateStore } from '../stores/diaryDateStore';
 import type { RootStackParamList } from '../types/navigation';
+import type { SharedCycleSettings } from '../types/womensHealth';
 
 function getServerConnectionMessage(
   t: (key: string, options: { defaultValue: string }) => string,
@@ -36,6 +37,11 @@ function getServerConnectionMessage(
       return t('addSheetActions.configureForWorkout', {
         defaultValue:
           'Configure your server connection in Settings to start a workout.',
+      });
+    case 'addSheetActions.configureForCopy':
+      return t('addSheetActions.configureForCopy', {
+        defaultValue:
+          'Configure your server connection in Settings to copy from yesterday.',
       });
     default:
       return fallback;
@@ -97,6 +103,8 @@ function findRouteParams<T extends object>(
 
 interface AddSheetActionsArgs {
   syncMutation: ReturnType<typeof useSyncHealthData>;
+  /** Presents the copy-from-yesterday sheet for the active diary date. */
+  presentCopyFromYesterday?: (date: string) => void;
 }
 
 /**
@@ -105,7 +113,10 @@ interface AddSheetActionsArgs {
  * draft/active-workout conflict prompts, manual health sync, and returning the
  * user to their last content tab after a dismissal without an action.
  */
-export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
+export function useAddSheetActions({
+  syncMutation,
+  presentCopyFromYesterday,
+}: AddSheetActionsArgs) {
   const { t } = useTranslation();
   const lastActiveTabRef = useRef<NonAddTabName>('Dashboard');
   const addSheetDismissNavigationTimeoutRef = useRef<ReturnType<
@@ -338,6 +349,18 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     navigateFromSheet('OralCareLog', { date });
   }, [getActiveDiaryDate, navigateFromSheet]);
 
+  // Target-oriented copy: bring yesterday's meals into the day the sheet is
+  // open over. The date is fixed here (like the other date rows) so the sheet
+  // copies into the day the user is looking at, not a fallback.
+  const handleCopyFromYesterday = useCallback(() => {
+    if (!checkServerConnected('addSheetActions.configureForCopy', '')) {
+      return;
+    }
+    const date =
+      getActiveDiaryDate() ?? useDiaryDateStore.getState().selectedDate;
+    presentCopyFromYesterday?.(date);
+  }, [checkServerConnected, getActiveDiaryDate, presentCopyFromYesterday]);
+
   const handleRecordActivity = useCallback(() => {
     navigateFromSheet('RecordActivity');
   }, [navigateFromSheet]);
@@ -346,8 +369,16 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     navigateFromSheet('Chat');
   }, [navigateFromSheet]);
 
+  // Cycle can be on before its setup is done (Settings → Features turns it on
+  // without it), so the row sends that person to the setup, as the Dashboard
+  // card and the hub do, instead of logging without a mode or lengths.
   const handleOpenCycle = useCallback(() => {
-    navigateFromSheet('CycleLogModal');
+    const settings = queryClient.getQueryData<SharedCycleSettings | null>(
+      cycleSettingsQueryKey
+    );
+    navigateFromSheet(
+      settings?.onboarded_at ? 'CycleLogModal' : 'CycleOnboarding'
+    );
   }, [navigateFromSheet]);
 
   const handleSyncHealthData = useCallback(async () => {
@@ -424,6 +455,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     handleStartCheckIn,
     handleAddMindfulness,
     handleAddOralCare,
+    handleCopyFromYesterday,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,

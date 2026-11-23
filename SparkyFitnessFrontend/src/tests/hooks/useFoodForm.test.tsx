@@ -6,7 +6,7 @@ import type { Food, FoodVariant } from '@/types/food';
 const mockToast = jest.fn();
 const mockFetchQuery = jest.fn();
 const mockSaveFood = jest.fn();
-const mockCustomNutrients: [] = [];
+let mockCustomNutrients: never[] = [];
 const mockQueryClient = {
   fetchQuery: mockFetchQuery,
 };
@@ -171,6 +171,26 @@ describe('useCustomFoodForm', () => {
       })
     );
     mockFetchQuery.mockReset();
+  });
+
+  it('keeps what was typed when the custom nutrient list refetches', async () => {
+    const initialVariants = [createVariant({ is_default: true })];
+    const { result, rerender } = renderHook(() =>
+      useCustomFoodForm({ initialVariants, onSave: jest.fn() })
+    );
+    await waitFor(() => expect(result.current.variants).toHaveLength(1));
+    act(() => {
+      result.current.updateField('name', 'Typed yogurt');
+      result.current.updateField('barcode', '1234567890123');
+    });
+
+    // A refetch hands back a new list; the variants are rebuilt, but the
+    // food's own fields are not re-seeded.
+    mockCustomNutrients = [];
+    rerender();
+
+    expect(result.current.formData.name).toBe('Typed yogurt');
+    expect(result.current.formData.barcode).toBe('1234567890123');
   });
 
   it('uses the signed-in account when confirming a manual barcode conflict', async () => {

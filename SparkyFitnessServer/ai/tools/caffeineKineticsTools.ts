@@ -1,15 +1,11 @@
 import { tool } from 'ai';
-import {
-  todayInZone,
-  utcToLocalDateTimeInput,
-  type CaffeineActiveResponse,
-} from '@workspace/shared';
+import { todayInZone, type CaffeineActiveResponse } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import { getActiveCaffeineKinetics } from '../../services/caffeineKineticsService.js';
 import goalService from '../../services/goalService.js';
 import { ERRORS, formatZodError } from './errors.js';
 import { formatJsonResult } from './formatting.js';
-import { normalizeActionArgs } from './dates.js';
+import { normalizeActionArgs, withLocalDateTime } from './dates.js';
 import {
   CAFFEINE_KINETICS_ACTIONS,
   caffeineKineticsSchema,
@@ -62,10 +58,7 @@ function toLocalDisplayTimes(
   dailyGoalMg: number | null
 ): CaffeineKineticsForChat {
   const { doses, bedtime_at: _bedtimeAt, ...rest } = data;
-  const localDoses = doses.map(({ at, ...doseRest }) => {
-    const [doseDate, doseTime] = utcToLocalDateTimeInput(at, tz).split('T');
-    return { ...doseRest, date: doseDate ?? '', time: doseTime ?? '' };
-  });
+  const localDoses = doses.map((dose) => withLocalDateTime(dose, tz));
   const totalMgForDate = localDoses
     .filter((dose) => dose.date === date)
     .reduce((sum, dose) => sum + dose.mg, 0);

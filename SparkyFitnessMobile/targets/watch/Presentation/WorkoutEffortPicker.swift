@@ -9,6 +9,9 @@ import SwiftUI
 /// `save` runs the actual write and reports whether it worked; the picker only
 /// tracks the choice and the saved state.
 struct WorkoutEffortPicker: View {
+    /// The new workout view's picker: a segmented track set with the crown or a
+    /// drag instead of a card that has to be selected first.
+    var trackStyle = false
     let save: (Int, @escaping (Bool) -> Void) -> Void
 
     @EnvironmentObject private var checkIn: CheckInStore
@@ -18,6 +21,8 @@ struct WorkoutEffortPicker: View {
     @State private var position: Double = 5
     @State private var selected = false
     @State private var saved = false
+    /// Skip hides the picker without rating the workout.
+    @State private var skipped = false
     /// True while the write is in flight, so a second tap cannot send it twice.
     @State private var saving = false
     @FocusState private var crownFocused: Bool
@@ -29,20 +34,78 @@ struct WorkoutEffortPicker: View {
     }
 
     /// Apple Health's four bands: 1-3, 4-6, 7-8 and 9-10.
-    private var band: (name: String, color: Color) {
-        switch rating {
-        case ...3:
-            return (String(localized: "watch.effort.band.easy", defaultValue: "Easy"), .green)
-        case 4...6:
-            return (String(localized: "watch.effort.band.moderate", defaultValue: "Moderate"), .yellow)
-        case 7...8:
-            return (String(localized: "watch.effort.band.hard", defaultValue: "Hard"), .orange)
-        default:
-            return (String(localized: "watch.effort.band.allOut", defaultValue: "All Out"), .red)
+    private var band: EffortBand { EffortBand(score: Double(rating)) }
+
+    var body: some View {
+        if trackStyle { trackBody } else { cardBody }
+    }
+
+    private var trackBody: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(String(localized: "watch.effort.trackTitle", defaultValue: "How hard?"))
+                .font(.system(size: WatchStyle.m(23), weight: .semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+                .frame(height: WatchStyle.m(28))
+                .accessibilityAddTraits(.isHeader)
+            if saved {
+                Label(
+                    String(localized: "watch.effort.saved", defaultValue: "Saved"),
+                    systemImage: "checkmark"
+                )
+                .font(.system(size: WatchStyle.m(21), weight: .semibold))
+                .foregroundStyle(.green)
+                .padding(.top, WatchStyle.m(12))
+            } else if !skipped {
+                HStack(alignment: .lastTextBaseline, spacing: WatchStyle.m(10)) {
+                    Text("\(rating)")
+                        .font(.system(size: WatchStyle.num(68), weight: .semibold))
+                        .monospacedDigit()
+                        .tracking(-WatchStyle.m(2))
+                    Text(band.name)
+                        .font(.system(size: WatchStyle.m(21), weight: .semibold))
+                        .foregroundStyle(band.color)
+                }
+                .padding(.top, WatchStyle.m(12))
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(String(localized: "watch.effort.value", defaultValue: "Effort \(rating) of 10, \(band.name)"))
+                EffortTrack(
+                    values: Self.scores,
+                    index: Binding(get: { rating - 1 }, set: { position = Double($0 + 1) }),
+                    hapticsEnabled: checkIn.context.effectiveHapticsEnabled
+                )
+                .padding(.top, WatchStyle.m(10))
+                HStack(spacing: WatchStyle.m(6)) {
+                    Button(action: Haptics.tapping { skipped = true }) {
+                        Text(String(localized: "watch.rpe.skip", defaultValue: "Skip"))
+                            .font(.system(size: WatchStyle.m(16), weight: .semibold))
+                            .foregroundStyle(Color.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: WatchStyle.m(46))
+                            .background(WatchStyle.surface, in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    Button(action: Haptics.tapping(saveRating)) {
+                        Text(String(localized: "watch.rpe.save", defaultValue: "Save"))
+                            .font(.system(size: WatchStyle.m(16), weight: .bold))
+                            .foregroundStyle(Color.black)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: WatchStyle.m(46))
+                            .background(Color.white, in: Capsule())
+                            .contentShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(saving)
+                }
+                .padding(.top, WatchStyle.m(10))
+            }
         }
     }
 
-    var body: some View {
+    private static let scores: [Double] = (1...10).map(Double.init)
+
+    private var cardBody: some View {
         VStack(spacing: 4) {
             Text(title)
                 .watchFont(.footnote, classic: .caption)
@@ -55,7 +118,7 @@ struct WorkoutEffortPicker: View {
                 .watchFont(.headline, classic: .caption.weight(.semibold))
                 .foregroundStyle(.green)
             } else {
-                ValueBox(
+                PlainValueBox(
                     value: "\(rating)",
                     unit: band.name,
                     isSelected: selected,

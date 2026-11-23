@@ -87,8 +87,14 @@ class MainActivity : ComponentActivity() {
   override fun onResume() {
     super.onResume()
     sessionManager.pullInitialDataItems()
+    sessionManager.mediaStore.setAppForeground(true)
     ComplicationUpdater.requestAll(applicationContext)
     TileUpdater.requestAll(applicationContext)
+  }
+
+  override fun onPause() {
+    sessionManager.mediaStore.setAppForeground(false)
+    super.onPause()
   }
 
   private fun handleNavigationIntent(intent: Intent?) {
@@ -203,7 +209,10 @@ fun SparkyWearRoot(sessionManager: WearSessionManager) {
             runStore = sessionManager.runStore,
             isCurrentPage = isCurrentPage
           )
-          WatchPage.NOW_PLAYING -> NowPlayingPage(isCurrentPage = isCurrentPage)
+          WatchPage.NOW_PLAYING -> NowPlayingPage(
+            store = sessionManager.mediaStore,
+            isCurrentPage = isCurrentPage
+          )
           WatchPage.FASTING -> FastingPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
           WatchPage.STEPS -> StepsPage(store = sessionManager.checkInStore, isCurrentPage = isCurrentPage)
         }

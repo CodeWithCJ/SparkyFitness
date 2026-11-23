@@ -16,6 +16,8 @@ import type {
   UpdateSymptomDefinitionBody,
   UpdateSymptomEntryBody,
 } from '@workspace/shared';
+import { withoutCycleHubSymptoms } from '@workspace/shared';
+import { useMobileFeatures } from './useMobileFeatures';
 import {
   listSymptomEntries,
   createSymptomEntry,
@@ -139,7 +141,7 @@ export function useSymptomMutations(fromDate: string, toDate: string) {
  * date range, the ongoing-episode banner, and the cycle hub, which reads
  * cycle-source entries from the same table.
  */
-const invalidateEntries = (queryClient: QueryClient) => {
+export const invalidateSymptomEntryCaches = (queryClient: QueryClient) => {
   queryClient.invalidateQueries({ queryKey: symptomEntriesRootQueryKey });
   queryClient.invalidateQueries({ queryKey: symptomOngoingQueryKey });
   queryClient.invalidateQueries({ queryKey: ['symptoms', 'entry'] });
@@ -154,11 +156,24 @@ export function useSymptomDefinitions() {
   return { definitions: query.data ?? [], isLoading: query.isLoading };
 }
 
+/**
+ * Symptoms logged in the cycle hub belong to cycle tracking: while the person
+ * has turned it off on purpose (Settings → Features), lists outside the hub
+ * leave them out. They stay stored and come back when cycle is turned on.
+ * Not for `useSymptomEntries`, which the hub itself reads to save its picks.
+ */
+function useCycleHubSymptomsFilter() {
+  return useMobileFeatures().isExplicitlyOff('cycle')
+    ? withoutCycleHubSymptoms<SymptomEntryResponse>
+    : undefined;
+}
+
 export function useOngoingEpisodes(enabled = true) {
   const query = useQuery<SymptomEntryResponse[]>({
     queryKey: symptomOngoingQueryKey,
     queryFn: fetchOngoingEpisodes,
     enabled,
+    select: useCycleHubSymptomsFilter(),
   });
   useRefetchOnFocus(query.refetch, enabled);
   return { episodes: query.data ?? [], isLoading: query.isLoading };
@@ -181,6 +196,7 @@ export function useSymptomEntriesDetailed({
     queryFn: () =>
       fetchSymptomEntriesDetailed(fromDate, toDate, { overlapping }),
     enabled,
+    select: useCycleHubSymptomsFilter(),
   });
   useRefetchOnFocus(query.refetch, enabled);
   return {
@@ -270,7 +286,7 @@ export function useSymptomActions() {
   const logEntry = useMutation({
     mutationFn: (body: CreateSymptomEntryBody) => logSymptomEntry(body),
     onSuccess: (data) => {
-      invalidateEntries(queryClient);
+      invalidateSymptomEntryCaches(queryClient);
       if (data?.id && data.started_at && !data.ended_at) {
         void scheduleOngoingEpisodeNudge(
           data.id,
@@ -288,7 +304,7 @@ export function useSymptomActions() {
     mutationFn: ({ id, body }: { id: string; body: UpdateSymptomEntryBody }) =>
       patchSymptomEntry(id, body),
     onSuccess: (data) => {
-      invalidateEntries(queryClient);
+      invalidateSymptomEntryCaches(queryClient);
       if (data?.id && data.ended_at) {
         void cancelOngoingEpisodeNudge(data.id);
       }
@@ -304,7 +320,7 @@ export function useSymptomActions() {
     mutationFn: ({ id, body }: { id: string; body: EndSymptomEpisodeBody }) =>
       endSymptomEpisode(id, body),
     onSuccess: (_data, variables) => {
-      invalidateEntries(queryClient);
+      invalidateSymptomEntryCaches(queryClient);
       void cancelOngoingEpisodeNudge(variables.id);
     },
     onError: onError(
@@ -315,7 +331,7 @@ export function useSymptomActions() {
   const addSeverity = useMutation({
     mutationFn: ({ id, severity }: { id: string; severity: number }) =>
       addSymptomSeverity(id, severity),
-    onSuccess: () => invalidateEntries(queryClient),
+    onSuccess: () => invalidateSymptomEntryCaches(queryClient),
     onError: onError(
       t('symptoms.severityFailed', {
         defaultValue: 'Could not update severity',
@@ -326,7 +342,7 @@ export function useSymptomActions() {
   const removeEntry = useMutation({
     mutationFn: (id: string) => deleteSymptomEntry(id),
     onSuccess: (_data, id) => {
-      invalidateEntries(queryClient);
+      invalidateSymptomEntryCaches(queryClient);
       void cancelOngoingEpisodeNudge(id);
     },
     onError: onError(

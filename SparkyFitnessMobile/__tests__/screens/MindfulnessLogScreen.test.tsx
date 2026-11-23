@@ -298,12 +298,14 @@ describe('MindfulnessLogScreen', () => {
     expect(mockNavigation.goBack).not.toHaveBeenCalled();
   });
 
+  // The header bar reserves the status bar itself (#3465): 12 of its own
+  // padding plus the inset, which a modal leaves out on iOS.
   it('keeps the header below the status bar and Save above the navigation bar on Android', () => {
     const osSpy = jest.replaceProperty(Platform, 'OS', 'android');
     renderScreen({ date: DATE });
 
     expect(paddingAbove('Log Mindful Session', 'paddingTop')).toBe(
-      ANDROID_INSETS.top
+      12 + ANDROID_INSETS.top
     );
     expect(paddingAbove('Save', 'paddingBottom')).toBe(ANDROID_INSETS.bottom);
     osSpy.restore();
@@ -313,7 +315,7 @@ describe('MindfulnessLogScreen', () => {
     const osSpy = jest.replaceProperty(Platform, 'OS', 'ios');
     renderScreen({ date: DATE });
 
-    expect(paddingAbove('Log Mindful Session', 'paddingTop')).toBeUndefined();
+    expect(paddingAbove('Log Mindful Session', 'paddingTop')).toBe(12);
     osSpy.restore();
   });
 });

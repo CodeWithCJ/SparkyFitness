@@ -14,7 +14,10 @@ import exercisePresetEntryRepository from '../models/exercisePresetEntryReposito
 import workoutPresetRepository from '../models/workoutPresetRepository.js';
 import calorieCalculationService from '../services/CalorieCalculationService.js';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
-import { getGroupedExerciseSessionByIdWithClient } from '../services/exerciseEntryHistoryService.js';
+import {
+  getGroupedExerciseSessionById,
+  getGroupedExerciseSessionByIdWithClient,
+} from '../services/exerciseEntryHistoryService.js';
 import exerciseService from '../services/exerciseService.js';
 import { canEditGroupedWorkout } from '@workspace/shared';
 import * as workoutTelemetryRepository from '../models/workoutTelemetryRepository.js';
@@ -156,6 +159,119 @@ describe('exerciseService grouped workouts', () => {
     expect(client.query).toHaveBeenCalledWith('ROLLBACK');
     expect(client.query).not.toHaveBeenCalledWith('COMMIT');
     expect(client.release).toHaveBeenCalled();
+  });
+  describe('create with a client-minted id', () => {
+    const sessionId = '22222222-2222-4222-8222-222222222222';
+    const storedSession = { id: sessionId, name: 'Stored', exercises: [] };
+    const request = {
+      id: sessionId,
+      name: 'Offline Workout',
+      entry_date: '2026-03-12',
+      source: 'sparky',
+      exercises: [],
+    };
+
+    it('returns the stored session and creates nothing when the id was already created', async () => {
+      vi.mocked(getGroupedExerciseSessionById).mockResolvedValue(
+        storedSession as never
+      );
+      const result = await exerciseService.createOrReplayGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        request
+      );
+      expect(result).toEqual({ session: storedSession, replayed: true });
+      expect(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).not.toHaveBeenCalled();
+      expect(client.query).not.toHaveBeenCalledWith('BEGIN');
+    });
+
+    it('creates the session with the supplied id when it is new', async () => {
+      vi.mocked(getGroupedExerciseSessionById).mockResolvedValue(null);
+      vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mockResolvedValue({ id: sessionId } as never);
+      vi.mocked(getGroupedExerciseSessionByIdWithClient).mockResolvedValue(
+        storedSession as never
+      );
+      const result = await exerciseService.createOrReplayGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        request
+      );
+      expect(result).toEqual({ session: storedSession, replayed: false });
+      const createArgs = vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mock.calls[0];
+      expect(createArgs[2]).toMatchObject({ id: sessionId });
+      expect(client.query).toHaveBeenCalledWith('COMMIT');
+    });
+
+    it('returns the stored session when two copies of the create race', async () => {
+      vi.mocked(getGroupedExerciseSessionById)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(storedSession as never);
+      vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mockRejectedValue(
+        Object.assign(new Error('duplicate key'), {
+          code: '23505',
+          constraint: 'exercise_preset_entries_pkey',
+        })
+      );
+      const result = await exerciseService.createOrReplayGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        request
+      );
+      expect(result).toEqual({ session: storedSession, replayed: true });
+      expect(client.query).toHaveBeenCalledWith('ROLLBACK');
+    });
+
+    it('refuses with 409 when the id belongs to someone else', async () => {
+      vi.mocked(getGroupedExerciseSessionById).mockResolvedValue(null);
+      vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mockRejectedValue(
+        Object.assign(new Error('duplicate key'), {
+          code: '23505',
+          constraint: 'exercise_preset_entries_pkey',
+        })
+      );
+      await expect(
+        exerciseService.createOrReplayGroupedWorkoutSession(
+          'user-1',
+          'actor-1',
+          request
+        )
+      ).rejects.toMatchObject({ status: 409 });
+    });
+
+    it('does not look anything up when the request carries no id', async () => {
+      vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mockResolvedValue({ id: 'preset-entry-1' } as never);
+      vi.mocked(getGroupedExerciseSessionByIdWithClient).mockResolvedValue(
+        storedSession as never
+      );
+      const result = await exerciseService.createOrReplayGroupedWorkoutSession(
+        'user-1',
+        'actor-1',
+        {
+          name: 'Plain',
+          entry_date: '2026-03-12',
+          source: 'manual',
+          exercises: [],
+        }
+      );
+      expect(result.replayed).toBe(false);
+      expect(getGroupedExerciseSessionById).not.toHaveBeenCalled();
+      const createArgs = vi.mocked(
+        exercisePresetEntryRepository.createExercisePresetEntryWithClient
+      ).mock.calls[0];
+      expect(createArgs[2]).toMatchObject({ id: null });
+    });
   });
   it('persists superset_group on freeform grouped workout creation', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
@@ -2325,6 +2441,50 @@ describe('_updateExerciseEntryWithClient snapshot round-trip', () => {
     expect(update!.params[22]).toBe('["Leg_Press/0.jpg"]');
   });
 
+  // #1750: the entry's copy of the Health activity type follows a move to
+  // another exercise and is otherwise left as stored.
+  const healthActivityTypeParams = (params: unknown[]) => params.slice(-2);
+
+  it("copies the new exercise's activity type when the entry changes exercise", async () => {
+    vi.mocked(exerciseDb.getExerciseById).mockResolvedValueOnce({
+      id: 'ex-2',
+      name: 'Walking',
+      category: 'Cardio',
+      modality: 'duration_distance',
+      health_activity_type: 'walking',
+    });
+    const client = makeClient();
+    await updateEntry(
+      client,
+      'entry-a',
+      'user-1',
+      { exercise_id: 'ex-2' },
+      'actor-1',
+      'manual'
+    );
+    const update = client.calls.find(({ sql }) =>
+      /^UPDATE exercise_entries/.test(sql)
+    );
+    expect(update!.sql).toContain('health_activity_type = CASE');
+    expect(healthActivityTypeParams(update!.params)).toEqual([true, 'walking']);
+  });
+
+  it('leaves the stored activity type alone on an ordinary edit', async () => {
+    const client = makeClient();
+    await updateEntry(
+      client,
+      'entry-a',
+      'user-1',
+      { duration_minutes: 12 },
+      'actor-1',
+      'manual'
+    );
+    const update = client.calls.find(({ sql }) =>
+      /^UPDATE exercise_entries/.test(sql)
+    );
+    expect(healthActivityTypeParams(update!.params)).toEqual([false, null]);
+  });
+
   it('encodes array snapshot values from updateData exactly once', async () => {
     const client = makeClient();
     await updateEntry(
@@ -2413,12 +2573,12 @@ describe('_createExerciseEntryWithClient id threading', () => {
       /INSERT INTO exercise_entries/.test(sql)
     );
     expect(insert).toBeDefined();
-    expect(insert!.sql).toContain('$75');
+    expect(insert!.sql).toContain('$76');
     expect(insert!.sql).toContain('modality');
     expect(insert!.sql).toContain(', id)');
-    // $75 is the last param — the client uuid.
-    expect(insert!.params).toHaveLength(75);
-    expect(insert!.params[74]).toBe('client-uuid-1');
+    // $76 is the last param — the client uuid (after health_activity_type).
+    expect(insert!.params).toHaveLength(76);
+    expect(insert!.params[75]).toBe('client-uuid-1');
   });
 
   it('omits the id column when no id is provided (defaults to gen_random_uuid)', async () => {
@@ -2435,8 +2595,8 @@ describe('_createExerciseEntryWithClient id threading', () => {
       /INSERT INTO exercise_entries/.test(sql)
     );
     expect(insert).toBeDefined();
-    expect(insert!.sql).not.toContain('$75');
-    expect(insert!.sql).not.toMatch(/record_timezone, id\)/);
-    expect(insert!.params).toHaveLength(74);
+    expect(insert!.sql).not.toContain('$76');
+    expect(insert!.sql).not.toMatch(/health_activity_type, id\)/);
+    expect(insert!.params).toHaveLength(75);
   });
 });

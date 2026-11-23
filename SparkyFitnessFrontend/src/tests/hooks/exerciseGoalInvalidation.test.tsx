@@ -6,7 +6,11 @@ import {
   useDeleteExercisePresetEntryMutation,
   useLogWorkoutPresetMutation,
 } from '@/hooks/Exercises/useExerciseEntries';
-import { useExerciseInvalidation } from '@/hooks/useInvalidateKeys';
+import {
+  useDiaryInvalidation,
+  useExerciseInvalidation,
+} from '@/hooks/useInvalidateKeys';
+import { challengeKeys } from '@/api/keys/challenges';
 import { useDiaryGoals } from '@/hooks/Diary/useFoodEntries';
 import { loadDiaryGoals } from '@/api/Diary/foodEntryService';
 import {
@@ -147,4 +151,56 @@ describe('exercise changes refresh cached diary macro goals', () => {
       }
     }
   );
+});
+
+describe('exercise changes refresh cached challenge standings', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.mocked(logWorkoutPreset).mockResolvedValue(undefined);
+    jest.mocked(deleteExercisePresetEntry).mockResolvedValue(undefined);
+    jest.mocked(createPresetSession).mockResolvedValue({
+      type: 'preset',
+      id: 'session-1',
+      entry_date: date,
+      workout_preset_id: 1,
+      name: 'Evening run',
+      description: null,
+      notes: null,
+      source: 'manual',
+      status: 'completed',
+      total_duration_minutes: 45,
+      exercises: [],
+      activity_details: [],
+    });
+  });
+
+  it.each([
+    { action: 'log a preset', useAction: useLogPreset },
+    { action: 'create a session', useAction: useCreateSession },
+    { action: 'delete a preset session', useAction: useDeleteSession },
+    { action: 'change exercise history', useAction: useExerciseInvalidation },
+    { action: 'change the diary', useAction: useDiaryInvalidation },
+  ])('marks the standings stale after $action', async ({ useAction }) => {
+    const client = new QueryClient({
+      defaultOptions: { mutations: { retry: false } },
+    });
+    const current = challengeKeys.standings('c1', null);
+    const past = challengeKeys.standings('c2', '2026-10-19');
+    client.setQueryData(current, { rows: [] });
+    client.setQueryData(past, { rows: [] });
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const { result, unmount } = renderHook(() => useAction(), { wrapper });
+    try {
+      await act(async () => {
+        await result.current();
+      });
+      expect(client.getQueryState(current)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(past)?.isInvalidated).toBe(true);
+    } finally {
+      unmount();
+      client.clear();
+    }
+  });
 });

@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import ReportRangeControl from './ReportRangeControl';
 import { useActiveWorkoutBarPadding } from '../ActiveWorkoutBar';
-import { useNativeIOSHeadersActive } from '../../services/nativeTabBarPreference';
 import type { CustomRange, ReportRange } from '../../utils/trendRange';
 
 interface ReportScreenLayoutProps {
@@ -20,8 +19,9 @@ interface ReportScreenLayoutProps {
 }
 
 /**
- * The scaffold every Reports screen shares: safe-area padding, the screen header, a 7/30/90
- * day control and a scrolling body clear of the active-workout bar.
+ * The scaffold every Reports screen shares: the screen header (which keeps
+ * itself below the status bar), a 7/30/90 day control and a scrolling body
+ * clear of the active-workout bar.
  */
 const ReportScreenLayout: React.FC<ReportScreenLayoutProps> = ({
   header,
@@ -33,13 +33,9 @@ const ReportScreenLayout: React.FC<ReportScreenLayoutProps> = ({
 }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1"

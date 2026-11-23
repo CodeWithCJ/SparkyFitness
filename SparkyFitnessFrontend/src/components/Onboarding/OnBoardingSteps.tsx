@@ -254,6 +254,7 @@ export const OnboardingSteps = ({
                 {[
                   'MM/dd/yyyy',
                   'dd/MM/yyyy',
+                  'dd.MM.yyyy',
                   'dd-MMM-yyyy',
                   'yyyy-MM-dd',
                   'MMM dd, yyyy',

@@ -127,4 +127,42 @@ describe('POST /food-entry-meals', () => {
 
     expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
   });
+
+  it('forwards a replay key to the service', async () => {
+    const clientId = '22222222-2222-4222-8222-222222222222';
+
+    await request(app)
+      .post('/food-entry-meals')
+      .send({
+        meal_type: 'lunch',
+        entry_date: '2026-06-19',
+        quantity: 1,
+        unit: 'serving',
+        client_id: clientId,
+        foods: [],
+      })
+      .expect(201);
+
+    expect(foodEntryService.createFoodEntryMeal).toHaveBeenCalledWith(
+      'user-1',
+      'user-1',
+      expect.objectContaining({ client_id: clientId })
+    );
+  });
+
+  it('rejects a replay key that is not a uuid before reaching the service', async () => {
+    await request(app)
+      .post('/food-entry-meals')
+      .send({
+        meal_type: 'lunch',
+        entry_date: '2026-06-19',
+        quantity: 1,
+        unit: 'serving',
+        client_id: 'not-a-uuid',
+        foods: [],
+      })
+      .expect(400);
+
+    expect(foodEntryService.createFoodEntryMeal).not.toHaveBeenCalled();
+  });
 });

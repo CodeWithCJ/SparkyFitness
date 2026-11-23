@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, Platform } from 'react-native';
+import { View, Text, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
@@ -63,7 +63,7 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
           }),
         });
       } else {
-        await createPregnancyAsync(body);
+        await createPregnancyAsync({ body });
         Toast.show({
           type: 'success',
           text1: t('pregnancySetup.created', {
@@ -83,6 +83,7 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: isEdit
       ? t('pregnancySetup.editTitle', { defaultValue: 'Edit Pregnancy' })
       : t('pregnancySetup.title', { defaultValue: 'Pregnancy Setup' }),
@@ -90,12 +91,7 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      // iOS keeps no top inset even without the native header: this modal
-      // sheet already starts below the status bar.
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{

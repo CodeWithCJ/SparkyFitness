@@ -1,0 +1,10 @@
+{
+  "platforms": ["ios", "android"],
+  "ios": {
+    "modules": ["ClientCertificateModule"],
+    "appDelegateSubscribers": ["ClientCertificateSubscriber"]
+  },
+  "android": {
+    "modules": ["expo.modules.clientcertificate.ClientCertificateModule"]
+  }
+}

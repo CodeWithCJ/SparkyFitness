@@ -24,6 +24,7 @@ import {
   useSyncHevyMutation,
   useSyncLiftosaurMutation,
   useSyncIntervalsMutation,
+  useSyncZeppBridgeMutation,
 } from '@/hooks/Integrations/useIntegrations';
 import {
   useCreateExternalProviderMutation,
@@ -33,8 +34,10 @@ import {
 import {
   encodeYazioAppId,
   encodeYazioAppKey,
+  isProviderTypeOffered,
   validateProvider,
 } from '@/utils/settings';
+import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
 import { ProviderSpecificFields } from './ProviderSpecificFields';
 import { ProviderSyncFrequencyFields } from './ProviderSyncFrequencyFields';
 import { useToast } from '@/hooks/use-toast';
@@ -65,6 +68,8 @@ const AddExternalProviderForm = ({
     useSyncLiftosaurMutation();
   const { mutateAsync: syncIntervalsData, isPending: isSyncingIntervals } =
     useSyncIntervalsMutation();
+  const { mutateAsync: syncZeppBridgeData, isPending: isSyncingZeppBridge } =
+    useSyncZeppBridgeMutation();
   const { mutateAsync: loginGarmin, isPending: isLoggingInGarmin } =
     useLoginGarminMutation();
   const { mutateAsync: createExternalProvider, isPending: isCreatingProvider } =
@@ -91,6 +96,7 @@ const AddExternalProviderForm = ({
     isSyncingHevy ||
     isSyncingLiftosaur ||
     isSyncingIntervals ||
+    isSyncingZeppBridge ||
     isLoggingInGarmin ||
     isCreatingProvider ||
     isCreatingGlobal ||
@@ -207,6 +213,10 @@ const AddExternalProviderForm = ({
             app_key: appKey,
             base_url: newProvider.base_url || null,
             is_active: newProvider.is_active || false,
+            provider_options:
+              newProvider.provider_type === MCP_SERVER_PROVIDER_TYPE
+                ? (newProvider.provider_options ?? undefined)
+                : undefined,
           });
         } else {
           createdProvider = await createExternalProvider({
@@ -255,6 +265,15 @@ const AddExternalProviderForm = ({
           if (error instanceof Error) {
             console.error(error);
           }
+        }
+      }
+
+      if (newProvider.provider_type === 'zeppbridge' && newProvider.is_active) {
+        try {
+          await syncZeppBridgeData({ providerId: createdProvider.id });
+        } catch {
+          // The provider is saved. The sync mutation has already shown its own
+          // error, and the person can sync again from the provider card.
         }
       }
 
@@ -376,6 +395,10 @@ const AddExternalProviderForm = ({
                     garmin_connect_status: 'disconnected',
                     garmin_last_status_check: '',
                     garmin_token_expires: '',
+                    provider_options:
+                      value === MCP_SERVER_PROVIDER_TYPE
+                        ? { allowed_tools: [], send_user_id: false }
+                        : undefined,
                   }))
                 }
               >
@@ -384,12 +407,11 @@ const AddExternalProviderForm = ({
                 </SelectTrigger>
                 <SelectContent>
                   {(providerTypes || [])
+                    .filter((type) => isProviderTypeOffered(type, isAdminMode))
                     .map((type) => ({
                       value: type.id,
                       label: type.display_name,
-                      is_strictly_private: type.is_strictly_private,
                     }))
-                    .filter((type) => !isAdminMode || !type.is_strictly_private)
                     .map((type) => (
                       <SelectItem key={type.value} value={type.value}>
                         {type.label}

@@ -9,6 +9,10 @@ import {
 } from '../hooks/queryTestUtils';
 import type { CheckInPhoto } from '../../src/types/checkInPhotos';
 
+jest.mock('../../src/hooks/useOfflineDiaryDay', () => ({
+  useOfflineDiaryDay: jest.fn(() => ({ saved: null, waiting: [] })),
+}));
+
 jest.mock('../../src/hooks', () => ({
   useServerConnection: () => ({ isConnected: true }),
   useDailySummary: jest.fn(),

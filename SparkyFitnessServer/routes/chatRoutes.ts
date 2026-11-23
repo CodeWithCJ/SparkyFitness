@@ -1,9 +1,28 @@
+import { requireSelfActor } from '../middleware/requireSelfMiddleware.js';
+import {
+  getChatMcpServers,
+  updateChatMcpServers,
+} from '../services/chatMcpService.js';
 import express from 'express';
 // @ts-expect-error multer does not ship TypeScript declarations in this package.
 import multer from 'multer';
 import { pipeUIMessageStreamToResponse } from 'ai';
 import { authenticate } from '../middleware/authMiddleware.js';
-import chatService from '../services/chatService.js';
+import { v5 as uuidv5 } from 'uuid';
+import { z } from 'zod';
+import {
+  ChatTurnStreams,
+  chatTurnFailure,
+} from '../services/chatTurnStreams.js';
+import {
+  cancelChatTurn,
+  getChatTurnStatus,
+  markChatTurnFailed,
+} from '../models/chatRepository.js';
+import chatService, {
+  CHAT_REQUEST_TIMEOUT_MS,
+  claimChatTurn,
+} from '../services/chatService.js';
 import type { FoodOptionsErrorCategory } from '../services/chatService.js';
 import { transcribeVoiceAudio } from '../services/voiceTranscriptionService.js';
 import globalSettingsRepository from '../models/globalSettingsRepository.js';
@@ -15,6 +34,8 @@ import {
   OutboundUrlBlockedError,
 } from '../utils/outboundUrlPolicy.js';
 import {
+  chatApprovalCapabilitySchema,
+  updateChatMcpServersRequestSchema,
   testAiServiceConnectionRequestSchema,
   listOpenCodeGoModelsRequestSchema,
   normalizeChatToolCategories,
@@ -24,6 +45,85 @@ import {
   voiceTranscriptionRequestSchema,
 } from '@workspace/shared';
 const router = express.Router();
+/**
+ * @swagger
+ * /chat/mcp-servers:
+ *   get:
+ *     summary: List available outside tool servers and the owner's choices
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Server IDs, names and enabled states only.
+ *       403:
+ *         description: Only available for your own account.
+ *       500:
+ *         description: Server error.
+ *   put:
+ *     summary: Change one outside tool server choice for the owner
+ *     tags: [AI & Insights]
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             additionalProperties: false
+ *             required: [server_id, enabled, send_user_id]
+ *             properties:
+ *               server_id:
+ *                 type: string
+ *                 format: uuid
+ *               enabled:
+ *                 type: boolean
+ *               send_user_id:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Server IDs, names and enabled states only.
+ *       409:
+ *         description: Server changed or disappeared; returns the current list as in GET.
+ *       400:
+ *         description: Invalid server choices.
+ *       403:
+ *         description: Only available for your own account.
+ *       500:
+ *         description: Server error.
+ */
+router.get(
+  '/mcp-servers',
+  authenticate,
+  requireSelfActor,
+  async (req, res, next) => {
+    try {
+      res.json(await getChatMcpServers(req.userId));
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+router.put(
+  '/mcp-servers',
+  authenticate,
+  requireSelfActor,
+  async (req, res, next) => {
+    const parsed = updateChatMcpServersRequestSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Invalid server choices.' });
+      return;
+    }
+    try {
+      const result = await updateChatMcpServers(req.userId, parsed.data);
+      res.status(result.status).json(result.data);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
 const voiceUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -335,23 +435,208 @@ router.post('/', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+const chatTurns = new ChatTurnStreams();
+const turnParams = z.object({ turnId: z.uuid() });
+// The converter reads both SDK parts and legacy array-form content.
+const turnMessageParts = z.array(
+  z.looseObject({
+    type: z.string(),
+    text: z.string().nullish(),
+    content: z.string().nullish(),
+    image: z.string().nullish(),
+    image_url: z.looseObject({ url: z.string().nullish() }).nullish(),
+    url: z.string().nullish(),
+    mimeType: z.string().nullish(),
+    mediaType: z.string().nullish(),
+    state: z.string().nullish(),
+    errorText: z.string().nullish(),
+    approval: z
+      .looseObject({
+        id: z.string().optional(),
+        approved: z.boolean().optional(),
+        reason: z.string().nullish(),
+      })
+      .nullish(),
+  })
+);
+const turnRequest = turnParams
+  .extend({
+    service_config_id: z.string().min(1),
+    approvals: z.boolean().optional(),
+    messages: z.array(
+      z.object({
+        role: z.string(),
+        id: z.string().optional(),
+        parts: turnMessageParts.optional(),
+        content: z.union([z.string(), turnMessageParts]).nullish(),
+      })
+    ),
+  })
+  .refine(({ messages, approvals }) => {
+    const last = messages.at(-1);
+    return (
+      last?.role === 'user' ||
+      (approvals &&
+        last?.role === 'assistant' &&
+        z.uuid().safeParse(last.id).success &&
+        last.parts?.some((part) => part.state === 'approval-responded'))
+    );
+  });
+
+function turnRowId(actor: string, account: string, turnId: string) {
+  return uuidv5(JSON.stringify([actor, account]), turnId);
+}
+
+async function sendChatTurn(
+  res: express.Response,
+  key: string,
+  actor: string,
+  replay: Awaited<ReturnType<ChatTurnStreams['open']>>
+) {
+  let durable: Awaited<ReturnType<typeof getChatTurnStatus>>;
+  try {
+    durable = await getChatTurnStatus(key, actor, CHAT_REQUEST_TIMEOUT_MS);
+  } finally {
+    // A remote Stop can win while open() is waiting for producer setup.
+    // Release the unused subscription on terminal status or a failed lookup.
+    if (
+      replay instanceof ReadableStream &&
+      durable !== 'pending' &&
+      durable !== 'gone'
+    ) {
+      await replay.cancel().catch(() => {});
+    }
+  }
+  if (
+    replay instanceof ReadableStream &&
+    (durable === 'pending' || durable === 'gone')
+  ) {
+    // A completed checkpoint ('gone') can still have a local replay.
+    res.set('X-Accel-Buffering', 'no');
+    return pipeUIMessageStreamToResponse({ response: res, stream: replay });
+  }
+  // A slow claim may still be pending when local setup has timed out.
+  const status =
+    (!durable || durable === 'pending') &&
+    replay &&
+    typeof replay === 'object' &&
+    'error' in replay
+      ? replay
+      : durable;
+  if (!status && replay === 'capacity') {
+    return res
+      .set('Retry-After', '2')
+      .status(429)
+      .json({ error: 'Too many active chat turns.' });
+  }
+  if (status === 'cancelled') return res.status(410).json({ cancelled: true });
+  if (status && typeof status === 'object' && 'error' in status) {
+    return res.status(422).json({ error: status.error });
+  }
+  if (status === 'pending') return res.set('Retry-After', '2').sendStatus(503);
+  if (status === 'gone') return res.sendStatus(410);
+  return res.sendStatus(404);
+}
+
+router.get('/turns/:turnId/stream', authenticate, async (req, res) => {
+  const parsed = turnParams.safeParse(req.params);
+  if (!parsed.success) return res.sendStatus(400);
+  const { turnId } = parsed.data;
+  const key = turnRowId(req.authenticatedUserId, req.userId, turnId);
+  const replay = await chatTurns.open(key, req.authenticatedUserId);
+  return sendChatTurn(res, key, req.authenticatedUserId, replay);
+});
+
+router.post('/turns/:turnId/stop', authenticate, async (req, res) => {
+  const parsed = turnParams.safeParse(req.params);
+  if (!parsed.success) return res.sendStatus(400);
+  const actor = req.authenticatedUserId;
+  const { turnId } = parsed.data;
+  const key = turnRowId(actor, req.userId, turnId);
+  await cancelChatTurn(key, actor, req.userId, turnId);
+  chatTurns.stop(key);
+  return res.sendStatus(204);
+});
+
 router.post('/stream', authenticate, async (req, res, next) => {
-  const { messages, service_config_id } = req.body;
+  const { messages, service_config_id, turnId } = req.body;
   const toolCategories = normalizeChatToolCategories(req.body?.toolCategories);
+  const capability = chatApprovalCapabilitySchema.safeParse(req.body);
+  if (!capability.success)
+    return res.status(400).json({ error: 'Invalid approval capability.' });
+  const conversationId =
+    typeof req.body.conversationId === 'string'
+      ? req.body.conversationId
+      : undefined;
+  if (turnId !== undefined && !turnRequest.safeParse(req.body).success) {
+    return res.status(400).json({
+      error:
+        'A resumable turn requires a UUID, a prompt or approval response, and a service configuration.',
+    });
+  }
   try {
     const isAdmin = await resolveIsAdmin(req.user, req.authenticatedUserId);
-    const { stream } = await chatService.processChatMessageStream(
-      messages,
-      service_config_id,
-      req.userId,
-      req.authenticatedUserId,
-      isAdmin,
-      toolCategories,
-      typeof req.body?.conversationId === 'string'
-        ? req.body.conversationId
-        : undefined
-    );
-
+    const generate = (signal?: AbortSignal, key?: string) =>
+      chatService.processChatMessageStream(
+        messages,
+        service_config_id,
+        req.userId,
+        req.authenticatedUserId,
+        isAdmin,
+        toolCategories,
+        conversationId,
+        capability.data.approvals,
+        turnId,
+        signal,
+        key
+      );
+    if (turnId) {
+      const key = turnRowId(req.authenticatedUserId, req.userId, turnId);
+      let claimed = false;
+      const fail = async (message: string) => {
+        if (!claimed) return;
+        if (await markChatTurnFailed(key, req.authenticatedUserId, message))
+          return { error: message };
+        // A guarded write can lose to Stop or to the approval settlement.
+        const state = await getChatTurnStatus(
+          key,
+          req.authenticatedUserId,
+          CHAT_REQUEST_TIMEOUT_MS
+        );
+        return state === 'cancelled' || typeof state === 'object'
+          ? state
+          : undefined;
+      };
+      const replay = await chatTurns.open(key, req.authenticatedUserId, {
+        timeoutMs: CHAT_REQUEST_TIMEOUT_MS,
+        fail,
+        start: async (signal, deadline) => {
+          claimed = await claimChatTurn(
+            key,
+            turnId,
+            messages.at(-1),
+            req.authenticatedUserId,
+            req.userId,
+            conversationId,
+            deadline
+          );
+          if (!claimed) return null;
+          if (signal.aborted) {
+            // A slow database claim may return after the deadline.
+            await fail(chatTurnFailure(signal));
+            return null;
+          }
+          const { stream } = await generate(signal, key);
+          if (signal.aborted) {
+            await stream.cancel(signal.reason);
+            return null;
+          }
+          return stream;
+        },
+      });
+      return sendChatTurn(res, key, req.authenticatedUserId, replay);
+    }
+    const { stream } = await generate();
     pipeUIMessageStreamToResponse({ response: res, stream });
   } catch (error) {
     next(error);

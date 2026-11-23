@@ -30,6 +30,7 @@ import {
 } from '../services/diagnosticReportService';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useVerticalBar } from '../hooks/useVerticalBar';
 import { loadLastSyncedTime } from '../services/storage';
 import { formatRelativeTime } from '../utils/dateUtils';
 import type { DiagnosticQueryState } from '../types/diagnosticReport';
@@ -55,6 +56,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding();
   const usesNativeTabs = useNativeIOSTabsActive();
+  const verticalBar = useVerticalBar();
 
   // Only offered with a watch paired: the settings do nothing without one.
   const { supported: nfcSupported } = useNfcSupport();
@@ -203,6 +205,8 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
         ]}
         contentContainerStyle={{
           ...(!usesNativeTabs ? { paddingTop: 0 } : null),
+          // Room under the large title beside a vertical bar.
+          ...(usesNativeTabs && verticalBar ? { paddingTop: 12 } : null),
           paddingBottom: 80 + activeWorkoutBarPadding,
         }}
         scrollEventThrottle={16}
@@ -238,6 +242,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   })
             }
           />
+
+          {activeConfig && (
+            <SettingsRow
+              icon="cloud-offline"
+              title={t('settings.rows.offline', { defaultValue: 'Offline' })}
+              onPress={() => navigation.navigate('OfflineSettings')}
+              iconColor={catSlate}
+            />
+          )}
 
           <SectionErrorBoundary
             sectionName={t('settings.title', { defaultValue: 'Settings' })}
@@ -311,6 +324,16 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ navigation }) => {
                   title={t('settings.rows.ai', { defaultValue: 'AI' })}
                   onPress={() => navigation.navigate('AiSettings')}
                   iconColor={catTeal}
+                />
+              )}
+              {isConnected && (
+                <SettingsRow
+                  icon="feature-settings"
+                  title={t('settings.rows.features', {
+                    defaultValue: 'Features',
+                  })}
+                  onPress={() => navigation.navigate('FeatureSettings')}
+                  iconColor={catViolet}
                 />
               )}
               {isConnected && (

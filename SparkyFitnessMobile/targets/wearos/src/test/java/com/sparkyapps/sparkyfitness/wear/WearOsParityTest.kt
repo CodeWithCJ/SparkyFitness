@@ -1,11 +1,13 @@
 package com.sparkyapps.sparkyfitness.wear
 
 import androidx.compose.ui.graphics.toArgb
+import com.SparkyApps.SparkyFitnessMobile.R
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -510,20 +512,51 @@ class WearOsParityTest {
         assertEquals("24/32g", nutritionTile.macros[1].valueText)
         assertEquals(SparkyColors.Green.toArgb(), nutritionTile.macros[1].colorArgb)
 
+        val resolveString: (Int, Array<out Any>) -> String = { id, args ->
+            when (id) {
+                R.string.tile_sleep_no_logged -> "No sleep logged today"
+                R.string.tile_sleep_in_bed -> "In bed ${args[0]}"
+                R.string.tile_meds_not_synced -> "Not synced"
+                R.string.tile_meds_taken_count -> "${args[0]} / ${args[1]} Taken"
+                R.string.tile_meds_open_app -> "Open app to sync"
+                R.string.tile_meds_none_today -> "No doses scheduled today"
+                R.string.tile_meds_pending_today -> "${args[0]} pending today"
+                R.string.tile_meds_skipped_done -> "${args[0]} skipped \u00B7 All done"
+                R.string.tile_meds_all_done -> "All doses completed"
+                R.string.tile_exercise_steps_count -> "${args[0]} steps"
+                R.string.tile_exercise_goal_minutes -> "Goal ${args[0]}m"
+                R.string.tile_exercise_planned_today -> "Workout planned today"
+                R.string.tile_exercise_tap_start -> "Tap to start a workout"
+                else -> error("Unexpected string resource id: $id")
+            }
+        }
+        val resolvePlural: (Int, Int, Array<out Any>) -> String = { id, qty, args ->
+            when (id) {
+                R.plurals.tile_sleep_naps -> if (qty == 1) "${args[0]} nap (${args[1]})" else "${args[0]} naps (${args[1]})"
+                R.plurals.tile_exercise_workouts -> if (qty == 1) "${args[0]} workout" else "${args[0]} workouts"
+                else -> error("Unexpected plural resource id: $id")
+            }
+        }
+
         val sleepTile = TileModels.buildSleepTileModel(ctx.sleep)
         assertTrue(sleepTile.hasData)
-        assertEquals("7h 45m", sleepTile.durationText)
-        assertEquals("Score 86", sleepTile.scoreText)
-        assertEquals("11:00 PM – 6:45 AM", sleepTile.windowText)
+        assertEquals("7h 45m", TileModels.formatSleepDuration(sleepTile, resolveString))
+        assertEquals(86, sleepTile.sleepScore)
+        assertEquals(SleepWindow.BedWake("11:00 PM", "6:45 AM"), sleepTile.window)
+        assertEquals("11:00 PM \u2013 6:45 AM", TileModels.formatSleepWindow(sleepTile.window, resolveString, resolvePlural))
         assertEquals(3, sleepTile.stages.size)
-        assertEquals("RHR 54bpm · HRV 64ms", sleepTile.biometricsText)
+        assertEquals(R.string.sleep_stage_deep, sleepTile.stages[0].labelRes)
+        assertEquals(R.string.sleep_stage_rem, sleepTile.stages[1].labelRes)
+        assertEquals(R.string.sleep_stage_light, sleepTile.stages[2].labelRes)
+        assertEquals("RHR 54bpm \u00B7 HRV 64ms", sleepTile.biometricsText)
 
         val medsTile = TileModels.buildMedicationsTileModel(ctx.medications)
         assertTrue(medsTile.hasData)
         assertEquals(1, medsTile.takenCount)
         assertEquals(2, medsTile.totalCount)
         assertEquals(1, medsTile.pendingCount)
-        assertEquals("1 / 2 Taken", medsTile.headlineText)
+        assertEquals("1 / 2 Taken", TileModels.formatMedicationsHeadline(medsTile, resolveString))
+        assertEquals("1 pending today", TileModels.formatMedicationsSubtitle(medsTile, resolveString))
         assertEquals("Magnesium", medsTile.doseRows[0].name)
 
         val exerciseTile = TileModels.buildExerciseTileModel(
@@ -535,7 +568,176 @@ class WearOsParityTest {
         assertTrue(exerciseTile.hasData)
         assertEquals(45, exerciseTile.minutes)
         assertEquals(60, exerciseTile.minutesGoal)
-        assertEquals("45m · 380/500 kcal", exerciseTile.headlineText)
+        assertEquals("45m \u00B7 380/500 kcal", TileModels.formatExerciseHeadline(exerciseTile, resolveString))
+        assertEquals("Goal 60m \u00B7 1 workout", TileModels.formatExerciseSubtitle(exerciseTile, resolveString, resolvePlural))
         assertEquals("Upper Body Push", exerciseTile.rows[0].title)
+    }
+
+    @Test
+    fun `phone media state parses metadata, volume percentage, and outbound payloads`() {
+        val fullJson = JSONObject().apply {
+            put("type", "mediaState")
+            put("title", "  Blinding Lights  ")
+            put("artist", "The Weeknd")
+            put("album", "After Hours")
+            put("appName", "Symfonium")
+            put("isPlaying", true)
+            put("volume", 9)
+            put("maxVolume", 15)
+            put("hasSession", true)
+            put("hasMetadataAccess", true)
+            put("epoch", 1760000000000.0)
+            put("seq", 7.0)
+            put("updatedAt", 1760000000000.0)
+        }
+        val state = ContextPayloadMapper.parsePhoneMediaState(fullJson)
+        assertEquals("Blinding Lights", state.title)
+        assertEquals("The Weeknd", state.artist)
+        assertEquals("After Hours", state.album)
+        assertEquals("Symfonium", state.appName)
+        assertEquals("The Weeknd", state.secondaryLabel)
+        assertTrue(state.isPlaying)
+        assertEquals(60, state.volumePercent)
+        assertTrue(state.hasSession)
+        assertTrue(state.hasMetadataAccess)
+        assertEquals(1760000000000L, state.epoch)
+        assertEquals(7L, state.seq)
+
+        val fallbackJson = JSONObject().apply {
+            put("type", "mediaState")
+            put("isPlaying", true)
+            put("volume", 20)
+            put("maxVolume", 15)
+            put("hasSession", true)
+            put("hasMetadataAccess", false)
+        }
+        val fallback = ContextPayloadMapper.parsePhoneMediaState(fallbackJson)
+        assertNull(fallback.title)
+        assertNull(fallback.secondaryLabel)
+        assertEquals(15, fallback.volume)
+        assertEquals(100, fallback.volumePercent)
+        assertFalse(fallback.hasMetadataAccess)
+        assertEquals(0L, fallback.epoch)
+        assertEquals(0L, fallback.seq)
+
+        val noArtist = PhoneMediaState(title = "Track", artist = "  ", appName = "Symfonium")
+        assertEquals("Symfonium", noArtist.secondaryLabel)
+
+        val control = OutboundPayloads.mediaControl("next")
+        assertEquals("mediaControl", control.getString("type"))
+        assertEquals("next", control.getString("action"))
+        assertFalse(control.has("steps"))
+
+        val multiStepVol = OutboundPayloads.mediaControl("volumeUp", steps = 3)
+        assertEquals("volumeUp", multiStepVol.getString("action"))
+        assertEquals(3, multiStepVol.getInt("steps"))
+
+        val req = OutboundPayloads.mediaStateRequest(active = true, epoch = 100L, visitId = 42L)
+        assertEquals("mediaStateRequest", req.getString("type"))
+        assertTrue(req.getBoolean("active"))
+        assertEquals(100L, req.getDouble("epoch").toLong())
+        assertEquals(42L, req.getDouble("visitId").toLong())
+    }
+
+    @Test
+    fun `media snapshot ordering rejects stale seq within epoch and accepts new epoch across clock rollback`() {
+        val current = PhoneMediaState(title = "Current", epoch = 200L, seq = 5L, updatedAtMs = 5000L)
+
+        // First snapshot is always accepted.
+        assertTrue(MediaControlLogic.shouldAcceptSnapshot(current, null))
+        // Newer seq in same epoch is accepted, even if wall clock jumped backward.
+        assertTrue(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "Next", epoch = 200L, seq = 6L, updatedAtMs = 1000L),
+                current
+            )
+        )
+        // Reordered earlier seq in same epoch is rejected.
+        assertFalse(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "Stale", epoch = 200L, seq = 4L, updatedAtMs = 9000L),
+                current
+            )
+        )
+        // Higher producer epoch (phone restart) is accepted even with lower seq and earlier clock.
+        assertTrue(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "Restarted", epoch = 201L, seq = 1L, updatedAtMs = 1000L),
+                current
+            )
+        )
+        // Delayed delivery from a retired producer epoch is rejected.
+        assertFalse(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "OldEpoch", epoch = 199L, seq = 99L, updatedAtMs = 9999L),
+                current
+            )
+        )
+        // Legacy snapshots without epoch fall back to updatedAtMs.
+        val legacyCurrent = PhoneMediaState(title = "Legacy", updatedAtMs = 5000L)
+        assertTrue(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "LegacyNew", updatedAtMs = 5001L),
+                legacyCurrent
+            )
+        )
+        assertFalse(
+            MediaControlLogic.shouldAcceptSnapshot(
+                PhoneMediaState(title = "LegacyOld", updatedAtMs = 4999L),
+                legacyCurrent
+            )
+        )
+    }
+
+    @Test
+    fun `media control target resolves phone by default and falls back to watch when offline or watch plays locally`() {
+        val phonePlaying = PhoneMediaState(isPlaying = true, hasSession = true)
+        val phonePaused = PhoneMediaState(isPlaying = false, hasSession = true)
+
+        assertEquals(
+            MediaTarget.PHONE,
+            MediaControlLogic.resolveEffectiveTarget(
+                manualTarget = null,
+                phoneReachable = true,
+                watchMusicActive = false,
+                phoneMedia = phonePlaying
+            )
+        )
+        assertEquals(
+            MediaTarget.WATCH,
+            MediaControlLogic.resolveEffectiveTarget(
+                manualTarget = null,
+                phoneReachable = true,
+                watchMusicActive = true,
+                phoneMedia = phonePaused
+            )
+        )
+        assertEquals(
+            MediaTarget.PHONE,
+            MediaControlLogic.resolveEffectiveTarget(
+                manualTarget = null,
+                phoneReachable = true,
+                watchMusicActive = true,
+                phoneMedia = phonePlaying
+            )
+        )
+        assertEquals(
+            MediaTarget.WATCH,
+            MediaControlLogic.resolveEffectiveTarget(
+                manualTarget = MediaTarget.PHONE,
+                phoneReachable = false,
+                watchMusicActive = false,
+                phoneMedia = phonePlaying
+            )
+        )
+        assertEquals(
+            MediaTarget.WATCH,
+            MediaControlLogic.resolveEffectiveTarget(
+                manualTarget = MediaTarget.WATCH,
+                phoneReachable = true,
+                watchMusicActive = false,
+                phoneMedia = phonePlaying
+            )
+        )
     }
 }

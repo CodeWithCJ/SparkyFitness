@@ -1,10 +1,12 @@
 import React from 'react';
 import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import Toast from 'react-native-toast-message';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import RecordActivityScreen from '../../src/screens/RecordActivityScreen';
 import {
   discardRecording,
+  markRecordingSaveComplete,
   elapsedSeconds,
   startRecording,
   useGpsRecording,
@@ -45,6 +47,9 @@ jest.mock('../../src/services/gpsRecordingService', () => {
     setRecordingAudioCues: jest.fn(() => Promise.resolve()),
     finishRecording: jest.fn(() => Promise.resolve()),
     discardRecording: jest.fn(() => Promise.resolve()),
+    markRecordingSaveComplete: jest.fn(() => Promise.resolve()),
+    beginRecordingSave: jest.fn(),
+    endRecordingSave: jest.fn(),
     getHeartRateSamples: jest.fn(() => Promise.resolve([])),
     elapsedSeconds: jest.fn(() => 300),
     getRecordingPreferences: jest.fn(() =>
@@ -354,6 +359,12 @@ describe('RecordActivityScreen fitness test', () => {
       expect(
         jest.mocked(saveRecordedActivity).mock.invocationCallOrder[0]
       ).toBeLessThan(jest.mocked(saveFitnessTest).mock.invocationCallOrder[0]);
+      // Complete only once the test is filed too.
+      expect(
+        jest.mocked(saveFitnessTest).mock.invocationCallOrder[0]
+      ).toBeLessThan(
+        jest.mocked(markRecordingSaveComplete).mock.invocationCallOrder[0]
+      );
       expect(discardRecording).toHaveBeenCalled();
     });
 
@@ -408,6 +419,8 @@ describe('RecordActivityScreen fitness test', () => {
       await waitFor(() => expect(saveFitnessTest).toHaveBeenCalled());
       expect(discardRecording).not.toHaveBeenCalled();
       expect(navigation.replace).not.toHaveBeenCalled();
+      // Half-saved: a Discard must still be able to delete the entry (#3470).
+      expect(markRecordingSaveComplete).not.toHaveBeenCalled();
     });
 
     it('files no test for an ordinary run', async () => {
@@ -685,6 +698,33 @@ describe('RecordActivityScreen fitness test', () => {
       );
     });
 
+    it('saves a treadmill 5K stopped after a few seconds as an ordinary run, without 5 km', async () => {
+      jest.mocked(elapsedSeconds).mockReturnValue(2);
+      state(treadmill('5k'));
+      saved();
+      const screen = await renderScreen();
+      expect(screen.getByText(/saved as an ordinary run/)).toBeTruthy();
+      fireEvent.press(screen.getByText('Save activity'));
+      await waitFor(() =>
+        expect(navigation.replace).toHaveBeenCalledWith(
+          'RunSummary',
+          expect.anything()
+        )
+      );
+      expect(saveFitnessTest).not.toHaveBeenCalled();
+      expect(saveRecordedActivity).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'km',
+        null,
+        null,
+        true
+      );
+      expect(Toast.show).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'error' })
+      );
+    });
+
     it('saves an unreadable 5K time as an ordinary run, and says why', async () => {
       jest.mocked(elapsedSeconds).mockReturnValue(1503);
       state(treadmill('5k'));
@@ -695,6 +735,15 @@ describe('RecordActivityScreen fitness test', () => {
       fireEvent.press(screen.getByText('Save activity'));
       await waitFor(() => expect(navigation.replace).toHaveBeenCalled());
       expect(saveFitnessTest).not.toHaveBeenCalled();
+      // Not a test, so the 5 km is not filled in for it.
+      expect(saveRecordedActivity).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.anything(),
+        'km',
+        null,
+        null,
+        true
+      );
     });
 
     it('sends the distance at 10:00 for a 30-minute run, or assumes a steady pace', async () => {

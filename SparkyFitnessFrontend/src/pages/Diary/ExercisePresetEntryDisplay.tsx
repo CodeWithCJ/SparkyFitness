@@ -1,5 +1,5 @@
 import type React from 'react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useLayoutEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,7 +33,7 @@ import { Exercise, ExerciseEntry, PresetSessionEntry } from '@/types/exercises';
 import {
   earliestEntryTime,
   entryCaloriesCounted,
-  isAppLoggedWorkoutSource,
+  isCalorieLinkWorkoutSource,
   setsDurationMinutes,
 } from '@workspace/shared';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
@@ -110,11 +110,28 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   // The feedback panel autosaves, so only people who can write the diary
   // get it (#1560); report-only viewers can't save and don't see it here.
-  const { hasWritePermission } = useActiveUser();
+  const { hasWritePermission, activeUserId } = useActiveUser();
   const canGiveFeedback = hasWritePermission('diary');
   const navigate = useNavigate();
   const { mutateAsync: updatePresetSession } = useUpdatePresetSessionMutation();
   const [isResuming, setIsResuming] = useState(false);
+  // Who the page belongs to now, and whether it is still on screen: a reopen
+  // that answers after another account or profile took over, or after the
+  // person left the Diary, must not open the player over what they are doing.
+  // Layout effects, so both change in the same commit as the switch: a
+  // passive effect runs later, and a reply landing in between would still
+  // read the previous person.
+  const activeUserIdRef = useRef(activeUserId);
+  const mountedRef = useRef(false);
+  useLayoutEffect(() => {
+    activeUserIdRef.current = activeUserId;
+  }, [activeUserId]);
+  useLayoutEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // #1995 phase 1: derived server-side, guaranteed on preset-session
   // responses. Partial and unfinished live sessions can be resumed.
@@ -126,6 +143,8 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
   const handleResumeWorkout = useCallback(async () => {
     if (isResuming) return;
     setIsResuming(true);
+    const isStale = () =>
+      !mountedRef.current || activeUserIdRef.current !== activeUserId;
     try {
       // Reopen the session server-side first (finished_at: null) so other
       // devices see it as in progress again, carrying the revision we last
@@ -139,6 +158,7 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
             : {}),
         },
       });
+      if (isStale()) return;
       // The reopen PUT bumped the server revision, so seed the draft
       // from the response: it carries the fresh revision, and the
       // finish PUT presents it instead of the stale pre-update one
@@ -153,14 +173,16 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
         });
         return;
       }
-      saveWorkoutPlaybackDraftToStorage(draft);
+      saveWorkoutPlaybackDraftToStorage(activeUserId, draft);
       navigate(`/workout-playback?date=${draft.entry_date}`, {
         state: {
           draft,
+          ownerId: activeUserId,
           returnTo: `${window.location.pathname}${window.location.search}`,
         },
       });
     } catch (error) {
+      if (isStale()) return;
       if (isPresetSessionConflictError(error)) {
         toast({
           description: t(
@@ -179,12 +201,12 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
     } finally {
       setIsResuming(false);
     }
-  }, [isResuming, navigate, presetEntry, t, updatePresetSession]);
+  }, [activeUserId, isResuming, navigate, presetEntry, t, updatePresetSession]);
 
   // Linking works on the whole session, so any of its exercises will do.
   const linkableEntry = presetEntry.exercises?.[0];
   const linkableEntryId =
-    linkableEntry && isAppLoggedWorkoutSource(linkableEntry.source)
+    linkableEntry && isCalorieLinkWorkoutSource(linkableEntry.source)
       ? linkableEntry.id
       : null;
 
@@ -405,6 +427,10 @@ const ExercisePresetEntryDisplay: React.FC<ExercisePresetEntryDisplayProps> = ({
                     <Button
                       variant="ghost"
                       size="icon"
+                      aria-label={t(
+                        'exercise.calorieLink.action',
+                        'Link a synced workout'
+                      )}
                       onClick={() => onLink(linkableEntryId)}
                       className="flex-shrink-0 h-8 w-8 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors"
                     >

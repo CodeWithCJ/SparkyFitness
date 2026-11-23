@@ -27,7 +27,7 @@ interface UseChatHistoryOptions {
 export function useChatHistory({ enabled = true }: UseChatHistoryOptions = {}) {
   return useQuery({
     queryKey: chatHistoryQueryKey,
-    queryFn: loadChatHistory,
+    queryFn: ({ signal }) => loadChatHistory(undefined, signal),
     enabled,
     staleTime: 0,
     gcTime: 0,

@@ -6,6 +6,19 @@ if (typeof globalThis.TextEncoder === 'undefined')
 if (typeof globalThis.TextDecoder === 'undefined')
   globalThis.TextDecoder = TextDecoder;
 
+// Node 26 has a global `ErrorEvent`, so react-test-renderer reports an
+// uncaught render error through `window.dispatchEvent`, which the native Jest
+// environment's `window` (an alias of the global object) does not have.
+// Returning true makes React fall back to console.error, as it did under jsdom.
+if (typeof window === 'object' && typeof window.dispatchEvent !== 'function') {
+  window.dispatchEvent = () => true;
+}
+
+// The native Jest environment flushes some async React updates later than
+// jsdom did, so `waitFor`/`findBy*` can need a little over RNTL's default one
+// second after a rejected request. This only raises the failure deadline.
+require('@testing-library/react-native').configure({ asyncUtilTimeout: 3000 });
+
 // Deterministic expo-localization: tests read the device language through
 // getLocales(). The localization suite overrides the return value per test;
 // the default here keeps every other test environment-agnostic (en-US).
@@ -16,6 +29,22 @@ jest.mock('expo-localization', () => ({
       languageTag: 'en-US',
       regionCode: 'US',
       textDirection: 'ltr',
+    },
+  ]),
+  getCalendars: jest.fn(() => [
+    {
+      calendar: 'gregory',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      uses24hourClock: false,
+      firstWeekday: 1,
+    },
+  ]),
+  useCalendars: jest.fn(() => [
+    {
+      calendar: 'gregory',
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      uses24hourClock: false,
+      firstWeekday: 1,
     },
   ]),
 }));
@@ -62,6 +91,11 @@ jest.mock('react-native-nitro-modules', () => ({
 jest.mock('@kingstinct/react-native-healthkit', () => ({
   requestAuthorization: jest.fn().mockResolvedValue(true),
   queryQuantitySamples: jest.fn(),
+  queryQuantitySamplesWithAnchor: jest.fn().mockResolvedValue({
+    samples: [],
+    deletedSamples: [],
+    newAnchor: 'mock-anchor',
+  }),
   queryCategorySamples: jest.fn(),
   queryStatisticsForQuantity: jest.fn(),
   queryStatisticsCollectionForQuantity: jest.fn().mockResolvedValue([]),
@@ -120,6 +154,13 @@ jest.mock('react-native-health-connect', () => ({
   requestPermission: jest.fn().mockResolvedValue([]),
   getGrantedPermissions: jest.fn().mockResolvedValue([]),
   readRecords: jest.fn().mockResolvedValue({ records: [] }),
+  getChanges: jest.fn().mockResolvedValue({
+    upsertionChanges: [],
+    deletionChanges: [],
+    nextChangesToken: 'mock-token',
+    hasMore: false,
+    changesTokenExpired: false,
+  }),
   requestExerciseRoute: jest.fn().mockResolvedValue([]),
   aggregateRecord: jest.fn().mockResolvedValue({}),
   aggregateGroupByDuration: jest.fn().mockResolvedValue([]),
@@ -404,9 +445,26 @@ jest.mock('react-native-reanimated', () => {
       ScrollView,
       createAnimatedComponent: (Component) => Component,
     },
-    useSharedValue: (init) => React.useRef({ value: init }).current,
+    useSharedValue: (init) =>
+      React.useRef({
+        value: init,
+        get() {
+          return this.value;
+        },
+        set(next) {
+          this.value = typeof next === 'function' ? next(this.value) : next;
+        },
+      }).current,
     useAnimatedStyle: (fn) => fn(),
-    useDerivedValue: (fn) => ({ value: fn() }),
+    useDerivedValue: (fn) => {
+      const value = fn();
+      return {
+        value,
+        get() {
+          return value;
+        },
+      };
+    },
     // Linear map between the first and last stops, clamped — enough for the
     // synchronous worklet the useAnimatedStyle mock runs.
     interpolate: (value, input, output) => {
@@ -763,8 +821,9 @@ jest.mock('react-native-maps', () => {
 // Mock @gorhom/bottom-sheet
 jest.mock('@gorhom/bottom-sheet', () => {
   const React = require('react');
-  const { View, ScrollView } = require('react-native');
+  const { View, ScrollView, TextInput } = require('react-native');
   return {
+    BottomSheetTextInput: TextInput,
     BottomSheetModal: React.forwardRef(({ children }, ref) => {
       React.useImperativeHandle(ref, () => ({
         present: jest.fn(),
@@ -954,4 +1013,31 @@ jest.mock('react-native-nfc-manager', () => ({
 // `jest.requireActual`.
 jest.mock('./src/hooks/useEnergyUnit', () => ({
   useEnergyUnit: jest.fn(() => 'kcal'),
+}));
+
+// Components read safe-area insets (Duo vertical bars). Fall back to zero insets
+// when a test renders without a provider; a real provider still wins.
+jest.mock('react-native-safe-area-context', () => {
+  const actual = jest.requireActual('react-native-safe-area-context');
+  const zero = { top: 0, bottom: 0, left: 0, right: 0 };
+  return {
+    ...actual,
+    useSafeAreaInsets: () => {
+      try {
+        return actual.useSafeAreaInsets();
+      } catch {
+        return zero;
+      }
+    },
+  };
+});
+
+// The offline file (src/offline/) opens expo-sqlite, a native module. Tests of
+// the offline code supply their own database through `__setOfflineDbForTests`;
+// everywhere else an open simply fails, which the offline code treats as
+// "nothing stored" and logs.
+jest.mock('expo-sqlite', () => ({
+  openDatabaseAsync: jest.fn(() =>
+    Promise.reject(new Error('expo-sqlite is not available in tests'))
+  ),
 }));

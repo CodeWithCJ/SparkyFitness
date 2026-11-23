@@ -1,3 +1,4 @@
+import type { RecipeImportPickerTarget } from '../services/recipeImportSelection';
 import type { BarcodeLookupContext } from '../utils/barcodeFoods';
 import type { RunSummaryParams } from '../utils/runSummary';
 import type { NavigatorScreenParams } from '@react-navigation/native';
@@ -43,7 +44,7 @@ import type {
   FoodUnitSelectionResult,
   FoodUnitVariant,
 } from './foodUnitVariants';
-import type { Meal, MealIngredientDraft } from './meals';
+import type { Meal, MealFood, MealIngredientDraft } from './meals';
 import type { MealPlanPickerTarget, MealPlanTemplate } from './mealPlans';
 import type { WorkoutPreset } from './workoutPresets';
 import type { WorkoutPlanTemplate } from './workoutPlans';
@@ -115,24 +116,40 @@ export type RootStackParamList = {
     selectedEntryIds: string[];
   };
   CycleSettings: undefined;
+  FeatureSettings: undefined;
   CycleOnboarding: undefined;
   CycleHub: undefined;
   CycleLogModal: { date?: string } | undefined;
   PregnancySetup: { pregnancy?: SharedPregnancy } | undefined;
   FoodsLibrary: undefined;
   MealsLibrary: undefined;
+  RecipeImport:
+    { providerId: string; recipeSlug: string; scope: string } | undefined;
   MealPlans: undefined;
   WorkoutPlans: undefined;
-  WorkoutPlanForm: { template?: WorkoutPlanTemplate } | undefined;
+  WorkoutPlanForm:
+    | {
+        template?: WorkoutPlanTemplate;
+        selectedExercise?: Exercise;
+        selectionNonce?: number;
+      }
+    | undefined;
+  WorkoutPlanDetail: { template: WorkoutPlanTemplate };
   RunPrograms: undefined;
-  RunProgramCalendar: undefined;
-  RunProgramWorkout: { index: number };
+  /** `programId` is the program the row was shown for; a different active program is "not in your program any more". */
+  RunProgramWorkout: { index: number; programId: string };
   RunProgramRace: { distance?: RaceDistance; raceDay?: string } | undefined;
   FitnessTest: undefined;
   FitnessTestResult: { id: string };
   RunProgramEdit: { id?: string; fromProgramId?: string } | undefined;
   PersonalRecords: undefined;
   LabResults: undefined;
+  /** The challenges the user is in, with join by code. */
+  Challenges: undefined;
+  /** One challenge's standings; `name` titles the screen until it loads. */
+  ChallengeDetail: { id: string; name?: string };
+  /** Join a challenge with an invite code; `code` prefills it. */
+  ChallengeJoin: { code?: string } | undefined;
   /** `marker` is a `LabMarker` id: `builtin:<key>` or `custom:<uuid>`. */
   LabResultDetail: { marker: string; name?: string };
   LabResultAdd: { marker?: string };
@@ -142,6 +159,7 @@ export type RootStackParamList = {
   /** `routeId` opens a saved route in the editor and saves over it. */
   RouteDraw: { routeId?: string } | undefined;
   RouteGenerate: undefined;
+  TrainingCalendar: undefined;
   WatchRunLive: undefined;
   MealPlanForm: { template?: MealPlanTemplate; initialMeal?: Meal } | undefined;
   // #2115, Phase 12: mobile-only water-container CRUD.
@@ -210,6 +228,7 @@ export type RootStackParamList = {
     | {
         date?: string;
         pickerMode?: FoodPickerMode;
+        recipeImportTarget?: RecipeImportPickerTarget;
         /** Optional canonical meal type id to pre-select when logging. */
         mealTypeId?: string;
         mealPlanTarget?: MealPlanPickerTarget;
@@ -228,10 +247,12 @@ export type RootStackParamList = {
     selectedVariantOverride?: FoodUnitVariant;
     pickerMode?: FoodPickerMode;
     ingredientIndex?: number;
+    recipeImportTarget?: RecipeImportPickerTarget;
     returnDepth?: number;
     /** Optional canonical meal type id to pre-select when logging. */
     mealTypeId?: string;
     mealPlanTarget?: MealPlanPickerTarget;
+    customizedFoods?: MealFood[];
   };
   /** Multi-select batch review (#1980): the basket lives in
    * useFoodSearchSelectionStore, not route params, so no selection data
@@ -312,6 +333,7 @@ export type RootStackParamList = {
       }
     | {
         mode: 'adjust-entry-nutrition';
+        pendingNutritionLabelScan?: NutritionLabelScan;
         initialValues: Partial<FoodFormData>;
         returnTo: 'FoodEntryAdd' | 'FoodEntryView';
         returnKey: string;
@@ -409,6 +431,8 @@ export type RootStackParamList = {
   };
   ActiveWorkout:
     { selectedExercise?: Exercise; selectionNonce?: number } | undefined;
+  // Native modal over ActiveWorkout; reads and reorders the live session.
+  WorkoutReorder: undefined;
   // Post-save celebration for a finished live workout. Renders entirely from
   // the store snapshot captured before `clearWorkout()`; only calories arrive
   // via a post-save session refetch.
@@ -502,10 +526,12 @@ export type RootStackParamList = {
   WatchSettings: undefined;
   AddMenuSettings: undefined;
   DiarySettings: undefined;
+  OfflineSettings: undefined;
   CustomCategories: undefined;
   CustomCategoryEdit: { categoryId?: string } | undefined;
   WorkoutSettings: undefined;
   WarmupSettings: undefined;
+  TreadmillSettings: undefined;
   HeartRateZonesSettings: undefined;
   ServerSettings: undefined;
   PasskeySettings: undefined;

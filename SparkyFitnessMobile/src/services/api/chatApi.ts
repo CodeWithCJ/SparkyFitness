@@ -1,4 +1,6 @@
+import { savedChatMessageMetadata } from '@workspace/shared';
 import type { useChatRuntime } from '@assistant-ui/react-ai-sdk';
+import type { ServerConfig } from '../storage';
 import { apiFetch } from './apiClient';
 
 /**
@@ -32,11 +34,28 @@ type InitialMessages = NonNullable<
  * `autoClearHistory` query param, so no params are needed here.
  * GET /api/chat/sparky-chat-history
  */
-export const loadChatHistory = (): Promise<ChatHistoryEntry[]> =>
+export const loadChatHistory = (
+  serverConfig?: ServerConfig,
+  signal?: AbortSignal
+): Promise<ChatHistoryEntry[]> =>
   apiFetch<ChatHistoryEntry[]>({
     endpoint: '/api/chat/sparky-chat-history',
     serviceName: 'Chat API',
     operation: 'load chat history',
+    serverConfig,
+    signal,
+  });
+
+export const stopChatTurn = (
+  serverConfig: ServerConfig,
+  turnId: string
+): Promise<void> =>
+  apiFetch<void>({
+    endpoint: `/api/chat/turns/${encodeURIComponent(turnId)}/stop`,
+    serviceName: 'Chat API',
+    operation: 'stop chat turn',
+    method: 'POST',
+    serverConfig,
   });
 
 /**
@@ -52,10 +71,8 @@ export const clearAllChatHistory = (): Promise<void> =>
     body: {},
   });
 
-type NormalizedHistoryPart = Extract<
-  NonNullable<InitialMessages>[number]['parts'][number],
-  { type: 'text' | 'file' }
->;
+type NormalizedHistoryPart =
+  NonNullable<InitialMessages>[number]['parts'][number];
 
 interface RawHistoryPart {
   type?: unknown;
@@ -120,6 +137,16 @@ function extractImageUrl(rawPart: RawHistoryPart): string {
 function normalizeHistoryPart(part: unknown): NormalizedHistoryPart | null {
   if (!part || typeof part !== 'object') return null;
   const raw = part as RawHistoryPart;
+  if (
+    typeof raw.type === 'string' &&
+    raw.type.startsWith('tool-') &&
+    'state' in part &&
+    typeof part.state === 'string' &&
+    'toolCallId' in part &&
+    typeof part.toolCallId === 'string'
+  ) {
+    return part as NormalizedHistoryPart;
+  }
 
   if (raw.type === 'text' && typeof raw.text === 'string') {
     return raw.text.trim().length > 0 ? { type: 'text', text: raw.text } : null;
@@ -180,7 +207,16 @@ export function mapHistoryToInitialMessages(
           ? ('user' as const)
           : ('assistant' as const),
       content: entry.content,
+      metadata: savedChatMessageMetadata(entry.metadata, entry.id),
       parts,
     };
   });
 }
+
+export const deleteChatMessage = (id: string): Promise<void> =>
+  apiFetch<void>({
+    endpoint: `/api/chat/sparky-chat-history/${encodeURIComponent(id)}`,
+    serviceName: 'Chat API',
+    operation: 'delete chat message',
+    method: 'DELETE',
+  });

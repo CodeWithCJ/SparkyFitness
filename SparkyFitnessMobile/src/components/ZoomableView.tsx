@@ -53,12 +53,12 @@ export default function ZoomableView({
   };
 
   useEffect(() => {
-    scale.value = 1;
-    savedScale.value = 1;
-    translateX.value = 0;
-    translateY.value = 0;
-    savedTranslateX.value = 0;
-    savedTranslateY.value = 0;
+    scale.set(1);
+    savedScale.set(1);
+    translateX.set(0);
+    translateY.set(0);
+    savedTranslateX.set(0);
+    savedTranslateY.set(0);
     // Shared values are stable refs; only the key should re-run this.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
@@ -73,45 +73,45 @@ export default function ZoomableView({
 
   const pinch = Gesture.Pinch()
     .onUpdate((event) => {
-      const next = savedScale.value * event.scale;
-      scale.value = Math.min(Math.max(next, MIN_SCALE), MAX_SCALE);
+      const next = savedScale.get() * event.scale;
+      scale.set(Math.min(Math.max(next, MIN_SCALE), MAX_SCALE));
     })
     .onEnd(() => {
-      savedScale.value = scale.value;
+      savedScale.set(scale.get());
       // Snapping back at 1x also recentres, so a pinch-out-then-in cannot
       // strand the content off-screen.
-      if (scale.value <= MIN_SCALE) {
-        translateX.value = withTiming(0, { duration: RESET_MS });
-        translateY.value = withTiming(0, { duration: RESET_MS });
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
+      if (scale.get() <= MIN_SCALE) {
+        translateX.set(withTiming(0, { duration: RESET_MS }));
+        translateY.set(withTiming(0, { duration: RESET_MS }));
+        savedTranslateX.set(0);
+        savedTranslateY.set(0);
       }
-      runOnJS(reportZoom)(scale.value > MIN_SCALE);
+      runOnJS(reportZoom)(scale.get() > MIN_SCALE);
     });
 
   const pan = Gesture.Pan()
     .enabled(zoomed)
     .onUpdate((event) => {
-      translateX.value = savedTranslateX.value + event.translationX;
-      translateY.value = savedTranslateY.value + event.translationY;
+      translateX.set(savedTranslateX.get() + event.translationX);
+      translateY.set(savedTranslateY.get() + event.translationY);
     })
     .onEnd(() => {
-      savedTranslateX.value = translateX.value;
-      savedTranslateY.value = translateY.value;
+      savedTranslateX.set(translateX.get());
+      savedTranslateY.set(translateY.get());
     });
 
   const doubleTap = Gesture.Tap()
     .numberOfTaps(2)
     .onEnd(() => {
-      const zoomIn = scale.value <= MIN_SCALE;
+      const zoomIn = scale.get() <= MIN_SCALE;
       const target = zoomIn ? DOUBLE_TAP_SCALE : MIN_SCALE;
-      scale.value = withTiming(target, { duration: RESET_MS });
-      savedScale.value = target;
+      scale.set(withTiming(target, { duration: RESET_MS }));
+      savedScale.set(target);
       if (!zoomIn) {
-        translateX.value = withTiming(0, { duration: RESET_MS });
-        translateY.value = withTiming(0, { duration: RESET_MS });
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
+        translateX.set(withTiming(0, { duration: RESET_MS }));
+        translateY.set(withTiming(0, { duration: RESET_MS }));
+        savedTranslateX.set(0);
+        savedTranslateY.set(0);
       }
       runOnJS(reportZoom)(zoomIn);
     });

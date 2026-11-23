@@ -42,6 +42,7 @@ import type {
   Breakpoint,
 } from '@/utils/dashboardLayout';
 import { GRID_COLS } from '@/utils/dashboardLayout';
+import { useIsMounted } from '@/hooks/useIsMounted';
 
 /** Stable widget keys for the reports-measurements dashboard layout. */
 export const STEPS_WIDGET_KEY = 'steps';
@@ -300,11 +301,7 @@ export function useMeasurementChartWidgets({
     []
   );
 
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   const metrics = React.useMemo(
     () => [

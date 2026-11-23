@@ -1,4 +1,5 @@
 import React from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import {
   Dialog,
   DialogContent,
@@ -56,7 +57,7 @@ const EndFastDialog: React.FC<EndFastDialogProps> = ({
   });
 
   // Sync local inputs when props change (dialog may mount before activeFast is available)
-  React.useEffect(() => {
+  useOnChange([initialStartISO, initialEndISO, isOpen], () => {
     try {
       if (initialStartISO)
         setStartLocal(formatForLocalInput(new Date(initialStartISO)));
@@ -65,7 +66,7 @@ const EndFastDialog: React.FC<EndFastDialogProps> = ({
     } catch (e) {
       // ignore
     }
-  }, [initialStartISO, initialEndISO, isOpen]);
+  });
 
   const handleConfirm = () => {
     // Convert local datetime-local value back to a Date object in user's local timezone

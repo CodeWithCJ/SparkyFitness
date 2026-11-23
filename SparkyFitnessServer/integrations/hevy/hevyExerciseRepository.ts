@@ -1,5 +1,6 @@
 import { getClient } from '../../db/poolManager.js';
-import type { QueryResult } from 'pg';
+import type { PoolClient, QueryResult } from 'pg';
+import { emptyMuscleColumnSql } from '../../utils/muscleColumnSql.js';
 
 export interface HevyLibraryExercise {
   id: string;
@@ -12,9 +13,10 @@ export interface HevyLibraryExercise {
 async function findOwnedByName(
   userId: string,
   name: string,
-  includeLinkedHevy = false
+  includeLinkedHevy = false,
+  existingClient?: PoolClient
 ): Promise<HevyLibraryExercise | null> {
-  const client = await getClient(userId);
+  const client = existingClient ?? (await getClient(userId));
   try {
     const result: QueryResult<HevyLibraryExercise> = await client.query(
       `SELECT id, user_id, source, source_id FROM exercises
@@ -25,7 +27,7 @@ async function findOwnedByName(
     );
     return result.rows[0] ?? null;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 
@@ -40,7 +42,7 @@ async function findTemplateIdsWithMuscles(
     const result: QueryResult<{ source_id: string }> = await client.query(
       `SELECT DISTINCT source_id FROM exercises
        WHERE user_id = $1 AND source = 'Hevy' AND source_id = ANY($2::text[])
-         AND regexp_replace(COALESCE(primary_muscles, ''), '\\s', '', 'g') NOT IN ('', '[]', 'null')`,
+         AND NOT (${emptyMuscleColumnSql('primary_muscles')})`,
       [userId, templateIds]
     );
     return result.rows.map((row) => row.source_id);
@@ -51,9 +53,10 @@ async function findTemplateIdsWithMuscles(
 
 async function findByTemplateId(
   userId: string,
-  templateId: string
+  templateId: string,
+  existingClient?: PoolClient
 ): Promise<HevyLibraryExercise | null> {
-  const client = await getClient(userId);
+  const client = existingClient ?? (await getClient(userId));
   try {
     const result: QueryResult<HevyLibraryExercise> = await client.query(
       `SELECT id, user_id, source, source_id FROM exercises
@@ -63,7 +66,7 @@ async function findByTemplateId(
     );
     return result.rows[0] ?? null;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 
@@ -72,26 +75,28 @@ async function fillMissingMuscles(
   exerciseId: string,
   templateId: string,
   primary: readonly string[],
-  secondary: readonly string[]
+  secondary: readonly string[],
+  existingClient?: PoolClient
 ): Promise<void> {
-  const client = await getClient(userId);
+  const client = existingClient ?? (await getClient(userId));
   try {
+    if (existingClient) await client.query('SAVEPOINT hevy_muscle_metadata');
     // Fill empty legacy columns in the same write that claims the template id.
     // Testing emptiness in SQL preserves edits committed while a sync is fetching.
     await client.query(
       `UPDATE exercises SET
          primary_muscles = CASE WHEN
-           regexp_replace(COALESCE(primary_muscles, ''), '\\s', '', 'g') IN ('', '[]', 'null')
+           ${emptyMuscleColumnSql('primary_muscles')}
            THEN $1 ELSE primary_muscles END,
          secondary_muscles = CASE WHEN
-           regexp_replace(COALESCE(secondary_muscles, ''), '\\s', '', 'g') IN ('', '[]', 'null')
+           ${emptyMuscleColumnSql('secondary_muscles')}
            THEN $2 ELSE secondary_muscles END,
          source_id = $3, updated_at = NOW()
        WHERE id = $4 AND user_id = $5 AND source = 'Hevy'
          AND (source_id IS NULL OR source_id = '' OR source_id = $3)
          AND (source_id IS NULL OR source_id = ''
-           OR (regexp_replace(COALESCE(primary_muscles, ''), '\\s', '', 'g') IN ('', '[]', 'null') AND $1::text <> '[]')
-           OR (regexp_replace(COALESCE(secondary_muscles, ''), '\\s', '', 'g') IN ('', '[]', 'null') AND $2::text <> '[]'))`,
+           OR (${emptyMuscleColumnSql('primary_muscles')} AND $1::text <> '[]')
+           OR (${emptyMuscleColumnSql('secondary_muscles')} AND $2::text <> '[]'))`,
       [
         JSON.stringify(primary),
         JSON.stringify(secondary),
@@ -100,16 +105,25 @@ async function fillMissingMuscles(
         userId,
       ]
     );
+    if (existingClient)
+      await client.query('RELEASE SAVEPOINT hevy_muscle_metadata');
+  } catch (error) {
+    if (existingClient) {
+      await client.query('ROLLBACK TO SAVEPOINT hevy_muscle_metadata');
+      await client.query('RELEASE SAVEPOINT hevy_muscle_metadata');
+    }
+    throw error;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 
 async function findLegacyByName(
   userId: string,
-  name: string
+  name: string,
+  existingClient?: PoolClient
 ): Promise<HevyLibraryExercise | null> {
-  const client = await getClient(userId);
+  const client = existingClient ?? (await getClient(userId));
   try {
     const result: QueryResult<HevyLibraryExercise> = await client.query(
       `SELECT id, user_id, source, source_id FROM exercises
@@ -120,7 +134,7 @@ async function findLegacyByName(
     );
     return result.rows[0] ?? null;
   } finally {
-    client.release();
+    if (!existingClient) client.release();
   }
 }
 

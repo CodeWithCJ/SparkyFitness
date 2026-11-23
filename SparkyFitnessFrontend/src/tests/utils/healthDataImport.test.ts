@@ -1,6 +1,7 @@
 import {
   mapRowsToHealthItems,
   parseHealthCSV,
+  MEASUREMENT_LENGTH_FIELDS,
   HealthImportRow,
 } from '@/utils/healthDataImport';
 
@@ -73,6 +74,144 @@ describe('mapRowsToHealthItems', () => {
       expect(items).toEqual([]);
       expect(errors).toHaveLength(1);
       expect(errors[0]!.error).toContain('weight unit');
+    });
+
+    it('rejects a weight with no unit (and no override) instead of assuming kg', () => {
+      const { items, errors } = mapRowsToHealthItems('measurements', [
+        row({
+          date: '2026-01-02',
+          weight: '177',
+          weight_unit: '',
+          body_fat: '',
+          height: '',
+          neck: '',
+          waist: '',
+          hips: '',
+          length_unit: '',
+        }),
+      ]);
+      expect(items).toEqual([]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]!.error).toContain('no unit is set');
+    });
+
+    it('tags the weight no-unit error with a translation key (localized before display)', () => {
+      const { errors } = mapRowsToHealthItems('measurements', [
+        row({
+          date: '2026-01-02',
+          weight: '177',
+          weight_unit: '',
+          body_fat: '',
+          height: '',
+          neck: '',
+          waist: '',
+          hips: '',
+          length_unit: '',
+        }),
+      ]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]!.key).toBe('healthDataImport.weightUnitMissing');
+    });
+
+    it('tags the length no-unit error with a translation key and the field name', () => {
+      const { errors } = mapRowsToHealthItems('measurements', [
+        row({
+          date: '2026-01-02',
+          weight: '',
+          weight_unit: '',
+          body_fat: '',
+          height: '',
+          neck: '',
+          waist: '82',
+          hips: '',
+          length_unit: '',
+        }),
+      ]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]!.key).toBe('healthDataImport.lengthUnitMissing');
+      expect(errors[0]!.params).toEqual({ type: 'waist' });
+    });
+
+    it('exports the measurement length fields shared by the mapper and the submit gate', () => {
+      // One list drives both mapMeasurementRow (conversion) and the
+      // useHealthDataImport unit-required gate, so they can't drift apart.
+      expect(MEASUREMENT_LENGTH_FIELDS).toEqual([
+        'height',
+        'neck',
+        'waist',
+        'hips',
+      ]);
+    });
+
+    it('applies a weight unit override when the unit column is absent', () => {
+      const { items } = mapRowsToHealthItems(
+        'measurements',
+        [
+          row({
+            date: '2026-01-02',
+            weight: '177',
+            weight_unit: '',
+            body_fat: '',
+            height: '',
+            neck: '',
+            waist: '',
+            hips: '',
+            length_unit: '',
+          }),
+        ],
+        'auto',
+        { weightUnit: 'lb' }
+      );
+      const weight = items.find((i) => i.type === 'weight');
+      expect(weight?.value).toBeCloseTo(80.286, 2);
+      expect(weight?.unit).toBe('kg');
+    });
+
+    it('applies a length unit override when the unit column is absent', () => {
+      const { items } = mapRowsToHealthItems(
+        'measurements',
+        [
+          row({
+            date: '2026-01-02',
+            weight: '',
+            weight_unit: '',
+            body_fat: '',
+            height: '70',
+            neck: '',
+            waist: '',
+            hips: '',
+            length_unit: '',
+          }),
+        ],
+        'auto',
+        { lengthUnit: 'in' }
+      );
+      const height = items.find((i) => i.type === 'height');
+      expect(height?.value).toBeCloseTo(177.8, 1);
+      expect(height?.unit).toBe('cm');
+    });
+
+    it('lets a populated unit cell win over an override', () => {
+      const { items } = mapRowsToHealthItems(
+        'measurements',
+        [
+          row({
+            date: '2026-01-02',
+            weight: '73',
+            weight_unit: 'kg',
+            body_fat: '',
+            height: '',
+            neck: '',
+            waist: '',
+            hips: '',
+            length_unit: '',
+          }),
+        ],
+        'auto',
+        { weightUnit: 'lb' }
+      );
+      const weight = items.find((i) => i.type === 'weight');
+      expect(weight?.value).toBeCloseTo(73, 2);
     });
   });
 
@@ -202,6 +341,53 @@ describe('mapRowsToHealthItems', () => {
     expect(items[1]).toMatchObject({ type: 'steps', value: 9450 });
   });
 
+  it('normalizes activity distance mi/mile/miles -> m', () => {
+    const { items } = mapRowsToHealthItems('activity', [
+      row({
+        date: '2026-01-02',
+        type: 'distance',
+        value: '2.5',
+        unit: 'mi',
+        source: '',
+      }),
+      row({
+        date: '2026-01-02',
+        type: 'distance',
+        value: '1',
+        unit: 'miles',
+        source: '',
+      }),
+    ]);
+    // 2.5 mi * 1609.344 = 4023.36 m; 1 mile = 1609.344 m.
+    expect(items[0]).toMatchObject({
+      type: 'distance',
+      value: 4023.36,
+      unit: 'm',
+    });
+    expect(items[1]).toMatchObject({
+      type: 'distance',
+      value: 1609.344,
+      unit: 'm',
+    });
+  });
+
+  it('keeps a non-distance unit as-is (no normalization)', () => {
+    const { items } = mapRowsToHealthItems('activity', [
+      row({
+        date: '2026-01-02',
+        type: 'calories',
+        value: '300',
+        unit: 'kcal',
+        source: '',
+      }),
+    ]);
+    expect(items[0]).toMatchObject({
+      type: 'calories',
+      value: 300,
+      unit: 'kcal',
+    });
+  });
+
   it('builds a single SleepSession item with numeric durations', () => {
     const { items } = mapRowsToHealthItems('sleep', [
       row({
@@ -301,6 +487,63 @@ describe('mapRowsToHealthItems', () => {
     ]);
     expect(items[0]!['record_timezone']).toBeUndefined();
     expect(items[0]!['record_utc_offset_minutes']).toBeUndefined();
+  });
+
+  describe('mood', () => {
+    it('maps a valid integer mood_value with tags split on |', () => {
+      const { items, errors } = mapRowsToHealthItems('mood', [
+        row({
+          date: '2026-01-02',
+          mood_value: '70',
+          mood_tags: 'happy| calm |',
+        }),
+      ]);
+      expect(errors).toEqual([]);
+      expect(items[0]).toMatchObject({
+        type: 'Mood',
+        value: 70,
+        mood_tags: ['happy', 'calm'],
+      });
+    });
+
+    it('omits mood_tags when the cell is blank', () => {
+      const { items } = mapRowsToHealthItems('mood', [
+        row({ date: '2026-01-02', mood_value: '40', mood_tags: '' }),
+      ]);
+      expect(items[0]!['mood_tags']).toBeUndefined();
+    });
+
+    it('drops a row with a blank mood_value', () => {
+      const { items } = mapRowsToHealthItems('mood', [
+        row({ date: '2026-01-02', mood_value: '' }),
+      ]);
+      expect(items).toEqual([]);
+    });
+
+    it('rejects a mood_value below the 10 floor', () => {
+      const { items, errors } = mapRowsToHealthItems('mood', [
+        row({ date: '2026-01-02', mood_value: '5' }),
+      ]);
+      expect(items).toEqual([]);
+      expect(errors).toHaveLength(1);
+      expect(errors[0]!.error).toContain('between 10 and 100');
+    });
+
+    it('rejects a mood_value above the 100 ceiling', () => {
+      const { items, errors } = mapRowsToHealthItems('mood', [
+        row({ date: '2026-01-02', mood_value: '105' }),
+      ]);
+      expect(items).toEqual([]);
+      expect(errors).toHaveLength(1);
+    });
+
+    it('rejects a non-integer mood_value', () => {
+      const { items, errors } = mapRowsToHealthItems('mood', [
+        row({ date: '2026-01-02', mood_value: '12.5' }),
+      ]);
+      expect(items).toEqual([]);
+      expect(errors).toHaveLength(1);
+    });
   });
 });
 

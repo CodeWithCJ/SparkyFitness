@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'Equipment'>;
@@ -19,7 +18,6 @@ const EquipmentScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
-  const usesNativeHeader = useNativeIOSHeadersActive();
 
   const header = useScreenHeader({
     title: t('equipmentHub.title', { defaultValue: 'Equipment' }),
@@ -27,10 +25,7 @@ const EquipmentScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{

@@ -1,38 +1,46 @@
 import { getClient, getSystemClient } from '../db/poolManager.js';
+import { log } from '../config/logging.js';
 async function canAccessUserData(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   targetUserId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   permissionType: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any
+  authenticatedUserId: any,
+  options: { allowSameEmail?: boolean } = {}
 ) {
   // If accessing own data, always allow
   if (targetUserId === authenticatedUserId) {
     return true;
   }
-  // Check if target and authenticated user are effectively the same (same email)
-  const systemClient = await getSystemClient();
-  try {
-    const emailCheckResult = await systemClient.query(
-      `SELECT 
+  // Check if target and authenticated user are effectively the same (same
+  // email). A caller reading another person's data passes `allowSameEmail:
+  // false` to rely on a family grant alone: emails are only case-insensitively
+  // unique by convention, so a look-alike address must not stand in for the
+  // owner.
+  if (options.allowSameEmail !== false) {
+    const systemClient = await getSystemClient();
+    try {
+      const emailCheckResult = await systemClient.query(
+        `SELECT 
         (SELECT email FROM "user" WHERE id = $1) as target_email,
         (SELECT email FROM "user" WHERE id = $2) as auth_email`,
-      [targetUserId, authenticatedUserId]
-    );
-    const emails = emailCheckResult.rows[0];
-    if (
-      emails &&
-      emails.target_email &&
-      emails.auth_email &&
-      emails.target_email.toLowerCase() === emails.auth_email.toLowerCase()
-    ) {
-      return true;
+        [targetUserId, authenticatedUserId]
+      );
+      const emails = emailCheckResult.rows[0];
+      if (
+        emails &&
+        emails.target_email &&
+        emails.auth_email &&
+        emails.target_email.toLowerCase() === emails.auth_email.toLowerCase()
+      ) {
+        return true;
+      }
+    } catch (error) {
+      log('error', 'Error checking same-email permission:', error);
+    } finally {
+      systemClient.release();
     }
-  } catch (error) {
-    console.error('Error checking same-email permission:', error);
-  } finally {
-    systemClient.release();
   }
   // Check if authenticated user has family access with the required permission
   const client = await getClient(authenticatedUserId); // User-specific operation

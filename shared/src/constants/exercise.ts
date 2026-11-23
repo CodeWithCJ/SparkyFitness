@@ -136,7 +136,14 @@ export function resolveExerciseModality(
 // Workout sources that support nested exercise editing after creation.
 const EDITABLE_SOURCES = new Set(['manual', 'sparky', 'workout plan']);
 
-function normalizeSource(source: string | null | undefined): string | null {
+/**
+ * A stored source in one form for comparing: trimmed and lower case. Exercise
+ * entries default to 'Manual', presets and plans are Title Case and other
+ * tables use lower case, so never compare a source with `===`.
+ */
+export function normalizeSource(
+  source: string | null | undefined
+): string | null {
   if (source == null) return null;
   return source.trim().toLowerCase();
 }
@@ -256,4 +263,28 @@ export function deriveWorkoutSessionStatus(
     return 'in_progress';
   }
   return 'completed';
+}
+
+/**
+ * Sources of data a person created in SparkyFitness itself, as opposed to a
+ * provider sync or a health-store import. Exercise entries default to
+ * 'Manual' (capital M) and presets/plans are Title Case while other tables use
+ * lowercase, so compare with `isUserOriginatedSource`, never `===`. If a new
+ * user-originated source tag is introduced, add it here: the synced-data
+ * delete never offers these, and health write-back (#1750) writes only these.
+ */
+export const USER_ORIGINATED_SOURCES = [
+  'manual',
+  'sparky',
+  'workout preset',
+  'workout plan',
+] as const;
+
+/** True when a source string represents user-created data, regardless of casing. */
+export function isUserOriginatedSource(
+  source: string | null | undefined
+): boolean {
+  return (USER_ORIGINATED_SOURCES as readonly string[]).includes(
+    (source ?? '').trim().toLowerCase()
+  );
 }

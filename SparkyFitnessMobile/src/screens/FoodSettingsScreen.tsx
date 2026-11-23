@@ -155,10 +155,7 @@ const FoodSettingsScreen: React.FC<FoodSettingsScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         contentContainerStyle={{

@@ -15,13 +15,11 @@ import {
   FlatList,
   ScrollView,
   TextInput,
-  Platform,
 } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import Toast from 'react-native-toast-message';
 import Button from '../components/ui/Button';
 import StatusView from '../components/StatusView';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useQueryClient } from '@tanstack/react-query';
 import Icon from '../components/Icon';
@@ -83,7 +81,6 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
   const { returnKey, replaceFor } = route.params;
   const { t } = useTranslation();
 
-  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [accentColor, textMuted, textSecondary, borderSubtle] = useCSSVariable([
     '--color-accent-primary',
@@ -91,7 +88,10 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
     '--color-text-secondary',
     '--color-border-subtle',
   ]) as [string, string, string, string];
-  const { isConnected } = useServerConnection();
+  const { isConnected, status: connectionStatus } = useServerConnection();
+  // Searching the library works from what the phone saved (src/offline/);
+  // online catalogues and alternatives still need the server.
+  const canSearchLibrary = isConnected || connectionStatus === 'unreachable';
   const { profile } = useProfile();
   const { getImageSource } = useExerciseImageSource();
   const { isNavigationLocked, runNavigationAction } =
@@ -169,7 +169,6 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
       return;
     // Default the provider once the list loads; guarded by a ref tracking an
     // explicit user selection, which keeps this from moving to a render-time derive.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedProvider(providers[0].id);
   }, [providers, selectedProvider]);
 
@@ -526,7 +525,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
   };
 
   const renderSearchTab = () => {
-    if (!isConnected) {
+    if (!canSearchLibrary) {
       return (
         <StatusView
           icon="cloud-offline"
@@ -772,7 +771,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
           renderItem={renderExternalExerciseItem}
           keyboardShouldPersistTaps="handled"
           contentContainerClassName="pb-safe-or-4"
-          ListFooterComponent={renderOnlineFooter()}
+          ListFooterComponent={renderOnlineFooter() ?? undefined}
         />
       </View>
     );
@@ -938,6 +937,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
   );
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: replaceFor
       ? t('exerciseSearch.replaceTitle', { defaultValue: 'Replace Exercise' })
       : t('exerciseSearch.title', { defaultValue: 'Exercises' }),
@@ -977,10 +977,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       {/* Segmented control */}

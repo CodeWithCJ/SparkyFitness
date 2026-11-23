@@ -50,6 +50,13 @@ object ContextPayloadMapper {
       energyUnit = obj.optStringOrNull("energyUnit") ?: previous.energyUnit,
       doubleTapEnabled = obj.optBooleanOrNull("doubleTapEnabled") ?: previous.doubleTapEnabled,
       rpeEnabled = obj.optBooleanOrNull("rpeEnabled") ?: previous.rpeEnabled,
+      newWorkout = obj.optBooleanOrNull("newWorkout") ?: previous.newWorkout,
+      workoutCountdown = obj.optIntOrNull("workoutCountdown") ?: previous.workoutCountdown,
+      holdCountdown = obj.optBooleanOrNull("holdCountdown") ?: previous.holdCountdown,
+      workoutTopLine = obj.optStringOrNull("workoutTopLine") ?: previous.workoutTopLine,
+      heartRateZoneFloors = WatchHeartRateZone.normalized(parseDoubleList(obj.optJSONArray("heartRateZoneFloors")))
+        ?: previous.heartRateZoneFloors,
+      exerciseDoNow = obj.optBooleanOrNull("exerciseDoNow") ?: previous.exerciseDoNow,
       medications = parseMedications(obj),
       fast = if (fastKnown) parseFast(obj.optJSONObject("fast")) else previous.fast,
       fastSynced = if (fastKnown) true else previous.fastSynced,
@@ -439,6 +446,7 @@ object ContextPayloadMapper {
             targetReps = rawSet.optDoubleOrNull("targetReps"),
             targetWeightKg = rawSet.optDoubleOrNull("targetWeightKg"),
             restSeconds = rawSet.optIntOrNull("restSeconds") ?: 60,
+            restAfterSeconds = rawSet.optIntOrNull("restAfterSeconds"),
             setType = rawSet.optStringOrNull("setType"),
             targetDurationSec = rawSet.optIntOrNull("targetDurationSec"),
             previousDurationSec = rawSet.optIntOrNull("previousDurationSec"),
@@ -455,6 +463,11 @@ object ContextPayloadMapper {
           name = name,
           supersetRun = rawEx.optIntOrNull("supersetRun"),
           bodyweight = rawEx.optBooleanOrNull("bodyweight"),
+          equipment = rawEx.optStringOrNull("equipment")?.takeIf { it.isNotBlank() },
+          plates = parsePlateConfig(rawEx.optJSONObject("plates")),
+          imageKey = rawEx.optStringOrNull("imageKey")?.takeIf { it.isNotBlank() },
+          imageCount = rawEx.optIntOrNull("imageCount")?.takeIf { it > 0 },
+          muscle = rawEx.optStringOrNull("muscle")?.takeIf { it.isNotBlank() },
           sets = sets
         )
       )
@@ -474,6 +487,40 @@ object ContextPayloadMapper {
       pausedAtMs = parseIsoMs(obj.optStringOrNull("pausedAt")),
       excludedPauseSeconds = obj.optIntOrNull("excludedPauseSeconds") ?: 0,
       prSetIds = obj.optStringList("prSetIds").toSet()
+    )
+  }
+
+  private fun parseDoubleList(arr: JSONArray?): List<Double>? {
+    if (arr == null) return null
+    val out = mutableListOf<Double>()
+    for (i in 0 until arr.length()) {
+      val v = arr.optDouble(i)
+      if (v.isNaN() || v.isInfinite()) return null
+      out.add(v)
+    }
+    return out
+  }
+
+  private fun parsePlateConfig(obj: JSONObject?): WatchPlateConfig? {
+    if (obj == null) return null
+    val unit = obj.optStringOrNull("unit")?.takeIf { it == "kg" || it == "lbs" } ?: return null
+    val barWeight = obj.optDoubleOrNull("barWeight") ?: return null
+    val collarWeight = obj.optDoubleOrNull("collarWeight") ?: 0.0
+    val rawPlates = obj.optJSONArray("plates") ?: return null
+    val plates = mutableListOf<WatchPlateConfig.Plate>()
+    for (i in 0 until rawPlates.length()) {
+      val item = rawPlates.optJSONObject(i) ?: continue
+      val weight = item.optDoubleOrNull("weight") ?: continue
+      val pairs = item.optIntOrNull("pairs") ?: continue
+      if (weight > 0.0 && pairs > 0) {
+        plates.add(WatchPlateConfig.Plate(weight = weight, pairs = pairs))
+      }
+    }
+    return WatchPlateConfig(
+      unit = unit,
+      barWeight = barWeight,
+      collarWeight = collarWeight,
+      plates = plates
     )
   }
 
@@ -594,6 +641,26 @@ object ContextPayloadMapper {
       sentAtMs = sentAt,
       lapCount = obj.optIntOrNull("lapCount") ?: 0,
       interval = interval
+    )
+  }
+
+  fun parsePhoneMediaState(obj: JSONObject): PhoneMediaState {
+    val maxVolume = maxOf(0, obj.optIntOrNull("maxVolume") ?: 0)
+    val rawVolume = maxOf(0, obj.optIntOrNull("volume") ?: 0)
+    val volume = if (maxVolume > 0) rawVolume.coerceAtMost(maxVolume) else rawVolume
+    return PhoneMediaState(
+      title = obj.optStringOrNull("title")?.trim()?.takeIf { it.isNotEmpty() },
+      artist = obj.optStringOrNull("artist")?.trim()?.takeIf { it.isNotEmpty() },
+      album = obj.optStringOrNull("album")?.trim()?.takeIf { it.isNotEmpty() },
+      appName = obj.optStringOrNull("appName")?.trim()?.takeIf { it.isNotEmpty() },
+      isPlaying = obj.optBooleanOrNull("isPlaying") ?: false,
+      volume = volume,
+      maxVolume = maxVolume,
+      hasSession = obj.optBooleanOrNull("hasSession") ?: false,
+      hasMetadataAccess = obj.optBooleanOrNull("hasMetadataAccess") ?: false,
+      epoch = obj.optDoubleOrNull("epoch")?.toLong()?.coerceAtLeast(0L) ?: 0L,
+      seq = obj.optDoubleOrNull("seq")?.toLong()?.coerceAtLeast(0L) ?: 0L,
+      updatedAtMs = obj.optDoubleOrNull("updatedAt")?.toLong() ?: System.currentTimeMillis()
     )
   }
 
@@ -724,13 +791,35 @@ object OutboundPayloads {
           put("action", "deleteExercise")
           put("exerciseEntryId", action.exerciseEntryId)
         }
+        is WorkoutEditAction.DoExerciseNow -> {
+          put("action", "doExerciseNow")
+          put("exerciseEntryId", action.exerciseEntryId)
+          put("anchorEntryId", action.anchorEntryId)
+        }
+        is WorkoutEditAction.SetValuesEdit -> {
+          put("action", "setValues")
+          put("setId", action.setId)
+          action.weightKg?.let { put("weightKg", it) }
+          action.reps?.let { put("reps", it) }
+          action.distanceKm?.let { put("distanceKm", it) }
+          put("at", action.atMs.toDouble())
+          action.armedAtMs?.let { put("armedAt", it.toDouble()) }
+        }
       }
     }
 
-  fun presetUpdateAnswer(sessionId: String, update: Boolean): JSONObject = JSONObject().apply {
-    put("type", "presetUpdateAnswer")
+  fun presetUpdateAnswer(sessionId: String, update: Boolean, waiting: Boolean = false): JSONObject =
+    JSONObject().apply {
+      put("type", "presetUpdateAnswer")
+      put("sessionId", sessionId)
+      put("update", update)
+      if (waiting) put("waiting", true)
+    }
+
+  fun workoutEffort(sessionId: String, rating: Int): JSONObject = JSONObject().apply {
+    put("type", "workoutEffort")
     put("sessionId", sessionId)
-    put("update", update)
+    put("rating", rating)
   }
 
   fun setCompleted(completed: CompletedSet): JSONObject = JSONObject().apply {
@@ -743,6 +832,7 @@ object OutboundPayloads {
     completed.duration?.let { put("duration", it) }
     completed.distanceKm?.let { put("distanceKm", it) }
     completed.rpe?.let { put("rpe", it) }
+    if (completed.rpeOnly) put("rpeOnly", true)
     put("completedAt", ContextPayloadMapper.formatIso(completed.completedAtMs))
   }
 
@@ -782,9 +872,19 @@ object OutboundPayloads {
       put("startedAt", startedAtMs.toDouble())
     }
 
-  fun workoutStop(sessionId: String): JSONObject = JSONObject().apply {
+  fun workoutStop(
+    sessionId: String,
+    completedSets: List<CompletedSet> = emptyList()
+  ): JSONObject = JSONObject().apply {
     put("type", "workoutStop")
     put("sessionId", sessionId)
+    if (completedSets.isNotEmpty()) {
+      val arr = JSONArray()
+      for (completed in completedSets) {
+        arr.put(setCompleted(completed))
+      }
+      put("completedSets", arr)
+    }
   }
 
   fun workoutDiscard(sessionId: String, armedAtMs: Long?): JSONObject = JSONObject().apply {
@@ -910,6 +1010,28 @@ object OutboundPayloads {
       put("id", id)
       put("text", text)
       put("at", atMs.toDouble())
+    }
+
+  fun mediaControl(action: String, steps: Int = 1): JSONObject =
+    JSONObject().apply {
+      put("type", "mediaControl")
+      put("action", action)
+      val clamped = steps.coerceIn(1, 5)
+      if (clamped > 1) {
+        put("steps", clamped)
+      }
+    }
+
+  fun mediaStateRequest(active: Boolean, epoch: Long? = null, visitId: Long? = null): JSONObject =
+    JSONObject().apply {
+      put("type", "mediaStateRequest")
+      put("active", active)
+      if (epoch != null && epoch > 0L) {
+        put("epoch", epoch.toDouble())
+      }
+      if (visitId != null && visitId > 0L) {
+        put("visitId", visitId.toDouble())
+      }
     }
 }
 

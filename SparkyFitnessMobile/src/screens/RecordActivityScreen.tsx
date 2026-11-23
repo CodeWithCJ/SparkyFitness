@@ -53,8 +53,11 @@ import IntervalSetup, {
 } from '../components/recording/IntervalSetup';
 import RouteMap from '../components/exerciseStats/RouteMap';
 import { useScreenHeader } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useIndoorDistanceEstimate } from '../hooks/useIndoorDistanceEstimate';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { correctTreadmillDistance } from '../utils/treadmillCorrection';
+import { usePreferencesHydrated } from '../hooks/usePreferencesHydrated';
+import { formatTreadmillPercent } from '../utils/treadmillCorrectionFormat';
 import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
 import { usePreferences } from '../hooks/usePreferences';
 import { useSuggestedRanges } from '../hooks/useSuggestedRanges';
@@ -69,6 +72,9 @@ import { formatLocalizedNumber, getAppLocale } from '../localization';
 import {
   RecordingPermissionError,
   discardRecording,
+  beginRecordingSave,
+  endRecordingSave,
+  markRecordingSaveComplete,
   elapsedSeconds,
   planCompleted,
   finishRecording,
@@ -268,7 +274,6 @@ function recordingTitle(
 const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const { updateMutation: updateShoe } = useShoeMutations();
   const { preferences } = usePreferences();
@@ -352,29 +357,24 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   // (the Diary card's Start, or Start today's workout); otherwise it is just
   // offered on its own card, because most recordings are a plain walk or run.
   const wantsProgramWorkout = route.params?.programWorkout === true;
-  const programApplied = useRef(false);
-  useEffect(() => {
-    if (!wantsProgramWorkout || programApplied.current || !programLoaded)
-      return;
-    programApplied.current = true;
+  const [programApplied, setProgramApplied] = useState(false);
+  if (wantsProgramWorkout && !programApplied && programLoaded) {
+    setProgramApplied(true);
     if (programWorkout && programStatus) {
       setActivity(programStatus.program.activity);
       setIntervalChoice('program');
     }
-  }, [wantsProgramWorkout, programLoaded, programWorkout, programStatus]);
+  }
   // A program that ended or was left while it was chosen.
-  useEffect(() => {
-    if (intervalChoice === 'program' && programLoaded && !programWorkout) {
-      setIntervalChoice('off');
-    }
-  }, [intervalChoice, programLoaded, programWorkout]);
+  if (intervalChoice === 'program' && programLoaded && !programWorkout) {
+    setIntervalChoice('off');
+  }
   // The run/walk presets are not offered for a walk or ride, so switching to
   // one drops a run/walk preset rather than leaving a choice the picker lacks.
-  useEffect(() => {
-    if (activity === 'run') return;
+  if (activity !== 'run') {
     const preset = INTERVAL_PRESETS.find((p) => p.id === intervalChoice);
     if (preset?.options.style === 'runWalk') setIntervalChoice('off');
-  }, [activity, intervalChoice]);
+  }
   // Optional pace ranges for a plan's fast and easy stretches, this run only.
   // Paces for tempo, marathon-pace and stride stretches, set from a recent race.
   const [effortPace, setEffortPace] = useState<Partial<
@@ -396,8 +396,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const easyBand = easyPace.band ?? defaultEasyPaceBand(distanceUnit);
   // Distance steps follow GPS distance, so going indoors drops a distance
   // plan: Custom goes back to timed work, a distance preset to no plan.
-  useEffect(() => {
-    if (!indoor) return;
+  if (indoor) {
     if (intervalChoice === 'custom') {
       if (usesWorkDistance(customIntervals)) {
         setCustomIntervals({
@@ -406,11 +405,11 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           workUnit: undefined,
         });
       }
-      return;
+    } else {
+      const preset = INTERVAL_PRESETS.find((p) => p.id === intervalChoice);
+      if (preset && usesWorkDistance(preset.options)) setIntervalChoice('off');
     }
-    const preset = INTERVAL_PRESETS.find((p) => p.id === intervalChoice);
-    if (preset && usesWorkDistance(preset.options)) setIntervalChoice('off');
-  }, [indoor, intervalChoice, customIntervals]);
+  }
   const [warmOpen, setWarmOpen] = useState(false);
   const warmBand = warmPace.band ?? defaultWarmPaceBand(distanceUnit);
   const basePlan = useMemo<IntervalPlan | undefined>(() => {
@@ -534,9 +533,11 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   // Tempo, stride and marathon-pace ranges come from the latest fitness test or
   // the saved race; once it is
   // cleared or the activity changes, the ranges applied from it no longer apply.
-  useEffect(() => {
+  const [effortPaceSource, setEffortPaceSource] = useState(suggested.byEffort);
+  if (effortPaceSource !== suggested.byEffort) {
+    setEffortPaceSource(suggested.byEffort);
     setEffortPace(null);
-  }, [suggested.byEffort]);
+  }
   const suggestedHeartRate = watchAvailable ? suggested.heartRate : null;
   const useSuggestedRangesNow = () => {
     if (suggestedPaceChoice) {
@@ -688,12 +689,14 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     [points, session?.status, unitMeters]
   );
   const lapMarks = session?.laps;
+  const sessionStatus = session?.status;
+  const sessionFinishedAt = session?.finishedAt;
   const laps = useMemo(
     () =>
-      session?.status === 'finished' && lapMarks && lapMarks.length > 0
-        ? computeLaps(points, lapMarks, session.finishedAt ?? undefined)
+      sessionStatus === 'finished' && lapMarks && lapMarks.length > 0
+        ? computeLaps(points, lapMarks, sessionFinishedAt ?? undefined)
         : [],
-    [points, session?.status, session?.finishedAt, lapMarks]
+    [points, sessionStatus, sessionFinishedAt, lapMarks]
   );
   const lapBarsFor = useMemo(
     () => splitBars(laps, unitMeters),
@@ -851,14 +854,16 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   // voice cues on, spoken.
   useEffect(() => {
     if (countdownLeft === null) return;
-    if (countdownLeft === 0) {
-      setCountdownLeft(null);
-      void handleStart();
-      return;
-    }
     fireSelectionHaptic();
     if (audioCues) speakRecordingCue(String(countdownLeft));
-    const id = setTimeout(() => setCountdownLeft(countdownLeft - 1), 1000);
+    const id = setTimeout(() => {
+      if (countdownLeft - 1 === 0) {
+        setCountdownLeft(null);
+        void handleStart();
+      } else {
+        setCountdownLeft(countdownLeft - 1);
+      }
+    }, 1000);
     return () => clearTimeout(id);
   }, [countdownLeft, audioCues, handleStart]);
 
@@ -900,6 +905,10 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     [run, t]
   );
 
+  const [testTimeText, setTestTimeText] = useState<string | null>(null);
+  const [testSplitText, setTestSplitText] = useState('');
+  const [inclineText, setInclineText] = useState('1');
+  const [adjustForIncline, setAdjustForIncline] = useState(true);
   const handleDiscard = useCallback(() => {
     Alert.alert(
       t('recordActivity.discard.title', {
@@ -921,7 +930,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           onPress: () =>
             void run(
               async () => {
-                await discardRecording();
+                await discardRecording({ discarded: true });
                 // The screen stays mounted. A distance typed for this session
                 // must not be offered as the next one's estimate.
                 setIndoorDistanceText(null);
@@ -955,16 +964,46 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   const indoorDistanceInvalid =
     indoorDistance !== null &&
     (!Number.isFinite(indoorDistance) || indoorDistance < 0);
-  const indoorDistanceKm =
-    indoorDistance !== null && Number.isFinite(indoorDistance)
-      ? (indoorDistance * unitMeters) / METERS_PER_KM
+  const preferencesHydrated = usePreferencesHydrated();
+  const treadmillCorrectionEnabled = useAppPreferencesStore(
+    (s) => s.treadmillCorrectionEnabled
+  );
+  const treadmillCorrectionPercent = useAppPreferencesStore(
+    (s) => s.treadmillCorrectionPercent
+  );
+  // Only a figure the person typed is a treadmill reading; the prefilled
+  // step estimate is already the phone's own measurement, so it is never
+  // corrected. What is saved, and what the stride learns from, is the corrected
+  // figure.
+  const typedIndoorMeters =
+    indoorDistanceText !== null &&
+    indoorDistance !== null &&
+    Number.isFinite(indoorDistance)
+      ? indoorDistance * unitMeters
       : null;
+  // The correction describes a treadmill, so it is for walks and runs only;
+  // an indoor ride's figure comes from another machine and is kept as typed.
+  const onTreadmill =
+    session?.activity === 'walk' || session?.activity === 'run';
+  const treadmillCorrection = useMemo(
+    () => ({
+      enabled: treadmillCorrectionEnabled && onTreadmill,
+      percent: treadmillCorrectionPercent,
+    }),
+    [onTreadmill, treadmillCorrectionEnabled, treadmillCorrectionPercent]
+  );
+  const indoorCorrected =
+    typedIndoorMeters !== null
+      ? correctTreadmillDistance(typedIndoorMeters, treadmillCorrection)
+      : null;
+  const indoorDistanceKm =
+    indoorCorrected?.applied === true
+      ? indoorCorrected.correctedMeters / METERS_PER_KM
+      : indoorDistance !== null && Number.isFinite(indoorDistance)
+        ? (indoorDistance * unitMeters) / METERS_PER_KM
+        : null;
 
   // A treadmill test's extra answers, asked after Finish.
-  const [testTimeText, setTestTimeText] = useState<string | null>(null);
-  const [testSplitText, setTestSplitText] = useState('');
-  const [inclineText, setInclineText] = useState('1');
-  const [adjustForIncline, setAdjustForIncline] = useState(true);
   const inclineValue =
     inclineText.trim() === '' ? null : parseDecimalInput(inclineText);
   const inclineInvalid =
@@ -985,10 +1024,16 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       distanceMeters:
         indoorDistanceKm === null ? null : indoorDistanceKm * METERS_PER_KM,
       timeSeconds: typedTime,
+      // The split is read off the same treadmill as the total, so it takes
+      // the same correction; otherwise the last 20 minutes would mix a
+      // corrected total with a raw split.
       splitMeters:
         splitValue === null || !Number.isFinite(splitValue)
           ? null
-          : splitValue * unitMeters,
+          : correctTreadmillDistance(
+              splitValue * unitMeters,
+              treadmillCorrection
+            ).correctedMeters,
       inclinePercent: inclineInvalid ? null : inclineValue,
       adjustForIncline,
     });
@@ -1003,6 +1048,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     testSplitText,
     testTimeText,
     testType,
+    treadmillCorrection,
     unitMeters,
   ]);
   const testMeasurement: FitnessTestMeasurement | null = useMemo(() => {
@@ -1037,17 +1083,23 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     testIndoor && indoorTestResult && !indoorTestResult.ok
       ? indoorTestResult.reason
       : null;
+  // Only a test with a result is filed. One the result check refuses (a
+  // treadmill 5K stopped after a few seconds) is saved as an ordinary run,
+  // as the finished card says, rather than sent for the server to reject.
+  const testToSave = testOutcome ? testMeasurement : null;
 
   const handleSave = useCallback(async () => {
     if (!session) return;
     setBusy(true);
     try {
+      // Refused while the recording bar is discarding this recording.
+      beginRecordingSave(session.id);
       const saved = await saveRecordedActivity(
         session,
         points,
         distanceUnit,
         session.indoor
-          ? session.fitnessTest === '5k' && indoorDistanceKm === null
+          ? testToSave?.type === '5k' && indoorDistanceKm === null
             ? FIVE_K_METERS / METERS_PER_KM
             : indoorDistanceKm
           : null,
@@ -1058,24 +1110,34 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
       // failure throws like any save failure: the recording is kept, and the
       // retry reuses the saved activity and replaces the test, never doubling it.
       let savedTest: FitnessTestResponse | null = null;
-      if (session.fitnessTest && testMeasurement) {
+      if (session.fitnessTest && testToSave) {
         savedTest = await saveFitnessTest({
-          test_type: testMeasurement.type,
+          test_type: testToSave.type,
           test_date: toLocalDateString(new Date(session.startedAt)),
-          distance_meters: testMeasurement.distanceMeters,
-          duration_seconds: testMeasurement.durationSeconds,
-          split_distance_meters: testMeasurement.splitDistanceMeters ?? null,
+          distance_meters: testToSave.distanceMeters,
+          duration_seconds: testToSave.durationSeconds,
+          split_distance_meters: testToSave.splitDistanceMeters ?? null,
           exercise_entry_id: saved.entryId,
           surface: session.indoor ? 'indoor' : 'outdoor',
           incline_percent: session.indoor
-            ? (testMeasurement.inclinePercent ?? null)
+            ? (testToSave.inclinePercent ?? null)
             : null,
           incline_adjusted:
             session.indoor === true &&
-            testMeasurement.inclinePercent != null &&
-            testMeasurement.adjustForIncline !== false,
+            testToSave.inclinePercent != null &&
+            testToSave.adjustForIncline !== false,
         });
       }
+      // Everything a Discard should undo is saved now. From here on a session
+      // that is still around (a failed clear, the app killed before it) holds
+      // a finished save, so a Discard must not delete its entry. Best effort:
+      // the save itself went through, so nothing here reports it as failed.
+      await markRecordingSaveComplete(session.id).catch((error: unknown) =>
+        addLog(
+          `[GPS Recording] Could not mark the save complete: ${error}`,
+          'WARNING'
+        )
+      );
       // Ticks a program workout off only if the plan was followed to its end; a run cut short can be tried again. The day is the one the run
       // started on, so a run saved after midnight still counts for its own day.
       let program: RunSummaryParams['program'] = null;
@@ -1139,6 +1201,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
           program,
           entryId: saved.entryId,
           form: saved.form,
+          clockSeconds: elapsedSeconds(session),
         });
       } catch (error) {
         addLog(
@@ -1171,6 +1234,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
         }),
       });
     } finally {
+      endRecordingSave(session.id);
       setBusy(false);
     }
   }, [
@@ -1183,7 +1247,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
     queryClient,
     session,
     t,
-    testMeasurement,
+    testToSave,
     updateShoe,
   ]);
 
@@ -2053,6 +2117,24 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
                 {unitLabel}
               </Text>
             </View>
+            {indoorCorrected?.applied ? (
+              <Text className="text-text-secondary text-sm mt-2">
+                {t('recordActivity.indoorDistance.corrected', {
+                  defaultValue:
+                    'Treadmill showed {{shown}} {{unit}}. Saved as {{saved}} {{unit}} with your {{percent}} treadmill correction.',
+                  shown: formatLocalizedNumber(
+                    indoorCorrected.displayedMeters / unitMeters,
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                  ),
+                  saved: formatLocalizedNumber(
+                    indoorCorrected.correctedMeters / unitMeters,
+                    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+                  ),
+                  unit: unitLabel,
+                  percent: formatTreadmillPercent(indoorCorrected.percent),
+                })}
+              </Text>
+            ) : null}
             {indoorDistanceInvalid ? (
               <Text className="text-text-danger-subtle text-sm mt-2">
                 {t('recordActivity.indoorDistance.invalid', {
@@ -2082,7 +2164,12 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
             <Button
               loading={busy}
               disabled={
-                indoorSession && (indoorDistanceInvalid || inclineInvalid)
+                indoorSession &&
+                (indoorDistanceInvalid ||
+                  inclineInvalid ||
+                  // A typed treadmill figure is corrected with the saved
+                  // setting; not before it is read, or the raw figure is stored.
+                  !preferencesHydrated)
               }
               onPress={() => void handleSave()}
             >
@@ -2236,10 +2323,7 @@ const RecordActivityScreen: React.FC<Props> = ({ navigation, route }) => {
   })();
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 bg-background"

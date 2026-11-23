@@ -368,3 +368,74 @@ describe('useUnitConversion', () => {
     expect(result.current.aiEstimateData).toBeNull();
   });
 });
+
+it.each([null, undefined, -1, Number.NaN, Number.POSITIVE_INFINITY])(
+  'preserves unknown optional nutrition when recipe conversion opts in (%s)',
+  (dietary_fiber) => {
+    const base = {
+      ...createVariant({ serving_size: 100, sodium: 0, iron: 2 }),
+      dietary_fiber,
+    } as unknown as FoodVariant;
+    const { result } = renderHook(() =>
+      useUnitConversion({
+        variants: [base],
+        selectedVariant: base,
+        onVariantSelect: jest.fn(),
+        preserveUnknownNutrition: true,
+      })
+    );
+    act(() => result.current.handleUnitChange('kg'));
+    const converted = result.current.buildConvertedVariant();
+    expect(converted?.dietary_fiber).toBeUndefined();
+    expect(converted?.sodium).toBe(0);
+    expect(converted?.iron).toBe(20);
+    expect(converted?.calories).toBe(100);
+  }
+);
+
+it('keeps ordinary conversion defaults and measured optional zero when recipe mode is absent', () => {
+  const base = createVariant({
+    serving_size: 100,
+    dietary_fiber: undefined,
+    sodium: 0,
+    iron: 2,
+  });
+  const { result } = renderHook(() =>
+    useUnitConversion({
+      variants: [base],
+      selectedVariant: base,
+      onVariantSelect: jest.fn(),
+    })
+  );
+  act(() => result.current.handleUnitChange('kg'));
+  expect(result.current.buildConvertedVariant()).toEqual(
+    expect.objectContaining({ dietary_fiber: 0, sodium: 0, iron: 20 })
+  );
+});
+
+it('preserves unknown custom nutrient amounts in recipe conversion without changing ordinary defaults', () => {
+  const base = createVariant({
+    serving_size: 100,
+    custom_nutrients: {
+      missing: '',
+      invalid: 'unknown',
+      negative: -1,
+      nonfinite: Number.POSITIVE_INFINITY,
+      measured: 0,
+      known: '2',
+    },
+  });
+  const { result } = renderHook(() =>
+    useUnitConversion({
+      variants: [base],
+      selectedVariant: base,
+      onVariantSelect: jest.fn(),
+      preserveUnknownNutrition: true,
+    })
+  );
+  act(() => result.current.handleUnitChange('kg'));
+  expect(result.current.buildConvertedVariant()?.custom_nutrients).toEqual({
+    measured: 0,
+    known: 20,
+  });
+});

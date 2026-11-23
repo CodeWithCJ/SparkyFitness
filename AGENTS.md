@@ -1,6 +1,6 @@
 # AGENTS.md
 
-*Last updated: 2026-11-05*
+*Last updated: 2026-11-22*
 
 This is the repo-root monorepo guide for SparkyFitness. Use it to choose the right package, understand shared repo-level rules, and find the next guide to read.
 
@@ -33,7 +33,7 @@ For `docs/` and `SparkyFitnessGarmin/`, there is no package-level `AGENTS.md`. `
 
 - `SparkyFitnessFrontend/` - React 19 + Vite web app.
 - `SparkyFitnessServer/` - Express 5 + PostgreSQL backend API.
-- `SparkyFitnessMobile/` - Expo SDK 57 / React Native 0.86 app.
+- `SparkyFitnessMobile/` - Expo SDK 58 / React Native 0.88 app.
 - `shared/` - source-first TypeScript workspace package for `@workspace/shared` schemas, constants, and timezone/day helpers.
 - `docs/` - VitePress documentation site.
 - `docs/readme/` - translated copies of the root `README.md` (`README_<lang>.md`), outside the VitePress `srcDir`. The language bar at the top of `README.md` links to them; when the root README changes substantially, the translations go stale.
@@ -62,6 +62,7 @@ Do not read or search these paths; they burn context for nothing:
 - `db_schema_backup.sql` (~330 KB) - never read whole; grep for the one `CREATE TABLE` you need.
 - `SparkyFitnessFrontend/dist/` - build output.
 - `SparkyFitnessFrontend/public/locales/` except `en/` - 35 machine-synced translations. Only `en/translation.json` is ever hand-edited, and even that (~120 KB) should be grepped, not read whole.
+- `SparkyFitnessExerciseLibrary/exercises/` and `dist/` - static dataset with 1,300+ exercise folders. Never search or read whole during general app tasks (burns tokens for nothing); inspect `schema/exercise.schema.json` or `taxonomy/` instead unless the user explicitly asks to research, edit, or import exercises.
 
 Cheap ways to learn things:
 
@@ -69,6 +70,10 @@ Cheap ways to learn things:
 - Database security & permissions: `docs/src/developer/database-security-tiers.md` (security tier, permission type, and RLS rules for every table).
 - API request/response contract: `shared/src/schemas/api/<Name>.api.zod.ts`.
 - Definition of done: CI (`.github/workflows/ci-tests.yml`) runs `pnpm run validate` (which includes Knip unused export & dead code checks in frontend and mobile) plus the package's CI test script for each changed package. Run those locally before declaring work complete.
+
+## Recipe Ingredient Imports
+
+Mealie ingredient meals use `shared/src/schemas/api/RecipeImport.api.zod.ts` and owner-only `/api/v2/recipe-imports` routes. Preview/suggest never create foods or meals; save accepts confirmed accessible local food/variant IDs and uses authoritative nutrition. External candidates follow existing provider detail/import first. Cooked weight changes only the normal meal serving denominator. Nutrition sync previews current saved-meal totals per current Mealie serving and requires explicit confirmation of that state; diary edits never write back.
 
 ## Cross-Package Rules
 
@@ -82,7 +87,11 @@ Cheap ways to learn things:
   5. Add or update the matching Zod schema in `shared/src/schemas/database/`.
   6. Update the user-facing documentation in `docs/src/features/family-friends-sharing.md`.
   7. Update the developer documentation in `docs/src/developer/database-security-tiers.md` to classify the table as Tier 1, Tier 2, or Tier 3.
+- **Offline on mobile has one place (#1983):** everything the app keeps for use without a connection is in `SparkyFitnessMobile/src/offline/` (one SQLite file: a cache of server JSON, one upload queue, saved pictures). Reads fall back to the phone's copy inside the API client functions through `withOfflineFallback`; writes that must survive no connection go through the one outbox with a registered handler per `kind`. Never add a second queue, a second local store or a mirror of server tables. Server-side, a create that a phone may repeat accepts a client-minted id and answers a repeat with 200 (see `createOrReplayGroupedWorkoutSession`). User guide: `docs/src/features/exercises/offline-workouts.md`.
+- **Optional features (#3487) have one registry:** `shared/src/features/optionalFeatures.ts` (`OPTIONAL_FEATURES`, `isFeatureEnabled`, `isFeatureExplicitlyOff`, `filterByFeature`, `isShownByFeature`, `hiddenFeatureCustomCategories`, `withoutHiddenCategories`). A feature a person can turn on or off in Settings → Features is registered there, with its default, and every entry point to it (tab, menu item, card, route, reminder, watch page) declares its key and goes through the shared filter or a guard; never read `feature_choices` or `cycle_settings.enabled` directly to show or hide something (each app's gates go through it: the web's `SparkyFitnessFrontend/src/hooks/Settings/useWebFeatures.ts` and the app's `SparkyFitnessMobile/src/hooks/useMobileFeatures.ts`). Choices are per platform (`FEATURE_PLATFORMS`: `web` is the website on any screen, `mobile` the native app with its watch pages, widgets and reminders; not the nutrient-display `platform` values), so each app asks `isFeatureEnabled(key, '<its platform>', sources)`; code that is about neither app's screens (the server, someone acting for the person) uses `isFeatureEnabledAnywhere`. The server stores only explicit choices in `user_preferences.feature_choices` (`{ web, mobile }`), read through `GET /api/user-preferences/features` (never the general preferences payload, which falls back to defaults on errors) and written only by the owner-only `PATCH` there; cycle keeps its own switch (`cycle_settings.enabled`). Lab results (`labResults`, on by default) is the first feature stored in `feature_choices`; while the choices load, after a failed read, or on a server older than the route (a 404), each app uses the defaults, so nothing that was showing disappears, and its switches work only once the choices have loaded. Add a key together with its gates on both web and mobile, so neither Features screen lists a switch that hides nothing. The switch hides UI only: no route, importer, sync or MCP tool checks it, and it never rewrites the finer per-place settings (the web tabs, Customize layout, hidden cards, the + menu, watch pages), so turning a feature back on restores them. Those settings screens leave out the rows of a feature that is off, as the place itself does, and show one "Some features are turned off · Manage" line instead (web Settings → Tabs; mobile Dashboard settings and Quick Actions, through `FeaturesOffNotice`); a drag in the shortened list is merged back into the full stored order so the hidden rows keep their places.
 - **Heart rate zones have one source of truth:** `shared/src/utils/heartRateZones.ts` (`resolveHeartRateZones`, `heartRateZoneRange`, `computeTimeInZones`). Never re-derive max heart rate or zone floors in a package; server stored zones, training load, mobile suggested ranges and the web/mobile charts, Heart Rate reports and settings all call it (reports show the five zones, Zone 1 to 5, never fixed bpm tiers). Max heart rate is the person's own value, else Nes (211 - 0.64 x age) from date of birth, else 190. Settings never rewrite stored `exercise_entry_hr_zones` rows. iOS 27 can fill custom floors from Apple Health (`floorsFromAppleHeartRateZones`); that does not change max heart rate. A finished Apple workout's own zone group (`bucketsFromAppleWorkoutZones`) is stored as `device` zones instead of recomputing, so the chart matches Apple, including time below the first boundary.
+- **Estimated blood alcohol has one source of truth:** `shared/src/nutrients/alcoholKinetics.ts`. Server, web, mobile and AI tools never re-derive BAC; clients draw with `bloodAlcoholCurve(doses, bacModelOf(response), ...)` and `bloodAlcoholChartWindow`. It is always shown with the rough-estimate, not-for-driving disclaimer, and nothing (UI, API, tool text, docs) states a time when the level reaches zero.
+- **Exercise write-back activity types have one source:** `shared/src/constants/healthActivityTypes.ts` (each key's Apple Health and Health Connect type, the name/category guess) and `healthConnectSegments.ts` (per-set segments and androidx's compatibility rules). The per-exercise override is `exercises.health_activity_type`, copied onto each `exercise_entries` row; NULL is Automatic. Never map activity types in a package.
 - Prefer the shared timezone helpers from `@workspace/shared` and `SparkyFitnessServer/utils/timezoneLoader.ts` for day-string logic. Avoid `toISOString().split('T')[0]` for user-facing or business-logic dates.
 - Keep `YYYY-MM-DD` values as calendar-day strings until you reach a database or external API boundary that needs UTC instants.
 - Auth or API contract changes usually need a quick check in both web and mobile because they share the same backend.

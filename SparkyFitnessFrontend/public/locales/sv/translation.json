@@ -991,8 +991,6 @@
       "katchMath": "Formel: 370 + 21.6 × LBM (där LBM = vikt × (1 − BF/100))\nUträkning: 370 + 21.6 × ({{weight}} kg × (1 − {{bodyFat}}/100)) = {{result}} kcal",
       "harrisMaleMath": "Formel: 13.397 × vikt + 4.799 × längd − 5.677 × ålder + 88.362\nUträkning: 13.397 × {{weight}} + 4.799 × {{height}} − 5.677 × {{age}} + 88.362 = {{result}} kcal",
       "harrisFemaleMath": "Formel: 9.247 × vikt + 3.098 × längd − 4.33 × ålder + 447.593\nUträkning: 9.247 × {{weight}} + 3.098 × {{height}} − 4.33 × {{age}} + 447.593 = {{result}} kcal",
-      "oxfordMaleMath": "Formel: 14.2 × vikt + 593\nUträkning: 14.2 × {{weight}} + 593 = {{result}} kcal",
-      "oxfordFemaleMath": "Formel: 10.9 × vikt + 677\nUträkning: 10.9 × {{weight}} + 677 = {{result}} kcal",
       "invalidMeasurements": "Ogiltiga mått för logaritmberäkningen.",
       "navyMaleMath": "Formel (man): 86.01 × log10(midja − hals) − 70.041 × log10(längd) + 36.76 (i tum)\nUträkning: 86.01 × log10({{waist}} tum − {{neck}} tum) − 70.041 × log10({{height}} tum) + 36.76\nBeräknat: {{result}} %",
       "navyFemaleMath": "Formel (kvinna): 163.205 × log10(midja + höfter − hals) − 97.684 × log10(längd) − 78.387 (i tum)\nUträkning: 163.205 × log10({{waist}} tum + {{hips}} tum − {{neck}} tum) − 97.684 × log10({{height}} tum) − 78.387\nBeräknat: {{result}} %",
@@ -1007,7 +1005,6 @@
       "requirementMet": "✓ Uppfyllt",
       "daysMissing": "❌ Saknas ({{days}}/{{required}} dagar loggade)",
       "daysMet": "✓ Uppfyllt ({{days}}/{{required}} dagar loggade)",
-      "stabilityRequirement": "• Kaloriloggar för stabilt mål ({{required}}+ dagar ≥ 200 kcal)",
       "daysWarning": "⚠️ Saknas ({{days}}/{{required}} dagar loggade)",
       "usingFallbackBmr": "Använder reserv-BMR × aktivitetsfaktor:",
       "fallbackMath": "Uträkning: BMR ({{bmr}} kcal) × aktivitetsfaktor ({{multiplier}}) = {{result}} {{unit}}",
@@ -1745,5 +1742,13 @@
     "errorLoadingWeight": "Det gick inte att läsa in senaste vikt."
   },
   "success": "Klart",
-  "warning": "Varning"
+  "warning": "Varning",
+  "recipeImport": {
+    "inactive": "Inaktiv",
+    "inactiveManagement": "Aktivera den här leverantören i Inställningar för att importera recept. Du kan fortfarande hantera dina sparade val här."
+  },
+  "barcodeLookup": {
+    "yourFoods": "Dina livsmedel",
+    "fallback": "Reserv"
+  }
 }

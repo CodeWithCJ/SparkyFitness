@@ -3,10 +3,12 @@ import {
   requestPermission,
   getGrantedPermissions,
   readRecords,
+  getChanges,
   aggregateRecord,
   aggregateGroupByDuration,
   aggregateGroupByPeriod,
 } from 'react-native-health-connect';
+import { loadHealthWaterSyncToken, saveHealthWaterSyncToken } from '../storage';
 import { addLog } from '../LogService';
 import {
   AggregatedHealthRecord,
@@ -16,7 +18,12 @@ import {
   type ReadResult,
 } from '../../types/healthRecords';
 import { toLocalDateString } from '../../utils/dateUtils';
-import { mapHealthConnectSleepStage } from './dataTransformation';
+import {
+  getOwnPackageName,
+  isOwnWrittenExerciseRecord,
+  mapHealthConnectSleepStage,
+} from './dataTransformation';
+import { EXERCISE_FILTER_OWN_PREF } from './exerciseWriteback';
 import { ceilToLocalDayStart, getSyncStartDate } from '../../utils/syncUtils';
 import {
   isClientUnavailableError,
@@ -480,7 +487,169 @@ const withClientRecovery = async <T>(read: () => Promise<T>): Promise<T> => {
   }
 };
 
+interface StagedWaterRun {
+  token: string | null;
+  configId: string | null;
+  cancelled: boolean;
+}
+const stagedWaterRuns = new Map<number, StagedWaterRun>();
+let nextWaterRunId = 1;
+
+export const beginWaterDeletionRun = (configId?: string | null): number => {
+  const runId = nextWaterRunId++;
+  stagedWaterRuns.set(runId, {
+    token: null,
+    configId: configId ?? null,
+    cancelled: false,
+  });
+  return runId;
+};
+
+export const cancelWaterDeletionRun = (runId?: number): void => {
+  if (runId !== undefined) {
+    const staged = stagedWaterRuns.get(runId);
+    if (staged) {
+      staged.cancelled = true;
+      staged.token = null;
+    }
+  } else {
+    for (const staged of stagedWaterRuns.values()) {
+      staged.cancelled = true;
+      staged.token = null;
+    }
+  }
+};
+
+export const commitWaterDeletionRun = async (runId?: number): Promise<void> => {
+  if (runId !== undefined) {
+    const staged = stagedWaterRuns.get(runId);
+    if (!staged) return;
+    stagedWaterRuns.delete(runId);
+    if (staged.token && !staged.cancelled) {
+      await saveHealthWaterSyncToken('android', staged.token, staged.configId);
+    }
+  } else {
+    for (const [id, staged] of Array.from(stagedWaterRuns.entries())) {
+      stagedWaterRuns.delete(id);
+      if (staged.token && !staged.cancelled) {
+        await saveHealthWaterSyncToken(
+          'android',
+          staged.token,
+          staged.configId
+        );
+      }
+    }
+  }
+};
+
+const readHydrationDeletions = async (
+  runId?: number
+): Promise<Record<string, unknown>[]> => {
+  const staged = runId != null ? stagedWaterRuns.get(runId) : undefined;
+  try {
+    const savedToken = await loadHealthWaterSyncToken(
+      'android',
+      staged?.configId
+    );
+    let currentToken = savedToken;
+    let hasMore = true;
+    const deletedRecords: Record<string, unknown>[] = [];
+
+    if (!currentToken) {
+      const initial = await getChanges({
+        recordTypes: ['Hydration'],
+      });
+      if (initial.nextChangesToken && staged && !staged.cancelled) {
+        staged.token = initial.nextChangesToken;
+      }
+      if (initial.deletionChanges) {
+        for (const del of initial.deletionChanges) {
+          if (del.recordId) {
+            deletedRecords.push({
+              deleted: true,
+              source_id: del.recordId,
+            });
+          }
+        }
+      }
+      return deletedRecords;
+    }
+
+    let pageToken = currentToken;
+    while (hasMore) {
+      const changes = await getChanges({
+        changesToken: pageToken,
+        recordTypes: ['Hydration'],
+      });
+      if (changes.changesTokenExpired) {
+        const fresh = await getChanges({
+          recordTypes: ['Hydration'],
+        });
+        if (fresh.nextChangesToken && staged && !staged.cancelled) {
+          staged.token = fresh.nextChangesToken;
+        }
+        return [];
+      }
+      if (changes.deletionChanges) {
+        for (const del of changes.deletionChanges) {
+          if (del.recordId) {
+            deletedRecords.push({
+              deleted: true,
+              source_id: del.recordId,
+            });
+          }
+        }
+      }
+      if (changes.nextChangesToken) {
+        pageToken = changes.nextChangesToken;
+      }
+      hasMore = changes.hasMore && !!changes.nextChangesToken;
+    }
+    // Only stage the new token once pagination completes without throwing and run is not cancelled
+    if (staged && !staged.cancelled) {
+      staged.token = pageToken;
+    }
+    return deletedRecords;
+  } catch (error) {
+    addLog(
+      `[HealthConnectService] Failed reading changes for Hydration: ${(error as Error).message}`,
+      'WARNING'
+    );
+    if (staged) {
+      staged.token = null;
+    }
+    return [];
+  }
+};
+
 export const readHealthRecordsDetailed = async (
+  recordType: string,
+  startDate: Date,
+  endDate: Date,
+  _telemetry?: TelemetryRunContext,
+  runId?: number
+): Promise<HealthConnectReadResult> => {
+  if (recordType === 'Hydration') {
+    // Establish deletion baseline/changes query BEFORE reading sample window
+    // so any sample deleted during or after the window read is detected on the next sync
+    const deletions = await readHydrationDeletions(runId);
+    const result = await readHealthRecordsDetailedInner(
+      recordType,
+      startDate,
+      endDate
+    );
+    if (deletions.length > 0) {
+      return {
+        records: [...result.records, ...deletions],
+        error: result.error,
+      };
+    }
+    return result;
+  }
+  return readHealthRecordsDetailedInner(recordType, startDate, endDate);
+};
+
+const readHealthRecordsDetailedInner = async (
   recordType: string,
   startDate: Date,
   endDate: Date
@@ -960,6 +1129,141 @@ const buildOffsetSegments = async (
   ];
 };
 
+// Daily totals exercise write-back also writes into (#1750). Health Connect
+// derives total calories from active energy, so it is filtered too.
+const EXERCISE_WRITTEN_DAILY_TYPES: ReadonlySet<string> = new Set([
+  'ActiveCaloriesBurned',
+  'TotalCaloriesBurned',
+  'Distance',
+]);
+
+/**
+ * Runs a daily aggregate, and when this app's own written workouts
+ * contributed to it, runs it again limited to the other apps that did, so a
+ * workout logged in Sparky is not read back as device activity and counted
+ * twice. Only once something was written, so nobody who never turned exercise
+ * write-back on sees a changed query. Health Connect has no "exclude" filter,
+ * hence the second pass with the remaining origins.
+ *
+ * An aggregate's `dataOrigins` lists only the apps that contributed after
+ * priority deduplication, so an app whose overlapping data lost to Sparky's is
+ * missing from it. Those apps can only hide inside the windows of Sparky's own
+ * records, so the records there are read to find them.
+ */
+const aggregateWithoutOwnWrites = async <B extends { result: unknown }>(
+  recordType: string,
+  range: { startTime: string; endTime: string },
+  run: (dataOriginFilter?: string[]) => Promise<B[]>
+): Promise<B[]> => {
+  const buckets = await run();
+  if (!EXERCISE_WRITTEN_DAILY_TYPES.has(recordType)) return buckets;
+  const own = getOwnPackageName();
+  if (!own) return buckets;
+  if (
+    (await loadHealthPreference<boolean>(EXERCISE_FILTER_OWN_PREF)) !== true
+  ) {
+    return buckets;
+  }
+  const origins = new Set<string>();
+  for (const bucket of buckets) {
+    const list = (bucket.result as { dataOrigins?: unknown } | null)
+      ?.dataOrigins;
+    if (Array.isArray(list)) {
+      for (const origin of list) {
+        if (typeof origin === 'string') origins.add(origin);
+      }
+    }
+  }
+  if (!origins.has(own)) return buckets;
+  for (const origin of await originsUnderOwnWrites(recordType, range, own)) {
+    origins.add(origin);
+  }
+  origins.delete(own);
+  if (origins.size === 0) return [];
+  return run([...origins]);
+};
+
+// Sparky writes active energy, not total; Health Connect derives the total
+// from it, so the windows of a total come from the active records.
+const OWN_WRITTEN_TYPE: Readonly<Record<string, string>> = {
+  TotalCaloriesBurned: 'ActiveCaloriesBurned',
+};
+const ORIGIN_DISCOVERY_PAGE_LIMIT = 5;
+
+type OriginRecord = {
+  startTime?: string;
+  endTime?: string;
+  metadata?: { dataOrigin?: string };
+};
+
+const readAllPages = async (
+  recordType: string,
+  options: {
+    timeRangeFilter: {
+      operator: 'between';
+      startTime: string;
+      endTime: string;
+    };
+    dataOriginFilter?: string[];
+  }
+): Promise<OriginRecord[]> => {
+  const records: OriginRecord[] = [];
+  let pageToken: string | undefined;
+  for (let page = 0; page < ORIGIN_DISCOVERY_PAGE_LIMIT; page++) {
+    const result = await withClientRecovery(() =>
+      readRecords(
+        recordType as Parameters<typeof readRecords>[0],
+        {
+          ...options,
+          ...(pageToken ? { pageToken } : {}),
+        } as unknown as Parameters<typeof readRecords>[1]
+      )
+    );
+    records.push(...(result.records as OriginRecord[]));
+    pageToken = (result as { pageToken?: string }).pageToken || undefined;
+    if (!pageToken) return records;
+  }
+  // A partial origin list would undercount the day, so it fails like a read.
+  throw new Error(
+    `${recordType} origin discovery exceeded ${ORIGIN_DISCOVERY_PAGE_LIMIT} pages`
+  );
+};
+
+/**
+ * The apps with records of `recordType` overlapping this app's own written
+ * records in the range. A failed or truncated read throws, so the aggregate
+ * fails and the sync retries, instead of reporting a day without them.
+ */
+const originsUnderOwnWrites = async (
+  recordType: string,
+  range: { startTime: string; endTime: string },
+  own: string
+): Promise<Set<string>> => {
+  const found = new Set<string>();
+  const ownRecords = await readAllPages(
+    OWN_WRITTEN_TYPE[recordType] ?? recordType,
+    {
+      timeRangeFilter: { operator: 'between', ...range },
+      dataOriginFilter: [own],
+    }
+  );
+  for (const record of ownRecords) {
+    if (!record.startTime || !record.endTime) continue;
+    const others = await readAllPages(recordType, {
+      timeRangeFilter: {
+        operator: 'between',
+        startTime: record.startTime,
+        endTime: record.endTime,
+      },
+    });
+    for (const other of others) {
+      const origin = other.metadata?.dataOrigin;
+      if (typeof origin === 'string' && origin !== own) found.add(origin);
+    }
+  }
+  return found;
+};
+
 /**
  * Today's stationary path: one aggregateGroupByPeriod call bucketing by
  * device-local calendar days.
@@ -973,19 +1277,25 @@ const aggregateByDeviceZone = async (
   type PeriodBucket = { result: unknown; startTime: string; endTime: string };
   let buckets: PeriodBucket[];
   try {
-    buckets = (await withClientRecovery(() =>
-      aggregateGroupByPeriod({
-        recordType: spec.recordType as Parameters<
-          typeof aggregateGroupByPeriod
-        >[0]['recordType'],
-        timeRangeFilter: {
-          operator: 'between',
-          startTime: startDate.toISOString(),
-          endTime: endDate.toISOString(),
-        },
-        timeRangeSlicer: { period: 'DAYS', length: 1 },
-      })
-    )) as unknown as PeriodBucket[];
+    buckets = await aggregateWithoutOwnWrites(
+      spec.recordType,
+      { startTime: startDate.toISOString(), endTime: endDate.toISOString() },
+      async (dataOriginFilter) =>
+        (await withClientRecovery(() =>
+          aggregateGroupByPeriod({
+            recordType: spec.recordType as Parameters<
+              typeof aggregateGroupByPeriod
+            >[0]['recordType'],
+            timeRangeFilter: {
+              operator: 'between',
+              startTime: startDate.toISOString(),
+              endTime: endDate.toISOString(),
+            },
+            timeRangeSlicer: { period: 'DAYS', length: 1 },
+            ...(dataOriginFilter ? { dataOriginFilter } : {}),
+          })
+        )) as unknown as PeriodBucket[]
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     addLog(
@@ -1040,19 +1350,28 @@ const aggregateByRecordOffsets = async (
     };
     let buckets: DurationBucket[];
     try {
-      buckets = (await withClientRecovery(() =>
-        aggregateGroupByDuration({
-          recordType: spec.recordType as Parameters<
-            typeof aggregateGroupByDuration
-          >[0]['recordType'],
-          timeRangeFilter: {
-            operator: 'between',
-            startTime: new Date(segment.startMs).toISOString(),
-            endTime: new Date(segment.endMs).toISOString(),
-          },
-          timeRangeSlicer: { duration: 'DAYS', length: 1 },
-        })
-      )) as unknown as DurationBucket[];
+      buckets = await aggregateWithoutOwnWrites(
+        spec.recordType,
+        {
+          startTime: new Date(segment.startMs).toISOString(),
+          endTime: new Date(segment.endMs).toISOString(),
+        },
+        async (dataOriginFilter) =>
+          (await withClientRecovery(() =>
+            aggregateGroupByDuration({
+              recordType: spec.recordType as Parameters<
+                typeof aggregateGroupByDuration
+              >[0]['recordType'],
+              timeRangeFilter: {
+                operator: 'between',
+                startTime: new Date(segment.startMs).toISOString(),
+                endTime: new Date(segment.endMs).toISOString(),
+              },
+              timeRangeSlicer: { duration: 'DAYS', length: 1 },
+              ...(dataOriginFilter ? { dataOriginFilter } : {}),
+            })
+          )) as unknown as DurationBucket[]
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       addLog(
@@ -1858,6 +2177,9 @@ export const enrichExerciseSessions = async (
   records: unknown[],
   telemetry: TelemetryRunContext
 ): Promise<unknown[]> => {
+  // Sessions exercise write-back saved from the diary (#1750) are already in
+  // Sparky; drop them before they claim telemetry-budget slots.
+  records = records.filter((r) => !isOwnWrittenExerciseRecord(r));
   if (records.length === 0) return records;
 
   addLog(

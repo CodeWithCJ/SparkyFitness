@@ -1,5 +1,6 @@
 import { instantToDay, isValidTimeZone } from '@workspace/shared';
 import { addLog } from '../LogService';
+import { BODY_WRITEBACK_METADATA_KEY } from '../shared/bodyWriteback';
 import { attachWorkoutTelemetry } from '../shared/workoutTelemetryPayload';
 import {
   TransformedExerciseSession,
@@ -70,6 +71,34 @@ export const isOwnWatchWorkout = (rec: Record<string, unknown>): boolean => {
   const metadata = rec.metadata as Record<string, unknown> | undefined;
   return metadata?.[WATCH_SESSION_METADATA_KEY] !== undefined;
 };
+
+/**
+ * Metadata key exercise write-back (#1750) stamps on every workout and sample
+ * it saves, valued with the diary session's write key. Matched by key rather
+ * than by this app's bundle id, because the dev seed tool also saves workouts
+ * from this app and those must still be imported.
+ */
+export const EXERCISE_WRITEBACK_METADATA_KEY = 'SparkyExerciseWriteback';
+
+/**
+ * True for a workout exercise write-back saved from the diary. Importing it
+ * would file the session it came from a second time.
+ */
+export const isOwnWrittenWorkout = (rec: Record<string, unknown>): boolean => {
+  const metadata = rec.metadata as Record<string, unknown> | undefined;
+  return metadata?.[EXERCISE_WRITEBACK_METADATA_KEY] !== undefined;
+};
+
+/**
+ * True for a sample body measurement write-back (#2465) saved, by its metadata
+ * key; matched by key rather than bundle id for the same reason as workouts.
+ */
+export const isOwnWrittenBodySample = (sample: {
+  metadata?: unknown;
+}): boolean =>
+  (sample.metadata as Record<string, unknown> | undefined)?.[
+    BODY_WRITEBACK_METADATA_KEY
+  ] !== undefined;
 
 /**
  * True for a workout recorded by this app's watch target on its own (the
@@ -713,6 +742,8 @@ const DIRECT_TRANSFORMERS: Record<string, DirectTransformer> = {
     // Written by our own watch app during a live Sparky workout, whose sets
     // are already in the diary. See `isOwnWatchWorkout`.
     if (isOwnWatchWorkout(rec)) return;
+    // Written from the diary by exercise write-back; already in the diary.
+    if (isOwnWrittenWorkout(rec)) return;
 
     const activityType = rec.activityType as number | undefined;
     const baseActivityName = activityType

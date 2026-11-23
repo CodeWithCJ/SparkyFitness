@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   Pressable,
+  type ScrollViewInstance,
 } from 'react-native';
 import { CommonActions, StackActions } from '@react-navigation/native';
 import {
@@ -69,8 +70,8 @@ import {
   resolveSnapshotModality,
 } from '../utils/workoutSession';
 import { formatDateLabel } from '../utils/dateUtils';
+import { createInFlightGuard } from '../utils/duplicatePress';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import type { ExerciseSessionResponse } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
 import type { RootStackScreenProps } from '../types/navigation';
@@ -129,6 +130,31 @@ const StatTile: React.FC<{ label: string; value: string; sub?: string }> = ({
   </View>
 );
 
+function TabSwipeDetector({
+  onSwipe,
+  children,
+}: {
+  onSwipe: (offset: number) => void;
+  children: React.ReactNode;
+}) {
+  const swipeGesture = useMemo(
+    () =>
+      Gesture.Race(
+        Gesture.Fling()
+          .direction(Directions.RIGHT)
+          .hitSlop({ left: -BACK_SWIPE_EDGE_WIDTH })
+          .onEnd(() => onSwipe(-1))
+          .runOnJS(true),
+        Gesture.Fling()
+          .direction(Directions.LEFT)
+          .onEnd(() => onSwipe(1))
+          .runOnJS(true)
+      ),
+    [onSwipe]
+  );
+  return <GestureDetector gesture={swipeGesture}>{children}</GestureDetector>;
+}
+
 const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   navigation,
   route,
@@ -142,7 +168,6 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     route.params;
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const textPrimary = useCSSVariable('--color-text-primary') as string;
   const textMuted = useCSSVariable('--color-text-muted') as string;
@@ -353,7 +378,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<TabKey>('summary');
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
 
   // The image carousel renders on both Summary and How to, so it remounts at
   // page 0 on tab switches; reset the dot index with it.
@@ -394,26 +419,11 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
       ? 'summary'
       : activeTab;
 
-  const swipeGesture = useMemo(() => {
-    const selectAdjacentTab = (offset: number) => {
-      const index = segments.findIndex(
-        (segment) => segment.key === resolvedTab
-      );
-      const target = segments[index + offset];
-      if (target) handleSelectTab(target.key);
-    };
-    return Gesture.Race(
-      Gesture.Fling()
-        .direction(Directions.RIGHT)
-        .hitSlop({ left: -BACK_SWIPE_EDGE_WIDTH })
-        .onEnd(() => selectAdjacentTab(-1))
-        .runOnJS(true),
-      Gesture.Fling()
-        .direction(Directions.LEFT)
-        .onEnd(() => selectAdjacentTab(1))
-        .runOnJS(true)
-    );
-  }, [segments, resolvedTab, handleSelectTab]);
+  const selectAdjacentTab = (offset: number) => {
+    const index = segments.findIndex((segment) => segment.key === resolvedTab);
+    const target = segments[index + offset];
+    if (target) handleSelectTab(target.key);
+  };
 
   const handleImagePageSelected = useCallback(
     (e: { nativeEvent: { position: number } }) => {
@@ -571,15 +581,14 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   // Pre-add preview flow (opened via ⓘ from ExerciseSearch): Add selects this
   // exercise into the form that opened the search. External items (non-UUID
   // id) are imported into the user's library first.
-  const addInFlightRef = useRef(false);
+  const [addGuard] = useState(createInFlightGuard);
   const [isAdding, setIsAdding] = useState(false);
 
   const handleAdd = async () => {
     if (!selectionReturnKey) return;
     // `busy` only disables the button after a re-render; the ref blocks a
     // second tap landing before that.
-    if (addInFlightRef.current) return;
-    addInFlightRef.current = true;
+    if (!addGuard.tryEnter()) return;
     setIsAdding(true);
 
     let selected: Exercise | null = exercise;
@@ -617,7 +626,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
     }
     // No `finally`: the react compiler can't lower it and would bail on the
     // whole component. Every path above falls through to this cleanup.
-    addInFlightRef.current = false;
+    addGuard.leave();
     setIsAdding(false);
   };
 
@@ -697,11 +706,8 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   });
 
   return (
-    <GestureDetector gesture={swipeGesture}>
-      <View
-        className="flex-1 bg-background"
-        style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-      >
+    <TabSwipeDetector onSwipe={selectAdjacentTab}>
+      <View className="flex-1 bg-background">
         {header}
 
         <ScrollView
@@ -1067,7 +1073,7 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
           items={deleteSheetItems}
         />
       </View>
-    </GestureDetector>
+    </TabSwipeDetector>
   );
 };
 

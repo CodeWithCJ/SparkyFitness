@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
@@ -36,6 +36,7 @@ import ZoomableChart from '@/components/ZoomableChart';
 import { List, Clock, Hourglass, Award } from 'lucide-react';
 import { calculateSmartYAxisDomain, getChartConfig } from '@/utils/chartUtils';
 import { FastingLog } from '@/types/fasting';
+import { useIsMounted } from '@/hooks/useIsMounted';
 
 interface FastingReportProps {
   fastingData: FastingLog[];
@@ -52,11 +53,7 @@ const COLORS = ['#6366f1', '#06b6d4', '#f59e0b', '#ef4444'];
 export const FastingReport = ({ fastingData }: FastingReportProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone } = usePreferences();
-  const [isMounted, setIsMounted] = useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   const formatHoursToReadable = (
     value: TooltipValueType | undefined | number

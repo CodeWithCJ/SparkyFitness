@@ -25,7 +25,6 @@ import {
   usePlateInventoryMutations,
 } from '../hooks/usePlateInventory';
 import { addLog } from '../services/LogService';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { barLabel } from '../utils/plateFormat';
 import type { RootStackScreenProps } from '../types/navigation';
 
@@ -489,8 +488,6 @@ const PlateInventoryForm: React.FC<{
 
 const PlateInventoryScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const { preferences } = usePreferences();
   const weightUnit: PlateUnit =
     preferences?.default_weight_unit === 'lbs' ? 'lbs' : 'kg';
@@ -517,10 +514,7 @@ const PlateInventoryScreen: React.FC<Props> = ({ navigation }) => {
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {isLoading ? (
         <StatusView loading />

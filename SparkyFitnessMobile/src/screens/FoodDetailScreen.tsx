@@ -43,7 +43,6 @@ import {
 import { foodDeletionImpactQueryKey, foodsQueryKey } from '../hooks/queryKeys';
 import { getFoodDeletionImpact, updateFood } from '../services/api/foodsApi';
 import { useScreenHeader, type HeaderItem } from '../hooks/useScreenHeader';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import {
   buildExternalVariantOptions,
   buildLocalVariantOptions,
@@ -72,13 +71,14 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
   const { item, updatedItem, updatedSelectedVariantId, updatedBarcode } =
     route.params;
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const [accentColor, textPrimary] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-primary',
   ]) as [string, string];
-  const { isConnected } = useServerConnection();
+  const { isConnected, status } = useServerConnection();
+  // The servings kept on the phone are read while the server is away.
+  const canRead = isConnected || status === 'unreachable';
   const { profile } = useProfile();
   const { preferences } = usePreferences({ enabled: isConnected });
   const showNetCarbs = preferences?.show_net_carbs === true;
@@ -96,7 +96,7 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
     isLoading: isVariantsLoading,
     isError: isVariantsError,
   } = useFoodVariants(food.id, {
-    enabled: isLocalFood && isConnected,
+    enabled: isLocalFood && canRead,
   });
   const canManageFood = !!(
     isLocalFood &&
@@ -251,14 +251,31 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
     return undefined;
   }, [food.customNutrients, food.variantId, selectedVariantId, variants]);
 
-  useEffect(() => {
+  const [syncedItem, setSyncedItem] = useState(item);
+  if (syncedItem !== item) {
+    setSyncedItem(item);
     setFood(item);
-  }, [item]);
+  }
 
+  const [appliedUpdate, setAppliedUpdate] = useState<{
+    item: typeof updatedItem;
+    variantId: typeof updatedSelectedVariantId;
+  } | null>(null);
+  if (!updatedItem) {
+    if (appliedUpdate !== null) setAppliedUpdate(null);
+  } else if (
+    appliedUpdate?.item !== updatedItem ||
+    appliedUpdate.variantId !== updatedSelectedVariantId
+  ) {
+    setAppliedUpdate({
+      item: updatedItem,
+      variantId: updatedSelectedVariantId,
+    });
+    setFood(updatedItem);
+    setSelectedVariantId(updatedSelectedVariantId ?? updatedItem.variantId);
+  }
   useEffect(() => {
     if (updatedItem) {
-      setFood(updatedItem);
-      setSelectedVariantId(updatedSelectedVariantId ?? updatedItem.variantId);
       navigation.setParams({
         updatedItem: undefined,
         updatedSelectedVariantId: undefined,
@@ -266,18 +283,27 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
     }
   }, [updatedItem, updatedSelectedVariantId, navigation]);
 
+  const [appliedBarcode, setAppliedBarcode] = useState<{
+    value: typeof updatedBarcode;
+  } | null>(null);
+  if (updatedBarcode === undefined) {
+    if (appliedBarcode !== null) setAppliedBarcode(null);
+  } else if (
+    appliedBarcode === null ||
+    appliedBarcode.value !== updatedBarcode
+  ) {
+    setAppliedBarcode({ value: updatedBarcode });
+    setFood((prev) => ({ ...prev, barcode: updatedBarcode }));
+  }
   useEffect(() => {
     if (updatedBarcode !== undefined) {
-      setFood((prev) => ({ ...prev, barcode: updatedBarcode }));
       navigation.setParams({ updatedBarcode: undefined });
     }
   }, [updatedBarcode, navigation]);
 
-  useEffect(() => {
-    if (!selectedVariantId && localVariantOptions.length > 0) {
-      setSelectedVariantId(localVariantOptions[0].id);
-    }
-  }, [selectedVariantId, localVariantOptions]);
+  if (!selectedVariantId && localVariantOptions.length > 0) {
+    setSelectedVariantId(localVariantOptions[0].id);
+  }
 
   const {
     buildDeleteOptions,
@@ -625,12 +651,9 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
   };
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
-      <ServerGate>{renderContent()}</ServerGate>
+      <ServerGate offlineCapable>{renderContent()}</ServerGate>
 
       <ActionSheet
         ref={deleteSheetRef}

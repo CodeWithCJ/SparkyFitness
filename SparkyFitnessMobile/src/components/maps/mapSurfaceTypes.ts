@@ -65,8 +65,6 @@ export interface MapSurfaceProps {
   interactive?: boolean;
   /** Shows or hides the MapLibre attribution control. Defaults to true. Apple Maps and Google Maps ignore it. */
   attribution?: boolean;
-  /** Google Maps lite mode only (Android with a key). Apple Maps and MapLibre ignore it. */
-  lite?: boolean;
   showUserLocation?: boolean;
   /** Hides the map itself from screen readers; the wrapper carries the label. */
   hideFromAccessibility?: boolean;

@@ -1,0 +1,346 @@
+{
+  "data": {
+    "gtin14": "00016000228986",
+    "product": {
+      "id": "gtin:00016000228986",
+      "type": "branded",
+      "names": [
+        {
+          "lang": "en",
+          "name": "Dunkaroos Cinnamon Graham Cookie Vanilla Frosting 12 Count",
+          "source": "fdc_branded description (as labelled)"
+        }
+      ],
+      "group": "sweets_desserts",
+      "gtin": "00016000228986",
+      "gtin_published": "00016000228986",
+      "gtin_derivation": "as published",
+      "brand": "GENERAL MILLS SALES INC.",
+      "brand_name": "DunkAroos",
+      "subbrand_name": "",
+      "market": "United States",
+      "category": "Biscuits/Cookies",
+      "ingredients": "Vanilla Frosting with Rainbow Chips: Sugar, High Fructose Corn Syrup, Palm Oil, Corn Starch, Water, Salt, Monoglycerides, Polysorbate 60, Nonfat Dry Milk, Whey Powder, Sodium Acid Pyrophosphate, Sodium Stearoyl Lactylate, Natural and Artificial Flavor, Color (yellow 6 lake, blue 1 lake, yellow 5 lake, blue 2 lake, red 40 lake, yellow 5, yellow 6), Soy Lecithin, Maltodextrin, Citric Acid. Freshness preserved by Potassium Sorbate. Cinnamon Graham Cookies: Graham Flour, Enriched Flour (wheat flour, niacin, reduced iron, thiamin mononitrate, riboflavin, folic acid), Sugar, Palm Oil, Cinnamon, Invert Sugar, Molasses, Honey, Salt, Sodium Bicarbonate.",
+      "basis": "100 g",
+      "nutrients": {
+        "energy_kcal": 429,
+        "energy_kj": null,
+        "protein_g": 2.38,
+        "fat_g": 14.29,
+        "carbohydrate_g": 71.43,
+        "fiber_g": 2.4,
+        "sugars_g": 45.24,
+        "saturated_fat_g": 7.14,
+        "sodium_mg": 357,
+        "water_g": null,
+        "alcohol_g": null,
+        "added_sugars_g": 42.9,
+        "trans_fat_g": 0,
+        "mufa_g": null,
+        "pufa_g": null,
+        "cholesterol_mg": 0,
+        "potassium_mg": 0,
+        "calcium_mg": 0,
+        "iron_mg": 1.19
+      },
+      "units": {
+        "energy_kcal": "kcal",
+        "energy_kj": "kJ",
+        "protein_g": "g",
+        "fat_g": "g",
+        "carbohydrate_g": "g",
+        "fiber_g": "g",
+        "sugars_g": "g",
+        "saturated_fat_g": "g",
+        "sodium_mg": "mg",
+        "water_g": "g",
+        "alcohol_g": "g",
+        "added_sugars_g": "g",
+        "trans_fat_g": "g",
+        "mufa_g": "g",
+        "pufa_g": "g",
+        "cholesterol_mg": "mg",
+        "potassium_mg": "mg",
+        "calcium_mg": "mg",
+        "iron_mg": "mg"
+      },
+      "portions": [
+        {
+          "description": "1 serving (1 tray with frosting) = 42 GRM",
+          "grams": 42,
+          "source": "fdc_branded 2739214 label serving size"
+        }
+      ],
+      "primary_portion": {
+        "description": "1 serving (1 tray with frosting) = 42 GRM",
+        "grams": 42,
+        "source": "fdc_branded 2739214 label serving size"
+      },
+      "package_weight": "18 ONZ",
+      "dates": {
+        "available": "2025-07-24",
+        "modified": "2025-06-20",
+        "publication": "2025-07-24",
+        "discontinued": ""
+      },
+      "source": {
+        "dataset": "fdc_branded",
+        "record_id": "2739214",
+        "url": "https://fdc.nal.usda.gov/food-details/2739214/nutrients",
+        "retrieved": "2026-10-10",
+        "data_source": "GDSN",
+        "selection": "top_ranked",
+        "n_records": 2,
+        "source_records": [
+          {
+            "fdc_id": "2739214",
+            "rank": 1,
+            "role": "canonical",
+            "data_source": "GDSN",
+            "available_date": "2025-07-24",
+            "discontinued_date": "",
+            "failed_checks": []
+          },
+          {
+            "fdc_id": "2734636",
+            "rank": 2,
+            "role": "superseded",
+            "data_source": "GDSN",
+            "available_date": "2025-06-19",
+            "discontinued_date": "",
+            "failed_checks": []
+          }
+        ]
+      },
+      "mapping": {
+        "type": "source",
+        "sources": [
+          {
+            "dataset": "fdc_branded",
+            "id": "2739214"
+          }
+        ]
+      },
+      "missing": ["energy_kj", "water_g", "alcohol_g", "mufa_g", "pufa_g"],
+      "flags": [],
+      "provenance": {
+        "nutrients": {
+          "energy_kcal": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1008",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "protein_g": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1003",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "fat_g": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1004",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "carbohydrate_g": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1005",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "fiber_g": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1079",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "sugars_g": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "2000",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "saturated_fat_g": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1258",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "sodium_mg": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1093",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "added_sugars_g": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1235",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "trans_fat_g": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1257",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "cholesterol_mg": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1253",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "potassium_mg": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1092",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "calcium_mg": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1087",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          },
+          "iron_mg": {
+            "dataset": "fdc_branded",
+            "id": "2739214",
+            "source_nutrient_id": "1089",
+            "retrieved": "2026-10-10",
+            "method": "copied from source (per 100 g or 100 ml as the label basis)"
+          }
+        }
+      }
+    }
+  },
+  "meta": {
+    "request_id": "req_bebc0cd38ecef0f91f",
+    "api_version": "1",
+    "dataset": "food",
+    "dataset_version": "1.0.0",
+    "dataset_built_at": "2026-10-10T17:56:11Z",
+    "data_status": "released",
+    "sources": [
+      {
+        "id": "ah102",
+        "name": "USDA Agriculture Handbook No. 102, Food Yields Summarized by Different Stages of Preparation (1975)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/Classics/ah102.pdf",
+        "licence": "U.S. Government work (USDA), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "1975 (scanned PDF, ARS Classics)",
+        "attribution": "Matthews RH, Garrison YJ. Food Yields Summarized by Different Stages of Preparation. Agriculture Handbook No. 102, USDA, 1975."
+      },
+      {
+        "id": "ciqual",
+        "name": "ANSES-CIQUAL French food composition table 2025 (English edition)",
+        "url": "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202025_ENG_2025_11_03.xlsx",
+        "licence": "Licence Ouverte / Open Licence (Etalab). Reuse allowed, including commercial, on condition that the data are not altered, their meaning is not distorted, the source and version date are cited, and no ANSES endorsement is implied. No share-alike.",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2025 (file dated 2025-11-03)",
+        "attribution": "Anses. 2025. Ciqual French food composition table."
+      },
+      {
+        "id": "ciqual_fr",
+        "name": "ANSES-CIQUAL Table de composition nutritionnelle des aliments 2025 (French edition; used for official French names only)",
+        "url": "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202025_FR_2025_11_03.xlsx",
+        "licence": "Licence Ouverte / Open Licence (Etalab), same terms as the English edition.",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2025 (file dated 2025-11-03)",
+        "attribution": "Anses. 2025. Table de composition nutritionnelle des aliments Ciqual."
+      },
+      {
+        "id": "cooking_yields_meat",
+        "name": "USDA Table of Cooking Yields for Meat and Poultry (2014)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/retn/USDA_CookingYields_MeatPoultry.pdf",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2014",
+        "attribution": "USDA ARS Nutrient Data Laboratory. USDA Table of Cooking Yields for Meat and Poultry, 2014."
+      },
+      {
+        "id": "fdc_branded",
+        "name": "USDA FoodData Central - Branded Foods (Global Branded Food Products Database)",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_branded_food_csv_2026-04-30.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2026-04-30",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Branded Foods 2026-04-30 (data provided by GS1 US/1WorldSync/Label Insight/NielsenIQ/Euromonitor partners via the Global Branded Food Products Database)."
+      },
+      {
+        "id": "fdc_foundation",
+        "name": "USDA FoodData Central - Foundation Foods",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_foundation_food_csv_2026-04-30.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central data are public domain, published under CC0)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2026-04-30",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Foundation Foods 2026-04-30. fdc.nal.usda.gov"
+      },
+      {
+        "id": "fdc_sr_legacy",
+        "name": "USDA FoodData Central - SR Legacy",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_sr_legacy_food_csv_2018-04.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2018-04",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, SR Legacy 2018-04."
+      },
+      {
+        "id": "fdc_survey",
+        "name": "USDA FoodData Central - Survey (FNDDS 2021-2023)",
+        "url": "https://fdc.nal.usda.gov/fdc-datasets/FoodData_Central_survey_food_csv_2024-10-31.zip",
+        "licence": "CC0 1.0 Universal (USDA FoodData Central)",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2024-10-31",
+        "attribution": "U.S. Department of Agriculture, Agricultural Research Service. FoodData Central, Survey Foods (FNDDS 2021-2023), 2024-10-31."
+      },
+      {
+        "id": "fndds_ingredients",
+        "name": "USDA ARS 2021-2023 FNDDS At A Glance - FNDDS Ingredients (recipes, moisture change)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400530/apps/2021-2023%20FNDDS%20At%20A%20Glance%20-%20FNDDS%20Ingredients.xlsx",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "2021-2023",
+        "attribution": "USDA ARS Food Surveys Research Group. FNDDS 2021-2023."
+      },
+      {
+        "id": "retn06",
+        "name": "USDA Table of Nutrient Retention Factors, Release 6 (2007)",
+        "url": "https://www.ars.usda.gov/ARSUserFiles/80400525/Data/retn/retn06.txt",
+        "licence": "U.S. Government work (USDA ARS), public domain in the United States",
+        "commercial_redistribution_ok": true,
+        "retrieved": "2026-10-10",
+        "version": "Release 6 (2007)",
+        "attribution": "USDA ARS Nutrient Data Laboratory. USDA Table of Nutrient Retention Factors, Release 6, 2007."
+      }
+    ],
+    "provenance_note": "Every value carries provenance (source, id or URL, retrieval date; method and confidence where an AI judged). Calculations list their inputs and method.",
+    "disclaimer": "Nutrition reference data. Not medical or dietary advice.",
+    "demo": true,
+    "demo_kind": "sample",
+    "demo_note": "Demo answer: a sample request from the site, answered by the real endpoint on the current data. Not metered and limited per IP address. For any other input, send your API key (X-API-Key) to the same path without /demo; a free key takes a minute.",
+    "usage": null
+  }
+}

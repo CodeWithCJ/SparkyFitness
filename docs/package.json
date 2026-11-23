@@ -9,8 +9,8 @@
     "preview": "vitepress preview"
   },
   "devDependencies": {
-    "@types/node": "^22.13.10",
+    "@types/node": "^26.6.6",
     "vitepress": "^1.6.3",
-    "vue": "^3.5.13"
+    "vue": "^3.5.45"
   }
 }

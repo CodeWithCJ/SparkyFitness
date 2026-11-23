@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, Platform } from 'react-native';
+import { View } from 'react-native';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CommonActions } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { getFoodPortionUnit, parseNamedFoodPortion } from '@workspace/shared';
@@ -13,7 +12,7 @@ import {
 } from '../../utils/namedFoodPortions';
 import FoodForm, { type FoodFormData } from '../../components/FoodForm';
 import FoodImagePicker from '../../components/FoodImagePicker';
-import Button from '../../components/ui/Button';
+import { ScanNutritionLabelButton } from './ScanNutritionLabelButton';
 import { usableFoodImages } from '../../utils/foodImages';
 import {
   pickerImagesDiffer,
@@ -128,7 +127,6 @@ export function EditFoodMode({
   const { item, initialValues, returnKey, foodId, variantId, customNutrients } =
     params;
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -180,15 +178,18 @@ export function EditFoodMode({
   // the fallback selection lands without AI provenance. When the server-backed
   // variants resolve, swap in the matching saved variant so the inline AI
   // badge surfaces on first render (not only after switching units and back).
-  useEffect(() => {
-    if (savedUnitVariants.length === 0) return;
-    setPendingUnitSelection((prev) => {
-      if (!prev || prev.kind !== 'existing' || !prev.variant.id) return prev;
-      const match = savedUnitVariants.find((v) => v.id === prev.variant.id);
-      if (!match || match === prev.variant) return prev;
-      return { ...prev, variant: match };
-    });
-  }, [savedUnitVariants]);
+  if (
+    savedUnitVariants.length > 0 &&
+    pendingUnitSelection?.kind === 'existing' &&
+    pendingUnitSelection.variant.id
+  ) {
+    const match = savedUnitVariants.find(
+      (v) => v.id === pendingUnitSelection.variant.id
+    );
+    if (match && match !== pendingUnitSelection.variant) {
+      setPendingUnitSelection({ ...pendingUnitSelection, variant: match });
+    }
+  }
   const [currentVariantId, setCurrentVariantId] = useState(variantId);
   const [variantBaselineValues, setVariantBaselineValues] = useState<
     Partial<FoodFormData>
@@ -828,6 +829,7 @@ export function EditFoodMode({
   const submitRequestRef = useRef<(() => void) | null>(null);
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: t('foodForm.editTitle', { defaultValue: 'Edit Food' }),
     left: {
       kind: 'dismiss',
@@ -848,10 +850,7 @@ export function EditFoodMode({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <FoodForm
@@ -868,21 +867,11 @@ export function EditFoodMode({
         hideSubmitButton={usesNativeHeader}
         headerChildren={
           <View className="mb-4">
-            <Button
-              variant="secondary"
+            <ScanNutritionLabelButton
+              navigation={navigation}
+              returnKey={routeKey}
               disabled={isSubmitting}
-              className="mb-4"
-              onPress={() =>
-                navigation.navigate('FoodScan', {
-                  mode: 'capture-label',
-                  returnKey: routeKey,
-                })
-              }
-            >
-              {t('foodForm.scanNutritionLabel', {
-                defaultValue: 'Scan nutrition label',
-              })}
-            </Button>
+            />
             <FoodImagePicker
               items={pickerImages}
               onItemsChange={setPickerImages}

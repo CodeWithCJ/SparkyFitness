@@ -1,8 +1,33 @@
 import {
+  extractHost,
   normalizeUrl,
   isPrivateOrLocalHost,
   getInsecureUrlError,
 } from '../../src/utils/serverUrl';
+
+describe('extractHost', () => {
+  test.each([
+    ['https://Fit.Example.com:8443/app?x=1#top', 'fit.example.com'],
+    ['https://user:pass@fit.example.com/path', 'fit.example.com'],
+    ['https://fit.example.com.', 'fit.example.com'],
+    ['fit.example.com/path', 'fit.example.com'],
+    ['http://[::1]:3000/x', '::1'],
+    ['https://192.168.1.5:8443', '192.168.1.5'],
+    ['https://192.168.1.5:8443/fitness', '192.168.1.5'],
+    ['https://example.com/fitness/app/', 'example.com'],
+    ['https://example.com:8443/fitness?x=1#top', 'example.com'],
+    ['', ''],
+  ])('%s -> %s', (url, host) => {
+    expect(extractHost(url)).toBe(host);
+  });
+
+  test('a backslash ends the host, as the network code reads it', () => {
+    // OkHttp and URLSession read the backslash as a slash and connect to
+    // a.com, so the app must not decide the host is b.com.
+    expect(extractHost('https://a.com\\@b.com')).toBe('a.com');
+    expect(extractHost('https://a.com\\path')).toBe('a.com');
+  });
+});
 
 describe('normalizeUrl', () => {
   test('trims whitespace and trailing slashes', () => {

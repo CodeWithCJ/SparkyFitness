@@ -1,9 +1,6 @@
 package com.sparkyapps.sparkyfitness.wear
 
 import android.content.Context
-import android.media.AudioManager
-import android.os.SystemClock
-import android.view.KeyEvent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -21,9 +18,18 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PhoneAndroid
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Watch
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,6 +52,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,9 +63,12 @@ import androidx.wear.compose.foundation.lazy.ScalingLazyListState
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.CircularProgressIndicator
+import androidx.wear.compose.material.Icon
 import androidx.wear.compose.material.Text
+import com.SparkyApps.SparkyFitnessMobile.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.max
@@ -152,7 +162,7 @@ fun GoalsSummaryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
   ) {
     item {
       Text(
-        text = "Today's Goals",
+        text = stringResource(R.string.goals_title),
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = SparkyColors.Green,
@@ -163,7 +173,7 @@ fun GoalsSummaryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
     val snap = nutrition
     if (snap == null) {
       item {
-        EmptyStateCard("Open SparkyFitness on your phone to sync today's nutrition goals.")
+        EmptyStateCard(stringResource(R.string.goals_open_phone_to_sync))
       }
     } else {
       val energy = EnergyDisplay.of(watchContext)
@@ -200,7 +210,11 @@ fun GoalsSummaryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
           }
           Spacer(Modifier.height(6.dp))
           Text(
-            text = if (remainingInt >= 0) "$remainingInt ${energy.unit} left" else "${abs(remainingInt)} ${energy.unit} over",
+            text = if (remainingInt >= 0) {
+              stringResource(R.string.goals_energy_left, remainingInt, energy.unit)
+            } else {
+              stringResource(R.string.goals_energy_over, abs(remainingInt), energy.unit)
+            },
             fontSize = 11.sp,
             color = if (remainingInt >= 0) SparkyColors.Muted else SparkyColors.Amber
           )
@@ -220,13 +234,13 @@ fun GoalsSummaryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
         }
       } else {
         item {
-          MacroBarRow("Protein", snap.protein.consumed.roundToInt(), snap.protein.goal.roundToInt(), "g", SparkyColors.Cyan)
+          MacroBarRow(stringResource(R.string.common_protein), snap.protein.consumed.roundToInt(), snap.protein.goal.roundToInt(), "g", SparkyColors.Cyan)
         }
         item {
-          MacroBarRow("Carbs", snap.carbs.consumed.roundToInt(), snap.carbs.goal.roundToInt(), "g", SparkyColors.Amber)
+          MacroBarRow(stringResource(R.string.common_carbs), snap.carbs.consumed.roundToInt(), snap.carbs.goal.roundToInt(), "g", SparkyColors.Amber)
         }
         item {
-          MacroBarRow("Fat", snap.fat.consumed.roundToInt(), snap.fat.goal.roundToInt(), "g", SparkyColors.Rose)
+          MacroBarRow(stringResource(R.string.common_fat), snap.fat.consumed.roundToInt(), snap.fat.goal.roundToInt(), "g", SparkyColors.Rose)
         }
       }
     }
@@ -310,10 +324,12 @@ fun WaterPage(store: CheckInStore, isCurrentPage: Boolean = true) {
   }
 
   val snap = water
+  val defaultGlassName = stringResource(R.string.water_default_glass)
+  val defaultBottleName = stringResource(R.string.water_default_bottle)
   val effectiveContainers = containers.ifEmpty {
     listOf(
-      WaterContainer(id = 1, name = "Glass", servingVolumeMl = 250.0, unit = "ml"),
-      WaterContainer(id = 2, name = "Bottle", servingVolumeMl = 500.0, unit = "ml")
+      WaterContainer(id = 1, name = defaultGlassName, servingVolumeMl = 250.0, unit = "ml"),
+      WaterContainer(id = 2, name = defaultBottleName, servingVolumeMl = 500.0, unit = "ml")
     )
   }
 
@@ -333,7 +349,7 @@ fun WaterPage(store: CheckInStore, isCurrentPage: Boolean = true) {
         modifier = Modifier.padding(bottom = 6.dp)
       ) {
         Text(
-          text = "Hydration",
+          text = stringResource(R.string.water_title),
           fontSize = 13.sp,
           fontWeight = FontWeight.SemiBold,
           color = SparkyColors.Cyan
@@ -391,7 +407,7 @@ fun WaterPage(store: CheckInStore, isCurrentPage: Boolean = true) {
         if (fromFoodMl != null && fromFoodMl > 0.5) {
           Spacer(Modifier.height(3.dp))
           Text(
-            text = "Includes ${watchCtx.formattedWater(fromFoodMl)} from food",
+            text = stringResource(R.string.water_includes_from_food, watchCtx.formattedWater(fromFoodMl)),
             fontSize = 9.sp,
             color = SparkyColors.Muted
           )
@@ -400,7 +416,7 @@ fun WaterPage(store: CheckInStore, isCurrentPage: Boolean = true) {
         if (waterSyncState == SyncState.FAILED) {
           Spacer(Modifier.height(3.dp))
           Text(
-            text = "Sync failed • Tap to retry",
+            text = stringResource(R.string.water_sync_failed),
             fontSize = 10.sp,
             color = SparkyColors.Rose,
             modifier = Modifier.clickable { store.retryFailedWaterTaps() }
@@ -408,7 +424,7 @@ fun WaterPage(store: CheckInStore, isCurrentPage: Boolean = true) {
         } else if (queuedMl > 0.5) {
           Spacer(Modifier.height(3.dp))
           Text(
-            text = "+${watchCtx.formattedWater(queuedMl)} syncing…",
+            text = stringResource(R.string.water_syncing_amount, watchCtx.formattedWater(queuedMl)),
             fontSize = 9.sp,
             color = SparkyColors.Amber
           )
@@ -453,13 +469,13 @@ fun WaterPage(store: CheckInStore, isCurrentPage: Boolean = true) {
           horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
           SmallPillButton(
-            label = "Log (${logEntries.size})",
+            label = stringResource(R.string.water_log_count, logEntries.size),
             color = SparkyColors.CardBg,
             textColor = SparkyColors.Cyan,
             onClick = { showLogSheet = true }
           )
           SmallPillButton(
-            label = "Undo Last",
+            label = stringResource(R.string.water_undo_last),
             color = SparkyColors.CardBg,
             textColor = SparkyColors.Muted,
             onClick = { store.deleteLastWaterEntry() }
@@ -490,7 +506,7 @@ private fun WaterLogView(
       horizontalAlignment = Alignment.CenterHorizontally,
       verticalArrangement = Arrangement.Center
     ) {
-      Text("Remove Drink?", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+      Text(stringResource(R.string.water_remove_drink_title), fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
       Spacer(Modifier.height(4.dp))
       Text(
         text = "${pendingDelete.name} (${watchCtx.formattedWater(pendingDelete.volumeMl)})",
@@ -500,10 +516,10 @@ private fun WaterLogView(
       )
       Spacer(Modifier.height(10.dp))
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        SmallPillButton("No", SparkyColors.CardBg, SparkyColors.Muted) {
+        SmallPillButton(stringResource(R.string.common_no), SparkyColors.CardBg, SparkyColors.Muted) {
           confirmEntry = null
         }
-        SmallPillButton("Yes", SparkyColors.Rose, Color.White) {
+        SmallPillButton(stringResource(R.string.common_yes), SparkyColors.Rose, Color.White) {
           onDelete(pendingDelete)
           confirmEntry = null
         }
@@ -524,7 +540,7 @@ private fun WaterLogView(
   ) {
     item {
       Text(
-        text = "Today's Drinks",
+        text = stringResource(R.string.water_todays_drinks_title),
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold,
         color = SparkyColors.Cyan,
@@ -532,11 +548,11 @@ private fun WaterLogView(
       )
     }
     item {
-      SmallPillButton("Done", SparkyColors.CardBg, Color.White, onClose)
+      SmallPillButton(stringResource(R.string.common_done), SparkyColors.CardBg, Color.White, onClose)
     }
     if (entries.isEmpty()) {
       item {
-        EmptyStateCard("No drinks logged today.")
+        EmptyStateCard(stringResource(R.string.water_no_drinks_logged))
       }
     } else {
       items(entries.reversed(), key = { it.id }) { entry ->
@@ -596,7 +612,11 @@ fun MedicationListPage(store: CheckInStore, isCurrentPage: Boolean = true) {
     item {
       val taken = doses.count { it.status == MedicationDoseStatus.TAKEN }
       Text(
-        text = if (doses.isEmpty()) "Medications" else "Meds ($taken/${doses.size})",
+        text = if (doses.isEmpty()) {
+          stringResource(R.string.meds_title_empty)
+        } else {
+          stringResource(R.string.meds_title_count, taken, doses.size)
+        },
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = SparkyColors.Purple,
@@ -606,7 +626,7 @@ fun MedicationListPage(store: CheckInStore, isCurrentPage: Boolean = true) {
 
     if (doses.isEmpty()) {
       item {
-        EmptyStateCard("No medications scheduled for today.")
+        EmptyStateCard(stringResource(R.string.meds_none_scheduled))
       }
     } else {
       items(doses, key = { it.id }) { dose ->
@@ -674,7 +694,11 @@ fun WeightEntryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
   if (showKeypadFor != null) {
     val mode = showKeypadFor!!
     WatchKeypadSheet(
-      title = if (mode == "weight") "Weight (${unit.suffix})" else "Body Fat %",
+      title = if (mode == "weight") {
+        stringResource(R.string.weight_keypad_title, unit.suffix)
+      } else {
+        stringResource(R.string.weight_body_fat_title)
+      },
       initialValue = if (mode == "weight") draftWeight else draftBodyFat,
       allowDecimal = true,
       onConfirm = { v ->
@@ -711,7 +735,7 @@ fun WeightEntryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
       verticalArrangement = Arrangement.Center
     ) {
       Text(
-        text = "Body Fat %",
+        text = stringResource(R.string.weight_body_fat_title),
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
         color = SparkyColors.Cyan
@@ -736,7 +760,7 @@ fun WeightEntryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
             color = Color.White
           )
           Text(
-            text = "TAP TO TYPE",
+            text = stringResource(R.string.weight_tap_to_type),
             fontSize = 8.sp,
             color = SparkyColors.Muted
           )
@@ -748,11 +772,11 @@ fun WeightEntryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
       }
       Spacer(Modifier.height(8.dp))
       Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        SmallPillButton("Skip", SparkyColors.CardBg, SparkyColors.Muted) {
+        SmallPillButton(stringResource(R.string.common_skip), SparkyColors.CardBg, SparkyColors.Muted) {
           editingBodyFat = false
           store.saveWeight(includeBodyFat = false)
         }
-        SmallPillButton("Save", SparkyColors.Green, Color.Black) {
+        SmallPillButton(stringResource(R.string.common_save), SparkyColors.Green, Color.Black) {
           editingBodyFat = false
           store.saveWeight(includeBodyFat = true)
         }
@@ -764,8 +788,8 @@ fun WeightEntryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
   val delta = store.deltaFromLatest
   val implausible = store.isWeightDeltaImplausible
   val deltaText = when {
-    history.isEmpty() -> "No prior weight"
-    delta == null || abs(delta) < 0.05 -> "Same as last"
+    history.isEmpty() -> stringResource(R.string.weight_no_prior)
+    delta == null || abs(delta) < 0.05 -> stringResource(R.string.weight_same_as_last)
     delta > 0 -> String.format(Locale.US, "+%.1f %s", delta, unit.suffix)
     else -> String.format(Locale.US, "%.1f %s", delta, unit.suffix)
   }
@@ -782,7 +806,7 @@ fun WeightEntryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
     verticalArrangement = Arrangement.Center
   ) {
     Text(
-      text = "Weight Check-In",
+      text = stringResource(R.string.weight_title),
       fontSize = 12.sp,
       fontWeight = FontWeight.SemiBold,
       color = SparkyColors.Green
@@ -829,25 +853,29 @@ fun WeightEntryPage(store: CheckInStore, isCurrentPage: Boolean = true) {
 
     Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
       if (history.isEmpty()) {
-        SmallPillButton("Set Start", SparkyColors.CardBg, SparkyColors.Muted) {
+        SmallPillButton(stringResource(R.string.weight_set_start), SparkyColors.CardBg, SparkyColors.Muted) {
           showFirstRun = true
         }
       } else {
         SmallPillButton(
-          label = if (hasBodyFatSeed) String.format(Locale.US, "BF %.1f%%", draftBodyFat) else "+BF%",
+          label = if (hasBodyFatSeed) {
+            stringResource(R.string.weight_bf_short, draftBodyFat)
+          } else {
+            stringResource(R.string.weight_add_bf)
+          },
           color = SparkyColors.CardBg,
           textColor = SparkyColors.Cyan,
           onClick = { editingBodyFat = true }
         )
       }
       val saveLabel = when {
-        syncState == SyncState.QUEUED -> "Queued ✓"
-        syncState == SyncState.FAILED -> "Retry"
+        syncState == SyncState.QUEUED -> stringResource(R.string.weight_queued)
+        syncState == SyncState.FAILED -> stringResource(R.string.common_retry)
         implausible && delta != null -> {
           val sign = if (delta > 0) "+" else ""
-          String.format(Locale.US, "Save %s%.1f", sign, delta)
+          stringResource(R.string.weight_save_delta, sign, delta)
         }
-        else -> "Save"
+        else -> stringResource(R.string.common_save)
       }
       SmallPillButton(
         label = saveLabel,
@@ -864,6 +892,8 @@ fun WatchKeypadSheet(
   title: String,
   initialValue: Double,
   allowDecimal: Boolean,
+  allowNegative: Boolean = false,
+  allowZero: Boolean = false,
   onConfirm: (Double) -> Unit,
   onCancel: () -> Unit
 ) {
@@ -878,7 +908,7 @@ fun WatchKeypadSheet(
     modifier = Modifier
       .fillMaxSize()
       .background(Color.Black)
-      .padding(horizontal = 10.dp, vertical = 8.dp),
+      .padding(horizontal = 10.dp, vertical = 18.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.SpaceBetween
   ) {
@@ -887,6 +917,20 @@ fun WatchKeypadSheet(
       verticalAlignment = Alignment.CenterVertically,
       horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+      if (allowNegative) {
+        Box(
+          modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(SparkyColors.CardBg)
+            .clickable {
+              text = if (text.startsWith("-")) text.removePrefix("-") else "-$text"
+              Haptics.click()
+            }
+            .padding(horizontal = 6.dp, vertical = 2.dp)
+        ) {
+          Text("±", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+        }
+      }
       Text(
         text = text.ifEmpty { "0" },
         fontSize = 18.sp,
@@ -928,11 +972,17 @@ fun WatchKeypadSheet(
                   when (key) {
                     "✓" -> {
                       val parsed = text.toDoubleOrNull()
-                      if (parsed != null && parsed > 0) onConfirm(parsed) else onCancel()
+                      val valid = when {
+                        parsed == null -> false
+                        allowNegative -> true
+                        allowZero -> parsed >= 0.0
+                        else -> parsed > 0.0
+                      }
+                      if (valid && parsed != null) onConfirm(parsed) else onCancel()
                     }
                     "C" -> text = ""
-                    "." -> if (!text.contains(".")) text += "."
-                    else -> if (text.length < 6) text += key
+                    "." -> if (!text.contains(".")) text += if (text.isEmpty() || text == "-") "0." else "."
+                    else -> if (text.length < 7) text += key
                   }
                 },
               contentAlignment = Alignment.Center
@@ -950,7 +1000,7 @@ fun WatchKeypadSheet(
     }
 
     Text(
-      text = "Cancel",
+      text = stringResource(R.string.common_cancel),
       fontSize = 10.sp,
       color = SparkyColors.Muted,
       modifier = Modifier.clickable { onCancel() }
@@ -979,7 +1029,7 @@ private fun FirstRunWeightOverlay(
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center
   ) {
-    Text("Starting Weight", fontSize = 12.sp, color = SparkyColors.Green)
+    Text(stringResource(R.string.weight_starting_title), fontSize = 12.sp, color = SparkyColors.Green)
     Spacer(Modifier.height(4.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
       WeightUnit.entries.forEach { u ->
@@ -1007,8 +1057,8 @@ private fun FirstRunWeightOverlay(
     }
     Spacer(Modifier.height(8.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-      SmallPillButton("Cancel", SparkyColors.CardBg, SparkyColors.Muted, onCancel)
-      SmallPillButton("Done", SparkyColors.Green, Color.Black) { onApply(value, unit) }
+      SmallPillButton(stringResource(R.string.common_cancel), SparkyColors.CardBg, SparkyColors.Muted, onCancel)
+      SmallPillButton(stringResource(R.string.common_done), SparkyColors.Green, Color.Black) { onApply(value, unit) }
     }
   }
 }
@@ -1046,7 +1096,11 @@ fun TrendChartPage(store: CheckInStore, isCurrentPage: Boolean = true) {
         }
     ) {
       Text(
-        text = if (showBodyFat && canShowBf) "Body Fat Trend" else "Weight Trend",
+        text = if (showBodyFat && canShowBf) {
+          stringResource(R.string.trend_body_fat_title)
+        } else {
+          stringResource(R.string.trend_weight_title)
+        },
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = if (showBodyFat && canShowBf) SparkyColors.Cyan else SparkyColors.Green
@@ -1102,9 +1156,8 @@ fun TrendChartPage(store: CheckInStore, isCurrentPage: Boolean = true) {
       Spacer(Modifier.height(6.dp))
       val sign = if (totalDelta > 0) "+" else ""
       Text(
-        text = String.format(
-          Locale.US,
-          "Last %d: %s%.1f%% (%.1f–%.1f%%)",
+        text = stringResource(
+          R.string.trend_bf_summary,
           values.size,
           sign,
           totalDelta,
@@ -1116,7 +1169,7 @@ fun TrendChartPage(store: CheckInStore, isCurrentPage: Boolean = true) {
         textAlign = TextAlign.Center
       )
     } else if (history.size < 2) {
-      EmptyStateCard("Log at least 2 weight check-ins to see your trend chart.")
+      EmptyStateCard(stringResource(R.string.trend_empty_state))
     } else {
       val samples = history.takeLast(14)
       val values = samples.map { unit.fromKg(it.weightKg) }
@@ -1187,9 +1240,8 @@ fun TrendChartPage(store: CheckInStore, isCurrentPage: Boolean = true) {
       Spacer(Modifier.height(6.dp))
       val sign = if (totalDelta > 0) "+" else ""
       Text(
-        text = String.format(
-          Locale.US,
-          "Last %d: %s%.1f %s (%.1f–%.1f)",
+        text = stringResource(
+          R.string.trend_weight_summary,
           values.size,
           sign,
           totalDelta,
@@ -1206,75 +1258,232 @@ fun TrendChartPage(store: CheckInStore, isCurrentPage: Boolean = true) {
 }
 
 @Composable
-fun NowPlayingPage(isCurrentPage: Boolean = true) {
-  val context = LocalContext.current
-  val audioManager = remember(context) {
-    context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
+fun NowPlayingPage(store: MediaControlStore, isCurrentPage: Boolean = true) {
+  val phoneMedia by store.phoneMedia.collectAsState()
+  val phoneReachable by store.phoneReachable.collectAsState()
+  val manualTarget by store.manualTarget.collectAsState()
+  val watchPlaying by store.watchPlaying.collectAsState()
+  val watchVolume by store.watchVolume.collectAsState()
+  val watchMaxVolume by store.watchMaxVolume.collectAsState()
+
+  DisposableEffect(isCurrentPage) {
+    store.setPageVisible(isCurrentPage)
+    onDispose {
+      if (isCurrentPage) {
+        store.setPageVisible(false)
+      }
+    }
   }
 
-  fun sendMediaKey(keyCode: Int) {
-    val am = audioManager ?: return
-    try {
-      val now = SystemClock.uptimeMillis()
-      am.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0))
-      am.dispatchMediaKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0))
-      Haptics.click()
-    } catch (_: Throwable) {}
+  val target = MediaControlLogic.resolveEffectiveTarget(
+    manualTarget = manualTarget,
+    phoneReachable = phoneReachable,
+    watchMusicActive = watchPlaying,
+    phoneMedia = phoneMedia
+  )
+  val isPhoneTarget = target == MediaTarget.PHONE
+  val isPlaying = if (isPhoneTarget) phoneMedia?.isPlaying == true else watchPlaying
+  val volumePercent = if (isPhoneTarget) {
+    phoneMedia?.volumePercent
+  } else if (watchMaxVolume > 0) {
+    ((watchVolume.coerceIn(0, watchMaxVolume) * 100f) / watchMaxVolume).roundToInt()
+  } else {
+    null
   }
 
-  fun adjustVolume(direction: Int) {
-    val am = audioManager ?: return
-    try {
-      am.adjustStreamVolume(
-        AudioManager.STREAM_MUSIC,
-        if (direction > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER,
-        AudioManager.FLAG_SHOW_UI
-      )
-      Haptics.click()
-    } catch (_: Throwable) {}
+  val primaryText: String
+  val secondaryText: String?
+  val primaryColor: Color
+  if (isPhoneTarget) {
+    val remote = phoneMedia
+    when {
+      remote?.title != null -> {
+        primaryText = remote.title
+        secondaryText = remote.secondaryLabel
+        primaryColor = Color.White
+      }
+      remote != null && !remote.hasMetadataAccess -> {
+        primaryText = stringResource(
+          if (remote.isPlaying) R.string.now_playing_playing_on_phone else R.string.now_playing_phone_media
+        )
+        secondaryText = stringResource(R.string.now_playing_enable_track_info)
+        primaryColor = SparkyColors.Cyan
+      }
+      remote != null && remote.hasMetadataAccess -> {
+        if (remote.isPlaying) {
+          primaryText = stringResource(R.string.now_playing_playing_on_phone)
+          secondaryText = remote.secondaryLabel
+          primaryColor = SparkyColors.Cyan
+        } else if (remote.hasSession) {
+          primaryText = remote.appName ?: stringResource(R.string.now_playing_phone_media)
+          secondaryText = remote.artist
+          primaryColor = SparkyColors.Cyan
+        } else {
+          primaryText = stringResource(R.string.now_playing_nothing_playing)
+          secondaryText = null
+          primaryColor = SparkyColors.Muted
+        }
+      }
+      else -> {
+        primaryText = stringResource(R.string.now_playing_title)
+        secondaryText = null
+        primaryColor = SparkyColors.Cyan
+      }
+    }
+  } else {
+    primaryText = stringResource(
+      if (watchPlaying) R.string.now_playing_playing_on_watch else R.string.now_playing_watch_media
+    )
+    secondaryText = null
+    primaryColor = SparkyColors.Cyan
   }
 
   Column(
     modifier = Modifier
       .fillMaxSize()
       .wearRotaryStepper(isCurrentPage = isCurrentPage, pixelsPerStep = 28f) { steps ->
-        if (steps > 0) adjustVolume(1) else if (steps < 0) adjustVolume(-1)
+        if (steps != 0) store.adjustVolume(steps, target)
       }
-      .padding(horizontal = 14.dp, vertical = 18.dp),
+      .padding(start = 14.dp, end = 14.dp, top = 24.dp, bottom = 18.dp),
     horizontalAlignment = Alignment.CenterHorizontally,
     verticalArrangement = Arrangement.Center
   ) {
+    Row(
+      modifier = Modifier
+        .clip(RoundedCornerShape(10.dp))
+        .background(SparkyColors.CardBg)
+        .then(
+          if (phoneReachable) {
+            Modifier.clickable { store.toggleTarget() }
+          } else {
+            Modifier
+          }
+        )
+        .padding(horizontal = 8.dp, vertical = 3.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+      Icon(
+        imageVector = if (isPhoneTarget) Icons.Rounded.PhoneAndroid else Icons.Rounded.Watch,
+        contentDescription = null,
+        tint = if (isPhoneTarget) SparkyColors.Cyan else SparkyColors.Muted,
+        modifier = Modifier.size(11.dp)
+      )
+      Text(
+        text = stringResource(
+          if (isPhoneTarget) R.string.now_playing_source_phone else R.string.now_playing_source_watch
+        ),
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Medium,
+        color = if (isPhoneTarget) SparkyColors.Cyan else SparkyColors.Muted
+      )
+    }
+
+    Spacer(Modifier.height(6.dp))
+
     Text(
-      text = "Now Playing",
+      text = primaryText,
       fontSize = 13.sp,
       fontWeight = FontWeight.SemiBold,
-      color = SparkyColors.Cyan
+      color = primaryColor,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+      textAlign = TextAlign.Center,
+      modifier = Modifier.fillMaxWidth()
     )
-    Spacer(Modifier.height(10.dp))
+    if (secondaryText != null) {
+      Text(
+        text = secondaryText,
+        fontSize = 10.sp,
+        color = SparkyColors.Muted,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(top = 1.dp)
+      )
+    }
+
+    Spacer(Modifier.height(8.dp))
+
     Row(
       horizontalArrangement = Arrangement.spacedBy(10.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
-      RoundStepperButton("⏮") { sendMediaKey(KeyEvent.KEYCODE_MEDIA_PREVIOUS) }
       Box(
         modifier = Modifier
-          .size(44.dp)
+          .size(36.dp)
           .clip(CircleShape)
-          .background(SparkyColors.Cyan)
-          .clickable { sendMediaKey(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) },
+          .background(SparkyColors.CardBg)
+          .clickable { store.sendTransport(MediaTransportAction.PREVIOUS, target) },
         contentAlignment = Alignment.Center
       ) {
-        Text("⏯", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+        Icon(
+          imageVector = Icons.Rounded.SkipPrevious,
+          contentDescription = stringResource(R.string.now_playing_previous),
+          tint = Color.White,
+          modifier = Modifier.size(20.dp)
+        )
       }
-      RoundStepperButton("⏭") { sendMediaKey(KeyEvent.KEYCODE_MEDIA_NEXT) }
+      Box(
+        modifier = Modifier
+          .size(46.dp)
+          .clip(CircleShape)
+          .background(SparkyColors.Cyan)
+          .clickable { store.sendTransport(MediaTransportAction.PLAY_PAUSE, target) },
+        contentAlignment = Alignment.Center
+      ) {
+        Icon(
+          imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+          contentDescription = stringResource(
+            if (isPlaying) R.string.now_playing_pause else R.string.now_playing_play
+          ),
+          tint = Color.Black,
+          modifier = Modifier.size(24.dp)
+        )
+      }
+      Box(
+        modifier = Modifier
+          .size(36.dp)
+          .clip(CircleShape)
+          .background(SparkyColors.CardBg)
+          .clickable { store.sendTransport(MediaTransportAction.NEXT, target) },
+        contentAlignment = Alignment.Center
+      ) {
+        Icon(
+          imageVector = Icons.Rounded.SkipNext,
+          contentDescription = stringResource(R.string.now_playing_next),
+          tint = Color.White,
+          modifier = Modifier.size(20.dp)
+        )
+      }
     }
-    Spacer(Modifier.height(10.dp))
+
+    Spacer(Modifier.height(8.dp))
+
     Row(
-      horizontalArrangement = Arrangement.spacedBy(8.dp),
+      horizontalArrangement = Arrangement.spacedBy(6.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
-      SmallPillButton("Vol −", SparkyColors.CardBg, Color.White) { adjustVolume(-1) }
-      SmallPillButton("Vol +", SparkyColors.CardBg, Color.White) { adjustVolume(1) }
+      SmallPillButton(stringResource(R.string.now_playing_vol_down), SparkyColors.CardBg, Color.White) {
+        store.adjustVolume(-1, target)
+      }
+      if (volumePercent != null) {
+        val formattedVolume = NumberFormat.getPercentInstance(Locale.getDefault())
+          .format(volumePercent / 100.0)
+        Text(
+          text = formattedVolume,
+          fontSize = 11.sp,
+          fontWeight = FontWeight.Medium,
+          color = SparkyColors.Muted,
+          textAlign = TextAlign.Center,
+          modifier = Modifier.widthIn(min = 30.dp)
+        )
+      }
+      SmallPillButton(stringResource(R.string.now_playing_vol_up), SparkyColors.CardBg, Color.White) {
+        store.adjustVolume(1, target)
+      }
     }
   }
 }
@@ -1305,7 +1514,11 @@ fun FastingPage(store: CheckInStore, isCurrentPage: Boolean = true) {
   ) {
     item {
       Text(
-        text = if (activeFast != null) "Fasting (${activeFast.label ?: "16:8"})" else "Fasting",
+        text = if (activeFast != null) {
+          stringResource(R.string.fasting_title_active, activeFast.label ?: "16:8")
+        } else {
+          stringResource(R.string.fasting_title)
+        },
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = SparkyColors.Amber,
@@ -1344,7 +1557,7 @@ fun FastingPage(store: CheckInStore, isCurrentPage: Boolean = true) {
               color = Color.White
             )
             Text(
-              text = "${(progress * 100).toInt()}% of ${goalSec / 3600}h",
+              text = stringResource(R.string.fasting_progress_of, (progress * 100).toInt(), goalSec / 3600),
               fontSize = 10.sp,
               color = SparkyColors.Muted
             )
@@ -1354,7 +1567,7 @@ fun FastingPage(store: CheckInStore, isCurrentPage: Boolean = true) {
 
       item {
         SmallPillButton(
-          label = "End Fast",
+          label = stringResource(R.string.fasting_end_button),
           color = SparkyColors.Rose,
           textColor = Color.White,
           onClick = { store.endFast() }
@@ -1363,7 +1576,7 @@ fun FastingPage(store: CheckInStore, isCurrentPage: Boolean = true) {
     } else {
       item {
         Text(
-          text = "Start a Fast",
+          text = stringResource(R.string.fasting_start_prompt),
           fontSize = 11.sp,
           color = SparkyColors.Muted,
           modifier = Modifier.padding(bottom = 6.dp)
@@ -1416,7 +1629,7 @@ fun StepsPage(store: CheckInStore, isCurrentPage: Boolean = true) {
   ) {
     item {
       Text(
-        text = "Daily Steps",
+        text = stringResource(R.string.steps_title),
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = SparkyColors.Green,
@@ -1451,7 +1664,11 @@ fun StepsPage(store: CheckInStore, isCurrentPage: Boolean = true) {
 
         Spacer(Modifier.height(8.dp))
         Text(
-          text = if (remaining > 0) "${String.format(Locale.US, "%,d", remaining)} steps to goal" else "Goal reached! 🎉",
+          text = if (remaining > 0) {
+            stringResource(R.string.steps_remaining, String.format(Locale.US, "%,d", remaining))
+          } else {
+            stringResource(R.string.steps_goal_reached)
+          },
           fontSize = 11.sp,
           color = if (remaining > 0) SparkyColors.Muted else SparkyColors.Green
         )
@@ -1525,6 +1742,7 @@ fun RoundStepperButton(label: String, onClick: () -> Unit) {
 @Composable
 fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
   val sleep by store.sleep.collectAsState()
+  val context = LocalContext.current
   val model = remember(sleep) { TileModels.buildSleepTileModel(sleep) }
   val listState = rememberScalingLazyListState()
 
@@ -1540,7 +1758,7 @@ fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
   ) {
     item {
       Text(
-        text = "Sleep Health",
+        text = stringResource(R.string.sleep_title),
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,
         color = SparkyColors.Purple,
@@ -1550,40 +1768,41 @@ fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
 
     if (!model.hasData) {
       item {
-        EmptyStateCard("Open SparkyFitness on your phone to sync today's sleep data.")
+        EmptyStateCard(stringResource(R.string.sleep_open_phone_to_sync))
       }
     } else {
       item {
+        val resolvedDuration = TileModels.formatSleepDuration(context, model)
+        val resolvedWindow = TileModels.formatSleepWindow(context, model.window)
         Column(
           horizontalAlignment = Alignment.CenterHorizontally,
           modifier = Modifier.padding(bottom = 8.dp)
         ) {
           Text(
-            text = model.durationText,
+            text = resolvedDuration,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White
           )
-          model.scoreText?.let { score ->
+          model.sleepScore?.let { score ->
             Text(
-              text = score,
+              text = stringResource(R.string.tile_sleep_score, score),
               fontSize = 12.sp,
               fontWeight = FontWeight.SemiBold,
               color = SparkyColors.Purple
             )
           }
-          model.windowText?.let { window ->
-            Text(
-              text = window,
-              fontSize = 11.sp,
-              color = SparkyColors.Muted
-            )
-          }
+          Text(
+            text = resolvedWindow,
+            fontSize = 11.sp,
+            color = SparkyColors.Muted
+          )
         }
       }
 
       if (model.stages.isNotEmpty()) {
         items(model.stages, key = { it.label }) { stage ->
+          val stageLabel = if (stage.labelRes != 0) stringResource(stage.labelRes) else stage.label
           Row(
             modifier = Modifier
               .fillMaxWidth()
@@ -1595,7 +1814,7 @@ fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
           ) {
             Text(
-              text = stage.label,
+              text = stageLabel,
               fontSize = 11.sp,
               fontWeight = FontWeight.SemiBold,
               color = Color.White
@@ -1626,7 +1845,7 @@ fun SleepDetailPage(store: CheckInStore, onDismiss: () -> Unit) {
     item {
       Spacer(Modifier.height(8.dp))
       SmallPillButton(
-        label = "Close",
+        label = stringResource(R.string.common_close),
         color = SparkyColors.CardBg,
         textColor = Color.White,
         onClick = onDismiss

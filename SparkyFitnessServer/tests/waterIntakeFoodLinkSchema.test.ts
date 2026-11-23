@@ -26,6 +26,7 @@ const baseWaterIntakeEntry = {
   container_name: null,
   source: 'manual',
   source_id: null,
+  client_id: null,
   created_at: new Date(),
   created_by_user_id: null,
   logged_at: new Date(),
@@ -148,8 +149,10 @@ describe('water_ml round-trips through all three schema variants of each table',
       meal_type_id: 'meal-type-1',
       source: null,
       source_id: null,
+      client_id: null,
       images: [],
       notes: null,
+      cooked_quantity: null,
     };
 
     expect(

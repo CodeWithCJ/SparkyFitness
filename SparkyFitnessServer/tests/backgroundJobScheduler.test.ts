@@ -52,7 +52,6 @@ describe('scheduleBackgroundJobs', () => {
     expect(mocks.openFoodFacts).toHaveBeenCalledExactlyOnceWith();
     expect(mocks.providerSyncs).toHaveBeenCalledExactlyOnceWith();
     expect(mocks.demoReset).toHaveBeenCalledExactlyOnceWith();
-    expect(mocks.schedule).toHaveBeenCalledTimes(2);
     expect(mocks.schedule).toHaveBeenCalledWith(
       '0 3 * * *',
       expect.any(Function),
@@ -67,6 +66,27 @@ describe('scheduleBackgroundJobs', () => {
         distributed: true,
       })
     );
+    // Challenges: score queue every minute, nightly catch-up, hourly finalise.
+    expect(mocks.schedule).toHaveBeenCalledWith(
+      '* * * * *',
+      expect.any(Function),
+      expect.objectContaining({
+        name: 'challenge-score-queue',
+        distributed: true,
+        noOverlap: true,
+      })
+    );
+    expect(mocks.schedule).toHaveBeenCalledWith(
+      '30 2 * * *',
+      expect.any(Function),
+      expect.objectContaining({ name: 'challenge-catch-up', distributed: true })
+    );
+    expect(mocks.schedule).toHaveBeenCalledWith(
+      '15 * * * *',
+      expect.any(Function),
+      expect.objectContaining({ name: 'challenge-finalize', distributed: true })
+    );
+    expect(mocks.schedule).toHaveBeenCalledTimes(5);
   });
 
   it('waits for Open Food Facts setup before starting the remaining jobs', async () => {

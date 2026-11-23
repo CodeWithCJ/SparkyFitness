@@ -13,12 +13,14 @@ import { log } from '../config/logging.js';
 import wgerService from '../integrations/wger/wgerService.js';
 import nutritionixService from '../integrations/nutritionix/nutritionixService.js';
 import { downloadImage } from '../utils/imageDownloader.js';
-import calorieCalculationService from './CalorieCalculationService.js';
+import calorieCalculationService, {
+  type PreparedCalorieEstimator,
+} from './CalorieCalculationService.js';
 import fs from 'fs';
 import { resolveExerciseIdToUuid } from '../utils/uuidUtils.js';
 import { normalizeToStringArray } from '../utils/exerciseJsonFields.js';
 import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
-import { editedSyncFields } from '../utils/manualFields.js';
+import { editedSyncFields, resolveEditedSets } from '../utils/manualFields.js';
 import {
   deriveExerciseModality,
   canEditGroupedWorkout,
@@ -27,6 +29,10 @@ import {
   toNumber,
   parseCsv,
   DEFAULT_CSV_FORMAT,
+  type CreatePresetSessionRequest,
+  type PresetSessionExerciseRequest,
+  type PresetSessionResponse,
+  type UpdateExerciseEntryRequest,
 } from '@workspace/shared';
 import {
   getGroupedExerciseSessionById,
@@ -287,6 +293,53 @@ async function getExerciseStats(
     recentSessions: recentRows.map(mapRecentSessionRow),
   };
 }
+
+/** How many exercises of one batch are read from the database at a time. */
+const EXERCISE_STATS_BATCH_CONCURRENCY = 5;
+
+/**
+ * Stats for many exercise and preset pairs in one call (offline preparation
+ * on mobile). Each pair gets exactly what `getExerciseStats` returns for it;
+ * a pair asked for twice is answered once. Results keep the request order.
+ */
+async function getExerciseStatsBatch(
+  userId: string,
+  items: ReadonlyArray<{ exerciseId: string; presetId?: number }>
+) {
+  const seen = new Set<string>();
+  const unique = items.filter((item) => {
+    const key = `${item.exerciseId}|${item.presetId ?? ''}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const results: Array<{
+    exerciseId: string;
+    presetId: number | null;
+    stats: Awaited<ReturnType<typeof getExerciseStats>>;
+  }> = [];
+  for (
+    let start = 0;
+    start < unique.length;
+    start += EXERCISE_STATS_BATCH_CONCURRENCY
+  ) {
+    const chunk = unique.slice(start, start + EXERCISE_STATS_BATCH_CONCURRENCY);
+    const chunkResults = await Promise.all(
+      chunk.map(async (item) => ({
+        exerciseId: item.exerciseId,
+        presetId: item.presetId ?? null,
+        stats: await getExerciseStats(
+          userId,
+          item.exerciseId,
+          null,
+          item.presetId ?? null
+        ),
+      }))
+    );
+    results.push(...chunkResults);
+  }
+  return results;
+}
 async function getAvailableEquipment() {
   try {
     const equipment = await exerciseDb.getDistinctEquipment();
@@ -485,14 +538,11 @@ async function getExerciseEntryById(authenticatedUserId: any, id: any) {
   }
 }
 async function updateExerciseEntry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  actingUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  id: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  updateData: any
+  authenticatedUserId: string,
+  actingUserId: string,
+  id: string,
+  updateData: UpdateExerciseEntryRequest &
+    Partial<Pick<PresetSessionExerciseRequest, 'sort_order' | 'superset_group'>>
 ) {
   try {
     const existingEntry = await exerciseEntryDb.getExerciseEntryById(
@@ -514,18 +564,17 @@ async function updateExerciseEntry(
       updateData.duration_minutes !== null &&
       updateData.duration_minutes !== undefined &&
       updateData.calories_burned === undefined;
-    let caloriesPerHour: number | null = null;
+    let estimateCaloriesFromSets: PreparedCalorieEstimator | undefined;
     if (estimateCalories) {
       const exercise = await exerciseDb.getExerciseById(
         estimateExerciseId,
         authenticatedUserId
       );
       if (exercise) {
-        caloriesPerHour =
-          await calorieCalculationService.estimateCaloriesBurnedPerHour(
+        estimateCaloriesFromSets =
+          await calorieCalculationService.prepareCalorieEstimator(
             exercise,
-            authenticatedUserId,
-            updateData.sets
+            authenticatedUserId
           );
       } else {
         log(
@@ -542,70 +591,80 @@ async function updateExerciseEntry(
     // replaces once the update has committed.
     let replacedImageUrl: unknown;
     const resolveUpdate = (existingEntry: Record<string, unknown>) => {
+      const resolvedRequest = {
+        ...updateData,
+        sets: resolveEditedSets(updateData.sets, existingEntry.sets),
+      };
       replacedImageUrl = existingEntry.image_url;
-      let caloriesBurned = updateData.calories_burned;
+      let caloriesBurned = resolvedRequest.calories_burned;
       // The estimate is for the exercise read above; if another edit has
       // since moved the entry to a different one, keep the stored calories.
       if (
         estimateCalories &&
-        (updateData.exercise_id !== undefined ||
+        (resolvedRequest.exercise_id !== undefined ||
           existingEntry.exercise_id === estimateExerciseId)
       ) {
+        const caloriesPerHour = estimateCaloriesFromSets?.(
+          resolvedRequest.sets
+        );
         // A watch-measured figure (active_calories) beats the formula, same
         // rule as the grouped-session edit path.
         caloriesBurned = resolveEditedCaloriesBurned(
           undefined,
           existingEntry,
-          caloriesPerHour === null
+          caloriesPerHour === undefined
             ? Number(existingEntry.calories_burned ?? 0)
-            : (caloriesPerHour / 60) * updateData.duration_minutes
+            : (caloriesPerHour / 60) * Number(resolvedRequest.duration_minutes)
         );
       }
       return {
         updateData: {
-          ...updateData,
-          exercise_id: updateData.exercise_id ?? existingEntry.exercise_id,
+          ...resolvedRequest,
+          exercise_id: resolvedRequest.exercise_id ?? existingEntry.exercise_id,
           duration_minutes:
-            updateData.duration_minutes ?? existingEntry.duration_minutes ?? 0,
+            resolvedRequest.duration_minutes ??
+            existingEntry.duration_minutes ??
+            0,
           calories_burned: caloriesBurned ?? existingEntry.calories_burned ?? 0,
-          entry_date: updateData.entry_date ?? existingEntry.entry_date,
-          notes: updateData.notes ?? existingEntry.notes,
+          entry_date: resolvedRequest.entry_date ?? existingEntry.entry_date,
+          notes: resolvedRequest.notes ?? existingEntry.notes,
           workout_plan_assignment_id:
-            updateData.workout_plan_assignment_id ??
+            resolvedRequest.workout_plan_assignment_id ??
             existingEntry.workout_plan_assignment_id,
           image_url:
-            updateData.image_url === undefined
+            resolvedRequest.image_url === undefined
               ? existingEntry.image_url
-              : updateData.image_url,
+              : resolvedRequest.image_url,
           // Explicit value (including null-to-clear) wins; omitted derives the
           // total from per-set distances, else preserves the existing value.
           distance:
-            updateData.distance !== undefined
-              ? updateData.distance
-              : (setsDistanceKm(updateData.sets) ?? existingEntry.distance),
+            resolvedRequest.distance !== undefined
+              ? resolvedRequest.distance
+              : (setsDistanceKm(resolvedRequest.sets) ??
+                existingEntry.distance),
           avg_heart_rate:
-            updateData.avg_heart_rate ?? existingEntry.avg_heart_rate,
-          steps: updateData.steps ?? existingEntry.steps,
-          sort_order: updateData.sort_order ?? existingEntry.sort_order,
+            resolvedRequest.avg_heart_rate ?? existingEntry.avg_heart_rate,
+          steps: resolvedRequest.steps ?? existingEntry.steps,
+          sort_order: resolvedRequest.sort_order ?? existingEntry.sort_order,
           exercise_name:
-            updateData.exercise_name ?? existingEntry.exercise_name,
+            resolvedRequest.exercise_name ?? existingEntry.exercise_name,
           // Preserve when omitted; explicit null clears (leaving a superset).
           superset_group:
-            updateData.superset_group === undefined
+            resolvedRequest.superset_group === undefined
               ? (existingEntry.superset_group ?? null)
-              : updateData.superset_group,
+              : resolvedRequest.superset_group,
           // Preserve when omitted; explicit null clears the time of day.
           entry_time:
-            updateData.entry_time === undefined
+            resolvedRequest.entry_time === undefined
               ? (existingEntry.entry_time ?? null)
-              : updateData.entry_time,
+              : resolvedRequest.entry_time,
         },
         // A synced entry remembers which fields this edit changed, so the same
         // workout sent again by the provider does not overwrite them. Taken
         // from the request as sent, before the defaults and the calorie
         // estimate above fill in the rest.
         markManualFields: existingEntry.source_id
-          ? editedSyncFields(updateData, existingEntry)
+          ? editedSyncFields(resolvedRequest, existingEntry)
           : [],
       };
     };
@@ -628,11 +687,14 @@ async function updateExerciseEntry(
     }
     // Handle activity details updates
     if (updateData.activity_details !== undefined) {
-      const existingActivityDetails =
-        await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(
-          authenticatedUserId,
-          id
-        );
+      const existingActivityDetails: {
+        id: string;
+        detail_type: string;
+        detail_data: unknown;
+      }[] = await activityDetailsRepository.getActivityDetailsByEntryOrPresetId(
+        authenticatedUserId,
+        id
+      );
       const incomingActivityDetails = updateData.activity_details || [];
       const RAW_PROVIDER_TYPES = [
         'full_activity_data',
@@ -643,8 +705,7 @@ async function updateExerciseEntry(
       // Identify details to delete
       for (const existingDetail of existingActivityDetails) {
         const found = incomingActivityDetails.find(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (incomingDetail: any) => incomingDetail.id === existingDetail.id
+          (incomingDetail) => incomingDetail.id === existingDetail.id
         );
         if (!found) {
           // Do not delete raw provider dump rows during standard entry edit
@@ -665,12 +726,11 @@ async function updateExerciseEntry(
             incomingDetail.detail_data === null ||
             incomingDetail.detail_data === undefined ||
             incomingDetail.detail_data === 'null' ||
-            RAW_PROVIDER_TYPES.includes(incomingDetail.detail_type);
+            RAW_PROVIDER_TYPES.includes(incomingDetail.detail_type ?? '');
 
           if (isMaskedOrNull) {
             const existing = existingActivityDetails.find(
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (e: any) => e.id === incomingDetail.id
+              (e) => e.id === incomingDetail.id
             );
             if (
               existing &&
@@ -1453,7 +1513,6 @@ async function addFreeExerciseDBExerciseToUserExercises(
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
       images: localImagePaths.filter((p): p is string => p !== null), // Local upload paths — createExercise handles JSON.stringify
       calories_per_hour:
-        // @ts-expect-error TS(2554): Expected 3 arguments, but got 2.
         await calorieCalculationService.estimateCaloriesBurnedPerHour(
           exerciseDetails,
           authenticatedUserId
@@ -1931,6 +1990,65 @@ async function getGroupedWorkoutSessionById(userId: any, presetEntryId: any) {
   return getGroupedExerciseSessionById(userId, presetEntryId);
 }
 
+/**
+ * Postgres unique-violation on the session's primary key: the client-minted
+ * id is already taken, by this user (a repeated create) or by someone else.
+ */
+function isPresetEntryIdTaken(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  const pgError = error as { code?: unknown; constraint?: unknown };
+  return (
+    pgError.code === '23505' &&
+    pgError.constraint === 'exercise_preset_entries_pkey'
+  );
+}
+
+/**
+ * Creates a grouped workout session, or, when the request carries a
+ * client-minted `id` that this user has already created, returns that stored
+ * session untouched (`replayed: true`). A client that never heard the answer
+ * to its first create can therefore send it again without making a second
+ * workout. The stored copy may be older than the repeated request, so the
+ * caller follows a replay with an ordinary update.
+ */
+async function createOrReplayGroupedWorkoutSession(
+  userId: string,
+  actingUserId: string,
+  sessionData: CreatePresetSessionRequest
+): Promise<{ session: PresetSessionResponse; replayed: boolean }> {
+  const clientSessionId = sessionData.id ?? null;
+  if (clientSessionId !== null) {
+    const existing = await getGroupedExerciseSessionById(
+      userId,
+      clientSessionId
+    );
+    if (existing) return { session: existing, replayed: true };
+  }
+  try {
+    const session: PresetSessionResponse | null =
+      await createGroupedWorkoutSession(userId, actingUserId, sessionData);
+    if (!session) {
+      throw createServiceError(500, 'Created workout session was not found.');
+    }
+    return { session, replayed: false };
+  } catch (error) {
+    if (clientSessionId === null || !isPresetEntryIdTaken(error)) throw error;
+    // The id was taken between the lookup and the insert. If it is this
+    // user's (two copies of the same create racing), hand back the stored
+    // session. Otherwise it belongs to someone else, which row-level
+    // security hides from the lookup: refuse without saying whose it is.
+    const existing = await getGroupedExerciseSessionById(
+      userId,
+      clientSessionId
+    );
+    if (existing) return { session: existing, replayed: true };
+    throw createServiceError(
+      409,
+      'A workout session with this id cannot be created.'
+    );
+  }
+}
+
 async function createGroupedWorkoutSession(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   userId: any,
@@ -1971,6 +2089,7 @@ async function createGroupedWorkoutSession(
           client,
           userId,
           {
+            id: sessionData.id ?? null,
             workout_preset_id,
             name: name || workoutPreset.name,
             description:
@@ -2005,6 +2124,7 @@ async function createGroupedWorkoutSession(
           client,
           userId,
           {
+            id: sessionData.id ?? null,
             workout_preset_id: null,
             name,
             description: description ?? null,
@@ -2426,15 +2546,16 @@ async function logWorkoutPresetGrouped(
   });
 }
 async function getActivityDetailsByExerciseEntryIdAndProvider(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entryId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  providerName: any
+  authenticatedUserId: string,
+  entryId: string,
+  providerName: unknown
 ) {
   try {
-    let activityDetails = [];
+    let activityDetails: Awaited<
+      ReturnType<
+        typeof activityDetailsRepository.getActivityDetailsByEntryOrPresetId
+      >
+    > = [];
     // First, try to find an exercise entry with the given ID
     const exerciseEntry = await exerciseEntryDb.getExerciseEntryById(
       entryId,
@@ -2494,14 +2615,12 @@ async function getActivityDetailsByExerciseEntryIdAndProvider(
 
     // Find the full_activity_data and full_workout_data for the given provider
     const activityData = activityDetails.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (detail: any) =>
+      (detail) =>
         matchesProvider(detail.provider_name) &&
         detail.detail_type === 'full_activity_data'
     );
     const workoutData = activityDetails.find(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (detail: any) =>
+      (detail) =>
         matchesProvider(detail.provider_name) &&
         detail.detail_type === 'full_workout_data'
     );
@@ -2539,10 +2658,8 @@ async function getExercisesNeedingReview(authenticatedUserId: any) {
 }
 
 async function updateExerciseEntriesSnapshot(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  authenticatedUserId: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  exerciseId: any
+  authenticatedUserId: string,
+  exerciseId: string
 ) {
   try {
     // Fetch the latest exercise details
@@ -2558,6 +2675,7 @@ async function updateExerciseEntriesSnapshot(
       exercise_name: exercise.name,
       calories_per_hour: exercise.calories_per_hour,
       modality: exercise.modality,
+      health_activity_type: exercise.health_activity_type ?? null,
     };
     // Update all relevant exercise entries for the authenticated user
     await exerciseRepository.updateExerciseEntriesSnapshot(
@@ -2746,6 +2864,7 @@ export { getExercisesWithPagination };
 export { searchExercises };
 export { searchExercisesPaginated };
 export { getExerciseStats };
+export { getExerciseStatsBatch };
 export { getAvailableEquipment };
 export { getAvailableMuscleGroups };
 export { createExercise };
@@ -2775,6 +2894,7 @@ export { updateExerciseEntriesSnapshot };
 export { getActivityDetailsByExerciseEntryIdAndProvider };
 export { logWorkoutPresetGrouped };
 export { createGroupedWorkoutSession };
+export { createOrReplayGroupedWorkoutSession };
 export { updateGroupedWorkoutSession };
 export { getGroupedWorkoutSessionById };
 export default {
@@ -2784,6 +2904,7 @@ export default {
   searchExercises,
   searchExercisesPaginated,
   getExerciseStats,
+  getExerciseStatsBatch,
   getAvailableEquipment,
   getAvailableMuscleGroups,
   createExercise,
@@ -2812,6 +2933,7 @@ export default {
   getActivityDetailsByExerciseEntryIdAndProvider,
   logWorkoutPresetGrouped,
   createGroupedWorkoutSession,
+  createOrReplayGroupedWorkoutSession,
   updateGroupedWorkoutSession,
   getGroupedWorkoutSessionById,
 };

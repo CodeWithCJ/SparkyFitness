@@ -253,6 +253,13 @@ export interface WatchContextPayload {
   runHeartRateMinBpm?: number | null;
   runHeartRateMaxBpm?: number | null;
   /**
+   * The lowest bpm of heart rate zones 1 to 5 (five ascending numbers), from
+   * the person's own resolved zones. The new workout view colours the live
+   * heart rate by the zone it falls in. Missing keeps the watch's last value;
+   * with none ever sent the heart rate keeps its plain red.
+   */
+  heartRateZoneFloors?: number[] | null;
+  /**
    * Plans a wrist-only run can follow: the training-program workout due now
    * (carrying `programId`/`programIndex`) then the built-in interval plans,
    * with step names already translated. Missing keeps the watch's last list.
@@ -388,10 +395,16 @@ export interface WatchContextPayload {
   setScreenMetrics?: boolean;
   /** The Up Next page after the set screen. Absent means off. */
   upNextPage?: boolean;
-  /** The larger-text layout of the Goals and Water pages. Absent means off. */
+  /** Larger text and the newer layouts on every watch page. Absent means off. */
   largerText?: boolean;
-  /** Keep the original workout page while larger text is on. Absent means off. */
-  classicWorkout?: boolean;
+  /** Use the new workout view on the watch. Absent means off. */
+  newWorkout?: boolean;
+  /** Seconds of audible countdown before a rest or hold ends: 0, 3 or 5. Absent means off. */
+  workoutCountdown?: number;
+  /** A 3-2-1 Get ready screen before a timed hold starts. Absent means on. */
+  holdCountdown?: boolean;
+  /** What the new workout view's top line shows first: 'time' or 'metrics'. Absent means time. */
+  workoutTopLine?: 'time' | 'metrics';
   /**
    * This phone handles the `doExerciseNow` workout edit. The watch offers
    * Swap only while it is true.
@@ -480,6 +493,12 @@ export interface WatchPlannedSetPayload {
   targetDistanceKm?: number | null;
   /** Rest to run after this set, in seconds — the phone's own `WorkoutStep.restSec`. */
   restSeconds: number;
+  /**
+   * This set's own rest (`rest_time`, else the default rest), which the phone
+   * runs after logging it (`restSecBeforeNextSet`). The watch needs it because
+   * `restSeconds` is the rest before the set. Absent from an older phone.
+   */
+  restAfterSeconds?: number;
   /** `normal` | `warmup` | `drop` … drives the watch's "Warmup 1/2" label. */
   setType?: string | null;
 }
@@ -519,7 +538,31 @@ export interface WatchPlannedExercisePayload {
    * shows it as "BW +10" / "BW −20". Absent from an older phone build.
    */
   bodyweight?: boolean;
+  /** The exercise's first equipment name ("Barbell"). Absent from an older phone build. */
+  equipment?: string;
+  /** Present only for an exercise loaded on a bar: what the watch needs for its Plates tile. */
+  plates?: WatchPlateConfigPayload;
+  /**
+   * Cache key (the exercise id) of the demo pictures sent separately with
+   * `sendExerciseImage`, and how many (1 or 2). Absent without pictures or
+   * from an older phone build; the watch then has no demo page.
+   */
+  imageKey?: string;
+  imageCount?: number;
+  /** Primary muscle ("Chest"), for the line under the name on the demo page. */
+  muscle?: string;
   sets: WatchPlannedSetPayload[];
+}
+
+/** The bar and plates a person owns, for the watch's plates-per-side tile. */
+export interface WatchPlateConfigPayload {
+  /** Unit of every weight below. Set weights themselves stay in kg. */
+  unit: 'kg' | 'lbs';
+  barWeight: number;
+  /** Weight of one collar; 0 when collars are off. */
+  collarWeight: number;
+  /** Pairs owned of each plate weight, heaviest first. */
+  plates: { weight: number; pairs: number }[];
 }
 
 /** The workout plan pushed to the watch when a live session starts. */
@@ -593,6 +636,20 @@ export interface WatchSetCompletedPayload {
   distanceKm?: number | null;
   /** Effort (RPE) the wearer picked, 6 to 10. Omitted when skipped. */
   rpe?: number | null;
+  /**
+   * True when this payload is a Wear OS follow-up delivering only the wearer's
+   * RPE choice after the initial completion was already sent. When the set is
+   * already complete on the phone, only `rpe` is applied so phone-side edits
+   * are preserved; if the set is not yet complete, all carried values still
+   * recover the missed initial completion.
+   */
+  rpeOnly?: boolean | null;
+  /**
+   * True when the native bridge is replaying an unconfirmed completion bundled
+   * inside Wear OS `workoutStop`. Replays recover completions the phone missed
+   * without overwriting phone-side edits if the set is already complete.
+   */
+  replay?: boolean | null;
   /**
    * When the wearer tapped the set on the watch, ISO 8601. The phone stamps
    * its own clock when this is absent (an older watch build, or a set logged
@@ -780,6 +837,11 @@ export interface WatchPresetUpdateAnswerPayload {
   sessionId: string;
   /** True to write the workout's changes into the saved workout. */
   update: boolean;
+  /**
+   * True when this is no answer yet: the watch's summary has the question open,
+   * so the phone holds its own prompt for a while.
+   */
+  waiting?: boolean;
 }
 
 export interface WatchWorkoutStartRequestedPayload {
@@ -1132,6 +1194,16 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
     durable: boolean
   ): Promise<void>;
   startWorkout(plan: WatchWorkoutStartPayload): Promise<void>;
+  /**
+   * Transfers one exercise demo picture (a local JPEG, already scaled down) to
+   * the watch as a live message with durable queued fallback. `index` 0 is the
+   * start position, 1 the end. Supported on iOS and Android (Wear OS).
+   */
+  sendExerciseImage?(image: {
+    key: string;
+    index: number;
+    uri: string;
+  }): Promise<void>;
   /** Starts a walk or run on the watch and opens its app. */
   startRun(request: WatchRunStartPayload): Promise<void>;
   /**
@@ -1257,6 +1329,17 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
     headers: Record<string, string>
   ): Promise<void>;
   clearServerCredentials?(): Promise<void>;
+  /**
+   * Android only: whether SparkyFitness has Notification Access so the Wear OS
+   * Now Playing screen can display track title and artist from the phone's
+   * active media session. Transport and volume controls work without this.
+   */
+  isMediaAccessEnabled?(): Promise<boolean>;
+  /**
+   * Android only: opens Android's Notification Access settings screen so the
+   * user can grant or revoke media session metadata access for Wear OS.
+   */
+  openMediaAccessSettings?(): Promise<void>;
 }
 
 const WatchConnectivityModule: WatchConnectivityModuleType | null =

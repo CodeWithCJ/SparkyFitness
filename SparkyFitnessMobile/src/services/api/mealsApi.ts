@@ -1,4 +1,8 @@
 import { apiFetch } from './apiClient';
+import { putCacheRows } from '../../offline/cacheStore';
+import { CACHE_COLLECTIONS } from '../../offline/collections';
+import { readSavedMeal, readSavedMeals } from '../../offline/foodLibrary';
+import { withOfflineFallback } from '../../offline/withOfflineFallback';
 import { postPayloadWithImages } from './imageUploadClient';
 import type { ImageUploadArgs } from '../../utils/pickerImages';
 import {
@@ -12,10 +16,14 @@ import {
  * Fetches all meals for the current user.
  */
 export const fetchMeals = async (): Promise<Meal[]> => {
-  return apiFetch<Meal[]>({
-    endpoint: '/api/meals',
-    serviceName: 'Meals API',
-    operation: 'fetch meals',
+  return withOfflineFallback<Meal[]>({
+    fetch: () =>
+      apiFetch<Meal[]>({
+        endpoint: '/api/meals',
+        serviceName: 'Meals API',
+        operation: 'fetch meals',
+      }),
+    read: (db, serverConfigId) => readSavedMeals(db, serverConfigId),
   });
 };
 
@@ -23,10 +31,18 @@ export const fetchMeals = async (): Promise<Meal[]> => {
  * Fetches a single meal template by ID.
  */
 export const fetchMeal = async (id: string): Promise<Meal> => {
-  return apiFetch<Meal>({
-    endpoint: `/api/meals/${id}`,
-    serviceName: 'Meals API',
-    operation: 'fetch meal',
+  return withOfflineFallback<Meal>({
+    fetch: () =>
+      apiFetch<Meal>({
+        endpoint: `/api/meals/${id}`,
+        serviceName: 'Meals API',
+        operation: 'fetch meal',
+      }),
+    store: (db, serverConfigId, meal) =>
+      putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.meal, [
+        { key: meal.id, name: meal.name, payload: meal },
+      ]),
+    read: (db, serverConfigId) => readSavedMeal(db, serverConfigId, id),
   });
 };
 
@@ -59,10 +75,15 @@ export const fetchTopMeals = async (limit = 3): Promise<Meal[]> => {
  */
 export const searchMeals = async (searchTerm: string): Promise<Meal[]> => {
   const params = new URLSearchParams({ searchTerm });
-  return apiFetch<Meal[]>({
-    endpoint: `/api/meals/search?${params.toString()}`,
-    serviceName: 'Meals API',
-    operation: 'search meals',
+  return withOfflineFallback<Meal[]>({
+    fetch: () =>
+      apiFetch<Meal[]>({
+        endpoint: `/api/meals/search?${params.toString()}`,
+        serviceName: 'Meals API',
+        operation: 'search meals',
+      }),
+    read: (db, serverConfigId) =>
+      readSavedMeals(db, serverConfigId, searchTerm),
   });
 };
 

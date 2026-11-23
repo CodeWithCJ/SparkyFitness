@@ -48,6 +48,38 @@ describe('createExternalProvider', () => {
     }
   );
 
+  it('keeps the ZeppBridge URL and token, and no app id', async () => {
+    jest.mocked(apiCall).mockResolvedValue({
+      id: 'zepp-1',
+      provider_type: 'zeppbridge',
+      is_active: true,
+    });
+
+    await createExternalProvider({
+      user_id: 'user-1',
+      provider_name: 'My ZeppBridge',
+      provider_type: 'zeppbridge',
+      app_id: 'stale-value',
+      app_key: 'pull-token',
+      is_active: true,
+      base_url: 'http://127.0.0.1:43921',
+    });
+
+    expect(apiCall).toHaveBeenLastCalledWith('/external-providers', {
+      method: 'POST',
+      body: JSON.stringify({
+        user_id: 'user-1',
+        provider_name: 'My ZeppBridge',
+        provider_type: 'zeppbridge',
+        app_id: null,
+        app_key: 'pull-token',
+        is_active: true,
+        base_url: 'http://127.0.0.1:43921',
+        sync_frequency: null,
+      }),
+    });
+  });
+
   it('keeps Open Food Facts contribution consent out of provider credentials', async () => {
     jest.mocked(apiCall).mockResolvedValue({
       id: 'provider-1',

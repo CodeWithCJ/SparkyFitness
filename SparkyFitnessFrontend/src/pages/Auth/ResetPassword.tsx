@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,9 +38,14 @@ const ResetPassword = () => {
 
   const token = searchParams.get('token');
 
-  useEffect(() => {
+  useOnChange([token], () => {
     if (!token) {
       setMessage('Invalid or missing password reset token.');
+    }
+  });
+
+  useEffect(() => {
+    if (!token) {
       toast({
         title: t('common.error', 'Error'),
         description: t(

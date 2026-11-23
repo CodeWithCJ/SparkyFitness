@@ -67,6 +67,16 @@ function normalizeUnitKey(unit?: string | null): string {
   return unit?.trim().toLowerCase() ?? '';
 }
 
+function TriggerHost({
+  renderTrigger,
+  onPress,
+}: {
+  renderTrigger: FoodUnitSelectorSheetProps['renderTrigger'];
+  onPress: () => void;
+}) {
+  return <>{renderTrigger({ onPress })}</>;
+}
+
 const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
   variants,
   selectedVariantId,
@@ -476,7 +486,7 @@ const FoodUnitSelectorSheet: React.FC<FoodUnitSelectorSheetProps> = ({
 
   return (
     <>
-      {renderTrigger({ onPress: handleOpen })}
+      <TriggerHost renderTrigger={renderTrigger} onPress={handleOpen} />
 
       <BottomSheetModal
         ref={bottomSheetRef}

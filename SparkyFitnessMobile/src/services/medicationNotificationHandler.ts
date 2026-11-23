@@ -24,7 +24,10 @@ import { invalidateMedicationEntryCaches } from '../hooks/invalidateMedicationEn
 import { addLog, _flushBuffer } from '../services/LogService';
 import type { MedicationEntry, MedicationEntryStatus } from '@workspace/shared';
 import { addDays } from '../utils/dateUtils';
-import { getActiveServerConfig } from './storage';
+import {
+  belongsToOtherServer,
+  currentServerId,
+} from './notificationServerScope';
 import { isDoseLogged } from '../utils/medications';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
@@ -177,27 +180,6 @@ function doesNotificationMatchAction(
         (d.scheduleId ?? null) === (nd.scheduleId ?? null)
     )
   );
-}
-
-/** The id of the saved server the app is signed in to now, or null. */
-async function currentServerId(): Promise<string | null> {
-  try {
-    return (await getActiveServerConfig())?.id ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/**
- * A reminder stamped with a server is acted on only while that server is the
- * active one; otherwise it is kept queued until it is. A copy of a server (a
- * restored backup) has the same user and medication ids but another server id.
- */
-function belongsToOtherServer(
-  serverId: string | null | undefined,
-  activeServerId: string | null
-): boolean {
-  return Boolean(serverId) && serverId !== activeServerId;
 }
 
 function actionDedupeId(action: {

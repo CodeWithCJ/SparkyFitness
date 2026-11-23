@@ -6,6 +6,10 @@ The system is built with **least-privilege boundary isolation** using PostgreSQL
 
 AI service model and reasoning settings remain private to their owner. An administrator can publish a shared configuration; family diary access does not grant access to personal AI credentials or settings.
 
+Mealie ingredient imports and nutrition sync are available only for your own account. Family delegates can use the resulting reusable meals and diary snapshots through the normal meal-library and diary permissions. Recipe-provider credentials, saved source-food mappings and integration provenance are private, even when a meal is shared. Editing or logging a meal never changes the original Mealie recipe or an earlier diary entry.
+
+Saved Mealie matches are suggestions for each new preparation and require confirmation again. The provider owner can inspect and forget saved choices in the ingredient-import browser or forget an individual suggestion while reviewing a recipe. Forgetting a choice does not change an existing meal or diary entry; delegates cannot view or remove these private choices.
+
 ---
 
 ## How to Set Up Sharing
@@ -52,6 +56,8 @@ When you switch to someone's profile on the web, the AI assistant works in their
 - The conversation is yours: it is saved in your own chat history, not theirs, and kept apart from your chats in your own profile.
 - It uses your own AI service, as do label scans and other AI features. To change which one, switch back to your own profile.
 
+Outside MCP tool servers are off by default for each person. Each person turns them on for their own chat in AI settings. Family access cannot change these choices, and chat offers no outside tools while acting for a family member.
+
 ---
 
 ## Adaptive Calorie Details
@@ -97,15 +103,16 @@ Certain tables contain private user data that is **never** accessible to any fam
 * Your saved routes (`routes` table): routes you drew, imported or saved from a workout, with their points and turn cues. They are personal, so they are never shared or delegated.
 * Your plates and bars (`plate_inventories` table): the bars you own and how many pairs of each plate, for the plate calculator. They are personal, so they are never shared or delegated, and the server refuses requests for them while you act on behalf of someone else. Someone logging workouts for you sees the calculator with the standard set for your weight unit.
 * Your NFC tags (`action_tags` table): each tag's random code, its name and the action a tap runs, such as logging a drink from one of your water containers, a food or a saved meal. Tags are personal, so they are never shared or delegated, and the server refuses requests for them while you act on behalf of someone else. The sticker itself holds only the code.
+* Challenges you are in (`challenges` and the other `challenge_*` tables): your challenges, their standings and workout cards. Joining a challenge shares only your scores, display name and workout summaries with that challenge's members, never your diary. A family member who manages your diary does not see your challenges and cannot create, join or leave one for you.
 
 ### 2. Tier 2: Read-Only Profile & Settings Data
 The following data can be **read** by delegates who hold at least one of `can_manage_diary`, `can_manage_checkin`, `can_manage_medications`, `can_manage_symptoms`, or `can_view_reports` — but **only the account owner can modify it**:
 * Profile information (`profiles` table — name, date of birth, height, avatar, etc.)
-* General preferences (`user_preferences` table — themes, units, calculation methods, the optional separate activity-calorie and exercise-adjusted percentage macro settings, calorie safety-floor settings, weekly weight-change goals, calorie cycling settings, report chart scaling, heart rate zone settings (max and resting heart rate, zone method, custom zones — the Heart Rate Zones screen is also owner-only for family members), and Chat/Vision/Voice selections). Weekly weight-change goals sync across web and mobile and use the same owner-only editing rules as other calculation preferences; changing them does not grant family members additional access. Voice visibility, the System/AI selection, and the separate activity-calorie choice also sync across web and mobile. Only the owner can change them; disabling voice preserves the selected model.
+* General preferences (`user_preferences` table — themes, units, calculation methods, the optional separate activity-calorie and exercise-adjusted percentage macro settings, calorie safety-floor settings, weekly weight-change goals, calorie cycling settings, report chart scaling, heart rate zone settings (max and resting heart rate, zone method, custom zones — the Heart Rate Zones screen is also owner-only for family members), estimated blood alcohol settings (distribution formula, elimination rate, display unit; the estimate itself and its AI tool are owner-only, see [Estimated Blood Alcohol](/features/diary/blood-alcohol)), your choices of which optional features are on or off on the website and in the mobile app, and Chat/Vision/Voice selections). The server only stores those feature choices for now; the apps do not use them to show or hide anything yet. Someone acting for you can see them, but only you can change them. Weekly weight-change goals sync across web and mobile and use the same owner-only editing rules as other calculation preferences; changing them does not grant family members additional access. Voice visibility, the System/AI selection, and the separate activity-calorie choice also sync across web and mobile. Only the owner can change them; disabling voice preserves the selected model.
 * Nutrient column display preferences (`user_nutrient_display_preferences`)
 * Calorie settings history (`user_calorie_rule_history` — the goal mode, activity level, BMR, exercise-adjusted percentage macro opt-in, calorie cycling and other calculation settings in force from each change on, so past days keep their calorie and macro targets). It is recorded automatically when the owner changes those settings; family members can see it alongside the preferences, but cannot change it.
 * Dashboard widget layout and the website tabs you hid (`user_dashboard_layouts`). Hidden tabs only change your own view: someone acting for you sees the tabs their permissions allow.
-* Onboarding data and completion status (`onboarding_data`, `onboarding_status`)
+* Onboarding data and completion status (`onboarding_data`, `onboarding_status`). The setup questions are only ever shown to you: someone acting for you never gets them, and the server refuses to answer, skip or reset them, or to change your goal weight, for you.
 
 Delegates with only library permissions **cannot** read or write any of the above.
 

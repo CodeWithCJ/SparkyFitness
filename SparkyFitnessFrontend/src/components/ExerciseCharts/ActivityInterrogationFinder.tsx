@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { error } from '@/utils/logging';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,36 +48,48 @@ export const ActivityInterrogationFinder = ({
   const [queryResult, setQueryResult] =
     useState<ExerciseActivityQueryResponse | null>(null);
 
-  const executeSearch = useCallback(
-    async (preset?: string, kw?: string) => {
+  // Fetches and stores the result; `loading` is switched on by the caller.
+  const runSearch = useCallback(
+    (preset?: string, kw?: string) => {
       if (!onQueryFetch) return;
-      setLoading(true);
-      try {
-        const res = await onQueryFetch({
-          distanceStandard: preset,
-          searchKeyword: kw,
+      onQueryFetch({
+        distanceStandard: preset,
+        searchKeyword: kw,
+      })
+        .then((res) => {
+          setQueryResult(res);
+          setQueryError(null);
+        })
+        .catch((err: unknown) => {
+          error(loggingLevel, 'Failed to query activities:', err);
+          setQueryError(
+            t(
+              'exerciseAnalytics.finder.loadError',
+              'Failed to load activities. Please try again.'
+            )
+          );
+          setQueryResult(null);
+        })
+        .finally(() => {
+          setLoading(false);
         });
-        setQueryResult(res);
-        setQueryError(null);
-      } catch (err) {
-        error(loggingLevel, 'Failed to query activities:', err);
-        setQueryError(
-          t(
-            'exerciseAnalytics.finder.loadError',
-            'Failed to load activities. Please try again.'
-          )
-        );
-        setQueryResult(null);
-      } finally {
-        setLoading(false);
-      }
     },
     [onQueryFetch, loggingLevel, t]
   );
 
+  const executeSearch = (preset?: string, kw?: string) => {
+    if (!onQueryFetch) return;
+    setLoading(true);
+    runSearch(preset, kw);
+  };
+
+  useOnChange([runSearch], () => {
+    if (onQueryFetch) setLoading(true);
+  });
+
   useEffect(() => {
-    executeSearch('half_marathon', '');
-  }, [executeSearch]);
+    runSearch('half_marathon', '');
+  }, [runSearch]);
 
   return (
     <Card className="shadow-sm border">

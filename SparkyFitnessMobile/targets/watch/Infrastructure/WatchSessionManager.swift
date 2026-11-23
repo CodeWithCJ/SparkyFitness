@@ -738,6 +738,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
         case "intervalTiming": handle(intervalTiming: payload)
         case "setTargets": handle(setTargets: payload)
         case "workoutPlanUpdate": handle(workoutPlanUpdate: payload)
+        case "exerciseImage":
+            if ExerciseDemoStore.receive(payload) { ExerciseDemoStore.shared.didChange() }
         case "recordingState":
             if let update = ContextPayloadMapper.recordingUpdate(from: payload) {
                 RecordingStore.shared.apply(update)
@@ -783,7 +785,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
         if workoutStore.plan?.sessionId == plan.sessionId { return }
         // A wrist-only run already holds the watch's one workout session; a
         // second would end one of them. The workout carries on on the phone.
-        if WatchRunStore.shared.isActive { return }
+        // So does an indoor run whose workout is still being written to Health.
+        if WatchRunStore.shared.isActive || WatchRunHealthKitController.shared.holdsWorkoutSession { return }
 
         // Recovery may still be reattaching the previous HealthKit session.
         // Queue the plan and let that finish (and stop the old session)
@@ -1610,6 +1613,12 @@ final class WatchSessionManager: NSObject, ObservableObject {
     /// Ends the workout. The stop signal waits until HealthKit has finished
     /// the workout and the tail has been queued. See `finishCollection`.
     func endWorkout() {
+        // The summary will ask whether to update the saved workout: tell the
+        // phone first so it holds its own prompt for the answer.
+        if workoutStore.usesNewWorkoutView(), workoutStore.changedFromPreset,
+           let sessionId = workoutStore.plan?.sessionId, WCSession.isSupported() {
+            transfer(OutboundPayloads.presetUpdateAnswer(sessionId: sessionId, update: false, waiting: true))
+        }
         requestFinish(sendStop: true)
     }
 
@@ -1733,10 +1742,13 @@ final class WatchSessionManager: NSObject, ObservableObject {
                     )
                 }
                 let next = self.pendingPlan
+                let watchStartedFinish = sendStop || self.pendingSendStop
                 self.pendingPlan = nil
                 self.pendingSendStop = false
                 self.workoutStore.recordFinalHeartRate(self.heartRateReadings(samples))
-                let summary = next == nil ? self.workoutStore.makeSummary() : nil
+                let summary = next == nil
+                    ? self.workoutStore.makeSummary(askPresetUpdate: watchStartedFinish)
+                    : nil
                 self.workoutStore.reset()
                 self.workoutStore.recordSummary(summary)
                 self.collectionInFlight = false

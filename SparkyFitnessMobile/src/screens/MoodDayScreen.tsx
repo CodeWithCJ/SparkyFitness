@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useTranslation } from 'react-i18next';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import {
   draftFromEntry,
@@ -12,7 +11,6 @@ import {
   todayInZone,
 } from '@workspace/shared';
 import type { RootStackParamList } from '../types/navigation';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import Button from '../components/ui/Button';
 import MoodCheckinListItem from '../components/mood/MoodCheckinListItem';
@@ -82,8 +80,6 @@ function MoodDayFrame({
   children?: React.ReactNode;
 }) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const title = t('mood.dayTitle', { defaultValue: 'Mood' });
 
   const header = useScreenHeader({
@@ -97,10 +93,7 @@ function MoodDayFrame({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <ScrollView
         className="flex-1 px-4 py-3"

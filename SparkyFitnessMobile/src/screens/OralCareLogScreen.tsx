@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Platform, Text, TouchableOpacity, View } from 'react-native';
+import { Text, TouchableOpacity, View } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -170,6 +170,7 @@ export default function OralCareLogScreen({ navigation, route }: Props) {
     : t('oralCare.log.addTitle', { defaultValue: 'Log oral care' });
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title,
     nativeTitle: title,
     left: {
@@ -194,10 +195,7 @@ export default function OralCareLogScreen({ navigation, route }: Props) {
   const recentLabels = history?.recent_custom_labels ?? [];
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
 
       <KeyboardAwareScrollView

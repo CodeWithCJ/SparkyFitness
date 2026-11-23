@@ -103,11 +103,16 @@ export interface FoodEntryInput extends FoodEntrySnapshot {
   unit?: string | null;
   source?: string | null;
   source_id?: string | null;
+  // Idempotency key from the mobile offline queue (food_entries.client_id).
+  client_id?: string | null;
   images?: string[] | null;
   // Per-occurrence markdown note. Unlike the nutrition snapshot this is never
   // derived from the parent food or meal, so it is not part of
   // FoodEntrySnapshot and is never rewritten by a snapshot resync.
   notes?: string | null;
+  // Cooked weight eaten, in the unit of `quantity` (the raw weight). Only for
+  // weight units; NULL when the entry was not weighed cooked (#3534).
+  cooked_quantity?: number | null;
   created_by_user_id?: string | null;
   updated_by_user_id?: string | null;
   // Set when the entry was generated from a meal plan.

@@ -13,6 +13,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { BottomSheetModal, BottomSheetView } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import { useTranslation } from 'react-i18next';
 
@@ -58,6 +59,7 @@ interface AddSheetProps {
   onAddMood?: () => void;
   onAddMindfulness?: () => void;
   onAddOralCare?: () => void;
+  onCopyFromYesterday?: () => void;
   onRecordActivity?: () => void;
   onOpenCycle?: () => void;
   showCycleCard?: boolean;
@@ -93,6 +95,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       onAddMood,
       onAddMindfulness,
       onAddOralCare,
+      onCopyFromYesterday,
       onRecordActivity,
       onOpenCycle,
       showCycleCard,
@@ -104,6 +107,9 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
   ) => {
     const { t } = useTranslation();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
+    // The camera cutout and status icons sit in the safe area on the Duo's
+    // folded and unfolded-portrait poses; keep the sheet clear of them.
+    const sheetInsets = useSafeAreaInsets();
     const isDismissingRef = useRef(false);
     const isOpenRef = useRef(false);
     const isPresentingRef = useRef(false);
@@ -554,6 +560,14 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         icon: ADD_MENU_ITEM_ICONS.oralCare,
         onPress: onAddOralCare,
       },
+      copyFromYesterday: onCopyFromYesterday && {
+        label: labelOf('copyFromYesterday'),
+        hint: t('addSheet.copyFromYesterdayHint', {
+          defaultValue: 'Repeat meals',
+        }),
+        icon: ADD_MENU_ITEM_ICONS.copyFromYesterday,
+        onPress: onCopyFromYesterday,
+      },
       askSparky: {
         label: labelOf('askSparky'),
         icon: ADD_MENU_ITEM_ICONS.askSparky,
@@ -629,6 +643,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       <BottomSheetModal
         ref={bottomSheetRef}
         enableDynamicSizing
+        topInset={sheetInsets.top}
         backdropComponent={renderBackdrop}
         backgroundStyle={{ backgroundColor: surfaceBg }}
         handleIndicatorStyle={{ backgroundColor: textMuted }}
@@ -636,7 +651,13 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         onChange={handleChange}
         onDismiss={handleDismiss}
       >
-        <BottomSheetView className="pb-safe-or-5 px-2.5">
+        <BottomSheetView
+          className="pb-safe-or-5 px-2.5"
+          style={{
+            paddingLeft: sheetInsets.left,
+            paddingRight: sheetInsets.right,
+          }}
+        >
           {showExerciseMenu ? (
             <>
               <View className="flex-row items-center justify-between px-3 pt-1 pb-3">

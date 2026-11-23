@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { formatDateToYYYYMMDD } from '@/lib/utils';
@@ -33,6 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import type { WorkoutPreset } from '@/types/workout';
 import WorkoutPresetForm from './WorkoutPresetForm';
 import {
@@ -65,6 +67,7 @@ const WorkoutPresetsManager = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { activeUserId } = useActiveUser();
   const isMobile = useIsMobile();
   const { weightUnit } = usePreferences();
 
@@ -96,11 +99,11 @@ const WorkoutPresetsManager = () => {
   // Deleting every preset on the last page (or shrinking the page size) can
   // leave the request pointing past the end of the list, which would render an
   // empty table next to a stale page number. Fall back to the last real page.
-  React.useEffect(() => {
-    if (data && totalPages > 0 && currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [data, totalPages, currentPage]);
+  const overshotPage =
+    data && totalPages > 0 && currentPage > totalPages ? totalPages : null;
+  useOnChange([overshotPage, currentPage], () => {
+    if (overshotPage !== null) setCurrentPage(overshotPage);
+  });
 
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
 
@@ -149,9 +152,10 @@ const WorkoutPresetsManager = () => {
     setIsAddPresetDialogOpen(false);
   };
 
+  const userId = user?.id;
   const handleDuplicatePreset = React.useCallback(
     async (preset: WorkoutPreset) => {
-      if (!user?.id) return;
+      if (!userId) return;
       // The server always inserts fresh rows for exercises/sets on create and
       // ignores any incoming id (see workoutPresetRepository.createWorkoutPreset),
       // so the original's exercises/sets can be sent as-is. Defaults to
@@ -179,7 +183,7 @@ const WorkoutPresetsManager = () => {
           : preset.name;
 
       await createPreset({
-        user_id: user.id,
+        user_id: userId,
         name: t('workoutPresetsManager.duplicateNameSuffix', {
           name: truncatedName,
         }),
@@ -191,7 +195,7 @@ const WorkoutPresetsManager = () => {
         })),
       });
     },
-    [createPreset, user?.id, t]
+    [createPreset, userId, t]
   );
 
   const handleUpdatePreset = async (
@@ -262,6 +266,7 @@ const WorkoutPresetsManager = () => {
       const routeState = createWorkoutPlaybackRouteState(
         preset,
         today,
+        activeUserId,
         `${location.pathname}${location.search}`
       );
 
@@ -269,7 +274,7 @@ const WorkoutPresetsManager = () => {
         state: routeState,
       });
     },
-    [location.pathname, location.search, navigate, t]
+    [activeUserId, location.pathname, location.search, navigate, t]
   );
 
   const columns = React.useMemo<ColumnDef<DataTableFeatures, WorkoutPreset>[]>(

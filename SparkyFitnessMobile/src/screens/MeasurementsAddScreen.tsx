@@ -13,11 +13,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Platform,
 } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller';
 import Toast from 'react-native-toast-message';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
 import Button from '../components/ui/Button';
@@ -36,6 +34,7 @@ import {
 import { useUpsertCheckIn } from '../hooks/useUpsertCheckIn';
 import { usePreferences } from '../hooks/usePreferences';
 import { useProfile } from '../hooks/useProfile';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import { getTodayDate, addDays, formatDate } from '../utils/dateUtils';
 import {
   weightToKg,
@@ -50,6 +49,7 @@ import {
   calculateAge,
   energyFromKcal,
   normalizeEnergyUnit,
+  withoutHiddenCategories,
 } from '@workspace/shared';
 import {
   EMPTY_FORM,
@@ -204,7 +204,6 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     },
     [t]
   );
-  const insets = useSafeAreaInsets();
   const usesNativeHeader = useNativeIOSHeadersActive();
   const calendarSheetRef = useRef<CalendarSheetRef>(null);
 
@@ -311,12 +310,26 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // reach the form state, so they cannot flood the screen. Memoized so the
   // reconciliation effect below has a stable identity across renders.
   /** FORM MODEL: every Daily category (health-sync names included). Used by
-   * syncCustomForm / buildCustomOps / delete lookup / reconciliation / dirty
-   * preservation — never the presentation partition, so a value typed inside
-   * "More categories" is always part of the form regardless of expansion. */
+   * syncCustomForm / reconciliation / dirty preservation — never the
+   * presentation partition, so a value typed inside "More categories" is
+   * always part of the form regardless of expansion. Saving goes through
+   * `shownCustomCategories` below. */
   const dailyCustomCategories = useMemo(
     () => (customCategories ?? []).filter(isDailyCustomCategory),
     [customCategories]
+  );
+
+  /** SHOWN: the form model less the categories of a feature turned off on
+   * purpose (the reproductive ones while cycle is off in Settings →
+   * Features). What is listed, checked for unsaved edits, validated and
+   * saved. A value typed before the feature's state loaded stays in the form
+   * model, so it comes back with the feature, but a hidden draft is neither
+   * saved nor allowed to block Save. Their stored data is kept. */
+  const { hiddenCustomCategories } = useMobileFeatures();
+  const shownCustomCategories = useMemo(
+    () =>
+      withoutHiddenCategories(dailyCustomCategories, hiddenCustomCategories),
+    [dailyCustomCategories, hiddenCustomCategories]
   );
 
   /**
@@ -363,12 +376,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
    * for the selected date. Always visible in the main custom list. */
   const primaryCustomCategories = useMemo(
     () =>
-      dailyCustomCategories.filter(
+      shownCustomCategories.filter(
         (cat) =>
           !isAutoHealthSyncCustomCategoryName(cat.name) ||
           manualCategoryIds.has(cat.id)
       ),
-    [dailyCustomCategories, manualCategoryIds]
+    [shownCustomCategories, manualCategoryIds]
   );
 
   /** More: a known health-sync name with NO manual entry for the selected
@@ -377,17 +390,29 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
    * accessible. */
   const moreCustomCategories = useMemo(
     () =>
-      dailyCustomCategories.filter(
+      shownCustomCategories.filter(
         (cat) =>
           isAutoHealthSyncCustomCategoryName(cat.name) &&
           !manualCategoryIds.has(cat.id)
       ),
-    [dailyCustomCategories, manualCategoryIds]
+    [shownCustomCategories, manualCategoryIds]
   );
 
   // Lazy "More categories" expansion state (presentation only — never owns the
   // form value; collapsing keeps typed values in customForm).
   const [showMoreCategories, setShowMoreCategories] = useState(false);
+
+  // The form starts empty whenever a day (or the preferences) is still loading.
+  const isSyncing = isLoading || isPreferencesLoading;
+  const syncKey = `${selectedDate}|${isSyncing}`;
+  const [lastSyncKey, setLastSyncKey] = useState<string | null>(null);
+  if (lastSyncKey !== syncKey) {
+    setLastSyncKey(syncKey);
+    if (isSyncing) {
+      setForm(EMPTY_FORM);
+      setPrefilledKeys(new Set());
+    }
+  }
 
   // Sync the form to the latest measurements snapshot. Re-runs on every
   // measurements change (including background refetches) so cached-then-fresh
@@ -400,13 +425,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
     const dirtyFields = new Set(dirtyFieldsRef.current);
 
-    if (isLoading || isPreferencesLoading) {
-      // Syncs the form to the latest measurements snapshot (cached-then-fresh)
-      // with dirty-field tracking; a legitimate external-data sync effect.
-      setForm(EMPTY_FORM);
-      setPrefilledKeys(new Set());
-      return;
-    }
+    if (isLoading || isPreferencesLoading) return;
 
     const { values, prefilled } = buildStandardFormFromMeasurement(
       measurements,
@@ -515,12 +534,12 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     if (standardChanged) return true;
 
     const loadedCustom = syncCustomForm({
-      categories: dailyCustomCategories,
+      categories: shownCustomCategories,
       serverEntries: customMeasurements ?? [],
       current: {},
       dirtyKeys: new Set(),
     }).form;
-    return dailyCustomCategories.some((category) => {
+    return shownCustomCategories.some((category) => {
       const current = customForm[category.id];
       if (!current) return false;
       if (current.deleted.length > 0) return true;
@@ -534,7 +553,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     isPreferencesLoading,
     measurements,
     units,
-    dailyCustomCategories,
+    shownCustomCategories,
     customMeasurements,
   ]);
 
@@ -1038,7 +1057,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     // means a changed row failed validation, so handleSave stops before any
     // mutation runs; untouched rows are never parsed and cannot block saves.
     const customResult = buildCustomOps({
-      categories: dailyCustomCategories,
+      categories: shownCustomCategories,
       form: customForm,
       dirtyKeys: new Set(dirtyCustomKeysRef.current),
       onInvalid: (label) => {
@@ -1185,7 +1204,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     const clearingLabels = [
       ...cleared.map((k) => fieldLabel(k, k)),
       ...customDeleteOps.map((op) => {
-        const cat = dailyCustomCategories.find((c) => c.id === op.categoryId);
+        const cat = shownCustomCategories.find((c) => c.id === op.categoryId);
         return cat ? (cat.display_name ?? cat.name) : op.categoryId;
       }),
     ];
@@ -1238,7 +1257,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     saveCustomMutation,
     deleteCustomMutation,
     navigation,
-    dailyCustomCategories,
+    shownCustomCategories,
     customForm,
     refetchMeasurements,
     refetchCustomCategories,
@@ -1338,6 +1357,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
     : t('common.save', { defaultValue: 'Save' });
 
   const header = useScreenHeader({
+    topInset: 'android-only',
     title: t('screens.measurements', { defaultValue: 'Measurements' }),
     left: {
       kind: 'dismiss',
@@ -1480,10 +1500,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
           );
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       {guidedCheckIn && (
         <GuidedCheckInStepIndicator
@@ -1941,7 +1958,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
                 <ActivityIndicator size="small" color={accentPrimary} />
               </View>
             ) : (
-              dailyCustomCategories.length > 0 && (
+              shownCustomCategories.length > 0 && (
                 <View className="mt-4 mb-2">
                   <Text className="text-text-primary text-base font-semibold mb-3">
                     {t('measurements.custom.title', {

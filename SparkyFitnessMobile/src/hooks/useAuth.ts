@@ -1,3 +1,6 @@
+import { beginAccountChange } from '../offline/accountGeneration';
+import { notifyDiaryDaySaved } from '../offline/events';
+import { clearAllOfflineImages } from '../offline/offlineImages';
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
@@ -11,12 +14,19 @@ import {
 import {
   clearServerConfigCache,
   setOnServerConfigDeleted,
+  setOnServerConfigsChanged,
   takeIdentityChangeServerConfigIds,
 } from '../services/storage';
 import type { ServerConfig } from '../services/storage';
 import { addLog } from '../services/LogService';
 import { clearBackgroundWater } from '../services/backgroundWater';
+import { refreshClientCertificateHosts } from '../services/clientCertificate';
 import { clearAndroidWidgetSnapshots } from '../services/androidWidgetSyncService';
+import {
+  cancelChallengeWeekNotifications,
+  dismissDeliveredChallengeWeekNotifications,
+  enqueueChallengeWeekNotificationTask,
+} from '../services/challengeWeekNotificationService';
 import {
   deleteWatchTelemetryForConfig,
   notifyWatchTelemetryAccountSwitch,
@@ -52,6 +62,15 @@ export function useAuth() {
     // A deleted config's saved watch telemetry and queued batches can never
     // be posted again.
     setOnServerConfigDeleted(deleteWatchTelemetryForConfig);
+    // The TLS client certificate is only ever shown to the saved servers, so
+    // the native side is told whenever that list changes, and once at start.
+    const syncClientCertificateHosts = () => {
+      void refreshClientCertificateHosts().catch((err: unknown) => {
+        addLog(`Failed to update client certificate hosts: ${err}`, 'WARNING');
+      });
+    };
+    setOnServerConfigsChanged(syncClientCertificateHosts);
+    syncClientCertificateHosts();
     // Everything cached under the previous account has to go, or the new one
     // reads it until each query happens to refetch.
     setOnIdentityChanged(async () => {
@@ -61,6 +80,34 @@ export function useAuth() {
       // succeeds; restore waits until the ids are read and purged.
       notifyWatchTelemetryAccountSwitch(takeIdentityChangeServerConfigIds);
       queryClient.clear();
+      // The challenge week notices carry the previous account's challenge
+      // names, members and totals, and no account to tell them apart. With
+      // the cache gone the reconciler waits for the new account's reads and
+      // would leave them scheduled, so they are cancelled here, in its queue
+      // so a run already under way cannot schedule them again after. Queued
+      // before any await, so a run for the new account always comes after.
+      // Those already shown are dismissed too.
+      void enqueueChallengeWeekNotificationTask(async () => {
+        await cancelChallengeWeekNotifications();
+        await dismissDeliveredChallengeWeekNotifications();
+      });
+      // Data saved for offline use belongs to the previous account too; the
+      // next refresh downloads the new one's. Waiting uploads are kept and
+      // stay with the account that made them.
+      // Awaited like the cookie sweep below: the documents are keyed by
+      // server configuration, not by account, so a read that overtook this
+      // DELETE would answer from the previous account's copy. Reads of the
+      // saved copy wait for it (and stay closed if it fails, also after a
+      // restart), and work under way for the previous account (a refresh, a
+      // request that stores its answer) is told to stop writing.
+      await beginAccountChange();
+      // A Diary read that ran meanwhile is read again.
+      notifyDiaryDaySaved();
+      // Pictures of the shared exercise library carry no account data, so
+      // that sweep does not hold the switch up.
+      void clearAllOfflineImages().catch((err: unknown) => {
+        addLog(`Failed to clear saved pictures: ${err}`, 'WARNING');
+      });
       // The widgets' snapshots carry no account either, and the Quick Settings
       // tile shows the calorie figure on the lock screen. Cleared in the same
       // turn as the cache, so no summary of the previous account is pushed

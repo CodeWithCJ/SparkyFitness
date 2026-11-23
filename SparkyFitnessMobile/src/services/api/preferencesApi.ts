@@ -1,3 +1,9 @@
+import { getCacheRow, putCacheRows } from '../../offline/cacheStore';
+import {
+  CACHE_COLLECTIONS,
+  SINGLE_DOCUMENT_KEY,
+} from '../../offline/collections';
+import { withOfflineFallback } from '../../offline/withOfflineFallback';
 import { apiFetch } from './apiClient';
 import { UserPreferences } from '../../types/preferences';
 import { isValidTimeZone } from '@workspace/shared';
@@ -70,13 +76,30 @@ let timezoneBootstrapPromise: Promise<TimezoneBootstrapResult> | null = null;
 /**
  * Fetches user preferences.
  */
-export const fetchPreferences = async (): Promise<UserPreferences> => {
-  return apiFetch<UserPreferences>({
+const requestPreferences = (): Promise<UserPreferences> =>
+  apiFetch<UserPreferences>({
     endpoint: '/api/user-preferences',
     serviceName: 'Preferences API',
     operation: 'fetch preferences',
   });
-};
+
+export const fetchPreferences = async (): Promise<UserPreferences> =>
+  withOfflineFallback<UserPreferences>({
+    fetch: requestPreferences,
+    store: (db, serverConfigId, value) =>
+      putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.preferences, [
+        { key: SINGLE_DOCUMENT_KEY, payload: value },
+      ]),
+    read: async (db, serverConfigId) => {
+      const row = await getCacheRow(
+        db,
+        serverConfigId,
+        CACHE_COLLECTIONS.preferences,
+        SINGLE_DOCUMENT_KEY
+      );
+      return row ? (row.payload as UserPreferences) : null;
+    },
+  });
 
 /**
  * Whether the account reads iPhone active calories from the Move ring. Read on each
@@ -85,7 +108,9 @@ export const fetchPreferences = async (): Promise<UserPreferences> => {
  * without the field reads as off.
  */
 export const fetchMoveRingActiveCaloriesSetting = async (): Promise<boolean> =>
-  (await fetchPreferences()).use_move_ring_active_calories === true;
+  // Straight from the server, never the phone's saved copy: a saved value
+  // could be out of date and would send the wrong figure.
+  (await requestPreferences()).use_move_ring_active_calories === true;
 
 /**
  * Updates user preferences (partial — only provided fields are changed).

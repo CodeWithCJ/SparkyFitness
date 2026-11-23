@@ -75,7 +75,6 @@ describe('RouteMap', () => {
     expect(map.props.initialRegion.longitude).toBeCloseTo(-0.1195);
     expect(map.props.scrollEnabled).toBe(false);
     expect(map.props.zoomEnabled).toBe(false);
-    expect(map.props.liteMode).toBe(true);
   });
 
   it('never sets a map ID, which would bill loads as Dynamic Maps', () => {

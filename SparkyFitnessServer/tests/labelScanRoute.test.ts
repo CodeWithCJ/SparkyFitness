@@ -114,7 +114,10 @@ describe('POST /food-crud/scan-label', () => {
       .post('/food-crud/scan-label')
       .send({ image: 'base64data', mime_type: 'image/png' });
     expect(res.statusCode).toBe(422);
-    expect(res.body.error).toBe('No AI service configured');
+    expect(res.body).toEqual({
+      error: 'No AI service configured',
+      code: 'no_ai_configured',
+    });
   });
   it('should return 422 when API key is missing', async () => {
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
@@ -150,7 +153,10 @@ describe('POST /food-crud/scan-label', () => {
       .post('/food-crud/scan-label')
       .send({ image: 'base64data', mime_type: 'image/png' });
     expect(res.statusCode).toBe(status);
-    expect(res.body).toEqual({ error: 'Something went wrong upstream.' });
+    expect(res.body).toEqual({
+      error: 'Something went wrong upstream.',
+      code: category,
+    });
   });
   it('should return 500 when service throws an unhandled error', async () => {
     // @ts-expect-error TS(2339): Property 'mockRejectedValue' does not exist on typ... Remove this comment to see the full error message

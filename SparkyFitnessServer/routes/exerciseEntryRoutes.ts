@@ -33,6 +33,7 @@ import {
   setExerciseEntryEffortRequestSchema,
   setCalorieLinkRequestSchema,
   isEntryTimeString,
+  isValidTimeZone,
 } from '@workspace/shared';
 import exerciseCalorieLinkService, {
   CalorieLinkError,
@@ -374,6 +375,19 @@ router.post(
           error: 'entry_time must be in HH:MM (24h) format.',
         });
       }
+      // The zone `entry_time` was read in, when it is not the profile's.
+      const record_timezone =
+        entryData.record_timezone === '' ? null : entryData.record_timezone;
+      if (
+        record_timezone !== null &&
+        record_timezone !== undefined &&
+        (typeof record_timezone !== 'string' ||
+          !isValidTimeZone(record_timezone))
+      ) {
+        return res.status(400).json({
+          error: 'record_timezone must be an IANA time zone.',
+        });
+      }
       if (activity_details && typeof activity_details === 'string') {
         try {
           entryData.activity_details = JSON.parse(activity_details);
@@ -436,6 +450,10 @@ router.post(
           calories_applied: caloriesApplied,
           entry_date,
           entry_time,
+          // Omitted stays undefined: an assigned-workout retry updates the
+          // stored row, and null there would erase its zone. The insert path
+          // defaults to null itself.
+          record_timezone,
           notes,
           sets,
           reps,
@@ -943,6 +961,10 @@ router.put(
  *                 type: number
  *                 nullable: true
  *                 description: Stride length in cm; null clears it. Changes nothing else on the entry.
+ *               avgCadence:
+ *                 type: number
+ *                 nullable: true
+ *                 description: Average cadence in steps per minute; null clears it. Changes nothing else on the entry.
  *     responses:
  *       204:
  *         description: Telemetry attached.
@@ -977,7 +999,8 @@ router.post('/:id/watch-telemetry', authenticate, async (req, res, next) => {
       parsed.data.activeEnergyKcal,
       parsed.data.durationMinutes,
       parsed.data.appleZones,
-      parsed.data.strideLengthCm
+      parsed.data.strideLengthCm,
+      parsed.data.avgCadence
     );
     res.status(204).send();
   } catch (error) {

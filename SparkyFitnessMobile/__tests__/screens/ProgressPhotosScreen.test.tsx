@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, Text } from 'react-native';
+import { Text } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import ProgressPhotosScreen from '../../src/screens/ProgressPhotosScreen';
@@ -948,11 +948,18 @@ describe('ProgressPhotosScreen', () => {
       mockUseScreenHeader.mockImplementation(() => null);
     });
 
-    it('keeps its own header below the status bar (Android, iOS 26+ with Liquid Glass off)', () => {
+    // The header bar reserves the status bar itself (#3465); the screen only
+    // says whether it is a sheet, and never pads its root on top of that.
+    it('leaves the status bar to its header bar when pushed', () => {
       mockNativeHeadersActive = false;
       const { getByText } = renderScreen();
 
-      expect(paddingAbove(getByText('Screen header'), 'paddingTop')).toBe(47);
+      expect(
+        paddingAbove(getByText('Screen header'), 'paddingTop')
+      ).toBeUndefined();
+      expect(mockUseScreenHeader).toHaveBeenLastCalledWith(
+        expect.objectContaining({ topInset: 'status-bar' })
+      );
     });
 
     it('adds no top inset under the native iOS header', () => {
@@ -963,7 +970,7 @@ describe('ProgressPhotosScreen', () => {
       ).toBeUndefined();
     });
 
-    it('adds no top inset as the check-in sheet on iOS, which already starts below the status bar', () => {
+    it('asks for the room on Android only as the check-in sheet, which on iOS already starts below the status bar', () => {
       mockNativeHeadersActive = false;
       const { getByText } = renderScreen({
         date: '2026-03-20',
@@ -973,21 +980,9 @@ describe('ProgressPhotosScreen', () => {
       expect(
         paddingAbove(getByText('Screen header'), 'paddingTop')
       ).toBeUndefined();
-    });
-
-    it('keeps the top inset in the check-in on Android, where every screen is full height', () => {
-      mockNativeHeadersActive = false;
-      const platform = jest.replaceProperty(Platform, 'OS', 'android');
-      try {
-        const { getByText } = renderScreen({
-          date: '2026-03-20',
-          guidedCheckIn: {},
-        });
-
-        expect(paddingAbove(getByText('Screen header'), 'paddingTop')).toBe(47);
-      } finally {
-        platform.restore();
-      }
+      expect(mockUseScreenHeader).toHaveBeenLastCalledWith(
+        expect.objectContaining({ topInset: 'android-only' })
+      );
     });
   });
 });

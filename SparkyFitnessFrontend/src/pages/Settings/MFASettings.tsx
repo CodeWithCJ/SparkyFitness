@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -50,12 +51,12 @@ const MFASettings = () => {
     | null
   >(null);
 
-  useEffect(() => {
+  useOnChange([session], () => {
     if (session?.user) {
       setTotpEnabled(!!(session.user as BetterAuthUser).mfaTotpEnabled);
       setEmailMfaEnabled(!!(session.user as BetterAuthUser).mfaEmailEnabled);
     }
-  }, [session]);
+  });
 
   const handlePasswordAction = async () => {
     // SSO-only accounts have no password; the server skips the check for them,

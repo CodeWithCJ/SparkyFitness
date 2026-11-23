@@ -11,6 +11,7 @@ import {
   type ExerciseHistoryResponse,
   type ExerciseModality,
   type ExerciseSessionResponse,
+  type CalorieLinkResolution,
 } from '@workspace/shared';
 
 import { getClient } from '../db/poolManager.js';
@@ -135,6 +136,20 @@ const SETS_SUBQUERY = `COALESCE(
 ) AS sets`;
 
 /**
+ * The Health activity type override (#1750) a diary entry is written with:
+ * the library exercise's current value while the exercise exists (so changing
+ * it, including back to Automatic, fixes entries still in the write-back
+ * window), else the copy the entry took when it was created. Decided by
+ * whether the exercise row exists, not by COALESCE, so clearing the exercise's
+ * override never falls back to an old copy.
+ */
+const HEALTH_ACTIVITY_TYPE_SUBQUERY = `CASE
+     WHEN EXISTS (SELECT 1 FROM exercises ex WHERE ex.id = ee.exercise_id)
+       THEN (SELECT ex.health_activity_type FROM exercises ex WHERE ex.id = ee.exercise_id)
+     ELSE ee.health_activity_type
+   END AS resolved_health_activity_type`;
+
+/**
  * Transform a raw exercise_entries row (with snapshot columns and inline sets)
  * into the shape expected by exerciseEntryResponseSchema.
  */
@@ -154,6 +169,9 @@ function _buildExerciseEntryWithSnapshot(
     force,
     level,
     mechanic,
+    // The raw snapshot column is replaced by the resolved value below.
+    health_activity_type: _storedHealthActivityType,
+    resolved_health_activity_type,
     // Strip columns that aren't part of the API response
     _user_id,
     _created_by_user_id,
@@ -179,6 +197,15 @@ function _buildExerciseEntryWithSnapshot(
     exercise_id: entryData.exercise_id as string,
     duration_minutes: (entryData.duration_minutes as number) ?? 0,
     calories_burned: (entryData.calories_burned as number) ?? 0,
+    calories_applied:
+      entryData.calories_applied === null ||
+      entryData.calories_applied === undefined
+        ? null
+        : Number(entryData.calories_applied),
+    calorie_link_id: (entryData.calorie_link_id as string | null) ?? null,
+    calorie_link_resolution:
+      (entryData.calorie_link_resolution as CalorieLinkResolution | null) ??
+      null,
     entry_date: _dateToString(entryData.entry_date),
     entry_time: (entryData.entry_time as string) ?? null,
     notes: (entryData.notes as string) ?? null,
@@ -210,6 +237,8 @@ function _buildExerciseEntryWithSnapshot(
       force: (force as string) ?? null,
       level: (level as string) ?? null,
       mechanic: (mechanic as string) ?? null,
+      health_activity_type:
+        (resolved_health_activity_type as string | null) ?? null,
     },
     activity_details: [] as ActivityDetailResponse[],
   } satisfies ExerciseEntryResponse;
@@ -330,7 +359,7 @@ async function getExerciseEntryHistorySessions(
     batchQueries.push(
       client
         .query(
-          `SELECT ee.*, ${SETS_SUBQUERY}
+          `SELECT ee.*, ${SETS_SUBQUERY}, ${HEALTH_ACTIVITY_TYPE_SUBQUERY}
            FROM exercise_entries ee
            WHERE ee.exercise_preset_entry_id = ANY($1::uuid[])
            ORDER BY ee.sort_order ASC, ee.created_at ASC`,
@@ -376,7 +405,7 @@ async function getExerciseEntryHistorySessions(
     batchQueries.push(
       client
         .query(
-          `SELECT ee.*, ${SETS_SUBQUERY}
+          `SELECT ee.*, ${SETS_SUBQUERY}, ${HEALTH_ACTIVITY_TYPE_SUBQUERY}
            FROM exercise_entries ee
            WHERE ee.id = ANY($1::uuid[])`,
           [individualIds]
@@ -579,7 +608,7 @@ async function _getExerciseEntriesByDateWithClient(
       [userId, selectedDate]
     ),
     client.query(
-      `SELECT ee.*, ${SETS_SUBQUERY}
+      `SELECT ee.*, ${SETS_SUBQUERY}, ${HEALTH_ACTIVITY_TYPE_SUBQUERY}
        FROM exercise_entries ee
        WHERE ee.user_id = $1 AND ee.entry_date = $2
        ORDER BY ee.sort_order ASC, ee.created_at ASC`,
@@ -844,7 +873,7 @@ export async function getGroupedExerciseSessionByIdWithClient(
   // logging out of order would otherwise reorder the workout on every save.
   const [childEntriesResult, presetActivityResult] = await Promise.all([
     client.query(
-      `SELECT ee.*, ${SETS_SUBQUERY}
+      `SELECT ee.*, ${SETS_SUBQUERY}, ${HEALTH_ACTIVITY_TYPE_SUBQUERY}
        FROM exercise_entries ee
        WHERE ee.user_id = $1 AND ee.exercise_preset_entry_id = $2
        ORDER BY ee.sort_order ASC, ee.created_at ASC

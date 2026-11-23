@@ -16,7 +16,6 @@ import {
   useProfile,
 } from '../hooks';
 import { foodItemToFoodInfo } from '../types/foodInfo';
-import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
@@ -34,7 +33,6 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const usesNativeHeader = useNativeIOSHeadersActive();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const accentColor = useCSSVariable('--color-accent-primary') as string;
   const scrollBottomPadding = insets.bottom + activeWorkoutBarPadding + 16;
@@ -47,7 +45,9 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
   );
   const [refreshing, setRefreshing] = useState(false);
 
-  const { isConnected } = useServerConnection();
+  const { isConnected, status } = useServerConnection();
+  // The foods kept on the phone are read while the server is away.
+  const canRead = isConnected || status === 'unreachable';
   const { profile } = useProfile();
   const {
     foods,
@@ -59,7 +59,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
     isFetchingNextPage,
     loadMore,
     refetch,
-  } = useFoodsLibrary(searchText, { enabled: isConnected });
+  } = useFoodsLibrary(searchText, { enabled: canRead });
   const filteredFoods = useMemo(
     () => filterByOwnership(foods, ownershipFilter, profile?.id),
     [foods, ownershipFilter, profile?.id]
@@ -235,12 +235,9 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
   });
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={usesNativeHeader ? undefined : { paddingTop: insets.top }}
-    >
+    <View className="flex-1 bg-background">
       {header}
-      {isConnected ? (
+      {canRead ? (
         <LibrarySearchBar
           value={searchText}
           onChangeText={setSearchText}
@@ -250,7 +247,7 @@ const FoodsLibraryScreen: React.FC<FoodsLibraryScreenProps> = ({
           isSearching={isSearching}
         />
       ) : null}
-      <ServerGate>{renderContent()}</ServerGate>
+      <ServerGate offlineCapable>{renderContent()}</ServerGate>
     </View>
   );
 };

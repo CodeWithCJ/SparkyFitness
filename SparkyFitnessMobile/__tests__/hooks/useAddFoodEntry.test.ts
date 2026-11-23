@@ -353,6 +353,7 @@ describe('useAddFoodEntry', () => {
       fat: 4,
     });
     expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      client_id: expect.any(String),
       meal_type_id: 'meal-type-1',
       quantity: 1,
       unit: 'oz',
@@ -497,6 +498,7 @@ describe('useAddFoodEntry', () => {
       })
     );
     expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      client_id: expect.any(String),
       meal_type_id: 'meal-type-1',
       quantity: 1,
       unit: 'ml',
@@ -625,6 +627,7 @@ describe('useAddFoodEntry', () => {
 
     // The hook should NOT use default-variant; it should resolve to 'one-portion-variant'
     expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      client_id: expect.any(String),
       meal_type_id: 'meal-type-1',
       quantity: 1,
       unit: 'Portion',
@@ -726,6 +729,7 @@ describe('useAddFoodEntry', () => {
 
     expect(mockCreateFoodVariant).not.toHaveBeenCalled();
     expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      client_id: expect.any(String),
       meal_type_id: 'meal-type-1',
       quantity: 1,
       unit: 'serving',
@@ -853,6 +857,7 @@ describe('useAddFoodEntry', () => {
     });
 
     expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      client_id: expect.any(String),
       meal_type_id: 'meal-type-1',
       quantity: 1,
       unit: 'package (400 g)',
@@ -900,6 +905,7 @@ describe('useAddFoodEntry', () => {
     });
 
     expect(mockCreateFoodEntry).toHaveBeenCalledWith({
+      client_id: expect.any(String),
       meal_type_id: 'meal-type-1',
       quantity: 1,
       unit: 'package (400 g)',

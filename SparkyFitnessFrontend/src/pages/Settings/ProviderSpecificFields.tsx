@@ -13,6 +13,12 @@ import { Clipboard } from 'lucide-react';
 import { useTranslation, Trans } from 'react-i18next';
 import type { ExternalDataProvider } from './ExternalProviderSettings';
 import { RoutingProviderFields } from './RoutingProviderFields';
+import { ZeppBridgeFields } from './ZeppBridgeFields';
+import { McpServerFields } from './McpServerFields';
+import {
+  MCP_SERVER_PROVIDER_TYPE,
+  getFoodProviderMetadata,
+} from '@workspace/shared';
 import { WeatherProviderFields } from './WeatherProviderFields';
 
 // Developer dashboards where each OAuth provider's Client ID/Secret and callback
@@ -78,23 +84,26 @@ export const ProviderSpecificFields = ({
     'polar',
     'intervals',
   ].includes(provider.provider_type || '');
-  const needsAppKey = [
-    'mealie',
-    'tandoor',
-    'norish',
-    'nutritionix',
-    'fatsecret',
-    'usda',
-    'withings',
-    'fitbit',
-    'oura',
-    'googlehealth',
-    'strava',
-    'polar',
-    'hevy',
-    'liftosaur',
-    'intervals',
-  ].includes(provider.provider_type || '');
+  const isFoodApiKeyProvider =
+    getFoodProviderMetadata(provider.provider_type)?.credentials === 'api_key';
+  const needsAppKey =
+    isFoodApiKeyProvider ||
+    [
+      'mealie',
+      'tandoor',
+      'norish',
+      'nutritionix',
+      'fatsecret',
+      'withings',
+      'fitbit',
+      'oura',
+      'googlehealth',
+      'strava',
+      'polar',
+      'hevy',
+      'liftosaur',
+      'intervals',
+    ].includes(provider.provider_type || '');
 
   const providerDashboard =
     OAUTH_PROVIDER_DASHBOARDS[provider.provider_type || ''];
@@ -149,6 +158,20 @@ export const ProviderSpecificFields = ({
         </div>
       )}
 
+      {provider.provider_type === 'zeppbridge' && (
+        <ZeppBridgeFields
+          idPrefix="new"
+          baseUrl={provider.base_url}
+          appKey={provider.app_key}
+          onBaseUrlChange={(value) =>
+            setProvider((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setProvider((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
+
       {provider.provider_type === 'valhalla' && (
         <RoutingProviderFields
           idPrefix="new"
@@ -159,6 +182,23 @@ export const ProviderSpecificFields = ({
           }
           onAppKeyChange={(value) =>
             setProvider((prev) => ({ ...prev, app_key: value }))
+          }
+        />
+      )}
+      {provider.provider_type === MCP_SERVER_PROVIDER_TYPE && (
+        <McpServerFields
+          idPrefix="new"
+          baseUrl={provider.base_url}
+          appKey={provider.app_key}
+          options={provider.provider_options}
+          onBaseUrlChange={(value) =>
+            setProvider((prev) => ({ ...prev, base_url: value }))
+          }
+          onAppKeyChange={(value) =>
+            setProvider((prev) => ({ ...prev, app_key: value }))
+          }
+          onOptionsChange={(options) =>
+            setProvider((prev) => ({ ...prev, provider_options: options }))
           }
         />
       )}
@@ -757,6 +797,34 @@ export const ProviderSpecificFields = ({
               ),
             }}
           />
+        </p>
+      )}
+
+      {isFoodApiKeyProvider && provider.provider_type !== 'usda' && (
+        <p className="text-sm text-muted-foreground col-span-2 flex items-center gap-2">
+          {getFoodProviderMetadata(provider.provider_type)?.apiKeyUrl && (
+            <a
+              href={getFoodProviderMetadata(provider.provider_type)!.apiKeyUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 underline"
+            >
+              {t(
+                `settings.foodProviders.${provider.provider_type}.apiKeyLink`,
+                t('settings.foodProviders.common.getApiKey', 'Get an API Key')
+              )}
+            </a>
+          )}
+          {getFoodProviderMetadata(provider.provider_type)?.termsUrl && (
+            <a
+              href={getFoodProviderMetadata(provider.provider_type)!.termsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-muted-foreground underline text-xs"
+            >
+              {t('settings.foodProviders.common.terms', 'Terms')}
+            </a>
+          )}
         </p>
       )}
 

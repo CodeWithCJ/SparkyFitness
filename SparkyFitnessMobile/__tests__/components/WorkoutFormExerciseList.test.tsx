@@ -5,23 +5,23 @@ import WorkoutFormExerciseList, {
   type WorkoutFormExerciseListHandle,
 } from '../../src/components/WorkoutFormExerciseList';
 import { __resetAppPreferencesStoreForTests } from '../../src/stores/appPreferencesStore';
+import {
+  getWorkoutReorderSource,
+  setWorkoutReorderSource,
+} from '../../src/services/workoutReorderSource';
 import type { WorkoutDraftExercise } from '../../src/types/drafts';
 
-// Drive the reorder overlay through pressable stubs (established pattern).
-jest.mock('../../src/components/WorkoutReorderList', () => {
-  const React = require('react');
-  const { View, Pressable } = require('react-native');
-  return {
-    __esModule: true,
-    default: ({ visible, onMoveItem, onDone }: any) =>
-      visible ? (
-        <View testID="reorder-list">
-          <Pressable testID="reorder-move" onPress={() => onMoveItem(0, 1)} />
-          <Pressable testID="reorder-done" onPress={onDone} />
-        </View>
-      ) : null,
-  };
-});
+// The reorder modal is a root-stack route; the list hands it its exercises
+// through the source bridge and navigates by the shared navigation ref.
+const mockNavigate = jest.fn();
+let mockNavReady = true;
+jest.mock('../../src/components/ActiveWorkoutBar', () => ({
+  __esModule: true,
+  navigationRef: {
+    isReady: () => mockNavReady,
+    navigate: (...args: unknown[]) => mockNavigate(...args),
+  },
+}));
 
 jest.mock('../../src/components/Icon', () => {
   const { View } = require('react-native');
@@ -769,8 +769,8 @@ describe('WorkoutFormExerciseList', () => {
     });
   });
 
-  describe('reorder overlay', () => {
-    it('opens via the imperative handle (dismissing the active set + keyboard) and commits a move', () => {
+  describe('reorder screen', () => {
+    it('opens via the imperative handle (dismissing the active set + keyboard) and hands over its exercises', () => {
       const dismissSpy = jest
         .spyOn(Keyboard, 'dismiss')
         .mockImplementation(() => {});
@@ -780,20 +780,30 @@ describe('WorkoutFormExerciseList', () => {
         undefined,
         ref
       );
-      expect(utils.queryByTestId('reorder-list')).toBeNull();
 
       act(() => ref.current?.openReorder());
 
       expect(utils.callbacks.onDeactivateSet).toHaveBeenCalled();
       expect(dismissSpy).toHaveBeenCalled();
-      expect(utils.getByTestId('reorder-list')).toBeTruthy();
+      expect(mockNavigate).toHaveBeenCalledWith('WorkoutReorder');
 
-      fireEvent.press(utils.getByTestId('reorder-move'));
+      const source = getWorkoutReorderSource();
+      expect(source?.exercises.map((e) => e.id)).toEqual(['a', 'b']);
+      source?.onMove(0, 1);
       expect(utils.callbacks.onReorderExercises).toHaveBeenCalledWith(0, 1);
-
-      fireEvent.press(utils.getByTestId('reorder-done'));
-      expect(utils.queryByTestId('reorder-list')).toBeNull();
       dismissSpy.mockRestore();
+    });
+
+    it('does nothing when the navigator is not ready', () => {
+      mockNavReady = false;
+      setWorkoutReorderSource(null);
+      mockNavigate.mockClear();
+      const ref = React.createRef<WorkoutFormExerciseListHandle>();
+      renderList([makeExercise('a'), makeExercise('b')], undefined, ref);
+      act(() => ref.current?.openReorder());
+      expect(mockNavigate).not.toHaveBeenCalled();
+      expect(getWorkoutReorderSource()).toBeNull();
+      mockNavReady = true;
     });
   });
 

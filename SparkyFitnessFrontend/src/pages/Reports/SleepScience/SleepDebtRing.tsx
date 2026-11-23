@@ -47,9 +47,19 @@ const SleepDebtRing: React.FC<SleepDebtRingProps> = ({
 }) => {
   const { t } = useTranslation();
   const status = DEBT_STATUS_MAP[data.debtCategory] || DEBT_STATUS_MAP.low;
+  // The server reports more sleep than needed as a negative debt. Show it as
+  // a surplus instead of "-20m Sleep Debt".
+  const isSurplus = Math.round(data.currentDebt * 60) < 0;
 
-  const label = t(status.labelKey, status.labelDefault);
-  const description = t(status.descKey, status.descDefault);
+  const label = isSurplus
+    ? t('sleepScience.debtSurplus', 'Surplus')
+    : t(status.labelKey, status.labelDefault);
+  const description = isSurplus
+    ? t(
+        'sleepScience.debtSurplusDesc',
+        "You're ahead on sleep. Tonight's need is a little lower."
+      )
+    : t(status.descKey, status.descDefault);
 
   // SVG calculations (270° arc, matching BodyBatteryGauge pattern)
   const radius = (size - strokeWidth) / 2;
@@ -59,7 +69,7 @@ const SleepDebtRing: React.FC<SleepDebtRingProps> = ({
 
   // Debt fills inversely (0 debt = full, 8+ = empty)
   const maxDisplayDebt = 8;
-  const debtRatio = Math.min(data.currentDebt / maxDisplayDebt, 1);
+  const debtRatio = Math.min(Math.max(data.currentDebt, 0) / maxDisplayDebt, 1);
   const healthRatio = 1 - debtRatio;
   const filledLength = healthRatio * arcLength;
 
@@ -107,7 +117,7 @@ const SleepDebtRing: React.FC<SleepDebtRingProps> = ({
           className="fill-foreground font-bold"
           style={{ fontSize: size * 0.22 }}
         >
-          {formatSecondsToHHMM(data.currentDebt * 3600)}
+          {formatSecondsToHHMM(Math.abs(data.currentDebt) * 3600)}
         </text>
         {/* Subtitle */}
         <text
@@ -117,7 +127,9 @@ const SleepDebtRing: React.FC<SleepDebtRingProps> = ({
           className="fill-muted-foreground"
           style={{ fontSize: size * 0.08 }}
         >
-          {t('sleepScience.sleepDebt', 'Sleep Debt')}
+          {isSurplus
+            ? t('sleepScience.sleepSurplus', 'Sleep Surplus')
+            : t('sleepScience.sleepDebt', 'Sleep Debt')}
         </text>
       </svg>
 

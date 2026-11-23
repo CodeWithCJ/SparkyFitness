@@ -1,3 +1,6 @@
+import { isServerKnownUnreachable } from '../offline/connection';
+import { queuePresetUpdate } from '../offline/followUps';
+import { serverMayBeDown } from '../utils/serverErrors';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, AppState } from 'react-native';
@@ -93,6 +96,12 @@ export function useWorkoutCompletePresetSync({
     onSettledRef.current = onSettled;
     onNeedsUpdateRef.current = onNeedsUpdate;
   });
+  // Alert.alert cannot be dismissed from code: once the watch settles the
+  // question, the phone's open alert must not act on a stale choice.
+  const skipPromptRef = useRef(skipPrompt);
+  useEffect(() => {
+    skipPromptRef.current = skipPrompt;
+  });
   const announcedRef = useRef(false);
 
   useEffect(() => {
@@ -137,6 +146,27 @@ export function useWorkoutCompletePresetSync({
 
   const applyUpdate = useCallback(async (): Promise<boolean> => {
     if (sourcePreset == null || presetUpdateExercises == null) return false;
+    // No connection (#1983): keep the answer and update the saved workout
+    // once the server is back, unless it was changed elsewhere meanwhile.
+    const queueForLater = async (): Promise<boolean> => {
+      const queued = await queuePresetUpdate({
+        presetId: Number(sourcePreset.id),
+        presetName: sourcePreset.name,
+        exercises: presetUpdateExercises,
+        expectedUpdatedAt: sourcePreset.updated_at ?? null,
+      });
+      if (queued) {
+        Toast.show({
+          type: 'info',
+          text1: t('offline.presetUpdateQueued', {
+            defaultValue:
+              'Saved workout will be updated when you are back online',
+          }),
+        });
+      }
+      return queued;
+    };
+    if (isServerKnownUnreachable()) return queueForLater();
     try {
       await updatePresetAsync({
         id: sourcePreset.id,
@@ -149,7 +179,8 @@ export function useWorkoutCompletePresetSync({
         }),
       });
       return true;
-    } catch {
+    } catch (error) {
+      if (serverMayBeDown(error)) return queueForLater();
       // useUpdateWorkoutPreset already showed the failure toast.
       return false;
     }
@@ -183,6 +214,12 @@ export function useWorkoutCompletePresetSync({
       return;
     }
     if (skipPrompt) return;
+    // The alert closed without settling (the watch took over, or the write
+    // failed): allow the prompt again once nothing else holds it back.
+    const rearmPrompt = () => {
+      promptedRef.current = false;
+      setPromptNonce((n) => n + 1);
+    };
     const timer = setTimeout(() => {
       promptedRef.current = true;
       Alert.alert(
@@ -200,13 +237,23 @@ export function useWorkoutCompletePresetSync({
               defaultValue: 'Keep Preset',
             }),
             style: 'cancel',
-            onPress: () => onSettledRef.current?.(),
+            onPress: () => {
+              if (skipPromptRef.current) {
+                rearmPrompt();
+                return;
+              }
+              onSettledRef.current?.();
+            },
           },
           {
             text: t('workoutComplete.actions.update', {
               defaultValue: 'Update',
             }),
             onPress: () => {
+              if (skipPromptRef.current) {
+                rearmPrompt();
+                return;
+              }
               void (async () => {
                 if (await applyUpdate()) {
                   onSettledRef.current?.();
@@ -214,8 +261,7 @@ export function useWorkoutCompletePresetSync({
                 }
                 // The alert is already gone. Ask again instead of dropping
                 // the question because the write failed.
-                promptedRef.current = false;
-                setPromptNonce((n) => n + 1);
+                rearmPrompt();
               })();
             },
           },

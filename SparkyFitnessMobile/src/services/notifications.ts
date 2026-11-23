@@ -1,6 +1,7 @@
 import { Alert, AppState, Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import Toast from 'react-native-toast-message';
 import { addLog } from './LogService';
 import {
@@ -9,6 +10,7 @@ import {
   MOOD_CHECKIN_KIND,
   ORAL_CARE_REMINDER_KIND,
 } from '../utils/checkinReminderTimes';
+import { CHALLENGE_WEEK_LEADER_KIND } from '../utils/challenges';
 import i18n from '../localization/i18n';
 import { fireSuccessHaptic } from './haptics';
 import {
@@ -29,6 +31,7 @@ export const MOOD_CHECKIN_CHANNEL_ID = 'mood-checkin';
 export const ORAL_CARE_CHANNEL_ID = 'oral-care';
 const MINDFULNESS_CHANNEL_ID = 'mindfulness';
 export const MEDICATION_REMINDER_CHANNEL_ID = 'medication-reminders';
+export const CHALLENGES_CHANNEL_ID = 'challenges';
 const EXACT_ALARM_PROMPT_KEY = '@SparkyFitness/exactAlarmPromptShown';
 
 export function notificationCopy(
@@ -61,6 +64,10 @@ export const MEDICATION_TAKEN_ACTION = 'medication-taken';
 export const MEDICATION_SKIP_ACTION = 'medication-skip';
 export const MEDICATION_SNOOZE_ACTION = 'medication-snooze';
 
+export const SYMPTOM_EPISODE_NUDGE_CATEGORY = 'symptom-episode-nudge';
+export const SYMPTOM_END_EPISODE_ACTION = 'symptom-end-episode';
+export const SYMPTOM_STILL_ONGOING_ACTION = 'symptom-still-ongoing';
+
 export type AppNotificationPermission = 'granted' | 'denied' | 'undetermined';
 
 let initialized = false;
@@ -78,12 +85,12 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
         'notifications.channels.workoutTimer',
         'Workout timer'
       ),
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: AndroidImportance.HIGH,
       enableVibrate: true,
     });
     await Notifications.setNotificationChannelAsync(FASTING_CHANNEL_ID, {
       name: notificationCopy('notifications.channels.fasting', 'Fasting'),
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: AndroidImportance.HIGH,
       enableVibrate: true,
     });
     await Notifications.setNotificationChannelAsync(HYDRATION_CHANNEL_ID, {
@@ -91,10 +98,11 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
         'notifications.channels.hydration',
         'Hydration reminders'
       ),
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: AndroidImportance.HIGH,
       enableVibrate: true,
     });
     await ensureMoodCheckinChannel();
+    await ensureSymptomReminderChannel();
     await Notifications.setNotificationChannelAsync(
       MEDICATION_REMINDER_CHANNEL_ID,
       {
@@ -102,7 +110,7 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
           'notifications.channels.medicationReminders',
           'Medication reminders'
         ),
-        importance: Notifications.AndroidImportance.HIGH,
+        importance: AndroidImportance.HIGH,
         enableVibrate: true,
       }
     );
@@ -175,6 +183,27 @@ export async function registerLocalizedNotificationPresentation(): Promise<void>
       },
     ]
   );
+  // Built with notificationCopy like the others: this can run before i18n has
+  // loaded, and Android rejects an action whose buttonTitle is undefined.
+  // Both buttons open the app so initSymptomNotificationActions can act on them.
+  await Notifications.setNotificationCategoryAsync(
+    SYMPTOM_EPISODE_NUDGE_CATEGORY,
+    [
+      {
+        identifier: SYMPTOM_END_EPISODE_ACTION,
+        buttonTitle: notificationCopy('symptoms.actions.endNow', 'End now'),
+        options: { opensAppToForeground: true },
+      },
+      {
+        identifier: SYMPTOM_STILL_ONGOING_ACTION,
+        buttonTitle: notificationCopy(
+          'symptoms.actions.stillOngoing',
+          'Still ongoing'
+        ),
+        options: { opensAppToForeground: true },
+      },
+    ]
+  );
 }
 
 export async function ensureMoodCheckinChannel(): Promise<void> {
@@ -184,7 +213,7 @@ export async function ensureMoodCheckinChannel(): Promise<void> {
       'notifications.channels.moodCheckin',
       'Mood check-ins'
     ),
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     enableVibrate: true,
   });
 }
@@ -196,8 +225,16 @@ export async function ensureOralCareChannel(): Promise<void> {
       'notifications.channels.oralCare',
       'Brushing reminders'
     ),
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     enableVibrate: true,
+  });
+}
+
+export async function ensureChallengesChannel(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await Notifications.setNotificationChannelAsync(CHALLENGES_CHANNEL_ID, {
+    name: notificationCopy('notifications.channels.challenges', 'Challenges'),
+    importance: AndroidImportance.DEFAULT,
   });
 }
 
@@ -208,7 +245,7 @@ async function ensureMindfulnessChannel(): Promise<void> {
       'notifications.channels.mindfulness',
       'Meditation timer'
     ),
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     enableVibrate: true,
   });
 }
@@ -222,7 +259,7 @@ export async function ensureMedicationReminderChannel(): Promise<void> {
         'notifications.channels.medicationReminders',
         'Medication reminders'
       ),
-      importance: Notifications.AndroidImportance.HIGH,
+      importance: AndroidImportance.HIGH,
       enableVibrate: true,
     }
   );
@@ -235,7 +272,7 @@ export async function ensureSymptomReminderChannel(): Promise<void> {
       'notifications.channels.symptomReminders',
       'Symptom reminders'
     ),
-    importance: Notifications.AndroidImportance.HIGH,
+    importance: AndroidImportance.HIGH,
     enableVibrate: true,
   });
 }
@@ -298,7 +335,9 @@ export async function initNotifications(): Promise<void> {
         const isRestPing = category === REST_COMPLETE_CATEGORY;
         const kind = notification.request.content.data?.kind;
         const isMoodCheckin =
-          kind === MOOD_CHECKIN_KIND || kind === ORAL_CARE_REMINDER_KIND;
+          kind === MOOD_CHECKIN_KIND ||
+          kind === ORAL_CARE_REMINDER_KIND ||
+          kind === CHALLENGE_WEEK_LEADER_KIND;
         // iOS also runs this while the app is frontmost-but-inactive (screen
         // locking, app switcher), where the chime never plays — so there the
         // ping carries the cue itself instead of being hidden as a duplicate.
@@ -736,6 +775,38 @@ export async function scheduleFastGoalNotification(
       'ERROR'
     );
     return null;
+  }
+}
+
+/**
+ * Tells the person, once, that a workout logged without a connection has
+ * waited a week to upload (#1983). Shown now, without asking for permission:
+ * a reminder nobody asked for must not open a permission prompt.
+ */
+export async function showOfflineUploadReminder(): Promise<boolean> {
+  if (!useAppPreferencesStore.getState().notificationsEnabled) return false;
+  if (!(await hasNotificationPermission())) return false;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: notificationCopy(
+          'notifications.offlineUploads.title',
+          'A workout is waiting to upload'
+        ),
+        body: notificationCopy(
+          'notifications.offlineUploads.body',
+          'Open SparkyFitness when your server can be reached.'
+        ),
+      },
+      trigger: null,
+    });
+    return true;
+  } catch (err) {
+    addLog(
+      `showOfflineUploadReminder failed: ${(err as Error).message}`,
+      'ERROR'
+    );
+    return false;
   }
 }
 

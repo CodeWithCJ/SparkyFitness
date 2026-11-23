@@ -1,4 +1,9 @@
-import { localDateToDay } from '@workspace/shared';
+import { getCalendars } from 'expo-localization';
+import {
+  isValidTimeZone,
+  localDateToDay,
+  todayInZone,
+} from '@workspace/shared';
 import type { TFunction } from 'i18next';
 import type { EntryTimeFormat } from './entryTimeDisplay';
 import { formatDateToTimeLabel } from './entryTimeDisplay';
@@ -15,17 +20,32 @@ export const toLocalDateString = (timestamp: string | Date): string => {
   return localDateToDay(localDate);
 };
 
-/** Returns the device's IANA timezone (e.g. 'America/New_York'). */
-export const getDeviceTimezone = (): string =>
-  Intl.DateTimeFormat().resolvedOptions().timeZone;
+/**
+ * Returns the device's current IANA timezone (e.g. 'America/New_York').
+ * Queries expo-localization's native calendar first because Hermes caches
+ * `Intl.DateTimeFormat().resolvedOptions().timeZone` across OS timezone changes
+ * while the JS runtime stays alive.
+ */
+export const getDeviceTimezone = (): string => {
+  try {
+    const calendarTz =
+      typeof getCalendars === 'function' ? getCalendars()?.[0]?.timeZone : null;
+    if (calendarTz && isValidTimeZone(calendarTz)) {
+      return calendarTz;
+    }
+  } catch {
+    // Fall back to Intl when native calendar lookup is unavailable.
+  }
+  return Intl.DateTimeFormat().resolvedOptions().timeZone;
+};
 
 // Get today's date in YYYY-MM-DD format (local timezone)
 export const getTodayDate = (): string => {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  const tz = getDeviceTimezone();
+  if (tz && isValidTimeZone(tz)) {
+    return todayInZone(tz);
+  }
+  return localDateToDay(new Date());
 };
 
 // Add or subtract days from a YYYY-MM-DD date string

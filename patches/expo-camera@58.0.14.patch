@@ -1,0 +1,59 @@
+diff --git a/android/src/main/java/expo/modules/camera/ExpoCameraView.kt b/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
+index a676d64e853b96fc838ea27165cf265929df91a1..ae19e61a21dfc9145dd4a0c4bbaec7cf6ada7c71 100644
+--- a/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
++++ b/android/src/main/java/expo/modules/camera/ExpoCameraView.kt
+@@ -33,6 +33,7 @@ import androidx.camera.core.ImageCaptureException
+ import androidx.camera.core.ImageProxy
+ import androidx.camera.core.MirrorMode
+ import androidx.camera.core.Preview
++import androidx.camera.core.UseCase
+ import androidx.camera.core.UseCaseGroup
+ import androidx.camera.core.resolutionselector.ResolutionSelector
+ import androidx.camera.core.resolutionselector.ResolutionStrategy
+@@ -126,6 +127,7 @@ class ExpoCameraView(
+   private var activeRecording: Recording? = null
+ 
+   private var cameraProvider: ProcessCameraProvider? = null
++  private var boundUseCases: List<UseCase> = emptyList()
+   private var imageCaptureUseCase: ImageCapture? = null
+   private var imageAnalysisUseCase: ImageAnalysis? = null
+   private var barcodeAnalyzer: BarcodeAnalyzer? = null
+@@ -553,6 +555,7 @@ class ExpoCameraView(
+ 
+     cameraProvider.unbindAll()
+     camera = cameraProvider.bindToLifecycle(currentActivity, cameraSelector, useCases)
++    boundUseCases = useCases.useCases
+     camera?.let {
+       observeCameraState(it.cameraInfo)
+     }
+@@ -717,7 +720,7 @@ class ExpoCameraView(
+ 
+   fun pausePreview() {
+     previewPaused = true
+-    cameraProvider?.unbindAll()
++    unbindCameraUseCases()
+   }
+ 
+   fun setShouldScanBarcodes(shouldScanBarcodes: Boolean) {
+@@ -894,10 +897,20 @@ class ExpoCameraView(
+     Log.e(CameraViewModule.TAG, "The scope does not have a job in it")
+   }
+ 
++  private fun unbindCameraUseCases() {
++    val useCases = boundUseCases
++    boundUseCases = emptyList()
++    // A replacement view may already own the shared provider by the time this
++    // view is destroyed. Never unbind another view's preview or analyzer.
++    if (useCases.isNotEmpty()) {
++      cameraProvider?.unbind(*useCases.toTypedArray())
++    }
++  }
++
+   fun cleanupCamera() {
+     orientationEventListener.disable()
+     cancelCoroutineScope()
+-    cameraProvider?.unbindAll()
++    unbindCameraUseCases()
+     releaseBarcodeAnalyzer()
+     glSurfaceTexture?.release()
+   }

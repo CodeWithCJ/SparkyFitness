@@ -1,10 +1,16 @@
 import React, {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  observeRecipeImportOwner,
+  useRecipeImportAccess,
+} from '../hooks/useRecipeImport';
 import { useTranslation } from 'react-i18next';
 import {
   View,
@@ -13,11 +19,13 @@ import {
   SectionList,
   TextInput,
   Platform,
+  type ViewInstance,
 } from 'react-native';
 import Button from '../components/ui/Button';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 import Icon from '../components/Icon';
+import OfflineBanner from '../components/OfflineBanner';
 import AnchoredMenu, {
   AnchorRect,
   measureAnchoredMenuTrigger,
@@ -101,7 +109,17 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const date = route.params?.date;
-  const pickerMode = route.params?.pickerMode ?? 'log-entry';
+  const detailGeneration = useRef(0);
+  const closeSearch = useCallback(() => {
+    detailGeneration.current += 1;
+    navigation.goBack();
+  }, [navigation]);
+  const recipeImportTarget = route.params?.recipeImportTarget;
+  const ownerScope = useRecipeImportAccess();
+  const queryClient = useQueryClient();
+  const pickerMode =
+    route.params?.pickerMode ??
+    (recipeImportTarget ? 'meal-builder' : 'log-entry');
   const mealTypeId = route.params?.mealTypeId;
   const mealPlanTarget = route.params?.mealPlanTarget;
   const isMealBuilderMode = pickerMode === 'meal-builder';
@@ -120,7 +138,11 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   const { defaultColor: headerActionColor } = useHeaderActionColors();
   const usesNativeHeader = useNativeIOSHeadersActive();
 
-  const { isConnected } = useServerConnection();
+  const { isConnected, status: connectionStatus } = useServerConnection();
+  // The foods, their servings and the recent lists are kept on the phone, so
+  // they are read while the server is unreachable too (the API clients answer
+  // from the saved copy). Everything else on this screen needs the server.
+  const canReadSavedFoods = isConnected || connectionStatus === 'unreachable';
   const { profile } = useProfile();
   const ownershipFilter = useAppPreferencesStore(
     (s) => s.foodSearchOwnershipFilter
@@ -134,9 +156,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   // sections entirely, matching web.
   const onlineAllowedByOwnership =
     ownershipFilter === 'all' || ownershipFilter === 'public';
-  const { preferences } = usePreferences({ enabled: isConnected });
+  const { preferences } = usePreferences({ enabled: canReadSavedFoods });
   const { recentFoods, topFoods, isLoading, isError, refetch } = useFoods({
-    enabled: isConnected,
+    enabled: canReadSavedFoods,
   });
   const { favoriteFoods, favoriteMeals } = useFavorites({
     enabled: isConnected,
@@ -189,10 +211,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
 
   const [searchText, setSearchText] = useState('');
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const [loadingFoodId, setLoadingFoodId] = useState<string | null>(null);
+  const [loadingFood, setLoadingFood] = useState<{
+    id: string;
+    scope: string;
+  } | null>(null);
 
   // "+" New Food / New Meal menu, anchored under the button.
-  const addButtonRef = useRef<View>(null);
+  const addButtonRef = useRef<ViewInstance>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<AnchorRect | null>(null);
 
@@ -240,9 +265,25 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     [toggleFoodSelection, t, selectionMaxItems]
   );
 
+  // Adding several foods at once sends them straight to the server and keeps
+  // nothing on the phone, so it waits for a connection.
+  const multiAddUnavailable = connectionStatus === 'unreachable';
+
   const openMultiAddReview = useCallback(() => {
+    if (multiAddUnavailable) {
+      Toast.show({
+        type: 'info',
+        text1: t('foodSearch.multiSelect.needsConnection', {
+          defaultValue: 'Adding several foods needs a connection',
+        }),
+        text2: t('foodSearch.multiSelect.needsConnectionHint', {
+          defaultValue: 'Add them one at a time to keep them on this phone.',
+        }),
+      });
+      return;
+    }
     navigation.navigate('FoodEntryMultiAdd', { date, mealTypeId });
-  }, [navigation, date, mealTypeId]);
+  }, [navigation, date, mealTypeId, multiAddUnavailable, t]);
 
   const handleSelectAllInSection = useCallback(
     (entries: LandingEntry[]) => {
@@ -277,31 +318,35 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   const { searchResults, isSearching, isSearchActive } = useFoodSearch(
     searchText,
     {
-      enabled: isConnected,
+      enabled: canReadSavedFoods,
     }
   );
 
   // Local meals (never mixed in while building a meal).
   const { searchResults: mealResults, isSearching: isMealSearching } =
-    useMealSearch(searchText, { enabled: isConnected && !isMealBuilderMode });
+    useMealSearch(searchText, {
+      // The meals are kept on the phone too, so a saved meal can be found
+      // with the server away (a saved meal can be logged offline).
+      enabled: canReadSavedFoods && !isMealBuilderMode,
+    });
 
   // Online provider results stream in below the local results, always fetched
   // (no separate Online tab). Provider is the user's default.
   const { providers } = useExternalProviders({ enabled: isConnected });
   const getProviderColor = useProviderColor(providers);
   const [selectedProvider, setSelectedProvider] = useState<string | null>(null);
-  const hasUserSelectedProvider = useRef(false);
+  const [hasUserSelectedProvider, setHasUserSelectedProvider] = useState(false);
 
   // Sync to the user's default (or first) provider until the user taps the
   // online section header to peek at a different provider's results.
-  React.useEffect(() => {
-    if (providers.length === 0) return;
+  const defaultProviderChoice = (() => {
+    if (providers.length === 0) return null;
     if (
-      hasUserSelectedProvider.current &&
+      hasUserSelectedProvider &&
       ((selectedProvider === ALL_PROVIDERS_VALUE && providers.length > 1) ||
         providers.some((provider) => provider.id === selectedProvider))
     ) {
-      return;
+      return null;
     }
     // Persisted "All Providers" default. It has its own boolean preference rather
     // than living in default_food_data_provider_id, which is a uuid column and
@@ -313,20 +358,20 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       preferences?.food_search_all_providers_default &&
       providers.length > 1
     ) {
-      setSelectedProvider(ALL_PROVIDERS_VALUE);
-      return;
+      return ALL_PROVIDERS_VALUE;
     }
     const defaultId = preferences?.default_food_data_provider_id;
     const defaultProvider = defaultId
       ? providers.find((provider) => provider.id === defaultId)
       : undefined;
-    setSelectedProvider(defaultProvider?.id ?? providers[0].id);
-  }, [
-    preferences?.default_food_data_provider_id,
-    preferences?.food_search_all_providers_default,
-    providers,
-    selectedProvider,
-  ]);
+    return defaultProvider?.id ?? providers[0].id;
+  })();
+  if (
+    defaultProviderChoice !== null &&
+    defaultProviderChoice !== selectedProvider
+  ) {
+    setSelectedProvider(defaultProviderChoice);
+  }
 
   const providerOptions = useMemo(() => {
     const opts = providers.map((p) => ({
@@ -349,7 +394,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   }, [providers, t]);
   // Temporary peek at another provider; does not change the saved default.
   const handleSelectProvider = useCallback((id: string) => {
-    hasUserSelectedProvider.current = true;
+    setHasUserSelectedProvider(true);
     setSelectedProvider(id);
   }, []);
 
@@ -382,10 +427,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   // query resets it.
   const [showAllFoods, setShowAllFoods] = useState(false);
   const [showAllMeals, setShowAllMeals] = useState(false);
-  React.useEffect(() => {
+  const [lastSearchText, setLastSearchText] = useState(searchText);
+  if (lastSearchText !== searchText) {
+    setLastSearchText(searchText);
     setShowAllFoods(false);
     setShowAllMeals(false);
-  }, [searchText]);
+  }
   const handleShowAllLocal = useCallback((section: 'foods' | 'meals') => {
     if (section === 'foods') setShowAllFoods(true);
     else setShowAllMeals(true);
@@ -435,6 +482,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
         item,
         date,
         pickerMode: selectionPickerMode,
+        ...(recipeImportTarget ? { recipeImportTarget } : {}),
         // basketTapReturnDepth keeps a basket alive across a single add;
         // picker modes keep their existing depth-2 return past this screen.
         returnDepth: basketTapReturnDepth,
@@ -448,11 +496,13 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       mealPlanTarget,
       mealTypeId,
       selectionPickerMode,
+      recipeImportTarget,
       basketTapReturnDepth,
     ]
   );
 
   const openCreateFood = useCallback(() => {
+    if (recipeImportTarget) return;
     navigation.navigate('FoodForm', {
       mode: 'create-food',
       date,
@@ -468,6 +518,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     mealPlanTarget,
     selectionPickerMode,
     basketTapReturnDepth,
+    recipeImportTarget,
   ]);
 
   const openMealAdd = useCallback(() => {
@@ -475,6 +526,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   }, [navigation]);
 
   const openFoodScan = useCallback(() => {
+    if (recipeImportTarget) return;
     navigation.navigate('FoodScan', {
       date,
       pickerMode: selectionPickerMode,
@@ -495,6 +547,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     mealTypeId,
     selectionPickerMode,
     basketTapReturnDepth,
+    recipeImportTarget,
   ]);
 
   // Only the custom-header path opens the JS menu; on the native path the
@@ -526,12 +579,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       {
         key: 'food',
         label: t('foodSearch.menu.newFood', { defaultValue: 'New Food' }),
-        icon: 'food',
+        icon: 'food' as const,
         onPress: openCreateFood,
       },
-    ];
+    ].filter(() => !recipeImportTarget);
     // MealAdd never hands a meal back, so no picker mode offers it.
-    if (!selectionPickerMode) {
+    if (!selectionPickerMode && !recipeImportTarget) {
       items.push({
         key: 'meal',
         label: t('foodSearch.menu.newMeal', { defaultValue: 'New Meal' }),
@@ -557,6 +610,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     return items;
   }, [
     selectionPickerMode,
+    recipeImportTarget,
     openCreateFood,
     openMealAdd,
     ownershipFilter,
@@ -570,14 +624,14 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   >(() => {
     const items: NativeStackHeaderItemMenu['menu']['items'] = [
       {
-        type: 'action',
+        type: 'action' as const,
         label: t('foodSearch.menu.newFood', { defaultValue: 'New Food' }),
-        icon: { type: 'sfSymbol', name: 'fork.knife' as never },
+        icon: { type: 'sfSymbol' as const, name: 'fork.knife' as never },
         onPress: openCreateFood,
       },
-    ];
+    ].filter(() => !recipeImportTarget);
     // MealAdd never hands a meal back, so no picker mode offers it.
-    if (!selectionPickerMode) {
+    if (!selectionPickerMode && !recipeImportTarget) {
       items.push({
         type: 'action',
         label: t('foodSearch.menu.newMeal', { defaultValue: 'New Meal' }),
@@ -604,6 +658,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     return items;
   }, [
     selectionPickerMode,
+    recipeImportTarget,
     openCreateFood,
     openMealAdd,
     ownershipFilter,
@@ -622,7 +677,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
           identifier: 'food-search-close',
           tintColor: headerActionColor,
           accessibilityLabel: t('common.close', { defaultValue: 'Close' }),
-          onPress: () => navigation.goBack(),
+          onPress: closeSearch,
         }),
       ],
       unstable_headerRightItems: () => [
@@ -650,6 +705,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   }, [
     accentColor,
     headerActionColor,
+    closeSearch,
     isOwnershipFiltered,
     localizedFilterLabels,
     nativeMenuItems,
@@ -659,8 +715,48 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
     t,
   ]);
 
+  const detailScope = JSON.stringify([
+    searchText,
+    selectedProvider,
+    ownerScope,
+    profile?.id,
+    recipeImportTarget,
+    pickerMode,
+    date,
+    mealTypeId,
+    mealPlanTarget,
+    ownershipFilter,
+  ]);
+  if (loadingFood && loadingFood.scope !== detailScope) {
+    setLoadingFood(null);
+  }
+  const loadingFoodId =
+    loadingFood?.scope === detailScope ? loadingFood.id : null;
+  useEffect(() => {
+    const owner = observeRecipeImportOwner(queryClient, () => {
+      detailGeneration.current += 1;
+      setLoadingFood(null);
+    });
+    return owner.unsubscribe;
+  }, [queryClient, ownerScope]);
+  useEffect(() => {
+    const stop = navigation.addListener('blur', () => {
+      detailGeneration.current += 1;
+      setLoadingFood(null);
+    });
+    return () => {
+      stop();
+      detailGeneration.current += 1;
+    };
+  }, [navigation]);
+  useEffect(() => {
+    detailGeneration.current += 1;
+  }, [detailScope]);
+
   const handleExternalFoodTap = useCallback(
     async (item: ExternalFoodItem, explicitProviderId?: string) => {
+      const request = ++detailGeneration.current;
+      const current = () => request === detailGeneration.current;
       // Prefer the exact provider id carried by the result row (needed when
       // multiple providers share a type). Fall back to resolving by source: the
       // sentinel in All Providers mode, otherwise the selected provider.
@@ -669,11 +765,23 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
         (selectedProvider === ALL_PROVIDERS_VALUE
           ? providers.find((p) => p.provider_type === item.source)?.id
           : selectedProvider);
+      const toFoodInfo = (value: ExternalFoodItem) =>
+        value.source === 'mealie' || value.provider_type === 'mealie'
+          ? {
+              ...externalFoodItemToFoodInfo({
+                ...value,
+                recipe_provider_id: providerId ?? undefined,
+              }),
+              recipeImportScope: ownerScope ?? undefined,
+            }
+          : externalFoodItemToFoodInfo(value);
       if (
-        (item.source === 'fatsecret' || item.source === 'yazio') &&
+        (item.source === 'fatsecret' ||
+          item.source === 'yazio' ||
+          recipeImportTarget) &&
         providerId
       ) {
-        setLoadingFoodId(item.id);
+        setLoadingFood({ id: item.id, scope: detailScope });
         try {
           const detailed = await fetchExternalFoodDetails(
             item.source,
@@ -687,11 +795,12 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
               serving_description: item.serving_description,
             }
           );
+          if (!current()) return;
           // The details endpoint does not always echo the photo the search
           // result carried, so re-attach it rather than losing the image the
           // user just saw. Mirrors the web food search.
           showFoodInfo(
-            externalFoodItemToFoodInfo({
+            toFoodInfo({
               ...detailed,
               images: detailed.images?.length ? detailed.images : item.images,
               image_url: detailed.image_url ?? item.image_url,
@@ -700,6 +809,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
             })
           );
         } catch (error) {
+          if (!current()) return;
           const message =
             getApiErrorMessage(error) ??
             t('foodSearch.errors.loadNutritionDetails', {
@@ -712,14 +822,22 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
             }),
             text2: message,
           });
-          showFoodInfo(externalFoodItemToFoodInfo(item));
+          if (!recipeImportTarget) showFoodInfo(toFoodInfo(item));
         }
-        setLoadingFoodId(null);
+        if (current()) setLoadingFood(null);
         return;
       }
-      showFoodInfo(externalFoodItemToFoodInfo(item));
+      showFoodInfo(toFoodInfo(item));
     },
-    [selectedProvider, providers, showFoodInfo, t]
+    [
+      selectedProvider,
+      providers,
+      showFoodInfo,
+      recipeImportTarget,
+      detailScope,
+      ownerScope,
+      t,
+    ]
   );
 
   // --- Derived state ---
@@ -1173,7 +1291,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       {!usesNativeHeader && (
         <Button
           variant="ghost"
-          onPress={() => navigation.goBack()}
+          onPress={closeSearch}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           className="p-0"
           accessibilityLabel={t('common.close', { defaultValue: 'Close' })}
@@ -1227,7 +1345,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
           >
             <Icon name="close" size={20} color={textMuted} />
           </Button>
-        ) : (
+        ) : !recipeImportTarget ? (
           <Button
             variant="header"
             onPress={openFoodScan}
@@ -1239,7 +1357,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
           >
             <Icon name="scan" size={20} color={headerActionColor} />
           </Button>
-        )}
+        ) : null}
       </View>
 
       {multiSelectAvailable && (
@@ -1305,7 +1423,9 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
   // --- Body ---
 
   const renderBody = () => {
-    if (!isConnected) {
+    // With the server away the foods kept on the phone are still searched; only
+    // with no server at all is there nothing to show.
+    if (!canReadSavedFoods) {
       return (
         <View className="flex-1 justify-center items-center px-6">
           <Icon name="cloud-offline" size={48} color={accentColor} />
@@ -1443,6 +1563,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
       style={Platform.OS === 'android' ? { paddingTop: insets.top } : undefined}
     >
       {renderHeaderBar()}
+      {connectionStatus === 'unreachable' ? <OfflineBanner /> : null}
       {renderBody()}
       {/* Basket bar: visible whenever anything is selected in a
           diary-logging context, in or out of select mode, so a basket built
@@ -1491,6 +1612,7 @@ const FoodSearchScreen: React.FC<FoodSearchScreenProps> = ({
             <Button
               variant="ghost"
               onPress={openMultiAddReview}
+              disabled={multiAddUnavailable}
               className="p-0"
               accessibilityLabel={t('foodSearch.multiSelect.review', {
                 defaultValue: 'Review',

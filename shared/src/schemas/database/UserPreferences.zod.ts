@@ -12,8 +12,23 @@ import { MAX_GOAL_MODE_WEEKLY_CHANGE_KG } from '../../utils/calorieCalculations.
 import { HR_ZONE_METHODS } from '../../utils/heartRateZones.ts';
 import { GLUCOSE_UNITS } from '../../constants/bloodGlucose.ts';
 import { TEMPERATURE_UNITS } from '../../utils/temperatureUnit.ts';
+import {
+  BAC_DISPLAY_UNITS,
+  BAC_DISTRIBUTION_FORMULAS,
+  BAC_ELIMINATION_RATE_RANGE,
+} from '../../nutrients/alcoholKinetics.ts';
+import { featureChoicesSchema } from '../../features/optionalFeatures.ts';
 
 export const SUPPORTED_TIME_FORMATS = ['HH:mm', 'h:mm A', 'h:mm a'] as const;
+export const SUPPORTED_DATE_FORMATS = [
+  'MM/dd/yyyy',
+  'dd/MM/yyyy',
+  'dd.MM.yyyy',
+  'dd-MMM-yyyy',
+  'yyyy-MM-dd',
+  'MMM dd, yyyy',
+] as const;
+export type SupportedDateFormat = (typeof SUPPORTED_DATE_FORMATS)[number];
 
 const externalDataProvidersIdSchema = z.any();
 
@@ -37,6 +52,7 @@ const weeklyWeightChangeSchema = z
 export const userPreferencesSchema = z.object({
   adaptive_activity_separate: z.boolean().optional(),
   adjust_macros_with_exercise: z.boolean().optional(),
+  chat_mcp_server_ids: z.array(z.uuid()).default([]),
   voice_input_enabled: z.boolean().optional(),
   active_voice_ai_service_id: z.string().uuid().nullable().optional(),
   id: z.string(),
@@ -118,6 +134,13 @@ export const userPreferencesSchema = z.object({
   weekly_alcohol_limit_g: z.number().positive().nullable().optional(),
   caffeine_half_life_hours: z.number().min(2).max(8),
   target_bedtime: z.string(),
+  // Estimated blood alcohol: elimination rate is per mille per hour.
+  bac_distribution_formula: z.enum(BAC_DISTRIBUTION_FORMULAS),
+  bac_elimination_rate: z
+    .number()
+    .min(BAC_ELIMINATION_RATE_RANGE.min)
+    .max(BAC_ELIMINATION_RATE_RANGE.max),
+  bac_display_unit: z.enum(BAC_DISPLAY_UNITS),
   // Heart rate zones (owner-written, delegate-readable like the rest of the row).
   max_heart_rate: z.number().int().min(100).max(250).nullable(),
   resting_heart_rate: z.number().int().min(25).max(150).nullable(),
@@ -127,6 +150,11 @@ export const userPreferencesSchema = z.object({
   // Oral care goal (#1862): brushes per day and target seconds per brush.
   oral_care_daily_target: z.number().int().min(1).max(6),
   oral_care_target_seconds: z.number().int().min(30).max(600),
+  // Manually added (#3487): explicit optional-feature choices per platform
+  // ({ web, mobile }), read and written only through
+  // /api/user-preferences/features, never in the general preferences payload.
+  // Optional for that reason. Keep on regen.
+  feature_choices: featureChoicesSchema.optional(),
 });
 
 export const userPreferencesInitializerSchema = z.object({
@@ -219,6 +247,13 @@ export const userPreferencesInitializerSchema = z.object({
   weekly_alcohol_limit_g: z.number().positive().nullable().optional(),
   caffeine_half_life_hours: z.number().min(2).max(8).optional(),
   target_bedtime: z.string().optional(),
+  bac_distribution_formula: z.enum(BAC_DISTRIBUTION_FORMULAS).optional(),
+  bac_elimination_rate: z
+    .number()
+    .min(BAC_ELIMINATION_RATE_RANGE.min)
+    .max(BAC_ELIMINATION_RATE_RANGE.max)
+    .optional(),
+  bac_display_unit: z.enum(BAC_DISPLAY_UNITS).optional(),
   // Heart rate zones (owner-written, delegate-readable like the rest of the row).
   max_heart_rate: z.number().int().min(100).max(250).nullable().optional(),
   resting_heart_rate: z.number().int().min(25).max(150).nullable().optional(),
@@ -323,6 +358,13 @@ export const userPreferencesMutatorSchema = z.object({
   weekly_alcohol_limit_g: z.number().positive().nullable().optional(),
   caffeine_half_life_hours: z.number().min(2).max(8).optional(),
   target_bedtime: z.string().optional(),
+  bac_distribution_formula: z.enum(BAC_DISTRIBUTION_FORMULAS).optional(),
+  bac_elimination_rate: z
+    .number()
+    .min(BAC_ELIMINATION_RATE_RANGE.min)
+    .max(BAC_ELIMINATION_RATE_RANGE.max)
+    .optional(),
+  bac_display_unit: z.enum(BAC_DISPLAY_UNITS).optional(),
   // Heart rate zones (owner-written, delegate-readable like the rest of the row).
   max_heart_rate: z.number().int().min(100).max(250).nullable().optional(),
   resting_heart_rate: z.number().int().min(25).max(150).nullable().optional(),

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
@@ -8,6 +9,8 @@ import NutritionSummaryCard, { DayTotals } from './NutritionSummaryCard';
 import DailyProgress from './DailyProgress';
 import WaterIntake from './WaterIntake';
 import CaffeineCard from './CaffeineCard';
+import BloodAlcoholCard from './BloodAlcoholCard';
+import ChallengeStandingsCard from './ChallengeStandingsCard';
 import MealCard from './MealCard';
 import ExerciseCard from './ExerciseCard';
 import DiaryWidgetGrid, { type DiaryWidget } from './DiaryWidgetGrid';
@@ -17,16 +20,20 @@ import {
   Salad,
   Droplet,
   Coffee,
+  Wine,
   UtensilsCrossed,
   Dumbbell,
   HeartPulse,
+  Trophy,
 } from 'lucide-react';
 import { DailyHealthMetricsCard } from '@/components/Health/DailyHealthMetricsCard';
 import { useDailyHealthMetrics } from '@/hooks/useGenericHealth';
 import { selectDisplayableHealthMetrics } from '@/utils/dailyHealthMetrics';
 import EditFoodEntryDialog from './EditFoodEntryDialog';
 import FoodUnitSelector from '@/components/FoodUnitSelector';
-import CopyFoodEntryDialog from '@/pages/Diary/CopyFoodEntryDialog';
+import CopyFoodEntryDialog, {
+  type CopyQuickTarget,
+} from '@/pages/Diary/CopyFoodEntryDialog';
 import ConvertToMealDialog from '@/pages/Diary/ConvertToMealDialog';
 import EditMealFoodEntryDialog from './EditMealFoodEntryDialog';
 import CopyFamilyEntryDialog from '@/pages/Diary/CopyFamilyEntryDialog';
@@ -49,6 +56,7 @@ import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { useMealTypes } from '@/hooks/Diary/useMealTypes';
 import {
   useCopyFoodEntriesMutation,
+  useCopySingleFoodEntryMutation,
   useCreateFoodEntryMutation,
   useDeleteFoodEntryMealMutation,
   useDeleteFoodEntryMutation,
@@ -56,14 +64,24 @@ import {
   useFoodEntries,
   useFoodEntryMeals,
 } from '@/hooks/Diary/useFoodEntries';
-import { todayInZone, prefillEntryTime } from '@workspace/shared';
+import {
+  buildFoodEntryCopyPayload,
+  challengeStateNow,
+  clockInZone,
+  prefillEntryTime,
+  todayInZone,
+} from '@workspace/shared';
 import { useDailySummary } from '@/hooks/Diary/useDailyProgress';
+import {
+  useChallenges,
+  useChallengesAvailable,
+} from '@/hooks/Challenges/useChallenges';
 import { useNutrientGoalPreferences } from '@/hooks/Settings/useNutrientGoalPreferences';
 import { getCalorieBudget } from '@/utils/calorieBudget';
 
 const Diary = () => {
   const { t } = useTranslation();
-  const { activeUserId } = useActiveUser();
+  const { activeUserId, isActingOnBehalf } = useActiveUser();
   const location = useLocation();
   const navigate = useNavigate();
   const { timezone, loggingLevel, energyUnit, convertEnergy } =
@@ -144,6 +162,8 @@ const Diary = () => {
   const { mutateAsync: createFoodEntry } = useCreateFoodEntryMutation();
   const { mutateAsync: removeFoodEntry } = useDeleteFoodEntryMutation();
   const { mutateAsync: copyFoodEntries } = useCopyFoodEntriesMutation();
+  const { mutate: copySingleFoodEntry } = useCopySingleFoodEntryMutation();
+  const [copyingEntry, setCopyingEntry] = useState<FoodEntry | null>(null);
   const { mutateAsync: deleteFoodEntryMeal } = useDeleteFoodEntryMealMutation();
 
   const foodEntries = fetchedFoodEntries
@@ -158,33 +178,38 @@ const Diary = () => {
   );
 
   // Handle navigation for opening food search dialog
+  const requestedMealType =
+    (location.state as { openFoodSearchForMeal?: string } | null)
+      ?.openFoodSearchForMeal &&
+    availableMealTypes &&
+    availableMealTypes.length > 0
+      ? (location.state as { openFoodSearchForMeal: string })
+          .openFoodSearchForMeal
+      : null;
+
+  // Set which meal dialog should open
+  useOnChange([requestedMealType], () => {
+    if (requestedMealType) setOpenFoodSearchForMealType(requestedMealType);
+  });
+
   useEffect(() => {
-    const state = location.state as { openFoodSearchForMeal?: string };
-    debug(loggingLevel, '[Diary] Location state:', state);
-    if (
-      state?.openFoodSearchForMeal &&
-      availableMealTypes &&
-      availableMealTypes.length > 0
-    ) {
-      const mealType = state.openFoodSearchForMeal;
+    debug(loggingLevel, '[Diary] Location state:', location.state);
+    if (requestedMealType) {
       info(
         loggingLevel,
-        `Diary: Opening food search for meal type: ${mealType}`
+        `Diary: Opening food search for meal type: ${requestedMealType}`
       );
       debug(
         loggingLevel,
-        `[Diary] Setting openFoodSearchForMealType to: ${mealType}`
+        `[Diary] Setting openFoodSearchForMealType to: ${requestedMealType}`
       );
-
-      // Set which meal dialog should open
-      setOpenFoodSearchForMealType(mealType);
 
       // Clear the navigation state for next render
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [
     location.state,
-    availableMealTypes,
+    requestedMealType,
     loggingLevel,
     navigate,
     location.pathname,
@@ -194,6 +219,28 @@ const Diary = () => {
     setCopySourceMealType(mealType);
     setIsCopyDialogOpen(true);
     debug(loggingLevel, 'Opening copy dialog for meal type:', mealType);
+  };
+
+  const handleCopySingleFood = (
+    targetDate: string,
+    targetMealType: string,
+    quickTarget: CopyQuickTarget | null
+  ) => {
+    const entry = copyingEntry;
+    const mealType = availableMealTypes?.find(
+      (mt) => mt.name.toLowerCase() === targetMealType.toLowerCase()
+    );
+    if (!entry || !mealType || !currentUserId) return;
+    copySingleFoodEntry({
+      ...buildFoodEntryCopyPayload(
+        entry,
+        targetDate,
+        mealType.id,
+        quickTarget === 'now' ? clockInZone(timezone) : undefined
+      ),
+      // Copy into the diary being viewed, like adding a food does.
+      user_id: currentUserId,
+    });
   };
 
   const handleCopyFamilyClick = (mealType: string) => {
@@ -260,7 +307,8 @@ const Diary = () => {
     selectedVariant: FoodVariant,
     entryTime?: string | null,
     _mealType?: string | null,
-    notes?: string | null
+    notes?: string | null,
+    cookedQuantity?: number | null
   ) => {
     if (!currentUserId) {
       return;
@@ -284,6 +332,7 @@ const Diary = () => {
         entry_date: selectedDate,
         entry_time: entryTime || null,
         notes: notes || null,
+        cooked_quantity: cookedQuantity ?? null,
       });
       info(loggingLevel, 'Food entry added successfully.');
     } catch (err) {
@@ -366,6 +415,17 @@ const Diary = () => {
   // single-provider by design -- it badges metrics.source_provider -- so this
   // selects one row rather than merging several, which would mislabel the badge.
   const todaysHealthMetrics = selectDisplayableHealthMetrics(healthMetricsData);
+
+  // Challenge standings: owner-only, and only read while the admin switch is on.
+  const { available: challengesAvailable } = useChallengesAvailable();
+  const { data: challengeList } = useChallenges(challengesAvailable);
+  const myChallenges = useMemo(
+    () =>
+      challengesAvailable
+        ? (challengeList ?? []).filter((c) => challengeStateNow(c) !== 'ended')
+        : [],
+    [challengesAvailable, challengeList]
+  );
 
   // Build the ordered widget registry: energy, nutrition, water, one card per
   // visible meal type, then exercise. Keys match buildWidgetKeys() so the saved
@@ -453,6 +513,7 @@ const Diary = () => {
             }
             getEntryNutrition={getEntryNutrition}
             onCopyClick={handleCopyClick}
+            onCopyEntry={setCopyingEntry}
             onCopyFamilyClick={handleCopyFamilyClick}
             onConvertToMealClick={handleConvertToMealClick}
             energyUnit={energyUnit}
@@ -481,6 +542,17 @@ const Diary = () => {
       ),
     });
 
+    // Only for someone in a challenge, on their own account, while the admin
+    // switch is on; everyone else never sees an empty tile for it.
+    if (myChallenges.length > 0) {
+      list.push({
+        key: 'challenges',
+        title: t('challenges.widget.title', 'Challenge standings'),
+        icon: Trophy,
+        render: () => <ChallengeStandingsCard challenges={myChallenges} />,
+      });
+    }
+
     // Last in the registry to match its default tile, which sits below
     // exercise; the grid positions by layout, but keeping the two in the same
     // order stops the next reader wondering which one is authoritative.
@@ -490,6 +562,17 @@ const Diary = () => {
       icon: Coffee,
       render: () => <CaffeineCard date={selectedDate} userId={activeUserId} />,
     });
+
+    // Owner only: the estimate needs the person's own body data, and the
+    // server refuses it to a delegate.
+    if (!isActingOnBehalf) {
+      list.push({
+        key: 'bloodAlcohol',
+        title: t('diary.bloodAlcohol.title', 'Estimated Blood Alcohol'),
+        icon: Wine,
+        render: () => <BloodAlcoholCard date={selectedDate} />,
+      });
+    }
 
     return list;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -508,6 +591,8 @@ const Diary = () => {
     openFoodSearchForMealType,
     todaysHealthMetrics,
     loadingHealthMetrics,
+    isActingOnBehalf,
+    myChallenges,
     t,
   ]);
 
@@ -548,6 +633,7 @@ const Diary = () => {
           onSelect={handleFoodUnitSelect}
           showUnitSelector={true}
           showTimeInput={true}
+          showCookedWeight={true}
           defaultMealTime={
             availableMealTypes?.find(
               (t) => t.name.toLowerCase() === selectedMealType.toLowerCase()
@@ -581,6 +667,16 @@ const Diary = () => {
           onClose={() => setIsCopyDialogOpen(false)}
           onCopy={handleCopyFoodEntries}
           sourceMealType={copySourceMealType}
+        />
+      )}
+
+      {copyingEntry && (
+        <CopyFoodEntryDialog
+          isOpen={true}
+          onClose={() => setCopyingEntry(null)}
+          onCopy={handleCopySingleFood}
+          sourceMealType={copyingEntry.meal_type}
+          foodName={copyingEntry.food_name ?? ''}
         />
       )}
 

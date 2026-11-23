@@ -12,6 +12,9 @@ jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: { default_distance_unit: 'km' } }),
 }));
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
+jest.mock('../../src/services/healthkit/watchRunEntries', () => ({
+  noteWatchRunEntry: jest.fn(),
+}));
 jest.mock('../../src/services/gpsRecordingService', () => ({
   useGpsRecording: jest.fn(),
   hydrate: jest.fn(() => Promise.resolve()),
@@ -22,11 +25,14 @@ jest.mock('../../src/services/gpsRecordingService', () => ({
   addHeartRateSamples: jest.fn(() => Promise.resolve()),
   noteLiveHeartRate: jest.fn(() => Promise.resolve()),
   elapsedSeconds: jest.fn(() => 0),
+  wasRecordingDiscarded: jest.fn(() => false),
+  savedRecordingEntryId: jest.fn(() => null),
 }));
 
 import { useWatchRecordingBridge } from '../../src/hooks/useWatchRecordingBridge';
 import * as service from '../../src/services/gpsRecordingService';
 import { useLiveHeartRateStore } from '../../src/stores/liveHeartRateStore';
+import { noteWatchRunEntry } from '../../src/services/healthkit/watchRunEntries';
 
 const watch = (
   jest.requireMock('../../modules/watch-connectivity') as {
@@ -216,6 +222,32 @@ describe('useWatchRecordingBridge', () => {
     );
   });
 
+  it('says a half-saved recording the person discarded was discarded', () => {
+    setSnapshot({ ...baseSession, status: 'finished' });
+    const { rerender } = renderHook(() => useWatchRecordingBridge(true));
+    // A save created the entry and then failed. The discard publishes the
+    // cleared id before the session leaves, but this render may never see it,
+    // so the bridge asks the service whether the recording was discarded.
+    setSnapshot({
+      ...baseSession,
+      status: 'finished',
+      savedEntryId: 'entry-1',
+    });
+    rerender({});
+    watch.updateRecordingState.mockClear();
+    mockedService.wasRecordingDiscarded.mockReturnValue(true);
+
+    setSnapshot(null);
+    rerender({});
+
+    expect(mockedService.wasRecordingDiscarded).toHaveBeenCalledWith('rec-1');
+    expect(watch.updateRecordingState).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'ended', discarded: true }),
+      true
+    );
+    mockedService.wasRecordingDiscarded.mockReturnValue(false);
+  });
+
   it('applies pause, resume and finish from the watch to the live recording only', () => {
     setSnapshot(baseSession);
     renderHook(() => useWatchRecordingBridge(true));
@@ -369,6 +401,60 @@ describe('useWatchRecordingBridge', () => {
     });
 
     expect(useLiveHeartRateStore.getState().reading).toBeNull();
+  });
+
+  describe('the watch saves its own workout to Apple Health', () => {
+    const keepRecording = (rerender: (props?: unknown) => void) => {
+      setSnapshot({ ...baseSession, status: 'finished' });
+      rerender({});
+      setSnapshot({
+        ...baseSession,
+        status: 'finished',
+        savedEntryId: 'entry-1',
+      });
+      rerender({});
+      setSnapshot(null);
+      rerender({});
+    };
+
+    it('keeps a saved recording the watch sent readings for out of write-back', () => {
+      setSnapshot(baseSession);
+      const { rerender } = renderHook(() => useWatchRecordingBridge(true));
+      handlers.onRecordingHeartRate({
+        sessionId: 'rec-1',
+        clientId: 'batch-1',
+        samples: [{ t: '2026-10-06T10:00:00.000Z', bpm: 141 }],
+      });
+
+      keepRecording(rerender);
+
+      expect(noteWatchRunEntry).toHaveBeenCalledWith('entry-1');
+    });
+
+    it('does the same for readings that arrive after the recording was kept', () => {
+      setSnapshot(baseSession);
+      renderHook(() => useWatchRecordingBridge(true));
+      (mockedService.savedRecordingEntryId as jest.Mock).mockReturnValue(
+        'entry-1'
+      );
+
+      handlers.onRecordingHeartRate({
+        sessionId: 'rec-1',
+        clientId: 'batch-late',
+        samples: [{ t: '2026-10-06T10:05:00.000Z', bpm: 120 }],
+      });
+
+      expect(noteWatchRunEntry).toHaveBeenCalledWith('entry-1');
+    });
+
+    it('still writes back a recording the watch never sent readings for', () => {
+      setSnapshot(baseSession);
+      const { rerender } = renderHook(() => useWatchRecordingBridge(true));
+
+      keepRecording(rerender);
+
+      expect(noteWatchRunEntry).not.toHaveBeenCalled();
+    });
   });
 
   it('stores heart-rate batches with their ids and times in epoch ms', () => {

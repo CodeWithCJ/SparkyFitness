@@ -180,7 +180,8 @@ describe('Water Intake Routes (v2)', () => {
         'test-user-id',
         '2023-01-01',
         1,
-        2
+        2,
+        null
       );
     });
     it('returns 400 when entry_date is missing', async () => {

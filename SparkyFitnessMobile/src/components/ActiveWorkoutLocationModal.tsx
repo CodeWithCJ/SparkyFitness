@@ -6,13 +6,14 @@ import {
   ScrollView,
   Text,
   View,
-  type TextInput,
+  type TextInputInstance,
 } from 'react-native';
 import {
   KeyboardAvoidingView,
   KeyboardProvider,
 } from 'react-native-keyboard-controller';
 import Button from './ui/Button';
+import SafeAreaModalBackdrop from './SafeAreaModalBackdrop';
 import FormInput from './FormInput';
 import { WORKOUT_LOCATION_MAX_LENGTH } from '@workspace/shared';
 import { useWorkoutLocations } from '../hooks/useWorkoutLocations';
@@ -35,7 +36,7 @@ export default function ActiveWorkoutLocationModal({
   onSubmit,
 }: ActiveWorkoutLocationModalProps) {
   const { t } = useTranslation();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [value, setValue] = useState(initialLocation ?? '');
   const suggestions = useWorkoutLocations({ enabled: visible });
 
@@ -71,9 +72,7 @@ export default function ActiveWorkoutLocationModal({
     >
       <KeyboardProvider>
         <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>
-          <Pressable
-            className="flex-1 justify-center px-6"
-            style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          <SafeAreaModalBackdrop
             onPress={onCancel}
             accessibilityLabel={t('workout.dismissLocation', {
               defaultValue: 'Dismiss location',
@@ -152,7 +151,7 @@ export default function ActiveWorkoutLocationModal({
                 </View>
               </View>
             </Pressable>
-          </Pressable>
+          </SafeAreaModalBackdrop>
         </KeyboardAvoidingView>
       </KeyboardProvider>
     </Modal>

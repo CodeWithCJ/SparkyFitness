@@ -6,7 +6,10 @@ import {
   getGrantedPermissions,
 } from 'react-native-health-connect';
 import { fetchDailySummary } from '../../../src/services/api/dailySummaryApi';
-import { fetchWaterIntakeLog } from '../../../src/services/api/measurementsApi';
+import {
+  fetchMeasurementsRange,
+  fetchWaterIntakeLog,
+} from '../../../src/services/api/measurementsApi';
 import {
   loadHealthPreference,
   saveHealthPreference,
@@ -31,6 +34,7 @@ jest.mock('../../../src/services/api/dailySummaryApi', () => ({
 }));
 jest.mock('../../../src/services/api/measurementsApi', () => ({
   fetchWaterIntakeLog: jest.fn(),
+  fetchMeasurementsRange: jest.fn(),
 }));
 jest.mock('../../../src/utils/loggedMealCollapse', () => ({
   resolveCollapsedFoodEntries: jest.fn((_date: string, entries: unknown) =>
@@ -135,6 +139,33 @@ describe('writebackPhase', () => {
     expect(records[0].metadata.clientRecordId).toMatch(
       /^sparky-nutrition-fe1-\d+$/
     );
+  });
+
+  it('writes the check-in weight (#2465) without loading the daily summary', async () => {
+    prefs({ writebackWeightEnabled: true });
+    mockGranted.mockResolvedValue([
+      { recordType: 'Weight', accessType: 'write' },
+    ]);
+    (fetchMeasurementsRange as jest.Mock).mockResolvedValue([
+      {
+        id: 'c1',
+        user_id: 'u1',
+        entry_date: '2026-06-01',
+        weight: 80.4,
+        updated_at: '2026-06-01T08:00:00Z',
+      },
+    ]);
+    await writebackPhase(['2026-06-01', '2026-06-02']);
+    expect(fetchMeasurementsRange).toHaveBeenCalledWith(
+      '2026-06-01',
+      '2026-06-02'
+    );
+    expect(mockSummary).not.toHaveBeenCalled();
+    expect(mockInsert).toHaveBeenCalledTimes(1);
+    expect(mockInsert.mock.calls[0][0][0]).toMatchObject({
+      recordType: 'Weight',
+      weight: { value: 80.4, unit: 'kilograms' },
+    });
   });
 
   it('skips a metric when its write permission is not granted', async () => {
@@ -318,6 +349,20 @@ describe('runWriteback (cursor)', () => {
     expect(mockSaveCursor).toHaveBeenCalled();
   });
 
+  it('holds the cursor when the body check-in read fails, so those dates retry', async () => {
+    prefs({ writebackWeightEnabled: true });
+    mockGranted.mockResolvedValue([
+      { recordType: 'Weight', accessType: 'write' },
+    ]);
+    (fetchMeasurementsRange as jest.Mock).mockRejectedValue(
+      new Error('offline')
+    );
+    await expect(writebackPhase(['2026-06-01'])).resolves.toBe(false);
+    await runWriteback();
+    expect(mockSaveCursor).not.toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
   it('holds the cursor when a quota error stops the run early', async () => {
     prefs({ writebackNutritionEnabled: true });
     mockInsert.mockRejectedValue(new Error('quota'));
@@ -331,6 +376,36 @@ describe('runWriteback (cursor)', () => {
 });
 
 describe('removeWrittenData (cleanup)', () => {
+  it('keeps exercise id lists when deleting written workouts fails', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackExerciseExerciseSessionIds:2026-06-01',
+      JSON.stringify(['sparky-exercise-individual-e1-session-1'])
+    );
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackExerciseSig:2026-06-01',
+      '"sig"'
+    );
+    mockDeleteByRange.mockImplementation((type: string) =>
+      type === 'ExerciseSession'
+        ? Promise.reject(new Error('quota'))
+        : Promise.resolve(undefined)
+    );
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).toContain(
+      '@HealthConnect:writebackExerciseExerciseSessionIds:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthConnect:writebackExerciseSig:2026-06-01'
+    );
+    mockDeleteByRange.mockReset();
+    mockDeleteByRange.mockResolvedValue(undefined);
+  });
+
   it('full purge: deletes all-time, clears all tracking, disables writeback', async () => {
     await AsyncStorage.clear();
     await AsyncStorage.setItem(
@@ -355,6 +430,11 @@ describe('removeWrittenData (cleanup)', () => {
       'Hydration',
       expect.objectContaining({ operator: 'before' })
     );
+    // Body types are deleted only with their write permission (none granted here).
+    expect(mockDeleteByRange).not.toHaveBeenCalledWith(
+      'Weight',
+      expect.anything()
+    );
 
     const remaining = await AsyncStorage.getAllKeys();
     expect(remaining).not.toContain(
@@ -372,6 +452,102 @@ describe('removeWrittenData (cleanup)', () => {
     expect(mockSavePref).toHaveBeenCalledWith(
       'writebackHydrationEnabled',
       false
+    );
+  });
+
+  it('keeps body id lists when deleting that type fails, and clears only its signature', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyWeightIds:2026-06-01',
+      JSON.stringify(['sparky-body-weight-2026-06-01-1'])
+    );
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyWeightSig:2026-06-01',
+      '"sig"'
+    );
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyBodyFatIds:2026-06-01',
+      JSON.stringify(['sparky-body-bodyFat-2026-06-01-1'])
+    );
+    mockGranted.mockResolvedValue([
+      { recordType: 'Weight', accessType: 'write' },
+      { recordType: 'BodyFat', accessType: 'write' },
+    ]);
+    mockDeleteByRange.mockImplementation((type: string) =>
+      type === 'Weight'
+        ? Promise.reject(new Error('denied'))
+        : Promise.resolve(undefined)
+    );
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
+
+    const remaining = await AsyncStorage.getAllKeys();
+    // Weight failed: the next write still needs the ids to delete the survivor.
+    expect(remaining).toContain(
+      '@HealthConnect:writebackBodyWeightIds:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthConnect:writebackBodyWeightSig:2026-06-01'
+    );
+    // BodyFat succeeded: both keys go.
+    expect(remaining).not.toContain(
+      '@HealthConnect:writebackBodyBodyFatIds:2026-06-01'
+    );
+    mockDeleteByRange.mockReset();
+    mockDeleteByRange.mockResolvedValue(undefined);
+  });
+
+  it('keeps tracked ids of a body type whose write permission is gone, and reports it incomplete', async () => {
+    await AsyncStorage.clear();
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyWeightIds:2026-06-01',
+      JSON.stringify(['sparky-body-weight-2026-06-01-1'])
+    );
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyWeightSig:2026-06-01',
+      '"sig"'
+    );
+    // Height was never turned on: an empty list is not a record left behind.
+    await AsyncStorage.setItem(
+      '@HealthConnect:writebackBodyHeightIds:2026-06-01',
+      JSON.stringify([])
+    );
+    mockGranted.mockResolvedValue([]); // nothing may be deleted any more
+
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: false });
+    expect(mockDeleteByRange).not.toHaveBeenCalledWith(
+      'Weight',
+      expect.anything()
+    );
+
+    const remaining = await AsyncStorage.getAllKeys();
+    expect(remaining).toContain(
+      '@HealthConnect:writebackBodyWeightIds:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthConnect:writebackBodyWeightSig:2026-06-01'
+    );
+    expect(remaining).not.toContain(
+      '@HealthConnect:writebackBodyHeightIds:2026-06-01'
+    );
+  });
+
+  it('deletes the body records (#2465) it has write access for', async () => {
+    mockGranted.mockResolvedValue([
+      { recordType: 'Weight', accessType: 'write' },
+      { recordType: 'BodyFat', accessType: 'read' },
+    ]);
+    const result = await removeWrittenData(null);
+    expect(result).toEqual({ ok: true });
+    expect(mockDeleteByRange).toHaveBeenCalledWith(
+      'Weight',
+      expect.objectContaining({ operator: 'before' })
+    );
+    expect(mockDeleteByRange).not.toHaveBeenCalledWith(
+      'BodyFat',
+      expect.anything()
     );
   });
 

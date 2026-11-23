@@ -46,6 +46,7 @@ export const externalDataProvidersSchema = z.object({
   sync_started_at: z.date().nullable(),
   fit_downloads_day: z.date().nullable(),
   fit_downloads_used: z.number().int(),
+  provider_options: z.record(z.string(), z.unknown()).nullable(),
 });
 
 export const externalDataProvidersInitializerSchema = z.object({
@@ -85,6 +86,7 @@ export const externalDataProvidersInitializerSchema = z.object({
   sync_started_at: z.date().optional().nullable(),
   fit_downloads_day: z.date().optional().nullable(),
   fit_downloads_used: z.number().int().optional(),
+  provider_options: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 export const externalDataProvidersMutatorSchema = z.object({
@@ -124,6 +126,7 @@ export const externalDataProvidersMutatorSchema = z.object({
   sync_started_at: z.date().optional().nullable(),
   fit_downloads_day: z.date().optional().nullable(),
   fit_downloads_used: z.number().int().optional(),
+  provider_options: z.record(z.string(), z.unknown()).optional().nullable(),
 });
 
 export type ExternalDataProviders = z.infer<typeof externalDataProvidersSchema>;

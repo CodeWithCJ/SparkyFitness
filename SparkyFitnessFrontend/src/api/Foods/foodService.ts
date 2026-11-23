@@ -10,8 +10,11 @@ import { MealFilter } from '@/types/meal';
 import {
   barcodeLookupResponseSchema,
   barcodeAlternativesResponseSchema,
+  nutritionLabelScanResultSchema,
   type BarcodeLookupResponse,
   type BarcodeAlternativesResponse,
+  type NutritionLabelScanRequest,
+  type NutritionLabelScanResult,
 } from '@workspace/shared';
 
 interface FoodPayload {
@@ -247,6 +250,22 @@ export const getBarcodeAlternatives = async (
   barcodeAlternativesResponseSchema.parse(
     await apiCall(`/v2/foods/barcode/${barcode}/alternatives`, {
       method: 'GET',
+      suppressErrorToast: true,
+    })
+  );
+
+/**
+ * Reads the nutrition facts from a label photo with the user's vision AI
+ * service. Shows no toast on failure: the caller words the message from the
+ * error's `code`.
+ */
+export const scanNutritionLabel = async (
+  request: NutritionLabelScanRequest
+): Promise<NutritionLabelScanResult> =>
+  nutritionLabelScanResultSchema.parse(
+    await apiCall('/foods/scan-label', {
+      method: 'POST',
+      body: request,
       suppressErrorToast: true,
     })
   );

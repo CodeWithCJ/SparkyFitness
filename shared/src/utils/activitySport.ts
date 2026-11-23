@@ -342,6 +342,12 @@ function extractProviderSport(
     case 'strava':
     case 'intervals.icu':
       return asString(data['sport_type']) ?? asString(data['type']);
+    case 'zeppbridge':
+      return (
+        asString(data['effective_type']) ??
+        asString(data['normalized_type']) ??
+        asString(data['workout_type'])
+      );
     case 'fitbit':
       return (
         asString(data['activityParentName']) ?? asString(data['activityName'])
@@ -417,6 +423,9 @@ const NOTES_SPORT_PATTERNS: readonly RegExp[] = [
   /^garmin fit import:.*\(([^)]+)\)\s*$/i,
   /logged from coros(?: \(summary only\))?:\s*([^.(]+)/i,
   /synced from (?:strava|intervals\.icu)\.\s*type:\s*([^.]+)\./i,
+  // ZeppBridge's own pattern, written so the whitespace and the capture cannot
+  // match the same characters (the first captured character is not a space).
+  /synced from zeppbridge\.\s*type:\s*([^.\s][^.]*)\./i,
   /logged from polar flow:\s*([^.]+)\./i,
   /logged from oura workout:\s*([^.]+)\./i,
   /logged from withings workout:\s*([^.]+)\./i,
