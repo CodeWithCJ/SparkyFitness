@@ -7,6 +7,7 @@ import React, {
   useRef,
   useMemo,
   useEffect,
+  useLayoutEffect,
   useCallback,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -255,7 +256,9 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const recipeOperation = useRef(0);
   const recipeIdentity = `${recipeOwnerScope}:${route.key}:${item.source}:${item.id}:${JSON.stringify(recipeImportTarget)}`;
   const recipeIdentityRef = useRef(recipeIdentity);
-  recipeIdentityRef.current = recipeIdentity;
+  useLayoutEffect(() => {
+    recipeIdentityRef.current = recipeIdentity;
+  });
   const isRecipeImportSelection = !!recipeImportTarget;
   const recipeSelectionAvailable =
     !isRecipeImportSelection ||
@@ -792,28 +795,27 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   const [quantityText, setQuantityText] = useState(
     initialQuantity === undefined ? '' : String(initialQuantity)
   );
-  const quantityEditedRef = useRef(false);
+  const [quantityEdited, setQuantityEdited] = useState(false);
   // The draft amount belongs to its current unit, including edits and incomplete input.
-  const recipeUnitRef = useRef(
+  const [recipeUnit, setRecipeUnit] = useState(
     activeVariant.servingUnit || recipeImportTarget?.unit
   );
-  useEffect(() => {
-    if (
-      !recipeImportTarget ||
-      !activeVariant.servingUnit ||
-      recipeUnitRef.current === activeVariant.servingUnit
-    )
-      return;
-    const previousUnit = recipeUnitRef.current;
-    recipeUnitRef.current = activeVariant.servingUnit;
-    if (!previousUnit && quantityEditedRef.current) return;
-    const amount = recipeImportInitialQuantity(
-      parseDecimalInput(quantityText),
-      previousUnit,
-      activeVariant.servingUnit
-    );
-    setQuantityText(amount === undefined ? '' : String(amount));
-  }, [recipeImportTarget, activeVariant.servingUnit, quantityText]);
+  if (
+    recipeImportTarget &&
+    activeVariant.servingUnit &&
+    recipeUnit !== activeVariant.servingUnit
+  ) {
+    const previousUnit = recipeUnit;
+    setRecipeUnit(activeVariant.servingUnit);
+    if (previousUnit || !quantityEdited) {
+      const amount = recipeImportInitialQuantity(
+        parseDecimalInput(quantityText),
+        previousUnit,
+        activeVariant.servingUnit
+      );
+      setQuantityText(amount === undefined ? '' : String(amount));
+    }
+  }
   const quantity = parseDecimalInput(quantityText) || 0;
   const cookedSectionShown =
     !isSelectionMode &&
@@ -824,17 +826,16 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     activeItem.source === 'local' ? activeItem.id : undefined,
     cookedSectionShown
   );
-  useEffect(() => {
-    if (cookedSectionShown) return;
+  if (!cookedSectionShown && (cookedEnabled || cookedResult !== null)) {
     setCookedEnabled(false);
     setCookedResult(null);
-  }, [cookedSectionShown]);
+  }
   const handleCookedChange = useCallback(
     (enabled: boolean, result: CookedWeightResult | null) => {
       setCookedEnabled(enabled);
       setCookedResult(result);
       if (enabled && result) {
-        quantityEditedRef.current = true;
+        setQuantityEdited(true);
         setQuantityText(String(result.rawQuantity));
       }
     },
@@ -842,29 +843,35 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
   );
   const servings =
     displayValues.servingSize > 0 ? quantity / displayValues.servingSize : 0;
-  const servingSizeRef = useRef(displayValues.servingSize);
-  const servingUnitRef = useRef(displayValues.servingUnit);
   const pendingEquivalentsRef = useRef<EquivalentUnit[] | null>(null);
 
   const adjustedFromNav = route.params?.adjustedValues;
   const adjustedUnitSelectionFromNav = route.params?.adjustedUnitSelection;
   const adjustedCustomNutrientsFromNav = route.params?.adjustedCustomNutrients;
   const pendingEquivalentsFromNav = route.params?.pendingEquivalents;
-  useEffect(() => {
-    servingSizeRef.current = displayValues.servingSize;
-    servingUnitRef.current = displayValues.servingUnit;
-  }, [displayValues.servingSize, displayValues.servingUnit]);
-
-  useEffect(() => {
-    if (
-      !adjustedFromNav &&
-      !adjustedUnitSelectionFromNav &&
-      adjustedCustomNutrientsFromNav === undefined
-    ) {
-      return;
-    }
-
-    const previousServingSize = servingSizeRef.current;
+  const hasAdjustedFromNav =
+    !!adjustedFromNav ||
+    !!adjustedUnitSelectionFromNav ||
+    adjustedCustomNutrientsFromNav !== undefined;
+  const [appliedNav, setAppliedNav] = useState<{
+    values: typeof adjustedFromNav;
+    unitSelection: typeof adjustedUnitSelectionFromNav;
+    customNutrients: typeof adjustedCustomNutrientsFromNav;
+  } | null>(null);
+  if (!hasAdjustedFromNav) {
+    if (appliedNav !== null) setAppliedNav(null);
+  } else if (
+    appliedNav === null ||
+    appliedNav.values !== adjustedFromNav ||
+    appliedNav.unitSelection !== adjustedUnitSelectionFromNav ||
+    appliedNav.customNutrients !== adjustedCustomNutrientsFromNav
+  ) {
+    setAppliedNav({
+      values: adjustedFromNav,
+      unitSelection: adjustedUnitSelectionFromNav,
+      customNutrients: adjustedCustomNutrientsFromNav,
+    });
+    const previousServingSize = displayValues.servingSize;
     const nextServingSize =
       parseDecimalInput(adjustedFromNav?.servingSize ?? '') ||
       adjustedUnitSelectionFromNav?.variant.serving_size ||
@@ -873,7 +880,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     // the unit does not change. A new unit remounts the cooked section, so the
     // quantity starts again from the new serving size, even when the number
     // is the same (100 g -> 100 kg).
-    const previousServingUnit = servingUnitRef.current;
+    const previousServingUnit = displayValues.servingUnit;
     const nextServingUnit =
       adjustedFromNav?.servingUnit ||
       adjustedUnitSelectionFromNav?.variant.serving_unit ||
@@ -936,22 +943,20 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     if (!recipeImportTarget && resetsQuantity) {
       setQuantityText(String(nextServingSize));
     }
-
+  }
+  useEffect(() => {
+    if (!hasAdjustedFromNav) return;
     navigation.setParams({
       adjustedValues: undefined,
       adjustedUnitSelection: undefined,
       adjustedCustomNutrients: undefined,
     });
   }, [
-    recipeImportTarget,
+    hasAdjustedFromNav,
     adjustedFromNav,
     adjustedUnitSelectionFromNav,
     adjustedCustomNutrientsFromNav,
-    externalUnitVariants,
-    isLocalFood,
-    localUnitVariants,
     navigation,
-    quantityLocked,
   ]);
 
   useEffect(() => {
@@ -960,37 +965,33 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     navigation.setParams({ pendingEquivalents: undefined });
   }, [pendingEquivalentsFromNav, navigation]);
 
-  useEffect(() => {
-    if (
-      resolvedLocalPickerVariantId &&
-      resolvedLocalPickerVariantId !== selectedVariantId
-    ) {
-      const selectedVariant = selectorVariants.find(
-        (variant) => variant.id === selectedVariantId
-      );
-      const resolvedVariant = localVariantOptions.find(
-        (variant) => variant.id === resolvedLocalPickerVariantId
-      );
-      const convertedQuantity = convertEquivalentVariantQuantity(
-        quantity,
-        selectedVariant?.serving_size,
-        resolvedVariant?.servingSize
-      );
-      setSelectedVariantId(resolvedLocalPickerVariantId);
-      if (convertedQuantity !== undefined) {
-        if (recipeImportTarget && resolvedVariant)
-          recipeUnitRef.current = resolvedVariant.servingUnit;
-        setQuantityText(formatServingSizeDisplay(convertedQuantity));
-      }
-      return;
+  if (
+    resolvedLocalPickerVariantId &&
+    resolvedLocalPickerVariantId !== selectedVariantId
+  ) {
+    const selectedVariant = selectorVariants.find(
+      (variant) => variant.id === selectedVariantId
+    );
+    const resolvedVariant = localVariantOptions.find(
+      (variant) => variant.id === resolvedLocalPickerVariantId
+    );
+    const convertedQuantity = convertEquivalentVariantQuantity(
+      quantity,
+      selectedVariant?.serving_size,
+      resolvedVariant?.servingSize
+    );
+    setSelectedVariantId(resolvedLocalPickerVariantId);
+    if (convertedQuantity !== undefined) {
+      if (recipeImportTarget && resolvedVariant)
+        setRecipeUnit(resolvedVariant.servingUnit);
+      setQuantityText(formatServingSizeDisplay(convertedQuantity));
     }
-
-    if (!selectedVariantId) {
-      const firstVariant =
-        localVariantOptions[0] ?? externalVariantOptions[0] ?? null;
-      if (firstVariant) {
-        setSelectedVariantId(firstVariant.id);
-        if (recipeImportTarget && quantityEditedRef.current) return;
+  } else if (!selectedVariantId) {
+    const firstVariant =
+      localVariantOptions[0] ?? externalVariantOptions[0] ?? null;
+    if (firstVariant) {
+      setSelectedVariantId(firstVariant.id);
+      if (!(recipeImportTarget && quantityEdited)) {
         const amount = recipeImportTarget
           ? recipeImportInitialQuantity(
               recipeImportTarget.quantity,
@@ -998,20 +999,11 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
               firstVariant.servingUnit
             )
           : firstVariant.servingSize;
-        if (recipeImportTarget)
-          recipeUnitRef.current = firstVariant.servingUnit;
+        if (recipeImportTarget) setRecipeUnit(firstVariant.servingUnit);
         setQuantityText(amount === undefined ? '' : String(amount));
       }
     }
-  }, [
-    externalVariantOptions,
-    localVariantOptions,
-    recipeImportTarget,
-    quantity,
-    resolvedLocalPickerVariantId,
-    selectedVariantId,
-    selectorVariants,
-  ]);
+  }
 
   const handleVariantChange = useCallback(
     (variantId: string) => {
@@ -1023,20 +1015,16 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         (variant) => variant.id === variantId
       );
       if (localVariant) {
-        if (
-          recipeImportTarget &&
-          recipeUnitRef.current === localVariant.servingUnit
-        )
+        if (recipeImportTarget && recipeUnit === localVariant.servingUnit)
           return;
         const amount = recipeImportTarget
           ? recipeImportInitialQuantity(
               parseDecimalInput(quantityText),
-              recipeUnitRef.current,
+              recipeUnit,
               localVariant.servingUnit
             )
           : localVariant.servingSize;
-        if (recipeImportTarget)
-          recipeUnitRef.current = localVariant.servingUnit;
+        if (recipeImportTarget) setRecipeUnit(localVariant.servingUnit);
         setQuantityText(amount === undefined ? '' : String(amount));
         return;
       }
@@ -1045,20 +1033,16 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
         (variant) => variant.id === variantId
       );
       if (externalVariant) {
-        if (
-          recipeImportTarget &&
-          recipeUnitRef.current === externalVariant.servingUnit
-        )
+        if (recipeImportTarget && recipeUnit === externalVariant.servingUnit)
           return;
         const amount = recipeImportTarget
           ? recipeImportInitialQuantity(
               parseDecimalInput(quantityText),
-              recipeUnitRef.current,
+              recipeUnit,
               externalVariant.servingUnit
             )
           : externalVariant.servingSize;
-        if (recipeImportTarget)
-          recipeUnitRef.current = externalVariant.servingUnit;
+        if (recipeImportTarget) setRecipeUnit(externalVariant.servingUnit);
         setQuantityText(amount === undefined ? '' : String(amount));
       }
     },
@@ -1066,6 +1050,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
       externalVariantOptions,
       localVariantOptions,
       recipeImportTarget,
+      recipeUnit,
       quantityText,
     ]
   );
@@ -1074,7 +1059,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
     // While "Weighed it cooked" is on, the raw quantity is calculated.
     if (quantityLocked) return;
     if (DECIMAL_INPUT_REGEX.test(text)) {
-      quantityEditedRef.current = true;
+      setQuantityEdited(true);
       setQuantityText(text);
     }
   };
@@ -1089,7 +1074,7 @@ const FoodEntryAddScreen: React.FC<FoodEntryAddScreenProps> = ({
 
   const adjustQuantity = (delta: number) => {
     if (quantityLocked) return;
-    quantityEditedRef.current = true;
+    setQuantityEdited(true);
     setQuantityText(
       String(nextQuantity(quantity, delta, displayValues.servingSize))
     );

@@ -28,6 +28,7 @@ import {
   CustomCategoriesResponse,
   CustomMeasurementsResponse,
 } from '@workspace/shared';
+import { useIsMounted } from '@/hooks/useIsMounted';
 
 interface BodyBatteryCardProps {
   categories: CustomCategoriesResponse[];
@@ -51,11 +52,7 @@ const BodyBatteryCard: React.FC<BodyBatteryCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, chartScaleMode } = usePreferences();
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   // Get Body Battery categories
   const bodyBatteryCategories = useMemo(() => {

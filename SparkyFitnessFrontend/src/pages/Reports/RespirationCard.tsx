@@ -27,6 +27,7 @@ import {
 } from '@workspace/shared';
 
 import type { TFunction } from 'i18next';
+import { useIsMounted } from '@/hooks/useIsMounted';
 // Respiration metric names as they come from Garmin sync
 interface RespirationCardProps {
   categories: CustomCategoriesResponse[];
@@ -82,11 +83,7 @@ const RespirationCard: React.FC<RespirationCardProps> = ({
 }) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, chartScaleMode } = usePreferences();
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   // Get Respiration categories
   const respirationCategories = useMemo(() => {

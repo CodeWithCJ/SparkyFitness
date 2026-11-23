@@ -6,6 +6,11 @@ if (typeof globalThis.TextEncoder === 'undefined')
 if (typeof globalThis.TextDecoder === 'undefined')
   globalThis.TextDecoder = TextDecoder;
 
+// The native Jest environment flushes some async React updates later than
+// jsdom did, so `waitFor`/`findBy*` can need a little over RNTL's default one
+// second after a rejected request. This only raises the failure deadline.
+require('@testing-library/react-native').configure({ asyncUtilTimeout: 3000 });
+
 // Deterministic expo-localization: tests read the device language through
 // getLocales(). The localization suite overrides the return value per test;
 // the default here keeps every other test environment-agnostic (en-US).
@@ -432,9 +437,26 @@ jest.mock('react-native-reanimated', () => {
       ScrollView,
       createAnimatedComponent: (Component) => Component,
     },
-    useSharedValue: (init) => React.useRef({ value: init }).current,
+    useSharedValue: (init) =>
+      React.useRef({
+        value: init,
+        get() {
+          return this.value;
+        },
+        set(next) {
+          this.value = typeof next === 'function' ? next(this.value) : next;
+        },
+      }).current,
     useAnimatedStyle: (fn) => fn(),
-    useDerivedValue: (fn) => ({ value: fn() }),
+    useDerivedValue: (fn) => {
+      const value = fn();
+      return {
+        value,
+        get() {
+          return value;
+        },
+      };
+    },
     // Linear map between the first and last stops, clamped — enough for the
     // synchronous worklet the useAnimatedStyle mock runs.
     interpolate: (value, input, output) => {

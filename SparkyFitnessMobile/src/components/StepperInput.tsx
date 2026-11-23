@@ -3,8 +3,8 @@ import {
   View,
   TextInput,
   TouchableOpacity,
-  type NativeSyntheticEvent,
-  type TextInputFocusEventData,
+  type FocusEvent,
+  type TextInputInstance,
   type TextInputProps,
 } from 'react-native';
 import { useCSSVariable } from 'uniwind';
@@ -105,7 +105,7 @@ interface StepperInputProps {
   /** Extra props forwarded to the text input */
   inputProps?: Partial<TextInputProps>;
   /** Ref forwarded to the underlying text input for imperative focus control */
-  inputRef?: React.Ref<TextInput>;
+  inputRef?: React.Ref<TextInputInstance>;
   /** Accessibility labels for the decrement, input, and increment controls. */
   accessibilityLabels?: {
     decrement?: string;
@@ -120,8 +120,6 @@ interface StepperInputProps {
    */
   fill?: boolean;
 }
-
-type TextInputFocusEvent = NativeSyntheticEvent<TextInputFocusEventData>;
 
 function StepperInput({
   value,
@@ -183,11 +181,11 @@ function StepperInput({
         ref={inputRef}
         value={value}
         onChangeText={onChangeText}
-        onFocus={(e: TextInputFocusEvent) => {
+        onFocus={(e: FocusEvent) => {
           setIsFocused(true);
           externalOnFocus?.(e);
         }}
-        onBlur={(e: TextInputFocusEvent) => {
+        onBlur={(e: FocusEvent) => {
           setIsFocused(false);
           onBlur?.();
           externalOnBlur?.(e);

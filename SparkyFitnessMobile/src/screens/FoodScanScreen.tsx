@@ -237,11 +237,11 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   }, [cancelBarcodeLookup, restartCamera]);
 
   useEffect(() => {
-    if (!isFocused) {
+    return navigation.addListener('blur', () => {
       cancelBarcodeLookup();
       restartCamera();
-    }
-  }, [isFocused, cancelBarcodeLookup, restartCamera]);
+    });
+  }, [navigation, cancelBarcodeLookup, restartCamera]);
 
   // Photo estimation always logs to the diary; hide it for meal-builder
   // scans so we don't drop the user into a flow that ignores pickerMode.
@@ -688,28 +688,31 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   };
 
   // Photo-mode gate: drives the gate overlay and the one-time intro push.
-  // Triggered via effect (not just segment change) so deep-link entries
+  // Derived from the deps (not just segment change) so deep-link entries
   // with `initialMode: 'photo'` still hit the gate.
-  useEffect(() => {
-    if (isCaptureBarcodeMode) return;
-    if (isBasketOriginScan) {
+  const gateKey = `${isCaptureBarcodeMode}|${isBasketOriginScan}|${scanMode}|${aiSettingQuery.isLoading}|${photoModeAvailable}`;
+  const [syncedGateKey, setSyncedGateKey] = useState<string | null>(null);
+  if (syncedGateKey !== gateKey) {
+    setSyncedGateKey(gateKey);
+    if (isCaptureBarcodeMode) {
+      // Capture-only scans have no photo gate.
+    } else if (isBasketOriginScan) {
       // Basket-origin scans cannot use photo mode at all (its flow pops to
       // the diary root and would drop the basket): hide the gate, snap the
       // segment back to barcode, and never reach the availability fetch —
       // including deep-link photo entries the filtered segments can't stop.
       setPhotoGateVisible(false);
       setScanMode('barcode');
-      return;
+    } else if (scanMode === 'photo' && !aiSettingQuery.isLoading) {
+      setPhotoGateVisible(!photoModeAvailable);
     }
+  }
+  useEffect(() => {
+    if (isCaptureBarcodeMode || isBasketOriginScan) return;
     if (scanMode !== 'photo') return;
     if (aiSettingQuery.isLoading) return;
+    if (!photoModeAvailable) return;
 
-    if (!photoModeAvailable) {
-      setPhotoGateVisible(true);
-      return;
-    }
-
-    setPhotoGateVisible(false);
     if (introCheckedRef.current) return;
     introCheckedRef.current = true;
     void (async () => {

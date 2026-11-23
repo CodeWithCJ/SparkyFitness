@@ -39,6 +39,7 @@ import type {
 } from '../types/navigation';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
+import type { TranslateFn } from '../localization/translateFn';
 
 type Props = FoodPhotoFlowScreenProps<'EstimateReview'>;
 
@@ -78,7 +79,7 @@ const positiveOrUndefined = (v: number | undefined | null) =>
   v !== undefined && v !== null && v > 0 ? v : undefined;
 
 function confidenceLabel(
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TranslateFn,
   confidence: keyof typeof overallConfidenceLabels,
   scope: 'overall' | 'item'
 ): string {

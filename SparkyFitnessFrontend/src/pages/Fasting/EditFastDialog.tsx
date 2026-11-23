@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog,
@@ -54,7 +55,7 @@ export const EditFastDialog: React.FC<EditFastDialogProps> = ({
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
+  useOnChange([fast, isOpen], () => {
     if (fast) {
       setError('');
       setStartTime(formatForLocalInput(new Date(fast.start_time)));
@@ -79,7 +80,7 @@ export const EditFastDialog: React.FC<EditFastDialogProps> = ({
         setIsCustomPreset(true);
       }
     }
-  }, [fast, isOpen]);
+  });
 
   const handlePresetChange = (value: string) => {
     setPresetId(value);

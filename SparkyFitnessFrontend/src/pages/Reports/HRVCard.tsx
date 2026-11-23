@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { parseISO } from 'date-fns';
 import { calculateBaseline, getHRVStatus } from '@/utils/reportUtil';
 import { useHealthMetricSamples } from '@/hooks/useGenericHealth';
 import { samplesForDay } from '@/utils/healthMetricSamples';
+import { useIsMounted } from '@/hooks/useIsMounted';
 
 interface HRVDataPoint {
   date: string;
@@ -37,12 +38,8 @@ interface TransformedData {
 const HRVCard = ({ data }: HRVCardProps) => {
   const { t } = useTranslation();
   const { formatDateInUserTimezone, formatTime } = usePreferences();
-  const [isMounted, setIsMounted] = useState(false);
+  const isMounted = useIsMounted();
   const [showIntraday, setShowIntraday] = useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
 
   // Transform and process data
   const { transformedData, latestHRV, baseline, stats } = useMemo(() => {

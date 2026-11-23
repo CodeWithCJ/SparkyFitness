@@ -375,7 +375,7 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
               }).target
           : typedCalories
       : typedCalories;
-  const userData: UserNutrientData | null = useMemo(() => {
+  const userData: UserNutrientData | null = (() => {
     if (profile?.gender !== 'male' && profile?.gender !== 'female') return null;
     const activity = ACTIVITY_LEVELS.find(
       (level) => level === preferences?.activity_level
@@ -390,7 +390,7 @@ const GoalsForm: React.FC<GoalsFormProps> = ({
       totalFatGrams: Number.isFinite(calcFat) ? calcFat : 0,
       activityLevel: activity,
     };
-  }, [profile, latestMeasurements, preferences, calcCalories, calcFat]);
+  })();
 
   const calculateField = (field: NutrientGoalField): number | null => {
     if (!userData) return null;

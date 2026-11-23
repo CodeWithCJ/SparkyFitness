@@ -1,6 +1,6 @@
 # SparkyFitness Mobile — DESIGN.md
 
-This file is the design contract for the SparkyFitness mobile app (React Native 0.86, Expo SDK 57, styled with Uniwind, which is TailwindCSS v4 for React Native). It describes the design system as it exists in code today. It is not a redesign proposal.
+This file is the design contract for the SparkyFitness mobile app (React Native 0.88, Expo SDK 58, styled with Uniwind, which is TailwindCSS v4 for React Native). It describes the design system as it exists in code today. It is not a redesign proposal.
 
 `SparkyFitnessMobile/global.css` is the source of truth for every token value. Update this file in the same change whenever a token is added, renamed or re-valued there. One group has a hand-copied mirror: the eight dark `--color-cat-*` values, in the order of `SUPERSET_PALETTE_VARS` (`src/utils/workoutSupersets.ts`), are copied into `SupersetPalette` in `targets/watch/Presentation/WorkoutView.swift`. Change both in the same commit.
 

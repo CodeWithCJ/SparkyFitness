@@ -402,6 +402,18 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // form value; collapsing keeps typed values in customForm).
   const [showMoreCategories, setShowMoreCategories] = useState(false);
 
+  // The form starts empty whenever a day (or the preferences) is still loading.
+  const isSyncing = isLoading || isPreferencesLoading;
+  const syncKey = `${selectedDate}|${isSyncing}`;
+  const [lastSyncKey, setLastSyncKey] = useState<string | null>(null);
+  if (lastSyncKey !== syncKey) {
+    setLastSyncKey(syncKey);
+    if (isSyncing) {
+      setForm(EMPTY_FORM);
+      setPrefilledKeys(new Set());
+    }
+  }
+
   // Sync the form to the latest measurements snapshot. Re-runs on every
   // measurements change (including background refetches) so cached-then-fresh
   // updates land in the form, but bails out once the user has touched it.
@@ -413,13 +425,7 @@ const MeasurementsAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
     const dirtyFields = new Set(dirtyFieldsRef.current);
 
-    if (isLoading || isPreferencesLoading) {
-      // Syncs the form to the latest measurements snapshot (cached-then-fresh)
-      // with dirty-field tracking; a legitimate external-data sync effect.
-      setForm(EMPTY_FORM);
-      setPrefilledKeys(new Set());
-      return;
-    }
+    if (isLoading || isPreferencesLoading) return;
 
     const { values, prefilled } = buildStandardFormFromMeasurement(
       measurements,

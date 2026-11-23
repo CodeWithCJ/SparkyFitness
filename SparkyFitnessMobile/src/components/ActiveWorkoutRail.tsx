@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  type ScrollViewInstance,
+} from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import type { ExerciseEntryResponse } from '@workspace/shared';
 import Icon from './Icon';
@@ -105,7 +111,7 @@ function ActiveWorkoutRail({
     '--color-accent-primary',
   ]) as [string, string];
 
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ScrollViewInstance>(null);
   const itemOffsetsRef = useRef<Record<string, number>>({});
   // Focus target whose offset wasn't measured yet when the effect ran (first
   // render, e.g. resuming mid-workout) — its own onLayout completes the scroll.

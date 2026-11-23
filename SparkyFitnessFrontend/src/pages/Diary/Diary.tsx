@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
@@ -177,33 +178,38 @@ const Diary = () => {
   );
 
   // Handle navigation for opening food search dialog
+  const requestedMealType =
+    (location.state as { openFoodSearchForMeal?: string } | null)
+      ?.openFoodSearchForMeal &&
+    availableMealTypes &&
+    availableMealTypes.length > 0
+      ? (location.state as { openFoodSearchForMeal: string })
+          .openFoodSearchForMeal
+      : null;
+
+  // Set which meal dialog should open
+  useOnChange([requestedMealType], () => {
+    if (requestedMealType) setOpenFoodSearchForMealType(requestedMealType);
+  });
+
   useEffect(() => {
-    const state = location.state as { openFoodSearchForMeal?: string };
-    debug(loggingLevel, '[Diary] Location state:', state);
-    if (
-      state?.openFoodSearchForMeal &&
-      availableMealTypes &&
-      availableMealTypes.length > 0
-    ) {
-      const mealType = state.openFoodSearchForMeal;
+    debug(loggingLevel, '[Diary] Location state:', location.state);
+    if (requestedMealType) {
       info(
         loggingLevel,
-        `Diary: Opening food search for meal type: ${mealType}`
+        `Diary: Opening food search for meal type: ${requestedMealType}`
       );
       debug(
         loggingLevel,
-        `[Diary] Setting openFoodSearchForMealType to: ${mealType}`
+        `[Diary] Setting openFoodSearchForMealType to: ${requestedMealType}`
       );
-
-      // Set which meal dialog should open
-      setOpenFoodSearchForMealType(mealType);
 
       // Clear the navigation state for next render
       navigate(location.pathname, { replace: true, state: {} });
     }
   }, [
     location.state,
-    availableMealTypes,
+    requestedMealType,
     loggingLevel,
     navigate,
     location.pathname,

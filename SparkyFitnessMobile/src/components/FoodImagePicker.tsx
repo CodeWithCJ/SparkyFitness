@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View, Text, ScrollView, Pressable, Alert } from 'react-native';
 import { useCSSVariable } from 'uniwind';
@@ -61,7 +61,9 @@ const FoodImagePicker: React.FC<FoodImagePickerProps> = ({
   // handler can be stale by the time it returns — a parent that seeds saved
   // images meanwhile would be overwritten. Append against the latest list.
   const itemsRef = useRef(items);
-  itemsRef.current = items;
+  useLayoutEffect(() => {
+    itemsRef.current = items;
+  });
 
   const resolvedLabel =
     label === 'Photos'

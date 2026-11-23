@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
@@ -60,7 +61,7 @@ export default function CycleSettings() {
   const [exporting, setExporting] = useState(false);
 
   // Sync state from server settings
-  useEffect(() => {
+  useOnChange([settings], () => {
     if (settings) {
       setMode(settings.mode);
       setAvgCycleLength(
@@ -79,7 +80,7 @@ export default function CycleSettings() {
       setTerminology(settings.terminology);
       setDiscreetMode(settings.discreet_mode ?? false);
     }
-  }, [settings]);
+  });
 
   const handleExport = async () => {
     setExporting(true);

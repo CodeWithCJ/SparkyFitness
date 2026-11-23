@@ -249,14 +249,31 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
     return undefined;
   }, [food.customNutrients, food.variantId, selectedVariantId, variants]);
 
-  useEffect(() => {
+  const [syncedItem, setSyncedItem] = useState(item);
+  if (syncedItem !== item) {
+    setSyncedItem(item);
     setFood(item);
-  }, [item]);
+  }
 
+  const [appliedUpdate, setAppliedUpdate] = useState<{
+    item: typeof updatedItem;
+    variantId: typeof updatedSelectedVariantId;
+  } | null>(null);
+  if (!updatedItem) {
+    if (appliedUpdate !== null) setAppliedUpdate(null);
+  } else if (
+    appliedUpdate?.item !== updatedItem ||
+    appliedUpdate.variantId !== updatedSelectedVariantId
+  ) {
+    setAppliedUpdate({
+      item: updatedItem,
+      variantId: updatedSelectedVariantId,
+    });
+    setFood(updatedItem);
+    setSelectedVariantId(updatedSelectedVariantId ?? updatedItem.variantId);
+  }
   useEffect(() => {
     if (updatedItem) {
-      setFood(updatedItem);
-      setSelectedVariantId(updatedSelectedVariantId ?? updatedItem.variantId);
       navigation.setParams({
         updatedItem: undefined,
         updatedSelectedVariantId: undefined,
@@ -264,18 +281,27 @@ const FoodDetailScreen: React.FC<FoodDetailScreenProps> = ({
     }
   }, [updatedItem, updatedSelectedVariantId, navigation]);
 
+  const [appliedBarcode, setAppliedBarcode] = useState<{
+    value: typeof updatedBarcode;
+  } | null>(null);
+  if (updatedBarcode === undefined) {
+    if (appliedBarcode !== null) setAppliedBarcode(null);
+  } else if (
+    appliedBarcode === null ||
+    appliedBarcode.value !== updatedBarcode
+  ) {
+    setAppliedBarcode({ value: updatedBarcode });
+    setFood((prev) => ({ ...prev, barcode: updatedBarcode }));
+  }
   useEffect(() => {
     if (updatedBarcode !== undefined) {
-      setFood((prev) => ({ ...prev, barcode: updatedBarcode }));
       navigation.setParams({ updatedBarcode: undefined });
     }
   }, [updatedBarcode, navigation]);
 
-  useEffect(() => {
-    if (!selectedVariantId && localVariantOptions.length > 0) {
-      setSelectedVariantId(localVariantOptions[0].id);
-    }
-  }, [selectedVariantId, localVariantOptions]);
+  if (!selectedVariantId && localVariantOptions.length > 0) {
+    setSelectedVariantId(localVariantOptions[0].id);
+  }
 
   const {
     buildDeleteOptions,

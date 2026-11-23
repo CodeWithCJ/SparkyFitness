@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { BmrAlgorithm } from '@/services/bmrService';
 import { BodyFatAlgorithm } from '@/services/bodyCompositionService';
 
@@ -262,12 +263,12 @@ const CalculationSettings = () => {
     mode: savedCalorieCyclingMode,
     offsets: [...savedCalorieCyclingOffsets],
   });
-  useEffect(() => {
+  useOnChange([savedCalorieCyclingMode, savedCalorieCyclingOffsets], () => {
     setCalorieCycling({
       mode: savedCalorieCyclingMode,
       offsets: [...savedCalorieCyclingOffsets],
     });
-  }, [savedCalorieCyclingMode, savedCalorieCyclingOffsets]);
+  });
   // The weekday the cycling chart and the Live Preview show; today until a
   // day is picked on the chart.
   const [pickedCyclingDay, setPickedCyclingDay] = useState<number | null>(null);
@@ -348,113 +349,116 @@ const CalculationSettings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  useEffect(() => {
-    // When context preferences are loaded, update local state
-    if (contextBmrAlgorithm) {
-      setBmrAlgorithm(contextBmrAlgorithm);
-    }
-    if (contextBodyFatAlgorithm) {
-      setBodyFatAlgorithm(contextBodyFatAlgorithm);
-    }
-    if (contextIncludeBmrInNetCalories !== undefined) {
-      setIncludeBmrInNetCalories(contextIncludeBmrInNetCalories);
-    }
-    if (contextUseExternalBmr !== undefined) {
-      setUseExternalBmr(contextUseExternalBmr);
-    }
-    if (contextShowNetCarbs !== undefined) {
-      setShowNetCarbs(contextShowNetCarbs);
-    }
-    if (contextFatBreakdownAlgorithm) {
-      setFatBreakdownAlgorithm(contextFatBreakdownAlgorithm);
-    }
-    if (contextMineralCalculationAlgorithm) {
-      setMineralCalculationAlgorithm(contextMineralCalculationAlgorithm);
-    }
-    if (contextVitaminCalculationAlgorithm) {
-      setVitaminCalculationAlgorithm(contextVitaminCalculationAlgorithm);
-    }
-    if (contextSugarCalculationAlgorithm) {
-      setSugarCalculationAlgorithm(contextSugarCalculationAlgorithm);
-    }
-    if (contextAddedSugarAlgorithm) {
-      setAddedSugarAlgorithm(contextAddedSugarAlgorithm);
-    }
-    if (contextCalorieGoalAdjustmentMode) {
-      setCalorieGoalAdjustmentMode(
-        toSelectableMode(contextCalorieGoalAdjustmentMode)
-      );
-    }
-    if (contextExerciseCaloriePercentage !== undefined) {
-      setExerciseCaloriePercentage(contextExerciseCaloriePercentage);
-    }
-    if (contextTdeeAllowNegativeAdjustment !== undefined) {
-      setTdeeAllowNegativeAdjustment(contextTdeeAllowNegativeAdjustment);
-    }
-    if (contextActivityLevel) {
-      setActivityLevel(contextActivityLevel);
-    }
-    if (contextGoalMode) {
-      setGoalMode(contextGoalMode);
-    }
-    if (contextGoalModeCalculationMethod) {
-      setGoalModeCalculationMethod(contextGoalModeCalculationMethod);
-    }
-    setAdaptiveActivitySeparate(contextAdaptiveActivitySeparate ?? false);
-    setAdjustMacrosWithExercise(contextAdjustMacrosWithExercise ?? false);
-    if (contextGoalModeCustomPercentage !== undefined) {
-      setGoalModeCustomPercentage(contextGoalModeCustomPercentage);
-      setCustomPercentageInput(String(contextGoalModeCustomPercentage));
-    }
-    if (contextCalorieSafetyFloorMode !== undefined) {
-      setCalorieSafetyFloorMode(contextCalorieSafetyFloorMode);
-    }
-    if (contextCalorieSafetyFloorValue !== undefined) {
-      setCalorieSafetyFloorValue(contextCalorieSafetyFloorValue);
-      setCalorieSafetyFloorInput(
-        String(
-          Math.round(
-            convertEnergy(contextCalorieSafetyFloorValue, 'kcal', energyUnit)
+  useOnChange(
+    [
+      contextBmrAlgorithm,
+      contextBodyFatAlgorithm,
+      contextIncludeBmrInNetCalories,
+      contextUseExternalBmr,
+      contextShowNetCarbs,
+      contextFatBreakdownAlgorithm,
+      contextMineralCalculationAlgorithm,
+      contextVitaminCalculationAlgorithm,
+      contextSugarCalculationAlgorithm,
+      contextAddedSugarAlgorithm,
+      contextCalorieGoalAdjustmentMode,
+      contextExerciseCaloriePercentage,
+      contextTdeeAllowNegativeAdjustment,
+      contextActivityLevel,
+      contextGoalMode,
+      contextGoalModeCalculationMethod,
+      contextAdaptiveActivitySeparate,
+      contextAdjustMacrosWithExercise,
+      contextGoalModeCustomPercentage,
+      contextCalorieSafetyFloorMode,
+      contextCalorieSafetyFloorValue,
+      convertEnergy,
+      energyUnit,
+    ],
+    () => {
+      // When context preferences are loaded, update local state
+      if (contextBmrAlgorithm) {
+        setBmrAlgorithm(contextBmrAlgorithm);
+      }
+      if (contextBodyFatAlgorithm) {
+        setBodyFatAlgorithm(contextBodyFatAlgorithm);
+      }
+      if (contextIncludeBmrInNetCalories !== undefined) {
+        setIncludeBmrInNetCalories(contextIncludeBmrInNetCalories);
+      }
+      if (contextUseExternalBmr !== undefined) {
+        setUseExternalBmr(contextUseExternalBmr);
+      }
+      if (contextShowNetCarbs !== undefined) {
+        setShowNetCarbs(contextShowNetCarbs);
+      }
+      if (contextFatBreakdownAlgorithm) {
+        setFatBreakdownAlgorithm(contextFatBreakdownAlgorithm);
+      }
+      if (contextMineralCalculationAlgorithm) {
+        setMineralCalculationAlgorithm(contextMineralCalculationAlgorithm);
+      }
+      if (contextVitaminCalculationAlgorithm) {
+        setVitaminCalculationAlgorithm(contextVitaminCalculationAlgorithm);
+      }
+      if (contextSugarCalculationAlgorithm) {
+        setSugarCalculationAlgorithm(contextSugarCalculationAlgorithm);
+      }
+      if (contextAddedSugarAlgorithm) {
+        setAddedSugarAlgorithm(contextAddedSugarAlgorithm);
+      }
+      if (contextCalorieGoalAdjustmentMode) {
+        setCalorieGoalAdjustmentMode(
+          toSelectableMode(contextCalorieGoalAdjustmentMode)
+        );
+      }
+      if (contextExerciseCaloriePercentage !== undefined) {
+        setExerciseCaloriePercentage(contextExerciseCaloriePercentage);
+      }
+      if (contextTdeeAllowNegativeAdjustment !== undefined) {
+        setTdeeAllowNegativeAdjustment(contextTdeeAllowNegativeAdjustment);
+      }
+      if (contextActivityLevel) {
+        setActivityLevel(contextActivityLevel);
+      }
+      if (contextGoalMode) {
+        setGoalMode(contextGoalMode);
+      }
+      if (contextGoalModeCalculationMethod) {
+        setGoalModeCalculationMethod(contextGoalModeCalculationMethod);
+      }
+      setAdaptiveActivitySeparate(contextAdaptiveActivitySeparate ?? false);
+      setAdjustMacrosWithExercise(contextAdjustMacrosWithExercise ?? false);
+      if (contextGoalModeCustomPercentage !== undefined) {
+        setGoalModeCustomPercentage(contextGoalModeCustomPercentage);
+        setCustomPercentageInput(String(contextGoalModeCustomPercentage));
+      }
+      if (contextCalorieSafetyFloorMode !== undefined) {
+        setCalorieSafetyFloorMode(contextCalorieSafetyFloorMode);
+      }
+      if (contextCalorieSafetyFloorValue !== undefined) {
+        setCalorieSafetyFloorValue(contextCalorieSafetyFloorValue);
+        setCalorieSafetyFloorInput(
+          String(
+            Math.round(
+              convertEnergy(contextCalorieSafetyFloorValue, 'kcal', energyUnit)
+            )
           )
-        )
-      );
+        );
+      }
+      // Since preferences are loaded by the PreferencesProvider at a higher level,
+      // we can assume they are available by the time this component renders.
+      // Set isLoading to false after initial render with context values.
+      setIsLoading(false);
     }
-    // Since preferences are loaded by the PreferencesProvider at a higher level,
-    // we can assume they are available by the time this component renders.
-    // Set isLoading to false after initial render with context values.
-    setIsLoading(false);
-  }, [
-    contextBmrAlgorithm,
-    contextBodyFatAlgorithm,
-    contextIncludeBmrInNetCalories,
-    contextUseExternalBmr,
-    contextShowNetCarbs,
-    contextFatBreakdownAlgorithm,
-    contextMineralCalculationAlgorithm,
-    contextVitaminCalculationAlgorithm,
-    contextSugarCalculationAlgorithm,
-    contextAddedSugarAlgorithm,
-    contextCalorieGoalAdjustmentMode,
-    contextExerciseCaloriePercentage,
-    contextTdeeAllowNegativeAdjustment,
-    contextActivityLevel,
-    contextGoalMode,
-    contextGoalModeCalculationMethod,
-    contextAdaptiveActivitySeparate,
-    contextAdjustMacrosWithExercise,
-    contextGoalModeCustomPercentage,
-    contextCalorieSafetyFloorMode,
-    contextCalorieSafetyFloorValue,
-    convertEnergy,
-    energyUnit,
-  ]);
+  );
 
-  useEffect(() => {
+  useOnChange([contextGoalModeWeeklyChangeKg], () => {
     if (contextGoalModeWeeklyChangeKg !== undefined) {
       setGoalModeWeeklyChangeKg(contextGoalModeWeeklyChangeKg);
       setWeeklyRateValid(true);
     }
-  }, [contextGoalModeWeeklyChangeKg]);
+  });
 
   const handleSave = async () => {
     if (goalMode === 'weekly' && !weeklyRateValid) return;

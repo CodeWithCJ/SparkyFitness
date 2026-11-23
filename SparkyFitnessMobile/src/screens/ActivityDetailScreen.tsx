@@ -244,7 +244,6 @@ const ActivityDetailScreen: React.FC<Props> = ({ navigation, route }) => {
   // is still honored at runtime; the compiler just skips optimizing this
   // component. Suppress the bailout rather than rewrite the working id counter.
   const addDraftSet = useCallback(
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     (_exerciseId?: string) => {
       const id = `set-${nextSetIdRef.current++}`;
       setDraftSets((prev) => {

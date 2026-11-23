@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { useOnChange } from '@/hooks/useOnChange';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -14,7 +15,7 @@ import WaterContainerManager from './WaterContainerManager';
 import { AccordionTrigger, AccordionContent } from '@/components/ui/accordion'; // Import Accordion components
 import { useTranslation } from 'react-i18next';
 import { usePreferences } from '@/contexts/PreferencesContext';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 
@@ -34,9 +35,9 @@ export const WaterTrackingSettings = () => {
 
   const [loading, setLoading] = useState<boolean>(false);
 
-  useEffect(() => {
+  useOnChange([water_display_unit], () => {
     setLocalWaterUnit(water_display_unit);
-  }, [water_display_unit]);
+  });
 
   const handlePreferencesUpdate = async () => {
     if (!user) return;

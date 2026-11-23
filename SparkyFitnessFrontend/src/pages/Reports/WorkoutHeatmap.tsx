@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { WorkoutDayCount } from '@workspace/shared';
@@ -183,9 +184,7 @@ const WorkoutHeatmap = ({
     return Math.max(0, months.length - 1);
   }, [months, rangeEnd]);
   const [monthIndex, setMonthIndex] = useState(initialMonthIndex);
-  useEffect(() => {
-    setMonthIndex(initialMonthIndex);
-  }, [initialMonthIndex]);
+  useOnChange([initialMonthIndex], () => setMonthIndex(initialMonthIndex));
 
   const mobileMonth = months[monthIndex];
 

@@ -169,7 +169,6 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
       return;
     // Default the provider once the list loads; guarded by a ref tracking an
     // explicit user selection, which keeps this from moving to a render-time derive.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedProvider(providers[0].id);
   }, [providers, selectedProvider]);
 
@@ -772,7 +771,7 @@ const ExerciseSearchScreen: React.FC<ExerciseSearchScreenProps> = ({
           renderItem={renderExternalExerciseItem}
           keyboardShouldPersistTaps="handled"
           contentContainerClassName="pb-safe-or-4"
-          ListFooterComponent={renderOnlineFooter()}
+          ListFooterComponent={renderOnlineFooter() ?? undefined}
         />
       </View>
     );

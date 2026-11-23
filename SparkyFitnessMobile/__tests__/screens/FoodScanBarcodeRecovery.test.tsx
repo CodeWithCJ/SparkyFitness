@@ -51,13 +51,21 @@ const found: BarcodeLookupResult = {
     },
   },
 };
+const blurListeners = new Set<() => void>();
 const navigation = {
   replace: jest.fn(),
   navigate: jest.fn(),
   dispatch: jest.fn(),
   goBack: jest.fn(),
   isFocused: jest.fn(() => true),
+  addListener: jest.fn((event: string, listener: () => void) => {
+    if (event === 'blur') blurListeners.add(listener);
+    return () => {
+      blurListeners.delete(listener);
+    };
+  }),
 };
+const blur = () => act(() => blurListeners.forEach((listener) => listener()));
 const makeScreen = (params?: Props['route']['params']) => (
   <SafeAreaProvider
     initialMetrics={{
@@ -181,6 +189,7 @@ describe('FoodScan barcode recovery', () => {
         focused.mockReturnValue(false);
         navigation.isFocused.mockReturnValue(false);
         screen.rerender(makeScreen());
+        blur();
       } else screen.unmount();
 
       expect(signal?.aborted).toBe(true);
@@ -312,6 +321,7 @@ describe('FoodScan barcode recovery', () => {
     focused.mockReturnValue(false);
     navigation.isFocused.mockReturnValue(false);
     screen.rerender(makeScreen());
+    blur();
     expect(screen.queryByTestId('camera-view')).toBeNull();
     await act(async () => pending.resolve(found));
     expect(navigation.replace).not.toHaveBeenCalled();

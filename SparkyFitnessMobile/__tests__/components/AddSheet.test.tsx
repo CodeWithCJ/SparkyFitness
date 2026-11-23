@@ -32,11 +32,9 @@ jest.mock('@gorhom/bottom-sheet', () => {
       ({ children, onDismiss, onAnimate, onChange }: any, ref) => {
         // Test mock stashes the latest handlers for assertions; writing to the
         // module-scoped controls during the mock's render is intentional.
-        /* eslint-disable react-hooks/immutability */
         mockBottomSheetControls.onDismiss = onDismiss;
         mockBottomSheetControls.onAnimate = onAnimate;
         mockBottomSheetControls.onChange = onChange;
-        /* eslint-enable react-hooks/immutability */
 
         React.useImperativeHandle(ref, () => ({
           present: mockBottomSheetControls.present,
