@@ -450,6 +450,8 @@ const Reports = () => {
                   endDate,
                   formatDateInUserTimezone,
                   convertEnergy,
+                  defaultWeightUnit,
+                  convertWeight,
                 })
               }
               customNutrients={customNutrients}

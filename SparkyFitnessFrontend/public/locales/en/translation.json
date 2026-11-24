@@ -5579,7 +5579,7 @@
       "caloriesBurned": "Calories Burned",
       "sets": "Sets",
       "reps": "Reps",
-      "weight": "Weight",
+      "weight": "Weight ({{unit}})",
       "notes": "Notes",
       "category": "Category",
       "equipment": "Equipment",
