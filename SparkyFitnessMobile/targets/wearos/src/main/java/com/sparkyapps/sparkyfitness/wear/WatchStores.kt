@@ -544,9 +544,6 @@ class CheckInStore(private val context: Context) {
     if (curMeds != null && curMeds.day != today) {
       _medications.value = null
     }
-    if (baseMedications != null && baseMedications?.day != today) {
-      baseMedications = null
-    }
     val curSteps = _steps.value
     if (curSteps != null && curSteps.day != today) {
       _steps.value = null
@@ -807,9 +804,10 @@ class CheckInStore(private val context: Context) {
     val medOutcome = applyMedicationAcknowledgement(pendingMedicationTaps, clientId, ok)
     val matchedMed = medOutcome.matchedRecord
     if (matchedMed != null) {
-      if (medOutcome.clearFailureForDose) {
+      val isTodaysDose = matchedMed.day == CheckInDate.today()
+      if (isTodaysDose && medOutcome.clearFailureForDose) {
         failedMedicationDoses = failedMedicationDoses - matchedMed.doseId
-      } else if (medOutcome.markFailedForDose) {
+      } else if (isTodaysDose && medOutcome.markFailedForDose) {
         failedMedicationDoses = failedMedicationDoses + (matchedMed.doseId to matchedMed.day)
       }
       pendingMedicationTaps = medOutcome.records
@@ -1103,7 +1101,7 @@ class CheckInStore(private val context: Context) {
     val nextHistory = historyByDay.values.toList()
     val priorDatedEntries = sortedMapOf<String, HistoryPoint>()
     if (!baseWatchContext.lastEntryDate.isNullOrBlank() &&
-      baseWatchContext.lastEntryDate != today &&
+      baseWatchContext.lastEntryDate!! < today &&
       baseWatchContext.lastWeightKg != null
     ) {
       priorDatedEntries[baseWatchContext.lastEntryDate!!] = HistoryPoint(
@@ -1113,7 +1111,7 @@ class CheckInStore(private val context: Context) {
       )
     }
     if (!baseWatchContext.today.isNullOrBlank() &&
-      baseWatchContext.today != today &&
+      baseWatchContext.today!! < today &&
       baseWatchContext.todayWeightKg != null
     ) {
       val existingBf = priorDatedEntries[baseWatchContext.today]?.bodyFatPercentage
@@ -1134,9 +1132,22 @@ class CheckInStore(private val context: Context) {
       }
     }
     val newestPrior = priorDatedEntries.values.lastOrNull()
-    val nextLastWeightKg = newestPrior?.weightKg ?: baseWatchContext.lastWeightKg
-    val nextLastBf = if (newestPrior != null) newestPrior.bodyFatPercentage else baseWatchContext.lastBodyFatPercentage
-    val nextLastEntryDate = newestPrior?.day ?: baseWatchContext.lastEntryDate
+    val fallbackLastWeightKg = if (baseWatchContext.lastEntryDate.isNullOrBlank() || baseWatchContext.lastEntryDate!! <= today) {
+      baseWatchContext.lastWeightKg
+    } else {
+      null
+    }
+    val fallbackLastBf = if (baseWatchContext.lastEntryDate.isNullOrBlank() || baseWatchContext.lastEntryDate!! <= today) {
+      baseWatchContext.lastBodyFatPercentage
+    } else {
+      null
+    }
+    val fallbackLastEntryDate = baseWatchContext.lastEntryDate?.takeIf { it.isNotBlank() && it <= today }
+    val nextLastWeightKg = newestPrior?.weightKg ?: fallbackLastWeightKg
+    val nextLastBf = resolvePriorBodyFatPercentage(baseWatchContext, nextHistory, today)
+      ?: newestPrior?.bodyFatPercentage
+      ?: fallbackLastBf
+    val nextLastEntryDate = newestPrior?.day ?: fallbackLastEntryDate
 
     val todayPending = orderedUnsettled.lastOrNull { it.day == today }
     if (todayPending == null) {
@@ -1308,7 +1319,7 @@ class CheckInStore(private val context: Context) {
     nextCtx.waterGoalMl?.let { _waterGoalMl.value = it }
     nextCtx.waterDisplayUnit?.let { _waterDisplayUnit.value = it }
     _nutrition.value = nextCtx.nutrition?.takeIf { it.isToday }
-    baseMedications = nextCtx.medications?.takeIf { it.isToday }
+    baseMedications = nextCtx.medications
     _startableWorkouts.value = nextCtx.startableWorkouts ?: emptyList()
     _scheduledWorkouts.value = if (nextCtx.today.isNullOrEmpty() || nextCtx.today == CheckInDate.today()) {
       nextCtx.scheduledWorkouts ?: emptyList()
@@ -1368,24 +1379,29 @@ class CheckInStore(private val context: Context) {
     val hasCurrentDayWeight = (overlaidCtx.today == null || overlaidCtx.today == today) &&
       overlaidCtx.todayWeightKg != null
     val datedWeights = sortedMapOf<String, Double>()
-    if (!overlaidCtx.lastEntryDate.isNullOrBlank() && overlaidCtx.lastWeightKg != null) {
+    if (!overlaidCtx.lastEntryDate.isNullOrBlank() && overlaidCtx.lastEntryDate <= today && overlaidCtx.lastWeightKg != null) {
       datedWeights[overlaidCtx.lastEntryDate] = overlaidCtx.lastWeightKg
     }
-    if (!overlaidCtx.today.isNullOrBlank() && overlaidCtx.today != today && overlaidCtx.todayWeightKg != null) {
+    if (!overlaidCtx.today.isNullOrBlank() && overlaidCtx.today < today && overlaidCtx.todayWeightKg != null) {
       datedWeights[overlaidCtx.today] = overlaidCtx.todayWeightKg
     }
     for (pt in overlaidHist) {
-      if (pt.day.isNotBlank()) {
+      if (pt.day.isNotBlank() && pt.day <= today) {
         datedWeights[pt.day] = pt.weightKg
       }
     }
     if (hasCurrentDayWeight) {
       datedWeights[today] = overlaidCtx.todayWeightKg!!
     }
+    val fallbackLastWeightKg = if (overlaidCtx.lastEntryDate.isNullOrBlank() || overlaidCtx.lastEntryDate <= today) {
+      overlaidCtx.lastWeightKg
+    } else {
+      null
+    }
     val seedKg = if (hasCurrentDayWeight) {
       overlaidCtx.todayWeightKg
     } else {
-      datedWeights.values.lastOrNull() ?: overlaidCtx.lastWeightKg
+      datedWeights.values.lastOrNull() ?: fallbackLastWeightKg
     }
     val activeRejection = rejectedWeightDraft?.takeIf {
       it.day == today && (effectiveOwner == null || it.ownerId == effectiveOwner)
@@ -1402,24 +1418,29 @@ class CheckInStore(private val context: Context) {
     val hasCurrentDayBf = (overlaidCtx.today == null || overlaidCtx.today == today) &&
       overlaidCtx.todayBodyFatPercentage != null
     val datedBfs = sortedMapOf<String, Double>()
-    if (!overlaidCtx.lastEntryDate.isNullOrBlank() && overlaidCtx.lastBodyFatPercentage != null) {
-      datedBfs[overlaidCtx.lastEntryDate] = overlaidCtx.lastBodyFatPercentage
-    }
-    if (!overlaidCtx.today.isNullOrBlank() && overlaidCtx.today != today && overlaidCtx.todayBodyFatPercentage != null) {
-      datedBfs[overlaidCtx.today] = overlaidCtx.todayBodyFatPercentage
-    }
     for (pt in overlaidHist) {
-      if (pt.day.isNotBlank() && pt.bodyFatPercentage != null) {
+      if (pt.day.isNotBlank() && pt.day <= today && pt.bodyFatPercentage != null) {
         datedBfs[pt.day] = pt.bodyFatPercentage
       }
+    }
+    if (!overlaidCtx.lastEntryDate.isNullOrBlank() && overlaidCtx.lastEntryDate <= today && overlaidCtx.lastBodyFatPercentage != null) {
+      datedBfs[overlaidCtx.lastEntryDate] = overlaidCtx.lastBodyFatPercentage
+    }
+    if (!overlaidCtx.today.isNullOrBlank() && overlaidCtx.today < today && overlaidCtx.todayBodyFatPercentage != null) {
+      datedBfs[overlaidCtx.today] = overlaidCtx.todayBodyFatPercentage
     }
     if (hasCurrentDayBf) {
       datedBfs[today] = overlaidCtx.todayBodyFatPercentage!!
     }
+    val fallbackLastBf = if (overlaidCtx.lastEntryDate.isNullOrBlank() || overlaidCtx.lastEntryDate <= today) {
+      overlaidCtx.lastBodyFatPercentage
+    } else {
+      null
+    }
     val seedBf = if (hasCurrentDayBf) {
       overlaidCtx.todayBodyFatPercentage
     } else {
-      datedBfs.values.lastOrNull() ?: overlaidCtx.lastBodyFatPercentage
+      datedBfs.values.lastOrNull() ?: fallbackLastBf
     }
     val targetBf = activeRejection?.bodyFatPercentage ?: seedBf
     if (targetBf != null) {
@@ -1846,6 +1867,28 @@ class CheckInStore(private val context: Context) {
       WatchPage.WORKOUT -> resolveExercisePage(enabled)
       WatchPage.ENTRY -> resolveWeightPage(enabled)
       else -> resolveEnabledPage(preferred, enabled)
+    }
+
+    internal fun resolvePriorBodyFatPercentage(
+      baseWatchContext: WatchContext,
+      history: List<HistoryPoint>,
+      today: String
+    ): Double? {
+      val datedBodyFat = sortedMapOf<String, Double>()
+      val ctxLastDay = baseWatchContext.lastEntryDate?.takeIf { it.isNotBlank() && it < today }
+      if (ctxLastDay != null && baseWatchContext.lastBodyFatPercentage != null) {
+        datedBodyFat[ctxLastDay] = baseWatchContext.lastBodyFatPercentage
+      }
+      val ctxDay = baseWatchContext.today?.takeIf { it.isNotBlank() && it < today }
+      if (ctxDay != null && baseWatchContext.todayBodyFatPercentage != null) {
+        datedBodyFat[ctxDay] = baseWatchContext.todayBodyFatPercentage
+      }
+      for (pt in history) {
+        if (pt.day.isNotBlank() && pt.day < today && pt.bodyFatPercentage != null) {
+          datedBodyFat[pt.day] = pt.bodyFatPercentage
+        }
+      }
+      return datedBodyFat.values.lastOrNull()
     }
 
     internal data class MedicationAckOutcome(

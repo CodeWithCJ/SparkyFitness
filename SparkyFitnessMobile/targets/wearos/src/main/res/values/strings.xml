@@ -47,7 +47,8 @@
     <string name="complication_nutrition_carbs_fat">C %1$dg · F %2$dg</string>
     <string name="complication_water_desc">Water: %1$s</string>
     <string name="complication_fasting_idle">Idle</string>
-    <string name="complication_fasting_desc">Fasting: %1$s / %2$s</string>
+    <string name="complication_fasting_desc">Fasting: %1$s / %2$dh</string>
+    <string name="complication_fasting_desc_text">Fasting: %1$s / %2$s</string>
     <string name="complication_fasting_long_idle">Fasting · Idle</string>
     <string name="complication_fasting_long_active">Fast · %1$s / %2$s</string>
     <string name="complication_fasting_long_left">Fast · %1$s left</string>

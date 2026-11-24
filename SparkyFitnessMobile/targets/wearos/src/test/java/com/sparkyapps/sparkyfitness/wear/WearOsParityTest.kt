@@ -1226,15 +1226,26 @@ class WearOsParityTest {
         val dupTile = TileModels.buildMedicationsTileModel(dupSnap)
         assertFalse(dupTile.doseRows[0].isDirectlyActionable)
         assertFalse(dupTile.doseRows[1].isDirectlyActionable)
-        assertNull(resolveMedicationTileActionDose(formatMedicationTileActionId("tok-abc", today, "dup-1"), "tok-abc", dupSnap))
+        assertNull(
+            resolveMedicationTileActionDose(
+                formatMedicationTileActionId("tok-abc", today, "dup-1", medicationDoseFingerprint(dup1)),
+                "tok-abc",
+                dupSnap
+            )
+        )
 
         val doseToday = MedicationDose("dose:1", "m1", "s1", "Vitamin D", "2000 IU", "08:00 AM", MedicationDoseStatus.PENDING)
         val todayMedSnap = MedicationSnapshot(day = today, doses = listOf(doseToday))
-        val validMedClick = formatMedicationTileActionId("tok-abc", today, "dose:1")
-        val staleYesterdayClick = formatMedicationTileActionId("tok-abc", "2020-01-01", "dose:1")
+        val validMedClick = formatMedicationTileActionId("tok-abc", today, "dose:1", medicationDoseFingerprint(doseToday))
+        val staleYesterdayClick = formatMedicationTileActionId("tok-abc", "2020-01-01", "dose:1", medicationDoseFingerprint(doseToday))
         assertNotNull(resolveMedicationTileActionDose(validMedClick, "tok-abc", todayMedSnap))
         assertNull(resolveMedicationTileActionDose(staleYesterdayClick, "tok-abc", todayMedSnap))
         assertNull(resolveMedicationTileActionDose(validMedClick, "tok-other", todayMedSnap))
+        val editedDetailSnap = MedicationSnapshot(
+            day = today,
+            doses = listOf(doseToday.copy(detail = "4000 IU"))
+        )
+        assertNull(resolveMedicationTileActionDose(validMedClick, "tok-abc", editedDetailSnap))
 
         val savedMedRec = CheckInStore.PendingMedicationRecord(
             id = "med-c1",
@@ -1420,5 +1431,82 @@ class WearOsParityTest {
         assertEquals(81.0, acceptedSingle.weightKg, 0.001)
         assertNull(acceptedSingle.bodyFatPercentage)
         assertEquals(21.0, acceptedSingle.inheritedBodyFatPercentage ?: 0.0, 0.001)
+
+        // Future-dated cached weight point (e.g. after moving watch timezone backwards) must not override today's headline
+        val backwardDateToday = "2026-04-07"
+        val backwardDateCtx = WatchContext(
+            today = backwardDateToday,
+            todayWeightKg = 80.0,
+            lastEntryDate = "2026-04-06",
+            lastWeightKg = 80.5,
+            weightUnit = WeightUnit.KG
+        )
+        val futureContaminatedHistory = listOf(
+            HistoryPoint("2026-04-06", 80.5, 18.0),
+            HistoryPoint(backwardDateToday, 80.0, 17.8),
+            HistoryPoint("2026-04-08", 79.0, 17.5)
+        )
+        val backwardDateTile = TileModels.buildWeightTileModel(
+            watchCtx = backwardDateCtx,
+            history = futureContaminatedHistory,
+            unit = WeightUnit.KG,
+            today = backwardDateToday,
+            todayUnconfirmed = true
+        )
+        assertEquals("80.0 kg", backwardDateTile.weightValueText)
+        assertEquals(17.8, backwardDateTile.bodyFatPercent ?: 0.0, 0.001)
+        assertTrue(backwardDateTile.queuedToday)
+
+        // Prior body-fat-only day (Tuesday 21%) survives across midnight when Wednesday saves weight-only (79.5 kg)
+        val tuesdayBfOnlyBase = WatchContext(
+            today = "2026-04-07",
+            todayWeightKg = null,
+            todayBodyFatPercentage = 21.0,
+            lastEntryDate = "2026-04-06",
+            lastWeightKg = 80.0,
+            lastBodyFatPercentage = 18.0,
+            weightUnit = WeightUnit.KG
+        )
+        val wednesdayWeightOnlyHistory = listOf(
+            HistoryPoint("2026-04-06", 80.0, 18.0),
+            HistoryPoint("2026-04-08", 79.5, null)
+        )
+        val resolvedPriorBf = CheckInStore.resolvePriorBodyFatPercentage(
+            baseWatchContext = tuesdayBfOnlyBase,
+            history = wednesdayWeightOnlyHistory,
+            today = "2026-04-08"
+        )
+        assertEquals(21.0, resolvedPriorBf ?: 0.0, 0.001)
+        val wednesdayOverlayCtx = WatchContext(
+            today = "2026-04-08",
+            todayWeightKg = 79.5,
+            todayBodyFatPercentage = null,
+            lastEntryDate = "2026-04-06",
+            lastWeightKg = 80.0,
+            lastBodyFatPercentage = resolvedPriorBf,
+            weightUnit = WeightUnit.KG
+        )
+        val wednesdayTile = TileModels.buildWeightTileModel(
+            watchCtx = wednesdayOverlayCtx,
+            history = wednesdayWeightOnlyHistory,
+            unit = WeightUnit.KG,
+            today = "2026-04-08",
+            todayUnconfirmed = true
+        )
+        assertEquals("79.5 kg", wednesdayTile.weightValueText)
+        assertEquals(21.0, wednesdayTile.bodyFatPercent ?: 0.0, 0.001)
+
+        // Explicit Wednesday body fat (19.5%) still overrides Tuesday's 21%
+        val wednesdayExplicitBfTile = TileModels.buildWeightTileModel(
+            watchCtx = wednesdayOverlayCtx.copy(todayBodyFatPercentage = 19.5),
+            history = listOf(
+                HistoryPoint("2026-04-06", 80.0, 18.0),
+                HistoryPoint("2026-04-08", 79.5, 19.5)
+            ),
+            unit = WeightUnit.KG,
+            today = "2026-04-08",
+            todayUnconfirmed = true
+        )
+        assertEquals(19.5, wednesdayExplicitBfTile.bodyFatPercent ?: 0.0, 0.001)
     }
 }

@@ -100,7 +100,8 @@ data class TileDoseRow(
   val statusColorArgb: Int,
   val doseId: String = "",
   val isPending: Boolean = false,
-  val isDirectlyActionable: Boolean = isPending
+  val isDirectlyActionable: Boolean = isPending,
+  val displayFingerprint: String = ""
 )
 
 data class MedicationsTileModel(
@@ -441,7 +442,8 @@ object TileModels {
         statusColorArgb = color,
         doseId = dose.id,
         isPending = isPending,
-        isDirectlyActionable = uniquelyIdentifiable
+        isDirectlyActionable = uniquelyIdentifiable,
+        displayFingerprint = medicationDoseFingerprint(dose)
       )
     }
 
@@ -754,13 +756,13 @@ object TileModels {
   ): WeightTileModel {
     val byDay = sortedMapOf<String, HistoryPoint>()
     for (pt in history) {
-      if (pt.day.isNotBlank() && pt.weightKg > 0.0) {
+      if (pt.day.isNotBlank() && pt.day <= today && pt.weightKg > 0.0) {
         byDay[pt.day] = pt
       }
     }
     val ctxLastDay = watchCtx.lastEntryDate?.takeIf { it.isNotBlank() }
     val ctxLastKg = watchCtx.lastWeightKg?.takeIf { it > 0.0 }
-    if (ctxLastDay != null) {
+    if (ctxLastDay != null && ctxLastDay <= today) {
       val existingLast = byDay[ctxLastDay]
       if (existingLast == null && ctxLastKg != null) {
         byDay[ctxLastDay] = HistoryPoint(
@@ -774,7 +776,7 @@ object TileModels {
     }
     val ctxDay = watchCtx.today?.takeIf { it.isNotBlank() }
     val ctxTodayKg = watchCtx.todayWeightKg?.takeIf { it > 0.0 }
-    if (ctxDay != null && ctxTodayKg != null) {
+    if (ctxDay != null && ctxDay <= today && ctxTodayKg != null) {
       val existingBf = byDay[ctxDay]?.bodyFatPercentage
       byDay[ctxDay] = HistoryPoint(
         day = ctxDay,
@@ -791,17 +793,19 @@ object TileModels {
     }
 
     val datedPoints = byDay.values.toList()
-    val latestKg = datedPoints.lastOrNull()?.weightKg ?: ctxTodayKg ?: ctxLastKg
+    val fallbackTodayKg = if (ctxDay == null || ctxDay <= today) ctxTodayKg else null
+    val fallbackLastKg = if (ctxLastDay == null || ctxLastDay <= today) ctxLastKg else null
+    val latestKg = datedPoints.lastOrNull()?.weightKg ?: fallbackTodayKg ?: fallbackLastKg
     val bfByDay = sortedMapOf<String, Double>()
     for (pt in history) {
-      if (pt.day.isNotBlank() && pt.bodyFatPercentage != null) {
+      if (pt.day.isNotBlank() && pt.day <= today && pt.bodyFatPercentage != null) {
         bfByDay[pt.day] = pt.bodyFatPercentage
       }
     }
-    if (ctxLastDay != null && watchCtx.lastBodyFatPercentage != null && !bfByDay.containsKey(ctxLastDay)) {
+    if (ctxLastDay != null && ctxLastDay <= today && watchCtx.lastBodyFatPercentage != null) {
       bfByDay[ctxLastDay] = watchCtx.lastBodyFatPercentage
     }
-    if (ctxDay != null && watchCtx.todayBodyFatPercentage != null) {
+    if (ctxDay != null && ctxDay <= today && watchCtx.todayBodyFatPercentage != null) {
       bfByDay[ctxDay] = watchCtx.todayBodyFatPercentage
     } else if (ctxDay == null && watchCtx.todayBodyFatPercentage != null) {
       bfByDay[today] = watchCtx.todayBodyFatPercentage
@@ -811,9 +815,10 @@ object TileModels {
     } else {
       null
     }
+    val fallbackLastBf = if (ctxLastDay == null || ctxLastDay <= today) watchCtx.lastBodyFatPercentage else null
     val bodyFat = todayBf
       ?: bfByDay.values.lastOrNull()
-      ?: watchCtx.lastBodyFatPercentage
+      ?: fallbackLastBf
 
     if (latestKg == null || latestKg <= 0.0) {
       if (bodyFat != null) {
@@ -1514,8 +1519,18 @@ private const val CLICK_MED_TAKE_PREFIX = "med_take:"
 private const val CLICK_WATER_ADD_PREFIX = "water_add:"
 private const val CLICK_WATER_RETRY_PREFIX = "water_retry:"
 
-internal fun formatMedicationTileActionId(actionToken: String, day: String, doseId: String): String =
-  "$CLICK_MED_TAKE_PREFIX$actionToken:$day:$doseId"
+internal fun medicationDoseFingerprint(dose: MedicationDose): String {
+  val raw = "${dose.name.trim()}\u0000${dose.detail.trim()}\u0000${dose.time.trim()}"
+  val digest = java.security.MessageDigest.getInstance("SHA-256").digest(raw.toByteArray(Charsets.UTF_8))
+  return digest.take(6).joinToString("") { "%02x".format(it) }
+}
+
+internal fun formatMedicationTileActionId(
+  actionToken: String,
+  day: String,
+  doseId: String,
+  displayFingerprint: String
+): String = "$CLICK_MED_TAKE_PREFIX$actionToken:$day:$displayFingerprint:$doseId"
 
 internal fun resolveMedicationTileActionDose(
   clickableId: String,
@@ -1523,17 +1538,22 @@ internal fun resolveMedicationTileActionDose(
   currentSnap: MedicationSnapshot?
 ): MedicationDose? {
   if (!clickableId.startsWith(CLICK_MED_TAKE_PREFIX) || expectedToken.isNullOrEmpty()) return null
-  val parts = clickableId.removePrefix(CLICK_MED_TAKE_PREFIX).split(':', limit = 3)
-  if (parts.size != 3) return null
+  val parts = clickableId.removePrefix(CLICK_MED_TAKE_PREFIX).split(':', limit = 4)
+  if (parts.size != 4) return null
   val token = parts[0]
   val renderedDay = parts[1]
-  val doseId = parts[2]
-  if (token != expectedToken || renderedDay.isEmpty() || doseId.isEmpty()) return null
+  val renderedFingerprint = parts[2]
+  val doseId = parts[3]
+  if (token != expectedToken || renderedDay.isEmpty() || renderedFingerprint.isEmpty() || doseId.isEmpty()) return null
   val snap = currentSnap?.takeIf { it.isToday && it.day == renderedDay } ?: return null
   val model = TileModels.buildMedicationsTileModel(snap)
-  val actionableIds = model.doseRows.filter { it.isDirectlyActionable }.map { it.doseId }.toSet()
-  if (!actionableIds.contains(doseId)) return null
-  return snap.doses.firstOrNull { it.id == doseId && it.status == MedicationDoseStatus.PENDING }
+  val actionableRow = model.doseRows.firstOrNull { it.isDirectlyActionable && it.doseId == doseId } ?: return null
+  if (actionableRow.displayFingerprint != renderedFingerprint) return null
+  return snap.doses.firstOrNull {
+    it.id == doseId &&
+      it.status == MedicationDoseStatus.PENDING &&
+      medicationDoseFingerprint(it) == renderedFingerprint
+  }
 }
 
 class MedicationsTileService : BaseSparkyTileService() {
@@ -1599,7 +1619,9 @@ class MedicationsTileService : BaseSparkyTileService() {
       if (idx > 0) col.addContent(vSpacer(3f))
       val doseClickable = when {
         dose.isDirectlyActionable && actionToken != null && !medDay.isNullOrEmpty() && dose.doseId.isNotEmpty() ->
-          loadActionClickable(formatMedicationTileActionId(actionToken, medDay, dose.doseId))
+          loadActionClickable(
+            formatMedicationTileActionId(actionToken, medDay, dose.doseId, dose.displayFingerprint)
+          )
         dose.isPending ->
           launchPageClickable(targetPageKey)
         else -> null

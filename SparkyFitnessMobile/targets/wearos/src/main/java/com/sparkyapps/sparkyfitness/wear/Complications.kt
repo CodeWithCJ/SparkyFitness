@@ -928,20 +928,21 @@ class WaterGoalComplicationService : SuspendingComplicationDataSourceService() {
     tap: PendingIntent?,
     validUntil: Instant?
   ): ComplicationData? {
+    val locale = Locale.getDefault()
     val lowerUnit = unit.lowercase(Locale.US)
     val displayValue = when (lowerUnit) {
       "oz" -> "${(consumed / 29.5735f).roundToInt()}oz"
-      "liter", "l" -> String.format(Locale.US, "%.1fL", consumed / 1000f)
+      "liter", "l" -> String.format(locale, "%.1fL", consumed / 1000f)
       else -> "${consumed.toInt()}"
     }
     val displayGoal = when (lowerUnit) {
       "oz" -> "${(goal / 29.5735f).roundToInt()} oz"
-      "liter", "l" -> String.format(Locale.US, "%.1f L", goal / 1000f)
+      "liter", "l" -> String.format(locale, "%.1f L", goal / 1000f)
       else -> "${goal.toInt()} ml"
     }
     val longValue = when (lowerUnit) {
       "oz" -> "${(consumed / 29.5735f).roundToInt()} / $displayGoal"
-      "liter", "l" -> String.format(Locale.US, "%.1f / %s", consumed / 1000f, displayGoal)
+      "liter", "l" -> String.format(locale, "%.1f / %s", consumed / 1000f, displayGoal)
       else -> "${consumed.toInt()} / $displayGoal"
     }
     val spec = ComplicationDisplaySpec(
@@ -1043,12 +1044,12 @@ class FastingComplicationService : SuspendingTimelineComplicationDataSourceServi
     return ComplicationDataTimeline(currentData, emptyList())
   }
 
-  private fun formatGoalHoursLabel(goalHours: Float): String {
+  private fun formatGoalHoursLabel(goalHours: Float, locale: Locale = Locale.getDefault()): String {
     val roundedInt = goalHours.roundToInt()
     return if (abs(goalHours - roundedInt) < 0.05f && roundedInt >= 1) {
       "${roundedInt}h"
     } else {
-      String.format(Locale.US, "%.1fh", goalHours)
+      String.format(locale, "%.1fh", goalHours)
     }
   }
 
@@ -1063,10 +1064,11 @@ class FastingComplicationService : SuspendingTimelineComplicationDataSourceServi
     countdownTargetInstant: Instant? = null,
     neutralActiveSummary: Boolean = false
   ): ComplicationData? {
+    val locale = Locale.getDefault()
     val safeGoal = if (goalHours > 0f) goalHours else 16f
-    val goalHoursLabel = formatGoalHoursLabel(safeGoal)
+    val goalHoursLabel = formatGoalHoursLabel(safeGoal, locale)
     val shortLabel = if (isActive) {
-      String.format(Locale.US, "%.1fh", elapsedHours)
+      String.format(locale, "%.1fh", elapsedHours)
     } else {
       getString(R.string.complication_fasting_idle)
     }
@@ -1114,7 +1116,13 @@ class FastingComplicationService : SuspendingTimelineComplicationDataSourceServi
           .build()
       }
     }
-    val descText = getString(R.string.complication_fasting_desc, shortLabel, goalHoursLabel)
+    val roundedGoalHours = safeGoal.roundToInt()
+    val isWholeHourGoal = abs(safeGoal - roundedGoalHours) < 0.05f && roundedGoalHours >= 1
+    val descText = if (isWholeHourGoal) {
+      getString(R.string.complication_fasting_desc, shortLabel, roundedGoalHours)
+    } else {
+      getString(R.string.complication_fasting_desc_text, shortLabel, goalHoursLabel)
+    }
     val longDesc = if (presetTitle != null) "$longLabel · $presetTitle" else longLabel
     val effectiveDesc = if (type == ComplicationType.LONG_TEXT) longDesc else descText
     val spec = ComplicationDisplaySpec(
@@ -1162,7 +1170,7 @@ class StepsComplicationService : SuspendingComplicationDataSourceService() {
     validUntil: Instant?
   ): ComplicationData? {
     val shortStr = if (today >= 1000f) {
-      String.format(Locale.US, "%.1fk", today / 1000f)
+      String.format(Locale.getDefault(), "%.1fk", today / 1000f)
     } else {
       "${today.toInt()}"
     }
