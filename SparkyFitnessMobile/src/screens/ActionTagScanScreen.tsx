@@ -53,7 +53,7 @@ type ScanConfirmOptions = {
 
 type Phase =
   | { kind: 'running' }
-  | { kind: 'confirm'; tag: ActionTagResponse; doubleScanNotice?: boolean }
+  | { kind: 'confirm'; tag: ActionTagResponse }
   | { kind: 'unknown' }
   | { kind: 'missing'; tag: ActionTagResponse }
   | { kind: 'failed'; serverTooOld: boolean };
