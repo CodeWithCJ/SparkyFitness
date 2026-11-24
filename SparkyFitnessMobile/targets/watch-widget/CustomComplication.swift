@@ -82,12 +82,13 @@ private func starterDefinitions() -> [StoredDefinition] {
     ]
 }
 
-/// The phone's list, or the starter set while there is none.
+/// The phone's list, or the starter set while no valid list is stored. A stored
+/// empty list is the wearer's own (they deleted every complication) and stays
+/// empty.
 private func loadDefinitions() -> [StoredDefinition] {
     guard
         let data = customDefaults()?.data(forKey: "customComplicationDefinitions"),
-        let list = try? JSONDecoder().decode([StoredDefinition].self, from: data),
-        !list.isEmpty
+        let list = try? JSONDecoder().decode([StoredDefinition].self, from: data)
     else { return starterDefinitions() }
     return list
 }
@@ -461,10 +462,35 @@ struct CustomComplicationProvider: AppIntentTimelineProvider {
             matching: DateComponents(hour: 0, minute: 0, second: 0),
             matchingPolicy: .nextTime
         ) ?? in15Minutes
-        return Timeline(
-            entries: [CustomComplicationEntry(date: now, content: content(for: configuration, at: now))],
-            policy: .after(min(in15Minutes, nextMidnight))
-        )
+        let reloadAt = min(in15Minutes, nextMidnight)
+        var entries = [CustomComplicationEntry(date: now, content: content(for: configuration, at: now))]
+        // A fasting clock reads H:MM, so it needs an entry each time the
+        // fast's minute turns over; the day-scoped metrics keep the single
+        // entry and the reload at midnight.
+        if let started = fastingStart(for: configuration, at: now) {
+            let elapsed = now.timeIntervalSince1970 - started
+            var next = started + (floor(max(0, elapsed) / 60) + 1) * 60
+            while Date(timeIntervalSince1970: next) < reloadAt {
+                let date = Date(timeIntervalSince1970: next)
+                entries.append(CustomComplicationEntry(date: date, content: content(for: configuration, at: date)))
+                next += 60
+            }
+        }
+        return Timeline(entries: entries, policy: .after(reloadAt))
+    }
+
+    /// When the running fast began, if the chosen complication shows one.
+    private func fastingStart(for configuration: SelectCustomComplicationIntent, at now: Date) -> TimeInterval? {
+        guard
+            let chosen = configuration.complication,
+            let definition = loadDefinitions().first(where: { $0.id == chosen.id })
+        else { return nil }
+        let sources = [definition.source] + (definition.extras ?? []).prefix(2).map(\.source)
+        guard
+            sources.contains("fasting"),
+            let startedAt = loadMetric(source: "fasting", now: now)?.startedAt
+        else { return nil }
+        return startedAt / 1000
     }
 }
 
@@ -584,21 +610,38 @@ struct CustomComplicationView: View {
         content.items.filter { $0.progress != nil }
     }
 
-    /// Rings for the values that have progress. With none, the values stacked.
+    /// The values without progress, which have no ring to be drawn as.
+    private var plainValues: [CustomComplicationItemContent] {
+        content.items.filter { $0.progress == nil }
+    }
+
+    /// The values without progress, stacked, each in its own colour.
+    private func stackedValues(_ items: [CustomComplicationItemContent]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(items.prefix(3).enumerated()), id: \.offset) { _, item in
+                Text(item.text)
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundStyle(item.color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
+        }
+    }
+
+    /// Rings for the values that have progress, with the values that have none
+    /// stacked in the middle of them. With no rings, the values stacked alone.
     @ViewBuilder
     private var multiRings: some View {
         if rings.isEmpty {
-            VStack(spacing: 0) {
-                ForEach(Array(content.items.prefix(3).enumerated()), id: \.offset) { _, item in
-                    Text(item.text)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundStyle(item.color)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.5)
-                }
-            }
-        } else {
+            stackedValues(content.items)
+        } else if plainValues.isEmpty {
             ConcentricRings(items: rings)
+        } else {
+            ZStack {
+                ConcentricRings(items: rings)
+                stackedValues(plainValues)
+                    .padding(CGFloat(rings.count) * 8)
+            }
         }
     }
 

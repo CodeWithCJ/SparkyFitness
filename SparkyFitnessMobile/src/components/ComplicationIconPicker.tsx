@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useCSSVariable } from 'uniwind';
 import WatchSymbol from './WatchSymbol';
 import {
   COMPLICATION_COLOR_HEX,
@@ -27,6 +28,10 @@ const ComplicationIconPicker: React.FC<ComplicationIconPickerProps> = ({
   testIDPrefix,
 }) => {
   const { t } = useTranslation();
+  const [accent, border] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-border-strong',
+  ]) as [string, string];
   return (
     <View className="flex-row flex-wrap gap-3">
       {COMPLICATION_ICONS.map((icon) => {
@@ -39,13 +44,12 @@ const ComplicationIconPicker: React.FC<ComplicationIconPickerProps> = ({
             accessibilityLabel={COMPLICATION_ICON_LABELS[icon](t)}
             accessibilityState={{ selected }}
             onPress={() => onSelect(icon)}
-            className="items-center justify-center rounded-xl"
+            className="items-center justify-center rounded-xl bg-watch-face"
             style={{
               width: 44,
               height: 44,
-              backgroundColor: '#000000',
               borderWidth: selected ? 3 : 1,
-              borderColor: selected ? '#3b82f6' : 'rgba(128,128,128,0.4)',
+              borderColor: selected ? accent : border,
             }}
           >
             <WatchSymbol

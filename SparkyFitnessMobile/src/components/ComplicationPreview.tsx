@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { useCSSVariable } from 'uniwind';
 import WatchSymbol from './WatchSymbol';
 import {
   COMPLICATION_COLOR_HEX,
@@ -17,7 +18,6 @@ type PreviewDefinition = Pick<
 
 const CIRCLE_SIZE = 72;
 const STROKE = 7;
-const TRACK = 'rgba(255,255,255,0.25)';
 
 /** The circular size: a ring with the symbol and value inside, or a plain disc. */
 const CircularFace: React.FC<{
@@ -25,6 +25,7 @@ const CircularFace: React.FC<{
   text: string;
   progress: number | null;
 }> = ({ definition, text, progress }) => {
+  const [track] = useCSSVariable(['--color-watch-face-track']) as [string];
   const color = COMPLICATION_COLOR_HEX[definition.color];
   const radius = (CIRCLE_SIZE - STROKE) / 2;
   const circumference = 2 * Math.PI * radius;
@@ -36,11 +37,11 @@ const CircularFace: React.FC<{
     >
       {progress === null ? (
         <View
+          className="bg-watch-face-chip"
           style={{
             width: CIRCLE_SIZE,
             height: CIRCLE_SIZE,
             borderRadius: CIRCLE_SIZE / 2,
-            backgroundColor: 'rgba(255,255,255,0.14)',
           }}
         />
       ) : (
@@ -49,7 +50,7 @@ const CircularFace: React.FC<{
             cx={CIRCLE_SIZE / 2}
             cy={CIRCLE_SIZE / 2}
             r={radius}
-            stroke={TRACK}
+            stroke={track}
             strokeWidth={STROKE}
             fill="none"
           />
@@ -75,8 +76,8 @@ const CircularFace: React.FC<{
           testID="complication-preview-circular-text"
           numberOfLines={1}
           adjustsFontSizeToFit
+          className="text-watch-face-text"
           style={{
-            color: '#FFFFFF',
             fontSize: 15,
             fontWeight: '600',
             maxWidth: CIRCLE_SIZE - 2 * STROKE - 6,
@@ -106,17 +107,18 @@ const CornerFace: React.FC<{
         <Text
           testID="complication-preview-corner-text"
           numberOfLines={1}
-          style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}
+          className="text-watch-face-text"
+          style={{ fontSize: 13, fontWeight: '600' }}
         >
           {text}
         </Text>
         {progress !== null ? (
           <View
+            className="bg-watch-face-track"
             style={{
               height: 4,
               borderRadius: 2,
               marginTop: 3,
-              backgroundColor: TRACK,
             }}
           >
             <View
@@ -145,12 +147,12 @@ const RectangularFace: React.FC<{
   const color = COMPLICATION_COLOR_HEX[definition.color];
   return (
     <View
+      className="bg-watch-face-chip"
       testID="complication-preview-rectangular"
       style={{
         width: 168,
         borderRadius: 12,
         padding: 10,
-        backgroundColor: 'rgba(255,255,255,0.14)',
       }}
     >
       <View className="flex-row items-center gap-1.5">
@@ -165,17 +167,18 @@ const RectangularFace: React.FC<{
       <Text
         testID="complication-preview-rectangular-text"
         numberOfLines={1}
-        style={{ color: '#FFFFFF', fontSize: 17, fontWeight: '600' }}
+        className="text-watch-face-text"
+        style={{ fontSize: 17, fontWeight: '600' }}
       >
         {text}
       </Text>
       {progress !== null ? (
         <View
+          className="bg-watch-face-track"
           style={{
             height: 5,
             borderRadius: 3,
             marginTop: 4,
-            backgroundColor: TRACK,
           }}
         >
           <View
@@ -191,7 +194,8 @@ const RectangularFace: React.FC<{
         <Text
           testID="complication-preview-rectangular-detail"
           numberOfLines={1}
-          style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 2 }}
+          className="text-watch-face-text-muted"
+          style={{ fontSize: 12, marginTop: 2 }}
         >
           {detail}
         </Text>
@@ -218,7 +222,8 @@ const InlineFace: React.FC<{
     <Text
       testID="complication-preview-inline-text"
       numberOfLines={1}
-      style={{ color: '#FFFFFF', fontSize: 14 }}
+      className="text-watch-face-text"
+      style={{ fontSize: 14 }}
     >
       {`${text} ${name}`}
     </Text>
@@ -230,6 +235,7 @@ const Rings: React.FC<{ items: ComplicationItemPreview[]; size: number }> = ({
   items,
   size,
 }) => {
+  const [track] = useCSSVariable(['--color-watch-face-track']) as [string];
   const stroke = size * 0.1;
   const step = stroke + size * 0.03;
   return (
@@ -244,7 +250,7 @@ const Rings: React.FC<{ items: ComplicationItemPreview[]; size: number }> = ({
               cx={size / 2}
               cy={size / 2}
               r={radius}
-              stroke={TRACK}
+              stroke={track}
               strokeWidth={stroke}
               fill="none"
             />
@@ -275,7 +281,7 @@ const ColouredNumbers: React.FC<{
     {items.map((item, index) => (
       <Text key={index}>
         {index > 0 ? (
-          <Text style={{ color: 'rgba(255,255,255,0.5)' }}>{' • '}</Text>
+          <Text className="text-watch-face-text-faint">{' • '}</Text>
         ) : null}
         <Text
           style={{
@@ -306,12 +312,11 @@ const MultiRingFaces: React.FC<{ items: ComplicationItemPreview[] }> = ({
         ) : (
           // No value has a goal, so there is nothing to ring: the numbers stack.
           <View
-            className="items-center justify-center"
+            className="items-center justify-center bg-watch-face-chip"
             style={{
               width: CIRCLE_SIZE,
               height: CIRCLE_SIZE,
               borderRadius: CIRCLE_SIZE / 2,
-              backgroundColor: 'rgba(255,255,255,0.14)',
             }}
           >
             {items.slice(0, 3).map((item, index) => (
@@ -358,13 +363,13 @@ const MultiRows: React.FC<{ items: ComplicationItemPreview[] }> = ({
   items,
 }) => (
   <View
+    className="bg-watch-face-chip"
     testID="complication-preview-rectangular"
     style={{
       width: 168,
       borderRadius: 12,
       padding: 10,
       gap: 4,
-      backgroundColor: 'rgba(255,255,255,0.14)',
     }}
   >
     {items.map((item, index) => {
@@ -378,17 +383,18 @@ const MultiRows: React.FC<{ items: ComplicationItemPreview[] }> = ({
           <WatchSymbol name={item.icon} size={12} color={color} />
           <Text
             numberOfLines={1}
-            style={{ color: '#FFFFFF', fontSize: 13, fontWeight: '600' }}
+            className="text-watch-face-text"
+            style={{ fontSize: 13, fontWeight: '600' }}
           >
             {item.text}
           </Text>
           {item.progress !== null ? (
             <View
+              className="bg-watch-face-track"
               style={{
                 flex: 1,
                 height: 4,
                 borderRadius: 2,
-                backgroundColor: TRACK,
               }}
             >
               <View
@@ -403,7 +409,8 @@ const MultiRows: React.FC<{ items: ComplicationItemPreview[] }> = ({
           ) : item.detail ? (
             <Text
               numberOfLines={1}
-              style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}
+              className="text-watch-face-text-muted"
+              style={{ fontSize: 11 }}
             >
               {item.detail}
             </Text>
@@ -431,10 +438,7 @@ const ComplicationPreview: React.FC<{
 
   if (items.length > 1) {
     return (
-      <View
-        className="rounded-2xl py-5 gap-5 items-center"
-        style={{ backgroundColor: '#000000' }}
-      >
+      <View className="rounded-2xl py-5 gap-5 items-center bg-watch-face">
         <MultiRingFaces items={items} />
         <MultiRows items={items} />
         <View
@@ -449,7 +453,8 @@ const ComplicationPreview: React.FC<{
           <Text
             testID="complication-preview-inline-text"
             numberOfLines={1}
-            style={{ color: '#FFFFFF', fontSize: 14 }}
+            className="text-watch-face-text"
+            style={{ fontSize: 14 }}
           >
             {items.map((item) => item.text).join(' · ')}
           </Text>
@@ -460,10 +465,7 @@ const ComplicationPreview: React.FC<{
 
   const { text, detail, progress } = first;
   return (
-    <View
-      className="rounded-2xl py-5 gap-5 items-center"
-      style={{ backgroundColor: '#000000' }}
-    >
+    <View className="rounded-2xl py-5 gap-5 items-center bg-watch-face">
       <View className="flex-row items-center justify-around self-stretch">
         <CircularFace definition={definition} text={text} progress={progress} />
         <CornerFace definition={definition} text={text} progress={progress} />

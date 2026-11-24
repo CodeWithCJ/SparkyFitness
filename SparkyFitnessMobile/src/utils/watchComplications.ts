@@ -1,5 +1,6 @@
 import type { WatchComplicationConfigPayload } from '../../modules/watch-connectivity';
 import { getNutrientLabel } from '../constants/nutrients';
+import { formatLocalizedNumber } from '../localization/i18n';
 
 /**
  * Custom Apple Watch complications: the wearer defines any number of them on
@@ -46,7 +47,8 @@ export type ComplicationSourceKey = (typeof COMPLICATION_SOURCES)[number];
 /** A nutrient from the Goals list (`nutrient:<key>`), such as fibre or sodium. */
 export const NUTRIENT_SOURCE_PREFIX = 'nutrient:';
 export type ComplicationSource =
-  ComplicationSourceKey | `${typeof NUTRIENT_SOURCE_PREFIX}${string}`;
+  | ComplicationSourceKey
+  | `${typeof NUTRIENT_SOURCE_PREFIX}${string}`;
 
 /**
  * How the value is written. `value` is the amount, `percent` is the share of
@@ -804,11 +806,12 @@ export function moveComplication(
 export const PREVIEW_PROGRESS = 0.65;
 
 interface PreviewSample {
-  value: string;
+  /** A number is formatted with the app locale; a duration stays as written. */
+  value: number | string;
   /** What is left to the goal. */
-  left: string;
+  left: number | string;
   /** The goal, when there is one. */
-  goal?: string;
+  goal?: number | string;
   unit?: string;
   /** How full its gauge is, when that is not the usual sample figure. */
   progress?: number;
@@ -816,35 +819,41 @@ interface PreviewSample {
 
 // A made-up day for the preview.
 const PREVIEW_SAMPLES: Record<ComplicationSourceKey, PreviewSample> = {
-  calories: { value: '1,240', left: '660', goal: '1,900', unit: 'kcal' },
-  caloriesRemaining: { value: '660', left: '660', unit: 'kcal' },
-  caloriesBurned: { value: '420', left: '420', unit: 'kcal' },
-  protein: { value: '98', left: '52', goal: '150', unit: 'g' },
-  carbs: { value: '140', left: '75', goal: '215', unit: 'g' },
-  fat: { value: '45', left: '24', goal: '69', unit: 'g' },
-  water: { value: '1,300', left: '700', goal: '2,000', unit: 'ml' },
-  steps: { value: '6,500', left: '3,500', goal: '10,000', unit: 'steps' },
+  calories: { value: 1240, left: 660, goal: 1900, unit: 'kcal' },
+  caloriesRemaining: { value: 660, left: 660, unit: 'kcal' },
+  caloriesBurned: { value: 420, left: 420, unit: 'kcal' },
+  protein: { value: 98, left: 52, goal: 150, unit: 'g' },
+  carbs: { value: 140, left: 75, goal: 215, unit: 'g' },
+  fat: { value: 45, left: 24, goal: 69, unit: 'g' },
+  water: { value: 1300, left: 700, goal: 2000, unit: 'ml' },
+  steps: { value: 6500, left: 3500, goal: 10000, unit: 'steps' },
   fasting: { value: '10:30', left: '5:30', goal: '16:00' },
-  weight: { value: '72.5', left: '72.5', unit: 'kg' },
-  bodyFat: { value: '18.5', left: '18.5', unit: '%' },
+  weight: { value: 72.5, left: 72.5, unit: 'kg' },
+  bodyFat: { value: 18.5, left: 18.5, unit: '%' },
   sleepDuration: { value: '7:42', left: '7:42' },
-  sleepScore: { value: '82', left: '18', progress: 0.82 },
+  sleepScore: { value: 82, left: 18, progress: 0.82 },
   deepSleep: { value: '1:30', left: '1:30' },
   remSleep: { value: '1:45', left: '1:45' },
   lightSleep: { value: '4:20', left: '4:20' },
   timeInBed: { value: '8:05', left: '8:05' },
-  restingHeartRate: { value: '58', left: '58', unit: 'bpm' },
-  hrv: { value: '45', left: '45', unit: 'ms' },
-  spo2: { value: '97', left: '97', unit: '%' },
-  exerciseMinutes: { value: '20', left: '10', goal: '30', unit: 'min' },
-  exerciseCalories: { value: '320', left: '180', goal: '500', unit: 'kcal' },
-  workouts: { value: '1', left: '1' },
+  restingHeartRate: { value: 58, left: 58, unit: 'bpm' },
+  hrv: { value: 45, left: 45, unit: 'ms' },
+  spo2: { value: 97, left: 97, unit: '%' },
+  exerciseMinutes: { value: 20, left: 10, goal: 30, unit: 'min' },
+  exerciseCalories: { value: 320, left: 180, goal: 500, unit: 'kcal' },
+  workouts: { value: 1, left: 1 },
 };
 
-const PREVIEW_NUTRIENT: PreviewSample = { value: '12', left: '6', goal: '18' };
+const PREVIEW_NUTRIENT: PreviewSample = { value: 12, left: 6, goal: 18 };
 
-const withUnit = (amount: string, unit?: string) =>
-  unit ? `${amount} ${unit}` : amount;
+/** A sample figure as text: numbers in the app locale, durations as written. */
+const sampleText = (value: number | string): string =>
+  typeof value === 'number' ? formatLocalizedNumber(value) : value;
+
+const withUnit = (amount: number | string, unit?: string) => {
+  const text = sampleText(amount);
+  return unit ? `${text} ${unit}` : text;
+};
 
 /**
  * What one value would show on a sample day, so the editor can preview a change
@@ -874,7 +883,7 @@ export function complicationPreview(
   }
   if (hasGoal && definition.format === 'remaining') {
     return {
-      text: sample.left,
+      text: sampleText(sample.left),
       detail: sample.unit
         ? t('watchComplications.preview.leftUnit', {
             defaultValue: '{{unit}} left',
@@ -885,7 +894,7 @@ export function complicationPreview(
     };
   }
   return {
-    text: sample.value,
+    text: sampleText(sample.value),
     detail:
       hasGoal && sample.goal
         ? t('watchComplications.preview.ofGoal', {

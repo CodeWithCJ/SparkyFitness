@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useCSSVariable } from 'uniwind';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import ComplicationColorPicker from '../components/ComplicationColorPicker';
@@ -55,6 +56,7 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
 }) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const [dangerColor] = useCSSVariable(['--color-icon-danger']) as [string];
   const usesNativeHeader = useNativeIOSHeadersActive();
   const { list, isStarter, commit } = useWatchComplicationList();
 
@@ -167,7 +169,9 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
     }
     if (text === null) return;
     const result = parseComplicationsImport(text, newUuid);
-    if (!result || result.complications.length === 0) {
+    // A valid export of an empty list is a backup of "no complications" and
+    // can be restored; a file whose entries were all unusable is not.
+    if (!result || (result.complications.length === 0 && result.skipped > 0)) {
       Toast.show({
         type: 'error',
         text1: t('watchComplications.importInvalid', {
@@ -341,11 +345,10 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
           }
         >
           <View
-            className="items-center justify-center rounded-full mr-3"
+            className="items-center justify-center rounded-full mr-3 bg-watch-face"
             style={{
               width: 40,
               height: 40,
-              backgroundColor: 'rgba(0,0,0,0.85)',
             }}
           >
             <WatchSymbol name={definition.icon} size={20} color={color} />
@@ -394,7 +397,7 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
           className="p-3"
           onPress={() => confirmDelete(definition)}
         >
-          <Icon name="trash" size={20} color="#dc2626" />
+          <Icon name="trash" size={20} color={dangerColor} />
         </Pressable>
       </View>
     );
@@ -481,11 +484,10 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
                 onPress={() => setOpenBuiltIn(open ? null : key)}
               >
                 <View
-                  className="items-center justify-center rounded-full mr-3"
+                  className="items-center justify-center rounded-full mr-3 bg-watch-face"
                   style={{
                     width: 40,
                     height: 40,
-                    backgroundColor: 'rgba(0,0,0,0.85)',
                   }}
                 >
                   <WatchSymbol
@@ -557,11 +559,10 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
             }
           >
             <View
-              className="items-center justify-center rounded-full mr-3 flex-row flex-wrap"
+              className="items-center justify-center rounded-full mr-3 flex-row flex-wrap bg-watch-face"
               style={{
                 width: 40,
                 height: 40,
-                backgroundColor: 'rgba(0,0,0,0.85)',
                 padding: 9,
               }}
             >

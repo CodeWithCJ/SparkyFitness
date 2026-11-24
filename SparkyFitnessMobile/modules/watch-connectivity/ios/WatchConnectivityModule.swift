@@ -207,6 +207,9 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
         error: Error?
     ) {
         if activationState == .activated {
+            // Drained under the lock, as `transferComplicationConfig` sends:
+            // a send made between the release and the drain could queue a
+            // newer list that this older held copy then cancels.
             heldLock.lock()
             let plan = heldPlanUpdate
             let targets = heldSetTargets
@@ -214,10 +217,10 @@ private class WatchSessionDelegateHandler: NSObject, WCSessionDelegate {
             heldPlanUpdate = nil
             heldSetTargets = nil
             heldComplicationConfig = nil
-            heldLock.unlock()
             if let plan { session.transferUserInfo(plan) }
             if let targets { session.transferUserInfo(targets) }
             if let complications { sendComplicationConfigNow(complications) }
+            heldLock.unlock()
         }
         onReachabilityChange?(session.isReachable)
     }

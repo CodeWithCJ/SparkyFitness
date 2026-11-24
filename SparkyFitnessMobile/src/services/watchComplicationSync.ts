@@ -7,6 +7,17 @@ import {
 } from '../utils/watchComplications';
 import { addLog } from './LogService';
 
+let lastRevision = 0;
+
+/**
+ * The watch drops any revision lower than the one it holds, so each send takes
+ * a number above the last one even when the phone's clock has moved back.
+ */
+function nextRevision(): number {
+  lastRevision = Math.max(Date.now(), lastRevision + 1);
+  return lastRevision;
+}
+
 /**
  * Hands the wearer's custom complications to the watch, which keeps them in
  * shared storage for the watch-face picker. Queued (`transferUserInfo`), so it
@@ -22,7 +33,7 @@ export async function sendComplicationsToWatch(
     await WatchConnectivity.sendComplicationConfig(
       buildComplicationConfig(
         list,
-        Date.now(),
+        nextRevision(),
         options.reload === true,
         options.builtIns
       )
