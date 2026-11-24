@@ -2,6 +2,7 @@ import type { PoolClient } from 'pg';
 import { getClient } from '../db/poolManager.js';
 import {
   DEFAULT_SHOE_RETIREMENT_DISTANCE_KM,
+  isValidTimeZone,
   type AssignShoeResponse,
   type CreateShoeBody,
   type ShoeResponse,
@@ -294,4 +295,37 @@ export async function assignShoeToExerciseEntry(
   } finally {
     client.release();
   }
+}
+
+/**
+ * The pair a new run dated `entryDate` should be linked to: the user's active
+ * default pair, if the run is on or after the day they got it (its purchase
+ * date, else the day it was added, in `timezone`). A pair can't have been worn
+ * before that, so a history import doesn't fill today's pair with old
+ * mileage. Returns null when there is no such pair.
+ *
+ * Runs on the caller's client, inside its import transaction: the user's
+ * timezone is read there too rather than through another pool connection,
+ * and it is validated first (else UTC, as utils/timezoneLoader.ts does), since
+ * a failed statement would abort the whole import.
+ */
+export async function getDefaultShoeForRunWithClient(
+  client: PoolClient,
+  userId: string,
+  entryDate: string
+): Promise<string | null> {
+  const prefs = await client.query<{ timezone: string | null }>(
+    'SELECT timezone FROM user_preferences WHERE user_id = $1',
+    [userId]
+  );
+  const stored = prefs.rows[0]?.timezone;
+  const timezone = stored && isValidTimeZone(stored) ? stored : 'UTC';
+  const result = await client.query<{ id: string }>(
+    `SELECT id FROM shoes
+     WHERE user_id = $1 AND is_default AND status = 'active'
+       AND $2::date >= COALESCE(purchase_date, (created_at AT TIME ZONE $3)::date)
+     LIMIT 1`,
+    [userId, entryDate, timezone]
+  );
+  return result.rows[0]?.id ?? null;
 }
