@@ -47,8 +47,7 @@ export type ComplicationSourceKey = (typeof COMPLICATION_SOURCES)[number];
 /** A nutrient from the Goals list (`nutrient:<key>`), such as fibre or sodium. */
 export const NUTRIENT_SOURCE_PREFIX = 'nutrient:';
 export type ComplicationSource =
-  | ComplicationSourceKey
-  | `${typeof NUTRIENT_SOURCE_PREFIX}${string}`;
+  ComplicationSourceKey | `${typeof NUTRIENT_SOURCE_PREFIX}${string}`;
 
 /**
  * How the value is written. `value` is the amount, `percent` is the share of
