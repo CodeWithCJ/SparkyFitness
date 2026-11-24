@@ -604,7 +604,7 @@ async function processOuraVo2Max(
       {
         categoryName: 'VO2 Max',
         value: entry.vo2_max,
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         entryDate: entryDate,
         entryHour: 0,
         entryTimestamp: new Date(entryDate).toISOString(),

@@ -214,7 +214,7 @@ const garminMeasurementMapping: GarminMeasurementMappingRecord = {
     targetType: 'custom',
     name: 'VO2 Max',
     dataType: 'numeric',
-    measurementType: 'mL/kg/min',
+    measurementType: 'ml/kg/min',
     frequency: 'Daily',
   },
   average_overnight_hrv: {

@@ -33,7 +33,7 @@ const t = (key: string, options: Record<string, unknown> = {}): string => {
     'healthDataDisplay.cm': '{{value}} cm',
     'healthDataDisplay.mmolL': '{{value}} mmol/L',
     'healthDataDisplay.ms': '{{value}} ms',
-    'healthDataDisplay.vo2': '{{value}} ml/min/kg',
+    'healthDataDisplay.vo2': '{{value}} ml/kg/min',
     'healthDataDisplay.minutes': '{{value}} min',
     'healthDataDisplay.meters': '{{value}} m',
     'healthDataDisplay.watts': '{{value}} W',
@@ -605,7 +605,7 @@ const RAW_FORMATTERS: Record<
 
     return valid.length > 0
       ? t('healthDataDisplay.vo2', {
-          defaultValue: '{{value}} ml/min/kg',
+          defaultValue: '{{value}} ml/kg/min',
           value: number(valid[0].value!, {
             minimumFractionDigits: 1,
             maximumFractionDigits: 1,

@@ -7159,7 +7159,7 @@
     "cm": "{{value}} cm",
     "mmolL": "{{value}} mmol/L",
     "ms": "{{value}} ms",
-    "vo2": "{{value}} ml/min/kg",
+    "vo2": "{{value}} ml/kg/min",
     "minutes": "{{count}} min",
     "meters": "{{value}} m",
     "watts": "{{value}} W",
