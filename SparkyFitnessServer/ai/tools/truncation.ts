@@ -66,12 +66,21 @@ interface DominantArray {
   array: unknown[];
   rebuild: (slice: unknown[]) => unknown;
   label: string;
+  // Replaces the default pagination hint in the truncation note.
+  hint?: string;
+  // Child rows of one kept record that can be trimmed when that record alone
+  // still overflows; `rebuild` returns the whole payload with only that record.
+  children?: (item: unknown) => {
+    array: unknown[];
+    rebuild: (slice: unknown[]) => unknown;
+  };
 }
 
 // Locates the record array to trim: a top-level array, or the array-valued
 // property of a result object (preferring the PaginatedResult `data` key,
-// otherwise the longest array). Returns null when there is nothing
-// record-shaped to drop.
+// otherwise the longest array). An exercise diary (`entries` plus `sets`
+// keyed by `exercise_entry_id`) trims entries and keeps only their sets.
+// Returns null when there is nothing record-shaped to drop.
 function findDominantArray(data: unknown): DominantArray | null {
   if (Array.isArray(data)) {
     return { array: data, rebuild: (slice) => slice, label: 'records' };
@@ -112,6 +121,33 @@ function findDominantArray(data: unknown): DominantArray | null {
       label: 'diary entries',
     };
   }
+  if (
+    Array.isArray(record.entries) &&
+    Array.isArray(record.sets) &&
+    record.entries.length > 0 &&
+    'start_date' in record &&
+    'end_date' in record
+  ) {
+    const sets = record.sets as unknown[];
+    const setsFor = (slice: unknown[]) => {
+      const ids = new Set(
+        slice.map((entry) => (entry as Record<string, unknown>).id)
+      );
+      return sets.filter((set) =>
+        ids.has((set as Record<string, unknown>).exercise_entry_id)
+      );
+    };
+    return {
+      array: record.entries,
+      rebuild: (slice) => ({ ...record, entries: slice, sets: setsFor(slice) }),
+      label: 'exercise entries',
+      hint: 'Narrow the date range (start_date / end_date) to see the remaining entries.',
+      children: (entry) => ({
+        array: setsFor([entry]),
+        rebuild: (slice) => ({ ...record, entries: [entry], sets: slice }),
+      }),
+    };
+  }
   let bestKey: string | null = null;
   for (const [key, value] of Object.entries(record)) {
     if (!Array.isArray(value) || value.length === 0) continue;
@@ -140,9 +176,11 @@ function findDominantArray(data: unknown): DominantArray | null {
  * exceeds the profile's character limit: whole trailing records are dropped
  * (halving until the payload fits) and a "showing N of M" note is appended
  * AFTER the JSON, so the JSON itself always stays syntactically valid — never
- * sliced mid-record like plain truncateIfNeeded would. Falls back to string
- * truncation only when there is no record array to trim (rare after
- * compactRecord/projection: a single oversized scalar object).
+ * sliced mid-record like plain truncateIfNeeded would. For an exercise diary,
+ * entries are dropped together with their sets, and a single entry that still
+ * overflows keeps only its leading sets. Falls back to string truncation only
+ * when there is no record array to trim (rare after compactRecord/projection:
+ * a single oversized scalar object).
  */
 export function truncateJsonRecords(
   data: unknown,
@@ -154,7 +192,7 @@ export function truncateJsonRecords(
   if (full.length <= limit) return full;
 
   const target = findDominantArray(data);
-  if (!target || target.array.length <= 1) {
+  if (!target || (target.array.length <= 1 && !target.children)) {
     return truncateIfNeeded(full, undefined, profile);
   }
 
@@ -200,12 +238,33 @@ export function truncateJsonRecords(
     keep = Math.ceil(keep / 2);
     text = serialize(rebuild(array.slice(0, keep)));
   }
+  const hint =
+    target.hint ??
+    "Use 'limit' and 'offset' parameters to paginate, or add filters to narrow your search.";
+  if (text.length > limit - NOTE_RESERVE && target.children) {
+    // One record with many child rows: keep it and drop its trailing children.
+    const children = target.children(array[0]);
+    let keepChildren = children.array.length;
+    let childText = text;
+    while (keepChildren > 1 && childText.length > limit - NOTE_RESERVE) {
+      keepChildren = Math.ceil(keepChildren / 2);
+      childText = serialize(
+        children.rebuild(children.array.slice(0, keepChildren))
+      );
+    }
+    if (childText.length <= limit - NOTE_RESERVE) {
+      return (
+        childText +
+        `\n\n---\n⚠️ Result truncated: showing 1 of ${array.length} fetched ${label} and ${keepChildren} of ${children.array.length} of its sets (exceeded ${limit} characters). ${hint}`
+      );
+    }
+  }
   if (text.length > limit - NOTE_RESERVE) {
     // Even a single record overflows; string-slice the full payload instead.
     return truncateIfNeeded(full, undefined, profile);
   }
   return (
     text +
-    `\n\n---\n⚠️ Result truncated: showing ${keep} of ${array.length} fetched ${label} (exceeded ${limit} characters). Use 'limit' and 'offset' parameters to paginate, or add filters to narrow your search.`
+    `\n\n---\n⚠️ Result truncated: showing ${keep} of ${array.length} fetched ${label} (exceeded ${limit} characters). ${hint}`
   );
 }
