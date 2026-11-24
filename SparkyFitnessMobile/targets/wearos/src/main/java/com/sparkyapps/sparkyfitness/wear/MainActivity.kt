@@ -86,6 +86,7 @@ class MainActivity : ComponentActivity() {
 
   override fun onResume() {
     super.onResume()
+    sessionManager.checkInStore.pruneStaleDayData()
     sessionManager.pullInitialDataItems()
     sessionManager.mediaStore.setAppForeground(true)
     ComplicationUpdater.requestAll(applicationContext)
@@ -168,7 +169,8 @@ fun SparkyWearRoot(sessionManager: WearSessionManager) {
   )
 
   LaunchedEffect(requestedPage, pages) {
-    val target = requestedPage ?: return@LaunchedEffect
+    val rawTarget = requestedPage ?: return@LaunchedEffect
+    val target = CheckInStore.resolveNavigationPage(rawTarget, pages)
     val idx = pages.indexOf(target)
     if (idx >= 0) {
       pagerState.scrollToPage(idx)

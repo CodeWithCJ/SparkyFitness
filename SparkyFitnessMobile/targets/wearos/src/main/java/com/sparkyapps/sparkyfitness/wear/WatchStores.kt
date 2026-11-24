@@ -1,6 +1,9 @@
 package com.sparkyapps.sparkyfitness.wear
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.media.AudioManager
 import android.os.Build
 import android.os.SystemClock
@@ -214,28 +217,172 @@ class CheckInStore(private val context: Context) {
   private val _enabledPages = MutableStateFlow(WatchPage.defaultOrder)
   val enabledPages: StateFlow<List<WatchPage>> = _enabledPages.asStateFlow()
 
+  internal data class PendingMedicationRecord(
+    val id: String,
+    val doseId: String,
+    val medicationId: String,
+    val scheduleId: String,
+    val day: String,
+    val taken: Boolean,
+    val state: SyncState,
+    val ownerId: String,
+    val baselineGeneratedAtMs: Long? = null,
+    val baselineStatus: MedicationDoseStatus? = null,
+    val hasSupersededInFlight: Boolean = false,
+    val superseded: Boolean = false
+  )
+
+  internal data class PendingWeightRecord(
+    val id: String,
+    val day: String,
+    val weightKg: Double,
+    val bodyFatPercentage: Double?,
+    val state: SyncState,
+    val ownerId: String,
+    val baselineGeneratedAtMs: Long? = null,
+    val baselineWeightKg: Double? = null,
+    val baselineBodyFatPercentage: Double? = null,
+    val hasSupersededInFlight: Boolean = false,
+    val superseded: Boolean = false,
+    val inheritedBodyFatPercentage: Double? = null
+  )
+
+  private data class RejectedWeightDraft(
+    val day: String,
+    val weightKg: Double,
+    val bodyFatPercentage: Double?,
+    val omittedBodyFat: Boolean,
+    val ownerId: String
+  )
+
   private var confirmedOwnerId: String? = null
+  private var accountActionToken: String = ""
   private var userEditedWeight = false
   private var userEditedBodyFat = false
   private var workoutPageActive = false
+  private var baseWatchContext: WatchContext = WatchContext.empty
+  private var baseHistory: List<HistoryPoint> = emptyList()
+  private var baseMedications: MedicationSnapshot? = null
+  private var pendingMedicationTaps: List<PendingMedicationRecord> = emptyList()
+  private var failedMedicationDoses: Map<String, String> = emptyMap()
+  private var pendingWeightCheckIns: List<PendingWeightRecord> = emptyList()
+  private var failedWeightDays: Set<String> = emptySet()
+  private var rejectedWeightDraft: RejectedWeightDraft? = null
+  private var rolloverJob: Job? = null
   private val waterConsumedBaseline = mutableMapOf<String, Double>()
-  private val pendingCheckInDays = mutableMapOf<String, String>() // clientId -> day
-  private val unconfirmedDays = mutableSetOf<String>()
+
+  private fun newActionToken(): String =
+    UUID.randomUUID().toString().replace("-", "").take(12)
+
+  private fun ensureActionToken(): String {
+    if (accountActionToken.isNotEmpty()) return accountActionToken
+    val existing = prefs.getString("account_action_token", null)?.takeIf { it.isNotEmpty() }
+    val resolved = existing ?: newActionToken()
+    accountActionToken = resolved
+    if (existing == null) {
+      prefs.edit().putString("account_action_token", resolved).apply()
+    }
+    return resolved
+  }
+
+  fun currentActionToken(): String? =
+    if (activeOwnerId() != null) ensureActionToken() else null
+
+  fun resolveTargetPage(preferred: WatchPage): WatchPage =
+    resolveEnabledPage(preferred, _enabledPages.value)
+
+  fun preferredExerciseTargetPage(): WatchPage =
+    resolveExercisePage(_enabledPages.value)
+
+  fun preferredWeightTargetPage(): WatchPage =
+    resolveWeightPage(_enabledPages.value)
+
+  private fun applyRejectedWeightDraftIfNeeded() {
+    val rej = rejectedWeightDraft ?: return
+    val ownerId = activeOwnerId()
+    val today = CheckInDate.today()
+    if (rej.day != today || (ownerId != null && rej.ownerId != ownerId)) return
+    val activeUnit = _unit.value
+    if (!userEditedWeight) {
+      _draftWeight.value = clampAndSnap(activeUnit.fromKg(rej.weightKg), activeUnit)
+    }
+    if (rej.bodyFatPercentage != null && !userEditedBodyFat) {
+      _draftBodyFat.value = clampBodyFat(rej.bodyFatPercentage)
+      _hasBodyFatSeed.value = true
+    }
+  }
 
   init {
     restorePersistedPendingWater()
+    restorePersistedPendingEdits()
     restorePersistedContext()
     recomputeWaterState()
+    recomputeMedicationOverlay()
+    recomputeWeightOverlay()
+    applyRejectedWeightDraftIfNeeded()
+    startDayRolloverWatcher()
+  }
+
+  private fun scheduleNextRollover() {
+    rolloverJob?.cancel()
+    rolloverJob = scope.launch {
+      while (isActive) {
+        val nextMidnightMs = ComplicationModels.endOfLocalDayInstant(CheckInDate.today())?.toEpochMilli()
+        val waitMs = if (nextMidnightMs != null) {
+          (nextMidnightMs - System.currentTimeMillis() + 100L).coerceIn(1_000L, 86_400_000L)
+        } else {
+          60_000L
+        }
+        delay(waitMs)
+        pruneStaleDayData()
+        ComplicationUpdater.requestAll(context)
+        TileUpdater.requestAll(context)
+      }
+    }
+  }
+
+  private fun startDayRolloverWatcher() {
+    scheduleNextRollover()
+    try {
+      val filter = IntentFilter().apply {
+        addAction(Intent.ACTION_DATE_CHANGED)
+        addAction(Intent.ACTION_TIME_CHANGED)
+        addAction(Intent.ACTION_TIMEZONE_CHANGED)
+      }
+      val receiver = object : BroadcastReceiver() {
+        override fun onReceive(ctx: Context?, intent: Intent?) {
+          scope.launch {
+            pruneStaleDayData()
+            ComplicationUpdater.requestAll(context)
+            TileUpdater.requestAll(context)
+            scheduleNextRollover()
+          }
+        }
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        context.applicationContext.registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
+      } else {
+        context.applicationContext.registerReceiver(receiver, filter)
+      }
+    } catch (_: Throwable) {}
   }
 
   internal fun activeOwnerId(): String? =
     confirmedOwnerId?.takeIf { it.isNotEmpty() }
       ?: _watchContext.value.workoutServerId?.takeIf { it.isNotEmpty() }
 
+  fun todaysScheduledWorkouts(): List<ScheduledWorkout> {
+    val today = CheckInDate.today()
+    val snapDay = baseWatchContext.today
+    if (!snapDay.isNullOrEmpty() && snapDay != today) return emptyList()
+    return _scheduledWorkouts.value
+  }
+
   fun setWorkoutPageActive(active: Boolean) {
     if (workoutPageActive != active) {
       workoutPageActive = active
       _enabledPages.value = _watchContext.value.visiblePages(workoutActive = active)
+      ComplicationUpdater.requestAll(context)
     }
   }
 
@@ -256,7 +403,25 @@ class CheckInStore(private val context: Context) {
       return deltaKg > thresholdKg
     }
 
-  fun isDayUnconfirmed(day: String): Boolean = unconfirmedDays.contains(day)
+  fun isDayUnconfirmed(day: String): Boolean =
+    pendingWeightCheckIns.any { it.day == day && it.state == SyncState.QUEUED && !it.superseded }
+
+  fun isDayFailed(day: String): Boolean =
+    failedWeightDays.contains(day)
+
+  fun failedMedicationDoseIdsForToday(): Set<String> {
+    val today = CheckInDate.today()
+    return failedMedicationDoses.filterValues { it == today }.keys
+  }
+
+  private fun recomputeWeightSyncState() {
+    val today = CheckInDate.today()
+    _syncState.value = when {
+      failedWeightDays.contains(today) -> SyncState.FAILED
+      pendingWeightCheckIns.any { it.day == today && it.state == SyncState.QUEUED && !it.superseded } -> SyncState.QUEUED
+      else -> SyncState.SAVED
+    }
+  }
 
   fun rollingMean(points: List<HistoryPoint>, window: Int = 7): List<Pair<Int, Double>> {
     if (points.size < 2) return emptyList()
@@ -301,13 +466,19 @@ class CheckInStore(private val context: Context) {
     _draftWeight.value = clampAndSnap(value, selectedUnit)
   }
 
-  fun saveWeight(includeBodyFat: Boolean = _hasBodyFatSeed.value) {
+  fun saveWeight(includeBodyFat: Boolean? = null) {
     val ownerId = activeOwnerId() ?: return
+    pruneStaleDayData()
+    val today = CheckInDate.today()
+    val todayRejectedOmission = rejectedWeightDraft?.let {
+      it.day == today && it.ownerId == ownerId && it.omittedBodyFat
+    } == true
+    val effectiveIncludeBf = includeBodyFat
+      ?: (_hasBodyFatSeed.value && (userEditedBodyFat || !todayRejectedOmission))
     val u = _unit.value
     val displayVal = clampAndSnap(_draftWeight.value, u)
     val weightKg = u.toKg(displayVal)
-    val bodyFat = if (includeBodyFat) clampBodyFat(_draftBodyFat.value) else null
-    val today = CheckInDate.today()
+    val bodyFat = if (effectiveIncludeBf) clampBodyFat(_draftBodyFat.value) else null
     val clientId = UUID.randomUUID().toString()
     val checkIn = CheckIn(
       id = clientId,
@@ -316,24 +487,43 @@ class CheckInStore(private val context: Context) {
       bodyFatPercentage = bodyFat
     )
 
-    pendingCheckInDays[clientId] = today
-    unconfirmedDays.add(today)
-
-    val nextHistory = _history.value.toMutableList()
-    val idx = nextHistory.indexOfFirst { it.day == today }
-    val pt = HistoryPoint(day = today, weightKg = weightKg, bodyFatPercentage = bodyFat)
-    if (idx >= 0) nextHistory[idx] = pt else nextHistory.add(pt)
-    _history.value = nextHistory
+    val baseHistPt = baseHistory.lastOrNull { it.day == today }
+    val baseDayWeightKg = if (baseWatchContext.today == today) {
+      baseWatchContext.todayWeightKg ?: baseHistPt?.weightKg
+    } else {
+      baseHistPt?.weightKg
+    }
+    val baseDayBodyFat = if (baseWatchContext.today == today) {
+      baseWatchContext.todayBodyFatPercentage ?: baseHistPt?.bodyFatPercentage
+    } else {
+      baseHistPt?.bodyFatPercentage
+    }
+    val supersededSameDay = pendingWeightCheckIns.any { it.day == today }
+    val newRecord = PendingWeightRecord(
+      id = clientId,
+      day = today,
+      weightKg = weightKg,
+      bodyFatPercentage = bodyFat,
+      state = SyncState.QUEUED,
+      ownerId = ownerId,
+      baselineGeneratedAtMs = baseWatchContext.generatedAtMs,
+      baselineWeightKg = baseDayWeightKg,
+      baselineBodyFatPercentage = baseDayBodyFat,
+      hasSupersededInFlight = supersededSameDay
+    )
+    failedWeightDays = failedWeightDays - today
+    rejectedWeightDraft = null
+    pendingWeightCheckIns = appendQueuedWeightRecord(pendingWeightCheckIns, newRecord)
+    persistPendingWeight()
+    recomputeWeightOverlay()
     userEditedWeight = false
     userEditedBodyFat = false
-    _syncState.value = SyncState.QUEUED
+    recomputeWeightSyncState()
 
     val payload = OutboundPayloads.checkIn(checkIn, ownerId = ownerId)
-    session?.sendWeightCheckIn(payload) { deliveredLive ->
-      scope.launch {
-        _syncState.value = if (deliveredLive) SyncState.SAVED else SyncState.QUEUED
-      }
-    }
+    session?.sendWeightCheckIn(payload) { _ -> }
+    ComplicationUpdater.requestAll(context)
+    TileUpdater.requestAll(context)
     Haptics.success()
   }
 
@@ -354,6 +544,9 @@ class CheckInStore(private val context: Context) {
     if (curMeds != null && curMeds.day != today) {
       _medications.value = null
     }
+    if (baseMedications != null && baseMedications?.day != today) {
+      baseMedications = null
+    }
     val curSteps = _steps.value
     if (curSteps != null && curSteps.day != today) {
       _steps.value = null
@@ -366,7 +559,7 @@ class CheckInStore(private val context: Context) {
     if (curExercise != null && curExercise.day != today) {
       _exerciseSummary.value = null
     }
-    if (!_watchContext.value.today.isNullOrEmpty() && _watchContext.value.today != today) {
+    if (!baseWatchContext.today.isNullOrEmpty() && baseWatchContext.today != today) {
       _scheduledWorkouts.value = emptyList()
     }
     val filteredTaps = _pendingWaterTaps.value.filter { it.day == today }
@@ -376,7 +569,40 @@ class CheckInStore(private val context: Context) {
       _pendingWaterDeletes.value = filteredDeletes
       persistPendingWater()
     }
+    val filteredMedTaps = pendingMedicationTaps.filter {
+      if (it.state == SyncState.QUEUED && it.superseded) {
+        it.day == today
+      } else {
+        it.day == today || it.state == SyncState.QUEUED
+      }
+    }
+    failedMedicationDoses = failedMedicationDoses.filterValues { it == today }
+    if (filteredMedTaps.size != pendingMedicationTaps.size) {
+      pendingMedicationTaps = filteredMedTaps
+      persistPendingMedications()
+    }
+    val filteredWeights = pendingWeightCheckIns.filter {
+      if (it.state == SyncState.QUEUED && it.superseded) {
+        CheckInDate.daysBetween(it.day, today) <= 1
+      } else {
+        it.state == SyncState.QUEUED || CheckInDate.daysBetween(it.day, today) <= 90
+      }
+    }
+    val rejectedExpired = rejectedWeightDraft != null && rejectedWeightDraft?.day != today
+    if (rejectedExpired) {
+      rejectedWeightDraft = null
+    }
+    if (filteredWeights.size != pendingWeightCheckIns.size || rejectedExpired) {
+      pendingWeightCheckIns = filteredWeights
+      persistPendingWeight()
+    }
+    recomputeWeightOverlay()
+    if (rejectedExpired) {
+      reseedDraftFromCurrentState()
+    }
+    recomputeWeightSyncState()
     recomputeWaterState()
+    recomputeMedicationOverlay()
   }
 
   fun resendQueued() {
@@ -403,9 +629,44 @@ class CheckInStore(private val context: Context) {
         session?.sendMessageOrQueue(payload, "waterDelete")
       }
     }
+    for (med in pendingMedicationTaps) {
+      if (med.day.isNotEmpty() &&
+        med.state == SyncState.QUEUED &&
+        !med.superseded &&
+        med.ownerId == ownerId
+      ) {
+        val payload = OutboundPayloads.medicationTaken(
+          clientId = med.id,
+          entryDate = med.day,
+          medicationId = med.medicationId,
+          scheduleId = med.scheduleId,
+          taken = med.taken,
+          ownerId = ownerId
+        )
+        session?.sendMessageOrQueue(payload, "medicationTaken")
+      }
+    }
+    for (pendingWeight in pendingWeightCheckIns) {
+      if (pendingWeight.day.isNotEmpty() &&
+        pendingWeight.state == SyncState.QUEUED &&
+        !pendingWeight.superseded &&
+        pendingWeight.ownerId == ownerId
+      ) {
+        val payload = OutboundPayloads.checkIn(
+          CheckIn(
+            id = pendingWeight.id,
+            entryDate = pendingWeight.day,
+            weightKg = pendingWeight.weightKg,
+            bodyFatPercentage = pendingWeight.bodyFatPercentage
+          ),
+          ownerId = ownerId
+        )
+        session?.sendWeightCheckIn(payload) { _ -> }
+      }
+    }
   }
 
-  fun tapWaterContainer(container: WaterContainer) {
+  fun tapWaterContainer(container: WaterContainer, refreshTiles: Boolean = true) {
     val ownerId = activeOwnerId() ?: return
     pruneStaleDayData()
     val today = CheckInDate.today()
@@ -424,6 +685,9 @@ class CheckInStore(private val context: Context) {
     persistPendingWater()
     recomputeWaterState()
     ComplicationUpdater.requestAll(context)
+    if (refreshTiles) {
+      TileUpdater.requestAll(context)
+    }
 
     val payload = OutboundPayloads.waterTap(
       clientId = tap.id,
@@ -445,6 +709,7 @@ class CheckInStore(private val context: Context) {
       persistPendingWater()
       recomputeWaterState()
       ComplicationUpdater.requestAll(context)
+      TileUpdater.requestAll(context)
       Haptics.click()
       return
     }
@@ -462,6 +727,7 @@ class CheckInStore(private val context: Context) {
     persistPendingWater()
     recomputeWaterState()
     ComplicationUpdater.requestAll(context)
+    TileUpdater.requestAll(context)
 
     val payload = OutboundPayloads.waterDelete(
       clientId = del.id,
@@ -477,7 +743,7 @@ class CheckInStore(private val context: Context) {
     deleteWaterEntry(lastEntry)
   }
 
-  fun retryFailedWaterTaps() {
+  fun retryFailedWaterTaps(refreshTiles: Boolean = true) {
     val ownerId = activeOwnerId() ?: return
     var changed = false
     val updated = _pendingWaterTaps.value.map { tap ->
@@ -497,32 +763,92 @@ class CheckInStore(private val context: Context) {
       _pendingWaterTaps.value = updated
       persistPendingWater()
       recomputeWaterState()
+      ComplicationUpdater.requestAll(context)
+      if (refreshTiles) {
+        TileUpdater.requestAll(context)
+      }
     }
   }
 
-  fun acknowledge(clientId: String, ok: Boolean) {
-    val checkInDay = pendingCheckInDays.remove(clientId)
-    if (checkInDay != null) {
-      if (ok) {
-        unconfirmedDays.remove(checkInDay)
-        _syncState.value = SyncState.SAVED
-      } else {
-        _syncState.value = SyncState.FAILED
+  fun acknowledge(clientId: String, ok: Boolean, deferRecompute: Boolean = false) {
+    val weightOutcome = applyWeightAcknowledgement(pendingWeightCheckIns, clientId, ok)
+    val matchedWeight = weightOutcome.matched
+    if (matchedWeight != null) {
+      if (weightOutcome.clearFailureForDay) {
+        failedWeightDays = failedWeightDays - matchedWeight.day
+        if (rejectedWeightDraft?.day == matchedWeight.day) {
+          rejectedWeightDraft = null
+        }
+      } else if (weightOutcome.markFailedForDay) {
+        failedWeightDays = failedWeightDays + matchedWeight.day
+        if (matchedWeight.day == CheckInDate.today()) {
+          rejectedWeightDraft = RejectedWeightDraft(
+            day = matchedWeight.day,
+            weightKg = matchedWeight.weightKg,
+            bodyFatPercentage = matchedWeight.bodyFatPercentage,
+            omittedBodyFat = matchedWeight.bodyFatPercentage == null,
+            ownerId = matchedWeight.ownerId
+          )
+          if (!deferRecompute) {
+            applyRejectedWeightDraftIfNeeded()
+          }
+        }
+      }
+      pendingWeightCheckIns = weightOutcome.records
+      persistPendingWeight()
+      if (!deferRecompute) {
+        recomputeWeightOverlay()
+        recomputeWeightSyncState()
+        ComplicationUpdater.requestAll(context)
+        TileUpdater.requestAll(context)
+      }
+    }
+
+    val medOutcome = applyMedicationAcknowledgement(pendingMedicationTaps, clientId, ok)
+    val matchedMed = medOutcome.matchedRecord
+    if (matchedMed != null) {
+      if (medOutcome.clearFailureForDose) {
+        failedMedicationDoses = failedMedicationDoses - matchedMed.doseId
+      } else if (medOutcome.markFailedForDose) {
+        failedMedicationDoses = failedMedicationDoses + (matchedMed.doseId to matchedMed.day)
+      }
+      pendingMedicationTaps = medOutcome.records
+      persistPendingMedications()
+      if (!deferRecompute) {
+        recomputeMedicationOverlay()
+        ComplicationUpdater.requestAll(context)
+        TileUpdater.requestAll(context)
       }
     }
 
     val tapIdx = _pendingWaterTaps.value.indexOfFirst { it.id == clientId }
     if (tapIdx >= 0) {
       val list = _pendingWaterTaps.value.toMutableList()
-      val nextState = if (ok) SyncState.SAVED else SyncState.FAILED
-      list[tapIdx] = list[tapIdx].copy(state = nextState)
+      val tap = list[tapIdx]
+      val prevTodayMl = _water.value?.takeIf { it.isToday }?.consumedMl
       if (ok && !waterConsumedBaseline.containsKey(clientId)) {
-        waterConsumedBaseline[clientId] = _water.value?.takeIf { it.isToday }?.consumedMl ?: 0.0
+        waterConsumedBaseline[clientId] = prevTodayMl ?: 0.0
+      }
+      val baseline = waterConsumedBaseline[clientId]
+      val settledAgainstPrevious = ok &&
+        deferRecompute &&
+        prevTodayMl != null &&
+        baseline != null &&
+        prevTodayMl >= baseline + tap.volumeMl * 0.5
+      if (settledAgainstPrevious) {
+        list.removeAt(tapIdx)
+        waterConsumedBaseline.remove(clientId)
+      } else {
+        val nextState = if (ok) SyncState.SAVED else SyncState.FAILED
+        list[tapIdx] = tap.copy(state = nextState)
       }
       _pendingWaterTaps.value = list
       persistPendingWater()
-      recomputeWaterState()
-      ComplicationUpdater.requestAll(context)
+      if (!deferRecompute) {
+        recomputeWaterState()
+        ComplicationUpdater.requestAll(context)
+        TileUpdater.requestAll(context)
+      }
     }
 
     val delIdx = _pendingWaterDeletes.value.indexOfFirst { it.id == clientId }
@@ -541,8 +867,11 @@ class CheckInStore(private val context: Context) {
       }
       _pendingWaterDeletes.value = list
       persistPendingWater()
-      recomputeWaterState()
-      ComplicationUpdater.requestAll(context)
+      if (!deferRecompute) {
+        recomputeWaterState()
+        ComplicationUpdater.requestAll(context)
+        TileUpdater.requestAll(context)
+      }
     }
   }
 
@@ -620,20 +949,38 @@ class CheckInStore(private val context: Context) {
   /**
    * Toggles a scheduled medication dose between taken and pending and queues the mutation to the phone.
    */
-  fun toggleMedication(dose: MedicationDose) {
+  fun toggleMedication(dose: MedicationDose, refreshTiles: Boolean = true) {
     val ownerId = activeOwnerId() ?: return
-    val cur = _medications.value ?: return
-    val list = cur.doses.toMutableList()
-    val idx = list.indexOfFirst { it.id == dose.id }
-    if (idx < 0) return
-    val nextTaken = list[idx].status != MedicationDoseStatus.TAKEN
-    val nextStatus = if (nextTaken) MedicationDoseStatus.TAKEN else MedicationDoseStatus.PENDING
-    list[idx] = list[idx].copy(status = nextStatus)
-    _medications.value = cur.copy(doses = list)
-    TileUpdater.requestAll(context)
+    val cur = _medications.value?.takeIf { it.isToday } ?: return
+    val currentDose = cur.doses.firstOrNull { it.id == dose.id } ?: return
+    val nextTaken = currentDose.status != MedicationDoseStatus.TAKEN
+    val clientId = UUID.randomUUID().toString()
+    val baseSnapDose = baseMedications?.takeIf { it.day == cur.day }?.doses?.firstOrNull { it.id == dose.id }
+    val supersededSameDose = pendingMedicationTaps.any { it.day == cur.day && it.doseId == dose.id }
+    val record = PendingMedicationRecord(
+      id = clientId,
+      doseId = dose.id,
+      medicationId = dose.medicationId,
+      scheduleId = dose.scheduleId,
+      day = cur.day,
+      taken = nextTaken,
+      state = SyncState.QUEUED,
+      ownerId = ownerId,
+      baselineGeneratedAtMs = baseWatchContext.generatedAtMs,
+      baselineStatus = baseSnapDose?.status ?: currentDose.status,
+      hasSupersededInFlight = supersededSameDose
+    )
+    failedMedicationDoses = failedMedicationDoses - dose.id
+    pendingMedicationTaps = appendQueuedMedicationRecord(pendingMedicationTaps, record)
+    persistPendingMedications()
+    recomputeMedicationOverlay()
+    ComplicationUpdater.requestAll(context)
+    if (refreshTiles) {
+      TileUpdater.requestAll(context)
+    }
 
     val payload = OutboundPayloads.medicationTaken(
-      clientId = UUID.randomUUID().toString(),
+      clientId = clientId,
       entryDate = cur.day,
       medicationId = dose.medicationId,
       scheduleId = dose.scheduleId,
@@ -642,6 +989,188 @@ class CheckInStore(private val context: Context) {
     )
     session?.sendMessageOrQueue(payload, "medicationTaken")
     Haptics.success()
+  }
+
+  private fun recomputeMedicationOverlay() {
+    val ownerId = activeOwnerId()
+    val today = CheckInDate.today()
+    val snap = baseMedications?.takeIf { it.isToday }
+    val settledDoseKeys = mutableSetOf<Pair<String, String>>()
+    val pass1 = pendingMedicationTaps.filter { rec ->
+      if (ownerId != null && rec.ownerId != ownerId) return@filter false
+      if (rec.day.isBlank()) return@filter false
+      when {
+        rec.state == SyncState.QUEUED && rec.superseded ->
+          !baseWatchContext.ackedClientIds.contains(rec.id) && rec.day == today
+        rec.state == SyncState.QUEUED -> {
+          val settled = isQueuedMedicationRecordSettled(rec, baseWatchContext, snap)
+          if (settled) settledDoseKeys.add(rec.day to rec.doseId)
+          !settled
+        }
+        rec.day != today -> false
+        else -> {
+          val settled = isSavedMedicationRecordSettled(rec, baseWatchContext, snap)
+          if (settled) settledDoseKeys.add(rec.day to rec.doseId)
+          !settled
+        }
+      }
+    }
+    val retained = if (settledDoseKeys.isEmpty()) {
+      pass1
+    } else {
+      pass1.filterNot { it.state == SyncState.QUEUED && it.superseded && settledDoseKeys.contains(it.day to it.doseId) }
+    }
+    if (retained.size != pendingMedicationTaps.size) {
+      pendingMedicationTaps = retained
+      persistPendingMedications()
+    }
+    if (snap == null) {
+      _medications.value = null
+      return
+    }
+    val byDose = effectiveMedicationRecordsByDose(retained, snap.day)
+    val overlaid = snap.doses.map { d ->
+      val pending = byDose[d.id]
+      if (pending != null) {
+        d.copy(status = if (pending.taken) MedicationDoseStatus.TAKEN else MedicationDoseStatus.PENDING)
+      } else {
+        d
+      }
+    }
+    _medications.value = snap.copy(doses = overlaid)
+  }
+
+  private fun recomputeWeightOverlay() {
+    val ownerId = activeOwnerId()
+    val today = CheckInDate.today()
+    val settledActiveDays = mutableSetOf<String>()
+    val pass1 = pendingWeightCheckIns.filter { rec ->
+      if (ownerId != null && rec.ownerId != ownerId) return@filter false
+      when {
+        rec.state == SyncState.QUEUED && rec.superseded ->
+          !baseWatchContext.ackedClientIds.contains(rec.id) && CheckInDate.daysBetween(rec.day, today) <= 1
+        rec.state == SyncState.QUEUED -> {
+          val settled = isQueuedWeightRecordSettled(rec, baseWatchContext, baseHistory)
+          if (settled) settledActiveDays.add(rec.day)
+          !settled
+        }
+        rec.state == SyncState.SAVED -> {
+          val settled = isSavedWeightRecordSettled(rec, baseWatchContext, baseHistory)
+          if (settled) settledActiveDays.add(rec.day)
+          !settled
+        }
+        else -> true
+      }
+    }
+    val unsettled = if (settledActiveDays.isEmpty()) {
+      pass1
+    } else {
+      pass1.filterNot { it.state == SyncState.QUEUED && it.superseded && settledActiveDays.contains(it.day) }
+    }
+    if (unsettled.size != pendingWeightCheckIns.size) {
+      pendingWeightCheckIns = unsettled
+      persistPendingWeight()
+    }
+    val orderedUnsettled = orderWeightOverlayRecords(unsettled)
+    if (orderedUnsettled.isEmpty()) {
+      _watchContext.value = baseWatchContext
+      _history.value = baseHistory
+      return
+    }
+
+    val historyByDay = sortedMapOf<String, HistoryPoint>()
+    for (pt in baseHistory) {
+      if (pt.day.isNotBlank()) {
+        historyByDay[pt.day] = pt
+      }
+    }
+    for (rec in orderedUnsettled) {
+      val contextSameDayBf = if (baseWatchContext.today == rec.day) {
+        baseWatchContext.todayBodyFatPercentage
+      } else {
+        null
+      }
+      val resolvedBf = rec.bodyFatPercentage
+        ?: rec.inheritedBodyFatPercentage
+        ?: historyByDay[rec.day]?.bodyFatPercentage
+        ?: contextSameDayBf
+      historyByDay[rec.day] = HistoryPoint(
+        day = rec.day,
+        weightKg = rec.weightKg,
+        bodyFatPercentage = resolvedBf
+      )
+    }
+    val nextHistory = historyByDay.values.toList()
+    val priorDatedEntries = sortedMapOf<String, HistoryPoint>()
+    if (!baseWatchContext.lastEntryDate.isNullOrBlank() &&
+      baseWatchContext.lastEntryDate != today &&
+      baseWatchContext.lastWeightKg != null
+    ) {
+      priorDatedEntries[baseWatchContext.lastEntryDate!!] = HistoryPoint(
+        day = baseWatchContext.lastEntryDate!!,
+        weightKg = baseWatchContext.lastWeightKg!!,
+        bodyFatPercentage = baseWatchContext.lastBodyFatPercentage
+      )
+    }
+    if (!baseWatchContext.today.isNullOrBlank() &&
+      baseWatchContext.today != today &&
+      baseWatchContext.todayWeightKg != null
+    ) {
+      val existingBf = priorDatedEntries[baseWatchContext.today]?.bodyFatPercentage
+      priorDatedEntries[baseWatchContext.today!!] = HistoryPoint(
+        day = baseWatchContext.today!!,
+        weightKg = baseWatchContext.todayWeightKg!!,
+        bodyFatPercentage = baseWatchContext.todayBodyFatPercentage ?: existingBf
+      )
+    }
+    for (pt in nextHistory) {
+      if (pt.day.isNotBlank() && pt.day < today) {
+        val existingBf = priorDatedEntries[pt.day]?.bodyFatPercentage
+        priorDatedEntries[pt.day] = if (pt.bodyFatPercentage != null || existingBf == null) {
+          pt
+        } else {
+          pt.copy(bodyFatPercentage = existingBf)
+        }
+      }
+    }
+    val newestPrior = priorDatedEntries.values.lastOrNull()
+    val nextLastWeightKg = newestPrior?.weightKg ?: baseWatchContext.lastWeightKg
+    val nextLastBf = if (newestPrior != null) newestPrior.bodyFatPercentage else baseWatchContext.lastBodyFatPercentage
+    val nextLastEntryDate = newestPrior?.day ?: baseWatchContext.lastEntryDate
+
+    val todayPending = orderedUnsettled.lastOrNull { it.day == today }
+    if (todayPending == null) {
+      _history.value = nextHistory
+      _watchContext.value = baseWatchContext.copy(
+        lastWeightKg = nextLastWeightKg,
+        lastBodyFatPercentage = nextLastBf,
+        lastEntryDate = nextLastEntryDate,
+        history = nextHistory
+      )
+      return
+    }
+
+    val isSameDay = baseWatchContext.today == todayPending.day
+    val baseTodayHistoryBf = baseHistory.lastOrNull { it.day == todayPending.day }?.bodyFatPercentage
+    val resolvedTodayBf = todayPending.bodyFatPercentage
+      ?: todayPending.inheritedBodyFatPercentage
+      ?: historyByDay[todayPending.day]?.bodyFatPercentage
+      ?: (if (isSameDay) baseWatchContext.todayBodyFatPercentage else null)
+      ?: baseTodayHistoryBf
+
+    _history.value = nextHistory
+    _watchContext.value = baseWatchContext.copy(
+      today = todayPending.day,
+      todayWeightKg = todayPending.weightKg,
+      todayBodyFatPercentage = resolvedTodayBf,
+      lastWeightKg = nextLastWeightKg,
+      lastBodyFatPercentage = nextLastBf,
+      lastEntryDate = nextLastEntryDate,
+      history = nextHistory
+    )
+    if (!baseWatchContext.today.isNullOrEmpty() && !isSameDay) {
+      _scheduledWorkouts.value = emptyList()
+    }
   }
 
   fun endFast() {
@@ -694,6 +1223,15 @@ class CheckInStore(private val context: Context) {
    */
   fun clearAccountState(newOwnerId: String? = null) {
     confirmedOwnerId = newOwnerId?.takeIf { it.isNotEmpty() }
+    accountActionToken = if (confirmedOwnerId != null) newActionToken() else ""
+    baseWatchContext = WatchContext.empty
+    baseHistory = emptyList()
+    baseMedications = null
+    pendingMedicationTaps = emptyList()
+    failedMedicationDoses = emptyMap()
+    pendingWeightCheckIns = emptyList()
+    failedWeightDays = emptySet()
+    rejectedWeightDraft = null
     _watchContext.value = WatchContext.empty
     _history.value = emptyList()
     _water.value = null
@@ -712,20 +1250,27 @@ class CheckInStore(private val context: Context) {
     _steps.value = null
     _sleep.value = null
     _exerciseSummary.value = null
+    _draftWeight.value = 75.0
+    _draftBodyFat.value = 18.0
     _hasBodyFatSeed.value = false
     userEditedWeight = false
     userEditedBodyFat = false
+    _syncState.value = SyncState.SAVED
     waterConsumedBaseline.clear()
-    pendingCheckInDays.clear()
-    unconfirmedDays.clear()
     val editor = prefs.edit()
       .remove("last_context_json")
       .remove("pending_water_taps")
       .remove("pending_water_deletes")
+      .remove("pending_med_taps")
+      .remove("pending_weight_checkin")
+      .remove("failed_weight_days")
+      .remove("rejected_weight_draft")
     if (confirmedOwnerId != null) {
       editor.putString("context_owner_id", confirmedOwnerId)
+      editor.putString("account_action_token", accountActionToken)
     } else {
       editor.remove("context_owner_id")
+      editor.remove("account_action_token")
     }
     editor.apply()
     ComplicationUpdater.requestAll(context)
@@ -749,25 +1294,21 @@ class CheckInStore(private val context: Context) {
     }
 
     val previousUnit = _unit.value
-    val nextCtx = ContextPayloadMapper.parseContext(obj, _watchContext.value)
+    val nextCtx = ContextPayloadMapper.parseContext(obj, baseWatchContext)
 
-    for (ackedId in nextCtx.ackedClientIds) {
-      acknowledge(ackedId, true)
-    }
-    for (failedId in nextCtx.failedClientIds) {
-      acknowledge(failedId, false)
-    }
-
-    _watchContext.value = nextCtx
+    baseWatchContext = nextCtx
     val effectiveUnit = nextCtx.effectiveWeightUnit
     _unit.value = effectiveUnit
-    _history.value = nextCtx.history
-    _water.value = nextCtx.water?.takeIf { it.isToday }
+    if (userEditedWeight && previousUnit != effectiveUnit) {
+      val kg = previousUnit.toKg(_draftWeight.value)
+      _draftWeight.value = clampAndSnap(effectiveUnit.fromKg(kg), effectiveUnit)
+    }
+    baseHistory = nextCtx.history
     _waterContainers.value = nextCtx.waterContainers ?: emptyList()
     nextCtx.waterGoalMl?.let { _waterGoalMl.value = it }
     nextCtx.waterDisplayUnit?.let { _waterDisplayUnit.value = it }
     _nutrition.value = nextCtx.nutrition?.takeIf { it.isToday }
-    _medications.value = nextCtx.medications?.takeIf { it.isToday }
+    baseMedications = nextCtx.medications?.takeIf { it.isToday }
     _startableWorkouts.value = nextCtx.startableWorkouts ?: emptyList()
     _scheduledWorkouts.value = if (nextCtx.today.isNullOrEmpty() || nextCtx.today == CheckInDate.today()) {
       nextCtx.scheduledWorkouts ?: emptyList()
@@ -781,47 +1322,369 @@ class CheckInStore(private val context: Context) {
     _exerciseSummary.value = nextCtx.exerciseSummary?.takeIf { it.isToday }
     _enabledPages.value = nextCtx.visiblePages(workoutActive = workoutPageActive)
 
-    if (!userEditedWeight) {
-      val seedKg = nextCtx.todayWeightKg ?: nextCtx.lastWeightKg ?: nextCtx.history.lastOrNull()?.weightKg
-      if (seedKg != null) {
-        _draftWeight.value = clampAndSnap(effectiveUnit.fromKg(seedKg), effectiveUnit)
-      }
-    } else if (previousUnit != effectiveUnit) {
-      val kg = previousUnit.toKg(_draftWeight.value)
-      _draftWeight.value = clampAndSnap(effectiveUnit.fromKg(kg), effectiveUnit)
-    }
-
-    val seedBf = nextCtx.todayBodyFatPercentage ?: nextCtx.lastBodyFatPercentage
-      ?: nextCtx.history.lastOrNull { it.bodyFatPercentage != null }?.bodyFatPercentage
-    if (seedBf != null) {
-      _hasBodyFatSeed.value = true
-      if (!userEditedBodyFat) {
-        _draftBodyFat.value = clampBodyFat(seedBf)
-      }
-    }
-
-    recomputeWaterState()
-
     if (rawJson != null) {
       if (incomingOwner != null) {
+        val tok = ensureActionToken()
         prefs.edit()
           .putString("context_owner_id", incomingOwner)
+          .putString("account_action_token", tok)
           .putString("last_context_json", rawJson)
           .apply()
-        resendQueued()
       } else {
         prefs.edit()
           .remove("context_owner_id")
+          .remove("account_action_token")
           .remove("last_context_json")
           .apply()
       }
+    }
+
+    for (failedId in nextCtx.failedClientIds) {
+      acknowledge(failedId, false, deferRecompute = true)
+    }
+    for (ackedId in nextCtx.ackedClientIds) {
+      acknowledge(ackedId, true, deferRecompute = true)
+    }
+
+    _water.value = nextCtx.water?.takeIf { it.isToday }
+    recomputeMedicationOverlay()
+    recomputeWeightOverlay()
+    recomputeWeightSyncState()
+    reseedDraftFromCurrentState(incomingOwner ?: activeOwnerId())
+    recomputeWaterState()
+
+    if (rawJson != null && incomingOwner != null) {
+      resendQueued()
     }
     ComplicationUpdater.requestAll(context)
     TileUpdater.requestAll(context)
   }
 
+  private fun reseedDraftFromCurrentState(effectiveOwner: String? = activeOwnerId()) {
+    val effectiveUnit = _unit.value
+    val overlaidCtx = _watchContext.value
+    val overlaidHist = _history.value
+    val today = CheckInDate.today()
+    val hasCurrentDayWeight = (overlaidCtx.today == null || overlaidCtx.today == today) &&
+      overlaidCtx.todayWeightKg != null
+    val datedWeights = sortedMapOf<String, Double>()
+    if (!overlaidCtx.lastEntryDate.isNullOrBlank() && overlaidCtx.lastWeightKg != null) {
+      datedWeights[overlaidCtx.lastEntryDate] = overlaidCtx.lastWeightKg
+    }
+    if (!overlaidCtx.today.isNullOrBlank() && overlaidCtx.today != today && overlaidCtx.todayWeightKg != null) {
+      datedWeights[overlaidCtx.today] = overlaidCtx.todayWeightKg
+    }
+    for (pt in overlaidHist) {
+      if (pt.day.isNotBlank()) {
+        datedWeights[pt.day] = pt.weightKg
+      }
+    }
+    if (hasCurrentDayWeight) {
+      datedWeights[today] = overlaidCtx.todayWeightKg!!
+    }
+    val seedKg = if (hasCurrentDayWeight) {
+      overlaidCtx.todayWeightKg
+    } else {
+      datedWeights.values.lastOrNull() ?: overlaidCtx.lastWeightKg
+    }
+    val activeRejection = rejectedWeightDraft?.takeIf {
+      it.day == today && (effectiveOwner == null || it.ownerId == effectiveOwner)
+    }
+    if (!userEditedWeight) {
+      val targetKg = activeRejection?.weightKg ?: seedKg
+      if (targetKg != null) {
+        _draftWeight.value = clampAndSnap(effectiveUnit.fromKg(targetKg), effectiveUnit)
+      } else {
+        _draftWeight.value = clampAndSnap(effectiveUnit.fromKg(75.0), effectiveUnit)
+      }
+    }
+
+    val hasCurrentDayBf = (overlaidCtx.today == null || overlaidCtx.today == today) &&
+      overlaidCtx.todayBodyFatPercentage != null
+    val datedBfs = sortedMapOf<String, Double>()
+    if (!overlaidCtx.lastEntryDate.isNullOrBlank() && overlaidCtx.lastBodyFatPercentage != null) {
+      datedBfs[overlaidCtx.lastEntryDate] = overlaidCtx.lastBodyFatPercentage
+    }
+    if (!overlaidCtx.today.isNullOrBlank() && overlaidCtx.today != today && overlaidCtx.todayBodyFatPercentage != null) {
+      datedBfs[overlaidCtx.today] = overlaidCtx.todayBodyFatPercentage
+    }
+    for (pt in overlaidHist) {
+      if (pt.day.isNotBlank() && pt.bodyFatPercentage != null) {
+        datedBfs[pt.day] = pt.bodyFatPercentage
+      }
+    }
+    if (hasCurrentDayBf) {
+      datedBfs[today] = overlaidCtx.todayBodyFatPercentage!!
+    }
+    val seedBf = if (hasCurrentDayBf) {
+      overlaidCtx.todayBodyFatPercentage
+    } else {
+      datedBfs.values.lastOrNull() ?: overlaidCtx.lastBodyFatPercentage
+    }
+    val targetBf = activeRejection?.bodyFatPercentage ?: seedBf
+    if (targetBf != null) {
+      _hasBodyFatSeed.value = true
+      if (!userEditedBodyFat) {
+        _draftBodyFat.value = clampBodyFat(targetBf)
+      }
+    } else if (!userEditedBodyFat) {
+      _hasBodyFatSeed.value = false
+      _draftBodyFat.value = 18.0
+    }
+  }
+
   fun handleAck(status: String) {
     _syncState.value = if (status == "failed") SyncState.FAILED else SyncState.SAVED
+  }
+
+  private fun persistPendingMedications() {
+    try {
+      val arr = JSONArray()
+      for (m in pendingMedicationTaps) {
+        val obj = JSONObject()
+          .put("id", m.id)
+          .put("doseId", m.doseId)
+          .put("medicationId", m.medicationId)
+          .put("scheduleId", m.scheduleId)
+          .put("day", m.day)
+          .put("taken", m.taken)
+          .put("state", m.state.name)
+          .put("ownerId", m.ownerId)
+        if (m.baselineGeneratedAtMs != null) {
+          obj.put("baselineGeneratedAtMs", m.baselineGeneratedAtMs)
+        }
+        if (m.baselineStatus != null) {
+          obj.put("baselineStatus", m.baselineStatus.name)
+        }
+        if (m.hasSupersededInFlight) {
+          obj.put("hasSupersededInFlight", true)
+        }
+        if (m.superseded) {
+          obj.put("superseded", true)
+        }
+        arr.put(obj)
+      }
+      prefs.edit().putString("pending_med_taps", arr.toString()).apply()
+    } catch (_: Throwable) {}
+  }
+
+  private fun persistPendingWeight() {
+    try {
+      val editor = prefs.edit()
+      if (pendingWeightCheckIns.isEmpty()) {
+        editor.remove("pending_weight_checkin")
+      } else {
+        val arr = JSONArray()
+        for (cur in pendingWeightCheckIns) {
+          val obj = JSONObject()
+            .put("id", cur.id)
+            .put("day", cur.day)
+            .put("weightKg", cur.weightKg)
+            .put("state", cur.state.name)
+            .put("ownerId", cur.ownerId)
+          if (cur.bodyFatPercentage != null) {
+            obj.put("bodyFatPercentage", cur.bodyFatPercentage)
+          }
+          if (cur.baselineGeneratedAtMs != null) {
+            obj.put("baselineGeneratedAtMs", cur.baselineGeneratedAtMs)
+          }
+          if (cur.baselineWeightKg != null) {
+            obj.put("baselineWeightKg", cur.baselineWeightKg)
+          }
+          if (cur.baselineBodyFatPercentage != null) {
+            obj.put("baselineBodyFatPercentage", cur.baselineBodyFatPercentage)
+          }
+          if (cur.hasSupersededInFlight) {
+            obj.put("hasSupersededInFlight", true)
+          }
+          if (cur.superseded) {
+            obj.put("superseded", true)
+          }
+          if (cur.inheritedBodyFatPercentage != null) {
+            obj.put("inheritedBodyFatPercentage", cur.inheritedBodyFatPercentage)
+          }
+          arr.put(obj)
+        }
+        editor.putString("pending_weight_checkin", arr.toString())
+      }
+      if (failedWeightDays.isEmpty()) {
+        editor.remove("failed_weight_days")
+      } else {
+        val failedArr = JSONArray()
+        for (d in failedWeightDays) {
+          failedArr.put(d)
+        }
+        editor.putString("failed_weight_days", failedArr.toString())
+      }
+      val rej = rejectedWeightDraft
+      if (rej == null) {
+        editor.remove("rejected_weight_draft")
+      } else {
+        val rejObj = JSONObject()
+          .put("day", rej.day)
+          .put("weightKg", rej.weightKg)
+          .put("omittedBodyFat", rej.omittedBodyFat)
+          .put("ownerId", rej.ownerId)
+        if (rej.bodyFatPercentage != null) {
+          rejObj.put("bodyFatPercentage", rej.bodyFatPercentage)
+        }
+        editor.putString("rejected_weight_draft", rejObj.toString())
+      }
+      editor.apply()
+    } catch (_: Throwable) {}
+  }
+
+  private fun restorePersistedPendingEdits() {
+    val persistedOwner = prefs.getString("context_owner_id", null)?.takeIf { it.isNotEmpty() }
+    if (persistedOwner == null) {
+      prefs.edit()
+        .remove("pending_med_taps")
+        .remove("pending_weight_checkin")
+        .remove("failed_weight_days")
+        .remove("rejected_weight_draft")
+        .apply()
+      return
+    }
+    val today = CheckInDate.today()
+    try {
+      val medRaw = prefs.getString("pending_med_taps", null)
+      if (!medRaw.isNullOrBlank()) {
+        val arr = JSONArray(medRaw)
+        val meds = mutableListOf<PendingMedicationRecord>()
+        for (i in 0 until arr.length()) {
+          val o = arr.optJSONObject(i) ?: continue
+          val day = o.optString("day")
+          val itemOwner = o.optString("ownerId", "")
+          val state = try {
+            SyncState.valueOf(o.optString("state", "QUEUED"))
+          } catch (_: Throwable) {
+            SyncState.QUEUED
+          }
+          if (day.isBlank() || itemOwner != persistedOwner || (day != today && state != SyncState.QUEUED)) continue
+          val medBaseGenMs = if (o.has("baselineGeneratedAtMs") && !o.isNull("baselineGeneratedAtMs")) {
+            o.optLong("baselineGeneratedAtMs")
+          } else {
+            null
+          }
+          val medBaseStatus = o.optStringOrNull("baselineStatus")?.let { rawSt ->
+            try {
+              MedicationDoseStatus.valueOf(rawSt)
+            } catch (_: Throwable) {
+              null
+            }
+          }
+          meds.add(
+            PendingMedicationRecord(
+              id = o.optString("id"),
+              doseId = o.optString("doseId"),
+              medicationId = o.optString("medicationId"),
+              scheduleId = o.optString("scheduleId"),
+              day = day,
+              taken = o.optBoolean("taken", true),
+              state = state,
+              ownerId = itemOwner,
+              baselineGeneratedAtMs = medBaseGenMs,
+              baselineStatus = medBaseStatus,
+              hasSupersededInFlight = o.optBoolean("hasSupersededInFlight", false),
+              superseded = o.optBoolean("superseded", false)
+            )
+          )
+        }
+        pendingMedicationTaps = meds
+        if (meds.size != arr.length()) {
+          persistPendingMedications()
+        }
+      }
+    } catch (_: Throwable) {}
+    try {
+      val failedRaw = prefs.getString("failed_weight_days", null)
+      if (!failedRaw.isNullOrBlank()) {
+        val arr = JSONArray(failedRaw)
+        val days = mutableSetOf<String>()
+        for (i in 0 until arr.length()) {
+          val d = arr.optString(i)
+          if (d.isNotBlank()) days.add(d)
+        }
+        failedWeightDays = days
+      }
+    } catch (_: Throwable) {}
+    try {
+      val rejRaw = prefs.getString("rejected_weight_draft", null)
+      if (!rejRaw.isNullOrBlank()) {
+        val o = JSONObject(rejRaw)
+        val day = o.optString("day")
+        val itemOwner = o.optString("ownerId", "")
+        val weightKg = o.optDouble("weightKg", 0.0)
+        if (day == today && itemOwner == persistedOwner && weightKg > 0.0) {
+          val bf = o.optDoubleOrNull("bodyFatPercentage")
+          val omittedBf = o.optBoolean("omittedBodyFat", bf == null)
+          rejectedWeightDraft = RejectedWeightDraft(
+            day = day,
+            weightKg = weightKg,
+            bodyFatPercentage = bf,
+            omittedBodyFat = omittedBf,
+            ownerId = itemOwner
+          )
+        } else {
+          prefs.edit().remove("rejected_weight_draft").apply()
+        }
+      }
+    } catch (_: Throwable) {}
+    try {
+      val weightRaw = prefs.getString("pending_weight_checkin", null)
+      if (!weightRaw.isNullOrBlank()) {
+        val trimmed = weightRaw.trim()
+        val rawItems = mutableListOf<JSONObject>()
+        if (trimmed.startsWith("[")) {
+          val arr = JSONArray(trimmed)
+          for (i in 0 until arr.length()) {
+            arr.optJSONObject(i)?.let { rawItems.add(it) }
+          }
+        } else {
+          rawItems.add(JSONObject(trimmed))
+        }
+        val restored = mutableListOf<PendingWeightRecord>()
+        for (o in rawItems) {
+          val day = o.optString("day")
+          val itemOwner = o.optString("ownerId", "")
+          val weightKg = o.optDouble("weightKg", 0.0)
+          val state = try {
+            SyncState.valueOf(o.optString("state", "QUEUED"))
+          } catch (_: Throwable) {
+            SyncState.QUEUED
+          }
+          val retainable = state == SyncState.QUEUED || CheckInDate.daysBetween(day, today) <= 90
+          if (day.isNotBlank() && itemOwner == persistedOwner && weightKg > 0.0 && retainable) {
+            val baseGenMs = if (o.has("baselineGeneratedAtMs") && !o.isNull("baselineGeneratedAtMs")) {
+              o.optLong("baselineGeneratedAtMs")
+            } else {
+              null
+            }
+            restored.add(
+              PendingWeightRecord(
+                id = o.optString("id"),
+                day = day,
+                weightKg = weightKg,
+                bodyFatPercentage = o.optDoubleOrNull("bodyFatPercentage"),
+                state = state,
+                ownerId = itemOwner,
+                baselineGeneratedAtMs = baseGenMs,
+                baselineWeightKg = o.optDoubleOrNull("baselineWeightKg"),
+                baselineBodyFatPercentage = o.optDoubleOrNull("baselineBodyFatPercentage"),
+                hasSupersededInFlight = o.optBoolean("hasSupersededInFlight", false),
+                superseded = o.optBoolean("superseded", false),
+                inheritedBodyFatPercentage = o.optDoubleOrNull("inheritedBodyFatPercentage")
+              )
+            )
+          }
+        }
+        pendingWeightCheckIns = restored
+        if (restored.size != rawItems.size) {
+          persistPendingWeight()
+        }
+      }
+    } catch (_: Throwable) {}
+    recomputeWeightSyncState()
   }
 
   private fun persistPendingWater() {
@@ -957,6 +1820,332 @@ class CheckInStore(private val context: Context) {
   private fun clampBodyFat(value: Double): Double {
     val clamped = max(2.0, min(65.0, value))
     return (clamped * 10.0).roundToInt() / 10.0
+  }
+
+  companion object {
+    internal fun resolveEnabledPage(preferred: WatchPage, enabled: List<WatchPage>): WatchPage =
+      if (enabled.contains(preferred)) {
+        preferred
+      } else {
+        enabled.firstOrNull() ?: WatchPage.GOALS
+      }
+
+    internal fun resolveExercisePage(enabled: List<WatchPage>): WatchPage = when {
+      enabled.contains(WatchPage.WORKOUT) -> WatchPage.WORKOUT
+      enabled.contains(WatchPage.STEPS) -> WatchPage.STEPS
+      else -> enabled.firstOrNull() ?: WatchPage.GOALS
+    }
+
+    internal fun resolveWeightPage(enabled: List<WatchPage>): WatchPage = when {
+      enabled.contains(WatchPage.ENTRY) -> WatchPage.ENTRY
+      enabled.contains(WatchPage.TREND) -> WatchPage.TREND
+      else -> enabled.firstOrNull() ?: WatchPage.GOALS
+    }
+
+    internal fun resolveNavigationPage(preferred: WatchPage, enabled: List<WatchPage>): WatchPage = when (preferred) {
+      WatchPage.WORKOUT -> resolveExercisePage(enabled)
+      WatchPage.ENTRY -> resolveWeightPage(enabled)
+      else -> resolveEnabledPage(preferred, enabled)
+    }
+
+    internal data class MedicationAckOutcome(
+      val records: List<PendingMedicationRecord>,
+      val matchedRecord: PendingMedicationRecord?,
+      val clearFailureForDose: Boolean,
+      val markFailedForDose: Boolean
+    )
+
+    internal fun appendQueuedMedicationRecord(
+      existing: List<PendingMedicationRecord>,
+      next: PendingMedicationRecord
+    ): List<PendingMedicationRecord> {
+      val marked = existing.map { rec ->
+        if (rec.day == next.day && rec.doseId == next.doseId && rec.state == SyncState.QUEUED && !rec.superseded) {
+          rec.copy(superseded = true)
+        } else {
+          rec
+        }
+      }
+      val sameDoseSuperseded = marked.filter {
+        it.day == next.day && it.doseId == next.doseId && it.state == SyncState.QUEUED && it.superseded
+      }
+      val dropIds = if (sameDoseSuperseded.size > 4) {
+        sameDoseSuperseded.take(sameDoseSuperseded.size - 4).map { it.id }.toSet()
+      } else {
+        emptySet()
+      }
+      return marked.filterNot { dropIds.contains(it.id) } + next
+    }
+
+    internal fun applyMedicationAcknowledgement(
+      existing: List<PendingMedicationRecord>,
+      clientId: String,
+      ok: Boolean
+    ): MedicationAckOutcome {
+      val idx = existing.indexOfFirst { it.id == clientId }
+      if (idx < 0) {
+        return MedicationAckOutcome(existing, matchedRecord = null, clearFailureForDose = false, markFailedForDose = false)
+      }
+      val list = existing.toMutableList()
+      val rec = list[idx]
+      val hasNewerForDose = (idx + 1 until list.size).any {
+        list[it].day == rec.day && list[it].doseId == rec.doseId
+      }
+      return if (ok) {
+        val wasSaved = rec.state == SyncState.SAVED
+        val hasNewerSaved = (idx + 1 until list.size).any {
+          list[it].day == rec.day && list[it].doseId == rec.doseId && list[it].state == SyncState.SAVED
+        }
+        if (hasNewerSaved) {
+          list.removeAt(idx)
+        } else {
+          val accepted = rec.copy(state = SyncState.SAVED, superseded = false)
+          list[idx] = accepted
+          for (i in idx - 1 downTo 0) {
+            if (list[i].day == accepted.day && list[i].doseId == accepted.doseId) {
+              list.removeAt(i)
+            }
+          }
+        }
+        MedicationAckOutcome(
+          records = list,
+          matchedRecord = rec,
+          clearFailureForDose = !wasSaved && !rec.superseded && !hasNewerForDose,
+          markFailedForDose = false
+        )
+      } else {
+        list.removeAt(idx)
+        MedicationAckOutcome(
+          records = list,
+          matchedRecord = rec,
+          clearFailureForDose = false,
+          markFailedForDose = !rec.superseded && !hasNewerForDose
+        )
+      }
+    }
+
+    internal fun effectiveMedicationRecordsByDose(
+      retained: List<PendingMedicationRecord>,
+      day: String
+    ): Map<String, PendingMedicationRecord> =
+      retained
+        .filter { it.day == day && !(it.state == SyncState.QUEUED && it.superseded) }
+        .sortedBy { if (it.state == SyncState.SAVED) 0 else 1 }
+        .associateBy { it.doseId }
+
+    internal data class WeightAckOutcome(
+      val records: List<PendingWeightRecord>,
+      val matched: PendingWeightRecord?,
+      val clearFailureForDay: Boolean,
+      val markFailedForDay: Boolean
+    )
+
+    internal fun appendQueuedWeightRecord(
+      existing: List<PendingWeightRecord>,
+      next: PendingWeightRecord
+    ): List<PendingWeightRecord> {
+      val marked = existing.map { rec ->
+        if (rec.day == next.day && rec.state == SyncState.QUEUED && !rec.superseded) {
+          rec.copy(superseded = true)
+        } else {
+          rec
+        }
+      }
+      val sameDaySuperseded = marked.filter { it.day == next.day && it.state == SyncState.QUEUED && it.superseded }
+      val dropIds = if (sameDaySuperseded.size > 4) {
+        sameDaySuperseded.take(sameDaySuperseded.size - 4).map { it.id }.toSet()
+      } else {
+        emptySet()
+      }
+      return marked.filterNot { dropIds.contains(it.id) } + next
+    }
+
+    internal fun applyWeightAcknowledgement(
+      existing: List<PendingWeightRecord>,
+      clientId: String,
+      ok: Boolean
+    ): WeightAckOutcome {
+      val idx = existing.indexOfFirst { it.id == clientId }
+      if (idx < 0) {
+        return WeightAckOutcome(existing, null, clearFailureForDay = false, markFailedForDay = false)
+      }
+      val list = existing.toMutableList()
+      val rec = list[idx]
+      val hasNewerForDay = (idx + 1 until list.size).any { list[it].day == rec.day }
+      return if (ok) {
+        val wasSaved = rec.state == SyncState.SAVED
+        val newerSavedRel = (idx + 1 until list.size).indexOfFirst {
+          list[it].day == rec.day && list[it].state == SyncState.SAVED
+        }
+        if (newerSavedRel >= 0) {
+          val newerSavedIdx = idx + 1 + newerSavedRel
+          val newer = list[newerSavedIdx]
+          val candidateBf = rec.bodyFatPercentage ?: rec.inheritedBodyFatPercentage
+          if (newer.bodyFatPercentage == null && newer.inheritedBodyFatPercentage == null && candidateBf != null) {
+            list[newerSavedIdx] = newer.copy(inheritedBodyFatPercentage = candidateBf)
+          }
+          list.removeAt(idx)
+        } else {
+          val priorSavedBf = list.subList(0, idx)
+            .lastOrNull { it.day == rec.day && it.state == SyncState.SAVED }
+            ?.let { it.bodyFatPercentage ?: it.inheritedBodyFatPercentage }
+          val inheritedBf = if (rec.bodyFatPercentage == null) {
+            rec.inheritedBodyFatPercentage ?: priorSavedBf
+          } else {
+            null
+          }
+          val accepted = rec.copy(
+            state = SyncState.SAVED,
+            superseded = false,
+            inheritedBodyFatPercentage = inheritedBf
+          )
+          list[idx] = accepted
+          for (i in idx - 1 downTo 0) {
+            if (list[i].day == accepted.day) {
+              list.removeAt(i)
+            }
+          }
+        }
+        WeightAckOutcome(
+          records = list,
+          matched = rec,
+          clearFailureForDay = !wasSaved && !rec.superseded && !hasNewerForDay,
+          markFailedForDay = false
+        )
+      } else {
+        list.removeAt(idx)
+        WeightAckOutcome(
+          records = list,
+          matched = rec,
+          clearFailureForDay = false,
+          markFailedForDay = !rec.superseded && !hasNewerForDay
+        )
+      }
+    }
+
+    internal fun orderWeightOverlayRecords(
+      unsettled: List<PendingWeightRecord>
+    ): List<PendingWeightRecord> =
+      unsettled
+        .filterNot { it.state == SyncState.QUEUED && it.superseded }
+        .sortedWith(
+          compareBy<PendingWeightRecord> { it.day }
+            .thenBy { if (it.state == SyncState.SAVED) 0 else 1 }
+        )
+
+    internal fun isQueuedMedicationRecordSettled(
+      rec: PendingMedicationRecord,
+      watchCtx: WatchContext,
+      snap: MedicationSnapshot?
+    ): Boolean {
+      if (watchCtx.ackedClientIds.contains(rec.id)) return true
+      if (rec.hasSupersededInFlight) return false
+      if (snap == null || rec.day != snap.day) return false
+      val serverDose = snap.doses.firstOrNull { it.id == rec.doseId } ?: return false
+      val expected = if (rec.taken) MedicationDoseStatus.TAKEN else MedicationDoseStatus.PENDING
+      val baseStatus = rec.baselineStatus ?: return false
+      return serverDose.status != baseStatus && serverDose.status == expected
+    }
+
+    internal fun isSavedMedicationRecordSettled(
+      rec: PendingMedicationRecord,
+      watchCtx: WatchContext,
+      snap: MedicationSnapshot?
+    ): Boolean {
+      if (watchCtx.ackedClientIds.contains(rec.id)) {
+        return true
+      }
+      if (rec.hasSupersededInFlight) {
+        return false
+      }
+      if (snap != null && rec.day == snap.day) {
+        val serverDose = snap.doses.firstOrNull { it.id == rec.doseId } ?: return true
+        val expected = if (rec.taken) MedicationDoseStatus.TAKEN else MedicationDoseStatus.PENDING
+        if (serverDose.status == expected) {
+          return true
+        }
+      }
+      return false
+    }
+
+    internal fun isQueuedWeightRecordSettled(
+      rec: PendingWeightRecord,
+      watchCtx: WatchContext,
+      history: List<HistoryPoint>
+    ): Boolean {
+      if (watchCtx.ackedClientIds.contains(rec.id)) return true
+      if (rec.hasSupersededInFlight) return false
+      val checkUnit = watchCtx.effectiveWeightUnit
+      val expectedBf = rec.bodyFatPercentage ?: rec.inheritedBodyFatPercentage
+      fun matchesServer(wKg: Double, bf: Double?): Boolean {
+        val wMatch = abs(checkUnit.displayedFromKg(wKg) - checkUnit.displayedFromKg(rec.weightKg)) < 0.05
+        val bfMatch = expectedBf == null ||
+          (bf != null && abs(bf - expectedBf) < 0.05)
+        return wMatch && bfMatch
+      }
+      val histPt = history.lastOrNull { it.day == rec.day } ?: return false
+      if (!matchesServer(histPt.weightKg, histPt.bodyFatPercentage)) return false
+      if (watchCtx.today == rec.day) {
+        val ctxWeight = watchCtx.todayWeightKg ?: return false
+        if (!matchesServer(ctxWeight, watchCtx.todayBodyFatPercentage)) return false
+      } else if (watchCtx.lastEntryDate == rec.day && watchCtx.lastWeightKg != null) {
+        if (!matchesServer(watchCtx.lastWeightKg, watchCtx.lastBodyFatPercentage)) return false
+      }
+      val curSnapDayWeight = if (watchCtx.today == rec.day) {
+        watchCtx.todayWeightKg ?: histPt.weightKg
+      } else {
+        histPt.weightKg
+      }
+      val curSnapDayBf = if (watchCtx.today == rec.day) {
+        watchCtx.todayBodyFatPercentage ?: histPt.bodyFatPercentage
+      } else {
+        histPt.bodyFatPercentage
+      }
+      val weightChangedFromBaseline = when {
+        rec.baselineWeightKg == null -> true
+        else -> abs(checkUnit.displayedFromKg(curSnapDayWeight) - checkUnit.displayedFromKg(rec.baselineWeightKg)) >= 0.05
+      }
+      val bfChangedFromBaseline = when {
+        rec.bodyFatPercentage == null -> false
+        rec.baselineBodyFatPercentage == null -> true
+        curSnapDayBf == null -> false
+        else -> abs(curSnapDayBf - rec.baselineBodyFatPercentage) >= 0.05
+      }
+      return weightChangedFromBaseline || bfChangedFromBaseline
+    }
+
+    internal fun isSavedWeightRecordSettled(
+      rec: PendingWeightRecord,
+      watchCtx: WatchContext,
+      history: List<HistoryPoint>
+    ): Boolean {
+      if (watchCtx.ackedClientIds.contains(rec.id)) {
+        return true
+      }
+      if (rec.hasSupersededInFlight) {
+        return false
+      }
+      val checkUnit = watchCtx.effectiveWeightUnit
+      val expectedBf = rec.bodyFatPercentage ?: rec.inheritedBodyFatPercentage
+      fun matchesServer(wKg: Double, bf: Double?): Boolean {
+        val wMatch = abs(checkUnit.displayedFromKg(wKg) - checkUnit.displayedFromKg(rec.weightKg)) < 0.05
+        val bfMatch = expectedBf == null ||
+          (bf != null && abs(bf - expectedBf) < 0.05)
+        return wMatch && bfMatch
+      }
+      val histPt = history.lastOrNull { it.day == rec.day }
+      return if (watchCtx.today == rec.day) {
+        watchCtx.todayWeightKg != null &&
+          matchesServer(watchCtx.todayWeightKg, watchCtx.todayBodyFatPercentage) &&
+          (histPt == null || matchesServer(histPt.weightKg, histPt.bodyFatPercentage))
+      } else {
+        histPt != null &&
+          matchesServer(histPt.weightKg, histPt.bodyFatPercentage) &&
+          (watchCtx.lastEntryDate != rec.day ||
+            watchCtx.lastWeightKg == null ||
+            matchesServer(watchCtx.lastWeightKg, watchCtx.lastBodyFatPercentage))
+      }
+    }
   }
 }
 
