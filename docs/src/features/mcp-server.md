@@ -99,7 +99,7 @@ The MCP server is served **in-process** by the main SparkyFitness server at `POS
 
 ## Connect a Remote Client with OAuth 2.1
 
-Remote MCP OAuth is off by default. It is intended for clients such as Claude.ai that discover the authorization server, open the normal SparkyFitness login and consent screens, and receive a user-scoped access token without asking you to paste an API key.
+Remote MCP OAuth is off by default. It is intended for clients such as Claude.ai and Gemini that discover the authorization server, open the normal SparkyFitness login and consent screens, and receive a user-scoped access token without asking you to paste an API key.
 
 ::: danger Full MCP access
 Approving an OAuth application gives it the full MCP tool set for your account, including tools that can create, update, or delete data. Check the application name and redirect destination on the consent screen, and approve only applications you trust. You can revoke an application later under **Settings → Connected MCP Applications**.
@@ -109,7 +109,7 @@ Approving an OAuth application gives it the full MCP tool set for your account, 
 
 - Your SparkyFitness instance must be reachable by the remote client over **public HTTPS** with a valid certificate. Plain HTTP is supported only for loopback development addresses such as `localhost` and `127.0.0.1`.
 - `BETTER_AUTH_URL` should be the same public origin users and MCP clients open, for example `https://fitness.example.com`. If it is unset, SparkyFitness uses `SPARKY_FITNESS_FRONTEND_URL`.
-- The client's OAuth callback must be in the administrator's redirect allowlist. SparkyFitness ships with Anthropic's documented callbacks (`https://claude.ai/api/mcp/auth_callback` and `https://claude.com/api/mcp/auth_callback`) plus explicit loopback-any-port patterns for desktop clients.
+- The client's OAuth callback must be in the administrator's redirect allowlist. SparkyFitness ships with Anthropic's documented callbacks (`https://claude.ai/api/mcp/auth_callback` and `https://claude.com/api/mcp/auth_callback`), Google's six Gemini callback patterns (`/r/*` and `/a/*` on `oauth-redirect`, `oauth-redirect-sandbox` and `oauth-redirect-test` `.googleusercontent.com`), and explicit loopback-any-port patterns for desktop clients such as Gemini CLI.
 
 If the configured public URL is missing, invalid, or plain HTTP on a non-loopback host, SparkyFitness keeps API-key MCP access working but does not install or advertise the OAuth endpoints. The Admin page shows the reason next to the switch.
 
@@ -117,7 +117,7 @@ If the configured public URL is missing, invalid, or plain HTTP on a non-loopbac
 
 1. Sign in as an administrator.
 2. Open **Admin → Authentication Settings → Login Management**.
-3. Review **Allowed OAuth redirect URIs**. Keep only callbacks used by clients you trust. Enter one exact URI or supported loopback pattern per line.
+3. Review **Allowed OAuth redirect URIs**. Keep only callbacks used by clients you trust. Enter one exact URI or supported pattern per line. An HTTPS URI ending in `/*` allows any path below it on that exact host; Gemini needs this because each Gemini app gets its own callback path.
 4. Enable **Remote MCP OAuth**.
 
 ### Connect Claude.ai or Claude Desktop
@@ -127,6 +127,26 @@ If the configured public URL is missing, invalid, or plain HTTP on a non-loopbac
 3. Choose OAuth sign-in or automatic OAuth client registration when prompted.
 4. Complete the SparkyFitness login and review the consent screen carefully.
 5. Select **Allow** only if the displayed application and redirect destination are expected.
+
+### Connect Gemini
+
+Gemini registers itself through dynamic client registration and uses the same login and consent screens. It registers all six of Google's callback addresses at once, and SparkyFitness refuses the registration unless every one is allowed. If even one is missing, Gemini's **Connect** button does nothing and clears the URL, with no error shown. The six patterns are:
+
+```text
+https://oauth-redirect.googleusercontent.com/r/*
+https://oauth-redirect-sandbox.googleusercontent.com/r/*
+https://oauth-redirect-test.googleusercontent.com/r/*
+https://oauth-redirect.googleusercontent.com/a/*
+https://oauth-redirect-sandbox.googleusercontent.com/a/*
+https://oauth-redirect-test.googleusercontent.com/a/*
+```
+
+They are allowed by default on new installs. On an existing install, the first server restart after upgrading adds them only if the allowlist was never edited. If you changed the list, paste all six in yourself.
+
+- **Gemini app:** add a custom MCP app with your public MCP URL, `https://<your-host>/mcp`, and choose OAuth when asked.
+- **Gemini CLI:** add the server to `settings.json` with `"httpUrl": "https://<your-host>/mcp"`. The CLI discovers OAuth on its own and uses a loopback callback, which the loopback patterns allow. Run `/mcp auth` if it does not open the login page.
+
+Like Claude, the Gemini app reaches the server from Google's infrastructure, so it needs a public HTTPS address.
 
 Claude's hosted connector reaches the server from Anthropic's infrastructure, including when you use Claude Desktop. A private LAN-only SparkyFitness address therefore cannot be used for this hosted connector. API-key access remains available for local clients.
 

@@ -368,7 +368,7 @@ const AuthenticationSettings: React.FC = () => {
                   <p className="text-sm text-muted-foreground">
                     {t(
                       'admin.authenticationSettings.mcpOAuthRedirectAllowlistDescription',
-                      'Enter one exact URI or loopback pattern per line. Use http://localhost:*, http://127.0.0.1:*, or http://[::1]:* to allow desktop clients on any local callback port.'
+                      'Enter one exact URI or pattern per line. Use http://localhost:*, http://127.0.0.1:*, or http://[::1]:* to allow desktop clients on any local callback port. An HTTPS URI ending in /* allows any path below it on that host, as Gemini needs (https://oauth-redirect.googleusercontent.com/r/*).'
                     )}
                   </p>
                   <Button
