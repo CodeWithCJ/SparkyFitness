@@ -92,7 +92,6 @@ import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useVerticalBar } from '../hooks/useVerticalBar';
 import { getActiveServerConfig } from '../services/storage';
 import {
-  restSecAfterLoggingSet,
   useActiveWorkoutStore,
   type ActiveSetPatch,
 } from '../stores/activeWorkoutStore';
@@ -122,7 +121,6 @@ import {
   SET_TYPE_OPTIONS,
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import { formatRest } from '../components/RestPeriodChip';
 import { resolveWarmupOptions } from '../utils/warmupSettings';
 import { useActiveWorkoutIntervalLifecycle } from '../hooks/useActiveWorkoutIntervalLifecycle';
 import { useActiveWorkoutDiscard } from '../hooks/useActiveWorkoutDiscard';
@@ -146,7 +144,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   );
   const startedAt = useActiveWorkoutStore((s) => s.startedAt);
   const completedSetIds = useActiveWorkoutStore((s) => s.completedSetIds);
-  const steps = useActiveWorkoutStore((s) => s.steps);
   const prSetIds = useActiveWorkoutStore((s) => s.prSetIds);
   const setRenderKeys = useActiveWorkoutStore((s) => s.setRenderKeys);
   const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
@@ -1110,9 +1107,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     enabled: focusMode,
     onFinish: handleCompleteSet,
   });
-  // The focus view logs a set from the active-set card, so its bar only shows
-  // while a rest runs or for a timed hold's Start hold.
-  const focusBarIdle = focusMode && !restRunning && hold.setId == null;
+  // The focus view logs a set (or starts a hold) from the active-set card, so
+  // its bar only shows while a rest runs.
+  const focusBarIdle = focusMode && !restRunning;
   const restBarVisible =
     (restRunning || activeSetId != null) &&
     hold.phase === 'idle' &&
@@ -1166,15 +1163,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       ? null
       : formatSetLoad(activeSetDescription, weightUnit, t);
 
-  // The focus view's Log set button names the rest that follows the set, and
-  // its back button reopens the last logged set so it can be edited in place.
-  // The rest logging the set would start, by the rule completeSet applies:
-  // none between back-to-back superset partners, before a drop set or after
-  // the final set.
-  const activeRestSec =
-    activeSetId != null
-      ? restSecAfterLoggingSet(session, steps, completedSetIds, activeSetId)
-      : null;
+  // The focus view's now banner reopens the last logged set to edit it in place.
   const lastLoggedSetId = Object.entries(completedSetIds).reduce<string | null>(
     (latest, [id, at]) =>
       latest == null || at > completedSetIds[latest] ? id : latest,
@@ -1194,19 +1183,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onUndo: () => handleUncomplete(lastLoggedSetId),
         }
       : null;
-  const focusReady = focusMode
-    ? {
-        restLabel:
-          activeRestSec != null && activeRestSec > 0
-            ? formatRest(activeRestSec)
-            : null,
-        onPreviousSet:
-          lastLoggedSetId != null
-            ? () => handleUncomplete(lastLoggedSetId)
-            : undefined,
-        onStartHold: hold.setId != null ? hold.start : undefined,
-      }
-    : undefined;
+  const focusNowBanner =
+    focusMode && lastLoggedSetId != null && activeSetDescription != null
+      ? {
+          exerciseName: activeSetDescription.exerciseName,
+          setNumber: activeSetDescription.setNumber,
+          setCount: activeSetDescription.setCount,
+          load: restNextSetText,
+          onPreviousSet: () => handleUncomplete(lastLoggedSetId),
+        }
+      : undefined;
 
   // The set the Set type menu / Set options page is open for.
   const setOptionsSet = (() => {
@@ -1482,6 +1468,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
             activeExerciseId={activeExerciseId}
             supersetBorders={focusSupersetBorders}
             hold={hold}
+            nowBanner={focusNowBanner}
             sessionId={sessionId}
             verifiedSourcePresetId={effectiveVerifiedSourcePresetId}
             historyScopeSettled={historyScopeSettled}
@@ -1631,7 +1618,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onResume={handleResumeRest}
           onCompleteSet={handleCompleteActiveSet}
           onPressBar={handlePressRestBar}
-          focusReady={focusReady}
+          focus={focusMode}
         />
       )}
 

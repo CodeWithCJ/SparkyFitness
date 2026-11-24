@@ -40,6 +40,8 @@ import {
 import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
 import ExerciseHeartRateChip from './ExerciseHeartRateChip';
 import FocusHoldPanel from './FocusHoldPanel';
+import FocusHoldReadyCard from './FocusHoldReadyCard';
+import FocusNowBanner, { type FocusNowBannerInfo } from './FocusNowBanner';
 import FocusPlateStrip from './FocusPlateStrip';
 import RestPeriodChip from './RestPeriodChip';
 import WorkoutNotesField from './WorkoutNotesField';
@@ -139,6 +141,11 @@ interface Props extends SetEditorProps, HistoryProps {
   supersetBorders: Map<string, SupersetBorder>;
   /** The timed hold in progress; its exercise's page becomes the hold screen. */
   hold: FocusHold;
+  /**
+   * The set the lifter is on, with the way back to the last logged set. Omit
+   * when nothing is logged yet: the banner stays hidden.
+   */
+  nowBanner?: FocusNowBannerInfo;
   getImageSource: GetImageSource;
   onPressOverflow: (entryId: string) => void;
   /** Adds an exercise; the strip ends with an Add tile. */
@@ -578,6 +585,26 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
       }
     />
   ) : undefined;
+  // Before the hold starts, its current-set card carries Start hold.
+  const holdReadyCard =
+    hold.phase === 'idle' &&
+    hold.setId != null &&
+    hold.entryId === exercise.id ? (
+      <FocusHoldReadyCard
+        setLabel={t('activeWorkout.focus.hold.setNumber', {
+          defaultValue: 'Set {{number}}',
+          number:
+            exercise.sets.findIndex((set) => String(set.id) === hold.setId) + 1,
+        })}
+        targetSec={hold.targetSec}
+        onChangeSeconds={(seconds) => {
+          if (hold.setId != null) {
+            setEditorProps.onCommitField(hold.setId, { duration: seconds });
+          }
+        }}
+        onStart={hold.start}
+      />
+    ) : undefined;
 
   return (
     <FocusScrollTargetContext.Provider value={scrollTargets}>
@@ -714,8 +741,9 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
           weightUnit={weightUnit}
           assumedSetValues={assumedSetValues}
           previousSets={previousSets}
-          holdSetId={holdHere ? hold.setId : null}
+          holdSetId={holdHere || holdReadyCard != null ? hold.setId : null}
           holdCard={holdCard}
+          holdReadyCard={holdReadyCard}
           {...setEditorProps}
         />
       </View>
@@ -765,6 +793,7 @@ function ActiveWorkoutFocusView({
   activeExerciseId,
   supersetBorders,
   hold,
+  nowBanner,
   getImageSource,
   onPressOverflow,
   onAddExercise,
@@ -947,6 +976,9 @@ function ActiveWorkoutFocusView({
         onSelect={handleSelectChip}
         onAdd={onAddExercise}
       />
+      {nowBanner != null && hold.phase === 'idle' && (
+        <FocusNowBanner {...nowBanner} />
+      )}
       <KeyboardAwareScrollView
         ref={scrollRef}
         className="flex-1"

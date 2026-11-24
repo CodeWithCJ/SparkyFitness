@@ -143,6 +143,7 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
     scrollRef,
     expandedSetKey,
     noteEditorEntryId,
+    nowBanner,
   }: any) => {
     // The real view owns the scroll view the screen's ref points at.
     React.useImperativeHandle(scrollRef, () => ({
@@ -209,6 +210,18 @@ jest.mock('../../src/components/ActiveWorkoutFocusView', () => {
           testID="focus-complete-last"
           onPress={() => onCompleteSet('301')}
         />
+        <Pressable
+          testID="focus-complete-102"
+          onPress={() => onCompleteSet('102')}
+        />
+        {nowBanner != null && (
+          <Pressable
+            testID="focus-now-banner"
+            onPress={nowBanner.onPreviousSet}
+          >
+            <Text>{`${nowBanner.exerciseName}|${nowBanner.setNumber}/${nowBanner.setCount}|${nowBanner.load}`}</Text>
+          </Pressable>
+        )}
         {children}
       </View>
     );
@@ -2136,6 +2149,30 @@ describe('ActiveWorkoutScreen focus view', () => {
       const { queryByTestId, queryByText } = renderScreen();
       expect(queryByTestId('rest-bar-body')).toBeNull();
       expect(queryByText('Log set')).toBeNull();
+    });
+
+    it('passes the now banner once a set is logged, and tapping it reopens that set', () => {
+      // Set 101 is already logged, so the banner names set 102 and goes back.
+      const { getByTestId, queryByTestId, getByText } = renderScreen();
+      expect(getByText(/^Bench Press\|2\/2\|/)).toBeTruthy();
+      expect(
+        useActiveWorkoutStore.getState().completedSetIds['101']
+      ).toBeDefined();
+
+      fireEvent.press(getByTestId('focus-now-banner'));
+      expect(
+        useActiveWorkoutStore.getState().completedSetIds['101']
+      ).toBeUndefined();
+      expect(queryByTestId('focus-now-banner')).toBeNull();
+    });
+
+    it('passes no now banner while nothing is logged', () => {
+      __resetActiveWorkoutStoreForTests();
+      const session = makeSession();
+      session.exercises[0].sets[0].completed_at = null;
+      useActiveWorkoutStore.getState().startWorkout(session);
+      const { queryByTestId } = renderScreen();
+      expect(queryByTestId('focus-now-banner')).toBeNull();
     });
 
     it('asks the view to show an exercise picked with "Do another exercise first"', () => {

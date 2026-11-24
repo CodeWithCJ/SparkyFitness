@@ -52,16 +52,11 @@ interface ActiveWorkoutRestBarProps {
   /** Taps on the bar outside its controls (the buttons claim their own). */
   onPressBar?: () => void;
   /**
-   * The focus view's ready bar: a back button (reopens the last logged set to
-   * edit it) beside a large Log set button that names the rest that follows.
-   * The resting state is unchanged.
+   * The focus view's bar: only the rest state is drawn (the timer is a card
+   * among the sets, so the footer is just Skip rest). Logging a set and
+   * starting a hold live on the active-set card.
    */
-  focusReady?: {
-    restLabel: string | null;
-    onPreviousSet?: () => void;
-    /** Set for a timed hold: the primary button starts it instead of logging. */
-    onStartHold?: () => void;
-  };
+  focus?: boolean;
 }
 
 /**
@@ -96,7 +91,7 @@ function ActiveWorkoutRestBar({
   onResume,
   onCompleteSet,
   onPressBar,
-  focusReady,
+  focus,
 }: ActiveWorkoutRestBarProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -106,7 +101,6 @@ function ActiveWorkoutRestBar({
     textMuted,
     trackColor,
     chromeBorder,
-    textPrimary,
     restColor,
     onRest,
   ] = useCSSVariable([
@@ -114,10 +108,9 @@ function ActiveWorkoutRestBar({
     '--color-text-muted',
     '--color-progress-track',
     '--color-chrome-border',
-    '--color-text-primary',
     '--color-rest',
     '--color-on-rest',
-  ]) as [string, string, string, string, string, string, string];
+  ]) as [string, string, string, string, string, string];
 
   // Lead-in beeps for the last seconds of the rest (the watch's Countdown
   // setting: Off, 3 or 5). The beep at zero is the rest-complete chime, which
@@ -132,78 +125,9 @@ function ActiveWorkoutRestBar({
     },
   });
 
-  if (state === 'ready' && focusReady != null) {
-    return (
-      <FooterActionBar>
-        <Pressable
-          testID="rest-bar-body"
-          onPress={onPressBar}
-          accessible={false}
-          className="flex-row items-center gap-2.5 pt-2"
-        >
-          <Pressable
-            onPress={focusReady.onPreviousSet}
-            disabled={focusReady.onPreviousSet == null}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: focusReady.onPreviousSet == null }}
-            accessibilityLabel={t('activeWorkout.focus.bar.previousSet', {
-              defaultValue: 'Previous set, edit in place',
-            })}
-            className={`h-14 w-14 items-center justify-center rounded-full bg-raised active:opacity-70 ${
-              focusReady.onPreviousSet == null ? 'opacity-40' : ''
-            }`}
-          >
-            <Icon name="chevron-back" size={26} color={textPrimary} />
-          </Pressable>
-          <Pressable
-            onPress={focusReady.onStartHold ?? onCompleteSet}
-            accessibilityRole="button"
-            accessibilityLabel={
-              focusReady.onStartHold != null
-                ? t('activeWorkout.focus.bar.startHold', {
-                    defaultValue: 'Start hold',
-                  })
-                : focusReady.restLabel != null
-                  ? t('activeWorkout.focus.bar.logSetRest', {
-                      defaultValue: 'Log set, rest {{duration}}',
-                      duration: focusReady.restLabel,
-                    })
-                  : t('activeWorkout.focus.bar.logSet', {
-                      defaultValue: 'Log set',
-                    })
-            }
-            className="h-14 flex-1 flex-row items-center justify-center gap-2.5 rounded-full active:opacity-80"
-            style={{ backgroundColor: accentPrimary }}
-          >
-            <Text className="text-xl font-bold text-white">
-              {focusReady.onStartHold != null
-                ? t('activeWorkout.focus.bar.startHold', {
-                    defaultValue: 'Start hold',
-                  })
-                : t('activeWorkout.focus.bar.logSet', {
-                    defaultValue: 'Log set',
-                  })}
-            </Text>
-            {focusReady.restLabel != null && (
-              <Text
-                className="text-base font-semibold text-white"
-                style={{ opacity: 0.75, fontVariant: ['tabular-nums'] }}
-              >
-                {t('restPeriod.rest', {
-                  defaultValue: 'Rest {{duration}}',
-                  duration: focusReady.restLabel,
-                })}
-              </Text>
-            )}
-          </Pressable>
-        </Pressable>
-      </FooterActionBar>
-    );
-  }
-
   // The focus view shows the timer as a card among the sets; the footer is
   // just the way out of the rest.
-  if (focusReady != null) {
+  if (focus) {
     return (
       <FooterActionBar>
         <Pressable

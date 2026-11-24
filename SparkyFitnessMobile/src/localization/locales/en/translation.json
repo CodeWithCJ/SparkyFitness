@@ -620,11 +620,10 @@
         "position": "Exercise {{position}} of {{total}}",
         "list": "Exercise list"
       },
-      "bar": {
-        "previousSet": "Previous set, edit in place",
-        "logSet": "Log set",
-        "logSetRest": "Log set, rest {{duration}}",
-        "startHold": "Start hold"
+      "now": {
+        "label": "Now · {{name}} · Set {{number}}/{{total}}",
+        "tapBack": "Tap: back",
+        "a11y": "Previous set, edit in place"
       },
       "hero": {
         "label": "Set {{setNumber}} of {{total}}",
@@ -678,7 +677,15 @@
         "tapToEnd": "Tap the ring to end. At 0 it keeps going until you tap.",
         "tapToEndOver": "Past the plan. Tap the ring when you are done to log the set.",
         "tapToStop": "Tap the ring to stop and log the set.",
-        "setNumber": "Set {{number}}"
+        "setNumber": "Set {{number}}",
+        "ready": "Ready",
+        "planWord": "plan",
+        "stopwatch": "stopwatch",
+        "timeSeconds": "Time (s)",
+        "timeInput": "Hold time in seconds",
+        "decreaseTime": "Decrease hold time",
+        "increaseTime": "Increase hold time",
+        "startHold": "Start hold"
       },
       "exercises": {
         "title": "Exercises",

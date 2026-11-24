@@ -113,6 +113,8 @@ interface Props {
   /** The set being held, and the hold card drawn in its place. */
   holdSetId?: string | null;
   holdCard?: React.ReactNode;
+  /** The card for the held set before it starts, drawn in the row's place (not while a rest runs). */
+  holdReadyCard?: React.ReactNode;
   /** The screen's keyboard focus (render key and field), as in the list. */
   focusedSetKey: string | null;
   focusedField: SetInputField;
@@ -935,6 +937,7 @@ function ActiveWorkoutFocusSets({
   expandedSetKey = null,
   holdSetId = null,
   holdCard,
+  holdReadyCard,
   focusedSetKey,
   focusedField,
   onActivateSet,
@@ -1288,7 +1291,9 @@ function ActiveWorkoutFocusSets({
         );
         return (
           <React.Fragment key={renderKey}>
-            {holdCard != null && holdSetId === setId ? holdCard : row}
+            {holdSetId === setId
+              ? (holdCard ?? (resting ? null : holdReadyCard) ?? row)
+              : row}
             {expandedSetKey === renderKey && (
               <ActiveWorkoutSetDetail
                 set={set}

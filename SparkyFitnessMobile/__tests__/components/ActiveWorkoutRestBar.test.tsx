@@ -262,65 +262,19 @@ describe('ActiveWorkoutRestBar', () => {
     });
   });
 
-  describe('focus ready bar', () => {
-    it('shows a back button and a Log set button that names the rest', () => {
-      const onPreviousSet = jest.fn();
-      const { getByLabelText, getByText, queryByText, props } = renderBar({
-        state: 'ready',
-        focusReady: { restLabel: '1:30', onPreviousSet },
-      });
-      expect(getByText('Log set')).toBeTruthy();
-      expect(getByText('Rest 1:30')).toBeTruthy();
-      // The on-deck row is replaced.
-      expect(queryByText('Incline DB Press · Set 3')).toBeNull();
-      fireEvent.press(getByLabelText('Log set, rest 1:30'));
-      expect(props.onCompleteSet).toHaveBeenCalledTimes(1);
-      fireEvent.press(getByLabelText('Previous set, edit in place'));
-      expect(onPreviousSet).toHaveBeenCalledTimes(1);
-    });
-
-    it('omits the rest text with no rest and disables back with nothing to reopen', () => {
-      const { getByLabelText, queryByText } = renderBar({
-        state: 'ready',
-        focusReady: { restLabel: null },
-      });
-      expect(queryByText(/^Rest /)).toBeNull();
-      expect(
-        getByLabelText('Previous set, edit in place').props.accessibilityState
-      ).toEqual({ disabled: true });
-    });
-
-    it('is docked even when Liquid Glass tabs are active, and the rest keeps its timer', () => {
+  describe('focus bar', () => {
+    it('is docked even when Liquid Glass tabs are active', () => {
       mockUseNativeIOSTabsActive.mockReturnValue(true);
-      const ready = renderBar({
-        state: 'ready',
-        focusReady: { restLabel: '1:00' },
-      });
-      expect(ready.queryByTestId('rest-bar-glass')).toBeNull();
-      ready.unmount();
-      const resting = renderBar({ focusReady: { restLabel: '1:00' } });
+      const resting = renderBar({ focus: true });
       expect(resting.queryByTestId('rest-bar-glass')).toBeNull();
       expect(resting.getByLabelText('Skip rest')).toBeTruthy();
     });
 
     it('while resting shows only Skip rest; the timer is the rest card', () => {
-      const { getByLabelText, queryByText, props } = renderBar({
-        focusReady: { restLabel: '1:00' },
-      });
+      const { getByLabelText, queryByText, props } = renderBar({ focus: true });
       expect(queryByText('0:45')).toBeNull();
       fireEvent.press(getByLabelText('Skip rest'));
       expect(props.onSkip).toHaveBeenCalled();
-    });
-
-    it('turns Log set into Start hold for a timed set', () => {
-      const onStartHold = jest.fn();
-      const { getByLabelText, props } = renderBar({
-        state: 'ready',
-        focusReady: { restLabel: '1:00', onStartHold },
-      });
-      fireEvent.press(getByLabelText('Start hold'));
-      expect(onStartHold).toHaveBeenCalled();
-      expect(props.onCompleteSet).not.toHaveBeenCalled();
     });
   });
 

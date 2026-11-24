@@ -113,7 +113,12 @@ jest.mock('../../src/components/ActiveWorkoutFocusSets', () => {
   const { Text } = require('react-native');
   return {
     __esModule: true,
-    default: function FocusSetsMock({ exercise, previousSets, holdCard }: any) {
+    default: function FocusSetsMock({
+      exercise,
+      previousSets,
+      holdCard,
+      holdReadyCard,
+    }: any) {
       // The real card / rest card attach this ref; fake a measured position.
       const { useContext } = require('react');
       const {
@@ -137,6 +142,7 @@ jest.mock('../../src/components/ActiveWorkoutFocusSets', () => {
         <>
           <Text testID="focus-sets">{`sets:${exercise.id}`}</Text>
           {holdCard}
+          {holdReadyCard}
           <Text testID="focus-previous-sets">
             {JSON.stringify(previousSets?.map((p: any) => p?.weight ?? null))}
           </Text>
@@ -270,6 +276,92 @@ describe('ActiveWorkoutFocusView', () => {
     expect(screen.getByTestId('focus-hold-panel')).toBeTruthy();
     expect(screen.getByText(/^Set 1 · Holding$/)).toBeTruthy();
     expect(screen.getByText('Plan 13s')).toBeTruthy();
+  });
+
+  it('draws Start hold in the current-set card before a timed hold starts', () => {
+    const start = jest.fn();
+    render(
+      viewElement('a', {
+        hold: {
+          ...IDLE_HOLD,
+          entryId: 'a',
+          setId: 'a-0',
+          targetSec: 45,
+          start,
+        },
+      })
+    );
+    expect(screen.getByTestId('focus-hold-ready')).toBeTruthy();
+    expect(screen.getByText(/^Set 1 · Ready$/)).toBeTruthy();
+    expect(screen.getByText('Plan 0:45')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Start hold'));
+    expect(start).toHaveBeenCalledTimes(1);
+  });
+
+  it('steps the planned hold length by 5 s through onCommitField', () => {
+    render(
+      viewElement('a', {
+        hold: { ...IDLE_HOLD, entryId: 'a', setId: 'a-0', targetSec: 45 },
+      })
+    );
+    fireEvent.press(screen.getByLabelText('Increase hold time'));
+    expect(handlers.onCommitField).toHaveBeenCalledWith('a-0', {
+      duration: 50,
+    });
+    fireEvent.press(screen.getByLabelText('Decrease hold time'));
+    expect(handlers.onCommitField).toHaveBeenCalledWith('a-0', {
+      duration: 40,
+    });
+  });
+
+  it('draws no ready card for a set that is not a timed hold', () => {
+    render(viewElement('a'));
+    expect(screen.queryByTestId('focus-hold-ready')).toBeNull();
+  });
+
+  it('shows the now banner and reopens the previous set on tap', () => {
+    const onPreviousSet = jest.fn();
+    render(
+      viewElement('a', {
+        nowBanner: {
+          exerciseName: 'Bench Press',
+          setNumber: 2,
+          setCount: 4,
+          load: '82.5 kg × 8',
+          onPreviousSet,
+        },
+      })
+    );
+    expect(screen.getByText('Now · Bench Press · Set 2/4')).toBeTruthy();
+    expect(screen.getByText('82.5 kg × 8')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Previous set, edit in place'));
+    expect(onPreviousSet).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides the now banner without one, and while a hold runs', () => {
+    const { rerender } = render(viewElement('a'));
+    expect(screen.queryByTestId('focus-now-banner')).toBeNull();
+    const nowBanner = {
+      exerciseName: 'Bench Press',
+      setNumber: 2,
+      setCount: 4,
+      load: null,
+      onPreviousSet: jest.fn(),
+    };
+    rerender(
+      viewElement('a', {
+        nowBanner,
+        hold: {
+          ...IDLE_HOLD,
+          phase: 'running',
+          entryId: 'a',
+          setId: 'a-0',
+          targetSec: 13,
+          startedAt: Date.now(),
+        },
+      })
+    );
+    expect(screen.queryByTestId('focus-now-banner')).toBeNull();
   });
 
   it('opens on the first exercise when nothing is active', () => {
