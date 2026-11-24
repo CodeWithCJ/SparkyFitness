@@ -1541,6 +1541,24 @@ class WearOsParityTest {
         )
         assertFalse(clippedConcentrationTile.doseRows.single().isDirectlyActionable)
 
+        // Clipped unrecognized unit with digits (e.g. "2.5 mmol" or "2 kBq" truncated on a long name) must fail closed,
+        // while a clipped detail whose complete recognized strength stays visible ("500 mg with food") remains actionable
+        val clippedMmol = MedicationDose("cm-1", "m1", "s1", "Potassium Chloride", "2.5 mmol", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedUnknownUnit = MedicationDose("cu-1", "m2", "s2", "Diagnostic Agent", "2 kBq", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedWithVisibleStrength = MedicationDose("cv-1", "m3", "s3", "Vitamin D", "500 mg with food", "08:00 AM", MedicationDoseStatus.PENDING)
+        assertFalse(
+            TileModels.buildMedicationsTileModel(MedicationSnapshot(day = today, doses = listOf(clippedMmol)))
+                .doseRows.single().isDirectlyActionable
+        )
+        assertFalse(
+            TileModels.buildMedicationsTileModel(MedicationSnapshot(day = today, doses = listOf(clippedUnknownUnit)))
+                .doseRows.single().isDirectlyActionable
+        )
+        assertTrue(
+            TileModels.buildMedicationsTileModel(MedicationSnapshot(day = today, doses = listOf(clippedWithVisibleStrength)))
+                .doseRows.single().isDirectlyActionable
+        )
+
         // Timezone rollback to April 7 with April 8 edit still queued must preserve April 7 base lastWeightKg (80 kg) over April 6 history (81 kg)
         val rollbackBaseCtx = WatchContext(
             today = "2026-04-08",

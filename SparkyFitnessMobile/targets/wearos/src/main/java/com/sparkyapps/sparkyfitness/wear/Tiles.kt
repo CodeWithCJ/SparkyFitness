@@ -418,13 +418,18 @@ object TileModels {
       val detailText = rightParts.joinToString(" · ").ifBlank { dose.status.rawValue }
       val (compactName, nameStrengthIntact) = compactDoseNameWithSafety(dose.name)
       val (visibleDetailPrefix, unclippedChars) = visiblePillRowDetail(compactName, detailText)
-      val lastStrengthEnd = DETAIL_STRENGTH_REGEX.findAll(cleanDetail)
-        .lastOrNull()
-        ?.range
-        ?.last
-        ?.plus(1)
-        ?: 0
-      val detailStrengthIntact = lastStrengthEnd <= unclippedChars
+      val detailClipped = cleanDetail.length > unclippedChars
+      val clippedTailHasDigits = detailClipped && cleanDetail.drop(unclippedChars).any { it.isDigit() }
+      val strengthMatch = DETAIL_STRENGTH_REGEX.findAll(cleanDetail).lastOrNull()
+      val detailIsCountOnlyWithNamedStrength =
+        dose.name.any { it.isDigit() } && DOSAGE_COUNT_ONLY_REGEX.matches(cleanDetail)
+      val detailStrengthIntact = when {
+        !detailClipped -> true
+        clippedTailHasDigits -> false
+        strengthMatch != null -> strengthMatch.range.last + 1 <= unclippedChars
+        detailIsCountOnlyWithNamedStrength -> true
+        else -> cleanDetail.none { it.isDigit() }
+      }
       return FormattedDoseDisplay(
         name = compactName,
         detailText = detailText,
@@ -508,7 +513,11 @@ object TileModels {
 
   private const val SAFE_PILL_ROW_CHARS = 20
   private val DETAIL_STRENGTH_REGEX = Regex(
-    "\\d+(?:[.,]\\d+)?\\s*(?:%|(?:mcg|mg|ug|µg|g|iu|ml|l|meq|units?|u)\\b)(?:\\s*/\\s*(?:\\d+(?:[.,]\\d+)?(?:\\s*(?:%|[a-zµ]+\\b))?|(?:%|[a-zµ]+\\b)))*",
+    "\\d+(?:[.,]\\d+)?\\s*(?:%|(?:mcg|mg|ug|µg|g|iu|ml|l|mmol|mol|meq|units?|u)\\b)(?:\\s*/\\s*(?:\\d+(?:[.,]\\d+)?(?:\\s*(?:%|[a-zµ]+\\b))?|(?:%|[a-zµ]+\\b)))*",
+    RegexOption.IGNORE_CASE
+  )
+  private val DOSAGE_COUNT_ONLY_REGEX = Regex(
+    "^\\d+(?:\\.5|/[24])?\\s*(?:tabs?|tablets?|caps?|capsules?|pills?|softgels?|gummies?|gummy|lozenges?|chews?|patches?|puffs?|sprays?|drops?|sachets?|packets?|vials?|ampoules?|syringes?|injections?|doses?)\\.?$",
     RegexOption.IGNORE_CASE
   )
 
