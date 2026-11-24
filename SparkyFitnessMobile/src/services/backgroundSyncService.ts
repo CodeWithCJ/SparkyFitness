@@ -1,7 +1,9 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
+import type { FeatureChoicesResponse } from '@workspace/shared';
 import { registerAllOutboxHandlers } from '../offline/handlers';
 import { drainOutbox } from '../offline/syncEngine';
+import { accountGeneration as currentAccountGeneration } from '../offline/accountGeneration';
 import { remindAboutLongWaitingUploads } from '../offline/waitingReminder';
 import { AppState, Platform } from 'react-native';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
@@ -35,10 +37,20 @@ import {
   getActiveServerConfigId,
 } from './storage';
 import { queryClient } from '../hooks/queryClient';
+import { featureChoicesQueryKey } from '../hooks/queryKeys';
 import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
 import { isBackfillRunning, markSyncInFlight } from './autoSyncCoordinator';
 import { listMedications, listEntries } from './api/medicationsApi';
-import { reconcileMedicationReminders } from './medicationReminderService';
+import { fetchFeatureChoices } from './api/featureChoicesApi';
+import {
+  cancelMedicationRemindersOfOtherServers,
+  reconcileMedicationReminders,
+} from './medicationReminderService';
+import { retryPendingMedicationActions } from './medicationNotificationHandler';
+import {
+  medicationsFeatureState,
+  type MedicationsFeatureState,
+} from '../utils/medicationsFeatureState';
 import { getTodayDate } from '../utils/dateUtils';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
@@ -391,21 +403,8 @@ const runBackgroundSync = async (
         );
       }
 
-      // Reconcile medication reminders against fresh server schedules. With
-      // reminders disabled the fetches are skipped but the reconcile still runs
-      // so any pending reminders get cancelled.
       try {
-        const prefs = useAppPreferencesStore.getState();
-        const remindersActive =
-          prefs.medicationRemindersEnabled && prefs.notificationsEnabled;
-        const today = getTodayDate();
-        const [medications, entries] = remindersActive
-          ? await Promise.all([
-              listMedications({ activeOnly: true }),
-              listEntries({ fromDate: today, toDate: today }),
-            ])
-          : [[], []];
-        await reconcileMedicationReminders(medications, entries);
+        await reconcileMedicationRemindersInBackground();
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         await addLog(
@@ -418,6 +417,114 @@ const runBackgroundSync = async (
         healthReadProvider.cancelWaterDeletionRun?.(runId);
       }
     }
+  });
+};
+
+/**
+ * Whether a newer read of the feature choices than the one this run started at
+ * `readStartedAt` says something else about Medications: the app, running in
+ * the same JS runtime (a HealthKit observer run, or a manual sync), learned
+ * it meanwhile and reconciles the reminders itself. A headless run has an
+ * empty query cache, so its own read stands.
+ */
+const medicationsStateChangedSince = (
+  readStartedAt: number,
+  featureState: MedicationsFeatureState
+): boolean => {
+  const cached = queryClient.getQueryState<FeatureChoicesResponse | null>(
+    featureChoicesQueryKey
+  );
+  if (!cached || cached.data === undefined) return false;
+  if (cached.dataUpdatedAt <= readStartedAt) return false;
+  return medicationsFeatureState(cached.data) !== featureState;
+};
+
+/**
+ * Reconciles medication reminders against fresh server schedules. With
+ * reminders disabled the fetches are skipped but the reconcile still runs so
+ * any pending reminders get cancelled. Medications turned off in Settings →
+ * Features (#3487) cancels them the same way. When the choices cannot be read
+ * the active server's reminders are left exactly as they are: a run that
+ * cannot tell must not cancel reminders the person wants, nor bring back ones
+ * they turned off. Those of a server switched away from still stop, and
+ * waiting Taken / Skip presses are replayed. A reconcile is the last caller's
+ * (see `reconcileMedicationReminders`), so this run never reconciles on a
+ * state the app has read differently since: the app owns that one.
+ */
+const reconcileMedicationRemindersInBackground = async (): Promise<void> => {
+  const prefs = useAppPreferencesStore.getState();
+  if (!prefs.medicationRemindersEnabled || !prefs.notificationsEnabled) {
+    await reconcileMedicationReminders([], [], { active: false });
+    return;
+  }
+
+  // The passes below are bound to the account signed in now and to the
+  // server active now. One read before an account change (another server, or
+  // another account on the same one) is dropped when it reaches the queue,
+  // and one that runs after a switch to another server does nothing (an
+  // unreadable id binds nothing). The reads below follow whichever account
+  // is signed in when each one is sent, so the account is taken before them.
+  const accountGeneration = currentAccountGeneration();
+  let serverId: string | null | undefined;
+  try {
+    serverId =
+      typeof getActiveServerConfigId === 'function'
+        ? await getActiveServerConfigId()
+        : undefined;
+  } catch {
+    serverId = undefined;
+  }
+  const readStartedAt = Date.now();
+  let featureState: MedicationsFeatureState = 'unknown';
+  let readFailure = 'empty answer';
+  try {
+    featureState = medicationsFeatureState(await fetchFeatureChoices());
+  } catch (error) {
+    readFailure = error instanceof Error ? error.message : String(error);
+  }
+  if (featureState === 'unknown') {
+    await addLog(
+      `[Background Sync] Medication reminders left as they are: feature choices could not be read (${readFailure})`,
+      'WARNING'
+    );
+    // The reconcile that would replay waiting presses is not run; the replay
+    // checks whose they are and does nothing when none wait.
+    await retryPendingMedicationActions();
+    await cancelMedicationRemindersOfOtherServers();
+    return;
+  }
+
+  const deferToNewerRead = async (): Promise<boolean> => {
+    if (!medicationsStateChangedSince(readStartedAt, featureState)) {
+      return false;
+    }
+    await addLog(
+      '[Background Sync] Medication reminders left to the app: it read the feature choices again meanwhile',
+      'DEBUG'
+    );
+    return true;
+  };
+
+  if (featureState === 'off') {
+    if (await deferToNewerRead()) return;
+    await reconcileMedicationReminders([], [], {
+      active: false,
+      serverId,
+      accountGeneration,
+    });
+    return;
+  }
+
+  const today = getTodayDate();
+  const [medications, entries] = await Promise.all([
+    listMedications({ activeOnly: true }),
+    listEntries({ fromDate: today, toDate: today }),
+  ]);
+  if (await deferToNewerRead()) return;
+  await reconcileMedicationReminders(medications, entries, {
+    active: true,
+    serverId,
+    accountGeneration,
   });
 };
 

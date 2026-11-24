@@ -49,6 +49,7 @@ import {
   compareDays,
   addDays,
   instantToDay,
+  GLP1_CHECKIN_CATEGORY_NAMES,
 } from '@workspace/shared';
 import {
   useMedicationDisplayPreferences,
@@ -361,12 +362,12 @@ const MedicationReports = ({
     });
 
     // Custom Measurements for GLP-1 Check-ins
-    const hungerCat = customCategories.find((c) => c.name === 'GLP Hunger');
-    const foodNoiseCat = customCategories.find(
-      (c) => c.name === 'GLP Food Noise'
-    );
-    const fullnessCat = customCategories.find((c) => c.name === 'GLP Fullness');
-    const energyCat = customCategories.find((c) => c.name === 'GLP Energy');
+    const categoryNamed = (name: string) =>
+      customCategories.find((c) => c.name === name);
+    const hungerCat = categoryNamed(GLP1_CHECKIN_CATEGORY_NAMES.hunger);
+    const foodNoiseCat = categoryNamed(GLP1_CHECKIN_CATEGORY_NAMES.food_noise);
+    const fullnessCat = categoryNamed(GLP1_CHECKIN_CATEGORY_NAMES.fullness);
+    const energyCat = categoryNamed(GLP1_CHECKIN_CATEGORY_NAMES.energy);
 
     customMeasurementsData.forEach((m) => {
       const dStr = m.entry_date.split('T')[0];

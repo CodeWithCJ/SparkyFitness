@@ -17,7 +17,9 @@ import {
   dismissDeliveredChallengeWeekNotifications,
   enqueueChallengeWeekNotificationTask,
 } from '../../src/services/challengeWeekNotificationService';
+import { cancelMedicationRemindersForAccountChange } from '../../src/services/medicationReminderService';
 import { beginAccountChange } from '../../src/offline/accountGeneration';
+import { subscribeAccountChanged } from '../../src/offline/events';
 import { useGuidedCheckInStore } from '../../src/stores/guidedCheckInStore';
 import type { ServerConfig } from '../../src/services/storage';
 import { createTestQueryClient, createQueryWrapper } from './queryTestUtils';
@@ -80,6 +82,11 @@ jest.mock('../../src/offline/accountGeneration', () => {
     beginAccountChange: jest.fn(actual.beginAccountChange),
   };
 });
+jest.mock('../../src/services/medicationReminderService', () => ({
+  cancelMedicationRemindersForAccountChange: jest
+    .fn()
+    .mockResolvedValue(undefined),
+}));
 jest.mock('../../src/services/challengeWeekNotificationService', () => ({
   cancelChallengeWeekNotifications: jest.fn().mockResolvedValue(true),
   dismissDeliveredChallengeWeekNotifications: jest
@@ -285,6 +292,62 @@ describe('useAuth', () => {
     expect(enqueueChallengeWeekNotificationTask).toHaveBeenCalledTimes(1);
     expect(cancelChallengeWeekNotifications).toHaveBeenCalledTimes(1);
     expect(dismissDeliveredChallengeWeekNotifications).toHaveBeenCalledTimes(1);
+  });
+
+  test("identity changed callback cancels the previous account's medication reminders before it waits on the account change", async () => {
+    let finishAccountChange: () => void = () => {};
+    (beginAccountChange as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishAccountChange = resolve;
+        })
+    );
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    let done: Promise<void> = Promise.resolve();
+    act(() => {
+      done = identityChangedCb();
+    });
+
+    // Queued before the first await, so the new account's reconcile comes
+    // after it.
+    expect(cancelMedicationRemindersForAccountChange).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      finishAccountChange();
+      await done;
+    });
+  });
+
+  test('identity changed callback tells the app the account changed only once the cookies are cleared', async () => {
+    let finishCookieSweep: (cleared: boolean) => void = () => {};
+    mockClearAuthCookies.mockImplementationOnce(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finishCookieSweep = resolve;
+        })
+    );
+    const listener = jest.fn();
+    const unsubscribe = subscribeAccountChanged(listener);
+    renderUseAuth();
+    await act(async () => {});
+
+    const identityChangedCb = mockSetOnIdentityChanged.mock.calls[0][0];
+    let done: Promise<void> = Promise.resolve();
+    await act(async () => {
+      done = identityChangedCb();
+    });
+
+    // Still clearing the previous session's cookies: the reconciler must not
+    // read the new account yet.
+    expect(listener).not.toHaveBeenCalled();
+    await act(async () => {
+      finishCookieSweep(true);
+      await done;
+    });
+    expect(listener).toHaveBeenCalledTimes(1);
+    unsubscribe();
   });
 
   test('identity changed callback queues the challenge week cancel before it waits on the account change', async () => {

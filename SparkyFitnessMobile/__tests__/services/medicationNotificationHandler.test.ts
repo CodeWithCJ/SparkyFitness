@@ -2,9 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import {
+  clearSnoozedMedicationReminders,
   initMedicationNotificationActions,
   MEDICATION_NOTIFICATION_TASK_NAME,
   PENDING_MEDICATION_NOTIFICATION_ACTIONS_KEY,
+  removeSnoozedMedicationReminders,
+  syncSnoozedMedicationReminders,
 } from '../../src/services/medicationNotificationHandler';
 import {
   addNotificationResponseListener,
@@ -824,5 +827,295 @@ describe('logging a dose from a notification action', () => {
         Platform.OS = prevOS;
       }
     });
+  });
+});
+
+describe('forgetting snooze records (#3487)', () => {
+  const SNOOZED_KEY = 'snoozed_medication_reminders';
+  const record = (baseKey: string) => ({
+    baseKey,
+    entryDate: '2026-07-28',
+    doses: [{ medicationId: 'med-1', scheduleId: 'sched-1' }],
+  });
+  const storedKeys = async () =>
+    (
+      JSON.parse((await AsyncStorage.getItem(SNOOZED_KEY)) ?? '[]') as {
+        baseKey: string;
+      }[]
+    ).map((item) => item.baseKey);
+
+  // A snooze pressed on a reminder, through the handler's own path.
+  const snoozeThroughTheHandler = async (baseKey: string) => {
+    if (!registeredTaskExecutor) {
+      throw new Error('background notification task executor not registered');
+    }
+    (
+      Notifications.getAllScheduledNotificationsAsync as jest.Mock
+    ).mockResolvedValue([]);
+    await registeredTaskExecutor({
+      data: {
+        actionIdentifier: MEDICATION_SNOOZE_ACTION,
+        notification: {
+          request: {
+            identifier: `notif-${baseKey}`,
+            content: {
+              title: 'Medication reminder',
+              body: 'Scheduled dose: Metformin (500 mg)',
+              categoryIdentifier: 'medication-reminder',
+              data: {
+                medicationId: 'med-1',
+                scheduleId: 'sched-1',
+                entryDate: '2026-07-28',
+                key: baseKey,
+                baseKey,
+              },
+            },
+          },
+        },
+      },
+      error: null,
+    });
+  };
+
+  afterEach(async () => {
+    jest.restoreAllMocks();
+    await AsyncStorage.removeItem(SNOOZED_KEY);
+  });
+
+  it('says so when a removal cannot be written, and tries it again on the next call', async () => {
+    await AsyncStorage.setItem(
+      SNOOZED_KEY,
+      JSON.stringify([record('slot-a'), record('slot-b')])
+    );
+    jest
+      .spyOn(AsyncStorage, 'setItem')
+      .mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(removeSnoozedMedicationReminders(['slot-a'])).resolves.toBe(
+      false
+    );
+    expect(await storedKeys()).toEqual(['slot-a', 'slot-b']);
+
+    // No snoozed copy is left to name it, so the next call (here with no
+    // keys of its own) removes it.
+    await expect(removeSnoozedMedicationReminders([])).resolves.toBe(true);
+    expect(await storedKeys()).toEqual(['slot-b']);
+  });
+
+  it('says so when the records cannot be cleared', async () => {
+    await AsyncStorage.setItem(SNOOZED_KEY, JSON.stringify([record('slot-a')]));
+    jest
+      .spyOn(AsyncStorage, 'removeItem')
+      .mockRejectedValueOnce(new Error('disk full'));
+
+    await expect(clearSnoozedMedicationReminders()).resolves.toBe(false);
+    await expect(clearSnoozedMedicationReminders()).resolves.toBe(true);
+    expect(await AsyncStorage.getItem(SNOOZED_KEY)).toBeNull();
+  });
+
+  it('leaves the records a failed clear held out of the next reconcile, and drops them there', async () => {
+    await AsyncStorage.setItem(SNOOZED_KEY, JSON.stringify([record('slot-a')]));
+    jest
+      .spyOn(AsyncStorage, 'removeItem')
+      .mockRejectedValueOnce(new Error('disk full'));
+    await expect(clearSnoozedMedicationReminders()).resolves.toBe(false);
+    expect(await storedKeys()).toEqual(['slot-a']);
+
+    // Reminders back on before another full cancel: the dose is scheduled
+    // again rather than kept silent by its old snooze record.
+    const snoozed = await syncSnoozedMedicationReminders(
+      '2026-07-28',
+      new Set(['slot-a'])
+    );
+
+    expect(snoozed.has('slot-a')).toBe(false);
+    expect(await AsyncStorage.getItem(SNOOZED_KEY)).toBeNull();
+  });
+
+  it('keeps a record snoozed again after a failed clear', async () => {
+    await AsyncStorage.setItem(SNOOZED_KEY, JSON.stringify([record('slot-a')]));
+    jest
+      .spyOn(AsyncStorage, 'removeItem')
+      .mockRejectedValueOnce(new Error('disk full'));
+    await expect(clearSnoozedMedicationReminders()).resolves.toBe(false);
+
+    // The same slot is snoozed again: that record is a real one.
+    await AsyncStorage.setItem(SNOOZED_KEY, '[]');
+    await snoozeThroughTheHandler('slot-a');
+
+    const snoozed = await syncSnoozedMedicationReminders(
+      '2026-07-28',
+      new Set(['slot-a'])
+    );
+    expect(snoozed.has('slot-a')).toBe(true);
+    expect(await storedKeys()).toEqual(['slot-a']);
+  });
+
+  it('keeps a record snoozed again while a removal waited for the lock', async () => {
+    // slot-a's removal could not be written, so slot-a waits to be removed.
+    await AsyncStorage.setItem(SNOOZED_KEY, JSON.stringify([record('slot-a')]));
+    jest
+      .spyOn(AsyncStorage, 'removeItem')
+      .mockRejectedValueOnce(new Error('disk full'));
+    await expect(removeSnoozedMedicationReminders(['slot-a'])).resolves.toBe(
+      false
+    );
+    jest.restoreAllMocks();
+
+    // Another snooze holds the lock (its read is slow) while slot-a is snoozed
+    // again and a removal of another server's copies is asked for.
+    const getItem = AsyncStorage.getItem as unknown as jest.Mock;
+    const original = getItem.getMockImplementation()!;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    let lockHeld = false;
+    getItem.mockImplementation(async (key: string) => {
+      if (key === SNOOZED_KEY && !lockHeld) {
+        lockHeld = true;
+        await gate;
+      }
+      return original(key);
+    });
+    const nextMacrotask = () => new Promise((resolve) => setImmediate(resolve));
+    const until = async (arrived: () => boolean, what: string) => {
+      for (let i = 0; i < 200 && !arrived(); i += 1) await nextMacrotask();
+      if (!arrived()) throw new Error(`never reached: ${what}`);
+    };
+    const copiesScheduled = (baseKey: string) =>
+      (Notifications.scheduleNotificationAsync as jest.Mock).mock.calls.filter(
+        ([request]) => request?.content?.data?.baseKey === baseKey
+      ).length;
+
+    const other = snoozeThroughTheHandler('slot-z');
+    await until(() => lockHeld, 'slot-z holding the lock');
+    const copiesBefore = copiesScheduled('slot-a');
+    const again = snoozeThroughTheHandler('slot-a');
+    // The snooze schedules its copy and then records it, with only microtasks
+    // in between: once the copy is scheduled and those have run, its record
+    // is queued on the lock, ahead of the removal below.
+    await until(
+      () => copiesScheduled('slot-a') > copiesBefore,
+      "slot-a's snoozed copy"
+    );
+    await nextMacrotask();
+    const removal = removeSnoozedMedicationReminders([]);
+    release();
+    await Promise.all([other, again, removal]);
+    getItem.mockImplementation(original);
+
+    expect((await storedKeys()).sort()).toEqual(['slot-a', 'slot-z']);
+  });
+
+  describe('after a clear that could neither read nor write', () => {
+    const failTheClear = async () => {
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('locked'));
+      jest
+        .spyOn(AsyncStorage, 'removeItem')
+        .mockRejectedValueOnce(new Error('locked'));
+      await expect(clearSnoozedMedicationReminders()).resolves.toBe(false);
+      jest.restoreAllMocks();
+    };
+
+    it('leaves every stored record out of the next reconcile, and drops them there', async () => {
+      await AsyncStorage.setItem(
+        SNOOZED_KEY,
+        JSON.stringify([record('slot-a')])
+      );
+      await failTheClear();
+      expect(await storedKeys()).toEqual(['slot-a']);
+
+      const snoozed = await syncSnoozedMedicationReminders(
+        '2026-07-28',
+        new Set(['slot-a'])
+      );
+
+      expect(snoozed.has('slot-a')).toBe(false);
+      expect(await AsyncStorage.getItem(SNOOZED_KEY)).toBeNull();
+    });
+
+    it('finishes that clear when a new snooze is recorded', async () => {
+      await AsyncStorage.setItem(
+        SNOOZED_KEY,
+        JSON.stringify([record('slot-a')])
+      );
+      await failTheClear();
+
+      await snoozeThroughTheHandler('slot-b');
+
+      expect(await storedKeys()).toEqual(['slot-b']);
+      const snoozed = await syncSnoozedMedicationReminders(
+        '2026-07-28',
+        new Set(['slot-a', 'slot-b'])
+      );
+      expect([...snoozed]).toEqual(['slot-b']);
+    });
+  });
+
+  it.each([
+    ['nothing else snoozed', [] as Notifications.NotificationContent[]],
+    [
+      'another slot snoozed',
+      [
+        {
+          data: {
+            isSnoozed: 'true',
+            baseKey: 'slot-z',
+            entryDate: '2026-07-28',
+            medicationId: 'med-1',
+            scheduleId: 'sched-1',
+          },
+        } as unknown as Notifications.NotificationContent,
+      ],
+    ],
+  ])(
+    'keeps a record stale through a reconcile that could not read the records (%s)',
+    async (_label, activeSnoozes) => {
+      await AsyncStorage.setItem(
+        SNOOZED_KEY,
+        JSON.stringify([record('slot-k')])
+      );
+      jest
+        .spyOn(AsyncStorage, 'removeItem')
+        .mockRejectedValueOnce(new Error('disk full'));
+      await expect(removeSnoozedMedicationReminders(['slot-k'])).resolves.toBe(
+        false
+      );
+
+      // This reconcile cannot read the records, so it cannot tell whether
+      // slot-k's record is gone: it stays stale.
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('locked'));
+      await syncSnoozedMedicationReminders(
+        '2026-07-28',
+        new Set(['slot-k', 'slot-z']),
+        activeSnoozes
+      );
+
+      const snoozed = await syncSnoozedMedicationReminders(
+        '2026-07-28',
+        new Set(['slot-k'])
+      );
+      expect(snoozed.has('slot-k')).toBe(false);
+      expect(await AsyncStorage.getItem(SNOOZED_KEY)).toBeNull();
+    }
+  );
+
+  it('keeps the keys when the records cannot be read, and removes them once they can', async () => {
+    await AsyncStorage.setItem(
+      SNOOZED_KEY,
+      JSON.stringify([record('slot-a'), record('slot-b')])
+    );
+    jest
+      .spyOn(AsyncStorage, 'getItem')
+      .mockRejectedValueOnce(new Error('locked'));
+
+    await expect(removeSnoozedMedicationReminders(['slot-a'])).resolves.toBe(
+      false
+    );
+    await expect(removeSnoozedMedicationReminders([])).resolves.toBe(true);
+    expect(await storedKeys()).toEqual(['slot-b']);
   });
 });

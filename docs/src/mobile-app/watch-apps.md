@@ -30,7 +30,7 @@ Swipe between pages on the watch. Choose which pages show, and in what order, on
 | --- | --- |
 | **Goals** | Calorie ring plus the nutrients you pick (protein, carbs and fat by default). |
 | **Water** | Add a drink with one tap, see today's total against your goal (with the amount that comes from food, when that is on), and remove a drink you added by mistake. |
-| **Medications** | Today's scheduled doses and your as-needed medications; log a dose from the wrist. |
+| **Medications** | Today's scheduled doses and your as-needed medications; log a dose from the wrist. For now it shows even while Medications is turned off in the app's **Settings → Features**. |
 | **Weight check-in** | Enter today's weight from the wrist. |
 | **Weight trend** | A chart of your recent weight. |
 | **Workout** | Start a saved workout preset or a walk or run, and log it live. |

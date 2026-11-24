@@ -1,4 +1,5 @@
 import { apiFetch } from '../../../src/services/api/apiClient';
+import { ApiError } from '../../../src/services/api/errors';
 import {
   fetchFeatureChoices,
   updateFeatureChoices,
@@ -41,4 +42,18 @@ it('reads the choices from the active server', async () => {
     expect.objectContaining({ endpoint: '/api/user-preferences/features' })
   );
   expect(request.mock.calls[0][0]).not.toHaveProperty('serverConfig');
+});
+
+it('answers null only for the 404 of a server older than Features', async () => {
+  request.mockRejectedValueOnce(new ApiError('Not found', 404));
+  await expect(fetchFeatureChoices()).resolves.toBeNull();
+
+  // Anything else throws, so the choices stay unknown.
+  const serverError = new ApiError('Server error', 500);
+  request.mockRejectedValueOnce(serverError);
+  await expect(fetchFeatureChoices()).rejects.toBe(serverError);
+
+  const offline = new TypeError('Network request failed');
+  request.mockRejectedValueOnce(offline);
+  await expect(fetchFeatureChoices()).rejects.toBe(offline);
 });
