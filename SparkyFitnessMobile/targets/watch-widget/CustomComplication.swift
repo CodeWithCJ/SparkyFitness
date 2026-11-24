@@ -620,7 +620,7 @@ struct CustomComplicationView: View {
         VStack(spacing: 0) {
             ForEach(Array(items.prefix(3).enumerated()), id: \.offset) { _, item in
                 Text(item.text)
-                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .font(.system(.footnote, design: .rounded).weight(.semibold))
                     .foregroundStyle(item.color)
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
