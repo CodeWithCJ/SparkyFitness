@@ -1508,5 +1508,70 @@ class WearOsParityTest {
             todayUnconfirmed = true
         )
         assertEquals(19.5, wednesdayExplicitBfTile.bodyFatPercent ?: 0.0, 0.001)
+
+        // Narrow pillRow detail truncation: distinguishing strength clipped off or visible prefixes colliding must block inline toggle
+        val clippedStrengthA = MedicationDose("cs-1", "m1", "s1", "Metformin", "Extended release 500 mg", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedStrengthB = MedicationDose("cs-2", "m2", "s2", "Metformin", "Extended release 1000 mg", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedStrengthTile = TileModels.buildMedicationsTileModel(
+            MedicationSnapshot(day = today, doses = listOf(clippedStrengthA, clippedStrengthB))
+        )
+        assertFalse(clippedStrengthTile.doseRows[0].isDirectlyActionable)
+        assertFalse(clippedStrengthTile.doseRows[1].isDirectlyActionable)
+
+        val clippedTimeA = MedicationDose("ct-1", "m1", "s1", "Vitamin D", "1000 IU", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedTimeB = MedicationDose("ct-2", "m1", "s2", "Vitamin D", "1000 IU", "08:00 PM", MedicationDoseStatus.PENDING)
+        val clippedTimeTile = TileModels.buildMedicationsTileModel(
+            MedicationSnapshot(day = today, doses = listOf(clippedTimeA, clippedTimeB))
+        )
+        assertFalse(clippedTimeTile.doseRows[0].isDirectlyActionable)
+        assertFalse(clippedTimeTile.doseRows[1].isDirectlyActionable)
+
+        val visibleStrengthA = MedicationDose("vs-1", "m1", "s1", "Ibuprofen", "200 mg", "08:00 AM", MedicationDoseStatus.PENDING)
+        val visibleStrengthB = MedicationDose("vs-2", "m2", "s2", "Ibuprofen", "400 mg", "08:00 AM", MedicationDoseStatus.PENDING)
+        val visibleStrengthTile = TileModels.buildMedicationsTileModel(
+            MedicationSnapshot(day = today, doses = listOf(visibleStrengthA, visibleStrengthB))
+        )
+        assertTrue(visibleStrengthTile.doseRows[0].isDirectlyActionable)
+        assertTrue(visibleStrengthTile.doseRows[1].isDirectlyActionable)
+
+        // Clipped compound concentration denominator (e.g. "100 mg/mL" -> "100 mg/m…") must block inline toggle
+        val clippedConcentration = MedicationDose("cc-1", "m1", "s1", "Metformin", "100 mg/mL", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedConcentrationTile = TileModels.buildMedicationsTileModel(
+            MedicationSnapshot(day = today, doses = listOf(clippedConcentration))
+        )
+        assertFalse(clippedConcentrationTile.doseRows.single().isDirectlyActionable)
+
+        // Timezone rollback to April 7 with April 8 edit still queued must preserve April 7 base lastWeightKg (80 kg) over April 6 history (81 kg)
+        val rollbackBaseCtx = WatchContext(
+            today = "2026-04-08",
+            todayWeightKg = null,
+            lastEntryDate = "2026-04-07",
+            lastWeightKg = 80.0,
+            lastBodyFatPercentage = 19.0,
+            weightUnit = WeightUnit.KG
+        )
+        val rollbackHistory = listOf(
+            HistoryPoint("2026-04-06", 81.0, 20.0),
+            HistoryPoint("2026-04-08", 79.0, null)
+        )
+        val preservedTodayLast = CheckInStore.resolveLastReadingAfterOverlay(
+            baseWatchContext = rollbackBaseCtx,
+            history = rollbackHistory,
+            today = "2026-04-07",
+            hasTodayOverlay = false
+        )
+        assertEquals(80.0, preservedTodayLast.weightKg ?: 0.0, 0.001)
+        assertEquals(19.0, preservedTodayLast.bodyFatPercentage ?: 0.0, 0.001)
+        assertEquals("2026-04-07", preservedTodayLast.entryDate)
+
+        // When a local April 7 overlay IS present, lastReading still resolves to the older April 6 prior (81 kg)
+        val priorWhenOverlaid = CheckInStore.resolveLastReadingAfterOverlay(
+            baseWatchContext = rollbackBaseCtx,
+            history = rollbackHistory,
+            today = "2026-04-07",
+            hasTodayOverlay = true
+        )
+        assertEquals(81.0, priorWhenOverlaid.weightKg ?: 0.0, 0.001)
+        assertEquals("2026-04-06", priorWhenOverlaid.entryDate)
     }
 }

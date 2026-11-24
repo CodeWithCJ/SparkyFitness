@@ -1099,57 +1099,17 @@ class CheckInStore(private val context: Context) {
       )
     }
     val nextHistory = historyByDay.values.toList()
-    val priorDatedEntries = sortedMapOf<String, HistoryPoint>()
-    if (!baseWatchContext.lastEntryDate.isNullOrBlank() &&
-      baseWatchContext.lastEntryDate!! < today &&
-      baseWatchContext.lastWeightKg != null
-    ) {
-      priorDatedEntries[baseWatchContext.lastEntryDate!!] = HistoryPoint(
-        day = baseWatchContext.lastEntryDate!!,
-        weightKg = baseWatchContext.lastWeightKg!!,
-        bodyFatPercentage = baseWatchContext.lastBodyFatPercentage
-      )
-    }
-    if (!baseWatchContext.today.isNullOrBlank() &&
-      baseWatchContext.today!! < today &&
-      baseWatchContext.todayWeightKg != null
-    ) {
-      val existingBf = priorDatedEntries[baseWatchContext.today]?.bodyFatPercentage
-      priorDatedEntries[baseWatchContext.today!!] = HistoryPoint(
-        day = baseWatchContext.today!!,
-        weightKg = baseWatchContext.todayWeightKg!!,
-        bodyFatPercentage = baseWatchContext.todayBodyFatPercentage ?: existingBf
-      )
-    }
-    for (pt in nextHistory) {
-      if (pt.day.isNotBlank() && pt.day < today) {
-        val existingBf = priorDatedEntries[pt.day]?.bodyFatPercentage
-        priorDatedEntries[pt.day] = if (pt.bodyFatPercentage != null || existingBf == null) {
-          pt
-        } else {
-          pt.copy(bodyFatPercentage = existingBf)
-        }
-      }
-    }
-    val newestPrior = priorDatedEntries.values.lastOrNull()
-    val fallbackLastWeightKg = if (baseWatchContext.lastEntryDate.isNullOrBlank() || baseWatchContext.lastEntryDate!! <= today) {
-      baseWatchContext.lastWeightKg
-    } else {
-      null
-    }
-    val fallbackLastBf = if (baseWatchContext.lastEntryDate.isNullOrBlank() || baseWatchContext.lastEntryDate!! <= today) {
-      baseWatchContext.lastBodyFatPercentage
-    } else {
-      null
-    }
-    val fallbackLastEntryDate = baseWatchContext.lastEntryDate?.takeIf { it.isNotBlank() && it <= today }
-    val nextLastWeightKg = newestPrior?.weightKg ?: fallbackLastWeightKg
-    val nextLastBf = resolvePriorBodyFatPercentage(baseWatchContext, nextHistory, today)
-      ?: newestPrior?.bodyFatPercentage
-      ?: fallbackLastBf
-    val nextLastEntryDate = newestPrior?.day ?: fallbackLastEntryDate
-
     val todayPending = orderedUnsettled.lastOrNull { it.day == today }
+    val resolvedLast = resolveLastReadingAfterOverlay(
+      baseWatchContext = baseWatchContext,
+      history = nextHistory,
+      today = today,
+      hasTodayOverlay = todayPending != null
+    )
+    val nextLastWeightKg = resolvedLast.weightKg
+    val nextLastBf = resolvedLast.bodyFatPercentage
+    val nextLastEntryDate = resolvedLast.entryDate
+
     if (todayPending == null) {
       _history.value = nextHistory
       _watchContext.value = baseWatchContext.copy(
@@ -1867,6 +1827,81 @@ class CheckInStore(private val context: Context) {
       WatchPage.WORKOUT -> resolveExercisePage(enabled)
       WatchPage.ENTRY -> resolveWeightPage(enabled)
       else -> resolveEnabledPage(preferred, enabled)
+    }
+
+    internal data class ResolvedLastReading(
+      val weightKg: Double?,
+      val bodyFatPercentage: Double?,
+      val entryDate: String?
+    )
+
+    internal fun resolveLastReadingAfterOverlay(
+      baseWatchContext: WatchContext,
+      history: List<HistoryPoint>,
+      today: String,
+      hasTodayOverlay: Boolean
+    ): ResolvedLastReading {
+      val priorDatedEntries = sortedMapOf<String, HistoryPoint>()
+      if (!baseWatchContext.lastEntryDate.isNullOrBlank() &&
+        baseWatchContext.lastEntryDate < today &&
+        baseWatchContext.lastWeightKg != null
+      ) {
+        priorDatedEntries[baseWatchContext.lastEntryDate] = HistoryPoint(
+          day = baseWatchContext.lastEntryDate,
+          weightKg = baseWatchContext.lastWeightKg,
+          bodyFatPercentage = baseWatchContext.lastBodyFatPercentage
+        )
+      }
+      if (!baseWatchContext.today.isNullOrBlank() &&
+        baseWatchContext.today < today &&
+        baseWatchContext.todayWeightKg != null
+      ) {
+        val existingBf = priorDatedEntries[baseWatchContext.today]?.bodyFatPercentage
+        priorDatedEntries[baseWatchContext.today] = HistoryPoint(
+          day = baseWatchContext.today,
+          weightKg = baseWatchContext.todayWeightKg,
+          bodyFatPercentage = baseWatchContext.todayBodyFatPercentage ?: existingBf
+        )
+      }
+      for (pt in history) {
+        if (pt.day.isNotBlank() && pt.day < today) {
+          val existingBf = priorDatedEntries[pt.day]?.bodyFatPercentage
+          priorDatedEntries[pt.day] = if (pt.bodyFatPercentage != null || existingBf == null) {
+            pt
+          } else {
+            pt.copy(bodyFatPercentage = existingBf)
+          }
+        }
+      }
+      val newestPrior = priorDatedEntries.values.lastOrNull()
+      val priorBf = resolvePriorBodyFatPercentage(baseWatchContext, history, today)
+        ?: newestPrior?.bodyFatPercentage
+      val preserveBaseTodayLast = !hasTodayOverlay &&
+        baseWatchContext.lastEntryDate == today &&
+        baseWatchContext.lastWeightKg != null
+      if (preserveBaseTodayLast) {
+        return ResolvedLastReading(
+          weightKg = baseWatchContext.lastWeightKg,
+          bodyFatPercentage = baseWatchContext.lastBodyFatPercentage ?: priorBf,
+          entryDate = baseWatchContext.lastEntryDate
+        )
+      }
+      val fallbackLastWeightKg = if (baseWatchContext.lastEntryDate.isNullOrBlank() || baseWatchContext.lastEntryDate <= today) {
+        baseWatchContext.lastWeightKg
+      } else {
+        null
+      }
+      val fallbackLastBf = if (baseWatchContext.lastEntryDate.isNullOrBlank() || baseWatchContext.lastEntryDate <= today) {
+        baseWatchContext.lastBodyFatPercentage
+      } else {
+        null
+      }
+      val fallbackLastEntryDate = baseWatchContext.lastEntryDate?.takeIf { it.isNotBlank() && it <= today }
+      return ResolvedLastReading(
+        weightKg = newestPrior?.weightKg ?: fallbackLastWeightKg,
+        bodyFatPercentage = priorBf ?: fallbackLastBf,
+        entryDate = newestPrior?.day ?: fallbackLastEntryDate
+      )
     }
 
     internal fun resolvePriorBodyFatPercentage(

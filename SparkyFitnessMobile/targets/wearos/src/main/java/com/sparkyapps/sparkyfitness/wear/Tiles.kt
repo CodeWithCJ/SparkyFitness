@@ -406,19 +406,36 @@ object TileModels {
     data class FormattedDoseDisplay(
       val name: String,
       val detailText: String,
-      val strengthIntact: Boolean
+      val visibleDetailPrefix: String,
+      val strengthIntact: Boolean,
+      val detailStrengthIntact: Boolean
     )
 
     fun formatDoseDisplay(dose: MedicationDose): FormattedDoseDisplay {
       val compactTime = ComplicationModels.compactDoseTime(dose.time)
-      val rightParts = listOf(dose.detail, compactTime).filter { it.isNotBlank() }
+      val cleanDetail = dose.detail.trim()
+      val rightParts = listOf(cleanDetail, compactTime).filter { it.isNotBlank() }
       val detailText = rightParts.joinToString(" · ").ifBlank { dose.status.rawValue }
-      val (compactName, intact) = compactDoseNameWithSafety(dose.name)
-      return FormattedDoseDisplay(compactName, detailText, intact)
+      val (compactName, nameStrengthIntact) = compactDoseNameWithSafety(dose.name)
+      val (visibleDetailPrefix, unclippedChars) = visiblePillRowDetail(compactName, detailText)
+      val lastStrengthEnd = DETAIL_STRENGTH_REGEX.findAll(cleanDetail)
+        .lastOrNull()
+        ?.range
+        ?.last
+        ?.plus(1)
+        ?: 0
+      val detailStrengthIntact = lastStrengthEnd <= unclippedChars
+      return FormattedDoseDisplay(
+        name = compactName,
+        detailText = detailText,
+        visibleDetailPrefix = visibleDetailPrefix,
+        strengthIntact = nameStrengthIntact,
+        detailStrengthIntact = detailStrengthIntact
+      )
     }
 
-    val signatureCounts = doses
-      .groupingBy { val d = formatDoseDisplay(it); d.name to d.detailText }
+    val visibleSignatureCounts = doses
+      .groupingBy { val d = formatDoseDisplay(it); d.name to d.visibleDetailPrefix }
       .eachCount()
 
     val doseRows = ordered.take(3).map { dose ->
@@ -431,10 +448,11 @@ object TileModels {
       }
       val disp = formatDoseDisplay(dose)
       val isPending = dose.status == MedicationDoseStatus.PENDING
-      val sig = disp.name to disp.detailText
+      val sig = disp.name to disp.visibleDetailPrefix
       val uniquelyIdentifiable = isPending &&
         disp.strengthIntact &&
-        (signatureCounts[sig] ?: 0) == 1
+        disp.detailStrengthIntact &&
+        (visibleSignatureCounts[sig] ?: 0) == 1
       TileDoseRow(
         name = disp.name,
         detailText = disp.detailText,
@@ -486,6 +504,22 @@ object TileModels {
       }
     }
     return "${headOnly.trimEnd()}…" to false
+  }
+
+  private const val SAFE_PILL_ROW_CHARS = 20
+  private val DETAIL_STRENGTH_REGEX = Regex(
+    "\\d+(?:[.,]\\d+)?\\s*(?:%|(?:mcg|mg|ug|µg|g|iu|ml|l|meq|units?|u)\\b)(?:\\s*/\\s*(?:\\d+(?:[.,]\\d+)?(?:\\s*(?:%|[a-zµ]+\\b))?|(?:%|[a-zµ]+\\b)))*",
+    RegexOption.IGNORE_CASE
+  )
+
+  internal fun visiblePillRowDetail(compactName: String, detailText: String): Pair<String, Int> {
+    val leftChars = 2 + compactName.length
+    val availableDetailChars = (SAFE_PILL_ROW_CHARS - leftChars).coerceAtLeast(0)
+    if (detailText.length <= availableDetailChars) {
+      return detailText to detailText.length
+    }
+    val unclippedChars = (availableDetailChars - 1).coerceAtLeast(0)
+    return detailText.take(unclippedChars) to unclippedChars
   }
 
   fun compactDoseName(rawName: String, maxChars: Int = 15): String =
