@@ -350,4 +350,16 @@
         <item quantity="many">%1$d series</item>
         <item quantity="other">%1$d series</item>
     </plurals>
+    <string name="now_playing_source_phone">Teléfono</string>
+    <string name="now_playing_source_watch">Reloj</string>
+    <string name="now_playing_playing_on_phone">Reproduciendo en el teléfono</string>
+    <string name="now_playing_phone_media">Multimedia del teléfono</string>
+    <string name="now_playing_playing_on_watch">Reproduciendo en el reloj</string>
+    <string name="now_playing_watch_media">Multimedia del reloj</string>
+    <string name="now_playing_nothing_playing">Nada en reproducción</string>
+    <string name="now_playing_enable_track_info">Activa la información de pista en los ajustes del teléfono</string>
+    <string name="now_playing_previous">Pista anterior</string>
+    <string name="now_playing_play">Reproducir</string>
+    <string name="now_playing_pause">Pausar</string>
+    <string name="now_playing_next">Siguiente pista</string>
 </resources>

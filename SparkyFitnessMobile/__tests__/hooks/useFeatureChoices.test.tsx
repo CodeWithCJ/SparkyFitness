@@ -15,7 +15,6 @@ import {
   updateFeatureChoices,
 } from '../../src/services/api/featureChoicesApi';
 import { getSettings } from '../../src/services/api/cycleApi';
-import { ApiError } from '../../src/services/api/errors';
 import {
   createQueryWrapper,
   createTestQueryClient,
@@ -124,7 +123,8 @@ describe('lab results in the app', () => {
   });
 
   it('uses the defaults on a server older than Features, and cannot be switched there', async () => {
-    getMock.mockRejectedValue(new ApiError('Not found', 404));
+    // fetchFeatureChoices answers null for the 404 such a server sends.
+    getMock.mockResolvedValue(null);
     const { result } = setup();
     await waitFor(() =>
       expect(result.current.write.state).toBe('serverTooOld')

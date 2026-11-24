@@ -1,18 +1,26 @@
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useReducer, useState, useSyncExternalStore } from 'react';
 import { AppState } from 'react-native';
 import { useCalendars } from 'expo-localization';
 
 import { useMedications, useMedicationEntries } from '../hooks/useMedications';
+import { useMedicationsFeatureState } from '../hooks/useMedicationsFeatureState';
+import { useServerConfigs } from '../hooks/useServerConfigs';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getDeviceTimezone, getTodayDate } from '../utils/dateUtils';
-import { reconcileMedicationReminders } from '../services/medicationReminderService';
+import {
+  cancelMedicationRemindersOfOtherServers,
+  reconcileMedicationReminders,
+} from '../services/medicationReminderService';
 import {
   maybePromptForExactAlarmPermission,
   registerLocalizedNotificationPresentation,
 } from '../services/notifications';
 import { syncMedicationActiveUser } from '../services/backgroundWater';
+import { retryPendingMedicationActions } from '../services/medicationNotificationHandler';
 import { syncNativeMedicationSnoozeMinutes } from '../services/medicationNativeSync';
 import { addLog } from '../services/LogService';
+import { accountGeneration } from '../offline/accountGeneration';
+import { subscribeAccountChanged } from '../offline/events';
 import i18n from '../localization/i18n';
 
 const FOREGROUND_CLOCK_POLL_MS = 30_000;
@@ -36,9 +44,42 @@ const MedicationReminderReconciler: React.FC = () => {
   const medicationReminderSnoozeMinutes = useAppPreferencesStore(
     (s) => s.medicationReminderSnoozeMinutes
   );
-  const remindersActive = medicationRemindersEnabled && notificationsEnabled;
+  // Medications turned off in Settings → Features (#3487) stops its
+  // reminders; turning it back on brings them back. The reminder preferences
+  // are never written.
+  const { state: featureState, refetch: refetchFeatureState } =
+    useMedicationsFeatureState();
+  // With no server at all (its configuration deleted, or none set up yet) the
+  // reminders are cancelled as before Features: nothing else removes the
+  // reminders of an account that is gone. That is read from the stored active
+  // id: a configuration whose keychain read failed, or a failed read, is not
+  // "no server", and is handled like any other state that is not known.
+  const { activeConfigId, isLoading: isLoadingServer } = useServerConfigs();
+  const noActiveServer = !isLoadingServer && activeConfigId === null;
+  // A switch to another server runs the reconcile below again, so the
+  // reminders of the one switched away from stop even while the new one's
+  // choices are not known.
+  const activeServerId = activeConfigId ?? null;
+  const remindersActive =
+    featureState === 'on' && medicationRemindersEnabled && notificationsEnabled;
   const [languageRevision, setLanguageRevision] = useState(0);
   const [, bumpResumeRevision] = useReducer((n: number) => n + 1, 0);
+  // The account this render's data were read for. An effect runs after its
+  // render, so one that runs only once an account change has started would
+  // reconcile the previous account's medications; the queue drops it.
+  // Read through a hook, never by calling accountGeneration() in the body:
+  // React Compiler memoizes such a call once per mounted component, so the
+  // first account's number would stay and every reconcile after an account
+  // change would be dropped.
+  // An account change cancels every medication reminder and clears the query
+  // cache, which does not tell the queries below. The account-changed event
+  // renders this again, so they read the new account and the reconcile below
+  // runs again: its reminders come back without waiting for the app to return
+  // to the foreground.
+  const readUnderAccount = useSyncExternalStore(
+    subscribeAccountChanged,
+    accountGeneration
+  );
 
   // `useCalendars()` re-renders on iOS `significantTimeChangeNotification`,
   // while the foreground poll below covers Android (`expo-localization` 57.0.2
@@ -86,13 +127,37 @@ const MedicationReminderReconciler: React.FC = () => {
   }, [medicationReminderSnoozeMinutes, languageRevision]);
 
   useEffect(() => {
+    // Not known yet whether Medications is on (the choices are loading, the
+    // read failed, or the app opened offline) while the reminder settings
+    // want reminders: the active server's reminders stay exactly as they are,
+    // neither cancelled nor rescheduled. Those of a server switched away from
+    // still stop, and Taken / Skip presses still waiting are replayed (the
+    // reconcile that would flush them is not run). With a reminder setting
+    // off, the reconcile below cancels them as before Features.
+    if (
+      featureState === 'unknown' &&
+      !noActiveServer &&
+      medicationRemindersEnabled &&
+      notificationsEnabled
+    ) {
+      cancelMedicationRemindersOfOtherServers().catch((error) => {
+        addLog(
+          `Cancelling another server's medication reminders failed: ${(error as Error).message}`,
+          'ERROR'
+        );
+      });
+      void retryPendingMedicationActions();
+      return;
+    }
     if (remindersActive && (isLoadingMeds || isLoadingEntries)) return;
 
-    // With reminders off the queries stay disabled; the reconcile still runs
-    // (with empty data) so any pending reminders get cancelled.
+    // With reminders off, Medications off or no server, the queries stay
+    // disabled; the reconcile still runs (with empty data) so any pending
+    // reminders get cancelled.
     reconcileMedicationReminders(
       remindersActive ? (medications ?? []) : [],
-      remindersActive ? (todayEntries ?? []) : []
+      remindersActive ? (todayEntries ?? []) : [],
+      { active: remindersActive, accountGeneration: readUnderAccount }
     ).catch((error) => {
       addLog(
         `Medication reminder reconciliation failed: ${(error as Error).message}`,
@@ -104,13 +169,19 @@ const MedicationReminderReconciler: React.FC = () => {
     todayEntries,
     isLoadingMeds,
     isLoadingEntries,
+    featureState,
+    noActiveServer,
+    activeServerId,
     remindersActive,
+    medicationRemindersEnabled,
+    notificationsEnabled,
     medicationReminderRepeats,
     medicationReminderHideNames,
     medicationReminderConsolidate,
     today,
     timezone,
     languageRevision,
+    readUnderAccount,
   ]);
 
   useEffect(() => {
@@ -173,6 +244,15 @@ const MedicationReminderReconciler: React.FC = () => {
       subscription.remove();
     };
   }, [refetchMeds, refetchEntries, remindersActive, timezone, today]);
+
+  // A switch made on another phone applies when the app comes back, whether
+  // Medications was on, off or not known yet.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refetchFeatureState();
+    });
+    return () => subscription.remove();
+  }, [refetchFeatureState]);
 
   return null;
 };

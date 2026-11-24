@@ -11,8 +11,12 @@ jest.mock('../../../src/hooks/useMeasurementTimeline', () => ({
   useMeasurementTimeline: jest.fn(),
 }));
 let mockHiddenCategories: ReadonlySet<string> = new Set();
+let mockFeaturesOff = new Set<string>();
 jest.mock('../../../src/hooks/useMobileFeatures', () => ({
-  useMobileFeatures: () => ({ hiddenCustomCategories: mockHiddenCategories }),
+  useMobileFeatures: () => ({
+    hiddenCustomCategories: mockHiddenCategories,
+    isEnabled: (key: string) => !mockFeaturesOff.has(key),
+  }),
 }));
 let mockCustomCategories: { id: string; name: string }[] = [];
 jest.mock('../../../src/hooks/useCustomMeasurements', () => ({
@@ -151,6 +155,7 @@ const flowCategory = {
 };
 beforeEach(() => {
   mockHiddenCategories = new Set();
+  mockFeaturesOff = new Set();
   mockCustomCategories = [cgmCategory];
   jest.mocked(usePreferences).mockReturnValue({
     preferences: { timezone: 'UTC', time_format: 'HH:mm' },
@@ -347,5 +352,106 @@ describe('categories of a feature turned off on purpose', () => {
     expect(timeline).toHaveBeenLastCalledWith('blood_glucose', '2026-11-03');
     expect(screen.queryByLabelText('Measurement: Menstrual flow')).toBeNull();
     expect(screen.getByLabelText('Measurement: CGM import')).toBeTruthy();
+  });
+});
+
+describe('the medication layer while Medications is turned off in Features', () => {
+  const withMedication = () =>
+    context.mockReturnValue({
+      data: {
+        events: [
+          {
+            id: 'food',
+            kind: 'meal',
+            day: '2026-11-03',
+            label: 'Oatmeal',
+            start: '2026-11-03T09:30:00Z',
+          },
+          {
+            id: 'dose',
+            kind: 'medication',
+            day: '2026-11-03',
+            label: 'Metformin',
+            start: '2026-11-03T10:00:00Z',
+          },
+        ],
+        unavailable: ['medication', 'stress'],
+      },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useGlucoseContext>);
+  const renderCard = () =>
+    render(
+      <MeasurementTimelineCard startDate="2026-11-02" endDate="2026-11-03" />
+    );
+
+  test('is left out of the picker, the chart and the lists', () => {
+    withMedication();
+    const view = renderCard();
+    expect(screen.getAllByTestId('context-marker')).toHaveLength(2);
+    expect(screen.getByText(/Metformin/)).toBeTruthy();
+    expect(
+      screen.getByText('Some context is unavailable: Medications, Stress')
+    ).toBeTruthy();
+    expect(screen.getByText(/Context layers · 8/)).toBeTruthy();
+    view.unmount();
+
+    mockFeaturesOff = new Set(['medications']);
+    renderCard();
+    expect(screen.getAllByTestId('context-marker')).toHaveLength(1);
+    expect(screen.queryByText(/Metformin/)).toBeNull();
+    expect(screen.getByText(/Oatmeal/)).toBeTruthy();
+    expect(
+      screen.getByText('Some context is unavailable: Stress')
+    ).toBeTruthy();
+    fireEvent.press(screen.getByText(/Event details/));
+    expect(screen.queryByText(/Metformin/)).toBeNull();
+    fireEvent.press(screen.getByLabelText('Context layers'));
+    expect(screen.queryByLabelText('Medications')).toBeNull();
+    expect(screen.getByLabelText('Food')).toBeTruthy();
+    expect(screen.getByText(/Context layers · 7/)).toBeTruthy();
+  });
+
+  test('says nothing is unavailable when only the medication layer is', () => {
+    context.mockReturnValue({
+      data: { events: [], unavailable: ['medication'] },
+      isLoading: false,
+      isError: false,
+    } as unknown as ReturnType<typeof useGlucoseContext>);
+    mockFeaturesOff = new Set(['medications']);
+    renderCard();
+    expect(screen.queryByText(/Some context is unavailable/)).toBeNull();
+  });
+
+  test('comes back as it was chosen when the feature is turned on again', () => {
+    withMedication();
+    const view = renderCard();
+    fireEvent.press(screen.getByLabelText('Context layers'));
+    // Turned off by hand before the feature went off: stays off after.
+    fireEvent.press(screen.getByLabelText('Food'));
+
+    mockFeaturesOff = new Set(['medications']);
+    view.rerender(
+      <MeasurementTimelineCard startDate="2026-11-02" endDate="2026-11-03" />
+    );
+    expect(screen.queryByLabelText('Medications')).toBeNull();
+    // A layer turned off while medications is hidden does not drop it.
+    fireEvent.press(screen.getByLabelText('Exercise'));
+
+    mockFeaturesOff = new Set();
+    view.rerender(
+      <MeasurementTimelineCard startDate="2026-11-02" endDate="2026-11-03" />
+    );
+    expect(
+      screen.getByLabelText('Medications').props.accessibilityState
+    ).toEqual({ checked: true });
+    expect(screen.getByLabelText('Food').props.accessibilityState).toEqual({
+      checked: false,
+    });
+    expect(screen.getByLabelText('Exercise').props.accessibilityState).toEqual({
+      checked: false,
+    });
+    expect(screen.getAllByTestId('context-marker')).toHaveLength(1);
+    expect(screen.getByText(/Metformin/)).toBeTruthy();
   });
 });

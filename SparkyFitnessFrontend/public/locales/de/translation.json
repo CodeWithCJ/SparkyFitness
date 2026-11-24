@@ -1522,13 +1522,13 @@
       "title": "Tabs",
       "description": "Wähle aus, welche Haupt-Tabs auf der Website angezeigt werden",
       "cycleOn": "Ein",
-      "cycleOff": "Aus",
       "cycleHint": "{{name}} wird oben unter „Funktionen“ ein- oder ausgeschaltet.",
       "footnote": "Tagebuch und Einstellungen werden immer angezeigt. Das Ausblenden eines Tabs wirkt sich nur auf diese Website aus: Es wird nichts gelöscht, und die mobile App behält ihre eigenen Einstellungen.",
       "saveError": "Deine Tab-Auswahl konnte nicht gespeichert werden. Bitte versuche es erneut.",
       "loadError": "Deine Tab-Auswahl konnte nicht geladen werden.",
       "actingOnBehalf": "Du kannst die Tabs nur in deinem eigenen Konto ändern.",
-      "featureOff": "Nicht angezeigt: unter „Funktionen“ deaktiviert."
+      "someFeaturesOff": "Einige Funktionen sind deaktiviert",
+      "manageFeatures": "Verwalten"
     },
     "chatMcp": {
       "title": "Externe Tools",
@@ -1613,6 +1613,36 @@
       "labResults": {
         "description": "Blutuntersuchungen erfassen und jeden Wert im Zeitverlauf verfolgen."
       }
+    },
+    "foodProviders": {
+      "common": {
+        "getApiKey": "API-Schlüssel abrufen",
+        "terms": "AGB"
+      },
+      "cooktool": {
+        "help": "Der kostenlose Tarif umfasst 1.000 Abfragen pro Tag. Akzeptiere die CookTool-Bedingungen mit deinem eigenen Schlüssel. Abfragen werden 24 Stunden zwischengespeichert.",
+        "portalLabel": "CookTool-Dokumentation"
+      },
+      "nutrientgraph": {
+        "help": "Der kostenlose Tarif umfasst 2.500 Einheiten pro Monat. Deckt USDA, französisches CIQUAL und US-Markenprodukte in fünf Sprachen ab. Abfragen werden 24 Stunden zwischengespeichert.",
+        "portalLabel": "NutrientGraph-Dokumentation"
+      },
+      "food-info": {
+        "help": "Der kostenlose Tarif umfasst 100 Anfragen pro Tag. Greife auf Referenzlebensmittel aus mehreren nationalen Lebensmitteldatensätzen zu. Abfragen werden 24 Stunden zwischengespeichert.",
+        "portalLabel": "Food-Info-Entwicklerportal"
+      }
+    },
+    "zeppBridgeProvider": {
+      "warningTitle": "Drittanbieter-Integration: erfordert ZeppBridge",
+      "warningExperimental": "Diese Integration ist experimentell. Sie basiert auf der veröffentlichten API von ZeppBridge und wurde nur begrenzt mit echten Geräten getestet.",
+      "baseUrlLabel": "ZeppBridge-URL",
+      "tokenLabel": "Pull-Token",
+      "tokenPlaceholder": "Das als ZEPPBRIDGE_PULL_TOKEN gesetzte Token",
+      "overviewNote": "SparkyFitness liest nur von deinem eigenen ZeppBridge-Server (ausgeführt über `zeppbridge-cli serve`). Es kontaktiert niemals Zepp und sieht nie deine Zepp-Zugangsdaten.",
+      "urlNote": "Gib die vollständige Adresse inklusive http:// (oder https://) ein. Verwende innerhalb von Docker ein gemeinsames Netzwerk für beide Container und den Containernamen, zum Beispiel http://zeppbridge-serve:43921.",
+      "privateNetworkNote": "Eine private oder LAN-Adresse funktioniert für Admin-Konten. Auf einem Server mit mehreren Nutzern muss ein Admin Anbieter im privaten Netzwerk zuerst freigeben.",
+      "warningInstall": "ZeppBridge ist ein unabhängiges Open-Source-Projekt. Es wird weder von SparkyFitness entwickelt noch gepflegt oder unterstützt. Diese Integration funktioniert nur, wenn du ZeppBridge selbst installierst und betreibst. Im <repo>ZeppBridge-Projekt auf GitHub</repo> erfährst du, was es genau ist und wie du es einrichtest.",
+      "warningDueDiligence": "ZeppBridge meldet sich bei deinem Zepp-Konto an und speichert eine Kopie deiner Gesundheitsdaten lokal auf deinem eigenen Gerät. Bitte prüfe die Anwendung vor der Installation sorgfältig: Lies die Dokumentation sowie die <privacy>Datenschutzhinweise</privacy>, kontrolliere die angeforderten Berechtigungen und entscheide selbst, ob du ihr vertraust. Die Nutzung erfolgt auf eigene Gefahr."
     }
   },
   "aboutDialog": {
@@ -7560,7 +7590,18 @@
     "intervalsRemoveTitle": "Übertragene Nährwerte entfernt",
     "intervalsRemoveDetails": "{{cleared}} Tage gelöscht, {{kept}} von einer anderen App geänderte Tage beibehalten, {{failed}} fehlgeschlagen.",
     "intervalsRemoveError": "Die übertragenen Nährwerte konnten nicht entfernt werden. Bitte versuche es erneut.",
-    "intervalsPushToggleError": "Die Einstellung für die Nährwertübertragung an Intervals.icu konnte nicht gespeichert werden."
+    "intervalsPushToggleError": "Die Einstellung für die Nährwertübertragung an Intervals.icu konnte nicht gespeichert werden.",
+    "zeppbridgeSyncSuccessTitle": "ZeppBridge erfolgreich synchronisiert",
+    "zeppbridgeSyncDetails": "Synchronisiert: {{sleepImported}} Schlaferfassungen, {{workoutsImported}} Trainings ({{workoutDetailsImported}} mit Route oder Herzfrequenz), {{metricDays}} Tage mit Messwerten ({{failed}} fehlgeschlagen, {{workoutDetailsFailed}} Trainingsdetails fehlen).",
+    "zeppbridgeSyncIncompleteTitle": "ZeppBridge mit Problemen synchronisiert",
+    "zeppbridgeSyncError": "ZeppBridge-Synchronisierung fehlgeschlagen. Prüfe die ZeppBridge-URL und das Pull-Token in den Einstellungen sowie ob der ZeppBridge-Server läuft.",
+    "zeppbridgeTestSuccessTitle": "ZeppBridge-Verbindung funktioniert",
+    "zeppbridgeTestSuccessDetails": "ZeppBridge {{version}} hat geantwortet.",
+    "zeppbridgeTestError": "Verbindung zu ZeppBridge fehlgeschlagen. Prüfe die URL (inklusive http://) und das Pull-Token.",
+    "zeppbridgeTestButton": "Verbindung testen",
+    "zeppbridgeDisconnectConfirm": "Möchtest du ZeppBridge wirklich trennen? Dadurch wird die Integration deaktiviert, bis du sie wieder aktivierst. Bereits importierte Daten bleiben erhalten.",
+    "zeppbridgeDuplicateNote": "Wenn die Zepp-App ebenfalls in Apple Health oder Health Connect schreibt und du das hier auch synchronisierst, können dieselbe Nacht oder dasselbe Training doppelt erscheinen. Nutze nur eine der beiden Quellen.",
+    "zeppbridgeThirdPartyNote": "Drittanbieter-Integration: Erfordert <repo>ZeppBridge</repo>, ein unabhängiges Projekt ohne Support durch SparkyFitness, das auf deinem eigenen Gerät laufen muss."
   },
   "mealCreation": {
     "convertToMeal": "Mahlzeit aus Tagebuch erstellen",
@@ -9604,7 +9645,9 @@
       "loadingCameraModule": "Kameramodul wird geladen..."
     },
     "foodResultCard": {
-      "gi": "GI: {{glycemic_index}}"
+      "gi": "GI: {{glycemic_index}}",
+      "tapForFullNutrition": "Tippen für alle Nährwerte",
+      "tapForNutrition": "Tippen für Nährwerte"
     },
     "searchingBarcode": "Barcode wird gesucht",
     "lookingUp": "Suche: {{barcode}}...",
@@ -11218,7 +11261,7 @@
     },
     "leave": {
       "button": "Verlassen",
-      "title": "Diese Challenge verlassen?",
+      "title": "Challenge verlassen?",
       "last": "Du bist das letzte Mitglied, daher wird die Challenge gelöscht.",
       "host": "Deine Punkte darin werden gelöscht und die Leitung geht an das Mitglied über, das zuerst beigetreten ist.",
       "member": "Deine Punkte darin werden gelöscht. Mit einer neuen Einladung kannst du wieder beitreten.",
@@ -11519,7 +11562,8 @@
       "km": "{{value}} km",
       "metres": "{{value}} m",
       "days_one": "{{count}} Tag",
-      "days_other": "{{count}} Tage"
+      "days_other": "{{count}} Tage",
+      "feet": "{{value}} ft"
     },
     "units": {
       "points": "Punkte",
@@ -11528,7 +11572,8 @@
       "miles": "Meilen",
       "km": "km",
       "days": "Tage",
-      "metres": "Meter"
+      "metres": "Meter",
+      "feet": "Fuß"
     },
     "periodRange": "{{start}} – {{end}}",
     "widget": {

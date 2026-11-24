@@ -103,8 +103,9 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
     refetch: refetchRecentMeals,
   } = useRecentMeals({ enabled: isConnected, limit: RECENT_LIMIT });
   const { meals, refetch: refetchMeals } = useMeals({ enabled: isConnected });
+  const medicationsOn = isFeatureOn('medications');
   const { data: medications, refetch: refetchMedications } = useMedications({
-    enabled: isConnected,
+    enabled: isConnected && medicationsOn,
   });
   const { containers: waterContainers } = useWaterContainersQuery({
     enabled: isConnected,
@@ -154,7 +155,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
         refetchExercisesCount(),
         refetchPresetsCount(),
         refetchRecentExercises(),
-        refetchMedications(),
+        ...(medicationsOn ? [refetchMedications()] : []),
       ]);
     } finally {
       setIsRefreshing(false);
@@ -168,6 +169,7 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
     refetchExercisesCount,
     refetchPresetsCount,
     refetchRecentExercises,
+    medicationsOn,
     refetchMedications,
   ]);
 
@@ -631,8 +633,9 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
           </View>
           <Icon name="chevron-forward" size={20} color="#999" />
         </Pressable>
+        {/* The last row has no divider: this one, while Medications is off. */}
         <Pressable
-          className="px-4 py-4 flex-row items-center justify-between border-b border-border-subtle"
+          className={`px-4 py-4 flex-row items-center justify-between ${medicationsOn ? 'border-b border-border-subtle' : ''}`}
           onPress={() => navigation.navigate('WaterContainers')}
           style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
         >
@@ -655,21 +658,25 @@ const LibraryScreen: React.FC<LibraryScreenProps> = ({ navigation }) => {
             <Icon name="chevron-forward" size={20} color="#999" />
           </View>
         </Pressable>
-        <Pressable
-          className="px-4 py-4 flex-row items-center justify-between"
-          onPress={() => navigation.navigate('MedicationsList')}
-          style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
-        >
-          <Text className="text-base font-semibold text-text-primary">
-            {t('screens.library.medications', { defaultValue: 'Medications' })}
-          </Text>
-          <View className="flex-row items-center">
-            <Text className="text-text-secondary text-base mr-2">
-              {medications?.length ?? '-'}
+        {medicationsOn && (
+          <Pressable
+            className="px-4 py-4 flex-row items-center justify-between"
+            onPress={() => navigation.navigate('MedicationsList')}
+            style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+          >
+            <Text className="text-base font-semibold text-text-primary">
+              {t('screens.library.medications', {
+                defaultValue: 'Medications',
+              })}
             </Text>
-            <Icon name="chevron-forward" size={20} color="#999" />
-          </View>
-        </Pressable>
+            <View className="flex-row items-center">
+              <Text className="text-text-secondary text-base mr-2">
+                {medications?.length ?? '-'}
+              </Text>
+              <Icon name="chevron-forward" size={20} color="#999" />
+            </View>
+          </Pressable>
+        )}
       </View>
 
       <View className="mb-3">

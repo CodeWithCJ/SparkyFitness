@@ -397,6 +397,7 @@ export {
 } from './utils/measurementTimeline.ts';
 export {
   GLUCOSE_CONTEXT_KINDS,
+  GLUCOSE_CONTEXT_KIND_FEATURES,
   loadGlucoseContext,
   glucoseContextForDay,
   type GlucoseContextKind,

@@ -169,6 +169,16 @@ describe('WhatsNewScreen localization', () => {
     expect(screen.queryByText('Open lab results')).toBeNull();
   });
 
+  it('keeps the medications card without its button while medications are off', () => {
+    mockFeaturesOff = new Set(['medications']);
+    render(<WhatsNewScreen navigation={navigation} route={route} />);
+
+    expect(screen.getByText('Track your medications')).toBeTruthy();
+    expect(screen.queryByText('Set up medications')).toBeNull();
+    // Only the medications button leaves.
+    expect(screen.getByText('Open lab results')).toBeTruthy();
+  });
+
   it('hides the NFC tags button on a phone without NFC', () => {
     render(<WhatsNewScreen navigation={navigation} route={route} />);
 

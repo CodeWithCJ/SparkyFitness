@@ -10,6 +10,10 @@ import {
   pressAction,
   skipDuplicatePressWindow,
 } from './helpers/nativeHeaderTestUtils';
+import {
+  GLP1_CHECKIN_CATEGORY_NAMES,
+  hiddenFeatureCustomCategories,
+} from '@workspace/shared';
 import MeasurementsAddScreen from '../../src/screens/MeasurementsAddScreen';
 import {
   useLatestMeasurementsOnOrBefore,
@@ -741,6 +745,33 @@ describe('MeasurementsAddScreen — custom measurements', () => {
 
     expect(screen.getByText('Energy')).toBeTruthy();
     expect(screen.queryByText('Menstrual flow')).toBeNull();
+  });
+
+  test('leaves out the GLP-1 check-in categories only while Medications is turned off on purpose', () => {
+    setCustomCategories([
+      customCategory({ id: 'c1', name: 'Energy', measurement_type: '' }),
+      customCategory({
+        id: 'c2',
+        name: GLP1_CHECKIN_CATEGORY_NAMES.hunger,
+        measurement_type: '',
+      }),
+    ]);
+    // Never chosen: the categories stay.
+    mockHiddenCategories = hiddenFeatureCustomCategories('mobile', {
+      choices: undefined,
+      cycleEnabled: null,
+    });
+    const screen = renderScreen();
+    expect(screen.getByText('GLP Hunger')).toBeTruthy();
+
+    // Turned off in this app.
+    mockHiddenCategories = hiddenFeatureCustomCategories('mobile', {
+      choices: { mobile: { medications: false } },
+      cycleEnabled: null,
+    });
+    rerenderScreen(screen);
+    expect(screen.getByText('Energy')).toBeTruthy();
+    expect(screen.queryByText('GLP Hunger')).toBeNull();
   });
 
   test('keeps a value typed before its feature turned out to be off', () => {

@@ -6,6 +6,7 @@ import SymptomsReport from '@/pages/Symptoms/SymptomsReport';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
+import { FeatureRoute } from '@/components/FeatureRoute';
 import { withoutHiddenCategories } from '@workspace/shared';
 import { useProfileQuery } from '@/hooks/Settings/useProfile';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -29,7 +30,6 @@ import ExerciseReportsDashboard from '@/pages/Reports/ExerciseReportsDashboard';
 import SleepReport from '@/pages/Reports/SleepReport';
 import BodyBatteryCard from '@/pages/Reports/BodyBatteryCard';
 import RespirationCard from '@/pages/Reports/RespirationCard';
-import GlucoseCard from '@/pages/Reports/GlucoseCard';
 import HeartRateAnalyticsCard from '@/pages/Reports/HeartRateAnalyticsCard';
 
 import StressChart from '@/pages/Reports/StressChart';
@@ -52,7 +52,6 @@ import {
   exportExerciseEntries,
   exportFoodDiary,
 } from '@/utils/reportUtil';
-import { CustomCategoryReport } from './CustomCategoryReport';
 import { ChartErrorBoundary } from '../Errors/ChartErrorFallback';
 import { CustomCategoriesResponse } from '@workspace/shared';
 import { useDailyGoalsRange } from '@/hooks/Goals/useGoals';
@@ -205,6 +204,10 @@ const Reports = () => {
     targetWeightKg: profile?.target_weight
       ? Number(profile.target_weight)
       : null,
+    startDate,
+    endDate,
+    customCategories,
+    customMeasurementsData,
   });
 
   const legacyReportChartPref = nutrientDisplayPreferences.find(
@@ -285,9 +288,6 @@ const Reports = () => {
         return (
           <div className="space-y-6">
             <ChartErrorBoundary>
-              <GlucoseCard startDate={startDate} endDate={endDate} />
-            </ChartErrorBoundary>
-            <ChartErrorBoundary>
               <WidgetGrid
                 pageKey="reports-measurements"
                 widgets={measurementChartWidgets}
@@ -306,12 +306,6 @@ const Reports = () => {
               <RespirationCard
                 categories={customCategories}
                 measurementsData={customMeasurementsData}
-              />
-            </ChartErrorBoundary>
-            <ChartErrorBoundary>
-              <CustomCategoryReport
-                customCategories={customCategories}
-                customMeasurementsData={customMeasurementsData}
               />
             </ChartErrorBoundary>
           </div>
@@ -457,28 +451,33 @@ const Reports = () => {
           </ChartErrorBoundary>
         );
       case 'medications-reports':
+        // Reached by address while Medications is off, it says so instead of
+        // showing the report (the pill is gone; the tab and saved report
+        // settings are kept).
         return (
-          <ChartErrorBoundary>
-            <MedicationReports
-              startDate={startDate}
-              endDate={endDate}
-              nutritionData={nutritionData}
-              tabularData={tabularData}
-              exerciseEntries={exerciseEntries}
-              measurementData={measurementData.map((m) => ({
-                entry_date: m.entry_date,
-                weight: m.weight ?? null,
-              }))}
-              customCategories={customCategories}
-              customMeasurementsData={customMeasurementsData}
-              sleepAnalyticsData={sleepAnalyticsData}
-              medications={medications}
-              medicationEntries={medicationEntries}
-              symptomEntries={symptomEntries}
-              injections={injections}
-              titrationSteps={titrationSteps}
-            />
-          </ChartErrorBoundary>
+          <FeatureRoute feature="medications">
+            <ChartErrorBoundary>
+              <MedicationReports
+                startDate={startDate}
+                endDate={endDate}
+                nutritionData={nutritionData}
+                tabularData={tabularData}
+                exerciseEntries={exerciseEntries}
+                measurementData={measurementData.map((m) => ({
+                  entry_date: m.entry_date,
+                  weight: m.weight ?? null,
+                }))}
+                customCategories={customCategories}
+                customMeasurementsData={customMeasurementsData}
+                sleepAnalyticsData={sleepAnalyticsData}
+                medications={medications}
+                medicationEntries={medicationEntries}
+                symptomEntries={symptomEntries}
+                injections={injections}
+                titrationSteps={titrationSteps}
+              />
+            </ChartErrorBoundary>
+          </FeatureRoute>
         );
       case 'symptoms-reports':
         return (

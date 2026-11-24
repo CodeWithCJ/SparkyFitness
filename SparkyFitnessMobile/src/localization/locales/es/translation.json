@@ -517,8 +517,7 @@
     "oralCareSubtitle": "Muestra el cepillado frente a tu objetivo y racha",
     "bloodAlcohol": "Estimación de alcohol en sangre",
     "bloodAlcoholSubtitle": "Mostrar una estimación aproximada de alcohol en sangre según las bebidas registradas en el Panel",
-    "wellness": "Bienestar",
-    "offInFeatures": "No se muestra: desactivado en Funciones"
+    "wellness": "Bienestar"
   },
   "workoutSettings": {
     "title": "Ajustes de entrenamiento",
@@ -4502,7 +4501,8 @@
     "sleepingWristTemperature": "Temperatura de la muñeca al dormir",
     "overnightBodyTemperature": "Temperatura corporal nocturna",
     "toothbrushing": "Cepillado de dientes",
-    "exercise": "Ejercicio"
+    "exercise": "Ejercicio",
+    "waistCircumference": "Perímetro de cintura"
   },
   "healthDataDisplay": {
     "distance": "{{value}} km",
@@ -4700,7 +4700,10 @@
       "fixed": "Objetivo − Ingerido",
       "projectedTotal": "Calorías totales del dispositivo (TMB + valor de reserva de calorías de actividad)",
       "dynamicActivitySeparated": "Objetivo − Consumidas + Actividad",
-      "tdeeWeekly": "TDEE proyectado + Ajuste de objetivo semanal − Consumidas"
+      "tdeeWeekly": "TDEE proyectado + Ajuste de objetivo semanal − Consumidas",
+      "burnedAdaptive": "Se muestra como referencia. Tu objetivo adaptativo ya incluye tu actividad.",
+      "netAdaptive": "No se usa para Restante. Activa \"Contar calorías de actividad por separado\" para abonar la actividad de hoy.",
+      "netAdaptivePercentage": "No se usa para Restante. Para abonar la actividad de hoy, elige Dinámico y activa \"Contar calorías de actividad por separado\"."
     },
     "notes": {
       "dynamic": "El objetivo crece a medida que te mueves",
@@ -4811,7 +4814,9 @@
       "chartHintTrainingShort": "Toca una barra para ver ese día. Toca un día abajo para alternar entrenamiento y descanso.",
       "chartHintCustomHandle": "Toca una barra para ver ese día. Arrastra el control superior para modificarlo."
     },
-    "adaptiveEstimateRangeWithUnit": "El nivel de actividad establece la estimación inicial y el rango de plausibilidad de ±{{amount}} {{unit}} alrededor de la TMB multiplicada por este factor. Las estimaciones pueden tardar varias semanas en estabilizarse; las fluctuaciones de peso y diarios incompletos añaden incertidumbre."
+    "adaptiveEstimateRangeWithUnit": "El nivel de actividad establece la estimación inicial y el rango de plausibilidad de ±{{amount}} {{unit}} alrededor de la TMB multiplicada por este factor. Las estimaciones pueden tardar varias semanas en estabilizarse; las fluctuaciones de peso y diarios incompletos añaden incertidumbre.",
+    "adaptiveFallbackActivityLevel": "Hasta que el modo adaptativo tenga registros de comida de {{days}} días, tu base es TMB × este nivel, antes de aplicar el modo de objetivo, y tus entrenamientos no se suman encima. Elige un nivel que incluya tus entrenamientos.",
+    "adaptiveFallbackActivitySeparated": "Hasta que el modo adaptativo tenga registros de comida de {{days}} días, tu base es TMB × este nivel, antes de aplicar el modo de objetivo. Describe tu actividad al margen de los pasos y entrenamientos que se cuentan por separado."
   },
   "foodUnit": {
     "updateFailed": "No se pudo actualizar esa unidad",
@@ -7221,7 +7226,19 @@
     "countdownSeconds": "{{seconds}} s",
     "holdCountdownTitle": "Cuenta atrás antes de aguantar",
     "holdCountdownSubtitle": "Una pantalla de preparación 3, 2, 1 antes de iniciar un aguantado cronometrado para ponerte en posición. Toca para omitir.",
-    "newWorkoutSubtitleWearOs": "Un botón para registrar serie, un botón para editar la serie anterior, demostraciones de ejercicios, calculadora de discos, una página de más opciones con acciones de entrenamiento y un resumen único al terminar. Desactivado mantiene la pantalla original."
+    "newWorkoutSubtitleWearOs": "Un botón para registrar serie, un botón para editar la serie anterior, demostraciones de ejercicios, calculadora de discos, una página de más opciones con acciones de entrenamiento y un resumen único al terminar. Desactivado mantiene la pantalla original.",
+    "mediaControlsTitle": "Controles de reproducción",
+    "mediaAccessTitle": "Información de la pista en reproducción",
+    "mediaAccessEnabledSubtitle": "Tu reloj muestra la canción actual y el artista mientras controlas la música del teléfono durante los entrenamientos.",
+    "mediaAccessDisabledSubtitle": "Los controles de reproducción, salto y volumen funcionan automáticamente. Permite el acceso a las notificaciones para que tu reloj también pueda mostrar la canción y el artista actuales. Se ignoran las demás notificaciones.",
+    "mediaAccessEnabled": "Activado",
+    "mediaAccessSetup": "Configurar",
+    "mediaAccessA11yLabel": "{{title}}, {{status}}",
+    "mediaAccessDisclosureTitle": "¿Permitir acceso a las notificaciones?",
+    "mediaAccessDisclosureBody": "Android requiere acceso a las notificaciones para leer la canción y el artista en reproducción en tu reloj Wear OS. SparkyFitness solo lee las sesiones multimedia activas e ignora tus mensajes y otras notificaciones.",
+    "mediaAccessOpenSettings": "Abrir ajustes",
+    "mediaAccessOpenErrorTitle": "No se pudieron abrir los ajustes",
+    "mediaAccessOpenErrorBody": "Abre Ajustes de Android → Notificaciones → Leer, responder y controlar notificaciones y activa Controles multimedia de SparkyFitness."
   },
   "exerciseStatistics": {
     "analysis": {
@@ -9527,8 +9544,7 @@
     "turnCount_other": "{{count}} turnos",
     "showAllTurns_one": "Mostrar todos los {{count}} turno",
     "showAllTurns_many": "Mostrar todos los {{count}} turnos",
-    "showAllTurns_other": "Mostrar todos los {{count}} turnos",
-    "osmAttribution": "© OpenStreetMap"
+    "showAllTurns_other": "Mostrar todos los {{count}} turnos"
   },
   "compareReport": {
     "screen": {
@@ -9892,8 +9908,7 @@
     "buttonsDescription": "Se muestran uno al lado del otro en la parte inferior de la hoja.",
     "chooseCard": "Elige una tarjeta",
     "slotLabel": "Tarjeta {{number}}: {{name}}",
-    "slotHint": "Abre una lista para elegir qué va aquí",
-    "offInFeatures": "No se muestra: desactivado en Funciones"
+    "slotHint": "Abre una lista para elegir qué va aquí"
   },
   "calorieLink": {
     "action": "Vincular un entrenamiento sincronizado",

@@ -7,6 +7,7 @@ import type { CustomMeasurementsResponse } from '../schemas/api/CustomMeasuremen
 import type { WaterIntakeLogEntry } from '../schemas/api/WaterIntake.api.zod.ts';
 import type { SleepEntriesResponse } from '../schemas/api/SleepEntries.api.zod.ts';
 import type { DailyHealthMetrics } from '../schemas/database/DailyHealthMetrics.zod.ts';
+import type { FeatureKey } from '../features/optionalFeatures.ts';
 
 export const GLUCOSE_CONTEXT_KINDS = [
   'meal',
@@ -19,6 +20,19 @@ export const GLUCOSE_CONTEXT_KINDS = [
   'hydration',
 ] as const;
 export type GlucoseContextKind = (typeof GLUCOSE_CONTEXT_KINDS)[number];
+
+/** Context layers that belong to an optional feature. A layer is an entry
+ * point, so it follows `useWebFeatures().isShown` on the web (`isEnabled` for
+ * the owner, always shown while acting on behalf) and
+ * `useMobileFeatures().isEnabled` in the app: the feature's default while the
+ * choices load or fail. While the feature is off in an app, that app leaves
+ * the layer out of the picker and the chart; the person's layer selection is
+ * kept for when it comes back on. */
+export const GLUCOSE_CONTEXT_KIND_FEATURES: Partial<
+  Record<GlucoseContextKind, FeatureKey>
+> = {
+  medication: 'medications',
+};
 export interface GlucoseContextEvent {
   id: string;
   kind: GlucoseContextKind;
