@@ -270,18 +270,7 @@ class CheckInStore(private val context: Context) {
   private var failedWeightDays: Set<String> = emptySet()
   private var rejectedWeightDraft: RejectedWeightDraft? = null
   private var rolloverJob: Job? = null
-  private val waterConsumedBaseline = mutableMapOf<String, WaterTapBaseline>()
-  private val settledWaterTapCohort = mutableListOf<SettledWaterTapRecord>()
-  private var lastSeenServerWaterDay: String = ""
-  private val lastSeenServerWaterEntries = mutableMapOf<String, Double>()
-
-  private fun captureWaterTapBaseline(): WaterTapBaseline {
-    val todaySnap = _water.value?.takeIf { it.isToday }
-    return WaterTapBaseline(
-      capturedServerMl = todaySnap?.consumedMl ?: 0.0,
-      capturedEntryIds = todaySnap?.log?.map { it.id }?.toSet().orEmpty()
-    )
-  }
+  private val waterConsumedBaseline = mutableMapOf<String, Double>()
 
   private fun newActionToken(): String =
     UUID.randomUUID().toString().replace("-", "").take(12)
@@ -574,13 +563,6 @@ class CheckInStore(private val context: Context) {
     }
     val filteredTaps = _pendingWaterTaps.value.filter { it.day == today }
     val filteredDeletes = _pendingWaterDeletes.value.filter { it.day == today }
-    if (dateChanged || filteredTaps.isEmpty()) {
-      settledWaterTapCohort.clear()
-    }
-    if (dateChanged) {
-      lastSeenServerWaterDay = ""
-      lastSeenServerWaterEntries.clear()
-    }
     if (filteredTaps.size != _pendingWaterTaps.value.size || filteredDeletes.size != _pendingWaterDeletes.value.size) {
       _pendingWaterTaps.value = filteredTaps
       _pendingWaterDeletes.value = filteredDeletes
@@ -697,7 +679,7 @@ class CheckInStore(private val context: Context) {
       state = SyncState.QUEUED,
       ownerId = ownerId
     )
-    waterConsumedBaseline[tap.id] = captureWaterTapBaseline()
+    waterConsumedBaseline[tap.id] = _water.value?.takeIf { it.isToday }?.consumedMl ?: 0.0
     _pendingWaterTaps.value = _pendingWaterTaps.value + tap
     persistPendingWater()
     recomputeWaterState()
@@ -763,11 +745,11 @@ class CheckInStore(private val context: Context) {
   fun retryFailedWaterTaps(refreshTiles: Boolean = true) {
     val ownerId = activeOwnerId() ?: return
     var changed = false
-    val currentBaseline = captureWaterTapBaseline()
+    val todayServerMl = _water.value?.takeIf { it.isToday }?.consumedMl ?: 0.0
     val updated = _pendingWaterTaps.value.map { tap ->
       if (tap.state == SyncState.FAILED && tap.ownerId == ownerId) {
         changed = true
-        waterConsumedBaseline[tap.id] = currentBaseline
+        waterConsumedBaseline[tap.id] = todayServerMl
         val payload = OutboundPayloads.waterTap(
           clientId = tap.id,
           entryDate = tap.day,
@@ -846,7 +828,7 @@ class CheckInStore(private val context: Context) {
       val list = _pendingWaterTaps.value.toMutableList()
       val tap = list[tapIdx]
       if (ok && !waterConsumedBaseline.containsKey(clientId)) {
-        waterConsumedBaseline[clientId] = captureWaterTapBaseline()
+        waterConsumedBaseline[clientId] = _water.value?.takeIf { it.isToday }?.consumedMl ?: 0.0
       }
       val nextState = if (ok) SyncState.SAVED else SyncState.FAILED
       list[tapIdx] = tap.copy(state = nextState)
@@ -886,26 +868,19 @@ class CheckInStore(private val context: Context) {
   private fun recomputeWaterState() {
     val todaySnap = _water.value?.takeIf { it.isToday }
     val serverMl = todaySnap?.consumedMl ?: 0.0
-    val currentLog = todaySnap?.log.orEmpty()
-    val deletedEntries = if (todaySnap != null) {
-      if (lastSeenServerWaterDay != todaySnap.day) {
-        lastSeenServerWaterDay = todaySnap.day
-        lastSeenServerWaterEntries.clear()
-      }
-      computeDeletedServerWaterEntries(lastSeenServerWaterEntries, currentLog)
-    } else {
-      emptyMap()
-    }
 
-    // Settle SAVED taps once incoming server consumedMl covers the active settled cohort plus this tap
-    val remainingTaps = settleSavedWaterTaps(
-      taps = _pendingWaterTaps.value,
-      baselines = waterConsumedBaseline,
-      settledCohort = settledWaterTapCohort,
-      serverMl = serverMl,
-      currentLog = currentLog,
-      deletedEntries = deletedEntries
-    )
+    // Settle SAVED taps once server consumedMl has advanced past their baseline
+    val remainingTaps = _pendingWaterTaps.value.filter { tap ->
+      if (!tap.isToday) return@filter false
+      if (tap.state == SyncState.SAVED) {
+        val baseline = waterConsumedBaseline[tap.id]
+        if (baseline != null && serverMl >= baseline + tap.volumeMl * 0.5) {
+          waterConsumedBaseline.remove(tap.id)
+          return@filter false
+        }
+      }
+      true
+    }
     if (remainingTaps.size != _pendingWaterTaps.value.size) {
       _pendingWaterTaps.value = remainingTaps
       persistPendingWater()
@@ -1246,9 +1221,6 @@ class CheckInStore(private val context: Context) {
     lastDraftSeedDay = ""
     _syncState.value = SyncState.SAVED
     waterConsumedBaseline.clear()
-    settledWaterTapCohort.clear()
-    lastSeenServerWaterDay = ""
-    lastSeenServerWaterEntries.clear()
     val editor = prefs.edit()
       .remove("last_context_json")
       .remove("pending_water_taps")
@@ -1825,18 +1797,6 @@ class CheckInStore(private val context: Context) {
     return (clamped * 10.0).roundToInt() / 10.0
   }
 
-  internal data class WaterTapBaseline(
-    val capturedServerMl: Double,
-    val capturedEntryIds: Set<String> = emptySet()
-  )
-
-  internal data class SettledWaterTapRecord(
-    val capturedServerMl: Double,
-    val volumeMl: Double,
-    val capturedEntryIds: Set<String> = emptySet(),
-    val matchedEntryId: String? = null
-  )
-
   companion object {
     internal fun resolveEnabledPage(preferred: WatchPage, enabled: List<WatchPage>): WatchPage =
       if (enabled.contains(preferred)) {
@@ -1868,126 +1828,6 @@ class CheckInStore(private val context: Context) {
       today: String,
       rejectedExpired: Boolean
     ): Boolean = rejectedExpired || lastDraftSeedDay != today
-
-    internal fun minimumServerMlForWaterTaps(records: List<SettledWaterTapRecord>): Double {
-      var floor = 0.0
-      for (rec in records.sortedBy { it.capturedServerMl }) {
-        floor = max(floor, rec.capturedServerMl) + rec.volumeMl
-      }
-      return floor
-    }
-
-    internal fun computeDeletedServerWaterEntries(
-      previousEntries: MutableMap<String, Double>,
-      currentLog: List<WaterLogEntry>
-    ): Map<String, Double> {
-      val currentMap = currentLog.associate { it.id to it.volumeMl }
-      val deleted = mutableMapOf<String, Double>()
-      for ((id, volumeMl) in previousEntries) {
-        if (!currentMap.containsKey(id)) {
-          deleted[id] = volumeMl
-        }
-      }
-      previousEntries.clear()
-      previousEntries.putAll(currentMap)
-      return deleted
-    }
-
-    internal fun settleSavedWaterTaps(
-      taps: List<PendingWaterTap>,
-      baselines: MutableMap<String, WaterTapBaseline>,
-      settledCohort: MutableList<SettledWaterTapRecord>,
-      serverMl: Double,
-      currentLog: List<WaterLogEntry> = emptyList(),
-      deletedEntries: Map<String, Double> = emptyMap()
-    ): List<PendingWaterTap> {
-      val remaining = mutableListOf<PendingWaterTap>()
-      val todayTaps = taps.filter { it.isToday }
-      if (deletedEntries.isNotEmpty()) {
-        for (tap in todayTaps) {
-          val baseline = baselines[tap.id] ?: continue
-          val includedDeletedMl = deletedEntries
-            .filterKeys { it in baseline.capturedEntryIds }
-            .values
-            .sum()
-          if (includedDeletedMl > 0.0) {
-            baselines[tap.id] = WaterTapBaseline(
-              capturedServerMl = max(0.0, baseline.capturedServerMl - includedDeletedMl),
-              capturedEntryIds = baseline.capturedEntryIds - deletedEntries.keys
-            )
-          }
-        }
-        val cohortWithOrigIds = mutableListOf<Pair<SettledWaterTapRecord, Set<String>>>()
-        val unmatchedDeleted = deletedEntries.toMutableMap()
-        for (rec in settledCohort) {
-          if (rec.matchedEntryId != null && deletedEntries.containsKey(rec.matchedEntryId)) {
-            unmatchedDeleted.remove(rec.matchedEntryId)
-            continue
-          }
-          val origIds = rec.capturedEntryIds
-          val includedDeletedMl = deletedEntries
-            .filterKeys { it in origIds }
-            .values
-            .sum()
-          cohortWithOrigIds.add(
-            rec.copy(
-              capturedServerMl = max(0.0, rec.capturedServerMl - includedDeletedMl),
-              capturedEntryIds = origIds - deletedEntries.keys
-            ) to origIds
-          )
-        }
-        if (unmatchedDeleted.isNotEmpty() && cohortWithOrigIds.any { it.first.matchedEntryId == null }) {
-          for ((delId, delVol) in unmatchedDeleted) {
-            var left = delVol
-            val iter = cohortWithOrigIds.listIterator()
-            while (iter.hasNext() && left > 0.0) {
-              val (rec, origIds) = iter.next()
-              if (rec.matchedEntryId != null || delId in origIds) continue
-              if (left >= rec.volumeMl) {
-                left -= rec.volumeMl
-                iter.remove()
-              } else {
-                iter.set(rec.copy(volumeMl = rec.volumeMl - left) to origIds)
-                left = 0.0
-              }
-            }
-          }
-        }
-        settledCohort.clear()
-        settledCohort.addAll(cohortWithOrigIds.map { it.first })
-      }
-      val claimedEntryIds = settledCohort.mapNotNull { it.matchedEntryId }.toMutableSet()
-      for (tap in todayTaps) {
-        if (tap.state == SyncState.SAVED) {
-          val baseline = baselines[tap.id]
-          if (baseline != null) {
-            val matchedId = currentLog.firstOrNull { entry ->
-              entry.id !in baseline.capturedEntryIds &&
-                entry.id !in claimedEntryIds &&
-                abs(entry.volumeMl - tap.volumeMl) <= max(1.0, tap.volumeMl * 0.05)
-            }?.id
-            val candidate = SettledWaterTapRecord(
-              capturedServerMl = baseline.capturedServerMl,
-              volumeMl = tap.volumeMl,
-              capturedEntryIds = baseline.capturedEntryIds,
-              matchedEntryId = matchedId
-            )
-            val requiredServerMl = minimumServerMlForWaterTaps(settledCohort + candidate) - tap.volumeMl * 0.5
-            if (serverMl >= requiredServerMl) {
-              settledCohort.add(candidate)
-              if (matchedId != null) claimedEntryIds.add(matchedId)
-              baselines.remove(tap.id)
-              continue
-            }
-          }
-        }
-        remaining.add(tap)
-      }
-      if (remaining.isEmpty()) {
-        settledCohort.clear()
-      }
-      return remaining
-    }
 
     internal data class ResolvedLastReading(
       val weightKg: Double?,
