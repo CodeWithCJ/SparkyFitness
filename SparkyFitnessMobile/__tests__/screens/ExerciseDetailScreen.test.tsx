@@ -45,6 +45,16 @@ jest.mock('../../src/hooks/useExerciseStats', () => ({
   useExerciseStats: jest.fn(),
 }));
 
+// The trend card reads its own data; here only whether the screen shows it.
+jest.mock('../../src/components/ExerciseTrendCard', () => {
+  const { View }: typeof import('react-native') = require('react-native');
+  const ReactModule: typeof import('react') = require('react');
+  return {
+    __esModule: true,
+    default: () => ReactModule.createElement(View, { testID: 'trend-card' }),
+  };
+});
+
 jest.mock('../../src/hooks/useExerciseHistory', () => ({
   useExerciseHistory: jest.fn(),
 }));
@@ -461,6 +471,59 @@ describe('ExerciseDetailScreen', () => {
 
   describe('records strip', () => {
     const uuidId = '22222222-2222-4222-8222-222222222222';
+
+    const statsWithSessions = (count: number) =>
+      ({
+        data: {
+          bestSet: {
+            entryDate: '2026-01-06',
+            weight: 100,
+            reps: 5,
+            setNumber: 2,
+          },
+          lastSet: null,
+          recentSessions: Array.from({ length: count }, (_, index) => ({
+            entryDate: `2026-01-0${index + 1}`,
+            sets: [],
+          })),
+        },
+      }) as any;
+
+    it('shows the trend card for a lift with two sessions', () => {
+      mockUseExerciseStats.mockReturnValue(statsWithSessions(2));
+      const screen = renderScreen({ id: uuidId });
+      expect(screen.getByTestId('trend-card')).toBeTruthy();
+    });
+
+    it('hides the trend card until a second session exists', () => {
+      mockUseExerciseStats.mockReturnValue(statsWithSessions(1));
+      const screen = renderScreen({ id: uuidId });
+      expect(screen.queryByTestId('trend-card')).toBeNull();
+    });
+
+    it('shows the trend card for a lift logged only in interval or WOD workouts', () => {
+      // Best set skips those workout formats, so stats carry no bestSet.
+      const stats = statsWithSessions(2);
+      stats.data.bestSet = null;
+      mockUseExerciseStats.mockReturnValue(stats);
+      const screen = renderScreen({ id: uuidId });
+      expect(screen.getByTestId('trend-card')).toBeTruthy();
+    });
+
+    it('hides the trend card for cardio', () => {
+      mockUseExerciseStats.mockReturnValue(statsWithSessions(3));
+      const screen = renderScreen({ id: uuidId, category: 'cardio' });
+      expect(screen.queryByTestId('trend-card')).toBeNull();
+    });
+
+    it('shows the trend card for a bodyweight exercise', () => {
+      mockUseExerciseStats.mockReturnValue(statsWithSessions(2));
+      const screen = renderScreen({
+        id: uuidId,
+        modality: 'bodyweight_reps',
+      });
+      expect(screen.getByTestId('trend-card')).toBeTruthy();
+    });
 
     it('renders Best and Last tiles from stats', () => {
       mockUseExerciseStats.mockReturnValue({

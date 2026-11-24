@@ -2135,7 +2135,7 @@ async function getExerciseProgressData(
          ee.exercise_preset_entry_id,
          epe.name AS exercise_preset_entry_name,
          e.category,
-         ee.modality,
+         COALESCE(ee.modality, e.modality) AS modality,
          -- Body weight that day, for a bodyweight exercise's load
          -- (effectiveLoadKg in @workspace/shared).
          bw.weight::float8 AS body_weight_kg,
@@ -2162,7 +2162,32 @@ async function getExerciseProgressData(
               WHERE ees.exercise_entry_id = ee.id
             ) AS set_data
            ), '[]'::json
-         ) AS sets
+         ) AS sets,
+         -- What the shared isPlannedEntryRow needs, so a prefilled plan row
+         -- nobody started counts as nothing on the trend charts.
+         -- COALESCE: created_at is nullable, and the schema wants a boolean.
+         COALESCE(ee.updated_at > ee.created_at, false) AS edited,
+         CASE WHEN epe.id IS NULL THEN NULL ELSE json_build_object(
+           'source', epe.source,
+           'finished_at', epe.finished_at,
+           'edited', COALESCE(epe.updated_at > epe.created_at, false) OR EXISTS (
+             SELECT 1 FROM exercise_entries pe_e
+              WHERE pe_e.exercise_preset_entry_id = epe.id
+                AND pe_e.user_id = ee.user_id
+                AND pe_e.updated_at > pe_e.created_at),
+           'has_plan_assignment', EXISTS (
+             SELECT 1 FROM exercise_entries pe_e
+              WHERE pe_e.exercise_preset_entry_id = epe.id
+                AND pe_e.user_id = ee.user_id
+                AND pe_e.workout_plan_assignment_id IS NOT NULL),
+           'sets', COALESCE((
+             SELECT json_agg(json_build_object(
+                      'completed_at', pe_s.completed_at, 'started_at', pe_s.started_at))
+               FROM exercise_entry_sets pe_s
+               JOIN exercise_entries pe_e ON pe_e.id = pe_s.exercise_entry_id
+              WHERE pe_e.exercise_preset_entry_id = epe.id
+                AND pe_e.user_id = ee.user_id), '[]'::json)
+         ) END AS session
        FROM exercise_entries ee
        LEFT JOIN exercise_preset_entries epe ON epe.id = ee.exercise_preset_entry_id
        LEFT JOIN exercises e ON e.id = ee.exercise_id

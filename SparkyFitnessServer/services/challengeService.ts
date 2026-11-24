@@ -22,13 +22,12 @@ import {
   challengeWeekGoal,
   daysBetween,
   daysInRange,
-  deriveWorkoutSessionStatus,
   effortAdjustedOneRepMaxKg,
   entryCaloriesCounted,
   isValidTimeZone,
   isWarmupSetType,
   isoWeekday,
-  isWorkoutPlanGeneratedSource,
+  isPlannedEntryRow,
   parseChallengeRules,
   rankChallengeStandings,
   scoreChallengeDays,
@@ -841,38 +840,9 @@ const n = (v: unknown): number | null => {
  */
 const DAILY_SUMMARY_EXERCISE_NAME = 'Active Calories';
 
-/**
- * A diary row that is only planned, so it earns nothing yet: what a prefill
- * plan generated and nobody has touched. A row in a grouped session is
- * planned while the session's lifecycle status is 'planned' (no set checked
- * off, not finished) and neither the session nor any of its exercises was
- * edited. A single generated row is planned until the member edits it or
- * starts or checks off a set. "Edited" is the test the plan regeneration
- * uses before it removes generated rows (updated_at after created_at), so a
- * workout the plan keeps as the member's own also counts here.
- */
-export function isPlannedEntryRow(row: MemberEntryRow): boolean {
-  if (row.session) {
-    return (
-      !row.session.edited &&
-      // A started set means the session is under way, though not checked off
-      !row.session.sets.some((s) => (s.started_at ?? null) !== null) &&
-      deriveWorkoutSessionStatus({
-        source: row.session.source,
-        finishedAt: row.session.finished_at,
-        hasPlanAssignment: row.session.has_plan_assignment,
-        sets: row.session.sets ?? [],
-      }) === 'planned'
-    );
-  }
-  return (
-    isWorkoutPlanGeneratedSource(row.source) &&
-    !row.edited &&
-    !(row.sets ?? []).some(
-      (s) => s.completed_at !== null || s.started_at !== null
-    )
-  );
-}
+// The planned-row rule lives in @workspace/shared (the exercise trend charts
+// count by it too); re-exported for this service's callers and tests.
+export { isPlannedEntryRow };
 
 /** A diary row as the scorer reads it. Distance is stored in km and scored in metres. */
 export function toChallengeEntry(row: MemberEntryRow): ChallengeEntry {
