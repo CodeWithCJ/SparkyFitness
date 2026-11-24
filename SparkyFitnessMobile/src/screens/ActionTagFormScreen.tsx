@@ -868,20 +868,22 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
           })}
         </Text>
 
-        <View className="flex-row justify-between items-center mt-6">
-          <Text className="text-sm text-text-primary flex-shrink pr-3">
-            {t('actionTags.form.allowCustomTimestamp', {
-              defaultValue: 'Allow custom timestamp on scan',
-            })}
-          </Text>
-          <Switch
-            accessibilityLabel={t('actionTags.form.allowCustomTimestamp', {
-              defaultValue: 'Allow custom timestamp on scan',
-            })}
-            value={allowCustomTimestamp}
-            onValueChange={setAllowCustomTimestamp}
-          />
-        </View>
+        {kind !== 'water' ? (
+          <View className="flex-row justify-between items-center mt-6">
+            <Text className="text-sm text-text-primary flex-shrink pr-3">
+              {t('actionTags.form.allowCustomTimestamp', {
+                defaultValue: 'Allow custom timestamp on scan',
+              })}
+            </Text>
+            <Switch
+              accessibilityLabel={t('actionTags.form.allowCustomTimestamp', {
+                defaultValue: 'Allow custom timestamp on scan',
+              })}
+              value={allowCustomTimestamp}
+              onValueChange={setAllowCustomTimestamp}
+            />
+          </View>
+        ) : null}
         <Text className="text-text-secondary text-sm mt-2">
           {t('actionTags.form.allowCustomTimestampHint', {
             defaultValue:

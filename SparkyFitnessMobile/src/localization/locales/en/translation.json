@@ -6627,9 +6627,7 @@
       "servings_other": "{{formattedCount}} servings",
       "amount": "{{quantity}} {{unit}}",
       "food": "{{amount}} · {{meal}}",
-      "unsupported": "Update the app to use this tag",
-      "servingsFormatted_one": "{{formattedCount}} serving",
-      "servingsFormatted_other": "{{formattedCount}} servings"
+      "unsupported": "Update the app to use this tag"
     },
     "type": {
       "water": "Water or drink",
@@ -6639,24 +6637,18 @@
       "add": "Add NFC tag",
       "count_one": "{{formattedCount}} tag logs this container",
       "count_other": "{{formattedCount}} tags log this container",
-      "hint": "Tap a sticker on this bottle to log a drink",
-      "countFormatted_one": "{{formattedCount}} tag logs this container",
-      "countFormatted_other": "{{formattedCount}} tags log this container"
+      "hint": "Tap a sticker on this bottle to log a drink"
     },
     "food": {
       "count_one": "{{formattedCount}} tag logs this food",
       "count_other": "{{formattedCount}} tags log this food",
-      "hint": "Tap a sticker to log this food",
-      "countFormatted_one": "{{formattedCount}} tag logs this food",
-      "countFormatted_other": "{{formattedCount}} tags log this food"
+      "hint": "Tap a sticker to log this food"
     },
     "meal": {
       "auto": "By time of day",
       "count_one": "{{formattedCount}} tag logs this meal",
       "count_other": "{{formattedCount}} tags log this meal",
-      "hint": "Tap a sticker to log this meal",
-      "countFormatted_one": "{{formattedCount}} tag logs this meal",
-      "countFormatted_other": "{{formattedCount}} tags log this meal"
+      "hint": "Tap a sticker to log this meal"
     }
   },
   "waterContainers": {

@@ -109,7 +109,7 @@ function triggerScanHaptic(style: 'light' | 'medium' = 'light'): void {
         : Haptics.ImpactFeedbackStyle.Light;
     void Haptics.impactAsync(level);
   } catch {
-    // Kein Haptics-Modul verfügbar -> still ignorieren
+    // Haptics module unavailable -> ignore silently
   }
 }
 
@@ -343,15 +343,6 @@ const ConfirmAmountPicker: React.FC<{
   const [customInput, setCustomInput] = useState<string>(
     formatInputNumber(defaultValue)
   );
-
-  const defaultsKey = `${baseUnit}:${defaultValue}`;
-  const [syncedDefaultsKey, setSyncedDefaultsKey] = useState(defaultsKey);
-  if (syncedDefaultsKey !== defaultsKey) {
-    setSyncedDefaultsKey(defaultsKey);
-    setSelectedUnit(baseUnit);
-    setSelectedValue(defaultValue);
-    setCustomInput(formatInputNumber(defaultValue));
-  }
 
   const presets = useMemo(() => {
     if (Array.isArray(tag.preset_amounts) && tag.preset_amounts.length > 0) {
@@ -592,7 +583,7 @@ const ConfirmAmountPicker: React.FC<{
         );
         options.override =
           qty !== action.quantity ? { quantity_override: qty } : undefined;
-        if (selectedMealTypeId) {
+        if (mealTypeOverrideId !== null && selectedMealTypeId) {
           options.mealTypeId = selectedMealTypeId;
         }
       }
@@ -618,6 +609,7 @@ const ConfirmAmountPicker: React.FC<{
       customTime,
       isWater,
       selectedMealTypeId,
+      mealTypeOverrideId,
       selectedUnit,
       selectedValue,
       variantServingSize,
@@ -703,17 +695,6 @@ const ConfirmAmountPicker: React.FC<{
           </View>
         </View>
 
-        {doubleScanNotice ? (
-          <View className="mt-2 rounded-xl bg-amber-500/15 border border-amber-500/40 px-3.5 py-2.5">
-            <Text className="text-xs font-medium text-text-primary">
-              {t('actionTags.scan.doubleScanNotice', {
-                defaultValue:
-                  'Scanned again shortly after the previous scan — confirm to log again.',
-              })}
-            </Text>
-          </View>
-        ) : null}
-
         {/* Live-Vorschau-Karte */}
         <View className="mt-3 rounded-2xl bg-surface p-4 border border-border">
           <View className="flex-row items-center gap-3">
@@ -788,17 +769,10 @@ const ConfirmAmountPicker: React.FC<{
                     key={mt.id}
                     accessibilityRole="button"
                     onPress={() => setMealTypeOverrideId(mt.id)}
-                    style={{
-                      backgroundColor: active ? '#3B82F6' : '#FFFFFF',
-                      borderColor: active ? '#2563EB' : '#E2E8F0',
-                    }}
-                    className="px-3.5 py-2 rounded-full border"
+                    className={`px-3.5 py-2 rounded-full border ${active ? 'bg-primary border-primary' : 'bg-surface border-border'}`}
                   >
                     <Text
-                      style={{
-                        color: active ? '#FFFFFF' : '#0F172A',
-                      }}
-                      className="text-xs font-semibold"
+                      className={`text-xs font-semibold ${active ? 'text-white' : 'text-text-primary'}`}
                     >
                       {getMealTypeDisplayLabel(mt, t)}
                     </Text>
@@ -924,17 +898,10 @@ const ConfirmAmountPicker: React.FC<{
                     key={unitOption}
                     accessibilityRole="button"
                     onPress={() => handleSelectUnit(unitOption)}
-                    style={{
-                      backgroundColor: chosen ? '#3B82F6' : '#FFFFFF',
-                      borderColor: chosen ? '#2563EB' : '#E2E8F0',
-                    }}
-                    className="px-3 py-1.5 rounded-lg border"
+                    className="px-3 py-1.5 rounded-lg border ${chosen ? 'bg-primary border-primary' : 'bg-surface border-border'}"
                   >
                     <Text
-                      style={{
-                        color: chosen ? '#FFFFFF' : '#0F172A',
-                      }}
-                      className="text-xs font-medium"
+                      className={`text-xs font-medium ${chosen ? 'text-white' : 'text-text-primary'}`}
                     >
                       {unitOption}
                     </Text>

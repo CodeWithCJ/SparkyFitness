@@ -179,11 +179,17 @@ const RUNNERS: {
       const containerMl =
         containerVolumeInMl(container.volume, container.unit) /
         containerServings;
-      effectiveDrinks = Math.min(
-        20,
-        Math.max(1, Math.round(context.waterMlOverride / containerMl))
-      );
-      summaryLabel = `${effectiveDrinks} × ${container.name}`;
+      const rawDrinks =
+        containerMl > 0 ? context.waterMlOverride / containerMl : action.drinks;
+      const nearestWhole = Math.round(rawDrinks);
+      const isWholeMultiple =
+        nearestWhole >= 1 && Math.abs(rawDrinks - nearestWhole) < 1e-6;
+      effectiveDrinks = isWholeMultiple
+        ? Math.min(20, nearestWhole)
+        : Math.min(20, Math.max(0, Number(rawDrinks.toFixed(2))));
+      summaryLabel = isWholeMultiple
+        ? `${effectiveDrinks} × ${container.name}`
+        : `${Math.round(context.waterMlOverride)} ml (${container.name})`;
     }
 
     await measurementService.upsertWaterIntake(
