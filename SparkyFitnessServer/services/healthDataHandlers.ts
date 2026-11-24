@@ -1,4 +1,5 @@
 import { log } from '../config/logging.js';
+import { VO2_MAX_BOUNDS } from '../utils/vo2MaxDailySummary.js';
 import measurementRepository from '../models/measurementRepository.js';
 import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb, {
@@ -2567,11 +2568,10 @@ const restingHeartRateHandler = createDailySummaryReadingHandler(
   { min: 20, max: 250, decimals: 0 }
 );
 
-const vo2MaxHandler = createDailySummaryReadingHandler('vo2_max', {
-  min: 10,
-  max: 100,
-  decimals: 1,
-});
+const vo2MaxHandler = createDailySummaryReadingHandler(
+  'vo2_max',
+  VO2_MAX_BOUNDS
+);
 
 // Apple's sleeping wrist temperature arrives as a plain record, one per night.
 // It is kept as a `skin_temperature` sample, not a custom measurement, so the
