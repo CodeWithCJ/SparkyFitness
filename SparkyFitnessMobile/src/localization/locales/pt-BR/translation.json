@@ -1551,7 +1551,8 @@
       "hydration": "Lembretes de hidratação",
       "moodCheckin": "Check-ins de humor",
       "oralCare": "Lembretes de escovação",
-      "mindfulness": "Temporizador de meditação"
+      "mindfulness": "Temporizador de meditação",
+      "challenges": "Desafios"
     },
     "actions": {
       "completeSet": "Concluir série",
@@ -1611,6 +1612,12 @@
     "offlineUploads": {
       "title": "Um treino está esperando para ser enviado",
       "body": "Abra o SparkyFitness quando o seu servidor estiver acessível."
+    },
+    "challengeWeek": {
+      "body": "{{leader}} lidera com {{total}}. A semana fecha hoje à noite.",
+      "bodyWithOwn": "{{leader}} lidera com {{total}}. Você está em {{rank}}º com {{ownTotal}}. A semana fecha hoje à noite.",
+      "bodyYouLead": "Você lidera com {{total}}. A semana fecha hoje à noite.",
+      "title": "{{name}}: quem lidera esta semana"
     }
   },
   "activeWorkout": {
@@ -1878,7 +1885,9 @@
     "checkIn": "Check-In Diário",
     "checkInHint": "Hábitos",
     "oralCare": "Saúde bucal",
-    "oralCareHint": "Escovar, fio dental"
+    "oralCareHint": "Escovar, fio dental",
+    "copyFromYesterday": "Copiar de ontem",
+    "copyFromYesterdayHint": "Repetir refeições"
   },
   "screens": {
     "foods": "Alimentos",
@@ -1979,7 +1988,9 @@
       "labResults": "Exames laboratoriais",
       "labResultsSubtitle": "Exames de sangue e outros marcadores ao longo do tempo",
       "trainingCalendar": "Calendário de treinos",
-      "trainingCalendarSubtitle": "Treinos planejados e concluídos, e carga por esporte"
+      "trainingCalendarSubtitle": "Treinos planejados e concluídos, e carga por esporte",
+      "challenges": "Desafios",
+      "challengesSubtitle": "Classificações em grupo com amigos e família"
     },
     "sleep": "Sono",
     "healthTrendsSettings": "Tendências de saúde",
@@ -2555,7 +2566,8 @@
     "bloodAlcohol": "Estimativa de álcool no sangue",
     "bloodAlcoholSubtitle": "Mostrar no painel uma estimativa aproximada de álcool no sangue a partir das bebidas registradas",
     "wellness": "Bem-estar",
-    "offInFeatures": "Não exibido: desativado em Recursos"
+    "challenges": "Desafios",
+    "challengesSubtitle": "Mostra a sua posição nos desafios de que você participa"
   },
   "diarySettings": {
     "updateFailed": "Falha ao atualizar a configuração.",
@@ -2635,7 +2647,10 @@
     "oralCareReminderTime": "Lembrete {{number}}",
     "oralCareReminderTimeAccessibility": "Lembrete de escovação {{number}}, {{time}}",
     "oralCareRemoveReminder": "Remover lembrete de escovação {{number}}",
-    "oralCareAddReminder": "Adicionar lembrete"
+    "oralCareAddReminder": "Adicionar lembrete",
+    "challengeWeek": "Líder da semana",
+    "challengeWeekSubtitle": "Na última noite de cada semana de desafio: quem lidera cada desafio semanal de que você participa",
+    "challenges": "Desafios"
   },
   "workoutSettings": {
     "title": "Configurações de treino",
@@ -3603,7 +3618,8 @@
       "lookupBarcode": "Não foi possível consultar este código de barras. Tente novamente.",
       "timeout": "A requisição demorou demais. Confira a conexão com o servidor.",
       "retryOnDevice": "Este iPhone não conseguiu ler o rótulo.",
-      "restartApp": "Não foi possível abrir a galeria. Reinicie o app."
+      "restartApp": "Não foi possível abrir a galeria. Reinicie o app.",
+      "offlineBarcode": "Sem conexão. Este código de barras não está entre os alimentos salvos no seu celular."
     },
     "permission": {
       "camera": "Precisamos da sua permissão para usar a câmera",
@@ -4851,7 +4867,9 @@
       "result": "= {{raw}} {{unit}} cru · {{energy}}",
       "incomplete": "Informe os pesos para calcular a quantidade crua.",
       "enterEaten": "Informe o peso cozido que você comeu."
-    }
+    },
+    "queued": "Salvo neste celular",
+    "queuedMessage": "Ele será enviado quando o seu servidor estiver acessível."
   },
   "foodEntryMultiAdd": {
     "title": "Revisar",
@@ -5022,7 +5040,9 @@
       "selected_many": "{{count}} selecionados",
       "selected_other": "{{count}} selecionados",
       "limitReached": "Você pode selecionar até {{limit}} alimentos",
-      "foodCheckbox": "Selecionar {{name}}"
+      "foodCheckbox": "Selecionar {{name}}",
+      "needsConnection": "Adicionar vários alimentos exige conexão",
+      "needsConnectionHint": "Adicione um de cada vez para mantê-los neste celular."
     },
     "states": {
       "connectToSearch": "Conecte-se a um servidor para buscar alimentos",
@@ -5064,6 +5084,10 @@
       "itemCount_one": "{{count}} item",
       "itemCount_many": "{{count}} itens",
       "itemCount_other": "{{count}} itens"
+    },
+    "foodResultCard": {
+      "tapForFullNutrition": "Toque para ver a informação nutricional completa",
+      "tapForNutrition": "Toque para ver a informação nutricional"
     }
   },
   "editBarcode": {
@@ -5351,7 +5375,9 @@
     "errors": {
       "permission": "Você não tem permissão para editar este registro.",
       "saveFailed": "Falha ao salvar as alterações",
-      "deleteFailed": "Falha ao excluir"
+      "deleteFailed": "Falha ao excluir",
+      "uploadingNow": "O envio está acontecendo agora. Tente de novo daqui a pouco.",
+      "alreadyUploaded": "Acabou de ser enviado. Tente de novo depois que o Diário for atualizado."
     },
     "deleteConfirm": "Tem certeza de que quer excluir este alimento registrado?",
     "entryNotes": "Observação deste registro",
@@ -5930,7 +5956,8 @@
     "healthUnavailable": {
       "title": "Dados de saúde indisponíveis",
       "message": "Não foi possível iniciar o acesso aos dados de saúde. Confira as permissões nas configurações."
-    }
+    },
+    "configureForCopy": "Configure a conexão com o servidor nas Configurações para copiar de ontem."
   },
   "announcementModal": {
     "title": "Aviso",
@@ -6437,10 +6464,14 @@
     "customConfirm": "Mostrar este período"
   },
   "foodEntryMeal": {
-    "failed": "Falha ao adicionar a refeição"
+    "failed": "Falha ao adicionar a refeição",
+    "queued": "Salvo neste celular",
+    "queuedMessage": "Ele será enviado quando o seu servidor estiver acessível."
   },
   "foodSave": {
-    "failed": "Falha ao salvar o alimento"
+    "failed": "Falha ao salvar o alimento",
+    "queued": "Salvo neste celular",
+    "queuedMessage": "Ele será enviado quando o seu servidor estiver acessível."
   },
   "favorites": {
     "updateFailed": "Falha ao atualizar os favoritos"
@@ -6458,7 +6489,9 @@
     "configure": "Configure um recipiente de água no servidor para acompanhar a hidratação.",
     "multipleNoPrimaryMobile": "Você tem vários recipientes de água, mas nenhum marcado como principal. Toque para escolher um.",
     "configureMobile": "Adicione um recipiente de água para começar a acompanhar a hidratação.",
-    "defaultContainer": "Padrão"
+    "defaultContainer": "Padrão",
+    "queued": "Salvo neste celular",
+    "queuedMessage": "Ele será enviado quando o seu servidor estiver acessível."
   },
   "waterContainers": {
     "title": "Recipientes de água",
@@ -9546,7 +9579,7 @@
     },
     "goBack": "Voltar",
     "followRoadsTooMany": "Seguir as ruas aceita no máximo {{max}} pontos. Desfaça pontos ou desative Seguir as ruas para salvar.",
-    "osmAttribution": "© OpenStreetMap"
+    "mapAttribution": "© OpenMapTiles © OpenStreetMap"
   },
   "compareReport": {
     "screen": {
@@ -9911,7 +9944,7 @@
     "chooseCard": "Escolher um bloco",
     "slotLabel": "Bloco {{number}}: {{name}}",
     "slotHint": "Abre uma lista para escolher o que vai aqui",
-    "offInFeatures": "Não exibido: desativado em Recursos"
+    "emptySlot": "Vazio"
   },
   "calorieLink": {
     "action": "Vincular um treino sincronizado",
@@ -11140,7 +11173,9 @@
     "labResults": {
       "title": "Exames laboratoriais",
       "description": "Registre exames de sangue e acompanhe cada marcador ao longo do tempo."
-    }
+    },
+    "someOff": "Alguns recursos estão desligados",
+    "manage": "Gerenciar"
   },
   "offline": {
     "keptAdded_one": "As imagens de {{count}} exercício serão mantidas offline",
@@ -11175,7 +11210,7 @@
     "presetUpdateQueued": "O treino predefinido será atualizado quando você voltar a ficar online",
     "presetUpdateSkipped": "O treino predefinido \"{{name}}\" não foi atualizado porque foi alterado em outro lugar",
     "presetUpdated": "Treino predefinido \"{{name}}\" atualizado",
-    "diaryNote": "Só os treinos ficam disponíveis offline. Alimentos e outros registros exigem conexão.",
+    "diaryNote": "Os alimentos e treinos da última semana ficam disponíveis offline. O sono e os outros registros exigem conexão.",
     "diaryNothingSaved": "Nada salvo neste dia",
     "finishedTitle": "Salvo neste celular",
     "finishedMessage": "Ele será enviado quando o seu servidor estiver acessível.",
@@ -11187,7 +11222,7 @@
     "notReadyMessage": "Conecte-se ao seu servidor uma vez para que este celular salve o que um treino precisa.",
     "banner": "Offline: mostrando dados salvos neste celular",
     "bannerHint": "Verifica a conexão de novo",
-    "intro": "Dá para começar e registrar treinos sem conexão. Eles ficam guardados neste celular e são enviados quando o seu servidor estiver acessível.",
+    "intro": "Treinos, alimentos, refeições, alimentos novos e bebidas podem ser registrados sem conexão. Eles ficam guardados neste celular e são enviados quando o seu servidor estiver acessível.",
     "waitingHeading": "Esperando envio",
     "nothingWaiting": "Nada esperando",
     "nothingWaitingSubtitle": "Tudo o que estava neste celular foi enviado.",
@@ -11201,7 +11236,7 @@
     "storageValue": "{{size}} MB",
     "refreshRow": "Atualizar agora",
     "refreshing": "Atualizando…",
-    "neverRefreshed": "Ainda não baixado. Conecte-se ao seu servidor uma vez para preparar os treinos offline.",
+    "neverRefreshed": "Ainda não baixado. Conecte-se ao seu servidor uma vez para preparar o uso offline.",
     "lastRefreshed": "Última atualização: {{when}}",
     "refreshDone": "Os dados salvos estão em dia",
     "refreshFailed": "Não foi possível atualizar",
@@ -11209,7 +11244,7 @@
     "clearRow": "Limpar dados offline",
     "clearRowSubtitle": "Os envios ainda pendentes são mantidos",
     "clearTitle": "Limpar os dados offline?",
-    "clearMessage": "Treinos predefinidos, exercícios e outros dados guardados para uso offline são removidos deste celular e baixados de novo na próxima vez. O que ainda está esperando envio é mantido.",
+    "clearMessage": "Treinos predefinidos, exercícios, alimentos, refeições e outros dados guardados para uso offline são removidos deste celular e baixados de novo na próxima vez. O que ainda está esperando envio é mantido.",
     "clearConfirm": "Limpar",
     "status": {
       "pending": "Esperando envio",
@@ -11232,8 +11267,165 @@
     },
     "kind": {
       "workout": "Treino",
-      "other": "Alteração salva"
+      "other": "Alteração salva",
+      "food": "Registro de alimento",
+      "water": "Bebida"
     },
-    "libraryNote": "Só os treinos e exercícios ficam disponíveis offline. O resto da Biblioteca exige conexão."
+    "libraryNote": "Treinos, exercícios, alimentos e refeições salvos neste celular ficam disponíveis offline. O resto da Biblioteca exige conexão.",
+    "ownerless": {
+      "title": "Nenhuma conta registrada",
+      "message": "Este envio foi salvo antes de o celular saber a qual conta ele pertencia, então não será enviado. Você pode descartá-lo.",
+      "discard": "Descartar este envio",
+      "subtitle": "Nenhuma conta registrada. Toque para descartar."
+    },
+    "foodHeading": "Alimentos e água guardados offline",
+    "foodIntro": "Ficam guardados os seus alimentos recentes e mais usados, os seus próprios alimentos (até 2.000), as refeições salvas, os seus tipos de refeição e recipientes de água, junto com o Diário e os totais da última semana. Eles são atualizados sempre que você está conectado.",
+    "foodsKeptTitle": "Alimentos",
+    "foodsKeptValue_one": "{{count}} alimento",
+    "foodsKeptValue_many": "{{count}} alimentos",
+    "foodsKeptValue_other": "{{count}} alimentos",
+    "mealsKeptTitle": "Refeições salvas",
+    "mealsKeptValue_one": "{{count}} refeição",
+    "mealsKeptValue_many": "{{count}} refeições",
+    "mealsKeptValue_other": "{{count}} refeições",
+    "diaryDaysKeptTitle": "Dias do diário",
+    "diaryDaysKeptValue_one": "{{count}} dia de alimentação",
+    "diaryDaysKeptValue_many": "{{count}} dias de alimentação",
+    "diaryDaysKeptValue_other": "{{count}} dias de alimentação"
+  },
+  "copyFromYesterday": {
+    "title": "Copiar de ontem",
+    "subtitle": "Traz as refeições de ontem para este dia",
+    "emptySource": "Não há nada para copiar de ontem.",
+    "copySelected": "Copiar selecionados",
+    "copyAll": "Copiar tudo",
+    "copying": "Copiando...",
+    "success": "Copiado de ontem",
+    "failed": "Falha ao copiar de ontem",
+    "loadError": "Não foi possível carregar as refeições de ontem."
+  },
+  "challenges": {
+    "card": {
+      "a11y": "Desafios",
+      "leader": "{{name}} lidera com {{total}}",
+      "noScore": "Ainda sem pontuação",
+      "refreshFailed": "Não foi possível atualizar; mostrando o último carregado",
+      "youLead": "Você lidera",
+      "yourPlace": "{{rank}}º de {{members}} · {{total}}"
+    },
+    "dates": {
+      "from": "A partir de {{start}}, sem data de término",
+      "range": "{{start}} a {{end}}"
+    },
+    "detailLoadFailed": "Não foi possível carregar este desafio.",
+    "emptySubtitle": "Entre em um com o código de convite de um amigo, ou organize o seu pela web.",
+    "emptyTitle": "Nenhum desafio ainda",
+    "format": {
+      "groupGoal": "Meta em grupo",
+      "hitGoal": "Cumprir a meta",
+      "leaderboard": "Classificação",
+      "race": "Corrida até a meta"
+    },
+    "hostOnWeb": "Você organiza este desafio. Mude as regras e os códigos de convite pela web.",
+    "join": {
+      "closed": "Não é possível entrar neste desafio agora.",
+      "codeLabel": "Código de convite",
+      "codePlaceholder": "Cole o código ou o link",
+      "ended": "Este desafio já terminou.",
+      "failed": "Não foi possível entrar no desafio.",
+      "full": "Este desafio está lotado.",
+      "invalidCode": "Esse código não é válido ou expirou.",
+      "joined": "Você entrou em {{name}}",
+      "lateJoinClosed": "Este desafio já começou e não aceita participantes atrasados.",
+      "nameLabel": "O seu nome no desafio",
+      "namePlaceholder": "Por exemplo, o seu primeiro nome",
+      "nameRequired": "Digite o nome que os outros participantes vão ver.",
+      "notACode": "Cole o código de convite ou o link que você recebeu.",
+      "privacy": "Os participantes veem esse nome e os seus pontos, nunca o seu diário nem o seu e-mail. Você pode sair a qualquer momento.",
+      "submit": "Entrar",
+      "submitting": "Entrando…",
+      "title": "Entrar num desafio",
+      "tooMany": "Tentativas demais. Espere alguns minutos e tente de novo.",
+      "withCode": "Entrar com um código"
+    },
+    "leave": {
+      "action": "Sair do desafio",
+      "confirm": "Sair",
+      "failed": "Não foi possível sair do desafio",
+      "message": "As suas pontuações nele serão excluídas. Você pode entrar de novo com um novo código de convite.",
+      "title": "Sair deste desafio?"
+    },
+    "listRefreshFailed": "Não foi possível atualizar os seus desafios; mostrando os últimos carregados.",
+    "loadFailed": "Não foi possível carregar os seus desafios.",
+    "memberCount_one": "{{count}} participante",
+    "memberCount_many": "{{count}} participantes",
+    "memberCount_other": "{{count}} participantes",
+    "metric": {
+      "activeCalories": "Calorias ativas",
+      "activeMinutes": "Minutos ativos",
+      "distance": "Distância",
+      "elevation": "Elevação",
+      "hrZoneMinutes": "Minutos em zona de frequência cardíaca",
+      "points": "Pontos",
+      "steps": "Passos",
+      "workoutDays": "Dias de treino"
+    },
+    "moreActions": "Mais ações",
+    "period": {
+      "challenge": "Desafio inteiro",
+      "day": "Diário",
+      "month": "Mensal",
+      "next": "Próximo período",
+      "previous": "Período anterior",
+      "week": "Semanal"
+    },
+    "refreshFailed": "Não foi possível atualizar este desafio; mostrando o último carregado.",
+    "standings": {
+      "daysHit": "{{hit}} de {{eligible}} dias na meta",
+      "empty": "Ninguém pontuou neste período ainda.",
+      "final": "Resultado final",
+      "find": "Buscar participante",
+      "finished": "Terminou em {{date}}",
+      "groupTotal": "Juntos: {{total}} de {{target}}",
+      "live": "Parcial; sincronizações atrasadas do relógio ainda contam",
+      "loadFailed": "Não foi possível carregar a classificação.",
+      "minutes": "{{value}} min ativos",
+      "noMatch": "Nenhum participante corresponde a “{{query}}”.",
+      "refreshFailed": "Não foi possível atualizar a classificação; mostrando a última carregada.",
+      "rowA11y": "{{rank}}. {{name}}, {{total}}",
+      "winner": "Vencedor",
+      "you": "{{name}} (você)"
+    },
+    "state": {
+      "active": "Ativo",
+      "daysLeft_one": "Falta {{count}} dia",
+      "daysLeft_many": "Faltam {{count}} dias",
+      "daysLeft_other": "Faltam {{count}} dias",
+      "ended": "Encerrado",
+      "lastDay": "Último dia",
+      "running": "Em andamento",
+      "startsIn_one": "Começa em {{count}} dia",
+      "startsIn_many": "Começa em {{count}} dias",
+      "startsIn_other": "Começa em {{count}} dias",
+      "startsOn": "Começa em {{date}}",
+      "startsTomorrow": "Começa amanhã"
+    },
+    "target": "Meta: {{target}}",
+    "title": "Desafios",
+    "unavailableSubtitle": "Os desafios estão desligados no seu servidor, ou ele precisa de uma atualização. Fale com o administrador do servidor.",
+    "unavailableTitle": "Os desafios não estão disponíveis",
+    "value": {
+      "feet": "{{value}} ft",
+      "km": "{{value}} km",
+      "metres": "{{value}} m",
+      "miles": "{{value}} mi",
+      "minutes": "{{value}} min",
+      "points": "{{value}} pts",
+      "steps": "{{value}} passos",
+      "workoutDays_one": "{{count}} dia",
+      "workoutDays_many": "{{count}} dias",
+      "workoutDays_other": "{{count}} dias"
+    },
+    "youHost": "Você organiza"
   }
 }

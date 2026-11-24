@@ -3084,7 +3084,6 @@
       "title": "Tabs",
       "description": "Choose die main tabs tonen on de website",
       "cycleOn": "On",
-      "cycleOff": "Uit",
       "cycleHint": "{{name}} is turned on of off in Features, hierboven.",
       "footnote": "Diary and Instellingen always show. Hiding a tab only changes this website: nothing is deleted, and the mobile app keeps its own instellingen.",
       "saveError": "Could not save your tab choice. Probeer het opnieuw.",
