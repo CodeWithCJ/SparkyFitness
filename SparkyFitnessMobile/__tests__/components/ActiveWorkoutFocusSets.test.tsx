@@ -338,7 +338,7 @@ describe('ActiveWorkoutFocusSets', () => {
       });
       expect(getByTestId('focus-active-set-card')).toBeTruthy();
       expect(queryByTestId('focus-set-row')).toBeNull();
-      expect(getByText('Set 1 of 1')).toBeTruthy();
+      expect(getByText('Set 1')).toBeTruthy();
       expect(getByText('step 2.5 kg')).toBeTruthy();
       fireEvent.press(getByLabelText('Increase RPE for set 1'));
       expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {

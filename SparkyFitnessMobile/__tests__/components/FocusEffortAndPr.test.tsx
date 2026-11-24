@@ -3,6 +3,15 @@ import { act, fireEvent, render } from '@testing-library/react-native';
 import FocusEffortSheet from '../../src/components/FocusEffortSheet';
 import FocusPrCard, { PR_CARD_MS } from '../../src/components/FocusPrCard';
 
+// The slider is adjusted the way a screen reader would: higher effort or lower.
+const adjust = (
+  utils: { getByTestId: (id: string) => never },
+  action: 'increment' | 'decrement'
+) =>
+  fireEvent(utils.getByTestId('focus-effort-slider'), 'accessibilityAction', {
+    nativeEvent: { actionName: action },
+  });
+
 describe('FocusEffortSheet', () => {
   const setup = (metric: 'rpe' | 'rir' = 'rpe', initialValue = 8) => {
     const onSave = jest.fn();
@@ -21,13 +30,15 @@ describe('FocusEffortSheet', () => {
   };
 
   it('starts at the given RPE with the reps left and saves the value', () => {
-    const { getByText, getByTestId, onSave } = setup();
+    const utils = setup();
+    const { getByText, getByTestId, onSave } = utils;
     expect(getByText('Bench Press · Set 2')).toBeTruthy();
     expect(getByText('2 reps left')).toBeTruthy();
-    fireEvent.press(getByTestId('focus-effort-plus'));
+    expect(getByText('· Hard')).toBeTruthy();
+    adjust(utils, 'increment');
     expect(getByText('1 rep left')).toBeTruthy();
-    fireEvent.press(getByTestId('focus-effort-plus'));
-    fireEvent.press(getByTestId('focus-effort-plus'));
+    adjust(utils, 'increment');
+    adjust(utils, 'increment');
     expect(getByText('Max effort')).toBeTruthy();
     expect(getByTestId('focus-effort-value').props.children).toBe(10);
     fireEvent.press(getByTestId('focus-effort-save'));
@@ -35,8 +46,9 @@ describe('FocusEffortSheet', () => {
   });
 
   it('stays inside 1 to 10 and can be skipped', () => {
-    const { getByTestId, onSkip, onSave } = setup('rpe', 1);
-    fireEvent.press(getByTestId('focus-effort-minus'));
+    const utils = setup('rpe', 1);
+    const { getByTestId, onSkip, onSave } = utils;
+    adjust(utils, 'decrement');
     expect(getByTestId('focus-effort-value').props.children).toBe(1);
     fireEvent.press(getByTestId('focus-effort-skip'));
     expect(onSkip).toHaveBeenCalled();
@@ -44,11 +56,12 @@ describe('FocusEffortSheet', () => {
   });
 
   it('uses the 0 to 5 reps in reserve scale for RIR', () => {
-    const { getByText, getByTestId, onSave } = setup('rir', 2);
-    expect(getByText('Reps in reserve, 0 to 5')).toBeTruthy();
-    fireEvent.press(getByTestId('focus-effort-minus'));
-    fireEvent.press(getByTestId('focus-effort-minus'));
-    fireEvent.press(getByTestId('focus-effort-minus'));
+    const utils = setup('rir', 2);
+    const { getByText, getByTestId, onSave } = utils;
+    // Higher effort is fewer reps in reserve.
+    adjust(utils, 'increment');
+    adjust(utils, 'increment');
+    adjust(utils, 'increment');
     expect(getByText('Nothing left')).toBeTruthy();
     fireEvent.press(getByTestId('focus-effort-save'));
     expect(onSave).toHaveBeenCalledWith(0);

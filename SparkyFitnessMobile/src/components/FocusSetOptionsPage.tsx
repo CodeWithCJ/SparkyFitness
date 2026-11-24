@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { useCSSVariable } from 'uniwind';
@@ -7,7 +7,7 @@ import {
   DEFAULT_DROP_SET_PERCENT,
 } from '@workspace/shared';
 
-import FocusPage from './FocusPage';
+import FocusPage, { FocusPageButton } from './FocusPage';
 import Icon from './Icon';
 import WorkoutNotesField from './WorkoutNotesField';
 import type { ActiveSetPatch } from '../stores/activeWorkoutStore';
@@ -120,6 +120,110 @@ function RowButton({
   );
 }
 
+/** What each set type means, in the order of the type picker. */
+function SetTypesPage({
+  visible,
+  onClose,
+}: {
+  visible: boolean;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const [warmup, drop, danger, secondary] = useCSSVariable([
+    '--color-cat-amber',
+    '--color-cat-violet',
+    '--color-icon-danger',
+    '--color-text-secondary',
+  ]) as [string, string, string, string];
+  const rows: { key: SetType; mark: string; color: string; body: string }[] = [
+    {
+      key: 'normal',
+      mark: '1',
+      color: secondary,
+      body: t('activeWorkout.focus.setTypes.normal', {
+        defaultValue:
+          'A working set. Numbered 1, 2, 3 and the one overload progression applies to.',
+      }),
+    },
+    {
+      key: 'warmup',
+      mark: 'W',
+      color: warmup,
+      body: t('activeWorkout.focus.setTypes.warmup', {
+        defaultValue:
+          'A lighter set before the working sets. No number, no progression.',
+      }),
+    },
+    {
+      key: 'drop',
+      mark: 'D',
+      color: drop,
+      body: t('activeWorkout.focus.setTypes.drop', {
+        defaultValue:
+          'A lighter set right after a working set. "Add {{sets}} drop sets" in the menu adds {{sets}} at -{{percent}}% each.',
+        sets: DEFAULT_DROP_SET_COUNT,
+        percent: DEFAULT_DROP_SET_PERCENT,
+      }),
+    },
+    {
+      key: 'failure',
+      mark: 'F',
+      color: danger,
+      body: t('activeWorkout.focus.setTypes.failure', {
+        defaultValue: 'A set taken to failure. Marked F, no number.',
+      }),
+    },
+  ];
+  const labels: Record<SetType, string> = {
+    normal: t('workout.setTypeNormal', { defaultValue: 'Normal' }),
+    warmup: t('workout.setTypeWarmup', { defaultValue: 'Warm-up' }),
+    drop: t('workout.setTypeDropSet', { defaultValue: 'Drop set' }),
+    failure: t('workout.setTypeFailure', { defaultValue: 'Failure' }),
+  };
+  return (
+    <FocusPage
+      visible={visible}
+      onClose={onClose}
+      title={t('activeWorkout.focus.setTypes.title', {
+        defaultValue: 'Set types',
+      })}
+      footer={
+        <FocusPageButton
+          testID="focus-set-types-done"
+          variant="neutral"
+          label={t('common.done', { defaultValue: 'Done' })}
+          onPress={onClose}
+        />
+      }
+    >
+      <Text className="text-[16px] text-text-secondary">
+        {t('activeWorkout.focus.setTypes.intro', {
+          defaultValue:
+            'Tap the number of a set to change its type. Only normal sets are numbered.',
+        })}
+      </Text>
+      {rows.map((row) => (
+        <View key={row.key} className="flex-row items-start gap-3.5 py-1.5">
+          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-raised">
+            <Text
+              className="text-[22px] font-bold"
+              style={{ color: row.color }}
+            >
+              {row.mark}
+            </Text>
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="text-[19px] font-bold text-text-primary">
+              {labels[row.key]}
+            </Text>
+            <Text className="text-[16px] text-text-secondary">{row.body}</Text>
+          </View>
+        </View>
+      ))}
+    </FocusPage>
+  );
+}
+
 /**
  * The focus view's Set options page (Phone-SetOptions board), opened from a
  * set number: set type, add drop sets, plate calculator and delete, the
@@ -144,6 +248,7 @@ function FocusSetOptionsPage({
   onClose,
 }: Props) {
   const { t } = useTranslation();
+  const [typesOpen, setTypesOpen] = useState(false);
   const [textPrimary, danger] = useCSSVariable([
     '--color-text-primary',
     '--color-icon-danger',
@@ -197,6 +302,14 @@ function FocusSetOptionsPage({
             />
           ))}
         </View>
+        <RowButton
+          testID="focus-set-options-types"
+          onPress={() => setTypesOpen(true)}
+          label={t('activeWorkout.focus.setTypes.link', {
+            defaultValue: 'What do the types mean?',
+          })}
+          icon={<Icon name="chevron-forward" size={18} color={textPrimary} />}
+        />
         {onGenerateDropSets != null && (
           <RowButton
             testID="focus-set-options-drop-sets"
@@ -292,6 +405,7 @@ function FocusSetOptionsPage({
           })}
         />
       </Card>
+      <SetTypesPage visible={typesOpen} onClose={() => setTypesOpen(false)} />
     </FocusPage>
   );
 }

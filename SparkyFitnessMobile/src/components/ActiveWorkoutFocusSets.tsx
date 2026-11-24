@@ -110,6 +110,9 @@ interface Props {
   /** Long-press expands a set's detail panel (per-set note); keyed by render key. */
   onToggleSetDetail?: (setKey: string) => void;
   expandedSetKey?: string | null;
+  /** The set being held, and the hold card drawn in its place. */
+  holdSetId?: string | null;
+  holdCard?: React.ReactNode;
   /** The screen's keyboard focus (render key and field), as in the list. */
   focusedSetKey: string | null;
   focusedField: SetInputField;
@@ -590,10 +593,9 @@ const FocusSetRow = React.memo(function FocusSetRow({
                       defaultValue: 'Set {{letter}}',
                       letter,
                     })
-                  : t('activeWorkout.focus.hero.setOf', {
-                      defaultValue: 'Set {{setNumber}} of {{total}}',
+                  : t('activeWorkout.focus.hero.setNumber', {
+                      defaultValue: 'Set {{setNumber}}',
                       setNumber: displayNumber,
-                      total: setCount,
                     })}
               </HeroLabel>
             </View>
@@ -614,7 +616,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
                 style={{ fontVariant: ['tabular-nums'] }}
               >
                 {t('activeWorkout.focus.hero.fill', {
-                  defaultValue: 'Fill {{value}}',
+                  defaultValue: 'Prev {{value}}',
                   value: fillText,
                 })}
               </Text>
@@ -904,6 +906,8 @@ function ActiveWorkoutFocusSets({
   onPressSetType,
   onToggleSetDetail,
   expandedSetKey = null,
+  holdSetId = null,
+  holdCard,
   focusedSetKey,
   focusedField,
   onActivateSet,
@@ -1257,7 +1261,7 @@ function ActiveWorkoutFocusSets({
         );
         return (
           <React.Fragment key={renderKey}>
-            {row}
+            {holdCard != null && holdSetId === setId ? holdCard : row}
             {expandedSetKey === renderKey && (
               <ActiveWorkoutSetDetail
                 set={set}

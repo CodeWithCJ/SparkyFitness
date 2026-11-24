@@ -15,33 +15,28 @@ import {
   formatRestCountdown,
 } from '../utils/workoutSession';
 
-const RING_SIZE = 236;
+const RING_SIZE = 208;
 
 interface FocusHoldPanelProps {
   hold: Pick<
     FocusHold,
     'phase' | 'targetSec' | 'startedAt' | 'getReadyEndsAt' | 'tap'
   >;
-  name: string;
-  /** "Bodyweight · Set 2/3", the planned length is appended here. */
-  subtitle: string;
+  /** "Set 2", shown with the phase above the ring. */
+  setLabel: string;
   /** The live heart-rate readout, when the watch sends one. */
   heartRate?: React.ReactNode;
 }
 
 /**
- * The focus view's timed hold: a big ring counting the planned length down (or
+ * The focus view's timed hold, a card in the set table where the held set
+ * sits (the exercise header and the other sets stay around it): a big ring counting the planned length down (or
  * a stopwatch with no plan), a 3-2-1 Get ready first when the watch's
  * "Countdown before holds" is on, and the live heart rate under the time. Tap
  * the ring to start now or to end. At zero the hold cues and keeps counting up
  * ("+0:07") until the tap, which logs the time actually held.
  */
-function FocusHoldPanel({
-  hold,
-  name,
-  subtitle,
-  heartRate,
-}: FocusHoldPanelProps) {
+function FocusHoldPanel({ hold, setLabel, heartRate }: FocusHoldPanelProps) {
   const { t } = useTranslation();
   const now = useClockTick(true);
   const beepSeconds = useCountdownSeconds();
@@ -96,26 +91,39 @@ function FocusHoldPanel({
         ? runningLeftMs / (targetSec * 1000)
         : (elapsedMs % 60000) / 60000;
 
-  const heading =
-    targetSec != null
-      ? `${subtitle} · ${formatDurationSeconds(targetSec)}`
-      : subtitle;
+  const phaseLabel = gettingReady
+    ? t('activeWorkout.focus.hold.getReady', { defaultValue: 'Get ready' })
+    : t('activeWorkout.focus.hold.holding', { defaultValue: 'Holding' });
 
   return (
-    <View testID="focus-hold-panel" className="items-center gap-4 pt-2">
-      <View className="items-center gap-1">
+    <View
+      testID="focus-hold-panel"
+      className="my-1 items-center gap-3 rounded-[20px] p-2.5"
+      style={{
+        backgroundColor: withAlpha(holdColor, 0.1),
+        borderWidth: 2,
+        borderColor: holdColor,
+      }}
+    >
+      <View className="w-full flex-row items-center justify-between">
         <Text
-          className="text-[28px] font-bold text-text-primary"
+          className="text-[17px] font-bold"
+          style={{ color: holdColor }}
           accessibilityRole="header"
         >
-          {name}
+          {`${setLabel} · ${phaseLabel}`}
         </Text>
-        <Text
-          className="text-[15px] text-text-secondary"
-          style={{ fontVariant: ['tabular-nums'] }}
-        >
-          {heading}
-        </Text>
+        {targetSec != null && (
+          <Text
+            className="text-[14px] text-text-secondary"
+            style={{ fontVariant: ['tabular-nums'] }}
+          >
+            {t('activeWorkout.focus.hold.plan', {
+              defaultValue: 'Plan {{time}}',
+              time: formatDurationSeconds(targetSec),
+            })}
+          </Text>
+        )}
       </View>
       <Pressable
         onPress={hold.tap}
@@ -135,26 +143,63 @@ function FocusHoldPanel({
           strokeWidth={22}
           progress={progress}
           color={holdColor}
-          trackColor={withAlpha(holdColor, 0.16)}
+          trackColor={withAlpha(holdColor, 0.22)}
         >
           <Text
             testID="focus-hold-time"
-            className="text-[72px] font-bold"
+            className={
+              bigText.length >= 5
+                ? 'text-[54px] font-bold'
+                : 'text-[64px] font-bold'
+            }
             style={{
               color: holdColor,
               fontVariant: ['tabular-nums'],
-              lineHeight: 80,
+              lineHeight: 72,
             }}
           >
             {bigText}
           </Text>
+          <Text className="text-[16px] text-text-secondary">
+            {gettingReady
+              ? t('activeWorkout.focus.hold.startsIn', {
+                  defaultValue: 'starts in {{number}}',
+                  number: readyNumber,
+                })
+              : overtime
+                ? t('activeWorkout.focus.hold.over', { defaultValue: 'over' })
+                : targetSec != null
+                  ? t('activeWorkout.focus.hold.left', {
+                      defaultValue: 'left',
+                    })
+                  : t('activeWorkout.focus.hold.held', {
+                      defaultValue: 'held',
+                    })}
+          </Text>
           {heartRate != null && !gettingReady && heartRate}
         </FocusTimerRing>
+      </Pressable>
+      <Pressable
+        testID="focus-hold-end"
+        onPress={hold.tap}
+        accessibilityRole="button"
+        className="h-14 w-full items-center justify-center rounded-full active:opacity-80"
+        style={{ backgroundColor: holdColor }}
+      >
+        <Text className="text-[20px] font-bold" style={{ color: onHold }}>
+          {gettingReady
+            ? t('activeWorkout.focus.hold.startNowButton', {
+                defaultValue: 'Start now',
+              })
+            : t('activeWorkout.focus.hold.endButton', {
+                defaultValue: 'End hold',
+              })}
+        </Text>
       </Pressable>
       {gettingReady ? (
         <View
           testID="focus-hold-get-ready"
-          className="w-full flex-row items-center gap-3 rounded-[20px] bg-raised p-4"
+          className="w-full flex-row items-center gap-3 rounded-[20px] bg-raised p-3"
         >
           <Text
             className="text-xs font-bold uppercase text-text-secondary"
@@ -188,7 +233,7 @@ function FocusHoldPanel({
           </View>
         </View>
       ) : null}
-      <Text className="px-4 text-center text-[15px] text-text-secondary">
+      <Text className="px-2 text-center text-[14px] text-text-secondary">
         {gettingReady
           ? t('activeWorkout.focus.hold.tapToStart', {
               defaultValue: 'Tap the ring to start now.',

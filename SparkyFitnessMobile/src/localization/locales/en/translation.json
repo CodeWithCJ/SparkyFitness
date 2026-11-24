@@ -605,6 +605,8 @@
         "done": "done",
         "inProgress": "in progress",
         "todo": "not started",
+        "add": "Add",
+        "addExercise": "Add exercise",
         "supersetLabel": "{{label}}, superset {{letter}}{{member}}"
       },
       "plan": "Plan: {{sets}} × {{reps}}",
@@ -626,9 +628,9 @@
       },
       "hero": {
         "label": "Set {{setNumber}} of {{total}}",
-        "setOf": "Set {{setNumber}} of {{total}}",
+        "setNumber": "Set {{setNumber}}",
         "typedSet": "Set {{letter}}",
-        "fill": "Fill {{value}}",
+        "fill": "Prev {{value}}",
         "fillLabel": "Fill set {{setNumber}} with {{value}}",
         "step": "step {{step}} {{unit}}",
         "lastReps": "last {{reps}}",
@@ -661,11 +663,19 @@
         "startNow": "Start the hold now",
         "end": "End the hold and log the set",
         "getReady": "Get ready",
+        "holding": "Holding",
+        "plan": "Plan {{time}}",
+        "startsIn": "starts in {{number}}",
+        "over": "over",
+        "left": "left",
+        "held": "held",
+        "startNowButton": "Start now",
+        "endButton": "End hold",
         "tapToStart": "Tap the ring to start now.",
         "tapToEnd": "Tap the ring to end. At 0 it keeps going until you tap.",
         "tapToEndOver": "Past the plan. Tap the ring when you are done to log the set.",
         "tapToStop": "Tap the ring to stop and log the set.",
-        "setOf": "Set {{number}}/{{total}}"
+        "setNumber": "Set {{number}}"
       },
       "exercises": {
         "title": "Exercises",
@@ -691,6 +701,15 @@
       "menu": {
         "viewHint": "Instructions and history",
         "warmupsHint": "Calculated from your working weight"
+      },
+      "setTypes": {
+        "title": "Set types",
+        "link": "What do the types mean?",
+        "intro": "Tap the number of a set to change its type. Only normal sets are numbered.",
+        "normal": "A working set. Numbered 1, 2, 3 and the one overload progression applies to.",
+        "warmup": "A lighter set before the working sets. No number, no progression.",
+        "drop": "A lighter set right after a working set. \"Add {{sets}} drop sets\" in the menu adds {{sets}} at -{{percent}}% each.",
+        "failure": "A set taken to failure. Marked F, no number."
       },
       "effort": {
         "maxEffort": "Max effort",

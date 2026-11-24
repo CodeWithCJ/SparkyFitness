@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
-import FullScreenModalBody from './FullScreenModalBody';
+import EffortFace from './EffortFace';
 import { FocusPageButton } from './FocusPage';
-import Icon from './Icon';
+import { RPE_TONE_VARS } from './ActiveWorkoutSetRow';
+import { effortBand, type EffortBand } from './FocusWorkoutSummary';
 
 export type EffortMetric = 'rpe' | 'rir';
 
@@ -45,19 +47,42 @@ function FocusEffortSheet({
   onSkip,
 }: Props) {
   const { t } = useTranslation();
-  const [effort, textPrimary, track] = useCSSVariable([
-    '--color-effort',
-    '--color-text-primary',
-    '--color-border-strong',
-  ]) as [string, string, string];
+  const insets = useSafeAreaInsets();
+  const [effort, track, easyTone, moderateTone, hardTone, maxTone] =
+    useCSSVariable([
+      '--color-effort',
+      '--color-border-strong',
+      RPE_TONE_VARS.easy,
+      RPE_TONE_VARS.moderate,
+      RPE_TONE_VARS.hard,
+      RPE_TONE_VARS.max,
+    ]) as string[];
+  const tones: Record<EffortBand, string> = {
+    easy: easyTone,
+    moderate: moderateTone,
+    hard: hardTone,
+    max: maxTone,
+  };
   const { min, max } = SCALE[metric];
   const [value, setValue] = useState(initialValue);
-  const step = (delta: number) =>
-    setValue((v) => Math.max(min, Math.min(max, v + delta)));
+  const clamp = (v: number) => Math.max(min, Math.min(max, v));
   const segments = max - min + 1;
   // RPE fills from the left as it rises; RIR as it falls (0 is all-out).
-  const filled = metric === 'rpe' ? value - min + 1 : max - value + 1;
+  const indexOf = (v: number) => (metric === 'rpe' ? v - min : max - v);
+  const valueAt = (i: number) => (metric === 'rpe' ? min + i : max - i);
+  // The 1 to 10 effort a value stands for, so both scales share bands and tones.
+  const rpeEquivalent = (v: number) => (metric === 'rpe' ? v : 10 - v);
+  const selected = indexOf(value);
+  const band = effortBand(rpeEquivalent(value));
   const repsLeft = metric === 'rpe' ? 10 - value : value;
+  const bandLabel: Record<EffortBand, string> = {
+    easy: t('workoutComplete.effort.easy', { defaultValue: 'Easy' }),
+    moderate: t('workoutComplete.effort.moderate', {
+      defaultValue: 'Moderate',
+    }),
+    hard: t('workoutComplete.effort.hard', { defaultValue: 'Hard' }),
+    max: t('workoutComplete.effort.allOut', { defaultValue: 'All Out' }),
+  };
   const caption =
     metric === 'rpe' && value >= 10
       ? t('activeWorkout.focus.effort.maxEffort', {
@@ -82,122 +107,152 @@ function FocusEffortSheet({
           defaultValue: 'Reps in reserve, 0 to 5',
         });
 
+  // Tap or drag along the bar: the segment under the finger is the value.
+  const trackWidthRef = useRef(0);
+  const setFromX = (x: number) => {
+    if (trackWidthRef.current <= 0) return;
+    const index = Math.floor((x / trackWidthRef.current) * segments);
+    setValue(clamp(valueAt(Math.max(0, Math.min(segments - 1, index)))));
+  };
   return (
     <Modal
       visible={visible}
+      transparent
       animationType="slide"
       statusBarTranslucent
       onRequestClose={onSkip}
     >
-      <FullScreenModalBody className="px-4">
-        {/* Scrolls when enlarged text outgrows the screen; Skip and Save stay below. */}
-        <ScrollView
-          className="flex-1"
-          contentContainerClassName="pb-4"
-          showsVerticalScrollIndicator={false}
+      <View className="flex-1 justify-end bg-black/60">
+        <View
+          className="gap-3 rounded-t-[28px] bg-surface px-4 pt-3"
+          style={{ paddingBottom: Math.max(insets.bottom, 16) }}
         >
-          <View className="items-center">
-            <View className="max-w-full rounded-full bg-raised px-5 py-2.5">
-              <Text
-                numberOfLines={1}
-                accessibilityRole="header"
-                className="text-[17px] font-bold text-text-primary"
-              >
-                {title}
-              </Text>
+          <View className="h-1.5 w-10 self-center rounded-full bg-border-strong" />
+          <Text
+            numberOfLines={1}
+            accessibilityRole="header"
+            className="text-center text-[13px] font-bold uppercase tracking-wider text-text-secondary"
+          >
+            {title}
+          </Text>
+          <Text className="text-center text-[20px] font-bold text-text-primary">
+            {t('activeWorkout.focus.effort.question', {
+              defaultValue: 'How hard was that set?',
+            })}
+          </Text>
+          <View className="flex-row items-center justify-center gap-4">
+            <EffortFace band={band} size={84} color={tones[band]} />
+            <View>
+              <View className="flex-row items-baseline gap-2">
+                <Text
+                  testID="focus-effort-value"
+                  accessibilityLabel={`${value}. ${caption}`}
+                  className="text-[64px] font-extrabold leading-[70px]"
+                  style={{ color: tones[band], fontVariant: ['tabular-nums'] }}
+                >
+                  {value}
+                </Text>
+                <Text
+                  className="text-[22px] font-bold"
+                  style={{ color: tones[band] }}
+                >
+                  {`· ${bandLabel[band]}`}
+                </Text>
+              </View>
+              <Text className="text-[17px] text-text-secondary">{caption}</Text>
             </View>
           </View>
-          <View className="mt-8 items-center">
-            <Text className="text-[14px] font-extrabold uppercase tracking-widest text-text-secondary">
-              {t('activeWorkout.focus.effort.question', {
-                defaultValue: 'How hard was that set?',
-              })}
-            </Text>
-            <Text
-              testID="focus-effort-value"
-              accessibilityLabel={`${value}. ${caption}`}
-              className="text-[120px] font-extrabold leading-[132px]"
-              style={{ color: effort, fontVariant: ['tabular-nums'] }}
+          <View
+            testID="focus-effort-slider"
+            accessible
+            accessibilityRole="adjustable"
+            accessibilityLabel={scaleNote}
+            accessibilityValue={{ min, max, now: value, text: caption }}
+            accessibilityActions={[
+              { name: 'increment' },
+              { name: 'decrement' },
+            ]}
+            onAccessibilityAction={(e) => {
+              const up = e.nativeEvent.actionName === 'increment';
+              // Higher effort is more reps left for RIR only when it falls.
+              const delta = (up ? 1 : -1) * (metric === 'rpe' ? 1 : -1);
+              setValue((v) => clamp(v + delta));
+            }}
+            onLayout={(e) => {
+              trackWidthRef.current = e.nativeEvent.layout.width;
+            }}
+            onStartShouldSetResponder={() => true}
+            onMoveShouldSetResponder={() => true}
+            onResponderGrant={(e) => setFromX(e.nativeEvent.locationX)}
+            onResponderMove={(e) => setFromX(e.nativeEvent.locationX)}
+            className="h-11 justify-center"
+          >
+            <View
+              pointerEvents="none"
+              className="flex-row items-center gap-1.5"
             >
-              {value}
-            </Text>
-            <Text className="text-[24px] font-extrabold text-text-primary">
-              {caption}
-            </Text>
-            <Text className="mt-1 text-[15px] text-text-secondary">
-              {scaleNote}
-            </Text>
-          </View>
-          <View className="mt-8">
-            <View className="flex-row gap-1.5" accessible={false}>
               {Array.from({ length: segments }, (_, i) => (
                 <View
                   key={i}
                   className="h-4 flex-1 rounded-full"
-                  style={{ backgroundColor: i < filled ? effort : track }}
+                  style={{
+                    backgroundColor:
+                      i <= selected
+                        ? tones[effortBand(rpeEquivalent(valueAt(i)))]
+                        : track,
+                  }}
                 />
               ))}
             </View>
-            <View className="mt-1.5 flex-row justify-between">
-              <Text className="text-[14px] text-text-secondary">
-                {t('activeWorkout.focus.effort.easy', { defaultValue: 'Easy' })}
-              </Text>
-              <Text className="text-[14px] text-text-secondary">
-                {t('activeWorkout.focus.effort.max', { defaultValue: 'Max' })}
-              </Text>
-            </View>
-          </View>
-          <View className="mt-6 flex-row justify-center gap-4">
-            <Pressable
-              testID="focus-effort-minus"
-              onPress={() => step(-1)}
-              accessibilityRole="button"
-              accessibilityLabel={t('activeWorkout.focus.effort.lower', {
-                defaultValue: 'Lower',
-              })}
-              className="h-14 w-14 items-center justify-center rounded-full bg-raised active:opacity-70"
-            >
-              <Text className="text-[28px] font-bold text-text-primary">−</Text>
-            </Pressable>
-            <Pressable
-              testID="focus-effort-plus"
-              onPress={() => step(1)}
-              accessibilityRole="button"
-              accessibilityLabel={t('activeWorkout.focus.effort.higher', {
-                defaultValue: 'Higher',
-              })}
-              className="h-14 w-14 items-center justify-center rounded-full bg-raised active:opacity-70"
-            >
-              <Icon name="add" size={26} color={textPrimary} />
-            </Pressable>
-          </View>
-        </ScrollView>
-        <View className="flex-row gap-3">
-          <View className="flex-1">
-            <FocusPageButton
-              testID="focus-effort-skip"
-              variant="neutral"
-              label={t('activeWorkout.focus.effort.skip', {
-                defaultValue: 'Skip',
-              })}
-              onPress={onSkip}
+            <View
+              pointerEvents="none"
+              className="absolute h-9 w-9 rounded-full border-[3px] bg-white"
+              style={{
+                left: `${((selected + 0.5) / segments) * 100}%`,
+                marginLeft: -18,
+                borderColor: tones[band],
+              }}
             />
           </View>
-          <View className="flex-[1.6]">
-            <Pressable
-              testID="focus-effort-save"
-              onPress={() => onSave(value)}
-              accessibilityRole="button"
-              className="h-14 items-center justify-center rounded-full active:opacity-80"
-              style={{ backgroundColor: effort }}
-            >
-              <Text className="text-[18px] font-bold text-black">
-                {t('activeWorkout.focus.effort.save', { defaultValue: 'Save' })}
+          <View className="flex-row justify-between">
+            {(['easy', 'moderate', 'hard', 'max'] as const).map((b) => (
+              <Text key={b} className="text-[13px] text-text-secondary">
+                {bandLabel[b]}
               </Text>
-            </Pressable>
+            ))}
           </View>
+          <View className="flex-row gap-3">
+            <View className="flex-1">
+              <FocusPageButton
+                testID="focus-effort-skip"
+                variant="neutral"
+                label={t('activeWorkout.focus.effort.skip', {
+                  defaultValue: 'Skip',
+                })}
+                onPress={onSkip}
+              />
+            </View>
+            <View className="flex-[1.6]">
+              <Pressable
+                testID="focus-effort-save"
+                onPress={() => onSave(value)}
+                accessibilityRole="button"
+                className="h-14 items-center justify-center rounded-full active:opacity-80"
+                style={{ backgroundColor: effort }}
+              >
+                <Text className="text-[18px] font-bold text-black">
+                  {t('activeWorkout.focus.effort.save', {
+                    defaultValue: 'Save',
+                  })}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+          <Text className="text-center text-[13px] text-text-secondary">
+            {scaleNote}
+          </Text>
         </View>
-      </FullScreenModalBody>
+      </View>
     </Modal>
   );
 }

@@ -35,36 +35,59 @@ describe('ActiveWorkoutFocusChips', () => {
     fireEvent(UNSAFE_getByType(ScrollView), 'layout', {
       nativeEvent: { layout: { width: 360, height: 60, x: 0, y: 0 } },
     });
-    // 16 padding + 5 chips of 44 + 5 gaps of 8, plus half a chip, minus half the viewport.
+    // 16 padding + 5 tiles of 72 + 5 gaps of 10, plus half a tile, minus half the viewport.
     expect(scrollTo).toHaveBeenLastCalledWith({
-      x: 16 + 5 * 52 + 22 - 180,
+      x: 16 + 5 * 82 + 36 - 180,
       animated: false,
     });
     scrollTo.mockRestore();
   });
 
-  it('fills the selected chip, outlines a finished one and tints the rest', () => {
-    const { getByTestId } = render(
+  it('rings the shown tile, badges the active one and ticks a finished one', () => {
+    const { getByTestId, queryByTestId, getByText } = render(
       <ActiveWorkoutFocusChips
         exercises={exercises}
         completedSetIds={{ '1': true }}
         selectedId="e0"
+        activeId="e0"
+        supersetBorders={new Map()}
+        getImageSource={() => null}
+        onSelect={jest.fn()}
+        onAdd={jest.fn()}
+      />
+    );
+    const ring = (id: string) =>
+      StyleSheet.flatten(getByTestId(`focus-chip-ring-${id}`).props.style);
+    expect(ring('e0').borderColor).not.toBe('transparent');
+    expect(ring('e2').borderColor).toBe('transparent');
+    expect(getByTestId('focus-chip-play-e0')).toBeTruthy();
+    expect(getByTestId('focus-chip-done-e1')).toBeTruthy();
+    expect(queryByTestId('focus-chip-play-e2')).toBeNull();
+    // The name sits below the picture, and the strip ends with Add.
+    expect(getByText('Exercise 2')).toBeTruthy();
+    expect(getByTestId('focus-chip-add')).toBeTruthy();
+  });
+
+  it('rings a tile other than the active one in the text colour', () => {
+    const { getByTestId } = render(
+      <ActiveWorkoutFocusChips
+        exercises={exercises}
+        completedSetIds={{}}
+        selectedId="e3"
+        activeId="e0"
         supersetBorders={new Map()}
         getImageSource={() => null}
         onSelect={jest.fn()}
       />
     );
-    const style = (id: string) =>
-      StyleSheet.flatten(getByTestId(id).props.style);
-    expect(style('focus-chip-e0').backgroundColor).toBeDefined();
-    expect(style('focus-chip-e1').borderColor).not.toBe('transparent');
-    expect(style('focus-chip-e2').borderColor).toBe('transparent');
-    expect(style('focus-chip-e1').backgroundColor).not.toBe(
-      style('focus-chip-e0').backgroundColor
-    );
+    const color = (id: string) =>
+      StyleSheet.flatten(getByTestId(`focus-chip-ring-${id}`).props.style)
+        .borderColor;
+    expect(color('e3')).not.toBe('transparent');
+    expect(color('e3')).not.toBe(color('e0'));
   });
 
-  it('wraps a superset in one group shape and labels its members A1 and A2', () => {
+  it('puts a superset on one bar behind its pictures and labels its members A1 and A2', () => {
     const borders = new Map([
       ['e2', { color: '#c792ea', isLast: false }],
       ['e3', { color: '#c792ea', isLast: true }],
@@ -80,8 +103,11 @@ describe('ActiveWorkoutFocusChips', () => {
       />
     );
     const group = getByTestId('focus-chip-group-e2');
-    expect(StyleSheet.flatten(group.props.style).borderColor).toBe('#c792ea');
-    // Both members sit in the one shape.
+    expect(
+      StyleSheet.flatten(getByTestId('focus-chip-bar-e2').props.style)
+        .backgroundColor
+    ).toMatch(/^rgba\(199, ?146, ?234/);
+    // Both members sit in the one group.
     expect(group).toContainElement(getByTestId('focus-chip-e2'));
     expect(group).toContainElement(getByTestId('focus-chip-e3'));
     expect(getByLabelText(/^Exercise 3 of 8.*superset A1$/)).toBeTruthy();

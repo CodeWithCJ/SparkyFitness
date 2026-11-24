@@ -69,3 +69,31 @@ describe('FocusSetOptionsPage', () => {
     });
   });
 });
+
+describe('FocusSetOptionsPage set types', () => {
+  it('explains each set type from the type card', () => {
+    const { getByText, getByTestId, queryByText } = render(
+      <FocusSetOptionsPage
+        visible
+        setId="5"
+        setNumber={2}
+        exerciseName="Bench Press"
+        currentType="normal"
+        note={null}
+        metricColumn="rpe"
+        clampedToRpe={false}
+        onSelectType={jest.fn()}
+        onSelectMetric={jest.fn()}
+        onCommitField={jest.fn()}
+        onDelete={jest.fn()}
+        onClose={jest.fn()}
+      />
+    );
+    expect(queryByText(/Only normal sets are numbered/)).toBeNull();
+    fireEvent.press(getByTestId('focus-set-options-types'));
+    expect(getByText(/Only normal sets are numbered/)).toBeTruthy();
+    expect(getByText(/lighter set right after a working set/)).toBeTruthy();
+    fireEvent.press(getByTestId('focus-set-types-done'));
+    expect(queryByText(/Only normal sets are numbered/)).toBeNull();
+  });
+});

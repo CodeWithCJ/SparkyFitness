@@ -1491,6 +1491,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
             keyboardBottomOffset={keyboardBottomOffset}
             onSwap={handleSwapExercise}
             onPressOverflow={handlePressOverflow}
+            onAddExercise={handleAddExercise}
             onSeeAlternatives={handleReplaceExercise}
             onCompleteSet={handleCompleteSet}
             onUncomplete={handleUncomplete}

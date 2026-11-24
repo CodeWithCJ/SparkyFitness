@@ -85,13 +85,13 @@ describe('FocusHoldPanel', () => {
           getReadyEndsAt: Date.now() + 2_500,
           tap,
         }}
-        name="Plank"
-        subtitle="Bodyweight · Set 2/3"
+        setLabel="Set 2"
       />
     );
     expect(getByTestId('focus-hold-get-ready')).toBeTruthy();
     expect(getByText('Get ready')).toBeTruthy();
-    expect(getByText('Bodyweight · Set 2/3 · 45s')).toBeTruthy();
+    expect(getByText('Set 2 · Get ready')).toBeTruthy();
+    expect(getByText('Plan 45s')).toBeTruthy();
     fireEvent.press(getByLabelText('Start the hold now'));
     expect(tap).toHaveBeenCalled();
   });
@@ -106,8 +106,7 @@ describe('FocusHoldPanel', () => {
           getReadyEndsAt: null,
           tap,
         }}
-        name="Plank"
-        subtitle="Set 2/3"
+        setLabel="Set 2"
         heartRate={<></>}
       />
     );
@@ -130,8 +129,7 @@ describe('FocusHoldPanel', () => {
           getReadyEndsAt: null,
           tap: jest.fn(),
         }}
-        name="Plank"
-        subtitle="Set 1/3"
+        setLabel="Set 2"
       />
     );
     expect(getByTestId('focus-hold-time').props.children).toMatch(/^\+0:0\d$/);
@@ -150,8 +148,7 @@ describe('FocusHoldPanel', () => {
           getReadyEndsAt: null,
           tap,
         }}
-        name="Plank"
-        subtitle="Set 1/3"
+        setLabel="Set 2"
       />
     );
     expect(getByTestId('focus-hold-time').props.children).toBe('1:15');
