@@ -29,7 +29,6 @@ import ExerciseReportsDashboard from '@/pages/Reports/ExerciseReportsDashboard';
 import SleepReport from '@/pages/Reports/SleepReport';
 import BodyBatteryCard from '@/pages/Reports/BodyBatteryCard';
 import RespirationCard from '@/pages/Reports/RespirationCard';
-import GlucoseCard from '@/pages/Reports/GlucoseCard';
 import HeartRateAnalyticsCard from '@/pages/Reports/HeartRateAnalyticsCard';
 
 import StressChart from '@/pages/Reports/StressChart';
@@ -52,7 +51,6 @@ import {
   exportExerciseEntries,
   exportFoodDiary,
 } from '@/utils/reportUtil';
-import { CustomCategoryReport } from './CustomCategoryReport';
 import { ChartErrorBoundary } from '../Errors/ChartErrorFallback';
 import { CustomCategoriesResponse } from '@workspace/shared';
 import { useDailyGoalsRange } from '@/hooks/Goals/useGoals';
@@ -205,6 +203,10 @@ const Reports = () => {
     targetWeightKg: profile?.target_weight
       ? Number(profile.target_weight)
       : null,
+    startDate,
+    endDate,
+    customCategories,
+    customMeasurementsData,
   });
 
   const legacyReportChartPref = nutrientDisplayPreferences.find(
@@ -285,9 +287,6 @@ const Reports = () => {
         return (
           <div className="space-y-6">
             <ChartErrorBoundary>
-              <GlucoseCard startDate={startDate} endDate={endDate} />
-            </ChartErrorBoundary>
-            <ChartErrorBoundary>
               <WidgetGrid
                 pageKey="reports-measurements"
                 widgets={measurementChartWidgets}
@@ -306,12 +305,6 @@ const Reports = () => {
               <RespirationCard
                 categories={customCategories}
                 measurementsData={customMeasurementsData}
-              />
-            </ChartErrorBoundary>
-            <ChartErrorBoundary>
-              <CustomCategoryReport
-                customCategories={customCategories}
-                customMeasurementsData={customMeasurementsData}
               />
             </ChartErrorBoundary>
           </div>
