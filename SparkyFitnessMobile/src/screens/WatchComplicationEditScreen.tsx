@@ -427,7 +427,7 @@ const WatchComplicationEditScreen: React.FC<
                 hitSlop={8}
                 onPress={() => removeExtra(index)}
               >
-                <Text className="text-sm text-red-600">
+                <Text className="text-sm text-text-danger-subtle">
                   {t('watchComplications.remove', { defaultValue: 'Remove' })}
                 </Text>
               </Pressable>

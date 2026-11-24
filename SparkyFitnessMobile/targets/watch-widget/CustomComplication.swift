@@ -98,6 +98,7 @@ private struct StoredMetric: Decodable {
     let key: String
     let value: Double
     let goal: Double?
+    let remaining: Double?
     let progress: Double?
     let unit: String?
     let decimals: Int?
@@ -211,9 +212,9 @@ private func display(
             progress: progress
         )
     }
-    if format == "remaining", let goal = metric.goal {
+    if format == "remaining", let left = metric.remaining ?? metric.goal.map({ $0 - metric.value }) {
         return Shown(
-            text: formatted(max(0, goal - metric.value), decimals: decimals),
+            text: formatted(max(0, left), decimals: decimals),
             detail: leftText(unit: unit),
             progress: metric.progress
         )
