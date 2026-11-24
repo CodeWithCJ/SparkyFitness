@@ -3,6 +3,7 @@ import { queryClient } from '../../hooks/queryClient';
 import {
   changeWaterIntake,
   deleteWaterIntakeLogEntry,
+  logCustomWaterAmount,
 } from '../../services/api/measurementsApi';
 import { invalidateFoodCache } from '../../hooks/invalidateFoodCache';
 import { ApiError } from '../../services/api/errors';
@@ -16,9 +17,12 @@ import type {
 import {
   WATER_ADD,
   WATER_PAYLOAD_VERSION,
+  WATER_ADD_CUSTOM,
+  WATER_ADD_CUSTOM_PAYLOAD_VERSION,
   WATER_REMOVE,
   WATER_REMOVE_PAYLOAD_VERSION,
   type WaterAddPayload,
+  type WaterAddCustomPayload,
   type WaterRemovePayload,
 } from '../waterHandOver';
 import { registerOutboxHandler } from './registry';
@@ -64,6 +68,35 @@ const handler: OutboxHandler = {
   },
 };
 
+async function sendAddCustom(
+  row: OutboxRow,
+  context?: SendContext
+): Promise<SendResult> {
+  const { entryDate, waterMl } = row.payload as WaterAddCustomPayload;
+  try {
+    await logCustomWaterAmount({
+      entryDate,
+      waterMl,
+      clientId: row.entityId,
+      serverConfig: context?.serverConfig,
+    });
+    return { outcome: 'synced' };
+  } catch (error) {
+    return sendResultFromError(error);
+  }
+}
+
+const customAmountHandler: OutboxHandler = {
+  kind: WATER_ADD_CUSTOM,
+  payloadVersion: WATER_ADD_CUSTOM_PAYLOAD_VERSION,
+  // Version 1 is the first shape; nothing older exists to convert.
+  upgrade: (payload) => payload,
+  send: sendAddCustom,
+  onSynced: (row) => {
+    if (row.entryDate) invalidateWaterIntakeQueries(queryClient, row.entryDate);
+  },
+};
+
 async function sendRemove(
   row: OutboxRow,
   context?: SendContext
@@ -99,5 +132,6 @@ const removeHandler: OutboxHandler = {
 /** Makes queued drinks sendable. Called once at app start. */
 export function registerWaterIntakeHandlers(): void {
   registerOutboxHandler(handler);
+  registerOutboxHandler(customAmountHandler);
   registerOutboxHandler(removeHandler);
 }

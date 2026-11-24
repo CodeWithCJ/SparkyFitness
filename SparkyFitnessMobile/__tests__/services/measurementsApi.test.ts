@@ -2,6 +2,7 @@ import {
   fetchMeasurements,
   fetchWaterContainers,
   changeWaterIntake,
+  logCustomWaterAmount,
   upsertCheckIn,
 } from '../../src/services/api/measurementsApi';
 import {
@@ -322,6 +323,106 @@ describe('measurementsApi', () => {
           changeDrinks: 1,
           containerId: 1,
         })
+      ).rejects.toThrow('Server error: 500 - Internal Server Error');
+    });
+  });
+
+  describe('logCustomWaterAmount', () => {
+    const testConfig: ServerConfig = {
+      id: 'test-id',
+      url: 'https://example.com',
+      apiKey: 'test-api-key-12345',
+    };
+
+    test('throws error when no server config exists', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(null);
+
+      await expect(
+        logCustomWaterAmount({ entryDate: '2024-06-15', waterMl: 180 })
+      ).rejects.toThrow('Server configuration not found.');
+    });
+
+    test('sends POST request to /api/v2/measurements/water-intake/custom with correct body', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ water_ml: 180 }),
+      });
+
+      await logCustomWaterAmount({
+        entryDate: '2024-06-15',
+        waterMl: 180,
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/v2/measurements/water-intake/custom',
+        expect.objectContaining({
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer test-api-key-12345',
+
+            'X-Meal-Model-Version': '2',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            entry_date: '2024-06-15',
+            water_ml: 180,
+          }),
+        })
+      );
+    });
+
+    test('includes client_id in the body when provided', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ water_ml: 180 }),
+      });
+
+      await logCustomWaterAmount({
+        entryDate: '2024-06-15',
+        waterMl: 180,
+        clientId: 'client-123',
+      });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://example.com/api/v2/measurements/water-intake/custom',
+        expect.objectContaining({
+          body: JSON.stringify({
+            entry_date: '2024-06-15',
+            water_ml: 180,
+            client_id: 'client-123',
+          }),
+        })
+      );
+    });
+
+    test('returns parsed JSON response on success', async () => {
+      const responseData = { water_ml: 430 };
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(responseData),
+      });
+
+      const result = await logCustomWaterAmount({
+        entryDate: '2024-06-15',
+        waterMl: 180,
+      });
+
+      expect(result).toEqual(responseData);
+    });
+
+    test('throws error on non-OK response', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: () => Promise.resolve('Internal Server Error'),
+      });
+
+      await expect(
+        logCustomWaterAmount({ entryDate: '2024-06-15', waterMl: 180 })
       ).rejects.toThrow('Server error: 500 - Internal Server Error');
     });
   });

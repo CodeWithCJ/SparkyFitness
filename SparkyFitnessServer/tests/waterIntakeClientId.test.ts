@@ -17,6 +17,7 @@ vi.mock('../models/measurementRepository', async (importOriginal) => {
       insertWaterIntakeLog: vi.fn(),
       findWaterIntakeLogByClientId: vi.fn(),
       recomputeWaterAggregateForUser: vi.fn(),
+      incrementWaterData: vi.fn(),
     },
   };
 });
@@ -36,6 +37,7 @@ const TOTALS = { water_ml: 250, manual_ml: 250, ledger_ml: 250 };
 
 const insert = vi.mocked(measurementRepository.insertWaterIntakeLog);
 const find = vi.mocked(measurementRepository.findWaterIntakeLogByClientId);
+const increment = vi.mocked(measurementRepository.incrementWaterData);
 const totals = vi.mocked(hydrationTotalsService.resolveWaterTotalsForDate);
 
 describe('upsertWaterIntake client_id (offline replay)', () => {
@@ -44,6 +46,7 @@ describe('upsertWaterIntake client_id (offline replay)', () => {
     insert.mockReset();
     insert.mockResolvedValue({} as never);
     find.mockResolvedValue(null);
+    increment.mockResolvedValue({} as never);
     totals.mockResolvedValue(TOTALS as never);
     vi.mocked(waterContainerRepository.getWaterContainerById).mockResolvedValue(
       null as never
@@ -176,6 +179,94 @@ describe('upsertWaterIntake client_id (offline replay)', () => {
       USER
     );
     expect(insert.mock.calls[0][11]).toBe(CLIENT_ID);
+  });
+});
+
+describe('logWaterIntakeAmount client_id (offline replay)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    insert.mockReset();
+    insert.mockResolvedValue({ id: 'drink-new' } as never);
+    find.mockResolvedValue(null);
+    increment.mockResolvedValue({} as never);
+    totals.mockResolvedValue(TOTALS as never);
+  });
+
+  it('logs the amount with the client id on a first request', async () => {
+    const res = await measurementService.logWaterIntakeAmount(
+      USER,
+      USER,
+      DATE,
+      180,
+      'manual',
+      CLIENT_ID
+    );
+
+    expect(find).toHaveBeenCalledWith(USER, CLIENT_ID);
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(increment).toHaveBeenCalledTimes(1);
+    expect(res).toEqual(TOTALS);
+  });
+
+  it('logs nothing and returns the totals when the id was already used', async () => {
+    find.mockResolvedValue({ id: 'drink-1' } as never);
+
+    const res = await measurementService.logWaterIntakeAmount(
+      USER,
+      USER,
+      DATE,
+      180,
+      'manual',
+      CLIENT_ID
+    );
+
+    expect(insert).not.toHaveBeenCalled();
+    expect(increment).not.toHaveBeenCalled();
+    expect(res).toEqual(TOTALS);
+  });
+
+  it('treats a lost race on the unique index as a duplicate, not an error', async () => {
+    insert.mockRejectedValue(
+      Object.assign(new Error('duplicate key'), {
+        code: '23505',
+        constraint: 'idx_water_intake_entries_user_client_id',
+      })
+    );
+
+    await expect(
+      measurementService.logWaterIntakeAmount(
+        USER,
+        USER,
+        DATE,
+        180,
+        'manual',
+        CLIENT_ID
+      )
+    ).resolves.toEqual(TOTALS);
+    expect(increment).not.toHaveBeenCalled();
+  });
+
+  it('still surfaces other insert failures', async () => {
+    insert.mockRejectedValue(new Error('connection lost'));
+
+    await expect(
+      measurementService.logWaterIntakeAmount(
+        USER,
+        USER,
+        DATE,
+        180,
+        'manual',
+        CLIENT_ID
+      )
+    ).rejects.toThrow('connection lost');
+  });
+
+  it('does not look anything up for requests without a client id', async () => {
+    await measurementService.logWaterIntakeAmount(USER, USER, DATE, 180);
+
+    expect(find).not.toHaveBeenCalled();
+    expect(insert).toHaveBeenCalledTimes(1);
+    expect(increment).toHaveBeenCalledTimes(1);
   });
 });
 

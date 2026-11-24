@@ -14,6 +14,7 @@ import foodRepository from '../models/foodRepository.js';
 import foodEntryMealRepository from '../models/foodEntryMealRepository.js';
 import mealTypeRepository from '../models/mealType.js';
 import measurementRepository from '../models/measurementRepository.js';
+import hydrationTotalsService from '../services/hydrationTotalsService.js';
 import reportRepository from '../models/reportRepository.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
@@ -96,6 +97,12 @@ vi.mock('../models/measurementRepository', () => ({
     upsertWaterData: vi.fn(),
     incrementWaterData: vi.fn(),
     getWaterTotalsByDateRange: vi.fn(),
+    findWaterIntakeLogByClientId: vi.fn(),
+  },
+}));
+vi.mock('../services/hydrationTotalsService', () => ({
+  default: {
+    resolveWaterTotalsForDate: vi.fn(),
   },
 }));
 vi.mock('../models/reportRepository', () => ({
@@ -5566,6 +5573,9 @@ describe('log_water', () => {
     vi.mocked(measurementRepository.incrementWaterData).mockResolvedValue({
       water_ml: 750,
     } as any);
+    vi.mocked(
+      hydrationTotalsService.resolveWaterTotalsForDate
+    ).mockResolvedValue({ water_ml: 750 } as any);
 
     const result = await tools.sparky_manage_food.execute!(
       { action: 'log_water', amount_ml: 500, entry_date: '2026-06-11' },
@@ -5580,7 +5590,12 @@ describe('log_water', () => {
       500,
       null,
       null,
-      'manual'
+      'manual',
+      null,
+      null,
+      null,
+      undefined,
+      null
     );
     // The aggregated water_intake row (read by the dashboard) must be atomically
     // incremented by the newly logged amount: 500ml.

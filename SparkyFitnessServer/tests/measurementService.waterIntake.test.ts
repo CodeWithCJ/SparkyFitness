@@ -2,7 +2,10 @@ import { vi, beforeEach, describe, expect, it } from 'vitest';
 import measurementService from '../services/measurementService.js';
 import measurementRepository from '../models/measurementRepository.js';
 import waterContainerRepository from '../models/waterContainerRepository.js';
-import { UpsertWaterIntakeBodySchema } from '../schemas/measurementSchemas.js';
+import {
+  UpsertWaterIntakeBodySchema,
+  LogWaterIntakeAmountBodySchema,
+} from '../schemas/measurementSchemas.js';
 // Mock the repository functions
 vi.mock('../models/measurementRepository');
 vi.mock('../models/waterContainerRepository');
@@ -87,6 +90,48 @@ describe('Measurement Service - Water Intake', () => {
         const result = UpsertWaterIntakeBodySchema.safeParse({
           entry_date: '2023-01-01',
           change_drinks: -3,
+        });
+        expect(result.success).toBe(true);
+      });
+    });
+
+    describe('LogWaterIntakeAmountBodySchema', () => {
+      it('accepts a positive amount', () => {
+        const result = LogWaterIntakeAmountBodySchema.safeParse({
+          entry_date: '2023-01-01',
+          water_ml: 180,
+        });
+        expect(result.success).toBe(true);
+      });
+
+      it('rejects a zero amount', () => {
+        const result = LogWaterIntakeAmountBodySchema.safeParse({
+          entry_date: '2023-01-01',
+          water_ml: 0,
+        });
+        expect(result.success).toBe(false);
+      });
+
+      it('rejects a negative amount', () => {
+        const result = LogWaterIntakeAmountBodySchema.safeParse({
+          entry_date: '2023-01-01',
+          water_ml: -50,
+        });
+        expect(result.success).toBe(false);
+      });
+
+      it('rejects a missing entry_date', () => {
+        const result = LogWaterIntakeAmountBodySchema.safeParse({
+          water_ml: 180,
+        });
+        expect(result.success).toBe(false);
+      });
+
+      it('accepts an optional client_id', () => {
+        const result = LogWaterIntakeAmountBodySchema.safeParse({
+          entry_date: '2023-01-01',
+          water_ml: 180,
+          client_id: '33333333-3333-4333-8333-333333333333',
         });
         expect(result.success).toBe(true);
       });

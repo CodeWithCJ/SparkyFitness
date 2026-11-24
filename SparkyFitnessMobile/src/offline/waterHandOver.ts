@@ -75,6 +75,62 @@ export async function queueWaterDrink(
   }
 }
 
+/**
+ * A one-off amount with no container (#3734), waiting for the server. Its
+ * own kind rather than `water.add`'s payload: that shape names a container
+ * press, not an arbitrary millilitre amount.
+ */
+export const WATER_ADD_CUSTOM = 'water.addCustom';
+
+/** The payload shape of `water.addCustom`, as this build writes it. */
+export const WATER_ADD_CUSTOM_PAYLOAD_VERSION = 1;
+
+export interface WaterAddCustomPayload {
+  entryDate: string;
+  waterMl: number;
+}
+
+/**
+ * Queues one custom-amount entry for upload. Mirrors `queueWaterDrink`'s
+ * replay-key contract: the row's id is the key sent to the server, so a
+ * request whose upload reached the server but whose answer was lost is
+ * never logged twice.
+ */
+export async function queueWaterCustomAmount(
+  clientId: string,
+  payload: WaterAddCustomPayload
+): Promise<boolean> {
+  try {
+    const serverConfigId = await getActiveServerConfigId();
+    if (!serverConfigId) return false;
+    const db = await getOfflineDb();
+    const userId = await signedInUserId(db, serverConfigId);
+    if (userId == null) return false;
+    const kept = (await listUnconfirmedOutbox(db, serverConfigId)).find(
+      (row) =>
+        row.kind === WATER_ADD_CUSTOM &&
+        row.entityId === clientId &&
+        isOwnedBy(row, userId)
+    );
+    if (kept) return true;
+    await enqueueOutbox(db, {
+      id: newUuid(),
+      serverConfigId,
+      userId,
+      kind: WATER_ADD_CUSTOM,
+      entityId: clientId,
+      entryDate: payload.entryDate,
+      payload,
+      payloadVersion: WATER_ADD_CUSTOM_PAYLOAD_VERSION,
+    });
+    notifyOutboxChanged();
+    return true;
+  } catch (error) {
+    addLog(`[Offline] Could not queue the custom amount: ${error}`, 'ERROR');
+    return false;
+  }
+}
+
 /** The removal of one drink the server already has, waiting to upload. */
 export const WATER_REMOVE = 'water.remove';
 

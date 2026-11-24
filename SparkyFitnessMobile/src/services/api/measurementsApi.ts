@@ -588,6 +588,29 @@ export const changeWaterIntake = async (params: {
   });
 };
 
+/** Logs a one-off amount with no container (#3734). */
+export const logCustomWaterAmount = async (params: {
+  entryDate: string;
+  waterMl: number;
+  /** Replay key from the mobile offline queue. */
+  clientId?: string;
+  /** Send to this server, not whichever is active when the request goes out. */
+  serverConfig?: ServerConfig;
+}): Promise<WaterIntakeResponse> => {
+  return apiFetch<WaterIntakeResponse>({
+    endpoint: '/api/v2/measurements/water-intake/custom',
+    serviceName: 'Measurements API',
+    operation: 'log custom water amount',
+    method: 'POST',
+    serverConfig: params.serverConfig,
+    body: {
+      entry_date: params.entryDate,
+      water_ml: params.waterMl,
+      ...(params.clientId ? { client_id: params.clientId } : {}),
+    },
+  });
+};
+
 /**
  * Deletes one logged drink. The server also decrements the day's total, so
  * callers only need to refresh — no separate total adjustment.

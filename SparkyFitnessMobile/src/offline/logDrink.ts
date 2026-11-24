@@ -1,10 +1,17 @@
-import { changeWaterIntake } from '../services/api/measurementsApi';
+import {
+  changeWaterIntake,
+  logCustomWaterAmount,
+} from '../services/api/measurementsApi';
 import { ApiError } from '../services/api/errors';
 import type { WaterIntakeResponse } from '../types/measurements';
 import { newUuid } from '../utils/ids';
 import { accountGeneration } from './accountGeneration';
 import { queueAfterConnectionFailure } from './queueAfterFailure';
-import { queueWaterDrink, removeLatestDrinkOffline } from './waterHandOver';
+import {
+  queueWaterDrink,
+  queueWaterCustomAmount,
+  removeLatestDrinkOffline,
+} from './waterHandOver';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -102,6 +109,34 @@ export async function removeDrinkOrQueue(
       startedUnder
     );
     if (kept) return { kept: true, result };
+    throw error;
+  }
+}
+
+/**
+ * Logs a custom one-off amount, with no container (#3734). Follows the same
+ * replay-key and queue-on-connection-failure rules as `logDrinkOrQueue`.
+ */
+export async function logCustomAmountOrQueue(
+  entryDate: string,
+  waterMl: number
+): Promise<DrinkResult> {
+  const clientId = newUuid();
+  const startedUnder = accountGeneration();
+  try {
+    const response = await logCustomWaterAmount({
+      entryDate,
+      waterMl,
+      clientId,
+    });
+    return { queued: false, response };
+  } catch (error) {
+    const queued = await queueAfterConnectionFailure(
+      error,
+      () => queueWaterCustomAmount(clientId, { entryDate, waterMl }),
+      startedUnder
+    );
+    if (queued) return { queued: true };
     throw error;
   }
 }

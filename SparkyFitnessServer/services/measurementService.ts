@@ -1001,19 +1001,58 @@ async function logWaterIntakeAmount(
   actingUserId: string,
   entryDate: string,
   waterMl: number,
-  source = 'manual'
+  source = 'manual',
+  // Mobile offline-queue idempotency key for a custom-amount entry (#3734),
+  // same contract as upsertWaterIntake's clientId.
+  clientId: string | null = null
 ) {
   try {
-    // 1. Insert the itemized log entry.
-    const logEntry = await measurementRepository.insertWaterIntakeLog(
-      authenticatedUserId,
-      actingUserId,
-      entryDate,
-      waterMl,
-      null,
-      null,
-      source
-    );
+    if (clientId) {
+      const alreadyLogged =
+        await measurementRepository.findWaterIntakeLogByClientId(
+          authenticatedUserId,
+          clientId
+        );
+      if (alreadyLogged) {
+        return await hydrationTotalsService.resolveWaterTotalsForDate(
+          authenticatedUserId,
+          actingUserId,
+          entryDate
+        );
+      }
+    }
+
+    try {
+      // 1. Insert the itemized log entry.
+      await measurementRepository.insertWaterIntakeLog(
+        authenticatedUserId,
+        actingUserId,
+        entryDate,
+        waterMl,
+        null,
+        null,
+        source,
+        null,
+        null,
+        null,
+        undefined,
+        clientId
+      );
+    } catch (insertError) {
+      // A copy of this same request committed first.
+      if (
+        clientId &&
+        isUniqueViolationOn(insertError, WATER_ENTRY_CLIENT_ID_INDEX)
+      ) {
+        return await hydrationTotalsService.resolveWaterTotalsForDate(
+          authenticatedUserId,
+          actingUserId,
+          entryDate
+        );
+      }
+      throw insertError;
+    }
+
     // 2. Add the amount to the aggregated daily total for this source so the
     //    dashboard (which SUMs water_intake) reflects the logged water.
     await measurementRepository.incrementWaterData(
@@ -1023,7 +1062,14 @@ async function logWaterIntakeAmount(
       entryDate,
       source
     );
-    return logEntry;
+
+    // Return the latest totals through the same owner the GET uses, matching
+    // upsertWaterIntake's response shape.
+    return await hydrationTotalsService.resolveWaterTotalsForDate(
+      authenticatedUserId,
+      actingUserId,
+      entryDate
+    );
   } catch (error) {
     log(
       'error',

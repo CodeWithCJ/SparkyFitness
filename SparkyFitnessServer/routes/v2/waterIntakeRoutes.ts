@@ -1,6 +1,7 @@
 import express, { RequestHandler } from 'express';
 import {
   UpsertWaterIntakeBodySchema,
+  LogWaterIntakeAmountBodySchema,
   UpdateWaterIntakeBodySchema,
   DateParamSchema,
   UuidParamSchema,
@@ -309,6 +310,99 @@ const upsertWaterIntakeHandler: RequestHandler = async (req, res, next) => {
       entry_date,
       change_drinks,
       container_id ?? null,
+      client_id ?? null
+    );
+    res.status(200).json(result);
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message.startsWith('Forbidden')) {
+      res.status(403).json({ error: error.message });
+      return;
+    }
+    next(error);
+  }
+};
+
+/**
+ * @swagger
+ * /v2/measurements/water-intake/custom:
+ *   post:
+ *     summary: Log a custom one-off water amount, with no container
+ *     tags: [Wellness & Metrics]
+ *     security:
+ *       - cookieAuth: []
+ *     parameters:
+ *       - in: header
+ *         name: x-on-behalf-of-user-id
+ *         schema:
+ *           type: string
+ *         description: Target user ID for family access.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [entry_date, water_ml]
+ *             properties:
+ *               entry_date:
+ *                 type: string
+ *                 format: date
+ *                 description: Date of water intake in YYYY-MM-DD format.
+ *                 example: "2023-01-01"
+ *               water_ml:
+ *                 type: number
+ *                 description: The amount logged, in millilitres.
+ *                 example: 180
+ *     responses:
+ *       200:
+ *         description: Custom water amount logged successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 water_ml:
+ *                   type: number
+ *       400:
+ *         description: Validation error - missing required fields or invalid data.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Invalid request body"
+ *                 details:
+ *                   type: object
+ *       403:
+ *         description: Forbidden - user doesn't have permission.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Forbidden: access denied."
+ */
+const logWaterIntakeAmountHandler: RequestHandler = async (req, res, next) => {
+  try {
+    const bodyResult = LogWaterIntakeAmountBodySchema.safeParse(req.body);
+    if (!bodyResult.success) {
+      res.status(400).json({
+        error: 'Invalid request body',
+        details: bodyResult.error.flatten().fieldErrors,
+      });
+      return;
+    }
+    const { entry_date, water_ml, client_id } = bodyResult.data;
+    const result = await measurementService.logWaterIntakeAmount(
+      req.userId,
+      req.originalUserId || req.userId,
+      entry_date,
+      water_ml,
+      'manual',
       client_id ?? null
     );
     res.status(200).json(result);
@@ -718,6 +812,7 @@ router.get('/water-intake/entry/:id', getWaterIntakeEntryHandler);
 router.get('/water-intake/:date/log', getWaterIntakeLogHandler);
 router.get('/water-intake/:date', getWaterIntakeHandler);
 router.post('/water-intake', upsertWaterIntakeHandler);
+router.post('/water-intake/custom', logWaterIntakeAmountHandler);
 router.put('/water-intake/:id', updateWaterIntakeHandler);
 router.patch('/water-intake/log/:id', updateWaterIntakeLogTimeHandler);
 router.delete('/water-intake/log/:id', deleteWaterIntakeLogHandler);

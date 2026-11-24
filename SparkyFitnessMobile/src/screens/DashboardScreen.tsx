@@ -38,6 +38,9 @@ import FastingGoalReconciler from '../components/FastingGoalReconciler';
 import HydrationReminderReconciler from '../components/HydrationReminderReconciler';
 import HealthTrendsPager from '../components/HealthTrendsPager';
 import HydrationGauge from '../components/HydrationGauge';
+import CustomWaterAmountSheet, {
+  type CustomWaterAmountSheetRef,
+} from '../components/CustomWaterAmountSheet';
 import CaffeineCard from '../components/CaffeineCard';
 import BloodAlcoholCard from '../components/BloodAlcoholCard';
 import { useBackgroundWaterSync } from '../hooks/useBackgroundWaterSync';
@@ -141,6 +144,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
   const [trendsRange, setTrendsRange] = useState<HealthTrendDateRange>('7d');
   const scrollViewRef = useRef<ScrollViewInstance>(null);
   const calendarRef = useRef<CalendarSheetRef>(null);
+  const customAmountSheetRef = useRef<CustomWaterAmountSheetRef>(null);
 
   // Only reset to today when the calendar day has actually changed (midnight rollover)
   useFocusEffect(
@@ -297,6 +301,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     containers: waterContainers,
     quickAddPresets: waterQuickAddPresets,
     logPreset: logWaterPreset,
+    logCustomAmount: logCustomWaterAmount,
     activeContainer: activeWaterContainer,
     selectContainer: selectWaterContainer,
   } = useWaterIntakeMutation({
@@ -575,6 +580,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
       onQuickAdd={
         isContainersLoaded ? (id: number) => logWaterPreset(id) : undefined
       }
+      onCustomAmount={() => customAmountSheetRef.current?.present()}
     />
   );
 
@@ -1104,6 +1110,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
           onSelectDate={handleCalendarSelect}
           markedDates={photoDates}
         />
+        <CustomWaterAmountSheet
+          ref={customAmountSheetRef}
+          unit={waterDisplayUnit}
+          onSubmit={(waterMl) => logCustomWaterAmount(waterMl)}
+        />
       </>
     );
   }
@@ -1127,6 +1138,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
         selectedDate={selectedDate}
         onSelectDate={handleCalendarSelect}
         markedDates={photoDates}
+      />
+      <CustomWaterAmountSheet
+        ref={customAmountSheetRef}
+        unit={waterDisplayUnit}
+        onSubmit={(waterMl) => logCustomWaterAmount(waterMl)}
       />
     </View>
   );
