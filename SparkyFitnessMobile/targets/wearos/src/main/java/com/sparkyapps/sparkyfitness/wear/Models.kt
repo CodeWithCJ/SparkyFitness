@@ -17,6 +17,13 @@ enum class WatchPage(val key: String, val label: String) {
   FASTING("fasting", "Fasting"),
   STEPS("steps", "Steps");
 
+  /**
+   * The optional feature (#3487) the page belongs to, by its phone key (`WATCH_PAGE_FEATURES` in
+   * `src/constants/watchPages.ts`). While the phone lists it in `offFeatures`, the page does not show.
+   */
+  val feature: String?
+    get() = if (this == MEDICATIONS) "medications" else null
+
   companion object {
     val defaultOrder = listOf(
       GOALS, WATER, MEDICATIONS, ENTRY, TREND, WORKOUT, FASTING, STEPS
@@ -362,6 +369,11 @@ data class WatchContext(
   val restAlertsEnabled: Boolean? = null,
   val pageOrder: List<String>? = null,
   val hiddenPages: List<String>? = null,
+  /**
+   * Optional features turned off in the phone app (`offFeatures`, such as `medications`): their pages
+   * and tiles say so. Null, from an older phone or before the phone knows its choices, reads as none off.
+   */
+  val offFeatures: List<String>? = null,
   val setInputStyle: String? = null,
   val startableWorkouts: List<StartableWorkout>? = null,
   val scheduledWorkouts: List<ScheduledWorkout>? = null,
@@ -431,6 +443,12 @@ data class WatchContext(
     }
   }
 
+  fun isFeatureOff(key: String): Boolean = offFeatures?.contains(key) == true
+
+  /**
+   * The pages to swipe between. A page of a feature that is off never shows; the phone hides it in
+   * `hiddenPages` too, and keeps Goals when that page was the only one shown.
+   */
   fun visiblePages(workoutActive: Boolean): List<WatchPage> {
     val hidden = (hiddenPages ?: emptyList()).map { it.lowercase() }.toSet()
     val ordered = mutableListOf<WatchPage>()
@@ -442,6 +460,7 @@ data class WatchContext(
     for (p in WatchPage.defaultOrder) {
       if (!ordered.contains(p)) ordered.add(p)
     }
+    ordered.removeAll { page -> page.feature?.let { isFeatureOff(it) } == true }
     val filtered = ordered.filter { page ->
       if (workoutActive && page == WatchPage.WORKOUT) true
       else !hidden.contains(page.key)

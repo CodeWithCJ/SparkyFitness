@@ -106,7 +106,9 @@ data class MedicationsTileModel(
   val pendingCount: Int,
   val progress: Float,
   val doseRows: List<TileDoseRow>,
-  val skippedCount: Int = 0
+  val skippedCount: Int = 0,
+  /** Medications is turned off in the phone app (Settings → Features). */
+  val turnedOff: Boolean = false
 )
 
 data class TileExerciseItemRow(
@@ -321,7 +323,21 @@ object TileModels {
   /**
    * Builds the display model for the Medications tile from today's [MedicationSnapshot].
    */
-  fun buildMedicationsTileModel(medications: MedicationSnapshot?): MedicationsTileModel {
+  fun buildMedicationsTileModel(
+    medications: MedicationSnapshot?,
+    turnedOff: Boolean = false
+  ): MedicationsTileModel {
+    if (turnedOff) {
+      return MedicationsTileModel(
+        hasData = false,
+        takenCount = 0,
+        totalCount = 0,
+        pendingCount = 0,
+        progress = 0f,
+        doseRows = emptyList(),
+        turnedOff = true
+      )
+    }
     if (medications == null || !medications.isToday) {
       return MedicationsTileModel(
         hasData = false,
@@ -499,7 +515,9 @@ object TileModels {
   fun formatMedicationsHeadline(
     model: MedicationsTileModel,
     getString: (Int, Array<out Any>) -> String
-  ): String = if (!model.hasData) {
+  ): String = if (model.turnedOff) {
+    getString(R.string.tile_meds_turned_off, emptyArray())
+  } else if (!model.hasData) {
     getString(R.string.tile_meds_not_synced, emptyArray())
   } else {
     getString(R.string.tile_meds_taken_count, arrayOf(model.takenCount, model.totalCount))
@@ -514,6 +532,7 @@ object TileModels {
     model: MedicationsTileModel,
     getString: (Int, Array<out Any>) -> String
   ): String = when {
+    model.turnedOff -> getString(R.string.tile_meds_turned_off_hint, emptyArray())
     !model.hasData -> getString(R.string.tile_meds_open_app, emptyArray())
     model.totalCount == 0 -> getString(R.string.tile_meds_none_today, emptyArray())
     model.pendingCount > 0 -> getString(R.string.tile_meds_pending_today, arrayOf(model.pendingCount))
@@ -1127,14 +1146,23 @@ class MedicationsTileService : BaseSparkyTileService() {
   override val accentColorArgb = 0xFF2DD4BF.toInt()
 
   override fun currentRingProgress(session: WearSessionManager): Float {
-    return TileModels.buildMedicationsTileModel(session.checkInStore.medications.value).progress
+    return medicationsModel(session).progress
+  }
+
+  /** Today's doses, or the turned-off state while Medications is off in the phone app. */
+  private fun medicationsModel(session: WearSessionManager): MedicationsTileModel {
+    val store = session.checkInStore
+    return TileModels.buildMedicationsTileModel(
+      medications = store.medications.value,
+      turnedOff = store.watchContext.value.isFeatureOff("medications")
+    )
   }
 
   /**
    * Builds the ProtoLayout content column for the Medications tile.
    */
   override fun buildContentLayout(session: WearSessionManager): LayoutElement {
-    val model = TileModels.buildMedicationsTileModel(session.checkInStore.medications.value)
+    val model = medicationsModel(session)
     val headlineText = TileModels.formatMedicationsHeadline(this, model)
     val subtitleText = TileModels.formatMedicationsSubtitle(this, model)
     val col = Column.Builder()
@@ -1177,7 +1205,7 @@ class MedicationsTileService : BaseSparkyTileService() {
       )
     }
 
-    if (model.doseRows.size < 3) {
+    if (!model.turnedOff && model.doseRows.size < 3) {
       col.addContent(vSpacer(4f))
       col.addContent(
         bottomActionPill(

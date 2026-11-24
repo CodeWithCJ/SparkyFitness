@@ -565,6 +565,10 @@ struct WatchContext: Codable, Equatable {
     /// the zone it is in. Nil (an older phone build, or zones not loaded) keeps
     /// the plain heart colour.
     var heartRateZoneFloors: [Double]? = nil
+    /// Optional features turned off in the phone app (`offFeatures`, such as
+    /// `medications`): their pages leave the watch. Nil, from an older phone
+    /// or before the phone knows its choices, reads as none off.
+    var offFeatures: [String]? = nil
 
     static let empty = WatchContext(
         today: nil,
@@ -618,7 +622,12 @@ struct WatchContext: Codable, Equatable {
 
     /// The pages to swipe between, in order — see `WatchPage.visible`.
     func visiblePages(workoutActive: Bool) -> [WatchPage] {
-        WatchPage.visible(order: pageOrder, hidden: hiddenPages, workoutActive: workoutActive)
+        WatchPage.visible(
+            order: pageOrder,
+            hidden: hiddenPages,
+            offFeatures: offFeatures,
+            workoutActive: workoutActive
+        )
     }
 
     var hasSeed: Bool { todayWeightKg != nil || lastWeightKg != nil }

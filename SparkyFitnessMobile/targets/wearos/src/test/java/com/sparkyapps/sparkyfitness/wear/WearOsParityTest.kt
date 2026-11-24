@@ -574,6 +574,88 @@ class WearOsParityTest {
     }
 
     @Test
+    fun `a feature turned off in the phone app hides its page and turns its tile off`() {
+        fun names(vararg keys: String) = JSONArray().apply { keys.forEach { put(it) } }
+        val off = ContextPayloadMapper.parseContext(JSONObject().apply {
+            put("hiddenPages", names("trend", "medications"))
+            put("offFeatures", names("medications"))
+        }, WatchContext.empty)
+        assertEquals(listOf("medications"), off.offFeatures)
+        assertTrue(off.isFeatureOff("medications"))
+        assertFalse(off.visiblePages(workoutActive = false).contains(WatchPage.MEDICATIONS))
+
+        // The watch drops the page even when the hidden list does not name it.
+        val notHidden = ContextPayloadMapper.parseContext(JSONObject().apply {
+            put("hiddenPages", names())
+            put("offFeatures", names("medications"))
+        }, WatchContext.empty)
+        assertFalse(notHidden.visiblePages(workoutActive = false).contains(WatchPage.MEDICATIONS))
+        assertTrue(notHidden.visiblePages(workoutActive = false).contains(WatchPage.WATER))
+
+        // Kept while the phone leaves it out; an empty list turns it back on.
+        val carried = ContextPayloadMapper.parseContext(JSONObject().apply {
+            put("today", CheckInDate.today())
+        }, off)
+        assertEquals(listOf("medications"), carried.offFeatures)
+        val backOn = ContextPayloadMapper.parseContext(JSONObject().apply {
+            put("hiddenPages", names("trend"))
+            put("offFeatures", names())
+        }, off)
+        assertFalse(backOn.isFeatureOff("medications"))
+        assertTrue(backOn.visiblePages(workoutActive = false).contains(WatchPage.MEDICATIONS))
+
+        // Goals when the page of the feature was the only one shown.
+        val onlyMedications = ContextPayloadMapper.parseContext(JSONObject().apply {
+            put(
+                "hiddenPages",
+                names(*WatchPage.defaultOrder.filter { it != WatchPage.MEDICATIONS }.map { it.key }.toTypedArray())
+            )
+            put("offFeatures", names("medications"))
+        }, WatchContext.empty)
+        assertEquals(listOf(WatchPage.GOALS), onlyMedications.visiblePages(workoutActive = false))
+
+        val resolveString: (Int, Array<out Any>) -> String = { id, _ ->
+            when (id) {
+                R.string.tile_meds_turned_off -> "Turned off"
+                R.string.tile_meds_turned_off_hint -> "Turn on in the phone app"
+                else -> error("Unexpected string resource id: $id")
+            }
+        }
+        val tile = TileModels.buildMedicationsTileModel(medications = null, turnedOff = true)
+        assertTrue(tile.turnedOff)
+        assertEquals(0f, tile.progress, 0f)
+        assertTrue(tile.doseRows.isEmpty())
+        assertEquals("Turned off", TileModels.formatMedicationsHeadline(tile, resolveString))
+        assertEquals("Turn on in the phone app", TileModels.formatMedicationsSubtitle(tile, resolveString))
+        assertFalse(TileModels.buildMedicationsTileModel(medications = null).turnedOff)
+    }
+
+    @Test
+    fun `the context kept for a restart keeps the page layout the phone left out`() {
+        fun names(vararg keys: String) = JSONArray().apply { keys.forEach { put(it) } }
+        val full = JSONObject().apply {
+            put("pageOrder", names("goals", "water"))
+            put("hiddenPages", names("medications"))
+            put("offFeatures", names("medications"))
+        }
+        val first = ContextPayloadMapper.parseContext(full, WatchContext.empty)
+        assertEquals(full.toString(), ContextPayloadMapper.persistableContextJson(full.toString(), first))
+
+        // A push sent while the phone did not know its feature choices.
+        val partial = JSONObject().apply {
+            put("today", CheckInDate.today())
+            put("pageOrder", names("water", "goals"))
+        }
+        val second = ContextPayloadMapper.parseContext(partial, first)
+        val kept = JSONObject(ContextPayloadMapper.persistableContextJson(partial.toString(), second))
+        val restored = ContextPayloadMapper.parseContext(kept, WatchContext.empty)
+        assertEquals(listOf("water", "goals"), restored.pageOrder)
+        assertEquals(listOf("medications"), restored.hiddenPages)
+        assertEquals(listOf("medications"), restored.offFeatures)
+        assertFalse(restored.visiblePages(workoutActive = false).contains(WatchPage.MEDICATIONS))
+    }
+
+    @Test
     fun `phone media state parses metadata, volume percentage, and outbound payloads`() {
         val fullJson = JSONObject().apply {
             put("type", "mediaState")

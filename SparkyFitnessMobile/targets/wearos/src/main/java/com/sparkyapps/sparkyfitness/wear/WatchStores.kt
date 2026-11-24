@@ -806,7 +806,7 @@ class CheckInStore(private val context: Context) {
       if (incomingOwner != null) {
         prefs.edit()
           .putString("context_owner_id", incomingOwner)
-          .putString("last_context_json", rawJson)
+          .putString("last_context_json", ContextPayloadMapper.persistableContextJson(rawJson, nextCtx))
           .apply()
         resendQueued()
       } else {

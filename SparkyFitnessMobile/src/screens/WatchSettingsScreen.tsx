@@ -12,7 +12,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCSSVariable } from 'uniwind';
 
 import WatchConnectivity from '../../modules/watch-connectivity';
+import { isShownByFeature } from '@workspace/shared';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import FeaturesOffNotice from '../components/FeaturesOffNotice';
 import Icon from '../components/Icon';
 import { ReorderSwitchList } from '../components/ReorderSwitchList';
 import SegmentedControl from '../components/SegmentedControl';
@@ -20,20 +22,23 @@ import SettingsRow from '../components/SettingsRow';
 import Switch from '../components/ui/Switch';
 import { getNutrientLabel } from '../constants/nutrients';
 import {
+  WATCH_PAGE_FEATURES,
   WATCH_PAGE_KEYS,
   WATCH_PAGE_LABELS,
   WATCH_WORKOUT_COUNTDOWNS,
+  type WatchPageKey,
   type WatchSetInputStyle,
   type WatchWorkoutCountdown,
   type WatchWorkoutTopLine,
 } from '../constants/watchPages';
 import { useCustomNutrients } from '../hooks/useCustomNutrients';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useServerConnection } from '../hooks/useServerConnection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
-import { resolveKeyOrder } from '../utils/reorderUtils';
+import { mergeSubsetOrder, resolveKeyOrder } from '../utils/reorderUtils';
 import { WATCH_STANDARD_NUTRIENT_KEYS } from '../utils/watchNutrients';
 
 type WatchSettingsScreenProps = RootStackScreenProps<'WatchSettings'>;
@@ -45,7 +50,9 @@ type WatchSettingsScreenProps = RootStackScreenProps<'WatchSettings'>;
  * (`useWatchCheckInBridge`), so a change reaches the wrist the next time the
  * two talk.
  */
-const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
+const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const isAndroid = Platform.OS === 'android';
   const insets = useSafeAreaInsets();
@@ -206,17 +213,31 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
     (s) => s.setWatchSetInputStyle
   );
 
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
+  const orderedPages = useMemo(
+    () => resolveKeyOrder(watchPageOrder, WATCH_PAGE_KEYS),
+    [watchPageOrder]
+  );
+  // The pages of features turned off in Settings → Features are left out, as
+  // the watch leaves them out; their place and switch are kept for when the
+  // feature comes back.
   const pageItems = useMemo(
     () =>
-      resolveKeyOrder(watchPageOrder, WATCH_PAGE_KEYS).map((key) => ({
-        key,
-        label: WATCH_PAGE_LABELS[key](t),
-      })),
-    [watchPageOrder, t]
+      orderedPages
+        .filter((key) =>
+          isShownByFeature(WATCH_PAGE_FEATURES[key], isFeatureOn)
+        )
+        .map((key) => ({ key, label: WATCH_PAGE_LABELS[key](t) })),
+    [orderedPages, isFeatureOn, t]
   );
   const shownPageCount = pageItems.filter(
     ({ key }) => !hiddenWatchPages.includes(key)
   ).length;
+  const reorderPages = useCallback(
+    (order: WatchPageKey[]) =>
+      setWatchPageOrder(mergeSubsetOrder(orderedPages, order)),
+    [orderedPages, setWatchPageOrder]
+  );
 
   // Standard nutrients, then the account's custom ones, in the saved order.
   const nutrientItems = useMemo(() => {
@@ -578,7 +599,7 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
             !hiddenWatchPages.includes(key) && shownPageCount <= 1
           }
           onToggle={(key, enabled) => setWatchPageHidden(key, !enabled)}
-          onReorder={setWatchPageOrder}
+          onReorder={reorderPages}
           reorderA11yLabel={(name) =>
             t('watchSettings.reorder', {
               defaultValue: 'Reorder {{name}}',
@@ -589,6 +610,16 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
             defaultValue: 'Changes where this page sits on your watch',
           })}
         />
+        {pageItems.length < orderedPages.length && (
+          <FeaturesOffNotice
+            className="mt-3"
+            onManage={
+              isConnected
+                ? () => navigation.navigate('FeatureSettings')
+                : undefined
+            }
+          />
+        )}
 
         <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
           {t('watchSettings.nutrientsTitle', {
