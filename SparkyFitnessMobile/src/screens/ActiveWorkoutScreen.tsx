@@ -1110,8 +1110,13 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     enabled: focusMode,
     onFinish: handleCompleteSet,
   });
+  // The focus view logs a set from the active-set card, so its bar only shows
+  // while a rest runs or for a timed hold's Start hold.
+  const focusBarIdle = focusMode && !restRunning && hold.setId == null;
   const restBarVisible =
-    (restRunning || activeSetId != null) && hold.phase === 'idle';
+    (restRunning || activeSetId != null) &&
+    hold.phase === 'idle' &&
+    !focusBarIdle;
   const scrollContentStyle = useMemo(() => {
     const restBarPadding = usesGlassRestBar
       ? REST_BAR_GLASS_CLEARANCE + insets.bottom

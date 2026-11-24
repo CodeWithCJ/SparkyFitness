@@ -26,7 +26,7 @@ interface Props {
   onBackToCurrent?: () => void;
 }
 
-const THUMB_SIZE = 96;
+const THUMB_SIZE = 72;
 const MAX_HEIGHT_RATIO = 0.32;
 // Library photos are mostly 4:3 landscape; the card takes each image's own
 // shape once it loads, within portrait 3:4 and wide 16:9, so a photo fills it

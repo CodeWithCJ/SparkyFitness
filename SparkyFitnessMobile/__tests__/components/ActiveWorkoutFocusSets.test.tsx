@@ -350,6 +350,31 @@ describe('ActiveWorkoutFocusSets', () => {
       });
     });
 
+    it('logs the set from the card and shows the planned reps', () => {
+      const { getByLabelText, getByText, callbacks } = renderSets({
+        activeSetId: '101',
+        sets: [makeSet()],
+        assumed: [{ weight: 55, reps: 8 }],
+      });
+      expect(getByText('Plan 8 reps')).toBeTruthy();
+      fireEvent.press(getByLabelText('Log set'));
+      expect(callbacks.onCompleteSet).toHaveBeenCalledWith('101');
+    });
+
+    it('hides the plan text without planned reps and singularizes one rep', () => {
+      const { queryByText, rerenderSets } = renderSets({
+        activeSetId: '101',
+        sets: [makeSet()],
+      });
+      expect(queryByText(/^Plan /)).toBeNull();
+      rerenderSets({
+        activeSetId: '101',
+        sets: [makeSet()],
+        assumed: [{ weight: 55, reps: 1 }],
+      });
+      expect(queryByText('Plan 1 rep')).toBeTruthy();
+    });
+
     it('stops RPE at 10', () => {
       const { getByLabelText, callbacks } = renderSets({
         activeSetId: '101',

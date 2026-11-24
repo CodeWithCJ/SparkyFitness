@@ -450,7 +450,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
     'h-7 flex-row items-center gap-1.5 rounded-full bg-raised px-2.5';
   const nameText = (
     <Text
-      className={`${mediaMode === 'expanded' ? 'flex-1 text-2xl' : 'text-[22px]'} font-bold text-text-primary`}
+      className="text-2xl font-bold text-text-primary"
       accessibilityRole="header"
     >
       {name}
@@ -482,27 +482,46 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
       <Icon name="ellipsis-horizontal" size={22} color={textPrimary} />
     </Pressable>
   );
-  // Beside the thumbnail, or alone for an exercise without pictures: the name,
-  // the plan under it, then Swap and the menu.
-  const sideTitle = (
-    <View className="min-w-0 flex-1 gap-1">
-      {nameText}
-      {planText != null && (
-        <Text
-          className="text-[15px] text-text-secondary"
-          style={{ fontVariant: ['tabular-nums'] }}
-        >
-          {planText}
+  const bestChip =
+    bestDisplay != null ? (
+      <View
+        className={`${tagClass} self-start`}
+        accessibilityLabel={t('activeWorkout.exercise.best', {
+          defaultValue: 'Best {{value}}',
+          value: bestText,
+        })}
+      >
+        <Text className="text-[13px] font-semibold text-text-secondary">
+          {t('activeWorkout.focus.bestLabel', { defaultValue: 'Best' })}
         </Text>
-      )}
-      <View className="mt-1 flex-row items-center gap-2">
+        <Text
+          className="text-[13px] font-bold"
+          style={{
+            color: bestIsPr ? prColor : accent,
+            fontVariant: ['tabular-nums'],
+          }}
+        >
+          {bestText}
+        </Text>
+      </View>
+    ) : null;
+  // Under the large picture, beside the thumbnail, or alone for an exercise
+  // without pictures: the name with the Best chip under it, left-aligned, and
+  // Swap and the menu on the right.
+  const sideTitle = (
+    <View className="min-w-0 flex-row items-start gap-2">
+      <View className="min-w-0 flex-1 gap-1.5">
+        {nameText}
+        {bestChip}
+      </View>
+      <View className="flex-row items-center gap-2">
         {swapButton}
         {moreButton}
       </View>
     </View>
   );
 
-  const hasTags = muscle !== '' || equipment !== '' || bestDisplay != null;
+  const hasTags = muscle !== '' || equipment !== '';
   const showMetaRow = hasTags || liveBpm != null;
   const restChip = !cardioForm && (
     <RestPeriodChip
@@ -515,10 +534,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
       }
     />
   );
-  const contextText =
-    mediaMode === 'expanded'
-      ? [planText, lastTimeText].filter(Boolean).join(' · ')
-      : (lastTimeText ?? '');
+  const contextText = [planText, lastTimeText].filter(Boolean).join(' · ');
   const plateSetId = useMemo(() => {
     const sets = exercise.sets;
     return String(
@@ -583,13 +599,7 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
           >
             {sideTitle}
           </ActiveWorkoutFocusMedia>
-          {mediaMode === 'expanded' && (
-            <View className="flex-row items-center gap-2">
-              {nameText}
-              {swapButton}
-              {moreButton}
-            </View>
-          )}
+          {mediaMode === 'expanded' && sideTitle}
           {mediaMode === 'none' && sideTitle}
         </View>
 
@@ -606,28 +616,6 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
               <View className={tagClass}>
                 <Text className="text-[13px] font-semibold text-text-secondary">
                   {equipment}
-                </Text>
-              </View>
-            )}
-            {bestDisplay != null && (
-              <View
-                className={tagClass}
-                accessibilityLabel={t('activeWorkout.exercise.best', {
-                  defaultValue: 'Best {{value}}',
-                  value: bestText,
-                })}
-              >
-                <Text className="text-[13px] font-semibold text-text-secondary">
-                  {t('activeWorkout.focus.bestLabel', { defaultValue: 'Best' })}
-                </Text>
-                <Text
-                  className="text-[13px] font-bold"
-                  style={{
-                    color: bestIsPr ? prColor : accent,
-                    fontVariant: ['tabular-nums'],
-                  }}
-                >
-                  {bestText}
                 </Text>
               </View>
             )}

@@ -638,7 +638,10 @@
         "optionalRepsLeft_one": "optional · {{count}} rep left",
         "optionalRepsLeft_other": "optional · {{count}} reps left",
         "decreaseEffort": "Decrease {{metric}} for set {{setNumber}}",
-        "increaseEffort": "Increase {{metric}} for set {{setNumber}}"
+        "increaseEffort": "Increase {{metric}} for set {{setNumber}}",
+        "planReps_one": "Plan {{count}} rep",
+        "planReps_other": "Plan {{count}} reps",
+        "logSet": "Log set"
       },
       "plates": {
         "perSide": "Per side:",

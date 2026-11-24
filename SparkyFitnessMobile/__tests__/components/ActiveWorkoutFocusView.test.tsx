@@ -607,7 +607,7 @@ describe('ActiveWorkoutFocusView', () => {
     });
   });
 
-  it('puts the plan under the name when there are no pictures, and Swap and the menu beside the name when there are', () => {
+  it('keeps Swap and the menu beside the name with and without pictures', () => {
     const { rerender } = render(viewElement('a'));
     // No pictures: the preview stays collapsed and the title block stands alone.
     expect(screen.getAllByLabelText('Swap Bench Press').length).toBeGreaterThan(
@@ -648,8 +648,7 @@ describe('ActiveWorkoutFocusView', () => {
       },
     });
     render(viewElement('a'));
-    expect(screen.getByText('Plan 2 × 12')).toBeTruthy();
-    expect(screen.getByText('Last time 40×7, 35×9')).toBeTruthy();
+    expect(screen.getByText('Plan 2 × 12 · Last time 40×7, 35×9')).toBeTruthy();
   });
 
   it("passes last session's sets to the set editor, warm-ups paired with warm-ups", () => {
@@ -685,7 +684,7 @@ describe('ActiveWorkoutFocusView', () => {
       },
     });
     render(viewElement('a'));
-    expect(screen.getByText('Last time 42.5×5')).toBeTruthy();
+    expect(screen.getByText(/Last time 42.5×5/)).toBeTruthy();
 
     try {
       await act(async () => {

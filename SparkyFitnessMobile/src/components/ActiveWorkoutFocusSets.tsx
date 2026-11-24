@@ -558,6 +558,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
       previousSet != null
         ? formatRecentSessionSet(previousSet, weightUnit, t, modality)
         : null;
+    const plannedReps = assumed?.reps ?? null;
     const repsLeft =
       effortField === 'rpe' && effort != null && effort >= 5 && effort <= 10
         ? Math.round(10 - effort)
@@ -572,10 +573,10 @@ const FocusSetRow = React.memo(function FocusSetRow({
           setNumber: displayNumber,
           total: setCount,
         })}
-        className="my-1 gap-2 rounded-[20px] bg-raised p-2.5"
+        className="my-1 gap-2 rounded-[20px] bg-transparent p-2.5"
         style={{ borderWidth: 2, borderColor: accentPrimary }}
       >
-        <View className="flex-row items-center justify-between">
+        <View className="flex-row items-center gap-2">
           <Pressable
             onPress={openSetTypeMenu}
             disabled={!onPressSetType}
@@ -621,6 +622,18 @@ const FocusSetRow = React.memo(function FocusSetRow({
                 })}
               </Text>
             </Pressable>
+          )}
+          {plannedReps != null && (
+            <Text
+              className="ml-auto text-[15px] text-text-secondary"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {t('activeWorkout.focus.hero.planReps', {
+                defaultValue_one: 'Plan {{count}} rep',
+                defaultValue_other: 'Plan {{count}} reps',
+                count: plannedReps,
+              })}
+            </Text>
           )}
         </View>
         <View className="flex-row gap-2">
@@ -716,6 +729,19 @@ const FocusSetRow = React.memo(function FocusSetRow({
             </View>
           </View>
         )}
+        <Pressable
+          onPress={handleComplete}
+          accessibilityRole="button"
+          accessibilityLabel={t('activeWorkout.focus.hero.logSet', {
+            defaultValue: 'Log set',
+          })}
+          className="h-14 items-center justify-center rounded-full active:opacity-80"
+          style={{ backgroundColor: accentPrimary }}
+        >
+          <Text className="text-xl font-bold text-white">
+            {t('activeWorkout.focus.hero.logSet', { defaultValue: 'Log set' })}
+          </Text>
+        </Pressable>
       </View>
     );
   }
@@ -1052,7 +1078,7 @@ function ActiveWorkoutFocusSets({
     const cardioSet = exercise.sets[0] ?? null;
     const cardioSetId = cardioSet != null ? String(cardioSet.id) : null;
     return (
-      <View className="rounded-2xl bg-surface p-2">
+      <View className="rounded-2xl bg-transparent p-2">
         <CardioEffortForm
           set={cardioSet}
           exerciseName={

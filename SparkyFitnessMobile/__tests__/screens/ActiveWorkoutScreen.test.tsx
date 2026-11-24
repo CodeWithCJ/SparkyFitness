@@ -2132,14 +2132,10 @@ describe('ActiveWorkoutScreen focus view', () => {
       expect(queryByText('Log')).toBeNull();
     });
 
-    it('asks the view to show the active exercise when the rest bar is tapped', () => {
-      const { getByTestId } = renderScreen();
-      expect(getByTestId('focus-show').props.children).toBe('show:0:undefined');
-
-      fireEvent.press(getByTestId('rest-bar-body'));
-      expect(getByTestId('focus-show').props.children).toBe('show:1:ex-a');
-      fireEvent.press(getByTestId('rest-bar-body'));
-      expect(getByTestId('focus-show').props.children).toBe('show:2:ex-a');
+    it('has no docked Log set bar while no rest runs (the active-set card logs the set)', () => {
+      const { queryByTestId, queryByText } = renderScreen();
+      expect(queryByTestId('rest-bar-body')).toBeNull();
+      expect(queryByText('Log set')).toBeNull();
     });
 
     it('asks the view to show an exercise picked with "Do another exercise first"', () => {
