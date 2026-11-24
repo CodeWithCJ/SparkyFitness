@@ -1,7 +1,13 @@
 import { tool } from 'ai';
 import { log } from '../../config/logging.js';
 import sleepScienceService from '../../services/sleepScienceService.js';
-import { ERRORS, formatZodError } from './errors.js';
+import { ERRORS } from './errors.js';
+import {
+  changedKeys,
+  dropTodayDates,
+  formatActionZodError,
+} from './crossActionKeys.js';
+import { DEBT_WINDOW_DAYS } from '../../constants/sleepScienceConstants.js';
 import {
   SLEEP_SCIENCE_ACTIONS,
   sleepScienceSchema,
@@ -98,6 +104,36 @@ function isInsufficient(result: {
   return result.success === false;
 }
 
+/**
+ * The flat input schema lists date and window_days for every action, but only
+ * daily_need takes a date and only recalculate_baseline a window (#3713). Every
+ * other action answers for today over a fixed window, so today's date, or
+ * sleep_debt's own window, cannot change its answer and is dropped. Any other
+ * value is left for validation to reject with the accepted keys.
+ */
+function reconcileCrossActionKeys(args: Record<string, unknown>, tz: string) {
+  if (!VALID_ACTIONS.includes(args.action as (typeof VALID_ACTIONS)[number])) {
+    return;
+  }
+  const before = { ...args };
+  if (args.action !== 'daily_need') dropTodayDates(args, ['date'], tz);
+  if (
+    args.action === 'sleep_debt' &&
+    (typeof args.window_days === 'number' ||
+      typeof args.window_days === 'string') &&
+    Number(args.window_days) === DEBT_WINDOW_DAYS
+  ) {
+    delete args.window_days;
+  }
+  const changed = changedKeys(before, args);
+  if (changed.length > 0) {
+    log(
+      'info',
+      `[sleepScienceTools] Reconciled cross-action keys for ${String(args.action)}: ${changed.join(', ')}`
+    );
+  }
+}
+
 export function buildSleepScienceTools(userId: string, tz: string) {
   return {
     sparky_get_sleep_science: tool({
@@ -112,9 +148,15 @@ export function buildSleepScienceTools(userId: string, tz: string) {
           () => 'sleep_debt'
         );
 
+        reconcileCrossActionKeys(normalized as Record<string, unknown>, tz);
         const parsed = sleepScienceSchema.safeParse(normalized);
         if (!parsed.success) {
-          return formatZodError(parsed.error);
+          return formatActionZodError(
+            parsed.error,
+            sleepScienceSchema,
+            (normalized as Record<string, unknown>).action,
+            tz
+          );
         }
         const args: SleepScienceInput = parsed.data;
 
