@@ -1,6 +1,7 @@
 import React, {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -13,6 +14,7 @@ import {
   View,
   type LayoutChangeEvent,
   type StyleProp,
+  type ViewInstance,
   type ViewStyle,
 } from 'react-native';
 import {
@@ -365,9 +367,9 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   // exercise becomes started, on landing on a started one, and whenever the
   // current set moves on. Measured against the page, which starts at the top
   // of the scroll content.
-  const pageRef = useRef<View>(null);
-  const scrollTargetRef = useRef<View>(null);
-  const scrollHeaderRef = useRef<View>(null);
+  const pageRef = useRef<ViewInstance>(null);
+  const scrollTargetRef = useRef<ViewInstance>(null);
+  const scrollHeaderRef = useRef<ViewInstance>(null);
   // Where the title and thumbnail block ends, from its own layout.
   const titleBottomRef = useRef(0);
   const scrollTargets = useMemo(
@@ -920,8 +922,11 @@ function ActiveWorkoutFocusView({
   // The visible part of the scroll view: its height less what the footer
   // covers (the content's bottom padding), so a set can be scrolled above it.
   const viewportRef = useRef<ScrollViewport>({ height: 0, bottomInset: 0 });
-  viewportRef.current.bottomInset =
+  const footerInset =
     Number(StyleSheet.flatten(scrollContentStyle)?.paddingBottom) || 0;
+  useLayoutEffect(() => {
+    viewportRef.current.bottomInset = footerInset;
+  }, [footerInset]);
   const handleScrollLayout = useCallback((e: LayoutChangeEvent) => {
     viewportRef.current.height = e.nativeEvent.layout.height;
   }, []);

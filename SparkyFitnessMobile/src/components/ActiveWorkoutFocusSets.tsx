@@ -631,6 +631,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
               {t('activeWorkout.focus.hero.planReps', {
                 defaultValue_one: 'Plan {{count}} rep',
                 defaultValue_other: 'Plan {{count}} reps',
+                defaultValue: 'Plan {{count}} reps',
                 count: plannedReps,
               })}
             </Text>

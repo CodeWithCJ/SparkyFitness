@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import {
+  Pressable,
+  Text,
+  TextInput,
+  View,
+  type TextInputInstance,
+} from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import Icon from './Icon';
 
@@ -14,7 +20,7 @@ interface CellInputProps {
   keyboardType?: FocusKeyboardType;
   placeholder?: string;
   accessibilityLabel: string;
-  inputRef?: React.Ref<TextInput>;
+  inputRef?: React.Ref<TextInputInstance>;
   /** Overrides the value color (an effort tone). */
   textColor?: string;
   /** Ring color while the cell does not hold the keyboard (the resting set). */

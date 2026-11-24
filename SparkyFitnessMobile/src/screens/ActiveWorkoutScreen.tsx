@@ -1039,11 +1039,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   } | null>(null);
   // The page's note field flushes its draft on unmount, after the menu state is
   // already null; keep the last id so that final commit still reaches the set.
-  const lastSetOptionsIdRef = useRef('');
-  if (setTypeMenu != null) lastSetOptionsIdRef.current = setTypeMenu.setId;
+  const [lastSetOptionsId, setLastSetOptionsId] = useState('');
   const handlePressSetType = useCallback(
     (setId: string, anchor: AnchorRect) => {
       setSetTypeMenu({ setId, anchor });
+      setLastSetOptionsId(setId);
     },
     []
   );
@@ -1710,7 +1710,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       {focusMode ? (
         <FocusSetOptionsPage
           visible={setTypeCurrent != null && setTypeMenu != null}
-          setId={setTypeMenu?.setId ?? lastSetOptionsIdRef.current}
+          setId={setTypeMenu?.setId ?? lastSetOptionsId}
           setNumber={setOptionsSet?.set.set_number ?? 0}
           exerciseName={
             setOptionsSet?.exercise.exercise_snapshot?.name ??

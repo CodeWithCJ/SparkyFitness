@@ -1,5 +1,5 @@
 import { createContext } from 'react';
-import type { View } from 'react-native';
+import type { ViewInstance } from 'react-native';
 
 /**
  * Where the focus view's sets table header and current-set card (or the rest
@@ -7,8 +7,8 @@ import type { View } from 'react-native';
  * view without pushing the header off the top.
  */
 export interface FocusScrollTargets {
-  card: React.RefObject<View | null>;
-  header: React.RefObject<View | null>;
+  card: React.RefObject<ViewInstance | null>;
+  header: React.RefObject<ViewInstance | null>;
 }
 
 export const FocusScrollTargetContext =

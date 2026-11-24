@@ -363,7 +363,7 @@ const ExerciseAlternativesList: React.FC<ExerciseAlternativesListProps> = ({
                     'Free Exercise DB is unavailable, so only your library is shown.',
                 })}
               </Text>
-            ) : null
+            ) : undefined
           ) : (
             <View className="py-4 items-center">
               {!data.catalog_available && (
