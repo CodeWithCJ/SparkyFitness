@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import WatchConnectivity from '../../modules/watch-connectivity';
 import {
@@ -7,15 +8,37 @@ import {
 } from '../utils/watchComplications';
 import { addLog } from './LogService';
 
+const REVISION_KEY = 'watchComplicationLastRevision';
+
 let lastRevision = 0;
+let revisionLoaded: Promise<void> | null = null;
+
+/** Reads the last revision sent, once per launch. */
+function loadLastRevision(): Promise<void> {
+  revisionLoaded ??= AsyncStorage.getItem(REVISION_KEY)
+    .then((stored) => {
+      const value = Number(stored);
+      if (Number.isFinite(value)) lastRevision = Math.max(lastRevision, value);
+    })
+    .catch(() => {
+      // Unreadable: fall back to the clock, as before.
+    });
+  return revisionLoaded;
+}
 
 /**
  * The watch drops any revision lower than the one it holds, so each send takes
- * a number above the last one even when the phone's clock has moved back.
+ * a number above the last one sent, even when the phone's clock has moved back
+ * or the app has restarted since. The value is kept on the phone.
  */
-function nextRevision(): number {
+async function nextRevision(): Promise<number> {
+  await loadLastRevision();
   lastRevision = Math.max(Date.now(), lastRevision + 1);
-  return lastRevision;
+  const revision = lastRevision;
+  await AsyncStorage.setItem(REVISION_KEY, String(revision)).catch(() => {
+    // The in-memory value still keeps this launch's sends in order.
+  });
+  return revision;
 }
 
 /**
@@ -30,10 +53,11 @@ export async function sendComplicationsToWatch(
 ): Promise<void> {
   if (Platform.OS !== 'ios' || !WatchConnectivity) return;
   try {
+    const revision = await nextRevision();
     await WatchConnectivity.sendComplicationConfig(
       buildComplicationConfig(
         list,
-        nextRevision(),
+        revision,
         options.reload === true,
         options.builtIns
       )

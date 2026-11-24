@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import WatchConnectivity from '../../modules/watch-connectivity';
 import { sendComplicationsToWatch } from '../../src/services/watchComplicationSync';
@@ -57,6 +58,29 @@ describe('sendComplicationsToWatch', () => {
       (call) => call[0].revision
     );
     expect(second).toBeGreaterThan(first);
+  });
+
+  it('keeps the revision above the last one sent before a restart', async () => {
+    await AsyncStorage.setItem(
+      'watchComplicationLastRevision',
+      '9000000000000'
+    );
+    jest.isolateModules(() => {
+      jest.doMock('../../modules/watch-connectivity', () => ({
+        __esModule: true,
+        default: module,
+      }));
+    });
+    let fresh: typeof import('../../src/services/watchComplicationSync');
+    jest.isolateModules(() => {
+      fresh = require('../../src/services/watchComplicationSync');
+    });
+    jest.spyOn(Date, 'now').mockReturnValue(1_000);
+    await fresh!.sendComplicationsToWatch([water]);
+    jest.restoreAllMocks();
+    expect(
+      module.sendComplicationConfig.mock.calls[0][0].revision
+    ).toBeGreaterThan(9_000_000_000_000);
   });
 
   it('marks a manual reload so the watch refreshes its picker', async () => {
