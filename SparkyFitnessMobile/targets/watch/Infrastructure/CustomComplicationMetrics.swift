@@ -13,6 +13,10 @@ struct CustomMetric: Codable, Equatable {
     let value: Double
     /// The target in `unit`, when there is one.
     var goal: Double? = nil
+    /// The amount left, when the phone sends it directly. The "left" format
+    /// prefers it to `goal - value`, so it never depends on a goal rebuilt
+    /// from clamped progress.
+    var remaining: Double? = nil
     /// 0...1 toward the goal, worked out by the phone (or here for steps), so a
     /// gauge fills from the same figure the Goals page uses.
     var progress: Double? = nil
@@ -37,19 +41,25 @@ enum CustomComplicationMetrics {
 
         if let nutrition = context.nutrition {
             let day = nutrition.day
+            // Energy goes out in the wearer's unit (kcal or kJ), like water
+            // does, because the widget can't read the account's unit itself.
+            // The phone's payload stays in kcal; the conversion happens here.
             // No goal on the calories figure: the phone sends the progress and
             // the amount left, and a goal worked out here could drift from them.
+            let energyUnit = context.energyUnitLabel
+            func energy(_ kcal: Double) -> Double { context.energyFromKcal(kcal) }
             metrics.append(CustomMetric(
-                key: "calories", value: nutrition.caloriesConsumed,
-                progress: nutrition.calorieProgress, unit: "kcal", day: day
+                key: "calories", value: energy(nutrition.caloriesConsumed),
+                remaining: energy(nutrition.caloriesRemaining),
+                progress: nutrition.calorieProgress, unit: energyUnit, day: day
             ))
             metrics.append(CustomMetric(
-                key: "caloriesRemaining", value: nutrition.caloriesRemaining,
-                unit: "kcal", day: day
+                key: "caloriesRemaining", value: energy(nutrition.caloriesRemaining),
+                unit: energyUnit, day: day
             ))
             metrics.append(CustomMetric(
-                key: "caloriesBurned", value: nutrition.caloriesBurned,
-                unit: "kcal", day: day
+                key: "caloriesBurned", value: energy(nutrition.caloriesBurned),
+                unit: energyUnit, day: day
             ))
             metrics.append(macro("protein", nutrition.protein, day: day))
             metrics.append(macro("carbs", nutrition.carbs, day: day))
