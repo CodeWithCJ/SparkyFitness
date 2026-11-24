@@ -2135,7 +2135,7 @@ async function getExerciseProgressData(
          ee.exercise_preset_entry_id,
          epe.name AS exercise_preset_entry_name,
          e.category,
-         ee.modality,
+         COALESCE(ee.modality, e.modality) AS modality,
          -- Body weight that day, for a bodyweight exercise's load
          -- (effectiveLoadKg in @workspace/shared).
          bw.weight::float8 AS body_weight_kg,
