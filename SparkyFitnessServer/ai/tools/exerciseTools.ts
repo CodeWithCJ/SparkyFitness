@@ -1943,7 +1943,8 @@ Workout formats (workout_format, default standard) drive the in-app timer:
     }),
 
     sparky_get_daily_exercise_totals: tool({
-      description: 'Returns daily exercise totals for a date or range.',
+      description:
+        "Returns daily exercise totals for a date or range. entry_count counts workouts only: a day with just a device's Active Calories summary has entry_count 0 but still reports its calories_burned.",
       inputSchema: exerciseDateRangeSchema,
       execute: async (rawArgs) => {
         const parsed = exerciseDateRangeSchema.safeParse(

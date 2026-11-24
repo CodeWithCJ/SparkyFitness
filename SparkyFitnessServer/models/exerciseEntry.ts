@@ -16,7 +16,10 @@ import { log } from '../config/logging.js';
 import exerciseRepository from './exercise.js';
 import activityDetailsRepository from './activityDetailsRepository.js';
 import * as workoutTelemetryRepository from './workoutTelemetryRepository.js';
-import { bodyWeightJoinSql } from '../utils/exerciseLoadSql.js';
+import {
+  bodyWeightJoinSql,
+  workoutEntryPredicateSql,
+} from '../utils/exerciseLoadSql.js';
 import { assertSetWeightSign } from '../utils/setWeightSign.js';
 import { getDefaultShoeForRunWithClient } from './shoeRepository.js';
 import {
@@ -2538,7 +2541,11 @@ async function deleteExerciseEntriesByEntrySourceAndDate(
   }
 }
 // Per-day exercise totals over a date range. Backs the chatbot
-// sparky_get_daily_exercise_totals tool.
+// sparky_get_daily_exercise_totals and sparky_get_daily_report tools.
+// `entry_count` counts workouts only: a device's daily "Active Calories" row is
+// not one, but the day keeps its row so its calories stay visible. SUM over the
+// integer `steps` column is a bigint, which node-pg returns as a string, so it
+// is cast; the numeric sums already parse to numbers (db/poolManager.ts).
 async function getDailyExerciseTotalsRange(
   userId: string,
   startDate: string,
@@ -2548,11 +2555,11 @@ async function getDailyExerciseTotalsRange(
   try {
     const result = await client.query(
       `SELECT entry_date,
-              COUNT(*)::int AS entry_count,
+              (COUNT(*) FILTER (WHERE ${workoutEntryPredicateSql()}))::int AS entry_count,
               SUM(COALESCE(duration_minutes, 0)) AS duration_minutes,
               SUM(COALESCE(calories_applied, calories_burned, 0)) AS calories_burned,
               SUM(COALESCE(distance, 0)) AS distance,
-              SUM(COALESCE(steps, 0)) AS steps
+              SUM(COALESCE(steps, 0))::float8 AS steps
        FROM exercise_entries
        WHERE user_id = $1 AND entry_date BETWEEN $2 AND $3
        GROUP BY entry_date

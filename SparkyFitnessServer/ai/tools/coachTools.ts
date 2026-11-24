@@ -11,6 +11,7 @@ import { log } from '../../config/logging.js';
 import calorieTargetReviewService from '../../services/calorieTargetReviewService.js';
 import preferenceService from '../../services/preferenceService.js';
 import coachRepository from '../../models/coachRepository.js';
+import reportRepository from '../../models/reportRepository.js';
 import symptomRepository from '../../models/symptomRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
 import { normalizeDayKeywords } from './dates.js';
@@ -51,6 +52,22 @@ async function getHealthSummary(
     startDate,
     end
   );
+  // The same per-day rows sparky_get_nutrition_summary reports, so the daily
+  // averages here multiply back to that tool's totals for the same range.
+  const nutritionDays = await reportRepository.getDailyNutritionTotalsRange(
+    userId,
+    startDate,
+    end
+  );
+  const daysLogged = nutritionDays.length;
+  const sumOf = (key: string) =>
+    nutritionDays.reduce(
+      (sum: number, day: Record<string, unknown>) =>
+        sum + (Number(day[key]) || 0),
+      0
+    );
+  const dailyAverage = (key: string) =>
+    daysLogged > 0 ? sumOf(key) / daysLogged : 0;
   const exercise = await coachRepository.getExerciseAggregates(
     userId,
     startDate,
@@ -77,11 +94,13 @@ async function getHealthSummary(
   return {
     period: { start_date: startDate, end_date: end },
     nutrition: {
-      total_calories: Number(nutrition.total_calories),
-      avg_protein: Number(Number(nutrition.avg_protein).toFixed(1)),
-      avg_carbs: Number(Number(nutrition.avg_carbs).toFixed(1)),
-      avg_fat: Number(Number(nutrition.avg_fat).toFixed(1)),
-      entry_count: nutrition.entry_count,
+      total_calories: Math.round(sumOf('calories')),
+      days_logged: daysLogged,
+      avg_daily_calories: Math.round(dailyAverage('calories')),
+      avg_daily_protein: Number(dailyAverage('protein').toFixed(1)),
+      avg_daily_carbs: Number(dailyAverage('carbs').toFixed(1)),
+      avg_daily_fat: Number(dailyAverage('fat').toFixed(1)),
+      entry_count: Number(nutrition.entry_count),
     },
     fitness: {
       total_calories_burned: resolvedBurned,
@@ -487,7 +506,7 @@ export function buildCoachTools(userId: string, tz: string) {
   return {
     sparky_get_health_summary: tool({
       description:
-        "Get a summary of the user's health status (Nutrition, Fitness, Vitals, Hydration) for a specific date range.",
+        "Get a summary of the user's health status (Nutrition, Fitness, Vitals, Hydration) for a specific date range. Nutrition values are in kcal and grams, from the same per-day totals as sparky_get_nutrition_summary (supplement doses included); avg_daily_* average over the days_logged days with any food or supplement logged. workout_count excludes a device's daily Active Calories summary.",
       inputSchema: GetHealthSummarySchema,
       execute: async (rawArgs) => {
         const rawArgsWithDefaults = {
@@ -537,7 +556,7 @@ export function buildCoachTools(userId: string, tz: string) {
 
     sparky_get_30_day_trends: tool({
       description:
-        'Get comprehensive trends for the last 30 days including food, exercise, mood, sleep, and biometrics.',
+        "Get comprehensive trends for the last 30 days including food, exercise, mood, sleep, and biometrics. total_workouts and active_days exclude a device's daily Active Calories summary.",
       inputSchema: Get30DayTrendsSchema,
       execute: async (rawArgs) => {
         const parsed = Get30DayTrendsSchema.safeParse(
