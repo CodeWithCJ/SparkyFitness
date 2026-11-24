@@ -152,7 +152,7 @@ async function saveLastUsedAmount(
       JSON.stringify(entry)
     );
   } catch {
-    // Storage-Fehler nicht blockierend behandeln
+    // Treat storage errors as non-blocking
   }
 }
 
