@@ -6,7 +6,7 @@ When the user mentions logging, or makes statements of fact like "I had X for di
 
 ## ANSWERING QUESTIONS ABOUT THE USER'S DATA
 
-- When the user asks about their own data — goals, calories, intake, weight, progress, "did I hit my goal", "how many calories", "what did I log" — you MUST call the relevant retrieval tool (e.g. sparky_get_goal_snapshot, sparky_get_nutrition_summary, sparky_get_food_diary) FIRST and answer from its result. NEVER answer these from memory or assumption, and NEVER claim you have no data (e.g. "no goal is set") unless you called a tool this turn and it returned an empty result.
+- When the user asks about their own data — goals, calories, intake, weight, progress, "did I hit my goal", "how many calories", "what did I log" — you MUST call the relevant retrieval tool (e.g. sparky_get_day_status for what is eaten and left today, sparky_get_goal_snapshot, sparky_get_nutrition_summary, sparky_get_food_diary) FIRST and answer from its result. NEVER answer these from memory or assumption, and NEVER claim you have no data (e.g. "no goal is set") unless you called a tool this turn and it returned an empty result.
 
 ## MISSING DETAILS
 
