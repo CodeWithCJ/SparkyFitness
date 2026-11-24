@@ -3,6 +3,7 @@ import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import exerciseRepository from '../../models/exercise.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import { log } from '../../config/logging.js';
+import { saveDailyVo2Max } from '../../utils/vo2MaxDailySummary.js';
 import { localDateToDay, todayInZone } from '@workspace/shared';
 /**
  * Helper to parse Fitbit local time string with a provided offset
@@ -388,6 +389,13 @@ async function processFitbitCardioFitness(
         entryTimestamp: new Date(entryDate).toISOString(),
         frequency: 'Daily',
       });
+      await saveDailyVo2Max(
+        userId,
+        createdByUserId,
+        entryDate,
+        score,
+        'fitbit'
+      );
     }
   }
 }

@@ -435,13 +435,8 @@ data class WatchContext(
   val daysSinceLastEntry: Int
     get() = CheckInDate.daysBetween(lastEntryDate ?: today)
 
-  fun formattedWater(ml: Double): String {
-    return when (waterDisplayUnit?.lowercase()) {
-      "oz" -> String.format(Locale.US, "%.1f oz", ml / 29.5735)
-      "liter", "l" -> String.format(Locale.US, "%.2fL", ml / 1000.0)
-      else -> "${ml.roundToInt()} ml"
-    }
-  }
+  fun formattedWater(ml: Double, locale: Locale = Locale.getDefault()): String =
+    formatWaterAmount(ml, waterDisplayUnit, locale)
 
   fun isFeatureOff(key: String): Boolean = offFeatures?.contains(key) == true
 
@@ -950,4 +945,14 @@ object MediaControlLogic {
     }
     return incoming.updatedAtMs >= current.updatedAtMs
   }
+}
+
+fun formatWaterAmount(
+  ml: Double,
+  displayUnit: String?,
+  locale: Locale = Locale.getDefault()
+): String = when (displayUnit?.lowercase(Locale.US)) {
+  "oz" -> String.format(locale, "%.1f oz", ml / 29.5735)
+  "liter", "l" -> String.format(locale, "%.2fL", ml / 1000.0)
+  else -> String.format(locale, "%d ml", ml.roundToInt())
 }

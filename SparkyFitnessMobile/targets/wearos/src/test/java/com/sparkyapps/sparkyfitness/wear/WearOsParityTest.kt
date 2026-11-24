@@ -10,6 +10,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class WearOsParityTest {
 
@@ -821,5 +822,932 @@ class WearOsParityTest {
                 phoneMedia = phonePlaying
             )
         )
+    }
+
+    @Test
+    fun `water and weight tile models format presets, sparkline bars, deltas, and pending medication rows`() {
+        val today = CheckInDate.today()
+        val medSnap = MedicationSnapshot(
+            day = today,
+            doses = listOf(
+                MedicationDose("m1:s1", "m1", "s1", "Vitamin D", "2000 IU", "08:00 AM", MedicationDoseStatus.TAKEN),
+                MedicationDose("m2:s2", "m2", "s2", "Magnesium", "400 mg", "09:00 PM", MedicationDoseStatus.PENDING)
+            )
+        )
+        val medTile = TileModels.buildMedicationsTileModel(medSnap)
+        assertEquals("m2:s2", medTile.doseRows[0].doseId)
+        assertTrue(medTile.doseRows[0].isPending)
+        assertEquals("m1:s1", medTile.doseRows[1].doseId)
+        assertFalse(medTile.doseRows[1].isPending)
+
+        val syncedContainers = listOf(
+            WaterContainer(id = 10, name = "Glass", servingVolumeMl = 250.0, unit = "ml"),
+            WaterContainer(id = 11, name = "Bottle", servingVolumeMl = 500.0, unit = "ml")
+        )
+        val waterCtx = WatchContext(waterDisplayUnit = "ml")
+        val unsyncedWaterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 1500.0,
+            goalMl = 2500.0,
+            queuedMl = 250.0,
+            watchCtx = waterCtx,
+            containers = emptyList(),
+            locale = Locale.US
+        )
+        assertTrue(unsyncedWaterTile.containers.isEmpty())
+
+        val waterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 1500.0,
+            goalMl = 2500.0,
+            queuedMl = 250.0,
+            watchCtx = waterCtx,
+            containers = syncedContainers,
+            locale = Locale.US
+        )
+        assertTrue(waterTile.hasOwner)
+        assertEquals("1500 ml", waterTile.consumedText)
+        assertEquals("2500 ml", waterTile.goalText)
+        assertEquals("1000 ml", waterTile.remainingText)
+        assertFalse(waterTile.isGoalMet)
+        assertEquals("250 ml", waterTile.queuedText)
+        assertEquals(0.6f, waterTile.progress, 0.001f)
+        assertEquals(2, waterTile.containers.size)
+        assertEquals("+250 ml", waterTile.containers[0].addText)
+        assertEquals("+500 ml", waterTile.containers[1].addText)
+        assertFalse(waterTile.syncFailed)
+
+        val ozWaterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 0.0,
+            goalMl = 2500.0,
+            queuedMl = 0.0,
+            watchCtx = WatchContext(waterDisplayUnit = "oz"),
+            containers = syncedContainers,
+            locale = Locale.US
+        )
+        assertEquals("+8.5 oz", ozWaterTile.containers[0].addText)
+        assertEquals("+16.9 oz", ozWaterTile.containers[1].addText)
+
+        val deOzWaterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 1500.0,
+            goalMl = 2500.0,
+            queuedMl = 250.0,
+            watchCtx = WatchContext(waterDisplayUnit = "oz"),
+            containers = syncedContainers,
+            locale = Locale.GERMANY
+        )
+        assertEquals("+8,5 oz", deOzWaterTile.containers[0].addText)
+        assertEquals("50,7 oz", deOzWaterTile.consumedText)
+        assertEquals("84,5 oz", deOzWaterTile.goalText)
+
+        val deLiterWaterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 1500.0,
+            goalMl = 2500.0,
+            queuedMl = 0.0,
+            watchCtx = WatchContext(waterDisplayUnit = "liter"),
+            containers = syncedContainers,
+            locale = Locale.GERMANY
+        )
+        assertEquals("1,50L", deLiterWaterTile.consumedText)
+        assertEquals("2,50L", deLiterWaterTile.goalText)
+        assertEquals("+0,25L", deLiterWaterTile.containers[0].addText)
+
+        // Native-digit locale must localize milliliter digits as well
+        val arLocale = Locale.forLanguageTag("ar-EG")
+        val arMlWaterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 1500.0,
+            goalMl = 2500.0,
+            queuedMl = 250.0,
+            watchCtx = waterCtx,
+            containers = syncedContainers,
+            locale = arLocale
+        )
+        assertEquals(String.format(arLocale, "%d ml", 1500), arMlWaterTile.consumedText)
+        assertEquals("+${String.format(arLocale, "%d ml", 250)}", arMlWaterTile.containers[0].addText)
+
+        val failedWaterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 1500.0,
+            goalMl = 2500.0,
+            queuedMl = 0.0,
+            watchCtx = waterCtx,
+            containers = syncedContainers,
+            waterSyncState = SyncState.FAILED,
+            locale = Locale.US
+        )
+        assertTrue(failedWaterTile.syncFailed)
+
+        val history = listOf(
+            HistoryPoint("2026-01-01", 82.0, 17.4),
+            HistoryPoint("2026-01-02", 81.6, null),
+            HistoryPoint("2026-01-03", 81.2, 17.0),
+            HistoryPoint(today, 80.5, 16.8)
+        )
+        val weightCtx = WatchContext(
+            today = today,
+            todayWeightKg = 81.0,
+            todayBodyFatPercentage = 16.8,
+            weightUnit = WeightUnit.KG
+        )
+        val weightTile = TileModels.buildWeightTileModel(
+            watchCtx = weightCtx,
+            history = history,
+            unit = WeightUnit.KG,
+            today = today
+        )
+        assertTrue(weightTile.hasData)
+        assertTrue(weightTile.loggedToday)
+        assertEquals(1.0f, weightTile.progress, 0.001f)
+        assertEquals("81.0 kg", weightTile.weightValueText)
+        assertEquals(-0.2, weightTile.stepDelta ?: 0.0, 0.01)
+        assertEquals(-1.0, weightTile.trendDelta ?: 0.0, 0.01)
+        assertEquals(4, weightTile.trendCount)
+        assertEquals(16.8, weightTile.bodyFatPercent ?: 0.0, 0.01)
+        assertEquals(4, weightTile.sparklineFractions.size)
+        assertEquals(1.0f, weightTile.sparklineFractions.first(), 0.01f)
+        assertEquals(0.0f, weightTile.sparklineFractions.last(), 0.01f)
+    }
+
+    @Test
+    fun `complication models build calories remaining, sleep, meds, exercise live-or-scheduled, and weight specs`() {
+        val today = CheckInDate.today()
+        val nutrition = NutritionSnapshot(
+            day = today,
+            caloriesConsumed = 1650.0,
+            caloriesBurned = 380.0,
+            caloriesRemaining = 550.0,
+            calorieProgress = 0.75,
+            carbs = MacroGoal(180.0, 220.0, 0.82),
+            fat = MacroGoal(50.0, 65.0, 0.77),
+            protein = MacroGoal(130.0, 170.0, 0.76),
+            rows = null
+        )
+        val calRem = ComplicationModels.buildCaloriesRemainingSpec(nutrition, EnergyDisplay.KCAL)
+        assertEquals("550", calRem.shortText)
+        assertTrue(calRem.shortText.length <= 7)
+        assertEquals("left", calRem.shortTitle)
+        assertEquals("550 kcal left \u00B7 130/170g P", calRem.longText)
+        assertEquals("C 180g \u00B7 F 50g", calRem.longTitle)
+        assertEquals("550 kcal left \u00B7 130/170g P \u00B7 C 180g \u00B7 F 50g", calRem.contentDescription)
+        assertEquals(550f, calRem.progressValue, 0.1f)
+        assertEquals(2200f, calRem.goalValue, 0.1f)
+        assertEquals(550f, calRem.rangedValueOverride ?: -1f, 0.1f)
+
+        val calRemKj = ComplicationModels.buildCaloriesRemainingSpec(nutrition, EnergyDisplay(isKj = true))
+        assertEquals("2301kJ", calRemKj.shortText)
+        assertTrue(calRemKj.shortText.length <= 7)
+        assertEquals("left", calRemKj.shortTitle)
+
+        val overNutrition = nutrition.copy(caloriesConsumed = 2320.0, caloriesRemaining = -120.0)
+        val calOver = ComplicationModels.buildCaloriesRemainingSpec(overNutrition, EnergyDisplay.KCAL)
+        assertEquals("-120", calOver.shortText)
+        assertTrue(calOver.shortText.length <= 7)
+        assertEquals("over", calOver.shortTitle)
+        assertEquals("120 kcal over \u00B7 130/170g P", calOver.longText)
+        assertEquals(0f, calOver.progressValue, 0.1f)
+        assertEquals(0f, calOver.rangedValueOverride ?: -1f, 0.1f)
+
+        val overKj = ComplicationModels.buildCaloriesRemainingSpec(
+            nutrition.copy(caloriesConsumed = 5200.0, caloriesRemaining = -3000.0),
+            EnergyDisplay(isKj = true)
+        )
+        assertEquals("-13k kJ", overKj.shortText)
+        assertTrue(overKj.shortText.length <= 7)
+        assertEquals("over", overKj.shortTitle)
+
+        val extremeOverKj = ComplicationModels.buildCaloriesRemainingSpec(
+            nutrition.copy(caloriesConsumed = 26000.0, caloriesRemaining = -23805.0),
+            EnergyDisplay(isKj = true)
+        )
+        assertEquals("-100kkJ", extremeOverKj.shortText)
+        assertTrue(extremeOverKj.shortText.length <= 7)
+
+        val bfOnlyTodayTile = TileModels.buildWeightTileModel(
+            watchCtx = WatchContext(today = today, todayWeightKg = null, todayBodyFatPercentage = 16.8),
+            history = listOf(HistoryPoint("2026-01-01", 81.2, 17.4)),
+            unit = WeightUnit.KG,
+            today = today
+        )
+        assertFalse(bfOnlyTodayTile.loggedToday)
+        assertEquals(16.8, bfOnlyTodayTile.bodyFatPercent ?: 0.0, 0.01)
+
+        val bfWithoutAnyWeightTile = TileModels.buildWeightTileModel(
+            watchCtx = WatchContext(today = today, todayWeightKg = null, todayBodyFatPercentage = 16.8),
+            history = emptyList(),
+            unit = WeightUnit.KG,
+            today = today
+        )
+        assertTrue(bfWithoutAnyWeightTile.hasData)
+        assertFalse(bfWithoutAnyWeightTile.hasWeight)
+        assertFalse(bfWithoutAnyWeightTile.loggedToday)
+        assertEquals(16.8, bfWithoutAnyWeightTile.bodyFatPercent ?: 0.0, 0.01)
+        val bfOnlySpec = ComplicationModels.buildWeightSpec(bfWithoutAnyWeightTile)
+        assertEquals("16.8%", bfOnlySpec.shortText)
+        assertEquals("BF", bfOnlySpec.shortTitle)
+        assertEquals("BF 16.8%", bfOnlySpec.longText)
+
+        // Body-fat-only snapshot retains latest dated body fat after midnight rollover
+        val afterMidnightBfTile = TileModels.buildWeightTileModel(
+            watchCtx = WatchContext(
+                today = "2026-01-01",
+                todayBodyFatPercentage = 21.0
+            ),
+            history = emptyList(),
+            unit = WeightUnit.KG,
+            today = "2026-01-02"
+        )
+        assertTrue(afterMidnightBfTile.hasData)
+        assertFalse(afterMidnightBfTile.hasWeight)
+        assertEquals(21.0, afterMidnightBfTile.bodyFatPercent ?: 0.0, 0.01)
+
+        // Context lastBodyFatPercentage fills matching history date when history row omits bodyFatPercentage
+        val mergedLastBfTile = TileModels.buildWeightTileModel(
+            watchCtx = WatchContext(
+                today = today,
+                lastEntryDate = "2026-01-02",
+                lastWeightKg = 80.0,
+                lastBodyFatPercentage = 20.0
+            ),
+            history = listOf(
+                HistoryPoint("2026-01-01", 80.5, 25.0),
+                HistoryPoint("2026-01-02", 80.0, null)
+            ),
+            unit = WeightUnit.KG,
+            today = today
+        )
+        assertEquals(20.0, mergedLastBfTile.bodyFatPercent ?: 0.0, 0.01)
+
+        val sleepScored = SleepSnapshot(
+            day = today,
+            totalSeconds = 7 * 3600 + 24 * 60,
+            timeInBedSeconds = 8 * 3600,
+            sleepScore = 84,
+            bedtime = "11:00 PM",
+            wakeTime = "6:24 AM"
+        )
+        val sleepSpec = ComplicationModels.buildSleepSpec(sleepScored)
+        assertEquals("84", sleepSpec.shortText)
+        assertEquals("7h 24m", sleepSpec.shortTitle)
+        assertEquals("Sleep 7h 24m \u00B7 Score 84", sleepSpec.longText)
+        assertEquals(84f, sleepSpec.progressValue, 0.01f)
+        assertEquals(100f, sleepSpec.goalValue, 0.01f)
+
+        val sleepUnscored = sleepScored.copy(sleepScore = null)
+        val unscoredSpec = ComplicationModels.buildSleepSpec(sleepUnscored)
+        assertEquals("7h 24m", unscoredSpec.shortText)
+        assertEquals(null, unscoredSpec.shortTitle)
+        assertEquals(8f, unscoredSpec.goalValue, 0.01f)
+
+        val inBedOnly = sleepScored.copy(totalSeconds = 0, sleepScore = null)
+        val inBedSpec = ComplicationModels.buildSleepSpec(inBedOnly)
+        assertEquals("8h 0m", inBedSpec.shortText)
+        assertEquals("In bed", inBedSpec.shortTitle)
+        assertEquals("In bed 8h 0m", inBedSpec.longText)
+        assertEquals("In bed 8h 0m", inBedSpec.contentDescription)
+        assertEquals(0f, inBedSpec.progressValue, 0.01f)
+
+        val scoredInBedOnly = sleepScored.copy(totalSeconds = 0, sleepScore = 84)
+        val scoredInBedSpec = ComplicationModels.buildSleepSpec(scoredInBedOnly)
+        assertEquals("84", scoredInBedSpec.shortText)
+        assertEquals("In bed", scoredInBedSpec.shortTitle)
+        assertEquals("In bed 8h 0m \u00B7 Score 84", scoredInBedSpec.longText)
+
+        val macroWithGoal = ComplicationModels.buildMacroSpec("Protein", 120f, configuredGoal = 160f, fallbackGoal = 150f)
+        assertEquals("120g", macroWithGoal.shortText)
+        assertEquals("/160g", macroWithGoal.shortTitle)
+        assertEquals("40g left", macroWithGoal.longTitle)
+
+        val macroWithoutGoal = ComplicationModels.buildMacroSpec("Protein", 100f, configuredGoal = null, fallbackGoal = 150f)
+        assertEquals("100g", macroWithoutGoal.shortText)
+        assertNull(macroWithoutGoal.shortTitle)
+        assertEquals("Protein 100g", macroWithoutGoal.longText)
+        assertNull(macroWithoutGoal.longTitle)
+        assertEquals("Protein: 100g", macroWithoutGoal.contentDescription)
+        assertEquals(100f, macroWithoutGoal.progressValue, 0.01f)
+        assertFalse(macroWithoutGoal.hasGoalTarget)
+        assertTrue(macroWithGoal.hasGoalTarget)
+
+        assertEquals("8:00a", ComplicationModels.compactDoseTime("08:00 AM"))
+        assertEquals("9:30p", ComplicationModels.compactDoseTime("09:30 PM"))
+        val meds = MedicationSnapshot(
+            day = today,
+            doses = listOf(
+                MedicationDose("1", "m1", "s1", "Vitamin D", "2000 IU", "08:00 AM", MedicationDoseStatus.TAKEN),
+                MedicationDose("2", "m2", "s2", "Magnesium", "400 mg", "08:00 PM", MedicationDoseStatus.PENDING)
+            )
+        )
+        val medsSpec = ComplicationModels.buildMedicationsSpec(meds)
+        assertEquals("1/2", medsSpec.shortText)
+        assertEquals("8:00p", medsSpec.shortTitle)
+        assertEquals("1/2 \u00B7 Magnesium 8:00p", medsSpec.longText)
+        assertEquals("400 mg", medsSpec.longTitle)
+        assertEquals("1/2 \u00B7 Magnesium \u00B7 400 mg \u00B7 8:00p", medsSpec.contentDescription)
+        assertNotNull(medsSpec.validUntil)
+        assertNotNull(calRem.validUntil)
+        assertNotNull(sleepSpec.validUntil)
+
+        val amoxComplicationSnap = MedicationSnapshot(
+            day = today,
+            doses = listOf(
+                MedicationDose("1", "m1", "s1", "Vitamin D", "2000 IU", "07:00 AM", MedicationDoseStatus.TAKEN),
+                MedicationDose("2", "m2", "s2", "Amoxicillin 250 mg", "1 cap", "08:00 AM", MedicationDoseStatus.PENDING)
+            )
+        )
+        val amoxCompSpec = ComplicationModels.buildMedicationsSpec(amoxComplicationSnap)
+        assertEquals("1/2 \u00B7 Amoxici\u2026250 mg 8:00a", amoxCompSpec.longText)
+
+        val uncompactedComplicationSnap = MedicationSnapshot(
+            day = today,
+            doses = listOf(
+                MedicationDose("1", "m1", "s1", "Vitamin D", "2000 IU", "07:00 AM", MedicationDoseStatus.TAKEN),
+                MedicationDose("2", "m2", "s2", "Augmentin 875 mg / 125 mg", "1 tab", "08:00 AM", MedicationDoseStatus.PENDING)
+            )
+        )
+        val fallbackCompSpec = ComplicationModels.buildMedicationsSpec(uncompactedComplicationSnap)
+        assertEquals("1/2 \u00B7 Medications 8:00a", fallbackCompSpec.longText)
+
+        val skippedMeds = MedicationSnapshot(
+            day = today,
+            doses = listOf(
+                MedicationDose("1", "m1", "s1", "Vitamin D", "2000 IU", "08:00 AM", MedicationDoseStatus.TAKEN),
+                MedicationDose("2", "m2", "s2", "Magnesium", "400 mg", "08:00 PM", MedicationDoseStatus.SKIPPED)
+            )
+        )
+        val skippedSpec = ComplicationModels.buildMedicationsSpec(skippedMeds)
+        assertEquals("1/2 \u00B7 1 skipped \u00B7 All done", skippedSpec.longText)
+
+        val scheduled = listOf(ScheduledWorkout("p1", "Push Day A", "PPL", "Today"))
+        val plannedSpec = ComplicationModels.buildExerciseSpec(
+            exercise = null,
+            scheduledWorkouts = scheduled
+        )
+        assertEquals("0m", plannedSpec.shortText)
+        assertEquals("Today: Push Day A", plannedSpec.longText)
+        assertNotNull(plannedSpec.validUntil)
+
+        val liveSpec = ComplicationModels.buildExerciseSpec(
+            exercise = ExerciseSummarySnapshot(today, 20, 45, 180, 400, 1),
+            scheduledWorkouts = scheduled,
+            activeSessionLabel = "Workout",
+            activeSessionMinutes = 34
+        )
+        assertEquals("34m", liveSpec.shortText)
+        assertEquals("Live", liveSpec.shortTitle)
+        assertEquals("Workout \u00B7 34m", liveSpec.longText)
+        assertEquals(54f, liveSpec.progressValue, 0.01f)
+        assertNotNull(liveSpec.validUntil)
+
+        val weightModel = TileModels.buildWeightTileModel(
+            watchCtx = WatchContext(today = today, todayWeightKg = 80.92, todayBodyFatPercentage = 16.8, weightUnit = WeightUnit.LBS),
+            history = listOf(HistoryPoint("2026-01-01", 81.10), HistoryPoint(today, 80.92, 16.8)),
+            unit = WeightUnit.LBS,
+            today = today
+        )
+        val weightSpec = ComplicationModels.buildWeightSpec(weightModel)
+        assertEquals("178.4", weightSpec.shortText)
+        assertEquals("-0.4", weightSpec.shortTitle)
+        assertEquals("178.4 lbs \u00B7 -0.4 lbs", weightSpec.longText)
+        assertEquals("BF 16.8%", weightSpec.longTitle)
+        assertEquals("178.4 lbs \u00B7 -0.4 lbs \u00B7 BF 16.8%", weightSpec.contentDescription)
+        assertNull(weightSpec.validUntil)
+    }
+
+    @Test
+    fun `weight tile queued status, causal check-in settlement, and enabled-page complication routing`() {
+        val today = CheckInDate.today()
+        val optimisticCtx = WatchContext(
+            today = today,
+            todayWeightKg = 80.0,
+            todayBodyFatPercentage = 16.5,
+            weightUnit = WeightUnit.KG
+        )
+        val optimisticHistory = listOf(
+            HistoryPoint("2026-01-01", 80.6, 16.8),
+            HistoryPoint(today, 80.0, 16.5)
+        )
+
+        val queuedTile = TileModels.buildWeightTileModel(
+            watchCtx = optimisticCtx,
+            history = optimisticHistory,
+            unit = WeightUnit.KG,
+            today = today,
+            todayUnconfirmed = true
+        )
+        assertTrue(queuedTile.hasData)
+        assertFalse(queuedTile.loggedToday)
+        assertTrue(queuedTile.queuedToday)
+        assertEquals("80.0 kg", queuedTile.weightValueText)
+        assertEquals(0.85f, queuedTile.progress, 0.001f)
+
+        val confirmedTile = TileModels.buildWeightTileModel(
+            watchCtx = optimisticCtx,
+            history = optimisticHistory,
+            unit = WeightUnit.KG,
+            today = today,
+            todayUnconfirmed = false
+        )
+        assertTrue(confirmedTile.loggedToday)
+        assertFalse(confirmedTile.queuedToday)
+        assertEquals(1.0f, confirmedTile.progress, 0.001f)
+
+        val savedRec = CheckInStore.PendingWeightRecord(
+            id = "c-watch-80",
+            day = today,
+            weightKg = 80.0,
+            bodyFatPercentage = null,
+            state = SyncState.SAVED,
+            ownerId = "srv-1",
+            baselineGeneratedAtMs = 1000L,
+            baselineWeightKg = 79.0,
+            baselineBodyFatPercentage = 20.0
+        )
+        // Pre-write snapshot right after direct sendAck must NOT retire the 80 kg overlay
+        val preWriteSnap = WatchContext(
+            today = today,
+            todayWeightKg = 79.0,
+            todayBodyFatPercentage = 20.0,
+            generatedAtMs = 1000L,
+            ackedClientIds = emptyList(),
+            weightUnit = WeightUnit.KG
+        )
+        assertFalse(
+            CheckInStore.isSavedWeightRecordSettled(
+                savedRec,
+                preWriteSnap,
+                listOf(HistoryPoint(today, 79.0, 20.0))
+            )
+        )
+
+        // Unrelated body-fat change (20% -> 21%) without weight change or rec.id ack must NOT retire weight-only edit
+        val bfOnlyChangeSnap = WatchContext(
+            today = today,
+            todayWeightKg = 79.0,
+            todayBodyFatPercentage = 21.0,
+            generatedAtMs = 1500L,
+            ackedClientIds = (1..20).map { "other-ack-$it" },
+            weightUnit = WeightUnit.KG
+        )
+        assertFalse(
+            CheckInStore.isSavedWeightRecordSettled(
+                savedRec,
+                bfOnlyChangeSnap,
+                listOf(HistoryPoint(today, 79.0, 21.0))
+            )
+        )
+
+        // Post-write snapshot with a later 81 kg phone edit + ackedClientIds retires the 80 kg overlay
+        val phoneEditWithAck = WatchContext(
+            today = today,
+            todayWeightKg = 81.0,
+            generatedAtMs = 2000L,
+            ackedClientIds = listOf("c-watch-80"),
+            weightUnit = WeightUnit.KG
+        )
+        assertTrue(
+            CheckInStore.isSavedWeightRecordSettled(
+                savedRec,
+                phoneEditWithAck,
+                listOf(HistoryPoint(today, 81.0))
+            )
+        )
+
+        // Snapshot from an intermediate prior edit (80 kg, edit-1 acked, edit-2 not yet in ackedClientIds) must NOT retire edit-2 (81 kg)
+        val edit2SavedRec = savedRec.copy(id = "c-watch-81", weightKg = 81.0)
+        val intermediateEdit1Snap = WatchContext(
+            today = today,
+            todayWeightKg = 80.0,
+            generatedAtMs = 2500L,
+            ackedClientIds = listOf("c-watch-80"),
+            weightUnit = WeightUnit.KG
+        )
+        assertFalse(
+            CheckInStore.isSavedWeightRecordSettled(
+                edit2SavedRec,
+                intermediateEdit1Snap,
+                listOf(HistoryPoint(today, 80.0))
+            )
+        )
+
+        // Medication date-bound tile action, distinguishable strength labels, & causal override retirement
+        val amox250 = MedicationDose("d-250", "m250", "s1", "Amoxicillin 250 mg", "1 cap", "08:00 AM", MedicationDoseStatus.PENDING)
+        val amox500 = MedicationDose("d-500", "m500", "s2", "Amoxicillin 500 mg", "1 cap", "08:00 AM", MedicationDoseStatus.PENDING)
+        val distinctSnap = MedicationSnapshot(day = today, doses = listOf(amox250, amox500))
+        val distinctTile = TileModels.buildMedicationsTileModel(distinctSnap)
+        assertEquals("Amoxicil\u2026250 mg", distinctTile.doseRows[0].name)
+        assertEquals("Amoxicil\u2026500 mg", distinctTile.doseRows[1].name)
+        assertTrue(distinctTile.doseRows[0].isDirectlyActionable)
+        assertTrue(distinctTile.doseRows[1].isDirectlyActionable)
+
+        val er1500 = MedicationDose("d-1500", "m1500", "s3", "Extended Release Drug 1500 mg", "1 tab", "09:00 AM", MedicationDoseStatus.PENDING)
+        val tooLongStrength = MedicationDose("d-combo", "mcombo", "s4", "Augmentin 875 mg / 125 mg", "1 tab", "09:00 AM", MedicationDoseStatus.PENDING)
+        val mcgDose = MedicationDose("d-mcg", "mmcg", "s5", "ExampleMed 10 mcg", "1 tab", "09:00 AM", MedicationDoseStatus.PENDING)
+        val strengthTile = TileModels.buildMedicationsTileModel(MedicationSnapshot(day = today, doses = listOf(er1500, tooLongStrength, mcgDose)))
+        assertEquals("Extende\u20261500 mg", strengthTile.doseRows[0].name)
+        assertTrue(strengthTile.doseRows[0].isDirectlyActionable)
+        assertFalse(strengthTile.doseRows[1].isDirectlyActionable)
+        assertEquals("ExampleM\u202610 mcg", strengthTile.doseRows[2].name)
+        assertTrue(strengthTile.doseRows[2].isDirectlyActionable)
+        assertFalse(TileModels.compactDoseNameWithSafety("Vitamin B12 1000 mcg").second)
+
+        val takenAlpha = MedicationDose("d-alpha", "ma", "s1", "LongMedication Alpha", "1 tab", "08:00 AM", MedicationDoseStatus.TAKEN)
+        val pendingBeta = MedicationDose("d-beta", "mb", "s2", "LongMedication Beta", "1 tab", "08:00 AM", MedicationDoseStatus.PENDING)
+        val crossStatusCollisionTile = TileModels.buildMedicationsTileModel(
+            MedicationSnapshot(day = today, doses = listOf(takenAlpha, pendingBeta))
+        )
+        assertEquals("d-beta", crossStatusCollisionTile.doseRows[0].doseId)
+        assertFalse(crossStatusCollisionTile.doseRows[0].isDirectlyActionable)
+
+        val dup1 = MedicationDose("dup-1", "m1", "s1", "Vitamin D", "1000 IU", "08:00 AM", MedicationDoseStatus.PENDING)
+        val dup2 = MedicationDose("dup-2", "m2", "s2", "Vitamin D", "1000 IU", "08:00 AM", MedicationDoseStatus.PENDING)
+        val dupSnap = MedicationSnapshot(day = today, doses = listOf(dup1, dup2))
+        val dupTile = TileModels.buildMedicationsTileModel(dupSnap)
+        assertFalse(dupTile.doseRows[0].isDirectlyActionable)
+        assertFalse(dupTile.doseRows[1].isDirectlyActionable)
+        assertNull(
+            resolveMedicationTileActionDose(
+                formatMedicationTileActionId("tok-abc", today, "dup-1", medicationDoseFingerprint(dup1)),
+                "tok-abc",
+                dupSnap
+            )
+        )
+
+        val doseToday = MedicationDose("dose:1", "m1", "s1", "Vitamin D", "2000 IU", "08:00 AM", MedicationDoseStatus.PENDING)
+        val todayMedSnap = MedicationSnapshot(day = today, doses = listOf(doseToday))
+        val validMedClick = formatMedicationTileActionId("tok-abc", today, "dose:1", medicationDoseFingerprint(doseToday))
+        val staleYesterdayClick = formatMedicationTileActionId("tok-abc", "2020-01-01", "dose:1", medicationDoseFingerprint(doseToday))
+        assertNotNull(resolveMedicationTileActionDose(validMedClick, "tok-abc", todayMedSnap))
+        assertNull(resolveMedicationTileActionDose(staleYesterdayClick, "tok-abc", todayMedSnap))
+        assertNull(resolveMedicationTileActionDose(validMedClick, "tok-other", todayMedSnap))
+        val editedDetailSnap = MedicationSnapshot(
+            day = today,
+            doses = listOf(doseToday.copy(detail = "4000 IU"))
+        )
+        assertNull(resolveMedicationTileActionDose(validMedClick, "tok-abc", editedDetailSnap))
+
+        val savedMedRec = CheckInStore.PendingMedicationRecord(
+            id = "med-c1",
+            doseId = "dose:1",
+            medicationId = "m1",
+            scheduleId = "s1",
+            day = today,
+            taken = true,
+            state = SyncState.SAVED,
+            ownerId = "srv-1",
+            baselineGeneratedAtMs = 1000L,
+            baselineStatus = MedicationDoseStatus.PENDING
+        )
+        assertFalse(CheckInStore.isSavedMedicationRecordSettled(savedMedRec, preWriteSnap, todayMedSnap))
+        val phoneUndidMedSnap = WatchContext(
+            today = today,
+            generatedAtMs = 2000L,
+            ackedClientIds = listOf("med-c1")
+        )
+        assertTrue(CheckInStore.isSavedMedicationRecordSettled(savedMedRec, phoneUndidMedSnap, todayMedSnap))
+
+        // Queued medication & weight reconciliation when server snapshot confirms without clientId
+        val queuedMedRec = savedMedRec.copy(state = SyncState.QUEUED)
+        assertFalse(CheckInStore.isQueuedMedicationRecordSettled(queuedMedRec, preWriteSnap, todayMedSnap))
+        val takenMedSnap = MedicationSnapshot(
+            day = today,
+            doses = listOf(doseToday.copy(status = MedicationDoseStatus.TAKEN))
+        )
+        assertTrue(CheckInStore.isQueuedMedicationRecordSettled(queuedMedRec, preWriteSnap, takenMedSnap))
+
+        // Multi-toggle oscillation (PENDING -> TAKEN -> PENDING -> TAKEN) must wait for latest clientId
+        val oscillatedMedRec = queuedMedRec.copy(id = "med-c3", hasSupersededInFlight = true)
+        val firstToggleAckSnap = WatchContext(today = today, ackedClientIds = listOf("med-c1"))
+        assertFalse(CheckInStore.isQueuedMedicationRecordSettled(oscillatedMedRec, firstToggleAckSnap, takenMedSnap))
+        val latestToggleAckSnap = WatchContext(today = today, ackedClientIds = listOf("med-c1", "med-c3"))
+        assertTrue(CheckInStore.isQueuedMedicationRecordSettled(oscillatedMedRec, latestToggleAckSnap, takenMedSnap))
+
+        val queuedWeightRec = savedRec.copy(
+            state = SyncState.QUEUED,
+            weightKg = 81.0,
+            baselineWeightKg = 80.0
+        )
+        val stillBaselineSnap = WatchContext(today = today, todayWeightKg = 80.0, weightUnit = WeightUnit.KG)
+        assertFalse(
+            CheckInStore.isQueuedWeightRecordSettled(
+                queuedWeightRec,
+                stillBaselineSnap,
+                listOf(HistoryPoint(today, 80.0))
+            )
+        )
+        // Unchanged baseline must not settle a newer queued edit that requests the same 80 kg value
+        val sameAsBaselineQueued = queuedWeightRec.copy(weightKg = 80.0, baselineWeightKg = 80.0)
+        assertFalse(
+            CheckInStore.isQueuedWeightRecordSettled(
+                sameAsBaselineQueued,
+                stillBaselineSnap,
+                listOf(HistoryPoint(today, 80.0))
+            )
+        )
+        val serverConfirmed81Snap = WatchContext(today = today, todayWeightKg = 81.0, weightUnit = WeightUnit.KG)
+        assertTrue(
+            CheckInStore.isQueuedWeightRecordSettled(
+                queuedWeightRec,
+                serverConfirmed81Snap,
+                listOf(HistoryPoint(today, 81.0))
+            )
+        )
+        // Multi-edit oscillation (79 -> 80 -> 81 -> 80) must wait for latest clientId
+        val oscillatedWeightRec = queuedWeightRec.copy(
+            id = "c-watch-80-second",
+            weightKg = 80.0,
+            baselineWeightKg = 79.0,
+            hasSupersededInFlight = true
+        )
+        val firstWeightAckSnap = WatchContext(
+            today = today,
+            todayWeightKg = 80.0,
+            ackedClientIds = listOf("c-watch-80-first"),
+            weightUnit = WeightUnit.KG
+        )
+        assertFalse(
+            CheckInStore.isQueuedWeightRecordSettled(
+                oscillatedWeightRec,
+                firstWeightAckSnap,
+                listOf(HistoryPoint(today, 80.0))
+            )
+        )
+        val latestWeightAckSnap = firstWeightAckSnap.copy(
+            ackedClientIds = listOf("c-watch-80-first", "c-watch-80-second")
+        )
+        assertTrue(
+            CheckInStore.isQueuedWeightRecordSettled(
+                oscillatedWeightRec,
+                latestWeightAckSnap,
+                listOf(HistoryPoint(today, 80.0))
+            )
+        )
+
+        // Launch-time enabled-page destination fallbacks for complications & tiles
+        val noMedsOrWorkout = listOf(WatchPage.GOALS, WatchPage.WATER, WatchPage.STEPS, WatchPage.TREND)
+        assertEquals(
+            WatchPage.GOALS,
+            CheckInStore.resolveNavigationPage(WatchPage.MEDICATIONS, noMedsOrWorkout)
+        )
+        assertEquals(
+            WatchPage.STEPS,
+            CheckInStore.resolveNavigationPage(WatchPage.WORKOUT, noMedsOrWorkout)
+        )
+        assertEquals(
+            WatchPage.TREND,
+            CheckInStore.resolveNavigationPage(WatchPage.ENTRY, noMedsOrWorkout)
+        )
+        assertEquals(
+            WatchPage.GOALS,
+            CheckInStore.resolveNavigationPage(WatchPage.WATER, listOf(WatchPage.GOALS, WatchPage.STEPS))
+        )
+        assertEquals(
+            WatchPage.MEDICATIONS,
+            CheckInStore.resolveNavigationPage(WatchPage.MEDICATIONS, listOf(WatchPage.GOALS, WatchPage.MEDICATIONS))
+        )
+        assertEquals(
+            WatchPage.WORKOUT,
+            CheckInStore.resolveNavigationPage(WatchPage.WORKOUT, listOf(WatchPage.GOALS, WatchPage.WORKOUT, WatchPage.STEPS))
+        )
+
+        // Retained SAVED overlay records survive beneath replacement QUEUED edits so failed replacements restore accepted values
+        val queuedUndo = savedMedRec.copy(id = "med-c2", taken = false, state = SyncState.QUEUED, hasSupersededInFlight = true)
+        val stackedMeds = CheckInStore.appendQueuedMedicationRecord(listOf(savedMedRec), queuedUndo)
+        assertEquals(2, stackedMeds.size)
+        assertEquals(false, CheckInStore.effectiveMedicationRecordsByDose(stackedMeds, today)["dose:1"]?.taken)
+        val afterFailedUndo = stackedMeds.filterNot { it.id == "med-c2" }
+        assertEquals(true, CheckInStore.effectiveMedicationRecordsByDose(afterFailedUndo, today)["dose:1"]?.taken)
+
+        // Rapid unacked medication toggle (PENDING -> TAKEN -> PENDING): earlier TAKEN stays eligible for ack and restores if undo fails
+        val rapidMedTake = savedMedRec.copy(id = "med-rapid-1", taken = true, state = SyncState.QUEUED)
+        val rapidMedUndo = savedMedRec.copy(id = "med-rapid-2", taken = false, state = SyncState.QUEUED, hasSupersededInFlight = true)
+        val medsBothInFlight = CheckInStore.appendQueuedMedicationRecord(
+            CheckInStore.appendQueuedMedicationRecord(emptyList(), rapidMedTake),
+            rapidMedUndo
+        )
+        assertEquals(2, medsBothInFlight.size)
+        assertTrue(medsBothInFlight[0].superseded)
+        assertEquals(false, CheckInStore.effectiveMedicationRecordsByDose(medsBothInFlight, today)["dose:1"]?.taken)
+        val afterMedTakeAcked = CheckInStore.applyMedicationAcknowledgement(medsBothInFlight, "med-rapid-1", ok = true)
+        assertEquals(false, CheckInStore.effectiveMedicationRecordsByDose(afterMedTakeAcked.records, today)["dose:1"]?.taken)
+        val afterMedUndoFailed = CheckInStore.applyMedicationAcknowledgement(afterMedTakeAcked.records, "med-rapid-2", ok = false)
+        assertTrue(afterMedUndoFailed.markFailedForDose)
+        assertEquals(true, CheckInStore.effectiveMedicationRecordsByDose(afterMedUndoFailed.records, today)["dose:1"]?.taken)
+        val failedMedTile = TileModels.buildMedicationsTileModel(todayMedSnap, failedDoseIds = setOf("dose:1"))
+        assertEquals("!", failedMedTile.doseRows.single().statusSymbol)
+
+        val queuedReplacement81 = savedRec.copy(id = "c-watch-81", weightKg = 81.0, state = SyncState.QUEUED, hasSupersededInFlight = true)
+        val stackedWeights = CheckInStore.appendQueuedWeightRecord(listOf(savedRec), queuedReplacement81)
+        assertEquals(2, stackedWeights.size)
+        assertEquals(81.0, CheckInStore.orderWeightOverlayRecords(stackedWeights).last().weightKg, 0.001)
+        val afterFailed81 = stackedWeights.filterNot { it.id == "c-watch-81" }
+        assertEquals(80.0, CheckInStore.orderWeightOverlayRecords(afterFailed81).last().weightKg, 0.001)
+
+        // Rapid unacked 80 kg -> 81 kg: 80 kg stays eligible for ack while superseded; if 80 kg succeeds and 81 kg fails, 80 kg restores
+        val rapid80 = savedRec.copy(id = "c-rapid-80", weightKg = 80.0, bodyFatPercentage = 21.0, state = SyncState.QUEUED)
+        val rapid81 = savedRec.copy(id = "c-rapid-81", weightKg = 81.0, bodyFatPercentage = null, state = SyncState.QUEUED, hasSupersededInFlight = true)
+        val bothInFlight = CheckInStore.appendQueuedWeightRecord(
+            CheckInStore.appendQueuedWeightRecord(emptyList(), rapid80),
+            rapid81
+        )
+        assertEquals(2, bothInFlight.size)
+        assertTrue(bothInFlight[0].superseded)
+        assertFalse(bothInFlight[1].superseded)
+        assertEquals(listOf(81.0), CheckInStore.orderWeightOverlayRecords(bothInFlight).map { it.weightKg })
+
+        val after80Acked = CheckInStore.applyWeightAcknowledgement(bothInFlight, "c-rapid-80", ok = true)
+        assertFalse(after80Acked.clearFailureForDay)
+        assertEquals(81.0, CheckInStore.orderWeightOverlayRecords(after80Acked.records).last().weightKg, 0.001)
+
+        val after81Rejected = CheckInStore.applyWeightAcknowledgement(after80Acked.records, "c-rapid-81", ok = false)
+        assertTrue(after81Rejected.markFailedForDay)
+        assertEquals(80.0, CheckInStore.orderWeightOverlayRecords(after81Rejected.records).single().weightKg, 0.001)
+        assertEquals(21.0, CheckInStore.orderWeightOverlayRecords(after81Rejected.records).single().bodyFatPercentage ?: 0.0, 0.001)
+
+        // Weight-only replacement carries forward prior accepted BF in inheritedBodyFatPercentage while keeping bodyFatPercentage null
+        val after81Accepted = CheckInStore.applyWeightAcknowledgement(after80Acked.records, "c-rapid-81", ok = true)
+        val acceptedSingle = after81Accepted.records.single()
+        assertEquals(81.0, acceptedSingle.weightKg, 0.001)
+        assertNull(acceptedSingle.bodyFatPercentage)
+        assertEquals(21.0, acceptedSingle.inheritedBodyFatPercentage ?: 0.0, 0.001)
+
+        // Future-dated cached weight point (e.g. after moving watch timezone backwards) must not override today's headline
+        val backwardDateToday = "2026-04-07"
+        val backwardDateCtx = WatchContext(
+            today = backwardDateToday,
+            todayWeightKg = 80.0,
+            lastEntryDate = "2026-04-06",
+            lastWeightKg = 80.5,
+            weightUnit = WeightUnit.KG
+        )
+        val futureContaminatedHistory = listOf(
+            HistoryPoint("2026-04-06", 80.5, 18.0),
+            HistoryPoint(backwardDateToday, 80.0, 17.8),
+            HistoryPoint("2026-04-08", 79.0, 17.5)
+        )
+        val backwardDateTile = TileModels.buildWeightTileModel(
+            watchCtx = backwardDateCtx,
+            history = futureContaminatedHistory,
+            unit = WeightUnit.KG,
+            today = backwardDateToday,
+            todayUnconfirmed = true
+        )
+        assertEquals("80.0 kg", backwardDateTile.weightValueText)
+        assertEquals(17.8, backwardDateTile.bodyFatPercent ?: 0.0, 0.001)
+        assertTrue(backwardDateTile.queuedToday)
+
+        // Prior body-fat-only day (Tuesday 21%) survives across midnight when Wednesday saves weight-only (79.5 kg)
+        val tuesdayBfOnlyBase = WatchContext(
+            today = "2026-04-07",
+            todayWeightKg = null,
+            todayBodyFatPercentage = 21.0,
+            lastEntryDate = "2026-04-06",
+            lastWeightKg = 80.0,
+            lastBodyFatPercentage = 18.0,
+            weightUnit = WeightUnit.KG
+        )
+        val wednesdayWeightOnlyHistory = listOf(
+            HistoryPoint("2026-04-06", 80.0, 18.0),
+            HistoryPoint("2026-04-08", 79.5, null)
+        )
+        val resolvedPriorBf = CheckInStore.resolvePriorBodyFatPercentage(
+            baseWatchContext = tuesdayBfOnlyBase,
+            history = wednesdayWeightOnlyHistory,
+            today = "2026-04-08"
+        )
+        assertEquals(21.0, resolvedPriorBf ?: 0.0, 0.001)
+        val wednesdayOverlayCtx = WatchContext(
+            today = "2026-04-08",
+            todayWeightKg = 79.5,
+            todayBodyFatPercentage = null,
+            lastEntryDate = "2026-04-06",
+            lastWeightKg = 80.0,
+            lastBodyFatPercentage = resolvedPriorBf,
+            weightUnit = WeightUnit.KG
+        )
+        val wednesdayTile = TileModels.buildWeightTileModel(
+            watchCtx = wednesdayOverlayCtx,
+            history = wednesdayWeightOnlyHistory,
+            unit = WeightUnit.KG,
+            today = "2026-04-08",
+            todayUnconfirmed = true
+        )
+        assertEquals("79.5 kg", wednesdayTile.weightValueText)
+        assertEquals(21.0, wednesdayTile.bodyFatPercent ?: 0.0, 0.001)
+
+        // Explicit Wednesday body fat (19.5%) still overrides Tuesday's 21%
+        val wednesdayExplicitBfTile = TileModels.buildWeightTileModel(
+            watchCtx = wednesdayOverlayCtx.copy(todayBodyFatPercentage = 19.5),
+            history = listOf(
+                HistoryPoint("2026-04-06", 80.0, 18.0),
+                HistoryPoint("2026-04-08", 79.5, 19.5)
+            ),
+            unit = WeightUnit.KG,
+            today = "2026-04-08",
+            todayUnconfirmed = true
+        )
+        assertEquals(19.5, wednesdayExplicitBfTile.bodyFatPercent ?: 0.0, 0.001)
+
+        // Narrow pillRow detail truncation: distinguishing strength clipped off or visible prefixes colliding must block inline toggle
+        val clippedStrengthA = MedicationDose("cs-1", "m1", "s1", "Metformin", "Extended release 500 mg", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedStrengthB = MedicationDose("cs-2", "m2", "s2", "Metformin", "Extended release 1000 mg", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedStrengthTile = TileModels.buildMedicationsTileModel(
+            MedicationSnapshot(day = today, doses = listOf(clippedStrengthA, clippedStrengthB))
+        )
+        assertFalse(clippedStrengthTile.doseRows[0].isDirectlyActionable)
+        assertFalse(clippedStrengthTile.doseRows[1].isDirectlyActionable)
+
+        val clippedTimeA = MedicationDose("ct-1", "m1", "s1", "Vitamin D", "1000 IU", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedTimeB = MedicationDose("ct-2", "m1", "s2", "Vitamin D", "1000 IU", "08:00 PM", MedicationDoseStatus.PENDING)
+        val clippedTimeTile = TileModels.buildMedicationsTileModel(
+            MedicationSnapshot(day = today, doses = listOf(clippedTimeA, clippedTimeB))
+        )
+        assertFalse(clippedTimeTile.doseRows[0].isDirectlyActionable)
+        assertFalse(clippedTimeTile.doseRows[1].isDirectlyActionable)
+
+        val visibleStrengthA = MedicationDose("vs-1", "m1", "s1", "Ibuprofen", "200 mg", "08:00 AM", MedicationDoseStatus.PENDING)
+        val visibleStrengthB = MedicationDose("vs-2", "m2", "s2", "Ibuprofen", "400 mg", "08:00 AM", MedicationDoseStatus.PENDING)
+        val visibleStrengthTile = TileModels.buildMedicationsTileModel(
+            MedicationSnapshot(day = today, doses = listOf(visibleStrengthA, visibleStrengthB))
+        )
+        assertTrue(visibleStrengthTile.doseRows[0].isDirectlyActionable)
+        assertTrue(visibleStrengthTile.doseRows[1].isDirectlyActionable)
+
+        // Clipped compound concentration denominator (e.g. "100 mg/mL" -> "100 mg/m…") must block inline toggle
+        val clippedConcentration = MedicationDose("cc-1", "m1", "s1", "Metformin", "100 mg/mL", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedConcentrationTile = TileModels.buildMedicationsTileModel(
+            MedicationSnapshot(day = today, doses = listOf(clippedConcentration))
+        )
+        assertFalse(clippedConcentrationTile.doseRows.single().isDirectlyActionable)
+
+        // Clipped unrecognized unit with digits (e.g. "2.5 mmol" or "2 kBq" truncated on a long name) must fail closed,
+        // while a clipped detail whose complete recognized strength stays visible ("500 mg with food") remains actionable
+        val clippedMmol = MedicationDose("cm-1", "m1", "s1", "Potassium Chloride", "2.5 mmol", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedUnknownUnit = MedicationDose("cu-1", "m2", "s2", "Diagnostic Agent", "2 kBq", "08:00 AM", MedicationDoseStatus.PENDING)
+        val clippedWithVisibleStrength = MedicationDose("cv-1", "m3", "s3", "Vitamin D", "500 mg with food", "08:00 AM", MedicationDoseStatus.PENDING)
+        assertFalse(
+            TileModels.buildMedicationsTileModel(MedicationSnapshot(day = today, doses = listOf(clippedMmol)))
+                .doseRows.single().isDirectlyActionable
+        )
+        assertFalse(
+            TileModels.buildMedicationsTileModel(MedicationSnapshot(day = today, doses = listOf(clippedUnknownUnit)))
+                .doseRows.single().isDirectlyActionable
+        )
+        assertTrue(
+            TileModels.buildMedicationsTileModel(MedicationSnapshot(day = today, doses = listOf(clippedWithVisibleStrength)))
+                .doseRows.single().isDirectlyActionable
+        )
+
+        // Timezone rollback to April 7 with April 8 edit still queued must preserve April 7 base lastWeightKg (80 kg) over April 6 history (81 kg)
+        val rollbackBaseCtx = WatchContext(
+            today = "2026-04-08",
+            todayWeightKg = null,
+            lastEntryDate = "2026-04-07",
+            lastWeightKg = 80.0,
+            lastBodyFatPercentage = 19.0,
+            weightUnit = WeightUnit.KG
+        )
+        val rollbackHistory = listOf(
+            HistoryPoint("2026-04-06", 81.0, 20.0),
+            HistoryPoint("2026-04-08", 79.0, null)
+        )
+        val preservedTodayLast = CheckInStore.resolveLastReadingAfterOverlay(
+            baseWatchContext = rollbackBaseCtx,
+            history = rollbackHistory,
+            today = "2026-04-07",
+            hasTodayOverlay = false
+        )
+        assertEquals(80.0, preservedTodayLast.weightKg ?: 0.0, 0.001)
+        assertEquals(19.0, preservedTodayLast.bodyFatPercentage ?: 0.0, 0.001)
+        assertEquals("2026-04-07", preservedTodayLast.entryDate)
+
+        // When a local April 7 overlay IS present, lastReading still resolves to the older April 6 prior (81 kg)
+        val priorWhenOverlaid = CheckInStore.resolveLastReadingAfterOverlay(
+            baseWatchContext = rollbackBaseCtx,
+            history = rollbackHistory,
+            today = "2026-04-07",
+            hasTodayOverlay = true
+        )
+        assertEquals(81.0, priorWhenOverlaid.weightKg ?: 0.0, 0.001)
+        assertEquals("2026-04-06", priorWhenOverlaid.entryDate)
+
+        // Unicode fractional strengths (e.g. ½ mg) must be preserved when they fit, or block inline toggle when dropped
+        val (fracKeptName, fracKeptIntact) = TileModels.compactDoseNameWithSafety("Example Medication ½ mg")
+        assertEquals("Example Me\u2026\u00BD mg", fracKeptName)
+        assertTrue(fracKeptIntact)
+        val (_, fracTooLongIntact) = TileModels.compactDoseNameWithSafety("Example Medication ½ mg / 250 mg")
+        assertFalse(fracTooLongIntact)
+        val fracTooLongDose = MedicationDose("fr-1", "m1", "s1", "Example Medication ½ mg / 250 mg", "1 tab", "08:00 AM", MedicationDoseStatus.PENDING)
+        assertFalse(
+            TileModels.buildMedicationsTileModel(MedicationSnapshot(day = today, doses = listOf(fracTooLongDose)))
+                .doseRows.single().isDirectlyActionable
+        )
+
+        // Untouched weight drafts must reseed whenever the local calendar date changes (e.g. rollback Apr 8 -> Apr 7)
+        assertTrue(CheckInStore.shouldReseedWeightDraft(lastDraftSeedDay = "2026-04-08", today = "2026-04-07", rejectedExpired = false))
+        assertFalse(CheckInStore.shouldReseedWeightDraft(lastDraftSeedDay = "2026-04-07", today = "2026-04-07", rejectedExpired = false))
+        assertTrue(CheckInStore.shouldReseedWeightDraft(lastDraftSeedDay = "2026-04-07", today = "2026-04-07", rejectedExpired = true))
     }
 }

@@ -6158,7 +6158,53 @@ describe('sparky_get_food_diary', () => {
       sodium: 125,
       potassium: 125,
       sugars: 37.5,
+      nutrients_basis: 'consumed',
+      per_serving: { calories: 170, protein: 2, carbs: 20, fat: 9 },
     });
+  });
+
+  it('marks nutrients it cannot scale as per serving', async () => {
+    vi.mocked(foodEntryService.getFoodEntriesByDateRange).mockResolvedValue([
+      {
+        id: ENTRY_ID,
+        food_id: FOOD_ID,
+        food_name: 'Soup',
+        quantity: 2,
+        unit: 'cup',
+        serving_size: 100,
+        serving_unit: 'g',
+        calories: 60,
+        protein: 3,
+        entry_date: '2026-09-27',
+        meal_type: 'Lunch',
+      },
+    ]);
+    vi.mocked(
+      foodEntryMealRepository.getFoodEntryMealsByDateRange
+    ).mockResolvedValue([]);
+
+    const result = await tools.sparky_get_food_diary.execute!(
+      { date: '2026-09-27' },
+      opts
+    );
+    const entry = JSON.parse(result as string).food_entries[0];
+
+    expect(entry).toMatchObject({
+      calories: 60,
+      protein: 3,
+      nutrients_basis: 'serving',
+    });
+    expect(entry).not.toHaveProperty('per_serving');
+  });
+
+  it('says in the description that nutrients are already scaled', () => {
+    for (const name of [
+      'sparky_get_food_diary',
+      'sparky_get_recent_food_entries',
+      'sparky_get_food_usage',
+    ] as const) {
+      expect(tools[name].description).toContain('never multiply');
+    }
   });
 
   it('does not scale a serving count twice when the reference is in servings', async () => {
@@ -6232,7 +6278,12 @@ describe('sparky_get_food_diary', () => {
       protein: 6.44,
     });
     // A one-serving reference still scales by the serving count.
-    expect(byName('Yogurt')).toMatchObject({ calories: 180, protein: 20 });
+    expect(byName('Yogurt')).toMatchObject({
+      calories: 180,
+      protein: 20,
+      nutrients_basis: 'consumed',
+      per_serving: { calories: 90, protein: 10 },
+    });
   });
 });
 
@@ -6524,4 +6575,113 @@ it('logs and lists literal servings without multiplying a multi-serving referenc
   expect(diary).toContain('200 kcal');
   expect(diary).toContain('**Total Energy:** 200 kcal');
   expect(diary).not.toContain('900 kcal');
+});
+
+describe('diary nutrients_basis', () => {
+  const diaryEntry = async (row: Record<string, unknown>) => {
+    vi.mocked(foodEntryService.getFoodEntriesByDateRange).mockResolvedValue([
+      { id: ENTRY_ID, food_id: FOOD_ID, entry_date: '2026-09-27', ...row },
+    ]);
+    vi.mocked(
+      foodEntryMealRepository.getFoodEntryMealsByDateRange
+    ).mockResolvedValue([]);
+    const result = await tools.sparky_get_food_diary.execute!(
+      { date: '2026-09-27' },
+      opts
+    );
+    return JSON.parse(result as string).food_entries[0];
+  };
+
+  it('leaves rows without nutrients unmarked', async () => {
+    const entry = await diaryEntry({ quantity: 1, unit: 'serving' });
+    expect(entry).not.toHaveProperty('nutrients_basis');
+  });
+
+  it('scales a row that only has custom nutrients', async () => {
+    const entry = await diaryEntry({
+      quantity: 2,
+      unit: 'serving',
+      serving_size: 1,
+      serving_unit: 'serving',
+      custom_nutrients: { omega3: 0.5 },
+    });
+    expect(entry).toMatchObject({
+      nutrients_basis: 'consumed',
+      custom_nutrients: { omega3: 1 },
+    });
+  });
+
+  it('marks a legacy "2 tbsp" unit as per serving', async () => {
+    const entry = await diaryEntry({
+      quantity: 1,
+      unit: '2 tbsp',
+      serving_size: 2,
+      serving_unit: 'tbsp',
+      calories: 190,
+    });
+    expect(entry).toMatchObject({ calories: 190, nutrients_basis: 'serving' });
+  });
+
+  it('omits per_serving when one serving was eaten', async () => {
+    const entry = await diaryEntry({
+      quantity: 100,
+      unit: 'g',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 47,
+    });
+    expect(entry).toMatchObject({ calories: 47, nutrients_basis: 'consumed' });
+    expect(entry).not.toHaveProperty('per_serving');
+  });
+
+  it('rounds per_serving like the scaled values', async () => {
+    const entry = await diaryEntry({
+      quantity: 150,
+      unit: 'g',
+      serving_size: 100,
+      serving_unit: 'g',
+      calories: 46.66666667,
+    });
+    expect(entry.per_serving).toEqual({ calories: 46.667 });
+  });
+
+  const scalableRow = {
+    id: ENTRY_ID,
+    food_id: FOOD_ID,
+    quantity: 150,
+    unit: 'g',
+    serving_size: 100,
+    serving_unit: 'g',
+    calories: 47,
+    protein: 8,
+  };
+  const scaled = {
+    calories: 70.5,
+    protein: 12,
+    nutrients_basis: 'consumed',
+    per_serving: { calories: 47, protein: 8 },
+  };
+
+  it('applies to recent entries', async () => {
+    vi.mocked(foodRepository.getRecentFoodEntries).mockResolvedValue([
+      scalableRow,
+    ]);
+    const result = await tools.sparky_get_recent_food_entries.execute!(
+      {},
+      opts
+    );
+    expect(JSON.parse(result as string)[0]).toMatchObject(scaled);
+  });
+
+  it('applies to food usage', async () => {
+    vi.mocked(foodRepository.getFoodUsage).mockResolvedValue({
+      rows: [scalableRow],
+      totalCount: 1,
+    });
+    const result = await tools.sparky_get_food_usage.execute!(
+      { food_id: FOOD_ID },
+      opts
+    );
+    expect(JSON.parse(result as string).data[0]).toMatchObject(scaled);
+  });
 });

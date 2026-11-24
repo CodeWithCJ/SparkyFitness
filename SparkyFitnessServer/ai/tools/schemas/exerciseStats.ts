@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { optionalDateSchema } from './common.js';
 
+// Trailing window accepted by training_review and run_review.
+export const REVIEW_WINDOW_DAYS = { min: 7, max: 90 } as const;
+
 export const EXERCISE_STATS_ACTIONS = [
   'stats_summary',
   'query_activities',
@@ -75,14 +78,24 @@ const matchedCoursesSchema = z
 const trainingReviewSchema = z
   .object({
     action: z.literal('training_review'),
-    window_days: z.coerce.number().int().min(7).max(90).optional(),
+    window_days: z.coerce
+      .number()
+      .int()
+      .min(REVIEW_WINDOW_DAYS.min)
+      .max(REVIEW_WINDOW_DAYS.max)
+      .optional(),
   })
   .strict();
 
 const runReviewSchema = z
   .object({
     action: z.literal('run_review'),
-    window_days: z.coerce.number().int().min(7).max(90).optional(),
+    window_days: z.coerce
+      .number()
+      .int()
+      .min(REVIEW_WINDOW_DAYS.min)
+      .max(REVIEW_WINDOW_DAYS.max)
+      .optional(),
   })
   .strict();
 
