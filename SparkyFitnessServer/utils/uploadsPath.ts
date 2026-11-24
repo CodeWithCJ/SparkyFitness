@@ -59,3 +59,14 @@ export const resolveUploadPathWithinRoot = (
   const absolute = resolveUploadPath(relativePath);
   return isWithinUploadsRoot(absolute) ? absolute : null;
 };
+
+/**
+ * True for a single file or folder name that is safe to join under an uploads
+ * directory: letters, digits, `_`, `-` and `.`, not starting with a dot, so it
+ * can hold no separator and is never `.` or `..`. Express decodes `%2F` in a
+ * route parameter into `/`, so an id taken from the URL must pass this before
+ * it becomes part of a path.
+ */
+export const isSafePathSegment = (value: unknown): value is string =>
+  typeof value === 'string' &&
+  /^[A-Za-z0-9_-][A-Za-z0-9_.-]{0,254}$/.test(value);

@@ -1274,7 +1274,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                         current_date, current_date
                     )
                     logger.debug(
-                        f"Raw blood pressure data for {current_date}: {blood_pressure_data}"
+                        f"Blood pressure data for {current_date} received: {bool(blood_pressure_data)}"
                     )
                     if blood_pressure_data and blood_pressure_data.get(
                         "measurementSummaries"
@@ -1307,11 +1307,11 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                         )
                                     else:
                                         logger.warning(
-                                            f"Incomplete blood pressure data for {current_date}: {bp_entry}"
+                                            f"Incomplete blood pressure data for {current_date} (fields: {sorted(bp_entry.keys()) if isinstance(bp_entry, dict) else type(bp_entry).__name__})"
                                         )
                             else:
                                 logger.warning(
-                                    f"No measurements found in blood pressure summary for {current_date}: {summary}"
+                                    f"No measurements found in blood pressure summary for {current_date}"
                                 )
                     else:
                         logger.debug(
@@ -1392,9 +1392,6 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                         for entry in body_composition_data["dateWeightList"]:
                             logger.info(
                                 f"[GARMIN_SYNC] Body composition entry ALL KEYS: {list(entry.keys())}"
-                            )
-                            logger.info(
-                                f"[GARMIN_SYNC] Body composition entry VALUES: weight={entry.get('weight')}, bodyFat={entry.get('bodyFat')}, boneMass={entry.get('boneMass')}, muscleMass={entry.get('muscleMass')}, bmi={entry.get('bmi')}, bodyWater={entry.get('bodyWater')}"
                             )
                             health_data["body_composition"].append(
                                 {

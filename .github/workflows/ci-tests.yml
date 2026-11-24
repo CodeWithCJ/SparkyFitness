@@ -20,6 +20,11 @@ on:
       - "shared/**"
       - ".github/workflows/ci-tests.yml"
 
+permissions:
+  contents: read
+  # dorny/paths-filter lists a pull request's changed files through the API.
+  pull-requests: read
+
 jobs:
   # Detect which components changed
   changes:

@@ -8,7 +8,8 @@ import { fileURLToPath } from 'url';
 import { log } from '../config/logging.js';
 import { getSystemClient } from '../db/poolManager.js';
 import type { ImageDomain } from '../utils/imageDownloader.js';
-import { UPLOAD_STAGING_DIR } from '../utils/uploadsPath.js';
+import { UPLOAD_STAGING_DIR, isSafePathSegment } from '../utils/uploadsPath.js';
+import { ValidationError } from '../utils/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +37,12 @@ function stagingDirFor(uploadId: string): string {
 }
 
 function entityDirFor(domain: ImageDomain, entityId: string): string {
+  // Update routes pass `req.params.id` here before the row is looked up, and
+  // Express decodes %2F into '/', so an id must be one plain name or the files
+  // would be moved outside the uploads folder.
+  if (!isSafePathSegment(entityId)) {
+    throw new ValidationError('Invalid id.');
+  }
   return path.join(baseUploadsDir, domain, entityId);
 }
 
@@ -433,7 +440,7 @@ async function removeEntityImageDir(
   domain: ImageDomain,
   entityId: string
 ): Promise<void> {
-  if (!entityId) {
+  if (!isSafePathSegment(entityId)) {
     return;
   }
   await fsp

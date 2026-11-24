@@ -97,7 +97,8 @@ export const MaterializeDrinkPresetBodySchema = z.object({
 });
 
 export const ReorderWaterContainersBodySchema = z.object({
-  container_ids: z.array(z.number().int().positive()),
+  // A person has a handful of containers; the cap bounds the per-id UPDATE loop.
+  container_ids: z.array(z.number().int().positive()).max(500),
 });
 
 export type CreateWaterContainerBody = z.infer<
