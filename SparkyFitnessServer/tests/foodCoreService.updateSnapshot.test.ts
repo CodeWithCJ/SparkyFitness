@@ -205,6 +205,7 @@ describe('foodCoreService.updateFoodEntriesSnapshot', () => {
     foodRepository.updateFoodEntriesSnapshot.mockResolvedValue({
       rowCount: 1,
       replacedEntryImages: ['/uploads/food_entries/e1/custom.jpg'],
+      syncedEntryIds: ['e1'],
     });
     // @ts-expect-error TS(2339): Property 'mockResolvedValue' does not exist on typ... Remove this comment to see the full error message
     foodRepository.clearUserIgnoredUpdate.mockResolvedValue();
@@ -216,9 +217,11 @@ describe('foodCoreService.updateFoodEntriesSnapshot', () => {
       true
     );
 
+    // Only the synced entries' own folders may be cleaned.
     expect(removeOrphanedImages).toHaveBeenCalledWith(
       ['/uploads/food_entries/e1/custom.jpg'],
-      []
+      [],
+      [{ domain: 'food_entries', entityId: 'e1' }]
     );
   });
   it('does not unlink anything when nothing was replaced', async () => {

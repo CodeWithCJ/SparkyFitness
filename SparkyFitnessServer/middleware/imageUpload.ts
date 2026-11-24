@@ -403,32 +403,58 @@ async function isImageReferencedByDiary(image: string): Promise<boolean> {
   }
 }
 
+/** The row whose own image folder (`<uploads>/<domain>/<entityId>/`) may be cleaned. */
+interface ImageOwner {
+  domain: ImageDomain;
+  entityId: string;
+}
+
+/**
+ * The file a stored image path names inside one of the owners' folders, or
+ * null. Image lists are client JSON, so a path is only trusted when it has the
+ * exact `/uploads/<domain>/<entityId>/<file>` form for a row being edited;
+ * anything else (another row's folder, another user's check-in photo, a nested
+ * or dotted path) is never deleted from here.
+ */
+function ownedImageFile(image: string, owners: ImageOwner[]): string | null {
+  const parts = image.split('/');
+  // ['', 'uploads', domain, entityId, file]
+  if (parts.length !== 5 || parts[0] !== '' || parts[1] !== 'uploads') {
+    return null;
+  }
+  const [, , domain, entityId, file] = parts;
+  if (!isSafePathSegment(entityId) || !isSafePathSegment(file)) {
+    return null;
+  }
+  const owned = owners.some(
+    (owner) => owner.domain === domain && owner.entityId === entityId
+  );
+  return owned ? path.join(baseUploadsDir, domain!, entityId!, file!) : null;
+}
+
+/**
+ * Unlinks images that were in `previous` and are absent from `next`, but only
+ * files inside the given owners' own folders and only when no diary row still
+ * holds the path. Everything else in the lists is left alone.
+ */
 async function removeOrphanedImages(
   previous: unknown,
-  next: unknown
+  next: unknown,
+  owners: ImageOwner | ImageOwner[]
 ): Promise<void> {
   const before = Array.isArray(previous) ? previous : [];
   const after = new Set(Array.isArray(next) ? next : []);
+  const ownerList = Array.isArray(owners) ? owners : [owners];
 
   for (const image of before) {
     if (typeof image !== 'string' || after.has(image)) {
       continue;
     }
-    if (!image.startsWith('/uploads/')) {
-      continue; // remote URL, nothing local to delete
+    const absolute = ownedImageFile(image, ownerList);
+    if (!absolute) {
+      continue; // remote URL, or not this row's file: never ours to delete
     }
     if (await isImageReferencedByDiary(image)) {
-      continue;
-    }
-    const absolute = path.resolve(
-      baseUploadsDir,
-      image.slice('/uploads/'.length)
-    );
-    // Guard against traversal via a crafted stored path.
-    if (
-      absolute !== baseUploadsDir &&
-      !absolute.startsWith(baseUploadsDir + path.sep)
-    ) {
       continue;
     }
     await fsp.unlink(absolute).catch(() => {});

@@ -367,13 +367,11 @@ async function updateFood(
     // Drop upload files the user removed. Best-effort: a failed unlink must not
     // fail the update, since the database already reflects the new list.
     if (previousImages) {
-      await removeOrphanedImages(previousImages, updatedFood.images).catch(
-        (error) =>
-          log(
-            'warn',
-            `Error removing orphaned images for food ${foodId}:`,
-            error
-          )
+      await removeOrphanedImages(previousImages, updatedFood.images, {
+        domain: 'foods',
+        entityId: foodId,
+      }).catch((error) =>
+        log('warn', `Error removing orphaned images for food ${foodId}:`, error)
       );
     }
     // The food_entries table now holds the snapshot of nutrient data.
@@ -955,7 +953,7 @@ async function updateSnapshotForVariant(
     glycemic_index: variant.glycemic_index,
     custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
   };
-  const { replacedEntryImages } =
+  const { replacedEntryImages, syncedEntryIds } =
     await foodRepository.updateFoodEntriesSnapshot(
       authenticatedUserId,
       String(food.id),
@@ -967,13 +965,19 @@ async function updateSnapshotForVariant(
   // removeOrphanedImages re-checks each path against the diary before
   // unlinking, so a copy still in use elsewhere is left alone.
   if (replacedEntryImages.length > 0) {
-    await removeOrphanedImages(replacedEntryImages, []).catch((error) => {
-      log(
-        'error',
-        `Error removing replaced diary entry images for food ${food.id}:`,
-        error
-      );
-    });
+    const owners = (syncedEntryIds ?? []).map((entityId) => ({
+      domain: 'food_entries' as const,
+      entityId,
+    }));
+    await removeOrphanedImages(replacedEntryImages, [], owners).catch(
+      (error) => {
+        log(
+          'error',
+          `Error removing replaced diary entry images for food ${food.id}:`,
+          error
+        );
+      }
+    );
   }
   await foodRepository.clearUserIgnoredUpdate(
     authenticatedUserId,
