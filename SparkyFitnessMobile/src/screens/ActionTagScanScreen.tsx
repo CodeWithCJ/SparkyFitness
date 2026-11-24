@@ -179,14 +179,7 @@ const ConfirmAmountPicker: React.FC<{
   onOpenSettings: () => void;
   onConfirm: (options?: ScanConfirmOptions) => void;
   onCancel: () => void;
-}> = ({
-  tag,
-  entryDate,
-  doubleScanNotice,
-  onOpenSettings,
-  onConfirm,
-  onCancel,
-}) => {
+}> = ({ tag, entryDate, onOpenSettings, onConfirm, onCancel }) => {
   const { t } = useTranslation();
   const action = tag.action;
   const isWater = action.type === 'water';
@@ -1097,15 +1090,13 @@ const ActionTagScanScreen: React.FC<ActionTagScanScreenProps> = ({
         const showPicker = Boolean(
           phase.tag.allow_amount_adjustment ||
           phase.tag.advanced_mode ||
-          phase.tag.allow_custom_timestamp ||
-          phase.doubleScanNotice
+          phase.tag.allow_custom_timestamp
         );
         if (showPicker) {
           return (
             <ConfirmAmountPicker
               tag={phase.tag}
               entryDate={entryDate}
-              doubleScanNotice={phase.doubleScanNotice}
               onOpenSettings={() =>
                 navigation.navigate('ActionTagForm', { tagId: phase.tag.id })
               }
