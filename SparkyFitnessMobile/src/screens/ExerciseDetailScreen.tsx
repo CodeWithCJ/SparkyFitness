@@ -229,7 +229,6 @@ const ExerciseDetailScreen: React.FC<ExerciseDetailScreenProps> = ({
   const trendModality = resolveSnapshotModality(exercise);
   const showTrend =
     historyAvailable &&
-    !!bestSet &&
     (stats?.recentSessions.length ?? 0) >= 2 &&
     (trendModality === 'weight_reps' || isBodyweightModality(trendModality));
 

@@ -501,6 +501,15 @@ describe('ExerciseDetailScreen', () => {
       expect(screen.queryByTestId('trend-card')).toBeNull();
     });
 
+    it('shows the trend card for a lift logged only in interval or WOD workouts', () => {
+      // Best set skips those workout formats, so stats carry no bestSet.
+      const stats = statsWithSessions(2);
+      stats.data.bestSet = null;
+      mockUseExerciseStats.mockReturnValue(stats);
+      const screen = renderScreen({ id: uuidId });
+      expect(screen.getByTestId('trend-card')).toBeTruthy();
+    });
+
     it('hides the trend card for cardio', () => {
       mockUseExerciseStats.mockReturnValue(statsWithSessions(3));
       const screen = renderScreen({ id: uuidId, category: 'cardio' });
