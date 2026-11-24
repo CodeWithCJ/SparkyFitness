@@ -11,6 +11,7 @@ import {
   createGuardedFetch,
   PUBLIC_ONLY_AI_NETWORK_POLICY,
 } from './outboundUrlPolicy.js';
+import { isSafePathSegment } from './uploadsPath.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -129,6 +130,10 @@ async function downloadImage(
   entityId: string,
   domain: ImageDomain = 'exercises'
 ): Promise<string> {
+  // The id becomes a folder name; refuse anything that could leave the domain.
+  if (!isSafePathSegment(entityId)) {
+    throw new Error('[imageDownloader] Invalid entity id for an image folder');
+  }
   await ensureUploadsDir(domain);
 
   try {
