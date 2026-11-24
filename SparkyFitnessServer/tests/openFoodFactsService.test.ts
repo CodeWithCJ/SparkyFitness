@@ -5,6 +5,7 @@ import {
   DEFAULT_OFF_BASE_URL,
 } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 import {
+  hasUsableOffCoreNutrition,
   mapOpenFoodFactsProduct,
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
@@ -28,6 +29,31 @@ vi.mock('../services/openFoodFactsProductReadRateLimitService.js', () => ({
 const fetchMock = vi.fn();
 global.fetch = fetchMock;
 const EXPLICIT_ZERO_CORE_NUTRITION = { 'energy-kcal_100g': 0 };
+const SEARCH_A_LICIOUS_URL = 'https://search.openfoodfacts.org/search';
+const CORE_NUTRITION_SEARCH_CLAUSE =
+  '((nutriments.energy-kcal_100g:* OR nutriments.energy-kj_100g:* OR nutriments.proteins_100g:* OR nutriments.carbohydrates_100g:* OR nutriments.fat_100g:*) OR (serving_quantity:[0.000001 TO *] AND nutrition_data_per:serving))';
+// Fields the public Search-a-licious index has, as of issue #3760.
+const INDEXED_SEARCH_FIELDS = new Set([
+  'product_name',
+  'brands',
+  'code',
+  'nutrition_data_per',
+  'serving_quantity',
+  'nutriments.energy-kcal_100g',
+  'nutriments.energy-kj_100g',
+  'nutriments.proteins_100g',
+  'nutriments.carbohydrates_100g',
+  'nutriments.fat_100g',
+]);
+/** Field names of every `field:term` and `field:[range]` token in a query. */
+const queryFieldNames = (query: string) =>
+  new Set(
+    [...query.matchAll(/([A-Za-z_][\w.-]*):(?=[*[\w])/g)].map(
+      (match) => match[1]
+    )
+  );
+/** The nutrition clause the server appends after the free text. */
+const nutritionClauseOf = (query: string) => query.slice(query.indexOf('(('));
 
 describe('openFoodFactsService', () => {
   beforeEach(() => {
@@ -79,7 +105,7 @@ describe('openFoodFactsService', () => {
       const request = fetch.mock.calls[0][1];
       expect(JSON.parse(request.body)).toEqual(
         expect.objectContaining({
-          q: 'whole milk ((nutriments.energy-kcal_100g:* OR nutriments.energy-kj_100g:* OR nutriments.energy_100g:* OR nutriments.proteins_100g:* OR nutriments.carbohydrates_100g:* OR nutriments.fat_100g:*) OR (serving_quantity:[0.000001 TO *] AND (nutriments.energy-kcal_serving:* OR nutriments.energy-kj_serving:* OR nutriments.energy_serving:* OR nutriments.proteins_serving:* OR nutriments.carbohydrates_serving:* OR nutriments.fat_serving:*)))',
+          q: 'whole milk ((nutriments.energy-kcal_100g:* OR nutriments.energy-kj_100g:* OR nutriments.proteins_100g:* OR nutriments.carbohydrates_100g:* OR nutriments.fat_100g:*) OR (serving_quantity:[0.000001 TO *] AND nutrition_data_per:serving))',
           page: 2,
           page_size: 12,
           boost_phrase: true,
@@ -92,6 +118,124 @@ describe('openFoodFactsService', () => {
         totalCount: 25,
         hasMore: true,
       });
+    });
+
+    it('names only fields the public Search-a-licious index has', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ hits: [], page: 1, page_size: 20, count: 0 }),
+      });
+
+      await searchOpenFoodFacts('whole milk');
+
+      const { q } = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect([...queryFieldNames(nutritionClauseOf(q))].sort()).toEqual(
+        [
+          'nutriments.energy-kcal_100g',
+          'nutriments.energy-kj_100g',
+          'nutriments.proteins_100g',
+          'nutriments.carbohydrates_100g',
+          'nutriments.fat_100g',
+          'serving_quantity',
+          'nutrition_data_per',
+        ].sort()
+      );
+    });
+
+    it('keeps products declared per serving as search candidates', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ hits: [], page: 1, page_size: 20, count: 0 }),
+      });
+
+      await searchOpenFoodFacts('yogurt');
+
+      const { q } = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const clause = nutritionClauseOf(q);
+      // The serving branch is one alternative of the outer OR group, not a
+      // condition every product must meet.
+      expect(clause.startsWith('((')).toBe(true);
+      expect(
+        clause.endsWith(
+          ' OR (serving_quantity:[0.000001 TO *] AND nutrition_data_per:serving))'
+        )
+      ).toBe(true);
+    });
+
+    it('returns products when Search-a-licious refuses fields missing from its index (#3760)', async () => {
+      const products = [
+        {
+          code: '111',
+          product_name: 'Greek Yogurt',
+          nutriments: {
+            energy_100g: 406,
+            'energy-kcal_100g': 97,
+            proteins_100g: 9,
+            carbohydrates_100g: 3.6,
+            fat_100g: 5,
+          },
+        },
+        {
+          code: '222',
+          product_name: 'Yogurt Cup',
+          serving_quantity: 150,
+          nutrition_data_per: 'serving',
+          nutriments: {
+            'energy-kcal_serving': 120,
+            proteins_serving: 6,
+            carbohydrates_serving: 14,
+            fat_serving: 4,
+          },
+        },
+      ];
+      fetchMock.mockImplementation(
+        async (url: string, init?: { body?: string }) => {
+          if (url === SEARCH_A_LICIOUS_URL) {
+            const { q } = JSON.parse(String(init?.body));
+            const unknown = [...queryFieldNames(q)].filter(
+              (field) => !INDEXED_SEARCH_FIELDS.has(field)
+            );
+            if (unknown.length > 0) {
+              return {
+                ok: false,
+                status: 400,
+                json: () =>
+                  Promise.resolve({
+                    errors: unknown.map((field) => ({
+                      title: `Unknown field name '${field}'`,
+                    })),
+                  }),
+              };
+            }
+            return {
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  hits: products.map(({ code, product_name }) => ({
+                    code,
+                    product_name,
+                  })),
+                  page: 1,
+                  page_size: 20,
+                  count: 2,
+                }),
+            };
+          }
+          if (String(url).includes('/api/v2/search?code=')) {
+            return { ok: true, json: () => Promise.resolve({ products }) };
+          }
+          throw new Error(`Unexpected request: ${url}`);
+        }
+      );
+
+      const result = await searchOpenFoodFacts('greek yogurt');
+
+      expect(result.products.map((product) => product.code)).toEqual([
+        '111',
+        '222',
+      ]);
     });
 
     it('excludes products without mapped calories or core macros after hydration', async () => {
@@ -1115,6 +1259,22 @@ describe('openFoodFactsService', () => {
         }
       });
 
+      it('sends the same nutrition clause on every Search-a-licious request', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(hitsResponse([]))
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        await searchOpenFoodFacts('bagel kirkland');
+
+        const queries = searchQueries();
+        expect(queries).toHaveLength(3);
+        for (const query of queries) {
+          expect(query.endsWith(` ${CORE_NUTRITION_SEARCH_CLAUSE}`)).toBe(true);
+        }
+      });
+
       it('keeps a brand hit that has no barcode', async () => {
         const codelessBagel = {
           product_name: kirklandBagel.product_name,
@@ -1790,6 +1950,20 @@ describe('openFoodFactsService', () => {
         'https://search.openfoodfacts.org/search',
         expect.any(Object)
       );
+    });
+  });
+
+  describe('hasUsableOffCoreNutrition', () => {
+    it('still accepts a product whose only core value is energy_100g', () => {
+      // The search index no longer has this field, but hydrated product
+      // documents still carry it.
+      expect(
+        hasUsableOffCoreNutrition({
+          code: 'energy-only',
+          product_name: 'Energy Only',
+          nutriments: { energy_100g: 418 },
+        })
+      ).toBe(true);
     });
   });
 
