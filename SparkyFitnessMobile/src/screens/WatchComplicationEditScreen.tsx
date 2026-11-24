@@ -275,10 +275,7 @@ const WatchComplicationEditScreen: React.FC<
   const formats = allowedFormats(form.source);
 
   return (
-    <View
-      className="flex-1 bg-background"
-      style={!usesNativeHeader ? { paddingTop: insets.top } : undefined}
-    >
+    <View className="flex-1 bg-background">
       {header}
       <KeyboardAwareScrollView
         contentContainerStyle={{
