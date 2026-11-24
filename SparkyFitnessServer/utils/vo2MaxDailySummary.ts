@@ -7,14 +7,23 @@ import { log } from '../config/logging.js';
  */
 export const VO2_MAX_BOUNDS = { min: 10, max: 100, decimals: 1 } as const;
 
-/** Rounds a reading to the stored precision, or null outside the bounds. */
+// Fitbit reports its cardio fitness score as a range ("44-48") for many people.
+const RANGE_PATTERN = /^\s*(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*$/;
+
+function parseVo2Max(raw: unknown): number {
+  if (typeof raw === 'number') return raw;
+  if (typeof raw !== 'string' || raw.trim() === '') return Number.NaN;
+  const range = RANGE_PATTERN.exec(raw);
+  if (range) return (Number(range[1]) + Number(range[2])) / 2;
+  return Number(raw);
+}
+
+/**
+ * Rounds a reading to the stored precision, or null outside the bounds. A range
+ * such as "44-48" is stored as its midpoint.
+ */
 export function normalizeVo2Max(raw: unknown): number | null {
-  const value =
-    typeof raw === 'number'
-      ? raw
-      : typeof raw === 'string' && raw.trim() !== ''
-        ? Number(raw)
-        : Number.NaN;
+  const value = parseVo2Max(raw);
   if (!Number.isFinite(value)) return null;
   if (value < VO2_MAX_BOUNDS.min || value > VO2_MAX_BOUNDS.max) return null;
   const scale = 10 ** VO2_MAX_BOUNDS.decimals;

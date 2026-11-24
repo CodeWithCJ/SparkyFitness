@@ -18,6 +18,12 @@ describe('normalizeVo2Max', () => {
     expect(normalizeVo2Max('51.26')).toBe(51.3);
   });
 
+  it('stores a Fitbit range as its midpoint', () => {
+    expect(normalizeVo2Max('44-48')).toBe(46);
+    expect(normalizeVo2Max(' 43 - 46 ')).toBe(44.5);
+    expect(normalizeVo2Max('5-8')).toBeNull();
+  });
+
   it('rejects values outside the plausible range or not numbers', () => {
     expect(normalizeVo2Max(9.9)).toBeNull();
     expect(normalizeVo2Max(100.1)).toBeNull();
