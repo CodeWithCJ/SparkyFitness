@@ -10,6 +10,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 class WearOsParityTest {
 
@@ -757,14 +758,30 @@ class WearOsParityTest {
         assertEquals("m1:s1", medTile.doseRows[1].doseId)
         assertFalse(medTile.doseRows[1].isPending)
 
+        val syncedContainers = listOf(
+            WaterContainer(id = 10, name = "Glass", servingVolumeMl = 250.0, unit = "ml"),
+            WaterContainer(id = 11, name = "Bottle", servingVolumeMl = 500.0, unit = "ml")
+        )
         val waterCtx = WatchContext(waterDisplayUnit = "ml")
+        val unsyncedWaterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 1500.0,
+            goalMl = 2500.0,
+            queuedMl = 250.0,
+            watchCtx = waterCtx,
+            containers = emptyList(),
+            locale = Locale.US
+        )
+        assertTrue(unsyncedWaterTile.containers.isEmpty())
+
         val waterTile = TileModels.buildWaterTileModel(
             hasOwner = true,
             consumedMl = 1500.0,
             goalMl = 2500.0,
             queuedMl = 250.0,
             watchCtx = waterCtx,
-            containers = emptyList()
+            containers = syncedContainers,
+            locale = Locale.US
         )
         assertTrue(waterTile.hasOwner)
         assertEquals("1500 ml", waterTile.consumedText)
@@ -784,10 +801,51 @@ class WearOsParityTest {
             goalMl = 2500.0,
             queuedMl = 0.0,
             watchCtx = WatchContext(waterDisplayUnit = "oz"),
-            containers = emptyList()
+            containers = syncedContainers,
+            locale = Locale.US
         )
         assertEquals("+8.5 oz", ozWaterTile.containers[0].addText)
         assertEquals("+16.9 oz", ozWaterTile.containers[1].addText)
+
+        val deOzWaterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 1500.0,
+            goalMl = 2500.0,
+            queuedMl = 250.0,
+            watchCtx = WatchContext(waterDisplayUnit = "oz"),
+            containers = syncedContainers,
+            locale = Locale.GERMANY
+        )
+        assertEquals("+8,5 oz", deOzWaterTile.containers[0].addText)
+        assertEquals("50,7 oz", deOzWaterTile.consumedText)
+        assertEquals("84,5 oz", deOzWaterTile.goalText)
+
+        val deLiterWaterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 1500.0,
+            goalMl = 2500.0,
+            queuedMl = 0.0,
+            watchCtx = WatchContext(waterDisplayUnit = "liter"),
+            containers = syncedContainers,
+            locale = Locale.GERMANY
+        )
+        assertEquals("1,50L", deLiterWaterTile.consumedText)
+        assertEquals("2,50L", deLiterWaterTile.goalText)
+        assertEquals("+0,25L", deLiterWaterTile.containers[0].addText)
+
+        // Native-digit locale must localize milliliter digits as well
+        val arLocale = Locale.forLanguageTag("ar-EG")
+        val arMlWaterTile = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 1500.0,
+            goalMl = 2500.0,
+            queuedMl = 250.0,
+            watchCtx = waterCtx,
+            containers = syncedContainers,
+            locale = arLocale
+        )
+        assertEquals(String.format(arLocale, "%d ml", 1500), arMlWaterTile.consumedText)
+        assertEquals("+${String.format(arLocale, "%d ml", 250)}", arMlWaterTile.containers[0].addText)
 
         val failedWaterTile = TileModels.buildWaterTileModel(
             hasOwner = true,
@@ -795,8 +853,9 @@ class WearOsParityTest {
             goalMl = 2500.0,
             queuedMl = 0.0,
             watchCtx = waterCtx,
-            containers = emptyList(),
-            waterSyncState = SyncState.FAILED
+            containers = syncedContainers,
+            waterSyncState = SyncState.FAILED,
+            locale = Locale.US
         )
         assertTrue(failedWaterTile.syncFailed)
 
@@ -1591,5 +1650,214 @@ class WearOsParityTest {
         )
         assertEquals(81.0, priorWhenOverlaid.weightKg ?: 0.0, 0.001)
         assertEquals("2026-04-06", priorWhenOverlaid.entryDate)
+
+        // Unicode fractional strengths (e.g. ½ mg) must be preserved when they fit, or block inline toggle when dropped
+        val (fracKeptName, fracKeptIntact) = TileModels.compactDoseNameWithSafety("Example Medication ½ mg")
+        assertEquals("Example Me\u2026\u00BD mg", fracKeptName)
+        assertTrue(fracKeptIntact)
+        val (_, fracTooLongIntact) = TileModels.compactDoseNameWithSafety("Example Medication ½ mg / 250 mg")
+        assertFalse(fracTooLongIntact)
+        val fracTooLongDose = MedicationDose("fr-1", "m1", "s1", "Example Medication ½ mg / 250 mg", "1 tab", "08:00 AM", MedicationDoseStatus.PENDING)
+        assertFalse(
+            TileModels.buildMedicationsTileModel(MedicationSnapshot(day = today, doses = listOf(fracTooLongDose)))
+                .doseRows.single().isDirectlyActionable
+        )
+
+        // Untouched weight drafts must reseed whenever the local calendar date changes (e.g. rollback Apr 8 -> Apr 7)
+        assertTrue(CheckInStore.shouldReseedWeightDraft(lastDraftSeedDay = "2026-04-08", today = "2026-04-07", rejectedExpired = false))
+        assertFalse(CheckInStore.shouldReseedWeightDraft(lastDraftSeedDay = "2026-04-07", today = "2026-04-07", rejectedExpired = false))
+        assertTrue(CheckInStore.shouldReseedWeightDraft(lastDraftSeedDay = "2026-04-07", today = "2026-04-07", rejectedExpired = true))
+
+        // Stacked water taps must only settle once incoming server total includes each tap
+        val tap1 = PendingWaterTap("w-1", 250.0, 10, "Glass", 1000L, today, SyncState.SAVED, "srv-1")
+        val tap2 = PendingWaterTap("w-2", 250.0, 10, "Glass", 2000L, today, SyncState.SAVED, "srv-1")
+        val baselines = mutableMapOf(
+            "w-1" to CheckInStore.WaterTapBaseline(0.0),
+            "w-2" to CheckInStore.WaterTapBaseline(0.0)
+        )
+        val cohort = mutableListOf<CheckInStore.SettledWaterTapRecord>()
+        val afterFirst250 = CheckInStore.settleSavedWaterTaps(listOf(tap1, tap2), baselines, cohort, serverMl = 250.0)
+        assertEquals(listOf("w-2"), afterFirst250.map { it.id })
+        // Repeat pass at the same 250 ml total must keep tap2 pending
+        val stillPendingAt250 = CheckInStore.settleSavedWaterTaps(afterFirst250, baselines, cohort, serverMl = 250.0)
+        assertEquals(listOf("w-2"), stillPendingAt250.map { it.id })
+        // Once incoming server total reaches 500 ml, tap2 settles and cohort resets
+        val after500 = CheckInStore.settleSavedWaterTaps(stillPendingAt250, baselines, cohort, serverMl = 500.0)
+        assertTrue(after500.isEmpty())
+        assertTrue(cohort.isEmpty())
+
+        // If tap1 failed while tap2 succeeded, tap2 still settles at 250 ml without waiting for failed tap1
+        val failedTap1 = tap1.copy(state = SyncState.FAILED)
+        val failedBaselines = mutableMapOf(
+            "w-1" to CheckInStore.WaterTapBaseline(0.0),
+            "w-2" to CheckInStore.WaterTapBaseline(0.0)
+        )
+        val failedCohort = mutableListOf<CheckInStore.SettledWaterTapRecord>()
+        val afterTap2Only = CheckInStore.settleSavedWaterTaps(listOf(failedTap1, tap2), failedBaselines, failedCohort, serverMl = 250.0)
+        assertEquals(listOf("w-1"), afterTap2Only.map { it.id })
+
+        // Out-of-order ack: tap A (baseline=0) reflected in server (250) before ack; tap B recorded baseline=250 and acks first at server=500.
+        // Settling B must preserve A's credit so A also settles at server=500 once A's ack arrives.
+        val tapAQueued = tap1.copy(id = "w-a", state = SyncState.QUEUED)
+        val tapBSaved = tap2.copy(id = "w-b", state = SyncState.SAVED)
+        val outOfOrderBaselines = mutableMapOf(
+            "w-a" to CheckInStore.WaterTapBaseline(0.0),
+            "w-b" to CheckInStore.WaterTapBaseline(250.0)
+        )
+        val outOfOrderCohort = mutableListOf<CheckInStore.SettledWaterTapRecord>()
+        val afterBSettled = CheckInStore.settleSavedWaterTaps(listOf(tapAQueued, tapBSaved), outOfOrderBaselines, outOfOrderCohort, serverMl = 500.0)
+        assertEquals(listOf("w-a"), afterBSettled.map { it.id })
+        val afterAAcked = CheckInStore.settleSavedWaterTaps(
+            listOf(tapAQueued.copy(state = SyncState.SAVED)),
+            outOfOrderBaselines,
+            outOfOrderCohort,
+            serverMl = 500.0
+        )
+        assertTrue(afterAAcked.isEmpty())
+
+        // Unequal-volume out-of-order acks (A=1000@0, B=500@0, C=250@1000 after A landed on server):
+        // At server=1500: B settles, then A settles, while C stays pending (must NOT double-count A into C).
+        // At server=1750: C settles cleanly with zero duplicate pending entries.
+        val tapA1000 = PendingWaterTap("u-a", 1000.0, 11, "Jug", 1000L, today, SyncState.QUEUED, "srv-1")
+        val tapB500 = PendingWaterTap("u-b", 500.0, 12, "Bottle", 2000L, today, SyncState.SAVED, "srv-1")
+        val tapC250 = PendingWaterTap("u-c", 250.0, 10, "Glass", 3000L, today, SyncState.QUEUED, "srv-1")
+        val unequalBaselines = mutableMapOf(
+            "u-a" to CheckInStore.WaterTapBaseline(0.0),
+            "u-b" to CheckInStore.WaterTapBaseline(0.0),
+            "u-c" to CheckInStore.WaterTapBaseline(1000.0)
+        )
+        val unequalCohort = mutableListOf<CheckInStore.SettledWaterTapRecord>()
+        val afterUnequalB = CheckInStore.settleSavedWaterTaps(
+            listOf(tapA1000, tapB500, tapC250),
+            unequalBaselines,
+            unequalCohort,
+            serverMl = 1500.0
+        )
+        assertEquals(listOf("u-a", "u-c"), afterUnequalB.map { it.id })
+        val afterUnequalA = CheckInStore.settleSavedWaterTaps(
+            listOf(tapA1000.copy(state = SyncState.SAVED), tapC250.copy(state = SyncState.SAVED)),
+            unequalBaselines,
+            unequalCohort,
+            serverMl = 1500.0
+        )
+        assertEquals(listOf("u-c"), afterUnequalA.map { it.id })
+        val afterUnequalAll = CheckInStore.settleSavedWaterTaps(
+            afterUnequalA,
+            unequalBaselines,
+            unequalCohort,
+            serverMl = 1750.0
+        )
+        assertTrue(afterUnequalAll.isEmpty())
+        assertTrue(unequalCohort.isEmpty())
+
+        // Deletion reconciliation: settle first of two 250 ml taps, then delete its server entry and confirm the second at server=250
+        val delBaselines = mutableMapOf(
+            "w-1" to CheckInStore.WaterTapBaseline(0.0),
+            "w-2" to CheckInStore.WaterTapBaseline(0.0)
+        )
+        val delCohort = mutableListOf<CheckInStore.SettledWaterTapRecord>()
+        val seenLog = mutableMapOf<String, Double>()
+        val entry1 = WaterLogEntry("srv-e1", "Glass", 250.0, "08:00")
+        val entry2 = WaterLogEntry("srv-e2", "Glass", 250.0, "08:01")
+        val deletedPass1 = CheckInStore.computeDeletedServerWaterEntries(seenLog, listOf(entry1))
+        assertTrue(deletedPass1.isEmpty())
+        val afterFirstWithLog = CheckInStore.settleSavedWaterTaps(
+            listOf(tap1, tap2),
+            delBaselines,
+            delCohort,
+            serverMl = 250.0,
+            currentLog = listOf(entry1),
+            deletedEntries = deletedPass1
+        )
+        assertEquals(listOf("w-2"), afterFirstWithLog.map { it.id })
+        val deletedPass2 = CheckInStore.computeDeletedServerWaterEntries(seenLog, listOf(entry2))
+        assertEquals(mapOf("srv-e1" to 250.0), deletedPass2)
+        val afterDeleteAndTap2 = CheckInStore.settleSavedWaterTaps(
+            afterFirstWithLog,
+            delBaselines,
+            delCohort,
+            serverMl = 250.0,
+            currentLog = listOf(entry2),
+            deletedEntries = deletedPass2
+        )
+        assertTrue(afterDeleteAndTap2.isEmpty())
+        assertTrue(delCohort.isEmpty())
+
+        // Post-baseline external add + delete must NOT lower an earlier tap's captured baseline
+        val eBase = WaterLogEntry("srv-base", "Pitcher", 1000.0, "07:00")
+        val eExt = WaterLogEntry("srv-ext", "Bottle", 500.0, "07:30")
+        val extSeenLog = mutableMapOf("srv-base" to 1000.0)
+        val extTap = PendingWaterTap("ext-1", 250.0, 10, "Glass", 1000L, today, SyncState.QUEUED, "srv-1")
+        val extBaselines = mutableMapOf("ext-1" to CheckInStore.WaterTapBaseline(1000.0, setOf("srv-base")))
+        val extCohort = mutableListOf<CheckInStore.SettledWaterTapRecord>()
+        // Phone adds 500 ml external drink
+        val extDelAdd = CheckInStore.computeDeletedServerWaterEntries(extSeenLog, listOf(eBase, eExt))
+        assertTrue(extDelAdd.isEmpty())
+        // Phone deletes 500 ml external drink; standalone ack arrives while server is still 1000 ml (without extTap)
+        val extDelRemove = CheckInStore.computeDeletedServerWaterEntries(extSeenLog, listOf(eBase))
+        assertEquals(mapOf("srv-ext" to 500.0), extDelRemove)
+        val afterExtDelete = CheckInStore.settleSavedWaterTaps(
+            listOf(extTap.copy(state = SyncState.SAVED)),
+            extBaselines,
+            extCohort,
+            serverMl = 1000.0,
+            currentLog = listOf(eBase),
+            deletedEntries = extDelRemove
+        )
+        assertEquals(listOf("ext-1"), afterExtDelete.map { it.id })
+        assertEquals(1000.0, extBaselines["ext-1"]!!.capturedServerMl, 0.001)
+
+        // Surviving cohort record rebasing: settled (1000,250) and (1250,250) + queued 100 ml tap captured at 1000.
+        // Deleting the first 250 ml entry drops the first record and rebases the second record's captured total from 1250 -> 1000,
+        // so the 100 ml tap settles cleanly at serverMl = 1350.
+        val eInit1000 = WaterLogEntry("srv-init", "Jug", 1000.0, "07:00")
+        val eS1 = WaterLogEntry("srv-s1", "Glass", 250.0, "08:00")
+        val eS2 = WaterLogEntry("srv-s2", "Glass", 250.0, "08:05")
+        val eS3 = WaterLogEntry("srv-s3", "Sip", 100.0, "08:10")
+        val rebaseSeen = mutableMapOf("srv-init" to 1000.0)
+        val rebaseCohort = mutableListOf<CheckInStore.SettledWaterTapRecord>()
+        val rebaseTap1 = PendingWaterTap("rb-1", 250.0, 10, "Glass", 1000L, today, SyncState.SAVED, "srv-1")
+        val rebaseTap3 = PendingWaterTap("rb-3", 100.0, 13, "Sip", 1001L, today, SyncState.QUEUED, "srv-1")
+        val rebaseBaselines = mutableMapOf(
+            "rb-1" to CheckInStore.WaterTapBaseline(1000.0, setOf("srv-init")),
+            "rb-3" to CheckInStore.WaterTapBaseline(1000.0, setOf("srv-init"))
+        )
+        // Settle tap1 at 1250
+        val delRb1 = CheckInStore.computeDeletedServerWaterEntries(rebaseSeen, listOf(eInit1000, eS1))
+        val remRb1 = CheckInStore.settleSavedWaterTaps(
+            listOf(rebaseTap1, rebaseTap3),
+            rebaseBaselines,
+            rebaseCohort,
+            serverMl = 1250.0,
+            currentLog = listOf(eInit1000, eS1),
+            deletedEntries = delRb1
+        )
+        assertEquals(listOf("rb-3"), remRb1.map { it.id })
+        // Tap2 captured at 1250 with {srv-init, srv-s1} and settles at 1500
+        val rebaseTap2 = PendingWaterTap("rb-2", 250.0, 10, "Glass", 2000L, today, SyncState.SAVED, "srv-1")
+        rebaseBaselines["rb-2"] = CheckInStore.WaterTapBaseline(1250.0, setOf("srv-init", "srv-s1"))
+        val delRb2 = CheckInStore.computeDeletedServerWaterEntries(rebaseSeen, listOf(eInit1000, eS1, eS2))
+        val remRb2 = CheckInStore.settleSavedWaterTaps(
+            listOf(rebaseTap3, rebaseTap2),
+            rebaseBaselines,
+            rebaseCohort,
+            serverMl = 1500.0,
+            currentLog = listOf(eInit1000, eS1, eS2),
+            deletedEntries = delRb2
+        )
+        assertEquals(listOf("rb-3"), remRb2.map { it.id })
+        // Delete srv-s1 (250 ml) while rb-3 (100 ml) succeeds at serverMl = 1350
+        val delRb3 = CheckInStore.computeDeletedServerWaterEntries(rebaseSeen, listOf(eInit1000, eS2, eS3))
+        assertEquals(mapOf("srv-s1" to 250.0), delRb3)
+        val remRb3 = CheckInStore.settleSavedWaterTaps(
+            listOf(rebaseTap3.copy(state = SyncState.SAVED)),
+            rebaseBaselines,
+            rebaseCohort,
+            serverMl = 1350.0,
+            currentLog = listOf(eInit1000, eS2, eS3),
+            deletedEntries = delRb3
+        )
+        assertTrue(remRb3.isEmpty())
+        assertTrue(rebaseCohort.isEmpty())
     }
 }

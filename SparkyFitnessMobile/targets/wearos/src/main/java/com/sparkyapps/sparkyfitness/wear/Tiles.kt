@@ -419,16 +419,16 @@ object TileModels {
       val (compactName, nameStrengthIntact) = compactDoseNameWithSafety(dose.name)
       val (visibleDetailPrefix, unclippedChars) = visiblePillRowDetail(compactName, detailText)
       val detailClipped = cleanDetail.length > unclippedChars
-      val clippedTailHasDigits = detailClipped && cleanDetail.drop(unclippedChars).any { it.isDigit() }
+      val clippedTailHasDigits = detailClipped && cleanDetail.drop(unclippedChars).any { isNumericChar(it) }
       val strengthMatch = DETAIL_STRENGTH_REGEX.findAll(cleanDetail).lastOrNull()
       val detailIsCountOnlyWithNamedStrength =
-        dose.name.any { it.isDigit() } && DOSAGE_COUNT_ONLY_REGEX.matches(cleanDetail)
+        dose.name.any { isNumericChar(it) } && DOSAGE_COUNT_ONLY_REGEX.matches(cleanDetail)
       val detailStrengthIntact = when {
         !detailClipped -> true
         clippedTailHasDigits -> false
         strengthMatch != null -> strengthMatch.range.last + 1 <= unclippedChars
         detailIsCountOnlyWithNamedStrength -> true
-        else -> cleanDetail.none { it.isDigit() }
+        else -> cleanDetail.none { isNumericChar(it) }
       }
       return FormattedDoseDisplay(
         name = compactName,
@@ -481,20 +481,23 @@ object TileModels {
     )
   }
 
+  private fun isNumericChar(ch: Char): Boolean =
+    ch.isDigit() || Character.getType(ch) == Character.OTHER_NUMBER.toInt()
+
   /**
    * Shortens long medication names while keeping any numeric strength/unit intact; returns `strengthIntact = false`
-   * whenever any digit or trailing strength unit cannot fit without truncation.
+   * whenever any digit, fraction character, or trailing strength unit cannot fit without truncation.
    */
   fun compactDoseNameWithSafety(rawName: String, maxChars: Int = 15): Pair<String, Boolean> {
     val clean = rawName.trim()
     if (clean.isEmpty()) return "" to false
     if (clean.length <= maxChars) return clean to true
     val headOnly = clean.take((maxChars - 1).coerceAtLeast(1))
-    if (!clean.any { it.isDigit() }) {
+    if (!clean.any { isNumericChar(it) }) {
       return "${headOnly.trimEnd()}…" to true
     }
     val tokens = clean.split(Regex("\\s+"))
-    val strengthIdx = tokens.indexOfFirst { tok -> tok.any { it.isDigit() } }
+    val strengthIdx = tokens.indexOfFirst { tok -> tok.any { isNumericChar(it) } }
     if (strengthIdx > 0) {
       val prefix = tokens.subList(0, strengthIdx).joinToString(" ")
       val strengthTail = tokens.subList(strengthIdx, tokens.size).joinToString(" ")
@@ -503,7 +506,7 @@ object TileModels {
       if (headBudget >= minPrefixLen) {
         val keptPrefix = prefix.take(headBudget)
         val droppedPrefix = prefix.drop(keptPrefix.length)
-        if (!droppedPrefix.any { it.isDigit() }) {
+        if (!droppedPrefix.any { isNumericChar(it) }) {
           return "${keptPrefix.trimEnd()}…$strengthTail" to true
         }
       }
@@ -513,11 +516,11 @@ object TileModels {
 
   private const val SAFE_PILL_ROW_CHARS = 20
   private val DETAIL_STRENGTH_REGEX = Regex(
-    "\\d+(?:[.,]\\d+)?\\s*(?:%|(?:mcg|mg|ug|µg|g|iu|ml|l|mmol|mol|meq|units?|u)\\b)(?:\\s*/\\s*(?:\\d+(?:[.,]\\d+)?(?:\\s*(?:%|[a-zµ]+\\b))?|(?:%|[a-zµ]+\\b)))*",
+    "(?:\\d+(?:[.,]\\d+)?\\p{No}?|\\p{No})\\s*(?:%|(?:mcg|mg|ug|µg|g|iu|ml|l|mmol|mol|meq|units?|u)\\b)(?:\\s*/\\s*(?:(?:\\d+(?:[.,]\\d+)?\\p{No}?|\\p{No})(?:\\s*(?:%|[a-zµ]+\\b))?|(?:%|[a-zµ]+\\b)))*",
     RegexOption.IGNORE_CASE
   )
   private val DOSAGE_COUNT_ONLY_REGEX = Regex(
-    "^\\d+(?:\\.5|/[24])?\\s*(?:tabs?|tablets?|caps?|capsules?|pills?|softgels?|gummies?|gummy|lozenges?|chews?|patches?|puffs?|sprays?|drops?|sachets?|packets?|vials?|ampoules?|syringes?|injections?|doses?)\\.?$",
+    "^(?:\\d+(?:\\.5|/[24]|\\p{No})?|\\p{No})\\s*(?:tabs?|tablets?|caps?|capsules?|pills?|softgels?|gummies?|gummy|lozenges?|chews?|patches?|puffs?|sprays?|drops?|sachets?|packets?|vials?|ampoules?|syringes?|injections?|doses?)\\.?$",
     RegexOption.IGNORE_CASE
   )
 
@@ -717,24 +720,8 @@ object TileModels {
   )
 
   /**
-   * Resolves user-configured water containers or falls back to standard Glass (250ml) and Bottle (500ml) presets.
-   */
-  fun resolveEffectiveWaterContainers(
-    containers: List<WaterContainer>,
-    displayUnit: String?,
-    defaultGlassName: String = "Glass",
-    defaultBottleName: String = "Bottle"
-  ): List<WaterContainer> {
-    if (containers.isNotEmpty()) return containers
-    val unit = displayUnit?.takeIf { it.isNotBlank() } ?: "ml"
-    return listOf(
-      WaterContainer(id = 1, name = defaultGlassName, servingVolumeMl = 250.0, unit = unit),
-      WaterContainer(id = 2, name = defaultBottleName, servingVolumeMl = 500.0, unit = unit)
-    )
-  }
-
-  /**
    * Builds the display model for the interactive Hydration tile.
+   * Only synced phone containers are offered for one-tap logging so the tapped amount always matches the server record.
    */
   fun buildWaterTileModel(
     hasOwner: Boolean,
@@ -744,27 +731,16 @@ object TileModels {
     watchCtx: WatchContext,
     containers: List<WaterContainer>,
     waterSyncState: SyncState = SyncState.SAVED,
-    defaultGlassName: String = "Glass",
-    defaultBottleName: String = "Bottle"
+    locale: Locale = Locale.getDefault()
   ): WaterTileModel {
     val safeGoal = max(1.0, goalMl)
     val clampedConsumed = max(0.0, consumedMl)
     val progress = (clampedConsumed / safeGoal).toFloat().coerceIn(0f, 1f)
     val isGoalMet = goalMl > 0.0 && clampedConsumed >= goalMl - 0.5
     val remMl = max(0.0, goalMl - clampedConsumed)
-    val effectiveContainers = resolveEffectiveWaterContainers(
-      containers = containers,
-      displayUnit = watchCtx.waterDisplayUnit,
-      defaultGlassName = defaultGlassName,
-      defaultBottleName = defaultBottleName
-    )
-    val chips = effectiveContainers.take(3).map { c ->
-      val unitKey = (watchCtx.waterDisplayUnit?.takeIf { it.isNotBlank() } ?: c.unit).lowercase(Locale.US)
-      val formattedVol = when (unitKey) {
-        "oz" -> String.format(Locale.US, "%.1f oz", c.servingVolumeMl / 29.5735)
-        "liter", "l" -> String.format(Locale.US, "%.2fL", c.servingVolumeMl / 1000.0)
-        else -> "${c.servingVolumeMl.roundToInt()} ml"
-      }
+    val chips = containers.take(3).map { c ->
+      val effectiveUnit = watchCtx.waterDisplayUnit?.takeIf { it.isNotBlank() } ?: c.unit
+      val formattedVol = formatWaterAmount(c.servingVolumeMl, effectiveUnit, locale)
       TileWaterContainerChip(
         id = c.id,
         name = c.name.take(13),
@@ -774,11 +750,11 @@ object TileModels {
     }
     return WaterTileModel(
       hasOwner = hasOwner,
-      consumedText = watchCtx.formattedWater(clampedConsumed),
-      goalText = watchCtx.formattedWater(safeGoal),
-      remainingText = if (!isGoalMet) watchCtx.formattedWater(remMl) else null,
+      consumedText = watchCtx.formattedWater(clampedConsumed, locale),
+      goalText = watchCtx.formattedWater(safeGoal, locale),
+      remainingText = if (!isGoalMet) watchCtx.formattedWater(remMl, locale) else null,
       isGoalMet = isGoalMet,
-      queuedText = if (queuedMl > 0.5) watchCtx.formattedWater(queuedMl) else null,
+      queuedText = if (queuedMl > 0.5) watchCtx.formattedWater(queuedMl, locale) else null,
       syncFailed = waterSyncState == SyncState.FAILED,
       progress = progress,
       containers = chips
@@ -1808,13 +1784,7 @@ class WaterTileService : BaseSparkyTileService() {
     if (parts.size != 3 || parts[0] != currentToken) return false
     val containerId = parts[1].toIntOrNull() ?: return false
     val expectedBits = parts[2].toLongOrNull() ?: return false
-    val containers = TileModels.resolveEffectiveWaterContainers(
-      containers = store.waterContainers.value,
-      displayUnit = store.watchContext.value.waterDisplayUnit,
-      defaultGlassName = getString(R.string.water_default_glass),
-      defaultBottleName = getString(R.string.water_default_bottle)
-    )
-    val target = containers.firstOrNull { it.id == containerId } ?: return false
+    val target = store.waterContainers.value.firstOrNull { it.id == containerId } ?: return false
     if (target.servingVolumeMl.toRawBits() != expectedBits) {
       return false
     }
@@ -1836,9 +1806,7 @@ class WaterTileService : BaseSparkyTileService() {
       queuedMl = store.queuedWaterMl.value,
       watchCtx = store.watchContext.value,
       containers = store.waterContainers.value,
-      waterSyncState = store.waterSyncState.value,
-      defaultGlassName = getString(R.string.water_default_glass),
-      defaultBottleName = getString(R.string.water_default_bottle)
+      waterSyncState = store.waterSyncState.value
     )
 
     val col = Column.Builder()
@@ -1949,6 +1917,15 @@ class WaterTileService : BaseSparkyTileService() {
         col.addContent(
           bottomActionPill(
             label = getString(R.string.tile_water_open_log),
+            bgColorArgb = 0xFF0E3A47.toInt(),
+            textColorArgb = accentColorArgb
+          )
+        )
+      } else if (model.containers.isEmpty()) {
+        col.addContent(vSpacer(4f))
+        col.addContent(
+          bottomActionPill(
+            label = getString(R.string.water_title),
             bgColorArgb = 0xFF0E3A47.toInt(),
             textColorArgb = accentColorArgb
           )
