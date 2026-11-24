@@ -136,7 +136,7 @@ const WITHINGS_METRIC_MAPPING = {
   },
   123: {
     name: 'VO2 Max',
-    unit: 'ml/min/kg',
+    unit: 'ml/kg/min',
     type: 'custom_measurement',
     categoryName: 'VO2 Max',
     frequency: 'Daily',
