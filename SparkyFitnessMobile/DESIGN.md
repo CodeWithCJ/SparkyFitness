@@ -87,6 +87,19 @@ In Light, the canvas is the darkest surface and controls are white. In Dark, rai
 | Heart-Rate Red       | `--color-heart-rate` (JS only)    | #E2363C   | #E96367  | Watch-measured heart rate on workouts and charts; also the finish marker on route maps        |
 | Active-Energy Orange | `--color-active-energy` (JS only) | #F36F16   | #E79055  | Watch-measured active energy; separate from dietary Calorie Indigo                            |
 
+### Watch face preview
+
+The Complications preview draws the watch's own face, so these do not change with the theme. Phone-side controls on the same screens use the shared tokens: the selected-swatch border is Sparky Blue, the unselected one Strong Border, and the delete glyph the Danger Glyph.
+
+| Role             | Token class                                            | Value (every theme) | Usage                                                                    |
+| ---------------- | ------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------ |
+| Watch Face       | `bg-watch-face`                                        | #000000             | Black backdrop of the preview, the icon picker tiles and the list badges |
+| Watch Face Text  | `text-watch-face-text`                                 | #FFFFFF             | Values and names on the previewed face                                   |
+| Watch Face Muted | `text-watch-face-text-muted`                           | white at 60%        | The detail line under a value                                            |
+| Watch Face Faint | `text-watch-face-text-faint`                           | white at 50%        | The dot between values in the corner row                                 |
+| Watch Face Chip  | `bg-watch-face-chip`                                   | white at 14%        | The disc and card behind a previewed complication                        |
+| Watch Face Track | `bg-watch-face-track`, `--color-watch-face-track` (JS) | white at 25%        | The empty part of a previewed ring or bar                                |
+
 ### Category palette
 
 Eight balanced hues for things that need a distinct color but no fixed meaning. Seven of them (all but amber) tint Settings row icons, and all eight color workout superset rails and the workout-complete confetti.

@@ -46,6 +46,19 @@ describe('sendComplicationsToWatch', () => {
     expect(typeof sent.revision).toBe('number');
   });
 
+  it('keeps each revision above the last one when the clock moves back', async () => {
+    const now = jest.spyOn(Date, 'now');
+    now.mockReturnValue(5_000_000_000_000);
+    await sendComplicationsToWatch([water]);
+    now.mockReturnValue(1_000);
+    await sendComplicationsToWatch([water]);
+    now.mockRestore();
+    const [first, second] = module.sendComplicationConfig.mock.calls.map(
+      (call) => call[0].revision
+    );
+    expect(second).toBeGreaterThan(first);
+  });
+
   it('marks a manual reload so the watch refreshes its picker', async () => {
     await sendComplicationsToWatch([water], { reload: true });
     expect(module.sendComplicationConfig.mock.calls[0][0].reload).toBe(true);

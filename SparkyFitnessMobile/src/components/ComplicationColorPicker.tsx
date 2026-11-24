@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useCSSVariable } from 'uniwind';
 import {
   COMPLICATION_COLORS,
   COMPLICATION_COLOR_HEX,
@@ -24,6 +25,10 @@ const ComplicationColorPicker: React.FC<ComplicationColorPickerProps> = ({
   size = 40,
 }) => {
   const { t } = useTranslation();
+  const [accent, border] = useCSSVariable([
+    '--color-accent-primary',
+    '--color-border-strong',
+  ]) as [string, string];
   return (
     <View className="flex-row flex-wrap gap-3">
       {COMPLICATION_COLORS.map((color) => {
@@ -42,7 +47,7 @@ const ComplicationColorPicker: React.FC<ComplicationColorPickerProps> = ({
               borderRadius: size / 2,
               backgroundColor: COMPLICATION_COLOR_HEX[color],
               borderWidth: selected ? 3 : 1,
-              borderColor: selected ? '#3b82f6' : 'rgba(128,128,128,0.4)',
+              borderColor: selected ? accent : border,
             }}
           />
         );
