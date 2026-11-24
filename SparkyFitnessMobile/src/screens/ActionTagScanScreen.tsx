@@ -176,7 +176,6 @@ function parseContainerMl(volume: unknown, unit: unknown): number {
 const ConfirmAmountPicker: React.FC<{
   tag: ActionTagResponse;
   entryDate: string;
-  doubleScanNotice?: boolean;
   onOpenSettings: () => void;
   onConfirm: (options?: ScanConfirmOptions) => void;
   onCancel: () => void;
