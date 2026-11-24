@@ -973,7 +973,8 @@
     "sleepingWristTemperature": "睡眠时手腕温度",
     "overnightBodyTemperature": "夜间体温",
     "toothbrushing": "刷牙",
-    "exercise": "运动"
+    "exercise": "运动",
+    "waistCircumference": "腰围"
   },
   "settings": {
     "app": "应用设置",
@@ -1995,7 +1996,10 @@
       "adaptive": "目标 − 摄入",
       "fixed": "目标 − 摄入",
       "dynamicActivitySeparated": "目标 − 已食 + 活动",
-      "tdeeWeekly": "推算 TDEE + 每周目标调整 − 已食"
+      "tdeeWeekly": "推算 TDEE + 每周目标调整 − 已食",
+      "burnedAdaptive": "仅供参考。你的自适应目标已包含你的活动量。",
+      "netAdaptive": "不会用于“剩余”。请在下方开启“单独计算活动热量”，才会计入今天的活动。",
+      "netAdaptivePercentage": "不会用于“剩余”。若要计入今天的活动，请选择“动态”并开启“单独计算活动热量”。"
     },
     "notes": {
       "dynamic": "目标随你的活动增长",
@@ -2104,7 +2108,9 @@
       "customShort": "自定义",
       "chartHintTrainingShort": "点击柱状条查看当天。点击下方的日子切换训练与休息。",
       "chartHintCustomHandle": "点击柱状条查看当天。拖动柱顶的把手即可修改。"
-    }
+    },
+    "adaptiveFallbackActivityLevel": "在自适应累计满 {{days}} 天饮食记录之前，你的基准值是 BMR × 该活动等级，之后才应用目标模式；你的运动不会额外加上去。请选择一个已包含你运动量的等级。",
+    "adaptiveFallbackActivitySeparated": "在自适应累计满 {{days}} 天饮食记录之前，你的基准值是 BMR × 该活动等级，之后才应用目标模式。该等级只描述步数和运动以外的活动，因为这两项会单独计算。"
   },
   "dashboardSettings": {
     "updateFailed": "更新设置失败。",
@@ -2151,7 +2157,6 @@
     "trainingLoad": "训练负荷",
     "trainingLoadSubtitle": "显示本周与你平时训练的比较，并提醒你休息",
     "wellness": "健康",
-    "offInFeatures": "不显示：已在「功能」关闭",
     "bloodAlcohol": "酒精浓度估算",
     "bloodAlcoholSubtitle": "在主页显示根据已记录饮酒推算的粗略酒精浓度估算",
     "labResults": "化验结果",
@@ -6771,7 +6776,19 @@
     "countdownOff": "关闭",
     "countdownSeconds": "{{seconds}} 秒",
     "holdCountdownTitle": "保持前倒计时",
-    "holdCountdownSubtitle": "计时保持开始前有 3、2、1「准备」界面，让你就位。点一下可跳过。"
+    "holdCountdownSubtitle": "计时保持开始前有 3、2、1「准备」界面，让你就位。点一下可跳过。",
+    "mediaControlsTitle": "媒体控制",
+    "mediaAccessTitle": "正在播放曲目信息",
+    "mediaAccessEnabledSubtitle": "你的手表在运动期间控制手机媒体时，会显示当前播放的歌曲和歌手。",
+    "mediaAccessDisabledSubtitle": "播放、切歌和音量控制会自动生效。允许通知访问后，你的手表即可同时显示当前播放的歌曲和歌手，其他通知一律忽略。",
+    "mediaAccessEnabled": "已开启",
+    "mediaAccessSetup": "设置",
+    "mediaAccessA11yLabel": "{{title}}，{{status}}",
+    "mediaAccessDisclosureTitle": "允许通知访问？",
+    "mediaAccessDisclosureBody": "Android 需要通知访问权限，Wear OS 手表才能读取当前播放的歌曲和歌手。SparkyFitness 只会读取使用中的媒体会话，不会读取你的消息和其他通知。",
+    "mediaAccessOpenSettings": "打开设置",
+    "mediaAccessOpenErrorTitle": "无法打开设置",
+    "mediaAccessOpenErrorBody": "前往 Android 设置 → 通知 → 通知读取、回复与控制，然后开启 SparkyFitness 媒体控制。"
   },
   "guidedWorkout": {
     "cue": {
@@ -9114,7 +9131,6 @@
     "mapSatellite": "卫星图",
     "mapStandard": "地图",
     "mapUnavailable": "该版本无法在地图绘制路线。",
-    "osmAttribution": "© OpenStreetMap",
     "redo": "重做",
     "findingRoute": "正在寻找路线",
     "turns": "转向",
@@ -9515,7 +9531,6 @@
     "previewTitle": "预览",
     "previewDescription": "你选择后「快捷操作」的样子。",
     "lineNumber": "第 {{number}} 行",
-    "offInFeatures": "不显示：已在「功能」关闭",
     "showAs": "显示为",
     "showAsValue": "显示为{{style}}",
     "styleList": "列表",

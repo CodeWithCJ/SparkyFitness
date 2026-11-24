@@ -338,4 +338,16 @@
     <string name="tile_sleep_description">訓覺時長、分數、訓覺階段以及恢復指標</string>
     <string name="tile_exercise_description">每日運動分鐘數、熱量以及訓練記錄</string>
     <string name="workout_preset_update_desc">要將您在手錶所作嘅變更儲存到「%1$s」嗎？</string>
+    <string name="now_playing_source_phone">手機</string>
+    <string name="now_playing_source_watch">手錶</string>
+    <string name="now_playing_playing_on_phone">喺手機播放緊</string>
+    <string name="now_playing_phone_media">手機媒體</string>
+    <string name="now_playing_playing_on_watch">喺手錶播放緊</string>
+    <string name="now_playing_watch_media">手錶媒體</string>
+    <string name="now_playing_nothing_playing">而家冇嘢播放</string>
+    <string name="now_playing_enable_track_info">喺手機設定開啟歌曲資訊</string>
+    <string name="now_playing_previous">上一首</string>
+    <string name="now_playing_play">播放</string>
+    <string name="now_playing_pause">暫停</string>
+    <string name="now_playing_next">下一首</string>
 </resources>

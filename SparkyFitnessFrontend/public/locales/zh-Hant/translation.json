@@ -667,7 +667,8 @@
     "wellness": "健康",
     "symptoms": "症狀",
     "sparkyFitnessV": "SparkyFitness v{{version}}",
-    "labs": "檢驗結果"
+    "labs": "檢驗結果",
+    "challenges": "挑戰"
   },
   "nutrition": {
     "calories": "熱量",
@@ -2272,7 +2273,10 @@
       "remainingActivitySeparated": "每日目標 − 已攝取 + 活動（步數與運動，不含 BMR）",
       "activitySeparatedFootnote": "儲存後，自適應基準會排除歷史活動；今天的步數與運動只計入一次，不再加計 BMR。伺服器產生的預覽值會使用你已儲存的設定。",
       "remainingTdeeWeekly": "預估 TDEE + 每週調整 − 已攝取",
-      "adaptiveEstimateFootnote": "* 依食物與體重紀錄的推估，逐步調整您的每日目標。體重波動與紀錄不完整會增加不確定性。"
+      "adaptiveEstimateFootnote": "* 依食物與體重紀錄的推估，逐步調整您的每日目標。體重波動與紀錄不完整會增加不確定性。",
+      "burnedAdaptive": "僅供參考。您的自適應目標已包含您的活動量。",
+      "netAdaptive": "不會用於「剩餘」。請在下方開啟「另外計算活動熱量」，才會計入今天的活動。",
+      "netAdaptivePercentage": "不會用於「剩餘」。若要計入今天的活動，請選擇「動態」並開啟「另外計算活動熱量」。"
     },
     "calorieGoalAdjustment": {
       "activityHeavy": "非常活躍（×1.725）",
@@ -2306,7 +2310,8 @@
       "cardPercentage": "百分比賺回",
       "cardPercentageSummary": "加回部分運動熱量",
       "cardDevice": "裝置推估",
-      "cardDeviceSummary": "推估您裝置到午夜的總消耗"
+      "cardDeviceSummary": "推估您裝置到午夜的總消耗",
+      "cardDynamicAdaptiveSummary": "活動量已包含在您的自適應目標中"
     },
     "dataImport": {
       "checkin": {
@@ -2474,7 +2479,10 @@
       "adaptiveWeightIntervalTip": "在固定時間記錄實際體重，並在觀察期間保持食物紀錄。",
       "adaptiveFoodIntervalTip": "食物盡量記齊；符合資格的日子也可以是部分紀錄。",
       "adaptiveGoalMatchedEvidence": "<span>自適應目標：</span>以相符觀察期的食物紀錄與實測體重推估消耗。新證據會逐步納入；先前不確定或封頂的證據仍會影響結果。漏記食物與體重磅波動會增加不確定性。",
-      "adaptivePlausibilityBandHint": "💡 在自適應模式下，此項設定公式基準，以及每個完整推估的 ±{{band}} {{unit}} 合理範圍。顯示的推估會逐步變化，證據過時時會逐漸回到公式基準，因此低估活動量會使其維持偏低。"
+      "adaptivePlausibilityBandHint": "💡 在自適應模式下，此項設定公式基準，以及每個完整推估的 ±{{band}} {{unit}} 合理範圍。顯示的推估會逐步變化，證據過時時會逐漸回到公式基準，因此低估活動量會使其維持偏低。",
+      "dynamicGoalAdaptiveMethod": "<span>動態目標：</span>採用自適應計算方法時，您的目標由飲食紀錄與體重趨勢推算，因此已包含您平常的活動量，「剩餘」即目標減已攝取。請在下方開啟<span>另外計算活動熱量</span>，即可將每日步數與運動加回一個原本不含這些項目的基準值。",
+      "adaptiveFallbackActivityLevel": "在自適應累積滿 {{days}} 天飲食紀錄之前，您的基準值是 BMR × 此活動等級，之後才套用目標模式；您的運動不會另外加上去。請選擇一個已納入您運動量的等級。",
+      "adaptiveFallbackActivitySeparated": "在自適應累積滿 {{days}} 天飲食紀錄之前，您的基準值是 BMR × 此活動等級，之後才套用目標模式。此等級只描述步數與運動以外的活動，因為這兩項會另外計算。"
     },
     "mfa": {
       "confirmPassword": "輸入密碼以繼續",
@@ -3112,13 +3120,11 @@
       "title": "分頁",
       "description": "選擇哪些主要分頁在網站顯示",
       "cycleOn": "開",
-      "cycleOff": "關",
       "cycleHint": "{{name}} 在上方「功能」中開關。",
       "footnote": "日誌與設定永遠都會顯示。隱藏分頁僅變更此網站：不會刪除任何內容，手機 App 有其自身設定。",
       "saveError": "無法儲存您的分頁選擇。請再試一次。",
       "loadError": "無法載入您的分頁選擇。",
-      "actingOnBehalf": "僅能變更您自己帳戶的分頁。",
-      "featureOff": "不顯示：已在「功能」中關閉。"
+      "actingOnBehalf": "僅能變更您自己帳戶的分頁。"
     },
     "features": {
       "title": "功能",
@@ -3364,6 +3370,11 @@
       "automaticallySyncedWithYourCurrent": "✓ 已自動與你目前的 URL 同步。路徑尾碼已鎖定以確保路由安全。",
       "expertEnsureYourBaseURL": "⚠️ 進階：請確保你的 Base URL 可從網際網路存取，OIDC 供應商才能回傳資料。",
       "none": "無"
+    },
+    "challenges": {
+      "title": "挑戰",
+      "label": "允許此伺服器上的挑戰與群組排行榜",
+      "help": "使用者可以發起挑戰、用邀請碼邀請其他人，並互相看到彼此的分數，但永遠看不到對方的日記。關閉後，挑戰會隱藏、計分會停止，但不會刪除任何資料。"
     }
   },
   "goals": {
@@ -11115,5 +11126,368 @@
     "underwater_diving": "潛水",
     "paragliding": "飛行傘",
     "other": "其他"
+  },
+  "challenges": {
+    "title": "挑戰",
+    "dates": "{{start}} 至 {{end}}",
+    "datesOpen": "從 {{start}} 開始",
+    "memberCount_other": "{{count}} 位成員",
+    "state": {
+      "active": "進行中",
+      "startsTomorrow": "明天開始",
+      "startsIn_other": "{{count}} 天後開始",
+      "lastDay": "最後一天",
+      "daysLeft_other": "還剩 {{count}} 天"
+    },
+    "host": "主辦人",
+    "ended": "已結束",
+    "rules": {
+      "edit": "變更規則",
+      "noPeriodLeft": "已沒有剩餘的計分期可套用新規則。",
+      "fromNext": "此變更自 {{day}} 起生效，因此進行中的計分期仍沿用原有規則。每位成員都會在規則紀錄中看到。",
+      "beforeStart": "挑戰尚未開始，因此變更自開始時生效。",
+      "save": "儲存規則",
+      "everyDay": "每日",
+      "dayRange": "{{from}} 至 {{to}}",
+      "saved": "規則已儲存。挑戰內所有成員都能看到此變更。"
+    },
+    "leave": {
+      "button": "退出",
+      "title": "退出此挑戰？",
+      "last": "您是最後一位成員，因此此挑戰會被刪除。",
+      "host": "您在此挑戰的分數會被刪除，主辦權會移交給最早加入的成員。",
+      "member": "您在此挑戰的分數會被刪除。您可以用新邀請再次加入。",
+      "done": "您已退出挑戰"
+    },
+    "tabs": {
+      "standings": "排名",
+      "how": "計分方式",
+      "log": "規則變更",
+      "members": "成員"
+    },
+    "how": {
+      "upcoming": "從 {{day}} 起：",
+      "exampleTitle": "範例",
+      "example": "一場 {{minutes}} 分鐘、心率區間 {{zone}} 的運動可得 {{effort}}，{{steps}} 步再加 {{stepPoints}}：合計 {{total}} 分。",
+      "exampleCapped": "一場 {{minutes}} 分鐘、心率區間 {{zone}} 的運動可得 {{effort}}，{{steps}} 步再加 {{stepPoints}}：合計 {{uncapped}} 分，但受每日上限 {{total}} 分限制。",
+      "what": "{{format}}，對象為{{metric}}，依{{period}}計分。",
+      "race": "最先達到 {{target}} 者獲勝；之後達成者，依達成日期排名。",
+      "hitGoalDay": "每個計分日都達到 {{target}} 者全部獲勝。",
+      "hitGoalPeriod": "在計分期內達到 {{target}} 者全部獲勝。",
+      "groupGoal": "所有人的分數加總為一個總數；達到 {{target}} 即全組獲勝。",
+      "target": "目標：{{target}}。",
+      "leaderboard": "總分最高者獲勝。",
+      "days": "計分日：{{days}}。",
+      "window": "只有在 {{start}} 至 {{end}} 之間開始的運動才計分。",
+      "bestDays_other": "每週只計您最好的 {{count}} 天。",
+      "dailyCap": "一天最多加 {{cap}}。",
+      "zoneFrom": "心率區間 {{zone}} 以上的分鐘會計分，採用您自己的心率區間。",
+      "zones": "努力程度依您自己的心率區間計算：心率區間 1 至 5 每分鐘 {{rates}} 分。",
+      "noHr": "低於心率區間 1：每分鐘 {{below}}。完全沒有心率：每分鐘 {{none}}。",
+      "strength": "舉重每分鐘至少得 {{rate}}，因為組間休息會降低心率。",
+      "tiers": "每天最多 {{full}} 分鐘全額計分，先計每分鐘分數最高者；接著 {{half}} 分鐘按 {{pct}}% 計，其餘不計。",
+      "tiersFullOnly": "每天最多 {{full}} 分鐘計分，先計每分鐘分數最高者；其餘不計。",
+      "steps": "步數：每 {{per}} 步 1 分，一天最多 {{cap}}。",
+      "pr": "個人紀錄：每項 +{{bonus}}，一天最多 {{max}} 項。",
+      "streak": "連續紀錄：自連續第 {{from}} 天起，每天 +{{bonus}}。",
+      "beatAverage": "超越您自己 {{days}} 天的平均值：+{{bonus}}。",
+      "goal": "您自己的每週目標（高於您過去 {{weeks}} 週 {{pct}}%）：最多 +{{max}}，達成多少給多少。",
+      "include": "只計這些：{{sports}}。",
+      "exclude": "排除：{{sports}}。",
+      "minMinutes": "短於 {{minutes}} 分鐘的運動不計。",
+      "manualIgnore": "手動記錄的運動不計。",
+      "manualCap": "手動記錄的運動，一天最多計 {{minutes}} 分鐘。",
+      "merge": "從兩個來源同步的同一場運動只計一次。",
+      "prSome": "個人紀錄（僅計{{types}}）：每項 +{{bonus}}，一天最多 {{max}} 項。"
+    },
+    "leaderboard": {
+      "you": "您",
+      "previous": "上一個計分期",
+      "final": "最終",
+      "live": "進行中",
+      "current": "目前",
+      "next": "下一個計分期",
+      "groupProgress": "全組合計：{{total}}（目標 {{target}}）",
+      "groupReached": "已達標！",
+      "empty": "此計分期尚無分數。",
+      "member": "成員",
+      "total": "總分",
+      "minutes": "活動分鐘",
+      "winner": "贏家",
+      "reachedOn": "於 {{day}} 達成",
+      "daysHit": "{{eligible}} 天中 {{hit}} 天達標",
+      "leads": "領先",
+      "find": "尋找成員",
+      "noMatch": "找不到符合的成員。",
+      "progress": "進度",
+      "ofLeader": "最高總分的 {{percent}}%",
+      "ofTarget": "目標的 {{percent}}%",
+      "ofDays": "{{percent}}% 的日子達標"
+    },
+    "joined": "{{day}} 加入",
+    "invite": {
+      "title": "邀請他人",
+      "copied": "已複製",
+      "copyFailed": "無法複製",
+      "active": "邀請碼有效至 {{when}}。",
+      "none": "目前沒有生效中的邀請碼。",
+      "shownOnce": "請立即分享此連結或邀請碼，它只會顯示一次。",
+      "link": "邀請連結",
+      "copyLink": "複製連結",
+      "code": "邀請碼",
+      "copyCode": "複製邀請碼",
+      "newCode": "產生新邀請碼",
+      "create": "產生邀請碼",
+      "revoke": "停用邀請碼",
+      "revoked": "邀請碼已停用"
+    },
+    "editor": {
+      "scoring": "計分範圍與獲勝方式",
+      "metric": "計分項目",
+      "format": "形式",
+      "period": "計分期",
+      "target": "目標（{{unit}}）",
+      "targetPer": "目標適用範圍",
+      "targetPerDay": "每一天",
+      "targetPerPeriod": "整個計分期",
+      "periodLocked": "挑戰開始後即無法變更計分期。",
+      "targetRequired": "此形式必須設定目標。",
+      "time": "日子與時段",
+      "days": "計分日",
+      "timeWindow": "只計在指定時段內開始的運動",
+      "windowStart": "從",
+      "windowEnd": "至",
+      "bestDays": "每週只計最好的日子",
+      "bestDaysCount": "每週最好的天數",
+      "dailyCap": "限制一天最多可加多少",
+      "dailyCapValue": "每日上限（{{unit}}）",
+      "zoneFrom": "從哪個心率區間開始計分鐘",
+      "points": "計分設定",
+      "zoneRates": "心率區間 1 至 5 每分鐘的分數",
+      "zoneN": "區間 {{zone}}",
+      "belowZoneRate": "低於區間 1（每分鐘）",
+      "noHrRate": "沒有心率（每分鐘）",
+      "strengthFloor": "舉重最低分",
+      "strengthFloorValue": "至少（每分鐘）",
+      "minuteTiers": "每日分鐘分級",
+      "tierFull": "全額計分的分鐘",
+      "tierHalf": "之後依較低比率計的分鐘",
+      "tierRate": "較低比率（%）",
+      "steps": "步數計分",
+      "stepsPerPoint": "幾步等於 1 分",
+      "stepsCap": "一天最多的步數分",
+      "pr": "個人紀錄加分",
+      "prBonus": "每項紀錄的分數",
+      "prMax": "一天最多幾項紀錄",
+      "streak": "連續紀錄加分",
+      "streakFrom": "從第幾天開始",
+      "streakBonus": "每天分數",
+      "beatAverage": "超越平均值加分",
+      "beatAverageBonus": "分數",
+      "goal": "每週目標自動調整加分",
+      "goalNeedsWeek": "每週目標需要用以週或更長為計分期的挑戰。",
+      "goalMax": "最多分數",
+      "goalStretch": "高於自己平均值（%）",
+      "activities": "哪些運動計分",
+      "includeSports": "只計這些運動（全部未勾選即為所有運動）",
+      "excludeSports": "排除這些運動",
+      "minMinutes": "最短多少分鐘才計（分鐘）",
+      "manualEntries": "手動記錄的運動",
+      "manualCap": "一天最多計多少手動分鐘",
+      "mergeDuplicates": "從兩個來源同步的運動只計一次",
+      "notAllowed": "此處無法使用，將維持為 {{value}}。"
+    },
+    "join": {
+      "button": "用邀請碼加入",
+      "displayName": "您在此挑戰的名稱",
+      "goalType": "您的每週目標",
+      "errors": {
+        "invalid": "此邀請碼無效或已過期。請向主辦人索取新的。",
+        "ended": "此挑戰已經結束。",
+        "lateJoinClosed": "此挑戰已經開始，不接受中途加入。",
+        "full": "此挑戰已額滿。",
+        "rateLimited": "嘗試次數過多。請等幾分鐘再試。",
+        "generic": "無法加入。請再試一次。"
+      },
+      "title": "加入挑戰",
+      "description": "貼上邀請連結或邀請碼。成員只會看到您的顯示名稱與分數，永遠看不到您的日記或電子郵件。",
+      "code": "邀請連結或邀請碼",
+      "badCode": "這看起來不像邀請碼。",
+      "submit": "加入"
+    },
+    "create": {
+      "button": "新挑戰",
+      "endBeforeStart": "結束日期不可早於開始日期。",
+      "tooLong": "挑戰最多維持 {{days}} 天。",
+      "endNeeded": "以整個計分期計分的挑戰必須有結束日期。",
+      "title": "發起挑戰",
+      "description": "選擇一個預設，之後想怎麼改都可以。成員會看到您的規則與之後的每一次變更。",
+      "presets": "預設",
+      "name": "名稱",
+      "emoji": "表情符號",
+      "descriptionLabel": "描述（選填）",
+      "start": "開始",
+      "end": "結束",
+      "endOptional": "結束（選填）",
+      "timeZone": "每日以 {{zone}} 的午夜為界。",
+      "memberLimit": "成員上限",
+      "lateJoin": "允許開始後加入",
+      "rules": "規則",
+      "submit": "建立挑戰",
+      "created": "挑戰已建立",
+      "startOutOfRange": "開始日期須介於 {{earliest}} 與 {{latest}} 之間。",
+      "errors": {
+        "invalidDates": "挑戰最晚可於 {{back}} 天前開始、最早可於 {{ahead}} 天後開始，且最多維持 {{length}} 天。",
+        "generic": "無法建立挑戰。請再試一次。",
+        "rateLimited": "新挑戰建立過於頻繁。請等幾分鐘再試。"
+      },
+      "rulesInvalid": "有規則設定為空或超出範圍。",
+      "memberLimitRange": "成員上限須介於 2 與 {{max}} 之間。"
+    },
+    "ownOnly": "挑戰屬於個人。請切換回自己的帳戶以查看自己的挑戰。",
+    "disabled": "此伺服器已關閉挑戰功能。管理員可在管理設定中開啟。",
+    "notFound": "找不到此挑戰，或您不是成員。",
+    "empty": "尚無挑戰。發起一個，邀請朋友或家人，或用邀請碼加入。",
+    "goalTypes": {
+      "lose_weight": "減重（活動分鐘）",
+      "build_muscle": "增肌（舉重）",
+      "endurance": "耐力（距離）",
+      "stay_active": "保持活躍（運動天數）"
+    },
+    "member": {
+      "days": "其在此挑戰最近幾天的成績。",
+      "periods": "其在此挑戰最近幾個計分期的成績。",
+      "place": "#{{rank}}",
+      "none": "沒有分數"
+    },
+    "log": {
+      "removed": "已取消：{{rule}}",
+      "empty": "沒有規則變更。",
+      "changed": "{{name}} 於 {{when}} 變更了規則",
+      "formerMember": "已退出的成員",
+      "created": "建立挑戰時設定的規則",
+      "effective": "自 {{day}} 起生效"
+    },
+    "presets": {
+      "all_rounder": {
+        "name": "全能型",
+        "description": "依心率、步數、個人紀錄與連續紀錄計分。每週計最好的 5 天。"
+      },
+      "workweek_hustle": {
+        "name": "工作日衝刺",
+        "description": "星期一至五最多步數。"
+      },
+      "weekend_warrior": {
+        "name": "週末戰士",
+        "description": "星期六與星期日最多步數。"
+      },
+      "daily_showdown": {
+        "name": "每日對決",
+        "description": "單日最多步數。"
+      },
+      "race_to_100k_steps": {
+        "name": "衝刺 10 萬步",
+        "description": "最先達到 100,000 步者獲勝。"
+      },
+      "most_km_this_month": {
+        "name": "本月最多公里",
+        "description": "一個月曆月內最多距離。"
+      },
+      "consistency_30_day": {
+        "name": "30 天持續",
+        "description": "30 天內完成 20 分鐘或以上運動的天數最多。"
+      }
+    },
+    "metrics": {
+      "points": "分數",
+      "steps": "步數",
+      "active_minutes": "活動分鐘",
+      "hr_zone_minutes": "心率區間分鐘",
+      "distance": "距離",
+      "workout_days": "運動天數",
+      "active_calories": "活動熱量",
+      "elevation": "爬升"
+    },
+    "formats": {
+      "leaderboard": "排行榜",
+      "race": "競速達標",
+      "hit_goal": "達標",
+      "group_goal": "群組目標"
+    },
+    "periods": {
+      "day": "每日",
+      "week": "每週",
+      "month": "每月",
+      "challenge": "整個挑戰"
+    },
+    "manualEntries": {
+      "count": "計",
+      "cap": "計到上限",
+      "ignore": "不計"
+    },
+    "sports": {
+      "running": "跑步",
+      "cycling": "自行車",
+      "walking": "步行",
+      "hiking": "登山",
+      "swimming": "游泳",
+      "rowing": "划船",
+      "fitness_equipment": "健身器材",
+      "strength": "力量訓練",
+      "other": "其他"
+    },
+    "weekdays": {
+      "mon": "一",
+      "tue": "二",
+      "wed": "三",
+      "thu": "四",
+      "fri": "五",
+      "sat": "六",
+      "sun": "日"
+    },
+    "values": {
+      "points": "{{value}} 分",
+      "steps": "{{value}} 步",
+      "minutes": "{{value}} 分鐘",
+      "miles": "{{value}} mi",
+      "km": "{{value}} km",
+      "days_other": "{{count}} 天",
+      "metres": "{{value}} m"
+    },
+    "units": {
+      "points": "分",
+      "steps": "步",
+      "minutes": "分鐘",
+      "miles": "英里",
+      "km": "公里",
+      "days": "天",
+      "metres": "公尺"
+    },
+    "periodRange": "{{start}} – {{end}}",
+    "widget": {
+      "title": "挑戰排名",
+      "all": "所有挑戰",
+      "place": "#{{rank}} / {{members}} · {{total}}",
+      "noScore": "尚無分數",
+      "youLead": "您領先",
+      "youShareLead": "您與其他人並列領先",
+      "leader": "{{name}} 以 {{total}} 領先"
+    },
+    "retry": "再試一次",
+    "errors": {
+      "load": "無法載入您的挑戰。",
+      "loadOne": "無法載入此挑戰。",
+      "standings": "無法載入排名。",
+      "standingsRefresh": "無法重新整理排名，目前顯示上次載入的。",
+      "ruleChanges": "無法載入規則變更。",
+      "hostOnly": "只有主辦人可以做此操作。主辦權可能已移交給其他人。",
+      "periodLocked": "挑戰開始後即無法變更計分期。",
+      "action": "此次操作未成功，請再試一次。"
+    },
+    "prTypes": {
+      "lift": "舉重",
+      "distance": "距離",
+      "pace": "配速"
+    }
   }
 }
