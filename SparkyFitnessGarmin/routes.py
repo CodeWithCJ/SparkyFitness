@@ -1307,7 +1307,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                         )
                                     else:
                                         logger.warning(
-                                            f"Incomplete blood pressure data for {current_date} (fields: {sorted(bp_entry.keys()) if isinstance(bp_entry, dict) else type(bp_entry).__name__})"
+                                            f"Incomplete blood pressure data for {current_date}; entry skipped"
                                         )
                             else:
                                 logger.warning(
