@@ -50,6 +50,23 @@ describe('countedTrendSets', () => {
     expect(countedTrendSets(e).map((s) => s.weight)).toEqual([20]);
   });
 
+  it('skips a weight_reps set with no weight', () => {
+    const e = entry('2026-11-02', [
+      { weight: null, reps: 8 },
+      { weight: 20, reps: 8 },
+    ]);
+    expect(countedTrendSets(e).map((s) => s.weight)).toEqual([20]);
+  });
+
+  it('counts a bodyweight set with no weight', () => {
+    const e = entry('2026-11-02', [{ weight: null, reps: 8 }], {
+      modality: 'bodyweight_reps',
+      body_weight_kg: 80,
+    });
+    expect(countedTrendSets(e)).toHaveLength(1);
+    expect(exerciseTrendEntryValueKg(e, 'volume')).toBe(640);
+  });
+
   it('counts a workout plan row once a set is ticked', () => {
     const e = entry(
       '2026-11-02',
