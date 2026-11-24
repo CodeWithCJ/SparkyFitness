@@ -484,7 +484,8 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
             action,
             ask_before_running: askFirst,
             allow_amount_adjustment: allowAmountAdjustment,
-            allow_custom_timestamp: allowCustomTimestamp,
+            allow_custom_timestamp:
+              kind === 'water' ? false : allowCustomTimestamp,
             advanced_mode: advancedMode,
             tap_to_log: tapToLog,
             preset_amounts: normalizedPresets,
@@ -497,7 +498,8 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
           action,
           ask_before_running: askFirst,
           allow_amount_adjustment: allowAmountAdjustment,
-          allow_custom_timestamp: allowCustomTimestamp,
+          allow_custom_timestamp:
+            kind === 'water' ? false : allowCustomTimestamp,
           advanced_mode: advancedMode,
           tap_to_log: tapToLog,
           preset_amounts: normalizedPresets,
@@ -869,27 +871,29 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
         </Text>
 
         {kind !== 'water' ? (
-          <View className="flex-row justify-between items-center mt-6">
-            <Text className="text-sm text-text-primary flex-shrink pr-3">
-              {t('actionTags.form.allowCustomTimestamp', {
-                defaultValue: 'Allow custom timestamp on scan',
+          <>
+            <View className="flex-row justify-between items-center mt-6">
+              <Text className="text-sm text-text-primary flex-shrink pr-3">
+                {t('actionTags.form.allowCustomTimestamp', {
+                  defaultValue: 'Allow custom timestamp on scan',
+                })}
+              </Text>
+              <Switch
+                accessibilityLabel={t('actionTags.form.allowCustomTimestamp', {
+                  defaultValue: 'Allow custom timestamp on scan',
+                })}
+                value={allowCustomTimestamp}
+                onValueChange={setAllowCustomTimestamp}
+              />
+            </View>
+            <Text className="text-text-secondary text-sm mt-2">
+              {t('actionTags.form.allowCustomTimestampHint', {
+                defaultValue:
+                  'When off, logs immediately at the current time. When on, shows a time field during scan.',
               })}
             </Text>
-            <Switch
-              accessibilityLabel={t('actionTags.form.allowCustomTimestamp', {
-                defaultValue: 'Allow custom timestamp on scan',
-              })}
-              value={allowCustomTimestamp}
-              onValueChange={setAllowCustomTimestamp}
-            />
-          </View>
+          </>
         ) : null}
-        <Text className="text-text-secondary text-sm mt-2">
-          {t('actionTags.form.allowCustomTimestampHint', {
-            defaultValue:
-              'When off, logs immediately at the current time. When on, shows a time field during scan.',
-          })}
-        </Text>
 
         <View className="flex-row justify-between items-center mt-6">
           <Text className="text-sm text-text-primary flex-shrink pr-3">
