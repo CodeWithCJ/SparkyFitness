@@ -178,9 +178,10 @@ function findDominantArray(data: unknown): DominantArray | null {
  * AFTER the JSON, so the JSON itself always stays syntactically valid — never
  * sliced mid-record like plain truncateIfNeeded would. For an exercise diary,
  * entries are dropped together with their sets, and a single entry that still
- * overflows keeps only its leading sets. Falls back to string truncation only
- * when there is no record array to trim (rare after compactRecord/projection:
- * a single oversized scalar object).
+ * overflows keeps only its leading sets. If it overflows with no sets, its
+ * long string fields are shortened before any string slicing. Falls back to
+ * string truncation only when there is no record array to trim (rare after
+ * compactRecord/projection: a single oversized scalar object).
  */
 export function truncateJsonRecords(
   data: unknown,
@@ -244,24 +245,47 @@ export function truncateJsonRecords(
   if (text.length > limit - NOTE_RESERVE && target.children) {
     // One record with many child rows: keep it and drop its trailing children.
     const children = target.children(array[0]);
+    const childNote = (kept: number) =>
+      `\n\n---\n⚠️ Result truncated: showing 1 of ${array.length} fetched ${label} and ${kept} of ${children.array.length} of its sets (exceeded ${limit} characters). ${hint}`;
     let keepChildren = children.array.length;
     let childText = text;
-    while (keepChildren > 1 && childText.length > limit - NOTE_RESERVE) {
-      keepChildren = Math.ceil(keepChildren / 2);
+    while (
+      keepChildren > 0 &&
+      childText.length + childNote(keepChildren).length > limit
+    ) {
+      keepChildren = keepChildren > 1 ? Math.ceil(keepChildren / 2) : 0;
       childText = serialize(
         children.rebuild(children.array.slice(0, keepChildren))
       );
     }
-    if (childText.length <= limit - NOTE_RESERVE) {
-      return (
-        childText +
-        `\n\n---\n⚠️ Result truncated: showing 1 of ${array.length} fetched ${label} and ${keepChildren} of ${children.array.length} of its sets (exceeded ${limit} characters). ${hint}`
+    if (childText.length + childNote(keepChildren).length <= limit) {
+      return childText + childNote(keepChildren);
+    }
+    // The record alone still overflows: shorten its long text fields.
+    const entry = array[0];
+    if (entry !== null && typeof entry === 'object' && !Array.isArray(entry)) {
+      const shortened = Object.fromEntries(
+        Object.entries(entry).map(([key, value]) => [
+          key,
+          typeof value === 'string' && value.length > NOTE_PREVIEW_LIMIT
+            ? `${value.slice(0, NOTE_PREVIEW_LIMIT)}… (truncated)`
+            : value,
+        ])
       );
+      const shortText = serialize({
+        ...(data as Record<string, unknown>),
+        entries: [shortened],
+        sets: [],
+      });
+      const shortNote = `\n\n---\n⚠️ Result truncated: showing 1 of ${array.length} fetched ${label}, with its long text shortened and none of its ${children.array.length} sets (exceeded ${limit} characters). ${hint}`;
+      if (shortText.length + shortNote.length <= limit) {
+        return shortText + shortNote;
+      }
     }
   }
   if (text.length > limit - NOTE_RESERVE) {
     // Even a single record overflows; string-slice the full payload instead.
-    return truncateIfNeeded(full, undefined, profile);
+    return truncateIfNeeded(full, target.hint, profile);
   }
   return (
     text +
