@@ -30,7 +30,7 @@ Swipe between pages on the watch. Choose which pages show, and in what order, on
 | --- | --- |
 | **Goals** | Calorie ring plus the nutrients you pick (protein, carbs and fat by default). |
 | **Water** | Add a drink with one tap, see today's total against your goal (with the amount that comes from food, when that is on), and remove a drink you added by mistake. |
-| **Medications** | Today's scheduled doses and your as-needed medications; log a dose from the wrist. While Medications is turned off in the app's **Settings → Features**, this page leaves the watch (Goals shows if it was the only page) and the Wear OS Medications tile says it is turned off. |
+| **Medications** | Today's scheduled doses and your as-needed medications; log a dose from the wrist. While Medications is turned off in the app's **Settings → Features**, this page leaves the watch (Goals shows if it was the only page) and the Wear OS Medications tile and complication say it is turned off. |
 | **Weight check-in** | Enter today's weight from the wrist. |
 | **Weight trend** | A chart of your recent weight. |
 | **Workout** | Start a saved workout preset or a walk or run, and log it live. |
@@ -58,8 +58,9 @@ Add these to a watch face for a one-tap glance that opens the matching page:
 - Water
 - Fasting
 - Steps
+- Calories left, Sleep, Medications, Exercise and Weight (Wear OS only)
 
-Apple Watch has Protein, Carbs, Fat, Fasting and Steps complications in circular, corner, rectangular and inline sizes. Wear OS offers Calories, Protein, Carbs, Fat, Water, Fasting and Steps.
+Apple Watch has Protein, Carbs, Fat, Fasting and Steps complications in circular, corner, rectangular and inline sizes. Wear OS offers Calories, Calories left, Protein, Carbs, Fat, Water, Fasting, Steps, Sleep, Medications, Exercise and Weight.
 
 ## Troubleshooting
 

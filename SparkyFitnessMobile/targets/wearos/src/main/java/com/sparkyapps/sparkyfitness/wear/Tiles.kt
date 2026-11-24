@@ -1612,6 +1612,8 @@ class MedicationsTileService : BaseSparkyTileService() {
 
   override fun handleTileAction(session: WearSessionManager, clickableId: String): Boolean {
     val store = session.checkInStore
+    // A tile drawn before Medications was turned off in the phone app logs nothing.
+    if (store.watchContext.value.isFeatureOff("medications")) return false
     val dose = resolveMedicationTileActionDose(
       clickableId = clickableId,
       expectedToken = store.currentActionToken(),

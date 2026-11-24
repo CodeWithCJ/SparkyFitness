@@ -272,8 +272,25 @@ object ComplicationModels {
     noneTodayText: String = "No doses scheduled today",
     allDoneText: String = "All doses completed",
     openMedsFallbackLabel: String = "Medications",
+    turnedOff: Boolean = false,
+    turnedOffShortText: String = "Off",
+    turnedOffText: String = "Turned off",
+    turnedOffDescription: String = "Medications turned off",
     skippedDoneFormat: (Int) -> String = { "$it skipped · All done" }
   ): ComplicationDisplaySpec {
+    // Medications is off in the phone app (Settings → Features): no doses, and
+    // no "Not synced", which would ask the wearer to sync something turned off.
+    if (turnedOff) {
+      return ComplicationDisplaySpec(
+        shortText = turnedOffShortText,
+        shortTitle = null,
+        longText = turnedOffText,
+        longTitle = null,
+        progressValue = 0f,
+        goalValue = 1f,
+        contentDescription = turnedOffDescription
+      )
+    }
     if (medications == null || !medications.isToday) {
       return ComplicationDisplaySpec(
         shortText = "—",
@@ -1283,6 +1300,10 @@ class MedicationsComplicationService : SuspendingComplicationDataSourceService()
       noneTodayText = getString(R.string.tile_meds_none_today),
       allDoneText = getString(R.string.tile_meds_all_done),
       openMedsFallbackLabel = getString(R.string.meds_title_empty),
+      turnedOff = store.watchContext.value.isFeatureOff("medications"),
+      turnedOffShortText = getString(R.string.complication_meds_off_short),
+      turnedOffText = getString(R.string.tile_meds_turned_off),
+      turnedOffDescription = getString(R.string.complication_meds_turned_off_description),
       skippedDoneFormat = { getString(R.string.tile_meds_skipped_done, it) }
     )
     val tap = ComplicationUpdater.tapPendingIntent(applicationContext, WatchPage.MEDICATIONS)

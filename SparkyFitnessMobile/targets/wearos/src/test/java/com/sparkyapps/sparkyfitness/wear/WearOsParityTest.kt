@@ -629,6 +629,14 @@ class WearOsParityTest {
         assertEquals("Turned off", TileModels.formatMedicationsHeadline(tile, resolveString))
         assertEquals("Turn on in the phone app", TileModels.formatMedicationsSubtitle(tile, resolveString))
         assertFalse(TileModels.buildMedicationsTileModel(medications = null).turnedOff)
+
+        // The complication says it is off instead of asking for a sync.
+        val offSpec = ComplicationModels.buildMedicationsSpec(medications = null, turnedOff = true)
+        assertEquals("Off", offSpec.shortText)
+        assertEquals("Turned off", offSpec.longText)
+        assertEquals("Medications turned off", offSpec.contentDescription)
+        assertEquals(0f, offSpec.progressValue, 0f)
+        assertEquals("Not synced", ComplicationModels.buildMedicationsSpec(medications = null).longText)
     }
 
     @Test
