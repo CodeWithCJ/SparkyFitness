@@ -65,6 +65,15 @@ jest.mock('../../src/components/Vo2MaxLineChart', () => {
   };
 });
 
+jest.mock('../../src/components/MoodLineChart', () => {
+  const ReactModule = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: () => ReactModule.createElement(View, { testID: 'mood-chart' }),
+  };
+});
+
 type PagerProps = React.ComponentProps<typeof HealthTrendsPager>;
 
 const emptySeries = <TPoint,>(): HealthTrendSeries<TPoint> => ({
@@ -610,6 +619,22 @@ describe('VO2 max page', () => {
   test('hides itself for someone who never syncs VO2 max', () => {
     renderPager({ visibleTrends: ['steps', 'vo2max'] });
     expect(screen.queryByTestId('vo2max-chart')).toBeNull();
+    expect(screen.getByTestId('steps-chart')).toBeTruthy();
+  });
+});
+
+describe('Mood page', () => {
+  test('shows once a mood is logged', () => {
+    renderPager({
+      visibleTrends: ['steps', 'mood'],
+      mood: populated({ day: '2026-06-03', mood: 60 }),
+    });
+    expect(screen.getByTestId('mood-chart')).toBeTruthy();
+  });
+
+  test('hides itself for someone who has never logged a mood', () => {
+    renderPager({ visibleTrends: ['steps', 'mood'] });
+    expect(screen.queryByTestId('mood-chart')).toBeNull();
     expect(screen.getByTestId('steps-chart')).toBeTruthy();
   });
 });

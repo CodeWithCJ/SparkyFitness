@@ -12,6 +12,7 @@ import type {
   StepsDataPoint,
   WeightDataPoint,
 } from '../hooks/useMeasurementsRange';
+import type { MoodDataPoint } from '../hooks/useMood';
 import type {
   HealthTrendDateRange,
   HealthTrendSeries,
@@ -25,6 +26,7 @@ import StepsBarChart from './StepsBarChart';
 import Vo2MaxLineChart from './Vo2MaxLineChart';
 import WeightLineChart from './WeightLineChart';
 import HeartRateLineChart from './HeartRateLineChart';
+import MoodLineChart from './MoodLineChart';
 
 type HealthTrendsPagerProps = {
   steps: HealthTrendSeries<StepsDataPoint> & {
@@ -37,6 +39,8 @@ type HealthTrendsPagerProps = {
   heartRate?: HeartRateTrendSeries;
   /** Optional so a caller that predates the trend still renders; absent reads as no data. */
   vo2max?: HealthTrendSeries<Vo2MaxDataPoint>;
+  /** Optional so a caller that predates the trend still renders; absent reads as no data. */
+  mood?: HealthTrendSeries<MoodDataPoint>;
   range: HealthTrendDateRange;
   weightUnit: string;
   waterUnit: string;
@@ -85,6 +89,12 @@ const NO_HEART_RATE: HeartRateTrendSeries = {
   maxRestingHr: null,
 };
 
+const NO_MOOD: HealthTrendSeries<MoodDataPoint> = {
+  data: [],
+  isLoading: false,
+  isError: false,
+};
+
 const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   steps,
   weight,
@@ -93,6 +103,7 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
   calories,
   heartRate = NO_HEART_RATE,
   vo2max = NO_VO2MAX,
+  mood = NO_MOOD,
   range,
   weightUnit,
   waterUnit,
@@ -129,6 +140,13 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
     ),
     heartRate: () => <HeartRateLineChart {...heartRate} range={range} />,
     vo2max: () => <Vo2MaxLineChart {...vo2max} range={range} />,
+    mood: () => (
+      <MoodLineChart
+        {...mood}
+        range={range}
+        title={t('charts.mood.title', { defaultValue: 'Mood' })}
+      />
+    ),
   };
 
   const hasTrendData: Record<HealthTrendKey, () => boolean> = {
@@ -152,6 +170,7 @@ const HealthTrendsPager: React.FC<HealthTrendsPagerProps> = ({
     // Wearable-synced metrics wait for readings so users without them see no empty error card
     heartRate: () => heartRate.isLoading || heartRate.data.length > 0,
     vo2max: () => vo2max.data.length > 0,
+    mood: () => shouldShowTrend(mood),
   };
 
   // A trend the user configured to show but that has no data for in this window still hides itself

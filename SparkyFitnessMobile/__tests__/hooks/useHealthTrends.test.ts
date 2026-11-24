@@ -11,6 +11,7 @@ import {
 import { fetchSleepEntries } from '../../src/services/api/sleepApi';
 import { fetchNutritionTrends } from '../../src/services/api/reportsApi';
 import { fetchGoalsRange } from '../../src/services/api/goalsApi';
+import { fetchMoodEntries } from '../../src/services/api/moodApi';
 import { ApiError } from '../../src/services/api/errors';
 import { getTodayDate } from '../../src/utils/dateUtils';
 import { buildSleepEntry } from '../helpers/sleepFixtures';
@@ -41,6 +42,10 @@ jest.mock('../../src/services/api/goalsApi', () => ({
   fetchGoalsRange: jest.fn(),
 }));
 
+jest.mock('../../src/services/api/moodApi', () => ({
+  fetchMoodEntries: jest.fn(),
+}));
+
 // `useSleepRange` reads the profile timezone to decide which day the window ends on. With
 // none configured it falls back to device-local, which is what the sibling measurements
 // request uses, so both endpoints ask for the same window.
@@ -65,6 +70,9 @@ const mockFetchNutritionTrends = fetchNutritionTrends as jest.MockedFunction<
 >;
 const mockFetchGoalsRange = fetchGoalsRange as jest.MockedFunction<
   typeof fetchGoalsRange
+>;
+const mockFetchMoodEntries = fetchMoodEntries as jest.MockedFunction<
+  typeof fetchMoodEntries
 >;
 
 const today = getTodayDate();
@@ -108,6 +116,7 @@ beforeEach(() => {
   mockFetchWaterIntakeRange.mockResolvedValue([]);
   mockFetchNutritionTrends.mockResolvedValue([]);
   mockFetchGoalsRange.mockResolvedValue({});
+  mockFetchMoodEntries.mockResolvedValue([]);
 });
 
 afterEach(() => {
@@ -268,6 +277,7 @@ describe('useHealthTrends', () => {
     expect(mockFetchSleepEntries).not.toHaveBeenCalled();
     expect(mockFetchWaterIntakeRange).not.toHaveBeenCalled();
     expect(mockFetchNutritionTrends).not.toHaveBeenCalled();
+    expect(mockFetchMoodEntries).not.toHaveBeenCalled();
   });
 
   test('returns a hydration series for the window', async () => {
@@ -451,5 +461,53 @@ describe('useHealthTrends', () => {
     });
 
     expect(result.current.hydration.hydrationGoals.at(-1)).toBe(2200);
+  });
+
+  test('returns a mood series for the window', async () => {
+    mockFetchMoodEntries.mockResolvedValue([
+      {
+        id: 'a',
+        entry_date: today,
+        entry_timestamp: `${today}T12:00:00Z`,
+        source: 'manual',
+        mood_value: 60,
+        mood_tags: [],
+        notes: null,
+      },
+    ]);
+
+    const { result } = renderTrends();
+
+    await waitFor(() => {
+      expect(result.current.mood.isLoading).toBe(false);
+    });
+
+    // Sparse, not zero-filled: only the logged day is a point.
+    expect(result.current.mood.data).toEqual([{ day: today, mood: 60 }]);
+  });
+
+  test('issues no mood request when mood is not active', async () => {
+    renderTrends('7d', true, ['steps', 'weight', 'sleep', 'hydration']);
+
+    await waitFor(() => {
+      expect(mockFetchMeasurementsRange).toHaveBeenCalled();
+    });
+
+    expect(mockFetchMoodEntries).not.toHaveBeenCalled();
+  });
+
+  test('refetch refreshes mood only when mood is active', async () => {
+    const { result } = renderTrends('7d', true, ['mood']);
+
+    await waitFor(() => {
+      expect(mockFetchMoodEntries).toHaveBeenCalledTimes(1);
+    });
+
+    await act(async () => {
+      await result.current.refetch();
+    });
+
+    expect(mockFetchMoodEntries).toHaveBeenCalledTimes(2);
+    expect(mockFetchMeasurementsRange).not.toHaveBeenCalled();
   });
 });

@@ -5812,6 +5812,11 @@
       "estimateNote": "Estimated from your logged runs. Not a measurement; a synced reading replaces it.",
       "loadFailed": "Failed to load VO2 max data",
       "empty": "No VO2 max data for this period"
+    },
+    "mood": {
+      "title": "Mood",
+      "loadFailed": "Failed to load mood data",
+      "empty": "No mood logged for this period"
     }
   },
   "exerciseLibrary": {
