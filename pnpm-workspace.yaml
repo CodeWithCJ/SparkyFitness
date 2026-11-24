@@ -52,6 +52,10 @@ overrides:
   # Build-time tools reach these through @bacons/apple-targets (xmldom) and
   # Expo's CLI (node-forge); the patched releases are drop-in for 0.8.x / 1.x.
   "@xmldom/xmldom": "^0.8.15"
+  # @bacons/xcode (via @bacons/apple-targets, prebuild only) still asks for
+  # uuid 8; 11.1.1 fixes the v3/v5/v6 buffer bounds check, keeps CommonJS
+  # and the v4 API it calls.
+  "@bacons/xcode>uuid": "^11.1.1"
   assistant-cloud: "0.2.8"
   # One copy for web and mobile. 7.1 turns on the React Compiler rule set
   # (set-state-in-effect, refs, immutability); both apps lint with
