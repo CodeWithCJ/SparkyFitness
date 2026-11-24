@@ -74,6 +74,7 @@ describe('HealthTrendsSettingsScreen', () => {
         'calories',
         'heartRate',
         'vo2max',
+        'mood',
       ],
     });
 
@@ -87,6 +88,7 @@ describe('HealthTrendsSettingsScreen', () => {
       'calories',
       'heartRate',
       'vo2max',
+      'mood',
     ]);
     expect(orderedRowKeys()).toHaveLength(HEALTH_TREND_KEYS.length);
   });
@@ -124,6 +126,7 @@ describe('HealthTrendsSettingsScreen', () => {
       'calories',
       'heartRate',
       'vo2max',
+      'mood',
     ]);
   });
 

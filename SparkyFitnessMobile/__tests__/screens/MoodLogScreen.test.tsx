@@ -134,7 +134,7 @@ jest.mock('../../src/components/TimeSheet', () => {
   return { __esModule: true, default: MockTimeSheet };
 });
 
-jest.mock('../../src/components/mood/MoodLineChart', () => ({
+jest.mock('../../src/components/MoodLineChart', () => ({
   __esModule: true,
   default: () => null,
 }));

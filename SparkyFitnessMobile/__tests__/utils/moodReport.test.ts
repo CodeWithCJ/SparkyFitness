@@ -1,5 +1,18 @@
-import { buildMoodReport, moodTagLabel } from '../../src/utils/moodReport';
+import {
+  buildMoodReport,
+  formatMoodTooltip,
+  moodTagLabel,
+} from '../../src/utils/moodReport';
 import type { MoodEntry } from '../../src/services/api/moodApi';
+import i18n, { initializeI18n } from '../../src/localization/i18n';
+
+const t = ((key: string, options: Record<string, unknown>) =>
+  i18n.t(key, options)) as never;
+
+beforeAll(async () => {
+  await initializeI18n('en');
+  await i18n.changeLanguage('en');
+});
 
 const entry = (
   day: string,
@@ -147,5 +160,19 @@ describe('buildMoodReport highlights', () => {
 describe('moodTagLabel', () => {
   it('keeps a custom mood literal', () => {
     expect(moodTagLabel('my-own-mood')).toBe('my-own-mood');
+  });
+});
+
+describe('formatMoodTooltip', () => {
+  it('names the mood band and date for a logged value', () => {
+    expect(formatMoodTooltip({ value: 90, day: '2026-06-03' }, t)).toBe(
+      '😍 Excited · Wed, Jun 3'
+    );
+  });
+
+  it('shows a dash for a day with no mood', () => {
+    expect(formatMoodTooltip({ value: 0, day: '2026-06-03' }, t)).toBe(
+      '- · Wed, Jun 3'
+    );
   });
 });

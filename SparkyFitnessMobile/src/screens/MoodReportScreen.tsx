@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useScreenHeader } from '../hooks/useScreenHeader';
@@ -14,6 +14,7 @@ import { useReportCustomization } from '../hooks/useReportCustomization';
 import TrendBarChart from '../components/TrendBarChart';
 import { formatTooltipDate } from '../components/charts/chartFormatting';
 import {
+  formatMoodTooltip,
   moodForValue,
   moodTagLabel,
   type MoodDayPoint,
@@ -41,17 +42,7 @@ const MoodReportScreen: React.FC<MoodReportScreenProps> = () => {
     left: { kind: 'back' },
   });
 
-  const formatTooltip = useCallback(
-    (point: MoodDayPoint) => {
-      const mood = point.value > 0 ? moodForValue(point.value) : null;
-      return t('moodReport.tooltip', {
-        defaultValue: '{{mood}} · {{date}}',
-        mood: mood ? `${mood.emoji} ${mood.name}` : '-',
-        date: formatTooltipDate(point.day),
-      });
-    },
-    [t]
-  );
+  const formatTooltip = (point: MoodDayPoint) => formatMoodTooltip(point, t);
 
   const averageMood =
     report?.averageValue != null ? moodForValue(report.averageValue) : null;

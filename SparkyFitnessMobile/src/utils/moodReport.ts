@@ -1,6 +1,8 @@
+import type { TFunction } from 'i18next';
 import { dailyMoodSeries, moodByName, moodValueToTag } from '@workspace/shared';
 import { average } from './mathUtils';
 import { addDays, weekdayOfDay } from './dateUtils';
+import { formatTooltipDate } from '../components/charts/chartFormatting';
 import type { MoodEntry } from '../services/api/moodApi';
 
 export type MoodDayPoint = {
@@ -41,6 +43,22 @@ export const moodTagLabel = (tag: string): string => {
   const def = moodByName(tag);
   return def ? `${def.emoji} ${def.displayName}` : tag;
 };
+
+/**
+ * Tooltip copy for a mood trend point, shared by the Mood report's "Daily mood"
+ * chart and the Health Trends pager's Mood page.
+ */
+export function formatMoodTooltip(
+  point: { value: number; day: string },
+  t: TFunction
+): string {
+  const mood = point.value > 0 ? moodForValue(point.value) : null;
+  return t('moodReport.tooltip', {
+    defaultValue: '{{mood}} · {{date}}',
+    mood: mood ? `${mood.emoji} ${mood.name}` : '-',
+    date: formatTooltipDate(point.day),
+  });
+}
 
 /**
  * One point per day in the window, so a quiet day reads as a gap rather than being
