@@ -9,29 +9,63 @@
 // src/components/ReadableWidthLayout.tsx.
 import { ConfigPlugin, withMainActivity } from 'expo/config-plugins';
 
-const ACTIVITY_INFO_IMPORT = 'import android.content.pm.ActivityInfo';
+const IMPORTS = [
+  'import android.content.pm.ActivityInfo',
+  'import android.content.res.Configuration',
+];
 const ROTATION_MARKER = 'Tablets rotate; phones keep the portrait lock';
 
 export const TABLET_ROTATION = `    // ${ROTATION_MARKER}.
-    if (resources.configuration.smallestScreenWidthDp >= 600) {
-      requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_USER
-    }
+    applyTabletRotation(resources.configuration)
+`;
+
+// Also re-checked when the window changes size without the activity being
+// recreated (split screen, a foldable, a resizable window), so the lock follows
+// the current width rather than the one at launch.
+export const TABLET_ROTATION_METHODS = `
+  override fun onConfigurationChanged(newConfig: Configuration) {
+    super.onConfigurationChanged(newConfig)
+    applyTabletRotation(newConfig)
+  }
+
+  private fun applyTabletRotation(config: Configuration) {
+    requestedOrientation =
+      if (config.smallestScreenWidthDp >= 600) ActivityInfo.SCREEN_ORIENTATION_FULL_USER
+      else ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+  }
 `;
 
 export function addTabletRotation(source: string): string {
   if (source.includes(ROTATION_MARKER)) return source;
+  if (/fun onConfigurationChanged\(/.test(source)) {
+    throw new Error(
+      '[withTabletRotation] MainActivity already overrides onConfigurationChanged; merge the tablet rotation check into it.'
+    );
+  }
   const superCall = source.match(/^[ \t]*super\.onCreate\(/m);
   const importBlock = source.match(/((?:^import [^\n]+\n)+)/m);
-  if (!superCall || superCall.index === undefined || !importBlock) {
+  const classEnd = source.lastIndexOf('}');
+  if (
+    !superCall ||
+    superCall.index === undefined ||
+    !importBlock ||
+    classEnd < superCall.index
+  ) {
     throw new Error(
       '[withTabletRotation] Could not locate super.onCreate in MainActivity.'
     );
   }
-  let next = `${source.slice(0, superCall.index)}${TABLET_ROTATION}${source.slice(superCall.index)}`;
-  if (!next.includes(ACTIVITY_INFO_IMPORT)) {
+  let next =
+    source.slice(0, superCall.index) +
+    TABLET_ROTATION +
+    source.slice(superCall.index, classEnd).replace(/\s*$/, '\n') +
+    TABLET_ROTATION_METHODS +
+    source.slice(classEnd);
+  const missing = IMPORTS.filter((line) => !next.includes(`${line}\n`));
+  if (missing.length > 0) {
     next = next.replace(
       importBlock[1],
-      `${importBlock[1]}${ACTIVITY_INFO_IMPORT}\n`
+      `${importBlock[1]}${missing.map((line) => `${line}\n`).join('')}`
     );
   }
   return next;

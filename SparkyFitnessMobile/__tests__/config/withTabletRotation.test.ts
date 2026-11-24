@@ -1,6 +1,7 @@
 import { addQuickActionLaunchGuard } from '../../plugins/withQuickActionLaunchGuard';
 import {
   TABLET_ROTATION,
+  TABLET_ROTATION_METHODS,
   addTabletRotation,
 } from '../../plugins/withTabletRotation';
 
@@ -32,6 +33,29 @@ describe('addTabletRotation', () => {
     expect(result).toContain(`${TABLET_ROTATION}    super.onCreate(null)`);
     expect(result).toContain('smallestScreenWidthDp >= 600');
     expect(result).toContain('SCREEN_ORIENTATION_FULL_USER');
+  });
+
+  it('re-checks the width when the window changes size', () => {
+    const result = addTabletRotation(mainActivityFixture());
+
+    expect(result).toContain('import android.content.res.Configuration\n');
+    expect(result).toContain(
+      'override fun onConfigurationChanged(newConfig: Configuration)'
+    );
+    expect(result).toContain('SCREEN_ORIENTATION_PORTRAIT');
+    // The methods sit inside the class, after onCreate.
+    expect(result.indexOf(TABLET_ROTATION_METHODS)).toBeGreaterThan(
+      result.indexOf('super.onCreate(null)')
+    );
+    expect(result.trimEnd().endsWith('}')).toBe(true);
+  });
+
+  it('refuses to add a second onConfigurationChanged', () => {
+    const source = mainActivityFixture().replace(
+      '    super.onCreate(null)\n  }\n',
+      '    super.onCreate(null)\n  }\n  override fun onConfigurationChanged(newConfig: Configuration) {}\n'
+    );
+    expect(() => addTabletRotation(source)).toThrow('onConfigurationChanged');
   });
 
   it('is idempotent', () => {

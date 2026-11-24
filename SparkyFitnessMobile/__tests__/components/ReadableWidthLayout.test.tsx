@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { render, screen } from '@testing-library/react-native';
 import {
   DASHBOARD_CONTENT_MAX_WIDTH,
@@ -42,5 +42,36 @@ describe('ReadableWidthLayout', () => {
     );
     expect(screen.getByText('column')).toBeTruthy();
     expect(screen.getByText('full')).toBeTruthy();
+  });
+
+  it('centres a screen in a column no wider than its route allows', () => {
+    const { toJSON } = render(
+      <ReadableWidthLayout routeName="Diary">
+        <Text>column</Text>
+      </ReadableWidthLayout>
+    );
+    const root = toJSON();
+    expect(root).not.toBeNull();
+    expect(Array.isArray(root)).toBe(false);
+    if (!root || Array.isArray(root)) return;
+    expect(root.type).toBe('View');
+    expect(StyleSheet.flatten(root.props.style)).toMatchObject({
+      maxWidth: READABLE_CONTENT_MAX_WIDTH,
+      width: '100%',
+      alignSelf: 'center',
+    });
+  });
+
+  it('adds no wrapper for an edge-to-edge route', () => {
+    const { toJSON } = render(
+      <ReadableWidthLayout routeName="FoodScan">
+        <Text>full</Text>
+      </ReadableWidthLayout>
+    );
+    const root = toJSON();
+    expect(root).not.toBeNull();
+    expect(Array.isArray(root)).toBe(false);
+    if (!root || Array.isArray(root)) return;
+    expect(root.type).toBe('Text');
   });
 });
