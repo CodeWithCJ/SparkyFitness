@@ -296,9 +296,18 @@ export interface WatchContextPayload {
    * Settings → Apple Watch: the watch app's pages in swipe order, and the ones
    * turned off (`WATCH_PAGE_KEYS` names). Missing reads as the factory order
    * with nothing hidden; the watch carries the last values forward.
+   * `hiddenPages` also holds the pages of features that are off in the app
+   * (`watchHiddenPagesForContext`), and is left out, with `offFeatures`,
+   * while the app does not know its feature choices.
    */
   pageOrder?: string[] | null;
   hiddenPages?: string[] | null;
+  /**
+   * Optional features (#3487) the watch has pages or tiles of that are off in
+   * the app (`medications`). Empty means none is off; missing means an older
+   * phone build or choices not known yet, and the watch keeps its last value.
+   */
+  offFeatures?: string[];
   /**
    * The rows the watch's Goals page lists under the calorie ring, in order
    * (Settings → Apple Watch). Day-scoped like the calorie figures: null when

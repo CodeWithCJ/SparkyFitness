@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,6 +29,8 @@ import {
   deleteWaterIntakeLogEntry,
 } from '../services/api/measurementsApi';
 import { logDrinkOrQueue } from '../offline/logDrink';
+import { accountGeneration } from '../offline/accountGeneration';
+import { subscribeAccountChanged } from '../offline/events';
 import {
   listMedications,
   listEntries,
@@ -58,6 +67,11 @@ import {
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { useDailySummary, type DailySummaryRawData } from './useDailySummary';
 import { WATCH_PAGE_KEYS } from '../constants/watchPages';
+import {
+  watchHiddenPagesForContext,
+  watchOffFeatures,
+} from '../utils/watchPageFeatures';
+import { useFeatureChoicesQuery } from './useFeatureChoices';
 import { resolveKeyOrder } from '../utils/reorderUtils';
 import { buildWatchGoalNutrients, shownInOrder } from '../utils/watchNutrients';
 import { useCustomNutrients } from './useCustomNutrients';
@@ -233,7 +247,7 @@ type StoredAckState = {
 };
 
 /**
- * Bridges Apple Watch check-ins to the SparkyFitness server.
+ * Bridges Apple Watch and Wear OS check-ins to the SparkyFitness server.
  *
  * The watch cannot call the API itself (auth lives here), so it captures weight
  * and body fat locally and hands them over via WatchConnectivity. This hook
@@ -241,7 +255,7 @@ type StoredAckState = {
  * stop showing "queued", and pushes back fresh seed values plus recent history so
  * the watch's Digital Crown starts from the right number.
  *
- * iOS-only; a no-op everywhere else.
+ * Runs on iOS and Android; a no-op where the watch module is absent.
  */
 export function useWatchCheckInBridge(enabled: boolean): void {
   // Acks are relayed inside the application context (which is latest-value-only
@@ -305,6 +319,27 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // Device-local, so it rides the context rather than the server.
   const watchPageOrder = useAppPreferencesStore((s) => s.watchPageOrder);
   const hiddenWatchPages = useAppPreferencesStore((s) => s.hiddenWatchPages);
+  // An account change clears the query cache, which does not tell the
+  // queries this hook has mounted, as it lives outside the screens. The
+  // account-changed event renders it again, so they read the new account
+  // and the watch is not left with the previous account's feature choices.
+  useSyncExternalStore(subscribeAccountChanged, accountGeneration);
+  // Settings → Features (#3487): a page of a feature that is off leaves the
+  // watch too. Undefined while the choices are not known, and then the
+  // context leaves both keys out so the watch keeps what it last had.
+  const { data: featureChoices } = useFeatureChoicesQuery();
+  const watchFeaturesOff = useMemo(
+    () => watchOffFeatures(featureChoices),
+    [featureChoices]
+  );
+  const watchHiddenPages = useMemo(
+    () =>
+      watchFeaturesOff === undefined
+        ? undefined
+        : watchHiddenPagesForContext(hiddenWatchPages, watchFeaturesOff),
+    [hiddenWatchPages, watchFeaturesOff]
+  );
+  const medicationsOff = watchFeaturesOff?.includes('medications') ?? false;
   // And which nutrients its Goals page lists, in order.
   const watchNutrientOrder = useAppPreferencesStore(
     (s) => s.watchNutrientOrder
@@ -547,11 +582,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
 
   // Today's scheduled doses for the watch's Medications page. Same list and
   // entry queries the phone's own MedicationsCard reads (and invalidates on
-  // every dose write), so the two never disagree about what is taken.
+  // every dose write), so the two never disagree about what is taken. Not
+  // read while Medications is off in the app: the watch then gets null.
   const { data: activeMedications } = useQuery({
     queryKey: medicationsListQueryKey({ activeOnly: true }),
     queryFn: () => listMedications({ activeOnly: true }),
-    enabled,
+    enabled: enabled && !medicationsOff,
   });
   const { data: medicationEntries } = useQuery({
     queryKey: medicationEntriesQueryKey({
@@ -559,13 +595,14 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       toDate: summaryDate,
     }),
     queryFn: () => listEntries({ fromDate: summaryDate, toDate: summaryDate }),
-    enabled,
+    enabled: enabled && !medicationsOff,
   });
   // Null until both queries have answered: an empty list is a real "nothing
-  // scheduled today" and must not be mistaken for "not loaded yet".
+  // scheduled today" and must not be mistaken for "not loaded yet". Null
+  // while Medications is off too, whatever is still cached.
   const watchMedications = useMemo(
     () =>
-      activeMedications && medicationEntries
+      !medicationsOff && activeMedications && medicationEntries
         ? medicationsForWatch(
             activeMedications,
             medicationEntries,
@@ -574,7 +611,13 @@ export function useWatchCheckInBridge(enabled: boolean): void {
             timeFormat
           )
         : null,
-    [activeMedications, medicationEntries, summaryDate, timeFormat]
+    [
+      medicationsOff,
+      activeMedications,
+      medicationEntries,
+      summaryDate,
+      timeFormat,
+    ]
   );
 
   // Memoized because `pushContext` below closes over it. A fresh array every
@@ -949,7 +992,9 @@ export function useWatchCheckInBridge(enabled: boolean): void {
             : null,
         stepGoal,
         pageOrder: resolveKeyOrder(watchPageOrder, WATCH_PAGE_KEYS),
-        hiddenPages: hiddenWatchPages,
+        ...(watchHiddenPages !== undefined && watchFeaturesOff !== undefined
+          ? { hiddenPages: watchHiddenPages, offFeatures: watchFeaturesOff }
+          : {}),
         setInputStyle: watchSetInputStyle,
         ...figures,
       };
@@ -995,7 +1040,8 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     stepGoal,
     waterDisplayUnit,
     watchPageOrder,
-    hiddenWatchPages,
+    watchHiddenPages,
+    watchFeaturesOff,
     watchSetInputStyle,
     summaryDate,
     figuresForSummaryDate,

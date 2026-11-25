@@ -1292,7 +1292,7 @@ class CheckInStore(private val context: Context) {
         prefs.edit()
           .putString("context_owner_id", incomingOwner)
           .putString("account_action_token", tok)
-          .putString("last_context_json", rawJson)
+          .putString("last_context_json", ContextPayloadMapper.persistableContextJson(rawJson, nextCtx))
           .apply()
       } else {
         prefs.edit()

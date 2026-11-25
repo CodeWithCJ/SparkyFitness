@@ -16,6 +16,16 @@ enum WatchPage: String, CaseIterable {
     /// case stays so a stored or phone-sent page name still decodes.
     case recording
 
+    /// The optional feature (#3487) the page belongs to, by its phone key
+    /// (`WATCH_PAGE_FEATURES` in `src/constants/watchPages.ts`). While the
+    /// phone lists it in `offFeatures`, the page does not show.
+    var feature: String? {
+        switch self {
+        case .medications: return "medications"
+        default: return nil
+        }
+    }
+
     /// The pages to show, in swipe order.
     ///
     /// Names the watch doesn't know, and repeats, are dropped; a page the saved
@@ -27,9 +37,14 @@ enum WatchPage: String, CaseIterable {
     /// leave that workout with nowhere to be tracked. An order that hides
     /// everything shows everything — the phone won't send one, but a watch with
     /// no pages at all would be stuck.
+    ///
+    /// The page of a feature turned off in the phone app (`offFeatures`) never
+    /// shows, not even then. The phone hides it in `hidden` too, and keeps
+    /// Goals when that page was the only one shown.
     static func visible(
         order: [String]?,
         hidden: [String]?,
+        offFeatures: [String]? = nil,
         workoutActive: Bool
     ) -> [WatchPage] {
         var ordered: [WatchPage] = []
@@ -41,6 +56,8 @@ enum WatchPage: String, CaseIterable {
         for page in allCases where page != .nowPlaying && page != .recording && !ordered.contains(page) {
             ordered.append(page)
         }
+        let off = Set(offFeatures ?? [])
+        ordered.removeAll { page in page.feature.map(off.contains) ?? false }
 
         let hiddenPages = Set((hidden ?? []).compactMap(WatchPage.init(rawValue:)))
         let shown = ordered.filter { page in

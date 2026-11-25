@@ -196,6 +196,10 @@
     <string name="tile_meds_skipped_done">%1$d skipped · All done</string>
     <string name="tile_meds_all_done">All doses completed</string>
     <string name="tile_meds_log_dose">Log Dose</string>
+    <string name="tile_meds_turned_off">Turned off</string>
+    <string name="tile_meds_turned_off_hint">Turn on in the phone app</string>
+    <string name="complication_meds_off_short">Off</string>
+    <string name="complication_meds_turned_off_description">Medications turned off</string>
 
     <string name="tile_exercise_header">EXERCISE</string>
     <string name="tile_exercise_steps_count">%1$d steps</string>

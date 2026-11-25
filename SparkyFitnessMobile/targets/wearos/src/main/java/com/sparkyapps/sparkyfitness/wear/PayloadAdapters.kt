@@ -14,6 +14,30 @@ import java.util.TimeZone
 object ContextPayloadMapper {
 
   /**
+   * The context JSON kept for a restart, where it is parsed again against an empty context. Keys the
+   * phone leaves out while it does not know them (the page layout, `offFeatures`) are filled in from
+   * the context they were carried forward into, so a restart does not bring back a page the phone hid.
+   */
+  fun persistableContextJson(rawJson: String, ctx: WatchContext): String {
+    val obj = try {
+      JSONObject(rawJson)
+    } catch (_: Throwable) {
+      return rawJson
+    }
+    var changed = false
+    fun carry(key: String, value: List<String>?) {
+      if (!obj.has(key) && value != null) {
+        obj.put(key, JSONArray(value))
+        changed = true
+      }
+    }
+    carry("pageOrder", ctx.pageOrder)
+    carry("hiddenPages", ctx.hiddenPages)
+    carry("offFeatures", ctx.offFeatures)
+    return if (changed) obj.toString() else rawJson
+  }
+
+  /**
    * Parses an incoming phone-to-watch JSON context payload into a [WatchContext],
    * carrying forward sticky preferences from [previous] when omitted.
    */
@@ -41,6 +65,8 @@ object ContextPayloadMapper {
       restAlertsEnabled = obj.optBooleanOrNull("restAlertsEnabled") ?: previous.restAlertsEnabled,
       pageOrder = if (obj.has("pageOrder")) obj.optStringList("pageOrder") else previous.pageOrder,
       hiddenPages = if (obj.has("hiddenPages")) obj.optStringList("hiddenPages") else previous.hiddenPages,
+      // Carried forward like the page layout: the phone leaves it out while it does not know its choices.
+      offFeatures = if (obj.has("offFeatures")) obj.optStringList("offFeatures") else previous.offFeatures,
       setInputStyle = obj.optStringOrNull("setInputStyle") ?: previous.setInputStyle,
       startableWorkouts = parseStartableWorkouts(obj) ?: previous.startableWorkouts,
       scheduledWorkouts = parseScheduledWorkouts(obj) ?: previous.scheduledWorkouts,
