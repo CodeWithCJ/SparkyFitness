@@ -2,6 +2,17 @@ export const CLOUD_CHARACTER_LIMIT = 8_000;
 export const LOCAL_CHARACTER_LIMIT = 3_000;
 export const CHARACTER_LIMIT = CLOUD_CHARACTER_LIMIT;
 
+// Truncation hint for a result that has no offset to continue from. Most tools
+// take no limit/offset, so naming them sent models into a validation error
+// (#2949). Tools with their own way to narrow pass a specific hint instead.
+export const NARROW_HINT =
+  "Narrow the request with this tool's own parameters (for example a shorter date range) to see the rest.";
+
+/** Hint for a page cut short: where the next call should start. */
+export function offsetHint(nextOffset: number): string {
+  return `Call again with offset=${nextOffset} for the rest.`;
+}
+
 export function getCharacterLimit(profile: 'full' | 'core' = 'full'): number {
   return profile === 'core' ? LOCAL_CHARACTER_LIMIT : CLOUD_CHARACTER_LIMIT;
 }
@@ -26,8 +37,6 @@ export function truncateIfNeeded(
   const limit = getCharacterLimit(profile);
   if (text.length <= limit) return text;
 
-  const defaultHint =
-    "Use 'limit' and 'offset' parameters to paginate results, or add filters to narrow your search.";
   let truncated = text.slice(0, limit - 200);
   if (atLineBoundary) {
     const lastNewline = truncated.lastIndexOf('\n');
@@ -35,7 +44,7 @@ export function truncateIfNeeded(
   }
   return (
     truncated +
-    `\n\n---\n⚠️ Response truncated (exceeded ${limit} characters). ${hint || defaultHint}`
+    `\n\n---\n⚠️ Response truncated (exceeded ${limit} characters). ${hint || NARROW_HINT}`
   );
 }
 
@@ -193,9 +202,7 @@ export function truncateJsonRecords(
   if (full.length <= limit) return full;
 
   const target = findDominantArray(data);
-  if (!target || (target.array.length <= 1 && !target.children)) {
-    return truncateIfNeeded(full, undefined, profile);
-  }
+  if (!target) return truncateIfNeeded(full, undefined, profile);
 
   const { array, label } = target;
   // A paginated result may be shortened after the repository already computed
@@ -217,15 +224,31 @@ export function truncateJsonRecords(
       : Number.isFinite(totalCount)
         ? totalCount - array.length
         : 0;
+  const canResume =
+    paginatedRecord !== null &&
+    Number.isFinite(totalCount) &&
+    Number.isInteger(originalOffset) &&
+    originalOffset >= 0;
+  // A paginated result comes from a tool that takes offset: say where to
+  // resume. Anything else gets the tool's own hint or the neutral one.
+  const resumeAt = (kept: number) =>
+    canResume ? offsetHint(originalOffset + kept) : undefined;
+  // Last resort: the first record alone overflows and the payload is cut as a
+  // string. Say so, and continue after that record.
+  const sliceFirst = () =>
+    truncateIfNeeded(
+      full,
+      target.hint ??
+        (canResume
+          ? `The first record is cut off. ${offsetHint(originalOffset + 1)}`
+          : undefined),
+      profile
+    );
+  if (array.length <= 1 && !target.children) return sliceFirst();
+
   const rebuild = (slice: unknown[]) => {
     const rebuilt = target.rebuild(slice);
-    if (
-      !paginatedRecord ||
-      !Number.isFinite(totalCount) ||
-      !Number.isFinite(originalOffset)
-    ) {
-      return rebuilt;
-    }
+    if (!canResume) return rebuilt;
     const nextOffset = originalOffset + slice.length;
     return {
       ...(rebuilt as Record<string, unknown>),
@@ -239,9 +262,7 @@ export function truncateJsonRecords(
     keep = Math.ceil(keep / 2);
     text = serialize(rebuild(array.slice(0, keep)));
   }
-  const hint =
-    target.hint ??
-    "Use 'limit' and 'offset' parameters to paginate, or add filters to narrow your search.";
+  const hint = target.hint ?? resumeAt(keep) ?? NARROW_HINT;
   if (text.length > limit - NOTE_RESERVE && target.children) {
     // One record with many child rows: keep it and drop its trailing children.
     const children = target.children(array[0]);
@@ -285,7 +306,7 @@ export function truncateJsonRecords(
   }
   if (text.length > limit - NOTE_RESERVE) {
     // Even a single record overflows; string-slice the full payload instead.
-    return truncateIfNeeded(full, target.hint, profile);
+    return sliceFirst();
   }
   return (
     text +

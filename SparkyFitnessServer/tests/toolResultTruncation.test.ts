@@ -6,6 +6,8 @@ import {
 } from '../ai/tools/formatting.js';
 import {
   getCharacterLimit,
+  NARROW_HINT,
+  truncateIfNeeded,
   truncateJsonRecords,
 } from '../ai/tools/truncation.js';
 
@@ -355,5 +357,120 @@ describe('truncateJsonRecords exercise diary', () => {
 
     expect(out).toContain('start_date / end_date');
     expect(out).not.toContain("'limit' and 'offset'");
+  });
+});
+
+// #2949: most tools have no limit/offset, so a truncation note must not tell
+// the model to send them. Only a paginated result names offset, with the exact
+// value to resume from.
+describe('truncation hints', () => {
+  const rows = (n: number, from = 0) =>
+    Array.from({ length: n }, (_, i) => makeRow(from + i));
+
+  it('names no parameters for a result without pagination', () => {
+    for (const out of [
+      truncateJsonRecords(rows(200)),
+      truncateJsonRecords({ data: rows(200), total_count: 200 }),
+      truncateJsonRecords({ note: 'y'.repeat(10_000) }),
+      truncateIfNeeded('x'.repeat(10_000)),
+      formatList(rows(100), 'Items', (r) => `${r.name} ${r.notes}`),
+    ]) {
+      expect(out).toContain(NARROW_HINT);
+      expect(out).not.toMatch(/\blimit\b|\boffset\b/);
+    }
+  });
+
+  it('gives the offset after the last kept record of a cut page', () => {
+    // Page 2 of 3: offset 100, 100 rows fetched.
+    const out = formatJsonResult({
+      data: rows(100, 100),
+      has_more: true,
+      next_offset: 200,
+      total_count: 300,
+    });
+    const parsed = JSON.parse(jsonPortion(out));
+    const resume = 100 + parsed.data.length;
+    expect(parsed.data.length).toBeLessThan(100);
+    expect(parsed.next_offset).toBe(resume);
+    expect(out).toContain(`Call again with offset=${resume} for the rest.`);
+    expect(out).not.toContain(NARROW_HINT);
+  });
+
+  it('gives the offset of the next page when a whole last page is cut', () => {
+    const out = formatJsonResult({
+      data: rows(100, 200),
+      has_more: false,
+      next_offset: null,
+      total_count: 300,
+    });
+    const parsed = JSON.parse(jsonPortion(out));
+    expect(out).toContain(
+      `Call again with offset=${200 + parsed.data.length} for the rest.`
+    );
+  });
+
+  it('continues a list after the items shown, not after the fetched page', () => {
+    const items = Array.from({ length: 100 }, (_, i) => i);
+    const out = formatList(
+      items,
+      'Items',
+      (n) => `Item ${n}: ${'z'.repeat(200)}`,
+      { total_count: 300, has_more: true, next_offset: 200 }
+    );
+    const shown = out.split('\n').filter((l) => l.startsWith('Item ')).length;
+    expect(shown).toBeLessThan(100);
+    expect(out).toContain(`Use offset=${100 + shown} to see more.`);
+    expect(out).not.toContain(NARROW_HINT);
+  });
+
+  it('continues after a paginated record that alone overflows', () => {
+    const big = (i: number) => ({ ...makeRow(i), notes: 'x'.repeat(10_000) });
+    for (const data of [[big(100), big(101), big(102)], [big(100)]]) {
+      const out = formatJsonResult({
+        data,
+        has_more: true,
+        next_offset: 100 + data.length,
+        total_count: 300,
+      });
+      expect(out.length).toBeLessThanOrEqual(getCharacterLimit('full'));
+      expect(out).toContain(
+        'The first record is cut off. Call again with offset=101 for the rest.'
+      );
+    }
+  });
+
+  it('never offers a negative offset', () => {
+    // next_offset smaller than the page: an inconsistent result.
+    const out = formatJsonResult({
+      data: rows(100),
+      has_more: true,
+      next_offset: 5,
+      total_count: 300,
+    });
+    expect(out).not.toContain('offset=');
+    expect(out).toContain(NARROW_HINT);
+  });
+
+  it('keeps the offset when one list item alone overflows', () => {
+    const out = formatList(
+      [1, 2],
+      'Items',
+      (n) => `Item ${n}: ${'z'.repeat(10_000)}`,
+      { total_count: 50, has_more: true, next_offset: 12 }
+    );
+    expect(out.length).toBeLessThanOrEqual(getCharacterLimit('full'));
+    expect(out).toContain('Call again with offset=11 for the rest.');
+  });
+
+  it('offers a next offset for a cut list even on the last page', () => {
+    const items = Array.from({ length: 100 }, (_, i) => i);
+    const out = formatList(
+      items,
+      'Items',
+      (n) => `Item ${n}: ${'z'.repeat(200)}`,
+      { total_count: 100, has_more: false, next_offset: null }
+    );
+    const shown = out.split('\n').filter((l) => l.startsWith('Item ')).length;
+    expect(out).toContain(`Use offset=${shown} to see more.`);
   });
 });
