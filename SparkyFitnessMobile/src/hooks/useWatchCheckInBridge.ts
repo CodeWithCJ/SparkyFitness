@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,6 +29,8 @@ import {
   deleteWaterIntakeLogEntry,
 } from '../services/api/measurementsApi';
 import { logDrinkOrQueue } from '../offline/logDrink';
+import { accountGeneration } from '../offline/accountGeneration';
+import { subscribeAccountChanged } from '../offline/events';
 import {
   listMedications,
   listEntries,
@@ -310,6 +319,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   // Device-local, so it rides the context rather than the server.
   const watchPageOrder = useAppPreferencesStore((s) => s.watchPageOrder);
   const hiddenWatchPages = useAppPreferencesStore((s) => s.hiddenWatchPages);
+  // An account change clears the query cache, which does not tell the
+  // queries this hook has mounted, as it lives outside the screens. The
+  // account-changed event renders it again, so they read the new account
+  // and the watch is not left with the previous account's feature choices.
+  useSyncExternalStore(subscribeAccountChanged, accountGeneration);
   // Settings → Features (#3487): a page of a feature that is off leaves the
   // watch too. Undefined while the choices are not known, and then the
   // context leaves both keys out so the watch keeps what it last had.

@@ -11,6 +11,8 @@ import {
 } from '../../src/services/api/medicationsApi';
 import { useAppPreferencesStore } from '../../src/stores/appPreferencesStore';
 import { featureChoicesQueryKey } from '../../src/hooks/queryKeys';
+import { bumpAccountGeneration } from '../../src/offline/accountGeneration';
+import { notifyAccountChanged } from '../../src/offline/events';
 import { createQueryWrapper, createTestQueryClient } from './queryTestUtils';
 
 jest.mock('../../modules/watch-connectivity', () => ({
@@ -171,6 +173,28 @@ describe('useWatchCheckInBridge and the Medications switch', () => {
 
     await waitFor(() => expect(lastContext().medications).toBeNull());
     expect(lastContext().offFeatures).toEqual(['medications']);
+  });
+
+  it("reads the new account's choices after an account switch", async () => {
+    const off = { feature_choices: { mobile: { medications: false } } };
+    mockFetchChoices.mockResolvedValue(off);
+    const client = renderBridge(off);
+    await waitFor(() =>
+      expect(lastContext().offFeatures).toEqual(['medications'])
+    );
+
+    // Another account with Medications on takes over. As in useAuth, the
+    // cache is cleared, which mounted queries are not told about, and then
+    // the app is told the account changed.
+    mockFetchChoices.mockResolvedValue({ feature_choices: {} });
+    act(() => {
+      bumpAccountGeneration();
+      client.clear();
+      notifyAccountChanged();
+    });
+
+    await waitFor(() => expect(lastContext().offFeatures).toEqual([]));
+    expect(lastContext().hiddenPages).toEqual(['trend']);
   });
 
   it('leaves the pages to the watch while the choices are not known', async () => {
