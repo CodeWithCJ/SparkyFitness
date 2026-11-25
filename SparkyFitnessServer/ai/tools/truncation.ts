@@ -13,6 +13,9 @@ export function offsetHint(nextOffset: number): string {
   return `Call again with offset=${nextOffset} for the rest.`;
 }
 
+// Room left for the truncation note when text is cut as a plain string.
+const SLICE_RESERVE = 200;
+
 export function getCharacterLimit(profile: 'full' | 'core' = 'full'): number {
   return profile === 'core' ? LOCAL_CHARACTER_LIMIT : CLOUD_CHARACTER_LIMIT;
 }
@@ -37,7 +40,7 @@ export function truncateIfNeeded(
   const limit = getCharacterLimit(profile);
   if (text.length <= limit) return text;
 
-  let truncated = text.slice(0, limit - 200);
+  let truncated = text.slice(0, limit - SLICE_RESERVE);
   if (atLineBoundary) {
     const lastNewline = truncated.lastIndexOf('\n');
     if (lastNewline > 0) truncated = truncated.slice(0, lastNewline).trimEnd();
@@ -234,16 +237,28 @@ export function truncateJsonRecords(
   const resumeAt = (kept: number) =>
     canResume ? offsetHint(originalOffset + kept) : undefined;
   // Last resort: the first record alone overflows and the payload is cut as a
-  // string. Say so, and continue after that record.
-  const sliceFirst = () =>
-    truncateIfNeeded(
+  // string. If the cut falls inside that record, say so and continue after
+  // it. If a long field before the records hides it entirely, an offset would
+  // skip it, so fall back to the generic hint.
+  const sliceFirst = () => {
+    const empty = serialize(target.rebuild([])) ?? '';
+    let recordStart = 0;
+    while (
+      recordStart < empty.length &&
+      empty[recordStart] === full[recordStart]
+    ) {
+      recordStart++;
+    }
+    const firstVisible = recordStart < limit - SLICE_RESERVE;
+    return truncateIfNeeded(
       full,
       target.hint ??
-        (canResume
+        (canResume && firstVisible
           ? `The first record is cut off. ${offsetHint(originalOffset + 1)}`
           : undefined),
       profile
     );
+  };
   if (array.length <= 1 && !target.children) return sliceFirst();
 
   const rebuild = (slice: unknown[]) => {
