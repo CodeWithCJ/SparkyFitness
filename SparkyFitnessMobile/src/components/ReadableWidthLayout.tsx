@@ -16,9 +16,12 @@ export const DASHBOARD_CONTENT_MAX_WIDTH = 1100;
 export const DASHBOARD_TWO_COLUMN_MIN_WIDTH = 900;
 
 // Routes that draw edge to edge: the tab container (its screens apply the
-// column themselves), cameras, maps and photo players.
+// column themselves), cameras, maps and photo players, and the active workout,
+// whose exercise rail is offset against the iPhone Duo's vertical bar and so
+// must sit flush with the safe-area edge.
 const FULL_BLEED_ROUTES = new Set([
   'Tabs',
+  'ActiveWorkout',
   'FoodScan',
   'ActionTagScan',
   'RecordActivity',

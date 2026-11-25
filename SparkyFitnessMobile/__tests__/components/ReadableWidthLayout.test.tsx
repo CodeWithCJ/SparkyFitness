@@ -9,10 +9,11 @@ import {
 } from '../../src/components/ReadableWidthLayout';
 
 describe('readableMaxWidthForRoute', () => {
-  it('keeps cameras, maps and the tab container edge to edge', () => {
+  it('keeps cameras, maps, the active workout and the tab container edge to edge', () => {
     expect(readableMaxWidthForRoute('Tabs')).toBeNull();
     expect(readableMaxWidthForRoute('FoodScan')).toBeNull();
     expect(readableMaxWidthForRoute('RecordActivity')).toBeNull();
+    expect(readableMaxWidthForRoute('ActiveWorkout')).toBeNull();
   });
 
   it('gives the Dashboard a wider column than other screens', () => {
