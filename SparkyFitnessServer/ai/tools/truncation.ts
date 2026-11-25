@@ -240,18 +240,22 @@ export function truncateJsonRecords(
   // string. If the cut falls inside that record, say so and continue after
   // it. If a long field before the records hides it entirely, an offset would
   // skip it, so fall back to the generic hint.
+  // Cut a payload holding only the first record of the stream (not `full`,
+  // whose arrays can be in a different order, e.g. diary food before meal
+  // entries), so the record that may show is the one the offset counts.
   const sliceFirst = () => {
+    const firstOnly = serialize(target.rebuild(array.slice(0, 1))) ?? '';
     const empty = serialize(target.rebuild([])) ?? '';
     let recordStart = 0;
     while (
       recordStart < empty.length &&
-      empty[recordStart] === full[recordStart]
+      empty[recordStart] === firstOnly[recordStart]
     ) {
       recordStart++;
     }
     const firstVisible = recordStart < limit - SLICE_RESERVE;
     return truncateIfNeeded(
-      full,
+      firstOnly,
       target.hint ??
         (canResume && firstVisible
           ? `The first record is cut off. ${offsetHint(originalOffset + 1)}`
