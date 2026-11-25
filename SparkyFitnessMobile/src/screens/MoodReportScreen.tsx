@@ -45,7 +45,7 @@ const MoodReportScreen: React.FC<MoodReportScreenProps> = () => {
   const formatTooltip = (point: MoodDayPoint) => formatMoodTooltip(point, t);
 
   const averageMood =
-    report?.averageValue != null ? moodForValue(report.averageValue) : null;
+    report?.averageValue != null ? moodForValue(report.averageValue, t) : null;
 
   const previousAverage = previousReport?.averageValue ?? null;
   const averageDiff =
@@ -66,7 +66,7 @@ const MoodReportScreen: React.FC<MoodReportScreenProps> = () => {
     point: MoodDayPoint | null,
     testID: string
   ) => {
-    const mood = point ? moodForValue(point.value) : null;
+    const mood = point ? moodForValue(point.value, t) : null;
     return point
       ? [
           {
@@ -150,7 +150,7 @@ const MoodReportScreen: React.FC<MoodReportScreenProps> = () => {
                   label: t('moodReport.mostLogged', {
                     defaultValue: 'Most logged mood',
                   }),
-                  value: moodTagLabel(report.topTags[0].tag),
+                  value: moodTagLabel(report.topTags[0].tag, t),
                   testID: 'mood-highlight-top-tag',
                 },
               ]
@@ -164,7 +164,7 @@ const MoodReportScreen: React.FC<MoodReportScreenProps> = () => {
       const best = report.weekdayAverages.reduce((a, b) =>
         b.value > a.value ? b : a
       );
-      const bestMood = moodForValue(best.value);
+      const bestMood = moodForValue(best.value, t);
       insightLines.push(
         t('moodReport.insightBestWeekday', {
           defaultValue: '{{weekday}} is your best day of the week{{mood}}.',
@@ -181,7 +181,7 @@ const MoodReportScreen: React.FC<MoodReportScreenProps> = () => {
             'Your most logged mood was {{mood}}, {{count}} time.',
           defaultValue_other:
             'Your most logged mood was {{mood}}, {{count}} times.',
-          mood: moodTagLabel(report.topTags[0].tag),
+          mood: moodTagLabel(report.topTags[0].tag, t),
           count: report.topTags[0].count,
         })
       );
@@ -258,7 +258,7 @@ const MoodReportScreen: React.FC<MoodReportScreenProps> = () => {
                 defaultValue: 'Average by weekday',
               })}
               rows={report.weekdayAverages.map(({ weekday, value }) => {
-                const mood = moodForValue(value);
+                const mood = moodForValue(value, t);
                 return {
                   label: weekdayName(weekday),
                   value: mood ? `${mood.emoji} ${mood.name}` : '-',
@@ -271,7 +271,7 @@ const MoodReportScreen: React.FC<MoodReportScreenProps> = () => {
             <ReportSummaryCard
               title={t('moodReport.topMoods', { defaultValue: 'Most logged' })}
               rows={report.topTags.map(({ tag, count }) => ({
-                label: moodTagLabel(tag),
+                label: moodTagLabel(tag, t),
                 value: formatLocalizedNumber(count),
                 testID: `mood-tag-${tag}`,
               }))}

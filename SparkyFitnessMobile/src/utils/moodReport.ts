@@ -3,6 +3,7 @@ import { dailyMoodSeries, moodByName, moodValueToTag } from '@workspace/shared';
 import { average } from './mathUtils';
 import { addDays, weekdayOfDay } from './dateUtils';
 import { formatTooltipDate } from '../components/charts/chartFormatting';
+import { getBuiltInMoodLabels } from '../components/mood/moodLabels';
 import type { MoodEntry } from '../services/api/moodApi';
 
 export type MoodDayPoint = {
@@ -30,18 +31,23 @@ export interface MoodReport {
   weekdayAverages: { weekday: number; value: number }[];
 }
 
-/** The emoji and display name a 0-100 mood value stands for, per the shared band model. */
+/** The emoji and localized display name a 0-100 mood value stands for, per the shared band model. */
 export const moodForValue = (
-  value: number
+  value: number,
+  t: TFunction
 ): { emoji: string; name: string } | null => {
   const def = moodByName(moodValueToTag(value));
-  return def ? { emoji: def.emoji, name: def.displayName } : null;
+  if (!def) return null;
+  const name = getBuiltInMoodLabels(t)[def.name] ?? def.displayName;
+  return { emoji: def.emoji, name };
 };
 
 /** Built-in moods show as "emoji name"; a user's own mood tag stays literal. */
-export const moodTagLabel = (tag: string): string => {
+export const moodTagLabel = (tag: string, t: TFunction): string => {
   const def = moodByName(tag);
-  return def ? `${def.emoji} ${def.displayName}` : tag;
+  if (!def) return tag;
+  const name = getBuiltInMoodLabels(t)[def.name] ?? def.displayName;
+  return `${def.emoji} ${name}`;
 };
 
 /**
@@ -52,7 +58,7 @@ export function formatMoodTooltip(
   point: { value: number; day: string },
   t: TFunction
 ): string {
-  const mood = point.value > 0 ? moodForValue(point.value) : null;
+  const mood = point.value > 0 ? moodForValue(point.value, t) : null;
   return t('moodReport.tooltip', {
     defaultValue: '{{mood}} · {{date}}',
     mood: mood ? `${mood.emoji} ${mood.name}` : '-',

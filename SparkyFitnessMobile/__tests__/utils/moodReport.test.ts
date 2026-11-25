@@ -159,7 +159,11 @@ describe('buildMoodReport highlights', () => {
 
 describe('moodTagLabel', () => {
   it('keeps a custom mood literal', () => {
-    expect(moodTagLabel('my-own-mood')).toBe('my-own-mood');
+    expect(moodTagLabel('my-own-mood', t)).toBe('my-own-mood');
+  });
+
+  it('localizes a built-in mood name', () => {
+    expect(moodTagLabel('excited', t)).toBe('😍 Excited');
   });
 });
 
