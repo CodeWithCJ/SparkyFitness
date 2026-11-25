@@ -26,6 +26,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
@@ -53,6 +55,8 @@ private const val SERVER_HEADERS_KEY = "sparky.serverHeadersJson"
 private const val ENCRYPTED_HEADERS_KEY = "sparky.serverHeadersEncrypted"
 private const val CREDENTIALS_KEY_ALIAS = "sparky_watch_credentials_key"
 private const val LAST_CONTEXT_JSON_KEY = "sparky.lastContextJson"
+private const val LAST_COMPLICATION_CONFIG_JSON_KEY = "sparky.lastComplicationConfigJson"
+private const val LAST_COMPLICATION_CONFIG_REV_KEY = "sparky.lastComplicationConfigRevision"
 private const val HEART_RATE_QUEUE_LIMIT = 10_080
 private const val HEART_RATE_BATCH_BYTE_LIMIT = 1_048_576
 private const val RUN_QUEUE_LIMIT = 50
@@ -80,6 +84,7 @@ internal object WatchConnectivityHub {
   private val runQueue = mutableListOf<Map<String, Any?>>()
 
   private val inboundLock = Any()
+  private val complicationConfigMutex = Mutex()
 
   data class QueuedHrBatch(
     val event: Map<String, Any?>,
@@ -269,6 +274,51 @@ internal object WatchConnectivityHub {
     }
 
     sendLiveBytes(appCtx, "/sparky/context", bytes)
+  }
+
+  suspend fun sendComplicationConfig(context: Context, payload: Map<String, Any?>) {
+    val appCtx = context.applicationContext
+    val cleaned = withoutNulls(payload).toMutableMap()
+    cleaned["type"] = "complicationConfig"
+    val incomingRevision = (cleaned["revision"] as? Number)?.toLong() ?: 0L
+    val json = mapToJsonObject(cleaned).toString()
+
+    complicationConfigMutex.withLock {
+      val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      val cachedRevision = prefs.getLong(LAST_COMPLICATION_CONFIG_REV_KEY, 0L)
+      if (incomingRevision < cachedRevision) return@withLock
+      prefs.edit()
+        .putString(LAST_COMPLICATION_CONFIG_JSON_KEY, json)
+        .putLong(LAST_COMPLICATION_CONFIG_REV_KEY, incomingRevision)
+        .apply()
+      publishRawComplicationConfigJson(appCtx, json)
+    }
+  }
+
+  private suspend fun replayCachedComplicationConfig(context: Context) {
+    val appCtx = context.applicationContext
+    complicationConfigMutex.withLock {
+      val cached = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getString(LAST_COMPLICATION_CONFIG_JSON_KEY, null)
+        ?: return@withLock
+      publishRawComplicationConfigJson(appCtx, cached)
+    }
+  }
+
+  private suspend fun publishRawComplicationConfigJson(appCtx: Context, json: String) {
+    val bytes = json.toByteArray(Charsets.UTF_8)
+
+    try {
+      val req = PutDataMapRequest.create("/sparky/complicationConfig").apply {
+        dataMap.putString("json", json)
+        dataMap.putLong("sentAt", System.currentTimeMillis())
+      }.asPutDataRequest().setUrgent()
+      Wearable.getDataClient(appCtx).putDataItem(req).await()
+    } catch (e: Throwable) {
+      Log.w(TAG, "sendComplicationConfig DataClient failed: ${e.message}")
+    }
+
+    sendLiveBytes(appCtx, "/sparky/message", bytes)
   }
 
   suspend fun sendMessageOrTransfer(
@@ -856,8 +906,9 @@ internal object WatchConnectivityHub {
         } else {
           val cached = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getString(LAST_CONTEXT_JSON_KEY, null)
-          if (cached != null) {
-            scope.launch { publishRawContextJson(context, cached) }
+          scope.launch {
+            if (cached != null) publishRawContextJson(context, cached)
+            replayCachedComplicationConfig(context)
           }
         }
       }
@@ -1759,6 +1810,14 @@ class WatchConnectivityModule : Module() {
       val payload = context.toHashMap()
       WatchConnectivityHub.scope.launch {
         WatchConnectivityHub.putApplicationContext(ctx, payload)
+      }
+    }
+
+    AsyncFunction("sendComplicationConfig") { config: ReadableMap ->
+      val ctx = appContext.reactContext ?: return@AsyncFunction
+      val payload = config.toHashMap()
+      WatchConnectivityHub.scope.launch {
+        WatchConnectivityHub.sendComplicationConfig(ctx, payload)
       }
     }
 

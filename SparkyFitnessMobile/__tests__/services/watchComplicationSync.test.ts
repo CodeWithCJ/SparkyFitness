@@ -38,7 +38,7 @@ beforeEach(() => {
 
 describe('sendComplicationsToWatch', () => {
   it('queues the list as a complication config', async () => {
-    await sendComplicationsToWatch([water]);
+    await expect(sendComplicationsToWatch([water])).resolves.toBe(true);
     expect(module.sendComplicationConfig).toHaveBeenCalledTimes(1);
     const sent = module.sendComplicationConfig.mock.calls[0][0];
     expect(sent.definitions).toEqual([
@@ -104,10 +104,31 @@ describe('sendComplicationsToWatch', () => {
     );
   });
 
-  it('sends nothing on Android, whose module has no such message', async () => {
+  it('queues the list on Android (Wear OS) too', async () => {
     Object.defineProperty(Platform, 'OS', { value: 'android' });
-    await sendComplicationsToWatch([water]);
+    await expect(sendComplicationsToWatch([water])).resolves.toBe(true);
+    expect(module.sendComplicationConfig).toHaveBeenCalledTimes(1);
+    const sent = module.sendComplicationConfig.mock.calls[0][0];
+    expect(sent.definitions).toEqual([
+      expect.objectContaining({ id: 'w', name: 'Water', source: 'water' }),
+    ]);
+  });
+
+  it('returns false without sending on unsupported platforms', async () => {
+    Object.defineProperty(Platform, 'OS', { value: 'web' });
+    await expect(sendComplicationsToWatch([water])).resolves.toBe(false);
     expect(module.sendComplicationConfig).not.toHaveBeenCalled();
+  });
+
+  it('returns false when the native sendComplicationConfig method is unavailable', async () => {
+    const saved = module.sendComplicationConfig;
+    (module as { sendComplicationConfig?: jest.Mock }).sendComplicationConfig =
+      undefined;
+    try {
+      await expect(sendComplicationsToWatch([water])).resolves.toBe(false);
+    } finally {
+      module.sendComplicationConfig = saved;
+    }
   });
 
   it('reports a failed send to the caller', async () => {

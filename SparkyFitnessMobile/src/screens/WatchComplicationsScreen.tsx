@@ -1,5 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useCSSVariable } from 'uniwind';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -55,6 +62,7 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
   navigation,
 }) => {
   const { t } = useTranslation();
+  const isAndroid = Platform.OS === 'android';
   const insets = useSafeAreaInsets();
   const [dangerColor] = useCSSVariable(['--color-icon-danger']) as [string];
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -76,10 +84,20 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
   const handleReload = useCallback(async () => {
     setReloading(true);
     try {
-      await sendComplicationsToWatch(list, {
+      const sent = await sendComplicationsToWatch(list, {
         reload: true,
         builtIns: builtInStyles,
       });
+      if (!sent) {
+        Toast.show({
+          type: 'error',
+          text1: t('watchComplications.reloadFailed', {
+            defaultValue: 'Could not send to your watch',
+          }),
+          text2: t('common.tryAgain', { defaultValue: 'Please try again.' }),
+        });
+        return;
+      }
       Toast.show({
         type: 'success',
         text1: t('watchComplications.reloaded', {
@@ -534,91 +552,93 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
             </View>
           );
         })}
-        <View
-          testID="watch-built-in-row-dailyEnergy"
-          className="bg-surface rounded-xl mb-3 shadow-sm"
-        >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('watchComplications.changeBuiltIn', {
-              defaultValue: 'Change {{name}}',
-              name: t('watchComplications.builtInDailyEnergy', {
-                defaultValue: 'Daily Energy Goal',
-              }),
-            })}
-            accessibilityState={{ expanded: openBuiltIn === 'dailyEnergy' }}
-            className="flex-row items-center px-4 py-3"
-            style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
-            onPress={() =>
-              setOpenBuiltIn(
-                openBuiltIn === 'dailyEnergy' ? null : 'dailyEnergy'
-              )
-            }
+        {!isAndroid ? (
+          <View
+            testID="watch-built-in-row-dailyEnergy"
+            className="bg-surface rounded-xl mb-3 shadow-sm"
           >
-            <View
-              className="items-center justify-center rounded-full mr-3 flex-row flex-wrap bg-watch-face"
-              style={{
-                width: 40,
-                height: 40,
-                padding: 9,
-              }}
-            >
-              {ENERGY_COLOR_KEYS.map((key) => (
-                <View
-                  key={key}
-                  style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: 5,
-                    backgroundColor:
-                      COMPLICATION_COLOR_HEX[
-                        resolveEnergyColor(builtInStyles, key)
-                      ],
-                  }}
-                />
-              ))}
-            </View>
-            <Text className="flex-1 text-lg font-semibold text-text-primary">
-              {t('watchComplications.builtInDailyEnergy', {
-                defaultValue: 'Daily Energy Goal',
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('watchComplications.changeBuiltIn', {
+                defaultValue: 'Change {{name}}',
+                name: t('watchComplications.builtInDailyEnergy', {
+                  defaultValue: 'Daily Energy Goal',
+                }),
               })}
-            </Text>
-            <Icon
-              name={
-                openBuiltIn === 'dailyEnergy' ? 'chevron-up' : 'chevron-down'
+              accessibilityState={{ expanded: openBuiltIn === 'dailyEnergy' }}
+              className="flex-row items-center px-4 py-3"
+              style={({ pressed }) => (pressed ? { opacity: 0.7 } : null)}
+              onPress={() =>
+                setOpenBuiltIn(
+                  openBuiltIn === 'dailyEnergy' ? null : 'dailyEnergy'
+                )
               }
-              size={18}
-            />
-          </Pressable>
-          {openBuiltIn === 'dailyEnergy' ? (
-            <View className="px-4 pb-4">
-              {ENERGY_COLOR_KEYS.map((key) => (
-                <View key={key} className="mb-3">
-                  <Text className="text-sm font-semibold text-text-secondary mb-2">
-                    {energyColorLabel(key, t)}
-                  </Text>
-                  <ComplicationColorPicker
-                    value={resolveEnergyColor(builtInStyles, key)}
-                    onSelect={(color) => changeBuiltIn(key, { color })}
-                    testIDPrefix={`watch-built-in-${key}-color`}
-                    size={34}
+            >
+              <View
+                className="items-center justify-center rounded-full mr-3 flex-row flex-wrap bg-watch-face"
+                style={{
+                  width: 40,
+                  height: 40,
+                  padding: 9,
+                }}
+              >
+                {ENERGY_COLOR_KEYS.map((key) => (
+                  <View
+                    key={key}
+                    style={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: 5,
+                      backgroundColor:
+                        COMPLICATION_COLOR_HEX[
+                          resolveEnergyColor(builtInStyles, key)
+                        ],
+                    }}
                   />
-                </View>
-              ))}
-              {ENERGY_COLOR_KEYS.some((key) => builtInStyles[key]) ? (
-                <Button
-                  variant="ghost"
-                  testID="watch-built-in-dailyEnergy-reset"
-                  onPress={() => clearBuiltIns(ENERGY_COLOR_KEYS)}
-                >
-                  {t('watchComplications.builtInEnergyReset', {
-                    defaultValue: 'Put back the original colours',
-                  })}
-                </Button>
-              ) : null}
-            </View>
-          ) : null}
-        </View>
+                ))}
+              </View>
+              <Text className="flex-1 text-lg font-semibold text-text-primary">
+                {t('watchComplications.builtInDailyEnergy', {
+                  defaultValue: 'Daily Energy Goal',
+                })}
+              </Text>
+              <Icon
+                name={
+                  openBuiltIn === 'dailyEnergy' ? 'chevron-up' : 'chevron-down'
+                }
+                size={18}
+              />
+            </Pressable>
+            {openBuiltIn === 'dailyEnergy' ? (
+              <View className="px-4 pb-4">
+                {ENERGY_COLOR_KEYS.map((key) => (
+                  <View key={key} className="mb-3">
+                    <Text className="text-sm font-semibold text-text-secondary mb-2">
+                      {energyColorLabel(key, t)}
+                    </Text>
+                    <ComplicationColorPicker
+                      value={resolveEnergyColor(builtInStyles, key)}
+                      onSelect={(color) => changeBuiltIn(key, { color })}
+                      testIDPrefix={`watch-built-in-${key}-color`}
+                      size={34}
+                    />
+                  </View>
+                ))}
+                {ENERGY_COLOR_KEYS.some((key) => builtInStyles[key]) ? (
+                  <Button
+                    variant="ghost"
+                    testID="watch-built-in-dailyEnergy-reset"
+                    onPress={() => clearBuiltIns(ENERGY_COLOR_KEYS)}
+                  >
+                    {t('watchComplications.builtInEnergyReset', {
+                      defaultValue: 'Put back the original colours',
+                    })}
+                  </Button>
+                ) : null}
+              </View>
+            ) : null}
+          </View>
+        ) : null}
         <Button
           variant="outline"
           testID="watch-complications-reload"
@@ -630,10 +650,15 @@ const WatchComplicationsScreen: React.FC<WatchComplicationsScreenProps> = ({
           })}
         </Button>
         <Text className="text-text-muted text-xs mt-2">
-          {t('watchComplications.reloadHint', {
-            defaultValue:
-              'Sends your complications to the Apple Watch and refreshes them.',
-          })}
+          {isAndroid
+            ? t('watchComplications.reloadHintWearOs', {
+                defaultValue:
+                  'Sends your complications to your Wear OS watch and refreshes them.',
+              })
+            : t('watchComplications.reloadHint', {
+                defaultValue:
+                  'Sends your complications to the Apple Watch and refreshes them.',
+              })}
         </Text>
       </ScrollView>
       <FooterActionBar>

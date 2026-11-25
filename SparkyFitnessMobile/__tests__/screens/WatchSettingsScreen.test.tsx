@@ -440,9 +440,26 @@ describe('WatchSettingsScreen', () => {
     }
   });
 
-  test('has a row that opens the complications screen', () => {
+  test('has a row that opens the complications screen on iOS and Android', () => {
     renderScreen();
     fireEvent.press(screen.getByTestId('watch-complications-row'));
     expect(navigation.navigate).toHaveBeenCalledWith('WatchComplications');
+
+    navigation.navigate.mockClear();
+    const originalOs = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    try {
+      renderScreen();
+      fireEvent.press(screen.getAllByTestId('watch-complications-row')[0]);
+      expect(navigation.navigate).toHaveBeenCalledWith('WatchComplications');
+    } finally {
+      Object.defineProperty(Platform, 'OS', {
+        value: originalOs,
+        configurable: true,
+      });
+    }
   });
 });

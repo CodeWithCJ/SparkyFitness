@@ -7290,6 +7290,7 @@
     "menu": "Complication options",
     "reload": "Reload complications",
     "reloadHint": "Sends your complications to the Apple Watch and refreshes them.",
+    "reloadHintWearOs": "Sends your complications to your Wear OS watch and refreshes them.",
     "reloaded": "Sent to your watch",
     "reloadedSubtitle": "Open the watch app if the picker still shows the old list.",
     "reloadFailed": "Could not send to your watch",

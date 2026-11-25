@@ -252,30 +252,24 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = ({
           usesNativeHeader ? 'automatic' : 'never'
         }
       >
-        {!isAndroid && (
-          <>
-            <Text className="text-text-primary text-base font-semibold mb-1">
-              {t('watchSettings.complicationsTitle', {
-                defaultValue: 'Complications',
-              })}
-            </Text>
-            <SettingsRow
-              testID="watch-complications-row"
-              title={t('watchSettings.complicationsRow', {
-                defaultValue: 'Your complications',
-              })}
-              subtitle={t('watchSettings.complicationsSubtitle', {
-                defaultValue:
-                  'Make your own for the watch face, and import or export them.',
-              })}
-              subtitleNumberOfLines={0}
-              onPress={() => navigation.navigate('WatchComplications')}
-            />
-          </>
-        )}
-        <Text
-          className={`text-text-primary text-base font-semibold mb-1 ${isAndroid ? '' : 'mt-6'}`}
-        >
+        <Text className="text-text-primary text-base font-semibold mb-1">
+          {t('watchSettings.complicationsTitle', {
+            defaultValue: 'Complications',
+          })}
+        </Text>
+        <SettingsRow
+          testID="watch-complications-row"
+          title={t('watchSettings.complicationsRow', {
+            defaultValue: 'Your complications',
+          })}
+          subtitle={t('watchSettings.complicationsSubtitle', {
+            defaultValue:
+              'Make your own for the watch face, and import or export them.',
+          })}
+          subtitleNumberOfLines={0}
+          onPress={() => navigation.navigate('WatchComplications')}
+        />
+        <Text className="text-text-primary text-base font-semibold mb-1 mt-6">
           {t('watchSettings.gesturesTitle', { defaultValue: 'Gestures' })}
         </Text>
         {!isAndroid && (
