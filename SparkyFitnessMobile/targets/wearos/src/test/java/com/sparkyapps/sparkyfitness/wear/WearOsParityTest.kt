@@ -2038,5 +2038,11 @@ class WearOsParityTest {
         )
         val mix3RemSpec = CustomComplicationEngine.buildRenderSpec(mix3RemainingFmt, metrics, nowMs, today, Locale.US)
         assertEquals("7k/2k", mix3RemSpec.shortTitle)
+
+        // Native-digit locale preserves localized digits during ultra-compaction
+        val arLocale = Locale.forLanguageTag("ar-EG")
+        val arFmt = java.text.NumberFormat.getIntegerInstance(arLocale).apply { isGroupingUsed = false }
+        val mix3ArSpec = CustomComplicationEngine.buildRenderSpec(weightStepsCal, metrics, nowMs, today, arLocale)
+        assertEquals("${arFmt.format(7L)}k/${arFmt.format(2L)}k", mix3ArSpec.shortTitle)
     }
 }
