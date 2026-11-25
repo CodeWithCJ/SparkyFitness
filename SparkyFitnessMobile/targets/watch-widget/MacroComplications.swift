@@ -143,6 +143,29 @@ struct MacroComplicationView: View {
 
     private var percent: Int { Int((entry.progress * 100).rounded()) }
 
+    private var styleKey: String {
+        switch macro {
+        case .protein: return "proteinGoal"
+        case .carbs: return "carbsGoal"
+        case .fat: return "fatGoal"
+        }
+    }
+
+    /// The wearer's colour and icon from the phone, else the macro's own.
+    private var look: BuiltInLook {
+        builtInLook(styleKey, color: macro.tint, icon: macro.symbol)
+    }
+
+    /// The macro's letter, or the icon the wearer picked in its place.
+    @ViewBuilder
+    private var badge: some View {
+        if look.customIcon {
+            Image(systemName: look.icon)
+        } else {
+            Text(macro.letter)
+        }
+    }
+
     /// "85/150g" when the phone sent grams, otherwise the percentage.
     private var amountText: String {
         guard let amount = entry.amount else { return "\(percent)%" }
@@ -178,38 +201,38 @@ struct MacroComplicationView: View {
             // The curved label has room for about seven characters before it
             // is clipped, so the macro's letter goes in the corner itself and
             // the label carries only "81/150" (or the percent), with no unit.
-            Text(macro.letter)
+            badge
                 .font(.system(.title3, design: .rounded).weight(.semibold))
-                .foregroundStyle(macro.tint)
+                .foregroundStyle(look.color)
                 .widgetLabel {
                     ProgressView(value: entry.progress) {
                         Text(cornerLabel)
                             .minimumScaleFactor(0.7)
                     }
-                    .tint(macro.tint)
+                    .tint(look.color)
                 }
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
-                Label(macro.name, systemImage: macro.symbol)
+                Label(macro.name, systemImage: look.icon)
                     .font(.headline)
-                    .foregroundStyle(macro.tint)
+                    .foregroundStyle(look.color)
                 Text(amountText)
                     .font(.system(.body, design: .rounded).weight(.semibold))
                     .monospacedDigit()
                 ProgressView(value: entry.progress)
-                    .tint(macro.tint)
+                    .tint(look.color)
             }
         case .accessoryInline:
-            Label("\(macro.letter) \(amountText)", systemImage: macro.symbol)
+            Label("\(macro.letter) \(amountText)", systemImage: look.icon)
         default:
             Gauge(value: entry.progress) {
-                Text(macro.letter)
+                badge
             } currentValueLabel: {
                 Text(shortText)
                     .monospacedDigit()
             }
             .gaugeStyle(.accessoryCircular)
-            .tint(macro.tint)
+            .tint(look.color)
         }
     }
 }

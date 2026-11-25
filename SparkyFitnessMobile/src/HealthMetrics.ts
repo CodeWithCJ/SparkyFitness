@@ -504,7 +504,7 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
     stateKey: 'isVo2MaxSyncEnabled',
     preferenceKey: 'syncVo2MaxEnabled',
     recordType: 'Vo2Max',
-    unit: 'ml/min/kg',
+    unit: 'ml/kg/min',
     icon: require('../assets/icons/health-metrics/vo2_max.png'),
     permissions: [{ accessType: 'read', recordType: 'Vo2Max' }],
     type: 'vo2_max',

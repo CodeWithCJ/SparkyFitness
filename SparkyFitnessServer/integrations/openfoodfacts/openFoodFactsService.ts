@@ -107,13 +107,22 @@ const OFF_CORE_NUTRIENT_SERVING_KEYS = [
   'carbohydrates_serving',
   'fat_serving',
 ] as const;
-const OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_KEYS.map(
+// Search-a-licious rejects the whole query when it names a field missing from
+// its index, and the public index no longer has nutriments.energy_100g or any
+// nutriments.*_serving field. This clause is only a pre-filter on the fields
+// it still has; the exact per-document rule still runs in
+// hasUsableOffCoreNutrition after hydration.
+const OFF_CORE_NUTRIENT_100G_SEARCH_KEYS = [
+  'energy-kcal_100g',
+  'energy-kj_100g',
+  'proteins_100g',
+  'carbohydrates_100g',
+  'fat_100g',
+] as const;
+const OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_SEARCH_KEYS.map(
   (key) => `nutriments.${key}:*`
 ).join(' OR ')})`;
-const OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_SERVING_KEYS.map(
-  (key) => `nutriments.${key}:*`
-).join(' OR ')})`;
-const OFF_CORE_NUTRITION_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE} OR (serving_quantity:[0.000001 TO *] AND ${OFF_CORE_NUTRIENT_SERVING_SEARCH_CLAUSE}))`;
+const OFF_CORE_NUTRITION_SEARCH_CLAUSE = `(${OFF_CORE_NUTRIENT_100G_SEARCH_CLAUSE} OR (serving_quantity:[0.000001 TO *] AND nutrition_data_per:serving))`;
 const LEGACY_SEARCH_BATCH_SIZE = 100;
 const LEGACY_SEARCH_MAX_BATCHES = 10;
 

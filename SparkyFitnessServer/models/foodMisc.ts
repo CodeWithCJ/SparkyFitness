@@ -506,7 +506,13 @@ async function updateFoodEntriesSnapshot(
   variantId: string,
   newSnapshotData: FoodEntrySnapshot,
   syncImages: boolean = true
-): Promise<{ rowCount: number; replacedEntryImages: string[] }> {
+): Promise<{
+  rowCount: number;
+  replacedEntryImages: string[];
+  // The entries whose photos were read: the only image folders the caller may
+  // clean up (a stored path can name any folder).
+  syncedEntryIds: string[];
+}> {
   const client = await getClient(userId); // User-specific operation
   try {
     // The read and the overwrite share one transaction, and the read takes row
@@ -680,6 +686,7 @@ async function updateFoodEntriesSnapshot(
 
     return {
       rowCount: result.rowCount ?? 0,
+      syncedEntryIds: rows.map((row) => String(row.id)),
       // Only report photos that actually stopped being referenced.
       replacedEntryImages: replacedEntryImages.filter(
         (image) => !(newSnapshotData.images ?? []).includes(image)

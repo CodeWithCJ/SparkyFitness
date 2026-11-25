@@ -1632,7 +1632,7 @@ describe('transformHealthRecords', () => {
       const records = [{ time: '2024-01-15T08:00:00Z', vo2Max: 45.5 }];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1644,7 +1644,7 @@ describe('transformHealthRecords', () => {
       const records = [{ time: '2024-01-15T08:00:00Z', vo2: 42.0 }];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1656,7 +1656,7 @@ describe('transformHealthRecords', () => {
       const records = [{ time: '2024-01-15T08:00:00Z', value: 40.0 }];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1670,7 +1670,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1687,7 +1687,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1699,7 +1699,7 @@ describe('transformHealthRecords', () => {
       const records = [{ time: '2024-01-15T08:00:00Z', vo2Max: '45.5' }];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1714,7 +1714,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       });
 

@@ -97,6 +97,16 @@
       --color-sport-strength: hsl(264, 29%, 51%);
       --color-sport-other: hsl(219, 6%, 57%);
 
+      /* The watch's own face in the Complications preview: always black with
+         white text, in every theme, because the watch has one look. Phone-side
+         controls use the shared tokens instead. */
+      --color-watch-face: hsl(0, 0%, 0%);
+      --color-watch-face-text: hsl(0, 0%, 100%);
+      --color-watch-face-text-muted: hsla(0, 0%, 100%, 0.6);
+      --color-watch-face-text-faint: hsla(0, 0%, 100%, 0.5);
+      --color-watch-face-chip: hsla(0, 0%, 100%, 0.14);
+      --color-watch-face-track: hsla(0, 0%, 100%, 0.25);
+
       --color-wellness-menstrual: hsl(354, 75%, 55%);
       --color-wellness-follicular: hsl(158, 55%, 45%);
       --color-wellness-ovulation: hsl(214, 90%, 56%);
@@ -184,6 +194,16 @@
       --color-sport-strength: hsl(264, 26%, 59%);
       --color-sport-other: hsl(219, 6%, 65%);
 
+      /* The watch's own face in the Complications preview: always black with
+         white text, in every theme, because the watch has one look. Phone-side
+         controls use the shared tokens instead. */
+      --color-watch-face: hsl(0, 0%, 0%);
+      --color-watch-face-text: hsl(0, 0%, 100%);
+      --color-watch-face-text-muted: hsla(0, 0%, 100%, 0.6);
+      --color-watch-face-text-faint: hsla(0, 0%, 100%, 0.5);
+      --color-watch-face-chip: hsla(0, 0%, 100%, 0.14);
+      --color-watch-face-track: hsla(0, 0%, 100%, 0.25);
+
       --color-wellness-menstrual: hsl(354, 75%, 65%);
       --color-wellness-follicular: hsl(158, 55%, 55%);
       --color-wellness-ovulation: hsl(214, 90%, 66%);
@@ -269,6 +289,16 @@
       --color-sport-cardio: hsl(173, 52%, 47%);
       --color-sport-strength: hsl(264, 26%, 59%);
       --color-sport-other: hsl(219, 6%, 65%);
+
+      /* The watch's own face in the Complications preview: always black with
+         white text, in every theme, because the watch has one look. Phone-side
+         controls use the shared tokens instead. */
+      --color-watch-face: hsl(0, 0%, 0%);
+      --color-watch-face-text: hsl(0, 0%, 100%);
+      --color-watch-face-text-muted: hsla(0, 0%, 100%, 0.6);
+      --color-watch-face-text-faint: hsla(0, 0%, 100%, 0.5);
+      --color-watch-face-chip: hsla(0, 0%, 100%, 0.14);
+      --color-watch-face-track: hsla(0, 0%, 100%, 0.25);
 
       --color-wellness-menstrual: hsl(354, 75%, 65%);
       --color-wellness-follicular: hsl(158, 55%, 55%);

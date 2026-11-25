@@ -1,0 +1,780 @@
+import AppIntents
+import SwiftUI
+import WidgetKit
+
+// The wearer's own complications. One configurable complication whose picker
+// lists the definitions the phone sent (`complicationConfig`, saved by
+// ComplicationPublisher under `customComplicationDefinitions`), so any number
+// can be made and each watch-face slot picks one. What a definition shows comes
+// from `customMetricsSnapshot`, the numbers the watch app copies out of its
+// context. Helpers are file-private for the reason spelled out at the top of
+// WaterGoalComplication.
+
+private let customDateFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.calendar = Calendar(identifier: .gregorian)
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "yyyy-MM-dd"
+    return formatter
+}()
+
+private func customDefaults() -> UserDefaults? {
+    guard
+        let appGroup = Bundle.main.object(forInfoDictionaryKey: "APP_GROUP_IDENTIFIER") as? String,
+        !appGroup.isEmpty
+    else { return nil }
+    return UserDefaults(suiteName: appGroup)
+}
+
+/// Mirrors `ComplicationPublisher.CustomDefinition` (targets/watch). Every
+/// field but the first three is optional so a list written by a build that
+/// lacked one still decodes.
+private struct StoredDefinition: Decodable {
+    let id: String
+    let name: String
+    let source: String
+    let format: String?
+    let gauge: Bool?
+    let color: String?
+    let icon: String?
+    /// The second and third values, shown with the first.
+    let extras: [StoredItem]?
+}
+
+/// Mirrors `ComplicationPublisher.CustomItem` (targets/watch).
+private struct StoredItem: Decodable {
+    let source: String
+    let format: String?
+    let color: String?
+    let icon: String?
+}
+
+/// What the picker offers before the phone's list has reached the watch (a
+/// fresh install, or a watch that has not been in range yet), so it is never
+/// empty. Mirrors `starterComplications` in `src/utils/watchComplications.ts`
+/// and uses the same ids, so a slot set to one of these keeps working once the
+/// phone's list arrives: change one side, change the other.
+private func starterDefinitions() -> [StoredDefinition] {
+    func starter(
+        _ source: String, _ name: String, _ format: String, _ gauge: Bool,
+        _ color: String, _ icon: String, extras: [StoredItem]? = nil
+    ) -> StoredDefinition {
+        StoredDefinition(
+            id: "starter-\(source)", name: name, source: source,
+            format: format, gauge: gauge, color: color, icon: icon, extras: extras
+        )
+    }
+    return [
+        starter("caloriesRemaining", String(localized: "watch.custom.starter.caloriesRemaining", defaultValue: "Calories left"), "value", false, "calories", "flame.fill"),
+        // The macros as rings, like the Daily Energy complication. Its id is
+        // `starter-macros`, not a source's, as on the phone.
+        StoredDefinition(
+            id: "starter-macros",
+            name: String(localized: "watch.custom.starter.macros", defaultValue: "Macros"),
+            source: "protein", format: "percent", gauge: true, color: "protein", icon: "fish.fill",
+            extras: [
+                StoredItem(source: "carbs", format: "percent", color: "carbs", icon: "leaf.fill"),
+                StoredItem(source: "fat", format: "percent", color: "fat", icon: "drop.fill"),
+            ]
+        ),
+        starter("weight", String(localized: "watch.custom.starter.weight", defaultValue: "Weight"), "value", false, "weight", "scalemass.fill"),
+        starter("sleepScore", String(localized: "watch.custom.starter.sleepScore", defaultValue: "Sleep score"), "percent", true, "sleep", "moon.zzz.fill"),
+    ]
+}
+
+/// The phone's list, or the starter set while no valid list is stored. A stored
+/// empty list is the wearer's own (they deleted every complication) and stays
+/// empty.
+private func loadDefinitions() -> [StoredDefinition] {
+    guard
+        let data = customDefaults()?.data(forKey: "customComplicationDefinitions"),
+        let list = try? JSONDecoder().decode([StoredDefinition].self, from: data)
+    else { return starterDefinitions() }
+    return list
+}
+
+/// Mirrors `CustomMetric` (targets/watch).
+private struct StoredMetric: Decodable {
+    let key: String
+    let value: Double
+    let goal: Double?
+    let remaining: Double?
+    let progress: Double?
+    let unit: String?
+    let decimals: Int?
+    let day: String?
+    let startedAt: Double?
+    let targetEndAt: Double?
+    /// `value` is seconds, written as H:MM.
+    let isDuration: Bool?
+}
+
+private struct StoredMetrics: Decodable {
+    let metrics: [StoredMetric]
+}
+
+/// The metric a source names, unless it describes another day.
+private func loadMetric(source: String, now: Date) -> StoredMetric? {
+    guard
+        let data = customDefaults()?.data(forKey: "customMetricsSnapshot"),
+        let stored = try? JSONDecoder().decode(StoredMetrics.self, from: data),
+        let metric = stored.metrics.first(where: { $0.key == source })
+    else { return nil }
+    if let day = metric.day, day != customDateFormatter.string(from: now) { return nil }
+    return metric
+}
+
+private func formatted(_ value: Double, decimals: Int) -> String {
+    value.formatted(.number.precision(.fractionLength(decimals)))
+}
+
+private func percentText(_ progress: Double) -> String {
+    "\(Int((max(0, min(1, progress)) * 100).rounded()))%"
+}
+
+/// Elapsed or remaining time as H:MM.
+private func clockText(_ seconds: TimeInterval) -> String {
+    let minutes = Int(max(0, seconds) / 60)
+    return String(format: "%d:%02d", minutes / 60, minutes % 60)
+}
+
+/// The words a definition shows: the main text, a line under it for the
+/// rectangular size, and the 0...1 fill. Dashes when its number isn't there. A
+/// format that needs a figure the metric lacks (percent without progress,
+/// remaining without a goal) shows the plain value instead.
+private struct Shown {
+    let text: String
+    let detail: String?
+    let progress: Double?
+
+    static let missing = Shown(text: "–", detail: nil, progress: nil)
+}
+
+private func ofGoalText(_ goal: String) -> String {
+    String(localized: "watch.custom.ofGoal", defaultValue: "of \(goal)")
+}
+
+/// "kcal left", or just "left" for a number with no unit.
+private func leftText(unit: String) -> String {
+    unit.isEmpty
+        ? String(localized: "watch.custom.leftOnly", defaultValue: "left")
+        : String(localized: "watch.custom.left", defaultValue: "\(unit) left")
+}
+
+/// An amount and its unit, as one phrase.
+private func amountText(_ value: Double, unit: String, decimals: Int) -> String {
+    let number = formatted(value, decimals: decimals)
+    return unit.isEmpty ? number : "\(number) \(unit)"
+}
+
+private func display(
+    source: String,
+    format: String,
+    metric: StoredMetric?,
+    now: Date
+) -> Shown {
+    guard let metric else { return .missing }
+
+    if source == "fasting" {
+        // Not fasting: no start time.
+        guard let started = metric.startedAt else { return .missing }
+        let elapsed = max(0, now.timeIntervalSince1970 - started / 1000)
+        var progress: Double?
+        var remaining: TimeInterval?
+        var total: TimeInterval?
+        if let target = metric.targetEndAt {
+            let span = (target - started) / 1000
+            if span > 0 {
+                total = span
+                progress = min(1, elapsed / span)
+                remaining = max(0, span - elapsed)
+            }
+        }
+        if format == "percent", let progress {
+            return Shown(text: percentText(progress), detail: clockText(elapsed), progress: progress)
+        }
+        if format == "remaining", let remaining {
+            return Shown(text: clockText(remaining), detail: leftText(unit: ""), progress: progress)
+        }
+        return Shown(
+            text: clockText(elapsed),
+            detail: total.map { ofGoalText(clockText($0)) },
+            progress: progress
+        )
+    }
+
+    let decimals = metric.decimals ?? 0
+    let unit = metric.unit ?? ""
+    if format == "percent", let progress = metric.progress {
+        return Shown(
+            text: percentText(progress),
+            detail: amountText(metric.value, unit: unit, decimals: decimals),
+            progress: progress
+        )
+    }
+    if format == "remaining", let left = metric.remaining ?? metric.goal.map({ $0 - metric.value }) {
+        return Shown(
+            text: formatted(max(0, left), decimals: decimals),
+            detail: leftText(unit: unit),
+            progress: metric.progress
+        )
+    }
+    return Shown(
+        text: metric.isDuration == true
+            ? clockText(metric.value)
+            : formatted(metric.value, decimals: decimals),
+        detail: metric.goal.map { ofGoalText(amountText($0, unit: unit, decimals: decimals)) }
+            ?? (unit.isEmpty ? nil : unit),
+        progress: metric.progress
+    )
+}
+
+func tint(_ color: String?) -> Color {
+    switch color {
+    case "calories": return ComplicationPalette.calories
+    case "protein": return ComplicationPalette.protein
+    case "carbs": return ComplicationPalette.carbs
+    case "fat": return ComplicationPalette.fat
+    case "water": return .cyan
+    case "steps": return .mint
+    case "fasting": return .orange
+    case "weight": return .teal
+    case "sleep": return .indigo
+    case "heart": return .pink
+    case "exercise": return .green
+    default: return .white
+    }
+}
+
+/// A tap goes to the page that matches what the complication shows.
+private func link(for source: String) -> ComplicationLink {
+    switch source {
+    case "water": return .water
+    case "steps": return .steps
+    case "fasting": return .fasting
+    default: return .goals
+    }
+}
+
+struct CustomComplicationEntity: AppEntity, Sendable {
+    static let typeDisplayRepresentation = TypeDisplayRepresentation(name: "Complication")
+    static let defaultQuery = CustomComplicationQuery()
+
+    let id: String
+    let name: String
+    let icon: String
+
+    // The name is the wearer's own text, so it is passed as a literal rather
+    // than as a localisable string.
+    var displayRepresentation: DisplayRepresentation {
+        DisplayRepresentation(
+            title: .init(stringLiteral: name),
+            image: .init(systemName: icon)
+        )
+    }
+}
+
+struct CustomComplicationQuery: EntityQuery, EntityStringQuery {
+    func entities(for identifiers: [CustomComplicationEntity.ID]) async throws -> [CustomComplicationEntity] {
+        all().filter { identifiers.contains($0.id) }
+    }
+
+    func entities(matching string: String) async throws -> IntentItemCollection<CustomComplicationEntity> {
+        .init(items: all().filter { string.isEmpty || $0.name.localizedCaseInsensitiveContains(string) })
+    }
+
+    func suggestedEntities() async throws -> IntentItemCollection<CustomComplicationEntity> {
+        .init(items: all())
+    }
+
+    /// A slot starts on the first complication, so adding one shows something
+    /// before the wearer has picked.
+    func defaultResult() async -> CustomComplicationEntity? {
+        all().first
+    }
+
+    private func all() -> [CustomComplicationEntity] {
+        loadDefinitions().map {
+            CustomComplicationEntity(
+                id: $0.id,
+                name: $0.name,
+                icon: $0.icon ?? "gauge.with.dots.needle.33percent"
+            )
+        }
+    }
+}
+
+struct SelectCustomComplicationIntent: WidgetConfigurationIntent {
+    static let title: LocalizedStringResource = "Custom Complication"
+    static let description = IntentDescription("Choose which of your complications to show.")
+
+    @Parameter(title: "Complication")
+    var complication: CustomComplicationEntity?
+
+    init() {}
+}
+
+/// One value of a slot, worked out once so the view has nothing left to decide.
+struct CustomComplicationItemContent {
+    let icon: String
+    let color: Color
+    let text: String
+    /// A line under the text, for the rectangular size.
+    let detail: String?
+    /// Nil draws no gauge or ring: the definition turned it off, or the number
+    /// has no progress.
+    let progress: Double?
+
+    static let placeholder = CustomComplicationItemContent(
+        icon: "gauge.with.dots.needle.33percent", color: .white,
+        text: "60%", detail: nil, progress: 0.6
+    )
+
+    /// The slot has no complication yet, or the one it had was deleted.
+    static let empty = CustomComplicationItemContent(
+        icon: "gauge.with.dots.needle.33percent", color: .secondary,
+        text: "–", detail: nil, progress: nil
+    )
+}
+
+/// What a slot draws: one value, or up to three shown together.
+struct CustomComplicationContent {
+    let name: String
+    /// The first value first. Never empty.
+    let items: [CustomComplicationItemContent]
+    let link: ComplicationLink
+
+    private var first: CustomComplicationItemContent { items[0] }
+    var icon: String { first.icon }
+    var color: Color { first.color }
+    var detail: String? { first.detail }
+    var progress: Double? { first.progress }
+    /// Every value's text: the one value, or all of them for VoiceOver.
+    var text: String { items.map(\.text).joined(separator: ", ") }
+
+    static let placeholder = CustomComplicationContent(
+        name: "", items: [.placeholder], link: .goals
+    )
+    static let empty = CustomComplicationContent(
+        name: "", items: [.empty], link: .goals
+    )
+}
+
+struct CustomComplicationEntry: TimelineEntry {
+    let date: Date
+    let content: CustomComplicationContent
+}
+
+struct CustomComplicationProvider: AppIntentTimelineProvider {
+    typealias Entry = CustomComplicationEntry
+    typealias Intent = SelectCustomComplicationIntent
+
+    func placeholder(in context: Context) -> CustomComplicationEntry {
+        CustomComplicationEntry(date: Date(), content: .placeholder)
+    }
+
+    /// One value, worked out from the definition's source, format and look.
+    private func itemContent(
+        source: String, format: String?, color: String?, icon: String?,
+        showProgress: Bool, now: Date, preview: Bool
+    ) -> CustomComplicationItemContent {
+        var shown = display(
+            source: source, format: format ?? "value",
+            metric: loadMetric(source: source, now: now), now: now
+        )
+        // The picker and the face gallery draw this too: with no number yet, a
+        // sample in the definition's own look beats a dash.
+        if preview, shown.text == "–" {
+            shown = Shown(text: "60%", detail: nil, progress: 0.6)
+        }
+        return CustomComplicationItemContent(
+            icon: icon ?? "gauge.with.dots.needle.33percent",
+            color: tint(color),
+            text: shown.text,
+            detail: shown.detail,
+            progress: showProgress ? shown.progress : nil
+        )
+    }
+
+    /// Looks the definition up again by id rather than trusting the stored
+    /// choice, so an edit shows up and a deleted one falls back to empty. With
+    /// extra values every value that has progress gets its own ring or bar; with
+    /// one value its gauge switch decides.
+    private func content(for configuration: SelectCustomComplicationIntent, at now: Date, preview: Bool = false) -> CustomComplicationContent {
+        guard
+            let chosen = configuration.complication,
+            let definition = loadDefinitions().first(where: { $0.id == chosen.id })
+        else { return .empty }
+        let extras = Array((definition.extras ?? []).prefix(2))
+        let several = !extras.isEmpty
+        var items = [
+            itemContent(
+                source: definition.source, format: definition.format,
+                color: definition.color, icon: definition.icon,
+                showProgress: several || (definition.gauge ?? false), now: now,
+                preview: preview
+            )
+        ]
+        items += extras.map {
+            itemContent(
+                source: $0.source, format: $0.format, color: $0.color,
+                icon: $0.icon, showProgress: true, now: now, preview: preview
+            )
+        }
+        return CustomComplicationContent(
+            name: definition.name, items: items, link: link(for: definition.source)
+        )
+    }
+
+    /// On watchOS this IS the picker. Apple: watchOS has no interface for
+    /// choosing a complication's intent parameters, so the choices it lists
+    /// are the recommendations a provider returns, and a provider that returns
+    /// none shows "No options available" however good its entity query is. Each
+    /// saved definition (or a starter, until a list arrives) is one choice.
+    /// watchOS caches the answer: `ComplicationPublisher` calls
+    /// `invalidateConfigurationRecommendations()` when the list changes.
+    func recommendations() -> [AppIntentRecommendation<SelectCustomComplicationIntent>] {
+        loadDefinitions().map { definition in
+            var intent = SelectCustomComplicationIntent()
+            intent.complication = CustomComplicationEntity(
+                id: definition.id,
+                name: definition.name,
+                icon: definition.icon ?? "gauge.with.dots.needle.33percent"
+            )
+            // The name is the wearer's own text: passed as a plain String, which
+            // picks the `StringProtocol` initialiser, not a localised key.
+            return AppIntentRecommendation(intent: intent, description: definition.name)
+        }
+    }
+
+    func snapshot(for configuration: SelectCustomComplicationIntent, in context: Context) async -> CustomComplicationEntry {
+        let now = Date()
+        return CustomComplicationEntry(
+            date: now,
+            content: content(for: configuration, at: now, preview: context.isPreview)
+        )
+    }
+
+    func timeline(for configuration: SelectCustomComplicationIntent, in context: Context) async -> Timeline<CustomComplicationEntry> {
+        let now = Date()
+        let in15Minutes = Calendar.current.date(byAdding: .minute, value: 15, to: now) ?? now
+        let nextMidnight = Calendar.current.nextDate(
+            after: now,
+            matching: DateComponents(hour: 0, minute: 0, second: 0),
+            matchingPolicy: .nextTime
+        ) ?? in15Minutes
+        let reloadAt = min(in15Minutes, nextMidnight)
+        var entries = [CustomComplicationEntry(date: now, content: content(for: configuration, at: now))]
+        // A fasting clock reads H:MM, so it needs an entry each time the
+        // fast's minute turns over; the day-scoped metrics keep the single
+        // entry and the reload at midnight.
+        if let started = fastingStart(for: configuration, at: now) {
+            let elapsed = now.timeIntervalSince1970 - started
+            var next = started + (floor(max(0, elapsed) / 60) + 1) * 60
+            while Date(timeIntervalSince1970: next) < reloadAt {
+                let date = Date(timeIntervalSince1970: next)
+                entries.append(CustomComplicationEntry(date: date, content: content(for: configuration, at: date)))
+                next += 60
+            }
+        }
+        return Timeline(entries: entries, policy: .after(reloadAt))
+    }
+
+    /// When the running fast began, if the chosen complication shows one.
+    private func fastingStart(for configuration: SelectCustomComplicationIntent, at now: Date) -> TimeInterval? {
+        guard
+            let chosen = configuration.complication,
+            let definition = loadDefinitions().first(where: { $0.id == chosen.id })
+        else { return nil }
+        let sources = [definition.source] + (definition.extras ?? []).prefix(2).map(\.source)
+        guard
+            sources.contains("fasting"),
+            let startedAt = loadMetric(source: "fasting", now: now)?.startedAt
+        else { return nil }
+        return startedAt / 1000
+    }
+}
+
+struct CustomComplicationView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: CustomComplicationEntry
+
+    private var content: CustomComplicationContent { entry.content }
+
+    var body: some View {
+        face
+            .widgetURL(content.link.url)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(
+                String(
+                    localized: "watch.custom.accessibility",
+                    defaultValue: "\(content.name) \(content.text)"
+                )
+            )
+    }
+
+    @ViewBuilder
+    private var face: some View {
+        if content.items.count > 1 {
+            multiFace
+        } else {
+            singleFace
+        }
+    }
+
+    @ViewBuilder
+    private var singleFace: some View {
+        switch family {
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 2) {
+                Label {
+                    Text(verbatim: content.name)
+                } icon: {
+                    Image(systemName: content.icon)
+                }
+                .font(.headline)
+                .foregroundStyle(content.color)
+                .lineLimit(1)
+                Text(content.text)
+                    .font(.system(.body, design: .rounded).weight(.semibold))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+                if let progress = content.progress {
+                    ProgressView(value: progress)
+                        .tint(content.color)
+                } else if let detail = content.detail {
+                    Text(detail)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        case .accessoryInline:
+            // The value goes first so a long name is what gets cut, never the number.
+            Label {
+                Text(verbatim: "\(content.text) \(content.name)")
+            } icon: {
+                Image(systemName: content.icon)
+            }
+        case .accessoryCorner:
+            Image(systemName: content.icon)
+                .font(.system(.title3, design: .rounded).weight(.semibold))
+                .foregroundStyle(content.color)
+                .widgetLabel {
+                    cornerLabel
+                }
+        default:
+            if let progress = content.progress {
+                Gauge(value: progress) {
+                    Image(systemName: content.icon)
+                } currentValueLabel: {
+                    Text(content.text)
+                        .monospacedDigit()
+                        .minimumScaleFactor(0.5)
+                }
+                .gaugeStyle(.accessoryCircular)
+                .tint(content.color)
+            } else {
+                ZStack {
+                    AccessoryWidgetBackground()
+                    VStack(spacing: 1) {
+                        Image(systemName: content.icon)
+                            .font(.caption)
+                            .foregroundStyle(content.color)
+                        Text(content.text)
+                            .font(.system(.body, design: .rounded).weight(.semibold))
+                            .monospacedDigit()
+                            .minimumScaleFactor(0.5)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var cornerLabel: some View {
+        if let progress = content.progress {
+            ProgressView(value: progress) {
+                Text(content.text)
+                    .minimumScaleFactor(0.7)
+            }
+            .tint(content.color)
+        } else {
+            Text(content.text)
+        }
+    }
+
+    /// The values that have progress, which are the ones drawn as rings.
+    private var rings: [CustomComplicationItemContent] {
+        content.items.filter { $0.progress != nil }
+    }
+
+    /// The values without progress, which have no ring to be drawn as.
+    private var plainValues: [CustomComplicationItemContent] {
+        content.items.filter { $0.progress == nil }
+    }
+
+    /// The values without progress, stacked, each in its own colour.
+    private func stackedValues(_ items: [CustomComplicationItemContent]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(items.prefix(3).enumerated()), id: \.offset) { _, item in
+                Text(item.text)
+                    .font(.system(.footnote, design: .rounded).weight(.semibold))
+                    .foregroundStyle(item.color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+            }
+        }
+    }
+
+    /// Rings for the values that have progress, with the values that have none
+    /// stacked in the middle of them. With no rings, the values stacked alone.
+    @ViewBuilder
+    private var multiRings: some View {
+        if rings.isEmpty {
+            stackedValues(content.items)
+        } else if plainValues.isEmpty {
+            ConcentricRings(items: rings)
+        } else {
+            ZStack {
+                ConcentricRings(items: rings)
+                stackedValues(plainValues)
+                    .padding(CGFloat(rings.count) * 8)
+            }
+        }
+    }
+
+    /// The corner's curved row: each value in its own colour, like the Daily
+    /// Energy corner.
+    private var cornerNumbers: Text {
+        var result = Text(verbatim: "")
+        for (index, item) in content.items.enumerated() {
+            if index > 0 {
+                result = result + Text(verbatim: " • ").foregroundStyle(.secondary)
+            }
+            result = result + Text(verbatim: item.text).foregroundStyle(item.color)
+        }
+        return result
+    }
+
+    /// A complication with two or three values.
+    @ViewBuilder
+    private var multiFace: some View {
+        switch family {
+        case .accessoryRectangular:
+            VStack(alignment: .leading, spacing: 3) {
+                ForEach(Array(content.items.enumerated()), id: \.offset) { _, item in
+                    HStack(spacing: 4) {
+                        Image(systemName: item.icon)
+                            .font(.caption2)
+                            .foregroundStyle(item.color)
+                            .frame(width: 14)
+                        Text(item.text)
+                            .font(.system(.footnote, design: .rounded).weight(.semibold))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        if let progress = item.progress {
+                            ProgressView(value: progress)
+                                .tint(item.color)
+                        } else if let detail = item.detail {
+                            Text(detail)
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        case .accessoryInline:
+            Label {
+                Text(verbatim: content.items.map(\.text).joined(separator: " · "))
+            } icon: {
+                Image(systemName: content.icon)
+            }
+        case .accessoryCorner:
+            multiRings
+                .widgetLabel {
+                    cornerNumbers
+                }
+        default:
+            ZStack {
+                if rings.isEmpty {
+                    AccessoryWidgetBackground()
+                }
+                multiRings
+            }
+        }
+    }
+}
+
+/// One ring: a dim track and the coloured progress on it.
+private struct RingLayer: View {
+    let progress: Double
+    let color: Color
+    let size: CGFloat
+    let stroke: CGFloat
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Color.secondary.opacity(0.25), style: StrokeStyle(lineWidth: stroke))
+            Circle()
+                .trim(from: 0, to: CGFloat(max(0, min(1, progress))))
+                .stroke(color, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        // A stroke straddles its path, so inset by half of it or the outer half
+        // is clipped by the circular family's mask.
+        .padding(stroke / 2)
+        .frame(width: size, height: size)
+    }
+}
+
+/// Up to three rings, the first one outermost, each filled to its own progress.
+private struct ConcentricRings: View {
+    let items: [CustomComplicationItemContent]
+
+    var body: some View {
+        GeometryReader { geo in
+            let side = min(geo.size.width, geo.size.height)
+            let stroke = side * 0.1
+            let step = stroke + side * 0.03
+            ZStack {
+                ForEach(Array(items.prefix(3).enumerated()), id: \.offset) { index, item in
+                    RingLayer(
+                        progress: item.progress ?? 0,
+                        color: item.color,
+                        size: side - 2 * step * CGFloat(index),
+                        stroke: stroke
+                    )
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+    }
+}
+
+struct CustomComplication: Widget {
+    // Must match ComplicationPublisher's Custom.kind (targets/watch).
+    let kind: String = "customComplication"
+
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(
+            kind: kind,
+            intent: SelectCustomComplicationIntent.self,
+            provider: CustomComplicationProvider()
+        ) { entry in
+            CustomComplicationView(entry: entry)
+                .containerBackground(.clear, for: .widget)
+        }
+        .configurationDisplayName("Custom Complication")
+        .description("A complication you set up in the SparkyFitness app.")
+        .supportedFamilies([
+            .accessoryCircular, .accessoryCorner, .accessoryRectangular, .accessoryInline,
+        ])
+    }
+}

@@ -19,6 +19,7 @@ import { useHydrationRange } from './useHydrationRange';
 import { useSleepRange } from './useSleepRange';
 import { useVo2MaxRange } from './useVo2MaxRange';
 import { useHeartRateRange } from './useHeartRateRange';
+import { useMoodRange, type MoodDataPoint } from './useMood';
 
 interface UseHealthTrendsOptions {
   range: HealthTrendDateRange;
@@ -65,6 +66,7 @@ interface HealthTrends {
   calories: CaloriesTrendSeries;
   heartRate: HeartRateTrendSeries;
   vo2max: HealthTrendSeries<Vo2MaxDataPoint>;
+  mood: HealthTrendSeries<MoodDataPoint>;
   refetch: () => Promise<void>;
 }
 
@@ -84,6 +86,7 @@ export function useHealthTrends({
   const isCaloriesEnabled = enabled && activeTrends.includes('calories');
   const isHeartRateEnabled = enabled && activeTrends.includes('heartRate');
   const isVo2MaxEnabled = enabled && activeTrends.includes('vo2max');
+  const isMoodEnabled = enabled && activeTrends.includes('mood');
 
   const {
     stepsData,
@@ -137,6 +140,13 @@ export function useHealthTrends({
     refetch: refetchVo2Max,
   } = useVo2MaxRange({ range, enabled: isVo2MaxEnabled });
 
+  const {
+    moodData,
+    isLoading: isMoodLoading,
+    isError: isMoodError,
+    refetch: refetchMood,
+  } = useMoodRange({ range, enabled: isMoodEnabled });
+
   const refetch = useCallback(async () => {
     await Promise.all([
       isMeasurementsEnabled ? refetchMeasurements() : Promise.resolve(),
@@ -145,6 +155,7 @@ export function useHealthTrends({
       isCaloriesEnabled ? refetchCalories() : Promise.resolve(),
       isHeartRateEnabled ? refetchHeartRate() : Promise.resolve(),
       isVo2MaxEnabled ? refetchVo2Max() : Promise.resolve(),
+      isMoodEnabled ? refetchMood() : Promise.resolve(),
     ]);
   }, [
     isMeasurementsEnabled,
@@ -153,12 +164,14 @@ export function useHealthTrends({
     isCaloriesEnabled,
     isHeartRateEnabled,
     isVo2MaxEnabled,
+    isMoodEnabled,
     refetchMeasurements,
     refetchSleep,
     refetchHydration,
     refetchCalories,
     refetchHeartRate,
     refetchVo2Max,
+    refetchMood,
   ]);
 
   return {
@@ -209,6 +222,11 @@ export function useHealthTrends({
       isEstimate: isVo2MaxEstimate,
       isLoading: isVo2MaxLoading,
       isError: isVo2MaxError,
+    },
+    mood: {
+      data: moodData,
+      isLoading: isMoodLoading,
+      isError: isMoodError,
     },
     refetch,
   };

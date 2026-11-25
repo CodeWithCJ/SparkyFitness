@@ -1758,4 +1758,381 @@ class WearOsParityTest {
         assertFalse(CheckInStore.shouldReseedWeightDraft(lastDraftSeedDay = "2026-04-07", today = "2026-04-07", rejectedExpired = false))
         assertTrue(CheckInStore.shouldReseedWeightDraft(lastDraftSeedDay = "2026-04-07", today = "2026-04-07", rejectedExpired = true))
     }
+
+    @Test
+    fun `custom complication config parsing, serialization, and starter parity`() {
+        val starters = CustomComplicationCodec.starterDefinitions()
+        assertEquals(
+            listOf("starter-caloriesRemaining", "starter-macros", "starter-weight", "starter-sleepScore"),
+            starters.map { it.id }
+        )
+        assertEquals(2, starters[1].extras.size)
+
+        val wireJson = JSONObject().apply {
+            put("type", "complicationConfig")
+            put("revision", 1730000000000L)
+            put("reload", true)
+            put("builtIns", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("key", "steps")
+                    put("color", "heart")
+                    put("icon", "bolt.fill")
+                })
+                put(JSONObject().apply {
+                    put("key", "empty")
+                })
+            })
+            put("definitions", JSONArray().apply {
+                put(JSONObject().apply {
+                    put("id", "c-1")
+                    put("name", "Macros Mix")
+                    put("source", "protein")
+                    put("format", "percent")
+                    put("gauge", true)
+                    put("color", "protein")
+                    put("icon", "fish.fill")
+                    put("extras", JSONArray().apply {
+                        put(JSONObject().apply {
+                            put("source", "protein") // duplicate primary should be skipped
+                            put("format", "value")
+                            put("color", "protein")
+                            put("icon", "fish.fill")
+                        })
+                        put(JSONObject().apply {
+                            put("source", "carbs")
+                            put("format", "remaining")
+                            put("color", "carbs")
+                            put("icon", "leaf.fill")
+                        })
+                        put(JSONObject().apply {
+                            put("source", "fat")
+                            put("format", "value")
+                            put("color", "fat")
+                            put("icon", "drop.fill")
+                        })
+                        put(JSONObject().apply {
+                            put("source", "water") // 3rd extra exceeds MAX_EXTRAS=2
+                            put("format", "percent")
+                            put("color", "water")
+                            put("icon", "drop.fill")
+                        })
+                    })
+                })
+                put(JSONObject().apply {
+                    put("id", "")
+                    put("name", "Invalid")
+                    put("source", "steps")
+                })
+            })
+        }
+
+        val parsed = CustomComplicationCodec.parseConfig(wireJson)
+        assertNotNull(parsed)
+        assertEquals(1730000000000L, parsed!!.revision)
+        assertTrue(parsed.reload)
+        assertEquals(1, parsed.definitions.size)
+        val def = parsed.definitions.single()
+        assertEquals("c-1", def.id)
+        assertEquals("Macros Mix", def.name)
+        assertEquals(listOf("carbs", "fat"), def.extras.map { it.source })
+        assertEquals(1, parsed.builtIns?.size)
+        assertEquals("steps", parsed.builtIns?.single()?.key)
+        assertEquals("heart", parsed.builtIns?.single()?.color)
+        assertEquals("bolt.fill", parsed.builtIns?.single()?.icon)
+
+        // Round-trip definitions and built-ins serialization
+        val roundTrippedDefs = CustomComplicationCodec.parseDefinitionsArray(
+            JSONArray(CustomComplicationCodec.serializeDefinitions(parsed.definitions))
+        )
+        assertEquals(parsed.definitions, roundTrippedDefs)
+        val roundTrippedBuiltIns = CustomComplicationCodec.parseBuiltInsArray(
+            JSONArray(CustomComplicationCodec.serializeBuiltIns(parsed.builtIns!!))
+        )
+        assertEquals(parsed.builtIns, roundTrippedBuiltIns)
+    }
+
+    @Test
+    fun `custom complication metrics, energy units, formatting, and multi-value render specs`() {
+        val today = CheckInDate.today()
+        val nowMs = 1_700_010_000_000L
+        val fastStartMs = nowMs - (10L * 3600L + 30L * 60L) * 1000L
+        val fastTargetMs = fastStartMs + 16L * 3600L * 1000L
+
+        val ctx = WatchContext(
+            today = today,
+            todayWeightKg = 80.0,
+            todayBodyFatPercentage = 17.4,
+            weightUnit = WeightUnit.LBS,
+            energyUnit = "kJ",
+            waterDisplayUnit = "oz",
+            waterGoalMl = 2957.35,
+            water = WaterSnapshot(day = today, consumedMl = 1478.675, fromFoodMl = null, log = emptyList()),
+            steps = StepsSnapshot(day = today, count = 6500),
+            stepGoal = 10_000,
+            fastSynced = true,
+            fast = WatchFast(startedAtMs = fastStartMs, targetEndAtMs = fastTargetMs, label = "16:8"),
+            nutrition = NutritionSnapshot(
+                day = today,
+                caloriesConsumed = 1000.0,
+                caloriesBurned = 300.0,
+                caloriesRemaining = 500.0,
+                calorieProgress = 0.67,
+                protein = MacroGoal(120.0, 160.0, 0.75),
+                carbs = MacroGoal(150.0, 200.0, 0.75),
+                fat = MacroGoal(50.0, 70.0, 0.714),
+                rows = listOf(
+                    NutrientRow("dietary_fiber", "Fiber", "g", 18.0, 30.0, 0.6)
+                )
+            ),
+            sleep = SleepSnapshot(
+                day = today,
+                totalSeconds = 7 * 3600 + 42 * 60,
+                timeInBedSeconds = 8 * 3600 + 5 * 60,
+                sleepScore = 82,
+                deepSeconds = 5400,
+                remSeconds = 6300,
+                lightSeconds = 15600,
+                restingHeartRate = 58,
+                hrvMs = 45,
+                spo2 = 97
+            ),
+            exerciseSummary = ExerciseSummarySnapshot(
+                day = today,
+                minutes = 30,
+                minutesGoal = 60,
+                calories = 250,
+                caloriesGoal = 500,
+                sessionCount = 2
+            )
+        )
+
+        val metrics = CustomComplicationEngine.buildMetrics(ctx)
+
+        // Energy converts to kJ (1000 kcal * 4.184 = 4184 kJ)
+        assertEquals("kJ", metrics["calories"]?.unit)
+        assertEquals(4184.0, metrics["calories"]?.value ?: 0.0, 1.0)
+        assertEquals(2092.0, metrics["caloriesRemaining"]?.value ?: 0.0, 1.0)
+        assertEquals("kJ", metrics["exerciseCalories"]?.unit)
+
+        // Custom Goals nutrient source
+        assertEquals(18.0, metrics["nutrient:dietary_fiber"]?.value ?: 0.0, 0.01)
+        assertEquals(0.6, metrics["nutrient:dietary_fiber"]?.progress ?: 0.0, 0.01)
+
+        // Water in oz
+        assertEquals("oz", metrics["water"]?.unit)
+        assertEquals(50.0, metrics["water"]?.value ?: 0.0, 0.1)
+
+        // Fasting formatting: elapsed, remaining, percent
+        val fastElapsed = CustomComplicationEngine.formatMetric("fasting", "value", metrics["fasting"], nowMs, today, Locale.US)
+        assertEquals("10:30", fastElapsed.text)
+        assertEquals("of 16:00", fastElapsed.detail)
+        val fastLeft = CustomComplicationEngine.formatMetric("fasting", "remaining", metrics["fasting"], nowMs, today, Locale.US)
+        assertEquals("5:30", fastLeft.text)
+        assertEquals("left", fastLeft.detail)
+
+        // Sleep duration & score
+        val sleepDur = CustomComplicationEngine.formatMetric("sleepDuration", "value", metrics["sleepDuration"], nowMs, today, Locale.US)
+        assertEquals("7:42", sleepDur.text)
+        val sleepScore = CustomComplicationEngine.formatMetric("sleepScore", "percent", metrics["sleepScore"], nowMs, today, Locale.US)
+        assertEquals("82%", sleepScore.text)
+        assertEquals(0.82, sleepScore.progress ?: 0.0, 0.001)
+
+        // Stale day metric hides itself
+        val stale = CustomComplicationEngine.formatMetric("steps", "value", metrics["steps"], nowMs, today = "1999-01-01", locale = Locale.US)
+        assertEquals("—", stale.text)
+
+        // Single-value gauge toggle
+        val calDefNoGauge = CustomComplicationDefinition(
+            id = "d1",
+            name = "Cal left",
+            source = "calories",
+            format = "remaining",
+            gauge = false,
+            color = "calories",
+            icon = "flame.fill"
+        )
+        val specNoGauge = CustomComplicationEngine.buildRenderSpec(calDefNoGauge, metrics, nowMs, today, Locale.US)
+        assertNull(specNoGauge.progress)
+        assertEquals("2,092", specNoGauge.shortText)
+        assertEquals("left", specNoGauge.shortTitle)
+        assertEquals("2,092 · kJ left", specNoGauge.longText)
+        assertEquals(WatchPage.GOALS.key, specNoGauge.tapPageKey)
+
+        // Multi-value Macros starter builds concentric rings + multi-color ramp + joined long text
+        val macrosDef = CustomComplicationCodec.starterDefinitions()[1]
+        val macrosSpec = CustomComplicationEngine.buildRenderSpec(macrosDef, metrics, nowMs, today, Locale.US)
+        assertEquals(3, macrosSpec.rings.size)
+        assertEquals(3, macrosSpec.rampColors.size)
+        assertEquals("75% · 75% · 71%", macrosSpec.longText)
+        assertEquals("Macros", macrosSpec.longTitle)
+
+        // Tap page routing covers Sleep, Weight, Exercise, Water, Fasting, Steps, Goals
+        assertEquals("sleep", CustomComplicationEngine.resolveTapPageKey("sleepScore"))
+        assertEquals(WatchPage.ENTRY.key, CustomComplicationEngine.resolveTapPageKey("weight"))
+        assertEquals(WatchPage.WORKOUT.key, CustomComplicationEngine.resolveTapPageKey("exerciseMinutes"))
+        assertEquals(WatchPage.WATER.key, CustomComplicationEngine.resolveTapPageKey("water"))
+        assertEquals(WatchPage.FASTING.key, CustomComplicationEngine.resolveTapPageKey("fasting"))
+        assertEquals(WatchPage.STEPS.key, CustomComplicationEngine.resolveTapPageKey("steps"))
+
+        // All 17 icon keys resolve to distinct valid drawables and 12 colors resolve to palette values
+        assertEquals(R.drawable.ic_complication_calories, CustomComplicationIcons.drawableFor("flame.fill"))
+        assertEquals(R.drawable.ic_custom_lungs, CustomComplicationIcons.drawableFor("lungs.fill"))
+        assertEquals(CustomComplicationPalette.SLEEP, CustomComplicationPalette.colorArgb("sleep"))
+        assertNull(CustomComplicationPalette.knownColorArgbOrNull("unknown"))
+
+        // Mixed daily + non-daily definition keeps weight visible at midnight rollover instead of expiring whole slot
+        val weightAndSteps = CustomComplicationDefinition(
+            id = "mix-1",
+            name = "Weight & Steps",
+            source = "weight",
+            format = "value",
+            gauge = false,
+            color = "weight",
+            icon = "scalemass.fill",
+            extras = listOf(
+                CustomComplicationItem(source = "steps", format = "value", color = "steps", icon = "figure.walk")
+            )
+        )
+        val mixedToday = CustomComplicationEngine.buildRenderSpec(weightAndSteps, metrics, nowMs, today, Locale.US)
+        assertTrue(mixedToday.hasNonDailyItems)
+        assertNotNull(mixedToday.dailyRolloverAt)
+        assertNull(mixedToday.validUntil)
+        val mixedNextDay = CustomComplicationEngine.buildRenderSpec(weightAndSteps, metrics, nowMs, "2099-01-01", Locale.US)
+        assertEquals("176.4 · —", mixedNextDay.longText)
+
+        // Progress compatibility distinguishes value-only vs goal-backed definitions
+        assertFalse(CustomComplicationEngine.definitionSupportsProgress(CustomComplicationCodec.starterDefinitions()[2])) // Weight
+        assertTrue(CustomComplicationEngine.definitionSupportsProgress(CustomComplicationCodec.starterDefinitions()[1])) // Macros
+        assertTrue(CustomComplicationEngine.definitionSupportsProgress(CustomComplicationCodec.starterDefinitions()[3])) // Sleep score
+
+        // Value-only percentage (SpO2) and bare-unit (RHR) render specs format cleanly without middot noise
+        val spo2Def = CustomComplicationDefinition(
+            id = "spo2-1",
+            name = "Blood oxygen",
+            source = "spo2",
+            format = "value",
+            gauge = false,
+            color = "heart",
+            icon = "lungs.fill"
+        )
+        assertFalse(CustomComplicationEngine.definitionSupportsProgress(spo2Def))
+        val spo2Spec = CustomComplicationEngine.buildRenderSpec(spo2Def, metrics, nowMs, today, Locale.US)
+        assertEquals("97%", spo2Spec.shortText)
+        assertNull(spo2Spec.shortTitle)
+        assertEquals("97%", spo2Spec.longText)
+        assertNull(spo2Spec.progress)
+
+        val rhrDef = CustomComplicationDefinition(
+            id = "rhr-1",
+            name = "Resting HR",
+            source = "restingHeartRate",
+            format = "value",
+            gauge = false,
+            color = "heart",
+            icon = "heart.fill"
+        )
+        val rhrSpec = CustomComplicationEngine.buildRenderSpec(rhrDef, metrics, nowMs, today, Locale.US)
+        assertEquals("58", rhrSpec.shortText)
+        assertEquals("bpm", rhrSpec.shortTitle)
+        assertEquals("58 bpm", rhrSpec.longText)
+
+        // Single-value fasting produces live clock metadata for non-rewinding Wear OS TimeDifferenceComplicationText
+        val fastDef = CustomComplicationDefinition(
+            id = "fast-1",
+            name = "Fast",
+            source = "fasting",
+            format = "remaining",
+            gauge = true,
+            color = "fasting",
+            icon = "timer"
+        )
+        val fastSpec = CustomComplicationEngine.buildRenderSpec(fastDef, metrics, nowMs, today, Locale.US)
+        assertNotNull(fastSpec.fastingLiveClock)
+        assertEquals(fastStartMs, fastSpec.fastingLiveClock?.startedAtMs)
+        assertEquals(fastTargetMs, fastSpec.fastingLiveClock?.targetEndAtMs)
+        assertEquals("remaining", fastSpec.fastingLiveClock?.format)
+
+        // Locale-aware percentage formatting (e.g., fr-FR uses localized percent format)
+        val frPercent = CustomComplicationEngine.percentText(0.75, Locale.FRANCE)
+        assertTrue(frPercent.contains("75") && frPercent.endsWith("%") && frPercent != "75%")
+
+        // Live fast override: null liveFast clears stale WatchContext.fast (e.g., fast ended offline on watch)
+        val endedFastMetrics = CustomComplicationEngine.buildMetrics(
+            context = ctx,
+            useLiveFast = true,
+            liveFast = null
+        )
+        val endedFastShown = CustomComplicationEngine.formatMetric("fasting", "value", endedFastMetrics["fasting"], nowMs, today, Locale.US)
+        assertEquals("—", endedFastShown.text)
+
+        // Optimistic water total logged today overrides stale yesterday WaterSnapshot date
+        val yesterdayWaterCtx = ctx.copy(
+            water = WaterSnapshot(day = "2020-01-01", consumedMl = 500.0, fromFoodMl = null, log = emptyList())
+        )
+        val optimisticWaterMetrics = CustomComplicationEngine.buildMetrics(
+            context = yesterdayWaterCtx,
+            effectiveWaterMl = 250.0,
+            effectiveWaterDay = today
+        )
+        assertEquals(today, optimisticWaterMetrics["water"]?.day)
+        val optimisticWaterShown = CustomComplicationEngine.formatMetric("water", "value", optimisticWaterMetrics["water"], nowMs, today, Locale.US)
+        assertTrue(optimisticWaterShown.text != "—")
+
+        // Hidden stale daily metrics must not poison dailyRolloverAt for today's live metrics
+        val staleSleepCtx = ctx.copy(
+            sleep = ctx.sleep?.copy(day = "2020-01-01")
+        )
+        val staleSleepMetrics = CustomComplicationEngine.buildMetrics(staleSleepCtx)
+        val weightStepsStaleSleep = CustomComplicationDefinition(
+            id = "mix-stale",
+            name = "Mix",
+            source = "weight",
+            format = "value",
+            gauge = false,
+            color = "weight",
+            icon = "scalemass.fill",
+            extras = listOf(
+                CustomComplicationItem(source = "steps", format = "value", color = "steps", icon = "figure.walk"),
+                CustomComplicationItem(source = "sleepDuration", format = "value", color = "sleep", icon = "bed.double.fill")
+            )
+        )
+        val mixStaleSpec = CustomComplicationEngine.buildRenderSpec(weightStepsStaleSleep, staleSleepMetrics, nowMs, today, Locale.US)
+        assertEquals(ComplicationModels.endOfLocalDayInstant(today), mixStaleSpec.dailyRolloverAt)
+        assertEquals(1, mixStaleSpec.rings.size)
+
+        // Three-value definition with large numbers compacts extras into <=7-char shortTitle instead of dropping them
+        val weightStepsCal = CustomComplicationDefinition(
+            id = "mix-3",
+            name = "Summary",
+            source = "weight",
+            format = "value",
+            gauge = false,
+            color = "weight",
+            icon = "scalemass.fill",
+            extras = listOf(
+                CustomComplicationItem(source = "steps", format = "value", color = "steps", icon = "figure.walk"),
+                CustomComplicationItem(source = "caloriesRemaining", format = "value", color = "calories", icon = "flame.fill")
+            )
+        )
+        val mix3Spec = CustomComplicationEngine.buildRenderSpec(weightStepsCal, metrics, nowMs, today, Locale.US)
+        assertEquals("176.4", mix3Spec.shortText)
+        assertEquals("7k/2k", mix3Spec.shortTitle)
+        assertEquals("176.4 · 6,500 · 2,092", mix3Spec.longText)
+
+        // caloriesRemaining with format="remaining" falls back to metric.value during compaction too
+        val mix3RemainingFmt = weightStepsCal.copy(
+            extras = listOf(
+                CustomComplicationItem(source = "steps", format = "value", color = "steps", icon = "figure.walk"),
+                CustomComplicationItem(source = "caloriesRemaining", format = "remaining", color = "calories", icon = "flame.fill")
+            )
+        )
+        val mix3RemSpec = CustomComplicationEngine.buildRenderSpec(mix3RemainingFmt, metrics, nowMs, today, Locale.US)
+        assertEquals("7k/2k", mix3RemSpec.shortTitle)
+
+        // Native-digit locale preserves localized digits during ultra-compaction
+        val arLocale = Locale.forLanguageTag("ar-EG")
+        val arFmt = java.text.NumberFormat.getIntegerInstance(arLocale).apply { isGroupingUsed = false }
+        val mix3ArSpec = CustomComplicationEngine.buildRenderSpec(weightStepsCal, metrics, nowMs, today, arLocale)
+        assertEquals("${arFmt.format(7L)}k/${arFmt.format(2L)}k", mix3ArSpec.shortTitle)
+    }
 }

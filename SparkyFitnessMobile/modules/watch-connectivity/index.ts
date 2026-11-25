@@ -1090,6 +1090,37 @@ export interface WatchRouteSyncPayload {
 }
 
 /**
+ * The wearer's custom complications (`complicationConfig`): what each one
+ * shows and how it looks. Strings other than `name` are wire values; see
+ * `src/utils/watchComplications.ts`. `revision` is epoch ms; the watch keeps
+ * the newest.
+ */
+export interface WatchComplicationConfigPayload {
+  revision: number;
+  /** Refresh the watch's picker and faces even if the list is unchanged. */
+  reload?: boolean;
+  /**
+   * The colour and icon the wearer chose for each built-in complication
+   * (`calorieGoal`, `proteinGoal`, `carbsGoal`, `fatGoal`, `water`, `fasting`,
+   * `steps`) and for each part of Daily Energy Goal (`energyCalories`,
+   * `energyProtein`, `energyCarbs`, `energyFat`, colour only); only the parts
+   * they changed. Empty puts them all back.
+   */
+  builtIns?: { key: string; color?: string; icon?: string }[];
+  definitions: {
+    id: string;
+    name: string;
+    source: string;
+    format: string;
+    gauge: boolean;
+    color: string;
+    icon: string;
+    /** The second and third values, shown with the first. */
+    extras: { source: string; format: string; color: string; icon: string }[];
+  }[];
+}
+
+/**
  * What the watch's route library holds (`routeLibrary`): each stored route
  * with the `updatedAt` it was stored at, the ids it turned away (`full` when
  * the library is at `capacity`, `storage` when the file could not be written)
@@ -1223,6 +1254,12 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   sendRoute(sync: WatchRouteSyncPayload): Promise<void>;
   /** Takes a route out of the watch's library (queued). */
   removeRoute(routeId: string): Promise<void>;
+  /**
+   * Sends the wearer's custom complications and built-in style overrides to
+   * the watch (queued on iOS, DataClient + live message on Android / Wear OS).
+   * Only the newest list matters, so a copy still waiting is replaced.
+   */
+  sendComplicationConfig(config: WatchComplicationConfigPayload): Promise<void>;
   /** Pause, resume, lap, finish or discard for the run on the watch, or a switch change (`autoPauseOn`/`Off`, `voiceCuesOn`/`Off`, `paceAlertOn`/`Off`, `heartRateAlertOn`/`Off`). */
   sendRunControl(control: WatchRunControlPayload): Promise<void>;
   /** Tells the watch the phone is saying cue `id`, so it stays quiet. */

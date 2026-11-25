@@ -7,6 +7,7 @@ import android.content.Intent
 import android.graphics.drawable.Icon
 import android.os.Build
 import androidx.annotation.DrawableRes
+import androidx.wear.watchface.complications.data.ColorRamp
 import androidx.wear.watchface.complications.data.ComplicationData
 import androidx.wear.watchface.complications.data.ComplicationText
 import androidx.wear.watchface.complications.data.ComplicationType
@@ -561,7 +562,9 @@ object ComplicationUpdater {
       SleepComplicationService::class.java,
       MedicationsComplicationService::class.java,
       ExerciseComplicationService::class.java,
-      WeightComplicationService::class.java
+      WeightComplicationService::class.java,
+      CustomComplicationService::class.java,
+      CustomGaugeComplicationService::class.java
     )
     for (cls in services) {
       try {
@@ -603,12 +606,27 @@ object ComplicationUpdater {
     return MonochromaticImage.Builder(Icon.createWithResource(context, iconRes)).build()
   }
 
+  fun resolveBuiltInStyle(
+    context: Context,
+    builtInKey: String,
+    @DrawableRes defaultIconRes: Int
+  ): Pair<Int, Int?> {
+    val style = WearSessionManager.getInstance(context.applicationContext)
+      .customComplicationStore
+      .builtInStyleFor(builtInKey)
+      ?: return defaultIconRes to null
+    val iconRes = style.icon?.let { CustomComplicationIcons.drawableFor(it, defaultIconRes) } ?: defaultIconRes
+    val colorArgb = CustomComplicationPalette.knownColorArgbOrNull(style.color)
+    return iconRes to colorArgb
+  }
+
   fun buildComplicationFromSpec(
     context: Context,
     type: ComplicationType,
     @DrawableRes iconRes: Int,
     spec: ComplicationDisplaySpec,
-    tap: PendingIntent?
+    tap: PendingIntent?,
+    colorArgb: Int? = null
   ): ComplicationData? {
     val safeGoal = if (spec.goalValue > 0f) spec.goalValue else 1f
     val shortText = PlainComplicationText.Builder(spec.shortText).build()
@@ -628,6 +646,8 @@ object ComplicationUpdater {
       PlainComplicationText.Builder(spec.contentDescription).build()
     }
     val image = monoIcon(context, iconRes)
+    val tintedImage = colorArgb?.let { CustomComplicationBitmaps.tintedIconSmallImage(context, iconRes, it) }
+    val colorRamp = colorArgb?.let { ColorRamp(intArrayOf(it), false) }
     val timeRange = spec.validUntil?.let { TimeRange.before(it) }
 
     return when (type) {
@@ -642,6 +662,8 @@ object ComplicationUpdater {
           setText(shortText)
           if (shortTitle != null) setTitle(shortTitle)
           setMonochromaticImage(image)
+          if (tintedImage != null) setSmallImage(tintedImage)
+          if (colorRamp != null) setColorRamp(colorRamp)
           setTapAction(tap)
           if (timeRange != null) setValidTimeRange(timeRange)
         }.build()
@@ -660,6 +682,8 @@ object ComplicationUpdater {
               setText(shortText)
               if (shortTitle != null) setTitle(shortTitle)
               setMonochromaticImage(image)
+              if (tintedImage != null) setSmallImage(tintedImage)
+              if (colorRamp != null) setColorRamp(colorRamp)
               setTapAction(tap)
               if (timeRange != null) setValidTimeRange(timeRange)
             }.build()
@@ -676,6 +700,7 @@ object ComplicationUpdater {
         ).apply {
           if (shortTitle != null) setTitle(shortTitle)
           setMonochromaticImage(image)
+          if (tintedImage != null) setSmallImage(tintedImage)
           setTapAction(tap)
           if (timeRange != null) setValidTimeRange(timeRange)
         }.build()
@@ -688,6 +713,7 @@ object ComplicationUpdater {
         ).apply {
           if (longTitle != null) setTitle(longTitle)
           setMonochromaticImage(image)
+          if (tintedImage != null) setSmallImage(tintedImage)
           setTapAction(tap)
           if (timeRange != null) setValidTimeRange(timeRange)
         }.build()
@@ -706,7 +732,8 @@ object ComplicationUpdater {
     configuredGoal: Float?,
     fallbackGoal: Float,
     tap: PendingIntent?,
-    validUntil: Instant? = null
+    validUntil: Instant? = null,
+    colorArgb: Int? = null
   ): ComplicationData? {
     val spec = ComplicationModels.buildMacroSpec(
       fullLabel = fullLabel,
@@ -723,7 +750,7 @@ object ComplicationUpdater {
       leftFormat = { context.getString(R.string.complication_macro_left, it) },
       overFormat = { context.getString(R.string.complication_macro_over, it) }
     )
-    return buildComplicationFromSpec(context, type, iconRes, spec, tap)
+    return buildComplicationFromSpec(context, type, iconRes, spec, tap, colorArgb = colorArgb)
   }
 }
 
@@ -794,12 +821,18 @@ class EnergyGoalComplicationService : SuspendingComplicationDataSourceService() 
       contentDescription = effectiveDesc,
       validUntil = if (expireAtMidnight) valid?.day?.let { ComplicationModels.endOfLocalDayInstant(it) } else null
     )
+    val (iconRes, colorArgb) = if (expireAtMidnight) {
+      ComplicationUpdater.resolveBuiltInStyle(this, "calorieGoal", R.drawable.ic_complication_calories)
+    } else {
+      R.drawable.ic_complication_calories to null
+    }
     return ComplicationUpdater.buildComplicationFromSpec(
       this,
       type,
-      R.drawable.ic_complication_calories,
+      iconRes,
       spec,
-      tap
+      tap,
+      colorArgb = colorArgb
     )
   }
 }
@@ -871,7 +904,8 @@ class ProteinGoalComplicationService : SuspendingComplicationDataSourceService()
     val configuredGoal = p?.goal?.takeIf { it > 0.0 }?.toFloat()
     val tap = ComplicationUpdater.tapPendingIntent(applicationContext, WatchPage.GOALS)
     val validUntil = valid?.day?.let { ComplicationModels.endOfLocalDayInstant(it) }
-    return ComplicationUpdater.buildMacroData(this, request.complicationType, R.drawable.ic_complication_protein, getString(R.string.common_protein), consumed, configuredGoal, 150f, tap, validUntil)
+    val (iconRes, colorArgb) = ComplicationUpdater.resolveBuiltInStyle(this, "proteinGoal", R.drawable.ic_complication_protein)
+    return ComplicationUpdater.buildMacroData(this, request.complicationType, iconRes, getString(R.string.common_protein), consumed, configuredGoal, 150f, tap, validUntil, colorArgb = colorArgb)
   }
 }
 
@@ -889,7 +923,8 @@ class CarbsGoalComplicationService : SuspendingComplicationDataSourceService() {
     val configuredGoal = c?.goal?.takeIf { it > 0.0 }?.toFloat()
     val tap = ComplicationUpdater.tapPendingIntent(applicationContext, WatchPage.GOALS)
     val validUntil = valid?.day?.let { ComplicationModels.endOfLocalDayInstant(it) }
-    return ComplicationUpdater.buildMacroData(this, request.complicationType, R.drawable.ic_complication_carbs, getString(R.string.common_carbs), consumed, configuredGoal, 200f, tap, validUntil)
+    val (iconRes, colorArgb) = ComplicationUpdater.resolveBuiltInStyle(this, "carbsGoal", R.drawable.ic_complication_carbs)
+    return ComplicationUpdater.buildMacroData(this, request.complicationType, iconRes, getString(R.string.common_carbs), consumed, configuredGoal, 200f, tap, validUntil, colorArgb = colorArgb)
   }
 }
 
@@ -907,7 +942,8 @@ class FatGoalComplicationService : SuspendingComplicationDataSourceService() {
     val configuredGoal = f?.goal?.takeIf { it > 0.0 }?.toFloat()
     val tap = ComplicationUpdater.tapPendingIntent(applicationContext, WatchPage.GOALS)
     val validUntil = valid?.day?.let { ComplicationModels.endOfLocalDayInstant(it) }
-    return ComplicationUpdater.buildMacroData(this, request.complicationType, R.drawable.ic_complication_fat, getString(R.string.common_fat), consumed, configuredGoal, 65f, tap, validUntil)
+    val (iconRes, colorArgb) = ComplicationUpdater.resolveBuiltInStyle(this, "fatGoal", R.drawable.ic_complication_fat)
+    return ComplicationUpdater.buildMacroData(this, request.complicationType, iconRes, getString(R.string.common_fat), consumed, configuredGoal, 65f, tap, validUntil, colorArgb = colorArgb)
   }
 }
 
@@ -972,12 +1008,18 @@ class WaterGoalComplicationService : SuspendingComplicationDataSourceService() {
       contentDescription = getString(R.string.complication_water_desc, longValue),
       validUntil = validUntil
     )
+    val (iconRes, colorArgb) = if (tap != null) {
+      ComplicationUpdater.resolveBuiltInStyle(this, "water", R.drawable.ic_complication_water)
+    } else {
+      R.drawable.ic_complication_water to null
+    }
     return ComplicationUpdater.buildComplicationFromSpec(
       this,
       type,
-      R.drawable.ic_complication_water,
+      iconRes,
       spec,
-      tap
+      tap,
+      colorArgb = colorArgb
     )
   }
 }
@@ -1153,12 +1195,18 @@ class FastingComplicationService : SuspendingTimelineComplicationDataSourceServi
       longComplicationTextOverride = liveCountdownText,
       longContentDescriptionOverride = liveCountdownA11y
     )
+    val (iconRes, colorArgb) = if (tap != null) {
+      ComplicationUpdater.resolveBuiltInStyle(this, "fasting", R.drawable.ic_complication_fasting)
+    } else {
+      R.drawable.ic_complication_fasting to null
+    }
     return ComplicationUpdater.buildComplicationFromSpec(
       this,
       type,
-      R.drawable.ic_complication_fasting,
+      iconRes,
       spec,
-      tap
+      tap,
+      colorArgb = colorArgb
     )
   }
 }
@@ -1203,12 +1251,18 @@ class StepsComplicationService : SuspendingComplicationDataSourceService() {
       contentDescription = descText,
       validUntil = validUntil
     )
+    val (iconRes, colorArgb) = if (tap != null) {
+      ComplicationUpdater.resolveBuiltInStyle(this, "steps", R.drawable.ic_complication_steps)
+    } else {
+      R.drawable.ic_complication_steps to null
+    }
     return ComplicationUpdater.buildComplicationFromSpec(
       this,
       type,
-      R.drawable.ic_complication_steps,
+      iconRes,
       spec,
-      tap
+      tap,
+      colorArgb = colorArgb
     )
   }
 }

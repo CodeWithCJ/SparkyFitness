@@ -87,6 +87,19 @@ In Light, the canvas is the darkest surface and controls are white. In Dark, rai
 | Heart-Rate Red       | `--color-heart-rate` (JS only)    | #E2363C   | #E96367  | Watch-measured heart rate on workouts and charts; also the finish marker on route maps        |
 | Active-Energy Orange | `--color-active-energy` (JS only) | #F36F16   | #E79055  | Watch-measured active energy; separate from dietary Calorie Indigo                            |
 
+### Watch face preview
+
+The Complications preview draws the watch's own face, so these do not change with the theme. Phone-side controls on the same screens use the shared tokens: the selected-swatch border is Sparky Blue, the unselected one Strong Border, and the delete glyph the Danger Glyph.
+
+| Role             | Token class                                            | Value (every theme) | Usage                                                                    |
+| ---------------- | ------------------------------------------------------ | ------------------- | ------------------------------------------------------------------------ |
+| Watch Face       | `bg-watch-face`                                        | #000000             | Black backdrop of the preview, the icon picker tiles and the list badges |
+| Watch Face Text  | `text-watch-face-text`                                 | #FFFFFF             | Values and names on the previewed face                                   |
+| Watch Face Muted | `text-watch-face-text-muted`                           | white at 60%        | The detail line under a value                                            |
+| Watch Face Faint | `text-watch-face-text-faint`                           | white at 50%        | The dot between values in the corner row                                 |
+| Watch Face Chip  | `bg-watch-face-chip`                                   | white at 14%        | The disc and card behind a previewed complication                        |
+| Watch Face Track | `bg-watch-face-track`, `--color-watch-face-track` (JS) | white at 25%        | The empty part of a previewed ring or bar                                |
+
 ### Category palette
 
 Eight balanced hues for things that need a distinct color but no fixed meaning. Seven of them (all but amber) tint Settings row icons, and all eight color workout superset rails and the workout-complete confetti.
@@ -786,7 +799,7 @@ The watches are native, not React Native, so sections 2–9 (Uniwind tokens, `gl
 | Surface                              | Code                                                                                                                                                         | UI toolkit                                         |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
 | Apple Watch app                      | `targets/watch` (`Presentation/`, `Domain/`, `Application/`, `Infrastructure/`, `Adapters/`)                                                                 | SwiftUI                                            |
-| Apple Watch complications            | `targets/watch-widget` (`index.swift` lists them: Energy, Water, Protein, Carbs, Fat, Fasting, Steps)                                                        | WidgetKit                                          |
+| Apple Watch complications            | `targets/watch-widget` (`index.swift` lists them: Energy, Calorie Goal, Water, Protein, Carbs, Fat, Fasting, Steps, and the wearer's Custom Complication)    | WidgetKit                                          |
 | Wear OS app, complications and tiles | `targets/wearos/src/main/java/com/sparkyapps/sparkyfitness/wear` (`Screens.kt`, `WorkoutScreens.kt`, `NewWorkoutScreens.kt`, `Complications.kt`, `Tiles.kt`) | Compose for Wear OS (`MaterialTheme`), ProtoLayout |
 
 Android home-screen widgets (`targets/android-widget`) and the iOS phone widget (`targets/widget`) are separate from these.
@@ -841,6 +854,7 @@ Take macro and nutrient colors from `GoalPalette` (`GoalPalette.color(forNutrien
 - Refresh differs by complication. Steps, Water, Energy and the macros reload after 15 minutes or at midnight, whichever is first. Fasting reloads hourly when no fast is active; during an active fast it provides a run of 15-minute entries and reloads `.atEnd`.
 - Each Apple Watch complication opens the app on its page through the `sparkyfitness-watch` URL scheme (`ComplicationLinks.swift`). The scheme is declared in three copies that must stay in step: `targets/watch/expo-target.config.js`, `WatchDeepLink.scheme` and `ComplicationLink.scheme`. Wear OS complications instead tap through a `PendingIntent` carrying a `target_page` extra (`ComplicationUpdater.tapPendingIntent`); Wear OS also accepts a separate `sparkyfitness://watch` deep link in `MainActivity`.
 - Tints: Water cyan (`GoalPalette.water`), Steps mint, Fasting orange. The Energy and macro complications use the `GoalPalette` calorie and macro colors through the `ComplicationPalette` mirror in `EnergyGoalComplication.swift`; if `GoalPalette` changes, change the mirror too.
+- Custom complications (`CustomComplication.swift`) are made on the phone: Settings → Apple Watch → Complications (`WatchComplicationsScreen`, and `WatchComplicationEditScreen` for one). The editor previews the circular, corner, rectangular and inline sizes on a sample day with `ComplicationPreview` (approximate, since the real corner label follows the screen's curve), and offers the twelve colours in `COMPLICATION_COLOR_HEX` (indigo for sleep, pink for heart and bright green for exercise are the system colours) and seventeen SF Symbols in `COMPLICATION_ICONS`. A complication can show up to three values together: concentric rings (circular and corner, the corner with a curved row of coloured numbers beside them, like Daily Energy), a row each (rectangular) or the values joined on one line (inline). The colour list mirrors the watch's own colours (`ComplicationPalette` plus the system cyan, mint, orange and teal in `CustomComplication.swift`); change one side and change the other.
 
 ### 10.5 Wear OS app
 

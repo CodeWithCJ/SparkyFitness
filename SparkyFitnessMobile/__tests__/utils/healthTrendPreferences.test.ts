@@ -14,6 +14,7 @@ describe('resolveHealthTrendOrder', () => {
       'calories',
       'heartRate',
       'vo2max',
+      'mood',
     ];
 
     expect(resolveHealthTrendOrder(savedOrder)).toEqual(savedOrder);
@@ -30,6 +31,7 @@ describe('resolveHealthTrendOrder', () => {
       'calories',
       'heartRate',
       'vo2max',
+      'mood',
     ]);
   });
 
@@ -45,6 +47,7 @@ describe('resolveHealthTrendOrder', () => {
       'calories',
       'heartRate',
       'vo2max',
+      'mood',
     ]);
   });
 
@@ -60,6 +63,7 @@ describe('resolveHealthTrendOrder', () => {
       'calories',
       'heartRate',
       'vo2max',
+      'mood',
     ]);
   });
 

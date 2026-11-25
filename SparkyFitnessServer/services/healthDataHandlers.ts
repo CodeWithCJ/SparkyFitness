@@ -102,8 +102,8 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   oxygen_saturation: '%',
   OxygenSaturation: '%',
   BloodOxygenSaturation: '%',
-  vo2_max: 'ml/min/kg',
-  Vo2Max: 'ml/min/kg',
+  vo2_max: 'ml/kg/min',
+  Vo2Max: 'ml/kg/min',
   height: 'm',
   Height: 'm',
   neck: 'cm',
@@ -2370,6 +2370,14 @@ const customMeasurementHandleBatch: HandleBatchFn = async (entries, ctx) => {
       unitFromPayload.trim()
     ) {
       resolvedMeasurementType = unitFromPayload.trim();
+      // Older mobile clients send the mislabeled "ml/min/kg" for VO2 max;
+      // keep the category on the canonical "ml/kg/min".
+      if (
+        (type === 'vo2_max' || type === 'Vo2Max') &&
+        resolvedMeasurementType.toLowerCase() === 'ml/min/kg'
+      ) {
+        resolvedMeasurementType = 'ml/kg/min';
+      }
     } else {
       resolvedMeasurementType =
         // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message

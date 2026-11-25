@@ -1044,7 +1044,8 @@ async function updateFoodEntry(
     ) {
       await removeOrphanedImages(
         existingEntry.images,
-        updatedEntry.images ?? []
+        updatedEntry.images ?? [],
+        { domain: 'food_entries', entityId: entryId }
       ).catch((unlinkError) =>
         log('warn', 'Error removing replaced food entry image:', unlinkError)
       );
