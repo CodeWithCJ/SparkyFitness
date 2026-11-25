@@ -120,13 +120,8 @@ export function formatCurrentTimeHhMm(): string {
   return `${hours}:${minutes}`;
 }
 
-export function parseContainerMl(volume: unknown, unit: unknown): number {
+export function parseContainerMl(volume: unknown): number {
   const num = Number(volume);
   if (!Number.isFinite(num) || num <= 0) return 250;
-  const u = String(unit ?? 'ml')
-    .trim()
-    .toLowerCase();
-  if (u === 'l' || u === 'liter' || u === 'litre') return num * 1000;
-  if (u === 'oz' || u === 'fl oz') return num * 29.5735;
   return num;
 }

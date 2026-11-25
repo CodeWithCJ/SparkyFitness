@@ -25,17 +25,6 @@ import { toLocalDateString } from '../utils/dateUtils';
 
 type ActionTagScanScreenProps = RootStackScreenProps<'ActionTagScan'>;
 
-type ScanOverride =
-  | { drinks_override: number }
-  | { water_ml_override: number }
-  | { quantity_override: number };
-
-type ScanConfirmOptions = {
-  override?: ScanOverride;
-  mealTypeId?: string;
-  entryTime?: string;
-};
-
 type Phase =
   | { kind: 'running' }
   | { kind: 'confirm'; tag: ActionTagResponse }

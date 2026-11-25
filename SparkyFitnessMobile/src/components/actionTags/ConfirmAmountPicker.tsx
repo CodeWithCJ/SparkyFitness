@@ -57,10 +57,7 @@ export const ConfirmAmountPicker: React.FC<{
   );
   const containerMl = useMemo(() => {
     if (!waterContainer) return 250;
-    const totalMl = parseContainerMl(
-      waterContainer.volume,
-      waterContainer.unit
-    );
+    const totalMl = parseContainerMl(waterContainer.volume);
     const servingsPerContainer = Math.max(
       1,
       Number(

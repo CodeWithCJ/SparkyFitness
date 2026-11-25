@@ -86,29 +86,21 @@ function normalizeTime(rawTime: string | undefined, tz: string): string {
   return rawTime.length === 5 ? `${rawTime}:00` : rawTime;
 }
 
-function containerVolumeInMl(volume: unknown, unit: unknown): number {
+function containerVolumeInMl(volume: unknown): number {
   const numericVolume = Number(volume);
-  if (!Number.isFinite(numericVolume) || numericVolume <= 0) return 250;
-  const normalizedUnit = String(unit ?? 'ml')
-    .trim()
-    .toLowerCase();
-  if (
-    normalizedUnit === 'l' ||
-    normalizedUnit === 'liter' ||
-    normalizedUnit === 'litre'
-  ) {
-    return numericVolume * 1000;
-  }
-  if (normalizedUnit === 'oz' || normalizedUnit === 'fl oz') {
-    return numericVolume * 29.5735;
-  }
-  return numericVolume;
+  return Number.isFinite(numericVolume) && numericVolume > 0
+    ? numericVolume
+    : 250;
 }
 
 function formatMlLabel(ml: number): string {
   return Number.isInteger(ml) ? String(ml) : String(Number(ml.toFixed(2)));
 }
 
+/**
+ * The food and the variant a food tag names, or null when either was deleted
+ * or the variant no longer belongs to the food.
+ */
 async function loadFoodTarget(userId: string, action: FoodAction) {
   const food = await foodRepository.getFoodById(action.food_id, userId);
   if (!food) return null;
@@ -117,10 +109,19 @@ async function loadFoodTarget(userId: string, action: FoodAction) {
     userId
   );
   if (!variant || String(variant.food_id) !== String(food.id)) return null;
+  // The amount is in the unit the tag was saved with. If the serving's unit
+  // was changed since, 170 g would log as 170 of the new unit, so the tag is
+  // treated as pointing at something that no longer exists.
   if (!sameUnit(action.unit, variant.serving_unit || 'serving')) return null;
   return { food, variant };
 }
 
+/**
+ * The saved meal a meal tag names, or null when it was deleted or its serving
+ * unit no longer matches the tag. A logged meal's portion is the amount in the
+ * meal's own unit (servings, or grams for a meal measured by weight), so any
+ * other unit would log the wrong share of the meal.
+ */
 async function loadMealTarget(userId: string, action: MealAction) {
   const meal = await mealRepository.getMealById(
     action.meal_template_id,
@@ -131,6 +132,11 @@ async function loadMealTarget(userId: string, action: MealAction) {
   return meal;
 }
 
+/**
+ * The meal type a food or meal tap logs into. A fixed meal type wins while it
+ * exists; otherwise the time of day in the person's own zone picks it, by the
+ * same rule a drink from a linked water container uses.
+ */
 async function resolveMealTypeId(
   userId: string,
   choice: TagMealChoice,
@@ -140,6 +146,9 @@ async function resolveMealTypeId(
 ): Promise<string | null> {
   const allTypes: MealTypeRow[] =
     await mealTypeRepository.getAllMealTypes(userId);
+  // Only meal types the diary shows: an entry in a hidden one would not
+  // appear anywhere. A fixed type that was hidden or deleted falls back to
+  // the time of day, which is also what the app shows for it.
   const visible = allTypes.filter((type) => type.is_visible !== false);
   const mealTypes = visible.length > 0 ? visible : allTypes;
 
@@ -166,6 +175,8 @@ type Runner<T extends TagAction> = (
   action: T
 ) => Promise<RunnerResult>;
 
+// One runner per action type. The mapped type makes adding a type to
+// tagActionSchema without a runner here a compile error.
 const RUNNERS: {
   [K in TagActionType]: Runner<Extract<TagAction, { type: K }>>;
 } = {
@@ -215,8 +226,7 @@ const RUNNERS: {
         ) || 1
       );
       const drinkMl =
-        containerVolumeInMl(container.volume, container.unit) /
-        servingsPerContainer;
+        containerVolumeInMl(container.volume) / servingsPerContainer;
       if (drinkMl > 0) {
         effectiveDrinks = Math.min(
           20,
@@ -274,6 +284,8 @@ const RUNNERS: {
     };
   },
   meal: async (context, action) => {
+    // createFoodEntryMeal only warns about a missing template and would log an
+    // empty meal, so a deleted one is checked here.
     const meal = await loadMealTarget(context.userId, action);
     if (!meal) return null;
     const tz = await loadUserTimezone(context.userId);
@@ -295,6 +307,7 @@ const RUNNERS: {
         entry_time: normalizeTime(context.entryTime, tz),
         quantity: action.quantity,
         unit: action.unit,
+        // The serving model current clients use (issue #1023).
         _clientMealModelVersion: 2,
       }
     );
@@ -307,6 +320,10 @@ const RUNNERS: {
   },
 };
 
+/**
+ * True when what an action points at exists for this person, so a tag is never
+ * saved pointing at a food, meal or container its first tap could not log.
+ */
 export async function actionTargetExists(
   userId: string,
   action: TagAction
@@ -330,10 +347,15 @@ function runAction(
   context: RunnerContext,
   action: TagAction
 ): Promise<RunnerResult> {
+  // The cast keeps the lookup type-safe per member of the union.
   const runner = RUNNERS[action.type] as Runner<TagAction>;
   return runner(context, action);
 }
 
+/**
+ * Runs the action saved for a tag code. Never logs for a code that is not bound
+ * to this person, so another person's sticker cannot write into this account.
+ */
 export async function scanActionTag(
   userId: string,
   authenticatedUserId: string,
