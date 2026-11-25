@@ -61,10 +61,14 @@ describe('logDrinkOrQueue', () => {
     expect(await logDrinkOrQueue('2026-11-21', 4)).toEqual({ queued: true });
 
     const sentKey = mockChange.mock.calls[0][0].clientId;
-    expect(mockQueue).toHaveBeenCalledWith(sentKey, {
-      entryDate: '2026-11-21',
-      containerId: 4,
-    });
+    expect(mockQueue).toHaveBeenCalledWith(
+      sentKey,
+      {
+        entryDate: '2026-11-21',
+        containerId: 4,
+      },
+      expect.any(Number)
+    );
   });
 
   it('uses a fresh key for each drink', async () => {
@@ -138,7 +142,10 @@ describe('removeDrinkOrQueue', () => {
       kept: true,
       result: 'queued',
     });
-    expect(mockRemoveOffline).toHaveBeenCalledWith('2026-11-21');
+    expect(mockRemoveOffline).toHaveBeenCalledWith(
+      '2026-11-21',
+      expect.any(Number)
+    );
   });
 
   it('does nothing on the phone after a timeout, since the server may have removed it', async () => {
@@ -187,10 +194,14 @@ describe('logCustomAmountOrQueue', () => {
     });
 
     const sentKey = mockLogCustom.mock.calls[0][0].clientId;
-    expect(mockQueueCustom).toHaveBeenCalledWith(sentKey, {
-      entryDate: '2026-11-21',
-      waterMl: 180,
-    });
+    expect(mockQueueCustom).toHaveBeenCalledWith(
+      sentKey,
+      {
+        entryDate: '2026-11-21',
+        waterMl: 180,
+      },
+      expect.any(Number)
+    );
   });
 
   it('does not keep the amount after a timeout, since the server may have it', async () => {

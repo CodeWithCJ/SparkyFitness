@@ -1,8 +1,14 @@
 import { useTranslation } from 'react-i18next';
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 import { View, Text } from 'react-native';
 import Button from './ui/Button';
-import { useSheetBackdrop } from './ui/sheetChrome';
+import { useSheetBackdrop, useSheetHardwareBack } from './ui/sheetChrome';
 import {
   BottomSheetModal,
   BottomSheetView,
@@ -32,6 +38,36 @@ const AMOUNT_STEP: Record<string, number> = {
   liter: 0.1,
 };
 
+// Decimal places of a plain numeric literal (e.g. a step constant), with no
+// locale separator handling -- the step constants above are always '.'.
+function decimalPlacesOfLiteral(value: number): number {
+  const dotIndex = value.toString().indexOf('.');
+  return dotIndex === -1 ? 0 : value.toString().length - dotIndex - 1;
+}
+
+// Decimal places the user actually typed, '.' or ',' alike.
+function decimalPlacesOfText(text: string): number {
+  const match = text.match(/[.,](\d+)$/);
+  return match ? match[1].length : 0;
+}
+
+// +/- stepping through a float step (liter's 0.1) accumulates binary
+// floating-point artifacts (0.1 three times is 0.30000000000000004).
+// Rounding to the finer of the step's own precision and what the user had
+// typed clears that without flattening a value like 0.25 to one decimal.
+function roundStepResult(
+  value: number,
+  amountText: string,
+  step: number
+): number {
+  const decimals = Math.max(
+    decimalPlacesOfText(amountText),
+    decimalPlacesOfLiteral(step)
+  );
+  const factor = 10 ** decimals;
+  return Math.round(value * factor) / factor;
+}
+
 const CustomWaterAmountSheet = forwardRef<
   CustomWaterAmountSheetRef,
   CustomWaterAmountSheetProps
@@ -47,6 +83,8 @@ const CustomWaterAmountSheet = forwardRef<
   const amount = parseDecimalInput(amountText) || 0;
   const unitLabel = WATER_UNIT_LABELS[unit] ?? unit;
   const step = AMOUNT_STEP[unit] ?? AMOUNT_STEP.ml;
+
+  const [isOpen, setIsOpen] = useState(false);
 
   useImperativeHandle(ref, () => ({
     present: () => {
@@ -65,7 +103,8 @@ const CustomWaterAmountSheet = forwardRef<
   };
 
   const adjustAmount = (delta: number) => {
-    setAmountText(String(Math.max(0, amount + delta)));
+    const next = Math.max(0, roundStepResult(amount + delta, amountText, step));
+    setAmountText(String(next));
   };
 
   const handleLog = () => {
@@ -73,6 +112,27 @@ const CustomWaterAmountSheet = forwardRef<
     onSubmit(volumeToMl(amount, unit));
     bottomSheetRef.current?.dismiss();
   };
+
+  // Track the open state so Android's hardware Back can dismiss the sheet
+  // instead of falling through to navigation. Set from both onAnimate and
+  // onChange (the library drops onAnimate when the open finishes before it
+  // reaches JS), cleared only in onDismiss.
+  const markOpen = useCallback(() => setIsOpen(true), []);
+  const handleAnimate = useCallback(
+    (_fromIndex: number, toIndex: number) => {
+      if (toIndex >= 0) markOpen();
+    },
+    [markOpen]
+  );
+  const handleChange = useCallback(
+    (index: number) => {
+      if (index >= 0) markOpen();
+    },
+    [markOpen]
+  );
+  const handleDismiss = useCallback(() => setIsOpen(false), []);
+
+  useSheetHardwareBack(isOpen, () => bottomSheetRef.current?.dismiss());
 
   const renderBackdrop = useSheetBackdrop();
 
@@ -86,6 +146,9 @@ const CustomWaterAmountSheet = forwardRef<
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: surfaceBg }}
       handleIndicatorStyle={{ backgroundColor: textMuted }}
+      onAnimate={handleAnimate}
+      onChange={handleChange}
+      onDismiss={handleDismiss}
     >
       <BottomSheetView className="px-6 pb-safe-or-8">
         <View className="items-center mb-5">

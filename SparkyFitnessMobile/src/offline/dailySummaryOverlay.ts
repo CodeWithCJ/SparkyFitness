@@ -16,7 +16,9 @@ import { NO_ENTRY_CHANGES, readFoodEntryChanges } from './foodEntryChanges';
 import { FOOD_ENTRY_MEAL_DELETE } from './foodEntryMealDeleteHandOver';
 import {
   WATER_ADD,
+  WATER_ADD_CUSTOM,
   WATER_REMOVE,
+  type WaterAddCustomPayload,
   type WaterAddPayload,
   type WaterRemovePayload,
 } from './waterHandOver';
@@ -128,6 +130,11 @@ export async function readWaitingForDay(date: string): Promise<WaitingForDay> {
         } catch {
           // This drink's food is left out; the rest of the day still shows.
         }
+        continue;
+      }
+      if (row.kind === WATER_ADD_CUSTOM) {
+        // A one-off amount has no container and no linked food.
+        waterMl += (row.payload as WaterAddCustomPayload).waterMl;
         continue;
       }
       if (row.kind === WATER_REMOVE) {

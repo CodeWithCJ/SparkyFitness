@@ -17,6 +17,7 @@ import measurementRepository from '../models/measurementRepository.js';
 import hydrationTotalsService from '../services/hydrationTotalsService.js';
 import reportRepository from '../models/reportRepository.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
+import * as poolManager from '../db/poolManager.js';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
 
 vi.mock('../services/foodCoreService', () => ({
@@ -96,6 +97,7 @@ vi.mock('../models/measurementRepository', () => ({
     getWaterIntakeByDate: vi.fn(),
     upsertWaterData: vi.fn(),
     incrementWaterData: vi.fn(),
+    recomputeWaterAggregate: vi.fn(),
     getWaterTotalsByDateRange: vi.fn(),
     findWaterIntakeLogByClientId: vi.fn(),
   },
@@ -5567,12 +5569,19 @@ describe('save_as_meal_template', () => {
 
 describe('log_water', () => {
   it('inserts a manual water entry and syncs the aggregated daily total', async () => {
+    const mockClient = {
+      query: vi.fn().mockResolvedValue({}),
+      release: vi.fn(),
+    };
+    const getClientSpy = vi
+      .spyOn(poolManager, 'getClient')
+      .mockResolvedValue(mockClient as any);
     vi.mocked(measurementRepository.insertWaterIntakeLog).mockResolvedValue({
       id: ENTRY_ID,
     });
-    vi.mocked(measurementRepository.incrementWaterData).mockResolvedValue({
-      water_ml: 750,
-    } as any);
+    vi.mocked(measurementRepository.recomputeWaterAggregate).mockResolvedValue(
+      750 as any
+    );
     vi.mocked(
       hydrationTotalsService.resolveWaterTotalsForDate
     ).mockResolvedValue({ water_ml: 750 } as any);
@@ -5594,18 +5603,21 @@ describe('log_water', () => {
       null,
       null,
       null,
-      undefined,
+      mockClient,
       null
     );
-    // The aggregated water_intake row (read by the dashboard) must be atomically
-    // incremented by the newly logged amount: 500ml.
-    expect(measurementRepository.incrementWaterData).toHaveBeenCalledWith(
+    // The itemized entry and the aggregated water_intake row (read by the
+    // dashboard) are written in the same transaction, from source of truth,
+    // so a replay can never see one land without the other.
+    expect(measurementRepository.recomputeWaterAggregate).toHaveBeenCalledWith(
+      mockClient,
       'user-1',
       'user-1',
-      500,
       '2026-06-11',
       'manual'
     );
+    expect(mockClient.query).toHaveBeenCalledWith('COMMIT');
+    getClientSpy.mockRestore();
   });
 });
 

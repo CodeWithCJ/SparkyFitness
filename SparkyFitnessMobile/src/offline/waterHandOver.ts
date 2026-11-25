@@ -4,7 +4,7 @@ import { newUuid } from '../utils/ids';
 import { getOfflineDb } from './db';
 import { notifyOutboxChanged } from './events';
 import type { WaterIntakeLogEntry } from '@workspace/shared';
-import { savedCopyReadable } from './accountGeneration';
+import { accountGeneration, savedCopyReadable } from './accountGeneration';
 import { getCacheRow } from './cacheStore';
 import { CACHE_COLLECTIONS } from './collections';
 import {
@@ -14,6 +14,19 @@ import {
   listUnconfirmedOutbox,
 } from './outbox';
 import { signedInUserId } from './syncEngine';
+
+/**
+ * True while the signed-in account is still the one that started the
+ * request (`startedUnder`, its `accountGeneration()` at that time). Checked
+ * right before a queue function writes a new row: the `userId` it resolved
+ * is whoever was signed in when it called `signedInUserId`, which an account
+ * switch during the awaits before that can already have moved past the
+ * account the request began under -- `queueAfterConnectionFailure`'s own
+ * check, made before any of those awaits, does not cover this window.
+ */
+function stillStartedAccount(startedUnder: number | undefined): boolean {
+  return startedUnder === undefined || accountGeneration() === startedUnder;
+}
 
 /** One "+" press of a water container, waiting for the server. */
 export const WATER_ADD = 'water.add';
@@ -34,11 +47,14 @@ export interface WaterAddPayload {
  * the caller before the first request, so a press that is queued after a
  * failed request keeps the key that request carried.
  *
- * True once the row is written.
+ * True once the row is written. `startedUnder` is the caller's
+ * `accountGeneration()` from before its first request; passing it refuses
+ * the write if the signed-in account has moved on by the time this runs.
  */
 export async function queueWaterDrink(
   clientId: string,
-  payload: WaterAddPayload
+  payload: WaterAddPayload,
+  startedUnder?: number
 ): Promise<boolean> {
   try {
     const serverConfigId = await getActiveServerConfigId();
@@ -56,6 +72,7 @@ export async function queueWaterDrink(
         isOwnedBy(row, userId)
     );
     if (kept) return true;
+    if (!stillStartedAccount(startedUnder)) return false;
     await enqueueOutbox(db, {
       // A press is its own entity: two presses are two rows, never merged.
       id: newUuid(),
@@ -94,11 +111,12 @@ export interface WaterAddCustomPayload {
  * Queues one custom-amount entry for upload. Mirrors `queueWaterDrink`'s
  * replay-key contract: the row's id is the key sent to the server, so a
  * request whose upload reached the server but whose answer was lost is
- * never logged twice.
+ * never logged twice. `startedUnder` follows `queueWaterDrink`'s contract.
  */
 export async function queueWaterCustomAmount(
   clientId: string,
-  payload: WaterAddCustomPayload
+  payload: WaterAddCustomPayload,
+  startedUnder?: number
 ): Promise<boolean> {
   try {
     const serverConfigId = await getActiveServerConfigId();
@@ -113,6 +131,7 @@ export async function queueWaterCustomAmount(
         isOwnedBy(row, userId)
     );
     if (kept) return true;
+    if (!stillStartedAccount(startedUnder)) return false;
     await enqueueOutbox(db, {
       id: newUuid(),
       serverConfigId,
@@ -153,9 +172,13 @@ export interface WaterRemovePayload {
  * to upload is simply cancelled; otherwise the latest drink the phone knows
  * the server has is queued for removal by its id, which is safe to send again
  * (one already gone counts as done). 'none' when there is nothing to take off.
+ * `startedUnder` follows `queueWaterDrink`'s contract and only guards the
+ * removal-queued path below (the cancel path deletes by this account's own
+ * row id, which carries no new attribution to get wrong).
  */
 export async function removeLatestDrinkOffline(
-  entryDate: string
+  entryDate: string,
+  startedUnder?: number
 ): Promise<'cancelled' | 'queued' | 'none' | 'busy'> {
   // The saved drink list belongs to whoever it was made for: it is not read
   // while that is in doubt (just after an account switch), like every other
@@ -217,6 +240,7 @@ export async function removeLatestDrinkOffline(
     )
     .sort((a, b) => b.logged_at.localeCompare(a.logged_at))[0];
   if (!latest) return 'none';
+  if (!stillStartedAccount(startedUnder)) return 'none';
 
   try {
     const payload: WaterRemovePayload = {

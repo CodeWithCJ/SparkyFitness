@@ -52,7 +52,7 @@ export async function logDrinkOrQueue(
   } catch (error) {
     const queued = await queueAfterConnectionFailure(
       error,
-      () => queueWaterDrink(clientId, { entryDate, containerId }),
+      () => queueWaterDrink(clientId, { entryDate, containerId }, startedUnder),
       startedUnder
     );
     if (queued) return { queued: true };
@@ -101,7 +101,7 @@ export async function removeDrinkOrQueue(
     const kept = await queueAfterConnectionFailure(
       error,
       async () => {
-        result = await removeLatestDrinkOffline(entryDate);
+        result = await removeLatestDrinkOffline(entryDate, startedUnder);
         // Nothing was written when there was nothing to take off, the phone
         // could not store it, or the drink is mid-upload: not a kept change.
         return result !== 'none' && result !== 'busy';
@@ -133,7 +133,8 @@ export async function logCustomAmountOrQueue(
   } catch (error) {
     const queued = await queueAfterConnectionFailure(
       error,
-      () => queueWaterCustomAmount(clientId, { entryDate, waterMl }),
+      () =>
+        queueWaterCustomAmount(clientId, { entryDate, waterMl }, startedUnder),
       startedUnder
     );
     if (queued) return { queued: true };

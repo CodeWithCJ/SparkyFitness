@@ -323,10 +323,14 @@ describe('useWaterIntakeMutation', () => {
       await waitFor(() => expect(mockQueueWaterDrink).toHaveBeenCalledTimes(1));
       // The key the failed request carried is the key the upload will carry.
       const sentKey = mockChangeWaterIntake.mock.calls[0][0].clientId;
-      expect(mockQueueWaterDrink).toHaveBeenCalledWith(sentKey, {
-        entryDate: testDate,
-        containerId: 1,
-      });
+      expect(mockQueueWaterDrink).toHaveBeenCalledWith(
+        sentKey,
+        {
+          entryDate: testDate,
+          containerId: 1,
+        },
+        expect.any(Number)
+      );
       // The press stays on screen and no error is shown.
       const cached = queryClient.getQueryData<DailySummaryRawData>(
         dailySummaryQueryKey(testDate)
@@ -380,7 +384,10 @@ describe('useWaterIntakeMutation', () => {
           expect.objectContaining({ type: 'info' })
         )
       );
-      expect(mockRemoveLatestDrink).toHaveBeenCalledWith(testDate);
+      expect(mockRemoveLatestDrink).toHaveBeenCalledWith(
+        testDate,
+        expect.any(Number)
+      );
       expect(mockQueueWaterDrink).not.toHaveBeenCalled();
     });
 
@@ -690,10 +697,14 @@ describe('useWaterIntakeMutation', () => {
         expect(mockQueueWaterCustomAmount).toHaveBeenCalledTimes(1)
       );
       const sentKey = mockLogCustomWaterAmount.mock.calls[0][0].clientId;
-      expect(mockQueueWaterCustomAmount).toHaveBeenCalledWith(sentKey, {
-        entryDate: testDate,
-        waterMl: 180,
-      });
+      expect(mockQueueWaterCustomAmount).toHaveBeenCalledWith(
+        sentKey,
+        {
+          entryDate: testDate,
+          waterMl: 180,
+        },
+        expect.any(Number)
+      );
       expect(Toast.show).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'info',
