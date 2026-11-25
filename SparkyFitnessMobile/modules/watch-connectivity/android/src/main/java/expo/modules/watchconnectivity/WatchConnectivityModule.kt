@@ -19,6 +19,7 @@ import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import kotlinx.coroutines.CoroutineScope
@@ -276,17 +277,17 @@ internal object WatchConnectivityHub {
     sendLiveBytes(appCtx, "/sparky/context", bytes)
   }
 
-  suspend fun sendComplicationConfig(context: Context, payload: Map<String, Any?>) {
+  suspend fun sendComplicationConfig(context: Context, payload: Map<String, Any?>): Boolean {
     val appCtx = context.applicationContext
     val cleaned = withoutNulls(payload).toMutableMap()
     cleaned["type"] = "complicationConfig"
     val incomingRevision = (cleaned["revision"] as? Number)?.toLong() ?: 0L
     val json = mapToJsonObject(cleaned).toString()
 
-    complicationConfigMutex.withLock {
+    return complicationConfigMutex.withLock {
       val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
       val cachedRevision = prefs.getLong(LAST_COMPLICATION_CONFIG_REV_KEY, 0L)
-      if (incomingRevision < cachedRevision) return@withLock
+      if (incomingRevision < cachedRevision) return@withLock true
       prefs.edit()
         .putString(LAST_COMPLICATION_CONFIG_JSON_KEY, json)
         .putLong(LAST_COMPLICATION_CONFIG_REV_KEY, incomingRevision)
@@ -305,8 +306,9 @@ internal object WatchConnectivityHub {
     }
   }
 
-  private suspend fun publishRawComplicationConfigJson(appCtx: Context, json: String) {
+  private suspend fun publishRawComplicationConfigJson(appCtx: Context, json: String): Boolean {
     val bytes = json.toByteArray(Charsets.UTF_8)
+    var dataQueued = false
 
     try {
       val req = PutDataMapRequest.create("/sparky/complicationConfig").apply {
@@ -314,11 +316,13 @@ internal object WatchConnectivityHub {
         dataMap.putLong("sentAt", System.currentTimeMillis())
       }.asPutDataRequest().setUrgent()
       Wearable.getDataClient(appCtx).putDataItem(req).await()
+      dataQueued = true
     } catch (e: Throwable) {
       Log.w(TAG, "sendComplicationConfig DataClient failed: ${e.message}")
     }
 
-    sendLiveBytes(appCtx, "/sparky/message", bytes)
+    val liveSent = sendLiveBytes(appCtx, "/sparky/message", bytes)
+    return dataQueued || liveSent
   }
 
   suspend fun sendMessageOrTransfer(
@@ -1813,11 +1817,32 @@ class WatchConnectivityModule : Module() {
       }
     }
 
-    AsyncFunction("sendComplicationConfig") { config: ReadableMap ->
-      val ctx = appContext.reactContext ?: return@AsyncFunction
+    AsyncFunction("sendComplicationConfig") { config: ReadableMap, promise: Promise ->
+      val ctx = appContext.reactContext
+      if (ctx == null) {
+        promise.reject("E_NO_CONTEXT", "React context unavailable", null)
+        return@AsyncFunction
+      }
       val payload = config.toHashMap()
       WatchConnectivityHub.scope.launch {
-        WatchConnectivityHub.sendComplicationConfig(ctx, payload)
+        try {
+          val ok = WatchConnectivityHub.sendComplicationConfig(ctx, payload)
+          if (ok) {
+            promise.resolve(null)
+          } else {
+            promise.reject(
+              "E_SEND_COMPLICATION_CONFIG",
+              "Failed to send complication configuration to Wear OS",
+              null
+            )
+          }
+        } catch (e: Throwable) {
+          promise.reject(
+            "E_SEND_COMPLICATION_CONFIG",
+            e.message ?: "Failed to send complication configuration to Wear OS",
+            e
+          )
+        }
       }
     }
 
