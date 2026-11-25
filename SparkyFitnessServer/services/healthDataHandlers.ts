@@ -2293,11 +2293,19 @@ const workoutHandler: HealthTypeHandler = {
   },
 };
 
+/** The fields of a nutrition record that decide when it was logged. */
+interface NutritionRecordTime {
+  timestamp?: string | number | null;
+  date?: string | null;
+  entry_date?: string | null;
+  record_timezone?: string | null;
+  record_utc_offset_minutes?: number | null;
+}
+
 // True when the record carries a real instant rather than only a day. Mirrors
 // which field resolveHealthEntryDate takes entryTimestamp from: `timestamp`
 // when it parses, else the `date` / `entry_date` basis.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function hasLoggedInstant(entry: any): boolean {
+function hasLoggedInstant(entry: NutritionRecordTime): boolean {
   const isInstant = (value: unknown) =>
     (typeof value === 'number' && Number.isFinite(value)) ||
     (typeof value === 'string' &&
@@ -2314,8 +2322,7 @@ function hasLoggedInstant(entry: any): boolean {
 // precedence the entry date uses (record timezone, then record UTC offset,
 // then the user's timezone), so date and time always agree.
 async function nutritionEntryTime(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entry: any,
+  entry: NutritionRecordTime,
   ctx: HealthEntryContext
 ): Promise<string | null> {
   // A date-only record has no logged time: the resolver's entryTimestamp is
