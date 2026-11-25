@@ -1246,9 +1246,9 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   /** Takes a route out of the watch's library (queued). */
   removeRoute(routeId: string): Promise<void>;
   /**
-   * Sends the wearer's custom complications to the watch (queued, delivered
-   * once). Only the newest list matters, so a copy still waiting is dropped
-   * first. iOS only.
+   * Sends the wearer's custom complications and built-in style overrides to
+   * the watch (queued on iOS, DataClient + live message on Android / Wear OS).
+   * Only the newest list matters, so a copy still waiting is replaced.
    */
   sendComplicationConfig(config: WatchComplicationConfigPayload): Promise<void>;
   /** Pause, resume, lap, finish or discard for the run on the watch, or a switch change (`autoPauseOn`/`Off`, `voiceCuesOn`/`Off`, `paceAlertOn`/`Off`, `heartRateAlertOn`/`Off`). */

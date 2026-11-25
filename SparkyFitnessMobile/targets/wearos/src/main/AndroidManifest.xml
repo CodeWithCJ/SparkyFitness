@@ -44,6 +44,18 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="com.sparkyapps.sparkyfitness.wear.CustomComplicationConfigActivity"
+            android:exported="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.DeviceDefault">
+            <intent-filter>
+                <action android:name="com.sparkyapps.sparkyfitness.wear.action.CONFIG_CUSTOM_COMPLICATION" />
+                <category android:name="android.support.wearable.complications.category.PROVIDER_CONFIG" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name="com.sparkyapps.sparkyfitness.wear.WearDataListenerService"
             android:exported="true">
@@ -265,6 +277,46 @@
             <meta-data
                 android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
                 android:value="900" />
+        </service>
+
+        <service
+            android:name="com.sparkyapps.sparkyfitness.wear.CustomComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_custom_gauge"
+            android:label="@string/complication_custom_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="SHORT_TEXT,LONG_TEXT,SMALL_IMAGE" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="900" />
+            <meta-data
+                android:name="android.support.wearable.complications.PROVIDER_CONFIG_ACTION"
+                android:value="com.sparkyapps.sparkyfitness.wear.action.CONFIG_CUSTOM_COMPLICATION" />
+        </service>
+
+        <service
+            android:name="com.sparkyapps.sparkyfitness.wear.CustomGaugeComplicationService"
+            android:exported="true"
+            android:icon="@drawable/ic_custom_gauge"
+            android:label="@string/complication_custom_gauge_label"
+            android:permission="com.google.android.wearable.permission.BIND_COMPLICATION_PROVIDER">
+            <intent-filter>
+                <action android:name="android.support.wearable.complications.ACTION_COMPLICATION_UPDATE_REQUEST" />
+            </intent-filter>
+            <meta-data
+                android:name="android.support.wearable.complications.SUPPORTED_TYPES"
+                android:value="RANGED_VALUE,GOAL_PROGRESS" />
+            <meta-data
+                android:name="android.support.wearable.complications.UPDATE_PERIOD_SECONDS"
+                android:value="900" />
+            <meta-data
+                android:name="android.support.wearable.complications.PROVIDER_CONFIG_ACTION"
+                android:value="com.sparkyapps.sparkyfitness.wear.action.CONFIG_CUSTOM_COMPLICATION" />
         </service>
 
         <receiver
