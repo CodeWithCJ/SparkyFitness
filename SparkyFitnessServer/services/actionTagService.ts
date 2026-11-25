@@ -99,7 +99,14 @@ function containerVolumeInMl(volume: unknown, unit: unknown): number {
   ) {
     return numericVolume * 1000;
   }
+  if (normalizedUnit === 'oz' || normalizedUnit === 'fl oz') {
+    return numericVolume * 29.5735;
+  }
   return numericVolume;
+}
+
+function formatMlLabel(ml: number): string {
+  return Number.isInteger(ml) ? String(ml) : String(Number(ml.toFixed(2)));
 }
 
 async function loadFoodTarget(userId: string, action: FoodAction) {
@@ -163,33 +170,59 @@ const RUNNERS: {
   [K in TagActionType]: Runner<Extract<TagAction, { type: K }>>;
 } = {
   water: async (context, action) => {
+    // upsertWaterIntake falls back to a default 250 ml for an unknown
+    // container without saying so, so a deleted container is checked here.
     const container = await waterContainerRepository.getWaterContainerById(
       action.container_id,
       context.userId
     );
     if (!container) return null;
 
-    let effectiveDrinks = action.drinks;
-    let summaryLabel = `${action.drinks} × ${container.name}`;
-    if (context.waterMlOverride !== undefined) {
-      const containerServings = Math.max(
-        1,
-        Number((container as { servings?: unknown }).servings ?? 1) || 1
+    const linkedFoodId = (container as { linked_food_id?: unknown })
+      .linked_food_id;
+
+    if (context.waterMlOverride !== undefined && !linkedFoodId) {
+      const mlToLog = Math.min(
+        10000,
+        Math.max(1, Number(context.waterMlOverride.toFixed(2)))
       );
-      const containerMl =
+      const logEntry = await measurementService.logWaterIntakeAmount(
+        context.userId,
+        context.authenticatedUserId,
+        context.entryDate,
+        mlToLog,
+        'manual'
+      );
+      const entryId =
+        logEntry && typeof logEntry === 'object' && 'id' in logEntry
+          ? String((logEntry as { id?: unknown }).id ?? '')
+          : '';
+      return {
+        summary: `${formatMlLabel(mlToLog)} ml (${container.name})`,
+        logged: entryId
+          ? { kind: 'water_intake_entry', id: entryId }
+          : undefined,
+      };
+    }
+
+    let effectiveDrinks = action.drinks;
+    if (context.waterMlOverride !== undefined && linkedFoodId) {
+      const servingsPerContainer = Math.max(
+        1,
+        Number(
+          (container as { servings_per_container?: unknown })
+            .servings_per_container ?? 1
+        ) || 1
+      );
+      const drinkMl =
         containerVolumeInMl(container.volume, container.unit) /
-        containerServings;
-      const rawDrinks =
-        containerMl > 0 ? context.waterMlOverride / containerMl : action.drinks;
-      const nearestWhole = Math.round(rawDrinks);
-      const isWholeMultiple =
-        nearestWhole >= 1 && Math.abs(rawDrinks - nearestWhole) < 1e-6;
-      effectiveDrinks = isWholeMultiple
-        ? Math.min(20, nearestWhole)
-        : Math.min(20, Math.max(0, Number(rawDrinks.toFixed(2))));
-      summaryLabel = isWholeMultiple
-        ? `${effectiveDrinks} × ${container.name}`
-        : `${Math.round(context.waterMlOverride)} ml (${container.name})`;
+        servingsPerContainer;
+      if (drinkMl > 0) {
+        effectiveDrinks = Math.min(
+          20,
+          Math.max(1, Math.round(context.waterMlOverride / drinkMl))
+        );
+      }
     }
 
     await measurementService.upsertWaterIntake(
@@ -199,7 +232,10 @@ const RUNNERS: {
       effectiveDrinks,
       action.container_id
     );
-    return { summary: summaryLabel, drinks: effectiveDrinks };
+    return {
+      summary: `${effectiveDrinks} × ${container.name}`,
+      drinks: effectiveDrinks,
+    };
   },
   food: async (context, action) => {
     const target = await loadFoodTarget(context.userId, action);
@@ -310,9 +346,7 @@ export async function scanActionTag(
   );
   if (!tag) return { status: 'unknown_tag', tag: null, summary: null };
 
-  const allowsAdjustment = Boolean(
-    tag.allow_amount_adjustment || tag.advanced_mode
-  );
+  const allowsAdjustment = Boolean(tag.allow_amount_adjustment);
   if (
     (tag.ask_before_running ||
       allowsAdjustment ||

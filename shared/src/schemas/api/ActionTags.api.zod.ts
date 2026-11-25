@@ -94,7 +94,6 @@ export const actionTagResponseSchema = z.object({
   ask_before_running: z.boolean(),
   allow_amount_adjustment: z.boolean(),
   allow_custom_timestamp: z.boolean(),
-  advanced_mode: z.boolean(),
   tap_to_log: z.boolean(),
   preset_amounts: actionTagPresetAmountsSchema
     .nullable()
@@ -116,7 +115,6 @@ export const createActionTagBodySchema = z.object({
   ask_before_running: z.boolean().optional(),
   allow_amount_adjustment: z.boolean().optional(),
   allow_custom_timestamp: z.boolean().optional(),
-  advanced_mode: z.boolean().optional(),
   tap_to_log: z.boolean().optional(),
   preset_amounts: actionTagPresetAmountsSchema.nullable().optional(),
 });
@@ -128,7 +126,6 @@ export const updateActionTagBodySchema = z.object({
   ask_before_running: z.boolean().optional(),
   allow_amount_adjustment: z.boolean().optional(),
   allow_custom_timestamp: z.boolean().optional(),
-  advanced_mode: z.boolean().optional(),
   tap_to_log: z.boolean().optional(),
   preset_amounts: actionTagPresetAmountsSchema.nullable().optional(),
 });
@@ -148,7 +145,7 @@ export const scanActionTagBodySchema = z.object({
   quantity_override: tagQuantitySchema.optional(),
   /** Optional drinks override when `allow_amount_adjustment` is enabled on a water tag. */
   drinks_override: z.number().int().min(1).max(20).optional(),
-  /** Optional drink volume in ml when `advanced_mode` is enabled on a water tag. */
+  /** Optional drink volume in ml when `allow_amount_adjustment` is enabled on a water tag. */
   water_ml_override: z.number().positive().max(10000).optional(),
 });
 export type ScanActionTagBody = z.infer<typeof scanActionTagBodySchema>;

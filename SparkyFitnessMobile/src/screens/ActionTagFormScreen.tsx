@@ -177,7 +177,7 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
   const [askFirst, setAskFirst] = useState(false);
   const [allowAmountAdjustment, setAllowAmountAdjustment] = useState(false);
   const [allowCustomTimestamp, setAllowCustomTimestamp] = useState(false);
-  const [advancedMode, setAdvancedMode] = useState(false);
+  const [advancedExpanded, setAdvancedExpanded] = useState(false);
   const [tapToLog, setTapToLog] = useState(false);
   const [presetAmountsText, setPresetAmountsText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -197,7 +197,6 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
     setAskFirst(existing.ask_before_running);
     setAllowAmountAdjustment(Boolean(existing.allow_amount_adjustment));
     setAllowCustomTimestamp(Boolean(existing.allow_custom_timestamp));
-    setAdvancedMode(Boolean(existing.advanced_mode));
     setTapToLog(Boolean(existing.tap_to_log));
     setPresetAmountsText(
       Array.isArray(existing.preset_amounts)
@@ -486,7 +485,6 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
             allow_amount_adjustment: allowAmountAdjustment,
             allow_custom_timestamp:
               kind === 'water' ? false : allowCustomTimestamp,
-            advanced_mode: advancedMode,
             tap_to_log: tapToLog,
             preset_amounts: normalizedPresets,
           },
@@ -500,7 +498,6 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
           allow_amount_adjustment: allowAmountAdjustment,
           allow_custom_timestamp:
             kind === 'water' ? false : allowCustomTimestamp,
-          advanced_mode: advancedMode,
           tap_to_log: tapToLog,
           preset_amounts: normalizedPresets,
         };
@@ -905,18 +902,17 @@ const ActionTagFormScreen: React.FC<ActionTagFormScreenProps> = ({
             accessibilityLabel={t('actionTags.form.advancedMode', {
               defaultValue: 'Advanced presets & ml mode',
             })}
-            value={advancedMode}
+            value={advancedExpanded}
             onValueChange={(next) => {
-              setAdvancedMode(next);
+              setAdvancedExpanded(next);
               if (!next) {
-                setPresetAmountsText('');
                 setTapToLog(false);
               }
             }}
           />
         </View>
 
-        {advancedMode ? (
+        {advancedExpanded ? (
           <View className="mt-3">
             <Text className="text-xs font-semibold text-text-secondary mb-1.5">
               {t('actionTags.form.presetAmountsLabel', {

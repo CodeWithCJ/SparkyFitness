@@ -23,7 +23,7 @@ vi.mock('../models/waterContainerRepository.js', () => ({
 }));
 
 vi.mock('../services/measurementService.js', () => ({
-  default: { upsertWaterIntake: vi.fn() },
+  default: { upsertWaterIntake: vi.fn(), logWaterIntakeAmount: vi.fn() },
 }));
 
 vi.mock('../models/foodRepository.js', () => ({
@@ -71,7 +71,6 @@ function tag(overrides: Partial<ActionTagResponse> = {}): ActionTagResponse {
     ask_before_running: false,
     allow_amount_adjustment: false,
     allow_custom_timestamp: false,
-    advanced_mode: false,
     tap_to_log: false,
     preset_amounts: null,
     last_run_at: null,
@@ -90,6 +89,7 @@ describe('scanActionTag', () => {
       claimedAt: new Date('2026-10-30T12:00:00.000Z'),
     });
     vi.mocked(measurementService.upsertWaterIntake).mockReset();
+    vi.mocked(measurementService.logWaterIntakeAmount).mockReset();
     vi.mocked(waterContainerRepository.getWaterContainerById).mockResolvedValue(
       { id: 7, name: 'Stanley (1 L)' } as Awaited<
         ReturnType<typeof waterContainerRepository.getWaterContainerById>
@@ -572,13 +572,57 @@ describe('Phase 1 amount and multiplier adjustments', () => {
     );
   });
 
-  it('converts water_ml_override into whole container drinks', async () => {
+  it('logs non-whole water_ml_override directly via logWaterIntakeAmount with undo entry', async () => {
     vi.mocked(waterContainerRepository.getWaterContainerById).mockResolvedValue(
       {
         id: 7,
-        name: 'Bottle (500 ml)',
-        volume: 500,
+        name: 'Jug (1000 ml)',
+        volume: 1000,
         unit: 'ml',
+        servings_per_container: 1,
+      } as never
+    );
+    vi.mocked(measurementService.logWaterIntakeAmount).mockResolvedValue({
+      id: 'water-entry-42',
+    } as never);
+    vi.mocked(repo.getActionTagByCode).mockResolvedValue(
+      tag({
+        action: { type: 'water', container_id: 7, drinks: 1 },
+        allow_amount_adjustment: true,
+      })
+    );
+
+    const result = await scanActionTag(USER, USER, {
+      ...BODY,
+      confirmed: true,
+      water_ml_override: 250,
+    });
+
+    expect(result.status).toBe('done');
+    expect(result.summary).toBe('250 ml (Jug (1000 ml))');
+    expect(result.logged).toEqual({
+      kind: 'water_intake_entry',
+      id: 'water-entry-42',
+    });
+    expect(measurementService.logWaterIntakeAmount).toHaveBeenCalledWith(
+      USER,
+      USER,
+      '2026-10-30',
+      250,
+      'manual'
+    );
+    expect(measurementService.upsertWaterIntake).not.toHaveBeenCalled();
+  });
+
+  it('uses servings_per_container > 1 when converting water_ml_override for a linked food container', async () => {
+    vi.mocked(waterContainerRepository.getWaterContainerById).mockResolvedValue(
+      {
+        id: 7,
+        name: 'Carafe (2000 ml)',
+        volume: 2000,
+        unit: 'ml',
+        servings_per_container: 8,
+        linked_food_id: FOOD_ID,
       } as never
     );
     vi.mocked(repo.getActionTagByCode).mockResolvedValue(
@@ -591,11 +635,11 @@ describe('Phase 1 amount and multiplier adjustments', () => {
     const result = await scanActionTag(USER, USER, {
       ...BODY,
       confirmed: true,
-      water_ml_override: 1000,
+      water_ml_override: 500,
     });
 
     expect(result.status).toBe('done');
-    expect(result.summary).toBe('2 × Bottle (500 ml)');
+    expect(result.summary).toBe('2 × Carafe (2000 ml)');
     expect(measurementService.upsertWaterIntake).toHaveBeenCalledWith(
       USER,
       USER,
@@ -603,5 +647,6 @@ describe('Phase 1 amount and multiplier adjustments', () => {
       2,
       7
     );
+    expect(measurementService.logWaterIntakeAmount).not.toHaveBeenCalled();
   });
 });

@@ -14,7 +14,10 @@ import type { WaterContainer } from '../types/measurements';
 import { getMealTypeDisplayLabel } from '../utils/mealNutrition';
 import { deleteFoodEntry } from './api/foodEntriesApi';
 import { deleteFoodEntryMeal } from './api/foodEntryMealsApi';
-import { changeWaterIntake } from './api/measurementsApi';
+import {
+  changeWaterIntake,
+  deleteWaterIntakeLogEntry,
+} from './api/measurementsApi';
 
 /**
  * Everything the app needs to know about one kind of tag action. The server

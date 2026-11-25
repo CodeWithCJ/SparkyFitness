@@ -11,7 +11,7 @@ import {
 } from '@workspace/shared';
 
 const ACTION_TAG_COLUMNS = `id, tag_code, label, action, ask_before_running,
-  allow_amount_adjustment, allow_custom_timestamp, advanced_mode, tap_to_log,
+  allow_amount_adjustment, allow_custom_timestamp, tap_to_log,
   preset_amounts, last_run_at, created_at, updated_at`;
 
 export class ActionTagLimitError extends Error {
@@ -55,7 +55,6 @@ function mapRow(row: Record<string, unknown>): ActionTagResponse | null {
     ask_before_running: Boolean(row.ask_before_running),
     allow_amount_adjustment: Boolean(row.allow_amount_adjustment),
     allow_custom_timestamp: Boolean(row.allow_custom_timestamp),
-    advanced_mode: Boolean(row.advanced_mode),
     tap_to_log: Boolean(row.tap_to_log),
     preset_amounts: parsePresetAmounts(row.preset_amounts),
     last_run_at: row.last_run_at ? toIso(row.last_run_at) : null,
@@ -125,7 +124,7 @@ export async function createActionTag(
     const inserted = await client.query(
       `INSERT INTO action_tags (
          user_id, tag_code, label, action, ask_before_running, allow_amount_adjustment,
-         allow_custom_timestamp, advanced_mode, tap_to_log, preset_amounts, created_by_user_id
+         allow_custom_timestamp, tap_to_log, preset_amounts, created_by_user_id
        ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10::jsonb, $11)
        RETURNING ${ACTION_TAG_COLUMNS}`,
       [
@@ -136,7 +135,6 @@ export async function createActionTag(
         data.ask_before_running ?? false,
         data.allow_amount_adjustment ?? false,
         data.allow_custom_timestamp ?? false,
-        data.advanced_mode ?? false,
         data.tap_to_log ?? false,
         data.preset_amounts ? JSON.stringify(data.preset_amounts) : null,
         authenticatedUserId ?? userId,
@@ -168,10 +166,9 @@ export async function updateActionTag(
          ask_before_running = COALESCE($5, ask_before_running),
          allow_amount_adjustment = COALESCE($6, allow_amount_adjustment),
          allow_custom_timestamp = COALESCE($7, allow_custom_timestamp),
-         advanced_mode = COALESCE($8, advanced_mode),
-         tap_to_log = COALESCE($9, tap_to_log),
-         preset_amounts = CASE WHEN $10 THEN $11::jsonb ELSE preset_amounts END,
-         updated_by_user_id = $12,
+         tap_to_log = COALESCE($8, tap_to_log),
+         preset_amounts = CASE WHEN $9 THEN $10::jsonb ELSE preset_amounts END,
+         updated_by_user_id = $11,
          updated_at = NOW()
        WHERE id = $1 AND user_id = $2
        RETURNING ${ACTION_TAG_COLUMNS}`,
@@ -183,7 +180,6 @@ export async function updateActionTag(
         data.ask_before_running ?? null,
         data.allow_amount_adjustment ?? null,
         data.allow_custom_timestamp ?? null,
-        data.advanced_mode ?? null,
         data.tap_to_log ?? null,
         presetPresent,
         data.preset_amounts ? JSON.stringify(data.preset_amounts) : null,

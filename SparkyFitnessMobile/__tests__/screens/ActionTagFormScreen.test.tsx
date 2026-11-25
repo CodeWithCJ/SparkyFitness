@@ -156,7 +156,6 @@ describe('ActionTagFormScreen', () => {
       ask_before_running: false,
       allow_amount_adjustment: false,
       allow_custom_timestamp: false,
-      advanced_mode: false,
       tap_to_log: false,
       preset_amounts: null,
     });
@@ -233,7 +232,6 @@ describe('ActionTagFormScreen', () => {
       ask_before_running: false,
       allow_amount_adjustment: false,
       allow_custom_timestamp: false,
-      advanced_mode: false,
       tap_to_log: false,
       preset_amounts: null,
     });

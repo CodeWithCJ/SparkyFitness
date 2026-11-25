@@ -61,6 +61,19 @@ function isUniqueViolation(error: unknown): boolean {
  *     responses:
  *       200:
  *         description: The saved tags, newest first
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   id: {type: string}
+ *                   tag_code: {type: string}
+ *                   label: {type: string}
+ *                   ask_before_running: {type: boolean}
+ *                   allow_amount_adjustment: {type: boolean}
+ *                   allow_custom_timestamp: {type: boolean}
+ *                   tap_to_log: {type: boolean}
+ *                   preset_amounts: {type: object, nullable: true}
  *       403:
  *         description: Not the owner of these tags
  *       500:
@@ -100,9 +113,33 @@ router.get('/', async (req, res, next) => {
  *               tag_code: {type: string, description: 32 lowercase hex characters}
  *               entry_date: {type: string, format: date}
  *               confirmed: {type: boolean}
+ *               entry_time: {type: string, description: Optional HH:MM or HH:MM:SS time when custom timestamp is allowed}
+ *               meal_type_id: {type: string, description: Optional meal type ID override on confirmed scan}
+ *               quantity_override: {type: number, description: Optional quantity override for food/meal tags when adjustment is allowed}
+ *               drinks_override: {type: number, description: Optional drinks count override for water tags when adjustment is allowed}
+ *               water_ml_override: {type: number, description: Optional water volume override in ml when adjustment is allowed}
  *     responses:
  *       200:
  *         description: The outcome of the scan
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   status: {type: string}
+ *                   summary: {type: string, nullable: true}
+ *                   tag:
+ *                     type: object
+ *                     nullable: true
+ *                     properties:
+ *                       id: {type: string}
+ *                       tag_code: {type: string}
+ *                       label: {type: string}
+ *                       ask_before_running: {type: boolean}
+ *                       allow_amount_adjustment: {type: boolean}
+ *                       allow_custom_timestamp: {type: boolean}
+ *                       tap_to_log: {type: boolean}
+ *                       preset_amounts: {type: object, nullable: true}
  *       400:
  *         description: Invalid request body
  *       403:
@@ -152,9 +189,26 @@ router.post('/scan', async (req, res, next) => {
  *                 type: object
  *                 description: "Discriminated on `type`. `water` takes container_id and drinks; `food` takes food_id, variant_id, quantity, unit and meal; `meal` takes meal_template_id, quantity, unit and meal. The `meal` field is mode auto (time of day) or mode fixed with a meal_type_id."
  *               ask_before_running: {type: boolean}
+ *               allow_amount_adjustment: {type: boolean}
+ *               allow_custom_timestamp: {type: boolean}
+ *               tap_to_log: {type: boolean}
+ *               preset_amounts: {type: object, nullable: true}
  *     responses:
  *       201:
  *         description: The saved tag
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   id: {type: string}
+ *                   tag_code: {type: string}
+ *                   label: {type: string}
+ *                   ask_before_running: {type: boolean}
+ *                   allow_amount_adjustment: {type: boolean}
+ *                   allow_custom_timestamp: {type: boolean}
+ *                   tap_to_log: {type: boolean}
+ *                   preset_amounts: {type: object, nullable: true}
  *       400:
  *         description: Invalid request body, or the food, meal or container does not exist
  *       403:
@@ -217,9 +271,26 @@ router.post('/', async (req, res, next) => {
  *               label: {type: string, minLength: 1, maxLength: 120}
  *               action: {type: object}
  *               ask_before_running: {type: boolean}
+ *               allow_amount_adjustment: {type: boolean}
+ *               allow_custom_timestamp: {type: boolean}
+ *               tap_to_log: {type: boolean}
+ *               preset_amounts: {type: object, nullable: true}
  *     responses:
  *       200:
  *         description: The updated tag
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 type: object
+ *                 properties:
+ *                   id: {type: string}
+ *                   tag_code: {type: string}
+ *                   label: {type: string}
+ *                   ask_before_running: {type: boolean}
+ *                   allow_amount_adjustment: {type: boolean}
+ *                   allow_custom_timestamp: {type: boolean}
+ *                   tap_to_log: {type: boolean}
+ *                   preset_amounts: {type: object, nullable: true}
  *       400:
  *         description: Invalid request body
  *       403:
