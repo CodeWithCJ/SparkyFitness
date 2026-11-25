@@ -298,7 +298,8 @@ Actions:
     }),
 
     sparky_get_goal_snapshot: tool({
-      description: 'Returns the goals active on a specific date.',
+      description:
+        'Returns the goals active on a specific date, with goal_directions per nutrient. isDefault in goal_directions means the user never chose that direction and the built-in default applies.',
       inputSchema: goalSnapshotSchema,
       execute: async (rawArgs) => {
         const parsed = goalSnapshotSchema.safeParse(
@@ -317,7 +318,9 @@ Actions:
               undefined,
               true
             ) as Promise<Record<string, unknown>>,
-            nutrientGoalPreferenceService.getEffectiveGoalTypes(userId),
+            nutrientGoalPreferenceService.getEffectiveGoalTypes(userId, {
+              markDefaults: true,
+            }),
           ]);
           const data: Record<string, unknown> = {};
           for (const field of GOAL_SNAPSHOT_FIELDS) {

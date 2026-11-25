@@ -40,6 +40,7 @@ interface GoalTypeView {
   goalType?: string;
   targetMin?: number;
   targetMax?: number;
+  isDefault?: boolean;
 }
 
 const num = (value: unknown): number | null => {
@@ -87,14 +88,16 @@ function direction(type: GoalTypeView | undefined) {
       target_max: type.targetMax ?? null,
     };
   }
-  return { direction: type.goalType };
+  return type.isDefault
+    ? { direction: type.goalType, direction_is_default: true }
+    : { direction: type.goalType };
 }
 
 export function buildDayStatusTools(userId: string, tz: string) {
   return {
     sparky_get_day_status: tool({
       description:
-        "One-call status for a day: calories and macros (protein, carbs, fat, fiber) consumed, goal and remaining, each goal's direction (minimum, maximum or target range), and per-meal subtotals. Calories match the dashboard: remaining already accounts for burned calories the way the user's settings count them. Macro remaining is goal minus consumed; negative means over the goal. Taken supplements are listed as their own by_meal row. A goal of null means none is set. Read-only. Defaults to today in the user's timezone.",
+        "One-call status for a day: calories and macros (protein, carbs, fat, fiber) consumed, goal and remaining, each goal's direction (minimum, maximum or target range; direction_is_default means the user never chose one, so do not treat it as a floor or limit), and per-meal subtotals. Calories match the dashboard: remaining already accounts for burned calories the way the user's settings count them. Macro remaining is goal minus consumed; negative means over the goal. Taken supplements are listed as their own by_meal row. A goal of null means none is set. Read-only. Defaults to today in the user's timezone.",
       inputSchema: dayStatusSchema,
       execute: async (rawArgs) => {
         const parsed = dayStatusSchema.safeParse(
@@ -116,9 +119,9 @@ export function buildDayStatusTools(userId: string, tz: string) {
                 undefined,
                 true
               ) as Promise<Record<string, unknown>>,
-              nutrientGoalPreferenceService.getEffectiveGoalTypes(
-                userId
-              ) as Promise<Record<string, GoalTypeView>>,
+              nutrientGoalPreferenceService.getEffectiveGoalTypes(userId, {
+                markDefaults: true,
+              }) as Promise<Record<string, GoalTypeView>>,
               reportRepository.getMealNutritionTotals(userId, date),
             ]);
           const totals = (totalsRows[0] ?? {}) as Record<string, unknown>;
