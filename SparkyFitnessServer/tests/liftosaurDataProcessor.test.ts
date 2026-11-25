@@ -164,16 +164,12 @@ describe('processLiftosaurWorkouts', () => {
       .mocked(exerciseEntryRepository._createExerciseEntryWithClient)
       .mock.calls.map((call) => call[2].source_id);
     expect(created).toEqual(['2_Squat_0', '2_Bulgarian Split Squat_0']);
-    // The failed workout's stored rows are kept, not cleaned up.
-    const keptEntries = vi.mocked(
+    // The failed workout may have stored rows under ids this sync does
+    // not know, so nothing is deleted.
+    expect(
       exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient
-    ).mock.calls[0]![6];
-    expect(keptEntries).toEqual(
-      expect.arrayContaining(['1_Squat_0', '1_Bulgarian Split Squat_0'])
-    );
-    const keptSessions = vi.mocked(deleteLiftosaurSessionsNotInWithClient).mock
-      .calls[0]![4];
-    expect(keptSessions).toEqual(expect.arrayContaining(['1', '2']));
+    ).not.toHaveBeenCalled();
+    expect(deleteLiftosaurSessionsNotInWithClient).not.toHaveBeenCalled();
   });
 
   describe('assisted (negative-weight) sets', () => {

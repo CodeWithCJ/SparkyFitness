@@ -457,8 +457,6 @@ async function processLiftosaurWorkouts(
       } catch (error) {
         await client.query('ROLLBACK TO SAVEPOINT liftosaur_workout');
         workoutsFailed += 1;
-        // An error, not a skip: keep what an earlier sync stored for it.
-        keepWorkoutRows(workout, kept);
         log(
           'error',
           `Skipping Liftosaur workout ${workout.id} for user ${userId}: ${errorMessage(error)}`
@@ -474,10 +472,14 @@ async function processLiftosaurWorkouts(
     // write is deleted: workouts deleted in Liftosaur, rows from before
     // source ids were stable, and rows the import now skips. Entries go
     // first, because that path clears their calorie links and a session
-    // delete cascades to the entries still under it.
+    // delete cascades to the entries still under it. A workout that failed
+    // to save may have rows stored under ids this sync cannot know (an
+    // exercise renamed or removed in Liftosaur since, or ids from before they
+    // were stable), so after a failure nothing is deleted, as when a record
+    // does not parse.
     const range =
       cleanup === undefined ? fetchedDayRange(workouts, timezone) : cleanup;
-    if (range) {
+    if (range && workoutsFailed === 0) {
       const { startDate, endDate } = range;
 
       await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient(
@@ -511,17 +513,6 @@ async function processLiftosaurWorkouts(
   } finally {
     client.release();
   }
-}
-
-/** Keep every row a workout that failed to save may already have stored. */
-function keepWorkoutRows(
-  workout: LiftohistoryWorkout,
-  kept: KeptSourceIds
-): void {
-  kept.sessions.add(String(workout.id));
-  workout.exercises.forEach((_, index) => {
-    kept.entries.add(entrySourceId(workout, index));
-  });
 }
 
 /**
