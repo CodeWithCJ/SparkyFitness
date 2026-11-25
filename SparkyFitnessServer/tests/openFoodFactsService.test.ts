@@ -603,6 +603,56 @@ describe('openFoodFactsService', () => {
       ]);
     });
 
+    it('ranks on decoded names, so an escaped "&amp;" is not a match for "amp"', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [
+                {
+                  code: 'choc',
+                  product_name: 'Chocolate &amp; Topping',
+                  nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+                },
+                {
+                  code: 'amp',
+                  product_name: 'Amp Energy Drink',
+                  nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+                },
+              ],
+              page: 1,
+              page_size: 20,
+              count: 2,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [
+                {
+                  code: 'choc',
+                  product_name: 'Chocolate &amp; Topping',
+                  nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+                },
+                {
+                  code: 'amp',
+                  product_name: 'Amp Energy Drink',
+                  nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+                },
+              ],
+            }),
+        });
+
+      const result = await searchOpenFoodFacts('amp');
+
+      expect(result.products.map((product) => product.code)).toEqual([
+        'amp',
+        'choc',
+      ]);
+    });
+
     it('does not treat a query token embedded inside another word as a phrase match', async () => {
       fetchMock
         .mockResolvedValueOnce({
@@ -1980,6 +2030,186 @@ describe('openFoodFactsService', () => {
         fat_100g: 3,
       },
     };
+
+    it('decodes HTML entities in the name and brand', () => {
+      const result = mapOpenFoodFactsProduct({
+        ...baseProduct,
+        product_name: 'Chocolate &amp; Topping &#8211; caf&#xE9;',
+        brands: 'M&amp;M&apos;s, Other',
+      });
+      expect(result.name).toBe('Chocolate & Topping – café');
+      expect(result.brand).toBe("M&M's");
+    });
+
+    it('decodes entities in one pass and leaves unknown ones', () => {
+      const result = mapOpenFoodFactsProduct({
+        ...baseProduct,
+        product_name: 'A &amp;lt; B &foo; C',
+      });
+      expect(result.name).toBe('A &lt; B &foo; C');
+    });
+
+    it('keeps plausible sodium and derives it from salt when missing', () => {
+      const autoOff = { autoScale: false };
+      const sodium = mapOpenFoodFactsProduct(
+        {
+          ...baseProduct,
+          nutriments: { ...baseProduct.nutriments, sodium_100g: 0.6 },
+        },
+        autoOff
+      );
+      expect(sodium.default_variant.sodium).toBe(600);
+
+      const salt = mapOpenFoodFactsProduct(
+        {
+          ...baseProduct,
+          nutriments: { ...baseProduct.nutriments, salt_100g: 2 },
+        },
+        autoOff
+      );
+      expect(salt.default_variant.sodium).toBe(800);
+    });
+
+    it('decodes a localized name and ignores unsafe or unknown entities', () => {
+      const result = mapOpenFoodFactsProduct(
+        {
+          ...baseProduct,
+          product_name: 'x',
+          product_name_fr:
+            ' Caf&eacute;&nbsp;&amp;&nbsp;Lait &#1;&#xD800; &constructor; ',
+        },
+        { language: 'fr' }
+      );
+      expect(result.name).toBe('Caf&eacute; & Lait &#1;&#xD800; &constructor;');
+    });
+
+    it('takes sodium from salt when the sodium value is impossible', () => {
+      const result = mapOpenFoodFactsProduct(
+        {
+          ...baseProduct,
+          nutriments: {
+            ...baseProduct.nutriments,
+            sodium_100g: 44.06,
+            salt_100g: 2,
+          },
+        },
+        { autoScale: false }
+      );
+      expect(result.default_variant.sodium).toBe(800);
+    });
+
+    it('keeps a declared 0 sodium and pure salt at the cap', () => {
+      const map = (nutriments: Record<string, number>) =>
+        mapOpenFoodFactsProduct(
+          {
+            ...baseProduct,
+            nutriments: { ...baseProduct.nutriments, ...nutriments },
+          },
+          { autoScale: false }
+        ).default_variant.sodium;
+      expect(map({ sodium_100g: 0, salt_100g: 1 })).toBe(0);
+      expect(map({ sodium_100g: 40 })).toBe(40000);
+      expect(map({ salt_100g: 100 })).toBe(40000);
+      expect(map({ sodium_100g: 40.1 })).toBe(0);
+    });
+
+    it('decodes uppercase named entities and collapses whitespace', () => {
+      const result = mapOpenFoodFactsProduct({
+        ...baseProduct,
+        product_name: 'A&AMP;B  C&#160;D\t E',
+        brands: ' X &nbsp; Y ,Other',
+      });
+      expect(result.name).toBe('A&B C D E');
+      expect(result.brand).toBe('X Y');
+    });
+
+    it.each([
+      ['&#x202E;', 'bidi override'],
+      ['&#8203;', 'zero-width space'],
+      ['&#xFEFF;', 'byte order mark'],
+      ['&#x2028;', 'line separator'],
+      ['&#xE000;', 'private use'],
+      ['&#xFFFF;', 'noncharacter'],
+      ['&#x110000;', 'beyond Unicode'],
+    ])('leaves %s (%s) as written', (ref) => {
+      expect(
+        mapOpenFoodFactsProduct({ ...baseProduct, product_name: `A${ref}B` })
+          .name
+      ).toBe(`A${ref}B`);
+    });
+
+    it('decodes a valid astral code point', () => {
+      expect(
+        mapOpenFoodFactsProduct({
+          ...baseProduct,
+          product_name: 'Fruit &#x1F34E;',
+        }).name
+      ).toBe('Fruit \u{1F34E}');
+    });
+
+    it('skips a name candidate that decodes to nothing', () => {
+      expect(
+        mapOpenFoodFactsProduct(
+          {
+            ...baseProduct,
+            product_name_de: '&nbsp;',
+            product_name_en: 'Apple',
+            product_name: 'Apfel',
+          },
+          { language: 'de' }
+        ).name
+      ).toBe('Apple');
+      expect(
+        mapOpenFoodFactsProduct({ ...baseProduct, product_name: '&nbsp;' }).name
+      ).toBe('&nbsp;');
+    });
+
+    it('uses salt for a negative sodium and scales a per-serving salt', () => {
+      const map = (
+        nutriments: Record<string, number>,
+        extra: Record<string, unknown> = {}
+      ) =>
+        mapOpenFoodFactsProduct(
+          {
+            ...baseProduct,
+            ...extra,
+            nutriments: { ...baseProduct.nutriments, ...nutriments },
+          },
+          { autoScale: false }
+        ).default_variant.sodium;
+      expect(map({ sodium_100g: -5, salt_100g: 2 })).toBe(800);
+      // 1 g salt per 50 g serving = 2 g per 100 g = 0.8 g sodium.
+      expect(map({ salt_serving: 1 }, { serving_quantity: 50 })).toBe(800);
+    });
+
+    it('uses salt when sodium is only per serving and there is no serving size', () => {
+      const map = (nutriments: Record<string, number>) =>
+        mapOpenFoodFactsProduct(
+          {
+            ...baseProduct,
+            serving_quantity: undefined,
+            nutriments: { ...baseProduct.nutriments, ...nutriments },
+          },
+          { autoScale: false }
+        ).default_variant.sodium;
+      expect(map({ sodium_serving: 0.1, salt_100g: 2 })).toBe(800);
+      expect(map({ sodium_serving: 0, salt_100g: 2 })).toBe(0);
+    });
+
+    it('drops a sodium value above pure salt instead of importing it', () => {
+      const result = mapOpenFoodFactsProduct(
+        {
+          ...baseProduct,
+          nutriments: {
+            ...baseProduct.nutriments,
+            sodium_100g: 44.06,
+            salt_100g: 110.15,
+          },
+        },
+        { autoScale: false }
+      );
+      expect(result.default_variant.sodium).toBe(0);
+    });
 
     it('extracts and normalizes allergens_tags and traces_tags', () => {
       const product = {
