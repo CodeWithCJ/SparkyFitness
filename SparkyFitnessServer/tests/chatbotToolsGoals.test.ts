@@ -4,7 +4,15 @@ import { buildGoalTools } from '../ai/tools/goalTools.js';
 import goalService from '../services/goalService.js';
 import goalRepository from '../models/goalRepository.js';
 import nutrientGoalPreferenceService from '../services/nutrientGoalPreferenceService.js';
+import onboardingService from '../services/onboardingService.js';
+import preferenceService from '../services/preferenceService.js';
+import { actorUserIdFor } from '../db/poolManager.js';
 import { toolOpts } from './helpers/toolExecutionOptions.js';
+import { isToolErrorText } from '../ai/tools/errors.js';
+import {
+  manageGoalsInput,
+  manageGoalsSchema,
+} from '../ai/tools/schemas/goals.js';
 
 vi.mock('../services/goalService', () => ({
   default: {
@@ -22,6 +30,15 @@ vi.mock('../services/nutrientGoalPreferenceService', () => ({
     getEffectiveGoalTypes: vi.fn(),
   },
 }));
+vi.mock('../services/onboardingService', () => ({
+  default: { setTargetWeight: vi.fn() },
+}));
+vi.mock('../services/preferenceService', () => ({
+  default: { getUserPreferences: vi.fn() },
+}));
+vi.mock('../db/poolManager', () => ({
+  actorUserIdFor: vi.fn((id: string) => id),
+}));
 vi.mock('../config/logging', () => ({
   log: vi.fn(),
 }));
@@ -37,6 +54,10 @@ beforeEach(() => {
   vi.mocked(
     nutrientGoalPreferenceService.getEffectiveGoalTypes
   ).mockResolvedValue({});
+  vi.mocked(actorUserIdFor).mockImplementation((id: string) => id);
+  vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({
+    default_weight_unit: 'kg',
+  } as never);
   tools = buildGoalTools('user-1', 'UTC');
 });
 
@@ -691,5 +712,355 @@ describe('sparky_get_goal_snapshot', () => {
     const result = await tools.sparky_get_goal_snapshot.execute!({}, opts);
 
     expect(result).toBe(DB_ERROR_TEXT);
+  });
+
+  describe('set_goals weight (target body weight)', () => {
+    it('stores a weight-only call as the target weight without a timeline entry', async () => {
+      const result = await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', weight: 72.5 },
+        opts
+      );
+      expect(result).toBe('✅ Target weight set to 72.5 kg.');
+      expect(onboardingService.setTargetWeight).toHaveBeenCalledWith(
+        'user-1',
+        72.5
+      );
+      expect(goalService.manageGoalTimeline).not.toHaveBeenCalled();
+    });
+
+    it('infers set_goals from weight alone', async () => {
+      const result = await tools.sparky_manage_goals.execute!(
+        { weight: 80 },
+        opts
+      );
+      expect(result).toBe('✅ Target weight set to 80 kg.');
+      expect(onboardingService.setTargetWeight).toHaveBeenCalledWith(
+        'user-1',
+        80
+      );
+    });
+
+    it("converts from the user's lbs preference and rounds to the column", async () => {
+      vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({
+        default_weight_unit: 'lbs',
+      } as never);
+      const result = await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', weight: 165 },
+        opts
+      );
+      expect(result).toBe('✅ Target weight set to 165 lbs (74.84 kg).');
+      expect(onboardingService.setTargetWeight).toHaveBeenCalledWith(
+        'user-1',
+        74.84
+      );
+    });
+
+    it('an explicit weight_unit wins over the preference', async () => {
+      vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({
+        default_weight_unit: 'lbs',
+      } as never);
+      await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', weight: 70, weight_unit: 'kg' },
+        opts
+      );
+      expect(onboardingService.setTargetWeight).toHaveBeenCalledWith(
+        'user-1',
+        70
+      );
+      expect(preferenceService.getUserPreferences).not.toHaveBeenCalled();
+    });
+
+    it('stores weight and the other goals together', async () => {
+      vi.mocked(goalService.getUserGoals).mockResolvedValue({
+        calories: 2000,
+      });
+      vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+        message: 'ok',
+      });
+      const result = await tools.sparky_manage_goals.execute!(
+        {
+          action: 'set_goals',
+          start_date: '2026-06-15',
+          calories: 2200,
+          weight: 75,
+        },
+        opts
+      );
+      expect(result).toBe(
+        '✅ Goals set successfully starting from 2026-06-15. Target weight set to 75 kg.'
+      );
+      expect(onboardingService.setTargetWeight).toHaveBeenCalledWith(
+        'user-1',
+        75
+      );
+      expect(goalService.manageGoalTimeline).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ p_calories: 2200 })
+      );
+      expect(
+        vi.mocked(goalService.manageGoalTimeline).mock.calls[0][1]
+      ).not.toHaveProperty('p_weight');
+    });
+
+    it.each([0, 0.004, 1000])('refuses weight %s', async (weight) => {
+      const result = await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', weight, weight_unit: 'kg', calories: 2000 },
+        opts
+      );
+      expect(result).toMatch(/VALIDATION.*999\.99 kg/s);
+      expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
+      expect(goalService.manageGoalTimeline).not.toHaveBeenCalled();
+    });
+
+    it('leaves the target weight alone when the goal timeline write fails', async () => {
+      vi.mocked(goalService.getUserGoals).mockResolvedValue({ calories: 2000 });
+      vi.mocked(goalService.manageGoalTimeline).mockRejectedValue(
+        new Error('db down')
+      );
+      const result = await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', calories: 2200, weight: 75 },
+        opts
+      );
+      expect(result).toBe(DB_ERROR_TEXT);
+      expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
+    });
+
+    describe('when only the target weight write fails', () => {
+      const setGoalsAndWeight = async (cause: unknown) => {
+        vi.mocked(goalService.getUserGoals).mockResolvedValue({
+          calories: 2000,
+        });
+        vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+          message: 'ok',
+        });
+        // The service wraps the pg error, as onboardingService does.
+        vi.mocked(onboardingService.setTargetWeight).mockRejectedValueOnce(
+          new Error('Failed to save target weight.', { cause })
+        );
+        return tools.sparky_manage_goals.execute!(
+          {
+            action: 'set_goals',
+            start_date: '2026-06-15',
+            calories: 2200,
+            weight: 165,
+            weight_unit: 'lbs',
+          },
+          opts
+        );
+      };
+      const tail =
+        '\n\nDo not repeat this call, the goals are already saved. Tell the user the target weight was not changed.';
+
+      it('reports a partial success, not an error', async () => {
+        const result = await setGoalsAndWeight(new Error('db down'));
+        expect(goalService.manageGoalTimeline).toHaveBeenCalled();
+        expect(onboardingService.setTargetWeight).toHaveBeenCalledWith(
+          'user-1',
+          74.84
+        );
+        expect(result).toBe(
+          '⚠️ Partial success: goals set successfully starting from 2026-06-15, but the target weight of 165 lbs (74.84 kg) was NOT saved: a database error occurred.' +
+            tail
+        );
+        expect(isToolErrorText(result as string)).toBe(false);
+      });
+
+      it('names a rejected constraint', async () => {
+        const result = await setGoalsAndWeight(
+          Object.assign(new Error('x'), {
+            code: '23514',
+            constraint: 'target_weight_check',
+          })
+        );
+        expect(result).toContain(
+          'NOT saved: the database rejected it (check constraint target_weight_check).'
+        );
+      });
+
+      it('says when the account may not change it', async () => {
+        const result = await setGoalsAndWeight(
+          Object.assign(new Error('x'), { code: '42501' })
+        );
+        expect(result).toContain('NOT saved: this account may not change it.');
+      });
+    });
+
+    it('treats empty extras as a weight-only call', async () => {
+      const result = await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', weight: 70, custom_nutrients: {} },
+        opts
+      );
+      expect(result).toBe('✅ Target weight set to 70 kg.');
+      expect(goalService.manageGoalTimeline).not.toHaveBeenCalled();
+    });
+
+    it('says start_date does not apply to a weight-only call', async () => {
+      const result = await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', start_date: '2026-07-01', weight: 70 },
+        opts
+      );
+      expect(result).toBe(
+        '✅ Target weight set to 70 kg. The target weight has no start date, so start_date was not used.'
+      );
+      expect(goalService.manageGoalTimeline).not.toHaveBeenCalled();
+    });
+
+    it('asks for weight_unit when the preference is not kg or lbs', async () => {
+      vi.mocked(preferenceService.getUserPreferences).mockResolvedValue({
+        default_weight_unit: 'st',
+      } as never);
+      const result = await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', weight: 11 },
+        opts
+      );
+      expect(result).toMatch(/VALIDATION.*weight_unit/s);
+      expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
+    });
+
+    it.each([{}, { default_weight_unit: null }, { default_weight_unit: '' }])(
+      'asks for weight_unit when no weight unit preference is stored (%j)',
+      async (prefs) => {
+        // getUserPreferences returns defaults without a weight unit when the row
+        // is missing or the read fails; that must not be read as kg.
+        vi.mocked(preferenceService.getUserPreferences).mockResolvedValue(
+          prefs as never
+        );
+        const result = await tools.sparky_manage_goals.execute!(
+          { action: 'set_goals', weight: 165 },
+          opts
+        );
+        expect(result).toMatch(/VALIDATION.*weight_unit/s);
+        expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
+      }
+    );
+
+    it('treats null and empty numeric extras as not given', async () => {
+      const result = await tools.sparky_manage_goals.execute!(
+        {
+          action: 'set_goals',
+          weight: 70,
+          calories: null,
+          protein: '',
+        } as never,
+        opts
+      );
+      expect(result).toBe('✅ Target weight set to 70 kg.');
+      expect(goalService.manageGoalTimeline).not.toHaveBeenCalled();
+    });
+
+    it('ignores a null weight and keeps the other goals', async () => {
+      vi.mocked(goalService.getUserGoals).mockResolvedValue({ calories: 1800 });
+      vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+        message: 'ok',
+      });
+      await tools.sparky_manage_goals.execute!(
+        {
+          action: 'set_goals',
+          weight: null,
+          weight_unit: null,
+          calories: 2000,
+        } as never,
+        opts
+      );
+      expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
+      expect(goalService.manageGoalTimeline).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ p_calories: 2000 })
+      );
+    });
+
+    it('keeps an explicit 0 on the execute path', async () => {
+      vi.mocked(goalService.getUserGoals).mockResolvedValue({
+        caffeine_mg: 400,
+      });
+      vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+        message: 'ok',
+      });
+      await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', caffeine_mg: 0 },
+        opts
+      );
+      expect(goalService.manageGoalTimeline).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ p_caffeine_mg: 0 })
+      );
+    });
+
+    it('drops blank custom nutrient values instead of storing 0', async () => {
+      vi.mocked(goalService.getUserGoals).mockResolvedValue({});
+      vi.mocked(goalService.manageGoalTimeline).mockResolvedValue({
+        message: 'ok',
+      });
+      await tools.sparky_manage_goals.execute!(
+        {
+          action: 'set_goals',
+          calories: 2000,
+          custom_nutrients: { Omega3: null, Zinc: '', Iodine: 150 },
+        } as never,
+        opts
+      );
+      expect(goalService.manageGoalTimeline).toHaveBeenCalledWith(
+        'user-1',
+        expect.objectContaining({ custom_nutrients: { Iodine: 150 } })
+      );
+    });
+
+    it('every numeric set_goals field treats null, blank and whitespace as not given', () => {
+      const shape = manageGoalsInput.shape as Record<string, unknown>;
+      const numericKeys = Object.keys(shape).filter(
+        (k) =>
+          (
+            manageGoalsInput.safeParse({ action: 'set_goals', [k]: '5' })
+              .data as Record<string, unknown> | undefined
+          )?.[k] === 5
+      );
+      expect(numericKeys).toEqual(
+        expect.arrayContaining(['calories', 'weight', 'caffeine_mg', 'iron'])
+      );
+      for (const k of numericKeys) {
+        for (const blank of [null, '', ' ']) {
+          for (const schema of [manageGoalsInput, manageGoalsSchema]) {
+            const parsed = schema.safeParse({
+              action: 'set_goals',
+              [k]: blank,
+            });
+            expect(parsed.success, `${k}=${JSON.stringify(blank)}`).toBe(true);
+            expect(
+              (parsed.data as Record<string, unknown>)[k],
+              `${k}=${JSON.stringify(blank)}`
+            ).toBeUndefined();
+          }
+        }
+      }
+    });
+
+    it.each([true, [], 'abc', -1])('refuses %j as a goal number', (v) => {
+      expect(
+        manageGoalsSchema.safeParse({ action: 'set_goals', calories: v })
+          .success
+      ).toBe(false);
+    });
+
+    it('the published schema drops null and empty numbers but keeps an explicit 0', () => {
+      const parsed = manageGoalsInput.parse({
+        action: 'set_goals',
+        calories: null,
+        protein: '',
+        fat: 0,
+      });
+      expect(parsed.calories).toBeUndefined();
+      expect(parsed.protein).toBeUndefined();
+      expect(parsed.fat).toBe(0);
+    });
+
+    it("refuses in a family member's account", async () => {
+      vi.mocked(actorUserIdFor).mockReturnValue('someone-else');
+      const result = await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', weight: 70 },
+        opts
+      );
+      expect(result).toMatch(/own account/);
+      expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
+    });
   });
 });
