@@ -1062,5 +1062,16 @@ describe('sparky_get_goal_snapshot', () => {
       expect(result).toMatch(/own account/);
       expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
     });
+
+    it("refuses the whole call in a family member's account, goals included", async () => {
+      vi.mocked(actorUserIdFor).mockReturnValue('someone-else');
+      const result = await tools.sparky_manage_goals.execute!(
+        { action: 'set_goals', weight: 70, calories: 2000 },
+        opts
+      );
+      expect(result).toMatch(/own account/);
+      expect(goalService.manageGoalTimeline).not.toHaveBeenCalled();
+      expect(onboardingService.setTargetWeight).not.toHaveBeenCalled();
+    });
   });
 });

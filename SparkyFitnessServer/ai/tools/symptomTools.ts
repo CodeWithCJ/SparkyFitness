@@ -36,8 +36,25 @@ const VALID_ACTIONS = [
 export function buildSymptomTools(userId: string, tz: string) {
   return {
     sparky_manage_symptoms: tool({
-      description:
-        'Manage and track symptoms, episodes (e.g. migraines, headaches, pain, flare-ups), severity timeline, symptom-free days, options, and relief treatments.',
+      description: `Manage and track symptoms, episodes (e.g. migraines, headaches, pain, flare-ups), severity timeline, symptom-free days, options, and relief treatments.
+
+Actions:
+- list_definitions()
+- create_definition(name, category?, template?, scale_type?, unit?, is_episodic?, color?, icon?, is_pinned?)
+- update_definition(id, name?, category?, template?, scale_type?, unit?, is_episodic?, is_pinned?, is_archived?)
+- delete_definition(id)
+- log_entry(symptom_name, symptom_id?, severity?, entry_date?, started_at?, ended_at?, body_locations?, qualities?, associated_symptoms?, triggers?, impact?, context_text?, treatments?)
+- start_episode(symptom_name, symptom_id?, severity?, started_at?, body_locations?, qualities?, associated_symptoms?, triggers?, impact?, context_text?, treatments?)
+- update_severity(id, severity, at?, impact?)
+- end_episode(id, ended_at?, treatments?)
+- list_entries(from?, to?, symptom_id?, episodes_only?)
+- get_ongoing()
+- mark_symptom_free(entry_date?)
+- list_options(kind?)
+- create_option(kind, name)
+- get_metrics(from, to)
+
+symptom_id is a definition id (UUID); id is an entry id (from log_entry, list_entries or get_ongoing) for update_severity/end_episode and a definition id (from list_definitions) for update_definition/delete_definition. severity is 0-10. entry_date/from/to are YYYY-MM-DD; started_at/ended_at/at/taken_at are ISO datetimes with offset. treatments: [{name_snapshot, kind?: medication|relief, effectiveness?, taken_at?, notes?}]`,
       inputSchema: manageSymptomsInput,
       execute: async (rawArgs: Record<string, unknown>) => {
         const normalized = normalizeActionArgs(rawArgs, tz, VALID_ACTIONS);
@@ -58,7 +75,7 @@ export function buildSymptomTools(userId: string, tz: string) {
                 defs,
                 'Symptom Definitions',
                 (d) =>
-                  `• ${d.name} (${d.category}, template: ${d.template}, scale: ${d.scale_type}${d.is_episodic ? ', episodic' : ''})`
+                  `• ${d.name} (${d.category}, template: ${d.template}, scale: ${d.scale_type}${d.is_episodic ? ', episodic' : ''}) [ID: ${d.id}]`
               );
             }
 
@@ -235,7 +252,7 @@ export function buildSymptomTools(userId: string, tz: string) {
                   const locs = e.body_locations.length
                     ? ` (${e.body_locations.join(', ')})`
                     : '';
-                  return `• ${dayString(e.entry_date)}: ${name}${sev}${ongoing}${locs}`;
+                  return `• ${dayString(e.entry_date)}: ${name}${sev}${ongoing}${locs} [ID: ${e.id}]`;
                 }
               );
             }

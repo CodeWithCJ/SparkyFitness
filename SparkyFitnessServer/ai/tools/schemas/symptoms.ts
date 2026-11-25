@@ -296,6 +296,12 @@ export const manageSymptomsSchema = z.discriminatedUnion('action', [
 
 export type ManageSymptomsInput = z.infer<typeof manageSymptomsSchema>;
 
+// Offset datetime for the published schema: keeps `format: date-time` but
+// drops Zod's long regex, which every chat request would otherwise resend
+// (as uuidSchema does); the per-action schemas still validate with it.
+const flatDateTime = () =>
+  z.string().datetime({ offset: true }).meta({ pattern: undefined });
+
 export const manageSymptomsInput = z.object({
   action: z
     .enum([
@@ -321,17 +327,25 @@ export const manageSymptomsInput = z.object({
     .describe('Symptom name (e.g. Migraine, Lower Back Pain, Nausea)'),
   symptom_id: z.string().optional().describe('Custom symptom definition ID'),
   id: z.string().optional().describe('Symptom entry or definition ID'),
-  severity: z.number().optional().describe('Severity level (e.g. 1-10)'),
+  severity: z
+    .number()
+    .min(0)
+    .max(10)
+    .optional()
+    .describe('Severity level (0-10)'),
+  at: flatDateTime()
+    .optional()
+    .describe(
+      'update_severity: ISO timestamp with offset of the measurement (e.g. 2026-11-25T08:00:00+01:00), defaults to now'
+    ),
   entry_date: z
     .string()
     .optional()
     .describe('Date for the log or metric (YYYY-MM-DD)'),
-  started_at: z
-    .string()
+  started_at: flatDateTime()
     .optional()
     .describe('ISO timestamp when symptom/episode started'),
-  ended_at: z
-    .string()
+  ended_at: flatDateTime()
     .optional()
     .describe('ISO timestamp when symptom/episode ended'),
   body_locations: z
@@ -358,10 +372,15 @@ export const manageSymptomsInput = z.object({
   treatments: z
     .array(
       z.object({
-        name_snapshot: z.string(),
+        name_snapshot: z.string().min(1).max(150),
         kind: z.enum(['medication', 'relief']).optional(),
         effectiveness: effectivenessEnum.optional(),
-        notes: z.string().optional(),
+        taken_at: flatDateTime()
+          .optional()
+          .describe(
+            'ISO timestamp with offset when it was taken, e.g. 2026-11-25T08:00:00+01:00'
+          ),
+        notes: z.string().max(500).optional(),
       })
     )
     .optional()
@@ -374,6 +393,11 @@ export const manageSymptomsInput = z.object({
     .describe('Scale type for custom symptom'),
   unit: z.string().optional().describe('Unit for count-based scale'),
   is_episodic: z.boolean().optional().describe('Whether symptom is episodic'),
+  color: z
+    .string()
+    .optional()
+    .describe('create_definition: color token or hex code'),
+  icon: z.string().optional().describe('create_definition: icon identifier'),
   is_pinned: z.boolean().optional().describe('Pin symptom'),
   is_archived: z.boolean().optional().describe('Archive symptom'),
   kind: optionKindEnum
