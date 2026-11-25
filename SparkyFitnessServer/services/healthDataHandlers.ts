@@ -42,6 +42,7 @@ import {
   BUILT_IN_MOODS,
   instantForDay,
   instantHourMinute,
+  instantHourMinuteInZone,
   instantToDay,
   isDayString,
   isSkinTemperatureSite,
@@ -49,6 +50,7 @@ import {
   type SkinTemperatureSite,
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
+  resolveRecordZone,
   todayInZone,
 } from '@workspace/shared';
 
@@ -2291,6 +2293,28 @@ const workoutHandler: HealthTypeHandler = {
   },
 };
 
+// Local wall-clock time of a nutrition record, resolved with the same zone
+// precedence the entry date uses (record timezone, then record UTC offset,
+// then the user's timezone), so date and time always agree.
+async function nutritionEntryTime(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  entry: any,
+  ctx: HealthEntryContext
+): Promise<string | null> {
+  if (!ctx.entryTimestamp || !Number.isFinite(Date.parse(ctx.entryTimestamp)))
+    return null;
+  const zone = resolveRecordZone(
+    entry.record_timezone,
+    entry.record_utc_offset_minutes
+  );
+  if (zone) {
+    const { hour, minute } = instantHourMinuteInZone(ctx.entryTimestamp, zone);
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+  }
+  const { tz } = await ctx.getSleepContext();
+  return localEntryTime(ctx.entryTimestamp, tz);
+}
+
 // Ingest a Health Connect NutritionRecord as a food entry
 // (see ingestNutritionFoodEntry).
 const nutritionHandler: HealthTypeHandler = {
@@ -2310,14 +2334,7 @@ const nutritionHandler: HealthTypeHandler = {
       };
     }
     try {
-      const { tz } = await ctx.getSleepContext();
-      const zone =
-        typeof entry.record_timezone === 'string' && entry.record_timezone
-          ? entry.record_timezone
-          : tz;
-      const entryTime = ctx.entryTimestamp
-        ? localEntryTime(ctx.entryTimestamp, zone)
-        : null;
+      const entryTime = await nutritionEntryTime(entry, ctx);
       const foodEntry = await ingestNutritionFoodEntry(
         entry,
         ctx.userId,
