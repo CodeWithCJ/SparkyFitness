@@ -172,6 +172,25 @@ describe('processHealthData Nutrition ingestion', () => {
     });
   });
 
+  it('leaves entry_time unset for a date-only record', async () => {
+    await measurementService.processHealthData(
+      [
+        {
+          type: 'Nutrition',
+          source: 'HealthKit',
+          source_id: 'hk-caffeine-3',
+          date: '2026-11-25',
+          caffeine_mg: 80,
+        },
+      ],
+      'user-1',
+      'user-1'
+    );
+    const [entryData] = (foodRepository.createFoodEntry as any).mock.calls[0];
+    expect(entryData.entry_date).toBe('2026-11-25');
+    expect(entryData).not.toHaveProperty('entry_time');
+  });
+
   it('reuses an existing provider food and refreshes its variant nutrition', async () => {
     (foodRepository.findFoodByProviderExternalId as any).mockResolvedValue({
       id: 'food-existing',
