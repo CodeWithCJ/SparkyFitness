@@ -144,8 +144,8 @@ export function refreshAfterTagAction(
 }
 
 /**
- * Reverses what the action just logged. A food or meal tap is undone by
- * deleting the row the server reported, so it needs `logged`.
+ * Reverses what the action just logged. A food, meal, or exact-ml water tap is
+ * undone by deleting the row the server reported, so it needs `logged`.
  */
 export async function undoTagAction(
   action: TagAction,
@@ -154,6 +154,10 @@ export async function undoTagAction(
 ): Promise<void> {
   switch (action.type) {
     case 'water':
+      if (logged?.kind === 'water_intake_entry') {
+        await deleteWaterIntakeLogEntry(logged.id);
+        return;
+      }
       await changeWaterIntake({
         entryDate: date,
         changeDrinks: -action.drinks,
@@ -165,8 +169,12 @@ export async function undoTagAction(
       if (!logged) throw new Error('The server did not say what it logged');
       if (logged.kind === 'food_entry') {
         await deleteFoodEntry(logged.id);
-      } else {
+      } else if (logged.kind === 'food_entry_meal') {
         await deleteFoodEntryMeal(logged.id);
+      } else {
+        throw new Error(
+          `Unexpected logged row kind for ${action.type}: ${logged.kind}`
+        );
       }
       return;
     default:
