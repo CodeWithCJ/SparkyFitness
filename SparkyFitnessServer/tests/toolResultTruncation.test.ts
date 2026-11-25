@@ -439,6 +439,19 @@ describe('truncation hints', () => {
     }
   });
 
+  it('does not skip a first record hidden behind a long field', () => {
+    const out = formatJsonResult({
+      note: 'n'.repeat(10_000),
+      data: [makeRow(100), makeRow(101)],
+      has_more: true,
+      next_offset: 102,
+      total_count: 300,
+    });
+    expect(out).not.toContain('id-100');
+    expect(out).not.toContain('offset=');
+    expect(out).toContain(NARROW_HINT);
+  });
+
   it('never offers a negative offset', () => {
     // next_offset smaller than the page: an inconsistent result.
     const out = formatJsonResult({
