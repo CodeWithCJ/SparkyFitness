@@ -245,6 +245,29 @@ describe('sparky_get_day_status', () => {
     });
   });
 
+  it('flags a direction the user never chose', async () => {
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({
+      calories: 2000,
+      protein: 150,
+    } as never);
+    vi.mocked(
+      nutrientGoalPreferenceService.getEffectiveGoalTypes
+    ).mockResolvedValue({
+      calories: { goalType: 'minimum', isDefault: true },
+      protein: { goalType: 'minimum' },
+    } as never);
+    const out = await run({ date: '2026-11-24' });
+    expect(out.nutrition.calories).toMatchObject({
+      direction: 'minimum',
+      direction_is_default: true,
+    });
+    expect(out.nutrition.protein.direction).toBe('minimum');
+    expect(out.nutrition.protein).not.toHaveProperty('direction_is_default');
+    expect(
+      nutrientGoalPreferenceService.getEffectiveGoalTypes
+    ).toHaveBeenCalledWith(expect.any(String), { markDefaults: true });
+  });
+
   it('treats a goal of 0 as not set and a target without bounds as null', async () => {
     vi.mocked(goalService.getUserGoals).mockResolvedValue({
       protein: 0,

@@ -641,6 +641,24 @@ describe('sparky_get_goal_snapshot', () => {
     );
   });
 
+  it('marks default directions in goal_directions', async () => {
+    vi.mocked(goalService.getUserGoals).mockResolvedValue({ calories: 2000 });
+    const directions = {
+      calories: { goalType: 'minimum', isDefault: true },
+      protein: { goalType: 'minimum' },
+    } as const;
+    vi.mocked(
+      nutrientGoalPreferenceService.getEffectiveGoalTypes
+    ).mockResolvedValue(directions);
+
+    const result = await tools.sparky_get_goal_snapshot.execute!({}, opts);
+
+    expect(JSON.parse(result as string).goal_directions).toEqual(directions);
+    expect(
+      nutrientGoalPreferenceService.getEffectiveGoalTypes
+    ).toHaveBeenCalledWith(expect.any(String), { markDefaults: true });
+  });
+
   it("maps 'not found' service errors to NOT_FOUND", async () => {
     vi.mocked(goalService.getUserGoals).mockRejectedValue(
       new Error('Goal not found')
