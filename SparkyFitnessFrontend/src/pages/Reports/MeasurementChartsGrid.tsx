@@ -12,6 +12,13 @@ import {
   Bar,
 } from 'recharts';
 import { Scale, Ruler, Percent, Activity, Flame, Droplet } from 'lucide-react';
+import GlucoseCard from '@/pages/Reports/GlucoseCard';
+import CustomMeasurementChart from '@/pages/Reports/CustomCategoryReport';
+import { HIDDEN_CUSTOM_METRICS } from '@/constants/reports';
+import {
+  healthMetricLabel,
+  healthMetricUnitLabel,
+} from '@/utils/healthMetricLabels';
 import { useTranslation } from 'react-i18next';
 import ZoomableChart from '@/components/ZoomableChart';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -34,7 +41,11 @@ import {
   prepareTimeChartData,
   REPORTS_CHART_SYNC_ID,
 } from '@/utils/chartUtils';
-import { CheckInMeasurementsResponse } from '@workspace/shared';
+import {
+  CheckInMeasurementsResponse,
+  CustomCategoriesResponse,
+  CustomMeasurementsResponse,
+} from '@workspace/shared';
 import type { Widget } from '@/components/widgets/WidgetGrid';
 import type {
   DashboardLayouts,
@@ -45,7 +56,13 @@ import { GRID_COLS } from '@/utils/dashboardLayout';
 import { useIsMounted } from '@/hooks/useIsMounted';
 
 /** Stable widget keys for the reports-measurements dashboard layout. */
+export const GLUCOSE_WIDGET_KEY = 'glucose';
 export const STEPS_WIDGET_KEY = 'steps';
+export const CUSTOM_CATEGORY_WIDGET_PREFIX = 'custom:';
+export const customCategoryWidgetKey = (id: string | number): string =>
+  `${CUSTOM_CATEGORY_WIDGET_PREFIX}${id}`;
+export const isCustomCategoryWidgetKey = (key: string): boolean =>
+  key.startsWith(CUSTOM_CATEGORY_WIDGET_PREFIX);
 const METRIC_WIDGET_KEYS = [
   'weight',
   'neck',
@@ -63,15 +80,24 @@ const METRIC_WIDGET_KEYS = [
  * Uniform default layout for the reports-measurements widget grid: the six
  * measurement metrics laid out 4-up on large screens (mirroring the previous
  * fixed grid's `lg:grid-cols-4`), 2-up on medium, and stacked below that, with
- * the steps chart spanning the full width beneath.
+ * the blood glucose, steps, and custom measurement charts spanning the full width beneath.
  */
 export function generateReportsMeasurementsDefaultLayouts(
   widgetKeys: string[]
 ): DashboardLayouts {
-  const metricKeys = widgetKeys.filter((key) => key !== STEPS_WIDGET_KEY);
+  const isSpecialKey = (key: string) =>
+    key === STEPS_WIDGET_KEY ||
+    key === GLUCOSE_WIDGET_KEY ||
+    isCustomCategoryWidgetKey(key);
+
+  const metricKeys = widgetKeys.filter((key) => !isSpecialKey(key));
+  const hasGlucose = widgetKeys.includes(GLUCOSE_WIDGET_KEY);
   const hasSteps = widgetKeys.includes(STEPS_WIDGET_KEY);
+  const customCategoryKeys = widgetKeys.filter(isCustomCategoryWidgetKey);
   const CARD_H = 10;
+  const GLUCOSE_H = 12;
   const STEPS_H = 12;
+  const CUSTOM_H = 12;
 
   const buildBreakpoint = (cols: number, perRow: number): WidgetLayout[] => {
     const w = Math.max(1, Math.floor(cols / perRow));
@@ -85,16 +111,42 @@ export function generateReportsMeasurementsDefaultLayouts(
       minH: 6,
     }));
     const maxY = items.reduce((m, it) => Math.max(m, it.y + it.h), 0);
+    let curY = maxY;
+    if (hasGlucose) {
+      items.push({
+        i: GLUCOSE_WIDGET_KEY,
+        x: 0,
+        y: curY,
+        w: cols,
+        h: GLUCOSE_H,
+        minW: 2,
+        minH: 6,
+      });
+      curY += GLUCOSE_H;
+    }
     if (hasSteps) {
       items.push({
         i: STEPS_WIDGET_KEY,
         x: 0,
-        y: maxY,
+        y: curY,
         w: cols,
         h: STEPS_H,
         minW: 2,
         minH: 6,
       });
+      curY += STEPS_H;
+    }
+    for (const key of customCategoryKeys) {
+      items.push({
+        i: key,
+        x: 0,
+        y: curY,
+        w: cols,
+        h: CUSTOM_H,
+        minW: 2,
+        minH: 6,
+      });
+      curY += CUSTOM_H;
     }
     return items;
   };
@@ -110,11 +162,17 @@ export function generateReportsMeasurementsDefaultLayouts(
 // Stable fallback so a loading `measurementData` doesn't hand a fresh `[]` to
 // the chart memos each render and cascade re-renders through the widget grid.
 const EMPTY_MEASUREMENTS: CheckInMeasurementsResponse[] = [];
+const EMPTY_CUSTOM_CATEGORIES: CustomCategoriesResponse[] = [];
+const EMPTY_CUSTOM_MEASUREMENTS: CustomMeasurementsResponse[] = [];
 
 interface UseMeasurementChartWidgetsArgs {
   measurementData?: CheckInMeasurementsResponse[];
   /** Profile target weight in kg; enables the projected goal date. */
   targetWeightKg?: number | null;
+  startDate?: string;
+  endDate?: string;
+  customCategories?: CustomCategoriesResponse[];
+  customMeasurementsData?: CustomMeasurementsResponse[];
 }
 
 /**
@@ -126,6 +184,10 @@ interface UseMeasurementChartWidgetsArgs {
 export function useMeasurementChartWidgets({
   measurementData = EMPTY_MEASUREMENTS,
   targetWeightKg = null,
+  startDate = '',
+  endDate = '',
+  customCategories = EMPTY_CUSTOM_CATEGORIES,
+  customMeasurementsData = EMPTY_CUSTOM_MEASUREMENTS,
 }: UseMeasurementChartWidgetsArgs): Widget[] {
   const { t } = useTranslation();
   const {
@@ -663,6 +725,13 @@ export function useMeasurementChartWidgets({
       ),
     }));
 
+    const glucoseWidget: Widget = {
+      key: GLUCOSE_WIDGET_KEY,
+      title: t('reports.glucose.title', 'Blood glucose'),
+      icon: Activity,
+      render: () => <GlucoseCard startDate={startDate} endDate={endDate} />,
+    };
+
     const stepsWidget: Widget = {
       key: STEPS_WIDGET_KEY,
       title: t('reports.dailySteps', 'Daily Steps'),
@@ -744,7 +813,42 @@ export function useMeasurementChartWidgets({
       ),
     };
 
-    return [...metricWidgets, stepsWidget];
+    const customWidgets: Widget[] = customCategories
+      .filter(
+        (c) =>
+          c.data_type === 'numeric' && !HIDDEN_CUSTOM_METRICS.includes(c.name)
+      )
+      .map((category) => {
+        const categoryLabel = healthMetricLabel(
+          category.name,
+          category.display_name,
+          t
+        );
+        const categoryUnit = healthMetricUnitLabel(
+          category.measurement_type,
+          t
+        );
+        const title =
+          category.measurement_type.toLowerCase() === 'length' ||
+          category.measurement_type.toLowerCase() === 'distance'
+            ? `${categoryLabel} (${measurementUnit})`
+            : `${categoryLabel} (${categoryUnit})`;
+
+        const categoryData = customMeasurementsData.filter(
+          (m) => m.category_id === category.id
+        );
+
+        return {
+          key: customCategoryWidgetKey(category.id),
+          title,
+          icon: Activity,
+          render: () => (
+            <CustomMeasurementChart category={category} data={categoryData} />
+          ),
+        };
+      });
+
+    return [...metricWidgets, glucoseWidget, stepsWidget, ...customWidgets];
   }, [
     isMounted,
     metrics,
@@ -757,5 +861,10 @@ export function useMeasurementChartWidgets({
     getYAxisDomain,
     chartScaleMode,
     syncMethod,
+    startDate,
+    endDate,
+    customCategories,
+    customMeasurementsData,
+    measurementUnit,
   ]);
 }

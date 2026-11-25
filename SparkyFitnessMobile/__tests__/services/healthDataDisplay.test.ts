@@ -359,7 +359,7 @@ describe('fetchHealthDisplayData', () => {
       {
         recordType: 'Vo2Max',
         records: [{ time: '2026-06-01T00:00:00Z', vo2Max: 42 }],
-        expected: '42.0 ml/min/kg',
+        expected: '42.0 ml/kg/min',
       },
       {
         recordType: 'LeanBodyMass',

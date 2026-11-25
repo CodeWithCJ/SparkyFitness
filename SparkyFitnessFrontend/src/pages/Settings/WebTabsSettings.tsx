@@ -39,14 +39,16 @@ export const WebTabsSettings = ({ onManageFeatures }: WebTabsSettingsProps) => {
   const { hidden, editState, reload } = useHiddenWebTabs();
   const { setTabHidden } = useSetWebTabHidden();
   const { data: cycleSettings } = useCycleSettings();
-  const { isEnabled: isFeatureOn } = useWebFeatures();
+  // Rows follow `isShown`, so someone acting for the owner still sees every
+  // row (as switches they cannot use); the cycle row reads the cycle switch.
+  const { isEnabled: isFeatureOn, isShown } = useWebFeatures();
   // Challenges is offered only while the admin switch is on.
   const { available: challengesAvailable } = useChallengesAvailable();
   const tabIds = WEB_HIDEABLE_TAB_IDS.filter(
     (id) => id !== 'challenges' || challengesAvailable
   );
   const shownTabIds = tabIds.filter((id) =>
-    isShownByFeature(webTabFeature(id), isFeatureOn)
+    isShownByFeature(webTabFeature(id), isShown)
   );
   // Cycle has no switch here; its row shows only while cycle is on, and only
   // once its settings are known (until then discreet mode is unknown too, and

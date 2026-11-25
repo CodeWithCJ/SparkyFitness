@@ -3379,7 +3379,7 @@ CREATE TABLE public.global_settings (
     mock_data_enabled boolean DEFAULT false NOT NULL,
     enable_passkey_login boolean DEFAULT true NOT NULL,
     mcp_oauth_enabled boolean DEFAULT false NOT NULL,
-    mcp_oauth_allowed_redirect_uris text[] DEFAULT ARRAY['https://claude.ai/api/mcp/auth_callback'::text, 'https://claude.com/api/mcp/auth_callback'::text, 'http://localhost:*'::text, 'http://127.0.0.1:*'::text, 'http://[::1]:*'::text] NOT NULL,
+    mcp_oauth_allowed_redirect_uris text[] DEFAULT ARRAY['https://claude.ai/api/mcp/auth_callback'::text, 'https://claude.com/api/mcp/auth_callback'::text, 'https://oauth-redirect.googleusercontent.com/r/*'::text, 'https://oauth-redirect-sandbox.googleusercontent.com/r/*'::text, 'https://oauth-redirect-test.googleusercontent.com/r/*'::text, 'https://oauth-redirect.googleusercontent.com/a/*'::text, 'https://oauth-redirect-sandbox.googleusercontent.com/a/*'::text, 'https://oauth-redirect-test.googleusercontent.com/a/*'::text, 'http://localhost:*'::text, 'http://127.0.0.1:*'::text, 'http://[::1]:*'::text] NOT NULL,
     enable_version_check boolean DEFAULT true NOT NULL,
     enable_magic_link_login boolean DEFAULT true NOT NULL,
     enable_challenges boolean DEFAULT true NOT NULL,

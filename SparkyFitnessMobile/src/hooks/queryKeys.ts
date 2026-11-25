@@ -275,6 +275,20 @@ export const exerciseStatsQueryKey = (
     presetId ?? null,
   ] as const;
 
+/** One exercise's progress window; under the stats root so exercise writes reload it. */
+export const exerciseProgressQueryKey = (
+  exerciseId: string,
+  startDate: string,
+  endDate: string
+) =>
+  [
+    ...exerciseStatsQueryKeyRoot,
+    'progress',
+    exerciseId,
+    startDate,
+    endDate,
+  ] as const;
+
 export const workoutSessionFeedbackQueryKey = (presetEntryId: string) =>
   ['workoutSessionFeedback', presetEntryId] as const;
 

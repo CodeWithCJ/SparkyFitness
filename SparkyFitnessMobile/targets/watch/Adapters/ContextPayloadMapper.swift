@@ -94,6 +94,8 @@ enum ContextPayloadMapper {
             fastSynced: fastKnown(in: payload) ? true : previous.fastSynced,
             steps: steps(from: payload["steps"]),
             stepGoal: (payload["stepGoal"] as? NSNumber)?.intValue ?? previous.stepGoal,
+            sleep: sleep(from: payload["sleep"]),
+            exerciseSummary: exerciseSummary(from: payload["exerciseSummary"]),
             runVoiceCues: payload["runVoiceCues"] as? Bool ?? previous.runVoiceCues,
             appLanguage: payload["appLanguage"] as? String ?? previous.appLanguage,
             runAutoPause: payload["runAutoPause"] as? Bool ?? previous.runAutoPause,
@@ -126,6 +128,46 @@ enum ContextPayloadMapper {
               let day = dict["day"] as? String,
               let count = (dict["count"] as? NSNumber)?.intValue else { return nil }
         return StepsSnapshot(day: day, count: count)
+    }
+
+    /// Last night's sleep from the phone's `sleep` key. Nil when absent or
+    /// malformed. A field the tracker did not provide is simply missing, since
+    /// the phone's nulls are dropped on the way over.
+    static func sleep(from raw: Any?) -> SleepSnapshot? {
+        guard let dict = raw as? [String: Any],
+              let day = dict["day"] as? String,
+              let total = (dict["totalSeconds"] as? NSNumber)?.doubleValue else { return nil }
+        func number(_ key: String) -> Double? { (dict[key] as? NSNumber)?.doubleValue }
+        return SleepSnapshot(
+            day: day,
+            totalSeconds: total,
+            timeInBedSeconds: number("timeInBedSeconds") ?? 0,
+            sleepScore: number("sleepScore"),
+            deepSeconds: number("deepSeconds"),
+            remSeconds: number("remSeconds"),
+            lightSeconds: number("lightSeconds"),
+            restingHeartRate: number("restingHeartRate"),
+            hrvMs: number("hrvMs"),
+            spo2: number("spo2")
+        )
+    }
+
+    /// Today's exercise from the phone's `exerciseSummary` key. Nil when absent
+    /// or malformed.
+    static func exerciseSummary(from raw: Any?) -> ExerciseSummarySnapshot? {
+        guard let dict = raw as? [String: Any],
+              let day = dict["day"] as? String,
+              let minutes = (dict["minutes"] as? NSNumber)?.doubleValue,
+              let calories = (dict["calories"] as? NSNumber)?.doubleValue else { return nil }
+        func number(_ key: String) -> Double { (dict[key] as? NSNumber)?.doubleValue ?? 0 }
+        return ExerciseSummarySnapshot(
+            day: day,
+            minutes: minutes,
+            minutesGoal: number("minutesGoal"),
+            calories: calories,
+            caloriesGoal: number("caloriesGoal"),
+            sessionCount: Int(number("sessionCount"))
+        )
     }
 
     /// The running fast from the phone's `fast` key. Nil when there is none.
@@ -276,6 +318,68 @@ enum ContextPayloadMapper {
             let updatedAt = doubleValue(payload["updatedAt"])
         else { return nil }
         return WatchRouteSync(route: route, updatedAt: updatedAt)
+    }
+
+    /// The wearer's custom complications from a `complicationConfig`, with the
+    /// revision they were sent at. Entries without an id, name or source are
+    /// dropped; anything else missing takes a plain default, so a newer phone
+    /// that adds a field does not break this build.
+    static func complicationConfig(
+        from payload: [String: Any]
+    ) -> (
+        revision: Double,
+        reload: Bool,
+        builtIns: [ComplicationPublisher.BuiltInStyle]?,
+        definitions: [ComplicationPublisher.CustomDefinition]
+    )? {
+        guard
+            let revision = doubleValue(payload["revision"]),
+            let raw = payload["definitions"] as? [[String: Any]]
+        else { return nil }
+        // Set by the phone's Reload button: refresh the picker and faces even
+        // when the list is the one already held.
+        let reload = payload["reload"] as? Bool ?? false
+        // The wearer's colour and icon for the built-in complications. Nil when
+        // the phone did not send the field (an older build), which keeps what
+        // the watch already has; an empty list clears them.
+        let builtIns = (payload["builtIns"] as? [[String: Any]])?.compactMap {
+            entry -> ComplicationPublisher.BuiltInStyle? in
+            guard let key = entry["key"] as? String, !key.isEmpty else { return nil }
+            return ComplicationPublisher.BuiltInStyle(
+                key: key,
+                color: entry["color"] as? String,
+                icon: entry["icon"] as? String
+            )
+        }
+        let definitions = raw.compactMap { entry -> ComplicationPublisher.CustomDefinition? in
+            guard
+                let id = entry["id"] as? String, !id.isEmpty,
+                let name = entry["name"] as? String, !name.isEmpty,
+                let source = entry["source"] as? String, !source.isEmpty
+            else { return nil }
+            // At most two more values; one with no source is dropped.
+            let extras = (entry["extras"] as? [[String: Any]] ?? []).prefix(2).compactMap {
+                item -> ComplicationPublisher.CustomItem? in
+                guard let itemSource = item["source"] as? String, !itemSource.isEmpty else { return nil }
+                return ComplicationPublisher.CustomItem(
+                    source: itemSource,
+                    format: item["format"] as? String ?? "value",
+                    color: item["color"] as? String ?? "neutral",
+                    icon: item["icon"] as? String ?? "gauge.with.dots.needle.33percent"
+                )
+            }
+            return ComplicationPublisher.CustomDefinition(
+                id: id,
+                name: name,
+                source: source,
+                format: entry["format"] as? String ?? "value",
+                gauge: entry["gauge"] as? Bool ?? false,
+                color: entry["color"] as? String ?? "neutral",
+                icon: entry["icon"] as? String ?? "gauge.with.dots.needle.33percent",
+                extras: extras.isEmpty ? nil : Array(extras)
+            )
+        }
+        return (revision, reload, builtIns, definitions)
     }
 
     /// The route id a `routeRemove` names.

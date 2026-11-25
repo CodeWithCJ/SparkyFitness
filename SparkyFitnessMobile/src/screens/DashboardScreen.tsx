@@ -1074,6 +1074,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                       calories={trends.calories}
                       heartRate={trends.heartRate}
                       vo2max={trends.vo2max}
+                      mood={trends.mood}
                       range={trendsRange}
                       weightUnit={weightUnit}
                       waterUnit={waterDisplayUnit}

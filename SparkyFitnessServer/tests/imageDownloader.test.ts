@@ -52,6 +52,19 @@ afterAll(async () => {
 });
 
 describe('imageDownloader - downloadImage', () => {
+  it('refuses an entity id that would leave the uploads folder, before fetching', async () => {
+    const fetchMock = vi.fn();
+    globalThis.fetch = fetchMock;
+
+    for (const bad of ['../escape', '..', 'a/b', '.hidden', '']) {
+      await expect(
+        downloadImage('https://cdn.example.com/good.png', bad)
+      ).rejects.toThrow(/Invalid entity id/);
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fs.existsSync(path.join(TMP_UPLOADS, 'escape'))).toBe(false);
+  });
+
   it('downloads a valid image and returns the web path', async () => {
     const bytes = Buffer.from('fake-png-bytes');
     globalThis.fetch = vi.fn().mockResolvedValue(

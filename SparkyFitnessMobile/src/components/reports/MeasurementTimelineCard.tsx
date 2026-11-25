@@ -19,7 +19,9 @@ import {
   instantHourMinute,
   localDateTimeToUtc,
   GLUCOSE_CONTEXT_KINDS,
+  GLUCOSE_CONTEXT_KIND_FEATURES,
   glucoseContextForDay,
+  isShownByFeature,
   type GlucoseContextKind,
   withoutHiddenCategories,
 } from '@workspace/shared';
@@ -109,7 +111,8 @@ export default function MeasurementTimelineCard({
   // Categories of a feature turned off on purpose (the reproductive ones while
   // cycle is off in Settings → Features) are not offered, and one picked
   // before falls back to glucose; it comes back when the feature does.
-  const { hiddenCustomCategories } = useMobileFeatures();
+  const { hiddenCustomCategories, isEnabled: isFeatureOn } =
+    useMobileFeatures();
   const { data: allCustomCategories } = useCustomCategories();
   const categoryId = allCustomCategories?.some(
     (item) =>
@@ -191,9 +194,19 @@ export default function MeasurementTimelineCard({
   );
   const actual = points.filter((point) => point.value !== null);
   const context = useGlucoseContext(day, timezone, actual.length > 0);
-  const [layers, setLayers] = useState<GlucoseContextKind[]>([
+  const [chosenLayers, setLayers] = useState<GlucoseContextKind[]>([
     ...GLUCOSE_CONTEXT_KINDS,
   ]);
+  // The layer of a feature turned off in Settings → Features (medications) is
+  // not offered and its events are not drawn; the choice is kept for when the
+  // feature comes back.
+  const offeredKinds = GLUCOSE_CONTEXT_KINDS.filter((kind) =>
+    isShownByFeature(GLUCOSE_CONTEXT_KIND_FEATURES[kind], isFeatureOn)
+  );
+  const layers = chosenLayers.filter((kind) => offeredKinds.includes(kind));
+  const unavailableKinds = (context.data?.unavailable ?? []).filter((kind) =>
+    offeredKinds.includes(kind)
+  );
   const events = useMemo(
     () =>
       glucoseContextForDay(
@@ -664,7 +677,7 @@ export default function MeasurementTimelineCard({
       </View>
       {layersOpen && (
         <View className="flex-row flex-wrap my-2">
-          {GLUCOSE_CONTEXT_KINDS.map((kind) => (
+          {offeredKinds.map((kind) => (
             <Pressable
               key={kind}
               accessibilityRole="checkbox"
@@ -712,11 +725,11 @@ export default function MeasurementTimelineCard({
           })}
         </Text>
       )}
-      {(context.data?.unavailable.length ?? 0) > 0 && (
+      {unavailableKinds.length > 0 && (
         <Text className="text-text-secondary">
           {t('measurementTimeline.unavailable', {
             defaultValue: 'Some context is unavailable: {{layers}}',
-            layers: context.data?.unavailable.map(kindLabel).join(', '),
+            layers: unavailableKinds.map(kindLabel).join(', '),
           })}
         </Text>
       )}

@@ -18,6 +18,10 @@ jest.mock('../../src/components/SwipeableFoodRow', () => {
   return { __esModule: true, default: () => <View testID="food-row" /> };
 });
 
+jest.mock('../../src/hooks/usePreferences', () => ({
+  usePreferences: () => ({ preferences: { time_format: 'HH:mm' } }),
+}));
+
 const mealTypes: MealType[] = [
   {
     id: 'sys-b',
@@ -229,5 +233,17 @@ describe('FoodSummary', () => {
       />
     );
     expect(queryByText(/\/ 500/)).toBeNull();
+  });
+
+  it("shows the meal type's start time under its name", () => {
+    const { getByText } = render(
+      <FoodSummary
+        foodEntries={[entry('e5', 'sys-b', 'breakfast')]}
+        mealTypes={mealTypes.map((mt) =>
+          mt.id === 'sys-b' ? { ...mt, default_time: '07:30:00' } : mt
+        )}
+      />
+    );
+    expect(getByText('from 07:30')).toBeTruthy();
   });
 });

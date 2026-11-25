@@ -1,4 +1,5 @@
 import { log } from '../config/logging.js';
+import { VO2_MAX_BOUNDS } from '../utils/vo2MaxDailySummary.js';
 import measurementRepository from '../models/measurementRepository.js';
 import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb, {
@@ -101,8 +102,8 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   oxygen_saturation: '%',
   OxygenSaturation: '%',
   BloodOxygenSaturation: '%',
-  vo2_max: 'ml/min/kg',
-  Vo2Max: 'ml/min/kg',
+  vo2_max: 'ml/kg/min',
+  Vo2Max: 'ml/kg/min',
   height: 'm',
   Height: 'm',
   neck: 'cm',
@@ -2369,6 +2370,14 @@ const customMeasurementHandleBatch: HandleBatchFn = async (entries, ctx) => {
       unitFromPayload.trim()
     ) {
       resolvedMeasurementType = unitFromPayload.trim();
+      // Older mobile clients send the mislabeled "ml/min/kg" for VO2 max;
+      // keep the category on the canonical "ml/kg/min".
+      if (
+        (type === 'vo2_max' || type === 'Vo2Max') &&
+        resolvedMeasurementType.toLowerCase() === 'ml/min/kg'
+      ) {
+        resolvedMeasurementType = 'ml/kg/min';
+      }
     } else {
       resolvedMeasurementType =
         // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
@@ -2567,11 +2576,10 @@ const restingHeartRateHandler = createDailySummaryReadingHandler(
   { min: 20, max: 250, decimals: 0 }
 );
 
-const vo2MaxHandler = createDailySummaryReadingHandler('vo2_max', {
-  min: 10,
-  max: 100,
-  decimals: 1,
-});
+const vo2MaxHandler = createDailySummaryReadingHandler(
+  'vo2_max',
+  VO2_MAX_BOUNDS
+);
 
 // Apple's sleeping wrist temperature arrives as a plain record, one per night.
 // It is kept as a `skin_temperature` sample, not a custom measurement, so the

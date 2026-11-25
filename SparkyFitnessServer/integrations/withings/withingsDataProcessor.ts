@@ -1,5 +1,6 @@
 import measurementRepository from '../../models/measurementRepository.js';
 import { log } from '../../config/logging.js';
+import { saveDailyVo2Max } from '../../utils/vo2MaxDailySummary.js';
 import exerciseRepository from '../../models/exercise.js';
 import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import sleepRepository from '../../models/sleepRepository.js';
@@ -136,7 +137,7 @@ const WITHINGS_METRIC_MAPPING = {
   },
   123: {
     name: 'VO2 Max',
-    unit: 'ml/min/kg',
+    unit: 'ml/kg/min',
     type: 'custom_measurement',
     categoryName: 'VO2 Max',
     frequency: 'Daily',
@@ -399,6 +400,15 @@ async function processWithingsMeasures(
         customMeasurement,
         'Withings'
       );
+      if (customMeasurement.categoryName === 'VO2 Max') {
+        await saveDailyVo2Max(
+          userId,
+          createdByUserId,
+          customMeasurement.entryDate,
+          customMeasurement.value,
+          'withings'
+        );
+      }
     }
   }
 }

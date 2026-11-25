@@ -1,8 +1,10 @@
 import {
   BLOOD_GLUCOSE_MG_DL_PER_MMOL_L,
   DEFAULT_GLUCOSE_UNIT,
+  GLUCOSE_CONTEXT_KIND_FEATURES,
   GLUCOSE_CONTEXT_KINDS,
   glucoseContextForDay,
+  isShownByFeature,
   localDateTimeToUtc,
   addDays,
   instantToDay,
@@ -51,6 +53,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { useHealthMetricSamples } from '@/hooks/useGenericHealth';
 import { useGlucoseContext } from '@/hooks/Reports/useGlucoseContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 
 const CONTEXT_COLORS: Record<GlucoseContextKind, string> = {
   meal: '#d97706',
@@ -166,6 +169,12 @@ export default function GlucoseCard({ startDate, endDate }: GlucoseCardProps) {
   const [layers, setLayers] = useState<GlucoseContextKind[]>([
     ...GLUCOSE_CONTEXT_KINDS,
   ]);
+  // A layer of an optional feature that is off (Settings > Features) leaves
+  // the picker and the chart; the layer choice is kept for when it is back.
+  const { isShown } = useWebFeatures();
+  const shownKinds = GLUCOSE_CONTEXT_KINDS.filter((kind) =>
+    isShownByFeature(GLUCOSE_CONTEXT_KIND_FEATURES[kind], isShown)
+  );
   const events = useMemo(
     () =>
       glucoseContextForDay(
@@ -175,7 +184,12 @@ export default function GlucoseCard({ startDate, endDate }: GlucoseCardProps) {
       ),
     [context.data, day, timezone]
   );
-  const visibleEvents = events.filter((event) => layers.includes(event.kind));
+  const visibleEvents = events.filter(
+    (event) => layers.includes(event.kind) && shownKinds.includes(event.kind)
+  );
+  const unavailableKinds = (context.data?.unavailable ?? []).filter((kind) =>
+    shownKinds.includes(kind)
+  );
   const windowEvents = visibleEvents.filter(
     (event) =>
       event.start &&
@@ -507,7 +521,7 @@ export default function GlucoseCard({ startDate, endDate }: GlucoseCardProps) {
           <legend className="mb-2 text-sm">
             {t('reports.glucose.context', 'Recorded context · display layers')}
           </legend>
-          {GLUCOSE_CONTEXT_KINDS.map((kind) => (
+          {shownKinds.map((kind) => (
             <label key={kind} className="flex items-center gap-1 text-sm">
               <input
                 type="checkbox"
@@ -538,10 +552,10 @@ export default function GlucoseCard({ startDate, endDate }: GlucoseCardProps) {
             )}
           </p>
         )}
-        {(context.data?.unavailable.length ?? 0) > 0 && (
+        {unavailableKinds.length > 0 && (
           <p className="text-sm">
             {t('reports.glucose.unavailable', 'Some context is unavailable:')}{' '}
-            {context.data?.unavailable.map(kindLabel).join(', ')}
+            {unavailableKinds.map(kindLabel).join(', ')}
           </p>
         )}
         <details>

@@ -19,7 +19,7 @@ Manage your daily pregnancy workflows via six dashboard tiles:
 * **Weight & BP Tracking**:
   * *Weight Tracking*: Logs weight against pre-pregnancy targets (Singleton/Twins) based on IOM guidelines.
   * *BP (Blood Pressure) Tracking*: Records systolic/diastolic blood pressure logs to help monitor cardiovascular health.
-* **Prenatal Vitamin Toggle**: Quick-log buttons on the vitals card to record daily prenatal vitamin and iron compliance.
+* **Prenatal Vitamin Toggle**: Quick-log buttons on the vitals card to record daily prenatal vitamin and iron compliance. On the website they show while Medications is turned on in **Settings → Features**.
 * **Appointments & Scans**: Log upcoming doctor checkups, lab scans, or ultrasound appointments.
 * **Food & Medication Safety**: Safety categories (Safe, Caution, Avoid) with risk breakdowns (e.g. soft cheeses, herbal teas, ibuprofen).
 

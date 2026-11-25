@@ -137,3 +137,223 @@ describe('formatList', () => {
     }
   });
 });
+
+describe('truncateJsonRecords exercise diary', () => {
+  function makeEntry(i: number) {
+    return {
+      id: `entry-${i}`,
+      exercise_name: `Exercise number ${i} with a descriptive name`,
+      entry_date: '2026-11-20',
+      duration_minutes: 45,
+      calories_burned: 300 + i,
+      category: 'strength',
+      source: 'manual',
+      source_id: null,
+      notes: 'n'.repeat(150),
+    };
+  }
+
+  function makeSet(entryIndex: number, setNumber: number) {
+    return {
+      id: `set-${entryIndex}-${setNumber}`,
+      exercise_entry_id: `entry-${entryIndex}`,
+      set_number: setNumber,
+      reps: 10,
+      weight: 50,
+    };
+  }
+
+  function makeDiary(entryCount: number, setsPerEntry: number) {
+    const entries = Array.from({ length: entryCount }, (_, i) => makeEntry(i));
+    const sets = entries.flatMap((_, i) =>
+      Array.from({ length: setsPerEntry }, (_, s) => makeSet(i, s + 1))
+    );
+    return {
+      start_date: '2026-11-01',
+      end_date: '2026-11-20',
+      entries,
+      sets,
+    };
+  }
+
+  function expectValidDiaryTruncation(
+    data: ReturnType<typeof makeDiary>,
+    profile: 'full' | 'core'
+  ) {
+    const out = formatJsonResult(data, profile);
+    expect(() => JSON.parse(jsonPortion(out))).not.toThrow();
+    expect(out.length).toBeLessThanOrEqual(getCharacterLimit(profile));
+    const parsed = JSON.parse(jsonPortion(out));
+
+    expect(parsed.entries.length).toBeGreaterThan(0);
+    expect(parsed.entries.length).toBeLessThan(data.entries.length);
+    expect(parsed.entries).toEqual(
+      data.entries.slice(0, parsed.entries.length)
+    );
+
+    const keptIds = new Set(
+      parsed.entries.map((entry: { id: string }) => entry.id)
+    );
+    for (const set of parsed.sets) {
+      expect(keptIds.has(set.exercise_entry_id)).toBe(true);
+    }
+    expect(parsed.sets).toEqual(
+      data.sets.filter((set) => keptIds.has(set.exercise_entry_id))
+    );
+
+    expect(parsed.start_date).toBe(data.start_date);
+    expect(parsed.end_date).toBe(data.end_date);
+    expect(out).toContain(
+      `showing ${parsed.entries.length} of ${data.entries.length} fetched exercise entries`
+    );
+    expect(out).toContain('start_date / end_date');
+    expect(out).not.toContain("'limit' and 'offset'");
+  }
+
+  it('drops whole entries with their sets when entries alone exceed the limit', () => {
+    const data = makeDiary(40, 4);
+    expect(JSON.stringify(data.entries).length).toBeGreaterThan(
+      getCharacterLimit('full')
+    );
+    expect(data.sets.length).toBeGreaterThan(data.entries.length);
+    expectValidDiaryTruncation(data, 'full');
+  });
+
+  it('drops whole entries with their sets under the core-profile limit', () => {
+    const data = makeDiary(40, 4);
+    expectValidDiaryTruncation(data, 'core');
+  });
+
+  it('keeps one entry and a prefix of its sets when that entry alone overflows', () => {
+    const data = makeDiary(1, 200);
+    const out = formatJsonResult(data);
+
+    expect(() => JSON.parse(jsonPortion(out))).not.toThrow();
+    expect(out.length).toBeLessThanOrEqual(getCharacterLimit('full'));
+    const parsed = JSON.parse(jsonPortion(out));
+    expect(parsed.entries).toEqual(data.entries);
+    expect(parsed.sets.length).toBeGreaterThan(0);
+    expect(parsed.sets.length).toBeLessThan(data.sets.length);
+    expect(parsed.sets).toEqual(data.sets.slice(0, parsed.sets.length));
+    expect(out).toContain(
+      `showing 1 of 1 fetched exercise entries and ${parsed.sets.length} of ${data.sets.length} of its sets`
+    );
+  });
+
+  it('returns an exercise diary under the limit byte-identical to JSON.stringify', () => {
+    const data = makeDiary(2, 3);
+    expect(formatJsonResult(data)).toBe(JSON.stringify(data));
+  });
+
+  it('truncates to valid JSON when the diary has no sets', () => {
+    const data = makeDiary(40, 0);
+    const out = formatJsonResult(data);
+
+    expect(out.length).toBeLessThanOrEqual(getCharacterLimit('full'));
+    const parsed = JSON.parse(jsonPortion(out));
+    expect(parsed.entries.length).toBeGreaterThan(0);
+    expect(parsed.entries.length).toBeLessThan(data.entries.length);
+    expect(parsed.sets).toEqual([]);
+  });
+
+  it.each(['full', 'core'] as const)(
+    'drops the last set when one entry fits only without it (%s profile)',
+    (profile) => {
+      const limit = getCharacterLimit(profile);
+      const entry = { id: 'e', notes: '' };
+      const data = {
+        start_date: '2026-11-01',
+        end_date: '2026-11-20',
+        entries: [entry],
+        sets: [] as { id: string; exercise_entry_id: string; notes: string }[],
+      };
+      entry.notes = 'n'.repeat(limit - 300 - JSON.stringify(data).length);
+      expect(JSON.stringify(data).length).toBe(limit - 300);
+      data.sets = [{ id: 's', exercise_entry_id: 'e', notes: 'p'.repeat(400) }];
+      expect(JSON.stringify(data).length).toBeGreaterThan(limit);
+
+      const out = formatJsonResult(data, profile);
+      expect(() => JSON.parse(jsonPortion(out))).not.toThrow();
+      const parsed = JSON.parse(jsonPortion(out));
+      expect(parsed.entries).toEqual([entry]);
+      expect(parsed.sets).toEqual([]);
+      expect(out).toContain('and 0 of 1 of its sets');
+      expect(out.length).toBeLessThanOrEqual(limit);
+    }
+  );
+
+  it.each(['full', 'core'] as const)(
+    'shortens the long text of a single entry that overflows on its own (%s profile)',
+    (profile) => {
+      const data = {
+        start_date: '2026-11-01',
+        end_date: '2026-11-20',
+        entries: [{ id: 'e', notes: 'n'.repeat(9000) }],
+        sets: [],
+      };
+      const out = formatJsonResult(data, profile);
+
+      expect(() => JSON.parse(jsonPortion(out))).not.toThrow();
+      const parsed = JSON.parse(jsonPortion(out));
+      expect(parsed.entries[0].id).toBe('e');
+      expect(parsed.entries[0].notes).toBe('n'.repeat(400) + '… (truncated)');
+      expect(out).toContain('with its long text shortened');
+      expect(out).toContain('start_date / end_date');
+      expect(out).not.toContain("'limit' and 'offset'");
+      expect(out.length).toBeLessThanOrEqual(getCharacterLimit(profile));
+      expect(data.entries[0].notes).toHaveLength(9000);
+    }
+  );
+
+  it.each(['full', 'core'] as const)(
+    'stays within the limit for every length of the first entry (%s profile)',
+    (profile) => {
+      const limit = getCharacterLimit(profile);
+      const entries = Array.from({ length: 1000 }, (_, i) => ({
+        id: `e${i}`,
+        notes: '',
+      }));
+      // Two set shapes: which paddings land on the note-length edge depends
+      // on how the set sizes step, and each shape hits it in one profile.
+      const setShapes = [
+        Array.from({ length: 1600 }, (_, i) => ({
+          id: `s${i}`,
+          exercise_entry_id: 'e0',
+        })),
+        Array.from({ length: 1600 }, () => ({ exercise_entry_id: 'e0' })),
+      ];
+      for (const sets of setShapes) {
+        const data = {
+          start_date: '2026-11-01',
+          end_date: '2026-11-20',
+          entries,
+          sets,
+        };
+        for (let padding = 0; padding <= 1500; padding++) {
+          entries[0].notes = 'n'.repeat(padding);
+          const out = formatJsonResult(data, profile);
+          expect(() => JSON.parse(jsonPortion(out))).not.toThrow();
+          expect(out.length).toBeLessThanOrEqual(limit);
+        }
+      }
+    },
+    30_000
+  );
+
+  it('keeps the date-range hint when even a shortened entry overflows', () => {
+    const entry: Record<string, string> = { id: 'e' };
+    for (let i = 0; i < 40; i++) {
+      entry[`field_${i}`] = String(i % 10).repeat(400);
+    }
+    const data = {
+      start_date: '2026-11-01',
+      end_date: '2026-11-20',
+      entries: [entry],
+      sets: [],
+    };
+    const out = formatJsonResult(data);
+
+    expect(out).toContain('start_date / end_date');
+    expect(out).not.toContain("'limit' and 'offset'");
+  });
+});

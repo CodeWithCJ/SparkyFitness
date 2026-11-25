@@ -973,7 +973,8 @@
     "sleepingWristTemperature": "訓緊覺時手腕溫度",
     "overnightBodyTemperature": "整夜體溫",
     "toothbrushing": "刷牙",
-    "exercise": "運動"
+    "exercise": "運動",
+    "waistCircumference": "腰圍"
   },
   "settings": {
     "app": "App 設定",
@@ -1995,7 +1996,10 @@
       "adaptive": "目標 − 攝取",
       "fixed": "目標 − 攝取",
       "dynamicActivitySeparated": "目標 − 已食 + 活動",
-      "tdeeWeekly": "推算 TDEE + 每週目標調整 − 已食"
+      "tdeeWeekly": "推算 TDEE + 每週目標調整 − 已食",
+      "burnedAdaptive": "只供參考。您嘅自適應目標已經包含咗您嘅活動量.",
+      "netAdaptive": "唔會用於「剩餘」。喺下面開啟「另外計算活動熱量」，先會計入今日嘅活動.",
+      "netAdaptivePercentage": "唔會用於「剩餘」。要計入今日嘅活動，請選擇「動態」並開啟「另外計算活動熱量」."
     },
     "notes": {
       "dynamic": "目標會隨住您郁而增長",
@@ -2104,7 +2108,9 @@
       "customShort": "自訂",
       "chartHintTrainingShort": "撳一條柱睇嗰日。撳下面嘅日子切換訓練同休息.",
       "chartHintCustomHandle": "撳一條柱睇嗰日。拖柱頂嘅把手就可以改."
-    }
+    },
+    "adaptiveFallbackActivityLevel": "喺自適應夠 {{days}} 日飲食記錄之前，您嘅基線係 BMR × 呢個活動級別，之後才套用目標模式；您嘅運動唔會另外加上去。請揀一個已包含您運動量嘅級別.",
+    "adaptiveFallbackActivitySeparated": "喺自適應夠 {{days}} 日飲食記錄之前，您嘅基線係 BMR × 呢個活動級別，之後才套用目標模式。呢個級別只描述步數同運動以外嘅活動，因為呢兩樣會另外計算."
   },
   "dashboardSettings": {
     "updateFailed": "更新設定失敗.",
@@ -2151,7 +2157,6 @@
     "trainingLoad": "訓練負荷",
     "trainingLoadSubtitle": "顯示今個星期同您平時訓練嘅比較，仲會提您休息",
     "wellness": "健康",
-    "offInFeatures": "唔顯示：已喺「功能」關閉",
     "bloodAlcohol": "酒精濃度估算",
     "bloodAlcoholSubtitle": "喺主頁顯示根據已記錄酒類嘅粗略酒精濃度估算",
     "labResults": "化驗結果",
@@ -6771,7 +6776,19 @@
     "countdownOff": "關閉",
     "countdownSeconds": "{{seconds}} 秒",
     "holdCountdownTitle": "保持前倒數",
-    "holdCountdownSubtitle": "計時保持開始前有 3、2、1「準備」畫面，等您擺好位。撳一下可以略過."
+    "holdCountdownSubtitle": "計時保持開始前有 3、2、1「準備」畫面，等您擺好位。撳一下可以略過.",
+    "mediaControlsTitle": "媒體控制",
+    "mediaAccessTitle": "正在播放歌曲資訊",
+    "mediaAccessEnabledSubtitle": "您嘅手錶喺運動期間控制手機媒體時，會顯示而家播放緊嘅歌同歌手.",
+    "mediaAccessDisabledSubtitle": "播放、跳歌同音量控制會自動生效。允許通知存取後，您嘅手錶就可以同時顯示而家播放緊嘅歌同歌手，其他通知一律唔理.",
+    "mediaAccessEnabled": "已開啟",
+    "mediaAccessSetup": "設定",
+    "mediaAccessA11yLabel": "{{title}}，{{status}}",
+    "mediaAccessDisclosureTitle": "允許通知存取？",
+    "mediaAccessDisclosureBody": "Android 需要通知存取權，Wear OS 手錶先讀到而家播放緊嘅歌同歌手。SparkyFitness 只會讀取使用中嘅媒體工作階段，唔會理您嘅訊息同其他通知.",
+    "mediaAccessOpenSettings": "開啟設定",
+    "mediaAccessOpenErrorTitle": "開唔到設定",
+    "mediaAccessOpenErrorBody": "去 Android 設定 → 通知 → 通知讀取、回覆同控制，然後開啟 SparkyFitness 媒體控制."
   },
   "guidedWorkout": {
     "cue": {
@@ -9114,7 +9131,6 @@
     "mapSatellite": "衛星圖",
     "mapStandard": "地圖",
     "mapUnavailable": "呢個版本唔可以喺地圖畫路線.",
-    "osmAttribution": "© OpenStreetMap",
     "redo": "重做",
     "findingRoute": "搵緊路線",
     "turns": "轉向",
@@ -9515,7 +9531,6 @@
     "previewTitle": "預覽",
     "previewDescription": "您揀完之後「快速操作」嘅樣.",
     "lineNumber": "第 {{number}} 行",
-    "offInFeatures": "唔顯示：已喺「功能」關閉",
     "showAs": "顯示為",
     "showAsValue": "顯示為{{style}}",
     "styleList": "清單",

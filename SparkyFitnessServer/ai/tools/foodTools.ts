@@ -651,11 +651,41 @@ const NUTRIENT_FIELDS = [
   'alcohol_g',
 ] as const;
 
+// Stored food_entries nutrients describe serving_size × serving_unit. Scaled
+// diary rows echo the main ones so a model can check them against the food.
+const PER_SERVING_FIELDS = ['calories', 'protein', 'carbs', 'fat'] as const;
+
+const DIARY_NUTRIENTS_NOTE =
+  ' Nutrient fields are already scaled to the amount eaten when nutrients_basis is "consumed" (never multiply them by quantity again; per_serving has the stored values for serving_size serving_unit, omitted when they equal the scaled ones). With nutrients_basis "serving" the logged unit does not match serving_unit, so they are the stored values per serving_size serving_unit, not scaled.';
+
+const hasValue = (value: unknown) =>
+  value !== null && value !== undefined && value !== '';
+
+/**
+ * A diary row with its nutrients scaled to the amount eaten. `nutrients_basis`
+ * says which amount the nutrient fields describe: "consumed" (scaled; the
+ * stored serving values are under `per_serving`) or "serving" (the row's unit
+ * differs from serving_unit, so the values are still per serving_size). Units
+ * are not converted (kg vs g): the rest of the app stores quantity in
+ * serving_unit, so a mismatch is old data and its values are left as stored.
+ */
 function projectFoodDiaryEntry(
   row: Record<string, unknown>,
   dropFields: readonly string[] = DIARY_ENTRY_DROP
 ): Record<string, unknown> {
   const compacted = compactRecord(row, dropFields);
+  const hasCustomNutrients =
+    !!row.custom_nutrients &&
+    typeof row.custom_nutrients === 'object' &&
+    !Array.isArray(row.custom_nutrients) &&
+    Object.keys(row.custom_nutrients).length > 0;
+  if (
+    !hasCustomNutrients &&
+    !NUTRIENT_FIELDS.some((field) => hasValue(row[field]))
+  ) {
+    return compacted;
+  }
+  compacted.nutrients_basis = 'serving';
   const quantity = Number(row.quantity);
   const storedUnit = typeof row.unit === 'string' ? row.unit : 'g';
   const isLegacyAmbiguous = isAmbiguousLegacyFoodUnit(storedUnit);
@@ -693,16 +723,25 @@ function projectFoodDiaryEntry(
     effectiveServingSize !== null
   ) {
     const multiplier = consumedQuantity / effectiveServingSize;
-    for (const field of NUTRIENT_FIELDS) {
-      if (
-        row[field] !== null &&
-        row[field] !== undefined &&
-        row[field] !== ''
-      ) {
+    compacted.nutrients_basis = 'consumed';
+    // Only when it adds something: with no stored serving_size the reference
+    // is implied, and with a multiplier of 1 the values are the same.
+    if (hasValidServingSize && multiplier !== 1) {
+      const perServing: Record<string, number> = {};
+      for (const field of PER_SERVING_FIELDS) {
         const val = Number(row[field]);
-        if (Number.isFinite(val)) {
-          compacted[field] = Number((val * multiplier).toFixed(3));
+        if (hasValue(row[field]) && Number.isFinite(val)) {
+          perServing[field] = Number(val.toFixed(3));
         }
+      }
+      if (Object.keys(perServing).length > 0) {
+        compacted.per_serving = perServing;
+      }
+    }
+    for (const field of NUTRIENT_FIELDS) {
+      const val = Number(row[field]);
+      if (hasValue(row[field]) && Number.isFinite(val)) {
+        compacted[field] = Number((val * multiplier).toFixed(3));
       }
     }
 
@@ -3058,7 +3097,9 @@ Actions:
 
     sparky_get_food_diary: tool({
       description:
-        'Returns entry-level food diary data for a specific date or date range.',
+        'Returns entry-level food diary data for a specific date or date range.' +
+        DIARY_NUTRIENTS_NOTE +
+        ' For day totals use sparky_get_nutrition_summary.',
       inputSchema: foodDiaryDateRangeSchema,
       execute: async (rawArgs) => {
         const parsed = foodDiaryDateRangeSchema.safeParse(
@@ -3169,7 +3210,8 @@ Actions:
 
     sparky_get_recent_food_entries: tool({
       description:
-        'Returns recent entry-level food diary rows for the authenticated user.',
+        'Returns recent entry-level food diary rows for the authenticated user.' +
+        DIARY_NUTRIENTS_NOTE,
       inputSchema: recentFoodEntriesSchema,
       execute: async (rawArgs) => {
         const parsed = recentFoodEntriesSchema.safeParse(
@@ -3200,7 +3242,9 @@ Actions:
     }),
 
     sparky_get_food_usage: tool({
-      description: 'Shows where a specific food_id was used in the diary.',
+      description:
+        'Shows where a specific food_id was used in the diary.' +
+        DIARY_NUTRIENTS_NOTE,
       inputSchema: foodUsageSchema,
       execute: async (rawArgs) => {
         const parsed = foodUsageSchema.safeParse(

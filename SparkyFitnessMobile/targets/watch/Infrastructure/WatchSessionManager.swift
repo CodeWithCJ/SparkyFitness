@@ -606,6 +606,8 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 for: water.day
             )
         }
+
+        ComplicationPublisher.publish(customMetrics: CustomComplicationMetrics.build(from: context))
     }
 
     /// Adopts the application context WatchConnectivity is already holding.
@@ -704,6 +706,7 @@ final class WatchSessionManager: NSObject, ObservableObject {
                 for: day
             )
         }
+        ComplicationPublisher.publish(customMetrics: CustomComplicationMetrics.build(from: incoming))
     }
 
     /// Marks one check-in saved or failed once the phone reports the server
@@ -747,6 +750,15 @@ final class WatchSessionManager: NSObject, ObservableObject {
         case "runStart":
             if let request = ContextPayloadMapper.runStartRequest(from: payload) {
                 WatchRunStore.shared.startRequested(request)
+            }
+        case "complicationConfig":
+            if let config = ContextPayloadMapper.complicationConfig(from: payload) {
+                ComplicationPublisher.publish(
+                    customDefinitions: config.definitions,
+                    revision: config.revision,
+                    reload: config.reload,
+                    builtInStyles: config.builtIns
+                )
             }
         case "routeSync":
             if let sync = ContextPayloadMapper.routeSync(from: payload) {

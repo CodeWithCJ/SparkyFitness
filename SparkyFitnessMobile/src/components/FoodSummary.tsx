@@ -17,6 +17,8 @@ import {
   type MealGroup,
 } from '../utils/mealNutrition';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
+import { usePreferences } from '../hooks/usePreferences';
+import { formatTimeLabel } from '../utils/entryTimeDisplay';
 import { energyUnitLabel, roundedEnergy } from '../utils/energyUnit';
 
 interface FoodSummaryProps {
@@ -33,6 +35,14 @@ interface FoodSummaryProps {
   ) => void;
 }
 
+const MEAL_EMOJIS: Record<string, string> = {
+  breakfast: '☕',
+  lunch: '🥪',
+  snack: '🍏',
+  snacks: '🍏',
+  dinner: '🍽️',
+};
+
 interface MealSectionProps {
   group: MealGroup;
   goals?: DailyGoals;
@@ -43,6 +53,8 @@ interface MealSectionProps {
     mealTypeName: string,
     entries: FoodEntry[]
   ) => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
 const EmptyState: React.FC<{ onAddFood?: () => void }> = ({ onAddFood }) => {
@@ -54,7 +66,7 @@ const EmptyState: React.FC<{ onAddFood?: () => void }> = ({ onAddFood }) => {
       accessibilityLabel={t('foodSummary.tapToAddFood', {
         defaultValue: 'Tap to add food',
       })}
-      className="bg-surface rounded-xl p-4 mb-2 shadow-sm items-center py-6"
+      className="rounded-xl p-4 mb-2 items-center py-6 border border-dashed border-border-strong"
     >
       <Text className="text-text-muted text-base">
         {t('foodSummary.tapToAddFood', { defaultValue: 'Tap to add food' })}
@@ -69,9 +81,15 @@ const MealSection: React.FC<MealSectionProps> = ({
   calorieGoal,
   onAdjustServing,
   onPressMealType,
-}) => {
+  isFirst = false,
+  isLast = false,
+}: MealSectionProps) => {
   const { t } = useTranslation();
   const accentPrimary = useCSSVariable('--color-accent-primary') as string;
+
+  const emoji = group.isSystem
+    ? MEAL_EMOJIS[group.name.toLowerCase()]
+    : undefined;
 
   const label = getMealGroupLabel(group, t);
   // Single canonical MEAL_CONFIG lookup (read once, reuse both fields). A
@@ -83,6 +101,11 @@ const MealSection: React.FC<MealSectionProps> = ({
   const icon = systemConfig?.icon ?? 'meal-snack';
 
   const energyUnit = useEnergyUnit();
+  const { preferences } = usePreferences();
+  const startTime = formatTimeLabel(
+    group.defaultTime,
+    preferences?.time_format
+  );
   const totalCalories = calculateMealNutrition(group.entries).values.calories;
   const targetCalories = React.useMemo(
     () => getMealTargetCalories(group.name, group.isSystem, goals, calorieGoal),
@@ -91,10 +114,27 @@ const MealSection: React.FC<MealSectionProps> = ({
 
   const headerContent = (
     <>
-      <Icon name={icon} size={18} color={accentPrimary} />
-      <Text className="text-base font-bold text-text-secondary flex-1">
-        {label}
-      </Text>
+      {/* The meal icon sits on the timeline rail that runs past its entries. */}
+      <View className="w-9 h-9 rounded-full bg-surface items-center justify-center">
+        <View className="w-full h-full rounded-full bg-accent-primary/10 items-center justify-center">
+          {emoji ? (
+            <Text className="text-xl leading-none">{emoji}</Text>
+          ) : (
+            <Icon name={icon} size={18} color={accentPrimary} />
+          )}
+        </View>
+      </View>
+      <View className="flex-1">
+        <Text className="text-base font-bold text-text-secondary">{label}</Text>
+        {startTime && (
+          <Text className="text-xs text-text-muted">
+            {t('foodSummary.fromTime', {
+              defaultValue: 'from {{time}}',
+              time: startTime,
+            })}
+          </Text>
+        )}
+      </View>
       {(totalCalories > 0 || targetCalories > 0) && (
         <View className="bg-accent-primary/5 rounded-full px-2.5 py-0.5">
           <Text className="text-xs text-accent-primary font-semibold">
@@ -113,7 +153,17 @@ const MealSection: React.FC<MealSectionProps> = ({
   );
 
   return (
-    <View className="bg-surface rounded-xl p-4 overflow-hidden shadow-sm">
+    <View className="bg-surface rounded-xl p-4 shadow-sm relative">
+      {/* Timeline vertical rail: runs through the header and entries, bridging across the gap to the next meal card */}
+      <View
+        className="absolute bg-border"
+        style={{
+          left: 33.5,
+          width: 1,
+          top: isFirst ? 34 : -8,
+          bottom: isLast ? 28 : -8,
+        }}
+      />
       {onPressMealType ? (
         <Pressable
           onPress={() =>
@@ -133,17 +183,25 @@ const MealSection: React.FC<MealSectionProps> = ({
           {headerContent}
         </View>
       )}
-      {group.entries.map((entry, index) => {
-        const nutrition = calculateEntryNutrition(entry);
-        return (
-          <SwipeableFoodRow
-            key={entry.id || index}
-            entry={entry}
-            nutrition={nutrition}
-            onAdjustServing={onAdjustServing}
-          />
-        );
-      })}
+      <View>
+        {group.entries.map((entry, index) => {
+          const nutrition = calculateEntryNutrition(entry);
+          return (
+            <View key={entry.id || index} className="flex-row items-center">
+              <View className="w-9 items-center">
+                <View className="w-2.5 h-2.5 rounded-full border-2 border-accent-primary bg-surface" />
+              </View>
+              <View className="flex-1 ml-2">
+                <SwipeableFoodRow
+                  entry={entry}
+                  nutrition={nutrition}
+                  onAdjustServing={onAdjustServing}
+                />
+              </View>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 };
@@ -171,7 +229,7 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
 
   return (
     <View className="gap-2 mb-2">
-      {groups.map((group) => (
+      {groups.map((group, index) => (
         <MealSection
           key={
             group.mealTypeId
@@ -183,6 +241,8 @@ const FoodSummary: React.FC<FoodSummaryProps> = ({
           calorieGoal={calorieGoal}
           onAdjustServing={onAdjustServing}
           onPressMealType={onPressMealType}
+          isFirst={index === 0}
+          isLast={index === groups.length - 1}
         />
       ))}
     </View>

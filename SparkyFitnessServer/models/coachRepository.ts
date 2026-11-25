@@ -1,6 +1,7 @@
 import { getClient } from '../db/poolManager.js';
 import { DAILY_MOOD_VALUE_SQL } from './moodRepository.js';
 import { MAIN_SLEEP_ORDER_SQL } from './sleepRepository.js';
+import { workoutEntryPredicateSql } from '../utils/exerciseLoadSql.js';
 
 // Aggregate queries backing the chatbot coach tools (sparky_get_health_summary,
 // sparky_analyze_trends, sparky_get_30day_trends, sparky_detect_patterns,
@@ -10,6 +11,10 @@ import { MAIN_SLEEP_ORDER_SQL } from './sleepRepository.js';
 // Snapshot nutrient columns on food_entries are stored unscaled (per serving),
 // so totals scale by quantity / serving_size.
 
+// Food entry count for the health summary. Its nutrition totals and daily
+// averages come from reportRepository.getDailyNutritionTotalsRange instead, the
+// per-day source sparky_get_nutrition_summary uses (supplement doses included),
+// so the two tools agree for the same range.
 async function getNutritionAggregates(
   userId: string,
   startDate: string,
@@ -18,12 +23,7 @@ async function getNutritionAggregates(
   const client = await getClient(userId);
   try {
     const result = await client.query(
-      `SELECT
-        COALESCE(SUM(calories * quantity / NULLIF(serving_size, 0)), 0)::numeric AS total_calories,
-        COALESCE(AVG(protein * quantity / NULLIF(serving_size, 0)), 0)::numeric AS avg_protein,
-        COALESCE(AVG(carbs * quantity / NULLIF(serving_size, 0)), 0)::numeric AS avg_carbs,
-        COALESCE(AVG(fat * quantity / NULLIF(serving_size, 0)), 0)::numeric AS avg_fat,
-        COUNT(*)::int AS entry_count
+      `SELECT COUNT(*)::int AS entry_count
        FROM food_entries
        WHERE user_id = $1 AND entry_date >= $2 AND entry_date <= $3`,
       [userId, startDate, endDate]
@@ -44,7 +44,7 @@ async function getExerciseAggregates(
     const result = await client.query(
       `SELECT
         COALESCE(SUM(calories_burned), 0)::numeric AS total_calories_burned,
-        COUNT(*)::int AS workout_count
+        (COUNT(*) FILTER (WHERE ${workoutEntryPredicateSql()}))::int AS workout_count
        FROM exercise_entries
        WHERE user_id = $1 AND entry_date >= $2 AND entry_date <= $3`,
       [userId, startDate, endDate]
@@ -162,8 +162,8 @@ async function get30DayExerciseAggregates(userId: string, endDate: string) {
   try {
     const result = await client.query(
       `SELECT
-        COUNT(*)::int AS total_workouts,
-        COUNT(DISTINCT entry_date)::int AS active_days,
+        (COUNT(*) FILTER (WHERE ${workoutEntryPredicateSql()}))::int AS total_workouts,
+        (COUNT(DISTINCT entry_date) FILTER (WHERE ${workoutEntryPredicateSql()}))::int AS active_days,
         COALESCE(SUM(calories_burned), 0)::numeric AS total_calories_burned
        FROM exercise_entries
        WHERE user_id = $1 AND entry_date > ($2::date - INTERVAL '30 days') AND entry_date <= $2::date`,

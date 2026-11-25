@@ -37,6 +37,7 @@ import {
   moodLegacyDayQueryKey,
   moodRatingsSupportQueryKey,
 } from './queryKeys';
+import { useRefetchOnFocus } from './useRefetchOnFocus';
 
 export type MoodDataPoint = {
   day: string;
@@ -77,6 +78,43 @@ export function useMoodEntries(range: HealthTrendDateRange) {
     points,
     isLoading: query.isLoading,
     isError: query.isError,
+  };
+}
+
+interface UseMoodRangeOptions {
+  range: HealthTrendDateRange;
+  enabled?: boolean;
+}
+
+/**
+ * Mood over the Health Trends pager's window, one point per day that has a
+ * logged mood. Sparse, not zero-filled: a quiet day is a gap in the line, the
+ * same way Weight/HeartRate/VO2 max read a day with no reading.
+ */
+export function useMoodRange({ range, enabled = true }: UseMoodRangeOptions) {
+  const today = getTodayDate();
+  const startDate = addDays(today, -(RANGE_DAYS[range] - 1));
+
+  const query = useQuery({
+    queryKey: moodEntriesQueryKey(startDate, today),
+    queryFn: () => fetchMoodEntries(startDate, today),
+    enabled,
+    select: (entries) =>
+      dailyMoodSeries(
+        entries.map((entry) => ({
+          ...entry,
+          entry_date: normalizeDate(entry.entry_date),
+        }))
+      ).map(({ date, mood_value }) => ({ day: date, mood: mood_value })),
+  });
+
+  useRefetchOnFocus(query.refetch, enabled);
+
+  return {
+    moodData: query.data ?? [],
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
   };
 }
 

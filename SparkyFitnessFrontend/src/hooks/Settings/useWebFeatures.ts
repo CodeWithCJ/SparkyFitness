@@ -10,23 +10,32 @@ import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useCycleSettings, useSetCycleEnabledMutation } from '@/hooks/useCycle';
 import { useFeatureChoicesQuery } from '@/hooks/Settings/useFeatureChoices';
 
+const NO_HIDDEN_CATEGORIES: ReadonlySet<string> = new Set();
+
 /**
  * Which optional features (#3487) show on this website, from the shared
  * registry. Every entry point to one (tab, + menu item, link) asks this
  * instead of reading where the switch is stored: the website's own
- * `feature_choices` (lab results), or for cycle its account-wide switch in
- * `cycle_settings.enabled`.
+ * `feature_choices` (medications, lab results), or for cycle its account-wide
+ * switch in `cycle_settings.enabled`.
  *
  * While a value is loading or could not be read, or the server is older than
  * Features, `isEnabled` gives the feature's default (cycle off, as before
- * Features; lab results on), so a network error or an old server never hides
- * something that was showing. `isExplicitlyOff` is
- * only for a feature the person turned off: data shown outside the feature's
- * own pages (the reproductive Health categories, cycle hub symptoms) hides
- * only then, so nothing disappears for someone who never chose, or while the
+ * Features; medications and lab results on), so a network error or an old
+ * server never hides something that was showing. `isExplicitlyOff` is only
+ * for a feature the person turned off: data shown outside the feature's own
+ * pages (the reproductive Health categories, cycle hub symptoms) hides only
+ * then, so nothing disappears for someone who never chose, or while the
  * answer loads.
+ *
+ * The switches are the owner's own website. `isShown` is for a feature's
+ * entry points outside its own tab (a report pill, a chart layer, a picker):
+ * they follow `isEnabled` for the owner, and someone acting for the owner
+ * sees them as their permissions allow. For the same reason nothing is in
+ * `hiddenCustomCategories` while acting on behalf.
  */
 export function useWebFeatures() {
+  const { isActingOnBehalf } = useActiveUser();
   const { data: cycleSettings } = useCycleSettings();
   const cycleEnabled = cycleSettings?.enabled;
   const { data: choicesResponse } = useFeatureChoicesQuery();
@@ -39,6 +48,10 @@ export function useWebFeatures() {
     (key: FeatureKey) => isFeatureEnabled(key, 'web', sources),
     [sources]
   );
+  const isShown = useCallback(
+    (key: FeatureKey) => isActingOnBehalf || isEnabled(key),
+    [isActingOnBehalf, isEnabled]
+  );
   const isExplicitlyOff = useCallback(
     (key: FeatureKey) => isFeatureExplicitlyOff(key, 'web', sources),
     [sources]
@@ -47,10 +60,13 @@ export function useWebFeatures() {
   // of measurements leave them out (`withoutHiddenCategories` from shared);
   // Settings > Custom Categories keeps them.
   const hiddenCustomCategories = useMemo(
-    () => hiddenFeatureCustomCategories('web', sources),
-    [sources]
+    () =>
+      isActingOnBehalf
+        ? NO_HIDDEN_CATEGORIES
+        : hiddenFeatureCustomCategories('web', sources),
+    [isActingOnBehalf, sources]
   );
-  return { isEnabled, isExplicitlyOff, hiddenCustomCategories };
+  return { isEnabled, isShown, isExplicitlyOff, hiddenCustomCategories };
 }
 
 /**

@@ -45,7 +45,9 @@ type WatchSettingsScreenProps = RootStackScreenProps<'WatchSettings'>;
  * (`useWatchCheckInBridge`), so a change reaches the wrist the next time the
  * two talk.
  */
-const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
+const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const isAndroid = Platform.OS === 'android';
   const insets = useSafeAreaInsets();
@@ -250,7 +252,30 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
           usesNativeHeader ? 'automatic' : 'never'
         }
       >
-        <Text className="text-text-primary text-base font-semibold mb-1">
+        {!isAndroid && (
+          <>
+            <Text className="text-text-primary text-base font-semibold mb-1">
+              {t('watchSettings.complicationsTitle', {
+                defaultValue: 'Complications',
+              })}
+            </Text>
+            <SettingsRow
+              testID="watch-complications-row"
+              title={t('watchSettings.complicationsRow', {
+                defaultValue: 'Your complications',
+              })}
+              subtitle={t('watchSettings.complicationsSubtitle', {
+                defaultValue:
+                  'Make your own for the watch face, and import or export them.',
+              })}
+              subtitleNumberOfLines={0}
+              onPress={() => navigation.navigate('WatchComplications')}
+            />
+          </>
+        )}
+        <Text
+          className={`text-text-primary text-base font-semibold mb-1 ${isAndroid ? '' : 'mt-6'}`}
+        >
           {t('watchSettings.gesturesTitle', { defaultValue: 'Gestures' })}
         </Text>
         {!isAndroid && (

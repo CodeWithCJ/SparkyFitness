@@ -108,7 +108,7 @@ describe('foodRepository snapshot functions', () => {
       mockClient.query
         .mockResolvedValueOnce({}) // BEGIN
         .mockResolvedValueOnce({
-          rows: entryImages.map((images) => ({ images })),
+          rows: entryImages.map((images, i) => ({ id: `e${i + 1}`, images })),
         })
         .mockResolvedValueOnce({ rowCount })
         .mockResolvedValueOnce({}); // COMMIT
@@ -253,6 +253,8 @@ describe('foodRepository snapshot functions', () => {
         '/uploads/food_entries/e1/custom.jpg',
         '/uploads/food_entries/e2/custom.jpg',
       ]);
+      // The caller may only clean these entries' own folders.
+      expect(result.syncedEntryIds).toEqual(['e1', 'e2']);
     });
 
     it('reports each replaced photo once even when entries share it', async () => {
