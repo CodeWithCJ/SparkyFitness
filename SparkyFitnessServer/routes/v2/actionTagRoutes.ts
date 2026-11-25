@@ -61,7 +61,7 @@ function isUniqueViolation(error: unknown): boolean {
  *     responses:
  *       200:
  *         description: The saved tags, newest first
- *           content:
+ *         content:
  *             application/json:
  *               schema:
  *                 type: object
@@ -121,7 +121,7 @@ router.get('/', async (req, res, next) => {
  *     responses:
  *       200:
  *         description: The outcome of the scan
- *           content:
+ *         content:
  *             application/json:
  *               schema:
  *                 type: object
@@ -196,7 +196,7 @@ router.post('/scan', async (req, res, next) => {
  *     responses:
  *       201:
  *         description: The saved tag
- *           content:
+ *         content:
  *             application/json:
  *               schema:
  *                 type: object
@@ -278,7 +278,7 @@ router.post('/', async (req, res, next) => {
  *     responses:
  *       200:
  *         description: The updated tag
- *           content:
+ *         content:
  *             application/json:
  *               schema:
  *                 type: object
