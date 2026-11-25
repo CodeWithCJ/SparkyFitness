@@ -22,7 +22,6 @@ import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
 import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchComplicationSync, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, useWatchRouteBridge, usePreferences } from './src/hooks';
 import { useCycleSheetLabel } from './src/hooks/useAddMenuItemLabel';
-import { useAddMenuItemAvailable } from './src/hooks/useAddMenuItemAvailable';
 import { configureRunLiveActivity } from './src/services/runLiveActivity';
 import { useWatchWorkoutStart } from './src/hooks/useWatchWorkoutStart';
 import { useLiveWorkoutInputsCapture } from './src/hooks/useLiveWorkoutInputsCapture';
@@ -443,7 +442,6 @@ function AppContent() {
       copyFromYesterdaySheetRef.current?.present(date),
   });
 
-  const isAddMenuItemAvailable = useAddMenuItemAvailable();
   const cycleSheetLabel = useCycleSheetLabel();
 
   const [primary, chromeBorder, bgPrimary, textPrimary] = useCSSVariable([
@@ -1627,7 +1625,6 @@ function AppContent() {
           onAskSparky={handleAskSparky}
           onStartCheckIn={handleStartCheckIn}
           onOpenCycle={handleOpenCycle}
-          showCycleCard={isAddMenuItemAvailable('wellness')}
           cycleLabel={cycleSheetLabel}
           onDismissWithoutAction={handleAddSheetDismissWithoutAction}
         />

@@ -7,7 +7,11 @@ import {
   within,
 } from '@testing-library/react-native';
 import FeatureSettingsScreen from '../../src/screens/FeatureSettingsScreen';
-import type { FeatureKey } from '@workspace/shared';
+import {
+  FEATURE_KEYS,
+  featureStorage,
+  type FeatureKey,
+} from '@workspace/shared';
 import type { CycleSwitchState } from '../../src/hooks/useMobileFeatures';
 import type { FeatureChoiceState } from '../../src/hooks/useFeatureChoices';
 import { initializeI18n } from '../../src/localization/i18n';
@@ -74,6 +78,11 @@ jest.mock('../../src/hooks/useFeatureChoices', () => ({
 }));
 
 const renderScreen = () => render(<FeatureSettingsScreen {...({} as never)} />);
+
+// One row each for the features switched per platform (`feature_choices`).
+const CHOICE_FEATURE_COUNT = FEATURE_KEYS.filter(
+  (key) => featureStorage(key) === 'choices'
+).length;
 
 const featureRow = (feature: FeatureKey) =>
   within(screen.getByTestId(`feature-row-${feature}`));
@@ -203,7 +212,38 @@ describe('FeatureSettingsScreen', () => {
       'feature-row-cycle',
       'feature-row-medications',
       'feature-row-labResults',
+      'feature-row-oralCare',
     ]);
+  });
+
+  it('lists oral care, on by default, and says brushing reminders follow it', () => {
+    renderScreen();
+    const toggle = screen.getByLabelText('Oral care');
+    expect(toggle.props.value).toBe(true);
+    expect(toggle.props.disabled).toBe(false);
+    expect(
+      featureRow('oralCare').getByText(
+        /While it is off, brushing reminders stop and come back when you turn it on\./
+      )
+    ).toBeTruthy();
+  });
+
+  it('turns oral care off in this app, and back on', () => {
+    const { unmount } = renderScreen();
+    fireEvent(
+      screen.getByTestId('feature-switch-oralCare'),
+      'valueChange',
+      false
+    );
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('oralCare', false);
+    unmount();
+
+    mockFeaturesOff = new Set<FeatureKey>(['oralCare']);
+    renderScreen();
+    const toggle = screen.getByTestId('feature-switch-oralCare');
+    expect(toggle.props.value).toBe(false);
+    fireEvent(toggle, 'valueChange', true);
+    expect(mockSetFeatureOn).toHaveBeenLastCalledWith('oralCare', true);
   });
 
   it('turns medications off in this app', () => {
@@ -246,9 +286,9 @@ describe('FeatureSettingsScreen', () => {
     expect(screen.getByTestId('feature-switch-labResults').props.disabled).toBe(
       true
     );
-    // One under each switch that reads the choices: medications, lab results.
+    // One under each switch that reads the choices.
     const retries = screen.getAllByText('Retry');
-    expect(retries).toHaveLength(2);
+    expect(retries).toHaveLength(CHOICE_FEATURE_COUNT);
     fireEvent.press(retries[1]);
     expect(mockReloadChoices).toHaveBeenCalledTimes(1);
   });

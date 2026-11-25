@@ -36,6 +36,7 @@ export const ADD_MENU_ITEM_FEATURES: Partial<
   Record<AddMenuItemKey, FeatureKey>
 > = {
   wellness: 'cycle',
+  oralCare: 'oralCare',
 };
 
 /** How many big cards the sheet has room for: two rows of two. */

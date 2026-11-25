@@ -137,6 +137,10 @@ describe('choiceFeatureLabel', () => {
     expect(choiceFeatureLabel(t, 'labResults')).toBe('Lab results');
     expect(choiceFeatureLabel(t, 'medications')).toBe('Medications');
   });
+
+  it('names oral care, which has no tab of its own', () => {
+    expect(choiceFeatureLabel(t, 'oralCare')).toBe('Oral care');
+  });
 });
 
 describe('cycleTabLabel', () => {

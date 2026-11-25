@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View, ScrollView, Text } from 'react-native';
+import { View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useDiscreetMode } from '../hooks/useDiscreetMode';
@@ -15,7 +15,7 @@ import type { RootStackScreenProps } from '../types/navigation';
 import MedicalDisclaimer from '../components/MedicalDisclaimer';
 import SegmentedControl from '../components/SegmentedControl';
 import StatusView from '../components/StatusView';
-import Button from '../components/ui/Button';
+import FeatureOffView from '../components/FeatureOffView';
 import CycleCalendarGrid from '../components/wellness/CycleCalendarGrid';
 import CycleHistoryList from '../components/wellness/CycleHistoryList';
 import CycleInsightsView from '../components/wellness/CycleInsightsView';
@@ -163,40 +163,28 @@ const CycleHubScreen: React.FC<CycleHubScreenProps> = ({ navigation }) => {
       <View className="flex-1 bg-background">
         {header}
         {isOff ? (
-          <View className="flex-1 justify-center items-center px-6 gap-3">
-            <Text className="text-text-primary text-lg font-semibold text-center">
-              {discreetMode
+          <FeatureOffView
+            title={
+              discreetMode
                 ? t('cycleHub.off.discreetTitle', {
                     defaultValue: 'Wellness is turned off',
                   })
                 : t('cycleHub.off.title', {
                     defaultValue: 'Cycle tracking is turned off',
-                  })}
-            </Text>
-            <Text className="text-text-secondary text-sm text-center">
-              {t('cycleHub.off.description', {
-                defaultValue:
-                  'Your history is kept. Turn it back on to see it here again.',
-              })}
-            </Text>
-            <Button
-              variant="primary"
-              className="mt-2 px-6"
-              disabled={cycle.isPending}
-              onPress={() => cycle.setOn(true)}
-            >
-              {t('cycleHub.off.turnOn', { defaultValue: 'Turn on' })}
-            </Button>
-            <Button
-              variant="secondary"
-              className="px-6"
-              onPress={() => navigation.navigate('FeatureSettings')}
-            >
-              {t('cycleHub.off.openFeatures', {
-                defaultValue: 'Open Features',
-              })}
-            </Button>
-          </View>
+                  })
+            }
+            description={t('cycleHub.off.description', {
+              defaultValue:
+                'Your history is kept. Turn it back on to see it here again.',
+            })}
+            turnOnLabel={t('cycleHub.off.turnOn', { defaultValue: 'Turn on' })}
+            openFeaturesLabel={t('cycleHub.off.openFeatures', {
+              defaultValue: 'Open Features',
+            })}
+            turnOnDisabled={cycle.isPending}
+            onTurnOn={() => cycle.setOn(true)}
+            onOpenFeatures={() => navigation.navigate('FeatureSettings')}
+          />
         ) : (
           <StatusView
             icon="alert-circle"

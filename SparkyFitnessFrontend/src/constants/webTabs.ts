@@ -89,7 +89,7 @@ export function webTabIcon(id: WebHideableTabId): LucideIcon {
   return TAB_ICONS[id];
 }
 
-/** A feature switched per platform, named like its tab. */
+/** A feature switched per platform, named like its tab where it has one. */
 export function choiceFeatureLabel(
   t: TFunction,
   feature: ChoiceFeatureKey
@@ -99,6 +99,9 @@ export function choiceFeatureLabel(
       return webTabLabel(t, 'medications');
     case 'labResults':
       return webTabLabel(t, 'labs');
+    case 'oralCare':
+      // No tab of its own: it lives on Check-In and Reports.
+      return t('oralCare.title', 'Oral care');
   }
 }
 

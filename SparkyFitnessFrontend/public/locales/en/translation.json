@@ -3661,6 +3661,9 @@
       },
       "labResults": {
         "description": "Record blood tests and follow each marker over time."
+      },
+      "oralCare": {
+        "description": "Log brushing, flossing and the rest, with a daily goal and a streak."
       }
     }
   },

@@ -241,6 +241,25 @@ function MedicationsFeatureRows() {
   );
 }
 
+/** Brushing reminders stop while it is off and come back when it is on; a
+ * brushing timer already running is never cut off. */
+function OralCareFeatureRows() {
+  const { t } = useTranslation();
+  return (
+    <ChoiceFeatureRows
+      feature="oralCare"
+      icon="oral-care"
+      title={t('featureSettings.oralCare.title', {
+        defaultValue: 'Oral care',
+      })}
+      description={t('featureSettings.oralCare.description', {
+        defaultValue:
+          'Log brushing, flossing and the rest, with a daily goal and a streak. While it is off, brushing reminders stop and come back when you turn it on.',
+      })}
+    />
+  );
+}
+
 /** One row per feature. A new registry key needs its own rows here: the
  * return type makes a missing case fail to compile. */
 function FeatureRows({ feature }: { feature: FeatureKey }): ReactElement {
@@ -251,6 +270,8 @@ function FeatureRows({ feature }: { feature: FeatureKey }): ReactElement {
       return <MedicationsFeatureRows />;
     case 'labResults':
       return <LabResultsFeatureRows />;
+    case 'oralCare':
+      return <OralCareFeatureRows />;
   }
 }
 

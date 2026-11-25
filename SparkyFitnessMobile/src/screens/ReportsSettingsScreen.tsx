@@ -3,13 +3,17 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { isShownByFeature } from '@workspace/shared';
+
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import FeaturesOffNotice from '../components/FeaturesOffNotice';
 import { ReorderSwitchList } from '../components/ReorderSwitchList';
 import SegmentedControl from '../components/SegmentedControl';
 import SettingsRow from '../components/SettingsRow';
 import Switch from '../components/ui/Switch';
 import { getNutrientLabel } from '../constants/nutrients';
 import { useCustomNutrients } from '../hooks/useCustomNutrients';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import { useServerConnection } from '../hooks/useServerConnection';
 import {
   EXERCISE_SECTIONS,
@@ -19,6 +23,7 @@ import {
   MEASUREMENTS_SECTIONS,
   MOOD_SECTIONS,
   NUTRITION_SECTIONS,
+  REPORT_FEATURES,
   REPORT_KEYS,
   REPORT_NUTRIENT_KEYS,
   SUBSTANCES_SECTIONS,
@@ -31,7 +36,7 @@ import { useScreenHeader } from '../hooks/useScreenHeader';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
-import { resolveKeyOrder } from '../utils/reorderUtils';
+import { mergeSubsetOrder, resolveKeyOrder } from '../utils/reorderUtils';
 import { SLEEP_ANALYTICS_METRICS } from '../utils/sleepAnalytics';
 import { trendRangeSegments } from '../utils/trendRange';
 
@@ -295,8 +300,11 @@ const SLEEP_METRIC_LABELS: Record<
  * phone only (`appPreferencesStore`), like the Health Trends and Apple Watch
  * layouts.
  */
-const ReportsSettingsScreen: React.FC<ReportsSettingsScreenProps> = () => {
+const ReportsSettingsScreen: React.FC<ReportsSettingsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
@@ -335,14 +343,22 @@ const ReportsSettingsScreen: React.FC<ReportsSettingsScreenProps> = () => {
     (s) => s.resetReportCustomization
   );
 
+  const orderedReports = useMemo(
+    () => resolveKeyOrder(reportOrder, REPORT_KEYS),
+    [reportOrder]
+  );
+  // The reports of features turned off in Settings → Features are left out,
+  // as the Reports page leaves them out; their place, switch and sections are
+  // kept for when the feature comes back.
   const reportItems = useMemo(
     () =>
-      resolveKeyOrder(reportOrder, REPORT_KEYS).map((key) => ({
-        key,
-        label: REPORT_LABELS[key](t),
-      })),
-    [reportOrder, t]
+      orderedReports
+        .filter((key) => isShownByFeature(REPORT_FEATURES[key], isFeatureOn))
+        .map((key) => ({ key, label: REPORT_LABELS[key](t) })),
+    [orderedReports, isFeatureOn, t]
   );
+  const someReportsOff = reportItems.length < orderedReports.length;
+  const oralCareOn = isFeatureOn('oralCare');
   // Standard nutrients, then the account's custom ones, in the saved order.
   const nutrientItems = useMemo(() => {
     const customNames = customNutrients.map((def) => def.name);
@@ -433,7 +449,9 @@ const ReportsSettingsScreen: React.FC<ReportsSettingsScreenProps> = () => {
             !hiddenReports.includes(key) && shownReportCount <= 1
           }
           onToggle={(key, enabled) => setReportHidden(key, !enabled)}
-          onReorder={setReportOrder}
+          onReorder={(order) =>
+            setReportOrder(mergeSubsetOrder(orderedReports, order))
+          }
           reorderA11yLabel={(name) =>
             t('reportsSettings.reorder', {
               defaultValue: 'Reorder {{name}}',
@@ -444,6 +462,16 @@ const ReportsSettingsScreen: React.FC<ReportsSettingsScreenProps> = () => {
             defaultValue: 'Changes where this report sits on the Reports page',
           })}
         />
+        {someReportsOff && (
+          <FeaturesOffNotice
+            className="mt-3"
+            onManage={
+              isConnected
+                ? () => navigation.navigate('FeatureSettings')
+                : undefined
+            }
+          />
+        )}
 
         <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
           {t('reportsSettings.rangeTitle', { defaultValue: 'Default range' })}
@@ -553,14 +581,15 @@ const ReportsSettingsScreen: React.FC<ReportsSettingsScreenProps> = () => {
           HEART_RATE_SECTIONS,
           sectionLabel
         )}
-        {renderSections(
-          t('reportsSettings.oralCareSections', {
-            defaultValue: 'Oral care report',
-          }),
-          'reports-section',
-          ORAL_CARE_SECTIONS,
-          sectionLabel
-        )}
+        {oralCareOn &&
+          renderSections(
+            t('reportsSettings.oralCareSections', {
+              defaultValue: 'Oral care report',
+            }),
+            'reports-section',
+            ORAL_CARE_SECTIONS,
+            sectionLabel
+          )}
       </ScrollView>
     </View>
   );

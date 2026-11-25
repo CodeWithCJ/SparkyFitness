@@ -41,9 +41,12 @@ const mockCycle = {
 jest.mock('../../src/hooks/useCycleMode', () => ({
   useCycleMode: () => mockCycle,
 }));
+// Cycle follows mockCycle; the other features are on unless listed here.
+let mockFeaturesOff = new Set<string>();
 jest.mock('../../src/hooks/useMobileFeatures', () => ({
   useMobileFeatures: () => ({
-    isEnabled: (key: string) => key === 'cycle' && mockCycle.enabled,
+    isEnabled: (key: string) =>
+      key === 'cycle' ? mockCycle.enabled : !mockFeaturesOff.has(key),
   }),
 }));
 jest.mock('../../src/hooks/useDiscreetMode', () => ({
@@ -90,6 +93,7 @@ describe('AddMenuSettingsScreen', () => {
       discreetMode: false,
     });
     mockConnected = true;
+    mockFeaturesOff = new Set();
   });
 
   test('lists every row in the saved order, adding ones it lacks', () => {
@@ -265,6 +269,30 @@ describe('AddMenuSettingsScreen', () => {
 
       expect(screen.getByTestId('features-off-notice')).toBeTruthy();
       expect(screen.queryByTestId('features-off-manage')).toBeNull();
+    });
+
+    test('include Oral care while oral care is off, with one line for both', () => {
+      Object.assign(mockCycle, { enabled: true });
+      renderScreen();
+      expect(screen.getByTestId('add-menu-row-oralCare')).toBeTruthy();
+      expect(screen.queryByTestId('features-off-notice')).toBeNull();
+      screen.unmount();
+
+      mockFeaturesOff = new Set(['oralCare']);
+      renderScreen();
+      expect(screen.queryByTestId('add-menu-row-oralCare')).toBeNull();
+      expect(screen.getAllByText('Some features are turned off')).toHaveLength(
+        1
+      );
+      screen.unmount();
+
+      Object.assign(mockCycle, { enabled: false });
+      renderScreen();
+      expect(screen.queryByTestId('add-menu-row-oralCare')).toBeNull();
+      expect(screen.queryByTestId('add-menu-row-wellness')).toBeNull();
+      expect(screen.getAllByText('Some features are turned off')).toHaveLength(
+        1
+      );
     });
   });
 

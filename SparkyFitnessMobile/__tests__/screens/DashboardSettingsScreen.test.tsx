@@ -55,6 +55,7 @@ jest.mock('../../src/components/Icon', () => {
 let mockCycleOn = false;
 let mockMedicationsOn = true;
 let mockLabResultsOn = true;
+let mockOralCareOn = true;
 let mockDiscreet = false;
 jest.mock('../../src/hooks/useMobileFeatures', () => ({
   useMobileFeatures: () => ({
@@ -65,7 +66,9 @@ jest.mock('../../src/hooks/useMobileFeatures', () => ({
           ? mockMedicationsOn
           : key === 'labResults'
             ? mockLabResultsOn
-            : true,
+            : key === 'oralCare'
+              ? mockOralCareOn
+              : true,
   }),
 }));
 jest.mock('../../src/hooks/useDiscreetMode', () => ({
@@ -112,6 +115,7 @@ describe('DashboardSettingsScreen', () => {
     mockCycleOn = false;
     mockMedicationsOn = true;
     mockLabResultsOn = true;
+    mockOralCareOn = true;
     mockDiscreet = false;
   });
 
@@ -159,6 +163,23 @@ describe('DashboardSettingsScreen', () => {
     expect(state.medicationsCardVisible).toBe(true);
     expect(state.dashboardCardOrder.indexOf('medications')).toBe(
       DASHBOARD_CARD_KEYS.indexOf('medications')
+    );
+  });
+
+  test('leaves out the Oral care card while oral care is off, and keeps its choices', () => {
+    mockCycleOn = true;
+    mockOralCareOn = false;
+    useAppPreferencesStore.setState({ oralCareCardVisible: true });
+    renderScreen();
+
+    expect(orderedRowKeys()).toEqual(
+      DASHBOARD_CARD_KEYS.filter((key) => key !== 'oralCare')
+    );
+    expect(screen.getAllByText('Some features are turned off')).toHaveLength(1);
+    const state = useAppPreferencesStore.getState();
+    expect(state.oralCareCardVisible).toBe(true);
+    expect(state.dashboardCardOrder.indexOf('oralCare')).toBe(
+      DASHBOARD_CARD_KEYS.indexOf('oralCare')
     );
   });
 

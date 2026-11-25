@@ -37,11 +37,7 @@ import {
   isNativeMedicationActionClaimed,
 } from './medicationNativeBridge';
 import { syncNativeMedicationSnoozeMinutes } from './medicationNativeSync';
-import i18n, {
-  getDeviceLanguage,
-  initializeI18n,
-  normalizeLanguage,
-} from '../localization/i18n';
+import i18n, { ensureI18nInitialized } from '../localization/i18n';
 
 export const MEDICATION_NOTIFICATION_TASK_NAME =
   'MEDICATION_NOTIFICATION_ACTION_TASK';
@@ -806,20 +802,13 @@ async function handleSnoozeNotificationAction(
     // Fall back to in-memory default if storage rehydration fails in headless mode.
   }
 
-  try {
-    if (!i18n.isInitialized) {
-      const prefsLang = useAppPreferencesStore.getState()?.languagePreference;
-      const targetLang = normalizeLanguage(
-        data?.locale ??
-          (prefsLang && prefsLang !== 'system'
-            ? prefsLang
-            : getDeviceLanguage())
-      );
-      await initializeI18n(targetLang);
-    }
-  } catch {
-    // Fall back to default English strings if i18n init fails in headless mode.
-  }
+  // The stored language preference, not the reminder's `locale` (only `pl`
+  // or `en`): this run's i18n setup is also what a background task in the
+  // same headless runtime writes other reminders with. Falls back to the
+  // English strings if i18n cannot be set up headless.
+  await ensureI18nInitialized(
+    useAppPreferencesStore.getState()?.languagePreference ?? data?.locale
+  );
 
   try {
     await ensureMedicationReminderChannel();

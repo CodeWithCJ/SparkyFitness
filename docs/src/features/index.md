@@ -14,7 +14,8 @@ SparkyFitness tracks the parts of your life that move your body and your health:
 - [Nutrition Summary](/features/diary/nutrition-summary): your daily totals against your goals, plus 14-day trends
 - [Daily Calorie Goal](/features/diary/daily-calorie-goal): the energy goal card: eaten, burned, and how you're tracking
 - [Exercise Diary](/features/diary/exercise): log workouts, cardio, and strength sets
-- [Check-In](/features/check-in): measurements, fasting & mood, mindfulness, sleep, progress photos, and symptoms
+- [Check-In](/features/check-in): measurements, fasting & mood, mindfulness, oral care, sleep, progress photos, and symptoms
+- [Oral Care](/features/oral-care): brushing, flossing and the rest, with a daily goal, a streak and a brushing timer
 - [Symptom & Episode Tracking](/features/symptom-tracking): track migraines, pain, flare-ups, and other episodes
 
 ## Set your goals

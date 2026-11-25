@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { useCalendars } from 'expo-localization';
 
 import { useMedications, useMedicationEntries } from '../hooks/useMedications';
-import { useMedicationsFeatureState } from '../hooks/useMedicationsFeatureState';
+import { useFeatureOnState } from '../hooks/useFeatureOnState';
 import { useServerConfigs } from '../hooks/useServerConfigs';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { getDeviceTimezone, getTodayDate } from '../utils/dateUtils';
@@ -48,7 +48,7 @@ const MedicationReminderReconciler: React.FC = () => {
   // reminders; turning it back on brings them back. The reminder preferences
   // are never written.
   const { state: featureState, refetch: refetchFeatureState } =
-    useMedicationsFeatureState();
+    useFeatureOnState('medications');
   // With no server at all (its configuration deleted, or none set up yet) the
   // reminders are cancelled as before Features: nothing else removes the
   // reminders of an account that is gone. That is read from the stored active

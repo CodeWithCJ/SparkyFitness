@@ -2932,6 +2932,12 @@
     "appOnly": "Only this app. The website has its own switch.",
     "someOff": "Some features are turned off",
     "manage": "Manage",
+    "off": {
+      "title": "{{name}} is turned off",
+      "description": "Your history is kept. Turn it back on to see it here again.",
+      "turnOn": "Turn on",
+      "openFeatures": "Open Features"
+    },
     "serverTooOld": "Update your SparkyFitness server to change this.",
     "groups": {
       "health": "Health",
@@ -2954,6 +2960,10 @@
     "labResults": {
       "title": "Lab results",
       "description": "Record blood tests and follow each marker over time."
+    },
+    "oralCare": {
+      "title": "Oral care",
+      "description": "Log brushing, flossing and the rest, with a daily goal and a streak. While it is off, brushing reminders stop and come back when you turn it on."
     }
   },
   "measurements": {

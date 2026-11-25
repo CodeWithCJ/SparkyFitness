@@ -15,9 +15,10 @@
  * still apply while a feature is on, and are kept while it is off.
  *
  * The switch hides UI only. No route, importer, sync or MCP tool checks it,
- * with one exception: the mobile app's medication reminders stop while
- * `medications` is off there, come back when it is on, and are left as they
- * are while the app cannot tell (see the repo-root AGENTS.md).
+ * with one exception: the mobile app's medication and brushing reminders stop
+ * while `medications` or `oralCare` is off there, come back when it is on, and
+ * stay on or off as they were while the app cannot tell (see the repo-root
+ * AGENTS.md).
  *
  * An entry point outside a feature's own pages (a report pill, a chart layer,
  * a picker, a chat chip) follows `isFeatureEnabled`, which gives the default
@@ -66,6 +67,7 @@ export const OPTIONAL_FEATURES = {
   cycle: { group: 'health', defaultEnabled: false, storage: 'cycleSettings' },
   medications: { group: 'health', defaultEnabled: true, storage: 'choices' },
   labResults: { group: 'health', defaultEnabled: true, storage: 'choices' },
+  oralCare: { group: 'health', defaultEnabled: true, storage: 'choices' },
 } as const satisfies Record<string, FeatureDefinition>;
 
 export type FeatureKey = keyof typeof OPTIONAL_FEATURES;

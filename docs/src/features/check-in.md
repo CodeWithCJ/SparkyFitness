@@ -1,6 +1,6 @@
 # Check-In
 
-The Check-In page in SparkyFitness allows you to quickly log your daily progress, including meals, exercises, and other key metrics. The page is split into six tabs.
+The Check-In page in SparkyFitness allows you to quickly log your daily progress, including meals, exercises, and other key metrics. The page is split into seven tabs.
 
 ## Measurements tab
 
@@ -51,6 +51,10 @@ A small daily space for breathing and meditation:
   Press **Begin Breathing**, follow the Inhale / Hold / Exhale / Rest prompts, and the session is logged when you press **Complete**.
 - **Meditation Timer**: run an open or timed session with **Start Timer**, **Pause**, and **Save & Finish**
 - **Today's Sessions**: log a session manually (type: *Meditation* or *Breathwork*, minutes and seconds), or edit and delete past sessions
+
+## Oral care tab
+
+Log brushing, flossing and the rest of your oral care, run the brushing timer, and set your daily brushing goal. See [Oral Care](/features/oral-care). While Oral care is turned off on the website (**Settings → Features**), this tab leaves the page, and a link to it offers to turn it back on.
 
 ## Sleep tab
 

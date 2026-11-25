@@ -9,10 +9,10 @@ import {
 
 /**
  * Whether the + sheet can show an item right now. An item of an optional
- * feature (`ADD_MENU_ITEM_FEATURES`, the cycle row) needs that feature on in
- * Settings → Features; every other item is always offered, and hiding one is
- * the user's call in Quick Actions. Settings and its preview use this to
- * match the sheet.
+ * feature (`ADD_MENU_ITEM_FEATURES`: the cycle and oral care rows) needs that
+ * feature on in Settings → Features; every other item is always offered, and
+ * hiding one is the user's call in Quick Actions. The sheet, its settings and
+ * the settings preview all ask this, so they agree.
  */
 export function useAddMenuItemAvailable(): (key: AddMenuItemKey) => boolean {
   const { isEnabled } = useMobileFeatures();

@@ -1,6 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { FeatureKey, SharedCycleSettings } from '@workspace/shared';
+import {
+  FEATURE_KEYS,
+  featureStorage,
+  type FeatureKey,
+  type SharedCycleSettings,
+} from '@workspace/shared';
 import type { FeatureChoiceState } from '@/hooks/Settings/useFeatureChoices';
 import type { CycleSwitchState } from '@/hooks/Settings/useWebFeatures';
 import { Accordion, AccordionItem } from '@/components/ui/accordion';
@@ -49,6 +54,11 @@ jest.mock('@/hooks/Settings/useFeatureChoices', () => ({
     reload: mockReloadChoices,
   }),
 }));
+
+// One row each for the features switched per platform (`feature_choices`).
+const CHOICE_FEATURE_COUNT = FEATURE_KEYS.filter(
+  (key) => featureStorage(key) === 'choices'
+).length;
 
 function renderSettings() {
   return render(
@@ -126,7 +136,7 @@ describe('FeatureSettings', () => {
       screen.getAllByText(
         'Only this website. The mobile app has its own switch.'
       )
-    ).toHaveLength(2);
+    ).toHaveLength(CHOICE_FEATURE_COUNT);
   });
 
   it('lists medications under Health, on by default, for this website only', () => {
@@ -153,6 +163,32 @@ describe('FeatureSettings', () => {
     expect(toggle).not.toBeChecked();
     fireEvent.click(toggle);
     expect(mockSetFeatureOn).toHaveBeenLastCalledWith('medications', true);
+  });
+
+  it('lists oral care under Health, on by default, for this website only', () => {
+    renderSettings();
+    const toggle = screen.getByRole('switch', { name: 'Oral care' });
+    expect(toggle).toBeChecked();
+    expect(toggle).toBeEnabled();
+    expect(
+      screen.getByText(
+        'Log brushing, flossing and the rest, with a daily goal and a streak.'
+      )
+    ).toBeInTheDocument();
+  });
+
+  it('turns oral care off on this website, and back on', () => {
+    const { unmount } = renderSettings();
+    fireEvent.click(screen.getByRole('switch', { name: 'Oral care' }));
+    expect(mockSetFeatureOn).toHaveBeenCalledWith('oralCare', false);
+    unmount();
+
+    mockFeaturesOff = new Set<FeatureKey>(['oralCare']);
+    renderSettings();
+    const toggle = screen.getByRole('switch', { name: 'Oral care' });
+    expect(toggle).not.toBeChecked();
+    fireEvent.click(toggle);
+    expect(mockSetFeatureOn).toHaveBeenLastCalledWith('oralCare', true);
   });
 
   it('turns lab results off on this website', () => {
@@ -187,7 +223,7 @@ describe('FeatureSettings', () => {
     expect(screen.getByRole('switch', { name: 'Medications' })).toBeDisabled();
     expect(
       screen.getAllByText('Update your SparkyFitness server to change this.')
-    ).toHaveLength(2);
+    ).toHaveLength(CHOICE_FEATURE_COUNT);
     expect(
       screen.queryByRole('button', { name: 'Retry' })
     ).not.toBeInTheDocument();
@@ -199,7 +235,7 @@ describe('FeatureSettings', () => {
     expect(screen.getByRole('switch', { name: 'Lab results' })).toBeDisabled();
     expect(screen.getByRole('switch', { name: 'Medications' })).toBeDisabled();
     const retries = screen.getAllByRole('button', { name: 'Retry' });
-    expect(retries).toHaveLength(2);
+    expect(retries).toHaveLength(CHOICE_FEATURE_COUNT);
     fireEvent.click(retries[0]!);
     expect(mockReloadChoices).toHaveBeenCalledTimes(1);
   });

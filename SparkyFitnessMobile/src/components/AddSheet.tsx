@@ -23,12 +23,14 @@ import { useSheetBackdrop, useSheetHardwareBack } from './ui/sheetChrome';
 import {
   ADD_MENU_CARD_LABELS,
   ADD_MENU_ITEM_ICONS,
+  ADD_MENU_ITEM_KEYS,
   ADD_MENU_ITEM_LABELS,
   ADD_MENU_ITEM_TINTS,
   type AddMenuItemKey,
   type AddMenuRowStyle,
 } from '../constants/addMenuItems';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
+import { useAddMenuItemAvailable } from '../hooks/useAddMenuItemAvailable';
 import {
   chunkIntoLines,
   groupRowsByStyle,
@@ -62,7 +64,6 @@ interface AddSheetProps {
   onCopyFromYesterday?: () => void;
   onRecordActivity?: () => void;
   onOpenCycle?: () => void;
-  showCycleCard?: boolean;
   cycleLabel?: string;
   cycleIcon?: IconName;
   onDismissWithoutAction?: () => void;
@@ -98,7 +99,6 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
       onCopyFromYesterday,
       onRecordActivity,
       onOpenCycle,
-      showCycleCard,
       cycleLabel,
       cycleIcon,
       onDismissWithoutAction,
@@ -106,6 +106,7 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
     ref
   ) => {
     const { t } = useTranslation();
+    const isItemAvailable = useAddMenuItemAvailable();
     const bottomSheetRef = useRef<BottomSheetModal>(null);
     // The camera cutout and status icons sit in the safe area on the Duo's
     // folded and unfolded-portrait poses; keep the sheet clear of them.
@@ -485,12 +486,13 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
 
     // Everything the app can offer right now, keyed so the saved arrangement
     // from Settings → Quick Actions can place it. An item whose handler or
-    // feature is off is simply absent, whatever the arrangement says. Names
-    // come from the shared labels so the sheet and its settings cannot drift;
-    // only the hints are the sheet's own, and the cycle row is named by the
-    // cycle mode.
+    // feature is off is simply absent, whatever the arrangement says
+    // (`itemDefs` drops the items of features turned off in Settings →
+    // Features, as Quick Actions settings and its preview do). Names come from
+    // the shared labels so the sheet and its settings cannot drift; only the
+    // hints are the sheet's own, and the cycle row is named by the cycle mode.
     const labelOf = (key: AddMenuItemKey) => ADD_MENU_ITEM_LABELS[key](t);
-    const itemDefs: Partial<Record<AddMenuItemKey, MenuItemDef>> = {
+    const allItemDefs: Partial<Record<AddMenuItemKey, MenuItemDef>> = {
       food: {
         label: labelOf('food'),
         icon: ADD_MENU_ITEM_ICONS.food,
@@ -524,14 +526,11 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         icon: ADD_MENU_ITEM_ICONS.progressPhotos,
         onPress: onAddProgressPhotos,
       },
-      wellness:
-        showCycleCard && onOpenCycle
-          ? {
-              label: cycleLabel ?? labelOf('wellness'),
-              icon: cycleIcon ?? ADD_MENU_ITEM_ICONS.wellness,
-              onPress: onOpenCycle,
-            }
-          : undefined,
+      wellness: onOpenCycle && {
+        label: cycleLabel ?? labelOf('wellness'),
+        icon: cycleIcon ?? ADD_MENU_ITEM_ICONS.wellness,
+        onPress: onOpenCycle,
+      },
       symptoms: onAddSymptoms && {
         label: labelOf('symptoms'),
         hint: t('addSheet.symptomsHint', { defaultValue: 'Log' }),
@@ -579,12 +578,25 @@ const AddSheet = React.forwardRef<AddSheetRef, AddSheetProps>(
         onPress: onSyncHealthData,
       },
     };
+    const itemDefs: Partial<Record<AddMenuItemKey, MenuItemDef>> = {};
+    for (const key of ADD_MENU_ITEM_KEYS) {
+      const def = allItemDefs[key];
+      if (def && isItemAvailable(key)) itemDefs[key] = def;
+    }
     const cardKeys = resolveAddMenuCards(addMenuCards);
     // The four cards share one panel. An unavailable one leaves its slot
     // empty so the others keep their width.
     const cards = cardKeys.map((key) => {
       const def = itemDefs[key];
-      return def ? renderCard(key, def) : <View key={key} className="flex-1" />;
+      return def ? (
+        renderCard(key, def)
+      ) : (
+        <View
+          key={key}
+          testID={`add-sheet-empty-card-${key}`}
+          className="flex-1"
+        />
+      );
     });
     // Below the cards, each style gathers in its own place, keeping the
     // arranged order within it: list rows and compact pairs in one panel,

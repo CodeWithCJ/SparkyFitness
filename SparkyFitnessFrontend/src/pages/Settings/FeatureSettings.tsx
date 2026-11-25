@@ -26,6 +26,7 @@ import {
   cycleTabLabel,
   webTabIcon,
 } from '@/constants/webTabs';
+import Tooth from '@/components/icons/Tooth';
 import { CycleSetupPrompt } from './CycleSetupPrompt';
 
 function FeatureIcon({ icon: Icon }: { icon: LucideIcon }) {
@@ -207,6 +208,21 @@ function LabResultsFeatureRow() {
   );
 }
 
+function OralCareFeatureRow() {
+  const { t } = useTranslation();
+  return (
+    <ChoiceFeatureRow
+      feature="oralCare"
+      icon={Tooth}
+      label={choiceFeatureLabel(t, 'oralCare')}
+      description={t(
+        'settings.features.oralCare.description',
+        'Log brushing, flossing and the rest, with a daily goal and a streak.'
+      )}
+    />
+  );
+}
+
 /** One row per feature. A new registry key needs its own row here. */
 function FeatureRow({ feature }: { feature: FeatureKey }): ReactElement {
   switch (feature) {
@@ -216,6 +232,8 @@ function FeatureRow({ feature }: { feature: FeatureKey }): ReactElement {
       return <MedicationsFeatureRow />;
     case 'labResults':
       return <LabResultsFeatureRow />;
+    case 'oralCare':
+      return <OralCareFeatureRow />;
   }
 }
 
