@@ -20,6 +20,7 @@ import {
 } from '../../src/offline/syncEngine';
 import type { OfflineDb } from '../../src/offline/types';
 import {
+  queueWaterCustomAmount,
   queueWaterDrink,
   removeLatestDrinkOffline,
 } from '../../src/offline/waterHandOver';
@@ -110,6 +111,16 @@ describe('taking a drink off with no connection', () => {
 
     expect(await removeLatestDrinkOffline(DAY)).toBe('cancelled');
     expect(await listUnconfirmedOutbox(db, 's1')).toEqual([]);
+  });
+
+  it('cancels a waiting custom amount the same way, not an older container drink', async () => {
+    await queueWaterDrink(KEY_A, { entryDate: DAY, containerId: 4 });
+    await queueWaterCustomAmount(KEY_B, { entryDate: DAY, waterMl: 500 });
+
+    expect(await removeLatestDrinkOffline(DAY)).toBe('cancelled');
+    const remaining = await listUnconfirmedOutbox(db, 's1');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]!.kind).toBe('water.add');
   });
 
   it('leaves a waiting drink alone once its upload was tried: the server may have it', async () => {

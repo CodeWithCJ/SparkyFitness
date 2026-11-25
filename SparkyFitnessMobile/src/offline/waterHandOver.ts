@@ -198,7 +198,7 @@ export async function removeLatestDrinkOffline(
   const waiting = rows
     .filter(
       (row) =>
-        row.kind === WATER_ADD &&
+        (row.kind === WATER_ADD || row.kind === WATER_ADD_CUSTOM) &&
         row.entryDate === entryDate &&
         row.status !== 'sending'
     )
