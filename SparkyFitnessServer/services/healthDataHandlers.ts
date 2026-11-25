@@ -354,7 +354,8 @@ async function ingestNutritionFoodEntry(
   userId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   actingUserId: any,
-  parsedDate: string
+  parsedDate: string,
+  entryTime: string | null = null
 ) {
   const { providerType, fallbackName } = resolveProvider(dataEntry.source);
   const trimmedName =
@@ -417,6 +418,10 @@ async function ingestNutritionFoodEntry(
       quantity: 1,
       unit: 'serving',
       entry_date: parsedDate,
+      // Local wall-clock time the record was logged at, so time-dependent
+      // views (caffeine kinetics, diary order) use the real instant instead of
+      // falling back to the meal's default time.
+      ...(entryTime ? { entry_time: entryTime } : {}),
       meal_type: dataEntry.meal_type || 'snacks',
       serving_size: 1,
       serving_unit: 'serving',
@@ -2305,11 +2310,20 @@ const nutritionHandler: HealthTypeHandler = {
       };
     }
     try {
+      const { tz } = await ctx.getSleepContext();
+      const zone =
+        typeof entry.record_timezone === 'string' && entry.record_timezone
+          ? entry.record_timezone
+          : tz;
+      const entryTime = ctx.entryTimestamp
+        ? localEntryTime(ctx.entryTimestamp, zone)
+        : null;
       const foodEntry = await ingestNutritionFoodEntry(
         entry,
         ctx.userId,
         ctx.actingUserId,
-        ctx.parsedDate
+        ctx.parsedDate,
+        entryTime
       );
       return { status: 'success', data: foodEntry };
     } catch (nutritionError) {
