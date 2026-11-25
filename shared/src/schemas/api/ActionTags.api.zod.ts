@@ -165,12 +165,12 @@ export const scanActionTagResponseSchema = z.object({
   /** What was logged, e.g. "1 x Stanley (1 L)". Set when status is `done`. */
   summary: z.string().nullable(),
   /**
-   * The diary row a food or meal tap created, so Undo removes exactly that
-   * row. Absent for water, which undoes by drinks, and from older servers.
+   * The diary row a food, meal, or exact-ml water tap created, so Undo removes
+   * exactly that row. Absent for drink-based water logs and from older servers.
    */
   logged: z
     .object({
-      kind: z.enum(['food_entry', 'food_entry_meal']),
+      kind: z.enum(['food_entry', 'food_entry_meal', 'water_intake_entry']),
       id: z.string(),
     })
     .nullable()
