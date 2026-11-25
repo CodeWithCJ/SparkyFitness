@@ -125,6 +125,29 @@ describe('processHealthData Nutrition ingestion', () => {
     expect(actingUserId).toBe('user-1');
   });
 
+  it('stores the logged time as entry_time in the record timezone', async () => {
+    await measurementService.processHealthData(
+      [
+        {
+          type: 'Nutrition',
+          source: 'HealthKit',
+          source_id: 'hk-caffeine-1',
+          timestamp: '2026-11-25T08:42:00.000Z',
+          record_timezone: 'Europe/Vienna',
+          caffeine_mg: 80,
+        },
+      ],
+      'user-1',
+      'user-1'
+    );
+    const [entryData] = (foodRepository.createFoodEntry as any).mock.calls[0];
+    expect(entryData).toMatchObject({
+      entry_date: '2026-11-25',
+      entry_time: '09:42:00',
+      caffeine_mg: 80,
+    });
+  });
+
   it('reuses an existing provider food and refreshes its variant nutrition', async () => {
     (foodRepository.findFoodByProviderExternalId as any).mockResolvedValue({
       id: 'food-existing',
