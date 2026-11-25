@@ -1064,16 +1064,17 @@ object CustomComplicationEngine {
         "remaining" -> metric.remaining ?: metric.goal?.let { max(0.0, it - metric.value) } ?: metric.value
         else -> metric.value
       }
+      val intFmt = NumberFormat.getIntegerInstance(locale).apply { isGroupingUsed = false }
       if (numeric >= 1000.0) {
         val k = numeric / 1000.0
         return if (ultraCompact) {
-          "${k.roundToInt()}k"
+          "${intFmt.format(k.roundToInt().toLong())}k"
         } else {
           String.format(locale, "%.1fk", k)
         }
       }
       if (ultraCompact && metric.decimals > 0) {
-        return "${numeric.roundToInt()}"
+        return intFmt.format(numeric.roundToInt().toLong())
       }
     }
     return stripped
