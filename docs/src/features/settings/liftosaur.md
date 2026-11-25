@@ -41,6 +41,7 @@ The Liftosaur integration allows you to automatically import workouts, exercise 
 ### Workouts & Exercises
 - **Workouts**: Workouts completed in Liftosaur are automatically parsed and imported into SparkyFitness.
 - **Sets, Reps, and Weights**: Completed sets, warmup sets, repetitions, weights (kg/lb), RPE, and notes are preserved. Reusable workout presets and session entries are created so workouts group cleanly in your Diary.
+  - Assisted sets, which Liftosaur logs with a negative weight (an assisted pull-up at -20 kg, say), are kept with that weight. An exercise the import created becomes a bodyweight exercise the first time it has one; on an exercise from your own library that is not a bodyweight exercise, those sets are imported without their weight.
 
 - **Muscles**: Each exercise gets the target and synergist muscles Liftosaur assigns it, including any muscle changes you made to that exercise in Liftosaur, so Liftosaur workouts count toward the muscle-group reports, body map and recovery view. Liftosaur's finer muscle groups are combined into SparkyFitness's (front, side and rear delts become *shoulders*, abs and obliques become *abdominals*); hip flexors have no SparkyFitness equivalent and are left out.
   - Muscles are filled in once, when an exercise first syncs or while it has none. Muscles you set on the exercise in SparkyFitness are never overwritten, and later muscle changes in Liftosaur are not copied over an exercise that already has muscles.

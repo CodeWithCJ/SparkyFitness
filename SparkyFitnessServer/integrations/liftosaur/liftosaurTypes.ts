@@ -214,6 +214,8 @@ export interface LiftosaurSyncResult {
   parsedCount: number;
   skippedCount: number;
   workoutsImported: number;
+  /** Workouts skipped because they could not be saved. */
+  workoutsFailed: number;
   measurementsImported: number;
   source: 'live_api';
 }
