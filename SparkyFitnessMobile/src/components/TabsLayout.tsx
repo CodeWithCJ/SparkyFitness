@@ -82,7 +82,9 @@ const NativeTab = createNativeBottomTabNavigator<TabParamList>();
 // Fallback Tab Navigator (Android / iOS < 26)
 const FallbackTab = createBottomTabNavigator<TabParamList>();
 
-// Centres each tab's content on wide windows (iPad); see ReadableWidthLayout.
+// Centres each native tab's content on wide windows (iPad); see
+// ReadableWidthLayout. Native tabs skip HorizontalInsetsFrame, so these screens
+// pad the side insets themselves.
 function renderReadableWidthScreen({
   children,
   route,
@@ -98,6 +100,21 @@ function renderReadableWidthScreen({
         {children}
       </ReadableWidthLayout>
     </ScreenSideInsets>
+  );
+}
+
+// The fallback tab bar (Android, iOS below 26 or with Liquid Glass off) sits
+// inside App.tsx's HorizontalInsetsFrame, which already pads the side insets,
+// so its screens only take the readable column.
+function renderFallbackTabScreen({
+  children,
+  route,
+}: {
+  children: React.ReactElement;
+  route: { name: string };
+}) {
+  return (
+    <ReadableWidthLayout routeName={route.name}>{children}</ReadableWidthLayout>
   );
 }
 
@@ -415,7 +432,7 @@ export function FallbackTabsLayout({
       screenOptions={{
         headerShown: false,
       }}
-      screenLayout={renderReadableWidthScreen}
+      screenLayout={renderFallbackTabScreen}
       tabBar={(props) => (
         <View collapsable={false}>
           <WhatsNewBanner reserveAddButtonClearance />
