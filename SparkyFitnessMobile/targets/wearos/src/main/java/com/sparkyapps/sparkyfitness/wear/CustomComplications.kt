@@ -89,6 +89,7 @@ import org.json.JSONObject
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.floor
@@ -985,11 +986,8 @@ object CustomComplicationEngine {
     }
     val joinedLong = shownItems.joinToString(" · ") { it.second.text }
     val firstText = shownItems.first().second.text
-    val restCompact = shownItems.drop(1).joinToString("/") {
-      it.second.text.replace(Regex("\\s*%$"), "")
-    }
-    val shortTitle = restCompact.takeIf { it.isNotBlank() && it.length <= 7 }
-      ?: definition.name.take(7)
+    val extraItems = shownItems.drop(1)
+    val shortTitle = buildCompactExtrasShortTitle(extraItems, metrics, locale)
     val ramp = if (ringSpecs.isNotEmpty()) {
       ringSpecs.map { it.colorArgb }.toIntArray()
     } else {
@@ -1017,6 +1015,68 @@ object CustomComplicationEngine {
       activeFastingStartedAtMs = if (preview) null else activeFastStart,
       activeFastingTargetEndAtMs = if (preview) null else activeFastTargetEnd
     )
+  }
+
+  private fun buildCompactExtrasShortTitle(
+    extraItems: List<Triple<CustomComplicationItem, ShownCustomValue, Double?>>,
+    metrics: Map<String, CustomMetric>,
+    locale: Locale
+  ): String? {
+    if (extraItems.isEmpty()) return null
+    val rawTokens = extraItems.map { it.second.text.replace(Regex("\\s*%$"), "").trim() }
+    val joinedRaw = rawTokens.joinToString("/")
+    if (joinedRaw.isNotBlank() && joinedRaw.length <= 7) return joinedRaw
+
+    val compactTokens = extraItems.map { (item, shown, _) ->
+      compactExtraToken(item, shown, metrics[item.source], locale, ultraCompact = false)
+    }
+    val joinedCompact = compactTokens.joinToString("/")
+    if (joinedCompact.isNotBlank() && joinedCompact.length <= 7) return joinedCompact
+
+    val ultraTokens = extraItems.map { (item, shown, _) ->
+      compactExtraToken(item, shown, metrics[item.source], locale, ultraCompact = true)
+    }
+    val joinedUltra = ultraTokens.joinToString("/")
+    if (joinedUltra.isNotBlank() && joinedUltra.length <= 7) return joinedUltra
+
+    val first = ultraTokens.firstOrNull()?.takeIf { it.isNotBlank() } ?: return null
+    return if (extraItems.size > 1 && first.length <= 6) "${first}+" else first.take(7)
+  }
+
+  private fun compactExtraToken(
+    item: CustomComplicationItem,
+    shown: ShownCustomValue,
+    metric: CustomMetric?,
+    locale: Locale,
+    ultraCompact: Boolean
+  ): String {
+    val stripped = shown.text.replace(Regex("\\s*%$"), "").trim()
+    if (stripped == ShownCustomValue.MISSING.text) return stripped
+    if (metric != null && item.format != "percent") {
+      if (metric.isDuration || item.source == "fasting") {
+        val colon = stripped.indexOf(':')
+        if (colon > 0) {
+          val hours = stripped.substring(0, colon)
+          return "${hours}h"
+        }
+      }
+      val numeric = when (item.format) {
+        "remaining" -> metric.remaining ?: metric.goal?.let { max(0.0, it - metric.value) } ?: metric.value
+        else -> metric.value
+      }
+      if (numeric >= 1000.0) {
+        val k = numeric / 1000.0
+        return if (ultraCompact) {
+          "${k.roundToInt()}k"
+        } else {
+          String.format(locale, "%.1fk", k)
+        }
+      }
+      if (ultraCompact && metric.decimals > 0) {
+        return "${numeric.roundToInt()}"
+      }
+    }
+    return stripped
   }
 }
 
@@ -1173,7 +1233,9 @@ class CustomComplicationStore(private val context: Context) {
 
 open class CustomComplicationService : SuspendingTimelineComplicationDataSourceService() {
   override fun getPreviewData(type: ComplicationType): ComplicationData? {
-    val requiresProgress = type == ComplicationType.RANGED_VALUE || type == ComplicationType.GOAL_PROGRESS
+    val requiresProgress = type == ComplicationType.RANGED_VALUE ||
+      type == ComplicationType.GOAL_PROGRESS ||
+      type == ComplicationType.SMALL_IMAGE
     val def = if (requiresProgress) {
       CustomComplicationDefinition(
         id = "preview-gauge",
@@ -1239,7 +1301,8 @@ open class CustomComplicationService : SuspendingTimelineComplicationDataSourceS
     val defs = customStore.definitions.value
     val assignedId = customStore.getAssignedDefinitionId(request.complicationInstanceId)
     val requiresProgress = request.complicationType == ComplicationType.RANGED_VALUE ||
-      request.complicationType == ComplicationType.GOAL_PROGRESS
+      request.complicationType == ComplicationType.GOAL_PROGRESS ||
+      request.complicationType == ComplicationType.SMALL_IMAGE
     val definition = when {
       assignedId != null -> defs.firstOrNull { it.id == assignedId }
       requiresProgress -> defs.firstOrNull { CustomComplicationEngine.definitionSupportsProgress(it) }
@@ -1268,7 +1331,8 @@ open class CustomComplicationService : SuspendingTimelineComplicationDataSourceS
       return ComplicationDataTimeline(data, emptyList())
     }
 
-    val today = CheckInDate.today()
+    val nowMs = System.currentTimeMillis()
+    val today = Instant.ofEpochMilli(nowMs).atZone(ZoneId.systemDefault()).toLocalDate().toString()
     val metrics = CustomComplicationEngine.buildMetrics(
       context = checkInStore.watchContext.value,
       effectiveWaterMl = checkInStore.effectiveWaterMl.value.takeIf {
@@ -1279,7 +1343,6 @@ open class CustomComplicationService : SuspendingTimelineComplicationDataSourceS
       useLiveFast = true,
       liveFast = checkInStore.fast.value
     )
-    val nowMs = System.currentTimeMillis()
     val tap = ComplicationUpdater.tapPageKeyPendingIntent(
       applicationContext,
       CustomComplicationEngine.resolveTapPageKey(definition.source),
@@ -1600,7 +1663,13 @@ open class CustomComplicationService : SuspendingTimelineComplicationDataSourceS
       }
 
       ComplicationType.SMALL_IMAGE -> {
-        val img = smallIcon ?: return null
+        val effectiveRings = spec.rings.ifEmpty {
+          spec.progress?.let {
+            listOf(RingLayerSpec(it.coerceIn(0f, 1f), spec.primaryColorArgb))
+          }.orEmpty()
+        }
+        val img = CustomComplicationBitmaps.concentricRingsSmallImage(effectiveRings)
+          ?: return NoDataComplicationData()
         SmallImageComplicationData.Builder(
           smallImage = img,
           contentDescription = desc
@@ -1643,16 +1712,18 @@ class CustomComplicationConfigActivity : ComponentActivity() {
       ComplicationDataSourceService.EXTRA_CONFIG_COMPLICATION_TYPE,
       -1
     )
-    val requiresProgressSlot =
+    val isGaugeSlot =
       rawSlotType == ComplicationType.RANGED_VALUE.toWireComplicationType() ||
         rawSlotType == ComplicationType.GOAL_PROGRESS.toWireComplicationType()
+    val isSmallImageSlot =
+      rawSlotType == ComplicationType.SMALL_IMAGE.toWireComplicationType()
     val providerComponent = IntentCompat.getParcelableExtra(
       intent,
       EXTRA_CONFIG_PROVIDER_COMPONENT,
       ComponentName::class.java
     ) ?: ComponentName(
       applicationContext,
-      if (requiresProgressSlot) {
+      if (isGaugeSlot) {
         CustomGaugeComplicationService::class.java
       } else {
         CustomComplicationService::class.java
@@ -1666,7 +1737,8 @@ class CustomComplicationConfigActivity : ComponentActivity() {
         CustomComplicationPickerScreen(
           session = session,
           selectedId = currentAssignedId,
-          requiresProgressSlot = requiresProgressSlot,
+          isGaugeSlot = isGaugeSlot,
+          isSmallImageSlot = isSmallImageSlot,
           onSelect = { def ->
             if (complicationInstanceId >= 0) {
               session.customComplicationStore.setAssignedDefinitionId(
@@ -1697,7 +1769,8 @@ class CustomComplicationConfigActivity : ComponentActivity() {
 private fun CustomComplicationPickerScreen(
   session: WearSessionManager,
   selectedId: String?,
-  requiresProgressSlot: Boolean,
+  isGaugeSlot: Boolean,
+  isSmallImageSlot: Boolean,
   onSelect: (CustomComplicationDefinition) -> Unit
 ) {
   val context = LocalContext.current
@@ -1707,13 +1780,15 @@ private fun CustomComplicationPickerScreen(
   val liveSteps by session.checkInStore.steps.collectAsState()
   val liveFast by session.checkInStore.fast.collectAsState()
   val listState = rememberScalingLazyListState()
+  val requiresProgressSlot = isGaugeSlot || isSmallImageSlot
 
   val orderedDefinitions = if (requiresProgressSlot) {
     definitions.sortedByDescending { CustomComplicationEngine.definitionSupportsProgress(it) }
   } else {
     definitions
   }
-  val today = CheckInDate.today()
+  val nowMs = System.currentTimeMillis()
+  val today = Instant.ofEpochMilli(nowMs).atZone(ZoneId.systemDefault()).toLocalDate().toString()
   val metrics = CustomComplicationEngine.buildMetrics(
     context = watchContext,
     effectiveWaterMl = effectiveWaterMl.takeIf { watchContext.water?.isToday == true || it > 0.0 },
@@ -1722,11 +1797,16 @@ private fun CustomComplicationPickerScreen(
     useLiveFast = true,
     liveFast = liveFast
   )
-  val nowMs = System.currentTimeMillis()
   val leftOnly = stringResource(R.string.complication_unit_left)
-  val useSparkyCustomLabel = stringResource(R.string.complication_custom_picker_use_sparky_custom)
+  val incompatibleLabel = stringResource(
+    if (isSmallImageSlot) {
+      R.string.complication_custom_picker_needs_ring
+    } else {
+      R.string.complication_custom_picker_use_sparky_custom
+    }
+  )
   val pickerTitle = stringResource(
-    if (requiresProgressSlot) {
+    if (isGaugeSlot) {
       R.string.complication_custom_gauge_picker_title
     } else {
       R.string.complication_custom_picker_title
@@ -1787,7 +1867,7 @@ private fun CustomComplicationPickerScreen(
               leftOnlyLabel = leftOnly
             )
             val subtitle = if (!compatible) {
-              useSparkyCustomLabel
+              incompatibleLabel
             } else {
               spec.longText.takeIf { it != ShownCustomValue.MISSING.text }
             }

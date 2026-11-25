@@ -2009,5 +2009,34 @@ class WearOsParityTest {
         val mixStaleSpec = CustomComplicationEngine.buildRenderSpec(weightStepsStaleSleep, staleSleepMetrics, nowMs, today, Locale.US)
         assertEquals(ComplicationModels.endOfLocalDayInstant(today), mixStaleSpec.dailyRolloverAt)
         assertEquals(1, mixStaleSpec.rings.size)
+
+        // Three-value definition with large numbers compacts extras into <=7-char shortTitle instead of dropping them
+        val weightStepsCal = CustomComplicationDefinition(
+            id = "mix-3",
+            name = "Summary",
+            source = "weight",
+            format = "value",
+            gauge = false,
+            color = "weight",
+            icon = "scalemass.fill",
+            extras = listOf(
+                CustomComplicationItem(source = "steps", format = "value", color = "steps", icon = "figure.walk"),
+                CustomComplicationItem(source = "caloriesRemaining", format = "value", color = "calories", icon = "flame.fill")
+            )
+        )
+        val mix3Spec = CustomComplicationEngine.buildRenderSpec(weightStepsCal, metrics, nowMs, today, Locale.US)
+        assertEquals("176.4", mix3Spec.shortText)
+        assertEquals("7k/2k", mix3Spec.shortTitle)
+        assertEquals("176.4 · 6,500 · 2,092", mix3Spec.longText)
+
+        // caloriesRemaining with format="remaining" falls back to metric.value during compaction too
+        val mix3RemainingFmt = weightStepsCal.copy(
+            extras = listOf(
+                CustomComplicationItem(source = "steps", format = "value", color = "steps", icon = "figure.walk"),
+                CustomComplicationItem(source = "caloriesRemaining", format = "remaining", color = "calories", icon = "flame.fill")
+            )
+        )
+        val mix3RemSpec = CustomComplicationEngine.buildRenderSpec(mix3RemainingFmt, metrics, nowMs, today, Locale.US)
+        assertEquals("7k/2k", mix3RemSpec.shortTitle)
     }
 }

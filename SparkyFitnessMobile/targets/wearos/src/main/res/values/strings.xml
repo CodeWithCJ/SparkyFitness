@@ -19,6 +19,7 @@
     <string name="complication_custom_gauge_picker_title">Custom Gauge</string>
     <string name="complication_custom_picker_empty">Add custom complications in the SparkyFitness phone app.</string>
     <string name="complication_custom_picker_use_sparky_custom">Use Sparky Custom</string>
+    <string name="complication_custom_picker_needs_ring">Needs ring or goal</string>
     <string name="complication_custom_unconfigured">Pick a complication</string>
     <string name="complication_custom_of_goal">of %1$s</string>
     <string name="complication_custom_left_unit">%1$s left</string>
