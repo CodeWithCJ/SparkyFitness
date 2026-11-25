@@ -452,6 +452,27 @@ describe('truncation hints', () => {
     expect(out).toContain(NARROW_HINT);
   });
 
+  it('cuts the first diary entry by date, not the first food entry', () => {
+    const entry = (id: string, entry_date: string) => ({
+      id,
+      entry_date,
+      notes: 'n'.repeat(10_000),
+    });
+    const out = formatJsonResult({
+      // The meal entry is earlier, so it is offset 0 of the diary stream.
+      food_entries: [entry('food-later', '2026-01-02')],
+      meal_entries: [entry('meal-earlier', '2026-01-01')],
+      has_more: false,
+      next_offset: null,
+      total_count: 2,
+    });
+    expect(out).toContain('meal-earlier');
+    expect(out).not.toContain('food-later');
+    expect(out).toContain(
+      'The first record is cut off. Call again with offset=1 for the rest.'
+    );
+  });
+
   it('never offers a negative offset', () => {
     // next_offset smaller than the page: an inconsistent result.
     const out = formatJsonResult({
