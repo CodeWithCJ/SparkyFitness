@@ -473,6 +473,39 @@ describe('truncation hints', () => {
     );
   });
 
+  it('keeps a first record that just fits and says where the rest starts', () => {
+    // Sized so the page minus its second record lands just under the limit:
+    // too big for the halving loop's note reserve, small enough to keep whole.
+    const page = (first: string) => ({
+      data: [
+        { ...makeRow(0), notes: first },
+        { ...makeRow(1), notes: 'm'.repeat(1_000) },
+      ],
+      has_more: false,
+      next_offset: null,
+      total_count: 2,
+    });
+    const onePage = (first: string) =>
+      JSON.stringify({
+        data: [{ ...makeRow(0), notes: first }],
+        has_more: true,
+        next_offset: 1,
+        total_count: 2,
+      });
+    const first = 'n'.repeat(
+      getCharacterLimit('full') - 150 - onePage('').length
+    );
+
+    const out = formatJsonResult(page(first));
+    const parsed = JSON.parse(jsonPortion(out));
+    expect(parsed.data).toHaveLength(1);
+    expect(parsed.has_more).toBe(true);
+    expect(parsed.next_offset).toBe(1);
+    expect(out).toContain('showing 1 of 2 fetched records');
+    expect(out).toContain('Call again with offset=1 for the rest.');
+    expect(out.length).toBeLessThanOrEqual(getCharacterLimit('full'));
+  });
+
   it('never offers a negative offset', () => {
     // next_offset smaller than the page: an inconsistent result.
     const out = formatJsonResult({

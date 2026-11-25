@@ -39,7 +39,17 @@ export function truncateIfNeeded(
 ): string {
   const limit = getCharacterLimit(profile);
   if (text.length <= limit) return text;
+  return cutWithNote(text, limit, hint, atLineBoundary);
+}
 
+// Cuts text to leave room for the note, then appends it. Unlike
+// truncateIfNeeded it always cuts, for callers that already dropped content.
+function cutWithNote(
+  text: string,
+  limit: number,
+  hint?: string,
+  atLineBoundary = false
+): string {
   let truncated = text.slice(0, limit - SLICE_RESERVE);
   if (atLineBoundary) {
     const lastNewline = truncated.lastIndexOf('\n');
@@ -236,35 +246,6 @@ export function truncateJsonRecords(
   // resume. Anything else gets the tool's own hint or the neutral one.
   const resumeAt = (kept: number) =>
     canResume ? offsetHint(originalOffset + kept) : undefined;
-  // Last resort: the first record alone overflows and the payload is cut as a
-  // string. If the cut falls inside that record, say so and continue after
-  // it. If a long field before the records hides it entirely, an offset would
-  // skip it, so fall back to the generic hint.
-  // Cut a payload holding only the first record of the stream (not `full`,
-  // whose arrays can be in a different order, e.g. diary food before meal
-  // entries), so the record that may show is the one the offset counts.
-  const sliceFirst = () => {
-    const firstOnly = serialize(target.rebuild(array.slice(0, 1))) ?? '';
-    const empty = serialize(target.rebuild([])) ?? '';
-    let recordStart = 0;
-    while (
-      recordStart < empty.length &&
-      empty[recordStart] === firstOnly[recordStart]
-    ) {
-      recordStart++;
-    }
-    const firstVisible = recordStart < limit - SLICE_RESERVE;
-    return truncateIfNeeded(
-      firstOnly,
-      target.hint ??
-        (canResume && firstVisible
-          ? `The first record is cut off. ${offsetHint(originalOffset + 1)}`
-          : undefined),
-      profile
-    );
-  };
-  if (array.length <= 1 && !target.children) return sliceFirst();
-
   const rebuild = (slice: unknown[]) => {
     const rebuilt = target.rebuild(slice);
     if (!canResume) return rebuilt;
@@ -275,6 +256,40 @@ export function truncateJsonRecords(
       next_offset: totalCount > nextOffset ? nextOffset : null,
     };
   };
+  // Last resort: the halving loop is down to the first record and it still
+  // does not fit with a note. Work on a payload holding only that record of
+  // the stream (not `full`, whose arrays can be in another order, e.g. diary
+  // food before meal entries), with next_offset recomputed for it.
+  // - It fits with a note: keep it whole and say the rest was left out.
+  // - Otherwise cut it as a string. If the cut falls inside the record, say so
+  //   and continue after it; if a long field before the records hides it, an
+  //   offset would skip it, so fall back to the generic hint.
+  const sliceFirst = () => {
+    const firstOnly = serialize(rebuild(array.slice(0, 1))) ?? '';
+    const wholeNote = `\n\n---\n⚠️ Result truncated: showing 1 of ${array.length} fetched ${label} (exceeded ${limit} characters). ${target.hint ?? resumeAt(1) ?? NARROW_HINT}`;
+    if (array.length > 1 && firstOnly.length + wholeNote.length <= limit) {
+      return firstOnly + wholeNote;
+    }
+    const empty = serialize(rebuild([])) ?? '';
+    let recordStart = 0;
+    while (
+      recordStart < empty.length &&
+      empty[recordStart] === firstOnly[recordStart]
+    ) {
+      recordStart++;
+    }
+    const firstVisible = recordStart < limit - SLICE_RESERVE;
+    return cutWithNote(
+      firstOnly,
+      limit,
+      target.hint ??
+        (canResume && firstVisible
+          ? `The first record is cut off. ${offsetHint(originalOffset + 1)}`
+          : undefined)
+    );
+  };
+  if (array.length <= 1 && !target.children) return sliceFirst();
+
   let keep = array.length;
   let text = full;
   while (keep > 1 && text.length > limit - NOTE_RESERVE) {
