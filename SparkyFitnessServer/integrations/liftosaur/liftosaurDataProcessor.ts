@@ -212,9 +212,16 @@ async function resolveLibraryExercises(
     )
   );
 
+  // Names that resolve to the same row ("Pull Up" and "Pull Up, Machine")
+  // share one object, so a change made for one (muscles, the bodyweight
+  // switch) is seen by the other.
   const found = new Map<string, ExerciseRow | null>();
+  const byId = new Map<string, ExerciseRow>();
   for (const name of names) {
-    found.set(name, await findLibraryExercise(userId, name));
+    const row = await findLibraryExercise(userId, name);
+    const shared = row ? (byId.get(row.id) ?? row) : null;
+    if (shared) byId.set(shared.id, shared);
+    found.set(name, shared);
   }
 
   let muscles: LiftosaurMuscleLookup = new Map();
@@ -297,7 +304,18 @@ async function useAssistedModality(
          AND modality = 'weight_reps'`,
       [ASSISTED_MODALITY, exercise.id, userId, LIFTOSAUR_SOURCE]
     );
-    if ((result.rowCount ?? 0) > 0) exercise.modality = ASSISTED_MODALITY;
+    if ((result.rowCount ?? 0) > 0) {
+      exercise.modality = ASSISTED_MODALITY;
+    } else {
+      // Changed since it was read: use what is stored now.
+      const stored = await client.query(
+        'SELECT modality FROM exercises WHERE id = $1 AND user_id = $2',
+        [exercise.id, userId]
+      );
+      const modality = (stored.rows[0] as { modality?: string } | undefined)
+        ?.modality;
+      if (modality) exercise.modality = modality;
+    }
   } catch (error) {
     log(
       'warn',
