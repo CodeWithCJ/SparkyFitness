@@ -229,6 +229,13 @@
     <string name="tile_meds_log_dose">Log Dose</string>
     <string name="tile_meds_turned_off">Turned off</string>
     <string name="tile_meds_turned_off_hint">Turn on in the phone app</string>
+    <string name="tile_meds_card_cd_mark_taken">Mark %1$s (%2$s) as taken</string>
+    <string name="tile_meds_card_cd_mark_taken_failed">%1$s (%2$s), %3$s, tap to mark as taken</string>
+    <string name="tile_meds_card_cd_open">%1$s (%2$s), %3$s, open medications</string>
+    <string name="tile_meds_status_taken">taken</string>
+    <string name="tile_meds_status_skipped">skipped</string>
+    <string name="tile_meds_status_pending">pending</string>
+    <string name="tile_meds_status_failed">failed to sync</string>
     <string name="complication_meds_off_short">Off</string>
     <string name="complication_meds_turned_off_description">Medications turned off</string>
 
@@ -251,6 +258,8 @@
     <string name="tile_water_tap_log">Tap a drink to log</string>
     <string name="tile_water_open_log">Open Hydration</string>
     <string name="tile_water_more_pages">More %1$d/%2$d ▸</string>
+    <string name="tile_water_card_cd_log">Log %1$s (%2$s)</string>
+    <string name="tile_water_card_cd_open">%1$s (%2$s), open hydration</string>
 
     <string name="tile_weight_header">WEIGHT &amp; TREND</string>
     <string name="tile_weight_header_bf">WEIGHT · %1$s</string>

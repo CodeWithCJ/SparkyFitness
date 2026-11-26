@@ -6938,5 +6938,56 @@ class WearOsParityTest {
         assertFalse(rows[0].isDirectlyActionable)
         assertTrue(rows[1].isDirectlyActionable)
         assertFalse(rows[2].isDirectlyActionable)
+
+        // Content descriptions use untruncated full names and action/status context
+        val medTakeCd = TileModels.buildMedicationCardContentDescription(
+            dose = rows[1],
+            markTakenFormat = { n, d -> "Mark $n ($d) as taken" },
+            markTakenFailedFormat = { n, d, s -> "$n ($d), $s, tap to mark as taken" },
+            openFormat = { n, d, s -> "$n ($d), $s, open medications" },
+            statusLabel = "pending"
+        )
+        assertEquals("Mark Other Med (5 mg · 11:30p) as taken", medTakeCd)
+
+        val medFailedActionableCd = TileModels.buildMedicationCardContentDescription(
+            dose = rows[1].copy(statusSymbol = "!"),
+            markTakenFormat = { n, d -> "Mark $n ($d) as taken" },
+            markTakenFailedFormat = { n, d, s -> "$n ($d), $s, tap to mark as taken" },
+            openFormat = { n, d, s -> "$n ($d), $s, open medications" },
+            statusLabel = "failed to sync"
+        )
+        assertEquals("Other Med (5 mg · 11:30p), failed to sync, tap to mark as taken", medFailedActionableCd)
+
+        val medOpenCd = TileModels.buildMedicationCardContentDescription(
+            dose = rows[0],
+            markTakenFormat = { n, d -> "Mark $n ($d) as taken" },
+            markTakenFailedFormat = { n, d, s -> "$n ($d), $s, tap to mark as taken" },
+            openFormat = { n, d, s -> "$n ($d), $s, open medications" },
+            statusLabel = "pending"
+        )
+        assertEquals("Supplement Alpha (10 mg · 11:30p), pending, open medications", medOpenCd)
+
+        val waterModel = TileModels.buildWaterTileModel(
+            hasOwner = true,
+            consumedMl = 500.0,
+            goalMl = 2500.0,
+            queuedMl = 0.0,
+            watchCtx = WatchContext.empty.copy(waterDisplayUnit = "oz"),
+            containers = listOf(WaterContainer(1, "Morning Drip Coffee", 240.0, "oz", isQuickAdd = true))
+        )
+        val waterCd = TileModels.buildWaterCardContentDescription(
+            chip = waterModel.containers.first(),
+            logFormat = { n, a -> "Log $n ($a)" },
+            openFormat = { n, a -> "$n ($a), open hydration" }
+        )
+        assertTrue(waterCd.startsWith("Log Morning Drip Coffee (+"))
+
+        val waterOpenCd = TileModels.buildWaterCardContentDescription(
+            chip = waterModel.containers.first().copy(isDirectlyActionable = false),
+            logFormat = { n, a -> "Log $n ($a)" },
+            openFormat = { n, a -> "$n ($a), open hydration" }
+        )
+        assertTrue(waterOpenCd.startsWith("Morning Drip Coffee (+"))
+        assertTrue(waterOpenCd.endsWith(", open hydration"))
     }
 }

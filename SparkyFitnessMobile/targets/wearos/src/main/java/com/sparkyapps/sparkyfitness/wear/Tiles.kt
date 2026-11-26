@@ -47,6 +47,7 @@ import androidx.wear.protolayout.material3.textEdgeButton
 import androidx.wear.protolayout.modifiers.LayoutModifier
 import androidx.wear.protolayout.modifiers.background
 import androidx.wear.protolayout.modifiers.clip
+import androidx.wear.protolayout.modifiers.contentDescription
 import androidx.wear.protolayout.modifiers.padding
 import androidx.wear.protolayout.types.LayoutColor
 import androidx.wear.protolayout.types.argb
@@ -119,7 +120,9 @@ data class TileDoseRow(
   val doseId: String = "",
   val isPending: Boolean = false,
   val isDirectlyActionable: Boolean = isPending,
-  val displayFingerprint: String = ""
+  val displayFingerprint: String = "",
+  val fullName: String = name,
+  val status: MedicationDoseStatus = MedicationDoseStatus.PENDING
 )
 
 data class MedicationsTileModel(
@@ -142,7 +145,8 @@ data class TileWaterContainerChip(
   val addText: String,
   val volumeMl: Double,
   val isQuickAdd: Boolean = false,
-  val isDirectlyActionable: Boolean = true
+  val isDirectlyActionable: Boolean = true,
+  val fullName: String = name
 )
 
 data class WaterTileModel(
@@ -599,8 +603,39 @@ object TileModels {
         doseId = dose.id,
         isPending = isPending,
         isDirectlyActionable = uniquelyIdentifiable,
-        displayFingerprint = medicationDoseFingerprint(dose)
+        displayFingerprint = medicationDoseFingerprint(dose),
+        fullName = dose.name.trim().ifEmpty { disp.name },
+        status = dose.status
       )
+    }
+  }
+
+  fun buildMedicationCardContentDescription(
+    dose: TileDoseRow,
+    markTakenFormat: (String, String) -> String,
+    markTakenFailedFormat: (String, String, String) -> String,
+    openFormat: (String, String, String) -> String,
+    statusLabel: String
+  ): String {
+    val labelName = dose.fullName.ifBlank { dose.name }
+    return when {
+      dose.isDirectlyActionable && dose.statusSymbol == "!" ->
+        markTakenFailedFormat(labelName, dose.detailText, statusLabel)
+      dose.isDirectlyActionable -> markTakenFormat(labelName, dose.detailText)
+      else -> openFormat(labelName, dose.detailText, statusLabel)
+    }
+  }
+
+  fun buildWaterCardContentDescription(
+    chip: TileWaterContainerChip,
+    logFormat: (String, String) -> String,
+    openFormat: (String, String) -> String
+  ): String {
+    val labelName = chip.fullName.ifBlank { chip.name }
+    return if (chip.isDirectlyActionable) {
+      logFormat(labelName, chip.addText)
+    } else {
+      openFormat(labelName, chip.addText)
     }
   }
 
@@ -1148,7 +1183,8 @@ object TileModels {
         name = compactWaterContainerName(c, ordered, maxNameChars),
         addText = addLabel,
         volumeMl = c.servingVolumeMl,
-        isQuickAdd = c.isQuickAdd
+        isQuickAdd = c.isQuickAdd,
+        fullName = c.name.trim().ifEmpty { compactWaterContainerName(c, ordered, maxNameChars) }
       )
     }
     val disambiguated = disambiguateCollidingWaterChipNames(ordered, rawChips, maxNameChars)
@@ -2130,8 +2166,25 @@ private fun MaterialScope.m3MedicationGridCard(
   }
   val detailCol: LayoutColor = dose.statusColorArgb.argb
 
+  val statusLabel = when {
+    dose.statusSymbol == "!" -> context.getString(R.string.tile_meds_status_failed)
+    dose.status == MedicationDoseStatus.TAKEN -> context.getString(R.string.tile_meds_status_taken)
+    dose.status == MedicationDoseStatus.SKIPPED -> context.getString(R.string.tile_meds_status_skipped)
+    else -> context.getString(R.string.tile_meds_status_pending)
+  }
+  val cardDescription = TileModels.buildMedicationCardContentDescription(
+    dose = dose,
+    markTakenFormat = { name, detail -> context.getString(R.string.tile_meds_card_cd_mark_taken, name, detail) },
+    markTakenFailedFormat = { name, detail, status ->
+      context.getString(R.string.tile_meds_card_cd_mark_taken_failed, name, detail, status)
+    },
+    openFormat = { name, detail, status -> context.getString(R.string.tile_meds_card_cd_open, name, detail, status) },
+    statusLabel = statusLabel
+  )
+
   return textDataCard(
     onClick = clickable,
+    modifier = LayoutModifier.contentDescription(cardDescription),
     title = {
       text(
         text = "${dose.statusSymbol} ${dose.name}".layoutString,
@@ -2464,8 +2517,15 @@ private fun MaterialScope.m3WaterGridCard(
   } else {
     colorScheme.primary
   }
+  val cardDescription = TileModels.buildWaterCardContentDescription(
+    chip = chip,
+    logFormat = { name, amount -> context.getString(R.string.tile_water_card_cd_log, name, amount) },
+    openFormat = { name, amount -> context.getString(R.string.tile_water_card_cd_open, name, amount) }
+  )
+
   return textDataCard(
     onClick = clickable,
+    modifier = LayoutModifier.contentDescription(cardDescription),
     title = {
       text(
         text = chip.name.layoutString,
