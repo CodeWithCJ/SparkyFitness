@@ -1,1 +1,24 @@
-{}
+{
+  "email": {
+    "passwordReset": {
+      "subject": "Obnovení hesla do SparkyFitness",
+      "intro": "Požádali jste o obnovení hesla ke svému účtu SparkyFitness.",
+      "actionPrompt": "Klikněte na následující odkaz a obnovte si heslo:",
+      "expiry": "Platnost tohoto odkazu vyprší za {{expiresInHours}} h.",
+      "ignoreNotice": "Pokud jste o obnovení hesla nežádali, tento e-mail ignorujte."
+    },
+    "mfaCode": {
+      "subject": "Váš ověřovací kód MFA pro SparkyFitness",
+      "intro": "Váš kód pro vícefaktorové ověření:",
+      "expiry": "Platnost kódu v minutách: {{expiresInMinutes}}.",
+      "ignoreNotice": "Pokud jste o tento kód nežádali, tento e-mail ignorujte."
+    },
+    "magicLink": {
+      "subject": "Váš přihlašovací odkaz do SparkyFitness",
+      "intro": "Požádali jste o přihlášení ke svému účtu SparkyFitness bez hesla.",
+      "actionPrompt": "Pro přihlášení klikněte na následující odkaz:",
+      "expiry": "Platnost odkazu v minutách: {{expiresInMinutes}}. Odkaz lze použít jen jednou.",
+      "ignoreNotice": "Pokud jste o přihlášení nežádali, tento e-mail ignorujte."
+    }
+  }
+}

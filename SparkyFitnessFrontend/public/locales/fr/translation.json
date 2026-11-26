@@ -1559,6 +1559,9 @@
       },
       "labResults": {
         "description": "Enregistrez vos analyses de sang et suivez chaque marqueur dans le temps."
+      },
+      "medications": {
+        "description": "Suivi des médicaments, des compléments et des GLP-1. Les nutriments des compléments restent comptés dans vos totaux."
       }
     },
     "chatMcp": {
@@ -2501,7 +2504,7 @@
       "mcpOAuthAccessWarning": "Approuver une application lui donne un accès MCP complet, y compris aux outils qui peuvent modifier ou supprimer des données. N'approuvez que des applications de confiance.",
       "mcpOAuthHttpsRequired": "L'OAuth MCP distant exige un accès HTTPS public. Le HTTP simple n'est accepté que pour le développement en boucle locale.",
       "mcpOAuthRedirectAllowlist": "URI de redirection OAuth autorisées",
-      "mcpOAuthRedirectAllowlistDescription": "Saisissez une URI exacte ou un motif de boucle locale par ligne. Utilisez http://localhost:*, http://127.0.0.1:* ou http://[::1]:* pour autoriser les clients de bureau sur n'importe quel port de rappel local.",
+      "mcpOAuthRedirectAllowlistDescription": "Saisissez une URI exacte ou un motif par ligne. Utilisez http://localhost:*, http://127.0.0.1:* ou http://[::1]:* pour autoriser les clients de bureau sur n'importe quel port de rappel local. Une URI HTTPS se terminant par /* autorise tous les chemins situés en dessous sur cet hôte, comme l'exige Gemini (https://oauth-redirect.googleusercontent.com/r/*).",
       "saveMcpOAuthRedirects": "Enregistrer la liste des redirections OAuth",
       "mcpOAuthRedirectsUpdated": "Liste des redirections OAuth mise à jour avec succès.",
       "mcpOAuthRedirectsFailed": "Échec de l'enregistrement de la liste des redirections OAuth.",
@@ -3447,7 +3450,9 @@
     "editFoodDatabase": "Modifier dans la base d'aliments",
     "editFoodDatabaseDescription": "Modifiez les informations nutritionnelles de cet aliment dans votre base.",
     "editingTemporarilyUnavailable": "La modification des détails de l'aliment est temporairement indisponible en raison de changements de schéma.",
-    "copyFood": "Copier l'aliment"
+    "copyFood": "Copier l'aliment",
+    "fromTime": "à partir de {{time}}",
+    "nothingLogged": "Rien d'enregistré pour l'instant, ajoutez un aliment"
   },
   "checkIn": {
     "neutral": "Neutre",
@@ -4201,7 +4206,7 @@
       "caloriesBurned": "Calories brûlées",
       "sets": "Séries",
       "reps": "Répétitions",
-      "weight": "Poids",
+      "weight": "Poids ({{unit}})",
       "notes": "Notes",
       "category": "Catégorie",
       "equipment": "Équipement",

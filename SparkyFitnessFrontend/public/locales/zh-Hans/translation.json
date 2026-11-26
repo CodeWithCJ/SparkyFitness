@@ -3124,7 +3124,9 @@
       "footnote": "日志与设置永远都会显示。隐藏标签页仅更改该网站：不会删除任何内容，手机 App 有自身设置。",
       "saveError": "无法保存你的标签页选择。请再试一次。",
       "loadError": "无法加载你的标签页选择。",
-      "actingOnBehalf": "只能更改你自己账户的标签页。"
+      "actingOnBehalf": "只能更改你自己账户的标签页。",
+      "someFeaturesOff": "部分功能已关闭",
+      "manageFeatures": "管理"
     },
     "features": {
       "title": "功能",
@@ -3155,6 +3157,36 @@
       "labResults": {
         "description": "记录血液检验结果，长期追踪每个指标。"
       }
+    },
+    "foodProviders": {
+      "common": {
+        "getApiKey": "获取 API 密钥",
+        "terms": "条款"
+      },
+      "cooktool": {
+        "help": "免费方案每天包含 1,000 次查询。请用你自己的密钥接受 CookTool 条款。查询结果会缓存 24 小时。",
+        "portalLabel": "CookTool 文档"
+      },
+      "nutrientgraph": {
+        "help": "免费方案每月包含 2,500 次用量。涵盖 USDA、法国 CIQUAL 和美国品牌产品，支持五种语言。查询结果会缓存 24 小时。",
+        "portalLabel": "NutrientGraph 文档"
+      },
+      "food-info": {
+        "help": "免费方案每天包含 100 次请求。可访问多个国家食物数据库的参考食物。查询结果会缓存 24 小时。",
+        "portalLabel": "Food Info 开发者门户"
+      }
+    },
+    "zeppBridgeProvider": {
+      "warningTitle": "第三方集成：需要 ZeppBridge",
+      "warningInstall": "ZeppBridge 是独立的开源项目，并非由 SparkyFitness 开发、维护或支持。只有你自己安装并运行 ZeppBridge，该集成才会生效。想了解它是什么、如何设置，请参阅 <repo>GitHub 上的 ZeppBridge 项目</repo>。",
+      "warningDueDiligence": "ZeppBridge 会登录你的 Zepp 账户，并在你自己的电脑上保留一份健康数据副本。安装前请自行做好评估：阅读其文档和 <privacy>隐私说明</privacy>，确认它要求的权限，再决定是否信任。使用风险由你自己承担。",
+      "warningExperimental": "该集成属于实验性质，是基于 ZeppBridge 公开的 API 构建的，在真实设备上的测试有限。",
+      "baseUrlLabel": "ZeppBridge 地址",
+      "tokenLabel": "拉取令牌",
+      "tokenPlaceholder": "设置为 ZEPPBRIDGE_PULL_TOKEN 的令牌",
+      "overviewNote": "SparkyFitness 只会读取你自己的 ZeppBridge 服务器（用 `zeppbridge-cli serve` 运行）。它永远不会连接 Zepp，也看不到你的 Zepp 登录信息。",
+      "urlNote": "请输入完整地址，包含 http://（或 https://）。若使用 Docker，请将两个容器放在同一网络，并使用容器名称，例如 http://zeppbridge-serve:43921。",
+      "privateNetworkNote": "私有或局域网地址仅适用于管理员账户。如果服务器有多个用户，管理员必须先允许私有网络提供方。"
     }
   },
   "admin": {
@@ -7554,7 +7586,18 @@
     "intervalsRemoveTitle": "已移除推送的营养数据",
     "intervalsRemoveDetails": "已清除 {{cleared}} 天，另有 {{kept}} 天被其他 App 更改而保留，{{failed}} 个失败。",
     "intervalsRemoveError": "无法移除已推送的营养数据。请再试一次。",
-    "intervalsPushToggleError": "无法保存 Intervals.icu 营养推送设置。"
+    "intervalsPushToggleError": "无法保存 Intervals.icu 营养推送设置。",
+    "zeppbridgeSyncSuccessTitle": "ZeppBridge 同步成功",
+    "zeppbridgeSyncDetails": "已同步：{{sleepImported}} 段睡眠、{{workoutsImported}} 次运动（其中 {{workoutDetailsImported}} 次含路线或心率）、{{metricDays}} 天指标（{{failed}} 项失败，{{workoutDetailsFailed}} 项运动详情缺失）。",
+    "zeppbridgeSyncIncompleteTitle": "ZeppBridge 同步有问题",
+    "zeppbridgeSyncError": "ZeppBridge 同步失败。请检查设置中的 ZeppBridge 地址和拉取令牌，并确认 ZeppBridge 服务器正在运行。",
+    "zeppbridgeTestSuccessTitle": "ZeppBridge 连接正常",
+    "zeppbridgeTestSuccessDetails": "ZeppBridge {{version}} 已响应。",
+    "zeppbridgeTestError": "无法连接 ZeppBridge。请检查地址（须包含 http://）和拉取令牌。",
+    "zeppbridgeTestButton": "测试连接",
+    "zeppbridgeDisconnectConfirm": "确定要断开 ZeppBridge 连接吗？该集成会停用，直到你再次启用为止。已导入的数据会保留。",
+    "zeppbridgeThirdPartyNote": "第三方集成：需要 <repo>ZeppBridge</repo>，这是独立项目，不受 SparkyFitness 支持，需在你自己电脑上运行。",
+    "zeppbridgeDuplicateNote": "如果 Zepp 应用同时写入 Apple Health 或 Health Connect，而你又在这里同步该来源，同一晚睡眠或同一场运动可能出现两次。请只用其中一个。"
   },
   "mealCreation": {
     "convertToMeal": "从日记创建餐食",
@@ -9545,7 +9588,9 @@
       "loadingCameraModule": "正在加载相机模块…"
     },
     "foodResultCard": {
-      "gi": "GI：{{glycemic_index}}"
+      "gi": "GI：{{glycemic_index}}",
+      "tapForFullNutrition": "点击查看完整营养",
+      "tapForNutrition": "点击查看营养"
     },
     "searchingBarcode": "正在搜索条码",
     "lookingUp": "查询中：{{barcode}}…",
@@ -11452,7 +11497,8 @@
       "miles": "{{value}} mi",
       "km": "{{value}} km",
       "days_other": "{{count}} 天",
-      "metres": "{{value}} m"
+      "metres": "{{value}} m",
+      "feet": "{{value}} ft"
     },
     "units": {
       "points": "分",
@@ -11461,7 +11507,8 @@
       "miles": "英里",
       "km": "公里",
       "days": "天",
-      "metres": "米"
+      "metres": "米",
+      "feet": "英尺"
     },
     "periodRange": "{{start}} – {{end}}",
     "widget": {

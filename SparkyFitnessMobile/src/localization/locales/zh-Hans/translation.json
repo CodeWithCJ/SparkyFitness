@@ -1171,7 +1171,8 @@
       "ongoingWorkout": "进行中的训练",
       "moodCheckin": "心情打卡",
       "oralCare": "刷牙提醒",
-      "mindfulness": "冥想计时器"
+      "mindfulness": "冥想计时器",
+      "challenges": "挑战"
     },
     "actions": {
       "completeSet": "完成该组",
@@ -1229,6 +1230,12 @@
     "meditationTimer": {
       "title": "冥想完成",
       "body": "打开 SparkyFitness 保存你的时段。"
+    },
+    "challengeWeek": {
+      "body": "{{leader}} 以 {{total}} 领先。本周今晚结束。",
+      "bodyWithOwn": "{{leader}} 以 {{total}} 领先。你排第 {{rank}}，共 {{ownTotal}}。本周今晚结束。",
+      "bodyYouLead": "你以 {{total}} 领先。本周今晚结束。",
+      "title": "{{name}}：本周谁领先"
     }
   },
   "activeWorkout": {
@@ -1490,7 +1497,9 @@
     "checkIn": "每日打卡",
     "checkInHint": "习惯",
     "oralCare": "口腔护理",
-    "oralCareHint": "刷牙、牙线"
+    "oralCareHint": "刷牙、牙线",
+    "copyFromYesterday": "从昨天复制",
+    "copyFromYesterdayHint": "重复餐点"
   },
   "screens": {
     "foods": "食物",
@@ -1586,7 +1595,9 @@
       "trainingCalendar": "训练日历",
       "trainingCalendarSubtitle": "计划与已完成的运动，以及按运动类型的负荷",
       "labResults": "化验结果",
-      "labResultsSubtitle": "验血与其他指标随时间变化"
+      "labResultsSubtitle": "验血与其他指标随时间变化",
+      "challenges": "挑战",
+      "challengesSubtitle": "与朋友家人一起玩群组排行榜"
     },
     "sleep": "睡眠",
     "healthTrendsSettings": "健康趋势",
@@ -2162,7 +2173,9 @@
     "labResults": "化验结果",
     "labResultsSubtitle": "显示最新化验结果与哪些超出范围",
     "oralCare": "口腔护理",
-    "oralCareSubtitle": "显示刷牙对比目标与连续记录"
+    "oralCareSubtitle": "显示刷牙对比目标与连续记录",
+    "challenges": "挑战",
+    "challengesSubtitle": "显示你在所参加挑战中的排名"
   },
   "diarySettings": {
     "updateFailed": "更新设置失败。",
@@ -2240,7 +2253,10 @@
     "oralCareReminderTime": "提醒 {{number}}",
     "oralCareReminderTimeAccessibility": "刷牙提醒 {{number}}，{{time}}",
     "oralCareRemoveReminder": "移除刷牙提醒 {{number}}",
-    "oralCareAddReminder": "添加提醒"
+    "oralCareAddReminder": "添加提醒",
+    "challengeWeek": "每周领先",
+    "challengeWeekSubtitle": "每个挑战周的最后一晚：通知你所参加的每周挑战谁领先",
+    "challenges": "挑战"
   },
   "workoutSettings": {
     "title": "训练设置",
@@ -2892,7 +2908,8 @@
       "lookupBarcode": "无法查询此条形码。请重试。",
       "timeout": "请求超时。请检查你的服务器连接。",
       "retryOnDevice": "此 iPhone 无法读取标签。",
-      "restartApp": "无法打开相册。请重新启动应用。"
+      "restartApp": "无法打开相册。请重新启动应用。",
+      "offlineBarcode": "没有连接。该条码不在你手机已保存的食物中。"
     },
     "permission": {
       "camera": "我们需要你的权限才能显示相机",
@@ -4104,7 +4121,9 @@
       "result": "= {{raw}} {{unit}} 生 · {{energy}}",
       "incomplete": "请输入重量以计算生重。",
       "enterEaten": "请输入你吃掉的熟重。"
-    }
+    },
+    "queued": "已保存在此手机",
+    "queuedMessage": "连接到你的服务器时就会上传。"
   },
   "exerciseSearch": {
     "title": "动作",
@@ -4264,7 +4283,13 @@
       "selectAll": "全选",
       "selected_other": "已选择 {{count}} 项",
       "limitReached": "最多可选择 {{limit}} 项食物",
-      "foodCheckbox": "选择 {{name}}"
+      "foodCheckbox": "选择 {{name}}",
+      "needsConnection": "一次添加多种食物需要连接",
+      "needsConnectionHint": "请逐项添加，才能保留在此手机。"
+    },
+    "foodResultCard": {
+      "tapForFullNutrition": "点击查看完整营养",
+      "tapForNutrition": "点击查看营养"
     }
   },
   "editBarcode": {
@@ -4544,7 +4569,9 @@
     "errors": {
       "permission": "你没有权限编辑此条目。",
       "saveFailed": "保存更改失败",
-      "deleteFailed": "删除失败"
+      "deleteFailed": "删除失败",
+      "uploadingNow": "当前正在上传。请稍后再试。",
+      "alreadyUploaded": "刚刚已上传。请等日记刷新后再试。"
     },
     "deleteConfirm": "确定要删除此食物条目吗？",
     "entryNotes": "此条目的备注",
@@ -5137,7 +5164,8 @@
     "healthUnavailable": {
       "title": "健康数据不可用",
       "message": "无法初始化健康数据访问。请在设置中检查你的权限。"
-    }
+    },
+    "configureForCopy": "请在设置中配置好服务器连接，才能从昨天复制。"
   },
   "announcementModal": {
     "title": "公告",
@@ -5594,10 +5622,14 @@
     "customConfirm": "设为自定义范围？"
   },
   "foodEntryMeal": {
-    "failed": "添加餐食失败"
+    "failed": "添加餐食失败",
+    "queued": "已保存在此手机",
+    "queuedMessage": "连接到你的服务器时就会上传。"
   },
   "foodSave": {
-    "failed": "保存食物失败"
+    "failed": "保存食物失败",
+    "queued": "已保存在此手机",
+    "queuedMessage": "连接到你的服务器时就会上传。"
   },
   "favorites": {
     "updateFailed": "更新收藏失败"
@@ -5928,7 +5960,9 @@
     "configure": "请在服务器上配置一个饮水容器以追踪饮水。",
     "multipleNoPrimaryMobile": "你有多个水容器，但没有标记为主要容器。点击以选择一个。",
     "configureMobile": "添加水容器以开始追踪水分。",
-    "defaultContainer": "默认"
+    "defaultContainer": "默认",
+    "queued": "已保存在此手机",
+    "queuedMessage": "连接到你的服务器时就会上传。"
   },
   "activeWorkoutAutosave": {
     "failedTitle": "训练未保存",
@@ -9168,7 +9202,8 @@
       "arrive": "到达"
     },
     "goBack": "返回",
-    "followRoadsTooMany": "跟随道路最多 {{max}} 个点。请撤销部分点，或关闭「跟随道路」再保存。"
+    "followRoadsTooMany": "跟随道路最多 {{max}} 个点。请撤销部分点，或关闭「跟随道路」再保存。",
+    "mapAttribution": "© OpenMapTiles © OpenStreetMap"
   },
   "compareReport": {
     "screen": {
@@ -9518,7 +9553,9 @@
     "labResults": {
       "title": "化验结果",
       "description": "记录验血并随时间追踪每个指标。"
-    }
+    },
+    "someOff": "部分功能已关闭",
+    "manage": "管理"
   },
   "addMenuSettings": {
     "reorder": "重排 {{name}}",
@@ -9542,7 +9579,8 @@
     "buttonsDescription": "在面板底部并排显示。",
     "chooseCard": "选择一个磁贴",
     "slotLabel": "磁贴 {{number}}：{{name}}",
-    "slotHint": "打开列表以选择要放的项目"
+    "slotHint": "打开列表以选择要放的项目",
+    "emptySlot": "空"
   },
   "calorieLink": {
     "action": "关联已同步运动",
@@ -10712,7 +10750,7 @@
     "presetUpdateQueued": "联网后就会更新已保存运动",
     "presetUpdateSkipped": "已保存运动「{{name}}」未更新，因为在别处更改了。",
     "presetUpdated": "已保存运动「{{name}}」已更新",
-    "diaryNote": "离线仅有运动可用。食物与其他记录需要连接。",
+    "diaryNote": "离线时可查看上周的食物和运动。睡眠和其他记录需要连接。",
     "diaryNothingSaved": "这天没有保存任何内容",
     "finishedTitle": "已保存在这台手机",
     "finishedMessage": "连接到你的服务器时就会上传。",
@@ -10724,7 +10762,7 @@
     "notReadyMessage": "请先连接一次你的服务器，这台手机才能保存运动所需内容。",
     "banner": "离线：显示保存在这台手机的数据",
     "bannerHint": "再次检查连接",
-    "intro": "不联网也能开始与记录运动。会保留在这台手机，连接到服务器时上传。",
+    "intro": "没有连接也能记录运动、食物、餐点、新食物和饮品。这些会保留在此手机，连接到服务器时上传。",
     "waitingHeading": "等待上传",
     "nothingWaiting": "没有内容等待",
     "nothingWaitingSubtitle": "这台手机的所有内容都已上传。",
@@ -10738,7 +10776,7 @@
     "storageValue": "{{size}} MB",
     "refreshRow": "立即刷新",
     "refreshing": "正在刷新…",
-    "neverRefreshed": "尚未下载。请先连接一次你的服务器准备离线运动。",
+    "neverRefreshed": "尚未下载。请连接你的服务器一次，以准备离线使用。",
     "lastRefreshed": "上次刷新 {{when}}",
     "refreshDone": "已保存数据为最新",
     "refreshFailed": "无法刷新",
@@ -10746,7 +10784,7 @@
     "clearRow": "清除离线数据",
     "clearRowSubtitle": "仍在等待上传的会保留",
     "clearTitle": "清除离线数据？",
-    "clearMessage": "为离线使用而保存的运动、动作与其他数据会从这台手机移除，下次再下载。仍在等待上传的会保留。",
+    "clearMessage": "为离线使用而保存的运动、动作、食物、餐点和其他数据会从此手机移除，下次再下载。仍在等待上传的内容会保留。",
     "clearConfirm": "清除",
     "status": {
       "pending": "等待上传",
@@ -10769,8 +10807,151 @@
     },
     "kind": {
       "workout": "运动",
-      "other": "已保存更改"
+      "other": "已保存更改",
+      "food": "食物记录",
+      "water": "饮品"
     },
-    "libraryNote": "离线仅有运动与动作可用。图库其他内容需要连接。"
+    "libraryNote": "保存在此手机的运动、动作、食物和餐点，离线也能使用。库中其他内容需要连接。",
+    "ownerless": {
+      "title": "未记录账户",
+      "message": "此次上传是在手机还不知道属于哪个账户之前保存的，因此不会发送。你可以舍弃它。",
+      "discard": "舍弃此次上传",
+      "subtitle": "未记录账户。点击舍弃。"
+    },
+    "foodHeading": "离线保留的食物和水分",
+    "foodIntro": "你最近和最常用的食物、你自己的食物（最多 2,000 项）、已保存的餐点、你的餐点类型和水分容器都会保留，连同日记和上周的合计。每次连接都会刷新。",
+    "foodsKeptTitle": "食物",
+    "foodsKeptValue_other": "{{count}} 项食物",
+    "mealsKeptTitle": "已保存的餐点",
+    "mealsKeptValue_other": "{{count}} 个餐点",
+    "diaryDaysKeptTitle": "日记天数",
+    "diaryDaysKeptValue_other": "{{count}} 天食物"
+  },
+  "copyFromYesterday": {
+    "title": "从昨天复制",
+    "subtitle": "将昨天的餐点带到这一天",
+    "emptySource": "昨天没有可复制的内容。",
+    "copySelected": "复制所选项",
+    "copyAll": "全部复制",
+    "copying": "复制中…",
+    "success": "已从昨天复制",
+    "failed": "从昨天复制失败",
+    "loadError": "无法加载昨天的餐点。"
+  },
+  "challenges": {
+    "card": {
+      "a11y": "挑战",
+      "leader": "{{name}} 以 {{total}} 领先",
+      "noScore": "暂无分数",
+      "refreshFailed": "无法刷新，显示上次加载的",
+      "youLead": "你领先",
+      "yourPlace": "#{{rank}} / {{members}} · {{total}}"
+    },
+    "dates": {
+      "from": "从 {{start}} 开始，没有结束日期",
+      "range": "{{start}} 至 {{end}}"
+    },
+    "detailLoadFailed": "无法加载该挑战。",
+    "emptySubtitle": "用朋友的邀请码加入，或在网页自行发起一个。",
+    "emptyTitle": "暂无挑战",
+    "format": {
+      "groupGoal": "群组目标",
+      "hitGoal": "达标",
+      "leaderboard": "排行榜",
+      "race": "竞速达标"
+    },
+    "hostOnWeb": "你是该挑战的主办人。请在网页更改其规则和邀请码。",
+    "join": {
+      "closed": "当前无法加入该挑战。",
+      "codeLabel": "邀请码",
+      "codePlaceholder": "粘贴邀请码或链接",
+      "ended": "该挑战已经结束。",
+      "failed": "无法加入挑战。",
+      "full": "该挑战已满员。",
+      "invalidCode": "该邀请码无效或已过期。",
+      "joined": "已加入 {{name}}",
+      "lateJoinClosed": "已经开始，不接受中途加入。",
+      "nameLabel": "你在其中的名称",
+      "namePlaceholder": "例如你的名字",
+      "nameRequired": "请输入其他成员会看到的名称。",
+      "notACode": "粘贴他人发给你的邀请码或链接。",
+      "privacy": "成员只会看到该名称和你的分数，永远看不到你的日记或邮箱。你可以随时退出。",
+      "submit": "加入",
+      "submitting": "加入中…",
+      "title": "加入挑战",
+      "tooMany": "尝试次数过多。请等几分钟再试。",
+      "withCode": "用邀请码加入"
+    },
+    "leave": {
+      "action": "退出挑战",
+      "confirm": "退出",
+      "failed": "无法退出挑战",
+      "message": "你在该挑战的分数会被删除。你可以用新邀请码再次加入。",
+      "title": "退出该挑战？"
+    },
+    "listRefreshFailed": "无法刷新你的挑战，显示上次加载的。",
+    "loadFailed": "无法加载你的挑战。",
+    "memberCount_other": "{{count}} 位成员",
+    "metric": {
+      "activeCalories": "活动热量",
+      "activeMinutes": "活动分钟",
+      "distance": "距离",
+      "elevation": "爬升",
+      "hrZoneMinutes": "心率区间分钟",
+      "points": "分数",
+      "steps": "步数",
+      "workoutDays": "运动天数"
+    },
+    "moreActions": "更多操作",
+    "period": {
+      "challenge": "整个挑战",
+      "day": "每日",
+      "month": "每月",
+      "next": "下一个计分期",
+      "previous": "上一个计分期",
+      "week": "每周"
+    },
+    "refreshFailed": "无法刷新该挑战，显示上次加载的内容。",
+    "standings": {
+      "daysHit": "{{eligible}} 天中 {{hit}} 天达标",
+      "empty": "该计分期暂无得分。",
+      "final": "最终结果",
+      "find": "查找成员",
+      "finished": "于 {{date}} 结束",
+      "groupTotal": "全组合计：{{total}}（目标 {{target}}）",
+      "live": "截至当前；较晚同步的手表数据仍会计入",
+      "loadFailed": "无法加载排名。",
+      "minutes": "{{value}} 活动分钟",
+      "noMatch": "找不到匹配“{{query}}”的成员。",
+      "refreshFailed": "无法刷新排名，显示上次加载的。",
+      "rowA11y": "{{rank}}. {{name}}, {{total}}",
+      "winner": "获胜者",
+      "you": "{{name}}（你）"
+    },
+    "state": {
+      "active": "进行中",
+      "daysLeft_other": "还剩 {{count}} 天",
+      "ended": "已结束",
+      "lastDay": "最后一天",
+      "running": "进行中",
+      "startsIn_other": "{{count}} 天后开始",
+      "startsOn": "{{date}} 开始",
+      "startsTomorrow": "明天开始"
+    },
+    "target": "目标：{{target}}",
+    "title": "挑战",
+    "unavailableSubtitle": "你的服务器已关闭挑战功能，或需要更新。请联系服务器管理员。",
+    "unavailableTitle": "挑战不可用",
+    "value": {
+      "feet": "{{value}} ft",
+      "km": "{{value}} km",
+      "metres": "{{value}} m",
+      "miles": "{{value}} mi",
+      "minutes": "{{value}} 分钟",
+      "points": "{{value}} 分",
+      "steps": "{{value}} 步",
+      "workoutDays_other": "{{count}} 天"
+    },
+    "youHost": "你是主办"
   }
 }
