@@ -7,6 +7,7 @@ import type {
   CoachView,
   UpdateBuiltinCoachBody,
   UpdateCoachProfileBody,
+  UpdateCustomCoachBody,
 } from '@workspace/shared';
 import { apiFetch } from './apiClient';
 
@@ -41,6 +42,18 @@ export const updateBuiltinCoach = (
     serviceName: SERVICE,
     operation: 'update coach',
     method: 'PUT',
+    body,
+  });
+
+export const updateCustomCoach = (
+  id: string,
+  body: UpdateCustomCoachBody
+): Promise<CoachView> =>
+  apiFetch<CoachView>({
+    endpoint: `${BASE}/custom/${encodeURIComponent(id)}`,
+    serviceName: SERVICE,
+    operation: 'update custom coach',
+    method: 'PATCH',
     body,
   });
 

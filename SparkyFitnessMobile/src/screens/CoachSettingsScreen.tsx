@@ -32,6 +32,7 @@ import {
   useCoachSettings,
   useUpdateBuiltinCoach,
   useUpdateCoachProfile,
+  useUpdateCustomCoach,
 } from '../hooks/useCoaches';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
@@ -61,6 +62,7 @@ export default function CoachSettingsScreen({
   const { data, isLoading, refetch } = useCoachSettings();
   const updateProfile = useUpdateCoachProfile();
   const updateBuiltin = useUpdateBuiltinCoach();
+  const updateCustom = useUpdateCustomCoach();
   const checkIn = useCheckInNow();
   const coachNotifications = useAppPreferencesStore(
     (s) => s.coachNotificationsEnabled
@@ -76,6 +78,7 @@ export default function CoachSettingsScreen({
   const [avoidDraft, setAvoid] = useState<string>();
   const [preferDraft, setPrefer] = useState<string>();
   const [notesDraft, setNotes] = useState<string>();
+  const [timesDraft, setTimesDraft] = useState<string[]>();
 
   // Discard drafts when the active account identity changes.
   const activeUserId = userProfile?.id;
@@ -89,6 +92,7 @@ export default function CoachSettingsScreen({
       setAvoid(undefined);
       setPrefer(undefined);
       setNotes(undefined);
+      setTimesDraft(undefined);
     }
     activeUserRef.current = activeUserId;
   }, [activeUserId]);
@@ -104,9 +108,17 @@ export default function CoachSettingsScreen({
   });
 
   const timeRows = useReminderTimeRows({
-    times: profile?.checkin_times ?? [],
-    onChangeTimes: (times) =>
-      updateProfile.mutate({ checkin_times: normalizeCheckinTimes(times) }),
+    times: timesDraft ?? profile?.checkin_times ?? [],
+    onChangeTimes: (times) => {
+      const normalized = normalizeCheckinTimes(times);
+      setTimesDraft(normalized);
+      updateProfile.mutate(
+        { checkin_times: normalized },
+        {
+          onSettled: () => setTimesDraft(undefined),
+        }
+      );
+    },
     maxTimes: MAX_COACH_CHECKIN_TIMES,
     timeFormat: preferences?.time_format,
     labels: {
@@ -216,6 +228,8 @@ export default function CoachSettingsScreen({
   const switchCoach = (coach: CoachView, enabled: boolean) => {
     if (coach.builtin_key) {
       updateBuiltin.mutate({ key: coach.builtin_key, body: { enabled } });
+    } else if (coach.id) {
+      updateCustom.mutate({ id: coach.id, body: { enabled } });
     }
   };
 
@@ -343,7 +357,9 @@ export default function CoachSettingsScreen({
                         <Switch
                           accessibilityLabel={name}
                           value={coach.enabled}
-                          disabled={!coach.builtin_key}
+                          disabled={
+                            updateBuiltin.isPending || updateCustom.isPending
+                          }
                           onValueChange={(on) => switchCoach(coach, on)}
                         />
                       }

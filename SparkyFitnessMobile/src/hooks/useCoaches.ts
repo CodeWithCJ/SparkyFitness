@@ -5,6 +5,7 @@ import type {
   CoachNudgeState,
   UpdateBuiltinCoachBody,
   UpdateCoachProfileBody,
+  UpdateCustomCoachBody,
 } from '@workspace/shared';
 import {
   answerCoachNudge,
@@ -18,6 +19,7 @@ import {
   reactToCoachNudge,
   updateBuiltinCoach,
   updateCoachProfile,
+  updateCustomCoach,
 } from '../services/api/coachesApi';
 import {
   coachNudgesQueryKey,
@@ -89,6 +91,18 @@ export function useUpdateBuiltinCoach() {
       key: string;
       body: UpdateBuiltinCoachBody;
     }) => updateBuiltinCoach(key, body),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: coachSettingsQueryKey }),
+    onError: showError,
+  });
+}
+
+export function useUpdateCustomCoach() {
+  const queryClient = useQueryClient();
+  const showError = useCoachError();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateCustomCoachBody }) =>
+      updateCustomCoach(id, body),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: coachSettingsQueryKey }),
     onError: showError,
