@@ -15,7 +15,12 @@ import activityDetailsRepository from '../../models/activityDetailsRepository.js
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
 import { getClient } from '../../db/poolManager.js';
 import { log } from '../../config/logging.js';
-import { instantToDay, instantHourMinute } from '@workspace/shared';
+import {
+  instantToDay,
+  instantHourMinute,
+  isBodyweightModality,
+  isExerciseModality,
+} from '@workspace/shared';
 import {
   LiftohistoryWorkout,
   LiftohistoryExercise,
@@ -47,8 +52,31 @@ export const LIFTOSAUR_SOURCE = 'Liftosaur';
 interface ExerciseRow {
   id: string;
   user_id?: string | null;
+  source?: string | null;
+  modality?: string | null;
   primary_muscles?: unknown;
   secondary_muscles?: unknown;
+}
+
+/** The modality a Liftosaur exercise gets when it has assisted sets. */
+const ASSISTED_MODALITY = 'bodyweight_reps';
+
+function isBodyweightExercise(exercise: ExerciseRow): boolean {
+  return (
+    isExerciseModality(exercise.modality) &&
+    isBodyweightModality(exercise.modality)
+  );
+}
+
+/**
+ * Whether a performed set of this exercise has a negative weight. Liftosaur
+ * logs an assisted set (an assisted pull-up, say) that way, and only a
+ * bodyweight exercise can store one.
+ */
+function hasAssistedSet(exercise: LiftohistoryExercise): boolean {
+  return mergeSets(exercise).sets.some(
+    (set) => set.weightKg !== null && set.weightKg < 0
+  );
 }
 interface WorkoutPresetRow {
   id: number;
@@ -178,9 +206,22 @@ async function resolveLibraryExercises(
     ),
   ];
 
+  const assisted = new Set(
+    workouts.flatMap((w) =>
+      w.exercises.filter((e) => hasAssistedSet(e)).map((e) => e.name)
+    )
+  );
+
+  // Names that resolve to the same row ("Pull Up" and "Pull Up, Machine")
+  // share one object, so a change made for one (muscles, the bodyweight
+  // switch) is seen by the other.
   const found = new Map<string, ExerciseRow | null>();
+  const byId = new Map<string, ExerciseRow>();
   for (const name of names) {
-    found.set(name, await findLibraryExercise(userId, name));
+    const row = await findLibraryExercise(userId, name);
+    const shared = row ? (byId.get(row.id) ?? row) : null;
+    if (shared) byId.set(shared.id, shared);
+    found.set(name, shared);
   }
 
   let muscles: LiftosaurMuscleLookup = new Map();
@@ -209,6 +250,7 @@ async function resolveLibraryExercises(
     if (exercise) {
       if (mapping) await fillMissingMuscles(userId, exercise, mapping);
       await backfillLiftosaurDiaryMuscles(userId, exercise);
+      if (assisted.has(name)) await useAssistedModality(userId, exercise);
     } else {
       exercise = await exerciseRepository.createExercise({
         user_id: userId,
@@ -216,6 +258,7 @@ async function resolveLibraryExercises(
         source: LIFTOSAUR_SOURCE,
         is_custom: true,
         shared_with_public: false,
+        ...(assisted.has(name) ? { modality: ASSISTED_MODALITY } : {}),
         ...(mapping
           ? {
               primary_muscles: mapping.primary,
@@ -234,6 +277,53 @@ async function resolveLibraryExercises(
     }
   }
   return library;
+}
+
+/**
+ * Switch an exercise the Liftosaur import created to bodyweight once it has
+ * assisted sets, so their negative weight can be stored. Only rows the import
+ * made and that still have the import's default modality (weight_reps) are
+ * changed: a modality the user picked, and exercises from the user's own or
+ * the public library, are left alone (processSingleWorkout drops the negative
+ * weight on those instead). Library writes run outside the diary transaction,
+ * so a failure is logged and the import goes on.
+ */
+async function useAssistedModality(
+  userId: string,
+  exercise: ExerciseRow
+): Promise<void> {
+  if (exercise.user_id !== userId) return;
+  if (exercise.source !== LIFTOSAUR_SOURCE) return;
+  if (exercise.modality !== 'weight_reps') return;
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE exercises
+       SET modality = $1, updated_at = now()
+       WHERE id = $2 AND user_id = $3 AND source = $4
+         AND modality = 'weight_reps'`,
+      [ASSISTED_MODALITY, exercise.id, userId, LIFTOSAUR_SOURCE]
+    );
+    if ((result.rowCount ?? 0) > 0) {
+      exercise.modality = ASSISTED_MODALITY;
+    } else {
+      // Changed since it was read: use what is stored now.
+      const stored = await client.query(
+        'SELECT modality FROM exercises WHERE id = $1 AND user_id = $2',
+        [exercise.id, userId]
+      );
+      const modality = (stored.rows[0] as { modality?: string } | undefined)
+        ?.modality;
+      if (modality) exercise.modality = modality;
+    }
+  } catch (error) {
+    log(
+      'warn',
+      `Skipping the bodyweight switch for Liftosaur exercise ${exercise.id}: ${errorMessage(error)}`
+    );
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -361,21 +451,35 @@ async function processLiftosaurWorkouts(
     // exactly once so a second pass doesn't create an empty orphan session.
     const seenWorkoutIds = new Set<number>();
     const kept: KeptSourceIds = { sessions: new Set(), entries: new Set() };
+    let workoutsFailed = 0;
     for (const workout of workouts) {
       if (seenWorkoutIds.has(workout.id)) {
         log('debug', `Skipping duplicate Liftosaur workout ${workout.id}`);
         continue;
       }
       seenWorkoutIds.add(workout.id);
-      await processSingleWorkout(
-        userId,
-        createdByUserId,
-        workout,
-        library,
-        kept,
-        client,
-        timezone
-      );
+      // Each workout gets its own savepoint, so one that cannot be saved is
+      // skipped instead of rolling back every other workout of the sync.
+      await client.query('SAVEPOINT liftosaur_workout');
+      try {
+        await processSingleWorkout(
+          userId,
+          createdByUserId,
+          workout,
+          library,
+          kept,
+          client,
+          timezone
+        );
+        await client.query('RELEASE SAVEPOINT liftosaur_workout');
+      } catch (error) {
+        await client.query('ROLLBACK TO SAVEPOINT liftosaur_workout');
+        workoutsFailed += 1;
+        log(
+          'error',
+          `Skipping Liftosaur workout ${workout.id} for user ${userId}: ${errorMessage(error)}`
+        );
+      }
     }
 
     // Re-sent workouts are updated in place above, keyed by source id
@@ -386,10 +490,14 @@ async function processLiftosaurWorkouts(
     // write is deleted: workouts deleted in Liftosaur, rows from before
     // source ids were stable, and rows the import now skips. Entries go
     // first, because that path clears their calorie links and a session
-    // delete cascades to the entries still under it.
+    // delete cascades to the entries still under it. A workout that failed
+    // to save may have rows stored under ids this sync cannot know (an
+    // exercise renamed or removed in Liftosaur since, or ids from before they
+    // were stable), so after a failure nothing is deleted, as when a record
+    // does not parse.
     const range =
       cleanup === undefined ? fetchedDayRange(workouts, timezone) : cleanup;
-    if (range) {
+    if (range && workoutsFailed === 0) {
       const { startDate, endDate } = range;
 
       await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient(
@@ -412,6 +520,7 @@ async function processLiftosaurWorkouts(
     }
 
     await client.query('COMMIT');
+    return { workoutsFailed };
   } catch (error) {
     await client.query('ROLLBACK');
     log(
@@ -548,6 +657,22 @@ async function processSingleWorkout(
     const durationMinutes =
       sourceId === durationOwner ? workoutDurationMinutes : 0;
 
+    // Assisted sets keep their negative weight on a bodyweight exercise. The
+    // modality also goes to an entry updated in place, whose copy of it is
+    // otherwise kept from when it was first imported. On any other exercise
+    // (one the import may not switch, see useAssistedModality) the set is
+    // kept without its weight, since that modality cannot store it.
+    const bodyweight = isBodyweightExercise(exercise);
+    const assisted = mergedSets.sets.some(
+      (set) => set.weightKg !== null && set.weightKg < 0
+    );
+    if (assisted && !bodyweight) {
+      log(
+        'warn',
+        `Liftosaur exercise "${liftosaurExercise.name}" has assisted sets but exercise ${exercise.id} is not a bodyweight exercise; importing those sets without their weight.`
+      );
+    }
+
     // 3. Prepare entry data
     const entryData = {
       exercise_id: exercise.id,
@@ -559,10 +684,14 @@ async function processSingleWorkout(
       superset_group: null, // supersets are not part of the serialized format
       source_id: sourceId,
       notes: liftosaurExercise.notes || null,
+      ...(assisted && bodyweight ? { modality: exercise.modality } : {}),
       sets: mergedSets.sets.map((set) => ({
         set_number: set.set_number,
         set_type: set.set_type,
-        weight: set.weightKg,
+        weight:
+          set.weightKg !== null && set.weightKg < 0 && !bodyweight
+            ? null
+            : set.weightKg,
         reps: set.reps,
         duration: set.durationSeconds,
         rest_time: set.restSeconds,

@@ -125,6 +125,72 @@ describe('processHealthData Nutrition ingestion', () => {
     expect(actingUserId).toBe('user-1');
   });
 
+  it('stores the logged time as entry_time in the record timezone', async () => {
+    await measurementService.processHealthData(
+      [
+        {
+          type: 'Nutrition',
+          source: 'HealthKit',
+          source_id: 'hk-caffeine-1',
+          timestamp: '2026-11-25T08:42:00.000Z',
+          record_timezone: 'Europe/Vienna',
+          caffeine_mg: 80,
+        },
+      ],
+      'user-1',
+      'user-1'
+    );
+    const [entryData] = (foodRepository.createFoodEntry as any).mock.calls[0];
+    expect(entryData).toMatchObject({
+      entry_date: '2026-11-25',
+      entry_time: '09:42:00',
+      caffeine_mg: 80,
+    });
+  });
+
+  it('derives entry_time from the record UTC offset when there is no timezone', async () => {
+    // User timezone is UTC (mocked). 23:42Z at +02:00 is 01:42 on the next
+    // day where it was recorded: date and time must both use the offset.
+    await measurementService.processHealthData(
+      [
+        {
+          type: 'Nutrition',
+          source: 'HealthKit',
+          source_id: 'hk-caffeine-2',
+          timestamp: '2026-11-25T23:42:00.000Z',
+          record_utc_offset_minutes: 120,
+          caffeine_mg: 80,
+        },
+      ],
+      'user-1',
+      'user-1'
+    );
+    const [entryData] = (foodRepository.createFoodEntry as any).mock.calls[0];
+    expect(entryData).toMatchObject({
+      entry_date: '2026-11-26',
+      entry_time: '01:42:00',
+    });
+  });
+
+  it('leaves entry_time unset for a date-only record', async () => {
+    await measurementService.processHealthData(
+      [
+        {
+          type: 'Nutrition',
+          source: 'HealthKit',
+          source_id: 'hk-caffeine-3',
+          date: '2026-11-25',
+          caffeine_mg: 80,
+        },
+      ],
+      'user-1',
+      'user-1'
+    );
+    const [entryData] = (foodRepository.createFoodEntry as any).mock.calls[0];
+    expect(entryData.entry_date).toBe('2026-11-25');
+    expect(entryData).not.toHaveProperty('entry_time');
+  });
+
   it('reuses an existing provider food and refreshes its variant nutrition', async () => {
     (foodRepository.findFoodByProviderExternalId as any).mockResolvedValue({
       id: 'food-existing',

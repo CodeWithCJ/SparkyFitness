@@ -315,6 +315,7 @@ describe('published (flat) chatbot tool schemas', () => {
         'fat',
         'water_goal_ml',
         'weight',
+        'weight_unit',
         'saturated_fat',
         'polyunsaturated_fat',
         'monounsaturated_fat',
