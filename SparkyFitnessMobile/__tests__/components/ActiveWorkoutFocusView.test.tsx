@@ -26,9 +26,14 @@ jest.mock('react-native-gesture-handler', () => {
     GestureHandlerRootView: View,
   };
 });
-import { ScrollView, StyleSheet } from 'react-native';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import i18n, { initializeI18n } from '../../src/localization/i18n';
+import { ScrollView } from 'react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import type { FocusHold } from '../../src/hooks/useFocusHold';
 import ActiveWorkoutFocusView from '../../src/components/ActiveWorkoutFocusView';
 import { useExerciseStats } from '../../src/hooks/useExerciseStats';
@@ -190,7 +195,6 @@ const handlers = {
   onAddSet: jest.fn(),
   onActivateRpe: jest.fn(),
   onDeleteSet: jest.fn(),
-  onPressRestChip: jest.fn(),
   onDismissKeyboard: jest.fn(),
   onPressMetricHeader: jest.fn(),
   onPressSetType: jest.fn(),
@@ -242,6 +246,7 @@ const IDLE_HOLD: FocusHold = {
   getReadyEndsAt: null,
   startedAt: null,
   start: jest.fn(),
+  cancel: jest.fn(),
   tap: jest.fn(),
 };
 
@@ -257,6 +262,36 @@ describe('ActiveWorkoutFocusView', () => {
     render(viewElement('b'));
     expect(shownName()).toBe('Squat');
     expect(screen.getByTestId('focus-sets').props.children).toBe('sets:b');
+  });
+
+  it('renders the guided card above the page and the interval HUD slot under the exercise media, above the sets', () => {
+    const { Text } = require('react-native');
+    render(
+      viewElement('a', {
+        topSlot: <Text testID="top-slot">hud</Text>,
+        guidedCard: <Text testID="guided-slot">guided</Text>,
+      })
+    );
+    expect(screen.getByTestId('top-slot')).toBeTruthy();
+    expect(screen.getByTestId('guided-slot')).toBeTruthy();
+    // The HUD sits between the title / media block and the sets.
+    const tree = JSON.stringify(screen.toJSON());
+    const at = (id: string) => tree.indexOf(`"testID":"${id}"`);
+    expect(at('focus-title-block')).toBeGreaterThan(-1);
+    expect(at('focus-title-block')).toBeLessThan(at('top-slot'));
+    expect(at('top-slot')).toBeLessThan(at('focus-sets'));
+
+    fireEvent.press(screen.getByTestId('focus-chip-b'));
+
+    expect(shownName()).toBe('Squat');
+    expect(screen.getByTestId('top-slot')).toBeTruthy();
+    expect(screen.getByTestId('guided-slot')).toBeTruthy();
+  });
+
+  it('renders no slot content when none is given', () => {
+    render(viewElement('a'));
+    expect(screen.queryByTestId('top-slot')).toBeNull();
+    expect(screen.queryByTestId('guided-slot')).toBeNull();
   });
 
   it('keeps the exercise page around a timed hold and draws the hold card in its table', () => {
@@ -275,7 +310,7 @@ describe('ActiveWorkoutFocusView', () => {
     expect(shownName()).toBe('Bench Press');
     expect(screen.getByTestId('focus-hold-panel')).toBeTruthy();
     expect(screen.getByText(/^Set 1 · Holding$/)).toBeTruthy();
-    expect(screen.getByText('Plan 13s')).toBeTruthy();
+    expect(screen.getByText('Plan 0:13')).toBeTruthy();
   });
 
   it('draws Start hold in the current-set card before a timed hold starts', () => {
@@ -296,6 +331,32 @@ describe('ActiveWorkoutFocusView', () => {
     expect(screen.getByText('Plan 0:45')).toBeTruthy();
     fireEvent.press(screen.getByLabelText('Start hold'));
     expect(start).toHaveBeenCalledTimes(1);
+  });
+
+  it('draws Start hold for the first unlogged set of a timed exercise that is not the current one', () => {
+    const start = jest.fn();
+    const timed = makeExercise('c', 'Plank');
+    timed.exercise_snapshot = {
+      ...timed.exercise_snapshot,
+      modality: 'duration',
+      equipment: [],
+    };
+    render(
+      viewElement(
+        'a',
+        {
+          activeSetId: 'a-0',
+          completedSetIds: { 'c-0': 1 },
+          hold: { ...IDLE_HOLD, start },
+        },
+        { exercises: [makeExercise('a', 'Bench Press'), timed] }
+      )
+    );
+    fireEvent.press(screen.getByTestId('focus-chip-c'));
+    expect(screen.getByTestId('focus-hold-ready')).toBeTruthy();
+    expect(screen.getByText(/^Set 2 · Ready$/)).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('Start hold'));
+    expect(start).toHaveBeenCalledWith('c-1');
   });
 
   it('steps the planned hold length by 5 s through onCommitField', () => {
@@ -319,49 +380,342 @@ describe('ActiveWorkoutFocusView', () => {
     expect(screen.queryByTestId('focus-hold-ready')).toBeNull();
   });
 
-  it('shows the now banner and reopens the previous set on tap', () => {
-    const onPreviousSet = jest.fn();
-    render(
-      viewElement('a', {
-        nowBanner: {
-          exerciseName: 'Bench Press',
-          setNumber: 2,
-          setCount: 4,
-          load: '82.5 kg × 8',
-          onPreviousSet,
-        },
-      })
-    );
-    expect(screen.getByText('Now · Bench Press · Set 2/4')).toBeTruthy();
-    expect(screen.getByText('82.5 kg × 8')).toBeTruthy();
-    fireEvent.press(screen.getByLabelText('Previous set, edit in place'));
-    expect(onPreviousSet).toHaveBeenCalledTimes(1);
-  });
-
-  it('hides the now banner without one, and while a hold runs', () => {
-    const { rerender } = render(viewElement('a'));
-    expect(screen.queryByTestId('focus-now-banner')).toBeNull();
+  describe('now banner', () => {
     const nowBanner = {
       exerciseName: 'Bench Press',
       setNumber: 2,
       setCount: 4,
-      load: null,
-      onPreviousSet: jest.fn(),
+      load: '82.5 kg × 8',
     };
-    rerender(
-      viewElement('a', {
-        nowBanner,
-        hold: {
-          ...IDLE_HOLD,
-          phase: 'running',
-          entryId: 'a',
-          setId: 'a-0',
-          targetSec: 13,
-          startedAt: Date.now(),
+
+    it('shows only while another exercise is on show, and a tap goes back to the current one', () => {
+      render(viewElement('a', { nowBanner }));
+      expect(screen.queryByTestId('focus-now-banner')).toBeNull();
+
+      fireEvent.press(screen.getByTestId('focus-chip-c'));
+      expect(screen.getByText('Now · Bench Press')).toBeTruthy();
+      expect(screen.getByText('Set 2/4 · 82.5 kg × 8')).toBeTruthy();
+
+      fireEvent.press(screen.getByLabelText('Back to the current exercise'));
+      expect(shownName()).toBe('Bench Press');
+      expect(screen.queryByTestId('focus-now-banner')).toBeNull();
+      // Going back never un-logs or reopens a set.
+      expect(handlers.onUncomplete).not.toHaveBeenCalled();
+    });
+
+    it('hides without one, and while a hold runs', () => {
+      const { rerender } = render(viewElement('a'));
+      fireEvent.press(screen.getByTestId('focus-chip-c'));
+      expect(screen.queryByTestId('focus-now-banner')).toBeNull();
+      rerender(
+        viewElement('a', {
+          nowBanner,
+          hold: {
+            ...IDLE_HOLD,
+            phase: 'running',
+            entryId: 'a',
+            setId: 'a-0',
+            targetSec: 13,
+            startedAt: Date.now(),
+          },
+        })
+      );
+      expect(screen.queryByTestId('focus-now-banner')).toBeNull();
+    });
+  });
+
+  describe('exercise preview', () => {
+    it('draws a dashed card with Add set and Do it now for another exercise', () => {
+      render(viewElement('a', { activeSetId: 'a-0' }));
+      expect(screen.queryByTestId('focus-exercise-preview')).toBeNull();
+      fireEvent.press(screen.getByTestId('focus-chip-c'));
+      expect(screen.getByTestId('focus-exercise-preview')).toBeTruthy();
+      expect(screen.getByText('0/2 sets')).toBeTruthy();
+      expect(screen.queryByTestId('focus-sets')).toBeNull();
+
+      fireEvent.press(screen.getByTestId('focus-preview-add-set'));
+      expect(handlers.onAddSet).toHaveBeenCalledWith('c');
+    });
+
+    it('Do it now moves the exercise in front and opens its page', () => {
+      const doExerciseNow = jest.fn();
+      useActiveWorkoutStore.setState({ doExerciseNow } as never);
+      const { rerender } = render(viewElement('a', { activeSetId: 'a-0' }));
+      fireEvent.press(screen.getByTestId('focus-chip-c'));
+      fireEvent.press(screen.getByTestId('focus-preview-do-now'));
+      expect(doExerciseNow).toHaveBeenCalledWith('c');
+      rerender(viewElement('c', { activeSetId: 'c-0' }));
+      expect(shownName()).toBe('Deadlift');
+      expect(screen.queryByTestId('focus-exercise-preview')).toBeNull();
+    });
+
+    it('disables Do it now with a hint while a hold is running', () => {
+      const doExerciseNow = jest.fn();
+      useActiveWorkoutStore.setState({ doExerciseNow } as never);
+      render(
+        viewElement('a', {
+          activeSetId: 'a-0',
+          hold: {
+            ...IDLE_HOLD,
+            phase: 'running',
+            entryId: 'a',
+            setId: 'a-0',
+            targetSec: 13,
+            startedAt: Date.now(),
+          },
+        })
+      );
+      fireEvent.press(screen.getByTestId('focus-chip-c'));
+      expect(screen.getByTestId('focus-preview-do-now-hint')).toBeTruthy();
+      fireEvent.press(screen.getByTestId('focus-preview-do-now'));
+      expect(doExerciseNow).not.toHaveBeenCalled();
+    });
+
+    it('previews another exercise during a hold even when it has logged sets', () => {
+      render(
+        viewElement('a', {
+          activeSetId: 'a-0',
+          completedSetIds: { 'c-0': 1 },
+          hold: {
+            ...IDLE_HOLD,
+            phase: 'running',
+            entryId: 'a',
+            setId: 'a-0',
+            targetSec: 13,
+            startedAt: Date.now(),
+          },
+        })
+      );
+      fireEvent.press(screen.getByTestId('focus-chip-c'));
+      expect(screen.getByTestId('focus-exercise-preview')).toBeTruthy();
+      expect(screen.getByTestId('focus-preview-do-now-hint')).toBeTruthy();
+    });
+
+    it('previews the cursor exercise too when the hold runs on another exercise', () => {
+      render(
+        viewElement('a', {
+          activeSetId: 'a-1',
+          completedSetIds: { 'a-0': 1 },
+          hold: {
+            ...IDLE_HOLD,
+            phase: 'running',
+            entryId: 'c',
+            setId: 'c-1',
+            targetSec: 13,
+            startedAt: Date.now(),
+          },
+        })
+      );
+      const preview = screen.getByTestId('focus-exercise-preview');
+      expect(preview).toBeTruthy();
+      expect(within(preview).getByText(/^1\/\d+ sets$/)).toBeTruthy();
+      expect(screen.getByTestId('focus-preview-do-now-hint')).toBeTruthy();
+    });
+
+    it('previews a superset member during a hold instead of the editable round page', () => {
+      render(
+        viewElement(
+          'c',
+          {
+            activeSetId: 'c-0',
+            supersetBorders: new Map([
+              ['a', { color: '#c8a2ff', isLast: false }],
+              ['b', { color: '#c8a2ff', isLast: true }],
+            ]),
+            hold: {
+              ...IDLE_HOLD,
+              phase: 'running',
+              entryId: 'c',
+              setId: 'c-0',
+              targetSec: 13,
+              startedAt: Date.now(),
+            },
+          },
+          {
+            exercises: [
+              makeExercise('a', 'Triceps Pushdown', { superset_group: 1 }),
+              makeExercise('b', 'Lateral Raise', { superset_group: 1 }),
+              makeExercise('c', 'Plank'),
+            ],
+          } as any
+        )
+      );
+      fireEvent.press(screen.getByTestId('focus-chip-a'));
+      expect(screen.getByTestId('focus-exercise-preview')).toBeTruthy();
+      expect(screen.queryByText('Superset A')).toBeNull();
+    });
+
+    it('keeps the full page for the current exercise', () => {
+      render(viewElement('b'));
+      expect(shownName()).toBe('Squat');
+      expect(screen.queryByTestId('focus-exercise-preview')).toBeNull();
+    });
+  });
+
+  describe('superset page', () => {
+    const superset = {
+      exercises: [
+        makeExercise('a', 'Triceps Pushdown', { superset_group: 1 }),
+        makeExercise('b', 'Lateral Raise', { superset_group: 1 }),
+        makeExercise('c', 'Plank'),
+      ],
+    } as any;
+    const borders = new Map([
+      ['a', { color: '#c8a2ff', isLast: false }],
+      ['b', { color: '#c8a2ff', isLast: true }],
+    ]);
+
+    it('shows one combined page with the round card and the sets to come', () => {
+      render(
+        viewElement(
+          'a',
+          { supersetBorders: borders, activeSetId: 'a-0' },
+          superset
+        )
+      );
+      expect(screen.getByText('Superset A')).toBeTruthy();
+      expect(
+        screen.getByText('2 rounds · A1 then A2, rest after A2')
+      ).toBeTruthy();
+      expect(screen.getByText('Round 1 · A1')).toBeTruthy();
+      expect(screen.getByText('Log set · go to A2')).toBeTruthy();
+      expect(screen.getByTestId('focus-superset-step-b-0')).toBeTruthy();
+      expect(screen.getByTestId('focus-superset-step-a-1')).toBeTruthy();
+      expect(screen.queryByTestId('focus-sets')).toBeNull();
+    });
+
+    it('logs the current set and keeps the partner on the same page', () => {
+      render(
+        viewElement(
+          'a',
+          { supersetBorders: borders, activeSetId: 'a-0' },
+          superset
+        )
+      );
+      fireEvent.press(screen.getByTestId('focus-superset-log'));
+      expect(handlers.onCompleteSet).toHaveBeenCalledWith('a-0');
+    });
+
+    it('shows the page from either member, with no open-alone buttons', () => {
+      render(
+        viewElement(
+          'a',
+          { supersetBorders: borders, activeSetId: 'a-0' },
+          superset
+        )
+      );
+      fireEvent.press(screen.getByTestId('focus-chip-b'));
+      expect(screen.getByTestId('focus-superset-page')).toBeTruthy();
+      expect(screen.queryByTestId('focus-superset-alone-b')).toBeNull();
+      expect(screen.queryByTestId('focus-superset-back')).toBeNull();
+    });
+
+    it('lists the steps in order with the round card among them', () => {
+      render(
+        viewElement(
+          'a',
+          {
+            supersetBorders: borders,
+            activeSetId: 'b-0',
+            completedSetIds: { 'a-0': {} },
+          },
+          superset
+        )
+      );
+      const ids = screen
+        .getAllByTestId(/^focus-superset-(step-|round-card)/)
+        .map((n) => n.props.testID);
+      expect(ids).toEqual([
+        'focus-superset-step-a-0',
+        'focus-superset-round-card',
+        'focus-superset-step-a-1',
+        'focus-superset-step-b-1',
+      ]);
+    });
+
+    it('expands a finished row to amend its values only', () => {
+      render(
+        viewElement(
+          'a',
+          {
+            supersetBorders: borders,
+            activeSetId: 'b-0',
+            completedSetIds: { 'a-0': {} },
+          },
+          superset
+        )
+      );
+      const row = screen.getByTestId('focus-superset-step-a-0');
+      fireEvent.press(within(row).getByRole('button'));
+      fireEvent.press(within(row).getByLabelText('Reps +'));
+      expect(handlers.onCommitField).toHaveBeenCalledWith('a-0', { reps: 1 });
+      expect(screen.queryByTestId('focus-superset-unlog-a-0')).toBeNull();
+      expect(handlers.onUncomplete).not.toHaveBeenCalled();
+    });
+
+    it('keeps a pending row read-only', () => {
+      render(
+        viewElement(
+          'a',
+          { supersetBorders: borders, activeSetId: 'a-0' },
+          superset
+        )
+      );
+      expect(
+        within(screen.getByTestId('focus-superset-step-b-0')).queryByRole(
+          'button'
+        )
+      ).toBeNull();
+    });
+
+    it('frames the superset page only while it is not the current one', () => {
+      render(
+        viewElement(
+          'c',
+          { supersetBorders: borders, activeSetId: 'c-0' },
+          superset
+        )
+      );
+      expect(screen.queryByTestId('focus-away-frame')).toBeNull();
+      fireEvent.press(screen.getByTestId('focus-chip-a'));
+      expect(
+        within(screen.getByTestId('focus-away-frame')).getByTestId(
+          'focus-superset-page'
+        )
+      ).toBeTruthy();
+      expect(screen.getByTestId('focus-superset-log')).toBeTruthy();
+      fireEvent.press(screen.getByTestId('focus-chip-c'));
+      expect(screen.queryByTestId('focus-away-frame')).toBeNull();
+    });
+  });
+
+  describe('away frame', () => {
+    const cardio = makeExercise('d', 'Running', {
+      exercise_snapshot: {
+        name: 'Running',
+        modality: 'duration_distance',
+        images: [],
+      },
+      sets: [
+        {
+          id: 'd-0',
+          set_number: 1,
+          set_type: 'normal',
+          weight: null,
+          reps: null,
         },
-      })
-    );
-    expect(screen.queryByTestId('focus-now-banner')).toBeNull();
+      ],
+    });
+
+    it('frames a viewed cardio page, and not the current one', () => {
+      const cardioSession = {
+        exercises: [makeExercise('a', 'Bench Press'), cardio],
+      };
+      render(viewElement('a', { activeSetId: 'a-0' }, cardioSession));
+      expect(screen.queryByTestId('focus-away-frame')).toBeNull();
+      fireEvent.press(screen.getByTestId('focus-chip-d'));
+      expect(screen.getByTestId('focus-away-frame')).toBeTruthy();
+    });
   });
 
   it('opens on the first exercise when nothing is active', () => {
@@ -453,7 +807,7 @@ describe('ActiveWorkoutFocusView', () => {
     const { rerender } = render(viewElement('a'));
     rerender(viewElement('b'));
     expect(shownName()).toBe('Squat');
-    expect(screen.queryByText('Back to current')).toBeNull();
+    expect(screen.queryByTestId('focus-now-banner')).toBeNull();
   });
 
   describe('after a manual move', () => {
@@ -465,17 +819,61 @@ describe('ActiveWorkoutFocusView', () => {
     afterEach(() => jest.restoreAllMocks());
 
     it('stays put within the grace period and offers a way back', () => {
-      const { rerender } = render(viewElement('a'));
+      const nowBanner = {
+        exerciseName: 'Bench Press',
+        setNumber: 1,
+        setCount: 2,
+        load: null,
+      };
+      const { rerender } = render(viewElement('a', { nowBanner }));
       fireEvent.press(screen.getByTestId('focus-chip-c'));
-      expect(screen.getByText('Back to current')).toBeTruthy();
+      expect(screen.getByTestId('focus-now-banner')).toBeTruthy();
 
       now += FOCUS_FOLLOW_GRACE_MS - 1000;
-      rerender(viewElement('b'));
+      rerender(viewElement('b', { nowBanner }));
       expect(shownName()).toBe('Deadlift');
 
-      fireEvent.press(screen.getByText('Back to current'));
+      fireEvent.press(screen.getByTestId('focus-now-banner'));
       expect(shownName()).toBe('Squat');
-      expect(screen.queryByText('Back to current')).toBeNull();
+      expect(screen.queryByTestId('focus-now-banner')).toBeNull();
+    });
+
+    it('follows a log made in the shown exercise even within the grace', () => {
+      const { rerender } = render(
+        viewElement('a', { activeSetId: 'a-0', completedSetIds: {} })
+      );
+      // The lifter taps back to the exercise they are working in.
+      fireEvent.press(screen.getByTestId('focus-chip-b'));
+      fireEvent.press(screen.getByTestId('focus-chip-a'));
+      expect(shownName()).toBe('Bench Press');
+
+      // Logging A's set moves the cursor on to its superset partner B.
+      rerender(
+        viewElement('b', {
+          activeSetId: 'b-0',
+          completedSetIds: { 'a-0': 1 },
+        })
+      );
+      expect(shownName()).toBe('Squat');
+    });
+
+    it('still stays put when the log was made in another exercise', () => {
+      const { rerender } = render(
+        viewElement('a', { activeSetId: 'a-0', completedSetIds: {} })
+      );
+      fireEvent.press(screen.getByTestId('focus-chip-c'));
+      rerender(
+        viewElement('b', {
+          activeSetId: 'b-0',
+          completedSetIds: { 'a-0': 1 },
+        })
+      );
+      expect(screen.getByTestId('focus-exercise-preview')).toBeTruthy();
+      expect(
+        within(screen.getByTestId('focus-exercise-preview')).getByText(
+          'Deadlift'
+        )
+      ).toBeTruthy();
     });
 
     it('follows again once the grace period has passed', () => {
@@ -520,89 +918,24 @@ describe('ActiveWorkoutFocusView', () => {
     expect(handlers.onSwap).toHaveBeenCalledWith('b');
   });
 
-  it('shows the muscle and equipment chips and the best set', () => {
+  it('shows the best set and no muscle or equipment tags', () => {
     mockUseExerciseStats.mockReturnValue({
       data: { bestSet: { weight: 40, reps: 8 }, recentSessions: [] },
     });
     render(viewElement('a'));
-    expect(screen.getByText('Chest')).toBeTruthy();
-    expect(screen.getByText('Barbell')).toBeTruthy();
+    expect(screen.queryByText('Chest')).toBeNull();
+    expect(screen.queryByText('Barbell')).toBeNull();
     expect(screen.getByLabelText('Best 40 × 8')).toBeTruthy();
   });
 
   describe('restored list-view controls', () => {
-    it('shows the exercise rest and opens the rest picker from it', () => {
+    it('keeps the rest chip, last time text and heart rate out of the title area', () => {
+      mockUseLiveHeartRate.mockReturnValue(141);
       render(viewElement('b'));
-      fireEvent.press(screen.getByLabelText(/^Rest /));
-      expect(handlers.onPressRestChip).toHaveBeenCalledWith('b', null);
-    });
-
-    describe('live heart rate', () => {
-      afterEach(() => {
-        mockUseLiveHeartRate.mockReset().mockReturnValue(null);
-        mockUseHeartRateZoneColor.mockReset().mockReturnValue(null);
-      });
-
-      it('shows no chip without a live reading', () => {
-        render(viewElement('a'));
-        expect(screen.queryByTestId('exercise-heart-rate')).toBeNull();
-      });
-
-      it("shows the watch's live reading for the exercise being viewed", () => {
-        mockUseLiveHeartRate.mockImplementation((id) =>
-          id === 'b' ? 141 : null
-        );
-        const { rerender } = render(viewElement('a'));
-        expect(screen.queryByText('141 bpm')).toBeNull();
-
-        rerender(viewElement('b'));
-        expect(screen.getByText('141 bpm')).toBeTruthy();
-        expect(
-          screen.getByLabelText('Current heart rate for Squat')
-        ).toBeTruthy();
-      });
-
-      it('colors the number by the heart rate zone', () => {
-        mockUseLiveHeartRate.mockReturnValue(160);
-        mockUseHeartRateZoneColor.mockImplementation((bpm) =>
-          bpm === 160 ? '#f59e0b' : null
-        );
-        render(viewElement('a'));
-        expect(
-          StyleSheet.flatten(screen.getByText('160').props.style).color
-        ).toBe('#f59e0b');
-      });
-
-      it('keeps the default heart-rate color until zones are known', () => {
-        mockUseLiveHeartRate.mockReturnValue(160);
-        render(viewElement('a'));
-        expect(
-          StyleSheet.flatten(screen.getByText('160').props.style)?.color
-        ).toBeUndefined();
-      });
-
-      it('shows the chip on a one-set cardio exercise, which has no rest chip', () => {
-        mockUseLiveHeartRate.mockReturnValue(130);
-        const cardio = makeExercise('d', 'Running', {
-          exercise_snapshot: {
-            name: 'Running',
-            modality: 'duration_distance',
-            images: [],
-          },
-          sets: [
-            {
-              id: 'd-0',
-              set_number: 1,
-              set_type: 'normal',
-              weight: null,
-              reps: null,
-            },
-          ],
-        });
-        render(viewElement('d', {}, { exercises: [cardio] }));
-        expect(screen.getByText('130 bpm')).toBeTruthy();
-        expect(screen.queryByLabelText(/^Rest /)).toBeNull();
-      });
+      expect(screen.queryByLabelText(/^Rest /)).toBeNull();
+      expect(screen.queryByText(/^Last time /)).toBeNull();
+      expect(screen.queryByText('141 bpm')).toBeNull();
+      mockUseLiveHeartRate.mockReset().mockReturnValue(null);
     });
 
     it('hides the rest chip for a one-set cardio exercise, which logs in a form', () => {
@@ -687,7 +1020,30 @@ describe('ActiveWorkoutFocusView', () => {
         )
       );
       fireEvent.press(screen.getByTestId('plate-graphic'));
-      expect(onOpenPlateCalculator).toHaveBeenCalledWith('a-1');
+      expect(onOpenPlateCalculator).toHaveBeenCalledWith('a-1', 100);
+    });
+
+    it("opens the plate calculator on the current set's weight, not another set's", () => {
+      const onOpenPlateCalculator = jest.fn();
+      const ex = makeExercise('a', 'Bench Press');
+      ex.sets[0].weight = 175; // logged earlier
+      ex.sets[1].weight = 85; // the set the card is on
+      render(
+        viewElement(
+          'a',
+          {
+            onOpenPlateCalculator,
+            activeSetId: null,
+            completedSetIds: { 'a-0': 1 },
+          },
+          { exercises: [ex] }
+        )
+      );
+      expect(screen.getByTestId('plate-graphic').props.children).toBe(
+        'plates:85'
+      );
+      fireEvent.press(screen.getByTestId('plate-graphic'));
+      expect(onOpenPlateCalculator).toHaveBeenCalledWith('a-1', 85);
     });
 
     it('draws no plates for a non-barbell exercise', () => {
@@ -719,30 +1075,6 @@ describe('ActiveWorkoutFocusView', () => {
     );
   });
 
-  it('shows the plan and last time lines', () => {
-    useActiveWorkoutStore.setState({
-      plannedSetValues: {
-        'a-0': { weight: 40, reps: 12 },
-        'a-1': { weight: 40, reps: 12 },
-      },
-    });
-    mockUseExerciseStats.mockReturnValue({
-      data: {
-        bestSet: null,
-        recentSessions: [
-          {
-            sets: [
-              { setNumber: 1, setType: 'normal', weight: 40, reps: 7 },
-              { setNumber: 2, setType: 'normal', weight: 35, reps: 9 },
-            ],
-          },
-        ],
-      },
-    });
-    render(viewElement('a'));
-    expect(screen.getByText('Plan 2 × 12 · Last time 40×7, 35×9')).toBeTruthy();
-  });
-
   it("passes last session's sets to the set editor, warm-ups paired with warm-ups", () => {
     mockUseExerciseStats.mockReturnValue({
       data: {
@@ -762,38 +1094,6 @@ describe('ActiveWorkoutFocusView', () => {
     expect(screen.getByTestId('focus-previous-sets').props.children).toBe(
       '[40,null]'
     );
-  });
-
-  it('reformats the last-time weights when the app language changes', async () => {
-    await initializeI18n('en');
-    await i18n.changeLanguage('en');
-    mockUseExerciseStats.mockReturnValue({
-      data: {
-        bestSet: null,
-        recentSessions: [
-          { sets: [{ weight: 42.5, reps: 5, setType: 'normal' }] },
-        ],
-      },
-    });
-    render(viewElement('a'));
-    expect(screen.getByText(/Last time 42.5×5/)).toBeTruthy();
-
-    try {
-      await act(async () => {
-        await i18n.changeLanguage('pl');
-      });
-      expect(screen.getByText(/42,5×5/)).toBeTruthy();
-    } finally {
-      await act(async () => {
-        await i18n.changeLanguage('en');
-      });
-    }
-  });
-
-  it('omits the context lines without a plan or history', () => {
-    render(viewElement('a'));
-    expect(screen.queryByText(/^Plan /)).toBeNull();
-    expect(screen.queryByText(/^Last time /)).toBeNull();
   });
 
   it('keeps every exercise history tracked, not just the shown one', () => {
@@ -922,9 +1222,9 @@ describe('ActiveWorkoutFocusView', () => {
       fireEvent.press(screen.getByTestId('media-toggle'));
       expect(mediaState()).toBe('expanded');
 
-      // Away to a not-started exercise: the preference applies again.
+      // Away to a not-started exercise: a dashed preview, no demo.
       fireEvent.press(screen.getByLabelText(/^Exercise 2 of 2/));
-      expect(mediaState()).toBe('expanded');
+      expect(screen.getByTestId('focus-exercise-preview')).toBeTruthy();
       // Back on the started one: minimized again, scrolled to the set.
       scrollTo().mockClear();
       fireEvent.press(screen.getByLabelText(/^Exercise 1 of 2/));

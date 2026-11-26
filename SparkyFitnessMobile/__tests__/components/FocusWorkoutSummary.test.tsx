@@ -1,8 +1,7 @@
 import React from 'react';
 import { fireEvent, render } from '@testing-library/react-native';
-import FocusWorkoutSummary, {
-  effortBand,
-} from '../../src/components/FocusWorkoutSummary';
+import FocusWorkoutSummary from '../../src/components/FocusWorkoutSummary';
+import { effortBand } from '../../src/components/FocusEffortSlider';
 
 jest.mock('../../src/hooks/useHeartRateZoneColor', () => ({
   useHeartRateZoneColor: () => '#3b82f6',
@@ -51,18 +50,58 @@ describe('FocusWorkoutSummary', () => {
     expect(getByText('Avg bpm')).toBeTruthy();
   });
 
-  it('names the effort band and rates on tap', () => {
-    const onRateEffort = jest.fn();
+  it('shows the rated effort with its band and the shared slider', () => {
     const { getByTestId, getByText } = render(
-      <FocusWorkoutSummary {...base} onRateEffort={onRateEffort} />
+      <FocusWorkoutSummary {...base} />
     );
-    expect(getByText('7 · Hard')).toBeTruthy();
-    fireEvent.press(getByTestId('focus-summary-effort-9'));
-    expect(onRateEffort).toHaveBeenCalledWith(9);
+    expect(getByTestId('focus-summary-effort').props.children).toBe(7);
+    expect(getByText('· Hard')).toBeTruthy();
+    expect(getByTestId('focus-summary-effort-slider')).toBeTruthy();
     expect(effortBand(3)).toBe('easy');
     expect(effortBand(4)).toBe('moderate');
     expect(effortBand(8)).toBe('hard');
     expect(effortBand(10)).toBe('max');
+  });
+
+  it('rates only on release, not on every drag move', () => {
+    const onRateEffort = jest.fn();
+    const { getByTestId } = render(
+      <FocusWorkoutSummary {...base} onRateEffort={onRateEffort} />
+    );
+    const slider = getByTestId('focus-summary-effort-slider');
+    fireEvent(slider, 'layout', {
+      nativeEvent: { layout: { width: 100, height: 44, x: 0, y: 0 } },
+    });
+    fireEvent(slider, 'responderGrant', { nativeEvent: { locationX: 85 } });
+    fireEvent(slider, 'responderMove', { nativeEvent: { locationX: 95 } });
+    expect(onRateEffort).not.toHaveBeenCalled();
+    expect(getByTestId('focus-summary-effort').props.children).toBe(10);
+    fireEvent(slider, 'responderRelease', { nativeEvent: {} });
+    expect(onRateEffort).toHaveBeenCalledTimes(1);
+    expect(onRateEffort).toHaveBeenCalledWith(10);
+  });
+
+  it('refuses to give up the drag and commits if the responder is terminated', () => {
+    const onRateEffort = jest.fn();
+    const { getByTestId } = render(
+      <FocusWorkoutSummary {...base} onRateEffort={onRateEffort} />
+    );
+    const slider = getByTestId('focus-summary-effort-slider');
+    expect(slider.props.onResponderTerminationRequest()).toBe(false);
+    fireEvent(slider, 'layout', {
+      nativeEvent: { layout: { width: 100, height: 44, x: 0, y: 0 } },
+    });
+    fireEvent(slider, 'responderGrant', { nativeEvent: { locationX: 45 } });
+    fireEvent(slider, 'responderTerminate', { nativeEvent: {} });
+    expect(onRateEffort).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows an empty track and a hint until it is rated', () => {
+    const { queryByTestId, getByText } = render(
+      <FocusWorkoutSummary {...base} effort={null} />
+    );
+    expect(queryByTestId('focus-summary-effort')).toBeNull();
+    expect(getByText('Drag to rate')).toBeTruthy();
   });
 
   it('offers Update and Keep original when the workout changed', () => {

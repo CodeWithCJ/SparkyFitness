@@ -62,6 +62,19 @@ describe('ActiveWorkoutFocusChips', () => {
     expect(ring('e2').borderColor).toBe('transparent');
     expect(getByTestId('focus-chip-play-e0')).toBeTruthy();
     expect(getByTestId('focus-chip-done-e1')).toBeTruthy();
+    // Both badges share one size and corner.
+    const play = StyleSheet.flatten(
+      getByTestId('focus-chip-play-e0').props.style
+    );
+    const done = StyleSheet.flatten(
+      getByTestId('focus-chip-done-e1').props.style
+    );
+    expect(play).toMatchObject({
+      right: done.right,
+      bottom: done.bottom,
+      width: done.width,
+      height: done.height,
+    });
     expect(queryByTestId('focus-chip-play-e2')).toBeNull();
     // The name sits below the picture, and the strip ends with Add.
     expect(getByText('Exercise 2')).toBeTruthy();
@@ -92,7 +105,7 @@ describe('ActiveWorkoutFocusChips', () => {
       ['e2', { color: '#c792ea', isLast: false }],
       ['e3', { color: '#c792ea', isLast: true }],
     ]);
-    const { getByTestId, getByLabelText } = render(
+    const { getByTestId, queryByTestId, queryByText } = render(
       <ActiveWorkoutFocusChips
         exercises={exercises}
         completedSetIds={{}}
@@ -110,7 +123,14 @@ describe('ActiveWorkoutFocusChips', () => {
     // Both members sit in the one group.
     expect(group).toContainElement(getByTestId('focus-chip-e2'));
     expect(group).toContainElement(getByTestId('focus-chip-e3'));
-    expect(getByLabelText(/^Exercise 3 of 8.*superset A1$/)).toBeTruthy();
-    expect(getByLabelText(/^Exercise 4 of 8.*superset A2$/)).toBeTruthy();
+    // The superset is one button; its tiles only draw.
+    expect(group.props.accessibilityRole).toBe('button');
+    expect(group.props.accessibilityLabel).toBe('Exercise 2 + Exercise 3');
+    expect(getByTestId('focus-chip-e2').props.accessible).toBe(false);
+    expect(getByTestId('focus-chip-e3').props.onPress).toBeUndefined();
+    // No A1 / A2 pills on the pictures; the position is only spoken.
+    expect(queryByTestId('focus-chip-mark-e2')).toBeNull();
+    expect(queryByText('A1')).toBeNull();
+    expect(queryByText('A2')).toBeNull();
   });
 });

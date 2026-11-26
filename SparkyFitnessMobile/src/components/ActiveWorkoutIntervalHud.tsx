@@ -47,6 +47,12 @@ function formatClock(seconds: number): string {
   return `${String(m).padStart(2, '0')}:${String(remS).padStart(2, '0')}`;
 }
 
+/** The phase that last cued, outside the component so a remount keeps it. */
+let lastCue: { sessionId: string | null; phaseIndex: number | null } = {
+  sessionId: null,
+  phaseIndex: null,
+};
+
 export default function ActiveWorkoutIntervalHud({ getImageSource }: Props) {
   const { t, i18n } = useTranslation();
   const guidedEnabled = useAppPreferencesStore((s) => s.guidedWorkoutEnabled);
@@ -157,7 +163,13 @@ export default function ActiveWorkoutIntervalHud({ getImageSource }: Props) {
   }, [phase, intervalPhaseIndex, updateIntervalPhaseIndex]);
 
   // Audio and Haptic Cue Tracking & Auto Set Completion
-  const lastCuePhaseIndexRef = useRef<number | null>(null);
+  // The HUD remounts when the lifter pages between exercises, so the last
+  // phase that cued is kept outside the component (per session) and a remount
+  // does not play the same cue and speech again.
+  const cueSessionId = session?.id ?? null;
+  const lastCuePhaseIndexRef = useRef<number | null>(
+    lastCue.sessionId === cueSessionId ? lastCue.phaseIndex : null
+  );
   const lastCountdownSecRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -167,6 +179,7 @@ export default function ActiveWorkoutIntervalHud({ getImageSource }: Props) {
     if (lastCuePhaseIndexRef.current !== phase.phaseIndex) {
       const prevPhaseIndex = lastCuePhaseIndexRef.current;
       lastCuePhaseIndexRef.current = phase.phaseIndex;
+      lastCue = { sessionId: cueSessionId, phaseIndex: phase.phaseIndex };
       lastCountdownSecRef.current = null;
 
       if (prevPhaseIndex != null && prevPhaseIndex < phase.phaseIndex) {
@@ -245,6 +258,7 @@ export default function ActiveWorkoutIntervalHud({ getImageSource }: Props) {
     intervalPhases,
     workoutFormat,
     session,
+    cueSessionId,
     steps,
     completeSet,
     guidedEnabled,
@@ -318,7 +332,12 @@ export default function ActiveWorkoutIntervalHud({ getImageSource }: Props) {
 
   const formatTitle = workoutFormat.toUpperCase().replace('_', ' ');
 
-  const currentRound = phase?.round ?? 1;
+  // AMRAP has no fixed rounds: the header follows the +1 Round count.
+  const isWod = workoutFormat === 'amrap' || workoutFormat === 'for_time';
+  const currentRound =
+    workoutFormat === 'amrap'
+      ? intervalRoundsCompleted + 1
+      : (phase?.round ?? 1);
   const totalRounds = phase?.totalRounds;
 
   const roundLabel = totalRounds
@@ -496,123 +515,132 @@ export default function ActiveWorkoutIntervalHud({ getImageSource }: Props) {
       )}
 
       {/* WOD Scoring HUD Controls */}
-      <View className="mt-2 pt-3 border-t border-border/30">
-        {/* Rx / Scaled Toggle */}
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
-            {t('interval.wodScoring', { defaultValue: 'WOD Scoring' })}
-          </Text>
-          <View className="flex-row bg-raised rounded-lg p-0.5 border border-border/30">
-            <Pressable
-              className={`px-3 py-1 rounded-md ${
-                intervalStatus === 'rx' ? 'bg-accent-primary' : ''
-              }`}
-              onPress={() => setIntervalStatus('rx')}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  intervalStatus === 'rx' ? 'text-white' : 'text-text-muted'
-                }`}
-              >
-                {t('interval.rx', { defaultValue: 'Rx' })}
-              </Text>
-            </Pressable>
-            <Pressable
-              className={`px-3 py-1 rounded-md ${
-                intervalStatus === 'scaled' ? 'bg-amber-600' : ''
-              }`}
-              onPress={() => setIntervalStatus('scaled')}
-            >
-              <Text
-                className={`text-xs font-bold ${
-                  intervalStatus === 'scaled' ? 'text-white' : 'text-text-muted'
-                }`}
-              >
-                {t('interval.scaled', { defaultValue: 'Scaled' })}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* AMRAP-Only Controls: Large Round Incrementer & Additional Reps */}
-        {workoutFormat === 'amrap' && (
-          <>
-            <View className="flex-row items-center gap-2 mb-2">
+      {isWod && (
+        <View className="mt-2 pt-3 border-t border-border/30">
+          {/* Rx / Scaled Toggle */}
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-xs font-semibold text-text-secondary uppercase tracking-wider">
+              {t('interval.wodScoring', { defaultValue: 'WOD Scoring' })}
+            </Text>
+            <View className="flex-row bg-raised rounded-lg p-0.5 border border-border/30">
               <Pressable
-                className="flex-1 bg-accent-primary/15 border border-accent-primary/40 rounded-xl py-3 items-center justify-center active:opacity-70 active:scale-[0.99]"
-                onPress={() => {
-                  fireSelectionHaptic();
-                  incrementIntervalRound();
-                }}
+                className={`px-3 py-1 rounded-md ${
+                  intervalStatus === 'rx' ? 'bg-accent-primary' : ''
+                }`}
+                onPress={() => setIntervalStatus('rx')}
               >
-                <Text className="text-sm font-bold text-accent-primary">
-                  {t('interval.roundPlusOne', {
-                    defaultValue: '+1 Round ({{current}})',
-                    current: intervalRoundsCompleted,
-                  })}
+                <Text
+                  className={`text-xs font-bold ${
+                    intervalStatus === 'rx' ? 'text-white' : 'text-text-muted'
+                  }`}
+                >
+                  {t('interval.rx', { defaultValue: 'Rx' })}
                 </Text>
               </Pressable>
+              <Pressable
+                className={`px-3 py-1 rounded-md ${
+                  intervalStatus === 'scaled' ? 'bg-amber-600' : ''
+                }`}
+                onPress={() => setIntervalStatus('scaled')}
+              >
+                <Text
+                  className={`text-xs font-bold ${
+                    intervalStatus === 'scaled'
+                      ? 'text-white'
+                      : 'text-text-muted'
+                  }`}
+                >
+                  {t('interval.scaled', { defaultValue: 'Scaled' })}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
 
-              {intervalRoundsCompleted > 0 && (
+          {/* AMRAP-Only Controls: Large Round Incrementer & Additional Reps */}
+          {workoutFormat === 'amrap' && (
+            <>
+              <View className="flex-row items-center gap-2 mb-2">
                 <Pressable
-                  className="bg-raised border border-border/30 px-3 py-3 rounded-xl items-center justify-center active:opacity-70"
+                  className="flex-1 bg-accent-primary/15 border border-accent-primary/40 rounded-xl py-3 items-center justify-center active:opacity-70 active:scale-[0.99]"
                   onPress={() => {
                     fireSelectionHaptic();
-                    decrementIntervalRound();
+                    incrementIntervalRound();
                   }}
                 >
-                  <Text className="text-xs font-semibold text-text-muted">
-                    -1
+                  <Text className="text-sm font-bold text-accent-primary">
+                    {t('interval.roundPlusOne', {
+                      defaultValue: '+1 Round ({{current}})',
+                      current: intervalRoundsCompleted,
+                    })}
                   </Text>
                 </Pressable>
-              )}
-            </View>
 
-            <View className="flex-row items-center justify-between bg-raised/60 px-3 py-2 rounded-xl">
-              <Text className="text-xs text-text-secondary font-medium">
-                {t('interval.extraReps', { defaultValue: 'Additional Reps' })}:
-              </Text>
-              <View className="flex-row items-center gap-1.5">
-                <Pressable
-                  className="w-7 h-7 bg-raised rounded-lg items-center justify-center border border-border/30"
-                  onPress={() =>
-                    setIntervalReps(Math.max(0, intervalRepsCompleted - 5))
-                  }
-                >
-                  <Text className="text-xs font-bold text-text-muted">-5</Text>
-                </Pressable>
-                <Pressable
-                  className="w-7 h-7 bg-raised rounded-lg items-center justify-center border border-border/30"
-                  onPress={() =>
-                    setIntervalReps(Math.max(0, intervalRepsCompleted - 1))
-                  }
-                >
-                  <Text className="text-xs font-bold text-text-muted">-1</Text>
-                </Pressable>
-                <Text className="text-sm font-bold text-text-primary px-2 font-mono">
-                  {intervalRepsCompleted}
-                </Text>
-                <Pressable
-                  className="w-7 h-7 bg-raised rounded-lg items-center justify-center border border-border/30"
-                  onPress={() => setIntervalReps(intervalRepsCompleted + 1)}
-                >
-                  <Text className="text-xs font-bold text-text-primary">
-                    +1
-                  </Text>
-                </Pressable>
-                <Pressable
-                  className="w-7 h-7 bg-raised rounded-lg items-center justify-center border border-border/30"
-                  onPress={() => setIntervalReps(intervalRepsCompleted + 5)}
-                >
-                  <Text className="text-xs font-bold text-text-primary">
-                    +5
-                  </Text>
-                </Pressable>
+                {intervalRoundsCompleted > 0 && (
+                  <Pressable
+                    className="bg-raised border border-border/30 px-3 py-3 rounded-xl items-center justify-center active:opacity-70"
+                    onPress={() => {
+                      fireSelectionHaptic();
+                      decrementIntervalRound();
+                    }}
+                  >
+                    <Text className="text-xs font-semibold text-text-muted">
+                      -1
+                    </Text>
+                  </Pressable>
+                )}
               </View>
-            </View>
-          </>
-        )}
-      </View>
+
+              <View className="flex-row items-center justify-between bg-raised/60 px-3 py-2 rounded-xl">
+                <Text className="text-xs text-text-secondary font-medium">
+                  {t('interval.extraReps', { defaultValue: 'Additional Reps' })}
+                  :
+                </Text>
+                <View className="flex-row items-center gap-1.5">
+                  <Pressable
+                    className="w-7 h-7 bg-raised rounded-lg items-center justify-center border border-border/30"
+                    onPress={() =>
+                      setIntervalReps(Math.max(0, intervalRepsCompleted - 5))
+                    }
+                  >
+                    <Text className="text-xs font-bold text-text-muted">
+                      -5
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    className="w-7 h-7 bg-raised rounded-lg items-center justify-center border border-border/30"
+                    onPress={() =>
+                      setIntervalReps(Math.max(0, intervalRepsCompleted - 1))
+                    }
+                  >
+                    <Text className="text-xs font-bold text-text-muted">
+                      -1
+                    </Text>
+                  </Pressable>
+                  <Text className="text-sm font-bold text-text-primary px-2 font-mono">
+                    {intervalRepsCompleted}
+                  </Text>
+                  <Pressable
+                    className="w-7 h-7 bg-raised rounded-lg items-center justify-center border border-border/30"
+                    onPress={() => setIntervalReps(intervalRepsCompleted + 1)}
+                  >
+                    <Text className="text-xs font-bold text-text-primary">
+                      +1
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    className="w-7 h-7 bg-raised rounded-lg items-center justify-center border border-border/30"
+                    onPress={() => setIntervalReps(intervalRepsCompleted + 5)}
+                  >
+                    <Text className="text-xs font-bold text-text-primary">
+                      +5
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            </>
+          )}
+        </View>
+      )}
     </View>
   );
 }

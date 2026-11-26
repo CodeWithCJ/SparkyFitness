@@ -69,12 +69,33 @@ describe('ActiveWorkoutFocusMedia', () => {
     jest.useRealTimers();
   });
 
+  it('lets the title beside the thumbnail shrink so its buttons stay on screen', () => {
+    renderMedia({ expanded: false });
+    const slot = screen.getByText('Title block').parent?.parent;
+    expect(slot?.props.className).toContain('flex-1');
+    expect(slot?.props.className).toContain('min-w-0');
+  });
+
   it('shows pills when expanded and minimizes on press', () => {
     const { onToggleExpanded } = renderMedia();
     expect(screen.queryByText('Title block')).toBeNull();
     fireEvent.press(screen.getByLabelText('Minimize Squat image'));
     expect(onToggleExpanded).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Pause')).toBeTruthy();
+    expect(screen.getByLabelText('Pause Squat animation')).toBeTruthy();
+  });
+
+  it('puts Minimize bottom right and Pause / expand top right with 10 pt insets', () => {
+    renderMedia();
+    expect(
+      screen.getByLabelText('Minimize Squat image').props.className
+    ).toMatch(/right-2.5 bottom-2.5/);
+    expect(screen.getByLabelText('Pause Squat animation')).toBeTruthy();
+  });
+
+  it('opens the full-screen viewer from the expand icon', () => {
+    renderMedia();
+    fireEvent.press(screen.getByLabelText('Open Squat image full screen'));
+    expect(openLightbox).toHaveBeenCalledTimes(1);
   });
 
   it.each([true, false])(
@@ -101,7 +122,12 @@ describe('ActiveWorkoutFocusMedia', () => {
   it('opens the lightbox on long press of the thumbnail', () => {
     renderMedia({ expanded: false });
     fireEvent(screen.getByLabelText('Expand Squat image'), 'longPress');
-    expect(openLightbox).toHaveBeenCalledWith(['a.jpg', 'b.jpg'], 0, 'Squat');
+    expect(openLightbox).toHaveBeenCalledWith(
+      ['a.jpg', 'b.jpg'],
+      0,
+      'Squat',
+      expect.objectContaining({ controls: true })
+    );
   });
 
   it('cycles frames and pause/play toggles the cycling', () => {
@@ -123,12 +149,17 @@ describe('ActiveWorkoutFocusMedia', () => {
     renderMedia();
     act(() => jest.advanceTimersByTime(1000));
     fireEvent.press(screen.getByLabelText('View Squat image full screen'));
-    expect(openLightbox).toHaveBeenCalledWith(['a.jpg', 'b.jpg'], 1, 'Squat');
+    expect(openLightbox).toHaveBeenCalledWith(
+      ['a.jpg', 'b.jpg'],
+      1,
+      'Squat',
+      expect.objectContaining({ controls: true })
+    );
   });
 
   it('hides the pause pill for a single image and skips unusable paths', () => {
     renderMedia({ images: ['a.jpg', 'bad.jpg'] });
-    expect(screen.queryByText('Pause')).toBeNull();
+    expect(screen.queryByLabelText('Pause Squat animation')).toBeNull();
     act(() => jest.advanceTimersByTime(3000));
     expect(frame()).toBe('https://img/a.jpg');
   });
@@ -141,7 +172,7 @@ describe('ActiveWorkoutFocusMedia', () => {
       expect(screen.queryByTestId('safe-image')).toBeNull();
       expect(screen.queryByText('Title block')).toBeNull();
       expect(screen.queryByText('Minimize')).toBeNull();
-      expect(screen.queryByText('Pause')).toBeNull();
+      expect(screen.queryByLabelText('Pause Squat animation')).toBeNull();
     }
   );
 

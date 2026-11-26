@@ -1,10 +1,6 @@
 import type { TFunction } from 'i18next';
 import type { WorkoutPreset } from '../types/workoutPresets';
-import { useAppPreferencesStore } from '../stores/appPreferencesStore';
-import {
-  useActiveWorkoutStore,
-  type CompletedSetMap,
-} from '../stores/activeWorkoutStore';
+import type { CompletedSetMap } from '../stores/activeWorkoutStore';
 import type {
   ExerciseModality,
   ExerciseRecentSessionSet,
@@ -145,21 +141,6 @@ export function formatLastTimeSets(
       return weight ?? '';
     })
     .filter((text) => text !== '');
-}
-
-/**
- * Whether the active workout screen is drawing the focus view: the view is
- * chosen, the format is standard and guided mode is off. Read from the stores
- * so a handler (replace, finish) can ask without the screen's render state.
- */
-export function isFocusViewActive(): boolean {
-  const prefs = useAppPreferencesStore.getState();
-  return (
-    prefs.activeWorkoutView === 'focus' &&
-    !prefs.guidedWorkoutEnabled &&
-    (useActiveWorkoutStore.getState().workoutFormat ?? 'standard') ===
-      'standard'
-  );
 }
 
 /**

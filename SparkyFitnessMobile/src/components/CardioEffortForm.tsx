@@ -1,7 +1,10 @@
+import { LOG_LOCKED_OPACITY, useFocusLogLocked } from './focusLogLock';
+import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View, type TextInputInstance } from 'react-native';
 import { useCSSVariable } from 'uniwind';
+import { TableCellInput } from './FocusSetCells';
 import CompletionCheck, { LogCircle } from './CompletionCheck';
 import {
   SetCellInput,
@@ -199,6 +202,8 @@ export default function CardioEffortForm({
     [mode, commitDistance]
   );
 
+  const logLocked = useFocusLogLocked();
+  const locked = logLocked && !completed;
   const handleToggleComplete = useCallback(() => {
     if (setId == null) return;
     // Commit in-progress drafts first so completing adopts what's on screen.
@@ -274,12 +279,14 @@ export default function CardioEffortForm({
           <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
             {t('cardioEffort.duration', { defaultValue: 'Duration (min)' })}
           </Text>
-          <Text
-            className="text-center text-sm text-text-primary"
-            style={{ fontVariant: ['tabular-nums'] }}
-          >
-            {minutesDisplayText(set?.duration) || '–'}
-          </Text>
+          <View className="h-9 w-full items-center justify-center rounded-xl bg-raised">
+            <Text
+              className="text-center text-[15px] font-semibold text-text-primary"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {minutesDisplayText(set?.duration) || '–'}
+            </Text>
+          </View>
         </View>
         <View className="flex-1 items-center">
           <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
@@ -288,12 +295,14 @@ export default function CardioEffortForm({
               unit: distanceLabel,
             })}
           </Text>
-          <Text
-            className="text-center text-sm text-text-primary"
-            style={{ fontVariant: ['tabular-nums'] }}
-          >
-            {distanceDisplayText(set?.distance, distanceUnit) || '–'}
-          </Text>
+          <View className="h-9 w-full items-center justify-center rounded-xl bg-raised">
+            <Text
+              className="text-center text-[15px] font-semibold text-text-primary"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {distanceDisplayText(set?.distance, distanceUnit) || '–'}
+            </Text>
+          </View>
         </View>
       </View>
     );
@@ -305,7 +314,8 @@ export default function CardioEffortForm({
         <Text className="text-center text-xs font-semibold uppercase text-text-muted mb-1">
           {t('cardioEffort.duration', { defaultValue: 'Duration (min)' })}
         </Text>
-        <SetCellInput
+        <CardioCellInput
+          live={mode === 'live'}
           inputRef={durationInputRef}
           value={minutesDraft}
           onChangeText={handleMinutesChange}
@@ -335,7 +345,8 @@ export default function CardioEffortForm({
             unit: distanceLabel,
           })}
         </Text>
-        <SetCellInput
+        <CardioCellInput
+          live={mode === 'live'}
           inputRef={distanceInputRef}
           value={distanceDraft}
           onChangeText={handleDistanceChange}
@@ -362,9 +373,10 @@ export default function CardioEffortForm({
       {mode === 'live' && onComplete != null && (
         <Pressable
           onPress={handleToggleComplete}
+          disabled={locked}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityState={{ checked: completed }}
+          accessibilityState={{ checked: completed, disabled: locked }}
           accessibilityLabel={
             completed
               ? t('cardioEffort.markIncomplete', {
@@ -377,6 +389,7 @@ export default function CardioEffortForm({
                 })
           }
           className="pb-1"
+          style={locked ? { opacity: LOG_LOCKED_OPACITY } : undefined}
         >
           {completed ? (
             <CompletionCheck size={28} testID="cardio-complete-badge" />
@@ -395,4 +408,28 @@ export default function CardioEffortForm({
       )}
     </View>
   );
+}
+
+/** The filled table cell while logging live, the flat value cell in forms. */
+function CardioCellInput({
+  live,
+  ...props
+}: { live: boolean } & React.ComponentProps<typeof SetCellInput>) {
+  if (live) {
+    return (
+      <View className="h-[34px] w-full">
+        <TableCellInput
+          inputRef={props.inputRef}
+          value={props.value}
+          onChangeText={props.onChangeText}
+          onFocus={props.onFocus}
+          onBlur={props.onBlur}
+          keyboardType="decimal-pad"
+          placeholder={props.placeholder}
+          accessibilityLabel={props.accessibilityLabel}
+        />
+      </View>
+    );
+  }
+  return <SetCellInput {...props} />;
 }

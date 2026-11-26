@@ -1,3 +1,4 @@
+import { LOG_LOCKED_OPACITY } from './focusLogLock';
 import {
   memo,
   useCallback,
@@ -24,11 +25,17 @@ import {
   useKeyboardState,
   useReanimatedKeyboardAnimation,
 } from 'react-native-keyboard-controller';
-import Animated, { useAnimatedStyle } from 'react-native-reanimated';
+import Animated, {
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  type SharedValue,
+} from 'react-native-reanimated';
 import { useCSSVariable } from 'uniwind';
 import { useTranslation } from 'react-i18next';
 
 import FormInput from './FormInput';
+import Icon from './Icon';
 import LiquidGlassSurface, {
   createLiquidGlassPillStyle,
 } from './LiquidGlassSurface';
@@ -209,6 +216,8 @@ export interface SetAccessoryAction {
   onPress: () => void;
   /** Heavier weight for the primary action (e.g. Log). */
   bold?: boolean;
+  /** Greyed out and not pressable (Log while a rest runs). */
+  disabled?: boolean;
 }
 
 /** Floating pill button: Liquid Glass on iOS 26+, themed chrome chip elsewhere. */
@@ -216,12 +225,14 @@ function AccessoryPillButton({
   label,
   onPress,
   bold,
+  disabled,
   accentPrimary,
   chromeBorder,
 }: {
   label: string;
   onPress: () => void;
   bold?: boolean;
+  disabled?: boolean;
   accentPrimary: string;
   chromeBorder: string;
 }) {
@@ -239,8 +250,14 @@ function AccessoryPillButton({
       <TouchableOpacity
         onPress={onPress}
         hitSlop={HIT_SLOP}
+        disabled={disabled}
         accessibilityRole="button"
-        style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+        accessibilityState={{ disabled: !!disabled }}
+        style={{
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+          opacity: disabled ? LOG_LOCKED_OPACITY : 1,
+        }}
       >
         <Text
           style={{
@@ -299,6 +316,7 @@ export function SetInputAccessoryBar({
             label={action.label}
             onPress={action.onPress}
             bold={action.bold}
+            disabled={action.disabled}
             accentPrimary={accentPrimary}
             chromeBorder={chromeBorder}
           />
@@ -725,26 +743,58 @@ export function useSetEditAccessoryBar({
   return { onRegisterAccessoryHandle, accessoryBar };
 }
 
-/** Right-swipe Delete action for ReanimatedSwipeable's renderRightActions. */
+/**
+ * Hides the swipe Delete action until the row is actually dragged, so its red
+ * background never tints the row's right edge at rest.
+ */
+export function SwipeRevealedDelete({
+  progress,
+  children,
+}: {
+  progress?: SharedValue<number>;
+  children: React.ReactNode;
+}) {
+  const style = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      progress?.get() ?? 0,
+      [0, 0.05, 0.3],
+      [0, 0, 1],
+      Extrapolation.CLAMP
+    ),
+  }));
+  return <Animated.View style={style}>{children}</Animated.View>;
+}
+
+/**
+ * Right-swipe Delete action for ReanimatedSwipeable's renderRightActions.
+ * `height` pins the pill to a set row's cell height (the focus rows pass 34 pt,
+ * with a 12 pt radius and no vertical margin). Without it the pill stretches to
+ * the swipe row's height.
+ */
 export function SetSwipeDeleteAction({
   onPress,
   accessibilityLabel,
+  height,
 }: {
   onPress: () => void;
   accessibilityLabel?: string;
+  height?: number;
 }) {
   const { t } = useTranslation();
   return (
     <TouchableOpacity
-      className="bg-bg-danger justify-center items-center"
-      style={{ width: 72 }}
+      className={`bg-bg-danger ml-1.5 flex-row items-center justify-center gap-1 ${
+        height == null ? 'my-0.5 rounded-[14px]' : 'rounded-[12px]'
+      }`}
+      style={{ width: 84, ...(height == null ? null : { height }) }}
       onPress={onPress}
       activeOpacity={0.7}
       accessibilityLabel={
         accessibilityLabel ?? t('common.delete', { defaultValue: 'Delete' })
       }
     >
-      <Text className="text-text-danger font-semibold text-sm">
+      <Icon name="trash" size={16} color="#ffffff" />
+      <Text className="text-sm font-semibold text-white">
         {t('common.delete', { defaultValue: 'Delete' })}
       </Text>
     </TouchableOpacity>

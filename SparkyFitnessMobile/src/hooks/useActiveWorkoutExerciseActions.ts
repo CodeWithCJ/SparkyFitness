@@ -9,7 +9,6 @@ import type {
   ExerciseSetRestUpdate,
 } from '../components/ExerciseSetRestSheet';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
-import { isFocusViewActive } from '../utils/focusView';
 import { exerciseFromSnapshot, getSupersetRuns } from '../utils/workoutSession';
 import type { RootStackParamList } from '../types/navigation';
 import { buildExerciseReplaceContext } from '../utils/exerciseReplace';
@@ -19,9 +18,6 @@ interface UseActiveWorkoutExerciseActionsArgs {
   route: RouteProp<RootStackParamList, 'ActiveWorkout'>;
   runNavigationAction: (action: () => void) => void;
   setRestSheetRef: React.RefObject<ExerciseSetRestSheetRef | null>;
-  setUserExpandedIds: React.Dispatch<React.SetStateAction<ReadonlySet<string>>>;
-  setFocusedExerciseId: React.Dispatch<React.SetStateAction<string | null>>;
-  scrollToExercise: (entryId: string) => void;
 }
 
 export function useActiveWorkoutExerciseActions({
@@ -29,9 +25,6 @@ export function useActiveWorkoutExerciseActions({
   route,
   runNavigationAction,
   setRestSheetRef,
-  setUserExpandedIds,
-  setFocusedExerciseId,
-  scrollToExercise,
 }: UseActiveWorkoutExerciseActionsArgs) {
   const { t } = useTranslation();
 
@@ -41,29 +34,15 @@ export function useActiveWorkoutExerciseActions({
   const replaceTargetEntryIdRef = useRef<string | null>(null);
 
   // ExerciseSearch return. Replace swaps the exercise in place; Add appends to
-  // the end without moving the cursor, so expand the new card and scroll it
-  // into view (deferred so the card has a measured offset before scrolling).
+  // the end without moving the cursor.
   useSelectedExercise(route.params, (exercise) => {
     const replaceTarget = replaceTargetEntryIdRef.current;
     if (replaceTarget != null) {
       replaceTargetEntryIdRef.current = null;
       useActiveWorkoutStore.getState().replaceExercise(replaceTarget, exercise);
-      setFocusedExerciseId(replaceTarget);
       return;
     }
     useActiveWorkoutStore.getState().addExercise(exercise);
-    const exercises = useActiveWorkoutStore.getState().session?.exercises ?? [];
-    const added = exercises[exercises.length - 1];
-    if (added != null) {
-      const id = added.id;
-      setUserExpandedIds((prev) => {
-        const next = new Set(prev);
-        next.add(id);
-        return next;
-      });
-      setFocusedExerciseId(id);
-      setTimeout(() => scrollToExercise(id), 350);
-    }
   });
 
   const handleAddExercise = useCallback(() => {
@@ -91,7 +70,7 @@ export function useActiveWorkoutExerciseActions({
         navigation.navigate('ExerciseSearch', {
           returnKey: route.key,
           replaceFor,
-          ...(isFocusViewActive() ? { focusStyle: true } : null),
+          focusStyle: true,
         });
       });
     },

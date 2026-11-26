@@ -30,8 +30,14 @@ export interface FocusHold {
   getReadyEndsAt: number | null;
   /** Epoch ms the hold started (phase `running`). */
   startedAt: number | null;
-  /** Begins the hold: Get ready first when the watch setting has it on. */
-  start: () => void;
+  /**
+   * Begins the hold: Get ready first when the watch setting has it on. With a
+   * set id it holds that timed set instead of the cursor's (a timed exercise
+   * opened from the strip), without moving the cursor.
+   */
+  start: (setId?: string) => void;
+  /** Aborts Get ready without starting the hold (no effect once running). */
+  cancel: () => void;
   /**
    * Skips the rest of Get ready, or stops a running hold and logs the set with
    * the time held (before or after the planned length).
@@ -39,13 +45,40 @@ export interface FocusHold {
   tap: () => void;
 }
 
-interface TimedTarget {
+export interface TimedTarget {
   setId: string;
   entryId: string;
   targetSec: number | null;
 }
 
-/** The active set when it is a timed hold (not a cardio form or a distance set). */
+/** The set as a timed hold (not a cardio form or a distance set), else null. */
+export function timedTargetForSet(
+  exercise: PresetSessionResponse['exercises'][number],
+  setId: string,
+  plannedSetValues: Record<string, PlannedSetValues>
+): TimedTarget | null {
+  const set = exercise.sets.find((s) => String(s.id) === setId);
+  if (set == null) return null;
+  const snapshot = exercise.exercise_snapshot;
+  const modality = resolveSnapshotModality(snapshot);
+  const timed = modality === 'duration' || isWeightDurationModality(modality);
+  if (!timed || rendersCardioEffortForm(snapshot, exercise.sets.length)) {
+    return null;
+  }
+  // The set's own length wins (an edit); a set started from a plan keeps
+  // its length in the planned values until then.
+  const planned = plannedSetValues[setId];
+  const target =
+    effectiveSetDurationSec(set, modality) ??
+    (planned != null ? effectiveSetDurationSec(planned, modality) : null);
+  return {
+    setId,
+    entryId: exercise.id,
+    targetSec: target != null && target > 0 ? target : null,
+  };
+}
+
+/** The given set when it is a timed hold. */
 function findTimedTarget(
   session: PresetSessionResponse | null,
   activeSetId: string | null,
@@ -53,25 +86,9 @@ function findTimedTarget(
 ): TimedTarget | null {
   if (session == null || activeSetId == null) return null;
   for (const exercise of session.exercises) {
-    const set = exercise.sets.find((s) => String(s.id) === activeSetId);
-    if (set == null) continue;
-    const snapshot = exercise.exercise_snapshot;
-    const modality = resolveSnapshotModality(snapshot);
-    const timed = modality === 'duration' || isWeightDurationModality(modality);
-    if (!timed || rendersCardioEffortForm(snapshot, exercise.sets.length)) {
-      return null;
+    if (exercise.sets.some((s) => String(s.id) === activeSetId)) {
+      return timedTargetForSet(exercise, activeSetId, plannedSetValues);
     }
-    // The set's own length wins (an edit); a set started from a plan keeps
-    // its length in the planned values until then.
-    const planned = plannedSetValues[activeSetId];
-    const target =
-      effectiveSetDurationSec(set, modality) ??
-      (planned != null ? effectiveSetDurationSec(planned, modality) : null);
-    return {
-      setId: activeSetId,
-      entryId: exercise.id,
-      targetSec: target != null && target > 0 ? target : null,
-    };
   }
   return null;
 }
@@ -99,8 +116,14 @@ export function useFocusHold({
 }): FocusHold {
   const plannedSetValues = useActiveWorkoutStore((s) => s.plannedSetValues);
   const setRenderKeys = useActiveWorkoutStore((s) => s.setRenderKeys);
+  // A set started from another exercise's page; null follows the cursor.
+  const [manualId, setManualId] = useState<string | null>(null);
+  const manualCurrentId =
+    manualId != null
+      ? resolveCurrentSetId(session, setRenderKeys, manualId)
+      : null;
   const target = enabled
-    ? findTimedTarget(session, activeSetId, plannedSetValues)
+    ? findTimedTarget(session, manualCurrentId ?? activeSetId, plannedSetValues)
     : null;
   const setId = target?.setId ?? null;
   const startedAt = useActiveWorkoutStore((s) =>
@@ -139,6 +162,9 @@ export function useFocusHold({
       : activeGetReady != null
         ? 'getReady'
         : 'idle';
+  // Once the hold is over (logged, cancelled or the set gone) the cursor
+  // leads again.
+  if (manualId != null && phase === 'idle') setManualId(null);
   const targetSec = target?.targetSec ?? null;
 
   const run = useCallback((id: string) => {
@@ -188,27 +214,52 @@ export function useFocusHold({
     ) {
       return;
     }
+    // "Log at zero" ends the hold at the plan; "Keep counting" ends it at twice
+    // the plan so a forgotten hold cannot run for hours.
     const timer = setTimeout(
       () => {
         playIntervalCue('finish');
         fireSuccessHaptic();
+        if (useAppPreferencesStore.getState().focusHoldAtZero === 'log') {
+          finish(setId);
+        }
       },
       Math.max(0, startedAt + targetSec * 1000 - Date.now())
     );
-    return () => clearTimeout(timer);
+    const capTimer = setTimeout(
+      () => {
+        if (useAppPreferencesStore.getState().focusHoldAtZero === 'keep') {
+          finish(setId);
+        }
+      },
+      Math.max(0, startedAt + targetSec * 2000 - Date.now())
+    );
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(capTimer);
+    };
   }, [setId, startedAt, targetSec, finish]);
 
-  const start = useCallback(() => {
-    if (setId == null || phase !== 'idle') return;
-    if (holdGetReady) {
-      setGetReady({
-        setId,
-        endsAt: Date.now() + GET_READY_SECONDS * 1000,
-      });
-    } else {
-      run(setId);
-    }
-  }, [setId, phase, holdGetReady, run]);
+  const start = useCallback(
+    (otherSetId?: string) => {
+      const id = typeof otherSetId === 'string' ? otherSetId : setId;
+      if (id == null || phase !== 'idle') return;
+      if (id !== setId) setManualId(id);
+      if (holdGetReady) {
+        setGetReady({
+          setId: id,
+          endsAt: Date.now() + GET_READY_SECONDS * 1000,
+        });
+      } else {
+        run(id);
+      }
+    },
+    [setId, phase, holdGetReady, run]
+  );
+
+  const cancel = useCallback(() => {
+    if (phase === 'getReady') setGetReady(null);
+  }, [phase]);
 
   const tap = useCallback(() => {
     if (setId == null) return;
@@ -224,6 +275,7 @@ export function useFocusHold({
     getReadyEndsAt,
     startedAt,
     start,
+    cancel,
     tap,
   };
 }

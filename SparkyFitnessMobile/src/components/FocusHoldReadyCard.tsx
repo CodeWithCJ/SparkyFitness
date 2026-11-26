@@ -1,3 +1,4 @@
+import { LOG_LOCKED_OPACITY, useFocusLogLocked } from './focusLogLock';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
@@ -37,10 +38,12 @@ function FocusHoldReadyCard({
   onStart,
 }: FocusHoldReadyCardProps) {
   const { t } = useTranslation();
-  const [holdColor, onHold] = useCSSVariable([
+  const logLocked = useFocusLogLocked();
+  const [holdColor, onHold, holdText] = useCSSVariable([
     '--color-hold',
     '--color-on-hold',
-  ]) as [string, string];
+    '--color-hold-text',
+  ]) as [string, string, string];
   const seedText = targetSec != null ? String(targetSec) : '';
   // Null while the field is not being typed in: it shows the set's length.
   const [draft, setDraft] = useState<string | null>(null);
@@ -63,7 +66,7 @@ function FocusHoldReadyCard({
   return (
     <View
       testID="focus-hold-ready"
-      className="my-1 items-center gap-3 rounded-[20px] p-2.5"
+      className="mb-0.5 items-center gap-2.5 rounded-[20px] p-2"
       style={{
         backgroundColor: withAlpha(holdColor, 0.1),
         borderWidth: 2,
@@ -73,7 +76,7 @@ function FocusHoldReadyCard({
       <View className="w-full flex-row items-center justify-between">
         <Text
           className="text-[17px] font-bold"
-          style={{ color: holdColor }}
+          style={{ color: holdText }}
           accessibilityRole="header"
         >
           {`${setLabel} · ${t('activeWorkout.focus.hold.ready', {
@@ -94,7 +97,7 @@ function FocusHoldReadyCard({
       </View>
       <FocusTimerRing
         size={RING_SIZE}
-        strokeWidth={22}
+        strokeWidth={14}
         progress={1}
         color={holdColor}
         trackColor={withAlpha(holdColor, 0.22)}
@@ -102,7 +105,7 @@ function FocusHoldReadyCard({
         <Text
           className="text-[64px] font-bold"
           style={{
-            color: holdColor,
+            color: holdText,
             fontVariant: ['tabular-nums'],
             lineHeight: 72,
           }}
@@ -145,10 +148,15 @@ function FocusHoldReadyCard({
       <Pressable
         testID="focus-hold-start"
         onPress={onStart}
+        disabled={logLocked}
         accessibilityRole="button"
+        accessibilityState={{ disabled: logLocked }}
         accessibilityLabel={startLabel}
         className="h-14 w-full flex-row items-center justify-center gap-2.5 rounded-full active:opacity-80"
-        style={{ backgroundColor: holdColor }}
+        style={{
+          backgroundColor: holdColor,
+          opacity: logLocked ? LOG_LOCKED_OPACITY : 1,
+        }}
       >
         <Icon name="play" size={20} color={onHold} />
         <Text className="text-[20px] font-bold" style={{ color: onHold }}>

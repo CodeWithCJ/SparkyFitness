@@ -181,6 +181,7 @@ describe('ActiveWorkoutGuidedCard', () => {
     expect(store.rest.state).toBe('resting');
     expect(spoken().at(-1)).toEqual(['Rest. 30 seconds.', 'Next: Push-up.']);
     expect(screen.getByText('Next up')).toBeTruthy();
+    expect(screen.getByTestId('guided-rest-countdown')).toBeTruthy();
 
     // Rest over: set 2 is announced without repeating the instructions.
     act(() => useActiveWorkoutStore.getState().dismissRest());

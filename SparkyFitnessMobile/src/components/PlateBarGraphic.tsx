@@ -22,7 +22,7 @@ const PLATE_HEIGHT_MIN = 16;
 const PLATE_HEIGHT_MAX = 30;
 
 /** One side of the bar: the bar stub, then the plates from heaviest outwards. */
-export const PlateSide: React.FC<{ load: PlateLoad; barWeight: number }> = ({
+const PlateSide: React.FC<{ load: PlateLoad; barWeight: number }> = ({
   load,
   barWeight,
 }) => {

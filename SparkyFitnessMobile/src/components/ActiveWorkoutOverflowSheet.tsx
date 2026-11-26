@@ -1,16 +1,16 @@
 import { useMemo, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useCSSVariable } from 'uniwind';
 import type { PresetSessionResponse } from '@workspace/shared';
 import ActionSheet, {
   type ActionSheetItem,
   type ActionSheetRef,
 } from './ActionSheet';
+import { formatRestRangeLabel } from './RestPeriodChip';
+import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { CompletedSetMap } from '../stores/activeWorkoutStore';
-import {
-  rendersCardioEffortForm,
-  upcomingExercises,
-  type SupersetRun,
-} from '../utils/workoutSession';
+import { upcomingExercises, type SupersetRun } from '../utils/workoutSession';
+import { FOCUS_SUPERSET_PALETTE_VARS } from '../utils/workoutSupersets';
 
 export interface OverflowMenuState {
   entryId: string;
@@ -29,6 +29,8 @@ interface ActiveWorkoutOverflowSheetProps {
   onPressThumb: (entryId: string) => void;
   onToggleExerciseNote: (entryId: string) => void;
   onReplaceExercise: (entryId: string) => void;
+  /** Opens the exercise's rest period sheet. */
+  onPressRest: (entryId: string) => void;
   /** Whether the exercise can take a warm-up ramp: a weight to ramp to, and none logged yet. */
   canAddWarmups: (entryId: string) => boolean;
   onAddWarmups: (entryId: string) => void;
@@ -40,8 +42,6 @@ interface ActiveWorkoutOverflowSheetProps {
   onSwitchToSwapMode: () => void;
   onSwitchToMainMode: () => void;
   onDismiss: () => void;
-  /** The focus view's card-style menu (Phone-Menu board) with icons. */
-  cards?: boolean;
 }
 
 export default function ActiveWorkoutOverflowSheet({
@@ -55,6 +55,7 @@ export default function ActiveWorkoutOverflowSheet({
   onPressThumb,
   onToggleExerciseNote,
   onReplaceExercise,
+  onPressRest,
   canAddWarmups,
   onAddWarmups,
   onClearExerciseSets,
@@ -65,9 +66,12 @@ export default function ActiveWorkoutOverflowSheet({
   onSwitchToSwapMode,
   onSwitchToMainMode,
   onDismiss,
-  cards = false,
 }: ActiveWorkoutOverflowSheetProps) {
   const { t } = useTranslation();
+  const defaultRestSec = useAppPreferencesStore((s) => s.defaultRestSec);
+  const supersetPalette = useCSSVariable([
+    ...FOCUS_SUPERSET_PALETTE_VARS,
+  ]) as string[];
 
   const overflowMenuItems = useMemo<ActionSheetItem[]>(() => {
     if (overflowMenu == null || session == null) return [];
@@ -97,11 +101,36 @@ export default function ActiveWorkoutOverflowSheet({
       : [];
 
     if (mode === 'swap') {
+      // Swap is also opened from an exercise the cursor is not on (the focus
+      // view's header), so the list follows the cursor, not the swapped entry.
+      const swapUpcoming = upcomingExercises(
+        session,
+        activeSetId,
+        completedSetIds
+      ).filter((e) => e.id !== entryId);
       const exerciseLabel = t('workout.exercise', { defaultValue: 'Exercise' });
+      // Each exercise is its own card: its place in the workout, and A1 / A2
+      // for a superset member, as in the exercises list.
+      const memberBadge = (id: string) => {
+        const runIndex = supersetRuns.findIndex((run) =>
+          run.entryIds.includes(id)
+        );
+        if (runIndex < 0) return {};
+        const member = supersetRuns[runIndex].entryIds.indexOf(id) + 1;
+        return {
+          badge: `${String.fromCharCode(65 + runIndex)}${member}`,
+          badgeColor: supersetPalette[runIndex % supersetPalette.length],
+        };
+      };
       return [
-        ...upcoming.map((candidate) => ({
+        ...swapUpcoming.map((candidate) => ({
           key: candidate.id,
-          group: 'now',
+          group: candidate.id,
+          leading: String(
+            session.exercises.findIndex((e) => e.id === candidate.id) + 1
+          ),
+          ...memberBadge(candidate.id),
+          accentDescription: true,
           label: candidate.exercise_snapshot?.name ?? exerciseLabel,
           description: t('workout.doNowSets', {
             count: candidate.sets.length,
@@ -114,6 +143,7 @@ export default function ActiveWorkoutOverflowSheet({
         {
           key: 'replace',
           group: 'replace',
+          icon: 'chevron-forward' as const,
           label: t('workout.replaceWithOther', {
             defaultValue: 'Replace with another exercise…',
           }),
@@ -125,20 +155,15 @@ export default function ActiveWorkoutOverflowSheet({
     const entry = session.exercises.find((e) => e.id === entryId);
     const entryHasCompleted =
       entry?.sets.some((s) => completedSetIds[String(s.id)] != null) ?? false;
-    const entryIsCardioForm =
-      entry != null &&
-      rendersCardioEffortForm(entry.exercise_snapshot, entry.sets.length);
 
     const items: ActionSheetItem[] = [];
     items.push({
       key: 'view',
       label: t('workout.viewExercise', { defaultValue: 'View exercise' }),
       icon: 'play',
-      description: cards
-        ? t('activeWorkout.focus.menu.viewHint', {
-            defaultValue: 'Instructions and history',
-          })
-        : undefined,
+      description: t('activeWorkout.focus.menu.viewHint', {
+        defaultValue: 'Instructions and history',
+      }),
       onPress: () => onPressThumb(entryId),
     });
     items.push({
@@ -147,6 +172,21 @@ export default function ActiveWorkoutOverflowSheet({
       icon: 'list',
       onPress: () => onToggleExerciseNote(entryId),
     });
+    if (entry != null) {
+      items.push({
+        key: 'rest',
+        label: t('activeWorkout.focus.menu.restTimer', {
+          defaultValue: 'Rest timer · {{duration}}',
+          duration: formatRestRangeLabel(
+            entry.sets.map((set) => set.rest_time),
+            defaultRestSec,
+            t('restPeriod.off', { defaultValue: 'Off' })
+          ),
+        }),
+        icon: 'timer',
+        onPress: () => onPressRest(entryId),
+      });
+    }
     if (upcoming.length > 0) {
       items.push({
         key: 'do-now',
@@ -184,11 +224,9 @@ export default function ActiveWorkoutOverflowSheet({
         key: 'warmups',
         label: t('workout.addWarmups', { defaultValue: 'Add warm-ups' }),
         icon: 'flame',
-        description: cards
-          ? t('activeWorkout.focus.menu.warmupsHint', {
-              defaultValue: 'Calculated from your working weight',
-            })
-          : undefined,
+        description: t('activeWorkout.focus.menu.warmupsHint', {
+          defaultValue: 'Calculated from your working weight',
+        }),
         onPress: () => onAddWarmups(entryId),
       });
     }
@@ -198,7 +236,7 @@ export default function ActiveWorkoutOverflowSheet({
       icon: 'arrow-undo',
       onPress: () => onReplaceExercise(entryId),
     });
-    if (entryHasCompleted && !entryIsCardioForm) {
+    if (entryHasCompleted) {
       items.push({
         key: 'clear',
         label: t('workout.clearLoggedSets', {
@@ -221,6 +259,7 @@ export default function ActiveWorkoutOverflowSheet({
     overflowMenu,
     session,
     supersetRuns,
+    supersetPalette,
     completedSetIds,
     activeSetId,
     onDoExerciseNow,
@@ -228,14 +267,15 @@ export default function ActiveWorkoutOverflowSheet({
     onPressThumb,
     onToggleExerciseNote,
     onReplaceExercise,
+    onPressRest,
     canAddWarmups,
+    defaultRestSec,
     onAddWarmups,
     onClearExerciseSets,
     onRemoveExercise,
     onSelectSupersetPartner,
     onUngroupExercise,
     onSwitchToPickMode,
-    cards,
     t,
   ]);
 
@@ -254,12 +294,9 @@ export default function ActiveWorkoutOverflowSheet({
     <ActionSheet
       ref={sheetRef}
       title={title}
-      items={
-        cards
-          ? overflowMenuItems
-          : overflowMenuItems.map(({ icon: _icon, ...rest }) => rest)
-      }
-      layout={cards ? 'cards' : 'list'}
+      items={overflowMenuItems}
+      layout="cards"
+      showCancel={overflowMenu?.mode === 'swap'}
       onBack={overflowMenu?.mode === 'pick' ? onSwitchToMainMode : undefined}
       onDismiss={onDismiss}
     />

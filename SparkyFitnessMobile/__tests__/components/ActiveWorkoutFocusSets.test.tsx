@@ -1,7 +1,9 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { act, render, fireEvent } from '@testing-library/react-native';
+import { act, render, fireEvent, screen } from '@testing-library/react-native';
 import ActiveWorkoutFocusSets from '../../src/components/ActiveWorkoutFocusSets';
+import { FocusLogLockContext } from '../../src/components/focusLogLock';
+import { useActiveWorkoutStore } from '../../src/stores/activeWorkoutStore';
 import {
   __resetAppPreferencesStoreForTests,
   useAppPreferencesStore,
@@ -76,9 +78,28 @@ interface RenderOptions {
   focusedField?: 'weight' | 'reps' | 'distance' | 'rpe';
   expandedSetKey?: string | null;
   withDetail?: boolean;
+  tail?: boolean;
+  /** A standard rest runs: logging a new set is locked. */
+  logLocked?: boolean;
 }
 
-function renderSets(options: RenderOptions = {}) {
+// The card opens on the first set to do unless the cursor says otherwise, so a
+// test about compact rows asks for a trailing current
+// set (id 999) to hold the card: pass `tail: true`.
+function withTailCurrent(options: RenderOptions): RenderOptions {
+  if (!options.tail) return options;
+  return {
+    ...options,
+    activeSetId: '999',
+    sets: [
+      ...(options.sets ?? [makeSet()]),
+      makeSet({ id: 999, set_number: 99 }),
+    ],
+  };
+}
+
+function renderSets(rawOptions: RenderOptions = {}) {
+  const options = withTailCurrent(rawOptions);
   const callbacks = {
     onCompleteSet: jest.fn(),
     onUncomplete: jest.fn(),
@@ -94,32 +115,34 @@ function renderSets(options: RenderOptions = {}) {
   };
   const { onDeleteSet, onToggleSetDetail, ...rest } = callbacks;
   const buildElement = (options: RenderOptions) => (
-    <ActiveWorkoutFocusSets
-      exercise={makeExercise(
-        options.sets ?? [makeSet()],
-        options.modality,
-        options.equipment
-      )}
-      completedSetIds={options.completedSetIds ?? {}}
-      activeSetId={options.activeSetId ?? null}
-      setRenderKeys={{ '101': 'key-101' }}
-      metricColumn={options.metricColumn ?? 'rpe'}
-      weightUnit={options.weightUnit ?? 'kg'}
-      distanceUnit={options.distanceUnit ?? 'km'}
-      assumedSetValues={options.assumed}
-      previousSets={options.previousSets}
-      focusedSetKey={options.focusedSetKey ?? null}
-      focusedField={options.focusedField ?? 'weight'}
-      {...rest}
-      onDeleteSet={options.withDelete ? onDeleteSet : undefined}
-      onToggleSetDetail={options.withDetail ? onToggleSetDetail : undefined}
-      expandedSetKey={options.expandedSetKey ?? null}
-    />
+    <FocusLogLockContext.Provider value={options.logLocked ?? false}>
+      <ActiveWorkoutFocusSets
+        exercise={makeExercise(
+          options.sets ?? [makeSet()],
+          options.modality,
+          options.equipment
+        )}
+        completedSetIds={options.completedSetIds ?? {}}
+        activeSetId={options.activeSetId ?? null}
+        setRenderKeys={{ '101': 'key-101' }}
+        metricColumn={options.metricColumn ?? 'rpe'}
+        weightUnit={options.weightUnit ?? 'kg'}
+        distanceUnit={options.distanceUnit ?? 'km'}
+        assumedSetValues={options.assumed}
+        previousSets={options.previousSets}
+        focusedSetKey={options.focusedSetKey ?? null}
+        focusedField={options.focusedField ?? 'weight'}
+        {...rest}
+        onDeleteSet={options.withDelete ? onDeleteSet : undefined}
+        onToggleSetDetail={options.withDetail ? onToggleSetDetail : undefined}
+        expandedSetKey={options.expandedSetKey ?? null}
+      />
+    </FocusLogLockContext.Provider>
   );
   const utils = render(buildElement(options));
   /** Re-render the same sets (same callbacks) with updated options. */
   const rerenderSets = (next: RenderOptions) =>
-    utils.rerender(buildElement(next));
+    utils.rerender(buildElement(withTailCurrent(next)));
   return { ...utils, callbacks, rerenderSets };
 }
 
@@ -129,7 +152,8 @@ describe('ActiveWorkoutFocusSets', () => {
   });
 
   it('renders a row per set with weight, reps and the headers', () => {
-    const { getByLabelText, getByText } = renderSets({
+    const { getByLabelText } = renderSets({
+      tail: true,
       sets: [
         makeSet(),
         makeSet({ id: 102, set_number: 2, weight: 62.5, reps: 8 }),
@@ -139,9 +163,9 @@ describe('ActiveWorkoutFocusSets', () => {
     expect(getByLabelText('Reps for set 1').props.value).toBe('10');
     expect(getByLabelText('Weight for set 2').props.value).toBe('62.5');
     expect(getByLabelText('Reps for set 2').props.value).toBe('8');
-    expect(getByText('kg')).toBeTruthy();
-    expect(getByText('Reps')).toBeTruthy();
-    expect(getByText('RPE')).toBeTruthy();
+    expect(screen.getAllByText('kg').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Reps').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('RPE').length).toBeGreaterThan(0);
   });
 
   it('shows assumed values as placeholders on empty fields', () => {
@@ -299,8 +323,75 @@ describe('ActiveWorkoutFocusSets', () => {
     expect(callbacks.onCompleteSet).not.toHaveBeenCalled();
   });
 
+  describe('while a rest runs (log lock)', () => {
+    it('disables the hero Log set button and the table log check, but not un-log', () => {
+      const locked = renderSets({
+        logLocked: true,
+        activeSetId: '101',
+        sets: [makeSet(), makeSet({ id: 102, set_number: 2 })],
+      });
+      const hero = locked.getByLabelText('Log set');
+      expect(hero.props.accessibilityState).toMatchObject({ disabled: true });
+      fireEvent.press(hero);
+      expect(locked.callbacks.onCompleteSet).not.toHaveBeenCalled();
+      const check = locked.getByLabelText('Mark set 2 complete');
+      expect(check.props.accessibilityState).toMatchObject({ disabled: true });
+      fireEvent.press(check);
+      expect(locked.callbacks.onCompleteSet).not.toHaveBeenCalled();
+      locked.rerenderSets({
+        logLocked: false,
+        activeSetId: '101',
+        sets: [makeSet(), makeSet({ id: 102, set_number: 2 })],
+      });
+      fireEvent.press(locked.getByLabelText('Log set'));
+      expect(locked.callbacks.onCompleteSet).toHaveBeenCalledWith('101');
+    });
+
+    it('lets an earlier open set be re-marked, but not a later one', () => {
+      const { getByLabelText, callbacks } = renderSets({
+        logLocked: true,
+        activeSetId: '102',
+        sets: [
+          makeSet(),
+          makeSet({ id: 102, set_number: 2 }),
+          makeSet({ id: 103, set_number: 3 }),
+        ],
+      });
+      const earlier = getByLabelText('Mark set 1 complete');
+      expect(earlier.props.accessibilityState.disabled).toBeFalsy();
+      fireEvent.press(earlier);
+      expect(callbacks.onCompleteSet).toHaveBeenCalledWith('101');
+      const later = getByLabelText('Mark set 3 complete');
+      expect(later.props.accessibilityState).toMatchObject({ disabled: true });
+    });
+
+    it('still un-logs a done set', () => {
+      const done = renderSets({
+        logLocked: true,
+        completedSetIds: { '101': 1 },
+      });
+      fireEvent.press(done.getByLabelText('Un-complete set 1'));
+      expect(done.callbacks.onUncomplete).toHaveBeenCalledWith('101');
+    });
+
+    it('disables the cardio complete control', () => {
+      const { getByLabelText, callbacks } = renderSets({
+        logLocked: true,
+        modality: 'duration_distance',
+        sets: [
+          makeSet({ weight: null, reps: null, duration: 600, distance: 2 }),
+        ],
+        activeSetId: '101',
+      });
+      const btn = getByLabelText('Complete Bench Press');
+      expect(btn.props.accessibilityState).toMatchObject({ disabled: true });
+      fireEvent.press(btn);
+      expect(callbacks.onCompleteSet).not.toHaveBeenCalled();
+    });
+  });
+
   it('completes and un-completes through the check', () => {
-    const upcoming = renderSets();
+    const upcoming = renderSets({ tail: true });
     fireEvent.press(upcoming.getByLabelText('Mark set 1 complete'));
     expect(upcoming.callbacks.onCompleteSet).toHaveBeenCalledWith('101');
     upcoming.unmount();
@@ -318,20 +409,57 @@ describe('ActiveWorkoutFocusSets', () => {
     expect(StyleSheet.flatten(check.props.style).backgroundColor).toBeDefined();
     done.unmount();
 
-    const open = renderSets();
+    const open = renderSets({ tail: true });
     expect(
       open.getByLabelText('Mark set 1 complete').props.accessibilityState
     ).toEqual({ checked: false });
   });
 
   describe('active-set card', () => {
-    it('replaces the active set row with a card that steps weight, reps and RPE', () => {
+    it('shows the card on the first set when the cursor is not on this exercise', () => {
+      const { getByTestId, getByText } = renderSets({
+        activeSetId: null,
+        sets: [makeSet({ id: 101 }), makeSet({ id: 102, set_number: 2 })],
+      });
+      expect(getByTestId('focus-active-set-card')).toBeTruthy();
+      expect(getByText('Set 1')).toBeTruthy();
+    });
+
+    it('keeps the card on the first set while its input is focused', () => {
+      const { getByTestId } = renderSets({
+        activeSetId: '999',
+        focusedSetKey: 'key-101',
+        sets: [makeSet({ id: 101 }), makeSet({ id: 102, set_number: 2 })],
+      });
+      expect(getByTestId('focus-active-set-card')).toBeTruthy();
+    });
+
+    it('puts the card on the first set still to do, not a logged one', () => {
+      const { getByTestId, getByText } = renderSets({
+        activeSetId: null,
+        completedSetIds: { '101': 1 },
+        sets: [makeSet({ id: 101 }), makeSet({ id: 102, set_number: 2 })],
+      });
+      expect(getByTestId('focus-active-set-card')).toBeTruthy();
+      expect(getByText('Set 2')).toBeTruthy();
+    });
+
+    it('shows no card once every set is logged', () => {
+      const { queryByTestId } = renderSets({
+        activeSetId: null,
+        completedSetIds: { '101': 1 },
+        sets: [makeSet({ id: 101 })],
+      });
+      expect(queryByTestId('focus-active-set-card')).toBeNull();
+    });
+
+    it('replaces the active set row with a card that has no RPE stepper or captions', () => {
       const {
-        getByLabelText,
         getByTestId,
         getByText,
+        queryByLabelText,
         queryByTestId,
-        callbacks,
+        queryByText,
       } = renderSets({
         activeSetId: '101',
         sets: [makeSet({ rpe: 8 })],
@@ -339,15 +467,9 @@ describe('ActiveWorkoutFocusSets', () => {
       expect(getByTestId('focus-active-set-card')).toBeTruthy();
       expect(queryByTestId('focus-set-row')).toBeNull();
       expect(getByText('Set 1')).toBeTruthy();
-      expect(getByText('step 2.5 kg')).toBeTruthy();
-      fireEvent.press(getByLabelText('Increase RPE for set 1'));
-      expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
-        rpe: 9,
-      });
-      fireEvent.press(getByLabelText('Decrease RPE for set 1'));
-      expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
-        rpe: 7,
-      });
+      expect(queryByText('step 2.5 kg')).toBeNull();
+      expect(queryByLabelText('Increase RPE for set 1')).toBeNull();
+      expect(queryByLabelText('Decrease RPE for set 1')).toBeNull();
     });
 
     it('logs the set from the card and shows the planned reps', () => {
@@ -375,44 +497,13 @@ describe('ActiveWorkoutFocusSets', () => {
       expect(queryByText('Plan 1 rep')).toBeTruthy();
     });
 
-    it('stops RPE at 10', () => {
-      const { getByLabelText, callbacks } = renderSets({
-        activeSetId: '101',
-        sets: [makeSet({ rpe: 10 })],
-      });
-      fireEvent.press(getByLabelText('Increase RPE for set 1'));
-      expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
-        rpe: 10,
-      });
-    });
-
-    it('offers no RPE stepper when the effort column is off', () => {
-      const { queryByLabelText } = renderSets({
-        activeSetId: '101',
-        metricColumn: 'volume',
-      });
-      expect(queryByLabelText('Increase RPE for set 1')).toBeNull();
-    });
-
-    it('steps RIR through the same stepper', () => {
-      const { getByLabelText, callbacks } = renderSets({
-        activeSetId: '101',
-        metricColumn: 'rir',
-        sets: [makeSet({ rir: 2 })],
-      });
-      fireEvent.press(getByLabelText('Increase RIR for set 1'));
-      expect(callbacks.onCommitField).toHaveBeenLastCalledWith('101', {
-        rir: 3,
-      });
-    });
-
-    it('fills from last time and shows what was lifted', () => {
-      const { getByText, getByLabelText, callbacks } = renderSets({
+    it('fills from last time', () => {
+      const { queryByText, getByLabelText, callbacks } = renderSets({
         activeSetId: '101',
         sets: [makeSet({ weight: null, reps: null })],
         previousSets: [{ weight: 80, reps: 8 } as ExerciseRecentSessionSet],
       });
-      expect(getByText('last 8')).toBeTruthy();
+      expect(queryByText('last 8')).toBeNull();
       fireEvent.press(getByLabelText(/^Fill set 1 with/));
       expect(callbacks.onCommitField).toHaveBeenCalledWith('101', {
         weight: 80,
@@ -435,8 +526,31 @@ describe('ActiveWorkoutFocusSets', () => {
     });
   });
 
+  it('keeps the next set card up during a rest and leaves the rest card to the page overlay', () => {
+    useActiveWorkoutStore.setState({
+      rest: {
+        ...useActiveWorkoutStore.getState().rest,
+        state: 'resting',
+        endsAt: Date.now() + 60_000,
+        durationSec: 90,
+        pausedRemainingMs: null,
+      },
+    });
+    const { getByTestId, queryByTestId } = renderSets({
+      activeSetId: '102',
+      completedSetIds: { '101': 1 },
+      sets: [makeSet(), makeSet({ id: 102, set_number: 2 })],
+    });
+    expect(getByTestId('focus-active-set-card')).toBeTruthy();
+    expect(queryByTestId('focus-rest-card')).toBeNull();
+    useActiveWorkoutStore.setState({
+      rest: { ...useActiveWorkoutStore.getState().rest, state: 'ready' },
+    });
+  });
+
   it('labels warm-ups W and numbers working sets without them', () => {
     const { getByText, queryByText } = renderSets({
+      tail: true,
       sets: [
         makeSet({ set_type: 'warmup' }),
         makeSet({ id: 102, set_number: 2 }),
@@ -448,18 +562,19 @@ describe('ActiveWorkoutFocusSets', () => {
   });
 
   it('shows the RIR effort column and activates it with the render key', () => {
-    const { getByLabelText, getByText, callbacks } = renderSets({
+    const { getByLabelText, callbacks } = renderSets({
+      tail: true,
       metricColumn: 'rir',
       sets: [makeSet({ rir: 2 })],
     });
-    expect(getByText('RIR')).toBeTruthy();
+    expect(screen.getAllByText('RIR').length).toBeGreaterThan(0);
     expect(getByLabelText('RIR for set 1').props.value).toBe('2');
     fireEvent(getByLabelText('RIR for set 1'), 'focus');
     expect(callbacks.onActivateRpe).toHaveBeenCalledWith('key-101');
   });
 
   it('commits a typed RPE on blur and a typed RIR to the rir field', () => {
-    const rpe = renderSets();
+    const rpe = renderSets({ tail: true });
     const rpeInput = rpe.getByLabelText('RPE for set 1');
     fireEvent.changeText(rpeInput, '8.5');
     expect(rpe.callbacks.onCommitField).not.toHaveBeenCalled();
@@ -469,7 +584,7 @@ describe('ActiveWorkoutFocusSets', () => {
     });
     rpe.unmount();
 
-    const rir = renderSets({ metricColumn: 'rir' });
+    const rir = renderSets({ tail: true, metricColumn: 'rir' });
     const rirInput = rir.getByLabelText('RIR for set 1');
     fireEvent.changeText(rirInput, '2');
     fireEvent(rirInput, 'blur');
@@ -479,7 +594,7 @@ describe('ActiveWorkoutFocusSets', () => {
   });
 
   it('reports focus with the render key and registers an accessory handle', () => {
-    const { getByLabelText, callbacks } = renderSets();
+    const { getByLabelText, callbacks } = renderSets({ tail: true });
     fireEvent(getByLabelText('Weight for set 1'), 'focus');
     expect(callbacks.onActivateSet).toHaveBeenCalledWith('key-101', 'weight');
     fireEvent(getByLabelText('Reps for set 1'), 'focus');
@@ -522,6 +637,7 @@ describe('ActiveWorkoutFocusSets', () => {
 
   it('shows the volume column read-only, as the list does', () => {
     const { getByText, queryByLabelText } = renderSets({
+      tail: true,
       metricColumn: 'volume',
       sets: [makeSet({ weight: 60, reps: 10 })],
     });
@@ -532,6 +648,7 @@ describe('ActiveWorkoutFocusSets', () => {
 
   it('shows estimated maxes read-only for 1RM and 10RM', () => {
     const e1rm = renderSets({
+      tail: true,
       metricColumn: 'e1rm',
       sets: [makeSet({ weight: 60, reps: 10 })],
     });
@@ -539,6 +656,7 @@ describe('ActiveWorkoutFocusSets', () => {
     expect(e1rm.getByText('80')).toBeTruthy();
     e1rm.unmount();
     const tenrm = renderSets({
+      tail: true,
       metricColumn: 'tenrm',
       sets: [makeSet({ weight: 60, reps: 10 })],
     });
@@ -547,12 +665,13 @@ describe('ActiveWorkoutFocusSets', () => {
   });
 
   it('clamps the weight-derived columns to RPE for reps-only tables', () => {
-    const { getByLabelText, getByText } = renderSets({
+    const { getByLabelText } = renderSets({
+      tail: true,
       metricColumn: 'volume',
       modality: 'reps_only',
       sets: [makeSet({ weight: null, rpe: 8 })],
     });
-    expect(getByText('RPE')).toBeTruthy();
+    expect(screen.getAllByText('RPE').length).toBeGreaterThan(0);
     expect(getByLabelText('RPE for set 1')).toBeTruthy();
   });
 
@@ -705,12 +824,13 @@ describe('ActiveWorkoutFocusSets', () => {
 
   it('commits an effort draft to the metric it was typed for after a switch', () => {
     const { getByLabelText, callbacks, rerenderSets } = renderSets({
+      tail: true,
       metricColumn: 'rpe',
     });
     fireEvent.changeText(getByLabelText('RPE for set 1'), '8');
     expect(callbacks.onCommitField).not.toHaveBeenCalled();
 
-    rerenderSets({ metricColumn: 'rir' });
+    rerenderSets({ tail: true, metricColumn: 'rir' });
     expect(callbacks.onCommitField).toHaveBeenCalledTimes(1);
     expect(callbacks.onCommitField).toHaveBeenCalledWith('101', { rpe: 8 });
     expect(callbacks.onCommitField).not.toHaveBeenCalledWith(
@@ -720,14 +840,40 @@ describe('ActiveWorkoutFocusSets', () => {
     expect(getByLabelText('RIR for set 1').props.value).toBe('');
   });
 
-  it('disables swipe-to-delete on fallback rows but leaves the detail Delete', () => {
+  it('swipes to Delete on fallback rows', () => {
     const { queryByTestId } = renderSets({
       modality: 'duration',
       sets: [makeSet({ weight: null, reps: null, duration: 30 })],
       withDelete: true,
     });
     expect(queryByTestId('set-row')).toBeTruthy();
-    expect(queryByTestId('reanimated-swipeable')).toBeNull();
+    expect(queryByTestId('reanimated-swipeable')).toBeTruthy();
+  });
+
+  it('keeps the swipe Delete background invisible until the row is swiped', () => {
+    const { getAllByTestId } = renderSets({ tail: true, withDelete: true });
+    const wrapper = getAllByTestId('swipeable-right-actions')[0];
+    // The Delete action sits inside a wrapper whose opacity follows the swipe
+    // progress, so it is fully transparent at rest.
+    expect(
+      wrapper.findAll((node) => {
+        const style = node.props.style as { opacity?: number } | undefined;
+        return style?.opacity === 0;
+      }).length
+    ).toBeGreaterThan(0);
+  });
+
+  it('swipes to Delete on a stepper table row, and not without a delete handler', () => {
+    const withDelete = renderSets({ tail: true, withDelete: true });
+    expect(withDelete.queryAllByTestId('reanimated-swipeable').length).toBe(
+      withDelete.queryAllByTestId('focus-set-row').length
+    );
+    expect(withDelete.queryAllByTestId('focus-set-row').length).toBeGreaterThan(
+      0
+    );
+    withDelete.unmount();
+    const without = renderSets({ tail: true });
+    expect(without.queryByTestId('reanimated-swipeable')).toBeNull();
   });
 
   it('unregisters its accessory handle when a row unmounts', () => {
@@ -768,6 +914,7 @@ describe('ActiveWorkoutFocusSets', () => {
 
   it('toggles the set detail on long press, keyed by render key', () => {
     const { getByTestId, callbacks } = renderSets({
+      tail: true,
       withDetail: true,
       withDelete: true,
     });
@@ -798,7 +945,7 @@ describe('ActiveWorkoutFocusSets', () => {
   });
 
   it('shows no detail panel for a collapsed row', () => {
-    const { queryByLabelText } = renderSets({ withDelete: true });
+    const { queryByLabelText } = renderSets({ withDelete: true, tail: true });
     expect(queryByLabelText('Notes for set 1')).toBeNull();
   });
 
@@ -817,12 +964,12 @@ describe('ActiveWorkoutFocusSets', () => {
   });
 
   it('deletes a set on long press only when a handler is wired', () => {
-    const wired = renderSets({ withDelete: true });
+    const wired = renderSets({ withDelete: true, tail: true });
     fireEvent(wired.getByTestId('focus-set-row'), 'longPress');
     expect(wired.callbacks.onDeleteSet).toHaveBeenCalledWith('101');
     wired.unmount();
 
-    const unwired = renderSets();
+    const unwired = renderSets({ tail: true });
     expect(
       unwired.getByTestId('focus-set-row').props.onLongPress
     ).toBeUndefined();
@@ -857,6 +1004,7 @@ describe('ActiveWorkoutFocusSets', () => {
 
     it('shows last session per set, and a dash when a set has no counterpart', () => {
       const { getByText, queryByLabelText } = renderSets({
+        tail: true,
         sets: [
           makeSet(),
           makeSet({ id: 102, set_number: 2, weight: 62.5, reps: 8 }),
@@ -871,6 +1019,7 @@ describe('ActiveWorkoutFocusSets', () => {
 
     it('never auto-shrinks the Previous value; long values step down to 12.5 at most', () => {
       const { getByText } = renderSets({
+        tail: true,
         sets: [makeSet(), makeSet({ id: 102, set_number: 2 })],
         previousSets: [prev(), prev({ weight: 102.5, reps: 12 })],
       });
@@ -884,6 +1033,7 @@ describe('ActiveWorkoutFocusSets', () => {
 
     it('fills weight and reps from the previous session on tap', () => {
       const { getByLabelText, callbacks } = renderSets({
+        tail: true,
         previousSets: [prev()],
       });
       fireEvent.press(getByLabelText('Fill set 1 from previous'));
@@ -896,6 +1046,7 @@ describe('ActiveWorkoutFocusSets', () => {
 
     it('fills only the fields the previous set has', () => {
       const { getByLabelText, callbacks } = renderSets({
+        tail: true,
         previousSets: [prev({ reps: null })],
       });
       fireEvent.press(getByLabelText('Fill set 1 from previous'));
@@ -906,6 +1057,7 @@ describe('ActiveWorkoutFocusSets', () => {
 
     it('does not let a typed draft overwrite the fill on blur', () => {
       const { getByLabelText, callbacks } = renderSets({
+        tail: true,
         previousSets: [prev()],
       });
       const input = getByLabelText('Weight for set 1');
@@ -921,6 +1073,7 @@ describe('ActiveWorkoutFocusSets', () => {
 
     it('long-pressing the Previous cell opens the set detail like the row', () => {
       const { getByLabelText, callbacks } = renderSets({
+        tail: true,
         previousSets: [prev()],
         withDetail: true,
       });
@@ -1060,6 +1213,17 @@ describe('ActiveWorkoutFocusSets', () => {
       });
       fireEvent.press(getByLabelText('Mark Bench Press incomplete'));
       expect(callbacks.onUncomplete).toHaveBeenCalledWith('101');
+    });
+
+    it('bottom-aligns the swipe Delete pill with the cardio cell row', () => {
+      const { getByTestId } = renderSets({
+        modality: 'duration_distance',
+        sets: [cardio()],
+        withDelete: true,
+      });
+      expect(getByTestId('cardio-swipe-delete-slot').props.style).toEqual(
+        expect.objectContaining({ marginTop: expect.any(Number) })
+      );
     });
 
     it('keeps the set table for multi-set cardio', () => {

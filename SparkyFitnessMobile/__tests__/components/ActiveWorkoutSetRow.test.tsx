@@ -194,6 +194,17 @@ describe('ActiveWorkoutSetRow', () => {
       ).toBeUndefined();
     });
 
+    it('keeps the swipe Delete invisible at rest on a logged row', () => {
+      const { getByTestId } = renderRow({ state: 'done' });
+      const wrapper = getByTestId('swipeable-right-actions');
+      expect(
+        wrapper.findAll((node) => {
+          const style = node.props.style as { opacity?: number } | undefined;
+          return style?.opacity === 0;
+        }).length
+      ).toBeGreaterThan(0);
+    });
+
     it('un-completes on check press', () => {
       const { getByLabelText, callbacks } = renderRow({ state: 'done' });
       fireEvent.press(getByLabelText('Un-complete set 1'));

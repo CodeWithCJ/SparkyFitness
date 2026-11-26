@@ -26,12 +26,6 @@ export const plateColorKey = (weight: number, unit: PlateUnit): PlateColorKey =>
 export const plateUsesDarkLabel = (key: PlateColorKey): boolean =>
   LIGHT_PLATES.includes(key);
 
-/** The legend order on the calculator: heaviest to lightest standard plate. */
-export const standardPlateWeights = (unit: PlateUnit): number[] =>
-  Object.keys(STANDARD_COLORS[unit])
-    .map(Number)
-    .sort((a, b) => b - a);
-
 /**
  * A plate's height and thickness in bar-drawing units (a 140 unit tall
  * canvas): the heaviest standard plate is 120 tall and 22 thick, lighter ones

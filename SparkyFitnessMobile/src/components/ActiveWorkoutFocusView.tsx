@@ -41,9 +41,11 @@ import AdaptiveSuggestionBanner from './AdaptiveSuggestionBanner';
 import ExerciseHeartRateChip from './ExerciseHeartRateChip';
 import FocusHoldPanel from './FocusHoldPanel';
 import FocusHoldReadyCard from './FocusHoldReadyCard';
+import FocusAwayFrame from './FocusAwayFrame';
+import FocusExercisePreview from './FocusExercisePreview';
 import FocusNowBanner, { type FocusNowBannerInfo } from './FocusNowBanner';
+import FocusSupersetPage, { supersetPageSupports } from './FocusSupersetPage';
 import FocusPlateStrip from './FocusPlateStrip';
-import RestPeriodChip from './RestPeriodChip';
 import WorkoutNotesField from './WorkoutNotesField';
 import type { AnchorRect } from './AnchoredMenu';
 import Icon from './Icon';
@@ -53,7 +55,7 @@ import type { SetInputField, SetRowAccessoryHandle } from './SetRowChrome';
 import { useExerciseStats } from '../hooks/useExerciseStats';
 import { useHeartRateZoneColor } from '../hooks/useHeartRateZoneColor';
 import type { GetImageSource } from '../hooks/useExerciseImageSource';
-import type { FocusHold } from '../hooks/useFocusHold';
+import { timedTargetForSet, type FocusHold } from '../hooks/useFocusHold';
 import {
   useCaptureLiveHistory,
   useExerciseBest,
@@ -61,8 +63,6 @@ import {
   useLiveAssumedSetValues,
   useLiveProgression,
 } from '../hooks/useLiveExerciseCoaching';
-import { useAppLocale } from '../localization';
-import { localizeExerciseTaxonomyValue } from '../localization/exerciseTaxonomy';
 import { fireSelectionHaptic } from '../services/haptics';
 import { useLiveHeartRate } from '../stores/liveHeartRateStore';
 import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
@@ -79,15 +79,10 @@ import {
   alignPreviousSets,
   plateTargetKg,
   rendersCardioEffortForm,
-  resolveSnapshotModality,
 } from '../utils/workoutSession';
+import { getSupersetRuns } from '../utils/workoutSupersets';
 import { storedWeightInUnit } from '../utils/unitConversions';
-import {
-  formatLastTimeSets,
-  shouldFollowActive,
-  summarizePlan,
-  swipePageDelta,
-} from '../utils/focusView';
+import { shouldFollowActive, swipePageDelta } from '../utils/focusView';
 
 type FocusExercise = PresetSessionResponse['exercises'][number];
 
@@ -108,7 +103,7 @@ interface SetEditorProps {
   onCommitField: (setId: string, patch: ActiveSetPatch) => void;
   onAddSet: (entryId: string) => void;
   /** Opens the plate calculator sheet for a set (barbell exercises). */
-  onOpenPlateCalculator: (setId: string) => void;
+  onOpenPlateCalculator: (setId: string, weightKg?: number | null) => void;
   onActivateRpe: (setKey: string) => void;
   onDeleteSet: (setId: string) => void;
   onPressMetricHeader: (anchor: AnchorRect, clampedToRpe: boolean) => void;
@@ -142,8 +137,8 @@ interface Props extends SetEditorProps, HistoryProps {
   /** The timed hold in progress; its exercise's page becomes the hold screen. */
   hold: FocusHold;
   /**
-   * The set the lifter is on, with the way back to the last logged set. Omit
-   * when nothing is logged yet: the banner stays hidden.
+   * The set the lifter is on. The banner shows it while another exercise than
+   * the one holding it is on show, and a tap goes back to that exercise.
    */
   nowBanner?: FocusNowBannerInfo;
   getImageSource: GetImageSource;
@@ -153,7 +148,6 @@ interface Props extends SetEditorProps, HistoryProps {
   /** The quick change for a busy machine, as on the Now card. */
   onSwap: (entryId: string) => void;
   /** Opens the rest picker for an exercise's sets. */
-  onPressRestChip: (entryId: string, currentSec: number | null) => void;
   /** The exercise whose note editor the overflow menu opened, if any. */
   noteEditorEntryId: string | null;
   onCommitExerciseNote: (entryId: string, text: string) => void;
@@ -171,6 +165,14 @@ interface Props extends SetEditorProps, HistoryProps {
   scrollContentStyle: StyleProp<ViewStyle>;
   /** Space kept between a focused input and the keyboard. */
   keyboardBottomOffset: number;
+  /**
+   * Rendered at the top of the scroll, above the exercise page and kept
+   * mounted across page changes: the interval HUD, which returns nothing for
+   * a standard workout.
+   */
+  topSlot?: React.ReactNode;
+  /** Guided mode's card, under `topSlot`; left out when guided mode is off. */
+  guidedCard?: React.ReactNode;
   /** Rendered under the last page, inside the scroll (Add exercise / End workout). */
   children?: React.ReactNode;
 }
@@ -209,17 +211,20 @@ interface PageProps extends SetEditorProps {
   scrollRef: React.RefObject<KeyboardAwareScrollViewRef | null>;
   /** The scroll view's height and the bottom strip the footer covers. */
   viewportRef: React.RefObject<ScrollViewport>;
+  /** The bottom padding the footer / rest overlay needs; re-aims the scroll once it is measured. */
+  footerInset: number;
   getImageSource: GetImageSource;
   onToggleMedia: () => void;
   onPressOverflow: (entryId: string) => void;
   onSwap: (entryId: string) => void;
-  onPressRestChip: (entryId: string, currentSec: number | null) => void;
   noteEditorEntryId: string | null;
   onCommitExerciseNote: (entryId: string, text: string) => void;
   onSeeAlternatives?: (entryId: string) => void;
-  /** Set while another exercise than the active one is shown. */
-  onBackToCurrent?: () => void;
   hold: FocusHold;
+  /** The guided card is showing its own photo above this page. */
+  guided?: boolean;
+  /** Drawn between the media / title block and the sets (the interval HUD). */
+  belowMedia?: React.ReactNode;
 }
 
 /** One exercise: media + title, plan / last-time context, coaching, sets. */
@@ -229,16 +234,17 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   mediaExpanded: mediaPreferenceExpanded,
   scrollRef,
   viewportRef,
+  footerInset,
   getImageSource,
   onToggleMedia: onTogglePreference,
   onPressOverflow,
   onSwap,
-  onPressRestChip,
   noteEditorEntryId,
   onCommitExerciseNote,
   onSeeAlternatives,
-  onBackToCurrent,
   hold,
+  guided = false,
+  belowMedia,
   sessionId,
   verifiedSourcePresetId,
   weightUnit,
@@ -264,9 +270,13 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   );
   const previousSessionSets = (stats?.recentSessions ?? [])[0]?.sets;
   // Warm-ups pair with last time's warm-ups, working sets with its working sets.
+  const showPrevious = useAppPreferencesStore((s) => s.focusShowPrevious);
   const previousSets = useMemo(
-    () => alignPreviousSets(exercise.sets, previousSessionSets),
-    [exercise.sets, previousSessionSets]
+    () =>
+      showPrevious
+        ? alignPreviousSets(exercise.sets, previousSessionSets)
+        : undefined,
+    [showPrevious, exercise.sets, previousSessionSets]
   );
   const progressionResult = useLiveProgression(
     exercise,
@@ -301,43 +311,6 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   const zoneColor = useHeartRateZoneColor(liveBpm);
   const plateEquipment = snapshot?.equipment ?? null;
   const showPlates = usesBarbell(plateEquipment) && !cardioForm;
-  const plateTarget = useMemo(
-    () =>
-      showPlates
-        ? plateTargetKg(
-            exercise.sets,
-            setEditorProps.activeSetId,
-            assumedSetValues
-          )
-        : null,
-    [showPlates, exercise.sets, setEditorProps.activeSetId, assumedSetValues]
-  );
-
-  const plan = useMemo(
-    () => summarizePlan(exercise.sets, plannedSetValues),
-    [exercise.sets, plannedSetValues]
-  );
-  // Subscribes to the app locale so a language switch re-renders; the
-  // formatter reads it, so the (at most five) sets are formatted per render
-  // rather than memoized past the switch.
-  useAppLocale();
-  const lastTime = formatLastTimeSets(
-    previousSessionSets,
-    weightUnit,
-    resolveSnapshotModality(snapshot),
-    setEditorProps.distanceUnit
-  );
-  const muscle = localizeExerciseTaxonomyValue(
-    t,
-    'muscle',
-    snapshot?.primary_muscles?.[0]
-  );
-  const equipment = localizeExerciseTaxonomyValue(
-    t,
-    'equipment',
-    snapshot?.equipment?.[0]
-  );
-
   // Once a set is logged (or a hold started) the lifter knows the movement, so
   // the demo shrinks and the current set takes the screen. The stored
   // minimize / enlarge preference only governs exercises not yet started; a
@@ -355,22 +328,31 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
     setWasStarted(started);
     if (!started) setHandEnlarged(false);
   }
+  const restHere = useActiveWorkoutStore(
+    (s) =>
+      s.rest.state !== 'ready' &&
+      exercise.sets.some((set) => String(set.id) === s.activeSetId)
+  );
+  // The rest card needs the room, so a hand-enlarged demo shrinks once when
+  // the rest starts; the lifter can still enlarge it again during the rest
+  // (adjusted during render).
+  const [wasRest, setWasRest] = useState(restHere);
+  if (wasRest !== restHere) {
+    setWasRest(restHere);
+    if (restHere) setHandEnlarged(false);
+  }
   const mediaExpanded = started ? handEnlarged : mediaPreferenceExpanded;
   const onToggleMedia = useCallback(
     () => (started ? setHandEnlarged((v) => !v) : onTogglePreference()),
     [started, onTogglePreference]
   );
 
-  const hasMedia = (snapshot?.images ?? []).some(
+  // The guided card carries the photo, so the page does not draw it again.
+  const pageImages = guided ? [] : (snapshot?.images ?? []);
+  const hasMedia = pageImages.some(
     (path) => path !== '' && getImageSource(path) !== null
   );
-  // The rest card needs the room, so the demo shrinks while it is up.
-  const restHere = useActiveWorkoutStore(
-    (s) =>
-      s.rest.state !== 'ready' &&
-      exercise.sets.some((set) => String(set.id) === s.activeSetId)
-  );
-  // Bring the current set (the rest card while resting) into view when the
+  // Bring the current set (clear of the rest overlay while resting) into view when the
   // exercise becomes started, on landing on a started one, and whenever the
   // current set moves on. Measured against the page, which starts at the top
   // of the scroll content.
@@ -387,13 +369,18 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   const activeHere = exercise.sets.some(
     (set) => String(set.id) === setEditorProps.activeSetId
   );
-  const scrollKey = !started
-    ? null
-    : restHere
-      ? `rest:${setEditorProps.activeSetId}`
-      : activeHere
-        ? setEditorProps.activeSetId
-        : null;
+  // Guided mode keeps the scroll where it is (the card sits at the top).
+  const scrollKey =
+    guided || !started
+      ? null
+      : restHere
+        ? `rest:${setEditorProps.activeSetId}`
+        : activeHere
+          ? setEditorProps.activeSetId
+          : null;
+  // The rest overlay is measured after the rest starts; aim again once it is
+  // known so the current set ends up above it (the first aim had no inset).
+  const restInset = restHere ? footerInset : 0;
   useEffect(() => {
     if (scrollKey == null) return;
     const frame = requestAnimationFrame(() => {
@@ -432,34 +419,16 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
       );
     });
     return () => cancelAnimationFrame(frame);
-  }, [scrollKey, reducedMotion, scrollRef, viewportRef]);
+  }, [scrollKey, restInset, reducedMotion, scrollRef, viewportRef]);
 
-  const mediaMode = !hasMedia
-    ? 'none'
-    : mediaExpanded && !restHere
-      ? 'expanded'
-      : 'min';
-  const planText =
-    plan != null
-      ? t('activeWorkout.focus.planShort', {
-          defaultValue: 'Plan {{sets}} × {{reps}}',
-          sets: plan.sets,
-          reps: plan.reps,
-        })
-      : null;
-  const lastTimeText =
-    lastTime.length > 0
-      ? t('activeWorkout.focus.lastTimeShort', {
-          defaultValue: 'Last time {{sets}}',
-          sets: lastTime.join(', '),
-        })
-      : null;
+  const mediaMode = !hasMedia ? 'none' : mediaExpanded ? 'expanded' : 'min';
 
   const tagClass =
-    'h-7 flex-row items-center gap-1.5 rounded-full bg-raised px-2.5';
+    'h-6 flex-row items-center gap-1.5 rounded-full bg-raised px-2.5';
   const nameText = (
     <Text
-      className="text-2xl font-bold text-text-primary"
+      className="text-lg font-bold leading-6 text-text-primary"
+      numberOfLines={1}
       accessibilityRole="header"
     >
       {name}
@@ -473,9 +442,10 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
         defaultValue: 'Swap {{name}}',
         name,
       })}
-      className="h-11 w-11 items-center justify-center rounded-full bg-raised active:opacity-70"
+      hitSlop={5}
+      className="h-9 w-9 items-center justify-center rounded-full bg-raised active:opacity-70"
     >
-      <Icon name="swap-horizontal" size={22} color={textPrimary} />
+      <Icon name="swap-horizontal" size={18} color={textPrimary} />
     </Pressable>
   );
   const moreButton = (
@@ -486,9 +456,10 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
         defaultValue: 'More options for {{name}}',
         name,
       })}
-      className="h-11 w-11 items-center justify-center rounded-full bg-raised active:opacity-70"
+      hitSlop={5}
+      className="h-9 w-9 items-center justify-center rounded-full active:opacity-70"
     >
-      <Icon name="ellipsis-horizontal" size={22} color={textPrimary} />
+      <Icon name="ellipsis-horizontal" size={18} color={textPrimary} />
     </Pressable>
   );
   const bestChip =
@@ -518,32 +489,18 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
   // without pictures: the name with the Best chip under it, left-aligned, and
   // Swap and the menu on the right.
   const sideTitle = (
-    <View className="min-w-0 flex-row items-start gap-2">
-      <View className="min-w-0 flex-1 gap-1.5">
+    <View className="min-w-0 flex-row items-center gap-2">
+      <View className="min-w-0 flex-1 gap-0.5">
         {nameText}
         {bestChip}
       </View>
-      <View className="flex-row items-center gap-2">
+      <View className="shrink-0 flex-row items-center gap-2">
         {swapButton}
         {moreButton}
       </View>
     </View>
   );
 
-  const hasTags = muscle !== '' || equipment !== '';
-  const showMetaRow = hasTags || liveBpm != null;
-  const restChip = !cardioForm && (
-    <RestPeriodChip
-      largeTarget
-      tile
-      value={exercise.sets[0]?.rest_time}
-      values={exercise.sets.map((set) => set.rest_time)}
-      onPress={() =>
-        onPressRestChip(exercise.id, exercise.sets[0]?.rest_time ?? null)
-      }
-    />
-  );
-  const contextText = [planText, lastTimeText].filter(Boolean).join(' · ');
   const plateSetId = useMemo(() => {
     const sets = exercise.sets;
     return String(
@@ -558,6 +515,16 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
     setEditorProps.activeSetId,
     setEditorProps.completedSetIds,
   ]);
+
+  // The strip shows, and the calculator opens on, the same set: the one the
+  // card is editing (typed weight, else the assumed one), never another set.
+  const plateTarget = useMemo(
+    () =>
+      showPlates
+        ? plateTargetKg(exercise.sets, plateSetId, assumedSetValues)
+        : null,
+    [showPlates, exercise.sets, plateSetId, assumedSetValues]
+  );
 
   // A timed hold draws its card in the table where the held set sits; the
   // header, the plates and the other sets stay around it.
@@ -585,24 +552,57 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
       }
     />
   ) : undefined;
-  // Before the hold starts, its current-set card carries Start hold.
+  // Before the hold starts, its current-set card carries Start hold. On a
+  // timed exercise that is not the current one (opened from the strip) the
+  // card sits on its first unlogged set and starts that set's hold.
+  const currentHoldSetId =
+    hold.phase === 'idle' && hold.setId != null && hold.entryId === exercise.id
+      ? hold.setId
+      : null;
+  const otherHold = useMemo(() => {
+    if (hold.phase !== 'idle' || currentHoldSetId != null) return null;
+    if (hold.entryId === exercise.id || setEditorProps.activeSetId == null) {
+      return null;
+    }
+    const first = exercise.sets.find(
+      (set) => !setEditorProps.completedSetIds[String(set.id)]
+    );
+    if (first == null) return null;
+    if (
+      exercise.sets.some((set) => String(set.id) === setEditorProps.activeSetId)
+    ) {
+      return null;
+    }
+    return timedTargetForSet(exercise, String(first.id), plannedSetValues);
+  }, [
+    hold.phase,
+    hold.entryId,
+    currentHoldSetId,
+    exercise,
+    setEditorProps.activeSetId,
+    setEditorProps.completedSetIds,
+    plannedSetValues,
+  ]);
+  const readySetId = currentHoldSetId ?? otherHold?.setId ?? null;
   const holdReadyCard =
-    hold.phase === 'idle' &&
-    hold.setId != null &&
-    hold.entryId === exercise.id ? (
+    readySetId != null ? (
       <FocusHoldReadyCard
         setLabel={t('activeWorkout.focus.hold.setNumber', {
           defaultValue: 'Set {{number}}',
           number:
-            exercise.sets.findIndex((set) => String(set.id) === hold.setId) + 1,
+            exercise.sets.findIndex((set) => String(set.id) === readySetId) + 1,
         })}
-        targetSec={hold.targetSec}
+        targetSec={
+          currentHoldSetId != null
+            ? hold.targetSec
+            : (otherHold?.targetSec ?? null)
+        }
         onChangeSeconds={(seconds) => {
-          if (hold.setId != null) {
-            setEditorProps.onCommitField(hold.setId, { duration: seconds });
-          }
+          setEditorProps.onCommitField(readySetId, { duration: seconds });
         }}
-        onStart={hold.start}
+        onStart={() =>
+          hold.start(currentHoldSetId != null ? undefined : readySetId)
+        }
       />
     ) : undefined;
 
@@ -619,12 +619,11 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
           }}
         >
           <ActiveWorkoutFocusMedia
-            images={snapshot?.images ?? []}
+            images={pageImages}
             exerciseName={name}
             getImageSource={getImageSource}
-            expanded={mediaExpanded && !restHere}
+            expanded={mediaExpanded}
             onToggleExpanded={onToggleMedia}
-            onBackToCurrent={onBackToCurrent}
           >
             {sideTitle}
           </ActiveWorkoutFocusMedia>
@@ -632,61 +631,16 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
           {mediaMode === 'none' && sideTitle}
         </View>
 
-        {showMetaRow && (
-          <View className="flex-row flex-wrap gap-2">
-            {muscle !== '' && (
-              <View className={tagClass}>
-                <Text className="text-[13px] font-semibold text-text-secondary">
-                  {muscle}
-                </Text>
-              </View>
-            )}
-            {equipment !== '' && (
-              <View className={tagClass}>
-                <Text className="text-[13px] font-semibold text-text-secondary">
-                  {equipment}
-                </Text>
-              </View>
-            )}
-            {liveBpm != null && (
-              <ExerciseHeartRateChip
-                pill
-                text={String(liveBpm)}
-                color={zoneColor ?? heartRateColor}
-                valueColor={zoneColor ?? undefined}
-                accessibilityLabel={t(
-                  'activeWorkout.exercise.liveHeartRateFor',
-                  {
-                    defaultValue: 'Current heart rate for {{name}}',
-                    name,
-                  }
-                )}
-              />
-            )}
-          </View>
-        )}
-
-        {(contextText !== '' || restChip) && (
-          <View className="flex-row items-center justify-between gap-3">
-            {mediaMode !== 'expanded' && restChip}
-            {contextText !== '' && (
-              <Text
-                className={`min-w-0 flex-1 text-[15px] text-text-secondary ${mediaMode === 'expanded' ? '' : 'text-right'}`}
-                style={{ fontVariant: ['tabular-nums'] }}
-              >
-                {contextText}
-              </Text>
-            )}
-            {mediaMode === 'expanded' && restChip}
-          </View>
-        )}
+        {belowMedia}
 
         {showPlates && plateTarget != null && (
           <FocusPlateStrip
             targetWeight={storedWeightInUnit(plateTarget, weightUnit)}
             weightUnit={weightUnit}
             equipment={plateEquipment}
-            onOpenCalculator={() => onOpenPlateCalculator(plateSetId)}
+            onOpenCalculator={() =>
+              onOpenPlateCalculator(plateSetId, plateTarget)
+            }
           />
         )}
 
@@ -704,6 +658,17 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
             })}
           />
         )}
+
+        <ActiveWorkoutFocusSets
+          exercise={exercise}
+          weightUnit={weightUnit}
+          assumedSetValues={assumedSetValues}
+          previousSets={previousSets}
+          holdSetId={holdHere ? hold.setId : readySetId}
+          holdCard={holdCard}
+          holdReadyCard={holdReadyCard}
+          {...setEditorProps}
+        />
 
         <AdaptiveSuggestionBanner
           adjustment={adaptiveAdjustment}
@@ -735,17 +700,6 @@ const FocusExercisePage = React.memo(function FocusExercisePage({
             }
           />
         )}
-
-        <ActiveWorkoutFocusSets
-          exercise={exercise}
-          weightUnit={weightUnit}
-          assumedSetValues={assumedSetValues}
-          previousSets={previousSets}
-          holdSetId={holdHere || holdReadyCard != null ? hold.setId : null}
-          holdCard={holdCard}
-          holdReadyCard={holdReadyCard}
-          {...setEditorProps}
-        />
       </View>
     </FocusScrollTargetContext.Provider>
   );
@@ -787,6 +741,21 @@ function SwipeDetector({
  * hand within the last {@link FOCUS_FOLLOW_GRACE_MS} (then a pill offers the
  * way back).
  */
+/** The shared not-the-current-exercise look; the current page is not framed. */
+function AwayFrame({
+  away,
+  children,
+}: {
+  away: boolean;
+  children: React.ReactNode;
+}) {
+  return away ? (
+    <FocusAwayFrame className="gap-2">{children}</FocusAwayFrame>
+  ) : (
+    <>{children}</>
+  );
+}
+
 function ActiveWorkoutFocusView({
   session,
   prSetIds,
@@ -808,9 +777,12 @@ function ActiveWorkoutFocusView({
   scrollRef,
   scrollContentStyle,
   keyboardBottomOffset,
+  topSlot,
+  guidedCard,
   children,
   ...setEditorProps
 }: Props) {
+  const accentColor = String(useCSSVariable('--color-accent-primary'));
   const reducedMotion = useReducedMotion();
   const { exercises } = session;
   const { weightUnit, completedSetIds } = setEditorProps;
@@ -825,6 +797,7 @@ function ActiveWorkoutFocusView({
     activeExerciseId ?? exercises[0]?.id ?? null
   );
   const lastManualAtRef = useRef<number | null>(null);
+  const supersetRuns = useMemo(() => getSupersetRuns(exercises), [exercises]);
   // An exercise removed or replaced under the view falls back to the active
   // one (or the first), without waiting for an effect.
   const selectedIndex = Math.max(
@@ -868,10 +841,23 @@ function ActiveWorkoutFocusView({
 
   // Refs keep the gesture and handlers stable across page changes.
   // Synced after commit (declared before the follow effect, which reads it).
-  const stateRef = useRef({ exercises, selectedIndex });
-  useEffect(() => {
-    stateRef.current = { exercises, selectedIndex };
+  const shownId = exercises[selectedIndex]?.id ?? null;
+  const shownDoneCount =
+    exercises[selectedIndex]?.sets.filter(
+      (set) => completedSetIds[String(set.id)] != null
+    ).length ?? 0;
+  const stateRef = useRef({
+    exercises,
+    selectedIndex,
+    shownId,
+    shownDoneCount,
   });
+  useEffect(() => {
+    stateRef.current = { exercises, selectedIndex, shownId, shownDoneCount };
+  });
+  // The shown exercise's logged-set count as of the previous commit, to tell a
+  // log made here from a cursor move that came from elsewhere.
+  const loggedRef = useRef({ id: shownId, count: shownDoneCount });
 
   const goToIndex = useCallback(
     (index: number) => {
@@ -900,18 +886,34 @@ function ActiveWorkoutFocusView({
   useEffect(() => {
     if (activeExerciseId === lastActiveRef.current) return;
     lastActiveRef.current = activeExerciseId;
+    const {
+      exercises: list,
+      selectedIndex: current,
+      shownId: shown,
+      shownDoneCount: doneCount,
+    } = stateRef.current;
+    // A set logged in the shown exercise moves the cursor on (a superset
+    // partner, the next exercise): the lifter is working here, so the page
+    // goes with the cursor even right after they picked it by hand.
+    const loggedHere =
+      loggedRef.current.id === shown && doneCount > loggedRef.current.count;
     if (
       activeExerciseId == null ||
-      !shouldFollowActive(lastManualAtRef.current, Date.now())
+      (!loggedHere && !shouldFollowActive(lastManualAtRef.current, Date.now()))
     ) {
       return;
     }
-    const { exercises: list, selectedIndex: current } = stateRef.current;
     const index = list.findIndex((e) => e.id === activeExerciseId);
     if (index >= 0 && index !== current) {
       showExercise(activeExerciseId, index > current ? 1 : -1);
     }
   }, [activeExerciseId, showExercise]);
+  useEffect(() => {
+    loggedRef.current = {
+      id: stateRef.current.shownId,
+      count: stateRef.current.shownDoneCount,
+    };
+  });
 
   // An explicit "show this exercise": ends the manual-move grace so the
   // active-set follow works again.
@@ -928,7 +930,14 @@ function ActiveWorkoutFocusView({
   const handleBackToCurrent = useCallback(() => {
     if (activeExerciseId != null) showById(activeExerciseId);
   }, [activeExerciseId, showById]);
-
+  // "Do it now" on a preview: moves the exercise in front, then opens its page.
+  const handleDoNow = useCallback(
+    (id: string) => {
+      useActiveWorkoutStore.getState().doExerciseNow(id);
+      showById(id);
+    },
+    [showById]
+  );
   const handledShowSeqRef = useRef(showRequest?.seq ?? 0);
   useEffect(() => {
     if (showRequest == null || showRequest.seq === handledShowSeqRef.current) {
@@ -961,8 +970,49 @@ function ActiveWorkoutFocusView({
   }, []);
 
   if (exercise == null) return null;
-  const awayFromCurrent =
-    activeExerciseId != null && activeExerciseId !== exercise.id;
+  // A superset member shows its run's one page.
+  const runIndex = supersetRuns.findIndex((r) =>
+    r.entryIds.includes(exercise.id)
+  );
+  const run = runIndex >= 0 ? supersetRuns[runIndex] : null;
+  const runMembers =
+    run != null
+      ? run.entryIds.flatMap((id) => exercises.find((e) => e.id === id) ?? [])
+      : [];
+  const supersetEligible =
+    run != null && runMembers.every(supersetPageSupports);
+  // While a hold is running or counting down, every other exercise (a
+  // superset page included) is a read-only preview, so nothing can be logged
+  // off the held set.
+  const holdAway =
+    hold.phase !== 'idle' &&
+    hold.entryId !== exercise.id &&
+    !(
+      supersetEligible &&
+      run != null &&
+      hold.entryId != null &&
+      run.entryIds.includes(hold.entryId)
+    );
+  const showSupersetPage = supersetEligible && !holdAway;
+  const viewingCurrent =
+    activeExerciseId == null ||
+    (showSupersetPage && run != null
+      ? run.entryIds.includes(activeExerciseId)
+      : activeExerciseId === exercise.id);
+  const awayFromCurrent = !viewingCurrent;
+  // Another exercise with nothing logged is a dashed preview, not a full page.
+  const showPreview =
+    !showSupersetPage &&
+    (holdAway ||
+      (awayFromCurrent &&
+        setEditorProps.activeSetId != null &&
+        exercise.sets.every((set) => completedSetIds[String(set.id)] == null) &&
+        supersetPageSupports(exercise) &&
+        !rendersCardioEffortForm(
+          exercise.exercise_snapshot,
+          exercise.sets.length
+        )));
+  const pageIsExercise = !showSupersetPage && !showPreview;
 
   return (
     <>
@@ -976,8 +1026,8 @@ function ActiveWorkoutFocusView({
         onSelect={handleSelectChip}
         onAdd={onAddExercise}
       />
-      {nowBanner != null && hold.phase === 'idle' && (
-        <FocusNowBanner {...nowBanner} />
+      {nowBanner != null && awayFromCurrent && hold.phase === 'idle' && (
+        <FocusNowBanner {...nowBanner} onBack={handleBackToCurrent} />
       )}
       <KeyboardAwareScrollView
         ref={scrollRef}
@@ -998,28 +1048,75 @@ function ActiveWorkoutFocusView({
             historyScopeSettled={historyScopeSettled}
           />
         ))}
+        {/* On the exercise page the slot sits under its media instead. */}
+        {pageIsExercise ? null : topSlot}
+        {/* Stays mounted (it runs the guided session) but only shows on the
+            current exercise's page. */}
+        {guidedCard != null && (
+          <View className={viewingCurrent ? undefined : 'hidden'}>
+            {guidedCard}
+          </View>
+        )}
         <SwipeDetector onSwipe={goBy}>
           <Animated.View style={pageStyle}>
-            <FocusExercisePage
-              key={exercise.id}
-              exercise={exercise}
-              prSetIds={prSetIds}
-              mediaExpanded={mediaExpanded}
-              scrollRef={scrollRef}
-              viewportRef={viewportRef}
-              getImageSource={getImageSource}
-              onToggleMedia={toggleMedia}
-              onPressOverflow={onPressOverflow}
-              onSwap={onSwap}
-              onBackToCurrent={
-                awayFromCurrent ? handleBackToCurrent : undefined
-              }
-              onSeeAlternatives={onSeeAlternatives}
-              hold={hold}
-              sessionId={sessionId}
-              verifiedSourcePresetId={verifiedSourcePresetId}
-              {...setEditorProps}
-            />
+            {showSupersetPage && run != null ? (
+              <AwayFrame away={awayFromCurrent}>
+                <FocusSupersetPage
+                  key={`superset-${run.groupId}`}
+                  members={runMembers}
+                  letter={String.fromCharCode(65 + runIndex)}
+                  color={supersetBorders.get(exercise.id)?.color ?? accentColor}
+                  completedSetIds={completedSetIds}
+                  activeSetId={setEditorProps.activeSetId}
+                  sessionId={sessionId}
+                  verifiedSourcePresetId={verifiedSourcePresetId}
+                  weightUnit={weightUnit}
+                  getImageSource={getImageSource}
+                  onCompleteSet={setEditorProps.onCompleteSet}
+                  onCommitField={setEditorProps.onCommitField}
+                  onPressOverflow={onPressOverflow}
+                />
+              </AwayFrame>
+            ) : showPreview ? (
+              <FocusExercisePreview
+                key={exercise.id}
+                exercise={exercise}
+                prSetIds={prSetIds}
+                completedSetIds={completedSetIds}
+                sessionId={sessionId}
+                verifiedSourcePresetId={verifiedSourcePresetId}
+                weightUnit={weightUnit}
+                getImageSource={getImageSource}
+                onAddSet={setEditorProps.onAddSet}
+                onDoNow={handleDoNow}
+                doNowDisabled={hold.phase !== 'idle'}
+                onSwap={onSwap}
+                onPressOverflow={onPressOverflow}
+              />
+            ) : (
+              <AwayFrame away={awayFromCurrent}>
+                <FocusExercisePage
+                  key={exercise.id}
+                  exercise={exercise}
+                  prSetIds={prSetIds}
+                  mediaExpanded={mediaExpanded}
+                  scrollRef={scrollRef}
+                  viewportRef={viewportRef}
+                  footerInset={footerInset}
+                  getImageSource={getImageSource}
+                  onToggleMedia={toggleMedia}
+                  onPressOverflow={onPressOverflow}
+                  onSwap={onSwap}
+                  onSeeAlternatives={onSeeAlternatives}
+                  hold={hold}
+                  guided={guidedCard != null && viewingCurrent}
+                  belowMedia={topSlot}
+                  sessionId={sessionId}
+                  verifiedSourcePresetId={verifiedSourcePresetId}
+                  {...setEditorProps}
+                />
+              </AwayFrame>
+            )}
           </Animated.View>
         </SwipeDetector>
         {children}

@@ -3786,7 +3786,7 @@ describe('activeWorkoutStore', () => {
       expect(state.activeSetId).toBe('201');
     });
 
-    it('ignores the current exercise and earlier ones', () => {
+    it('ignores the current exercise and finished earlier ones', () => {
       useActiveWorkoutStore.getState().doExerciseNow('ex-uuid-1');
       expect(useActiveWorkoutStore.getState().sessionRevision).toBe(0);
 
@@ -3796,6 +3796,19 @@ describe('activeWorkoutStore', () => {
       useActiveWorkoutStore.getState().doExerciseNow('ex-uuid-1');
       expect(useActiveWorkoutStore.getState().sessionRevision).toBe(revision);
       expect(useActiveWorkoutStore.getState().activeSetId).toBe('201');
+    });
+
+    it('puts the cursor on an unfinished exercise that sits before the current one', () => {
+      // The cursor was moved on to ex-uuid-2 while ex-uuid-1 still has sets:
+      // Do it now on ex-uuid-1 used to do nothing (it was not "after" the cursor).
+      useActiveWorkoutStore.setState({ activeSetId: '201' });
+      useActiveWorkoutStore.getState().doExerciseNow('ex-uuid-1');
+      const state = useActiveWorkoutStore.getState();
+      expect(state.session!.exercises.map((e) => e.id)).toEqual([
+        'ex-uuid-1',
+        'ex-uuid-2',
+      ]);
+      expect(state.activeSetId).toBe('101');
     });
   });
 

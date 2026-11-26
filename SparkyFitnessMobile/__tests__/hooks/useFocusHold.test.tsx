@@ -87,6 +87,57 @@ describe('useFocusHold', () => {
     expect(result.current.phase).toBe('idle');
   });
 
+  it('cancels Get ready without starting the hold', () => {
+    const { result, onFinish } = setup(10);
+    act(() => result.current.start());
+    expect(result.current.phase).toBe('getReady');
+    act(() => result.current.cancel());
+    expect(result.current.phase).toBe('idle');
+    act(() => {
+      jest.advanceTimersByTime(5000);
+    });
+    expect(result.current.phase).toBe('idle');
+    expect(playIntervalCue).not.toHaveBeenCalledWith('work');
+    expect(onFinish).not.toHaveBeenCalled();
+  });
+
+  it('holds another timed set than the cursor on request, without moving it', () => {
+    const session = {
+      id: 's',
+      exercises: [
+        {
+          id: 'e0',
+          exercise_id: 'x0',
+          exercise_snapshot: { name: 'Bench', modality: 'reps_weight' },
+          sets: [{ id: 1, set_number: 1 }],
+        },
+        {
+          id: 'e1',
+          exercise_id: 'x1',
+          exercise_snapshot: { name: 'Plank', modality: 'duration' },
+          sets: [{ id: 11, set_number: 1, duration: 30 }],
+        },
+      ],
+    } as unknown as PresetSessionResponse;
+    const onFinish = jest.fn();
+    const { result } = renderHook(() =>
+      useFocusHold({ session, activeSetId: '1', enabled: true, onFinish })
+    );
+    expect(result.current.setId).toBeNull();
+    act(() => result.current.start('11'));
+    expect(result.current.phase).toBe('getReady');
+    expect(result.current.setId).toBe('11');
+    expect(result.current.entryId).toBe('e1');
+    act(() => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(result.current.phase).toBe('running');
+    act(() => result.current.tap());
+    expect(onFinish).toHaveBeenCalledWith('11');
+    expect(result.current.phase).toBe('idle');
+    expect(result.current.setId).toBeNull();
+  });
+
   it('keeps Get ready when autosave swaps the set id under it', () => {
     // Temporary id -1 is replaced by 11; the store keeps -1 as the render key.
     useActiveWorkoutStore.setState({ setRenderKeys: { '11': '-1' } });

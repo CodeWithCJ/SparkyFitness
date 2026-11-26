@@ -1,8 +1,16 @@
 import React, { createContext, useContext } from 'react';
 import ImageLightbox from './ImageLightbox';
-import { useImageLightbox } from '../hooks/useImageLightbox';
+import {
+  useImageLightbox,
+  type LightboxOpenOptions,
+} from '../hooks/useImageLightbox';
 
-type OpenLightbox = (images: string[], index?: number, title?: string) => void;
+type OpenLightbox = (
+  images: string[],
+  index?: number,
+  title?: string,
+  options?: LightboxOpenOptions
+) => void;
 
 const LightboxContext = createContext<OpenLightbox | null>(null);
 

@@ -35,7 +35,19 @@ describe('FocusPlateStrip', () => {
     );
     expect(screen.getByTestId('focus-plate-strip')).toBeTruthy();
     expect(screen.getByText('25 + 15')).toBeTruthy();
-    expect(screen.getByText(/on a 20 kg bar/)).toBeTruthy();
+    expect(screen.getByText(/per side/)).toBeTruthy();
+    // The drawing is half the compact bar: 36 x 0.5 = 18 pt tall.
+    expect(screen.getByTestId('focus-plate-drawing').props.style).toEqual(
+      expect.objectContaining({ height: 18 })
+    );
+    // A small slop (about 42 pt tall) so it cannot swallow taps on the title
+    // row's thumbnail, Swap and menu just above.
+    expect(screen.getByTestId('focus-plate-strip').props.hitSlop).toEqual({
+      top: 8,
+      bottom: 10,
+      left: 16,
+      right: 16,
+    });
     fireEvent.press(screen.getByLabelText('Plate calculator'));
     expect(onOpenCalculator).toHaveBeenCalledTimes(1);
   });
@@ -83,6 +95,6 @@ describe('FocusPlateStrip', () => {
     );
     expect(screen.getByLabelText('Per side: 45, 45 lb')).toBeTruthy();
     expect(screen.getByText('45 + 45')).toBeTruthy();
-    expect(screen.getByText(/on a 45 lb bar/)).toBeTruthy();
+    expect(screen.getByText(/per side/)).toBeTruthy();
   });
 });

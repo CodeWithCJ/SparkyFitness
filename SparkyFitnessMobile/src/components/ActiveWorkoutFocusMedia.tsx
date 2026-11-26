@@ -1,5 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { Pressable, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Pressable,
+  Text,
+  View,
+  useWindowDimensions,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useIsFocused } from '@react-navigation/native';
 import { useReducedMotion } from 'react-native-reanimated';
@@ -26,14 +32,11 @@ interface Props {
   onBackToCurrent?: () => void;
 }
 
-const THUMB_SIZE = 72;
-const MAX_HEIGHT_RATIO = 0.32;
-// Library photos are mostly 4:3 landscape; the card takes each image's own
-// shape once it loads, within portrait 3:4 and wide 16:9, so a photo fills it
-// instead of sitting between white bands.
-const DEFAULT_ASPECT = 4 / 3;
-const MIN_ASPECT = 3 / 4;
-const MAX_ASPECT = 16 / 9;
+const THUMB_SIZE = 40;
+// The card spans the full content width at 16:9, capped to a share of the
+// window so the current-set card and Log set stay on screen.
+const MAX_HEIGHT_RATIO = 0.19;
+const ASPECT = 16 / 9;
 
 /**
  * The focus view's exercise media: a large card that can be minimized
@@ -51,12 +54,11 @@ function ActiveWorkoutFocusMedia({
 }: Props) {
   const { t } = useTranslation();
   const { height: windowHeight } = useWindowDimensions();
-  const [aspect, setAspect] = useState(DEFAULT_ASPECT);
-  const handleLoadSize = useCallback((width: number, height: number) => {
-    if (width > 0 && height > 0) {
-      setAspect(Math.min(MAX_ASPECT, Math.max(MIN_ASPECT, width / height)));
-    }
-  }, []);
+  const [cardWidth, setCardWidth] = useState(0);
+  const handleLayout = useCallback(
+    (e: LayoutChangeEvent) => setCardWidth(e.nativeEvent.layout.width),
+    []
+  );
   const openLightbox = useOpenLightbox();
   const reducedMotion = useReducedMotion();
   const accentPrimary = String(useCSSVariable('--color-accent-primary'));
@@ -105,20 +107,26 @@ function ActiveWorkoutFocusMedia({
 
   const source = getImageSource(usable[index]);
   const stillSource = getImageSource(usable[0]);
-  const openFullScreen = () => openLightbox(usable, index, exerciseName);
+  const lightboxOptions = { getImageSource, controls: true };
+  const openFullScreen = () =>
+    openLightbox(usable, index, exerciseName, lightboxOptions);
   // A dark scrim reads over any photo, whatever the app theme.
   const pillClass =
-    'flex-row items-center gap-1.5 bg-black/70 rounded-full px-3.5 active:opacity-70';
+    'flex-row items-center gap-1 bg-black/70 rounded-full px-2.5 active:opacity-70';
 
   if (!expanded) {
     return (
       <View className="gap-2">
         {backToCurrent(false)}
-        <View className="flex-row items-center gap-3">
+        <View className="flex-row items-center gap-2.5">
           <Pressable
             onPress={onToggleExpanded}
+            // 40 pt picture, 44 pt touch target.
+            hitSlop={2}
             // The thumbnail is the first picture, so that is the one opened.
-            onLongPress={() => openLightbox(usable, 0, exerciseName)}
+            onLongPress={() =>
+              openLightbox(usable, 0, exerciseName, lightboxOptions)
+            }
             className="active:opacity-80"
             accessibilityRole="button"
             accessibilityLabel={t('activeWorkout.focus.media.expandLabel', {
@@ -131,7 +139,7 @@ function ActiveWorkoutFocusMedia({
             accessibilityState={{ expanded: false }}
           >
             <View
-              className="bg-white rounded-2xl overflow-hidden"
+              className="bg-white rounded-[10px] overflow-hidden"
               style={{ width: THUMB_SIZE, height: THUMB_SIZE }}
             >
               <SafeImage
@@ -144,11 +152,8 @@ function ActiveWorkoutFocusMedia({
                 fallback={null}
               />
             </View>
-            <View className="absolute right-1.5 bottom-1.5 w-6 h-6 rounded-full bg-black/70 items-center justify-center">
-              <Icon name="expand" size={12} color="white" />
-            </View>
           </Pressable>
-          {children}
+          <View className="min-w-0 flex-1">{children}</View>
         </View>
       </View>
     );
@@ -157,11 +162,13 @@ function ActiveWorkoutFocusMedia({
   return (
     <View
       className="w-full bg-white overflow-hidden"
+      onLayout={handleLayout}
       // 22 pt corners, as drawn on the boards.
-
       style={{
-        aspectRatio: aspect,
-        maxHeight: windowHeight * MAX_HEIGHT_RATIO,
+        height:
+          cardWidth > 0
+            ? Math.min(cardWidth / ASPECT, windowHeight * MAX_HEIGHT_RATIO)
+            : windowHeight * MAX_HEIGHT_RATIO,
         borderRadius: 22,
       }}
     >
@@ -183,13 +190,13 @@ function ActiveWorkoutFocusMedia({
           contentFit="cover"
           autoplay={!reducedMotion && !paused && screenFocused}
           fallback={null}
-          onLoadSize={handleLoadSize}
         />
       </Pressable>
       {backToCurrent(true)}
       <Pressable
         onPress={onToggleExpanded}
-        className={`absolute left-3 bottom-3 min-h-11 ${pillClass}`}
+        hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+        className={`absolute right-2.5 bottom-2.5 h-8 ${pillClass}`}
         accessibilityRole="button"
         accessibilityLabel={t('activeWorkout.focus.media.minimizeLabel', {
           defaultValue: 'Minimize {{name}} image',
@@ -197,38 +204,48 @@ function ActiveWorkoutFocusMedia({
         })}
         accessibilityState={{ expanded: true }}
       >
-        <Icon name="contract" size={16} color="white" />
-        <Text className="text-sm font-semibold text-white">
+        <Icon name="contract" size={13} color="white" />
+        <Text className="text-xs font-semibold text-white">
           {t('activeWorkout.focus.media.minimize', {
             defaultValue: 'Minimize',
           })}
         </Text>
       </Pressable>
-      {multiple && (
+      <View className="absolute right-2.5 top-2.5 flex-row items-center gap-2">
+        {multiple && (
+          <Pressable
+            onPress={() => setPaused((p) => !p)}
+            hitSlop={6}
+            className={`h-8 w-8 items-center justify-center px-0 ${pillClass}`}
+            accessibilityRole="button"
+            accessibilityLabel={
+              paused
+                ? t('activeWorkout.focus.media.playLabel', {
+                    defaultValue: 'Play {{name}} animation',
+                    name: exerciseName,
+                  })
+                : t('activeWorkout.focus.media.pauseLabel', {
+                    defaultValue: 'Pause {{name}} animation',
+                    name: exerciseName,
+                  })
+            }
+          >
+            <Icon name={paused ? 'play' : 'pause'} size={15} color="white" />
+          </Pressable>
+        )}
         <Pressable
-          onPress={() => setPaused((p) => !p)}
-          className={`absolute right-3 bottom-3 min-h-11 ${pillClass}`}
+          onPress={openFullScreen}
+          hitSlop={6}
+          className={`h-8 w-8 items-center justify-center px-0 ${pillClass}`}
           accessibilityRole="button"
-          accessibilityLabel={
-            paused
-              ? t('activeWorkout.focus.media.playLabel', {
-                  defaultValue: 'Play {{name}} animation',
-                  name: exerciseName,
-                })
-              : t('activeWorkout.focus.media.pauseLabel', {
-                  defaultValue: 'Pause {{name}} animation',
-                  name: exerciseName,
-                })
-          }
+          accessibilityLabel={t('activeWorkout.focus.media.expandFullScreen', {
+            defaultValue: 'Open {{name}} image full screen',
+            name: exerciseName,
+          })}
         >
-          <Icon name={paused ? 'play' : 'pause'} size={16} color="white" />
-          <Text className="text-sm font-semibold text-white">
-            {paused
-              ? t('activeWorkout.focus.media.play', { defaultValue: 'Play' })
-              : t('activeWorkout.focus.media.pause', { defaultValue: 'Pause' })}
-          </Text>
+          <Icon name="expand" size={15} color="white" />
         </Pressable>
-      )}
+      </View>
     </View>
   );
 }

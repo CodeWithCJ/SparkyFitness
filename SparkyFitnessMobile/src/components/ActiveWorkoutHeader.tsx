@@ -3,7 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View, useWindowDimensions } from 'react-native';
 import { useCSSVariable } from 'uniwind';
 import { useClockTick } from '../hooks/useClockTick';
+import { useHeartRateZoneColor } from '../hooks/useHeartRateZoneColor';
+import { useEnergyUnit } from '../hooks/useEnergyUnit';
 import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
+import { useLiveHeartRate } from '../stores/liveHeartRateStore';
+import { energyUnitLabel, formatEnergyNumber } from '../utils/energyUnit';
 import { formatElapsed } from '../utils/workoutSession';
 import type { ExerciseProgress } from '../utils/workoutProgress';
 import Icon, { type IconName } from './Icon';
@@ -22,11 +26,6 @@ interface ActiveWorkoutHeaderProps {
   location?: string | null;
   startedAt: number | null;
   progress: ExerciseProgress[];
-  /**
-   * Show "n / m exercises" on the elapsed line instead of the segmented bar
-   * (the focus view's numbered chips already show each exercise's progress).
-   */
-  progressInSubtitle?: boolean;
   onBack: () => void;
   onDiscard: () => void;
   /** Adds an "End workout" action (the finish flow) in its own menu group. */
@@ -56,11 +55,19 @@ interface ActiveWorkoutHeaderProps {
    */
   statusCluster?: { left: number } | null;
   /**
-   * The focus view's pill bar: shown instead of the title block, with the
-   * viewed exercise's position and a list button. Ignored when the buttons
-   * live in a side strip.
+   * The focus view's pill bar, with the viewed exercise's position and a list
+   * button. Ignored when the buttons live in a side strip, where a compact
+   * title block shows instead.
    */
-  focusBar?: { position: number; total: number; onOpenList?: () => void };
+  focusBar: {
+    position: number;
+    total: number;
+    onOpenList?: () => void;
+    /** The viewed exercise's entry id: its live watch heart rate shows in the pill. */
+    exerciseEntryId?: string | null;
+    /** Workout energy so far, kcal. The calories segment shows only when set. */
+    caloriesKcal?: number | null;
+  };
 }
 
 /**
@@ -182,41 +189,115 @@ function ElapsedTime({ startedAt }: { startedAt: number | null }) {
 const FOCUS_PILL_CLASS =
   'h-11 min-w-11 flex-row items-center justify-center rounded-full bg-raised px-3.5';
 
-/** The elapsed clock as a pill; ticks on its own like {@link ElapsedTime}. */
-function ElapsedPill({ startedAt }: { startedAt: number | null }) {
+/**
+ * The focus bar's one centred pill: the elapsed clock, then the watch's live
+ * heart rate (in its zone colour) and the workout's energy when there is one.
+ * It ticks on its own like {@link ElapsedTime}; the heart rate segment
+ * subscribes to the live store, so only this pill re-renders on a new reading.
+ */
+function StatsPill({
+  startedAt,
+  exerciseEntryId,
+  caloriesKcal,
+}: {
+  startedAt: number | null;
+  exerciseEntryId: string | null;
+  caloriesKcal: number | null;
+}) {
   const { t } = useTranslation();
   const now = useClockTick();
+  const energyUnit = useEnergyUnit();
+  const [heartRateColor, activeEnergyColor, borderSubtle] = useCSSVariable([
+    '--color-heart-rate',
+    '--color-active-energy',
+    '--color-border-subtle',
+  ]) as [string, string, string];
+  const bpm = useLiveHeartRate(exerciseEntryId);
+  const zoneColor = useHeartRateZoneColor(bpm);
+  const hrColor = zoneColor ?? heartRateColor;
   const time = formatElapsed(startedAt, now);
-  return (
+  const showCalories = caloriesKcal != null && caloriesKcal > 0;
+  const divider = (
     <View
-      className={FOCUS_PILL_CLASS}
-      accessible
-      accessibilityLabel={t('activeWorkout.header.elapsedTime', {
-        defaultValue: '{{time}} elapsed',
-        time,
-      })}
-    >
-      <Text
-        className="text-[17px] font-bold text-accent-primary"
-        style={{ fontVariant: ['tabular-nums'] }}
+      className="mx-2.5 h-5 w-px"
+      style={{ backgroundColor: borderSubtle }}
+    />
+  );
+  return (
+    <View className={`${FOCUS_PILL_CLASS} px-3`}>
+      <View
+        accessible
+        accessibilityLabel={t('activeWorkout.header.elapsedTime', {
+          defaultValue: '{{time}} elapsed',
+          time,
+        })}
       >
-        {time}
-      </Text>
+        <Text
+          className="text-[17px] font-bold text-accent-primary"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {time}
+        </Text>
+      </View>
+      {bpm != null && (
+        <>
+          {divider}
+          <View
+            testID="focus-header-heart-rate"
+            className="flex-row items-center gap-1"
+            accessible
+            accessibilityLabel={t('activeWorkout.focus.header.heartRate', {
+              defaultValue: 'Heart rate {{bpm}} bpm',
+              bpm,
+            })}
+          >
+            <Icon name="heart-rate" size={14} color={hrColor} />
+            <Text
+              className="text-[15px] font-bold"
+              style={{ color: hrColor, fontVariant: ['tabular-nums'] }}
+            >
+              {bpm}
+            </Text>
+          </View>
+        </>
+      )}
+      {showCalories && (
+        <>
+          {divider}
+          <View
+            testID="focus-header-calories"
+            className="flex-row items-center gap-1"
+            accessible
+            accessibilityLabel={t('activeWorkout.focus.header.calories', {
+              defaultValue: 'Energy {{value}} {{unit}}',
+              value: formatEnergyNumber(caloriesKcal, energyUnit),
+              unit: energyUnitLabel(energyUnit, t),
+            })}
+          >
+            <Icon name="flame" size={14} color={activeEnergyColor} />
+            <Text
+              className="text-[15px] font-bold text-text-primary"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {formatEnergyNumber(caloriesKcal, energyUnit)}
+            </Text>
+          </View>
+        </>
+      )}
     </View>
   );
 }
 
 /**
  * Custom chrome for the active-workout screen (the route renders with
- * `headerShown: false`): back, name + elapsed clock, kebab menu, and the
- * one segmented per-exercise progress bar.
+ * `headerShown: false`): the focus view's pill bar (back, one centred clock / heart rate /
+ * energy pill, list with the position, kebab menu), or a compact title block beside a side strip.
  */
 function ActiveWorkoutHeader({
   name,
   location,
   startedAt,
   progress,
-  progressInSubtitle = false,
   onBack,
   onDiscard,
   onEndWorkout,
@@ -238,22 +319,10 @@ function ActiveWorkoutHeader({
     statusCluster != null
       ? Math.max(STATUS_CLUSTER_WIDTH, windowWidth - statusCluster.left + 8)
       : STATUS_CLUSTER_WIDTH;
-  const [
-    textPrimary,
-    textMuted,
-    accentPrimary,
-    successColor,
-    trackColor,
-    chromeBorder,
-  ] = useCSSVariable([
+  const [textPrimary, accentPrimary] = useCSSVariable([
     '--color-text-primary',
-    '--color-text-muted',
     '--color-accent-primary',
-    '--color-icon-success',
-    '--color-progress-track',
-    '--color-chrome-border',
-  ]) as [string, string, string, string, string, string];
-  const usesGlass = useNativeIOSTabsActive();
+  ]) as [string, string];
 
   const menuSheetRef = useRef<ActionSheetRef>(null);
   const openMenu = () => menuSheetRef.current?.present();
@@ -281,6 +350,7 @@ function ActiveWorkoutHeader({
   if (onAddExercise) {
     menuItems.push({
       key: 'add-exercise',
+      icon: 'add-circle',
       label: t('activeWorkout.header.addExercise', {
         defaultValue: 'Add exercise',
       }),
@@ -291,6 +361,7 @@ function ActiveWorkoutHeader({
   if (onReorder) {
     menuItems.push({
       key: 'reorder',
+      icon: 'reorder-handle',
       label: t('activeWorkout.header.reorderExercises', {
         defaultValue: 'Reorder exercises',
       }),
@@ -301,6 +372,7 @@ function ActiveWorkoutHeader({
   if (onRename) {
     menuItems.push({
       key: 'rename',
+      icon: 'pencil',
       label: t('activeWorkout.header.renameWorkout', {
         defaultValue: 'Rename workout',
       }),
@@ -311,6 +383,7 @@ function ActiveWorkoutHeader({
   if (onEditLocation) {
     menuItems.push({
       key: 'location',
+      icon: 'location',
       label: location
         ? t('activeWorkout.header.gymLocationSet', {
             defaultValue: 'Gym: {{location}}',
@@ -326,6 +399,7 @@ function ActiveWorkoutHeader({
   if (onOpenSettings) {
     menuItems.push({
       key: 'workout-settings',
+      icon: 'settings',
       label: t('activeWorkout.header.settings', {
         defaultValue: 'Workout settings',
       }),
@@ -336,6 +410,7 @@ function ActiveWorkoutHeader({
   if (onEndWorkout) {
     menuItems.push({
       key: 'end-workout',
+      icon: 'checkmark-circle',
       label: t('activeWorkout.header.endWorkout', {
         defaultValue: 'End workout',
       }),
@@ -346,6 +421,7 @@ function ActiveWorkoutHeader({
   if (onClearAllSets) {
     menuItems.push({
       key: 'clear-sets',
+      icon: 'close',
       label: t('activeWorkout.header.clearAllSets', {
         defaultValue: 'Clear all logged sets',
       }),
@@ -356,6 +432,7 @@ function ActiveWorkoutHeader({
   }
   menuItems.push({
     key: 'discard',
+    icon: 'trash',
     label: t('activeWorkout.header.discardWorkout', {
       defaultValue: 'Discard workout',
     }),
@@ -364,7 +441,7 @@ function ActiveWorkoutHeader({
     onPress: onDiscard,
   });
 
-  if (focusBar != null && !buttonsInStrip) {
+  if (!buttonsInStrip) {
     return (
       <View
         className="px-4 pb-1 bg-background"
@@ -385,26 +462,12 @@ function ActiveWorkoutHeader({
           >
             <Icon name="chevron-back" size={22} color={textPrimary} />
           </Pressable>
-          <Pressable
-            onPress={focusBar.onOpenList}
-            disabled={focusBar.onOpenList == null}
-            accessibilityRole={focusBar.onOpenList ? 'button' : 'text'}
-            accessibilityLabel={t('activeWorkout.focus.header.position', {
-              defaultValue: 'Exercise {{position}} of {{total}}',
-              position: focusBar.position,
-              total: focusBar.total,
-            })}
-            className={`${FOCUS_PILL_CLASS} active:opacity-70`}
-          >
-            <Text
-              className="text-[17px] font-bold text-accent-primary"
-              style={{ fontVariant: ['tabular-nums'] }}
-            >
-              {`${focusBar.position}/${focusBar.total}`}
-            </Text>
-          </Pressable>
           <View className="flex-1 items-center">
-            <ElapsedPill startedAt={startedAt} />
+            <StatsPill
+              startedAt={startedAt}
+              exerciseEntryId={focusBar.exerciseEntryId ?? null}
+              caloriesKcal={focusBar.caloriesKcal ?? null}
+            />
           </View>
           {focusBar.onOpenList != null && (
             <Pressable
@@ -413,9 +476,22 @@ function ActiveWorkoutHeader({
               accessibilityLabel={t('activeWorkout.focus.header.list', {
                 defaultValue: 'Exercise list',
               })}
-              className={`${FOCUS_PILL_CLASS} w-11 px-0 active:opacity-70`}
+              accessibilityValue={{
+                text: t('activeWorkout.focus.header.position', {
+                  defaultValue: 'Exercise {{position}} of {{total}}',
+                  position: focusBar.position,
+                  total: focusBar.total,
+                }),
+              }}
+              className={`${FOCUS_PILL_CLASS} w-11 flex-col px-0 active:opacity-70`}
             >
-              <Icon name="list" size={22} color={textPrimary} />
+              <Icon name="list" size={18} color={textPrimary} />
+              <Text
+                className="text-[10px] font-bold text-accent-primary"
+                style={{ fontVariant: ['tabular-nums'] }}
+              >
+                {`${focusBar.position}/${focusBar.total}`}
+              </Text>
             </Pressable>
           )}
           <Pressable
@@ -429,11 +505,18 @@ function ActiveWorkoutHeader({
             <Icon name="ellipsis-horizontal" size={22} color={textPrimary} />
           </Pressable>
         </View>
-        <ActionSheet ref={menuSheetRef} title={name} items={menuItems} />
+        <ActionSheet
+          ref={menuSheetRef}
+          title={name}
+          items={menuItems}
+          layout="cards"
+        />
       </View>
     );
   }
 
+  // Side-strip poses: the screen draws back and menu in the strip, so the
+  // header is only the compact title block.
   return (
     <View
       className="px-3 pb-2 border-b border-border-subtle bg-background"
@@ -443,19 +526,6 @@ function ActiveWorkoutHeader({
         className="flex-row items-center"
         style={inStatusRow ? { marginRight: clusterReserve } : undefined}
       >
-        {!buttonsInStrip && (
-          <HeaderIconButton
-            icon="chevron-back"
-            color={textPrimary}
-            usesGlass={usesGlass}
-            chromeBorder={chromeBorder}
-            onPress={onBack}
-            accessibilityLabel={t('activeWorkout.header.back', {
-              defaultValue: 'Back',
-            })}
-          />
-        )}
-
         <View className="flex-1 items-center">
           <Text
             numberOfLines={1}
@@ -465,12 +535,8 @@ function ActiveWorkoutHeader({
           </Text>
           <View className="flex-row items-center gap-2">
             <ElapsedTime startedAt={startedAt} />
-            {progressInSubtitle && (
-              <>
-                <Text className="text-xs text-text-secondary">·</Text>
-                {progressText}
-              </>
-            )}
+            <Text className="text-xs text-text-secondary">·</Text>
+            {progressText}
             {location ? (
               <Pressable
                 onPress={onEditLocation}
@@ -489,60 +555,14 @@ function ActiveWorkoutHeader({
             ) : null}
           </View>
         </View>
-
-        {/* Glass chrome is monochrome (see resolveHeaderActionColors), so the
-            kebab takes the primary tint on that path. */}
-        {!buttonsInStrip && (
-          <HeaderIconButton
-            icon="ellipsis-horizontal"
-            color={usesGlass ? textPrimary : textMuted}
-            usesGlass={usesGlass}
-            chromeBorder={chromeBorder}
-            onPress={openMenu}
-            accessibilityLabel={t('activeWorkout.header.menu', {
-              defaultValue: 'Workout menu',
-            })}
-          />
-        )}
       </View>
 
-      {!progressInSubtitle && (
-        <View className="flex-row items-center gap-3 px-2 mt-1">
-          <View className="flex-1 flex-row gap-1">
-            {progress.map((p) => {
-              const isDone = p.totalSets > 0 && p.completedSets >= p.totalSets;
-              const fillPct =
-                p.totalSets > 0
-                  ? Math.min(1, p.completedSets / p.totalSets)
-                  : 0;
-              return (
-                <View
-                  key={p.entryId}
-                  testID={isDone ? 'header-segment-done' : 'header-segment'}
-                  className="flex-1 h-[5px] rounded-full overflow-hidden"
-                  style={{
-                    backgroundColor: isDone ? successColor : trackColor,
-                  }}
-                >
-                  {!isDone && fillPct > 0 && (
-                    <View
-                      testID="header-segment-fill"
-                      className="h-full rounded-full"
-                      style={{
-                        width: `${fillPct * 100}%`,
-                        backgroundColor: accentPrimary,
-                      }}
-                    />
-                  )}
-                </View>
-              );
-            })}
-          </View>
-          {progressText}
-        </View>
-      )}
-
-      <ActionSheet ref={menuSheetRef} title={name} items={menuItems} />
+      <ActionSheet
+        ref={menuSheetRef}
+        title={name}
+        items={menuItems}
+        layout="cards"
+      />
     </View>
   );
 }

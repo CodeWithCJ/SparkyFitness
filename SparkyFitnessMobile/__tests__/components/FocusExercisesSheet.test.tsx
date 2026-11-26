@@ -71,7 +71,7 @@ describe('FocusExercisesSheet', () => {
     expect(getByText('2/2 sets')).toBeTruthy();
     expect(getByText('A1')).toBeTruthy();
     expect(getByText('A2')).toBeTruthy();
-    expect(getAllByText('Superset').length).toBeGreaterThan(0);
+    expect(getAllByText('Superset')).toHaveLength(1);
   });
 
   it('sizes a superset item around its members', () => {
@@ -85,9 +85,18 @@ describe('FocusExercisesSheet', () => {
 
   it('selects an exercise and closes', () => {
     const { getByTestId, props } = renderSheet();
-    fireEvent.press(getByTestId('focus-exercise-row-lat'));
+    fireEvent.press(getByTestId('focus-exercise-row-bench'));
     expect(props.onClose).toHaveBeenCalled();
-    expect(props.onSelectExercise).toHaveBeenCalledWith('lat');
+    expect(props.onSelectExercise).toHaveBeenCalledWith('bench');
+  });
+
+  it('opens a superset from one button, not one per member', () => {
+    const { getByTestId, props } = renderSheet();
+    // A press on either member row reaches the group button, once.
+    fireEvent.press(getByTestId('focus-exercise-row-lat'));
+    expect(props.onSelectExercise).toHaveBeenCalledTimes(1);
+    expect(props.onSelectExercise).toHaveBeenCalledWith('tri');
+    expect(getByTestId('focus-exercise-row-lat').props.accessible).toBe(false);
   });
 
   it('moves an item through the row accessibility actions, inside the list', () => {
@@ -103,7 +112,7 @@ describe('FocusExercisesSheet', () => {
     expect(props.onMoveItem).toHaveBeenCalledWith(0, 1);
 
     // Either member moves the whole superset; the last item cannot move down.
-    const lat = getByTestId('focus-exercise-row-lat');
+    const lat = getByTestId('focus-exercise-group-tri');
     fireEvent(lat, 'accessibilityAction', {
       nativeEvent: { actionName: 'increment' },
     });

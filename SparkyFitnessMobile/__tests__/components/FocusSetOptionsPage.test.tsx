@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { fireEvent, render, within } from '@testing-library/react-native';
 import FocusSetOptionsPage from '../../src/components/FocusSetOptionsPage';
 
 function setup(
@@ -9,7 +9,6 @@ function setup(
     visible: true,
     setId: '5',
     setNumber: 2,
-    exerciseName: 'Bench Press',
     currentType: 'normal',
     note: null,
     metricColumn: 'rpe' as const,
@@ -29,7 +28,7 @@ function setup(
 describe('FocusSetOptionsPage', () => {
   it('names the set and offers every set action', () => {
     const { getByText, props } = setup();
-    expect(getByText('Set 2 · Bench Press')).toBeTruthy();
+    expect(getByText('Set 2 options')).toBeTruthy();
     fireEvent.press(getByText('Warm-up'));
     expect(props.onSelectType).toHaveBeenCalledWith('warmup');
     fireEvent.press(getByText('Plate calculator'));
@@ -50,7 +49,9 @@ describe('FocusSetOptionsPage', () => {
   });
 
   it('switches the metric column, hiding weight metrics for timed sets', () => {
-    const { getByText, queryByText, props, rerender } = setup();
+    const { getByText, getByTestId, queryByText, props, rerender } = setup();
+    expect(queryByText('RIR')).toBeNull();
+    fireEvent.press(getByTestId('focus-set-options-metric'));
     fireEvent.press(getByText('RIR'));
     expect(props.onSelectMetric).toHaveBeenCalledWith('rir');
     fireEvent.press(getByText('1RM'));
@@ -59,8 +60,23 @@ describe('FocusSetOptionsPage', () => {
     expect(queryByText('1RM')).toBeNull();
   });
 
+  it('marks the current set type and closes from Done', () => {
+    const { getByTestId, props } = setup({ currentType: 'drop' });
+    expect(
+      getByTestId('focus-set-options-type-drop').props.accessibilityState
+    ).toEqual({ selected: true });
+    expect(
+      getByTestId('focus-set-options-type-normal').props.accessibilityState
+    ).toEqual({ selected: false });
+    fireEvent.press(getByTestId('focus-set-options-done'));
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
   it('saves a typed set note on blur', () => {
-    const { getByPlaceholderText, props } = setup();
+    const { getByPlaceholderText, getByTestId, queryByPlaceholderText, props } =
+      setup();
+    expect(queryByPlaceholderText('Add a note for this set…')).toBeNull();
+    fireEvent.press(getByTestId('focus-set-options-notes'));
     const field = getByPlaceholderText('Add a note for this set…');
     fireEvent.changeText(field, '  Felt easy ');
     fireEvent(field, 'blur');
@@ -77,7 +93,6 @@ describe('FocusSetOptionsPage set types', () => {
         visible
         setId="5"
         setNumber={2}
-        exerciseName="Bench Press"
         currentType="normal"
         note={null}
         metricColumn="rpe"
@@ -93,6 +108,11 @@ describe('FocusSetOptionsPage set types', () => {
     fireEvent.press(getByTestId('focus-set-options-types'));
     expect(getByText(/Only normal sets are numbered/)).toBeTruthy();
     expect(getByText(/lighter set right after a working set/)).toBeTruthy();
+    expect(getByText('In the table')).toBeTruthy();
+    expect(getByTestId('focus-set-types-example')).toBeTruthy();
+    expect(
+      within(getByTestId('focus-set-types-example')).getByText('kg')
+    ).toBeTruthy();
     fireEvent.press(getByTestId('focus-set-types-done'));
     expect(queryByText(/Only normal sets are numbered/)).toBeNull();
   });

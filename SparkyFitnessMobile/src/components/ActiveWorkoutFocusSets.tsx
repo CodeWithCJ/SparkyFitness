@@ -1,3 +1,4 @@
+import { LOG_LOCKED_OPACITY, useFocusLogLocked } from './focusLogLock';
 import React, {
   useCallback,
   useContext,
@@ -34,10 +35,15 @@ import ActiveWorkoutSetRow, {
 } from './ActiveWorkoutSetRow';
 import BodyweightBanner from './BodyweightBanner';
 import CardioEffortForm from './CardioEffortForm';
-import FocusRestCard from './FocusRestCard';
 import Icon from './Icon';
 import { HeroLabel, HeroStepper, TableCellInput } from './FocusSetCells';
-import { type SetInputField, type SetRowAccessoryHandle } from './SetRowChrome';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import {
+  SetSwipeDeleteAction,
+  SwipeRevealedDelete,
+  type SetInputField,
+  type SetRowAccessoryHandle,
+} from './SetRowChrome';
 import { focusWithAndroidImeRetry } from '../utils/keyboardFocus';
 import {
   parseDecimalInput,
@@ -46,9 +52,7 @@ import {
 import { storedWeightInUnit, weightToKg } from '../utils/unitConversions';
 import {
   buildWorkingSetNumbers,
-  effectiveSetDurationSec,
   formatRecentSessionSet,
-  formatSetLoad,
   getRpeTone,
   isDurationModality,
   isMetricClampedToRpe,
@@ -65,7 +69,6 @@ import {
   type WorkoutCardSet,
 } from '../utils/workoutSession';
 import {
-  useActiveWorkoutStore,
   type ActiveSetPatch,
   type CompletedSetMap,
 } from '../stores/activeWorkoutStore';
@@ -154,6 +157,9 @@ const PREV_FLEX = 74;
  * values ("102.5 × 12", "BW+20 × 8"). A fixed ladder, never auto-shrink,
  * which renders some rows tiny on iOS and never below 12.
  */
+/** Distance from the cardio card's top to its cell row's top (card p-2, label row, gap). */
+const CARDIO_DELETE_TOP_OFFSET = 35;
+
 function prevFontSize(text: string): number {
   if (text.length <= 7) return 15;
   if (text.length <= 9) return 14;
@@ -238,8 +244,8 @@ interface FocusSetRowProps {
   /** This set's counterpart last session; null shows a dash, undefined hides the column. */
   previousSet?: ExerciseRecentSessionSet | null;
   state: 'done' | 'current' | 'upcoming';
-  /** The rest card is up: the current set stays a table line, ringed in the rest color. */
-  resting?: boolean;
+  /** An earlier set that is open again: its tick still works during a rest. */
+  reLogAllowed: boolean;
   metricColumn: ActiveWorkoutMetricColumn;
   weightUnit: 'kg' | 'lbs';
   /** +/- step for weight, in the display unit. */
@@ -278,7 +284,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
   assumed,
   previousSet,
   state,
-  resting = false,
+  reLogAllowed,
   metricColumn,
   weightUnit,
   weightStep,
@@ -311,7 +317,6 @@ const FocusSetRow = React.memo(function FocusSetRow({
     rpeModerate,
     rpeHard,
     rpeMax,
-    restColor,
   ] = useCSSVariable([
     '--color-accent-primary',
     '--color-text-secondary',
@@ -322,7 +327,6 @@ const FocusSetRow = React.memo(function FocusSetRow({
     RPE_TONE_VARS.moderate,
     RPE_TONE_VARS.hard,
     RPE_TONE_VARS.max,
-    '--color-rest',
   ]) as [
     string,
     string,
@@ -333,9 +337,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
     string,
     string,
     string,
-    string,
   ];
-  const ringColor = resting && state === 'current' ? restColor : undefined;
   const rpeToneColors = {
     easy: rpeEasy,
     moderate: rpeModerate,
@@ -404,6 +406,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
     reps.flush();
     effortInput.flush();
   };
+  const logLocked = useFocusLogLocked() && !reLogAllowed;
   const handleComplete = () => {
     flushDrafts();
     onCompleteSet(setId);
@@ -555,16 +558,12 @@ const FocusSetRow = React.memo(function FocusSetRow({
 
   // The set currently being done opens into a card with big steppers; every
   // other set is one compact line of the table.
-  if (isCurrent && !resting) {
+  if (isCurrent) {
     const fillText =
       previousSet != null
         ? formatRecentSessionSet(previousSet, weightUnit, t, modality)
         : null;
     const plannedReps = assumed?.reps ?? null;
-    const repsLeft =
-      effortField === 'rpe' && effort != null && effort >= 5 && effort <= 10
-        ? Math.round(10 - effort)
-        : null;
     return (
       <View
         ref={scrollTargetRef}
@@ -575,8 +574,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
           setNumber: displayNumber,
           total: setCount,
         })}
-        className="my-1 gap-2 rounded-[20px] bg-transparent p-2.5"
-        style={{ borderWidth: 2, borderColor: accentPrimary }}
+        className="-mx-1 my-0.5 gap-2 rounded-[14px] bg-accent-primary/10 p-2"
       >
         <View className="flex-row items-center gap-2">
           <Pressable
@@ -587,7 +585,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
               defaultValue: 'Change type for set {{setNumber}}',
               setNumber,
             })}
-            className="min-h-11 justify-center"
+            className="min-h-9 justify-center"
           >
             <View ref={setNumberRef} collapsable={false}>
               <HeroLabel accent>
@@ -612,10 +610,10 @@ const FocusSetRow = React.memo(function FocusSetRow({
                 setNumber,
                 value: fillText,
               })}
-              className="h-11 justify-center rounded-full bg-control px-3.5 active:opacity-70"
+              className="h-[26px] justify-center rounded-full bg-control px-2.5 active:opacity-70"
             >
               <Text
-                className="text-[13px] font-semibold text-text-secondary"
+                className="text-xs font-semibold text-text-secondary"
                 style={{ fontVariant: ['tabular-nums'] }}
               >
                 {t('activeWorkout.focus.hero.fill', {
@@ -627,7 +625,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
           )}
           {plannedReps != null && (
             <Text
-              className="ml-auto text-[15px] text-text-secondary"
+              className="ml-auto text-xs text-text-secondary"
               style={{ fontVariant: ['tabular-nums'] }}
             >
               {t('activeWorkout.focus.hero.planReps', {
@@ -642,12 +640,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
         <View className="flex-row gap-2">
           {showWeight && (
             <View className="flex-1 gap-1">
-              <HeroLabel>
-                {t('activeWorkout.focus.sets.weightHeader', {
-                  defaultValue: 'Weight ({{unit}})',
-                  unit: unitLabel,
-                })}
-              </HeroLabel>
+              <HeroLabel>{unitLabel}</HeroLabel>
               <HeroStepper
                 {...weight.inputProps}
                 inputRef={weightInputRef}
@@ -657,16 +650,6 @@ const FocusSetRow = React.memo(function FocusSetRow({
                 decrementLabel={weightLabels.decrement}
                 incrementLabel={weightLabels.increment}
               />
-              <Text
-                className="text-center text-[13px] text-text-secondary"
-                style={{ fontVariant: ['tabular-nums'] }}
-              >
-                {t('activeWorkout.focus.hero.step', {
-                  defaultValue: 'step {{step}} {{unit}}',
-                  step: formatFocusWeight(weightStep, weightUnit),
-                  unit: unitLabel,
-                })}
-              </Text>
             </View>
           )}
           <View className="flex-1 gap-1">
@@ -682,66 +665,20 @@ const FocusSetRow = React.memo(function FocusSetRow({
               decrementLabel={repsLabels.decrement}
               incrementLabel={repsLabels.increment}
             />
-            {previousSet?.reps != null && (
-              <Text
-                className="text-center text-[13px] text-text-secondary"
-                style={{ fontVariant: ['tabular-nums'] }}
-              >
-                {t('activeWorkout.focus.hero.lastReps', {
-                  defaultValue: 'last {{reps}}',
-                  reps: previousSet.reps,
-                })}
-              </Text>
-            )}
           </View>
         </View>
-        {isEffortColumn && (
-          <View className="flex-row items-center gap-1.5 pl-3.5">
-            <View className="min-w-0 flex-1">
-              <HeroLabel accent>{effortLabel}</HeroLabel>
-              <Text className="text-[13px] text-text-secondary">
-                {repsLeft != null
-                  ? t('activeWorkout.focus.hero.optionalRepsLeft', {
-                      defaultValue: 'optional · {{count}} reps left',
-                      count: repsLeft,
-                    })
-                  : t('activeWorkout.focus.hero.optional', {
-                      defaultValue: 'optional',
-                    })}
-              </Text>
-            </View>
-            <View style={{ width: 150 }}>
-              <HeroStepper
-                {...effortInput.inputProps}
-                inputRef={effortInputRef}
-                onFocus={() => onActivateRpe(renderKey)}
-                keyboardType="decimal-pad"
-                accessibilityLabel={effortInputLabel}
-                decrementLabel={t('activeWorkout.focus.hero.decreaseEffort', {
-                  defaultValue: 'Decrease {{metric}} for set {{setNumber}}',
-                  metric: effortLabel,
-                  setNumber,
-                })}
-                incrementLabel={t('activeWorkout.focus.hero.increaseEffort', {
-                  defaultValue: 'Increase {{metric}} for set {{setNumber}}',
-                  metric: effortLabel,
-                  setNumber,
-                })}
-                textColor={effortColor}
-              />
-            </View>
-          </View>
-        )}
         <Pressable
           onPress={handleComplete}
+          disabled={logLocked}
           accessibilityRole="button"
+          accessibilityState={{ disabled: logLocked }}
           accessibilityLabel={t('activeWorkout.focus.hero.logSet', {
             defaultValue: 'Log set',
           })}
-          className="h-14 items-center justify-center rounded-full active:opacity-80"
-          style={{ backgroundColor: accentPrimary }}
+          className="h-11 items-center justify-center rounded-full bg-accent-primary active:opacity-80"
+          style={logLocked ? { opacity: LOG_LOCKED_OPACITY } : undefined}
         >
-          <Text className="text-xl font-bold text-white">
+          <Text className="text-lg font-bold text-on-accent">
             {t('activeWorkout.focus.hero.logSet', { defaultValue: 'Log set' })}
           </Text>
         </Pressable>
@@ -771,7 +708,7 @@ const FocusSetRow = React.memo(function FocusSetRow({
       ? formatRecentSessionSet(previousSet, weightUnit, t, modality)
       : '-';
 
-  return (
+  const rowElement = (
     <Pressable
       testID="focus-set-row"
       onLongPress={longPress}
@@ -794,12 +731,13 @@ const FocusSetRow = React.memo(function FocusSetRow({
               defaultValue: 'Change type for set {{setNumber}}',
               setNumber,
             })}
-            className="h-11 items-center justify-center"
+            hitSlop={{ top: 5, bottom: 5 }}
+            className="h-[34px] items-center justify-center"
           >
             {setIndicator}
           </Pressable>
         ) : (
-          <View className="h-11 items-center justify-center">
+          <View className="h-[34px] items-center justify-center">
             {setIndicator}
           </View>
         )}
@@ -818,7 +756,8 @@ const FocusSetRow = React.memo(function FocusSetRow({
                 })
               : undefined
           }
-          className="h-11 items-center justify-center rounded-[14px] border border-dashed border-border-strong"
+          hitSlop={{ top: 5, bottom: 5 }}
+          className="h-[34px] items-center justify-center rounded-[12px] border border-dashed border-border-strong"
           style={{ flex: PREV_FLEX }}
         >
           <Text
@@ -846,14 +785,12 @@ const FocusSetRow = React.memo(function FocusSetRow({
               onFocus={() => onActivateSet(renderKey, 'weight')}
               keyboardType={weightKeyboard}
               accessibilityLabel={weightLabels.input}
-              ringColor={ringColor}
             />
           </View>
         )}
         <View style={{ flex: showWeight ? 68 : 150 }}>
           <TableCellInput
             {...reps.inputProps}
-            ringColor={ringColor}
             inputRef={repsInputRef}
             onFocus={() => onActivateSet(renderKey, 'reps')}
             keyboardType="number-pad"
@@ -862,9 +799,9 @@ const FocusSetRow = React.memo(function FocusSetRow({
         </View>
         <View style={{ flex: 48 }}>
           {!isEffortColumn ? (
-            <View className="h-11 items-center justify-center rounded-[14px] bg-raised">
+            <View className="h-[34px] items-center justify-center rounded-[12px] bg-raised">
               <Text
-                className="text-center text-base text-text-secondary"
+                className="text-center text-[15px] text-text-secondary"
                 style={{ fontVariant: ['tabular-nums'] }}
               >
                 {weightMetricText(
@@ -891,22 +828,54 @@ const FocusSetRow = React.memo(function FocusSetRow({
       </View>
       <Pressable
         onPress={isDone ? () => onUncomplete(setId) : handleComplete}
+        disabled={logLocked && !isDone ? true : undefined}
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: isDone }}
+        accessibilityState={
+          logLocked && !isDone
+            ? { checked: isDone, disabled: true }
+            : { checked: isDone }
+        }
         accessibilityLabel={checkLabel}
-        className={`h-11 w-11 items-center justify-center rounded-[14px] active:opacity-70 ${
+        hitSlop={5}
+        className={`h-[34px] w-[34px] items-center justify-center rounded-[12px] active:opacity-70 ${
           isDone ? '' : 'bg-raised'
         }`}
-        style={isDone ? { backgroundColor: accentPrimary } : undefined}
+        style={{
+          ...(isDone ? { backgroundColor: accentPrimary } : null),
+          ...(logLocked && !isDone ? { opacity: LOG_LOCKED_OPACITY } : null),
+        }}
       >
         <Icon
           name="checkmark"
-          size={20}
+          size={17}
           color={isDone ? '#ffffff' : textSecondary}
           weight="bold"
         />
       </Pressable>
     </Pressable>
+  );
+  // A horizontal swipe on a row reveals Delete (the row's own pan outranks the
+  // exercise pager's, so it never turns the page).
+  if (onDeleteSet == null) return rowElement;
+  return (
+    <ReanimatedSwipeable
+      renderRightActions={(progress) => (
+        <SwipeRevealedDelete progress={progress}>
+          <SetSwipeDeleteAction
+            onPress={() => onDeleteSet(setId)}
+            height={34}
+            accessibilityLabel={t('activeWorkout.setRow.delete', {
+              defaultValue: 'Delete set {{setNumber}}',
+              setNumber,
+            })}
+          />
+        </SwipeRevealedDelete>
+      )}
+      overshootRight={false}
+      rightThreshold={40}
+    >
+      {rowElement}
+    </ReanimatedSwipeable>
   );
 });
 
@@ -944,7 +913,6 @@ function ActiveWorkoutFocusSets({
   onRegisterAccessoryHandle,
 }: Props) {
   const scrollTargets = useContext(FocusScrollTargetContext);
-  const scrollTargetRef = scrollTargets?.card;
   const { t } = useTranslation();
   const [accentPrimary, textPrimary] = useCSSVariable([
     '--color-accent-primary',
@@ -991,41 +959,22 @@ function ActiveWorkoutFocusSets({
     ).increment ?? DEFAULT_WARMUP_PLATE_ROUNDING[weightUnit];
   const bodyweightExercise = isBodyweightModality(modality);
   const bodyWeightKg = useBodyWeightKg(undefined, bodyweightExercise);
-  // While a rest runs, its card takes the active-set card's place.
-  const restActive = useActiveWorkoutStore((s) => s.rest.state !== 'ready');
   const activeSetIndex = exercise.sets.findIndex(
     (set) => String(set.id) === activeSetId
   );
-  const resting = restActive && activeSetIndex >= 0;
-  const restNextText = (() => {
-    if (!resting) return null;
-    const set = exercise.sets[activeSetIndex];
-    const assumed = assumedSetValues?.[activeSetIndex] ?? null;
-    const load = formatSetLoad(
-      isDurationModality(modality) || isWeightDurationModality(modality)
-        ? {
-            weightKg: isWeightDurationModality(modality)
-              ? (set.weight ?? assumed?.weight ?? null)
-              : null,
-            reps: null,
-            durationSec:
-              effectiveSetDurationSec(set, modality) ??
-              assumed?.duration ??
-              null,
-          }
-        : {
-            weightKg: set.weight ?? assumed?.weight ?? null,
-            reps: set.reps ?? assumed?.reps ?? null,
-          },
-      weightUnit,
-      t
-    );
-    const label = t('workout.setNumber', {
-      defaultValue: 'Set {{number}}',
-      number: set.set_number,
-    });
-    return load != null ? `${label} · ${load}` : label;
-  })();
+  // The card opens on this exercise's current set: the cursor's when it is
+  // here, else the first set still to do, so every exercise (and its first
+  // set, before anything is logged) gets the big steppers, not just the one
+  // the cursor sits in.
+  const firstToDo = exercise.sets.find(
+    (set) => !completedSetIds[String(set.id)]
+  );
+  const currentSetId =
+    activeSetIndex >= 0
+      ? activeSetId
+      : firstToDo != null
+        ? String(firstToDo.id)
+        : null;
   const effortHeader = (() => {
     switch (effectiveMetricColumn) {
       case 'rir':
@@ -1054,12 +1003,12 @@ function ActiveWorkoutFocusSets({
     >
       <Pressable
         onPress={openMetricMenu}
-        hitSlop={{ left: 4, right: 4 }}
+        hitSlop={{ left: 4, right: 4, top: 10, bottom: 10 }}
         accessibilityRole="button"
         accessibilityLabel={t('activeWorkout.exercise.changeMetric', {
           defaultValue: 'Change metric column',
         })}
-        className="min-h-11 flex-row items-center justify-center gap-0.5"
+        className="min-h-6 flex-row items-center justify-center gap-0.5"
       >
         <Text
           className="text-xs font-bold uppercase"
@@ -1081,7 +1030,7 @@ function ActiveWorkoutFocusSets({
   ) {
     const cardioSet = exercise.sets[0] ?? null;
     const cardioSetId = cardioSet != null ? String(cardioSet.id) : null;
-    return (
+    const cardioElement = (
       <View className="rounded-2xl bg-transparent p-2">
         <CardioEffortForm
           set={cardioSet}
@@ -1097,7 +1046,7 @@ function ActiveWorkoutFocusSets({
               ? 'upcoming'
               : completedSetIds[cardioSetId]
                 ? 'done'
-                : cardioSetId === activeSetId
+                : cardioSetId === currentSetId
                   ? 'current'
                   : 'upcoming'
           }
@@ -1114,23 +1063,45 @@ function ActiveWorkoutFocusSets({
         />
       </View>
     );
+    // A horizontal swipe reveals Delete, like the strength rows; the only set
+    // going removes the exercise (the screen confirms).
+    if (cardioSetId == null || onDeleteSet == null) return cardioElement;
+    return (
+      <ReanimatedSwipeable
+        renderRightActions={(progress) => (
+          <SwipeRevealedDelete progress={progress}>
+            {/* The swipe's action area only wraps the pill, so it sits at the
+                top of the row; drop it onto the cells under the labels. */}
+            <View
+              testID="cardio-swipe-delete-slot"
+              style={{ marginTop: CARDIO_DELETE_TOP_OFFSET }}
+            >
+              <SetSwipeDeleteAction
+                onPress={() => onDeleteSet(cardioSetId)}
+                height={34}
+                accessibilityLabel={t('activeWorkout.setRow.delete', {
+                  defaultValue: 'Delete set {{setNumber}}',
+                  setNumber: cardioSet?.set_number ?? 1,
+                })}
+              />
+            </View>
+          </SwipeRevealedDelete>
+        )}
+        overshootRight={false}
+        rightThreshold={40}
+      >
+        {cardioElement}
+      </ReanimatedSwipeable>
+    );
   }
 
   return (
     <View className="gap-1.5">
-      {resting && (
-        <View ref={scrollTargetRef} collapsable={false}>
-          <FocusRestCard nextText={restNextText} />
-        </View>
-      )}
-      {bodyweightExercise && (
-        <BodyweightBanner bodyWeightKg={bodyWeightKg} weightUnit={weightUnit} />
-      )}
       {stepperRows && (
         <View
           ref={scrollTargets?.header}
           collapsable={false}
-          className="flex-row items-center gap-1"
+          className="-mb-1.5 flex-row items-center gap-1"
         >
           <Text className={headerClass} style={{ width: 30 }}>
             {t('workout.set', { defaultValue: 'Set' })}
@@ -1156,7 +1127,7 @@ function ActiveWorkoutFocusSets({
             </Text>
             {metricTrigger}
           </View>
-          <View className="w-11" />
+          <View className="w-[34px]" />
         </View>
       )}
       {!stepperRows && exercise.sets.length > 0 && (
@@ -1164,7 +1135,7 @@ function ActiveWorkoutFocusSets({
         <View
           ref={scrollTargets?.header}
           collapsable={false}
-          className="flex-row items-center px-1 py-1.5"
+          className="-mb-2 flex-row items-center px-1"
         >
           <Text className={`w-9 ${headerClass}`}>
             {t('workout.set', { defaultValue: 'Set' })}
@@ -1213,9 +1184,12 @@ function ActiveWorkoutFocusSets({
         const isFocused = focusedSetKey === renderKey;
         const state = completedSetIds[setId]
           ? 'done'
-          : setId === activeSetId
+          : setId === currentSetId
             ? 'current'
             : 'upcoming';
+        // During a rest only the current set and the ones after it wait; an
+        // earlier set that is open again can be re-marked.
+        const reLogAllowed = activeSetIndex >= 0 && index < activeSetIndex;
         const assumed = assumedSetValues?.[index] ?? null;
         // null shows a dash for a set with no counterpart; undefined (no
         // `previousSets`) hides the column.
@@ -1231,7 +1205,7 @@ function ActiveWorkoutFocusSets({
             assumed={assumed}
             previousSet={previousSet}
             state={state}
-            resting={resting}
+            reLogAllowed={reLogAllowed}
             metricColumn={effectiveMetricColumn}
             weightUnit={weightUnit}
             weightStep={weightStep}
@@ -1263,6 +1237,7 @@ function ActiveWorkoutFocusSets({
             renderKey={renderKey}
             displayNumber={workingSetNumbers[index]}
             state={state}
+            reLogAllowed={reLogAllowed}
             metricColumn={metricColumn === 'rir' ? 'rir' : 'rpe'}
             weightUnit={weightUnit}
             assumed={assumed}
@@ -1271,7 +1246,6 @@ function ActiveWorkoutFocusSets({
             onUncomplete={onUncomplete}
             onCommitField={onCommitField}
             onDelete={onDeleteSet}
-            disableSwipeDelete
             focusLook
             onPressSetType={onPressSetType}
             onLongPress={
@@ -1291,9 +1265,7 @@ function ActiveWorkoutFocusSets({
         );
         return (
           <React.Fragment key={renderKey}>
-            {holdSetId === setId
-              ? (holdCard ?? (resting ? null : holdReadyCard) ?? row)
-              : row}
+            {holdSetId === setId ? (holdCard ?? holdReadyCard ?? row) : row}
             {expandedSetKey === renderKey && (
               <ActiveWorkoutSetDetail
                 set={set}
@@ -1322,6 +1294,10 @@ function ActiveWorkoutFocusSets({
           })}
         </Text>
       </Pressable>
+      {/* Below the table so the current-set card stays near the top. */}
+      {bodyweightExercise && (
+        <BodyweightBanner bodyWeightKg={bodyWeightKg} weightUnit={weightUnit} />
+      )}
     </View>
   );
 }

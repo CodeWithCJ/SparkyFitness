@@ -1,10 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { HEART_RATE_ZONE_COLORS } from '@workspace/shared';
 import { useCSSVariable } from 'uniwind';
 
-import { RPE_TONE_VARS } from './ActiveWorkoutSetRow';
+import FocusEffortSlider from './FocusEffortSlider';
 import { useEnergyUnit } from '../hooks/useEnergyUnit';
 import { useHeartRateZoneColor } from '../hooks/useHeartRateZoneColor';
 import { formatLocalizedNumber } from '../localization';
@@ -14,16 +14,6 @@ import {
   formatDuration,
   type WorkoutHeartRateSummary,
 } from '../utils/workoutSession';
-
-export type EffortBand = 'easy' | 'moderate' | 'hard' | 'max';
-
-/** Apple Health's workout effort bands, as the watch shows them: 1-3, 4-6, 7-8, 9-10. */
-export function effortBand(rating: number): EffortBand {
-  if (rating <= 3) return 'easy';
-  if (rating <= 6) return 'moderate';
-  if (rating <= 8) return 'hard';
-  return 'max';
-}
 
 export interface PresetChangesOffer {
   /** Lines on what differs from the preset. */
@@ -101,28 +91,14 @@ function FocusWorkoutSummary({
   const energyUnit = useEnergyUnit();
   const avgBpm = heartRate != null ? Math.round(heartRate.avgBpm) : null;
   const zoneColor = useHeartRateZoneColor(avgBpm);
-  const [heartRateColor, ...toneColors] = useCSSVariable([
-    '--color-heart-rate',
-    RPE_TONE_VARS.easy,
-    RPE_TONE_VARS.moderate,
-    RPE_TONE_VARS.hard,
-    RPE_TONE_VARS.max,
-  ]) as string[];
-  const [trackColor] = useCSSVariable(['--color-border-strong']) as string[];
-  const bandColor: Record<EffortBand, string> = {
-    easy: toneColors[0],
-    moderate: toneColors[1],
-    hard: toneColors[2],
-    max: toneColors[3],
-  };
-  const bandLabel: Record<EffortBand, string> = {
-    easy: t('workoutComplete.effort.easy', { defaultValue: 'Easy' }),
-    moderate: t('workoutComplete.effort.moderate', {
-      defaultValue: 'Moderate',
-    }),
-    hard: t('workoutComplete.effort.hard', { defaultValue: 'Hard' }),
-    max: t('workoutComplete.effort.allOut', { defaultValue: 'All Out' }),
-  };
+  const [heartRateColor] = useCSSVariable(['--color-heart-rate']) as string[];
+  // The slider moves freely while dragging; the rating is saved on release.
+  const [draftEffort, setDraftEffort] = useState<number | null>(effort);
+  const [seenEffort, setSeenEffort] = useState(effort);
+  if (seenEffort !== effort) {
+    setSeenEffort(effort);
+    setDraftEffort(effort);
+  }
 
   const volumeText =
     volumeKg <= 0
@@ -209,52 +185,20 @@ function FocusWorkoutSummary({
       )}
 
       <View className="gap-2.5 rounded-3xl bg-surface p-4">
-        <View className="flex-row items-baseline justify-between">
-          <Text className="text-[13px] font-extrabold uppercase tracking-wider text-text-secondary">
-            {t('workoutComplete.focus.howHard', { defaultValue: 'How hard' })}
-          </Text>
-          {effort != null && (
-            <Text
-              testID="focus-summary-effort"
-              className="text-[22px] font-extrabold"
-              style={{ color: bandColor[effortBand(effort)] }}
-            >
-              {`${formatLocalizedNumber(effort)} · ${bandLabel[effortBand(effort)]}`}
-            </Text>
-          )}
-        </View>
-        <View className="flex-row gap-1.5">
-          {Array.from({ length: 10 }, (_, i) => {
-            const rating = i + 1;
-            const filled = effort != null && rating <= effort;
-            return (
-              <Pressable
-                key={rating}
-                testID={`focus-summary-effort-${rating}`}
-                onPress={() => onRateEffort(rating)}
-                accessibilityRole="button"
-                accessibilityLabel={t('workoutComplete.focus.rateEffort', {
-                  defaultValue: 'Rate the workout {{rating}} of 10',
-                  rating,
-                })}
-                hitSlop={{ top: 12, bottom: 12 }}
-                className="h-3.5 flex-1 rounded-full"
-                style={{
-                  backgroundColor: filled
-                    ? bandColor[effortBand(rating)]
-                    : trackColor,
-                }}
-              />
-            );
+        <Text className="text-[13px] font-extrabold uppercase tracking-wider text-text-secondary">
+          {t('workoutComplete.focus.howHard', { defaultValue: 'How hard' })}
+        </Text>
+        <FocusEffortSlider
+          metric="rpe"
+          value={draftEffort}
+          onChange={setDraftEffort}
+          onCommit={onRateEffort}
+          valueTestID="focus-summary-effort"
+          sliderTestID="focus-summary-effort-slider"
+          emptyHint={t('workoutComplete.focus.dragToRate', {
+            defaultValue: 'Drag to rate',
           })}
-        </View>
-        <View className="flex-row justify-between">
-          {(['easy', 'moderate', 'hard', 'max'] as const).map((band) => (
-            <Text key={band} className="text-[13px] text-text-secondary">
-              {bandLabel[band]}
-            </Text>
-          ))}
-        </View>
+        />
       </View>
 
       {presetOffer != null && (

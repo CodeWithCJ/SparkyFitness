@@ -30,7 +30,7 @@ interface CellInputProps {
 }
 
 /**
- * One editable cell of the focus view's set table: a 44 pt rounded control
+ * One editable cell of the focus view's set table: a 34 pt rounded control
  * whose number is centered and bold, ringed in the accent while it holds the
  * keyboard. The chrome sits on a wrapper and the input is bone stock (explicit
  * height, no padding), which keeps Android's EditText from mislaying its text.
@@ -51,12 +51,12 @@ export function TableCellInput({
   const [focused, setFocused] = useState(false);
   const [accent, muted, primary] = useCSSVariable([
     '--color-accent-primary',
-    '--color-text-muted',
+    '--color-text-secondary',
     '--color-text-primary',
   ]) as [string, string, string];
   return (
     <View
-      className="h-11 justify-center rounded-[14px] bg-raised"
+      className="h-[34px] justify-center rounded-[12px] bg-raised"
       style={{
         borderWidth: 2,
         borderColor: focused ? accent : (ringColor ?? 'transparent'),
@@ -81,11 +81,11 @@ export function TableCellInput({
         placeholderTextColor={muted}
         accessibilityLabel={accessibilityLabel}
         style={{
-          height: 36,
+          height: 30,
           padding: 0,
           textAlign: 'center',
-          fontSize: 19,
-          lineHeight: 21,
+          fontSize: 16,
+          lineHeight: 19,
           fontWeight: '700',
           color: textColor ?? primary,
           fontVariant: ['tabular-nums'],
@@ -102,7 +102,7 @@ interface HeroStepperProps extends CellInputProps {
   decrementLabel: string;
 }
 
-/** A round 44 pt −/+ button on the active-set card. */
+/** A round 34 pt −/+ button inside an active-set card pill. */
 function StepButton({
   icon,
   onPress,
@@ -118,15 +118,15 @@ function StepButton({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      hitSlop={4}
-      className="h-11 w-11 items-center justify-center rounded-full bg-control active:opacity-70"
+      hitSlop={6}
+      className="h-[34px] w-[34px] items-center justify-center rounded-full bg-text-primary/10 active:opacity-70"
     >
-      <Icon name={icon} size={20} color={primary} weight="bold" />
+      <Icon name={icon} size={18} color={primary} weight="bold" />
     </Pressable>
   );
 }
 
-/** The active-set card's [−] big number [+] control. */
+/** The active-set card's pill: [−] big number [+], tinted while it holds the keyboard. */
 export function HeroStepper({
   onIncrement,
   onDecrement,
@@ -142,19 +142,28 @@ export function HeroStepper({
   inputRef,
   textColor,
 }: HeroStepperProps) {
+  const [focused, setFocused] = useState(false);
   const [muted, primary] = useCSSVariable([
-    '--color-text-muted',
+    '--color-text-secondary',
     '--color-text-primary',
   ]) as [string, string];
   return (
-    <View className="flex-row items-center">
+    <View
+      className={`h-[46px] flex-row items-center rounded-[14px] px-1.5 ${focused ? 'bg-accent-primary/20' : 'bg-control'}`}
+    >
       <StepButton icon="remove" onPress={onDecrement} label={decrementLabel} />
       <TextInput
         ref={inputRef}
         value={value}
         onChangeText={onChangeText}
-        onFocus={onFocus}
-        onBlur={onBlur}
+        onFocus={() => {
+          setFocused(true);
+          onFocus?.();
+        }}
+        onBlur={() => {
+          setFocused(false);
+          onBlur?.();
+        }}
         keyboardType={keyboardType}
         selectTextOnFocus
         placeholder={placeholder}
@@ -166,7 +175,7 @@ export function HeroStepper({
           height: 40,
           padding: 0,
           textAlign: 'center',
-          fontSize: 26,
+          fontSize: 24,
           lineHeight: 28,
           fontWeight: '700',
           color: textColor ?? primary,
@@ -178,7 +187,10 @@ export function HeroStepper({
   );
 }
 
-/** Small uppercase label used over a hero field. */
+/**
+ * Label over a hero field: a small centred uppercase caption, or with `accent`
+ * the card's bold accent "Set 2" heading in normal case.
+ */
 export function HeroLabel({
   children,
   accent = false,
@@ -186,10 +198,15 @@ export function HeroLabel({
   children: React.ReactNode;
   accent?: boolean;
 }) {
-  return (
+  const accentInk = String(useCSSVariable('--color-accent-ink'));
+  return accent ? (
+    <Text className="text-[15px] font-extrabold" style={{ color: accentInk }}>
+      {children}
+    </Text>
+  ) : (
     <Text
-      className={`text-xs font-bold uppercase ${accent ? 'text-accent-primary' : 'text-text-secondary'}`}
-      style={{ letterSpacing: 0.7 }}
+      className="text-center text-[10px] font-bold uppercase text-text-secondary"
+      style={{ letterSpacing: 0.6 }}
     >
       {children}
     </Text>

@@ -2017,8 +2017,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           activeSetId: nextStep.setId,
           // Zero rest (back-to-back superset partners, or an explicit rest_time
           // of 0) advances straight to ready — no timer flash.
+          // Interval formats own their timing (the HUD's work/rest phases), so
+          // no second rest timer runs alongside it.
           rest:
-            restSec > 0
+            restSec > 0 && state.workoutFormat === 'standard'
               ? startRestForStep(
                   state.steps,
                   nextStep.setId,
@@ -2884,10 +2886,24 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         const items = buildExerciseReorderItems(session.exercises);
         const from = items.findIndex((i) => i.entryIds.includes(entryId));
         const to = items.findIndex((i) => i.entryIds.includes(currentEntryId));
-        if (from < 0 || to < 0 || from <= to) return;
+        // The exercise is the current one (or its superset partner): nothing
+        // to move in front of.
+        if (from < 0 || to < 0 || from === to) return;
+        // A finished exercise has nothing left to do.
+        const todo = session.exercises
+          .find((e) => e.id === entryId)
+          ?.sets.some((x) => state.completedSetIds[String(x.id)] == null);
+        if (!todo) return;
+        // One before the current exercise in the order goes just in front of
+        // it (removing it first shifts the current one up a place); one after
+        // it moves up into its place. One already right in front stays put.
+        const target = from < to ? to - 1 : to;
         const edit = buildSessionEditState(state, {
           ...session,
-          exercises: moveSessionExerciseItem(session.exercises, from, to),
+          exercises:
+            from === target
+              ? session.exercises
+              : moveSessionExerciseItem(session.exercises, from, target),
         });
         const picked = edit.session?.exercises.find((e) => e.id === entryId);
         const firstToDo = picked?.sets

@@ -35,7 +35,9 @@
       /* --color-accent-primary:    hsl(20, 89%, 48%);    */
       --color-accent-primary: hsl(220, 91%, 64%);
       --color-accent-muted: hsl(220, 49%, 55%);
+      --color-accent-ink: hsl(221, 83%, 38%);
       --color-accent-text: hsl(220, 88%, 94%);
+      --color-on-accent: hsl(0, 0%, 100%);
 
       --color-tab-active: hsl(220, 91%, 64%);
       --color-tab-inactive: hsl(220, 16%, 47%);
@@ -62,9 +64,10 @@
       --color-superset: hsl(280, 55%, 50%);
       --color-effort: hsl(280, 55%, 50%);
       --color-rest: hsl(24, 92%, 46%);
-      --color-hold: hsl(172, 70%, 32%);
+      --color-hold: hsl(38, 92%, 40%);
+      --color-hold-text: hsl(36, 95%, 25%);
       --color-on-rest: hsl(33, 100%, 6%);
-      --color-on-hold: hsl(171, 68%, 7%);
+      --color-on-hold: hsl(38, 100%, 8%);
 
       --color-progress-track: hsl(218, 29%, 92%);
       --color-progress-rail: hsl(218, 29%, 95%);
@@ -155,7 +158,9 @@
 
       --color-accent-primary: hsl(220, 85%, 60%);
       --color-accent-muted: hsl(220, 65%, 66%);
+      --color-accent-ink: hsl(220, 85%, 60%);
       --color-accent-text: hsl(221, 100%, 97%);
+      --color-on-accent: hsl(222, 70%, 11%);
 
       --color-text-link: hsl(220, 80%, 65%);
 
@@ -184,9 +189,10 @@
       --color-superset: hsl(282, 70%, 72%);
       --color-effort: hsl(282, 70%, 72%);
       --color-rest: hsl(25, 100%, 66%);
-      --color-hold: hsl(172, 62%, 55%);
+      --color-hold: hsl(38, 90%, 60%);
+      --color-hold-text: hsl(38, 90%, 60%);
       --color-on-rest: hsl(33, 100%, 6%);
-      --color-on-hold: hsl(171, 68%, 7%);
+      --color-on-hold: hsl(38, 100%, 8%);
 
       --color-progress-track: hsl(218, 41%, 23%);
       --color-progress-rail: hsl(218, 41%, 16%);
@@ -271,7 +277,9 @@
 
       --color-accent-primary: hsl(220, 85%, 60%);
       --color-accent-muted: hsl(220, 65%, 66%);
+      --color-accent-ink: hsl(220, 85%, 60%);
       --color-accent-text: hsl(221, 100%, 97%);
+      --color-on-accent: hsl(222, 70%, 11%);
 
       --color-text-link: hsl(220, 80%, 65%);
 
@@ -300,9 +308,10 @@
       --color-superset: hsl(282, 70%, 72%);
       --color-effort: hsl(282, 70%, 72%);
       --color-rest: hsl(25, 100%, 66%);
-      --color-hold: hsl(172, 62%, 55%);
+      --color-hold: hsl(38, 90%, 60%);
+      --color-hold-text: hsl(38, 90%, 60%);
       --color-on-rest: hsl(33, 100%, 6%);
-      --color-on-hold: hsl(171, 68%, 7%);
+      --color-on-hold: hsl(38, 100%, 8%);
 
       --color-progress-track: hsl(218, 41%, 15%);
       --color-progress-rail: hsl(218, 41%, 9%);

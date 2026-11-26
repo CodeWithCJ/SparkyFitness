@@ -17,6 +17,7 @@ import { useCSSVariable } from 'uniwind';
 import type { PresetSessionResponse } from '@workspace/shared';
 
 import Icon from './Icon';
+import { supersetPageSupports } from './FocusSupersetPage';
 import {
   useReorderDrag,
   useReorderItemDrag,
@@ -46,7 +47,8 @@ export function exercisesItemHeight(item: ExerciseReorderItem): number {
     GROUP_HEADER_HEIGHT +
     GROUP_PADDING +
     n * EXERCISES_ROW_HEIGHT +
-    (n - 1) * GROUP_INNER_GAP
+    // The gap under the header counts too, so the last row keeps its bottom pad.
+    n * GROUP_INNER_GAP
   );
 }
 
@@ -80,6 +82,8 @@ interface ItemProps {
   lastIndex: number;
   letter: string | null;
   exercisesById: Map<string, Exercise>;
+  /** 1-based position of an entry in the workout. */
+  exerciseNumber: (entryId: string) => number;
   completedSetIds: CompletedSetMap;
   selectedId: string | null;
   groupColor: string;
@@ -122,6 +126,7 @@ function ExercisesItem({
   lastIndex,
   letter,
   exercisesById,
+  exerciseNumber,
   completedSetIds,
   selectedId,
   groupColor,
@@ -166,6 +171,17 @@ function ExercisesItem({
     }
   };
 
+  // A superset whose members share one round page is one button: either member
+  // opens the same page, so only the group is tappable.
+  const groupOpensOnePage =
+    isGroup &&
+    item.entryIds.every((id) => {
+      const member = exercisesById.get(id);
+      return member != null && supersetPageSupports(member);
+    });
+  const groupTarget =
+    item.entryIds.find((id) => id === selectedId) ?? item.entryIds[0];
+
   const rows = item.entryIds.map((entryId, memberIndex) => {
     const exercise = exercisesById.get(entryId);
     if (exercise == null) return null;
@@ -185,16 +201,22 @@ function ExercisesItem({
     });
     const badge =
       isGroup && letter != null ? `${letter}${memberIndex + 1}` : null;
+    const rowProps = groupOpensOnePage
+      ? ({ accessible: false } as const)
+      : {
+          onPress: () => onSelectExercise(entryId),
+          accessibilityRole: 'button' as const,
+          accessibilityState: { selected: current },
+          accessibilityActions: reorderActions,
+          onAccessibilityAction: handleAccessibilityAction,
+          accessibilityLabel: `${name}, ${progress}${badge ? `, ${t('activeWorkout.focus.exercises.supersetMember', { defaultValue: 'superset {{badge}}', badge })}` : ''}`,
+        };
     return (
       <Pressable
         key={entryId}
         testID={`focus-exercise-row-${entryId}`}
-        onPress={() => onSelectExercise(entryId)}
-        accessibilityRole="button"
-        accessibilityState={{ selected: current }}
-        accessibilityActions={reorderActions}
-        onAccessibilityAction={handleAccessibilityAction}
-        accessibilityLabel={`${name}, ${progress}${badge ? `, ${t('activeWorkout.focus.exercises.supersetMember', { defaultValue: 'superset {{badge}}', badge })}` : ''}`}
+        disabled={groupOpensOnePage}
+        {...rowProps}
         className={`flex-row items-center gap-3 rounded-2xl pl-3.5 ${isGroup ? 'bg-background' : 'bg-raised'}`}
         style={{
           height: EXERCISES_ROW_HEIGHT,
@@ -209,7 +231,15 @@ function ExercisesItem({
             backgroundColor: finished ? accent : 'transparent',
           }}
         >
-          {finished && <Icon name="checkmark" size={14} color="#fff" />}
+          {finished ? (
+            <Icon name="checkmark" size={14} color="#fff" />
+          ) : current ? (
+            <Icon name="play" size={12} color={accent} />
+          ) : (
+            <Text className="text-[13px] font-bold text-text-secondary">
+              {exerciseNumber(entryId)}
+            </Text>
+          )}
         </View>
         <View className="min-w-0 flex-1">
           <Text
@@ -220,11 +250,6 @@ function ExercisesItem({
           </Text>
           <Text className="text-[14px] text-text-secondary" numberOfLines={1}>
             {progress}
-            {isGroup && (
-              <Text style={{ color: groupColor }}>
-                {` · ${t('activeWorkout.focus.exercises.superset', { defaultValue: 'Superset' })}`}
-              </Text>
-            )}
           </Text>
         </View>
         {badge != null && (
@@ -248,12 +273,31 @@ function ExercisesItem({
       style={[{ marginBottom: ROW_GAP }, animatedStyle]}
     >
       {isGroup ? (
-        <View
+        <Pressable
+          testID={`focus-exercise-group-${item.key}`}
+          disabled={!groupOpensOnePage}
+          onPress={() => onSelectExercise(groupTarget)}
+          {...(groupOpensOnePage
+            ? {
+                accessibilityRole: 'button' as const,
+                accessibilityActions: reorderActions,
+                onAccessibilityAction: handleAccessibilityAction,
+                accessibilityLabel: item.entryIds
+                  .map((id) => {
+                    const member = exercisesById.get(id);
+                    return (
+                      member?.exercise_snapshot?.name ??
+                      t('workout.exercise', { defaultValue: 'Exercise' })
+                    );
+                  })
+                  .join(', '),
+              }
+            : null)}
           className="rounded-[22px] px-2 pb-2"
           style={{
-            borderWidth: 2,
-            borderColor: groupColor,
-            backgroundColor: withAlpha(groupColor, 0.12),
+            borderWidth: 1,
+            borderColor: withAlpha(groupColor, 0.28),
+            backgroundColor: withAlpha(groupColor, 0.08),
             height: exercisesItemHeight(item),
             gap: GROUP_INNER_GAP,
           }}
@@ -272,7 +316,7 @@ function ExercisesItem({
             </Text>
           </View>
           {rows}
-        </View>
+        </Pressable>
       ) : (
         rows
       )}
@@ -319,6 +363,10 @@ function FocusExercisesSheet({
   );
   const exercisesById = useMemo(
     () => new Map(exercises.map((e) => [e.id, e])),
+    [exercises]
+  );
+  const exerciseNumber = useCallback(
+    (entryId: string) => exercises.findIndex((e) => e.id === entryId) + 1,
     [exercises]
   );
   // A for the first superset, B for the next, as the pager's group letters.
@@ -410,6 +458,7 @@ function FocusExercisesSheet({
                 lastIndex={items.length - 1}
                 letter={letters[index]}
                 exercisesById={exercisesById}
+                exerciseNumber={exerciseNumber}
                 completedSetIds={completedSetIds}
                 selectedId={selectedId}
                 groupColor={groupColor}

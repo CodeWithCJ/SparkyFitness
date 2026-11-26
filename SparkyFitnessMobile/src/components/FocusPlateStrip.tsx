@@ -1,13 +1,15 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, View } from 'react-native';
-import { useCSSVariable } from 'uniwind';
+import { Pressable, Text } from 'react-native';
 import type { PlateLoad, PlateUnit } from '@workspace/shared';
-import Icon from './Icon';
 import PlateBarDrawing from './PlateBarDrawing';
 import { usePlateLoad } from './PlateBarGraphic';
 import { formatPlateWeight } from '../utils/plateFormat';
 import { plateUnitLabel } from '../utils/plateUnitLabel';
+
+// The strip's bar graphic is drawn at half the compact size (was 0.7): an
+// 18 pt tall drawing next to 12 pt text, one line.
+const PLATE_SCALE = 0.5;
 
 interface Props {
   /** The set's weight in the person's weight unit, as shown. */
@@ -20,7 +22,7 @@ interface Props {
 
 /**
  * The focus view's plate strip: the bar drawn with this side's plates (the
- * calculator's drawing, small), one line naming them, and a button that opens the plate calculator. A weight the plates
+ * calculator's drawing, small) and one "per side" line naming them; the whole line opens the plate calculator. A weight the plates
  * can't make draws the nearest one below it and says so, never rounding.
  */
 function FocusPlateStrip({
@@ -30,7 +32,6 @@ function FocusPlateStrip({
   onOpenCalculator,
 }: Props) {
   const { t } = useTranslation();
-  const textPrimary = String(useCSSVariable('--color-text-primary'));
   const load = usePlateLoad(targetWeight, weightUnit, equipment);
   if (!load) return null;
   const { result, unit: plateUnit } = load;
@@ -55,16 +56,18 @@ function FocusPlateStrip({
           load={result.load}
           unit={plateUnit}
           variant="compact"
+          scale={PLATE_SCALE}
+          testID="focus-plate-drawing"
         />
-        <Text className="min-w-0 flex-1 text-sm text-text-primary">
-          {t('activeWorkout.focus.plates.perSide', {
-            defaultValue: 'Per side:',
-          })}{' '}
-          <Text className="font-bold">{platesText(result.load)}</Text>{' '}
-          {t('activeWorkout.focus.plates.onBar', {
-            defaultValue: 'on a {{bar}} {{unit}} bar',
-            bar: formatPlateWeight(result.barWeight),
-            unit,
+        <Text
+          className="min-w-0 flex-1 text-xs text-text-secondary"
+          numberOfLines={1}
+        >
+          <Text className="font-bold text-text-primary">
+            {platesText(result.load)}
+          </Text>{' '}
+          {t('activeWorkout.focus.plates.perSideLower', {
+            defaultValue: 'per side',
           })}
         </Text>
       </>
@@ -78,8 +81,13 @@ function FocusPlateStrip({
           load={result.below}
           unit={plateUnit}
           variant="compact"
+          scale={PLATE_SCALE}
+          testID="focus-plate-drawing"
         />
-        <Text className="min-w-0 flex-1 text-sm text-text-primary">
+        <Text
+          className="min-w-0 flex-1 text-xs text-text-secondary"
+          numberOfLines={1}
+        >
           {t('activeWorkout.focus.plates.nearest', {
             defaultValue: 'Nearest {{weight}} {{unit}}',
             weight: formatPlateWeight(result.below.totalWeight),
@@ -95,7 +103,7 @@ function FocusPlateStrip({
     );
   } else if (result.status === 'inexact') {
     body = (
-      <Text className="min-w-0 flex-1 text-sm text-text-secondary">
+      <Text className="min-w-0 flex-1 text-xs text-text-secondary">
         {t('plates.graphicBelowBar', {
           defaultValue: 'Plates: lighter than the bar',
         })}
@@ -106,22 +114,18 @@ function FocusPlateStrip({
   }
 
   return (
-    <View
+    <Pressable
       testID="focus-plate-strip"
-      className="flex-row items-center gap-2.5 rounded-[20px] bg-raised py-2 pl-3 pr-2"
+      onPress={onOpenCalculator}
+      accessibilityRole="button"
+      accessibilityLabel={t('activeWorkout.focus.plates.calculator', {
+        defaultValue: 'Plate calculator',
+      })}
+      hitSlop={{ top: 8, bottom: 10, left: 16, right: 16 }}
+      className="min-h-6 flex-row items-center gap-2 active:opacity-70"
     >
       {body}
-      <Pressable
-        onPress={onOpenCalculator}
-        accessibilityRole="button"
-        accessibilityLabel={t('activeWorkout.focus.plates.calculator', {
-          defaultValue: 'Plate calculator',
-        })}
-        className="h-11 w-11 items-center justify-center rounded-full bg-control active:opacity-70"
-      >
-        <Icon name="exercise-weights" size={22} color={textPrimary} />
-      </Pressable>
-    </View>
+    </Pressable>
   );
 }
 

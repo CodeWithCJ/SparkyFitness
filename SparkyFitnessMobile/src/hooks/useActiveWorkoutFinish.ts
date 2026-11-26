@@ -1,4 +1,3 @@
-import { isFocusViewActive } from '../utils/focusView';
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Keyboard } from 'react-native';
@@ -238,14 +237,12 @@ export function useActiveWorkoutFinish({
       const celebration = buildWorkoutCelebration(
         useActiveWorkoutStore.getState()
       );
-      // Read before the clear: the format it checks is reset with the store.
-      const focusStyle = isFocusViewActive();
       useActiveWorkoutStore.getState().clearWorkout();
       if (celebration != null) {
-        navigation.replace(
-          'WorkoutComplete',
-          focusStyle ? { ...celebration, focusStyle: true } : celebration
-        );
+        navigation.replace('WorkoutComplete', {
+          ...celebration,
+          focusStyle: true,
+        });
       } else {
         safeGoBack();
       }

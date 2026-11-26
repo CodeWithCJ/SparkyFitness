@@ -165,4 +165,20 @@ describe('ActiveWorkoutIntervalHud in guided mode', () => {
       language: 'en',
     });
   });
+  it('shows no WOD scoring row in a Tabata HUD', () => {
+    jest.setSystemTime(START + 1_000);
+    render(<ActiveWorkoutIntervalHud />);
+    expect(screen.queryByText('WOD Scoring')).toBeNull();
+  });
+
+  it('shows WOD scoring and the live round count in an AMRAP HUD', () => {
+    useActiveWorkoutStore.getState().startWorkout(tabataSession(), {
+      workoutFormat: 'amrap',
+    });
+    render(<ActiveWorkoutIntervalHud />);
+    expect(screen.getByText('WOD Scoring')).toBeTruthy();
+    expect(screen.getByText('Round 1')).toBeTruthy();
+    act(() => useActiveWorkoutStore.getState().incrementIntervalRound());
+    expect(screen.getByText('Round 2')).toBeTruthy();
+  });
 });

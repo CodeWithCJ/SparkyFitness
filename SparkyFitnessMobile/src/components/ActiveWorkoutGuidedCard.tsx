@@ -9,7 +9,10 @@ import {
   useGuidedWorkout,
   type GuidedSetView,
 } from '../hooks/useGuidedWorkout';
+import { useRestCountdown } from '../hooks/useRestCountdown';
 import { useImageSlideshow } from '../hooks/useImageSlideshow';
+import { useActiveWorkoutStore } from '../stores/activeWorkoutStore';
+import { formatRestCountdown } from '../utils/workoutSession';
 import {
   setGuidedSpeechMuted,
   useGuidedCaption,
@@ -37,12 +40,15 @@ export default function ActiveWorkoutGuidedCard({
   onCompleteSet,
 }: Props) {
   const { t } = useTranslation();
-  const [textMuted, textPrimary] = useCSSVariable([
+  const [textMuted, textPrimary, restColor, onRest] = useCSSVariable([
     '--color-text-muted',
     '--color-text-primary',
-  ]) as [string, string];
+    '--color-rest',
+    '--color-on-rest',
+  ]) as [string, string, string, string];
   const { phase, finish, paused, pause, resume, replay } =
     useGuidedWorkout(onCompleteSet);
+  const { remainingMs: restRemainingMs } = useRestCountdown();
   const muted = useGuidedSpeechMuted();
   const caption = useGuidedCaption();
   const phaseSet =
@@ -215,7 +221,10 @@ export default function ActiveWorkoutGuidedCard({
       {set != null && (
         <View className="items-center mt-2">
           {phase.kind === 'rest' && (
-            <Text className="text-xs font-semibold text-text-muted uppercase tracking-wider">
+            <Text
+              className="text-xs font-semibold uppercase tracking-wider"
+              style={{ color: restColor }}
+            >
               {t('guidedWorkout.card.nextUp', { defaultValue: 'Next up' })}
             </Text>
           )}
@@ -228,6 +237,31 @@ export default function ActiveWorkoutGuidedCard({
           {target != null && (
             <Text className="text-base text-text-secondary">{target}</Text>
           )}
+        </View>
+      )}
+
+      {phase.kind === 'rest' && (
+        <View className="items-center mt-2">
+          <Text
+            testID="guided-rest-countdown"
+            className="text-3xl font-black"
+            style={{ color: restColor }}
+          >
+            {formatRestCountdown(restRemainingMs)}
+          </Text>
+          <Pressable
+            onPress={() => useActiveWorkoutStore.getState().dismissRest()}
+            accessibilityRole="button"
+            accessibilityLabel={t('activeWorkout.rest.skip', {
+              defaultValue: 'Skip rest',
+            })}
+            className="mt-2 px-4 py-2 rounded-full active:opacity-70"
+            style={{ backgroundColor: restColor }}
+          >
+            <Text className="text-sm font-semibold" style={{ color: onRest }}>
+              {t('activeWorkout.rest.skip', { defaultValue: 'Skip rest' })}
+            </Text>
+          </Pressable>
         </View>
       )}
 

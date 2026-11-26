@@ -18,6 +18,7 @@ import {
   type ReactTestInstance,
 } from '@testing-library/react-native';
 import {
+  SetSwipeDeleteAction,
   SET_ACCESSORY_BAR_HEIGHT,
   StickySetInputAccessoryBar,
   useSetEditAccessoryBar,
@@ -638,5 +639,24 @@ describe('StickySetInputAccessoryBar', () => {
     } finally {
       osSpy.restore();
     }
+  });
+});
+
+describe('SetSwipeDeleteAction', () => {
+  it('pins the pill to the row height when one is given', () => {
+    const { getByLabelText } = render(
+      <SetSwipeDeleteAction onPress={jest.fn()} height={34} />
+    );
+    const style = StyleSheet.flatten(getByLabelText('Delete').props.style);
+    expect(style.height).toBe(34);
+    expect(style.width).toBe(84);
+  });
+
+  it('keeps the stretch layout when no height is given', () => {
+    const { getByLabelText } = render(
+      <SetSwipeDeleteAction onPress={jest.fn()} />
+    );
+    const style = StyleSheet.flatten(getByLabelText('Delete').props.style);
+    expect(style.height).toBeUndefined();
   });
 });

@@ -131,6 +131,8 @@ interface Props {
   load: PlateLoad;
   unit: PlateUnit;
   variant?: PlateBarVariant;
+  /** Multiplies the drawn size (the focus strip draws it small); 1 by default. */
+  scale?: number;
   testID?: string;
 }
 
@@ -151,7 +153,13 @@ const COLOR_TOKENS = [
  * share: a side view with sleeve, collar and the plates as vertical bars,
  * coloured by competition convention and as tall as their weight.
  */
-function PlateBarDrawing({ load, unit, variant = 'large', testID }: Props) {
+function PlateBarDrawing({
+  load,
+  unit,
+  variant = 'large',
+  scale = 1,
+  testID,
+}: Props) {
   const label = usePlateDrawingLabel(load, unit);
   const [red, blue, yellow, green, white, grey, steel, sleeve, labelInk] =
     useCSSVariable([...COLOR_TOKENS]) as string[];
@@ -175,7 +183,10 @@ function PlateBarDrawing({ load, unit, variant = 'large', testID }: Props) {
       accessibilityLabel={label}
       style={
         compact
-          ? { width: Math.min(layout.width, 150), height: layout.height }
+          ? {
+              width: Math.min(layout.width, 150) * scale,
+              height: layout.height * scale,
+            }
           : { width: '100%', aspectRatio: layout.width / layout.height }
       }
     >

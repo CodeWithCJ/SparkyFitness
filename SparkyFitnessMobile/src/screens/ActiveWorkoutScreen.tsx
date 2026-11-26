@@ -9,13 +9,11 @@ import {
   Text,
   View,
   type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
   useWindowDimensions,
 } from 'react-native';
 import {
-  KeyboardAwareScrollView,
   type KeyboardAwareScrollViewRef,
+  useKeyboardState,
 } from 'react-native-keyboard-controller';
 import {
   calculateWarmupSets,
@@ -32,9 +30,7 @@ import ActiveWorkoutHeader, {
   ActiveWorkoutStripButtons,
   buildExerciseProgress,
 } from '../components/ActiveWorkoutHeader';
-import ActiveWorkoutRail, {
-  useSupersetBorders,
-} from '../components/ActiveWorkoutRail';
+import { useSupersetBorders } from '../components/ActiveWorkoutRail';
 import type { SetRowAccessoryHandle } from '../components/ActiveWorkoutSetRow';
 import {
   SET_ACCESSORY_BAR_HEIGHT,
@@ -43,7 +39,7 @@ import {
   type SetAccessoryAction,
   type SetInputField,
 } from '../components/SetRowChrome';
-import { MetricColumnMenu, SetTypeMenu } from '../components/WorkoutMenus';
+import { MetricColumnMenu } from '../components/WorkoutMenus';
 import PlateCalculatorSheet from '../components/PlateCalculatorSheet';
 import {
   storedWeightInUnit,
@@ -55,7 +51,6 @@ import {
   COMPACT_REST_ROW_HEIGHT,
   MIN_WINDOW_HEIGHT_FOR_COMPACT_REST_ROW,
   LiveActiveWorkoutRestBar,
-  REST_BAR_GLASS_CLEARANCE,
 } from '../components/ActiveWorkoutRestBar';
 import type { ActionSheetRef } from '../components/ActionSheet';
 import { type AnchorRect } from '../components/AnchoredMenu';
@@ -66,29 +61,28 @@ import WorkoutDurationSheet, {
 } from '../components/WorkoutDurationSheet';
 import FocusExercisesSheet from '../components/FocusExercisesSheet';
 import FocusSetOptionsPage from '../components/FocusSetOptionsPage';
+import FocusWorkoutSettingsPage from '../components/FocusWorkoutSettingsPage';
 import FocusEffortSheet, {
   effortStartValue,
-  type EffortMetric,
 } from '../components/FocusEffortSheet';
+import { type EffortMetric } from '../components/FocusEffortSlider';
 import FocusPrCard from '../components/FocusPrCard';
 import { formatLocalizedNumber } from '../localization';
 import ActiveWorkoutIntervalHud from '../components/ActiveWorkoutIntervalHud';
 import ActiveWorkoutGuidedCard from '../components/ActiveWorkoutGuidedCard';
-import ActiveWorkoutNowCard from '../components/ActiveWorkoutNowCard';
 import ActiveWorkoutRenameModal from '../components/ActiveWorkoutRenameModal';
 import ActiveWorkoutLocationModal from '../components/ActiveWorkoutLocationModal';
 import { setWorkoutReorderSource } from '../services/workoutReorderSource';
 import ActiveWorkoutOverflowSheet, {
   type OverflowMenuState,
 } from '../components/ActiveWorkoutOverflowSheet';
-import ActiveWorkoutExerciseList from '../components/ActiveWorkoutExerciseList';
 import ActiveWorkoutFocusView from '../components/ActiveWorkoutFocusView';
+import FocusRestCard from '../components/FocusRestCard';
 import Button from '../components/ui/Button';
 import { useActiveWorkoutAutosave } from '../hooks/useActiveWorkoutAutosave';
 import { useExerciseImageSource } from '../hooks/useExerciseImageSource';
 import { useNavigationActionGuard } from '../hooks/useNavigationActionGuard';
 import { usePreferences } from '../hooks/usePreferences';
-import { useNativeIOSTabsActive } from '../services/nativeTabBarPreference';
 import { useVerticalBar } from '../hooks/useVerticalBar';
 import { getActiveServerConfig } from '../services/storage';
 import {
@@ -107,6 +101,7 @@ import { runAfterKeyboardSettles } from '../utils/keyboardFocus';
 import {
   buildExerciseReorderItems,
   describeActiveSet,
+  describeActiveSetAssumed,
   FOCUS_SUPERSET_PALETTE_VARS,
   firstSetInputField,
   formatSetLoad,
@@ -114,6 +109,8 @@ import {
   resolveSnapshotModality,
   isCardioModality,
   isDurationModality,
+  isWeightDurationModality,
+  effectiveSetDurationSec,
   isMetricClampedToRpe,
   isWarmupSetType,
   quantizeSetWeightKg,
@@ -122,14 +119,19 @@ import {
 } from '../utils/workoutSession';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import { resolveWarmupOptions } from '../utils/warmupSettings';
+import { useLiveWorkoutCalories } from '../stores/liveHeartRateStore';
 import { useActiveWorkoutIntervalLifecycle } from '../hooks/useActiveWorkoutIntervalLifecycle';
 import { useActiveWorkoutDiscard } from '../hooks/useActiveWorkoutDiscard';
 import { useActiveWorkoutFinish } from '../hooks/useActiveWorkoutFinish';
 import { useActiveWorkoutExerciseActions } from '../hooks/useActiveWorkoutExerciseActions';
 import { useLiveCoachingSignals } from '../hooks/useLiveCoachingSignals';
+import { FocusLogLockContext } from '../components/focusLogLock';
 import type { RootStackScreenProps } from '../types/navigation';
 
 type Props = RootStackScreenProps<'ActiveWorkout'>;
+
+/** Breathing room kept between the sets and the floating focus rest card. */
+const FOCUS_REST_OVERLAY_GAP = 16;
 
 function ActiveWorkoutScreen({ navigation, route }: Props) {
   useLiveCoachingSignals();
@@ -148,10 +150,15 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const setRenderKeys = useActiveWorkoutStore((s) => s.setRenderKeys);
   const activeSetId = useActiveWorkoutStore((s) => s.activeSetId);
   const plannedSetValues = useActiveWorkoutStore((s) => s.plannedSetValues);
+  const previousSessionSets = useActiveWorkoutStore(
+    (s) => s.previousSessionSets
+  );
+  const exerciseConfigs = useActiveWorkoutStore((s) => s.exerciseConfigs);
+  const coachingSignals = useActiveWorkoutStore((s) => s.coachingSignals);
+  const declinedAdaptive = useActiveWorkoutStore((s) => s.declinedAdaptive);
   // Only the rest state's transitions reach the screen; the countdown itself
   // ticks inside the rest bar.
   const restState = useActiveWorkoutStore((s) => s.rest.state);
-  const usesGlassRestBar = useNativeIOSTabsActive();
   const createdByLiveStart = useActiveWorkoutStore((s) => s.createdByLiveStart);
   const queryClient = useQueryClient();
 
@@ -161,8 +168,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const guidedWorkoutEnabled = useAppPreferencesStore(
     (s) => s.guidedWorkoutEnabled
   );
-  const nowCardEnabled = useAppPreferencesStore((s) => s.activeWorkoutNowCard);
-  const activeWorkoutView = useAppPreferencesStore((s) => s.activeWorkoutView);
 
   const { preferences } = usePreferences();
   const weightUnit = (preferences?.default_weight_unit ?? 'kg') as 'kg' | 'lbs';
@@ -174,13 +179,16 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
   useActiveWorkoutIntervalLifecycle(workoutFormat, guidedWorkoutEnabled);
 
-  // The one-exercise view replaces the rail, Now card and the list (standard
-  // format only; interval formats keep their HUD, and guided mode keeps the
-  // list, whose guided card runs the spoken cues).
-  const focusMode =
-    activeWorkoutView === 'focus' &&
-    (workoutFormat ?? 'standard') === 'standard' &&
-    !guidedWorkoutEnabled;
+  const showFocusNowBanner = useAppPreferencesStore((s) => s.focusNowBanner);
+  // The one-exercise view is the only layout. Guided mode and the interval
+  // formats render their own card / HUD at the top of it and drive set timing
+  // themselves, so the hold screen and the post-set effort / PR flow, which
+  // belong to a plain standard workout, stay off for them.
+  const standardFocus =
+    (workoutFormat ?? 'standard') === 'standard' && !guidedWorkoutEnabled;
+  // A standard-format rest that is running blocks logging a new set (the
+  // interval formats and guided mode own their rest and never lock).
+  const logLocked = restState !== 'ready' && standardFocus;
 
   // The exercise on show in the focus view, for the header's "2/6" pill.
   const [focusIndex, setFocusIndex] = useState(0);
@@ -420,153 +428,36 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     runNavigationAction(() => navigation.push('WorkoutReorder'));
   }, [navigation, runNavigationAction]);
 
+  // The focus view opens its own settings page.
+  const [focusSettingsOpen, setFocusSettingsOpen] = useState(false);
   const handleOpenWorkoutSettings = useCallback(() => {
     Keyboard.dismiss();
-    navigation.navigate('WorkoutSettings');
-  }, [navigation]);
+    setFocusSettingsOpen(true);
+  }, []);
 
   const exercisesForBorders = useMemo(
     () => session?.exercises ?? [],
     [session]
   );
-  const { runs: supersetRuns, borders: supersetBorders } =
-    useSupersetBorders(exercisesForBorders);
   // The focus view draws supersets in the watch's lilac group colour.
-  const { borders: focusSupersetBorders } = useSupersetBorders(
-    exercisesForBorders,
-    FOCUS_SUPERSET_PALETTE_VARS
-  );
-
-  const [userExpandedIds, setUserExpandedIds] = useState<ReadonlySet<string>>(
-    () => new Set<string>()
-  );
-  const [autoExpandedId, setAutoExpandedId] = useState<string | null>(
-    activeExerciseId
-  );
-  const [focusedExerciseId, setFocusedExerciseId] = useState<string | null>(
-    activeExerciseId
-  );
+  const { runs: supersetRuns, borders: focusSupersetBorders } =
+    useSupersetBorders(exercisesForBorders, FOCUS_SUPERSET_PALETTE_VARS);
 
   const scrollRef = useRef<KeyboardAwareScrollViewRef>(null);
-  const cardOffsetsRef = useRef<Record<string, number>>({});
-  const viewportHeightRef = useRef(0);
-  const programmaticScrollUntilRef = useRef(0);
 
-  const focusModeRef = useRef(focusMode);
-  useEffect(() => {
-    focusModeRef.current = focusMode;
-  }, [focusMode]);
-
-  // Focus mode has no list to scroll; the rest bar, "do this now" and the
-  // other callers of handleRailPress ask its view to show the exercise.
+  // The rest bar, "do this now" and similar callers ask the focus view to
+  // show an exercise; a new `seq` is a new request.
   const [focusShowRequest, setFocusShowRequest] = useState<{
     id: string;
     seq: number;
   } | null>(null);
 
-  const scrollToExercise = useCallback((entryId: string) => {
-    // The focus view has no list cards: offsets left from a list session
-    // (the view can be switched mid-workout) would scroll its page to a stale
-    // position. Read through a ref so a view switch does not re-run effects.
-    if (focusModeRef.current) return;
-    const y = cardOffsetsRef.current[entryId];
-    if (y == null) return;
-    programmaticScrollUntilRef.current = Date.now() + 600;
-    scrollRef.current?.scrollTo({ y: Math.max(0, y - 8), animated: true });
+  const handleShowExercise = useCallback((entryId: string) => {
+    setFocusShowRequest((prev) => ({
+      id: entryId,
+      seq: (prev?.seq ?? 0) + 1,
+    }));
   }, []);
-
-  const [prevActiveExerciseId, setPrevActiveExerciseId] =
-    useState(activeExerciseId);
-  if (activeExerciseId !== prevActiveExerciseId) {
-    const leaving = prevActiveExerciseId;
-    if (leaving != null) {
-      const leavingExercise = session?.exercises.find((e) => e.id === leaving);
-      const leavingDone =
-        leavingExercise != null &&
-        leavingExercise.sets.length > 0 &&
-        leavingExercise.sets.every((s) => completedSetIds[String(s.id)]);
-      if (leavingDone) {
-        setUserExpandedIds((prev) => {
-          if (prev.has(leaving)) return prev;
-          const next = new Set(prev);
-          next.add(leaving);
-          return next;
-        });
-      }
-    }
-    setPrevActiveExerciseId(activeExerciseId);
-    if (activeExerciseId != null) {
-      setAutoExpandedId(activeExerciseId);
-      setFocusedExerciseId(activeExerciseId);
-    }
-  }
-
-  useEffect(() => {
-    if (activeExerciseId == null) return;
-    return runAfterKeyboardSettles(
-      () => scrollToExercise(activeExerciseId),
-      350
-    );
-  }, [activeExerciseId, scrollToExercise]);
-
-  const handleToggleExpanded = useCallback(
-    (entryId: string) => {
-      setUserExpandedIds((prev) => {
-        const next = new Set(prev);
-        if (next.has(entryId)) {
-          next.delete(entryId);
-        } else if (autoExpandedId === entryId) {
-          setAutoExpandedId(null);
-        } else {
-          next.add(entryId);
-        }
-        return next;
-      });
-    },
-    [autoExpandedId]
-  );
-
-  const handleRailPress = useCallback(
-    (entryId: string) => {
-      setUserExpandedIds((prev) => {
-        if (prev.has(entryId) || autoExpandedId === entryId) return prev;
-        const next = new Set(prev);
-        next.add(entryId);
-        return next;
-      });
-      setFocusedExerciseId(entryId);
-      if (focusModeRef.current) {
-        setFocusShowRequest((prev) => ({
-          id: entryId,
-          seq: (prev?.seq ?? 0) + 1,
-        }));
-      }
-      setTimeout(() => scrollToExercise(entryId), 100);
-    },
-    [autoExpandedId, scrollToExercise]
-  );
-
-  const handlePressRestBar = useCallback(() => {
-    if (activeExerciseId != null) handleRailPress(activeExerciseId);
-  }, [activeExerciseId, handleRailPress]);
-
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (Date.now() < programmaticScrollUntilRef.current) return;
-      const offset = event.nativeEvent.contentOffset.y;
-      const probe = offset + viewportHeightRef.current / 3;
-      let candidate: string | null = null;
-      let candidateY = -Infinity;
-      for (const [entryId, y] of Object.entries(cardOffsetsRef.current)) {
-        if (y <= probe && y > candidateY) {
-          candidate = entryId;
-          candidateY = y;
-        }
-      }
-      if (candidate != null) setFocusedExerciseId(candidate);
-    },
-    []
-  );
 
   const setRestSheetRef = useRef<ExerciseSetRestSheetRef>(null);
   const {
@@ -583,9 +474,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     route,
     runNavigationAction,
     setRestSheetRef,
-    setUserExpandedIds,
-    setFocusedExerciseId,
-    scrollToExercise,
   });
 
   const [metricMenu, setMetricMenu] = useState<{
@@ -624,14 +512,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     (entryId: string) => {
       const opening = noteEditorEntryId !== entryId;
       setNoteEditorEntryId(opening ? entryId : null);
-      if (opening) {
-        setUserExpandedIds((prev) => {
-          if (prev.has(entryId)) return prev;
-          const next = new Set(prev);
-          next.add(entryId);
-          return next;
-        });
-      }
     },
     [noteEditorEntryId]
   );
@@ -661,9 +541,9 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const handleDoExerciseNow = useCallback(
     (entryId: string) => {
       useActiveWorkoutStore.getState().doExerciseNow(entryId);
-      handleRailPress(entryId);
+      handleShowExercise(entryId);
     },
-    [handleRailPress]
+    [handleShowExercise]
   );
 
   const handleActivateSet = useCallback(
@@ -726,8 +606,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         // In the one-exercise view the lifter may have paged to another
         // exercise; its row isn't mounted, so there is nothing to focus and
         // a stuck focused key would hold autosave. Stay where they went.
-        if (focusModeRef.current && accessoryHandlesRef.current[key] == null)
-          return;
+        if (accessoryHandlesRef.current[key] == null) return;
         handleActivateSet(
           key,
           firstSetInputField(
@@ -755,7 +634,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // Reads the store so a weight committed a moment ago (a row flushing its
   // draft) is not missed by a stale render.
   const plateTargetFor = useCallback(
-    (setId: string) => {
+    (setId: string, weightKgOverride?: number | null) => {
       const current = useActiveWorkoutStore.getState().session;
       const ex = current?.exercises.find((e) =>
         e.sets.some((s) => String(s.id) === setId)
@@ -763,7 +642,11 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       const equipment = ex?.exercise_snapshot?.equipment ?? null;
       if (!ex || !usesBarbell(equipment)) return null;
       const set = ex.sets.find((s) => String(s.id) === setId);
-      const weightKg = Number(set?.weight ?? plannedSetValues[setId]?.weight);
+      // The focus strip passes the weight it shows (typed or assumed), so the
+      // calculator opens on the same target.
+      const weightKg = Number(
+        weightKgOverride ?? set?.weight ?? plannedSetValues[setId]?.weight
+      );
       return {
         setId,
         weightKg: Number.isFinite(weightKg) && weightKg > 0 ? weightKg : null,
@@ -775,8 +658,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     [plannedSetValues]
   );
   const openPlateCalculator = useCallback(
-    (setId: string) => {
-      const target = plateTargetFor(setId);
+    (setId: string, weightKg?: number | null) => {
+      const target = plateTargetFor(setId, weightKg);
       if (target) setPlateCalc(target);
     },
     [plateTargetFor]
@@ -876,6 +759,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               key: 'log',
               label: t('workout.log', { defaultValue: 'Log' }),
               bold: true,
+              disabled: logLocked,
               onPress: () => {
                 accessoryHandlesRef.current[key]?.log();
               },
@@ -892,6 +776,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     metricColumn,
     openPlateCalculator,
     setFocusedSetKey,
+    logLocked,
     t,
   ]);
 
@@ -927,14 +812,14 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     const column = useAppPreferencesStore.getState().activeWorkoutMetricColumn;
     const effective =
       isMetricClampedToRpe(modality) && column !== 'rir' ? 'rpe' : column;
-    const effortColumnOn =
-      (effective === 'rpe' || effective === 'rir') &&
-      !rendersCardioEffortForm(
-        exercise.exercise_snapshot,
-        exercise.sets.length
-      );
+    const effortColumnOn = effective === 'rpe' || effective === 'rir';
     const hasEffort = set.rpe != null || set.rir != null;
-    if (effortColumnOn && !hasEffort && !isWarmupSetType(set.set_type)) {
+    if (
+      effortColumnOn &&
+      useAppPreferencesStore.getState().watchRpeEnabled &&
+      !hasEffort &&
+      !isWarmupSetType(set.set_type)
+    ) {
       setPostSet({ setId, stage: 'effort' });
     } else if (state.prSetIds[setId]) {
       setPostSet({ setId, stage: 'pr' });
@@ -944,7 +829,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const handleCompleteSet = useCallback(
     (setId: string) => {
       useActiveWorkoutStore.getState().completeSet(setId);
-      if (focusModeRef.current) startPostSetFlow(setId);
+      if (standardFocus) startPostSetFlow(setId);
       setFocusedSetKey(null);
       setExpandedSetKey(null);
       Keyboard.dismiss();
@@ -958,24 +843,29 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         ) ?? 0;
       if (remaining === 0) {
         runAfterKeyboardSettles(() => {
-          programmaticScrollUntilRef.current = Date.now() + 600;
           scrollRef.current?.scrollToEnd({ animated: true });
         }, 350);
       }
     },
-    [setFocusedSetKey, startPostSetFlow]
+    [setFocusedSetKey, startPostSetFlow, standardFocus]
   );
 
-  const handleCompleteActiveSet = useCallback(() => {
-    // The bottom Log runs before the focused input's blur commits its draft,
-    // so flush every row's typed values first or the set logs the old ones
-    // (and a typed record is neither detected as a PR nor kept as logged).
-    for (const handle of Object.values(accessoryHandlesRef.current)) {
-      handle.flushDrafts?.();
-    }
-    const id = useActiveWorkoutStore.getState().activeSetId;
-    if (id != null) handleCompleteSet(id);
-  }, [handleCompleteSet]);
+  // What the focus view's controls call; a tap during a rest logs nothing,
+  // except re-marking a set that comes before the current one.
+  // The hold finish and the guided card use handleCompleteSet directly.
+  const handleLogTap = useCallback(
+    (setId: string) => {
+      if (logLocked) {
+        const { steps, activeSetId: currentId } =
+          useActiveWorkoutStore.getState();
+        const at = steps.findIndex((step) => step.setId === setId);
+        const current = steps.findIndex((step) => step.setId === currentId);
+        if (at < 0 || current < 0 || at >= current) return;
+      }
+      handleCompleteSet(setId);
+    },
+    [logLocked, handleCompleteSet]
+  );
 
   const handleUncomplete = useCallback((setId: string) => {
     useActiveWorkoutStore.getState().uncompleteSet(setId);
@@ -1080,6 +970,27 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       session == null ? [] : buildExerciseProgress(session, completedSetIds),
     [session, completedSetIds]
   );
+  const liveCalories = useLiveWorkoutCalories();
+  const exerciseCount = session?.exercises.length ?? 0;
+  const focusedEntryId = String(
+    session?.exercises[Math.min(focusIndex, exerciseCount - 1)]?.id ?? ''
+  );
+  const focusBar = useMemo(
+    () => ({
+      position: Math.min(focusIndex, exerciseCount - 1) + 1,
+      total: exerciseCount,
+      onOpenList: handleOpenExercisesSheet,
+      exerciseEntryId: focusedEntryId,
+      caloriesKcal: liveCalories,
+    }),
+    [
+      focusIndex,
+      exerciseCount,
+      handleOpenExercisesSheet,
+      focusedEntryId,
+      liveCalories,
+    ]
+  );
   const handleOpenRename = useCallback(() => setRenameVisible(true), []);
   const handleOpenLocation = useCallback(() => setLocationVisible(true), []);
   // The header's laid-out height: the strip buttons are placed from window
@@ -1104,40 +1015,32 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const hold = useFocusHold({
     session,
     activeSetId,
-    enabled: focusMode,
+    enabled: standardFocus,
     onFinish: handleCompleteSet,
   });
   // The focus view logs a set (or starts a hold) from the active-set card, so
   // its bar only shows while a rest runs.
-  const focusBarIdle = focusMode && !restRunning;
-  const restBarVisible =
-    (restRunning || activeSetId != null) &&
-    hold.phase === 'idle' &&
-    !focusBarIdle;
+  const restBarVisible = restRunning && hold.phase === 'idle';
+  // The focus view's rest card floats over the bottom of the page, so the
+  // scroll content keeps its height clear while it shows. It hides behind the
+  // keyboard, whose bar carries the rest controls instead.
+  const [focusRestHeight, setFocusRestHeight] = useState(0);
+  // Guided mode and the interval formats own their rest (the guided card, the
+  // HUD), so the overlay would be a second timer.
+  // A field can stay focused with no keyboard on screen (a hardware keyboard,
+  // or a tap on a button that leaves the field focused); the keyboard bar then
+  // isn't there to carry the rest, so the card stays up.
+  const keyboardUp = useKeyboardState((state) => state.isVisible);
+  const focusRestOverlay =
+    restRunning && !(focusedSetKey != null && keyboardUp) && standardFocus;
   const scrollContentStyle = useMemo(() => {
-    const restBarPadding = usesGlassRestBar
-      ? REST_BAR_GLASS_CLEARANCE + insets.bottom
-      : 16;
+    const basePadding = insets.bottom + 16;
     return {
-      paddingBottom: restBarVisible ? restBarPadding : insets.bottom + 16,
+      paddingBottom: focusRestOverlay
+        ? basePadding + focusRestHeight + FOCUS_REST_OVERLAY_GAP
+        : basePadding,
     };
-  }, [restBarVisible, usesGlassRestBar, insets.bottom]);
-  const handleScrollLayout = useCallback((e: LayoutChangeEvent) => {
-    viewportHeightRef.current = e.nativeEvent.layout.height;
-  }, []);
-
-  const handleAdjustRest = useCallback((deltaSec: number) => {
-    useActiveWorkoutStore.getState().adjustRest(deltaSec);
-  }, []);
-  const handleSkipRest = useCallback(() => {
-    useActiveWorkoutStore.getState().dismissRest();
-  }, []);
-  const handlePauseRest = useCallback(() => {
-    useActiveWorkoutStore.getState().pauseRest();
-  }, []);
-  const handleResumeRest = useCallback(() => {
-    useActiveWorkoutStore.getState().resumeRest();
-  }, []);
+  }, [focusRestOverlay, focusRestHeight, insets.bottom]);
 
   if (session == null || sessionId == null) {
     return (
@@ -1153,17 +1056,24 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   }
 
   const hasAnyCompletedSets = Object.keys(completedSetIds).length > 0;
-  const activeSetDescription = describeActiveSet(session, activeSetId);
-  const restLabel =
-    activeSetDescription == null
-      ? ''
-      : `${activeSetDescription.exerciseName ?? t('workout.exercise', { defaultValue: 'Exercise' })} · ${t('workout.setNumber', { defaultValue: 'Set {{number}}', number: activeSetDescription.setNumber })}`;
+  // Assumed-aware, like the workout bar: a set with empty fields shows the
+  // target its row shows in grey, so the banner and the rest line read
+  // "load × reps" whenever one is known.
+  const activeSetDescription = describeActiveSetAssumed(session, activeSetId, {
+    previousSessionSets,
+    plannedSetValues,
+    exerciseConfigs,
+    weightUnit,
+    workoutFormat,
+    coachingSignals,
+    declinedAdaptive,
+  });
   const restNextSetText =
     activeSetDescription == null
       ? null
       : formatSetLoad(activeSetDescription, weightUnit, t);
 
-  // The focus view's now banner reopens the last logged set to edit it in place.
+  // The last logged set, which the Exercises sheet's Undo reverts.
   const lastLoggedSetId = Object.entries(completedSetIds).reduce<string | null>(
     (latest, [id, at]) =>
       latest == null || at > completedSetIds[latest] ? id : latest,
@@ -1183,14 +1093,22 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           onUndo: () => handleUncomplete(lastLoggedSetId),
         }
       : null;
+  const focusRestNextText =
+    activeSetDescription == null
+      ? null
+      : restNextSetText != null
+        ? `${t('workout.setNumber', { defaultValue: 'Set {{number}}', number: activeSetDescription.setNumber })} · ${restNextSetText}`
+        : t('workout.setNumber', {
+            defaultValue: 'Set {{number}}',
+            number: activeSetDescription.setNumber,
+          });
   const focusNowBanner =
-    focusMode && lastLoggedSetId != null && activeSetDescription != null
+    showFocusNowBanner && activeSetDescription != null
       ? {
           exerciseName: activeSetDescription.exerciseName,
           setNumber: activeSetDescription.setNumber,
           setCount: activeSetDescription.setCount,
           load: restNextSetText,
-          onPreviousSet: () => handleUncomplete(lastLoggedSetId),
         }
       : undefined;
 
@@ -1258,6 +1176,28 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
     return null;
   })();
   const effortMetric: EffortMetric = metricColumn === 'rir' ? 'rir' : 'rpe';
+  const postSetModality =
+    postSetTarget != null
+      ? resolveSnapshotModality(postSetTarget.exercise.exercise_snapshot)
+      : null;
+  const postSetTimed =
+    postSetModality != null &&
+    (isDurationModality(postSetModality) ||
+      isWeightDurationModality(postSetModality));
+  const postSetSummary =
+    postSetTarget != null && postSetModality != null
+      ? formatSetLoad(
+          {
+            weightKg: postSetTarget.set.weight ?? null,
+            reps: postSetTimed ? null : (postSetTarget.set.reps ?? null),
+            durationSec: postSetTimed
+              ? effectiveSetDurationSec(postSetTarget.set, postSetModality)
+              : null,
+          },
+          weightUnit,
+          t
+        )
+      : null;
   const finishEffortPrompt = (value: number | null) => {
     if (postSet == null) return;
     if (value != null && postSetId != null) {
@@ -1327,8 +1267,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   // Tiles centre on the status glyphs (measured ~48 pt in from the edge), so
   // the rail is twice that wide; a ringed tile is 52 pt and fits with room.
   const RAIL_WIDTH = 96;
-  // The rail reaches past the strip into the log by this much; keep a gap.
-  const railOverlap = Math.max(0, RAIL_WIDTH - stripWidth) + 8;
   const stripOnRight = insets.right >= insets.left;
   // The closed outer display (~466 pt wide) parks the clock and Wi-Fi cluster
   // lower than the inner display does (dots end ~150 pt down vs ~98 pt), so the
@@ -1356,21 +1294,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const statusCluster = headerInStatusRow
     ? statusRowCluster(statusRegions, windowWidth)
     : null;
-  const railElement = (
-    <ActiveWorkoutRail
-      exercises={session.exercises}
-      completedSetIds={completedSetIds}
-      focusedEntryId={focusedExerciseId}
-      activeEntryId={activeExerciseId}
-      supersetBorders={supersetBorders}
-      getImageSource={getImageSource}
-      onPressExercise={handleRailPress}
-      onPressAdd={handleAddExercise}
-      vertical={railBeside}
-    />
-  );
-  // Focus mode has no rail, but the header's back and menu buttons still move
-  // into the strip beside a vertical bar, so mount them there on their own.
+  // The header's back and menu buttons move into the strip beside a vertical
+  // bar, so mount them there on their own.
   // The first measurement replaces the fixed guess used until it arrives; that
   // is settling in, not movement, so it snaps like a change of window size.
   const stripLayoutKey = `${windowWidth}x${windowHeight}:${stripBottom != null}`;
@@ -1392,31 +1317,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
       />
     </AnimatedStripBox>
   );
-  const railInStrip = (
-    <AnimatedStripBox
-      pointerEvents="box-none"
-      // Measured: the status glyphs end ~98 pt down and App Settings' back
-      // button starts ~123 pt down; this puts the workout's at the same gap.
-      top={stripButtonsTop}
-      layoutKey={stripLayoutKey}
-      style={{
-        position: 'absolute',
-        bottom: 0,
-        alignItems: 'center',
-        width: RAIL_WIDTH,
-        ...(stripOnRight ? { right: -stripWidth } : { left: -stripWidth }),
-      }}
-    >
-      <ActiveWorkoutStripButtons
-        onBack={safeGoBack}
-        onMenu={() => openMenuRef.current?.()}
-      />
-      <View style={{ flex: 1, minHeight: 0, width: '100%', marginTop: 16 }}>
-        {railElement}
-      </View>
-    </AnimatedStripBox>
-  );
-
   return (
     <View
       className="flex-1 bg-background"
@@ -1430,17 +1330,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           location={session.location}
           startedAt={startedAt}
           progress={progress}
-          progressInSubtitle={focusMode}
-          focusBar={
-            focusMode
-              ? {
-                  position:
-                    Math.min(focusIndex, session.exercises.length - 1) + 1,
-                  total: session.exercises.length,
-                  onOpenList: handleOpenExercisesSheet,
-                }
-              : undefined
-          }
+          focusBar={focusBar}
           onBack={safeGoBack}
           onDiscard={handleDiscard}
           onEndWorkout={handleConfirmEnd}
@@ -1455,8 +1345,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         />
       </View>
 
-      {focusMode ? (
-        <View className="flex-1">
+      <View className="flex-1">
+        <FocusLogLockContext.Provider value={logLocked}>
           <ActiveWorkoutFocusView
             scrollRef={scrollRef}
             showRequest={focusShowRequest}
@@ -1485,11 +1375,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
             onPressOverflow={handlePressOverflow}
             onAddExercise={handleAddExercise}
             onSeeAlternatives={handleReplaceExercise}
-            onCompleteSet={handleCompleteSet}
+            onCompleteSet={handleLogTap}
             onUncomplete={handleUncomplete}
             onCommitField={handleCommitField}
             onDeleteSet={handleDeleteSet}
-            onPressRestChip={handlePressRestChip}
             onPressMetricHeader={handlePressMetricHeader}
             onPressSetType={handlePressSetType}
             onToggleSetDetail={handleToggleSetDetail}
@@ -1502,125 +1391,31 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
             focusedField={focusedField}
             onActivateSet={handleActivateSet}
             onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
-          >
-            {footerButtons}
-          </ActiveWorkoutFocusView>
-          {railBeside && stripButtonsOnly}
-        </View>
-      ) : (
-        <View className="flex-1">
-          {!railBeside && railElement}
-          <View
-            className="flex-1"
-            style={
-              railBeside
-                ? stripOnRight
-                  ? { marginRight: railOverlap }
-                  : { marginLeft: railOverlap }
-                : undefined
-            }
-          >
-            {/* Pinned rather than in the list, so the scroll to the active exercise
-            never hides it; out of the way while a set value is being typed. */}
-            {nowCardEnabled &&
-              !guidedWorkoutEnabled &&
-              workoutFormat === 'standard' &&
-              focusedSetKey == null && (
-                <ActiveWorkoutNowCard
-                  session={session}
-                  activeSetId={activeSetId}
-                  completedSetIds={completedSetIds}
-                  weightUnit={weightUnit}
-                  resting={restState === 'resting'}
-                  getImageSource={getImageSource}
-                  onPressExercise={handleRailPress}
-                  onSwap={handleSwapExercise}
-                />
-              )}
-
-            <KeyboardAwareScrollView
-              ref={scrollRef}
-              className="flex-1"
-              contentContainerClassName="px-3 pt-2"
-              contentContainerStyle={scrollContentStyle}
-              onScroll={handleScroll}
-              scrollEventThrottle={32}
-              onLayout={handleScrollLayout}
-              keyboardShouldPersistTaps="handled"
-              // The focused cell stays clear of the keyboard bar riding on top of
-              // the keyboard, and of the rest row it carries while a rest runs.
-              bottomOffset={keyboardBottomOffset}
-              disableScrollOnKeyboardHide
-            >
+            topSlot={
               <ActiveWorkoutIntervalHud getImageSource={getImageSource} />
-
-              {guidedWorkoutEnabled && workoutFormat === 'standard' && (
+            }
+            guidedCard={
+              guidedWorkoutEnabled && workoutFormat === 'standard' ? (
                 <ActiveWorkoutGuidedCard
                   getImageSource={getImageSource}
                   onCompleteSet={handleCompleteSet}
                 />
-              )}
+              ) : undefined
+            }
+          >
+            {footerButtons}
+          </ActiveWorkoutFocusView>
+        </FocusLogLockContext.Provider>
+        {focusRestOverlay && (
+          <FocusRestCard
+            nextText={focusRestNextText}
+            onHeightChange={setFocusRestHeight}
+          />
+        )}
+        {railBeside && stripButtonsOnly}
+      </View>
 
-              <ActiveWorkoutExerciseList
-                session={session}
-                userExpandedIds={userExpandedIds}
-                autoExpandedId={autoExpandedId}
-                supersetBorders={supersetBorders}
-                completedSetIds={completedSetIds}
-                prSetIds={prSetIds}
-                sessionId={sessionId}
-                verifiedSourcePresetId={effectiveVerifiedSourcePresetId}
-                historyScopeSettled={historyScopeSettled}
-                activeSetId={activeSetId}
-                focusedSetKey={focusedSetKey}
-                setRenderKeys={setRenderKeys}
-                focusedField={focusedField}
-                metricColumn={metricColumn}
-                weightUnit={weightUnit}
-                distanceUnit={distanceUnit}
-                expandedSetKey={expandedSetKey}
-                noteEditorEntryId={noteEditorEntryId}
-                cardOffsetsRef={cardOffsetsRef}
-                getImageSource={getImageSource}
-                onPressThumb={handlePressThumb}
-                onToggleExpanded={handleToggleExpanded}
-                onPressRestChip={handlePressRestChip}
-                onPressMetricHeader={handlePressMetricHeader}
-                onPressOverflow={handlePressOverflow}
-                onSeeAlternatives={handleReplaceExercise}
-                onCompleteSet={handleCompleteSet}
-                onUncomplete={handleUncomplete}
-                onCommitField={handleCommitField}
-                onDeleteSet={handleDeleteSet}
-                onPressSetType={handlePressSetType}
-                onToggleSetDetail={handleToggleSetDetail}
-                onAddSet={handleAddSet}
-                onCommitExerciseNote={handleCommitExerciseNote}
-                onActivateSet={handleActivateSet}
-                onActivateRpe={handleActivateRpe}
-                onRegisterAccessoryHandle={handleRegisterAccessoryHandle}
-              />
-
-              {footerButtons}
-            </KeyboardAwareScrollView>
-          </View>
-          {railBeside && railInStrip}
-        </View>
-      )}
-
-      {restBarVisible && (
-        <LiveActiveWorkoutRestBar
-          label={restLabel}
-          nextSetText={restNextSetText}
-          onAdjust={handleAdjustRest}
-          onSkip={handleSkipRest}
-          onPause={handlePauseRest}
-          onResume={handleResumeRest}
-          onCompleteSet={handleCompleteActiveSet}
-          onPressBar={handlePressRestBar}
-          focus={focusMode}
-        />
-      )}
+      {restBarVisible && <LiveActiveWorkoutRestBar />}
 
       <StickySetInputAccessoryBar
         visible={focusedSetKey != null}
@@ -1631,7 +1426,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
       <ExerciseSetRestSheet
         ref={setRestSheetRef}
-        appearance={focusMode ? 'page' : 'sheet'}
+        appearance="page"
         onApply={handleApplySetRests}
       />
 
@@ -1662,7 +1457,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
       <ActiveWorkoutOverflowSheet
         sheetRef={overflowSheetRef}
-        cards={focusMode}
         overflowMenu={overflowMenu}
         session={session}
         supersetRuns={supersetRuns}
@@ -1672,6 +1466,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onPressThumb={handlePressThumb}
         onToggleExerciseNote={handleToggleExerciseNote}
         onReplaceExercise={handleReplaceExercise}
+        onPressRest={(entryId) => handlePressRestChip(entryId, null)}
         canAddWarmups={canAddWarmups}
         onAddWarmups={handleAddWarmups}
         onClearExerciseSets={handleClearExerciseSets}
@@ -1694,50 +1489,38 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         onDismiss={() => setOverflowMenu(null)}
       />
 
-      {focusMode ? (
-        <FocusSetOptionsPage
-          visible={setTypeCurrent != null && setTypeMenu != null}
-          setId={setTypeMenu?.setId ?? lastSetOptionsId}
-          setNumber={setOptionsSet?.set.set_number ?? 0}
-          exerciseName={
-            setOptionsSet?.exercise.exercise_snapshot?.name ??
-            t('workout.exercise', { defaultValue: 'Exercise' })
-          }
-          currentType={setTypeCurrent}
-          note={setOptionsSet?.set.notes}
-          metricColumn={metricColumn}
-          clampedToRpe={
-            setOptionsSet != null &&
-            isMetricClampedToRpe(
-              resolveSnapshotModality(setOptionsSet.exercise.exercise_snapshot)
-            )
-          }
-          onSelectType={handleSelectSetType}
-          onSelectMetric={(metric) =>
-            useAppPreferencesStore
-              .getState()
-              .setActiveWorkoutMetricColumn(metric)
-          }
-          onCommitField={handleCommitField}
-          onGenerateDropSets={generateDropSets}
-          onOpenPlateCalculator={openSetPlateCalculator}
-          onDelete={() => {
-            const setId = setTypeMenu?.setId;
-            setSetTypeMenu(null);
-            if (setId != null) handleDeleteSet(setId);
-          }}
-          onClose={() => setSetTypeMenu(null)}
-        />
-      ) : (
-        <SetTypeMenu
-          anchor={setTypeCurrent != null ? (setTypeMenu?.anchor ?? null) : null}
-          currentType={setTypeCurrent}
-          onClose={() => setSetTypeMenu(null)}
-          onSelect={handleSelectSetType}
-          onOpenPlateCalculator={openSetPlateCalculator}
-          onGenerateDropSets={generateDropSets}
-        />
-      )}
+      <FocusSetOptionsPage
+        visible={setTypeCurrent != null && setTypeMenu != null}
+        setId={setTypeMenu?.setId ?? lastSetOptionsId}
+        setNumber={setOptionsSet?.set.set_number ?? 0}
+        currentType={setTypeCurrent}
+        note={setOptionsSet?.set.notes}
+        metricColumn={metricColumn}
+        clampedToRpe={
+          setOptionsSet != null &&
+          isMetricClampedToRpe(
+            resolveSnapshotModality(setOptionsSet.exercise.exercise_snapshot)
+          )
+        }
+        onSelectType={handleSelectSetType}
+        onSelectMetric={(metric) =>
+          useAppPreferencesStore.getState().setActiveWorkoutMetricColumn(metric)
+        }
+        onCommitField={handleCommitField}
+        onGenerateDropSets={generateDropSets}
+        onOpenPlateCalculator={openSetPlateCalculator}
+        onDelete={() => {
+          const setId = setTypeMenu?.setId;
+          setSetTypeMenu(null);
+          if (setId != null) handleDeleteSet(setId);
+        }}
+        onClose={() => setSetTypeMenu(null)}
+      />
+
+      <FocusWorkoutSettingsPage
+        visible={focusSettingsOpen}
+        onClose={() => setFocusSettingsOpen(false)}
+      />
 
       {plateCalc != null && (
         <PlateCalculatorSheet
@@ -1750,7 +1533,6 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
           }
           weightUnit={weightUnit}
           equipment={plateCalc?.equipment}
-          page={focusMode}
           exerciseName={plateCalc?.exerciseName}
           setNumber={plateCalc?.setNumber}
           onUseWeight={(weight) => {
@@ -1771,18 +1553,28 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         />
       )}
 
-      {focusMode && postSetTarget != null && postSet?.stage === 'effort' && (
+      {postSetTarget != null && postSet?.stage === 'effort' && (
         <FocusEffortSheet
           key={postSet.setId}
           visible
-          title={`${postSetTarget.exercise.exercise_snapshot?.name ?? t('workout.exercise', { defaultValue: 'Exercise' })} · ${t('workout.setNumber', { defaultValue: 'Set {{number}}', number: postSetTarget.set.set_number })}`}
+          title={
+            postSetTarget.exercise.exercise_snapshot?.name ??
+            t('workout.exercise', { defaultValue: 'Exercise' })
+          }
+          setLabel={t('workout.setNumber', {
+            defaultValue: 'Set {{number}}',
+            number: postSetTarget.set.set_number,
+          })}
+          summary={postSetSummary}
+          timed={postSetTimed}
+          cardio={postSetModality != null && isCardioModality(postSetModality)}
           metric={effortMetric}
           initialValue={effortStartValue(effortMetric)}
           onSave={(value) => finishEffortPrompt(value)}
           onSkip={() => finishEffortPrompt(null)}
         />
       )}
-      {focusMode && postSetTarget != null && postSet?.stage === 'pr' && (
+      {postSetTarget != null && postSet?.stage === 'pr' && (
         <FocusPrCard
           key={postSet.setId}
           visible
@@ -1796,25 +1588,22 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
         />
       )}
 
-      {focusMode && (
-        <FocusExercisesSheet
-          visible={exercisesSheetVisible}
-          exercises={session.exercises}
-          completedSetIds={completedSetIds}
-          selectedId={
-            session.exercises[
-              Math.min(focusIndex, session.exercises.length - 1)
-            ]?.id ?? null
-          }
-          undo={exercisesUndo}
-          groupColor={focusGroupColor}
-          onSelectExercise={handleRailPress}
-          onMoveItem={handleReorderMove}
-          onAddExercise={handleAddExercise}
-          onEndWorkout={handleConfirmEnd}
-          onClose={handleCloseExercisesSheet}
-        />
-      )}
+      <FocusExercisesSheet
+        visible={exercisesSheetVisible}
+        exercises={session.exercises}
+        completedSetIds={completedSetIds}
+        selectedId={
+          session.exercises[Math.min(focusIndex, session.exercises.length - 1)]
+            ?.id ?? null
+        }
+        undo={exercisesUndo}
+        groupColor={focusGroupColor}
+        onSelectExercise={handleShowExercise}
+        onMoveItem={handleReorderMove}
+        onAddExercise={handleAddExercise}
+        onEndWorkout={handleConfirmEnd}
+        onClose={handleCloseExercisesSheet}
+      />
     </View>
   );
 }

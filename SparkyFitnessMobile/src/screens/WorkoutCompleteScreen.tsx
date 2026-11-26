@@ -375,6 +375,7 @@ function WorkoutCompleteScreen({ navigation, route }: Props) {
           <WorkoutFeedbackCard
             presetEntryId={session.id}
             exercises={feedbackExercises}
+            effort={effort}
           />
         </View>
 

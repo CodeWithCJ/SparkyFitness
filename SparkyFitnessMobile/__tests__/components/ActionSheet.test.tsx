@@ -60,7 +60,8 @@ function makeItems() {
 
 function renderSheet(overrides?: {
   items?: ActionSheetItem[];
-  layout?: 'list' | 'grid';
+  layout?: 'list' | 'grid' | 'cards';
+  showCancel?: boolean;
   onBack?: () => void;
   onDismiss?: () => void;
 }) {
@@ -88,6 +89,7 @@ function renderSheet(overrides?: {
       title="Bench Press"
       items={items}
       layout={overrides?.layout}
+      showCancel={overrides?.showCancel}
       onBack={overrides?.onBack}
       onDismiss={onDismiss}
     />
@@ -206,6 +208,48 @@ describe('ActionSheet', () => {
     });
     // one|two and two|ungrouped boundaries; d and e chunk together.
     expect(queryAllByTestId('action-sheet-group-spacer')).toHaveLength(2);
+  });
+
+  it('draws each group as its own card in the cards layout', () => {
+    const { queryAllByTestId, queryByTestId } = renderSheet({
+      layout: 'cards',
+      items: [
+        { key: 'a', label: 'A', group: 'one', onPress: jest.fn() },
+        { key: 'b', label: 'B', group: 'one', onPress: jest.fn() },
+        {
+          key: 'c',
+          label: 'C',
+          group: 'two',
+          destructive: true,
+          onPress: jest.fn(),
+        },
+      ],
+    });
+    expect(queryAllByTestId('action-sheet-card')).toHaveLength(2);
+    expect(queryByTestId('action-sheet-item-c')).toBeTruthy();
+  });
+
+  it('draws a Cancel pill, order numbers and badges in the cards layout', () => {
+    const { getByTestId, getByText } = renderSheet({
+      layout: 'cards',
+      showCancel: true,
+      items: [
+        {
+          key: 'a',
+          label: 'Triceps Pushdown',
+          group: 'a',
+          leading: '3',
+          badge: 'A1',
+          description: 'Do now · 3 sets',
+          accentDescription: true,
+          onPress: jest.fn(),
+        },
+      ],
+    });
+    expect(getByText('3')).toBeTruthy();
+    expect(getByText('A1')).toBeTruthy();
+    fireEvent.press(getByTestId('action-sheet-cancel'));
+    expect(mockModal.dismiss).toHaveBeenCalledTimes(1);
   });
 
   it('presents through the ref via rAF', () => {

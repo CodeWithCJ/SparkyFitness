@@ -38,6 +38,14 @@ export interface ActionSheetItem {
    * adjacent blocks by a spacer band. Ungrouped items chunk together.
    */
   group?: string;
+  /** Cards layout: a bold position number drawn before the label. */
+  leading?: string;
+  /** Cards layout: a small lilac pill after the label (a superset's A1 / A2). */
+  badge?: string;
+  /** Fill of the badge pill; defaults to the accent colour. */
+  badgeColor?: string;
+  /** Cards layout: draws the description in the accent colour. */
+  accentDescription?: boolean;
   /** Danger tint on the label. */
   destructive?: boolean;
   /**
@@ -59,6 +67,8 @@ interface ActionSheetProps {
   layout?: 'list' | 'grid' | 'cards';
   /** Renders a back chevron left of the title (content-swap flows). */
   onBack?: () => void;
+  /** Cards layout: a Cancel pill right of the title that closes the sheet. */
+  showCancel?: boolean;
   onDismiss?: () => void;
 }
 
@@ -73,7 +83,7 @@ interface ActionSheetProps {
  * overwritten the old.
  */
 const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
-  ({ title, items, layout = 'list', onBack, onDismiss }, ref) => {
+  ({ title, items, layout = 'list', onBack, showCancel, onDismiss }, ref) => {
     const { t } = useTranslation();
     const modalRef = useRef<BottomSheetModal>(null);
     const isDismissingRef = useRef(false);
@@ -94,14 +104,21 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
       windowHeight - sheetInsets.top - sheetInsets.bottom - 24
     );
 
-    const [surfaceBg, textMuted, accentPrimary, textPrimary, iconDanger] =
-      useCSSVariable([
-        '--color-surface',
-        '--color-text-muted',
-        '--color-accent-primary',
-        '--color-text-primary',
-        '--color-icon-danger',
-      ]) as [string, string, string, string, string];
+    const [
+      surfaceBg,
+      pageBg,
+      textMuted,
+      accentPrimary,
+      textPrimary,
+      iconDanger,
+    ] = useCSSVariable([
+      '--color-surface',
+      '--color-background',
+      '--color-text-muted',
+      '--color-accent-primary',
+      '--color-text-primary',
+      '--color-icon-danger',
+    ]) as [string, string, string, string, string, string];
 
     const clearScheduledPresent = useCallback(() => {
       if (presentFrameRef.current != null) {
@@ -237,7 +254,9 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
         backdropComponent={renderBackdrop}
         containerComponent={sheetContainer}
         backgroundStyle={{
-          backgroundColor: surfaceBg,
+          // Cards sit on the page colour so each group's surface card shows,
+          // as on the focus Set options page.
+          backgroundColor: layout === 'cards' ? pageBg : surfaceBg,
           ...(layout === 'grid' || layout === 'cards'
             ? { borderTopLeftRadius: 28, borderTopRightRadius: 28 }
             : {}),
@@ -266,49 +285,98 @@ const ActionSheet = React.forwardRef<ActionSheetRef, ActionSheetProps>(
                   </Pressable>
                 )}
                 <Text
-                  numberOfLines={1}
+                  numberOfLines={2}
                   accessibilityRole="header"
                   className="min-w-0 flex-1 text-[26px] font-extrabold text-text-primary"
                 >
                   {title}
                 </Text>
-              </View>
-              <View className="gap-2">
-                {items.map((item) => (
+                {showCancel && (
                   <Pressable
-                    key={item.key}
-                    testID={`action-sheet-item-${item.key}`}
-                    onPress={() => handleItemPress(item)}
+                    testID="action-sheet-cancel"
+                    onPress={dismissSheet}
                     accessibilityRole="button"
-                    accessibilityLabel={
-                      item.description
-                        ? `${item.label}. ${item.description}`
-                        : item.label
-                    }
-                    className="min-h-[52px] flex-row items-center gap-4 rounded-2xl bg-raised px-4 py-2.5 active:opacity-70"
+                    className="h-11 items-center justify-center rounded-full bg-raised px-4 active:opacity-70"
                   >
-                    {item.icon != null && (
-                      <View className="w-6 items-center" accessible={false}>
-                        <Icon
-                          name={item.icon}
-                          size={22}
-                          color={item.destructive ? iconDanger : textPrimary}
-                        />
-                      </View>
-                    )}
-                    <View className="min-w-0 flex-1">
-                      <Text
-                        className={`text-[17px] font-bold ${item.destructive ? 'text-icon-danger' : 'text-text-primary'}`}
-                      >
-                        {item.label}
-                      </Text>
-                      {item.description ? (
-                        <Text className="text-[13px] text-text-secondary">
-                          {item.description}
-                        </Text>
-                      ) : null}
-                    </View>
+                    <Text className="text-[16px] font-bold text-text-primary">
+                      {t('common.cancel', { defaultValue: 'Cancel' })}
+                    </Text>
                   </Pressable>
+                )}
+              </View>
+              <View className="gap-3">
+                {sections.map((section) => (
+                  <View
+                    key={section[0].key}
+                    testID="action-sheet-card"
+                    className="overflow-hidden rounded-3xl bg-surface"
+                  >
+                    {section.map((item, index) => (
+                      <Pressable
+                        key={item.key}
+                        testID={`action-sheet-item-${item.key}`}
+                        onPress={() => handleItemPress(item)}
+                        accessibilityRole="button"
+                        accessibilityLabel={
+                          item.description
+                            ? `${item.label}. ${item.description}`
+                            : item.label
+                        }
+                        className={`min-h-12 flex-row items-center justify-between gap-4 px-5 py-2.5 active:opacity-70 ${index > 0 ? 'border-t border-border-subtle' : ''}`}
+                      >
+                        {item.leading != null && (
+                          <Text
+                            className="w-5 text-center text-[17px] font-bold text-text-secondary"
+                            style={{ fontVariant: ['tabular-nums'] }}
+                          >
+                            {item.leading}
+                          </Text>
+                        )}
+                        <View className="min-w-0 flex-1">
+                          <Text
+                            className={`text-[17px] font-bold ${item.destructive ? 'text-icon-danger' : 'text-text-primary'}`}
+                          >
+                            {item.label}
+                          </Text>
+                          {item.description ? (
+                            <Text
+                              className="text-[13px] font-semibold text-text-secondary"
+                              style={
+                                item.accentDescription
+                                  ? { color: accentPrimary }
+                                  : undefined
+                              }
+                            >
+                              {item.description}
+                            </Text>
+                          ) : null}
+                        </View>
+                        {item.badge != null && (
+                          <View
+                            className="rounded-full px-2.5 py-0.5"
+                            style={{
+                              backgroundColor: item.badgeColor ?? accentPrimary,
+                            }}
+                          >
+                            <Text className="text-[13px] font-extrabold text-black">
+                              {item.badge}
+                            </Text>
+                          </View>
+                        )}
+                        {item.icon != null && (
+                          <View accessible={false}>
+                            <Icon
+                              name={item.icon}
+                              size={20}
+                              color={
+                                item.destructive ? iconDanger : textPrimary
+                              }
+                            />
+                          </View>
+                        )}
+                      </Pressable>
+                    ))}
+                  </View>
                 ))}
               </View>
             </View>

@@ -83,6 +83,65 @@ export function useLiveHeartRate(
   return reading.bpm;
 }
 
+/** The watch's active energy for the live workout, summed over its batches. */
+interface LiveWorkoutEnergy {
+  sessionId: string;
+  /** Run start the total belongs to, so a restart of the same session resets it. */
+  startedAt: number;
+  kcal: number;
+}
+
+interface LiveWorkoutEnergyState {
+  energy: LiveWorkoutEnergy | null;
+  /**
+   * Adds one batch's active energy (a delta, kcal) to the running total for the
+   * live workout. A different session or run starts the total over.
+   */
+  add: (sessionId: string, startedAt: number, kcal: number) => void;
+  reset: () => void;
+}
+
+/**
+ * In memory only, like the heart-rate reading. The watch is the only source:
+ * a phone-only workout never adds to it, so the header's calories segment
+ * stays hidden rather than showing an estimate.
+ */
+export const useLiveWorkoutEnergyStore = create<LiveWorkoutEnergyState>(
+  (set) => ({
+    energy: null,
+    add: (sessionId, startedAt, kcal) =>
+      set((state) => {
+        const current =
+          state.energy?.sessionId === sessionId &&
+          state.energy.startedAt === startedAt
+            ? state.energy.kcal
+            : 0;
+        return { energy: { sessionId, startedAt, kcal: current + kcal } };
+      }),
+    reset: () => set({ energy: null }),
+  })
+);
+
+/**
+ * The watch's active energy so far for the live workout in kcal, or null when
+ * the watch has sent none (phone-only workout) or the total belongs to another
+ * session or run.
+ */
+export function useLiveWorkoutCalories(): number | null {
+  const energy = useLiveWorkoutEnergyStore((s) => s.energy);
+  const liveSessionId = useActiveWorkoutStore((s) => s.sessionId);
+  const liveStartedAt = useActiveWorkoutStore((s) => s.startedAt);
+  if (
+    energy == null ||
+    energy.sessionId !== liveSessionId ||
+    energy.startedAt !== liveStartedAt ||
+    !(energy.kcal > 0)
+  ) {
+    return null;
+  }
+  return energy.kcal;
+}
+
 /**
  * How long a GPS recording's reading stays on screen. The watch sends one every
  * few seconds while the phone is reachable; a run has no batch to wait for, so

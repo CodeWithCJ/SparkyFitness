@@ -506,30 +506,25 @@ describe('appPreferencesStore', () => {
   });
 
   describe('focus workout view', () => {
-    it('defaults to the list view with an expanded focus photo', () => {
+    it('defaults to an expanded focus photo', () => {
       const state = useAppPreferencesStore.getState();
-      expect(state.activeWorkoutView).toBe('list');
       expect(state.focusMediaDefault).toBe('expanded');
     });
 
-    it('updates and persists both preferences', async () => {
+    it('updates and persists the preference', async () => {
       const store = useAppPreferencesStore.getState();
-      store.setActiveWorkoutView('focus');
       store.setFocusMediaDefault('minimized');
-      expect(useAppPreferencesStore.getState().activeWorkoutView).toBe('focus');
       expect(useAppPreferencesStore.getState().focusMediaDefault).toBe(
         'minimized'
       );
 
       const raw = await AsyncStorage.getItem('@SparkyFitness/app-preferences');
       const parsed = JSON.parse(raw!);
-      expect(parsed.state.activeWorkoutView).toBe('focus');
       expect(parsed.state.focusMediaDefault).toBe('minimized');
     });
 
     it('falls back to the defaults when an older persisted blob lacks the keys', async () => {
       const legacy = { ...PREFERENCE_DEFAULTS } as Record<string, unknown>;
-      delete legacy.activeWorkoutView;
       delete legacy.focusMediaDefault;
       await AsyncStorage.setItem(
         '@SparkyFitness/app-preferences',
@@ -543,7 +538,6 @@ describe('appPreferencesStore', () => {
 
       const state = useAppPreferencesStore.getState();
       expect(state.soundsEnabled).toBe(false);
-      expect(state.activeWorkoutView).toBe('list');
       expect(state.focusMediaDefault).toBe('expanded');
     });
   });

@@ -22,6 +22,9 @@ import CompletionCheck from './CompletionCheck';
 const TILE_WIDTH = 72;
 const IMAGE_SIZE = 64;
 const TILE_GAP = 10;
+/** The done check and the play badge share one size and corner of the picture. */
+const BADGE_SIZE = 20;
+const BADGE_OFFSET = -2;
 /** The selected tile's ring, drawn around the picture. */
 const RING_WIDTH = 3;
 /** How far a superset's tinted bar reaches past its two pictures. */
@@ -75,7 +78,7 @@ function buildGroups(
 /**
  * The focus view's exercise strip: one picture tile per exercise with its name
  * below, ending with an Add tile. The exercise holding the active set carries
- * a play badge, a finished one a green check; the shown exercise is ringed in
+ * a play badge, a finished one a green check, both in the picture's bottom-right corner; the shown exercise is ringed in
  * the accent (in the text colour when it is not the active one). A superset
  * sits on one tinted bar behind just its pictures. Keeps the shown tile in view.
  */
@@ -185,23 +188,23 @@ function ActiveWorkoutFocusChips({
         : textPrimary
       : 'transparent';
 
+    const tileProps =
+      groupLetter != null
+        ? // A superset is one button (the group); its tiles only draw.
+          { accessible: false as const }
+        : {
+            onPress: () => onSelect(exercise.id),
+            accessibilityRole: 'button' as const,
+            accessibilityState: { selected: isSelected },
+            accessibilityLabel: label,
+          };
+    const Tile = groupLetter != null ? View : Pressable;
+
     return (
-      <Pressable
+      <Tile
         key={exercise.id}
         testID={`focus-chip-${exercise.id}`}
-        onPress={() => onSelect(exercise.id)}
-        accessibilityRole="button"
-        accessibilityState={{ selected: isSelected }}
-        accessibilityLabel={
-          groupLetter != null
-            ? t('activeWorkout.focus.chips.supersetLabel', {
-                defaultValue: '{{label}}, superset {{letter}}{{member}}',
-                label,
-                letter: groupLetter,
-                member: memberNumber,
-              })
-            : label
-        }
+        {...tileProps}
         className="items-center"
         style={{ width: TILE_WIDTH }}
       >
@@ -240,27 +243,31 @@ function ActiveWorkoutFocusChips({
               }
             />
           </View>
-          {isDone ? (
+          {isDone || isActive ? (
             <View
-              testID={`focus-chip-done-${exercise.id}`}
-              className="absolute"
-              style={{ right: -2, bottom: -2 }}
-            >
-              <CompletionCheck size={20} iconSize={12} />
-            </View>
-          ) : isActive ? (
-            <View
-              testID={`focus-chip-play-${exercise.id}`}
-              className="absolute items-center justify-center rounded-full"
+              testID={
+                isDone
+                  ? `focus-chip-done-${exercise.id}`
+                  : `focus-chip-play-${exercise.id}`
+              }
+              className="absolute items-center justify-center"
               style={{
-                right: -2,
-                bottom: -2,
-                width: 20,
-                height: 20,
-                backgroundColor: accentPrimary,
+                right: BADGE_OFFSET,
+                bottom: BADGE_OFFSET,
+                width: BADGE_SIZE,
+                height: BADGE_SIZE,
               }}
             >
-              <Icon name="play" size={10} color={accentOn ?? '#ffffff'} />
+              {isDone ? (
+                <CompletionCheck size={BADGE_SIZE} iconSize={12} />
+              ) : (
+                <View
+                  className="h-full w-full items-center justify-center rounded-full"
+                  style={{ backgroundColor: accentPrimary }}
+                >
+                  <Icon name="play" size={10} color={accentOn ?? '#ffffff'} />
+                </View>
+              )}
             </View>
           ) : null}
         </View>
@@ -274,7 +281,7 @@ function ActiveWorkoutFocusChips({
         >
           {name}
         </Text>
-      </Pressable>
+      </Tile>
     );
   };
 
@@ -297,10 +304,23 @@ function ActiveWorkoutFocusChips({
         const letter = String.fromCharCode(supersetLetterCode++);
         const border = group.border;
         return (
-          <View
+          <Pressable
             key={`group-${exercises[group.indexes[0]].id}`}
             testID={`focus-chip-group-${exercises[group.indexes[0]].id}`}
-            accessibilityRole="none"
+            onPress={() => onSelect(exercises[group.indexes[0]].id)}
+            accessibilityRole="button"
+            accessibilityLabel={group.indexes
+              .map(
+                (index) =>
+                  exercises[index].exercise_snapshot?.name ??
+                  t('workout.exercise', { defaultValue: 'Exercise' })
+              )
+              .join(' + ')}
+            accessibilityState={{
+              selected: group.indexes.some(
+                (index) => exercises[index].id === selectedId
+              ),
+            }}
             className="flex-row items-start"
             style={{ columnGap: TILE_GAP }}
           >
@@ -320,7 +340,7 @@ function ActiveWorkoutFocusChips({
             {group.indexes.map((index, i) =>
               renderTile(exercises[index], index, letter, i + 1)
             )}
-          </View>
+          </Pressable>
         );
       })}
       {onAdd ? (

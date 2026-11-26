@@ -2,8 +2,7 @@ import { createContext } from 'react';
 import type { ViewInstance } from 'react-native';
 
 /**
- * Where the focus view's sets table header and current-set card (or the rest
- * card while resting) attach their refs, so the page can scroll the card into
+ * Where the focus view's sets table header and current-set card attach their refs, so the page can scroll the card into
  * view without pushing the header off the top.
  */
 export interface FocusScrollTargets {
