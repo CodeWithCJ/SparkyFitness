@@ -2862,10 +2862,14 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           delete completedSetIds[id];
           delete prSetIds[id];
         }
-        // The entry keeps its id, so drop the replaced exercise's preset
-        // progression/ramp settings rather than applying them to the new one.
-        const { [entryId]: _replaced, ...exerciseConfigs } =
+        // The video interval belongs to the slot. Progression and ramp
+        // settings belong to the replaced exercise.
+        const { [entryId]: replacedConfig, ...exerciseConfigs } =
           state.exerciseConfigs;
+        const { video_start_seconds, video_end_seconds } = replacedConfig ?? {};
+        if (video_start_seconds != null && video_end_seconds != null) {
+          exerciseConfigs[entryId] = { video_start_seconds, video_end_seconds };
+        }
         // Same for a declined adaptive suggestion: it was about the old
         // exercise (#1560).
         const { [entryId]: _declined, ...declinedAdaptive } =

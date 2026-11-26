@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -6,6 +7,7 @@ import {
   within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
+import type { CreatePresetSessionRequest } from '@workspace/shared';
 import WorkoutPlaybackPage from '@/pages/Diary/WorkoutPlaybackPage';
 import type { WorkoutPreset } from '@/types/workout';
 import { createWorkoutPlaybackDraftFromPreset } from '@/utils/workoutPlayback';
@@ -13,6 +15,7 @@ import { createWorkoutPlaybackDraftFromPreset } from '@/utils/workoutPlayback';
 const mockNavigate = jest.fn();
 const mockCreatePresetSession = jest.fn();
 const mockUpdatePresetSession = jest.fn();
+const mockFetchExerciseProgressionStats = jest.fn();
 const mockSearchParams = new URLSearchParams('date=2026-04-27');
 let mockLocationState: {
   returnTo?: string;
@@ -56,6 +59,9 @@ jest.mock('@/contexts/PreferencesContext', () => ({
 }));
 
 jest.mock('@/hooks/Exercises/useExerciseEntries', () => ({
+  fetchExerciseProgressionStats: (exerciseId: string) =>
+    mockFetchExerciseProgressionStats(exerciseId),
+  isPresetSessionConflictError: () => false,
   useCreatePresetSessionMutation: () => ({
     mutateAsync: (...args: unknown[]) => mockCreatePresetSession(...args),
     isPending: false,
@@ -65,6 +71,23 @@ jest.mock('@/hooks/Exercises/useExerciseEntries', () => ({
     isPending: false,
   }),
   useWorkoutLocations: () => ({ data: ['Home Gym', 'Downtown'] }),
+}));
+
+jest.mock('@/hooks/Exercises/useWorkoutCoaching', () => ({
+  fetchWorkoutCoachingSignals: async () => null,
+}));
+
+jest.mock('@/pages/Diary/FollowAlongWorkoutPlayer', () => ({
+  __esModule: true,
+  default: ({
+    onComplete,
+  }: {
+    onComplete: (exerciseIndexes: readonly number[], ended: boolean) => void;
+  }) => (
+    <button type="button" onClick={() => onComplete([0], true)}>
+      Complete video
+    </button>
+  ),
 }));
 
 const presetFixture: WorkoutPreset = {
@@ -90,9 +113,61 @@ describe('WorkoutPlaybackPage', () => {
   beforeEach(() => {
     mockNavigate.mockReset();
     mockCreatePresetSession.mockReset();
+    mockFetchExerciseProgressionStats.mockReset().mockResolvedValue(null);
     window.localStorage.clear();
     mockActiveUserId = 'user-1';
     mockLocationState = { returnTo: '/?date=2026-04-27' };
+  });
+
+  it('retries saving a completed video after late progression history arrives', async () => {
+    const draft = createWorkoutPlaybackDraftFromPreset(
+      {
+        ...presetFixture,
+        video_url: 'https://example.com/workout.mp4',
+        exercises: [
+          {
+            ...presetFixture.exercises[0]!,
+            video_start_seconds: 0,
+            video_end_seconds: 12,
+          },
+        ],
+      },
+      '2026-04-27'
+    );
+    mockLocationState = { draft };
+    const history = { recentSessions: [{ sets: [{ reps: 12, weight: 80 }] }] };
+    let resolveHistory!: (value: typeof history) => void;
+    mockFetchExerciseProgressionStats.mockReturnValue(
+      new Promise<typeof history>((resolve) => {
+        resolveHistory = resolve;
+      })
+    );
+    mockCreatePresetSession.mockRejectedValue(new Error('Network unavailable'));
+
+    render(<WorkoutPlaybackPage />);
+    await waitFor(() => {
+      expect(mockFetchExerciseProgressionStats).toHaveBeenCalledWith(
+        'exercise-1'
+      );
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Complete video' }));
+    await screen.findByText(/Failed to save workout/);
+    const firstPayload: CreatePresetSessionRequest =
+      mockCreatePresetSession.mock.calls[0][0];
+    expect(firstPayload.exercises?.[0]?.sets?.[0]).toMatchObject({
+      weight: 80,
+      completed_at: expect.any(String),
+    });
+
+    await act(async () => resolveHistory(history));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Finish Workout' }));
+    });
+
+    expect(mockCreatePresetSession).toHaveBeenCalledTimes(2);
+    expect(mockCreatePresetSession.mock.calls[1][0].exercises).toEqual(
+      firstPayload.exercises
+    );
   });
 
   it('shows elapsed timer and collapses completed exercises', () => {

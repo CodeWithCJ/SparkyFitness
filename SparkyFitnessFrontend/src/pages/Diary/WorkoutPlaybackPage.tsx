@@ -227,7 +227,7 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
   useEffect(() => {
     if (!draft || progressionCheckedRef.current) return;
     progressionCheckedRef.current = true;
-    if (draft.load_adjustments_applied) return;
+    if (draft.load_adjustments_applied || draft.video_finish_pending) return;
 
     const isWarmup = (setType?: string | null): boolean => {
       if (!setType) return false;
@@ -475,15 +475,15 @@ const WorkoutPlaybackPage = ({ ownerId }: { ownerId: string | null }) => {
       const changed =
         hasChanges ||
         rampedExercises.some((exercise, i) => exercise !== updatedExercises[i]);
-      setDraft((current) =>
-        current
-          ? {
-              ...current,
-              ...(changed ? { exercises: rampedExercises } : {}),
-              load_adjustments_applied: true,
-            }
-          : current
-      );
+      setDraft((current) => {
+        if (!current || current.video_finish_pending) return current;
+        const canApply = changed && current.exercises === draft.exercises;
+        return {
+          ...current,
+          ...(canApply ? { exercises: rampedExercises } : {}),
+          load_adjustments_applied: true,
+        };
+      });
     };
 
     void evaluateDraftProgression();

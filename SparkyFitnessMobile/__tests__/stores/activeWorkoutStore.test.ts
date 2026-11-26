@@ -2911,6 +2911,35 @@ describe('activeWorkoutStore', () => {
         });
       });
 
+      it('keeps the video interval and logs the replacement when that interval is played', () => {
+        useActiveWorkoutStore.getState().startWorkout(makeSession(), {
+          videoUrl: 'https://example.com/workout.mp4',
+          exerciseConfigs: [
+            {
+              ramp_increment: 5,
+              video_start_seconds: 0,
+              video_end_seconds: 30,
+            },
+          ],
+        });
+        useActiveWorkoutStore
+          .getState()
+          .replaceExercise('ex-uuid-1', replacement);
+
+        const state = useActiveWorkoutStore.getState();
+        expect(state.exerciseConfigs['ex-uuid-1']).toEqual({
+          video_start_seconds: 0,
+          video_end_seconds: 30,
+        });
+        state.completeVideoExercises(['ex-uuid-1']);
+
+        const latest = useActiveWorkoutStore.getState();
+        expect(
+          buildActiveWorkoutUpdateBody({ ...latest, session: latest.session! })
+            .exercises?.[0]
+        ).toMatchObject({ exercise_id: 'ex-9', duration_minutes: 0.5 });
+      });
+
       it('clears completions on the kept sets and repoints the cursor', async () => {
         useActiveWorkoutStore.getState().completeActiveSet(); // 101 done, cursor 102
         await flushPromises();
