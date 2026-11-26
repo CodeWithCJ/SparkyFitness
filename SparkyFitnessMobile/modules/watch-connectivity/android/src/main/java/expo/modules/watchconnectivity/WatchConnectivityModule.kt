@@ -612,7 +612,12 @@ internal object WatchConnectivityHub {
     return true
   }
 
-  fun setServerCredentials(context: Context, baseUrl: String, headers: Map<String, Any?>) {
+  fun setServerCredentials(
+    context: Context,
+    baseUrl: String,
+    headers: Map<String, Any?>,
+    expectedOwnerId: String? = null
+  ) {
     val appCtx = context.applicationContext
     val cleanBaseUrl = baseUrl.trim().trimEnd('/')
     val headersObj = JSONObject()
@@ -629,6 +634,10 @@ internal object WatchConnectivityHub {
         val wm = readRevocationWatermarksLocked(appCtx)
         val prevGen = prefs.getLong(CREDENTIALS_GENERATION_KEY, 0L)
         val currentOwner = prefs.getString(TELEMETRY_OWNER_KEY, "") ?: ""
+        val cleanExpectedOwner = expectedOwnerId?.trim()
+        if (cleanExpectedOwner != null && cleanExpectedOwner != currentOwner) {
+          return@synchronized 1
+        }
         val existingUrl = prefs.getString(SERVER_URL_KEY, null)?.takeIf { it.isNotEmpty() }
         val existingHeaders = prefs.getString(ENCRYPTED_HEADERS_KEY, null)?.let { blob ->
           try {
@@ -5977,13 +5986,13 @@ class WatchConnectivityModule : Module() {
       WatchConnectivityHub.setTelemetryOwner(ctx, ownerId)
     }
 
-    AsyncFunction("setServerCredentials") { baseUrl: String, headers: ReadableMap ->
+    AsyncFunction("setServerCredentials") { baseUrl: String, headers: ReadableMap, expectedOwnerId: String? ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
       val cleanHeaders = headers.toHashMap().entries.mapNotNull { (k, v) ->
         val str = v?.toString()
         if (!str.isNullOrBlank()) k to str else null
       }.toMap()
-      WatchConnectivityHub.setServerCredentials(ctx, baseUrl, cleanHeaders)
+      WatchConnectivityHub.setServerCredentials(ctx, baseUrl, cleanHeaders, expectedOwnerId)
     }
 
     AsyncFunction("clearServerCredentials") {

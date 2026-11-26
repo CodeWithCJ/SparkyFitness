@@ -123,7 +123,7 @@ import {
 import { presetName } from '../components/recording/IntervalSetup';
 import { programWorkoutLabel } from '../components/recording/RunProgramCard';
 import { getAppLocale } from '../localization';
-import { getDueDosesForDate, normalizeEnergyUnit } from '@workspace/shared';
+import { normalizeEnergyUnit } from '@workspace/shared';
 
 /** Saved workouts the watch may start. Presets with no exercises are omitted:
  * the server rejects a session that has none. */
@@ -534,6 +534,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
   const uncertainWaterWritesRef = useRef(
     new Map<string, Map<string, string>>()
   );
+  const waterRefreshSeqRef = useRef(new Map<string, number>());
   // Increments on every `pushContext` call, so each one can tell whether it is
   // still the newest by the time it has something to send.
   const pushGenerationRef = useRef(0);
@@ -1989,6 +1990,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         handledWaterClientIdsRef.current.add(payload.clientId);
 
       try {
+        const tapGeneration = accountGeneration();
         if (payload.clientId && payload.entryDate) {
           recordUncertainWaterWrite(
             ownerKey,
@@ -1996,6 +1998,13 @@ export function useWatchCheckInBridge(enabled: boolean): void {
             payload.entryDate
           );
           await persistAckState();
+          if (
+            accountGeneration() !== tapGeneration ||
+            !(await isPayloadForActiveServer(payload))
+          ) {
+            handledWaterClientIdsRef.current.delete(payload.clientId);
+            return;
+          }
         }
         // One tap = one full serving of that container, same as the phone's
         // own + button. With the server away the drink is kept on the phone
@@ -2477,32 +2486,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           fromDate: payload.entryDate,
           toDate: payload.entryDate,
         });
-        let allowLegacyFallback = false;
-        if (payload.scheduleId) {
-          const hasExact = entries.some(
-            (e) => e.schedule_id === payload.scheduleId
-          );
-          const hasLegacy =
-            !hasExact &&
-            entries.some(
-              (e) =>
-                e.medication_id === payload.medicationId &&
-                !e.schedule_id &&
-                e.status !== 'prn_taken'
-            );
-          if (hasLegacy) {
-            const activeMeds = await listMedications({ activeOnly: true });
-            const dueCount = getDueDosesForDate(
-              activeMeds,
-              payload.entryDate,
-              getDeviceTimezone()
-            ).filter((d) => d.medication.id === payload.medicationId).length;
-            allowLegacyFallback = dueCount === 1;
-          }
-        }
-        const write = watchMedicationWrite(payload, entries, {
-          allowLegacyFallback,
-        });
+        const write = watchMedicationWrite(payload, entries);
         if (write.kind === 'delete') {
           await deleteEntry(write.entryId);
         } else if (write.kind === 'update') {
@@ -2855,6 +2839,15 @@ export function useWatchCheckInBridge(enabled: boolean): void {
             }
             if (directClientId) {
               const generationBeforeLiveFetch = accountGeneration();
+              const liveOwnerKey = expectedOwnerId ?? '';
+              const requestSeqByDay = new Map<string, number>();
+              for (const d of waterDates) {
+                const seqKey = `${liveOwnerKey}::${d}`;
+                const nextSeq =
+                  (waterRefreshSeqRef.current.get(seqKey) ?? 0) + 1;
+                waterRefreshSeqRef.current.set(seqKey, nextSeq);
+                requestSeqByDay.set(d, nextSeq);
+              }
               const liveServerConfig =
                 await resolveWatchServerConfig(expectedOwnerId);
               if (!liveServerConfig) {
@@ -2881,6 +2874,12 @@ export function useWatchCheckInBridge(enabled: boolean): void {
                 return;
               }
               for (const { day, log, total } of liveWaterSnapshots) {
+                if (
+                  waterRefreshSeqRef.current.get(`${liveOwnerKey}::${day}`) !==
+                  requestSeqByDay.get(day)
+                ) {
+                  continue;
+                }
                 queryClient.setQueryData(waterIntakeLogQueryKey(day), log);
                 if (total && typeof total.water_ml === 'number') {
                   queryClient.setQueryData<DailySummaryRawData>(

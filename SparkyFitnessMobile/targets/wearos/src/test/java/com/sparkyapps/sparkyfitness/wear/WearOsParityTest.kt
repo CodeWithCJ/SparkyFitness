@@ -6920,4 +6920,23 @@ class WearOsParityTest {
         assertEquals(12.0, started.plan.exercises[0].sets[0].targetReps!!, 0.001)
         assertNull(started.plan.exercises[0].sets[1].targetReps)
     }
+
+    @Test
+    fun medicationTileCommonSignatureCollidesAcrossGridRows() {
+        val doses = listOf(
+            MedicationDose("d1", "m1", "s1", "Supplement Alpha", "10 mg", "11:30 PM", MedicationDoseStatus.PENDING),
+            MedicationDose("d2", "m2", "s2", "Other Med", "5 mg", "11:30 PM", MedicationDoseStatus.PENDING),
+            MedicationDose("d3", "m3", "s3", "Supplement Beta", "10 mg", "11:30 PM", MedicationDoseStatus.PENDING)
+        )
+        val rows = TileModels.buildAllMedicationDoseRows(
+            doses = doses,
+            screenWidthDp = 192,
+            fontScale = 1f
+        )
+        assertEquals(3, rows.size)
+        // Row 0 ("Supplement Alpha") and Row 1 ("Supplement Beta") collide under common grid budget
+        assertFalse(rows[0].isDirectlyActionable)
+        assertTrue(rows[1].isDirectlyActionable)
+        assertFalse(rows[2].isDirectlyActionable)
+    }
 }

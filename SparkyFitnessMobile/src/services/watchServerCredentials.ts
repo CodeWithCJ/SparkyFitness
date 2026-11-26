@@ -55,11 +55,15 @@ export async function syncWatchServerCredentials(): Promise<string | null> {
         return workoutServerId;
       }
       if (activeCfg?.url) {
-        await watch.setServerCredentials?.(normalizeUrl(activeCfg.url), {
-          ...proxyHeadersToRecord(activeCfg.proxyHeaders),
-          ...getAuthHeaders(activeCfg),
-          'X-Meal-Model-Version': '2',
-        });
+        await watch.setServerCredentials?.(
+          normalizeUrl(activeCfg.url),
+          {
+            ...proxyHeadersToRecord(activeCfg.proxyHeaders),
+            ...getAuthHeaders(activeCfg),
+            'X-Meal-Model-Version': '2',
+          },
+          workoutServerId ?? ''
+        );
       } else {
         await watch.clearServerCredentials?.();
       }

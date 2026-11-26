@@ -205,48 +205,6 @@ describe('medicationsForWatch', () => {
       )
     ).toEqual([]);
   });
-
-  it('matches a legacy schedule-less entry only when the medication has exactly one due slot today', () => {
-    const singleSlotMed = buildMedication('med-single', 'Vitamin D', [
-      { id: 'sched-only', time_of_day: '08:00' },
-    ]);
-    const multiSlotMed = buildMedication('med-multi', 'Metformin', [
-      { id: 'sched-am', time_of_day: '08:00' },
-      { id: 'sched-pm', time_of_day: '20:00' },
-    ]);
-
-    const doses = medicationsForWatch(
-      [singleSlotMed, multiSlotMed],
-      [
-        buildEntry({
-          id: 'legacy-single',
-          medication_id: 'med-single',
-          schedule_id: null,
-          status: 'taken',
-        }),
-        buildEntry({
-          id: 'legacy-multi',
-          medication_id: 'med-multi',
-          schedule_id: null,
-          status: 'taken',
-        }),
-      ],
-      DAY,
-      'UTC',
-      'HH:mm'
-    );
-
-    expect(
-      doses.find((d) => d.id === watchDoseId('med-single', 'sched-only'))
-        ?.status
-    ).toBe('taken');
-    expect(
-      doses.find((d) => d.id === watchDoseId('med-multi', 'sched-am'))?.status
-    ).toBe('pending');
-    expect(
-      doses.find((d) => d.id === watchDoseId('med-multi', 'sched-pm'))?.status
-    ).toBe('pending');
-  });
 });
 
 describe('watchMedicationWrite', () => {
@@ -315,26 +273,6 @@ describe('watchMedicationWrite', () => {
       watchMedicationWrite({ ...prn, skipped: true }, [
         buildEntry({ schedule_id: null, status: 'prn_taken' }),
       ])
-    ).toEqual({ kind: 'none' });
-  });
-
-  it('ignores legacy schedule-less entries when allowLegacyFallback is false', () => {
-    const legacy = buildEntry({
-      id: 'legacy-1',
-      medication_id: 'med-1',
-      schedule_id: null,
-      status: 'taken',
-    });
-    expect(
-      watchMedicationWrite(slot, [legacy], { allowLegacyFallback: false })
-    ).toEqual({ kind: 'create', status: 'taken' });
-    expect(
-      watchMedicationWrite({ ...slot, taken: false }, [legacy], {
-        allowLegacyFallback: false,
-      })
-    ).toEqual({ kind: 'none' });
-    expect(
-      watchMedicationWrite(slot, [legacy], { allowLegacyFallback: true })
     ).toEqual({ kind: 'none' });
   });
 });

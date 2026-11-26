@@ -6,7 +6,7 @@ import type {
 } from '../../modules/watch-connectivity';
 import type { EntryTimeFormat } from './entryTimeDisplay';
 import { formatLocalizedTimeOfDay } from './medicationScheduleLocalization';
-import { doseSlotStatus } from './medications';
+import { doseSlotStatus, entryMatchesDose } from './medications';
 
 /** The id the watch and the phone both use to name one dose slot. */
 export function watchDoseId(medicationId: string, scheduleId: string): string {
@@ -21,40 +21,14 @@ function isAsNeeded(med: MedicationDetail): boolean {
 }
 
 /**
- * Matches a logged entry to one scheduled watch dose slot.
- * Exact `schedule_id` matches always win. A legacy schedule-less entry
- * (`schedule_id == null`, excluding `prn_taken`) is only matched when
- * `allowLegacyFallback` is true (i.e. the medication has exactly one due
- * scheduled slot on that date), matching Wear OS's single-slot legacy rule so
- * multi-slot medications never mark two slots taken from one legacy row.
- */
-function findEntryForWatchScheduledSlot(
-  entries: readonly MedicationEntry[],
-  medicationId: string,
-  scheduleId: string,
-  allowLegacyFallback: boolean
-): MedicationEntry | undefined {
-  const exact = entries.find((e) => e.schedule_id === scheduleId);
-  if (exact) return exact;
-  if (!allowLegacyFallback) return undefined;
-  return entries.find(
-    (e) =>
-      e.medication_id === medicationId &&
-      !e.schedule_id &&
-      e.status !== 'prn_taken'
-  );
-}
-
-/**
  * Today's dose slots, in the shape the watch's Medications page draws:
  * scheduled slots soonest first (untimed last), then as-needed medications
  * (no schedule, or a PRN schedule) as a single untimed row each with an empty
  * `scheduleId`. A new medication therefore shows up on the watch before it has
  * a schedule.
  *
- * Legacy schedule-less entries only bind to a scheduled slot when the
- * medication has exactly one due slot on `date`, keeping phone context and
- * Wear OS direct refresh in agreement.
+ * Status comes from the same entry matching the phone's own dose rows use
+ * (`entryMatchesDose`), so the two never disagree about what is taken.
  */
 export function medicationsForWatch(
   medications: readonly MedicationDetail[],
@@ -63,38 +37,29 @@ export function medicationsForWatch(
   timezone: string,
   timeFormat?: EntryTimeFormat | null
 ): WatchMedicationDosePayload[] {
-  const dueDoses = getDueDosesForDate([...medications], date, timezone);
-  const dueCountByMedication = new Map<string, number>();
-  for (const due of dueDoses) {
-    dueCountByMedication.set(
-      due.medication.id,
-      (dueCountByMedication.get(due.medication.id) ?? 0) + 1
-    );
-  }
-  const scheduled = dueDoses.map((due) => {
-    const entry = findEntryForWatchScheduledSlot(
-      entries,
-      due.medication.id,
-      due.schedule.id,
-      dueCountByMedication.get(due.medication.id) === 1
-    );
-    return {
-      id: watchDoseId(due.medication.id, due.schedule.id),
-      medicationId: due.medication.id,
-      scheduleId: due.schedule.id,
-      name: due.medication.name,
-      detail: formatDose(due.medication, due.schedule) ?? '',
-      time: due.schedule.time_of_day
-        ? formatLocalizedTimeOfDay(
-            due.schedule.time_of_day,
-            undefined,
-            timeFormat
-          )
-        : '',
-      status: doseSlotStatus(entry),
-      supplement: Boolean(due.medication.is_supplement),
-    };
-  });
+  const scheduled = getDueDosesForDate([...medications], date, timezone).map(
+    (due) => {
+      const entry = entries.find((e) =>
+        entryMatchesDose(e, due.medication.id, due.schedule.id)
+      );
+      return {
+        id: watchDoseId(due.medication.id, due.schedule.id),
+        medicationId: due.medication.id,
+        scheduleId: due.schedule.id,
+        name: due.medication.name,
+        detail: formatDose(due.medication, due.schedule) ?? '',
+        time: due.schedule.time_of_day
+          ? formatLocalizedTimeOfDay(
+              due.schedule.time_of_day,
+              undefined,
+              timeFormat
+            )
+          : '',
+        status: doseSlotStatus(entry),
+        supplement: Boolean(due.medication.is_supplement),
+      };
+    }
+  );
   const asNeeded = medications.filter(isAsNeeded).map((med) => {
     const entry = entries.find(
       (e) => e.medication_id === med.id && e.status === 'prn_taken'
@@ -131,29 +96,24 @@ export type WatchMedicationWrite =
  * - `taken: false` (an un-tick) clears the slot, whether it was taken or
  *   skipped.
  * - Otherwise the slot is marked taken. A skipped or schedule-less (web-logged)
- *   entry for it is updated rather than a second one created when
- *   `allowLegacyFallback` is true (single due slot on the day).
+ *   entry for it is updated rather than a second one created, as the phone's
+ *   own dose row does.
  */
 export function watchMedicationWrite(
   payload: Pick<
     WatchMedicationTakenPayload,
     'medicationId' | 'scheduleId' | 'taken' | 'skipped'
   >,
-  entries: readonly MedicationEntry[],
-  options?: { allowLegacyFallback?: boolean }
+  entries: readonly MedicationEntry[]
 ): WatchMedicationWrite {
   const asNeeded = !payload.scheduleId;
-  const allowLegacyFallback = options?.allowLegacyFallback ?? true;
   const existing = asNeeded
     ? entries.find(
         (e) =>
           e.medication_id === payload.medicationId && e.status === 'prn_taken'
       )
-    : findEntryForWatchScheduledSlot(
-        entries,
-        payload.medicationId,
-        payload.scheduleId,
-        allowLegacyFallback
+    : entries.find((e) =>
+        entryMatchesDose(e, payload.medicationId, payload.scheduleId)
       );
   const taken =
     existing?.status === 'taken' || existing?.status === 'prn_taken';

@@ -488,6 +488,7 @@ object TileModels {
       val name: String,
       val detailText: String,
       val visibleDetailPrefix: String,
+      val signatureDetailPrefix: String,
       val strengthIntact: Boolean,
       val detailStrengthIntact: Boolean
     )
@@ -532,10 +533,29 @@ object TileModels {
         detailIsCountOnlyWithNamedStrength -> true
         else -> cleanDetail.none { isNumericChar(it) }
       }
+      val signatureDetailPrefix = if (useGrid) {
+        visibleGridChipDetail(
+          detailText = detailText,
+          screenWidthDp = screenWidthDp,
+          fontScale = fontScale,
+          rowIndex = 0,
+          totalRows = 1
+        ).first
+      } else {
+        visiblePillRowDetail(
+          compactName = compactName,
+          detailText = detailText,
+          screenWidthDp = screenWidthDp,
+          fontScale = fontScale,
+          rowIndex = 0,
+          totalRows = 1
+        ).first
+      }
       return FormattedDoseDisplay(
         name = compactName,
         detailText = detailText,
         visibleDetailPrefix = visibleDetailPrefix,
+        signatureDetailPrefix = signatureDetailPrefix,
         strengthIntact = nameStrengthIntact,
         detailStrengthIntact = detailStrengthIntact
       )
@@ -553,7 +573,7 @@ object TileModels {
       formatDoseDisplay(dose, rowIndex, totalRows)
     }
     val visibleSignatureCounts = displayed
-      .groupingBy { it.name to it.visibleDetailPrefix }
+      .groupingBy { it.name to it.signatureDetailPrefix }
       .eachCount()
 
     return ordered.mapIndexed { idx, dose ->
@@ -566,7 +586,7 @@ object TileModels {
       }
       val disp = displayed[idx]
       val isPending = dose.status == MedicationDoseStatus.PENDING
-      val sig = disp.name to disp.visibleDetailPrefix
+      val sig = disp.name to disp.signatureDetailPrefix
       val uniquelyIdentifiable = isPending &&
         disp.strengthIntact &&
         disp.detailStrengthIntact &&

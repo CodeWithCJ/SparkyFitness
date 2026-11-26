@@ -1428,7 +1428,8 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   takeDroppedHeartRateBatchCount(): Promise<number>;
   setServerCredentials?(
     baseUrl: string,
-    headers: Record<string, string>
+    headers: Record<string, string>,
+    expectedOwnerId?: string
   ): Promise<void>;
   clearServerCredentials?(): Promise<void>;
   /**
