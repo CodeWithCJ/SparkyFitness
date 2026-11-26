@@ -55,6 +55,12 @@ describe('useWatchComplicationSync', () => {
     expect(resent.map((d: { name: string }) => d.name)).toEqual(['Caffeine']);
   });
 
+  it("does not send the list again for a Garmin watch's request", () => {
+    renderHook(() => useWatchComplicationSync(true));
+    mockListeners.get('onContextRequest')?.({ source: 'garmin' });
+    expect(sendComplicationsToWatch).toHaveBeenCalledTimes(1);
+  });
+
   it('sends the list again when the watch becomes reachable, not when it leaves', () => {
     renderHook(() => useWatchComplicationSync(true));
     mockListeners.get('onReachabilityChange')?.({ isReachable: false });

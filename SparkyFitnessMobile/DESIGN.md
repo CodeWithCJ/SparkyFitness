@@ -898,6 +898,6 @@ Take macro and nutrient colors from `GoalPalette` (`GoalPalette.color(forNutrien
 - [ ] Took colors from `GoalPalette` / `SparkyColors` and updated the table above if a value changed.
 - [ ] Fired Apple Watch haptics through `Haptics`, never `WKInterfaceDevice` directly (the one exception is the rest-finished buzz in `WatchAppDelegate`, which uses `effectiveRestBuzzEnabled` to honor the rest-alerts setting as well), and kept pages working with no phone connection.
 - [ ] A new page is added to `WatchPage`, `WATCH_PAGE_KEYS` and the phone's Apple Watch settings together.
-- [ ] A new complication is added on both Apple Watch (`index.swift`) and Wear OS (service plus manifest entry), with its tap target (URL scheme on Apple Watch, `target_page` on Wear OS), unless documented as an intentional platform-specific exception in Section 10.6.
+- [ ] A new complication is added on both Apple Watch (`index.swift`) and Wear OS (service plus manifest entry), with its tap target (URL scheme on Apple Watch, `target_page` on Wear OS), unless documented as an intentional platform-specific exception in Section 10.7.
 - [ ] Payload or context changes are made on both watches and the phone by hand, and the Wear OS parity test still passes.
 - [ ] New Apple Watch strings are localized with `String(localized:defaultValue:)` and added to `en.lproj/Localizable.strings`.

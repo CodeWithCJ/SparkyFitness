@@ -1347,7 +1347,12 @@ export type GarminOpenAppResult =
 export type WatchConnectivityEvents = {
   onReachabilityChange: (payload: { isReachable: boolean }) => void;
   onCheckIn: (payload: WatchCheckInPayload) => void;
-  onContextRequest: () => void;
+  /**
+   * A watch asked for a fresh context push. `source` is `'garmin'` for a
+   * Garmin watch's request, which only the check-in bridge answers; absent
+   * for an Apple Watch or Wear OS one.
+   */
+  onContextRequest: (payload?: { source?: 'garmin' }) => void;
   onWaterIntake: (payload: WatchWaterIntakePayload) => void;
   onWaterDelete: (payload: WatchWaterDeletePayload) => void;
   onMedicationTaken: (payload: WatchMedicationTakenPayload) => void;

@@ -55,9 +55,13 @@ export function useWatchComplicationSync(enabled: boolean): void {
         addLog(`[Watch Complications] Resend failed: ${error}`, 'WARNING');
       });
     };
+    // A Garmin watch's request is not for these: the complications live on
+    // the Apple Watch and Wear OS.
     const requestSub = WatchConnectivity.addListener(
       'onContextRequest',
-      resend
+      (payload) => {
+        if (payload?.source !== 'garmin') resend();
+      }
     );
     const reachabilitySub = WatchConnectivity.addListener(
       'onReachabilityChange',

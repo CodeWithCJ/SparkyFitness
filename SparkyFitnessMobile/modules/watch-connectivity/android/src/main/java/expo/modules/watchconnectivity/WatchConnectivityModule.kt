@@ -22,6 +22,7 @@ import com.google.android.gms.wearable.Wearable
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.watchconnectivity.garmin.GARMIN_TYPE_REQUEST_CONTEXT
 import expo.modules.watchconnectivity.garmin.GarminLink
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -459,6 +460,15 @@ internal object WatchConnectivityHub {
   // gives them the Wear OS owner checks, inbound queue and JS events; the JSON
   // copy is what the inbound queue stores and replays.
   fun handleGarminPayload(context: Context, payload: Map<String, Any?>) {
+    // A Garmin watch's request only asks JS for a fresh context push, which
+    // JS turns into its snapshot. Marked as Garmin's, so what answers a Wear
+    // OS request (the complication resend) leaves it alone, and without JS
+    // nothing Wear OS is replayed for it: GarminLink answers the watch from
+    // its own cache.
+    if (payload["type"] == GARMIN_TYPE_REQUEST_CONTEXT) {
+      activeModule?.emitEvent("onContextRequest", mapOf("source" to "garmin"))
+      return
+    }
     val appCtx = context.applicationContext
     scope.launch {
       val rawJson = try {
