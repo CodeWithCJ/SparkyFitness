@@ -523,4 +523,8 @@ test("hidden characters and wide dots cannot disguise a link, CJK sentences are 
   assert.deepEqual(has("登录已过期。请打开"), []);
   assert.deepEqual(has("由AI驱动。全面记录您的饮食"), []);
   assert.deepEqual(has("家族のために。AI搭載。食事"), []);
+  assert.deepEqual(has("包埋 http://（或 https://）"), []);
+  assert.deepEqual(has("包含 http://（或 https://）"), []);
+  assert.deepEqual(has("http://"), []);
+  assert.deepEqual(has("https://"), []);
 });
