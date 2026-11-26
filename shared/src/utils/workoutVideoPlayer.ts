@@ -127,6 +127,7 @@ if (config.source.kind === 'file') {
   let previous = null;
   let playbackRate = 1;
   let playing = false;
+  let pausedBeforePlay = false;
   let timer;
   window.pauseWorkoutVideo = () => player?.pauseVideo?.();
   const report = (ended = false, resumed = false) => {
@@ -139,8 +140,10 @@ if (config.source.kind === 'file') {
       const elapsed = (now - previous.now) / 1000;
       const elapsedPlayback = resumed ? Math.min(elapsed, 0.2) : elapsed;
       let expected = previous.expected + elapsedPlayback * playbackRate;
-      // YouTube may deliver PLAYING after the playhead has started moving.
-      if (resumed && seconds <= expected + 0.5 * playbackRate) {
+      // Allow for a late PLAYING event at startup or after buffering.
+      // A seek from an explicit pause gets only the elapsed playback time.
+      const startupAllowance = pausedBeforePlay ? 0 : 0.5 * playbackRate;
+      if (resumed && seconds <= expected + startupAllowance) {
         expected = seconds;
       }
       // Small backwards corrections occur as the player clock settles.
@@ -192,7 +195,9 @@ if (config.source.kind === 'file') {
           const wasPlaying = playing;
           if (wasPlaying) report(ended);
           playing = event.data === window.YT.PlayerState.PLAYING;
+          if (event.data === window.YT.PlayerState.PAUSED) pausedBeforePlay = true;
           report(ended, playing && !wasPlaying);
+          if (playing) pausedBeforePlay = false;
         },
         onPlaybackRateChange: (event) => {
           report();

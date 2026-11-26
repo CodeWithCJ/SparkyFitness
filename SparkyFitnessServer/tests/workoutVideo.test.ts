@@ -293,6 +293,12 @@ describe('follow-along workout video', () => {
       seconds: 12.37,
       ranges: [{ start: 12.12, end: expect.closeTo(12.245) }],
     });
+    sample(4500, 12.4, playerState.PAUSED);
+    sample(4510, 12.4, playerState.BUFFERING);
+    expect(sample(4625, 12.65, playerState.PLAYING)).toMatchObject({
+      seconds: 12.65,
+      ranges: [{ start: 12.4, end: expect.closeTo(12.515, 3) }],
+    });
     sample(5000, 50);
     now = 5010;
     seconds = 50.01;
