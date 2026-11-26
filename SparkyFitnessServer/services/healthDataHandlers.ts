@@ -42,6 +42,7 @@ import {
   BUILT_IN_MOODS,
   instantForDay,
   instantHourMinute,
+  instantHourMinuteInZone,
   instantToDay,
   isDayString,
   isSkinTemperatureSite,
@@ -49,6 +50,7 @@ import {
   type SkinTemperatureSite,
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
+  resolveRecordZone,
   todayInZone,
 } from '@workspace/shared';
 
@@ -354,7 +356,8 @@ async function ingestNutritionFoodEntry(
   userId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   actingUserId: any,
-  parsedDate: string
+  parsedDate: string,
+  entryTime: string | null = null
 ) {
   const { providerType, fallbackName } = resolveProvider(dataEntry.source);
   const trimmedName =
@@ -417,6 +420,10 @@ async function ingestNutritionFoodEntry(
       quantity: 1,
       unit: 'serving',
       entry_date: parsedDate,
+      // Local wall-clock time the record was logged at, so time-dependent
+      // views (caffeine kinetics, diary order) use the real instant instead of
+      // falling back to the meal's default time.
+      ...(entryTime ? { entry_time: entryTime } : {}),
       meal_type: dataEntry.meal_type || 'snacks',
       serving_size: 1,
       serving_unit: 'serving',
@@ -2286,6 +2293,53 @@ const workoutHandler: HealthTypeHandler = {
   },
 };
 
+/** The fields of a nutrition record that decide when it was logged. */
+interface NutritionRecordTime {
+  timestamp?: string | number | null;
+  date?: string | null;
+  entry_date?: string | null;
+  record_timezone?: string | null;
+  record_utc_offset_minutes?: number | null;
+}
+
+// True when the record carries a real instant rather than only a day. Mirrors
+// which field resolveHealthEntryDate takes entryTimestamp from: `timestamp`
+// when it parses, else the `date` / `entry_date` basis.
+function hasLoggedInstant(entry: NutritionRecordTime): boolean {
+  const isInstant = (value: unknown) =>
+    (typeof value === 'number' && Number.isFinite(value)) ||
+    (typeof value === 'string' &&
+      !isDayString(value) &&
+      Number.isFinite(Date.parse(value)));
+  const timestamp = entry.timestamp;
+  if (timestamp && Number.isFinite(new Date(timestamp).getTime())) {
+    return isInstant(timestamp);
+  }
+  return isInstant(entry.date || entry.entry_date);
+}
+
+// Local wall-clock time of a nutrition record, resolved with the same zone
+// precedence the entry date uses (record timezone, then record UTC offset,
+// then the user's timezone), so date and time always agree.
+async function nutritionEntryTime(
+  entry: NutritionRecordTime,
+  ctx: HealthEntryContext
+): Promise<string | null> {
+  // A date-only record has no logged time: the resolver's entryTimestamp is
+  // then a synthesized midnight, which must not become 00:00.
+  if (!hasLoggedInstant(entry) || !ctx.entryTimestamp) return null;
+  const zone = resolveRecordZone(
+    entry.record_timezone,
+    entry.record_utc_offset_minutes
+  );
+  if (zone) {
+    const { hour, minute } = instantHourMinuteInZone(ctx.entryTimestamp, zone);
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+  }
+  const { tz } = await ctx.getSleepContext();
+  return localEntryTime(ctx.entryTimestamp, tz);
+}
+
 // Ingest a Health Connect NutritionRecord as a food entry
 // (see ingestNutritionFoodEntry).
 const nutritionHandler: HealthTypeHandler = {
@@ -2305,11 +2359,13 @@ const nutritionHandler: HealthTypeHandler = {
       };
     }
     try {
+      const entryTime = await nutritionEntryTime(entry, ctx);
       const foodEntry = await ingestNutritionFoodEntry(
         entry,
         ctx.userId,
         ctx.actingUserId,
-        ctx.parsedDate
+        ctx.parsedDate,
+        entryTime
       );
       return { status: 'success', data: foodEntry };
     } catch (nutritionError) {

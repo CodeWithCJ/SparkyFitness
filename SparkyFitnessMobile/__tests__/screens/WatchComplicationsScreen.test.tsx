@@ -1,5 +1,5 @@
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import Toast from 'react-native-toast-message';
 
@@ -44,7 +44,7 @@ jest.mock('../../src/components/Icon', () => {
 });
 
 jest.mock('../../src/services/watchComplicationSync', () => ({
-  sendComplicationsToWatch: jest.fn(() => Promise.resolve()),
+  sendComplicationsToWatch: jest.fn(() => Promise.resolve(true)),
 }));
 
 jest.mock('../../src/services/watchComplicationFile', () => ({
@@ -175,6 +175,17 @@ describe('WatchComplicationsScreen', () => {
 
   test('Reload says so when the send fails', async () => {
     sync.sendComplicationsToWatch.mockRejectedValueOnce(new Error('boom'));
+    renderScreen();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('watch-complications-reload'));
+    });
+    expect(Toast.show).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'error' })
+    );
+  });
+
+  test('Reload shows an error when the watch transport is unavailable', async () => {
+    sync.sendComplicationsToWatch.mockResolvedValueOnce(false);
     renderScreen();
     await act(async () => {
       fireEvent.press(screen.getByTestId('watch-complications-reload'));
@@ -370,5 +381,29 @@ describe('WatchComplicationsScreen', () => {
     renderScreen();
     expect(screen.getByText('No complications yet')).toBeTruthy();
     expect(screen.queryByTestId(/^watch-complication-row-/)).toBeNull();
+  });
+
+  test('on Android (Wear OS), hides iOS-only Daily Energy Goal and shows Wear OS reload hint', () => {
+    const originalOs = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    try {
+      renderScreen();
+      expect(screen.getByTestId('watch-built-in-row-calorieGoal')).toBeTruthy();
+      expect(screen.getByTestId('watch-built-in-row-steps')).toBeTruthy();
+      expect(screen.queryByTestId('watch-built-in-row-dailyEnergy')).toBeNull();
+      expect(
+        screen.getByText(
+          'Sends your complications to your Wear OS watch and refreshes them.'
+        )
+      ).toBeTruthy();
+    } finally {
+      Object.defineProperty(Platform, 'OS', {
+        value: originalOs,
+        configurable: true,
+      });
+    }
   });
 });

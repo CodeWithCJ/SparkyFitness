@@ -13,6 +13,20 @@
     <string name="complication_medications_label">Sparky Medications</string>
     <string name="complication_exercise_label">Sparky Exercise</string>
     <string name="complication_weight_label">Sparky Weight</string>
+    <string name="complication_custom_label">Sparky Custom</string>
+    <string name="complication_custom_gauge_label">Sparky Custom Gauge</string>
+    <string name="complication_custom_picker_title">Custom Complication</string>
+    <string name="complication_custom_gauge_picker_title">Custom Gauge</string>
+    <string name="complication_custom_picker_empty">Add custom complications in the SparkyFitness phone app.</string>
+    <string name="complication_custom_picker_use_sparky_custom">Use Sparky Custom</string>
+    <string name="complication_custom_picker_needs_ring">Needs ring or goal</string>
+    <string name="complication_custom_unconfigured">Pick a complication</string>
+    <string name="complication_custom_of_goal">of %1$s</string>
+    <string name="complication_custom_left_unit">%1$s left</string>
+    <string name="complication_custom_starter_calories_left">Calories left</string>
+    <string name="complication_custom_starter_macros">Macros</string>
+    <string name="complication_custom_starter_weight">Weight</string>
+    <string name="complication_custom_starter_sleep_score">Sleep score</string>
     <string name="tile_nutrition_label">Sparky Nutrition</string>
     <string name="tile_nutrition_description">Consumed vs goal calories and macro targets</string>
     <string name="tile_water_label">Sparky Hydration</string>
@@ -182,6 +196,10 @@
     <string name="tile_meds_skipped_done">%1$d skipped · All done</string>
     <string name="tile_meds_all_done">All doses completed</string>
     <string name="tile_meds_log_dose">Log Dose</string>
+    <string name="tile_meds_turned_off">Turned off</string>
+    <string name="tile_meds_turned_off_hint">Turn on in the phone app</string>
+    <string name="complication_meds_off_short">Off</string>
+    <string name="complication_meds_turned_off_description">Medications turned off</string>
 
     <string name="tile_exercise_header">EXERCISE</string>
     <string name="tile_exercise_steps_count">%1$d steps</string>

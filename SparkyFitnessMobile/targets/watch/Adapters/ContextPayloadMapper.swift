@@ -112,7 +112,12 @@ enum ContextPayloadMapper {
             indoorDistanceScale: indoorDistanceScale(from: payload) ?? previous.indoorDistanceScale,
             heartRateZoneFloors: WatchHeartRateZone.normalized(
                 (payload["heartRateZoneFloors"] as? [NSNumber])?.map(\.doubleValue)
-            ) ?? previous.heartRateZoneFloors
+            ) ?? previous.heartRateZoneFloors,
+            // Carried forward like the page layout: the phone leaves it out
+            // while it does not know its feature choices.
+            offFeatures: payload.keys.contains("offFeatures")
+                ? stringArray(payload["offFeatures"])
+                : previous.offFeatures
         )
     }
 

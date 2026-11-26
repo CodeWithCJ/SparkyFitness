@@ -1,3 +1,5 @@
+import type { ChoiceFeatureKey } from '@workspace/shared';
+
 /**
  * The Apple Watch app's swipeable pages, in the order the watch shipped with.
  *
@@ -19,6 +21,17 @@ export const WATCH_PAGE_KEYS = [
 ] as const;
 
 export type WatchPageKey = (typeof WATCH_PAGE_KEYS)[number];
+
+/**
+ * The optional feature (#3487) a page belongs to: while it is off in the app,
+ * the page leaves the watch and the Watch settings list. Only features stored
+ * in `feature_choices`, because the watch context reads only those.
+ */
+export const WATCH_PAGE_FEATURES: Partial<
+  Record<WatchPageKey, ChoiceFeatureKey>
+> = {
+  medications: 'medications',
+};
 
 type Translator = (key: string, options: { defaultValue: string }) => string;
 

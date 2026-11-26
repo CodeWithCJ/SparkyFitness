@@ -42,16 +42,25 @@ async function nextRevision(): Promise<number> {
 }
 
 /**
- * Hands the wearer's custom complications to the watch, which keeps them in
- * shared storage for the watch-face picker. Queued (`transferUserInfo`), so it
- * arrives when the watch is next in range even if it is not now. iOS only: the
- * Android half of the module has no such message.
+ * Hands the wearer's custom complications and built-in style overrides to the
+ * watch, which keeps them in shared storage for the watch-face picker. Queued
+ * (`transferUserInfo` on iOS; DataClient + live message on Android / Wear OS),
+ * so it arrives when the watch is next in range even if it is not now.
+ *
+ * Returns `true` once handed to the native module, or `false` when the watch
+ * transport is unavailable on this platform/build.
  */
 export async function sendComplicationsToWatch(
   list: readonly WatchComplicationDefinition[],
   options: { reload?: boolean; builtIns?: WatchBuiltInStyles } = {}
-): Promise<void> {
-  if (Platform.OS !== 'ios' || !WatchConnectivity) return;
+): Promise<boolean> {
+  if (
+    (Platform.OS !== 'ios' && Platform.OS !== 'android') ||
+    !WatchConnectivity ||
+    typeof WatchConnectivity.sendComplicationConfig !== 'function'
+  ) {
+    return false;
+  }
   try {
     const revision = await nextRevision();
     await WatchConnectivity.sendComplicationConfig(
@@ -63,6 +72,7 @@ export async function sendComplicationsToWatch(
       )
     );
     addLog(`[Watch Complications] Sent ${list.length} to the watch`, 'INFO');
+    return true;
   } catch (error) {
     addLog(`[Watch Complications] Could not send: ${error}`, 'ERROR');
     throw error;

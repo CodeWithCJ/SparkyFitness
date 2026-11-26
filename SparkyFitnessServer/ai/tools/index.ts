@@ -28,6 +28,7 @@ import { buildSyncedDataTools } from './syncedDataTools.js';
 import { buildProgressPhotoTools } from './progressPhotoTools.js';
 import { buildBarcodeTools } from './barcodeTools.js';
 import { buildDashboardTools } from './dashboardTools.js';
+import { buildDayStatusTools } from './dayStatusTools.js';
 import { buildFavoritesTools } from './favoritesTools.js';
 import { buildFoodTools } from './foodTools.js';
 import { buildFoodAssistantTools } from './foodAssistantTools.js';
@@ -114,6 +115,7 @@ const CATEGORY_BUILDERS: Record<
     (_u, _tz, ctx): ToolMap =>
       ctx?.foodResearchTool ? { web_search: ctx.foodResearchTool } : {},
     (u, tz) => buildFoodTools(u, tz),
+    (u, tz) => buildDayStatusTools(u, tz),
     (u, _tz, ctx) => buildFoodAssistantTools(u, ctx),
     (u, tz) => buildFavoritesTools(u, tz),
     (u, tz) => buildMealPlanTools(u, tz),

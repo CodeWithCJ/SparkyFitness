@@ -24,13 +24,13 @@ The watch gets everything from the phone, so keep the phone app signed in. If th
 
 ## Pages
 
-Swipe between pages on the watch. Choose which pages show, and in what order, on the phone under **Settings → Apple Watch** (or **Settings → Wear OS** on Android). The menu only appears while a watch is paired, and the last page can't be turned off.
+Swipe between pages on the watch. Choose which pages show, and in what order, on the phone under **Settings → Apple Watch** (or **Settings → Wear OS** on Android). The menu only appears while a watch is paired, and the last page can't be turned off. Pages of features turned off in **Settings → Features** are not listed there.
 
 | Page | What it does |
 | --- | --- |
 | **Goals** | Calorie ring plus the nutrients you pick (protein, carbs and fat by default). |
 | **Water** | Add a drink with one tap, see today's total against your goal (with the amount that comes from food, when that is on), and remove a drink you added by mistake. |
-| **Medications** | Today's scheduled doses and your as-needed medications; log a dose from the wrist. For now it shows even while Medications is turned off in the app's **Settings → Features**. |
+| **Medications** | Today's scheduled doses and your as-needed medications; log a dose from the wrist. While Medications is turned off in the app's **Settings → Features**, this page leaves the watch (Goals shows if it was the only page) and the Wear OS Medications tile and complication say it is turned off. |
 | **Weight check-in** | Enter today's weight from the wrist. |
 | **Weight trend** | A chart of your recent weight. |
 | **Workout** | Start a saved workout preset or a walk or run, and log it live. |
@@ -68,28 +68,28 @@ Add these to a watch face for a one-tap glance that opens the matching page.
 
 The four sizes are circular, corner, rectangular and inline.
 
-### Change a built-in's colour and icon (Apple Watch)
+### Change a built-in's colour and icon
 
-On the phone, open **Settings → Apple Watch → Complications** and scroll to **Built-in complications**. Tap Calorie Goal, Protein Goal, Carbs Goal, Fat Goal, Water Intake, Fasting or Steps, then pick a colour and an icon. **Put back the original look** undoes it. What each one shows stays the same, and a face that already uses it keeps working. Daily Energy Goal has a colour for each part it draws (the calorie ring, protein, carbs and fat) and no icon; **Put back the original colours** undoes it. For different numbers or layouts, make a custom complication instead.
+On the phone, open **Settings → Apple Watch → Complications** (or **Settings → Wear OS → Complications** on Android) and scroll to **Built-in complications**. Tap Calorie Goal, Protein Goal, Carbs Goal, Fat Goal, Water Intake, Fasting or Steps, then pick a colour and an icon. **Put back the original look** undoes it. What each one shows stays the same, and a face that already uses it keeps working. On Apple Watch, Daily Energy Goal has a colour for each part it draws (the calorie ring, protein, carbs and fat) and no icon; **Put back the original colours** undoes it. For different numbers or layouts, make a custom complication instead.
 
-### Make your own (Apple Watch)
+### Make your own (Apple Watch and Wear OS)
 
-On the phone, open **Settings → Apple Watch → Complications**. Add as many as you like, and for each one choose:
+On the phone, open **Settings → Apple Watch → Complications** (or **Settings → Wear OS → Complications** on Android). Add as many as you like, and for each one choose:
 
 - **What it shows.** Calories (eaten, left or burned), protein, carbs, fat, water, steps, fasting time, weight, body fat, any nutrient you show on the Goals page, sleep (time, score, deep, REM and light sleep, time in bed), resting heart rate, overnight HRV, blood oxygen, exercise minutes, exercise calories, and workouts today. Sleep and exercise appear once the phone has that day's data.
 - **How it is written.** The value, the percentage of its goal, or what is left to reach it. A value with no goal, such as sleep time, can only show itself. The sleep score is out of 100, so it can show a percentage and fill a gauge.
 - **A gauge**, a **color** and an **icon**.
-- **More values.** A complication can show up to three values together: concentric rings in the circular and corner sizes, a row for each in the rectangular size, and the values joined on one line inline. The editor previews all four sizes as you change things.
+- **More values.** A complication can show up to three values together: concentric rings in the circular/corner sizes (or small image slot on Wear OS), a row for each in the rectangular size, and the values joined on one line inline or in long-text slots. The editor previews the layouts as you change things.
 
-The list starts with four ready-made ones that the built-in complications don't offer: Calories left, Macros (protein, carbs and fat as three rings), Weight and Sleep score. Changing or adding one makes the list yours. **Reset to starters**, **Export** and **Import** are in the menu at the top right: Export saves your list as a file, and Import adds the complications in a file to your list or replaces it.
+The list starts with four ready-made ones: Calories left, Macros (protein, carbs and fat as three rings), Weight and Sleep score. Changing or adding one makes the list yours. **Reset to starters**, **Export** and **Import** are in the menu at the top right: Export saves your list as a file, and Import adds the complications in a file to your list or replaces it.
 
-To use one, edit the watch face, tap a complication slot and choose **Custom Complication**, then pick one of yours. Put different ones in different slots.
+To use one, edit the watch face, tap a complication slot and choose **Custom Complication** (on Apple Watch) or **Sparky Custom** / **Sparky Custom Gauge** (on Wear OS), then pick one of yours. Put different ones in different slots.
 
 The watch keeps its own copy of the list and remembers the picker. If a change doesn't show up there, tap **Reload complications** at the bottom of the Complications screen. It sends the list to the watch again and makes the watch refresh the picker and every face.
 
 ### Wear OS
 
-Wear OS offers Calories, Protein, Carbs, Fat, Water, Fasting and Steps. Custom complications are not on Wear OS yet.
+Wear OS offers built-in complications for Calories, Calories Left, Protein, Carbs, Fat, Water, Fasting, Steps, Sleep, Medications, Exercise and Weight, plus **Sparky Custom** (for any custom complication — values, text, or multi-value rings) and **Sparky Custom Gauge** (for goal-backed custom complications with a watch-face progress arc). Selecting either one on a watch face opens the picker on the watch to choose which saved complication that slot displays.
 
 ## Troubleshooting
 
