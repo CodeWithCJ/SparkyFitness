@@ -2068,6 +2068,28 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
       expect(mockReconcileMedications).toHaveBeenCalledTimes(1);
     });
 
+    test('still applies the switch when the health upload fails, and reports the failure', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: true,
+      });
+      mockFetchChoices.mockResolvedValue(oralCareOff);
+      healthService.getAggregatedStepsByDate.mockResolvedValue([
+        { value: 5000 },
+      ]);
+      healthService.transformHealthRecords.mockImplementation((data) => data);
+      api.syncHealthData.mockRejectedValue(new Error('Network error'));
+
+      await expect(triggerManualSync()).rejects.toThrow('Network error');
+
+      expect(api.syncHealthData).toHaveBeenCalled();
+      expect(mockReconcileBrushing).toHaveBeenCalledTimes(1);
+      expect(mockReconcileBrushing).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: 'off', dismissDelivered: true })
+      );
+      expect(mockReconcileMedications).toHaveBeenCalledTimes(1);
+    });
+
     test('runs the reminder passes once in a run whose health sync goes through', async () => {
       useAppPreferencesStore.setState({
         ...brushingWanted,

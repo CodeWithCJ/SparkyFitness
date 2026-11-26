@@ -145,11 +145,18 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
         budget: BACKGROUND_TELEMETRY_BUDGET,
         interactive: false,
       });
-  await runBackgroundSync(taskId, telemetry);
+  // A health sync that fails (an upload that throws) is rethrown once the
+  // reminders below are done, as before.
+  let healthSyncFailure: { error: unknown } | null = null;
+  try {
+    await runBackgroundSync(taskId, telemetry);
+  } catch (error) {
+    healthSyncFailure = { error };
+  }
   // Once per run, whatever the health sync did: it returns early with no
   // metric on, when the health provider cannot start, on a locked device and
-  // after an account change, and the reminders follow the feature switches
-  // all the same.
+  // after an account change, or fails, and the reminders follow the feature
+  // switches all the same.
   try {
     await reconcileRemindersInBackground();
   } catch (error) {
@@ -159,6 +166,7 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
       'ERROR'
     );
   }
+  if (healthSyncFailure) throw healthSyncFailure.error;
   // Best effort: the OS decides when this task runs, so uploads of work
   // logged offline also go out on reconnect and when the app opens.
   registerAllOutboxHandlers();
