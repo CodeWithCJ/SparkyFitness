@@ -47,18 +47,22 @@ const checkPermissionMiddleware = (permissionType: any) => {
 
     try {
       let resolvedPermission = permissionType;
+      const urlPath = req.originalUrl
+        ? req.originalUrl.split('?')[0]
+        : req.path || '';
       if (permissionType === 'diary') {
         if (req.method === 'GET') {
           resolvedPermission = 'diary_read';
         }
       } else if (permissionType === 'checkin') {
-        if (req.originalUrl && req.originalUrl.includes('/water-intake')) {
+        // Inspect the route pathname rather than originalUrl with query string,
+        // so query text like ?x=/water-intake cannot select the weaker water tier.
+        if (urlPath.includes('/water-intake')) {
           resolvedPermission = 'water';
         } else if (
           req.method === 'GET' &&
-          req.originalUrl &&
-          !req.originalUrl.includes('/check-in-photos') &&
-          !req.originalUrl.includes('/photos')
+          !urlPath.includes('/check-in-photos') &&
+          !urlPath.includes('/photos')
         ) {
           resolvedPermission = 'checkin_read';
         }

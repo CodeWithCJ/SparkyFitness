@@ -322,6 +322,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
       const { error } = await authClient.signOut();
       if (error) {
         console.error('[Auth Hook] SignOut API error:', error);
+      } else {
+        clearBirthPrepLocalStorage();
       }
     } catch (err) {
       console.error('[Auth Hook] SignOut unexpected error:', err);
@@ -330,7 +332,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     identityLookupRef.current = null;
     clearDemoRestrictions();
     clearPendingInvite();
-    clearBirthPrepLocalStorage();
     queryClient.clear();
     window.location.href = '/';
   }, [queryClient]);

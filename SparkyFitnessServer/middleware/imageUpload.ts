@@ -107,12 +107,23 @@ const imageUpload = multer({
 
 async function validateAndSanitizeStagedFiles(req: unknown): Promise<void> {
   const staged = stagedFilesFrom(req);
+  const stagingDir = path.resolve(
+    stagingDirFor((req as UploadRequest)?.imageUploadId || '')
+  );
   for (const file of staged) {
+    const safeFilename = path.basename(file.filename);
+    const resolvedPath = path.resolve(stagingDir, safeFilename);
+    if (
+      !resolvedPath.startsWith(stagingDir + path.sep) ||
+      !isSafePathSegment(safeFilename)
+    ) {
+      throw new ValidationError('Invalid uploaded file path.');
+    }
     let handle;
     const header = Buffer.alloc(16);
     let bytesRead: number;
     try {
-      handle = await fsp.open(file.path, 'r');
+      handle = await fsp.open(resolvedPath, 'r');
       const res = await handle.read(header, 0, 16, 0);
       bytesRead = res.bytesRead;
     } catch {
@@ -127,15 +138,21 @@ async function validateAndSanitizeStagedFiles(req: unknown): Promise<void> {
       );
     }
     // Normalize file extension to canonical format from verified magic bytes
-    const currentExt = path.extname(file.filename).slice(1).toLowerCase();
+    const currentExt = path.extname(safeFilename).slice(1).toLowerCase();
     if (
       currentExt !== detectedExt &&
       !(detectedExt === 'jpg' && currentExt === 'jpeg')
     ) {
-      const base = path.basename(file.filename, path.extname(file.filename));
+      const base = path.basename(safeFilename, path.extname(safeFilename));
       const newFilename = `${base}.${detectedExt}`;
-      const newPath = path.join(path.dirname(file.path), newFilename);
-      await fsp.rename(file.path, newPath);
+      if (!isSafePathSegment(newFilename)) {
+        throw new ValidationError('Invalid destination file name.');
+      }
+      const newPath = path.resolve(stagingDir, newFilename);
+      if (!newPath.startsWith(stagingDir + path.sep)) {
+        throw new ValidationError('Invalid destination path.');
+      }
+      await fsp.rename(resolvedPath, newPath);
       file.filename = newFilename;
       file.path = newPath;
     }

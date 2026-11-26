@@ -246,9 +246,11 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         // Lets iOS honour the `timeSensitive` rest alert (see
         // `scheduleRestNotification`); without it a Focus mode silences it.
         'com.apple.developer.usernotifications.time-sensitive': true,
-        // Enforce complete file protection at rest for the app sandbox (encrypted when locked)
+        // Protect files at rest while allowing background tasks (offline outbox
+        // drain, background sync, GPS recording) to access storage once the device
+        // has been unlocked after boot.
         'com.apple.developer.default-data-protection':
-          'NSFileProtectionComplete',
+          'NSFileProtectionCompleteUntilFirstUserAuthentication',
       },
       icon: './assets/icons/appicon.icon',
     },
