@@ -699,16 +699,66 @@ async function countRecentDownvotes(
 async function resolveSuggestion(
   userId: string,
   nudgeId: string,
-  status: Exclude<CoachSuggestionStatus, 'pending'>
+  status: Exclude<CoachSuggestionStatus, 'pending'>,
+  fromStatus: CoachSuggestionStatus = 'pending'
 ): Promise<boolean> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
       `UPDATE coach_nudges SET suggestion_status = $3, suggestion_resolved_at = now()
-       WHERE user_id = $1 AND id = $2 AND suggestion_status = 'pending'`,
-      [userId, nudgeId, status]
+       WHERE user_id = $1 AND id = $2 AND suggestion_status = $4`,
+      [userId, nudgeId, status, fromStatus]
     );
     return result.rowCount === 1;
+  } finally {
+    client.release();
+  }
+}
+
+/** Conditionally claims a pending suggestion for applying so concurrent dismissals cannot race. */
+async function claimSuggestion(
+  userId: string,
+  nudgeId: string
+): Promise<boolean> {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE coach_nudges SET suggestion_status = 'applied', suggestion_resolved_at = now()
+       WHERE user_id = $1 AND id = $2 AND suggestion_status = 'pending'`,
+      [userId, nudgeId]
+    );
+    return result.rowCount === 1;
+  } finally {
+    client.release();
+  }
+}
+
+/** Reverts an applied claim back to pending if the domain write failed. */
+async function unclaimSuggestion(
+  userId: string,
+  nudgeId: string
+): Promise<void> {
+  const client = await getClient(userId);
+  try {
+    await client.query(
+      `UPDATE coach_nudges SET suggestion_status = 'pending', suggestion_resolved_at = NULL
+       WHERE user_id = $1 AND id = $2 AND suggestion_status = 'applied'`,
+      [userId, nudgeId]
+    );
+  } finally {
+    client.release();
+  }
+}
+
+/** Clears the recorded answer if the accompanying diary entry write failed. */
+async function clearAnswer(userId: string, nudgeId: string): Promise<void> {
+  const client = await getClient(userId);
+  try {
+    await client.query(
+      `UPDATE coach_nudges SET answer = NULL, answered_at = NULL
+       WHERE user_id = $1 AND id = $2`,
+      [userId, nudgeId]
+    );
   } finally {
     client.release();
   }
@@ -809,7 +859,10 @@ export default {
   setReaction,
   countRecentDownvotes,
   resolveSuggestion,
+  claimSuggestion,
+  unclaimSuggestion,
   recordAnswer,
+  clearAnswer,
   claimEventScan,
   listNudgesForKnowledge,
   insertNudgeWithChatMessage,

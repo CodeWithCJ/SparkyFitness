@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   describeWorkout: vi.fn(),
   getPersonalRecordMatrix: vi.fn(),
   loadUserTimezone: vi.fn(),
+  getUserPreferences: vi.fn(),
 }));
 
 vi.mock('../models/aiCoachRepository.js', () => ({ default: mocks.repo }));
@@ -62,7 +63,7 @@ vi.mock('../models/foodMisc.js', () => ({
 }));
 vi.mock('../models/preferenceRepository.js', () => ({
   default: {
-    getUserPreferences: vi.fn().mockResolvedValue({ language: 'en' }),
+    getUserPreferences: mocks.getUserPreferences,
   },
 }));
 vi.mock('../services/allergenPreferenceService.js', () => ({
@@ -103,6 +104,10 @@ const recoveryRow = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.getUserPreferences.mockResolvedValue({
+    language: 'en',
+    feature_choices: choicesOn,
+  });
   mocks.loadUserTimezone.mockResolvedValue('Europe/Berlin');
   mocks.repo.listCheckinCandidates.mockResolvedValue([candidate()]);
   mocks.repo.claimCheckin.mockResolvedValue(true);
@@ -655,6 +660,14 @@ describe('runCheckinNow', () => {
     mocks.repo.listCoaches.mockResolvedValue([recoveryRow]);
     mocks.repo.countNudgesForDay.mockResolvedValue(3);
     expect((await runCheckinNow('u1', NOW)).reason).toBe('limit_reached');
+    mocks.getUserPreferences.mockResolvedValueOnce({
+      language: 'en',
+      feature_choices: {
+        web: { aiCoaches: false },
+        mobile: { aiCoaches: false },
+      },
+    });
+    expect((await runCheckinNow('u1', NOW)).reason).toBe('no_coaches');
   });
 
   it('still never repeats what was already said today', async () => {

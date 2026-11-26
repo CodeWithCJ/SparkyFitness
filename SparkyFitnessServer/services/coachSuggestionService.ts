@@ -233,6 +233,12 @@ async function applyProteinBump(
   const todayGoal = effective[today];
   const tomorrowGoal = effective[tomorrow];
   if (!todayGoal) throw new CoachSuggestionError('expired', 'No goals today.');
+  if (Math.round(Number(todayGoal.protein)) !== Math.round(suggestion.from)) {
+    throw new CoachSuggestionError(
+      'expired',
+      'The current protein target has changed since this suggestion.'
+    );
+  }
 
   // Grams win only when the percentages are cleared on the changed day.
   await goalService.manageGoalTimeline(
@@ -263,10 +269,17 @@ async function applyProteinBump(
   );
   const planDecides = Boolean(weeklyGoalPlanInForce(plans, tomorrow));
   if (tomorrowGoal && !tomorrowExplicit && !planDecides) {
-    await goalService.manageGoalTimeline(
-      userId,
-      goalPayload(tomorrow, tomorrowGoal, {}, false)
-    );
+    try {
+      await goalService.manageGoalTimeline(
+        userId,
+        goalPayload(tomorrow, tomorrowGoal, {}, false)
+      );
+    } catch (err) {
+      await goalService
+        .manageGoalTimeline(userId, goalPayload(today, todayGoal, {}, false))
+        .catch(() => {});
+      throw err;
+    }
   }
   return { day: today, nutrient: 'protein', value: suggestion.to };
 }
@@ -285,6 +298,12 @@ async function applyCalorieTarget(
   )) as Record<string, GoalRow>;
   const goal = goals[today];
   if (!goal) throw new CoachSuggestionError('expired', 'No goals today.');
+  if (Math.round(Number(goal.calories)) !== Math.round(suggestion.from_kcal)) {
+    throw new CoachSuggestionError(
+      'expired',
+      'The current calorie target has changed since this review.'
+    );
+  }
   await goalService.manageGoalTimeline(
     userId,
     goalPayload(today, goal, { calories: suggestion.to_kcal }, true)
@@ -299,12 +318,22 @@ async function applyPlan(
   // Recomputed from the plan as it is now; nothing from the message is trusted.
   const current = await getPlanProposals(userId, suggestion.plan_id);
   if (!current) throw new CoachSuggestionError('expired', 'Plan not found.');
+  const changing = current.proposals.filter((p) => p.setChanges.length > 0);
+  if (changing.length === 0) {
+    throw new CoachSuggestionError('expired', 'No pending plan changes found.');
+  }
+  const stepUp = changing.filter((p) => p.kind === 'increase').length;
+  const lighter = changing.filter((p) => p.kind === 'reduce').length;
+  if (stepUp !== suggestion.step_up || lighter !== suggestion.lighter) {
+    throw new CoachSuggestionError(
+      'expired',
+      'Plan proposals have changed since this suggestion was created.'
+    );
+  }
   const result = await applyPlanProposals(
     userId,
     suggestion.plan_id,
-    current.proposals
-      .filter((proposal) => proposal.setChanges.length > 0)
-      .map((proposal) => proposal.assignmentId)
+    changing.map((proposal) => proposal.assignmentId)
   );
   if (result === 'prefill') {
     throw new CoachSuggestionError(
@@ -325,13 +354,21 @@ export async function applySuggestion(userId: string, nudgeId: string) {
   if (nudge.suggestion_status !== 'pending') {
     throw new CoachSuggestionError('not_pending', 'Already handled.');
   }
+  if (!(await aiCoachRepository.claimSuggestion(userId, nudgeId))) {
+    throw new CoachSuggestionError('not_pending', 'Already handled.');
+  }
   const tz = await loadUserTimezone(userId);
   const suggestion = nudge.suggestion;
   if (
     suggestion.kind === 'goal_day_protein' &&
     suggestion.day !== todayInZone(tz)
   ) {
-    await aiCoachRepository.resolveSuggestion(userId, nudgeId, 'expired');
+    await aiCoachRepository.resolveSuggestion(
+      userId,
+      nudgeId,
+      'expired',
+      'applied'
+    );
     throw new CoachSuggestionError('expired', 'This was for another day.');
   }
   let summary: Record<string, unknown>;
@@ -349,11 +386,16 @@ export async function applySuggestion(userId: string, nudgeId: string) {
     }
   } catch (error) {
     if (error instanceof CoachSuggestionError && error.code === 'expired') {
-      await aiCoachRepository.resolveSuggestion(userId, nudgeId, 'expired');
+      await aiCoachRepository
+        .resolveSuggestion(userId, nudgeId, 'expired', 'applied')
+        .catch(() => {});
+    } else {
+      await aiCoachRepository
+        .unclaimSuggestion(userId, nudgeId)
+        .catch(() => {});
     }
     throw error;
   }
-  await aiCoachRepository.resolveSuggestion(userId, nudgeId, 'applied');
   return { applied: true as const, kind: suggestion.kind, summary };
 }
 

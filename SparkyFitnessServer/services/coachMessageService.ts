@@ -141,7 +141,7 @@ export async function composeCoachMessage(
     templateParams: template.params,
   });
 
-  const resolved = await resolveTextAiProvider(input.userId);
+  const resolved = await resolveTextAiProvider(input.userId).catch(() => null);
   if (!resolved) return fallback('template');
 
   const coachPrompt = input.coachKey ? readPrompt(input.coachKey) : '';
@@ -214,6 +214,41 @@ export interface JudgeCoachInput {
   profile: CoachProfileRow | null;
   allergens: string[];
   language: string | null;
+  toolCategories?: string[];
+}
+
+const CATEGORY_SIGNAL_PREFIXES: Record<string, string[]> = {
+  nutrition: ['calorie_', 'protein_', 'carb_', 'fat_', 'fiber_', 'water_'],
+  food: ['calorie_', 'protein_', 'carb_', 'fat_', 'fiber_', 'water_'],
+  exercise: [
+    'training_',
+    'workout_',
+    'stalled_lifts',
+    'fitness_',
+    'fatigue',
+    'form',
+  ],
+  workout: [
+    'training_',
+    'workout_',
+    'stalled_lifts',
+    'fitness_',
+    'fatigue',
+    'form',
+  ],
+  sleep: ['sleep_', 'resting_heart_rate_'],
+  cycle: ['cycle_phase'],
+  habits: ['focus_habit_'],
+  wellbeing: ['wellness_', 'mood_', 'energy_', 'focus_'],
+  mood: ['wellness_', 'mood_', 'energy_', 'focus_'],
+  measurements: ['weight_'],
+};
+
+function isSignalInCategories(signal: string, categories: string[]): boolean {
+  return categories.some((cat) => {
+    const prefixes = CATEGORY_SIGNAL_PREFIXES[cat];
+    return prefixes ? prefixes.some((p) => signal.startsWith(p)) : false;
+  });
 }
 
 /**
@@ -224,10 +259,16 @@ export interface JudgeCoachInput {
 export async function judgeCustomCoach(
   input: JudgeCoachInput
 ): Promise<string | null> {
-  const resolved = await resolveTextAiProvider(input.userId);
+  const resolved = await resolveTextAiProvider(input.userId).catch(() => null);
   if (!resolved) return null;
   const numbers = Object.entries(input.signals)
-    .filter(([, value]) => value !== null && value !== undefined)
+    .filter(([name, value]) => {
+      if (value === null || value === undefined) return false;
+      if (input.toolCategories && input.toolCategories.length > 0) {
+        return isSignalInCategories(name, input.toolCategories);
+      }
+      return true;
+    })
     .map(([name, value]) => `${name}: ${value}`);
   const prompt = [
     readPrompt('coach-judge'),

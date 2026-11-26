@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
+  addDays,
   coachRuleOverridesSchema,
   coachRulesSchema,
   dailyOutlook,
@@ -58,6 +59,9 @@ const TOP_FOODS_FOR_CONTEXT = 8;
 const FIRST_SCAN_LOOKBACK_MINUTES = 30;
 const MAX_WINS_PER_DAY = 1;
 const DEFAULT_WEEKDAY = 0;
+/** Time one person's check-in may spend on AI calls: a provider that hangs
+ * must not hold the shared job and expire other people's slots. */
+const USER_CHECKIN_AI_BUDGET_MS = 2 * 60_000;
 
 /** The latest of the person's check-in times that has just passed, as the
  * instant it was due and its `HH:MM`. Null when none is due. */
@@ -67,12 +71,15 @@ export function dueCheckinSlot(
   now: Date
 ): { slot: Date; time: string; day: string } | null {
   const day = instantToDay(now, tz);
+  const prevDay = addDays(day, -1);
   let best: { slot: Date; time: string; day: string } | null = null;
-  for (const time of times) {
-    const slot = localDateTimeToUtc(`${day}T${time}`, tz);
-    const ageMinutes = (now.getTime() - slot.getTime()) / 60_000;
-    if (ageMinutes < 0 || ageMinutes > CHECKIN_GRACE_MINUTES) continue;
-    if (!best || slot > best.slot) best = { slot, time, day };
+  for (const d of [prevDay, day]) {
+    for (const time of times) {
+      const slot = localDateTimeToUtc(`${d}T${time}`, tz);
+      const ageMinutes = (now.getTime() - slot.getTime()) / 60_000;
+      if (ageMinutes < 0 || ageMinutes > CHECKIN_GRACE_MINUTES) continue;
+      if (!best || slot > best.slot) best = { slot, time, day: d };
+    }
   }
   return best;
 }
@@ -149,13 +156,22 @@ async function signalOptions(
 ): Promise<CoachSignalOptions> {
   const on = (key: string) =>
     coaches.find((coach) => coach.builtin_key === key) !== undefined;
+  const hasSignal = (signal: string) =>
+    coaches.some((c) =>
+      rulesOf(c).rules.some(
+        (r) => r.enabled && r.conditions.some((cond) => cond.signal === signal)
+      )
+    );
   const habits = coaches.find((coach) => coach.builtin_key === 'habits');
   const focus = habits ? settingsOf(habits).focus_habit_id : null;
   const cycle = await cycleRepository.getSettings(userId).catch(() => null);
   return {
     focusHabitId: typeof focus === 'string' ? focus : null,
-    includeStalls: on('training'),
-    includeGoalStreaks: on('nutrition'),
+    includeStalls: on('training') || hasSignal('stalled_lifts'),
+    includeGoalStreaks:
+      on('nutrition') ||
+      hasSignal('calorie_goal_streak_days') ||
+      hasSignal('protein_goal_streak_days'),
     includeCycle: isFeatureEnabledAnywhere('cycle', {
       choices: null,
       cycleEnabled: cycle?.enabled ?? null,
@@ -263,6 +279,7 @@ async function deliver(
       profile: context.profile,
       allergens: context.allergens,
       language: context.language,
+      toolCategories: coach.tool_categories,
     });
     if (!text) return false;
     return send(userId, coach, {
@@ -412,8 +429,9 @@ async function runCheckinForUser(
   planned.sort((a, b) => PRIORITY[a.kind] - PRIORITY[b.kind]);
 
   let context: MessageContext | null = null;
+  const deadline = Date.now() + USER_CHECKIN_AI_BUDGET_MS;
   for (const item of planned) {
-    if (budget <= 0 || isShuttingDown()) break;
+    if (budget <= 0 || isShuttingDown() || Date.now() >= deadline) break;
     if (item.kind === 'win' && wins >= MAX_WINS_PER_DAY) continue;
     context ??= await loadMessageContext(userId);
     const sent = await deliver(userId, tz, item, signals, context, {
@@ -515,8 +533,9 @@ async function runWorkoutScanForUser(
       workout_hard: workout.hard ? 1 : 0,
       workout_new_pr: prDays.has(first.entry_date.slice(0, 10)) ? 1 : 0,
     };
+    const workoutDeadline = Date.now() + USER_CHECKIN_AI_BUDGET_MS;
     for (const coach of coaches) {
-      if (budget <= 0) break;
+      if (budget <= 0 || Date.now() >= workoutDeadline) break;
       const match = evaluateCoachRules(rulesOf(coach), signals, {
         part: slotPartOf(slot),
         afterWorkout: true,
@@ -611,6 +630,15 @@ export async function runCheckinNow(
   userId: string,
   now: Date = new Date()
 ): Promise<CoachCheckInNowResponse> {
+  const preferences = await preferenceRepository.getUserPreferences(userId);
+  if (
+    !isFeatureEnabledAnywhere('aiCoaches', {
+      choices: preferences?.feature_choices ?? null,
+      cycleEnabled: null,
+    })
+  ) {
+    return { sent: 0, reason: 'no_coaches' };
+  }
   const profile = await aiCoachRepository.getProfile(userId);
   const tz = await loadUserTimezone(userId);
   const day = instantToDay(now, tz);

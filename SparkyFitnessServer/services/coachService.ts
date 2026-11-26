@@ -582,13 +582,18 @@ export async function answerNudge(
       throw new CoachAnswerError('already_answered', 'Already answered.');
     }
     if (value === 'yes' && nudge.question_ref) {
-      await habitRepository.upsertHabitLog(
-        userId,
-        nudge.question_ref,
-        today,
-        'true'
-      );
-      return { saved: 'habit_log' };
+      try {
+        await habitRepository.upsertHabitLog(
+          userId,
+          nudge.question_ref,
+          today,
+          'true'
+        );
+        return { saved: 'habit_log' };
+      } catch (err) {
+        await aiCoachRepository.clearAnswer(userId, nudgeId).catch(() => {});
+        throw err;
+      }
     }
     return { saved: 'none' };
   }
@@ -604,15 +609,20 @@ export async function answerNudge(
   if (!(await aiCoachRepository.recordAnswer(userId, nudgeId, value))) {
     throw new CoachAnswerError('already_answered', 'Already answered.');
   }
-  await moodRepository.createCheckin(userId, {
-    entryDate: today,
-    ...(nudge.question === 'energy' ? { energyValue: value } : {}),
-    ...(nudge.question === 'focus' ? { focusValue: value } : {}),
-    ...(nudge.question === 'mood'
-      ? { moodValue: value * MOOD_SCALE_FACTOR }
-      : {}),
-  });
-  return { saved: 'mood_entry' };
+  try {
+    await moodRepository.createCheckin(userId, {
+      entryDate: today,
+      ...(nudge.question === 'energy' ? { energyValue: value } : {}),
+      ...(nudge.question === 'focus' ? { focusValue: value } : {}),
+      ...(nudge.question === 'mood'
+        ? { moodValue: value * MOOD_SCALE_FACTOR }
+        : {}),
+    });
+    return { saved: 'mood_entry' };
+  } catch (err) {
+    await aiCoachRepository.clearAnswer(userId, nudgeId).catch(() => {});
+    throw err;
+  }
 }
 
 export default {

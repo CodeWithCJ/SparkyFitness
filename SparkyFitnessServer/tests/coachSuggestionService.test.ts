@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   repo: {
     getNudge: vi.fn(),
     resolveSuggestion: vi.fn(),
+    claimSuggestion: vi.fn(),
+    unclaimSuggestion: vi.fn(),
   },
   getUserGoalsForRange: vi.fn(),
   manageGoalTimeline: vi.fn(),
@@ -74,6 +76,8 @@ beforeEach(() => {
   mocks.getGoalsInRange.mockResolvedValue([]);
   mocks.getActiveWeeklyGoalPlansInRange.mockResolvedValue([]);
   mocks.repo.resolveSuggestion.mockResolvedValue(true);
+  mocks.repo.claimSuggestion.mockResolvedValue(true);
+  mocks.repo.unclaimSuggestion.mockResolvedValue(undefined);
   mocks.getUserPreferences.mockResolvedValue({ goal_mode: 'cut' });
 });
 
@@ -236,11 +240,7 @@ describe('applySuggestion', () => {
       p_protein: 150,
       p_protein_percentage: 25,
     });
-    expect(mocks.repo.resolveSuggestion).toHaveBeenCalledWith(
-      'u1',
-      'n1',
-      'applied'
-    );
+    expect(mocks.repo.claimSuggestion).toHaveBeenCalledWith('u1', 'n1');
   });
 
   it('leaves tomorrow alone when the person set it', async () => {
@@ -270,7 +270,8 @@ describe('applySuggestion', () => {
     expect(mocks.repo.resolveSuggestion).toHaveBeenCalledWith(
       'u1',
       'n1',
-      'expired'
+      'expired',
+      'applied'
     );
   });
 
@@ -341,7 +342,7 @@ describe('applySuggestion', () => {
     );
     mocks.getPlanProposals.mockResolvedValue({
       plan: { id: 7 },
-      proposals: [],
+      proposals: [{ assignmentId: 'a1', kind: 'increase', setChanges: [{}] }],
     });
     mocks.applyPlanProposals.mockResolvedValue('prefill');
     await expect(applySuggestion('u1', 'n1')).rejects.toMatchObject({
