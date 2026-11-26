@@ -975,7 +975,11 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   ? renderHydrationGauge(summary)
                   : null;
               case 'caffeine':
-                return caffeineCardVisible ? (
+                // The card renders nothing while loading or with no doses;
+                // skip it here too so the grid has no empty cell.
+                return caffeineCardVisible &&
+                  !isCaffeineLoading &&
+                  (caffeineKinetics?.doses.length ?? 0) > 0 ? (
                   <CaffeineCard
                     key="caffeine"
                     kinetics={caffeineKinetics}
@@ -984,7 +988,15 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                   />
                 ) : null;
               case 'bloodAlcohol':
-                return bloodAlcoholCardVisible ? (
+                // Same empty states as BloodAlcoholCard, so the grid has no
+                // empty cell.
+                return bloodAlcoholCardVisible &&
+                  !isBloodAlcoholLoading &&
+                  bloodAlcoholEstimate &&
+                  !(
+                    bloodAlcoholEstimate.status === 'ok' &&
+                    bloodAlcoholEstimate.doses.length === 0
+                  ) ? (
                   <BloodAlcoholCard
                     key="bloodAlcohol"
                     date={selectedDate}
