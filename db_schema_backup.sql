@@ -1789,6 +1789,10 @@ CREATE TABLE public.action_tags (
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
     created_by_user_id uuid,
     updated_by_user_id uuid,
+    allow_amount_adjustment boolean DEFAULT false NOT NULL,
+    allow_custom_timestamp boolean DEFAULT false NOT NULL,
+    tap_to_log boolean DEFAULT false NOT NULL,
+    preset_amounts jsonb,
     CONSTRAINT action_tags_action_check CHECK (((jsonb_typeof(action) = 'object'::text) AND (action ? 'type'::text))),
     CONSTRAINT action_tags_code_check CHECK ((char_length((tag_code)::text) >= 16))
 );
