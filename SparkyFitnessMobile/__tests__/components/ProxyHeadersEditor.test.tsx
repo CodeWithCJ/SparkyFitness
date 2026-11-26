@@ -1,9 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
 import ProxyHeadersEditor from '../../src/components/ProxyHeadersEditor';
 import type { ProxyHeader } from '../../src/services/storage';
 
 jest.mock('../../src/components/Icon', () => 'Icon');
+
+// A controlled wrapper so removal/re-render behaves like a real consumer
+// (the component itself holds no header state).
+const ControlledEditor = ({ initial }: { initial: ProxyHeader[] }) => {
+  const [headers, setHeaders] = useState(initial);
+  return <ProxyHeadersEditor headers={headers} onHeadersChange={setHeaders} />;
+};
 
 describe('ProxyHeadersEditor', () => {
   it('shows the help text when there are no headers', () => {
@@ -107,5 +114,30 @@ describe('ProxyHeadersEditor', () => {
       false
     );
     expect(result.getByLabelText('Hide header value')).toBeTruthy();
+  });
+
+  it('re-hides every row after a removal shifts indices', () => {
+    const headers: ProxyHeader[] = [
+      { name: 'X-Visible', value: 'shown' },
+      { name: 'X-Hidden', value: 'secret' },
+    ];
+    const result = render(<ControlledEditor initial={headers} />);
+
+    // Reveal the first row only; the second stays hidden.
+    fireEvent.press(result.getAllByLabelText('Show header value')[0]);
+    expect(
+      result.getAllByPlaceholderText('Value')[0].props.secureTextEntry
+    ).toBe(false);
+    expect(
+      result.getAllByPlaceholderText('Value')[1].props.secureTextEntry
+    ).toBe(true);
+
+    // Removing the first row shifts the second into index 0. It must not
+    // inherit the removed row's "revealed" state.
+    fireEvent.press(result.getByLabelText('Remove header 1'));
+
+    expect(result.getByPlaceholderText('Value').props.secureTextEntry).toBe(
+      true
+    );
   });
 });

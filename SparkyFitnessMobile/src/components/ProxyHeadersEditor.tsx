@@ -17,10 +17,11 @@ const ProxyHeadersEditor: React.FC<ProxyHeadersEditorProps> = ({
   onHeadersChange,
 }) => {
   const { t } = useTranslation();
-  const [textSecondary, accentPrimary] = useCSSVariable([
+  const [textSecondary, accentPrimary, dangerColor] = useCSSVariable([
     '--color-text-secondary',
     '--color-accent-primary',
-  ]) as [string, string];
+    '--color-icon-danger',
+  ]) as [string, string, string];
   const [showHeaders, setShowHeaders] = useState<Record<number, boolean>>({});
 
   const toggleShowHeader = (index: number) => {
@@ -32,6 +33,9 @@ const ProxyHeadersEditor: React.FC<ProxyHeadersEditorProps> = ({
   };
 
   const handleRemoveHeader = (index: number) => {
+    // Visibility is keyed by row index, which shifts on removal; reset it
+    // rather than risk another row's hidden value becoming visible.
+    setShowHeaders({});
     onHeadersChange(headers.filter((_, i) => i !== index));
   };
 
@@ -94,7 +98,7 @@ const ProxyHeadersEditor: React.FC<ProxyHeadersEditorProps> = ({
               })}
               className="absolute right-1 py-0 px-1.5"
             >
-              <Icon name="remove-circle" size={18} color="#ef4444" />
+              <Icon name="remove-circle" size={18} color={dangerColor} />
             </Button>
           </View>
           <View className="flex-row items-center">
