@@ -42,6 +42,7 @@ const tag = {
   label: 'Stanley',
   action: { type: 'water' as const, container_id: 7, drinks: 1 },
   ask_before_running: false,
+  allow_amount_adjustment: false,
   last_run_at: null,
   created_at: '2026-10-30T00:00:00.000Z',
   updated_at: '2026-10-30T00:00:00.000Z',
@@ -192,6 +193,43 @@ describe('ActionTagScanScreen', () => {
     expect(
       await screen.findByText('Your server does not support NFC tags yet')
     ).toBeTruthy();
+  });
+
+  it('shows amount adjustment controls when allow_amount_adjustment is enabled and logs preset override', async () => {
+    jest
+      .mocked(scanActionTag)
+      .mockResolvedValueOnce({
+        status: 'needs_confirmation',
+        tag: {
+          ...tag,
+          label: 'Greek yogurt',
+          allow_amount_adjustment: true,
+          action: {
+            type: 'food',
+            food_id: 'food-1',
+            variant_id: 'variant-1',
+            quantity: 100,
+            unit: 'g',
+            meal: { mode: 'auto' },
+          },
+        },
+        summary: null,
+      })
+      .mockResolvedValueOnce({
+        status: 'done',
+        tag,
+        summary: '150 g Greek yogurt',
+      });
+    renderScreen();
+    fireEvent.press(await screen.findByText('1.5×'));
+    fireEvent.press(screen.getByText('Log it'));
+    await waitFor(() => expect(navigation.goBack).toHaveBeenCalled());
+    expect(scanActionTag).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        confirmed: true,
+        quantity_override: 150,
+      })
+    );
   });
 
   it('does not run before the server is reachable', () => {
