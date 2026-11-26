@@ -821,7 +821,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
       replayPendingWorkoutRecoveries()
       refreshLiveFromServerThrottled()
       try {
-        if (!sendLiveMessage(OutboundPayloads.contextRequest())) {
+        val needsCredentials = WearServerCredentialsStore.load(appContext, checkInStore.activeOwnerId()) == null
+        if (!sendLiveMessage(OutboundPayloads.contextRequest(needsCredentials = needsCredentials))) {
           lastContextRequestMs.compareAndSet(requestStartedAt, 0L)
         }
       } catch (_: Throwable) {
@@ -1075,6 +1076,19 @@ class WearSessionManager private constructor(private val appContext: Context) :
             }
             return@launch
           }
+          val incomingGen = json.optLong("generation", 0L)
+          val incomingTransportRev = json.optLong("transportRevision", 0L)
+          if (outcome is WearServerCredentialsStore.SaveResult.Duplicate && !isMtlsNotice && incomingOwner.isNotEmpty()) {
+            scope.launch {
+              sendLiveMessage(
+                OutboundPayloads.credentialsAck(
+                  generation = incomingGen,
+                  transportRevision = incomingTransportRev,
+                  ownerId = incomingOwner
+                )
+              )
+            }
+          }
           if (outcome is WearServerCredentialsStore.SaveResult.Saved) {
             scope.launch {
               if (checkInStore.currentAccountGeneration() != genBefore) {
@@ -1086,6 +1100,15 @@ class WearSessionManager private constructor(private val appContext: Context) :
               val activeAfter = checkInStore.activeOwnerId()
               when {
                 activeAfter == outcome.ownerId -> {
+                  if (!isMtlsNotice) {
+                    sendLiveMessage(
+                      OutboundPayloads.credentialsAck(
+                        generation = incomingGen,
+                        transportRevision = incomingTransportRev,
+                        ownerId = outcome.ownerId
+                      )
+                    )
+                  }
                   checkInStore.resendQueued()
                   replayPendingWorkoutRecoveries()
                   refreshLiveFromServerThrottled(force = true)
@@ -1097,6 +1120,15 @@ class WearSessionManager private constructor(private val appContext: Context) :
                 }
                 else -> {
                   // Newly paired watch before first context arrives: retain credentials until owner is confirmed.
+                  if (!isMtlsNotice) {
+                    sendLiveMessage(
+                      OutboundPayloads.credentialsAck(
+                        generation = incomingGen,
+                        transportRevision = incomingTransportRev,
+                        ownerId = outcome.ownerId
+                      )
+                    )
+                  }
                 }
               }
             }

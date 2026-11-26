@@ -6990,4 +6990,28 @@ class WearOsParityTest {
         assertTrue(waterOpenCd.startsWith("Morning Drip Coffee (+"))
         assertTrue(waterOpenCd.endsWith(", open hydration"))
     }
+
+    @Test
+    fun fastingPresetRejectionAndCredentialAckPayloadsParity() {
+        // Point #6: unknown and blank presetIds return null and reject fastStart with 400
+        assertEquals("16:8 Leangains" to 16.0, WearDirectApiClient.fastingPresetSpec("16-8"))
+        assertEquals("Custom Fast" to 12.0, WearDirectApiClient.fastingPresetSpec("custom"))
+        assertNull(WearDirectApiClient.fastingPresetSpec(""))
+        assertNull(WearDirectApiClient.fastingPresetSpec("unknown-preset"))
+
+        // Point #2: credentialsAck + requestContext(needsCredentials = true/false)
+        val reqNoCreds = OutboundPayloads.contextRequest(needsCredentials = true)
+        assertEquals("requestContext", reqNoCreds.getString("type"))
+        assertTrue(reqNoCreds.getBoolean("needsCredentials"))
+
+        val reqWithCreds = OutboundPayloads.contextRequest(needsCredentials = false)
+        assertEquals("requestContext", reqWithCreds.getString("type"))
+        assertFalse(reqWithCreds.has("needsCredentials"))
+
+        val ack = OutboundPayloads.credentialsAck(generation = 5L, transportRevision = 12L, ownerId = "srv-1")
+        assertEquals("credentialsAck", ack.getString("type"))
+        assertEquals(5L, ack.getLong("generation"))
+        assertEquals(12L, ack.getLong("transportRevision"))
+        assertEquals("srv-1", ack.getString("ownerId"))
+    }
 }

@@ -35,9 +35,16 @@ import {
   deleteWaterIntakeLogEntry,
 } from '../services/api/measurementsApi';
 import { logDrinkOrQueue } from '../offline/logDrink';
-import { cancelQueuedWaterDrink } from '../offline/waterHandOver';
+import {
+  cancelQueuedWaterDrink,
+  getQueuedWaterDrinkEntryDate,
+  getQueuedWaterDrinkStatus,
+} from '../offline/waterHandOver';
 import { accountGeneration } from '../offline/accountGeneration';
-import { subscribeAccountChanged } from '../offline/events';
+import {
+  subscribeAccountChanged,
+  subscribeUploadsConfirmed,
+} from '../offline/events';
 import {
   listMedications,
   listEntries,
@@ -1933,6 +1940,200 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     []
   );
 
+  const advanceWaterRefreshSeq = useCallback(
+    (ownerKey: string, day: string) => {
+      if (!day) return;
+      const seqKey = `${ownerKey}::${day}`;
+      waterRefreshSeqRef.current.set(
+        seqKey,
+        (waterRefreshSeqRef.current.get(seqKey) ?? 0) + 1
+      );
+    },
+    []
+  );
+
+  const reconcileCancelledQueuedWaterTap = useCallback(
+    async (
+      ownerKey: string,
+      clientId: string,
+      entryDate: string,
+      replayKey: string
+    ): Promise<'settled' | 'pending'> => {
+      if (!WatchConnectivity) return 'pending';
+      if (
+        !(await isPayloadForActiveServer({ ownerId: ownerKey || undefined }))
+      ) {
+        return 'pending';
+      }
+      const resolvedEntryDate =
+        entryDate ||
+        (await getQueuedWaterDrinkEntryDate(
+          replayKey,
+          ownerKey || undefined
+        )) ||
+        '';
+      if (!entryDate && resolvedEntryDate) {
+        recordCreatedWaterEntryId(
+          ownerKey,
+          clientId,
+          `${QUEUED_WATER_OUTBOX_PREFIX}${resolvedEntryDate}|${replayKey}`
+        );
+        await persistAckState();
+      }
+      const cancelResult = await cancelQueuedWaterDrink(
+        replayKey,
+        ownerKey || undefined
+      );
+      let cancelAckOutcome: boolean | null = null;
+      if (cancelResult === 'cancelled') {
+        consumeCreatedWaterEntryId(ownerKey, clientId);
+        cancelAckOutcome = true;
+      } else {
+        if (cancelResult === 'uploading') {
+          const outboxStatus = await getQueuedWaterDrinkStatus(
+            replayKey,
+            ownerKey || undefined
+          );
+          if (outboxStatus === 'active') {
+            return 'pending';
+          }
+          if (outboxStatus === 'failed') {
+            consumeCreatedWaterEntryId(ownerKey, clientId);
+            cancelAckOutcome = false;
+          }
+        }
+        if (cancelAckOutcome === null) {
+          if (!resolvedEntryDate) {
+            return 'pending';
+          }
+          const targetServerConfig = await resolveWatchServerConfig(
+            ownerKey || undefined
+          );
+          if (!targetServerConfig) {
+            return 'pending';
+          }
+          let matchingEntryId: string | undefined;
+          try {
+            const logRows = await fetchWaterIntakeLogLive(
+              resolvedEntryDate,
+              targetServerConfig
+            );
+            const matched = logRows.find((entry) => {
+              const rowClientId = (entry as { client_id?: unknown }).client_id;
+              return (
+                typeof rowClientId === 'string' &&
+                (rowClientId.trim() === replayKey ||
+                  rowClientId.trim() === clientId)
+              );
+            });
+            if (matched?.id) {
+              matchingEntryId = matched.id;
+            }
+          } catch (error) {
+            addLog(
+              `Watch queued water tap cancellation lookup failed: ${String(error)}`,
+              'WARNING'
+            );
+            return 'pending';
+          }
+          cancelAckOutcome = true;
+          if (matchingEntryId) {
+            try {
+              await deleteWaterIntakeLogEntry(
+                matchingEntryId,
+                targetServerConfig
+              );
+              advanceWaterRefreshSeq(ownerKey, resolvedEntryDate);
+            } catch (error) {
+              if (error instanceof ApiError && error.statusCode === 404) {
+                advanceWaterRefreshSeq(ownerKey, resolvedEntryDate);
+                cancelAckOutcome = true;
+              } else if (isPermanentWatchClientRejection(error)) {
+                cancelAckOutcome = false;
+              } else {
+                addLog(
+                  `Watch queued water tap cancellation delete failed: ${String(error)}`,
+                  'WARNING'
+                );
+                return 'pending';
+              }
+            }
+          }
+          consumeCreatedWaterEntryId(ownerKey, clientId);
+        }
+      }
+      handledWaterClientIdsRef.current.delete(clientId);
+      ackedClientIdsRef.current = ackedClientIdsRef.current.filter(
+        (id) => id !== clientId
+      );
+      await persistAckState();
+      const invalidateDay = resolvedEntryDate || getTodayDate();
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: dailySummaryQueryKey(invalidateDay),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: waterIntakeLogQueryKey(invalidateDay),
+        }),
+        invalidateIntakeKinetics(queryClient, invalidateDay),
+      ]);
+      await WatchConnectivity.sendAck(clientId, cancelAckOutcome);
+      await pushContextRef.current();
+      return 'settled';
+    },
+    [
+      advanceWaterRefreshSeq,
+      consumeCreatedWaterEntryId,
+      persistAckState,
+      recordCreatedWaterEntryId,
+    ]
+  );
+
+  const reconcilePendingCancelledQueuedTaps =
+    useCallback(async (): Promise<void> => {
+      await ensureAckStateHydrated();
+      const candidates: {
+        ownerKey: string;
+        clientId: string;
+        entryDate: string;
+        replayKey: string;
+      }[] = [];
+      for (const [
+        ownerKey,
+        entries,
+      ] of createdWaterEntryIdByTapRef.current.entries()) {
+        for (const [clientId, recorded] of entries.entries()) {
+          if (!isWaterTapCancelled(ownerKey, clientId)) continue;
+          if (!recorded.startsWith(QUEUED_WATER_OUTBOX_PREFIX)) continue;
+          const rawQueued = recorded.slice(QUEUED_WATER_OUTBOX_PREFIX.length);
+          const sepIdx = rawQueued.indexOf('|');
+          const entryDate = sepIdx > 0 ? rawQueued.slice(0, sepIdx) : '';
+          const replayKey =
+            sepIdx > 0 ? rawQueued.slice(sepIdx + 1) : rawQueued;
+          candidates.push({ ownerKey, clientId, entryDate, replayKey });
+        }
+      }
+      for (const c of candidates) {
+        try {
+          await reconcileCancelledQueuedWaterTap(
+            c.ownerKey,
+            c.clientId,
+            c.entryDate,
+            c.replayKey
+          );
+        } catch (error) {
+          addLog(
+            `Watch queued water tap reconciliation failed for ${c.clientId}: ${String(error)}`,
+            'WARNING'
+          );
+        }
+      }
+    }, [
+      ensureAckStateHydrated,
+      isWaterTapCancelled,
+      reconcileCancelledQueuedWaterTap,
+    ]);
+
   const handleWaterTap = useCallback(
     async (payload: WatchWaterIntakePayload): Promise<void> => {
       if (!WatchConnectivity) return;
@@ -2043,7 +2244,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
             recordCreatedWaterEntryId(
               ownerKey,
               payload.clientId,
-              `${QUEUED_WATER_OUTBOX_PREFIX}${replayKey}`
+              `${QUEUED_WATER_OUTBOX_PREFIX}${payload.entryDate}|${replayKey}`
             );
           } else {
             recordCreatedWaterEntryId(
@@ -2062,13 +2263,20 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           const recorded = peekCreatedWaterEntryId(ownerKey, payload.clientId);
           let cancelAckOutcome: boolean | null = null;
           if (recorded?.startsWith(QUEUED_WATER_OUTBOX_PREFIX)) {
-            const replayKey = recorded.slice(QUEUED_WATER_OUTBOX_PREFIX.length);
-            const cancelResult = await cancelQueuedWaterDrink(
-              replayKey,
-              ownerKey || undefined
+            const rawQueued = recorded.slice(QUEUED_WATER_OUTBOX_PREFIX.length);
+            const sepIdx = rawQueued.indexOf('|');
+            const queuedDate =
+              sepIdx > 0 ? rawQueued.slice(0, sepIdx) : payload.entryDate;
+            const replayKey =
+              sepIdx > 0 ? rawQueued.slice(sepIdx + 1) : rawQueued;
+            await persistAckState();
+            await reconcileCancelledQueuedWaterTap(
+              ownerKey,
+              payload.clientId,
+              queuedDate,
+              replayKey
             );
-            consumeCreatedWaterEntryId(ownerKey, payload.clientId);
-            cancelAckOutcome = cancelResult === 'cancelled';
+            return;
           } else if (recorded === COMMITTED_WATER_NO_ROW_ID || !recorded) {
             consumeCreatedWaterEntryId(ownerKey, payload.clientId);
             cancelAckOutcome = false;
@@ -2190,6 +2398,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       isWaterTapCancelled,
       peekCreatedWaterEntryId,
       persistAckState,
+      reconcileCancelledQueuedWaterTap,
       recordCreatedWaterEntryId,
       recordUncertainWaterWrite,
     ]
@@ -2210,16 +2419,22 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       await persistAckState();
       const recorded = peekCreatedWaterEntryId(ownerKey, clientId);
       if (recorded !== undefined) {
-        let cancelAckOutcome: boolean;
         if (recorded.startsWith(QUEUED_WATER_OUTBOX_PREFIX)) {
-          const replayKey = recorded.slice(QUEUED_WATER_OUTBOX_PREFIX.length);
-          const cancelResult = await cancelQueuedWaterDrink(
-            replayKey,
-            ownerKey || undefined
+          const rawQueued = recorded.slice(QUEUED_WATER_OUTBOX_PREFIX.length);
+          const sepIdx = rawQueued.indexOf('|');
+          const queuedDate = sepIdx > 0 ? rawQueued.slice(0, sepIdx) : '';
+          const replayKey =
+            sepIdx > 0 ? rawQueued.slice(sepIdx + 1) : rawQueued;
+          await reconcileCancelledQueuedWaterTap(
+            ownerKey,
+            clientId,
+            queuedDate,
+            replayKey
           );
-          consumeCreatedWaterEntryId(ownerKey, clientId);
-          cancelAckOutcome = cancelResult === 'cancelled';
-        } else if (recorded === COMMITTED_WATER_NO_ROW_ID) {
+          return;
+        }
+        let cancelAckOutcome: boolean;
+        if (recorded === COMMITTED_WATER_NO_ROW_ID) {
           consumeCreatedWaterEntryId(ownerKey, clientId);
           cancelAckOutcome = false;
         } else {
@@ -2357,6 +2572,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       peekCreatedWaterEntryId,
       peekUncertainWaterWriteDate,
       persistAckState,
+      reconcileCancelledQueuedWaterTap,
     ]
   );
 
@@ -2687,7 +2903,6 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         // Hold direct acks in directAcksRef with full provenance (never
         // downgrading into plain ackedClientIdsRef) until a fresh rendered
         // snapshot for this owner/day publishes them.
-        pushGenerationRef.current += 1;
         directAcksRef.current.delete(entry.clientId);
         directAcksRef.current.set(entry.clientId, {
           ...entry,
@@ -2705,6 +2920,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         );
         await persistAckState();
         if (AppState.currentState === 'active') {
+          pushGenerationRef.current += 1;
           setDirectAckFlushVersion(requiredFlushVersion);
         }
         return true;
@@ -3040,6 +3256,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
     handleWatchServerSynced,
     pushContext,
     catchUpToToday,
+    reconcilePendingCancelledQueuedTaps,
   });
   useEffect(() => {
     handlersRef.current = {
@@ -3051,6 +3268,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       handleWatchServerSynced,
       pushContext,
       catchUpToToday,
+      reconcilePendingCancelledQueuedTaps,
     };
   });
 
@@ -3127,7 +3345,11 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       setDirectAckFlushVersion((v) =>
         Math.max(v, nextDirectAckFlushVersionRef.current)
       );
+      void handlersRef.current.reconcilePendingCancelledQueuedTaps();
       void handlersRef.current.pushContext();
+    });
+    const uploadsConfirmedUnsub = subscribeUploadsConfirmed(() => {
+      void handlersRef.current.reconcilePendingCancelledQueuedTaps();
     });
 
     return () => {
@@ -3140,6 +3362,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       reachabilitySub.remove();
       serverSyncedSub.remove();
       appStateSub.remove();
+      uploadsConfirmedUnsub();
     };
   }, [enabled]);
 

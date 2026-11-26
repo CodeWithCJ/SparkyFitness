@@ -168,11 +168,11 @@ describe('useWatchFastingBridge', () => {
       });
     renderHook(() => useWatchFastingBridge(true));
     const fire = mockListeners.get('onFastEndRequested');
-    fire?.({ clientId: 'c4-retry' });
+    fire?.({ clientId: 'c4-retry', ownerId: 'srv-1' });
     await waitFor(() => expect(addLog).toHaveBeenCalled());
     expect(mockSendAck).not.toHaveBeenCalled();
 
-    fire?.({ clientId: 'c4-retry' });
+    fire?.({ clientId: 'c4-retry', ownerId: 'srv-1' });
     await waitFor(() =>
       expect(mockSendAck).toHaveBeenCalledWith('c4-retry', true)
     );
@@ -1315,9 +1315,10 @@ describe('useWatchFastingBridge', () => {
     });
     await waitFor(() => expect(addLog).toHaveBeenCalledTimes(1));
 
-    // End omits ownerId while active server is 'srv-1' -> resolves to 'srv-1' and defers behind the retrying Start.
+    // End with matching ownerId 'srv-1' defers behind the retrying Start on the same 'srv-1' queue.
     mockListeners.get('onFastEndRequested')?.({
       clientId: 'omitted-owner-end',
+      ownerId: 'srv-1',
       startedAt: startMs,
       endedAt: endMs,
     });
@@ -1986,5 +1987,54 @@ describe('useWatchFastingBridge', () => {
       expect(mockSendAck).toHaveBeenCalledWith('end-reblock', true)
     );
     expect(endFast).not.toHaveBeenCalled();
+  });
+
+  it('acks false immediately on transient Apple Watch (no ownerId) fastStart/fastEnd errors without blocking subsequent startless fastEnd', async () => {
+    const startMs = Date.parse('2026-11-25T10:00:00.000Z');
+    (getActiveServerConfigId as jest.Mock).mockResolvedValue('srv-1');
+    (fetchCurrentFast as jest.Mock)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        id: 'existing-active-fast',
+        start_time: new Date(startMs - 60_000).toISOString(),
+      })
+      .mockResolvedValueOnce({
+        id: 'existing-active-fast',
+        start_time: new Date(startMs - 60_000).toISOString(),
+      });
+    (startFast as jest.Mock).mockRejectedValueOnce(
+      new ApiError('Service Unavailable', 503)
+    );
+    (endFast as jest.Mock)
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new ApiError('Service Unavailable', 503));
+
+    renderHook(() => useWatchFastingBridge(true));
+
+    // 1. Apple Watch fastStart (no ownerId) fails with 503 -> immediate sendAck(false), NOT held in retryingStarts.
+    mockListeners.get('onFastStartRequested')?.({
+      clientId: 'ios-start-503',
+      presetId: '16-8',
+    });
+    await waitFor(() =>
+      expect(mockSendAck).toHaveBeenCalledWith('ios-start-503', false)
+    );
+
+    // 2. Subsequent startless Apple Watch fastEnd (no ownerId) runs endFast immediately!
+    mockListeners.get('onFastEndRequested')?.({
+      clientId: 'ios-end-after-503',
+    });
+    await waitFor(() =>
+      expect(mockSendAck).toHaveBeenCalledWith('ios-end-after-503', true)
+    );
+    expect(endFast).toHaveBeenCalledTimes(1);
+
+    // 3. Transient 503 on Apple Watch fastEnd (no ownerId) also sends immediate sendAck(false).
+    mockListeners.get('onFastEndRequested')?.({
+      clientId: 'ios-end-503',
+    });
+    await waitFor(() =>
+      expect(mockSendAck).toHaveBeenCalledWith('ios-end-503', false)
+    );
   });
 });

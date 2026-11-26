@@ -23,7 +23,10 @@ import {
 } from '../../src/services/api/measurementsApi';
 import { ApiError } from '../../src/services/api/errors';
 import { logDrinkOrQueue } from '../../src/offline/logDrink';
-import { cancelQueuedWaterDrink } from '../../src/offline/waterHandOver';
+import {
+  cancelQueuedWaterDrink,
+  getQueuedWaterDrinkStatus,
+} from '../../src/offline/waterHandOver';
 import { addLog } from '../../src/services/LogService';
 import {
   getActiveServerConfigId,
@@ -47,7 +50,10 @@ import {
 import type { DailySummary } from '../../src/types/dailySummary';
 import type { FastingLog } from '../../src/types/fasting';
 import { bumpAccountGeneration } from '../../src/offline/accountGeneration';
-import { notifyAccountChanged } from '../../src/offline/events';
+import {
+  notifyAccountChanged,
+  notifyUploadsConfirmed,
+} from '../../src/offline/events';
 import { addDays, getTodayDate } from '../../src/utils/dateUtils';
 import { createQueryWrapper, createTestQueryClient } from './queryTestUtils';
 
@@ -96,6 +102,8 @@ jest.mock('../../src/offline/logDrink', () => ({
 }));
 jest.mock('../../src/offline/waterHandOver', () => ({
   cancelQueuedWaterDrink: jest.fn(() => Promise.resolve('cancelled')),
+  getQueuedWaterDrinkEntryDate: jest.fn(() => Promise.resolve(null)),
+  getQueuedWaterDrinkStatus: jest.fn(() => Promise.resolve('none')),
 }));
 jest.mock('../../src/hooks/usePreferences', () => ({
   usePreferences: () => ({ preferences: null }),
@@ -1448,6 +1456,7 @@ describe('useWatchCheckInBridge direct water sync ack coordination', () => {
 
     watch.sendAck.mockClear();
     mockCancelQueuedWaterDrink.mockResolvedValueOnce('uploading');
+    (getQueuedWaterDrinkStatus as jest.Mock).mockResolvedValueOnce('failed');
     act(() => {
       mockWatchListeners.get('onWaterTapCancel')?.({
         clientId: 'tap-queued-uploading',
@@ -1794,6 +1803,243 @@ describe('useWatchCheckInBridge direct water sync ack coordination', () => {
     });
     await waitFor(() =>
       expect(lastContext().ackedClientIds).toContain('dir-11')
+    );
+  });
+
+  it('reconciles cancelled queued water taps across uploading->confirmed and none states via live client_id lookup', async () => {
+    const today = getTodayDate();
+    jest.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+    const mockGetQueuedStatus =
+      getQueuedWaterDrinkStatus as jest.MockedFunction<
+        typeof getQueuedWaterDrinkStatus
+      >;
+    const mockCancelQueued = cancelQueuedWaterDrink as jest.MockedFunction<
+      typeof cancelQueuedWaterDrink
+    >;
+    renderBridgeWithHandle({ feature_choices: {} });
+    await waitFor(() => expect(watch.updateContext).toHaveBeenCalled());
+
+    // 1. Tap is queued offline, then cancelled while outbox is actively 'uploading'.
+    mockLogDrinkOrQueue.mockResolvedValueOnce({
+      queued: true,
+      replayKey: 'replay-uploading-1',
+    } as unknown as Awaited<ReturnType<typeof logDrinkOrQueue>>);
+    act(() => {
+      mockWatchListeners.get('onWaterIntake')?.({
+        clientId: 'tap-queued-uploading',
+        entryDate: today,
+        containerId: 1,
+        ownerId: 'server-a',
+      });
+    });
+    await waitFor(() => expect(mockLogDrinkOrQueue).toHaveBeenCalledTimes(1));
+
+    watch.sendAck.mockClear();
+    mockCancelQueued.mockResolvedValueOnce('uploading');
+    mockGetQueuedStatus.mockResolvedValueOnce('active');
+    act(() => {
+      mockWatchListeners.get('onWaterTapCancel')?.({
+        clientId: 'tap-queued-uploading',
+        ownerId: 'server-a',
+      });
+    });
+    await waitFor(() => expect(mockGetQueuedStatus).toHaveBeenCalledTimes(1));
+    // Must NOT ack false or drop tracking while upload is active!
+    expect(watch.sendAck).not.toHaveBeenCalledWith(
+      'tap-queued-uploading',
+      false
+    );
+    expect(watch.sendAck).not.toHaveBeenCalledWith(
+      'tap-queued-uploading',
+      true
+    );
+
+    // Outbox finishes uploading -> notifyUploadsConfirmed triggers reconciliation,
+    // finds the landed row by client_id, deletes it, and acks true!
+    mockCancelQueued.mockResolvedValueOnce('none');
+    mockFetchWaterIntakeLogLive.mockResolvedValueOnce([
+      {
+        id: 'landed-row-1',
+        client_id: 'replay-uploading-1',
+        water_ml: 250,
+        logged_at: `${today}T12:00:00.000Z`,
+      } as unknown as Awaited<
+        ReturnType<typeof fetchWaterIntakeLogLive>
+      >[number],
+    ]);
+    mockDeleteWaterIntakeLogEntry.mockResolvedValueOnce(undefined);
+    act(() => {
+      notifyUploadsConfirmed();
+    });
+    await waitFor(() =>
+      expect(mockDeleteWaterIntakeLogEntry).toHaveBeenCalledWith(
+        'landed-row-1',
+        mockServerConfigA
+      )
+    );
+    await waitFor(() =>
+      expect(watch.sendAck).toHaveBeenCalledWith('tap-queued-uploading', true)
+    );
+
+    // 2. 'none' on initial cancel immediately looks up and deletes landed row by client_id.
+    mockLogDrinkOrQueue.mockResolvedValueOnce({
+      queued: true,
+      replayKey: 'replay-none-2',
+    } as unknown as Awaited<ReturnType<typeof logDrinkOrQueue>>);
+    act(() => {
+      mockWatchListeners.get('onWaterIntake')?.({
+        clientId: 'tap-queued-none',
+        entryDate: today,
+        containerId: 1,
+        ownerId: 'server-a',
+      });
+    });
+    await waitFor(() => expect(mockLogDrinkOrQueue).toHaveBeenCalledTimes(2));
+
+    mockCancelQueued.mockResolvedValueOnce('none');
+    mockFetchWaterIntakeLogLive.mockResolvedValueOnce([
+      {
+        id: 'landed-row-2',
+        client_id: 'replay-none-2',
+        water_ml: 250,
+        logged_at: `${today}T12:05:00.000Z`,
+      } as unknown as Awaited<
+        ReturnType<typeof fetchWaterIntakeLogLive>
+      >[number],
+    ]);
+    mockDeleteWaterIntakeLogEntry.mockResolvedValueOnce(undefined);
+    act(() => {
+      mockWatchListeners.get('onWaterTapCancel')?.({
+        clientId: 'tap-queued-none',
+        ownerId: 'server-a',
+      });
+    });
+    await waitFor(() =>
+      expect(mockDeleteWaterIntakeLogEntry).toHaveBeenCalledWith(
+        'landed-row-2',
+        mockServerConfigA
+      )
+    );
+    await waitFor(() =>
+      expect(watch.sendAck).toHaveBeenCalledWith('tap-queued-none', true)
+    );
+  });
+
+  it('does not bump pushGenerationRef in background recordDirectAck so in-flight pushContext completes', async () => {
+    const today = getTodayDate();
+    jest.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+    renderBridgeWithHandle({ feature_choices: {} });
+    await waitFor(() => expect(watch.updateContext).toHaveBeenCalled());
+
+    let resolveRange!: (
+      rows: Awaited<ReturnType<typeof fetchMeasurementsRange>>
+    ) => void;
+    mockFetchMeasurementsRange.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRange = resolve;
+        })
+    );
+    watch.updateContext.mockClear();
+    mockFetchMeasurementsRange.mockClear();
+    act(() => {
+      mockWatchListeners.get('onContextRequest')?.();
+    });
+    await waitFor(() =>
+      expect(mockFetchMeasurementsRange).toHaveBeenCalledTimes(1)
+    );
+
+    const prevAppState = AppState.currentState;
+    Object.defineProperty(AppState, 'currentState', {
+      value: 'background',
+      configurable: true,
+    });
+    mockFetchWaterIntakeLive.mockResolvedValueOnce({
+      water_ml: 250,
+    } as unknown as Awaited<ReturnType<typeof fetchWaterIntakeLive>>);
+    mockFetchWaterIntakeLogLive.mockResolvedValueOnce([]);
+    act(() => {
+      mockWatchListeners.get('onWatchServerSynced')?.({
+        domain: 'water',
+        ownerId: 'server-a',
+        entryDate: today,
+        clientId: 'bg-direct-water',
+      });
+    });
+    await waitFor(() =>
+      expect(mockFetchWaterIntakeLive).toHaveBeenCalledTimes(1)
+    );
+
+    Object.defineProperty(AppState, 'currentState', {
+      value: prevAppState,
+      configurable: true,
+    });
+    resolveRange([]);
+    await waitFor(() => expect(watch.updateContext).toHaveBeenCalledTimes(1));
+  });
+
+  it('continues reconciling remaining cancelled queued water taps if an earlier candidate throws', async () => {
+    const today = getTodayDate();
+    jest.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
+    const mockGetQueuedStatus =
+      getQueuedWaterDrinkStatus as jest.MockedFunction<
+        typeof getQueuedWaterDrinkStatus
+      >;
+    const mockCancelQueued = cancelQueuedWaterDrink as jest.MockedFunction<
+      typeof cancelQueuedWaterDrink
+    >;
+    renderBridgeWithHandle({ feature_choices: {} });
+    await waitFor(() => expect(watch.updateContext).toHaveBeenCalled());
+
+    for (const [cid, rkey] of [
+      ['tap-queued-err-1', 'replay-err-1'],
+      ['tap-queued-ok-2', 'replay-ok-2'],
+    ] as const) {
+      mockLogDrinkOrQueue.mockResolvedValueOnce({
+        queued: true,
+        replayKey: rkey,
+      } as unknown as Awaited<ReturnType<typeof logDrinkOrQueue>>);
+      act(() => {
+        mockWatchListeners.get('onWaterIntake')?.({
+          clientId: cid,
+          entryDate: today,
+          containerId: 1,
+          ownerId: 'server-a',
+        });
+      });
+    }
+    await waitFor(() => expect(mockLogDrinkOrQueue).toHaveBeenCalledTimes(2));
+
+    watch.sendAck.mockClear();
+    mockCancelQueued
+      .mockResolvedValueOnce('uploading')
+      .mockResolvedValueOnce('uploading');
+    mockGetQueuedStatus
+      .mockResolvedValueOnce('active')
+      .mockResolvedValueOnce('active');
+    for (const cid of ['tap-queued-err-1', 'tap-queued-ok-2']) {
+      act(() => {
+        mockWatchListeners.get('onWaterTapCancel')?.({
+          clientId: cid,
+          ownerId: 'server-a',
+        });
+      });
+    }
+    await waitFor(() => expect(mockGetQueuedStatus).toHaveBeenCalledTimes(2));
+
+    // Candidate 1 throws during reconciliation; candidate 2 must still settle!
+    mockCancelQueued
+      .mockRejectedValueOnce(new Error('SQLite busy'))
+      .mockResolvedValueOnce('cancelled');
+    act(() => {
+      notifyUploadsConfirmed();
+    });
+    await waitFor(() =>
+      expect(watch.sendAck).toHaveBeenCalledWith('tap-queued-ok-2', true)
+    );
+    expect(addLog).toHaveBeenCalledWith(
+      expect.stringContaining('tap-queued-err-1'),
+      'WARNING'
     );
   });
 });

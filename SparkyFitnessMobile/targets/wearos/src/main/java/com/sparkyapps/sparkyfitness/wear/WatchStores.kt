@@ -293,7 +293,7 @@ class CheckInStore(private val context: Context) {
   ) {
     fun toOptimisticWatchFast(): WatchFast? = when (kind) {
       "fastStart" -> {
-        val durHours = hours ?: WearDirectApiClient.fastingPresetSpec(presetId ?: "16-8").second
+        val durHours = hours ?: (WearDirectApiClient.fastingPresetSpec(presetId ?: "16-8")?.second ?: 16.0)
         val start = if (startedAtMs > 0L) startedAtMs else System.currentTimeMillis()
         WatchFast(
           startedAtMs = start,

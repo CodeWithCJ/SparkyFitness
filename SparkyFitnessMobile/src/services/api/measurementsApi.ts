@@ -539,9 +539,6 @@ export const deleteCustomMeasurement = async (id: string): Promise<void> => {
 };
 
 /**
- * Changes water intake by adding or removing a drink.
- */
-/**
  * Live server-backed itemized water ledger read without offline cache fallback.
  * Used by direct-sync acknowledgement gates that must prove the phone has read
  * fresh server state rather than a cached SQLite copy.
@@ -585,6 +582,9 @@ export const fetchWaterIntakeLog = async (
   });
 };
 
+/**
+ * Changes water intake by adding or removing a drink.
+ */
 export const changeWaterIntake = async (params: {
   entryDate: string;
   changeDrinks: number;

@@ -242,6 +242,7 @@ export function useWatchFastingBridge(enabled: boolean): void {
       ownerKey: string,
       payload: WatchFastEndRequestPayload
     ): string[] => {
+      if (!payload.ownerId?.trim()) return [];
       const retrying = retryingStartsByOwnerRef.current.get(ownerKey);
       if (!retrying || retrying.size === 0) return [];
       const requestedFastId = payload.fastId?.trim() ?? '';
@@ -421,8 +422,9 @@ export function useWatchFastingBridge(enabled: boolean): void {
         }
       } catch (error) {
         addLog(`[Watch] Fast end failed: ${String(error)}`, 'WARNING');
-        if (isPermanentWatchClientRejection(error)) {
-          if (payload.clientId) recordSettled(dedupeKey, false);
+        const isPermanent = isPermanentWatchClientRejection(error);
+        if (isPermanent || !payload.ownerId?.trim()) {
+          if (isPermanent && payload.clientId) recordSettled(dedupeKey, false);
           if (await isPayloadForActiveServer({ ownerId: expectedOwnerId })) {
             try {
               await sendAckWithFast(payload.clientId, false, false, null);
@@ -609,6 +611,17 @@ export function useWatchFastingBridge(enabled: boolean): void {
             await drainDeferredEnds(resolvedOwner, 'rejected');
           } else {
             deferredEndsByOwnerRef.current.delete(resolvedOwner);
+          }
+        } else if (!payload.ownerId?.trim()) {
+          if (await isPayloadForActiveServer({ ownerId: expectedOwnerId })) {
+            try {
+              await sendAckWithFast(payload.clientId, false, false, null);
+            } catch (ackError) {
+              addLog(
+                `[Watch] Fast start transient ack failed: ${String(ackError)}`,
+                'WARNING'
+              );
+            }
           }
         } else {
           markStartRetrying(resolvedOwner, payload.clientId, payload.startedAt);

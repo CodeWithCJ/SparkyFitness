@@ -862,8 +862,18 @@ object OutboundPayloads {
     if (!ownerId.isNullOrEmpty()) put("ownerId", ownerId)
   }
 
-  fun contextRequest(): JSONObject = JSONObject().apply {
+  fun contextRequest(needsCredentials: Boolean = false): JSONObject = JSONObject().apply {
     put("type", "requestContext")
+    if (needsCredentials) {
+      put("needsCredentials", true)
+    }
+  }
+
+  fun credentialsAck(generation: Long, transportRevision: Long, ownerId: String): JSONObject = JSONObject().apply {
+    put("type", "credentialsAck")
+    put("generation", generation)
+    put("transportRevision", transportRevision)
+    put("ownerId", ownerId)
   }
 
   fun workoutStartRequest(presetId: String, serverId: String?): JSONObject = JSONObject().apply {

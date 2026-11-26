@@ -1595,13 +1595,13 @@ object WearDirectApiClient {
     return MedicationWriteDecision.Create(if (asNeeded) "prn_taken" else targetStatus)
   }
 
-  internal fun fastingPresetSpec(presetId: String): Pair<String, Double> = when (presetId) {
+  internal fun fastingPresetSpec(presetId: String): Pair<String, Double>? = when (presetId) {
     "16-8" -> "16:8 Leangains" to 16.0
     "18-6" -> "18:6 Warrior" to 18.0
     "20-4" -> "20:4 Warrior" to 20.0
     "circumadian" -> "Circadian Rhythm" to 13.0
     "custom" -> "Custom Fast" to 12.0
-    else -> presetId to 16.0
+    else -> null
   }
 
   internal fun parseFastJson(raw: String?): Pair<WatchFast?, Boolean> {
@@ -2458,14 +2458,15 @@ object WearDirectApiClient {
     }
   }
 
-  private fun executeFastStart(
+  internal fun executeFastStart(
     context: Context,
     creds: WearServerCredentials,
     payload: JSONObject,
     isAccountActive: () -> Boolean
   ): DirectWriteOutcome {
-    val presetId = payload.optString("presetId", "").ifBlank { "16-8" }
+    val presetId = payload.optString("presetId", "").trim()
     val (fastingType, hours) = fastingPresetSpec(presetId)
+      ?: return DirectWriteOutcome.Rejected(400)
     val curRes = request(creds, "GET", "/api/fasting/current")
     if (!curRes.isSuccess) return DirectWriteOutcome.FallbackToPhone
     val curBody = curRes.body ?: return DirectWriteOutcome.FallbackToPhone

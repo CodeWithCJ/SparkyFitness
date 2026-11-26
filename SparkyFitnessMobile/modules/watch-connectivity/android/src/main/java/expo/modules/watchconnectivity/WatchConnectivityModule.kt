@@ -83,6 +83,12 @@ private const val LAST_CONTEXT_JSON_KEY = "sparky.lastContextJson"
 private const val LAST_CACHED_CONTEXT_SEQ_KEY = "sparky.lastCachedContextSeq"
 private const val LAST_PUBLISHED_CONTEXT_GEN_KEY = "sparky.lastPublishedContextGen"
 private const val LAST_PUBLISHED_CONTEXT_SEQ_KEY = "sparky.lastPublishedContextSeq"
+private const val LAST_ACKED_CREDENTIALS_GEN_KEY = "sparky.lastAckedCredentialsGen"
+private const val LAST_ACKED_CREDENTIALS_REV_KEY = "sparky.lastAckedCredentialsRev"
+private const val PENDING_FORCED_CRED_REPUBLISH_GEN_KEY = "sparky.pendingForcedCredRepublishGen"
+private const val PENDING_FORCED_CRED_REPUBLISH_REV_KEY = "sparky.pendingForcedCredRepublishRev"
+private const val PENDING_ACKED_CRED_CLEANUP_GEN_KEY = "sparky.pendingAckedCredCleanupGen"
+private const val PENDING_ACKED_CRED_CLEANUP_REV_KEY = "sparky.pendingAckedCredCleanupRev"
 private const val LAST_COMPLICATION_CONFIG_JSON_KEY = "sparky.lastComplicationConfigJson"
 private const val LAST_COMPLICATION_CONFIG_REV_KEY = "sparky.lastComplicationConfigRevision"
 private const val HEART_RATE_QUEUE_LIMIT = 10_080
@@ -190,6 +196,13 @@ internal object WatchConnectivityHub {
     val ownerId: String,
     val baseUrl: String?,
     val headersObj: JSONObject?
+  )
+
+  private data class CredentialSyncEval(
+    val snap: CredentialTransportSnapshot,
+    val unfinishedRevokeNow: Boolean,
+    val transportRev: Long,
+    val alreadyAcked: Boolean
   )
 
   data class QueuedHrBatch(
@@ -338,6 +351,12 @@ internal object WatchConnectivityHub {
         .putLong(LAST_RECORDED_TRANSPORT_GEN_KEY, nextGen)
         .putInt(LAST_RECORDED_MTLS_KEY, -1)
         .putLong(PENDING_REVOCATION_GENERATION_KEY, nextGen)
+        .remove(LAST_ACKED_CREDENTIALS_GEN_KEY)
+        .remove(LAST_ACKED_CREDENTIALS_REV_KEY)
+        .remove(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY)
+        .remove(PENDING_FORCED_CRED_REPUBLISH_REV_KEY)
+        .remove(PENDING_ACKED_CRED_CLEANUP_GEN_KEY)
+        .remove(PENDING_ACKED_CRED_CLEANUP_REV_KEY)
       if (newOwnerId != null) {
         editor.putString(TELEMETRY_OWNER_KEY, newOwnerId)
       }
@@ -664,6 +683,12 @@ internal object WatchConnectivityHub {
           .putLong(CREDENTIALS_TRANSPORT_REV_KEY, nextTransportRev)
           .putLong(LAST_RECORDED_TRANSPORT_GEN_KEY, nextGen)
           .putInt(LAST_RECORDED_MTLS_KEY, -1)
+          .remove(LAST_ACKED_CREDENTIALS_GEN_KEY)
+          .remove(LAST_ACKED_CREDENTIALS_REV_KEY)
+          .remove(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY)
+          .remove(PENDING_FORCED_CRED_REPUBLISH_REV_KEY)
+          .remove(PENDING_ACKED_CRED_CLEANUP_GEN_KEY)
+          .remove(PENDING_ACKED_CRED_CLEANUP_REV_KEY)
         if (currentOwner.isNotEmpty() && !wm.hasUnfinished && activeUnrevoked) {
           val rawCtx = prefs.getString(LAST_CONTEXT_JSON_KEY, null)
           if (!rawCtx.isNullOrEmpty()) {
@@ -874,8 +899,116 @@ internal object WatchConnectivityHub {
     }
   }
 
-  private suspend fun publishWatchCredentials(context: Context) {
-    syncCredentialsTransport(context.applicationContext, forcePublish = true)
+  private suspend fun publishWatchCredentials(context: Context, forcePublish: Boolean = true) {
+    syncCredentialsTransport(context.applicationContext, forcePublish = forcePublish)
+  }
+
+  private fun handleCredentialsAck(context: Context, payload: Map<String, Any?>) {
+    val ackGen = asDouble(payload["generation"])?.toLong() ?: 0L
+    val ackRev = asDouble(payload["transportRevision"])?.toLong() ?: 0L
+    val ackOwner = (payload["ownerId"] as? String)?.trim() ?: ""
+    if (ackGen <= 0L || ackRev <= 0L || ackOwner.isEmpty()) return
+    val appCtx = context.applicationContext
+    val matched = synchronized(credentialsStateLock) {
+      val wm = readRevocationWatermarksLocked(appCtx)
+      val curSnap = readCredentialTransportSnapshotLocked(appCtx)
+      val requiresClientCert = isPhoneClientCertificateConfigured(appCtx)
+      val curRev = if (!wm.hasUnfinished && curSnap.generation > 0L) {
+        resolveTransportRevisionLocked(appCtx, curSnap.generation, requiresClientCert)
+      } else {
+        0L
+      }
+      val isMatch =
+        !wm.hasUnfinished &&
+          curSnap.ownerId == ackOwner &&
+          curSnap.generation == ackGen &&
+          curRev == ackRev &&
+          (wm.pending == 0L || curSnap.generation > wm.pending)
+      if (isMatch) {
+        appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+          .edit()
+          .putLong(LAST_ACKED_CREDENTIALS_GEN_KEY, ackGen)
+          .putLong(LAST_ACKED_CREDENTIALS_REV_KEY, ackRev)
+          .putLong(PENDING_ACKED_CRED_CLEANUP_GEN_KEY, ackGen)
+          .putLong(PENDING_ACKED_CRED_CLEANUP_REV_KEY, ackRev)
+          .apply()
+      }
+      isMatch
+    }
+    if (!matched) return
+    scope.launch {
+      val backoffMs = longArrayOf(0L, 2_000L, 5_000L, 12_000L, 30_000L)
+      for (waitMs in backoffMs) {
+        if (waitMs > 0L) delay(waitMs)
+        val deletedOrStale = credentialsMutex.withLock {
+          withContext(Dispatchers.IO) {
+            deletePendingAckedCredentialsUnderMutex(appCtx, expectedGen = ackGen, expectedRev = ackRev)
+          }
+        }
+        if (deletedOrStale) return@launch
+      }
+    }
+  }
+
+  private suspend fun deletePendingAckedCredentialsUnderMutex(
+    appCtx: Context,
+    expectedGen: Long? = null,
+    expectedRev: Long? = null
+  ): Boolean {
+    val targetPair = synchronized(credentialsStateLock) {
+      val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      val cleanupGen = prefs.getLong(PENDING_ACKED_CRED_CLEANUP_GEN_KEY, 0L)
+      val cleanupRev = prefs.getLong(PENDING_ACKED_CRED_CLEANUP_REV_KEY, 0L)
+      if (cleanupGen <= 0L || cleanupRev <= 0L) return@synchronized null
+      if ((expectedGen != null && cleanupGen != expectedGen) || (expectedRev != null && cleanupRev != expectedRev)) {
+        return@synchronized null
+      }
+      val wm = readRevocationWatermarksLocked(appCtx)
+      val curSnap = readCredentialTransportSnapshotLocked(appCtx)
+      val requiresClientCert = isPhoneClientCertificateConfigured(appCtx)
+      val curRev = if (!wm.hasUnfinished && curSnap.generation > 0L) {
+        resolveTransportRevisionLocked(appCtx, curSnap.generation, requiresClientCert)
+      } else {
+        0L
+      }
+      val stillMatchesCurrent =
+        !wm.hasUnfinished &&
+          curSnap.ownerId.isNotEmpty() &&
+          curSnap.generation == cleanupGen &&
+          curRev == cleanupRev &&
+          (wm.pending == 0L || curSnap.generation > wm.pending)
+      if (!stillMatchesCurrent) {
+        prefs.edit()
+          .remove(PENDING_ACKED_CRED_CLEANUP_GEN_KEY)
+          .remove(PENDING_ACKED_CRED_CLEANUP_REV_KEY)
+          .apply()
+        return@synchronized null
+      }
+      cleanupGen to cleanupRev
+    } ?: return true
+
+    return try {
+      Wearable.getDataClient(appCtx).deleteDataItems(
+        Uri.parse("wear://*/sparky/credentials"),
+        DataClient.FILTER_LITERAL
+      ).await()
+      synchronized(credentialsStateLock) {
+        val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (
+          prefs.getLong(PENDING_ACKED_CRED_CLEANUP_GEN_KEY, 0L) == targetPair.first &&
+          prefs.getLong(PENDING_ACKED_CRED_CLEANUP_REV_KEY, 0L) == targetPair.second
+        ) {
+          prefs.edit()
+            .remove(PENDING_ACKED_CRED_CLEANUP_GEN_KEY)
+            .remove(PENDING_ACKED_CRED_CLEANUP_REV_KEY)
+            .apply()
+        }
+      }
+      true
+    } catch (e: Throwable) {
+      Log.w(TAG, "Failed to delete acked credentials DataItem: ${e.message}")
+      false
+    }
   }
 
   private suspend fun syncCredentialsTransport(appCtx: Context, forcePublish: Boolean) {
@@ -887,9 +1020,12 @@ internal object WatchConnectivityHub {
         var lastFailedRev = 0L
         while (true) {
           val (revokeGen, revocationIncomplete) = runPendingRevocationDeletesUnderMutex(appCtx)
+          if (!revocationIncomplete) {
+            deletePendingAckedCredentialsUnderMutex(appCtx)
+          }
           val requiresClientCert = isPhoneClientCertificateConfigured(appCtx)
 
-          val (snap, unfinishedRevokeNow, transportRev) = synchronized(credentialsStateLock) {
+          val (snap, unfinishedRevokeNow, transportRev, alreadyAcked) = synchronized(credentialsStateLock) {
             val wm = readRevocationWatermarksLocked(appCtx)
             val curSnap = readCredentialTransportSnapshotLocked(appCtx)
             val validForRev =
@@ -904,7 +1040,38 @@ internal object WatchConnectivityHub {
             } else {
               0L
             }
-            Triple(curSnap, wm.hasUnfinished, rev)
+            val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val forcedGen = prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY, 0L)
+            val forcedRev = prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_REV_KEY, 0L)
+            val hasPersistedForce =
+              curSnap.generation > 0L &&
+                rev > 0L &&
+                forcedGen == curSnap.generation &&
+                forcedRev == rev
+            if ((forcedGen > 0L || forcedRev > 0L) && !hasPersistedForce && validForRev) {
+              prefs.edit()
+                .remove(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY)
+                .remove(PENDING_FORCED_CRED_REPUBLISH_REV_KEY)
+                .apply()
+            }
+            val effectiveForce = forceRemaining || hasPersistedForce
+            val ackedGen = prefs.getLong(LAST_ACKED_CREDENTIALS_GEN_KEY, 0L)
+            val ackedRev = prefs.getLong(LAST_ACKED_CREDENTIALS_REV_KEY, 0L)
+            val isAcked =
+              !effectiveForce &&
+                curSnap.generation > 0L &&
+                rev > 0L &&
+                ackedGen == curSnap.generation &&
+                ackedRev == rev
+            arrayOf(curSnap, wm.hasUnfinished, rev, isAcked)
+          }.let { arr ->
+            @Suppress("UNCHECKED_CAST")
+            CredentialSyncEval(
+              arr[0] as CredentialTransportSnapshot,
+              arr[1] as Boolean,
+              arr[2] as Long,
+              arr[3] as Boolean
+            )
           }
           val hasValidCredentials =
             !unfinishedRevokeNow &&
@@ -920,9 +1087,17 @@ internal object WatchConnectivityHub {
           var attemptedRevInPass = 0L
           var attemptedMtlsInPass: Boolean? = null
 
+          val hasPersistedForceNow = synchronized(credentialsStateLock) {
+            val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY, 0L) == snap.generation &&
+              prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_REV_KEY, 0L) == transportRev
+          }
+
           if (
             hasValidCredentials &&
+            !alreadyAcked &&
             (forceRemaining ||
+              hasPersistedForceNow ||
               snap.generation > lastPublishedTransportGeneration ||
               transportRev > lastPublishedTransportRevision ||
               lastPublishedRequiresMtls != requiresClientCert)
@@ -980,6 +1155,16 @@ internal object WatchConnectivityHub {
               sendLiveBytes(appCtx, "/sparky/message", mtlsNoticeJson.toByteArray(Charsets.UTF_8))
               if (durableSucceeded) {
                 synchronized(credentialsStateLock) {
+                  val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                  if (
+                    prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY, 0L) == snap.generation &&
+                    prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_REV_KEY, 0L) == transportRev
+                  ) {
+                    prefs.edit()
+                      .remove(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY)
+                      .remove(PENDING_FORCED_CRED_REPUBLISH_REV_KEY)
+                      .apply()
+                  }
                   if (
                     snap.generation > lastPublishedTransportGeneration ||
                       (snap.generation == lastPublishedTransportGeneration &&
@@ -1036,6 +1221,16 @@ internal object WatchConnectivityHub {
               sendLiveBytes(appCtx, "/sparky/message", payloadJson.toByteArray(Charsets.UTF_8))
               if (durableSucceeded) {
                 synchronized(credentialsStateLock) {
+                  val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                  if (
+                    prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY, 0L) == snap.generation &&
+                    prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_REV_KEY, 0L) == transportRev
+                  ) {
+                    prefs.edit()
+                      .remove(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY)
+                      .remove(PENDING_FORCED_CRED_REPUBLISH_REV_KEY)
+                      .apply()
+                  }
                   if (
                     snap.generation > lastPublishedTransportGeneration ||
                       (snap.generation == lastPublishedTransportGeneration &&
@@ -1078,10 +1273,30 @@ internal object WatchConnectivityHub {
             } else {
               0L
             }
+            val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val forcedGen = prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY, 0L)
+            val forcedRev = prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_REV_KEY, 0L)
+            val pendingForcedNow =
+              curValid &&
+                cur.generation > 0L &&
+                curRev > 0L &&
+                forcedGen == cur.generation &&
+                forcedRev == curRev
+            val ackedGen = prefs.getLong(LAST_ACKED_CREDENTIALS_GEN_KEY, 0L)
+            val ackedRev = prefs.getLong(LAST_ACKED_CREDENTIALS_REV_KEY, 0L)
+            val isAckedCurrent =
+              !pendingForcedNow &&
+                curValid &&
+                cur.generation > 0L &&
+                curRev > 0L &&
+                ackedGen == cur.generation &&
+                ackedRev == curRev
             val unpublishedChange =
-              cur.generation > lastPublishedTransportGeneration ||
-                curRev > lastPublishedTransportRevision ||
-                lastPublishedRequiresMtls != curRequiresMtls
+              pendingForcedNow ||
+                (!isAckedCurrent &&
+                  (cur.generation > lastPublishedTransportGeneration ||
+                    curRev > lastPublishedTransportRevision ||
+                    lastPublishedRequiresMtls != curRequiresMtls))
             val canRetryNow =
               !durableFailedInPass ||
                 cur.generation != attemptedGenInPass ||
@@ -1098,12 +1313,35 @@ internal object WatchConnectivityHub {
         val finalWm = synchronized(credentialsStateLock) {
           readRevocationWatermarksLocked(appCtx)
         }
+        val forcedRetryTarget = synchronized(credentialsStateLock) {
+          val wm = readRevocationWatermarksLocked(appCtx)
+          val cur = readCredentialTransportSnapshotLocked(appCtx)
+          val curMtls = isPhoneClientCertificateConfigured(appCtx)
+          val curValid =
+            !wm.hasUnfinished &&
+              cur.ownerId.isNotEmpty() &&
+              cur.baseUrl != null &&
+              cur.headersObj != null &&
+              cur.generation > 0L &&
+              (wm.pending == 0L || cur.generation > wm.pending)
+          if (!curValid) {
+            null
+          } else {
+            val curRev = resolveTransportRevisionLocked(appCtx, cur.generation, curMtls)
+            val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            val fg = prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY, 0L)
+            val fr = prefs.getLong(PENDING_FORCED_CRED_REPUBLISH_REV_KEY, 0L)
+            if (fg == cur.generation && fr == curRev) cur.generation to curRev else null
+          }
+        }
         if (finalWm.hasUnfinished) {
           cancelCredentialPublishRetry()
           scheduleRevocationRetry(appCtx, finalWm.pending)
         } else {
           cancelRevocationRetry()
-          if (lastDurableFailed && lastFailedGen > 0L && lastFailedRev > 0L) {
+          if (forcedRetryTarget != null) {
+            scheduleCredentialPublishRetry(appCtx, forcedRetryTarget.first, forcedRetryTarget.second)
+          } else if (lastDurableFailed && lastFailedGen > 0L && lastFailedRev > 0L) {
             scheduleCredentialPublishRetry(appCtx, lastFailedGen, lastFailedRev)
           } else {
             cancelCredentialPublishRetry()
@@ -4462,9 +4700,36 @@ internal object WatchConnectivityHub {
           }
         }
       }
+      "credentialsAck" -> {
+        handleCredentialsAck(context, payload)
+      }
       "requestContext" -> {
+        val needsCredentials = payload["needsCredentials"] as? Boolean == true
+        if (needsCredentials) {
+          val appCtx = context.applicationContext
+          synchronized(credentialsStateLock) {
+            val wm = readRevocationWatermarksLocked(appCtx)
+            val cur = readCredentialTransportSnapshotLocked(appCtx)
+            val requiresMtls = isPhoneClientCertificateConfigured(appCtx)
+            val curValid =
+              !wm.hasUnfinished &&
+                cur.ownerId.isNotEmpty() &&
+                cur.baseUrl != null &&
+                cur.headersObj != null &&
+                cur.generation > 0L &&
+                (wm.pending == 0L || cur.generation > wm.pending)
+            if (curValid) {
+              val curRev = resolveTransportRevisionLocked(appCtx, cur.generation, requiresMtls)
+              appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putLong(PENDING_FORCED_CRED_REPUBLISH_GEN_KEY, cur.generation)
+                .putLong(PENDING_FORCED_CRED_REPUBLISH_REV_KEY, curRev)
+                .apply()
+            }
+          }
+        }
         scope.launch {
-          publishWatchCredentials(context)
+          publishWatchCredentials(context, forcePublish = needsCredentials)
         }
         if (jsForeground && mod != null) {
           mod.emitEvent("onContextRequest", emptyMap<String, Any?>())
