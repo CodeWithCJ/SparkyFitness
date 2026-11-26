@@ -136,7 +136,9 @@ data class WaterContainer(
   val id: Int,
   val name: String,
   val servingVolumeMl: Double,
-  val unit: String
+  val unit: String,
+  val isPrimary: Boolean = false,
+  val isQuickAdd: Boolean = false
 ) {
   val displayVolume: String
     get() = when (unit.lowercase()) {
@@ -150,7 +152,8 @@ data class WaterLogEntry(
   val id: String,
   val name: String,
   val volumeMl: Double,
-  val time: String
+  val time: String,
+  val loggedAtMs: Long? = null
 )
 
 data class WaterSnapshot(
@@ -170,7 +173,8 @@ data class PendingWaterTap(
   val createdAtMs: Long,
   val day: String,
   val state: SyncState,
-  val ownerId: String = ""
+  val ownerId: String = "",
+  val logConfirmed: Boolean = false
 ) {
   val isToday: Boolean get() = day == CheckInDate.today()
 }
@@ -231,7 +235,8 @@ data class PendingMedicationTap(
 data class WatchFast(
   val startedAtMs: Long,
   val targetEndAtMs: Long?,
-  val label: String?
+  val label: String?,
+  val id: String? = null
 )
 
 data class StepsSnapshot(
@@ -353,8 +358,10 @@ data class WatchContext(
   val todayBodyFatPercentage: Double? = null,
   val lastWeightKg: Double? = null,
   val lastBodyFatPercentage: Double? = null,
+  val lastBodyFatDate: String? = null,
   val lastEntryDate: String? = null,
   val history: List<HistoryPoint> = emptyList(),
+  val bodyFatHistory: List<HistoryPoint> = emptyList(),
   val ackedClientIds: List<String> = emptyList(),
   val failedClientIds: List<String> = emptyList(),
   val updatedAtMs: Long = 0L,
@@ -382,6 +389,8 @@ data class WatchContext(
   val distanceUnit: String? = null,
   /** The phone's energy unit (`kcal` or `kJ`); energy numbers stay kcal. Null reads as kcal. */
   val energyUnit: String? = null,
+  /** User's preferred clock format (`HH:mm` or `h:mm A` / `h:mm a`); null falls back to locale short time. */
+  val timeFormat: String? = null,
   val doubleTapEnabled: Boolean? = null,
   val rpeEnabled: Boolean? = null,
   val newWorkout: Boolean? = null,
@@ -952,7 +961,15 @@ fun formatWaterAmount(
   displayUnit: String?,
   locale: Locale = Locale.getDefault()
 ): String = when (displayUnit?.lowercase(Locale.US)) {
-  "oz" -> String.format(locale, "%.1f oz", ml / 29.5735)
+  "oz" -> {
+    val oz = ml / 29.5735
+    val roundedTenth = (oz * 10.0).roundToInt() / 10.0
+    if (kotlin.math.abs(roundedTenth - roundedTenth.roundToInt()) < 0.001) {
+      String.format(locale, "%d oz", roundedTenth.roundToInt())
+    } else {
+      String.format(locale, "%.1f oz", oz)
+    }
+  }
   "liter", "l" -> String.format(locale, "%.2fL", ml / 1000.0)
   else -> String.format(locale, "%d ml", ml.roundToInt())
 }

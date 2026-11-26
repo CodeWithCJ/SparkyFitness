@@ -26,9 +26,12 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Collections
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
@@ -181,6 +184,22 @@ class CheckInStore(private val context: Context) {
   private val _waterContainers = MutableStateFlow<List<WaterContainer>>(emptyList())
   val waterContainers: StateFlow<List<WaterContainer>> = _waterContainers.asStateFlow()
 
+  private val _waterTilePage = MutableStateFlow(0)
+  val waterTilePage: StateFlow<Int> = _waterTilePage.asStateFlow()
+
+  fun advanceWaterTilePage(totalPages: Int) {
+    val safeTotal = max(1, totalPages)
+    _waterTilePage.value = if (safeTotal <= 1) 0 else (_waterTilePage.value + 1) % safeTotal
+  }
+
+  private val _medicationTilePage = MutableStateFlow(0)
+  val medicationTilePage: StateFlow<Int> = _medicationTilePage.asStateFlow()
+
+  fun advanceMedicationTilePage(totalPages: Int) {
+    val safeTotal = max(1, totalPages)
+    _medicationTilePage.value = if (safeTotal <= 1) 0 else (_medicationTilePage.value + 1) % safeTotal
+  }
+
   private val _waterGoalMl = MutableStateFlow(2500.0)
   val waterGoalMl: StateFlow<Double> = _waterGoalMl.asStateFlow()
 
@@ -202,6 +221,9 @@ class CheckInStore(private val context: Context) {
   private val _fast = MutableStateFlow<WatchFast?>(null)
   val fast: StateFlow<WatchFast?> = _fast.asStateFlow()
 
+  private val _fastSyncState = MutableStateFlow(SyncState.SAVED)
+  val fastSyncState: StateFlow<SyncState> = _fastSyncState.asStateFlow()
+
   private val _steps = MutableStateFlow<StepsSnapshot?>(null)
   val steps: StateFlow<StepsSnapshot?> = _steps.asStateFlow()
 
@@ -216,6 +238,9 @@ class CheckInStore(private val context: Context) {
 
   private val _enabledPages = MutableStateFlow(WatchPage.defaultOrder)
   val enabledPages: StateFlow<List<WatchPage>> = _enabledPages.asStateFlow()
+
+  private val _localDay = MutableStateFlow(CheckInDate.today())
+  val localDay: StateFlow<String> = _localDay.asStateFlow()
 
   internal data class PendingMedicationRecord(
     val id: String,
@@ -255,8 +280,77 @@ class CheckInStore(private val context: Context) {
     val ownerId: String
   )
 
+  internal data class PendingFastOp(
+    val clientId: String,
+    val ownerId: String,
+    val kind: String,
+    val presetId: String? = null,
+    val hours: Double? = null,
+    val startedAtMs: Long = 0L,
+    val fastId: String? = null,
+    val endedAtMs: Long = 0L,
+    val orderSeq: Long = 0L
+  ) {
+    fun toOptimisticWatchFast(): WatchFast? = when (kind) {
+      "fastStart" -> {
+        val durHours = hours ?: WearDirectApiClient.fastingPresetSpec(presetId ?: "16-8").second
+        val start = if (startedAtMs > 0L) startedAtMs else System.currentTimeMillis()
+        WatchFast(
+          startedAtMs = start,
+          targetEndAtMs = start + (durHours * 3_600_000.0).toLong(),
+          label = presetId ?: "16-8"
+        )
+      }
+      "fastEnd" -> null
+      else -> null
+    }
+  }
+
+  internal data class FastSyncOutcomeState(
+    val failedOrderSeq: Long = 0L,
+    val highestSucceededOrderSeq: Long = 0L
+  ) {
+    val isFailed: Boolean get() = failedOrderSeq > highestSucceededOrderSeq
+  }
+
+  internal data class UnreconciledDirectMedicationOverride(
+    val clientId: String,
+    val ownerId: String,
+    val day: String,
+    val doseId: String,
+    val status: MedicationDoseStatus
+  )
+
+  internal data class UnreconciledDirectCheckInOverride(
+    val clientId: String,
+    val ownerId: String,
+    val day: String,
+    val weightKg: Double,
+    val bodyFatPercentage: Double?
+  )
+
   private var confirmedOwnerId: String? = null
   private var accountActionToken: String = ""
+  private val accountGeneration = AtomicLong(1L)
+  private val localMutationRevision = AtomicLong(0L)
+  private val acceptedContextGeneration = AtomicLong(0L)
+  private val acceptedContextSeq = AtomicLong(0L)
+
+  fun currentAccountGeneration(): Long = accountGeneration.get()
+
+  fun bumpAccountGeneration(): Long {
+    val next = accountGeneration.incrementAndGet()
+    prefs.edit().putLong("watch_account_epoch", next).apply()
+    return next
+  }
+
+  fun currentMutationRevision(): Long = localMutationRevision.get()
+
+  internal fun bumpMutationRevision(): Long = localMutationRevision.incrementAndGet()
+
+  fun currentAcceptedContextGeneration(): Long = acceptedContextGeneration.get()
+
+  fun currentAcceptedContextSeq(): Long = acceptedContextSeq.get()
   private var userEditedWeight = false
   private var userEditedBodyFat = false
   private var lastDraftSeedDay: String = ""
@@ -264,13 +358,26 @@ class CheckInStore(private val context: Context) {
   private var baseWatchContext: WatchContext = WatchContext.empty
   private var baseHistory: List<HistoryPoint> = emptyList()
   private var baseMedications: MedicationSnapshot? = null
+  private var baseFast: WatchFast? = null
   private var pendingMedicationTaps: List<PendingMedicationRecord> = emptyList()
   private var failedMedicationDoses: Map<String, String> = emptyMap()
   private var pendingWeightCheckIns: List<PendingWeightRecord> = emptyList()
   private var failedWeightDays: Set<String> = emptySet()
   private var rejectedWeightDraft: RejectedWeightDraft? = null
+  @Volatile private var pendingFastOps: List<PendingFastOp> = emptyList()
+  private var fastSyncOutcomeState: FastSyncOutcomeState = FastSyncOutcomeState()
+  private val fastOpOrderSeq = AtomicLong(0L)
   private var rolloverJob: Job? = null
   private val waterConsumedBaseline = mutableMapOf<String, Double>()
+  private var unreconciledDirectWaterDay: String = ""
+  private var unreconciledDirectWaterIds: Set<String> = emptySet()
+  private var deferredAckedWaterTapIds: Set<String> = emptySet()
+  private var unreconciledDirectFastOwner: String = ""
+  private var unreconciledDirectFastIds: Set<String> = emptySet()
+  private var unreconciledDirectFastWatermarkMs: Long = 0L
+  private var unreconciledDirectMedOverrides: Map<String, UnreconciledDirectMedicationOverride> = emptyMap()
+  private var unreconciledDirectCheckInOverrides: Map<String, UnreconciledDirectCheckInOverride> = emptyMap()
+  private val cancelledWaterTapIds: MutableSet<String> = Collections.synchronizedSet(LinkedHashSet())
 
   private fun newActionToken(): String =
     UUID.randomUUID().toString().replace("-", "").take(12)
@@ -314,9 +421,38 @@ class CheckInStore(private val context: Context) {
   }
 
   init {
-    restorePersistedPendingWater()
-    restorePersistedPendingEdits()
-    restorePersistedContext()
+    accountGeneration.set(max(1L, prefs.getLong("watch_account_epoch", 1L)))
+    acceptedContextGeneration.set(prefs.getLong("last_context_generation", 0L))
+    acceptedContextSeq.set(prefs.getLong("last_context_seq", 0L))
+    val savedCtxGen = acceptedContextGeneration.get()
+    val persistedRawJson = prefs.getString("last_context_json", null)
+    val jsonCtxGen = persistedRawJson?.let { raw ->
+      runCatching { JSONObject(raw).optLong("contextGeneration", 0L) }.getOrDefault(0L)
+    } ?: 0L
+    val startupRestoredGen = maxOf(savedCtxGen, jsonCtxGen)
+    val startupRevokedGen = WearServerCredentialsStore.revocationBarrierGeneration(context)
+    val hasPersistedAccountData =
+      !prefs.getString("context_owner_id", null).isNullOrEmpty() ||
+        !persistedRawJson.isNullOrEmpty() ||
+        !prefs.getString("pending_water_taps", null).isNullOrEmpty() ||
+        !prefs.getString("pending_water_deletes", null).isNullOrEmpty() ||
+        !prefs.getString("pending_med_taps", null).isNullOrEmpty() ||
+        !prefs.getString("pending_weight_checkin", null).isNullOrEmpty() ||
+        !prefs.getString("pending_fast_ops", null).isNullOrEmpty()
+    if (
+      hasPersistedAccountData &&
+      (
+        WearServerCredentialsStore.hasPendingRevocationBarrier(context) ||
+          WearServerCredentialsStore.isPersistedContextRevoked(startupRevokedGen, startupRestoredGen)
+      )
+    ) {
+      clearAccountState(newOwnerId = null)
+    } else {
+      restorePersistedPendingWater()
+      restorePersistedPendingEdits()
+      restorePersistedContext()
+    }
+    recomputeFastOverlay()
     recomputeWaterState()
     recomputeMedicationOverlay()
     recomputeWeightOverlay()
@@ -371,6 +507,9 @@ class CheckInStore(private val context: Context) {
   internal fun activeOwnerId(): String? =
     confirmedOwnerId?.takeIf { it.isNotEmpty() }
       ?: _watchContext.value.workoutServerId?.takeIf { it.isNotEmpty() }
+
+  internal fun currentBaseMedications(): MedicationSnapshot? =
+    if (_watchContext.value.isFeatureOff("medications")) null else baseMedications
 
   fun todaysScheduledWorkouts(): List<ScheduledWorkout> {
     val today = CheckInDate.today()
@@ -520,6 +659,7 @@ class CheckInStore(private val context: Context) {
     userEditedWeight = false
     userEditedBodyFat = false
     recomputeWeightSyncState()
+    bumpMutationRevision()
 
     val payload = OutboundPayloads.checkIn(checkIn, ownerId = ownerId)
     session?.sendWeightCheckIn(payload) { _ -> }
@@ -533,10 +673,17 @@ class CheckInStore(private val context: Context) {
    */
   fun pruneStaleDayData() {
     val today = CheckInDate.today()
+    _localDay.value = today
     val dateChanged = shouldReseedWeightDraft(lastDraftSeedDay, today, rejectedExpired = false)
     val curWater = _water.value
     if (curWater != null && curWater.day != today) {
       _water.value = null
+    }
+    if (unreconciledDirectWaterDay.isNotEmpty() && unreconciledDirectWaterDay != today) {
+      unreconciledDirectWaterDay = ""
+      unreconciledDirectWaterIds = emptySet()
+      deferredAckedWaterTapIds = emptySet()
+      persistUnreconciledDirectWater()
     }
     val curNutrition = _nutrition.value
     if (curNutrition != null && curNutrition.day != today) {
@@ -545,6 +692,7 @@ class CheckInStore(private val context: Context) {
     val curMeds = _medications.value
     if (curMeds != null && curMeds.day != today) {
       _medications.value = null
+      _medicationTilePage.value = 0
     }
     val curSteps = _steps.value
     if (curSteps != null && curSteps.day != today) {
@@ -608,7 +756,12 @@ class CheckInStore(private val context: Context) {
     val ownerId = confirmedOwnerId?.takeIf { it.isNotEmpty() } ?: return
     val today = CheckInDate.today()
     for (tap in _pendingWaterTaps.value) {
-      if (tap.day == today && tap.state == SyncState.QUEUED && tap.ownerId == ownerId) {
+      if (
+        tap.day == today &&
+        tap.state == SyncState.QUEUED &&
+        tap.ownerId == ownerId &&
+        session?.isClientIdInFlight(tap.id) != true
+      ) {
         val payload = OutboundPayloads.waterTap(
           clientId = tap.id,
           entryDate = tap.day,
@@ -619,7 +772,12 @@ class CheckInStore(private val context: Context) {
       }
     }
     for (del in _pendingWaterDeletes.value) {
-      if (del.day == today && del.state == SyncState.QUEUED && del.ownerId == ownerId) {
+      if (
+        del.day == today &&
+        del.state == SyncState.QUEUED &&
+        del.ownerId == ownerId &&
+        session?.isClientIdInFlight(del.id) != true
+      ) {
         val payload = OutboundPayloads.waterDelete(
           clientId = del.id,
           entryId = del.entryId,
@@ -629,10 +787,12 @@ class CheckInStore(private val context: Context) {
       }
     }
     for (med in pendingMedicationTaps) {
-      if (med.day.isNotEmpty() &&
+      if (
+        med.day.isNotEmpty() &&
         med.state == SyncState.QUEUED &&
         !med.superseded &&
-        med.ownerId == ownerId
+        med.ownerId == ownerId &&
+        session?.isClientIdInFlight(med.id) != true
       ) {
         val payload = OutboundPayloads.medicationTaken(
           clientId = med.id,
@@ -646,10 +806,12 @@ class CheckInStore(private val context: Context) {
       }
     }
     for (pendingWeight in pendingWeightCheckIns) {
-      if (pendingWeight.day.isNotEmpty() &&
+      if (
+        pendingWeight.day.isNotEmpty() &&
         pendingWeight.state == SyncState.QUEUED &&
         !pendingWeight.superseded &&
-        pendingWeight.ownerId == ownerId
+        pendingWeight.ownerId == ownerId &&
+        session?.isClientIdInFlight(pendingWeight.id) != true
       ) {
         val payload = OutboundPayloads.checkIn(
           CheckIn(
@@ -661,6 +823,20 @@ class CheckInStore(private val context: Context) {
           ownerId = ownerId
         )
         session?.sendWeightCheckIn(payload) { _ -> }
+      }
+    }
+    flushUnblockedPendingFastOps(ownerId)
+  }
+
+  private fun flushUnblockedPendingFastOps(ownerId: String? = activeOwnerId()) {
+    val activeOwner = ownerId?.takeIf { it.isNotEmpty() } ?: return
+    val dispatchable = selectDispatchablePendingFastOps(pendingFastOps, activeOwner) { cid ->
+      session?.isClientIdInFlight(cid) == true
+    }
+    for (fastOp in dispatchable) {
+      val payload = buildPendingFastOutboundPayload(fastOp)
+      if (payload != null) {
+        session?.sendMessageOrQueue(payload, fastOp.kind)
       }
     }
   }
@@ -683,6 +859,7 @@ class CheckInStore(private val context: Context) {
     _pendingWaterTaps.value = _pendingWaterTaps.value + tap
     persistPendingWater()
     recomputeWaterState()
+    bumpMutationRevision()
     ComplicationUpdater.requestAll(context)
     if (refreshTiles) {
       TileUpdater.requestAll(context)
@@ -698,15 +875,68 @@ class CheckInStore(private val context: Context) {
     Haptics.click()
   }
 
+  internal fun markWaterTapCancelled(tapId: String) {
+    if (tapId.isBlank()) return
+    synchronized(cancelledWaterTapIds) {
+      cancelledWaterTapIds.add(tapId)
+      while (cancelledWaterTapIds.size > 100) {
+        val iter = cancelledWaterTapIds.iterator()
+        if (iter.hasNext()) {
+          iter.next()
+          iter.remove()
+        } else {
+          break
+        }
+      }
+    }
+    persistCancelledWaterTapIds()
+  }
+
+  fun isWaterTapCancelled(tapId: String): Boolean {
+    if (tapId.isBlank()) return false
+    synchronized(cancelledWaterTapIds) {
+      return cancelledWaterTapIds.contains(tapId)
+    }
+  }
+
+  fun consumeWaterTapCancelled(tapId: String): Boolean {
+    if (tapId.isBlank()) return false
+    val removed = synchronized(cancelledWaterTapIds) {
+      cancelledWaterTapIds.remove(tapId)
+    }
+    if (removed) {
+      persistCancelledWaterTapIds()
+    }
+    return removed
+  }
+
+  private fun persistCancelledWaterTapIds() {
+    try {
+      val snapshot = synchronized(cancelledWaterTapIds) { cancelledWaterTapIds.toList() }
+      val ed = prefs.edit()
+      if (snapshot.isEmpty()) {
+        ed.remove("cancelled_water_tap_ids")
+      } else {
+        val arr = JSONArray()
+        for (id in snapshot) arr.put(id)
+        ed.putString("cancelled_water_tap_ids", arr.toString())
+      }
+      ed.apply()
+    } catch (_: Throwable) {}
+  }
+
   fun deleteWaterEntry(entry: WaterLogEntry) {
     val ownerId = activeOwnerId() ?: return
     pruneStaleDayData()
     if (entry.id.startsWith("pending_")) {
       val tapId = entry.id.removePrefix("pending_")
+      markWaterTapCancelled(tapId)
+      session?.cancelWaterTap(tapId, ownerId)
       _pendingWaterTaps.value = _pendingWaterTaps.value.filterNot { it.id == tapId }
       waterConsumedBaseline.remove(tapId)
       persistPendingWater()
       recomputeWaterState()
+      bumpMutationRevision()
       ComplicationUpdater.requestAll(context)
       TileUpdater.requestAll(context)
       Haptics.click()
@@ -725,6 +955,7 @@ class CheckInStore(private val context: Context) {
     _pendingWaterDeletes.value = _pendingWaterDeletes.value + del
     persistPendingWater()
     recomputeWaterState()
+    bumpMutationRevision()
     ComplicationUpdater.requestAll(context)
     TileUpdater.requestAll(context)
 
@@ -738,7 +969,7 @@ class CheckInStore(private val context: Context) {
   }
 
   fun deleteLastWaterEntry() {
-    val lastEntry = _waterLogEntries.value.lastOrNull() ?: return
+    val lastEntry = selectLatestWaterEntryForUndo(_waterLogEntries.value) ?: return
     deleteWaterEntry(lastEntry)
   }
 
@@ -764,6 +995,7 @@ class CheckInStore(private val context: Context) {
       _pendingWaterTaps.value = updated
       persistPendingWater()
       recomputeWaterState()
+      bumpMutationRevision()
       ComplicationUpdater.requestAll(context)
       if (refreshTiles) {
         TileUpdater.requestAll(context)
@@ -771,7 +1003,56 @@ class CheckInStore(private val context: Context) {
     }
   }
 
-  fun acknowledge(clientId: String, ok: Boolean, deferRecompute: Boolean = false) {
+  internal fun revertDirectRejection(clientId: String) {
+    acknowledge(clientId, ok = false)
+  }
+
+  fun acknowledge(
+    clientId: String,
+    ok: Boolean,
+    deferRecompute: Boolean = false,
+    fastKnown: Boolean = false,
+    settledFast: WatchFast? = null
+  ) {
+    if (!deferRecompute) {
+      bumpMutationRevision()
+    }
+    val matchedFastOp = pendingFastOps.firstOrNull { it.clientId == clientId }
+    if (matchedFastOp != null) {
+      pendingFastOps = settlePendingFastOp(pendingFastOps, clientId)
+      fastSyncOutcomeState = applyFastOpOutcome(
+        state = fastSyncOutcomeState,
+        opOrderSeq = matchedFastOp.orderSeq,
+        ok = ok
+      )
+      if (!deferRecompute) {
+        val (nextBaseFast, shouldPersistFast) = resolveFastForAck(
+          currentBaseFast = baseFast,
+          matchedOp = matchedFastOp,
+          ok = ok,
+          fastKnown = fastKnown,
+          settledFast = settledFast
+        )
+        if (shouldPersistFast) {
+          baseFast = nextBaseFast
+          baseWatchContext = baseWatchContext.copy(fast = nextBaseFast, fastSynced = true)
+          val patchedJson = buildPatchedContextJsonString(
+            ackedClientId = clientId,
+            fastUpdated = true,
+            fast = nextBaseFast
+          )
+          if (patchedJson != null) {
+            persistPendingFastOpsAndContextAtomically(patchedJson)
+          }
+        } else {
+          persistPendingFastOps()
+        }
+        recomputeFastOverlay()
+        flushUnblockedPendingFastOps()
+        ComplicationUpdater.requestAll(context)
+        TileUpdater.requestAll(context)
+      }
+    }
     val weightOutcome = applyWeightAcknowledgement(pendingWeightCheckIns, clientId, ok)
     val matchedWeight = weightOutcome.matched
     if (matchedWeight != null) {
@@ -865,19 +1146,469 @@ class CheckInStore(private val context: Context) {
     }
   }
 
+  /**
+   * Settles a direct watch → server write outcome immediately into local
+   * snapshots, persisted context JSON, complications, and tiles.
+   */
+  fun applyDirectWriteOutcome(clientId: String, outcome: DirectWriteOutcome.Applied) {
+    bumpMutationRevision()
+    val today = CheckInDate.today()
+    val matchesToday = outcome.entryDate == today
+    if (matchesToday && outcome.medicationDoseId != null && outcome.medicationStatus != null) {
+      val snap = baseMedications
+      if (snap != null && snap.day == today) {
+        baseMedications = snap.copy(
+          doses = snap.doses.map { d ->
+            if (d.id == outcome.medicationDoseId) d.copy(status = outcome.medicationStatus) else d
+          }
+        )
+      }
+    }
+    if (matchesToday && (outcome.waterMl != null || outcome.waterLog != null || outcome.deletedWaterEntryId != null)) {
+      val prev = _water.value?.takeIf { it.isToday }
+      val nextLog = outcome.waterLog ?: prev?.log.orEmpty().let { existing ->
+        if (outcome.deletedWaterEntryId != null) {
+          existing.filterNot { it.id == outcome.deletedWaterEntryId }
+        } else {
+          existing
+        }
+      }
+      val nextConsumedMl = resolveWaterConsumedMlAfterDirectOutcome(prev, outcome)
+      _water.value = WaterSnapshot(
+        day = today,
+        consumedMl = nextConsumedMl,
+        fromFoodMl = prev?.fromFoodMl,
+        log = nextLog
+      )
+    }
+    val prevBaseFastStartedAtMs = baseFast?.startedAtMs ?: 0L
+    if (outcome.fastUpdated) {
+      baseFast = outcome.fast
+    }
+    val fastOpMatched = clientId.isNotEmpty() && pendingFastOps.any { it.clientId == clientId }
+    if (clientId.isNotEmpty()) {
+      acknowledge(clientId, ok = true, deferRecompute = true)
+    }
+    if (outcome.fastUpdated) {
+      if (outcome.syncedDomain == "fasting" && clientId.isNotEmpty()) {
+        val ownerId = activeOwnerId().orEmpty()
+        val (nextOwner, nextFastIds) = recordUnreconciledDirectFastId(
+          currentOwner = unreconciledDirectFastOwner,
+          currentIds = unreconciledDirectFastIds,
+          ownerId = ownerId,
+          clientId = clientId
+        )
+        val sameOwner = unreconciledDirectFastOwner == nextOwner
+        val baseWatermark = if (sameOwner) unreconciledDirectFastWatermarkMs else 0L
+        unreconciledDirectFastOwner = nextOwner
+        unreconciledDirectFastIds = nextFastIds
+        unreconciledDirectFastWatermarkMs = maxOf(
+          baseWatermark,
+          outcome.fast?.startedAtMs ?: 0L,
+          prevBaseFastStartedAtMs
+        )
+        persistUnreconciledDirectFast()
+      }
+      recomputeFastOverlay()
+    }
+    if (matchesToday && outcome.syncedDomain == "medications" && clientId.isNotEmpty() &&
+      outcome.medicationDoseId != null && outcome.medicationStatus != null
+    ) {
+      val ownerId = activeOwnerId().orEmpty()
+      unreconciledDirectMedOverrides = recordUnreconciledDirectMedicationOverride(
+        existing = unreconciledDirectMedOverrides,
+        ownerId = ownerId,
+        day = today,
+        clientId = clientId,
+        doseId = outcome.medicationDoseId,
+        status = outcome.medicationStatus
+      )
+      persistUnreconciledDirectMedOverrides()
+    }
+    if (outcome.syncedDomain == "checkIn" && clientId.isNotEmpty() &&
+      !outcome.entryDate.isNullOrBlank() && outcome.weightKg != null && outcome.weightKg > 0.0
+    ) {
+      val ownerId = activeOwnerId().orEmpty()
+      unreconciledDirectCheckInOverrides = recordUnreconciledDirectCheckInOverride(
+        existing = unreconciledDirectCheckInOverrides,
+        ownerId = ownerId,
+        day = outcome.entryDate,
+        clientId = clientId,
+        weightKg = outcome.weightKg,
+        bodyFatPercentage = outcome.bodyFatPercentage
+      )
+      persistUnreconciledDirectCheckInOverrides()
+    }
+    if (matchesToday && outcome.syncedDomain == "water" && clientId.isNotEmpty() &&
+      (outcome.waterMl != null || outcome.waterLog != null || outcome.deletedWaterEntryId != null)
+    ) {
+      val (nextDay, nextIds) = recordUnreconciledDirectWaterId(
+        currentDay = unreconciledDirectWaterDay,
+        currentIds = unreconciledDirectWaterIds,
+        today = today,
+        clientId = clientId
+      )
+      if (unreconciledDirectWaterDay.isNotEmpty() && unreconciledDirectWaterDay != nextDay) {
+        deferredAckedWaterTapIds = emptySet()
+      }
+      unreconciledDirectWaterDay = nextDay
+      unreconciledDirectWaterIds = nextIds
+      persistUnreconciledDirectWater()
+    }
+    if (matchesToday && outcome.syncedDomain == "water") {
+      val (settledTaps, changed) = settleDirectWaterTapsForOutcome(
+        existingTaps = _pendingWaterTaps.value,
+        baselines = waterConsumedBaseline,
+        day = today,
+        outcome = outcome
+      )
+      if (changed) {
+        _pendingWaterTaps.value = settledTaps
+        persistPendingWater()
+      }
+    }
+    val (settledCtx, settledHistory) = applyDirectOutcomeToBaseState(
+      baseCtx = baseWatchContext,
+      baseHist = baseHistory,
+      clientId = clientId,
+      outcome = outcome,
+      today = today
+    )
+    baseWatchContext = if (outcome.fastUpdated) {
+      settledCtx.copy(fast = baseFast, fastSynced = true)
+    } else {
+      settledCtx
+    }
+    baseHistory = settledHistory
+    val contextPatched = patchPersistedContextJson(
+      ackedClientId = clientId.takeIf { it.isNotEmpty() },
+      entryDate = outcome.entryDate,
+      localToday = today,
+      hasCheckIn = outcome.syncedDomain == "checkIn",
+      checkInWeightKg = outcome.weightKg,
+      checkInBodyFat = outcome.bodyFatPercentage,
+      waterConsumedMl = if (matchesToday) outcome.waterMl else null,
+      waterLog = if (matchesToday) outcome.waterLog else null,
+      deletedWaterEntryId = if (matchesToday) outcome.deletedWaterEntryId else null,
+      medicationDoseId = if (matchesToday) outcome.medicationDoseId else null,
+      medicationStatus = if (matchesToday) outcome.medicationStatus else null,
+      fastUpdated = outcome.fastUpdated,
+      fast = baseFast,
+      alsoPersistPendingFastOps = fastOpMatched
+    )
+    if (fastOpMatched && !contextPatched && !outcome.fastUpdated) {
+      persistPendingFastOps()
+    }
+    recomputeMedicationOverlay()
+    recomputeWeightOverlay()
+    recomputeWeightSyncState()
+    recomputeWaterState()
+    if (fastOpMatched) {
+      flushUnblockedPendingFastOps()
+    }
+    ComplicationUpdater.requestAll(context)
+    TileUpdater.requestAll(context)
+    if (shouldForceWaterRefreshAfterDirectOutcome(matchesToday, outcome)) {
+      session?.refreshLiveFromServerThrottled(force = true)
+    }
+  }
+
+  fun currentBaseNutrition(): NutritionSnapshot? = baseWatchContext.nutrition
+
+  fun currentBaseWater(): WaterSnapshot? = baseWatchContext.water
+
+  /**
+   * Merges a direct watch → server live refresh into the store while preserving
+   * phone-sourced UI settings and sleep.
+   */
+  fun applyDirectServerRefresh(snapshot: DirectLiveSnapshot) {
+    val ownerId = activeOwnerId() ?: return
+    if (snapshot.ownerId != ownerId || snapshot.day != CheckInDate.today()) return
+
+    snapshot.waterGoalMl?.takeIf { it > 0.0 }?.let { goalMl ->
+      _waterGoalMl.value = goalMl
+      baseWatchContext = baseWatchContext.copy(waterGoalMl = goalMl)
+    }
+    snapshot.waterContainers?.let { containers ->
+      _waterContainers.value = containers
+      baseWatchContext = applyRefreshedContainersToBaseContext(baseWatchContext, containers)
+    }
+    if (snapshot.waterConsumedMl != null || snapshot.waterLog != null || snapshot.waterFromFoodMl != null) {
+      val prev = _water.value?.takeIf { it.isToday }
+      _water.value = WaterSnapshot(
+        day = snapshot.day,
+        consumedMl = snapshot.waterConsumedMl ?: prev?.consumedMl ?: 0.0,
+        fromFoodMl = snapshot.waterFromFoodMl ?: prev?.fromFoodMl,
+        log = snapshot.waterLog ?: prev?.log.orEmpty()
+      )
+    }
+    snapshot.nutrition?.takeIf { it.day == snapshot.day }?.let { nut ->
+      _nutrition.value = nut
+      baseWatchContext = baseWatchContext.copy(nutrition = nut)
+    }
+    snapshot.exerciseSummary?.takeIf { it.day == snapshot.day }?.let { ex ->
+      _exerciseSummary.value = ex
+      baseWatchContext = baseWatchContext.copy(exerciseSummary = ex)
+    }
+    snapshot.steps?.takeIf { it.day == snapshot.day }?.let { st ->
+      _steps.value = st
+      baseWatchContext = baseWatchContext.copy(steps = st)
+    }
+    snapshot.stepGoal?.takeIf { it > 0 }?.let { goal ->
+      _stepGoal.value = goal
+      baseWatchContext = baseWatchContext.copy(stepGoal = goal)
+    }
+    if (snapshot.waterConsumedMl != null) {
+      val (settledTaps, tapsChanged) = settleLogConfirmedWaterTapsOnRefresh(
+        existingTaps = _pendingWaterTaps.value,
+        baselines = waterConsumedBaseline,
+        day = snapshot.day,
+        hasAuthoritativeWaterMl = true
+      )
+      if (tapsChanged) {
+        _pendingWaterTaps.value = settledTaps
+        persistPendingWater()
+      }
+    }
+    val medicationsOff = _watchContext.value.isFeatureOff("medications")
+    if (!medicationsOff) {
+      if (snapshot.medications != null && snapshot.medications.day == snapshot.day) {
+        baseMedications = snapshot.medications
+        baseWatchContext = baseWatchContext.copy(medications = snapshot.medications)
+      } else if (snapshot.medicationStatusesByDoseId != null) {
+        val curBaseMeds = baseMedications
+        if (curBaseMeds != null && curBaseMeds.day == snapshot.day) {
+          val updatedMeds = curBaseMeds.copy(
+            doses = curBaseMeds.doses.map { d ->
+              val serverStatus = snapshot.medicationStatusesByDoseId[d.id]
+              if (serverStatus != null) d.copy(status = serverStatus) else d
+            }
+          )
+          baseMedications = updatedMeds
+          baseWatchContext = baseWatchContext.copy(medications = updatedMeds)
+        }
+      }
+    }
+    if (snapshot.history != null) {
+      val prevHistory = baseHistory
+      val prevBodyFatHistory = baseWatchContext.bodyFatHistory
+      val mergedHistory = mergeDirectRefreshHistory(
+        existing = prevHistory,
+        refreshed = snapshot.history,
+        snapshotDay = snapshot.day
+      )
+      val mergedBodyFatHistory = snapshot.bodyFatHistory?.let { refreshedBf ->
+        mergeDirectRefreshHistory(
+          existing = prevBodyFatHistory,
+          refreshed = refreshedBf,
+          snapshotDay = snapshot.day
+        )
+      } ?: prevBodyFatHistory
+      val resolvedLast = resolveLastMetricsAfterDirectRefresh(
+        snapshotDay = snapshot.day,
+        todayBodyFatPercentage = snapshot.todayBodyFatPercentage,
+        mergedHistory = mergedHistory,
+        mergedBodyFatHistory = mergedBodyFatHistory,
+        prevHistory = prevHistory,
+        prevBodyFatHistory = prevBodyFatHistory,
+        prevLastWeightKg = baseWatchContext.lastWeightKg,
+        prevLastEntryDate = baseWatchContext.lastEntryDate,
+        prevLastBodyFatPercentage = baseWatchContext.lastBodyFatPercentage,
+        prevLastBodyFatDate = baseWatchContext.lastBodyFatDate,
+        prevToday = baseWatchContext.today,
+        prevTodayBodyFatPercentage = baseWatchContext.todayBodyFatPercentage
+      )
+      baseHistory = mergedHistory
+      baseWatchContext = baseWatchContext.copy(
+        today = snapshot.day,
+        todayWeightKg = snapshot.todayWeightKg,
+        todayBodyFatPercentage = snapshot.todayBodyFatPercentage,
+        lastWeightKg = resolvedLast.lastWeightKg,
+        lastBodyFatPercentage = resolvedLast.lastBodyFatPercentage,
+        lastBodyFatDate = resolvedLast.lastBodyFatDate,
+        lastEntryDate = resolvedLast.lastEntryDate,
+        history = mergedHistory,
+        bodyFatHistory = mergedBodyFatHistory
+      )
+    }
+    val (nextFast, applyFastFromRefresh) = resolveFastForLiveRefresh(
+      currentFast = _fast.value,
+      snapshot = snapshot,
+      pendingFastOps = pendingFastOps,
+      ownerId = ownerId
+    )
+    if (applyFastFromRefresh) {
+      baseFast = nextFast
+      baseWatchContext = baseWatchContext.copy(fast = nextFast, fastSynced = true)
+      _fast.value = nextFast
+      fastSyncOutcomeState = FastSyncOutcomeState()
+      _fastSyncState.value = resolveFastSyncState(ownerPendingCount = 0, fastSyncFailed = false)
+      // Keep unreconciledDirectFastIds / unreconciledDirectFastOwner intact until the phone
+      // acknowledges those direct fast clientIds (or pushes an independently newer fast), so a
+      // delayed stale phone context arriving after a direct fastEnd + direct server refresh
+      // cannot resurrect the ended fast.
+      val updatedWatermark = resolveUnreconciledDirectFastWatermarkAfterRefresh(
+        unreconciledOwner = unreconciledDirectFastOwner,
+        unreconciledIds = unreconciledDirectFastIds,
+        currentWatermarkMs = unreconciledDirectFastWatermarkMs,
+        refreshOwnerId = ownerId,
+        refreshedFast = nextFast
+      )
+      if (updatedWatermark != unreconciledDirectFastWatermarkMs) {
+        unreconciledDirectFastWatermarkMs = updatedWatermark
+        persistUnreconciledDirectFast()
+      }
+    }
+    patchPersistedContextJson(
+      ackedClientId = null,
+      entryDate = snapshot.day,
+      localToday = snapshot.day,
+      waterConsumedMl = snapshot.waterConsumedMl,
+      waterLog = snapshot.waterLog,
+      medicationStatuses = if (medicationsOff) null else snapshot.medicationStatusesByDoseId,
+      refreshedMedications = if (medicationsOff) null else snapshot.medications,
+      fastUpdated = applyFastFromRefresh,
+      fast = if (applyFastFromRefresh) nextFast else null,
+      bodyFatHistory = snapshot.bodyFatHistory,
+      refreshedSnapshot = snapshot
+    )
+    if (!medicationsOff) {
+      recomputeMedicationOverlay()
+    }
+    recomputeWeightOverlay()
+    recomputeWeightSyncState()
+    reseedDraftFromCurrentState(ownerId)
+    recomputeWaterState()
+    ComplicationUpdater.requestAll(context)
+    TileUpdater.requestAll(context)
+  }
+
+  private fun buildPatchedContextJsonString(
+    ackedClientId: String?,
+    entryDate: String? = null,
+    localToday: String = CheckInDate.today(),
+    hasCheckIn: Boolean = false,
+    checkInWeightKg: Double? = null,
+    checkInBodyFat: Double? = null,
+    waterConsumedMl: Double? = null,
+    waterLog: List<WaterLogEntry>? = null,
+    deletedWaterEntryId: String? = null,
+    medicationDoseId: String? = null,
+    medicationStatus: MedicationDoseStatus? = null,
+    medicationStatuses: Map<String, MedicationDoseStatus>? = null,
+    refreshedMedications: MedicationSnapshot? = null,
+    fastUpdated: Boolean = false,
+    fast: WatchFast? = null,
+    bodyFatHistory: List<HistoryPoint>? = null,
+    refreshedSnapshot: DirectLiveSnapshot? = null
+  ): String? {
+    val raw = prefs.getString("last_context_json", null) ?: return null
+    return try {
+      val obj = JSONObject(raw)
+      patchContextJsonObject(
+        obj = obj,
+        ackedClientId = ackedClientId,
+        entryDate = entryDate,
+        localToday = localToday,
+        hasCheckIn = hasCheckIn,
+        checkInWeightKg = checkInWeightKg,
+        checkInBodyFat = checkInBodyFat,
+        waterConsumedMl = waterConsumedMl,
+        waterLog = waterLog,
+        deletedWaterEntryId = deletedWaterEntryId,
+        medicationDoseId = medicationDoseId,
+        medicationStatus = medicationStatus,
+        medicationStatuses = medicationStatuses,
+        refreshedMedications = refreshedMedications,
+        fastUpdated = fastUpdated,
+        fast = fast,
+        bodyFatHistory = bodyFatHistory,
+        refreshedSnapshot = refreshedSnapshot
+      )
+      obj.toString()
+    } catch (_: Throwable) {
+      null
+    }
+  }
+
+  private fun writePendingFastOpsToEditor(editor: android.content.SharedPreferences.Editor) {
+    editor.remove("pending_fast_client_ids")
+    if (pendingFastOps.isEmpty()) {
+      editor.remove("pending_fast_ops")
+    } else {
+      editor.putString("pending_fast_ops", serializePendingFastOps(pendingFastOps))
+    }
+  }
+
+  private fun persistPendingFastOpsAndContextAtomically(patchedContextJson: String) {
+    try {
+      val editor = prefs.edit().putString("last_context_json", patchedContextJson)
+      writePendingFastOpsToEditor(editor)
+      editor.apply()
+    } catch (_: Throwable) {}
+  }
+
+  private fun patchPersistedContextJson(
+    ackedClientId: String?,
+    entryDate: String? = null,
+    localToday: String = CheckInDate.today(),
+    hasCheckIn: Boolean = false,
+    checkInWeightKg: Double? = null,
+    checkInBodyFat: Double? = null,
+    waterConsumedMl: Double? = null,
+    waterLog: List<WaterLogEntry>? = null,
+    deletedWaterEntryId: String? = null,
+    medicationDoseId: String? = null,
+    medicationStatus: MedicationDoseStatus? = null,
+    medicationStatuses: Map<String, MedicationDoseStatus>? = null,
+    refreshedMedications: MedicationSnapshot? = null,
+    fastUpdated: Boolean = false,
+    fast: WatchFast? = null,
+    bodyFatHistory: List<HistoryPoint>? = null,
+    refreshedSnapshot: DirectLiveSnapshot? = null,
+    alsoPersistPendingFastOps: Boolean = false
+  ): Boolean {
+    val patched = buildPatchedContextJsonString(
+      ackedClientId = ackedClientId,
+      entryDate = entryDate,
+      localToday = localToday,
+      hasCheckIn = hasCheckIn,
+      checkInWeightKg = checkInWeightKg,
+      checkInBodyFat = checkInBodyFat,
+      waterConsumedMl = waterConsumedMl,
+      waterLog = waterLog,
+      deletedWaterEntryId = deletedWaterEntryId,
+      medicationDoseId = medicationDoseId,
+      medicationStatus = medicationStatus,
+      medicationStatuses = medicationStatuses,
+      refreshedMedications = refreshedMedications,
+      fastUpdated = fastUpdated,
+      fast = fast,
+      bodyFatHistory = bodyFatHistory,
+      refreshedSnapshot = refreshedSnapshot
+    ) ?: return false
+    return try {
+      val editor = prefs.edit().putString("last_context_json", patched)
+      if (alsoPersistPendingFastOps) {
+        writePendingFastOpsToEditor(editor)
+      }
+      editor.apply()
+      true
+    } catch (_: Throwable) {
+      false
+    }
+  }
+
   private fun recomputeWaterState() {
     val todaySnap = _water.value?.takeIf { it.isToday }
     val serverMl = todaySnap?.consumedMl ?: 0.0
 
-    // Settle SAVED taps once server consumedMl has advanced past their baseline
+    // Settle non-logConfirmed SAVED taps once server consumedMl has advanced past their baseline
     val remainingTaps = _pendingWaterTaps.value.filter { tap ->
       if (!tap.isToday) return@filter false
-      if (tap.state == SyncState.SAVED) {
-        val baseline = waterConsumedBaseline[tap.id]
-        if (baseline != null && serverMl >= baseline + tap.volumeMl * 0.5) {
-          waterConsumedBaseline.remove(tap.id)
-          return@filter false
-        }
+      if (shouldSettleSavedTapByBaseline(tap, waterConsumedBaseline[tap.id], serverMl)) {
+        waterConsumedBaseline.remove(tap.id)
+        return@filter false
       }
       true
     }
@@ -912,9 +1643,9 @@ class CheckInStore(private val context: Context) {
 
     val deletedIds = remainingDeletes.map { it.entryId }.toSet()
     val baseLog = todaySnap?.log.orEmpty().filterNot { deletedIds.contains(it.id) }
-    val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
-    val pendingLog = remainingTaps
-      .filter { it.state != SyncState.FAILED }
+    val activeTimeFormat = _watchContext.value.timeFormat
+    val pendingLog = filterPendingWaterLogTaps(remainingTaps)
+      .sortedByDescending { it.createdAtMs }
       .map { tap ->
         val name = tap.containerName.ifBlank {
           _waterContainers.value.firstOrNull { it.id == tap.containerId }?.name
@@ -924,10 +1655,11 @@ class CheckInStore(private val context: Context) {
           id = "pending_${tap.id}",
           name = name,
           volumeMl = tap.volumeMl,
-          time = timeFmt.format(Date(tap.createdAtMs))
+          time = WearDirectApiClient.formatWaterLogTimestamp(tap.createdAtMs, activeTimeFormat),
+          loggedAtMs = tap.createdAtMs.takeIf { it > 0L }
         )
       }
-    _waterLogEntries.value = baseLog + pendingLog
+    _waterLogEntries.value = combineWaterLogNewestFirst(pendingLog, baseLog)
 
     _waterSyncState.value = when {
       remainingTaps.any { it.state == SyncState.FAILED } -> SyncState.FAILED
@@ -940,6 +1672,7 @@ class CheckInStore(private val context: Context) {
    * Toggles a scheduled medication dose between taken and pending and queues the mutation to the phone.
    */
   fun toggleMedication(dose: MedicationDose, refreshTiles: Boolean = true) {
+    if (_watchContext.value.isFeatureOff("medications")) return
     val ownerId = activeOwnerId() ?: return
     val cur = _medications.value?.takeIf { it.isToday } ?: return
     val currentDose = cur.doses.firstOrNull { it.id == dose.id } ?: return
@@ -964,6 +1697,7 @@ class CheckInStore(private val context: Context) {
     pendingMedicationTaps = appendQueuedMedicationRecord(pendingMedicationTaps, record)
     persistPendingMedications()
     recomputeMedicationOverlay()
+    bumpMutationRevision()
     ComplicationUpdater.requestAll(context)
     if (refreshTiles) {
       TileUpdater.requestAll(context)
@@ -1136,15 +1870,53 @@ class CheckInStore(private val context: Context) {
     }
   }
 
+  private fun recomputeFastOverlay() {
+    val ownerId = activeOwnerId()
+    val ownerPending = pendingFastOps.filter { ownerId == null || it.ownerId == ownerId }
+    val activeOp = ownerPending.lastOrNull()
+    _fast.value = if (activeOp != null) activeOp.toOptimisticWatchFast() else baseFast
+    _fastSyncState.value = resolveFastSyncState(
+      ownerPendingCount = ownerPending.size,
+      fastSyncFailed = fastSyncOutcomeState.isFailed
+    )
+  }
+
   fun endFast() {
     val ownerId = activeOwnerId() ?: return
-    if (_fast.value == null) return
-    _fast.value = null
-    ComplicationUpdater.requestAll(context)
-    session?.sendMessageOrQueue(
-      OutboundPayloads.fastEnd(UUID.randomUUID().toString(), ownerId = ownerId),
-      "fastEnd"
+    val currentFast = _fast.value ?: return
+    val endedAtMs = System.currentTimeMillis()
+    val clientId = UUID.randomUUID().toString()
+    if (!canEnqueuePendingFastOp(pendingFastOps, ownerId, clientId)) {
+      fastSyncOutcomeState = applyFastOpOutcome(
+        state = fastSyncOutcomeState,
+        opOrderSeq = fastOpOrderSeq.incrementAndGet(),
+        ok = false
+      )
+      _fastSyncState.value = SyncState.FAILED
+      Haptics.failure()
+      return
+    }
+    val op = PendingFastOp(
+      clientId = clientId,
+      ownerId = ownerId,
+      kind = "fastEnd",
+      startedAtMs = currentFast.startedAtMs,
+      fastId = currentFast.id,
+      endedAtMs = endedAtMs,
+      orderSeq = fastOpOrderSeq.incrementAndGet()
     )
+    fastSyncOutcomeState = FastSyncOutcomeState()
+    pendingFastOps = recordPendingFastOp(pendingFastOps, op)
+    persistPendingFastOps()
+    _fastSyncState.value = SyncState.QUEUED
+    _fast.value = null
+    bumpMutationRevision()
+    ComplicationUpdater.requestAll(context)
+    if (!hasEarlierUnsettledFastOp(pendingFastOps, ownerId, op.clientId)) {
+      buildPendingFastOutboundPayload(op)?.let { payload ->
+        session?.sendMessageOrQueue(payload, "fastEnd")
+      }
+    }
     Haptics.stop()
   }
 
@@ -1152,20 +1924,42 @@ class CheckInStore(private val context: Context) {
     val ownerId = activeOwnerId() ?: return
     val nowMs = System.currentTimeMillis()
     val targetMs = nowMs + (hours * 3600_000.0).toLong()
+    val clientId = UUID.randomUUID().toString()
+    if (!canEnqueuePendingFastOp(pendingFastOps, ownerId, clientId)) {
+      fastSyncOutcomeState = applyFastOpOutcome(
+        state = fastSyncOutcomeState,
+        opOrderSeq = fastOpOrderSeq.incrementAndGet(),
+        ok = false
+      )
+      _fastSyncState.value = SyncState.FAILED
+      Haptics.failure()
+      return
+    }
+    val op = PendingFastOp(
+      clientId = clientId,
+      ownerId = ownerId,
+      kind = "fastStart",
+      presetId = presetId,
+      hours = hours,
+      startedAtMs = nowMs,
+      orderSeq = fastOpOrderSeq.incrementAndGet()
+    )
+    fastSyncOutcomeState = FastSyncOutcomeState()
+    pendingFastOps = recordPendingFastOp(pendingFastOps, op)
+    persistPendingFastOps()
+    _fastSyncState.value = SyncState.QUEUED
     _fast.value = WatchFast(
       startedAtMs = nowMs,
       targetEndAtMs = targetMs,
       label = presetId
     )
+    bumpMutationRevision()
     ComplicationUpdater.requestAll(context)
-    session?.sendMessageOrQueue(
-      OutboundPayloads.fastStart(
-        presetId = presetId,
-        clientId = UUID.randomUUID().toString(),
-        ownerId = ownerId
-      ),
-      "fastStart"
-    )
+    if (!hasEarlierUnsettledFastOp(pendingFastOps, ownerId, op.clientId)) {
+      buildPendingFastOutboundPayload(op)?.let { payload ->
+        session?.sendMessageOrQueue(payload, "fastStart")
+      }
+    }
     Haptics.start()
   }
 
@@ -1181,20 +1975,60 @@ class CheckInStore(private val context: Context) {
     }
   }
 
+  fun hasPendingFastStartBefore(ownerId: String, endClientId: String): Boolean =
+    hasPendingFastStartBefore(pendingFastOps, ownerId, endClientId)
+
+  fun hasEarlierUnsettledFastOp(ownerId: String, clientId: String): Boolean =
+    hasEarlierUnsettledFastOp(pendingFastOps, ownerId, clientId)
+
   /**
    * Resets all cached account state, snapshots, and persisted preferences on sign-out or account switch.
+   * Returns the highest retired account generation (`newGen - 1L`).
    */
-  fun clearAccountState(newOwnerId: String? = null) {
+  fun clearAccountState(
+    newOwnerId: String? = null,
+    expectedCredentialWriteId: Long? = null
+  ): Long {
+    val nextGen = bumpAccountGeneration()
+    bumpMutationRevision()
+    val storedCredOwner = WearServerCredentialsStore.storedOwnerId(context)
+    if (
+      newOwnerId.isNullOrEmpty() ||
+      (storedCredOwner != null && storedCredOwner != newOwnerId)
+    ) {
+      val matchedWriteId = WearServerCredentialsStore.disableCredentialsInMemoryIfWriteIdMatches(
+        context = context,
+        expectedWriteId = expectedCredentialWriteId
+      )
+      if (matchedWriteId != null) {
+        scope.launch(Dispatchers.IO) {
+          if (matchedWriteId > 0L) {
+            WearServerCredentialsStore.clearIfWriteIdMatches(context, matchedWriteId)
+          } else if (newOwnerId.isNullOrEmpty()) {
+            WearServerCredentialsStore.tryClearForRevocation(
+              context = context,
+              generation = null,
+              activeContextGeneration = 0L,
+              expectedWriteId = matchedWriteId
+            )
+          }
+        }
+      }
+    }
     confirmedOwnerId = newOwnerId?.takeIf { it.isNotEmpty() }
     accountActionToken = if (confirmedOwnerId != null) newActionToken() else ""
+    acceptedContextSeq.set(0L)
     baseWatchContext = WatchContext.empty
     baseHistory = emptyList()
     baseMedications = null
+    baseFast = null
     pendingMedicationTaps = emptyList()
     failedMedicationDoses = emptyMap()
     pendingWeightCheckIns = emptyList()
     failedWeightDays = emptySet()
     rejectedWeightDraft = null
+    pendingFastOps = emptyList()
+    fastSyncOutcomeState = FastSyncOutcomeState()
     _watchContext.value = WatchContext.empty
     _history.value = emptyList()
     _water.value = null
@@ -1205,11 +2039,14 @@ class CheckInStore(private val context: Context) {
     _waterLogEntries.value = emptyList()
     _waterSyncState.value = SyncState.SAVED
     _waterContainers.value = emptyList()
+    _waterTilePage.value = 0
+    _medicationTilePage.value = 0
     _nutrition.value = null
     _medications.value = null
     _startableWorkouts.value = emptyList()
     _scheduledWorkouts.value = emptyList()
     _fast.value = null
+    _fastSyncState.value = SyncState.SAVED
     _steps.value = null
     _sleep.value = null
     _exerciseSummary.value = null
@@ -1221,14 +2058,37 @@ class CheckInStore(private val context: Context) {
     lastDraftSeedDay = ""
     _syncState.value = SyncState.SAVED
     waterConsumedBaseline.clear()
+    unreconciledDirectWaterDay = ""
+    unreconciledDirectWaterIds = emptySet()
+    deferredAckedWaterTapIds = emptySet()
+    unreconciledDirectFastOwner = ""
+    unreconciledDirectFastIds = emptySet()
+    unreconciledDirectFastWatermarkMs = 0L
+    unreconciledDirectMedOverrides = emptyMap()
+    unreconciledDirectCheckInOverrides = emptyMap()
+    synchronized(cancelledWaterTapIds) {
+      cancelledWaterTapIds.clear()
+    }
     val editor = prefs.edit()
       .remove("last_context_json")
+      .remove("last_context_seq")
       .remove("pending_water_taps")
       .remove("pending_water_deletes")
+      .remove("unreconciled_direct_water_day")
+      .remove("unreconciled_direct_water_ids")
+      .remove("deferred_acked_water_tap_ids")
+      .remove("unreconciled_direct_fast_owner")
+      .remove("unreconciled_direct_fast_ids")
+      .remove("unreconciled_direct_fast_watermark_ms")
+      .remove("unreconciled_direct_med_overrides")
+      .remove("unreconciled_direct_checkin_overrides")
+      .remove("cancelled_water_tap_ids")
       .remove("pending_med_taps")
       .remove("pending_weight_checkin")
       .remove("failed_weight_days")
       .remove("rejected_weight_draft")
+      .remove("pending_fast_ops")
+      .remove("pending_fast_client_ids")
     if (confirmedOwnerId != null) {
       editor.putString("context_owner_id", confirmedOwnerId)
       editor.putString("account_action_token", accountActionToken)
@@ -1239,6 +2099,7 @@ class CheckInStore(private val context: Context) {
     editor.apply()
     ComplicationUpdater.requestAll(context)
     TileUpdater.requestAll(context)
+    return nextGen - 1L
   }
 
   /**
@@ -1246,71 +2107,310 @@ class CheckInStore(private val context: Context) {
    */
   fun applyRemoteContextJson(obj: JSONObject, rawJson: String? = null) {
     val incomingOwner = obj.optStringOrNull("workoutServerId")?.takeIf { it.isNotEmpty() }
-    val storedOwner = prefs.getString("context_owner_id", null)?.takeIf { it.isNotEmpty() }
+    val storedOwner = confirmedOwnerId ?: prefs.getString("context_owner_id", null)?.takeIf { it.isNotEmpty() }
+    val hadConfirmedOwner = !storedOwner.isNullOrEmpty() && storedOwner == incomingOwner
+    val hasContextGen = obj.has("contextGeneration")
+    val incomingContextGen = obj.optLong("contextGeneration", 0L)
+    val incomingContextSeq = obj.optLong("contextSeq", 0L)
     if (rawJson != null) {
+      val prevAcceptedGen = acceptedContextGeneration.get()
+      val prevAcceptedSeq = acceptedContextSeq.get()
+      val requireStrictlyNewer = storedOwner != null && incomingOwner != storedOwner
+      if (
+        !WearServerCredentialsStore.shouldAcceptRemoteContext(
+          context = context,
+          hasContextGeneration = hasContextGen,
+          incomingContextGen = incomingContextGen,
+          currentAcceptedContextGen = prevAcceptedGen,
+          requireStrictlyNewerContextGen = requireStrictlyNewer,
+          incomingContextSeq = incomingContextSeq,
+          currentAcceptedContextSeq = prevAcceptedSeq
+        )
+      ) {
+        return
+      }
       if (incomingOwner == null || (storedOwner != null && incomingOwner != storedOwner)) {
-        clearAccountState(newOwnerId = incomingOwner)
-        session?.clearQueuedWatchTransfers()
+        val retiredGen = clearAccountState(newOwnerId = incomingOwner)
+        session?.clearQueuedWatchTransfers(retiredThroughGeneration = retiredGen)
+        if (incomingContextGen > 0L) {
+          val nextAccepted = maxOf(prevAcceptedGen, incomingContextGen)
+          acceptedContextGeneration.set(nextAccepted)
+          val nextSeq = if (incomingOwner != null) incomingContextSeq.coerceAtLeast(0L) else 0L
+          acceptedContextSeq.set(nextSeq)
+          if (incomingOwner == null) {
+            prefs.edit()
+              .putLong("last_context_generation", nextAccepted)
+              .remove("last_context_seq")
+              .apply()
+          }
+        }
         if (incomingOwner == null) return
       } else {
+        if (incomingContextGen > 0L) {
+          val nextAccepted = maxOf(prevAcceptedGen, incomingContextGen)
+          acceptedContextGeneration.set(nextAccepted)
+          val nextSeq = if (incomingContextGen > prevAcceptedGen) {
+            incomingContextSeq.coerceAtLeast(0L)
+          } else {
+            maxOf(prevAcceptedSeq, incomingContextSeq)
+          }
+          acceptedContextSeq.set(nextSeq)
+        }
         confirmedOwnerId = incomingOwner
+        bumpMutationRevision()
       }
     }
 
+    val today = CheckInDate.today()
     val previousUnit = _unit.value
     val nextCtx = ContextPayloadMapper.parseContext(obj, baseWatchContext)
 
-    baseWatchContext = nextCtx
-    val effectiveUnit = nextCtx.effectiveWeightUnit
+    val waterReconcile = if (rawJson != null) {
+      val result = reconcileIncomingPhoneWater(
+        today = today,
+        unreconciledIds = unreconciledDirectWaterIds,
+        unreconciledDay = unreconciledDirectWaterDay,
+        currentLocalWater = _water.value,
+        incomingPhoneWater = nextCtx.water,
+        incomingAckedClientIds = nextCtx.ackedClientIds,
+        deferredAckedIds = deferredAckedWaterTapIds
+      )
+      if (result.settledIds.isNotEmpty() && !result.preservedLocalDirectWater && result.effectiveWater != null) {
+        var taps = _pendingWaterTaps.value
+        var tapsChanged = false
+        for (settledId in result.settledIds) {
+          val (nextTaps, changed) = settleConfirmedWaterTap(taps, waterConsumedBaseline, settledId)
+          if (changed) {
+            taps = nextTaps
+            tapsChanged = true
+          }
+        }
+        if (tapsChanged) {
+          _pendingWaterTaps.value = taps
+          persistPendingWater()
+        }
+      }
+      unreconciledDirectWaterIds = result.remainingIds
+      deferredAckedWaterTapIds = result.deferredAckedIds
+      unreconciledDirectWaterDay = if (result.remainingIds.isEmpty() && result.deferredAckedIds.isEmpty()) "" else today
+      persistUnreconciledDirectWater()
+      result
+    } else {
+      null
+    }
+
+    val incomingFastKnown = obj.optBoolean("fastKnown", false) || obj.has("fast")
+    val fastReconcile = if (rawJson != null) {
+      val result = reconcileIncomingPhoneFast(
+        ownerId = incomingOwner ?: activeOwnerId(),
+        unreconciledIds = unreconciledDirectFastIds,
+        unreconciledOwner = unreconciledDirectFastOwner,
+        unreconciledStartedAtWatermarkMs = unreconciledDirectFastWatermarkMs,
+        currentLocalBaseFast = baseFast,
+        incomingPhoneFast = nextCtx.fast,
+        incomingFastKnown = incomingFastKnown,
+        incomingAckedClientIds = nextCtx.ackedClientIds
+      )
+      unreconciledDirectFastIds = result.remainingIds
+      if (result.remainingIds.isEmpty()) {
+        unreconciledDirectFastOwner = ""
+        unreconciledDirectFastWatermarkMs = 0L
+      }
+      persistUnreconciledDirectFast()
+      result
+    } else {
+      null
+    }
+
+    val effectiveOwner = incomingOwner ?: activeOwnerId()
+    val medReconcile = if (rawJson != null) {
+      val result = reconcileIncomingPhoneMedications(
+        ownerId = effectiveOwner,
+        today = today,
+        unreconciled = unreconciledDirectMedOverrides,
+        currentLocalMedications = baseMedications,
+        incomingPhoneMedications = nextCtx.medications,
+        incomingAckedClientIds = nextCtx.ackedClientIds
+      )
+      unreconciledDirectMedOverrides = result.remaining
+      persistUnreconciledDirectMedOverrides()
+      result
+    } else {
+      null
+    }
+
+    var effectiveBaseCtx = if (waterReconcile?.preservedLocalDirectWater == true && waterReconcile.effectiveWater != null) {
+      nextCtx.copy(water = waterReconcile.effectiveWater)
+    } else {
+      nextCtx
+    }
+    if (fastReconcile?.preservedLocalDirectFast == true) {
+      effectiveBaseCtx = effectiveBaseCtx.copy(fast = fastReconcile.effectiveFast, fastSynced = true)
+    }
+    if (medReconcile?.preservedLocalDirectMedications == true) {
+      effectiveBaseCtx = effectiveBaseCtx.copy(medications = medReconcile.effectiveMedications)
+    }
+    val checkInReconcile = if (rawJson != null) {
+      val result = reconcileIncomingPhoneCheckIns(
+        ownerId = effectiveOwner,
+        today = today,
+        unreconciled = unreconciledDirectCheckInOverrides,
+        incomingCtx = effectiveBaseCtx,
+        incomingAckedClientIds = nextCtx.ackedClientIds
+      )
+      unreconciledDirectCheckInOverrides = result.remaining
+      persistUnreconciledDirectCheckInOverrides()
+      result
+    } else {
+      null
+    }
+    if (checkInReconcile?.preservedLocalDirectCheckIns == true) {
+      effectiveBaseCtx = checkInReconcile.effectiveContext
+    }
+
+    baseWatchContext = effectiveBaseCtx
+    val effectiveUnit = effectiveBaseCtx.effectiveWeightUnit
     _unit.value = effectiveUnit
     if (userEditedWeight && previousUnit != effectiveUnit) {
       val kg = previousUnit.toKg(_draftWeight.value)
       _draftWeight.value = clampAndSnap(effectiveUnit.fromKg(kg), effectiveUnit)
     }
-    baseHistory = nextCtx.history
-    _waterContainers.value = nextCtx.waterContainers ?: emptyList()
-    nextCtx.waterGoalMl?.let { _waterGoalMl.value = it }
-    nextCtx.waterDisplayUnit?.let { _waterDisplayUnit.value = it }
-    _nutrition.value = nextCtx.nutrition?.takeIf { it.isToday }
-    baseMedications = nextCtx.medications
-    _startableWorkouts.value = nextCtx.startableWorkouts ?: emptyList()
-    _scheduledWorkouts.value = if (nextCtx.today.isNullOrEmpty() || nextCtx.today == CheckInDate.today()) {
-      nextCtx.scheduledWorkouts ?: emptyList()
+    baseHistory = effectiveBaseCtx.history
+    _waterContainers.value = effectiveBaseCtx.waterContainers ?: emptyList()
+    effectiveBaseCtx.waterGoalMl?.let { _waterGoalMl.value = it }
+    effectiveBaseCtx.waterDisplayUnit?.let { _waterDisplayUnit.value = it }
+    _nutrition.value = effectiveBaseCtx.nutrition?.takeIf { it.isToday }
+    baseMedications = effectiveBaseCtx.medications
+    _startableWorkouts.value = effectiveBaseCtx.startableWorkouts ?: emptyList()
+    _scheduledWorkouts.value = if (effectiveBaseCtx.today.isNullOrEmpty() || effectiveBaseCtx.today == today) {
+      effectiveBaseCtx.scheduledWorkouts ?: emptyList()
     } else {
       emptyList()
     }
-    _fast.value = nextCtx.fast
-    _steps.value = nextCtx.steps?.takeIf { it.isToday } ?: _steps.value?.takeIf { it.isToday }
-    nextCtx.stepGoal?.let { _stepGoal.value = it }
-    _sleep.value = nextCtx.sleep?.takeIf { it.isToday }
-    _exerciseSummary.value = nextCtx.exerciseSummary?.takeIf { it.isToday }
-    _enabledPages.value = nextCtx.visiblePages(workoutActive = workoutPageActive)
+    baseFast = effectiveBaseCtx.fast
+    _steps.value = effectiveBaseCtx.steps?.takeIf { it.isToday } ?: _steps.value?.takeIf { it.isToday }
+    effectiveBaseCtx.stepGoal?.let { _stepGoal.value = it }
+    _sleep.value = effectiveBaseCtx.sleep?.takeIf { it.isToday }
+    _exerciseSummary.value = effectiveBaseCtx.exerciseSummary?.takeIf { it.isToday }
+    _enabledPages.value = effectiveBaseCtx.visiblePages(workoutActive = workoutPageActive)
 
     if (rawJson != null) {
       if (incomingOwner != null) {
         val tok = ensureActionToken()
-        prefs.edit()
+        val basePersistJson = ContextPayloadMapper.persistableContextJson(rawJson, effectiveBaseCtx)
+        val waterPatchedJson = if (waterReconcile?.preservedLocalDirectWater == true && waterReconcile.effectiveWater != null) {
+          applyPreservedWaterToContextJson(basePersistJson, waterReconcile.effectiveWater)
+        } else {
+          basePersistJson
+        }
+        val fastPatchedJson = if (fastReconcile?.preservedLocalDirectFast == true) {
+          applyPreservedFastToContextJson(waterPatchedJson, fastReconcile.effectiveFast)
+        } else if (!incomingFastKnown && effectiveBaseCtx.fastSynced) {
+          applyPreservedFastToContextJson(waterPatchedJson, effectiveBaseCtx.fast)
+        } else {
+          waterPatchedJson
+        }
+        val medPatchedJson = if (medReconcile?.preservedLocalDirectMedications == true && medReconcile.effectiveMedications != null) {
+          applyPreservedMedicationsToContextJson(fastPatchedJson, medReconcile.effectiveMedications)
+        } else {
+          fastPatchedJson
+        }
+        val finalPersistJson = if (checkInReconcile?.preservedLocalDirectCheckIns == true) {
+          applyPreservedCheckInsToContextJson(medPatchedJson, checkInReconcile.effectiveContext)
+        } else {
+          medPatchedJson
+        }
+        val ed = prefs.edit()
           .putString("context_owner_id", incomingOwner)
           .putString("account_action_token", tok)
-          .putString("last_context_json", ContextPayloadMapper.persistableContextJson(rawJson, nextCtx))
-          .apply()
+          .putString("last_context_json", finalPersistJson)
+        val curGen = acceptedContextGeneration.get()
+        if (curGen > 0L) {
+          ed.putLong("last_context_generation", curGen)
+          val curSeq = acceptedContextSeq.get()
+          if (curSeq > 0L) {
+            ed.putLong("last_context_seq", curSeq)
+          } else {
+            ed.remove("last_context_seq")
+          }
+        }
+        ed.apply()
       } else {
-        prefs.edit()
+        val ed = prefs.edit()
           .remove("context_owner_id")
           .remove("account_action_token")
           .remove("last_context_json")
-          .apply()
+          .remove("last_context_seq")
+        if (incomingContextGen > 0L) {
+          ed.putLong("last_context_generation", maxOf(acceptedContextGeneration.get(), incomingContextGen))
+        }
+        ed.apply()
       }
     }
 
-    for (failedId in nextCtx.failedClientIds) {
+    var sawFailedFastInPayload = false
+    var sawAckedFastInPayload = false
+    var anyFastSettledInPayload = false
+    var lastPromotedFastAckId: String? = null
+    var promotedFastPendingPersist = false
+    for (failedId in effectiveBaseCtx.failedClientIds) {
+      if (pendingFastOps.any { it.clientId == failedId }) {
+        sawFailedFastInPayload = true
+        anyFastSettledInPayload = true
+      }
       acknowledge(failedId, false, deferRecompute = true)
     }
-    for (ackedId in nextCtx.ackedClientIds) {
+    val ackedFastOpsByOrder = effectiveBaseCtx.ackedClientIds
+      .mapNotNull { id -> pendingFastOps.firstOrNull { it.clientId == id } }
+      .sortedBy { it.orderSeq }
+    val ackedNonFastIds = effectiveBaseCtx.ackedClientIds.filter { id ->
+      ackedFastOpsByOrder.none { it.clientId == id }
+    }
+    for (matched in ackedFastOpsByOrder) {
+      sawAckedFastInPayload = true
+      anyFastSettledInPayload = true
+      if (!incomingFastKnown) {
+        val promoted = matched.toOptimisticWatchFast()
+        baseFast = promoted
+        baseWatchContext = baseWatchContext.copy(fast = promoted, fastSynced = true)
+        lastPromotedFastAckId = matched.clientId
+        promotedFastPendingPersist = true
+      }
+      acknowledge(matched.clientId, true, deferRecompute = true)
+    }
+    for (ackedId in ackedNonFastIds) {
       acknowledge(ackedId, true, deferRecompute = true)
     }
+    if (anyFastSettledInPayload) {
+      if (promotedFastPendingPersist) {
+        val patched = buildPatchedContextJsonString(
+          ackedClientId = lastPromotedFastAckId,
+          fastUpdated = true,
+          fast = baseFast
+        )
+        if (patched != null) {
+          persistPendingFastOpsAndContextAtomically(patched)
+        }
+      } else {
+        persistPendingFastOps()
+      }
+    }
+    if (
+      rawJson != null &&
+      incomingFastKnown &&
+      !sawFailedFastInPayload &&
+      !(sawAckedFastInPayload && fastSyncOutcomeState.isFailed) &&
+      pendingFastOps.none { it.ownerId == (incomingOwner ?: activeOwnerId()) }
+    ) {
+      fastSyncOutcomeState = FastSyncOutcomeState()
+    }
 
-    _water.value = nextCtx.water?.takeIf { it.isToday }
+    _water.value = if (rawJson != null) {
+      waterReconcile?.effectiveWater
+    } else {
+      nextCtx.water?.takeIf { it.isToday }
+    }
+    recomputeFastOverlay()
     recomputeMedicationOverlay()
     recomputeWeightOverlay()
     recomputeWeightSyncState()
@@ -1318,7 +2418,12 @@ class CheckInStore(private val context: Context) {
     recomputeWaterState()
 
     if (rawJson != null && incomingOwner != null) {
-      resendQueued()
+      val missingStoredCreds = WearServerCredentialsStore.storedOwnerId(context) != incomingOwner
+      if (!hadConfirmedOwner || missingStoredCreds) {
+        session?.onOwnerConfirmed()
+      } else {
+        resendQueued()
+      }
     }
     ComplicationUpdater.requestAll(context)
     TileUpdater.requestAll(context)
@@ -1369,33 +2474,7 @@ class CheckInStore(private val context: Context) {
       }
     }
 
-    val hasCurrentDayBf = (overlaidCtx.today == null || overlaidCtx.today == today) &&
-      overlaidCtx.todayBodyFatPercentage != null
-    val datedBfs = sortedMapOf<String, Double>()
-    for (pt in overlaidHist) {
-      if (pt.day.isNotBlank() && pt.day <= today && pt.bodyFatPercentage != null) {
-        datedBfs[pt.day] = pt.bodyFatPercentage
-      }
-    }
-    if (!overlaidCtx.lastEntryDate.isNullOrBlank() && overlaidCtx.lastEntryDate <= today && overlaidCtx.lastBodyFatPercentage != null) {
-      datedBfs[overlaidCtx.lastEntryDate] = overlaidCtx.lastBodyFatPercentage
-    }
-    if (!overlaidCtx.today.isNullOrBlank() && overlaidCtx.today < today && overlaidCtx.todayBodyFatPercentage != null) {
-      datedBfs[overlaidCtx.today] = overlaidCtx.todayBodyFatPercentage
-    }
-    if (hasCurrentDayBf) {
-      datedBfs[today] = overlaidCtx.todayBodyFatPercentage!!
-    }
-    val fallbackLastBf = if (overlaidCtx.lastEntryDate.isNullOrBlank() || overlaidCtx.lastEntryDate <= today) {
-      overlaidCtx.lastBodyFatPercentage
-    } else {
-      null
-    }
-    val seedBf = if (hasCurrentDayBf) {
-      overlaidCtx.todayBodyFatPercentage
-    } else {
-      datedBfs.values.lastOrNull() ?: fallbackLastBf
-    }
+    val seedBf = resolveBodyFatSeed(overlaidCtx, overlaidHist, today)
     val targetBf = activeRejection?.bodyFatPercentage ?: seedBf
     if (targetBf != null) {
       _hasBodyFatSeed.value = true
@@ -1517,6 +2596,14 @@ class CheckInStore(private val context: Context) {
         .remove("pending_weight_checkin")
         .remove("failed_weight_days")
         .remove("rejected_weight_draft")
+        .remove("pending_fast_ops")
+        .remove("pending_fast_client_ids")
+        .remove("unreconciled_direct_fast_owner")
+        .remove("unreconciled_direct_fast_ids")
+        .remove("unreconciled_direct_fast_watermark_ms")
+        .remove("unreconciled_direct_med_overrides")
+        .remove("unreconciled_direct_checkin_overrides")
+        .remove("cancelled_water_tap_ids")
         .apply()
       return
     }
@@ -1659,24 +2746,195 @@ class CheckInStore(private val context: Context) {
         }
       }
     } catch (_: Throwable) {}
+    try {
+      val fastOpsRaw = prefs.getString("pending_fast_ops", null)
+      if (!fastOpsRaw.isNullOrBlank()) {
+        val parsed = deserializePendingFastOps(fastOpsRaw, persistedOwner)
+        var maxSeq = maxOf(fastOpOrderSeq.get(), parsed.maxOfOrNull { it.orderSeq } ?: 0L)
+        val normalized = parsed.map { op ->
+          if (op.orderSeq > 0L) {
+            op
+          } else {
+            maxSeq += 1L
+            op.copy(orderSeq = maxSeq)
+          }
+        }
+        fastOpOrderSeq.set(maxSeq)
+        pendingFastOps = normalized
+        if (normalized.isEmpty()) {
+          prefs.edit().remove("pending_fast_ops").apply()
+        }
+      }
+      prefs.edit().remove("pending_fast_client_ids").apply()
+    } catch (_: Throwable) {}
+    try {
+      val fastOwner = prefs.getString("unreconciled_direct_fast_owner", null).orEmpty()
+      val fastIdsRaw = prefs.getString("unreconciled_direct_fast_ids", null)
+      val fastWatermark = prefs.getLong("unreconciled_direct_fast_watermark_ms", 0L)
+      if (fastOwner == persistedOwner && !fastIdsRaw.isNullOrBlank()) {
+        val arr = JSONArray(fastIdsRaw)
+        val restoredIds = LinkedHashSet<String>()
+        for (i in 0 until arr.length()) {
+          val id = arr.optString(i, "").trim()
+          if (id.isNotEmpty()) restoredIds.add(id)
+        }
+        if (restoredIds.isNotEmpty()) {
+          unreconciledDirectFastOwner = persistedOwner
+          unreconciledDirectFastIds = restoredIds
+          unreconciledDirectFastWatermarkMs = fastWatermark.coerceAtLeast(0L)
+        }
+      } else if (fastOwner.isNotEmpty() || !fastIdsRaw.isNullOrBlank() || fastWatermark != 0L) {
+        prefs.edit()
+          .remove("unreconciled_direct_fast_owner")
+          .remove("unreconciled_direct_fast_ids")
+          .remove("unreconciled_direct_fast_watermark_ms")
+          .apply()
+      }
+    } catch (_: Throwable) {}
+    try {
+      val medOverridesRaw = prefs.getString("unreconciled_direct_med_overrides", null)
+      val restoredMeds = deserializeUnreconciledDirectMedOverrides(medOverridesRaw, persistedOwner, today)
+      unreconciledDirectMedOverrides = restoredMeds
+      if (medOverridesRaw != null && restoredMeds.isEmpty()) {
+        prefs.edit().remove("unreconciled_direct_med_overrides").apply()
+      }
+    } catch (_: Throwable) {}
+    try {
+      val checkInOverridesRaw = prefs.getString("unreconciled_direct_checkin_overrides", null)
+      val restoredCheckIns = deserializeUnreconciledDirectCheckInOverrides(checkInOverridesRaw, persistedOwner)
+      unreconciledDirectCheckInOverrides = restoredCheckIns
+      if (checkInOverridesRaw != null && restoredCheckIns.isEmpty()) {
+        prefs.edit().remove("unreconciled_direct_checkin_overrides").apply()
+      }
+    } catch (_: Throwable) {}
+    try {
+      val cancelledRaw = prefs.getString("cancelled_water_tap_ids", null)
+      if (!cancelledRaw.isNullOrBlank()) {
+        val arr = JSONArray(cancelledRaw)
+        synchronized(cancelledWaterTapIds) {
+          cancelledWaterTapIds.clear()
+          for (i in 0 until arr.length()) {
+            val id = arr.optString(i, "").trim()
+            if (id.isNotEmpty()) cancelledWaterTapIds.add(id)
+          }
+          while (cancelledWaterTapIds.size > 100) {
+            val iter = cancelledWaterTapIds.iterator()
+            if (iter.hasNext()) {
+              iter.next()
+              iter.remove()
+            } else {
+              break
+            }
+          }
+        }
+      }
+    } catch (_: Throwable) {}
     recomputeWeightSyncState()
+  }
+
+  private fun persistUnreconciledDirectMedOverrides() {
+    try {
+      val ed = prefs.edit()
+      if (unreconciledDirectMedOverrides.isEmpty()) {
+        ed.remove("unreconciled_direct_med_overrides")
+      } else {
+        ed.putString("unreconciled_direct_med_overrides", serializeUnreconciledDirectMedOverrides(unreconciledDirectMedOverrides))
+      }
+      ed.apply()
+    } catch (_: Throwable) {}
+  }
+
+  private fun persistUnreconciledDirectCheckInOverrides() {
+    try {
+      val ed = prefs.edit()
+      if (unreconciledDirectCheckInOverrides.isEmpty()) {
+        ed.remove("unreconciled_direct_checkin_overrides")
+      } else {
+        ed.putString("unreconciled_direct_checkin_overrides", serializeUnreconciledDirectCheckInOverrides(unreconciledDirectCheckInOverrides))
+      }
+      ed.apply()
+    } catch (_: Throwable) {}
+  }
+
+  private fun persistUnreconciledDirectFast() {
+    try {
+      val ed = prefs.edit()
+      if (unreconciledDirectFastOwner.isEmpty() || unreconciledDirectFastIds.isEmpty()) {
+        ed.remove("unreconciled_direct_fast_owner")
+          .remove("unreconciled_direct_fast_ids")
+          .remove("unreconciled_direct_fast_watermark_ms")
+      } else {
+        val arr = JSONArray()
+        for (id in unreconciledDirectFastIds) {
+          arr.put(id)
+        }
+        ed.putString("unreconciled_direct_fast_owner", unreconciledDirectFastOwner)
+          .putString("unreconciled_direct_fast_ids", arr.toString())
+          .putLong("unreconciled_direct_fast_watermark_ms", unreconciledDirectFastWatermarkMs)
+      }
+      ed.apply()
+    } catch (_: Throwable) {}
+  }
+
+  private fun persistPendingFastOps() {
+    try {
+      val editor = prefs.edit()
+      writePendingFastOpsToEditor(editor)
+      editor.apply()
+    } catch (_: Throwable) {}
+  }
+
+  private fun persistUnreconciledDirectWater() {
+    try {
+      val ed = prefs.edit()
+      if (
+        unreconciledDirectWaterDay.isEmpty() ||
+        (unreconciledDirectWaterIds.isEmpty() && deferredAckedWaterTapIds.isEmpty())
+      ) {
+        ed.remove("unreconciled_direct_water_day")
+          .remove("unreconciled_direct_water_ids")
+          .remove("deferred_acked_water_tap_ids")
+      } else {
+        ed.putString("unreconciled_direct_water_day", unreconciledDirectWaterDay)
+        if (unreconciledDirectWaterIds.isEmpty()) {
+          ed.remove("unreconciled_direct_water_ids")
+        } else {
+          val arr = JSONArray()
+          for (id in unreconciledDirectWaterIds) {
+            arr.put(id)
+          }
+          ed.putString("unreconciled_direct_water_ids", arr.toString())
+        }
+        if (deferredAckedWaterTapIds.isEmpty()) {
+          ed.remove("deferred_acked_water_tap_ids")
+        } else {
+          val defArr = JSONArray()
+          for (id in deferredAckedWaterTapIds) {
+            defArr.put(id)
+          }
+          ed.putString("deferred_acked_water_tap_ids", defArr.toString())
+        }
+      }
+      ed.apply()
+    } catch (_: Throwable) {}
   }
 
   private fun persistPendingWater() {
     try {
       val tapsArr = JSONArray()
       for (t in _pendingWaterTaps.value) {
-        tapsArr.put(
-          JSONObject()
-            .put("id", t.id)
-            .put("volumeMl", t.volumeMl)
-            .put("containerId", t.containerId)
-            .put("containerName", t.containerName)
-            .put("createdAtMs", t.createdAtMs)
-            .put("day", t.day)
-            .put("state", t.state.name)
-            .put("ownerId", t.ownerId)
-        )
+        val o = JSONObject()
+          .put("id", t.id)
+          .put("volumeMl", t.volumeMl)
+          .put("containerId", t.containerId)
+          .put("containerName", t.containerName)
+          .put("createdAtMs", t.createdAtMs)
+          .put("day", t.day)
+          .put("state", t.state.name)
+          .put("ownerId", t.ownerId)
+          .put("logConfirmed", t.logConfirmed)
+        waterConsumedBaseline[t.id]?.let { o.put("baselineMl", it) }
+        tapsArr.put(o)
       }
       val delArr = JSONArray()
       for (d in _pendingWaterDeletes.value) {
@@ -1704,10 +2962,47 @@ class CheckInStore(private val context: Context) {
       prefs.edit()
         .remove("pending_water_taps")
         .remove("pending_water_deletes")
+        .remove("unreconciled_direct_water_day")
+        .remove("unreconciled_direct_water_ids")
+        .remove("deferred_acked_water_tap_ids")
         .apply()
       return
     }
     val today = CheckInDate.today()
+    try {
+      val unreconciledDay = prefs.getString("unreconciled_direct_water_day", null).orEmpty()
+      val unreconciledRaw = prefs.getString("unreconciled_direct_water_ids", null)
+      val deferredRaw = prefs.getString("deferred_acked_water_tap_ids", null)
+      if (unreconciledDay == today && (!unreconciledRaw.isNullOrBlank() || !deferredRaw.isNullOrBlank())) {
+        val restoredIds = LinkedHashSet<String>()
+        if (!unreconciledRaw.isNullOrBlank()) {
+          val arr = JSONArray(unreconciledRaw)
+          for (i in 0 until arr.length()) {
+            val id = arr.optString(i, "").trim()
+            if (id.isNotEmpty()) restoredIds.add(id)
+          }
+        }
+        val restoredDeferred = LinkedHashSet<String>()
+        if (!deferredRaw.isNullOrBlank()) {
+          val arr = JSONArray(deferredRaw)
+          for (i in 0 until arr.length()) {
+            val id = arr.optString(i, "").trim()
+            if (id.isNotEmpty()) restoredDeferred.add(id)
+          }
+        }
+        if (restoredIds.isNotEmpty() || restoredDeferred.isNotEmpty()) {
+          unreconciledDirectWaterDay = today
+          unreconciledDirectWaterIds = restoredIds
+          deferredAckedWaterTapIds = restoredDeferred
+        }
+      } else if (unreconciledDay.isNotEmpty() || !unreconciledRaw.isNullOrBlank() || !deferredRaw.isNullOrBlank()) {
+        prefs.edit()
+          .remove("unreconciled_direct_water_day")
+          .remove("unreconciled_direct_water_ids")
+          .remove("deferred_acked_water_tap_ids")
+          .apply()
+      }
+    } catch (_: Throwable) {}
     try {
       val tapsRaw = prefs.getString("pending_water_taps", null)
       if (!tapsRaw.isNullOrBlank()) {
@@ -1723,16 +3018,19 @@ class CheckInStore(private val context: Context) {
           } catch (_: Throwable) {
             SyncState.QUEUED
           }
+          val tapId = o.optString("id")
+          o.optDoubleOrNull("baselineMl")?.let { waterConsumedBaseline[tapId] = it }
           taps.add(
             PendingWaterTap(
-              id = o.optString("id"),
+              id = tapId,
               volumeMl = o.optDouble("volumeMl", 0.0),
               containerId = o.optInt("containerId", 0),
               containerName = o.optString("containerName", ""),
               createdAtMs = o.optLong("createdAtMs", System.currentTimeMillis()),
               day = day,
               state = state,
-              ownerId = itemOwner
+              ownerId = itemOwner,
+              logConfirmed = o.optBoolean("logConfirmed", false)
             )
           )
         }
@@ -1781,6 +3079,31 @@ class CheckInStore(private val context: Context) {
         clearAccountState(newOwnerId = null)
         return
       }
+      val savedCtxGen = prefs.getLong("last_context_generation", 0L)
+      val jsonCtxGen = json.optLong("contextGeneration", 0L)
+      val restoredGen = maxOf(savedCtxGen, jsonCtxGen)
+      val revokedGen = WearServerCredentialsStore.revocationBarrierGeneration(context)
+      if (
+        WearServerCredentialsStore.hasPendingRevocationBarrier(context) ||
+        WearServerCredentialsStore.isPersistedContextRevoked(revokedGen, restoredGen)
+      ) {
+        clearAccountState(newOwnerId = null)
+        return
+      }
+      confirmedOwnerId = persistedOwner
+      if (restoredGen > 0L) {
+        acceptedContextGeneration.set(restoredGen)
+      }
+      val savedCtxSeq = prefs.getLong("last_context_seq", 0L)
+      val jsonCtxSeq = json.optLong("contextSeq", 0L)
+      val restoredSeq = when {
+        jsonCtxGen > savedCtxGen -> jsonCtxSeq
+        savedCtxGen > jsonCtxGen -> savedCtxSeq
+        else -> maxOf(savedCtxSeq, jsonCtxSeq)
+      }
+      if (restoredSeq > 0L) {
+        acceptedContextSeq.set(restoredSeq)
+      }
       applyRemoteContextJson(json, rawJson = null)
     } catch (_: Throwable) {}
   }
@@ -1798,6 +3121,1643 @@ class CheckInStore(private val context: Context) {
   }
 
   companion object {
+    internal const val MAX_PENDING_FAST_OPS = 12
+
+    internal fun canEnqueuePendingFastOp(
+      existing: List<PendingFastOp>,
+      ownerId: String,
+      clientId: String
+    ): Boolean {
+      if (ownerId.isBlank() || clientId.isBlank()) return false
+      if (existing.any { it.clientId == clientId }) return true
+      return existing.count { it.ownerId == ownerId } < MAX_PENDING_FAST_OPS
+    }
+
+    internal fun recordPendingFastOp(
+      existing: List<PendingFastOp>,
+      op: PendingFastOp
+    ): List<PendingFastOp> {
+      if (!canEnqueuePendingFastOp(existing, op.ownerId, op.clientId)) return existing
+      return existing.filterNot { it.clientId == op.clientId } + op
+    }
+
+    internal fun settlePendingFastOp(
+      existing: List<PendingFastOp>,
+      clientId: String
+    ): List<PendingFastOp> =
+      if (clientId.isBlank()) existing else existing.filterNot { it.clientId == clientId }
+
+    internal fun hasPendingFastStartBefore(
+      pendingOps: List<PendingFastOp>,
+      ownerId: String,
+      endClientId: String
+    ): Boolean {
+      if (ownerId.isBlank()) return false
+      val endIdx = if (endClientId.isNotBlank()) {
+        pendingOps.indexOfFirst { it.clientId == endClientId && it.ownerId == ownerId }
+      } else {
+        -1
+      }
+      val preceding = if (endIdx >= 0) pendingOps.subList(0, endIdx) else pendingOps
+      return preceding.any { it.ownerId == ownerId && it.kind == "fastStart" }
+    }
+
+    internal fun hasEarlierUnsettledFastOp(
+      pendingOps: List<PendingFastOp>,
+      ownerId: String,
+      clientId: String
+    ): Boolean {
+      if (ownerId.isBlank()) return false
+      val ownerOps = pendingOps.filter { it.ownerId == ownerId }
+      if (ownerOps.isEmpty()) return false
+      if (clientId.isBlank()) return true
+      val idx = ownerOps.indexOfFirst { it.clientId == clientId }
+      return if (idx >= 0) idx > 0 else true
+    }
+
+    internal fun selectDispatchablePendingFastOps(
+      pendingOps: List<PendingFastOp>,
+      ownerId: String,
+      isInFlight: (String) -> Boolean = { false }
+    ): List<PendingFastOp> {
+      if (ownerId.isBlank()) return emptyList()
+      val head = pendingOps.firstOrNull { it.ownerId == ownerId } ?: return emptyList()
+      return if (isInFlight(head.clientId)) emptyList() else listOf(head)
+    }
+
+    internal fun applyFastOpOutcome(
+      state: FastSyncOutcomeState,
+      opOrderSeq: Long,
+      ok: Boolean
+    ): FastSyncOutcomeState {
+      val seq = opOrderSeq.coerceAtLeast(1L)
+      return if (ok) {
+        val nextSucceeded = maxOf(state.highestSucceededOrderSeq, seq)
+        state.copy(
+          failedOrderSeq = if (state.failedOrderSeq <= nextSucceeded) 0L else state.failedOrderSeq,
+          highestSucceededOrderSeq = nextSucceeded
+        )
+      } else {
+        if (seq <= state.highestSucceededOrderSeq) {
+          state
+        } else {
+          state.copy(failedOrderSeq = maxOf(state.failedOrderSeq, seq))
+        }
+      }
+    }
+
+    internal fun resolveFastForAck(
+      currentBaseFast: WatchFast?,
+      matchedOp: PendingFastOp?,
+      ok: Boolean,
+      fastKnown: Boolean,
+      settledFast: WatchFast?
+    ): Pair<WatchFast?, Boolean> = when {
+      matchedOp == null -> currentBaseFast to false
+      ok && fastKnown -> settledFast to true
+      ok -> matchedOp.toOptimisticWatchFast() to true
+      else -> currentBaseFast to false
+    }
+
+    internal fun resolveBodyFatSeed(
+      overlaidCtx: WatchContext,
+      overlaidHist: List<HistoryPoint>,
+      today: String
+    ): Double? {
+      val hasCurrentDayBf = (overlaidCtx.today == null || overlaidCtx.today == today) &&
+        overlaidCtx.todayBodyFatPercentage != null
+      val datedBfs = sortedMapOf<String, Double>()
+      for (pt in overlaidCtx.bodyFatHistory) {
+        if (pt.day.isNotBlank() && pt.day <= today && pt.bodyFatPercentage != null) {
+          datedBfs[pt.day] = pt.bodyFatPercentage
+        }
+      }
+      for (pt in overlaidHist) {
+        if (pt.day.isNotBlank() && pt.day <= today && pt.bodyFatPercentage != null) {
+          datedBfs[pt.day] = pt.bodyFatPercentage
+        }
+      }
+      if (!overlaidCtx.today.isNullOrBlank() && overlaidCtx.today < today && overlaidCtx.todayBodyFatPercentage != null) {
+        datedBfs[overlaidCtx.today] = overlaidCtx.todayBodyFatPercentage
+      }
+      if (hasCurrentDayBf) {
+        datedBfs[today] = overlaidCtx.todayBodyFatPercentage!!
+      }
+      val fallbackLastBf = if (overlaidCtx.lastEntryDate.isNullOrBlank() || overlaidCtx.lastEntryDate <= today) {
+        overlaidCtx.lastBodyFatPercentage
+      } else {
+        null
+      }
+      return if (hasCurrentDayBf) {
+        overlaidCtx.todayBodyFatPercentage
+      } else {
+        datedBfs.values.lastOrNull() ?: fallbackLastBf
+      }
+    }
+
+    internal fun buildPendingFastOutboundPayload(op: PendingFastOp): JSONObject? = when (op.kind) {
+      "fastStart" -> OutboundPayloads.fastStart(
+        presetId = op.presetId?.takeIf { it.isNotBlank() } ?: "16-8",
+        clientId = op.clientId,
+        ownerId = op.ownerId,
+        startedAtMs = op.startedAtMs.takeIf { it > 0L } ?: System.currentTimeMillis()
+      )
+      "fastEnd" -> OutboundPayloads.fastEnd(
+        clientId = op.clientId,
+        ownerId = op.ownerId,
+        startedAtMs = op.startedAtMs.takeIf { it > 0L },
+        fastId = op.fastId?.takeIf { it.isNotBlank() },
+        endedAtMs = op.endedAtMs.takeIf { it > 0L } ?: System.currentTimeMillis()
+      )
+      else -> null
+    }
+
+    internal fun serializePendingFastOps(ops: List<PendingFastOp>): String {
+      val arr = JSONArray()
+      for (op in ops) {
+        val o = JSONObject()
+          .put("clientId", op.clientId)
+          .put("ownerId", op.ownerId)
+          .put("kind", op.kind)
+          .put("startedAtMs", op.startedAtMs)
+          .put("endedAtMs", op.endedAtMs)
+        if (op.orderSeq > 0L) o.put("orderSeq", op.orderSeq)
+        op.presetId?.takeIf { it.isNotBlank() }?.let { o.put("presetId", it) }
+        op.hours?.let { o.put("hours", it) }
+        op.fastId?.takeIf { it.isNotBlank() }?.let { o.put("fastId", it) }
+        arr.put(o)
+      }
+      return arr.toString()
+    }
+
+    internal fun deserializePendingFastOps(raw: String?, expectedOwnerId: String): List<PendingFastOp> {
+      if (raw.isNullOrBlank() || expectedOwnerId.isBlank()) return emptyList()
+      return try {
+        val arr = JSONArray(raw)
+        val restored = mutableListOf<PendingFastOp>()
+        for (i in 0 until arr.length()) {
+          val o = arr.optJSONObject(i) ?: continue
+          val clientId = o.optString("clientId", "").trim()
+          val ownerId = o.optString("ownerId", "").trim()
+          val kind = o.optString("kind", "").trim()
+          if (
+            clientId.isEmpty() ||
+            ownerId != expectedOwnerId ||
+            (kind != "fastStart" && kind != "fastEnd")
+          ) {
+            continue
+          }
+          val op = PendingFastOp(
+            clientId = clientId,
+            ownerId = ownerId,
+            kind = kind,
+            presetId = o.optStringOrNull("presetId")?.takeIf { it.isNotBlank() },
+            hours = o.optDoubleOrNull("hours"),
+            startedAtMs = o.optLong("startedAtMs", 0L),
+            fastId = o.optStringOrNull("fastId")?.takeIf { it.isNotBlank() },
+            endedAtMs = o.optLong("endedAtMs", 0L),
+            orderSeq = o.optLong("orderSeq", 0L)
+          )
+          restored.removeAll { it.clientId == clientId }
+          restored.add(op)
+        }
+        restored
+      } catch (_: Throwable) {
+        emptyList()
+      }
+    }
+
+    internal fun resolveFastForLiveRefresh(
+      currentFast: WatchFast?,
+      snapshot: DirectLiveSnapshot,
+      pendingFastOps: List<PendingFastOp>,
+      ownerId: String? = snapshot.ownerId
+    ): Pair<WatchFast?, Boolean> {
+      val hasPendingForOwner = pendingFastOps.any { ownerId == null || it.ownerId == ownerId }
+      val shouldApply = snapshot.fastKnown && !hasPendingForOwner
+      return (if (shouldApply) snapshot.fast else currentFast) to shouldApply
+    }
+
+    internal fun settleConfirmedWaterTap(
+      existingTaps: List<PendingWaterTap>,
+      baselines: MutableMap<String, Double>,
+      confirmedTapId: String
+    ): Pair<List<PendingWaterTap>, Boolean> {
+      baselines.remove(confirmedTapId)
+      val filtered = existingTaps.filterNot { it.id == confirmedTapId }
+      return filtered to (filtered.size != existingTaps.size)
+    }
+
+    internal fun markWaterTapLogConfirmed(
+      existingTaps: List<PendingWaterTap>,
+      tapId: String
+    ): Pair<List<PendingWaterTap>, Boolean> {
+      if (tapId.isBlank()) return existingTaps to false
+      var changed = false
+      val updated = existingTaps.map { tap ->
+        if (tap.id == tapId && !tap.logConfirmed) {
+          changed = true
+          tap.copy(logConfirmed = true)
+        } else {
+          tap
+        }
+      }
+      return updated to changed
+    }
+
+    internal fun resolveFastSyncState(
+      ownerPendingCount: Int,
+      fastSyncFailed: Boolean
+    ): SyncState = when {
+      fastSyncFailed -> SyncState.FAILED
+      ownerPendingCount > 0 -> SyncState.QUEUED
+      else -> SyncState.SAVED
+    }
+
+    internal fun applyRefreshedContainersToBaseContext(
+      baseCtx: WatchContext,
+      refreshedContainers: List<WaterContainer>?
+    ): WatchContext =
+      if (refreshedContainers != null) baseCtx.copy(waterContainers = refreshedContainers) else baseCtx
+
+    internal fun shouldForceWaterRefreshAfterDirectOutcome(
+      matchesToday: Boolean,
+      outcome: DirectWriteOutcome.Applied
+    ): Boolean =
+      matchesToday &&
+        outcome.syncedDomain == "water" &&
+        (outcome.waterMl == null || (outcome.deletedWaterEntryId == null && outcome.waterLog == null))
+
+    internal fun settleLogConfirmedWaterTapsOnRefresh(
+      existingTaps: List<PendingWaterTap>,
+      baselines: MutableMap<String, Double>,
+      day: String,
+      hasAuthoritativeWaterMl: Boolean
+    ): Pair<List<PendingWaterTap>, Boolean> {
+      if (!hasAuthoritativeWaterMl) return existingTaps to false
+      val remaining = existingTaps.filter { tap ->
+        val shouldSettle = tap.day == day && tap.state == SyncState.SAVED && tap.logConfirmed
+        if (shouldSettle) {
+          baselines.remove(tap.id)
+        }
+        !shouldSettle
+      }
+      return remaining to (remaining.size != existingTaps.size)
+    }
+
+    internal fun shouldSettleSavedTapByBaseline(
+      tap: PendingWaterTap,
+      baselineMl: Double?,
+      serverMl: Double
+    ): Boolean =
+      tap.state == SyncState.SAVED &&
+        !tap.logConfirmed &&
+        baselineMl != null &&
+        serverMl >= baselineMl + tap.volumeMl * 0.5
+
+    internal fun filterPendingWaterLogTaps(taps: List<PendingWaterTap>): List<PendingWaterTap> =
+      taps.filter { it.state != SyncState.FAILED && !it.logConfirmed }
+
+    internal fun recordUnreconciledDirectWaterId(
+      currentDay: String,
+      currentIds: Set<String>,
+      today: String,
+      clientId: String
+    ): Pair<String, Set<String>> {
+      if (today.isBlank() || clientId.isBlank()) return currentDay to currentIds
+      val base = if (currentDay == today) currentIds.toMutableList() else mutableListOf()
+      base.remove(clientId)
+      base.add(clientId)
+      val bounded = LinkedHashSet(base.takeLast(40))
+      return today to bounded
+    }
+
+    internal fun settleDirectWaterTapsForOutcome(
+      existingTaps: List<PendingWaterTap>,
+      baselines: MutableMap<String, Double>,
+      day: String,
+      outcome: DirectWriteOutcome.Applied
+    ): Pair<List<PendingWaterTap>, Boolean> {
+      var taps = existingTaps
+      var anyChanged = false
+      if (outcome.confirmedWaterTapId != null) {
+        val (next, changed) = settleConfirmedWaterTap(taps, baselines, outcome.confirmedWaterTapId)
+        taps = next
+        anyChanged = anyChanged || changed
+      } else if (outcome.logConfirmedWaterTapId != null) {
+        val (next, changed) = markWaterTapLogConfirmed(taps, outcome.logConfirmedWaterTapId)
+        taps = next
+        anyChanged = anyChanged || changed
+      }
+      if (outcome.waterMl != null) {
+        val (next, changed) = settleLogConfirmedWaterTapsOnRefresh(
+          existingTaps = taps,
+          baselines = baselines,
+          day = day,
+          hasAuthoritativeWaterMl = true
+        )
+        taps = next
+        anyChanged = anyChanged || changed
+      }
+      return taps to anyChanged
+    }
+
+    internal fun resolveWaterConsumedMlAfterDirectOutcome(
+      prev: WaterSnapshot?,
+      outcome: DirectWriteOutcome.Applied
+    ): Double {
+      if (outcome.waterMl != null) return outcome.waterMl
+      val prevMl = prev?.consumedMl ?: 0.0
+      val deletedId = outcome.deletedWaterEntryId
+      if (!deletedId.isNullOrEmpty() && prev != null) {
+        val deletedVol = prev.log.firstOrNull { it.id == deletedId }?.volumeMl
+        if (deletedVol != null && deletedVol > 0.0) {
+          return max(0.0, prevMl - deletedVol)
+        }
+      }
+      return prevMl
+    }
+
+    internal fun combineWaterLogNewestFirst(
+      pendingNewestFirst: List<WaterLogEntry>,
+      baseNewestFirst: List<WaterLogEntry>
+    ): List<WaterLogEntry> {
+      data class IndexedWaterEntry(
+        val entry: WaterLogEntry,
+        val isPending: Boolean,
+        val originalIndex: Int
+      )
+      val combined = ArrayList<IndexedWaterEntry>(pendingNewestFirst.size + baseNewestFirst.size)
+      pendingNewestFirst.forEachIndexed { idx, e -> combined.add(IndexedWaterEntry(e, true, idx)) }
+      baseNewestFirst.forEachIndexed { idx, e -> combined.add(IndexedWaterEntry(e, false, idx)) }
+      val anyTimedBase = baseNewestFirst.any { (it.loggedAtMs ?: 0L) > 0L }
+      if (!anyTimedBase) {
+        return combined.map { it.entry }
+      }
+      return combined.sortedWith { a, b ->
+        val ta = a.entry.loggedAtMs?.takeIf { it > 0L }
+        val tb = b.entry.loggedAtMs?.takeIf { it > 0L }
+        when {
+          ta != null && tb != null -> {
+            val cmp = tb.compareTo(ta)
+            if (cmp != 0) cmp else a.originalIndex.compareTo(b.originalIndex)
+          }
+          ta != null && tb == null -> -1
+          ta == null && tb != null -> 1
+          a.isPending != b.isPending -> if (a.isPending) -1 else 1
+          else -> a.originalIndex.compareTo(b.originalIndex)
+        }
+      }.map { it.entry }
+    }
+
+    internal fun selectLatestWaterEntryForUndo(entriesNewestFirst: List<WaterLogEntry>): WaterLogEntry? =
+      entriesNewestFirst.firstOrNull()
+
+    internal fun computeRefreshWindowStartDay(snapshotDay: String, windowDays: Int = 14): String {
+      return try {
+        val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val parsed = fmt.parse(snapshotDay) ?: return snapshotDay
+        val cal = Calendar.getInstance().apply {
+          time = parsed
+          add(Calendar.DAY_OF_YEAR, -(windowDays - 1).coerceAtLeast(0))
+        }
+        fmt.format(cal.time)
+      } catch (_: Throwable) {
+        snapshotDay
+      }
+    }
+
+    internal data class ResolvedLastMetrics(
+      val lastWeightKg: Double?,
+      val lastEntryDate: String?,
+      val lastBodyFatPercentage: Double?,
+      val lastBodyFatDate: String? = null
+    )
+
+    internal fun resolveLastMetricsAfterDirectRefresh(
+      snapshotDay: String,
+      todayBodyFatPercentage: Double?,
+      mergedHistory: List<HistoryPoint>,
+      mergedBodyFatHistory: List<HistoryPoint>,
+      prevHistory: List<HistoryPoint>,
+      prevBodyFatHistory: List<HistoryPoint>,
+      prevLastWeightKg: Double?,
+      prevLastEntryDate: String?,
+      prevLastBodyFatPercentage: Double?,
+      prevLastBodyFatDate: String? = null,
+      prevToday: String? = null,
+      prevTodayBodyFatPercentage: Double? = null,
+      windowDays: Int = 14
+    ): ResolvedLastMetrics {
+      val refreshStartDay = computeRefreshWindowStartDay(snapshotDay, windowDays)
+
+      val sortedWeightPoints = mergedHistory
+        .filter { it.day.isNotBlank() && it.weightKg > 0.0 }
+        .sortedBy { it.day }
+      val priorMergedWeight = sortedWeightPoints.lastOrNull { it.day < snapshotDay }
+      val todayMergedWeight = sortedWeightPoints.lastOrNull { it.day == snapshotDay }
+
+      val validOlderPrevWeight = prevLastWeightKg?.takeIf { it > 0.0 } != null &&
+        !prevLastEntryDate.isNullOrBlank() &&
+        prevLastEntryDate < refreshStartDay
+
+      val chosenWeightPoint: Pair<Double, String>? = when {
+        priorMergedWeight != null -> {
+          if (validOlderPrevWeight && prevLastEntryDate!! > priorMergedWeight.day) {
+            prevLastWeightKg!! to prevLastEntryDate
+          } else {
+            priorMergedWeight.weightKg to priorMergedWeight.day
+          }
+        }
+        validOlderPrevWeight -> prevLastWeightKg!! to prevLastEntryDate!!
+        todayMergedWeight != null -> todayMergedWeight.weightKg to todayMergedWeight.day
+        else -> null
+      }
+
+      val bfByDay = sortedMapOf<String, Double>()
+      for (pt in mergedHistory) {
+        val bf = pt.bodyFatPercentage?.takeIf { it > 0.0 } ?: continue
+        if (pt.day.isNotBlank()) bfByDay[pt.day] = bf
+      }
+      for (pt in mergedBodyFatHistory) {
+        val bf = pt.bodyFatPercentage?.takeIf { it > 0.0 } ?: continue
+        if (pt.day.isNotBlank()) bfByDay[pt.day] = bf
+      }
+      val priorMergedBfEntry = bfByDay.entries.lastOrNull { it.key < snapshotDay }
+      val todayMergedBf = bfByDay[snapshotDay] ?: todayBodyFatPercentage?.takeIf { it > 0.0 }
+
+      val prevBfInWindow = prevBodyFatHistory.any { it.day >= refreshStartDay && (it.bodyFatPercentage ?: 0.0) > 0.0 } ||
+        prevHistory.any { it.day >= refreshStartDay && (it.bodyFatPercentage ?: 0.0) > 0.0 } ||
+        (!prevToday.isNullOrBlank() && prevToday >= refreshStartDay && (prevTodayBodyFatPercentage ?: 0.0) > 0.0)
+      val prevWeightDateHasNoBf = !prevLastEntryDate.isNullOrBlank() &&
+        prevHistory.any { it.day == prevLastEntryDate && it.bodyFatPercentage == null }
+      val prevExplicitBfDate = prevLastBodyFatDate?.takeIf { it.isNotBlank() }
+      val prevBfDateKnownOlder = if (prevExplicitBfDate != null) {
+        prevExplicitBfDate < refreshStartDay && !prevBfInWindow
+      } else {
+        !prevBfInWindow && (
+          (!prevLastEntryDate.isNullOrBlank() && prevLastEntryDate < refreshStartDay) ||
+            prevWeightDateHasNoBf
+          )
+      }
+      val validOlderPrevBf = prevLastBodyFatPercentage?.takeIf { it > 0.0 } != null && prevBfDateKnownOlder
+
+      val (chosenBodyFat, chosenBodyFatDate) = when {
+        priorMergedBfEntry != null -> priorMergedBfEntry.value to priorMergedBfEntry.key
+        validOlderPrevBf -> prevLastBodyFatPercentage to (
+          prevExplicitBfDate?.takeIf { it < refreshStartDay }
+            ?: prevLastEntryDate?.takeIf { it < refreshStartDay && !prevWeightDateHasNoBf }
+          )
+        todayMergedBf != null -> todayMergedBf to snapshotDay
+        else -> null to null
+      }
+
+      return ResolvedLastMetrics(
+        lastWeightKg = chosenWeightPoint?.first,
+        lastEntryDate = chosenWeightPoint?.second,
+        lastBodyFatPercentage = chosenBodyFat,
+        lastBodyFatDate = chosenBodyFatDate
+      )
+    }
+
+    internal fun resolveUnreconciledDirectFastWatermarkAfterRefresh(
+      unreconciledOwner: String,
+      unreconciledIds: Set<String>,
+      currentWatermarkMs: Long,
+      refreshOwnerId: String,
+      refreshedFast: WatchFast?
+    ): Long {
+      if (unreconciledOwner != refreshOwnerId || unreconciledIds.isEmpty()) return currentWatermarkMs
+      val refreshedStart = refreshedFast?.startedAtMs ?: 0L
+      return maxOf(currentWatermarkMs, refreshedStart)
+    }
+
+    internal fun mergeDirectRefreshHistory(
+      existing: List<HistoryPoint>,
+      refreshed: List<HistoryPoint>,
+      snapshotDay: String,
+      windowDays: Int = 14
+    ): List<HistoryPoint> {
+      val refreshStartDay = computeRefreshWindowStartDay(snapshotDay, windowDays)
+      val byDay = sortedMapOf<String, HistoryPoint>()
+      for (pt in existing) {
+        if (pt.day.isNotBlank() && pt.day < refreshStartDay) {
+          byDay[pt.day] = pt
+        }
+      }
+      for (pt in refreshed) {
+        if (pt.day.isNotBlank()) {
+          byDay[pt.day] = pt
+        }
+      }
+      return byDay.values.toList()
+    }
+
+    internal data class WaterReconciliationResult(
+      val remainingIds: Set<String>,
+      val effectiveWater: WaterSnapshot?,
+      val preservedLocalDirectWater: Boolean,
+      val deferredAckedIds: Set<String> = emptySet(),
+      val settledIds: Set<String> = emptySet()
+    )
+
+    internal fun reconcileIncomingPhoneWater(
+      today: String,
+      unreconciledIds: Set<String>,
+      unreconciledDay: String,
+      currentLocalWater: WaterSnapshot?,
+      incomingPhoneWater: WaterSnapshot?,
+      incomingAckedClientIds: List<String>,
+      deferredAckedIds: Set<String> = emptySet()
+    ): WaterReconciliationResult {
+      val activeUnreconciled = if (unreconciledDay == today) unreconciledIds else emptySet()
+      val activeDeferred = if (unreconciledDay == today) deferredAckedIds else emptySet()
+      val localTodayWater = currentLocalWater?.takeIf { it.day == today }
+      val phoneTodayWater = incomingPhoneWater?.takeIf { it.day == today }
+      if (phoneTodayWater == null && activeUnreconciled.isNotEmpty() && localTodayWater != null) {
+        return WaterReconciliationResult(
+          remainingIds = activeUnreconciled,
+          effectiveWater = localTodayWater,
+          preservedLocalDirectWater = true,
+          deferredAckedIds = activeDeferred,
+          settledIds = emptySet()
+        )
+      }
+      val ackedSet = incomingAckedClientIds.toSet()
+      val newlyAcked = activeUnreconciled intersect ackedSet
+      val remaining = activeUnreconciled - ackedSet
+      val allAckedSoFar = LinkedHashSet<String>().apply {
+        addAll(activeDeferred)
+        addAll(newlyAcked)
+      }
+      if (remaining.isNotEmpty() && localTodayWater != null) {
+        val merged = localTodayWater.copy(
+          fromFoodMl = phoneTodayWater?.fromFoodMl ?: localTodayWater.fromFoodMl
+        )
+        return WaterReconciliationResult(
+          remainingIds = remaining,
+          effectiveWater = merged,
+          preservedLocalDirectWater = true,
+          deferredAckedIds = allAckedSoFar,
+          settledIds = emptySet()
+        )
+      }
+      if (phoneTodayWater == null) {
+        return WaterReconciliationResult(
+          remainingIds = remaining,
+          effectiveWater = null,
+          preservedLocalDirectWater = false,
+          deferredAckedIds = allAckedSoFar,
+          settledIds = emptySet()
+        )
+      }
+      return WaterReconciliationResult(
+        remainingIds = remaining,
+        effectiveWater = phoneTodayWater,
+        preservedLocalDirectWater = false,
+        deferredAckedIds = emptySet(),
+        settledIds = allAckedSoFar
+      )
+    }
+
+    internal fun recordUnreconciledDirectFastId(
+      currentOwner: String,
+      currentIds: Set<String>,
+      ownerId: String,
+      clientId: String
+    ): Pair<String, Set<String>> {
+      if (ownerId.isBlank() || clientId.isBlank()) return currentOwner to currentIds
+      val base = if (currentOwner == ownerId) currentIds.toMutableList() else mutableListOf()
+      base.remove(clientId)
+      base.add(clientId)
+      val bounded = LinkedHashSet(base.takeLast(40))
+      return ownerId to bounded
+    }
+
+    internal data class FastReconciliationResult(
+      val remainingIds: Set<String>,
+      val effectiveFast: WatchFast?,
+      val preservedLocalDirectFast: Boolean
+    )
+
+    internal fun reconcileIncomingPhoneFast(
+      ownerId: String?,
+      unreconciledIds: Set<String>,
+      unreconciledOwner: String,
+      unreconciledStartedAtWatermarkMs: Long = 0L,
+      currentLocalBaseFast: WatchFast?,
+      incomingPhoneFast: WatchFast?,
+      incomingFastKnown: Boolean,
+      incomingAckedClientIds: List<String>
+    ): FastReconciliationResult {
+      val activeUnreconciled = if (!ownerId.isNullOrEmpty() && unreconciledOwner == ownerId) {
+        unreconciledIds
+      } else {
+        emptySet()
+      }
+      if (activeUnreconciled.isEmpty()) {
+        return FastReconciliationResult(
+          remainingIds = emptySet(),
+          effectiveFast = if (incomingFastKnown) incomingPhoneFast else currentLocalBaseFast,
+          preservedLocalDirectFast = false
+        )
+      }
+      if (!incomingFastKnown) {
+        return FastReconciliationResult(
+          remainingIds = activeUnreconciled,
+          effectiveFast = currentLocalBaseFast,
+          preservedLocalDirectFast = true
+        )
+      }
+      val minNewerStartMs = maxOf(currentLocalBaseFast?.startedAtMs ?: 0L, unreconciledStartedAtWatermarkMs)
+      val phoneHasStrictlyNewerFast = incomingPhoneFast != null &&
+        minNewerStartMs > 0L &&
+        incomingPhoneFast.startedAtMs > minNewerStartMs + 1_000L
+      if (phoneHasStrictlyNewerFast) {
+        return FastReconciliationResult(
+          remainingIds = emptySet(),
+          effectiveFast = incomingPhoneFast,
+          preservedLocalDirectFast = false
+        )
+      }
+      val ackedSet = incomingAckedClientIds.toSet()
+      val remaining = activeUnreconciled - ackedSet
+      if (remaining.isNotEmpty()) {
+        return FastReconciliationResult(
+          remainingIds = remaining,
+          effectiveFast = currentLocalBaseFast,
+          preservedLocalDirectFast = true
+        )
+      }
+      return FastReconciliationResult(
+        remainingIds = emptySet(),
+        effectiveFast = incomingPhoneFast,
+        preservedLocalDirectFast = false
+      )
+    }
+
+    internal fun applyPreservedFastToContextJson(rawJson: String, fast: WatchFast?): String {
+      return try {
+        val obj = JSONObject(rawJson)
+        obj.put("fastKnown", true)
+        if (fast != null) {
+          val fastObj = JSONObject().put("startedAt", fast.startedAtMs)
+          fast.targetEndAtMs?.let { fastObj.put("targetEndAt", it) }
+          fast.label?.let { fastObj.put("label", it) }
+          fast.id?.takeIf { it.isNotEmpty() }?.let { fastObj.put("id", it) }
+          obj.put("fast", fastObj)
+        } else {
+          obj.put("fast", JSONObject.NULL)
+        }
+        obj.toString()
+      } catch (_: Throwable) {
+        rawJson
+      }
+    }
+
+    internal fun applyPreservedWaterToContextJson(rawJson: String, water: WaterSnapshot): String {
+      return try {
+        val obj = JSONObject(rawJson)
+        obj.put("waterConsumedMl", water.consumedMl)
+        if (water.fromFoodMl != null) {
+          obj.put("waterFromFoodMl", water.fromFoodMl)
+        }
+        val logArr = JSONArray()
+        for (entry in water.log) {
+          logArr.put(
+            JSONObject()
+              .put("id", entry.id)
+              .put("name", entry.name)
+              .put("volumeMl", entry.volumeMl)
+              .put("time", entry.time)
+              .apply {
+                if (entry.loggedAtMs != null && entry.loggedAtMs > 0L) {
+                  put("loggedAtMs", entry.loggedAtMs)
+                }
+              }
+          )
+        }
+        obj.put("waterLog", logArr)
+        obj.toString()
+      } catch (_: Throwable) {
+        rawJson
+      }
+    }
+
+    internal fun serializeUnreconciledDirectMedOverrides(
+      overrides: Map<String, UnreconciledDirectMedicationOverride>
+    ): String {
+      val arr = JSONArray()
+      for (ov in overrides.values) {
+        arr.put(
+          JSONObject()
+            .put("clientId", ov.clientId)
+            .put("ownerId", ov.ownerId)
+            .put("day", ov.day)
+            .put("doseId", ov.doseId)
+            .put("status", ov.status.rawValue)
+        )
+      }
+      return arr.toString()
+    }
+
+    internal fun deserializeUnreconciledDirectMedOverrides(
+      raw: String?,
+      ownerId: String,
+      today: String
+    ): Map<String, UnreconciledDirectMedicationOverride> {
+      if (raw.isNullOrBlank() || ownerId.isBlank() || today.isBlank()) return emptyMap()
+      return try {
+        val arr = JSONArray(raw)
+        val out = LinkedHashMap<String, UnreconciledDirectMedicationOverride>()
+        for (i in 0 until arr.length()) {
+          val o = arr.optJSONObject(i) ?: continue
+          val itemOwner = o.optString("ownerId", "").trim()
+          val day = o.optString("day", "").trim()
+          val clientId = o.optString("clientId", "").trim()
+          val doseId = o.optString("doseId", "").trim()
+          val status = MedicationDoseStatus.fromRaw(o.optString("status", "")) ?: continue
+          if (itemOwner == ownerId && day == today && clientId.isNotEmpty() && doseId.isNotEmpty()) {
+            out[doseId] = UnreconciledDirectMedicationOverride(clientId, itemOwner, day, doseId, status)
+          }
+        }
+        out
+      } catch (_: Throwable) {
+        emptyMap()
+      }
+    }
+
+    internal fun recordUnreconciledDirectMedicationOverride(
+      existing: Map<String, UnreconciledDirectMedicationOverride>,
+      ownerId: String,
+      day: String,
+      clientId: String,
+      doseId: String,
+      status: MedicationDoseStatus
+    ): Map<String, UnreconciledDirectMedicationOverride> {
+      if (ownerId.isBlank() || day.isBlank() || clientId.isBlank() || doseId.isBlank()) return existing
+      val filtered = LinkedHashMap<String, UnreconciledDirectMedicationOverride>()
+      for ((k, v) in existing) {
+        if (v.ownerId == ownerId && v.day == day && k != doseId) {
+          filtered[k] = v
+        }
+      }
+      filtered[doseId] = UnreconciledDirectMedicationOverride(clientId, ownerId, day, doseId, status)
+      return if (filtered.size > 40) {
+        LinkedHashMap(filtered.entries.toList().takeLast(40).associate { it.key to it.value })
+      } else {
+        filtered
+      }
+    }
+
+    internal data class MedicationReconciliationResult(
+      val remaining: Map<String, UnreconciledDirectMedicationOverride>,
+      val effectiveMedications: MedicationSnapshot?,
+      val preservedLocalDirectMedications: Boolean
+    )
+
+    internal fun reconcileIncomingPhoneMedications(
+      ownerId: String?,
+      today: String,
+      unreconciled: Map<String, UnreconciledDirectMedicationOverride>,
+      currentLocalMedications: MedicationSnapshot?,
+      incomingPhoneMedications: MedicationSnapshot?,
+      incomingAckedClientIds: List<String>
+    ): MedicationReconciliationResult {
+      if (ownerId.isNullOrEmpty() || today.isBlank()) {
+        return MedicationReconciliationResult(emptyMap(), incomingPhoneMedications, false)
+      }
+      val acked = incomingAckedClientIds.toSet()
+      val remaining = LinkedHashMap<String, UnreconciledDirectMedicationOverride>()
+      for ((doseId, ov) in unreconciled) {
+        if (ov.ownerId == ownerId && ov.day == today && ov.clientId !in acked) {
+          remaining[doseId] = ov
+        }
+      }
+      if (remaining.isEmpty()) {
+        return MedicationReconciliationResult(emptyMap(), incomingPhoneMedications, false)
+      }
+      val base = incomingPhoneMedications?.takeIf { it.day == today }
+        ?: currentLocalMedications?.takeIf { it.day == today }
+        ?: return MedicationReconciliationResult(remaining, incomingPhoneMedications, false)
+      var changed = false
+      val mergedDoses = base.doses.map { dose ->
+        val ov = remaining[dose.id]
+        if (ov != null && dose.status != ov.status) {
+          changed = true
+          dose.copy(status = ov.status)
+        } else {
+          dose
+        }
+      }
+      val effective = base.copy(doses = mergedDoses)
+      val preserved = changed || (incomingPhoneMedications?.day != today && currentLocalMedications?.day == today)
+      return MedicationReconciliationResult(remaining, effective, preserved)
+    }
+
+    internal fun applyPreservedMedicationsToContextJson(rawJson: String, medications: MedicationSnapshot): String {
+      return try {
+        val obj = JSONObject(rawJson)
+        val medsOut = JSONArray()
+        for (dose in medications.doses) {
+          medsOut.put(
+            JSONObject()
+              .put("id", dose.id)
+              .put("medicationId", dose.medicationId)
+              .put("scheduleId", dose.scheduleId)
+              .put("name", dose.name)
+              .put("detail", dose.detail)
+              .put("time", dose.time)
+              .put("status", dose.status.rawValue)
+          )
+        }
+        obj.put("medications", medsOut)
+        obj.toString()
+      } catch (_: Throwable) {
+        rawJson
+      }
+    }
+
+    internal fun serializeUnreconciledDirectCheckInOverrides(
+      overrides: Map<String, UnreconciledDirectCheckInOverride>
+    ): String {
+      val arr = JSONArray()
+      for (ov in overrides.values) {
+        val item = JSONObject()
+          .put("clientId", ov.clientId)
+          .put("ownerId", ov.ownerId)
+          .put("day", ov.day)
+          .put("weightKg", ov.weightKg)
+        if (ov.bodyFatPercentage != null) {
+          item.put("bodyFatPercentage", ov.bodyFatPercentage)
+        }
+        arr.put(item)
+      }
+      return arr.toString()
+    }
+
+    internal fun deserializeUnreconciledDirectCheckInOverrides(
+      raw: String?,
+      ownerId: String
+    ): Map<String, UnreconciledDirectCheckInOverride> {
+      if (raw.isNullOrBlank() || ownerId.isBlank()) return emptyMap()
+      return try {
+        val arr = JSONArray(raw)
+        val out = LinkedHashMap<String, UnreconciledDirectCheckInOverride>()
+        for (i in 0 until arr.length()) {
+          val o = arr.optJSONObject(i) ?: continue
+          val itemOwner = o.optString("ownerId", "").trim()
+          val day = o.optString("day", "").trim()
+          val clientId = o.optString("clientId", "").trim()
+          val weightKg = o.optDoubleOrNull("weightKg") ?: 0.0
+          val bf = o.optDoubleOrNull("bodyFatPercentage")?.takeIf { it > 0.0 }
+          if (itemOwner == ownerId && day.isNotEmpty() && clientId.isNotEmpty() && weightKg > 0.0) {
+            out[day] = UnreconciledDirectCheckInOverride(clientId, itemOwner, day, weightKg, bf)
+          }
+        }
+        out
+      } catch (_: Throwable) {
+        emptyMap()
+      }
+    }
+
+    internal fun recordUnreconciledDirectCheckInOverride(
+      existing: Map<String, UnreconciledDirectCheckInOverride>,
+      ownerId: String,
+      day: String,
+      clientId: String,
+      weightKg: Double,
+      bodyFatPercentage: Double?
+    ): Map<String, UnreconciledDirectCheckInOverride> {
+      if (ownerId.isBlank() || day.isBlank() || clientId.isBlank() || weightKg <= 0.0) return existing
+      val priorSameDayBf = existing[day]?.takeIf { it.ownerId == ownerId }?.bodyFatPercentage
+      val filtered = LinkedHashMap<String, UnreconciledDirectCheckInOverride>()
+      for ((k, v) in existing) {
+        if (v.ownerId == ownerId && k != day) {
+          filtered[k] = v
+        }
+      }
+      filtered[day] = UnreconciledDirectCheckInOverride(
+        clientId = clientId,
+        ownerId = ownerId,
+        day = day,
+        weightKg = weightKg,
+        bodyFatPercentage = bodyFatPercentage ?: priorSameDayBf
+      )
+      return if (filtered.size > 40) {
+        LinkedHashMap(filtered.entries.toList().takeLast(40).associate { it.key to it.value })
+      } else {
+        filtered
+      }
+    }
+
+    internal data class CheckInReconciliationResult(
+      val remaining: Map<String, UnreconciledDirectCheckInOverride>,
+      val effectiveContext: WatchContext,
+      val preservedLocalDirectCheckIns: Boolean
+    )
+
+    internal fun reconcileIncomingPhoneCheckIns(
+      ownerId: String?,
+      today: String,
+      unreconciled: Map<String, UnreconciledDirectCheckInOverride>,
+      incomingCtx: WatchContext,
+      incomingAckedClientIds: List<String>
+    ): CheckInReconciliationResult {
+      if (ownerId.isNullOrEmpty()) {
+        return CheckInReconciliationResult(emptyMap(), incomingCtx, false)
+      }
+      val acked = incomingAckedClientIds.toSet()
+      val remaining = LinkedHashMap<String, UnreconciledDirectCheckInOverride>()
+      for ((day, ov) in unreconciled) {
+        if (ov.ownerId == ownerId && ov.clientId !in acked) {
+          remaining[day] = ov
+        }
+      }
+      if (remaining.isEmpty()) {
+        return CheckInReconciliationResult(emptyMap(), incomingCtx, false)
+      }
+      val historyByDay = sortedMapOf<String, HistoryPoint>()
+      for (pt in incomingCtx.history) {
+        if (pt.day.isNotBlank()) historyByDay[pt.day] = pt
+      }
+      val bfByDay = sortedMapOf<String, HistoryPoint>()
+      for (pt in incomingCtx.bodyFatHistory) {
+        if (pt.day.isNotBlank() && pt.bodyFatPercentage != null) bfByDay[pt.day] = pt
+      }
+      var nextTodayWeight = incomingCtx.todayWeightKg
+      var nextTodayBf = incomingCtx.todayBodyFatPercentage
+      var nextLastWeight = incomingCtx.lastWeightKg
+      var nextLastEntryDate = incomingCtx.lastEntryDate
+      var nextLastBf = incomingCtx.lastBodyFatPercentage
+      var nextLastBfDate = incomingCtx.lastBodyFatDate
+      val effectiveToday = incomingCtx.today?.takeIf { it.isNotBlank() } ?: today
+
+      for (ov in remaining.values.sortedBy { it.day }) {
+        val existingDayBf = historyByDay[ov.day]?.bodyFatPercentage ?: bfByDay[ov.day]?.bodyFatPercentage
+        val resolvedBf = ov.bodyFatPercentage
+          ?: existingDayBf
+          ?: (if (ov.day == effectiveToday) nextTodayBf else null)
+        historyByDay[ov.day] = HistoryPoint(ov.day, ov.weightKg, resolvedBf)
+        if (resolvedBf != null) {
+          bfByDay[ov.day] = HistoryPoint(ov.day, ov.weightKg, resolvedBf)
+        }
+        if (ov.day == effectiveToday) {
+          nextTodayWeight = ov.weightKg
+          if (resolvedBf != null) {
+            nextTodayBf = resolvedBf
+          }
+        } else if (ov.day < effectiveToday) {
+          if (nextLastEntryDate.isNullOrBlank() || ov.day >= nextLastEntryDate) {
+            nextLastEntryDate = ov.day
+            nextLastWeight = ov.weightKg
+          }
+          if (resolvedBf != null && (nextLastBfDate.isNullOrBlank() || ov.day >= nextLastBfDate)) {
+            nextLastBf = resolvedBf
+            nextLastBfDate = ov.day
+          }
+        }
+      }
+
+      val effective = incomingCtx.copy(
+        todayWeightKg = nextTodayWeight,
+        todayBodyFatPercentage = nextTodayBf,
+        lastWeightKg = nextLastWeight,
+        lastEntryDate = nextLastEntryDate,
+        lastBodyFatPercentage = nextLastBf,
+        lastBodyFatDate = nextLastBfDate,
+        history = historyByDay.values.toList(),
+        bodyFatHistory = bfByDay.values.toList()
+      )
+      return CheckInReconciliationResult(remaining, effective, preservedLocalDirectCheckIns = true)
+    }
+
+    internal fun applyPreservedCheckInsToContextJson(rawJson: String, ctx: WatchContext): String {
+      return try {
+        val obj = JSONObject(rawJson)
+        if (ctx.todayWeightKg != null) obj.put("todayWeightKg", ctx.todayWeightKg)
+        if (ctx.todayBodyFatPercentage != null) obj.put("todayBodyFatPercentage", ctx.todayBodyFatPercentage)
+        if (ctx.lastWeightKg != null) obj.put("lastWeightKg", ctx.lastWeightKg)
+        if (!ctx.lastEntryDate.isNullOrBlank()) obj.put("lastEntryDate", ctx.lastEntryDate)
+        if (ctx.lastBodyFatPercentage != null) obj.put("lastBodyFatPercentage", ctx.lastBodyFatPercentage)
+        if (!ctx.lastBodyFatDate.isNullOrBlank()) obj.put("lastBodyFatDate", ctx.lastBodyFatDate)
+        val histArr = JSONArray()
+        for (pt in ctx.history) {
+          val item = JSONObject().put("day", pt.day).put("weightKg", pt.weightKg)
+          if (pt.bodyFatPercentage != null) item.put("bodyFatPercentage", pt.bodyFatPercentage)
+          histArr.put(item)
+        }
+        obj.put("history", histArr)
+        val bfArr = JSONArray()
+        for (pt in ctx.bodyFatHistory) {
+          val bf = pt.bodyFatPercentage ?: continue
+          val item = JSONObject().put("day", pt.day).put("bodyFatPercentage", bf)
+          if (pt.weightKg > 0.0) item.put("weightKg", pt.weightKg)
+          bfArr.put(item)
+        }
+        obj.put("bodyFatHistory", bfArr)
+        obj.toString()
+      } catch (_: Throwable) {
+        rawJson
+      }
+    }
+
+    internal fun applyDirectOutcomeToBaseState(
+      baseCtx: WatchContext,
+      baseHist: List<HistoryPoint>,
+      clientId: String,
+      outcome: DirectWriteOutcome.Applied,
+      today: String
+    ): Pair<WatchContext, List<HistoryPoint>> {
+      val isCheckIn = outcome.syncedDomain == "checkIn"
+      val validCheckIn = isCheckIn && !outcome.entryDate.isNullOrBlank() && outcome.weightKg != null && outcome.weightKg > 0.0
+      val nextAcked = if (clientId.isNotEmpty() && (!isCheckIn || validCheckIn)) {
+        (baseCtx.ackedClientIds + clientId).distinct().takeLast(40)
+      } else {
+        baseCtx.ackedClientIds
+      }
+      if (!validCheckIn) {
+        return baseCtx.copy(ackedClientIds = nextAcked) to baseHist
+      }
+      val entryDate = outcome.entryDate!!
+      val weightKg = outcome.weightKg!!
+      val matchesToday = entryDate == today
+      val sameBaseCtxDay = baseCtx.today == entryDate
+      val byDay = sortedMapOf<String, HistoryPoint>()
+      for (pt in baseHist) {
+        if (pt.day.isNotBlank()) {
+          byDay[pt.day] = pt
+        }
+      }
+      val existingDayBf = byDay[entryDate]?.bodyFatPercentage
+      val resolvedBf = outcome.bodyFatPercentage
+        ?: existingDayBf
+        ?: (if (sameBaseCtxDay) baseCtx.todayBodyFatPercentage else null)
+      byDay[entryDate] = HistoryPoint(
+        day = entryDate,
+        weightKg = weightKg,
+        bodyFatPercentage = resolvedBf
+      )
+      val nextHistory = byDay.values.toList()
+      val priorCtxDay = baseCtx.today?.takeIf { matchesToday && it.isNotBlank() && it < today }
+      val priorTodayWeight = if (priorCtxDay != null) baseCtx.todayWeightKg?.takeIf { it > 0.0 } else null
+      val priorTodayBf = if (priorCtxDay != null) baseCtx.todayBodyFatPercentage?.takeIf { it > 0.0 } else null
+      val nextBodyFatHistory = if (resolvedBf != null || priorTodayBf != null) {
+        val bfMap = sortedMapOf<String, HistoryPoint>()
+        for (pt in baseCtx.bodyFatHistory) {
+          if (pt.day.isNotBlank() && pt.bodyFatPercentage != null) {
+            bfMap[pt.day] = pt
+          }
+        }
+        if (priorCtxDay != null && priorTodayBf != null && !bfMap.containsKey(priorCtxDay)) {
+          bfMap[priorCtxDay] = HistoryPoint(
+            day = priorCtxDay,
+            weightKg = priorTodayWeight ?: byDay[priorCtxDay]?.weightKg ?: 0.0,
+            bodyFatPercentage = priorTodayBf
+          )
+        }
+        if (resolvedBf != null) {
+          bfMap[entryDate] = HistoryPoint(day = entryDate, weightKg = weightKg, bodyFatPercentage = resolvedBf)
+        }
+        bfMap.values.toList()
+      } else {
+        baseCtx.bodyFatHistory
+      }
+      val nextCtx = if (matchesToday) {
+        val shouldRollPriorWeight = priorCtxDay != null &&
+          priorTodayWeight != null &&
+          (baseCtx.lastEntryDate.isNullOrBlank() || priorCtxDay >= baseCtx.lastEntryDate)
+        val rolledLastEntryDate = if (shouldRollPriorWeight) priorCtxDay else baseCtx.lastEntryDate
+        val rolledLastWeightKg = if (shouldRollPriorWeight) priorTodayWeight else baseCtx.lastWeightKg
+        val shouldRollPriorBf = priorCtxDay != null &&
+          priorTodayBf != null &&
+          (baseCtx.lastBodyFatDate.isNullOrBlank() || priorCtxDay >= baseCtx.lastBodyFatDate)
+        val rolledLastBf = if (shouldRollPriorBf) priorTodayBf else baseCtx.lastBodyFatPercentage
+        val rolledLastBfDate = if (shouldRollPriorBf) priorCtxDay else baseCtx.lastBodyFatDate
+        baseCtx.copy(
+          today = today,
+          todayWeightKg = weightKg,
+          todayBodyFatPercentage = resolvedBf,
+          lastEntryDate = rolledLastEntryDate,
+          lastWeightKg = rolledLastWeightKg,
+          lastBodyFatPercentage = rolledLastBf,
+          lastBodyFatDate = rolledLastBfDate,
+          history = nextHistory,
+          bodyFatHistory = nextBodyFatHistory,
+          ackedClientIds = nextAcked
+        )
+      } else if (entryDate < today) {
+        val updateLastWeight = baseCtx.lastEntryDate.isNullOrBlank() || entryDate >= baseCtx.lastEntryDate
+        val updateLastBf = resolvedBf != null &&
+          (baseCtx.lastBodyFatDate.isNullOrBlank() || entryDate >= baseCtx.lastBodyFatDate)
+        baseCtx.copy(
+          lastEntryDate = if (updateLastWeight) entryDate else baseCtx.lastEntryDate,
+          lastWeightKg = if (updateLastWeight) weightKg else baseCtx.lastWeightKg,
+          lastBodyFatPercentage = if (updateLastBf) resolvedBf else baseCtx.lastBodyFatPercentage,
+          lastBodyFatDate = if (updateLastBf) entryDate else baseCtx.lastBodyFatDate,
+          history = nextHistory,
+          bodyFatHistory = nextBodyFatHistory,
+          ackedClientIds = nextAcked
+        )
+      } else {
+        baseCtx.copy(
+          history = nextHistory,
+          bodyFatHistory = nextBodyFatHistory,
+          ackedClientIds = nextAcked
+        )
+      }
+      return nextCtx to nextHistory
+    }
+
+    internal fun patchContextJsonObject(
+      obj: JSONObject,
+      ackedClientId: String?,
+      entryDate: String? = null,
+      localToday: String = CheckInDate.today(),
+      hasCheckIn: Boolean = false,
+      checkInWeightKg: Double? = null,
+      checkInBodyFat: Double? = null,
+      waterConsumedMl: Double? = null,
+      waterLog: List<WaterLogEntry>? = null,
+      deletedWaterEntryId: String? = null,
+      medicationDoseId: String? = null,
+      medicationStatus: MedicationDoseStatus? = null,
+      medicationStatuses: Map<String, MedicationDoseStatus>? = null,
+      refreshedMedications: MedicationSnapshot? = null,
+      fastUpdated: Boolean = false,
+      fast: WatchFast? = null,
+      bodyFatHistory: List<HistoryPoint>? = null,
+      refreshedSnapshot: DirectLiveSnapshot? = null
+    ) {
+      val hasWaterWrite = waterConsumedMl != null || waterLog != null || deletedWaterEntryId != null
+      val validCurrentDayCheckIn = hasCheckIn &&
+        checkInWeightKg != null &&
+        checkInWeightKg > 0.0 &&
+        !entryDate.isNullOrBlank() &&
+        entryDate == localToday
+      val existingToday = obj.optString("today", "")
+      val prevTodayBfBeforeRollover = obj.optDoubleOrNull("todayBodyFatPercentage")?.takeIf { it > 0.0 }
+      val refreshTargetDay = refreshedSnapshot?.day?.takeIf { it.isNotBlank() }
+      val targetDay = refreshTargetDay
+        ?: entryDate?.takeIf { (hasWaterWrite || validCurrentDayCheckIn) && it.isNotBlank() }
+      val shouldRebaseDay = if (refreshTargetDay != null) {
+        existingToday.isEmpty() || refreshTargetDay != existingToday
+      } else {
+        targetDay != null && (existingToday.isEmpty() || targetDay > existingToday)
+      }
+      if (shouldRebaseDay && targetDay != null) {
+        if (existingToday.isNotEmpty() && targetDay > existingToday) {
+          val existingLastDate = obj.optString("lastEntryDate", "")
+          val existingLastBfDate = obj.optString("lastBodyFatDate", "")
+          val prevTodayWeight = obj.optDoubleOrNull("todayWeightKg")?.takeIf { it > 0.0 }
+          val prevTodayBf = obj.optDoubleOrNull("todayBodyFatPercentage")?.takeIf { it > 0.0 }
+          if (prevTodayWeight != null && (existingLastDate.isEmpty() || existingToday >= existingLastDate)) {
+            obj.put("lastWeightKg", prevTodayWeight)
+            obj.put("lastEntryDate", existingToday)
+          }
+          if (prevTodayBf != null && (existingLastBfDate.isEmpty() || existingToday >= existingLastBfDate)) {
+            obj.put("lastBodyFatPercentage", prevTodayBf)
+            obj.put("lastBodyFatDate", existingToday)
+          }
+          if (prevTodayBf != null) {
+            val existingBfHist = obj.optJSONArray("bodyFatHistory")
+            val updatedBfHist = JSONArray()
+            var hasExistingDay = false
+            if (existingBfHist != null) {
+              for (i in 0 until existingBfHist.length()) {
+                val pt = existingBfHist.optJSONObject(i) ?: continue
+                if (pt.optString("day", "") == existingToday) {
+                  hasExistingDay = true
+                }
+                updatedBfHist.put(pt)
+              }
+            }
+            if (!hasExistingDay) {
+              val priorBfPoint = JSONObject()
+                .put("day", existingToday)
+                .put("bodyFatPercentage", prevTodayBf)
+              if (prevTodayWeight != null) {
+                priorBfPoint.put("weightKg", prevTodayWeight)
+              }
+              updatedBfHist.put(priorBfPoint)
+              obj.put("bodyFatHistory", updatedBfHist)
+            }
+          }
+        }
+        obj.remove("todayWeightKg")
+        obj.remove("todayBodyFatPercentage")
+        obj.remove("waterConsumedMl")
+        obj.remove("waterFromFoodMl")
+        obj.remove("waterLog")
+        obj.remove("caloriesConsumed")
+        obj.remove("caloriesBurned")
+        obj.remove("caloriesRemaining")
+        obj.remove("calorieGoalProgress")
+        obj.remove("carbsConsumed")
+        obj.remove("carbsGoal")
+        obj.remove("carbsGoalProgress")
+        obj.remove("fatConsumed")
+        obj.remove("fatGoal")
+        obj.remove("fatGoalProgress")
+        obj.remove("proteinConsumed")
+        obj.remove("proteinGoal")
+        obj.remove("proteinGoalProgress")
+        obj.remove("goalNutrients")
+        obj.remove("medications")
+        obj.remove("scheduledWorkouts")
+        obj.remove("steps")
+        obj.remove("sleep")
+        obj.remove("exerciseSummary")
+        obj.put("today", targetDay)
+      }
+      if (refreshedSnapshot?.waterContainers != null) {
+        val containersArr = JSONArray()
+        for (c in refreshedSnapshot.waterContainers) {
+          containersArr.put(
+            JSONObject()
+              .put("id", c.id)
+              .put("name", c.name)
+              .put("servingVolumeMl", c.servingVolumeMl)
+              .put("unit", c.unit)
+              .put("isPrimary", c.isPrimary)
+              .put("isQuickAdd", c.isQuickAdd)
+          )
+        }
+        obj.put("containers", containersArr)
+        obj.put("waterContainers", containersArr)
+      }
+      if (refreshedSnapshot?.history != null) {
+        obj.put("today", refreshedSnapshot.day)
+        if (refreshedSnapshot.todayWeightKg != null) {
+          obj.put("todayWeightKg", refreshedSnapshot.todayWeightKg)
+        } else {
+          obj.remove("todayWeightKg")
+        }
+        if (refreshedSnapshot.todayBodyFatPercentage != null) {
+          obj.put("todayBodyFatPercentage", refreshedSnapshot.todayBodyFatPercentage)
+        } else {
+          obj.remove("todayBodyFatPercentage")
+        }
+        val existingHistArr = obj.optJSONArray("history")
+        val existingHistPts = mutableListOf<HistoryPoint>()
+        if (existingHistArr != null) {
+          for (i in 0 until existingHistArr.length()) {
+            val pt = existingHistArr.optJSONObject(i) ?: continue
+            val day = pt.optStringOrNull("day") ?: continue
+            val w = pt.optDoubleOrNull("weightKg") ?: continue
+            existingHistPts.add(HistoryPoint(day, w, pt.optDoubleOrNull("bodyFatPercentage")))
+          }
+        }
+        val existingBfArr = obj.optJSONArray("bodyFatHistory")
+        val existingBfPts = mutableListOf<HistoryPoint>()
+        if (existingBfArr != null) {
+          for (i in 0 until existingBfArr.length()) {
+            val pt = existingBfArr.optJSONObject(i) ?: continue
+            val day = pt.optStringOrNull("day") ?: continue
+            val bfVal = pt.optDoubleOrNull("bodyFatPercentage")?.takeIf { it > 0.0 } ?: continue
+            existingBfPts.add(HistoryPoint(day, pt.optDoubleOrNull("weightKg") ?: 0.0, bfVal))
+          }
+        }
+        val mergedHistory = mergeDirectRefreshHistory(
+          existing = existingHistPts,
+          refreshed = refreshedSnapshot.history,
+          snapshotDay = refreshedSnapshot.day
+        )
+        val mergedBfForLast = (bodyFatHistory ?: refreshedSnapshot.bodyFatHistory)?.let { refreshedBf ->
+          mergeDirectRefreshHistory(
+            existing = existingBfPts,
+            refreshed = refreshedBf,
+            snapshotDay = refreshedSnapshot.day
+          )
+        } ?: existingBfPts
+        val resolvedLast = resolveLastMetricsAfterDirectRefresh(
+          snapshotDay = refreshedSnapshot.day,
+          todayBodyFatPercentage = refreshedSnapshot.todayBodyFatPercentage,
+          mergedHistory = mergedHistory,
+          mergedBodyFatHistory = mergedBfForLast,
+          prevHistory = existingHistPts,
+          prevBodyFatHistory = existingBfPts,
+          prevLastWeightKg = obj.optDoubleOrNull("lastWeightKg"),
+          prevLastEntryDate = obj.optStringOrNull("lastEntryDate"),
+          prevLastBodyFatPercentage = obj.optDoubleOrNull("lastBodyFatPercentage"),
+          prevLastBodyFatDate = obj.optStringOrNull("lastBodyFatDate"),
+          prevToday = existingToday.takeIf { it.isNotBlank() },
+          prevTodayBodyFatPercentage = prevTodayBfBeforeRollover
+        )
+        if (resolvedLast.lastWeightKg != null) {
+          obj.put("lastWeightKg", resolvedLast.lastWeightKg)
+        } else {
+          obj.remove("lastWeightKg")
+        }
+        if (resolvedLast.lastBodyFatPercentage != null) {
+          obj.put("lastBodyFatPercentage", resolvedLast.lastBodyFatPercentage)
+        } else {
+          obj.remove("lastBodyFatPercentage")
+        }
+        if (resolvedLast.lastBodyFatDate != null) {
+          obj.put("lastBodyFatDate", resolvedLast.lastBodyFatDate)
+        } else {
+          obj.remove("lastBodyFatDate")
+        }
+        if (resolvedLast.lastEntryDate != null) {
+          obj.put("lastEntryDate", resolvedLast.lastEntryDate)
+        } else {
+          obj.remove("lastEntryDate")
+        }
+        val histArr = JSONArray()
+        for (pt in mergedHistory) {
+          val item = JSONObject()
+            .put("day", pt.day)
+            .put("weightKg", pt.weightKg)
+          if (pt.bodyFatPercentage != null) {
+            item.put("bodyFatPercentage", pt.bodyFatPercentage)
+          }
+          histArr.put(item)
+        }
+        obj.put("history", histArr)
+      }
+      val dateMatches = entryDate != null && obj.optString("today", "") == entryDate
+      val validCheckIn = !entryDate.isNullOrBlank() && checkInWeightKg != null && checkInWeightKg > 0.0
+      val allowAckAppend = if (hasCheckIn) {
+        validCheckIn
+      } else {
+        true
+      }
+      if (hasCheckIn && validCheckIn) {
+        if (dateMatches) {
+          obj.put("todayWeightKg", checkInWeightKg)
+          if (checkInBodyFat != null) {
+            obj.put("todayBodyFatPercentage", checkInBodyFat)
+          }
+        }
+        val existingHistory = obj.optJSONArray("history")
+        val updatedHistory = JSONArray()
+        var preservedSameDayBf: Double? = null
+        if (existingHistory != null) {
+          for (i in 0 until existingHistory.length()) {
+            val pt = existingHistory.optJSONObject(i) ?: continue
+            if (pt.optString("day", "") == entryDate) {
+              preservedSameDayBf = pt.optDoubleOrNull("bodyFatPercentage")
+            } else {
+              updatedHistory.put(pt)
+            }
+          }
+        }
+        val resolvedBf = checkInBodyFat
+          ?: preservedSameDayBf
+          ?: (if (dateMatches) obj.optDoubleOrNull("todayBodyFatPercentage") else null)
+        if (!dateMatches && (existingToday.isEmpty() || entryDate < existingToday)) {
+          val existingLastDate = obj.optString("lastEntryDate", "")
+          if (existingLastDate.isEmpty() || entryDate >= existingLastDate) {
+            obj.put("lastWeightKg", checkInWeightKg)
+            obj.put("lastEntryDate", entryDate)
+          }
+          if (resolvedBf != null) {
+            val existingLastBfDate = obj.optString("lastBodyFatDate", "")
+            if (existingLastBfDate.isEmpty() || entryDate >= existingLastBfDate) {
+              obj.put("lastBodyFatPercentage", resolvedBf)
+              obj.put("lastBodyFatDate", entryDate)
+            }
+          }
+        }
+        val todayEntry = JSONObject()
+          .put("day", entryDate)
+          .put("weightKg", checkInWeightKg)
+        if (resolvedBf != null) {
+          todayEntry.put("bodyFatPercentage", resolvedBf)
+        }
+        updatedHistory.put(todayEntry)
+        obj.put("history", updatedHistory)
+        if (resolvedBf != null) {
+          val existingBfHist = obj.optJSONArray("bodyFatHistory")
+          val updatedBfHist = JSONArray()
+          if (existingBfHist != null) {
+            for (i in 0 until existingBfHist.length()) {
+              val pt = existingBfHist.optJSONObject(i) ?: continue
+              if (pt.optString("day", "") != entryDate) {
+                updatedBfHist.put(pt)
+              }
+            }
+          }
+          updatedBfHist.put(
+            JSONObject()
+              .put("day", entryDate)
+              .put("weightKg", checkInWeightKg)
+              .put("bodyFatPercentage", resolvedBf)
+          )
+          obj.put("bodyFatHistory", updatedBfHist)
+        }
+      }
+      if (ackedClientId != null && allowAckAppend) {
+        val existingAcked = obj.optJSONArray("ackedClientIds")
+        val deduped = ArrayList<String>()
+        if (existingAcked != null) {
+          for (i in 0 until existingAcked.length()) {
+            val id = existingAcked.optString(i, "")
+            if (id.isNotEmpty() && id != ackedClientId && !deduped.contains(id)) {
+              deduped.add(id)
+            }
+          }
+        }
+        deduped.add(ackedClientId)
+        val bounded = deduped.takeLast(40)
+        obj.put("ackedClientIds", JSONArray(bounded))
+      }
+      if (dateMatches && waterConsumedMl != null) {
+        obj.put("waterConsumedMl", waterConsumedMl)
+      }
+      if (dateMatches) {
+        if (deletedWaterEntryId != null && waterConsumedMl == null) {
+          val existingLogForVol = obj.optJSONArray("waterLog")
+          var deletedVol: Double? = null
+          if (existingLogForVol != null) {
+            for (i in 0 until existingLogForVol.length()) {
+              val item = existingLogForVol.optJSONObject(i) ?: continue
+              if (item.optString("id", "") == deletedWaterEntryId) {
+                deletedVol = item.optDoubleOrNull("volumeMl")
+                break
+              }
+            }
+          }
+          if (deletedVol != null && deletedVol > 0.0 && obj.has("waterConsumedMl")) {
+            val existingMl = obj.optDoubleOrNull("waterConsumedMl") ?: 0.0
+            obj.put("waterConsumedMl", max(0.0, existingMl - deletedVol))
+          }
+        }
+        if (waterLog != null) {
+          val logArr = JSONArray()
+          for (entry in waterLog) {
+            logArr.put(
+              JSONObject()
+                .put("id", entry.id)
+                .put("name", entry.name)
+                .put("volumeMl", entry.volumeMl)
+                .put("time", entry.time)
+                .apply {
+                  if (entry.loggedAtMs != null && entry.loggedAtMs > 0L) {
+                    put("loggedAtMs", entry.loggedAtMs)
+                  }
+                }
+            )
+          }
+          obj.put("waterLog", logArr)
+          if (!obj.has("waterConsumedMl")) {
+            obj.put("waterConsumedMl", 0.0)
+          }
+        } else if (deletedWaterEntryId != null) {
+          val existingLog = obj.optJSONArray("waterLog")
+          if (existingLog != null) {
+            val pruned = JSONArray()
+            for (i in 0 until existingLog.length()) {
+              val item = existingLog.optJSONObject(i) ?: continue
+              if (item.optString("id", "") != deletedWaterEntryId) {
+                pruned.put(item)
+              }
+            }
+            obj.put("waterLog", pruned)
+          }
+        }
+      }
+      if (dateMatches && refreshedMedications != null && refreshedMedications.day == entryDate) {
+        val medsOut = JSONArray()
+        for (dose in refreshedMedications.doses) {
+          medsOut.put(
+            JSONObject()
+              .put("id", dose.id)
+              .put("medicationId", dose.medicationId)
+              .put("scheduleId", dose.scheduleId)
+              .put("name", dose.name)
+              .put("detail", dose.detail)
+              .put("time", dose.time)
+              .put("status", dose.status.rawValue)
+          )
+        }
+        obj.put("medications", medsOut)
+      }
+      if (dateMatches && refreshedSnapshot != null && refreshedSnapshot.day == entryDate) {
+        refreshedSnapshot.waterGoalMl?.takeIf { it > 0.0 }?.let { obj.put("waterGoalMl", it) }
+        refreshedSnapshot.waterFromFoodMl?.let { obj.put("waterFromFoodMl", it) }
+        refreshedSnapshot.nutrition?.takeIf { it.day == entryDate }?.let { n ->
+          obj.put("caloriesConsumed", n.caloriesConsumed)
+          obj.put("caloriesBurned", n.caloriesBurned)
+          obj.put("caloriesRemaining", n.caloriesRemaining)
+          obj.put("calorieGoalProgress", n.calorieProgress)
+          obj.put("carbsConsumed", n.carbs.consumed)
+          obj.put("carbsGoal", n.carbs.goal)
+          obj.put("carbsGoalProgress", n.carbs.progress)
+          obj.put("fatConsumed", n.fat.consumed)
+          obj.put("fatGoal", n.fat.goal)
+          obj.put("fatGoalProgress", n.fat.progress)
+          obj.put("proteinConsumed", n.protein.consumed)
+          obj.put("proteinGoal", n.protein.goal)
+          obj.put("proteinGoalProgress", n.protein.progress)
+          n.rows?.let { rows ->
+            val rowsArr = JSONArray()
+            for (r in rows) {
+              val rObj = JSONObject()
+                .put("key", r.key)
+                .put("label", r.label)
+                .put("unit", r.unit)
+                .put("consumed", r.consumed)
+                .put("progress", r.progress)
+              if (r.goal != null) {
+                rObj.put("goal", r.goal)
+              }
+              rowsArr.put(rObj)
+            }
+            obj.put("goalNutrients", rowsArr)
+          }
+        }
+        refreshedSnapshot.exerciseSummary?.takeIf { it.day == entryDate }?.let { ex ->
+          val sessionsArr = JSONArray()
+          for (s in ex.sessions) {
+            sessionsArr.put(
+              JSONObject()
+                .put("name", s.name)
+                .put("durationMinutes", s.durationMinutes)
+                .put("calories", s.calories)
+            )
+          }
+          obj.put(
+            "exerciseSummary",
+            JSONObject()
+              .put("day", ex.day)
+              .put("minutes", ex.minutes)
+              .put("minutesGoal", ex.minutesGoal)
+              .put("calories", ex.calories)
+              .put("caloriesGoal", ex.caloriesGoal)
+              .put("sessionCount", ex.sessionCount)
+              .put("sessions", sessionsArr)
+          )
+        }
+        refreshedSnapshot.steps?.takeIf { it.day == entryDate }?.let { st ->
+          obj.put(
+            "steps",
+            JSONObject()
+              .put("day", st.day)
+              .put("count", st.count)
+          )
+        }
+        refreshedSnapshot.stepGoal?.takeIf { it > 0 }?.let { obj.put("stepGoal", it) }
+      }
+      val medsArr = obj.optJSONArray("medications")
+      if (dateMatches && medsArr != null && (medicationDoseId != null || medicationStatuses != null)) {
+        for (i in 0 until medsArr.length()) {
+          val doseObj = medsArr.optJSONObject(i) ?: continue
+          val dId = doseObj.optString("id", "")
+          if (medicationDoseId != null && medicationStatus != null && dId == medicationDoseId) {
+            doseObj.put("status", medicationStatus.rawValue)
+          } else if (medicationStatuses != null) {
+            medicationStatuses[dId]?.let { doseObj.put("status", it.rawValue) }
+          }
+        }
+      }
+      if (fastUpdated) {
+        obj.put("fastKnown", true)
+        if (fast != null) {
+          val fastObj = JSONObject().put("startedAt", fast.startedAtMs)
+          fast.targetEndAtMs?.let { fastObj.put("targetEndAt", it) }
+          fast.label?.let { fastObj.put("label", it) }
+          fast.id?.takeIf { it.isNotEmpty() }?.let { fastObj.put("id", it) }
+          obj.put("fast", fastObj)
+        } else {
+          obj.put("fast", JSONObject.NULL)
+        }
+      }
+      if (bodyFatHistory != null) {
+        val resolvedBfHistory = if (refreshedSnapshot != null) {
+          val existingBfArr = obj.optJSONArray("bodyFatHistory")
+          val existingBfPts = mutableListOf<HistoryPoint>()
+          if (existingBfArr != null) {
+            for (i in 0 until existingBfArr.length()) {
+              val pt = existingBfArr.optJSONObject(i) ?: continue
+              val day = pt.optStringOrNull("day") ?: continue
+              val bfVal = pt.optDoubleOrNull("bodyFatPercentage")?.takeIf { it > 0.0 } ?: continue
+              existingBfPts.add(HistoryPoint(day, pt.optDoubleOrNull("weightKg") ?: 0.0, bfVal))
+            }
+          }
+          mergeDirectRefreshHistory(
+            existing = existingBfPts,
+            refreshed = bodyFatHistory,
+            snapshotDay = refreshedSnapshot.day
+          )
+        } else {
+          bodyFatHistory
+        }
+        val bfArr = JSONArray()
+        for (pt in resolvedBfHistory) {
+          val bf = pt.bodyFatPercentage ?: continue
+          val item = JSONObject()
+            .put("day", pt.day)
+            .put("bodyFatPercentage", bf)
+          if (pt.weightKg > 0.0) {
+            item.put("weightKg", pt.weightKg)
+          }
+          bfArr.put(item)
+        }
+        obj.put("bodyFatHistory", bfArr)
+      }
+    }
     internal fun resolveEnabledPage(preferred: WatchPage, enabled: List<WatchPage>): WatchPage =
       if (enabled.contains(preferred)) {
         preferred
@@ -1917,6 +4877,11 @@ class CheckInStore(private val context: Context) {
       val ctxDay = baseWatchContext.today?.takeIf { it.isNotBlank() && it < today }
       if (ctxDay != null && baseWatchContext.todayBodyFatPercentage != null) {
         datedBodyFat[ctxDay] = baseWatchContext.todayBodyFatPercentage
+      }
+      for (pt in baseWatchContext.bodyFatHistory) {
+        if (pt.day.isNotBlank() && pt.day < today && pt.bodyFatPercentage != null) {
+          datedBodyFat[pt.day] = pt.bodyFatPercentage
+        }
       }
       for (pt in history) {
         if (pt.day.isNotBlank() && pt.day < today && pt.bodyFatPercentage != null) {
@@ -4835,5 +7800,9 @@ interface WearSessionTransport {
   }
   fun sendWatchRunFinished(result: WatchRunResult)
   fun sendHeartRateBatch(batch: HeartRateBatch)
-  fun clearQueuedWatchTransfers() {}
+  fun cancelWaterTap(clientId: String, ownerId: String) {}
+  fun clearQueuedWatchTransfers(retiredThroughGeneration: Long = 0L) {}
+  fun isClientIdInFlight(clientId: String): Boolean = false
+  fun onOwnerConfirmed() {}
+  fun refreshLiveFromServerThrottled(force: Boolean = false) {}
 }

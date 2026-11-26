@@ -51,8 +51,9 @@ export const waterContainersQueryKey = ['waterContainers'] as const;
 export const actionTagsQueryKey = ['actionTags'] as const;
 
 /** A day's individual logged drinks — the rows behind the day's water total. */
+export const waterIntakeLogRootQueryKey = ['waterIntakeLog'] as const;
 export const waterIntakeLogQueryKey = (date: string) =>
-  ['waterIntakeLog', date] as const;
+  [...waterIntakeLogRootQueryKey, date] as const;
 
 export const foodsQueryKey = ['foods'] as const;
 
@@ -169,8 +170,9 @@ export const heartRateReportQueryKeyRoot = ['heartRateReport'] as const;
 export const heartRateReportQueryKey = (startDate: string, endDate: string) =>
   [...heartRateReportQueryKeyRoot, startDate, endDate] as const;
 
+export const waterIntakeRangeRootQueryKey = ['waterIntakeRange'] as const;
 export const waterIntakeRangeQueryKey = (startDate: string, endDate: string) =>
-  ['waterIntakeRange', startDate, endDate] as const;
+  [...waterIntakeRangeRootQueryKey, startDate, endDate] as const;
 
 export const sleepRangeQueryKeyRoot = ['sleepRange'] as const;
 /** Tonight's sleep need; it moves with both synced sleep and logged workouts. */

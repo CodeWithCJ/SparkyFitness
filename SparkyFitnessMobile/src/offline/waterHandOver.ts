@@ -75,6 +75,39 @@ export async function queueWaterDrink(
   }
 }
 
+/**
+ * Cancels one queued offline water drink by its replay key (`entityId`) before
+ * upload begins. Returns `'cancelled'` when deleted untouched, `'uploading'`
+ * when an attempt has already started or was tried, and `'none'` when no
+ * unconfirmed outbox row exists for that replay key.
+ */
+export async function cancelQueuedWaterDrink(
+  replayKey: string,
+  explicitServerConfigId?: string
+): Promise<'cancelled' | 'uploading' | 'none'> {
+  const cleanKey = replayKey.trim();
+  if (!cleanKey) return 'none';
+  if (!(await savedCopyReadable())) return 'none';
+  const serverConfigId =
+    explicitServerConfigId?.trim() || (await getActiveServerConfigId());
+  if (!serverConfigId) return 'none';
+  const db = await getOfflineDb();
+  const userId = await signedInUserId(db, serverConfigId);
+  if (userId == null) return 'none';
+  const outcome = await deleteUnconfirmedUnlessSending(
+    db,
+    serverConfigId,
+    cleanKey,
+    (row) => isOwnedBy(row, userId),
+    (row) => row.attempts > 0
+  );
+  if (outcome === 'deleted') {
+    notifyOutboxChanged();
+    return 'cancelled';
+  }
+  return outcome;
+}
+
 /** The removal of one drink the server already has, waiting to upload. */
 export const WATER_REMOVE = 'water.remove';
 

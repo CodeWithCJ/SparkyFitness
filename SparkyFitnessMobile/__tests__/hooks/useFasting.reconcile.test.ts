@@ -219,6 +219,18 @@ describe('cancelFastGoalNotification', () => {
     await cancelFastGoalNotification();
     expect(mockCancel).not.toHaveBeenCalled();
   });
+
+  test('skips cancelling when fastId does not match the stored notification', async () => {
+    await reconcileFastGoalNotification(activeFast({ id: 'fast-new' }));
+    await cancelFastGoalNotification('fast-old');
+    expect(mockCancel).not.toHaveBeenCalled();
+    expect(await AsyncStorage.getItem(GOAL_NOTIF_STORAGE_KEY)).not.toBeNull();
+
+    await cancelFastGoalNotification('fast-new');
+    expect(mockCancel).toHaveBeenCalledWith('notif-1');
+    expect(mockCancel).toHaveBeenCalledWith('notif-pre-1');
+    expect(await AsyncStorage.getItem(GOAL_NOTIF_STORAGE_KEY)).toBeNull();
+  });
 });
 
 describe('useFastingGoalReconciler notification preferences', () => {
