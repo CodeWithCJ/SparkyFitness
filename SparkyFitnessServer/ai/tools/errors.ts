@@ -17,7 +17,7 @@ export function toolError(
 // Postgres error fields that are safe to show: the SQLSTATE class and the name
 // of the violated constraint. Both are schema metadata — they identify WHICH
 // rule was broken without revealing row data, SQL text, or internals.
-function describeDbError(error: unknown): string | null {
+export function describeDbError(error: unknown): string | null {
   if (!error || typeof error !== 'object') return null;
   const pg = error as { code?: unknown; constraint?: unknown };
   const code = typeof pg.code === 'string' ? pg.code : null;

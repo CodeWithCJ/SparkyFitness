@@ -24,13 +24,13 @@ The watch gets everything from the phone, so keep the phone app signed in. If th
 
 ## Pages
 
-Swipe between pages on the watch. Choose which pages show, and in what order, on the phone under **Settings → Apple Watch** (or **Settings → Wear OS** on Android). The menu only appears while a watch is paired, and the last page can't be turned off.
+Swipe between pages on the watch. Choose which pages show, and in what order, on the phone under **Settings → Apple Watch** (or **Settings → Wear OS** on Android). The menu only appears while a watch is paired, and the last page can't be turned off. Pages of features turned off in **Settings → Features** are not listed there.
 
 | Page | What it does |
 | --- | --- |
 | **Goals** | Calorie ring plus the nutrients you pick (protein, carbs and fat by default). |
 | **Water** | Add a drink with one tap, see today's total against your goal (with the amount that comes from food, when that is on), and remove a drink you added by mistake. |
-| **Medications** | Today's scheduled doses and your as-needed medications; log a dose from the wrist. For now it shows even while Medications is turned off in the app's **Settings → Features**. |
+| **Medications** | Today's scheduled doses and your as-needed medications; log a dose from the wrist. While Medications is turned off in the app's **Settings → Features**, this page leaves the watch (Goals shows if it was the only page) and the Wear OS Medications tile and complication say it is turned off. |
 | **Weight check-in** | Enter today's weight from the wrist. |
 | **Weight trend** | A chart of your recent weight. |
 | **Workout** | Start a saved workout preset or a walk or run, and log it live. |

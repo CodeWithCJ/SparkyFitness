@@ -4,8 +4,17 @@ import { todayInZone, type CalorieCyclingDay } from '@workspace/shared';
 import { log } from '../../config/logging.js';
 import goalService from '../../services/goalService.js';
 import goalRepository from '../../models/goalRepository.js';
+import onboardingService from '../../services/onboardingService.js';
+import preferenceService from '../../services/preferenceService.js';
+import { actorUserIdFor } from '../../db/poolManager.js';
+import { convertWeight } from './unitConversion.js';
 import nutrientGoalPreferenceService from '../../services/nutrientGoalPreferenceService.js';
-import { ERRORS, formatZodError } from './errors.js';
+import {
+  ERRORS,
+  describeDbError,
+  formatZodError,
+  isPermissionDenied,
+} from './errors.js';
 import {
   dayString,
   formatConfirmation,
@@ -90,7 +99,7 @@ This tool takes a FLAT object with an "action" field. Do NOT nest fields under t
 
 Actions:
 - action: 'get_goals' (fields: target_date?) — returns the goals active on a specific date
-- action: 'set_goals' (fields: start_date, calories?, protein?, carbs?, fat?, water_goal_ml?, weight?, caffeine_mg?, alcohol_g?, ...) — sets new goals from a start date
+- action: 'set_goals' (fields: start_date, calories?, protein?, carbs?, fat?, water_goal_ml?, weight?, weight_unit?, caffeine_mg?, alcohol_g?, ...) — sets new goals from a start date. weight is the target body weight; it has no start date and replaces the current one
 - action: 'list_goal_timeline' — lists all goal changes over time`,
       inputSchema: manageGoalsInput,
       execute: async (rawArgs) => {
@@ -205,6 +214,87 @@ Actions:
 
             case 'set_goals': {
               const startDate = args.start_date || todayInZone(tz);
+              const {
+                action: _action,
+                start_date: _startDate,
+                weight,
+                weight_unit: weightUnitArg,
+                ...goalFields
+              } = args;
+              // The target weight is validated first and written only after the
+              // goal timeline, so a failed timeline write leaves it untouched.
+              let targetWeightKg: number | undefined;
+              let weightText = '';
+              let weightLabel = '';
+              if (weight !== undefined) {
+                // The target weight lives with the onboarding data, which only
+                // the account owner may change (as in PUT /onboarding/target-weight).
+                if (actorUserIdFor(userId) !== userId) {
+                  return ERRORS.OWN_ACCOUNT_ONLY();
+                }
+                let weightUnit: string | undefined = weightUnitArg;
+                if (weightUnit === undefined) {
+                  const prefs = await preferenceService.getUserPreferences(
+                    actorUserIdFor(userId),
+                    userId
+                  );
+                  // No kg fallback: getUserPreferences returns defaults without
+                  // a weight unit when the row is missing or the read fails.
+                  const pref = String(
+                    prefs?.default_weight_unit ?? ''
+                  ).toLowerCase();
+                  weightUnit =
+                    pref === 'kg'
+                      ? 'kg'
+                      : pref === 'lbs' || pref === 'lb'
+                        ? 'lbs'
+                        : undefined;
+                  if (weightUnit === undefined) {
+                    return ERRORS.VALIDATION(
+                      'weight: pass weight_unit (kg or lbs) with the target weight'
+                    );
+                  }
+                }
+                // NUMERIC(5,2) column: round as it would, refuse what it can't hold.
+                const kg =
+                  Math.round(convertWeight(weight, weightUnit, 'kg') * 100) /
+                  100;
+                if (!(kg > 0 && kg <= 999.99)) {
+                  return ERRORS.VALIDATION(
+                    `weight: ${weight} ${weightUnit} is out of range; the target weight must be above 0 and at most 999.99 kg`
+                  );
+                }
+                targetWeightKg = kg;
+                weightLabel =
+                  weightUnit === 'kg'
+                    ? `${kg} kg`
+                    : `${weight} ${weightUnit} (${kg} kg)`;
+                weightText =
+                  weightUnit === 'kg'
+                    ? `Target weight set to ${kg} kg.`
+                    : `Target weight set to ${weight} ${weightUnit} (${kg} kg).`;
+                // A weight-only call must not add a goal timeline entry. Empty
+                // values a model fills in (null, {}, []) don't count as goals.
+                const hasGoalValue = Object.values(goalFields).some(
+                  (v) =>
+                    v !== undefined &&
+                    v !== null &&
+                    !(Array.isArray(v) && v.length === 0) &&
+                    !(
+                      typeof v === 'object' &&
+                      !Array.isArray(v) &&
+                      Object.keys(v).length === 0
+                    )
+                );
+                if (!hasGoalValue) {
+                  await onboardingService.setTargetWeight(userId, kg);
+                  return formatConfirmation(
+                    args.start_date
+                      ? `${weightText} The target weight has no start date, so start_date was not used.`
+                      : weightText
+                  );
+                }
+              }
               // Fetch existing goals for the start date to preserve unchanged nutrients
               const existingGoals: any = await goalService.getUserGoals(
                 userId,
@@ -269,8 +359,32 @@ Actions:
                     }),
               };
               await goalService.manageGoalTimeline(userId, payload);
+              if (targetWeightKg !== undefined) {
+                try {
+                  await onboardingService.setTargetWeight(
+                    userId,
+                    targetWeightKg
+                  );
+                } catch (error) {
+                  // Not an "Error [...]" result: the goals ARE saved, and a
+                  // client that reads the call as failed would repeat it and
+                  // write the goal timeline twice. The service logs the error.
+                  const cause =
+                    (error as { cause?: unknown } | null)?.cause ?? error;
+                  const detail = describeDbError(cause);
+                  const reason = isPermissionDenied(cause)
+                    ? 'this account may not change it'
+                    : detail
+                      ? `the database rejected it (${detail})`
+                      : 'a database error occurred';
+                  return (
+                    `⚠️ Partial success: goals set successfully starting from ${startDate}, but the target weight of ${weightLabel} was NOT saved: ${reason}.\n\n` +
+                    'Do not repeat this call, the goals are already saved. Tell the user the target weight was not changed.'
+                  );
+                }
+              }
               return formatConfirmation(
-                `Goals set successfully starting from ${startDate}.`
+                `Goals set successfully starting from ${startDate}.${weightText ? ` ${weightText}` : ''}`
               );
             }
 
