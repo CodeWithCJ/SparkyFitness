@@ -366,47 +366,51 @@ function buildDefaultVariantEcho(
 /**
  * Downloads a food's provider-hosted images to local storage and writes the
  * localized paths back, after the row is already committed and the caller
- * has returned its response. Runs on its own client, since the caller's
- * client is released by the time this settles.
+ * has returned its response.
  *
  * A slow or unreachable provider CDN must never hold up the create/update
  * response (#3532): the food is durable as soon as it's committed, so image
  * mirroring is a best-effort follow-up, not something the client should wait
  * on. Failures are logged and leave the remote URL in place.
+ *
+ * The download has no overall deadline, so a pooled connection is acquired
+ * only for the brief write-back afterward, not held for the whole download.
  */
 async function localizeFoodImagesInBackground(
   foodId: string,
   images: unknown,
   userId: string
 ): Promise<void> {
-  const client = await getClient(userId);
   try {
     const localizedImages = await localizeImages(images, foodId, 'foods');
     if (!localizedImages) {
       return;
     }
-    // Guarded: an edit can land while these downloads run. Don't clobber a
-    // newer value with a stale localized copy of the old one.
-    const localizeWrite = await client.query(
-      'UPDATE foods SET images = $1::jsonb WHERE id = $2 AND images = $3::jsonb',
-      [
-        JSON.stringify(localizedImages),
-        foodId,
-        JSON.stringify(toImageArray(images)),
-      ]
-    );
-    if (localizeWrite.rowCount === 0) {
-      log(
-        'debug',
-        `[food] Images for ${foodId} changed before localization finished; keeping the newer value`
+    const client = await getClient(userId);
+    try {
+      // Guarded: an edit can land while these downloads run. Don't clobber a
+      // newer value with a stale localized copy of the old one.
+      const localizeWrite = await client.query(
+        'UPDATE foods SET images = $1::jsonb WHERE id = $2 AND images = $3::jsonb',
+        [
+          JSON.stringify(localizedImages),
+          foodId,
+          JSON.stringify(toImageArray(images)),
+        ]
       );
+      if (localizeWrite.rowCount === 0) {
+        log(
+          'debug',
+          `[food] Images for ${foodId} changed before localization finished; keeping the newer value`
+        );
+      }
+    } finally {
+      client.release();
     }
   } catch (imageError) {
     const message =
       imageError instanceof Error ? imageError.message : String(imageError);
     log('warn', `[food] Image localization failed for ${foodId}: ${message}`);
-  } finally {
-    client.release();
   }
 }
 
