@@ -79,7 +79,11 @@ async function runReadOnlyQuery(
     await client.query(
       `SET LOCAL statement_timeout = '${READ_ONLY_STATEMENT_TIMEOUT}'`
     );
-    const result = await client.query(sql);
+    // Pass an (empty) parameter array so node-postgres uses the extended query
+    // protocol, which executes exactly ONE statement. This blocks multi-statement
+    // input like `SELECT 1; COPY (...) TO PROGRAM '...'` that the simple protocol
+    // would run in full — the leading-keyword check alone is not sufficient.
+    const result = await client.query(sql, []);
     await client.query('ROLLBACK');
     return result.rows;
   } catch (error) {
