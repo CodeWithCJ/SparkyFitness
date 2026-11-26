@@ -9,6 +9,7 @@ import ClientCertificateModule, {
 import { extractHost } from '../utils/serverUrl';
 import { addLog } from './LogService';
 import { getSavedServerUrls } from './storage';
+import { syncWatchServerCredentials } from './watchServerCredentials';
 
 export type {
   ClientCertificateImportError,
@@ -164,6 +165,9 @@ export const hasClientCertificateGap = (): boolean => {
 
 export const removeClientCertificate = (): void => {
   ClientCertificateModule?.removeCertificate();
+  if (Platform.OS === 'android') {
+    void syncWatchServerCredentials().catch(() => undefined);
+  }
 };
 
 const discardFile = (uri: string): void => {
@@ -227,6 +231,9 @@ export const importClientCertificate = async (
     // An upgrade from a build without this module has saved servers the
     // native side has never been told about.
     await refreshClientCertificateHosts();
+    if (Platform.OS === 'android') {
+      void syncWatchServerCredentials().catch(() => undefined);
+    }
   }
   return result;
 };

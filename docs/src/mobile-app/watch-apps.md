@@ -20,7 +20,7 @@ Install the phone and watch apps from the same place. Only apps signed with the 
 
 If you use Obtainium, a release now has two APKs. Choose `app-release.apk` for your phone, or filter on it in the app's settings.
 
-The watch gets everything from the phone, so keep the phone app signed in. If the phone is out of range, check-ins you make on the watch (water, weight, fasting, doses, finished sets) are queued and normally delivered when it is back. If a delivery fails, open the app on both devices and try again.
+Keep the phone app signed in so it can sync your account settings and credentials to the watch. On Wear OS, once the phone has shared your server credentials, the watch can also sync directly with your server over Wi-Fi or LTE (Watch → Server) to refresh today's figures and save water, medication doses, weight check-ins and fasting changes right away, falling back automatically to the paired Android phone whenever the server cannot be reached directly (and notifying the phone to refresh its own cache when in range). If a client certificate (mTLS) is configured in the Android app, the phone does not share server credentials with the watch, so the watch routes server access through the paired Android phone even when the watch has Wi-Fi or LTE. Apple Watch queues actions whenever the paired iPhone is unreachable, while Wear OS queues them on the wrist only when neither direct Watch → Server nor the paired Android phone can be reached, delivering them once connectivity returns (queued Wear OS hydration actions are eligible for replay only on the day they were logged).
 
 ## Pages
 
@@ -31,15 +31,15 @@ Swipe between pages on the watch. Choose which pages show, and in what order, on
 | **Goals** | Calorie ring plus the nutrients you pick (protein, carbs and fat by default). |
 | **Water** | Add a drink with one tap, see today's total against your goal (with the amount that comes from food, when that is on), and remove a drink you added by mistake. |
 | **Medications** | Today's scheduled doses and your as-needed medications; log a dose from the wrist. While Medications is turned off in the app's **Settings → Features**, this page leaves the watch (Goals shows if it was the only page) and the Wear OS Medications tile and complication say it is turned off. |
-| **Weight check-in** | Enter today's weight from the wrist. |
-| **Weight trend** | A chart of your recent weight. |
+| **Weight check-in** | Enter today's weight (and optional body fat %) from the wrist. |
+| **Weight trend** | A chart of your recent weight. On Wear OS, one body-fat reading enables the dual Weight + Body Fat % summary card and the **Weight** / **Body Fat** chart selector so smart-scale body fat stays visible even when the Weight check-in page is hidden, while the Body Fat trend curve requires at least two dated readings within the 14-day chart window. |
 | **Workout** | Start a saved workout preset or a walk or run, and log it live. |
 | **Fasting** | See the running fast, start a 16:8, 18:6 or 20:4 fast, or end it. |
 | **Steps** | Today's steps against the goal. |
 
 The settings screen also picks which nutrients the Goals page lists, and:
 
-- **Ask for effort (RPE) after each set**: off by default. When on, logging a set holds it behind a quick effort rating (1–10 on Apple Watch, 5–10 on Wear OS).
+- **Ask for effort (RPE) after each set**: off by default. When on, logging a set holds it behind a quick effort rating (1–10 on Apple Watch, 5–10 on Wear OS, or 1–10 in the new workout view).
 - **Apple Watch only:** double-tap to tick a set (watchOS 11 and a watch that supports it), and a **Set input** choice between a keypad and adjusting weight and reps with the Digital Crown.
 
 ## Workouts
@@ -49,6 +49,14 @@ Start a saved workout from the phone, or from the Workout page on the watch. The
 Walks and runs can be recorded on the watch alone with **Cardio**: outdoors with the watch's GPS or indoors on a treadmill. Training-program workouts can be followed on the watch, with pace and heart-rate alerts and buzzing or spoken cues. See [GPS activity recording](/features/exercises/gps-activity-recording) for the full behavior, including the Apple Watch details.
 
 **Apple Watch only:** a saved route can be followed (and kept on the watch) during an outdoor run. See [Following a Route on Apple Watch](/features/exercises/route-following-on-watch).
+
+## Wear OS tiles
+
+Wear OS includes six Material 3 Expressive tiles (**Nutrition**, **Hydration**, **Medications**, **Sleep**, **Exercise** and **Weight**) with an outer progress ring, tonal cards or button groups, and a curved bottom edge button (smaller watch screens may omit the bottom edge button on the Nutrition and Sleep tiles when showing three rows). Tapping a tile's header, ring or bottom action opens the matching page in the watch app (or cycles pages inline when paginated):
+
+- **Hydration tile:** shows your primary water container and Quick Add drink presets first, using full-width rows when 1–2 presets are configured and a 2×2 one-tap grid for 3 or more so you can log water or drinks directly from the tile without opening the app (duplicate colliding labels open the Water page instead so you can pick the exact preset). When more than four containers or Quick Add drinks are configured, the curved bottom **More** edge button cycles pages inline on the tile.
+- **Medications tile:** shows 1–2 daily doses as full-width tonal cards and switches to a 2×2 grid when 3 or more daily doses are scheduled, with inline **More** edge-button page cycling beyond four doses and one-tap dose check-off directly from the tile when each dose strength fits unambiguously (clipped or duplicate entries open the Medications page instead; active while **Settings → Features → Medications** is on).
+- **Weight, Sleep, Nutrition and Exercise tiles:** summarize today's progress at a glance with a curved bottom shortcut button; tapping the Weight sparkline opens **Weight trend** when that page is enabled (or the tile's main page when hidden).
 
 ## Complications
 

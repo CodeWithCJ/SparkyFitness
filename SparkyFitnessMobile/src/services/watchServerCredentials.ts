@@ -5,6 +5,7 @@ import {
   getActiveServerConfig,
   getActiveServerConfigId,
   proxyHeadersToRecord,
+  type ServerConfig,
 } from './storage';
 import { normalizeUrl } from '../utils/serverUrl';
 
@@ -54,11 +55,15 @@ export async function syncWatchServerCredentials(): Promise<string | null> {
         return workoutServerId;
       }
       if (activeCfg?.url) {
-        await watch.setServerCredentials?.(normalizeUrl(activeCfg.url), {
-          ...proxyHeadersToRecord(activeCfg.proxyHeaders),
-          ...getAuthHeaders(activeCfg),
-          'X-Meal-Model-Version': '2',
-        });
+        await watch.setServerCredentials?.(
+          normalizeUrl(activeCfg.url),
+          {
+            ...proxyHeadersToRecord(activeCfg.proxyHeaders),
+            ...getAuthHeaders(activeCfg),
+            'X-Meal-Model-Version': '2',
+          },
+          workoutServerId ?? ''
+        );
       } else {
         await watch.clearServerCredentials?.();
       }
@@ -88,4 +93,20 @@ export async function isPayloadForActiveServer(payload: {
   }
   const activeOwnerId = await getActiveServerConfigId();
   return Boolean(activeOwnerId) && payload.ownerId === activeOwnerId;
+}
+
+/**
+ * Resolves and validates the active `ServerConfig` for a watch payload's
+ * `ownerId` (or the active server when `ownerId` is omitted on iOS). Returns
+ * `null` when no server config exists or when an explicit `ownerId` does not
+ * match the currently active server config.
+ */
+export async function resolveWatchServerConfig(
+  ownerId?: string
+): Promise<ServerConfig | null> {
+  const cleanOwner = ownerId?.trim() ?? '';
+  const active = await getActiveServerConfig();
+  if (!active) return null;
+  if (cleanOwner !== '' && active.id !== cleanOwner) return null;
+  return active;
 }

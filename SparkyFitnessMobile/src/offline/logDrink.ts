@@ -11,7 +11,8 @@ const UUID_PATTERN =
 
 /** What logging a drink came to: the server's answer, or a waiting upload. */
 export type DrinkResult =
-  { queued: false; response: WaterIntakeResponse } | { queued: true };
+  | { queued: false; response: WaterIntakeResponse }
+  | { queued: true; replayKey?: string };
 
 /**
  * Logs one drink. It carries a replay key from the first request on, so a
@@ -48,7 +49,11 @@ export async function logDrinkOrQueue(
       () => queueWaterDrink(clientId, { entryDate, containerId }),
       startedUnder
     );
-    if (queued) return { queued: true };
+    if (queued) {
+      return pressKey !== undefined
+        ? { queued: true, replayKey: clientId }
+        : { queued: true };
+    }
     throw error;
   }
 }

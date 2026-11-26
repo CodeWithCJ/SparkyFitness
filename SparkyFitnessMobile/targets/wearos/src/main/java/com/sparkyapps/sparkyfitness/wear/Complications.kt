@@ -771,8 +771,10 @@ class EnergyGoalComplicationService : SuspendingComplicationDataSourceService() 
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-    val store = WearSessionManager.getInstance(applicationContext).checkInStore
+    val session = WearSessionManager.getInstance(applicationContext)
+    val store = session.checkInStore
     store.pruneStaleDayData()
+    session.refreshLiveFromServerIfStale()
     val nutrition = store.nutrition.value
     val energy = EnergyDisplay.of(store.watchContext.value)
     val tap = ComplicationUpdater.tapPendingIntent(applicationContext, WatchPage.GOALS)
@@ -861,8 +863,10 @@ class CaloriesRemainingComplicationService : SuspendingComplicationDataSourceSer
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-    val store = WearSessionManager.getInstance(applicationContext).checkInStore
+    val session = WearSessionManager.getInstance(applicationContext)
+    val store = session.checkInStore
     store.pruneStaleDayData()
+    session.refreshLiveFromServerIfStale()
     val energy = EnergyDisplay.of(store.watchContext.value)
     val spec = buildSpec(store.nutrition.value, energy)
     val tap = ComplicationUpdater.tapPendingIntent(applicationContext, WatchPage.GOALS)
@@ -896,8 +900,10 @@ class ProteinGoalComplicationService : SuspendingComplicationDataSourceService()
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-    val store = WearSessionManager.getInstance(applicationContext).checkInStore
+    val session = WearSessionManager.getInstance(applicationContext)
+    val store = session.checkInStore
     store.pruneStaleDayData()
+    session.refreshLiveFromServerIfStale()
     val valid = store.nutrition.value?.takeIf { it.isToday }
     val p = valid?.protein
     val consumed = (p?.consumed ?: 0.0).toFloat()
@@ -915,8 +921,10 @@ class CarbsGoalComplicationService : SuspendingComplicationDataSourceService() {
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-    val store = WearSessionManager.getInstance(applicationContext).checkInStore
+    val session = WearSessionManager.getInstance(applicationContext)
+    val store = session.checkInStore
     store.pruneStaleDayData()
+    session.refreshLiveFromServerIfStale()
     val valid = store.nutrition.value?.takeIf { it.isToday }
     val c = valid?.carbs
     val consumed = (c?.consumed ?: 0.0).toFloat()
@@ -934,8 +942,10 @@ class FatGoalComplicationService : SuspendingComplicationDataSourceService() {
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-    val store = WearSessionManager.getInstance(applicationContext).checkInStore
+    val session = WearSessionManager.getInstance(applicationContext)
+    val store = session.checkInStore
     store.pruneStaleDayData()
+    session.refreshLiveFromServerIfStale()
     val valid = store.nutrition.value?.takeIf { it.isToday }
     val f = valid?.fat
     val consumed = (f?.consumed ?: 0.0).toFloat()
@@ -953,9 +963,11 @@ class WaterGoalComplicationService : SuspendingComplicationDataSourceService() {
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-    val store = WearSessionManager.getInstance(applicationContext).checkInStore
+    val session = WearSessionManager.getInstance(applicationContext)
+    val store = session.checkInStore
     var requestDay = CheckInDate.today()
     store.pruneStaleDayData()
+    session.refreshLiveFromServerIfStale()
     var consumed = store.effectiveWaterMl.value.toFloat()
     var snap = store.water.value
     val afterDay = CheckInDate.today()
@@ -1217,8 +1229,10 @@ class StepsComplicationService : SuspendingComplicationDataSourceService() {
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-    val store = WearSessionManager.getInstance(applicationContext).checkInStore
+    val session = WearSessionManager.getInstance(applicationContext)
+    val store = session.checkInStore
     store.pruneStaleDayData()
+    session.refreshLiveFromServerIfStale()
     val steps = store.steps.value?.takeIf { it.isToday }
     val today = (steps?.count ?: 0).toFloat()
     val goal = max(1, store.stepGoal.value).toFloat()
@@ -1345,8 +1359,10 @@ class MedicationsComplicationService : SuspendingComplicationDataSourceService()
   }
 
   override suspend fun onComplicationRequest(request: ComplicationRequest): ComplicationData? {
-    val store = WearSessionManager.getInstance(applicationContext).checkInStore
+    val session = WearSessionManager.getInstance(applicationContext)
+    val store = session.checkInStore
     store.pruneStaleDayData()
+    session.refreshLiveFromServerIfStale()
     val spec = ComplicationModels.buildMedicationsSpec(
       medications = store.medications.value,
       doneShortLabel = getString(R.string.common_done),
@@ -1402,6 +1418,7 @@ class ExerciseComplicationService : SuspendingComplicationDataSourceService() {
     val session = WearSessionManager.getInstance(applicationContext)
     val store = session.checkInStore
     store.pruneStaleDayData()
+    session.refreshLiveFromServerIfStale()
     val energy = EnergyDisplay.of(store.watchContext.value)
 
     var activeLabel: String? = null
