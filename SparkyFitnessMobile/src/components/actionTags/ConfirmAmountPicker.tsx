@@ -217,11 +217,14 @@ export const ConfirmAmountPicker: React.FC<{
     if (Array.isArray(tag.preset_amounts) && tag.preset_amounts.length > 0) {
       return tag.preset_amounts.map((val, idx) => ({
         key: `custom-preset-${idx}-${val}`,
-        label: isWater
-          ? selectedUnit === 'drinks'
-            ? `${formatDisplayNumber(val)}×`
-            : `${formatDisplayNumber(val)} ${selectedUnit}`
-          : `${formatDisplayNumber(val)} ${selectedUnit}`,
+        label:
+          selectedUnit === 'drinks'
+            ? `${formatDisplayNumber(val)}\u00d7`
+            : selectedUnit === 'oz'
+              ? `${formatDisplayNumber(val)} ${t('actionTags.scan.unitOz', { defaultValue: 'oz' })}`
+              : selectedUnit === 'liter'
+                ? `${formatDisplayNumber(val)} ${t('actionTags.scan.unitLiter', { defaultValue: 'liter' })}`
+                : `${formatDisplayNumber(val)} ${selectedUnit}`,
         value: val,
       }));
     }
@@ -230,14 +233,14 @@ export const ConfirmAmountPicker: React.FC<{
       if (volUnit === 'oz') {
         return WATER_OZ_PRESETS.map((oz) => ({
           key: `oz-${oz}`,
-          label: `${oz} oz`,
+          label: `${formatDisplayNumber(oz)} ${t('actionTags.scan.unitOz', { defaultValue: 'oz' })}`,
           value: oz,
         }));
       }
       if (volUnit === 'liter') {
         return WATER_LITER_PRESETS.map((liters) => ({
           key: `liter-${liters}`,
-          label: `${formatDisplayNumber(liters)} liter`,
+          label: `${formatDisplayNumber(liters)} ${t('actionTags.scan.unitLiter', { defaultValue: 'liter' })}`,
           value: liters,
         }));
       }
@@ -273,6 +276,7 @@ export const ConfirmAmountPicker: React.FC<{
     defaultValue,
     isWater,
     selectedUnit,
+    t,
     tag.preset_amounts,
     variantServingSize,
   ]);

@@ -6541,7 +6541,9 @@
       "proteinShort": "P:",
       "carbsShort": "C:",
       "fatShort": "F:",
-      "timePlaceholder": "HH:MM"
+      "timePlaceholder": "HH:MM",
+      "unitOz": "oz",
+      "unitLiter": "liter"
     },
     "form": {
       "errors": {
