@@ -151,7 +151,8 @@ if (config.source.kind === 'file') {
         seconds <= expected + 0.2
       ) {
         sample.expected = Math.min(expected, seconds + playbackRate);
-        const playedUntil = Math.min(seconds, expected);
+        // The end event confirms the final fraction of continuous playback.
+        const playedUntil = ended ? seconds : Math.min(seconds, expected);
         sample.playedUntil = Math.max(previous.playedUntil, playedUntil);
         if (playedUntil > previous.playedUntil) {
           ranges.push({ start: previous.playedUntil, end: playedUntil });

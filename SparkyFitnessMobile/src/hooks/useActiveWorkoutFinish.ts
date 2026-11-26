@@ -57,6 +57,34 @@ export function useActiveWorkoutFinish({
       return !finishInProgressRef.current && isTargetWorkoutActive();
     }
 
+    function hasSavableChanges(): boolean {
+      const { hasUnsavedChanges, session } = useActiveWorkoutStore.getState();
+      // The autosave skips empty workouts because updates require exercises.
+      return hasUnsavedChanges && (session?.exercises.length ?? 0) > 0;
+    }
+
+    function adoptStampRevision(
+      previous: number,
+      latest: number | undefined
+    ): void {
+      const { session, offlineBaseRevision } = useActiveWorkoutStore.getState();
+      if (
+        session == null ||
+        latest == null ||
+        latest <= previous ||
+        (session.revision != null && session.revision !== previous)
+      ) {
+        return;
+      }
+      // The stamp changes only lifecycle metadata. Advance the known revision
+      // for retries and the offline queue while keeping the newer local edits.
+      useActiveWorkoutStore.setState({
+        session: { ...session, revision: latest },
+        offlineBaseRevision:
+          offlineBaseRevision === previous ? latest : offlineBaseRevision,
+      });
+    }
+
     function confirmDiscardChanges(): void {
       Alert.alert(
         t('workout.discardChangesTitle', {
@@ -101,10 +129,17 @@ export function useActiveWorkoutFinish({
         useActiveWorkoutStore.getState().pendingCreate != null;
       if (!neverReachedServer && (await checkServerConnection())) return false;
       if (!isTargetWorkoutActive()) return false;
+      const queuedRevision = useActiveWorkoutStore.getState().sessionRevision;
       const queued = await queueActiveWorkoutForUpload({
         finishedAt: new Date().toISOString(),
       });
-      if (queued == null || !isTargetWorkoutActive()) return false;
+      if (
+        queued == null ||
+        !isTargetWorkoutActive() ||
+        useActiveWorkoutStore.getState().sessionRevision !== queuedRevision
+      ) {
+        return false;
+      }
       const celebration = buildWorkoutCelebration(
         useActiveWorkoutStore.getState()
       );
@@ -126,47 +161,52 @@ export function useActiveWorkoutFinish({
       return true;
     }
 
+    async function handleSaveFailure(): Promise<void> {
+      if ((await finishOffline()) || !isTargetWorkoutActive()) return;
+      Alert.alert(
+        t('workout.saveError', {
+          defaultValue: 'Could not save your workout',
+        }),
+        t('workout.failedChangesMessage', {
+          defaultValue: 'Some changes have not reached the server yet.',
+        }),
+        [
+          {
+            text: t('workout.retry', { defaultValue: 'Retry' }),
+            onPress: () => void runFinish(),
+          },
+          {
+            text: t('common.discardChanges', {
+              defaultValue: 'Discard changes',
+            }),
+            style: 'destructive',
+            onPress: confirmDiscardChanges,
+          },
+          {
+            text: t('common.cancel', { defaultValue: 'Cancel' }),
+            style: 'cancel',
+          },
+        ]
+      );
+    }
+
     async function attempt(): Promise<void> {
       const ok = await flush();
       if (!isTargetWorkoutActive()) return;
       if (!ok) {
-        if ((await finishOffline()) || !isTargetWorkoutActive()) return;
-        Alert.alert(
-          t('workout.saveError', {
-            defaultValue: 'Could not save your workout',
-          }),
-          t('workout.failedChangesMessage', {
-            defaultValue: 'Some changes have not reached the server yet.',
-          }),
-          [
-            {
-              text: t('workout.retry', { defaultValue: 'Retry' }),
-              onPress: () => void runFinish(),
-            },
-            {
-              text: t('common.discardChanges', {
-                defaultValue: 'Discard changes',
-              }),
-              style: 'destructive',
-              onPress: confirmDiscardChanges,
-            },
-            {
-              text: t('common.cancel', { defaultValue: 'Cancel' }),
-              style: 'cancel',
-            },
-          ]
-        );
+        await handleSaveFailure();
         return;
       }
-      // #1995 phase 1: the flush delivered every set; stamp the lifecycle
-      // end so the session derives partial/completed from its sets instead
-      // of staying in progress forever. The stamp presents the revision the
-      // flush adopted from the server (or the one the session was seeded
-      // with, when the flush found nothing to save), so it can never mark a
-      // newer session that another device resumed or edited in between: the
-      // server refuses with 409, the revision is refreshed once, and a stamp
-      // that still fails falls back to the retry alert below.
-      const stampFinished = async (): Promise<boolean> => {
+      // #1995 phase 1: after flushing the sets, stamp the lifecycle end so the
+      // session derives partial/completed from its sets. The stamp presents
+      // the revision the flush adopted from the server (or the one the
+      // session was seeded with, when the flush found nothing to save). On a
+      // revision conflict the server refuses with 409, the revision is
+      // refreshed once, and a failed stamp offers a retry below.
+      const stampFinished = async (): Promise<{
+        previous: number;
+        latest: number | undefined;
+      } | null> => {
         let revision = useActiveWorkoutStore.getState().session?.revision;
         // A session restored from storage can lack the revision, and a
         // clean flush never fetches it: fetch the server's current one
@@ -176,18 +216,18 @@ export function useActiveWorkoutFinish({
           try {
             revision = (await getWorkout(targetSessionId)).revision;
           } catch {
-            return false;
+            return null;
           }
-          if (revision == null) return false;
+          if (revision == null) return null;
         }
         for (let stampAttempt = 0; stampAttempt < 2; stampAttempt += 1) {
-          if (!isTargetWorkoutActive()) return false;
+          if (!isTargetWorkoutActive()) return null;
           try {
-            await updateWorkout(targetSessionId, {
+            const finished = await updateWorkout(targetSessionId, {
               finished_at: new Date().toISOString(),
               revision,
             });
-            return true;
+            return { previous: revision, latest: finished.revision };
           } catch (error) {
             if (
               stampAttempt === 0 &&
@@ -201,20 +241,19 @@ export function useActiveWorkoutFinish({
                 revision = (await getWorkout(targetSessionId)).revision;
                 // A session without a revision cannot be guarded:
                 // refuse instead of stamping unguarded.
-                if (revision == null) return false;
+                if (revision == null) return null;
               } catch {
-                return false;
+                return null;
               }
               continue;
             }
-            return false;
+            return null;
           }
         }
-        return false;
+        return null;
       };
-      // Capture the entry date before the async stamp: the store must
-      // not be re-read afterwards, when the session may have been
-      // swapped mid-stamp.
+      // Keep the stamped workout's entry date even if the live session
+      // changes while the stamp is in flight.
       const entryDate = useActiveWorkoutStore.getState().session?.entry_date;
       const stamped = await stampFinished();
       // The stamp bumps the revision after the flush above already
@@ -225,6 +264,10 @@ export function useActiveWorkoutFinish({
       }
       if (!isTargetWorkoutActive()) return;
       if (!stamped) {
+        if (hasSavableChanges()) {
+          await handleSaveFailure();
+          return;
+        }
         // The sets reached the server but the connection went before the
         // finish did: queue the finish instead of asking for a retry.
         if ((await finishOffline()) || !isTargetWorkoutActive()) return;
@@ -248,6 +291,18 @@ export function useActiveWorkoutFinish({
           ]
         );
         return;
+      }
+      // Playback and other inputs can log sets while the stamp is in flight.
+      // A subsequent autosave keeps the finish time already set on the server.
+      if (hasSavableChanges()) {
+        adoptStampRevision(stamped.previous, stamped.latest);
+        const saved = await flush();
+        if (!isTargetWorkoutActive()) return;
+        if (!saved || hasSavableChanges()) {
+          adoptStampRevision(stamped.previous, stamped.latest);
+          await handleSaveFailure();
+          return;
+        }
       }
       const celebration = buildWorkoutCelebration(
         useActiveWorkoutStore.getState()

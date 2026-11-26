@@ -306,5 +306,24 @@ describe('follow-along workout video', () => {
     expect(sample(5360, 50.36)).toMatchObject({
       ranges: [{ start: expect.closeTo(50.31), end: expect.closeTo(50.36) }],
     });
+
+    const beforeEnd = messages.length;
+    sample(7700, 51, playerState.ENDED);
+    expect(messages.slice(beforeEnd)).toContainEqual(
+      expect.objectContaining({
+        ended: true,
+        ranges: [{ start: expect.closeTo(50.36), end: 51 }],
+      })
+    );
+
+    sample(8000, 0);
+    sample(8050, 0, playerState.PLAYING);
+    const beforeJumpToEnd = messages.length;
+    sample(8200, 51, playerState.ENDED);
+    expect(messages.slice(beforeJumpToEnd)).not.toContainEqual(
+      expect.objectContaining({
+        ranges: expect.arrayContaining([expect.anything()]),
+      })
+    );
   });
 });
