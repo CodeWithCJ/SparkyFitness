@@ -865,7 +865,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
     for (event in events) {
       val item = event.dataItem
       val path = item.uri.path ?: continue
-      if (event.type == DataEvent.TYPE_DELETED && (path == PATH_CONTEXT || path == PATH_CREDENTIALS)) {
+      if (event.type == DataEvent.TYPE_DELETED && shouldHandleDeletedDataPath(path)) {
         val uri = item.uri
         val isContextDelete = path == PATH_CONTEXT
         val genAtEvent = checkInStore.currentAccountGeneration()
@@ -927,11 +927,6 @@ class WearSessionManager private constructor(private val appContext: Context) :
                 clearQueuedWatchTransfers(retiredThroughGeneration = retiredGen)
               }
             }
-          } else {
-            WearServerCredentialsStore.disableDirectHttpForClientCertificate(
-              context = appContext,
-              expectedWriteId = credWriteIdAtEvent
-            )
           }
         }
         continue
@@ -2086,6 +2081,9 @@ class WearSessionManager private constructor(private val appContext: Context) :
         activeOwnerId == expectedOwnerId &&
         snapshotOwnerId == expectedOwnerId &&
         (snapshotCredWriteId <= 0L || (currentCredWriteId == snapshotCredWriteId && isCredSessionCurrent))
+
+    internal fun shouldHandleDeletedDataPath(path: String): Boolean =
+      path == PATH_CONTEXT
 
     internal fun isStaleDeleteEvent(
       genAtEvent: Long,

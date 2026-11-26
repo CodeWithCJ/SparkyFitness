@@ -1894,8 +1894,12 @@ describe('useWatchCheckInBridge direct water sync ack coordination', () => {
         ownerId: 'server-a',
       });
     });
-    await waitFor(() => expect(mockLogDrinkOrQueue).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(watch.sendAck).toHaveBeenCalledWith('tap-queued-none', true)
+    );
+    watch.sendAck.mockClear();
 
+    let resolveQueuedDelete!: () => void;
     mockCancelQueued.mockResolvedValueOnce('none');
     mockFetchWaterIntakeLogLive.mockResolvedValueOnce([
       {
@@ -1907,7 +1911,12 @@ describe('useWatchCheckInBridge direct water sync ack coordination', () => {
         ReturnType<typeof fetchWaterIntakeLogLive>
       >[number],
     ]);
-    mockDeleteWaterIntakeLogEntry.mockResolvedValueOnce(undefined);
+    mockDeleteWaterIntakeLogEntry.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveQueuedDelete = resolve;
+        })
+    );
     act(() => {
       mockWatchListeners.get('onWaterTapCancel')?.({
         clientId: 'tap-queued-none',
@@ -1920,8 +1929,48 @@ describe('useWatchCheckInBridge direct water sync ack coordination', () => {
         mockServerConfigA
       )
     );
+    expect(watch.sendAck).not.toHaveBeenCalled();
+
+    act(() => {
+      resolveQueuedDelete();
+    });
     await waitFor(() =>
       expect(watch.sendAck).toHaveBeenCalledWith('tap-queued-none', true)
+    );
+
+    // 3. 'unreadable' saved copy keeps queued water cancellation pending until readable.
+    mockLogDrinkOrQueue.mockResolvedValueOnce({
+      queued: true,
+      replayKey: 'replay-unreadable-3',
+    } as unknown as Awaited<ReturnType<typeof logDrinkOrQueue>>);
+    act(() => {
+      mockWatchListeners.get('onWaterIntake')?.({
+        clientId: 'tap-queued-unreadable',
+        entryDate: today,
+        containerId: 1,
+        ownerId: 'server-a',
+      });
+    });
+    await waitFor(() =>
+      expect(watch.sendAck).toHaveBeenCalledWith('tap-queued-unreadable', true)
+    );
+    watch.sendAck.mockClear();
+    mockCancelQueued.mockResolvedValueOnce('unreadable');
+    act(() => {
+      mockWatchListeners.get('onWaterTapCancel')?.({
+        clientId: 'tap-queued-unreadable',
+        ownerId: 'server-a',
+      });
+    });
+    await waitFor(() => expect(mockCancelQueued).toHaveBeenCalled());
+    expect(watch.sendAck).not.toHaveBeenCalled();
+
+    mockCancelQueued.mockResolvedValueOnce('cancelled');
+    act(() => {
+      notifyUploadsConfirmed();
+    });
+    await waitFor(() =>
+      expect(watch.sendAck).toHaveBeenCalledWith('tap-queued-unreadable', true)
     );
   });
 
@@ -1930,6 +1979,10 @@ describe('useWatchCheckInBridge direct water sync ack coordination', () => {
     jest.spyOn(queryClient, 'invalidateQueries').mockResolvedValue(undefined);
     renderBridgeWithHandle({ feature_choices: {} });
     await waitFor(() => expect(watch.updateContext).toHaveBeenCalled());
+    const appStateChangeListener = (
+      AppState.addEventListener as jest.Mock
+    ).mock.calls.find(([type]) => type === 'change')?.[1] as
+      ((state: string) => void) | undefined;
 
     let resolveRange!: (
       rows: Awaited<ReturnType<typeof fetchMeasurementsRange>>
@@ -1950,32 +2003,50 @@ describe('useWatchCheckInBridge direct water sync ack coordination', () => {
     );
 
     const prevAppState = AppState.currentState;
-    Object.defineProperty(AppState, 'currentState', {
-      value: 'background',
-      configurable: true,
-    });
-    mockFetchWaterIntakeLive.mockResolvedValueOnce({
-      water_ml: 250,
-    } as unknown as Awaited<ReturnType<typeof fetchWaterIntakeLive>>);
-    mockFetchWaterIntakeLogLive.mockResolvedValueOnce([]);
-    act(() => {
-      mockWatchListeners.get('onWatchServerSynced')?.({
-        domain: 'water',
-        ownerId: 'server-a',
-        entryDate: today,
-        clientId: 'bg-direct-water',
+    try {
+      Object.defineProperty(AppState, 'currentState', {
+        value: 'background',
+        configurable: true,
       });
-    });
-    await waitFor(() =>
-      expect(mockFetchWaterIntakeLive).toHaveBeenCalledTimes(1)
-    );
+      mockFetchWaterIntakeLive.mockResolvedValueOnce({
+        water_ml: 250,
+      } as unknown as Awaited<ReturnType<typeof fetchWaterIntakeLive>>);
+      mockFetchWaterIntakeLogLive.mockResolvedValueOnce([]);
+      const setItemSpy = jest.spyOn(AsyncStorage, 'setItem');
+      act(() => {
+        mockWatchListeners.get('onWatchServerSynced')?.({
+          domain: 'water',
+          ownerId: 'server-a',
+          entryDate: today,
+          clientId: 'bg-direct-water',
+        });
+      });
+      await waitFor(() =>
+        expect(setItemSpy).toHaveBeenCalledWith(
+          'sparky.watch.ackState.v1',
+          expect.stringContaining('bg-direct-water')
+        )
+      );
+      resolveRange([]);
+      await waitFor(() => expect(watch.updateContext).toHaveBeenCalledTimes(1));
 
-    Object.defineProperty(AppState, 'currentState', {
-      value: prevAppState,
-      configurable: true,
-    });
-    resolveRange([]);
-    await waitFor(() => expect(watch.updateContext).toHaveBeenCalledTimes(1));
+      Object.defineProperty(AppState, 'currentState', {
+        value: 'active',
+        configurable: true,
+      });
+      watch.updateContext.mockClear();
+      act(() => {
+        appStateChangeListener?.('active');
+      });
+      await waitFor(() =>
+        expect(lastContext().ackedClientIds).toContain('bg-direct-water')
+      );
+    } finally {
+      Object.defineProperty(AppState, 'currentState', {
+        value: prevAppState,
+        configurable: true,
+      });
+    }
   });
 
   it('continues reconciling remaining cancelled queued water taps if an earlier candidate throws', async () => {

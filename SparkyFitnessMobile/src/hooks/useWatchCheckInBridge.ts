@@ -1965,13 +1965,17 @@ export function useWatchCheckInBridge(enabled: boolean): void {
       ) {
         return 'pending';
       }
-      const resolvedEntryDate =
-        entryDate ||
-        (await getQueuedWaterDrinkEntryDate(
+      let resolvedEntryDate = entryDate;
+      if (!resolvedEntryDate) {
+        const lookedUpDate = await getQueuedWaterDrinkEntryDate(
           replayKey,
           ownerKey || undefined
-        )) ||
-        '';
+        );
+        if (lookedUpDate === 'unreadable') {
+          return 'pending';
+        }
+        resolvedEntryDate = lookedUpDate || '';
+      }
       if (!entryDate && resolvedEntryDate) {
         recordCreatedWaterEntryId(
           ownerKey,
@@ -1984,6 +1988,9 @@ export function useWatchCheckInBridge(enabled: boolean): void {
         replayKey,
         ownerKey || undefined
       );
+      if (cancelResult === 'unreadable') {
+        return 'pending';
+      }
       let cancelAckOutcome: boolean | null = null;
       if (cancelResult === 'cancelled') {
         consumeCreatedWaterEntryId(ownerKey, clientId);
@@ -1994,7 +2001,7 @@ export function useWatchCheckInBridge(enabled: boolean): void {
             replayKey,
             ownerKey || undefined
           );
-          if (outboxStatus === 'active') {
+          if (outboxStatus === 'unreadable' || outboxStatus === 'active') {
             return 'pending';
           }
           if (outboxStatus === 'failed') {
@@ -2425,12 +2432,19 @@ export function useWatchCheckInBridge(enabled: boolean): void {
           const queuedDate = sepIdx > 0 ? rawQueued.slice(0, sepIdx) : '';
           const replayKey =
             sepIdx > 0 ? rawQueued.slice(sepIdx + 1) : rawQueued;
-          await reconcileCancelledQueuedWaterTap(
-            ownerKey,
-            clientId,
-            queuedDate,
-            replayKey
-          );
+          try {
+            await reconcileCancelledQueuedWaterTap(
+              ownerKey,
+              clientId,
+              queuedDate,
+              replayKey
+            );
+          } catch (error) {
+            addLog(
+              `Watch queued water tap cancellation failed: ${String(error)}`,
+              'WARNING'
+            );
+          }
           return;
         }
         let cancelAckOutcome: boolean;

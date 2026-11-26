@@ -51,6 +51,7 @@ object WearServerCredentialsStore {
   private const val KEY_WRITE_ID = "credentials_write_id"
   private const val KEY_LAST_APPLIED_FINGERPRINT = "last_credentials_fingerprint"
   private const val KEY_LAST_TRANSPORT_REVISION = "last_credentials_transport_revision"
+  private const val KEY_MTLS_DISABLED = "mtls_disabled"
   private const val KEY_ALIAS = "sparky_wear_server_credentials_key"
   private const val ANDROID_KEYSTORE = "AndroidKeyStore"
   private const val TRANSFORMATION = "AES/GCM/NoPadding"
@@ -69,7 +70,8 @@ object WearServerCredentialsStore {
     val fingerprint: String?,
     val lastGeneration: Long,
     val writeId: Long,
-    val lastTransportRevision: Long = 0L
+    val lastTransportRevision: Long = 0L,
+    val mtlsDisabled: Boolean = false
   )
 
   data class RevocationResult(
@@ -214,7 +216,8 @@ object WearServerCredentialsStore {
     hasActiveBlob: Boolean,
     incomingTransportRev: Long = 0L,
     lastTransportRev: Long = 0L,
-    isMtlsNotice: Boolean = false
+    isMtlsNotice: Boolean = false,
+    mtlsDisabled: Boolean = true
   ): Boolean {
     if (revokedGen > 0L && incomingGeneration <= revokedGen) return false
     val barrier = maxOf(lastSavedGen, revokedGen)
@@ -237,6 +240,9 @@ object WearServerCredentialsStore {
         return false
       }
       return true
+    }
+    if (!isMtlsNotice && !mtlsDisabled) {
+      return lastTransportRev == 0L || incomingTransportRev >= lastTransportRev
     }
     return incomingTransportRev > lastTransportRev
   }
@@ -387,7 +393,8 @@ object WearServerCredentialsStore {
       fingerprint = prefs.getString(KEY_LAST_APPLIED_FINGERPRINT, null),
       lastGeneration = prefs.getLong(KEY_LAST_GENERATION, 0L),
       writeId = prefs.getLong(KEY_WRITE_ID, 0L),
-      lastTransportRevision = prefs.getLong(KEY_LAST_TRANSPORT_REVISION, 0L)
+      lastTransportRevision = prefs.getLong(KEY_LAST_TRANSPORT_REVISION, 0L),
+      mtlsDisabled = prefs.getBoolean(KEY_MTLS_DISABLED, false)
     )
 
   private fun restoreCredentialRecord(
@@ -401,6 +408,7 @@ object WearServerCredentialsStore {
     if (record.lastGeneration > 0L) ed.putLong(KEY_LAST_GENERATION, record.lastGeneration) else ed.remove(KEY_LAST_GENERATION)
     if (record.writeId > 0L) ed.putLong(KEY_WRITE_ID, record.writeId) else ed.remove(KEY_WRITE_ID)
     if (record.lastTransportRevision > 0L) ed.putLong(KEY_LAST_TRANSPORT_REVISION, record.lastTransportRevision) else ed.remove(KEY_LAST_TRANSPORT_REVISION)
+    if (record.mtlsDisabled) ed.putBoolean(KEY_MTLS_DISABLED, true) else ed.remove(KEY_MTLS_DISABLED)
     ed.apply()
   }
 
@@ -466,6 +474,7 @@ object WearServerCredentialsStore {
       inMemoryClearedWriteId = maxOf(inMemoryClearedWriteId, storedWriteId)
     }
     val lastSaved = prefs.getLong(KEY_LAST_GENERATION, 0L)
+    val prevMtlsDisabled = prefs.getBoolean(KEY_MTLS_DISABLED, false)
     val incomingGen = generation ?: 0L
     val nextLast = maxOf(lastSaved, incomingGen)
     val lastTransportRev = prefs.getLong(KEY_LAST_TRANSPORT_REVISION, 0L)
@@ -483,6 +492,7 @@ object WearServerCredentialsStore {
         .remove(KEY_LAST_APPLIED_FINGERPRINT)
         .putLong(KEY_LAST_GENERATION, nextLast)
         .putLong(KEY_LAST_TRANSPORT_REVISION, nextTransportRev)
+        .putBoolean(KEY_MTLS_DISABLED, true)
         .commit()
     }
     val (nextPendingGen, nextPendingRev) = resolvePendingUnpersistedMtlsBarrier(
@@ -500,6 +510,9 @@ object WearServerCredentialsStore {
       prefs.edit()
         .putLong(KEY_LAST_GENERATION, lastSaved)
         .putLong(KEY_LAST_TRANSPORT_REVISION, lastTransportRev)
+        .apply {
+          if (prevMtlsDisabled) putBoolean(KEY_MTLS_DISABLED, true) else remove(KEY_MTLS_DISABLED)
+        }
         .commit()
     }
     committed
@@ -544,6 +557,7 @@ object WearServerCredentialsStore {
     } else {
       hasBlob
     }
+    val mtlsDisabled = prefs.getBoolean(KEY_MTLS_DISABLED, false) || pendingUnpersistedMtlsGeneration > 0L
     if (
       !shouldAcceptCredentialSave(
         incomingGeneration = incomingGen,
@@ -552,7 +566,8 @@ object WearServerCredentialsStore {
         hasActiveBlob = effectiveHasBlob,
         incomingTransportRev = incomingTransportRev,
         lastTransportRev = effectiveLastTransportRev,
-        isMtlsNotice = isMtlsNotice
+        isMtlsNotice = isMtlsNotice,
+        mtlsDisabled = mtlsDisabled
       )
     ) {
       return SaveResult.Rejected
@@ -660,7 +675,8 @@ object WearServerCredentialsStore {
         fingerprint = fingerprint,
         lastGeneration = nextLastSaved,
         writeId = nextWriteId,
-        lastTransportRevision = nextTransportRev
+        lastTransportRevision = nextTransportRev,
+        mtlsDisabled = false
       )
       val saved = commitWithRetry {
         prefs.edit()
@@ -670,6 +686,7 @@ object WearServerCredentialsStore {
           .putLong(KEY_LAST_GENERATION, nextLastSaved)
           .putLong(KEY_LAST_TRANSPORT_REVISION, nextTransportRev)
           .putLong(KEY_WRITE_ID, nextWriteId)
+          .putBoolean(KEY_MTLS_DISABLED, false)
           .commit()
       }
       val (effectiveRecord, committed) = resolveCredentialStateAfterCommit(

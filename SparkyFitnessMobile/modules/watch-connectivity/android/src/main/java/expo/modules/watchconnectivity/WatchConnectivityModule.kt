@@ -3620,14 +3620,33 @@ internal object WatchConnectivityHub {
       }
       return
     }
-    val (fastingType, hours) = when (presetId) {
+    val presetSpec = when (presetId) {
       "16-8" -> "16:8 Leangains" to 16.0
       "18-6" -> "18:6 Warrior" to 18.0
       "20-4" -> "20:4 Warrior" to 20.0
       "circumadian" -> "Circadian Rhythm" to 13.0
       "custom" -> "Custom Fast" to 12.0
-      else -> presetId.ifBlank { "16:8 Leangains" } to 16.0
+      else -> null
     }
+    if (presetSpec == null) {
+      removeQueuedInboundEvent(context, clientId, type = "fastStart", ownerId = payloadOwner)
+      clearInFlightForegroundFastStart(clientId, payloadOwner)
+      if (isHeadlessOwnerStillActive(context, creds)) {
+        sendMessageOrTransfer(
+          context,
+          buildFastAckPayload(
+            clientId = clientId,
+            ok = false,
+            fastKnown = false,
+            fast = null
+          ),
+          durable = false
+        )
+        drainQueuedFastEndsForOwner(context, payloadOwner)
+      }
+      return
+    }
+    val (fastingType, hours) = presetSpec
     val (cStatus, cBody) = performHeadlessHttp(creds, "/api/fasting/current", "GET", null)
     if (cStatus == HEADLESS_HTTP_OWNER_RETIRED) return
     if (cStatus !in 200..299 || cBody == null) {

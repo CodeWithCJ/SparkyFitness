@@ -84,10 +84,10 @@ export async function queueWaterDrink(
 export async function cancelQueuedWaterDrink(
   replayKey: string,
   explicitServerConfigId?: string
-): Promise<'cancelled' | 'uploading' | 'none'> {
+): Promise<'cancelled' | 'uploading' | 'none' | 'unreadable'> {
   const cleanKey = replayKey.trim();
   if (!cleanKey) return 'none';
-  if (!(await savedCopyReadable())) return 'none';
+  if (!(await savedCopyReadable())) return 'unreadable';
   const serverConfigId =
     explicitServerConfigId?.trim() || (await getActiveServerConfigId());
   if (!serverConfigId) return 'none';
@@ -115,10 +115,10 @@ export async function cancelQueuedWaterDrink(
 export async function getQueuedWaterDrinkStatus(
   replayKey: string,
   explicitServerConfigId?: string
-): Promise<'active' | 'failed' | 'none'> {
+): Promise<'active' | 'failed' | 'none' | 'unreadable'> {
   const cleanKey = replayKey.trim();
   if (!cleanKey) return 'none';
-  if (!(await savedCopyReadable())) return 'none';
+  if (!(await savedCopyReadable())) return 'unreadable';
   const serverConfigId =
     explicitServerConfigId?.trim() || (await getActiveServerConfigId());
   if (!serverConfigId) return 'none';
@@ -142,10 +142,10 @@ export async function getQueuedWaterDrinkStatus(
 export async function getQueuedWaterDrinkEntryDate(
   replayKey: string,
   explicitServerConfigId?: string
-): Promise<string | null> {
+): Promise<string | 'unreadable' | null> {
   const cleanKey = replayKey.trim();
   if (!cleanKey) return null;
-  if (!(await savedCopyReadable())) return null;
+  if (!(await savedCopyReadable())) return 'unreadable';
   const serverConfigId =
     explicitServerConfigId?.trim() || (await getActiveServerConfigId());
   if (!serverConfigId) return null;

@@ -7013,5 +7013,94 @@ class WearOsParityTest {
         assertEquals(5L, ack.getLong("generation"))
         assertEquals(12L, ack.getLong("transportRevision"))
         assertEquals("srv-1", ack.getString("ownerId"))
+
+        // Round 4 Thread [3]: TYPE_DELETED on PATH_CREDENTIALS is ignored (does not wipe Keystore credentials),
+        // while PATH_CONTEXT deletion, explicit requiresClientCertificate, and explicit revocation remain active.
+        assertFalse(WearSessionManager.shouldHandleDeletedDataPath("/sparky/credentials"))
+        assertTrue(WearSessionManager.shouldHandleDeletedDataPath("/sparky/context"))
+        assertTrue(
+            WearServerCredentialsStore.shouldAcceptCredentialSave(
+                incomingGeneration = 5L,
+                lastSavedGen = 5L,
+                revokedGen = 0L,
+                hasActiveBlob = true,
+                incomingTransportRev = 2L,
+                lastTransportRev = 1L,
+                isMtlsNotice = true
+            )
+        )
+        assertTrue(
+            WearServerCredentialsStore.shouldAcceptRevocation(
+                generation = 5L,
+                lastSavedGen = 5L,
+                revokedGen = 0L,
+                hasActiveBlob = true
+            )
+        )
+        // Republishing matching (gen, rev) when local encrypted blob is missing (mtlsDisabled = false) succeeds
+        assertTrue(
+            WearServerCredentialsStore.shouldAcceptCredentialSave(
+                incomingGeneration = 5L,
+                lastSavedGen = 5L,
+                revokedGen = 0L,
+                hasActiveBlob = false,
+                incomingTransportRev = 2L,
+                lastTransportRev = 2L,
+                isMtlsNotice = false,
+                mtlsDisabled = false
+            )
+        )
+        // But when revoked (revokedGen == 5), matching (gen, rev) is still rejected
+        assertFalse(
+            WearServerCredentialsStore.shouldAcceptCredentialSave(
+                incomingGeneration = 5L,
+                lastSavedGen = 5L,
+                revokedGen = 5L,
+                hasActiveBlob = false,
+                incomingTransportRev = 2L,
+                lastTransportRev = 2L,
+                isMtlsNotice = false,
+                mtlsDisabled = false
+            )
+        )
+
+        // Failed credential commit rolls back mtlsDisabled = true so same-(gen, rev) direct save stays blocked
+        val mTlsPrev = WearServerCredentialsStore.CredentialStoreRecord(
+            ownerId = null,
+            encryptedBlob = null,
+            fingerprint = null,
+            lastGeneration = 5L,
+            writeId = 0L,
+            lastTransportRevision = 2L,
+            mtlsDisabled = true
+        )
+        val candidateDirect = WearServerCredentialsStore.CredentialStoreRecord(
+            ownerId = "srv-1",
+            encryptedBlob = "enc",
+            fingerprint = "fp",
+            lastGeneration = 5L,
+            writeId = 1L,
+            lastTransportRevision = 2L,
+            mtlsDisabled = false
+        )
+        val (rolledBack, committedRollback) = WearServerCredentialsStore.resolveCredentialStateAfterCommit(
+            previousCommitted = mTlsPrev,
+            candidate = candidateDirect,
+            commitSucceeded = false
+        )
+        assertFalse(committedRollback)
+        assertTrue(rolledBack.mtlsDisabled)
+        assertFalse(
+            WearServerCredentialsStore.shouldAcceptCredentialSave(
+                incomingGeneration = 5L,
+                lastSavedGen = rolledBack.lastGeneration,
+                revokedGen = 0L,
+                hasActiveBlob = rolledBack.encryptedBlob != null,
+                incomingTransportRev = 2L,
+                lastTransportRev = rolledBack.lastTransportRevision,
+                isMtlsNotice = false,
+                mtlsDisabled = rolledBack.mtlsDisabled
+            )
+        )
     }
 }
