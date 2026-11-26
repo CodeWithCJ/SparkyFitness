@@ -202,7 +202,10 @@ export async function removeLatestDrinkOffline(
         row.entryDate === entryDate &&
         row.status !== 'sending'
     )
-    .sort((a, b) => b.createdAt - a.createdAt)[0];
+    // `createdAt` alone cannot break a tie between two drinks queued in the
+    // same millisecond; `rowid` is SQLite's own insertion-order sequence, so
+    // it always resolves to the one queued more recently.
+    .sort((a, b) => b.createdAt - a.createdAt || b.rowid - a.rowid)[0];
   if (waiting) {
     // A drink whose upload was already tried may be on the server (the answer
     // can be lost), and cancelling it would drop the only record of it, so it

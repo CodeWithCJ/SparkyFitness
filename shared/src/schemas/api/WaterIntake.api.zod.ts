@@ -19,9 +19,11 @@ export type UpsertWaterIntakeBody = z.infer<typeof upsertWaterIntakeBodySchema>;
 // A one-off amount with no container (#3734): the same client_id replay-key
 // contract as upsertWaterIntakeBodySchema, but carrying the millilitre
 // amount directly instead of a container-derived press count.
+// water_intake_entries.water_ml is numeric(10,3); the max keeps an oversized
+// amount a 400 here instead of a database overflow.
 export const logWaterIntakeAmountBodySchema = z.object({
   entry_date: z.string(),
-  water_ml: z.number().positive(),
+  water_ml: z.number().positive().max(9999999.999),
   client_id: clientRequestIdSchema.optional(),
 });
 export type LogWaterIntakeAmountBody = z.infer<

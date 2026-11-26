@@ -154,7 +154,13 @@ export type UpdateWaterIntakeBody = z.infer<typeof UpdateWaterIntakeBodySchema>;
 export const LogWaterIntakeAmountBodySchema = z
   .object({
     entry_date: requiredLegacyString('entry_date'),
-    water_ml: z.preprocess(coerceLegacyNumber, z.number().positive()),
+    // water_intake_entries.water_ml is numeric(10,3); without the max an
+    // oversized amount reaches the database as a 500 overflow instead of a
+    // 400 here.
+    water_ml: z.preprocess(
+      coerceLegacyNumber,
+      z.number().positive().max(9999999.999)
+    ),
     client_id: clientRequestIdSchema.optional(),
   })
   .loose();

@@ -30,6 +30,13 @@ export type OutboxStatus =
 /** One piece of work the server has not confirmed yet. */
 export interface OutboxRow {
   id: string;
+  /**
+   * SQLite's own insertion-order sequence for this row (the table's implicit
+   * `rowid`, since `id` is a UUID primary key rather than `INTEGER PRIMARY
+   * KEY`). Breaks ties `createdAt` cannot: two rows queued in the same
+   * millisecond still get distinct, strictly increasing rowids.
+   */
+  rowid: number;
   serverConfigId: string;
   /** The account that made it; never uploaded under another one. */
   userId: string | null;

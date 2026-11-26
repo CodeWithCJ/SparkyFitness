@@ -16,6 +16,7 @@ const UNCONFIRMED_SQL = UNCONFIRMED.map((status) => `'${status}'`).join(', ');
 
 interface OutboxRecord {
   id: string;
+  rowid: number;
   server_config_id: string;
   user_id: string | null;
   kind: string;
@@ -47,6 +48,7 @@ function parseJson(text: string | null): unknown {
 function toRow(record: OutboxRecord): OutboxRow {
   return {
     id: record.id,
+    rowid: record.rowid,
     serverConfigId: record.server_config_id,
     userId: record.user_id,
     kind: record.kind,
@@ -167,7 +169,7 @@ export async function getOutboxRow(
   id: string
 ): Promise<OutboxRow | null> {
   const record = await db.first<OutboxRecord>(
-    `SELECT * FROM outbox WHERE id = ?`,
+    `SELECT rowid, * FROM outbox WHERE id = ?`,
     [id]
   );
   return record ? toRow(record) : null;
@@ -179,7 +181,7 @@ export async function listUnconfirmedOutbox(
   serverConfigId: string
 ): Promise<OutboxRow[]> {
   const records = await db.all<OutboxRecord>(
-    `SELECT * FROM outbox
+    `SELECT rowid, * FROM outbox
      WHERE server_config_id = ? AND status IN (${UNCONFIRMED_SQL})
      ORDER BY created_at, id`,
     [serverConfigId]

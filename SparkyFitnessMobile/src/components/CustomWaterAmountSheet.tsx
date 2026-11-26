@@ -28,7 +28,6 @@ interface CustomWaterAmountSheetProps {
   /** The caller's resolved water display unit; the typed amount is in this unit. */
   unit: string;
   onSubmit: (waterMl: number) => void;
-  isPending?: boolean;
 }
 
 // How far one +/- press moves the typed amount, per display unit.
@@ -71,7 +70,7 @@ function roundStepResult(
 const CustomWaterAmountSheet = forwardRef<
   CustomWaterAmountSheetRef,
   CustomWaterAmountSheetProps
->(({ unit, onSubmit, isPending }, ref) => {
+>(({ unit, onSubmit }, ref) => {
   const { t } = useTranslation();
   const bottomSheetRef = useRef<BottomSheetModal>(null);
   const [amountText, setAmountText] = useState('0');
@@ -175,14 +174,8 @@ const CustomWaterAmountSheet = forwardRef<
           </View>
         </View>
 
-        <Button
-          variant="primary"
-          onPress={handleLog}
-          disabled={isPending || amount <= 0}
-        >
-          {isPending
-            ? t('common.saving', { defaultValue: 'Saving…' })
-            : t('waterIntake.logAmount', { defaultValue: 'Log' })}
+        <Button variant="primary" onPress={handleLog} disabled={amount <= 0}>
+          {t('waterIntake.logAmount', { defaultValue: 'Log' })}
         </Button>
       </BottomSheetView>
     </BottomSheetModal>

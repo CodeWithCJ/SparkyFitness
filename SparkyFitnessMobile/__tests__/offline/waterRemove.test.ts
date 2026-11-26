@@ -123,6 +123,25 @@ describe('taking a drink off with no connection', () => {
     expect(remaining[0]!.kind).toBe('water.add');
   });
 
+  it('cancels the one queued more recently even when both share a createdAt', async () => {
+    const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    try {
+      await queueWaterDrink(KEY_A, { entryDate: DAY, containerId: 4 });
+      await queueWaterCustomAmount(KEY_B, { entryDate: DAY, waterMl: 500 });
+    } finally {
+      nowSpy.mockRestore();
+    }
+    const queued = await listUnconfirmedOutbox(db, 's1');
+    expect(queued.map((row) => row.createdAt)).toEqual([
+      1_700_000_000_000, 1_700_000_000_000,
+    ]);
+
+    expect(await removeLatestDrinkOffline(DAY)).toBe('cancelled');
+    const remaining = await listUnconfirmedOutbox(db, 's1');
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]!.kind).toBe('water.add');
+  });
+
   it('leaves a waiting drink alone once its upload was tried: the server may have it', async () => {
     await queueWaterDrink(KEY_A, { entryDate: DAY, containerId: 4 });
     const [row] = await listUnconfirmedOutbox(db, 's1');
