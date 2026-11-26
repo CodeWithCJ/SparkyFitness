@@ -209,6 +209,17 @@ async function syncTrustedProviders() {
       '[AUTH] Synced trusted SSO provider origins:',
       dynamicTrustedSsoOrigins
     );
+    if (
+      providers.length > 0 &&
+      process.env.SPARKY_FITNESS_DISABLE_SIGNUP !== 'true'
+    ) {
+      log(
+        'warn',
+        '[SECURITY WARN] SSO/OIDC providers are active while public signup is open (SPARKY_FITNESS_DISABLE_SIGNUP is not true). ' +
+          'Without local email verification, an attacker could pre-register an account with a victim email and capture their SSO identity upon first login. ' +
+          'It is strongly recommended to set SPARKY_FITNESS_DISABLE_SIGNUP=true when SSO is configured.'
+      );
+    }
     // @ts-expect-error
     return dynamicTrustedProviders;
   } catch (error) {

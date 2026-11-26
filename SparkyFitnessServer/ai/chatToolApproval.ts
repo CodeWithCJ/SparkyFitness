@@ -37,7 +37,7 @@ export const DESTRUCTIVE_ACTIONS: Readonly<Record<string, readonly string[]>> =
     sparky_manage_exercise: ['delete_exercise_entry', 'delete_workout_preset'],
     sparky_manage_favorites: ['remove_favorite'],
     sparky_manage_food: ['delete_entry', 'delete_food'],
-    sparky_food_assistant_state: ['forget_preference'],
+    sparky_food_assistant_state: ['forget_preference', 'cancel_task'],
     sparky_manage_meal_plans: ['delete_meal_plan'],
     sparky_manage_medications: [
       'delete_entry',

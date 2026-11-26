@@ -57,7 +57,12 @@ router.get(
   authenticate,
   async (req, res, next) => {
     const { targetUserId, permissionType } = req.query;
-    if (!targetUserId || !permissionType) {
+    if (
+      typeof targetUserId !== 'string' ||
+      typeof permissionType !== 'string' ||
+      !targetUserId ||
+      !permissionType
+    ) {
       return res
         .status(400)
         .json({ error: 'targetUserId and permissionType are required.' });

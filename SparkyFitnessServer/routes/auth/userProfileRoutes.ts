@@ -5,6 +5,7 @@ import {
   isDemoEmail,
 } from '../../middleware/demoGuardMiddleware.js';
 import authService from '../../services/authService.js';
+import { makeIpRateLimit } from '../../middleware/ipRateLimit.js';
 // @ts-expect-error TS(7016): Could not find a declaration file for module 'mult... Remove this comment to see the full error message
 import multer from 'multer';
 import path from 'path';
@@ -34,6 +35,9 @@ const storage = multer.diskStorage({
     cb(null, req.userId + '-' + uniqueSuffix + fileExtension);
   },
 });
+// Email->userId lookup is an existence/UUID oracle; without a limit it can be
+// enumerated freely by any authenticated caller (including read-only API keys).
+const findByEmailRateLimit = makeIpRateLimit('find-by-email', 20, 60 * 1000);
 const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
@@ -201,28 +205,33 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
  *       404:
  *         description: User not found.
  */
-router.get('/users/find-by-email', authenticate, async (req, res, next) => {
-  const { email } = req.query;
-  if (!email) {
-    return res.status(400).json({ error: 'Email parameter is required.' });
-  }
-  try {
-    const userId = await authService.findUserIdByEmail(email);
-    res.status(200).json({ userId });
-  } catch (error) {
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message.startsWith('Forbidden')) {
-      // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(403).json({ error: error.message });
+router.get(
+  '/users/find-by-email',
+  findByEmailRateLimit,
+  authenticate,
+  async (req, res, next) => {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ error: 'Email parameter is required.' });
     }
-    // @ts-expect-error TS(2571): Object is of type 'unknown'.
-    if (error.message === 'User not found.') {
+    try {
+      const userId = await authService.findUserIdByEmail(email);
+      res.status(200).json({ userId });
+    } catch (error) {
       // @ts-expect-error TS(2571): Object is of type 'unknown'.
-      return res.status(404).json({ error: error.message });
+      if (error.message.startsWith('Forbidden')) {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(403).json({ error: error.message });
+      }
+      // @ts-expect-error TS(2571): Object is of type 'unknown'.
+      if (error.message === 'User not found.') {
+        // @ts-expect-error TS(2571): Object is of type 'unknown'.
+        return res.status(404).json({ error: error.message });
+      }
+      next(error);
     }
-    next(error);
   }
-});
+);
 /**
  * @swagger
  * /identity/profiles:

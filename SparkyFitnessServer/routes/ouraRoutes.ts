@@ -109,7 +109,11 @@ router.get(
 router.post(
   '/callback',
   authMiddleware.authenticate,
-  checkPermissionMiddleware('diary'),
+  // Linking a provider is self-only: writing the OAuth tokens/identity onto the
+  // owner's row from a switched/delegated context would let a delegate attach
+  // their own provider account to the owner. requireSelfActor rejects a switched
+  // context, matching the /authorize route above.
+  requireSelfActor,
   async (req, res) => {
     try {
       const bodyResult = CallbackBodySchema.safeParse(req.body);
