@@ -171,6 +171,24 @@ describe('exerciseApi - createExerciseEntry / updateExerciseEntry', () => {
         'Server configuration not found.'
       );
     });
+
+    test('sends the zone the entry time was read in', async () => {
+      mockGetActiveServerConfig.mockResolvedValue(testConfig);
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ id: 'new-entry-1' }),
+      });
+      const withZone = {
+        ...testPayload,
+        entry_time: '10:56',
+        record_timezone: 'America/Los_Angeles',
+      };
+
+      await createExerciseEntry(withZone);
+
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual(withZone);
+    });
   });
 
   describe('updateExerciseEntry', () => {

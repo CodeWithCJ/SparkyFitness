@@ -14,6 +14,30 @@ import java.util.TimeZone
 object ContextPayloadMapper {
 
   /**
+   * The context JSON kept for a restart, where it is parsed again against an empty context. Keys the
+   * phone leaves out while it does not know them (the page layout, `offFeatures`) are filled in from
+   * the context they were carried forward into, so a restart does not bring back a page the phone hid.
+   */
+  fun persistableContextJson(rawJson: String, ctx: WatchContext): String {
+    val obj = try {
+      JSONObject(rawJson)
+    } catch (_: Throwable) {
+      return rawJson
+    }
+    var changed = false
+    fun carry(key: String, value: List<String>?) {
+      if (!obj.has(key) && value != null) {
+        obj.put(key, JSONArray(value))
+        changed = true
+      }
+    }
+    carry("pageOrder", ctx.pageOrder)
+    carry("hiddenPages", ctx.hiddenPages)
+    carry("offFeatures", ctx.offFeatures)
+    return if (changed) obj.toString() else rawJson
+  }
+
+  /**
    * Parses an incoming phone-to-watch JSON context payload into a [WatchContext],
    * carrying forward sticky preferences from [previous] when omitted.
    */
@@ -41,6 +65,8 @@ object ContextPayloadMapper {
       restAlertsEnabled = obj.optBooleanOrNull("restAlertsEnabled") ?: previous.restAlertsEnabled,
       pageOrder = if (obj.has("pageOrder")) obj.optStringList("pageOrder") else previous.pageOrder,
       hiddenPages = if (obj.has("hiddenPages")) obj.optStringList("hiddenPages") else previous.hiddenPages,
+      // Carried forward like the page layout: the phone leaves it out while it does not know its choices.
+      offFeatures = if (obj.has("offFeatures")) obj.optStringList("offFeatures") else previous.offFeatures,
       setInputStyle = obj.optStringOrNull("setInputStyle") ?: previous.setInputStyle,
       startableWorkouts = parseStartableWorkouts(obj) ?: previous.startableWorkouts,
       scheduledWorkouts = parseScheduledWorkouts(obj) ?: previous.scheduledWorkouts,
@@ -644,6 +670,26 @@ object ContextPayloadMapper {
     )
   }
 
+  fun parsePhoneMediaState(obj: JSONObject): PhoneMediaState {
+    val maxVolume = maxOf(0, obj.optIntOrNull("maxVolume") ?: 0)
+    val rawVolume = maxOf(0, obj.optIntOrNull("volume") ?: 0)
+    val volume = if (maxVolume > 0) rawVolume.coerceAtMost(maxVolume) else rawVolume
+    return PhoneMediaState(
+      title = obj.optStringOrNull("title")?.trim()?.takeIf { it.isNotEmpty() },
+      artist = obj.optStringOrNull("artist")?.trim()?.takeIf { it.isNotEmpty() },
+      album = obj.optStringOrNull("album")?.trim()?.takeIf { it.isNotEmpty() },
+      appName = obj.optStringOrNull("appName")?.trim()?.takeIf { it.isNotEmpty() },
+      isPlaying = obj.optBooleanOrNull("isPlaying") ?: false,
+      volume = volume,
+      maxVolume = maxVolume,
+      hasSession = obj.optBooleanOrNull("hasSession") ?: false,
+      hasMetadataAccess = obj.optBooleanOrNull("hasMetadataAccess") ?: false,
+      epoch = obj.optDoubleOrNull("epoch")?.toLong()?.coerceAtLeast(0L) ?: 0L,
+      seq = obj.optDoubleOrNull("seq")?.toLong()?.coerceAtLeast(0L) ?: 0L,
+      updatedAtMs = obj.optDoubleOrNull("updatedAt")?.toLong() ?: System.currentTimeMillis()
+    )
+  }
+
   fun parseIsoMs(iso: String?): Long? {
     if (iso.isNullOrBlank()) return null
     for (pattern in listOf("yyyy-MM-dd'T'HH:mm:ss.SSSX", "yyyy-MM-dd'T'HH:mm:ssX", "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", "yyyy-MM-dd'T'HH:mm:ss'Z'")) {
@@ -990,6 +1036,28 @@ object OutboundPayloads {
       put("id", id)
       put("text", text)
       put("at", atMs.toDouble())
+    }
+
+  fun mediaControl(action: String, steps: Int = 1): JSONObject =
+    JSONObject().apply {
+      put("type", "mediaControl")
+      put("action", action)
+      val clamped = steps.coerceIn(1, 5)
+      if (clamped > 1) {
+        put("steps", clamped)
+      }
+    }
+
+  fun mediaStateRequest(active: Boolean, epoch: Long? = null, visitId: Long? = null): JSONObject =
+    JSONObject().apply {
+      put("type", "mediaStateRequest")
+      put("active", active)
+      if (epoch != null && epoch > 0L) {
+        put("epoch", epoch.toDouble())
+      }
+      if (visitId != null && visitId > 0L) {
+        put("visitId", visitId.toDouble())
+      }
     }
 }
 

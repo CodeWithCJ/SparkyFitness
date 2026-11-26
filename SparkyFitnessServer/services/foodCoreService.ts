@@ -2,6 +2,7 @@ import foodRepository from '../models/foodRepository.js';
 import preferenceService from './preferenceService.js';
 import externalProviderService from './externalProviderService.js';
 import { log } from '../config/logging.js';
+import { isUniqueViolationOn } from '../utils/uniqueViolation.js';
 import {
   sanitizeCustomNutrients,
   normalizeBarcode,
@@ -35,7 +36,13 @@ import { resolveTemplateStartDay } from '../utils/timezoneLoader.js';
 import {
   alcoholGramsForServing,
   BARCODE_FALLBACK_PROVIDER_ID,
+  getFoodProviderMetadata,
+  type FoodProviderType,
 } from '@workspace/shared';
+import {
+  FOOD_PROVIDER_ADAPTERS,
+  type ProviderCallContext,
+} from '../integrations/foodProviders/index.js';
 
 /** A food row as returned by the repository. */
 interface FoodRow {
@@ -210,8 +217,19 @@ function deriveAlcoholGramsIfMissing<
   return data;
 }
 
+const FOOD_CLIENT_ID_INDEX = 'idx_foods_user_client_id';
+
 async function createFood(authenticatedUserId: string, foodData: FoodInput) {
   try {
+    // A repeat of a request that already created the food (the phone's answer
+    // was lost) gets that food back and nothing is created twice.
+    if (foodData.client_id) {
+      const stored = await foodRepository.findFoodByClientId(
+        authenticatedUserId,
+        foodData.client_id
+      );
+      if (stored) return stored;
+    }
     if (foodData.barcode) {
       const existingFood = await foodRepository.findFoodByBarcode(
         foodData.barcode,
@@ -249,14 +267,29 @@ async function createFood(authenticatedUserId: string, foodData: FoodInput) {
       }
     }
     const processedFoodData = deriveAlcoholGramsIfMissing(foodData);
-    const newFood = await foodRepository.createFood({
-      ...processedFoodData,
-      glycemic_index: processedFoodData.glycemic_index || null,
-      custom_nutrients: sanitizeCustomNutrients(
-        processedFoodData.custom_nutrients
-      ),
-    });
-    return newFood;
+    try {
+      const newFood = await foodRepository.createFood({
+        ...processedFoodData,
+        glycemic_index: processedFoodData.glycemic_index || null,
+        custom_nutrients: sanitizeCustomNutrients(
+          processedFoodData.custom_nutrients
+        ),
+      });
+      return newFood;
+    } catch (insertError) {
+      // Two copies of the same request raced; the other one won.
+      if (
+        foodData.client_id &&
+        isUniqueViolationOn(insertError, FOOD_CLIENT_ID_INDEX)
+      ) {
+        const winner = await foodRepository.findFoodByClientId(
+          authenticatedUserId,
+          foodData.client_id
+        );
+        if (winner) return winner;
+      }
+      throw insertError;
+    }
   } catch (error) {
     log(
       'error',
@@ -334,13 +367,11 @@ async function updateFood(
     // Drop upload files the user removed. Best-effort: a failed unlink must not
     // fail the update, since the database already reflects the new list.
     if (previousImages) {
-      await removeOrphanedImages(previousImages, updatedFood.images).catch(
-        (error) =>
-          log(
-            'warn',
-            `Error removing orphaned images for food ${foodId}:`,
-            error
-          )
+      await removeOrphanedImages(previousImages, updatedFood.images, {
+        domain: 'foods',
+        entityId: foodId,
+      }).catch((error) =>
+        log('warn', `Error removing orphaned images for food ${foodId}:`, error)
       );
     }
     // The food_entries table now holds the snapshot of nutrient data.
@@ -922,7 +953,7 @@ async function updateSnapshotForVariant(
     glycemic_index: variant.glycemic_index,
     custom_nutrients: sanitizeCustomNutrients(variant.custom_nutrients),
   };
-  const { replacedEntryImages } =
+  const { replacedEntryImages, syncedEntryIds } =
     await foodRepository.updateFoodEntriesSnapshot(
       authenticatedUserId,
       String(food.id),
@@ -934,13 +965,19 @@ async function updateSnapshotForVariant(
   // removeOrphanedImages re-checks each path against the diary before
   // unlinking, so a copy still in use elsewhere is left alone.
   if (replacedEntryImages.length > 0) {
-    await removeOrphanedImages(replacedEntryImages, []).catch((error) => {
-      log(
-        'error',
-        `Error removing replaced diary entry images for food ${food.id}:`,
-        error
-      );
-    });
+    const owners = (syncedEntryIds ?? []).map((entityId) => ({
+      domain: 'food_entries' as const,
+      entityId,
+    }));
+    await removeOrphanedImages(replacedEntryImages, [], owners).catch(
+      (error) => {
+        log(
+          'error',
+          `Error removing replaced diary entry images for food ${food.id}:`,
+          error
+        );
+      }
+    );
   }
   await foodRepository.clearUserIgnoredUpdate(
     authenticatedUserId,
@@ -1236,6 +1273,62 @@ async function lookupBarcode(
           'warn',
           `YAZIO barcode lookup failed for ${barcode}:`,
           captureSurfaceable(yazioError)
+        );
+      }
+    }
+    // Try other registered barcode providers via generic adapter
+    if (
+      provider &&
+      provider.provider_type !== 'fatsecret' &&
+      provider.provider_type !== 'usda' &&
+      provider.provider_type !== 'yazio' &&
+      provider.provider_type !== 'openfoodfacts' &&
+      FOOD_PROVIDER_ADAPTERS[provider.provider_type as FoodProviderType]
+        ?.lookupBarcode &&
+      getFoodProviderMetadata(provider.provider_type)?.supportsBarcode
+    ) {
+      try {
+        const adapter =
+          FOOD_PROVIDER_ADAPTERS[provider.provider_type as FoodProviderType];
+        const ctx: ProviderCallContext = {
+          userId,
+          credentialUserId,
+          providerId: provider.id,
+          credentials: {
+            app_id: provider.app_id ?? undefined,
+            app_key: provider.app_key ?? undefined,
+            base_url: provider.base_url ?? undefined,
+            is_active: provider.is_active ?? undefined,
+            provider_options:
+              (provider.provider_options as Record<string, unknown>) ??
+              undefined,
+          },
+          language,
+          autoScale,
+          signal: options.signal,
+        };
+        const mappedFood = await adapter.lookupBarcode!(ctx, barcode);
+        options.signal?.throwIfAborted();
+        if (mappedFood) {
+          const rawFood =
+            (mappedFood as { barcode_raw?: unknown }).barcode_raw ?? mappedFood;
+          return {
+            source: provider.provider_type,
+            food: mappedFood,
+            barcode_raw: rawFood,
+            ...sourceMetadata(
+              provider.id,
+              provider.provider_name ??
+                getFoodProviderMetadata(provider.provider_type)?.displayName ??
+                provider.provider_type
+            ),
+          };
+        }
+      } catch (adapterError) {
+        log(
+          'warn',
+          `${provider.provider_type} barcode lookup failed for ${barcode}:`,
+          captureSurfaceable(adapterError)
         );
       }
     }

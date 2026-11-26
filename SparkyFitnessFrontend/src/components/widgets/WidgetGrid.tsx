@@ -8,6 +8,7 @@ import {
   type ComponentType,
   type ReactNode,
 } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { Responsive, useContainerWidth } from 'react-grid-layout';
 import type { Layout, ResponsiveLayouts } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
@@ -39,6 +40,11 @@ export interface Widget {
   title: string;
   icon: ComponentType<{ className?: string }>;
   render: () => ReactNode;
+  /**
+   * Show the widget without its frame outside edit mode, so neighbouring
+   * widgets can read as one piece (the diary's meal timeline).
+   */
+  seamless?: boolean;
 }
 
 interface WidgetGridProps {
@@ -101,9 +107,9 @@ const WidgetGridInner = ({
   // the raw measurement straight to the grid lets a ~15px scrollbar toggle flip
   // the breakpoint near a threshold and oscillate forever (#2056), so damp it.
   const [width, setWidth] = useState(rawWidth);
-  useEffect(() => {
+  useOnChange([rawWidth], () => {
     setWidth((prev) => stabilizeGridWidth(prev, rawWidth));
-  }, [rawWidth]);
+  });
 
   // Layout editing is a personal action; when viewing someone else's profile
   // the layout is shown read-only (the server also rejects writes).
@@ -137,15 +143,16 @@ const WidgetGridInner = ({
   // clobbering a rapid follow-up drag. On exiting edit mode the optimistic
   // cache already holds the latest layout, so the resync is a no-op.
   const syncSig = `${widgetKeys.join(',')}|${saved?.updated_at ?? ''}`;
-  useEffect(() => {
+  useOnChange([syncSig, effectiveEditMode], () => {
     if (effectiveEditMode) return;
     setLayouts(reconcileLayouts(saved?.layout, widgetKeys, defaults));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncSig, effectiveEditMode]);
+  });
 
   // Latest full (all-breakpoint) layout, kept in sync by onLayoutChange.
   const latestLayoutsRef = useRef<DashboardLayouts>(layouts);
-  latestLayoutsRef.current = layouts;
+  useEffect(() => {
+    latestLayoutsRef.current = layouts;
+  }, [layouts]);
 
   // Measured natural content height (in grid rows) per widget. Heights are
   // content-driven so tiles grow to fit and never show an inner scrollbar.
@@ -217,7 +224,9 @@ const WidgetGridInner = ({
   // Hide/Restore clicks would otherwise capture a stale `hidden` closure and
   // clobber the prior click's save before the re-render lands.
   const hiddenRef = useRef(hidden);
-  hiddenRef.current = hidden;
+  useEffect(() => {
+    hiddenRef.current = hidden;
+  }, [hidden]);
 
   const hideWidget = useCallback(
     (key: string) => {
@@ -337,6 +346,7 @@ const WidgetGridInner = ({
                     widgetKey={w.key}
                     title={w.title}
                     editMode={effectiveEditMode}
+                    seamless={w.seamless}
                     isMax={maximized === w.key}
                     onToggleMax={() =>
                       setMaximized((cur) => (cur === w.key ? null : w.key))

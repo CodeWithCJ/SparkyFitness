@@ -6,7 +6,14 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, Pressable, Text, TextInput, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  Text,
+  View,
+  type TextInputInstance,
+  type ViewInstance,
+} from 'react-native';
 import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useCSSVariable } from 'uniwind';
 import { RIR_MAX, RIR_MIN, isBodyweightModality } from '@workspace/shared';
@@ -480,11 +487,11 @@ function ActiveWorkoutSetRow({
     }
   }
 
-  const weightInputRef = useRef<TextInput>(null);
-  const repsInputRef = useRef<TextInput>(null);
-  const durationInputRef = useRef<TextInput>(null);
-  const distanceInputRef = useRef<TextInput>(null);
-  const rpeInputRef = useRef<TextInput>(null);
+  const weightInputRef = useRef<TextInputInstance>(null);
+  const repsInputRef = useRef<TextInputInstance>(null);
+  const durationInputRef = useRef<TextInputInstance>(null);
+  const distanceInputRef = useRef<TextInputInstance>(null);
+  const rpeInputRef = useRef<TextInputInstance>(null);
 
   // Move the keyboard to the commanded input when this row is the focused
   // cell. All rows keep their inputs mounted, so this does the real work only
@@ -958,7 +965,7 @@ function ActiveWorkoutSetRow({
 
   // Tap the set number (or long-press the row) to change this set's type. The
   // menu anchors to the number cell, measured on demand.
-  const setNumberRef = useRef<View>(null);
+  const setNumberRef = useRef<ViewInstance>(null);
   const openSetTypeMenu = useCallback(() => {
     if (!onPressSetType) return;
     measureAnchoredMenuTrigger(setNumberRef.current, (anchor) =>

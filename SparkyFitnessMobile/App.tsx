@@ -1,5 +1,5 @@
 import './global.css'
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { StatusBar, Platform, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as SplashScreen from 'expo-splash-screen';
@@ -20,7 +20,7 @@ import { FoodImageSourceProvider } from './src/components/FoodImageSourceProvide
 import { LightboxProvider } from './src/components/LightboxProvider';
 import { Uniwind, useUniwind, useCSSVariable } from 'uniwind';
 
-import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, useWatchRouteBridge, usePreferences } from './src/hooks';
+import { queryClient, serverConnectionQueryKey, serverConfigsQueryKey, useSyncHealthData, useServerConnection, drainQuickActionNavigation, useControlRouteHandoff, useQuickActions, useWatchCheckInBridge, useWatchFastingBridge, useWatchComplicationSync, useWatchPlanSync, useWatchRecordingBridge, useWatchSetTargetsSync, useWatchWorkoutBridge, useWatchWorkoutEdit, useWatchRunBridge, useWatchRouteBridge, usePreferences } from './src/hooks';
 import { useCycleSheetLabel } from './src/hooks/useAddMenuItemLabel';
 import { useAddMenuItemAvailable } from './src/hooks/useAddMenuItemAvailable';
 import { configureRunLiveActivity } from './src/services/runLiveActivity';
@@ -37,6 +37,10 @@ import { useAppBootstrap } from './src/hooks/useAppBootstrap';
 import { useAppLanguageForegroundSync } from './src/hooks/useAppLanguageForegroundSync';
 import { useAutoSyncOnOpen } from './src/hooks/useAutoSyncOnOpen';
 import { useAddSheetActions } from './src/hooks/useAddSheetActions';
+import { useCopyFromYesterday } from './src/hooks/useCopyFromYesterday';
+import CopyFromYesterdaySheet, {
+  type CopyFromYesterdaySheetRef,
+} from './src/components/CopyFromYesterdaySheet';
 
 import { createNativeStackNavigator, type NativeStackNavigationOptions } from '@react-navigation/native-stack';
 import FoodPhotoFlow from './src/components/FoodPhotoFlow';
@@ -50,6 +54,9 @@ import {
   SafeLabResultAdd,
   SafeLabResultDetail,
   SafeLabResults,
+  SafeChallenges,
+  SafeChallengeDetail,
+  SafeChallengeJoin,
   SafePersonalRecords,
   SafeTrainingCalendar,
   SafeWatchRunLive,
@@ -135,6 +142,8 @@ import {
   SafeHealthTrendsSettings,
   SafeWatchSettings,
   SafeGarminSettings,
+  SafeWatchComplications,
+  SafeWatchComplicationEdit,
   SafeAddMenuSettings,
   SafeDiarySettings,
   SafeOfflineSettings,
@@ -221,6 +230,7 @@ import ActiveWorkoutKeepAwake from './src/components/ActiveWorkoutKeepAwake';
 import MedicationReminderReconciler from './src/components/MedicationReminderReconciler';
 import MoodCheckinReminderReconciler from './src/components/MoodCheckinReminderReconciler';
 import OralCareReminderReconciler from './src/components/OralCareReminderReconciler';
+import ChallengeWeekNotificationReconciler from './src/components/ChallengeWeekNotificationReconciler';
 import { useNativeIOSTabsActive, useNativeIOSHeadersActive } from './src/services/nativeTabBarPreference';
 import { useWidgetLanguageRefresh } from './src/hooks/useWidgetLanguageRefresh';
 import { useIOSWidgetLanguageRefresh } from './src/hooks/useIOSWidgetLanguageRefresh';
@@ -250,6 +260,9 @@ function WatchCheckInGate() {
   const { isConnected: isServerConnected } = useServerConnection();
   useWatchCheckInBridge(isServerConnected);
   useWatchFastingBridge(isServerConnected);
+  // Custom complications live on the phone and need no server, so they are
+  // sent whether or not it is reachable.
+  useWatchComplicationSync(true);
   return null;
 }
 
@@ -400,6 +413,10 @@ function AppContent() {
   const { shouldYieldObserverSync } = useAutoSyncOnOpen({ initialRoute, syncMutation });
   useAppStartup({ shouldYieldObserverSync });
 
+  const copyFromYesterdaySheetRef = useRef<CopyFromYesterdaySheetRef>(null);
+  const { copyFromYesterday, isPending: copyFromYesterdayPending } =
+    useCopyFromYesterday();
+
   const {
     rememberActiveTab,
     getLastActiveTab,
@@ -415,12 +432,17 @@ function AppContent() {
     handleStartCheckIn,
     handleAddMindfulness,
     handleAddOralCare,
+    handleCopyFromYesterday,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,
     handleSyncHealthData,
     handleAddSheetDismissWithoutAction,
-  } = useAddSheetActions({ syncMutation });
+  } = useAddSheetActions({
+    syncMutation,
+    presentCopyFromYesterday: (date) =>
+      copyFromYesterdaySheetRef.current?.present(date),
+  });
 
   const isAddMenuItemAvailable = useAddMenuItemAvailable();
   const cycleSheetLabel = useCycleSheetLabel();
@@ -564,7 +586,7 @@ function AppContent() {
             with "No safe area value available". */}
         <LightboxProvider>
         <UniwindInsetsBridge />
-        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+        <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <HorizontalInsetsFrame>
         <Stack.Navigator
           screenLayout={usesLiquidGlassNavigation
@@ -736,6 +758,25 @@ function AppContent() {
             name="LabResults"
             component={SafeLabResults}
             options={createStackScreenOptions(t('screens.labResults', { defaultValue: 'Lab results' }), { headerBackTitle: t('navigation.library', { defaultValue: 'Library' }) })}
+          />
+          <Stack.Screen
+            name="Challenges"
+            component={SafeChallenges}
+            options={createStackScreenOptions(t('challenges.title', { defaultValue: 'Challenges' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="ChallengeDetail"
+            component={SafeChallengeDetail}
+            options={({ route }) => createStackScreenOptions(route.params.name ?? t('challenges.title', { defaultValue: 'Challenges' }), { headerBackButtonDisplayMode: 'minimal' })}
+          />
+          <Stack.Screen
+            name="ChallengeJoin"
+            component={SafeChallengeJoin}
+            options={createStackScreenOptions(t('challenges.join.title', { defaultValue: 'Join a challenge' }), {
+              presentation: 'modal',
+              headerBackButtonDisplayMode: 'minimal',
+              ...(Platform.OS === 'android' ? androidModalAnimation : {}),
+            })}
           />
           <Stack.Screen
             name="LabResultDetail"
@@ -1329,6 +1370,16 @@ function AppContent() {
             options={createStackScreenOptions(t('screens.watchSettings', { defaultValue: 'Apple Watch' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
+            name="WatchComplications"
+            component={SafeWatchComplications}
+            options={createStackScreenOptions(t('watchComplications.title', { defaultValue: 'Complications' }), { headerBackTitle: t('screens.watchSettings', { defaultValue: 'Apple Watch' }) })}
+          />
+          <Stack.Screen
+            name="WatchComplicationEdit"
+            component={SafeWatchComplicationEdit}
+            options={createStackScreenOptions(t('watchComplications.editTitle', { defaultValue: 'Edit complication' }), { headerBackTitle: t('common.back', { defaultValue: 'Back' }) })}
+          />
+          <Stack.Screen
             name="GarminSettings"
             component={SafeGarminSettings}
             options={createStackScreenOptions(t('screens.garminSettings', { defaultValue: 'Garmin' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
@@ -1577,6 +1628,7 @@ function AppContent() {
           onAddMood={handleAddMood}
           onAddMindfulness={handleAddMindfulness}
           onAddOralCare={handleAddOralCare}
+          onCopyFromYesterday={handleCopyFromYesterday}
           onRecordActivity={handleRecordActivity}
           onAskSparky={handleAskSparky}
           onStartCheckIn={handleStartCheckIn}
@@ -1584,6 +1636,11 @@ function AppContent() {
           showCycleCard={isAddMenuItemAvailable('wellness')}
           cycleLabel={cycleSheetLabel}
           onDismissWithoutAction={handleAddSheetDismissWithoutAction}
+        />
+        <CopyFromYesterdaySheet
+          ref={copyFromYesterdaySheetRef}
+          isPending={copyFromYesterdayPending}
+          onCopy={copyFromYesterday}
         />
         <ReauthModal
           visible={showReauthModal}
@@ -1622,6 +1679,7 @@ function AppContent() {
         <MedicationReminderReconciler />
         <MoodCheckinReminderReconciler />
         <OralCareReminderReconciler />
+        <ChallengeWeekNotificationReconciler />
         <SafeAreaToast />
         </LightboxProvider>
       </SafeAreaProvider>

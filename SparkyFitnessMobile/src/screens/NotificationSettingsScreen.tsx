@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
+import FeaturesOffNotice from '../components/FeaturesOffNotice';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
 import NotificationPermissionBanner, {
   type NotificationPermissionBannerHandle,
@@ -28,6 +29,8 @@ import {
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useScreenHeader } from '../hooks/useScreenHeader';
 import { usePreferences } from '../hooks/usePreferences';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
+import { useServerConnection } from '../hooks/useServerConnection';
 import { markCheckinReminderOfferShown } from '../services/checkinReminderOffer';
 import {
   MAX_CHECKIN_REMINDERS,
@@ -44,9 +47,9 @@ type SnoozeMinutesKey = `${MedicationReminderSnoozeMinutes}`;
 type NotificationSettingsScreenProps =
   RootStackScreenProps<'NotificationSettings'>;
 
-const NotificationSettingsScreen: React.FC<
-  NotificationSettingsScreenProps
-> = () => {
+const NotificationSettingsScreen: React.FC<NotificationSettingsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
@@ -223,6 +226,26 @@ const NotificationSettingsScreen: React.FC<
     [setOralCareRemindersEnabled]
   );
 
+  const challengeWeekNotificationsEnabled = useAppPreferencesStore(
+    (s) => s.challengeWeekNotificationsEnabled
+  );
+  const setChallengeWeekNotificationsEnabled = useAppPreferencesStore(
+    (s) => s.setChallengeWeekNotificationsEnabled
+  );
+
+  const handleChallengeWeekToggle = useCallback(
+    async (value: boolean) => {
+      if (!value) {
+        setChallengeWeekNotificationsEnabled(false);
+        return;
+      }
+      const status = await requestNotificationPermission();
+      bannerRef.current?.refresh();
+      if (status === 'granted') setChallengeWeekNotificationsEnabled(true);
+    },
+    [setChallengeWeekNotificationsEnabled]
+  );
+
   const oralCareReminderRows = useReminderTimeRows({
     times: oralCareReminderTimes,
     onChangeTimes: setOralCareReminderTimes,
@@ -353,6 +376,12 @@ const NotificationSettingsScreen: React.FC<
     left: { kind: 'back' },
   });
 
+  // While Medications is off in Settings → Features its reminder settings are
+  // left out (and kept as they are); one line says so instead.
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
+  const medicationsOn = isFeatureOn('medications');
+  const { isConnected } = useServerConnection();
+
   return (
     <View className="flex-1 bg-background">
       {header}
@@ -432,7 +461,18 @@ const NotificationSettingsScreen: React.FC<
           </SettingsRowGroup>
         )}
 
-        {notificationsEnabled && (
+        {notificationsEnabled && !medicationsOn && (
+          <FeaturesOffNotice
+            className="mb-4"
+            onManage={
+              isConnected
+                ? () => navigation.navigate('FeatureSettings')
+                : undefined
+            }
+          />
+        )}
+
+        {notificationsEnabled && medicationsOn && (
           <SettingsRowGroup
             title={t('notificationSettings.medications', {
               defaultValue: 'Medications',
@@ -691,6 +731,34 @@ const NotificationSettingsScreen: React.FC<
               }
             />
             {oralCareRemindersEnabled && oralCareReminderRows.rows}
+          </SettingsRowGroup>
+        )}
+
+        {notificationsEnabled && (
+          <SettingsRowGroup
+            title={t('notificationSettings.challenges', {
+              defaultValue: 'Challenges',
+            })}
+          >
+            <SettingsRow
+              title={t('notificationSettings.challengeWeek', {
+                defaultValue: 'Week leader',
+              })}
+              subtitle={t('notificationSettings.challengeWeekSubtitle', {
+                defaultValue:
+                  'The last evening of each challenge week: who leads each weekly challenge you are in',
+              })}
+              subtitleNumberOfLines={0}
+              rightAccessory={
+                <Switch
+                  accessibilityLabel={t('notificationSettings.challengeWeek', {
+                    defaultValue: 'Week leader',
+                  })}
+                  value={challengeWeekNotificationsEnabled}
+                  onValueChange={handleChallengeWeekToggle}
+                />
+              }
+            />
           </SettingsRowGroup>
         )}
       </ScrollView>

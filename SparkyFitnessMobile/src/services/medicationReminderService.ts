@@ -19,8 +19,12 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { MedicationDetail, MedicationEntry } from '@workspace/shared';
 import { isDoseLogged } from '../utils/medications';
 import { addLog } from './LogService';
-import { getActiveServerConfig } from './storage';
+import { accountGeneration } from '../offline/accountGeneration';
+import { getActiveServerConfig, getActiveServerConfigId } from './storage';
+import { belongsToOtherServer } from './notificationServerScope';
 import {
+  clearSnoozedMedicationReminders,
+  removeSnoozedMedicationReminders,
   flushPendingMedicationNotificationActions,
   syncSnoozedMedicationReminders,
 } from './medicationNotificationHandler';
@@ -31,17 +35,58 @@ const REPEAT_MINUTES = [10, 20, 30];
 // bounded lookahead and the repeat pings stay today-only.
 const REMINDER_LOOKAHEAD_DAYS = 7;
 
-interface QueuedReconcileBatch {
+/** What the caller decided about the reminders before they are reconciled. */
+export interface MedicationReminderScope {
+  /**
+   * False cancels and dismisses every medication reminder (Medications is
+   * turned off in Settings → Features, #3487, or the caller has reminders
+   * off); true schedules them as the reminder preferences allow. Required so
+   * no caller can forget the feature.
+   */
+  active: boolean;
+  /**
+   * The saved server the caller read its medications and feature choices
+   * from. When given, the pass does nothing if another server is active by
+   * the time it runs: what it would schedule or cancel belongs to an account
+   * the person switched away from.
+   */
+  serverId?: string | null;
+  /**
+   * `accountGeneration()` when the caller started its reads. When given and
+   * the account on the phone changed since (another server, or another
+   * account on the same one, which keeps the server id), the request is
+   * dropped at once: it is not queued and does not replace a reconcile
+   * waiting for the account now signed in.
+   */
+  accountGeneration?: number;
+}
+
+interface ReconcileRequest {
   medications: MedicationDetail[];
   entries: MedicationEntry[];
   entriesDate: string;
+  active: boolean;
+  serverId: string | null | undefined;
+  accountGeneration: number | undefined;
+}
+
+/**
+ * The work waiting for the next pass. Callers add to it rather than replace
+ * it, so one kind of work never drops another: the account change cancels
+ * everything first, then the reconcile runs (the last caller's, as with its
+ * data), then the reminders of other servers are cancelled.
+ */
+interface QueuedReminderWork {
+  cancelAll: boolean;
+  reconcile: ReconcileRequest | null;
+  cancelOtherServers: boolean;
   promise: Promise<void>;
   resolve: () => void;
   reject: (reason?: unknown) => void;
 }
 
 let activeReconcileRunning = false;
-let queuedReconcileBatch: QueuedReconcileBatch | null = null;
+let queuedReminderWork: QueuedReminderWork | null = null;
 
 function resolveCurrentTimezoneAndToday(): {
   validTz: string | null;
@@ -54,23 +99,36 @@ function resolveCurrentTimezoneAndToday(): {
   return { validTz, tz: validTz ?? 'UTC', today };
 }
 
-function createQueuedReconcileBatch(
-  medications: MedicationDetail[],
-  entries: MedicationEntry[],
-  entriesDate: string
-): QueuedReconcileBatch {
-  let resolve!: () => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<void>((res, rej) => {
-    resolve = res;
-    reject = rej;
-  });
-  return { medications, entries, entriesDate, promise, resolve, reject };
+function queuedWork(): QueuedReminderWork {
+  if (!queuedReminderWork) {
+    let resolve!: () => void;
+    let reject!: (reason?: unknown) => void;
+    const promise = new Promise<void>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    queuedReminderWork = {
+      cancelAll: false,
+      reconcile: null,
+      cancelOtherServers: false,
+      promise,
+      resolve,
+      reject,
+    };
+  }
+  return queuedReminderWork;
 }
 
-function dequeueReconcileBatch(): QueuedReconcileBatch | null {
-  const next = queuedReconcileBatch;
-  queuedReconcileBatch = null;
+function startQueuedWork(work: QueuedReminderWork): Promise<void> {
+  if (!activeReconcileRunning) {
+    void drainReconcileQueue();
+  }
+  return work.promise;
+}
+
+function dequeueReminderWork(): QueuedReminderWork | null {
+  const next = queuedReminderWork;
+  queuedReminderWork = null;
   return next;
 }
 
@@ -166,21 +224,113 @@ async function scheduleReminder(
   }
 }
 
-async function cancelAndDismissAllMedicationReminders(): Promise<void> {
+type ReminderData = Record<string, unknown> | null | undefined;
+
+/** Cancels and dismisses the medication reminders `matches` picks, and
+ * returns the base keys of the snoozed copies among them. */
+async function cancelAndDismissAllMedicationReminders(
+  matches: (data: NonNullable<ReminderData>) => boolean = () => true
+): Promise<Set<string>> {
+  const snoozedBaseKeys = new Set<string>();
+  const isMedicationReminder = (data: ReminderData) => {
+    if (!data?.medicationId || !matches(data)) return false;
+    if (data.isSnoozed === 'true') {
+      const baseKey = data.baseKey ?? data.key;
+      if (typeof baseKey === 'string') snoozedBaseKeys.add(baseKey);
+    }
+    return true;
+  };
   const all = await Notifications.getAllScheduledNotificationsAsync();
   const medIds = all
-    .filter((n) => n.content.data?.medicationId)
+    .filter((n) => isMedicationReminder(n.content.data))
     .map((n) => n.identifier);
   if (medIds.length > 0) await cancelReminders(medIds);
   if (typeof Notifications.getPresentedNotificationsAsync === 'function') {
     const presented =
       await Notifications.getPresentedNotificationsAsync().catch(() => []);
     const presentedIds = presented
-      .filter((n) => n.request.content.data?.medicationId)
+      .filter((n) => isMedicationReminder(n.request.content.data))
       .map((n) => n.request.identifier);
     if (presentedIds.length > 0) {
       await dismissPresentedReminders(presentedIds);
     }
+  }
+  return snoozedBaseKeys;
+}
+
+/**
+ * Cancels and dismisses the reminders made for a server other than the active
+ * one, and leaves the active server's alone. For while it is not known yet
+ * whether Medications is on for the active account (#3487): its own reminders
+ * stay as they are, but those of an account switched away from stop. Reminders
+ * without a server stamp (from an older build) count as the active server's.
+ *
+ * It goes through the reconcile queue, after a pass already under way and
+ * after any reconcile waiting with it, which it never drops.
+ */
+export function cancelMedicationRemindersOfOtherServers(): Promise<void> {
+  const work = queuedWork();
+  work.cancelOtherServers = true;
+  return startQueuedWork(work);
+}
+
+/**
+ * Cancels and dismisses every medication reminder and forgets the snooze
+ * records, for when the account on the phone changes (another account on the
+ * same server, another server, or the server deleted): they carry the
+ * previous account's medication names, and nothing else would tell them
+ * apart while the new account's feature choices are not known yet. The app
+ * cannot tell a sign-in back into the same account from another one, so that
+ * cancels them too: the account's next reconcile schedules them again, but a
+ * snoozed copy and the reminders already shown are gone.
+ *
+ * A reconcile still waiting was read for the previous account, so it is
+ * dropped; one queued after this, for the new account, runs after it. A
+ * reconcile read before the change and queued after it is dropped when it
+ * says which account generation it read under (`accountGeneration`), as the
+ * background task's do.
+ */
+export function cancelMedicationRemindersForAccountChange(): Promise<void> {
+  const work = queuedWork();
+  work.cancelAll = true;
+  work.reconcile = null;
+  return startQueuedWork(work);
+}
+
+async function cancelAllRemindersOnce(): Promise<void> {
+  await cancelAndDismissAllMedicationReminders();
+  if (!(await clearSnoozedMedicationReminders())) {
+    addLog(
+      'Medication reminders were cancelled but their snooze records could not be cleared; while the app runs they are left out of the snooze sync and removed by its next write that works',
+      'WARNING'
+    );
+  }
+}
+
+async function cancelRemindersOfOtherServersOnce(): Promise<void> {
+  let activeServerId: string | null;
+  try {
+    // Only the stored id, no keychain read: a failed keychain or keystore read
+    // must not make the active server look like none, and so cancel its
+    // reminders too.
+    activeServerId = await getActiveServerConfigId();
+  } catch {
+    // Not known which server is active: every reminder stays as it is.
+    return;
+  }
+  const snoozedBaseKeys = await cancelAndDismissAllMedicationReminders((data) =>
+    belongsToOtherServer(
+      typeof data.serverId === 'string' ? data.serverId : null,
+      activeServerId
+    )
+  );
+  // Their snoozed copies are gone; a record left behind would keep the dose
+  // silent for the rest of the day once that server is back.
+  if (!(await removeSnoozedMedicationReminders(snoozedBaseKeys))) {
+    addLog(
+      "Another server's snooze records could not be removed; they are tried again on the next pass",
+      'WARNING'
+    );
   }
 }
 
@@ -196,29 +346,37 @@ async function cancelAndDismissAllMedicationReminders(): Promise<void> {
  *
  * @param medications - Active medications from the API
  * @param entries - Today's medication entries from the API
+ * @param scope - Whether reminders may be scheduled at all, and for which
+ *   server and account; a queued pass runs with the last caller's, as it
+ *   does with its data
  */
 export function reconcileMedicationReminders(
   medications: MedicationDetail[],
-  entries: MedicationEntry[]
+  entries: MedicationEntry[],
+  scope: MedicationReminderScope
 ): Promise<void> {
-  const entriesDate = resolveCurrentTimezoneAndToday().today;
-  if (queuedReconcileBatch) {
-    queuedReconcileBatch.medications = medications;
-    queuedReconcileBatch.entries = entries;
-    queuedReconcileBatch.entriesDate = entriesDate;
-  } else {
-    queuedReconcileBatch = createQueuedReconcileBatch(
-      medications,
-      entries,
-      entriesDate
+  // Read for an account the person has left since: dropped here, before it
+  // can take the place of the reconcile waiting for the account signed in.
+  if (
+    scope.accountGeneration !== undefined &&
+    scope.accountGeneration !== accountGeneration()
+  ) {
+    addLog(
+      'Medication reminder pass dropped: it was read for a previous account',
+      'DEBUG'
     );
+    return Promise.resolve();
   }
-
-  const batchPromise = queuedReconcileBatch.promise;
-  if (!activeReconcileRunning) {
-    void drainReconcileQueue();
-  }
-  return batchPromise;
+  const work = queuedWork();
+  work.reconcile = {
+    medications,
+    entries,
+    entriesDate: resolveCurrentTimezoneAndToday().today,
+    active: scope.active,
+    serverId: scope.serverId,
+    accountGeneration: scope.accountGeneration,
+  };
+  return startQueuedWork(work);
 }
 
 interface ReconcileDrainState {
@@ -229,20 +387,29 @@ async function drainReconcileQueue(): Promise<void> {
   activeReconcileRunning = true;
   const drainState: ReconcileDrainState = { flushedDuringDrain: false };
   try {
-    let batch = dequeueReconcileBatch();
-    while (batch) {
-      try {
-        await reconcileMedicationRemindersOnce(
-          batch.medications,
-          batch.entries,
-          batch.entriesDate,
-          drainState
+    let work = dequeueReminderWork();
+    while (work) {
+      // Each part runs even when an earlier one failed; the caller hears of
+      // the first failure.
+      const failures: unknown[] = [];
+      const run = async (part: () => Promise<void>) => {
+        try {
+          await part();
+        } catch (error) {
+          failures.push(error);
+        }
+      };
+      const { reconcile } = work;
+      if (work.cancelAll) await run(cancelAllRemindersOnce);
+      if (reconcile) {
+        await run(() =>
+          reconcileMedicationRemindersOnce(reconcile, drainState)
         );
-        batch.resolve();
-      } catch (err) {
-        batch.reject(err);
       }
-      batch = dequeueReconcileBatch();
+      if (work.cancelOtherServers) await run(cancelRemindersOfOtherServersOnce);
+      if (failures.length > 0) work.reject(failures[0]);
+      else work.resolve();
+      work = dequeueReminderWork();
     }
   } finally {
     activeReconcileRunning = false;
@@ -250,11 +417,11 @@ async function drainReconcileQueue(): Promise<void> {
 }
 
 async function reconcileMedicationRemindersOnce(
-  medications: MedicationDetail[],
-  entries: MedicationEntry[],
-  entriesDate: string,
+  request: ReconcileRequest,
   drainState: ReconcileDrainState
 ): Promise<void> {
+  const { medications, entriesDate, active, serverId } = request;
+  let { entries } = request;
   // Each reminder is stamped with the server it was made for, so the iOS
   // native handler logs a button press only against that same server.
   const activeServerId =
@@ -263,9 +430,43 @@ async function reconcileMedicationRemindersOnce(
   if (flushedAny) {
     drainState.flushedDuringDrain = true;
   }
+  // The presses flushed above are logged whatever happens next. A pass read
+  // for an account or a server that is no longer the active one does nothing
+  // more: what it would schedule or cancel belongs to an account switched
+  // away from.
+  if (
+    request.accountGeneration !== undefined &&
+    request.accountGeneration !== accountGeneration()
+  ) {
+    addLog(
+      'Medication reminder pass skipped: it was read for a previous account',
+      'DEBUG'
+    );
+    return;
+  }
+  if (serverId !== undefined) {
+    const currentServerId = await getActiveServerConfigId().catch(
+      () => undefined
+    );
+    if (currentServerId === undefined || currentServerId !== serverId) {
+      addLog(
+        'Medication reminder pass skipped: it was read for another server',
+        'DEBUG'
+      );
+      return;
+    }
+  }
+  // With reminders off only the reminders go, and no preference is written.
   const prefs = useAppPreferencesStore.getState();
-  if (!prefs.medicationRemindersEnabled || !prefs.notificationsEnabled) {
-    await cancelAndDismissAllMedicationReminders();
+  if (
+    !active ||
+    !prefs.medicationRemindersEnabled ||
+    !prefs.notificationsEnabled
+  ) {
+    // The snoozed copies go with them, so their records go too: turned back
+    // on the same day, a slot still recorded as snoozed would get no reminder
+    // at all.
+    await cancelAllRemindersOnce();
     return;
   }
 

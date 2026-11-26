@@ -23,6 +23,10 @@ jest.mock('react-native-safe-area-context', () => ({
 
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 
 jest.mock('../../src/hooks/useRefetchOnFocus', () => ({
@@ -133,5 +137,70 @@ describe('OfflineSettingsScreen', () => {
       expect(await getCacheRow(db, 's1', 'exercise', 'e1')).toBeNull();
     });
     expect((await getOutboxRow(db, 'o1'))?.status).toBe('pending');
+  });
+
+  it('says what food and water are kept, with counts of what is on the phone', async () => {
+    const { CACHE_COLLECTIONS } = require('../../src/offline/collections');
+    await putCacheRows(db, 's1', CACHE_COLLECTIONS.food, [
+      { key: 'f1', name: 'Bread', payload: { id: 'f1' } },
+      { key: 'f2', name: 'Cheese', payload: { id: 'f2' } },
+    ]);
+    await putCacheRows(db, 's1', CACHE_COLLECTIONS.meal, [
+      { key: 'm1', name: 'Porridge', payload: { id: 'm1' } },
+    ]);
+    await putCacheRows(db, 's1', CACHE_COLLECTIONS.diaryFoodDay, [
+      { key: '2026-11-20', payload: [] },
+      { key: '2026-11-21', payload: [] },
+    ]);
+
+    const { findByText, getByTestId, getByText } = renderScreen();
+
+    expect(await findByText('Food and water kept offline')).toBeTruthy();
+    await waitFor(() => {
+      expect(getByTestId('offline-foods-kept')).toHaveTextContent(/2 foods/);
+      expect(getByTestId('offline-meals-kept')).toHaveTextContent(/1 meal/);
+      expect(getByTestId('offline-diary-days-kept')).toHaveTextContent(
+        /2 days of food/
+      );
+    });
+    // The intro no longer speaks of workouts alone.
+    expect(
+      getByText(/Workouts, food, meals, new foods and drinks/)
+    ).toBeTruthy();
+  });
+
+  it('lists a waiting food, a new food, a changed entry and a deleted meal by what they are', async () => {
+    await putCacheRows(db, 's1', IDENTITY_COLLECTION, [
+      { key: IDENTITY_KEY, payload: { id: 'u1' } },
+    ]);
+    for (const [kind, entityId] of [
+      ['food.create', 'k1'],
+      ['food_entry.update', 'k2'],
+      ['food_entry_meal.delete', 'k3'],
+    ] as const) {
+      await enqueueOutbox(db, {
+        id: `row-${entityId}`,
+        serverConfigId: 's1',
+        userId: 'u1',
+        kind,
+        entityId,
+        entryDate: '2026-11-21',
+        payload: {},
+        payloadVersion: 1,
+      });
+    }
+
+    const { findByTestId, queryByText } = renderScreen();
+
+    expect(await findByTestId('offline-waiting-row-k1')).toHaveTextContent(
+      /Food entry/
+    );
+    expect(await findByTestId('offline-waiting-row-k2')).toHaveTextContent(
+      /Food entry/
+    );
+    expect(await findByTestId('offline-waiting-row-k3')).toHaveTextContent(
+      /Food entry/
+    );
+    expect(queryByText(/Saved change/)).toBeNull();
   });
 });

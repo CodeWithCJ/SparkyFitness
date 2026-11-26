@@ -80,6 +80,27 @@ describe('nutrientGoalPreferenceService', () => {
       expect(result.sodium).toEqual({ goalType: 'maximum' });
     });
 
+    it('marks built-in defaults, not saved choices, with markDefaults', async () => {
+      repo.getNutrientGoalPreferences.mockResolvedValue([
+        {
+          nutrient_key: 'protein',
+          goal_type: 'minimum',
+          target_min: null,
+          target_max: null,
+        },
+      ]);
+      customNutrients.getCustomNutrients.mockResolvedValue([]);
+
+      const result = await nutrientGoalPreferenceService.getEffectiveGoalTypes(
+        'user-1',
+        { markDefaults: true }
+      );
+
+      expect(result.calories).toEqual({ goalType: 'minimum', isDefault: true });
+      expect(result.sodium).toEqual({ goalType: 'maximum', isDefault: true });
+      expect(result.protein).toEqual({ goalType: 'minimum' });
+    });
+
     it('includes custom nutrient names, defaulting to minimum', async () => {
       repo.getNutrientGoalPreferences.mockResolvedValue([]);
       customNutrients.getCustomNutrients.mockResolvedValue([

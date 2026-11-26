@@ -2,6 +2,7 @@ import {
   getSupportedLanguages,
   getLanguageDisplayName,
 } from '@/utils/languageUtils'; // Import language utilities
+import { useOnChange } from '@/hooks/useOnChange';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { TimeInput } from '@/components/ui/TimeInput';
@@ -32,7 +33,7 @@ import {
   MeasurementUnit,
 } from '@/contexts/PreferencesContext';
 import type { ChartScaleMode, TemperatureUnit } from '@workspace/shared';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { DayOfWeek } from '@/types/settings';
@@ -98,13 +99,13 @@ export const PreferenceSettings = () => {
   // "0" of "0.12" into the minimum before the rest could be typed.
   const [bacRateText, setBacRateText] = useState(String(bacEliminationRate));
 
-  useEffect(() => {
+  useOnChange([loggingLevel], () => {
     setLocalLoggingLevel(loggingLevel);
-  }, [loggingLevel]);
+  });
 
-  useEffect(() => {
+  useOnChange([bacEliminationRate], () => {
     setBacRateText(String(bacEliminationRate));
-  }, [bacEliminationRate]);
+  });
 
   const commitBacRate = () => {
     const parsed = parseFloat(bacRateText);

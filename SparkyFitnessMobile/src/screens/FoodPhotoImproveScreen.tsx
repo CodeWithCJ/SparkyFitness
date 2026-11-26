@@ -162,9 +162,13 @@ const FoodPhotoImproveScreen: React.FC<Props> = ({ navigation, route }) => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
 
+  const [wasPending, setWasPending] = useState(mutation.isPending);
+  if (wasPending !== mutation.isPending) {
+    setWasPending(mutation.isPending);
+    if (mutation.isPending) setElapsedSec(0);
+  }
   useEffect(() => {
     if (!mutation.isPending) return;
-    setElapsedSec(0);
     const startedAt = Date.now();
     const id = setInterval(() => {
       setElapsedSec(Math.floor((Date.now() - startedAt) / 1000));

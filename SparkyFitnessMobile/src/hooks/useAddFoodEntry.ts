@@ -24,9 +24,109 @@ import {
   servingVariantKey,
 } from '../utils/foodDetails';
 import { persistExternalVariants } from '../utils/persistExternalVariants';
+import { accountGeneration } from '../offline/accountGeneration';
+import { queueAfterConnectionFailure } from '../offline/queueAfterFailure';
+import {
+  isPendingEntryId,
+  isQueueableFoodEntry,
+  pendingEntryId,
+  queueFoodEntry,
+} from '../offline/foodEntryHandOver';
+import {
+  findWaitingFood,
+  isPendingFoodId,
+  isQueueableFoodCreate,
+  pendingFoodClientId,
+  queueFoodCreate,
+} from '../offline/foodCreateHandOver';
+import { newUuid } from '../utils/ids';
+
+/** True for an entry that is waiting on the phone, not yet on the server. */
+export function isPendingEntry(entry: Pick<FoodEntry, 'id'>): boolean {
+  return isPendingEntryId(entry.id);
+}
+
+/**
+ * A diary entry as it will read once uploaded, for the screens that carry on
+ * with the entry they were handed. Its id is the replay key, marked pending.
+ */
+function pendingEntryFrom(
+  clientId: string,
+  payload: CreateFoodEntryPayload
+): FoodEntry {
+  return {
+    id: pendingEntryId(clientId),
+    food_id: payload.food_id,
+    variant_id: payload.variant_id,
+    meal_type: '',
+    meal_type_id: payload.meal_type_id,
+    quantity: payload.quantity,
+    unit: payload.unit,
+    notes: payload.notes,
+    food_name: payload.food_name,
+    brand_name: payload.brand_name,
+    entry_date: payload.entry_date,
+    entry_time: payload.entry_time,
+    serving_size: payload.serving_size ?? payload.quantity,
+    serving_unit: payload.serving_unit ?? payload.unit,
+    calories: payload.calories ?? 0,
+  };
+}
+
+/**
+ * Logs an entry that needs nothing created first. It carries a replay key
+ * from the first request on, so a request that reached the server but lost
+ * its answer is logged once when it is sent again. When the server cannot be
+ * reached the entry is kept on the phone and uploads later, never after a
+ * timeout (the server may have it already).
+ */
+async function createOrQueueFoodEntry(
+  payload: CreateFoodEntryPayload
+): Promise<FoodEntry> {
+  const clientId = newUuid();
+  const startedUnder = accountGeneration();
+  // A food that is itself still waiting to upload has no id on the server
+  // yet: the entry goes up with the food, which the server answers with the
+  // food it already made when the key is repeated.
+  if (payload.food_id && isPendingFoodId(payload.food_id)) {
+    const waiting = await findWaitingFood(pendingFoodClientId(payload.food_id));
+    if (!waiting) throw new Error('The new food has been uploaded; try again');
+    const { food_id: _foodId, variant_id: _variantId, ...entry } = payload;
+    if (
+      !(await queueFoodCreate(
+        waiting.foodClientId,
+        clientId,
+        waiting.food,
+        entry
+      ))
+    ) {
+      throw new Error('Could not keep the entry on the phone');
+    }
+    return pendingEntryFrom(clientId, {
+      ...payload,
+      food_name: waiting.food.name,
+      calories: waiting.food.calories,
+    });
+  }
+  try {
+    return await createFoodEntry({ ...payload, client_id: clientId });
+  } catch (error) {
+    const queued =
+      isQueueableFoodEntry(payload) &&
+      (await queueAfterConnectionFailure(
+        error,
+        () => queueFoodEntry(clientId, payload),
+        startedUnder
+      ));
+    if (queued) return pendingEntryFrom(clientId, payload);
+    throw error;
+  }
+}
 
 export interface AddFoodEntryInput {
   saveFoodPayload?: SaveFoodPayload;
+  /** The form has equivalent servings to save after the food: that needs the server. */
+  hasEquivalentServings?: boolean;
   /** Reuse the food saved by this form's earlier attempt without another POST. */
   savedFood?: FoodItem;
   /**
@@ -125,10 +225,63 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
   const mutation = useMutation({
     mutationFn: async (input: AddFoodEntryInput) => {
       if (input.saveFoodPayload) {
-        const saved =
-          input.savedFood ??
-          (await saveFood(input.saveFoodPayload, input.saveFoodImages));
-        if (!input.savedFood) options?.onFoodSaved?.(saved);
+        const saveFoodPayload = input.saveFoodPayload;
+        // A plain new food can be kept on the phone and uploaded later with
+        // its entry. Both carry replay keys from the first request on.
+        const foodClientId = newUuid();
+        const entryClientId = newUuid();
+        const startedUnder = accountGeneration();
+        const queueable =
+          !input.savedFood &&
+          isQueueableFoodCreate({
+            food: saveFoodPayload,
+            hasImages: Boolean(input.saveFoodImages),
+            hasExtraServings: Boolean(
+              input.saveThenCreateVariantPayload ||
+              input.hasEquivalentServings ||
+              (input.externalVariants && input.externalVariants.length > 0)
+            ),
+          });
+        let saved: FoodItem;
+        if (input.savedFood) {
+          saved = input.savedFood;
+        } else {
+          try {
+            saved = await saveFood(
+              queueable
+                ? { ...saveFoodPayload, client_id: foodClientId }
+                : saveFoodPayload,
+              input.saveFoodImages
+            );
+          } catch (error) {
+            const entry = input.createEntryPayload;
+            const queued =
+              queueable &&
+              (await queueAfterConnectionFailure(
+                error,
+                () =>
+                  queueFoodCreate(
+                    foodClientId,
+                    entryClientId,
+                    saveFoodPayload,
+                    entry
+                  ),
+                startedUnder
+              ));
+            if (queued) {
+              return pendingEntryFrom(entryClientId, {
+                ...entry,
+                food_name: saveFoodPayload.name,
+                brand_name: saveFoodPayload.brand ?? undefined,
+                serving_size: saveFoodPayload.serving_size,
+                serving_unit: saveFoodPayload.serving_unit,
+                calories: saveFoodPayload.calories,
+              });
+            }
+            throw error;
+          }
+          options?.onFoodSaved?.(saved);
+        }
 
         let variantId = saved.default_variant?.id;
         let unit = input.createEntryPayload.unit;
@@ -167,17 +320,33 @@ export function useAddFoodEntry(options?: UseAddFoodEntryOptions) {
           );
         }
 
-        return createFoodEntry({
+        // The food is on the server now; if only the entry cannot reach it,
+        // the entry is kept on the phone like any other.
+        return createOrQueueFoodEntry({
           ...input.createEntryPayload,
           food_id: saved.id,
           variant_id: variantId,
           unit,
         });
       }
-      return createFoodEntry(input.createEntryPayload);
+      return createOrQueueFoodEntry(input.createEntryPayload);
     },
     onSuccess: (entry) => {
-      invalidateCache(entry.entry_date);
+      if (isPendingEntry(entry)) {
+        Toast.show({
+          type: 'info',
+          text1: t('foodEntryAdd.queued', {
+            defaultValue: 'Saved on this phone',
+          }),
+          text2: t('foodEntryAdd.queuedMessage', {
+            defaultValue: 'It uploads when your server can be reached.',
+          }),
+        });
+        // The Diary reloads the day, which now counts the waiting entry.
+        invalidateCache(entry.entry_date);
+      } else {
+        invalidateCache(entry.entry_date);
+      }
       if (entry.meal_id) {
         invalidateMealUsageCaches(queryClient);
       }

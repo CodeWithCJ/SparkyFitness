@@ -1,4 +1,5 @@
 import { Platform, type ImageSourcePropType } from 'react-native';
+import type { BodyWritebackMetricId } from './services/shared/bodyWriteback';
 
 // Writeback metrics (Sparky → OS health store). Kept separate from the read
 // HealthMetrics list: those drive background-delivery subscriptions and inbound
@@ -12,7 +13,11 @@ import { Platform, type ImageSourcePropType } from 'react-native';
 // category-grouped list rather than a flat pair).
 
 export type WritebackMetricId =
-  'nutrition' | 'hydration' | 'toothbrushing' | 'exercise';
+  | 'nutrition'
+  | 'hydration'
+  | 'toothbrushing'
+  | 'exercise'
+  | BodyWritebackMetricId;
 
 /** Inclusive local-calendar-day range (YYYY-MM-DD) for a targeted writeback removal.
  *  `null` removal means "all time" (full purge). */
@@ -27,7 +32,20 @@ export interface WritebackRemovalResult {
 }
 
 type WritebackRecordType =
-  'Nutrition' | 'Hydration' | 'Toothbrushing' | 'ExerciseSession';
+  | 'Nutrition'
+  | 'Hydration'
+  | 'Toothbrushing'
+  | 'ExerciseSession'
+  | BodyWritebackRecordType;
+
+/** The store record type each body metric is written as (#2465). */
+export type BodyWritebackRecordType =
+  | 'Weight'
+  | 'BodyFat'
+  | 'Height'
+  | 'WaistCircumference'
+  | 'BoneMass'
+  | 'BodyWaterMass';
 
 export interface WritebackMetric {
   id: WritebackMetricId;
@@ -120,6 +138,86 @@ const ALL_WRITEBACK_METRICS: WritebackMetric[] = [
   },
 ];
 
+// Body measurements from the daily check-in (#2465), one switch each. Each also
+// asks to read its own type: the writer skips a day when another app already has
+// the same value on it, and writes anyway without that read access.
+const bodyMetric = (
+  id: BodyWritebackMetricId,
+  recordType: BodyWritebackRecordType,
+  labelKey: string,
+  defaultLabel: string,
+  preferenceKey: string,
+  icon: ImageSourcePropType,
+  platforms?: ('android' | 'ios')[]
+): WritebackMetric => ({
+  id,
+  labelKey,
+  defaultLabel,
+  preferenceKey,
+  recordType,
+  permission: { accessType: 'write', recordType },
+  extraPermissions: [{ accessType: 'read', recordType, optional: true }],
+  platforms,
+  icon,
+  category: 'Body Measurements',
+});
+
+const BODY_WRITEBACK_METRICS: WritebackMetric[] = [
+  bodyMetric(
+    'weight',
+    'Weight',
+    'healthMetrics.weight',
+    'Weight',
+    'writebackWeightEnabled',
+    require('../assets/icons/health-metrics/weight.png')
+  ),
+  bodyMetric(
+    'bodyFat',
+    'BodyFat',
+    'healthMetrics.bodyFat',
+    'Body Fat',
+    'writebackBodyFatEnabled',
+    require('../assets/icons/health-metrics/body_fat.png')
+  ),
+  bodyMetric(
+    'height',
+    'Height',
+    'healthMetrics.height',
+    'Height',
+    'writebackHeightEnabled',
+    require('../assets/icons/health-metrics/height.png')
+  ),
+  // Health Connect has no waist record.
+  bodyMetric(
+    'waistCircumference',
+    'WaistCircumference',
+    'healthMetrics.waistCircumference',
+    'Waist Circumference',
+    'writebackWaistEnabled',
+    require('../assets/icons/health-metrics/lean_body_mass.png'),
+    ['ios']
+  ),
+  // Apple Health has no bone mass or body water type.
+  bodyMetric(
+    'boneMass',
+    'BoneMass',
+    'healthMetrics.boneMass',
+    'Bone Mass',
+    'writebackBoneMassEnabled',
+    require('../assets/icons/health-metrics/bone_mass.png'),
+    ['android']
+  ),
+  bodyMetric(
+    'bodyWaterMass',
+    'BodyWaterMass',
+    'healthMetrics.bodyWaterMass',
+    'Body Water Mass',
+    'writebackBodyWaterEnabled',
+    require('../assets/icons/health-metrics/hydration.png'),
+    ['android']
+  ),
+];
+
 /** Every permission a writeback metric asks for: its own, then any extras. */
 export const writebackMetricPermissions = (
   metric: WritebackMetric
@@ -155,16 +253,19 @@ export const missingRequiredWritebackPermissions = (
     );
 
 /** The writeback metrics this platform's health store can hold. */
-export const WRITEBACK_METRICS: WritebackMetric[] =
-  ALL_WRITEBACK_METRICS.filter(
-    (metric) =>
-      !metric.platforms ||
-      metric.platforms.includes(Platform.OS as 'android' | 'ios')
-  );
+export const WRITEBACK_METRICS: WritebackMetric[] = [
+  ...ALL_WRITEBACK_METRICS,
+  ...BODY_WRITEBACK_METRICS,
+].filter(
+  (metric) =>
+    !metric.platforms ||
+    metric.platforms.includes(Platform.OS as 'android' | 'ios')
+);
 
 /** Order categories render in (mirrors the read section's grouping). */
 export const WRITEBACK_CATEGORY_ORDER: string[] = [
   'Nutrition',
   'Exercise',
+  'Body Measurements',
   'Hygiene',
 ];

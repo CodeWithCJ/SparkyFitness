@@ -282,6 +282,36 @@ describe('transformHealthRecords', () => {
       expect(result[0].type).toBe('weight');
     });
 
+    test('skips records body write-back wrote, keeps other records from this app', () => {
+      setOwnPackageName('com.sparky');
+      const records = [
+        {
+          time: atLocalTime('2024-01-15', '12:00'),
+          weight: { inKilograms: 80 },
+          metadata: {
+            dataOrigin: 'com.sparky',
+            clientRecordId: 'sparky-body-weight-2024-01-15-1',
+          },
+        },
+        // The dev seed tool writes from this app too; still imported.
+        {
+          time: atLocalTime('2024-01-15', '08:00'),
+          weight: { inKilograms: 75.5 },
+          metadata: { dataOrigin: 'com.sparky', clientRecordId: 'seed-1' },
+        },
+      ];
+      try {
+        const result = transformHealthRecords(records, {
+          recordType: 'Weight',
+          unit: 'kg',
+          type: 'weight',
+        }) as TransformedRecord[];
+        expect(result.map((r) => r.value)).toEqual([75.5]);
+      } finally {
+        setOwnPackageName(null);
+      }
+    });
+
     test('skips record when weight data is missing', () => {
       const records = [
         { time: '2024-01-15T08:00:00Z', weight: null },
@@ -1602,7 +1632,7 @@ describe('transformHealthRecords', () => {
       const records = [{ time: '2024-01-15T08:00:00Z', vo2Max: 45.5 }];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1614,7 +1644,7 @@ describe('transformHealthRecords', () => {
       const records = [{ time: '2024-01-15T08:00:00Z', vo2: 42.0 }];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1626,7 +1656,7 @@ describe('transformHealthRecords', () => {
       const records = [{ time: '2024-01-15T08:00:00Z', value: 40.0 }];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1640,7 +1670,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1657,7 +1687,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1669,7 +1699,7 @@ describe('transformHealthRecords', () => {
       const records = [{ time: '2024-01-15T08:00:00Z', vo2Max: '45.5' }];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       }) as TransformedRecord[];
 
@@ -1684,7 +1714,7 @@ describe('transformHealthRecords', () => {
       ];
       const result = transformHealthRecords(records, {
         recordType: 'Vo2Max',
-        unit: 'ml/min/kg',
+        unit: 'ml/kg/min',
         type: 'vo2max',
       });
 

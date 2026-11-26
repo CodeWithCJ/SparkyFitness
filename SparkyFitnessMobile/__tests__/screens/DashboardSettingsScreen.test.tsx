@@ -15,6 +15,7 @@ import {
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
 import { DASHBOARD_CARD_KEYS } from '../../src/constants/dashboardCards';
+import { useServerConnection } from '../../src/hooks';
 
 jest.mock('../../src/hooks', () => ({
   useServerConnection: jest.fn(() => ({
@@ -52,12 +53,19 @@ jest.mock('../../src/components/Icon', () => {
 });
 
 let mockCycleOn = false;
+let mockMedicationsOn = true;
 let mockLabResultsOn = true;
 let mockDiscreet = false;
 jest.mock('../../src/hooks/useMobileFeatures', () => ({
   useMobileFeatures: () => ({
     isEnabled: (key: string) =>
-      key === 'cycle' ? mockCycleOn : mockLabResultsOn,
+      key === 'cycle'
+        ? mockCycleOn
+        : key === 'medications'
+          ? mockMedicationsOn
+          : key === 'labResults'
+            ? mockLabResultsOn
+            : true,
   }),
 }));
 jest.mock('../../src/hooks/useDiscreetMode', () => ({
@@ -97,7 +105,12 @@ describe('DashboardSettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
+    jest.mocked(useServerConnection).mockReturnValue({
+      isConnected: false,
+      isLoading: false,
+    } as ReturnType<typeof useServerConnection>);
     mockCycleOn = false;
+    mockMedicationsOn = true;
     mockLabResultsOn = true;
     mockDiscreet = false;
   });
@@ -110,37 +123,87 @@ describe('DashboardSettingsScreen', () => {
     );
 
   test('renders every dashboard card in the order from the store', () => {
+    mockCycleOn = true;
     renderScreen();
 
     expect(orderedRowKeys()).toEqual([...DASHBOARD_CARD_KEYS]);
+    expect(screen.queryByTestId('features-off-notice')).toBeNull();
   });
 
-  test('keeps the cycle card listed while cycle is off, saying why it is not shown', () => {
+  test('leaves out the cards of features turned off, and says so once', () => {
+    mockLabResultsOn = false;
     renderScreen();
-    const row = screen.getByTestId('dashboard-card-row-cycle');
-    expect(
-      within(row).getByText('Not shown: turned off in Features')
-    ).toBeTruthy();
-    expect(screen.getByTestId('dashboard-card-switch-cycle').props.value).toBe(
-      true
+
+    expect(orderedRowKeys()).toEqual(
+      DASHBOARD_CARD_KEYS.filter(
+        (key) => key !== 'cycle' && key !== 'labResults'
+      )
+    );
+    expect(screen.getAllByText('Some features are turned off')).toHaveLength(1);
+    // Their own choices are kept for when the feature comes back.
+    const state = useAppPreferencesStore.getState();
+    expect(state.cycleCardVisible).toBe(true);
+    expect(state.labResultsCardVisible).toBe(true);
+  });
+
+  test('leaves out the Medications card while medications are off, and keeps its choices', () => {
+    mockCycleOn = true;
+    mockMedicationsOn = false;
+    renderScreen();
+
+    expect(orderedRowKeys()).toEqual(
+      DASHBOARD_CARD_KEYS.filter((key) => key !== 'medications')
+    );
+    expect(screen.getAllByText('Some features are turned off')).toHaveLength(1);
+    const state = useAppPreferencesStore.getState();
+    expect(state.medicationsCardVisible).toBe(true);
+    expect(state.dashboardCardOrder.indexOf('medications')).toBe(
+      DASHBOARD_CARD_KEYS.indexOf('medications')
     );
   });
 
-  test('keeps the lab results card listed while lab results are off, saying why it is not shown', () => {
-    mockLabResultsOn = false;
+  test('the Medications card keeps its place while the cards around it move', () => {
+    mockCycleOn = true;
+    mockMedicationsOn = false;
     renderScreen();
-    const row = screen.getByTestId('dashboard-card-row-labResults');
-    expect(
-      within(row).getByText('Not shown: turned off in Features')
-    ).toBeTruthy();
+
+    // Medications sits between Cycle and Symptoms, and is off.
+    moveRow('symptoms', 'decrement');
+
+    const order = useAppPreferencesStore.getState().dashboardCardOrder;
+    expect(order.indexOf('medications')).toBe(
+      DASHBOARD_CARD_KEYS.indexOf('medications')
+    );
+    expect(order.indexOf('symptoms')).toBeLessThan(order.indexOf('cycle'));
   });
 
-  test('describes the lab results card normally while lab results are on', () => {
+  test('opens Features from the line while connected', () => {
+    jest.mocked(useServerConnection).mockReturnValue({
+      isConnected: true,
+      isLoading: false,
+    } as ReturnType<typeof useServerConnection>);
     renderScreen();
-    const row = screen.getByTestId('dashboard-card-row-labResults');
-    expect(
-      within(row).queryByText('Not shown: turned off in Features')
-    ).toBeNull();
+
+    fireEvent.press(screen.getByTestId('features-off-manage'));
+    expect(navigation.navigate).toHaveBeenCalledWith('FeatureSettings');
+  });
+
+  test('offers no way to Features while offline', () => {
+    renderScreen();
+
+    expect(screen.getByTestId('features-off-notice')).toBeTruthy();
+    expect(screen.queryByTestId('features-off-manage')).toBeNull();
+  });
+
+  test('a card left out keeps its place when the cards around it move', () => {
+    renderScreen();
+
+    // Cycle sits between Fasting and Medications, and is off.
+    moveRow('medications', 'decrement');
+
+    const order = useAppPreferencesStore.getState().dashboardCardOrder;
+    expect(order.indexOf('cycle')).toBe(DASHBOARD_CARD_KEYS.indexOf('cycle'));
+    expect(order.indexOf('medications')).toBeLessThan(order.indexOf('fasting'));
   });
 
   test('describes the cycle card normally while cycle is on', () => {
@@ -148,9 +211,6 @@ describe('DashboardSettingsScreen', () => {
     renderScreen();
     const row = screen.getByTestId('dashboard-card-row-cycle');
     expect(within(row).getByText('Cycle & Pregnancy')).toBeTruthy();
-    expect(
-      within(row).queryByText('Not shown: turned off in Features')
-    ).toBeNull();
   });
 
   test('never names cycle in discreet mode', () => {

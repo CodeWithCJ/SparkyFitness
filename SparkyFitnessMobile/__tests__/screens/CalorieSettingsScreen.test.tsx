@@ -413,6 +413,46 @@ describe('CalorieSettingsScreen', () => {
     ).toBe(visible);
   });
 
+  it('shows the activity level a Dynamic + Adaptive target falls back on (#3689)', () => {
+    mockPreferences.calorie_goal_adjustment_mode = 'dynamic';
+    mockPreferences.goal_mode_calculation_method = 'adaptive';
+    const { getByText, queryByText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    expect(getByText('Activity Level')).toBeTruthy();
+    expect(getByText(/your workouts are not added on top/)).toBeTruthy();
+    expect(
+      getByText(
+        'Shown for reference. Your Adaptive target already includes your activity.'
+      )
+    ).toBeTruthy();
+    expect(queryByText('Eaten − Burned')).toBeNull();
+  });
+
+  it('sends Percentage users to Dynamic before the separate-activity switch', () => {
+    mockPreferences.calorie_goal_adjustment_mode = 'percentage';
+    mockPreferences.goal_mode_calculation_method = 'adaptive';
+    const { getByText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    expect(
+      getByText(/choose Dynamic and turn on "Count activity calories/)
+    ).toBeTruthy();
+  });
+
+  it('keeps the activity level hidden and earn-back wording for a Manual Dynamic target', () => {
+    mockPreferences.calorie_goal_adjustment_mode = 'dynamic';
+    mockPreferences.goal_mode_calculation_method = 'manual';
+    const { getByText, queryByText } = render(
+      <CalorieSettingsScreen navigation={navigation} route={route} />
+    );
+
+    expect(queryByText('Activity Level')).toBeNull();
+    expect(getByText('Eaten − Burned')).toBeTruthy();
+  });
+
   it('defaults separate activity off and saves the opt-in without changing the mode', () => {
     mockPreferences.calorie_goal_adjustment_mode = 'dynamic';
     mockPreferences.goal_mode_calculation_method = 'adaptive';

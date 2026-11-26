@@ -194,6 +194,58 @@ describe('writeExerciseForDate', () => {
     expect(mockSave).not.toHaveBeenCalled();
   });
 
+  it('does not write a session the watch app already saved, even when the times do not overlap', async () => {
+    // The watch workout started after the last logged set ended.
+    mockQuery.mockResolvedValue([
+      {
+        startDate: new Date('2026-06-01T07:00:00Z'),
+        endDate: new Date('2026-06-01T07:05:00Z'),
+        metadata: { SparkyFitnessSessionId: 'e1' },
+        sourceRevision: { source: { name: 'SparkyFitness' } },
+      },
+    ]);
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('still writes a session when the watch workout nearby belongs to another session', async () => {
+    mockQuery.mockResolvedValue([
+      {
+        startDate: new Date('2026-06-01T07:00:00Z'),
+        endDate: new Date('2026-06-01T07:05:00Z'),
+        metadata: { SparkyFitnessSessionId: 'other' },
+        sourceRevision: { source: { name: 'SparkyFitness' } },
+      },
+    ]);
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+
+  it('never writes a walk the Apple Watch app recorded, whatever Health holds', async () => {
+    store.writebackWatchRunEntryIds = ['e1'];
+    // The watch's own workout has not reached this phone's Health yet.
+    mockQuery.mockResolvedValue([]);
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(mockSave).not.toHaveBeenCalled();
+  });
+
+  it('skips a walk noted as a watch run while Apple Health was being read', async () => {
+    // The note lands during the overlap read, after the first snapshot.
+    mockQuery.mockImplementation(() => {
+      store.writebackWatchRunEntryIds = ['e1'];
+      return Promise.resolve([]);
+    });
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(mockSave).not.toHaveBeenCalled();
+    expect(store[`writebackExerciseKeys:${DAY}`]).toEqual([]);
+  });
+
+  it('still writes a walk logged on the phone when a watch run is remembered', async () => {
+    store.writebackWatchRunEntryIds = ['some-other-entry'];
+    await writeExerciseForDate(DAY, [walk()], 1, context);
+    expect(mockSave).toHaveBeenCalledTimes(1);
+  });
+
   it('ignores its own earlier copy when checking for overlaps', async () => {
     mockQuery.mockResolvedValue([
       {

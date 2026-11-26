@@ -59,3 +59,15 @@ export function cardioPredicateSql(entryAlias?: string): string {
         )
       )`;
 }
+
+/**
+ * True for an exercise entry that is a workout. A device's daily
+ * "Active Calories" summary is stored as an exercise entry (see
+ * exercise.getOrCreateActiveCaloriesExercise) but is not a workout, so workout
+ * counts leave it out. `IS DISTINCT FROM` keeps rows with a null name counted,
+ * as the Reports workout heatmap (exerciseEntry.getWorkoutDayCounts) does.
+ */
+export function workoutEntryPredicateSql(entryAlias?: string): string {
+  const column = entryAlias ? `${entryAlias}.exercise_name` : 'exercise_name';
+  return `${column} IS DISTINCT FROM 'Active Calories'`;
+}

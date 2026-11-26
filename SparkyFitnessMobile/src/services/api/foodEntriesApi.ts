@@ -1,6 +1,7 @@
 import { apiFetch } from './apiClient';
 import { ApiError } from './errors';
 import type { FoodEntry } from '../../types/foodEntries';
+import type { ServerConfig } from '../storage';
 import type {
   LastCookedFoodEntry,
   LastCookedFoodEntryResponse,
@@ -52,6 +53,12 @@ export interface CreateFoodEntryPayload {
   custom_nutrients?: Record<string, string | number> | null;
   // Meal entry
   meal_id?: string;
+  /**
+   * Replay key (uuid). The server answers a repeat of the same key with the
+   * entry it already stored and logs nothing, so a request sent again after a
+   * lost answer cannot log twice.
+   */
+  client_id?: string;
 }
 
 /**
@@ -74,7 +81,9 @@ export const fetchFoodEntriesRange = async (
  * Creates a food entry.
  */
 export const createFoodEntry = async (
-  payload: CreateFoodEntryPayload
+  payload: CreateFoodEntryPayload,
+  /** Send to this server, not whichever is active when the request goes out. */
+  serverConfig?: ServerConfig
 ): Promise<FoodEntry> => {
   return apiFetch<FoodEntry>({
     endpoint: '/api/food-entries/',
@@ -82,6 +91,7 @@ export const createFoodEntry = async (
     operation: 'create food entry',
     method: 'POST',
     body: payload,
+    serverConfig,
   });
 };
 
@@ -153,7 +163,8 @@ export const fetchLastCookedFoodEntry = async (
  */
 export const updateFoodEntry = async (
   id: string,
-  payload: UpdateFoodEntryPayload
+  payload: UpdateFoodEntryPayload,
+  serverConfig?: ServerConfig
 ): Promise<FoodEntry> => {
   return apiFetch<FoodEntry>({
     endpoint: `/api/food-entries/${id}`,
@@ -161,18 +172,23 @@ export const updateFoodEntry = async (
     operation: 'update food entry',
     method: 'PUT',
     body: payload,
+    serverConfig,
   });
 };
 
 /**
  * Deletes a food entry by ID.
  */
-export const deleteFoodEntry = async (id: string): Promise<void> => {
+export const deleteFoodEntry = async (
+  id: string,
+  serverConfig?: ServerConfig
+): Promise<void> => {
   await apiFetch<void>({
     endpoint: `/api/food-entries/${id}`,
     serviceName: 'Food Entries API',
     operation: 'delete food entry',
     method: 'DELETE',
+    serverConfig,
   });
 };
 
@@ -197,6 +213,56 @@ export const copyFoodEntries = async (
     operation: 'copy food entries',
     method: 'POST',
     body: payload,
+  });
+};
+
+export interface CopyFoodEntriesFromYesterdayPayload {
+  mealType: string;
+  targetDate: string;
+}
+
+/**
+ * Copies one meal from the previous day into the same meal on `targetDate`.
+ * The source day is `targetDate - 1`, computed server-side. `mealType` is the
+ * meal type's id, which the server resolves before any name match, so a custom
+ * type sharing a system type's name is not resolved to the system one. An empty
+ * source meal copies nothing. `serverConfig` pins the account the copy started
+ * for, so a mid-copy account switch cannot redirect it elsewhere.
+ */
+export const copyFoodEntriesFromYesterday = async (
+  payload: CopyFoodEntriesFromYesterdayPayload,
+  serverConfig?: ServerConfig
+): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: '/api/food-entries/copy-yesterday',
+    serviceName: 'Food Entries API',
+    operation: 'copy food entries from yesterday',
+    method: 'POST',
+    body: payload,
+    serverConfig,
+  });
+};
+
+export interface CopyAllFoodEntriesFromYesterdayPayload {
+  targetDate: string;
+}
+
+/**
+ * Copies every meal with data on the previous day into `targetDate`. The source
+ * day is `targetDate - 1`, computed server-side. `serverConfig` pins the account
+ * the copy started for, so a mid-copy account switch cannot redirect it.
+ */
+export const copyAllFoodEntriesFromYesterday = async (
+  payload: CopyAllFoodEntriesFromYesterdayPayload,
+  serverConfig?: ServerConfig
+): Promise<void> => {
+  await apiFetch<unknown>({
+    endpoint: '/api/food-entries/copy-all-yesterday',
+    serviceName: 'Food Entries API',
+    operation: 'copy all food entries from yesterday',
+    method: 'POST',
+    body: payload,
+    serverConfig,
   });
 };
 

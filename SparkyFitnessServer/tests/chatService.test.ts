@@ -12,7 +12,12 @@ import chatService, {
   buildChatStopConditions,
 } from '../services/chatService.js';
 import { ASK_USER_TOOL_NAME } from '@workspace/shared';
-import chatRepository from '../models/chatRepository.js';
+import chatRepository, {
+  completeChatTurn,
+  getChatTurnStatus,
+  markChatTurnFailed,
+  settleFailedApprovalTurn,
+} from '../models/chatRepository.js';
 import {
   recordRejectedParam,
   resetLearnedRejections,
@@ -916,7 +921,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 33\/59 active tools for chatbot \(profile=core/
+          /Loaded 34\/60 active tools for chatbot \(profile=core/
         )
       );
       // The core profile is the mitigation, so no context-window warning.
@@ -998,7 +1003,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 56\/59 active tools for chatbot \(profile=full/
+          /Loaded 57\/60 active tools for chatbot \(profile=full/
         )
       );
       // Ollama + full profile is the risky combo, so warn about the 4096 default.
@@ -1031,7 +1036,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 56\/59 active tools for chatbot \(profile=full/
+          /Loaded 57\/60 active tools for chatbot \(profile=full/
         )
       );
     });
@@ -1059,7 +1064,7 @@ describe('chatService', () => {
       expect(log).toHaveBeenCalledWith(
         'info',
         expect.stringMatching(
-          /Loaded 56\/59 active tools for chatbot \(profile=full/
+          /Loaded 57\/60 active tools for chatbot \(profile=full/
         )
       );
       // The context-window warning is Ollama-only; cloud providers never see it.
@@ -1582,6 +1587,7 @@ describe('chatService', () => {
     };
 
     beforeEach(() => {
+      vi.mocked(getChatTurnStatus).mockReset().mockResolvedValue('pending');
       vi.mocked(chatRepository.getAiServiceSettingForBackend).mockResolvedValue(
         aiServiceSetting
       );
@@ -1663,7 +1669,9 @@ describe('chatService', () => {
           userMessage,
         ],
         approvals = true,
-        consume = drainStream
+        consume = drainStream,
+        turnId?: string,
+        rowId?: string
       ) => {
         const { stream } = await chatService.processChatMessageStream(
           messages,
@@ -1673,7 +1681,10 @@ describe('chatService', () => {
           false,
           undefined,
           undefined,
-          approvals
+          approvals,
+          turnId,
+          undefined,
+          rowId
         );
         return consume(stream);
       };
@@ -1925,6 +1936,27 @@ describe('chatService', () => {
           messageMetadata: { custom: { savedMessageId: saved?.id } },
         });
       });
+      it('keeps a checkpointed prompt single and associates the rich assistant row with its turn', async () => {
+        scripted([
+          callStep('mcp_notes__search'),
+          callStep('sparky_test_write', 'write-1'),
+        ]);
+        await run([userMessage], true, drainStream, 'turn-1');
+        const rows = vi
+          .mocked(chatRepository.saveChatHistory)
+          .mock.calls.map(([row]) => row);
+        expect(rows).toHaveLength(1);
+        expect(rows[0]).toMatchObject({
+          messageType: 'assistant',
+          metadata: {
+            turnId: 'turn-1',
+            custom: { savedMessageId: rows[0].id },
+          },
+          parts: expect.arrayContaining([
+            expect.objectContaining({ state: 'approval-requested' }),
+          ]),
+        });
+      });
       it('persists a pending approval without text, including input and approval id', async () => {
         scripted([
           callStep('mcp_notes__search'),
@@ -1967,13 +1999,20 @@ describe('chatService', () => {
       const resume = async (
         approved: boolean,
         responseType = pending.type,
-        consume = drainStream
+        consume = drainStream,
+        checkpoint?: { turnId: string; rowId: string },
+        priorText = ''
       ) => {
+        const previousParts = priorText
+          ? [{ type: 'text', text: priorText }, outsidePart]
+          : [outsidePart];
         vi.mocked(chatRepository.getChatHistoryEntryById).mockResolvedValue({
           id: 'row-1',
           user_id: actorUserId,
           message_type: 'assistant',
-          parts: [outsidePart, pending],
+          metadata: { turnId: 'turn-1' },
+          content: priorText,
+          parts: [...previousParts, pending],
         });
         return run(
           [
@@ -1982,7 +2021,7 @@ describe('chatService', () => {
               role: 'assistant',
               id: 'row-1',
               parts: [
-                outsidePart,
+                ...previousParts,
                 {
                   ...pending,
                   type: responseType,
@@ -1993,9 +2032,151 @@ describe('chatService', () => {
             },
           ] as Parameters<typeof chatService.processChatMessageStream>[0],
           true,
-          consume
+          consume,
+          checkpoint?.turnId,
+          checkpoint?.rowId
         );
       };
+      it('completes the fresh continuation checkpoint on the existing assistant row', async () => {
+        scripted([doneStep]);
+        vi.mocked(getChatTurnStatus).mockResolvedValueOnce('pending');
+        vi.mocked(completeChatTurn).mockResolvedValueOnce(true);
+        const chunks = await resume(true, pending.type, drainStream, {
+          turnId: 'continued-turn',
+          rowId: 'continued-claim',
+        });
+        expect(chunks.at(-2)).toMatchObject({ type: 'finish' });
+        expect(chunks.at(-1)).toMatchObject({
+          type: 'message-metadata',
+          messageMetadata: { custom: { savedMessageId: 'row-1' } },
+        });
+        expect(completeChatTurn).toHaveBeenCalledWith(
+          'continued-claim',
+          actorUserId,
+          expect.objectContaining({
+            id: 'row-1',
+            metadata: expect.objectContaining({ turnId: 'continued-turn' }),
+            parts: expect.arrayContaining([
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-available',
+              }),
+            ]),
+          }),
+          true
+        );
+      });
+      it('retains the approved tool output when the provider then fails', async () => {
+        const providerError = new APICallError({
+          message: 'Provider unavailable',
+          url: 'https://example.test',
+          requestBodyValues: {},
+          statusCode: 400,
+        });
+        scripted([[{ type: 'error', error: providerError }]]);
+        vi.mocked(settleFailedApprovalTurn).mockResolvedValueOnce({
+          error: providerError.message,
+        });
+        vi.mocked(getChatTurnStatus).mockResolvedValueOnce('pending');
+        await resume(true, pending.type, drainStream, {
+          turnId: 'continued-turn',
+          rowId: 'continued-claim',
+        });
+        expect(writeExecute).toHaveBeenCalledTimes(1);
+        expect(chatRepository.claimChatApproval).toHaveBeenCalledWith(
+          'row-1',
+          actorUserId,
+          expect.any(Array),
+          expect.any(Array),
+          'continued-claim'
+        );
+        expect(markChatTurnFailed).not.toHaveBeenCalled();
+        expect(chatRepository.saveApprovalContinuation).not.toHaveBeenCalled();
+        expect(settleFailedApprovalTurn).toHaveBeenCalledExactlyOnceWith(
+          'continued-claim',
+          actorUserId,
+          providerError.message,
+          expect.objectContaining({
+            id: 'row-1',
+            parts: expect.arrayContaining([
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-available',
+                output: 'saved',
+              }),
+            ]),
+          })
+        );
+      });
+      it('restores the completed tool output when Stop wins the approval commit', async () => {
+        const priorText = 'This diary write needs approval.';
+        scripted([doneStep]);
+        vi.mocked(completeChatTurn).mockResolvedValueOnce(false);
+        vi.mocked(settleFailedApprovalTurn).mockResolvedValueOnce('cancelled');
+        const chunks = await resume(
+          true,
+          pending.type,
+          drainStream,
+          {
+            turnId: 'continued-turn',
+            rowId: 'continued-claim',
+          },
+          priorText
+        );
+        expect(chunks.at(-1)).toEqual({ type: 'abort' });
+        expect(writeExecute).toHaveBeenCalledTimes(1);
+        expect(settleFailedApprovalTurn).toHaveBeenCalledExactlyOnceWith(
+          'continued-claim',
+          actorUserId,
+          expect.any(String),
+          {
+            id: 'row-1',
+            parts: [
+              { type: 'text', text: priorText },
+              outsidePart,
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-available',
+                output: 'saved',
+              }),
+            ],
+          }
+        );
+      });
+      it.each([
+        ['cancelled', { type: 'abort' }],
+        [
+          { error: 'The chat request timed out.' },
+          { type: 'error', errorText: 'The chat request timed out.' },
+        ],
+        [
+          { error: 'Provider failed.' },
+          { type: 'error', errorText: 'Provider failed.' },
+        ],
+      ] as const)(
+        'reports the durable outcome when completion loses the race (%j)',
+        async (status, terminal) => {
+          scripted([doneStep]);
+          vi.mocked(getChatTurnStatus).mockResolvedValue('pending');
+          vi.mocked(completeChatTurn).mockImplementationOnce(async () => {
+            vi.mocked(getChatTurnStatus).mockResolvedValue(status);
+            return false;
+          });
+          const chunks = await run(
+            [userMessage],
+            true,
+            drainStream,
+            'turn',
+            'row'
+          );
+          expect(chunks.some((chunk) => chunk.type === 'text-delta')).toBe(
+            true
+          );
+          expect(chunks.some((chunk) => chunk.type === 'finish')).toBe(false);
+          expect(JSON.stringify(chunks)).not.toContain('savedMessageId');
+          expect(chunks.at(-1)).toEqual(terminal);
+        }
+      );
       it('approves once, updates the same row, and asks again for the next write', async () => {
         const model = scripted([callStep('sparky_test_write', 'write-2')]);
         const chunks = await resume(true);
@@ -2017,6 +2198,7 @@ describe('chatService', () => {
           'row-1',
           actorUserId,
           expect.objectContaining({
+            metadata: expect.objectContaining({ turnId: 'turn-1' }),
             parts: expect.arrayContaining([
               expect.objectContaining({
                 toolCallId: 'write-2',
@@ -2107,6 +2289,222 @@ describe('chatService', () => {
           })
         );
       });
+      it.each([false, true])(
+        'atomically settles setup failures after claiming an approval (rollback %s)',
+        async (rollback) => {
+          scripted([doneStep]);
+          vi.mocked(getChatToolServerNames).mockImplementationOnce(() => {
+            throw new Error('setup failed');
+          });
+          if (rollback)
+            vi.mocked(settleFailedApprovalTurn).mockRejectedValueOnce(
+              new Error('transaction rolled back')
+            );
+          else
+            vi.mocked(settleFailedApprovalTurn).mockResolvedValueOnce({
+              error: 'The AI service could not complete the request.',
+            });
+          await expect(
+            resume(true, pending.type, drainStream, {
+              turnId: 'continued-turn',
+              rowId: 'continued-claim',
+            })
+          ).rejects.toThrow(
+            rollback ? 'transaction rolled back' : 'setup failed'
+          );
+          expect(writeExecute).not.toHaveBeenCalled();
+          expect(settleFailedApprovalTurn).toHaveBeenCalledExactlyOnceWith(
+            'continued-claim',
+            actorUserId,
+            'The AI service could not complete the request.',
+            {
+              id: 'row-1',
+              parts: expect.arrayContaining([
+                expect.objectContaining({
+                  toolCallId: 'write-1',
+                  state: 'output-error',
+                  errorText: 'Did not run.',
+                }),
+              ]),
+            }
+          );
+          expect(markChatTurnFailed).not.toHaveBeenCalled();
+          expect(
+            chatRepository.saveApprovalContinuation
+          ).not.toHaveBeenCalled();
+        }
+      );
+      it('keeps an interrupted later-step call with no output alongside the completed approval', async () => {
+        scripted([callStep('sparky_get_goal_snapshot', 'later-read')]);
+        let finishRead!: (value: string) => void;
+        const result = new Promise<string>((resolve) => {
+          finishRead = resolve;
+        });
+        readExecute.mockImplementationOnce(() => result);
+        vi.mocked(settleFailedApprovalTurn).mockResolvedValueOnce('cancelled');
+        try {
+          await resume(
+            true,
+            pending.type,
+            async (stream) => {
+              const reader = stream.getReader();
+              for (;;) {
+                const chunk = await reader.read();
+                if (chunk.done) throw new Error('Missing the later tool call.');
+                if (
+                  chunk.value.type === 'tool-input-available' &&
+                  chunk.value.toolCallId === 'later-read'
+                )
+                  break;
+              }
+              await vi.waitFor(() =>
+                expect(readExecute).toHaveBeenCalledTimes(1)
+              );
+              await reader.cancel();
+              return [];
+            },
+            { turnId: 'continued-turn', rowId: 'continued-claim' }
+          );
+          await vi.waitFor(() =>
+            expect(settleFailedApprovalTurn).toHaveBeenCalledWith(
+              'continued-claim',
+              actorUserId,
+              expect.any(String),
+              {
+                id: 'row-1',
+                parts: expect.arrayContaining([
+                  expect.objectContaining({
+                    toolCallId: 'write-1',
+                    state: 'output-available',
+                    output: 'saved',
+                  }),
+                  expect.objectContaining({
+                    toolCallId: 'later-read',
+                    state: 'output-error',
+                    errorText:
+                      'Stopped before a result came back. It may have run; check before trying again.',
+                  }),
+                ]),
+              }
+            )
+          );
+        } finally {
+          finishRead('late result');
+        }
+      });
+      it.each(['40001', 'ECONNRESET', '08006'])(
+        'retries only the atomic approval settlement on a transient database error %s',
+        async (code) => {
+          const error = new APICallError({
+            message: 'Provider unavailable',
+            url: 'https://example.test',
+            requestBodyValues: {},
+            statusCode: 400,
+          });
+          scripted([[{ type: 'error', error }]]);
+          const settle = vi
+            .mocked(settleFailedApprovalTurn)
+            .mockRejectedValueOnce(
+              Object.assign(new Error('Transient failure'), { code })
+            )
+            .mockResolvedValueOnce({ error: error.message });
+          const chunks = await resume(true, pending.type, drainStream, {
+            turnId: 'continued-turn',
+            rowId: 'continued-claim',
+          });
+          expect(writeExecute).toHaveBeenCalledTimes(1);
+          expect(chatRepository.claimChatApproval).toHaveBeenCalledTimes(1);
+          expect(settle).toHaveBeenCalledTimes(2);
+          expect(settle.mock.calls[1]).toEqual(settle.mock.calls[0]);
+          expect(settle.mock.calls[1]).toEqual([
+            'continued-claim',
+            actorUserId,
+            error.message,
+            {
+              id: 'row-1',
+              parts: expect.arrayContaining([
+                expect.objectContaining({
+                  toolCallId: 'write-1',
+                  state: 'output-available',
+                  output: 'saved',
+                }),
+              ]),
+            },
+          ]);
+          expect(chunks.at(-1)).toEqual({
+            type: 'error',
+            errorText: error.message,
+          });
+        }
+      );
+      it('bounds retries when settlement stays unavailable without running the tool again', async () => {
+        scripted([[{ type: 'error', error: new Error('provider failed') }]]);
+        const failure = Object.assign(new Error('connection unavailable'), {
+          code: 'ECONNRESET',
+        });
+        const settle = vi.mocked(settleFailedApprovalTurn);
+        settle
+          .mockRejectedValueOnce(failure)
+          .mockRejectedValueOnce(failure)
+          .mockRejectedValueOnce(failure);
+        await expect(
+          resume(true, pending.type, drainStream, {
+            turnId: 'continued-turn',
+            rowId: 'continued-claim',
+          })
+        ).rejects.toThrow(failure.message);
+        expect(settle).toHaveBeenCalledTimes(3);
+        expect(writeExecute).toHaveBeenCalledTimes(1);
+        expect(markChatTurnFailed).not.toHaveBeenCalled();
+      });
+      it('propagates a rolled-back approval settlement without publishing a separate failure', async () => {
+        scripted([[{ type: 'error', error: new Error('provider failed') }]]);
+        vi.mocked(settleFailedApprovalTurn).mockRejectedValueOnce(
+          new Error('transaction rolled back')
+        );
+        await expect(
+          resume(true, pending.type, drainStream, {
+            turnId: 'continued-turn',
+            rowId: 'continued-claim',
+          })
+        ).rejects.toThrow('transaction rolled back');
+        expect(writeExecute).toHaveBeenCalledTimes(1);
+        expect(markChatTurnFailed).not.toHaveBeenCalled();
+        expect(chatRepository.saveApprovalContinuation).not.toHaveBeenCalled();
+      });
+      it('preserves executed tool results if the approval completion transaction throws', async () => {
+        scripted([doneStep]);
+        vi.mocked(completeChatTurn).mockRejectedValueOnce(
+          new Error('completion rolled back')
+        );
+        vi.mocked(settleFailedApprovalTurn).mockResolvedValueOnce({
+          error: 'The AI service could not complete the request.',
+        });
+        const chunks = await resume(true, pending.type, drainStream, {
+          turnId: 'continued-turn',
+          rowId: 'continued-claim',
+        });
+        expect(chunks.at(-1)).toEqual({
+          type: 'error',
+          errorText: 'The AI service could not complete the request.',
+        });
+        expect(settleFailedApprovalTurn).toHaveBeenCalledExactlyOnceWith(
+          'continued-claim',
+          actorUserId,
+          expect.any(String),
+          {
+            id: 'row-1',
+            parts: expect.arrayContaining([
+              expect.objectContaining({
+                toolCallId: 'write-1',
+                state: 'output-available',
+                output: 'saved',
+              }),
+            ]),
+          }
+        );
+        expect(markChatTurnFailed).not.toHaveBeenCalled();
+      });
       it('saves settled parts for an already aborted continuation', async () => {
         scripted([doneStep]);
         const timeout = vi
@@ -2131,6 +2529,50 @@ describe('chatService', () => {
             ]),
           })
         );
+      });
+      it('waits for the approval settlement when a resumable source is cancelled', async () => {
+        scripted([doneStep]);
+        let finishTool!: (value: string) => void;
+        writeExecute.mockImplementationOnce(
+          () =>
+            new Promise<string>((resolve) => {
+              finishTool = resolve;
+            })
+        );
+        let commit!: () => void;
+        vi.mocked(settleFailedApprovalTurn).mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              commit = () => resolve('cancelled');
+            })
+        );
+        try {
+          await resume(
+            true,
+            pending.type,
+            async (stream) => {
+              const reader = stream.getReader();
+              const first = reader.read();
+              await vi.waitFor(() =>
+                expect(writeExecute).toHaveBeenCalledOnce()
+              );
+              const returned = vi.fn();
+              const cancelled = reader.cancel().then(returned);
+              await vi.waitFor(() =>
+                expect(settleFailedApprovalTurn).toHaveBeenCalledOnce()
+              );
+              expect(returned).not.toHaveBeenCalled();
+              commit();
+              await cancelled;
+              await first;
+              return [];
+            },
+            { turnId: 'continued-turn', rowId: 'continued-claim' }
+          );
+        } finally {
+          commit?.();
+          finishTool?.('saved');
+        }
       });
       it('settles a continuation when its client cancels while the tool runs', async () => {
         scripted([doneStep]);
@@ -2456,6 +2898,182 @@ describe('chatService', () => {
         'error',
         expect.stringContaining('stream error')
       );
+    });
+
+    it.each([
+      { reasoning: [], stopped: false },
+      { reasoning: [], stopped: true },
+      {
+        stopped: false,
+        reasoning: [
+          { type: 'reasoning-start', id: 'reason' },
+          { type: 'reasoning-delta', id: 'reason', delta: 'Thinking.' },
+          { type: 'reasoning-end', id: 'reason' },
+        ],
+      },
+    ])(
+      'streams the durable outcome when no answer is available (%j)',
+      async ({ reasoning, stopped }) => {
+        if (stopped)
+          vi.mocked(markChatTurnFailed).mockImplementationOnce(async () => {
+            vi.mocked(getChatTurnStatus).mockResolvedValue('cancelled');
+            return false;
+          });
+        streamModel([
+          { type: 'stream-start', warnings: [] },
+          ...reasoning,
+          {
+            type: 'finish',
+            finishReason: { unified: 'stop', raw: undefined },
+            usage,
+          },
+        ]);
+        const { stream } = await chatService.processChatMessageStream(
+          [{ role: 'user', content: 'Sample' }],
+          'svc-1',
+          activeUserId,
+          actorUserId,
+          false,
+          undefined,
+          undefined,
+          true,
+          'turn',
+          undefined,
+          'row'
+        );
+        const chunks = await drainStream(stream);
+        const errorText =
+          'The AI service returned an empty response. Please try again.';
+        expect(markChatTurnFailed).toHaveBeenCalledWith(
+          'row',
+          actorUserId,
+          errorText
+        );
+        expect(
+          chunks.filter((chunk) =>
+            ['error', 'finish', 'abort'].includes(chunk.type)
+          )
+        ).toEqual([stopped ? { type: 'abort' } : { type: 'error', errorText }]);
+        expect(completeChatTurn).not.toHaveBeenCalled();
+      }
+    );
+    it('persists a provider failure after a partial response without publishing the fragment as a completed answer', async () => {
+      vi.mocked(getChatTurnStatus).mockResolvedValueOnce('pending');
+      streamModel([
+        { type: 'stream-start', warnings: [] },
+        { type: 'text-start', id: 'text' },
+        { type: 'text-delta', id: 'text', delta: 'Partial' },
+        { type: 'text-end', id: 'text' },
+        {
+          type: 'error',
+          error: new APICallError({
+            message: 'Provider unavailable',
+            url: 'https://example.test',
+            requestBodyValues: {},
+            statusCode: 400,
+          }),
+        },
+      ]);
+      const { stream } = await chatService.processChatMessageStream(
+        [{ role: 'user', content: 'Sample' }],
+        'svc-1',
+        activeUserId,
+        actorUserId,
+        false,
+        undefined,
+        undefined,
+        true,
+        'turn',
+        undefined,
+        'row'
+      );
+      const chunks = await drainStream(stream);
+      expect(
+        chunks.filter((chunk) =>
+          ['error', 'finish', 'abort'].includes(chunk.type)
+        )
+      ).toEqual([{ type: 'error', errorText: 'Provider unavailable' }]);
+      expect(markChatTurnFailed).toHaveBeenCalledWith(
+        'row',
+        actorUserId,
+        'Provider unavailable'
+      );
+      expect(completeChatTurn).not.toHaveBeenCalled();
+    });
+
+    it.each(['cancelled', { error: 'The chat request timed out.' }] as const)(
+      'aborts an active provider when durable status changes to %j',
+      async (status) => {
+        vi.mocked(getChatTurnStatus)
+          .mockResolvedValueOnce('pending')
+          .mockResolvedValue(status);
+        let providerAborted = false;
+        mockModelHolder.current = new MockLanguageModelV3({
+          doStream: async ({ abortSignal }) => ({
+            stream: new ReadableStream({
+              start(controller) {
+                abortSignal?.addEventListener(
+                  'abort',
+                  () => {
+                    providerAborted = true;
+                    controller.close();
+                  },
+                  { once: true }
+                );
+              },
+            }),
+          }),
+        });
+        const { stream } = await chatService.processChatMessageStream(
+          [{ role: 'user', content: 'Sample' }],
+          'svc-1',
+          activeUserId,
+          actorUserId,
+          false,
+          undefined,
+          undefined,
+          true,
+          'turn',
+          undefined,
+          'row'
+        );
+        const chunks = await drainStream(stream);
+        expect(chunks.at(-1)).toEqual(
+          typeof status === 'object'
+            ? { type: 'error', errorText: status.error }
+            : { type: 'abort' }
+        );
+        if (typeof status === 'object')
+          expect(markChatTurnFailed).toHaveBeenCalledWith(
+            'row',
+            actorUserId,
+            status.error
+          );
+        expect(providerAborted).toBe(true);
+        expect(completeChatTurn).not.toHaveBeenCalled();
+      }
+    );
+
+    it('aborts provider setup when another worker has already recorded Stop', async () => {
+      vi.mocked(getChatTurnStatus).mockResolvedValueOnce('cancelled');
+      await expect(
+        chatService.processChatMessageStream(
+          [{ role: 'user', content: 'Sample' }],
+          'svc-1',
+          activeUserId,
+          actorUserId,
+          false,
+          undefined,
+          undefined,
+          true,
+          'turn',
+          undefined,
+          'row'
+        )
+      ).rejects.toThrow();
+      expect(
+        chatRepository.getAiServiceSettingForBackend
+      ).not.toHaveBeenCalled();
     });
 
     it('injects an error chunk and skips the assistant save when the model errors out with an empty completion', async () => {

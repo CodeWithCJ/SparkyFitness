@@ -36,7 +36,7 @@ Paths are relative to each package root. `—` means that layer does not exist f
 
 | Feature | Backend | Frontend | Mobile | Shared |
 |---------|---------|----------|--------|--------|
-| **Foods** | `routes/foodRoutes.ts` `routes/foodCrudRoutes.ts` `routes/v2/foodRoutes.ts`, `services/foodService.ts` `services/foodCoreService.ts`, `models/food.ts` `models/foodRepository.ts` | `pages/Foods/` `api/Foods/` `hooks/Foods/` | `screens/Food*Screen.tsx` `services/api/foodsApi.ts` `hooks/useFoods.ts` | `schemas/database/Foods.zod.ts` (no Foods API schema) |
+| **Foods** | `routes/foodRoutes.ts` `routes/foodCrudRoutes.ts` `routes/v2/foodRoutes.ts`, `services/foodService.ts` `services/foodCoreService.ts` `integrations/foodProviders/` (see `docs/src/developer/adding-a-food-provider.md`), `models/food.ts` `models/foodRepository.ts` | `pages/Foods/` `api/Foods/` `hooks/Foods/` | `screens/Food*Screen.tsx` `services/api/foodsApi.ts` `hooks/useFoods.ts` | `schemas/database/Foods.zod.ts` (no Foods API schema) |
 | **Meals** | `routes/mealRoutes.ts` `routes/mealTypeRoutes.ts`, `services/mealService.ts`, `models/mealRepository.ts` | folded into `pages/Foods/` + `pages/Diary/` (no `pages/Meals/`) | `screens/Meal*Screen.tsx` `services/api/mealsApi.ts` `hooks/useMeals.ts` | `schemas/database/Meals.zod.ts` `schemas/database/MealFoods.zod.ts` |
 | **Food Entries** | `routes/foodEntryRoutes.ts` `routes/foodEntryMealRoutes.ts`, `services/foodEntryService.ts`, `models/foodEntry.ts` `models/foodEntryMealRepository.ts` | `pages/Diary/` `api/Diary/` | `services/api/foodEntriesApi.ts` `services/api/foodEntryMealsApi.ts` | `schemas/database/FoodEntries.zod.ts` `schemas/api/FoodEntries.api.zod.ts` |
 

@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -528,85 +529,85 @@ const EditExerciseEntryDialog = ({
   // the dialog stays open; without this guard, that refetch re-runs the
   // whole seeding block below and overwrites any field the user has already
   // typed into but not yet saved.
-  const hasSeededRef = useRef(false);
-  useEffect(() => {
-    if (!open) {
-      hasSeededRef.current = false;
-      return;
-    }
-  }, [open]);
+  const [hasSeeded, setHasSeeded] = useState(false);
+  useOnChange([open], () => {
+    if (!open) setHasSeeded(false);
+  });
 
-  useEffect(() => {
-    if (!open || hasSeededRef.current || !activityDataFetched) return;
-    hasSeededRef.current = true;
-    const extracted = extractTelemetry(entry, activityData);
-    if (extracted.maxHeartRate !== '')
-      setMaxHeartRateInput(extracted.maxHeartRate);
-    if (extracted.avgRespiration !== '')
-      setAvgRespirationInput(extracted.avgRespiration);
-    if (extracted.maxRespiration !== '')
-      setMaxRespirationInput(extracted.maxRespiration);
-    if (extracted.avgSpeedMps !== '')
-      setAvgSpeedMpsInput(extracted.avgSpeedMps);
-    if (extracted.maxSpeedMps !== '')
-      setMaxSpeedMpsInput(extracted.maxSpeedMps);
-    if (extracted.avgCadence !== '') setAvgCadenceInput(extracted.avgCadence);
-    if (extracted.maxCadence !== '') setMaxCadenceInput(extracted.maxCadence);
-    if (extracted.avgPowerWatts !== '')
-      setAvgPowerWattsInput(extracted.avgPowerWatts);
-    if (extracted.maxPowerWatts !== '')
-      setMaxPowerWattsInput(extracted.maxPowerWatts);
-    if (extracted.elevationGain !== '')
-      setElevationGainInput(extracted.elevationGain);
-    if (extracted.elevationLoss !== '')
-      setElevationLossInput(extracted.elevationLoss);
-    if (extracted.floorsClimbed !== '')
-      setFloorsClimbedInput(extracted.floorsClimbed);
-    if (extracted.strokeCount !== '')
-      setStrokeCountInput(extracted.strokeCount);
-    if (extracted.trainingLoad !== '')
-      setTrainingLoadInput(extracted.trainingLoad);
-    if (extracted.aerobicEffect !== '')
-      setAerobicEffectInput(extracted.aerobicEffect);
-    if (extracted.anaerobicEffect !== '')
-      setAnaerobicEffectInput(extracted.anaerobicEffect);
-    if (extracted.vo2Max !== '') setVo2MaxInput(extracted.vo2Max);
-    if (extracted.avgTemp !== '') setTempCelsiusInput(extracted.avgTemp);
-    if (extracted.weatherCondition)
-      setWeatherCondInput(extracted.weatherCondition);
-    if (extracted.gearName) setGearNameInput(extracted.gearName);
-    if (extracted.steps !== '') setStepsInput(extracted.steps);
-    if (extracted.waterEstimated !== '')
-      setWaterEstimatedInput(extracted.waterEstimated);
-    if (extracted.movingTime !== '') setMovingTimeInput(extracted.movingTime);
-    if (extracted.elapsedTime !== '')
-      setElapsedTimeInput(extracted.elapsedTime);
-    if (extracted.activeCalories !== '')
-      setActiveCaloriesInput(extracted.activeCalories);
-    if (extracted.restingCalories !== '')
-      setRestingCaloriesInput(extracted.restingCalories);
-    if (extracted.groundContact !== '')
-      setGroundContactInput(extracted.groundContact);
-    if (extracted.verticalOscillation !== '')
-      setVerticalOscillationInput(extracted.verticalOscillation);
-    if (extracted.strideLength !== '')
-      setStrideLengthInput(extracted.strideLength);
-    if (extracted.normPower !== '') setNormPowerInput(extracted.normPower);
-    if (extracted.tss !== '') setTssInput(extracted.tss);
-    if (extracted.minElevation !== '')
-      setMinElevationInput(extracted.minElevation);
-    if (extracted.maxElevation !== '')
-      setMaxElevationInput(extracted.maxElevation);
-    if (extracted.avgMovingSpeed !== '')
-      setAvgMovingSpeedInput(extracted.avgMovingSpeed);
-    if (extracted.weatherTemp !== '')
-      setWeatherTempInput(extracted.weatherTemp);
-    if (extracted.windSpeed !== '') setWindSpeedInput(extracted.windSpeed);
-    if (extracted.humidity !== '') setHumidityInput(extracted.humidity);
-    if (entry.duration_minutes != null && entry.duration_minutes > 0) {
-      setDurationInput(seedDurationInput(entry));
+  useOnChange(
+    [open, hasSeeded, entry, activityData, activityDataFetched],
+    () => {
+      if (!open || hasSeeded || !activityDataFetched) return;
+      setHasSeeded(true);
+      const extracted = extractTelemetry(entry, activityData);
+      if (extracted.maxHeartRate !== '')
+        setMaxHeartRateInput(extracted.maxHeartRate);
+      if (extracted.avgRespiration !== '')
+        setAvgRespirationInput(extracted.avgRespiration);
+      if (extracted.maxRespiration !== '')
+        setMaxRespirationInput(extracted.maxRespiration);
+      if (extracted.avgSpeedMps !== '')
+        setAvgSpeedMpsInput(extracted.avgSpeedMps);
+      if (extracted.maxSpeedMps !== '')
+        setMaxSpeedMpsInput(extracted.maxSpeedMps);
+      if (extracted.avgCadence !== '') setAvgCadenceInput(extracted.avgCadence);
+      if (extracted.maxCadence !== '') setMaxCadenceInput(extracted.maxCadence);
+      if (extracted.avgPowerWatts !== '')
+        setAvgPowerWattsInput(extracted.avgPowerWatts);
+      if (extracted.maxPowerWatts !== '')
+        setMaxPowerWattsInput(extracted.maxPowerWatts);
+      if (extracted.elevationGain !== '')
+        setElevationGainInput(extracted.elevationGain);
+      if (extracted.elevationLoss !== '')
+        setElevationLossInput(extracted.elevationLoss);
+      if (extracted.floorsClimbed !== '')
+        setFloorsClimbedInput(extracted.floorsClimbed);
+      if (extracted.strokeCount !== '')
+        setStrokeCountInput(extracted.strokeCount);
+      if (extracted.trainingLoad !== '')
+        setTrainingLoadInput(extracted.trainingLoad);
+      if (extracted.aerobicEffect !== '')
+        setAerobicEffectInput(extracted.aerobicEffect);
+      if (extracted.anaerobicEffect !== '')
+        setAnaerobicEffectInput(extracted.anaerobicEffect);
+      if (extracted.vo2Max !== '') setVo2MaxInput(extracted.vo2Max);
+      if (extracted.avgTemp !== '') setTempCelsiusInput(extracted.avgTemp);
+      if (extracted.weatherCondition)
+        setWeatherCondInput(extracted.weatherCondition);
+      if (extracted.gearName) setGearNameInput(extracted.gearName);
+      if (extracted.steps !== '') setStepsInput(extracted.steps);
+      if (extracted.waterEstimated !== '')
+        setWaterEstimatedInput(extracted.waterEstimated);
+      if (extracted.movingTime !== '') setMovingTimeInput(extracted.movingTime);
+      if (extracted.elapsedTime !== '')
+        setElapsedTimeInput(extracted.elapsedTime);
+      if (extracted.activeCalories !== '')
+        setActiveCaloriesInput(extracted.activeCalories);
+      if (extracted.restingCalories !== '')
+        setRestingCaloriesInput(extracted.restingCalories);
+      if (extracted.groundContact !== '')
+        setGroundContactInput(extracted.groundContact);
+      if (extracted.verticalOscillation !== '')
+        setVerticalOscillationInput(extracted.verticalOscillation);
+      if (extracted.strideLength !== '')
+        setStrideLengthInput(extracted.strideLength);
+      if (extracted.normPower !== '') setNormPowerInput(extracted.normPower);
+      if (extracted.tss !== '') setTssInput(extracted.tss);
+      if (extracted.minElevation !== '')
+        setMinElevationInput(extracted.minElevation);
+      if (extracted.maxElevation !== '')
+        setMaxElevationInput(extracted.maxElevation);
+      if (extracted.avgMovingSpeed !== '')
+        setAvgMovingSpeedInput(extracted.avgMovingSpeed);
+      if (extracted.weatherTemp !== '')
+        setWeatherTempInput(extracted.weatherTemp);
+      if (extracted.windSpeed !== '') setWindSpeedInput(extracted.windSpeed);
+      if (extracted.humidity !== '') setHumidityInput(extracted.humidity);
+      if (entry.duration_minutes != null && entry.duration_minutes > 0) {
+        setDurationInput(seedDurationInput(entry));
+      }
     }
-  }, [open, entry, activityData, activityDataFetched]);
+  );
 
   const { mutateAsync: updateExerciseEntry, isPending: loading } =
     useUpdateExerciseEntryMutation();

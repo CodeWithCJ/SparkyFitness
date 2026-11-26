@@ -1,5 +1,6 @@
 import type React from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CALORIE_LINK_RESOLUTIONS,
@@ -67,7 +68,7 @@ const LinkSyncedWorkoutDialog: React.FC<LinkSyncedWorkoutDialogProps> = ({
 
   // Start on the synced workout already linked, else the first that looks like
   // the same session; the person can always choose another.
-  useEffect(() => {
+  useOnChange([data], () => {
     if (!data) return;
     const linked = data.link?.synced_entry_id;
     const best = data.candidates.find((c) => c.match !== null);
@@ -77,7 +78,7 @@ const LinkSyncedWorkoutDialog: React.FC<LinkSyncedWorkoutDialogProps> = ({
         (data.manual_total_calories === 0 ? 'synced' : 'sparkyfitness')
     );
     setCustomInput(data.link?.custom_calories ?? '');
-  }, [data]);
+  });
 
   const unit = getEnergyUnitString(energyUnit);
   const show = (kcal: number) =>

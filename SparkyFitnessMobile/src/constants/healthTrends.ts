@@ -16,6 +16,7 @@ export const HEALTH_TREND_KEYS = [
   'calories',
   'heartRate',
   'vo2max',
+  'mood',
 ] as const;
 
 export type HealthTrendKey = (typeof HEALTH_TREND_KEYS)[number];
@@ -41,4 +42,5 @@ export const HEALTH_TREND_LABELS: Record<
   heartRate: (t) =>
     t('charts.heartRate.title', { defaultValue: 'Resting Heart Rate' }),
   vo2max: (t) => t('charts.vo2max.title', { defaultValue: 'VO2 max' }),
+  mood: (t) => t('charts.mood.title', { defaultValue: 'Mood' }),
 };

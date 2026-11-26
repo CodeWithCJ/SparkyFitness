@@ -658,9 +658,11 @@ router.put('/:id', authenticate, uploadImages, async (req, res, next) => {
     // Drop upload files the user removed. Best-effort: the database already
     // reflects the new list, so a failed unlink must not fail the update.
     if (previousImages) {
-      await removeOrphanedImages(previousImages, updatedMeal.images).catch(
-        (unlinkError) =>
-          log('warn', 'Error removing orphaned meal images:', unlinkError)
+      await removeOrphanedImages(previousImages, updatedMeal.images, {
+        domain: 'meals',
+        entityId: req.params.id,
+      }).catch((unlinkError) =>
+        log('warn', 'Error removing orphaned meal images:', unlinkError)
       );
     }
 

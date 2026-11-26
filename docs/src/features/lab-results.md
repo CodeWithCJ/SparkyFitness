@@ -2,7 +2,7 @@
 
 Keep your blood work and other lab tests in one place, see each marker over time, and check it against its reference range. Lab results are on the web (**Lab results** tab, or the **Add** menu) and in the mobile app (**Library → Lab results**).
 
-Lab results are on by default. To hide them, turn them off in **Settings → Features**: the website and the mobile app each have their own switch, so you can keep them in one and hide them in the other. Turning them off only hides them (the tab, the Add menu entry, the Library row and the Dashboard card); your results are kept and come back when you turn them on again. With a server older than this switch, lab results stay on and the switch asks you to update the server.
+Lab results are on by default. To hide them, turn them off in **Settings → Features**: the website and the mobile app each have their own switch, so you can keep them in one and hide them in the other. Turning them off only hides them (the tab, the Add menu entry, the Library row and the Dashboard card); your results are kept and come back when you turn them on again. With a server that does not have **Settings → Features** yet, lab results stay on and the switch asks you to update the server.
 
 ## Markers
 

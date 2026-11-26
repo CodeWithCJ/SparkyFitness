@@ -1,14 +1,29 @@
 import React from 'react';
-import { Platform } from 'react-native';
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { Alert, Platform } from 'react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react-native';
 
 import WatchSettingsScreen from '../../src/screens/WatchSettingsScreen';
+import WatchConnectivity from '../../modules/watch-connectivity';
 import { WATCH_PAGE_KEYS } from '../../src/constants/watchPages';
 import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
 import { initializeI18n } from '../../src/localization/i18n';
+
+jest.mock('../../modules/watch-connectivity', () => ({
+  __esModule: true,
+  default: {
+    isSupported: jest.fn(() => true),
+    isMediaAccessEnabled: jest.fn(async () => false),
+    openMediaAccessSettings: jest.fn(async () => undefined),
+  },
+}));
 
 jest.mock('../../src/hooks/useScreenHeader', () => ({
   useScreenHeader: () => null,
@@ -22,8 +37,16 @@ jest.mock('../../src/components/ActiveWorkoutBar', () => ({
   useActiveWorkoutBarPadding: () => 0,
 }));
 
+let mockIsConnected = true;
 jest.mock('../../src/hooks/useServerConnection', () => ({
-  useServerConnection: () => ({ isConnected: true }),
+  useServerConnection: () => ({ isConnected: mockIsConnected }),
+}));
+
+let mockOffFeatures: string[] = [];
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({
+    isEnabled: (key: string) => !mockOffFeatures.includes(key),
+  }),
 }));
 
 jest.mock('../../src/hooks/useCustomNutrients', () => ({
@@ -66,6 +89,8 @@ describe('WatchSettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     __resetAppPreferencesStoreForTests();
+    mockIsConnected = true;
+    mockOffFeatures = [];
   });
 
   test('lists every watch page in the saved order, adding ones it lacks', () => {
@@ -243,6 +268,81 @@ describe('WatchSettingsScreen', () => {
     );
   });
 
+  describe('with Medications turned off in Settings → Features', () => {
+    beforeEach(() => {
+      mockOffFeatures = ['medications'];
+    });
+
+    test('leaves its page out and says some features are off', () => {
+      renderScreen();
+
+      expect(orderedRowKeys()).not.toContain('medications');
+      expect(orderedRowKeys()).toHaveLength(WATCH_PAGE_KEYS.length - 1);
+      fireEvent.press(screen.getByTestId('features-off-manage'));
+      expect(navigation.navigate).toHaveBeenCalledWith('FeatureSettings');
+    });
+
+    test('offers no Manage link while offline', () => {
+      mockIsConnected = false;
+      renderScreen();
+
+      expect(screen.getByTestId('features-off-notice')).toBeTruthy();
+      expect(screen.queryByTestId('features-off-manage')).toBeNull();
+    });
+
+    test('a drag keeps the hidden page where it was', () => {
+      renderScreen();
+
+      fireEvent(
+        screen.getByTestId('watch-page-drag-handle-water'),
+        'accessibilityAction',
+        { nativeEvent: { actionName: 'increment' } }
+      );
+
+      expect(useAppPreferencesStore.getState().watchPageOrder).toEqual([
+        'goals',
+        'entry',
+        'medications',
+        'water',
+        'trend',
+        'workout',
+        'fasting',
+        'steps',
+      ]);
+    });
+
+    test('the last page shown that is not Medications cannot be turned off', () => {
+      useAppPreferencesStore.setState({
+        hiddenWatchPages: [
+          'goals',
+          'water',
+          'entry',
+          'trend',
+          'fasting',
+          'steps',
+        ],
+      });
+
+      renderScreen();
+
+      expect(
+        screen.getByTestId('watch-page-switch-workout').props.disabled
+      ).toBe(true);
+    });
+
+    test('does not change the stored pages', () => {
+      renderScreen();
+
+      expect(useAppPreferencesStore.getState().hiddenWatchPages).toEqual([]);
+    });
+  });
+
+  test('shows no notice while every feature is on', () => {
+    renderScreen();
+
+    expect(screen.queryByTestId('features-off-notice')).toBeNull();
+  });
+
   describe('Goals page nutrients', () => {
     const nutrientRowKeys = (): string[] =>
       screen
@@ -309,7 +409,7 @@ describe('WatchSettingsScreen', () => {
     expect(useAppPreferencesStore.getState().watchSetInputStyle).toBe('crown');
   });
 
-  test('on Android (Wear OS), shows New workout view and its sub-options while hiding iOS-only settings', () => {
+  test('on Android (Wear OS), shows New workout view and its sub-options while hiding iOS-only settings', async () => {
     const originalOs = Platform.OS;
     Object.defineProperty(Platform, 'OS', {
       value: 'android',
@@ -317,6 +417,9 @@ describe('WatchSettingsScreen', () => {
     });
     try {
       renderScreen();
+      await waitFor(() => {
+        expect(WatchConnectivity?.isMediaAccessEnabled).toHaveBeenCalled();
+      });
       const prefs = () => useAppPreferencesStore.getState();
 
       expect(screen.queryByTestId('watch-double-tap-switch')).toBeNull();
@@ -347,6 +450,96 @@ describe('WatchSettingsScreen', () => {
         false
       );
       expect(prefs().watchHoldCountdown).toBe(false);
+    } finally {
+      Object.defineProperty(Platform, 'OS', {
+        value: originalOs,
+        configurable: true,
+      });
+    }
+  });
+
+  test('hides Now Playing track info row on iOS and shows disclosure flow on Android', async () => {
+    renderScreen();
+    expect(screen.queryByTestId('watch-media-access-row')).toBeNull();
+
+    const originalOs = Platform.OS;
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const isEnabledMock = WatchConnectivity?.isMediaAccessEnabled as jest.Mock;
+    const openSettingsMock =
+      WatchConnectivity?.openMediaAccessSettings as jest.Mock;
+    isEnabledMock.mockResolvedValueOnce(false);
+
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    try {
+      const { unmount } = renderScreen();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('watch-media-access-row')).toBeTruthy();
+        expect(screen.getByText('Set up')).toBeTruthy();
+        expect(
+          screen.getByTestId('watch-media-access-row').props.accessibilityLabel
+        ).toBe('Now Playing track info, Set up');
+      });
+
+      fireEvent.press(screen.getByTestId('watch-media-access-row'));
+      expect(alertSpy).toHaveBeenCalledTimes(1);
+      const buttons = alertSpy.mock.calls[0][2] as {
+        text?: string;
+        onPress?: () => void;
+      }[];
+      const openBtn = buttons.find((b) => b.text === 'Open Settings');
+      expect(openBtn).toBeDefined();
+      openBtn?.onPress?.();
+      expect(openSettingsMock).toHaveBeenCalledTimes(1);
+
+      unmount();
+      alertSpy.mockClear();
+      openSettingsMock.mockClear();
+      isEnabledMock.mockResolvedValueOnce(true);
+      openSettingsMock.mockRejectedValueOnce(new Error('activity not found'));
+
+      renderScreen();
+      await waitFor(() => {
+        expect(screen.getByText('Enabled')).toBeTruthy();
+        expect(
+          screen.getByTestId('watch-media-access-row').props.accessibilityLabel
+        ).toBe('Now Playing track info, Enabled');
+      });
+      fireEvent.press(screen.getByTestId('watch-media-access-row'));
+      expect(openSettingsMock).toHaveBeenCalledTimes(1);
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith(
+          'Unable to open Settings',
+          expect.stringContaining('SparkyFitness Media Controls')
+        );
+      });
+    } finally {
+      alertSpy.mockRestore();
+      Object.defineProperty(Platform, 'OS', {
+        value: originalOs,
+        configurable: true,
+      });
+    }
+  });
+
+  test('has a row that opens the complications screen on iOS and Android', () => {
+    renderScreen();
+    fireEvent.press(screen.getByTestId('watch-complications-row'));
+    expect(navigation.navigate).toHaveBeenCalledWith('WatchComplications');
+
+    navigation.navigate.mockClear();
+    const originalOs = Platform.OS;
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    try {
+      renderScreen();
+      fireEvent.press(screen.getAllByTestId('watch-complications-row')[0]);
+      expect(navigation.navigate).toHaveBeenCalledWith('WatchComplications');
     } finally {
       Object.defineProperty(Platform, 'OS', {
         value: originalOs,

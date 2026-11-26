@@ -266,6 +266,36 @@ const FoodResultCard = ({
                       'No declared nutrition'
                     )}
                   </p>
+                ) : foodItem.has_core_nutrition === false ? (
+                  foodItem.has_calories === true ? (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-semibold text-gray-900 dark:text-gray-100">
+                        {Math.round(
+                          nutrientConfig.convertEnergy(
+                            foodItem.default_variant.calories,
+                            'kcal',
+                            nutrientConfig.energyUnit
+                          )
+                        )}{' '}
+                        {nutrientConfig.getEnergyUnitString(
+                          nutrientConfig.energyUnit
+                        )}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {t(
+                          'foodSearch.foodResultCard.tapForFullNutrition',
+                          'Tap for full nutrition'
+                        )}
+                      </span>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {t(
+                        'foodSearch.foodResultCard.tapForNutrition',
+                        'Tap for nutrition'
+                      )}
+                    </p>
+                  )
                 ) : (
                   <NutrientGrid
                     food={foodItem.default_variant}

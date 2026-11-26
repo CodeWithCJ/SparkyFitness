@@ -59,13 +59,22 @@ function RecipeImportWorkspace({
     (provider) => provider.id === providerId
   );
   const providerAvailable = !!selectedProvider?.is_active;
+  const providerLost = providers.isSuccess && !providerAvailable;
+  const providerLostKey = `${providerId}|${providerLost}`;
+  const [seenProviderLostKey, setSeenProviderLostKey] = useState<string | null>(
+    null
+  );
+  if (seenProviderLostKey !== providerLostKey) {
+    setSeenProviderLostKey(providerLostKey);
+    if (providerLost) {
+      setPreview(null);
+      setBusy(false);
+      setInitialDismissed(true);
+    }
+  }
   useEffect(() => {
-    if (!providers.isSuccess || providerAvailable) return;
-    generation.current += 1;
-    setPreview(null);
-    setBusy(false);
-    setInitialDismissed(true);
-  }, [providerId, providerAvailable, providers.isSuccess]);
+    if (providerLost) generation.current += 1;
+  }, [providerId, providerLost]);
   const recipes = useQuery({
     queryKey: ['recipeImportBrowse', scope, providerId, debouncedSearch, page],
     queryFn: () => browseRecipes(providerId, debouncedSearch, page),

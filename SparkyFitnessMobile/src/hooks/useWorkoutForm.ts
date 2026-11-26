@@ -145,6 +145,7 @@ export function workoutFormReducer(
         type: 'workout',
         name: action.session.name,
         nameManuallySet: true,
+        populatedFromSession: true,
         entryDate: action.session.entry_date
           ? normalizeDate(action.session.entry_date)
           : getTodayDate(),

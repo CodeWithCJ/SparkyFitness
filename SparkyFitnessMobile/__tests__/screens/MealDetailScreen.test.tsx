@@ -319,6 +319,27 @@ describe('MealDetailScreen', () => {
     }
   );
 
+  it('shows the meal from the phone while the server cannot be reached, without delete', () => {
+    mockUseServerConnection.mockReturnValue({
+      status: 'unreachable',
+      isConnected: false,
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    } as any);
+
+    const screen = renderScreen();
+
+    expect(screen.getByText('Lunch Bowl')).toBeTruthy();
+    expect(screen.queryByText("Can't reach your server")).toBeNull();
+    expect(mockUseMeal).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ enabled: true })
+    );
+    expect(screen.queryByText('Delete Meal')).toBeNull();
+  });
+
   it('shows owner edit and delete actions', () => {
     const screen = renderScreen();
 

@@ -1,4 +1,11 @@
 import { apiFetch } from './apiClient';
+import { putCacheRows } from '../../offline/cacheStore';
+import {
+  CACHE_COLLECTIONS,
+  SINGLE_DOCUMENT_KEY,
+} from '../../offline/collections';
+import { readSavedSingle } from '../../offline/foodLibrary';
+import { withOfflineFallback } from '../../offline/withOfflineFallback';
 import { MealType } from '../../types/mealTypes';
 import type { FamilyMealTypesResponse } from '@workspace/shared';
 
@@ -6,10 +13,23 @@ import type { FamilyMealTypesResponse } from '@workspace/shared';
  * Fetches all meal types for the current user.
  */
 export const fetchMealTypes = async (): Promise<MealType[]> => {
-  return apiFetch<MealType[]>({
-    endpoint: '/api/meal-types',
-    serviceName: 'Meal Types API',
-    operation: 'fetch meal types',
+  return withOfflineFallback<MealType[]>({
+    fetch: () =>
+      apiFetch<MealType[]>({
+        endpoint: '/api/meal-types',
+        serviceName: 'Meal Types API',
+        operation: 'fetch meal types',
+      }),
+    store: (db, serverConfigId, mealTypes) =>
+      putCacheRows(db, serverConfigId, CACHE_COLLECTIONS.mealTypes, [
+        { key: SINGLE_DOCUMENT_KEY, payload: mealTypes },
+      ]),
+    read: (db, serverConfigId) =>
+      readSavedSingle<MealType[]>(
+        db,
+        serverConfigId,
+        CACHE_COLLECTIONS.mealTypes
+      ),
   });
 };
 

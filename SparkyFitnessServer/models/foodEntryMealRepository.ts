@@ -25,6 +25,22 @@ interface FoodEntryMealInput {
   unit?: string | null;
   legacy_serving_unit_math?: boolean;
   entry_total_servings?: number | null;
+  /** Replay key from the mobile offline queue; see `client_id` on the table. */
+  client_id?: string | null;
+}
+
+/** The logged meal an earlier request with this key already stored, if any. */
+async function findFoodEntryMealByClientId(userId: string, clientId: string) {
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      'SELECT * FROM food_entry_meals WHERE user_id = $1 AND client_id = $2',
+      [userId, clientId]
+    );
+    return result.rows[0] ?? null;
+  } finally {
+    client.release();
+  }
 }
 
 /** The subset of fields an update may change. */
@@ -92,14 +108,14 @@ async function createFoodEntryMealWithClient(
                 user_id, meal_template_id, meal_type_id, entry_date, entry_time, name, description, notes,
                 quantity, unit, legacy_serving_unit_math,
                 created_by_user_id, updated_by_user_id, images,
-                entry_total_servings
+                entry_total_servings, client_id
             ) VALUES (
               $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
               COALESCE(
                 (SELECT m.images FROM meals m WHERE m.id = $2),
                 '[]'::jsonb
               ),
-              $14
+              $14, $15
             )
             RETURNING *`,
     [
@@ -117,6 +133,7 @@ async function createFoodEntryMealWithClient(
       createdByUserId,
       createdByUserId,
       foodEntryMealData.entry_total_servings ?? null,
+      foodEntryMealData.client_id ?? null,
     ]
   );
   return result.rows[0];
@@ -464,6 +481,7 @@ async function setFoodEntryMealImages(
 
 export { setFoodEntryMealImages };
 export { createFoodEntryMeal };
+export { findFoodEntryMealByClientId };
 export { updateFoodEntryMeal };
 export { getFoodEntryMealById };
 export { getFoodEntryMealsByDate };
@@ -473,6 +491,8 @@ export { moveFoodEntryMealToMealType };
 export default {
   setFoodEntryMealImages,
   createFoodEntryMeal,
+  createFoodEntryMealWithClient,
+  findFoodEntryMealByClientId,
   updateFoodEntryMeal,
   getFoodEntryMealById,
   getFoodEntryMealsByDate,

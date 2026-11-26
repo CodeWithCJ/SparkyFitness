@@ -1,0 +1,295 @@
+import { putCacheRows } from '../../src/offline/cacheStore';
+import { __setOfflineDbForTests } from '../../src/offline/db';
+import { discardOwnerlessUpload } from '../../src/offline/discardOwnerless';
+import { FOOD_ENTRY_DELETE } from '../../src/offline/foodEntryDeleteHandOver';
+import { dropSupersededMealUpdate } from '../../src/offline/foodEntryMealUpdateHandOver';
+import {
+  FOOD_ENTRY_UPDATE,
+  dropSupersededUpdate,
+  queueFoodEntryUpdate,
+} from '../../src/offline/foodEntryUpdateHandOver';
+import {
+  deleteUnconfirmedRow,
+  deleteUnconfirmedUnlessSending,
+  enqueueOutbox,
+  getOutboxRow,
+  listUnconfirmedOutbox,
+  rewriteUnconfirmedPayload,
+  updateOutboxRow,
+} from '../../src/offline/outbox';
+import {
+  IDENTITY_COLLECTION,
+  IDENTITY_KEY,
+} from '../../src/offline/syncEngine';
+import type { OfflineDb } from '../../src/offline/types';
+import { createTestDb } from '../helpers/offlineTestDb';
+
+jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
+jest.mock('../../src/services/storage', () => ({
+  getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
+}));
+
+const ENTRY = 'entry-1';
+const DAY = '2026-11-21';
+
+describe('a direct save and the older changes still waiting on the phone', () => {
+  let db: OfflineDb & { close(): void };
+
+  beforeEach(async () => {
+    db = await createTestDb();
+    __setOfflineDbForTests(db);
+    await putCacheRows(db, 's1', IDENTITY_COLLECTION, [
+      { key: IDENTITY_KEY, payload: { id: 'u1' } },
+    ]);
+  });
+
+  afterEach(() => {
+    __setOfflineDbForTests(null);
+    db.close();
+  });
+
+  it('removes only the update it supersedes, never a delete queued for the same entry', async () => {
+    await queueFoodEntryUpdate(ENTRY, DAY, { quantity: 2 }, { quantity: 2 });
+    await enqueueOutbox(db, {
+      id: 'del',
+      serverConfigId: 's1',
+      userId: 'u1',
+      kind: FOOD_ENTRY_DELETE,
+      entityId: ENTRY,
+      entryDate: DAY,
+      payload: {},
+      payloadVersion: 1,
+    });
+
+    await dropSupersededUpdate(ENTRY, { quantity: 3 }, Date.now() + 1000);
+
+    const rows = await listUnconfirmedOutbox(db, 's1');
+    expect(rows.map((row) => row.kind)).toEqual([FOOD_ENTRY_DELETE]);
+  });
+
+  it('keeps the fields the save did not set', async () => {
+    await queueFoodEntryUpdate(
+      ENTRY,
+      DAY,
+      { quantity: 2, notes: 'x' },
+      { quantity: 2, notes: 'x' }
+    );
+
+    await dropSupersededUpdate(ENTRY, { quantity: 3 }, Date.now() + 1000);
+
+    const [row] = await listUnconfirmedOutbox(db, 's1');
+    expect(row?.kind).toBe(FOOD_ENTRY_UPDATE);
+    expect((row?.payload as { patch: object }).patch).toEqual({ notes: 'x' });
+  });
+
+  it('leaves a change queued after the save was sent: it is the newer one', async () => {
+    const requestStartedAt = Date.now() - 1000;
+    await queueFoodEntryUpdate(ENTRY, DAY, { quantity: 5 }, { quantity: 5 });
+
+    await dropSupersededUpdate(ENTRY, { quantity: 3 }, requestStartedAt);
+
+    const [row] = await listUnconfirmedOutbox(db, 's1');
+    expect((row?.payload as { patch: object }).patch).toEqual({ quantity: 5 });
+  });
+
+  it('drops an older waiting meal change after an online save, but not a newer one', async () => {
+    await enqueueOutbox(db, {
+      id: 'meal-old',
+      serverConfigId: 's1',
+      userId: 'u1',
+      kind: 'food_entry_meal.update',
+      entityId: 'meal-1',
+      entryDate: DAY,
+      payload: { patch: {}, display: {} },
+      payloadVersion: 1,
+    });
+    await dropSupersededMealUpdate('meal-1', Date.now() + 1000);
+    expect(await getOutboxRow(db, 'meal-old')).toBeNull();
+
+    await enqueueOutbox(db, {
+      id: 'meal-new',
+      serverConfigId: 's1',
+      userId: 'u1',
+      kind: 'food_entry_meal.update',
+      entityId: 'meal-1',
+      entryDate: DAY,
+      payload: { patch: {}, display: {} },
+      payloadVersion: 1,
+    });
+    await dropSupersededMealUpdate('meal-1', Date.now() - 1000);
+    expect(await getOutboxRow(db, 'meal-new')).not.toBeNull();
+  });
+
+  it('discards a parked upload with no account, and only that one', async () => {
+    await enqueueOutbox(db, {
+      id: 'orphan',
+      serverConfigId: 's1',
+      userId: null,
+      kind: FOOD_ENTRY_DELETE,
+      entityId: 'a',
+      payload: {},
+      payloadVersion: 1,
+    });
+    await enqueueOutbox(db, {
+      id: 'owned',
+      serverConfigId: 's1',
+      userId: 'u1',
+      kind: FOOD_ENTRY_DELETE,
+      entityId: 'b',
+      payload: {},
+      payloadVersion: 1,
+    });
+
+    expect(await discardOwnerlessUpload('owned')).toBe(false);
+    expect(await discardOwnerlessUpload('orphan')).toBe(true);
+
+    expect(await getOutboxRow(db, 'orphan')).toBeNull();
+    expect(await getOutboxRow(db, 'owned')).not.toBeNull();
+  });
+
+  it('deletes a waiting row only if, as it is inside the transaction, it is neither being sent nor already tried', async () => {
+    const queue = (id: string, entityId: string) =>
+      enqueueOutbox(db, {
+        id,
+        serverConfigId: 's1',
+        userId: 'u1',
+        kind: FOOD_ENTRY_DELETE,
+        entityId,
+        payload: {},
+        payloadVersion: 1,
+      });
+    const tried = (row: { attempts: number }) => row.attempts > 0;
+    await queue('fresh', 'e-fresh');
+    await queue('retried', 'e-retried');
+    await updateOutboxRow(db, 'retried', { attempts: 2 });
+    await queue('claimed', 'e-claimed');
+    await updateOutboxRow(db, 'claimed', { status: 'sending' });
+
+    expect(
+      await deleteUnconfirmedUnlessSending(
+        db,
+        's1',
+        'e-retried',
+        undefined,
+        tried
+      )
+    ).toBe('uploading');
+    expect(
+      await deleteUnconfirmedUnlessSending(
+        db,
+        's1',
+        'e-claimed',
+        undefined,
+        tried
+      )
+    ).toBe('uploading');
+    expect(
+      await deleteUnconfirmedUnlessSending(
+        db,
+        's1',
+        'e-fresh',
+        undefined,
+        tried
+      )
+    ).toBe('deleted');
+
+    expect(await getOutboxRow(db, 'retried')).not.toBeNull();
+    expect(await getOutboxRow(db, 'claimed')).not.toBeNull();
+    expect(await getOutboxRow(db, 'fresh')).toBeNull();
+  });
+
+  it('keeps the time a waiting field was queued when a save removes part of the row', async () => {
+    await enqueueOutbox(
+      db,
+      {
+        id: 'upd',
+        serverConfigId: 's1',
+        userId: 'u1',
+        kind: FOOD_ENTRY_UPDATE,
+        entityId: ENTRY,
+        entryDate: DAY,
+        payload: {
+          patch: { quantity: 2, notes: 'x' },
+          display: { quantity: 2, notes: 'x' },
+        },
+        payloadVersion: 2,
+      },
+      1000
+    );
+
+    await dropSupersededUpdate(ENTRY, { quantity: 3 }, 5000);
+
+    const row = await getOutboxRow(db, 'upd');
+    expect((row?.payload as { patch: object }).patch).toEqual({ notes: 'x' });
+    // Not moved forward to the time of the cleanup, so a later save still
+    // sees these fields as older than itself.
+    expect(row?.updatedAt).toBe(1000);
+  });
+
+  it('leaves a row alone that was replaced after it was looked at', async () => {
+    await enqueueOutbox(
+      db,
+      {
+        id: 'upd2',
+        serverConfigId: 's1',
+        userId: 'u1',
+        kind: FOOD_ENTRY_UPDATE,
+        entityId: ENTRY,
+        entryDate: DAY,
+        payload: { patch: { notes: 'new' }, display: { notes: 'new' } },
+        payloadVersion: 2,
+      },
+      2000
+    );
+
+    // The row was read at 1000, then an edit replaced it (same id, 2000).
+    expect(
+      await rewriteUnconfirmedPayload(db, 'upd2', 1000, { patch: {} })
+    ).toBe(false);
+    expect(await deleteUnconfirmedRow(db, 'upd2', undefined, 1000)).toBe(false);
+    expect(
+      ((await getOutboxRow(db, 'upd2'))?.payload as { patch: object }).patch
+    ).toEqual({ notes: 'new' });
+
+    // The version that was looked at is still removed.
+    expect(await deleteUnconfirmedRow(db, 'upd2', undefined, 2000)).toBe(true);
+    expect(await getOutboxRow(db, 'upd2')).toBeNull();
+  });
+
+  it('judges a waiting field by when the person set it, not by upload retries', async () => {
+    // quantity was set at 1000, then the drain claimed and retried the row,
+    // which moved the row's own timestamp to 9000.
+    await enqueueOutbox(
+      db,
+      {
+        id: 'retried',
+        serverConfigId: 's1',
+        userId: 'u1',
+        kind: FOOD_ENTRY_UPDATE,
+        entityId: ENTRY,
+        entryDate: DAY,
+        payload: {
+          patch: { quantity: 2, notes: 'later' },
+          display: { quantity: 2, notes: 'later' },
+          times: { quantity: 1000, notes: 7000 },
+        },
+        payloadVersion: 2,
+      },
+      9000
+    );
+
+    // A save sent at 5000: quantity (1000) is older and goes, notes (7000) was
+    // set after the save started and stays.
+    await dropSupersededUpdate(ENTRY, { quantity: 3, notes: 'direct' }, 5000);
+
+    const row = await getOutboxRow(db, 'retried');
+    expect((row?.payload as { patch: object }).patch).toEqual({
+      notes: 'later',
+    });
+    expect((row?.payload as { times: object }).times).toEqual({ notes: 7000 });
+  });
+});

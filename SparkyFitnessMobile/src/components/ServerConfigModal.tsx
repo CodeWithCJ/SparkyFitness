@@ -10,7 +10,8 @@ import {
   Platform,
   LayoutAnimation,
   Alert,
-  type TextInput,
+  type TextInputInstance,
+  type ScrollViewInstance,
 } from 'react-native';
 import Button from './ui/Button';
 import { useCSSVariable } from 'uniwind';
@@ -77,6 +78,8 @@ interface ServerConfigModalProps {
   onDismiss: () => void;
 }
 
+const newConfigId = () => Date.now().toString();
+
 const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   visible,
   editingConfig,
@@ -97,9 +100,9 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   }));
 
   // Form state
-  const scrollViewRef = useRef<ScrollView>(null);
-  const serverUrlInputRef = useRef<TextInput>(null);
-  const apiKeyInputRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollViewInstance>(null);
+  const serverUrlInputRef = useRef<TextInputInstance>(null);
+  const apiKeyInputRef = useRef<TextInputInstance>(null);
   const [serverUrl, setServerUrl] = useState('');
   const [isServerUrlFocused, setIsServerUrlFocused] = useState(false);
   // Bumped after a certificate import, to ask the server for its sign-in
@@ -134,8 +137,23 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const [mfaCode, setMfaCode] = useState('');
   const [emailOtpSent, setEmailOtpSent] = useState(false);
 
+  /** Strip empty rows so we only persist real headers. */
+  const cleanedHeaders = () =>
+    proxyHeaders.filter((h) => h.name.trim() && h.value.trim());
+
   // Reset form when modal opens or closes
-  useEffect(() => {
+  const [lastReset, setLastReset] = useState<{
+    visible: boolean;
+    editingConfig: typeof editingConfig;
+    defaultAuthTab: typeof defaultAuthTab;
+  } | null>(null);
+  if (
+    lastReset === null ||
+    lastReset.visible !== visible ||
+    lastReset.editingConfig !== editingConfig ||
+    lastReset.defaultAuthTab !== defaultAuthTab
+  ) {
+    setLastReset({ visible, editingConfig, defaultAuthTab });
     if (!visible) {
       setServerUrl('');
       setError('');
@@ -145,48 +163,76 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       // Closing unmounts the focused input without firing onBlur, which
       // would leave a stale focus flag suppressing the URL echo on reopen.
       setIsServerUrlFocused(false);
+    } else {
+      setError('');
+      setLoading(false);
+      setStep('form');
+      setMfaCode('');
+      setEmailOtpSent(false);
+      setEmail('');
+      setPassword('');
+      setShowPassword(false);
+      setShowApiKey(false);
+      setShowHeaders({});
+
+      setAdvancedExpanded(false);
+
+      if (editingConfig) {
+        setServerUrl(editingConfig.url);
+        setApiKey(
+          editingConfig.authType === 'apiKey' ? editingConfig.apiKey : ''
+        );
+        setProxyHeaders(editingConfig.proxyHeaders ?? []);
+        const tab =
+          defaultAuthTab ??
+          (editingConfig.authType === 'apiKey' ? 'apiKey' : 'signIn');
+        setAuthTab(tab);
+      } else {
+        setServerUrl('');
+        setApiKey('');
+        setProxyHeaders([]);
+        setAuthTab(defaultAuthTab ?? 'signIn');
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (!visible) {
       void setPendingClientCertificateServer(null);
       return;
     }
-
-    setError('');
-    setLoading(false);
-    setStep('form');
-    setMfaCode('');
-    setEmailOtpSent(false);
-    setEmail('');
-    setPassword('');
-    setShowPassword(false);
-    setShowApiKey(false);
-    setShowHeaders({});
-
-    setAdvancedExpanded(false);
-    chevronRotation.value = -90;
-
-    if (editingConfig) {
-      setServerUrl(editingConfig.url);
-      setApiKey(
-        editingConfig.authType === 'apiKey' ? editingConfig.apiKey : ''
-      );
-      setProxyHeaders(editingConfig.proxyHeaders ?? []);
-      const tab =
-        defaultAuthTab ??
-        (editingConfig.authType === 'apiKey' ? 'apiKey' : 'signIn');
-      setAuthTab(tab);
-    } else {
-      setServerUrl('');
-      setApiKey('');
-      setProxyHeaders([]);
-      setAuthTab(defaultAuthTab ?? 'signIn');
-    }
-
+    chevronRotation.set(-90);
     clearPendingProxyHeaders();
   }, [visible, editingConfig, defaultAuthTab, chevronRotation]);
+
+  // The URL's validity decides the settings and the HTTP warning; both follow
+  // the same triggers as the debounced fetch below.
+  const urlCheck = (() => {
+    if (!visible || !serverUrl) return { fetchable: false, error: null };
+    const url = normalizeUrl(serverUrl);
+    const lowerUrl = url.toLowerCase();
+    if (!lowerUrl.startsWith('http://') && !lowerUrl.startsWith('https://')) {
+      return { fetchable: false, error: null };
+    }
+    const validationError = getInsecureUrlError(
+      url,
+      t('auth.errors.httpsRequired', {
+        defaultValue: 'HTTPS is required for server connections.',
+      })
+    );
+    return { fetchable: !validationError, error: validationError ?? '' };
+  })();
+  const [lastFetchKey, setLastFetchKey] = useState<string | null>(null);
+  const fetchKey = `${serverUrl}|${visible}|${isServerUrlFocused}|${certificateReloadKey}`;
+  if (lastFetchKey !== fetchKey) {
+    setLastFetchKey(fetchKey);
+    if (!urlCheck.fetchable) setAuthSettings(null);
+    if (urlCheck.error !== null) setError(urlCheck.error);
+  }
 
   // Fetch settings dynamically whenever the URL changes
   useEffect(() => {
     if (!visible || !serverUrl) {
-      setAuthSettings(null);
       void setPendingClientCertificateServer(null);
       return;
     }
@@ -201,16 +247,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
         })
       );
       if (validationError) {
-        setError(validationError);
-        setAuthSettings(null);
         void setPendingClientCertificateServer(null);
         return;
       }
-
-      // Clear HTTP warning if URL is now secure/valid
-      setError('');
     } else {
-      setAuthSettings(null);
       void setPendingClientCertificateServer(null);
       return;
     }
@@ -270,7 +310,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const next = !advancedExpanded;
     setAdvancedExpanded(next);
-    chevronRotation.value = withTiming(next ? 0 : -90, { duration: 200 });
+    chevronRotation.set(withTiming(next ? 0 : -90, { duration: 200 }));
   };
 
   const handleAddHeader = () => {
@@ -291,11 +331,7 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     );
   };
 
-  /** Strip empty rows so we only persist real headers. */
-  const cleanedHeaders = () =>
-    proxyHeaders.filter((h) => h.name.trim() && h.value.trim());
-
-  const getConfigId = () => editingConfig?.id ?? Date.now().toString();
+  const getConfigId = () => editingConfig?.id ?? newConfigId();
 
   const saveConfig = async (url: string, overrides: Partial<ServerConfig>) => {
     await saveServerConfig({

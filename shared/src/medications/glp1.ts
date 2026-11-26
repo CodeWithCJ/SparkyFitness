@@ -7,6 +7,20 @@
  * education only — it is NOT a measured blood level and must be labeled as such in the UI.
  */
 
+/**
+ * The custom measurement categories the GLP-1 daily check-in stores its answers
+ * in (daily, 1 to 10). The names are the stable identifiers web and mobile find
+ * the categories by, so they must never be localized or renamed.
+ */
+export const GLP1_CHECKIN_CATEGORY_NAMES = {
+  hunger: 'GLP Hunger',
+  food_noise: 'GLP Food Noise',
+  fullness: 'GLP Fullness',
+  energy: 'GLP Energy',
+} as const;
+
+export type Glp1CheckInMetricKey = keyof typeof GLP1_CHECKIN_CATEGORY_NAMES;
+
 export interface Glp1DrugProfile {
   /** stable id used in code / data */
   id: string;

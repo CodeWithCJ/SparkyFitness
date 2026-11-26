@@ -23,7 +23,7 @@ import {
   Moon,
   TrendingUp,
 } from 'lucide-react';
-import React, { useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -48,6 +48,7 @@ import SleepSummaryCard from './SleepSummaryCard';
 import SpO2Card from './SpO2Card';
 import { useSleepDebtQuery } from '@/hooks/SleepScience/useSleepScience';
 import { axisLabelText } from '@/utils/chartUtils';
+import { useIsMounted } from '@/hooks/useIsMounted';
 
 interface SpO2DataPoint {
   date: string;
@@ -273,11 +274,7 @@ const SleepAnalyticsCharts = ({
   const hasAnyHealthMetrics =
     hasSpO2 || hasHRV || hasRespiration || hasHeartRate;
 
-  const [isMounted, setIsMounted] = useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   if (!isMounted) {
     return (

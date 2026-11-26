@@ -48,6 +48,10 @@ import {
   type WatchWorkoutCountdown,
   type WatchWorkoutTopLine,
 } from '../constants/watchPages';
+import type {
+  WatchBuiltInStyles,
+  WatchComplicationDefinition,
+} from '../utils/watchComplications';
 import {
   DEFAULT_REPORT_NUTRIENTS,
   DEFAULT_REPORT_RANGE,
@@ -129,6 +133,7 @@ export const PREFERENCE_DEFAULTS = {
   mindfulnessCardVisible: true,
   oralCareCardVisible: false,
   labResultsCardVisible: true,
+  challengesCardVisible: true,
   trainingLoadCardVisible: true,
   dashboardCardOrder: [...DASHBOARD_CARD_KEYS] as DashboardCardKey[],
   medicationRemindersEnabled: true,
@@ -144,6 +149,7 @@ export const PREFERENCE_DEFAULTS = {
   checkinReminderTimes: [DEFAULT_CHECKIN_REMINDER_TIME] as string[],
   oralCareRemindersEnabled: false,
   oralCareReminderTimes: [...DEFAULT_ORAL_CARE_REMINDER_TIMES] as string[],
+  challengeWeekNotificationsEnabled: true,
   liquidGlassTabBarEnabled: false,
   activeWorkoutMetricColumn: 'rpe' as ActiveWorkoutMetricColumn,
   diarySummaryVisible: false,
@@ -177,6 +183,8 @@ export const PREFERENCE_DEFAULTS = {
   addMenuRowStyles: {} as AddMenuRowStyleOverrides,
   watchPageOrder: [...WATCH_PAGE_KEYS] as WatchPageKey[],
   hiddenWatchPages: [] as WatchPageKey[],
+  watchComplications: null as WatchComplicationDefinition[] | null,
+  watchBuiltInStyles: {} as WatchBuiltInStyles,
   watchDoubleTapEnabled: true,
   watchRpeEnabled: false,
   watchSetScreenMetrics: true,
@@ -234,6 +242,7 @@ export type AppPreferencesData = {
   mindfulnessCardVisible: boolean;
   oralCareCardVisible: boolean;
   labResultsCardVisible: boolean;
+  challengesCardVisible: boolean;
   trainingLoadCardVisible: boolean;
   dashboardCardOrder: DashboardCardKey[];
   medicationRemindersEnabled: boolean;
@@ -249,6 +258,7 @@ export type AppPreferencesData = {
   checkinReminderTimes: string[];
   oralCareRemindersEnabled: boolean;
   oralCareReminderTimes: string[];
+  challengeWeekNotificationsEnabled: boolean;
   liquidGlassTabBarEnabled: boolean;
   activeWorkoutMetricColumn: ActiveWorkoutMetricColumn;
   diarySummaryVisible: boolean;
@@ -325,6 +335,10 @@ export type AppPreferencesData = {
   watchPageOrder: WatchPageKey[];
   /** Watch pages turned off in Settings → Apple Watch. */
   hiddenWatchPages: WatchPageKey[];
+  /** The wearer's custom watch complications; null until they make or import one (the starter set is sent meanwhile). */
+  watchComplications: WatchComplicationDefinition[] | null;
+  /** The colour and icon the wearer chose for the built-in watch complications; only what differs from the built-in's own. */
+  watchBuiltInStyles: WatchBuiltInStyles;
   /** Order of the reports on the Reports hub. */
   reportOrder: ReportKey[];
   /** Reports turned off in Reports → Customize. */
@@ -413,6 +427,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setMindfulnessCardVisible: (value: boolean) => void;
   setOralCareCardVisible: (value: boolean) => void;
   setLabResultsCardVisible: (value: boolean) => void;
+  setChallengesCardVisible: (value: boolean) => void;
   setTrainingLoadCardVisible: (value: boolean) => void;
   setDashboardCardOrder: (order: DashboardCardKey[]) => void;
   setMedicationRemindersEnabled: (value: boolean) => void;
@@ -429,6 +444,7 @@ export interface AppPreferencesState extends AppPreferencesData {
   setCheckinReminderTimes: (times: string[]) => void;
   setOralCareRemindersEnabled: (enabled: boolean) => void;
   setOralCareReminderTimes: (times: string[]) => void;
+  setChallengeWeekNotificationsEnabled: (enabled: boolean) => void;
   setLiquidGlassTabBarEnabled: (value: boolean) => void;
   setActiveWorkoutMetricColumn: (value: ActiveWorkoutMetricColumn) => void;
   setDiarySummaryVisible: (value: boolean) => void;
@@ -463,6 +479,8 @@ export interface AppPreferencesState extends AppPreferencesData {
   setAddMenuRowStyle: (key: AddMenuItemKey, style: AddMenuRowStyle) => void;
   resetAddMenu: () => void;
   setWatchPageOrder: (order: WatchPageKey[]) => void;
+  setWatchComplications: (list: WatchComplicationDefinition[] | null) => void;
+  setWatchBuiltInStyles: (styles: WatchBuiltInStyles) => void;
   setWatchPageHidden: (key: WatchPageKey, isHidden: boolean) => void;
   setReportOrder: (order: ReportKey[]) => void;
   setReportHidden: (key: ReportKey, isHidden: boolean) => void;
@@ -598,6 +616,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
       setOralCareCardVisible: (value) => set({ oralCareCardVisible: value }),
       setLabResultsCardVisible: (value) =>
         set({ labResultsCardVisible: value }),
+      setChallengesCardVisible: (value) =>
+        set({ challengesCardVisible: value }),
       setTrainingLoadCardVisible: (value) =>
         set({ trainingLoadCardVisible: value }),
       setDashboardCardOrder: (order) => set({ dashboardCardOrder: order }),
@@ -624,6 +644,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         set({ oralCareRemindersEnabled: enabled }),
       setOralCareReminderTimes: (times) =>
         set({ oralCareReminderTimes: normalizeOralCareReminderTimes(times) }),
+      setChallengeWeekNotificationsEnabled: (enabled) =>
+        set({ challengeWeekNotificationsEnabled: enabled }),
       setLiquidGlassTabBarEnabled: (value) =>
         set({ liquidGlassTabBarEnabled: value }),
       setActiveWorkoutMetricColumn: (value) =>
@@ -719,6 +741,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
           addMenuRowStyles: {},
         }),
       setWatchPageOrder: (order) => set({ watchPageOrder: order }),
+      setWatchComplications: (list) => set({ watchComplications: list }),
+      setWatchBuiltInStyles: (styles) => set({ watchBuiltInStyles: styles }),
       setReportOrder: (order) => set({ reportOrder: order }),
       setReportHidden: (key, isHidden) =>
         set((state) => ({
@@ -845,6 +869,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         mindfulnessCardVisible: state.mindfulnessCardVisible,
         oralCareCardVisible: state.oralCareCardVisible,
         labResultsCardVisible: state.labResultsCardVisible,
+        challengesCardVisible: state.challengesCardVisible,
         trainingLoadCardVisible: state.trainingLoadCardVisible,
         dashboardCardOrder: state.dashboardCardOrder,
         medicationRemindersEnabled: state.medicationRemindersEnabled,
@@ -860,6 +885,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         checkinReminderTimes: state.checkinReminderTimes,
         oralCareRemindersEnabled: state.oralCareRemindersEnabled,
         oralCareReminderTimes: state.oralCareReminderTimes,
+        challengeWeekNotificationsEnabled:
+          state.challengeWeekNotificationsEnabled,
         liquidGlassTabBarEnabled: state.liquidGlassTabBarEnabled,
         // Older persisted blobs without these keys backfill via the default
         // shallow merge — no version bump needed.
@@ -895,6 +922,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>()(
         addMenuRowStyles: state.addMenuRowStyles,
         watchPageOrder: state.watchPageOrder,
         hiddenWatchPages: state.hiddenWatchPages,
+        watchComplications: state.watchComplications,
+        watchBuiltInStyles: state.watchBuiltInStyles,
         watchDoubleTapEnabled: state.watchDoubleTapEnabled,
         watchRpeEnabled: state.watchRpeEnabled,
         watchSetScreenMetrics: state.watchSetScreenMetrics,

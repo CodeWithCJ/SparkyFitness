@@ -469,6 +469,26 @@ export const createExerciseEntryRequestSchema = z
     calories_burned: z.coerce.number().min(0).default(0),
     entry_date: dateStringSchema,
     entry_time: timeStringSchema.nullish(),
+    /**
+     * The IANA zone `entry_time` was read in, when it is not the profile's
+     * (a phone abroad). Without it the time is taken in the profile zone.
+     */
+    record_timezone: z
+      .string()
+      .min(1)
+      .max(64)
+      .refine(
+        (zone) => {
+          try {
+            new Intl.DateTimeFormat('en-US', { timeZone: zone });
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: 'Unknown time zone' }
+      )
+      .nullish(),
     notes: z.string().nullable().optional(),
     sets: z.array(exerciseEntrySetRequestSchema).optional(),
     reps: z.coerce.number().nullable().optional(),
@@ -641,6 +661,24 @@ export const exerciseProgressResponseSchema = z.object({
   /** The lifter's body weight that day (kg), null with no check-ins. */
   body_weight_kg: z.number().nullable().optional(),
   sets: z.array(exerciseProgressSetSchema),
+  /** The member changed the row after it was created (isPlannedEntryRow). */
+  edited: z.boolean().optional(),
+  /** The grouped session the row belongs to, for isPlannedEntryRow. */
+  session: z
+    .object({
+      source: z.string().nullable(),
+      finished_at: z.string().nullable(),
+      edited: z.boolean(),
+      has_plan_assignment: z.boolean(),
+      sets: z.array(
+        z.object({
+          completed_at: z.string().nullable().optional(),
+          started_at: z.string().nullable().optional(),
+        })
+      ),
+    })
+    .nullable()
+    .optional(),
 });
 
 // --- Session types (discriminated by "type") ---

@@ -44,6 +44,7 @@ import {
   scanNutritionLabel,
 } from '../services/api/externalFoodSearchApi';
 import { getApiErrorMessage } from '../services/api/errors';
+import { serverMayBeDown } from '../utils/serverErrors';
 import { TimeoutError } from '../utils/concurrency';
 import { fireSuccessHaptic } from '../services/haptics';
 import {
@@ -237,11 +238,11 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   }, [cancelBarcodeLookup, restartCamera]);
 
   useEffect(() => {
-    if (!isFocused) {
+    return navigation.addListener('blur', () => {
       cancelBarcodeLookup();
       restartCamera();
-    }
-  }, [isFocused, cancelBarcodeLookup, restartCamera]);
+    });
+  }, [navigation, cancelBarcodeLookup, restartCamera]);
 
   // Photo estimation always logs to the diary; hide it for meal-builder
   // scans so we don't drop the user into a flow that ignores pickerMode.
@@ -382,9 +383,17 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
               defaultValue: 'Request timed out. Check your server connection.',
             })
           : (getApiErrorMessage(error) ??
-            t('foodScan.errors.lookupBarcode', {
-              defaultValue: "Couldn't look up this barcode. Please try again.",
-            }));
+            (serverMayBeDown(error)
+              ? // The phone has no copy of this barcode, and only the server
+                // can ask the providers, so say what is possible.
+                t('foodScan.errors.offlineBarcode', {
+                  defaultValue:
+                    "No connection. This barcode isn't in the foods saved on your phone.",
+                })
+              : t('foodScan.errors.lookupBarcode', {
+                  defaultValue:
+                    "Couldn't look up this barcode. Please try again.",
+                })));
       setLookupError({ barcode, message });
     } finally {
       if (isCurrentRequest()) {
@@ -688,28 +697,31 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
   };
 
   // Photo-mode gate: drives the gate overlay and the one-time intro push.
-  // Triggered via effect (not just segment change) so deep-link entries
+  // Derived from the deps (not just segment change) so deep-link entries
   // with `initialMode: 'photo'` still hit the gate.
-  useEffect(() => {
-    if (isCaptureBarcodeMode) return;
-    if (isBasketOriginScan) {
+  const gateKey = `${isCaptureBarcodeMode}|${isBasketOriginScan}|${scanMode}|${aiSettingQuery.isLoading}|${photoModeAvailable}`;
+  const [syncedGateKey, setSyncedGateKey] = useState<string | null>(null);
+  if (syncedGateKey !== gateKey) {
+    setSyncedGateKey(gateKey);
+    if (isCaptureBarcodeMode) {
+      // Capture-only scans have no photo gate.
+    } else if (isBasketOriginScan) {
       // Basket-origin scans cannot use photo mode at all (its flow pops to
       // the diary root and would drop the basket): hide the gate, snap the
       // segment back to barcode, and never reach the availability fetch —
       // including deep-link photo entries the filtered segments can't stop.
       setPhotoGateVisible(false);
       setScanMode('barcode');
-      return;
+    } else if (scanMode === 'photo' && !aiSettingQuery.isLoading) {
+      setPhotoGateVisible(!photoModeAvailable);
     }
+  }
+  useEffect(() => {
+    if (isCaptureBarcodeMode || isBasketOriginScan) return;
     if (scanMode !== 'photo') return;
     if (aiSettingQuery.isLoading) return;
+    if (!photoModeAvailable) return;
 
-    if (!photoModeAvailable) {
-      setPhotoGateVisible(true);
-      return;
-    }
-
-    setPhotoGateVisible(false);
     if (introCheckedRef.current) return;
     introCheckedRef.current = true;
     void (async () => {
@@ -876,7 +888,6 @@ const FoodScanScreen: React.FC<FoodScanScreenProps> = ({
           key={`${scanMode}-${cameraSession}`}
           ref={cameraRef}
           facing="back"
-          autofocus="on"
           onCameraReady={() => {
             if (
               appActiveRef.current &&

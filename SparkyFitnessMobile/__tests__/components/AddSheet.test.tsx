@@ -32,11 +32,9 @@ jest.mock('@gorhom/bottom-sheet', () => {
       ({ children, onDismiss, onAnimate, onChange }: any, ref) => {
         // Test mock stashes the latest handlers for assertions; writing to the
         // module-scoped controls during the mock's render is intentional.
-        /* eslint-disable react-hooks/immutability */
         mockBottomSheetControls.onDismiss = onDismiss;
         mockBottomSheetControls.onAnimate = onAnimate;
         mockBottomSheetControls.onChange = onChange;
-        /* eslint-enable react-hooks/immutability */
 
         React.useImperativeHandle(ref, () => ({
           present: mockBottomSheetControls.present,
@@ -261,6 +259,30 @@ describe('AddSheet', () => {
     act(() => mockBottomSheetControls.onDismiss?.());
 
     expect(onAddMood).toHaveBeenCalledTimes(1);
+  });
+
+  it('invokes onCopyFromYesterday when the Copy from yesterday row is pressed', () => {
+    const onCopyFromYesterday = jest.fn();
+    const onDismissWithoutAction = jest.fn();
+    const { ref, getByText } = renderAddSheet({
+      onCopyFromYesterday,
+      onDismissWithoutAction,
+    });
+
+    act(() => ref.current?.present());
+    fireEvent.press(getByText('Copy from yesterday'));
+    act(() => mockBottomSheetControls.onDismiss?.());
+
+    expect(onCopyFromYesterday).toHaveBeenCalledTimes(1);
+    expect(onDismissWithoutAction).not.toHaveBeenCalled();
+  });
+
+  it('leaves the Copy from yesterday row out when it has no handler', () => {
+    const { ref, queryByText } = renderAddSheet();
+
+    act(() => ref.current?.present());
+
+    expect(queryByText('Copy from yesterday')).toBeNull();
   });
 
   it('dismisses from Done without counting as an action', () => {

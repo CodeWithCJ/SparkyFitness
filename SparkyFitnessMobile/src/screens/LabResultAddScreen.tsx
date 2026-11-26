@@ -110,7 +110,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // What the form filled in last, so a range left over from another unit can
   // be told apart from one the person typed.
-  const prefill = useRef<LabFormPrefill | null>(null);
+  const [prefill, setPrefill] = useState<LabFormPrefill | null>(null);
 
   const applyDefaults = (next: {
     unit: string;
@@ -122,7 +122,7 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
       low: rangeText(next.low),
       high: rangeText(next.high),
     };
-    prefill.current = filled;
+    setPrefill(filled);
     setUnit(filled.unit);
     setLowText(filled.low);
     setHighText(filled.high);
@@ -131,18 +131,18 @@ const LabResultAddScreen: React.FC<Props> = ({ navigation, route }) => {
   // Changing the unit of a range the form filled in invalidates that range.
   const settledRange = dropStalePrefilledRange(
     { unit, low: lowText, high: highText },
-    prefill.current,
+    prefill,
     selection?.kind === 'builtin' ? selection.key : null
   );
   const handleUnitCommitted = () => {
-    const base = prefill.current;
+    const base = prefill;
     const edited =
       base !== null && (lowText !== base.low || highText !== base.high);
     setLowText(settledRange.low);
     setHighText(settledRange.high);
     // A range the person edited is theirs from here on, so it must never be
     // taken for the form's own fill-in on a later unit change.
-    prefill.current = edited ? null : { unit, ...settledRange };
+    setPrefill(edited ? null : { unit, ...settledRange });
   };
 
   // The form is filled in from the marker's latest result and the profile's

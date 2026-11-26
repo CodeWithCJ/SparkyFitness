@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
   TextInput,
+  type TextInputInstance,
 } from 'react-native';
 import {
   KeyboardEvents,
@@ -86,7 +87,7 @@ export interface SetCellInputProps {
   keyboardType:
     'decimal-pad' | 'number-pad' | 'numbers-and-punctuation' | 'numeric';
   accessibilityLabel: string;
-  inputRef: Ref<TextInput>;
+  inputRef: Ref<TextInputInstance>;
   className?: string;
   /** Shown while the cell is empty; the assumed value when one resolves. */
   placeholder?: string;

@@ -19,6 +19,7 @@ import {
   setPaceBandPreference,
   setRecordingPaceBand,
   setRecordingAutoPause,
+  markRecordingSaveComplete,
   useGpsRecording,
   type RecordingSession,
   type RecordingSnapshot,
@@ -57,6 +58,9 @@ jest.mock('../../src/services/gpsRecordingService', () => {
     setRecordingAudioCues: jest.fn(() => Promise.resolve()),
     finishRecording: jest.fn(() => Promise.resolve()),
     discardRecording: jest.fn(() => Promise.resolve()),
+    markRecordingSaveComplete: jest.fn(() => Promise.resolve()),
+    beginRecordingSave: jest.fn(),
+    endRecordingSave: jest.fn(),
     getHeartRateSamples: jest.fn(() => Promise.resolve([])),
     elapsedSeconds: jest.fn(() => 754),
     getRecordingPreferences: jest.fn(() =>
@@ -1052,6 +1056,61 @@ describe('RecordActivityScreen', () => {
         expect.anything()
       )
     );
+  });
+
+  it('marks the save complete before clearing the recording', async () => {
+    state(session({ status: 'finished', finishedAt: Date.now() }), track);
+    jest
+      .mocked(saveRecordedActivity)
+      .mockResolvedValue({ entryId: 'entry-1', entryDate: '2026-10-06' });
+    const screen = await renderScreen();
+
+    fireEvent.press(screen.getByText('Save activity'));
+
+    await waitFor(() => expect(discardRecording).toHaveBeenCalled());
+    // A session left behind after this point holds a finished save, which a
+    // Discard must not delete.
+    expect(
+      jest.mocked(saveRecordedActivity).mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      jest.mocked(markRecordingSaveComplete).mock.invocationCallOrder[0]
+    );
+    expect(
+      jest.mocked(markRecordingSaveComplete).mock.invocationCallOrder[0]
+    ).toBeLessThan(jest.mocked(discardRecording).mock.invocationCallOrder[0]);
+    // Clearing after a save is not the person discarding it.
+    expect(discardRecording).toHaveBeenCalledWith();
+  });
+
+  it('still opens the summary when marking the save complete fails', async () => {
+    state(session({ status: 'finished', finishedAt: Date.now() }), track);
+    jest
+      .mocked(saveRecordedActivity)
+      .mockResolvedValue({ entryId: 'entry-1', entryDate: '2026-10-06' });
+    jest
+      .mocked(markRecordingSaveComplete)
+      .mockRejectedValueOnce(new Error('disk'));
+    const screen = await renderScreen();
+
+    fireEvent.press(screen.getByText('Save activity'));
+
+    await waitFor(() =>
+      expect(navigation.replace).toHaveBeenCalledWith(
+        'RunSummary',
+        expect.anything()
+      )
+    );
+  });
+
+  it('does not mark a failed save complete', async () => {
+    state(session({ status: 'finished', finishedAt: Date.now() }), track);
+    jest.mocked(saveRecordedActivity).mockRejectedValue(new Error('offline'));
+    const screen = await renderScreen();
+
+    fireEvent.press(screen.getByText('Save activity'));
+
+    await waitFor(() => expect(saveRecordedActivity).toHaveBeenCalled());
+    expect(markRecordingSaveComplete).not.toHaveBeenCalled();
   });
 
   it('shows a spinner, not Start, until the saved-session check finishes', async () => {

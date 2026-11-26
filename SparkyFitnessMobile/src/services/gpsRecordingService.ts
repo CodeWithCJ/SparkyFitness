@@ -4,6 +4,11 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import i18n from '../localization/i18n';
 import { addLog } from './LogService';
+import { deleteExerciseEntry } from './api/exerciseApi';
+import { ApiError } from './api/errors';
+import { queryClient } from '../hooks/queryClient';
+import { invalidateExerciseCache } from '../hooks/invalidateExerciseCache';
+import { toLocalDateString } from '../utils/dateUtils';
 import {
   beginRecordingCues,
   endRecordingCues,
@@ -192,6 +197,17 @@ export interface RecordingSession {
    */
   savedForm?: FormMetrics | null;
   /**
+   * `false` from the moment the entry exists until every part of the save
+   * went through (the entry, its route and a fitness test), then `true`.
+   * `savedEntryId` alone is also set by a save that failed half-way, so a
+   * Discard uses this to tell the two apart: it deletes only an entry whose
+   * save is known to be unfinished (`false`), never one saved in full, which a
+   * session left behind by a failed clear or an app killed after the save
+   * still holds. Absent on a session saved by a build from before the flag:
+   * that one cannot be told apart, so it is kept, as it always was.
+   */
+  saveComplete?: boolean;
+  /**
    * A treadmill or other indoor session: no location task and no route, just
    * the clock (and a paired watch's heart rate). Absent on sessions saved by
    * an earlier build, which were all outdoors.
@@ -236,13 +252,41 @@ export class RecordingPermissionError extends Error {
   }
 }
 
+/** A Discard asked for while that recording is still being saved. */
+export class RecordingSaveInProgressError extends Error {
+  constructor() {
+    super('The recording is still being saved');
+    this.name = 'RecordingSaveInProgressError';
+  }
+}
+
+/** A Save asked for while that recording is being discarded. */
+export class RecordingDiscardInProgressError extends Error {
+  constructor() {
+    super('The recording is being discarded');
+    this.name = 'RecordingDiscardInProgressError';
+  }
+}
+
 let session: RecordingSession | null = null;
 let points: RecordedPoint[] = [];
+// The recording a save is running for. A Discard of it waits for nothing: it
+// is refused, so it cannot delete an entry the save is still finishing.
+let savingSessionId: string | null = null;
+// The recording a Discard is running for. A Save of it is refused meanwhile,
+// so it cannot reuse the entry the discard is deleting.
+let discardingSessionId: string | null = null;
 let snapshot: RecordingSnapshot = { session: null, points: [] };
 let heartRate: StoredHeartRate = { samples: [], batchIds: [] };
 /** Saved entry ids by recording, for Apple zones that arrive after the session is cleared. */
 const savedEntriesBySession = new Map<string, string>();
 const MAX_SAVED_ENTRY_IDS = 5;
+// Recordings the person discarded, so the watch bridge can tell them from a
+// saved one after the session has left the store. A discard that deletes a
+// half-saved entry publishes `savedEntryId: null` first, but the bridge does
+// not have to render in between, so this is what it relies on. A discard that
+// kept a fully saved entry is not in here: the watch is told it was saved.
+const discardedSessionIds = new Set<string>();
 /** Apple's zone group for the recording, held until the diary entry can take it. */
 let appleZonesForSession: {
   sessionId: string;
@@ -1203,6 +1247,11 @@ export function startRecording(options: StartRecordingOptions): Promise<void> {
         );
       }
     }
+    // Whatever an earlier discard could not clear must not join this track.
+    // Done before the session exists, so a failure here leaves nothing behind
+    // and the next Start can simply try again.
+    await clearStoredPoints();
+    await AsyncStorage.removeItem(HEART_RATE_KEY);
     const now = Date.now();
     // A new recording starts the alerts afresh: the state (and its epoch-ms
     // waits) belongs to the run that ended, not this one.
@@ -1267,6 +1316,7 @@ export function startRecording(options: StartRecordingOptions): Promise<void> {
     latestFix = null;
     clearLatestFix();
     points = [];
+    heartRate = { samples: [], batchIds: [] };
     await persistSession();
     if (!indoor) {
       try {
@@ -1703,38 +1753,164 @@ export function clearAppleWorkoutZones(sessionId: string): void {
  * track, along with the form metrics saved on it.
  */
 export function markRecordingSaved(
+  sessionId: string,
   entryId: string,
   form: FormMetrics | null = null
 ): Promise<void> {
   return enqueue(async () => {
-    if (!session) return;
     // Kept outside the session, which is cleared right after the save, so
     // Apple zones that arrive late can still find the diary entry.
-    savedEntriesBySession.delete(session.id);
-    savedEntriesBySession.set(session.id, entryId);
+    savedEntriesBySession.delete(sessionId);
+    savedEntriesBySession.set(sessionId, entryId);
     if (savedEntriesBySession.size > MAX_SAVED_ENTRY_IDS) {
       const oldest = savedEntriesBySession.keys().next().value;
       if (oldest !== undefined) savedEntriesBySession.delete(oldest);
     }
-    session = { ...session, savedEntryId: entryId, savedForm: form };
+    // Only on the recording the save started from: once it was discarded and
+    // another one started, the entry must not become the new one's.
+    if (session?.id !== sessionId) return;
+    session = {
+      ...session,
+      savedEntryId: entryId,
+      savedForm: form,
+      saveComplete: false,
+    };
     await persistSession();
     publish();
   });
 }
 
-/** Drops the session and every stored point. */
-export function discardRecording(): Promise<void> {
+/**
+ * Records that the save finished, so a Discard of a session that is somehow
+ * still around afterwards clears the phone and leaves the diary entry alone.
+ */
+export function markRecordingSaveComplete(sessionId: string): Promise<void> {
   return enqueue(async () => {
-    await hydrate();
-    await stopUpdates();
-    stopRecordingCues();
-    await clearStoredPoints();
-    await AsyncStorage.removeItem(HEART_RATE_KEY);
-    session = null;
-    points = [];
-    heartRate = { samples: [], batchIds: [] };
+    if (session?.id !== sessionId) return;
+    session = { ...session, saveComplete: true };
     await persistSession();
     publish();
+  });
+}
+
+/** Whether the person discarded this recording rather than saving it. */
+export function wasRecordingDiscarded(sessionId: string): boolean {
+  return discardedSessionIds.has(sessionId);
+}
+
+/**
+ * Deletes the diary entry a failed save already created. A 404 means it is
+ * gone already, which is what a discard wants.
+ */
+async function deleteHalfSavedEntry(
+  entryId: string,
+  startedAt: number
+): Promise<void> {
+  try {
+    await deleteExerciseEntry(entryId);
+  } catch (error) {
+    if (!(error instanceof ApiError && error.statusCode === 404)) throw error;
+  }
+  invalidateExerciseCache(queryClient, toLocalDateString(new Date(startedAt)));
+}
+
+/**
+ * Marks a save of the given recording as running, so a Discard of the same
+ * recording (from the recording bar, which stays live while the Record screen
+ * saves) is refused until `endRecordingSave` instead of deleting an entry the
+ * save is still finishing.
+ */
+export function beginRecordingSave(sessionId: string): void {
+  if (discardingSessionId === sessionId) {
+    throw new RecordingDiscardInProgressError();
+  }
+  savingSessionId = sessionId;
+}
+
+export function endRecordingSave(sessionId: string): void {
+  if (savingSessionId === sessionId) savingSessionId = null;
+}
+
+/**
+ * Drops the session and every stored point.
+ *
+ * `discarded` is the person throwing the recording away. A save that created
+ * the diary entry and then failed (the route upload, say) leaves that entry
+ * behind, so it is deleted first; if that fails the recording is kept and the
+ * error thrown, so the discard can be retried. Only an entry whose save is
+ * known to be unfinished (`saveComplete === false`) is deleted; one saved in
+ * full is kept, and the watch is then told the recording was saved, not
+ * discarded, so it keeps its Apple Health workout too. Clearing the store
+ * after a successful save leaves `discarded` off.
+ */
+export function discardRecording({
+  discarded = false,
+}: { discarded?: boolean } = {}): Promise<void> {
+  return enqueue(async () => {
+    await hydrate();
+    // An entry saved in full (or by a build from before `saveComplete`) stays
+    // in the diary: the person is only clearing a leftover from the phone,
+    // and the watch is told it was saved.
+    const keepsSavedEntry =
+      session?.savedEntryId != null && session.saveComplete !== false;
+    if (discarded && session && savingSessionId === session.id) {
+      throw new RecordingSaveInProgressError();
+    }
+    if (discarded && session) discardingSessionId = session.id;
+    try {
+      let discardedId: string | null = null;
+      if (discarded && session && !keepsSavedEntry) {
+        if (session.savedEntryId) {
+          await deleteHalfSavedEntry(session.savedEntryId, session.startedAt);
+          // The entry is gone. Published at once, because the screen saves from
+          // the published session: if clearing the phone below fails, a retried
+          // Save must create a new entry rather than re-send to the deleted id.
+          session = { ...session, savedEntryId: null, savedForm: null };
+          try {
+            await persistSession();
+          } finally {
+            publish();
+          }
+        }
+        savedEntriesBySession.delete(session.id);
+        discardedId = session.id;
+      }
+      // The stored session goes first. If removing it fails, nothing else has
+      // changed: the recording keeps its track, its location updates and its
+      // status, and can still be saved or discarded again.
+      await AsyncStorage.removeItem(SESSION_KEY);
+      // Marked only once that succeeded: a discard that fails before this
+      // leaves the recording on screen, and saving it after all must reach the
+      // watch as saved.
+      if (discardedId) {
+        discardedSessionIds.add(discardedId);
+        if (discardedSessionIds.size > MAX_SAVED_ENTRY_IDS) {
+          const oldest = discardedSessionIds.values().next().value;
+          if (oldest !== undefined) discardedSessionIds.delete(oldest);
+        }
+      }
+      session = null;
+      points = [];
+      heartRate = { samples: [], batchIds: [] };
+      publish();
+      // The recording is gone now; what is left is tidying up. A leftover
+      // track or heart rate cannot come back without its session, and the
+      // next recording clears it before it starts.
+      await stopUpdates();
+      stopRecordingCues();
+      try {
+        await clearStoredPoints();
+        await AsyncStorage.removeItem(HEART_RATE_KEY);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        addLog(
+          `[GPS Recording] Could not clear the discarded track: ${message}`,
+          'WARNING'
+        );
+      }
+    } finally {
+      discardingSessionId = null;
+    }
   });
 }
 
@@ -1780,5 +1956,8 @@ export function resetRecordingStateForTests(): void {
   heartRateAlertStep = null;
   hydrated = null;
   queue = Promise.resolve();
+  discardedSessionIds.clear();
+  savingSessionId = null;
+  discardingSessionId = null;
   publish();
 }

@@ -42,6 +42,7 @@ export * from './schemas/api/SleepScience.api.zod.ts';
 export * from './schemas/api/SleepEntries.api.zod.ts';
 export * from './schemas/api/Symptoms.api.zod.ts';
 export * from './schemas/api/WorkoutPresets.api.zod.ts';
+export * from './schemas/api/ClientRequestId.api.zod.ts';
 export * from './schemas/api/WaterIntake.api.zod.ts';
 export * from './schemas/api/WaterContainers.api.zod.ts';
 export * from './schemas/api/HydrationNutritionRange.api.zod.ts';
@@ -196,6 +197,7 @@ export * from './challenges/rules.ts';
 export * from './challenges/presets.ts';
 export * from './challenges/periods.ts';
 export * from './challenges/scoring.ts';
+export * from './challenges/client.ts';
 export * from './utils/calorieRuleDefaults.ts';
 export * from './utils/calorieCycling.ts';
 export * from './utils/exerciseCalorieLink.ts';
@@ -309,6 +311,7 @@ export * from './utils/guidedWorkoutCues.ts';
 export * from './utils/dropSetCalculator.ts';
 export * from './utils/weightRamp.ts';
 export * from './utils/runningTrends.ts';
+export * from './utils/exerciseTrends.ts';
 export * from './utils/raceTimePredictions.ts';
 export * from './utils/weightTrend.ts';
 export * from './utils/workoutFeedbackForm.ts';
@@ -394,6 +397,7 @@ export {
 } from './utils/measurementTimeline.ts';
 export {
   GLUCOSE_CONTEXT_KINDS,
+  GLUCOSE_CONTEXT_KIND_FEATURES,
   loadGlucoseContext,
   glucoseContextForDay,
   type GlucoseContextKind,

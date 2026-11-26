@@ -1,11 +1,13 @@
 import React from 'react';
-import { render, fireEvent, waitFor } from '@testing-library/react-native';
+import { RefreshControl } from 'react-native';
+import { act, render, fireEvent, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LibraryScreen from '../../src/screens/LibraryScreen';
 import {
   useFoods,
   useMeals,
+  useMedications,
   useRecentMeals,
   useServerConnection,
   useSuggestedExercises,
@@ -67,6 +69,7 @@ jest.mock('../../src/hooks/useMobileFeatures', () => ({
 
 const mockUseFoods = useFoods as jest.MockedFunction<typeof useFoods>;
 const mockUseMeals = useMeals as jest.MockedFunction<typeof useMeals>;
+const mockUseMedications = jest.mocked(useMedications);
 const mockUseRecentMeals = useRecentMeals as jest.MockedFunction<
   typeof useRecentMeals
 >;
@@ -403,6 +406,73 @@ describe('LibraryScreen', () => {
     expect(navigation.navigate).toHaveBeenCalledWith('MedicationsList');
   });
 
+  describe('while Medications is turned off in Features', () => {
+    /** The Browse row a label sits in. */
+    const rowOf = (screen: ReturnType<typeof renderScreen>, label: string) => {
+      let node = screen.getByText(label).parent;
+      while (node && !String(node.props.className ?? '').includes('px-4 py-4'))
+        node = node.parent;
+      if (!node) throw new Error(`No row around ${label}`);
+      return node;
+    };
+
+    it('leaves out the Medications row and does not count medications', () => {
+      const on = renderScreen();
+      expect(on.getByText('Medications')).toBeTruthy();
+      expect(mockUseMedications).toHaveBeenLastCalledWith({ enabled: true });
+      on.unmount();
+
+      mockFeaturesOff = new Set(['medications']);
+      const screen = renderScreen();
+      expect(screen.queryByText('Medications')).toBeNull();
+      expect(screen.getByText('Water containers')).toBeTruthy();
+      expect(mockUseMedications).toHaveBeenLastCalledWith({ enabled: false });
+    });
+
+    it('draws no divider under the last row, whichever rows show', () => {
+      const on = renderScreen();
+      expect(rowOf(on, 'Water containers').props.className).toContain(
+        'border-b'
+      );
+      expect(rowOf(on, 'Medications').props.className).not.toContain(
+        'border-b'
+      );
+      on.unmount();
+
+      mockFeaturesOff = new Set(['medications']);
+      const off = renderScreen();
+      expect(rowOf(off, 'Water containers').props.className).not.toContain(
+        'border-b'
+      );
+    });
+
+    it('refetches medications on pull-to-refresh only while it is on', async () => {
+      const refetchMedications = jest.fn();
+      mockUseMedications.mockReturnValue({
+        data: [],
+        refetch: refetchMedications,
+      } as unknown as ReturnType<typeof useMedications>);
+      const pull = async (screen: ReturnType<typeof renderScreen>) => {
+        await act(async () => {
+          fireEvent(screen.UNSAFE_getByType(RefreshControl), 'refresh');
+        });
+      };
+
+      const on = renderScreen();
+      await pull(on);
+      expect(refetchMedications).toHaveBeenCalledTimes(1);
+      on.unmount();
+
+      mockFeaturesOff = new Set(['medications']);
+      const off = renderScreen();
+      await pull(off);
+      expect(
+        mockUseFoods.mock.results.at(-1)?.value.refetch
+      ).toHaveBeenCalled();
+      expect(refetchMedications).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('navigates to WaterContainers when the Water containers row is pressed (#2115)', () => {
     const screen = renderScreen();
     fireEvent.press(screen.getByText('Water containers'));
@@ -533,11 +603,15 @@ describe('LibraryScreen', () => {
       } as unknown as ReturnType<typeof useServerConnection>);
     });
 
-    it('offers only workout presets and exercises', () => {
+    it('offers what the phone has saved: workouts, exercises, foods and meals', () => {
       const screen = renderScreen();
 
       expect(screen.getByTestId('offline-library')).toBeTruthy();
-      expect(screen.queryByText('Foods')).toBeNull();
+      for (const key of ['workoutPresets', 'exercises', 'foods', 'meals']) {
+        expect(screen.getByTestId(`offline-library-${key}`)).toBeTruthy();
+      }
+      // The rest of the Library needs the server.
+      expect(screen.queryByText('Meal plans')).toBeNull();
       expect(screen.queryByText("Can't reach your server")).toBeNull();
     });
 
@@ -553,6 +627,20 @@ describe('LibraryScreen', () => {
 
       fireEvent.press(screen.getByTestId('offline-library-exercises'));
       expect(navigation.navigate).toHaveBeenCalledWith('ExercisesLibrary');
+    });
+
+    it('opens the saved foods', () => {
+      const screen = renderScreen();
+
+      fireEvent.press(screen.getByTestId('offline-library-foods'));
+      expect(navigation.navigate).toHaveBeenCalledWith('FoodsLibrary');
+    });
+
+    it('opens the saved meals', () => {
+      const screen = renderScreen();
+
+      fireEvent.press(screen.getByTestId('offline-library-meals'));
+      expect(navigation.navigate).toHaveBeenCalledWith('MealsLibrary');
     });
   });
 });

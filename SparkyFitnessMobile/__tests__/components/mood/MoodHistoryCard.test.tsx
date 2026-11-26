@@ -14,7 +14,7 @@ jest.mock('../../../src/hooks/useMood', () => ({
   }),
 }));
 
-jest.mock('../../../src/components/mood/MoodLineChart', () => ({
+jest.mock('../../../src/components/MoodLineChart', () => ({
   __esModule: true,
   default: () => null,
 }));

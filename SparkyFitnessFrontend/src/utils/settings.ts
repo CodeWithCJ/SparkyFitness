@@ -1,6 +1,9 @@
 import { ExternalDataProvider } from '@/pages/Settings/ExternalProviderSettings';
 import { DataProvider } from '@/types/settings';
-import { MCP_SERVER_PROVIDER_TYPE } from '@workspace/shared';
+import {
+  MCP_SERVER_PROVIDER_TYPE,
+  getFoodProviderMetadata,
+} from '@workspace/shared';
 
 export const providerRequirements: Record<string, string[]> = {
   mealie: ['base_url', 'app_key'],
@@ -20,6 +23,7 @@ export const providerRequirements: Record<string, string[]> = {
   hevy: ['app_key'],
   liftosaur: ['app_key'],
   intervals: ['app_id', 'app_key'],
+  zeppbridge: ['base_url', 'app_key'],
   yazio: ['app_id', 'app_key', 'yazio_client_id', 'yazio_client_secret'],
   coros_mcp: [],
 };
@@ -37,6 +41,10 @@ const providerFieldLabels: Record<string, Record<string, string>> = {
   intervals: {
     app_id: 'Athlete ID',
     app_key: 'API Key',
+  },
+  zeppbridge: {
+    base_url: 'ZeppBridge URL',
+    app_key: 'Pull token',
   },
 };
 
@@ -58,6 +66,7 @@ const PROVIDERS_WITHOUT_APP_ID = [
   'free-exercise-db',
   'wger',
   'liftosaur',
+  'zeppbridge',
   MCP_SERVER_PROVIDER_TYPE,
 ];
 const OAUTH_TOKEN_PROVIDERS = [
@@ -142,7 +151,14 @@ export const validateProvider = (
 ): string | null => {
   if (!provider.provider_name) return 'Please fill in the provider name';
 
-  let requiredFields = providerRequirements[provider.provider_type || ''] || [];
+  let requiredFields = providerRequirements[provider.provider_type || ''];
+  if (
+    !requiredFields &&
+    getFoodProviderMetadata(provider.provider_type)?.credentials === 'api_key'
+  ) {
+    requiredFields = ['app_key'];
+  }
+  requiredFields = requiredFields || [];
   let fieldLabels = providerFieldLabels[provider.provider_type || ''] || {};
 
   if (providerTypes && provider.provider_type) {

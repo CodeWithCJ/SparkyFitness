@@ -36,6 +36,7 @@ from service import (
     map_garmin_stress_to_mood,
     mock_filename,
     meters_to_km,
+    project_body_battery_fallback,
     project_daily_calorie_metrics,
     safe_convert,
     seconds_to_minutes,
@@ -49,6 +50,16 @@ router = APIRouter()
 
 MAX_CONCURRENT_GARMIN_REQUESTS = int(os.getenv("GARMIN_MAX_CONCURRENCY", "4"))
 garmin_concurrency_semaphore = asyncio.Semaphore(MAX_CONCURRENT_GARMIN_REQUESTS)
+
+
+def _metric_counts(data) -> dict:
+    """Metric names with record counts, so logs never carry health values."""
+    if not isinstance(data, dict):
+        return {}
+    return {
+        key: len(value) if isinstance(value, (list, dict)) else 1
+        for key, value in data.items()
+    }
 
 
 async def safe_garmin_call(fn, *args, **kwargs):
@@ -1273,7 +1284,7 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                         current_date, current_date
                     )
                     logger.debug(
-                        f"Raw blood pressure data for {current_date}: {blood_pressure_data}"
+                        f"Blood pressure data for {current_date} received: {bool(blood_pressure_data)}"
                     )
                     if blood_pressure_data and blood_pressure_data.get(
                         "measurementSummaries"
@@ -1306,11 +1317,11 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                                         )
                                     else:
                                         logger.warning(
-                                            f"Incomplete blood pressure data for {current_date}: {bp_entry}"
+                                            f"Incomplete blood pressure data for {current_date}; entry skipped"
                                         )
                             else:
                                 logger.warning(
-                                    f"No measurements found in blood pressure summary for {current_date}: {summary}"
+                                    f"No measurements found in blood pressure summary for {current_date}"
                                 )
                     else:
                         logger.debug(
@@ -1336,40 +1347,13 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                         logger.info(
                             f"[GARMIN_SYNC] get_body_battery({current_date}) fallback RAW RESPONSE: {body_battery_data}"
                         )
-                        if (
-                            body_battery_data
-                            and isinstance(body_battery_data, list)
-                            and len(body_battery_data) > 0
+                        for entry in project_body_battery_fallback(
+                            body_battery_data, current_date
                         ):
-                            for bb_entry in body_battery_data:
-                                # Extract from bodyBatteryValuesArray if available
-                                bb_values = bb_entry.get("bodyBatteryValuesArray", [])
-                                bb_highest = (
-                                    max([v[1] for v in bb_values], default=None)
-                                    if bb_values
-                                    else None
-                                )
-                                bb_lowest = (
-                                    min([v[1] for v in bb_values], default=None)
-                                    if bb_values
-                                    else None
-                                )
-                                bb_current = bb_values[-1][1] if bb_values else None
-
-                                logger.info(
-                                    f"[GARMIN_SYNC] Body battery fallback entry: highest={bb_highest}, lowest={bb_lowest}, charged={bb_entry.get('charged')}, drained={bb_entry.get('drained')}"
-                                )
-                                health_data["body_battery"].append(
-                                    {
-                                        "date": current_date,
-                                        "body_battery_highest": bb_highest,
-                                        "body_battery_lowest": bb_lowest,
-                                        "body_battery_at_wake": None,  # Not available in this endpoint
-                                        "body_battery_charged": bb_entry.get("charged"),
-                                        "body_battery_drained": bb_entry.get("drained"),
-                                        "body_battery_current": bb_current,
-                                    }
-                                )
+                            logger.info(
+                                f"[GARMIN_SYNC] Body battery fallback entry: highest={entry['body_battery_highest']}, lowest={entry['body_battery_lowest']}, charged={entry['body_battery_charged']}, drained={entry['body_battery_drained']}"
+                            )
+                            health_data["body_battery"].append(entry)
                     except Exception as e:
                         logger.warning(
                             f"Could not retrieve body battery data for {current_date}: {e}"
@@ -1418,9 +1402,6 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                         for entry in body_composition_data["dateWeightList"]:
                             logger.info(
                                 f"[GARMIN_SYNC] Body composition entry ALL KEYS: {list(entry.keys())}"
-                            )
-                            logger.info(
-                                f"[GARMIN_SYNC] Body composition entry VALUES: weight={entry.get('weight')}, bodyFat={entry.get('bodyFat')}, boneMass={entry.get('boneMass')}, muscleMass={entry.get('muscleMass')}, bmi={entry.get('bmi')}, bodyWater={entry.get('bodyWater')}"
                             )
                             health_data["body_composition"].append(
                                 {
@@ -1530,7 +1511,9 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                         f"Could not retrieve training load/acute load data for {current_date}: {e}"
                     )
 
-        logger.debug(f"Health data before cleaning: {health_data}")
+        logger.debug(
+            f"Health data before cleaning (records per metric): {_metric_counts(health_data)}"
+        )
         # Clean and filter the data
         cleaned_health_data = clean_garmin_data(health_data)
 
@@ -1561,7 +1544,9 @@ async def get_health_and_wellness(request_data: HealthAndWellnessRequest):
                 },
             )
 
-        logger.debug(f"Final health data being returned: {final_health_data}")
+        logger.debug(
+            f"Final health data being returned (records per metric): {_metric_counts(final_health_data)}"
+        )
         logger.info(
             f"Successfully retrieved and cleaned health and wellness data for user {user_id} from {start_date} to {end_date}."
         )

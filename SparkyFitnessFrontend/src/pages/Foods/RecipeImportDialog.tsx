@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 import type {
   RecipeImportPreview,
@@ -107,13 +108,16 @@ function RecipeImportBrowser({
     (provider) => provider.id === providerId
   );
   const providerAvailable = !!selectedProvider?.is_active;
-  useEffect(() => {
-    if (!providers.isSuccess || providerAvailable) return;
-    generation.current += 1;
+  const providerUnavailable = providers.isSuccess && !providerAvailable;
+  useOnChange([providerId, providerUnavailable], () => {
+    if (!providerUnavailable) return;
     setPreview(null);
     setBusy(false);
     setInitialDismissed(true);
-  }, [providerId, providerAvailable, providers.isSuccess]);
+  });
+  useEffect(() => {
+    if (providerUnavailable) generation.current += 1;
+  }, [providerId, providerUnavailable]);
   const busy =
     providerAvailable &&
     (manualBusy ||

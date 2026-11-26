@@ -52,6 +52,16 @@ describe('visibleModuleTabs', () => {
     expect(ids(none, labsOff)).toContain('medications');
   });
 
+  it('shows the medications tab and its + menu entry only while its feature is on', () => {
+    const medicationsOff = (key: FeatureKey) => key !== 'medications';
+    const tabs = visibleModuleTabs(t, none, medicationsOff, cycleSettings);
+    expect(tabs.map((tab) => tab.id)).not.toContain('medications');
+    expect(
+      tabs.filter((tab) => tab.inPlusMenu).map((tab) => tab.id)
+    ).not.toContain('medications');
+    expect(ids(none, medicationsOff)).toContain('labs');
+  });
+
   it('names the cycle tab from its settings, also before they load', () => {
     const cycleTab = (settings: Parameters<typeof visibleModuleTabs>[3]) =>
       visibleModuleTabs(t, none, allOn, settings).find(
@@ -82,6 +92,30 @@ describe('visibleModuleTabs', () => {
     expect(plusMenu).toContain('labs');
   });
 
+  it('shows Challenges only while they are available', () => {
+    expect(ids(none)).not.toContain('challenges');
+    const withChallenges = visibleModuleTabs(
+      t,
+      none,
+      allOn,
+      cycleSettings,
+      true
+    );
+    expect(withChallenges.map((tab) => tab.id)).toContain('challenges');
+    expect(withChallenges.find((tab) => tab.id === 'challenges')).toMatchObject(
+      { path: '/challenges', label: 'Challenges', inPlusMenu: true }
+    );
+    expect(
+      visibleModuleTabs(
+        t,
+        new Set<WebHideableTabId>(['challenges']),
+        allOn,
+        cycleSettings,
+        true
+      ).map((tab) => tab.id)
+    ).not.toContain('challenges');
+  });
+
   it('gives each tab its label and path', () => {
     const labs = visibleModuleTabs(t, none, allOn, cycleSettings).find(
       (tab) => tab.id === 'labs'
@@ -93,6 +127,7 @@ describe('visibleModuleTabs', () => {
 describe('webTabFeature', () => {
   it('names the feature a tab belongs to', () => {
     expect(webTabFeature('labs')).toBe('labResults');
+    expect(webTabFeature('medications')).toBe('medications');
     expect(webTabFeature('goals')).toBeUndefined();
   });
 });
@@ -100,6 +135,7 @@ describe('webTabFeature', () => {
 describe('choiceFeatureLabel', () => {
   it('names a feature like its tab', () => {
     expect(choiceFeatureLabel(t, 'labResults')).toBe('Lab results');
+    expect(choiceFeatureLabel(t, 'medications')).toBe('Medications');
   });
 });
 

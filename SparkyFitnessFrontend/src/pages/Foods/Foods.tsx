@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { useOnChange } from '@/hooks/useOnChange';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -73,7 +74,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Food, FoodVariant } from '@/types/food';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useCustomNutrients } from '@/hooks/Foods/useCustomNutrients';
 import { formatServingLabel } from '@/utils/foodServing';
 import { usableFoodImages } from '@/utils/foodImages';
@@ -173,11 +174,11 @@ const FoodDatabaseManager = () => {
   } = useBulkSelection(selectedIdsFromTable);
 
   // Clear table selection when exiting edit mode
-  useEffect(() => {
+  useOnChange([isEditMode], () => {
     if (!isEditMode) {
       setRowSelection({});
     }
-  }, [isEditMode]);
+  });
 
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 

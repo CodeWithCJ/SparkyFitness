@@ -7,6 +7,8 @@ import type {
   NormalizedFood,
   NutritionLabelScanResult,
 } from '@workspace/shared';
+import { readSavedBarcodeResult } from '../../offline/foodLibrary';
+import { withOfflineFallback } from '../../offline/withOfflineFallback';
 import { addLog } from '../LogService';
 import { getActiveServerConfig, proxyHeadersToRecord } from '../storage';
 import { getAuthHeaders, notifySessionExpired } from './authService';
@@ -455,7 +457,7 @@ export async function _searchMealie(
 
 // --- V2 API (server-normalized) ---
 
-interface NormalizedFoodVariant {
+export interface NormalizedFoodVariant {
   id?: string;
   serving_size: number;
   serving_unit: string;
@@ -566,6 +568,8 @@ export function _transformNormalizedFood(
     provider_external_id: food.provider_external_id,
     recipe_has_nutrition: food.recipe_has_nutrition,
     recipe_servings: food.recipe_servings,
+    has_core_nutrition: food.has_core_nutrition,
+    has_calories: food.has_calories,
     is_custom: food.is_custom,
     ...mapVariant(displayVariant),
     allergens: displayVariant.allergens,
@@ -651,7 +655,25 @@ interface V2BarcodeResponse {
   food: NormalizedFood | null;
 }
 
+/**
+ * Looks a barcode up. With the server unreachable it is answered from the
+ * foods kept on the phone (the person's own foods with that barcode); a
+ * barcode the phone does not know stays an error, since only the server
+ * can ask the providers.
+ */
 export async function lookupBarcodeV2(
+  barcode: string,
+  providerId?: string,
+  signal?: AbortSignal
+): Promise<BarcodeLookupResult> {
+  return withOfflineFallback<BarcodeLookupResult>({
+    fetch: () => lookupBarcodeOnServer(barcode, providerId, signal),
+    read: (db, serverConfigId) =>
+      readSavedBarcodeResult(db, serverConfigId, barcode),
+  });
+}
+
+async function lookupBarcodeOnServer(
   barcode: string,
   providerId?: string,
   signal?: AbortSignal

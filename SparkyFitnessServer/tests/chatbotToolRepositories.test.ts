@@ -42,14 +42,8 @@ beforeEach(() => {
 });
 
 describe('coachRepository', () => {
-  it('getNutritionAggregates scopes by user and date range and returns the aggregate row', async () => {
-    const row = {
-      total_calories: '2100',
-      avg_protein: '80.1',
-      avg_carbs: '210.5',
-      avg_fat: '70.2',
-      entry_count: 12,
-    };
+  it('getNutritionAggregates scopes by user and date range and returns the entry count', async () => {
+    const row = { entry_count: 12 };
     mockClient.query.mockResolvedValue({ rows: [row] });
 
     const result = await coachRepository.getNutritionAggregates(
@@ -61,10 +55,28 @@ describe('coachRepository', () => {
     expect(result).toBe(row);
     const [sql, params] = mockClient.query.mock.calls[0];
     expect(sql).toContain('FROM food_entries');
-    expect(sql).toContain('NULLIF(serving_size, 0)');
+    expect(sql).toContain('COUNT(*)::int AS entry_count');
     expect(params).toEqual(['user-1', '2026-06-01', '2026-06-07']);
     expect(mockClient.release).toHaveBeenCalled();
+    // Averages moved to the per-day nutrition totals; no per-entry AVG is left.
+    expect(sql).not.toContain('AVG(');
   });
+
+  it.each([
+    ['getExerciseAggregates', ['user-1', '2026-06-01', '2026-06-07']],
+    ['get30DayExerciseAggregates', ['user-1', '2026-06-07']],
+  ] as const)(
+    '%s does not count Active Calories rows as workouts',
+    async (fn, args) => {
+      mockClient.query.mockResolvedValue({ rows: [{}] });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (coachRepository as any)[fn](...args);
+      const [sql] = mockClient.query.mock.calls[0];
+      expect(sql).toContain(
+        "FILTER (WHERE exercise_name IS DISTINCT FROM 'Active Calories')"
+      );
+    }
+  );
 
   it('getLatestWeightInRange returns null when no weight is logged', async () => {
     const result = await coachRepository.getLatestWeightInRange(
@@ -389,6 +401,11 @@ describe('exerciseEntry range/usage queries', () => {
     expect(sql).toContain('GROUP BY entry_date');
     expect(sql).toContain('entry_date BETWEEN $2 AND $3');
     expect(params).toEqual(['user-1', '2026-06-01', '2026-06-11']);
+    // Workouts only, and the bigint steps sum cast so node-pg returns a number.
+    expect(sql).toContain(
+      "COUNT(*) FILTER (WHERE exercise_name IS DISTINCT FROM 'Active Calories')"
+    );
+    expect(sql).toContain('SUM(COALESCE(steps, 0))::float8 AS steps');
   });
 
   it('getRecentExerciseEntries joins the exercise catalog', async () => {

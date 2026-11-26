@@ -3,7 +3,7 @@ import { emailLoginGuard } from './middleware/emailLoginGuard.js';
 import { passkeyLoginGuard } from './middleware/passkeyLoginGuard.js';
 import { magicLinkLoginGuard } from './middleware/magicLinkLoginGuard.js';
 import { restoreWriteFence } from './middleware/restoreWriteFence.js';
-import { UPLOAD_STAGING_DIR } from './utils/uploadsPath.js';
+import { UPLOAD_STAGING_DIR, isSafePathSegment } from './utils/uploadsPath.js';
 
 import fs from 'fs';
 import type { ServerResponse } from 'http';
@@ -88,6 +88,7 @@ import stravaRoutes from './routes/stravaRoutes.js';
 import hevyRoutes from './routes/hevyRoutes.js';
 import liftosaurRoutes from './routes/liftosaurRoutes.js';
 import intervalsRoutes from './routes/intervalsRoutes.js';
+import zeppBridgeRoutes from './routes/zeppBridgeRoutes.js';
 import moodRoutes from './routes/moodRoutes.js';
 import fastingRoutes from './routes/fastingRoutes.js';
 import adaptiveTdeeRoutes from './routes/adaptiveTdeeRoutes.js';
@@ -642,6 +643,13 @@ app.get(
   ],
   async (req, res, _next) => {
     const { exerciseId, imageFileName } = req.params;
+    // This route is public, and Express decodes %2F into '/', so both parts
+    // are refused unless each is one plain name. Otherwise an id such as
+    // '../../owner/repo/main/exercises/X' would fetch another repository's JSON
+    // below and save its picture outside the uploads folder.
+    if (!isSafePathSegment(exerciseId) || !isSafePathSegment(imageFileName)) {
+      return res.status(400).send('Invalid image path.');
+    }
 
     // Security: Resolve and normalize the path to prevent traversal attacks
     const exercisesBaseDir = path.resolve(UPLOADS_BASE_DIR, 'exercises');
@@ -674,12 +682,12 @@ app.get(
     // Check primary path
     let resolvedStatus = 'NOT_FOUND';
     if (
-      normalizedLocalPath.startsWith(normalizedBaseDir) &&
+      normalizedLocalPath.startsWith(`${normalizedBaseDir}${path.sep}`) &&
       fs.existsSync(localImagePath)
     ) {
       resolvedStatus = 'FOUND_IN_SUBFOLDER';
     } else if (
-      normalizedFlatPath.startsWith(normalizedBaseDir) &&
+      normalizedFlatPath.startsWith(`${normalizedBaseDir}${path.sep}`) &&
       fs.existsSync(flatImagePath)
     ) {
       // Fallback found
@@ -700,7 +708,11 @@ app.get(
     // per-user DB copy — different users may have locally diverged the images
     // array, and this route is unauthenticated so we have no user context.
     try {
-      const exercise = await freeExerciseDBService.getExerciseById(exerciseId);
+      const exercise = await freeExerciseDBService.getExerciseById(
+        // A route parameter is a string; the template it went into before
+        // read an array the same way.
+        String(exerciseId)
+      );
       if (!exercise) {
         return res.status(404).send('Exercise not found.');
       }
@@ -856,6 +868,7 @@ app.use('/api/integrations/strava', stravaRoutes);
 app.use('/api/integrations/hevy', hevyRoutes);
 app.use('/api/integrations/liftosaur', liftosaurRoutes);
 app.use('/api/integrations/intervals', intervalsRoutes);
+app.use('/api/integrations/zeppbridge', zeppBridgeRoutes);
 app.use('/api/mood', moodRoutes);
 app.use('/api/fasting', fastingRoutes);
 app.use('/api/admin', adminRoutes);

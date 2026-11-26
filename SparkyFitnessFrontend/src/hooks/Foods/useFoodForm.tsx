@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import { useAuth } from '@/hooks/useAuth';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -444,7 +445,7 @@ export function useCustomFoodForm({
   const [loading, setLoading] = useState(false);
   const partiallySavedFoodRef = useRef<Food | null>(null);
   const createProgressRef = useRef<FoodCreateProgress>({});
-  const initialPortionReferenceRef = useRef('');
+  const [initialPortionReference, setInitialPortionReference] = useState('');
   const [variantMeta, setVariantMeta] = useState<VariantMeta[]>([]);
   const [variants, setVariants] = useState<GroupedFormFoodVariant[]>([]);
   const portionReference =
@@ -453,8 +454,7 @@ export function useCustomFoodForm({
         variant.is_default && getFoodPortionUnit(variant.serving_unit)
     ) ?? variants.find((variant) => getFoodPortionUnit(variant.serving_unit));
   const referenceChanged =
-    portionReferenceSignature(portionReference) !==
-    initialPortionReferenceRef.current;
+    portionReferenceSignature(portionReference) !== initialPortionReference;
   const managedPortionRows = useMemo(
     () =>
       variants.map(
@@ -574,7 +574,7 @@ export function useCustomFoodForm({
     []
   );
 
-  const initializeVariantState = useCallback(
+  const applyVariantState = useCallback(
     (
       grouped: GroupedFormFoodVariant[],
       options: { autoScaleIntent: boolean; hasTrustedBase: boolean }
@@ -586,9 +586,7 @@ export function useCustomFoodForm({
             variant.is_default && getFoodPortionUnit(variant.serving_unit)
         ) ??
         withMatches.find((variant) => getFoodPortionUnit(variant.serving_unit));
-      initialPortionReferenceRef.current = portionReferenceSignature(reference);
-      partiallySavedFoodRef.current = null;
-      createProgressRef.current = {};
+      setInitialPortionReference(portionReferenceSignature(reference));
       const trustedSnapshot = deepClone(withMatches);
       const scalingSnapshot = deepClone(withMatches);
       setVariants(withMatches);
@@ -622,7 +620,20 @@ export function useCustomFoodForm({
     [applyProviderMatchesToVariants]
   );
 
-  const resetForm = useCallback(() => {
+  const initializeVariantState = useCallback(
+    (
+      grouped: GroupedFormFoodVariant[],
+      options: { autoScaleIntent: boolean; hasTrustedBase: boolean }
+    ) => {
+      partiallySavedFoodRef.current = null;
+      createProgressRef.current = {};
+      applyVariantState(grouped, options);
+    },
+    [applyVariantState]
+  );
+
+  // State-only reset, safe to run while rendering.
+  const resetFormState = useCallback(() => {
     setFormData({
       name: '',
       brand: '',
@@ -633,148 +644,195 @@ export function useCustomFoodForm({
     setImageItems([]);
     const defaultVariant = createDefaultFormVariant(customNutrients);
     const grouped = groupEquivalentVariants([defaultVariant]);
-    initializeVariantState(grouped, {
+    applyVariantState(grouped, {
       autoScaleIntent: false,
       hasTrustedBase: false,
     });
-  }, [customNutrients, initializeVariantState]);
+  }, [customNutrients, applyVariantState]);
 
-  const loadExistingVariants = useCallback(async () => {
-    if (!food?.id || !isUUID(food.id)) return;
+  const resetForm = useCallback(() => {
+    partiallySavedFoodRef.current = null;
+    createProgressRef.current = {};
+    resetFormState();
+  }, [resetFormState]);
 
-    try {
-      const data = await queryClient.fetchQuery(foodVariantsOptions(food.id));
-      let loaded: FormFoodVariant[] = [];
+  const foodId = food?.id;
+  const foodDefaultVariantId = food?.default_variant?.id;
+  const loadExistingVariants = useCallback((): Promise<void> => {
+    if (!foodId || !isUUID(foodId)) return Promise.resolve();
 
-      if (data && data.length > 0) {
-        let defaultVariant =
-          data.find((v) => v.is_default) ??
-          (food.default_variant
-            ? data.find((v) => v.id === food.default_variant?.id)
-            : undefined) ??
-          data[0];
+    return queryClient
+      .fetchQuery(foodVariantsOptions(foodId))
+      .then((data) => {
+        let loaded: FormFoodVariant[];
 
-        if (defaultVariant) {
-          defaultVariant = { ...defaultVariant, is_default: true };
+        if (data && data.length > 0) {
+          let defaultVariant =
+            data.find((v) => v.is_default) ??
+            (foodDefaultVariantId
+              ? data.find((v) => v.id === foodDefaultVariantId)
+              : undefined) ??
+            data[0];
+
+          if (defaultVariant) {
+            defaultVariant = { ...defaultVariant, is_default: true };
+            loaded = [
+              foodVariantToFormVariant({
+                ...defaultVariant,
+                is_locked: autoScaleOnlineImports,
+              }),
+              ...data
+                .filter((v) => v.id !== defaultVariant?.id)
+                .map((v) =>
+                  foodVariantToFormVariant({
+                    ...v,
+                    is_locked: autoScaleOnlineImports,
+                  })
+                ),
+            ];
+          } else {
+            loaded = data.map((v) =>
+              foodVariantToFormVariant({
+                ...v,
+                is_locked: autoScaleOnlineImports,
+              })
+            );
+          }
+        } else {
           loaded = [
-            foodVariantToFormVariant({
-              ...defaultVariant,
+            createDefaultFormVariant(customNutrients, {
               is_locked: autoScaleOnlineImports,
             }),
-            ...data
-              .filter((v) => v.id !== defaultVariant?.id)
-              .map((v) =>
-                foodVariantToFormVariant({
-                  ...v,
-                  is_locked: autoScaleOnlineImports,
-                })
-              ),
           ];
-        } else {
-          loaded = data.map((v) =>
-            foodVariantToFormVariant({
-              ...v,
-              is_locked: autoScaleOnlineImports,
-            })
-          );
         }
-      } else {
-        loaded = [
-          createDefaultFormVariant(customNutrients, {
-            is_locked: autoScaleOnlineImports,
-          }),
-        ];
-      }
 
-      const grouped = groupEquivalentVariants(loaded);
-      initializeVariantState(grouped, {
-        autoScaleIntent: autoScaleOnlineImports,
-        hasTrustedBase: true,
+        const grouped = groupEquivalentVariants(loaded);
+        initializeVariantState(grouped, {
+          autoScaleIntent: autoScaleOnlineImports,
+          hasTrustedBase: true,
+        });
+      })
+      .catch((err: unknown) => {
+        console.error('Error loading variants:', err);
+        const fallback = createDefaultFormVariant(customNutrients, {
+          is_locked: autoScaleOnlineImports,
+        });
+        const grouped = groupEquivalentVariants([fallback]);
+        initializeVariantState(grouped, {
+          autoScaleIntent: autoScaleOnlineImports,
+          hasTrustedBase: true,
+        });
       });
-    } catch (err) {
-      console.error('Error loading variants:', err);
-      const fallback = createDefaultFormVariant(customNutrients, {
-        is_locked: autoScaleOnlineImports,
-      });
-      const grouped = groupEquivalentVariants([fallback]);
-      initializeVariantState(grouped, {
-        autoScaleIntent: autoScaleOnlineImports,
-        hasTrustedBase: true,
-      });
-    }
   }, [
     autoScaleOnlineImports,
     customNutrients,
-    food?.default_variant,
-    food?.id,
+    foodDefaultVariantId,
+    foodId,
     initializeVariantState,
     queryClient,
   ]);
 
-  useEffect(() => {
-    if (food) {
-      setFormData({
-        name: food.name || '',
-        brand: food.brand || '',
-        is_quick_food: food.is_quick_food || false,
-        barcode: food.barcode || '',
-        notes: food.notes || '',
-      });
-      // A provider search result has no `images` array yet — its photo is the
-      // single upstream `image_url`. Seed the picker with it so importing
-      // keeps the image the user saw on the search card; the server downloads
-      // remote URLs into /uploads on save (see utils/imageLocalizer.ts).
-      // Precedence mirrors the server's resolveImageInput: stored array first,
-      // then the full-size URL, then the thumbnail.
-      const providerImage = food.image_source_url || food.image_url;
-      const existingImages = toSavedImages(food.images);
-      setImageItems(
-        existingImages.length > 0
-          ? existingImages
-          : toSavedImages(providerImage ? [providerImage] : [])
-      );
+  // Name, brand, barcode and notes belong to the form's identity (the food or
+  // the provider result being edited), not to the nutrient list. They are
+  // re-seeded only when that identity changes; a custom-nutrient refetch
+  // rebuilds the variants below but keeps what the user already typed.
+  const [formIdentity, setFormIdentity] = useState<
+    readonly [typeof food, typeof initialVariants] | null
+  >(null);
 
-      if (food.variants && food.variants.length > 0) {
-        const mapped = food.variants.map((v) =>
+  useOnChange(
+    [
+      autoScaleOnlineImports,
+      customNutrients,
+      food,
+      initialVariants,
+      initializeVariantState,
+      loadExistingVariants,
+      resetForm,
+    ],
+    () => {
+      const isNewForm =
+        formIdentity === null ||
+        formIdentity[0] !== food ||
+        formIdentity[1] !== initialVariants;
+      if (isNewForm) setFormIdentity([food, initialVariants]);
+
+      if (food) {
+        if (isNewForm) {
+          setFormData({
+            name: food.name || '',
+            brand: food.brand || '',
+            is_quick_food: food.is_quick_food || false,
+            barcode: food.barcode || '',
+            notes: food.notes || '',
+          });
+        }
+        // A provider search result has no `images` array yet — its photo is the
+        // single upstream `image_url`. Seed the picker with it so importing
+        // keeps the image the user saw on the search card; the server downloads
+        // remote URLs into /uploads on save (see utils/imageLocalizer.ts).
+        // Precedence mirrors the server's resolveImageInput: stored array first,
+        // then the full-size URL, then the thumbnail.
+        const providerImage = food.image_source_url || food.image_url;
+        const existingImages = toSavedImages(food.images);
+        setImageItems(
+          existingImages.length > 0
+            ? existingImages
+            : toSavedImages(providerImage ? [providerImage] : [])
+        );
+
+        if (food.variants && food.variants.length > 0) {
+          const mapped = food.variants.map((v) =>
+            foodVariantToFormVariant({
+              ...v,
+              is_locked: autoScaleOnlineImports,
+              glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
+            })
+          );
+          mapped.sort(
+            (a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0)
+          );
+
+          const grouped = groupEquivalentVariants(mapped);
+          applyVariantState(grouped, {
+            autoScaleIntent: autoScaleOnlineImports,
+            hasTrustedBase: true,
+          });
+        }
+      } else if (initialVariants && initialVariants.length > 0) {
+        if (isNewForm) {
+          setFormData({
+            name: '',
+            brand: '',
+            is_quick_food: false,
+            barcode: '',
+            notes: '',
+          });
+        }
+        const mapped = initialVariants.map((variant) =>
           foodVariantToFormVariant({
-            ...v,
+            ...variant,
             is_locked: autoScaleOnlineImports,
-            glycemic_index: sanitizeGlycemicIndexFrontend(v.glycemic_index),
           })
         );
         mapped.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0));
 
         const grouped = groupEquivalentVariants(mapped);
-        initializeVariantState(grouped, {
+        applyVariantState(grouped, {
           autoScaleIntent: autoScaleOnlineImports,
           hasTrustedBase: true,
         });
       } else {
-        loadExistingVariants();
+        resetFormState();
       }
-    } else if (initialVariants && initialVariants.length > 0) {
-      setFormData({
-        name: '',
-        brand: '',
-        is_quick_food: false,
-        barcode: '',
-        notes: '',
-      });
-      const mapped = initialVariants.map((variant) =>
-        foodVariantToFormVariant({
-          ...variant,
-          is_locked: autoScaleOnlineImports,
-        })
-      );
-      mapped.sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0));
+    }
+  );
 
-      const grouped = groupEquivalentVariants(mapped);
-      initializeVariantState(grouped, {
-        autoScaleIntent: autoScaleOnlineImports,
-        hasTrustedBase: true,
-      });
-    } else {
-      resetForm();
+  useEffect(() => {
+    partiallySavedFoodRef.current = null;
+    createProgressRef.current = {};
+    if (food && !(food.variants && food.variants.length > 0)) {
+      void loadExistingVariants();
     }
   }, [
     autoScaleOnlineImports,
@@ -1060,8 +1118,12 @@ export function useCustomFoodForm({
           updatedOriginalVariants[index] = exactSwap.originalPatch;
         }
 
-        updatedVariants[index] = newVariant;
-        setVariants(updatedVariants);
+        const replacedVariant = newVariant;
+        setVariants(
+          updatedVariants.map((variant, i) =>
+            i === index ? replacedVariant : variant
+          )
+        );
         setOriginalVariants(updatedOriginalVariants);
         setServingSizeScalingBaseVariants(
           updatedServingSizeScalingBaseVariants
@@ -1099,8 +1161,12 @@ export function useCustomFoodForm({
         if (aiSwap.showManualToast) {
           toast(buildManualConversionToast());
         }
-        updatedVariants[index] = newVariant;
-        setVariants(updatedVariants);
+        const swappedVariant = newVariant;
+        setVariants(
+          updatedVariants.map((variant, i) =>
+            i === index ? swappedVariant : variant
+          )
+        );
         setVariantMeta((prev) =>
           prev.map((m, i) => (i === index ? { ...m, ...metaPatch } : m))
         );
@@ -1209,8 +1275,12 @@ export function useCustomFoodForm({
       }
     }
 
-    updatedVariants[index] = newVariant;
-    setVariants(updatedVariants);
+    const replacedVariant = newVariant;
+    setVariants(
+      updatedVariants.map((variant, i) =>
+        i === index ? replacedVariant : variant
+      )
+    );
     if (Object.keys(metaPatch).length > 0) {
       setVariantMeta((prev) =>
         prev.map((m, i) => (i === index ? { ...m, ...metaPatch } : m))

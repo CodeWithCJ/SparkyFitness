@@ -202,17 +202,14 @@ const WorkoutAddScreen: React.FC<Props> = ({ navigation, route }) => {
 
   // Populate the edit form once after the preferences query settles so
   // the initial unit conversion is correct without overwriting later edits.
-  // Tracked in state (not a ref) so the loading gate below re-renders
-  // deterministically once population completes.
-  const [hasPopulatedEdit, setHasPopulatedEdit] = useState(false);
+  // The reducer marks the draft as populated, so the loading gate below
+  // re-renders from state without a second state update in the effect.
+  const hasPopulatedEdit = state.populatedFromSession === true;
   useEffect(() => {
     if (!isEditMode || !session || hasPopulatedEdit || isPreferencesLoading) {
       return;
     }
 
-    // One-time initialization from the async-loaded session; setting state
-    // synchronously here is intentional and mirrors the populate() side effect.
-    setHasPopulatedEdit(true);
     populate(session, weightUnit as 'kg' | 'lbs', distanceUnit);
   }, [
     isEditMode,

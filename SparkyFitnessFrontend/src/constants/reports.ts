@@ -1,3 +1,6 @@
+import { GLP1_CHECKIN_CATEGORY_NAMES } from '@workspace/shared';
+import { RESPIRATION_METRICS } from '@/pages/Reports/respirationMetrics';
+
 // Body Battery metric names as they come from Garmin sync
 export const BODY_BATTERY_METRICS = [
   'Body Battery Highest',
@@ -6,4 +9,12 @@ export const BODY_BATTERY_METRICS = [
   'Body Battery Charged',
   'Body Battery Drained',
   'Body Battery Current',
+];
+
+export const HIDDEN_CUSTOM_METRICS = [
+  ...BODY_BATTERY_METRICS,
+  ...RESPIRATION_METRICS, // Shown in dedicated Respiration card
+  'Average SpO2', // Shown in Sleep tab SpO2 card
+  'Average Overnight HRV', // Shown in Sleep tab HRV card
+  ...Object.values(GLP1_CHECKIN_CATEGORY_NAMES), // Shown in the Medications report
 ];

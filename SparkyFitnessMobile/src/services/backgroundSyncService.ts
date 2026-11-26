@@ -1,7 +1,9 @@
 import * as TaskManager from 'expo-task-manager';
 import * as BackgroundTask from 'expo-background-task';
+import type { FeatureChoicesResponse } from '@workspace/shared';
 import { registerAllOutboxHandlers } from '../offline/handlers';
 import { drainOutbox } from '../offline/syncEngine';
+import { accountGeneration as currentAccountGeneration } from '../offline/accountGeneration';
 import { remindAboutLongWaitingUploads } from '../offline/waitingReminder';
 import { AppState, Platform } from 'react-native';
 import { syncHealthData, HealthDataPayload } from './api/healthDataApi';
@@ -19,6 +21,7 @@ import {
 import {
   collectHealthData,
   sessionTelemetryOutcomesUsable,
+  runSerializedSync,
 } from './shared/healthSyncEngine';
 import { markEnrichedSessions } from './shared/enrichedSessionCache';
 import {
@@ -31,12 +34,23 @@ import {
   loadBackgroundSyncEnabled,
   savePendingHealthSyncCacheRefresh,
   consumePendingHealthSyncCacheRefresh,
+  getActiveServerConfigId,
 } from './storage';
 import { queryClient } from '../hooks/queryClient';
+import { featureChoicesQueryKey } from '../hooks/queryKeys';
 import { refreshHealthSyncCache } from '../hooks/refreshHealthSyncCache';
 import { isBackfillRunning, markSyncInFlight } from './autoSyncCoordinator';
 import { listMedications, listEntries } from './api/medicationsApi';
-import { reconcileMedicationReminders } from './medicationReminderService';
+import { fetchFeatureChoices } from './api/featureChoicesApi';
+import {
+  cancelMedicationRemindersOfOtherServers,
+  reconcileMedicationReminders,
+} from './medicationReminderService';
+import { retryPendingMedicationActions } from './medicationNotificationHandler';
+import {
+  medicationsFeatureState,
+  type MedicationsFeatureState,
+} from '../utils/medicationsFeatureState';
 import { getTodayDate } from '../utils/dateUtils';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import {
@@ -155,230 +169,363 @@ const runBackgroundSync = async (
   taskId: string,
   telemetry: TelemetryRunContext
 ): Promise<void> => {
-  const lastSyncedTimeStr = await loadLastSyncedTime();
-  addLog(
-    `[Background Sync] Last synced: ${lastSyncedTimeStr ?? 'never (defaulting to 24h ago)'}`,
-    'INFO'
-  );
-
-  // Session reads use the cursor minus a 6h overlap so late-arriving records are
-  // still picked up; day-aggregated reads align to start-of-day so complete daily
-  // values are sent, never partial-window slices (see buildBackgroundWindows).
-  const windows = buildBackgroundWindows(lastSyncedTimeStr);
-
-  addLog(
-    `[Background Sync] Syncing sessions from ${windows.sessionStart.toISOString()}, aggregated from ${windows.aggregatedStart.toISOString()} to ${windows.end.toISOString()}`,
-    'INFO'
-  );
-
-  // The clamp stops a stuck cursor from widening the window every cycle until
-  // it can never finish, but the span it drops is genuinely not read by the
-  // background task — say so rather than silently skipping it (#2191).
-  if (windows.clampedFrom) {
-    const skippedDays = Math.round(
-      (windows.sessionStart.getTime() - windows.clampedFrom.getTime()) /
-        (24 * 60 * 60 * 1000)
-    );
+  return runSerializedSync(async () => {
+    const lastSyncedTimeStr = await loadLastSyncedTime();
     addLog(
-      `[Background Sync] Last sync was ${MAX_BACKGROUND_LOOKBACK_DAYS}+ days ago — reading only the last ` +
-        `${MAX_BACKGROUND_LOOKBACK_DAYS} days. About ${skippedDays} earlier day(s) ` +
-        `(${windows.clampedFrom.toISOString()} to ${windows.sessionStart.toISOString()}) are NOT covered here. ` +
-        `Run History Import, or a manual sync with a wider time range, to bring them in.`,
-      'WARNING'
-    );
-  }
-
-  const allData: HealthDataPayload = [];
-  const collectedCounts: string[] = [];
-  let syncErrors = 0;
-
-  resetDatabaseInaccessibleCount();
-
-  // Filter to enabled metrics first (preferences are fast AsyncStorage reads)
-  const enabledMetrics: (typeof HEALTH_METRICS)[number][] = [];
-  for (const metric of HEALTH_METRICS) {
-    const isEnabled = await loadHealthPreference<boolean>(metric.preferenceKey);
-    if (isEnabled) {
-      enabledMetrics.push(metric);
-    }
-  }
-  const enabledMetricCount = enabledMetrics.length;
-  addLog(
-    `[Background Sync] Found ${enabledMetricCount} enabled metrics`,
-    'INFO'
-  );
-
-  if (enabledMetricCount === 0) {
-    await addLog(
-      '[Background Sync] No metrics enabled — nothing to sync',
+      `[Background Sync] Last synced: ${lastSyncedTimeStr ?? 'never (defaulting to 24h ago)'}`,
       'INFO'
     );
-    return;
-  }
 
-  const healthConnectInitialized = await initHealthConnect();
-  if (!healthConnectInitialized) {
-    await addLog(
-      '[Background Sync] Health provider initialization failed — skipping health reads and timestamp update; will retry next cycle. Check provider availability and health permissions in Settings.',
-      'WARNING'
+    // Session reads use the cursor minus a 6h overlap so late-arriving records are
+    // still picked up; day-aggregated reads align to start-of-day so complete daily
+    // values are sent, never partial-window slices (see buildBackgroundWindows).
+    const windows = buildBackgroundWindows(lastSyncedTimeStr);
+
+    addLog(
+      `[Background Sync] Syncing sessions from ${windows.sessionStart.toISOString()}, aggregated from ${windows.aggregatedStart.toISOString()} to ${windows.end.toISOString()}`,
+      'INFO'
     );
-    return;
-  }
 
-  const outcomes = await collectHealthData(
-    healthReadProvider,
-    enabledMetrics,
-    windows,
-    {
-      timeoutLabelPrefix: 'Background query',
-      telemetry,
-    }
-  );
-
-  // Staged telemetry keys are only committable when the session read itself
-  // completed; see sessionTelemetryOutcomesUsable.
-  const telemetryUsable = sessionTelemetryOutcomesUsable(outcomes);
-
-  for (const outcome of outcomes) {
-    const metric = outcome.metric;
-
-    if (outcome.status === 'skipped') {
-      syncErrors++;
+    // The clamp stops a stuck cursor from widening the window every cycle until
+    // it can never finish, but the span it drops is genuinely not read by the
+    // background task — say so rather than silently skipping it (#2191).
+    if (windows.clampedFrom) {
+      const skippedDays = Math.round(
+        (windows.sessionStart.getTime() - windows.clampedFrom.getTime()) /
+          (24 * 60 * 60 * 1000)
+      );
       addLog(
-        `[Background Sync] Skipping ${metric.defaultLabel} because an earlier metric timed out; will retry next cycle`,
+        `[Background Sync] Last sync was ${MAX_BACKGROUND_LOOKBACK_DAYS}+ days ago — reading only the last ` +
+          `${MAX_BACKGROUND_LOOKBACK_DAYS} days. About ${skippedDays} earlier day(s) ` +
+          `(${windows.clampedFrom.toISOString()} to ${windows.sessionStart.toISOString()}) are NOT covered here. ` +
+          `Run History Import, or a manual sync with a wider time range, to bring them in.`,
         'WARNING'
       );
-    } else if (outcome.status === 'fulfilled') {
-      if (outcome.data.length > 0) {
-        // Per-record push: spreading a day of per-sample records (e.g.
-        // continuous heart rate) into one call can exceed the engine's
-        // argument limit and throw RangeError.
-        for (const record of outcome.data) {
-          allData.push(record);
-        }
-        collectedCounts.push(`${metric.id}: ${outcome.data.length}`);
+    }
+
+    const allData: HealthDataPayload = [];
+    const collectedCounts: string[] = [];
+    let syncErrors = 0;
+
+    resetDatabaseInaccessibleCount();
+
+    // Filter to enabled metrics first (preferences are fast AsyncStorage reads)
+    const enabledMetrics: (typeof HEALTH_METRICS)[number][] = [];
+    for (const metric of HEALTH_METRICS) {
+      const isEnabled = await loadHealthPreference<boolean>(
+        metric.preferenceKey
+      );
+      if (isEnabled) {
+        enabledMetrics.push(metric);
       }
-      if (outcome.error) {
-        syncErrors++;
+    }
+    const enabledMetricCount = enabledMetrics.length;
+    addLog(
+      `[Background Sync] Found ${enabledMetricCount} enabled metrics`,
+      'INFO'
+    );
+
+    if (enabledMetricCount === 0) {
+      await addLog(
+        '[Background Sync] No metrics enabled — nothing to sync',
+        'INFO'
+      );
+      return;
+    }
+
+    const healthConnectInitialized = await initHealthConnect();
+    if (!healthConnectInitialized) {
+      await addLog(
+        '[Background Sync] Health provider initialization failed — skipping health reads and timestamp update; will retry next cycle. Check provider availability and health permissions in Settings.',
+        'WARNING'
+      );
+      return;
+    }
+
+    const configId =
+      typeof getActiveServerConfigId === 'function'
+        ? await getActiveServerConfigId()
+        : null;
+    const runId =
+      typeof healthReadProvider.beginRun === 'function'
+        ? (healthReadProvider.beginRun(configId) ?? undefined)
+        : undefined;
+
+    try {
+      const outcomes = await collectHealthData(
+        healthReadProvider,
+        enabledMetrics,
+        windows,
+        {
+          timeoutLabelPrefix: 'Background query',
+          telemetry,
+          configId,
+          runId,
+        }
+      );
+
+      // Staged telemetry keys are only committable when the session read itself
+      // completed; see sessionTelemetryOutcomesUsable.
+      const telemetryUsable = sessionTelemetryOutcomesUsable(outcomes);
+
+      for (const outcome of outcomes) {
+        const metric = outcome.metric;
+
+        if (outcome.status === 'skipped') {
+          syncErrors++;
+          addLog(
+            `[Background Sync] Skipping ${metric.defaultLabel} because an earlier metric timed out; will retry next cycle`,
+            'WARNING'
+          );
+        } else if (outcome.status === 'fulfilled') {
+          if (outcome.data.length > 0) {
+            // Per-record push: spreading a day of per-sample records (e.g.
+            // continuous heart rate) into one call can exceed the engine's
+            // argument limit and throw RangeError.
+            for (const record of outcome.data) {
+              allData.push(record);
+            }
+            collectedCounts.push(`${metric.id}: ${outcome.data.length}`);
+          }
+          if (outcome.error) {
+            syncErrors++;
+            addLog(
+              `[Background Sync] ${metric.defaultLabel} completed with read errors: ${outcome.error}`,
+              'WARNING'
+            );
+          }
+        } else {
+          syncErrors++;
+          addLog(
+            `[Background Sync] Error syncing ${metric.defaultLabel}: ${outcome.error}`,
+            'ERROR'
+          );
+        }
+      }
+
+      const inaccessibleCount = getDatabaseInaccessibleCount();
+
+      // One line for the whole run instead of one error per metric. The reads
+      // already surfaced errors, which hold the cursor — this just makes the cause
+      // legible in the exported diagnostic (#2191).
+      const clientUnavailableCount = getClientUnavailableCount();
+      if (clientUnavailableCount > 0) {
         addLog(
-          `[Background Sync] ${metric.defaultLabel} completed with read errors: ${outcome.error}`,
+          `[Background Sync] Health Connect was unavailable for ${clientUnavailableCount} metric read(s) ` +
+            `(the client disconnects when the app is backgrounded or the provider updates). ` +
+            `Reconnect was attempted once; unread metrics hold the sync timestamp and retry next cycle.`,
           'WARNING'
         );
       }
-    } else {
-      syncErrors++;
-      addLog(
-        `[Background Sync] Error syncing ${metric.defaultLabel}: ${outcome.error}`,
-        'ERROR'
-      );
+
+      if (inaccessibleCount > 0 && allData.length === 0) {
+        await addLog(
+          `[Background Sync] Device appears locked — ${inaccessibleCount} HealthKit query(s) returned database inaccessible ` +
+            `(${enabledMetricCount} metric(s) enabled). Skipping timestamp update; will retry next cycle.`,
+          'WARNING'
+        );
+        return;
+      }
+
+      if (inaccessibleCount > 0) {
+        addLog(
+          `[Background Sync] Partial data collected — ${inaccessibleCount} query(s) hit database inaccessible, ` +
+            `but ${allData.length} records were still collected. Proceeding with sync.`,
+          'WARNING'
+        );
+      }
+
+      const currentConfigId =
+        typeof getActiveServerConfigId === 'function'
+          ? await getActiveServerConfigId()
+          : null;
+      if (currentConfigId !== configId) {
+        healthReadProvider.cancelWaterDeletionRun?.(runId);
+        await addLog(
+          '[Background Sync] Active account changed during sync; aborted.',
+          'WARNING'
+        );
+        return;
+      }
+
+      if (allData.length > 0) {
+        addLog(
+          `[Background Sync] Collected ${allData.length} records (${collectedCounts.join(', ')})`,
+          'INFO'
+        );
+        addLog(
+          `[Background Sync] Sending ${allData.length} records to server`,
+          'INFO'
+        );
+        const uploadSummary = await syncHealthData(allData);
+        // Only a fully accepted upload commits the telemetry reuse cache; see the
+        // invariant on markEnrichedSessions.
+        if ((uploadSummary?.recordErrors?.length ?? 0) === 0) {
+          if (telemetryUsable) {
+            await markEnrichedSessions(telemetry.drainCollected());
+          }
+          await healthReadProvider.commitRun?.(runId);
+        }
+        await refreshHealthSyncCacheWhenActive();
+
+        if (syncErrors > 0) {
+          addLog(
+            `[Background Sync] Skipping timestamp update — ${syncErrors} metric(s) had errors, will retry from same window`,
+            'WARNING'
+          );
+        } else {
+          await saveLastSyncedTime();
+        }
+
+        await addLog(
+          `[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`,
+          'INFO'
+        );
+      } else {
+        await healthReadProvider.commitRun?.(runId);
+        await addLog(
+          `[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`,
+          'INFO'
+        );
+      }
+
+      // Outbound phase: SparkyFitness diary → OS health store (Health Connect on
+      // Android, HealthKit on iOS; resolved via ./writeback). Runs regardless of
+      // inbound results and in its own try/catch so a writeback failure never affects
+      // the inbound sync or its cursor above.
+      try {
+        await runWriteback();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await addLog(
+          `[Background Sync] Writeback phase failed: ${message}`,
+          'ERROR'
+        );
+      }
+
+      try {
+        await reconcileMedicationRemindersInBackground();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await addLog(
+          `[Background Sync] Medication reminder reconciliation failed: ${message}`,
+          'ERROR'
+        );
+      }
+    } finally {
+      if (runId != null) {
+        healthReadProvider.cancelWaterDeletionRun?.(runId);
+      }
     }
-  }
+  });
+};
 
-  const inaccessibleCount = getDatabaseInaccessibleCount();
+/**
+ * Whether a newer read of the feature choices than the one this run started at
+ * `readStartedAt` says something else about Medications: the app, running in
+ * the same JS runtime (a HealthKit observer run, or a manual sync), learned
+ * it meanwhile and reconciles the reminders itself. A headless run has an
+ * empty query cache, so its own read stands.
+ */
+const medicationsStateChangedSince = (
+  readStartedAt: number,
+  featureState: MedicationsFeatureState
+): boolean => {
+  const cached = queryClient.getQueryState<FeatureChoicesResponse | null>(
+    featureChoicesQueryKey
+  );
+  if (!cached || cached.data === undefined) return false;
+  if (cached.dataUpdatedAt <= readStartedAt) return false;
+  return medicationsFeatureState(cached.data) !== featureState;
+};
 
-  // One line for the whole run instead of one error per metric. The reads
-  // already surfaced errors, which hold the cursor — this just makes the cause
-  // legible in the exported diagnostic (#2191).
-  const clientUnavailableCount = getClientUnavailableCount();
-  if (clientUnavailableCount > 0) {
-    addLog(
-      `[Background Sync] Health Connect was unavailable for ${clientUnavailableCount} metric read(s) ` +
-        `(the client disconnects when the app is backgrounded or the provider updates). ` +
-        `Reconnect was attempted once; unread metrics hold the sync timestamp and retry next cycle.`,
-      'WARNING'
-    );
-  }
-
-  if (inaccessibleCount > 0 && allData.length === 0) {
-    await addLog(
-      `[Background Sync] Device appears locked — ${inaccessibleCount} HealthKit query(s) returned database inaccessible ` +
-        `(${enabledMetricCount} metric(s) enabled). Skipping timestamp update; will retry next cycle.`,
-      'WARNING'
-    );
+/**
+ * Reconciles medication reminders against fresh server schedules. With
+ * reminders disabled the fetches are skipped but the reconcile still runs so
+ * any pending reminders get cancelled. Medications turned off in Settings →
+ * Features (#3487) cancels them the same way. When the choices cannot be read
+ * the active server's reminders are left exactly as they are: a run that
+ * cannot tell must not cancel reminders the person wants, nor bring back ones
+ * they turned off. Those of a server switched away from still stop, and
+ * waiting Taken / Skip presses are replayed. A reconcile is the last caller's
+ * (see `reconcileMedicationReminders`), so this run never reconciles on a
+ * state the app has read differently since: the app owns that one.
+ */
+const reconcileMedicationRemindersInBackground = async (): Promise<void> => {
+  const prefs = useAppPreferencesStore.getState();
+  if (!prefs.medicationRemindersEnabled || !prefs.notificationsEnabled) {
+    await reconcileMedicationReminders([], [], { active: false });
     return;
   }
 
-  if (inaccessibleCount > 0) {
-    addLog(
-      `[Background Sync] Partial data collected — ${inaccessibleCount} query(s) hit database inaccessible, ` +
-        `but ${allData.length} records were still collected. Proceeding with sync.`,
+  // The passes below are bound to the account signed in now and to the
+  // server active now. One read before an account change (another server, or
+  // another account on the same one) is dropped when it reaches the queue,
+  // and one that runs after a switch to another server does nothing (an
+  // unreadable id binds nothing). The reads below follow whichever account
+  // is signed in when each one is sent, so the account is taken before them.
+  const accountGeneration = currentAccountGeneration();
+  let serverId: string | null | undefined;
+  try {
+    serverId =
+      typeof getActiveServerConfigId === 'function'
+        ? await getActiveServerConfigId()
+        : undefined;
+  } catch {
+    serverId = undefined;
+  }
+  const readStartedAt = Date.now();
+  let featureState: MedicationsFeatureState = 'unknown';
+  let readFailure = 'empty answer';
+  try {
+    featureState = medicationsFeatureState(await fetchFeatureChoices());
+  } catch (error) {
+    readFailure = error instanceof Error ? error.message : String(error);
+  }
+  if (featureState === 'unknown') {
+    await addLog(
+      `[Background Sync] Medication reminders left as they are: feature choices could not be read (${readFailure})`,
       'WARNING'
     );
+    // The reconcile that would replay waiting presses is not run; the replay
+    // checks whose they are and does nothing when none wait.
+    await retryPendingMedicationActions();
+    await cancelMedicationRemindersOfOtherServers();
+    return;
   }
 
-  if (allData.length > 0) {
-    addLog(
-      `[Background Sync] Collected ${allData.length} records (${collectedCounts.join(', ')})`,
-      'INFO'
-    );
-    addLog(
-      `[Background Sync] Sending ${allData.length} records to server`,
-      'INFO'
-    );
-    const uploadSummary = await syncHealthData(allData);
-    // Only a fully accepted upload commits the telemetry reuse cache; see the
-    // invariant on markEnrichedSessions.
-    if (telemetryUsable && (uploadSummary?.recordErrors?.length ?? 0) === 0) {
-      await markEnrichedSessions(telemetry.drainCollected());
+  const deferToNewerRead = async (): Promise<boolean> => {
+    if (!medicationsStateChangedSince(readStartedAt, featureState)) {
+      return false;
     }
-    await refreshHealthSyncCacheWhenActive();
-
-    if (syncErrors > 0) {
-      addLog(
-        `[Background Sync] Skipping timestamp update — ${syncErrors} metric(s) had errors, will retry from same window`,
-        'WARNING'
-      );
-    } else {
-      await saveLastSyncedTime();
-    }
-
     await addLog(
-      `[Background Sync] Sync completed successfully${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`,
-      'INFO'
+      '[Background Sync] Medication reminders left to the app: it read the feature choices again meanwhile',
+      'DEBUG'
     );
-  } else {
-    await addLog(
-      `[Background Sync] No health data collected to sync${syncErrors > 0 ? ` (${syncErrors} metric(s) had errors)` : ''}`,
-      'INFO'
-    );
+    return true;
+  };
+
+  if (featureState === 'off') {
+    if (await deferToNewerRead()) return;
+    await reconcileMedicationReminders([], [], {
+      active: false,
+      serverId,
+      accountGeneration,
+    });
+    return;
   }
 
-  // Outbound phase: SparkyFitness diary → OS health store (Health Connect on
-  // Android, HealthKit on iOS; resolved via ./writeback). Runs regardless of
-  // inbound results and in its own try/catch so a writeback failure never affects
-  // the inbound sync or its cursor above.
-  try {
-    await runWriteback();
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await addLog(
-      `[Background Sync] Writeback phase failed: ${message}`,
-      'ERROR'
-    );
-  }
-
-  // Reconcile medication reminders against fresh server schedules. With
-  // reminders disabled the fetches are skipped but the reconcile still runs
-  // so any pending reminders get cancelled.
-  try {
-    const prefs = useAppPreferencesStore.getState();
-    const remindersActive =
-      prefs.medicationRemindersEnabled && prefs.notificationsEnabled;
-    const today = getTodayDate();
-    const [medications, entries] = remindersActive
-      ? await Promise.all([
-          listMedications({ activeOnly: true }),
-          listEntries({ fromDate: today, toDate: today }),
-        ])
-      : [[], []];
-    await reconcileMedicationReminders(medications, entries);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await addLog(
-      `[Background Sync] Medication reminder reconciliation failed: ${message}`,
-      'ERROR'
-    );
-  }
+  const today = getTodayDate();
+  const [medications, entries] = await Promise.all([
+    listMedications({ activeOnly: true }),
+    listEntries({ fromDate: today, toDate: today }),
+  ]);
+  if (await deferToNewerRead()) return;
+  await reconcileMedicationReminders(medications, entries, {
+    active: true,
+    serverId,
+    accountGeneration,
+  });
 };
 
 TaskManager.defineTask(BACKGROUND_TASK_NAME, async () => {

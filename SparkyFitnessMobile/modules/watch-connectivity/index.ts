@@ -296,9 +296,18 @@ export interface WatchContextPayload {
    * Settings → Apple Watch: the watch app's pages in swipe order, and the ones
    * turned off (`WATCH_PAGE_KEYS` names). Missing reads as the factory order
    * with nothing hidden; the watch carries the last values forward.
+   * `hiddenPages` also holds the pages of features that are off in the app
+   * (`watchHiddenPagesForContext`), and is left out, with `offFeatures`,
+   * while the app does not know its feature choices.
    */
   pageOrder?: string[] | null;
   hiddenPages?: string[] | null;
+  /**
+   * Optional features (#3487) the watch has pages or tiles of that are off in
+   * the app (`medications`). Empty means none is off; missing means an older
+   * phone build or choices not known yet, and the watch keeps its last value.
+   */
+  offFeatures?: string[];
   /**
    * The rows the watch's Goals page lists under the calorie ring, in order
    * (Settings → Apple Watch). Day-scoped like the calorie figures: null when
@@ -1081,6 +1090,37 @@ export interface WatchRouteSyncPayload {
 }
 
 /**
+ * The wearer's custom complications (`complicationConfig`): what each one
+ * shows and how it looks. Strings other than `name` are wire values; see
+ * `src/utils/watchComplications.ts`. `revision` is epoch ms; the watch keeps
+ * the newest.
+ */
+export interface WatchComplicationConfigPayload {
+  revision: number;
+  /** Refresh the watch's picker and faces even if the list is unchanged. */
+  reload?: boolean;
+  /**
+   * The colour and icon the wearer chose for each built-in complication
+   * (`calorieGoal`, `proteinGoal`, `carbsGoal`, `fatGoal`, `water`, `fasting`,
+   * `steps`) and for each part of Daily Energy Goal (`energyCalories`,
+   * `energyProtein`, `energyCarbs`, `energyFat`, colour only); only the parts
+   * they changed. Empty puts them all back.
+   */
+  builtIns?: { key: string; color?: string; icon?: string }[];
+  definitions: {
+    id: string;
+    name: string;
+    source: string;
+    format: string;
+    gauge: boolean;
+    color: string;
+    icon: string;
+    /** The second and third values, shown with the first. */
+    extras: { source: string; format: string; color: string; icon: string }[];
+  }[];
+}
+
+/**
  * What the watch's route library holds (`routeLibrary`): each stored route
  * with the `updatedAt` it was stored at, the ids it turned away (`full` when
  * the library is at `capacity`, `storage` when the file could not be written)
@@ -1381,6 +1421,12 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
   sendRoute(sync: WatchRouteSyncPayload): Promise<void>;
   /** Takes a route out of the watch's library (queued). */
   removeRoute(routeId: string): Promise<void>;
+  /**
+   * Sends the wearer's custom complications and built-in style overrides to
+   * the watch (queued on iOS, DataClient + live message on Android / Wear OS).
+   * Only the newest list matters, so a copy still waiting is replaced.
+   */
+  sendComplicationConfig(config: WatchComplicationConfigPayload): Promise<void>;
   /** Pause, resume, lap, finish or discard for the run on the watch, or a switch change (`autoPauseOn`/`Off`, `voiceCuesOn`/`Off`, `paceAlertOn`/`Off`, `heartRateAlertOn`/`Off`). */
   sendRunControl(control: WatchRunControlPayload): Promise<void>;
   /** Tells the watch the phone is saying cue `id`, so it stays quiet. */
@@ -1585,6 +1631,17 @@ declare class WatchConnectivityModuleType extends NativeModule<WatchConnectivity
    * side may add one.
    */
   openGarminApp?(deviceId: string): Promise<string>;
+  /**
+   * Android only: whether SparkyFitness has Notification Access so the Wear OS
+   * Now Playing screen can display track title and artist from the phone's
+   * active media session. Transport and volume controls work without this.
+   */
+  isMediaAccessEnabled?(): Promise<boolean>;
+  /**
+   * Android only: opens Android's Notification Access settings screen so the
+   * user can grant or revoke media session metadata access for Wear OS.
+   */
+  openMediaAccessSettings?(): Promise<void>;
 }
 
 const WatchConnectivityModule: WatchConnectivityModuleType | null =

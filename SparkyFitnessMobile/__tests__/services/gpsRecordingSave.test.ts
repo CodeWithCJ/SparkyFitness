@@ -26,6 +26,7 @@ import {
 import type { RecordedPoint } from '../../src/utils/gpsRecording';
 import type { RecordingSession } from '../../src/services/gpsRecordingService';
 import type { Exercise } from '../../src/types/exercise';
+import * as dateUtils from '../../src/utils/dateUtils';
 
 jest.mock('../../src/services/api/exerciseApi');
 jest.mock('../../src/services/api/shoesApi');
@@ -146,6 +147,27 @@ describe('resolveRecordingExercise', () => {
 });
 
 describe('saveRecordedActivity', () => {
+  it('sends the zone read with the date, even if the zone changes during the save', async () => {
+    const zone = jest
+      .spyOn(dateUtils, 'getDeviceTimezone')
+      .mockReturnValue('America/Los_Angeles');
+    mockedSearch.mockImplementationOnce(async (name: string) => {
+      // The phone lands in another zone while the save is under way.
+      zone.mockReturnValue('Asia/Tokyo');
+      return [{ id: 'ex-1', name, modality: 'duration_distance' } as Exercise];
+    });
+    try {
+      await saveRecordedActivity(session, points, 'km');
+      expect(mockedCreateEntry.mock.calls[0][0]).toMatchObject({
+        entry_date: '2026-10-06',
+        entry_time: '07:05',
+        record_timezone: 'America/Los_Angeles',
+      });
+    } finally {
+      zone.mockRestore();
+    }
+  });
+
   it('logs the entry, then attaches the route and per-km splits', async () => {
     const saved = await saveRecordedActivity(session, points, 'km');
 
@@ -158,6 +180,8 @@ describe('saveRecordedActivity', () => {
       exercise_id: 'ex-1',
       entry_date: '2026-10-06',
       entry_time: '07:05',
+      // The time is read on this phone, so its zone travels with it.
+      record_timezone: expect.any(String),
       duration_minutes: 25,
     });
     expect(entry.distance).toBeCloseTo(2.5, 2);
@@ -165,7 +189,11 @@ describe('saveRecordedActivity', () => {
     expect(entry).not.toHaveProperty('calories_burned');
     expect(entry.sets?.[0]).toMatchObject({ duration: 1500 });
 
-    expect(markRecordingSaved).toHaveBeenCalledWith('entry-1', null);
+    expect(markRecordingSaved).toHaveBeenCalledWith(
+      session.id,
+      'entry-1',
+      null
+    );
     const [entryId, track] = mockedAttach.mock.calls[0];
     expect(entryId).toBe('entry-1');
     expect(track.points).toHaveLength(11);
@@ -221,7 +249,11 @@ describe('saveRecordedActivity', () => {
     await expect(saveRecordedActivity(session, points, 'km')).rejects.toThrow(
       'offline'
     );
-    expect(markRecordingSaved).toHaveBeenCalledWith('entry-1', null);
+    expect(markRecordingSaved).toHaveBeenCalledWith(
+      session.id,
+      'entry-1',
+      null
+    );
   });
 
   it('attaches watch heart rate to the saved entry', async () => {
@@ -259,6 +291,41 @@ describe('saveRecordedActivity', () => {
       entryId: 'entry-1',
       entryDate: '2026-10-06',
     });
+  });
+});
+
+describe('saveRecordedActivity with no GPS fix', () => {
+  it.each([
+    ['no points', [] as RecordedPoint[]],
+    ['a single point', points.slice(0, 1)],
+  ])(
+    'saves the time with no route or distance when there are %s',
+    async (_label, few) => {
+      const saved = await saveRecordedActivity(session, few, 'km');
+
+      expect(saved.entryId).toBe('entry-1');
+      const entry = mockedCreateEntry.mock.calls[0][0];
+      expect(entry.distance).toBeNull();
+      expect(entry.duration_minutes).toBe(25);
+      // The server needs two points for a route; sending fewer failed every
+      // save and left the entry behind (#3470).
+      expect(mockedAttach).not.toHaveBeenCalled();
+      expect(mockedLearnOutdoor).not.toHaveBeenCalled();
+    }
+  );
+
+  it('still attaches the watch heart rate', async () => {
+    mockedHeartRate.mockResolvedValueOnce([
+      { t: T0, bpm: 120 },
+      { t: T0 + 60_000, bpm: 130 },
+    ]);
+
+    await saveRecordedActivity(session, [], 'km');
+
+    expect(mockedTelemetry).toHaveBeenCalledWith(
+      'entry-1',
+      expect.objectContaining({ hrSamples: expect.any(Array) })
+    );
   });
 });
 

@@ -14,7 +14,8 @@
     "wellness": "Bienestar",
     "symptoms": "Síntomas",
     "sparkyFitnessV": "SparkyFitness v{{version}}",
-    "labs": "Resultados de laboratorio"
+    "labs": "Resultados de laboratorio",
+    "challenges": "Desafíos"
   },
   "aboutDialog": {
     "title": "Sobre SparkyFitness",
@@ -797,7 +798,7 @@
     "editFoodDetailsDescription": "Ajusta los detalles del alimento antes de añadirlo a tu base de datos personalizada.",
     "addNewFood": "Añadir nuevo alimento",
     "addNewFoodDescription": "Introduce los detalles de un nuevo alimento para añadirlo a tu base de datos.",
-    "scanBarcodeDescription": "Coloca el código de barras del producto frente a la cámara.",
+    "scanBarcodeDescription": "Coloca el código de barras del producto frente a la cámara o usa una foto del mismo.",
     "importFromCSVDescription": "Importa un archivo CSV para añadir varios alimentos de una vez.",
     "yourFoods": "Tus alimentos",
     "yourMeals": "Tus comidas",
@@ -1011,11 +1012,11 @@
       "canUseExerciseLibrary": "Puede usar mi biblioteca de ejercicios y entrenamientos",
       "canUseExerciseLibraryHelp": "Permite al delegado ver y utilizar tus ejercicios personalizados y rutinas preestablecidas al cambiar de contexto. No otorga acceso a los registros del diario ni a la configuración del perfil.",
       "canManageCheckin": "Puede gestionar los datos de seguimiento",
-      "canManageCheckinHelp": "Permite al delegado registrar peso, medidas corporales, fotos de progreso, registros de sueño, estado de ánimo y estado de ayuno en tu nombre. Los registros del diario están bloqueados. Otorga acceso al perfil en modo de solo lectura.",
+      "canManageCheckinHelp": "Permite que el delegado registre el peso, las medidas corporales, las fotos de progreso, los registros de sueño, los registros de estado de ánimo y el estado de ayuno en tu nombre. También le da acceso a tus resultados de laboratorio. Los registros del diario están bloqueados. Proporciona acceso de solo lectura al perfil.",
       "canManageMedications": "Puede gestionar medicamentos",
       "canManageMedicationsHelp": "Permite al delegado registrar medicamentos, dosis, planes de titulación y zonas de inyección en tu nombre. Los registros del diario están bloqueados. Otorga acceso al perfil en modo de solo lectura.",
       "canViewReports": "Puede ver informes",
-      "canViewReportsHelp": "Permite al delegado ver gráficos, estadísticas y registros históricos en tu panel. No se conceden privilegios de escritura. Otorga acceso al perfil en modo de solo lectura.",
+      "canViewReportsHelp": "Permite que el delegado vea gráficos, estadísticas y registros históricos en tu panel. También le da acceso de solo lectura a tus resultados de laboratorio. No se otorgan permisos de escritura. Proporciona acceso de solo lectura al perfil.",
       "shareExternalProviders": "Compartir proveedores de datos externos",
       "shareExternalProvidersHelp": "Permite al delegado buscar alimentos/ejercicios utilizando tus proveedores de API configurados (p. ej., FatSecret, USDA). Las integraciones de salud (Garmin, Fitbit, etc.) son estrictamente privadas y nunca se comparten.",
       "accessEndDate": "Fecha de finalización del acceso (opcional)",
@@ -1508,8 +1509,7 @@
       "resetSuccessTitle": "Restablecimiento del perfil",
       "switchInFeatures": "El seguimiento del ciclo menstrual se activa o desactiva en Funciones.",
       "onInFeatures": "El seguimiento del ciclo está activo. Puedes desactivarlo en Funciones.",
-      "offInFeatures": "El seguimiento del ciclo está desactivado. Actívalo en Funciones.",
-      "openFeatures": "Abrir Funciones"
+      "offInFeatures": "El seguimiento del ciclo está desactivado. Actívalo en Funciones."
     },
     "nutrientGoalDirection": {
       "title": "Orientación del objetivo de nutrientes",
@@ -1540,7 +1540,10 @@
       "remainingActivitySeparated": "Objetivo diario - Consumido + Actividad (Pasos y entrenamientos, sin TMB)",
       "activitySeparatedFootnote": "Tras guardar, la línea base adaptativa excluye la actividad histórica; los pasos y entrenamientos de hoy se acreditan una vez sin TMB. Los valores de vista previa derivados del servidor utilizan tu configuración guardada.",
       "remainingTdeeWeekly": "TDEE proyectado + Ajuste semanal − Consumido",
-      "adaptiveEstimateFootnote": "* Ajusta gradualmente tu Objetivo Diario utilizando estimaciones de los registros de alimentos y peso. Las fluctuaciones de peso y los registros incompletos agregan incertidumbre."
+      "adaptiveEstimateFootnote": "* Ajusta gradualmente tu Objetivo Diario utilizando estimaciones de los registros de alimentos y peso. Las fluctuaciones de peso y los registros incompletos agregan incertidumbre.",
+      "burnedAdaptive": "Se muestra como referencia. Tu objetivo adaptativo ya incluye tu actividad.",
+      "netAdaptive": "No se usa para Restante. Activa \"Contar calorías de actividad por separado\" a continuación para abonar la actividad de hoy.",
+      "netAdaptivePercentage": "No se usa para Restante. Para abonar la actividad de hoy, elige Dinámico y activa \"Contar calorías de actividad por separado\"."
     },
     "calorieGoalAdjustment": {
       "activityHeavy": "Muy activo (×1.725)",
@@ -1549,9 +1552,9 @@
       "activityModerate": "Moderadamente activo (×1.55)",
       "activityNone": "Ninguno (×1.0)",
       "activityNotMuch": "Sedentario (×1.2)",
-      "adaptiveActivityHint": "En el modo adaptativo esta es la estimación alternativa hasta que tengas suficientes datos de seguimiento, y después sigue fijando los límites de plausibilidad. Tu TDEE medido se limita a ±500 kcal respecto a TMB × este multiplicador, así que un nivel demasiado bajo puede frenar un gasto realmente mayor.",
+      "adaptiveActivityHint": "En el modo Adaptativo, esto establece la referencia base de la fórmula y el margen de plausibilidad de ±500 kcal para cada estimación completa. La estimación mostrada cambia de forma gradual y vuelve hacia la referencia base de la fórmula cuando los datos pierden vigencia, por lo que un nivel de actividad subestimado puede mantenerla baja.",
       "adaptiveGoal": "Objetivo adaptativo",
-      "adaptiveGoalDescription": "Tu objetivo calórico se calcula a partir de tu gasto energético medido, comparando la ingesta registrada con la evolución de tu peso durante los últimos 28 días. Esta es la opción más precisa una vez que hayas llevado un registro constante de tu peso y de lo que comes durante unas semanas.",
+      "adaptiveGoalDescription": "Tu objetivo de calorías utiliza el gasto estimado a partir de los alimentos registrados y los pesos medidos. Los datos completos nuevos se incorporan de forma gradual, y los datos más antiguos van perdiendo peso hacia la referencia base de la fórmula basada en la TMB. Registrar con constancia ayuda, pero los alimentos sin registrar y las fluctuaciones del peso en la báscula añaden incertidumbre.",
       "allowNegativeAdjustment": "Permitir que la proyección de respaldo reduzca el objetivo",
       "dynamicGoal": "Objetivo dinámico",
       "dynamicGoalDescription": "Tu objetivo de calorías se ajustará dinámicamente según tu nivel de actividad diaria (p. ej., ejercicio, pasos). Es ideal para personas activas o cuyo nivel de actividad varía a diario.",
@@ -1574,7 +1577,8 @@
       "cardPercentage": "Porcentaje de recuperación",
       "cardPercentageSummary": "Añade de nuevo una parte de las calorías de tu ejercicio",
       "cardDevice": "Proyección del dispositivo",
-      "cardDeviceSummary": "Proyecta el consumo total de tu dispositivo hasta la medianoche"
+      "cardDeviceSummary": "Proyecta el consumo total de tu dispositivo hasta la medianoche",
+      "cardDynamicAdaptiveSummary": "La actividad ya está incluida en tu objetivo adaptativo"
     },
     "dataImport": {
       "checkin": {
@@ -1670,9 +1674,9 @@
       "awaitingCalibrationTitle": "Esperando la Calibración de TDEE Adaptativo",
       "customPercentageUnreachable": "Más profundo que el ~{{percent}}% que permite tu límite de seguridad; el objetivo se elevará a ese límite.",
       "deficitCeilingHintEstimated": "En tu nivel de actividad actual, el déficit más profundo alcanzable es de aprox. {{percent}}%. Los modos más profundos se elevarán a tu límite de seguridad.",
-      "deficitCeilingHintMeasured": "Según tu TDEE medido, el déficit más profundo alcanzable es de aprox. {{percent}}%. Los modos más profundos se elevarán a tu límite de seguridad.",
-      "clampAdviceEstimated": ". Para perder peso más rápido, aumenta tu gasto mediante actividad o verifica que tu Nivel de Actividad no esté subestimado; este define el techo hasta que tengas suficiente historial para una base medida.",
-      "clampAdviceMeasured": ". Para perder peso más rápido, aumenta tu gasto real en lugar de reducir más la ingesta; tu base ya está medida, por lo que el ajuste del Nivel de Actividad ya no le afecta.",
+      "deficitCeilingHintMeasured": "Según tu GET estimado, el déficit máximo alcanzable es de aproximadamente un {{percent}} %. Los modos más intensos se ajustan automáticamente a tu límite mínimo de seguridad.",
+      "clampAdviceEstimated": ". Comprueba que tu nivel de actividad no esté subestimado: establece la referencia base de la fórmula y los límites de plausibilidad utilizados en todo el cálculo gradual del GET adaptativo.",
+      "clampAdviceMeasured": ". Con el GET adaptativo, el nivel de actividad sigue estableciendo la referencia base de la fórmula y los límites de plausibilidad, además de influir en el retorno gradual a esa referencia base a medida que los datos pierden vigencia.",
       "modeNames": {
         "maintain": "Mantenimiento",
         "recomp": "Recomposición corporal",
@@ -1742,7 +1746,10 @@
       "adaptiveWeightIntervalTip": "Registra pesos reales a horas constantes, manteniendo los registros de alimentos durante el período observado.",
       "adaptiveFoodIntervalTip": "Registra tus alimentos lo más completamente posible; una fecha válida aún puede ser parcial.",
       "adaptiveGoalMatchedEvidence": "<span>Objetivo adaptativo:</span> Estima el gasto a partir de los registros de alimentos y pesos medidos durante períodos de observación coincidentes. Las nuevas evidencias se introducen gradualmente; datos anteriores inciertos o limitados aún pueden influir en el resultado. La falta de registros y las fluctuaciones de peso añaden incertidumbre.",
-      "adaptivePlausibilityBandHint": "💡 En modo Adaptativo, esto establece la base de la fórmula y el rango de plausibilidad de ±{{band}} {{unit}} para cada estimación completa. La estimación mostrada cambia gradualmente y regresa hacia la base de la fórmula cuando la evidencia envejece, por lo que un nivel de actividad subestimado puede mantenerla baja."
+      "adaptivePlausibilityBandHint": "💡 En modo Adaptativo, esto establece la base de la fórmula y el rango de plausibilidad de ±{{band}} {{unit}} para cada estimación completa. La estimación mostrada cambia gradualmente y regresa hacia la base de la fórmula cuando la evidencia envejece, por lo que un nivel de actividad subestimado puede mantenerla baja.",
+      "dynamicGoalAdaptiveMethod": "<span>Objetivo dinámico:</span> Con el método de cálculo adaptativo, tu objetivo se aprende a partir de tus registros de comida y tendencia de peso, por lo que ya incluye tu actividad habitual, y Restante es Objetivo menos Consumido. Activa <span>Contar calorías de actividad por separado</span> a continuación para añadir los pasos y entrenamientos de cada día a una base que los excluye.",
+      "adaptiveFallbackActivityLevel": "Hasta que el modo adaptativo tenga registros de comida de {{days}} días, tu base es TMB × este nivel, antes de aplicar el modo de objetivo, y tus entrenamientos no se suman encima. Elige un nivel que incluya tus entrenamientos.",
+      "adaptiveFallbackActivitySeparated": "Hasta que el modo adaptativo tenga registros de comida de {{days}} días, tu base es TMB × este nivel, antes de aplicar el modo de objetivo. Describe tu actividad al margen de los pasos y entrenamientos que se cuentan por separado."
     },
     "mfa": {
       "confirmPassword": "Confirma la contraseña para continuar",
@@ -1793,7 +1800,7 @@
       "surplus": "Superávit",
       "deficit": "Déficit",
       "adaptiveFormula": "Fórmula: Calorías diarias promedio − (Cambio de peso diario en {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})",
-      "adaptiveFormulaExplainer": "{{kcalPerUnit}} kcal/{{massUnit}} es la energía que representa cada {{unitName}} de peso corporal, por lo que tu tendencia de peso se puede convertir en calorías. El peso corporal perdido o ganado es una mezcla de grasa (~{{fatPerUnit}} kcal/{{massUnit}}) y tejido magro y agua (~{{leanPerUnit}} kcal/{{massUnit}}), y {{kcalPerUnit}} refleja una combinación típica.",
+      "adaptiveFormulaExplainer": "El cálculo asume {{kcalPerUnit}} kcal/{{massUnit}} para un cambio sostenido de tejido. Un {{unitName}} de peso en la báscula también puede incluir agua, glucógeno y contenido digestivo; esta estimación no puede medir su energía ni tu composición corporal. La grasa (~{{fatPerUnit}} kcal/{{massUnit}}) y el tejido magro (~{{leanPerUnit}} kcal/{{massUnit}}) tienen densidades energéticas diferentes.",
       "adjustment": "Ajuste",
       "goalAdjustmentLabel": "Ajuste Objetivo:",
       "adaptiveWeightedFormula": "Fórmula: Ingesta diaria ponderada − (Cambio diario de peso observado en {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})",
@@ -1801,7 +1808,7 @@
     },
     "calorieBreakdown": {
       "confidence": "Confianza: {{level}}",
-      "adaptiveConfidenceCaveat": "Basado en {{days}} día(s) de registros calóricos. Registrar menos ingesta de la real hace que esta estimación sea alta; registra de manera constante para mejorarla.",
+      "adaptiveConfidenceCaveat": "Basado en {{days}} día(s) de registros de calorías. Registrar una ingesta menor a la real puede hacer que esta estimación sea demasiado baja; los días incompletos y las fluctuaciones de peso añaden incertidumbre.",
       "bodyFatUsed": "El valor medido anterior es utilizado por esta fórmula de TMB; la estimación se muestra como comparación.",
       "bodyFatMissing": "{{algorithm}} utiliza la grasa corporal, pero no hay mediciones registradas; añade una para obtener un objetivo preciso.",
       "bodyFatUnused": "Se muestra solo como referencia; {{algorithm}} no requiere la grasa corporal como dato de entrada.",
@@ -2155,7 +2162,10 @@
       "syncLabel": "Sincronizar:",
       "neverSynced": "Última sincronización: nunca",
       "garminServiceUnreachable": "Servicio de Garmin inalcanzable. No es posible sincronizar.",
-      "mcpServerSendsUserId": "Indica al servidor quién está chateando"
+      "mcpServerSendsUserId": "Indica al servidor quién está chateando",
+      "mcpServerToolCount_one": "El chat puede usar {{count}} herramienta",
+      "mcpServerToolCount_many": "El chat puede usar {{count}} herramientas",
+      "mcpServerToolCount_other": "El chat puede usar {{count}} herramientas"
     },
     "providerSpecificFields": {
       "appURL": "URL de la app",
@@ -2267,7 +2277,7 @@
     "oauthClients": {
       "authorizedAt": "Autorizado:",
       "description": "Revisar y revocar aplicaciones conectadas mediante Remote MCP OAuth",
-      "empty": "No hay actualmente aplicaciones que tengan acceso OAuth para tu cuenta.",
+      "empty": "Actualmente ninguna aplicación tiene acceso mediante OAuth a tu cuenta.",
       "loadError": "Error al cargar las aplicaciones conectadas.",
       "loading": "Cargando aplicaciones conectadas…",
       "permissions": "Permisos:",
@@ -2327,7 +2337,6 @@
       "title": "Pestañas",
       "description": "Elige qué pestañas principales se muestran en el sitio web",
       "cycleOn": "Activado",
-      "cycleOff": "Desactivado",
       "cycleHint": "{{name}} está activado o desactivado en Funciones, más arriba.",
       "footnote": "El diario y los ajustes siempre se muestran. Ocultar una pestaña solo cambia este sitio web: no se elimina nada y la aplicación móvil mantiene sus propios ajustes.",
       "saveError": "No se pudo guardar tu elección de pestañas. Por favor, inténtalo de nuevo.",
@@ -2382,7 +2391,13 @@
         "unreachable": "No se pudo conectar con el servidor. Comprueba la URL.",
         "policy": "La política de red no permite esta dirección.",
         "other": "El servidor no listó sus herramientas ({{reason}})."
-      }
+      },
+      "changedSummary_one": "{{count}} herramienta cambió desde que guardaste y se desmarcó. Revísala abajo.",
+      "changedSummary_many": "{{count}} herramientas cambiaron desde que guardaste y se desmarcaron. Revísalas abajo.",
+      "changedSummary_other": "{{count}} herramientas cambiaron desde que guardaste y se desmarcaron. Revísalas abajo.",
+      "goneSummary_one": "{{count}} herramienta ya no está en el servidor.",
+      "goneSummary_many": "{{count}} herramientas ya no están en el servidor.",
+      "goneSummary_other": "{{count}} herramientas ya no están en el servidor."
     },
     "features": {
       "title": "Funciones",
@@ -2401,6 +2416,17 @@
         "scope": "Un solo interruptor para el sitio web y la aplicación móvil.",
         "setupHint": "Responde a unas breves preguntas para terminar la configuración.",
         "setupAction": "Configurar"
+      },
+      "open": "Abrir Funciones",
+      "webOnly": "Solo este sitio web. La aplicación móvil tiene su propio interruptor.",
+      "serverTooOld": "Actualiza tu servidor SparkyFitness para cambiar esto.",
+      "off": {
+        "title": "{{name}} está desactivado",
+        "description": "Se conserva tu historial. Vuelve a activarlo para verlo aquí de nuevo.",
+        "turnOn": "Activar"
+      },
+      "labResults": {
+        "description": "Registra análisis de sangre y sigue la evolución de cada marcador."
       }
     }
   },
@@ -2619,6 +2645,11 @@
       "automaticallySyncedWithYourCurrent": "✓ Sincronizado automáticamente con tu URL actual. El sufijo de la ruta está bloqueado por seguridad de enrutamiento.",
       "expertEnsureYourBaseURL": "⚠️ Experto: Asegúrate de que tu URL base sea accesible desde internet para que el proveedor OIDC pueda devolver datos.",
       "none": "ninguno"
+    },
+    "challenges": {
+      "title": "Desafíos",
+      "label": "Permitir desafíos y clasificaciones de grupo en este servidor",
+      "help": "Las personas pueden iniciar desafíos, invitar a otras con un código y ver sus puntuaciones, pero nunca sus diarios. Si se desactiva, los desafíos se ocultan y la puntuación se detiene; no se elimina nada."
     }
   },
   "goals": {
@@ -2982,26 +3013,26 @@
       "invalidMeasurements": "Mediciones no válidas para el cálculo del registro.",
       "navyMaleMath": "Fórmula (Hombre): 86,01 × log10(cintura - cuello) - 70,041 × log10(altura) + 36,76 (en pulgadas)\nCálculo: 86,01 × log10({{waist}}in - {{neck}}in) - 70,041 × log10({{height}}in) + 36,76\nCalculado: {{result}}%",
       "navyFemaleMath": "Fórmula (Mujer): 163,205 × log10(cintura + caderas - cuello) - 97,684 × log10(altura) - 78,387 (en pulgadas)\nCálculo: 163,205 × log10({{waist}}in + {{hips}}in - {{neck}}in) - 97,684 × log10({{height}}in) - 78,387\nCalculado: {{result}}%",
-      "fallbackInsufficient": "El objetivo utilizará la TMB alternativa ({{value}} {{unit}}) debido a datos insuficientes.",
-      "fallbackWeight": "El objetivo utilizará la TMB alternativa ({{value}} {{unit}}) porque faltan registros de peso (requiere al menos 2 registros de peso durante más de 7 días).",
-      "fallbackCalories": "El objetivo utilizará la TMB alternativa ({{value}} {{unit}}) porque faltan registros calóricos (requiere al menos 7 días con ≥200 kcal).",
-      "fallbackUnknown": "El objetivo utilizará la TMB alternativa ({{value}} {{unit}}) debido a: {{reason}}",
-      "fallbackRequiredDays": "El objetivo utilizará la TMB alternativa ({{value}} {{unit}}) hasta alcanzar {{required}} días de registros calóricos (actualmente {{days}}/{{required}} días registrados).",
+      "fallbackInsufficient": "El objetivo utilizará la referencia base de la fórmula basada en la TMB ({{value}} {{unit}}) debido a que los datos son insuficientes.",
+      "fallbackWeight": "El objetivo utilizará la referencia base de la fórmula basada en la TMB ({{value}} {{unit}}) porque los datos de peso son insuficientes (se requieren al menos {{readings}} días medidos en un periodo de {{span}} días o más).",
+      "fallbackCalories": "El objetivo utilizará la referencia base de la fórmula basada en la TMB ({{value}} {{unit}}) porque los datos de calorías son insuficientes (se requieren al menos {{required}} días con ≥200 kcal).",
+      "fallbackUnknown": "El objetivo utilizará la referencia base de la fórmula basada en la TMB ({{value}} {{unit}}) debido a: {{reason}}",
+      "fallbackRequiredDays": "El objetivo utilizará la referencia base de la fórmula basada en la TMB ({{value}} {{unit}}) hasta que se alcancen {{required}} días de registros de calorías (actualmente {{days}}/{{required}} días registrados).",
       "adaptiveTitle": "3. TDEE Adaptativo (Gasto Energético)",
       "fallbackEstimate": "Estimación Alternativa",
       "adaptiveTdee": "TDEE Adaptativo",
-      "adaptiveFormula": "Fórmula: Promedio de Calorías Diarias - (Cambio de Peso Diario en kg × 7700 kcal)",
+      "adaptiveFormula": "Fórmula: Calorías diarias promedio − (Cambio de peso diario en {{massUnit}} × {{kcalPerUnit}} kcal/{{massUnit}})",
       "adaptiveBypassedStatus": "Estado: Se omitió el cálculo directo ({{value}} {{unit}}) debido a un historial insuficiente.",
       "adaptiveChecklist": "Lista de verificación de TDEE adaptativo para dejar la estimación alternativa:",
-      "weightLogRequirement": "• Registros de Peso (2+ entradas durante 7+ días)",
+      "weightLogRequirement": "• Registros de peso ({{readings}}+ días medidos en un periodo de {{span}}+ días)",
       "weightLogsMissing": "❌ Faltante (registros de peso en Verificación)",
       "requirementMet": "✓ Cumplido",
-      "calorieLogRequirement": "• Registros de Calorías para cálculo de TDEE (7+ días ≥ 200 kcal)",
+      "calorieLogRequirement": "• Registros de calorías para el cálculo del GET y objetivos automáticos ({{required}}+ días ≥ 200 kcal)",
       "daysMissing": "❌ Faltante ({{days}}/{{required}} días registrados)",
       "daysMet": "✓ Cumplido ({{days}}/{{required}} días registrados)",
       "daysWarning": "⚠️ Incompleto ({{days}}/{{required}} días registrados)",
       "usingFallbackBmr": "Usando TMB alternativa × Multiplicador de actividad:",
-      "fallbackMath": "Cálculo: TMB ({{bmr}} kcal) × multiplicador de actividad ({{multiplier}}) = {{result}} {{unit}}",
+      "fallbackMath": "Cálculo: TMB ({{bmr}} {{unit}}) × multiplicador de actividad ({{multiplier}}) = {{result}} {{unit}}",
       "adaptiveActiveStatus": "Estado: Activo (línea base calculada desde los registros).",
       "averageDailyIntake": "Consumo calórico diario promedio:",
       "calculatedExpenditure": "Gasto calculado (TDEE):",
@@ -3022,7 +3053,7 @@
       "modeFixed": "Objetivo fijo",
       "modePercentage": "Recuperación por porcentaje",
       "tdeeSum": "({{intake}} {{sign}} {{delta}})",
-      "weightTrendCalories": "Energía de esa tendencia: −({{daily}} {{massUnit}}/día × {{kcalPerUnit}} kcal/{{massUnit}}) ≈ {{value}}",
+      "weightTrendCalories": "Energía según el ritmo de cambio de peso aplicado: −({{daily}} {{massUnit}}/día × {{kcalPerUnit}} kcal/{{massUnit}}) ≈ {{value}}",
       "weightTrendTerm": "Tendencia de peso: {{start}} → {{end}} ({{change}} a lo largo de los {{days}} días transcurridos entre el primer y el último día del periodo) = {{daily}} {{massUnit}}/día — medias de 7 días de tus pesos registrados, no las lecturas en sí, rellenando los días que faltan a partir de los días anterior y posterior",
       "averageDailyCalorieIntake": "Ingesta calórica media diaria: {{displayAdaptiveIntake}} {{energyUnitString}}",
       "calculatedExpenditureTDEE": "Gasto calculado (TDEE): {{energy}} {{energyUnitString}}",
@@ -5288,7 +5319,13 @@
     "acrophase": "Acrofase",
     "method2": "Método: {{method}}",
     "workdays2": "Días laborables: {{workdaysAvailable}}/{{workdaysNeeded}}",
-    "freeDays": "Días libres: {{freedaysAvailable}}/{{freedaysNeeded}}"
+    "freeDays": "Días libres: {{freedaysAvailable}}/{{freedaysNeeded}}",
+    "sleepSurplus": "Excedente de sueño",
+    "debtSurplus": "Excedente",
+    "debtSurplusDesc": "Vas al día con el sueño. Tu necesidad para esta noche es un poco menor.",
+    "trainingLoad": "Carga de entrenamiento",
+    "recovery": "Recuperación",
+    "recoveryScore": "{{score}}/100"
   },
   "chat": {
     "toolCategories": {
@@ -6918,12 +6955,7 @@
       "displayNameCapacityMlml": "{{displayName}} (<span>{{capacityMl}}</span>ml)",
       "energy": "Energía: {{energy}}"
     },
-    "ownerOnly": "Solo el propietario de la cuenta puede ver y cambiar esto.",
-    "off": {
-      "title": "{{name}} está desactivado",
-      "description": "Tu historial se conserva. Vuelve a activarlo para verlo aquí de nuevo.",
-      "turnOn": "Activar"
-    }
+    "ownerOnly": "Solo el propietario de la cuenta puede ver y cambiar esto."
   },
   "nutrientGoalDirection": {
     "min": "Mín.",
@@ -10178,16 +10210,16 @@
     "sourceFailed": "La fuente es inaccesible.",
     "retry": "Reintentar",
     "title": "Resultados del código de barras",
-    "yourFoods": "Tus alimentos",
+    "yourFoods": "Tus comidas",
     "fallback": "Alternativa",
     "basis": "Por {{quantity}} {{unit}}",
-    "sourceNotFound": "No se encontró ningún producto en esta fuente.",
+    "sourceNotFound": "No se ha encontrado el producto en esta fuente.",
     "useFood": "Usar alimento",
-    "notFound": "No se encontró ningún producto. Consulta otras fuentes o añade un alimento manualmente.",
+    "notFound": "No se ha encontrado el producto. Comprueba otras fuentes o añade una comida manualmente.",
     "otherSources": "Otras fuentes",
-    "loading": "Consultando otras fuentes…",
-    "alternativesFailed": "No se pudieron cargar otras fuentes.",
-    "noAlternatives": "No hay otras fuentes disponibles.",
+    "loading": "Comprobando en otras fuentes…",
+    "alternativesFailed": "No se han podido cargar otras fuentes.",
+    "noAlternatives": "No hay más fuentes disponibles.",
     "useSource": "Usar esta fuente"
   },
   "numericInput": {
@@ -10850,7 +10882,16 @@
       "readFailed": "No se pudo abrir ese archivo.",
       "photoTooLarge": "La foto es demasiado grande para leerse (límite 6 MB). Intenta con una foto más pequeña o una captura de pantalla.",
       "lockedAfterFailedSave": "El guardado no finalizó, por lo que esta revisión está bloqueada: Guardar de nuevo envía exactamente el mismo informe y se almacena solo una vez. Para cambiar los valores, vuelve a seleccionar el informe.",
-      "unconfirmedNoKey": "El guardado no finalizó y este navegador no puede marcar el informe para asegurar que se guarde solo una vez. Es posible que aún se esté guardando. Cierra esta ventana y comprueba tus resultados de laboratorio en unos minutos antes de importar algo más para evitar duplicados."
+      "unconfirmedNoKey": "El guardado no finalizó y este navegador no puede marcar el informe para asegurar que se guarde solo una vez. Es posible que aún se esté guardando. Cierra esta ventana y comprueba tus resultados de laboratorio en unos minutos antes de importar algo más para evitar duplicados.",
+      "saveCount_one": "Guardar {{count}} resultado",
+      "saveCount_many": "Guardar {{count}} resultados",
+      "saveCount_other": "Guardar {{count}} resultados",
+      "saved_one": "{{count}} resultado guardado",
+      "saved_many": "{{count}} resultados guardados",
+      "saved_other": "{{count}} resultados guardados",
+      "deleted_one": "{{count}} resultado importado eliminado",
+      "deleted_many": "{{count}} resultados importados eliminados",
+      "deleted_other": "{{count}} resultados importados eliminados"
     },
     "moreActions": "Más acciones",
     "deleteMarker": "Eliminar marcador y todos sus resultados",
@@ -10861,7 +10902,10 @@
     "notes": "Notas",
     "valueInvalid": "Introduce un marcador y un resultado numérico.",
     "historyCutOff": "El historial muestra como máximo los {{count}} resultados más recientes.",
-    "dateInvalid": "Introduce la fecha de la prueba."
+    "dateInvalid": "Introduce la fecha de la prueba.",
+    "chartOtherUnits_one": "No se muestra {{count}} resultado por estar en otra unidad.",
+    "chartOtherUnits_many": "No se muestran {{count}} resultados por estar en otra unidad.",
+    "chartOtherUnits_other": "No se muestran {{count}} resultados por estar en otra unidad."
   },
   "oralCare": {
     "title": "Cuidado bucal",
@@ -11108,7 +11152,10 @@
     "noDeclaredNutrition": "Sin nutrición declarada",
     "missingNutritionHint": "Esta receta de Mealie no tiene nutrición declarada. Calcúlala a partir de los ingredientes coincidentes.",
     "importAsMeal": "Importar ingredientes como una comida",
-    "searchMacros": "Proteínas {{protein}} g · Carbohidratos {{carbs}} g · Grasas {{fat}} g"
+    "searchMacros": "Proteínas {{protein}} g · Carbohidratos {{carbs}} g · Grasas {{fat}} g",
+    "recipeYield_one": "Esta receta produce {{servings}} porción",
+    "recipeYield_many": "Esta receta produce {{servings}} porciones",
+    "recipeYield_other": "Esta receta produce {{servings}} porciones"
   },
   "healthActivityTypes": {
     "american_football": "Fútbol americano",
@@ -11203,5 +11250,378 @@
     "underwater_diving": "Buceo",
     "paragliding": "Parapente",
     "other": "Otro"
+  },
+  "challenges": {
+    "title": "Desafíos",
+    "dates": "{{start}} a {{end}}",
+    "datesOpen": "Desde {{start}}",
+    "state": {
+      "active": "Activo",
+      "startsTomorrow": "Empieza mañana",
+      "lastDay": "Último día",
+      "startsIn_one": "Comienza en {{count}} día",
+      "startsIn_many": "Comienza en {{count}} días",
+      "startsIn_other": "Comienza en {{count}} días",
+      "daysLeft_one": "{{count}} día restante",
+      "daysLeft_many": "{{count}} días restantes",
+      "daysLeft_other": "{{count}} días restantes"
+    },
+    "host": "Anfitrión",
+    "ended": "Finalizado",
+    "rules": {
+      "edit": "Cambiar las reglas",
+      "noPeriodLeft": "No queda ningún periodo al que se pueda aplicar un cambio.",
+      "fromNext": "El cambio cuenta desde {{day}}, por lo que el periodo en curso mantiene sus reglas. Todos los miembros lo verán en el registro de reglas.",
+      "beforeStart": "El desafío no ha comenzado, por lo que el cambio se aplica desde el inicio.",
+      "save": "Guardar reglas",
+      "everyDay": "Todos los días",
+      "dayRange": "{{from}} a {{to}}",
+      "saved": "Reglas guardadas. Todos los participantes del desafío pueden ver el cambio."
+    },
+    "leave": {
+      "button": "Salir",
+      "title": "¿Quieres salir de este desafío?",
+      "last": "Eres el último miembro, por lo que el desafío se eliminará.",
+      "host": "Tus puntuaciones se eliminarán y la función de anfitrión pasará al primer miembro que se unió.",
+      "member": "Tus puntuaciones en este desafío se eliminarán. Puedes volver a unirte con una nueva invitación.",
+      "done": "Has salido del desafío"
+    },
+    "tabs": {
+      "standings": "Clasificación",
+      "how": "Cómo funcionan los puntos",
+      "log": "Cambios de reglas",
+      "members": "Miembros"
+    },
+    "how": {
+      "upcoming": "Desde {{day}}:",
+      "exampleTitle": "Día de ejemplo",
+      "example": "Un entrenamiento de {{minutes}} minutos en zona {{zone}} otorga {{effort}}, y {{steps}} pasos añaden {{stepPoints}}: {{total}} puntos.",
+      "exampleCapped": "Un entrenamiento de {{minutes}} minutos en zona {{zone}} otorga {{effort}}, y {{steps}} pasos añaden {{stepPoints}}: {{uncapped}} puntos, limitados al máximo diario de {{total}}.",
+      "what": "{{format}} de {{metric}}, puntuado {{period}}.",
+      "race": "Gana la primera persona en alcanzar {{target}}; los demás se clasifican según el día en que llegaron.",
+      "hitGoalDay": "Gana cualquier persona que alcance {{target}} en cada día contabilizado.",
+      "hitGoalPeriod": "Gana cualquier persona que alcance {{target}} en el periodo.",
+      "groupGoal": "Todos suman a un total común; el grupo gana al alcanzar {{target}}.",
+      "target": "Objetivo: {{target}}.",
+      "leaderboard": "Gana el total más alto.",
+      "days": "Días que cuentan: {{days}}.",
+      "window": "Solo cuentan los entrenamientos que comiencen entre {{start}} y {{end}}.",
+      "dailyCap": "Un día añade como máximo {{cap}}.",
+      "zoneFrom": "Cuentan los minutos en la zona de frecuencia cardíaca {{zone}} y superiores, según tus propias zonas.",
+      "zones": "Esfuerzo, según tus zonas de frecuencia cardíaca: {{rates}} puntos por minuto en las zonas 1 a 5.",
+      "noHr": "Por debajo de la zona 1: {{below}} por minuto. Sin frecuencia cardíaca: {{none}} por minuto.",
+      "strength": "El levantamiento otorga al menos {{rate}} por minuto, ya que el descanso entre series reduce la frecuencia cardíaca.",
+      "tiers": "Hasta {{full}} minutos al día cuentan al 100%, priorizando los minutos de mayor tasa; los siguientes {{half}} cuentan al {{pct}}%, y el resto no suma.",
+      "tiersFullOnly": "Hasta {{full}} minutos al día cuentan, priorizando los minutos de mayor tasa; el resto no suma.",
+      "steps": "Pasos: 1 punto por cada {{per}}, hasta {{cap}} al día.",
+      "pr": "Récords personales: +{{bonus}} cada uno, máximo {{max}} al día.",
+      "streak": "Racha: +{{bonus}} al día a partir del día {{from}} consecutivo.",
+      "beatAverage": "Supera tu propio promedio de {{days}} días: +{{bonus}}.",
+      "goal": "Tu propio objetivo semanal ({{pct}}% por encima de tus últimas {{weeks}} semanas): hasta +{{max}}, abonado proporcionalmente.",
+      "include": "Solo cuentan estos: {{sports}}.",
+      "exclude": "Excluidos: {{sports}}.",
+      "minMinutes": "Los entrenamientos de menos de {{minutes}} minutos no cuentan.",
+      "manualIgnore": "Los entrenamientos registrados manualmente no cuentan.",
+      "manualCap": "Los entrenamientos registrados manualmente cuentan hasta {{minutes}} minutos al día.",
+      "merge": "Un entrenamiento sincronizado desde dos fuentes se cuenta una sola vez.",
+      "prSome": "Récords personales (solo {{types}}): +{{bonus}} cada uno, máximo {{max}} al día.",
+      "bestDays_one": "Solo cuenta tu mejor día de cada semana.",
+      "bestDays_many": "Solo cuentan tus {{count}} mejores días de cada semana.",
+      "bestDays_other": "Solo cuentan tus {{count}} mejores días de cada semana."
+    },
+    "leaderboard": {
+      "you": "Tú",
+      "previous": "Periodo anterior",
+      "final": "Final",
+      "live": "En curso",
+      "current": "Actual",
+      "next": "Siguiente periodo",
+      "groupProgress": "En conjunto: {{total}} de {{target}}",
+      "groupReached": "Objetivo alcanzado!",
+      "empty": "Aún no hay puntuaciones en este periodo.",
+      "member": "Miembro",
+      "total": "Total",
+      "minutes": "Min activos",
+      "winner": "Ganador",
+      "reachedOn": "Alcanzado el {{day}}",
+      "daysHit": "Objetivo alcanzado en {{hit}} de {{eligible}} días",
+      "leads": "En cabeza",
+      "find": "Buscar un miembro",
+      "noMatch": "Ningún miembro coincide.",
+      "progress": "Progreso",
+      "ofLeader": "{{percent}}% del total más alto",
+      "ofTarget": "{{percent}}% del objetivo",
+      "ofDays": "Objetivo alcanzado en el {{percent}}% de los días"
+    },
+    "joined": "Se unió el {{day}}",
+    "invite": {
+      "title": "Invitar a personas",
+      "copied": "Copiado",
+      "copyFailed": "No se pudo copiar",
+      "active": "Un código de invitación funciona hasta el {{when}}.",
+      "none": "No hay ningún código de invitación activo.",
+      "shownOnce": "Comparte este enlace o código ahora; solo se muestra una vez.",
+      "link": "Enlace de invitación",
+      "copyLink": "Copiar enlace",
+      "code": "Código de invitación",
+      "copyCode": "Copiar código",
+      "newCode": "Crear un nuevo código",
+      "create": "Crear un código de invitación",
+      "revoke": "Desactivar el código",
+      "revoked": "Código de invitación desactivado"
+    },
+    "editor": {
+      "scoring": "Qué cuenta y quién gana",
+      "metric": "Qué cuenta",
+      "format": "Formato",
+      "period": "Puntuación",
+      "target": "Objetivo ({{unit}})",
+      "targetPer": "El objetivo se aplica a",
+      "targetPerDay": "Cada día",
+      "targetPerPeriod": "El total del periodo",
+      "periodLocked": "El periodo no se puede cambiar una vez que el desafío ha comenzado.",
+      "targetRequired": "Este formato requiere un objetivo.",
+      "time": "Días y horas",
+      "days": "Días que cuentan",
+      "timeWindow": "Solo entrenamientos que comiencen en una franja horaria",
+      "windowStart": "Desde",
+      "windowEnd": "Hasta",
+      "bestDays": "Solo cuentan los mejores días de cada semana",
+      "bestDaysCount": "Mejores días a la semana",
+      "dailyCap": "Limitar lo que un día puede sumar",
+      "dailyCapValue": "Límite diario ({{unit}})",
+      "zoneFrom": "Contar minutos según la zona de frecuencia cardíaca",
+      "points": "Generador de puntos",
+      "zoneRates": "Puntos por minuto en las zonas de frecuencia cardíaca 1 a 5",
+      "zoneN": "Zona {{zone}}",
+      "belowZoneRate": "Por debajo de la zona 1 (por minuto)",
+      "noHrRate": "Sin frecuencia cardíaca (por minuto)",
+      "strengthFloor": "Mínimo en levantamiento",
+      "strengthFloorValue": "Al menos (por minuto)",
+      "minuteTiers": "Niveles diarios de minutos",
+      "tierFull": "Minutos contabilizados al 100%",
+      "tierHalf": "Luego minutos a la tasa reducida",
+      "tierRate": "Tasa reducida (%)",
+      "steps": "Puntos por pasos",
+      "stepsPerPoint": "Pasos para 1 punto",
+      "stepsCap": "Máximo de puntos por pasos al día",
+      "pr": "Bonificación por récord personal",
+      "prBonus": "Puntos por récord",
+      "prMax": "Máximo de récords al día",
+      "streak": "Bonificación por racha",
+      "streakFrom": "Desde el día",
+      "streakBonus": "Puntos al día",
+      "beatAverage": "Bonificación por superar tu promedio",
+      "beatAverageBonus": "Puntos",
+      "goal": "Bonificación por objetivo semanal autoajustable",
+      "goalNeedsWeek": "El objetivo semanal requiere un desafío cuya puntuación sea por semanas o superior.",
+      "goalMax": "Máximo de puntos",
+      "goalStretch": "Por encima del propio promedio (%)",
+      "activities": "Qué entrenamientos cuentan",
+      "includeSports": "Solo estos deportes (si no se marca ninguno: todos los deportes)",
+      "excludeSports": "Excluir estos deportes",
+      "minMinutes": "Entrenamiento más corto que cuenta (minutos)",
+      "manualEntries": "Entrenamientos registrados manualmente",
+      "manualCap": "Máximo de minutos registrados manualmente al día",
+      "mergeDuplicates": "Contar una sola vez un entrenamiento sincronizado desde dos fuentes",
+      "notAllowed": "No permitido aquí. Se mantiene en {{value}}."
+    },
+    "join": {
+      "button": "Unirse con un código",
+      "displayName": "Tu nombre en este desafío",
+      "goalType": "Tu objetivo semanal",
+      "errors": {
+        "invalid": "Este código de invitación no es válido o ha caducado. Pide uno nuevo al anfitrión.",
+        "ended": "Este desafío ha finalizado.",
+        "lateJoinClosed": "Este desafío ya ha comenzado y no acepta incorporaciones tardías.",
+        "full": "Este desafío está lleno.",
+        "rateLimited": "Demasiados intentos. Espera unos minutos e inténtalo de nuevo.",
+        "generic": "No se pudo unir. Inténtalo de nuevo."
+      },
+      "title": "Unirse a un desafío",
+      "description": "Pega el enlace o código de invitación. Los miembros verán tu nombre público y tus puntuaciones, nunca tu diario ni tu correo electrónico.",
+      "code": "Enlace o código de invitación",
+      "badCode": "No parece ser un código de invitación válido.",
+      "submit": "Unirse"
+    },
+    "create": {
+      "button": "Nuevo desafío",
+      "endBeforeStart": "La fecha de fin no puede ser anterior a la de inicio.",
+      "tooLong": "Un desafío dura como máximo {{days}} días.",
+      "endNeeded": "Un desafío puntuado como un solo periodo requiere una fecha de fin.",
+      "title": "Iniciar un desafío",
+      "description": "Elige un ajuste preestablecido y luego modifica lo que quieras. Los miembros verán tus reglas y todos los cambios posteriores.",
+      "presets": "Ajustes preestablecidos",
+      "name": "Nombre",
+      "emoji": "Emoji",
+      "descriptionLabel": "Descripción (opcional)",
+      "start": "Comienza",
+      "end": "Termina",
+      "endOptional": "Termina (opcional)",
+      "timeZone": "Los días terminan a medianoche en {{zone}}.",
+      "memberLimit": "Máximo de miembros",
+      "lateJoin": "Permitir unirse tras el inicio",
+      "rules": "Reglas",
+      "submit": "Crear desafío",
+      "created": "Desafío creado",
+      "startOutOfRange": "El inicio debe estar entre {{earliest}} y {{latest}}.",
+      "errors": {
+        "invalidDates": "Un desafío puede comenzar como máximo hace {{back}} días y hasta {{ahead}} días a partir de hoy, y dura como máximo {{length}} días.",
+        "generic": "No se pudo crear el desafío. Inténtalo de nuevo.",
+        "rateLimited": "Demasiados desafíos nuevos. Espera unos minutos e inténtalo de nuevo."
+      },
+      "rulesInvalid": "Un ajuste de las reglas está vacío o fuera de rango.",
+      "memberLimitRange": "El máximo de miembros debe estar entre 2 y {{max}}."
+    },
+    "ownOnly": "Los desafíos son personales. Vuelve a tu propia cuenta para ver los tuyos.",
+    "disabled": "Los desafíos están desactivados en este servidor. Un administrador puede activarlos en la configuración de administración.",
+    "notFound": "No se encontró este desafío o no eres miembro del mismo.",
+    "empty": "Aún no hay desafíos. Inicia uno e invita a amigos o familiares, o únete con un código de invitación.",
+    "goalTypes": {
+      "lose_weight": "Perder peso (minutos activos)",
+      "build_muscle": "Ganar músculo (levantamiento)",
+      "endurance": "Resistencia (distancia)",
+      "stay_active": "Mantener la actividad (días de entrenamiento)"
+    },
+    "member": {
+      "days": "Sus últimos días en este desafío.",
+      "periods": "Sus últimos periodos en este desafío.",
+      "place": "#{{rank}}",
+      "none": "Sin puntuación"
+    },
+    "log": {
+      "removed": "Ya no aplica: {{rule}}",
+      "empty": "Sin cambios de reglas.",
+      "changed": "{{name}} cambió las reglas el {{when}}",
+      "formerMember": "Un antiguo miembro",
+      "created": "Reglas establecidas al crear el desafío",
+      "effective": "Cuenta desde {{day}}"
+    },
+    "presets": {
+      "all_rounder": {
+        "name": "Todoterreno",
+        "description": "Puntos por esfuerzo según la frecuencia cardíaca, pasos, récords personales y rachas. Semanalmente cuentan los mejores 5 días."
+      },
+      "workweek_hustle": {
+        "name": "Ajetreo laboral",
+        "description": "Máximo de pasos de lunes a viernes."
+      },
+      "weekend_warrior": {
+        "name": "Guerrero de fin de semana",
+        "description": "Máximo de pasos el sábado y el domingo."
+      },
+      "daily_showdown": {
+        "name": "Duelo diario",
+        "description": "Máximo de pasos en un solo día."
+      },
+      "race_to_100k_steps": {
+        "name": "Carrera por 100 000 pasos",
+        "description": "Gana la primera persona en alcanzar 100 000 pasos."
+      },
+      "most_km_this_month": {
+        "name": "Máximo de km este mes",
+        "description": "Máximo de distancia en un mes natural."
+      },
+      "consistency_30_day": {
+        "name": "Constancia de 30 días",
+        "description": "Máximo de días con un entrenamiento de 20 minutos o más en un periodo de 30 días."
+      }
+    },
+    "metrics": {
+      "points": "Puntos",
+      "steps": "Pasos",
+      "active_minutes": "Minutos activos",
+      "hr_zone_minutes": "Minutos en zona de frecuencia cardíaca",
+      "distance": "Distancia",
+      "workout_days": "Días de entrenamiento",
+      "active_calories": "Calorías activas",
+      "elevation": "Desnivel positivo"
+    },
+    "formats": {
+      "leaderboard": "Clasificación",
+      "race": "Carrera hacia un objetivo",
+      "hit_goal": "Alcanzar el objetivo",
+      "group_goal": "Objetivo grupal"
+    },
+    "periods": {
+      "day": "Diario",
+      "week": "Semanal",
+      "month": "Mensual",
+      "challenge": "Desafío completo"
+    },
+    "manualEntries": {
+      "count": "Contar",
+      "cap": "Contar hasta un límite",
+      "ignore": "Ignorar"
+    },
+    "sports": {
+      "running": "Carrera",
+      "cycling": "Ciclismo",
+      "walking": "Caminata",
+      "hiking": "Senderismo",
+      "swimming": "Natación",
+      "rowing": "Remo",
+      "fitness_equipment": "Máquinas de gimnasio",
+      "strength": "Fuerza",
+      "other": "Otro"
+    },
+    "weekdays": {
+      "mon": "Lun",
+      "tue": "Mar",
+      "wed": "Mié",
+      "thu": "Jue",
+      "fri": "Vie",
+      "sat": "Sáb",
+      "sun": "Dom"
+    },
+    "values": {
+      "points": "{{value}} pts",
+      "steps": "{{value}} pasos",
+      "minutes": "{{value}} min",
+      "miles": "{{value}} mi",
+      "km": "{{value}} km",
+      "metres": "{{value}} m",
+      "days_one": "{{count}} día",
+      "days_many": "{{count}} días",
+      "days_other": "{{count}} días"
+    },
+    "units": {
+      "points": "puntos",
+      "steps": "pasos",
+      "minutes": "minutos",
+      "miles": "millas",
+      "km": "km",
+      "days": "días",
+      "metres": "metros"
+    },
+    "periodRange": "{{start}} – {{end}}",
+    "widget": {
+      "title": "Clasificación del desafío",
+      "all": "Todos los desafíos",
+      "place": "#{{rank}} de {{members}} · {{total}}",
+      "noScore": "Aún sin puntuación",
+      "youLead": "Vas en cabeza",
+      "youShareLead": "Compartes el liderazgo",
+      "leader": "{{name}} va en cabeza con {{total}}"
+    },
+    "retry": "Reintentar",
+    "errors": {
+      "load": "No se pudieron cargar tus desafíos.",
+      "loadOne": "No se pudo cargar este desafío.",
+      "standings": "No se pudo cargar la clasificación.",
+      "standingsRefresh": "No se pudo actualizar la clasificación; se muestra la última cargada.",
+      "ruleChanges": "No se pudieron cargar los cambios de reglas.",
+      "hostOnly": "Solo el anfitrión puede hacer esto. Es posible que el rol de anfitrión haya pasado a otra persona.",
+      "periodLocked": "El periodo no se puede cambiar una vez iniciado el desafío.",
+      "action": "No se pudo procesar. Inténtalo de nuevo."
+    },
+    "prTypes": {
+      "lift": "levantamientos",
+      "distance": "distancia",
+      "pace": "ritmo"
+    },
+    "memberCount_one": "{{count}} miembro",
+    "memberCount_many": "{{count}} miembros",
+    "memberCount_other": "{{count}} miembros"
   }
 }

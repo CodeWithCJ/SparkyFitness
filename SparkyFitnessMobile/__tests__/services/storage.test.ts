@@ -19,6 +19,10 @@ import {
   takeIdentityChangeServerConfigIds,
   setOnServerConfigsChanged,
   getSavedServerUrls,
+  getSavedActiveServerConfigId,
+  loadHealthWaterSyncToken,
+  saveHealthWaterSyncToken,
+  clearHealthWaterSyncToken,
   ServerConfig,
 } from '../../src/services/storage';
 import { CATEGORY_ORDER } from '../../src/HealthMetrics';
@@ -893,6 +897,61 @@ describe('storage', () => {
     });
   });
 
+  describe('getSavedActiveServerConfigId', () => {
+    test('names the active saved server, without its keychain entry', async () => {
+      await saveServerConfig({
+        id: 'u1',
+        url: 'https://a.example',
+        apiKey: 'k',
+      });
+      clearServerConfigCache();
+      const keychain = jest
+        .spyOn(SecureStore, 'getItemAsync')
+        .mockRejectedValue(new Error('keychain locked'));
+
+      try {
+        expect(await getActiveServerConfig()).toBeNull();
+        expect(await getSavedActiveServerConfigId()).toBe('u1');
+      } finally {
+        keychain.mockRestore();
+      }
+    });
+
+    test('is null when no server is active', async () => {
+      expect(await getSavedActiveServerConfigId()).toBeNull();
+    });
+
+    test('is null when the stored id names a server no longer saved', async () => {
+      await saveServerConfig({
+        id: 'gone',
+        url: 'https://a.example',
+        apiKey: 'k',
+      });
+      // A delete cut short: the list was written, the active id was not
+      // cleared.
+      await AsyncStorage.setItem('serverConfigs', '[]');
+      clearServerConfigCache();
+
+      expect(await getSavedActiveServerConfigId()).toBeNull();
+    });
+
+    test('rejects when storage cannot be read', async () => {
+      await saveServerConfig({
+        id: 'u1',
+        url: 'https://a.example',
+        apiKey: 'k',
+      });
+      clearServerConfigCache();
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('storage down'));
+
+      await expect(getSavedActiveServerConfigId()).rejects.toThrow(
+        'storage down'
+      );
+    });
+  });
+
   describe('the saved-servers listener when later steps fail', () => {
     const config: ServerConfig = {
       id: 'late-1',
@@ -968,6 +1027,58 @@ describe('storage', () => {
 
       await expect(saveServerConfig(config)).resolves.toBeUndefined();
       expect(await getAllServerConfigs()).toHaveLength(1);
+    });
+  });
+
+  describe('healthWaterSyncToken', () => {
+    test('saves, loads, and clears token for iOS and Android independently', async () => {
+      expect(await loadHealthWaterSyncToken('ios')).toBeNull();
+      expect(await loadHealthWaterSyncToken('android')).toBeNull();
+
+      await saveHealthWaterSyncToken('ios', 'ios-anchor-123');
+      await saveHealthWaterSyncToken('android', 'android-token-456');
+
+      expect(await loadHealthWaterSyncToken('ios')).toBe('ios-anchor-123');
+      expect(await loadHealthWaterSyncToken('android')).toBe(
+        'android-token-456'
+      );
+
+      await clearHealthWaterSyncToken('ios');
+      expect(await loadHealthWaterSyncToken('ios')).toBeNull();
+      expect(await loadHealthWaterSyncToken('android')).toBe(
+        'android-token-456'
+      );
+
+      await clearHealthWaterSyncToken('android');
+      expect(await loadHealthWaterSyncToken('android')).toBeNull();
+    });
+
+    test('scopes token by server configuration ID', async () => {
+      await saveHealthWaterSyncToken('android', 'server-1-token', 'server-1');
+      await saveHealthWaterSyncToken('android', 'server-2-token', 'server-2');
+
+      expect(await loadHealthWaterSyncToken('android', 'server-1')).toBe(
+        'server-1-token'
+      );
+      expect(await loadHealthWaterSyncToken('android', 'server-2')).toBe(
+        'server-2-token'
+      );
+
+      await clearHealthWaterSyncToken('android', 'server-1');
+      expect(await loadHealthWaterSyncToken('android', 'server-1')).toBeNull();
+      expect(await loadHealthWaterSyncToken('android', 'server-2')).toBe(
+        'server-2-token'
+      );
+    });
+
+    test('propagates storage errors instead of silently returning null', async () => {
+      jest
+        .spyOn(AsyncStorage, 'getItem')
+        .mockRejectedValueOnce(new Error('Storage failure'));
+
+      await expect(loadHealthWaterSyncToken('android')).rejects.toThrow(
+        'Storage failure'
+      );
     });
   });
 });

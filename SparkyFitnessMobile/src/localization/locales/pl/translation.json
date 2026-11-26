@@ -136,7 +136,9 @@
       "customMeasurements": "Własne pomiary",
       "heartRateZones": "Strefy tętna",
       "heartRateZonesSubtitle": "Maksymalne i spoczynkowe tętno, metoda stref",
-      "nfcTags": "Tagi NFC"
+      "nfcTags": "Tagi NFC",
+      "offline": "Offline",
+      "features": "Funkcje"
     },
     "theme": {
       "title": "Motyw",
@@ -268,7 +270,8 @@
       "hydration": "Przypomnienia o nawodnieniu",
       "moodCheckin": "Wpisy nastroju",
       "oralCare": "Przypomnienia o szczotkowaniu",
-      "mindfulness": "Timer medytacji"
+      "mindfulness": "Timer medytacji",
+      "challenges": "Wyzwania"
     },
     "actions": {
       "completeSet": "Wykonaj serię",
@@ -324,6 +327,16 @@
     "meditationTimer": {
       "title": "Medytacja zakończona",
       "body": "Otwórz SparkyFitness, aby zapisać sesję."
+    },
+    "offlineUploads": {
+      "title": "Trening czeka na przesłanie",
+      "body": "Otwórz SparkyFitness, gdy serwer będzie dostępny."
+    },
+    "challengeWeek": {
+      "body": "{{leader}} prowadzi z wynikiem {{total}}. Tydzień kończy się dziś wieczorem.",
+      "bodyWithOwn": "{{leader}} prowadzi z wynikiem {{total}}. Jesteś #{{rank}} z wynikiem {{ownTotal}}. Tydzień kończy się dziś wieczorem.",
+      "bodyYouLead": "Prowadzisz z wynikiem {{total}}. Tydzień kończy się dziś wieczorem.",
+      "title": "{{name}}: kto prowadzi w tym tygodniu"
     }
   },
   "activeWorkout": {
@@ -591,7 +604,9 @@
     "checkIn": "Codzienny wpis",
     "checkInHint": "Nawyki",
     "oralCare": "Higiena jamy ustnej",
-    "oralCareHint": "Szczotkuj, nitkuj"
+    "oralCareHint": "Szczotkuj, nitkuj",
+    "copyFromYesterday": "Skopiuj z wczoraj",
+    "copyFromYesterdayHint": "Powtórz posiłki"
   },
   "screens": {
     "foods": "Produkty spożywcze",
@@ -687,7 +702,9 @@
       "labResults": "Wyniki badań",
       "labResultsSubtitle": "Badania krwi i inne wskaźniki w czasie",
       "trainingCalendar": "Kalendarz treningów",
-      "trainingCalendarSubtitle": "Zaplanowane i ukończone treningi oraz obciążenie treningowe wg sportu"
+      "trainingCalendarSubtitle": "Zaplanowane i ukończone treningi oraz obciążenie treningowe wg sportu",
+      "challenges": "Wyzwania",
+      "challengesSubtitle": "Rankingi grupowe ze znajomymi i rodziną"
     },
     "duplicateExercise": "Zduplikuj ćwiczenie",
     "symptomLog": "Zapis objawu",
@@ -746,7 +763,9 @@
     "labResultAdd": "Dodaj wynik badania",
     "labReportImport": "Import wyniku",
     "treadmillSettings": "Bieżnia i krok",
-    "trainingCalendar": "Kalendarz treningów"
+    "trainingCalendar": "Kalendarz treningów",
+    "features": "Funkcje",
+    "offlineSettings": "Offline"
   },
   "healthMetrics": {
     "steps": "Kroki",
@@ -814,7 +833,8 @@
     "sleepingWristTemperature": "Temperatura nadgarstka podczas snu",
     "overnightBodyTemperature": "Temperatura ciała w nocy",
     "toothbrushing": "Szczotkowanie zębów",
-    "exercise": "Ćwiczenie"
+    "exercise": "Ćwiczenie",
+    "waistCircumference": "Obwód talii"
   },
   "healthCategories": {
     "Common": "Ogólne",
@@ -1165,7 +1185,10 @@
       "fixed": "Cel − zjedzone",
       "projectedTotal": "Całkowite kalorie Health Connect (zapasowo BMR + kalorie aktywności)",
       "dynamicActivitySeparated": "Cel - Zjedzone + Aktywność",
-      "tdeeWeekly": "Prognozowane TDEE + tygodniowa korekta celu - Zjedzone"
+      "tdeeWeekly": "Prognozowane TDEE + tygodniowa korekta celu - Zjedzone",
+      "burnedAdaptive": "Wyświetlane informacyjnie. Twój cel adaptacyjny już uwzględnia Twoją aktywność.",
+      "netAdaptive": "Nieużywane dla „Pozostało”. Włącz „Licz kalorie aktywności osobno”, aby zaliczać dzisiejszą aktywność.",
+      "netAdaptivePercentage": "Nieużywane dla „Pozostało”. Aby zaliczać dzisiejszą aktywność, wybierz Dynamiczny i włącz „Licz kalorie aktywności osobno”."
     },
     "notes": {
       "dynamic": "Cel rośnie wraz z aktywnością",
@@ -1276,7 +1299,9 @@
       "chartHintTrainingShort": "Dotknij słupka, aby zobaczyć dany dzień. Dotknij dnia poniżej, aby przełączyć trening i odpoczynek.",
       "chartHintCustomHandle": "Dotknij słupka, aby zobaczyć dany dzień. Przeciągnij uchwyt nad słupkiem, aby go zmienić."
     },
-    "adaptiveEstimateRangeWithUnit": "Poziom aktywności ustawia oszacowanie początkowe oraz zakres wiarygodności ±{{amount}} {{unit}} wokół BMR × tego mnożnika. Oszacowania mogą potrzebować kilku tygodni na ustabilizowanie; wahania masy ciała i niekompletne zapisy żywieniowe zwiększają niepewność."
+    "adaptiveEstimateRangeWithUnit": "Poziom aktywności ustawia oszacowanie początkowe oraz zakres wiarygodności ±{{amount}} {{unit}} wokół BMR × tego mnożnika. Oszacowania mogą potrzebować kilku tygodni na ustabilizowanie; wahania masy ciała i niekompletne zapisy żywieniowe zwiększają niepewność.",
+    "adaptiveFallbackActivityLevel": "Dopóki Adaptacyjny nie zbierze {{days}} dni dzienników żywności, Twoja baza to BMR × ten poziom, przed zastosowaniem Trybu celu, a Twoje treningi nie są do niej doliczane. Wybierz poziom, który obejmuje Twoje treningi.",
+    "adaptiveFallbackActivitySeparated": "Dopóki Adaptacyjny nie zbierze {{days}} dni dzienników żywności, Twoja baza to BMR × ten poziom, przed zastosowaniem Trybu celu. Opisz swoją aktywność poza krokami i treningami, które są liczone osobno."
   },
   "dashboardSettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -1327,7 +1352,10 @@
     "oralCare": "Higiena jamy ustnej",
     "oralCareSubtitle": "Pokazuje szczotkowanie względem celu i Twoją serię",
     "bloodAlcohol": "Szacunek alkoholu we krwi",
-    "bloodAlcoholSubtitle": "Pokaż zgrubny szacunek alkoholu we krwi na podstawie zapisanych drinków na Pulpicie"
+    "bloodAlcoholSubtitle": "Pokaż zgrubny szacunek alkoholu we krwi na podstawie zapisanych drinków na Pulpicie",
+    "wellness": "Samopoczucie",
+    "challenges": "Wyzwania",
+    "challengesSubtitle": "Pokaż Twoje miejsce w wyzwaniach, w których bierzesz udział"
   },
   "diarySettings": {
     "updateFailed": "Nie udało się zaktualizować ustawienia.",
@@ -1407,7 +1435,10 @@
     "oralCareReminderTime": "Przypomnienie {{number}}",
     "oralCareReminderTimeAccessibility": "Przypomnienie o szczotkowaniu {{number}}, {{time}}",
     "oralCareRemoveReminder": "Usuń przypomnienie o szczotkowaniu {{number}}",
-    "oralCareAddReminder": "Dodaj przypomnienie"
+    "oralCareAddReminder": "Dodaj przypomnienie",
+    "challengeWeek": "Lider tygodnia",
+    "challengeWeekSubtitle": "Ostatni wieczór każdego tygodnia wyzwania: kto prowadzi w każdym cotygodniowym wyzwaniu, w którym bierzesz udział",
+    "challenges": "Wyzwania"
   },
   "workoutSettings": {
     "title": "Ustawienia treningu",
@@ -2827,10 +2858,6 @@
       "wellness": "Ustawienia dobrego samopoczucia",
       "cyclePregnancy": "Cykl i ciąża"
     },
-    "enable": {
-      "title": "Włącz monitorowanie cyklu i ciąży",
-      "subtitle": "Włącz zapisywanie, prognozy i historię"
-    },
     "groups": {
       "features": "Konfiguracja funkcji",
       "calculations": "Korekty obliczeń cyklu",
@@ -2864,6 +2891,16 @@
       "discreetSubtitle": "Ukrywa w interfejsie etykiety „Cykl” i „Ciąża”",
       "exportSubtitle": "Pobierz eksport danych JSON",
       "resetSubtitle": "Uruchom ponownie przewodnik konfiguracji"
+    },
+    "loadFailed": "Nie udało się wczytać tych ustawień.",
+    "feature": {
+      "on": "Włączono",
+      "off": "Wyłączono",
+      "hint": "Włącz lub wyłącz w Ustawieniach → Funkcje."
+    },
+    "setup": {
+      "action": "Skonfiguruj",
+      "hint": "Odpowiedz na kilka pytań, aby dokończyć konfigurację."
     }
   },
   "measurements": {
@@ -2969,7 +3006,8 @@
       "lookupBarcode": "Nie udało się wyszukać tego kodu kreskowego. Spróbuj ponownie.",
       "timeout": "Upłynął limit czasu żądania. Sprawdź połączenie z serwerem.",
       "retryOnDevice": "Nie udało się odczytać etykiety na tym iPhonie.",
-      "restartApp": "Nie można otworzyć galerii. Uruchom aplikację ponownie."
+      "restartApp": "Nie można otworzyć galerii. Uruchom aplikację ponownie.",
+      "offlineBarcode": "Brak połączenia. Ten kod kreskowy nie znajduje się w produktach zapisanych na telefonie."
     },
     "permission": {
       "camera": "Aby używać aparatu, potrzebujemy Twojej zgody.",
@@ -3608,7 +3646,11 @@
       "deskTag": "Tag na biurku",
       "tapped": "Dotknięto",
       "tagWater": "Woda • 500 mL",
-      "logged": "Zapisano"
+      "logged": "Zapisano",
+      "offlinePush": "Trening push",
+      "offlineBadge": "Offline",
+      "offlineSets": "Zapisano 12 serii",
+      "offlineWaiting": "Czeka na przesłanie"
     },
     "features": {
       "medications": {
@@ -3709,6 +3751,12 @@
         "headline": "Zapisz jednym dotknięciem",
         "body": "Przyklej tag NFC na butelce wody, biurku lub szafce kuchennej i ustaw go tak, aby zapisywał napój, produkt lub zapisany posiłek. Przyłóż telefon, aby zapisać, z opcją Cofnij, jeśli nie o to chodziło.",
         "cta": "Skonfiguruj tagi NFC"
+      },
+      "offlineWorkouts": {
+        "eyebrow": "TRENINGI OFFLINE",
+        "headline": "Trenuj bez zasięgu",
+        "body": "Rozpocznij, zapisz i zakończ trening, nawet gdy serwer jest nieosiągalny. Trening zostaje zapisany na telefonie i prześle się sam, gdy wrócisz do sieci. Przytrzymaj ćwiczenia w bibliotece, aby ich zdjęcia były też dostępne offline.",
+        "cta": "Ustawienia offline"
       }
     }
   },
@@ -4102,7 +4150,9 @@
       "result": "= {{raw}} {{unit}} na surowo · {{energy}}",
       "incomplete": "Wprowadź masy, aby obliczyć ilość surową.",
       "enterEaten": "Wprowadź zjedzoną masę po ugotowaniu."
-    }
+    },
+    "queued": "Zapisano na telefonie",
+    "queuedMessage": "Zostanie przesłane, gdy serwer będzie dostępny."
   },
   "exerciseSearch": {
     "title": "Ćwiczenia",
@@ -4272,7 +4322,13 @@
       "selected_few": "Wybrano {{count}}",
       "selected_many": "Wybrano {{count}}",
       "limitReached": "Możesz wybrać do {{limit}} produktów",
-      "foodCheckbox": "Wybierz {{name}}"
+      "foodCheckbox": "Wybierz {{name}}",
+      "needsConnection": "Dodanie kilku produktów wymaga połączenia",
+      "needsConnectionHint": "Dodawaj je pojedynczo, aby zachować je na tym telefonie."
+    },
+    "foodResultCard": {
+      "tapForFullNutrition": "Dotknij, aby zobaczyć pełne wartości odżywcze",
+      "tapForNutrition": "Dotknij, aby zobaczyć wartości odżywcze"
     }
   },
   "editBarcode": {
@@ -4560,7 +4616,9 @@
     "errors": {
       "permission": "Nie masz uprawnień do edycji tego wpisu.",
       "saveFailed": "Nie udało się zapisać zmian",
-      "deleteFailed": "Nie udało się usunąć wpisu"
+      "deleteFailed": "Nie udało się usunąć wpisu",
+      "uploadingNow": "Trwa przesyłanie. Spróbuj ponownie za chwilę.",
+      "alreadyUploaded": "Właśnie przesłano. Spróbuj ponownie po odświeżeniu Dziennika."
     },
     "deleteConfirm": "Czy na pewno chcesz usunąć ten wpis produktu?",
     "entryNotes": "Notatka do tego wpisu",
@@ -5165,7 +5223,8 @@
     "healthUnavailable": {
       "title": "Dane zdrowotne niedostępne",
       "message": "Nie udało się uruchomić dostępu do danych zdrowotnych. Sprawdź uprawnienia w Ustawieniach."
-    }
+    },
+    "configureForCopy": "Skonfiguruj połączenie z serwerem w Ustawieniach, aby kopiować z wczoraj."
   },
   "announcementModal": {
     "title": "Ogłoszenie",
@@ -5214,7 +5273,9 @@
     "reorderExercises": "Zmień kolejność ćwiczeń",
     "workoutPlaceholder": "Trening",
     "useYesterday": "Użyj wczoraj",
-    "useToday": "Użyj dzisiaj"
+    "useToday": "Użyj dzisiaj",
+    "savedOfflineTitle": "Zapisano na tym telefonie",
+    "savedOfflineMessage": "Prześle się, gdy serwer będzie dostępny."
   },
   "mealMutations": {
     "createFailed": "Nie udało się utworzyć posiłku",
@@ -5670,10 +5731,14 @@
     "customConfirm": "Pokaż ten zakres"
   },
   "foodEntryMeal": {
-    "failed": "Nie udało się dodać posiłku"
+    "failed": "Nie udało się dodać posiłku",
+    "queued": "Zapisano na telefonie",
+    "queuedMessage": "Zostanie przesłane, gdy serwer będzie dostępny."
   },
   "foodSave": {
-    "failed": "Nie udało się zapisać produktu"
+    "failed": "Nie udało się zapisać produktu",
+    "queued": "Zapisano na telefonie",
+    "queuedMessage": "Zostanie przesłane, gdy serwer będzie dostępny."
   },
   "favorites": {
     "updateFailed": "Nie udało się zaktualizować ulubionych"
@@ -6008,11 +6073,15 @@
     "configure": "Skonfiguruj pojemnik na wodę na serwerze, aby śledzić nawodnienie.",
     "multipleNoPrimaryMobile": "Masz kilka pojemników na wodę, ale żaden nie jest oznaczony jako główny. Dotknij, aby wybrać.",
     "configureMobile": "Dodaj pojemnik na wodę, aby rozpocząć śledzenie nawodnienia.",
-    "defaultContainer": "Domyślny"
+    "defaultContainer": "Domyślny",
+    "queued": "Zapisano na telefonie",
+    "queuedMessage": "Zostanie przesłane, gdy serwer będzie dostępny."
   },
   "activeWorkoutAutosave": {
     "failedTitle": "Nie zapisano treningu",
-    "failedMessage": "Zmiany są przechowywane na tym urządzeniu i zostaną ponownie wysłane."
+    "failedMessage": "Zmiany są przechowywane na tym urządzeniu i zostaną ponownie wysłane.",
+    "offlineTitle": "Zapisano na tym telefonie",
+    "offlineMessage": "Trening prześle się, gdy serwer będzie dostępny."
   },
   "medicalDisclaimer": {
     "text": "Tylko do śledzenia i ogólnych informacji, to nie jest porada medyczna. W sprawach zdrowotnych skonsultuj się z lekarzem."
@@ -6406,6 +6475,14 @@
       "dayCycle_one": "{{count}}-dniowy cykl",
       "dayCycle_few": "{{count}}-dniowe cykle",
       "dayCycle_many": "{{count}}-dniowy cykl"
+    },
+    "loadFailed": "Nie udało się wczytać ustawień.",
+    "off": {
+      "title": "Śledzenie cyklu jest wyłączone",
+      "discreetTitle": "Samopoczucie jest wyłączone",
+      "description": "Twoja historia zostaje zachowana. Włącz ponownie, aby znów ją tu zobaczyć.",
+      "turnOn": "Włącz",
+      "openFeatures": "Otwórz Funkcje"
     }
   },
   "time": {
@@ -6709,7 +6786,8 @@
     "saving": "Zapisywanie…",
     "saved": "Zapisano",
     "saveFailed": "Nie udało się zapisać Twojej opinii. Spróbuj ponownie.",
-    "loadFailed": "Nie udało się wczytać Twojej opinii."
+    "loadFailed": "Nie udało się wczytać Twojej opinii.",
+    "queued": "Zostanie wysłane, gdy wrócisz do sieci"
   },
   "adaptiveCoaching": {
     "reasons": {
@@ -7091,7 +7169,19 @@
     "countdownSeconds": "{{seconds}} s",
     "holdCountdownTitle": "Odliczanie przed pozycjami na czas",
     "holdCountdownSubtitle": "Ekran „3, 2, 1, gotowe” przed rozpoczęciem pozycji na czas, aby zdążyć się ustawić. Dotknij, aby pominąć.",
-    "newWorkoutSubtitleWearOs": "Przycisk zapisania serii, przycisk edycji poprzedniej serii, demonstracje ćwiczeń, kalkulator talerzy, strona Więcej z akcjami treningu i pojedyncze podsumowanie po zakończeniu treningu. Opcja wyłączona zachowuje oryginalny ekran treningu."
+    "newWorkoutSubtitleWearOs": "Przycisk zapisania serii, przycisk edycji poprzedniej serii, demonstracje ćwiczeń, kalkulator talerzy, strona Więcej z akcjami treningu i pojedyncze podsumowanie po zakończeniu treningu. Opcja wyłączona zachowuje oryginalny ekran treningu.",
+    "mediaControlsTitle": "Sterowanie multimediami",
+    "mediaAccessTitle": "Informacje o odtwarzanym utworze",
+    "mediaAccessEnabledSubtitle": "Zegarek pokazuje aktualny utwór i wykonawcę podczas sterowania multimediami z telefonu w trakcie treningów.",
+    "mediaAccessDisabledSubtitle": "Odtwarzanie, przewijanie i sterowanie głośnością działają automatycznie. Zezwól na dostęp do powiadomień, aby zegarek mógł też pokazywać aktualny utwór i wykonawcę. Inne powiadomienia są ignorowane.",
+    "mediaAccessEnabled": "Włączone",
+    "mediaAccessSetup": "Skonfiguruj",
+    "mediaAccessA11yLabel": "{{title}}, {{status}}",
+    "mediaAccessDisclosureTitle": "Zezwolić na dostęp do powiadomień?",
+    "mediaAccessDisclosureBody": "Android wymaga dostępu do powiadomień, aby odczytać aktualnie odtwarzany utwór i wykonawcę dla zegarka Wear OS. SparkyFitness odczytuje tylko aktywne sesje multimedialne i ignoruje Twoje wiadomości oraz inne powiadomienia.",
+    "mediaAccessOpenSettings": "Otwórz ustawienia",
+    "mediaAccessOpenErrorTitle": "Nie można otworzyć ustawień",
+    "mediaAccessOpenErrorBody": "Otwórz Ustawienia Androida → Powiadomienia → Odczyt, odpowiadanie i sterowanie powiadomieniami i włącz Sterowanie multimediami SparkyFitness."
   },
   "progressPhotos": {
     "card": {
@@ -8619,7 +8709,22 @@
     "insightWeekendShorter": "W weekendy śpisz o {{hours}} krócej niż w dni robocze.",
     "insightFullNights": "{{full}} z {{total}} nocy osiągnęło 7 godzin.",
     "insightIrregular": "Twoja pora snu waha się o około ±{{minutes}} min.",
-    "insightDurationChange": "Czas snu jest {{change}} względem poprzedniego okresu."
+    "insightDurationChange": "Czas snu jest {{change}} względem poprzedniego okresu.",
+    "negativeDuration": "-{{duration}}",
+    "needLoadFailed": "Nie udało się wczytać dzisiejszego zapotrzebowania na sen",
+    "needTonight": "Zapotrzebowanie na sen dziś w nocy",
+    "needTotal": "Razem",
+    "needBaseline": "Baza",
+    "needStrain": "Obciążenie",
+    "needStrainHint": "Z dzisiejszych treningów",
+    "needDebt": "Odrabianie niedoboru",
+    "needDebtHint": "Część Twojego niedoboru snu ({{amount}})",
+    "needSurplusHint": "Część Twojej nadwyżki snu ({{amount}})",
+    "recovery": "Regeneracja",
+    "recoveryScore": "{{score}}/100",
+    "recoveryHint": "Twoja gotowość: sen, tętno spoczynkowe i HRV",
+    "trainingLoad": "Obciążenie treningowe",
+    "trainingLoadHint": "Minuty treningu ważone tętnem"
   },
   "reportsSettings": {
     "reset": "Resetuj",
@@ -8685,7 +8790,8 @@
       "measurementTimeline": "Oś czasu pomiarów",
       "oralCareBrushesChart": "Wykres szczotkowań dziennie",
       "oralCareMinutesChart": "Wykres minut szczotkowania",
-      "oralCareSummary": "Serie i inne zabiegi"
+      "oralCareSummary": "Serie i inne zabiegi",
+      "sleepNeed": "Zapotrzebowanie na sen dziś w nocy"
     },
     "hydrationSections": "Raport nawodnienia",
     "measurementsSections": "Raport pomiarów",
@@ -9473,7 +9579,7 @@
     },
     "goBack": "Wróć",
     "followRoadsTooMany": "Prowadzenie wzdłuż dróg mieści do {{max}} punktów. Cofnij punkty albo wyłącz „Wzdłuż dróg”, aby zapisać.",
-    "osmAttribution": "© OpenStreetMap"
+    "mapAttribution": "© OpenMapTiles © OpenStreetMap"
   },
   "compareReport": {
     "screen": {
@@ -9826,7 +9932,6 @@
     "previewTitle": "Podgląd",
     "previewDescription": "Tak wyglądają szybkie akcje z Twoim wyborem.",
     "lineNumber": "Linia {{number}}",
-    "needsCycle": "Niewidoczne: śledzenie cyklu jest wyłączone",
     "showAs": "Pokaż jako",
     "showAsValue": "Pokaż jako {{style}}",
     "styleList": "Lista",
@@ -9838,7 +9943,8 @@
     "buttonsDescription": "Wyświetlane obok siebie na dole arkusza.",
     "chooseCard": "Wybierz kafelek",
     "slotLabel": "Kafelek {{number}}: {{name}}",
-    "slotHint": "Otwiera listę wyboru tego, co tu trafi"
+    "slotHint": "Otwiera listę wyboru tego, co tu trafi",
+    "emptySlot": "Puste"
   },
   "calorieLink": {
     "action": "Powiąż trening z urządzenia",
@@ -10446,7 +10552,8 @@
     "goToSettings": "Przejdź do Ustawień",
     "unreachableTitle": "Nie można połączyć się z serwerem",
     "unreachableSubtitle": "Sprawdź połączenie lub spróbuj ponownie.",
-    "tryAgain": "Spróbuj ponownie"
+    "tryAgain": "Spróbuj ponownie",
+    "offlineWorkouts": "Rozpocznij zapisany trening offline"
   },
   "waterLog": {
     "title": "Napoje",
@@ -11039,5 +11146,286 @@
     "showEarlier_one": "Pokaż wcześniejszy tydzień ({{formattedCount}})",
     "showEarlier_few": "Pokaż wcześniejsze tygodnie ({{formattedCount}})",
     "showEarlier_many": "Pokaż wcześniejsze tygodnie ({{formattedCount}})"
+  },
+  "featureSettings": {
+    "title": "Funkcje",
+    "description": "Włączaj i wyłączaj całe funkcje w tej aplikacji.",
+    "footnote": "Wyłączenie funkcji tylko ją ukrywa: nic nie jest usuwane, a synchronizacje i importy działają dalej.",
+    "loading": "Wczytywanie",
+    "loadError": "Nie udało się wczytać tego ustawienia.",
+    "saveFailed": "Nie udało się zapisać tego ustawienia. Spróbuj ponownie.",
+    "appOnly": "Tylko ta aplikacja. Strona ma własny przełącznik.",
+    "serverTooOld": "Aby to zmienić, zaktualizuj serwer SparkyFitness.",
+    "groups": {
+      "health": "Zdrowie",
+      "nutrition": "Odżywianie",
+      "training": "Trening",
+      "wellbeing": "Samopoczucie"
+    },
+    "cycle": {
+      "title": "Cykl i ciąża",
+      "discreetTitle": "Samopoczucie",
+      "description": "Śledź miesiączki, płodność i ciążę.",
+      "scope": "Jeden przełącznik dla aplikacji i strony.",
+      "setupAction": "Skonfiguruj",
+      "setupHint": "Odpowiedz na kilka pytań, aby dokończyć konfigurację."
+    },
+    "labResults": {
+      "title": "Wyniki badań",
+      "description": "Zapisuj wyniki badań krwi i śledź każdy marker w czasie."
+    },
+    "someOff": "Niektóre funkcje są wyłączone",
+    "manage": "Zarządzaj"
+  },
+  "offline": {
+    "keptAdded_one": "Zdjęcia {{count}} ćwiczenia będą przechowywane offline",
+    "keptAdded_few": "Zdjęcia {{count}} ćwiczeń będą przechowywane offline",
+    "keptAdded_many": "Zdjęcia {{count}} ćwiczeń będą przechowywane offline",
+    "keptRemoved_one": "{{count}} ćwiczenie nie będzie już przechowywane offline",
+    "keptRemoved_few": "{{count}} ćwiczenia nie będą już przechowywane offline",
+    "keptRemoved_many": "{{count}} ćwiczeń nie będzie już przechowywane offline",
+    "keptMark": "Przechowywane offline",
+    "selectedCount_one": "Wybrano {{count}}",
+    "selectedCount_few": "Wybrano {{count}}",
+    "selectedCount_many": "Wybrano {{count}}",
+    "keepOffline": "Przechowuj offline",
+    "removeFromOffline": "Nie przechowuj offline",
+    "picturesTitle": "Zdjęcia ćwiczeń",
+    "picturesOnMobileData": "Pobieraj zdjęcia przez dane mobilne",
+    "picturesOnMobileDataSubtitle": "Wyłączone: zdjęcia pobierają się tylko przez Wi-Fi. Maksymalnie 300 MB.",
+    "keptHeading": "Ćwiczenia przechowywane offline",
+    "keptIntro": "Zdjęcia planu na ten tydzień i zapisanych treningów są przechowywane automatycznie. Aby przechowywać więcej, przytrzymaj ćwiczenia w bibliotece ćwiczeń.",
+    "keptRemove": "Dotknij, aby przestać przechowywać offline",
+    "presetOfflineNote": "Offline: możesz rozpocząć lub zapisać ten trening. Zmiany i duplikowanie wymagają połączenia.",
+    "leave": {
+      "title_one": "{{count}} trening czeka na przesłanie",
+      "title_few": "{{count}} treningi czekają na przesłanie",
+      "title_many": "{{count}} treningów czeka na przesłanie",
+      "deleteMessage": "Usunięcie tego serwera usuwa też dane czekające na telefonie i nigdy nie trafią one na serwer.",
+      "switchMessage": "Zostają na tym telefonie i prześlą się po przełączeniu z powrotem na ten serwer.",
+      "uploadFirst": "Najpierw prześlij",
+      "deleteAnyway": "Usuń mimo to",
+      "switchAnyway": "Przełącz mimo to"
+    },
+    "presetUpdateQueued": "Zapisany trening zostanie zaktualizowany po powrocie do sieci",
+    "presetUpdateSkipped": "Zapisany trening „{{name}}” nie został zaktualizowany, ponieważ zmieniono go gdzie indziej",
+    "presetUpdated": "Zaktualizowano zapisany trening „{{name}}”",
+    "diaryNote": "Produkty i treningi z ostatniego tygodnia są dostępne offline. Sen i pozostałe wpisy wymagają połączenia.",
+    "diaryNothingSaved": "Nic nie zapisano na ten dzień",
+    "finishedTitle": "Zapisano na tym telefonie",
+    "finishedMessage": "Prześle się, gdy serwer będzie dostępny.",
+    "deleteSavedTitle": "Usunięto na tym telefonie",
+    "deleteSavedMessage": "Zostanie usunięty z serwera, gdy tylko będzie dostępny.",
+    "startedTitle": "Rozpoczęto offline",
+    "startedMessage": "Ten trening jest przechowywany na tym telefonie i prześle się, gdy serwer będzie dostępny.",
+    "notReadyTitle": "Brak gotowości do treningów offline",
+    "notReadyMessage": "Połącz się z serwerem raz, aby ten telefon mógł zapisać to, czego wymaga trening.",
+    "banner": "Offline: wyświetlanie danych zapisanych na tym telefonie",
+    "bannerHint": "Sprawdza połączenie ponownie",
+    "intro": "Treningi, produkty, posiłki, nowe produkty i napoje można zapisywać bez połączenia. Są przechowywane na tym telefonie i przesyłane, gdy serwer będzie dostępny.",
+    "waitingHeading": "Czeka na przesłanie",
+    "nothingWaiting": "Nic nie czeka",
+    "nothingWaitingSubtitle": "Wszystko z tego telefonu zostało już przesłane.",
+    "waitingItem": "{{kind}}, {{date}}",
+    "uploadNow": "Prześlij teraz",
+    "uploadDone": "Wszystko przesłano",
+    "uploadStillWaiting": "Niektóre elementy nadal czekają",
+    "uploadStillWaitingDetail": "Zostają na tym telefonie i prześlą się, gdy serwer będzie dostępny.",
+    "storageHeading": "Na tym telefonie",
+    "storageTitle": "Zapisane do użytku offline",
+    "storageValue": "{{size}} MB",
+    "refreshRow": "Odśwież teraz",
+    "refreshing": "Odświeżanie…",
+    "neverRefreshed": "Jeszcze nie pobrano. Połącz się raz z serwerem, aby przygotować tryb offline.",
+    "lastRefreshed": "Ostatnio odświeżono {{when}}",
+    "refreshDone": "Zapisane dane są aktualne",
+    "refreshFailed": "Nie udało się odświeżyć",
+    "refreshFailedDetail": "Serwer jest nieosiągalny. To, co już zapisano, zostaje zachowane.",
+    "clearRow": "Wyczyść dane offline",
+    "clearRowSubtitle": "Czekające na przesłanie elementy zostają zachowane",
+    "clearTitle": "Wyczyścić dane offline?",
+    "clearMessage": "Zapisane treningi, ćwiczenia, produkty, posiłki i inne dane przechowywane do użytku offline zostaną usunięte z tego telefonu i pobrane ponownie następnym razem. Wszystko, co czeka na przesłanie, zostaje zachowane.",
+    "clearConfirm": "Wyczyść",
+    "status": {
+      "pending": "Czeka na przesłanie",
+      "sending": "Przesyłanie…",
+      "conflict": "Zmieniono gdzie indziej. Dotknij, aby wybrać.",
+      "needsSignIn": "Zaloguj się ponownie, aby przesłać",
+      "failed": "Serwer go nie przyjął"
+    },
+    "conflict": {
+      "phoneSuffix": "(telefon)",
+      "deletedTitle": "Usunięto gdzie indziej",
+      "deletedMessage": "Ten trening został usunięty na innym urządzeniu, gdy ten telefon był offline.",
+      "saveAsNew": "Zapisz jako nowy trening",
+      "discard": "Odrzuć kopię z tego telefonu",
+      "changedTitle": "Zmieniono gdzie indziej",
+      "changedMessage": "Ten trening został zmieniony na innym urządzeniu, gdy ten telefon był offline. Którą wersję chcesz zachować?",
+      "keepPhone": "Zachowaj trening z tego telefonu",
+      "keepServer": "Zachowaj tę drugą wersję",
+      "saveSeparately": "Zachowaj obie"
+    },
+    "kind": {
+      "workout": "Trening",
+      "other": "Zapisana zmiana",
+      "food": "Wpis produktu",
+      "water": "Napój"
+    },
+    "libraryNote": "Treningi, ćwiczenia, produkty i posiłki zapisane na tym telefonie są dostępne offline. Cała reszta Biblioteki wymaga połączenia.",
+    "ownerless": {
+      "title": "Brak zapisanego konta",
+      "message": "Ten wpis został zapisany, zanim telefon wiedział, do którego konta należy, dlatego nie zostanie przesłany. Możesz go odrzucić.",
+      "discard": "Odrzuć ten wpis",
+      "subtitle": "Brak zapisanego konta. Dotknij, aby odrzucić."
+    },
+    "foodHeading": "Produkty i napoje przechowywane offline",
+    "foodIntro": "Twoje ostatnie i najczęściej używane produkty, własne produkty (do 2000), zapisane posiłki, typy posiłków i pojemniki na napoje są przechowywane razem z Dziennikiem i sumami z ostatniego tygodnia. Odświeżają się przy każdym połączeniu.",
+    "foodsKeptTitle": "Produkty",
+    "foodsKeptValue_one": "{{count}} produkt",
+    "foodsKeptValue_few": "{{count}} produkty",
+    "foodsKeptValue_many": "{{count}} produktów",
+    "mealsKeptTitle": "Zapisane posiłki",
+    "mealsKeptValue_one": "{{count}} posiłek",
+    "mealsKeptValue_few": "{{count}} posiłki",
+    "mealsKeptValue_many": "{{count}} posiłków",
+    "diaryDaysKeptTitle": "Dni Dziennika",
+    "diaryDaysKeptValue_one": "{{count}} dzień produktów",
+    "diaryDaysKeptValue_few": "{{count}} dni produktów",
+    "diaryDaysKeptValue_many": "{{count}} dni produktów"
+  },
+  "copyFromYesterday": {
+    "title": "Skopiuj z wczoraj",
+    "subtitle": "Przenieś wczorajsze posiłki na ten dzień",
+    "emptySource": "Nie ma nic do skopiowania z wczoraj.",
+    "copySelected": "Skopiuj wybrane",
+    "copyAll": "Skopiuj wszystkie",
+    "copying": "Kopiowanie...",
+    "success": "Skopiowano z wczoraj",
+    "failed": "Nie udało się skopiować z wczoraj",
+    "loadError": "Nie udało się wczytać wczorajszych posiłków."
+  },
+  "challenges": {
+    "card": {
+      "a11y": "Wyzwania",
+      "leader": "{{name}} prowadzi z wynikiem {{total}}",
+      "noScore": "Brak wyniku",
+      "refreshFailed": "Nie udało się odświeżyć; pokazywane są ostatnio wczytane",
+      "youLead": "Prowadzisz",
+      "yourPlace": "#{{rank}} z {{members}} · {{total}}"
+    },
+    "dates": {
+      "from": "Od {{start}}, bez daty końcowej",
+      "range": "{{start}} do {{end}}"
+    },
+    "detailLoadFailed": "Nie udało się wczytać tego wyzwania.",
+    "emptySubtitle": "Dołącz kodem zaproszenia od znajomego albo utwórz własne na stronie web.",
+    "emptyTitle": "Nie masz jeszcze wyzwań",
+    "format": {
+      "groupGoal": "Cel grupowy",
+      "hitGoal": "Osiągnij cel",
+      "leaderboard": "Ranking",
+      "race": "Wyścig do celu"
+    },
+    "hostOnWeb": "Jesteś gospodarzem tego wyzwania. Zmień jego zasady i kody zaproszeń na stronie web.",
+    "join": {
+      "closed": "Nie można teraz dołączyć do tego wyzwania.",
+      "codeLabel": "Kod zaproszenia",
+      "codePlaceholder": "Wklej kod lub link",
+      "ended": "To wyzwanie się zakończyło.",
+      "failed": "Nie udało się dołączyć do wyzwania.",
+      "full": "To wyzwanie jest pełne.",
+      "invalidCode": "Ten kod jest nieprawidłowy lub utracił ważność.",
+      "joined": "Dołączono do {{name}}",
+      "lateJoinClosed": "To wyzwanie się rozpoczęło i nie przyjmuje późniejszych dołączających.",
+      "nameLabel": "Twoja nazwa w nim",
+      "namePlaceholder": "Na przykład Twoje imię",
+      "nameRequired": "Wpisz nazwę, którą zobaczą pozostali członkowie.",
+      "notACode": "Wklej otrzymany kod zaproszenia lub link.",
+      "privacy": "Członkowie widzą tę nazwę i Twoje punkty, nigdy Twojego dziennika ani adresu e-mail. Możesz wyjść w każdej chwili.",
+      "submit": "Dołącz",
+      "submitting": "Dołączanie…",
+      "title": "Dołącz do wyzwania",
+      "tooMany": "Zbyt wiele prób. Odczekaj kilka minut i spróbuj ponownie.",
+      "withCode": "Dołącz kodem"
+    },
+    "leave": {
+      "action": "Opuść wyzwanie",
+      "confirm": "Opuść",
+      "failed": "Nie udało się opuścić wyzwania",
+      "message": "Twoje wyniki w nim zostaną usunięte. Możesz dołączyć ponownie z nowym kodem zaproszenia.",
+      "title": "Opuścić to wyzwanie?"
+    },
+    "listRefreshFailed": "Nie udało się odświeżyć Twoich wyzwań; pokazywane są ostatnio wczytane.",
+    "loadFailed": "Nie udało się wczytać Twoich wyzwań.",
+    "memberCount_one": "{{count}} członek",
+    "memberCount_few": "{{count}} członków",
+    "memberCount_many": "{{count}} członków",
+    "metric": {
+      "activeCalories": "Kalorie z aktywności",
+      "activeMinutes": "Aktywne minuty",
+      "distance": "Dystans",
+      "elevation": "Przewyższenie",
+      "hrZoneMinutes": "Minuty w strefach tętna",
+      "points": "Punkty",
+      "steps": "Kroki",
+      "workoutDays": "Dni treningowe"
+    },
+    "moreActions": "Więcej akcji",
+    "period": {
+      "challenge": "Całe wyzwanie",
+      "day": "Dziennie",
+      "month": "Miesięcznie",
+      "next": "Następny okres",
+      "previous": "Poprzedni okres",
+      "week": "Tygodniowo"
+    },
+    "refreshFailed": "Nie udało się odświeżyć tego wyzwania; pokazywane są ostatnio wczytane.",
+    "standings": {
+      "daysHit": "Cel osiągnięty w {{hit}} z {{eligible}} dni",
+      "empty": "Nikt nie zdobył jeszcze punktów w tym okresie.",
+      "final": "Wyniki końcowe",
+      "find": "Znajdź członka",
+      "finished": "Zakończono {{date}}",
+      "groupTotal": "Razem: {{total}} z {{target}}",
+      "live": "Na bieżąco; późne synchronizacje zegarka wciąż się liczą",
+      "loadFailed": "Nie udało się wczytać wyników.",
+      "minutes": "{{value}} aktywnych min",
+      "noMatch": "Żaden członek nie pasuje do „{{query}}”.",
+      "refreshFailed": "Nie udało się odświeżyć wyników; pokazywane są ostatnio wczytane.",
+      "rowA11y": "{{rank}}. {{name}}, {{total}}",
+      "winner": "Zwycięzca",
+      "you": "{{name}} (Ty)"
+    },
+    "state": {
+      "active": "Trwa",
+      "daysLeft_one": "Został {{count}} dzień",
+      "daysLeft_few": "Zostały {{count}} dni",
+      "daysLeft_many": "Zostało {{count}} dni",
+      "ended": "Zakończone",
+      "lastDay": "Ostatni dzień",
+      "running": "W trakcie",
+      "startsIn_one": "Zaczyna się za {{count}} dzień",
+      "startsIn_few": "Zaczyna się za {{count}} dni",
+      "startsIn_many": "Zaczyna się za {{count}} dni",
+      "startsOn": "Zaczyna się {{date}}",
+      "startsTomorrow": "Zaczyna się jutro"
+    },
+    "target": "Cel: {{target}}",
+    "title": "Wyzwania",
+    "unavailableSubtitle": "Wyzwania są wyłączone na Twoim serwerze albo serwer wymaga aktualizacji. Skontaktuj się z administratorem serwera.",
+    "unavailableTitle": "Wyzwania są niedostępne",
+    "value": {
+      "feet": "{{value}} ft",
+      "km": "{{value}} km",
+      "metres": "{{value}} m",
+      "miles": "{{value}} mi",
+      "minutes": "{{value}} min",
+      "points": "{{value}} pkt",
+      "steps": "{{value}} kroków",
+      "workoutDays_one": "{{count}} dzień",
+      "workoutDays_few": "{{count}} dni",
+      "workoutDays_many": "{{count}} dni"
+    },
+    "youHost": "Jesteś gospodarzem"
   }
 }

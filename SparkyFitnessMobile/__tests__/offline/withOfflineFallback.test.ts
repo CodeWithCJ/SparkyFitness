@@ -12,6 +12,10 @@ import { createTestDb } from '../helpers/offlineTestDb';
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 
 describe('withOfflineFallback', () => {
@@ -47,6 +51,56 @@ describe('withOfflineFallback', () => {
     expect(value).toBe('fresh');
     expect(store).toHaveBeenCalledWith(db, 's1', 'fresh');
     expect(read).not.toHaveBeenCalled();
+    expect(fallbackUsed).not.toHaveBeenCalled();
+  });
+
+  it('does not answer from the new account copy when the account changed during a failed request', async () => {
+    const read = jest.fn(async () => 'saved');
+    const failure = new TypeError('Network request failed');
+
+    await expect(
+      withOfflineFallback({
+        fetch: async () => {
+          bumpAccountGeneration();
+          throw failure;
+        },
+        read,
+      })
+    ).rejects.toBe(failure);
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it('does not return a saved copy when the account changed while it was being read', async () => {
+    const failure = new TypeError('Network request failed');
+    let finishRead: (value: string) => void = () => {};
+    let readStarted: () => void = () => {};
+    const started = new Promise<void>((resolve) => {
+      readStarted = resolve;
+    });
+    const read = jest.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          finishRead = resolve;
+          readStarted();
+        })
+    );
+
+    const answer = withOfflineFallback({
+      fetch: async () => {
+        throw failure;
+      },
+      read,
+    });
+    const outcome = answer.then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error })
+    );
+    await started;
+    // The account changes with the read still pending.
+    bumpAccountGeneration();
+    finishRead('another account copy');
+
+    expect(await outcome).toEqual({ error: failure });
     expect(fallbackUsed).not.toHaveBeenCalled();
   });
 

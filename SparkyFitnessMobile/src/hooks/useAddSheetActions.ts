@@ -38,6 +38,11 @@ function getServerConnectionMessage(
         defaultValue:
           'Configure your server connection in Settings to start a workout.',
       });
+    case 'addSheetActions.configureForCopy':
+      return t('addSheetActions.configureForCopy', {
+        defaultValue:
+          'Configure your server connection in Settings to copy from yesterday.',
+      });
     default:
       return fallback;
   }
@@ -98,6 +103,8 @@ function findRouteParams<T extends object>(
 
 interface AddSheetActionsArgs {
   syncMutation: ReturnType<typeof useSyncHealthData>;
+  /** Presents the copy-from-yesterday sheet for the active diary date. */
+  presentCopyFromYesterday?: (date: string) => void;
 }
 
 /**
@@ -106,7 +113,10 @@ interface AddSheetActionsArgs {
  * draft/active-workout conflict prompts, manual health sync, and returning the
  * user to their last content tab after a dismissal without an action.
  */
-export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
+export function useAddSheetActions({
+  syncMutation,
+  presentCopyFromYesterday,
+}: AddSheetActionsArgs) {
   const { t } = useTranslation();
   const lastActiveTabRef = useRef<NonAddTabName>('Dashboard');
   const addSheetDismissNavigationTimeoutRef = useRef<ReturnType<
@@ -339,6 +349,18 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     navigateFromSheet('OralCareLog', { date });
   }, [getActiveDiaryDate, navigateFromSheet]);
 
+  // Target-oriented copy: bring yesterday's meals into the day the sheet is
+  // open over. The date is fixed here (like the other date rows) so the sheet
+  // copies into the day the user is looking at, not a fallback.
+  const handleCopyFromYesterday = useCallback(() => {
+    if (!checkServerConnected('addSheetActions.configureForCopy', '')) {
+      return;
+    }
+    const date =
+      getActiveDiaryDate() ?? useDiaryDateStore.getState().selectedDate;
+    presentCopyFromYesterday?.(date);
+  }, [checkServerConnected, getActiveDiaryDate, presentCopyFromYesterday]);
+
   const handleRecordActivity = useCallback(() => {
     navigateFromSheet('RecordActivity');
   }, [navigateFromSheet]);
@@ -433,6 +455,7 @@ export function useAddSheetActions({ syncMutation }: AddSheetActionsArgs) {
     handleStartCheckIn,
     handleAddMindfulness,
     handleAddOralCare,
+    handleCopyFromYesterday,
     handleRecordActivity,
     handleAskSparky,
     handleOpenCycle,

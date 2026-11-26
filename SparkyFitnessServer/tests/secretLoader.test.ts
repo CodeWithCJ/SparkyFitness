@@ -97,26 +97,60 @@ describe('secretLoader', () => {
 
   it('logs a warning without throwing if secret file does not exist', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    process.env.NON_EXISTENT_SECRET_FILE = path.join(
+    process.env.SPARKY_FITNESS_NON_EXISTENT_SECRET_FILE = path.join(
       tempDir,
       'does_not_exist.txt'
     );
-    delete process.env.NON_EXISTENT_SECRET;
+    delete process.env.SPARKY_FITNESS_NON_EXISTENT_SECRET;
 
     expect(() => loadSecrets()).not.toThrow();
-    expect(process.env.NON_EXISTENT_SECRET).toBeUndefined();
+    expect(process.env.SPARKY_FITNESS_NON_EXISTENT_SECRET).toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining(
-        '[Secrets] WARNING: File specified in NON_EXISTENT_SECRET_FILE'
+        '[Secrets] WARNING: File specified in SPARKY_FITNESS_NON_EXISTENT_SECRET_FILE'
       )
     );
   });
 
   it('ignores *_FILE variables with empty file paths', () => {
-    process.env.EMPTY_PATH_VAR_FILE = '';
-    delete process.env.EMPTY_PATH_VAR;
+    process.env.SPARKY_FITNESS_EMPTY_PATH_VAR_FILE = '';
+    delete process.env.SPARKY_FITNESS_EMPTY_PATH_VAR;
 
     expect(() => loadSecrets()).not.toThrow();
-    expect(process.env.EMPTY_PATH_VAR).toBeUndefined();
+    expect(process.env.SPARKY_FITNESS_EMPTY_PATH_VAR).toBeUndefined();
+  });
+
+  it('loads the proxy and Garmin service variables from files', () => {
+    const values: Record<string, string> = {
+      HTTP_PROXY: 'http://user:pass@proxy:3128',
+      HTTPS_PROXY: 'http://user:pass@proxy:3129',
+      GARMIN_MICROSERVICE_URL: 'http://garmin:8000',
+    };
+    for (const [varName, value] of Object.entries(values)) {
+      const filePath = path.join(tempDir, `${varName}.txt`);
+      fs.writeFileSync(filePath, value);
+      delete process.env[varName];
+      process.env[`${varName}_FILE`] = filePath;
+    }
+
+    loadSecrets();
+
+    for (const [varName, value] of Object.entries(values)) {
+      expect(process.env[varName]).toBe(value);
+    }
+  });
+
+  it("leaves other tools' *_FILE variables alone", () => {
+    const certFile = path.join(tempDir, 'ca-certificates.crt');
+    fs.writeFileSync(certFile, 'x'.repeat(200 * 1024));
+    delete process.env.NIX_SSL_CERT;
+    process.env.NIX_SSL_CERT_FILE = certFile;
+    delete process.env.COMPOSE;
+    process.env.COMPOSE_FILE = certFile;
+
+    loadSecrets();
+
+    expect(process.env.NIX_SSL_CERT).toBeUndefined();
+    expect(process.env.COMPOSE).toBeUndefined();
   });
 });

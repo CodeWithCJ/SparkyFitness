@@ -173,6 +173,22 @@ export const getActiveServerConfigId = async (): Promise<string | null> => {
 };
 
 /**
+ * The active server's id when it names a saved server, read from AsyncStorage
+ * alone (no keys or tokens), so a failed keychain read does not make it look
+ * like none. Null when none is active, or when the stored id names a server
+ * that is no longer saved (a delete cut short before it cleared the id). A
+ * storage failure rejects instead of reading as "none".
+ */
+export const getSavedActiveServerConfigId = async (): Promise<
+  string | null
+> => {
+  const activeId = await getActiveServerConfigId();
+  if (activeId === null) return null;
+  const saved = await getRawStoredConfigs();
+  return saved.some((entry) => entry.id === activeId) ? activeId : null;
+};
+
+/**
  * Retrieves the currently active server configuration.
  */
 export const getActiveServerConfig = async (): Promise<ServerConfig | null> => {
@@ -488,6 +504,66 @@ export const saveLastWritebackTime = async (): Promise<string | null> => {
     const message = getErrorMessage(error);
     addLog(`[Storage] Failed to save writeback time: ${message}`, 'ERROR');
     return null;
+  }
+};
+
+const HEALTH_WATER_SYNC_TOKEN_KEY = (
+  platform: 'ios' | 'android',
+  configId?: string | null
+) =>
+  configId
+    ? `healthWaterSyncToken_${platform}_${configId}`
+    : `healthWaterSyncToken_${platform}`;
+
+export const loadHealthWaterSyncToken = async (
+  platform: 'ios' | 'android',
+  configId?: string | null
+): Promise<string | null> => {
+  const resolvedConfigId =
+    configId !== undefined ? configId : await getActiveServerConfigId();
+  if (resolvedConfigId) {
+    const scoped = await AsyncStorage.getItem(
+      HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId)
+    );
+    if (scoped != null) return scoped;
+  }
+  return await AsyncStorage.getItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform));
+};
+
+export const saveHealthWaterSyncToken = async (
+  platform: 'ios' | 'android',
+  token: string,
+  configId?: string | null
+): Promise<void> => {
+  try {
+    const resolvedConfigId =
+      configId !== undefined ? configId : await getActiveServerConfigId();
+    await AsyncStorage.setItem(
+      HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId),
+      token
+    );
+  } catch (error) {
+    const message = getErrorMessage(error);
+    addLog(`[Storage] Failed to save water sync token: ${message}`, 'ERROR');
+  }
+};
+
+export const clearHealthWaterSyncToken = async (
+  platform: 'ios' | 'android',
+  configId?: string | null
+): Promise<void> => {
+  try {
+    const resolvedConfigId =
+      configId !== undefined ? configId : await getActiveServerConfigId();
+    if (resolvedConfigId) {
+      await AsyncStorage.removeItem(
+        HEALTH_WATER_SYNC_TOKEN_KEY(platform, resolvedConfigId)
+      );
+    }
+    await AsyncStorage.removeItem(HEALTH_WATER_SYNC_TOKEN_KEY(platform));
+  } catch (error) {
+    const message = getErrorMessage(error);
+    addLog(`[Storage] Failed to clear water sync token: ${message}`, 'ERROR');
   }
 };
 

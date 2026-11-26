@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { useOnChange } from '@/hooks/useOnChange';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 
@@ -56,9 +57,9 @@ const DialogContent = React.forwardRef<
     // If confirmation becomes inactive while the prompt is open (e.g. an import
     // finishes, flipping confirmWhen false), reset the flag so a later re-enable
     // doesn't resurrect the stale prompt without a fresh close attempt.
-    React.useEffect(() => {
+    useOnChange([confirmActive], () => {
       if (!confirmActive) setShowConfirm(false);
-    }, [confirmActive]);
+    });
 
     const handleCloseAttempt = (e: Event | React.MouseEvent) => {
       if (confirmActive) {

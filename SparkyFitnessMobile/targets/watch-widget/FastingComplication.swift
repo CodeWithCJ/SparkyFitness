@@ -85,6 +85,10 @@ struct FastingComplicationView: View {
     @Environment(\.widgetFamily) private var family
     let entry: FastingEntry
 
+    private var look: BuiltInLook {
+        builtInLook("fasting", color: .orange, icon: "timer")
+    }
+
     var body: some View {
         content
             .widgetURL(ComplicationLink.fasting.url)
@@ -97,28 +101,28 @@ struct FastingComplicationView: View {
     private var content: some View {
         switch family {
         case .accessoryCorner:
-            Image(systemName: "timer")
+            Image(systemName: look.icon)
                 .font(.title3)
-                .foregroundStyle(.orange)
+                .foregroundStyle(look.color)
                 .widgetLabel {
                     if entry.isFasting {
                         ProgressView(value: entry.progress)
-                            .tint(.orange)
+                            .tint(look.color)
                     } else {
                         Text(String(localized: "watch.fasting.noFast", defaultValue: "No fast"))
                     }
                 }
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
-                Label(entry.label ?? "Fasting", systemImage: "timer")
+                Label(entry.label ?? "Fasting", systemImage: look.icon)
                     .font(.headline)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(look.color)
                 if let start = entry.start {
                     Text(start, style: .timer)
                         .font(.system(.title3, design: .rounded).weight(.semibold))
                         .monospacedDigit()
                     if entry.target != nil {
-                        ProgressView(value: entry.progress).tint(.orange)
+                        ProgressView(value: entry.progress).tint(look.color)
                     }
                 } else {
                     Text(String(localized: "watch.fasting.notFasting", defaultValue: "Not fasting"))
@@ -130,20 +134,20 @@ struct FastingComplicationView: View {
                 Label {
                     Text(start, style: .timer)
                 } icon: {
-                    Image(systemName: "timer")
+                    Image(systemName: look.icon)
                 }
             } else {
-                Label(String(localized: "watch.fasting.noFast", defaultValue: "No fast"), systemImage: "timer")
+                Label(String(localized: "watch.fasting.noFast", defaultValue: "No fast"), systemImage: look.icon)
             }
         default:
             Gauge(value: entry.progress) {
-                Image(systemName: "timer")
+                Image(systemName: look.icon)
             } currentValueLabel: {
                 Text(entry.isFasting ? "\(entry.elapsedHours)h" : "--")
                     .monospacedDigit()
             }
             .gaugeStyle(.accessoryCircular)
-            .tint(.orange)
+            .tint(look.color)
         }
     }
 }

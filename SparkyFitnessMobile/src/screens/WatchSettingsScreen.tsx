@@ -1,27 +1,43 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, ScrollView, Text, View } from 'react-native';
+import {
+  Alert,
+  AppState,
+  Platform,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useCSSVariable } from 'uniwind';
 
+import WatchConnectivity from '../../modules/watch-connectivity';
+import { isShownByFeature } from '@workspace/shared';
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import FeaturesOffNotice from '../components/FeaturesOffNotice';
+import Icon from '../components/Icon';
 import { ReorderSwitchList } from '../components/ReorderSwitchList';
 import SegmentedControl from '../components/SegmentedControl';
 import SettingsRow from '../components/SettingsRow';
 import Switch from '../components/ui/Switch';
 import { WatchGoalNutrientsSection } from '../components/WatchGoalNutrientsSection';
 import {
+  WATCH_PAGE_FEATURES,
   WATCH_PAGE_KEYS,
   WATCH_PAGE_LABELS,
   WATCH_WORKOUT_COUNTDOWNS,
+  type WatchPageKey,
   type WatchSetInputStyle,
   type WatchWorkoutCountdown,
   type WatchWorkoutTopLine,
 } from '../constants/watchPages';
+import { useMobileFeatures } from '../hooks/useMobileFeatures';
 import { useScreenHeader } from '../hooks/useScreenHeader';
+import { useServerConnection } from '../hooks/useServerConnection';
 import { useNativeIOSHeadersActive } from '../services/nativeTabBarPreference';
 import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
-import { resolveKeyOrder } from '../utils/reorderUtils';
+import { mergeSubsetOrder, resolveKeyOrder } from '../utils/reorderUtils';
 
 type WatchSettingsScreenProps = RootStackScreenProps<'WatchSettings'>;
 
@@ -32,12 +48,96 @@ type WatchSettingsScreenProps = RootStackScreenProps<'WatchSettings'>;
  * (`useWatchCheckInBridge`), so a change reaches the wrist the next time the
  * two talk.
  */
-const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
+const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = ({
+  navigation,
+}) => {
   const { t } = useTranslation();
   const isAndroid = Platform.OS === 'android';
   const insets = useSafeAreaInsets();
   const activeWorkoutBarPadding = useActiveWorkoutBarPadding('stack');
   const usesNativeHeader = useNativeIOSHeadersActive();
+  const [textSecondary] = useCSSVariable(['--color-text-secondary']) as [
+    string,
+  ];
+  const { isConnected } = useServerConnection();
+  const canConfigureMediaAccess =
+    isAndroid &&
+    typeof WatchConnectivity?.openMediaAccessSettings === 'function';
+  const [mediaAccessEnabled, setMediaAccessEnabled] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!canConfigureMediaAccess || !WatchConnectivity?.isMediaAccessEnabled)
+      return;
+    let cancelled = false;
+    let requestId = 0;
+    const checkAccess = () => {
+      const currentRequest = ++requestId;
+      void WatchConnectivity?.isMediaAccessEnabled?.()
+        .then((enabled) => {
+          if (!cancelled && currentRequest === requestId) {
+            setMediaAccessEnabled(enabled);
+          }
+        })
+        .catch(() => {
+          if (!cancelled && currentRequest === requestId) {
+            setMediaAccessEnabled(false);
+          }
+        });
+    };
+    checkAccess();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        checkAccess();
+      }
+    });
+    return () => {
+      cancelled = true;
+      sub.remove();
+    };
+  }, [canConfigureMediaAccess]);
+
+  const handlePressMediaAccess = useCallback(() => {
+    const opener = WatchConnectivity?.openMediaAccessSettings;
+    if (!opener) return;
+    const openSettings = () => {
+      void opener().catch(() => {
+        Alert.alert(
+          t('watchSettings.mediaAccessOpenErrorTitle', {
+            defaultValue: 'Unable to open Settings',
+          }),
+          t('watchSettings.mediaAccessOpenErrorBody', {
+            defaultValue:
+              'Open Android Settings → Notifications → Notification read, reply & control and enable SparkyFitness Media Controls.',
+          })
+        );
+      });
+    };
+    if (mediaAccessEnabled) {
+      openSettings();
+      return;
+    }
+    Alert.alert(
+      t('watchSettings.mediaAccessDisclosureTitle', {
+        defaultValue: 'Allow Notification Access?',
+      }),
+      t('watchSettings.mediaAccessDisclosureBody', {
+        defaultValue:
+          'Android requires Notification Access to read the currently playing song and artist for your Wear OS watch. SparkyFitness only reads active media sessions and ignores your messages and other notifications.',
+      }),
+      [
+        {
+          text: t('common.cancel', { defaultValue: 'Cancel' }),
+          style: 'cancel',
+        },
+        {
+          text: t('watchSettings.mediaAccessOpenSettings', {
+            defaultValue: 'Open Settings',
+          }),
+          onPress: openSettings,
+        },
+      ]
+    );
+  }, [mediaAccessEnabled, t]);
 
   const watchPageOrder = useAppPreferencesStore((s) => s.watchPageOrder);
   const hiddenWatchPages = useAppPreferencesStore((s) => s.hiddenWatchPages);
@@ -98,17 +198,31 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
     (s) => s.setWatchSetInputStyle
   );
 
+  const { isEnabled: isFeatureOn } = useMobileFeatures();
+  const orderedPages = useMemo(
+    () => resolveKeyOrder(watchPageOrder, WATCH_PAGE_KEYS),
+    [watchPageOrder]
+  );
+  // The pages of features turned off in Settings → Features are left out, as
+  // the watch leaves them out; their place and switch are kept for when the
+  // feature comes back.
   const pageItems = useMemo(
     () =>
-      resolveKeyOrder(watchPageOrder, WATCH_PAGE_KEYS).map((key) => ({
-        key,
-        label: WATCH_PAGE_LABELS[key](t),
-      })),
-    [watchPageOrder, t]
+      orderedPages
+        .filter((key) =>
+          isShownByFeature(WATCH_PAGE_FEATURES[key], isFeatureOn)
+        )
+        .map((key) => ({ key, label: WATCH_PAGE_LABELS[key](t) })),
+    [orderedPages, isFeatureOn, t]
   );
   const shownPageCount = pageItems.filter(
     ({ key }) => !hiddenWatchPages.includes(key)
   ).length;
+  const reorderPages = useCallback(
+    (order: WatchPageKey[]) =>
+      setWatchPageOrder(mergeSubsetOrder(orderedPages, order)),
+    [orderedPages, setWatchPageOrder]
+  );
 
   const header = useScreenHeader({
     title: isAndroid
@@ -131,6 +245,23 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
         }
       >
         <Text className="text-text-primary text-base font-semibold mb-1">
+          {t('watchSettings.complicationsTitle', {
+            defaultValue: 'Complications',
+          })}
+        </Text>
+        <SettingsRow
+          testID="watch-complications-row"
+          title={t('watchSettings.complicationsRow', {
+            defaultValue: 'Your complications',
+          })}
+          subtitle={t('watchSettings.complicationsSubtitle', {
+            defaultValue:
+              'Make your own for the watch face, and import or export them.',
+          })}
+          subtitleNumberOfLines={0}
+          onPress={() => navigation.navigate('WatchComplications')}
+        />
+        <Text className="text-text-primary text-base font-semibold mb-1 mt-6">
           {t('watchSettings.gesturesTitle', { defaultValue: 'Gestures' })}
         </Text>
         {!isAndroid && (
@@ -374,6 +505,72 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
           </>
         )}
 
+        {canConfigureMediaAccess && (
+          <>
+            <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
+              {t('watchSettings.mediaControlsTitle', {
+                defaultValue: 'Media controls',
+              })}
+            </Text>
+            <SettingsRow
+              testID="watch-media-access-row"
+              title={t('watchSettings.mediaAccessTitle', {
+                defaultValue: 'Now Playing track info',
+              })}
+              accessibilityLabel={t('watchSettings.mediaAccessA11yLabel', {
+                defaultValue: '{{title}}, {{status}}',
+                title: t('watchSettings.mediaAccessTitle', {
+                  defaultValue: 'Now Playing track info',
+                }),
+                status: mediaAccessEnabled
+                  ? t('watchSettings.mediaAccessEnabled', {
+                      defaultValue: 'Enabled',
+                    })
+                  : t('watchSettings.mediaAccessSetup', {
+                      defaultValue: 'Set up',
+                    }),
+              })}
+              subtitle={
+                mediaAccessEnabled
+                  ? t('watchSettings.mediaAccessEnabledSubtitle', {
+                      defaultValue:
+                        'Your watch shows the current song and artist while controlling phone media during workouts.',
+                    })
+                  : t('watchSettings.mediaAccessDisabledSubtitle', {
+                      defaultValue:
+                        'Play, skip and volume controls work automatically. Allow Notification Access so your watch can also show the current song and artist. Other notifications are ignored.',
+                    })
+              }
+              subtitleNumberOfLines={0}
+              onPress={handlePressMediaAccess}
+              rightAccessory={
+                <View className="flex-row items-center gap-1">
+                  <Text
+                    className={
+                      mediaAccessEnabled
+                        ? 'text-sm font-semibold text-text-success'
+                        : 'text-sm font-medium text-text-secondary'
+                    }
+                  >
+                    {mediaAccessEnabled
+                      ? t('watchSettings.mediaAccessEnabled', {
+                          defaultValue: 'Enabled',
+                        })
+                      : t('watchSettings.mediaAccessSetup', {
+                          defaultValue: 'Set up',
+                        })}
+                  </Text>
+                  <Icon
+                    name="chevron-forward"
+                    size={18}
+                    color={textSecondary}
+                  />
+                </View>
+              }
+            />
+          </>
+        )}
+
         <Text className="text-text-primary text-base font-semibold mt-6 mb-1">
           {t('watchSettings.pagesTitle', { defaultValue: 'Pages' })}
         </Text>
@@ -392,7 +589,7 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
             !hiddenWatchPages.includes(key) && shownPageCount <= 1
           }
           onToggle={(key, enabled) => setWatchPageHidden(key, !enabled)}
-          onReorder={setWatchPageOrder}
+          onReorder={reorderPages}
           reorderA11yLabel={(name) =>
             t('watchSettings.reorder', {
               defaultValue: 'Reorder {{name}}',
@@ -403,6 +600,16 @@ const WatchSettingsScreen: React.FC<WatchSettingsScreenProps> = () => {
             defaultValue: 'Changes where this page sits on your watch',
           })}
         />
+        {pageItems.length < orderedPages.length && (
+          <FeaturesOffNotice
+            className="mt-3"
+            onManage={
+              isConnected
+                ? () => navigation.navigate('FeatureSettings')
+                : undefined
+            }
+          />
+        )}
 
         <WatchGoalNutrientsSection />
       </ScrollView>

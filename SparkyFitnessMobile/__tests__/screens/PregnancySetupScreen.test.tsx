@@ -82,13 +82,13 @@ describe('PregnancySetupScreen', () => {
     fireEvent.press(getByText('Save'));
 
     await waitFor(() => {
-      expect(mockCreateAsync).toHaveBeenCalledWith(
-        expect.objectContaining({
+      expect(mockCreateAsync).toHaveBeenCalledWith({
+        body: expect.objectContaining({
           due_date_basis: 'manual',
           due_date: dueDate,
           status: 'active',
-        })
-      );
+        }),
+      });
     });
     expect(mockUpdateAsync).not.toHaveBeenCalled();
   });

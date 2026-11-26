@@ -8,10 +8,11 @@ const KOTLIN_COMPOSE_PLUGIN =
   'apply plugin: "org.jetbrains.kotlin.plugin.compose"';
 const KOTLIN_ANDROID_PLUGIN = 'apply plugin: "org.jetbrains.kotlin.android"';
 
-const GLANCE_APPWIDGET_DEP =
-  '    implementation("androidx.glance:glance-appwidget:1.1.1")';
-const GLANCE_MATERIAL3_DEP =
-  '    implementation("androidx.glance:glance-material3:1.1.1")';
+// Keep in step with expo-widgets, which declares androidx.glance:glance at this
+// version: Gradle cannot resolve glance 1.2.0 against older glance artifacts.
+const GLANCE_VERSION = '1.2.0';
+const GLANCE_APPWIDGET_DEP = `    implementation("androidx.glance:glance-appwidget:${GLANCE_VERSION}")`;
+const GLANCE_MATERIAL3_DEP = `    implementation("androidx.glance:glance-material3:${GLANCE_VERSION}")`;
 
 async function resolveKotlinVersion(projectRoot: string): Promise<string> {
   const catalogPath = path.join(
@@ -45,8 +46,11 @@ function addComposeCompilerClasspath(
     );
   }
 
+  // Matches the whole classpath line: a plain `classpath('...kotlin-gradle-plugin')`
+  // (SDK 57) or the `kotlinVersion ? "...:$kotlinVersion" : '...'` form the
+  // SDK 58 template writes.
   const anchor = src.match(
-    /(classpath\(['"]org\.jetbrains\.kotlin:kotlin-gradle-plugin['"]\))/
+    /(classpath\([^\n]*org\.jetbrains\.kotlin:kotlin-gradle-plugin[^\n]*\))/
   );
   if (!anchor || anchor.index === undefined) {
     throw new Error(
@@ -97,7 +101,12 @@ function enableComposeBuildFeature(src: string): string {
   )}    buildFeatures {\n        compose true\n    }\n${src.slice(insertAt)}`;
 }
 
-function injectGlanceDependencies(src: string): string {
+function injectGlanceDependencies(srcIn: string): string {
+  // Move an already generated project (no --clean) onto the current version.
+  const src = srcIn.replace(
+    /(androidx\.glance:glance-(?:appwidget|material3):)[\d.]+(?:-[\w.]+)?/g,
+    `$1${GLANCE_VERSION}`
+  );
   const needsAppwidget = !src.includes('androidx.glance:glance-appwidget');
   const needsMaterial3 = !src.includes('androidx.glance:glance-material3');
   if (!needsAppwidget && !needsMaterial3) return src;

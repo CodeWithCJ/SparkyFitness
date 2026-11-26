@@ -20,19 +20,21 @@ export const DASHBOARD_CARD_KEYS = [
   'mindfulness',
   'oralCare',
   'labResults',
+  'challenges',
 ] as const;
 
 export type DashboardCardKey = (typeof DASHBOARD_CARD_KEYS)[number];
 
 /**
  * Cards that belong to an optional feature (Settings → Features): the
- * Dashboard leaves them out while it is off. Dashboard Settings keeps listing
- * them, so their place and switch are kept for when it comes back.
+ * Dashboard and Dashboard Settings leave them out while it is off, and their
+ * place and switch are kept for when it comes back.
  */
 export const DASHBOARD_CARD_FEATURES: Partial<
   Record<DashboardCardKey, FeatureKey>
 > = {
   cycle: 'cycle',
+  medications: 'medications',
   labResults: 'labResults',
 };
 
@@ -79,6 +81,8 @@ export const DASHBOARD_CARD_TITLES: Record<
     t('dashboardSettings.oralCare', { defaultValue: 'Oral care' }),
   labResults: (t) =>
     t('dashboardSettings.labResults', { defaultValue: 'Lab Results' }),
+  challenges: (t) =>
+    t('dashboardSettings.challenges', { defaultValue: 'Challenges' }),
 };
 
 export const DASHBOARD_CARD_SUBTITLES: Record<
@@ -159,5 +163,9 @@ export const DASHBOARD_CARD_SUBTITLES: Record<
   labResults: (t) =>
     t('dashboardSettings.labResultsSubtitle', {
       defaultValue: 'Show your latest lab results and which are out of range',
+    }),
+  challenges: (t) =>
+    t('dashboardSettings.challengesSubtitle', {
+      defaultValue: 'Show your place in the challenges you are in',
     }),
 };

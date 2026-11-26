@@ -7,7 +7,12 @@ import express, {
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import chatRoutes from '../routes/chatRoutes.js';
-import chatService from '../services/chatService.js';
+import {
+  cancelChatTurn,
+  getChatTurnStatus,
+  markChatTurnFailed,
+} from '../models/chatRepository.js';
+import chatService, { claimChatTurn } from '../services/chatService.js';
 import { getChatMcpServerChoices } from '../models/externalProviderRepository.js';
 import {
   getChatMcpServerIds,
@@ -17,12 +22,19 @@ import {
 vi.mock('../middleware/authMiddleware.js', () => ({
   authenticate: (req: Request, _res: Response, next: NextFunction) => {
     req.userId = req.headers['x-family'] ? 'family' : 'owner';
-    req.authenticatedUserId = 'owner';
+    req.authenticatedUserId = req.headers['x-other-actor'] ? 'other' : 'owner';
     next();
   },
 }));
 vi.mock('../services/chatService.js', () => ({
   default: { processChatMessageStream: vi.fn() },
+  claimChatTurn: vi.fn(),
+  CHAT_REQUEST_TIMEOUT_MS: 300_000,
+}));
+vi.mock('../models/chatRepository.js', () => ({
+  getChatTurnStatus: vi.fn(),
+  cancelChatTurn: vi.fn(),
+  markChatTurnFailed: vi.fn(),
 }));
 vi.mock('../utils/adminCheck.js', () => ({
   resolveIsAdmin: vi.fn(async () => false),
@@ -167,7 +179,10 @@ describe('/api/chat/stream approval capability', () => {
         false,
         undefined,
         undefined,
-        approvals ?? false
+        approvals ?? false,
+        undefined,
+        undefined,
+        undefined
       );
     }
   );
@@ -178,4 +193,260 @@ describe('/api/chat/stream approval capability', () => {
     expect(result.status).toBe(400);
     expect(chatService.processChatMessageStream).not.toHaveBeenCalled();
   });
+});
+
+describe('resumable chat turns', () => {
+  const malformedParts = [
+    null,
+    42,
+    'text',
+    {},
+    { type: false },
+    { type: 'text', text: 7 },
+    { type: 'text', content: {} },
+    { type: 'image_url', image_url: { url: 7 } },
+    { type: 'image', image: {} },
+    { type: 'file', mediaType: 7 },
+    { type: 'file', mimeType: {} },
+    { type: 'file', url: {} },
+    { type: 'tool-example', state: 'output-error', errorText: {} },
+    { type: 'tool-example', state: 'output-denied', approval: { reason: 7 } },
+  ];
+  it.each(
+    ['content', 'parts'].flatMap((field) =>
+      malformedParts.map((part) => ({ field, part }))
+    )
+  )(
+    'rejects an invalid $field entry $part before claiming the turn',
+    async ({ field, part }) => {
+      vi.clearAllMocks();
+      const response = await request(app)
+        .post('/api/chat/stream')
+        .send({
+          turnId: first,
+          service_config_id: 'svc',
+          messages: [{ role: 'user', [field]: [part] }],
+        });
+      expect(response.status).toBe(400);
+      expect(claimChatTurn).not.toHaveBeenCalled();
+      expect(chatService.processChatMessageStream).not.toHaveBeenCalled();
+    }
+  );
+
+  it('runs a retried prompt once and only replays it within its account', async () => {
+    vi.clearAllMocks();
+    vi.mocked(claimChatTurn).mockResolvedValue(true);
+    vi.mocked(getChatTurnStatus).mockResolvedValue('pending');
+    vi.mocked(chatService.processChatMessageStream).mockResolvedValue({
+      stream: new ReadableStream({
+        start(c) {
+          c.enqueue({ type: 'finish', finishReason: 'stop' });
+          c.close();
+        },
+      }),
+    });
+    const body = {
+      turnId: first,
+      service_config_id: 'svc',
+      approvals: true,
+      messages: [
+        { role: 'user', content: 'First question' },
+        {
+          role: 'user',
+          parts: [
+            { type: 'text', text: 'Hello' },
+            {
+              type: 'file',
+              mediaType: 'image/png',
+              url: 'data:image/png;base64,AA==',
+            },
+          ],
+        },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', content: 'Second question' },
+            {
+              type: 'image_url',
+              image_url: { url: 'https://example.com/meal.png' },
+            },
+          ],
+        },
+      ],
+    };
+    const [accepted, duplicate] = await Promise.all(
+      [1, 2].map(() => request(app).post('/api/chat/stream').send(body))
+    );
+    expect(accepted.status).toBe(200);
+    expect(duplicate.text).toBe(accepted.text);
+    expect(chatService.processChatMessageStream).toHaveBeenCalledTimes(1);
+    expect(chatService.processChatMessageStream).toHaveBeenCalledWith(
+      body.messages,
+      'svc',
+      'owner',
+      'owner',
+      false,
+      undefined,
+      undefined,
+      true,
+      first,
+      expect.any(AbortSignal),
+      expect.any(String)
+    );
+    expect(claimChatTurn).toHaveBeenCalledTimes(1);
+    const key = vi.mocked(claimChatTurn).mock.calls[0]![0];
+    vi.mocked(getChatTurnStatus).mockImplementation(async (row, actor) =>
+      row === key && actor === 'owner' ? 'gone' : undefined
+    );
+    const route = '/api/chat/turns/' + first + '/stream';
+    expect(
+      (await request(app).get(route).set('x-other-actor', 'yes')).status
+    ).toBe(404);
+    expect((await request(app).get(route)).text).toBe(accepted.text);
+    expect((await request(app).get(route).set('x-family', 'yes')).status).toBe(
+      404
+    );
+
+    // A Stop recorded on another worker overrides retained chunks here.
+    vi.mocked(getChatTurnStatus).mockResolvedValue('cancelled');
+    for (const result of [
+      await request(app).get(route),
+      await request(app).post('/api/chat/stream').send(body),
+    ]) {
+      expect(result.status).toBe(410);
+      expect(result.body).toEqual({ cancelled: true });
+    }
+    expect(chatService.processChatMessageStream).toHaveBeenCalledTimes(1);
+  });
+  it('releases a live subscription when a remote Stop wins during lookup', async () => {
+    vi.clearAllMocks();
+    const turnId = '00000000-0000-4000-8000-000000000010';
+    let close!: () => void;
+    vi.mocked(claimChatTurn).mockResolvedValue(true);
+    vi.mocked(chatService.processChatMessageStream).mockResolvedValue({
+      stream: new ReadableStream({
+        start(controller) {
+          close = () => controller.close();
+        },
+      }),
+    });
+    let stopped!: () => void;
+    vi.mocked(getChatTurnStatus).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          stopped = () => resolve('cancelled');
+        })
+    );
+    const cancel = vi.spyOn(ReadableStream.prototype, 'cancel');
+    try {
+      const response = request(app)
+        .post('/api/chat/stream')
+        .send({
+          turnId,
+          service_config_id: 'svc',
+          messages: [{ role: 'user', content: 'Hello' }],
+        })
+        .expect(410, { cancelled: true })
+        .then(() => {});
+      await vi.waitFor(() =>
+        expect(getChatTurnStatus).toHaveBeenCalledTimes(1)
+      );
+      stopped();
+      await response;
+      expect(cancel).toHaveBeenCalledTimes(1);
+    } finally {
+      close();
+      cancel.mockRestore();
+    }
+  });
+
+  it('recognizes a durable checkpoint after replay expires and never regenerates it', async () => {
+    vi.clearAllMocks();
+    vi.mocked(claimChatTurn).mockResolvedValue(false);
+    vi.mocked(getChatTurnStatus).mockResolvedValue('gone');
+    const body = {
+      turnId: second,
+      service_config_id: 'svc',
+      messages: [{ role: 'user', content: 'Hello' }],
+    };
+    expect(
+      (await request(app).post('/api/chat/stream').send(body)).status
+    ).toBe(410);
+    expect(
+      (await request(app).get('/api/chat/turns/' + second + '/stream')).status
+    ).toBe(410);
+    vi.mocked(getChatTurnStatus).mockResolvedValue('pending');
+    const remote = await request(app).get(
+      '/api/chat/turns/' + second + '/stream'
+    );
+    expect(remote.status).toBe(503);
+    expect(remote.headers['retry-after']).toBe('2');
+    expect(chatService.processChatMessageStream).not.toHaveBeenCalled();
+  });
+});
+
+it('writes a stop even when the stream has not reached this worker', async () => {
+  vi.clearAllMocks();
+  const response = await request(app)
+    .post('/api/chat/turns/' + second + '/stop')
+    .set('x-family', 'true');
+  expect(response.status).toBe(204);
+  expect(cancelChatTurn).toHaveBeenCalledWith(
+    expect.any(String),
+    'owner',
+    'family',
+    second
+  );
+  vi.mocked(getChatTurnStatus).mockResolvedValue('cancelled');
+  const replay = await request(app)
+    .get('/api/chat/turns/' + second + '/stream')
+    .set('x-family', 'true');
+  expect(replay.status).toBe(410);
+  expect(replay.body).toEqual({ cancelled: true });
+});
+
+it('records a claimed approval continuation setup failure and returns its durable error', async () => {
+  vi.clearAllMocks();
+  const turnId = '00000000-0000-4000-8000-000000000009';
+  const last = {
+    id: second,
+    role: 'assistant',
+    parts: [
+      {
+        type: 'tool-logFood',
+        state: 'approval-responded',
+        approval: { id: first, approved: true },
+      },
+    ],
+  };
+  const error = 'The AI service could not complete the request.';
+  vi.mocked(claimChatTurn).mockResolvedValue(true);
+  vi.mocked(chatService.processChatMessageStream).mockRejectedValue(
+    new Error('Provider failure')
+  );
+  vi.mocked(getChatTurnStatus).mockResolvedValue({ error });
+  const response = await request(app)
+    .post('/api/chat/stream')
+    .send({
+      turnId,
+      service_config_id: 'svc',
+      approvals: true,
+      messages: [last],
+    });
+  expect(claimChatTurn).toHaveBeenCalledWith(
+    expect.any(String),
+    turnId,
+    last,
+    'owner',
+    'owner',
+    undefined,
+    expect.any(Number)
+  );
+  expect(markChatTurnFailed).toHaveBeenCalledWith(
+    expect.any(String),
+    'owner',
+    error
+  );
+  expect(response.status).toBe(422);
+  expect(response.body).toEqual({ error });
 });

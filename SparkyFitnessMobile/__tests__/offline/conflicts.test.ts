@@ -11,11 +11,20 @@ import {
   WORKOUT_SESSION_CREATE,
   WORKOUT_SESSION_UPDATE,
 } from '../../src/offline/workoutHandOver';
+import { putCacheRows } from '../../src/offline/cacheStore';
+import {
+  IDENTITY_COLLECTION,
+  IDENTITY_KEY,
+} from '../../src/offline/syncEngine';
 import { createTestDb } from '../helpers/offlineTestDb';
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
 jest.mock('../../src/services/storage', () => ({
   getActiveServerConfigId: jest.fn(async () => 's1'),
+  getActiveServerConfig: jest.fn(async () => ({
+    id: 's1',
+    url: 'https://one',
+  })),
 }));
 
 const SESSION_ID = '22222222-2222-4222-8222-222222222222';
@@ -28,10 +37,13 @@ describe('resolving a workout changed elsewhere', () => {
     __setOfflineDbForTests(db);
     // No handlers: the choice is recorded, nothing is actually sent here.
     __clearOutboxHandlersForTests();
+    await putCacheRows(db, 's1', IDENTITY_COLLECTION, [
+      { key: IDENTITY_KEY, payload: { id: 'u1' } },
+    ]);
     await enqueueOutbox(db, {
       id: 'row-1',
       serverConfigId: 's1',
-      userId: null,
+      userId: 'u1',
       kind: WORKOUT_SESSION_UPDATE,
       entityId: SESSION_ID,
       entryDate: '2026-11-16',

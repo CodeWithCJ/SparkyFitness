@@ -1,5 +1,9 @@
-import { exportBodyMeasurements, exportFoodDiary } from '@/utils/reportUtil';
-import { DailyFoodEntry } from '@/types/reports';
+import {
+  exportBodyMeasurements,
+  exportExerciseEntries,
+  exportFoodDiary,
+} from '@/utils/reportUtil';
+import { DailyExerciseEntry, DailyFoodEntry } from '@/types/reports';
 import { UserCustomNutrient } from '@/types/customNutrient';
 import type { CheckInMeasurementsResponse } from '@workspace/shared';
 
@@ -278,5 +282,44 @@ describe('exportBodyMeasurements', () => {
     expect(csv).toContain('Neck (cm)');
     expect(csv).toContain('"12st 8.4lbs","40.0"');
     expect(csv).toContain(`"5'10.1"""`);
+  });
+});
+
+describe('exportExerciseEntries', () => {
+  it('writes set weights in the user unit and escapes quotes in notes', async () => {
+    let csv = '';
+    jest
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+    jest.spyOn(global, 'Blob').mockImplementation((parts) => {
+      csv = String(parts?.[0]);
+      return {} as Blob;
+    });
+    global.URL.createObjectURL = jest.fn(() => 'blob:test-url');
+    global.URL.revokeObjectURL = jest.fn();
+
+    await exportExerciseEntries({
+      loggingLevel: 'ERROR',
+      energyUnit: 'kcal',
+      exerciseEntries: [
+        {
+          entry_date: '2026-11-02',
+          duration_minutes: 45,
+          calories_burned: 300,
+          notes: 'felt "strong", PR',
+          exercises: { name: 'Bench Press', category: 'strength' },
+          sets: [{ set_number: 1, reps: 5, weight: 100 }],
+        },
+      ] as unknown as DailyExerciseEntry[],
+      startDate: '2026-11-01',
+      endDate: '2026-11-09',
+      formatDateInUserTimezone: (date) => String(date),
+      convertEnergy: (value) => value,
+      defaultWeightUnit: 'lbs',
+      convertWeight: (value) => value * 2,
+    });
+
+    expect(csv).toContain('"Weight (lbs)"');
+    expect(csv).toContain('"200","felt ""strong"", PR"');
   });
 });

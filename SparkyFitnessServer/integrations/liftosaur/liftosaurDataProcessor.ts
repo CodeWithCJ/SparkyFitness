@@ -15,17 +15,34 @@ import activityDetailsRepository from '../../models/activityDetailsRepository.js
 import workoutPresetRepository from '../../models/workoutPresetRepository.js';
 import { getClient } from '../../db/poolManager.js';
 import { log } from '../../config/logging.js';
-import { instantToDay, instantHourMinute } from '@workspace/shared';
+import {
+  instantToDay,
+  instantHourMinute,
+  isBodyweightModality,
+  isExerciseModality,
+} from '@workspace/shared';
 import {
   LiftohistoryWorkout,
   LiftohistoryExercise,
   LiftohistorySet,
 } from './liftosaurTypes.js';
 import {
+  hasNoMuscles,
+  type LiftosaurMuscleLookup,
+  type MuscleMapping,
+} from './liftosaurMuscles.js';
+import {
   deleteLiftosaurSessionsNotInWithClient,
+  getStoredEntryDurationsWithClient,
   moveEntryToSessionWithClient,
   upsertLiftosaurSessionWithClient,
+  type StoredEntryDuration,
 } from './liftosaurSessionRepository.js';
+import { emptyMuscleColumnSql } from '../../utils/muscleColumnSql.js';
+import {
+  normalizeToStringArray,
+  parseJsonArrayField,
+} from '../../utils/exerciseJsonFields.js';
 
 const LB_TO_KG = 0.45359237;
 
@@ -34,12 +51,48 @@ export const LIFTOSAUR_SOURCE = 'Liftosaur';
 /** Minimal shapes for the repository rows we consume by id. */
 interface ExerciseRow {
   id: string;
+  user_id?: string | null;
+  source?: string | null;
+  modality?: string | null;
+  primary_muscles?: unknown;
+  secondary_muscles?: unknown;
+}
+
+/** The modality a Liftosaur exercise gets when it has assisted sets. */
+const ASSISTED_MODALITY = 'bodyweight_reps';
+
+function isBodyweightExercise(exercise: ExerciseRow): boolean {
+  return (
+    isExerciseModality(exercise.modality) &&
+    isBodyweightModality(exercise.modality)
+  );
+}
+
+/**
+ * Whether a performed set of this exercise has a negative weight. Liftosaur
+ * logs an assisted set (an assisted pull-up, say) that way, and only a
+ * bodyweight exercise can store one.
+ */
+function hasAssistedSet(exercise: LiftohistoryExercise): boolean {
+  return mergeSets(exercise).sets.some(
+    (set) => set.weightKg !== null && set.weightKg < 0
+  );
 }
 interface WorkoutPresetRow {
   id: number;
 }
 interface ExerciseEntryRow {
   id: string;
+}
+
+function toMuscleArray(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return normalizeToStringArray(value);
+  }
+  if (typeof value === 'string') {
+    return normalizeToStringArray(parseJsonArrayField(value));
+  }
+  return [];
 }
 
 function errorMessage(error: unknown): string {
@@ -97,6 +150,264 @@ export interface LiftosaurCleanupRange {
 }
 
 /**
+ * Looks up muscles for exercise names (in production, Liftosaur's
+ * program-stats endpoint via liftosaurMuscles.resolveLiftosaurMuscles).
+ */
+export type LiftosaurMuscleResolver = (
+  names: string[]
+) => Promise<LiftosaurMuscleLookup>;
+
+/** Library exercise for a Liftosaur name: exact name, then the bare name. */
+async function findLibraryExercise(
+  userId: string,
+  name: string
+): Promise<ExerciseRow | null> {
+  const exact: ExerciseRow | null =
+    await exerciseRepository.findExerciseByNameAndUserId(name, userId);
+  if (exact) return exact;
+  const bareName = name.split(',')[0]!.trim();
+  if (!bareName || bareName === name) return null;
+  return (
+    (await exerciseRepository.findExerciseByNameAndUserId(bareName, userId)) ??
+    null
+  );
+}
+
+function needsMuscles(userId: string, exercise: ExerciseRow | null): boolean {
+  return (
+    !exercise ||
+    (exercise.user_id === userId && hasNoMuscles(exercise.primary_muscles))
+  );
+}
+
+/**
+ * Resolve every distinct Liftosaur exercise name in the batch to a library
+ * exercise once, creating missing ones, before the diary transaction starts.
+ *
+ * Diary entries snapshot the exercise's muscles when they are created, so
+ * muscles have to be on the library row first. Only exercises that are new or
+ * that the user owns with empty muscles are sent to the resolver, so after the
+ * first full sync a routine sync normally makes no muscle request at all, and
+ * one that failed is retried on the next sync. Library rows are written on
+ * their own connections, as before (see processSingleWorkout).
+ */
+async function resolveLibraryExercises(
+  userId: string,
+  workouts: LiftohistoryWorkout[],
+  resolveMuscles?: LiftosaurMuscleResolver
+): Promise<Map<string, ExerciseRow>> {
+  const names = [
+    ...new Set(
+      workouts.flatMap((w) =>
+        w.exercises
+          .filter((e) => mergeSets(e).sets.length > 0)
+          .map((e) => e.name)
+      )
+    ),
+  ];
+
+  const assisted = new Set(
+    workouts.flatMap((w) =>
+      w.exercises.filter((e) => hasAssistedSet(e)).map((e) => e.name)
+    )
+  );
+
+  // Names that resolve to the same row ("Pull Up" and "Pull Up, Machine")
+  // share one object, so a change made for one (muscles, the bodyweight
+  // switch) is seen by the other.
+  const found = new Map<string, ExerciseRow | null>();
+  const byId = new Map<string, ExerciseRow>();
+  for (const name of names) {
+    const row = await findLibraryExercise(userId, name);
+    const shared = row ? (byId.get(row.id) ?? row) : null;
+    if (shared) byId.set(shared.id, shared);
+    found.set(name, shared);
+  }
+
+  let muscles: LiftosaurMuscleLookup = new Map();
+  const wanted = names.filter((name) => needsMuscles(userId, found.get(name)!));
+  if (resolveMuscles && wanted.length > 0) {
+    try {
+      muscles = await resolveMuscles(wanted);
+    } catch (error) {
+      log(
+        'warn',
+        `Skipping Liftosaur muscle lookup for user ${userId}: ${errorMessage(error)}`
+      );
+    }
+  }
+
+  const library = new Map<string, ExerciseRow>();
+  for (const name of names) {
+    const mapping = muscles.get(name);
+    // An alias resolved earlier in this sync ("Squat" before
+    // "Squat, Barbell") is reused, as the bare-name lookup would have found
+    // it had the rows been created one workout at a time.
+    const bareName = name.split(',')[0]!.trim();
+    let exercise =
+      found.get(name) ??
+      (bareName !== name ? (library.get(bareName) ?? null) : null);
+    if (exercise) {
+      if (mapping) await fillMissingMuscles(userId, exercise, mapping);
+      await backfillLiftosaurDiaryMuscles(userId, exercise);
+      if (assisted.has(name)) await useAssistedModality(userId, exercise);
+    } else {
+      exercise = await exerciseRepository.createExercise({
+        user_id: userId,
+        name,
+        source: LIFTOSAUR_SOURCE,
+        is_custom: true,
+        shared_with_public: false,
+        ...(assisted.has(name) ? { modality: ASSISTED_MODALITY } : {}),
+        ...(mapping
+          ? {
+              primary_muscles: mapping.primary,
+              secondary_muscles: mapping.secondary,
+            }
+          : {}),
+      });
+      if (exercise && mapping) {
+        await backfillLiftosaurDiaryMuscles(userId, exercise);
+      }
+    }
+    if (exercise) {
+      library.set(name, exercise);
+    } else {
+      log('error', `Failed to find or create Liftosaur exercise "${name}"`);
+    }
+  }
+  return library;
+}
+
+/**
+ * Switch an exercise the Liftosaur import created to bodyweight once it has
+ * assisted sets, so their negative weight can be stored. Only rows the import
+ * made and that still have the import's default modality (weight_reps) are
+ * changed: a modality the user picked, and exercises from the user's own or
+ * the public library, are left alone (processSingleWorkout drops the negative
+ * weight on those instead). Library writes run outside the diary transaction,
+ * so a failure is logged and the import goes on.
+ */
+async function useAssistedModality(
+  userId: string,
+  exercise: ExerciseRow
+): Promise<void> {
+  if (exercise.user_id !== userId) return;
+  if (exercise.source !== LIFTOSAUR_SOURCE) return;
+  if (exercise.modality !== 'weight_reps') return;
+  const client = await getClient(userId);
+  try {
+    const result = await client.query(
+      `UPDATE exercises
+       SET modality = $1, updated_at = now()
+       WHERE id = $2 AND user_id = $3 AND source = $4
+         AND modality = 'weight_reps'`,
+      [ASSISTED_MODALITY, exercise.id, userId, LIFTOSAUR_SOURCE]
+    );
+    if ((result.rowCount ?? 0) > 0) {
+      exercise.modality = ASSISTED_MODALITY;
+    } else {
+      // Changed since it was read: use what is stored now.
+      const stored = await client.query(
+        'SELECT modality FROM exercises WHERE id = $1 AND user_id = $2',
+        [exercise.id, userId]
+      );
+      const modality = (stored.rows[0] as { modality?: string } | undefined)
+        ?.modality;
+      if (modality) exercise.modality = modality;
+    }
+  } catch (error) {
+    log(
+      'warn',
+      `Skipping the bodyweight switch for Liftosaur exercise ${exercise.id}: ${errorMessage(error)}`
+    );
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * Backfill muscles on an existing exercise the user owns when it has none
+ * (e.g. Liftosaur exercises created before the muscle mapping existed), so
+ * the muscle-group reports pick up its sets. Never overwrites muscles that are
+ * already set, and never touches public/shared library rows. Library writes
+ * run outside the diary transaction (see processSingleWorkout), so a failure
+ * here is logged and the workout still imports.
+ */
+async function fillMissingMuscles(
+  userId: string,
+  exercise: ExerciseRow,
+  muscles: MuscleMapping
+): Promise<void> {
+  if (exercise.user_id !== userId) return;
+  if (muscles.primary.length === 0) return;
+  if (!hasNoMuscles(exercise.primary_muscles)) return;
+  try {
+    // The write re-checks emptiness itself (see fillEmptyMuscles), so a
+    // stale snapshot or a second alias of the same row cannot overwrite
+    // muscles, and saved secondary muscles are kept.
+    const filled = await exerciseRepository.fillEmptyMuscles(
+      userId,
+      exercise.id,
+      muscles.primary,
+      muscles.secondary
+    );
+    if (filled) {
+      exercise.primary_muscles = filled.primary_muscles;
+      exercise.secondary_muscles = filled.secondary_muscles;
+    }
+  } catch (error) {
+    log(
+      'warn',
+      `Skipping Liftosaur muscle backfill for exercise ${exercise.id}: ${errorMessage(error)}`
+    );
+  }
+}
+
+/**
+ * Backfill muscles on existing Liftosaur diary entries that currently have
+ * empty muscle snapshots (e.g. entries imported before muscle mapping existed
+ * or during a previous lookup failure), so reports pick up their sets without
+ * overwriting populated snapshots or manual edits.
+ */
+async function backfillLiftosaurDiaryMuscles(
+  userId: string,
+  exercise: ExerciseRow
+): Promise<void> {
+  const primary = toMuscleArray(exercise.primary_muscles);
+  if (primary.length === 0) return;
+  const secondary = toMuscleArray(exercise.secondary_muscles);
+  const client = await getClient(userId);
+  try {
+    await client.query(
+      `UPDATE exercise_entries SET
+         primary_muscles = $1,
+         secondary_muscles = CASE WHEN ${emptyMuscleColumnSql('secondary_muscles')}
+           THEN $2 ELSE secondary_muscles END,
+         updated_at = NOW()
+       WHERE user_id = $3
+         AND exercise_id = $4
+         AND source = $5
+         AND ${emptyMuscleColumnSql('primary_muscles')}`,
+      [
+        JSON.stringify(primary),
+        JSON.stringify(secondary),
+        userId,
+        exercise.id,
+        LIFTOSAUR_SOURCE,
+      ]
+    );
+  } catch (error) {
+    log(
+      'warn',
+      `Skipping Liftosaur diary muscle backfill for exercise ${exercise.id}: ${errorMessage(error)}`
+    );
+  } finally {
+    client.release();
+  }
+}
+
+/**
  * Process a list of parsed Liftosaur workouts into SparkyFitness entries atomically.
  *
  * @param cleanup Which Liftosaur rows that are no longer sent get deleted:
@@ -110,11 +421,18 @@ async function processLiftosaurWorkouts(
   createdByUserId: string,
   workouts: LiftohistoryWorkout[],
   timezone = 'UTC',
-  cleanup?: LiftosaurCleanupRange | null
+  cleanup?: LiftosaurCleanupRange | null,
+  resolveMuscles?: LiftosaurMuscleResolver
 ) {
   log(
     'info',
     `Processing ${workouts.length} Liftosaur workouts for user ${userId}...`
+  );
+
+  const library = await resolveLibraryExercises(
+    userId,
+    workouts,
+    resolveMuscles
   );
 
   const client = await getClient(userId, createdByUserId);
@@ -133,20 +451,35 @@ async function processLiftosaurWorkouts(
     // exactly once so a second pass doesn't create an empty orphan session.
     const seenWorkoutIds = new Set<number>();
     const kept: KeptSourceIds = { sessions: new Set(), entries: new Set() };
+    let workoutsFailed = 0;
     for (const workout of workouts) {
       if (seenWorkoutIds.has(workout.id)) {
         log('debug', `Skipping duplicate Liftosaur workout ${workout.id}`);
         continue;
       }
       seenWorkoutIds.add(workout.id);
-      await processSingleWorkout(
-        userId,
-        createdByUserId,
-        workout,
-        kept,
-        client,
-        timezone
-      );
+      // Each workout gets its own savepoint, so one that cannot be saved is
+      // skipped instead of rolling back every other workout of the sync.
+      await client.query('SAVEPOINT liftosaur_workout');
+      try {
+        await processSingleWorkout(
+          userId,
+          createdByUserId,
+          workout,
+          library,
+          kept,
+          client,
+          timezone
+        );
+        await client.query('RELEASE SAVEPOINT liftosaur_workout');
+      } catch (error) {
+        await client.query('ROLLBACK TO SAVEPOINT liftosaur_workout');
+        workoutsFailed += 1;
+        log(
+          'error',
+          `Skipping Liftosaur workout ${workout.id} for user ${userId}: ${errorMessage(error)}`
+        );
+      }
     }
 
     // Re-sent workouts are updated in place above, keyed by source id
@@ -157,10 +490,14 @@ async function processLiftosaurWorkouts(
     // write is deleted: workouts deleted in Liftosaur, rows from before
     // source ids were stable, and rows the import now skips. Entries go
     // first, because that path clears their calorie links and a session
-    // delete cascades to the entries still under it.
+    // delete cascades to the entries still under it. A workout that failed
+    // to save may have rows stored under ids this sync cannot know (an
+    // exercise renamed or removed in Liftosaur since, or ids from before they
+    // were stable), so after a failure nothing is deleted, as when a record
+    // does not parse.
     const range =
       cleanup === undefined ? fetchedDayRange(workouts, timezone) : cleanup;
-    if (range) {
+    if (range && workoutsFailed === 0) {
       const { startDate, endDate } = range;
 
       await exerciseEntryRepository.deleteExerciseEntriesByEntrySourceAndDateWithClient(
@@ -183,6 +520,7 @@ async function processLiftosaurWorkouts(
     }
 
     await client.query('COMMIT');
+    return { workoutsFailed };
   } catch (error) {
     await client.query('ROLLBACK');
     log(
@@ -202,6 +540,7 @@ async function processSingleWorkout(
   userId: string,
   createdByUserId: string,
   workout: LiftohistoryWorkout,
+  library: Map<string, ExerciseRow>,
   kept: KeptSourceIds,
   client: PoolClient,
   timezone = 'UTC'
@@ -231,8 +570,8 @@ async function processSingleWorkout(
   // Find or create the reusable workout preset (the Liftosaur program name, or
   // a generic name for ad-hoc sessions) so the diary shows the whole workout as
   // a single grouped session instead of loose exercises.
-  // Library rows (exercises above, presets here) are written on their own
-  // connection, outside the diary transaction, the same way
+  // Library rows (exercises in resolveLibraryExercises, presets here) are
+  // written on their own connection, outside the diary transaction, the same way
   // services/garmin/garminActivityProcessor.ts does it: they are get-or-create
   // lookups whose survival after a rollback is harmless, and keeping them out
   // means a failure here cannot abort the transaction that owns the entries.
@@ -270,11 +609,18 @@ async function processSingleWorkout(
   const workoutDurationMinutes = workout.durationSeconds
     ? Math.round(workout.durationSeconds / 60)
     : 0;
-  // Liftosaur only records the whole workout's duration. Like the Hevy
-  // integration, it goes to the first exercise of the session and the rest
-  // get 0, so daily exercise minutes match the workout without multiplying it.
-  // When earlier exercises are skipped, it goes to the first imported one.
-  let durationAllocated = false;
+  // Liftosaur only records the whole workout's duration. It goes to one
+  // entry of the session and the rest get 0, so daily exercise minutes match
+  // the workout without multiplying it. That entry is the one that held it
+  // before when the workout was synced already (see chooseDurationOwner),
+  // else the first exercise with performed sets.
+  const importedSourceIds = workout.exercises.flatMap((exercise, index) =>
+    mergeSets(exercise).sets.length > 0 ? [entrySourceId(workout, index)] : []
+  );
+  const durationOwner = chooseDurationOwner(
+    importedSourceIds,
+    await getStoredEntryDurationsWithClient(client, userId, importedSourceIds)
+  );
 
   for (
     let exerciseIndex = 0;
@@ -295,37 +641,10 @@ async function processSingleWorkout(
       continue;
     }
 
-    // 1. Resolve exercise in SparkyFitness library: try exact name match
-    //    first, then the bare name ("Squat"), then create a custom exercise
-    //    that preserves the full Liftosaur name.
-    let exercise: ExerciseRow | null =
-      await exerciseRepository.findExerciseByNameAndUserId(
-        liftosaurExercise.name,
-        userId
-      );
+    // 1. The library exercise was resolved (and created, with its muscles)
+    //    up front by resolveLibraryExercises.
+    const exercise = library.get(liftosaurExercise.name);
     if (!exercise) {
-      const bareName = liftosaurExercise.name.split(',')[0]!.trim();
-      if (bareName && bareName !== liftosaurExercise.name) {
-        exercise = await exerciseRepository.findExerciseByNameAndUserId(
-          bareName,
-          userId
-        );
-      }
-    }
-    if (!exercise) {
-      exercise = await exerciseRepository.createExercise({
-        user_id: userId,
-        name: liftosaurExercise.name,
-        source: LIFTOSAUR_SOURCE,
-        is_custom: true,
-        shared_with_public: false,
-      });
-    }
-    if (!exercise) {
-      log(
-        'error',
-        `Failed to find or create Liftosaur exercise "${liftosaurExercise.name}"`
-      );
       // An error, not a skip: keep the existing entry for the next sync.
       kept.entries.add(entrySourceId(workout, exerciseIndex));
       continue;
@@ -335,8 +654,24 @@ async function processSingleWorkout(
     // duplicating (see entrySourceId).
     const sourceId = entrySourceId(workout, exerciseIndex);
 
-    const durationMinutes = durationAllocated ? 0 : workoutDurationMinutes;
-    durationAllocated = true;
+    const durationMinutes =
+      sourceId === durationOwner ? workoutDurationMinutes : 0;
+
+    // Assisted sets keep their negative weight on a bodyweight exercise. The
+    // modality also goes to an entry updated in place, whose copy of it is
+    // otherwise kept from when it was first imported. On any other exercise
+    // (one the import may not switch, see useAssistedModality) the set is
+    // kept without its weight, since that modality cannot store it.
+    const bodyweight = isBodyweightExercise(exercise);
+    const assisted = mergedSets.sets.some(
+      (set) => set.weightKg !== null && set.weightKg < 0
+    );
+    if (assisted && !bodyweight) {
+      log(
+        'warn',
+        `Liftosaur exercise "${liftosaurExercise.name}" has assisted sets but exercise ${exercise.id} is not a bodyweight exercise; importing those sets without their weight.`
+      );
+    }
 
     // 3. Prepare entry data
     const entryData = {
@@ -349,10 +684,14 @@ async function processSingleWorkout(
       superset_group: null, // supersets are not part of the serialized format
       source_id: sourceId,
       notes: liftosaurExercise.notes || null,
+      ...(assisted && bodyweight ? { modality: exercise.modality } : {}),
       sets: mergedSets.sets.map((set) => ({
         set_number: set.set_number,
         set_type: set.set_type,
-        weight: set.weightKg,
+        weight:
+          set.weightKg !== null && set.weightKg < 0 && !bodyweight
+            ? null
+            : set.weightKg,
         reps: set.reps,
         duration: set.durationSeconds,
         rest_time: set.restSeconds,
@@ -509,6 +848,35 @@ function mergeSets(exercise: LiftohistoryExercise): {
   }
 
   return { sets };
+}
+
+/**
+ * Which entry of a workout gets the whole workout duration (the others get
+ * 0), given the source ids of the exercises that are imported, in workout
+ * order, and what is already stored for them. Mirrors the Hevy import
+ * (hevyWorkoutRepository.ts) so a reorder in Liftosaur never moves the
+ * duration onto a second entry while a hand-edited one keeps its value:
+ *   1. an entry whose duration the user edited and that is above 0;
+ *   2. else the entry that already holds a duration (it got it last time);
+ *   3. else an entry whose duration the user edited (even to 0);
+ *   4. else the first imported exercise.
+ * Edited durations stay protected by the in-place update either way, so the
+ * workout is counted once.
+ */
+export function chooseDurationOwner(
+  sourceIds: string[],
+  stored: Map<string, StoredEntryDuration>
+): string | null {
+  const edited = (id: string) =>
+    stored.get(id)?.manual_fields.includes('duration_minutes') ?? false;
+  const minutes = (id: string) => stored.get(id)?.duration_minutes ?? 0;
+  return (
+    sourceIds.find((id) => edited(id) && minutes(id) > 0) ??
+    sourceIds.find((id) => minutes(id) > 0) ??
+    sourceIds.find((id) => edited(id)) ??
+    sourceIds[0] ??
+    null
+  );
 }
 
 /** Expand `count`-grouped sets into one entry per actual set. */

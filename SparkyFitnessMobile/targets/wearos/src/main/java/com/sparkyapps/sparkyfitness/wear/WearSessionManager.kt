@@ -61,6 +61,8 @@ class WearSessionManager private constructor(private val appContext: Context) :
   val recordingStore = RecordingStore()
   val runStore = WatchRunStore(appContext)
   val demoStore = ExerciseDemoStore(appContext)
+  val mediaStore = MediaControlStore(appContext)
+  val customComplicationStore = CustomComplicationStore(appContext)
   val sensorsController = WatchSensorsController(appContext, this)
 
   private val _requestedPage = MutableStateFlow<WatchPage?>(null)
@@ -111,6 +113,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
     runStore.session = this
     runStore.sensors = sensorsController
     runStore.checkInStore = checkInStore
+    mediaStore.session = this
 
     sensorsController.startPassiveStepCounter { stepsToday ->
       checkInStore.updateLiveSteps(stepsToday)
@@ -198,7 +201,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
         val dataItems = Wearable.getDataClient(appContext).dataItems.await()
         for (item in dataItems) {
           val path = item.uri.path ?: continue
-          if (path == PATH_CONTEXT) {
+          if (path == PATH_CONTEXT || path == PATH_COMPLICATION_CONFIG) {
             val dataMap = DataMapItem.fromDataItem(item).dataMap
             val raw = dataMap.getString("json") ?: continue
             handleIncomingPayloadString(raw)
@@ -271,7 +274,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
         continue
       }
       if (event.type != DataEvent.TYPE_CHANGED) continue
-      if (path == PATH_CONTEXT) {
+      if (path == PATH_CONTEXT || path == PATH_COMPLICATION_CONFIG) {
         val raw = DataMapItem.fromDataItem(item).dataMap.getString("json") ?: continue
         handleIncomingPayloadString(raw)
       } else if (path.startsWith(PREFIX_PHONE_TO_WATCH_EXERCISE_IMAGE)) {
@@ -411,6 +414,12 @@ class WearSessionManager private constructor(private val appContext: Context) :
           runStore.acknowledgeCue(id)
         }
       }
+      type == "mediaState" -> {
+        mediaStore.applyRemoteMediaState(ContextPayloadMapper.parsePhoneMediaState(json))
+      }
+      type == "complicationConfig" -> {
+        customComplicationStore.applyConfigJson(json)
+      }
     }
   }
 
@@ -443,6 +452,24 @@ class WearSessionManager private constructor(private val appContext: Context) :
   override fun sendLiveOnly(payload: JSONObject) {
     scope.launch(Dispatchers.IO) {
       sendLiveMessage(payload)
+    }
+  }
+
+  override fun sendLiveWithResult(payload: JSONObject, onResult: (Boolean) -> Unit) {
+    scope.launch(Dispatchers.IO) {
+      val live = sendLiveMessage(payload)
+      onResult(live)
+    }
+  }
+
+  override fun isPhoneConnected(onResult: (Boolean) -> Unit) {
+    scope.launch(Dispatchers.IO) {
+      val connected = try {
+        Wearable.getNodeClient(appContext).connectedNodes.await().isNotEmpty()
+      } catch (_: Throwable) {
+        false
+      }
+      onResult(connected)
     }
   }
 
@@ -491,6 +518,7 @@ class WearSessionManager private constructor(private val appContext: Context) :
 
   companion object {
     const val PATH_CONTEXT = "/sparky/context"
+    const val PATH_COMPLICATION_CONFIG = "/sparky/complicationConfig"
     const val PATH_MESSAGE = "/sparky/message"
     const val PREFIX_PHONE_TO_WATCH = "/sparky/transfer/phone/"
     const val PREFIX_PHONE_TO_WATCH_EXERCISE_IMAGE = "/sparky/transfer/phone/exerciseImage/"

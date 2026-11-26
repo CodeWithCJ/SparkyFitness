@@ -1,4 +1,8 @@
-import { moveItem, resolveKeyOrder } from '../../src/utils/reorderUtils';
+import {
+  mergeSubsetOrder,
+  moveItem,
+  resolveKeyOrder,
+} from '../../src/utils/reorderUtils';
 
 describe('moveItem', () => {
   test('moves an item forward in the array', () => {
@@ -40,5 +44,25 @@ describe('resolveKeyOrder', () => {
 
   test('an empty saved order is the registry order', () => {
     expect(resolveKeyOrder([], registry)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('mergeSubsetOrder', () => {
+  it('puts the moved keys in the places they held and leaves the rest where they were', () => {
+    // C is left out of the list on screen; D was moved to the top.
+    expect(mergeSubsetOrder(['a', 'b', 'c', 'd'], ['d', 'a', 'b'])).toEqual([
+      'd',
+      'a',
+      'c',
+      'b',
+    ]);
+  });
+
+  it('changes nothing when the keys on screen keep their order', () => {
+    expect(mergeSubsetOrder(['a', 'b', 'c'], ['a', 'c'])).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
   });
 });

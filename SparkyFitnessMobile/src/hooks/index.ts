@@ -28,6 +28,7 @@ export { useWatchRouteBridge } from './useWatchRouteBridge';
 export { useWatchPlanSync } from './useWatchPlanSync';
 export { useWatchWorkoutEdit } from './useWatchWorkoutEdit';
 export { useWatchFastingBridge } from './useWatchFastingBridge';
+export { useWatchComplicationSync } from './useWatchComplicationSync';
 export {
   drainQuickActionNavigation,
   useControlRouteHandoff,

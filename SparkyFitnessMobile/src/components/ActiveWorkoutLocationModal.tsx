@@ -6,7 +6,7 @@ import {
   ScrollView,
   Text,
   View,
-  type TextInput,
+  type TextInputInstance,
 } from 'react-native';
 import {
   KeyboardAvoidingView,
@@ -36,7 +36,7 @@ export default function ActiveWorkoutLocationModal({
   onSubmit,
 }: ActiveWorkoutLocationModalProps) {
   const { t } = useTranslation();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [value, setValue] = useState(initialLocation ?? '');
   const suggestions = useWorkoutLocations({ enabled: visible });
 

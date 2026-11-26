@@ -1,27 +1,45 @@
-import { GLP1_DRUG_PROFILES, INJECTION_SITES } from '@workspace/shared';
-import type { InjectionSite, MedicationPen } from '@workspace/shared';
+import {
+  GLP1_CHECKIN_CATEGORY_NAMES,
+  GLP1_DRUG_PROFILES,
+  INJECTION_SITES,
+} from '@workspace/shared';
+import type {
+  Glp1CheckInMetricKey,
+  InjectionSite,
+  MedicationPen,
+} from '@workspace/shared';
 
-export type Glp1CheckInMetricKey =
-  'hunger' | 'food_noise' | 'fullness' | 'energy';
+export type { Glp1CheckInMetricKey };
 
 /**
  * `categoryName` is the stable identifier shared with the web GLP-1 check-in
- * (it matches on it to find its custom measurement categories), so it must not
- * be localized or renamed.
+ * (`GLP1_CHECKIN_CATEGORY_NAMES`), so it must not be localized or renamed.
  */
 export const GLP1_CHECKIN_METRICS: {
   key: Glp1CheckInMetricKey;
   categoryName: string;
   defaultLabel: string;
 }[] = [
-  { key: 'hunger', categoryName: 'GLP Hunger', defaultLabel: 'Hunger' },
+  {
+    key: 'hunger',
+    categoryName: GLP1_CHECKIN_CATEGORY_NAMES.hunger,
+    defaultLabel: 'Hunger',
+  },
   {
     key: 'food_noise',
-    categoryName: 'GLP Food Noise',
+    categoryName: GLP1_CHECKIN_CATEGORY_NAMES.food_noise,
     defaultLabel: 'Food noise',
   },
-  { key: 'fullness', categoryName: 'GLP Fullness', defaultLabel: 'Fullness' },
-  { key: 'energy', categoryName: 'GLP Energy', defaultLabel: 'Energy' },
+  {
+    key: 'fullness',
+    categoryName: GLP1_CHECKIN_CATEGORY_NAMES.fullness,
+    defaultLabel: 'Fullness',
+  },
+  {
+    key: 'energy',
+    categoryName: GLP1_CHECKIN_CATEGORY_NAMES.energy,
+    defaultLabel: 'Energy',
+  },
 ];
 
 export const GLP1_CHECKIN_DEFAULT = 5;

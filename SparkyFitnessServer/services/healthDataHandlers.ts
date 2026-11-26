@@ -1,4 +1,5 @@
 import { log } from '../config/logging.js';
+import { VO2_MAX_BOUNDS } from '../utils/vo2MaxDailySummary.js';
 import measurementRepository from '../models/measurementRepository.js';
 import exerciseDb from '../models/exercise.js';
 import exerciseEntryDb, {
@@ -41,6 +42,7 @@ import {
   BUILT_IN_MOODS,
   instantForDay,
   instantHourMinute,
+  instantHourMinuteInZone,
   instantToDay,
   isDayString,
   isSkinTemperatureSite,
@@ -48,6 +50,7 @@ import {
   type SkinTemperatureSite,
   MIN_MEASURED_BMR_KCAL,
   MAX_MEASURED_BMR_KCAL,
+  resolveRecordZone,
   todayInZone,
 } from '@workspace/shared';
 
@@ -101,8 +104,8 @@ const DEFAULT_UNITS_BY_HEALTH_TYPE = {
   oxygen_saturation: '%',
   OxygenSaturation: '%',
   BloodOxygenSaturation: '%',
-  vo2_max: 'ml/min/kg',
-  Vo2Max: 'ml/min/kg',
+  vo2_max: 'ml/kg/min',
+  Vo2Max: 'ml/kg/min',
   height: 'm',
   Height: 'm',
   neck: 'cm',
@@ -353,7 +356,8 @@ async function ingestNutritionFoodEntry(
   userId: any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   actingUserId: any,
-  parsedDate: string
+  parsedDate: string,
+  entryTime: string | null = null
 ) {
   const { providerType, fallbackName } = resolveProvider(dataEntry.source);
   const trimmedName =
@@ -416,6 +420,10 @@ async function ingestNutritionFoodEntry(
       quantity: 1,
       unit: 'serving',
       entry_date: parsedDate,
+      // Local wall-clock time the record was logged at, so time-dependent
+      // views (caffeine kinetics, diary order) use the real instant instead of
+      // falling back to the meal's default time.
+      ...(entryTime ? { entry_time: entryTime } : {}),
       meal_type: dataEntry.meal_type || 'snacks',
       serving_size: 1,
       serving_unit: 'serving',
@@ -973,7 +981,7 @@ const waterHandler: HealthTypeHandler = {
     const outcomes: HandlerOutcome[] = new Array(entries.length);
     if (entries.length === 0) return outcomes;
 
-    // Group entries by source; each source is upserted independently.
+    // Group additions/updates by source.
     const entriesBySource = new Map<
       string,
       Array<{
@@ -983,9 +991,45 @@ const waterHandler: HealthTypeHandler = {
         waterMl: number;
       }>
     >();
+
+    // Group deletions by source.
+    const deletionsBySource = new Map<
+      string,
+      Array<{
+        index: number;
+        sourceId: string;
+      }>
+    >();
+
     for (let i = 0; i < entries.length; i++) {
       const item = entries[i];
       const source = (item.entry.source as string) || 'manual';
+
+      if (item.entry.deleted === true || item.entry.action === 'delete') {
+        if (!item.entry.source_id) {
+          outcomes[i] = {
+            status: 'error',
+            error: 'Missing source_id for water deletion',
+          };
+          continue;
+        }
+        if (source === 'manual') {
+          outcomes[i] = {
+            status: 'error',
+            error:
+              'Manual water entries cannot be deleted via health data sync',
+          };
+          continue;
+        }
+        const existingDeletions = deletionsBySource.get(source) || [];
+        existingDeletions.push({
+          index: i,
+          sourceId: String(item.entry.source_id),
+        });
+        deletionsBySource.set(source, existingDeletions);
+        continue;
+      }
+
       if (
         item.entry.value === null ||
         item.entry.value === undefined ||
@@ -1022,13 +1066,106 @@ const waterHandler: HealthTypeHandler = {
       entriesBySource.set(source, existing);
     }
 
+    // Process deletions first
+    for (const [source, deletionGroup] of deletionsBySource) {
+      if (deletionGroup.length === 0) continue;
+      const sourceIds = deletionGroup.map((d) => d.sourceId);
+      try {
+        const affectedDates =
+          await measurementRepository.deleteWaterIntakeSamplesBySourceIds(
+            ctx.userId,
+            ctx.actingUserId,
+            source,
+            sourceIds
+          );
+        // `affectedDates` is group-wide: repeating it on every outcome makes
+        // the response O(entries x distinct dates). Report it once on the first entry, plus a count.
+        deletionGroup.forEach((d, pos) => {
+          outcomes[d.index] = {
+            status: 'success',
+            data: {
+              deleted: true,
+              source_id: d.sourceId,
+              affectedDateCount: affectedDates.length,
+              ...(pos === 0 ? { affectedDates } : {}),
+            },
+          };
+        });
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        log(
+          'error',
+          `[waterHandler.handleBatch] deleteWaterIntakeSamplesBySourceIds failed for source '${source}' (${deletionGroup.length} record(s)): ${msg}`,
+          error
+        );
+        deletionGroup.forEach((d) => {
+          outcomes[d.index] = { status: 'error', error: msg };
+        });
+      }
+    }
+
+    // Exclude additions that share (source, source_id) with a tombstone in the same batch
+    // so the deletion is the final state.
+    for (const [source, deletionGroup] of deletionsBySource) {
+      if (deletionGroup.length === 0) continue;
+      const deletedSourceIds = new Set(deletionGroup.map((d) => d.sourceId));
+      const group = entriesBySource.get(source);
+      if (group) {
+        const filteredGroup: typeof group = [];
+        for (const item of group) {
+          const itemSourceId = item.entry.source_id as string | undefined;
+          if (itemSourceId && deletedSourceIds.has(itemSourceId)) {
+            // Tombstone takes precedence over addition with same ID in same batch
+            outcomes[item.index] = {
+              status: 'success',
+              data: {
+                deleted: true,
+                source_id: itemSourceId,
+                supersededByTombstone: true,
+              },
+            };
+          } else {
+            filteredGroup.push(item);
+          }
+        }
+        entriesBySource.set(source, filteredGroup);
+      }
+    }
+
+    // If there are no additions to process, return early without querying primary container
+    const totalAdditions = Array.from(entriesBySource.values()).reduce(
+      (sum, g) => sum + g.length,
+      0
+    );
+    if (totalAdditions === 0) {
+      return outcomes;
+    }
+
     // Synced entries log against the user's default container, same as manual entries.
-    const primaryContainer =
-      await waterContainerRepository.getPrimaryWaterContainerByUserId(
-        ctx.userId
+    let primaryContainerId: number | null = null;
+    let primaryContainerName = 'Default';
+    try {
+      const primaryContainer =
+        await waterContainerRepository.getPrimaryWaterContainerByUserId(
+          ctx.userId
+        );
+      primaryContainerId = primaryContainer?.id ?? null;
+      primaryContainerName = primaryContainer?.name || 'Default';
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      log(
+        'error',
+        `[waterHandler.handleBatch] Failed to fetch primary container: ${msg}`,
+        error
       );
-    const primaryContainerId = primaryContainer?.id ?? null;
-    const primaryContainerName = primaryContainer?.name || 'Default';
+      // Contain container lookup failure to addition outcomes, preserving deletion successes
+      for (const [, group] of entriesBySource) {
+        group.forEach((g) => {
+          outcomes[g.index] = { status: 'error', error: msg };
+        });
+      }
+      return outcomes;
+    }
 
     for (const [source, group] of entriesBySource) {
       if (group.length === 0) continue;
@@ -2156,6 +2293,53 @@ const workoutHandler: HealthTypeHandler = {
   },
 };
 
+/** The fields of a nutrition record that decide when it was logged. */
+interface NutritionRecordTime {
+  timestamp?: string | number | null;
+  date?: string | null;
+  entry_date?: string | null;
+  record_timezone?: string | null;
+  record_utc_offset_minutes?: number | null;
+}
+
+// True when the record carries a real instant rather than only a day. Mirrors
+// which field resolveHealthEntryDate takes entryTimestamp from: `timestamp`
+// when it parses, else the `date` / `entry_date` basis.
+function hasLoggedInstant(entry: NutritionRecordTime): boolean {
+  const isInstant = (value: unknown) =>
+    (typeof value === 'number' && Number.isFinite(value)) ||
+    (typeof value === 'string' &&
+      !isDayString(value) &&
+      Number.isFinite(Date.parse(value)));
+  const timestamp = entry.timestamp;
+  if (timestamp && Number.isFinite(new Date(timestamp).getTime())) {
+    return isInstant(timestamp);
+  }
+  return isInstant(entry.date || entry.entry_date);
+}
+
+// Local wall-clock time of a nutrition record, resolved with the same zone
+// precedence the entry date uses (record timezone, then record UTC offset,
+// then the user's timezone), so date and time always agree.
+async function nutritionEntryTime(
+  entry: NutritionRecordTime,
+  ctx: HealthEntryContext
+): Promise<string | null> {
+  // A date-only record has no logged time: the resolver's entryTimestamp is
+  // then a synthesized midnight, which must not become 00:00.
+  if (!hasLoggedInstant(entry) || !ctx.entryTimestamp) return null;
+  const zone = resolveRecordZone(
+    entry.record_timezone,
+    entry.record_utc_offset_minutes
+  );
+  if (zone) {
+    const { hour, minute } = instantHourMinuteInZone(ctx.entryTimestamp, zone);
+    return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`;
+  }
+  const { tz } = await ctx.getSleepContext();
+  return localEntryTime(ctx.entryTimestamp, tz);
+}
+
 // Ingest a Health Connect NutritionRecord as a food entry
 // (see ingestNutritionFoodEntry).
 const nutritionHandler: HealthTypeHandler = {
@@ -2175,11 +2359,13 @@ const nutritionHandler: HealthTypeHandler = {
       };
     }
     try {
+      const entryTime = await nutritionEntryTime(entry, ctx);
       const foodEntry = await ingestNutritionFoodEntry(
         entry,
         ctx.userId,
         ctx.actingUserId,
-        ctx.parsedDate
+        ctx.parsedDate,
+        entryTime
       );
       return { status: 'success', data: foodEntry };
     } catch (nutritionError) {
@@ -2240,6 +2426,14 @@ const customMeasurementHandleBatch: HandleBatchFn = async (entries, ctx) => {
       unitFromPayload.trim()
     ) {
       resolvedMeasurementType = unitFromPayload.trim();
+      // Older mobile clients send the mislabeled "ml/min/kg" for VO2 max;
+      // keep the category on the canonical "ml/kg/min".
+      if (
+        (type === 'vo2_max' || type === 'Vo2Max') &&
+        resolvedMeasurementType.toLowerCase() === 'ml/min/kg'
+      ) {
+        resolvedMeasurementType = 'ml/kg/min';
+      }
     } else {
       resolvedMeasurementType =
         // @ts-expect-error TS(7053): Element implicitly has an 'any' type because expre... Remove this comment to see the full error message
@@ -2438,11 +2632,10 @@ const restingHeartRateHandler = createDailySummaryReadingHandler(
   { min: 20, max: 250, decimals: 0 }
 );
 
-const vo2MaxHandler = createDailySummaryReadingHandler('vo2_max', {
-  min: 10,
-  max: 100,
-  decimals: 1,
-});
+const vo2MaxHandler = createDailySummaryReadingHandler(
+  'vo2_max',
+  VO2_MAX_BOUNDS
+);
 
 // Apple's sleeping wrist temperature arrives as a plain record, one per night.
 // It is kept as a `skin_temperature` sample, not a custom measurement, so the

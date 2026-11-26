@@ -1,3 +1,4 @@
+import type { ServerConfig } from '../services/storage';
 /** A value SQLite can bind. */
 export type SqlParam = string | number | null;
 
@@ -64,6 +65,16 @@ export type SendResult =
   | { outcome: 'needs_sign_in' }
   | { outcome: 'failed'; error: string };
 
+/**
+ * What the drain knows about the run a row is sent in. `serverConfig` is the
+ * server read when the run started: a handler sends to it, not to whichever
+ * server is active when its request goes out, so a switch in between cannot
+ * carry one account's row to another's server. Absent, the active one is used.
+ */
+export interface SendContext {
+  serverConfig?: ServerConfig;
+}
+
 /** Sends one kind of outbox row. A new offline module adds one of these. */
 export interface OutboxHandler {
   kind: string;
@@ -71,7 +82,7 @@ export interface OutboxHandler {
   payloadVersion: number;
   /** Brings a payload written by an older build up to `payloadVersion`. */
   upgrade(payload: unknown, fromVersion: number): unknown;
-  send(row: OutboxRow): Promise<SendResult>;
+  send(row: OutboxRow, context?: SendContext): Promise<SendResult>;
   /** Runs once the server has confirmed the row (cache refreshes). */
   onSynced?(row: OutboxRow): Promise<void> | void;
 }

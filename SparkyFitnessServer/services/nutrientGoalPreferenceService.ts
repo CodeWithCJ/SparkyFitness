@@ -41,6 +41,10 @@ export interface EffectiveGoalPreference {
   goalType: NutrientGoalType;
   targetMin?: number;
   targetMax?: number;
+  // Set (with markDefaults) when the user never chose a direction and the
+  // built-in default applies. Calories then read as "minimum" although the
+  // user only set a number; AI tools must not word that as a floor.
+  isDefault?: true;
 }
 
 function builtinDefaultFor(nutrientKey: string): NutrientGoalType {
@@ -48,7 +52,8 @@ function builtinDefaultFor(nutrientKey: string): NutrientGoalType {
 }
 
 async function getEffectiveGoalTypes(
-  userId: string
+  userId: string,
+  { markDefaults = false }: { markDefaults?: boolean } = {}
 ): Promise<Record<string, EffectiveGoalPreference>> {
   const [overrides, customNutrients] = await Promise.all([
     nutrientGoalPreferenceRepository.getNutrientGoalPreferences(userId),
@@ -72,7 +77,9 @@ async function getEffectiveGoalTypes(
         targetMax: override.target_max ?? undefined,
       };
     } else {
-      result[key] = { goalType: builtinDefaultFor(key) };
+      result[key] = markDefaults
+        ? { goalType: builtinDefaultFor(key), isDefault: true }
+        : { goalType: builtinDefaultFor(key) };
     }
   }
   return result;

@@ -55,6 +55,17 @@ describe('classifyActivitySport — provider-declared', () => {
     ).toEqual({ sport: 'cycling', confidence: 'declared' });
   });
 
+  it('reads the ZeppBridge workout type from the activity blob', () => {
+    expect(
+      classifyActivitySport({
+        exerciseName: 'Run',
+        category: 'cardio',
+        providerName: 'ZeppBridge',
+        detailData: { effective_type: 'outdoor_running', source: 'official' },
+      })
+    ).toEqual({ sport: 'running', confidence: 'declared' });
+  });
+
   it('trusts the Strava sport_type over a user-written activity title', () => {
     // Strava exercise_name is a free-text title the athlete chose, so keyword
     // matching on it is exactly what must NOT decide the sport.
@@ -226,6 +237,60 @@ describe('classifyActivitySport — notes templates', () => {
         notes: 'Synced from Strava. Type: VirtualRide. Moving time: 45min.',
       }).sport
     ).toBe('cycling');
+  });
+
+  it('reads the ZeppBridge notes template', () => {
+    expect(
+      classifyActivitySport({
+        exerciseName: 'Workout',
+        notes: 'Synced from ZeppBridge. Type: outdoor_running.',
+      })
+    ).toEqual({ sport: 'running', confidence: 'inferred' });
+  });
+
+  it('reads the ZeppBridge notes template with extra spaces after the colon', () => {
+    expect(
+      classifyActivitySport({
+        exerciseName: 'Workout',
+        notes: 'Synced from ZeppBridge. Type:   cycling.',
+      }).sport
+    ).toBe('cycling');
+  });
+
+  it('does not slow down on a long run of spaces in a ZeppBridge note', () => {
+    const notes = `Synced from ZeppBridge. Type:${' '.repeat(50_000)}`;
+    const started = performance.now();
+    expect(
+      classifyActivitySport({ exerciseName: 'Workout', notes }).sport
+    ).toBe('other');
+    // A backtracking pattern takes seconds to minutes here.
+    expect(performance.now() - started).toBeLessThan(500);
+  });
+});
+
+describe('classifyActivitySport — long notes', () => {
+  // Notes are free text the person can make as long as they like, and the
+  // classifier runs on every new entry, so matching must stay linear.
+  it.each([
+    ['Garmin', 'Garmin activity: ' + '('.repeat(200_000)],
+    ['Garmin FIT', 'Garmin FIT import: ' + '('.repeat(200_000)],
+    ['Strava', 'Synced from Strava. Type:' + ' '.repeat(200_000) + 'x'],
+    ['Polar', 'Logged from Polar Flow:' + ' '.repeat(200_000) + 'x'],
+    ['COROS', 'Logged from COROS:' + ' '.repeat(200_000)],
+    ['repeated prefixes', 'Logged from Polar Flow: x '.repeat(10_000)],
+  ])('classifies crafted %s notes quickly', (_source, notes) => {
+    const started = performance.now();
+    classifyActivitySport({ exerciseName: 'Session', notes });
+    expect(performance.now() - started).toBeLessThan(250);
+  });
+
+  it('still reads the sport from a template followed by long text', () => {
+    expect(
+      classifyActivitySport({
+        exerciseName: 'Session',
+        notes: 'Synced from Strava. Type: Run. ' + 'n'.repeat(5_000),
+      }).sport
+    ).toBe('running');
   });
 });
 

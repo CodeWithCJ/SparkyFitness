@@ -1971,10 +1971,6 @@
       "wellness": "Impostazioni salute",
       "cyclePregnancy": "Ciclo e gravidanza"
     },
-    "enable": {
-      "title": "Abilita monitoraggio del ciclo e della gravidanza",
-      "subtitle": "Attiva la registrazione, le previsioni e la cronologia"
-    },
     "groups": {
       "features": "Configurazione delle funzionalità",
       "calculations": "Sovrascritture dei calcoli del ciclo",

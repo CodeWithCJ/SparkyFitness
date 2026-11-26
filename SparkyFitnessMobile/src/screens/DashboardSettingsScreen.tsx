@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 
 import { useActiveWorkoutBarPadding } from '../components/ActiveWorkoutBar';
+import FeaturesOffNotice from '../components/FeaturesOffNotice';
 import { ReorderSwitchRow } from '../components/ReorderSwitchRow';
 import SettingsRow, { SettingsRowGroup } from '../components/SettingsRow';
 import StatusView from '../components/StatusView';
@@ -41,7 +42,7 @@ import { useAppPreferencesStore } from '../stores/appPreferencesStore';
 import type { RootStackScreenProps } from '../types/navigation';
 import { resolveDashboardCardOrder } from '../utils/dashboardCardPreferences';
 import { toggleNutrientVisibility } from '../utils/nutrientUtils';
-import { moveItem } from '../utils/reorderUtils';
+import { mergeSubsetOrder, moveItem } from '../utils/reorderUtils';
 
 type DashboardSettingsScreenProps = RootStackScreenProps<'DashboardSettings'>;
 
@@ -164,6 +165,12 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const setLabResultsCardVisible = useAppPreferencesStore(
     (s) => s.setLabResultsCardVisible
   );
+  const challengesCardVisible = useAppPreferencesStore(
+    (s) => s.challengesCardVisible
+  );
+  const setChallengesCardVisible = useAppPreferencesStore(
+    (s) => s.setChallengesCardVisible
+  );
   const trainingLoadCardVisible = useAppPreferencesStore(
     (s) => s.trainingLoadCardVisible
   );
@@ -181,6 +188,16 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const orderedCards = useMemo(
     () => resolveDashboardCardOrder(dashboardCardOrder),
     [dashboardCardOrder]
+  );
+  // The cards of features turned off in Settings → Features are left out, as
+  // the Dashboard leaves them out; their place and switch are kept for when
+  // the feature comes back.
+  const visibleCards = useMemo(
+    () =>
+      orderedCards.filter((key) =>
+        isShownByFeature(DASHBOARD_CARD_FEATURES[key], isFeatureOn)
+      ),
+    [orderedCards, isFeatureOn]
   );
 
   const cardVisibilityMap: Record<DashboardCardKey, boolean> = {
@@ -201,6 +218,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     mindfulness: mindfulnessCardVisible,
     oralCare: oralCareCardVisible,
     labResults: labResultsCardVisible,
+    challenges: challengesCardVisible,
     trainingLoad: trainingLoadCardVisible,
   };
 
@@ -258,6 +276,9 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
         case 'labResults':
           setLabResultsCardVisible(isVisible);
           break;
+        case 'challenges':
+          setChallengesCardVisible(isVisible);
+          break;
         case 'trainingLoad':
           setTrainingLoadCardVisible(isVisible);
           break;
@@ -281,12 +302,13 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
       setMindfulnessCardVisible,
       setOralCareCardVisible,
       setLabResultsCardVisible,
+      setChallengesCardVisible,
       setTrainingLoadCardVisible,
     ]
   );
 
   const { strides, offsets } = useReorderRowGeometry(
-    orderedCards.length,
+    visibleCards.length,
     DASHBOARD_CARD_ROW_HEIGHT
   );
 
@@ -309,11 +331,14 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const handleMove = useCallback(
     (fromIndex: number, toIndex: number) => {
       if (fromIndex === toIndex) return;
-      const newOrder = moveItem(orderedCards, fromIndex, toIndex);
+      const newOrder = mergeSubsetOrder(
+        orderedCards,
+        moveItem(visibleCards, fromIndex, toIndex)
+      );
       pendingDragResetRef.current = true;
       setDashboardCardOrder(newOrder);
     },
-    [orderedCards, setDashboardCardOrder]
+    [orderedCards, visibleCards, setDashboardCardOrder]
   );
 
   // Release the floating transform only once the reordered rows have rendered, so
@@ -322,7 +347,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     if (!pendingDragResetRef.current) return;
     pendingDragResetRef.current = false;
     resetReorderDragPreview(activeDragIndex, panY, committingTranslate);
-  }, [orderedCards, committingTranslate, activeDragIndex, panY]);
+  }, [visibleCards, committingTranslate, activeDragIndex, panY]);
 
   const queryClient = useQueryClient();
   const { isConnected } = useServerConnection();
@@ -481,23 +506,14 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
         </Text>
 
         <View className="bg-surface rounded-xl overflow-hidden shadow-sm mb-6">
-          {orderedCards.map((cardKey, index) => {
+          {visibleCards.map((cardKey, index) => {
             // Discreet mode (assumed until the cycle settings load) never
             // names cycle.
             const title =
               cardKey === 'cycle' && discreetMode
                 ? t('dashboardSettings.wellness', { defaultValue: 'Wellness' })
                 : DASHBOARD_CARD_TITLES[cardKey](t);
-            // A card of a feature turned off stays listed, with its place and
-            // switch, and says why the Dashboard leaves it out.
-            const subtitle = isShownByFeature(
-              DASHBOARD_CARD_FEATURES[cardKey],
-              isFeatureOn
-            )
-              ? DASHBOARD_CARD_SUBTITLES[cardKey](t)
-              : t('dashboardSettings.offInFeatures', {
-                  defaultValue: 'Not shown: turned off in Features',
-                });
+            const subtitle = DASHBOARD_CARD_SUBTITLES[cardKey](t);
             return (
               <ReorderSwitchRow
                 key={cardKey}
@@ -505,7 +521,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
                 dragHandleTestID={`dashboard-card-drag-handle-${cardKey}`}
                 switchTestID={`dashboard-card-switch-${cardKey}`}
                 index={index}
-                lastIndex={orderedCards.length - 1}
+                lastIndex={visibleCards.length - 1}
                 title={title}
                 subtitle={subtitle}
                 isEnabled={cardVisibilityMap[cardKey]}
@@ -538,6 +554,16 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
             );
           })}
         </View>
+        {visibleCards.length < orderedCards.length && (
+          <FeaturesOffNotice
+            className="-mt-3 mb-6"
+            onManage={
+              isConnected
+                ? () => navigation.navigate('FeatureSettings')
+                : undefined
+            }
+          />
+        )}
 
         <Text className="text-base font-semibold text-text-primary mb-4">
           {t('dashboardSettings.customNutrientDisplay', {

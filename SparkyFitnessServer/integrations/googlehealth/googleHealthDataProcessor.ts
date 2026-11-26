@@ -3,6 +3,7 @@ import exerciseEntryRepository from '../../models/exerciseEntry.js';
 import exerciseRepository from '../../models/exercise.js';
 import sleepRepository from '../../models/sleepRepository.js';
 import { log } from '../../config/logging.js';
+import { saveDailyVo2Max } from '../../utils/vo2MaxDailySummary.js';
 import {
   todayInZone,
   instantToDay,
@@ -1093,6 +1094,13 @@ async function processGoogleVO2Max(
       entryTimestamp: new Date(entryDate).toISOString(),
       frequency: 'Daily',
     });
+    await saveDailyVo2Max(
+      userId,
+      createdByUserId,
+      entryDate,
+      parseFloat(vo2 as string),
+      'googlehealth'
+    );
     log(
       'info',
       `Upserted Google Health VO2 Max for user ${userId} on ${entryDate}: ${vo2} ml/kg/min.`

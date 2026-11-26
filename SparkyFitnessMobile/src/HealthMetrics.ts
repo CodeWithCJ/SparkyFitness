@@ -504,7 +504,7 @@ const ALL_HEALTH_METRICS: HealthMetric[] = [
     stateKey: 'isVo2MaxSyncEnabled',
     preferenceKey: 'syncVo2MaxEnabled',
     recordType: 'Vo2Max',
-    unit: 'ml/min/kg',
+    unit: 'ml/kg/min',
     icon: require('../assets/icons/health-metrics/vo2_max.png'),
     permissions: [{ accessType: 'read', recordType: 'Vo2Max' }],
     type: 'vo2_max',
@@ -1286,6 +1286,10 @@ export function getHealthMetricLabel(
       });
     case 'boneMass':
       return t('healthMetrics.boneMass', { defaultValue: 'Bone Mass' });
+    case 'waistCircumference':
+      return t('healthMetrics.waistCircumference', {
+        defaultValue: 'Waist Circumference',
+      });
     case 'bodyWaterMass':
       return t('healthMetrics.bodyWaterMass', {
         defaultValue: 'Body Water Mass',

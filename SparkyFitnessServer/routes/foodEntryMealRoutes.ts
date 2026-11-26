@@ -5,6 +5,7 @@ import { log } from '../config/logging.js';
 import { canAccessUserData } from '../utils/permissionUtils.js';
 import { clearUserTdeeCache } from '../services/AdaptiveTdeeService.js';
 import {
+  clientRequestIdSchema,
   isEntryTimeString,
   foodPhotoLogRequestSchema,
   foodPhotoLogResponseSchema,
@@ -28,6 +29,10 @@ const router = express.Router();
 
 // Middleware to protect routes
 router.use(authenticate); // Use the authenticate middleware function
+// Every handler here writes or reads diary data, possibly for another account
+// the caller switched to: check the real caller against it (never the
+// switched context) before any handler runs.
+router.use(checkPermissionMiddleware('diary'));
 /**
  * @swagger
  * /food-entry-meals:
@@ -66,7 +71,15 @@ router.post('/', async (req, res, next) => {
       quantity,
       unit,
       entry_total_servings,
+      client_id,
     } = req.body;
+
+    // Replay key from the mobile offline queue; a repeat logs nothing new.
+    if (client_id !== undefined && client_id !== null) {
+      if (!clientRequestIdSchema.safeParse(client_id).success) {
+        return res.status(400).json({ error: 'client_id must be a uuid.' });
+      }
+    }
 
     if (
       entry_time !== null &&
@@ -90,13 +103,15 @@ router.post('/', async (req, res, next) => {
     }
 
     const userId = req.userId; // From authMiddleware
+    // The real caller, never the account they switched to.
+    const actorId = req.originalUserId || req.authenticatedUserId || userId;
     // Determine target user
     const targetUserId = req.body.user_id || userId;
-    if (targetUserId !== userId) {
+    if (targetUserId !== actorId) {
       const hasPermission = await { canAccessUserData }.canAccessUserData(
         targetUserId,
         'diary',
-        userId
+        actorId
       );
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
@@ -107,7 +122,7 @@ router.post('/', async (req, res, next) => {
       Number(req.header('x-meal-model-version')) || 1;
     const newFoodEntryMeal = await foodEntryService.createFoodEntryMeal(
       targetUserId, // Use targetUserId
-      userId, // actingUserId is the authenticated user
+      actorId, // actingUserId is the authenticated user
       {
         user_id: targetUserId, // Ensure this is passed
         meal_template_id,
@@ -127,6 +142,7 @@ router.post('/', async (req, res, next) => {
               ? Number(entry_total_servings)
               : null
             : undefined,
+        client_id: client_id ?? null,
         _clientMealModelVersion: clientMealModelVersion,
       } // mealData
     );
@@ -274,107 +290,104 @@ router.post('/', async (req, res, next) => {
  *       404:
  *         description: A referenced food or variant was not found.
  */
-router.post(
-  '/from-photo-estimate',
-  checkPermissionMiddleware('diary'),
-  async (req, res, next) => {
-    // The router mounts `authenticate` but not the diary permission check, so
-    // this route asks for it explicitly.
-    const parsed = foodPhotoLogRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({
-        error: 'Invalid food photo log payload.',
-        code: 'INVALID_REQUEST',
-        issues: parsed.error.issues,
-      });
-    }
+router.post('/from-photo-estimate', async (req, res, next) => {
+  // The router-level diary permission check has already run for every
+  // target; this resolves the real caller the same way it does.
+  const parsed = foodPhotoLogRequestSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: 'Invalid food photo log payload.',
+      code: 'INVALID_REQUEST',
+      issues: parsed.error.issues,
+    });
+  }
 
-    const userId = req.userId;
-    const targetUserId = req.body?.user_id || userId;
-    if (targetUserId !== userId) {
-      const hasPermission = await canAccessUserData(
-        targetUserId,
-        'diary',
-        userId
-      );
-      if (!hasPermission) {
-        return res.status(403).json({ error: 'Forbidden', code: 'FORBIDDEN' });
-      }
-    }
-
-    try {
-      const result = await foodPhotoLogService.createPhotoLoggedMeal(
-        targetUserId,
-        userId,
-        parsed.data
-      );
-      log(
-        'info',
-        `User ${userId} logged a ${parsed.data.mode} photo estimate with ${parsed.data.items.length} item(s)`
-      );
-      clearUserTdeeCache(targetUserId);
-
-      // The reusable template is built AFTER the log commits, deliberately.
-      //
-      // It reads the entries back out of the diary, so it cannot see them while
-      // they are still uncommitted. More importantly the diary rows are the
-      // thing the user asked for and the template is a convenience on top: if
-      // template creation fails, losing a correctly logged meal to roll it back
-      // would be the worse outcome. The response reports meal_template_id as
-      // null instead, and "convert to meal" remains available.
-      let mealTemplateId: string | null = null;
-      const saveAsMeal = parsed.data.save_as_meal;
-      if (saveAsMeal && result.food_entry_meal_id) {
-        try {
-          const meal = await mealService.createMealFromDiaryEntries(
-            targetUserId,
-            parsed.data.entry_date,
-            parsed.data.meal_type,
-            saveAsMeal.name,
-            parsed.data.description,
-            false,
-            result.food_entry_meal_id,
-            // The diary holds the portion that was eaten; the template should
-            // hold the whole dish, so scale the entries back up by the
-            // reciprocal of the multiplier the log applied, and record the
-            // serving model that reproduces that portion from the template.
-            (parsed.data.serving_size * parsed.data.total_servings) /
-              parsed.data.consumed_quantity,
-            parsed.data.total_servings,
-            parsed.data.serving_size,
-            parsed.data.serving_unit
-          );
-          mealTemplateId = meal?.id ?? null;
-        } catch (mealError) {
-          log(
-            'warn',
-            `Photo estimate logged for user ${userId} but the meal template could not be saved: ${
-              mealError instanceof Error ? mealError.message : String(mealError)
-            }`
-          );
-        }
-      }
-
-      return res.status(201).json(
-        foodPhotoLogResponseSchema.parse({
-          ...result,
-          meal_template_id: mealTemplateId,
-        })
-      );
-    } catch (err) {
-      if (err instanceof PhotoLogError) {
-        const status =
-          err.code === 'FOOD_NOT_FOUND' || err.code === 'VARIANT_NOT_FOUND'
-            ? 404
-            : err.code === 'FORBIDDEN'
-              ? 403
-              : 400;
-        return res.status(status).json({ error: err.message, code: err.code });
-      }
-      return next(err);
+  const actorId = req.originalUserId || req.authenticatedUserId || req.userId;
+  const userId = actorId;
+  const targetUserId = req.body?.user_id || req.userId;
+  if (targetUserId !== actorId) {
+    const hasPermission = await canAccessUserData(
+      targetUserId,
+      'diary',
+      actorId
+    );
+    if (!hasPermission) {
+      return res.status(403).json({ error: 'Forbidden', code: 'FORBIDDEN' });
     }
   }
-);
+
+  try {
+    const result = await foodPhotoLogService.createPhotoLoggedMeal(
+      targetUserId,
+      userId,
+      parsed.data
+    );
+    log(
+      'info',
+      `User ${userId} logged a ${parsed.data.mode} photo estimate with ${parsed.data.items.length} item(s)`
+    );
+    clearUserTdeeCache(targetUserId);
+
+    // The reusable template is built AFTER the log commits, deliberately.
+    //
+    // It reads the entries back out of the diary, so it cannot see them while
+    // they are still uncommitted. More importantly the diary rows are the
+    // thing the user asked for and the template is a convenience on top: if
+    // template creation fails, losing a correctly logged meal to roll it back
+    // would be the worse outcome. The response reports meal_template_id as
+    // null instead, and "convert to meal" remains available.
+    let mealTemplateId: string | null = null;
+    const saveAsMeal = parsed.data.save_as_meal;
+    if (saveAsMeal && result.food_entry_meal_id) {
+      try {
+        const meal = await mealService.createMealFromDiaryEntries(
+          targetUserId,
+          parsed.data.entry_date,
+          parsed.data.meal_type,
+          saveAsMeal.name,
+          parsed.data.description,
+          false,
+          result.food_entry_meal_id,
+          // The diary holds the portion that was eaten; the template should
+          // hold the whole dish, so scale the entries back up by the
+          // reciprocal of the multiplier the log applied, and record the
+          // serving model that reproduces that portion from the template.
+          (parsed.data.serving_size * parsed.data.total_servings) /
+            parsed.data.consumed_quantity,
+          parsed.data.total_servings,
+          parsed.data.serving_size,
+          parsed.data.serving_unit
+        );
+        mealTemplateId = meal?.id ?? null;
+      } catch (mealError) {
+        log(
+          'warn',
+          `Photo estimate logged for user ${userId} but the meal template could not be saved: ${
+            mealError instanceof Error ? mealError.message : String(mealError)
+          }`
+        );
+      }
+    }
+
+    return res.status(201).json(
+      foodPhotoLogResponseSchema.parse({
+        ...result,
+        meal_template_id: mealTemplateId,
+      })
+    );
+  } catch (err) {
+    if (err instanceof PhotoLogError) {
+      const status =
+        err.code === 'FOOD_NOT_FOUND' || err.code === 'VARIANT_NOT_FOUND'
+          ? 404
+          : err.code === 'FORBIDDEN'
+            ? 403
+            : 400;
+      return res.status(status).json({ error: err.message, code: err.code });
+    }
+    return next(err);
+  }
+});
 
 /**
  * @swagger
@@ -583,18 +596,19 @@ router.put('/:id', async (req, res, next) => {
         .json({ message: 'FoodEntryMeal not found or permission denied.' });
     }
     const targetUserId = existingMeal.user_id;
-    // Check write permission if target is not self
-    if (targetUserId !== userId) {
+    const actorId = req.originalUserId || req.authenticatedUserId || userId;
+    // Check write permission if target is not the real caller
+    if (targetUserId !== actorId) {
       const hasPermission = await { canAccessUserData }.canAccessUserData(
         targetUserId,
         'diary',
-        userId
+        actorId
       );
       if (!hasPermission) return res.status(403).json({ error: 'Forbidden' });
     }
     const updatedFoodEntryMeal = await foodEntryService.updateFoodEntryMeal(
       targetUserId, // owner ID
-      userId, // actingUserId
+      actorId, // actingUserId
       id, // foodEntryMealId
       {
         name,
@@ -723,7 +737,10 @@ router.post('/:id/image', uploadImages, async (req, res, next) => {
     const requestedOrder = parseImageOrder(req.body?.images);
     if (uploadedPaths.length === 0 && requestedOrder === undefined) {
       // Nothing to apply; drop the files we already moved out of staging.
-      await removeOrphanedImages(uploadedPaths, []);
+      await removeOrphanedImages(uploadedPaths, [], {
+        domain: 'food_entry_meals',
+        entityId: id,
+      });
       return res.status(400).json({ error: 'An image file is required.' });
     }
     const nextImages = applyImageOrder(requestedOrder, uploadedPaths);
@@ -738,17 +755,26 @@ router.post('/:id/image', uploadImages, async (req, res, next) => {
     } catch (persistError) {
       // The files are already out of staging, so cleanupStagedImages can no
       // longer reach them; remove them here or they leak permanently.
-      await removeOrphanedImages(uploadedPaths, []);
+      await removeOrphanedImages(uploadedPaths, [], {
+        domain: 'food_entry_meals',
+        entityId: id,
+      });
       throw persistError;
     }
     if (!updated) {
       // Concurrent delete, or the row is no longer the caller's.
-      await removeOrphanedImages(uploadedPaths, []);
+      await removeOrphanedImages(uploadedPaths, [], {
+        domain: 'food_entry_meals',
+        entityId: id,
+      });
       return res.status(404).json({ error: 'FoodEntryMeal not found.' });
     }
 
     // Drop files the client dropped so replacements don't accumulate on disk.
-    await removeOrphanedImages(existing.images, nextImages);
+    await removeOrphanedImages(existing.images, nextImages, {
+      domain: 'food_entry_meals',
+      entityId: id,
+    });
 
     res.status(200).json({ ...existing, ...updated });
   } catch (err) {
@@ -792,7 +818,10 @@ router.delete('/:id/image', async (req, res, next) => {
       req.userId,
       []
     );
-    await removeOrphanedImages(existing.images, []);
+    await removeOrphanedImages(existing.images, [], {
+      domain: 'food_entry_meals',
+      entityId: id,
+    });
 
     res.status(200).json({ ...existing, ...updated });
   } catch (err) {

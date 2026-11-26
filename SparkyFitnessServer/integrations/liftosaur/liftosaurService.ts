@@ -26,6 +26,7 @@ import {
   getValidatedLiftosaurBaseUrl,
 } from './liftosaurTypes.js';
 import { importMeasurementsFromLiftosaur } from './liftosaurMeasurementsService.js';
+import { resolveLiftosaurMuscles } from './liftosaurMuscles.js';
 
 const HISTORY_PAGE_SIZE = 200; // Liftosaur API cap
 
@@ -291,6 +292,8 @@ async function syncLiftosaurData(
     'debug',
     `[liftosaurService] Parsed ${allWorkouts.length} workouts for user ${userId}.`
   );
+  const apiKey = await getLiftosaurApiKey(userId, resolvedProviderId);
+
   if (!fetchComplete) {
     log(
       'warn',
@@ -306,18 +309,26 @@ async function syncLiftosaurData(
   const cleanup = fetchComplete && parseComplete ? syncDays : null;
   // With a window, process even an empty fetch: the only workout in the
   // window may have been deleted in Liftosaur.
+  let workoutsFailed = 0;
   if (allWorkouts.length > 0 || cleanup) {
-    await liftosaurDataProcessor.processLiftosaurWorkouts(
+    // Muscles come from Liftosaur's program-stats endpoint, asked only for
+    // exercises that do not have any yet (see liftosaurMuscles.ts).
+    ({ workoutsFailed } = await liftosaurDataProcessor.processLiftosaurWorkouts(
       userId,
       createdByUserId,
       allWorkouts,
       tz,
-      cleanup
+      cleanup,
+      (names) => resolveLiftosaurMuscles(apiKey, names)
+    ));
+  }
+  const workoutsImported = allWorkouts.length - workoutsFailed;
+  if (workoutsFailed > 0) {
+    log(
+      'warn',
+      `[liftosaurService] ${workoutsFailed} Liftosaur workouts could not be saved for user ${userId}.`
     );
   }
-  const workoutsImported = allWorkouts.length;
-
-  const apiKey = await getLiftosaurApiKey(userId, resolvedProviderId);
 
   // 2. Ingest measurements from Liftosaur into SparkyFitness
   let measurementsImported = 0;
@@ -358,9 +369,9 @@ async function syncLiftosaurData(
   }
 
   // The scheduler reads last_sync_at to decide when a daily sync is due, so a
-  // sync whose history fetch stopped early or whose measurements failed
-  // leaves it alone to be retried next tick.
-  if (fetchComplete && !measurementsFailed) {
+  // sync whose history fetch stopped early, that could not save a workout or
+  // whose measurements failed leaves it alone to be retried next tick.
+  if (fetchComplete && workoutsFailed === 0 && !measurementsFailed) {
     const client = await getSystemClient();
     try {
       await client.query(
@@ -375,7 +386,7 @@ async function syncLiftosaurData(
   } else {
     log(
       'warn',
-      `[liftosaurService] Liftosaur sync for user ${userId} did not import all ${fetchComplete ? 'measurements' : 'history'}; last_sync_at not updated.`
+      `[liftosaurService] Liftosaur sync for user ${userId} did not import all ${!fetchComplete ? 'history' : workoutsFailed > 0 ? 'workouts' : 'measurements'}; last_sync_at not updated.`
     );
   }
 
@@ -391,6 +402,7 @@ async function syncLiftosaurData(
     parsedCount: workoutsImported,
     skippedCount,
     workoutsImported,
+    workoutsFailed,
     measurementsImported,
     source: 'live_api',
   };

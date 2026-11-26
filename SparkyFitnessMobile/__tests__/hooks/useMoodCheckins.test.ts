@@ -6,6 +6,7 @@ import {
   useMoodCheckinsForDate,
   useMoodEntries,
   useMoodEntryForDate,
+  useMoodRange,
   useUpdateMoodCheckin,
 } from '../../src/hooks/useMood';
 import {
@@ -21,7 +22,7 @@ import {
   fetchMoodEntries,
   updateMoodCheckin,
 } from '../../src/services/api/moodApi';
-import { getTodayDate } from '../../src/utils/dateUtils';
+import { addDays, getTodayDate } from '../../src/utils/dateUtils';
 import {
   createTestQueryClient,
   createQueryWrapper,
@@ -40,6 +41,12 @@ jest.mock('../../src/services/api/moodApi', () => ({
 }));
 
 jest.mock('../../src/services/LogService', () => ({ addLog: jest.fn() }));
+
+jest.mock('@react-navigation/native', () => ({
+  useFocusEffect: jest.fn((callback) => {
+    callback();
+  }),
+}));
 
 const mocked = <T extends (...args: never[]) => unknown>(fn: T) =>
   fn as unknown as jest.Mock;
@@ -208,5 +215,49 @@ describe('mood check-in hooks', () => {
       checkinsProbe: true,
       ratingsProbe: true,
     });
+  });
+});
+
+describe('useMoodRange', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('omits a day with no logged mood instead of filling it with zero', async () => {
+    const today = getTodayDate();
+    const twoDaysAgo = addDays(today, -2);
+    const row = (day: string, mood_value: number) => ({
+      id: day,
+      entry_date: day,
+      entry_timestamp: `${day}T12:00:00Z`,
+      source: 'manual' as const,
+      mood_value,
+      mood_tags: null,
+      notes: null,
+    });
+    mocked(fetchMoodEntries).mockResolvedValue([
+      row(twoDaysAgo, 40),
+      row(today, 60),
+    ]);
+
+    const { result } = renderHook(() => useMoodRange({ range: '7d' }), {
+      wrapper: createQueryWrapper(createTestQueryClient()),
+    });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.moodData).toEqual([
+      { day: twoDaysAgo, mood: 40 },
+      { day: today, mood: 60 },
+    ]);
+  });
+
+  it('requests no data when disabled', async () => {
+    const { result } = renderHook(
+      () => useMoodRange({ range: '7d', enabled: false }),
+      { wrapper: createQueryWrapper(createTestQueryClient()) }
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(fetchMoodEntries).not.toHaveBeenCalled();
+    expect(result.current.moodData).toEqual([]);
   });
 });

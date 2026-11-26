@@ -63,7 +63,7 @@ const PregnancySetupScreen: React.FC<Props> = ({ navigation, route }) => {
           }),
         });
       } else {
-        await createPregnancyAsync(body);
+        await createPregnancyAsync({ body });
         Toast.show({
           type: 'success',
           text1: t('pregnancySetup.created', {

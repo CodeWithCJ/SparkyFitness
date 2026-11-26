@@ -75,6 +75,7 @@ describe('FoodScanScreen without camera permission', () => {
     navigate: jest.fn(),
     dispatch: jest.fn(),
     isFocused: jest.fn(() => true),
+    addListener: jest.fn(() => jest.fn()),
   };
 
   const renderScreen = (

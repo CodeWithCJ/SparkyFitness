@@ -28,6 +28,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
 import org.json.JSONArray
 import org.json.JSONObject
@@ -55,6 +57,8 @@ private const val SERVER_HEADERS_KEY = "sparky.serverHeadersJson"
 private const val ENCRYPTED_HEADERS_KEY = "sparky.serverHeadersEncrypted"
 private const val CREDENTIALS_KEY_ALIAS = "sparky_watch_credentials_key"
 private const val LAST_CONTEXT_JSON_KEY = "sparky.lastContextJson"
+private const val LAST_COMPLICATION_CONFIG_JSON_KEY = "sparky.lastComplicationConfigJson"
+private const val LAST_COMPLICATION_CONFIG_REV_KEY = "sparky.lastComplicationConfigRevision"
 private const val HEART_RATE_QUEUE_LIMIT = 10_080
 private const val HEART_RATE_BATCH_BYTE_LIMIT = 1_048_576
 private const val RUN_QUEUE_LIMIT = 50
@@ -82,6 +86,7 @@ internal object WatchConnectivityHub {
   private val runQueue = mutableListOf<Map<String, Any?>>()
 
   private val inboundLock = Any()
+  private val complicationConfigMutex = Mutex()
 
   data class QueuedHrBatch(
     val event: Map<String, Any?>,
@@ -272,6 +277,54 @@ internal object WatchConnectivityHub {
     }
 
     sendLiveBytes(appCtx, "/sparky/context", bytes)
+  }
+
+  suspend fun sendComplicationConfig(context: Context, payload: Map<String, Any?>): Boolean {
+    val appCtx = context.applicationContext
+    val cleaned = withoutNulls(payload).toMutableMap()
+    cleaned["type"] = "complicationConfig"
+    val incomingRevision = (cleaned["revision"] as? Number)?.toLong() ?: 0L
+    val json = mapToJsonObject(cleaned).toString()
+
+    return complicationConfigMutex.withLock {
+      val prefs = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+      val cachedRevision = prefs.getLong(LAST_COMPLICATION_CONFIG_REV_KEY, 0L)
+      if (incomingRevision < cachedRevision) return@withLock true
+      prefs.edit()
+        .putString(LAST_COMPLICATION_CONFIG_JSON_KEY, json)
+        .putLong(LAST_COMPLICATION_CONFIG_REV_KEY, incomingRevision)
+        .apply()
+      publishRawComplicationConfigJson(appCtx, json)
+    }
+  }
+
+  private suspend fun replayCachedComplicationConfig(context: Context) {
+    val appCtx = context.applicationContext
+    complicationConfigMutex.withLock {
+      val cached = appCtx.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        .getString(LAST_COMPLICATION_CONFIG_JSON_KEY, null)
+        ?: return@withLock
+      publishRawComplicationConfigJson(appCtx, cached)
+    }
+  }
+
+  private suspend fun publishRawComplicationConfigJson(appCtx: Context, json: String): Boolean {
+    val bytes = json.toByteArray(Charsets.UTF_8)
+    var dataQueued = false
+
+    try {
+      val req = PutDataMapRequest.create("/sparky/complicationConfig").apply {
+        dataMap.putString("json", json)
+        dataMap.putLong("sentAt", System.currentTimeMillis())
+      }.asPutDataRequest().setUrgent()
+      Wearable.getDataClient(appCtx).putDataItem(req).await()
+      dataQueued = true
+    } catch (e: Throwable) {
+      Log.w(TAG, "sendComplicationConfig DataClient failed: ${e.message}")
+    }
+
+    val liveSent = sendLiveBytes(appCtx, "/sparky/message", bytes)
+    return dataQueued || liveSent
   }
 
   suspend fun sendMessageOrTransfer(
@@ -875,8 +928,9 @@ internal object WatchConnectivityHub {
         } else {
           val cached = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .getString(LAST_CONTEXT_JSON_KEY, null)
-          if (cached != null) {
-            scope.launch { publishRawContextJson(context, cached) }
+          scope.launch {
+            if (cached != null) publishRawContextJson(context, cached)
+            replayCachedComplicationConfig(context)
           }
         }
       }
@@ -1257,6 +1311,17 @@ internal object WatchConnectivityHub {
         val event = normalizedRunEvent(context, payload)
         rememberFinishedRun(context, event)
         activeModule?.emitEvent("onRunFinished", event)
+      }
+      "mediaControl" -> {
+        val action = payload["action"] as? String ?: return
+        val steps = asInt(payload["steps"]) ?: 1
+        PhoneMediaBridge.handleCommand(context, action, steps)
+      }
+      "mediaStateRequest" -> {
+        val active = payload["active"] as? Boolean ?: true
+        val epoch = asDouble(payload["epoch"])?.toLong()?.takeIf { it > 0L }
+        val visitId = asDouble(payload["visitId"])?.toLong()?.takeIf { it > 0L }
+        PhoneMediaBridge.setWatchObserving(context, active, epoch, visitId)
       }
     }
   }
@@ -1791,6 +1856,35 @@ class WatchConnectivityModule : Module() {
       }
     }
 
+    AsyncFunction("sendComplicationConfig") { config: ReadableMap, promise: Promise ->
+      val ctx = appContext.reactContext
+      if (ctx == null) {
+        promise.reject("E_NO_CONTEXT", "React context unavailable", null)
+        return@AsyncFunction
+      }
+      val payload = config.toHashMap()
+      WatchConnectivityHub.scope.launch {
+        try {
+          val ok = WatchConnectivityHub.sendComplicationConfig(ctx, payload)
+          if (ok) {
+            promise.resolve(null)
+          } else {
+            promise.reject(
+              "E_SEND_COMPLICATION_CONFIG",
+              "Failed to send complication configuration to Wear OS",
+              null
+            )
+          }
+        } catch (e: Throwable) {
+          promise.reject(
+            "E_SEND_COMPLICATION_CONFIG",
+            e.message ?: "Failed to send complication configuration to Wear OS",
+            e
+          )
+        }
+      }
+    }
+
     AsyncFunction("sendAck") { clientId: String, ok: Boolean ->
       val ctx = appContext.reactContext ?: return@AsyncFunction
       WatchConnectivityHub.scope.launch {
@@ -2099,6 +2193,18 @@ class WatchConnectivityModule : Module() {
         return@AsyncFunction
       }
       GarminLink.openApp(deviceId) { result -> promise.resolve(result) }
+    }
+
+    AsyncFunction("isMediaAccessEnabled") {
+      val ctx = appContext.reactContext ?: return@AsyncFunction false
+      PhoneMediaBridge.isMediaAccessEnabled(ctx)
+    }
+
+    AsyncFunction("openMediaAccessSettings") {
+      val ctx = appContext.reactContext
+      if (ctx != null) {
+        PhoneMediaBridge.openMediaAccessSettings(ctx)
+      }
     }
   }
 

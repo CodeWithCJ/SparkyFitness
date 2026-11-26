@@ -12,6 +12,7 @@ import {
   triggerChunkRecoveryReload,
 } from '@/utils/chunkRecovery';
 
+import { useOnChange } from '@/hooks/useOnChange';
 import { useTranslation } from 'react-i18next';
 const UPDATE_TITLE = 'Updating SparkyFitness...';
 const UPDATE_MESSAGE = 'Loading the latest version.';
@@ -21,9 +22,9 @@ const useChunkRecoveryReload = (routeError: unknown) => {
     isStaleChunkLoadError(routeError) && canAttemptChunkRecoveryReload();
   const [isUpdatingApp, setIsUpdatingApp] = useState(canAttemptRecovery);
 
-  useEffect(() => {
+  useOnChange([canAttemptRecovery], () => {
     setIsUpdatingApp(canAttemptRecovery);
-  }, [canAttemptRecovery]);
+  });
 
   useEffect(() => {
     if (!canAttemptRecovery) {
@@ -31,7 +32,8 @@ const useChunkRecoveryReload = (routeError: unknown) => {
     }
 
     if (!triggerChunkRecoveryReload()) {
-      setIsUpdatingApp(false);
+      // Reported after the effect, once the reload was refused.
+      queueMicrotask(() => setIsUpdatingApp(false));
     }
   }, [canAttemptRecovery]);
 

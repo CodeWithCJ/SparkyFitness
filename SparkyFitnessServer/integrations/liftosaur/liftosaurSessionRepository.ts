@@ -129,3 +129,42 @@ export async function moveEntryToSessionWithClient(
     [entryId, userId, sessionId]
   );
 }
+
+/** What a stored Liftosaur entry says about its duration. */
+export interface StoredEntryDuration {
+  duration_minutes: number;
+  /** Fields the user edited, which a re-sync keeps (see utils/manualFields.ts). */
+  manual_fields: string[];
+}
+
+/**
+ * Stored duration and edited fields of the Liftosaur entries with these
+ * source ids, keyed by source id, so a re-sync can keep the workout duration
+ * on the entry that held it before.
+ */
+export async function getStoredEntryDurationsWithClient(
+  client: PoolClient,
+  userId: string,
+  sourceIds: string[]
+): Promise<Map<string, StoredEntryDuration>> {
+  if (sourceIds.length === 0) return new Map();
+  const result = await client.query<
+    StoredEntryDuration & { source_id: string }
+  >(
+    `SELECT source_id,
+            COALESCE(duration_minutes, 0)::float8 AS duration_minutes,
+            COALESCE(manual_fields, '{}') AS manual_fields
+     FROM exercise_entries
+     WHERE user_id = $1 AND source = $2 AND source_id = ANY($3::text[])`,
+    [userId, LIFTOSAUR_SESSION_SOURCE, sourceIds]
+  );
+  return new Map(
+    result.rows.map((row) => [
+      row.source_id,
+      {
+        duration_minutes: Number(row.duration_minutes) || 0,
+        manual_fields: row.manual_fields ?? [],
+      },
+    ])
+  );
+}

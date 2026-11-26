@@ -39,6 +39,6 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: "24"
+          node-version: "26"
       - run: pnpm install --filter . --frozen-lockfile --ignore-scripts
       - run: node --test .github/scripts/pr-validation.test.cjs .github/scripts/automation-allowlist.test.cjs

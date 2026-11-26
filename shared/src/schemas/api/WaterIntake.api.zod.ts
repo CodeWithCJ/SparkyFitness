@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { clientRequestIdSchema } from './ClientRequestId.api.zod.ts';
 
 // Two clients (web, mobile) hand-roll these request/response shapes today
 // (SparkyFitnessFrontend/src/api/Diary/waterIntakteService.ts). Phase 4
@@ -10,6 +11,8 @@ export const upsertWaterIntakeBodySchema = z.object({
   entry_date: z.string(),
   change_drinks: z.number(),
   container_id: z.number().nullable(),
+  // Replay key from the mobile offline queue; only valid for a single "+" press.
+  client_id: clientRequestIdSchema.optional(),
 });
 export type UpsertWaterIntakeBody = z.infer<typeof upsertWaterIntakeBodySchema>;
 

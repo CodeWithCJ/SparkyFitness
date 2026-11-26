@@ -1,5 +1,5 @@
 import { beginAccountChange } from '../offline/accountGeneration';
-import { notifyDiaryDaySaved } from '../offline/events';
+import { notifyAccountChanged, notifyDiaryDaySaved } from '../offline/events';
 import { clearAllOfflineImages } from '../offline/offlineImages';
 import { useState, useEffect, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -23,6 +23,12 @@ import { clearBackgroundWater } from '../services/backgroundWater';
 import { refreshClientCertificateHosts } from '../services/clientCertificate';
 import { clearAndroidWidgetSnapshots } from '../services/androidWidgetSyncService';
 import { clearGarminAccount } from '../services/garminSync';
+import { cancelMedicationRemindersForAccountChange } from '../services/medicationReminderService';
+import {
+  cancelChallengeWeekNotifications,
+  dismissDeliveredChallengeWeekNotifications,
+  enqueueChallengeWeekNotificationTask,
+} from '../services/challengeWeekNotificationService';
 import {
   deleteWatchTelemetryForConfig,
   notifyWatchTelemetryAccountSwitch,
@@ -76,6 +82,26 @@ export function useAuth() {
       // succeeds; restore waits until the ids are read and purged.
       notifyWatchTelemetryAccountSwitch(takeIdentityChangeServerConfigIds);
       queryClient.clear();
+      // The challenge week notices carry the previous account's challenge
+      // names, members and totals, and no account to tell them apart. With
+      // the cache gone the reconciler waits for the new account's reads and
+      // would leave them scheduled, so they are cancelled here, in its queue
+      // so a run already under way cannot schedule them again after. Queued
+      // before any await, so a run for the new account always comes after.
+      // Those already shown are dismissed too.
+      void enqueueChallengeWeekNotificationTask(async () => {
+        await cancelChallengeWeekNotifications();
+        await dismissDeliveredChallengeWeekNotifications();
+      });
+      // Medication reminders carry the previous account's medication names
+      // too, and while the new account's feature choices are not known yet
+      // the reconciler leaves the active server's reminders as they are, so
+      // two accounts on one server would keep the old one's. They go here, in
+      // the reminders' own queue, before any await; the new account's
+      // reconcile comes after (the reconciler is told below).
+      void cancelMedicationRemindersForAccountChange().catch((err: unknown) => {
+        addLog(`Failed to cancel the medication reminders: ${err}`, 'WARNING');
+      });
       // Data saved for offline use belongs to the previous account too; the
       // next refresh downloads the new one's. Waiting uploads are kept and
       // stay with the account that made them.
@@ -142,6 +168,12 @@ export function useAuth() {
           'ERROR'
         );
       }
+      // The cache cleared above does not tell the observers already mounted.
+      // Those outside the screens (the medication reminder reconciler, which
+      // has no focus to refetch on) render again on this and read the new
+      // account, so its reminders are scheduled again after the cancel above
+      // without waiting for the app to come back to the foreground.
+      notifyAccountChanged();
       // The image caches go too, but for data at rest rather than for what the
       // next account can see: every server-backed image URI carries a uuid --
       // `check-in-photos/file/{uuid}` and `/uploads/{domain}/{id}/{uuid}-name`

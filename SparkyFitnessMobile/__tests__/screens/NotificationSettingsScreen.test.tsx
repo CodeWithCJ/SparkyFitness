@@ -78,10 +78,27 @@ function latestTimeSheet(value: string): MockTimeSheetProps {
   return match;
 }
 
-const mockNavigation = { goBack: jest.fn(), setOptions: jest.fn() } as never;
+const mockNavigate = jest.fn();
+const mockNavigation = {
+  goBack: jest.fn(),
+  setOptions: jest.fn(),
+  navigate: mockNavigate,
+} as never;
 jest.mock('@react-navigation/native', () => ({
   ...jest.requireActual('@react-navigation/native'),
   useNavigation: () => mockNavigation,
+}));
+
+let mockMedicationsOn = true;
+jest.mock('../../src/hooks/useMobileFeatures', () => ({
+  useMobileFeatures: () => ({
+    isEnabled: (key: string) => key !== 'medications' || mockMedicationsOn,
+  }),
+}));
+
+let mockConnected = true;
+jest.mock('../../src/hooks/useServerConnection', () => ({
+  useServerConnection: () => ({ isConnected: mockConnected }),
 }));
 
 const mockRequestPermission =
@@ -125,6 +142,8 @@ describe('NotificationSettingsScreen', () => {
     __resetAppPreferencesStoreForTests();
     mockRequestPermission.mockResolvedValue('granted');
     mockTimeSheetRenders.length = 0;
+    mockMedicationsOn = true;
+    mockConnected = true;
   });
 
   it('hides category rows while the master toggle is off', () => {
@@ -271,6 +290,74 @@ describe('NotificationSettingsScreen', () => {
       });
       expect(mockRequestPermission).not.toHaveBeenCalled();
       expect(mockMaybePrompt).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('while Medications is turned off in Features', () => {
+    const reminderSettings = {
+      medicationRemindersEnabled: true,
+      medicationReminderRepeats: true,
+      medicationReminderHideNames: true,
+      medicationReminderConsolidate: true,
+      medicationReminderSnoozeMinutes: 60,
+    } as const;
+
+    it('leaves out the Medications group and says so once', () => {
+      mockMedicationsOn = false;
+      const { queryByText, getAllByText, getByText } = renderScreen();
+
+      expect(queryByText('Medication Reminders')).toBeNull();
+      expect(queryByText('Medications')).toBeNull();
+      expect(getAllByText('Some features are turned off')).toHaveLength(1);
+      expect(getByText('Water Reminders')).toBeTruthy();
+    });
+
+    it('keeps the reminder settings, and shows them again when it is back on', () => {
+      useAppPreferencesStore.setState(reminderSettings);
+      mockMedicationsOn = false;
+      const view = renderScreen();
+
+      expect(view.queryByLabelText('Medication Reminders')).toBeNull();
+      expect(useAppPreferencesStore.getState()).toMatchObject(reminderSettings);
+
+      mockMedicationsOn = true;
+      view.rerender(
+        <NotificationSettingsScreen navigation={mockNavigation} route={route} />
+      );
+      expect(view.getByLabelText('Medication Reminders').props.value).toBe(
+        true
+      );
+      expect(view.getByLabelText('Repeat Reminders').props.value).toBe(true);
+      expect(view.queryByTestId('features-off-notice')).toBeNull();
+      expect(useAppPreferencesStore.getState()).toMatchObject(reminderSettings);
+    });
+
+    it('opens Features from the line while connected', () => {
+      mockMedicationsOn = false;
+      const { getByTestId } = renderScreen();
+
+      fireEvent.press(getByTestId('features-off-manage'));
+      expect(mockNavigate).toHaveBeenCalledWith('FeatureSettings');
+    });
+
+    it('offers no way to Features while offline', () => {
+      mockMedicationsOn = false;
+      mockConnected = false;
+      const { getByTestId, queryByTestId } = renderScreen();
+
+      expect(getByTestId('features-off-notice')).toBeTruthy();
+      expect(queryByTestId('features-off-manage')).toBeNull();
+    });
+
+    it('says nothing while notifications are off', () => {
+      mockMedicationsOn = false;
+      const { getByTestId, queryByTestId } = renderScreen();
+      expect(getByTestId('features-off-notice')).toBeTruthy();
+
+      act(() => {
+        useAppPreferencesStore.setState({ notificationsEnabled: false });
+      });
+      expect(queryByTestId('features-off-notice')).toBeNull();
     });
   });
 

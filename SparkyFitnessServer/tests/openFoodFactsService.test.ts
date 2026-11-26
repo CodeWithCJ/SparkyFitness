@@ -5,6 +5,7 @@ import {
   DEFAULT_OFF_BASE_URL,
 } from '../integrations/openfoodfacts/openFoodFactsAuth.js';
 import {
+  hasUsableOffCoreNutrition,
   mapOpenFoodFactsProduct,
   searchOpenFoodFacts,
   searchOpenFoodFactsByBarcodeFields,
@@ -28,6 +29,31 @@ vi.mock('../services/openFoodFactsProductReadRateLimitService.js', () => ({
 const fetchMock = vi.fn();
 global.fetch = fetchMock;
 const EXPLICIT_ZERO_CORE_NUTRITION = { 'energy-kcal_100g': 0 };
+const SEARCH_A_LICIOUS_URL = 'https://search.openfoodfacts.org/search';
+const CORE_NUTRITION_SEARCH_CLAUSE =
+  '((nutriments.energy-kcal_100g:* OR nutriments.energy-kj_100g:* OR nutriments.proteins_100g:* OR nutriments.carbohydrates_100g:* OR nutriments.fat_100g:*) OR (serving_quantity:[0.000001 TO *] AND nutrition_data_per:serving))';
+// Fields the public Search-a-licious index has, as of issue #3760.
+const INDEXED_SEARCH_FIELDS = new Set([
+  'product_name',
+  'brands',
+  'code',
+  'nutrition_data_per',
+  'serving_quantity',
+  'nutriments.energy-kcal_100g',
+  'nutriments.energy-kj_100g',
+  'nutriments.proteins_100g',
+  'nutriments.carbohydrates_100g',
+  'nutriments.fat_100g',
+]);
+/** Field names of every `field:term` and `field:[range]` token in a query. */
+const queryFieldNames = (query: string) =>
+  new Set(
+    [...query.matchAll(/([A-Za-z_][\w.-]*):(?=[*[\w])/g)].map(
+      (match) => match[1]
+    )
+  );
+/** The nutrition clause the server appends after the free text. */
+const nutritionClauseOf = (query: string) => query.slice(query.indexOf('(('));
 
 describe('openFoodFactsService', () => {
   beforeEach(() => {
@@ -79,7 +105,7 @@ describe('openFoodFactsService', () => {
       const request = fetch.mock.calls[0][1];
       expect(JSON.parse(request.body)).toEqual(
         expect.objectContaining({
-          q: 'whole milk ((nutriments.energy-kcal_100g:* OR nutriments.energy-kj_100g:* OR nutriments.energy_100g:* OR nutriments.proteins_100g:* OR nutriments.carbohydrates_100g:* OR nutriments.fat_100g:*) OR (serving_quantity:[0.000001 TO *] AND (nutriments.energy-kcal_serving:* OR nutriments.energy-kj_serving:* OR nutriments.energy_serving:* OR nutriments.proteins_serving:* OR nutriments.carbohydrates_serving:* OR nutriments.fat_serving:*)))',
+          q: 'whole milk ((nutriments.energy-kcal_100g:* OR nutriments.energy-kj_100g:* OR nutriments.proteins_100g:* OR nutriments.carbohydrates_100g:* OR nutriments.fat_100g:*) OR (serving_quantity:[0.000001 TO *] AND nutrition_data_per:serving))',
           page: 2,
           page_size: 12,
           boost_phrase: true,
@@ -92,6 +118,124 @@ describe('openFoodFactsService', () => {
         totalCount: 25,
         hasMore: true,
       });
+    });
+
+    it('names only fields the public Search-a-licious index has', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ hits: [], page: 1, page_size: 20, count: 0 }),
+      });
+
+      await searchOpenFoodFacts('whole milk');
+
+      const { q } = JSON.parse(fetchMock.mock.calls[0][1].body);
+      expect([...queryFieldNames(nutritionClauseOf(q))].sort()).toEqual(
+        [
+          'nutriments.energy-kcal_100g',
+          'nutriments.energy-kj_100g',
+          'nutriments.proteins_100g',
+          'nutriments.carbohydrates_100g',
+          'nutriments.fat_100g',
+          'serving_quantity',
+          'nutrition_data_per',
+        ].sort()
+      );
+    });
+
+    it('keeps products declared per serving as search candidates', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: () =>
+          Promise.resolve({ hits: [], page: 1, page_size: 20, count: 0 }),
+      });
+
+      await searchOpenFoodFacts('yogurt');
+
+      const { q } = JSON.parse(fetchMock.mock.calls[0][1].body);
+      const clause = nutritionClauseOf(q);
+      // The serving branch is one alternative of the outer OR group, not a
+      // condition every product must meet.
+      expect(clause.startsWith('((')).toBe(true);
+      expect(
+        clause.endsWith(
+          ' OR (serving_quantity:[0.000001 TO *] AND nutrition_data_per:serving))'
+        )
+      ).toBe(true);
+    });
+
+    it('returns products when Search-a-licious refuses fields missing from its index (#3760)', async () => {
+      const products = [
+        {
+          code: '111',
+          product_name: 'Greek Yogurt',
+          nutriments: {
+            energy_100g: 406,
+            'energy-kcal_100g': 97,
+            proteins_100g: 9,
+            carbohydrates_100g: 3.6,
+            fat_100g: 5,
+          },
+        },
+        {
+          code: '222',
+          product_name: 'Yogurt Cup',
+          serving_quantity: 150,
+          nutrition_data_per: 'serving',
+          nutriments: {
+            'energy-kcal_serving': 120,
+            proteins_serving: 6,
+            carbohydrates_serving: 14,
+            fat_serving: 4,
+          },
+        },
+      ];
+      fetchMock.mockImplementation(
+        async (url: string, init?: { body?: string }) => {
+          if (url === SEARCH_A_LICIOUS_URL) {
+            const { q } = JSON.parse(String(init?.body));
+            const unknown = [...queryFieldNames(q)].filter(
+              (field) => !INDEXED_SEARCH_FIELDS.has(field)
+            );
+            if (unknown.length > 0) {
+              return {
+                ok: false,
+                status: 400,
+                json: () =>
+                  Promise.resolve({
+                    errors: unknown.map((field) => ({
+                      title: `Unknown field name '${field}'`,
+                    })),
+                  }),
+              };
+            }
+            return {
+              ok: true,
+              json: () =>
+                Promise.resolve({
+                  hits: products.map(({ code, product_name }) => ({
+                    code,
+                    product_name,
+                  })),
+                  page: 1,
+                  page_size: 20,
+                  count: 2,
+                }),
+            };
+          }
+          if (String(url).includes('/api/v2/search?code=')) {
+            return { ok: true, json: () => Promise.resolve({ products }) };
+          }
+          throw new Error(`Unexpected request: ${url}`);
+        }
+      );
+
+      const result = await searchOpenFoodFacts('greek yogurt');
+
+      expect(result.products.map((product) => product.code)).toEqual([
+        '111',
+        '222',
+      ]);
     });
 
     it('excludes products without mapped calories or core macros after hydration', async () => {
@@ -456,6 +600,56 @@ describe('openFoodFactsService', () => {
       expect(result.products.map((product) => product.code)).toEqual([
         'complete',
         'partial',
+      ]);
+    });
+
+    it('ranks on decoded names, so an escaped "&amp;" is not a match for "amp"', async () => {
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              hits: [
+                {
+                  code: 'choc',
+                  product_name: 'Chocolate &amp; Topping',
+                  nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+                },
+                {
+                  code: 'amp',
+                  product_name: 'Amp Energy Drink',
+                  nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+                },
+              ],
+              page: 1,
+              page_size: 20,
+              count: 2,
+            }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              products: [
+                {
+                  code: 'choc',
+                  product_name: 'Chocolate &amp; Topping',
+                  nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+                },
+                {
+                  code: 'amp',
+                  product_name: 'Amp Energy Drink',
+                  nutriments: EXPLICIT_ZERO_CORE_NUTRITION,
+                },
+              ],
+            }),
+        });
+
+      const result = await searchOpenFoodFacts('amp');
+
+      expect(result.products.map((product) => product.code)).toEqual([
+        'amp',
+        'choc',
       ]);
     });
 
@@ -1112,6 +1306,22 @@ describe('openFoodFactsService', () => {
           ]);
         } finally {
           nowSpy.mockRestore();
+        }
+      });
+
+      it('sends the same nutrition clause on every Search-a-licious request', async () => {
+        fetchMock
+          .mockResolvedValueOnce(hitsResponse([namedKirkland]))
+          .mockResolvedValueOnce(hitsResponse([]))
+          .mockResolvedValueOnce(hitsResponse([kirklandBagel]))
+          .mockResolvedValueOnce(productsResponse([]));
+
+        await searchOpenFoodFacts('bagel kirkland');
+
+        const queries = searchQueries();
+        expect(queries).toHaveLength(3);
+        for (const query of queries) {
+          expect(query.endsWith(` ${CORE_NUTRITION_SEARCH_CLAUSE}`)).toBe(true);
         }
       });
 
@@ -1793,6 +2003,20 @@ describe('openFoodFactsService', () => {
     });
   });
 
+  describe('hasUsableOffCoreNutrition', () => {
+    it('still accepts a product whose only core value is energy_100g', () => {
+      // The search index no longer has this field, but hydrated product
+      // documents still carry it.
+      expect(
+        hasUsableOffCoreNutrition({
+          code: 'energy-only',
+          product_name: 'Energy Only',
+          nutriments: { energy_100g: 418 },
+        })
+      ).toBe(true);
+    });
+  });
+
   describe('mapOpenFoodFactsProduct', () => {
     const baseProduct = {
       product_name: 'Test Bread',
@@ -1806,6 +2030,186 @@ describe('openFoodFactsService', () => {
         fat_100g: 3,
       },
     };
+
+    it('decodes HTML entities in the name and brand', () => {
+      const result = mapOpenFoodFactsProduct({
+        ...baseProduct,
+        product_name: 'Chocolate &amp; Topping &#8211; caf&#xE9;',
+        brands: 'M&amp;M&apos;s, Other',
+      });
+      expect(result.name).toBe('Chocolate & Topping – café');
+      expect(result.brand).toBe("M&M's");
+    });
+
+    it('decodes entities in one pass and leaves unknown ones', () => {
+      const result = mapOpenFoodFactsProduct({
+        ...baseProduct,
+        product_name: 'A &amp;lt; B &foo; C',
+      });
+      expect(result.name).toBe('A &lt; B &foo; C');
+    });
+
+    it('keeps plausible sodium and derives it from salt when missing', () => {
+      const autoOff = { autoScale: false };
+      const sodium = mapOpenFoodFactsProduct(
+        {
+          ...baseProduct,
+          nutriments: { ...baseProduct.nutriments, sodium_100g: 0.6 },
+        },
+        autoOff
+      );
+      expect(sodium.default_variant.sodium).toBe(600);
+
+      const salt = mapOpenFoodFactsProduct(
+        {
+          ...baseProduct,
+          nutriments: { ...baseProduct.nutriments, salt_100g: 2 },
+        },
+        autoOff
+      );
+      expect(salt.default_variant.sodium).toBe(800);
+    });
+
+    it('decodes a localized name and ignores unsafe or unknown entities', () => {
+      const result = mapOpenFoodFactsProduct(
+        {
+          ...baseProduct,
+          product_name: 'x',
+          product_name_fr:
+            ' Caf&eacute;&nbsp;&amp;&nbsp;Lait &#1;&#xD800; &constructor; ',
+        },
+        { language: 'fr' }
+      );
+      expect(result.name).toBe('Caf&eacute; & Lait &#1;&#xD800; &constructor;');
+    });
+
+    it('takes sodium from salt when the sodium value is impossible', () => {
+      const result = mapOpenFoodFactsProduct(
+        {
+          ...baseProduct,
+          nutriments: {
+            ...baseProduct.nutriments,
+            sodium_100g: 44.06,
+            salt_100g: 2,
+          },
+        },
+        { autoScale: false }
+      );
+      expect(result.default_variant.sodium).toBe(800);
+    });
+
+    it('keeps a declared 0 sodium and pure salt at the cap', () => {
+      const map = (nutriments: Record<string, number>) =>
+        mapOpenFoodFactsProduct(
+          {
+            ...baseProduct,
+            nutriments: { ...baseProduct.nutriments, ...nutriments },
+          },
+          { autoScale: false }
+        ).default_variant.sodium;
+      expect(map({ sodium_100g: 0, salt_100g: 1 })).toBe(0);
+      expect(map({ sodium_100g: 40 })).toBe(40000);
+      expect(map({ salt_100g: 100 })).toBe(40000);
+      expect(map({ sodium_100g: 40.1 })).toBe(0);
+    });
+
+    it('decodes uppercase named entities and collapses whitespace', () => {
+      const result = mapOpenFoodFactsProduct({
+        ...baseProduct,
+        product_name: 'A&AMP;B  C&#160;D\t E',
+        brands: ' X &nbsp; Y ,Other',
+      });
+      expect(result.name).toBe('A&B C D E');
+      expect(result.brand).toBe('X Y');
+    });
+
+    it.each([
+      ['&#x202E;', 'bidi override'],
+      ['&#8203;', 'zero-width space'],
+      ['&#xFEFF;', 'byte order mark'],
+      ['&#x2028;', 'line separator'],
+      ['&#xE000;', 'private use'],
+      ['&#xFFFF;', 'noncharacter'],
+      ['&#x110000;', 'beyond Unicode'],
+    ])('leaves %s (%s) as written', (ref) => {
+      expect(
+        mapOpenFoodFactsProduct({ ...baseProduct, product_name: `A${ref}B` })
+          .name
+      ).toBe(`A${ref}B`);
+    });
+
+    it('decodes a valid astral code point', () => {
+      expect(
+        mapOpenFoodFactsProduct({
+          ...baseProduct,
+          product_name: 'Fruit &#x1F34E;',
+        }).name
+      ).toBe('Fruit \u{1F34E}');
+    });
+
+    it('skips a name candidate that decodes to nothing', () => {
+      expect(
+        mapOpenFoodFactsProduct(
+          {
+            ...baseProduct,
+            product_name_de: '&nbsp;',
+            product_name_en: 'Apple',
+            product_name: 'Apfel',
+          },
+          { language: 'de' }
+        ).name
+      ).toBe('Apple');
+      expect(
+        mapOpenFoodFactsProduct({ ...baseProduct, product_name: '&nbsp;' }).name
+      ).toBe('&nbsp;');
+    });
+
+    it('uses salt for a negative sodium and scales a per-serving salt', () => {
+      const map = (
+        nutriments: Record<string, number>,
+        extra: Record<string, unknown> = {}
+      ) =>
+        mapOpenFoodFactsProduct(
+          {
+            ...baseProduct,
+            ...extra,
+            nutriments: { ...baseProduct.nutriments, ...nutriments },
+          },
+          { autoScale: false }
+        ).default_variant.sodium;
+      expect(map({ sodium_100g: -5, salt_100g: 2 })).toBe(800);
+      // 1 g salt per 50 g serving = 2 g per 100 g = 0.8 g sodium.
+      expect(map({ salt_serving: 1 }, { serving_quantity: 50 })).toBe(800);
+    });
+
+    it('uses salt when sodium is only per serving and there is no serving size', () => {
+      const map = (nutriments: Record<string, number>) =>
+        mapOpenFoodFactsProduct(
+          {
+            ...baseProduct,
+            serving_quantity: undefined,
+            nutriments: { ...baseProduct.nutriments, ...nutriments },
+          },
+          { autoScale: false }
+        ).default_variant.sodium;
+      expect(map({ sodium_serving: 0.1, salt_100g: 2 })).toBe(800);
+      expect(map({ sodium_serving: 0, salt_100g: 2 })).toBe(0);
+    });
+
+    it('drops a sodium value above pure salt instead of importing it', () => {
+      const result = mapOpenFoodFactsProduct(
+        {
+          ...baseProduct,
+          nutriments: {
+            ...baseProduct.nutriments,
+            sodium_100g: 44.06,
+            salt_100g: 110.15,
+          },
+        },
+        { autoScale: false }
+      );
+      expect(result.default_variant.sodium).toBe(0);
+    });
 
     it('extracts and normalizes allergens_tags and traces_tags', () => {
       const product = {

@@ -323,7 +323,8 @@
       "hydration": "Hydration reminders",
       "moodCheckin": "Mood check-ins",
       "oralCare": "Brushing reminders",
-      "mindfulness": "Meditation timer"
+      "mindfulness": "Meditation timer",
+      "challenges": "Challenges"
     },
     "moodCheckin": {
       "title": "How are you feeling?",
@@ -378,6 +379,12 @@
     "meditationTimer": {
       "title": "Meditation complete",
       "body": "Open SparkyFitness to save your session."
+    },
+    "challengeWeek": {
+      "body": "{{leader}} leads with {{total}}. The week closes tonight.",
+      "bodyWithOwn": "{{leader}} leads with {{total}}. You are #{{rank}} with {{ownTotal}}. The week closes tonight.",
+      "bodyYouLead": "You lead with {{total}}. The week closes tonight.",
+      "title": "{{name}}: who leads this week"
     }
   },
   "activeWorkout": {
@@ -642,7 +649,9 @@
     "checkIn": "Daily Check-In",
     "checkInHint": "Habits",
     "oralCare": "Oral care",
-    "oralCareHint": "Brush, floss"
+    "oralCareHint": "Brush, floss",
+    "copyFromYesterday": "Copy from yesterday",
+    "copyFromYesterdayHint": "Repeat meals"
   },
   "screens": {
     "foods": "Foods",
@@ -745,7 +754,9 @@
       "trainingCalendar": "Training calendar",
       "trainingCalendarSubtitle": "Planned and completed workouts, and load by sport",
       "labResults": "Lab results",
-      "labResultsSubtitle": "Blood tests and other markers over time"
+      "labResultsSubtitle": "Blood tests and other markers over time",
+      "challenges": "Challenges",
+      "challengesSubtitle": "Group leaderboards with friends and family"
     },
     "sleep": "Sleep",
     "healthTrendsSettings": "Health Trends",
@@ -853,6 +864,7 @@
     "elevationGained": "Elevation Gained",
     "boneMass": "Bone Mass",
     "bodyWaterMass": "Body Water Mass",
+    "waistCircumference": "Waist Circumference",
     "cervicalMucus": "Cervical Mucus",
     "cyclingPedalingCadence": "Cycling Pedaling Cadence",
     "intermenstrualBleeding": "Intermenstrual Bleeding",
@@ -1201,6 +1213,8 @@
     "exerciseCaloriesDescription": "How much of your exercise calories are added back to your daily goal.",
     "activityLevel": "Activity Level",
     "activityBaseline": "Used as a baseline for TDEE.",
+    "adaptiveFallbackActivityLevel": "Until Adaptive has {{days}} days of food logs, your baseline is BMR × this level, before Goal Mode is applied, and your workouts are not added on top. Pick a level that includes your workouts.",
+    "adaptiveFallbackActivitySeparated": "Until Adaptive has {{days}} days of food logs, your baseline is BMR × this level, before Goal Mode is applied. Describe your activity outside the steps and workouts that are counted separately.",
     "adaptiveEstimateRangeWithUnit": "Activity Level sets the starting estimate and the ±{{amount}} {{unit}} plausibility range around BMR × this multiplier. Estimates can take several weeks to settle; weight fluctuations and incomplete food logs add uncertainty.",
     "allowNegative": "Allow Lower Fallback Projection",
     "negativeDescription": "When a device total is unavailable, let the BMR + active calories fallback lower your target.",
@@ -1232,6 +1246,9 @@
     "formulas": {
       "activityWithBmr": "Activity + BMR",
       "activityOnly": "Activity only (exercise + steps)",
+      "burnedAdaptive": "Shown for reference. Your Adaptive target already includes your activity.",
+      "netAdaptive": "Not used for Remaining. Turn on \"Count activity calories separately\" to credit today’s activity.",
+      "netAdaptivePercentage": "Not used for Remaining. To credit today’s activity, choose Dynamic and turn on \"Count activity calories separately\".",
       "eatenBurned": "Eaten − Burned",
       "projectedTotal": "Device total calories (BMR + active calories fallback)",
       "dynamic": "Goal − Net Energy",
@@ -1368,7 +1385,6 @@
     "cyclePregnancy": "Cycle & Pregnancy",
     "cyclePregnancySubtitle": "Show the wellness card on the Dashboard",
     "wellness": "Wellness",
-    "offInFeatures": "Not shown: turned off in Features",
     "medications": "Medications",
     "medicationsSubtitle": "Show the medications card on the Dashboard",
     "symptoms": "Symptoms",
@@ -1398,7 +1414,9 @@
     "labResults": "Lab Results",
     "labResultsSubtitle": "Show your latest lab results and which are out of range",
     "oralCare": "Oral care",
-    "oralCareSubtitle": "Show brushing against your goal and your streak"
+    "oralCareSubtitle": "Show brushing against your goal and your streak",
+    "challenges": "Challenges",
+    "challengesSubtitle": "Show your place in the challenges you are in"
   },
   "diarySettings": {
     "updateFailed": "Failed to update setting.",
@@ -1477,7 +1495,10 @@
     "oralCareReminderTime": "Reminder {{number}}",
     "oralCareReminderTimeAccessibility": "Brushing reminder {{number}}, {{time}}",
     "oralCareRemoveReminder": "Remove brushing reminder {{number}}",
-    "oralCareAddReminder": "Add reminder"
+    "oralCareAddReminder": "Add reminder",
+    "challengeWeek": "Week leader",
+    "challengeWeekSubtitle": "The last evening of each challenge week: who leads each weekly challenge you are in",
+    "challenges": "Challenges"
   },
   "workoutSettings": {
     "title": "Workout Settings",
@@ -2782,6 +2803,7 @@
     "goalSeparator": " / {{value}}"
   },
   "foodSummary": {
+    "fromTime": "from {{time}}",
     "tapToAddFood": "Tap to add food",
     "caloriesShort": "kcal",
     "nutritionBreakdown": "{{label}} nutrition breakdown"
@@ -2910,6 +2932,8 @@
     "loadError": "Could not load this setting.",
     "saveFailed": "Could not save this setting. Please try again.",
     "appOnly": "Only this app. The website has its own switch.",
+    "someOff": "Some features are turned off",
+    "manage": "Manage",
     "serverTooOld": "Update your SparkyFitness server to change this.",
     "groups": {
       "health": "Health",
@@ -2924,6 +2948,10 @@
       "scope": "One switch for the app and the website.",
       "setupAction": "Set up",
       "setupHint": "Answer a few questions to finish setting it up."
+    },
+    "medications": {
+      "title": "Medications",
+      "description": "Medications, supplements and GLP-1 tracking. While it is off, reminders stop and come back when you turn it on; supplement nutrients still count in your totals."
     },
     "labResults": {
       "title": "Lab results",
@@ -3033,6 +3061,7 @@
       "loadPhoto": "Failed to load photo.",
       "restartApp": "Unable to open gallery. Please restart the app.",
       "lookupBarcode": "Couldn't look up this barcode. Please try again.",
+      "offlineBarcode": "No connection. This barcode isn't in the foods saved on your phone.",
       "timeout": "Request timed out. Check your server connection.",
       "retryOnDevice": "This iPhone could not read the label."
     },
@@ -4024,7 +4053,21 @@
     "deleteExercise": "Delete Exercise",
     "makePrivate": "Make private",
     "shareWithPublic": "Share with public",
-    "deleteSheetTitle": "Delete exercise"
+    "deleteSheetTitle": "Delete exercise",
+    "progress": {
+      "title": "Progress",
+      "weeks": "Weeks",
+      "months": "Months",
+      "years": "Years",
+      "estimated1RM": "Est. 1RM",
+      "heaviest": "Heaviest weight",
+      "volume": "Volume",
+      "volumeUnit": "{{unit}} × reps",
+      "weekOf": "Week of {{date}}",
+      "loadFailed": "Could not load progress",
+      "empty": "Nothing logged in this period",
+      "footnote": "Best per period. Dots mark new highs."
+    }
   },
   "mealTypeSettings": {
     "reorder": "Reorder {{name}}",
@@ -4152,7 +4195,6 @@
     "previewTitle": "Preview",
     "previewDescription": "How Quick Actions looks with your choices.",
     "lineNumber": "Line {{number}}",
-    "offInFeatures": "Not shown: turned off in Features",
     "showAs": "Show as",
     "showAsValue": "Show as {{style}}",
     "styleList": "List",
@@ -4164,6 +4206,7 @@
     "buttonsDescription": "Shown side by side at the bottom of the sheet.",
     "chooseCard": "Choose a tile",
     "slotLabel": "Tile {{number}}: {{name}}",
+    "emptySlot": "Empty",
     "slotHint": "Opens a list to choose what goes here"
   },
   "mealPlans": {
@@ -4335,6 +4378,8 @@
     "other": "Other"
   },
   "foodEntryAdd": {
+    "queued": "Saved on this phone",
+    "queuedMessage": "It uploads when your server can be reached.",
     "errors": {
       "equivalentsNotSaved": "Some equivalent units could not be saved",
       "invalidAmount": "Invalid amount",
@@ -4508,6 +4553,10 @@
     }
   },
   "foodSearch": {
+    "foodResultCard": {
+      "tapForFullNutrition": "Tap for full nutrition",
+      "tapForNutrition": "Tap for nutrition"
+    },
     "menu": {
       "newFood": "New Food",
       "newMeal": "New Meal",
@@ -4555,6 +4604,8 @@
       "selectAll": "Select all",
       "selected_one": "{{count}} selected",
       "selected_other": "{{count}} selected",
+      "needsConnection": "Adding several foods needs a connection",
+      "needsConnectionHint": "Add them one at a time to keep them on this phone.",
       "limitReached": "You can select up to {{limit}} foods",
       "foodCheckbox": "Select {{name}}"
     },
@@ -4905,7 +4956,9 @@
     "errors": {
       "permission": "You don't have permission to edit this entry.",
       "saveFailed": "Failed to save changes",
-      "deleteFailed": "Failed to delete"
+      "deleteFailed": "Failed to delete",
+      "uploadingNow": "It is uploading right now. Try again in a moment.",
+      "alreadyUploaded": "It has just uploaded. Try again once the Diary has refreshed."
     },
     "deleteConfirm": "Are you sure you want to delete this food entry?",
     "entryNotes": "Note for this entry"
@@ -5533,6 +5586,7 @@
     "noServerTitle": "No Server Connected",
     "configureForExercise": "Configure your server connection in Settings to add an exercise.",
     "configureForWorkout": "Configure your server connection in Settings to start a workout.",
+    "configureForCopy": "Configure your server connection in Settings to copy from yesterday.",
     "draft": {
       "title": "Draft in Progress",
       "message": "You have an unsaved {{type}} draft. What would you like to do?",
@@ -5779,6 +5833,11 @@
       "estimateNote": "Estimated from your logged runs. Not a measurement; a synced reading replaces it.",
       "loadFailed": "Failed to load VO2 max data",
       "empty": "No VO2 max data for this period"
+    },
+    "mood": {
+      "title": "Mood",
+      "loadFailed": "Failed to load mood data",
+      "empty": "No mood logged for this period"
     }
   },
   "exerciseLibrary": {
@@ -5979,6 +6038,17 @@
     "foodSuccess": "Food copied",
     "foodFailed": "Failed to copy food"
   },
+  "copyFromYesterday": {
+    "title": "Copy from yesterday",
+    "subtitle": "Bring yesterday’s meals into this day",
+    "emptySource": "There is nothing to copy from yesterday.",
+    "copySelected": "Copy Selected",
+    "copyAll": "Copy All",
+    "copying": "Copying...",
+    "success": "Copied from yesterday",
+    "failed": "Failed to copy from yesterday",
+    "loadError": "Could not load yesterday’s meals."
+  },
   "foodDelete": {
     "failed": "Failed to delete food",
     "title": "Delete Food",
@@ -6026,10 +6096,14 @@
     "customConfirm": "Show this range"
   },
   "foodEntryMeal": {
+    "queued": "Saved on this phone",
+    "queuedMessage": "It uploads when your server can be reached.",
     "failed": "Failed to add meal"
   },
   "foodSave": {
-    "failed": "Failed to save food"
+    "failed": "Failed to save food",
+    "queued": "Saved on this phone",
+    "queuedMessage": "It uploads when your server can be reached."
   },
   "favorites": {
     "updateFailed": "Failed to update favorites"
@@ -6443,6 +6517,8 @@
   "waterIntake": {
     "updateFailed": "Error",
     "updateMessage": "Failed to update water intake. Please try again.",
+    "queued": "Saved on this phone",
+    "queuedMessage": "It uploads when your server can be reached.",
     "noPrimary": "No Primary Container",
     "noContainers": "No Water Containers",
     "multipleNoPrimary": "You have multiple water containers but none is marked as primary. Please set one as primary on the server.",
@@ -7090,7 +7166,7 @@
     "cm": "{{value}} cm",
     "mmolL": "{{value}} mmol/L",
     "ms": "{{value}} ms",
-    "vo2": "{{value}} ml/min/kg",
+    "vo2": "{{value}} ml/kg/min",
     "minutes": "{{count}} min",
     "meters": "{{value}} m",
     "watts": "{{value}} W",
@@ -7197,7 +7273,136 @@
     "waterLogged": "Water logged",
     "waterFailed": "Could not log water"
   },
+  "watchComplications": {
+    "deleteTitle": "Delete complication",
+    "deleteMessage": "Delete {{name}}? A watch face slot that shows it will go blank.",
+    "exportFailed": "Could not export your complications",
+    "importTooLarge": "That file is too large",
+    "importFailed": "Could not read that file",
+    "importInvalid": "Not a complications file",
+    "importInvalidSubtitle": "Choose a file exported from the Complications screen.",
+    "importTitle": "Import complications",
+    "importAdd": "Add",
+    "importReplace": "Replace",
+    "resetTitle": "Reset to starters",
+    "resetMessage": "Replace your complications with the starter set? Yours will be lost.",
+    "resetConfirm": "Reset",
+    "title": "Complications",
+    "add": "Add complication",
+    "menu": "Complication options",
+    "reload": "Reload complications",
+    "reloadHint": "Sends your complications to the Apple Watch and refreshes them.",
+    "reloadHintWearOs": "Sends your complications to your Wear OS watch and refreshes them.",
+    "reloaded": "Sent to your watch",
+    "reloadedSubtitle": "Open the watch app if the picker still shows the old list.",
+    "reloadFailed": "Could not send to your watch",
+    "builtInTitle": "Built-in complications",
+    "builtInHelp": "These come with the app. Change their colours and icons.",
+    "changeBuiltIn": "Change {{name}}",
+    "builtInReset": "Put back the original look",
+    "builtInDailyEnergy": "Daily Energy Goal",
+    "builtInEnergyReset": "Put back the original colours",
+    "builtIn": {
+      "calorieGoal": "Calorie Goal",
+      "proteinGoal": "Protein Goal",
+      "carbsGoal": "Carbs Goal",
+      "fatGoal": "Fat Goal",
+      "water": "Water Intake",
+      "fasting": "Fasting",
+      "steps": "Steps"
+    },
+    "export": "Export",
+    "import": "Import",
+    "reset": "Reset to starters",
+    "withGauge": "Gauge",
+    "editNamed": "Edit {{name}}",
+    "moveUp": "Move {{name}} up",
+    "moveDown": "Move {{name}} down",
+    "deleteNamed": "Delete {{name}}",
+    "intro": "Make your own complications for the watch face. Each one shows a number from your day. On the watch, add the Custom Complication to a slot and pick one of these.",
+    "starterNote": "These are the starter complications. Change or add one and the list becomes yours.",
+    "emptyTitle": "No complications yet",
+    "emptySubtitle": "Add one such as protein left today, or import a file.",
+    "nameRequired": "Give it a name",
+    "nameRequiredSubtitle": "The name is what you pick on the watch face.",
+    "saved": "Complication saved",
+    "editTitle": "Edit complication",
+    "createTitle": "Add complication",
+    "previewNote": "A sample day, in each size. The watch face decides the final look.",
+    "preview": {
+      "left": "left",
+      "leftUnit": "{{unit}} left",
+      "ofGoal": "of {{goal}}"
+    },
+    "name": "Name",
+    "namePlaceholder": "e.g. Protein left",
+    "source": "Shows",
+    "sourceHelp": "Nutrients you show on the watch’s Goals page are listed too.",
+    "format": "Show as",
+    "noGoalNote": "This has no goal, so it can only show its value.",
+    "gauge": "Gauge",
+    "gaugeSubtitle": "Draw a ring or bar for how much of the goal is done.",
+    "color": "Color",
+    "icon": "Icon",
+    "formats": {
+      "value": "Value",
+      "percent": "Percent",
+      "remaining": "Left"
+    },
+    "colors": {
+      "calories": "Violet",
+      "protein": "Gold",
+      "carbs": "Green",
+      "fat": "Sky blue",
+      "water": "Cyan",
+      "steps": "Mint",
+      "fasting": "Orange",
+      "weight": "Teal",
+      "neutral": "White",
+      "exercise": "Bright green",
+      "heart": "Pink",
+      "sleep": "Indigo"
+    },
+    "icons": {
+      "flame": "Flame",
+      "fish": "Fish",
+      "leaf": "Leaf",
+      "drop": "Drop",
+      "walk": "Walking",
+      "timer": "Timer",
+      "scale": "Scale",
+      "heart": "Heart",
+      "bolt": "Bolt",
+      "fork": "Fork and knife",
+      "chart": "Bar chart",
+      "gauge": "Gauge",
+      "bed": "Bed",
+      "dumbbell": "Dumbbell",
+      "heartbeat": "Heartbeat",
+      "lungs": "Lungs",
+      "moon": "Moon"
+    },
+    "importDone_one": "Imported {{count}} complication",
+    "importDone_other": "Imported {{count}} complications",
+    "importMessage_one": "Found {{count}} complication in the file. Add it to your list, or replace your list with it?",
+    "importMessage_other": "Found {{count}} complications in the file. Add them to your list, or replace your list with them?",
+    "importSkipped_one": "{{count}} entry could not be used.",
+    "importSkipped_other": "{{count}} entries could not be used.",
+    "addValue": "Add another value",
+    "moreValues": "More values",
+    "moreValuesHelp": "Show up to three values together: rings in the circular and corner sizes, a row each in the rectangular size.",
+    "remove": "Remove",
+    "removeValue": "Remove value {{number}}",
+    "ringsNote": "With more than one value, each value that has a goal gets its own ring or bar.",
+    "starters": {
+      "macros": "Macros"
+    },
+    "valueNumber": "Value {{number}}"
+  },
   "watchSettings": {
+    "complicationsTitle": "Complications",
+    "complicationsRow": "Your complications",
+    "complicationsSubtitle": "Make your own for the watch face, and import or export them.",
     "gesturesTitle": "Gestures",
     "doubleTapTitle": "Double-tap to log a set",
     "rpeTitle": "Ask for effort (RPE) after each set",
@@ -7217,6 +7422,33 @@
       "workout": "Workout",
       "fasting": "Fasting",
       "steps": "Steps"
+    },
+    "complications": {
+      "sources": {
+        "calories": "Calories",
+        "caloriesRemaining": "Calories left",
+        "caloriesBurned": "Calories burned",
+        "protein": "Protein",
+        "carbs": "Carbs",
+        "fat": "Fat",
+        "water": "Water",
+        "steps": "Steps",
+        "fasting": "Fasting",
+        "weight": "Weight",
+        "bodyFat": "Body fat",
+        "deepSleep": "Deep sleep",
+        "exerciseCalories": "Exercise calories",
+        "exerciseMinutes": "Exercise minutes",
+        "hrv": "Overnight HRV",
+        "lightSleep": "Light sleep",
+        "remSleep": "REM sleep",
+        "restingHeartRate": "Resting heart rate",
+        "sleepDuration": "Sleep time",
+        "sleepScore": "Sleep score",
+        "spo2": "Blood oxygen",
+        "timeInBed": "Time in bed",
+        "workouts": "Workouts today"
+      }
     },
     "nutrientsTitle": "Goals page nutrients",
     "nutrientsDescription": "Choose the nutrients listed under the calorie ring on your watch, and drag to set their order. Each shows today’s amount against its goal.",
@@ -7244,7 +7476,19 @@
     "countdownOff": "Off",
     "countdownSeconds": "{{seconds}} s",
     "holdCountdownTitle": "Countdown before holds",
-    "holdCountdownSubtitle": "A 3, 2, 1 Get ready screen before a timed hold starts, so you can get into position. Tap it to skip."
+    "holdCountdownSubtitle": "A 3, 2, 1 Get ready screen before a timed hold starts, so you can get into position. Tap it to skip.",
+    "mediaControlsTitle": "Media controls",
+    "mediaAccessTitle": "Now Playing track info",
+    "mediaAccessEnabledSubtitle": "Your watch shows the current song and artist while controlling phone media during workouts.",
+    "mediaAccessDisabledSubtitle": "Play, skip and volume controls work automatically. Allow Notification Access so your watch can also show the current song and artist. Other notifications are ignored.",
+    "mediaAccessEnabled": "Enabled",
+    "mediaAccessSetup": "Set up",
+    "mediaAccessA11yLabel": "{{title}}, {{status}}",
+    "mediaAccessDisclosureTitle": "Allow Notification Access?",
+    "mediaAccessDisclosureBody": "Android requires Notification Access to read the currently playing song and artist for your Wear OS watch. SparkyFitness only reads active media sessions and ignores your messages and other notifications.",
+    "mediaAccessOpenSettings": "Open Settings",
+    "mediaAccessOpenErrorTitle": "Unable to open Settings",
+    "mediaAccessOpenErrorBody": "Open Android Settings → Notifications → Notification read, reply & control and enable SparkyFitness Media Controls."
   },
   "garminSettings": {
     "linkTitle": "Garmin Connect",
@@ -9833,7 +10077,7 @@
     "mapSatellite": "Satellite",
     "mapStandard": "Map",
     "mapUnavailable": "Routes cannot be drawn on a map in this build.",
-    "osmAttribution": "© OpenStreetMap",
+    "mapAttribution": "© OpenMapTiles © OpenStreetMap",
     "redo": "Redo",
     "findingRoute": "Finding a route",
     "turns": "Turns",
@@ -10969,7 +11213,7 @@
     "presetUpdateQueued": "Saved workout will be updated when you are back online",
     "presetUpdateSkipped": "Saved workout \"{{name}}\" was not updated because it was changed elsewhere",
     "presetUpdated": "Saved workout \"{{name}}\" updated",
-    "diaryNote": "Only workouts are available offline. Food and other entries need a connection.",
+    "diaryNote": "Food and workouts from the last week are available offline. Sleep and the other entries need a connection.",
     "diaryNothingSaved": "Nothing saved for this day",
     "finishedTitle": "Saved on this phone",
     "finishedMessage": "It uploads when your server can be reached.",
@@ -10981,7 +11225,7 @@
     "notReadyMessage": "Connect to your server once so this phone can save what a workout needs.",
     "banner": "Offline: showing data saved on this phone",
     "bannerHint": "Checks the connection again",
-    "intro": "Workouts can be started and logged without a connection. They are kept on this phone and uploaded when your server can be reached.",
+    "intro": "Workouts, food, meals, new foods and drinks can be logged without a connection. They are kept on this phone and uploaded when your server can be reached.",
     "waitingHeading": "Waiting to upload",
     "nothingWaiting": "Nothing is waiting",
     "nothingWaitingSubtitle": "Everything on this phone has been uploaded.",
@@ -10995,7 +11239,7 @@
     "storageValue": "{{size}} MB",
     "refreshRow": "Refresh now",
     "refreshing": "Refreshing…",
-    "neverRefreshed": "Not downloaded yet. Connect to your server once to prepare offline workouts.",
+    "neverRefreshed": "Not downloaded yet. Connect to your server once to prepare offline use.",
     "lastRefreshed": "Last refreshed {{when}}",
     "refreshDone": "Saved data is up to date",
     "refreshFailed": "Could not refresh",
@@ -11003,7 +11247,7 @@
     "clearRow": "Clear offline data",
     "clearRowSubtitle": "Uploads still waiting are kept",
     "clearTitle": "Clear offline data?",
-    "clearMessage": "Saved workouts, exercises and other data kept for offline use are removed from this phone and downloaded again next time. Anything still waiting to upload is kept.",
+    "clearMessage": "Saved workouts, exercises, foods, meals and other data kept for offline use are removed from this phone and downloaded again next time. Anything still waiting to upload is kept.",
     "clearConfirm": "Clear",
     "status": {
       "pending": "Waiting to upload",
@@ -11011,6 +11255,12 @@
       "conflict": "Changed somewhere else. Tap to choose.",
       "needsSignIn": "Sign in again to upload",
       "failed": "The server did not accept it"
+    },
+    "ownerless": {
+      "title": "No account recorded",
+      "message": "This upload was saved before the phone knew which account it belonged to, so it will not be sent. You can discard it.",
+      "discard": "Discard this upload",
+      "subtitle": "No account recorded. Tap to discard."
     },
     "conflict": {
       "phoneSuffix": "(phone)",
@@ -11026,8 +11276,141 @@
     },
     "kind": {
       "workout": "Workout",
+      "food": "Food entry",
+      "water": "Drink",
       "other": "Saved change"
     },
-    "libraryNote": "Only workouts and exercises are available offline. Everything else in the Library needs a connection."
+    "libraryNote": "Workouts, exercises, foods and meals saved on this phone are available offline. Everything else in the Library needs a connection.",
+    "foodHeading": "Food and water kept offline",
+    "foodIntro": "Your recent and most used foods, your own foods (up to 2,000), saved meals, your meal types and water containers are kept, along with the Diary and totals of the last week. They refresh whenever you are connected.",
+    "foodsKeptTitle": "Foods",
+    "foodsKeptValue_one": "{{count}} food",
+    "foodsKeptValue_other": "{{count}} foods",
+    "mealsKeptTitle": "Saved meals",
+    "mealsKeptValue_one": "{{count}} meal",
+    "mealsKeptValue_other": "{{count}} meals",
+    "diaryDaysKeptTitle": "Diary days",
+    "diaryDaysKeptValue_one": "{{count}} day of food",
+    "diaryDaysKeptValue_other": "{{count}} days of food"
+  },
+  "challenges": {
+    "card": {
+      "a11y": "Challenges",
+      "leader": "{{name}} leads with {{total}}",
+      "noScore": "No score yet",
+      "refreshFailed": "Could not refresh; showing the last loaded",
+      "youLead": "You lead",
+      "yourPlace": "#{{rank}} of {{members}} · {{total}}"
+    },
+    "dates": {
+      "from": "From {{start}}, no end date",
+      "range": "{{start}} to {{end}}"
+    },
+    "detailLoadFailed": "Could not load this challenge.",
+    "emptySubtitle": "Join one with an invite code from a friend, or host your own on the web.",
+    "emptyTitle": "No challenges yet",
+    "format": {
+      "groupGoal": "Group goal",
+      "hitGoal": "Hit the goal",
+      "leaderboard": "Leaderboard",
+      "race": "Race to a target"
+    },
+    "hostOnWeb": "You host this challenge. Change its rules and invite codes on the web.",
+    "join": {
+      "closed": "This challenge cannot be joined right now.",
+      "codeLabel": "Invite code",
+      "codePlaceholder": "Paste the code or link",
+      "ended": "This challenge has ended.",
+      "failed": "Could not join the challenge.",
+      "full": "This challenge is full.",
+      "invalidCode": "That code is not valid or has expired.",
+      "joined": "Joined {{name}}",
+      "lateJoinClosed": "This challenge has started and does not take late joiners.",
+      "nameLabel": "Your name in it",
+      "namePlaceholder": "For example, your first name",
+      "nameRequired": "Enter the name other members will see.",
+      "notACode": "Paste the invite code or link you were sent.",
+      "privacy": "Members see this name and your points, never your diary or your email. You can leave at any time.",
+      "submit": "Join",
+      "submitting": "Joining…",
+      "title": "Join a challenge",
+      "tooMany": "Too many tries. Wait a few minutes and try again.",
+      "withCode": "Join with a code"
+    },
+    "leave": {
+      "action": "Leave challenge",
+      "confirm": "Leave",
+      "failed": "Could not leave the challenge",
+      "message": "Your scores in it are deleted. You can join again with a new invite code.",
+      "title": "Leave this challenge?"
+    },
+    "listRefreshFailed": "Could not refresh your challenges; showing the last ones loaded.",
+    "loadFailed": "Could not load your challenges.",
+    "memberCount_one": "{{count}} member",
+    "memberCount_other": "{{count}} members",
+    "metric": {
+      "activeCalories": "Active calories",
+      "activeMinutes": "Active minutes",
+      "distance": "Distance",
+      "elevation": "Elevation",
+      "hrZoneMinutes": "Heart-rate zone minutes",
+      "points": "Points",
+      "steps": "Steps",
+      "workoutDays": "Workout days"
+    },
+    "moreActions": "More actions",
+    "period": {
+      "challenge": "Whole challenge",
+      "day": "Daily",
+      "month": "Monthly",
+      "next": "Next period",
+      "previous": "Previous period",
+      "week": "Weekly"
+    },
+    "refreshFailed": "Could not refresh this challenge; showing what was loaded last.",
+    "standings": {
+      "daysHit": "{{hit}} of {{eligible}} days on goal",
+      "empty": "Nobody has scored in this period yet.",
+      "final": "Final results",
+      "find": "Find a member",
+      "finished": "Finished {{date}}",
+      "groupTotal": "Together: {{total}} of {{target}}",
+      "live": "So far; late watch syncs still count",
+      "loadFailed": "Could not load the standings.",
+      "minutes": "{{value}} active min",
+      "noMatch": "No member matches “{{query}}”.",
+      "refreshFailed": "Could not refresh the standings; showing the last ones loaded.",
+      "rowA11y": "{{rank}}. {{name}}, {{total}}",
+      "winner": "Winner",
+      "you": "{{name}} (you)"
+    },
+    "state": {
+      "active": "Active",
+      "daysLeft_one": "{{count}} day left",
+      "daysLeft_other": "{{count}} days left",
+      "ended": "Ended",
+      "lastDay": "Last day",
+      "running": "Running",
+      "startsIn_one": "Starts in {{count}} day",
+      "startsIn_other": "Starts in {{count}} days",
+      "startsOn": "Starts {{date}}",
+      "startsTomorrow": "Starts tomorrow"
+    },
+    "target": "Target: {{target}}",
+    "title": "Challenges",
+    "unavailableSubtitle": "Challenges are turned off on your server, or it needs an update. Ask your server admin.",
+    "unavailableTitle": "Challenges are not available",
+    "value": {
+      "feet": "{{value}} ft",
+      "km": "{{value}} km",
+      "metres": "{{value}} m",
+      "miles": "{{value}} mi",
+      "minutes": "{{value}} min",
+      "points": "{{value}} pts",
+      "steps": "{{value}} steps",
+      "workoutDays_one": "{{count}} day",
+      "workoutDays_other": "{{count}} days"
+    },
+    "youHost": "You host"
   }
 }

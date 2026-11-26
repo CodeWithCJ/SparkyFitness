@@ -1,0 +1,20 @@
+diff --git a/android/src/main/java/expo/modules/kotlin/AppContext.kt b/android/src/main/java/expo/modules/kotlin/AppContext.kt
+index eec38de858ec307cbec442dd12540018396c1ee2..35b571e2057fdb4f02aca9d742e0073a1b1d13fb 100644
+--- a/android/src/main/java/expo/modules/kotlin/AppContext.kt
++++ b/android/src/main/java/expo/modules/kotlin/AppContext.kt
+@@ -304,13 +304,14 @@ class AppContext(
+       "Current Activity is of incorrect class, expected AppCompatActivity, received ${currentActivity?.localClassName}"
+     }
+ 
++    activityResultsManager.onHostResume(activity)
++
+     // We need to re-register activity contracts when reusing AppContext with new Activity after host destruction.
+     if (hostWasDestroyed) {
+       hostWasDestroyed = false
+       registry.registerActivityContracts()
+     }
+ 
+-    activityResultsManager.onHostResume(activity)
+     registry.post(EventName.ACTIVITY_ENTERS_FOREGROUND)
+   }
+ 

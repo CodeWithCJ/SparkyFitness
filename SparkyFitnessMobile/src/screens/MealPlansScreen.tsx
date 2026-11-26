@@ -337,7 +337,7 @@ const MealPlansScreen: React.FC<MealPlansScreenProps> = ({ navigation }) => {
                 })}
               </Text>
             </View>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           <StatusView

@@ -184,7 +184,12 @@ With the **Adaptive Method**, the default baseline represents the whole day's
 expenditure. **Dynamic Goal** and **Percentage Earn-Back** therefore do not add
 exercise, background-step calories, or BMR to this target again. Remaining calories
 are the calculated food target minus intake. Activity and net energy are still
-reported separately. This also applies while Adaptive uses its fallback estimate.
+reported separately. This also applies while Adaptive uses its fallback estimate
+(fewer than 14 days of food logs): the baseline is then BMR × your **Activity
+Level**, with Goal Mode applied on top, so choose a level that includes your workouts. With the default
+**Sedentary** level, workouts count nowhere until Adaptive has learned your
+expenditure. Calculation Settings shows the Activity Level whenever the Adaptive
+Method is selected, in every adjustment mode.
 **Device Projection** keeps its explicit full-day projection behavior. With the
 **Manual Method**, Dynamic and Percentage Earn-Back continue to credit activity.
 If BMR cannot be calculated, the stored manual target and its earn-back behavior

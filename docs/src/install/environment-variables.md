@@ -220,7 +220,7 @@ Configures code signing, bundle identifiers, and shared App Groups when building
 
 ### Module 14: 🤖 Android Mobile App Build `[Mobile Build]`
 
-- **`GOOGLE_MAPS_ANDROID_API_KEY`** (optional): Google Maps key for cardio routes on Android. Without it, Android draws routes over OpenStreetMap vector tiles with MapLibre, which needs no key, billing account or Google Play Services; iOS always uses Apple Maps and needs no key. With it, Android keeps Google Maps instead, and the key's Google Cloud project needs billing enabled. The app only makes plain Maps SDK for Android loads (no map ID), which Google does not charge for. Restrict the key to the app's package name and signing certificates, and pass it to the build (for example as an EAS secret) rather than committing it.
+- **`GOOGLE_MAPS_ANDROID_API_KEY`** (optional): Google Maps key for cardio routes on Android. Without it, Android draws routes over OpenStreetMap vector tiles with MapLibre, which needs no key, billing account or Google Play Services; iOS always uses Apple Maps and needs no key. With it, Android's route editors use Google Maps instead (the still route previews on finished activities stay on OpenStreetMap), and the key's Google Cloud project needs billing enabled. The app only makes plain Maps SDK for Android loads (no map ID), which Google does not charge for. Restrict the key to the app's package name and signing certificates, and pass it to the build (for example as an EAS secret) rather than committing it.
 
 ---
 
@@ -228,7 +228,7 @@ Configures code signing, bundle identifiers, and shared App Groups when building
 
 SparkyFitness natively supports loading sensitive configuration values from files mounted by **Docker Compose secrets**, **Docker Swarm**, or **Kubernetes**.
 
-Any backend environment variable `VAR` can be supplied via a corresponding `VAR_FILE` environment variable pointing to the mounted secret file. When `VAR_FILE` is provided and `VAR` is unset, empty, or contains only whitespace, the server automatically reads and trims the secret from the specified file on startup.
+Any backend environment variable `VAR` that starts with `SPARKY_FITNESS_` or `BETTER_AUTH_`, as well as `HTTP_PROXY`, `HTTPS_PROXY` and `GARMIN_MICROSERVICE_URL`, can be supplied via a corresponding `VAR_FILE` environment variable pointing to the mounted secret file. When `VAR_FILE` is provided and `VAR` is unset, empty, or contains only whitespace, the server automatically reads and trims the secret from the specified file on startup. Other `*_FILE` variables, such as ones set by other tools, are ignored.
 
 | Environment Variable                | File-Based Alternative (`*_FILE`)        | Description                             |
 | :---------------------------------- | :--------------------------------------- | :-------------------------------------- |

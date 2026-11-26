@@ -1,9 +1,12 @@
 import { renderHook, waitFor, act } from '@testing-library/react-native';
 import { useCycleSettings } from '../../src/hooks/useCycleSettings';
 import { getSettings, putSettings } from '../../src/services/api/cycleApi';
+import { serverConfigsQueryKey } from '../../src/hooks/queryKeys';
 import {
   createTestQueryClient,
   createQueryWrapper,
+  showServerOnScreen,
+  testServer,
   type QueryClient,
 } from './queryTestUtils';
 
@@ -26,6 +29,7 @@ describe('useCycleSettings', () => {
     jest.useRealTimers();
     jest.clearAllMocks();
     queryClient = createTestQueryClient();
+    showServerOnScreen(queryClient);
   });
 
   afterEach(() => {
@@ -99,9 +103,23 @@ describe('useCycleSettings', () => {
       await result.current.updateSettingsAsync({ enabled: true });
     });
 
-    expect(mockPutSettings).toHaveBeenCalledWith({ enabled: true });
+    expect(mockPutSettings).toHaveBeenCalledWith({ enabled: true }, testServer);
     await waitFor(() => {
       expect(result.current.settings).toEqual(updatedSettings);
     });
+  });
+
+  test('saves nothing, and rejects, when the server on screen is not known', async () => {
+    mockGetSettings.mockResolvedValue(null);
+    const { result } = renderHook(() => useCycleSettings(), {
+      wrapper: createQueryWrapper(queryClient),
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    queryClient.removeQueries({ queryKey: serverConfigsQueryKey });
+    await expect(
+      result.current.updateSettingsAsync({ mark_onboarded: true })
+    ).rejects.toThrow('No server on screen');
+    expect(mockPutSettings).not.toHaveBeenCalled();
   });
 });

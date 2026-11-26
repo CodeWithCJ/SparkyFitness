@@ -12,8 +12,11 @@ import {
   HeartPulse,
   Heart,
   GitCompareArrows,
+  type LucideIcon,
 } from 'lucide-react';
+import { filterByFeature, type FeatureKey } from '@workspace/shared';
 import Tooth from '@/components/icons/Tooth';
+import { useWebFeatures } from '@/hooks/Settings/useWebFeatures';
 
 interface ReportsControlsProps {
   startDate: string;
@@ -35,8 +38,16 @@ const ReportsControls = ({
   showDateRange,
 }: ReportsControlsProps) => {
   const { t } = useTranslation();
+  const { isShown } = useWebFeatures();
 
-  const reportTypes = [
+  // A report of an optional feature names it in `feature`; its pill leaves
+  // while that feature is off (Settings > Features).
+  const reportTypes: {
+    id: string;
+    label: string;
+    icon: LucideIcon;
+    feature?: FeatureKey;
+  }[] = [
     {
       id: 'charts',
       label: t('reports.nutrientsTab', 'Nutrients'),
@@ -81,6 +92,7 @@ const ReportsControls = ({
       id: 'medications-reports',
       label: t('reports.medicationsTab', 'Medications'),
       icon: Pill,
+      feature: 'medications',
     },
     {
       id: 'symptoms-reports',
@@ -103,7 +115,7 @@ const ReportsControls = ({
     <div className="w-full flex flex-col lg:flex-row items-center gap-4 lg:gap-6">
       {/* Navigation Pills */}
       <div className="flex flex-wrap items-center justify-center lg:justify-start gap-1 flex-1">
-        {reportTypes.map((type) => {
+        {filterByFeature(reportTypes, isShown).map((type) => {
           const Icon = type.icon;
           const isActive = activeTab === type.id;
           return (

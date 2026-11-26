@@ -363,34 +363,34 @@ function ReorderItemRow({
         .activateAfterLongPress(REORDER_LONG_PRESS_MS)
         .onStart(() => {
           'worklet';
-          activeIndex.value = index;
-          committing.value = false;
-          dragStartScrollY.value = scrollY.value;
-          panY.value = 0;
+          activeIndex.set(index);
+          committing.set(false);
+          dragStartScrollY.set(scrollY.get());
+          panY.set(0);
           runOnJS(setScrollEnabled)(false);
         })
         .onUpdate((event) => {
           'worklet';
-          panY.value = event.translationY;
-          pointerAbsY.value = event.absoluteY;
+          panY.set(event.translationY);
+          pointerAbsY.set(event.absoluteY);
         })
         .onEnd(() => {
           'worklet';
-          const from = activeIndex.value;
-          const to = targetIndex.value;
+          const from = activeIndex.get();
+          const to = targetIndex.get();
           // A real move keeps the drag transforms frozen at the drop layout; the
           // post-commit effect clears them once the reordered rows have rendered,
           // so the finger's preview hands off seamlessly instead of snapping back
           // to the pre-drag order for a frame while the JS state update lands.
-          committing.value = from >= 0 && to >= 0 && from !== to;
+          committing.set(from >= 0 && to >= 0 && from !== to);
           runOnJS(onCommit)(from, to);
         })
         .onFinalize(() => {
           'worklet';
           runOnJS(setScrollEnabled)(true);
-          if (committing.value) return;
-          activeIndex.value = -1;
-          panY.value = 0;
+          if (committing.get()) return;
+          activeIndex.set(-1);
+          panY.set(0);
         }),
     [
       index,
