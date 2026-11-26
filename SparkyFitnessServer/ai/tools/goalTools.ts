@@ -99,7 +99,7 @@ This tool takes a FLAT object with an "action" field. Do NOT nest fields under t
 
 Actions:
 - action: 'get_goals' (fields: target_date?) — returns the goals active on a specific date
-- action: 'set_goals' (fields: start_date, calories?, protein?, carbs?, fat?, water_goal_ml?, weight?, weight_unit?, caffeine_mg?, alcohol_g?, ...) — sets new goals from a start date. weight is the target body weight; it has no start date and replaces the current one
+- action: 'set_goals' (fields: start_date, calories?, protein?, carbs?, fat?, water_goal_ml?, weight?, weight_unit?, caffeine_mg?, alcohol_g?, ...) — sets new goals from a start date. For a start_date of today or later, it replaces goals already scheduled in the six months from start_date. For a start_date before today (in the user's timezone), only that date is written. Fields left out take the values active on start_date. If protein/carbs/fat are stored as percentages and none of them is given, their grams follow the new calories; giving any of them clears the stored percentages. weight is the target body weight. It has no start date and replaces the current one. A call with only weight (and weight_unit) saves just the target weight, adds no goal entry and ignores start_date. weight_unit is kg or lbs; pass it unless the user has a weight unit set in their preferences. Only the account owner can set the target weight: on another account, a call with weight is refused entirely
 - action: 'list_goal_timeline' — lists all goal changes over time`,
       inputSchema: manageGoalsInput,
       execute: async (rawArgs) => {

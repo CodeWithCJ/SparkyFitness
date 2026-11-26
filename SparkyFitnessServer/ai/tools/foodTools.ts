@@ -1041,7 +1041,7 @@ Actions:
 - set_food_barcode(food_id, barcode) — updates product metadata only; it never changes variants or diary history.
 - search_meal(meal_name)
 - log_meal(meal_type_id?|meal_type?, entry_date, meal_id?, meal_name?, quantity?)
-- list_diary(entry_date?)
+- list_diary(entry_date?) — the day's entries; for calories and macros eaten and left, use sparky_get_day_status
 - delete_entry(entry_id?|food_name?, entry_type?, entry_date?, meal_type?|meal_type_id?) — deletes one diary entry. Provide entry_id when you have it; otherwise food_name is resolved against the diary for entry_date (defaults to today), with meal_type narrowing when the same food appears in several meals. Ambiguous names return the candidates with their ids instead of deleting.
 - delete_food(food_id?|food_name?) — deletes food + variants from library; logged diary entries are preserved
 - update_entry(entry_id?|food_name?, entry_type?, entry_date?, quantity?, unit?, meal_type_id?, meal_type?) — changes quantity/unit and/or moves the entry to another meal type (meal_type/meal_type_id is the NEW meal). Provide entry_id when you have it; otherwise food_name is resolved against the diary for entry_date (defaults to today). Ambiguous names return the candidates with their ids instead of updating.
@@ -3099,7 +3099,7 @@ Actions:
       description:
         'Returns entry-level food diary data for a specific date or date range.' +
         DIARY_NUTRIENTS_NOTE +
-        ' For day totals use sparky_get_nutrition_summary.',
+        ' For day totals use sparky_get_nutrition_summary; for what is left against the goals, sparky_get_day_status.',
       inputSchema: foodDiaryDateRangeSchema,
       execute: async (rawArgs) => {
         const parsed = foodDiaryDateRangeSchema.safeParse(
