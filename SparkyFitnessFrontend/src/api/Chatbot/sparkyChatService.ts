@@ -25,11 +25,13 @@ export const loadUserPreferences = async (): Promise<UserPreferences> => {
 };
 
 export const loadChatHistory = async (
-  autoClearHistory: string
+  autoClearHistory: string,
+  coachId: string | null = null
 ): Promise<Message[]> => {
   const params = new URLSearchParams({
     autoClearHistory,
   });
+  if (coachId) params.set('coachId', coachId);
   const data: ChatHistory[] = await apiCall(
     `/chat/sparky-chat-history?${params.toString()}`,
     {

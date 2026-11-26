@@ -22,6 +22,7 @@ import {
 } from '../services/notifications';
 import { initMoodCheckinNotificationResponses } from '../services/moodCheckinNotificationHandler';
 import { initChallengeNotificationResponses } from '../services/challengeNotificationHandler';
+import { initCoachNotificationResponses } from '../services/coachNotificationHandler';
 import { initMedicationNotificationActions } from '../services/medicationNotificationHandler';
 import { initSymptomNotificationActions } from '../services/symptomNotificationHandler';
 import { initWorkoutLiveActivity } from '../services/workoutLiveActivity';
@@ -83,6 +84,7 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
     const stopMoodCheckinResponses = initMoodCheckinNotificationResponses();
     const stopSymptomActions = initSymptomNotificationActions();
     const stopChallengeResponses = initChallengeNotificationResponses();
+    const stopCoachResponses = initCoachNotificationResponses();
 
     // Keeps the iOS Live Activity or Android ongoing notification in sync
     // with the active-workout store.
@@ -185,6 +187,7 @@ export function useAppStartup({ shouldYieldObserverSync }: AppStartupArgs) {
       stopMoodCheckinResponses();
       stopSymptomActions();
       stopChallengeResponses();
+      stopCoachResponses();
       if (Platform.OS === 'ios') {
         stopObservers();
       }

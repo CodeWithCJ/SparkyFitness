@@ -111,6 +111,29 @@ describe('Demo Mode Infrastructure', () => {
         })
       );
     });
+
+    it('blocks demo user accessing /api/v2/coaches with 403 when demo mode is active', () => {
+      process.env.SPARKY_FITNESS_DEMO_MODE = 'true';
+      const req = {
+        user: { email: 'demo@sparkyfitness.com' },
+        method: 'GET',
+        originalUrl: '/api/v2/coaches',
+      } as unknown as Request;
+      const res = {
+        status: vi.fn().mockReturnThis(),
+        json: vi.fn(),
+      } as unknown as Response;
+      const next = vi.fn() as NextFunction;
+
+      demoGuard(req, res, next);
+      expect(next).not.toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          code: 'DEMO_ACTION_RESTRICTED',
+        })
+      );
+    });
   });
 
   describe('demoSeedService', () => {

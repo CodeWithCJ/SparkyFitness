@@ -140,6 +140,7 @@ import {
   SafeAllergenSettings,
   SafeDashboardSettings,
   SafeHealthTrendsSettings,
+  SafeCoachSettings,
   SafeWatchSettings,
   SafeWatchComplications,
   SafeWatchComplicationEdit,
@@ -1347,6 +1348,11 @@ function AppContent() {
             name="DashboardSettings"
             component={SafeDashboardSettings}
             options={createStackScreenOptions(t('screens.dashboardSettings', { defaultValue: 'Dashboard Settings' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
+          />
+          <Stack.Screen
+            name="CoachSettings"
+            component={SafeCoachSettings}
+            options={createStackScreenOptions(t('coaches.settings.title', { defaultValue: 'Coaches' }), { headerBackTitle: t('navigation.settings', { defaultValue: 'Settings' }) })}
           />
           <Stack.Screen
             name="HealthTrendsSettings"

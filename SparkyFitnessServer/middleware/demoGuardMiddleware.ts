@@ -136,6 +136,7 @@ const RESTRICTED_MESSAGE =
 const DEMO_BLOCKED_PREFIXES = [
   '/api/chat', // AI chat — bills the operator's LLM provider
   '/api/ai', // AI unit conversion — same
+  '/api/v2/coaches', // AI coaches — check-ins, custom judges, LLM composition
   '/mcp', // MCP tool surface, including AI-backed tools
   '/api/mcp',
   '/api/admin', // privileged surface (defense in depth behind the role check)

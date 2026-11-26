@@ -25,13 +25,14 @@ export const useChatPreferencesQuery = () => {
 
 export const useChatHistoryQuery = (
   autoClearSetting: string,
-  enabled: boolean
+  enabled: boolean,
+  coachId: string | null = null
 ) => {
   const { t } = useTranslation();
 
   return useQuery({
-    queryKey: chatbotKeys.history(autoClearSetting),
-    queryFn: () => loadChatHistory(autoClearSetting),
+    queryKey: chatbotKeys.history(autoClearSetting, coachId),
+    queryFn: () => loadChatHistory(autoClearSetting, coachId),
     enabled,
     meta: {
       errorMessage: t(

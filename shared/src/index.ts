@@ -406,5 +406,11 @@ export {
 } from './glucose/context.ts';
 
 export * from './schemas/api/Chat.api.zod.ts';
+export * from './schemas/api/Coaches.api.zod.ts';
+export * from './schemas/database/CoachProfile.zod.ts';
+export * from './schemas/database/UserCoaches.zod.ts';
+export * from './schemas/database/CoachNudges.zod.ts';
+export * from './coaches/index.ts';
+export * from './utils/loggingStreak.ts';
 
 export * from './utils/chatTools.ts';

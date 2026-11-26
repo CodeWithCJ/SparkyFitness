@@ -80,6 +80,10 @@ const ICON_MAP = {
     ion: 'swap-horizontal-outline',
   },
   'arrow-undo': { sf: 'arrow.uturn.backward', ion: 'arrow-undo-outline' },
+  'thumbs-up': { sf: 'hand.thumbsup', ion: 'thumbs-up-outline' },
+  'thumbs-up-fill': { sf: 'hand.thumbsup.fill', ion: 'thumbs-up' },
+  'thumbs-down': { sf: 'hand.thumbsdown', ion: 'thumbs-down-outline' },
+  'thumbs-down-fill': { sf: 'hand.thumbsdown.fill', ion: 'thumbs-down' },
 
   // Status
   'shield-checkmark': {

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-_Last updated: 2026-11-24_
+_Last updated: 2026-11-25_
 
 SparkyFitness Mobile is a React Native 0.88 + Expo SDK 58 app for syncing Apple Health / Health Connect data with the SparkyFitness backend, tracking nutrition, hydration, fasting, measurements, exercise, saved foods, meal templates, custom exercises, workout presets, iOS / Android widgets, the active workout HUD, and the Sparky AI chat.
 
@@ -304,6 +304,8 @@ npx expo prebuild --clean
 - Measurements and water routes are in `measurementsApi.ts`; date-sensitive flows should preserve calendar-day strings and shared timezone helpers.
 
 ## Chat (Ask Sparky)
+
+- AI coaches (#2013, optional feature `aiCoaches`, off by default): `services/api/coachesApi.ts` and `hooks/useCoaches.ts` over `/api/v2/coaches` (`useCoachesAvailable` is the `useMobileFeatures` switch). `ChatScreen` takes an optional `coachId` route param: `CoachThreadChips` switch between Sparky and each coach, history loads with `?coachId=` (`useChatHistory({ coachId })`, a coach's query key sits under `chatHistoryQueryKey`), the transport sends `coachId`, and `components/chat/CoachMessageExtras.tsx` draws the coach's name and the "Because" line above a message and, below it, the suggestion's Apply card, quick-question chips and the thumbs. The Ask Sparky dashboard card shows the unread total and opens the newest coach's thread. `CoachSettingsScreen` (Settings → Coaches; coaches of your own are made on the web) edits the coaches, check-in times, daily limit, pause, About me and the notification switches (`coachNotificationsEnabled`, `mutedCoachNotificationIds`). Notifications are local: `runBackgroundSync` ends with `notifyNewCoachMessages` (`services/coachNotificationService.ts`, `GET /api/v2/coaches/messages/unread?since=`, at most three a run, remembered per server so none repeats), and `coachNotificationHandler.ts` opens the thread when one is tapped (ignored for another server). Never read `feature_choices` directly for it.
 
 - `Chat` is a root-stack route (`src/screens/ChatScreen.tsx`), reached from `AddSheet`'s "Ask Sparky" row and an optional dashboard card gated by the `askSparkyVisible` preference.
 - The thread is an assistant-ui runtime: `@assistant-ui/react-native` primitives plus `useChatRuntime` / `AssistantChatTransport` from `@assistant-ui/react-ai-sdk`, streaming from `POST /api/chat/stream` (AI SDK UI message stream protocol).

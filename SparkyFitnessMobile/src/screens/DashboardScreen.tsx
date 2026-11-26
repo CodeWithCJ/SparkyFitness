@@ -1,4 +1,5 @@
 import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+import { useCoachUnread } from '../hooks/useCoaches';
 import type { CompositeScreenProps } from '@react-navigation/native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -478,6 +479,13 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
     isLoading: isBloodAlcoholLoading,
   } = useBloodAlcohol(selectedDate, bloodAlcoholCardVisible);
   const askSparkyVisible = useAppPreferencesStore((s) => s.askSparkyVisible);
+  // Unread coach messages (#2013) show on the Ask Sparky card, which opens on
+  // the coach with the newest one.
+  const { data: coachUnread } = useCoachUnread();
+  const coachUnreadTotal = coachUnread?.total ?? 0;
+  const newestCoachId = [...(coachUnread?.by_coach ?? [])].sort((a, b) =>
+    b.latest_at.localeCompare(a.latest_at)
+  )[0]?.coach_id;
   const medicationsCardVisible = useAppPreferencesStore(
     (s) => s.medicationsCardVisible
   );
@@ -782,7 +790,12 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                 return askSparkyVisible ? (
                   <Pressable
                     key="askSparky"
-                    onPress={() => navigation.navigate('Chat')}
+                    onPress={() =>
+                      navigation.navigate(
+                        'Chat',
+                        newestCoachId ? { coachId: newestCoachId } : undefined
+                      )
+                    }
                     className="flex-row items-center bg-surface rounded-lg px-4 py-3 mb-3 shadow-sm"
                   >
                     <Icon name="sparkles" size={18} color={accentColor} />
@@ -791,6 +804,21 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ navigation }) => {
                         defaultValue: 'Ask Sparky…',
                       })}
                     </Text>
+                    {coachUnreadTotal > 0 && (
+                      <View
+                        testID="ask-sparky-unread"
+                        className="ml-auto h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1"
+                        accessibilityLabel={t('coaches.thread.unread', {
+                          defaultValue: '{{count}} unread',
+                          defaultValue_one: '{{count}} unread',
+                          count: coachUnreadTotal,
+                        })}
+                      >
+                        <Text className="text-white text-xs font-semibold">
+                          {coachUnreadTotal > 9 ? '9+' : coachUnreadTotal}
+                        </Text>
+                      </View>
+                    )}
                   </Pressable>
                 ) : null;
               case 'macros':

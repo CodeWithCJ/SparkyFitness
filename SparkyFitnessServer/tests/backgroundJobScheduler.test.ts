@@ -27,6 +27,9 @@ vi.mock('../services/openFoodFactsAutoSyncScheduler.js', () => ({
 vi.mock('../services/providerSyncScheduler.js', () => ({
   startProviderSyncSchedulers: mocks.providerSyncs,
 }));
+vi.mock('../services/coachCheckinService.js', () => ({
+  runCoachCheckins: vi.fn(),
+}));
 vi.mock('../services/demoSeedService.js', () => ({
   scheduleDemoMidnightReset: mocks.demoReset,
 }));
@@ -86,7 +89,12 @@ describe('scheduleBackgroundJobs', () => {
       expect.any(Function),
       expect.objectContaining({ name: 'challenge-finalize', distributed: true })
     );
-    expect(mocks.schedule).toHaveBeenCalledTimes(5);
+    expect(mocks.schedule).toHaveBeenCalledWith(
+      '* * * * *',
+      expect.any(Function),
+      expect.objectContaining({ name: 'ai-coach-checkins', distributed: true })
+    );
+    expect(mocks.schedule).toHaveBeenCalledTimes(6);
   });
 
   it('waits for Open Food Facts setup before starting the remaining jobs', async () => {

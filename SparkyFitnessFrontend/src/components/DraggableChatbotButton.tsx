@@ -4,6 +4,10 @@ import { X } from 'lucide-react';
 import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/hooks/useAuth';
+import {
+  useCoachesAvailable,
+  useCoachUnread,
+} from '@/hooks/Coaches/useCoaches';
 import { useActiveAIService } from '@/hooks/AI/useAIServiceSettings';
 
 import { useTranslation } from 'react-i18next';
@@ -24,7 +28,7 @@ interface ButtonState {
 
 const DraggableChatbotButton: React.FC = () => {
   const { t } = useTranslation();
-  const { toggleChat, isChatOpen } = useChatbotVisibility();
+  const { toggleChat, isChatOpen, openCoachChat } = useChatbotVisibility();
   const { user } = useAuth();
   const [buttonState, setButtonState] = useState<ButtonState>(() => {
     const bottomOffset = window.innerWidth < 768 ? BOTTOM_NAV_HEIGHT : 0; // Quick check based on typical mobile breakpoint
@@ -68,6 +72,16 @@ const DraggableChatbotButton: React.FC = () => {
   const hasAiProvider = !!(
     activeService && Object.keys(activeService).length > 0
   );
+  // Coaches can leave messages even where no AI provider is set up.
+  const coachesAvailable = useCoachesAvailable();
+  const { data: coachUnread } = useCoachUnread();
+  const unreadCount = coachesAvailable ? (coachUnread?.total ?? 0) : 0;
+  const showButton = hasAiProvider || coachesAvailable;
+  const newestUnreadCoachId = coachesAvailable
+    ? [...(coachUnread?.by_coach ?? [])].sort((a, b) =>
+        b.latest_at.localeCompare(a.latest_at)
+      )[0]?.coach_id
+    : undefined;
 
   // Calculate actual position based on state
   const getPosition = useCallback(() => {
@@ -114,12 +128,12 @@ const DraggableChatbotButton: React.FC = () => {
 
   // Trigger entrance animation after provider check
   useEffect(() => {
-    if (hasAiProvider && !hasAppeared) {
+    if (showButton && !hasAppeared) {
       // Small delay to ensure position is set before animating in
       const timer = setTimeout(() => setHasAppeared(true), 100);
       return () => clearTimeout(timer);
     }
-  }, [hasAiProvider, hasAppeared]);
+  }, [showButton, hasAppeared]);
 
   // Snap to nearest edge (auto-minimize if dragged very close to edge on mobile)
   const snapToEdge = useCallback(
@@ -245,11 +259,22 @@ const DraggableChatbotButton: React.FC = () => {
         // Reset restoring state after animation
         setTimeout(() => setIsRestoring(false), 300);
       } else {
-        toggleChat();
+        // With unread coach messages the chat opens on the newest one.
+        if (!isChatOpen && newestUnreadCoachId)
+          openCoachChat(newestUnreadCoachId);
+        else toggleChat();
       }
     }
     hasDragged.current = false;
-  }, [setIsRestoring, setButtonState, toggleChat, buttonState]);
+  }, [
+    setIsRestoring,
+    setButtonState,
+    toggleChat,
+    buttonState,
+    isChatOpen,
+    newestUnreadCoachId,
+    openCoachChat,
+  ]);
   const handleTouchEnd = useCallback(() => {
     if (isDragging) {
       handleInteractionEnd();
@@ -301,7 +326,7 @@ const DraggableChatbotButton: React.FC = () => {
 
   // While the chat panel is open it provides its own header controls (minimize
   // / close), so hide the floating launcher to avoid overlapping the panel.
-  if (!hasAiProvider || isChatOpen) {
+  if (!showButton || isChatOpen) {
     return null;
   }
 
@@ -336,6 +361,18 @@ const DraggableChatbotButton: React.FC = () => {
         <div className="w-full h-full flex items-center justify-center pointer-events-none">
           <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
         </div>
+        {unreadCount > 0 && (
+          <span
+            data-testid="chatbot-unread-badge"
+            className="absolute -top-1 left-0 h-3 w-3 rounded-full bg-red-500"
+          >
+            <span className="sr-only">
+              {t('coaches.thread.unread', '{{count}} unread', {
+                count: unreadCount,
+              })}
+            </span>
+          </span>
+        )}
       </div>
     );
   }
@@ -385,6 +422,19 @@ const DraggableChatbotButton: React.FC = () => {
         </button>
       )}
 
+      {unreadCount > 0 && (
+        <span
+          data-testid="chatbot-unread-badge"
+          className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-xs font-semibold text-white shadow"
+        >
+          <span aria-hidden>{unreadCount > 9 ? '9+' : unreadCount}</span>
+          <span className="sr-only">
+            {t('coaches.thread.unread', '{{count}} unread', {
+              count: unreadCount,
+            })}
+          </span>
+        </span>
+      )}
       <img
         src="/images/chatbot.gif"
         alt={t('draggableChatbotButton.aiChatbot', 'AI Chatbot')}

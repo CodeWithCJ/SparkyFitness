@@ -36,6 +36,7 @@ import {
 } from '../ai/modelCapabilities.js';
 import { loadUserTimezone } from '../utils/timezoneLoader.js';
 import { TtlCache } from '../utils/ttlCache.js';
+import { getCoachChatContext } from './coachChatContextService.js';
 import {
   assertOutboundUrlShapeAndLiteralAllowed,
   createGuardedFetch,
@@ -348,12 +349,14 @@ async function clearOldChatHistory(authenticatedUserId: string) {
 
 async function getSparkyChatHistory(
   authenticatedUserId: string,
-  accountUserId: string
+  accountUserId: string,
+  coachId: string | null = null
 ) {
   try {
     const history = await chatRepository.getChatHistoryByUserId(
       authenticatedUserId,
-      accountUserId
+      accountUserId,
+      coachId
     );
     return history;
   } catch (error) {
@@ -410,26 +413,38 @@ async function updateSparkyChatHistoryEntry(
         'Forbidden: You do not have permission to update this chat history entry.'
       );
     }
-    // Metadata sent here replaces what is stored, so the account the message
-    // was saved in is carried over from the stored entry.
-    const storedAccount = (
-      entry.metadata as { account_user_id?: unknown } | null
-    )?.account_user_id;
+    // Metadata sent here replaces what is stored, so the account and coach the
+    // message was saved in, and a coach's own message details, are carried
+    // over from the stored entry.
+    const stored = (entry.metadata ?? {}) as {
+      account_user_id?: unknown;
+      coach_id?: unknown;
+      custom?: { coach?: unknown };
+    };
     const sent = updateData.metadata;
+    let metadata: unknown = sent;
+    if (sent !== undefined && sent !== null) {
+      const marked = withAccountMarker(sent, {
+        ...(typeof stored.account_user_id === 'string'
+          ? { account_user_id: stored.account_user_id }
+          : {}),
+        ...(typeof stored.coach_id === 'string'
+          ? { coach_id: stored.coach_id }
+          : {}),
+      }) as Record<string, unknown>;
+      if (stored.custom?.coach !== undefined) {
+        const custom =
+          marked.custom && typeof marked.custom === 'object'
+            ? (marked.custom as Record<string, unknown>)
+            : {};
+        marked.custom = { ...custom, coach: stored.custom.coach };
+      }
+      metadata = marked;
+    }
     const updatedEntry = await chatRepository.updateChatHistoryEntry(
       id,
       authenticatedUserId,
-      sent === undefined || sent === null
-        ? updateData
-        : {
-            ...updateData,
-            metadata: withAccountMarker(
-              sent,
-              typeof storedAccount === 'string'
-                ? { account_user_id: storedAccount }
-                : undefined
-            ),
-          }
+      metadata === sent ? updateData : { ...updateData, metadata }
     );
     if (!updatedEntry) {
       throw new Error(
@@ -559,27 +574,40 @@ function familyAccountPrompt(accountName: string | null): string {
 }
 
 // Saved with each message of a chat in a family member's account, so it is
-// restored only there (see chatRepository.getChatHistoryByUserId).
+// restored only there (see chatRepository.getChatHistoryByUserId). A message
+// in a coach's thread also carries that coach's id, so each thread restores
+// on its own.
 function accountHistoryMetadata(
   accountUserId: string,
-  authenticatedUserId: string
-): { account_user_id: string } | undefined {
-  return accountUserId === authenticatedUserId
-    ? undefined
-    : { account_user_id: accountUserId };
+  authenticatedUserId: string,
+  coachId?: string | null
+): { account_user_id?: string; coach_id?: string } | undefined {
+  const marker: { account_user_id?: string; coach_id?: string } = {};
+  if (accountUserId !== authenticatedUserId) {
+    marker.account_user_id = accountUserId;
+  }
+  if (coachId) marker.coach_id = coachId;
+  return Object.keys(marker).length > 0 ? marker : undefined;
 }
 
-// The account a message was saved in comes from the server, never the client:
-// any account_user_id sent in its metadata is replaced by `marker`.
+// The account and coach a message was saved in come from the server, never
+// the client: any account_user_id, coach_id or coach message sent in its
+// metadata is replaced by `marker`.
 function withAccountMarker(
   sent: unknown,
-  marker: { account_user_id: string } | undefined
+  marker: { account_user_id?: string; coach_id?: string } | undefined
 ): unknown {
   const sentObject = !!sent && typeof sent === 'object' && !Array.isArray(sent);
   const metadata: Record<string, unknown> = sentObject
     ? { ...(sent as Record<string, unknown>) }
     : {};
   delete metadata.account_user_id;
+  delete metadata.coach_id;
+  const custom = metadata.custom;
+  if (custom && typeof custom === 'object' && !Array.isArray(custom)) {
+    const { coach: _coach, ...rest } = custom as Record<string, unknown>;
+    metadata.custom = rest;
+  }
   Object.assign(metadata, marker);
   return sentObject || Object.keys(metadata).length > 0 ? metadata : sent;
 }
@@ -2466,7 +2494,8 @@ async function processChatMessage(
   authenticatedUserId: string,
   actorIsAdmin = false,
   toolCategories?: readonly string[],
-  conversationId?: string
+  conversationId?: string,
+  coachId?: string | null
 ) {
   try {
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -2507,10 +2536,19 @@ async function processChatMessage(
 
     // A non-empty toolCategories here is the user's explicit in-chat selection
     // (a strict ceiling); an empty one falls through to auto-classification.
-    const categoriesAreManual = Boolean(
-      toolCategories && toolCategories.length > 0
+    // In a coach's thread the coach's data access is the limit instead.
+    const coachContext = await getCoachChatContext(
+      userId,
+      authenticatedUserId,
+      coachId
     );
-    let activeCategories: readonly string[] | undefined = toolCategories;
+    const effectiveToolCategories =
+      coachContext.toolCategories ?? toolCategories;
+    const categoriesAreManual = Boolean(
+      effectiveToolCategories && effectiveToolCategories.length > 0
+    );
+    let activeCategories: readonly string[] | undefined =
+      effectiveToolCategories;
     if (!process.env.VITEST && !categoriesAreManual) {
       activeCategories = await classifyUserIntent(
         messages,
@@ -2539,7 +2577,9 @@ async function processChatMessage(
       aiService.chat_tool_profile,
       activeCategories,
       categoriesAreManual,
-      aiService.system_prompt,
+      [aiService.system_prompt, coachContext.extraPrompt]
+        .filter((part) => part?.trim())
+        .join('\n\n'),
       latestImageDataUrl,
       aiService.id,
       buildFoodResearchTool(
@@ -2663,7 +2703,7 @@ async function processChatMessage(
     await chatRepository
       .saveChatHistory({
         user_id: authenticatedUserId,
-        metadata: accountHistoryMetadata(userId, authenticatedUserId),
+        metadata: accountHistoryMetadata(userId, authenticatedUserId, coachId),
         content: userMessageContent,
         messageType: 'user',
         parts: userMessageParts,
@@ -2689,7 +2729,11 @@ async function processChatMessage(
       await chatRepository
         .saveChatHistory({
           user_id: authenticatedUserId,
-          metadata: accountHistoryMetadata(userId, authenticatedUserId),
+          metadata: accountHistoryMetadata(
+            userId,
+            authenticatedUserId,
+            coachId
+          ),
           content: finalContent,
           messageType: 'assistant',
           parts: [{ type: 'text', text: finalContent }],
@@ -3159,14 +3203,15 @@ export async function claimChatTurn(
   actorId: string,
   accountId: string,
   conversationId?: string,
-  deadlineMs = Date.now() + CHAT_REQUEST_TIMEOUT_MS
+  deadlineMs = Date.now() + CHAT_REQUEST_TIMEOUT_MS,
+  coachId?: string | null
 ) {
   const continuation = prompt.role === 'assistant';
   const { content, parts } = continuation
     ? { content: '', parts: [] }
     : describeUserMessage(toCoreMessages([prompt])[0]);
   return claimChatTurnPrompt(rowId, actorId, content, parts, {
-    ...accountHistoryMetadata(accountId, actorId),
+    ...accountHistoryMetadata(accountId, actorId, coachId),
     ...(conversationId ? { chat_conversation_id: conversationId } : {}),
     turnId,
     turnDeadline: deadlineMs,
@@ -3185,7 +3230,8 @@ async function processChatMessageStream(
   approvals = false,
   turnId?: string,
   producerSignal?: AbortSignal,
-  rowId?: string
+  rowId?: string,
+  coachId?: string | null
 ) {
   let continuation: UIMessage | undefined;
   let continuationContent = '';
@@ -3275,10 +3321,19 @@ async function processChatMessageStream(
 
     // A non-empty toolCategories here is the user's explicit in-chat selection
     // (a strict ceiling); an empty one falls through to auto-classification.
-    const categoriesAreManual = Boolean(
-      toolCategories && toolCategories.length > 0
+    // In a coach's thread the coach's data access is the limit instead.
+    const coachContext = await getCoachChatContext(
+      userId,
+      authenticatedUserId,
+      coachId
     );
-    let activeCategories: readonly string[] | undefined = toolCategories;
+    const effectiveToolCategories =
+      coachContext.toolCategories ?? toolCategories;
+    const categoriesAreManual = Boolean(
+      effectiveToolCategories && effectiveToolCategories.length > 0
+    );
+    let activeCategories: readonly string[] | undefined =
+      effectiveToolCategories;
     if (!process.env.VITEST && !categoriesAreManual) {
       activeCategories = await classifyUserIntent(
         messages,
@@ -3309,7 +3364,9 @@ async function processChatMessageStream(
       aiService.chat_tool_profile,
       activeCategories,
       categoriesAreManual,
-      aiService.system_prompt,
+      [aiService.system_prompt, coachContext.extraPrompt]
+        .filter((part) => part?.trim())
+        .join('\n\n'),
       latestImageDataUrl,
       aiService.id,
       buildFoodResearchTool(
@@ -3690,7 +3747,11 @@ async function processChatMessageStream(
               await chatRepository.saveChatHistory({
                 user_id: authenticatedUserId,
                 metadata: {
-                  ...accountHistoryMetadata(userId, authenticatedUserId),
+                  ...accountHistoryMetadata(
+                    userId,
+                    authenticatedUserId,
+                    coachId
+                  ),
                   ...(conversationId
                     ? { chat_conversation_id: conversationId }
                     : {}),
@@ -3746,7 +3807,7 @@ async function processChatMessageStream(
                   outsideSource: outsideSource(),
                   savedMessageId: responseMessage.id,
                 },
-                ...accountHistoryMetadata(userId, authenticatedUserId),
+                ...accountHistoryMetadata(userId, authenticatedUserId, coachId),
                 ...(conversationId
                   ? { chat_conversation_id: conversationId }
                   : {}),

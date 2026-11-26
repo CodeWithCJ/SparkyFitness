@@ -1,3 +1,4 @@
+import { runCoachCheckins } from './coachCheckinService.js';
 import { scheduleJob } from './scheduledJobs.js';
 import { scheduleBackupsOnStartup } from './backupScheduler.js';
 import { scheduleOpenFoodFactsAutoSyncOnStartup } from './openFoodFactsAutoSyncScheduler.js';
@@ -95,4 +96,18 @@ export async function scheduleBackgroundJobs(): Promise<void> {
   );
   scheduleDemoMidnightReset();
   scheduleChallengeJobs();
+  // AI coaches (#2013): each person's check-in times are checked every
+  // minute; a slot is claimed once, so it runs on one instance.
+  scheduleJob(
+    'ai-coach-checkins',
+    '* * * * *',
+    async () => {
+      try {
+        await runCoachCheckins();
+      } catch (error) {
+        log('error', '[CRON] AI coach check-ins failed:', error);
+      }
+    },
+    { noOverlap: true }
+  );
 }

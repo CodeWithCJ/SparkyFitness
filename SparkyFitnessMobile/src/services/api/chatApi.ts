@@ -36,10 +36,13 @@ type InitialMessages = NonNullable<
  */
 export const loadChatHistory = (
   serverConfig?: ServerConfig,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  coachId?: string | null
 ): Promise<ChatHistoryEntry[]> =>
   apiFetch<ChatHistoryEntry[]>({
-    endpoint: '/api/chat/sparky-chat-history',
+    endpoint: coachId
+      ? `/api/chat/sparky-chat-history?coachId=${encodeURIComponent(coachId)}`
+      : '/api/chat/sparky-chat-history',
     serviceName: 'Chat API',
     operation: 'load chat history',
     serverConfig,

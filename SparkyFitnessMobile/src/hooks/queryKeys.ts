@@ -397,6 +397,11 @@ export const nutrientDisplayPreferencesQueryKey = [
 
 export const chatHistoryQueryKey = ['chatHistory'] as const;
 
+export const coachSettingsQueryKey = ['coaches', 'settings'] as const;
+export const coachUnreadQueryKey = ['coaches', 'unread'] as const;
+export const coachNudgesQueryKey = (coachId: string) =>
+  ['coaches', 'nudges', coachId] as const;
+
 export const nutritionTrendsQueryKey = (startDate: string, endDate: string) =>
   ['nutritionTrends', startDate, endDate] as const;
 

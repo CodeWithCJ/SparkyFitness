@@ -21,6 +21,8 @@
 - **Settings**: Direct access to AI service configuration
 - **Chatbot tools** (web): choose which kinds of tools the assistant may use. While Medications is turned off on the website (**Settings → Features**), its chip is left out, with one "Some features are turned off · Manage" line. Only the chip leaves: your selection stays as it was, and turning Medications off does not take the assistant's medication tools away
 
+- **AI Coaches** (web): coaches that check your data at your chosen times and leave a short message in their own thread of this chat (website and app). See [AI Coaches](/features/ai-coaches). While Coaches are on, what you saved in **About me** (diet, foods to avoid, tone) is also shared with normal Sparky chat.
+
 ### Voice input on web and mobile
 
 In **Ask Sparky** on the web, Android, or iOS, tap the microphone, dictate a message, then stop recording. Review or edit the recognized text and tap **Send**. Dictation does not automatically send messages or add food to your diary; the existing chat handles your request after you send it.

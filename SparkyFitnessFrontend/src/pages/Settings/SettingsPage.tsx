@@ -41,6 +41,8 @@ import { OAuthClientSettings } from './OAuthClientSettings';
 import { WaterTrackingSettings } from './WaterTrackingSettings';
 import { FastingSettings } from './FastingSettings';
 import { GuidedWorkoutSettings } from './GuidedWorkoutSettings';
+import { CoachSettings } from './CoachSettings';
+import { useActiveUser } from '@/contexts/ActiveUserContext';
 import CycleSettings from './CycleSettings';
 import { PreferenceSettings } from './PreferenceSettings';
 import { WebTabsSettings } from './WebTabsSettings';
@@ -77,6 +79,7 @@ const SECTION_TO_TAB_MAP: Record<string, string> = {
   'fasting-settings': 'nutrition-diet',
   'cycle-settings': 'wellness',
   'guided-workouts': 'wellness',
+  coaches: 'wellness',
   'custom-categories': 'wellness',
   'food-and-exercise-data-providers': 'developer-integrations',
   'ai-service': 'developer-integrations',
@@ -88,6 +91,7 @@ const SECTION_TO_TAB_MAP: Record<string, string> = {
 
 const Settings = () => {
   const { t } = useTranslation();
+  const { isActingOnBehalf } = useActiveUser();
   const navigate = useNavigate();
 
   const location = useLocation();
@@ -411,6 +415,11 @@ const Settings = () => {
             >
               <GuidedWorkoutSettings />
             </AccordionItem>
+            {!isActingOnBehalf && (
+              <AccordionItem value="coaches" className="border rounded-lg mb-4">
+                <CoachSettings />
+              </AccordionItem>
+            )}
             <AccordionItem
               value="custom-categories"
               className="border rounded-lg mb-4"
