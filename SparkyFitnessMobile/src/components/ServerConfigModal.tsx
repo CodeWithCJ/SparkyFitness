@@ -59,6 +59,7 @@ import {
   shouldSuggestClientCertificate,
 } from '../services/clientCertificate';
 import ClientCertificateSection from './ClientCertificateSection';
+import ProxyHeadersEditor from './ProxyHeadersEditor';
 import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
 import { pasteFromClipboard } from '../utils/keyboardFocus';
 import {
@@ -118,11 +119,6 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
-  const [showHeaders, setShowHeaders] = useState<Record<number, boolean>>({});
-
-  const toggleShowHeader = (index: number) => {
-    setShowHeaders((prev) => ({ ...prev, [index]: !prev[index] }));
-  };
   const [loading, setLoading] = useState(false);
 
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
@@ -173,7 +169,6 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
       setPassword('');
       setShowPassword(false);
       setShowApiKey(false);
-      setShowHeaders({});
 
       setAdvancedExpanded(false);
 
@@ -311,24 +306,6 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
     const next = !advancedExpanded;
     setAdvancedExpanded(next);
     chevronRotation.set(withTiming(next ? 0 : -90, { duration: 200 }));
-  };
-
-  const handleAddHeader = () => {
-    setProxyHeaders([...proxyHeaders, { name: '', value: '' }]);
-  };
-
-  const handleRemoveHeader = (index: number) => {
-    setProxyHeaders(proxyHeaders.filter((_, i) => i !== index));
-  };
-
-  const handleChangeHeader = (
-    index: number,
-    field: 'name' | 'value',
-    text: string
-  ) => {
-    setProxyHeaders(
-      proxyHeaders.map((h, i) => (i === index ? { ...h, [field]: text } : h))
-    );
   };
 
   const getConfigId = () => editingConfig?.id ?? newConfigId();
@@ -1261,107 +1238,10 @@ const ServerConfigModal: React.FC<ServerConfigModalProps> = ({
 
                 {advancedExpanded && (
                   <View className="mt-3">
-                    <View className="flex-row justify-start items-center mb-2">
-                      <Text className="text-sm font-medium text-text-secondary mr-1">
-                        {t('auth.proxyHeaders', {
-                          defaultValue: 'Proxy Headers',
-                        })}
-                      </Text>
-                      <Button
-                        variant="ghost"
-                        onPress={handleAddHeader}
-                        accessibilityLabel={t('auth.addHeader', {
-                          defaultValue: 'Add header',
-                        })}
-                        className="py-0 px-0"
-                      >
-                        <Icon
-                          name="add-circle"
-                          size={22}
-                          color={accentPrimary}
-                        />
-                      </Button>
-                    </View>
-
-                    {proxyHeaders.length === 0 && (
-                      <Text className="text-xs text-text-muted mb-2">
-                        {t('auth.proxyHeadersHelp', {
-                          defaultValue:
-                            'Used when running behind certain reverse proxies',
-                        })}
-                      </Text>
-                    )}
-
-                    {proxyHeaders.map((header, index) => (
-                      <View key={index} className="mb-3">
-                        <View className="flex-row items-center mb-1.5">
-                          <FormInput
-                            className="flex-1 rounded-lg"
-                            placeholder={t('auth.headerNamePlaceholder', {
-                              defaultValue: 'Name (e.g. X-Access-Token)',
-                            })}
-                            value={header.name}
-                            onChangeText={(text) =>
-                              handleChangeHeader(index, 'name', text)
-                            }
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            style={{ fontSize: 14, paddingRight: 36 }}
-                          />
-                          <Button
-                            variant="ghost"
-                            onPress={() => handleRemoveHeader(index)}
-                            accessibilityLabel={t('auth.removeHeader', {
-                              defaultValue: 'Remove header {{number}}',
-                              number: index + 1,
-                            })}
-                            className="absolute right-1 py-0 px-1.5"
-                          >
-                            <Icon
-                              name="remove-circle"
-                              size={18}
-                              color="#ef4444"
-                            />
-                          </Button>
-                        </View>
-                        <View className="flex-row items-center">
-                          <FormInput
-                            className="flex-1 rounded-lg"
-                            placeholder={t('auth.headerValuePlaceholder', {
-                              defaultValue: 'Value',
-                            })}
-                            value={header.value}
-                            onChangeText={(text) =>
-                              handleChangeHeader(index, 'value', text)
-                            }
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            secureTextEntry={!showHeaders[index]}
-                            style={{ fontSize: 14, paddingRight: 40 }}
-                          />
-                          <Button
-                            variant="ghost"
-                            onPress={() => toggleShowHeader(index)}
-                            accessibilityLabel={
-                              showHeaders[index]
-                                ? t('auth.hideHeaderValue', {
-                                    defaultValue: 'Hide header value',
-                                  })
-                                : t('auth.showHeaderValue', {
-                                    defaultValue: 'Show header value',
-                                  })
-                            }
-                            className="absolute right-1 p-2 py-2 px-2 rounded-lg"
-                          >
-                            <Icon
-                              name={showHeaders[index] ? 'eye-off' : 'eye'}
-                              size={18}
-                              color={textSecondary}
-                            />
-                          </Button>
-                        </View>
-                      </View>
-                    ))}
+                    <ProxyHeadersEditor
+                      headers={proxyHeaders}
+                      onHeadersChange={setProxyHeaders}
+                    />
 
                     <ClientCertificateSection
                       onImported={() =>

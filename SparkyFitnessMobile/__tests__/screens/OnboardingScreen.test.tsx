@@ -33,9 +33,12 @@ jest.mock('../../src/services/api/authService', () => ({
   sendEmailOtp: jest.fn(),
   verifyEmailOtp: jest.fn(),
   fetchAuthSettings: jest.fn(),
+  setPendingProxyHeaders: jest.fn(),
+  clearPendingProxyHeaders: jest.fn(),
 }));
 
 jest.mock('../../src/services/storage', () => ({
+  ...jest.requireActual('../../src/services/storage'),
   saveServerConfig: jest.fn().mockResolvedValue(undefined),
 }));
 

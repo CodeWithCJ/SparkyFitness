@@ -29,12 +29,15 @@ import {
   fetchAuthSettings,
   deletePasskey,
   LoginError,
+  setPendingProxyHeaders,
+  clearPendingProxyHeaders,
   type MobilePasskeyRecord,
 } from '../services/api/authService';
 import ReauthModal from '../components/ReauthModal';
 import {
   getActiveServerConfig,
   proxyHeadersToRecord,
+  type ProxyHeader,
 } from '../services/storage';
 import { getAppLocale } from '../localization';
 
@@ -133,21 +136,26 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
     ) {
       return;
     }
-    await loadPasskeyList(activeConfig.url, activeConfig.sessionToken, {
-      proxyHeaders: proxyHeadersToRecord(activeConfig.proxyHeaders),
-      onLoginEnabled: setPasskeyLoginEnabled,
-      onList: setPasskeys,
-      onError: (msg) =>
-        Toast.show({
-          type: 'error',
-          text1: t('common.error', { defaultValue: 'Error' }),
-          text2: t('passkeySettings.loadFailed', {
-            defaultValue: 'Failed to load passkeys: {{error}}',
-            error: msg,
+    setPendingProxyHeaders(proxyHeadersToRecord(activeConfig.proxyHeaders));
+    try {
+      await loadPasskeyList(activeConfig.url, activeConfig.sessionToken, {
+        proxyHeaders: proxyHeadersToRecord(activeConfig.proxyHeaders),
+        onLoginEnabled: setPasskeyLoginEnabled,
+        onList: setPasskeys,
+        onError: (msg) =>
+          Toast.show({
+            type: 'error',
+            text1: t('common.error', { defaultValue: 'Error' }),
+            text2: t('passkeySettings.loadFailed', {
+              defaultValue: 'Failed to load passkeys: {{error}}',
+              error: msg,
+            }),
           }),
-        }),
-      onSettled: () => setLoading(false),
-    });
+        onSettled: () => setLoading(false),
+      });
+    } finally {
+      clearPendingProxyHeaders();
+    }
   }, [activeConfig, t]);
 
   const fetchList = React.useCallback(async () => {
@@ -166,18 +174,24 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
   const registerPasskeyWithConfig = async (
     url: string,
     token: string,
-    name: string
+    name: string,
+    proxyHeaders: ProxyHeader[] | undefined
   ) => {
-    await addPasskey(url, token, name);
-    Toast.show({
-      type: 'success',
-      text1: t('common.success', { defaultValue: 'Success' }),
-      text2: t('passkeySettings.registered', {
-        defaultValue: 'Passkey registered successfully!',
-      }),
-    });
-    setNewPasskeyName('');
-    await fetchList();
+    setPendingProxyHeaders(proxyHeadersToRecord(proxyHeaders));
+    try {
+      await addPasskey(url, token, name);
+      Toast.show({
+        type: 'success',
+        text1: t('common.success', { defaultValue: 'Success' }),
+        text2: t('passkeySettings.registered', {
+          defaultValue: 'Passkey registered successfully!',
+        }),
+      });
+      setNewPasskeyName('');
+      await fetchList();
+    } finally {
+      clearPendingProxyHeaders();
+    }
   };
 
   const reportAddError = (err: unknown) => {
@@ -239,7 +253,8 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
       await registerPasskeyWithConfig(
         activeConfig.url,
         activeConfig.sessionToken,
-        name
+        name,
+        activeConfig.proxyHeaders
       );
     } catch (err) {
       // Adding a credential requires a fresh session; on a stale one the server
@@ -272,7 +287,12 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
           })
         );
       }
-      await registerPasskeyWithConfig(fresh.url, fresh.sessionToken, name);
+      await registerPasskeyWithConfig(
+        fresh.url,
+        fresh.sessionToken,
+        name,
+        fresh.proxyHeaders
+      );
     } catch (err) {
       reportAddError(err);
     } finally {
@@ -300,6 +320,9 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
           onPress: async () => {
             if (!activeConfig || !activeConfig.sessionToken) return;
             setActionLoading(true);
+            setPendingProxyHeaders(
+              proxyHeadersToRecord(activeConfig.proxyHeaders)
+            );
             try {
               await deletePasskey(
                 activeConfig.url,
@@ -326,6 +349,7 @@ const PasskeySettingsScreen: React.FC<PasskeySettingsScreenProps> = () => {
                 })
               );
             } finally {
+              clearPendingProxyHeaders();
               setActionLoading(false);
             }
           },
