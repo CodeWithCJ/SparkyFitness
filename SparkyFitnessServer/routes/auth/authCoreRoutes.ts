@@ -278,10 +278,9 @@ router.get('/mfa-factors', mfaFactorsRateLimit, async (req, res) => {
   } catch (error) {
     // @ts-expect-error TS(2571): Object is of type 'unknown'.
     log('error', `[AUTH CORE] MFA Factors Error: ${error.message}`);
-    res.json({
-      mfa_totp_enabled: true,
-      mfa_email_enabled: false,
-    });
+    // An explicit server error triggers the frontend fallback (which defaults
+    // to TOTP) rather than falsely asserting that MFA is disabled.
+    res.status(500).json({ error: 'Failed to look up MFA factors' });
   }
 });
 

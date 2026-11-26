@@ -46,7 +46,10 @@ router.get('/authorize', requireSelfActor, async (req, res) => {
  * POST /callback
  * Exchange authorization code for tokens
  */
-router.post('/callback', async (req, res) => {
+// Self-only: linking from a switched/delegated context would let a delegate
+// attach their own Strava account to the owner's row. requireSelfActor rejects a
+// switched context (the router-level diary guard above does not).
+router.post('/callback', requireSelfActor, async (req, res) => {
   try {
     const userId = req.userId;
     const { code } = req.body;

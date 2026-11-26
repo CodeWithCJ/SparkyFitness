@@ -2,6 +2,7 @@ import { resolveMockDataOptions } from '../utils/mockDataOptions.js';
 import express from 'express';
 import { authenticate } from '../middleware/authMiddleware.js';
 import checkPermissionMiddleware from '../middleware/checkPermissionMiddleware.js';
+import requireSelfActor from '../middleware/requireSelfMiddleware.js';
 import garminConnectService from '../integrations/garminconnect/garminConnectService.js';
 import externalProviderRepository from '../models/externalProviderRepository.js';
 import measurementService from '../services/measurementService.js';
@@ -119,7 +120,11 @@ function validateDateRange(startDate: any, endDate: any) {
 router.post(
   '/login',
   authenticate,
-  checkPermissionMiddleware('diary'),
+  // Linking a provider is self-only: binding Garmin tokens onto the owner's row
+  // from a switched/delegated context would let a delegate attach their own
+  // Garmin account to the owner. See the matching Oura/Fitbit/Strava/Google
+  // Health callbacks for the same pattern.
+  requireSelfActor,
   async (req, res, next) => {
     try {
       const userId = req.userId;
@@ -186,7 +191,9 @@ router.post(
 router.post(
   '/resume_login',
   authenticate,
-  checkPermissionMiddleware('diary'),
+  // Same self-only requirement as /login: this route is the MFA continuation
+  // that also binds Garmin tokens onto the user's row.
+  requireSelfActor,
   async (req, res, next) => {
     try {
       const userId = req.userId;

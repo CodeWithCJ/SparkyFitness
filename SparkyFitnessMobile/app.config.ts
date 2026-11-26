@@ -246,12 +246,22 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         // Lets iOS honour the `timeSensitive` rest alert (see
         // `scheduleRestNotification`); without it a Focus mode silences it.
         'com.apple.developer.usernotifications.time-sensitive': true,
+        // Protect files at rest while allowing background tasks (offline outbox
+        // drain, background sync, GPS recording) to access storage once the device
+        // has been unlocked after boot.
+        'com.apple.developer.default-data-protection':
+          'NSFileProtectionCompleteUntilFirstUserAuthentication',
       },
       icon: './assets/icons/appicon.icon',
     },
     android: {
       package: isDev ? DEV_PACKAGE : PROD_PACKAGE,
       permissions: androidPermissions,
+      // Exclude the app's files from Android Auto Backup / adb backup. The
+      // offline SQLite cache (src/offline) holds health data in cleartext, and
+      // Keystore-backed SecureStore entries cannot be restored to another
+      // device anyway, so backing the data dir up only risks exposing it.
+      allowBackup: false,
       // NFC tag links (#941): production, or a dev build with ENABLE_NFC_LINKS=1.
       // The tag site lists the production package and signing keys, so an
       // unlisted dev build would only add a chooser. This is the verified web link Android 16 and later use; older
