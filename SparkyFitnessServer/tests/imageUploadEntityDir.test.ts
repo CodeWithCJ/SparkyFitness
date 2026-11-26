@@ -108,7 +108,11 @@ describe('finalizeUploadedImages', () => {
     ]);
     await fsp.writeFile(pngPath, pngBytes);
 
+    // The function resolves each file under stagingDirFor(imageUploadId), not
+    // the path the caller supplies, so the request must carry the same id the
+    // files were staged under.
     const reqValid = {
+      imageUploadId: 'magic-test',
       files: [{ filename: 'disguised.jpg', path: pngPath }],
     };
     await validateAndSanitizeStagedFiles(reqValid);
@@ -120,6 +124,7 @@ describe('finalizeUploadedImages', () => {
     const textPath = path.join(dir, 'fake.png');
     await fsp.writeFile(textPath, '<html>malicious payload</html>');
     const reqInvalid = {
+      imageUploadId: 'magic-test',
       files: [{ filename: 'fake.png', path: textPath }],
     };
     await expect(

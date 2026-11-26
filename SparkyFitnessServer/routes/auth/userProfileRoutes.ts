@@ -208,6 +208,13 @@ router.post('/switch-context', authenticate, async (req, res, next) => {
 router.get(
   '/users/find-by-email',
   findByEmailRateLimit,
+  // codeql[js/missing-rate-limiting] findByEmailRateLimit above (makeIpRateLimit,
+  // DB-backed) is this repo's own rate limiter; CodeQL's query only recognizes a
+  // fixed set of known libraries (e.g. express-rate-limit) and does not credit
+  // an in-house one, so it still flags this route as unprotected. The same
+  // limiter already guards /auth/mfa-factors elsewhere in this file without
+  // complaint, because CodeQL only reports NEW alerts in a diff — this route is
+  // simply the first new one to carry it.
   authenticate,
   async (req, res, next) => {
     const { email } = req.query;
