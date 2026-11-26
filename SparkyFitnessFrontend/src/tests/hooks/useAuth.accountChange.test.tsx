@@ -127,7 +127,7 @@ describe('AuthProvider query cache across accounts', () => {
     expect(queryClient.getQueryData(CACHED_KEY)).toBeUndefined();
   });
 
-  it('clears birth plan localStorage on account change and sign-out', () => {
+  it('clears birth plan localStorage on account change and sign-out', async () => {
     localStorage.setItem(
       'cycle.birthPlan:a',
       JSON.stringify({ question1: 'yes' })
@@ -153,5 +153,17 @@ describe('AuthProvider query cache across accounts', () => {
     expect(localStorage.getItem('cycle.birthPlan:a')).toBeNull();
     expect(localStorage.getItem('cycle.hospitalBag:a')).toBeNull();
     expect(localStorage.getItem('cycle.birthPlan:b')).not.toBeNull();
+
+    // On a shared/family browser another owner's list can still be around;
+    // signing out as the current owner ('b') must remove only their own keys.
+    localStorage.setItem(
+      'cycle.birthPlan:a',
+      JSON.stringify({ question1: 'yes' })
+    );
+    await act(async () => {
+      await result.current.signOut();
+    });
+    expect(localStorage.getItem('cycle.birthPlan:b')).toBeNull();
+    expect(localStorage.getItem('cycle.birthPlan:a')).not.toBeNull();
   });
 });

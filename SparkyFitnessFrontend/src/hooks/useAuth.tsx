@@ -318,12 +318,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
   }, []);
 
   const signOut = useCallback(async () => {
+    // Read before setUser(null) clears it: clearing only this owner's keys
+    // keeps a shared/family browser's other signed-out owners' lists intact.
+    const signingOutUserId = currentUserRef.current?.id;
     try {
       const { error } = await authClient.signOut();
       if (error) {
         console.error('[Auth Hook] SignOut API error:', error);
-      } else {
-        clearBirthPrepLocalStorage();
       }
     } catch (err) {
       console.error('[Auth Hook] SignOut unexpected error:', err);
@@ -332,6 +333,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({
     identityLookupRef.current = null;
     clearDemoRestrictions();
     clearPendingInvite();
+    clearBirthPrepLocalStorage(signingOutUserId);
     queryClient.clear();
     window.location.href = '/';
   }, [queryClient]);
