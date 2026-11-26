@@ -13,6 +13,53 @@ export function dayString(value: unknown): string {
   return value instanceof Date ? localDateToDay(value) : String(value);
 }
 
+// Display rounding for nutrition values in tool output: energy as a whole
+// number, other nutrients to one decimal, or two below 1 so a trace amount
+// (0.04 mg iron) does not show as 0. Sums of scaled entries otherwise show
+// float noise such as 1948.0945945945946. Values that are not numbers are
+// returned unchanged.
+export function roundNutrient(value: number, digits?: number): number;
+export function roundNutrient(value: unknown, digits?: number): unknown;
+export function roundNutrient(value: unknown, digits?: number): unknown {
+  if (value === null || value === undefined || value === '') return value;
+  const num = Number(value);
+  if (!Number.isFinite(num)) return value;
+  const places = Math.min(
+    15,
+    Math.max(0, Math.trunc(digits ?? (Math.abs(num) < 1 ? 2 : 1)))
+  );
+  // Shift the decimal point in the string form so 0.145 rounds to 0.15
+  // (0.145 * 100 is 14.499999999999998). Rounds half away from zero; numbers
+  // the string shift cannot handle (1e-7, 1e21) fall back to multiplication.
+  // digits is clamped to a whole number from 0 to 15.
+  // `+ 0` turns -0 into 0.
+  const sign = num < 0 ? -1 : 1;
+  const shifted = Math.round(Number(`${Math.abs(num)}e${places}`));
+  const result = sign * Number(`${shifted}e-${places}`);
+  if (Number.isFinite(result)) return result + 0;
+  const factor = 10 ** places;
+  return (sign * Math.round(Math.abs(num) * factor)) / factor + 0;
+}
+
+export function roundEnergy(value: number): number;
+export function roundEnergy(value: unknown): unknown;
+export function roundEnergy(value: unknown): unknown {
+  return roundNutrient(value, 0);
+}
+
+// "100 g", "1 serving": a serving size with its unit, space-separated, and
+// "?" for a size that is missing or not a number.
+export function formatServing(size: unknown, unit: unknown): string {
+  const rounded = roundNutrient(size, 3);
+  const amount =
+    typeof rounded === 'number' && Number.isFinite(rounded)
+      ? String(rounded)
+      : '?';
+  const unitText =
+    unit === null || unit === undefined ? '' : String(unit).trim();
+  return unitText ? `${amount} ${unitText}` : amount;
+}
+
 // Conservative result-size trim shared by the read tools: drop keys whose value
 // carries no information — null/undefined,
 // empty `{}` (e.g. default `custom_nutrients`), empty `[]` (e.g. `allergens`) —

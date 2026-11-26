@@ -6,7 +6,7 @@ import exerciseEntryDb from '../../models/exerciseEntry.js';
 import measurementRepository from '../../models/measurementRepository.js';
 import { ERRORS, formatZodError } from './errors.js';
 import { normalizeDayKeywords } from './dates.js';
-import { dayString, formatJsonResult } from './formatting.js';
+import { dayString, formatJsonResult, roundEnergy } from './formatting.js';
 import { getResolvedExerciseCaloriesRange } from '../../services/exerciseCalorieRangeService.js';
 import { getNutritionalSummaryRows, getWaterHistoryRows } from './foodTools.js';
 import { getBiometricsHistoryRows } from './checkinTools.js';
@@ -162,10 +162,11 @@ async function getDailyReport(
         r.calories_burned;
       return {
         entry_date: dayString(r.entry_date),
-        exercise_calories:
+        exercise_calories: roundEnergy(
           energyUnit === 'kJ' && typeof exerciseCalories === 'number'
             ? convertEnergy(exerciseCalories, 'kcal', 'kJ')
-            : exerciseCalories,
+            : exerciseCalories
+        ),
         exercise_minutes: r.duration_minutes,
         steps: r.steps,
       };
