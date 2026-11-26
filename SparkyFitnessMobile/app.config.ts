@@ -187,8 +187,19 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
         ? DEV_BUNDLE_IDENTIFIER
         : IOS_PROD_BUNDLE_IDENTIFIER,
       appleTeamId: isDev ? DEV_APPLE_TEAM_ID : PROD_APPLE_TEAM_ID,
-      supportsTablet: false,
+      // Universal app: runs natively on iPad. Screens centre their content in a
+      // readable column on wide windows (src/components/ReadableWidthLayout.tsx).
+      supportsTablet: true,
       infoPlist: {
+        // iPhone stays portrait (the `orientation` in app.json). iPad allows
+        // every orientation, which iPadOS also requires for Split View, Slide
+        // Over and Stage Manager windows.
+        'UISupportedInterfaceOrientations~ipad': [
+          'UIInterfaceOrientationPortrait',
+          'UIInterfaceOrientationPortraitUpsideDown',
+          'UIInterfaceOrientationLandscapeLeft',
+          'UIInterfaceOrientationLandscapeRight',
+        ],
         NSLocalNetworkUsageDescription:
           'SparkyFitness connects to self-hosted servers on your local network.',
         // Required by the food/meal photo picker and the label/barcode
@@ -332,6 +343,7 @@ export default ({ config }: ConfigContext): Partial<ExpoConfig> => {
       './plugins/withExactAlarmModule',
       './plugins/withBackgroundWater',
       './plugins/withQuickActionLaunchGuard',
+      './plugins/withTabletRotation',
       './plugins/withWorkoutNotification',
       './plugins/withWearOs',
       './plugins/withEnrichedMarkdownNoMath',
