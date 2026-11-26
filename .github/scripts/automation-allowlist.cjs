@@ -154,7 +154,7 @@ const FILE_EXTENSIONS =
 const LINK = new RegExp(
   [
     // Any scheme with "//": https://, sftp://, myapp://
-    String.raw`\b[a-z][a-z0-9+.-]{1,31}:\/\/[\p{L}\p{N}][^\s<>"'\x60]*`,
+    String.raw`\b[a-z][a-z0-9+.-]{1,31}:\/\/[^\s<>"'\x60().,;:!?{}][^\s<>"'\x60]*`,
     String.raw`\b(?:${BARE_SCHEMES}):[^\s<>"'\x60]+`,
     // Protocol-relative //host and www.host
     String.raw`(?:^|[\s(])\/\/[\p{L}\p{N}][^\s<>"'\x60]*`,

@@ -527,4 +527,7 @@ test("hidden characters and wide dots cannot disguise a link, CJK sentences are 
   assert.deepEqual(has("包含 http://（或 https://）"), []);
   assert.deepEqual(has("http://"), []);
   assert.deepEqual(has("https://"), []);
+  assert.deepEqual(has("https://%65vil%2ecom"), ["https://%65vil%2ecom"]);
+  assert.deepEqual(has("https://[::1]/"), ["https://[::1]/"]);
+  assert.deepEqual(has("https://☃.com"), ["https://☃.com"]);
 });
