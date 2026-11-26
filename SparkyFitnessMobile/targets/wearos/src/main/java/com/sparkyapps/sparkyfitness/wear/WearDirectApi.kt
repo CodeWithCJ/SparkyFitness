@@ -254,15 +254,17 @@ object WearServerCredentialsStore {
     hasActiveBlob: Boolean,
     activeContextGeneration: Long = 0L,
     expectedWriteId: Long? = null,
-    currentWriteId: Long = 0L
+    currentWriteId: Long = 0L,
+    mtlsDisabled: Boolean = false
   ): Boolean {
     if (expectedWriteId != null && currentWriteId != expectedWriteId) {
       return false
     }
     if (generation != null && generation > 0L) {
-      val effectiveActiveGen = maxOf(if (hasActiveBlob) lastSavedGen else 0L, activeContextGeneration)
+      val hasActiveTransport = hasActiveBlob || (mtlsDisabled && lastSavedGen > 0L)
+      val effectiveActiveGen = maxOf(if (hasActiveTransport) lastSavedGen else 0L, activeContextGeneration)
       if (effectiveActiveGen > generation) return false
-      if (!hasActiveBlob && activeContextGeneration <= 0L && revokedGen >= generation) return false
+      if (!hasActiveTransport && activeContextGeneration <= 0L && revokedGen >= generation) return false
     }
     return true
   }
@@ -820,19 +822,22 @@ object WearServerCredentialsStore {
   ): RevocationResult = synchronized(lock) {
     val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     val lastSaved = prefs.getLong(KEY_LAST_GENERATION, 0L)
+    val effectiveLastSaved = maxOf(lastSaved, pendingUnpersistedMtlsGeneration)
     val revoked = effectiveRevokedGeneration(prefs.getLong(KEY_REVOKED_GENERATION, 0L), inMemoryRevokedGeneration)
     val hasBlob = !prefs.getString(KEY_ENCRYPTED_BLOB, null).isNullOrEmpty()
+    val mtlsDisabled = prefs.getBoolean(KEY_MTLS_DISABLED, false) || pendingUnpersistedMtlsGeneration > 0L
     val storedWriteId = prefs.getLong(KEY_WRITE_ID, 0L)
     val currentWriteId = if (storedWriteId in failedUncommittedWriteIds) 0L else storedWriteId
     if (
       !shouldAcceptRevocation(
         generation = generation,
-        lastSavedGen = lastSaved,
+        lastSavedGen = effectiveLastSaved,
         revokedGen = revoked,
         hasActiveBlob = hasBlob,
         activeContextGeneration = activeContextGeneration,
         expectedWriteId = expectedWriteId,
-        currentWriteId = currentWriteId
+        currentWriteId = currentWriteId,
+        mtlsDisabled = mtlsDisabled
       )
     ) {
       return RevocationResult(
@@ -853,6 +858,7 @@ object WearServerCredentialsStore {
         .remove(KEY_ENCRYPTED_BLOB)
         .remove(KEY_OWNER_ID)
         .remove(KEY_LAST_APPLIED_FINGERPRINT)
+        .remove(KEY_MTLS_DISABLED)
         .putLong(KEY_REVOKED_GENERATION, nextRevoked)
         .commit()
     }
@@ -914,6 +920,7 @@ object WearServerCredentialsStore {
         .remove(KEY_ENCRYPTED_BLOB)
         .remove(KEY_OWNER_ID)
         .remove(KEY_LAST_APPLIED_FINGERPRINT)
+        .remove(KEY_MTLS_DISABLED)
         .putLong(KEY_REVOKED_GENERATION, nextRevoked)
         .commit()
     }
@@ -941,6 +948,7 @@ object WearServerCredentialsStore {
         .remove(KEY_ENCRYPTED_BLOB)
         .remove(KEY_OWNER_ID)
         .remove(KEY_LAST_APPLIED_FINGERPRINT)
+        .remove(KEY_MTLS_DISABLED)
         .putLong(KEY_REVOKED_GENERATION, nextRevoked)
         .commit()
     }

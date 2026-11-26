@@ -1955,20 +1955,29 @@ describe('useWatchCheckInBridge direct water sync ack coordination', () => {
       expect(watch.sendAck).toHaveBeenCalledWith('tap-queued-unreadable', true)
     );
     watch.sendAck.mockClear();
+    mockCancelQueued.mockClear();
     mockCancelQueued.mockResolvedValueOnce('unreadable');
-    act(() => {
+    await act(async () => {
       mockWatchListeners.get('onWaterTapCancel')?.({
         clientId: 'tap-queued-unreadable',
         ownerId: 'server-a',
       });
+      await Promise.resolve();
     });
-    await waitFor(() => expect(mockCancelQueued).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(mockCancelQueued).toHaveBeenCalledWith(
+        'replay-unreadable-3',
+        'server-a'
+      )
+    );
+    expect(mockCancelQueued).toHaveBeenCalledTimes(1);
     expect(watch.sendAck).not.toHaveBeenCalled();
 
     mockCancelQueued.mockResolvedValueOnce('cancelled');
     act(() => {
       notifyUploadsConfirmed();
     });
+    await waitFor(() => expect(mockCancelQueued).toHaveBeenCalledTimes(2));
     await waitFor(() =>
       expect(watch.sendAck).toHaveBeenCalledWith('tap-queued-unreadable', true)
     );

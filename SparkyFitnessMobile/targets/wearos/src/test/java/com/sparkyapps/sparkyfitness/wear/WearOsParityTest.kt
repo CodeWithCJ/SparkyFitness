@@ -7102,5 +7102,84 @@ class WearOsParityTest {
                 mtlsDisabled = rolledBack.mtlsDisabled
             )
         )
+
+        // Round 5 Thread [2]: Committed mTLS notice (mtlsDisabled = true, lastSavedGen > 0) treats lastSavedGen as active
+        // watermark against stale revocations (rev 5 rejected when lastSavedGen == 6), while rev 6 clears gen 6 and rev 5 clears gen 4.
+        assertFalse(
+            WearServerCredentialsStore.shouldAcceptRevocation(
+                generation = 5L,
+                lastSavedGen = 6L,
+                revokedGen = 0L,
+                hasActiveBlob = false,
+                mtlsDisabled = true
+            )
+        )
+        assertTrue(
+            WearServerCredentialsStore.shouldAcceptRevocation(
+                generation = 6L,
+                lastSavedGen = 6L,
+                revokedGen = 0L,
+                hasActiveBlob = false,
+                mtlsDisabled = true
+            )
+        )
+        assertTrue(
+            WearServerCredentialsStore.shouldAcceptRevocation(
+                generation = 5L,
+                lastSavedGen = 4L,
+                revokedGen = 0L,
+                hasActiveBlob = false,
+                mtlsDisabled = true
+            )
+        )
+
+        // Round 5 Thread [3]: Late /sparky/context TYPE_DELETED scopes revocation to deletedContextGen (never null when creds are generation-bearing)
+        val (revokeGen4, argGen4) = WearSessionManager.resolveContextDeleteRevocationGeneration(
+            deletedContextGen = 4L,
+            currentCredGen = 6L
+        )
+        assertTrue(revokeGen4)
+        assertEquals(4L, argGen4)
+        assertFalse(
+            WearServerCredentialsStore.shouldAcceptRevocation(
+                generation = argGen4,
+                lastSavedGen = 6L,
+                revokedGen = 0L,
+                hasActiveBlob = true
+            )
+        )
+        val (revokeGenerationless, argGenerationless) = WearSessionManager.resolveContextDeleteRevocationGeneration(
+            deletedContextGen = 0L,
+            currentCredGen = 6L
+        )
+        assertFalse(revokeGenerationless)
+        assertNull(argGenerationless)
+        val (revokeLegacy, argLegacy) = WearSessionManager.resolveContextDeleteRevocationGeneration(
+            deletedContextGen = 0L,
+            currentCredGen = 0L
+        )
+        assertTrue(revokeLegacy)
+        assertNull(argLegacy)
+
+        // Failed gen-6 mTLS notice commit (lastSavedGen = 4, pendingUnpersistedMtlsGeneration = 6) rejects rev 5 and accepts rev 6
+        val effectivePendingMtlsGen = maxOf(4L, 6L)
+        assertFalse(
+            WearServerCredentialsStore.shouldAcceptRevocation(
+                generation = 5L,
+                lastSavedGen = effectivePendingMtlsGen,
+                revokedGen = 0L,
+                hasActiveBlob = false,
+                mtlsDisabled = true
+            )
+        )
+        assertTrue(
+            WearServerCredentialsStore.shouldAcceptRevocation(
+                generation = 6L,
+                lastSavedGen = effectivePendingMtlsGen,
+                revokedGen = 0L,
+                hasActiveBlob = false,
+                mtlsDisabled = true
+            )
+        )
     }
 }

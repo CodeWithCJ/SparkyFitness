@@ -868,8 +868,14 @@ class WearSessionManager private constructor(private val appContext: Context) :
       if (event.type == DataEvent.TYPE_DELETED && shouldHandleDeletedDataPath(path)) {
         val uri = item.uri
         val isContextDelete = path == PATH_CONTEXT
+        val deletedItemCtxGen = runCatching {
+          DataMapItem.fromDataItem(item).dataMap.getString("json")?.let { raw ->
+            JSONObject(raw).optLong("generation", 0L).takeIf { it > 0L }
+          }
+        }.getOrNull() ?: 0L
         val genAtEvent = checkInStore.currentAccountGeneration()
         val ctxGenAtEvent = checkInStore.currentAcceptedContextGeneration()
+        val deletedContextGen = deletedItemCtxGen
         val ctxSeqAtEvent = checkInStore.currentAcceptedContextSeq()
         val credGenAtEvent = WearServerCredentialsStore.lastGeneration(appContext)
         val credWriteIdAtEvent = WearServerCredentialsStore.currentWriteId(appContext)
@@ -903,9 +909,14 @@ class WearSessionManager private constructor(private val appContext: Context) :
             return@launch
           }
           if (isContextDelete) {
+            val (shouldRevoke, revGen) = resolveContextDeleteRevocationGeneration(
+              deletedContextGen = deletedContextGen,
+              currentCredGen = WearServerCredentialsStore.lastGeneration(appContext)
+            )
+            if (!shouldRevoke) return@launch
             val result = WearServerCredentialsStore.tryClearForRevocation(
               context = appContext,
-              generation = null,
+              generation = revGen,
               activeContextGeneration = checkInStore.currentAcceptedContextGeneration(),
               expectedWriteId = credWriteIdAtEvent
             )
@@ -2084,6 +2095,15 @@ class WearSessionManager private constructor(private val appContext: Context) :
 
     internal fun shouldHandleDeletedDataPath(path: String): Boolean =
       path == PATH_CONTEXT
+
+    internal fun resolveContextDeleteRevocationGeneration(
+      deletedContextGen: Long,
+      currentCredGen: Long
+    ): Pair<Boolean, Long?> = when {
+      deletedContextGen > 0L -> true to deletedContextGen
+      currentCredGen > 0L -> false to null
+      else -> true to null
+    }
 
     internal fun isStaleDeleteEvent(
       genAtEvent: Long,
