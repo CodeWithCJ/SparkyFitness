@@ -58,6 +58,15 @@ import {
 } from '@workspace/shared';
 import ApprovalCard from '../components/chat/ApprovalCard';
 import OutsideSourceLine from '../components/chat/OutsideSourceLine';
+import {
+  CoachMessageFooter,
+  CoachMessageHeader,
+} from '../components/chat/CoachMessageExtras';
+import CoachThreadChips from '../components/chat/CoachThreadChips';
+import {
+  useCoachesAvailable,
+  useMarkCoachThreadRead,
+} from '../hooks/useCoaches';
 import Icon from '../components/Icon';
 import ActionSheet, { type ActionSheetRef } from '../components/ActionSheet';
 import SafeImage from '../components/SafeImage';
@@ -175,6 +184,7 @@ function useSparkyChatRuntime({
   settledTurnId,
   serviceConfigId,
   conversationId,
+  coachId,
   initialMessages,
 }: {
   serverConfig: ServerConfig;
@@ -182,6 +192,8 @@ function useSparkyChatRuntime({
   settledTurnId?: string;
   serviceConfigId: string;
   conversationId: string;
+  /** The coach whose thread this is; null is the main Sparky chat. */
+  coachId: string | null;
   initialMessages: InitialMessages;
 }) {
   const { t } = useTranslation();
@@ -250,11 +262,15 @@ function useSparkyChatRuntime({
         // Merged into the request body alongside `messages`; the server reads it.
         body: {
           service_config_id: serviceConfigId,
-          conversationId,
+          conversationId: coachId
+            ? `${conversationId}:${coachId}`
+            : conversationId,
           approvals: true,
+          // A coach's thread talks to that coach; the server limits its tools.
+          ...(coachId ? { coachId } : {}),
         },
       }),
-    [serverConfig, serviceConfigId, conversationId, begin, t]
+    [serverConfig, serviceConfigId, conversationId, coachId, begin, t]
   );
 
   // Thread-level safety net: a per-message error box can't render if the stream
@@ -369,6 +385,8 @@ function MessageBubble({
         </View>
       )}
 
+      {!isUser && <CoachMessageHeader />}
+
       {showBubble && (
         <View
           testID={isUser ? 'user-message-bubble' : 'assistant-message-bubble'}
@@ -404,6 +422,7 @@ function MessageBubble({
       {/* Error box + actions sit below the bubble and only apply to assistant
           messages. ErrorPrimitive.Root self-gates (renders null with no error). */}
       <MessagePrimitive.If assistant>
+        <CoachMessageFooter />
         <OutsideSourceLine onClearChat={onClearChat} />
         <ErrorPrimitive.Root
           style={{
@@ -1313,11 +1332,13 @@ function ChatThread({
   voiceServiceConfigId,
   voiceInputEnabled,
   conversationId,
+  coachId,
   initialMessages,
   onRunningChange,
   autoFocusReady,
   onClearChat,
 }: {
+  coachId: string | null;
   connectComposer: ConnectComposer;
   onClearChat: () => void;
   serverConfig: ServerConfig;
@@ -1339,6 +1360,7 @@ function ChatThread({
     settledTurnId,
     serviceConfigId,
     conversationId,
+    coachId,
     initialMessages,
   });
 
@@ -1497,6 +1519,7 @@ function Centered({ text }: { text: string }) {
 
 export default function ChatScreen({
   navigation,
+  route,
 }: RootStackScreenProps<'Chat'>) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -1516,9 +1539,13 @@ export default function ChatScreen({
 
   const [serverConfig, setServerConfig] = useState<ServerConfig | null>(null);
   const baseUrl = serverConfig ? normalizeUrl(serverConfig.url) : null;
+  const coachesAvailable = useCoachesAvailable();
+  const coachId = coachesAvailable ? (route.params?.coachId ?? null) : null;
   const [restoredHistory, setRestoredHistory] = useState<{
     messages: NonNullable<InitialMessages>;
     turnId: string;
+    /** The thread it was recovered in; another thread starts afresh. */
+    coachId: string | null;
   }>();
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [running, setRunning] = useState(false);
@@ -1554,10 +1581,10 @@ export default function ChatScreen({
   const onRecovered = useCallback(
     (messages: NonNullable<InitialMessages>, turnId: string) => {
       recoveryDraft.current = activeComposer.current?.getState();
-      setRestoredHistory({ messages, turnId });
+      setRestoredHistory({ messages, turnId, coachId });
       setThreadKey((k) => k + 1);
     },
-    []
+    [coachId]
   );
   // Kept across reopening the chat so session-affine providers keep their
   // session; rotated when the history is cleared or the provider changes.
@@ -1612,10 +1639,21 @@ export default function ChatScreen({
   }, []);
 
   // Clearing needs only an authenticated server, not an active AI provider.
+  const { mutate: markCoachRead } = useMarkCoachThreadRead();
   const { data: historyData, isLoading: loadingHistory } = useChatHistory({
     enabled: !!baseUrl,
+    coachId,
   });
-  const initialMessages = restoredHistory?.messages ?? historyData ?? [];
+
+  // A coach's thread is read once it is opened, and a thread switch starts
+  // from that thread's own history, not a turn recovered in another one.
+  useEffect(() => {
+    if (coachId) markCoachRead(coachId);
+  }, [coachId, markCoachRead]);
+  // A turn recovered in another thread is not this one's history.
+  const restoredHere =
+    restoredHistory?.coachId === coachId ? restoredHistory : undefined;
+  const initialMessages = restoredHere?.messages ?? historyData ?? [];
 
   const serviceConfigId = setting?.id ?? null;
 
@@ -1719,6 +1757,13 @@ export default function ChatScreen({
     >
       {header}
 
+      {coachesAvailable && (
+        <CoachThreadChips
+          activeCoachId={coachId}
+          onSelect={(next) => navigation.setParams({ coachId: next })}
+        />
+      )}
+
       {/* Padding shrinks the message list by the keyboard height so the composer
           stays pinned just above the keyboard. On iOS, RN core's
           KeyboardAvoidingView follows keyboardWillShow with the system layout
@@ -1756,10 +1801,11 @@ export default function ChatScreen({
         ) : (
           <ChatThread
             connectComposer={connectComposer}
-            key={threadKey}
+            key={`${threadKey}:${coachId ?? ''}`}
+            coachId={coachId}
             serverConfig={serverConfig}
             onRecovered={onRecovered}
-            settledTurnId={restoredHistory?.turnId}
+            settledTurnId={restoredHere?.turnId}
             serviceConfigId={serviceConfigId}
             voiceServiceConfigId={preferences?.active_voice_ai_service_id}
             voiceInputEnabled={

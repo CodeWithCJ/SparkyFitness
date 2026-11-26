@@ -21,6 +21,11 @@ import { Thread } from '@/components/thread';
 import { useToast } from '@/hooks/use-toast';
 import { useChatToolCategories } from '@/contexts/ChatToolCategoriesContext';
 import { useEffect } from 'react';
+import { useChatbotVisibility } from '@/contexts/ChatbotVisibilityContext';
+import {
+  useCoachesAvailable,
+  useMarkCoachThreadRead,
+} from '@/hooks/Coaches/useCoaches';
 import { useActiveUser } from '@/contexts/ActiveUserContext';
 import { useQueryClient } from '@tanstack/react-query';
 import { FoodAssistantState } from '@/components/ai/FoodAssistantState';
@@ -37,6 +42,10 @@ interface SparkyChatInnerProps {
     chat_tool_profile?: 'full' | 'core' | null;
   } | null;
   onClearChat?: () => void;
+  /** The coach whose thread this is; null is the main Sparky chat. */
+  coachId: string | null;
+  /** No AI provider: coach messages can be read but not answered. */
+  readOnly: boolean;
   history: Array<{
     id: string;
     content: string;
@@ -50,6 +59,8 @@ const SparkyChatInner = ({
   activeAIServiceSetting,
   history,
   onClearChat,
+  coachId,
+  readOnly,
 }: SparkyChatInnerProps) => {
   const { t } = useTranslation();
   const invalidateDiary = useDiaryInvalidation();
@@ -119,6 +130,8 @@ const SparkyChatInner = ({
         approvals: true,
         service_config_id: activeAIServiceSetting?.id,
         user_date: userDate,
+        // A coach's thread talks to that coach; the server limits its tools.
+        coachId: coachId ?? undefined,
       },
       prepareSendMessagesRequest: async (options: {
         id: string;
@@ -158,10 +171,15 @@ const SparkyChatInner = ({
             // Latest runtime tool-category selection (stable getter so the
             // closure never sends a stale set). Empty => server falls back to
             // the service's profile default.
-            toolCategories: hasCustomSelection ? getSelected() : undefined,
+            toolCategories:
+              hasCustomSelection && !coachId ? getSelected() : undefined,
             // Stable per-conversation ID. The server pins providers that need
             // session affinity (OpenCode Go) to it.
-            conversationId: await getChatConversationId(activeUserId ?? ''),
+            conversationId: await getChatConversationId(
+              coachId
+                ? `${activeUserId ?? ''}:${coachId}`
+                : (activeUserId ?? '')
+            ),
             messages: processedMessages,
           },
         };
@@ -204,7 +222,11 @@ const SparkyChatInner = ({
         }
       />
       <div className="flex-1 overflow-hidden py-4">
-        <Thread runtime={runtime} onClearChat={onClearChat} />
+        <Thread
+          runtime={runtime}
+          onClearChat={onClearChat}
+          readOnly={readOnly}
+        />
       </div>
     </div>
   );
@@ -213,14 +235,25 @@ const SparkyChatInner = ({
 const SparkyChatInterface = ({ onClearChat }: { onClearChat?: () => void }) => {
   const { user } = useAuth();
   const { activeUserId } = useActiveUser();
+  const { activeCoachId } = useChatbotVisibility();
+  const coachesAvailable = useCoachesAvailable();
+  const coachId = coachesAvailable ? activeCoachId : null;
+  const markRead = useMarkCoachThreadRead();
+  const markThreadRead = markRead.mutate;
   const { data: activeAIServiceSetting, isLoading: isActiveServiceLoading } =
     useActiveAIService(!!user);
   const { data: preferences, isLoading: isPrefsLoading } =
     useChatPreferencesQuery();
   const { data: history, isLoading: isHistoryLoading } = useChatHistoryQuery(
     preferences?.auto_clear_history || 'never',
-    !!user
+    !!user,
+    coachId
   );
+
+  // Opening a coach's thread reads its messages.
+  useEffect(() => {
+    if (coachId) markThreadRead(coachId);
+  }, [coachId, markThreadRead]);
 
   if (isActiveServiceLoading || isPrefsLoading || isHistoryLoading) {
     return (
@@ -232,7 +265,9 @@ const SparkyChatInterface = ({ onClearChat }: { onClearChat?: () => void }) => {
 
   return (
     <SparkyChatInner
-      key={activeUserId ?? ''}
+      key={`${activeUserId ?? ''}:${coachId ?? ''}`}
+      coachId={coachId}
+      readOnly={!activeAIServiceSetting}
       activeAIServiceSetting={activeAIServiceSetting || null}
       history={history || []}
       onClearChat={onClearChat}

@@ -195,7 +195,7 @@ describe('chatRepository.getChatHistoryByUserId', () => {
       expect.stringContaining(
         "COALESCE(metadata->>'account_user_id', user_id::text) = $2"
       ),
-      ['user-1', 'user-1']
+      ['user-1', 'user-1', '']
     );
     expect(result).toEqual(mockRows);
   });

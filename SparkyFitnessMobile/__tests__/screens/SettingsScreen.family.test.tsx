@@ -31,6 +31,10 @@ jest.mock('../../src/hooks', () => ({
   queryClient: { getQueryCache: () => ({ getAll: () => [] }) },
 }));
 
+jest.mock('../../src/hooks/useCoaches', () => ({
+  useCoachesAvailable: () => false,
+}));
+
 jest.mock('../../src/hooks/useNfcSupport', () => ({
   useNfcSupport: () => ({
     supported: false,

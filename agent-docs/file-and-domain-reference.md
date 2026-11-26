@@ -99,6 +99,7 @@ Paths are relative to each package root. `—` means that layer does not exist f
 | Feature | Backend | Frontend | Mobile | Shared |
 |---------|---------|----------|--------|--------|
 | **Chat** (Sparky) | `routes/chatRoutes.ts` `routes/mcpRoutes.ts`, `services/chatService.ts`, `ai/tools/` | `pages/Chat/` `api/Chatbot/` `hooks/AI/` | `screens/ChatScreen.tsx` `services/api/chatApi.ts` `hooks/useChatHistory.ts` | — (no Chat API schema) |
+| **AI Coaches** | `routes/v2/coachRoutes.ts`, `services/coachService.ts` `coachCheckinService.ts` `coachSignalService.ts` `coachMessageService.ts` `coachChatContextService.ts`, `models/aiCoachRepository.ts` `coachSignalRepository.ts`, `ai/resolveTextAiProvider.ts`, `prompts/coaches/`, `db/migrations/20261125120000_create_ai_coaches.sql` | `pages/Settings/CoachSettings.tsx` + `pages/Settings/Coaches/`, `components/ai/CoachMessageHeader.tsx` `CoachThreadPicker.tsx`, `hooks/Coaches/`, `api/Coaches/` | — (web first) | `shared/src/coaches/`, `schemas/api/Coaches.api.zod.ts`, `schemas/database/CoachProfile.zod.ts` `UserCoaches.zod.ts` `CoachNudges.zod.ts` |
 | **AI Photo Estimate** | `routes/checkInPhotoRoutes.ts` + food-photo route, `services/foodPhotoEstimationService.ts` `services/checkInPhotoService.ts`, `ai/` | `pages/Foods/` (photo flow) | `screens/FoodPhoto*Screen.tsx` `services/api/externalFoodSearchApi.ts` `hooks/useEstimateFoodPhoto.ts` | `schemas/api/FoodPhotoEstimate.api.zod.ts` |
 
 ---

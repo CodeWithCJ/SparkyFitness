@@ -8,6 +8,7 @@ import {
   FEATURE_GROUPS,
   FEATURE_KEYS,
   OPTIONAL_FEATURES,
+  isFeatureOffered,
   type ChoiceFeatureKey,
   type FeatureGroup,
   type FeatureKey,
@@ -241,6 +242,22 @@ function MedicationsFeatureRows() {
   );
 }
 
+/** AI coaches (#2013): messages from coaches in Sparky chat. Off by default. */
+function AiCoachesFeatureRows() {
+  const { t } = useTranslation();
+  return (
+    <ChoiceFeatureRows
+      feature="aiCoaches"
+      icon="sparkles"
+      title={t('featureSettings.aiCoaches.title', { defaultValue: 'Coaches' })}
+      description={t('featureSettings.aiCoaches.description', {
+        defaultValue:
+          'AI coaches that watch your food, training and sleep and send a short message when something is worth saying.',
+      })}
+    />
+  );
+}
+
 /** One row per feature. A new registry key needs its own rows here: the
  * return type makes a missing case fail to compile. */
 function FeatureRows({ feature }: { feature: FeatureKey }): ReactElement {
@@ -251,6 +268,8 @@ function FeatureRows({ feature }: { feature: FeatureKey }): ReactElement {
       return <MedicationsFeatureRows />;
     case 'labResults':
       return <LabResultsFeatureRows />;
+    case 'aiCoaches':
+      return <AiCoachesFeatureRows />;
   }
 }
 
@@ -289,7 +308,9 @@ export default function FeatureSettingsScreen(
         </Text>
         {FEATURE_GROUPS.map((group) => {
           const keys = FEATURE_KEYS.filter(
-            (key) => OPTIONAL_FEATURES[key].group === group
+            (key) =>
+              OPTIONAL_FEATURES[key].group === group &&
+              isFeatureOffered(key, 'mobile')
           );
           if (keys.length === 0) return null;
           return (

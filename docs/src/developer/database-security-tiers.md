@@ -44,6 +44,9 @@ These tables contain highly sensitive credentials, API keys, SSO tokens, 2FA rec
 | `food_assistant_preferences` | Explicit lasting food preferences | Owner-Only | Owner-Only |
 | `food_assistant_tasks` | Recoverable food tasks, ingredient drafts and source evidence | Owner-Only | Owner-Only |
 | `food_assistant_operations` | Idempotent operations and before/after audit records | Owner-Only | Owner-Only |
+| `coach_profile` | AI coaches: the shared "About me", check-in times, daily message limit and pause | Owner-Only | Owner-Only |
+| `user_coaches` | AI coaches a person switched on or created, with rule changes and settings | Owner-Only | Owner-Only |
+| `coach_nudges` | Messages AI coaches sent, why, and whether they were read | Owner-Only | Owner-Only |
 | `user_ignored_updates` | Records of skipped release updates | Owner-Only | Owner-Only |
 | `admin_activity_logs` | Admin action audits | Admin-Only | Admin-Only |
 | `ai_service_settings` | AI configurations and credentials, including optional reasoning effort (medium by default) and the per-model `supports_audio_input` opt-in | Owner-Only | Owner-Only (Public configs readable by all) |

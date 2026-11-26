@@ -44,6 +44,13 @@ vi.mock('../ai/tools/mcpServerTools.js', async (importOriginal) => ({
   getChatToolServerIds: vi.fn(() => ({ mcp_notes__search: 'server-1' })),
   getChatToolTitles: vi.fn(() => ({ mcp_notes__search: 'search_notes' })),
 }));
+vi.mock('../services/coachChatContextService.js', () => ({
+  CoachChatError: class CoachChatError extends Error {},
+  getCoachChatContext: vi.fn(async () => ({
+    extraPrompt: null,
+    toolCategories: null,
+  })),
+}));
 vi.mock('../models/chatRepository');
 vi.mock('../models/userRepository');
 vi.mock('../models/measurementRepository');
@@ -363,7 +370,8 @@ describe('chatService', () => {
       // The signed-in person's history, in the account being worked in.
       expect(chatRepository.getChatHistoryByUserId).toHaveBeenCalledWith(
         mockUserId,
-        mockTargetUserId
+        mockTargetUserId,
+        null
       );
     });
     it('should get chat history entry by id', async () => {
