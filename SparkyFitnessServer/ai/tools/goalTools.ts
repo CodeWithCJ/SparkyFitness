@@ -56,6 +56,25 @@ const GOAL_SNAPSHOT_FIELDS = [
   'alcohol_g',
 ] as const;
 
+const isMissing = (value: unknown) => value === null || value === undefined;
+
+// Goals get_goals lists below the main ones when set (units as in set_goals).
+const MICRONUTRIENT_GOALS = [
+  ['saturated_fat', 'Saturated fat', 'g'],
+  ['polyunsaturated_fat', 'Polyunsaturated fat', 'g'],
+  ['monounsaturated_fat', 'Monounsaturated fat', 'g'],
+  ['trans_fat', 'Trans fat', 'g'],
+  ['cholesterol', 'Cholesterol', ' mg'],
+  ['sodium', 'Sodium', ' mg'],
+  ['potassium', 'Potassium', ' mg'],
+  ['dietary_fiber', 'Fiber', 'g'],
+  ['sugars', 'Sugars', 'g'],
+  ['vitamin_a', 'Vitamin A', ' µg'],
+  ['vitamin_c', 'Vitamin C', ' mg'],
+  ['calcium', 'Calcium', ' mg'],
+  ['iron', 'Iron', ' mg'],
+] as const;
+
 // Adjusted goals come from the goal-mode calculation and can carry float noise
 // (e.g. 88.30000000000001). Round to 1 decimal for chat display — integers stay
 // integers, so raw stored goals render exactly as before.
@@ -98,9 +117,9 @@ export function buildGoalTools(userId: string, tz: string) {
 This tool takes a FLAT object with an "action" field. Do NOT nest fields under the action name.
 
 Actions:
-- action: 'get_goals' (fields: target_date?) — returns the goals active on a specific date
+- action: 'get_goals' (fields: target_date?) — returns the goals active on a date (default today): calories, macros, water, caffeine, alcohol, plus steps, micronutrient and custom nutrient goals when set (a micronutrient or steps goal of 0 counts as not set). For goal directions (minimum/maximum) use sparky_get_goal_snapshot
 - action: 'set_goals' (fields: start_date, calories?, protein?, carbs?, fat?, water_goal_ml?, weight?, weight_unit?, caffeine_mg?, alcohol_g?, ...) — sets new goals from a start date. For a start_date of today or later, it replaces goals already scheduled in the six months from start_date. For a start_date before today (in the user's timezone), only that date is written. Fields left out take the values active on start_date. If protein/carbs/fat are stored as percentages and none of them is given, their grams follow the new calories; giving any of them clears the stored percentages. weight is the target body weight. It has no start date and replaces the current one. A call with only weight (and weight_unit) saves just the target weight, adds no goal entry and ignores start_date. weight_unit is kg or lbs; pass it unless the user has a weight unit set in their preferences. Only the account owner can set the target weight: on another account, a call with weight is refused entirely
-- action: 'list_goal_timeline' — lists all goal changes over time`,
+- action: 'list_goal_timeline' — lists the dated goal changes (calories, macros, water), newest first, then the default goals used when no dated goal applies`,
       inputSchema: manageGoalsInput,
       execute: async (rawArgs) => {
         const normalized = normalizeActionArgs(
@@ -140,13 +159,14 @@ Actions:
               // chatbot reports the goal the user actually sees there rather
               // than the raw stored goal row. set_goals below intentionally
               // stays on raw goals since it persists them.
+              const goalDate = args.target_date || todayInZone(tz);
               const goals = (await goalService.getUserGoals(
                 userId,
-                args.target_date || todayInZone(tz),
+                goalDate,
                 undefined,
                 true
               )) as Record<string, unknown>;
-              let text = `### Goals for ${args.target_date || 'today'}\n\n`;
+              let text = `### Goals for ${goalDate}${args.target_date ? '' : ' (today)'}\n\n`;
               const DISPLAY_FIELDS = [
                 'calories',
                 'protein',
@@ -196,6 +216,18 @@ Actions:
                   text += `- **${label}:** ${roundGoalValue(goals[field])}${unit}\n`;
                 }
               }
+              const steps = Number(goals.target_steps);
+              if (Number.isFinite(steps) && steps > 0) {
+                text += `- **Steps:** ${Math.round(steps)}\n`;
+              }
+              // A micronutrient goal left out of set_goals is stored as 0, so 0
+              // is listed as not set (a deliberate 0 looks the same).
+              for (const [field, label, unit] of MICRONUTRIENT_GOALS) {
+                const value = Number(goals[field]);
+                if (Number.isFinite(value) && value > 0) {
+                  text += `- **${label}:** ${roundGoalValue(value)}${unit}\n`;
+                }
+              }
               if (
                 (goals as any).custom_nutrients &&
                 typeof (goals as any).custom_nutrients === 'object'
@@ -205,7 +237,8 @@ Actions:
                   number
                 >;
                 for (const [name, amount] of Object.entries(custom)) {
-                  text += `- **${name}:** ${amount}\n`;
+                  if (isMissing(amount)) continue;
+                  text += `- **${name}:** ${roundGoalValue(amount)}\n`;
                 }
               }
               text += describeCalorieCycling(goals.calorie_cycling);
@@ -345,6 +378,10 @@ Actions:
                   existingGoals.target_exercise_calories_burned,
                 p_target_exercise_duration_minutes:
                   existingGoals.target_exercise_duration_minutes,
+                // No set_goals parameter for steps: pass the active goal on, or
+                // the cascade (which deletes the goals it replaces) or a new
+                // row for a past date would leave the steps goal empty.
+                p_target_steps: existingGoals.target_steps,
                 p_breakfast_percentage: existingGoals.breakfast_percentage,
                 p_lunch_percentage: existingGoals.lunch_percentage,
                 p_dinner_percentage: existingGoals.dinner_percentage,
@@ -390,12 +427,27 @@ Actions:
 
             case 'list_goal_timeline': {
               const timeline = await goalRepository.getGoalTimeline(userId);
-              return formatList(
-                timeline,
-                'Goal Timeline',
-                (g: any) =>
-                  `**${dayString(g.goal_date)}**: ${g.calories} kcal | P: ${g.protein}g | C: ${g.carbs}g | F: ${g.fat}g | W: ${g.water_goal_ml}ml`
-              );
+              // Newest first; Postgres sorts the undated default row first, but
+              // it only applies when no dated goal does, so it goes last.
+              const ordered = [
+                ...timeline.filter((g) => !isMissing(g.goal_date)),
+                ...timeline.filter((g) => isMissing(g.goal_date)),
+              ];
+              const part = (value: unknown, text: (v: unknown) => string) =>
+                isMissing(value) ? [] : [text(roundGoalValue(value))];
+              return formatList(ordered, 'Goal Timeline', (g) => {
+                const label = isMissing(g.goal_date)
+                  ? 'Default (no start date)'
+                  : dayString(g.goal_date);
+                const values = [
+                  ...part(g.calories, (v) => `${v} kcal`),
+                  ...part(g.protein, (v) => `P: ${v}g`),
+                  ...part(g.carbs, (v) => `C: ${v}g`),
+                  ...part(g.fat, (v) => `F: ${v}g`),
+                  ...part(g.water_goal_ml, (v) => `W: ${v}ml`),
+                ];
+                return `**${label}**: ${values.join(' | ') || 'no values'}`;
+              });
             }
 
             default:

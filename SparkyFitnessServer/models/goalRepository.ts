@@ -239,7 +239,20 @@ async function deleteDefaultGoal(userId: any) {
 }
 // Compact goal history (one row per user_goals record, newest first). Backs
 // the chatbot list_goal_timeline action.
-async function getGoalTimeline(userId: string) {
+// goal_date is null for the default row. db/poolManager.ts parses NUMERIC
+// into numbers and keeps DATE as a YYYY-MM-DD string (dayString also takes a
+// Date, as a plain pg client returns).
+export type GoalTimelineRow = {
+  id: string;
+  goal_date: string | Date | null;
+  calories: number | null;
+  protein: number | null;
+  carbs: number | null;
+  fat: number | null;
+  water_goal_ml: number | null;
+};
+
+async function getGoalTimeline(userId: string): Promise<GoalTimelineRow[]> {
   const client = await getClient(userId);
   try {
     const result = await client.query(
