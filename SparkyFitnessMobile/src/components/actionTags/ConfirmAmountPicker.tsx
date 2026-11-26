@@ -13,25 +13,32 @@ import { useFood } from '../../hooks/useFoods';
 import { useFoodVariants } from '../../hooks/useFoodVariants';
 import { useMeal } from '../../hooks/useMeals';
 import { useMealTypes } from '../../hooks/useMealTypes';
+import { usePreferences } from '../../hooks/usePreferences';
 import { useWaterContainersQuery } from '../../hooks/useWaterContainers';
 import {
   buildMealDisplayValuesFromFoods,
   getMealTypeDisplayLabel,
 } from '../../utils/mealNutrition';
+import { volumeToMl } from '../../utils/unitConversions';
 import {
+  convertWaterVolumeFromMl,
   formatCurrentTimeHhMm,
   formatDisplayNumber,
   formatInputNumber,
   loadLastUsedAmount,
   MULTIPLIER_PRESETS,
   normalizeHhMm,
+  normalizeWaterVolumeUnit,
   parseContainerMl,
   saveLastUsedAmount,
   triggerScanHaptic,
   WATER_DRINK_PRESETS,
+  WATER_LITER_PRESETS,
   WATER_ML_PRESETS,
+  WATER_OZ_PRESETS,
   type LastUsedAmount,
   type ScanConfirmOptions,
+  type WaterVolumeUnit,
 } from './actionTagPickerUtils';
 
 export const ConfirmAmountPicker: React.FC<{
@@ -47,6 +54,7 @@ export const ConfirmAmountPicker: React.FC<{
   const tapToLogEnabled = Boolean(tag.tap_to_log);
   const allowCustomTimestamp = Boolean(tag.allow_custom_timestamp);
 
+  const { preferences } = usePreferences();
   const { containers } = useWaterContainersQuery({ enabled: isWater });
   const waterContainer = useMemo(
     () =>
@@ -55,6 +63,12 @@ export const ConfirmAmountPicker: React.FC<{
         : undefined,
     [action, containers, isWater]
   );
+  const preferredWaterUnit = useMemo<WaterVolumeUnit>(() => {
+    const containerUnit = normalizeWaterVolumeUnit(waterContainer?.unit);
+    if (containerUnit) return containerUnit;
+    return normalizeWaterVolumeUnit(preferences?.water_display_unit) ?? 'ml';
+  }, [preferences?.water_display_unit, waterContainer?.unit]);
+
   const containerMl = useMemo(() => {
     if (!waterContainer) return 250;
     const totalMl = parseContainerMl(waterContainer.volume);
@@ -99,29 +113,27 @@ export const ConfirmAmountPicker: React.FC<{
   );
   const [timeError, setTimeError] = useState<string | null>(null);
 
-  const waterUsesMl = useMemo(
+  const waterUsesVolume = useMemo(
     () =>
       isWater &&
-      (String(waterContainer?.unit ?? '')
-        .trim()
-        .toLowerCase() === 'ml' ||
+      (normalizeWaterVolumeUnit(waterContainer?.unit) !== null ||
         (Array.isArray(tag.preset_amounts) && tag.preset_amounts.length > 0)),
     [isWater, tag.preset_amounts, waterContainer?.unit]
   );
 
   const defaultValue = useMemo(() => {
     if (isWater) {
-      return waterUsesMl
-        ? Math.max(50, Math.round(action.drinks * containerMl))
-        : action.drinks;
+      if (!waterUsesVolume) return action.drinks;
+      const mlAmount = Math.max(50, Math.round(action.drinks * containerMl));
+      return convertWaterVolumeFromMl(mlAmount, preferredWaterUnit);
     }
     return action.quantity;
-  }, [action, containerMl, isWater, waterUsesMl]);
+  }, [action, containerMl, isWater, preferredWaterUnit, waterUsesVolume]);
 
   const baseUnit = useMemo(() => {
-    if (isWater) return waterUsesMl ? 'ml' : 'drinks';
+    if (isWater) return waterUsesVolume ? preferredWaterUnit : 'drinks';
     return action.unit;
-  }, [action, isWater, waterUsesMl]);
+  }, [action, isWater, preferredWaterUnit, waterUsesVolume]);
 
   const variantServingSize = useMemo(() => {
     if (action.type !== 'food') return null;
@@ -135,7 +147,7 @@ export const ConfirmAmountPicker: React.FC<{
   }, [action, variants]);
 
   const availableUnits = useMemo(() => {
-    if (isWater) return ['ml', 'drinks'];
+    if (isWater) return [preferredWaterUnit, 'drinks'];
     if (
       action.type === 'food' &&
       variantServingSize &&
@@ -144,7 +156,7 @@ export const ConfirmAmountPicker: React.FC<{
       return [action.unit, 'serving'];
     }
     return [action.unit];
-  }, [action, isWater, variantServingSize]);
+  }, [action, isWater, preferredWaterUnit, variantServingSize]);
 
   const [selectedUnit, setSelectedUnit] = useState<string>(baseUnit);
   const [unitPickerOpen, setUnitPickerOpen] = useState<boolean>(false);
@@ -174,16 +186,17 @@ export const ConfirmAmountPicker: React.FC<{
 
     let nextValue = selectedValue;
     if (isWater) {
-      if (selectedUnit === 'ml' && nextUnit === 'drinks') {
-        nextValue = Math.max(
-          1,
-          Math.round(selectedValue / Math.max(1, containerMl))
-        );
-      } else if (selectedUnit === 'drinks' && nextUnit === 'ml') {
-        nextValue = Math.max(
-          1,
-          Math.round(selectedValue * Math.max(1, containerMl))
-        );
+      const fromVolUnit = normalizeWaterVolumeUnit(selectedUnit);
+      const toVolUnit = normalizeWaterVolumeUnit(nextUnit);
+      if (fromVolUnit && nextUnit === 'drinks') {
+        const ml = volumeToMl(selectedValue, fromVolUnit);
+        nextValue = Math.max(1, Math.round(ml / Math.max(1, containerMl)));
+      } else if (selectedUnit === 'drinks' && toVolUnit) {
+        const ml = selectedValue * Math.max(1, containerMl);
+        nextValue = convertWaterVolumeFromMl(ml, toVolUnit);
+      } else if (fromVolUnit && toVolUnit) {
+        const ml = volumeToMl(selectedValue, fromVolUnit);
+        nextValue = convertWaterVolumeFromMl(ml, toVolUnit);
       }
     } else if (variantServingSize) {
       if (selectedUnit === 'serving' && nextUnit !== 'serving') {
@@ -204,17 +217,31 @@ export const ConfirmAmountPicker: React.FC<{
     if (Array.isArray(tag.preset_amounts) && tag.preset_amounts.length > 0) {
       return tag.preset_amounts.map((val, idx) => ({
         key: `custom-preset-${idx}-${val}`,
-        label:
-          selectedUnit === 'ml'
-            ? `${formatDisplayNumber(val)} ml`
-            : isWater
-              ? `${formatDisplayNumber(val)}×`
-              : `${formatDisplayNumber(val)} ${selectedUnit}`,
+        label: isWater
+          ? selectedUnit === 'drinks'
+            ? `${formatDisplayNumber(val)}×`
+            : `${formatDisplayNumber(val)} ${selectedUnit}`
+          : `${formatDisplayNumber(val)} ${selectedUnit}`,
         value: val,
       }));
     }
     if (isWater) {
-      if (selectedUnit === 'ml') {
+      const volUnit = normalizeWaterVolumeUnit(selectedUnit);
+      if (volUnit === 'oz') {
+        return WATER_OZ_PRESETS.map((oz) => ({
+          key: `oz-${oz}`,
+          label: `${oz} oz`,
+          value: oz,
+        }));
+      }
+      if (volUnit === 'liter') {
+        return WATER_LITER_PRESETS.map((liters) => ({
+          key: `liter-${liters}`,
+          label: `${formatDisplayNumber(liters)} liter`,
+          value: liters,
+        }));
+      }
+      if (volUnit === 'ml') {
         return WATER_ML_PRESETS.map((ml) => ({
           key: `ml-${ml}`,
           label: `${ml} ml`,
@@ -262,8 +289,10 @@ export const ConfirmAmountPicker: React.FC<{
 
   const livePreview = useMemo(() => {
     if (isWater) {
-      const mlAmount =
-        selectedUnit === 'ml' ? selectedValue : selectedValue * containerMl;
+      const volUnit = normalizeWaterVolumeUnit(selectedUnit);
+      const mlAmount = volUnit
+        ? volumeToMl(selectedValue, volUnit)
+        : selectedValue * containerMl;
       const kcalPerMl =
         waterContainer?.linked_food_id &&
         waterContainer?.linked_variant_serving_size &&
@@ -412,8 +441,10 @@ export const ConfirmAmountPicker: React.FC<{
       const options: ScanConfirmOptions = {};
 
       if (isWater) {
-        if (targetUnit === 'ml') {
-          const ml = Math.min(10000, Math.max(1, Math.round(targetVal)));
+        const volUnit = normalizeWaterVolumeUnit(targetUnit);
+        if (volUnit) {
+          const rawMl = volumeToMl(targetVal, volUnit);
+          const ml = Math.min(10000, Math.max(1, Math.round(rawMl)));
           options.override = { water_ml_override: ml };
         } else {
           const drinks = Math.min(20, Math.max(1, Math.round(targetVal)));

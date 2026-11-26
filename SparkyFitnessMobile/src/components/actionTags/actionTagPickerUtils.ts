@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { formatLocalizedNumber } from '../../localization';
+import { volumeFromMl } from '../../utils/unitConversions';
 
 export type ScanOverride =
   | { drinks_override: number }
@@ -13,8 +14,12 @@ export type ScanConfirmOptions = {
   entryTime?: string;
 };
 
+export type WaterVolumeUnit = 'ml' | 'oz' | 'liter';
+
 export const MULTIPLIER_PRESETS = [0.5, 1, 1.5, 2] as const;
 export const WATER_ML_PRESETS = [250, 500, 750] as const;
+export const WATER_OZ_PRESETS = [8, 16, 24] as const;
+export const WATER_LITER_PRESETS = [0.25, 0.5, 0.75] as const;
 export const WATER_DRINK_PRESETS = [1, 2, 3] as const;
 
 const LAST_AMOUNT_KEY_PREFIX = '@SparkyFitness/action-tag-last-amount:';
@@ -124,4 +129,22 @@ export function parseContainerMl(volume: unknown): number {
   const num = Number(volume);
   if (!Number.isFinite(num) || num <= 0) return 250;
   return num;
+}
+
+export function normalizeWaterVolumeUnit(raw: unknown): WaterVolumeUnit | null {
+  if (raw === 'ml' || raw === 'oz' || raw === 'liter') {
+    return raw;
+  }
+  return null;
+}
+
+export function convertWaterVolumeFromMl(
+  ml: number,
+  unit: WaterVolumeUnit
+): number {
+  const converted = volumeFromMl(ml, unit);
+  if (!Number.isFinite(converted)) return ml;
+  if (unit === 'oz') return Number(converted.toFixed(1));
+  if (unit === 'liter') return Number(converted.toFixed(2));
+  return Math.round(converted);
 }
