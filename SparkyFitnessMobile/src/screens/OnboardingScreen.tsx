@@ -37,11 +37,17 @@ import {
   fetchAuthSettings,
   loginWithOidc,
   loginWithPasskey,
+  setPendingProxyHeaders,
+  clearPendingProxyHeaders,
   type MfaFactors,
   type AuthSettings,
   type OidcProvider,
 } from '../services/api/authService';
-import { saveServerConfig } from '../services/storage';
+import {
+  saveServerConfig,
+  proxyHeadersToRecord,
+  type ProxyHeader,
+} from '../services/storage';
 import { addLog } from '../services/LogService';
 import {
   clientCertificateConnectionHint,
@@ -50,6 +56,7 @@ import {
   shouldSuggestClientCertificate,
 } from '../services/clientCertificate';
 import ClientCertificateSection from '../components/ClientCertificateSection';
+import ProxyHeadersEditor from '../components/ProxyHeadersEditor';
 import { normalizeUrl, getInsecureUrlError } from '../utils/serverUrl';
 import { pasteFromClipboard } from '../utils/keyboardFocus';
 import {
@@ -65,12 +72,16 @@ type AuthTab = 'signIn' | 'apiKey';
 
 const LEARN_MORE_SECTION_MIN_HEIGHT = 208;
 
-const checkReachability = async (url: string): Promise<boolean> => {
+const checkReachability = async (
+  url: string,
+  headers: Record<string, string>
+): Promise<boolean> => {
   try {
     const response = await fetchWithTimeout(
       `${normalizeUrl(url)}/api/auth/settings`,
       {
         cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
+        headers,
       },
       CONNECTION_CHECK_TIMEOUT_MS
     );
@@ -104,6 +115,9 @@ export default function OnboardingScreen({ navigation }: Props) {
   const [page, setPage] = useState<1 | 2>(1);
   const [learnMoreExpanded, setLearnMoreExpanded] = useState(false);
   const [advancedExpanded, setAdvancedExpanded] = useState(false);
+  const [proxyHeaders, setProxyHeaders] = useState<ProxyHeader[]>([]);
+  const cleanedHeaders = () =>
+    proxyHeaders.filter((h) => h.name.trim() && h.value.trim());
 
   // Shared state
   const [serverUrl, setServerUrl] = useState('');
@@ -174,6 +188,7 @@ export default function OnboardingScreen({ navigation }: Props) {
   useEffect(
     () => () => {
       void setPendingClientCertificateServer(null);
+      clearPendingProxyHeaders();
     },
     []
   );
@@ -219,10 +234,14 @@ export default function OnboardingScreen({ navigation }: Props) {
     setError('');
 
     try {
+      setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
       // Not saved yet, but it may require the TLS client certificate, so it
       // has to be an allowed host before the first request.
       await setPendingClientCertificateServer(url);
-      const settings = await fetchAuthSettings(url);
+      const settings = await fetchAuthSettings(
+        url,
+        proxyHeadersToRecord(cleanedHeaders())
+      );
       setAuthSettings(settings);
 
       // Passkey sign-in is always offered once settings load, so the Sign In
@@ -242,7 +261,12 @@ export default function OnboardingScreen({ navigation }: Props) {
       // fallback would probe the same host and just add 10s of spinner. Fast
       // HTTP errors (typo'd URL) go through the fallback as before.
       const reachable =
-        err instanceof TimeoutError ? false : await checkReachability(url);
+        err instanceof TimeoutError
+          ? false
+          : await checkReachability(
+              url,
+              proxyHeadersToRecord(cleanedHeaders())
+            );
       if (reachable) {
         setAuthSettings({
           trusted_origin: null,
@@ -281,7 +305,7 @@ export default function OnboardingScreen({ navigation }: Props) {
       id: getConfigId(),
       url,
       apiKey: '',
-      proxyHeaders: [],
+      proxyHeaders: cleanedHeaders(),
       ...overrides,
     });
   };
@@ -307,6 +331,7 @@ export default function OnboardingScreen({ navigation }: Props) {
 
     setLoading(true);
     setError('');
+    setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
 
     try {
       const result = await login(url, email.trim(), password);
@@ -338,6 +363,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         authType: 'session',
         sessionToken: result.sessionToken,
       });
+      clearPendingProxyHeaders();
 
       addLog('Connected via sign in.', 'INFO');
       await finishWithConnection();
@@ -361,6 +387,7 @@ export default function OnboardingScreen({ navigation }: Props) {
     const url = normalizeUrl(serverUrl);
     setLoading(true);
     setError('');
+    setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
 
     try {
       const result = await loginWithOidc(url, providerId);
@@ -370,6 +397,7 @@ export default function OnboardingScreen({ navigation }: Props) {
           authType: 'session',
           sessionToken: result.sessionToken,
         });
+        clearPendingProxyHeaders();
 
         addLog(`Connected via OIDC provider ${providerId}.`, 'INFO');
         await finishWithConnection();
@@ -397,6 +425,7 @@ export default function OnboardingScreen({ navigation }: Props) {
     const url = normalizeUrl(serverUrl);
     setLoading(true);
     setError('');
+    setPendingProxyHeaders(proxyHeadersToRecord(cleanedHeaders()));
 
     try {
       const result = await loginWithPasskey(url);
@@ -406,6 +435,7 @@ export default function OnboardingScreen({ navigation }: Props) {
           authType: 'session',
           sessionToken: result.sessionToken,
         });
+        clearPendingProxyHeaders();
 
         addLog('Connected via Passkey.', 'INFO');
         await finishWithConnection();
@@ -450,6 +480,7 @@ export default function OnboardingScreen({ navigation }: Props) {
           method: 'GET',
           cache: 'no-store', // skip native HTTP cache to avoid 304 empty bodies (#1353)
           headers: {
+            ...proxyHeadersToRecord(cleanedHeaders()),
             Authorization: `Bearer ${apiKey.trim()}`,
           },
         },
@@ -719,28 +750,34 @@ export default function OnboardingScreen({ navigation }: Props) {
       </View>
 
       {/* Advanced: only what a server can need before the first connection. */}
-      {isClientCertificateSupported() && (
-        <View className="mt-4">
-          <Pressable
-            onPress={toggleAdvanced}
-            className="flex-row items-center self-start"
-            accessibilityRole="button"
-            accessibilityState={{ expanded: advancedExpanded }}
-          >
-            <Icon
-              name={advancedExpanded ? 'chevron-down' : 'chevron-forward'}
-              size={14}
-              color={textMuted}
+      <View className="mt-4">
+        <Pressable
+          onPress={toggleAdvanced}
+          className="flex-row items-center self-start"
+          accessibilityRole="button"
+          accessibilityState={{ expanded: advancedExpanded }}
+        >
+          <Icon
+            name={advancedExpanded ? 'chevron-down' : 'chevron-forward'}
+            size={14}
+            color={textMuted}
+          />
+          <Text className="text-sm ml-1 text-text-muted">
+            {t('auth.advancedOptions', {
+              defaultValue: 'Advanced options',
+            })}
+          </Text>
+        </Pressable>
+        {advancedExpanded && (
+          <>
+            <ProxyHeadersEditor
+              headers={proxyHeaders}
+              onHeadersChange={setProxyHeaders}
             />
-            <Text className="text-sm ml-1 text-text-muted">
-              {t('auth.advancedOptions', {
-                defaultValue: 'Advanced options',
-              })}
-            </Text>
-          </Pressable>
-          {advancedExpanded && <ClientCertificateSection />}
-        </View>
-      )}
+            {isClientCertificateSupported() && <ClientCertificateSection />}
+          </>
+        )}
+      </View>
 
       {/* Learn more */}
       <View
