@@ -75,3 +75,11 @@ When you finish a workout on the web, a summary shows how long it took, the calo
 ## Languages
 
 Everything guided mode says (apart from the exercise instructions, which are read as written in your exercise library) goes through the app's translations and follows your app language. Choose a voice that matches that language for the best pronunciation.
+
+## Follow along with a video
+
+In the workout preset editor, add one YouTube link or a direct link to a video file, such as a self-hosted MP4. For each exercise you want to sync, enter the start and end positions in seconds from the beginning of the video. Leave space between exercises for breaks or instructions. The video position replaces the preset’s interval or rest clock while following a video. The video link and timings follow the sharing settings of the preset.
+
+Start the preset and select **Load video**. The current exercise, remaining time, next exercise, and workout progress follow the video position. Pausing freezes the countdown. Seeking moves the display to the new position. An exercise is marked complete once its full segment has played, including if you go back and play a section you skipped.
+
+When the video ends, the workout saves the completed exercises. You can also finish early to save your progress or log sets manually. YouTube videos must allow embedding, and direct links must be playable by the device. Use HTTPS for self-hosted videos if you use the mobile app or access your SparkyFitness site over HTTPS. Video playback requires access to the video host.

@@ -347,6 +347,7 @@ export interface ActiveWorkoutState {
   /** Interval / WOD format configuration & tracking */
   workoutFormat: WorkoutFormat;
   timeCapSeconds: number | null;
+  videoUrl: string | null;
   intervalPhases: IntervalPhase[];
   intervalPhaseIndex: number;
   isIntervalPaused: boolean;
@@ -384,6 +385,7 @@ export interface ActiveWorkoutState {
       sourceServerConfigId?: string;
       workoutFormat?: WorkoutFormat;
       timeCapSeconds?: number | null;
+      videoUrl?: string | null;
     }
   ) => void;
   startWorkoutAtSet: (session: PresetSessionResponse, setId: string) => void;
@@ -678,6 +680,7 @@ const initialData: Pick<
   | 'sourceServerConfigId'
   | 'workoutFormat'
   | 'timeCapSeconds'
+  | 'videoUrl'
   | 'intervalPhases'
   | 'intervalPhaseIndex'
   | 'isIntervalPaused'
@@ -719,6 +722,7 @@ const initialData: Pick<
   sourceServerConfigId: null,
   workoutFormat: 'standard',
   timeCapSeconds: null,
+  videoUrl: null,
   intervalPhases: [],
   intervalPhaseIndex: 0,
   isIntervalPaused: false,
@@ -1579,6 +1583,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           sourceServerConfigId: opts?.sourceServerConfigId ?? null,
           workoutFormat,
           timeCapSeconds,
+          videoUrl: opts?.videoUrl ?? null,
           intervalPhases,
           intervalPhaseIndex: 0,
           isIntervalPaused: false,
@@ -1657,6 +1662,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           sourceServerConfigId: null,
           workoutFormat: 'standard',
           timeCapSeconds: null,
+          videoUrl: null,
           intervalPhases: [],
           intervalPhaseIndex: 0,
           isIntervalPaused: false,
@@ -1988,7 +1994,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           // Zero rest (back-to-back superset partners, or an explicit rest_time
           // of 0) advances straight to ready — no timer flash.
           rest:
-            restSec > 0
+            restSec > 0 && !state.videoUrl
               ? startRestForStep(
                   state.steps,
                   nextStep.setId,
@@ -3116,6 +3122,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         sourceServerConfigId: state.sourceServerConfigId,
         workoutFormat: state.workoutFormat,
         timeCapSeconds: state.timeCapSeconds,
+        videoUrl: state.videoUrl,
         intervalPhases: state.intervalPhases,
         intervalPhaseIndex: state.intervalPhaseIndex,
         isIntervalPaused: state.isIntervalPaused,

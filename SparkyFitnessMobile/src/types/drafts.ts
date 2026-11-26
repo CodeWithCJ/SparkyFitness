@@ -1,4 +1,4 @@
-import type { ExerciseModality } from '@workspace/shared';
+import type { ExerciseModality, WorkoutVideoTiming } from '@workspace/shared';
 
 export type DraftSetType = 'warmup' | 'normal' | 'drop' | 'failure' | string;
 
@@ -27,7 +27,7 @@ export interface WorkoutSetMetaPatch {
   completedAt?: string | null;
 }
 
-export interface WorkoutDraftExercise {
+export interface WorkoutDraftExercise extends WorkoutVideoTiming {
   clientId: string;
   /** Server entry uuid. Existing rows keep theirs; new ones are minted in the form. */
   serverId?: string;

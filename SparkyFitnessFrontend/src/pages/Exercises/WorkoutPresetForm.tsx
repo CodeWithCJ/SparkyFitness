@@ -46,6 +46,7 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     isPublic,
     workoutFormat,
     timeCapSeconds,
+    videoUrl,
     exercises,
     isAddExerciseDialogOpen,
     sensors,
@@ -54,6 +55,8 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
     setIsPublic,
     setWorkoutFormat,
     setTimeCapSeconds,
+    setVideoUrl,
+    setVideoTiming,
     setIsAddExerciseDialogOpen,
     handleAddExercise,
     handleOpenAddExercise,
@@ -199,6 +202,90 @@ const WorkoutPresetForm: React.FC<WorkoutPresetFormProps> = ({
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
+            <fieldset className="space-y-3 rounded-md border p-3">
+              <legend className="px-1 text-sm font-medium">
+                {t('workoutPresetForm.followAlongVideo', 'Follow-along video')}
+              </legend>
+              <div className="space-y-1">
+                <Label htmlFor="workout-video-url">
+                  {t('workoutPresetForm.videoLink', 'Video link')}
+                </Label>
+                <Input
+                  id="workout-video-url"
+                  type="url"
+                  maxLength={2048}
+                  value={videoUrl}
+                  onChange={(event) => setVideoUrl(event.target.value)}
+                  aria-describedby="workout-video-help"
+                />
+                <p
+                  id="workout-video-help"
+                  className="text-xs text-muted-foreground"
+                >
+                  {t(
+                    'workoutPresetForm.videoHelp',
+                    'Use a YouTube link or a direct link to a video file. Set start and end times for the exercises you want to follow.'
+                  )}
+                </p>
+              </div>
+              {videoUrl.trim() &&
+                exercises.map((exercise, index) => (
+                  <fieldset
+                    key={exercise.id ?? index}
+                    className="grid grid-cols-2 gap-2 border-t pt-2"
+                  >
+                    <legend className="text-xs font-medium">
+                      {exercise.exercise_name}
+                    </legend>
+                    <label className="space-y-1 text-xs">
+                      <span>
+                        {t(
+                          'workoutPresetForm.videoStartSeconds',
+                          'Start (seconds)'
+                        )}
+                      </span>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={exercise.video_start_seconds ?? ''}
+                        onChange={(event) =>
+                          setVideoTiming(
+                            index,
+                            'video_start_seconds',
+                            event.target.value === ''
+                              ? null
+                              : event.target.valueAsNumber
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="space-y-1 text-xs">
+                      <span>
+                        {t(
+                          'workoutPresetForm.videoEndSeconds',
+                          'End (seconds)'
+                        )}
+                      </span>
+                      <Input
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={exercise.video_end_seconds ?? ''}
+                        onChange={(event) =>
+                          setVideoTiming(
+                            index,
+                            'video_end_seconds',
+                            event.target.value === ''
+                              ? null
+                              : event.target.valueAsNumber
+                          )
+                        }
+                      />
+                    </label>
+                  </fieldset>
+                ))}
+            </fieldset>
           </div>
 
           <div>

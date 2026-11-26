@@ -21,7 +21,14 @@ import { Exercise } from '@/types/exercises';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { toast } from '../use-toast';
 import { useTranslation } from 'react-i18next';
-import { resolveExerciseModality, type WorkoutFormat } from '@workspace/shared';
+import {
+  hasInvalidWorkoutVideoTiming,
+  hasOverlappingWorkoutVideoTimings,
+  parseWorkoutVideoUrl,
+  resolveExerciseModality,
+  type WorkoutFormat,
+  type WorkoutVideoTiming,
+} from '@workspace/shared';
 import { defaultSetForModality } from '@/constants/exercises';
 
 interface WorkoutPresetFormProps {
@@ -48,6 +55,7 @@ export function useWorkoutPresetForm({
   const [timeCapSeconds, setTimeCapSeconds] = useState<number | null>(
     initialPreset?.time_cap_seconds ?? null
   );
+  const [videoUrl, setVideoUrl] = useState(initialPreset?.video_url ?? '');
   const [exercises, setExercises] = useState<WorkoutPresetExercise[]>(() => {
     return (
       initialPreset?.exercises.map((ex) => ({
@@ -165,6 +173,9 @@ export function useWorkoutPresetForm({
         // clears it for the same reason, inserting the copy after the whole
         // run instead).
         superset_group: null,
+        ...(exerciseToDuplicate.video_start_seconds != null
+          ? { video_start_seconds: null, video_end_seconds: null }
+          : {}),
         sets: exerciseToDuplicate.sets.map((set) => ({
           ...set,
           id: generateClientId(),
@@ -357,6 +368,18 @@ export function useWorkoutPresetForm({
     },
     []
   );
+  const setVideoTiming = (
+    exerciseIndex: number,
+    field: keyof WorkoutVideoTiming,
+    value: number | null
+  ) => {
+    setExercises((previous) =>
+      previous.map((exercise, index) =>
+        index === exerciseIndex ? { ...exercise, [field]: value } : exercise
+      )
+    );
+  };
+
   const handleSubmit = () => {
     if (!name.trim()) {
       toast({
@@ -364,6 +387,24 @@ export function useWorkoutPresetForm({
         description: t(
           'workoutPresetForm.nameRequiredError',
           'Preset Name is required.'
+        ),
+        variant: 'destructive',
+      });
+      return;
+    }
+    const submittedVideoUrl = videoUrl.trim();
+    if (
+      submittedVideoUrl &&
+      (!parseWorkoutVideoUrl(submittedVideoUrl) ||
+        submittedVideoUrl.length > 2048 ||
+        exercises.some(hasInvalidWorkoutVideoTiming) ||
+        hasOverlappingWorkoutVideoTimings(exercises))
+    ) {
+      toast({
+        title: t('workoutPresetForm.validationErrorTitle', 'Validation Error'),
+        description: t(
+          'workoutPresetForm.videoValidationError',
+          'Enter a YouTube or direct video link and valid, non-overlapping start and end times.'
         ),
         variant: 'destructive',
       });
@@ -383,8 +424,16 @@ export function useWorkoutPresetForm({
       is_public: isPublic,
       workout_format: workoutFormat,
       time_cap_seconds: timeCapSeconds,
+      ...(submittedVideoUrl || initialPreset?.video_url
+        ? { video_url: submittedVideoUrl || null }
+        : {}),
       exercises: exercises.map((ex, index) => ({
         ...ex,
+        ...(!submittedVideoUrl &&
+        (ex.video_start_seconds !== undefined ||
+          ex.video_end_seconds !== undefined)
+          ? { video_start_seconds: null, video_end_seconds: null }
+          : {}),
         sort_order: index,
         sets: ex.sets.map((set) => ({
           ...set,
@@ -425,6 +474,7 @@ export function useWorkoutPresetForm({
     isPublic,
     workoutFormat,
     timeCapSeconds,
+    videoUrl,
     exercises,
     isAddExerciseDialogOpen,
     sensors,
@@ -433,6 +483,8 @@ export function useWorkoutPresetForm({
     setIsPublic,
     setWorkoutFormat,
     setTimeCapSeconds,
+    setVideoUrl,
+    setVideoTiming,
     setExercises,
     setIsAddExerciseDialogOpen,
     handleAddExercise,

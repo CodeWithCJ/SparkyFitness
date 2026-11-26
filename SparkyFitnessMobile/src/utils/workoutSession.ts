@@ -1311,7 +1311,10 @@ export function resolveAssumedSetValues(
  * ramp. Captured from the preset at live start, keyed by session exercise id.
  * Increments that are weights are kg.
  */
-export interface LiveExerciseConfig {
+export interface LiveExerciseConfig extends Pick<
+  WorkoutPresetExercise,
+  'video_start_seconds' | 'video_end_seconds'
+> {
   progression_mode?: 'rep_goal' | 'fixed' | 'step_load' | 'manual' | null;
   rep_goal?: number | null;
   increment_type?: 'weight' | 'reps' | null;
@@ -1325,6 +1328,12 @@ export function liveExerciseConfigFromPreset(
   exercise: Partial<LiveExerciseConfig>
 ): LiveExerciseConfig {
   return {
+    ...(exercise.video_start_seconds != null
+      ? {
+          video_start_seconds: exercise.video_start_seconds,
+          video_end_seconds: exercise.video_end_seconds,
+        }
+      : {}),
     progression_mode: exercise.progression_mode ?? null,
     rep_goal: exercise.rep_goal ?? null,
     increment_type: exercise.increment_type ?? null,
@@ -2544,6 +2553,12 @@ export function buildPresetExercisesPayload(
         increment_value: exercise.incrementValue ?? 5,
         equipment_brand: exercise.equipmentBrand ?? null,
         ramp_increment: exercise.rampIncrement ?? null,
+        ...(exercise.video_start_seconds !== undefined
+          ? {
+              video_start_seconds: exercise.video_start_seconds,
+              video_end_seconds: exercise.video_end_seconds,
+            }
+          : {}),
         sets: exercise.sets.map((set, setIndex) => {
           const weight = parseSetWeight(set.weight, modality);
           const reps = parseInt(set.reps, 10);

@@ -526,11 +526,16 @@ const DiaryScreen: React.FC<DiaryScreenProps> = ({ navigation }) => {
           ? Number(sessionAssignments[0].workout_preset_id)
           : undefined;
 
+      const videoUrl = allPresets.find(
+        (preset) => preset.id === singlePresetId
+      )?.video_url;
+
       await startLiveWorkout({
         name: sessionName,
         exercises: startExercises,
         exerciseConfigs: startConfigs,
         sourcePresetId: singlePresetId,
+        ...(videoUrl ? { videoUrl } : {}),
         workoutPlanAssignmentId: assignment.id
           ? Number(assignment.id)
           : undefined,

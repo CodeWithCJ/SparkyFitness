@@ -208,6 +208,9 @@ export function draftExercisesReducer(
         serverId: action.newServerId,
         snapshot: null,
         supersetGroup: null,
+        ...(original.video_start_seconds != null
+          ? { video_start_seconds: null, video_end_seconds: null }
+          : {}),
         sets: original.sets.map((set, i) => ({
           ...set,
           // setClientIds is precomputed against exercisesRef before dispatch

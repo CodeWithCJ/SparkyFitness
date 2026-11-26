@@ -1,5 +1,9 @@
 import { useCallback, useReducer, useRef } from 'react';
-import type { PresetSessionResponse, WorkoutFormat } from '@workspace/shared';
+import type {
+  PresetSessionResponse,
+  WorkoutFormat,
+  WorkoutVideoTiming,
+} from '@workspace/shared';
 import { weightFromKg } from '../utils/unitConversions';
 import {
   resolveSnapshotModality,
@@ -19,6 +23,7 @@ export interface PresetDraft {
   description: string;
   workoutFormat: WorkoutFormat;
   timeCapSeconds: number | null;
+  videoUrl?: string;
   exercises: WorkoutDraftExercise[];
 }
 
@@ -43,6 +48,13 @@ type PresetFormAction =
   | { type: 'SET_DESCRIPTION'; description: string }
   | { type: 'SET_WORKOUT_FORMAT'; workoutFormat: WorkoutFormat }
   | { type: 'SET_TIME_CAP_SECONDS'; timeCapSeconds: number | null }
+  | { type: 'SET_VIDEO_URL'; videoUrl: string }
+  | {
+      type: 'SET_VIDEO_TIMING';
+      clientId: string;
+      field: keyof WorkoutVideoTiming;
+      value: number | null;
+    }
   | {
       type: 'POPULATE_FROM_PRESET';
       preset: WorkoutPreset;
@@ -75,12 +87,28 @@ export function presetFormReducer(
     case 'SET_TIME_CAP_SECONDS':
       return { ...state, timeCapSeconds: action.timeCapSeconds };
 
+    case 'SET_VIDEO_URL':
+      return { ...state, videoUrl: action.videoUrl };
+
+    case 'SET_VIDEO_TIMING':
+      return {
+        ...state,
+        exercises: state.exercises.map((exercise) =>
+          exercise.clientId === action.clientId
+            ? { ...exercise, [action.field]: action.value }
+            : exercise
+        ),
+      };
+
     case 'POPULATE_FROM_PRESET':
       return {
         name: action.preset.name,
         description: action.preset.description ?? '',
         workoutFormat: action.preset.workout_format ?? 'standard',
         timeCapSeconds: action.preset.time_cap_seconds ?? null,
+        ...(action.preset.video_url
+          ? { videoUrl: action.preset.video_url }
+          : {}),
         exercises: action.preset.exercises.map((exercise, exerciseIdx) => ({
           clientId: action.clientIds[exerciseIdx].exerciseClientId,
           exerciseId: exercise.exercise_id,
@@ -90,6 +118,12 @@ export function presetFormReducer(
           images: exercise.image_url ? [exercise.image_url] : [],
           exerciseEquipment: exercise.equipment ?? null,
           supersetGroup: exercise.superset_group ?? null,
+          ...(exercise.video_start_seconds != null
+            ? {
+                video_start_seconds: exercise.video_start_seconds,
+                video_end_seconds: exercise.video_end_seconds,
+              }
+            : {}),
           // Progression & Equipment Fields
           progressionMode: exercise.progression_mode ?? 'rep_goal',
           repGoal: exercise.rep_goal ?? null,
@@ -235,6 +269,22 @@ export function useWorkoutPresetForm() {
     dispatch({ type: 'SET_TIME_CAP_SECONDS', timeCapSeconds });
   }, []);
 
+  const setVideoUrl = useCallback((videoUrl: string) => {
+    dispatch({ type: 'SET_VIDEO_URL', videoUrl });
+  }, []);
+
+  const setVideoTiming = useCallback(
+    (
+      clientId: string,
+      field: keyof WorkoutVideoTiming,
+      value: number | null
+    ) => {
+      exercisesModifiedRef.current = true;
+      dispatch({ type: 'SET_VIDEO_TIMING', clientId, field, value });
+    },
+    [exercisesModifiedRef]
+  );
+
   const populateFromPreset = useCallback(
     (
       preset: WorkoutPreset,
@@ -293,6 +343,8 @@ export function useWorkoutPresetForm() {
     setDescription,
     setWorkoutFormat,
     setTimeCapSeconds,
+    setVideoUrl,
+    setVideoTiming,
     addExercise,
     removeExercise,
     replaceExercise,

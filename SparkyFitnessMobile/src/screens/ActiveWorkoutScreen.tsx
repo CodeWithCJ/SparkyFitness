@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -109,6 +117,10 @@ import { useActiveWorkoutExerciseActions } from '../hooks/useActiveWorkoutExerci
 import { useLiveCoachingSignals } from '../hooks/useLiveCoachingSignals';
 import type { RootStackScreenProps } from '../types/navigation';
 
+const ActiveWorkoutVideo = lazy(
+  () => import('../components/ActiveWorkoutVideo')
+);
+
 type Props = RootStackScreenProps<'ActiveWorkout'>;
 
 function ActiveWorkoutScreen({ navigation, route }: Props) {
@@ -118,6 +130,17 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const railBeside = useVerticalBar();
   const session = useActiveWorkoutStore((s) => s.session);
   const sessionId = useActiveWorkoutStore((s) => s.sessionId);
+  const videoUrl = useActiveWorkoutStore((s) => s.videoUrl);
+  const exerciseConfigs = useActiveWorkoutStore((s) => s.exerciseConfigs);
+  const videoExercises = useMemo(
+    () =>
+      (session?.exercises ?? []).map((entry) => ({
+        ...exerciseConfigs[String(entry.id)],
+        id: String(entry.id),
+        name: entry.exercise_snapshot?.name ?? '',
+      })),
+    [session, exerciseConfigs]
+  );
   const sourcePresetId = useActiveWorkoutStore((s) => s.sourcePresetId);
   const sourceServerConfigId = useActiveWorkoutStore(
     (s) => s.sourceServerConfigId
@@ -151,7 +174,10 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const { getImageSource } = useExerciseImageSource();
 
   const workoutFormat = useActiveWorkoutStore((s) => s.workoutFormat);
-  useActiveWorkoutIntervalLifecycle(workoutFormat, guidedWorkoutEnabled);
+  useActiveWorkoutIntervalLifecycle(
+    videoUrl ? 'standard' : workoutFormat,
+    guidedWorkoutEnabled && !videoUrl
+  );
 
   // The one-exercise view replaces the rail, Now card and the list (standard
   // format only; interval formats keep their HUD, and guided mode keeps the
@@ -159,7 +185,8 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   const focusMode =
     activeWorkoutView === 'focus' &&
     (workoutFormat ?? 'standard') === 'standard' &&
-    !guidedWorkoutEnabled;
+    !guidedWorkoutEnabled &&
+    !videoUrl;
 
   const isFocused = useIsFocused();
   const [verifiedSourcePresetId, setVerifiedSourcePresetId] = useState<
@@ -460,12 +487,12 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
   }
 
   useEffect(() => {
-    if (activeExerciseId == null) return;
+    if (activeExerciseId == null || videoUrl) return;
     return runAfterKeyboardSettles(
       () => scrollToExercise(activeExerciseId),
       350
     );
-  }, [activeExerciseId, scrollToExercise]);
+  }, [activeExerciseId, scrollToExercise, videoUrl]);
 
   const handleToggleExpanded = useCallback(
     (entryId: string) => {
@@ -962,14 +989,58 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const durationSheetRef = useRef<WorkoutDurationSheetRef>(null);
   const openMenuRef = useRef<(() => void) | null>(null);
-  const { handleConfirmEnd, handleDurationSave } = useActiveWorkoutFinish({
-    navigation,
-    session,
-    completedSetIds,
-    flush,
-    durationSheetRef,
-    safeGoBack,
-  });
+  const { handleConfirmEnd, handleDurationSave, handleFinish } =
+    useActiveWorkoutFinish({
+      navigation,
+      session,
+      completedSetIds,
+      flush,
+      durationSheetRef,
+      safeGoBack,
+    });
+
+  const handleVideoComplete = useCallback(
+    (exerciseIds: readonly string[], ended: boolean) => {
+      const state = useActiveWorkoutStore.getState();
+      for (const entry of state.session?.exercises ?? []) {
+        const id = String(entry.id);
+        if (!exerciseIds.includes(id)) continue;
+        const timing = state.exerciseConfigs[id];
+        for (const set of entry.sets) {
+          const setId = String(set.id);
+          if (state.completedSetIds[setId] != null) continue;
+          if (
+            entry.sets.length === 1 &&
+            isDurationModality(
+              resolveSnapshotModality(entry.exercise_snapshot)
+            ) &&
+            timing?.video_start_seconds != null &&
+            timing.video_end_seconds != null
+          ) {
+            state.updateSetField(setId, {
+              duration: timing.video_end_seconds - timing.video_start_seconds,
+            });
+          }
+          state.completeSet(setId);
+        }
+      }
+      const current = useActiveWorkoutStore.getState();
+      if (
+        ended &&
+        current.session?.exercises.some(
+          (entry) =>
+            current.exerciseConfigs[String(entry.id)]?.video_start_seconds !=
+              null &&
+            entry.sets.some(
+              (set) => current.completedSetIds[String(set.id)] != null
+            )
+        )
+      ) {
+        void handleFinish();
+      }
+    },
+    [handleFinish]
+  );
 
   // Everything handed to a memoized child below is kept stable here, so a
   // screen render that changes nothing for that child (a cell gaining focus,
@@ -1262,6 +1333,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
             {/* Pinned rather than in the list, so the scroll to the active exercise
             never hides it; out of the way while a set value is being typed. */}
             {nowCardEnabled &&
+              !videoUrl &&
               !guidedWorkoutEnabled &&
               workoutFormat === 'standard' &&
               focusedSetKey == null && (
@@ -1277,6 +1349,20 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
                 />
               )}
 
+            {videoUrl && (
+              <View className="px-3 pt-2">
+                <Suspense fallback={null}>
+                  <ActiveWorkoutVideo
+                    key={sessionId}
+                    url={videoUrl}
+                    exercises={videoExercises}
+                    isFocused={isFocused}
+                    onComplete={handleVideoComplete}
+                  />
+                </Suspense>
+              </View>
+            )}
+
             <KeyboardAwareScrollView
               ref={scrollRef}
               className="flex-1"
@@ -1291,14 +1377,18 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
               bottomOffset={keyboardBottomOffset}
               disableScrollOnKeyboardHide
             >
-              <ActiveWorkoutIntervalHud getImageSource={getImageSource} />
-
-              {guidedWorkoutEnabled && workoutFormat === 'standard' && (
-                <ActiveWorkoutGuidedCard
-                  getImageSource={getImageSource}
-                  onCompleteSet={handleCompleteSet}
-                />
+              {!videoUrl && (
+                <ActiveWorkoutIntervalHud getImageSource={getImageSource} />
               )}
+
+              {guidedWorkoutEnabled &&
+                !videoUrl &&
+                workoutFormat === 'standard' && (
+                  <ActiveWorkoutGuidedCard
+                    getImageSource={getImageSource}
+                    onCompleteSet={handleCompleteSet}
+                  />
+                )}
 
               <ActiveWorkoutExerciseList
                 session={session}

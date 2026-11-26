@@ -19,6 +19,7 @@ export const workoutPresetsSchema = z.object({
   // Keep on regen. #1936: interval / WOD workout formats.
   workout_format: z.string().default('standard'),
   time_cap_seconds: z.number().int().nullable().optional(),
+  video_url: z.string().nullable().optional(),
   created_at: z.date().nullable(),
   updated_at: z.date().nullable(),
 });
@@ -32,6 +33,7 @@ export const workoutPresetsInitializerSchema = z.object({
   // Manually added. #1936: interval / WOD workout formats.
   workout_format: z.string().optional().default('standard'),
   time_cap_seconds: z.number().int().optional().nullable(),
+  video_url: z.string().nullable().optional(),
   created_at: z.date().optional().nullable(),
   updated_at: z.date().optional().nullable(),
 });
@@ -45,6 +47,7 @@ export const workoutPresetsMutatorSchema = z.object({
   // Manually added. #1936: interval / WOD workout formats.
   workout_format: z.string().optional(),
   time_cap_seconds: z.number().int().optional().nullable(),
+  video_url: z.string().nullable().optional(),
   created_at: z.date().optional().nullable(),
   updated_at: z.date().optional().nullable(),
 });
