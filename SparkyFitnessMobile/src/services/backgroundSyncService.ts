@@ -146,6 +146,19 @@ const performBackgroundSyncInternal = async (taskId: string): Promise<void> => {
         interactive: false,
       });
   await runBackgroundSync(taskId, telemetry);
+  // Once per run, whatever the health sync did: it returns early with no
+  // metric on, when the health provider cannot start, on a locked device and
+  // after an account change, and the reminders follow the feature switches
+  // all the same.
+  try {
+    await reconcileRemindersInBackground();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await addLog(
+      `[Background Sync] Reminder reconciliation failed: ${message}`,
+      'ERROR'
+    );
+  }
   // Best effort: the OS decides when this task runs, so uploads of work
   // logged offline also go out on reconnect and when the app opens.
   registerAllOutboxHandlers();
@@ -401,16 +414,6 @@ const runBackgroundSync = async (
           'ERROR'
         );
       }
-
-      try {
-        await reconcileRemindersInBackground();
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        await addLog(
-          `[Background Sync] Reminder reconciliation failed: ${message}`,
-          'ERROR'
-        );
-      }
     } finally {
       if (runId != null) {
         healthReadProvider.cancelWaterDeletionRun?.(runId);
@@ -532,7 +535,7 @@ const reconcileRemindersInBackground = async (): Promise<void> => {
   }
   if (brushingWanted) {
     try {
-      await reconcileBrushingRemindersInBackground(read);
+      await reconcileBrushingRemindersInBackground(read, accountGeneration);
     } catch (error) {
       await logFailure('Brushing', error);
     }
@@ -611,11 +614,13 @@ const reconcileMedicationRemindersInBackground = async (
  * (`skipWhenCurrent`), so a run does not rewrite them every time. When the
  * choices cannot be read they are left exactly as they are, and a state the
  * app has read differently since (checked again right before the reconcile)
- * is the app's to apply. They hold no account data, so they are not bound to
- * an account or server.
+ * is the app's to apply, as is everything after an account change during the
+ * run: the choices belong to the account the run started for. They hold no
+ * account data, so they are not bound to a server.
  */
 const reconcileBrushingRemindersInBackground = async (
-  read: FeatureChoicesRead
+  read: FeatureChoicesRead,
+  accountGeneration: number
 ): Promise<void> => {
   const featureState = featureOnState('oralCare', read.response);
   if (featureState === 'unknown') {
@@ -628,6 +633,15 @@ const reconcileBrushingRemindersInBackground = async (
   if (featureStateChangedSince('oralCare', read.startedAt, featureState)) {
     await addLog(
       '[Background Sync] Brushing reminders left to the app: it read the feature choices again meanwhile',
+      'DEBUG'
+    );
+    return;
+  }
+  // The choices were read for the account signed in when the run started;
+  // after a switch they say nothing about the one signed in now.
+  if (currentAccountGeneration() !== accountGeneration) {
+    await addLog(
+      '[Background Sync] Brushing reminders left to the app: the account changed during the run',
       'DEBUG'
     );
     return;

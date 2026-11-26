@@ -2025,5 +2025,62 @@ describe('performBackgroundSync (via triggerManualSync)', () => {
         expect.objectContaining({ mode: 'on' })
       );
     });
+
+    test('leaves them to the app when the account changes while the choices are read', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: false,
+      });
+      mockFetchChoices.mockImplementation(async () => {
+        // The person signs in to another account meanwhile.
+        bumpAccountGeneration();
+        return oralCareOff;
+      });
+
+      await triggerManualSync();
+
+      expect(mockReconcileBrushing).not.toHaveBeenCalled();
+    });
+
+    test.each([
+      [
+        'no health metric is on',
+        () => healthService.loadHealthPreference.mockResolvedValue(false),
+      ],
+      [
+        'the health provider cannot start',
+        () => healthService.initHealthConnect.mockResolvedValue(false),
+      ],
+    ])('still applies the switch when %s', async (_label, setUp) => {
+      setUp();
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: true,
+      });
+      mockFetchChoices.mockResolvedValue(oralCareOff);
+
+      await triggerManualSync();
+
+      expect(mockReconcileBrushing).toHaveBeenCalledTimes(1);
+      expect(mockReconcileBrushing).toHaveBeenCalledWith(
+        expect.objectContaining({ mode: 'off', dismissDelivered: true })
+      );
+      expect(mockReconcileMedications).toHaveBeenCalledTimes(1);
+    });
+
+    test('runs the reminder passes once in a run whose health sync goes through', async () => {
+      useAppPreferencesStore.setState({
+        ...brushingWanted,
+        medicationRemindersEnabled: true,
+      });
+      mockFetchChoices.mockResolvedValue({ feature_choices: {} });
+
+      await triggerManualSync();
+
+      expect(healthService.getAggregatedStepsByDate).toHaveBeenCalled();
+      expect(mockFetchChoices).toHaveBeenCalledTimes(1);
+      expect(mockReconcileBrushing).toHaveBeenCalledTimes(1);
+      expect(mockReconcileMedications).toHaveBeenCalledTimes(1);
+    });
   });
 });
