@@ -12,6 +12,7 @@ export type ActiveWorkoutSnapshot = Pick<
   | 'session'
   | 'completedSetIds'
   | 'prSetIds'
+  | 'videoSetCompletions'
   | 'startedAt'
   | 'resumedDurationMinutes'
   | 'workoutFormat'
@@ -66,7 +67,8 @@ export function buildActiveWorkoutUpdateBody(
       state.completedSetIds,
       state.prSetIds,
       state.startedAt,
-      state.resumedDurationMinutes
+      state.resumedDurationMinutes,
+      state.videoSetCompletions
     ),
     activity_details: activityDetails,
   };

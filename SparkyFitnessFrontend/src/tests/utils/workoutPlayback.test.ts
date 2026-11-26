@@ -10,6 +10,7 @@ import {
   buildPresetSessionCreateRequestFromDraft,
   buildPresetSessionUpdateRequestFromDraft,
   completeCurrentWorkoutSet,
+  completeWorkoutVideoExercises,
   createWorkoutPlaybackDraftFromExercise,
   createWorkoutPlaybackDraftFromSession,
   createWorkoutPlaybackDraftFromPreset,
@@ -445,6 +446,94 @@ describe('workoutPlayback utils', () => {
     expect(movedDraft.exercises[0]?.ended_at).toBeTruthy();
     expect(movedDraft.exercises[1]?.started_at).toBeTruthy();
     expect(movedDraft.exercises[1]?.ended_at).toBeNull();
+  });
+
+  it('saves video segment durations after a pause and draft reload', () => {
+    const start = new Date('2026-04-27T10:00:00.000Z');
+    const completion = new Date('2026-04-27T10:10:30.000Z');
+    const preset = createPresetFixture();
+    preset.video_url = 'https://example.com/workout.mp4';
+    preset.exercises[0] = {
+      ...preset.exercises[0]!,
+      modality: 'duration',
+      video_start_seconds: 0,
+      video_end_seconds: 30,
+      sets: [{ set_number: 1, duration: 10, rest_time: 90 }],
+    };
+    preset.exercises[1] = {
+      ...preset.exercises[1]!,
+      video_start_seconds: 40,
+      video_end_seconds: 52,
+      sets: [
+        { set_number: 1, reps: 10, rest_time: 90 },
+        { set_number: 2, reps: 8, rest_time: 90 },
+      ],
+    };
+
+    jest.useFakeTimers();
+    try {
+      jest.setSystemTime(start);
+      const draft = createWorkoutPlaybackDraftFromPreset(preset, '2026-04-27');
+      jest.setSystemTime(completion);
+      const completed = completeWorkoutVideoExercises(draft, [0, 1]);
+      saveWorkoutPlaybackDraftToStorage('user-1', completed);
+      const restored = loadWorkoutPlaybackDraftFromStorage(
+        'user-1',
+        '2026-04-27'
+      )!;
+
+      const payload = buildPresetSessionCreateRequestFromDraft(restored, 'UTC');
+      expect(payload.exercises?.[0]).toMatchObject({
+        duration_minutes: 0.5,
+        entry_time: '10:00',
+        sets: [{ duration: 30, completed_at: completion.toISOString() }],
+      });
+      expect(payload.exercises?.[1]).toMatchObject({
+        duration_minutes: 0.2,
+        sets: [
+          { reps: 10, duration: null },
+          { reps: 8, duration: null },
+        ],
+      });
+    } finally {
+      clearWorkoutPlaybackDraftFromStorage('user-1', '2026-04-27');
+      jest.useRealTimers();
+    }
+  });
+
+  it('uses a corrected timed set until its video completion is undone', () => {
+    const preset = createPresetFixture();
+    preset.exercises[0] = {
+      ...preset.exercises[0]!,
+      modality: 'duration',
+      video_start_seconds: 0,
+      video_end_seconds: 30,
+      sets: [{ set_number: 1, duration: 10 }],
+    };
+    const pointer = { exerciseIndex: 0, setIndex: 0 };
+    jest.useFakeTimers();
+    try {
+      jest.setSystemTime(new Date('2026-04-27T10:00:00.000Z'));
+      const draft = createWorkoutPlaybackDraftFromPreset(preset, '2026-04-27');
+      jest.setSystemTime(new Date('2026-04-27T10:10:00.000Z'));
+      const completed = completeWorkoutVideoExercises(draft, [0]);
+      const corrected = updateWorkoutSetAtPointer(completed, pointer, {
+        duration: 45,
+      });
+      expect(
+        buildPresetSessionUpdateRequestFromDraft(corrected, 'UTC')
+          .exercises?.[0]?.duration_minutes
+      ).toBeCloseTo(0.75);
+
+      const undone = toggleWorkoutSetCompletion(corrected, pointer);
+      const relogged = toggleWorkoutSetCompletion(undone, pointer);
+      expect(
+        buildPresetSessionUpdateRequestFromDraft(relogged, 'UTC').exercises?.[0]
+          ?.duration_minutes
+      ).toBeCloseTo(10);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('uses exercise start/end timestamps for duration minutes', () => {

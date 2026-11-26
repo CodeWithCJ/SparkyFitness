@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Keyboard } from 'react-native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -42,8 +42,21 @@ export function useActiveWorkoutFinish({
 } {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const finishInProgressRef = useRef(false);
 
   const handleFinish = useCallback(async () => {
+    const { sessionId } = useActiveWorkoutStore.getState();
+    if (sessionId == null) return;
+    const targetSessionId = sessionId;
+
+    function isTargetWorkoutActive(): boolean {
+      return useActiveWorkoutStore.getState().sessionId === targetSessionId;
+    }
+
+    function canFinish(): boolean {
+      return !finishInProgressRef.current && isTargetWorkoutActive();
+    }
+
     function confirmDiscardChanges(): void {
       Alert.alert(
         t('workout.discardChangesTitle', {
@@ -62,6 +75,7 @@ export function useActiveWorkoutFinish({
             text: t('workout.discard', { defaultValue: 'Discard' }),
             style: 'destructive',
             onPress: () => {
+              if (!canFinish()) return;
               useActiveWorkoutStore
                 .getState()
                 .clearWorkout({ discarded: true });
@@ -86,10 +100,11 @@ export function useActiveWorkoutFinish({
       const neverReachedServer =
         useActiveWorkoutStore.getState().pendingCreate != null;
       if (!neverReachedServer && (await checkServerConnection())) return false;
+      if (!isTargetWorkoutActive()) return false;
       const queued = await queueActiveWorkoutForUpload({
         finishedAt: new Date().toISOString(),
       });
-      if (queued == null) return false;
+      if (queued == null || !isTargetWorkoutActive()) return false;
       const celebration = buildWorkoutCelebration(
         useActiveWorkoutStore.getState()
       );
@@ -113,8 +128,9 @@ export function useActiveWorkoutFinish({
 
     async function attempt(): Promise<void> {
       const ok = await flush();
+      if (!isTargetWorkoutActive()) return;
       if (!ok) {
-        if (await finishOffline()) return;
+        if ((await finishOffline()) || !isTargetWorkoutActive()) return;
         Alert.alert(
           t('workout.saveError', {
             defaultValue: 'Could not save your workout',
@@ -125,7 +141,7 @@ export function useActiveWorkoutFinish({
           [
             {
               text: t('workout.retry', { defaultValue: 'Retry' }),
-              onPress: () => void attempt(),
+              onPress: () => void runFinish(),
             },
             {
               text: t('common.discardChanges', {
@@ -150,89 +166,88 @@ export function useActiveWorkoutFinish({
       // newer session that another device resumed or edited in between: the
       // server refuses with 409, the revision is refreshed once, and a stamp
       // that still fails falls back to the retry alert below.
-      const sessionId = useActiveWorkoutStore.getState().sessionId;
-      if (sessionId != null) {
-        const stampFinished = async (): Promise<boolean> => {
-          let revision = useActiveWorkoutStore.getState().session?.revision;
-          // A session restored from storage can lack the revision, and a
-          // clean flush never fetches it: fetch the server's current one
-          // first so this stamp is guarded too. Refuse rather than stamp
-          // unguarded.
-          if (revision == null) {
-            try {
-              revision = (await getWorkout(sessionId)).revision;
-            } catch {
-              return false;
-            }
-            if (revision == null) return false;
+      const stampFinished = async (): Promise<boolean> => {
+        let revision = useActiveWorkoutStore.getState().session?.revision;
+        // A session restored from storage can lack the revision, and a
+        // clean flush never fetches it: fetch the server's current one
+        // first so this stamp is guarded too. Refuse rather than stamp
+        // unguarded.
+        if (revision == null) {
+          try {
+            revision = (await getWorkout(targetSessionId)).revision;
+          } catch {
+            return false;
           }
-          for (let stampAttempt = 0; stampAttempt < 2; stampAttempt += 1) {
-            try {
-              await updateWorkout(sessionId, {
-                finished_at: new Date().toISOString(),
-                revision,
-              });
-              return true;
-            } catch (error) {
-              if (
-                stampAttempt === 0 &&
-                error instanceof ApiError &&
-                error.statusCode === 409
-              ) {
-                // Another device changed the session after this phone's
-                // save: adopt the server's current revision and retry once
-                // instead of presenting the stale revision again.
-                try {
-                  revision = (await getWorkout(sessionId)).revision;
-                  // A session without a revision cannot be guarded:
-                  // refuse instead of stamping unguarded.
-                  if (revision == null) return false;
-                } catch {
-                  return false;
-                }
-                continue;
+          if (revision == null) return false;
+        }
+        for (let stampAttempt = 0; stampAttempt < 2; stampAttempt += 1) {
+          if (!isTargetWorkoutActive()) return false;
+          try {
+            await updateWorkout(targetSessionId, {
+              finished_at: new Date().toISOString(),
+              revision,
+            });
+            return true;
+          } catch (error) {
+            if (
+              stampAttempt === 0 &&
+              error instanceof ApiError &&
+              error.statusCode === 409
+            ) {
+              // Another device changed the session after this phone's
+              // save: adopt the server's current revision and retry once
+              // instead of presenting the stale revision again.
+              try {
+                revision = (await getWorkout(targetSessionId)).revision;
+                // A session without a revision cannot be guarded:
+                // refuse instead of stamping unguarded.
+                if (revision == null) return false;
+              } catch {
+                return false;
               }
-              return false;
+              continue;
             }
+            return false;
           }
-          return false;
-        };
-        // Capture the entry date before the async stamp: the store must
-        // not be re-read afterwards, when the session may have been
-        // swapped mid-stamp.
-        const entryDate = useActiveWorkoutStore.getState().session?.entry_date;
-        const stamped = await stampFinished();
-        if (!stamped) {
-          // The sets reached the server but the connection went before the
-          // finish did: queue the finish instead of asking for a retry.
-          if (await finishOffline()) return;
-          Alert.alert(
-            t('workout.finishStampFailedTitle', {
-              defaultValue: 'Could not mark the workout as finished',
-            }),
-            t('workout.finishStampFailedMessage', {
-              defaultValue:
-                'Your sets were saved, but marking the workout finished failed. Retry to complete it.',
-            }),
-            [
-              {
-                text: t('workout.retry', { defaultValue: 'Retry' }),
-                onPress: () => void attempt(),
-              },
-              {
-                text: t('common.cancel', { defaultValue: 'Cancel' }),
-                style: 'cancel',
-              },
-            ]
-          );
-          return;
         }
-        // The stamp bumps the revision after the flush above already
-        // invalidated the diary, so refresh it again: otherwise the
-        // next read could resurrect the pre-finish state.
-        if (entryDate != null) {
-          invalidateExerciseCache(queryClient, normalizeDate(entryDate));
-        }
+        return false;
+      };
+      // Capture the entry date before the async stamp: the store must
+      // not be re-read afterwards, when the session may have been
+      // swapped mid-stamp.
+      const entryDate = useActiveWorkoutStore.getState().session?.entry_date;
+      const stamped = await stampFinished();
+      // The stamp bumps the revision after the flush above already
+      // invalidated the diary, so refresh it again: otherwise the
+      // next read could resurrect the pre-finish state.
+      if (stamped && entryDate != null) {
+        invalidateExerciseCache(queryClient, normalizeDate(entryDate));
+      }
+      if (!isTargetWorkoutActive()) return;
+      if (!stamped) {
+        // The sets reached the server but the connection went before the
+        // finish did: queue the finish instead of asking for a retry.
+        if ((await finishOffline()) || !isTargetWorkoutActive()) return;
+        Alert.alert(
+          t('workout.finishStampFailedTitle', {
+            defaultValue: 'Could not mark the workout as finished',
+          }),
+          t('workout.finishStampFailedMessage', {
+            defaultValue:
+              'Your sets were saved, but marking the workout finished failed. Retry to complete it.',
+          }),
+          [
+            {
+              text: t('workout.retry', { defaultValue: 'Retry' }),
+              onPress: () => void runFinish(),
+            },
+            {
+              text: t('common.cancel', { defaultValue: 'Cancel' }),
+              style: 'cancel',
+            },
+          ]
+        );
+        return;
       }
       const celebration = buildWorkoutCelebration(
         useActiveWorkoutStore.getState()
@@ -244,10 +259,31 @@ export function useActiveWorkoutFinish({
         safeGoBack();
       }
     }
-    await attempt();
+
+    async function runFinish(): Promise<void> {
+      if (!canFinish()) return;
+      finishInProgressRef.current = true;
+      try {
+        await attempt();
+      } finally {
+        finishInProgressRef.current = false;
+      }
+    }
+
+    await runFinish();
   }, [flush, navigation, queryClient, safeGoBack, t]);
 
+  const handleDurationSave = useCallback(
+    (minutes: number) => {
+      if (finishInProgressRef.current) return;
+      useActiveWorkoutStore.getState().setWorkoutDurationMinutes(minutes);
+      void handleFinish();
+    },
+    [handleFinish]
+  );
+
   const maybeAdjustDurationThenFinish = useCallback(() => {
+    if (finishInProgressRef.current) return;
     const { completedSetIds: completed, startedAt } =
       useActiveWorkoutStore.getState();
     const span = summarizeWorkoutSpan(completed, startedAt);
@@ -272,12 +308,7 @@ export function useActiveWorkoutFinish({
             defaultValue: 'Log {{name}}',
             name: activeLabel,
           }),
-          onPress: () => {
-            useActiveWorkoutStore
-              .getState()
-              .setWorkoutDurationMinutes(span.activeMinutes);
-            void handleFinish();
-          },
+          onPress: () => handleDurationSave(span.activeMinutes),
         },
         {
           text: t('workout.keep', {
@@ -296,17 +327,10 @@ export function useActiveWorkoutFinish({
         },
       ]
     );
-  }, [durationSheetRef, handleFinish, t]);
-
-  const handleDurationSave = useCallback(
-    (minutes: number) => {
-      useActiveWorkoutStore.getState().setWorkoutDurationMinutes(minutes);
-      void handleFinish();
-    },
-    [handleFinish]
-  );
+  }, [durationSheetRef, handleDurationSave, handleFinish, t]);
 
   const handleConfirmEnd = useCallback(() => {
+    if (finishInProgressRef.current) return;
     Keyboard.dismiss();
     const totalSets =
       session?.exercises.reduce((sum, e) => sum + e.sets.length, 0) ?? 0;

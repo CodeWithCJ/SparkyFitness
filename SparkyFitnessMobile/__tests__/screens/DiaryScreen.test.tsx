@@ -4,6 +4,7 @@ import { RefreshControl } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DiaryScreen from '../../src/screens/DiaryScreen';
 import type DateNavigatorComponent from '../../src/components/DateNavigator';
+import ExerciseSummary from '../../src/components/ExerciseSummary';
 import {
   useDailySummary,
   useCustomNutrients,
@@ -12,15 +13,23 @@ import {
   useServerConnection,
 } from '../../src/hooks';
 import { useMeasurements } from '../../src/hooks/useMeasurements';
+import { useActiveWorkoutPlans } from '../../src/hooks/useActiveWorkoutPlan';
+import type { StartLiveWorkoutArgs } from '../../src/hooks/useStartLiveWorkout';
 import { useCustomMeasurementsByDate } from '../../src/hooks/useCustomMeasurements';
 import { useDiaryDateStore } from '../../src/stores/diaryDateStore';
 import { useSleepDay } from '../../src/hooks/useSleepDay';
 import { getTodayDate } from '../../src/utils/dateUtils';
 import { useNativeIOSTabsActive } from '../../src/services/nativeTabBarPreference';
 import { setNativeHeaderDatePickerOptions } from '../../src/utils/nativeHeaderDatePicker';
+import { getWorkoutPresetById } from '../../src/services/api/workoutPresetsApi';
 import { EMPTY_SUPPLEMENT_TOTALS } from '@workspace/shared';
 import type { DailySummary, MacroSummary } from '../../src/types/dailySummary';
 import type { FoodEntry } from '../../src/types/foodEntries';
+import type {
+  WorkoutPlanAssignment,
+  WorkoutPlanTemplate,
+} from '../../src/types/workoutPlans';
+import type { WorkoutPreset } from '../../src/types/workoutPresets';
 import { buildSleepEntry } from '../helpers/sleepFixtures';
 
 type DiaryScreenProps = React.ComponentProps<typeof DiaryScreen>;
@@ -148,20 +157,31 @@ jest.mock('../../src/stores/activeWorkoutStore', () => ({
   useActiveWorkoutStore: { getState: () => ({ sessionId: null }) },
 }));
 
+const mockStartLiveWorkout = jest
+  .fn<Promise<void>, [StartLiveWorkoutArgs]>()
+  .mockResolvedValue(undefined);
 jest.mock('../../src/hooks/useStartLiveWorkout', () => ({
   useStartLiveWorkout: () => ({
-    startLiveWorkout: jest.fn(),
+    startLiveWorkout: mockStartLiveWorkout,
     isStarting: false,
   }),
 }));
 
 jest.mock('../../src/hooks/useActiveWorkoutPlan', () => ({
   useActiveWorkoutPlan: () => ({ plan: null, plans: [], isLoading: false }),
-  useActiveWorkoutPlans: () => ({ plan: null, plans: [], isLoading: false }),
+  useActiveWorkoutPlans: jest.fn(() => ({
+    plan: null,
+    plans: [],
+    isLoading: false,
+  })),
 }));
 
 jest.mock('../../src/hooks/useWorkoutPresets', () => ({
   useWorkoutPresets: () => ({ presets: [], isLoading: false }),
+}));
+
+jest.mock('../../src/services/api/workoutPresetsApi', () => ({
+  getWorkoutPresetById: jest.fn(),
 }));
 
 jest.mock('../../src/components/ActiveWorkoutBar', () => ({
@@ -237,7 +257,7 @@ jest.mock('../../src/components/ExerciseSummary', () => {
   const { View } = require('react-native');
   return {
     __esModule: true,
-    default: () => <View testID="exercise-summary" />,
+    default: jest.fn(() => <View testID="exercise-summary" />),
   };
 });
 
@@ -976,5 +996,92 @@ describe('DiaryScreen progress photo markers', () => {
 
     expect(mockUseCheckInPhotoDates).toHaveBeenCalledWith(false);
     expect(mockUseCheckInPhotoDates).not.toHaveBeenCalledWith(true);
+  });
+});
+
+describe('DiaryScreen scheduled workout video', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    configureConnection(true);
+    configureFamilyUsers([]);
+    configureOnlineData();
+  });
+
+  it.each([
+    {
+      name: 'uses the fetched preset video for a single assignment',
+      single: true,
+    },
+    { name: 'omits video when combining multiple assignments', single: false },
+  ])('$name', async ({ single }) => {
+    const videoUrl = 'https://example.com/workout.mp4';
+    const preset: WorkoutPreset = {
+      id: 12,
+      user_id: 'user-1',
+      name: 'Video workout',
+      description: null,
+      is_public: false,
+      workout_format: 'standard',
+      video_url: videoUrl,
+      exercises: [
+        {
+          id: 21,
+          exercise_id: 'exercise-1',
+          exercise_name: 'Stretch',
+          image_url: null,
+          category: null,
+          superset_group: null,
+          sets: [],
+        },
+      ],
+    };
+    const assignment: WorkoutPlanAssignment = {
+      id: '1',
+      template_id: 'plan-1',
+      day_of_week: 1,
+      sort_order: 0,
+      workout_preset_id: String(preset.id),
+      sets: [],
+    };
+    const extraAssignment: WorkoutPlanAssignment = {
+      id: '2',
+      template_id: assignment.template_id,
+      day_of_week: assignment.day_of_week,
+      sort_order: 1,
+      exercise_id: 'exercise-2',
+      sets: [],
+    };
+    const plan: WorkoutPlanTemplate = {
+      id: assignment.template_id,
+      user_id: preset.user_id,
+      plan_name: 'Workout plan',
+      start_date: baseSummary.date,
+      is_active: true,
+      schedule_type: 'weekly',
+      next_assignment: assignment,
+      assignments: single ? [assignment] : [assignment, extraAssignment],
+    };
+    jest.mocked(useActiveWorkoutPlans).mockReturnValueOnce({
+      plan,
+      plans: [plan],
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+    jest.mocked(getWorkoutPresetById).mockResolvedValueOnce(preset);
+
+    renderScreen();
+    const startAssignment =
+      jest.mocked(ExerciseSummary).mock.lastCall?.[0].onPressPlanAssignment;
+    expect(startAssignment).toBeDefined();
+    await act(async () => {
+      startAssignment?.(plan, assignment);
+    });
+
+    expect(getWorkoutPresetById).toHaveBeenCalledWith(preset.id);
+    expect(mockStartLiveWorkout).toHaveBeenCalledTimes(1);
+    const start = mockStartLiveWorkout.mock.lastCall?.[0];
+    expect(start?.sourcePresetId).toBe(single ? preset.id : undefined);
+    expect(start?.videoUrl).toBe(single ? videoUrl : undefined);
   });
 });

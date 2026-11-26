@@ -5,6 +5,7 @@ import type {
   ExerciseEntrySetRequest,
   ExerciseEntrySetResponse,
   ExerciseModality,
+  WorkoutVideoSetCompletion,
   ExerciseRecentSessionSet,
   EntryExerciseSnapshotResponse,
   ExerciseSessionResponse,
@@ -27,6 +28,7 @@ import {
   effectiveLoadKg,
   entryCaloriesCounted,
   evaluateProgression,
+  getWorkoutVideoExerciseDurationMinutes,
   isBodyweightModality,
   isCardioModality,
   isExerciseModality,
@@ -1665,7 +1667,8 @@ export function buildSessionExercisesPayload(
   completedSetIds: CompletedSetMap,
   prSetIds: PrSetMap,
   startedAtMs?: number | null,
-  resumedDurationMinutes?: Record<string, number>
+  resumedDurationMinutes?: Record<string, number>,
+  videoSetCompletions: Record<string, WorkoutVideoSetCompletion> = {}
 ): PresetSessionExerciseRequest[] {
   const timing = buildSessionExerciseTiming(
     session,
@@ -1678,11 +1681,16 @@ export function buildSessionExercisesPayload(
     id: exercise.id,
     exercise_id: exercise.exercise_id,
     sort_order: index,
-    duration_minutes: isCardioModality(
-      resolveSnapshotModality(exercise.exercise_snapshot)
-    )
-      ? setsDurationMinutes(exercise.sets)
-      : (timing?.durations.get(exercise.id) ?? exercise.duration_minutes ?? 0),
+    duration_minutes:
+      getWorkoutVideoExerciseDurationMinutes(exercise.sets, (set) => {
+        const id = String(set.id);
+        if (completedSetIds[id] != null) return videoSetCompletions[id];
+      }) ??
+      (isCardioModality(resolveSnapshotModality(exercise.exercise_snapshot))
+        ? setsDurationMinutes(exercise.sets)
+        : (timing?.durations.get(exercise.id) ??
+          exercise.duration_minutes ??
+          0)),
     // Omitted when nothing was completed yet, so the server keeps what it has.
     ...(timing?.startTimes.has(exercise.id)
       ? { entry_time: timing.startTimes.get(exercise.id) }

@@ -1,3 +1,5 @@
+import type { ExerciseModality } from '../constants/exercise.ts';
+
 export interface WorkoutVideoTiming {
   video_start_seconds?: number | null;
   video_end_seconds?: number | null;
@@ -71,6 +73,46 @@ export function hasInvalidWorkoutVideoTiming(
     end <= start ||
     end > 2_147_483_647
   );
+}
+
+export interface WorkoutVideoSetCompletion {
+  segmentSeconds: number;
+  /** A single timed set records the segment and can be corrected later. */
+  useSetDuration: boolean;
+}
+
+export function workoutVideoSetCompletion(
+  timing: WorkoutVideoTiming,
+  modality: ExerciseModality | undefined,
+  setCount: number
+): WorkoutVideoSetCompletion | undefined {
+  const { video_start_seconds: start, video_end_seconds: end } = timing;
+  if (start == null || end == null || hasInvalidWorkoutVideoTiming(timing)) {
+    return undefined;
+  }
+  return {
+    segmentSeconds: end - start,
+    useSetDuration:
+      setCount === 1 &&
+      (modality === 'duration' || modality === 'duration_distance'),
+  };
+}
+
+/** All sets logged by the same segment contribute its duration once. */
+export function getWorkoutVideoExerciseDurationMinutes<
+  TSet extends { duration?: number | null },
+>(
+  sets: readonly TSet[],
+  completionFor: (set: TSet) => WorkoutVideoSetCompletion | undefined
+): number | undefined {
+  for (const set of sets) {
+    const completion = completionFor(set);
+    if (completion) {
+      const correctedSeconds = completion.useSetDuration ? set.duration : null;
+      return (correctedSeconds ?? completion.segmentSeconds) / 60;
+    }
+  }
+  return undefined;
 }
 
 export function buildWorkoutVideoTimeline(

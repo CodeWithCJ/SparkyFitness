@@ -16,6 +16,7 @@ import {
   type PresetSessionResponse,
   type WorkoutFormat,
   type DropSetWeightUnit,
+  type WorkoutVideoSetCompletion,
   buildIntervalPhases,
   calculateDropSetWeightsKg,
   calculateWarmupSets,
@@ -23,6 +24,7 @@ import {
   isWarmupSetType,
   WARMUP_REST_SEC,
   shiftPhasesForPause,
+  workoutVideoSetCompletion,
 } from '@workspace/shared';
 import type { Exercise } from '../types/exercise';
 import {
@@ -194,6 +196,8 @@ export interface ActiveWorkoutState {
   startedAt: number | null;
   steps: WorkoutStep[];
   completedSetIds: CompletedSetMap;
+  /** Persisted alongside completion timestamps and remapped with set ids. */
+  videoSetCompletions: Record<string, WorkoutVideoSetCompletion>;
   /**
    * The set the user is currently on — the cursor advances strictly forward
    * through `steps`. `null` means the workout is finished (either every step
@@ -445,7 +449,13 @@ export interface ActiveWorkoutState {
    * `completedAtMs` is the tap time when the watch logged the set. Omit it
    * and the phone stamps now, which is the right time for a set logged here.
    */
-  completeSet: (setId: string, completedAtMs?: number) => void;
+  completeSet: (
+    setId: string,
+    completedAtMs?: number,
+    videoCompletion?: WorkoutVideoSetCompletion
+  ) => void;
+  /** Log sets for the exercise segments the player finished. */
+  completeVideoExercises: (exerciseIds: readonly string[]) => void;
   /** Complete the current cursor set. Thin wrapper over {@link completeSet}. */
   completeActiveSet: () => void;
   /**
@@ -656,6 +666,7 @@ const initialData: Pick<
   | 'startedAt'
   | 'steps'
   | 'completedSetIds'
+  | 'videoSetCompletions'
   | 'activeSetId'
   | 'rest'
   | 'restExpiredAt'
@@ -698,6 +709,7 @@ const initialData: Pick<
   startedAt: null,
   steps: [],
   completedSetIds: {},
+  videoSetCompletions: {},
   activeSetId: null,
   rest: READY_REST,
   restExpiredAt: null,
@@ -1200,6 +1212,20 @@ function keepIfUnchanged<T extends Record<string, unknown>>(
   return prev;
 }
 
+/** Keep video completions only for sets that are still logged. */
+function reconcileVideoSetCompletions(
+  current: ActiveWorkoutState['videoSetCompletions'],
+  completedSetIds: CompletedSetMap,
+  setIdMap?: ReadonlyMap<string, string>
+): ActiveWorkoutState['videoSetCompletions'] {
+  const next: ActiveWorkoutState['videoSetCompletions'] = {};
+  for (const [setId, completion] of Object.entries(current)) {
+    const id = setIdMap?.get(setId) ?? setId;
+    if (completedSetIds[id] != null) next[id] = completion;
+  }
+  return keepIfUnchanged(current, next);
+}
+
 /**
  * Shared tail of every session-edit action: rebuild steps from the edited
  * session, prune/repoint completion and cursor (same rules as
@@ -1209,7 +1235,12 @@ function keepIfUnchanged<T extends Record<string, unknown>>(
 function buildSessionEditState(
   state: Pick<
     ActiveWorkoutState,
-    'completedSetIds' | 'prSetIds' | 'activeSetId' | 'rest' | 'sessionRevision'
+    | 'completedSetIds'
+    | 'videoSetCompletions'
+    | 'prSetIds'
+    | 'activeSetId'
+    | 'rest'
+    | 'sessionRevision'
   >,
   editedSession: PresetSessionResponse
 ): Partial<ActiveWorkoutState> {
@@ -1248,6 +1279,10 @@ function buildSessionEditState(
     session: nextSession,
     steps: newSteps,
     completedSetIds: keepIfUnchanged(state.completedSetIds, nextCompleted),
+    videoSetCompletions: reconcileVideoSetCompletions(
+      state.videoSetCompletions,
+      nextCompleted
+    ),
     prSetIds: keepIfUnchanged(state.prSetIds, nextPr),
     activeSetId: nextActiveSetId,
     rest: nextRest,
@@ -1548,6 +1583,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           startedAt: startedMs,
           steps,
           completedSetIds,
+          videoSetCompletions: {},
           resumedDurationMinutes: captureResumedDurations(
             session,
             completedSetIds,
@@ -1628,6 +1664,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           startedAt: startedMs,
           steps,
           completedSetIds,
+          videoSetCompletions: {},
           resumedDurationMinutes: captureResumedDurations(
             session,
             savedCompletedSetIds,
@@ -1912,7 +1949,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set({ ...initialData, weightUnit: get().weightUnit });
       },
 
-      completeSet: (setId, completedAtMs) => {
+      completeSet: (setId, completedAtMs, videoCompletion) => {
         const state = get();
         const targetIndex = state.steps.findIndex((s) => s.setId === setId);
         if (targetIndex < 0) return;
@@ -1934,6 +1971,9 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
               ? completedAtMs
               : Date.now(),
         };
+        const videoSetCompletions = videoCompletion
+          ? { ...state.videoSetCompletions, [setId]: videoCompletion }
+          : state.videoSetCompletions;
 
         // PR detection runs against the pre-completion map (the candidate is
         // excluded internally). Sets logged within an interval/WOD session are saved as
@@ -1968,6 +2008,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           set({
             session,
             completedSetIds,
+            videoSetCompletions,
             prSetIds,
             activeSetId: null,
             rest: READY_REST,
@@ -1989,6 +2030,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         set({
           session,
           completedSetIds,
+          videoSetCompletions,
           prSetIds,
           activeSetId: nextStep.setId,
           // Zero rest (back-to-back superset partners, or an explicit rest_time
@@ -2006,6 +2048,32 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           sessionRevision: state.sessionRevision + 1,
           hasUnsavedChanges: true,
         });
+      },
+
+      completeVideoExercises: (exerciseIds) => {
+        const { session, exerciseConfigs } = get();
+        for (const exercise of session?.exercises ?? []) {
+          if (!exerciseIds.includes(exercise.id)) continue;
+          const timing = exerciseConfigs[exercise.id];
+          if (!timing) continue;
+          const completion = workoutVideoSetCompletion(
+            timing,
+            resolveSnapshotModality(exercise.exercise_snapshot),
+            exercise.sets.length
+          );
+          if (!completion) continue;
+          for (const s of exercise.sets) {
+            const setId = String(s.id);
+            const state = get();
+            if (state.completedSetIds[setId] != null) continue;
+            if (completion.useSetDuration) {
+              state.updateSetField(setId, {
+                duration: completion.segmentSeconds,
+              });
+            }
+            state.completeSet(setId, undefined, completion);
+          }
+        }
       },
 
       completeActiveSet: () => {
@@ -2048,6 +2116,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
 
         set({
           completedSetIds: next,
+          videoSetCompletions: reconcileVideoSetCompletions(
+            state.videoSetCompletions,
+            next
+          ),
           prSetIds: nextPr,
           activeSetId: nextActiveSetId,
           sessionRevision: state.sessionRevision + 1,
@@ -2087,6 +2159,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
 
         set({
           completedSetIds: next,
+          videoSetCompletions: reconcileVideoSetCompletions(
+            state.videoSetCompletions,
+            next
+          ),
           prSetIds: nextPr,
           activeSetId: nextActiveSetId,
           rest: nextRest,
@@ -2101,6 +2177,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         cancelCurrentRestNotification(state.rest);
         set({
           completedSetIds: {},
+          videoSetCompletions: {},
           prSetIds: {},
           // Rewind the cursor to the first step and drop any running rest.
           activeSetId: state.steps[0]?.setId ?? null,
@@ -2278,6 +2355,10 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           steps: newSteps,
           completedSetIds: keepIfUnchanged(
             state.completedSetIds,
+            nextCompleted
+          ),
+          videoSetCompletions: reconcileVideoSetCompletions(
+            state.videoSetCompletions,
             nextCompleted
           ),
           prSetIds: keepIfUnchanged(state.prSetIds, nextPr),
@@ -3000,6 +3081,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
               state.completedSetIds,
               nextCompleted
             ),
+            videoSetCompletions: reconcileVideoSetCompletions(
+              state.videoSetCompletions,
+              nextCompleted,
+              setIdMap
+            ),
             prSetIds: keepIfUnchanged(state.prSetIds, nextPr),
             setRenderKeys: keepIfUnchanged(state.setRenderKeys, nextRenderKeys),
             setTimerStartedAt: nextTimers,
@@ -3074,6 +3160,11 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
             state.completedSetIds,
             nextCompleted
           ),
+          videoSetCompletions: reconcileVideoSetCompletions(
+            state.videoSetCompletions,
+            nextCompleted,
+            setIdMap
+          ),
           prSetIds: keepIfUnchanged(state.prSetIds, nextPr),
           setRenderKeys: keepIfUnchanged(state.setRenderKeys, nextRenderKeys),
           setTimerStartedAt: nextTimers,
@@ -3093,6 +3184,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
         startedAt: state.startedAt,
         steps: state.steps,
         completedSetIds: state.completedSetIds,
+        videoSetCompletions: state.videoSetCompletions,
         activeSetId: state.activeSetId,
         rest: state.rest,
         // A running set stopwatch survives a cold start.

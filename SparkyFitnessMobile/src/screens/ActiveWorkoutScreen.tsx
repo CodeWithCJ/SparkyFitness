@@ -1001,29 +1001,7 @@ function ActiveWorkoutScreen({ navigation, route }: Props) {
 
   const handleVideoComplete = useCallback(
     (exerciseIds: readonly string[], ended: boolean) => {
-      const state = useActiveWorkoutStore.getState();
-      for (const entry of state.session?.exercises ?? []) {
-        const id = String(entry.id);
-        if (!exerciseIds.includes(id)) continue;
-        const timing = state.exerciseConfigs[id];
-        for (const set of entry.sets) {
-          const setId = String(set.id);
-          if (state.completedSetIds[setId] != null) continue;
-          if (
-            entry.sets.length === 1 &&
-            isDurationModality(
-              resolveSnapshotModality(entry.exercise_snapshot)
-            ) &&
-            timing?.video_start_seconds != null &&
-            timing.video_end_seconds != null
-          ) {
-            state.updateSetField(setId, {
-              duration: timing.video_end_seconds - timing.video_start_seconds,
-            });
-          }
-          state.completeSet(setId);
-        }
-      }
+      useActiveWorkoutStore.getState().completeVideoExercises(exerciseIds);
       const current = useActiveWorkoutStore.getState();
       if (
         ended &&

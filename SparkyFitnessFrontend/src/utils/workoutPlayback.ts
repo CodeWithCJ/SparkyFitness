@@ -4,11 +4,13 @@ import {
   calculateDropSetWeightsKg,
   calculateRampedWeightKg,
   findDropSetBaseIndex,
+  getWorkoutVideoExerciseDurationMinutes,
   instantHourMinute,
   isWeightRampActive,
   resolveExerciseModality,
   setsDurationMinutes,
   weightRampStepIndexes,
+  workoutVideoSetCompletion,
   type AdaptiveAdjustment,
   type AdaptiveAdjustmentKind,
   type AdaptiveReason,
@@ -17,6 +19,7 @@ import {
   type PresetSessionResponse,
   type UpdatePresetSessionRequest,
   type WorkoutFormat,
+  type WorkoutVideoSetCompletion,
   type WorkoutVideoTiming,
 } from '@workspace/shared';
 import type { WorkoutPreset, WorkoutPresetSet } from '@/types/workout';
@@ -113,6 +116,7 @@ export interface WorkoutPlaybackSetDraft extends WorkoutPresetSet {
   completed: boolean;
   /** ISO timestamp of when the set was checked off; null while incomplete. */
   completed_at: string | null;
+  video_completion?: WorkoutVideoSetCompletion;
   /**
    * Epoch ms a timed/hold set's stopwatch was started. Lives on the draft so a
    * running stopwatch survives re-renders and a page reload; never sent to
@@ -751,6 +755,7 @@ export function toggleWorkoutSetCompletion(
     ...set,
     completed: !set.completed,
     completed_at: set.completed ? null : new Date().toISOString(),
+    video_completion: undefined,
   }));
 }
 
@@ -1203,7 +1208,8 @@ export function replaceExerciseInWorkoutDraft(
 }
 
 export function completeCurrentWorkoutSet(
-  draft: WorkoutPlaybackDraft
+  draft: WorkoutPlaybackDraft,
+  videoCompletion?: WorkoutVideoSetCompletion
 ): WorkoutPlaybackDraft {
   const currentPointer = getCurrentWorkoutSetPointer(draft);
   const currentSet = getSetByPointer(draft, currentPointer);
@@ -1213,8 +1219,12 @@ export function completeCurrentWorkoutSet(
 
   let nextDraft = updateSetAtPointer(draft, currentPointer, (set) => ({
     ...set,
+    ...(videoCompletion?.useSetDuration
+      ? { duration: videoCompletion.segmentSeconds }
+      : {}),
     completed: true,
     completed_at: new Date().toISOString(),
+    video_completion: videoCompletion,
   }));
 
   const nextPointer = getNextIncompletePointer(nextDraft, currentPointer);
@@ -1233,28 +1243,19 @@ export function completeWorkoutVideoExercises(
   let nextDraft = draft;
   for (const exerciseIndex of exerciseIndexes) {
     const exercise = nextDraft.exercises[exerciseIndex];
-    if (
-      !exercise ||
-      exercise.video_start_seconds == null ||
-      exercise.video_end_seconds == null
-    )
-      continue;
-    const seconds = exercise.video_end_seconds - exercise.video_start_seconds;
+    if (!exercise) continue;
+    const completion = workoutVideoSetCompletion(
+      exercise,
+      exercise.modality,
+      exercise.sets.length
+    );
+    if (!completion) continue;
     for (const [setIndex, set] of exercise.sets.entries()) {
       if (set.completed) continue;
       const pointer = { exerciseIndex, setIndex };
-      if (
-        exercise.sets.length === 1 &&
-        (exercise.modality === 'duration' ||
-          exercise.modality === 'duration_distance')
-      ) {
-        nextDraft = updateSetAtPointer(nextDraft, pointer, (current) => ({
-          ...current,
-          duration: seconds,
-        }));
-      }
       nextDraft = completeCurrentWorkoutSet(
-        setWorkoutPlaybackPointer(nextDraft, pointer)
+        setWorkoutPlaybackPointer(nextDraft, pointer),
+        completion
       );
     }
   }
@@ -1313,6 +1314,7 @@ export function addRoundToWorkoutDraft(
       set_number: exercise.sets.length + idx + 1,
       completed: false,
       completed_at: null,
+      video_completion: undefined,
     }));
 
     return {
@@ -1388,7 +1390,11 @@ function buildSessionExercisesFromDraft(
         ...(exercise.entry_id ? { id: exercise.entry_id } : {}),
         exercise_id: exercise.exercise_id,
         sort_order: exerciseIndex,
-        duration_minutes: deriveExerciseDurationMinutes(exercise),
+        duration_minutes:
+          getWorkoutVideoExerciseDurationMinutes(
+            completedSets,
+            (set) => set.video_completion
+          ) ?? deriveExerciseDurationMinutes(exercise),
         notes: exercise.notes ?? null,
         entry_time: entryTime,
         workout_plan_assignment_id: exercise.workout_plan_assignment_id ?? null,

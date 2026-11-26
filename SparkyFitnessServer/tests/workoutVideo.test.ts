@@ -184,7 +184,7 @@ describe('follow-along workout video', () => {
     expect(document.match(/<script>/g)).toHaveLength(1);
   });
 
-  it('uses the last cued time when YouTube reports PLAYING after the first frame', () => {
+  it('tracks YouTube playback through buffering, clock corrections and speed changes', async () => {
     const html = buildWorkoutVideoDocument(
       { kind: 'youtube', id: 'H6x1X1A2HjA' },
       'https://example.com',
@@ -196,11 +196,15 @@ describe('follow-along workout video', () => {
 
     let seconds = 0;
     let now = 0;
-    let onPlaying: (() => void) | undefined;
+    let rate = 1;
+    let changeState: ((state: number) => void) | undefined;
+    let changeRate: ((rate: number) => void) | undefined;
+    let pollClock: (() => void) | undefined;
     const messages: unknown[] = [];
+    const playerState = { PLAYING: 1, ENDED: 0, PAUSED: 2, BUFFERING: 3 };
     const player = {
       getCurrentTime: () => seconds,
-      getPlaybackRate: () => 1,
+      getPlaybackRate: () => rate,
       getIframe: () => ({}),
     };
     const window = {
@@ -216,15 +220,20 @@ describe('follow-along workout video', () => {
               events: {
                 onReady: (event: { target: typeof player }) => void;
                 onStateChange: (event: { data: number }) => void;
+                onPlaybackRateChange: (event: { data: number }) => void;
               };
             }
           ) {
-            onPlaying = () => options.events.onStateChange({ data: 1 });
+            changeState = (data) => options.events.onStateChange({ data });
+            changeRate = (data) => {
+              rate = data;
+              options.events.onPlaybackRateChange({ data });
+            };
             queueMicrotask(() => options.events.onReady({ target: player }));
             Object.assign(this, player);
           }
         },
-        PlayerState: { PLAYING: 1, ENDED: 0 },
+        PlayerState: playerState,
       },
     };
     runInNewContext(script!, {
@@ -235,16 +244,67 @@ describe('follow-along workout video', () => {
         head: { append() {} },
       },
       performance: { now: () => now },
-      setInterval: () => 1,
+      setInterval: (callback: () => void) => {
+        pollClock = callback;
+        return 1;
+      },
     });
     window.onYouTubeIframeAPIReady();
-    return Promise.resolve().then(() => {
-      now = 330;
-      seconds = 0.3;
-      onPlaying?.();
-      expect(messages.at(-1)).toMatchObject({
-        ranges: [{ start: 0, end: 0.3 }],
-      });
+    await Promise.resolve();
+
+    function sample(at: number, position: number, state?: number) {
+      now = at;
+      seconds = position;
+      if (state === undefined) pollClock?.();
+      else changeState?.(state);
+      return messages.at(-1);
+    }
+
+    sample(990, 0);
+    expect(sample(1000, 0.3, playerState.PLAYING)).toMatchObject({
+      ranges: [{ start: 0, end: 0.3 }],
+    });
+    sample(1200, 0.5);
+    sample(1400, 0.51);
+    sample(1600, 0.52);
+    expect(sample(1800, 1.08)).toMatchObject({
+      ranges: [{ start: 0.52, end: 1.08 }],
+    });
+    expect(sample(1810, 0.8)).toMatchObject({ ranges: [] });
+    expect(sample(2010, 1.28)).toMatchObject({
+      ranges: [{ start: 1.08, end: 1.28 }],
+    });
+    sample(2110, 1.38, playerState.BUFFERING);
+    sample(2870, 1.38);
+    expect(sample(2880, 1.76, playerState.PLAYING)).toMatchObject({
+      ranges: [{ start: 1.38, end: 1.76 }],
+    });
+    sample(3080, 1.96);
+    expect(sample(3290, 7)).toMatchObject({ seconds: 7, ranges: [] });
+    expect(sample(3490, 7.2)).toMatchObject({
+      ranges: [{ start: 7, end: 7.2 }],
+    });
+    sample(3590, 7.3, playerState.PAUSED);
+    expect(sample(3890, 12)).toMatchObject({ seconds: 12, ranges: [] });
+    expect(sample(4090, 12.12, playerState.PLAYING)).toMatchObject({
+      ranges: [{ start: 12, end: 12.12 }],
+    });
+    expect(sample(4215, 12.37)).toMatchObject({
+      seconds: 12.37,
+      ranges: [{ start: 12.12, end: expect.closeTo(12.245) }],
+    });
+    sample(5000, 50);
+    now = 5010;
+    seconds = 50.01;
+    changeRate?.(2);
+    now = 5160;
+    seconds = 50.31;
+    changeRate?.(0.25);
+    expect(messages.at(-1)).toMatchObject({
+      ranges: [{ start: expect.closeTo(50.01), end: expect.closeTo(50.31) }],
+    });
+    expect(sample(5360, 50.36)).toMatchObject({
+      ranges: [{ start: expect.closeTo(50.31), end: expect.closeTo(50.36) }],
     });
   });
 });

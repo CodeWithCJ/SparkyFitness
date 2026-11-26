@@ -447,13 +447,22 @@ async function updateWorkoutPreset(
           occurrences.push(timing);
           byExercise.set(exercise_id, occurrences);
         }
-        exercises = exercises.map((exercise) => {
+        const exercisesInPresetOrder = [...exercises.entries()].sort(
+          ([leftIndex, left], [rightIndex, right]) =>
+            (left.sort_order || 0) - (right.sort_order || 0) ||
+            leftIndex - rightIndex
+        );
+        exercises = [...exercises];
+        for (const [index, exercise] of exercisesInPresetOrder) {
           const timing = byExercise.get(exercise.exercise_id)?.shift();
-          return exercise.video_start_seconds === undefined &&
+          if (
+            timing &&
+            exercise.video_start_seconds === undefined &&
             exercise.video_end_seconds === undefined
-            ? { ...exercise, ...timing }
-            : exercise;
-        });
+          ) {
+            exercises[index] = { ...exercise, ...timing };
+          }
+        }
         if (hasOverlappingWorkoutVideoTimings(exercises)) {
           throw new ValidationError(
             'Video exercise segments must not overlap.'

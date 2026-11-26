@@ -125,25 +125,43 @@ if (config.source.kind === 'file') {
   document.body.append(target);
   let player;
   let previous = null;
-  let lastReport = null;
+  let playbackRate = 1;
   let playing = false;
   let timer;
   window.pauseWorkoutVideo = () => player?.pauseVideo?.();
-  const report = (ended = false) => {
+  const report = (ended = false, resumed = false) => {
     if (!player || !player.getCurrentTime) return;
     const seconds = player.getCurrentTime();
     const now = performance.now();
     const ranges = [];
-    if (playing && previous && seconds > previous.seconds) {
-      const expected = ((now - previous.now) / 1000) * player.getPlaybackRate();
-      // The IFrame API has no seek event. A jump ahead of the active
-      // playback clock moves the display but does not fill the skipped time.
-      if (seconds - previous.seconds <= expected + 0.2) {
-        ranges.push({ start: previous.seconds, end: seconds });
+    const sample = { seconds, now, expected: seconds, playedUntil: seconds };
+    if (playing && previous) {
+      const elapsed = (now - previous.now) / 1000;
+      const elapsedPlayback = resumed ? Math.min(elapsed, 0.2) : elapsed;
+      let expected = previous.expected + elapsedPlayback * playbackRate;
+      // YouTube may deliver PLAYING after the playhead has started moving.
+      if (resumed && seconds <= expected + 0.5 * playbackRate) {
+        expected = seconds;
       }
+      // Small backwards corrections occur as the player clock settles.
+      // Carry at most one second of playback between reports. A larger
+      // discontinuity starts a new range at the reported position.
+      if (
+        seconds >= previous.seconds - 0.5 * playbackRate &&
+        seconds <= expected + 0.2
+      ) {
+        sample.expected = Math.min(expected, seconds + playbackRate);
+        const playedUntil = Math.min(seconds, expected);
+        sample.playedUntil = Math.max(previous.playedUntil, playedUntil);
+        if (playedUntil > previous.playedUntil) {
+          ranges.push({ start: previous.playedUntil, end: playedUntil });
+        }
+      }
+    } else if (previous && Math.abs(seconds - previous.seconds) < 0.05) {
+      // Keep the end of the last confirmed range across a stationary pause.
+      sample.playedUntil = previous.playedUntil;
     }
-    previous = playing ? { seconds, now } : null;
-    lastReport = { seconds, now };
+    previous = sample;
     send({ seconds, ended, ranges });
   };
   const fail = () => {
@@ -164,6 +182,7 @@ if (config.source.kind === 'file') {
         onReady: (event) => {
           const iframe = event.target.getIframe();
           iframe.title = config.title;
+          playbackRate = event.target.getPlaybackRate() || 1;
           timer = setInterval(() => report(), 200);
           report();
         },
@@ -172,15 +191,11 @@ if (config.source.kind === 'file') {
           const wasPlaying = playing;
           if (wasPlaying) report(ended);
           playing = event.data === window.YT.PlayerState.PLAYING;
-          if (!playing) {
-            previous = null;
-          } else if (!wasPlaying) {
-            // By the time YouTube announces PLAYING, a fraction of the
-            // first frame can already have elapsed. Include it if playback
-            // began at the last known paused or cued position.
-            previous = lastReport;
-          }
-          report(ended);
+          report(ended, playing && !wasPlaying);
+        },
+        onPlaybackRateChange: (event) => {
+          report();
+          playbackRate = event.data;
         },
         onError: fail,
       },

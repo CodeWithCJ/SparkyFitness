@@ -20,6 +20,10 @@ import {
 import { newUuid } from '../../src/utils/ids';
 import { buildSessionExercisesPayload } from '../../src/utils/workoutSession';
 import {
+  buildActiveWorkoutCreateBody,
+  buildActiveWorkoutUpdateBody,
+} from '../../src/utils/activeWorkoutPayload';
+import {
   useAppPreferencesStore,
   __resetAppPreferencesStoreForTests,
 } from '../../src/stores/appPreferencesStore';
@@ -4252,7 +4256,118 @@ describe('activeWorkoutStore', () => {
     });
   });
 
+  describe('video completion', () => {
+    it('keeps the actual completion time and uses the video duration until manually re-logged', () => {
+      const exercise = makeSession().exercises[0];
+      exercise.exercise_snapshot = {
+        ...exercise.exercise_snapshot!,
+        modality: 'duration',
+      };
+      exercise.sets = [{ ...exercise.sets[0], duration: 10 }];
+      useActiveWorkoutStore
+        .getState()
+        .startWorkout(makeSession({ exercises: [exercise] }), {
+          videoUrl: 'https://example.com/workout.mp4',
+          exerciseConfigs: [{ video_start_seconds: 0, video_end_seconds: 30 }],
+        });
+      const completion = new Date(FIXED_NOW + 630_000);
+      jest.setSystemTime(completion);
+      const state = useActiveWorkoutStore.getState();
+      state.completeVideoExercises([exercise.id]);
+
+      function exercisePayload() {
+        const latest = useActiveWorkoutStore.getState();
+        return buildActiveWorkoutUpdateBody({
+          ...latest,
+          session: latest.session!,
+        }).exercises?.[0];
+      }
+
+      expect(exercisePayload()).toMatchObject({
+        duration_minutes: 0.5,
+        sets: [{ duration: 30, completed_at: completion.toISOString() }],
+      });
+
+      state.updateSetField('101', { duration: 45 });
+      expect(exercisePayload()?.duration_minutes).toBe(0.75);
+
+      state.uncompleteSet('101');
+      state.completeSet('101');
+      expect(exercisePayload()?.duration_minutes).toBe(10.5);
+    });
+  });
+
   describe('persistence + rehydration', () => {
+    it('keeps video segment time through offline creation and set id assignment', async () => {
+      const exercise = makeSession().exercises[0];
+      exercise.sets[0].id = -1;
+      const session = makeSession({ exercises: [exercise] });
+      useActiveWorkoutStore.getState().startWorkout(session, {
+        videoUrl: 'https://example.com/workout.mp4',
+        exerciseConfigs: [{ video_start_seconds: 0, video_end_seconds: 30 }],
+        pendingCreate: {
+          entryDate: '2026-03-20',
+          workoutPresetId: null,
+          workoutPlanAssignmentId: null,
+        },
+      });
+      jest.setSystemTime(FIXED_NOW + 630_000);
+      useActiveWorkoutStore.getState().completeVideoExercises([exercise.id]);
+
+      const storageKey = '@SparkyFitness/active-workout';
+      const saved = await AsyncStorage.getItem(storageKey);
+      useActiveWorkoutStore.getState().clearWorkout();
+      await AsyncStorage.setItem(storageKey, saved!);
+      await useActiveWorkoutStore.persist.rehydrate();
+
+      const restored = useActiveWorkoutStore.getState();
+      const create = buildActiveWorkoutCreateBody({
+        ...restored,
+        session: restored.session!,
+      });
+      expect(create?.exercises?.[0]).toMatchObject({
+        duration_minutes: 0.5,
+        sets: [
+          { reps: 10, duration: null },
+          { reps: 8, duration: null },
+        ],
+      });
+
+      const serverSession: PresetSessionResponse = {
+        ...restored.session!,
+        exercises: [
+          {
+            ...exercise,
+            duration_minutes: 0.5,
+            sets: exercise.sets.map((set) =>
+              set.id === -1 ? { ...set, id: 401 } : set
+            ),
+          },
+        ],
+      };
+      restored.applyServerSession(serverSession, restored.sessionRevision, [
+        exercise.id,
+      ]);
+
+      const adopted = useActiveWorkoutStore.getState();
+      adopted.uncompleteSet('102');
+      const updated = useActiveWorkoutStore.getState();
+      const update = buildActiveWorkoutUpdateBody({
+        ...updated,
+        session: updated.session!,
+      });
+      expect(update.exercises?.[0]).toMatchObject({
+        duration_minutes: 0.5,
+        sets: [
+          {
+            id: 401,
+            completed_at: new Date(FIXED_NOW + 630_000).toISOString(),
+          },
+          { id: 102, completed_at: null },
+        ],
+      });
+    });
+
     it('rehydration with resting + expired endsAt snaps to ready (no phantom haptic)', async () => {
       jest.useRealTimers();
       const now = Date.now();
